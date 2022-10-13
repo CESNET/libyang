@@ -48,98 +48,6 @@
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
-/**
- * @brief information about YANG statements
- */
-struct stmt_info_s stmt_attr_info[] = {
-    [LY_STMT_NONE] = {NULL, NULL, 0},
-    [LY_STMT_ACTION] = {"action", "name", STMT_FLAG_ID},
-    [LY_STMT_ANYDATA] = {"anydata", "name", STMT_FLAG_ID},
-    [LY_STMT_ANYXML] = {"anyxml", "name", STMT_FLAG_ID},
-    [LY_STMT_ARGUMENT] = {"argument", "name", STMT_FLAG_ID},
-    [LY_STMT_ARG_TEXT] = {"text", NULL, 0},
-    [LY_STMT_ARG_VALUE] = {"value", NULL, 0},
-    [LY_STMT_AUGMENT] = {"augment", "target-node", STMT_FLAG_ID},
-    [LY_STMT_BASE] = {"base", "name", STMT_FLAG_ID},
-    [LY_STMT_BELONGS_TO] = {"belongs-to", "module", STMT_FLAG_ID},
-    [LY_STMT_BIT] = {"bit", "name", STMT_FLAG_ID},
-    [LY_STMT_CASE] = {"case", "name", STMT_FLAG_ID},
-    [LY_STMT_CHOICE] = {"choice", "name", STMT_FLAG_ID},
-    [LY_STMT_CONFIG] = {"config", "value", STMT_FLAG_ID},
-    [LY_STMT_CONTACT] = {"contact", "text", STMT_FLAG_YIN},
-    [LY_STMT_CONTAINER] = {"container", "name", STMT_FLAG_ID},
-    [LY_STMT_DEFAULT] = {"default", "value", 0},
-    [LY_STMT_DESCRIPTION] = {"description", "text", STMT_FLAG_YIN},
-    [LY_STMT_DEVIATE] = {"deviate", "value", STMT_FLAG_ID},
-    [LY_STMT_DEVIATION] = {"deviation", "target-node", STMT_FLAG_ID},
-    [LY_STMT_ENUM] = {"enum", "name", STMT_FLAG_ID},
-    [LY_STMT_ERROR_APP_TAG] = {"error-app-tag", "value", 0},
-    [LY_STMT_ERROR_MESSAGE] = {"error-message", "value", STMT_FLAG_YIN},
-    [LY_STMT_EXTENSION] = {"extension", "name", STMT_FLAG_ID},
-    [LY_STMT_EXTENSION_INSTANCE] = {NULL, NULL, 0},
-    [LY_STMT_FEATURE] = {"feature", "name", STMT_FLAG_ID},
-    [LY_STMT_FRACTION_DIGITS] = {"fraction-digits", "value", STMT_FLAG_ID},
-    [LY_STMT_GROUPING] = {"grouping", "name", STMT_FLAG_ID},
-    [LY_STMT_IDENTITY] = {"identity", "name", STMT_FLAG_ID},
-    [LY_STMT_IF_FEATURE] = {"if-feature", "name", 0},
-    [LY_STMT_IMPORT] = {"import", "module", STMT_FLAG_ID},
-    [LY_STMT_INCLUDE] = {"include", "module", STMT_FLAG_ID},
-    [LY_STMT_INPUT] = {"input", NULL, 0},
-    [LY_STMT_KEY] = {"key", "value", 0},
-    [LY_STMT_LEAF] = {"leaf", "name", STMT_FLAG_ID},
-    [LY_STMT_LEAF_LIST] = {"leaf-list", "name", STMT_FLAG_ID},
-    [LY_STMT_LENGTH] = {"length", "value", 0},
-    [LY_STMT_LIST] = {"list", "name", STMT_FLAG_ID},
-    [LY_STMT_MANDATORY] = {"mandatory", "value", STMT_FLAG_ID},
-    [LY_STMT_MAX_ELEMENTS] = {"max-elements", "value", STMT_FLAG_ID},
-    [LY_STMT_MIN_ELEMENTS] = {"min-elements", "value", STMT_FLAG_ID},
-    [LY_STMT_MODIFIER] = {"modifier", "value", STMT_FLAG_ID},
-    [LY_STMT_MODULE] = {"module", "name", STMT_FLAG_ID},
-    [LY_STMT_MUST] = {"must", "condition", 0},
-    [LY_STMT_NAMESPACE] = {"namespace", "uri", 0},
-    [LY_STMT_NOTIFICATION] = {"notification", "name", STMT_FLAG_ID},
-    [LY_STMT_ORDERED_BY] = {"ordered-by", "value", STMT_FLAG_ID},
-    [LY_STMT_ORGANIZATION] = {"organization", "text", STMT_FLAG_YIN},
-    [LY_STMT_OUTPUT] = {"output", NULL, 0},
-    [LY_STMT_PATH] = {"path", "value", 0},
-    [LY_STMT_PATTERN] = {"pattern", "value", 0},
-    [LY_STMT_POSITION] = {"position", "value", STMT_FLAG_ID},
-    [LY_STMT_PREFIX] = {"prefix", "value", STMT_FLAG_ID},
-    [LY_STMT_PRESENCE] = {"presence", "value", 0},
-    [LY_STMT_RANGE] = {"range", "value", 0},
-    [LY_STMT_REFERENCE] = {"reference", "text", STMT_FLAG_YIN},
-    [LY_STMT_REFINE] = {"refine", "target-node", STMT_FLAG_ID},
-    [LY_STMT_REQUIRE_INSTANCE] = {"require-instance", "value", STMT_FLAG_ID},
-    [LY_STMT_REVISION] = {"revision", "date", STMT_FLAG_ID},
-    [LY_STMT_REVISION_DATE] = {"revision-date", "date", STMT_FLAG_ID},
-    [LY_STMT_RPC] = {"rpc", "name", STMT_FLAG_ID},
-    [LY_STMT_STATUS] = {"status", "value", STMT_FLAG_ID},
-    [LY_STMT_SUBMODULE] = {"submodule", "name", STMT_FLAG_ID},
-    [LY_STMT_SYNTAX_LEFT_BRACE] = {"{", NULL, 0},
-    [LY_STMT_SYNTAX_RIGHT_BRACE] = {"}", NULL, 0},
-    [LY_STMT_SYNTAX_SEMICOLON] = {";", NULL, 0},
-    [LY_STMT_TYPE] = {"type", "name", STMT_FLAG_ID},
-    [LY_STMT_TYPEDEF] = {"typedef", "name", STMT_FLAG_ID},
-    [LY_STMT_UNIQUE] = {"unique", "tag", 0},
-    [LY_STMT_UNITS] = {"units", "name", 0},
-    [LY_STMT_USES] = {"uses", "name", STMT_FLAG_ID},
-    [LY_STMT_VALUE] = {"value", "value", STMT_FLAG_ID},
-    [LY_STMT_WHEN] = {"when", "condition", 0},
-    [LY_STMT_YANG_VERSION] = {"yang-version", "value", STMT_FLAG_ID},
-    [LY_STMT_YIN_ELEMENT] = {"yin-element", "value", STMT_FLAG_ID},
-};
-
-LIBYANG_API_DEF const char *
-ly_stmt2str(enum ly_stmt stmt)
-{
-    if (stmt == LY_STMT_EXTENSION_INSTANCE) {
-        return "extension instance";
-    } else {
-        return stmt_attr_info[stmt].name;
-    }
-}
-
-
 const char * const ly_devmod_list[] = {
     [LYS_DEV_NOT_SUPPORTED] = "not-supported",
     [LYS_DEV_ADD] = "add",
@@ -232,22 +140,22 @@ lys_getnext_into_case(const struct lysc_node_case *first_case, const struct lysc
  * be from an augment. If the @p ext is provided, the function is locked inside the schema tree defined in the
  * extension instance.
  *
- * ::lys_getnext_() is supposed to be called sequentially. In the first call, the \p last parameter is usually NULL
- * and function starts returning i) the first \p parent's child or ii) the first top level element specified in the
- * given extension (if provided) or iii) the first top level element of the \p module.
- * Consequent calls suppose to provide the previously returned node as the \p last parameter and still the same
- * \p parent and \p module parameters.
+ * ::lys_getnext_() is supposed to be called sequentially. In the first call, the @p last parameter is usually NULL
+ * and function starts returning i) the first @p parent's child or ii) the first top level element specified in the
+ * given extension (if provided) or iii) the first top level element of the @p module.
+ * Consequent calls suppose to provide the previously returned node as the @p last parameter and still the same
+ * @p parent and @p module parameters.
  *
  * Without options, the function is used to traverse only the schema nodes that can be paired with corresponding
- * data nodes in a data tree. By setting some \p options the behavior can be modified to the extent that
+ * data nodes in a data tree. By setting some @p options the behavior can be modified to the extent that
  * all the schema nodes are iteratively returned.
  *
  * @param[in] last Previously returned schema tree node, or NULL in case of the first call.
  * @param[in] parent Parent of the subtree where the function starts processing.
- * @param[in] module In case of iterating on top level elements, the \p parent is NULL and
+ * @param[in] module In case of iterating on top level elements, the @p parent is NULL and
  * module must be specified.
  * @param[in] ext The extension instance to provide a separate schema tree. To consider the top level elements in the tree,
- * the \p parent must be NULL. Anyway, at least one of @p parent, @p module and @p ext parameters must be specified.
+ * the @p parent must be NULL. Anyway, at least one of @p parent, @p module and @p ext parameters must be specified.
  * @param[in] options [ORed options](@ref sgetnextflags).
  * @return Next schema tree node that can be instantiated in a data tree, NULL in case there is no such element.
  */
@@ -257,7 +165,6 @@ lys_getnext_(const struct lysc_node *last, const struct lysc_node *parent, const
 {
     const struct lysc_node *next = NULL;
     ly_bool action_flag = 0, notif_flag = 0;
-    struct lysc_node **data_p = NULL;
 
     LY_CHECK_ARG_RET(NULL, parent || module || ext, NULL);
 
@@ -272,8 +179,8 @@ next:
         } else {
             /* top level data */
             if (ext) {
-                lysc_ext_substmt(ext, LY_STMT_CONTAINER /* matches all nodes */, (void **)&data_p);
-                next = last = data_p ? *data_p : NULL;
+                lyplg_ext_get_storage(ext, LY_STMT_DATA_NODE_MASK, (const void **)&last);
+                next = last;
             } else {
                 next = last = module->data;
             }
@@ -298,15 +205,13 @@ next:
 repeat:
     if (!next) {
         /* possibly go back to parent */
-        data_p = NULL;
         if (last && (last->parent != parent)) {
             last = last->parent;
             goto next;
         } else if (!action_flag) {
             action_flag = 1;
             if (ext) {
-                lysc_ext_substmt(ext, LY_STMT_RPC /* matches also actions */, (void **)&data_p);
-                next = data_p ? *data_p : NULL;
+                lyplg_ext_get_storage(ext, LY_STMT_OP_MASK, (const void **)&next);
             } else if (parent) {
                 next = (struct lysc_node *)lysc_node_actions(parent);
             } else {
@@ -315,8 +220,7 @@ repeat:
         } else if (!notif_flag) {
             notif_flag = 1;
             if (ext) {
-                lysc_ext_substmt(ext, LY_STMT_NOTIFICATION, (void **)&data_p);
-                next = data_p ? *data_p : NULL;
+                lyplg_ext_get_storage(ext, LY_STMT_NOTIFICATION, (const void **)&next);
             } else if (parent) {
                 next = (struct lysc_node *)lysc_node_notifs(parent);
             } else {
@@ -1278,6 +1182,102 @@ lysp_resolve_import_include(struct lysp_ctx *pctx, struct lysp_module *pmod, str
 }
 
 /**
+ * @brief Generate path of the given paresed node.
+ *
+ * @param[in] node Schema path of this node will be generated.
+ * @param[in] parent Build relative path only until this parent is found. If NULL, the full absolute path is printed.
+ * @return NULL in case of memory allocation error, path of the node otherwise.
+ * In case the @p buffer is NULL, the returned string is dynamically allocated and caller is responsible to free it.
+ */
+static char *
+lysp_path_until(const struct lysp_node *node, const struct lysp_node *parent, const struct lysp_module *pmod)
+{
+    const struct lysp_node *iter, *par;
+    char *path = NULL, *s;
+    const char *slash;
+    int len = 0;
+
+    for (iter = node; iter && (iter != parent) && (len >= 0); iter = iter->parent) {
+        if (parent && (iter->parent == parent)) {
+            slash = "";
+        } else {
+            slash = "/";
+        }
+
+        s = path;
+        par = iter->parent;
+        if (!par) {
+            /* print prefix */
+            len = asprintf(&path, "%s%s:%s%s", slash, pmod->mod->name, iter->name, s ? s : "");
+        } else {
+            /* prefix is the same as in parent */
+            len = asprintf(&path, "%s%s%s", slash, iter->name, s ? s : "");
+        }
+        free(s);
+    }
+
+    if (len < 0) {
+        free(path);
+        path = NULL;
+    } else if (len == 0) {
+        path = strdup("/");
+    }
+
+    return path;
+}
+
+/**
+ * @brief Build log path for a parsed extension instance.
+ *
+ * @param[in] pcxt Parse context.
+ * @param[in] ext Parsed extension instance.
+ * @param[out] path Generated path.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lysp_resolve_ext_instance_log_path(const struct lysp_ctx *pctx, const struct lysp_ext_instance *ext, char **path)
+{
+    char *buf = NULL;
+    uint32_t used = 0, size = 0;
+
+    if (ext->parent_stmt & LY_STMT_NODE_MASK) {
+        /* parsed node path */
+        buf = lysp_path_until(ext->parent, NULL, PARSER_CUR_PMOD(pctx));
+        LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(pctx)), LY_EMEM);
+        size = used = strlen(buf);
+
+        /* slash */
+        size += 1;
+        buf = realloc(buf, size + 1);
+        LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(pctx)), LY_EMEM);
+        used += sprintf(buf + used, "/");
+    } else {
+        /* module */
+        size += 1 + strlen(PARSER_CUR_PMOD(pctx)->mod->name) + 1;
+        buf = realloc(buf, size + 1);
+        LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(pctx)), LY_EMEM);
+        used += sprintf(buf + used, "/%s:", PARSER_CUR_PMOD(pctx)->mod->name);
+    }
+
+    /* extension name */
+    size += 12 + strlen(ext->name) + 2;
+    buf = realloc(buf, size + 1);
+    LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(pctx)), LY_EMEM);
+    used += sprintf(buf + used, "{extension='%s'}", ext->name);
+
+    /* extension argument */
+    if (ext->argument) {
+        size += 1 + strlen(ext->argument);
+        buf = realloc(buf, size + 1);
+        LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(pctx)), LY_EMEM);
+        used += sprintf(buf + used, "/%s", ext->argument);
+    }
+
+    *path = buf;
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Resolve (find) all extension instance records and finish their parsing.
  *
  * @param[in] pctx Parse context with all the parsed extension instances.
@@ -1286,30 +1286,69 @@ lysp_resolve_import_include(struct lysp_ctx *pctx, struct lysp_module *pmod, str
 static LY_ERR
 lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
 {
+    LY_ERR r;
+    struct lysf_ctx fctx = {.ctx = PARSER_CTX(pctx)};
     struct lysp_ext_instance *exts, *ext;
     const struct lys_module *mod;
-    const char *ptr;
     uint32_t i;
     LY_ARRAY_COUNT_TYPE u;
+    char *path = NULL;
 
+    /* first finish parsing all extension instances ... */
     for (i = 0; i < pctx->ext_inst.count; ++i) {
         exts = pctx->ext_inst.objs[i];
         LY_ARRAY_FOR(exts, u) {
             ext = &exts[u];
 
-            /* find the extension (definition) module */
-            ptr = strchr(ext->name, ':');
-            assert(ptr);
-            mod = ly_resolve_prefix(PARSER_CTX(pctx), ext->name, ptr - ext->name, ext->format, ext->prefix_data);
-            if (!mod) {
-                LOGVAL(PARSER_CTX(pctx), LYVE_SYNTAX, "Unknown prefix \"%*.s\" used for an extension instance.",
-                        (int)(ptr - ext->name), ext->name);
-                return LY_ENOTFOUND;
-            }
+            /* find the extension definition */
+            LY_CHECK_RET(lysp_ext_find_definition(PARSER_CTX(pctx), ext, &mod, &ext->def));
+
+            /* resolve the argument, if needed */
+            LY_CHECK_RET(lysp_ext_instance_resolve_argument(PARSER_CTX(pctx), ext));
 
             /* find the extension record, if any */
-            ++ptr;
-            ext->record = lyplg_ext_record_find(mod->name, mod->revision, ptr);
+            ext->record = lyplg_ext_record_find(mod->name, mod->revision, ext->def->name);
+        }
+    }
+
+    /* ... then call the parse callback */
+    for (i = 0; i < pctx->ext_inst.count; ++i) {
+        exts = pctx->ext_inst.objs[i];
+        u = 0;
+        while (u < LY_ARRAY_COUNT(exts)) {
+            ext = &exts[u];
+            if (!ext->record || !ext->record->plugin.parse) {
+                goto next_iter;
+            }
+
+            /* set up log path */
+            if ((r = lysp_resolve_ext_instance_log_path(pctx, ext, &path))) {
+                return r;
+            }
+            LOG_LOCINIT(NULL, NULL, path, NULL);
+
+            /* parse */
+            r = ext->record->plugin.parse(pctx, ext);
+
+            LOG_LOCBACK(0, 0, 1, 0);
+            free(path);
+
+            if (r == LY_ENOT) {
+                /* instance should be ignored, remove it */
+                lysp_ext_instance_free(&fctx, ext);
+                LY_ARRAY_DECREMENT(exts);
+                if (u < LY_ARRAY_COUNT(exts)) {
+                    /* replace by the last item */
+                    *ext = exts[LY_ARRAY_COUNT(exts)];
+                } /* else if there are no more items, leave the empty array, we are not able to free it */
+                continue;
+            } else if (r) {
+                /* error */
+                return r;
+            }
+
+next_iter:
+            ++u;
         }
     }
 
@@ -1413,31 +1452,32 @@ error:
 /**
  * @brief Add ietf-netconf metadata to the parsed module. Operation, filter, and select are added.
  *
+ * @param[in] pctx Parse context.
  * @param[in] mod Parsed module to add to.
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
 static LY_ERR
-lysp_add_internal_ietf_netconf(struct lysp_module *mod)
+lysp_add_internal_ietf_netconf(struct lysp_ctx *pctx, struct lysp_module *mod)
 {
-    struct lysp_ext_instance *ext_p;
+    struct lysp_ext_instance *extp;
     struct lysp_stmt *stmt;
     struct lysp_import *imp;
 
     /*
      * 1) edit-config's operation
      */
-    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, ext_p, LY_EMEM);
-    LY_CHECK_ERR_RET(!ext_p, LOGMEM(mod->mod->ctx), LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &ext_p->name));
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "operation", 0, &ext_p->argument));
-    ext_p->format = LY_VALUE_SCHEMA;
-    ext_p->prefix_data = mod;
-    ext_p->flags = LYS_INTERNAL;
-    ext_p->parent_stmt = LY_STMT_MODULE;
-    ext_p->parent_stmt_index = 0;
+    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, extp, LY_EMEM);
+    LY_CHECK_ERR_RET(!extp, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &extp->name));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "operation", 0, &extp->argument));
+    extp->format = LY_VALUE_SCHEMA;
+    extp->prefix_data = mod;
+    extp->parent = mod;
+    extp->parent_stmt = LY_STMT_MODULE;
+    extp->flags = LYS_INTERNAL;
 
-    ext_p->child = stmt = calloc(1, sizeof *ext_p->child);
+    extp->child = stmt = calloc(1, sizeof *extp->child);
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &stmt->stmt));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enumeration", 0, &stmt->arg));
@@ -1493,17 +1533,17 @@ lysp_add_internal_ietf_netconf(struct lysp_module *mod)
     /*
      * 2) filter's type
      */
-    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, ext_p, LY_EMEM);
-    LY_CHECK_ERR_RET(!ext_p, LOGMEM(mod->mod->ctx), LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &ext_p->name));
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &ext_p->argument));
-    ext_p->format = LY_VALUE_SCHEMA;
-    ext_p->prefix_data = mod;
-    ext_p->flags = LYS_INTERNAL;
-    ext_p->parent_stmt = LY_STMT_MODULE;
-    ext_p->parent_stmt_index = 0;
+    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, extp, LY_EMEM);
+    LY_CHECK_ERR_RET(!extp, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &extp->name));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &extp->argument));
+    extp->format = LY_VALUE_SCHEMA;
+    extp->prefix_data = mod;
+    extp->parent = mod;
+    extp->parent_stmt = LY_STMT_MODULE;
+    extp->flags = LYS_INTERNAL;
 
-    ext_p->child = stmt = calloc(1, sizeof *ext_p->child);
+    extp->child = stmt = calloc(1, sizeof *extp->child);
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &stmt->stmt));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enumeration", 0, &stmt->arg));
@@ -1544,17 +1584,17 @@ lysp_add_internal_ietf_netconf(struct lysp_module *mod)
     /*
      * 3) filter's select
      */
-    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, ext_p, LY_EMEM);
-    LY_CHECK_ERR_RET(!ext_p, LOGMEM(mod->mod->ctx), LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &ext_p->name));
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "select", 0, &ext_p->argument));
-    ext_p->format = LY_VALUE_SCHEMA;
-    ext_p->prefix_data = mod;
-    ext_p->flags = LYS_INTERNAL;
-    ext_p->parent_stmt = LY_STMT_MODULE;
-    ext_p->parent_stmt_index = 0;
+    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, extp, LY_EMEM);
+    LY_CHECK_ERR_RET(!extp, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &extp->name));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "select", 0, &extp->argument));
+    extp->format = LY_VALUE_SCHEMA;
+    extp->prefix_data = mod;
+    extp->parent = mod;
+    extp->parent_stmt = LY_STMT_MODULE;
+    extp->flags = LYS_INTERNAL;
 
-    ext_p->child = stmt = calloc(1, sizeof *ext_p->child);
+    extp->child = stmt = calloc(1, sizeof *extp->child);
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &stmt->stmt));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "yang_:xpath1.0", 0, &stmt->arg));
@@ -1562,15 +1602,18 @@ lysp_add_internal_ietf_netconf(struct lysp_module *mod)
     stmt->prefix_data = mod;
     stmt->kw = LY_STMT_TYPE;
 
+    if (LY_ARRAY_COUNT(mod->exts) == 3) {
+        /* first extension instances */
+        LY_CHECK_RET(ly_set_add(&pctx->ext_inst, mod->exts, 1, NULL));
+    }
+
     /* create new imports for the used prefixes */
     LY_ARRAY_NEW_RET(mod->mod->ctx, mod->imports, imp, LY_EMEM);
-
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "ietf-yang-metadata", 0, &imp->name));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_", 0, &imp->prefix));
     imp->flags = LYS_INTERNAL;
 
     LY_ARRAY_NEW_RET(mod->mod->ctx, mod->imports, imp, LY_EMEM);
-
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "ietf-yang-types", 0, &imp->name));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "yang_", 0, &imp->prefix));
     imp->flags = LYS_INTERNAL;
@@ -1581,31 +1624,31 @@ lysp_add_internal_ietf_netconf(struct lysp_module *mod)
 /**
  * @brief Add ietf-netconf-with-defaults "default" metadata to the parsed module.
  *
+ * @param[in] pctx Parse context.
  * @param[in] mod Parsed module to add to.
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
 static LY_ERR
-lysp_add_internal_ietf_netconf_with_defaults(struct lysp_module *mod)
+lysp_add_internal_ietf_netconf_with_defaults(struct lysp_ctx *pctx, struct lysp_module *mod)
 {
-    struct lysp_ext_instance *ext_p;
+    struct lysp_ext_instance *extp;
     struct lysp_stmt *stmt;
     struct lysp_import *imp;
 
     /* add new extension instance */
-    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, ext_p, LY_EMEM);
+    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, extp, LY_EMEM);
 
     /* fill in the extension instance fields */
-    LY_CHECK_ERR_RET(!ext_p, LOGMEM(mod->mod->ctx), LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &ext_p->name));
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "default", 0, &ext_p->argument));
-    ext_p->format = LY_VALUE_SCHEMA;
-    ext_p->prefix_data = mod;
-    ext_p->flags = LYS_INTERNAL;
-    ext_p->parent_stmt = LY_STMT_MODULE;
-    ext_p->parent_stmt_index = 0;
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &extp->name));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "default", 0, &extp->argument));
+    extp->format = LY_VALUE_SCHEMA;
+    extp->prefix_data = mod;
+    extp->parent = mod;
+    extp->parent_stmt = LY_STMT_MODULE;
+    extp->flags = LYS_INTERNAL;
 
-    ext_p->child = stmt = calloc(1, sizeof *ext_p->child);
+    extp->child = stmt = calloc(1, sizeof *extp->child);
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &stmt->stmt));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "boolean", 0, &stmt->arg));
@@ -1613,9 +1656,13 @@ lysp_add_internal_ietf_netconf_with_defaults(struct lysp_module *mod)
     stmt->prefix_data = mod;
     stmt->kw = LY_STMT_TYPE;
 
+    if (LY_ARRAY_COUNT(mod->exts) == 1) {
+        /* first extension instance */
+        LY_CHECK_RET(ly_set_add(&pctx->ext_inst, mod->exts, 1, NULL));
+    }
+
     /* create new import for the used prefix */
     LY_ARRAY_NEW_RET(mod->mod->ctx, mod->imports, imp, LY_EMEM);
-
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "ietf-yang-metadata", 0, &imp->name));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_", 0, &imp->prefix));
     imp->flags = LYS_INTERNAL;
@@ -1759,9 +1806,9 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
 
     /* add internal data in case specific modules were parsed */
     if (!strcmp(mod->name, "ietf-netconf")) {
-        LY_CHECK_GOTO(ret = lysp_add_internal_ietf_netconf(mod->parsed), cleanup);
+        LY_CHECK_GOTO(ret = lysp_add_internal_ietf_netconf(pctx, mod->parsed), cleanup);
     } else if (!strcmp(mod->name, "ietf-netconf-with-defaults")) {
-        LY_CHECK_GOTO(ret = lysp_add_internal_ietf_netconf_with_defaults(mod->parsed), cleanup);
+        LY_CHECK_GOTO(ret = lysp_add_internal_ietf_netconf_with_defaults(pctx, mod->parsed), cleanup);
     }
 
     /* add the module into newly created module set, will also be freed from there on any error */

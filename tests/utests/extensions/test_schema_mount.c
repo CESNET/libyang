@@ -73,7 +73,7 @@ test_schema(void **state)
             "  }\n"
             "}\n";
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Extension \"yangmnt:mount-point\" instance not allowed in YANG version 1 module.",
             "/sm:root/{extension='yangmnt:mount-point'}/root");
 
@@ -90,7 +90,7 @@ test_schema(void **state)
             "  yangmnt:mount-point \"root\";\n"
             "}\n";
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Extension \"yangmnt:mount-point\" instance allowed only in container or list statement.",
             "/sm:{extension='yangmnt:mount-point'}/root");
 
@@ -112,7 +112,7 @@ test_schema(void **state)
             "  }\n"
             "}\n";
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Extension \"yangmnt:mount-point\" instance allowed only in container or list statement.",
             "/sm:root/l/{extension='yangmnt:mount-point'}/root");
 
@@ -136,9 +136,9 @@ test_schema(void **state)
             "  }\n"
             "}\n";
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Multiple extension \"yangmnt:mount-point\" instances.",
-            "/sm:l/{extension='yangmnt:mount-point'}/root2");
+            "/sm:l/{extension='yangmnt:mount-point'}/root");
 
     /* valid */
     schema =
@@ -156,7 +156,7 @@ test_schema(void **state)
             "  }\n"
             "}\n";
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, &mod));
-    lys_print_mem(&str, mod, LYS_OUT_YIN, 0);
+    lys_print_mem(&str, mod, LYS_OUT_YANG, 0);
     assert_string_equal(str, schema);
     free(str);
 }
@@ -195,7 +195,7 @@ test_parse_invalid(void **state)
             "  </unknown>"
             "</root>";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EINVAL, data);
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": Failed to get extension data, no callback set.",
+    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": Failed to get extension data, no callback set.",
             NULL);
 
     json =
@@ -212,7 +212,7 @@ test_parse_invalid(void **state)
             "  }"
             "}";
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EINVAL, data);
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": Failed to get extension data, no callback set.",
+    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": Failed to get extension data, no callback set.",
             NULL);
 
     /* unknown data */
@@ -338,9 +338,9 @@ test_parse_invalid(void **state)
             "  </mount-point>"
             "</schema-mounts>");
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.", "Line number 1.");
+    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.", NULL);
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.", "Line number 1.");
+    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.", NULL);
 
     /* callback data correct, invalid YANG data */
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
@@ -404,25 +404,25 @@ test_parse_invalid(void **state)
             "  </mount-point>"
             "</schema-mounts>");
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Mandatory node \"type\" instance does not exist.",
             "Schema location \"/ietf-interfaces:interfaces/interface/type\".");
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Mandatory node \"type\" instance does not exist.",
-            "Schema location \"/ietf-interfaces:interfaces/interface/type\", line number 1.");
+            "Schema location \"/ietf-interfaces:interfaces/interface/type\".");
 
     /* same validation fail in separate validation */
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, LY_SUCCESS, data);
     assert_int_equal(LY_EVALID, lyd_validate_all(&data, NULL, LYD_VALIDATE_PRESENT, NULL));
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Mandatory node \"type\" instance does not exist.",
             "Schema location \"/ietf-interfaces:interfaces/interface/type\".");
     lyd_free_siblings(data);
 
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, LY_SUCCESS, data);
     assert_int_equal(LY_EVALID, lyd_validate_all(&data, NULL, LYD_VALIDATE_PRESENT, NULL));
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Mandatory node \"type\" instance does not exist.",
             "Schema location \"/ietf-interfaces:interfaces/interface/type\".");
     lyd_free_siblings(data);
@@ -865,7 +865,7 @@ test_parse_shared(void **state)
             "  </interfaces-state>\n"
             "</root2>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Shared-schema yang-library content-id \"2\" differs from \"1\" used previously.",
             "/ietf-yang-library:yang-library/content-id");
 
@@ -1121,7 +1121,7 @@ test_parse_shared_parent_ref(void **state)
             "</root3>\n"
             "<target xmlns=\"urn:sm\">wrong-target-value</target>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Invalid leafref value \"target-value\" - no target instance \"/sm:target\" with the same value.",
             "Data location \"/ietf-interfaces:interfaces/interface[name='bu']/sm:sm-name\".");
 
@@ -1146,7 +1146,7 @@ test_parse_shared_parent_ref(void **state)
             "  \"sm:target\": \"wrong-target-value\"\n"
             "}\n";
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Invalid leafref value \"target-value\" - no target instance \"/sm:target\" with the same value.",
             "Data location \"/ietf-interfaces:interfaces/interface[name='bu']/sm:sm-name\", line number 18.");
 

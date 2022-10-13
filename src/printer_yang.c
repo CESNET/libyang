@@ -28,7 +28,6 @@
 #include "out.h"
 #include "out_internal.h"
 #include "plugins_exts.h"
-#include "plugins_exts_print.h"
 #include "plugins_types.h"
 #include "printer_internal.h"
 #include "printer_schema.h"
@@ -246,22 +245,15 @@ yprp_extension_instance(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t 
 {
     struct lysp_stmt *stmt;
     ly_bool child_presence;
-    struct lysp_ext *ext_def;
 
     if ((ext->flags & LYS_INTERNAL) || (ext->parent_stmt != substmt) || (ext->parent_stmt_index != substmt_index)) {
         return;
     }
 
-    lysp_ext_find_definition(pctx->module->ctx, ext, NULL, &ext_def);
-    if (!ext_def) {
-        return;
-    }
-
     ypr_open(pctx->out, flag);
 
-    if (ext_def->argname) {
+    if (ext->def->argname) {
         ly_print_(pctx->out, "%*s%s \"", INDENT, ext->name);
-        lysp_ext_instance_resolve_argument(pctx->module->ctx, ext, ext_def);
         ypr_encode(pctx->out, ext->argument, -1);
         ly_print_(pctx->out, "\"");
     } else {
@@ -606,7 +598,7 @@ yprp_restr(struct lys_ypr_ctx *pctx, const struct lysp_restr *restr, enum ly_stm
     text = ((restr->arg.str[0] != LYSP_RESTR_PATTERN_NACK) && (restr->arg.str[0] != LYSP_RESTR_PATTERN_ACK)) ?
             restr->arg.str : restr->arg.str + 1;
     singleline = strchr(text, '\n') ? 0 : 1;
-    ypr_text(pctx, ly_stmt2str(stmt), text, singleline, 0);
+    ypr_text(pctx, lyplg_ext_stmt2str(stmt), text, singleline, 0);
 
     LEVEL++;
     yprp_extension_instances(pctx, stmt, 0, restr->exts, &inner_flag);
@@ -1124,7 +1116,7 @@ yprc_inout(struct lys_ypr_ctx *pctx, const struct lysc_node_action_inout *inout,
     ly_print_(pctx->out, "\n%*s%s {\n", INDENT, inout->name);
     LEVEL++;
 
-    yprc_extension_instances(pctx, lys_nodetype2stmt(inout->nodetype), 0, inout->exts, NULL);
+    yprc_extension_instances(pctx, lyplg_ext_nodetype2stmt(inout->nodetype), 0, inout->exts, NULL);
     LY_ARRAY_FOR(inout->musts, u) {
         yprc_must(pctx, &inout->musts[u], NULL);
     }
@@ -1219,7 +1211,7 @@ yprp_action(struct lys_ypr_ctx *pctx, const struct lysp_node_action *action)
     ly_print_(pctx->out, "%*s%s %s", INDENT, action->parent ? "action" : "rpc", action->name);
 
     LEVEL++;
-    yprp_extension_instances(pctx, lys_nodetype2stmt(action->nodetype), 0, action->exts, &flag);
+    yprp_extension_instances(pctx, lyplg_ext_nodetype2stmt(action->nodetype), 0, action->exts, &flag);
     yprp_iffeatures(pctx, action->iffeatures, action->exts, &flag);
     ypr_status(pctx, action->flags, action->exts, &flag);
     ypr_description(pctx, action->dsc, action->exts, &flag);
@@ -1258,7 +1250,7 @@ yprc_action(struct lys_ypr_ctx *pctx, const struct lysc_node_action *action)
     ly_print_(pctx->out, "%*s%s %s", INDENT, action->parent ? "action" : "rpc", action->name);
 
     LEVEL++;
-    yprc_extension_instances(pctx, lys_nodetype2stmt(action->nodetype), 0, action->exts, &flag);
+    yprc_extension_instances(pctx, lyplg_ext_nodetype2stmt(action->nodetype), 0, action->exts, &flag);
     ypr_status(pctx, action->flags, action->exts, &flag);
     ypr_description(pctx, action->dsc, action->exts, &flag);
     ypr_reference(pctx, action->ref, action->exts, &flag);
@@ -1276,7 +1268,7 @@ yprp_node_common1(struct lys_ypr_ctx *pctx, const struct lysp_node *node, ly_boo
     ly_print_(pctx->out, "%*s%s %s%s", INDENT, lys_nodetype2str(node->nodetype), node->name, flag ? "" : " {\n");
     LEVEL++;
 
-    yprp_extension_instances(pctx, lys_nodetype2stmt(node->nodetype), 0, node->exts, flag);
+    yprp_extension_instances(pctx, lyplg_ext_nodetype2stmt(node->nodetype), 0, node->exts, flag);
     yprp_when(pctx, lysp_node_when(node), flag);
     yprp_iffeatures(pctx, node->iffeatures, node->exts, flag);
 }
@@ -1290,7 +1282,7 @@ yprc_node_common1(struct lys_ypr_ctx *pctx, const struct lysc_node *node, ly_boo
     ly_print_(pctx->out, "%*s%s %s%s", INDENT, lys_nodetype2str(node->nodetype), node->name, flag ? "" : " {\n");
     LEVEL++;
 
-    yprc_extension_instances(pctx, lys_nodetype2stmt(node->nodetype), 0, node->exts, flag);
+    yprc_extension_instances(pctx, lyplg_ext_nodetype2stmt(node->nodetype), 0, node->exts, flag);
 
     when = lysc_node_when(node);
     LY_ARRAY_FOR(when, u) {
@@ -2456,7 +2448,7 @@ yang_print_compiled(struct ly_out *out, const struct lys_module *module, uint32_
 }
 
 LIBYANG_API_DEF void
-lysc_print_extension_instance(struct lyspr_ctx *ctx_generic, const struct lysc_ext_instance *ext, ly_bool *flag)
+lyplg_ext_print_extension_instance(struct lyspr_ctx *ctx_generic, const struct lysc_ext_instance *ext, ly_bool *flag)
 {
     struct lys_ypr_ctx *pctx = (struct lys_ypr_ctx *)ctx_generic;
     LY_ARRAY_COUNT_TYPE u, v;
@@ -2536,7 +2528,7 @@ lysc_print_extension_instance(struct lyspr_ctx *ctx_generic, const struct lysc_e
         /* TODO support other substatements */
         default:
             LOGWRN(pctx->module->ctx, "Statement \"%s\" is not supported for an extension printer.",
-                    ly_stmt2str(ext->substmts[u].stmt));
+                    lyplg_ext_stmt2str(ext->substmts[u].stmt));
             break;
         }
     }

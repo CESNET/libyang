@@ -168,8 +168,6 @@ set(headers
     src/parser_schema.h
     src/plugins.h
     src/plugins_exts.h
-    src/plugins_exts_compile.h
-    src/plugins_exts_print.h
     src/plugins_exts/metadata.h
     src/plugins_types.h
     src/printer_data.h

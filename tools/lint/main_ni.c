@@ -1,9 +1,10 @@
 /**
  * @file main_ni.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief libyang's yanglint tool - noninteractive code
+ * @author Michal Vasko <mvasko@cesnet.cz>
+ * @brief libyang's yanglint tool - non-interactive code
  *
- * Copyright (c) 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -24,6 +25,7 @@
 #include <sys/stat.h>
 
 #include "libyang.h"
+#include "plugins_exts.h"
 
 #include "common.h"
 #include "out.h"

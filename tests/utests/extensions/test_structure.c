@@ -34,14 +34,12 @@ test_schema(void **state)
             "  reference no-ref;"
             "  typedef my-type {type string;}"
             "  grouping my-grp {leaf gl {type my-type;}}"
-            "  grouping my-grp2 {leaf gl-obs {type uint16;}}"
             "  container n1 {leaf l {config false; type uint32;}}"
             "  list n2 {leaf l {type leafref {path /n1/l;}}}"
             "  uses my-grp;"
-            "  uses my-grp2 {status obsolete;}"
             "}}";
 
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, &mod));
+    UTEST_ADD_MODULE(data, LYS_IN_YANG, NULL, &mod);
     assert_non_null(e = mod->compiled->exts);
     assert_int_equal(LY_ARRAY_COUNT(mod->compiled->exts), 1);
 
@@ -55,7 +53,7 @@ test_schema(void **state)
             "  leaf aug-leaf {type string;}"
             "}}";
 
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, &mod));
+    UTEST_ADD_MODULE(data, LYS_IN_YANG, NULL, &mod);
     assert_non_null(e = mod->compiled->exts);
     assert_int_equal(LY_ARRAY_COUNT(mod->compiled->exts), 1);
 
@@ -100,10 +98,6 @@ test_schema(void **state)
             "      type string;\n"
             "      status deprecated;\n"
             "    }\n"
-            "    leaf gl-obs {\n"
-            "      type uint16;\n"
-            "      status obsolete;\n"
-            "    }\n"
             "  }\n"
             "}\n";
 
@@ -138,7 +132,8 @@ test_schema(void **state)
             "\n"
             "  ietf-yang-structure-ext:structure \"struct\";\n"
             "}\n";
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, &mod));
+
+    UTEST_ADD_MODULE(data, LYS_IN_YANG, NULL, &mod);
     assert_non_null(e = mod->compiled->exts);
     assert_int_equal(LY_ARRAY_COUNT(mod->compiled->exts), 1);
     assert_int_equal(LY_SUCCESS, lys_print_mem(&printed, mod, LYS_OUT_YANG_COMPILED, 0));
@@ -154,41 +149,39 @@ test_schema_invalid(void **state)
     data = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix self;"
             "import ietf-yang-structure-ext {prefix sx;}"
             "sx:structure struct {import yang;}}";
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
+    UTEST_INVALID_MODULE(data, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid keyword \"import\" as a child of \"sx:structure struct\" extension instance.",
             "/a:{extension='sx:structure'}/struct");
 
     data = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix self;"
             "import ietf-yang-structure-ext {prefix sx;}"
             "container b { sx:structure struct { container x { leaf x {type string;}}}}}";
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - structure, version 1\": "
+    UTEST_INVALID_MODULE(data, LYS_IN_YANG, NULL, LY_EVALID);
+    CHECK_LOG_CTX("Ext plugin \"ly2 structure v1\": "
             "Extension sx:structure must not be used as a non top-level statement in \"container\" statement.",
             "/a:b/{extension='sx:structure'}/struct");
 
     data = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix self;"
             "import ietf-yang-structure-ext {prefix sx;}"
             "sx:structure { container x { leaf x {type string;}}}}";
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Extension instance \"sx:structure\" misses argument element \"name\".",
-            "/a:{extension='sx:structure'}");
+    UTEST_INVALID_MODULE(data, LYS_IN_YANG, NULL, LY_EVALID);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Extension instance \"sx:structure\" missing argument element \"name\".", NULL);
 
     data = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix self;"
             "import ietf-yang-structure-ext {prefix sx;}"
             "sx:structure struct { container x { leaf x {type string;}}}"
             "sx:structure struct { container y { leaf y {type string;}}}}";
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - structure, version 1\": "
-            "Extension sx:structure is instantiated multiple times.",
+    UTEST_INVALID_MODULE(data, LYS_IN_YANG, NULL, LY_EVALID);
+    CHECK_LOG_CTX("Ext plugin \"ly2 structure v1\": Extension sx:structure is instantiated multiple times.",
             "/a:{extension='sx:structure'}/struct");
 
     data = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix self;"
             "import ietf-yang-structure-ext {prefix sx;}"
             "sx:structure struct { container x { leaf x {type string;}}}"
             "choice struct { container y { leaf y {type string;}}}}";
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - structure, version 1\": "
-            "Extension sx:structure collides with a choice with the same identifier.",
+    UTEST_INVALID_MODULE(data, LYS_IN_YANG, NULL, LY_EVALID);
+    CHECK_LOG_CTX("Ext plugin \"ly2 structure v1\": Extension sx:structure collides with a choice with the same identifier.",
             "/a:{extension='sx:structure'}/struct");
 }
 
@@ -204,7 +197,7 @@ test_parse(void **state)
     const char *xml = "<x xmlns=\"urn:tests:extensions:structure:a\"><x>test</x></x>";
     const char *json = "{\"a:x\":{\"x\":\"test\"}}";
 
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, &mod));
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     assert_non_null(e = mod->compiled->exts);
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(xml, &UTEST_IN));

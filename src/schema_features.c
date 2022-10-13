@@ -310,7 +310,7 @@ iff_setop(uint8_t *list, uint8_t op, size_t pos)
 #define LYS_IFF_RP 0x08 /**< Additional, temporary, value of @ref ifftokens: ) */
 
 static LY_ERR
-lys_compile_iffeature(const struct ly_ctx *ctx, struct lysp_qname *qname, struct lysc_iffeature *iff)
+lys_compile_iffeature(const struct ly_ctx *ctx, const struct lysp_qname *qname, struct lysc_iffeature *iff)
 {
     LY_ERR rc = LY_SUCCESS;
     const char *c = qname->str;
@@ -501,7 +501,7 @@ error:
 }
 
 LY_ERR
-lys_eval_iffeatures(const struct ly_ctx *ctx, struct lysp_qname *iffeatures, ly_bool *enabled)
+lys_eval_iffeatures(const struct ly_ctx *ctx, const struct lysp_qname *iffeatures, ly_bool *enabled)
 {
     LY_ERR ret;
     LY_ARRAY_COUNT_TYPE u;

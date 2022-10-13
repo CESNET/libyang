@@ -150,6 +150,7 @@ struct lysp_ctx {
     struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
                                           submodule, use ::lysp_ctx.main_ctx instead. */
     struct ly_set ext_inst;          /**< parsed extension instances to finish parsing */
+
     struct ly_set *parsed_mods;      /**< (sub)modules being parsed, the last one is the current */
     struct lysp_ctx *main_ctx;       /**< This pointer must not be NULL. If this context deals with the submodule,
                                           then should be set to the context of the module to which it belongs,
@@ -166,6 +167,7 @@ struct lysp_yang_ctx {
     struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
                                           submodule, use ::lysp_ctx.main_ctx instead. */
     struct ly_set ext_inst;          /**< parsed extension instances to finish parsing */
+
     struct ly_set *parsed_mods;      /**< (sub)modules being parsed, the last one is the current */
     struct lysp_ctx *main_ctx;       /**< This pointer must not be NULL. If this context deals with the submodule,
                                           then should be set to the context of the module to which it belongs,
@@ -185,6 +187,7 @@ struct lysp_yin_ctx {
     struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
                                           submodule, use ::lysp_ctx.main_ctx instead. */
     struct ly_set ext_inst;          /**< parsed extension instances to finish parsing */
+
     struct ly_set *parsed_mods;      /**< (sub)modules being parsed, the last one is the current */
     struct lysp_ctx *main_ctx;       /**< This pointer must not be NULL. If this context deals with the submodule,
                                           then should be set to the context of the module to which it belongs,
@@ -193,7 +196,7 @@ struct lysp_yin_ctx {
 };
 
 /**
- * @brief Check that \p c is valid UTF8 code point for YANG string.
+ * @brief Check that @p c is valid UTF8 code point for YANG string.
  *
  * @param[in] ctx parser context for logging.
  * @param[in] c UTF8 code point of a character to check.
@@ -202,14 +205,14 @@ struct lysp_yin_ctx {
 LY_ERR lysp_check_stringchar(struct lysp_ctx *ctx, uint32_t c);
 
 /**
- * @brief Check that \p c is valid UTF8 code point for YANG identifier.
+ * @brief Check that @p c is valid UTF8 code point for YANG identifier.
  *
  * @param[in] ctx parser context for logging. If NULL, does not log.
  * @param[in] c UTF8 code point of a character to check.
  * @param[in] first Flag to check the first character of an identifier, which is more restricted.
  * @param[in,out] prefix Storage for internally used flag in case of possible prefixed identifiers:
  * 0 - colon not yet found (no prefix)
- * 1 - \p c is the colon character
+ * 1 - @p c is the colon character
  * 2 - prefix already processed, now processing the identifier
  *
  * If the identifier cannot be prefixed, NULL is expected.
@@ -449,8 +452,8 @@ struct lysc_must **lysc_node_musts_p(const struct lysc_node *node);
  *
  * @param[in] ctx libyang context.
  * @param[in] ext Extension instance for which the definition will be searched.
- * @param[in, out] ext_mod Pointer to the module where the extension definition of the @p ext to correctly resolve prefixes.
- * @param[out] ext_def Pointer to return found extension definition.
+ * @param[out] ext_mod Module of the extension definition of @p ext.
+ * @param[out] ext_def Optional found extension definition.
  * @return LY_SUCCESS when the definition was found.
  * @return LY_EVALID when the extension instance is invalid and/or the definition not found.
  */
@@ -478,21 +481,17 @@ const struct lysc_node *lysc_ext_find_node(const struct lysc_ext_instance *ext, 
  * (it might come from import modules which is not yet parsed at that time). Therefore, all the attributes are stored
  * as substatements and resolving argument is postponed.
  *
- * There are 3 places which need the argument, so they resolve it when missing - YIN and YANG printers and extension instance
- * compiler.
- *
  * @param[in] ctx libyang context
  * @param[in] ext_p Parsed extension to be updated.
- * @param[in] ext_def Extension definition, found with ::lysp_ext_find_definition().
  * @return LY_ERR value.
  */
-LY_ERR lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance *ext_p, struct lysp_ext *ext_def);
+LY_ERR lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance *ext_p);
 
 /**
  * @brief Iterate over the specified type of the extension instances
  *
  * @param[in] ext ([Sized array](@ref sizedarrays)) of extensions to explore
- * @param[in] index Index in the \p ext array where to start searching (first call with 0, the consequent calls with
+ * @param[in] index Index in the @p ext array where to start searching (first call with 0, the consequent calls with
  *            the returned index increased by 1 (until the iteration is not terminated by returning LY_ARRAY_COUNT(ext).
  * @param[in] substmt The statement the extension is supposed to belong to.
  * @result index in the ext array, LY_ARRAY_COUNT(ext) value if not present.
@@ -597,17 +596,6 @@ void lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char *
  * @param[in] pos Position (0-based) to specify from which position get the operator.
  */
 uint8_t lysc_iff_getop(uint8_t *list, size_t pos);
-
-/**
- * @brief Parse generic statement structure into a specific parsed-schema structure.
- *
- * @param[in] ctx The compilation context of the @p stmt being processed
- * @param[in] stmt Generic statement structure to process.
- * @param[out] result Specific parsed-schema structure for the given statement. For the specific type for the particular statement, check the function code.
- * @param[in,out] exts [sized array](@ref sizedarrays) For extension instances in case of statements that do not store extension instances in their own list.
- * @return LY_ERR value.
- */
-LY_ERR lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, void **result, struct lysp_ext_instance **exts);
 
 /**
  * @brief match yang keyword
@@ -722,5 +710,17 @@ ly_bool lys_has_dep_mods(const struct lys_module *mod);
  */
 #define LYS_IS_SINGLE_DEP_SET(mod) \
         (!(mod)->parsed->features && (!lys_has_compiled(mod) || ((mod)->compiled && !lys_has_recompiled(mod))))
+
+/**
+ * @brief Get pointer to a compiled ext instance storage for a specific statement.
+ *
+ * @param[in] ext Compiled ext instance.
+ * @param[in] stmt Compiled statement. Can be a mask when the first match is returned, it is expected the storage is
+ * the same for all the masked statements.
+ * @param[out] storage_p Pointer to a compiled ext instance substatement storage, NULL if was not compiled.
+ * @return LY_SUCCESS on success.
+ * @return LY_ENOT if the substatement is not supported.
+ */
+LY_ERR lyplg_ext_get_storage_p(const struct lysc_ext_instance *ext, int stmt, const void ***storage_p);
 
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */

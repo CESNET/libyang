@@ -915,7 +915,7 @@ lyb_insert_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_
 {
     /* insert, keep first pointer correct */
     if (parent && (LYD_CTX(parent) != LYD_CTX(node))) {
-        lyd_insert_ext(parent, node);
+        lyplg_ext_insert(parent, node);
     } else {
         lyd_insert_node(parent, first_p, node, lybctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0);
     }

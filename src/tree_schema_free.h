@@ -50,7 +50,7 @@ struct lysf_ctx {
  * @param[in] ctx libyang context.
  * @param[in] qname Qualified name to free.
  */
-void lysp_qname_free(struct ly_ctx *ctx, struct lysp_qname *qname);
+void lysp_qname_free(const struct ly_ctx *ctx, struct lysp_qname *qname);
 
 /**
  * @brief Free the parsed extension instance structure.

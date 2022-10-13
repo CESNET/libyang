@@ -926,7 +926,7 @@ lydjson_maintain_children(struct lyd_node *parent, struct lyd_node **first_p, st
     if (*node_p) {
         /* insert, keep first pointer correct */
         if (ext) {
-            lyd_insert_ext(parent, *node_p);
+            lyplg_ext_insert(parent, *node_p);
         } else {
             lyd_insert_node(parent, first_p, *node_p, last);
         }

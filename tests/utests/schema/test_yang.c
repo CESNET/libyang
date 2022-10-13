@@ -54,7 +54,7 @@ LY_ERR parse_notif(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct l
 LY_ERR parse_submodule(struct lysp_yang_ctx *ctx, struct lysp_submodule *submod);
 LY_ERR parse_uses(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
 LY_ERR parse_when(struct lysp_yang_ctx *ctx, struct lysp_when **when_p);
-LY_ERR parse_type_enum_value_pos(struct lysp_yang_ctx *ctx, enum ly_stmt val_kw, int64_t *value, uint16_t *flags, struct lysp_ext_instance **exts);
+LY_ERR parse_type_enum_value_pos(struct lysp_yang_ctx *ctx, enum ly_stmt val_kw, struct lysp_type_enum *enm);
 
 struct lysp_yang_ctx *YCTX;
 struct lysf_ctx fctx;
@@ -1702,16 +1702,15 @@ test_when(void **state)
 static void
 test_value(void **state)
 {
-    int64_t val = 0;
-    uint16_t flags = 0;
+    struct lysp_type_enum enm;
 
     in.current = "-0;";
-    assert_int_equal(parse_type_enum_value_pos(YCTX, LY_STMT_VALUE, &val, &flags, NULL), LY_SUCCESS);
-    assert_int_equal(val, 0);
+    memset(&enm, 0, sizeof enm);
+    assert_int_equal(parse_type_enum_value_pos(YCTX, LY_STMT_VALUE, &enm), LY_SUCCESS);
 
     in.current = "-0;";
-    flags = 0;
-    assert_int_equal(parse_type_enum_value_pos(YCTX, LY_STMT_POSITION, &val, &flags, NULL), LY_EVALID);
+    memset(&enm, 0, sizeof enm);
+    assert_int_equal(parse_type_enum_value_pos(YCTX, LY_STMT_POSITION, &enm), LY_EVALID);
     CHECK_LOG_CTX("Invalid value \"-0\" of \"position\".", "Line number 1.");
 }
 

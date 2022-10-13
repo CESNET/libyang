@@ -868,7 +868,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     if (insert_anchor) {
         lyd_insert_after(insert_anchor, node);
     } else if (ext) {
-        LY_CHECK_GOTO(ret = lyd_insert_ext(parent, node), error);
+        LY_CHECK_GOTO(ret = lyplg_ext_insert(parent, node), error);
     } else {
         lyd_insert_node(parent, first_p, node, lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0);
     }
