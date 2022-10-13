@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "common.h"
+#include "compat.h"
 #include "dict.h"
 #include "libyang.h"
 #include "log.h"
@@ -56,50 +57,79 @@ struct lyplg_ext_sm {
     } inln;                             /**< inline mount points */
 };
 
-#define EXT_LOGERR_MEM_RET(ext) \
-        lyplg_ext_log(ext, LY_LLERR, LY_EMEM, NULL, "Memory allocation failed (%s:%d).", __FILE__, __LINE__); \
+#define EXT_LOGERR_MEM_RET(cctx, ext) \
+        lyplg_ext_compile_log(cctx, ext, LY_LLERR, LY_EMEM, "Memory allocation failed (%s:%d).", __FILE__, __LINE__); \
         return LY_EMEM
 
-#define EXT_LOGERR_MEM_GOTO(ext, rc, label) \
-        lyplg_ext_log(ext, LY_LLERR, LY_EMEM, NULL, "Memory allocation failed (%s:%d).", __FILE__, __LINE__); \
+#define EXT_LOGERR_MEM_GOTO(cctx, ext, rc, label) \
+        lyplg_ext_compile_log(cctx, ext, LY_LLERR, LY_EMEM, "Memory allocation failed (%s:%d).", __FILE__, __LINE__); \
         rc = LY_EMEM; \
         goto label
 
-#define EXT_LOGERR_INT_RET(ext) \
-        lyplg_ext_log(ext, LY_LLERR, LY_EINT, NULL, "Internal error (%s:%d).", __FILE__, __LINE__); \
+#define EXT_LOGERR_INT_RET(cctx, ext) \
+        lyplg_ext_compile_log(cctx, ext, LY_LLERR, LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__); \
         return LY_EINT
 
 /**
- * @brief Check if given mount point is unique among its' siblings
+ * @brief Check if given mount point is unique among its siblings
  *
- * @param cctx Compilation context.
- * @param c_ext Compiled extension instance for checking uniqueness.
- * @param p_ext Extension instance of the mount-point for comparison.
+ * @param[in] pctx Parse context.
+ * @param[in] ext Parsed extension instance.
  * @return LY_SUCCESS if is unique;
  * @return LY_EINVAL otherwise.
  */
 static LY_ERR
-schema_mount_compile_unique_mp(struct lysc_ctx *cctx, const struct lysc_ext_instance *c_ext,
-        const struct lysp_ext_instance *p_ext)
+schema_mount_parse_unique_mp(struct lysp_ctx *pctx, const struct lysp_ext_instance *ext)
 {
-    struct lysc_ext_instance *exts;
+    struct lysp_ext_instance *exts;
     LY_ARRAY_COUNT_TYPE u;
-    struct lysc_node *parent;
+    struct lysp_node *parent;
 
-    /* check if it is the only instance of the mount-point among its' siblings */
-    parent = (struct lysc_node *)c_ext->parent;
+    /* check if it is the only instance of the mount-point among its siblings */
+    parent = ext->parent;
     exts = parent->exts;
     LY_ARRAY_FOR(exts, u) {
-        if (&exts[u] == c_ext) {
+        if (&exts[u] == ext) {
             continue;
         }
 
-        if (!strcmp(exts[u].def->module->name, "ietf-yang-schema-mount") && !strcmp(exts[u].def->name, "mount-point")) {
-            lyplg_ext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx), "Multiple extension \"%s\" instances.",
-                    p_ext->name);
+        if (!strcmp(exts[u].name, ext->name)) {
+            lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EVALID, "Multiple extension \"%s\" instances.", ext->name);
             return LY_EINVAL;
         }
     }
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Schema mount parse.
+ * Checks if it can be a valid extension instance for yang schema mount.
+ *
+ * Implementation of ::lyplg_ext_parse_clb callback set as lyext_plugin::parse.
+ */
+static LY_ERR
+schema_mount_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
+{
+    /* check YANG version 1.1 */
+    if (lyplg_ext_parse_get_cur_pmod(pctx)->version != LYS_VERSION_1_1) {
+        lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EVALID, "Extension \"%s\" instance not allowed in YANG version 1 module.",
+                ext->name);
+        return LY_EINVAL;
+    }
+
+    /* check parent nodetype */
+    if ((ext->parent_stmt != LY_STMT_CONTAINER) && (ext->parent_stmt != LY_STMT_LIST)) {
+        lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EVALID, "Extension \"%s\" instance allowed only in container or list statement.",
+                ext->name);
+        return LY_EINVAL;
+    }
+
+    /* check uniqueness */
+    if (schema_mount_parse_unique_mp(pctx, ext)) {
+        return LY_EINVAL;
+    }
+
+    /* nothing to actually parse */
     return LY_SUCCESS;
 }
 
@@ -109,14 +139,12 @@ struct lyplg_ext_sm_shared_cb_data {
 };
 
 static LY_ERR
-schema_mount_compile_mod_dfs_cb(struct lysc_node *node, void *data, ly_bool *dfs_continue)
+schema_mount_compile_mod_dfs_cb(struct lysc_node *node, void *data, ly_bool *UNUSED(dfs_continue))
 {
     struct lyplg_ext_sm_shared_cb_data *cb_data = data;
     struct lyplg_ext_sm *sm_data;
     struct lysc_ext_instance *exts;
     LY_ARRAY_COUNT_TYPE u;
-
-    (void)dfs_continue;
 
     if (node == cb_data->ext->parent) {
         /* parent of the current compiled extension, skip */
@@ -129,7 +157,7 @@ schema_mount_compile_mod_dfs_cb(struct lysc_node *node, void *data, ly_bool *dfs
         if (!strcmp(exts[u].def->module->name, "ietf-yang-schema-mount") && !strcmp(exts[u].def->name, "mount-point") &&
                 (exts[u].argument == cb_data->ext->argument)) {
             /* same mount point, break the DFS search */
-            sm_data = exts[u].data;
+            sm_data = exts[u].compiled;
             cb_data->sm_shared = sm_data->shared;
             return LY_EEXIST;
         }
@@ -164,56 +192,33 @@ schema_mount_compile_find_shared(const struct lys_module *mod, const struct lysc
  * Implementation of ::lyplg_ext_compile_clb callback set as lyext_plugin::compile.
  */
 static LY_ERR
-schema_mount_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struct lysc_ext_instance *c_ext)
+schema_mount_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *UNUSED(extp), struct lysc_ext_instance *ext)
 {
-    const struct lys_module *cur_mod;
     const struct lysc_node *node;
     struct lyplg_ext_sm *sm_data;
-
-    assert(!strcmp(p_ext->name, "yangmnt:mount-point"));
-
-    /* check YANG version 1.1 */
-    cur_mod = lysc_ctx_get_cur_mod(cctx);
-    if (cur_mod->parsed->version != LYS_VERSION_1_1) {
-        lyplg_ext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx),
-                "Extension \"%s\" instance not allowed in YANG version 1 module.", p_ext->name);
-        return LY_EINVAL;
-    }
-
-    /* check parent nodetype */
-    if ((p_ext->parent_stmt != LY_STMT_CONTAINER) && (p_ext->parent_stmt != LY_STMT_LIST)) {
-        lyplg_ext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx),
-                "Extension \"%s\" instance allowed only in container or list statement.", p_ext->name);
-        return LY_EINVAL;
-    }
-
-    /* check uniqueness */
-    if (schema_mount_compile_unique_mp(cctx, c_ext, p_ext)) {
-        return LY_EINVAL;
-    }
 
     /* init internal data */
     sm_data = calloc(1, sizeof *sm_data);
     if (!sm_data) {
-        EXT_LOGERR_MEM_RET(c_ext);
+        EXT_LOGERR_MEM_RET(cctx, ext);
     }
-    c_ext->data = sm_data;
+    ext->compiled = sm_data;
 
     /* find the owner module */
-    node = c_ext->parent;
+    node = ext->parent;
     while (node->parent) {
         node = node->parent;
     }
 
     /* reuse/init shared schema */
-    sm_data->shared = schema_mount_compile_find_shared(node->module, c_ext);
+    sm_data->shared = schema_mount_compile_find_shared(node->module, ext);
     if (sm_data->shared) {
         ++sm_data->shared->ref_count;
     } else {
         sm_data->shared = calloc(1, sizeof *sm_data->shared);
         if (!sm_data->shared) {
             free(sm_data);
-            EXT_LOGERR_MEM_RET(c_ext);
+            EXT_LOGERR_MEM_RET(cctx, ext);
         }
         pthread_mutex_init(&sm_data->shared->lock, NULL);
         sm_data->shared->ref_count = 1;
@@ -242,7 +247,7 @@ schema_mount_get_smount(const struct lysc_ext_instance *ext, const struct lyd_no
     /* find the mount point */
     if (asprintf(&path, "/ietf-yang-schema-mount:schema-mounts/mount-point[module='%s'][label='%s']", ext->module->name,
             ext->argument) == -1) {
-        EXT_LOGERR_MEM_RET(ext);
+        EXT_LOGERR_MEM_RET(NULL, ext);
     }
     r = ext_data ? lyd_find_path(ext_data, path, 0, &mpoint) : LY_ENOTFOUND;
     free(path);
@@ -264,7 +269,7 @@ schema_mount_get_smount(const struct lysc_ext_instance *ext, const struct lyd_no
     /* check schema-ref */
     if (lyd_find_path(mpoint, "shared-schema", 0, NULL)) {
         if (lyd_find_path(mpoint, "inline", 0, NULL)) {
-            EXT_LOGERR_INT_RET(ext);
+            EXT_LOGERR_INT_RET(NULL, ext);
         }
         *shared = 0;
     } else {
@@ -308,7 +313,7 @@ schema_mount_create_ctx(const struct lysc_ext_instance *ext, const struct lyd_no
 
     /* create the context based on the data */
     if ((rc = ly_ctx_new_yldata(sdirs, ext_data, ly_ctx_get_options(ext->module->ctx), ext_ctx))) {
-        lyplg_ext_log(ext, LY_LLERR, rc, NULL, "Failed to create context for the schema-mount data.");
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, rc, "Failed to create context for the schema-mount data.");
         goto cleanup;
     }
 
@@ -348,7 +353,7 @@ static LY_ERR
 schema_mount_get_ctx_shared(struct lysc_ext_instance *ext, const struct lyd_node *ext_data, ly_bool config,
         const struct ly_ctx **ext_ctx)
 {
-    struct lyplg_ext_sm *sm_data = ext->data;
+    struct lyplg_ext_sm *sm_data = ext->compiled;
     LY_ERR ret = LY_SUCCESS, r;
     struct lyd_node *node = NULL;
     struct ly_ctx *new_ctx = NULL;
@@ -369,13 +374,14 @@ schema_mount_get_ctx_shared(struct lysc_ext_instance *ext, const struct lyd_node
         }
     }
     if (!content_id) {
-        lyplg_ext_log(ext, LY_LLERR, LY_EVALID, NULL, "Missing \"content-id\" or \"module-set-id\" in ietf-yang-library data.");
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EVALID,
+                "Missing \"content-id\" or \"module-set-id\" in ietf-yang-library data.");
         return LY_EVALID;
     }
 
     /* LOCK */
     if ((r = pthread_mutex_lock(&sm_data->shared->lock))) {
-        lyplg_ext_log(ext, LY_LLERR, LY_ESYS, NULL, "Mutex lock failed (%s).", strerror(r));
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_ESYS, "Mutex lock failed (%s).", strerror(r));
         return LY_ESYS;
     }
 
@@ -389,7 +395,7 @@ schema_mount_get_ctx_shared(struct lysc_ext_instance *ext, const struct lyd_node
     if (i < sm_data->shared->schema_count) {
         /* schema exists already */
         if (strcmp(content_id, sm_data->shared->schemas[i].content_id)) {
-            lyplg_ext_log(ext, LY_LLERR, LY_EVALID, "/ietf-yang-library:yang-library/content-id",
+            lyplg_ext_compile_log_path("/ietf-yang-library:yang-library/content-id", ext, LY_LLERR, LY_EVALID,
                     "Shared-schema yang-library content-id \"%s\" differs from \"%s\" used previously.",
                     content_id, sm_data->shared->schemas[i].content_id);
             ret = LY_EVALID;
@@ -406,7 +412,7 @@ schema_mount_get_ctx_shared(struct lysc_ext_instance *ext, const struct lyd_node
         mem = realloc(sm_data->shared->schemas, (i + 1) * sizeof *sm_data->shared->schemas);
         if (!mem) {
             ly_ctx_destroy(new_ctx);
-            EXT_LOGERR_MEM_GOTO(ext, ret, cleanup);
+            EXT_LOGERR_MEM_GOTO(NULL, ext, ret, cleanup);
         }
         sm_data->shared->schemas = mem;
         ++sm_data->shared->schema_count;
@@ -440,7 +446,7 @@ static LY_ERR
 schema_mount_get_ctx_inline(struct lysc_ext_instance *ext, const struct lyd_node *ext_data, ly_bool config,
         const struct ly_ctx **ext_ctx)
 {
-    struct lyplg_ext_sm *sm_data = ext->data;
+    struct lyplg_ext_sm *sm_data = ext->compiled;
     LY_ERR r;
     struct ly_ctx *new_ctx = NULL;
     uint32_t i;
@@ -459,7 +465,7 @@ schema_mount_get_ctx_inline(struct lysc_ext_instance *ext, const struct lyd_node
     mem = realloc(sm_data->inln.schemas, (i + 1) * sizeof *sm_data->inln.schemas);
     if (!mem) {
         ly_ctx_destroy(new_ctx);
-        EXT_LOGERR_MEM_RET(ext);
+        EXT_LOGERR_MEM_RET(NULL, ext);
     }
     sm_data->inln.schemas = mem;
     ++sm_data->inln.schema_count;
@@ -497,7 +503,7 @@ schema_mount_get_ctx(struct lysc_ext_instance *ext, const struct ly_ctx **ext_ct
     LY_LIST_FOR(ext_data, iter) {
         if (iter->flags & LYD_NEW) {
             /* must be validated for the parent-reference prefix data to be stored */
-            lyplg_ext_log(ext, LY_LLERR, LY_EINVAL, NULL, "Provided ext data have not been validated.");
+            lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EINVAL, "Provided ext data have not been validated.");
             ret = LY_EINVAL;
             goto cleanup;
         }
@@ -566,7 +572,7 @@ schema_mount_get_parent_ref(const struct lysc_ext_instance *ext, const struct ly
     /* get all parent references of this mount point */
     if (asprintf(&path, "/ietf-yang-schema-mount:schema-mounts/mount-point[module='%s'][label='%s']"
             "/shared-schema/parent-reference", ext->module->name, ext->argument) == -1) {
-        EXT_LOGERR_MEM_GOTO(ext, ret, cleanup);
+        EXT_LOGERR_MEM_GOTO(NULL, ext, ret, cleanup);
     }
     if ((ret = lyd_find_xpath(ext_data, path, set))) {
         goto cleanup;
@@ -603,7 +609,7 @@ schema_mount_dup_parent_ref(const struct lysc_ext_instance *ext, const struct ly
 
     if (!ext_data) {
         /* we expect the same ext data as before and there must be some for data to be parsed */
-        lyplg_ext_log(ext, LY_LLERR, LY_EINVAL, NULL, "No ext data provided.");
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EINVAL, "No ext data provided.");
         ret = LY_EINVAL;
         goto cleanup;
     }
@@ -625,7 +631,8 @@ schema_mount_dup_parent_ref(const struct lysc_ext_instance *ext, const struct ly
         LYD_VALUE_GET(&term->value, xp_val);
         if ((ret = lyd_find_xpath4(ctx_node, ctx_node, lyxp_get_expr(xp_val->exp), xp_val->format, xp_val->prefix_data,
                 NULL, &par_set))) {
-            lyplg_ext_log(ext, LY_LLERR, ret, NULL, "Parent reference \"%s\" evaluation failed.", lyxp_get_expr(xp_val->exp));
+            lyplg_ext_compile_log(NULL, ext, LY_LLERR, ret, "Parent reference \"%s\" evaluation failed.",
+                    lyxp_get_expr(xp_val->exp));
             goto cleanup;
         }
 
@@ -759,7 +766,7 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
 
     if (!sibling) {
         /* some data had to be parsed for this callback to be called */
-        EXT_LOGERR_INT_RET(ext);
+        EXT_LOGERR_INT_RET(NULL, ext);
     }
 
     /* get operational data with ietf-yang-library and ietf-yang-schema-mount data */
@@ -770,7 +777,7 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
     LY_LIST_FOR(ext_data, iter) {
         if (iter->flags & LYD_NEW) {
             /* must be validated for the parent-reference prefix data to be stored */
-            lyplg_ext_log(ext, LY_LLERR, LY_EINVAL, NULL, "Provided ext data have not been validated.");
+            lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EINVAL, "Provided ext data have not been validated.");
             ret = LY_EINVAL;
             goto cleanup;
         }
@@ -821,15 +828,15 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
     LY_LIST_FOR(sibling, iter) {
         iter->flags |= LYD_EXT;
     }
-    lyd_insert_ext(orig_parent, sibling);
+    lyplg_ext_insert(orig_parent, sibling);
 
     if (ret) {
         /* log the error in the original context */
         err = ly_err_first(LYD_CTX(sibling));
         if (!err) {
-            lyplg_ext_log(ext, LY_LLERR, ret, NULL, "Unknown validation error (err code %d).", ret);
+            lyplg_ext_compile_log(NULL, ext, LY_LLERR, ret, "Unknown validation error (err code %d).", ret);
         } else {
-            lyplg_ext_log(ext, LY_LLERR, err->no, err->path, "%s", err->msg);
+            lyplg_ext_compile_log_path(err->path, ext, LY_LLERR, err->no, "%s", err->msg);
         }
         goto cleanup;
     }
@@ -845,7 +852,7 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
         if ((ret = lyd_dup_single(lyd_parent(sibling), NULL, LYD_DUP_WITH_PARENTS | LYD_DUP_NO_META, &diff_parent))) {
             goto cleanup;
         }
-        if ((ret = lyd_insert_ext(diff_parent, ext_diff))) {
+        if ((ret = lyplg_ext_insert(diff_parent, ext_diff))) {
             goto cleanup;
         }
         ext_diff = NULL;
@@ -876,14 +883,14 @@ cleanup:
 }
 
 /**
- * @brief Schema mount free.
+ * @brief Schema mount compile free.
  *
- * Implementation of ::lyplg_ext_free_clb callback set as ::lyext_plugin::free.
+ * Implementation of ::lyplg_ext_compile_free_clb callback set as ::lyext_plugin::cfree.
  */
 static void
-schema_mount_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
+schema_mount_cfree(const struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 {
-    struct lyplg_ext_sm *sm_data = ext->data;
+    struct lyplg_ext_sm *sm_data = ext->compiled;
     uint32_t i;
 
     if (!sm_data) {
@@ -957,13 +964,15 @@ const struct lyplg_ext_record plugins_schema_mount[] = {
         .revision = "2019-01-14",
         .name = "mount-point",
 
-        .plugin.id = "libyang 2 - Schema Mount, version 1",
-        .plugin.compile = &schema_mount_compile,
+        .plugin.id = "ly2 schema mount v1",
+        .plugin.parse = schema_mount_parse,
+        .plugin.compile = schema_mount_compile,
         .plugin.sprinter = NULL,
-        .plugin.free = &schema_mount_free,
         .plugin.node = NULL,
-        .plugin.snode = &schema_mount_snode,
-        .plugin.validate = &schema_mount_validate
+        .plugin.snode = schema_mount_snode,
+        .plugin.validate = schema_mount_validate,
+        .plugin.pfree = NULL,
+        .plugin.cfree = schema_mount_cfree
     },
     {0} /* terminating zeroed item */
 };

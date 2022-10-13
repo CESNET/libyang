@@ -76,7 +76,7 @@ LIBYANG_API_DECL LY_ERR ly_set_new(struct ly_set **set_p);
  * @return LY_EMEM in case of memory allocation failure.
  * @return LY_EINVAL in case of invalid parameters.
  */
-LIBYANG_API_DECL LY_ERR ly_set_dup(const struct ly_set *set, void *(*duplicator)(void *obj), struct ly_set **newset_p);
+LIBYANG_API_DECL LY_ERR ly_set_dup(const struct ly_set *set, void *(*duplicator)(const void *obj), struct ly_set **newset_p);
 
 /**
  * @brief Add an object into the set
@@ -91,7 +91,7 @@ LIBYANG_API_DECL LY_ERR ly_set_dup(const struct ly_set *set, void *(*duplicator)
  * @return LY_EINVAL in case of invalid input parameters.
  * @return LY_EMEM in case of memory allocation failure.
  */
-LIBYANG_API_DECL LY_ERR ly_set_add(struct ly_set *set, void *object, ly_bool list, uint32_t *index_p);
+LIBYANG_API_DECL LY_ERR ly_set_add(struct ly_set *set, const void *object, ly_bool list, uint32_t *index_p);
 
 /**
  * @brief Add all objects from \p src to \p trg.
@@ -108,7 +108,7 @@ LIBYANG_API_DECL LY_ERR ly_set_add(struct ly_set *set, void *object, ly_bool lis
  * @return LY_EINVAL in case of invalid input parameters.
  * @return LY_EMEM in case of memory allocation failure.
  */
-LIBYANG_API_DECL LY_ERR ly_set_merge(struct ly_set *trg, const struct ly_set *src, ly_bool list, void *(*duplicator)(void *obj));
+LIBYANG_API_DECL LY_ERR ly_set_merge(struct ly_set *trg, const struct ly_set *src, ly_bool list, void *(*duplicator)(const void *obj));
 
 /**
  * @brief Learn whether the set contains the specified object.
@@ -118,7 +118,7 @@ LIBYANG_API_DECL LY_ERR ly_set_merge(struct ly_set *trg, const struct ly_set *sr
  * @param[out] index_p Optional pointer to return index of the searched @p object.
  * @return Boolean value whether the @p object was found in the @p set.
  */
-LIBYANG_API_DECL ly_bool ly_set_contains(const struct ly_set *set, void *object, uint32_t *index_p);
+LIBYANG_API_DECL ly_bool ly_set_contains(const struct ly_set *set, const void *object, uint32_t *index_p);
 
 /**
  * @brief Remove all objects from the set, but keep the set container for further use.

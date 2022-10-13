@@ -20,6 +20,8 @@
 
 struct lyd_ctx;
 struct ly_in;
+struct lysp_ext_substmt;
+struct lysp_stmt;
 struct lysp_yang_ctx;
 struct lysp_yin_ctx;
 struct lysp_ctx;
@@ -357,5 +359,15 @@ LY_ERR lyd_parse_check_keys(struct lyd_node *node);
  */
 LY_ERR lyd_parse_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct lyd_ctx *lydctx,
         struct lysc_ext_instance *ext);
+
+/**
+ * @brief Parse an instance extension statement.
+ *
+ * @param[in] pctx Parse context.
+ * @param[in] substmt Parsed ext instance substatement info.
+ * @param[in] stmt Parsed generic statement to process.
+ * @return LY_ERR value.
+ */
+LY_ERR lys_parse_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *substmt, struct lysp_stmt *stmt);
 
 #endif /* LY_PARSER_INTERNAL_H_ */

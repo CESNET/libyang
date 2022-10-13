@@ -30,7 +30,7 @@ struct lysp_qname;
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
-LY_ERR lys_eval_iffeatures(const struct ly_ctx *ctx, struct lysp_qname *iffeatures, ly_bool *enabled);
+LY_ERR lys_eval_iffeatures(const struct ly_ctx *ctx, const struct lysp_qname *iffeatures, ly_bool *enabled);
 
 /**
  * @brief Check whether all enabled features have their if-features satisfied.

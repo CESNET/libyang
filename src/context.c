@@ -606,45 +606,13 @@ lysc_node_clear_priv_dfs_cb(struct lysc_node *node, void *UNUSED(data), ly_bool 
     return LY_SUCCESS;
 }
 
-static void
-lysc_node_clear_all_priv(struct lys_module *mod)
-{
-    LY_ARRAY_COUNT_TYPE u, v;
-
-    if (!mod->compiled) {
-        return;
-    }
-
-    /* set NULL for all ::lysc_node.priv pointers in module */
-    lysc_module_dfs_full(mod, lysc_node_clear_priv_dfs_cb, NULL);
-
-    /* only lys_compile_extension_instance()
-     * can set ::lysp_ext_instance.parsed
-     */
-    if (mod->parsed) {
-        struct lysp_ext_instance *exts_p;
-
-        exts_p = mod->parsed->exts;
-        LY_ARRAY_FOR(exts_p, u) {
-            if (exts_p[u].parsed) {
-                /* lys_compile_extension_instance() was called */
-                struct lysc_ext_substmt *substmts;
-                struct lysc_node *root;
-
-                /* set NULL for all ::lysc_node.priv pointers in extensions */
-                substmts = mod->compiled->exts[u].substmts;
-                LY_ARRAY_FOR(substmts, v) {
-                    root = *(struct lysc_node **)substmts[v].storage;
-                    lysc_tree_dfs_full(root, lysc_node_clear_priv_dfs_cb, NULL);
-                }
-            }
-        }
-    }
-}
-
 LIBYANG_API_DEF LY_ERR
 ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
 {
+    LY_ARRAY_COUNT_TYPE u, v;
+    const struct lysc_ext_instance *ext;
+    struct lysc_node *root;
+
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
     LY_CHECK_ERR_RET(option & LY_CTX_NO_YANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
 
@@ -654,7 +622,24 @@ ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
 
         index = 0;
         while ((mod = ly_ctx_get_module_iter(ctx, &index))) {
-            lysc_node_clear_all_priv(mod);
+            if (!mod->compiled) {
+                continue;
+            }
+
+            /* set NULL for all ::lysc_node.priv pointers in module */
+            lysc_module_dfs_full(mod, lysc_node_clear_priv_dfs_cb, NULL);
+
+            /* set NULL for all ::lysc_node.priv pointers in compiled extension instances */
+            LY_ARRAY_FOR(mod->compiled->exts, u) {
+                ext = &mod->compiled->exts[u];
+                LY_ARRAY_FOR(ext->substmts, v) {
+                    if (ext->substmts[v].stmt & LY_STMT_DATA_NODE_MASK) {
+                        LY_LIST_FOR(*(struct lysc_node **)ext->substmts[v].storage, root) {
+                            lysc_tree_dfs_full(root, lysc_node_clear_priv_dfs_cb, NULL);
+                        }
+                    }
+                }
+            }
         }
     }
 

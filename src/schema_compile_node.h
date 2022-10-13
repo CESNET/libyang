@@ -40,7 +40,7 @@ struct lysc_ctx;
  * for the first call.
  * @return LY_ERR value.
  */
-LY_ERR lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t parent_flags,
+LY_ERR lys_compile_when(struct lysc_ctx *ctx, const struct lysp_when *when_p, uint16_t parent_flags,
         const struct lysc_node *compiled_parent, const struct lysc_node *ctx_node, struct lysc_node *node,
         struct lysc_when **when_c);
 
@@ -52,7 +52,23 @@ LY_ERR lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t
  * @param[in,out] must Prepared (empty) compiled must structure to fill.
  * @return LY_ERR value.
  */
-LY_ERR lys_compile_must(struct lysc_ctx *ctx, struct lysp_restr *must_p, struct lysc_must *must);
+LY_ERR lys_compile_must(struct lysc_ctx *ctx, const struct lysp_restr *must_p, struct lysc_must *must);
+
+/**
+ * @brief Compile the parsed range restriction.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] range_p Parsed range structure to compile.
+ * @param[in] basetype Base YANG built-in type of the node with the range restriction.
+ * @param[in] length_restr Flag to distinguish between range and length restrictions. Only for logging.
+ * @param[in] frdigits The fraction-digits value in case of LY_TYPE_DEC64 basetype.
+ * @param[in] base_range Range restriction of the type from which the current type is derived. The current
+ * range restriction must be more restrictive than the base_range.
+ * @param[in,out] range Pointer to the created current range structure.
+ * @return LY_ERR value.
+ */
+LY_ERR lys_compile_type_range(struct lysc_ctx *ctx, const struct lysp_restr *range_p, LY_DATA_TYPE basetype,
+        ly_bool length_restr, uint8_t frdigits, struct lysc_range *base_range, struct lysc_range **range);
 
 /**
  * @brief Checks pattern syntax.
@@ -74,8 +90,21 @@ LY_ERR lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, p
  * @param[out] patterns Pointer to the storage for the patterns of the current type.
  * @return LY_ERR LY_SUCCESS, LY_EMEM, LY_EVALID.
  */
-LY_ERR lys_compile_type_patterns(struct lysc_ctx *ctx, struct lysp_restr *patterns_p,
+LY_ERR lys_compile_type_patterns(struct lysc_ctx *ctx, const struct lysp_restr *patterns_p,
         struct lysc_pattern **base_patterns, struct lysc_pattern ***patterns);
+
+/**
+ * @brief Compile parsed type's enum structures (for enumeration and bits types).
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] enums_p Array of the parsed enum structures to compile.
+ * @param[in] basetype Base YANG built-in type from which the current type is derived. Only LY_TYPE_ENUM and LY_TYPE_BITS are expected.
+ * @param[in] base_enums Array of the compiled enums information from the (latest) base type to check if the current enums are compatible.
+ * @param[out] bitenums Newly created array of the compiled bitenums information for the current type.
+ * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
+ */
+LY_ERR lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_p, LY_DATA_TYPE basetype,
+        struct lysc_type_bitenum_item *base_enums, struct lysc_type_bitenum_item **bitenums);
 
 /**
  * @brief Compile information about the leaf/leaf-list's type.
@@ -91,8 +120,32 @@ LY_ERR lys_compile_type_patterns(struct lysc_ctx *ctx, struct lysp_restr *patter
  * @return LY_ERR value.
  */
 LY_ERR lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t context_flags,
-        const char *context_name, struct lysp_type *type_p, struct lysc_type **type, const char **units,
+        const char *context_name, const struct lysp_type *type_p, struct lysc_type **type, const char **units,
         struct lysp_qname **dflt);
+
+/**
+ * @brief Connect the node into the siblings list and check its name uniqueness. Also,
+ * keep specific order of augments targetting the same node.
+ *
+ * @param[in] ctx Compile context
+ * @param[in] parent Parent node holding the children list, in case of node from a choice's case,
+ * the choice itself is expected instead of a specific case node.
+ * @param[in] node Schema node to connect into the list.
+ * @return LY_ERR value - LY_SUCCESS or LY_EEXIST.
+ * In case of LY_EEXIST, the node is actually kept in the tree, so do not free it directly.
+ */
+LY_ERR lys_compile_node_connect(struct lysc_ctx *ctx, struct lysc_node *parent, struct lysc_node *node);
+
+/**
+ * @brief Compile parsed action's input/output node information.
+ *
+ * @param[in] ctx Compile context
+ * @param[in] pnode Parsed inout node.
+ * @param[in,out] node Pre-prepared structure from lys_compile_node_() with filled generic node information
+ * is enriched with the inout-specific information.
+ * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
+ */
+LY_ERR lys_compile_node_action_inout(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node *node);
 
 /**
  * @brief Find the node according to the given descendant/absolute schema nodeid.

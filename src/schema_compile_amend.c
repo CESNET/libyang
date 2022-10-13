@@ -26,7 +26,6 @@
 #include "common.h"
 #include "dict.h"
 #include "log.h"
-#include "plugins_exts_compile.h"
 #include "schema_compile.h"
 #include "schema_compile_node.h"
 #include "schema_features.h"
@@ -343,26 +342,40 @@ lysp_ext_children_dup(const struct ly_ctx *ctx, struct lysp_stmt **child, const 
 }
 
 static LY_ERR
-lysp_ext_dup(const struct ly_ctx *ctx, struct lysp_ext_instance *ext, const struct lysp_ext_instance *orig_ext)
+lysp_ext_dup(const struct ly_ctx *ctx, const struct lysp_module *pmod, struct lysp_ext_instance *ext,
+        const struct lysp_ext_instance *orig_ext)
 {
-    DUP_STRING_RET(ctx, orig_ext->name, ext->name);
-    DUP_STRING_RET(ctx, orig_ext->argument, ext->argument);
-    ext->format = orig_ext->format;
-    ext->parsed = NULL;
-    LY_CHECK_RET(ly_dup_prefix_data(ctx, orig_ext->format, orig_ext->prefix_data, &ext->prefix_data));
+    LY_ERR ret = LY_SUCCESS;
+    struct ly_set pmods = {0};
+    struct lysp_ctx pctx = {.parsed_mods = &pmods};
 
-    ext->child = NULL;
-    LY_CHECK_RET(lysp_ext_children_dup(ctx, &ext->child, orig_ext->child));
+    DUP_STRING_GOTO(ctx, orig_ext->name, ext->name, ret, cleanup);
+    DUP_STRING_GOTO(ctx, orig_ext->argument, ext->argument, ret, cleanup);
+    ext->format = orig_ext->format;
+    LY_CHECK_GOTO(ret = ly_dup_prefix_data(ctx, orig_ext->format, orig_ext->prefix_data, &ext->prefix_data), cleanup);
+    ext->def = orig_ext->def;
 
     ext->parent = orig_ext->parent;
     ext->parent_stmt = orig_ext->parent_stmt;
     ext->parent_stmt_index = orig_ext->parent_stmt_index;
     ext->flags = orig_ext->flags;
-    return LY_SUCCESS;
+    ext->record = orig_ext->record;
+
+    LY_CHECK_GOTO(ret = lysp_ext_children_dup(ctx, &ext->child, orig_ext->child), cleanup);
+    if (ext->record && ext->record->plugin.parse) {
+        /* parse again */
+        LY_CHECK_GOTO(ret = ly_set_add(&pmods, pmod, 1, NULL), cleanup);
+        LY_CHECK_GOTO(ret = ext->record->plugin.parse(&pctx, ext), cleanup);
+    }
+
+cleanup:
+    ly_set_erase(&pmods, NULL);
+    return ret;
 }
 
 static LY_ERR
-lysp_restr_dup(const struct ly_ctx *ctx, struct lysp_restr *restr, const struct lysp_restr *orig_restr)
+lysp_restr_dup(const struct ly_ctx *ctx, const struct lysp_module *pmod, struct lysp_restr *restr,
+        const struct lysp_restr *orig_restr)
 {
     LY_ERR ret = LY_SUCCESS;
 
@@ -373,7 +386,7 @@ lysp_restr_dup(const struct ly_ctx *ctx, struct lysp_restr *restr, const struct 
         DUP_STRING(ctx, orig_restr->eapptag, restr->eapptag, ret);
         DUP_STRING(ctx, orig_restr->dsc, restr->dsc, ret);
         DUP_STRING(ctx, orig_restr->ref, restr->ref, ret);
-        DUP_ARRAY(ctx, orig_restr->exts, restr->exts, lysp_ext_dup);
+        DUP_ARRAY2(ctx, pmod, orig_restr->exts, restr->exts, lysp_ext_dup);
     }
 
     return ret;
@@ -406,7 +419,8 @@ lysp_qname_dup(const struct ly_ctx *ctx, struct lysp_qname *qname, const struct 
 }
 
 static LY_ERR
-lysp_type_enum_dup(const struct ly_ctx *ctx, struct lysp_type_enum *enm, const struct lysp_type_enum *orig_enm)
+lysp_type_enum_dup(const struct ly_ctx *ctx, const struct lysp_module *pmod, struct lysp_type_enum *enm,
+        const struct lysp_type_enum *orig_enm)
 {
     LY_ERR ret = LY_SUCCESS;
 
@@ -415,14 +429,15 @@ lysp_type_enum_dup(const struct ly_ctx *ctx, struct lysp_type_enum *enm, const s
     DUP_STRING(ctx, orig_enm->ref, enm->ref, ret);
     enm->value = orig_enm->value;
     DUP_ARRAY(ctx, orig_enm->iffeatures, enm->iffeatures, lysp_qname_dup);
-    DUP_ARRAY(ctx, orig_enm->exts, enm->exts, lysp_ext_dup);
+    DUP_ARRAY2(ctx, pmod, orig_enm->exts, enm->exts, lysp_ext_dup);
     enm->flags = orig_enm->flags;
 
     return ret;
 }
 
 static LY_ERR
-lysp_type_dup(const struct ly_ctx *ctx, struct lysp_type *type, const struct lysp_type *orig_type)
+lysp_type_dup(const struct ly_ctx *ctx, const struct lysp_module *pmod, struct lysp_type *type,
+        const struct lysp_type *orig_type)
 {
     LY_ERR ret = LY_SUCCESS;
 
@@ -434,22 +449,22 @@ lysp_type_dup(const struct ly_ctx *ctx, struct lysp_type *type, const struct lys
     if (orig_type->range) {
         type->range = calloc(1, sizeof *type->range);
         LY_CHECK_ERR_RET(!type->range, LOGMEM(ctx), LY_EMEM);
-        LY_CHECK_RET(lysp_restr_dup(ctx, type->range, orig_type->range));
+        LY_CHECK_RET(lysp_restr_dup(ctx, pmod, type->range, orig_type->range));
     }
 
     if (orig_type->length) {
         type->length = calloc(1, sizeof *type->length);
         LY_CHECK_ERR_RET(!type->length, LOGMEM(ctx), LY_EMEM);
-        LY_CHECK_RET(lysp_restr_dup(ctx, type->length, orig_type->length));
+        LY_CHECK_RET(lysp_restr_dup(ctx, pmod, type->length, orig_type->length));
     }
 
-    DUP_ARRAY(ctx, orig_type->patterns, type->patterns, lysp_restr_dup);
-    DUP_ARRAY(ctx, orig_type->enums, type->enums, lysp_type_enum_dup);
-    DUP_ARRAY(ctx, orig_type->bits, type->bits, lysp_type_enum_dup);
+    DUP_ARRAY2(ctx, pmod, orig_type->patterns, type->patterns, lysp_restr_dup);
+    DUP_ARRAY2(ctx, pmod, orig_type->enums, type->enums, lysp_type_enum_dup);
+    DUP_ARRAY2(ctx, pmod, orig_type->bits, type->bits, lysp_type_enum_dup);
     LY_CHECK_GOTO(ret = lyxp_expr_dup(ctx, orig_type->path, 0, 0, &type->path), done);
     DUP_ARRAY(ctx, orig_type->bases, type->bases, lysp_string_dup);
-    DUP_ARRAY(ctx, orig_type->types, type->types, lysp_type_dup);
-    DUP_ARRAY(ctx, orig_type->exts, type->exts, lysp_ext_dup);
+    DUP_ARRAY2(ctx, pmod, orig_type->types, type->types, lysp_type_dup);
+    DUP_ARRAY2(ctx, pmod, orig_type->exts, type->exts, lysp_ext_dup);
 
     type->pmod = orig_type->pmod;
     type->compiled = orig_type->compiled;
@@ -463,20 +478,22 @@ done:
 }
 
 static LY_ERR
-lysp_when_dup(const struct ly_ctx *ctx, struct lysp_when *when, const struct lysp_when *orig_when)
+lysp_when_dup(const struct ly_ctx *ctx, const struct lysp_module *pmod, struct lysp_when *when,
+        const struct lysp_when *orig_when)
 {
     LY_ERR ret = LY_SUCCESS;
 
     DUP_STRING(ctx, orig_when->cond, when->cond, ret);
     DUP_STRING(ctx, orig_when->dsc, when->dsc, ret);
     DUP_STRING(ctx, orig_when->ref, when->ref, ret);
-    DUP_ARRAY(ctx, orig_when->exts, when->exts, lysp_ext_dup);
+    DUP_ARRAY2(ctx, pmod, orig_when->exts, when->exts, lysp_ext_dup);
 
     return ret;
 }
 
 static LY_ERR
-lysp_node_common_dup(const struct ly_ctx *ctx, struct lysp_node *node, const struct lysp_node *orig)
+lysp_node_common_dup(const struct ly_ctx *ctx, const struct lysp_module *pmod, struct lysp_node *node,
+        const struct lysp_node *orig)
 {
     LY_ERR ret = LY_SUCCESS;
 
@@ -488,20 +505,21 @@ lysp_node_common_dup(const struct ly_ctx *ctx, struct lysp_node *node, const str
     DUP_STRING(ctx, orig->dsc, node->dsc, ret);
     DUP_STRING(ctx, orig->ref, node->ref, ret);
     DUP_ARRAY(ctx, orig->iffeatures, node->iffeatures, lysp_qname_dup);
-    DUP_ARRAY(ctx, orig->exts, node->exts, lysp_ext_dup);
+    DUP_ARRAY2(ctx, pmod, orig->exts, node->exts, lysp_ext_dup);
 
     return ret;
 }
 
-#define DUP_PWHEN(CTX, ORIG, NEW) \
+#define DUP_PWHEN(CTX, PMOD, ORIG, NEW) \
     if (ORIG) { \
         NEW = calloc(1, sizeof *NEW); \
         LY_CHECK_ERR_RET(!NEW, LOGMEM(CTX), LY_EMEM); \
-        LY_CHECK_RET(lysp_when_dup(CTX, NEW, ORIG)); \
+        LY_CHECK_RET(lysp_when_dup(CTX, PMOD, NEW, ORIG)); \
     }
 
 static LY_ERR
-lysp_node_dup(const struct ly_ctx *ctx, struct lysp_node *node, const struct lysp_node *orig)
+lysp_node_dup(const struct ly_ctx *ctx, const struct lysp_module *pmod, struct lysp_node *node,
+        const struct lysp_node *orig)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysp_node_container *cont;
@@ -529,7 +547,7 @@ lysp_node_dup(const struct ly_ctx *ctx, struct lysp_node *node, const struct lys
             LYS_RPC | LYS_ACTION | LYS_NOTIF));
 
     /* common part */
-    LY_CHECK_RET(lysp_node_common_dup(ctx, node, orig));
+    LY_CHECK_RET(lysp_node_common_dup(ctx, pmod, node, orig));
 
     /* specific part */
     switch (node->nodetype) {
@@ -537,8 +555,8 @@ lysp_node_dup(const struct ly_ctx *ctx, struct lysp_node *node, const struct lys
         cont = (struct lysp_node_container *)node;
         orig_cont = (const struct lysp_node_container *)orig;
 
-        DUP_PWHEN(ctx, orig_cont->when, cont->when);
-        DUP_ARRAY(ctx, orig_cont->musts, cont->musts, lysp_restr_dup);
+        DUP_PWHEN(ctx, pmod, orig_cont->when, cont->when);
+        DUP_ARRAY2(ctx, pmod, orig_cont->musts, cont->musts, lysp_restr_dup);
         DUP_STRING(ctx, orig_cont->presence, cont->presence, ret);
         /* we do not need the rest */
         break;
@@ -546,9 +564,9 @@ lysp_node_dup(const struct ly_ctx *ctx, struct lysp_node *node, const struct lys
         leaf = (struct lysp_node_leaf *)node;
         orig_leaf = (const struct lysp_node_leaf *)orig;
 
-        DUP_PWHEN(ctx, orig_leaf->when, leaf->when);
-        DUP_ARRAY(ctx, orig_leaf->musts, leaf->musts, lysp_restr_dup);
-        LY_CHECK_RET(lysp_type_dup(ctx, &leaf->type, &orig_leaf->type));
+        DUP_PWHEN(ctx, pmod, orig_leaf->when, leaf->when);
+        DUP_ARRAY2(ctx, pmod, orig_leaf->musts, leaf->musts, lysp_restr_dup);
+        LY_CHECK_RET(lysp_type_dup(ctx, pmod, &leaf->type, &orig_leaf->type));
         DUP_STRING(ctx, orig_leaf->units, leaf->units, ret);
         LY_CHECK_RET(lysp_qname_dup(ctx, &leaf->dflt, &orig_leaf->dflt));
         break;
@@ -556,9 +574,9 @@ lysp_node_dup(const struct ly_ctx *ctx, struct lysp_node *node, const struct lys
         llist = (struct lysp_node_leaflist *)node;
         orig_llist = (const struct lysp_node_leaflist *)orig;
 
-        DUP_PWHEN(ctx, orig_llist->when, llist->when);
-        DUP_ARRAY(ctx, orig_llist->musts, llist->musts, lysp_restr_dup);
-        LY_CHECK_RET(lysp_type_dup(ctx, &llist->type, &orig_llist->type));
+        DUP_PWHEN(ctx, pmod, orig_llist->when, llist->when);
+        DUP_ARRAY2(ctx, pmod, orig_llist->musts, llist->musts, lysp_restr_dup);
+        LY_CHECK_RET(lysp_type_dup(ctx, pmod, &llist->type, &orig_llist->type));
         DUP_STRING(ctx, orig_llist->units, llist->units, ret);
         DUP_ARRAY(ctx, orig_llist->dflts, llist->dflts, lysp_qname_dup);
         llist->min = orig_llist->min;
@@ -568,8 +586,8 @@ lysp_node_dup(const struct ly_ctx *ctx, struct lysp_node *node, const struct lys
         list = (struct lysp_node_list *)node;
         orig_list = (const struct lysp_node_list *)orig;
 
-        DUP_PWHEN(ctx, orig_list->when, list->when);
-        DUP_ARRAY(ctx, orig_list->musts, list->musts, lysp_restr_dup);
+        DUP_PWHEN(ctx, pmod, orig_list->when, list->when);
+        DUP_ARRAY2(ctx, pmod, orig_list->musts, list->musts, lysp_restr_dup);
         DUP_STRING(ctx, orig_list->key, list->key, ret);
         /* we do not need these arrays */
         DUP_ARRAY(ctx, orig_list->uniques, list->uniques, lysp_qname_dup);
@@ -580,7 +598,7 @@ lysp_node_dup(const struct ly_ctx *ctx, struct lysp_node *node, const struct lys
         choice = (struct lysp_node_choice *)node;
         orig_choice = (const struct lysp_node_choice *)orig;
 
-        DUP_PWHEN(ctx, orig_choice->when, choice->when);
+        DUP_PWHEN(ctx, pmod, orig_choice->when, choice->when);
         /* we do not need children */
         LY_CHECK_RET(lysp_qname_dup(ctx, &choice->dflt, &orig_choice->dflt));
         break;
@@ -588,7 +606,7 @@ lysp_node_dup(const struct ly_ctx *ctx, struct lysp_node *node, const struct lys
         cas = (struct lysp_node_case *)node;
         orig_cas = (const struct lysp_node_case *)orig;
 
-        DUP_PWHEN(ctx, orig_cas->when, cas->when);
+        DUP_PWHEN(ctx, pmod, orig_cas->when, cas->when);
         /* we do not need children */
         break;
     case LYS_ANYDATA:
@@ -596,8 +614,8 @@ lysp_node_dup(const struct ly_ctx *ctx, struct lysp_node *node, const struct lys
         any = (struct lysp_node_anydata *)node;
         orig_any = (const struct lysp_node_anydata *)orig;
 
-        DUP_PWHEN(ctx, orig_any->when, any->when);
-        DUP_ARRAY(ctx, orig_any->musts, any->musts, lysp_restr_dup);
+        DUP_PWHEN(ctx, pmod, orig_any->when, any->when);
+        DUP_ARRAY2(ctx, pmod, orig_any->musts, any->musts, lysp_restr_dup);
         break;
     case LYS_RPC:
     case LYS_ACTION:
@@ -613,14 +631,14 @@ lysp_node_dup(const struct ly_ctx *ctx, struct lysp_node *node, const struct lys
         action_inout = (struct lysp_node_action_inout *)node;
         orig_action_inout = (const struct lysp_node_action_inout *)orig;
 
-        DUP_ARRAY(ctx, orig_action_inout->musts, action_inout->musts, lysp_restr_dup);
+        DUP_ARRAY2(ctx, pmod, orig_action_inout->musts, action_inout->musts, lysp_restr_dup);
         /* we do not need the rest */
         break;
     case LYS_NOTIF:
         notif = (struct lysp_node_notif *)node;
         orig_notif = (const struct lysp_node_notif *)orig;
 
-        DUP_ARRAY(ctx, orig_notif->musts, notif->musts, lysp_restr_dup);
+        DUP_ARRAY2(ctx, pmod, orig_notif->musts, notif->musts, lysp_restr_dup);
         /* we do not need the rest */
         break;
     default:
@@ -634,13 +652,15 @@ lysp_node_dup(const struct ly_ctx *ctx, struct lysp_node *node, const struct lys
  * @brief Duplicate a single parsed node. Only attributes that are used in compilation are copied.
  *
  * @param[in] ctx libyang context.
+ * @param[in] pmod Current parsed module.
  * @param[in] pnode Node to duplicate.
  * @param[in] with_links Whether to also copy any links (child, parent pointers).
  * @param[out] dup_p Duplicated parsed node.
  * @return LY_ERR value.
  */
 static LY_ERR
-lysp_dup_single(const struct ly_ctx *ctx, const struct lysp_node *pnode, ly_bool with_links, struct lysp_node **dup_p)
+lysp_dup_single(const struct ly_ctx *ctx, const struct lysp_module *pmod, const struct lysp_node *pnode,
+        ly_bool with_links, struct lysp_node **dup_p)
 {
     LY_ERR ret = LY_SUCCESS;
     void *mem = NULL;
@@ -688,7 +708,7 @@ lysp_dup_single(const struct ly_ctx *ctx, const struct lysp_node *pnode, ly_bool
         LOGINT_RET(ctx);
     }
     LY_CHECK_ERR_GOTO(!mem, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-    LY_CHECK_GOTO(ret = lysp_node_dup(ctx, mem, pnode), cleanup);
+    LY_CHECK_GOTO(ret = lysp_node_dup(ctx, pmod, mem, pnode), cleanup);
 
     if (with_links) {
         /* copy also parent, child, action, and notification pointers */
@@ -743,17 +763,28 @@ cleanup:
  *
  * @param[in] ctx Compile context.
  * @param[in] rfn Refine to apply.
+ * @param[in] rfn_pmod Local module fo the refine.
  * @param[in,out] target Refine target.
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_apply_refine(struct lysc_ctx *ctx, struct lysp_refine *rfn, struct lysp_node *target)
+lys_apply_refine(struct lysc_ctx *ctx, struct lysp_refine *rfn, const struct lysp_module *rfn_pmod, struct lysp_node *target)
 {
     LY_ERR ret = LY_SUCCESS;
+    struct lys_module *orig_mod = ctx->cur_mod;
+    struct lysp_module *orig_pmod = ctx->pmod;
     LY_ARRAY_COUNT_TYPE u;
     struct lysp_qname *qname;
     struct lysp_restr **musts, *must;
     uint32_t *num;
+
+    /* use module from the refine */
+    ctx->cur_mod = rfn_pmod->mod;
+    ctx->pmod = (struct lysp_module *)rfn_pmod;
+
+    /* keep the current path and add to it */
+    lysc_update_path(ctx, NULL, "{refine}");
+    lysc_update_path(ctx, NULL, rfn->nodeid);
 
     /* default value */
     if (rfn->dflts) {
@@ -860,7 +891,7 @@ lys_apply_refine(struct lysc_ctx *ctx, struct lysp_refine *rfn, struct lysp_node
 
         LY_ARRAY_FOR(rfn->musts, u) {
             LY_ARRAY_NEW_GOTO(ctx->ctx, *musts, must, ret, cleanup);
-            LY_CHECK_GOTO(ret = lysp_restr_dup(ctx->ctx, must, &rfn->musts[u]), cleanup);
+            LY_CHECK_GOTO(ret = lysp_restr_dup(ctx->ctx, rfn_pmod, must, &rfn->musts[u]), cleanup);
         }
     }
 
@@ -918,10 +949,15 @@ lys_apply_refine(struct lysc_ctx *ctx, struct lysp_refine *rfn, struct lysp_node
         }
     }
 
-    /* extension */
-    /* TODO refine extensions */
+    /* extension instances */
+    DUP_ARRAY2(ctx->ctx, rfn_pmod, rfn->exts, target->exts, lysp_ext_dup);
 
 cleanup:
+    ctx->cur_mod = orig_mod;
+    ctx->pmod = orig_pmod;
+
+    lysc_update_path(ctx, NULL, NULL);
+    lysc_update_path(ctx, NULL, NULL);
     return ret;
 }
 
@@ -973,7 +1009,7 @@ lys_apply_deviate_add(struct lysc_ctx *ctx, struct lysp_deviate_add *d, struct l
 
         LY_ARRAY_FOR(d->musts, u) {
             LY_ARRAY_NEW_GOTO(ctx->ctx, *musts, must, ret, cleanup);
-            LY_CHECK_GOTO(ret = lysp_restr_dup(ctx->ctx, must, &d->musts[u]), cleanup);
+            LY_CHECK_GOTO(ret = lysp_restr_dup(ctx->ctx, ctx->pmod, must, &d->musts[u]), cleanup);
         }
     }
 
@@ -1279,7 +1315,7 @@ lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysp_deviate_rpl *d, stru
         }
 
         lysp_type_free(&ctx->free_ctx, &((struct lysp_node_leaf *)target)->type);
-        lysp_type_dup(ctx->ctx, &((struct lysp_node_leaf *)target)->type, d->type);
+        lysp_type_dup(ctx->ctx, ctx->pmod, &((struct lysp_node_leaf *)target)->type, d->type);
     }
 
     /* [units-stmt] */
@@ -1411,6 +1447,65 @@ lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysp_deviate_rpl *d, stru
     }
 
 cleanup:
+    return ret;
+}
+
+/**
+ * @brief Apply deviation with all its deviates.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] dev Deviation to apply.
+ * @param[in] dev_pmod Local module of the deviation.
+ * @param[in,out] target Deviation target.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_apply_deviation(struct lysc_ctx *ctx, struct lysp_deviation *dev, const struct lysp_module *dev_pmod,
+        struct lysp_node *target)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lys_module *orig_mod = ctx->cur_mod;
+    struct lysp_module *orig_pmod = ctx->pmod;
+    char orig_path[LYSC_CTX_BUFSIZE];
+    struct lysp_deviate *d;
+
+    /* clear path and set modules */
+    strcpy(orig_path, ctx->path);
+    ctx->path_len = 1;
+    ctx->cur_mod = dev_pmod->mod;
+    ctx->pmod = (struct lysp_module *)dev_pmod;
+
+    /* generate correct path */
+    lysc_update_path(ctx, NULL, "{deviation}");
+    lysc_update_path(ctx, NULL, dev->nodeid);
+
+    LY_LIST_FOR(dev->deviates, d) {
+        switch (d->mod) {
+        case LYS_DEV_ADD:
+            ret = lys_apply_deviate_add(ctx, (struct lysp_deviate_add *)d, target);
+            break;
+        case LYS_DEV_DELETE:
+            ret = lys_apply_deviate_delete(ctx, (struct lysp_deviate_del *)d, target);
+            break;
+        case LYS_DEV_REPLACE:
+            ret = lys_apply_deviate_replace(ctx, (struct lysp_deviate_rpl *)d, target);
+            break;
+        default:
+            LOGINT(ctx->ctx);
+            ret = LY_EINT;
+        }
+        LY_CHECK_GOTO(ret, cleanup);
+    }
+
+    /* deviation extension instances */
+    DUP_ARRAY2(ctx->ctx, dev_pmod, dev->exts, target->exts, lysp_ext_dup);
+
+cleanup:
+    ctx->cur_mod = orig_mod;
+    ctx->pmod = orig_pmod;
+
+    strcpy(ctx->path, orig_path);
+    ctx->path_len = strlen(ctx->path);
     return ret;
 }
 
@@ -1606,13 +1701,8 @@ lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct lysp_node
     LY_ERR ret = LY_SUCCESS;
     uint32_t i;
     LY_ARRAY_COUNT_TYPE u;
-    struct lys_module *orig_mod = ctx->cur_mod;
-    struct lysp_module *orig_pmod = ctx->pmod;
-    char orig_path[LYSC_CTX_BUFSIZE];
     struct lysc_refine *rfn;
     struct lysc_deviation *dev;
-    struct lysp_deviation *dev_p;
-    struct lysp_deviate *d;
 
     *dev_pnode = NULL;
     *not_supported = 0;
@@ -1620,7 +1710,7 @@ lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct lysp_node
     for (i = 0; i < ctx->uses_rfns.count; ) {
         rfn = ctx->uses_rfns.objs[i];
 
-        if (!lysp_schema_nodeid_match(rfn->nodeid, rfn->nodeid_pmod, rfn->nodeid_ctx_node, parent, pnode, orig_mod)) {
+        if (!lysp_schema_nodeid_match(rfn->nodeid, rfn->nodeid_pmod, rfn->nodeid_ctx_node, parent, pnode, ctx->cur_mod)) {
             /* not our target node */
             ++i;
             continue;
@@ -1628,24 +1718,12 @@ lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct lysp_node
 
         if (!*dev_pnode) {
             /* first refine on this node, create a copy first */
-            LY_CHECK_GOTO(ret = lysp_dup_single(ctx->ctx, pnode, 1, dev_pnode), cleanup);
+            LY_CHECK_GOTO(ret = lysp_dup_single(ctx->ctx, ctx->pmod, pnode, 1, dev_pnode), cleanup);
         }
-
-        /* use modules from the refine */
-        ctx->cur_mod = rfn->nodeid_pmod->mod;
-        ctx->pmod = (struct lysp_module *)rfn->nodeid_pmod;
 
         /* apply all the refines by changing (the copy of) the parsed node */
         LY_ARRAY_FOR(rfn->rfns, u) {
-            /* keep the current path and add to it */
-            lysc_update_path(ctx, NULL, "{refine}");
-            lysc_update_path(ctx, NULL, rfn->rfns[u]->nodeid);
-
-            /* apply refine and restore the path */
-            ret = lys_apply_refine(ctx, rfn->rfns[u], *dev_pnode);
-            lysc_update_path(ctx, NULL, NULL);
-            lysc_update_path(ctx, NULL, NULL);
-            LY_CHECK_GOTO(ret, cleanup);
+            LY_CHECK_GOTO(ret = lys_apply_refine(ctx, rfn->rfns[u], rfn->nodeid_pmod, *dev_pnode), cleanup);
         }
 
         /* refine was applied, remove it */
@@ -1658,7 +1736,7 @@ lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct lysp_node
     for (i = 0; i < ctx->devs.count; ++i) {
         dev = ctx->devs.objs[i];
 
-        if (!lysp_schema_nodeid_match(dev->nodeid, dev->dev_pmods[0], NULL, parent, pnode, orig_mod)) {
+        if (!lysp_schema_nodeid_match(dev->nodeid, dev->dev_pmods[0], NULL, parent, pnode, ctx->cur_mod)) {
             /* not our target node */
             continue;
         }
@@ -1671,42 +1749,12 @@ lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct lysp_node
 
         if (!*dev_pnode) {
             /* first deviation on this node, create a copy first */
-            LY_CHECK_GOTO(ret = lysp_dup_single(ctx->ctx, pnode, 1, dev_pnode), cleanup);
+            LY_CHECK_GOTO(ret = lysp_dup_single(ctx->ctx, ctx->pmod, pnode, 1, dev_pnode), cleanup);
         }
 
         /* apply all the deviates by changing (the copy of) the parsed node */
         LY_ARRAY_FOR(dev->devs, u) {
-            dev_p = dev->devs[u];
-            LY_LIST_FOR(dev_p->deviates, d) {
-                /* generate correct path */
-                strcpy(orig_path, ctx->path);
-                ctx->path_len = 1;
-                ctx->cur_mod = dev->dev_pmods[u]->mod;
-                ctx->pmod = (struct lysp_module *)dev->dev_pmods[u];
-                lysc_update_path(ctx, NULL, "{deviation}");
-                lysc_update_path(ctx, NULL, dev_p->nodeid);
-
-                switch (d->mod) {
-                case LYS_DEV_ADD:
-                    ret = lys_apply_deviate_add(ctx, (struct lysp_deviate_add *)d, *dev_pnode);
-                    break;
-                case LYS_DEV_DELETE:
-                    ret = lys_apply_deviate_delete(ctx, (struct lysp_deviate_del *)d, *dev_pnode);
-                    break;
-                case LYS_DEV_REPLACE:
-                    ret = lys_apply_deviate_replace(ctx, (struct lysp_deviate_rpl *)d, *dev_pnode);
-                    break;
-                default:
-                    LOGINT(ctx->ctx);
-                    ret = LY_EINT;
-                }
-
-                /* restore previous path */
-                strcpy(ctx->path, orig_path);
-                ctx->path_len = strlen(ctx->path);
-
-                LY_CHECK_GOTO(ret, cleanup);
-            }
+            LY_CHECK_GOTO(ret = lys_apply_deviation(ctx, dev->devs[u], dev->dev_pmods[u], *dev_pnode), cleanup);
         }
 
 dev_applied:
@@ -1719,8 +1767,6 @@ dev_applied:
     }
 
 cleanup:
-    ctx->cur_mod = orig_mod;
-    ctx->pmod = orig_pmod;
     if (ret) {
         lysp_dev_node_free(ctx, *dev_pnode);
         *dev_pnode = NULL;
@@ -1876,6 +1922,9 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
     rc = lys_compile_augment_children(ctx, aug_p->when, aug_p->flags, (struct lysp_node *)aug_p->notifs, target,
             child_unres_disabled);
     LY_CHECK_GOTO(rc, cleanup);
+
+    /* compile extensions into the target */
+    COMPILE_EXTS_GOTO(ctx, aug_p->exts, target->exts, target, rc, cleanup);
 
 cleanup:
     ctx->compile_opts = opt_prev;

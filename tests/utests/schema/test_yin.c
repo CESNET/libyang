@@ -92,12 +92,12 @@ struct minmax_dev_meta {
 /* prototypes of static functions */
 enum yin_argument yin_match_argument_name(const char *name, size_t len);
 LY_ERR yin_parse_content(struct lysp_yin_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
-        enum ly_stmt current_element, const char **text_content, struct lysp_ext_instance **exts);
+        const void *parent, enum ly_stmt parent_stmt, const char **text_content, struct lysp_ext_instance **exts);
 LY_ERR yin_validate_value(struct lysp_yin_ctx *ctx, enum yang_arg val_type);
 enum ly_stmt yin_match_keyword(struct lysp_yin_ctx *ctx, const char *name, size_t name_len,
         const char *prefix, size_t prefix_len, enum ly_stmt parrent);
-LY_ERR yin_parse_extension_instance(struct lysp_yin_ctx *ctx, enum ly_stmt subelem, LY_ARRAY_COUNT_TYPE subelem_index,
-        struct lysp_ext_instance **exts);
+LY_ERR yin_parse_extension_instance(struct lysp_yin_ctx *ctx, const void *parent, enum ly_stmt parent_stmt,
+        LY_ARRAY_COUNT_TYPE parent_stmt_index, struct lysp_ext_instance **exts);
 LY_ERR yin_parse_element_generic(struct lysp_yin_ctx *ctx, enum ly_stmt parent, struct lysp_stmt **element);
 LY_ERR yin_parse_mod(struct lysp_yin_ctx *ctx, struct lysp_module *mod);
 LY_ERR yin_parse_submod(struct lysp_yin_ctx *ctx, struct lysp_submodule *submod);
@@ -330,7 +330,7 @@ test_yin_parse_content(void **state)
     lyxml_ctx_new(UTEST_LYCTX, UTEST_IN, &YCTX->xmlctx);
     lyxml_ctx_next(YCTX->xmlctx);
 
-    ret = yin_parse_content(YCTX, subelems2, 2, LY_STMT_STATUS, NULL, &exts);
+    ret = yin_parse_content(YCTX, subelems2, 2, NULL, LY_STMT_STATUS, NULL, &exts);
     assert_int_equal(ret, LY_EVALID);
     CHECK_LOG_CTX("Redefinition of \"text\" sub-element in \"status\" element.", "Line number 1.");
     lydict_remove(UTEST_LYCTX, prefix_value);
@@ -350,7 +350,7 @@ test_yin_parse_content(void **state)
     lyxml_ctx_new(UTEST_LYCTX, UTEST_IN, &YCTX->xmlctx);
     lyxml_ctx_next(YCTX->xmlctx);
 
-    ret = yin_parse_content(YCTX, subelems3, 2, LY_STMT_STATUS, NULL, &exts);
+    ret = yin_parse_content(YCTX, subelems3, 2, NULL, LY_STMT_STATUS, NULL, &exts);
     assert_int_equal(ret, LY_EVALID);
     CHECK_LOG_CTX("Sub-element \"text\" of \"status\" element must be defined as it's first sub-element.", "Line number 1.");
     lydict_remove(UTEST_LYCTX, prefix_value);
@@ -364,7 +364,7 @@ test_yin_parse_content(void **state)
     lyxml_ctx_new(UTEST_LYCTX, UTEST_IN, &YCTX->xmlctx);
     lyxml_ctx_next(YCTX->xmlctx);
 
-    ret = yin_parse_content(YCTX, subelems4, 1, LY_STMT_STATUS, NULL, &exts);
+    ret = yin_parse_content(YCTX, subelems4, 1, NULL, LY_STMT_STATUS, NULL, &exts);
     assert_int_equal(ret, LY_EVALID);
     CHECK_LOG_CTX("Missing mandatory sub-element \"prefix\" of \"status\" element.", "Line number 1.");
 }
@@ -1258,7 +1258,8 @@ test_element_helper(void **state, const char *data, void *dest, const char **tex
     name_len = YCTX->xmlctx->name_len;
     lyxml_ctx_next(YCTX->xmlctx);
 
-    ret = yin_parse_content(YCTX, subelems, 71, yin_match_keyword(YCTX, name, name_len, prefix, prefix_len, LY_STMT_NONE), text, exts);
+    ret = yin_parse_content(YCTX, subelems, 71, NULL,
+            yin_match_keyword(YCTX, name, name_len, prefix, prefix_len, LY_STMT_NONE), text, exts);
 
     /* free parser and input */
     lyxml_ctx_free(YCTX->xmlctx);
@@ -3480,7 +3481,7 @@ test_yin_parse_submodule(void **state)
             "</module>";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
     assert_int_equal(yin_parse_submodule(&yin_ctx, UTEST_LYCTX, (struct lysp_ctx *)YCTX, in, &submod), LY_EINVAL);
-    CHECK_LOG_CTX("Input data contains module in situation when a submodule is expected.", NULL);
+    CHECK_LOG_CTX("Input data contains module when a submodule is expected.", NULL);
     lysp_module_free(&fctx, (struct lysp_module *)submod);
     lysp_yin_ctx_free(yin_ctx);
     ly_in_free(in, 0);

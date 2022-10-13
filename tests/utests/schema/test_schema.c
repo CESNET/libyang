@@ -1606,7 +1606,8 @@ test_extension_argument_element(void **state)
     /* invalid */
     mod_test_yang = "module x { namespace \"urn:x\"; prefix x; import a { prefix a; } a:e; }";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, mod_test_yang, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Extension instance \"a:e\" misses argument element \"name\".", "/x:{extension='a:e'}");
+    CHECK_LOG_CTX("Parsing module \"x\" failed.", NULL,
+            "Extension instance \"a:e\" missing argument element \"name\".", NULL);
 
     mod_test_yin = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
             "<module name=\"x\"\n"
@@ -1621,7 +1622,8 @@ test_extension_argument_element(void **state)
             "  <a:e/>\n"
             "</module>\n";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, mod_test_yin, LYS_IN_YIN, NULL));
-    CHECK_LOG_CTX("Extension instance \"a:e\" misses argument element \"name\".", "/x:{extension='a:e'}");
+    CHECK_LOG_CTX("Parsing module \"x\" failed.", NULL,
+            "Extension instance \"a:e\" missing argument element \"name\".", NULL);
 
     mod_test_yin = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
             "<module name=\"x\"\n"
@@ -1636,7 +1638,8 @@ test_extension_argument_element(void **state)
             "  <a:e name=\"xxx\"/>\n"
             "</module>\n";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, mod_test_yin, LYS_IN_YIN, NULL));
-    CHECK_LOG_CTX("Extension instance \"a:e\" misses argument element \"name\".", "/x:{extension='a:e'}");
+    CHECK_LOG_CTX("Parsing module \"x\" failed.", NULL,
+            "Extension instance \"a:e\" missing argument element \"name\".", NULL);
 
     mod_test_yin = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
             "<module name=\"x\"\n"
@@ -1653,8 +1656,9 @@ test_extension_argument_element(void **state)
             "  </a:e>\n"
             "</module>\n";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, mod_test_yin, LYS_IN_YIN, NULL));
-    CHECK_LOG_CTX("Extension instance \"a:e\" element and its argument element \"name\" are expected in the same namespace, but they differ.",
-            "/x:{extension='a:e'}");
+    CHECK_LOG_CTX("Parsing module \"x\" failed.", NULL,
+            "Extension instance \"a:e\" element and its argument element \"name\" are expected in the same namespace, but they differ.",
+            NULL);
 
     mod_test_yin = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
             "<module name=\"x\"\n"
@@ -1671,8 +1675,9 @@ test_extension_argument_element(void **state)
             "  </a:e>\n"
             "</module>\n";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, mod_test_yin, LYS_IN_YIN, NULL));
-    CHECK_LOG_CTX("Extension instance \"a:e\" expects argument element \"name\" as its first XML child, but \"value\" element found.",
-            "/x:{extension='a:e'}");
+    CHECK_LOG_CTX("Parsing module \"x\" failed.", NULL,
+            "Extension instance \"a:e\" expects argument element \"name\" as its first XML child, but \"value\" element found.",
+            NULL);
 
 }
 
@@ -1682,6 +1687,7 @@ test_extension_compile(void **state)
     struct lys_module *mod;
     struct lysc_ctx cctx = {0};
     struct lysp_ext_instance ext_p = {0};
+    struct lysp_ext_substmt *substmtp;
     struct lysp_stmt child = {0};
     struct lysc_ext_instance ext_c = {0};
     struct lysc_ext_substmt *substmt;
@@ -1703,10 +1709,19 @@ test_extension_compile(void **state)
     ext_p.format = LY_VALUE_JSON;
     ext_p.parent_stmt = LY_STMT_MODULE;
 
+    LY_ARRAY_NEW_GOTO(UTEST_LYCTX, ext_p.substmts, substmtp, rc, cleanup);
+
+    substmtp->stmt = LY_STMT_ERROR_MESSAGE;
+    substmtp->storage = &ext_p.parsed;
+    /* fake parse */
+    lydict_insert(UTEST_LYCTX, "my error", 0, (const char **)&ext_p.parsed);
+
     /* compiled ext instance */
     ext_c.parent_stmt = ext_p.parent_stmt;
-    // ext_c.parent =
     LY_ARRAY_NEW_GOTO(UTEST_LYCTX, ext_c.substmts, substmt, rc, cleanup);
+
+    substmt->stmt = LY_STMT_ERROR_MESSAGE;
+    substmt->storage = &ext_c.compiled;
 
     /*
      * error-message
@@ -1717,22 +1732,20 @@ test_extension_compile(void **state)
     child.format = LY_VALUE_JSON;
     child.kw = LY_STMT_ERROR_MESSAGE;
 
-    substmt->stmt = LY_STMT_ERROR_MESSAGE;
-    substmt->storage = &ext_c.data;
-
     /* compile */
-    assert_int_equal(LY_SUCCESS, lys_compile_extension_instance(&cctx, &ext_p, &ext_c));
+    assert_int_equal(LY_SUCCESS, lyplg_ext_compile_extension_instance(&cctx, &ext_p, &ext_c));
 
     /* check */
-    assert_string_equal(ext_c.data, "my error");
+    assert_string_equal(ext_c.compiled, "my error");
 
 cleanup:
     lydict_remove(UTEST_LYCTX, ext_p.name);
     lydict_remove(UTEST_LYCTX, child.stmt);
     lydict_remove(UTEST_LYCTX, child.arg);
+    LY_ARRAY_FREE(ext_p.substmts);
+    lydict_remove(UTEST_LYCTX, ext_p.parsed);
     LY_ARRAY_FREE(ext_c.substmts);
-
-    lydict_remove(UTEST_LYCTX, ext_c.data);
+    lydict_remove(UTEST_LYCTX, ext_c.compiled);
     if (rc) {
         fail();
     }

@@ -55,12 +55,12 @@ test_add_simple(void **state)
     assert_int_equal(LYS_LEAF, leaf->nodetype);
 
     assert_non_null(plugin_t = lyplg_type_plugin_find("libyang-plugins-simple", NULL, "note"));
-    assert_string_equal("libyang 2 - simple test, version 1", plugin_t->id);
+    assert_string_equal("ly2 simple test v1", plugin_t->id);
     assert_ptr_equal(leaf->type->plugin, plugin_t);
 
     assert_int_equal(1, LY_ARRAY_COUNT(leaf->exts));
     assert_non_null(record_e = lyplg_ext_record_find("libyang-plugins-simple", NULL, "hint"));
-    assert_string_equal("libyang 2 - simple test, version 1", record_e->plugin.id);
+    assert_string_equal("ly2 simple test v1", record_e->plugin.id);
     assert_ptr_equal(leaf->exts[0].def->plugin, &record_e->plugin);
 
     /* the second loading of the same plugin - still success */

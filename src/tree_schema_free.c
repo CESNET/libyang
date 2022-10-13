@@ -33,11 +33,10 @@
 #include "xml.h"
 #include "xpath.h"
 
-static void lysc_extension_free(struct lysf_ctx *ctx, struct lysc_ext **ext);
 static void lysc_node_free_(struct lysf_ctx *ctx, struct lysc_node *node);
 
 void
-lysp_qname_free(struct ly_ctx *ctx, struct lysp_qname *qname)
+lysp_qname_free(const struct ly_ctx *ctx, struct lysp_qname *qname)
 {
     if (qname) {
         lydict_remove(ctx, qname->str);
@@ -70,13 +69,12 @@ void
 lysp_ext_instance_free(struct lysf_ctx *ctx, struct lysp_ext_instance *ext)
 {
     struct lysp_stmt *stmt, *next;
-    struct lysp_node *node, *next_node;
 
     lydict_remove(ctx->ctx, ext->name);
     lydict_remove(ctx->ctx, ext->argument);
     ly_free_prefix_data(ext->format, ext->prefix_data);
-    LY_LIST_FOR_SAFE(ext->parsed, next_node, node) {
-        lysp_node_free(ctx, node);
+    if (ext->record && ext->record->plugin.pfree) {
+        ext->record->plugin.pfree(ctx->ctx, ext);
     }
 
     LY_LIST_FOR_SAFE(ext->child, next, stmt) {
@@ -161,6 +159,29 @@ lysp_revision_free(struct lysf_ctx *ctx, struct lysp_revision *rev)
     lydict_remove(ctx->ctx, rev->dsc);
     lydict_remove(ctx->ctx, rev->ref);
     FREE_ARRAY(ctx, rev->exts, lysp_ext_instance_free);
+}
+
+/**
+ * @brief Free the compiled extension definition and NULL the provided pointer.
+ *
+ * @param[in] ctx Free context.
+ * @param[in,out] ext Compiled extension definition to be freed.
+ */
+static void
+lysc_extension_free(struct lysf_ctx *ctx, struct lysc_ext **ext)
+{
+    if (ly_set_contains(&ctx->ext_set, *ext, NULL)) {
+        /* already freed and only referenced again in this module */
+        return;
+    }
+
+    /* remember this extension to be freed, nothing to do on error */
+    (void)ly_set_add(&ctx->ext_set, *ext, 0, NULL);
+
+    /* recursive exts free */
+    FREE_ARRAY(ctx, (*ext)->exts, lysc_ext_instance_free);
+
+    *ext = NULL;
 }
 
 /**
@@ -637,34 +658,11 @@ lysp_module_free(struct lysf_ctx *ctx, struct lysp_module *module)
     free(module);
 }
 
-/**
- * @brief Free the compiled extension definition and NULL the provided pointer.
- *
- * @param[in] ctx Free context.
- * @param[in,out] ext Compiled extension definition to be freed.
- */
-static void
-lysc_extension_free(struct lysf_ctx *ctx, struct lysc_ext **ext)
-{
-    if (ly_set_contains(&ctx->ext_set, *ext, NULL)) {
-        /* already freed and only referenced again in this module */
-        return;
-    }
-
-    /* remember this extension to be freed, nothing to do on error */
-    (void)ly_set_add(&ctx->ext_set, *ext, 0, NULL);
-
-    /* recursive exts free */
-    FREE_ARRAY(ctx, (*ext)->exts, lysc_ext_instance_free);
-
-    *ext = NULL;
-}
-
 void
 lysc_ext_instance_free(struct lysf_ctx *ctx, struct lysc_ext_instance *ext)
 {
-    if (ext->def && ext->def->plugin && ext->def->plugin->free) {
-        ext->def->plugin->free(ctx->ctx, ext);
+    if (ext->def && ext->def->plugin && ext->def->plugin->cfree) {
+        ext->def->plugin->cfree(ctx->ctx, ext);
     }
     lydict_remove(ctx->ctx, ext->argument);
     FREE_ARRAY(ctx, ext->exts, lysc_ext_instance_free);
@@ -1354,10 +1352,11 @@ lysf_ctx_erase(struct lysf_ctx *ctx)
 }
 
 LIBYANG_API_DEF void
-lyplg_ext_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substmts)
+lyplg_ext_pfree_instance_substatements(const struct ly_ctx *ctx, struct lysp_ext_substmt *substmts)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct lysf_ctx fctx = {.ctx = ctx};
+    struct lysf_ctx fctx = {.ctx = (struct ly_ctx *)ctx};
+    ly_bool node_free;
 
     LY_ARRAY_FOR(substmts, u) {
         if (!substmts[u].storage) {
@@ -1365,42 +1364,240 @@ lyplg_ext_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substm
         }
 
         switch (substmts[u].stmt) {
+        case LY_STMT_NOTIFICATION:
+        case LY_STMT_INPUT:
+        case LY_STMT_OUTPUT:
         case LY_STMT_ACTION:
+        case LY_STMT_RPC:
         case LY_STMT_ANYDATA:
         case LY_STMT_ANYXML:
-        case LY_STMT_CONTAINER:
+        case LY_STMT_AUGMENT:
+        case LY_STMT_CASE:
         case LY_STMT_CHOICE:
+        case LY_STMT_CONTAINER:
+        case LY_STMT_GROUPING:
         case LY_STMT_LEAF:
         case LY_STMT_LEAF_LIST:
         case LY_STMT_LIST:
-        case LY_STMT_NOTIFICATION:
-        case LY_STMT_RPC: {
-            struct lysc_node *child, *child_next;
+        case LY_STMT_USES: {
+            struct lysp_node *child, *child_next;
 
-            LY_LIST_FOR_SAFE(*((struct lysc_node **)substmts[u].storage), child_next, child) {
-                lysc_node_free_(&fctx, child);
+            LY_LIST_FOR_SAFE(*((struct lysp_node **)substmts[u].storage), child_next, child) {
+                node_free = (child->nodetype & (LYS_INPUT | LYS_OUTPUT)) ? 1 : 0;
+                lysp_node_free(&fctx, child);
+                if (node_free) {
+                    free(child);
+                }
             }
             *((struct lysc_node **)substmts[u].storage) = NULL;
             break;
         }
-        case LY_STMT_GROUPING: {
-            struct lysp_node_grp *grp, *grp_next;
-
-            LY_LIST_FOR_SAFE(*((struct lysp_node_grp **)substmts[u].storage), grp_next, grp) {
-                lysp_node_free(&fctx, &grp->node);
-            }
+        case LY_STMT_BASE:
+            /* multiple strings */
+            FREE_ARRAY(ctx, **(const char ***)substmts[u].storage, lydict_remove);
             break;
-        }
-        case LY_STMT_USES:
+
+        case LY_STMT_BIT:
+        case LY_STMT_ENUM:
+            /* single enum */
+            lysp_type_enum_free(&fctx, *(struct lysp_type_enum **)substmts[u].storage);
+            break;
+
+        case LY_STMT_DEVIATE:
+            /* single deviate */
+            lysp_deviate_free(&fctx, *(struct lysp_deviate **)substmts[u].storage);
+            break;
+
+        case LY_STMT_DEVIATION:
+            /* single deviation */
+            lysp_deviation_free(&fctx, *(struct lysp_deviation **)substmts[u].storage);
+            break;
+
+        case LY_STMT_EXTENSION:
+            /* single extension */
+            lysp_ext_free(&fctx, *(struct lysp_ext **)substmts[u].storage);
+            break;
+
+        case LY_STMT_EXTENSION_INSTANCE:
+            /* multiple extension instances */
+            FREE_ARRAY(&fctx, *(struct lysp_ext_instance **)substmts[u].storage, lysp_ext_instance_free);
+            break;
+
+        case LY_STMT_FEATURE:
+            /* multiple features */
+            FREE_ARRAY(&fctx, *(struct lysp_feature **)substmts[u].storage, lysp_feature_free);
+            break;
+
+        case LY_STMT_IDENTITY:
+            /* multiple identities */
+            FREE_ARRAY(&fctx, *(struct lysp_ident **)substmts[u].storage, lysp_ident_free);
+            break;
+
+        case LY_STMT_IMPORT:
+            /* multiple imports */
+            FREE_ARRAY(&fctx, *(struct lysp_import **)substmts[u].storage, lysp_import_free);
+            break;
+
+        case LY_STMT_INCLUDE:
+            /* multiple includes */
+            FREE_ARRAY(&fctx, *(struct lysp_include **)substmts[u].storage, lysp_include_free);
+            break;
+
+        case LY_STMT_REFINE:
+            /* multiple refines */
+            FREE_ARRAY(&fctx, *(struct lysp_refine **)substmts[u].storage, lysp_refine_free);
+            break;
+
+        case LY_STMT_REVISION:
+            /* multiple revisions */
+            FREE_ARRAY(&fctx, *(struct lysp_revision **)substmts[u].storage, lysp_revision_free);
+            break;
+
         case LY_STMT_CONFIG:
+        case LY_STMT_FRACTION_DIGITS:
+        case LY_STMT_MANDATORY:
+        case LY_STMT_MAX_ELEMENTS:
+        case LY_STMT_MIN_ELEMENTS:
+        case LY_STMT_ORDERED_BY:
+        case LY_STMT_POSITION:
+        case LY_STMT_REQUIRE_INSTANCE:
         case LY_STMT_STATUS:
+        case LY_STMT_VALUE:
+        case LY_STMT_YANG_VERSION:
+        case LY_STMT_YIN_ELEMENT:
             /* nothing to do */
             break;
+
+        case LY_STMT_ARGUMENT:
+        case LY_STMT_BELONGS_TO:
         case LY_STMT_CONTACT:
         case LY_STMT_DESCRIPTION:
         case LY_STMT_ERROR_APP_TAG:
         case LY_STMT_ERROR_MESSAGE:
         case LY_STMT_KEY:
+        case LY_STMT_MODIFIER:
+        case LY_STMT_NAMESPACE:
+        case LY_STMT_ORGANIZATION:
+        case LY_STMT_PREFIX:
+        case LY_STMT_PRESENCE:
+        case LY_STMT_REFERENCE:
+        case LY_STMT_REVISION_DATE:
+        case LY_STMT_UNITS:
+            /* single string */
+            lydict_remove(ctx, *(const char **)substmts[u].storage);
+            break;
+
+        case LY_STMT_LENGTH:
+        case LY_STMT_MUST:
+        case LY_STMT_PATTERN:
+        case LY_STMT_RANGE:
+            /* multiple restrictions */
+            FREE_ARRAY(&fctx, *(struct lysp_restr **)substmts[u].storage, lysp_restr_free);
+            break;
+
+        case LY_STMT_WHEN:
+            /* multiple whens */
+            FREE_ARRAY(&fctx, *(struct lysp_when **)substmts[u].storage, lysp_when_free);
+            break;
+
+        case LY_STMT_PATH:
+            /* single expression */
+            lyxp_expr_free(ctx, *(struct lyxp_expr **)substmts[u].storage);
+            break;
+
+        case LY_STMT_DEFAULT:
+        case LY_STMT_IF_FEATURE:
+        case LY_STMT_UNIQUE:
+            /* multiple qnames */
+            FREE_ARRAY(ctx, *(struct lysp_qname **)substmts[u].storage, lysp_qname_free);
+            break;
+
+        case LY_STMT_TYPEDEF:
+            /* multiple typedefs */
+            FREE_ARRAY(&fctx, *(struct lysp_tpdf **)substmts[u].storage, lysp_tpdf_free);
+            break;
+
+        case LY_STMT_TYPE: {
+            /* single type */
+            struct lysp_type **type_p = substmts[u].storage;
+
+            lysp_type_free(&fctx, *type_p);
+            free(*type_p);
+            break;
+        }
+        case LY_STMT_MODULE:
+        case LY_STMT_SUBMODULE:
+            /* single (sub)module */
+            lysp_module_free(&fctx, *(struct lysp_module **)substmts[u].storage);
+            break;
+
+        default:
+            LOGINT(ctx);
+        }
+    }
+
+    LY_ARRAY_FREE(substmts);
+}
+
+LIBYANG_API_DEF void
+lyplg_ext_cfree_instance_substatements(const struct ly_ctx *ctx, struct lysc_ext_substmt *substmts)
+{
+    LY_ARRAY_COUNT_TYPE u;
+    struct lysf_ctx fctx = {.ctx = (struct ly_ctx *)ctx};
+    ly_bool node_free;
+
+    LY_ARRAY_FOR(substmts, u) {
+        if (!substmts[u].storage) {
+            continue;
+        }
+
+        switch (substmts[u].stmt) {
+        case LY_STMT_NOTIFICATION:
+        case LY_STMT_INPUT:
+        case LY_STMT_OUTPUT:
+        case LY_STMT_ACTION:
+        case LY_STMT_RPC:
+        case LY_STMT_ANYDATA:
+        case LY_STMT_ANYXML:
+        case LY_STMT_CASE:
+        case LY_STMT_CHOICE:
+        case LY_STMT_CONTAINER:
+        case LY_STMT_LEAF:
+        case LY_STMT_LEAF_LIST:
+        case LY_STMT_LIST: {
+            struct lysc_node *child, *child_next;
+
+            LY_LIST_FOR_SAFE(*((struct lysc_node **)substmts[u].storage), child_next, child) {
+                node_free = (child->nodetype & (LYS_INPUT | LYS_OUTPUT)) ? 1 : 0;
+                lysc_node_free_(&fctx, child);
+                if (node_free) {
+                    free(child);
+                }
+            }
+            *((struct lysc_node **)substmts[u].storage) = NULL;
+            break;
+        }
+        case LY_STMT_USES:
+        case LY_STMT_CONFIG:
+        case LY_STMT_FRACTION_DIGITS:
+        case LY_STMT_MANDATORY:
+        case LY_STMT_MAX_ELEMENTS:
+        case LY_STMT_MIN_ELEMENTS:
+        case LY_STMT_ORDERED_BY:
+        case LY_STMT_POSITION:
+        case LY_STMT_REQUIRE_INSTANCE:
+        case LY_STMT_STATUS:
+        case LY_STMT_VALUE:
+            /* nothing to do */
+            break;
+
+        case LY_STMT_ARGUMENT:
+        case LY_STMT_CONTACT:
+        case LY_STMT_DESCRIPTION:
+        case LY_STMT_ERROR_APP_TAG:
+        case LY_STMT_ERROR_MESSAGE:
+        case LY_STMT_KEY:
+        case LY_STMT_MODIFIER:
         case LY_STMT_NAMESPACE:
         case LY_STMT_ORGANIZATION:
         case LY_STMT_PRESENCE:
@@ -1412,44 +1609,88 @@ lyplg_ext_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substm
             lydict_remove(ctx, str);
             break;
         }
+        case LY_STMT_BIT:
+        case LY_STMT_ENUM: {
+            /* sized array */
+            struct lysc_type_bitenum_item *items = *((struct lysc_type_bitenum_item **)substmts[u].storage);
+
+            FREE_ARRAY(&fctx, items, lysc_enum_item_free);
+            break;
+        }
+        case LY_STMT_LENGTH:
+        case LY_STMT_RANGE: {
+            /* single item */
+            struct lysc_range *range = *((struct lysc_range **)substmts[u].storage);
+
+            lysc_range_free(&fctx, range);
+            break;
+        }
         case LY_STMT_MUST: {
-            /* multiple items */
+            /* sized array */
             struct lysc_must *musts = *((struct lysc_must **)substmts[u].storage);
 
             FREE_ARRAY(&fctx, musts, lysc_must_free);
             break;
         }
-        case LY_STMT_IF_FEATURE: {
-            struct lysc_iffeature *iff = *((struct lysc_iffeature **)substmts[u].storage);
-
-            if (!iff) {
-                break;
-            }
-            /* multiple items */
-            FREE_ARRAY(&fctx, iff, lysc_iffeature_free);
+        case LY_STMT_WHEN:
+            /* single item, expects a pointer */
+            lysc_when_free(&fctx, substmts[u].storage);
             break;
-        }
-        case LY_STMT_TYPEDEF: {
-            struct lysp_tpdf *tpdf = *((struct lysp_tpdf **)substmts[u].storage);
 
-            if (!tpdf) {
-                break;
-            }
-            /* always an array */
-            FREE_ARRAY(&fctx, tpdf, lysp_tpdf_free);
+        case LY_STMT_PATTERN: {
+            /* sized array of pointers */
+            struct lysc_pattern **patterns = *((struct lysc_pattern ***)substmts[u].storage);
+
+            FREE_ARRAY(&fctx, patterns, lysc_pattern_free);
             break;
         }
         case LY_STMT_TYPE: {
             /* single item */
             struct lysc_type *type = *((struct lysc_type **)substmts[u].storage);
 
-            if (!type) {
-                break;
-            }
             lysc_type_free(&fctx, type);
             break;
         }
-        /* TODO other statements */
+        case LY_STMT_IDENTITY: {
+            /* sized array */
+            struct lysc_ident *idents = *((struct lysc_ident **)substmts[u].storage);
+
+            FREE_ARRAY(&fctx, idents, lysc_ident_free);
+            break;
+        }
+        case LY_STMT_EXTENSION_INSTANCE: {
+            /* sized array */
+            struct lysc_ext_instance *exts = *((struct lysc_ext_instance **)substmts[u].storage);
+
+            FREE_ARRAY(&fctx, exts, lysc_ext_instance_free);
+            break;
+        }
+        case LY_STMT_AUGMENT:
+        case LY_STMT_BASE:
+        case LY_STMT_BELONGS_TO:
+        case LY_STMT_DEFAULT:
+        case LY_STMT_DEVIATE:
+        case LY_STMT_DEVIATION:
+        case LY_STMT_EXTENSION:
+        case LY_STMT_FEATURE:
+        case LY_STMT_GROUPING:
+        case LY_STMT_IF_FEATURE:
+        case LY_STMT_IMPORT:
+        case LY_STMT_INCLUDE:
+        case LY_STMT_MODULE:
+        case LY_STMT_PATH:
+        case LY_STMT_PREFIX:
+        case LY_STMT_REFINE:
+        case LY_STMT_REVISION:
+        case LY_STMT_REVISION_DATE:
+        case LY_STMT_SUBMODULE:
+        case LY_STMT_TYPEDEF:
+        case LY_STMT_UNIQUE:
+        case LY_STMT_YANG_VERSION:
+        case LY_STMT_YIN_ELEMENT:
+            /* it is not possible to compile these statements */
+            break;
+
         default:
             LOGINT(ctx);
         }

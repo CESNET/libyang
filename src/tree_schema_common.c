@@ -40,6 +40,87 @@
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 
+/**
+ * @brief information about YANG statements
+ */
+struct stmt_info_s stmt_attr_info[] = {
+    [LY_STMT_NONE] = {NULL, NULL, 0},
+    [LY_STMT_ACTION] = {"action", "name", STMT_FLAG_ID},
+    [LY_STMT_ANYDATA] = {"anydata", "name", STMT_FLAG_ID},
+    [LY_STMT_ANYXML] = {"anyxml", "name", STMT_FLAG_ID},
+    [LY_STMT_ARGUMENT] = {"argument", "name", STMT_FLAG_ID},
+    [LY_STMT_ARG_TEXT] = {"text", NULL, 0},
+    [LY_STMT_ARG_VALUE] = {"value", NULL, 0},
+    [LY_STMT_AUGMENT] = {"augment", "target-node", STMT_FLAG_ID},
+    [LY_STMT_BASE] = {"base", "name", STMT_FLAG_ID},
+    [LY_STMT_BELONGS_TO] = {"belongs-to", "module", STMT_FLAG_ID},
+    [LY_STMT_BIT] = {"bit", "name", STMT_FLAG_ID},
+    [LY_STMT_CASE] = {"case", "name", STMT_FLAG_ID},
+    [LY_STMT_CHOICE] = {"choice", "name", STMT_FLAG_ID},
+    [LY_STMT_CONFIG] = {"config", "value", STMT_FLAG_ID},
+    [LY_STMT_CONTACT] = {"contact", "text", STMT_FLAG_YIN},
+    [LY_STMT_CONTAINER] = {"container", "name", STMT_FLAG_ID},
+    [LY_STMT_DEFAULT] = {"default", "value", 0},
+    [LY_STMT_DESCRIPTION] = {"description", "text", STMT_FLAG_YIN},
+    [LY_STMT_DEVIATE] = {"deviate", "value", STMT_FLAG_ID},
+    [LY_STMT_DEVIATION] = {"deviation", "target-node", STMT_FLAG_ID},
+    [LY_STMT_ENUM] = {"enum", "name", STMT_FLAG_ID},
+    [LY_STMT_ERROR_APP_TAG] = {"error-app-tag", "value", 0},
+    [LY_STMT_ERROR_MESSAGE] = {"error-message", "value", STMT_FLAG_YIN},
+    [LY_STMT_EXTENSION] = {"extension", "name", STMT_FLAG_ID},
+    [LY_STMT_EXTENSION_INSTANCE] = {NULL, NULL, 0},
+    [LY_STMT_FEATURE] = {"feature", "name", STMT_FLAG_ID},
+    [LY_STMT_FRACTION_DIGITS] = {"fraction-digits", "value", STMT_FLAG_ID},
+    [LY_STMT_GROUPING] = {"grouping", "name", STMT_FLAG_ID},
+    [LY_STMT_IDENTITY] = {"identity", "name", STMT_FLAG_ID},
+    [LY_STMT_IF_FEATURE] = {"if-feature", "name", 0},
+    [LY_STMT_IMPORT] = {"import", "module", STMT_FLAG_ID},
+    [LY_STMT_INCLUDE] = {"include", "module", STMT_FLAG_ID},
+    [LY_STMT_INPUT] = {"input", NULL, 0},
+    [LY_STMT_KEY] = {"key", "value", 0},
+    [LY_STMT_LEAF] = {"leaf", "name", STMT_FLAG_ID},
+    [LY_STMT_LEAF_LIST] = {"leaf-list", "name", STMT_FLAG_ID},
+    [LY_STMT_LENGTH] = {"length", "value", 0},
+    [LY_STMT_LIST] = {"list", "name", STMT_FLAG_ID},
+    [LY_STMT_MANDATORY] = {"mandatory", "value", STMT_FLAG_ID},
+    [LY_STMT_MAX_ELEMENTS] = {"max-elements", "value", STMT_FLAG_ID},
+    [LY_STMT_MIN_ELEMENTS] = {"min-elements", "value", STMT_FLAG_ID},
+    [LY_STMT_MODIFIER] = {"modifier", "value", STMT_FLAG_ID},
+    [LY_STMT_MODULE] = {"module", "name", STMT_FLAG_ID},
+    [LY_STMT_MUST] = {"must", "condition", 0},
+    [LY_STMT_NAMESPACE] = {"namespace", "uri", 0},
+    [LY_STMT_NOTIFICATION] = {"notification", "name", STMT_FLAG_ID},
+    [LY_STMT_ORDERED_BY] = {"ordered-by", "value", STMT_FLAG_ID},
+    [LY_STMT_ORGANIZATION] = {"organization", "text", STMT_FLAG_YIN},
+    [LY_STMT_OUTPUT] = {"output", NULL, 0},
+    [LY_STMT_PATH] = {"path", "value", 0},
+    [LY_STMT_PATTERN] = {"pattern", "value", 0},
+    [LY_STMT_POSITION] = {"position", "value", STMT_FLAG_ID},
+    [LY_STMT_PREFIX] = {"prefix", "value", STMT_FLAG_ID},
+    [LY_STMT_PRESENCE] = {"presence", "value", 0},
+    [LY_STMT_RANGE] = {"range", "value", 0},
+    [LY_STMT_REFERENCE] = {"reference", "text", STMT_FLAG_YIN},
+    [LY_STMT_REFINE] = {"refine", "target-node", STMT_FLAG_ID},
+    [LY_STMT_REQUIRE_INSTANCE] = {"require-instance", "value", STMT_FLAG_ID},
+    [LY_STMT_REVISION] = {"revision", "date", STMT_FLAG_ID},
+    [LY_STMT_REVISION_DATE] = {"revision-date", "date", STMT_FLAG_ID},
+    [LY_STMT_RPC] = {"rpc", "name", STMT_FLAG_ID},
+    [LY_STMT_STATUS] = {"status", "value", STMT_FLAG_ID},
+    [LY_STMT_SUBMODULE] = {"submodule", "name", STMT_FLAG_ID},
+    [LY_STMT_SYNTAX_LEFT_BRACE] = {"{", NULL, 0},
+    [LY_STMT_SYNTAX_RIGHT_BRACE] = {"}", NULL, 0},
+    [LY_STMT_SYNTAX_SEMICOLON] = {";", NULL, 0},
+    [LY_STMT_TYPE] = {"type", "name", STMT_FLAG_ID},
+    [LY_STMT_TYPEDEF] = {"typedef", "name", STMT_FLAG_ID},
+    [LY_STMT_UNIQUE] = {"unique", "tag", 0},
+    [LY_STMT_UNITS] = {"units", "name", 0},
+    [LY_STMT_USES] = {"uses", "name", STMT_FLAG_ID},
+    [LY_STMT_VALUE] = {"value", "value", STMT_FLAG_ID},
+    [LY_STMT_WHEN] = {"when", "condition", 0},
+    [LY_STMT_YANG_VERSION] = {"yang-version", "value", STMT_FLAG_ID},
+    [LY_STMT_YIN_ELEMENT] = {"yin-element", "value", STMT_FLAG_ID},
+};
+
 LY_ERR
 lysp_check_prefix(struct lysp_ctx *ctx, struct lysp_import *imports, const char *module_prefix, const char **value)
 {
@@ -256,7 +337,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_m
 {
     const char *str, *name;
     struct lysp_tpdf *typedefs;
-    const struct lysp_tpdf **ext_typedefs;
+    const struct lysp_tpdf *ext_typedefs;
     const struct lys_module *mod;
     const struct lysp_module *local_module;
     LY_ARRAY_COUNT_TYPE u, v;
@@ -300,8 +381,8 @@ lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_m
 
         if (ext) {
             /* search typedefs directly in the extension */
-            ext_typedefs = (void *)lys_compile_ext_instance_get_storage(ext, LY_STMT_TYPEDEF);
-            if (ext_typedefs && (*tpdf = lysp_typedef_match(name, *ext_typedefs))) {
+            lyplg_ext_parsed_get_storage(ext, LY_STMT_TYPEDEF, (const void **)&ext_typedefs);
+            if ((*tpdf = lysp_typedef_match(name, ext_typedefs))) {
                 /* match */
                 return LY_SUCCESS;
             }
@@ -1348,43 +1429,6 @@ lys_nodetype2str(uint16_t nodetype)
     }
 }
 
-LIBYANG_API_DEF enum ly_stmt
-lys_nodetype2stmt(uint16_t nodetype)
-{
-    switch (nodetype) {
-    case LYS_CONTAINER:
-        return LY_STMT_CONTAINER;
-    case LYS_CHOICE:
-        return LY_STMT_CHOICE;
-    case LYS_LEAF:
-        return LY_STMT_LEAF;
-    case LYS_LEAFLIST:
-        return LY_STMT_LEAF_LIST;
-    case LYS_LIST:
-        return LY_STMT_LIST;
-    case LYS_ANYXML:
-        return LY_STMT_ANYXML;
-    case LYS_ANYDATA:
-        return LY_STMT_ANYDATA;
-    case LYS_CASE:
-        return LY_STMT_CASE;
-    case LYS_RPC:
-        return LY_STMT_RPC;
-    case LYS_ACTION:
-        return LY_STMT_ACTION;
-    case LYS_NOTIF:
-        return LY_STMT_NOTIFICATION;
-    case LYS_USES:
-        return LY_STMT_USES;
-    case LYS_INPUT:
-        return LY_STMT_INPUT;
-    case LYS_OUTPUT:
-        return LY_STMT_OUTPUT;
-    default:
-        return LY_STMT_NONE;
-    }
-}
-
 const char *
 lys_datatype2str(LY_DATA_TYPE basetype)
 {
@@ -2092,11 +2136,8 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
     const struct lys_module *mod = NULL;
     const struct lysp_submodule *submod;
 
-    assert(ext_def);
-
-    *ext_def = NULL;
-    if (ext_mod) {
-        *ext_mod = NULL;
+    if (ext_def) {
+        *ext_def = NULL;
     }
 
     /* parse the prefix, the nodeid was previously already parsed and checked */
@@ -2104,7 +2145,7 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
     ly_parse_nodeid(&tmp, &prefix, &pref_len, &name, &name_len);
 
     /* get module where the extension definition should be placed */
-    mod = ly_resolve_prefix(ctx, prefix, pref_len, ext->format, ext->prefix_data);
+    *ext_mod = mod = ly_resolve_prefix(ctx, prefix, pref_len, ext->format, ext->prefix_data);
     if (!mod) {
         LOGVAL(ctx, LYVE_REFERENCE, "Invalid prefix \"%.*s\" used for extension instance identifier.", (int)pref_len, prefix);
         return LY_EVALID;
@@ -2112,6 +2153,11 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
         LOGVAL(ctx, LYVE_REFERENCE, "Extension instance \"%s\" refers \"%s\" module that does not contain extension definitions.",
                 ext->name, mod->name);
         return LY_EVALID;
+    }
+
+    if (!ext_def) {
+        /* we are done */
+        return LY_SUCCESS;
     }
 
     /* find the parsed extension definition there */
@@ -2138,25 +2184,24 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
         return LY_EVALID;
     }
 
-    if (ext_mod) {
-        *ext_mod = mod;
-    }
     return LY_SUCCESS;
 }
 
 LY_ERR
-lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance *ext_p, struct lysp_ext *ext_def)
+lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance *ext_p)
 {
-    if (!ext_def->argname || ext_p->argument) {
+    assert(ext_p->def);
+
+    if (!ext_p->def->argname || ext_p->argument) {
         /* nothing to do */
         return LY_SUCCESS;
     }
 
     if (ext_p->format == LY_VALUE_XML) {
-        /* Schema was parsed from YIN and an argument is expected, ... */
+        /* schema was parsed from YIN and an argument is expected, ... */
         struct lysp_stmt *stmt = NULL;
 
-        if (ext_def->flags & LYS_YINELEM_TRUE) {
+        if (ext_p->def->flags & LYS_YINELEM_TRUE) {
             /* ... argument was the first XML child element */
             for (stmt = ext_p->child; stmt && (stmt->flags & LYS_YIN_ATTR); stmt = stmt->next) {}
             if (stmt) {
@@ -2167,9 +2212,9 @@ lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance 
 
                 arg = stmt->stmt;
                 ly_parse_nodeid(&arg, &prefix_arg, &prefix_arg_len, &name_arg, &name_arg_len);
-                if (ly_strncmp(ext_def->argname, name_arg, name_arg_len)) {
+                if (ly_strncmp(ext_p->def->argname, name_arg, name_arg_len)) {
                     LOGVAL(ctx, LYVE_SEMANTICS, "Extension instance \"%s\" expects argument element \"%s\" as its first XML child, "
-                            "but \"%.*s\" element found.", ext_p->name, ext_def->argname, (int)name_arg_len, name_arg);
+                            "but \"%.*s\" element found.", ext_p->name, ext_p->def->argname, (int)name_arg_len, name_arg);
                     return LY_EVALID;
                 }
 
@@ -2181,15 +2226,14 @@ lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance 
                 if (ly_resolve_prefix(ctx, prefix_ext, prefix_ext_len, ext_p->format, ext_p->prefix_data) !=
                         ly_resolve_prefix(ctx, prefix_arg, prefix_arg_len, stmt->format, stmt->prefix_data)) {
                     LOGVAL(ctx, LYVE_SEMANTICS, "Extension instance \"%s\" element and its argument element \"%s\" are "
-                            "expected in the same namespace, but they differ.", ext_p->name, ext_def->argname);
+                            "expected in the same namespace, but they differ.", ext_p->name, ext_p->def->argname);
                     return LY_EVALID;
                 }
             }
         } else {
-            /* ... argument was one of the XML attributes which are represented as child stmt
-             * with LYS_YIN_ATTR flag */
+            /* ... argument was one of the XML attributes which are represented as child stmt with LYS_YIN_ATTR flag */
             for (stmt = ext_p->child; stmt && (stmt->flags & LYS_YIN_ATTR); stmt = stmt->next) {
-                if (!strcmp(stmt->stmt, ext_def->argname)) {
+                if (!strcmp(stmt->stmt, ext_p->def->argname)) {
                     /* this is the extension's argument */
                     break;
                 }
@@ -2204,8 +2248,8 @@ lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance 
 
     if (!ext_p->argument) {
         /* missing extension's argument */
-        LOGVAL(ctx, LYVE_SEMANTICS, "Extension instance \"%s\" misses argument %s\"%s\".",
-                ext_p->name, (ext_def->flags & LYS_YINELEM_TRUE) ? "element " : "", ext_def->argname);
+        LOGVAL(ctx, LYVE_SEMANTICS, "Extension instance \"%s\" missing argument %s\"%s\".",
+                ext_p->name, (ext_p->def->flags & LYS_YINELEM_TRUE) ? "element " : "", ext_p->def->argname);
         return LY_EVALID;
     }
 

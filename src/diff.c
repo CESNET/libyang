@@ -1162,7 +1162,7 @@ lyd_diff_apply_r(struct lyd_node **first_node, struct lyd_node *parent_node, con
         ret = 0;
         if (parent_node) {
             if (match->flags & LYD_EXT) {
-                ret = lyd_insert_ext(parent_node, match);
+                ret = lyplg_ext_insert(parent_node, match);
             } else {
                 ret = lyd_insert_child(parent_node, match);
             }

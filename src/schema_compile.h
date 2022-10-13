@@ -170,6 +170,16 @@ struct lysc_unres_dflt {
         } \
     }
 
+#define DUP_ARRAY2(CTX, PMOD, ORIG_ARRAY, NEW_ARRAY, DUP_FUNC) \
+    if (ORIG_ARRAY) { \
+        LY_ARRAY_COUNT_TYPE __u; \
+        LY_ARRAY_CREATE_RET(CTX, NEW_ARRAY, LY_ARRAY_COUNT(ORIG_ARRAY), LY_EMEM); \
+        LY_ARRAY_FOR(ORIG_ARRAY, __u) { \
+            LY_ARRAY_INCREMENT(NEW_ARRAY); \
+            LY_CHECK_RET(DUP_FUNC(CTX, PMOD, &(NEW_ARRAY)[__u], &(ORIG_ARRAY)[__u])); \
+        } \
+    }
+
 #define COMPILE_OP_ARRAY_GOTO(CTX, ARRAY_P, ARRAY_C, PARENT, FUNC, USES_STATUS, RET, GOTO) \
     if (ARRAY_P) { \
         LY_ARRAY_COUNT_TYPE __u = (ARRAY_C) ? LY_ARRAY_COUNT(ARRAY_C) : 0; \
@@ -203,7 +213,7 @@ struct lysc_unres_dflt {
         LY_ARRAY_CREATE_GOTO((CTX)->ctx, EXT_C, __u + LY_ARRAY_COUNT(EXTS_P), RET, GOTO); \
         LY_ARRAY_FOR(EXTS_P, __u) { \
             LY_ARRAY_INCREMENT(EXT_C); \
-            RET = lys_compile_ext(CTX, &(EXTS_P)[__u], &(EXT_C)[LY_ARRAY_COUNT(EXT_C) - 1], PARENT, NULL); \
+            RET = lys_compile_ext(CTX, &(EXTS_P)[__u], &(EXT_C)[LY_ARRAY_COUNT(EXT_C) - 1], PARENT); \
             if (RET == LY_ENOT) { \
                 LY_ARRAY_DECREMENT(EXT_C); \
                 RET = LY_SUCCESS; \
@@ -217,16 +227,31 @@ struct lysc_unres_dflt {
  * @brief Fill in the prepared compiled extension instance structure according to the parsed extension instance.
  *
  * @param[in] ctx Compilation context.
- * @param[in] ext_p Parsed extension instance.
+ * @param[in] extp Parsed extension instance.
  * @param[in,out] ext Prepared compiled extension instance.
  * @param[in] parent Extension instance parent.
- * @param[in] ext_mod Optional module with the extension instance extension definition, set only for internal annotations.
  * @return LY_SUCCESS on success.
  * @return LY_ENOT if the extension is disabled and should be ignored.
  * @return LY_ERR on error.
  */
-LY_ERR lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext, void *parent,
-        const struct lys_module *ext_mod);
+LY_ERR lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *extp, struct lysc_ext_instance *ext, void *parent);
+
+/**
+ * @brief Compile information from the identity statement
+ *
+ * The backlinks to the identities derived from this one are supposed to be filled later via ::lys_compile_identity_bases().
+ *
+ * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p parsed_mod.
+ * @param[in] ctx libyang context.
+ * @param[in] parsed_mod Module with the identities.
+ * @param[in] identities_p Array of the parsed identity definitions to precompile.
+ * @param[in,out] identities Pointer to the storage of the (pre)compiled identities array where the new identities are
+ * supposed to be added. The storage is supposed to be initiated to NULL when the first parsed identities are going
+ * to be processed.
+ * @return LY_ERR value.
+ */
+LY_ERR lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp_module *parsed_mod,
+        const struct lysp_ident *identities_p, struct lysc_ident **identities);
 
 /**
  * @brief Find and process the referenced base identities from another identity or identityref
@@ -244,15 +269,6 @@ LY_ERR lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, st
  */
 LY_ERR lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module *base_pmod, const char **bases_p,
         struct lysc_ident *ident, struct lysc_ident ***bases);
-
-/**
- * @brief Get compiled ext instance storage for a specific statement.
- *
- * @param[in] ext Compiled ext instance.
- * @param[in] stmt Stored statement.
- * @return Compiled ext instance substatement storage, NULL if substaement not supported or not stored.
- */
-const void *lys_compile_ext_instance_get_storage(const struct lysc_ext_instance *ext, enum ly_stmt stmt);
 
 /**
  * @brief Perform a complet compilation of identites in a module and all its submodules.

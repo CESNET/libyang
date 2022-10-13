@@ -1,9 +1,10 @@
 /**
  * @file log.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Logger routines implementations
  *
- * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -33,6 +34,7 @@
 #include "tree_data.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"
+#include "tree_schema_internal.h"
 
 ATOMIC_T ly_ll = (uint_fast32_t)LY_LLWRN;
 ATOMIC_T ly_log_opts = (uint_fast32_t)(LY_LOLOG | LY_LOSTORE_LAST);
@@ -665,28 +667,74 @@ ly_vlog(const struct ly_ctx *ctx, const char *apptag, LY_VECODE code, const char
     va_end(ap);
 }
 
-LIBYANG_API_DEF void
-lyplg_ext_log(const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR err_no, const char *path, const char *format, ...)
+/**
+ * @brief Print a log message from an extension plugin callback.
+ *
+ * @param[in] ctx libyang context to store the error record. If not provided, the error is just printed.
+ * @param[in] plugin_name Name of the plugin generating the message.
+ * @param[in] level Log message level (error, warning, etc.)
+ * @param[in] err_no Error type code.
+ * @param[in] path Optional path of the error.
+ * @param[in] format Format string to print.
+ * @param[in] ap Var arg list for @p format.
+ */
+static void
+ly_ext_log(const struct ly_ctx *ctx, const char *plugin_name, LY_LOG_LEVEL level, LY_ERR err_no, const char *path,
+        const char *format, va_list ap)
 {
-    va_list ap;
     char *plugin_msg;
-    int ret;
 
     if (ATOMIC_LOAD_RELAXED(ly_ll) < level) {
         return;
     }
-    ret = asprintf(&plugin_msg, "Extension plugin \"%s\": %s", ext->def->plugin->id, format);
-    if (ret == -1) {
-        LOGMEM(ext->module->ctx);
+    if (asprintf(&plugin_msg, "Ext plugin \"%s\": %s", plugin_name, format) == -1) {
+        LOGMEM(ctx);
         return;
     }
 
+    log_vprintf(ctx, level, (level == LY_LLERR ? LY_EPLUGIN : 0) | err_no, LYVE_OTHER, path ? strdup(path) : NULL, NULL,
+            plugin_msg, ap);
+    free(plugin_msg);
+}
+
+LIBYANG_API_DEF void
+lyplg_ext_parse_log(const struct lysp_ctx *pctx, const struct lysp_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR err_no,
+        const char *format, ...)
+{
+    va_list ap;
+    char *path = NULL;
+
+    if (ATOMIC_LOAD_RELAXED(path_flag)) {
+        ly_vlog_build_path(PARSER_CTX(pctx), &path);
+    }
+
     va_start(ap, format);
-    log_vprintf(ext->module->ctx, level, (level == LY_LLERR ? LY_EPLUGIN : 0) | err_no, LYVE_OTHER,
-            path ? strdup(path) : NULL, NULL, plugin_msg, ap);
+    ly_ext_log(PARSER_CTX(pctx), ext->record->plugin.id, level, err_no, path, format, ap);
     va_end(ap);
 
-    free(plugin_msg);
+    free(path);
+}
+
+LIBYANG_API_DEF void
+lyplg_ext_compile_log(const struct lysc_ctx *cctx, const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR err_no,
+        const char *format, ...)
+{
+    va_list ap;
+
+    va_start(ap, format);
+    ly_ext_log(ext->module->ctx, ext->def->plugin->id, level, err_no, cctx ? cctx->path : NULL, format, ap);
+    va_end(ap);
+}
+
+LIBYANG_API_DEF void
+lyplg_ext_compile_log_path(const char *path, const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR err_no,
+        const char *format, ...)
+{
+    va_list ap;
+
+    va_start(ap, format);
+    ly_ext_log(ext->module->ctx, ext->def->plugin->id, level, err_no, path, format, ap);
+    va_end(ap);
 }
 
 /**

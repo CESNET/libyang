@@ -197,14 +197,15 @@ fill_cmdline_file(struct ly_set *set, struct ly_in *in, const char *path, LYD_FO
         YLMSG_E("Allocating memory for data file information failed.\n");
         return NULL;
     }
+    rec->in = in;
+    rec->path = path;
+    rec->format = format;
+
     if (set && ly_set_add(set, rec, 1, NULL)) {
         free(rec);
         YLMSG_E("Storing data file information failed.\n");
         return NULL;
     }
-    rec->in = in;
-    rec->path = path;
-    rec->format = format;
 
     return rec;
 }

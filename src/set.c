@@ -76,7 +76,7 @@ ly_set_free(struct ly_set *set, void (*destructor)(void *obj))
 }
 
 LIBYANG_API_DEF ly_bool
-ly_set_contains(const struct ly_set *set, void *object, uint32_t *index_p)
+ly_set_contains(const struct ly_set *set, const void *object, uint32_t *index_p)
 {
     LY_CHECK_ARG_RET(NULL, set, 0);
 
@@ -95,7 +95,7 @@ ly_set_contains(const struct ly_set *set, void *object, uint32_t *index_p)
 }
 
 LIBYANG_API_DEF LY_ERR
-ly_set_dup(const struct ly_set *set, void *(*duplicator)(void *obj), struct ly_set **newset_p)
+ly_set_dup(const struct ly_set *set, void *(*duplicator)(const void *obj), struct ly_set **newset_p)
 {
     struct ly_set *newset;
     uint32_t u;
@@ -126,7 +126,7 @@ ly_set_dup(const struct ly_set *set, void *(*duplicator)(void *obj), struct ly_s
 }
 
 LIBYANG_API_DEF LY_ERR
-ly_set_add(struct ly_set *set, void *object, ly_bool list, uint32_t *index_p)
+ly_set_add(struct ly_set *set, const void *object, ly_bool list, uint32_t *index_p)
 {
     void **new;
 
@@ -157,13 +157,13 @@ ly_set_add(struct ly_set *set, void *object, ly_bool list, uint32_t *index_p)
     if (index_p) {
         *index_p = set->count;
     }
-    set->objs[set->count++] = object;
+    set->objs[set->count++] = (void *)object;
 
     return LY_SUCCESS;
 }
 
 LIBYANG_API_DEF LY_ERR
-ly_set_merge(struct ly_set *trg, const struct ly_set *src, ly_bool list, void *(*duplicator)(void *obj))
+ly_set_merge(struct ly_set *trg, const struct ly_set *src, ly_bool list, void *(*duplicator)(const void *obj))
 {
     uint32_t u;
     void *obj;

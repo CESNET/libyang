@@ -814,7 +814,7 @@ check_ext_instance_priv_parsed_is_set(struct lysc_ext_instance *ext)
     LY_ARRAY_FOR(ext, u) {
         substmts = ext[u].substmts;
         LY_ARRAY_FOR(substmts, v) {
-            if (substmts && substmts[v].storage && LY_STMT_IS_NODE(substmts[v].stmt)) {
+            if (substmts && substmts[v].storage && (substmts[v].stmt & LY_STMT_DATA_NODE_MASK)) {
                 cnode = *(struct lysc_node **)substmts[v].storage;
                 iter = check;
                 assert_int_equal(LY_SUCCESS, lysc_tree_dfs_full(cnode, check_node_priv_parsed_is_set, &iter));
@@ -833,7 +833,7 @@ check_ext_instance_priv_parsed_not_set(struct lysc_ext_instance *ext)
     LY_ARRAY_FOR(ext, u) {
         substmts = ext[u].substmts;
         LY_ARRAY_FOR(substmts, v) {
-            if (substmts && substmts[v].storage && LY_STMT_IS_NODE(substmts[v].stmt)) {
+            if (substmts && substmts[v].storage && (substmts[v].stmt & LY_STMT_DATA_NODE_MASK)) {
                 cnode = *(struct lysc_node **)substmts[v].storage;
                 if (cnode) {
                     CHECK_POINTER((struct lysp_node *)cnode->priv, 0);

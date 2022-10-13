@@ -1212,7 +1212,16 @@ struct utest_context {
  */
 #define UTEST_ADD_MODULE(DATA, FORMAT, FEATURES, MOD) \
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(DATA, &_UC->in)); \
-    assert_int_equal(LY_SUCCESS, lys_parse(_UC->ctx, _UC->in, FORMAT, FEATURES, MOD)); \
+    { \
+        LY_ERR __r = lys_parse(_UC->ctx, _UC->in, FORMAT, FEATURES, MOD); \
+        if (__r != LY_SUCCESS) { \
+            print_message("[  MSG     ] Module parsing failed:\n"); \
+            for (struct ly_err_item *e = ly_err_first(_UC->ctx); e; e = e->next) { \
+                print_message("[  MSG     ] \t%s Path %s\n", e->msg, e->path); \
+            } \
+            fail(); \
+        } \
+    } \
     ly_in_free(_UC->in, 0); \
     _UC->in = NULL
 
@@ -1223,7 +1232,6 @@ struct utest_context {
  * @param[in] ERR Error information record from libyang context.
  * @param[in] MSG Expected error message.
  * @param[in] PATH Expected error path.
- *
  */
 #define _CHECK_LOG_CTX(ERR, MSG, PATH) \
     if (!MSG) { \

@@ -34,7 +34,6 @@
 #include "path.h"
 #include "plugins.h"
 #include "plugins_exts.h"
-#include "plugins_exts_compile.h"
 #include "plugins_internal.h"
 #include "plugins_types.h"
 #include "schema_compile_amend.h"
@@ -50,37 +49,43 @@
 
 /**
  * @brief Fill in the prepared compiled extensions definition structure according to the parsed extension definition.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] extp Parsed extension instance.
+ * @param[out] ext Compiled extension definition.
+ * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_extension(struct lysc_ctx *ctx, const struct lys_module *ext_mod, struct lysp_ext *ext_p,
-        const struct lyplg_ext_record *record, struct lysc_ext **ext)
+lys_compile_extension(struct lysc_ctx *ctx, struct lysp_ext_instance *extp, struct lysc_ext **ext)
 {
     LY_ERR ret = LY_SUCCESS;
+    struct lysp_ext *ep = extp->def;
 
-    if (!ext_p->compiled) {
+    if (!ep->compiled) {
         lysc_update_path(ctx, NULL, "{extension}");
-        lysc_update_path(ctx, NULL, ext_p->name);
+        lysc_update_path(ctx, NULL, ep->name);
 
         /* compile the extension definition */
-        *ext = ext_p->compiled = calloc(1, sizeof **ext);
+        *ext = ep->compiled = calloc(1, sizeof **ext);
         (*ext)->refcount = 1;
-        DUP_STRING_GOTO(ctx->ctx, ext_p->name, (*ext)->name, ret, done);
-        DUP_STRING_GOTO(ctx->ctx, ext_p->argname, (*ext)->argname, ret, done);
-        (*ext)->module = (struct lys_module *)ext_mod;
+        DUP_STRING_GOTO(ctx->ctx, ep->name, (*ext)->name, ret, cleanup);
+        DUP_STRING_GOTO(ctx->ctx, ep->argname, (*ext)->argname, ret, cleanup);
+        LY_CHECK_GOTO(ret = lysp_ext_find_definition(ctx->ctx, extp, (const struct lys_module **)&(*ext)->module, NULL),
+                cleanup);
 
         /* compile nested extensions */
-        COMPILE_EXTS_GOTO(ctx, ext_p->exts, (*ext)->exts, *ext, ret, done);
+        COMPILE_EXTS_GOTO(ctx, ep->exts, (*ext)->exts, *ext, ret, cleanup);
 
         lysc_update_path(ctx, NULL, NULL);
         lysc_update_path(ctx, NULL, NULL);
 
         /* find extension definition plugin */
-        (*ext)->plugin = record ? (struct lyplg_ext *)&record->plugin : NULL;
+        (*ext)->plugin = extp->record ? (struct lyplg_ext *)&extp->record->plugin : NULL;
     }
 
-    *ext = ext_p->compiled;
+    *ext = ep->compiled;
 
-done:
+cleanup:
     if (ret) {
         lysc_update_path(ctx, NULL, NULL);
         lysc_update_path(ctx, NULL, NULL);
@@ -89,34 +94,29 @@ done:
 }
 
 LY_ERR
-lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext, void *parent,
-        const struct lys_module *ext_mod)
+lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *extp, struct lysc_ext_instance *ext, void *parent)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lysp_ext *ext_def;
 
-    ext->parent_stmt = ext_p->parent_stmt;
-    ext->parent_stmt_index = ext_p->parent_stmt_index;
+    DUP_STRING_GOTO(ctx->ctx, extp->argument, ext->argument, ret, cleanup);
     ext->module = ctx->cur_mod;
     ext->parent = parent;
+    ext->parent_stmt = extp->parent_stmt;
+    ext->parent_stmt_index = extp->parent_stmt_index;
 
-    lysc_update_path(ctx, LY_STMT_IS_NODE(ext->parent_stmt) ? ((struct lysc_node *)ext->parent)->module : NULL, "{extension}");
-    lysc_update_path(ctx, NULL, ext_p->name);
+    lysc_update_path(ctx, (ext->parent_stmt & LY_STMT_NODE_MASK) ? ((struct lysc_node *)ext->parent)->module : NULL,
+            "{extension}");
+    lysc_update_path(ctx, NULL, extp->name);
 
-    LY_CHECK_GOTO(ret = lysp_ext_find_definition(ctx->ctx, ext_p, &ext_mod, &ext_def), cleanup);
-    LY_CHECK_GOTO(ret = lys_compile_extension(ctx, ext_mod, ext_def, ext_p->record, &ext->def), cleanup);
+    /* compile extension if not already */
+    LY_CHECK_GOTO(ret = lys_compile_extension(ctx, extp, &ext->def), cleanup);
 
-    if (ext_def->argname) {
-        LY_CHECK_GOTO(ret = lysp_ext_instance_resolve_argument(ctx->ctx, ext_p, ext_def), cleanup);
-    }
-
-    DUP_STRING_GOTO(ctx->ctx, ext_p->argument, ext->argument, ret, cleanup);
-
+    /* compile */
     if (ext->def->plugin && ext->def->plugin->compile) {
         if (ext->argument) {
             lysc_update_path(ctx, ext->module, ext->argument);
         }
-        ret = ext->def->plugin->compile(ctx, ext_p, ext);
+        ret = ext->def->plugin->compile(ctx, extp, ext);
         if (ret == LY_ENOT) {
             lysc_ext_instance_free(&ctx->free_ctx, ext);
         }
@@ -137,38 +137,6 @@ lysc_ext_dup(struct lysc_ext *orig)
 {
     ++orig->refcount;
     return orig;
-}
-
-LIBYANG_API_DEF LY_ERR
-lysc_ext_substmt(const struct lysc_ext_instance *ext, enum ly_stmt substmt, void **instance_p)
-{
-    LY_ARRAY_COUNT_TYPE u;
-
-    if (instance_p) {
-        *instance_p = NULL;
-    }
-
-    LY_ARRAY_FOR(ext->substmts, u) {
-        if (LY_STMT_IS_DATA_NODE(substmt)) {
-            if (!LY_STMT_IS_DATA_NODE(ext->substmts[u].stmt)) {
-                continue;
-            }
-        } else if (LY_STMT_IS_OP(substmt)) {
-            if (!LY_STMT_IS_OP(ext->substmts[u].stmt)) {
-                continue;
-            }
-        } else if (ext->substmts[u].stmt != substmt) {
-            continue;
-        }
-
-        /* match */
-        if (instance_p) {
-            *instance_p = ext->substmts[u].storage;
-        }
-        return LY_SUCCESS;
-    }
-
-    return LY_ENOT;
 }
 
 static void
@@ -251,21 +219,7 @@ remove_nodelevel:
     LOG_LOCSET(NULL, NULL, ctx->path, NULL);
 }
 
-/**
- * @brief Compile information from the identity statement
- *
- * The backlinks to the identities derived from this one are supposed to be filled later via ::lys_compile_identity_bases().
- *
- * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p parsed_mod.
- * @param[in] ctx libyang context.
- * @param[in] parsed_mod Module with the identities.
- * @param[in] identities_p Array of the parsed identity definitions to precompile.
- * @param[in,out] identities Pointer to the storage of the (pre)compiled identities array where the new identities are
- * supposed to be added. The storage is supposed to be initiated to NULL when the first parsed identities are going
- * to be processed.
- * @return LY_ERR value.
- */
-static LY_ERR
+LY_ERR
 lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp_module *parsed_mod,
         const struct lysp_ident *identities_p, struct lysc_ident **identities)
 {
@@ -445,6 +399,7 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module *base_
 
 /**
  * @brief For the given array of identities, set the backlinks from all their base identities.
+ *
  * @param[in] ctx Compile context, not only for logging but also to get the current module to resolve prefixes.
  * @param[in] idents_p Array of identities definitions from the parsed schema structure.
  * @param[in,out] idents Array of referencing identities to which the backlinks are supposed to be set.
@@ -477,259 +432,6 @@ lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p
 
     lysc_update_path(ctx, NULL, NULL);
     return LY_SUCCESS;
-}
-
-const void *
-lys_compile_ext_instance_get_storage(const struct lysc_ext_instance *ext, enum ly_stmt stmt)
-{
-    LY_ARRAY_COUNT_TYPE u;
-
-    LY_ARRAY_FOR(ext->substmts, u) {
-        if (ext->substmts[u].stmt == stmt) {
-            return ext->substmts[u].storage;
-        }
-    }
-    return NULL;
-}
-
-/**
- * @brief Store (parse/compile) an instance extension statement.
- *
- * @param[in] ctx Compile context.
- * @param[in] ext_p Parsed ext instance.
- * @param[in] ext Compiled ext instance.
- * @param[in] substmt Compled ext instance substatement info.
- * @param[in] stmt Parsed statement to process.
- * @param[in,out] aug_target Optional augment target where to append all schema data nodes.
- * @return LY_ERR value.
- */
-static LY_ERR
-lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext,
-        struct lysc_ext_substmt *substmt, struct lysp_stmt *stmt, struct lysc_node *aug_target)
-{
-    LY_ERR rc = LY_SUCCESS;
-    struct lysf_ctx fctx = {.ctx = ctx->ctx};
-    struct lysp_restr *restrs = NULL;
-    struct lysp_qname *qname = NULL;
-    struct lysp_type *ptype = NULL;
-
-    if (!substmt->storage) {
-        /* nothing to store (parse/compile) */
-        goto cleanup;
-    }
-
-    switch (stmt->kw) {
-    case LY_STMT_ACTION:
-    case LY_STMT_ANYDATA:
-    case LY_STMT_ANYXML:
-    case LY_STMT_CONTAINER:
-    case LY_STMT_CHOICE:
-    case LY_STMT_LEAF:
-    case LY_STMT_LEAF_LIST:
-    case LY_STMT_LIST:
-    case LY_STMT_NOTIFICATION:
-    case LY_STMT_RPC:
-    case LY_STMT_USES: {
-        struct lysp_node **pnodes_p, *pnode = NULL;
-        const uint16_t *flags = lys_compile_ext_instance_get_storage(ext, LY_STMT_STATUS);
-
-        /* parse the node */
-        LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, (void **)&pnode, NULL), cleanup);
-
-        /* store it together with all the parsed schema nodes */
-        pnodes_p = &((struct lysp_ext_instance *)ext_p)->parsed;
-        while (*pnodes_p) {
-            pnodes_p = &(*pnodes_p)->next;
-        }
-        *pnodes_p = pnode;
-
-        if (aug_target) {
-            /* augment nodes */
-            ((struct lysp_ext_instance *)ext_p)->flags |= LYS_EXT_PARSED_AUGMENT;
-
-            /* compile augmented nodes */
-            LY_CHECK_GOTO(rc = lys_compile_augment_children(ctx, NULL, 0, pnode, aug_target, 0), cleanup);
-        } else {
-            /* compile nodes, ctx->ext substatement storage is used as the document root */
-            LY_CHECK_GOTO(rc = lys_compile_node(ctx, pnode, NULL, flags, NULL), cleanup);
-        }
-        break;
-    }
-    case LY_STMT_GROUPING: {
-        struct lysp_node_grp **groupings_p, *grp = NULL;
-
-        /* parse the grouping */
-        LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, (void **)&grp, NULL), cleanup);
-
-        /* store it with all the other groupings */
-        groupings_p = substmt->storage;
-        while (*groupings_p) {
-            groupings_p = &(*groupings_p)->next;
-        }
-        *groupings_p = grp;
-        break;
-    }
-    case LY_STMT_CONTACT:
-    case LY_STMT_DESCRIPTION:
-    case LY_STMT_ERROR_APP_TAG:
-    case LY_STMT_ERROR_MESSAGE:
-    case LY_STMT_KEY:
-    case LY_STMT_NAMESPACE:
-    case LY_STMT_ORGANIZATION:
-    case LY_STMT_PRESENCE:
-    case LY_STMT_REFERENCE:
-    case LY_STMT_UNITS: {
-        const char **str_p;
-
-        /* single item */
-        str_p = substmt->storage;
-        if (*str_p) {
-            LOGVAL(ctx->ctx, LY_VCODE_DUPSTMT, stmt->stmt);
-            rc = LY_EVALID;
-            goto cleanup;
-        }
-
-        /* called instead of lysp_stmt_parse() to skip validation and not parse nested ext instances */
-        LY_CHECK_GOTO(rc = lydict_insert(ctx->ctx, stmt->arg, 0, str_p), cleanup);
-        break;
-    }
-    case LY_STMT_MUST: {
-        struct lysc_must **musts_p, *must;
-
-        /* parse */
-        LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, (void **)&restrs, NULL), cleanup);
-
-        /* sized array */
-        musts_p = substmt->storage;
-        LY_ARRAY_NEW_GOTO(ctx->ctx, *musts_p, must, rc, cleanup);
-
-        /* compile */
-        LY_CHECK_GOTO(rc = lys_compile_must(ctx, restrs, must), cleanup);
-        break;
-    }
-    case LY_STMT_IF_FEATURE: {
-        ly_bool enabled;
-
-        LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, (void **)&qname, NULL), cleanup);
-        LY_CHECK_GOTO(rc = lys_eval_iffeatures(ctx->ctx, qname, &enabled), cleanup);
-        if (!enabled) {
-            /* it is disabled, remove the whole extension instance */
-            return LY_ENOT;
-        }
-        break;
-    }
-    case LY_STMT_STATUS:
-        /* result needs to be a pointer to pointer */
-        LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, &substmt->storage, NULL), cleanup);
-        break;
-
-    case LY_STMT_TYPEDEF:
-        /* parse */
-        LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, substmt->storage, NULL), cleanup);
-        break;
-
-    case LY_STMT_TYPE: {
-        struct lysc_type **type_p;
-        const uint16_t *flags = lys_compile_ext_instance_get_storage(ext, LY_STMT_STATUS);
-        const char **units = (void *)lys_compile_ext_instance_get_storage(ext, LY_STMT_UNITS);
-
-        /* single item */
-        type_p = substmt->storage;
-        if (*type_p) {
-            LOGVAL(ctx->ctx, LY_VCODE_DUPSTMT, stmt->stmt);
-            rc = LY_EVALID;
-            goto cleanup;
-        }
-
-        LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, (void **)&ptype, NULL), cleanup);
-        LY_CHECK_GOTO(rc = lys_compile_type(ctx, NULL, flags ? *flags : 0, ext_p->name, ptype, type_p,
-                (units && !*units) ? units : NULL, NULL), cleanup);
-        break;
-    }
-    /* TODO support other substatements (parse stmt to lysp and then compile lysp to lysc),
-        * also note that in many statements their extensions are not taken into account  */
-    default:
-        LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Statement \"%s\" is not supported as an extension "
-                "(found in \"%s%s%s\") substatement.", stmt->stmt, ext_p->name, ext_p->argument ? " " : "",
-                ext_p->argument ? ext_p->argument : "");
-        rc = LY_EVALID;
-        goto cleanup;
-    }
-
-cleanup:
-    FREE_ARRAY(&fctx, restrs, lysp_restr_free);
-    FREE_ARRAY(ctx->ctx, qname, lysp_qname_free);
-    lysp_type_free(&ctx->free_ctx, ptype);
-    free(ptype);
-    return rc;
-}
-
-static LY_ERR
-lys_compile_extension_instance_(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext,
-        struct lysc_node *aug_target)
-{
-    LY_ERR rc = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u;
-    struct lysp_stmt *stmt;
-
-    /* check for invalid substatements */
-    for (stmt = ext_p->child; stmt; stmt = stmt->next) {
-        if (stmt->flags & (LYS_YIN_ATTR | LYS_YIN_ARGUMENT)) {
-            continue;
-        }
-        LY_ARRAY_FOR(ext->substmts, u) {
-            if (ext->substmts[u].stmt == stmt->kw) {
-                break;
-            }
-        }
-        if (u == LY_ARRAY_COUNT(ext->substmts)) {
-            LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s%s%s\" extension instance.",
-                    stmt->stmt, ext_p->name, ext_p->argument ? " " : "", ext_p->argument ? ext_p->argument : "");
-            rc = LY_EVALID;
-            goto cleanup;
-        }
-    }
-
-    /* TODO store inherited data, e.g. status first, but mark them somehow to allow to overwrite them and not detect duplicity */
-
-    /* note into the compile context that we are processing extension now */
-    ctx->ext = ext;
-
-    /* keep order of the processing the same as the order in the defined substmts,
-     * the order is important for some of the statements depending on others (e.g. type needs status and units) */
-
-    LY_ARRAY_FOR(ext->substmts, u) {
-        for (stmt = ext_p->child; stmt; stmt = stmt->next) {
-            if (ext->substmts[u].stmt != stmt->kw) {
-                continue;
-            }
-
-            if ((rc = lys_compile_ext_instance_stmt(ctx, ext_p, ext, &ext->substmts[u], stmt, aug_target))) {
-                goto cleanup;
-            }
-        }
-    }
-
-cleanup:
-    ctx->ext = NULL;
-    return rc;
-}
-
-LIBYANG_API_DEF LY_ERR
-lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext)
-{
-    LY_CHECK_ARG_RET(ctx ? ctx->ctx : NULL, ctx, ext_p, ext, LY_EINVAL);
-
-    return lys_compile_extension_instance_(ctx, ext_p, ext, NULL);
-}
-
-LIBYANG_API_DEF LY_ERR
-lys_compile_extension_instance_augment(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p,
-        struct lysc_ext_instance *ext, struct lysc_node *aug_target)
-{
-    LY_CHECK_ARG_RET(ctx ? ctx->ctx : NULL, ctx, ext_p, ext, aug_target, LY_EINVAL);
-
-    return lys_compile_extension_instance_(ctx, ext_p, ext, aug_target);
 }
 
 /**
@@ -1857,7 +1559,7 @@ lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
         LY_CHECK_GOTO(ret = lys_compile_node(&ctx, pnode, NULL, 0, NULL), cleanup);
     }
 
-    /* extension instances */
+    /* module extension instances */
     COMPILE_EXTS_GOTO(&ctx, sp->exts, mod_c->exts, mod_c, ret, cleanup);
 
     /* the same for submodules */

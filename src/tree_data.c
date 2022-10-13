@@ -732,7 +732,7 @@ lyd_insert_child(struct lyd_node *parent, struct lyd_node *node)
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_insert_ext(struct lyd_node *parent, struct lyd_node *first)
+lyplg_ext_insert(struct lyd_node *parent, struct lyd_node *first)
 {
     struct lyd_node *iter;
 
@@ -951,7 +951,7 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_ext_instance *ant = NULL;
-    const struct lysc_type **ant_type;
+    const struct lysc_type *ant_type;
     struct lyd_meta *mt, *last;
     LY_ARRAY_COUNT_TYPE u;
 
@@ -960,7 +960,7 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
     LOG_LOCSET(ctx_node, parent, NULL, NULL);
 
     LY_ARRAY_FOR(mod->compiled->exts, u) {
-        if (!strncmp(mod->compiled->exts[u].def->plugin->id, "libyang 2 - metadata", 20) &&
+        if (!strncmp(mod->compiled->exts[u].def->plugin->id, "ly2 metadata", 12) &&
                 !ly_strncmp(mod->compiled->exts[u].argument, name, name_len)) {
             /* we have the annotation definition */
             ant = &mod->compiled->exts[u];
@@ -979,8 +979,8 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
     LY_CHECK_ERR_GOTO(!mt, LOGMEM(mod->ctx); ret = LY_EMEM, cleanup);
     mt->parent = parent;
     mt->annotation = ant;
-    ant_type = ant->substmts[ANNOTATION_SUBSTMT_TYPE].storage;
-    ret = lyd_value_store(mod->ctx, &mt->value, *ant_type, value, value_len, dynamic, format, prefix_data, hints,
+    lyplg_ext_get_storage(ant, LY_STMT_TYPE, (const void **)&ant_type);
+    ret = lyd_value_store(mod->ctx, &mt->value, ant_type, value, value_len, dynamic, format, prefix_data, hints,
             ctx_node, incomplete);
     LY_CHECK_ERR_GOTO(ret, free(mt), cleanup);
     ret = lydict_insert(mod->ctx, name, name_len, &mt->name);

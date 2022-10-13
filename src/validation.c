@@ -345,9 +345,10 @@ lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, enum ly
             --i;
 
             struct lyd_meta *meta = meta_types->objs[i];
-            struct lysc_type *type = *(struct lysc_type **)meta->annotation->substmts[ANNOTATION_SUBSTMT_TYPE].storage;
+            struct lysc_type *type;
 
             /* validate and store the value of the metadata */
+            lyplg_ext_get_storage(meta->annotation, LY_STMT_TYPE, (const void **)&type);
             ret = lyd_value_validate_incomplete(LYD_CTX(meta->parent), type, &meta->value, meta->parent, *tree);
             LY_CHECK_RET(ret);
 
@@ -1525,6 +1526,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_when, struct ly_
         struct lyd_node **diff)
 {
     const struct lyd_meta *meta;
+    const struct lysc_type *type;
     struct lyd_node *node;
 
     LYD_TREE_DFS_BEGIN(root, node) {
@@ -1539,7 +1541,8 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_when, struct ly_
         }
 
         LY_LIST_FOR(node->meta, meta) {
-            if ((*(const struct lysc_type **)meta->annotation->substmts[ANNOTATION_SUBSTMT_TYPE].storage)->plugin->validate) {
+            lyplg_ext_get_storage(meta->annotation, LY_STMT_TYPE, (const void **)&type);
+            if (type->plugin->validate) {
                 /* metadata type resolution */
                 LY_CHECK_RET(ly_set_add(meta_types, (void *)meta, 1, NULL));
             }

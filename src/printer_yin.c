@@ -129,27 +129,17 @@ yprp_extension_instance(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t 
 {
     struct lysp_stmt *stmt;
     int8_t inner_flag;
-    struct lysp_ext *ext_def;
 
     if ((ext->flags & LYS_INTERNAL) || (ext->parent_stmt != substmt) || (ext->parent_stmt_index != substmt_index)) {
-        return;
-    }
-
-    lysp_ext_find_definition(pctx->module->ctx, ext, NULL, &ext_def);
-    if (!ext_def) {
         return;
     }
 
     ypr_close_parent(pctx, flag);
     inner_flag = 0;
 
-    if (ext_def->argname) {
-        lysp_ext_instance_resolve_argument(pctx->module->ctx, ext, ext_def);
-    }
-
-    ypr_open(pctx, ext->name, (ext_def->flags & LYS_YINELEM_TRUE) ? NULL : ext_def->argname, ext->argument, inner_flag);
+    ypr_open(pctx, ext->name, (ext->def->flags & LYS_YINELEM_TRUE) ? NULL : ext->def->argname, ext->argument, inner_flag);
     LEVEL++;
-    if (ext_def->flags & LYS_YINELEM_TRUE) {
+    if (ext->def->flags & LYS_YINELEM_TRUE) {
         const char *prefix, *name, *id;
         size_t prefix_len, name_len;
 
@@ -158,9 +148,9 @@ yprp_extension_instance(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t 
         /* we need to use the same namespace as for the extension instance element */
         id = ext->name;
         ly_parse_nodeid(&id, &prefix, &prefix_len, &name, &name_len);
-        ly_print_(pctx->out, "%*s<%.*s:%s>", INDENT, (int)prefix_len, prefix, ext_def->argname);
+        ly_print_(pctx->out, "%*s<%.*s:%s>", INDENT, (int)prefix_len, prefix, ext->def->argname);
         lyxml_dump_text(pctx->out, ext->argument, 0);
-        ly_print_(pctx->out, "</%.*s:%s>\n", (int)prefix_len, prefix, ext_def->argname);
+        ly_print_(pctx->out, "</%.*s:%s>\n", (int)prefix_len, prefix, ext->def->argname);
     }
     LY_LIST_FOR(ext->child, stmt) {
         if (stmt->flags & (LYS_YIN_ATTR | LYS_YIN_ARGUMENT)) {
@@ -425,7 +415,7 @@ yprp_restr(struct lys_ypr_ctx *pctx, const struct lysp_restr *restr, enum ly_stm
         return;
     }
 
-    ly_print_(pctx->out, "%*s<%s %s=\"", INDENT, ly_stmt2str(stmt), attr);
+    ly_print_(pctx->out, "%*s<%s %s=\"", INDENT, lyplg_ext_stmt2str(stmt), attr);
     lyxml_dump_text(pctx->out,
             (restr->arg.str[0] != LYSP_RESTR_PATTERN_NACK && restr->arg.str[0] != LYSP_RESTR_PATTERN_ACK) ?
             restr->arg.str : &restr->arg.str[1], 1);
@@ -450,7 +440,7 @@ yprp_restr(struct lys_ypr_ctx *pctx, const struct lysp_restr *restr, enum ly_stm
     ypr_reference(pctx, restr->ref, restr->exts, &inner_flag);
 
     LEVEL--;
-    ypr_close(pctx, ly_stmt2str(stmt), inner_flag);
+    ypr_close(pctx, lyplg_ext_stmt2str(stmt), inner_flag);
 }
 
 static void
@@ -657,7 +647,7 @@ yprp_inout(struct lys_ypr_ctx *pctx, const struct lysp_node_action_inout *inout,
     ypr_open(pctx, inout->name, NULL, NULL, *flag);
     LEVEL++;
 
-    yprp_extension_instances(pctx, lys_nodetype2stmt(inout->nodetype), 0, inout->exts, NULL);
+    yprp_extension_instances(pctx, lyplg_ext_nodetype2stmt(inout->nodetype), 0, inout->exts, NULL);
     LY_ARRAY_FOR(inout->musts, u) {
         yprp_restr(pctx, &inout->musts[u], LY_STMT_MUST, "condition", NULL);
     }
@@ -727,7 +717,7 @@ yprp_action(struct lys_ypr_ctx *pctx, const struct lysp_node_action *action)
     ypr_open(pctx, action->parent ? "action" : "rpc", "name", action->name, flag);
 
     LEVEL++;
-    yprp_extension_instances(pctx, lys_nodetype2stmt(action->nodetype), 0, action->exts, &flag);
+    yprp_extension_instances(pctx, lyplg_ext_nodetype2stmt(action->nodetype), 0, action->exts, &flag);
     yprp_iffeatures(pctx, action->iffeatures, action->exts, &flag);
     ypr_status(pctx, action->flags, action->exts, &flag);
     ypr_description(pctx, action->dsc, action->exts, &flag);
@@ -756,7 +746,7 @@ yprp_node_common1(struct lys_ypr_ctx *pctx, const struct lysp_node *node, int8_t
     ypr_open(pctx, lys_nodetype2str(node->nodetype), "name", node->name, *flag);
     LEVEL++;
 
-    yprp_extension_instances(pctx, lys_nodetype2stmt(node->nodetype), 0, node->exts, flag);
+    yprp_extension_instances(pctx, lyplg_ext_nodetype2stmt(node->nodetype), 0, node->exts, flag);
     yprp_when(pctx, lysp_node_when(node), flag);
     yprp_iffeatures(pctx, node->iffeatures, node->exts, flag);
 }
