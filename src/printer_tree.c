@@ -347,8 +347,7 @@ typedef enum {
     TRD_NODE_OPTIONAL_CHOICE,   /**< For choice node with optional mark. (\<name\>)? */
     TRD_NODE_OPTIONAL,          /**< For an optional leaf, anydata, or anyxml. \<name\>? */
     TRD_NODE_CONTAINER,         /**< For a presence container. \<name\>! */
-    TRD_NODE_LISTLEAFLIST,      /**< For a leaf-list or list (without keys). \<name\>* */
-    TRD_NODE_KEYS,              /**< For a list's keys. \<name\>* [\<keys\>] */
+    TRD_NODE_LISTLEAFLIST,      /**< For a leaf-list or list. \<name\>* */
     TRD_NODE_TOP_LEVEL1,        /**< For a top-level data node in a mounted module. \<name\>/ */
     TRD_NODE_TOP_LEVEL2,        /**< For a top-level data node of a module identified in a mount point parent reference. \<name\>@ */
     TRD_NODE_TRIPLE_DOT         /**< For collapsed sibling nodes and their children. Special case which doesn't belong here very well. */
@@ -362,6 +361,7 @@ typedef enum {
  */
 struct trt_node_name {
     trt_node_type type;         /**< Type of the node relevant for printing. */
+    ly_bool keys;               /**< Set to 1 if [\<keys\>] are to be printed. Valid for some types only. */
     const char *module_prefix;  /**< If the node is augmented into the tree from another module,
                                      so this is the prefix of that module. */
     const char *str;            /**< Name of the node. */
@@ -372,7 +372,7 @@ struct trt_node_name {
  */
 #define TRP_EMPTY_NODE_NAME \
     (struct trt_node_name) { \
-        .type = TRD_NODE_ELSE, .module_prefix = NULL, .str = NULL \
+        .type = TRD_NODE_ELSE, .keys = 0, .module_prefix = NULL, .str = NULL \
     }
 
 /**
@@ -1026,7 +1026,7 @@ trp_node_body_is_empty(struct trt_node node)
 {
     const ly_bool a = !node.iffeatures;
     const ly_bool b = TRP_TRT_TYPE_IS_EMPTY(node.type);
-    const ly_bool c = node.name.type != TRD_NODE_KEYS;
+    const ly_bool c = !node.name.keys;
 
     return a && b && c;
 }
@@ -1153,9 +1153,6 @@ trp_print_node_name(struct trt_node_name node_name, struct ly_out *out)
     case TRD_NODE_LISTLEAFLIST:
         ly_print_(out, "%s%s%s%s", mod_prefix, colon, node_name.str, trd_opts_list);
         break;
-    case TRD_NODE_KEYS:
-        ly_print_(out, "%s%s%s%s", mod_prefix, colon, node_name.str, trd_opts_list);
-        break;
     case TRD_NODE_TOP_LEVEL1:
         ly_print_(out, "%s%s%s%s", mod_prefix, colon, node_name.str, trd_opts_slash);
         break;
@@ -1181,12 +1178,13 @@ trp_mark_is_used(struct trt_node_name node_name)
 {
     if (TRP_NODE_NAME_IS_EMPTY(node_name)) {
         return 0;
+    } else if (node_name.keys) {
+        return 0;
     }
 
     switch (node_name.type) {
     case TRD_NODE_ELSE:
     case TRD_NODE_CASE:
-    case TRD_NODE_KEYS:
         return 0;
     default:
         return 1;
@@ -1204,7 +1202,7 @@ trp_mark_is_used(struct trt_node_name node_name)
 static void
 trp_print_opts_keys(struct trt_node_name node_name, int16_t btw_name_opts, struct trt_cf_print cf, struct ly_out *out)
 {
-    if (node_name.type != TRD_NODE_KEYS) {
+    if (!node_name.keys) {
         return;
     }
 
@@ -1648,7 +1646,7 @@ trp_default_indent_in_node(struct trt_node node)
     ret.type = TRD_INDENT_IN_NODE_NORMAL;
 
     /* btw_name_opts */
-    ret.btw_name_opts = node.name.type == TRD_NODE_KEYS ? TRD_INDENT_BEFORE_KEYS : 0;
+    ret.btw_name_opts = node.name.keys ? TRD_INDENT_BEFORE_KEYS : 0;
 
     /* btw_opts_type */
     if (!(TRP_TRT_TYPE_IS_EMPTY(node.type))) {
@@ -1715,7 +1713,7 @@ trp_first_half_node(struct trt_node node, struct trt_indent_in_node indent)
     struct trt_pair_indent_node ret = TRP_INIT_PAIR_INDENT_NODE(indent, node);
 
     if (indent.btw_name_opts == TRD_LINEBREAK) {
-        ret.node.name.type = node.name.type == TRD_NODE_KEYS ? TRD_NODE_LISTLEAFLIST : node.name.type;
+        ret.node.name.type = node.name.type;
         ret.node.type = TRP_EMPTY_TRT_TYPE;
         ret.node.iffeatures = 0;
     } else if (indent.btw_opts_type == TRD_LINEBREAK) {
@@ -1753,12 +1751,12 @@ trp_second_half_node(struct trt_node node, struct trt_indent_in_node indent)
         ret.indent.btw_opts_type = TRP_TRT_TYPE_IS_EMPTY(node.type) ? 0 : TRD_INDENT_BEFORE_TYPE;
         ret.indent.btw_type_iffeatures = !node.iffeatures ? 0 : TRD_INDENT_BEFORE_IFFEATURES;
     } else if (indent.btw_opts_type == TRD_LINEBREAK) {
-        ret.node.name.type = node.name.type == TRD_NODE_KEYS ? TRD_NODE_LISTLEAFLIST : node.name.type;
+        ret.node.name.type = node.name.type;
         ret.indent.btw_name_opts = 0;
         ret.indent.btw_opts_type = 0;
         ret.indent.btw_type_iffeatures = !node.iffeatures ? 0 : TRD_INDENT_BEFORE_IFFEATURES;
     } else if (indent.btw_type_iffeatures == TRD_LINEBREAK) {
-        ret.node.name.type = node.name.type == TRD_NODE_KEYS ? TRD_NODE_LISTLEAFLIST : node.name.type;
+        ret.node.name.type = node.name.type;
         ret.node.type = TRP_EMPTY_TRT_TYPE;
         ret.indent.btw_name_opts = 0;
         ret.indent.btw_opts_type = 0;
@@ -2550,6 +2548,7 @@ tro_create_implicit_case_node(struct trt_node node)
     ret.status = node.status;
     ret.flags = TRD_FLAGS_TYPE_EMPTY;
     ret.name.type = TRD_NODE_CASE;
+    ret.name.keys = node.name.keys;
     ret.name.module_prefix = node.name.module_prefix;
     ret.name.str = node.name.str;
     ret.type = TRP_EMPTY_TRT_TYPE;
@@ -2838,8 +2837,6 @@ trop_resolve_node_type(const struct trt_tree_ctx *tc, const struct lysp_node_lis
         return TRD_NODE_TOP_LEVEL1;
     } else if ((pn->nodetype & LYS_CONTAINER) && (trop_container_has_presence(pn))) {
         return TRD_NODE_CONTAINER;
-    } else if ((pn->nodetype & LYS_LIST) && (trop_list_has_keys(pn))) {
-        return TRD_NODE_KEYS;
     } else if (pn->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
         return TRD_NODE_LISTLEAFLIST;
     } else if ((pn->nodetype & (LYS_ANYDATA | LYS_ANYXML)) && !(pn->flags & LYS_MAND_TRUE)) {
@@ -2906,6 +2903,7 @@ trop_read_node(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
 
     /* set type of the node */
     ret.name.type = trop_resolve_node_type(tc, ca.last_list);
+    ret.name.keys = (tc->pn->nodetype & LYS_LIST) && trop_list_has_keys(tc->pn);
 
     /* The parsed tree is not compiled, so no node can be augmented
      * from another module. This means that nodes from the parsed tree
@@ -3237,8 +3235,6 @@ troc_resolve_node_type(const struct trt_tree_ctx *tc, uint16_t nodetype, uint16_
         return TRD_NODE_TOP_LEVEL1;
     } else if ((nodetype & LYS_CONTAINER) && (flags & LYS_PRESENCE)) {
         return TRD_NODE_CONTAINER;
-    } else if ((nodetype & LYS_LIST) && !(flags & LYS_KEYLESS)) {
-        return TRD_NODE_KEYS;
     } else if (nodetype & (LYS_LIST | LYS_LEAFLIST)) {
         return TRD_NODE_LISTLEAFLIST;
     } else if ((nodetype & (LYS_ANYDATA | LYS_ANYXML)) && !(flags & LYS_MAND_TRUE)) {
@@ -3302,6 +3298,7 @@ troc_read_node(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
 
     /* set type of the node */
     ret.name.type = troc_resolve_node_type(tc, cn->nodetype, cn->flags);
+    ret.name.keys = (cn->nodetype & LYS_LIST) && !(cn->flags & LYS_KEYLESS);
 
     /* <prefix> */
     ret.name.module_prefix = troc_resolve_node_prefix(cn, tc->cmod);
