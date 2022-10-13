@@ -4558,7 +4558,7 @@ trb_print_mount_point(const struct lysc_ext_instance *ext, const struct trt_wrap
             trm_lysp_tree_ctx(mod, pc->out, pc->max_line_length, 1, refs, &tmppc, &tmptc);
         }
         /* Decide whether to print the symbol '|'. */
-        tmpwr = (mod == last_mod) ? wr : trp_wrapper_set_mark_top(wr);
+        tmpwr = (mod == last_mod) && !refs ? wr : trp_wrapper_set_mark_top(wr);
         /* Print top-level nodes of mounted module which are denoted by the symbol '/'. */
         trb_print_family_tree(tmpwr, &tmppc, &tmptc);
     }
@@ -4566,6 +4566,7 @@ trb_print_mount_point(const struct lysc_ext_instance *ext, const struct trt_wrap
     /* Print parent-referenced nodes which are denoted by the symbol '@'. */
     for (i = 0; refs && i < refs->count; i++) {
         trm_lysc_tree_ctx(refs->snodes[i]->module, pc->out, pc->max_line_length, 1, refs, &tmppc, &tmptc);
+        tmpwr = ((i + 1) == refs->count) ? wr : trp_wrapper_set_mark_top(wr);
         trb_print_parents(refs->snodes[i], &tmpwr, pc, &tmptc);
     }
 
