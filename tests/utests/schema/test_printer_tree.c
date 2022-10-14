@@ -2150,6 +2150,44 @@ mount_point(void **state)
     assert_string_equal(printed, expect);
     ly_out_reset(UTEST_OUT);
 
+    /*
+     * notifications and rpcs in mounted module
+     */
+    orig = SM_MOD_MAIN("a36",
+            "container cont {\n"
+            "  yangmnt:mount-point \"mnt-root\";\n"
+            "}\n");
+    expect =
+            "module: a36\n"
+            "  +--mp cont\n"
+            "     +--rw tlist/ [name]\n"
+            "     |  +--rw name    uint32\n"
+            "     +--rw tcont/\n"
+            "     |  +--rw tleaf?   uint32\n"
+            "     +--rw cont/\n"
+            "     |  +---x cr\n"
+            "     |  |  +---w input\n"
+            "     |  |  |  +---w in?   string\n"
+            "     |  |  +--ro output\n"
+            "     |  |     +--ro out?   string\n"
+            "     |  +---n cn\n"
+            "     +---x r1/\n"
+            "     +---x r2/\n"
+            "     +---n n1/\n"
+            "     +---n n2/\n";
+    data = EXT_DATA("a36",
+            "<module>\n"
+            "   <name>sm-rpcnotif</name>\n"
+            "   <namespace>urn:rpcnotif</namespace>\n"
+            "</module>\n",
+            SCHEMA_REF_INLINE);
+    ly_ctx_set_ext_data_clb(UTEST_LYCTX, getter, data);
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_out_reset(UTEST_OUT);
+
     ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
     TEST_LOCAL_TEARDOWN;
 }

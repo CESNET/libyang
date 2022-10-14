@@ -4534,6 +4534,7 @@ trb_print_mount_point(const struct lysc_ext_instance *ext, const struct trt_wrap
     struct trt_printer_ctx tmppc;
     struct ly_set *refs = NULL;
     uint32_t i, iter_state;
+    ly_bool notif, rpc;
 
     if (lyplg_ext_schema_mount_create_context(ext, &ext_ctx)) {
         /* Void mount point */
@@ -4554,13 +4555,32 @@ trb_print_mount_point(const struct lysc_ext_instance *ext, const struct trt_wrap
         /* Prepare printer tree context. */
         if ((ext_ctx->flags & LY_CTX_SET_PRIV_PARSED) && mod->compiled) {
             trm_lysc_tree_ctx(mod, pc->out, pc->max_line_length, 1, refs, &tmppc, &tmptc);
+            notif = tmptc.cmod->notifs ? 1 : 0;
+            rpc = tmptc.cmod->rpcs ? 1 : 0;
         } else {
             trm_lysp_tree_ctx(mod, pc->out, pc->max_line_length, 1, refs, &tmppc, &tmptc);
+            notif = tmptc.pmod->notifs ? 1 : 0;
+            rpc = tmptc.pmod->rpcs ? 1 : 0;
         }
+
         /* Decide whether to print the symbol '|'. */
-        tmpwr = (mod == last_mod) && !refs ? wr : trp_wrapper_set_mark_top(wr);
+        tmpwr = (mod == last_mod) && !rpc && !notif && !refs ? wr : trp_wrapper_set_mark_top(wr);
         /* Print top-level nodes of mounted module which are denoted by the symbol '/'. */
         trb_print_family_tree(tmpwr, &tmppc, &tmptc);
+
+        /* Print top-level rpc nodes. */
+        if (rpc) {
+            tro_modi_get_rpcs(&tmptc);
+            tmpwr = (mod == last_mod) && !notif && !refs ? wr : trp_wrapper_set_mark_top(wr);
+            trb_print_family_tree(tmpwr, &tmppc, &tmptc);
+        }
+
+        /* Print top-level notification nodes. */
+        if (notif) {
+            tro_modi_get_notifications(&tmptc);
+            tmpwr = (mod == last_mod) && !refs ? wr : trp_wrapper_set_mark_top(wr);
+            trb_print_family_tree(tmpwr, &tmppc, &tmptc);
+        }
     }
 
     /* Print parent-referenced nodes which are denoted by the symbol '@'. */
