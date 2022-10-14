@@ -705,6 +705,7 @@ struct trt_tree_ctx {
     const struct lysc_node *cn;                     /**< Actual pointer to compiled node. */
     const struct ly_set *parent_refs;               /**< List of schema nodes for top-level nodes found in mount
                                                          point parent references */
+    LY_ERR last_error;                              /**< Error value during printing. */
 };
 
 /**
@@ -3512,7 +3513,7 @@ trb_print_entire_node(struct trt_node node, uint32_t max_gap_before_type, struct
             wr_mount = trp_wrapper_set_mark_top(wr_mount);
         }
 
-        trb_print_mount_point(node.mount, wr_mount, pc);
+        tc->last_error = trb_print_mount_point(node.mount, wr_mount, pc);
     }
 }
 
@@ -4028,7 +4029,8 @@ trm_lysp_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t ma
         .pn = module->parsed ? module->parsed->data : NULL,
         .tpn = module->parsed ? module->parsed->data : NULL,
         .cn = NULL,
-        .parent_refs = parent_refs
+        .parent_refs = parent_refs,
+        .last_error = 0
     };
 
     pc->out = out;
@@ -4082,7 +4084,8 @@ trm_lysc_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t ma
         .tpn = NULL,
         .pn = NULL,
         .cn = module->compiled->data,
-        .parent_refs = parent_refs
+        .parent_refs = parent_refs,
+        .last_error = 0
     };
 
     pc->out = out;
@@ -4116,7 +4119,11 @@ trm_lysc_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t ma
 static void
 trm_reset_to_lysc_tree_ctx(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
+    LY_ERR erc;
+
+    erc = tc->last_error;
     trm_lysc_tree_ctx(tc->pmod->mod, pc->out, pc->max_line_length, tc->mounted, tc->parent_refs, pc, tc);
+    tc->last_error = erc;
 }
 
 /**
@@ -4127,7 +4134,11 @@ trm_reset_to_lysc_tree_ctx(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 static void
 trm_reset_to_lysp_tree_ctx(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
+    LY_ERR erc;
+
+    erc = tc->last_error;
     trm_lysp_tree_ctx(tc->pmod->mod, pc->out, pc->max_line_length, tc->mounted, tc->parent_refs, pc, tc);
+    tc->last_error = erc;
 }
 
 /**
@@ -4411,6 +4422,18 @@ trm_print_sections(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
     ly_print_(pc->out, "\n");
 }
 
+static LY_ERR
+tree_print_check_error(struct ly_out_clb_arg *out, struct trt_tree_ctx *tc)
+{
+    if (out->last_error) {
+        return out->last_error;
+    } else if (tc->last_error) {
+        return tc->last_error;
+    } else {
+        return LY_SUCCESS;
+    }
+}
+
 /**********************************************************************
  * Definition of module interface
  *********************************************************************/
@@ -4438,7 +4461,7 @@ tree_print_module(struct ly_out *out, const struct lys_module *module, uint32_t 
     }
 
     trm_print_sections(&pc, &tc);
-    erc = clb_arg.last_error;
+    erc = tree_print_check_error(&clb_arg, &tc);
 
     ly_out_free(new_out, NULL, 1);
 
@@ -4478,7 +4501,7 @@ tree_print_compiled_node(struct ly_out *out, const struct lysc_node *node, uint3
     }
     ly_print_(out, "\n");
 
-    erc = clb_arg.last_error;
+    erc = tree_print_check_error(&clb_arg, &tc);
     ly_out_free(new_out, NULL, 1);
 
     return erc;
@@ -4508,7 +4531,7 @@ tree_print_parsed_submodule(struct ly_out *out, const struct lysp_submodule *sub
     tc.pn = tc.tpn;
 
     trm_print_sections(&pc, &tc);
-    erc = clb_arg.last_error;
+    erc = tree_print_check_error(&clb_arg, &tc);
 
     ly_out_free(new_out, NULL, 1);
 
@@ -4541,7 +4564,8 @@ trb_print_mount_point(const struct lysc_ext_instance *ext, const struct trt_wrap
         return LY_SUCCESS;
     }
 
-    lyplg_ext_schema_mount_get_parent_ref(ext, &refs);
+    ret = lyplg_ext_schema_mount_get_parent_ref(ext, &refs);
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* Get the last mounted module which will be printed. */
     iter_state = 0;
@@ -4590,6 +4614,7 @@ trb_print_mount_point(const struct lysc_ext_instance *ext, const struct trt_wrap
         trb_print_parents(refs->snodes[i], &tmpwr, pc, &tmptc);
     }
 
+cleanup:
     ly_set_free(refs, NULL);
     ly_ctx_destroy(ext_ctx);
 
