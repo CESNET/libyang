@@ -71,6 +71,13 @@
  * also split one node into multiple lines if the node does not fit
  * on one line.
  *
+ * @subsubsection TRP_trocm trocm
+ * Functions for Obtaining information from mounted shared schema (RFC 8528).
+ * Parent-references can be used to specify which nodes are accessible from the mounted module.
+ * These accessible nodes are printed including their parent nodes.
+ * Functions marked as 'trocm' operate on the Compiled schema tree.
+ *
+ *
  * @subsubsection TRP_trt trt
  * Data type marking in the printer_tree module.
  *
@@ -3421,6 +3428,194 @@ troc_modi_first_sibling(struct trt_tree_ctx *tc)
 }
 
 /**********************************************************************
+ * Definition of trocm reading functions
+ *********************************************************************/
+
+/**
+ * @brief Get child node from current @p node.
+ * @param[in] node from which it tries to get a child.
+ * If set to NULL, then the top-level node of the @p parent_ref is returned.
+ * @param[in] parent_ref is one of the referenced nodes.
+ * @return Child of @p node, top-level node of @p parent_ref or NULL.
+ */
+static const struct lysc_node *
+trocm_node_child(const struct lysc_node *node, const struct lysc_node *parent_ref)
+{
+    const struct lysc_node *child, *parent;
+
+    assert(node != parent_ref);
+
+    child = parent_ref;
+    for (parent = parent_ref->parent; parent; parent = parent->parent) {
+        if (parent == node) {
+            return child;
+        }
+        child = parent;
+    }
+
+    if (!node) {
+        return child;
+    } else {
+        return NULL;
+    }
+}
+
+/**
+ * @brief Get first parent-referenced node from @p cmod.
+ * @param[in] parent_refs is the set of all parent-referenced nodes.
+ * @param[in] cmod is compiled module from which to get the first parent-ref node.
+ * @param[out] first_parent_ref is index to @p parent_refs where first parent-ref node is located.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+trocm_first_parent_ref(const struct ly_set *parent_refs, const struct lysc_module *cmod, uint32_t *first_parent_ref)
+{
+    uint32_t i;
+    const struct lysc_node *ref;
+
+    for (i = 0; i < parent_refs->count; i++) {
+        ref = parent_refs->snodes[i];
+        if (ref->module->compiled == cmod) {
+            *first_parent_ref = i;
+            return LY_SUCCESS;
+        }
+    }
+
+    return LY_ENOTFOUND;
+}
+
+/**
+ * @brief Get next parent-referenced node from @p cmod.
+ * @param[in] parent_refs is the set of all parent-referenced nodes.
+ * @param[in] cmod is compiled module from which to get the next parent-ref node.
+ * @param[in,out] parent_ref is index to @p parent_refs where the next parent-ref node is located.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+trocm_next_parent_ref(const struct ly_set *parent_refs, const struct lysc_module *cmod, uint32_t *parent_ref)
+{
+    (*parent_ref)++;
+    if (*parent_ref >= parent_refs->count) {
+        return LY_ENOT;
+    } else if (parent_refs->snodes[*parent_ref]->module->compiled != cmod) {
+        return LY_ENOT;
+    } else {
+        return LY_SUCCESS;
+    }
+}
+
+/**
+ * @brief Get next sibling of current node @p cn.
+ * @param[in] cn is current compiled node.
+ * @param[in] parent_refs is the set of all parent-referenced nodes.
+ * @return Next sibling or NULL.
+ */
+static const struct lysc_node *
+trocm_next_sibling(const struct lysc_node *cn, const struct ly_set *parent_refs)
+{
+    LY_ERR ret;
+    uint32_t i;
+    const struct lysc_node *sibl, *ref, *child;
+    const struct lysc_module *cmod;
+
+    cmod = cn->module->compiled;
+    for (sibl = cn->next; sibl; sibl = sibl->next) {
+        for (ret = trocm_first_parent_ref(parent_refs, cmod, &i);
+                ret == LY_SUCCESS;
+                ret = trocm_next_parent_ref(parent_refs, cmod, &i)) {
+            ref = parent_refs->snodes[i];
+            if (ref == sibl) {
+                /* Sibling is in the parent-refs. */
+                return sibl;
+            }
+            child = trocm_node_child(sibl, parent_refs->snodes[i]);
+            if (child) {
+                /* Return parent of parent-ref node. */
+                return sibl;
+            }
+        }
+    }
+
+    return NULL;
+}
+
+/**
+ * @copydoc trop_read_if_sibling_exists
+ */
+static ly_bool
+trocm_read_if_sibling_exists(const struct trt_tree_ctx *tc)
+{
+    if (trocm_next_sibling(tc->cn, tc->parent_refs)) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+/**********************************************************************
+ * Modify trocm getters
+ *********************************************************************/
+
+/**
+ * @copydoc trop_modi_next_child()
+ */
+static struct trt_node
+trocm_modi_next_child(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
+{
+    LY_ERR ret;
+    uint32_t i;
+    const struct lysc_node *child, *ref;
+
+    child = NULL;
+    for (ret = trocm_first_parent_ref(tc->parent_refs, tc->cmod, &i);
+            ret == LY_SUCCESS;
+            ret = trocm_next_parent_ref(tc->parent_refs, tc->cmod, &i)) {
+        ref = tc->parent_refs->snodes[i];
+        if (ref == tc->cn) {
+            continue;
+        }
+        if ((child = trocm_node_child(tc->cn, ref))) {
+            tc->cn = child;
+            return troc_read_node(ca, tc);
+        }
+    }
+
+    return TRP_EMPTY_NODE;
+}
+
+/**
+ * @copydoc ::trop_modi_first_sibling()
+ */
+static void
+trocm_modi_first_sibling(struct trt_tree_ctx *tc)
+{
+    uint32_t i;
+
+    if (troc_modi_parent(tc)) {
+        trocm_modi_next_child(TRP_EMPTY_PARENT_CACHE, tc);
+    } else {
+        trocm_first_parent_ref(tc->parent_refs, tc->cmod, &i);
+        tc->cn = trocm_node_child(NULL, tc->parent_refs->snodes[i]);
+    }
+}
+
+/**
+ * @copydoc ::trop_modi_next_sibling()
+ */
+static struct trt_node
+trocm_modi_next_sibling(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
+{
+    const struct lysc_node *sibl;
+
+    if ((sibl = trocm_next_sibling(tc->cn, tc->parent_refs))) {
+        tc->cn = sibl;
+        return troc_read_node(ca, tc);
+    } else {
+        return TRP_EMPTY_NODE;
+    }
+}
+
+/**********************************************************************
  * Definition of tree browsing functions
  *********************************************************************/
 
@@ -4538,6 +4733,118 @@ tree_print_parsed_submodule(struct ly_out *out, const struct lysp_submodule *sub
     return erc;
 }
 
+/**********************************************************************
+ * Functions for YANG Schema mount.
+ *********************************************************************/
+
+/**
+ * @brief Callback data for lysc_module_dfs_full.
+ */
+struct sort_parent_refs_state{
+    struct ly_set *refs;    /**< Set of parent-references pointers to sort. */
+    uint64_t glob;          /**< Current index in sort_parent_refs_state.refs. */
+    uint64_t loc;           /**< Current index of parent-ref node which belongs to the same module. */
+    uint64_t total;         /**< Total number of parent-ref nodes which belongs to the same module. */
+};
+
+/**
+ * @brief Callback for lysc_module_dfs_full() which sorts parent-references.
+ * @param[in] node is current compiled node to check.
+ * @param[in,out] data are expected to be of type struct sort_parent_refs_state.
+ * @param[in] dfs_continue is not used.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+troc_dfs_clb(struct lysc_node *node, void *data, ly_bool *UNUSED(dfs_continue))
+{
+    struct sort_parent_refs_state *dfs_data;
+    struct lysc_node **snodes, *tmp;
+    uint64_t i;
+
+    dfs_data = data;
+    snodes = dfs_data->refs->snodes;
+    for (i = dfs_data->glob; i < dfs_data->refs->count; i++) {
+        if (snodes[i] == node) {
+            /* swap */
+            tmp = snodes[dfs_data->glob];
+            snodes[dfs_data->glob] = snodes[i];
+            snodes[i] = tmp;
+            /* increment counters */
+            dfs_data->glob++;
+            dfs_data->loc++;
+            break;
+        }
+    }
+
+    if (dfs_data->loc == dfs_data->total) {
+        /* Stop searching in the current module. */
+        return LY_ENOT;
+    } else {
+        return LY_SUCCESS;
+    }
+}
+
+/**
+ * @brief Sort parent-references so that the order matches deep-search-first.
+ * @param[in,out] refs is set of parent-references to sort.
+ */
+static void
+troc_sort_parent_refs(struct ly_set *refs)
+{
+    uint64_t i, j, same_mod;
+    const struct lys_module *mod;
+    struct sort_parent_refs_state dfs_data;
+
+    if (!refs || (refs->count == 0) || (refs->count == 1)) {
+        return;
+    }
+
+    dfs_data.refs = refs;
+    for (i = 0; i < refs->count; i++) {
+        mod = refs->snodes[i]->module;
+        /* Count total number of parent-references which refers to the same module. */
+        same_mod = 1;
+        for (j = i + 1; j < refs->count; j++) {
+            if (mod == refs->snodes[j]->module) {
+                ++same_mod;
+            }
+        }
+        if (same_mod == 1) {
+            continue;
+        }
+
+        /* Sort all parent-references in the current module. */
+        dfs_data.glob = i;
+        dfs_data.loc = 1;
+        dfs_data.total = same_mod;
+        lysc_module_dfs_full(mod, troc_dfs_clb, &dfs_data);
+        i = same_mod - 1;
+    }
+}
+
+/**
+ * @brief For next module get the first parent-reference.
+ * @param[in] parent_refs is set of parent-referenced nodes.
+ * @param[in,out] parent_ref is the index in @p parent_refs, which is set to next parent-reference.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+trocm_next_first_parent_ref(const struct ly_set *parent_refs, uint32_t *parent_ref)
+{
+    uint64_t i;
+    const struct lysc_module *cmod;
+
+    cmod = parent_refs->snodes[*parent_ref]->module->compiled;
+    for (i = (*parent_ref + 1); i < parent_refs->count; i++) {
+        if (cmod != parent_refs->snodes[i]->module->compiled) {
+            *parent_ref = i;
+            return LY_SUCCESS;
+        }
+    }
+
+    return LY_ENOT;
+}
+
 /**
  * @brief Print all mounted nodes ('/') and parent-referenced nodes ('@').
  *
@@ -4549,7 +4856,7 @@ tree_print_parsed_submodule(struct ly_out *out, const struct lysp_submodule *sub
 static LY_ERR
 trb_print_mount_point(const struct lysc_ext_instance *ext, const struct trt_wrapper wr, struct trt_printer_ctx *pc)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR ret = LY_SUCCESS, rc;
     struct ly_ctx *ext_ctx = NULL;
     const struct lys_module *mod, *last_mod;
     struct trt_tree_ctx tmptc;
@@ -4608,10 +4915,23 @@ trb_print_mount_point(const struct lysc_ext_instance *ext, const struct trt_wrap
     }
 
     /* Print parent-referenced nodes which are denoted by the symbol '@'. */
-    for (i = 0; refs && i < refs->count; i++) {
+    if (!refs || (refs->count == 0)) {
+        goto cleanup;
+    }
+    troc_sort_parent_refs(refs);
+    rc = LY_SUCCESS;
+    /* Iterate over all modules which are in refs. */
+    for (i = 0; rc == LY_SUCCESS; rc = trocm_next_first_parent_ref(refs, &i)) {
         trm_lysc_tree_ctx(refs->snodes[i]->module, pc->out, pc->max_line_length, 1, refs, &tmppc, &tmptc);
-        tmpwr = ((i + 1) == refs->count) ? wr : trp_wrapper_set_mark_top(wr);
-        trb_print_parents(refs->snodes[i], &tmpwr, pc, &tmptc);
+        tmptc.cn = trocm_node_child(NULL, refs->snodes[i]);
+        tmppc.fp.modify.first_sibling = trocm_modi_first_sibling;
+        tmppc.fp.modify.next_sibling = trocm_modi_next_sibling;
+        tmppc.fp.modify.next_child = trocm_modi_next_child;
+        tmppc.fp.read.if_sibling_exists = trocm_read_if_sibling_exists;
+        iter_state = i;
+        tmpwr = trocm_next_first_parent_ref(refs, &i) ? wr : trp_wrapper_set_mark_top(wr);
+        i = iter_state;
+        trb_print_family_tree(tmpwr, &tmppc, &tmptc);
     }
 
 cleanup:

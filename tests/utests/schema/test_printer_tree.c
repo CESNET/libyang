@@ -2188,6 +2188,68 @@ mount_point(void **state)
     assert_string_equal(printed, expect);
     ly_out_reset(UTEST_OUT);
 
+    /*
+     * parent-ref composes the '@' subtree
+     */
+    orig = SM_MOD_MAIN("a37",
+            "container pr {\n"
+            "  leaf ignored_node {\n"
+            "    type string;\n"
+            "  }\n"
+            "  container cont {\n"
+            "    leaf ignored_lf {\n"
+            "      type uint32;\n"
+            "    }\n"
+            "  }\n"
+            "  container ignored_subtree {\n"
+            "    leaf ignored_lf {\n"
+            "      type uint32;\n"
+            "    }\n"
+            "  }\n"
+            "  container cont_sibl {\n"
+            "    leaf slf {\n"
+            "      type string;\n"
+            "    }\n"
+            "  }\n"
+            "  leaf lf {\n"
+            "    type uint32;\n"
+            "  }\n"
+            "}\n"
+            "container cont_mount {\n"
+            "  yangmnt:mount-point \"mnt-root\";\n"
+            "}\n");
+    expect =
+            "module: a37\n"
+            "  +--rw pr\n"
+            "  |  +--rw ignored_node?      string\n"
+            "  |  +--rw cont\n"
+            "  |  |  +--rw ignored_lf?   uint32\n"
+            "  |  +--rw ignored_subtree\n"
+            "  |  |  +--rw ignored_lf?   uint32\n"
+            "  |  +--rw cont_sibl\n"
+            "  |  |  +--rw slf?   string\n"
+            "  |  +--rw lf?                uint32\n"
+            "  +--mp cont_mount\n"
+            "     +--rw tlist/ [name]\n"
+            "     |  +--rw name    uint32\n"
+            "     +--rw tcont/\n"
+            "     |  +--rw tleaf?   uint32\n"
+            "     +--rw pr@\n"
+            "        +--rw cont\n"
+            "        +--rw cont_sibl\n"
+            "        |  +--rw slf?   string\n"
+            "        +--rw lf?          uint32\n";
+    data = EXT_DATA("a37", "", SCHEMA_REF_SHARED(
+            "<parent-reference>/"SM_PREF ":pr/"SM_PREF ":cont_sibl/slf</parent-reference>\n"
+            "<parent-reference>/"SM_PREF ":pr/"SM_PREF ":cont</parent-reference>\n"
+            "<parent-reference>/"SM_PREF ":pr/"SM_PREF ":lf</parent-reference>\n"));
+    ly_ctx_set_ext_data_clb(UTEST_LYCTX, getter, data);
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_out_reset(UTEST_OUT);
+
     ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
     TEST_LOCAL_TEARDOWN;
 }
