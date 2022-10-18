@@ -672,7 +672,7 @@ LIBYANG_API_DECL void lysc_update_path(struct lysc_ctx *ctx, struct lys_module *
 LIBYANG_API_DECL struct lysc_ext *lysc_ext_dup(struct lysc_ext *orig);
 
 /*
- * printer
+ * sprinter info
  */
 
 /**
@@ -684,7 +684,7 @@ LIBYANG_API_DECL struct lysc_ext *lysc_ext_dup(struct lysc_ext *orig);
  * 1 otherwise.
  * @return LY_SUCCESS when everything was fine, other LY_ERR values in case of failure
  */
-typedef LY_ERR (*lyplg_ext_schema_printer_clb)(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, ly_bool *flag);
+typedef LY_ERR (*lyplg_ext_sprinter_info_clb)(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, ly_bool *flag);
 
 /**
  * @brief YANG printer context getter for output handler.
@@ -712,16 +712,16 @@ LIBYANG_API_DECL uint32_t *lyplg_ext_print_get_options(const struct lyspr_ctx *c
 LIBYANG_API_DECL uint16_t *lyplg_ext_print_get_level(const struct lyspr_ctx *ctx);
 
 /**
- * @brief Print substatements of an extension instance
+ * @brief Print substatements of an extension instance in info format (compiled YANG).
  *
- * Generic function to access YANG printer functions from the extension plugins (::lyplg_ext_schema_printer_clb).
+ * Generic function to access YANG printer functions from the extension plugins (::lyplg_ext_sprinter_info_clb).
  *
  * @param[in] ctx YANG printer context to provide output handler and other information for printing.
  * @param[in] ext The compiled extension instance to access the extensions and substatements data.
  * @param[in,out] flag Flag to be shared with the caller regarding the opening brackets - 0 if the '{' not yet printed,
  * 1 otherwise.
  */
-LIBYANG_API_DECL void lyplg_ext_print_extension_instance(struct lyspr_ctx *ctx, const struct lysc_ext_instance *ext,
+LIBYANG_API_DECL void lyplg_ext_print_info_extension_instance(struct lyspr_ctx *ctx, const struct lysc_ext_instance *ext,
         ly_bool *flag);
 
 /*
@@ -838,8 +838,8 @@ struct lyplg_ext {
                                                  of the plugins for external tools) */
     lyplg_ext_parse_clb parse;              /**< callback to parse the extension instance substatements */
     lyplg_ext_compile_clb compile;          /**< callback to compile extension instance from the parsed data */
-    lyplg_ext_schema_printer_clb sprinter;  /**< callback to print the compiled content (info format) of the extension
-                                                 instance */
+    lyplg_ext_sprinter_info_clb printer_info;   /**< callback to print the compiled content (info format) of the extension
+                                                     instance */
 
     lyplg_ext_data_node_clb node;           /**< callback to validate most relevant data instance for the extension
                                                  instance */

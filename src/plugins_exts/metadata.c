@@ -172,12 +172,12 @@ emem:
 /**
  * @brief INFO printer
  *
- * Implementation of ::lyplg_ext_schema_printer_clb set as ::lyext_plugin::sprinter
+ * Implementation of ::lyplg_ext_sprinter_info_clb set as ::lyext_plugin::printer_info
  */
 static LY_ERR
-annotation_sprinter(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, ly_bool *flag)
+annotation_printer_info(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, ly_bool *flag)
 {
-    lyplg_ext_print_extension_instance(ctx, ext, flag);
+    lyplg_ext_print_info_extension_instance(ctx, ext, flag);
 
     return LY_SUCCESS;
 }
@@ -230,7 +230,7 @@ const struct lyplg_ext_record plugins_metadata[] = {
         .plugin.id = "ly2 metadata v1",
         .plugin.parse = annotation_parse,
         .plugin.compile = annotation_compile,
-        .plugin.sprinter = annotation_sprinter,
+        .plugin.printer_info = annotation_printer_info,
         .plugin.node = NULL,
         .plugin.snode = NULL,
         .plugin.validate = NULL,
