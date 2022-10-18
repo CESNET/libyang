@@ -316,8 +316,8 @@ yprc_extension_instances(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t
         inner_flag = 0;
         yprc_extension_instances(pctx, LY_STMT_EXTENSION_INSTANCE, 0, exts[u].exts, &inner_flag);
 
-        if (exts[u].def->plugin && exts[u].def->plugin->sprinter) {
-            exts[u].def->plugin->sprinter(&pctx->printer_ctx, &exts[u], &inner_flag);
+        if (exts[u].def->plugin && exts[u].def->plugin->printer_info) {
+            exts[u].def->plugin->printer_info(&pctx->printer_ctx, &exts[u], &inner_flag);
         }
 
         LEVEL--;
@@ -2448,7 +2448,7 @@ yang_print_compiled(struct ly_out *out, const struct lys_module *module, uint32_
 }
 
 LIBYANG_API_DEF void
-lyplg_ext_print_extension_instance(struct lyspr_ctx *ctx_generic, const struct lysc_ext_instance *ext, ly_bool *flag)
+lyplg_ext_print_info_extension_instance(struct lyspr_ctx *ctx_generic, const struct lysc_ext_instance *ext, ly_bool *flag)
 {
     struct lys_ypr_ctx *pctx = (struct lys_ypr_ctx *)ctx_generic;
     LY_ARRAY_COUNT_TYPE u, v;

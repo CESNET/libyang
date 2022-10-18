@@ -167,12 +167,12 @@ emem:
 /**
  * @brief INFO printer
  *
- * Implementation of ::lyplg_ext_schema_printer_clb set as ::lyext_plugin::sprinter
+ * Implementation of ::lyplg_ext_sprinter_info_clb set as ::lyext_plugin::printer_info
  */
 static LY_ERR
-yangdata_schema_printer(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, ly_bool *flag)
+yangdata_printer_info(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, ly_bool *flag)
 {
-    lyplg_ext_print_extension_instance(ctx, ext, flag);
+    lyplg_ext_print_info_extension_instance(ctx, ext, flag);
     return LY_SUCCESS;
 }
 
@@ -214,7 +214,7 @@ const struct lyplg_ext_record plugins_yangdata[] = {
         .plugin.id = "ly2 yang-data v1",
         .plugin.parse = yangdata_parse,
         .plugin.compile = yangdata_compile,
-        .plugin.sprinter = yangdata_schema_printer,
+        .plugin.printer_info = yangdata_printer_info,
         .plugin.node = NULL,
         .plugin.snode = NULL,
         .plugin.validate = NULL,
