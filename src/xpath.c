@@ -5712,8 +5712,9 @@ moveto_node_check(const struct lyd_node *node, enum lyxp_node_type node_type, co
         }
     }
 
-    /* when check */
-    if (!(options & LYXP_IGNORE_WHEN) && lysc_has_when(node->schema) && !(node->flags & LYD_WHEN_TRUE)) {
+    /* when check, accept the context node because it should only be the path ".", we have checked the when is valid before */
+    if (!(options & LYXP_IGNORE_WHEN) && lysc_has_when(node->schema) && !(node->flags & LYD_WHEN_TRUE) &&
+            (node != set->cur_node)) {
         return LY_EINCOMPLETE;
     }
 
