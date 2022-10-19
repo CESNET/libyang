@@ -3842,14 +3842,14 @@ static void trb_print_subtree_nodes(struct trt_node node, uint32_t max_gap_befor
  *
  * @param[in] node is child of implicit case.
  * @param[in] wr is wrapper for printing identation before node.
- * @param[in] ca contains inherited data from ancestors.
  * @param[in] pc contains mainly functions for printing.
  * @param[in] tc is tree context. Its settings should be the same as
  * before the function call.
+ * @return new indentation wrapper for @p node.
  */
-static void
-trb_print_implicit_node_case_subtree(struct trt_node node, struct trt_wrapper wr,
-        struct trt_parent_cache ca, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
+static struct trt_wrapper
+trb_print_implicit_node(struct trt_node node, struct trt_wrapper wr, struct trt_printer_ctx *pc,
+        struct trt_tree_ctx *tc)
 {
     struct trt_node case_node;
     struct trt_wrapper wr_case_child;
@@ -3857,10 +3857,10 @@ trb_print_implicit_node_case_subtree(struct trt_node node, struct trt_wrapper wr
     case_node = tro_create_implicit_case_node(node);
     ly_print_(pc->out, "\n");
     trb_print_entire_node(case_node, 0, wr, pc, tc);
+    ly_print_(pc->out, "\n");
     wr_case_child = pc->fp.read.if_sibling_exists(tc) ?
             trp_wrapper_set_mark(wr) : trp_wrapper_set_shift(wr);
-    ly_print_(pc->out, "\n");
-    trb_print_subtree_nodes(node, 0, wr_case_child, ca, pc, tc);
+    return wr_case_child;
 }
 
 /**
@@ -3991,15 +3991,12 @@ static void
 trb_print_subtree_nodes(struct trt_node node, uint32_t max_gap_before_type, struct trt_wrapper wr,
         struct trt_parent_cache ca, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
-    struct trt_parent_cache new_ca;
-    ly_bool sibling_flag = 0;
-
     /* print root node */
     trb_print_entire_node(node, max_gap_before_type, wr, pc, tc);
 
     /* go to the child */
-    new_ca = tro_parent_cache_for_child(ca, tc);
-    node = pc->fp.modify.next_child(new_ca, tc);
+    ca = tro_parent_cache_for_child(ca, tc);
+    node = pc->fp.modify.next_child(ca, tc);
     if (trp_node_is_empty(node)) {
         /* No child. */
         return;
@@ -4010,20 +4007,22 @@ trb_print_subtree_nodes(struct trt_node node, uint32_t max_gap_before_type, stru
             trp_wrapper_set_shift(wr) : trp_wrapper_set_mark(wr);
 
     /* try unified indentation for children */
-    max_gap_before_type = trb_try_unified_indent(new_ca, pc, tc);
+    max_gap_before_type = trb_try_unified_indent(ca, pc, tc);
 
     do {
         if (!trb_need_implicit_node_case(tc)) {
             /* normal behavior */
             ly_print_(pc->out, "\n");
-            trb_print_subtree_nodes(node, max_gap_before_type, wr, new_ca, pc, tc);
+            trb_print_subtree_nodes(node, max_gap_before_type, wr, ca, pc, tc);
         } else {
-            trb_print_implicit_node_case_subtree(node, wr, new_ca, pc, tc);
+            struct trt_wrapper wr_case_child;
+
+            wr_case_child = trb_print_implicit_node(node, wr, pc, tc);
+            trb_print_subtree_nodes(node, max_gap_before_type, wr_case_child, ca, pc, tc);
         }
         /* go to the actual node's sibling */
-        node = pc->fp.modify.next_sibling(new_ca, tc);
-        sibling_flag = !trp_node_is_empty(node);
-    } while (sibling_flag);
+        node = pc->fp.modify.next_sibling(ca, tc);
+    } while (!trp_node_is_empty(node));
 
     /* get back from child node to root node */
     pc->fp.modify.parent(tc);
