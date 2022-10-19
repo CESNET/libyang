@@ -534,57 +534,56 @@ struct lysp_deviation {
  *     1 - container    6 - anydata/anyxml    11 - output       16 - grouping   21 - enum
  *     2 - choice       7 - case              12 - feature      17 - uses       22 - type
  *     3 - leaf         8 - notification      13 - identity     18 - refine     23 - stmt
- *     4 - leaflist     9 - rpc               14 - extension    19 - augment    24 - extension instance
+ *     4 - leaflist     9 - rpc               14 - extension    19 - augment
  *     5 - list        10 - input             15 - typedef      20 - deviate
  *
  *                                             1 1 1 1 1 1 1 1 1 1 2 2 2 2
  *     bit name              1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3
- *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       1 LYS_CONFIG_W     |x|x|x|x|x|x| | | | | | | | | | | |x| |x| | | | |
- *         LYS_SET_BASE     | | | | | | | | | | | | | | | | | | | | | |x| | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       2 LYS_CONFIG_R     |x|x|x|x|x|x| | | | | | | | | | | |x| |x| | | | |
- *         LYS_SET_BIT      | | | | | | | | | | | | | | | | | | | | | |x| | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       3 LYS_STATUS_CURR  |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| | | |
- *         LYS_SET_ENUM     | | | | | | | | | | | | | | | | | | | | | |x| | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       4 LYS_STATUS_DEPRC |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| | | |
- *         LYS_SET_FRDIGITS | | | | | | | | | | | | | | | | | | | | | |x| | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       5 LYS_STATUS_OBSLT |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| | | |
- *         LYS_SET_LENGTH   | | | | | | | | | | | | | | | | | | | | | |x| | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       6 LYS_MAND_TRUE    | |x|x| | |x| | | | | | | | | | | |x| |x| | | | |
- *         LYS_SET_PATH     | | | | | | | | | | | | | | | | | | | | | |x| | |
- *         LYS_FENABLED     | | | | | | | | | | | |x| | | | | | | | | | | | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       7 LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | | | | |x| |x| | | | |
- *         LYS_ORDBY_USER   | | | |x|x| | | | | | | | | | | | | | | | | | | |
- *         LYS_SET_PATTERN  | | | | | | | | | | | | | | | | | | | | | |x| | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       8 LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | | | | | | | | | | | |
- *         LYS_YINELEM_TRUE | | | | | | | | | | | | | |x| | | | | | | | | | |
- *         LYS_SET_RANGE    | | | | | | | | | | | | | | | | | | | | | |x| | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       9 LYS_YINELEM_FALSE| | | | | | | | | | | | | |x| | | | | | | | | | |
- *         LYS_SET_TYPE     | | | | | | | | | | | | | | | | | | | | | |x| | |
- *         LYS_SINGLEQUOTED | | | | | | | | | | | | | | | | | | | | | | |x| |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      10 LYS_SET_VALUE    | | | | | | | | | | | | | | | | | | | | |x| | | |
- *         LYS_SET_REQINST  | | | | | | | | | | | | | | | | | | | | | |x| | |
- *         LYS_SET_MIN      | | | |x|x| | | | | | | | | | | | |x| |x| | | | |
- *         LYS_DOUBLEQUOTED | | | | | | | | | | | | | | | | | | | | | | |x| |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      11 LYS_SET_MAX      | | | |x|x| | | | | | | | | | | | |x| |x| | | | |
- *         LYS_USED_GRP     | | | | | | | | | | | | | | | |x| | | | | | | | |
- *         LYS_YIN_ATTR     | | | | | | | | | | | | | | | | | | | | | | |x| |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      12 LYS_YIN_ARGUMENT | | | | | | | | | | | | | | | | | | | | | | |x| |
- *   LYS_EXT_PARSED_AUGMENT | | | | | | | | | | | | | | | | | | | | | | | |x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      13 LYS_INTERNAL     |x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|
- *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       1 LYS_CONFIG_W     |x|x|x|x|x|x| | | | | | | | | | | |x| |x| | | |
+ *         LYS_SET_BASE     | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       2 LYS_CONFIG_R     |x|x|x|x|x|x| | | | | | | | | | | |x| |x| | | |
+ *         LYS_SET_BIT      | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       3 LYS_STATUS_CURR  |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| | |
+ *         LYS_SET_ENUM     | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       4 LYS_STATUS_DEPRC |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| | |
+ *         LYS_SET_FRDIGITS | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       5 LYS_STATUS_OBSLT |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| | |
+ *         LYS_SET_LENGTH   | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       6 LYS_MAND_TRUE    | |x|x| | |x| | | | | | | | | | | |x| |x| | | |
+ *         LYS_SET_PATH     | | | | | | | | | | | | | | | | | | | | | |x| |
+ *         LYS_FENABLED     | | | | | | | | | | | |x| | | | | | | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       7 LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | | | | |x| |x| | | |
+ *         LYS_ORDBY_USER   | | | |x|x| | | | | | | | | | | | | | | | | | |
+ *         LYS_SET_PATTERN  | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       8 LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | | | | | | | | | | |
+ *         LYS_YINELEM_TRUE | | | | | | | | | | | | | |x| | | | | | | | | |
+ *         LYS_SET_RANGE    | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       9 LYS_YINELEM_FALSE| | | | | | | | | | | | | |x| | | | | | | | | |
+ *         LYS_SET_TYPE     | | | | | | | | | | | | | | | | | | | | | |x| |
+ *         LYS_SINGLEQUOTED | | | | | | | | | | | | | | | | | | | | | | |x|
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      10 LYS_SET_VALUE    | | | | | | | | | | | | | | | | | | | | |x| | |
+ *         LYS_SET_REQINST  | | | | | | | | | | | | | | | | | | | | | |x| |
+ *         LYS_SET_MIN      | | | |x|x| | | | | | | | | | | | |x| |x| | | |
+ *         LYS_DOUBLEQUOTED | | | | | | | | | | | | | | | | | | | | | | |x|
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      11 LYS_SET_MAX      | | | |x|x| | | | | | | | | | | | |x| |x| | | |
+ *         LYS_USED_GRP     | | | | | | | | | | | | | | | |x| | | | | | | |
+ *         LYS_YIN_ATTR     | | | | | | | | | | | | | | | | | | | | | | |x|
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      12 LYS_YIN_ARGUMENT | | | | | | | | | | | | | | | | | | | | | | |x|
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      13 LYS_INTERNAL     |x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|
+ *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
 
@@ -711,7 +710,6 @@ struct lysp_deviation {
 
 #define LYS_YIN_ATTR     0x0400      /**< flag to identify YIN attribute parsed as extension's substatement, only when the source is YIN */
 #define LYS_YIN_ARGUMENT 0x0800      /**< flag to identify statement representing extension's argument, only when the source is YIN */
-#define LYS_EXT_PARSED_AUGMENT 0x0800   /**< flag to mark an extension instance whose parsed nodes are augment nodes */
 
 #define LYS_INTERNAL     0x1000      /**< flag to identify internal parsed statements that should not be printed */
 

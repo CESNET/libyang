@@ -75,7 +75,7 @@ annotation_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     if (!ann_pdata) {
         goto emem;
     }
-    LY_ARRAY_CREATE_GOTO(lyplg_extp_cur_pmod(pctx)->mod->ctx, ext->substmts, 6, r, emem);
+    LY_ARRAY_CREATE_GOTO(lyplg_ext_parse_get_cur_pmod(pctx)->mod->ctx, ext->substmts, 6, r, emem);
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[0].stmt = LY_STMT_IF_FEATURE;

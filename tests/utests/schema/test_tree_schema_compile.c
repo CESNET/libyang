@@ -2309,15 +2309,15 @@ test_status(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;"
             "container c {status deprecated; leaf l {status current; type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Status \"current\" of \"l\" is in conflict with the \"deprecated\" status of parent \"c\".", "/aa:c/l");
+    CHECK_LOG_CTX("Status \"current\" of \"l\" is in conflict with \"deprecated\" status of parent \"c\".", "/aa:c/l");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;"
             "container c {status obsolete; leaf l {status current; type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Status \"current\" of \"l\" is in conflict with the \"obsolete\" status of parent \"c\".", "/bb:c/l");
+    CHECK_LOG_CTX("Status \"current\" of \"l\" is in conflict with \"obsolete\" status of parent \"c\".", "/bb:c/l");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc;"
             "container c {status obsolete; leaf l {status deprecated; type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Status \"deprecated\" of \"l\" is in conflict with the \"obsolete\" status of parent \"c\".", "/cc:c/l");
+    CHECK_LOG_CTX("Status \"deprecated\" of \"l\" is in conflict with \"obsolete\" status of parent \"c\".", "/cc:c/l");
 
     /* just a warning */
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:dd;prefix d;"
@@ -2536,7 +2536,7 @@ test_uses(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;grouping grp {leaf l {type string; status deprecated;}}"
             "uses grp {status obsolete;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Status \"deprecated\" of \"l\" is in conflict with the \"obsolete\" status of parent \"<schema-only-node>\".",
+    CHECK_LOG_CTX("Inherited schema-only status \"obsolete\" is in conflict with \"deprecated\" status of \"l\".",
             "/ee:{uses='grp'}/ee:l");
 
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module ff {namespace urn:ff;prefix ff;grouping grp {leaf l {type string;}}"
@@ -2706,7 +2706,7 @@ test_refine(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ii {namespace urn:ii;prefix ii;grouping grp {leaf l {type string; status deprecated;}}"
             "uses grp {status obsolete;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Status \"deprecated\" of \"l\" is in conflict with the \"obsolete\" status of parent \"<schema-only-node>\".",
+    CHECK_LOG_CTX("Inherited schema-only status \"obsolete\" is in conflict with \"deprecated\" status of \"l\".",
             "/ii:{uses='grp'}/ii:l");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module jj {namespace urn:jj;prefix jj;import grp {prefix g;}"

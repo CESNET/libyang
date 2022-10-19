@@ -1,9 +1,10 @@
 /**
  * @file schema_compile_node.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Header for schema compilation of common nodes.
  *
- * Copyright (c) 2015 - 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -32,17 +33,16 @@ struct lysc_ctx;
  *
  * @param[in] ctx Compile context.
  * @param[in] when_p Parsed when structure.
- * @param[in] parent_flags Flags of the parsed node with the when statement.
- * @param[in] compiled_parent Closest compiled parent of the when statement.
+ * @param[in] inherited_flags Inherited flags from a schema-only statement.
+ * @param[in] parent Parent node, if any.
  * @param[in] ctx_node Context node for the when statement.
- * @param[in] node Compiled node to which add the compiled when.
+ * @param[in] node Compiled node to which to add the compiled when.
  * @param[in,out] when_c Optional, pointer to the previously compiled @p when_p to be reused. Set to NULL
  * for the first call.
  * @return LY_ERR value.
  */
-LY_ERR lys_compile_when(struct lysc_ctx *ctx, const struct lysp_when *when_p, uint16_t parent_flags,
-        const struct lysc_node *compiled_parent, const struct lysc_node *ctx_node, struct lysc_node *node,
-        struct lysc_when **when_c);
+LY_ERR lys_compile_when(struct lysc_ctx *ctx, const struct lysp_when *when_p, uint16_t inherited_flags,
+        const struct lysc_node *parent, const struct lysc_node *ctx_node, struct lysc_node *node, struct lysc_when **when_c);
 
 /**
  * @brief Compile information from the must statement
@@ -148,27 +148,6 @@ LY_ERR lys_compile_node_connect(struct lysc_ctx *ctx, struct lysc_node *parent, 
 LY_ERR lys_compile_node_action_inout(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node *node);
 
 /**
- * @brief Find the node according to the given descendant/absolute schema nodeid.
- * Used in unique, refine and augment statements.
- *
- * @param[in] ctx Compile context
- * @param[in] nodeid Descendant-schema-nodeid (according to the YANG grammar)
- * @param[in] nodeid_len Length of the given nodeid, if it is not NULL-terminated string.
- * @param[in] ctx_node Context node for a relative nodeid.
- * @param[in] format Format of any prefixes.
- * @param[in] prefix_data Format-specific prefix data (see ::ly_resolve_prefix).
- * @param[in] nodetype Optional (can be 0) restriction for target's nodetype. If target exists, but does not match
- * the given nodetype, LY_EDENIED is returned (and target is provided), but no error message is printed.
- * The value can be even an ORed value to allow multiple nodetypes.
- * @param[out] target Found target node if any.
- * @param[out] result_flag Output parameter to announce if the schema nodeid goes through the action's input/output or a Notification.
- * The LYSC_OPT_RPC_INPUT, LYSC_OPT_RPC_OUTPUT and LYSC_OPT_NOTIFICATION are used as flags.
- * @return LY_ERR values - LY_ENOTFOUND, LY_EVALID, LY_EDENIED or LY_SUCCESS.
- */
-LY_ERR lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *ctx_node,
-        LY_VALUE_FORMAT format, void *prefix_data, uint16_t nodetype, const struct lysc_node **target, uint16_t *result_flag);
-
-/**
  * @brief Compile choice children.
  *
  * @param[in] ctx Compile context
@@ -213,11 +192,11 @@ LY_ERR lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *pnode, struc
  * @param[in] parent Compiled parent node where the current node is supposed to be connected. It is
  * NULL for top-level nodes, in such a case the module where the node will be connected is taken from
  * the compile context.
- * @param[in] inherited_status Explicitly inherited status (from uses/extension instance), if any.
+ * @param[in] inherited_flags Inherited flags from a schema-only statement.
  * @param[in,out] child_set Optional set to add all the compiled nodes into (can be more in case of uses).
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
-LY_ERR lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node *parent,
-        const uint16_t *inherited_status, struct ly_set *child_set);
+LY_ERR lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node *parent, uint16_t inherited_flags,
+        struct ly_set *child_set);
 
 #endif /* LY_SCHEMA_COMPILE_NODE_H_ */

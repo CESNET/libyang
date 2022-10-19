@@ -1539,24 +1539,64 @@ lysp_schema_nodeid_match_node(const struct lysc_node **node, const struct lys_mo
 }
 
 /**
+ * @brief Check whether a compiled ext instance matches a single schema nodeid name test.
+ *
+ * @param[in,out] ext Compiled ext instance to consider. On a match it is zeroed to not match again.
+ * @param[in] mod Expected module.
+ * @param[in] name Expected name.
+ * @param[in] name_len Length of @p name.
+ * @return Whether it is a match or not.
+ */
+static ly_bool
+lysp_schema_nodeid_match_ext(const struct lysc_ext_instance **ext, const struct lys_module *mod, const char *name,
+        size_t name_len)
+{
+    /* compare with the module */
+    if ((*ext)->module != mod) {
+        return 0;
+    }
+
+    /* compare names (argument) */
+    if (ly_strncmp((*ext)->argument, name, name_len)) {
+        return 0;
+    }
+
+    /* zero */
+    *ext = NULL;
+
+    return 1;
+}
+
+/**
  * @brief Check whether a node matches specific schema nodeid.
  *
  * @param[in] exp Parsed nodeid to match.
  * @param[in] exp_pmod Module to use for nodes in @p exp without a prefix.
+ * @param[in] exp_ext Extension instance in which @p exp is defined, it means it targets an extension instance.
  * @param[in] ctx_node Initial context node that should match, only for descendant paths.
  * @param[in] parent First compiled parent to consider. If @p pnode is NULL, it is condered the node to be matched.
  * @param[in] pnode Parsed node to be matched. May be NULL if the target node was already compiled.
  * @param[in] pnode_mod Compiled @p pnode to-be module.
+ * @param[in] pnode_ext Extension instance in which @p pnode is defined.
  * @return Whether it is a match or not.
  */
 static ly_bool
-lysp_schema_nodeid_match(const struct lyxp_expr *exp, const struct lysp_module *exp_pmod, const struct lysc_node *ctx_node,
-        const struct lysc_node *parent, const struct lysp_node *pnode, const struct lys_module *pnode_mod)
+lysp_schema_nodeid_match(const struct lyxp_expr *exp, const struct lysp_module *exp_pmod,
+        const struct lysp_ext_instance *exp_ext, const struct lysc_node *ctx_node, const struct lysc_node *parent,
+        const struct lysp_node *pnode, const struct lys_module *pnode_mod, const struct lysc_ext_instance *pnode_ext)
 {
     uint32_t i;
     const struct lys_module *mod;
     const char *name = NULL;
     size_t name_len = 0;
+
+    if (exp_ext && !pnode_ext) {
+        /* extension instance augment and standard node, will never match */
+        return 0;
+    } else if (!exp_ext && pnode_ext) {
+        /* standard augment and extension instance node, will never match */
+        return 0;
+    }
 
     /* compare last node in the node ID */
     i = exp->used - 1;
@@ -1582,7 +1622,7 @@ lysp_schema_nodeid_match(const struct lyxp_expr *exp, const struct lysp_module *
         i -= 2;
         assert(exp->tokens[i] == LYXP_TOKEN_NAMETEST);
 
-        if (!parent) {
+        if (!parent && !pnode_ext) {
             /* no more parents but path continues */
             return 0;
         }
@@ -1592,17 +1632,24 @@ lysp_schema_nodeid_match(const struct lyxp_expr *exp, const struct lysp_module *
                 &name_len);
         assert(mod);
 
-        /* compare with the parent */
-        if (!lysp_schema_nodeid_match_node(&parent, mod, name, name_len)) {
-            return 0;
+        if (parent) {
+            /* compare with the parent */
+            if (!lysp_schema_nodeid_match_node(&parent, mod, name, name_len)) {
+                return 0;
+            }
+        } else {
+            /* compare with the ext instance */
+            if (!lysp_schema_nodeid_match_ext(&pnode_ext, mod, name, name_len)) {
+                return 0;
+            }
         }
     }
 
     if (ctx_node && (ctx_node != parent)) {
         /* descendant path has not finished in the context node */
         return 0;
-    } else if (!ctx_node && parent) {
-        /* some parent was not matched */
+    } else if (!ctx_node && (parent || pnode_ext)) {
+        /* some parent/extension was not matched */
         return 0;
     }
 
@@ -1710,7 +1757,8 @@ lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct lysp_node
     for (i = 0; i < ctx->uses_rfns.count; ) {
         rfn = ctx->uses_rfns.objs[i];
 
-        if (!lysp_schema_nodeid_match(rfn->nodeid, rfn->nodeid_pmod, rfn->nodeid_ctx_node, parent, pnode, ctx->cur_mod)) {
+        if (!lysp_schema_nodeid_match(rfn->nodeid, rfn->nodeid_pmod, NULL, rfn->nodeid_ctx_node, parent, pnode,
+                ctx->cur_mod, ctx->ext)) {
             /* not our target node */
             ++i;
             continue;
@@ -1736,7 +1784,7 @@ lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct lysp_node
     for (i = 0; i < ctx->devs.count; ++i) {
         dev = ctx->devs.objs[i];
 
-        if (!lysp_schema_nodeid_match(dev->nodeid, dev->dev_pmods[0], NULL, parent, pnode, ctx->cur_mod)) {
+        if (!lysp_schema_nodeid_match(dev->nodeid, dev->dev_pmods[0], NULL, NULL, parent, pnode, ctx->cur_mod, ctx->ext)) {
             /* not our target node */
             continue;
         }
@@ -1775,7 +1823,19 @@ cleanup:
     return ret;
 }
 
-LY_ERR
+/**
+ * @brief Compile augment children.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] aug_when Parsed augment when to inherit.
+ * @param[in] aug_flags Parsed augment flags.
+ * @param[in] child First augment child to compile.
+ * @param[in] target Target node of the augment.
+ * @param[in] child_unres_disabled Whether the children are to be put into unres disabled set or not.
+ * @return LY_SUCCESS on success.
+ * @return LY_EVALID on failure.
+ */
+static LY_ERR
 lys_compile_augment_children(struct lysc_ctx *ctx, struct lysp_when *aug_when, uint16_t aug_flags, struct lysp_node *child,
         struct lysc_node *target, ly_bool child_unres_disabled)
 {
@@ -1816,9 +1876,9 @@ lys_compile_augment_children(struct lysc_ctx *ctx, struct lysp_when *aug_when, u
             } else {
                 ctx->compile_opts |= LYS_COMPILE_RPC_OUTPUT;
             }
-            LY_CHECK_GOTO(rc = lys_compile_node(ctx, pnode, target, 0, &child_set), cleanup);
+            LY_CHECK_GOTO(rc = lys_compile_node(ctx, pnode, target, aug_flags, &child_set), cleanup);
         } else {
-            LY_CHECK_GOTO(rc = lys_compile_node(ctx, pnode, target, 0, &child_set), cleanup);
+            LY_CHECK_GOTO(rc = lys_compile_node(ctx, pnode, target, aug_flags, &child_set), cleanup);
         }
 
         /* eval if-features again for the rest of this node processing */
@@ -1945,7 +2005,8 @@ lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
     for (i = 0; i < ctx->uses_augs.count; ) {
         aug = ctx->uses_augs.objs[i];
 
-        if (!lysp_schema_nodeid_match(aug->nodeid, orig_mod->parsed, aug->nodeid_ctx_node, node, NULL, NULL)) {
+        if (!lysp_schema_nodeid_match(aug->nodeid, orig_mod->parsed, aug->ext, aug->nodeid_ctx_node, node, NULL, NULL,
+                ctx->ext)) {
             /* not our target node */
             ++i;
             continue;
@@ -1973,7 +2034,7 @@ lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
     for (i = 0; i < ctx->augs.count; ) {
         aug = ctx->augs.objs[i];
 
-        if (!lysp_schema_nodeid_match(aug->nodeid, aug->aug_pmod, NULL, node, NULL, NULL)) {
+        if (!lysp_schema_nodeid_match(aug->nodeid, aug->aug_pmod, aug->ext, NULL, node, NULL, NULL, ctx->ext)) {
             /* not our target node */
             ++i;
             continue;
@@ -2006,15 +2067,17 @@ cleanup:
 }
 
 /**
- * @brief Prepare a top-level augment to be applied during data nodes compilation.
+ * @brief Prepare an absolute-nodeid augment to be applied during data nodes compilation.
  *
  * @param[in] ctx Compile context.
  * @param[in] aug_p Parsed augment to be applied.
  * @param[in] pmod Both current and prefix module for @p aug_p.
+ * @param[in] ext Extension instance in case @p aug_p is defined in one.
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_precompile_own_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, const struct lysp_module *pmod)
+lys_precompile_own_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, const struct lysp_module *pmod,
+        const struct lysp_ext_instance *ext)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr *exp = NULL;
@@ -2040,6 +2103,7 @@ lys_precompile_own_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p
     aug->nodeid = exp;
     exp = NULL;
     aug->aug_pmod = pmod;
+    aug->ext = ext;
     aug->aug_p = aug_p;
 
 cleanup:
@@ -2047,25 +2111,61 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Prepare all top-level augments and extension instance augments to be applied during data nodes compilation.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] pmod Parsed mod to use.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_precompile_own_augments_mod(struct lysc_ctx *ctx, const struct lysp_module *pmod)
+{
+    LY_ARRAY_COUNT_TYPE u, v;
+    struct lysp_node_augment *aug_p;
+
+    /* module */
+    LY_LIST_FOR(pmod->augments, aug_p) {
+        LY_CHECK_RET(lys_precompile_own_augment(ctx, aug_p, pmod, NULL));
+    }
+
+    /* parsed extension instances */
+    LY_ARRAY_FOR(pmod->exts, u) {
+        aug_p = NULL;
+        LY_ARRAY_FOR(pmod->exts[u].substmts, v) {
+            if (pmod->exts[u].substmts[v].stmt == LY_STMT_AUGMENT) {
+                aug_p = *(struct lysp_node_augment **)pmod->exts[u].substmts[v].storage;
+                break;
+            }
+        }
+        if (!aug_p) {
+            continue;
+        }
+
+        LY_CHECK_RET(lys_precompile_own_augment(ctx, aug_p, pmod, &pmod->exts[u]));
+    }
+
+    return LY_SUCCESS;
+}
+
 LY_ERR
 lys_precompile_own_augments(struct lysc_ctx *ctx)
 {
     LY_ARRAY_COUNT_TYPE u, v;
+    const struct lys_module *aug_mod;
+    const struct lysp_module *submod;
 
     LY_ARRAY_FOR(ctx->cur_mod->augmented_by, u) {
-        const struct lys_module *aug_mod = ctx->cur_mod->augmented_by[u];
-        struct lysp_node_augment *aug;
+        aug_mod = ctx->cur_mod->augmented_by[u];
 
         /* collect all module augments */
-        LY_LIST_FOR(aug_mod->parsed->augments, aug) {
-            LY_CHECK_RET(lys_precompile_own_augment(ctx, aug, aug_mod->parsed));
-        }
+        LY_CHECK_RET(lys_precompile_own_augments_mod(ctx, aug_mod->parsed));
 
         /* collect all submodules augments */
         LY_ARRAY_FOR(aug_mod->parsed->includes, v) {
-            LY_LIST_FOR(aug_mod->parsed->includes[v].submodule->augments, aug) {
-                LY_CHECK_RET(lys_precompile_own_augment(ctx, aug, (struct lysp_module *)aug_mod->parsed->includes[v].submodule));
-            }
+            submod = (struct lysp_module *)aug_mod->parsed->includes[v].submodule;
+
+            LY_CHECK_RET(lys_precompile_own_augments_mod(ctx, submod));
         }
     }
 
@@ -2245,24 +2345,28 @@ lys_precompile_mod_set_is_all_implemented(const struct ly_set *mod_set)
     return 1;
 }
 
-LY_ERR
-lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres *unres)
+/**
+ * @brief Add references to target modules of top-level augments, deviations, and augments in extension instances
+ * in a module and all its submodules.
+ *
+ * @param[in] pmod Module to process.
+ * @param[in,out] mod_set Module set to add referenced modules into.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error.
+ */
+static LY_ERR
+lys_precompile_mod_augments_deviations(struct lysp_module *pmod, struct ly_set *mod_set)
 {
-    LY_ERR ret = LY_SUCCESS, r;
+    LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u, v;
     struct lysc_ctx ctx;
-    struct lysp_module *mod_p;
     struct lys_module *m;
-    struct lysp_submodule *submod;
     struct lysp_node_augment *aug;
-    const char **imp_f, *all_f[] = {"*", NULL};
-    uint32_t i;
-    struct ly_set mod_set = {0}, set = {0};
+    struct ly_set set = {0};
 
-    mod_p = mod->parsed;
-    LYSC_CTX_INIT_PMOD(ctx, mod_p, NULL);
+    LYSC_CTX_INIT_PMOD(ctx, pmod, NULL);
 
-    LY_LIST_FOR(mod_p->augments, aug) {
+    LY_LIST_FOR(pmod->augments, aug) {
         /* get target module */
         lysc_update_path(&ctx, NULL, "{augment}");
         lysc_update_path(&ctx, NULL, aug->nodeid);
@@ -2272,64 +2376,81 @@ lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres
         LY_CHECK_GOTO(ret, cleanup);
 
         /* add this module into the target module augmented_by, if not there and implemented */
-        if ((lys_array_add_mod_ref(&ctx, mod, &m->augmented_by) != LY_EEXIST) ||
+        if ((lys_array_add_mod_ref(&ctx, pmod->mod, &m->augmented_by) != LY_EEXIST) ||
                 !lys_precompile_mod_set_is_all_implemented(&set)) {
-            LY_CHECK_GOTO(ret = ly_set_merge(&mod_set, &set, 0, NULL), cleanup);
+            LY_CHECK_GOTO(ret = ly_set_merge(mod_set, &set, 0, NULL), cleanup);
         }
         ly_set_erase(&set, NULL);
     }
 
-    LY_ARRAY_FOR(mod_p->deviations, u) {
+    LY_ARRAY_FOR(pmod->deviations, u) {
         /* get target module */
         lysc_update_path(&ctx, NULL, "{deviation}");
-        lysc_update_path(&ctx, NULL, mod_p->deviations[u].nodeid);
-        ret = lys_nodeid_mod_check(&ctx, mod_p->deviations[u].nodeid, 1, &set, NULL, &m);
+        lysc_update_path(&ctx, NULL, pmod->deviations[u].nodeid);
+        ret = lys_nodeid_mod_check(&ctx, pmod->deviations[u].nodeid, 1, &set, NULL, &m);
         lysc_update_path(&ctx, NULL, NULL);
         lysc_update_path(&ctx, NULL, NULL);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* add this module into the target module deviated_by, if not there and implemented */
-        if ((lys_array_add_mod_ref(&ctx, mod, &m->deviated_by) != LY_EEXIST) ||
+        if ((lys_array_add_mod_ref(&ctx, pmod->mod, &m->deviated_by) != LY_EEXIST) ||
                 !lys_precompile_mod_set_is_all_implemented(&set)) {
-            LY_CHECK_GOTO(ret = ly_set_merge(&mod_set, &set, 0, NULL), cleanup);
+            LY_CHECK_GOTO(ret = ly_set_merge(mod_set, &set, 0, NULL), cleanup);
         }
         ly_set_erase(&set, NULL);
     }
 
-    /* the same for augments and deviations in submodules */
-    LY_ARRAY_FOR(mod_p->includes, v) {
-        submod = mod_p->includes[v].submodule;
-        ctx.pmod = (struct lysp_module *)submod;
-
-        LY_LIST_FOR(submod->augments, aug) {
-            lysc_update_path(&ctx, NULL, "{augment}");
-            lysc_update_path(&ctx, NULL, aug->nodeid);
-            ret = lys_nodeid_mod_check(&ctx, aug->nodeid, 1, &set, NULL, &m);
-            lysc_update_path(&ctx, NULL, NULL);
-            lysc_update_path(&ctx, NULL, NULL);
-            LY_CHECK_GOTO(ret, cleanup);
-
-            if ((lys_array_add_mod_ref(&ctx, mod, &m->augmented_by) != LY_EEXIST) ||
-                    !lys_precompile_mod_set_is_all_implemented(&set)) {
-                LY_CHECK_GOTO(ret = ly_set_merge(&mod_set, &set, 0, NULL), cleanup);
+    LY_ARRAY_FOR(pmod->exts, u) {
+        aug = NULL;
+        LY_ARRAY_FOR(pmod->exts[u].substmts, v) {
+            if (pmod->exts[u].substmts[v].stmt == LY_STMT_AUGMENT) {
+                aug = *(struct lysp_node_augment **)pmod->exts[u].substmts[v].storage;
+                break;
             }
-            ly_set_erase(&set, NULL);
+        }
+        if (!aug) {
+            continue;
         }
 
-        LY_ARRAY_FOR(submod->deviations, u) {
-            lysc_update_path(&ctx, NULL, "{deviation}");
-            lysc_update_path(&ctx, NULL, submod->deviations[u].nodeid);
-            ret = lys_nodeid_mod_check(&ctx, submod->deviations[u].nodeid, 1, &set, NULL, &m);
-            lysc_update_path(&ctx, NULL, NULL);
-            lysc_update_path(&ctx, NULL, NULL);
-            LY_CHECK_GOTO(ret, cleanup);
+        /* get target module */
+        lysc_update_path(&ctx, NULL, "{ext-augment}");
+        lysc_update_path(&ctx, NULL, aug->nodeid);
+        ret = lys_nodeid_mod_check(&ctx, aug->nodeid, 1, &set, NULL, &m);
+        lysc_update_path(&ctx, NULL, NULL);
+        lysc_update_path(&ctx, NULL, NULL);
+        LY_CHECK_GOTO(ret, cleanup);
 
-            if ((lys_array_add_mod_ref(&ctx, mod, &m->deviated_by) != LY_EEXIST) ||
-                    !lys_precompile_mod_set_is_all_implemented(&set)) {
-                LY_CHECK_GOTO(ret = ly_set_merge(&mod_set, &set, 0, NULL), cleanup);
-            }
-            ly_set_erase(&set, NULL);
+        /* add this module into the target module augmented_by, if not there and implemented */
+        if ((lys_array_add_mod_ref(&ctx, pmod->mod, &m->augmented_by) != LY_EEXIST) ||
+                !lys_precompile_mod_set_is_all_implemented(&set)) {
+            LY_CHECK_GOTO(ret = ly_set_merge(mod_set, &set, 0, NULL), cleanup);
         }
+        ly_set_erase(&set, NULL);
+    }
+
+cleanup:
+    ly_set_erase(&set, NULL);
+    return ret;
+}
+
+LY_ERR
+lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres *unres)
+{
+    LY_ERR ret = LY_SUCCESS, r;
+    LY_ARRAY_COUNT_TYPE u;
+    struct lys_module *m;
+    struct lysp_module *submod;
+    const char **imp_f, *all_f[] = {"*", NULL};
+    uint32_t i;
+    struct ly_set mod_set = {0};
+
+    /* module */
+    LY_CHECK_GOTO(ret = lys_precompile_mod_augments_deviations(mod->parsed, &mod_set), cleanup);
+
+    /* submodules */
+    LY_ARRAY_FOR(mod->parsed->includes, u) {
+        submod = (struct lysp_module *)mod->parsed->includes[u].submodule;
+        LY_CHECK_GOTO(ret = lys_precompile_mod_augments_deviations(submod, &mod_set), cleanup);
     }
 
     for (i = 0; i < mod_set.count; ++i) {
@@ -2365,7 +2486,6 @@ lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres
     }
 
 cleanup:
-    ly_set_erase(&set, NULL);
     ly_set_erase(&mod_set, NULL);
     return ret;
 }
@@ -2416,74 +2536,4 @@ lys_precompile_augments_deviations_revert(struct ly_ctx *ctx, const struct lys_m
             }
         }
     }
-}
-
-LIBYANG_API_DEF LY_ERR
-lys_compile_extension_instance_find_augment_target(struct lysc_ctx *ctx, const char *path,
-        struct lysc_ext_instance **aug_ext, struct lysc_node **aug_target)
-{
-    LY_ERR rc;
-    LY_ARRAY_COUNT_TYPE u;
-    struct lys_module *target_mod;
-    struct lysc_ext_instance *target_ext = NULL, *prev_ext;
-    const struct lysc_node *target;
-    const char *id, *id2, *name;
-    size_t name_len;
-    uint16_t flag;
-
-    LY_CHECK_ARG_RET(ctx ? ctx->ctx : NULL, ctx, path, aug_target, LY_EINVAL);
-
-    /* skip first slash */
-    id = path;
-    if (id[0] != '/') {
-        LOGVAL(ctx->ctx, LYVE_SYNTAX, "Invalid absolute-schema-nodeid \"%s\".", path);
-        return LY_EVALID;
-    }
-    ++id;
-
-    /* find the next slash */
-    id2 = strchr(id, '/');
-    if (!id2) {
-        LOGVAL(ctx->ctx, LYVE_SYNTAX, "Invalid absolute-schema-nodeid \"%s\".", path);
-        return LY_EVALID;
-    }
-
-    /* find the target module */
-    target_mod = (struct lys_module *)lys_schema_node_get_module(ctx->ctx, id, id2 - id, ctx->pmod, &name, &name_len);
-    if (!target_mod) {
-        return LY_ENOTFOUND;
-    } else if (!target_mod->implemented) {
-        LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Augment target extension instance \"%*.s\" in a non-implemented module \"%s\".",
-                (int)name_len, name, target_mod->name);
-        return LY_ENOTFOUND;
-    }
-
-    /* find the extension instance */
-    LY_ARRAY_FOR(target_mod->compiled->exts, u) {
-        if (!ly_strncmp(target_mod->compiled->exts[u].argument, name, name_len)) {
-            target_ext = &target_mod->compiled->exts[u];
-            break;
-        }
-    }
-    if (!target_ext) {
-        LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Augment target extension instance \"%*.s\" not found in module \"%s\".",
-                (int)name_len, name, target_mod->name);
-        return LY_ENOTFOUND;
-    }
-
-    /* find the augment target with the correct compile context */
-    prev_ext = ctx->ext;
-    ctx->ext = target_ext;
-    rc = lysc_resolve_schema_nodeid(ctx, id2, strlen(id2), NULL, LY_VALUE_SCHEMA, ctx->pmod, 0, &target, &flag);
-    ctx->ext = prev_ext;
-    LY_CHECK_RET(rc);
-
-    /* add this module into the target module augmented_by, if not there */
-    lys_array_add_mod_ref(ctx, ctx->cur_mod, &target_mod->augmented_by);
-
-    if (aug_ext) {
-        *aug_ext = target_ext;
-    }
-    *aug_target = (struct lysc_node *)target;
-    return LY_SUCCESS;
 }

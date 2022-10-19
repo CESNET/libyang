@@ -51,7 +51,7 @@ nacm_inherit_clb(struct lysc_node *node, void *data, ly_bool *dfs_continue)
         /* duplicate this one to inherit it to the child */
         LY_ARRAY_NEW_GOTO(node->module->ctx, node->exts, inherited, ret, emem);
 
-        inherited->def = lysc_ext_dup(arg->ext->def);
+        inherited->def = arg->ext->def;
         inherited->parent = node;
         inherited->parent_stmt = lyplg_ext_nodetype2stmt(node->nodetype);
         if (arg->ext->argument) {
@@ -59,7 +59,7 @@ nacm_inherit_clb(struct lysc_node *node, void *data, ly_bool *dfs_continue)
                 return ret;
             }
         }
-        /* TODO duplicate extension instances */
+        /* copy the pointer to the static variables */
         inherited->compiled = arg->ext->compiled;
     }
 

@@ -224,6 +224,18 @@ struct lysc_unres_dflt {
     }
 
 /**
+ * @brief Update path in the compile context, which is used for logging where the compilation failed.
+ *
+ * @param[in] ctx Compile context with the path.
+ * @param[in] parent_module Module of the current node's parent to check difference with the currently processed module
+ * (taken from @p ctx).
+ * @param[in] name Name of the node to update path with. If NULL, the last segment is removed. If the format is
+ * `{keyword}`, the following call updates the segment to the form `{keyword='name'}` (to remove this compound segment,
+ * 2 calls with NULL @p name must be used).
+ */
+void lysc_update_path(struct lysc_ctx *ctx, const struct lys_module *parent_module, const char *name);
+
+/**
  * @brief Fill in the prepared compiled extension instance structure according to the parsed extension instance.
  *
  * @param[in] ctx Compilation context.

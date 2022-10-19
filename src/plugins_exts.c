@@ -84,12 +84,11 @@ cleanup:
  * @param[in] parsed Parsed ext instance substatement structure.
  * @param[in] ext Compiled ext instance.
  * @param[in] substmt Compled ext instance substatement info.
- * @param[in,out] aug_target Optional augment target where to append all schema data nodes.
  * @return LY_ERR value.
  */
 static LY_ERR
 lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, const void *parsed, struct lysc_ext_instance *ext,
-        struct lysc_ext_substmt *substmt, struct lysc_node *aug_target)
+        struct lysc_ext_substmt *substmt)
 {
     LY_ERR rc = LY_SUCCESS;
     ly_bool length_restr = 0;
@@ -133,22 +132,18 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, const void *parsed, struct l
 
         lyplg_ext_get_storage(ext, LY_STMT_STATUS, (const void **)&flags);
         pnodes = (struct lysp_node *)parsed;
-        if (aug_target) {
-            /* compile augmented nodes */
-            LY_CHECK_GOTO(rc = lys_compile_augment_children(ctx, NULL, 0, (struct lysp_node *)pnodes, aug_target, 0), cleanup);
-        } else {
-            /* compile nodes */
-            LY_LIST_FOR(pnodes, pnode) {
-                if (pnode->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
-                    /* manual compile */
-                    node = calloc(1, sizeof(struct lysc_node_action_inout));
-                    LY_CHECK_ERR_GOTO(!node, LOGMEM(ctx->ctx); rc = LY_EMEM, cleanup);
-                    LY_CHECK_GOTO(rc = lys_compile_node_action_inout(ctx, pnode, node), cleanup);
-                    LY_CHECK_GOTO(rc = lys_compile_node_connect(ctx, NULL, node), cleanup);
-                } else {
-                    /* ctx->ext substatement storage is used as the document root */
-                    LY_CHECK_GOTO(rc = lys_compile_node(ctx, pnode, NULL, flags ? &flags : NULL, NULL), cleanup);
-                }
+
+        /* compile nodes */
+        LY_LIST_FOR(pnodes, pnode) {
+            if (pnode->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
+                /* manual compile */
+                node = calloc(1, sizeof(struct lysc_node_action_inout));
+                LY_CHECK_ERR_GOTO(!node, LOGMEM(ctx->ctx); rc = LY_EMEM, cleanup);
+                LY_CHECK_GOTO(rc = lys_compile_node_action_inout(ctx, pnode, node), cleanup);
+                LY_CHECK_GOTO(rc = lys_compile_node_connect(ctx, NULL, node), cleanup);
+            } else {
+                /* ctx->ext substatement storage is used as the document root */
+                LY_CHECK_GOTO(rc = lys_compile_node(ctx, pnode, NULL, flags, NULL), cleanup);
             }
         }
         break;
@@ -200,10 +195,9 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, const void *parsed, struct l
     }
     case LY_STMT_MUST: {
         const struct lysp_restr *restrs = parsed;
-        struct lysc_must *musts = *(struct lysc_must **)substmt->storage;
 
         /* sized array */
-        COMPILE_ARRAY_GOTO(ctx, restrs, musts, lys_compile_must, rc, cleanup);
+        COMPILE_ARRAY_GOTO(ctx, restrs, *(struct lysc_must **)substmt->storage, lys_compile_must, rc, cleanup);
         break;
     }
     case LY_STMT_WHEN: {
@@ -276,10 +270,9 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, const void *parsed, struct l
     }
     case LY_STMT_EXTENSION_INSTANCE: {
         struct lysp_ext_instance *extps = (struct lysp_ext_instance *)parsed;
-        struct lysc_ext_instance *exts = *(struct lysc_ext_instance **)substmt->storage;
 
         /* compile sized array */
-        COMPILE_EXTS_GOTO(ctx, extps, exts, ext, rc, cleanup);
+        COMPILE_EXTS_GOTO(ctx, extps, *(struct lysc_ext_instance **)substmt->storage, ext, rc, cleanup);
         break;
     }
     case LY_STMT_AUGMENT:
@@ -321,15 +314,17 @@ cleanup:
     return rc;
 }
 
-static LY_ERR
-lys_compile_extension_instance_(struct lysc_ctx *ctx, const struct lysp_ext_instance *extp, struct lysc_ext_instance *ext,
-        struct lysc_node *aug_target)
+LIBYANG_API_DEF LY_ERR
+lyplg_ext_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *extp,
+        struct lysc_ext_instance *ext)
 {
     LY_ERR rc = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u, v;
     enum ly_stmt stmtp;
     const void *storagep;
     struct ly_set storagep_compiled = {0};
+
+    LY_CHECK_ARG_RET(ctx ? ctx->ctx : NULL, ctx, extp, ext, LY_EINVAL);
 
     /* note into the compile context that we are processing extension now */
     ctx->ext = ext;
@@ -348,7 +343,7 @@ lys_compile_extension_instance_(struct lysc_ctx *ctx, const struct lysp_ext_inst
                 continue;
             }
 
-            if ((rc = lys_compile_ext_instance_stmt(ctx, storagep, ext, &ext->substmts[v], aug_target))) {
+            if ((rc = lys_compile_ext_instance_stmt(ctx, storagep, ext, &ext->substmts[v]))) {
                 goto cleanup;
             }
 
@@ -364,23 +359,6 @@ cleanup:
     ctx->ext = NULL;
     ly_set_erase(&storagep_compiled, NULL);
     return rc;
-}
-
-LIBYANG_API_DEF LY_ERR
-lyplg_ext_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext)
-{
-    LY_CHECK_ARG_RET(ctx ? ctx->ctx : NULL, ctx, ext_p, ext, LY_EINVAL);
-
-    return lys_compile_extension_instance_(ctx, ext_p, ext, NULL);
-}
-
-LIBYANG_API_DEF LY_ERR
-lyplg_ext_compile_extension_instance_augment(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p,
-        struct lysc_ext_instance *ext, struct lysc_node *aug_target)
-{
-    LY_CHECK_ARG_RET(ctx ? ctx->ctx : NULL, ctx, ext_p, ext, aug_target, LY_EINVAL);
-
-    return lys_compile_extension_instance_(ctx, ext_p, ext, aug_target);
 }
 
 LIBYANG_API_DEF struct ly_ctx *
