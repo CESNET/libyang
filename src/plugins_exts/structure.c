@@ -43,12 +43,7 @@ struct lysp_ext_instance_augment_structure {
     const char *dsc;
     const char *ref;
     struct lysp_node *child;
-};
-
-struct lysc_ext_instance_augment_structure {
-    uint16_t flags;
-    const char *dsc;
-    const char *ref;
+    struct lysp_node_augment *aug;
 };
 
 /**
@@ -89,7 +84,7 @@ structure_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
         goto emem;
     }
     ext->parsed = struct_pdata;
-    LY_ARRAY_CREATE_GOTO(lyplg_extp_cur_pmod(pctx)->mod->ctx, ext->substmts, 14, rc, emem);
+    LY_ARRAY_CREATE_GOTO(lyplg_ext_parse_get_cur_pmod(pctx)->mod->ctx, ext->substmts, 14, rc, emem);
 
     /* parse substatements */
     LY_ARRAY_INCREMENT(ext->substmts);
@@ -310,6 +305,7 @@ structure_aug_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     LY_ERR rc;
     struct lysp_stmt *stmt;
     struct lysp_ext_instance_augment_structure *aug_pdata;
+    const struct ly_ctx *ctx = lyplg_ext_parse_get_cur_pmod(pctx)->mod->ctx;
 
     /* augment-structure can appear only at the top level of a YANG module or submodule */
     if ((ext->parent_stmt != LY_STMT_MODULE) && (ext->parent_stmt != LY_STMT_SUBMODULE)) {
@@ -337,7 +333,7 @@ structure_aug_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
         goto emem;
     }
     ext->parsed = aug_pdata;
-    LY_ARRAY_CREATE_GOTO(lyplg_extp_cur_pmod(pctx)->mod->ctx, ext->substmts, 12, rc, emem);
+    LY_ARRAY_CREATE_GOTO(ctx, ext->substmts, 13, rc, emem);
 
     /* parse substatements */
     LY_ARRAY_INCREMENT(ext->substmts);
@@ -390,117 +386,30 @@ structure_aug_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     ext->substmts[11].stmt = LY_STMT_CASE;
     ext->substmts[11].storage = &aug_pdata->child;
 
-    rc = lyplg_ext_parse_extension_instance(pctx, ext);
-    return rc;
-
-emem:
-    lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EMEM, "Memory allocation failed (%s()).", __func__);
-    return LY_EMEM;
-}
-
-/**
- * @brief Compile augment-structure extension instances.
- *
- * Implementation of ::lyplg_ext_compile_clb callback set as lyext_plugin::compile.
- */
-static LY_ERR
-structure_aug_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, struct lysc_ext_instance *ext)
-{
-    LY_ERR rc;
-    struct lysc_node *aug_target;
-    struct lysc_ext_instance *target_ext;
-    struct lysc_ext_instance_structure *target_cdata;
-    struct lysc_ext_instance_augment_structure *aug_cdata;
-    uint32_t prev_options = *lyplg_ext_compile_get_options(cctx), i;
-
-    /* find the target struct ext instance */
-    if ((rc = lys_compile_extension_instance_find_augment_target(cctx, extp->argument, &target_ext, &aug_target))) {
+    if ((rc = lyplg_ext_parse_extension_instance(pctx, ext))) {
         return rc;
     }
 
-    /* check target_ext */
-    if (strcmp(target_ext->def->name, "structure") || strcmp(target_ext->def->module->name, "ietf-yang-structure-ext")) {
-        lyplg_ext_compile_log(cctx, ext, LY_LLERR, LY_EVALID,
-                "Extension %s can only target extension instances of \"ietf-yang-structure-ext:structure\".", extp->name);
-        return LY_EVALID;
-    }
-    target_cdata = target_ext->compiled;
+    /* add fake parsed augment node */
+    LY_ARRAY_INCREMENT(ext->substmts);
+    ext->substmts[12].stmt = LY_STMT_AUGMENT;
+    ext->substmts[12].storage = &aug_pdata->aug;
 
-    /* allocate the storage */
-    aug_cdata = calloc(1, sizeof *aug_cdata);
-    if (!aug_cdata) {
+    aug_pdata->aug = calloc(1, sizeof *aug_pdata->aug);
+    if (!aug_pdata->aug) {
         goto emem;
     }
-    ext->compiled = aug_cdata;
-
-    /* compile substatements */
-    LY_ARRAY_CREATE_GOTO(cctx->ctx, ext->substmts, 12, rc, emem);
-    LY_ARRAY_INCREMENT(ext->substmts);
-    ext->substmts[0].stmt = LY_STMT_STATUS;
-    ext->substmts[0].storage = &aug_cdata->flags;
-
-    LY_ARRAY_INCREMENT(ext->substmts);
-    ext->substmts[1].stmt = LY_STMT_DESCRIPTION;
-    ext->substmts[1].storage = &aug_cdata->dsc;
-
-    LY_ARRAY_INCREMENT(ext->substmts);
-    ext->substmts[2].stmt = LY_STMT_REFERENCE;
-    ext->substmts[2].storage = &aug_cdata->ref;
-
-    /* data-def-stmt */
-    LY_ARRAY_INCREMENT(ext->substmts);
-    ext->substmts[3].stmt = LY_STMT_CONTAINER;
-    ext->substmts[3].storage = &target_cdata->child;
-
-    LY_ARRAY_INCREMENT(ext->substmts);
-    ext->substmts[4].stmt = LY_STMT_LEAF;
-    ext->substmts[4].storage = &target_cdata->child;
-
-    LY_ARRAY_INCREMENT(ext->substmts);
-    ext->substmts[5].stmt = LY_STMT_LEAF_LIST;
-    ext->substmts[5].storage = &target_cdata->child;
-
-    LY_ARRAY_INCREMENT(ext->substmts);
-    ext->substmts[6].stmt = LY_STMT_LIST;
-    ext->substmts[6].storage = &target_cdata->child;
-
-    LY_ARRAY_INCREMENT(ext->substmts);
-    ext->substmts[7].stmt = LY_STMT_CHOICE;
-    ext->substmts[7].storage = &target_cdata->child;
-
-    LY_ARRAY_INCREMENT(ext->substmts);
-    ext->substmts[8].stmt = LY_STMT_ANYDATA;
-    ext->substmts[8].storage = &target_cdata->child;
-
-    LY_ARRAY_INCREMENT(ext->substmts);
-    ext->substmts[9].stmt = LY_STMT_ANYXML;
-    ext->substmts[9].storage = &target_cdata->child;
-
-    LY_ARRAY_INCREMENT(ext->substmts);
-    ext->substmts[10].stmt = LY_STMT_USES;
-    ext->substmts[10].storage = &target_cdata->child;
-
-    /* case */
-    LY_ARRAY_INCREMENT(ext->substmts);
-    ext->substmts[11].stmt = LY_STMT_CASE;
-    ext->substmts[11].storage = &target_cdata->child;
-
-    *lyplg_ext_compile_get_options(cctx) |= LYS_COMPILE_NO_CONFIG | LYS_COMPILE_NO_DISABLED;
-    rc = lyplg_ext_compile_extension_instance_augment(cctx, extp, ext, aug_target);
-    *lyplg_ext_compile_get_options(cctx) = prev_options;
-    if (rc) {
-        return rc;
-    }
-
-    /* data-def-statements are now part of the target extension (do not print nor free them) */
-    for (i = 0; i < 9; ++i) {
-        LY_ARRAY_DECREMENT(ext->substmts);
-    }
+    aug_pdata->aug->nodetype = LYS_AUGMENT;
+    aug_pdata->aug->flags = aug_pdata->flags;
+    lydict_insert(ctx, ext->argument, 0, &aug_pdata->aug->nodeid);
+    aug_pdata->aug->child = aug_pdata->child;
+    /* avoid double free */
+    aug_pdata->child = NULL;
 
     return LY_SUCCESS;
 
 emem:
-    lyplg_ext_compile_log(cctx, ext, LY_LLERR, LY_EMEM, "Memory allocation failed (%s()).", __func__);
+    lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EMEM, "Memory allocation failed (%s()).", __func__);
     return LY_EMEM;
 }
 
@@ -534,13 +443,13 @@ const struct lyplg_ext_record plugins_structure[] = {
 
         .plugin.id = "ly2 structure v1",
         .plugin.parse = structure_aug_parse,
-        .plugin.compile = structure_aug_compile,
-        .plugin.printer_info = structure_printer_info,
+        .plugin.compile = NULL,
+        .plugin.printer_info = NULL,
         .plugin.node = NULL,
         .plugin.snode = NULL,
         .plugin.validate = NULL,
-        .plugin.pfree = NULL,
-        .plugin.cfree = structure_cfree
+        .plugin.pfree = structure_pfree,
+        .plugin.cfree = NULL
     },
     {0}     /* terminating zeroed record */
 };

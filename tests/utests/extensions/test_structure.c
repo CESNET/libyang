@@ -75,6 +75,10 @@ test_schema(void **state)
             "        type uint32;\n"
             "        status deprecated;\n"
             "      }\n"
+            "      leaf aug-leaf {\n"
+            "        type string;\n"
+            "        status obsolete;\n"
+            "      }\n"
             "    }\n"
             "    list n2 {\n"
             "      min-elements 0;\n"
@@ -88,10 +92,6 @@ test_schema(void **state)
             "          type uint32;\n"
             "        }\n"
             "        status deprecated;\n"
-            "      }\n"
-            "      leaf aug-leaf {\n"
-            "        type string;\n"
-            "        status obsolete;\n"
             "      }\n"
             "    }\n"
             "    leaf gl {\n"
@@ -110,11 +110,7 @@ test_schema(void **state)
             "  namespace \"urn:tests:extensions:structure:b\";\n"
             "  prefix b;\n"
             "\n"
-            "  ietf-yang-structure-ext:augment-structure \"/a:struct/a:n1\" {\n"
-            "    status obsolete;\n"
-            "    reference\n"
-            "      \"none\";\n"
-            "  }\n"
+            "  ietf-yang-structure-ext:augment-structure \"/a:struct/a:n1\";\n"
             "}\n";
 
     assert_non_null(mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "b"));
@@ -146,6 +142,7 @@ test_schema_invalid(void **state)
 {
     const char *data;
 
+    /* structure */
     data = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix self;"
             "import ietf-yang-structure-ext {prefix sx;}"
             "sx:structure struct {import yang;}}";
@@ -183,6 +180,26 @@ test_schema_invalid(void **state)
     UTEST_INVALID_MODULE(data, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Ext plugin \"ly2 structure v1\": Extension sx:structure collides with a choice with the same identifier.",
             "/a:{extension='sx:structure'}/struct");
+
+    /* augment-structure */
+    data = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix a;"
+            "import ietf-yang-structure-ext {prefix sx;}"
+            "sx:structure struct {"
+            "  container n1 {leaf l {config false; type uint32;}}"
+            "  list n2 {leaf l {type string;}}"
+            "}"
+            "container n1 {leaf l2 {type uint8;}}}";
+    UTEST_ADD_MODULE(data, LYS_IN_YANG, NULL, NULL);
+
+    data = "module b {yang-version 1.1; namespace urn:tests:extensions:structure:b; prefix b;"
+            "import ietf-yang-structure-ext {prefix sx;}"
+            "import a {prefix a;}"
+            "sx:augment-structure \"/a:n1\" {"
+            "  leaf aug-leaf {type string;}"
+            "}}";
+    UTEST_INVALID_MODULE(data, LYS_IN_YANG, NULL, LY_ENOTFOUND);
+    CHECK_LOG_CTX("Augment extension target node \"/a:n1\" from module \"b\" was not found.",
+            "/b:{extension='sx:augment-structure'}/{augment='/a:n1'}");
 }
 
 static void
@@ -191,24 +208,37 @@ test_parse(void **state)
     struct lys_module *mod;
     struct lysc_ext_instance *e;
     struct lyd_node *tree = NULL;
-    const char *schema = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix self;"
+    const char *yang;
+    const char *xml = "<x xmlns=\"urn:tests:extensions:structure:a\">"
+            "<x>test</x>"
+            "<x2 xmlns=\"urn:tests:extensions:structure:b\">25</x2>"
+            "</x>";
+    const char *json = "{\"a:x\":{\"x\":\"test\",\"b:x2\":25}}";
+
+    yang = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix a;"
             "import ietf-yang-structure-ext {prefix sx;}"
             "sx:structure struct { container x { leaf x { type string;}}}}";
-    const char *xml = "<x xmlns=\"urn:tests:extensions:structure:a\"><x>test</x></x>";
-    const char *json = "{\"a:x\":{\"x\":\"test\"}}";
+    UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, &mod);
 
-    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+    yang = "module b {yang-version 1.1; namespace urn:tests:extensions:structure:b; prefix b;"
+            "import ietf-yang-structure-ext {prefix sx;}"
+            "import a {prefix a;}"
+            "sx:augment-structure \"/a:struct/a:x\" {"
+            "  leaf x2 {type uint32;}"
+            "}}";
+    UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, NULL);
+
+    /* get extension after recompilation */
     assert_non_null(e = mod->compiled->exts);
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(xml, &UTEST_IN));
-    assert_int_equal(LY_SUCCESS, lyd_parse_ext_data(e, NULL, UTEST_IN, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_ext_data(e, NULL, UTEST_IN, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
     CHECK_LYD_STRING_PARAM(tree, xml, LYD_XML, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS);
     lyd_free_all(tree);
 
     ly_in_memory(UTEST_IN, json);
-    assert_int_equal(LY_SUCCESS, lyd_parse_ext_data(e, NULL, UTEST_IN, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_ext_data(e, NULL, UTEST_IN, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
     CHECK_LYD_STRING_PARAM(tree, json, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS);
-
     lyd_free_all(tree);
 }
 

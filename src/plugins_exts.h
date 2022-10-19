@@ -623,54 +623,6 @@ LIBYANG_API_DECL struct lysp_module *lyplg_ext_compile_get_pmod(const struct lys
 LIBYANG_API_DECL LY_ERR lyplg_ext_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *extp,
         struct lysc_ext_instance *ext);
 
-/**
- * @brief Compile substatements of an extension instance but append all schema data nodes as augments.
- *
- * Similar to ::lys_compile_extension_instance().
- *
- * @param[in] ctx Compile context.
- * @param[in] extp Parsed representation of the extension instance being processed.
- * @param[in,out] ext Compiled extension instance with the prepared ::lysc_ext_instance.substmts array, which will be updated
- * by storing the compiled data except for schema data nodes.
- * @param[in] aug_target Augment target node to append schema data nodes.
- * @return LY_SUCCESS on success.
- * @return LY_EVALID if compilation of the substatements fails.
- * @return LY_ENOT if the extension is disabled (by if-feature) and should be ignored.
- */
-LIBYANG_API_DECL LY_ERR lyplg_ext_compile_extension_instance_augment(struct lysc_ctx *ctx,
-        const struct lysp_ext_instance *extp, struct lysc_ext_instance *ext, struct lysc_node *aug_target);
-
-/**
- * @brief Find augment target in an extension.
- *
- * @param[in] ctx Compile context.
- * @param[in] path Absolute-schema-nodeid representing the augment target. The first segment is expected to identify
- * the specific extension instance.
- * @param[out] aug_ext Optional augment target extension.
- * @param[out] aug_target Augment target compiled schema node.
- * @return LY_ERR value.
- */
-LIBYANG_API_DECL LY_ERR lys_compile_extension_instance_find_augment_target(struct lysc_ctx *ctx, const char *path,
-        struct lysc_ext_instance **aug_ext, struct lysc_node **aug_target);
-
-/**
- * @brief Update path in the compile context, which is used for logging where the compilation failed.
- *
- * @param[in] ctx Compile context with the path.
- * @param[in] parent_module Module of the current node's parent to check difference with the currently processed module (taken from @p ctx).
- * @param[in] name Name of the node to update path with. If NULL, the last segment is removed. If the format is `{keyword}`, the following
- * call updates the segment to the form `{keyword='name'}` (to remove this compound segment, 2 calls with NULL @p name must be used).
- */
-LIBYANG_API_DECL void lysc_update_path(struct lysc_ctx *ctx, struct lys_module *parent_module, const char *name);
-
-/**
- * @brief Duplicate the compiled extension (definition) structure.
- *
- * @param[in] orig The extension structure to duplicate.
- * @return The duplicated structure to use.
- */
-LIBYANG_API_DECL struct lysc_ext *lysc_ext_dup(struct lysc_ext *orig);
-
 /*
  * sprinter info
  */

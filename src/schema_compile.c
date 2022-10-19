@@ -47,6 +47,66 @@
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
+void
+lysc_update_path(struct lysc_ctx *ctx, const struct lys_module *parent_module, const char *name)
+{
+    int len;
+    uint8_t nextlevel = 0; /* 0 - no starttag, 1 - '/' starttag, 2 - '=' starttag + '}' endtag */
+
+    if (!name) {
+        /* removing last path segment */
+        if (ctx->path[ctx->path_len - 1] == '}') {
+            for ( ; ctx->path[ctx->path_len] != '=' && ctx->path[ctx->path_len] != '{'; --ctx->path_len) {}
+            if (ctx->path[ctx->path_len] == '=') {
+                ctx->path[ctx->path_len++] = '}';
+            } else {
+                /* not a top-level special tag, remove also preceiding '/' */
+                goto remove_nodelevel;
+            }
+        } else {
+remove_nodelevel:
+            for ( ; ctx->path[ctx->path_len] != '/'; --ctx->path_len) {}
+            if (ctx->path_len == 0) {
+                /* top-level (last segment) */
+                ctx->path_len = 1;
+            }
+        }
+        /* set new terminating NULL-byte */
+        ctx->path[ctx->path_len] = '\0';
+    } else {
+        if (ctx->path_len > 1) {
+            if (!parent_module && (ctx->path[ctx->path_len - 1] == '}') && (ctx->path[ctx->path_len - 2] != '\'')) {
+                /* extension of the special tag */
+                nextlevel = 2;
+                --ctx->path_len;
+            } else {
+                /* there is already some path, so add next level */
+                nextlevel = 1;
+            }
+        } /* else the path is just initiated with '/', so do not add additional slash in case of top-level nodes */
+
+        if (nextlevel != 2) {
+            if ((parent_module && (parent_module == ctx->cur_mod)) || (!parent_module && (ctx->path_len > 1) && (name[0] == '{'))) {
+                /* module not changed, print the name unprefixed */
+                len = snprintf(&ctx->path[ctx->path_len], LYSC_CTX_BUFSIZE - ctx->path_len, "%s%s", nextlevel ? "/" : "", name);
+            } else {
+                len = snprintf(&ctx->path[ctx->path_len], LYSC_CTX_BUFSIZE - ctx->path_len, "%s%s:%s", nextlevel ? "/" : "", ctx->cur_mod->name, name);
+            }
+        } else {
+            len = snprintf(&ctx->path[ctx->path_len], LYSC_CTX_BUFSIZE - ctx->path_len, "='%s'}", name);
+        }
+        if (len >= LYSC_CTX_BUFSIZE - (int)ctx->path_len) {
+            /* output truncated */
+            ctx->path_len = LYSC_CTX_BUFSIZE - 1;
+        } else {
+            ctx->path_len += len;
+        }
+    }
+
+    LOG_LOCBACK(0, 0, 1, 0);
+    LOG_LOCSET(NULL, NULL, ctx->path, NULL);
+}
+
 /**
  * @brief Fill in the prepared compiled extensions definition structure according to the parsed extension definition.
  *
@@ -132,13 +192,6 @@ cleanup:
     return ret;
 }
 
-LIBYANG_API_DEF struct lysc_ext *
-lysc_ext_dup(struct lysc_ext *orig)
-{
-    ++orig->refcount;
-    return orig;
-}
-
 static void
 lysc_unres_must_free(struct lysc_unres_must *m)
 {
@@ -157,66 +210,6 @@ lysc_unres_dflt_free(const struct ly_ctx *ctx, struct lysc_unres_dflt *r)
         FREE_ARRAY((struct ly_ctx *)ctx, r->dflts, lysp_qname_free);
     }
     free(r);
-}
-
-LIBYANG_API_DEF void
-lysc_update_path(struct lysc_ctx *ctx, struct lys_module *parent_module, const char *name)
-{
-    int len;
-    uint8_t nextlevel = 0; /* 0 - no starttag, 1 - '/' starttag, 2 - '=' starttag + '}' endtag */
-
-    if (!name) {
-        /* removing last path segment */
-        if (ctx->path[ctx->path_len - 1] == '}') {
-            for ( ; ctx->path[ctx->path_len] != '=' && ctx->path[ctx->path_len] != '{'; --ctx->path_len) {}
-            if (ctx->path[ctx->path_len] == '=') {
-                ctx->path[ctx->path_len++] = '}';
-            } else {
-                /* not a top-level special tag, remove also preceiding '/' */
-                goto remove_nodelevel;
-            }
-        } else {
-remove_nodelevel:
-            for ( ; ctx->path[ctx->path_len] != '/'; --ctx->path_len) {}
-            if (ctx->path_len == 0) {
-                /* top-level (last segment) */
-                ctx->path_len = 1;
-            }
-        }
-        /* set new terminating NULL-byte */
-        ctx->path[ctx->path_len] = '\0';
-    } else {
-        if (ctx->path_len > 1) {
-            if (!parent_module && (ctx->path[ctx->path_len - 1] == '}') && (ctx->path[ctx->path_len - 2] != '\'')) {
-                /* extension of the special tag */
-                nextlevel = 2;
-                --ctx->path_len;
-            } else {
-                /* there is already some path, so add next level */
-                nextlevel = 1;
-            }
-        } /* else the path is just initiated with '/', so do not add additional slash in case of top-level nodes */
-
-        if (nextlevel != 2) {
-            if ((parent_module && (parent_module == ctx->cur_mod)) || (!parent_module && (ctx->path_len > 1) && (name[0] == '{'))) {
-                /* module not changed, print the name unprefixed */
-                len = snprintf(&ctx->path[ctx->path_len], LYSC_CTX_BUFSIZE - ctx->path_len, "%s%s", nextlevel ? "/" : "", name);
-            } else {
-                len = snprintf(&ctx->path[ctx->path_len], LYSC_CTX_BUFSIZE - ctx->path_len, "%s%s:%s", nextlevel ? "/" : "", ctx->cur_mod->name, name);
-            }
-        } else {
-            len = snprintf(&ctx->path[ctx->path_len], LYSC_CTX_BUFSIZE - ctx->path_len, "='%s'}", name);
-        }
-        if (len >= LYSC_CTX_BUFSIZE - (int)ctx->path_len) {
-            /* output truncated */
-            ctx->path_len = LYSC_CTX_BUFSIZE - 1;
-        } else {
-            ctx->path_len += len;
-        }
-    }
-
-    LOG_LOCBACK(0, 0, 1, 0);
-    LOG_LOCSET(NULL, NULL, ctx->path, NULL);
 }
 
 LY_ERR
@@ -1443,13 +1436,21 @@ lys_compile_unres_mod(struct lysc_ctx *ctx)
     for (i = 0; i < ctx->augs.count; ++i) {
         aug = ctx->augs.objs[i];
         ctx->cur_mod = aug->aug_pmod->mod;
+        if (aug->ext) {
+            lysc_update_path(ctx, NULL, "{extension}");
+            lysc_update_path(ctx, NULL, aug->ext->name);
+        }
         lysc_update_path(ctx, NULL, "{augment}");
         lysc_update_path(ctx, NULL, aug->nodeid->expr);
-        LOGVAL(ctx->ctx, LYVE_REFERENCE, "Augment target node \"%s\" from module \"%s\" was not found.",
-                aug->nodeid->expr, LYSP_MODULE_NAME(aug->aug_pmod));
+        LOGVAL(ctx->ctx, LYVE_REFERENCE, "Augment%s target node \"%s\" from module \"%s\" was not found.",
+                aug->ext ? " extension" : "", aug->nodeid->expr, LYSP_MODULE_NAME(aug->aug_pmod));
         ctx->cur_mod = orig_mod;
         lysc_update_path(ctx, NULL, NULL);
         lysc_update_path(ctx, NULL, NULL);
+        if (aug->ext) {
+            lysc_update_path(ctx, NULL, NULL);
+            lysc_update_path(ctx, NULL, NULL);
+        }
     }
     if (ctx->augs.count) {
         return LY_ENOTFOUND;

@@ -15,6 +15,7 @@
 
 #define _GNU_SOURCE
 
+#include <assert.h>
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -731,7 +732,40 @@ yprc_pattern(struct lys_ypr_ctx *pctx, const struct lysc_pattern *pattern, ly_bo
 }
 
 static void
-yprp_when(struct lys_ypr_ctx *pctx, struct lysp_when *when, ly_bool *flag)
+yprc_bits_enum(struct lys_ypr_ctx *pctx, const struct lysc_type_bitenum_item *items, LY_DATA_TYPE basetype, ly_bool *flag)
+{
+    LY_ARRAY_COUNT_TYPE u;
+    const struct lysc_type_bitenum_item *item;
+    ly_bool inner_flag;
+
+    assert((basetype == LY_TYPE_BITS) || (basetype == LY_TYPE_ENUM));
+
+    LY_ARRAY_FOR(items, u) {
+        item = &items[u];
+        inner_flag = 0;
+
+        ypr_open(pctx->out, flag);
+        ly_print_(pctx->out, "%*s%s \"", INDENT, basetype == LY_TYPE_BITS ? "bit" : "enum");
+        ypr_encode(pctx->out, item->name, -1);
+        ly_print_(pctx->out, "\"");
+        LEVEL++;
+        if (basetype == LY_TYPE_BITS) {
+            yprc_extension_instances(pctx, LY_STMT_BIT, 0, item->exts, &inner_flag);
+            ypr_unsigned(pctx, LY_STMT_POSITION, 0, item->exts, item->position, &inner_flag);
+        } else { /* LY_TYPE_ENUM */
+            yprc_extension_instances(pctx, LY_STMT_ENUM, 0, item->exts, &inner_flag);
+            ypr_signed(pctx, LY_STMT_VALUE, 0, item->exts, item->value, &inner_flag);
+        }
+        ypr_status(pctx, item->flags, item->exts, &inner_flag);
+        ypr_description(pctx, item->dsc, item->exts, &inner_flag);
+        ypr_reference(pctx, item->ref, item->exts, &inner_flag);
+        LEVEL--;
+        ypr_close(pctx, inner_flag);
+    }
+}
+
+static void
+yprp_when(struct lys_ypr_ctx *pctx, const struct lysp_when *when, ly_bool *flag)
 {
     ly_bool inner_flag = 0;
 
@@ -753,7 +787,7 @@ yprp_when(struct lys_ypr_ctx *pctx, struct lysp_when *when, ly_bool *flag)
 }
 
 static void
-yprc_when(struct lys_ypr_ctx *pctx, struct lysc_when *when, ly_bool *flag)
+yprc_when(struct lys_ypr_ctx *pctx, const struct lysc_when *when, ly_bool *flag)
 {
     ly_bool inner_flag = 0;
 
@@ -775,7 +809,7 @@ yprc_when(struct lys_ypr_ctx *pctx, struct lysc_when *when, ly_bool *flag)
 }
 
 static void
-yprp_enum(struct lys_ypr_ctx *pctx, const struct lysp_type_enum *items, LY_DATA_TYPE type, ly_bool *flag)
+yprp_bits_enum(struct lys_ypr_ctx *pctx, const struct lysp_type_enum *items, LY_DATA_TYPE type, ly_bool *flag)
 {
     LY_ARRAY_COUNT_TYPE u;
     ly_bool inner_flag;
@@ -824,8 +858,8 @@ yprp_type(struct lys_ypr_ctx *pctx, const struct lysp_type *type)
     LY_ARRAY_FOR(type->patterns, u) {
         yprp_restr(pctx, &type->patterns[u], LY_STMT_PATTERN, &flag);
     }
-    yprp_enum(pctx, type->bits, LY_TYPE_BITS, &flag);
-    yprp_enum(pctx, type->enums, LY_TYPE_ENUM, &flag);
+    yprp_bits_enum(pctx, type->bits, LY_TYPE_BITS, &flag);
+    yprp_bits_enum(pctx, type->enums, LY_TYPE_ENUM, &flag);
 
     if (type->path) {
         ypr_open(pctx->out, &flag);
@@ -910,28 +944,7 @@ yprc_type(struct lys_ypr_ctx *pctx, const struct lysc_type *type)
         /* bits and enums structures are compatible */
         struct lysc_type_bits *bits = (struct lysc_type_bits *)type;
 
-        LY_ARRAY_FOR(bits->bits, u) {
-            struct lysc_type_bitenum_item *item = &bits->bits[u];
-            ly_bool inner_flag = 0;
-
-            ypr_open(pctx->out, &flag);
-            ly_print_(pctx->out, "%*s%s \"", INDENT, type->basetype == LY_TYPE_BITS ? "bit" : "enum");
-            ypr_encode(pctx->out, item->name, -1);
-            ly_print_(pctx->out, "\"");
-            LEVEL++;
-            if (type->basetype == LY_TYPE_BITS) {
-                yprc_extension_instances(pctx, LY_STMT_BIT, 0, item->exts, &inner_flag);
-                ypr_unsigned(pctx, LY_STMT_POSITION, 0, item->exts, item->position, &inner_flag);
-            } else { /* LY_TYPE_ENUM */
-                yprc_extension_instances(pctx, LY_STMT_ENUM, 0, item->exts, &inner_flag);
-                ypr_signed(pctx, LY_STMT_VALUE, 0, item->exts, item->value, &inner_flag);
-            }
-            ypr_status(pctx, item->flags, item->exts, &inner_flag);
-            ypr_description(pctx, item->dsc, item->exts, &inner_flag);
-            ypr_reference(pctx, item->ref, item->exts, &inner_flag);
-            LEVEL--;
-            ypr_close(pctx, inner_flag);
-        }
+        yprc_bits_enum(pctx, bits->bits, type->basetype, &flag);
         break;
     }
     case LY_TYPE_BOOL:
@@ -2448,24 +2461,28 @@ yang_print_compiled(struct ly_out *out, const struct lys_module *module, uint32_
 }
 
 LIBYANG_API_DEF void
-lyplg_ext_print_info_extension_instance(struct lyspr_ctx *ctx_generic, const struct lysc_ext_instance *ext, ly_bool *flag)
+lyplg_ext_print_info_extension_instance(struct lyspr_ctx *ctx, const struct lysc_ext_instance *ext, ly_bool *flag)
 {
-    struct lys_ypr_ctx *pctx = (struct lys_ypr_ctx *)ctx_generic;
+    struct lys_ypr_ctx *pctx = (struct lys_ypr_ctx *)ctx;
     LY_ARRAY_COUNT_TYPE u, v;
     ly_bool data_printed = 0;
 
     LY_ARRAY_FOR(ext->substmts, u) {
         switch (ext->substmts[u].stmt) {
+        case LY_STMT_NOTIFICATION:
+        case LY_STMT_INPUT:
+        case LY_STMT_OUTPUT:
         case LY_STMT_ACTION:
-        case LY_STMT_CONTAINER:
+        case LY_STMT_RPC:
+        case LY_STMT_ANYDATA:
+        case LY_STMT_ANYXML:
+        case LY_STMT_CASE:
         case LY_STMT_CHOICE:
+        case LY_STMT_CONTAINER:
         case LY_STMT_LEAF:
         case LY_STMT_LEAF_LIST:
         case LY_STMT_LIST:
-        case LY_STMT_NOTIFICATION:
-        case LY_STMT_RPC:
-        case LY_STMT_ANYXML:
-        case LY_STMT_ANYDATA: {
+        case LY_STMT_USES: {
             const struct lysc_node *node;
 
             if (data_printed) {
@@ -2474,10 +2491,12 @@ lyplg_ext_print_info_extension_instance(struct lyspr_ctx *ctx_generic, const str
 
             LY_LIST_FOR(*(const struct lysc_node **)ext->substmts[u].storage, node) {
                 ypr_open(pctx->out, flag);
-                if ((ext->substmts[u].stmt == LY_STMT_ACTION) || (ext->substmts[u].stmt == LY_STMT_RPC)) {
-                    yprc_action(pctx, (struct lysc_node_action *)node);
-                } else if (ext->substmts[u].stmt == LY_STMT_NOTIFICATION) {
+                if (ext->substmts[u].stmt == LY_STMT_NOTIFICATION) {
                     yprc_notification(pctx, (struct lysc_node_notif *)node);
+                } else if (ext->substmts[u].stmt & (LY_STMT_INPUT | LY_STMT_OUTPUT)) {
+                    yprc_inout(pctx, (struct lysc_node_action_inout *)node, flag);
+                } else if (ext->substmts[u].stmt & (LY_STMT_ACTION | LY_STMT_RPC)) {
+                    yprc_action(pctx, (struct lysc_node_action *)node);
                 } else {
                     yprc_node(pctx, node);
                 }
@@ -2487,11 +2506,13 @@ lyplg_ext_print_info_extension_instance(struct lyspr_ctx *ctx_generic, const str
             data_printed = 1;
             break;
         }
+        case LY_STMT_ARGUMENT:
         case LY_STMT_CONTACT:
         case LY_STMT_DESCRIPTION:
         case LY_STMT_ERROR_APP_TAG:
         case LY_STMT_ERROR_MESSAGE:
         case LY_STMT_KEY:
+        case LY_STMT_MODIFIER:
         case LY_STMT_NAMESPACE:
         case LY_STMT_ORGANIZATION:
         case LY_STMT_PRESENCE:
@@ -2502,6 +2523,60 @@ lyplg_ext_print_info_extension_instance(struct lyspr_ctx *ctx_generic, const str
                 ypr_substmt(pctx, ext->substmts[u].stmt, 0, *(const char **)ext->substmts[u].storage, ext->exts);
             }
             break;
+        case LY_STMT_BIT:
+        case LY_STMT_ENUM: {
+            const struct lysc_type_bitenum_item *items = *(struct lysc_type_bitenum_item **)ext->substmts[u].storage;
+
+            yprc_bits_enum(pctx, items, ext->substmts[u].stmt == LY_STMT_BIT ? LY_TYPE_BITS : LY_TYPE_ENUM, flag);
+            break;
+        }
+        case LY_STMT_CONFIG:
+            ypr_config(pctx, *(uint16_t *)ext->substmts[u].storage, ext->exts, flag);
+            break;
+        case LY_STMT_EXTENSION_INSTANCE:
+            yprc_extension_instances(pctx, LY_STMT_EXTENSION_INSTANCE, 0,
+                    *(struct lysc_ext_instance **)ext->substmts[u].storage, flag);
+            break;
+        case LY_STMT_FRACTION_DIGITS:
+            if (*(uint8_t *)ext->substmts[u].storage) {
+                ypr_unsigned(pctx, LY_STMT_FRACTION_DIGITS, 0, ext->exts, *(uint8_t *)ext->substmts[u].storage, flag);
+            }
+            break;
+        case LY_STMT_IDENTITY: {
+            const struct lysc_ident *idents = *(struct lysc_ident **)ext->substmts[u].storage;
+
+            LY_ARRAY_FOR(idents, v) {
+                yprc_identity(pctx, &idents[v]);
+            }
+            break;
+        }
+        case LY_STMT_LENGTH:
+            if (*(struct lysc_range **)ext->substmts[u].storage) {
+                yprc_range(pctx, *(struct lysc_range **)ext->substmts[u].storage, LY_TYPE_STRING, flag);
+            }
+            break;
+        case LY_STMT_MANDATORY:
+            ypr_mandatory(pctx, *(uint16_t *)ext->substmts[u].storage, ext->exts, flag);
+            break;
+        case LY_STMT_MAX_ELEMENTS: {
+            uint32_t max = *(uint32_t *)ext->substmts[u].storage;
+
+            if (max) {
+                ypr_unsigned(pctx, LY_STMT_MAX_ELEMENTS, 0, ext->exts, max, flag);
+            } else {
+                ypr_open(pctx->out, flag);
+                ypr_substmt(pctx, LY_STMT_MAX_ELEMENTS, 0, "unbounded", ext->exts);
+            }
+            break;
+        }
+        case LY_STMT_MIN_ELEMENTS:
+            ypr_unsigned(pctx, LY_STMT_MIN_ELEMENTS, 0, ext->exts, *(uint32_t *)ext->substmts[u].storage, flag);
+            break;
+        case LY_STMT_ORDERED_BY:
+            ypr_open(pctx->out, flag);
+            ypr_substmt(pctx, LY_STMT_ORDERED_BY, 0,
+                    (*(uint16_t *)ext->substmts[u].storage & LYS_ORDBY_USER) ? "user" : "system", ext->exts);
+            break;
         case LY_STMT_MUST: {
             const struct lysc_must *musts = *(struct lysc_must **)ext->substmts[u].storage;
 
@@ -2510,11 +2585,33 @@ lyplg_ext_print_info_extension_instance(struct lyspr_ctx *ctx_generic, const str
             }
             break;
         }
-        case LY_STMT_IF_FEATURE:
-        case LY_STMT_USES:
-        case LY_STMT_GROUPING:
-        case LY_STMT_TYPEDEF:
-            /* nothing to do */
+        case LY_STMT_PATTERN: {
+            const struct lysc_pattern *patterns = *(struct lysc_pattern **)ext->substmts[u].storage;
+
+            LY_ARRAY_FOR(patterns, v) {
+                yprc_pattern(pctx, &patterns[v], flag);
+            }
+            break;
+        }
+        case LY_STMT_POSITION:
+            if (*(int64_t *)ext->substmts[u].storage) {
+                ypr_unsigned(pctx, ext->substmts[u].stmt, 0, ext->exts, *(int64_t *)ext->substmts[u].storage, flag);
+            }
+            break;
+        case LY_STMT_VALUE:
+            if (*(int64_t *)ext->substmts[u].storage) {
+                ypr_signed(pctx, ext->substmts[u].stmt, 0, ext->exts, *(int64_t *)ext->substmts[u].storage, flag);
+            }
+            break;
+        case LY_STMT_RANGE:
+            if (*(struct lysc_range **)ext->substmts[u].storage) {
+                yprc_range(pctx, *(struct lysc_range **)ext->substmts[u].storage, LY_TYPE_UINT64, flag);
+            }
+            break;
+        case LY_STMT_REQUIRE_INSTANCE:
+            ypr_open(pctx->out, flag);
+            ypr_substmt(pctx, LY_STMT_REQUIRE_INSTANCE, 0, *(uint8_t *)ext->substmts[u].storage ? "true" : "false",
+                    ext->exts);
             break;
         case LY_STMT_STATUS:
             ypr_status(pctx, *(uint16_t *)ext->substmts[u].storage, ext->exts, flag);
@@ -2525,10 +2622,36 @@ lyplg_ext_print_info_extension_instance(struct lyspr_ctx *ctx_generic, const str
                 yprc_type(pctx, *(const struct lysc_type **)ext->substmts[u].storage);
             }
             break;
-        /* TODO support other substatements */
+        case LY_STMT_WHEN:
+            yprc_when(pctx, *(struct lysc_when **)ext->substmts[u].storage, flag);
+            break;
+        case LY_STMT_AUGMENT:
+        case LY_STMT_BASE:
+        case LY_STMT_BELONGS_TO:
+        case LY_STMT_DEFAULT:
+        case LY_STMT_DEVIATE:
+        case LY_STMT_DEVIATION:
+        case LY_STMT_EXTENSION:
+        case LY_STMT_FEATURE:
+        case LY_STMT_GROUPING:
+        case LY_STMT_IF_FEATURE:
+        case LY_STMT_IMPORT:
+        case LY_STMT_INCLUDE:
+        case LY_STMT_MODULE:
+        case LY_STMT_PATH:
+        case LY_STMT_PREFIX:
+        case LY_STMT_REFINE:
+        case LY_STMT_REVISION:
+        case LY_STMT_REVISION_DATE:
+        case LY_STMT_SUBMODULE:
+        case LY_STMT_TYPEDEF:
+        case LY_STMT_UNIQUE:
+        case LY_STMT_YANG_VERSION:
+        case LY_STMT_YIN_ELEMENT:
+            /* nothing to do */
+            break;
         default:
-            LOGWRN(pctx->module->ctx, "Statement \"%s\" is not supported for an extension printer.",
-                    lyplg_ext_stmt2str(ext->substmts[u].stmt));
+            LOGINT(pctx->module->ctx);
             break;
         }
     }
