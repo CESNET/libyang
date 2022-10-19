@@ -3028,7 +3028,7 @@ trop_modi_next_child(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
 
     if ((tmp = tro_next_child(tc->pn, tc->lysc_tree))) {
         tc->pn = tmp;
-        return trop_read_node(tro_parent_cache_for_child(ca, tc), tc);
+        return trop_read_node(ca, tc);
     } else {
         return TRP_EMPTY_NODE;
     }
@@ -3864,72 +3864,6 @@ trb_print_implicit_node_case_subtree(struct trt_node node, struct trt_wrapper wr
 }
 
 /**
- * @brief For the current node: recursively print all of its child
- * nodes and all of its siblings, including their children.
- *
- * This function is an auxiliary function for ::trb_print_subtree_nodes().
- * The parent of the current node is expected to exist.
- * Nodes are printed, including unified sibling node alignment
- * (align \<type\> to column).
- * Side-effect -> current node is set to the last sibling.
- *
- * @param[in] wr is wrapper for printing identation before node.
- * @param[in] ca contains inherited data from ancestors.
- * @param[in] pc contains mainly functions for printing.
- * @param[in,out] tc is tree context.
- */
-static void
-trb_print_nodes(struct trt_wrapper wr, struct trt_parent_cache ca, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
-{
-    uint32_t max_gap_before_type;
-    ly_bool sibling_flag = 0;
-    ly_bool child_flag = 0;
-
-    /* if node is last sibling, then do not add '|' to wrapper */
-    wr = trb_parent_is_last_sibling(pc->fp, tc) ?
-            trp_wrapper_set_shift(wr) : trp_wrapper_set_mark(wr);
-
-    /* try unified indentation in node */
-    max_gap_before_type = trb_try_unified_indent(ca, pc, tc);
-
-    /* print all siblings */
-    do {
-        struct trt_parent_cache new_ca;
-        struct trt_node node;
-
-        node = pc->fp.read.node(ca, tc);
-
-        if (!trb_need_implicit_node_case(tc)) {
-            /* normal behavior */
-            ly_print_(pc->out, "\n");
-            trb_print_entire_node(node, max_gap_before_type, wr, pc, tc);
-            new_ca = tro_parent_cache_for_child(ca, tc);
-            /* go to the actual node's child or stay in actual node */
-            node = pc->fp.modify.next_child(ca, tc);
-            child_flag = !trp_node_is_empty(node);
-
-            if (child_flag) {
-                /* print all childs - recursive call */
-                trb_print_nodes(wr, new_ca, pc, tc);
-                /* get back from child node to actual node */
-                pc->fp.modify.parent(tc);
-            }
-        } else {
-            /* The case statement is omitted (shorthand).
-             * Print implicit case node and his subtree.
-             */
-            trb_print_implicit_node_case_subtree(node, wr, ca, pc, tc);
-        }
-
-        /* go to the actual node's sibling */
-        node = pc->fp.modify.next_sibling(ca, tc);
-        sibling_flag = !trp_node_is_empty(node);
-
-        /* go to the next sibling or stay in actual node */
-    } while (sibling_flag);
-}
-
-/**
  * @brief Calculate the wrapper about how deep in the tree the node is.
  * @param[in] wr_in A wrapper to use as a starting point
  * @param[in] node from which to count.
@@ -4058,19 +3992,41 @@ trb_print_subtree_nodes(struct trt_node node, uint32_t max_gap_before_type, stru
         struct trt_parent_cache ca, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
     struct trt_parent_cache new_ca;
+    ly_bool sibling_flag = 0;
 
+    /* print root node */
     trb_print_entire_node(node, max_gap_before_type, wr, pc, tc);
 
-    /* go to the actual node's child */
+    /* go to the child */
     new_ca = tro_parent_cache_for_child(ca, tc);
-    node = pc->fp.modify.next_child(ca, tc);
-
-    if (!trp_node_is_empty(node)) {
-        /* print root's nodes */
-        trb_print_nodes(wr, new_ca, pc, tc);
-        /* get back from child node to actual node */
-        pc->fp.modify.parent(tc);
+    node = pc->fp.modify.next_child(new_ca, tc);
+    if (trp_node_is_empty(node)) {
+        /* No child. */
+        return;
     }
+
+    /* if node is last sibling, then do not add '|' to wrapper */
+    wr = trb_parent_is_last_sibling(pc->fp, tc) ?
+            trp_wrapper_set_shift(wr) : trp_wrapper_set_mark(wr);
+
+    /* try unified indentation for children */
+    max_gap_before_type = trb_try_unified_indent(new_ca, pc, tc);
+
+    do {
+        if (!trb_need_implicit_node_case(tc)) {
+            /* normal behavior */
+            ly_print_(pc->out, "\n");
+            trb_print_subtree_nodes(node, max_gap_before_type, wr, new_ca, pc, tc);
+        } else {
+            trb_print_implicit_node_case_subtree(node, wr, new_ca, pc, tc);
+        }
+        /* go to the actual node's sibling */
+        node = pc->fp.modify.next_sibling(new_ca, tc);
+        sibling_flag = !trp_node_is_empty(node);
+    } while (sibling_flag);
+
+    /* get back from child node to root node */
+    pc->fp.modify.parent(tc);
 }
 
 /**
