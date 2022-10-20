@@ -374,7 +374,6 @@ lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_union *type_u = (struct lysc_type_union *)type;
     struct lyd_value_union *subvalue = storage->subvalue;
-    uint32_t type_idx;
 
     *err = NULL;
 
@@ -383,16 +382,9 @@ lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type
      * we have to perform union value storing again from scratch */
     subvalue->value.realtype->plugin->free(ctx, &subvalue->value);
 
-    if (subvalue->format == LY_VALUE_LYB) {
-        /* use the specific type to store the value */
-        lyb_parse_union(subvalue->original, 0, &type_idx, NULL, NULL);
-        ret = union_store_type(ctx, type_u->types[type_idx], subvalue, 1, ctx_node, tree, NULL, err);
-        LY_CHECK_RET(ret);
-    } else {
-        /* use the first usable subtype to store the value */
-        ret = union_find_type(ctx, type_u->types, subvalue, 1, ctx_node, tree, NULL, NULL, err);
-        LY_CHECK_RET(ret);
-    }
+    /* use the first usable subtype to store the value */
+    ret = union_find_type(ctx, type_u->types, subvalue, 1, ctx_node, tree, NULL, NULL, err);
+    LY_CHECK_RET(ret);
 
     /* success, update the canonical value, if any generated */
     lydict_remove(ctx, storage->_canonical);
