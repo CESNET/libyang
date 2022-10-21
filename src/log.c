@@ -31,6 +31,7 @@
 #include "plugins_exts.h"
 #include "set.h"
 #include "tree_data.h"
+#include "tree_data_internal.h"
 #include "tree_schema.h"
 
 ATOMIC_T ly_ll = (uint_fast32_t)LY_LLWRN;
@@ -530,11 +531,61 @@ ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char *form
     va_end(ap);
 }
 
+/**
+ * @brief Append a schema node name to a generated data path, only if it fits.
+ *
+ * @param[in,out] str Generated path to update.
+ * @param[in] snode Schema node to append.
+ * @param[in] parent Last printed data node.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+ly_vlog_build_path_append(char **str, const struct lysc_node *snode, const struct lyd_node *parent)
+{
+    const struct lys_module *mod, *prev_mod;
+    uint32_t len, new_len;
+    void *mem;
+
+    if (snode->nodetype & (LYS_CHOICE | LYS_CASE)) {
+        /* schema-only node */
+        return LY_SUCCESS;
+    } else if (lysc_data_parent(snode) != parent->schema) {
+        /* not a direct descendant node */
+        return LY_SUCCESS;
+    }
+
+    /* get module to print, if any */
+    mod = snode->module;
+    prev_mod = (parent->schema) ? parent->schema->module : lyd_owner_module(parent);
+    if (prev_mod == mod) {
+        mod = NULL;
+    }
+
+    /* realloc string */
+    len = strlen(*str);
+    new_len = len + 1 + (mod ? strlen(mod->name) + 1 : 0) + strlen(snode->name);
+    mem = realloc(*str, new_len + 1);
+    LY_CHECK_ERR_RET(!mem, LOGMEM(LYD_CTX(parent)), LY_EMEM);
+    *str = mem;
+
+    /* print the last schema node */
+    sprintf(*str + len, "/%s%s%s", mod ? mod->name : "", mod ? ":" : "", snode->name);
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Build log path from the stored log location information.
+ *
+ * @param[in] ctx Context to use.
+ * @param[out] path Generated log path.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 ly_vlog_build_path(const struct ly_ctx *ctx, char **path)
 {
-    int rc;
+    int r;
     char *str = NULL, *prev = NULL;
+    const struct lyd_node *dnode;
 
     *path = NULL;
 
@@ -543,45 +594,54 @@ ly_vlog_build_path(const struct ly_ctx *ctx, char **path)
         *path = strdup((const char *)log_location.paths.objs[log_location.paths.count - 1]);
         LY_CHECK_ERR_RET(!(*path), LOGMEM(ctx), LY_EMEM);
     } else {
-        /* generate location string */
-        if (log_location.scnodes.count) {
+        /* data/schema node */
+        if (log_location.dnodes.count) {
+            dnode = log_location.dnodes.objs[log_location.dnodes.count - 1];
+            if (!dnode->parent && lysc_data_parent(dnode->schema) && (log_location.dnodes.count > 1)) {
+                /* data parsers put all the parent nodes in the set, but they are not connected */
+                str = lyd_path_set(&log_location.dnodes, LYD_PATH_STD);
+
+                /* sometimes the last node is not created yet and we only have the schema node */
+                if (log_location.scnodes.count) {
+                    ly_vlog_build_path_append(&str, log_location.scnodes.objs[log_location.scnodes.count - 1], dnode);
+                }
+            } else {
+                str = lyd_path(log_location.dnodes.objs[log_location.dnodes.count - 1], LYD_PATH_STD, NULL, 0);
+            }
+            LY_CHECK_ERR_RET(!str, LOGMEM(ctx), LY_EMEM);
+
+            r = asprintf(path, "Data location \"%s\"", str);
+            free(str);
+            LY_CHECK_ERR_RET(r == -1, LOGMEM(ctx), LY_EMEM);
+        } else if (log_location.scnodes.count) {
             str = lysc_path(log_location.scnodes.objs[log_location.scnodes.count - 1], LYSC_PATH_LOG, NULL, 0);
             LY_CHECK_ERR_RET(!str, LOGMEM(ctx), LY_EMEM);
 
-            rc = asprintf(path, "Schema location \"%s\"", str);
+            r = asprintf(path, "Schema location \"%s\"", str);
             free(str);
-            LY_CHECK_ERR_RET(rc == -1, LOGMEM(ctx), LY_EMEM);
+            LY_CHECK_ERR_RET(r == -1, LOGMEM(ctx), LY_EMEM);
         }
-        if (log_location.dnodes.count) {
-            prev = *path;
-            str = lyd_path(log_location.dnodes.objs[log_location.dnodes.count - 1], LYD_PATH_STD, NULL, 0);
-            LY_CHECK_ERR_RET(!str, LOGMEM(ctx), LY_EMEM);
 
-            rc = asprintf(path, "%s%sata location \"%s\"", prev ? prev : "", prev ? ", d" : "D", str);
-            free(str);
-            free(prev);
-            LY_CHECK_ERR_RET(rc == -1, LOGMEM(ctx), LY_EMEM);
-        }
+        /* line */
+        prev = *path;
         if (log_location.line) {
-            prev = *path;
-            rc = asprintf(path, "%s%sine number %" PRIu64, prev ? prev : "", prev ? ", l" : "L", log_location.line);
+            r = asprintf(path, "%s%sine number %" PRIu64, prev ? prev : "", prev ? ", l" : "L", log_location.line);
             free(prev);
-            LY_CHECK_ERR_RET(rc == -1, LOGMEM(ctx), LY_EMEM);
+            LY_CHECK_ERR_RET(r == -1, LOGMEM(ctx), LY_EMEM);
 
             log_location.line = 0;
         } else if (log_location.inputs.count) {
-            prev = *path;
-            rc = asprintf(path, "%s%sine number %" PRIu64, prev ? prev : "", prev ? ", l" : "L",
+            r = asprintf(path, "%s%sine number %" PRIu64, prev ? prev : "", prev ? ", l" : "L",
                     ((struct ly_in *)log_location.inputs.objs[log_location.inputs.count - 1])->line);
             free(prev);
-            LY_CHECK_ERR_RET(rc == -1, LOGMEM(ctx), LY_EMEM);
+            LY_CHECK_ERR_RET(r == -1, LOGMEM(ctx), LY_EMEM);
         }
 
         if (*path) {
             prev = *path;
-            rc = asprintf(path, "%s.", prev);
+            r = asprintf(path, "%s.", prev);
             free(prev);
-            LY_CHECK_ERR_RET(rc == -1, LOGMEM(ctx), LY_EMEM);
+            LY_CHECK_ERR_RET(r == -1, LOGMEM(ctx), LY_EMEM);
         }
     }
 

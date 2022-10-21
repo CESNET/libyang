@@ -744,7 +744,7 @@ test_data_xml(void **state)
     /* error */
     TEST_ERROR_XML("T0", "< df");
     CHECK_LOG_CTX("Child element \"df\" inside a terminal node \"port\" found.",
-            "Schema location \"/T0:port\", data location \"/T0:port\", line number 1.");
+            "Data location \"/T0:port\", line number 1.");
     TEST_ERROR_XML("T0", "&text;");
     CHECK_LOG_CTX("Entity reference \"&text;</po\" not supported, only predefined references allowed.", "Line number 1.");
     TEST_ERROR_XML("T0", "\"&#x8;\"");

@@ -2289,8 +2289,7 @@ iter_print:
             }
 
             /* print next node */
-            bufused += sprintf(buffer + bufused, "/%s%s%s", mod ? mod->name : "", mod ? ":" : "",
-                    iter->schema ? iter->schema->name : ((struct lyd_node_opaq *)iter)->name.name);
+            bufused += sprintf(buffer + bufused, "/%s%s%s", mod ? mod->name : "", mod ? ":" : "", LYD_NAME(iter));
 
             /* do not always print the last (first) predicate */
             if (iter->schema && ((depth > 1) || (pathtype == LYD_PATH_STD))) {
@@ -2323,6 +2322,80 @@ iter_print:
             }
 
             --depth;
+        }
+        break;
+    }
+
+    return buffer;
+}
+
+char *
+lyd_path_set(const struct ly_set *dnodes, LYD_PATH_TYPE pathtype)
+{
+    uint32_t depth;
+    size_t bufused = 0, buflen = 0, len;
+    char *buffer = NULL;
+    const struct lyd_node *iter, *parent;
+    const struct lys_module *mod, *prev_mod;
+    LY_ERR rc = LY_SUCCESS;
+
+    switch (pathtype) {
+    case LYD_PATH_STD:
+    case LYD_PATH_STD_NO_LAST_PRED:
+        for (depth = 1; depth <= dnodes->count; ++depth) {
+            /* current node */
+            iter = dnodes->dnodes[depth - 1];
+            mod = iter->schema ? iter->schema->module : lyd_owner_module(iter);
+
+            /* parent */
+            parent = (depth > 1) ? dnodes->dnodes[depth - 2] : NULL;
+            assert(!parent || !iter->schema || !parent->schema || (lysc_data_parent(iter->schema) == parent->schema));
+
+            /* get module to print, if any */
+            prev_mod = (parent && parent->schema) ? parent->schema->module : lyd_owner_module(parent);
+            if (prev_mod == mod) {
+                mod = NULL;
+            }
+
+            /* realloc string */
+            len = 1 + (mod ? strlen(mod->name) + 1 : 0) + (iter->schema ? strlen(iter->schema->name) :
+                    strlen(((struct lyd_node_opaq *)iter)->name.name));
+            if ((rc = lyd_path_str_enlarge(&buffer, &buflen, bufused + len, 0))) {
+                break;
+            }
+
+            /* print next node */
+            bufused += sprintf(buffer + bufused, "/%s%s%s", mod ? mod->name : "", mod ? ":" : "", LYD_NAME(iter));
+
+            /* do not always print the last (first) predicate */
+            if (iter->schema && ((depth > 1) || (pathtype == LYD_PATH_STD))) {
+                switch (iter->schema->nodetype) {
+                case LYS_LIST:
+                    if (iter->schema->flags & LYS_KEYLESS) {
+                        /* print its position */
+                        rc = lyd_path_position_predicate(iter, &buffer, &buflen, &bufused, 0);
+                    } else {
+                        /* print all list keys in predicates */
+                        rc = lyd_path_list_predicate(iter, &buffer, &buflen, &bufused, 0);
+                    }
+                    break;
+                case LYS_LEAFLIST:
+                    if (iter->schema->flags & LYS_CONFIG_W) {
+                        /* print leaf-list value */
+                        rc = lyd_path_leaflist_predicate(iter, &buffer, &buflen, &bufused, 0);
+                    } else {
+                        /* print its position */
+                        rc = lyd_path_position_predicate(iter, &buffer, &buflen, &bufused, 0);
+                    }
+                    break;
+                default:
+                    /* nothing to print more */
+                    break;
+                }
+            }
+            if (rc) {
+                break;
+            }
         }
         break;
     }

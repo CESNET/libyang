@@ -28,7 +28,10 @@ setup(void **state)
 {
     const char *schema = "module a {namespace urn:tests:a;prefix a;yang-version 1.1; import ietf-yang-metadata {prefix md;}"
             "md:annotation hint { type int8;}"
-            "list l1 { key \"a b c\"; leaf a {type string;} leaf b {type string;} leaf c {type int16;} leaf d {type string;}}"
+            "list l1 { key \"a b c\"; leaf a {type string;} leaf b {type string;} leaf c {type int16;}"
+            "  leaf d {type string;}"
+            "  container cont {leaf e {type boolean;}}"
+            "}"
             "leaf foo { type string;}"
             "container c {"
             "    leaf x {type string;}"
@@ -147,6 +150,12 @@ test_leaf(void **state)
     PARSER_CHECK_ERROR("{\"a:foo\" : \"value\", \"@a:foo\" : { \"hint\" : 1 }}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
             "Metadata in JSON must be namespace-qualified, missing prefix for \"hint\".",
             "Schema location \"/a:foo\", line number 1.");
+
+    /* invalid JSON type */
+    data = "{\"a:l1\" : [{ \"a\" : \"val-a\", \"b\" : \"val-b\", \"c\" : 1, \"cont\" : { \"e\" : \"0\" } }]}";
+    PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
+            "Invalid non-boolean-encoded boolean value \"0\".",
+            "Data location \"/a:l1[a='val-a'][b='val-b'][c='1']/cont/e\", line number 1.");
 
     /* reverse solidus in JSON object member name */
     data = "{\"@a:foo\":{\"a:hi\\nt\":1},\"a:foo\":\"xxx\"}";
@@ -391,18 +400,18 @@ test_list(void **state)
     /* missing keys */
     PARSER_CHECK_ERROR("{ \"a:l1\": [ {\"c\" : 1, \"b\" : \"b\"}]}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
             "List instance is missing its key \"a\".",
-            "Schema location \"/a:l1\", data location \"/a:l1[b='b'][c='1']\", line number 1.");
+            "Data location \"/a:l1[b='b'][c='1']\", line number 1.");
 
     PARSER_CHECK_ERROR("{ \"a:l1\": [ {\"a\" : \"a\"}]}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"b\".", "Schema location \"/a:l1\", data location \"/a:l1[a='a']\", line number 1.");
+            "List instance is missing its key \"b\".", "Data location \"/a:l1[a='a']\", line number 1.");
 
     PARSER_CHECK_ERROR("{ \"a:l1\": [ {\"b\" : \"b\", \"a\" : \"a\"}]}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"c\".", "Schema location \"/a:l1\", data location \"/a:l1[a='a'][b='b']\", line number 1.");
+            "List instance is missing its key \"c\".", "Data location \"/a:l1[a='a'][b='b']\", line number 1.");
 
     /* key duplicate */
     PARSER_CHECK_ERROR("{ \"a:l1\": [ {\"c\" : 1, \"b\" : \"b\", \"a\" : \"a\", \"c\" : 1}]}", 0, LYD_VALIDATE_PRESENT,
             tree, LY_EVALID, "Duplicate instance of \"c\".",
-            "Schema location \"/a:l1/c\", data location \"/a:l1[a='a'][b='b'][c='1'][c='1']/c\", line number 1.");
+            "Data location \"/a:l1[a='a'][b='b'][c='1'][c='1']/c\", line number 1.");
 
     /* keys order, in contrast to XML, JSON accepts keys in any order even in strict mode */
     CHECK_PARSE_LYD("{ \"a:l1\": [ {\"d\" : \"d\", \"a\" : \"a\", \"c\" : 1, \"b\" : \"b\"}]}", 0, LYD_VALIDATE_PRESENT, tree);
@@ -416,7 +425,7 @@ test_list(void **state)
     assert_non_null(leaf = (struct lyd_node_term *)leaf->next);
     CHECK_LYSC_NODE(leaf->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "c", 1, LYS_LEAF, 1, 0, NULL, 0);
     assert_non_null(leaf = (struct lyd_node_term *)leaf->next);
-    CHECK_LYSC_NODE(leaf->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "d", 0, LYS_LEAF, 1, 0, NULL, 0);
+    CHECK_LYSC_NODE(leaf->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "d", 1, LYS_LEAF, 1, 0, NULL, 0);
     CHECK_LOG_CTX(NULL, NULL);
 
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS,
@@ -511,7 +520,7 @@ test_opaq(void **state)
     data = "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"d\":\"val_d\"}]}";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
             "List instance is missing its key \"c\".",
-            "Schema location \"/a:l1\", data location \"/a:l1[a='val_a'][b='val_b']\", line number 1.");
+            "Data location \"/a:l1[a='val_a'][b='val_b']\", line number 1.");
 
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
@@ -523,7 +532,7 @@ test_opaq(void **state)
     data = "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"c\":\"val_c\"}]}";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
             "Invalid non-number-encoded int16 value \"val_c\".",
-            "Schema location \"/a:l1/c\", data location \"/a:l1[a='val_a'][b='val_b']\", line number 1.");
+            "Data location \"/a:l1[a='val_a'][b='val_b']\", line number 1.");
 
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);

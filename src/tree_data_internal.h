@@ -1,9 +1,10 @@
 /**
  * @file tree_data_internal.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief internal functions for YANG schema trees.
  *
- * Copyright (c) 2015 - 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -556,9 +557,18 @@ void lyd_unlink_hash(struct lyd_node *node);
  * @param[in,out] buflen Current buffer length.
  * @param[in,out] bufused Current number of characters used in @p buffer.
  * @param[in] is_static Whether buffer is static or can be reallocated.
- * @return LY_ERR
+ * @return LY_ERR value.
  */
 LY_ERR lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, ly_bool is_static);
+
+/**
+ * @brief Generate a path similar to ::lyd_path() except read the parents from a set.
+ *
+ * @param[in] dnodes Set with the data nodes, from parent to the last descendant.
+ * @param[in] pathtype Type of data path to generate.
+ * @return Generated data path.
+ */
+char *lyd_path_set(const struct ly_set *dnodes, LYD_PATH_TYPE pathtype);
 
 /**
  * @brief Remove an object on the specific set index keeping the order of the other objects.
@@ -566,7 +576,7 @@ LY_ERR lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_
  * @param[in] set Set from which a node will be removed.
  * @param[in] index Index of the object to remove in the \p set.
  * @param[in] destructor Optional function to free the objects being removed.
- * @return LY_ERR return value.
+ * @return LY_ERR value.
  */
 LY_ERR ly_set_rm_index_ordered(struct ly_set *set, uint32_t index, void (*destructor)(void *obj));
 
