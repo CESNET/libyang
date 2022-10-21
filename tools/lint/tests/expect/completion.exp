@@ -1,0 +1,57 @@
+#!/usr/bin/expect -f
+
+if { [info exists ::env(CURRENT_SOURCE_DIR)] } {
+    source "$env(CURRENT_SOURCE_DIR)/tests/expect/common.exp"
+} else {
+    source "common.exp"
+}
+
+spawn $env(YANGLINT)
+
+expect_output "> "
+
+expect_command "clear -ii" 0 ""
+
+expect_command "add /home/roman/ribyang/tools/lint/examples/ietf-ip.yang" 0 ""
+
+expect_completion "print -f info -P " "print -f info -P /ietf-"
+
+set hints {"/ietf-yang-schema-mount:schema-mounts" "/ietf-interfaces:interfaces" "/ietf-interfaces:interfaces-state"}
+
+expect_hint "" "print -f info -P /ietf-" $hints
+
+expect_completion "i" "print -f info -P /ietf-interfaces:interfaces"
+
+expect_completion "/" "print -f info -P /ietf-interfaces:interfaces/interface"
+
+set hints {"/ietf-interfaces:interfaces/interface"
+"/ietf-interfaces:interfaces/interface/name" "/ietf-interfaces:interfaces/interface/description"
+"/ietf-interfaces:interfaces/interface/type" "/ietf-interfaces:interfaces/interface/enabled"
+"/ietf-interfaces:interfaces/interface/link-up-down-trap-enable"
+"/ietf-interfaces:interfaces/interface/ietf-ip:ipv4" "/ietf-interfaces:interfaces/interface/ietf-ip:ipv6"}
+
+expect_hint "" "print -f info -P /ietf-interfaces:interfaces/interface" $hints
+
+expect_completion "/i" "print -f info -P /ietf-interfaces:interfaces/interface/ietf-ip:ipv"
+
+expect_completion "4" "print -f info -P /ietf-interfaces:interfaces/interface/ietf-ip:ipv4"
+
+set hints { "/ietf-interfaces:interfaces/interface/ietf-ip:ipv4" "/ietf-interfaces:interfaces/interface/ietf-ip:ipv4/enabled"
+"/ietf-interfaces:interfaces/interface/ietf-ip:ipv4/forwarding" "/ietf-interfaces:interfaces/interface/ietf-ip:ipv4/mtu"
+"/ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address" "/ietf-interfaces:interfaces/interface/ietf-ip:ipv4/neighbor"
+}
+
+expect_hint "\t" "print -f info -P /ietf-interfaces:interfaces/interface/ietf-ip:ipv" $hints
+
+expect_completion "/e" "print -f info -P /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/enabled "
+
+send -- "\r"
+
+expect {
+    -re ".*\r\n> " {}
+    timeout {exit 1}
+}
+
+send -- "exit\r"
+
+expect eof
