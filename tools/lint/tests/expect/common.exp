@@ -1,0 +1,61 @@
+# set the timeout to 1 second
+set timeout 1
+
+# expect a single line of anchored regex output
+proc expect_output {output} {
+    expect {
+        -re "^${output}$" {}
+        timeout {exit 1}
+    }
+}
+
+# send a command and either expect some anchored regex output if specified or just an empty line
+proc expect_command {command has_output output} {
+    send -- "${command}\r"
+
+    if ($has_output==1) {
+        expect {
+            -re "^${command}\r\n${output}$" {}
+            timeout {exit 1}
+        }
+    } else {
+        # input echoes
+        expect {
+            -re "^${command}\r\n$" {}
+            timeout {exit 1}
+        }
+        expect {
+            -re "^> $" {}
+            timeout {exit 1}
+        }
+    }
+}
+
+# send a completion request and check if the anchored regex output matches
+proc expect_completion {input output} {
+    send -- "${input}\t"
+
+    expect {
+        # expecting echoing input, output and 10 terminal control characters
+        -re "^${input}\r> ${output}.*\r.*$" {}
+        timeout {exit 1}
+    }
+}
+
+# send a completion request and check if the anchored regex hint options match
+proc expect_hint {input prev_input hints} {
+    set output {}
+    foreach i $hints {
+        # each element might have some number of spaces and CRLF around it
+        append output "${i} *(?:\\r\\n)?"
+    }
+
+    send -- "${input}\t"
+
+    expect {
+        # expecting the hints, previous input from which the hints were generated
+        # and some number of terminal control characters
+        -re "^\r\n${output}\r> ${prev_input}.*\r.*$" {}
+        timeout {exit 1}
+    }
+}

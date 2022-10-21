@@ -1,20 +1,17 @@
 #!/usr/bin/expect -f
 
-set timeout 1
+if { [info exists ::env(CURRENT_SOURCE_DIR)] } {
+    source "$env(CURRENT_SOURCE_DIR)/tests/expect/common.exp"
+} else {
+    source "common.exp"
+}
 
 spawn $env(YANGLINT)
-expect -exact "> "
-send -- "feature -a\r"
-expect {
-    "feature -a\r
-yang:\r
-\t(none)\r
-\r
-ietf-yang-schema-mount:\r
-\t(none)\r
-\r
-> " { }
-    timeout { exit 1 }
-}
+
+expect_output "> "
+
+expect_command "feature -a" 1 "yang:\r\n\t\\(none\\)\r\n\r\nietf-yang-schema-mount:\r\n\t\\(none\\)\r\n\r\n> "
+
 send -- "exit\r"
+
 expect eof
