@@ -600,6 +600,7 @@ ly_vlog_build_path(const struct ly_ctx *ctx, char **path)
             if (!dnode->parent && lysc_data_parent(dnode->schema) && (log_location.dnodes.count > 1)) {
                 /* data parsers put all the parent nodes in the set, but they are not connected */
                 str = lyd_path_set(&log_location.dnodes, LYD_PATH_STD);
+                LY_CHECK_ERR_RET(!str, LOGMEM(ctx), LY_EMEM);
 
                 /* sometimes the last node is not created yet and we only have the schema node */
                 if (log_location.scnodes.count) {
@@ -607,8 +608,8 @@ ly_vlog_build_path(const struct ly_ctx *ctx, char **path)
                 }
             } else {
                 str = lyd_path(log_location.dnodes.objs[log_location.dnodes.count - 1], LYD_PATH_STD, NULL, 0);
+                LY_CHECK_ERR_RET(!str, LOGMEM(ctx), LY_EMEM);
             }
-            LY_CHECK_ERR_RET(!str, LOGMEM(ctx), LY_EMEM);
 
             r = asprintf(path, "Data location \"%s\"", str);
             free(str);
