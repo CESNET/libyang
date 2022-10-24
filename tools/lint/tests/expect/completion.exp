@@ -2,17 +2,19 @@
 
 if { [info exists ::env(CURRENT_SOURCE_DIR)] } {
     source "$env(CURRENT_SOURCE_DIR)/tests/expect/common.exp"
+    set yang_dir "$env(CURRENT_SOURCE_DIR)/examples"
 } else {
     source "common.exp"
+    set yang_dir "../../examples"
 }
 
-spawn $env(YANGLINT)
+spawn $yanglint
 
 expect_output "> "
 
 expect_command "clear -ii" 0 ""
 
-expect_command "add /home/roman/ribyang/tools/lint/examples/ietf-ip.yang" 0 ""
+expect_command "add ${yang_dir}/ietf-ip.yang" 0 ""
 
 expect_completion "print -f info -P " "print -f info -P /ietf-"
 

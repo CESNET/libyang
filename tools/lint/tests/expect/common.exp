@@ -1,3 +1,10 @@
+# detect the path to the yanglint binary
+if { [info exists ::env(YANGLINT)] } {
+    set yanglint "$env(YANGLINT)"
+} else {
+    set yanglint "../../../../build/yanglint"
+}
+
 # set the timeout to 1 second
 set timeout 1
 

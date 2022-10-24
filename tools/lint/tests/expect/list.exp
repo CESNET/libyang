@@ -2,11 +2,13 @@
 
 if { [info exists ::env(CURRENT_SOURCE_DIR)] } {
     source "$env(CURRENT_SOURCE_DIR)/tests/expect/common.exp"
+    set yang_dir "$env(CURRENT_SOURCE_DIR)/examples"
 } else {
     source "common.exp"
+    set yang_dir "../../examples"
 }
 
-spawn $env(YANGLINT)
+spawn $yanglint
 
 expect_output "> "
 
