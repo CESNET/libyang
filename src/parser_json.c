@@ -252,8 +252,6 @@ lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *pref
     *snode = NULL;
     *ext = NULL;
 
-    LOG_LOCSET(NULL, parent, NULL, NULL);
-
     /* get the element module, prefer parent context because of extensions */
     if (prefix_len) {
         mod = ly_ctx_get_module_implemented2(parent ? LYD_CTX(parent) : lydctx->jsonctx->ctx, prefix, prefix_len);
@@ -343,7 +341,6 @@ lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *pref
     }
 
 cleanup:
-    LOG_LOCBACK(0, parent ? 1 : 0, 0, 0);
     return ret;
 }
 
