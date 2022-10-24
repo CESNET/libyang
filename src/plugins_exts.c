@@ -403,6 +403,133 @@ lyplg_ext_print_get_level(const struct lyspr_ctx *ctx)
     return &((struct lyspr_ctx *)ctx)->level;
 }
 
+LIBYANG_API_DECL LY_ERR
+lyplg_ext_sprinter_ctree_add_ext_nodes(const struct lyspr_tree_ctx *ctx, struct lysc_ext_instance *ext,
+        lyplg_ext_sprinter_ctree_override_clb clb)
+{
+    LY_ERR rc = LY_SUCCESS;
+    uint32_t i;
+    struct lysc_node *schema;
+
+    LY_CHECK_ARG_RET2(NULL, ctx, ext, LY_EINVAL);
+
+    LY_ARRAY_FOR(ext->substmts, i) {
+        switch (ext->substmts[i].stmt) {
+        case LY_STMT_NOTIFICATION:
+        case LY_STMT_INPUT:
+        case LY_STMT_OUTPUT:
+        case LY_STMT_ACTION:
+        case LY_STMT_RPC:
+        case LY_STMT_ANYDATA:
+        case LY_STMT_ANYXML:
+        case LY_STMT_CASE:
+        case LY_STMT_CHOICE:
+        case LY_STMT_CONTAINER:
+        case LY_STMT_LEAF:
+        case LY_STMT_LEAF_LIST:
+        case LY_STMT_LIST:
+            schema = *((struct lysc_node **)ext->substmts[i].storage);
+            if (schema) {
+                rc = lyplg_ext_sprinter_ctree_add_nodes(ctx, schema, clb);
+                return rc;
+            }
+        default:
+            break;
+        }
+    }
+
+    return rc;
+}
+
+LIBYANG_API_DECL LY_ERR
+lyplg_ext_sprinter_ptree_add_ext_nodes(const struct lyspr_tree_ctx *ctx, struct lysp_ext_instance *ext,
+        lyplg_ext_sprinter_ptree_override_clb clb)
+{
+    LY_ERR rc = LY_SUCCESS;
+    uint32_t i;
+    struct lysp_node *schema;
+
+    LY_CHECK_ARG_RET2(NULL, ctx, ext, LY_EINVAL);
+
+    LY_ARRAY_FOR(ext->substmts, i) {
+        switch (ext->substmts[i].stmt) {
+        case LY_STMT_NOTIFICATION:
+        case LY_STMT_INPUT:
+        case LY_STMT_OUTPUT:
+        case LY_STMT_ACTION:
+        case LY_STMT_RPC:
+        case LY_STMT_ANYDATA:
+        case LY_STMT_ANYXML:
+        case LY_STMT_CASE:
+        case LY_STMT_CHOICE:
+        case LY_STMT_CONTAINER:
+        case LY_STMT_LEAF:
+        case LY_STMT_LEAF_LIST:
+        case LY_STMT_LIST:
+            schema = *((struct lysp_node **)ext->substmts[i].storage);
+            if (schema) {
+                rc = lyplg_ext_sprinter_ptree_add_nodes(ctx, schema, clb);
+                return rc;
+            }
+        default:
+            break;
+        }
+    }
+
+    return rc;
+}
+
+LIBYANG_API_DECL LY_ERR
+lyplg_ext_sprinter_ctree_add_nodes(const struct lyspr_tree_ctx *ctx, struct lysc_node *nodes,
+        lyplg_ext_sprinter_ctree_override_clb clb)
+{
+    struct lyspr_tree_schema *new;
+
+    LY_CHECK_ARG_RET1(NULL, ctx, LY_EINVAL);
+
+    if (!nodes) {
+        return LY_SUCCESS;
+    }
+
+    LY_ARRAY_NEW_RET(NULL, ((struct lyspr_tree_ctx *)ctx)->schemas, new, LY_EMEM);
+    new->compiled = 1;
+    new->ctree = nodes;
+    new->cn_overr = clb;
+
+    return LY_SUCCESS;
+}
+
+LIBYANG_API_DECL LY_ERR
+lyplg_ext_sprinter_ptree_add_nodes(const struct lyspr_tree_ctx *ctx, struct lysp_node *nodes,
+        lyplg_ext_sprinter_ptree_override_clb clb)
+{
+    struct lyspr_tree_schema *new;
+
+    LY_CHECK_ARG_RET1(NULL, ctx, LY_EINVAL);
+
+    if (!nodes) {
+        return LY_SUCCESS;
+    }
+
+    LY_ARRAY_NEW_RET(NULL, ((struct lyspr_tree_ctx *)ctx)->schemas, new, LY_EMEM);
+    new->compiled = 0;
+    new->ptree = nodes;
+    new->pn_overr = clb;
+
+    return LY_SUCCESS;
+}
+
+LIBYANG_API_DECL LY_ERR
+lyplg_ext_sprinter_tree_set_priv(const struct lyspr_tree_ctx *ctx, void *plugin_priv, void (*free_clb)(void *plugin_priv))
+{
+    LY_CHECK_ARG_RET1(NULL, ctx, LY_EINVAL);
+
+    ((struct lyspr_tree_ctx *)ctx)->plugin_priv = plugin_priv;
+    ((struct lyspr_tree_ctx *)ctx)->free_plugin_priv = free_clb;
+
+    return LY_SUCCESS;
+}
+
 LIBYANG_API_DEF const char *
 lyplg_ext_stmt2str(enum ly_stmt stmt)
 {

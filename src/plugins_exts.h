@@ -30,6 +30,7 @@ struct lysc_ctx;
 struct lysc_ext_substmt;
 struct lysp_ctx;
 struct lyspr_ctx;
+struct lyspr_tree_ctx;
 
 #ifdef __cplusplus
 extern "C" {
@@ -71,10 +72,17 @@ extern "C" {
  * matter if the extension instance is placed directly in the leaf's/leaf-list's type or in the type of the referenced
  * typedef).
  *
- * The ::lyplg_ext.sprinter callback implement printing the compiled extension instance data when the schema (module) is
+ * The ::lyplg_ext.printer_info callback implement printing the compiled extension instance data when the schema (module) is
  * being printed in the ::LYS_OUT_YANG_COMPILED (info) format. As for compile callback, there are also
  * [helper functions](@ref pluginsExtensionsPrint) to access printer's context and to print standard YANG statements
  * placed in the extension instance by libyang itself.
+ *
+ * The ::lyplg_ext.printer_ctree and ::lyplg_ext.printer_ptree callbacks implement printing of YANG tree diagrams
+ * (RFC 8340) for extension instance data. These callbacks are called for extension instances that have
+ * parents of type LY_STMT_MODULE, LY_STMT_SUBMODULE. Or these callbacks are called if the printer_tree finds
+ * a compiled/parsed data-node containing an extension instance. The callbacks should then decide which nodes
+ * should be printed within the extension instance. In addition, it is possible to register additional callbacks
+ * to the printer_tree context to override the form of the each node in the extension instance.
  *
  * The last callback, ::lyplg_ext.free, is supposed to free all the data allocated by the ::lyplg_ext.compile callback.
  * To free the data created by helper function ::lys_compile_extension_instance(), the plugin can used
@@ -677,6 +685,102 @@ LIBYANG_API_DECL void lyplg_ext_print_info_extension_instance(struct lyspr_ctx *
         ly_bool *flag);
 
 /*
+ * sprinter tree
+ */
+
+/**
+ * @brief Callback to print parent node of @p ext or to print the contents of the extension.
+ *
+ * Function is called in two different cases. If the printer_tree needs the tree-diagram form of a parent node,
+ * then @p ctx is set to NULL. In the second case, if printer_tree needs to print the contents of the extension,
+ * then @p ctx is set and function must prepare the nodes that should be printed using the
+ * lyplg_ext_sprinter_tree* functions.
+ *
+ * @param[in] ext Extension instance.
+ * @param[in,out] ctx Context for the tree printer. Extension contents can be inserted into it by functions
+ * lyplg_ext_sprinter_ctree_add_ext_nodes(), lyplg_ext_sprinter_ctree_add_nodes() or by their ptree alternatives.
+ * It parameter is set to NULL, then @p flags and @p add_opts are used by printer_tree.
+ * @param[out] flags Optional override tree-diagram \<flags\> in a parent node. If @p ctx is set, ignore this parameter.
+ * @param[out] add_opts Additional tree-diagram \<opts\> string in a parent node which is printed before \<opts\>. If @p ctx
+ * is set, ignore this parameter.
+ * @return LY_ERR value.
+ */
+typedef LY_ERR (*lyplg_ext_sprinter_ctree_clb)(struct lysc_ext_instance *ext, const struct lyspr_tree_ctx *ctx,
+        const char **flags, const char **add_opts);
+
+/**
+ * @brief Callback for rewriting the tree-diagram form of a specific node.
+ *
+ * If this callback is set, then it is called for each node that belongs to the extension instance.
+ *
+ * @param[in] node Node whose tree-diagram form can be modified by the function.
+ * @param[in,out] plugin_priv Private context set by plugin.
+ * @param[out] skip Flag set to 1 removes the node from printed diagram.
+ * @param[out] flags Override tree-diagram \<flags\> string in the @p node.
+ * @param[out] add_opts Additional tree-diagram \<opts\> string in the @p node which is printed before \<opts\>.
+ * @return LY_ERR value.
+ */
+typedef LY_ERR (*lyplg_ext_sprinter_ctree_override_clb)(const struct lysc_node *node, const void *plugin_priv,
+        ly_bool *skip, const char **flags, const char **add_opts);
+
+/**
+ * @brief Registration of printing a group of nodes, which is already in the extension.
+ *
+ * @param[in] ctx Context of printer_tree in which the group of nodes is saved and later printed.
+ * @param[in] ext Extension in which the group of nodes will be searched.
+ * @param[in] clb Override function that will be applied to each delivered node.
+ * @return LY_ERR value.
+ */
+LIBYANG_API_DECL LY_ERR lyplg_ext_sprinter_ctree_add_ext_nodes(const struct lyspr_tree_ctx *ctx,
+        struct lysc_ext_instance *ext, lyplg_ext_sprinter_ctree_override_clb clb);
+
+/**
+ * @brief Registration of printing the group of nodes which were defined in the plugin.
+ *
+ * @param[in] ctx Context of printer_tree in which the group of nodes is saved and later printed.
+ * @param[in] nodes Points to the first node in group.
+ * @param[in] clb Override function that will be applied to each delivered node.
+ * @return LY_ERR value.
+ */
+LIBYANG_API_DECL LY_ERR lyplg_ext_sprinter_ctree_add_nodes(const struct lyspr_tree_ctx *ctx, struct lysc_node *nodes,
+        lyplg_ext_sprinter_ctree_override_clb clb);
+
+/**
+ * @brief Registration of plugin-private data defined by the plugin that is shared between override_clb calls.
+ *
+ * @param[in] ctx Context of printer_tree in which plugin-private data will be saved.
+ * @param[in] plugin_priv Plugin-private data shared between oberride_clb calls.
+ * @param[in] free_clb Release function for @p plugin_priv.
+ * @return LY_ERR value.
+ */
+LIBYANG_API_DECL LY_ERR lyplg_ext_sprinter_tree_set_priv(const struct lyspr_tree_ctx *ctx, void *plugin_priv,
+        void (*free_clb)(void *plugin_priv));
+
+/**
+ * @copydoc lyplg_ext_sprinter_ctree_clb
+ */
+typedef LY_ERR (*lyplg_ext_sprinter_ptree_clb)(struct lysp_ext_instance *ext, const struct lyspr_tree_ctx *ctx,
+        const char **flags, const char **add_opts);
+
+/**
+ * @copydoc lyplg_ext_sprinter_ctree_override_clb
+ */
+typedef LY_ERR (*lyplg_ext_sprinter_ptree_override_clb)(const struct lysp_node *node, const void *plugin_priv,
+        ly_bool *skip, const char **flags, const char **add_opts);
+
+/**
+ * @copydoc lyplg_ext_sprinter_ctree_add_ext_nodes
+ */
+LIBYANG_API_DECL LY_ERR lyplg_ext_sprinter_ptree_add_ext_nodes(const struct lyspr_tree_ctx *ctx,
+        struct lysp_ext_instance *ext, lyplg_ext_sprinter_ptree_override_clb clb);
+
+/**
+ * @copydoc lyplg_ext_sprinter_ctree_add_nodes
+ */
+LIBYANG_API_DECL LY_ERR lyplg_ext_sprinter_ptree_add_nodes(const struct lyspr_tree_ctx *ctx, struct lysp_node *nodes,
+        lyplg_ext_sprinter_ptree_override_clb clb);
+
+/*
  * data node
  */
 
@@ -792,7 +896,10 @@ struct lyplg_ext {
     lyplg_ext_compile_clb compile;          /**< callback to compile extension instance from the parsed data */
     lyplg_ext_sprinter_info_clb printer_info;   /**< callback to print the compiled content (info format) of the extension
                                                      instance */
-
+    lyplg_ext_sprinter_ctree_clb printer_ctree; /**< callback to print tree format of compiled node containing the
+                                                     compiled content of the extension instance */
+    lyplg_ext_sprinter_ptree_clb printer_ptree; /**< callback to print tree format of parsed node containing the
+                                                     parsed content of the extension instance */
     lyplg_ext_data_node_clb node;           /**< callback to validate most relevant data instance for the extension
                                                  instance */
     lyplg_ext_data_snode_clb snode;         /**< callback to get schema node for nested YANG data */
