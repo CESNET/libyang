@@ -1952,7 +1952,7 @@ mount_point(void **state)
     expect =
             "module: a30\n"
             "  +--mp lt* [name]\n"
-            "     +--rw tlist/ [name]\n"
+            "     +--rw tlist/* [name]\n"
             "     |  +--rw name    uint32\n"
             "     +--rw tcont/\n"
             "     |  +--rw tleaf?   uint32\n"
@@ -1978,7 +1978,7 @@ mount_point(void **state)
     expect =
             "module: a31\n"
             "  +--mp cont\n"
-            "  |  +--rw tlist/ [name]\n"
+            "  |  +--rw tlist/* [name]\n"
             "  |  |  +--rw name    uint32\n"
             "  |  +--rw tcont/\n"
             "  |     +--rw tleaf?   uint32\n"
@@ -2007,7 +2007,7 @@ mount_point(void **state)
     expect =
             "module: a32\n"
             "  +--mp cont\n"
-            "     +--rw tlist/ [name]\n"
+            "     +--rw tlist/* [name]\n"
             "     |  +--rw name    uint32\n"
             "     +--rw tcont/\n"
             "     |  +--rw tleaf?   uint32\n"
@@ -2053,13 +2053,13 @@ mount_point(void **state)
             "  |  +--rw prlf?   string\n"
             "  +--rw lf?     string\n"
             "  +--mp cont\n"
-            "     +--rw tlist/ [name]\n"
+            "     +--rw tlist/* [name]\n"
             "     |  +--rw name    uint32\n"
             "     +--rw tcont/\n"
             "     |  +--rw tleaf?   uint32\n"
-            "     +--rw pr@ [name]\n"
+            "     +--rw pr@* [name]\n"
             "     |  +--rw prlf?   string\n"
-            "     +--rw lf@   string\n"
+            "     +--rw lf@?     string\n"
             "     +--rw lt* [name]\n"
             "        +--rw name    string\n";
     data = EXT_DATA("a33", "", SCHEMA_REF_SHARED(
@@ -2085,11 +2085,11 @@ mount_point(void **state)
     expect =
             "module: a34\n"
             "  +--mp cont\n"
-            "  |  +--rw tlist/ [name]\n"
+            "  |  +--rw tlist/* [name]\n"
             "  |  |  +--rw name    uint32\n"
             "  |  +--rw tcont/\n"
             "  |  |  +--rw tleaf?   uint32\n"
-            "  |  +--rw lf@   string\n"
+            "  |  +--rw lf@?     string\n"
             "  +--rw lf?     string\n";
     data = EXT_DATA("a34", "",
             SCHEMA_REF_SHARED(
@@ -2125,7 +2125,7 @@ mount_point(void **state)
             "  +--rw pr\n"
             "  |  +--rw prlf?   uint32\n"
             "  +--mp lt* [name]\n"
-            "     +--rw tlist/ [name]\n"
+            "     +--rw tlist/* [name]\n"
             "     |  +--rw name    uint32\n"
             "     +--rw tcont/\n"
             "     |  +--rw tleaf?   uint32\n"
@@ -2160,7 +2160,7 @@ mount_point(void **state)
     expect =
             "module: a36\n"
             "  +--mp cont\n"
-            "     +--rw tlist/ [name]\n"
+            "     +--rw tlist/* [name]\n"
             "     |  +--rw name    uint32\n"
             "     +--rw tcont/\n"
             "     |  +--rw tleaf?   uint32\n"
@@ -2230,7 +2230,7 @@ mount_point(void **state)
             "  |  |  +--rw slf?   string\n"
             "  |  +--rw lf?                uint32\n"
             "  +--mp cont_mount\n"
-            "     +--rw tlist/ [name]\n"
+            "     +--rw tlist/* [name]\n"
             "     |  +--rw name    uint32\n"
             "     +--rw tcont/\n"
             "     |  +--rw tleaf?   uint32\n"
@@ -2251,6 +2251,117 @@ mount_point(void **state)
     ly_out_reset(UTEST_OUT);
 
     ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_TEARDOWN;
+}
+
+static void
+structure(void **state)
+{
+    TEST_LOCAL_SETUP;
+
+    orig =
+            "module example-module {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:example:example-module\";\n"
+            "  prefix exm;\n"
+            "\n"
+            "  import ietf-yang-structure-ext {\n"
+            "    prefix sx;\n"
+            "  }\n"
+            "\n"
+            "  sx:structure address-book {\n"
+            "    list address {\n"
+            "      key \"last first\";\n"
+            "      leaf last {\n"
+            "        type string;\n"
+            "      }\n"
+            "      leaf first {\n"
+            "        type string;\n"
+            "      }\n"
+            "      leaf street {\n"
+            "        type string;\n"
+            "      }\n"
+            "      leaf city {\n"
+            "        type string;\n"
+            "      }\n"
+            "      leaf state {\n"
+            "        type string;\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+
+    /* from RFC 8791, Appendix A.1 */
+    expect =
+            "module: example-module\n"
+            "\n"
+            "  structure address-book:\n"
+            "    +-- address* [last first]\n"
+            "       +-- last      string\n"
+            "       +-- first     string\n"
+            "       +-- street?   string\n"
+            "       +-- city?     string\n"
+            "       +-- state?    string\n";
+
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_out_reset(UTEST_OUT);
+
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_out_reset(UTEST_OUT);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
+    orig =
+            "module example-module-aug {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:example:example-module-aug\";\n"
+            "  prefix exma;\n"
+            "\n"
+            "  import ietf-yang-structure-ext {\n"
+            "    prefix sx;\n"
+            "  }\n"
+            "  import example-module {\n"
+            "    prefix exm;\n"
+            "  }\n"
+            "\n"
+            "  sx:augment-structure \"/exm:address-book/exm:address\" {\n"
+            "    leaf county {\n"
+            "      type string;\n"
+            "    }\n"
+            "    leaf zipcode {\n"
+            "      type string;\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+
+    /* from RFC 8791, Appendix A.2 */
+    expect =
+            "module: example-module-aug\n"
+            "\n"
+            "  augment-structure /exm:address-book/exm:address:\n"
+            "    +-- county?    string\n"
+            "    +-- zipcode?   string\n";
+
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_out_reset(UTEST_OUT);
+
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_out_reset(UTEST_OUT);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -2286,7 +2397,8 @@ main(void)
         UTEST(print_compiled_node),
         UTEST(print_parsed_submodule),
         UTEST(yang_data),
-        UTEST(mount_point)
+        UTEST(mount_point),
+        UTEST(structure),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

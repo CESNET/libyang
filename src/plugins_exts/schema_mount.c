@@ -57,6 +57,11 @@ struct lyplg_ext_sm {
     } inln;                             /**< inline mount points */
 };
 
+struct sprinter_tree_priv {
+    struct ly_ctx *ext_ctx;
+    struct ly_set *refs;
+};
+
 #define EXT_LOGERR_MEM_RET(cctx, ext) \
         lyplg_ext_compile_log(cctx, ext, LY_LLERR, LY_EMEM, "Memory allocation failed (%s:%d).", __FILE__, __LINE__); \
         return LY_EMEM
@@ -951,6 +956,202 @@ out:
     return res;
 }
 
+static void
+schema_mount_spriter_tree_free(void *priv)
+{
+    struct sprinter_tree_priv *st_priv;
+
+    st_priv = priv;
+    ly_set_free(st_priv->refs, NULL);
+    ly_ctx_destroy(st_priv->ext_ctx);
+    free(st_priv);
+}
+
+static LY_ERR
+schema_mount_sprinter_tree_cnode_override_mounted(const struct lysc_node *node, const void *UNUSED(plugin_priv),
+        ly_bool *UNUSED(skip), const char **UNUSED(flags), const char **add_opts)
+{
+    if (!node->parent) {
+        *add_opts = "/";
+    }
+
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+schema_mount_sprinter_tree_pnode_override_mounted(const struct lysp_node *node, const void *UNUSED(plugin_priv),
+        ly_bool *UNUSED(skip), const char **UNUSED(flags), const char **add_opts)
+{
+    if (!node->parent) {
+        *add_opts = "/";
+    }
+
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+schema_mount_sprinter_tree_node_override_parent_refs(const struct lysc_node *node, const void *plugin_priv,
+        ly_bool *skip, const char **UNUSED(flags), const char **add_opts)
+{
+    uint32_t i;
+    const struct ly_set *refs;
+    const struct lysc_module *mod;
+    struct lysc_node *ref, *iter;
+
+    refs = ((struct sprinter_tree_priv *)plugin_priv)->refs;
+    mod = node->module->compiled;
+
+    /* Assume the @p node will be skipped. */
+    *skip = 1;
+    for (i = 0; (i < refs->count) && *skip; i++) {
+        ref = refs->snodes[i];
+        if (ref->module->compiled != mod) {
+            /* parent-reference points to different module */
+            continue;
+        }
+
+        for (iter = ref; iter; iter = iter->parent) {
+            if (iter == node) {
+                /* @p node is not skipped because it is parent-rererence node or his parent */
+                *skip = 0;
+                break;
+            }
+        }
+    }
+
+    if (!*skip && !node->parent) {
+        /* top-node has additional opts */
+        *add_opts = "@";
+    }
+
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+schema_mount_sprinter_ptree(struct lysp_ext_instance *UNUSED(ext), const struct lyspr_tree_ctx *ctx,
+        const char **flags, const char **UNUSED(add_opts))
+{
+    if (!ctx) {
+        *flags = "mp";
+    }
+
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+schema_mount_sprinter_ctree(struct lysc_ext_instance *ext, const struct lyspr_tree_ctx *ctx,
+        const char **flags, const char **UNUSED(add_opts))
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct ly_ctx *ext_ctx = NULL;
+    const struct lys_module *mod;
+    struct ly_set *refs = NULL;
+    struct lysc_node *tree1, *tree2;
+    uint32_t i, j;
+    ly_bool from_parent_ref, is_first;
+    struct sprinter_tree_priv *st_priv;
+
+    if (!ctx) {
+        *flags = "mp";
+        return LY_SUCCESS;
+    }
+
+    if (lyplg_ext_schema_mount_create_context(ext, &ext_ctx)) {
+        /* Void mount point */
+        return LY_SUCCESS;
+    }
+
+    rc = lyplg_ext_schema_mount_get_parent_ref(ext, &refs);
+    LY_CHECK_GOTO(rc, cleanup);
+
+    /* build new list of modules to print. This list will omit internal
+     * modules, modules with no nodes (e.g., iana-if-types) and modules
+     * that were loaded as the result of a parent-reference.
+     */
+    i = ly_ctx_internal_modules_count(ext_ctx);
+    while ((mod = ly_ctx_get_module_iter(ext_ctx, &i))) {
+        from_parent_ref = 0;
+
+        for (j = 0; refs && j < refs->count; j++) {
+            if (!strcmp(mod->ns, refs->snodes[j]->module->ns)) {
+                from_parent_ref = 1;
+                break;
+            }
+        }
+        if (from_parent_ref) {
+            /* Modules loaded as the result of a parent-reference are added later. */
+            continue;
+        }
+
+        /* Add data nodes, rpcs and notifications. */
+        if ((ext_ctx->flags & LY_CTX_SET_PRIV_PARSED) && mod->compiled) {
+            /* For compiled module. */
+            rc = lyplg_ext_sprinter_ctree_add_nodes(ctx, mod->compiled->data,
+                    schema_mount_sprinter_tree_cnode_override_mounted);
+            LY_CHECK_GOTO(rc, cleanup);
+            if (mod->compiled->rpcs) {
+                rc = lyplg_ext_sprinter_ctree_add_nodes(ctx, &mod->compiled->rpcs->node,
+                        schema_mount_sprinter_tree_cnode_override_mounted);
+            }
+            LY_CHECK_GOTO(rc, cleanup);
+            if (mod->compiled->notifs) {
+                rc = lyplg_ext_sprinter_ctree_add_nodes(ctx, &mod->compiled->notifs->node,
+                        schema_mount_sprinter_tree_cnode_override_mounted);
+            }
+            LY_CHECK_GOTO(rc, cleanup);
+        } else {
+            /* For parsed module. */
+            rc = lyplg_ext_sprinter_ptree_add_nodes(ctx, mod->parsed->data,
+                    schema_mount_sprinter_tree_pnode_override_mounted);
+            LY_CHECK_GOTO(rc, cleanup);
+            if (mod->parsed->rpcs) {
+                rc = lyplg_ext_sprinter_ptree_add_nodes(ctx, &mod->parsed->rpcs->node,
+                        schema_mount_sprinter_tree_pnode_override_mounted);
+            }
+            LY_CHECK_GOTO(rc, cleanup);
+            if (mod->parsed->notifs) {
+                rc = lyplg_ext_sprinter_ptree_add_nodes(ctx, &mod->parsed->notifs->node,
+                        schema_mount_sprinter_tree_pnode_override_mounted);
+            }
+            LY_CHECK_GOTO(rc, cleanup);
+        }
+    }
+
+    /* Add modules loaded as the result of a parent-reference. */
+    for (i = 0; refs && (i < refs->count); i++) {
+        tree1 = refs->snodes[i]->module->compiled->data;
+
+        /* Add data nodes from the module only once. */
+        is_first = 1;
+        for (j = 0; j < i; j++) {
+            tree2 = refs->snodes[j]->module->compiled->data;
+            if (tree1 == tree2) {
+                is_first = 0;
+                break;
+            }
+        }
+        if (is_first) {
+            /* Add all data nodes but unavailable nodes are skipped in the callback. */
+            rc = lyplg_ext_sprinter_ctree_add_nodes(ctx, tree1, schema_mount_sprinter_tree_node_override_parent_refs);
+            LY_CHECK_GOTO(rc, cleanup);
+        }
+    }
+
+    /* Add private plugin data. */
+    st_priv = calloc(1, sizeof(*st_priv));
+    st_priv->ext_ctx = ext_ctx;
+    st_priv->refs = refs;
+    rc = lyplg_ext_sprinter_tree_set_priv(ctx, st_priv, schema_mount_spriter_tree_free);
+
+cleanup:
+    if (rc) {
+        ly_set_free(refs, NULL);
+        ly_ctx_destroy(ext_ctx);
+    }
+
+    return rc;
+}
+
 /**
  * @brief Plugin descriptions for the Yang Schema Mount extension.
  *
@@ -968,6 +1169,8 @@ const struct lyplg_ext_record plugins_schema_mount[] = {
         .plugin.parse = schema_mount_parse,
         .plugin.compile = schema_mount_compile,
         .plugin.printer_info = NULL,
+        .plugin.printer_ctree = schema_mount_sprinter_ctree,
+        .plugin.printer_ptree = schema_mount_sprinter_ptree,
         .plugin.node = NULL,
         .plugin.snode = schema_mount_snode,
         .plugin.validate = schema_mount_validate,

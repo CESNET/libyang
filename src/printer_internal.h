@@ -16,6 +16,7 @@
 #define LY_PRINTER_INTERNAL_H_
 
 #include "out.h"
+#include "plugins_exts.h"
 #include "printer_data.h"
 #include "printer_schema.h"
 
@@ -33,6 +34,36 @@ struct lyspr_ctx {
     uint16_t flags;                  /**< internal flags for use by printer */
     uint32_t options;                /**< Schema output options (see @ref schemaprinterflags). */
     const struct lys_module *module; /**< schema to print */
+};
+
+/**
+ * @brief YANG schema provided from plugin extension for printer_tree.
+ *
+ * The YANG extensions API provides setting functions.
+ */
+struct lyspr_tree_schema {
+    ly_bool compiled;                                           /**< Flag if it is a compiled schema. */
+
+    union {
+        struct lysc_node *ctree;                                /**< Compiled schema. */
+        struct lysp_node *ptree;                                /**< Parsed schema. */
+    };
+    union {
+        lyplg_ext_sprinter_ctree_override_clb cn_overr;    /**< Override clb function for compiled node. */
+        lyplg_ext_sprinter_ptree_override_clb pn_overr;    /**< Override clb function for parsed node. */
+    };
+};
+
+/**
+ * @brief Context used between plugin extension and printer_tree.
+ *
+ * The YANG extensions API provides setting functions.
+ */
+struct lyspr_tree_ctx {
+    struct lyspr_tree_schema *schemas;              /**< Parsed or compiled schemas ([sized array](@ref sizedarrays)) */
+    void *plugin_priv;                              /**< Private data from plugin which printer_tree does not use. */
+
+    void (*free_plugin_priv)(void *plugin_priv);    /**< Release function for lyspr_tree_ctx.plugin_priv. */
 };
 
 /**

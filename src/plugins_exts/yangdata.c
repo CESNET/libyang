@@ -13,10 +13,12 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "compat.h"
 #include "libyang.h"
 #include "plugins_exts.h"
 
@@ -198,6 +200,54 @@ yangdata_cfree(const struct ly_ctx *ctx, struct lysc_ext_instance *ext)
     lyplg_ext_cfree_instance_substatements(ctx, ext->substmts);
 }
 
+static void
+yangdata_sprinter_node(uint16_t nodetype, const char **flags)
+{
+    if (nodetype & LYS_USES) {
+        *flags = "-u";
+    } else {
+        *flags = "--";
+    }
+}
+
+static LY_ERR
+yangdata_sprinter_cnode(const struct lysc_node *node, const void *UNUSED(plugin_priv), ly_bool *UNUSED(skip),
+        const char **flags, const char **UNUSED(add_opts))
+{
+    yangdata_sprinter_node(node->nodetype, flags);
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+yangdata_sprinter_pnode(const struct lysp_node *node, const void *UNUSED(plugin_priv), ly_bool *UNUSED(skip),
+        const char **flags, const char **UNUSED(add_opts))
+{
+    yangdata_sprinter_node(node->nodetype, flags);
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+yangdata_sprinter_ctree(struct lysc_ext_instance *ext, const struct lyspr_tree_ctx *ctx,
+        const char **UNUSED(flags), const char **UNUSED(add_opts))
+{
+    LY_ERR rc = LY_SUCCESS;
+
+    assert(ctx);
+    rc = lyplg_ext_sprinter_ctree_add_ext_nodes(ctx, ext, yangdata_sprinter_cnode);
+    return rc;
+}
+
+static LY_ERR
+yangdata_sprinter_ptree(struct lysp_ext_instance *ext, const struct lyspr_tree_ctx *ctx,
+        const char **UNUSED(flags), const char **UNUSED(add_opts))
+{
+    LY_ERR rc = LY_SUCCESS;
+
+    assert(ctx);
+    rc = lyplg_ext_sprinter_ptree_add_ext_nodes(ctx, ext, yangdata_sprinter_pnode);
+    return rc;
+}
+
 /**
  * @brief Plugin descriptions for the yang-data extension
  *
@@ -215,6 +265,8 @@ const struct lyplg_ext_record plugins_yangdata[] = {
         .plugin.parse = yangdata_parse,
         .plugin.compile = yangdata_compile,
         .plugin.printer_info = yangdata_printer_info,
+        .plugin.printer_ctree = yangdata_sprinter_ctree,
+        .plugin.printer_ptree = yangdata_sprinter_ptree,
         .plugin.node = NULL,
         .plugin.snode = NULL,
         .plugin.validate = NULL,
