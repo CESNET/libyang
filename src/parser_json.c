@@ -452,7 +452,8 @@ lydjson_value_type_hint(struct lyd_json_ctx *lydctx, enum LYJSON_PARSER_STATUS *
         /* only [null] */
         LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status_p));
         if (*status_p != LYJSON_NULL) {
-            LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX_JSON, "Expected JSON name/[null], but input data contains name/%s.",
+            LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX_JSON,
+                    "Expected JSON name/value or special name/[null], but input data contains name/[%s].",
                     lyjson_token2str(*status_p));
             return LY_EINVAL;
         }
