@@ -284,7 +284,7 @@ test_opaq(void **state)
             "</l1>\n";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
             "Invalid type int16 value \"val_c\".",
-            "Data location \"/a:l1[a='val_a'][b='val_b']\", line number 4.");
+            "Data location \"/a:l1[a='val_a'][b='val_b']/c\", line number 4.");
 
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);

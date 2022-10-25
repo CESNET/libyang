@@ -1095,7 +1095,7 @@ test_state(void **state)
             "</cont>\n";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_NO_STATE, 0, LY_EVALID, tree);
     CHECK_LOG_CTX("Unexpected data state node \"cont2\" found.",
-            "Data location \"/h:cont\", line number 3.");
+            "Data location \"/h:cont/cont2\", line number 3.");
 
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY, 0, LY_SUCCESS, tree);
     assert_int_equal(LY_EVALID, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT | LYD_VALIDATE_NO_STATE, NULL));
@@ -1293,7 +1293,7 @@ test_rpc(void **state)
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
     assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, &tree, NULL));
     CHECK_LOG_CTX("Unsatisfied length - string \"123\" length is not allowed.",
-            "Data location \"/val-str:modify-user-password\", line number 3.");
+            "Data location \"/val-str:modify-user-password/new-password\", line number 3.");
     ly_in_free(in, 0);
 }
 
