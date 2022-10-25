@@ -714,8 +714,6 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
     const struct lysc_node *key, *node, *node2;
     struct ly_ctx *ctx = cur_node->module->ctx;
 
-    LOG_LOCSET(cur_node, NULL, NULL, NULL);
-
     if (lyxp_next_token(NULL, expr, tok_idx, LYXP_TOKEN_BRACK1)) {
         /* '[', no predicate */
         goto cleanup; /* LY_SUCCESS */
@@ -818,7 +816,6 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
     } while (!lyxp_next_token(NULL, expr, tok_idx, LYXP_TOKEN_BRACK1));
 
 cleanup:
-    LOG_LOCBACK(1, 0, 0, 0);
     return (ret == LY_ENOTFOUND) ? LY_EVALID : ret;
 }
 

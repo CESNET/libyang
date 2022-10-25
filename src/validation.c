@@ -328,9 +328,9 @@ lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, enum ly
             struct lysc_type *type = ((struct lysc_node_leaf *)node->schema)->type;
 
             /* resolve the value of the node */
-            LOG_LOCSET(node->schema, &node->node, NULL, NULL);
+            LOG_LOCSET(NULL, &node->node, NULL, NULL);
             ret = lyd_value_validate_incomplete(LYD_CTX(node), type, &node->value, &node->node, *tree);
-            LOG_LOCBACK(node->schema ? 1 : 0, 1, 0, 0);
+            LOG_LOCBACK(0, 1, 0, 0);
             LY_CHECK_RET(ret);
 
             /* remove this node from the set */
