@@ -298,40 +298,17 @@ struct trt_pck_indent {
     }
 
 /**********************************************************************
- * status
- *********************************************************************/
-
-/**
- * @brief Status of the node.
- *
- * @see trp_print_status
- */
-typedef enum {
-    TRD_STATUS_TYPE_EMPTY = 0,
-    TRD_STATUS_TYPE_CURRENT,    /**< ::LYS_STATUS_CURR */
-    TRD_STATUS_TYPE_DEPRECATED, /**< ::LYS_STATUS_DEPRC */
-    TRD_STATUS_TYPE_OBSOLETE    /**< ::LYS_STATUS_OBSLT */
-} trt_status_type;
-
-/**********************************************************************
  * flags
  *********************************************************************/
 
-/**
- * @brief Flag of the node.
- *
- * @see trp_print_flags, trp_get_flags_strlen
- */
-typedef enum {
-    TRD_FLAGS_TYPE_EMPTY = 0,           /**< -- */
-    TRD_FLAGS_TYPE_RW,                  /**< rw */
-    TRD_FLAGS_TYPE_RO,                  /**< ro */
-    TRD_FLAGS_TYPE_RPC_INPUT_PARAMS,    /**< -w */
-    TRD_FLAGS_TYPE_USES_OF_GROUPING,    /**< -u */
-    TRD_FLAGS_TYPE_RPC,                 /**< -x */
-    TRD_FLAGS_TYPE_NOTIF,               /**< -n */
-    TRD_FLAGS_TYPE_MOUNT_POINT          /**< mp */
-} trt_flags_type;
+#define TRD_FLAGS_TYPE_EMPTY "--"
+#define TRD_FLAGS_TYPE_RW "rw"
+#define TRD_FLAGS_TYPE_RO "ro"
+#define TRD_FLAGS_TYPE_RPC_INPUT_PARAMS "-w"
+#define TRD_FLAGS_TYPE_USES_OF_GROUPING "-u"
+#define TRD_FLAGS_TYPE_RPC "-x"
+#define TRD_FLAGS_TYPE_NOTIF "-n"
+#define TRD_FLAGS_TYPE_MOUNT_POINT "mp"
 
 /**********************************************************************
  * node_name and opts
@@ -351,14 +328,14 @@ typedef enum {
     TRD_NODE_ELSE = 0,          /**< For some node which does not require special treatment. \<name\> */
     TRD_NODE_CASE,              /**< For case node. :(\<name\>) */
     TRD_NODE_CHOICE,            /**< For choice node. (\<name\>) */
-    TRD_NODE_OPTIONAL_CHOICE,   /**< For choice node with optional mark. (\<name\>)? */
-    TRD_NODE_OPTIONAL,          /**< For an optional leaf, anydata, or anyxml. \<name\>? */
-    TRD_NODE_CONTAINER,         /**< For a presence container. \<name\>! */
-    TRD_NODE_LISTLEAFLIST,      /**< For a leaf-list or list. \<name\>* */
     TRD_NODE_TOP_LEVEL1,        /**< For a top-level data node in a mounted module. \<name\>/ */
     TRD_NODE_TOP_LEVEL2,        /**< For a top-level data node of a module identified in a mount point parent reference. \<name\>@ */
     TRD_NODE_TRIPLE_DOT         /**< For collapsed sibling nodes and their children. Special case which doesn't belong here very well. */
 } trt_node_type;
+
+#define TRD_NODE_OPTIONAL "?"          /**< For an optional leaf, anydata, or anyxml. \<name\>? */
+#define TRD_NODE_CONTAINER "!"         /**< For a presence container. \<name\>! */
+#define TRD_NODE_LISTLEAFLIST "*"      /**< For a leaf-list or list. \<name\>* */
 
 /**
  * @brief Type of node and his name.
@@ -372,6 +349,7 @@ struct trt_node_name {
     const char *module_prefix;  /**< If the node is augmented into the tree from another module,
                                      so this is the prefix of that module. */
     const char *str;            /**< Name of the node. */
+    char *opts;
 };
 
 /**
@@ -379,7 +357,7 @@ struct trt_node_name {
  */
 #define TRP_EMPTY_NODE_NAME \
     (struct trt_node_name) { \
-        .type = TRD_NODE_ELSE, .keys = 0, .module_prefix = NULL, .str = NULL \
+        .type = TRD_NODE_ELSE, .keys = 0, .module_prefix = NULL, .str = NULL, .opts = NULL \
     }
 
 /**
@@ -387,12 +365,6 @@ struct trt_node_name {
  */
 #define TRP_NODE_NAME_IS_EMPTY(NODE_NAME) \
     !NODE_NAME.str
-
-/**
- * @brief Every \<opts\> mark except string of list's keys
- * has a length of one.
- */
-#define TRD_OPTS_MARK_LENGTH 1
 
 /**********************************************************************
  * type
@@ -437,6 +409,22 @@ struct trt_type {
 #define TRP_INIT_TRT_TYPE(TYPE_OF_TYPE, STRING) \
     (struct trt_type) {.type = TYPE_OF_TYPE, .str = STRING}
 
+typedef enum {
+    TRD_IFF_NON_PRESENT = 0,
+    TRD_IFF_PRESENT             /**< iffeatures are present and will be printed by
+                                     trt_fp_print.print_features_names callback */
+} trt_iffeatures_type;
+
+struct trt_iffeatures {
+    trt_iffeatures_type type;
+};
+
+#define TRP_EMPTY_TRT_IFFEATURES \
+    (struct trt_iffeatures) {.type = TRD_IFF_NON_PRESENT}
+
+#define TRP_EMPTY_TRT_IFFEATURES_IS_EMPTY(IFF_TYPE) \
+    (IFF_TYPE == TRD_IFF_NON_PRESENT)
+
 /**********************************************************************
  * node
  *********************************************************************/
@@ -455,12 +443,11 @@ struct trt_type {
  * trp_print_node
  */
 struct trt_node {
-    trt_status_type status;             /**< \<status\>. */
-    trt_flags_type flags;               /**< \<flags\>. */
+    char *status;                       /**< \<status\>. */
+    char *flags;                        /**< \<flags\>. */
     struct trt_node_name name;          /**< \<node\> with \<opts\> mark or [\<keys\>]. */
     struct trt_type type;               /**< \<type\> contains the name of the type or type for leafref. */
-    ly_bool iffeatures;                 /**< \<if-features\>. Value 1 means that iffeatures are present and
-                                             will be printed by trt_fp_print.print_features_names callback. */
+    struct trt_iffeatures iffeatures;   /**< \<if-features\>. */
     ly_bool last_one;                   /**< Information about whether the node is the last. */
     struct lysc_ext_instance *mount;    /**< Mount-point extension if flags == TRD_FLAGS_TYPE_MOUNT_POINT */
 };
@@ -470,11 +457,11 @@ struct trt_node {
  */
 #define TRP_EMPTY_NODE \
     (struct trt_node) { \
-        .status = TRD_STATUS_TYPE_EMPTY, \
-        .flags = TRD_FLAGS_TYPE_EMPTY, \
+        .status = NULL, \
+        .flags = NULL, \
         .name = TRP_EMPTY_NODE_NAME, \
         .type = TRP_EMPTY_TRT_TYPE, \
-        .iffeatures = 0, \
+        .iffeatures = TRP_EMPTY_TRT_IFFEATURES, \
         .last_one = 1, \
         .mount = NULL \
     }
@@ -1013,11 +1000,11 @@ trp_print_wrapper(struct trt_wrapper wr, struct ly_out *out)
 static ly_bool
 trp_node_is_empty(struct trt_node node)
 {
-    const ly_bool a = !node.iffeatures;
+    const ly_bool a = TRP_EMPTY_TRT_IFFEATURES_IS_EMPTY(node.iffeatures.type);
     const ly_bool b = TRP_TRT_TYPE_IS_EMPTY(node.type);
     const ly_bool c = TRP_NODE_NAME_IS_EMPTY(node.name);
-    const ly_bool d = node.flags == TRD_FLAGS_TYPE_EMPTY;
-    const ly_bool e = node.status == TRD_STATUS_TYPE_EMPTY;
+    const ly_bool d = node.flags == NULL;
+    const ly_bool e = node.status == NULL;
 
     return a && b && c && d && e;
 }
@@ -1032,81 +1019,11 @@ trp_node_is_empty(struct trt_node node)
 static ly_bool
 trp_node_body_is_empty(struct trt_node node)
 {
-    const ly_bool a = !node.iffeatures;
+    const ly_bool a = TRP_EMPTY_TRT_IFFEATURES_IS_EMPTY(node.iffeatures.type);
     const ly_bool b = TRP_TRT_TYPE_IS_EMPTY(node.type);
     const ly_bool c = !node.name.keys;
 
     return a && b && c;
-}
-
-/**
- * @brief Print \<status\> of the node.
- * @param[in] status_type is type of status.
- * @param[in,out] out is output handler.
- */
-static void
-trp_print_status(trt_status_type status_type, struct ly_out *out)
-{
-    switch (status_type) {
-    case TRD_STATUS_TYPE_CURRENT:
-        ly_print_(out, "%c", '+');
-        break;
-    case TRD_STATUS_TYPE_DEPRECATED:
-        ly_print_(out, "%c", 'x');
-        break;
-    case TRD_STATUS_TYPE_OBSOLETE:
-        ly_print_(out, "%c", 'o');
-        break;
-    default:
-        break;
-    }
-}
-
-/**
- * @brief Print \<flags\>.
- * @param[in] flags_type is type of \<flags\>.
- * @param[in,out] out is output handler.
- */
-static void
-trp_print_flags(trt_flags_type flags_type, struct ly_out *out)
-{
-    switch (flags_type) {
-    case TRD_FLAGS_TYPE_RW:
-        ly_print_(out, "%s", "rw");
-        break;
-    case TRD_FLAGS_TYPE_RO:
-        ly_print_(out, "%s", "ro");
-        break;
-    case TRD_FLAGS_TYPE_RPC_INPUT_PARAMS:
-        ly_print_(out, "%s", "-w");
-        break;
-    case TRD_FLAGS_TYPE_USES_OF_GROUPING:
-        ly_print_(out, "%s", "-u");
-        break;
-    case TRD_FLAGS_TYPE_RPC:
-        ly_print_(out, "%s", "-x");
-        break;
-    case TRD_FLAGS_TYPE_NOTIF:
-        ly_print_(out, "%s", "-n");
-        break;
-    case TRD_FLAGS_TYPE_MOUNT_POINT:
-        ly_print_(out, "%s", "mp");
-        break;
-    default:
-        ly_print_(out, "%s", "--");
-        break;
-    }
-}
-
-/**
- * @brief Get size of the \<flags\>.
- * @param[in] flags_type is type of \<flags\>.
- * @return 0 if flags_type is not set otherwise 2.
- */
-static size_t
-trp_get_flags_strlen(trt_flags_type flags_type)
-{
-    return flags_type == TRD_FLAGS_TYPE_EMPTY ? 0 : 2;
 }
 
 /**
@@ -1121,11 +1038,6 @@ trp_print_node_name(struct trt_node_name node_name, struct ly_out *out)
     const char *colon;
     const char trd_node_name_suffix_choice[] = ")";
     const char trd_node_name_suffix_case[] = ")";
-    const char trd_opts_optional[] = "?";        /**< For an optional leaf, choice, anydata, or anyxml. */
-    const char trd_opts_container[] = "!";       /**< For a presence container. */
-    const char trd_opts_list[] = "*";            /**< For a leaf-list or list. */
-    const char trd_opts_slash[] = "/";           /**< For a top-level data node in a mounted module. */
-    const char trd_opts_at_sign[] = "@";         /**< For a top-level data node of a module identified in a mount point parent reference. */
 
     if (TRP_NODE_NAME_IS_EMPTY(node_name)) {
         return;
@@ -1149,29 +1061,21 @@ trp_print_node_name(struct trt_node_name node_name, struct ly_out *out)
     case TRD_NODE_CHOICE:
         ly_print_(out, "%s%s%s%s%s", TRD_NODE_NAME_PREFIX_CHOICE,  mod_prefix, colon, node_name.str, trd_node_name_suffix_choice);
         break;
-    case TRD_NODE_OPTIONAL_CHOICE:
-        ly_print_(out, "%s%s%s%s%s%s", TRD_NODE_NAME_PREFIX_CHOICE,  mod_prefix, colon, node_name.str, trd_node_name_suffix_choice, trd_opts_optional);
-        break;
-    case TRD_NODE_OPTIONAL:
-        ly_print_(out, "%s%s%s%s", mod_prefix, colon, node_name.str, trd_opts_optional);
-        break;
-    case TRD_NODE_CONTAINER:
-        ly_print_(out, "%s%s%s%s", mod_prefix, colon, node_name.str, trd_opts_container);
-        break;
-    case TRD_NODE_LISTLEAFLIST:
-        ly_print_(out, "%s%s%s%s", mod_prefix, colon, node_name.str, trd_opts_list);
-        break;
     case TRD_NODE_TOP_LEVEL1:
-        ly_print_(out, "%s%s%s%s", mod_prefix, colon, node_name.str, trd_opts_slash);
+        ly_print_(out, "%s%s%s", mod_prefix, colon, node_name.str);
         break;
     case TRD_NODE_TOP_LEVEL2:
-        ly_print_(out, "%s%s%s%s", mod_prefix, colon, node_name.str, trd_opts_at_sign);
+        ly_print_(out, "%s%s%s", mod_prefix, colon, node_name.str);
         break;
     case TRD_NODE_TRIPLE_DOT:
         ly_print_(out, "%s", TRD_NODE_NAME_TRIPLE_DOT);
         break;
     default:
         break;
+    }
+
+    if (node_name.opts) {
+        ly_print_(out, "%s", node_name.opts);
     }
 }
 
@@ -1195,7 +1099,11 @@ trp_mark_is_used(struct trt_node_name node_name)
     case TRD_NODE_CASE:
         return 0;
     default:
-        return 1;
+        if (node_name.opts) {
+            return 1;
+        } else {
+            return 0;
+        }
     }
 }
 
@@ -1258,9 +1166,9 @@ trp_print_type(struct trt_type type, struct ly_out *out)
  * @param[in,out] out is output handler.
  */
 static void
-trp_print_iffeatures(ly_bool iffeature_flag, struct trt_cf_print cf, struct ly_out *out)
+trp_print_iffeatures(struct trt_iffeatures iff, struct trt_cf_print cf, struct ly_out *out)
 {
-    if (iffeature_flag) {
+    if (iff.type == TRD_IFF_PRESENT) {
         ly_print_(out, "{");
         cf.pf(cf.ctx, out);
         ly_print_(out, "}?");
@@ -1280,13 +1188,13 @@ trp_print_node_up_to_name(struct trt_node node, struct ly_out *out)
         return;
     }
     /* <status>--<flags> */
-    trp_print_status(node.status, out);
+    ly_print_(out, "%s", node.status);
     ly_print_(out, "--");
     /* If the node is a case node, there is no space before the <name>
      * also case node has no flags.
      */
-    if (node.name.type != TRD_NODE_CASE) {
-        trp_print_flags(node.flags, out);
+    if (node.flags && (node.name.type != TRD_NODE_CASE)) {
+        ly_print_(out, "%s", node.flags);
         ly_print_(out, " ");
     }
     /* <name> */
@@ -1302,7 +1210,7 @@ trp_print_node_up_to_name(struct trt_node node, struct ly_out *out)
 static void
 trp_print_divided_node_up_to_name(struct trt_node node, struct ly_out *out)
 {
-    uint32_t space = trp_get_flags_strlen(node.flags);
+    uint32_t space = strlen(node.flags);
 
     if (node.name.type == TRD_NODE_CASE) {
         /* :(<name> */
@@ -1620,6 +1528,7 @@ trp_print_line_up_to_node_name(struct trt_node node, struct trt_wrapper wr, stru
 static ly_bool
 trp_leafref_target_is_too_long(struct trt_node node, struct trt_wrapper wr, size_t mll, struct ly_out *out)
 {
+    size_t type_len;
     struct ly_out_clb_arg *data;
 
     if (node.type.type != TRD_TYPE_TARGET) {
@@ -1636,8 +1545,9 @@ trp_leafref_target_is_too_long(struct trt_node node, struct trt_wrapper wr, size
     ly_print_(out, "%*c", TRD_INDENT_BTW_SIBLINGS, ' ');
     trp_print_divided_node_up_to_name(node, out);
     data->mode = TRD_PRINT;
+    type_len = strlen(node.type.str);
 
-    return data->counter + strlen(node.type.str) > mll;
+    return data->counter + type_len > mll;
 }
 
 /**
@@ -1659,14 +1569,14 @@ trp_default_indent_in_node(struct trt_node node)
     /* btw_opts_type */
     if (!(TRP_TRT_TYPE_IS_EMPTY(node.type))) {
         ret.btw_opts_type = trp_mark_is_used(node.name) ?
-                TRD_INDENT_BEFORE_TYPE - TRD_OPTS_MARK_LENGTH :
+                TRD_INDENT_BEFORE_TYPE - strlen(node.name.opts) :
                 TRD_INDENT_BEFORE_TYPE;
     } else {
         ret.btw_opts_type = 0;
     }
 
     /* btw_type_iffeatures */
-    ret.btw_type_iffeatures = node.iffeatures ? TRD_INDENT_BEFORE_IFFEATURES : 0;
+    ret.btw_type_iffeatures = node.iffeatures.type == TRD_IFF_PRESENT ? TRD_INDENT_BEFORE_IFFEATURES : 0;
 
     return ret;
 }
@@ -1723,12 +1633,12 @@ trp_first_half_node(struct trt_node node, struct trt_indent_in_node indent)
     if (indent.btw_name_opts == TRD_LINEBREAK) {
         ret.node.name.type = node.name.type;
         ret.node.type = TRP_EMPTY_TRT_TYPE;
-        ret.node.iffeatures = 0;
+        ret.node.iffeatures = TRP_EMPTY_TRT_IFFEATURES;
     } else if (indent.btw_opts_type == TRD_LINEBREAK) {
         ret.node.type = TRP_EMPTY_TRT_TYPE;
-        ret.node.iffeatures = 0;
+        ret.node.iffeatures = TRP_EMPTY_TRT_IFFEATURES;
     } else if (indent.btw_type_iffeatures == TRD_LINEBREAK) {
-        ret.node.iffeatures = 0;
+        ret.node.iffeatures = TRP_EMPTY_TRT_IFFEATURES;
     }
 
     return ret;
@@ -1757,12 +1667,12 @@ trp_second_half_node(struct trt_node node, struct trt_indent_in_node indent)
          */
         ret.indent.btw_name_opts = 0;
         ret.indent.btw_opts_type = TRP_TRT_TYPE_IS_EMPTY(node.type) ? 0 : TRD_INDENT_BEFORE_TYPE;
-        ret.indent.btw_type_iffeatures = !node.iffeatures ? 0 : TRD_INDENT_BEFORE_IFFEATURES;
+        ret.indent.btw_type_iffeatures = node.iffeatures.type == TRD_IFF_NON_PRESENT ? 0 : TRD_INDENT_BEFORE_IFFEATURES;
     } else if (indent.btw_opts_type == TRD_LINEBREAK) {
         ret.node.name.type = node.name.type;
         ret.indent.btw_name_opts = 0;
         ret.indent.btw_opts_type = 0;
-        ret.indent.btw_type_iffeatures = !node.iffeatures ? 0 : TRD_INDENT_BEFORE_IFFEATURES;
+        ret.indent.btw_type_iffeatures = node.iffeatures.type == TRD_IFF_NON_PRESENT ? 0 : TRD_INDENT_BEFORE_IFFEATURES;
     } else if (indent.btw_type_iffeatures == TRD_LINEBREAK) {
         ret.node.name.type = node.name.type;
         ret.node.type = TRP_EMPTY_TRT_TYPE;
@@ -2324,12 +2234,12 @@ tro_parent_cache_for_child(struct trt_parent_cache ca, const struct trt_tree_ctx
  * Tree diagram \<status\>.
  * @param[in] flags is node's flags obtained from the tree.
  */
-static trt_status_type
+static char *
 tro_flags2status(uint16_t flags)
 {
-    return flags & LYS_STATUS_OBSLT ? TRD_STATUS_TYPE_OBSOLETE :
-           flags & LYS_STATUS_DEPRC ? TRD_STATUS_TYPE_DEPRECATED :
-           TRD_STATUS_TYPE_CURRENT;
+    return flags & LYS_STATUS_OBSLT ? "o" :
+           flags & LYS_STATUS_DEPRC ? "x" :
+           "+";
 }
 
 /**
@@ -2337,7 +2247,7 @@ tro_flags2status(uint16_t flags)
  * \<flags\> but more specifically 'ro' or 'rw'.
  * @param[in] flags is node's flags obtained from the tree.
  */
-static trt_flags_type
+static char *
 tro_flags2config(uint16_t flags)
 {
     return flags & LYS_CONFIG_R ? TRD_FLAGS_TYPE_RO :
@@ -2559,8 +2469,9 @@ tro_create_implicit_case_node(struct trt_node node)
     ret.name.keys = node.name.keys;
     ret.name.module_prefix = node.name.module_prefix;
     ret.name.str = node.name.str;
+    ret.name.opts = node.name.opts;
     ret.type = TRP_EMPTY_TRT_TYPE;
-    ret.iffeatures = 0;
+    ret.iffeatures = TRP_EMPTY_TRT_IFFEATURES;
     ret.last_one = node.last_one;
     ret.mount = NULL;
 
@@ -2764,11 +2675,11 @@ trop_node_charptr(uint16_t flags, trt_get_charptr_func f, const struct lysp_node
  * obtained from trt_parent_cache.
  * @return The status type.
  */
-static trt_status_type
+static char *
 trop_resolve_status(uint16_t nodetype, uint16_t flags, uint16_t ca_lys_status)
 {
-    /* LYS_INPUT and LYS_OUTPUT is special case */
     if (nodetype & (LYS_INPUT | LYS_OUTPUT)) {
+        /* LYS_INPUT and LYS_OUTPUT is special case */
         return tro_flags2status(ca_lys_status);
         /* if ancestor's status is deprc or obslt
          * and also node's status is not set
@@ -2792,7 +2703,7 @@ trop_resolve_status(uint16_t nodetype, uint16_t flags, uint16_t ca_lys_status)
  * obtained from trt_parent_cache.
  * @return The flags type.
  */
-static trt_flags_type
+static char *
 trop_resolve_flags(uint16_t nodetype, uint16_t flags, trt_ancestor_type ca_ancestor, uint16_t ca_lys_config)
 {
     if ((nodetype & LYS_INPUT) || (ca_ancestor == TRD_ANCESTOR_RPC_INPUT)) {
@@ -2821,38 +2732,43 @@ trop_resolve_flags(uint16_t nodetype, uint16_t flags, trt_ancestor_type ca_ances
  * @param[in] ca_last_list is pointer to the last visited list.
  * Obtained from the trt_parent_cache.
  */
-static trt_node_type
-trop_resolve_node_type(const struct trt_tree_ctx *tc, const struct lysp_node_list *ca_last_list)
+static void
+trop_resolve_node_opts(const struct trt_tree_ctx *tc, const struct lysp_node_list *ca_last_list, trt_node_type *type,
+        char **opts)
 {
     const struct lysp_node *pn = tc->pn;
 
     if (pn->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
-        return TRD_NODE_ELSE;
+        *type = TRD_NODE_ELSE;
     } else if (pn->nodetype & LYS_CASE) {
-        return TRD_NODE_CASE;
+        *type = TRD_NODE_CASE;
     } else if ((pn->nodetype & LYS_CHOICE) && !(pn->flags & LYS_MAND_TRUE)) {
-        return TRD_NODE_OPTIONAL_CHOICE;
+        *type = TRD_NODE_CHOICE;
+        *opts = TRD_NODE_OPTIONAL;
     } else if (pn->nodetype & LYS_CHOICE) {
-        return TRD_NODE_CHOICE;
+        *type = TRD_NODE_CHOICE;
     } else if (tc->mounted && (tc->pn->parent == NULL)) {
         if (tc->parent_refs) {
             for (uint32_t v = 0; v < tc->parent_refs->count; v++) {
                 if (!strcmp(tc->pmod->mod->ns, tc->parent_refs->snodes[v]->module->ns)) {
-                    return TRD_NODE_TOP_LEVEL2;
+                    *opts = "@";
+                    *type = TRD_NODE_TOP_LEVEL2;
+                    return;
                 }
             }
         }
-        return TRD_NODE_TOP_LEVEL1;
+        *opts = "/";
+        *type = TRD_NODE_TOP_LEVEL1;
     } else if ((pn->nodetype & LYS_CONTAINER) && (trop_container_has_presence(pn))) {
-        return TRD_NODE_CONTAINER;
+        *opts = TRD_NODE_CONTAINER;
     } else if (pn->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
-        return TRD_NODE_LISTLEAFLIST;
+        *opts = TRD_NODE_LISTLEAFLIST;
     } else if ((pn->nodetype & (LYS_ANYDATA | LYS_ANYXML)) && !(pn->flags & LYS_MAND_TRUE)) {
-        return TRD_NODE_OPTIONAL;
+        *opts = TRD_NODE_OPTIONAL;
     } else if ((pn->nodetype & LYS_LEAF) && !(pn->flags & LYS_MAND_TRUE) && (!trop_leaf_is_key(pn, ca_last_list))) {
-        return TRD_NODE_OPTIONAL;
+        *opts = TRD_NODE_OPTIONAL;
     } else {
-        return TRD_NODE_ELSE;
+        *type = TRD_NODE_ELSE;
     }
 }
 
@@ -2910,7 +2826,7 @@ trop_read_node(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
     }
 
     /* set type of the node */
-    ret.name.type = trop_resolve_node_type(tc, ca.last_list);
+    trop_resolve_node_opts(tc, ca.last_list, &ret.name.type, &ret.name.opts);
     ret.name.keys = (tc->pn->nodetype & LYS_LIST) && trop_list_has_keys(tc->pn);
 
     /* The parsed tree is not compiled, so no node can be augmented
@@ -2926,7 +2842,7 @@ trop_read_node(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
     ret.type = trop_resolve_type(pn);
 
     /* <iffeature> */
-    ret.iffeatures = trop_node_has_iffeature(pn);
+    ret.iffeatures.type = trop_node_has_iffeature(pn) ? TRD_IFF_PRESENT : TRD_IFF_NON_PRESENT;
 
     ret.last_one = !tro_next_sibling(pn, tc->lysc_tree);
 
@@ -3193,7 +3109,7 @@ troc_read_if_sibling_exists(const struct trt_tree_ctx *tc)
  * @param[in] flags is current lysc_node.flags.
  * @return The flags type.
  */
-static trt_flags_type
+static char *
 troc_resolve_flags(uint16_t nodetype, uint16_t flags)
 {
     if ((nodetype & LYS_INPUT) || (flags & LYS_IS_INPUT)) {
@@ -3221,36 +3137,40 @@ troc_resolve_flags(uint16_t nodetype, uint16_t flags)
  * @param[in] nodetype is current lysc_node.nodetype.
  * @param[in] flags is current lysc_node.flags.
  */
-static trt_node_type
-troc_resolve_node_type(const struct trt_tree_ctx *tc, uint16_t nodetype, uint16_t flags)
+static void
+troc_resolve_node_opts(uint16_t nodetype, uint16_t flags, const struct trt_tree_ctx *tc, trt_node_type *type, char **opts)
 {
     if (nodetype & (LYS_INPUT | LYS_OUTPUT)) {
-        return TRD_NODE_ELSE;
+        *type = TRD_NODE_ELSE;
     } else if (nodetype & LYS_CASE) {
-        return TRD_NODE_CASE;
+        *type = TRD_NODE_CASE;
     } else if ((nodetype & LYS_CHOICE) && !(flags & LYS_MAND_TRUE)) {
-        return TRD_NODE_OPTIONAL_CHOICE;
+        *type = TRD_NODE_CHOICE;
+        *opts = TRD_NODE_OPTIONAL;
     } else if (nodetype & LYS_CHOICE) {
-        return TRD_NODE_CHOICE;
+        *type = TRD_NODE_CHOICE;
     } else if (tc->mounted && (tc->cn->parent == NULL)) {
         if (tc->parent_refs) {
             for (uint32_t v = 0; v < tc->parent_refs->count; v++) {
                 if (!strcmp(tc->cn->module->ns, tc->parent_refs->snodes[v]->module->ns)) {
-                    return TRD_NODE_TOP_LEVEL2;
+                    *opts = "@";
+                    *type = TRD_NODE_TOP_LEVEL2;
+                    return;
                 }
             }
         }
-        return TRD_NODE_TOP_LEVEL1;
+        *opts = "/";
+        *type = TRD_NODE_TOP_LEVEL1;
     } else if ((nodetype & LYS_CONTAINER) && (flags & LYS_PRESENCE)) {
-        return TRD_NODE_CONTAINER;
+        *opts = TRD_NODE_CONTAINER;
     } else if (nodetype & (LYS_LIST | LYS_LEAFLIST)) {
-        return TRD_NODE_LISTLEAFLIST;
+        *opts = TRD_NODE_LISTLEAFLIST;
     } else if ((nodetype & (LYS_ANYDATA | LYS_ANYXML)) && !(flags & LYS_MAND_TRUE)) {
-        return TRD_NODE_OPTIONAL;
+        *opts = TRD_NODE_OPTIONAL;
     } else if ((nodetype & LYS_LEAF) && !(flags & (LYS_MAND_TRUE | LYS_KEY))) {
-        return TRD_NODE_OPTIONAL;
+        *opts = TRD_NODE_OPTIONAL;
     } else {
-        return TRD_NODE_ELSE;
+        *type = TRD_NODE_ELSE;
     }
 }
 
@@ -3305,7 +3225,7 @@ troc_read_node(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
     }
 
     /* set type of the node */
-    ret.name.type = troc_resolve_node_type(tc, cn->nodetype, cn->flags);
+    troc_resolve_node_opts(cn->nodetype, cn->flags, tc, &ret.name.type, &ret.name.opts);
     ret.name.keys = (cn->nodetype & LYS_LIST) && !(cn->flags & LYS_KEYLESS);
 
     /* <prefix> */
@@ -3319,7 +3239,7 @@ troc_read_node(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
         ret.type = trop_resolve_type(TRP_TREE_CTX_GET_LYSP_NODE(cn));
 
         /* <iffeature> */
-        ret.iffeatures = trop_node_has_iffeature(TRP_TREE_CTX_GET_LYSP_NODE(cn));
+        ret.iffeatures.type = trop_node_has_iffeature(TRP_TREE_CTX_GET_LYSP_NODE(cn)) ? TRD_IFF_PRESENT : TRD_IFF_NON_PRESENT;
     } else {
         /* only the implicit case node doesn't have access to lysp node */
         assert(tc->cn->nodetype & LYS_CASE);
@@ -3328,7 +3248,7 @@ troc_read_node(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
         ret.type = TRP_EMPTY_TRT_TYPE;
 
         /* <iffeature> */
-        ret.iffeatures = 0;
+        ret.iffeatures.type = TRD_IFF_NON_PRESENT;
     }
 
     ret.last_one = !tro_next_sibling(cn, tc->lysc_tree);
@@ -3619,53 +3539,92 @@ trocm_modi_next_sibling(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
  * Definition of tree browsing functions
  *********************************************************************/
 
-/**
- * @brief Get size of node name.
- * @param[in] name contains name and mark.
- * @return positive value total size of the node name.
- * @return negative value as an indication that option mark
- * is included in the total size.
- */
-static int32_t
-trb_strlen_of_name_and_mark(struct trt_node_name name)
+static uint32_t
+trb_gap_to_opts(struct trt_node node)
 {
-    size_t name_len = strlen(name.str);
+    uint32_t len = 0;
 
-    if ((name.type == TRD_NODE_CHOICE) || (name.type == TRD_NODE_CASE)) {
-        /* counting also parentheses */
-        name_len += 2;
+    if (node.name.keys) {
+        return 0;
     }
 
-    return trp_mark_is_used(name) ?
-           ((int32_t)(name_len + TRD_OPTS_MARK_LENGTH)) * (-1) :
-           (int32_t)name_len;
+    if (node.flags) {
+        len += strlen(node.flags);
+        /* space between flags and name */
+        len += 1;
+    } else {
+        /* space between -- and name */
+        len += 1;
+    }
+
+    switch (node.name.type) {
+    case TRD_NODE_CASE:
+        /* ':' is already counted. Plus parentheses. */
+        len += 2;
+        break;
+    case TRD_NODE_CHOICE:
+        /* Plus parentheses. */
+        len += 2;
+        break;
+    default:
+        break;
+    }
+
+    if (node.name.module_prefix) {
+        len += strlen(node.name.module_prefix);
+    }
+    if (node.name.str) {
+        len += strlen(node.name.str);
+    }
+    if (node.name.opts) {
+        len += strlen(node.name.opts);
+    }
+
+    return len;
+}
+
+static uint32_t
+trb_gap_to_type(struct trt_node node)
+{
+    uint32_t len;
+
+    if (node.name.keys) {
+        return 0;
+    }
+
+    len = trb_gap_to_opts(node);
+    /* Gap between opts and type. */
+    if (node.name.opts && (strlen(node.name.opts) >= TRD_INDENT_BEFORE_TYPE)) {
+        /* At least one space should be there. */
+        len += 1;
+    } else if (node.name.opts) {
+        len += TRD_INDENT_BEFORE_TYPE - strlen(node.name.opts);
+    } else {
+        len += TRD_INDENT_BEFORE_TYPE;
+    }
+
+    return len;
 }
 
 /**
  * @brief Calculate the trt_indent_in_node.btw_opts_type indent size
  * for a particular node.
- * @param[in] name is the node for which we get btw_opts_type.
- * @param[in] max_len4all is the maximum value of btw_opts_type
+ * @param[in] node for which we get btw_opts_type.
+ * @param[in] max_gap_before_type is the maximum value of btw_opts_type
  * that it can have.
  * @return Indent between \<opts\> and \<type\> for node.
  */
 static int16_t
-trb_calc_btw_opts_type(struct trt_node_name name, int16_t max_len4all)
+trb_calc_btw_opts_type(struct trt_node node, int16_t max_gap_before_type)
 {
-    int32_t name_len;
-    int16_t min_len;
-    int16_t ret;
+    uint32_t to_opts_len;
 
-    name_len = trb_strlen_of_name_and_mark(name);
-
-    /* negative value indicate that in name is some opt mark */
-    min_len = name_len < 0 ?
-            TRD_INDENT_BEFORE_TYPE - TRD_OPTS_MARK_LENGTH :
-            TRD_INDENT_BEFORE_TYPE;
-    ret = abs(max_len4all) - abs(name_len);
-
-    /* correction -> negative indicate that name is too long. */
-    return ret < 0 ? min_len : ret;
+    to_opts_len = trb_gap_to_opts(node);
+    if (to_opts_len == 0) {
+        return 1;
+    } else {
+        return max_gap_before_type - to_opts_len;
+    }
 }
 
 /**
@@ -3688,12 +3647,12 @@ trb_print_entire_node(struct trt_node node, uint32_t max_gap_before_type, struct
 
     if ((max_gap_before_type > 0) && (node.type.type != TRD_TYPE_EMPTY)) {
         /* print actual node with unified indent */
-        ind.btw_opts_type = trb_calc_btw_opts_type(node.name, max_gap_before_type);
+        ind.btw_opts_type = trb_calc_btw_opts_type(node, max_gap_before_type);
     }
     /* after -> print actual node with default indent */
     trp_print_entire_node(node, TRP_INIT_PCK_PRINT(tc, pc->fp.print),
             TRP_INIT_PCK_INDENT(wr, ind), pc->max_line_length, pc->out);
-    if ((node.flags == TRD_FLAGS_TYPE_MOUNT_POINT) && node.mount) {
+    if (!strcmp(node.flags, TRD_FLAGS_TYPE_MOUNT_POINT) && node.mount) {
         struct trt_wrapper wr_mount;
         struct tro_getters get;
 
@@ -3739,56 +3698,32 @@ trb_parent_is_last_sibling(struct trt_fp_all fp, struct trt_tree_ctx *tc)
 }
 
 /**
- * @brief Find sibling with the biggest node name and return that size.
+ * @brief For all siblings find maximal space from '--' to \<type\>.
  *
  * Side-effect -> Current node is set to the first sibling.
  *
  * @param[in] ca contains inherited data from ancestors.
  * @param[in] pc contains mainly functions for printing.
  * @param[in,out] tc is tree context.
- * @return positive number as a sign that only the node name is
- * included in the size.
- * @return negative number sign that node name and his opt mark is
- * included in the size.
+ * @return max space.
  */
-static int32_t
-trb_maxlen_node_name(struct trt_parent_cache ca, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
+static uint32_t
+trb_max_gap_to_type(struct trt_parent_cache ca, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
-    int32_t ret = 0;
+    int32_t maxlen, len;
 
     pc->fp.modify.first_sibling(tc);
 
+    maxlen = 0;
     for (struct trt_node node = pc->fp.read.node(ca, tc);
             !trp_node_is_empty(node);
             node = pc->fp.modify.next_sibling(ca, tc)) {
-        int32_t maxlen = trb_strlen_of_name_and_mark(node.name);
-
-        ret = abs(maxlen) > abs(ret) ? maxlen : ret;
+        len = trb_gap_to_type(node);
+        maxlen = maxlen < len ? len : maxlen;
     }
     pc->fp.modify.first_sibling(tc);
-    return ret;
-}
 
-/**
- * @brief Find maximal indent between
- * \<opts\> and \<type\> for siblings.
- *
- * Side-effect -> Current node is set to the first sibling.
- *
- * @param[in] ca contains inherited data from ancestors.
- * @param[in] pc contains mainly functions for printing.
- * @param[in,out] tc is tree context.
- * @return max btw_opts_type value for rest of the siblings
- */
-static int16_t
-trb_max_btw_opts_type4siblings(struct trt_parent_cache ca, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
-{
-    int32_t maxlen_node_name = trb_maxlen_node_name(ca, pc, tc);
-    int16_t ind_before_type = maxlen_node_name < 0 ?
-            TRD_INDENT_BEFORE_TYPE - 1 : /* mark was present */
-            TRD_INDENT_BEFORE_TYPE;
-
-    return abs(maxlen_node_name) + ind_before_type;
+    return maxlen;
 }
 
 /**
@@ -3803,16 +3738,15 @@ trb_max_btw_opts_type4siblings(struct trt_parent_cache ca, struct trt_printer_ct
  * @param[in] ca contains inherited data from ancestors.
  * @param[in] pc contains mainly functions for printing.
  * @param[in,out] tc is tree context.
- * @return 0 if all siblings cannot fit on the line.
  * @return positive number indicating the maximum number of spaces
- * before \<type\> if the length of the node name is 0. To calculate
+ * before \<type\> if the length of the flags, node name and opts is 0. To calculate
  * the trt_indent_in_node.btw_opts_type indent size for a particular
  * node, use the ::trb_calc_btw_opts_type().
 */
 static uint32_t
 trb_try_unified_indent(struct trt_parent_cache ca, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
-    return trb_max_btw_opts_type4siblings(ca, pc, tc);
+    return trb_max_gap_to_type(ca, pc, tc);
 }
 
 /**
@@ -3900,6 +3834,7 @@ trb_count_depth(const struct trt_wrapper *wr_in, const struct lysc_node *node)
 static void
 trb_print_parents(const struct lysc_node *node, struct trt_wrapper *wr_in, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
+    uint32_t max_gap_before_type;
     struct trt_wrapper wr;
     struct trt_node print_node;
 
@@ -3918,7 +3853,8 @@ trb_print_parents(const struct lysc_node *node, struct trt_wrapper *wr_in, struc
     /* print node */
     ly_print_(pc->out, "\n");
     print_node = pc->fp.read.node(TRP_EMPTY_PARENT_CACHE, tc);
-    trb_print_entire_node(print_node, 0, wr, pc, tc);
+    max_gap_before_type = trb_max_gap_to_type(TRP_EMPTY_PARENT_CACHE, pc, tc);
+    trb_print_entire_node(print_node, max_gap_before_type, wr, pc, tc);
 }
 
 /**
