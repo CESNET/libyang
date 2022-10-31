@@ -957,8 +957,6 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
 
     assert((parent || meta) && mod);
 
-    LOG_LOCSET(ctx_node, parent, NULL, NULL);
-
     LY_ARRAY_FOR(mod->compiled->exts, u) {
         if ((mod->compiled->exts[u].def->plugin == lyplg_find(LYPLG_EXTENSION, LYEXT_PLUGIN_INTERNAL_ANNOTATION)) &&
                 !ly_strncmp(mod->compiled->exts[u].argument, name, name_len)) {
@@ -999,7 +997,6 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
     }
 
 cleanup:
-    LOG_LOCBACK(ctx_node ? 1 : 0, parent ? 1 : 0, 0, 0);
     return ret;
 }
 
