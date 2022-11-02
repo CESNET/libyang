@@ -167,7 +167,6 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
 {
     struct lyd_node *dup, *siblings, *match = NULL, *diff_parent = NULL, *elem;
     const struct lyd_node *parent = NULL;
-    const struct lys_module *yang_mod;
 
     assert(diff);
 
@@ -237,17 +236,13 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
         lyd_insert_sibling(*diff, diff_parent, diff);
     }
 
-    /* get module with the operation metadata */
-    yang_mod = LYD_CTX(node)->list.objs[1];
-    assert(!strcmp(yang_mod->name, "yang"));
-
     /* add parent operation, if any */
     if (diff_parent && (diff_parent != dup)) {
-        LY_CHECK_RET(lyd_new_meta(LYD_CTX(node), diff_parent, yang_mod, "operation", "none", 0, NULL));
+        LY_CHECK_RET(lyd_new_meta(NULL, diff_parent, NULL, "yang:operation", "none", 0, NULL));
     }
 
     /* add subtree operation */
-    LY_CHECK_RET(lyd_new_meta(LYD_CTX(node), dup, yang_mod, "operation", lyd_diff_op2str(op), 0, NULL));
+    LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:operation", lyd_diff_op2str(op), 0, NULL));
 
     if (op == LYD_DIFF_OP_CREATE) {
         /* all nested user-ordered (leaf-)lists need special metadata for create op */
@@ -261,37 +256,37 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
 
     /* orig-default */
     if (orig_default) {
-        LY_CHECK_RET(lyd_new_meta(LYD_CTX(node), dup, yang_mod, "orig-default", orig_default, 0, NULL));
+        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:orig-default", orig_default, 0, NULL));
     }
 
     /* orig-value */
     if (orig_value) {
-        LY_CHECK_RET(lyd_new_meta(LYD_CTX(node), dup, yang_mod, "orig-value", orig_value, 0, NULL));
+        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:orig-value", orig_value, 0, NULL));
     }
 
     /* key */
     if (key) {
-        LY_CHECK_RET(lyd_new_meta(LYD_CTX(node), dup, yang_mod, "key", key, 0, NULL));
+        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:key", key, 0, NULL));
     }
 
     /* value */
     if (value) {
-        LY_CHECK_RET(lyd_new_meta(LYD_CTX(node), dup, yang_mod, "value", value, 0, NULL));
+        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:value", value, 0, NULL));
     }
 
     /* position */
     if (position) {
-        LY_CHECK_RET(lyd_new_meta(LYD_CTX(node), dup, yang_mod, "position", position, 0, NULL));
+        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:position", position, 0, NULL));
     }
 
     /* orig-key */
     if (orig_key) {
-        LY_CHECK_RET(lyd_new_meta(LYD_CTX(node), dup, yang_mod, "orig-key", orig_key, 0, NULL));
+        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:orig-key", orig_key, 0, NULL));
     }
 
     /* orig-position */
     if (orig_position) {
-        LY_CHECK_RET(lyd_new_meta(LYD_CTX(node), dup, yang_mod, "orig-position", orig_position, 0, NULL));
+        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:orig-position", orig_position, 0, NULL));
     }
 
     return LY_SUCCESS;
