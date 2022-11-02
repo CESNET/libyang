@@ -504,8 +504,8 @@ ly_ctx_new_yldata(const char *search_dir, const struct lyd_node *tree, int optio
             mod = ly_ctx_load_module(ctx_new, name, revision, feature_arr);
             free(feature_arr);
             if (!mod) {
-                LOGERR(NULL, LY_EINVAL, "Unable to load module %s@%s specified by yang library data.", name,
-                        revision ? revision : "<none>");
+                LOGERR(*ctx ? *ctx : LYD_CTX(tree), LY_EINVAL, "Unable to load module %s@%s specified by yang library data.",
+                        name, revision ? revision : "<none>");
                 ret = LY_EINVAL;
                 goto cleanup;
             }
