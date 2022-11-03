@@ -2696,22 +2696,26 @@ lyd_find_xpath4(const struct lyd_node *ctx_node, const struct lyd_node *tree, co
             LYXP_IGNORE_WHEN);
     LY_CHECK_GOTO(ret, cleanup);
 
+    if (xp_set.type != LYXP_SET_NODE_SET) {
+        LOGERR(LYD_CTX(tree), LY_EINVAL, "XPath \"%s\" result is not a node set.", xpath);
+        ret = LY_EINVAL;
+        goto cleanup;
+    }
+
     /* allocate return set */
     ret = ly_set_new(set);
     LY_CHECK_GOTO(ret, cleanup);
 
-    /* transform into ly_set */
-    if (xp_set.type == LYXP_SET_NODE_SET) {
-        /* allocate memory for all the elements once (even though not all items must be elements but most likely will be) */
-        (*set)->objs = malloc(xp_set.used * sizeof *(*set)->objs);
-        LY_CHECK_ERR_GOTO(!(*set)->objs, LOGMEM(LYD_CTX(tree)); ret = LY_EMEM, cleanup);
-        (*set)->size = xp_set.used;
+    /* transform into ly_set, allocate memory for all the elements once (even though not all items must be
+     * elements but most likely will be) */
+    (*set)->objs = malloc(xp_set.used * sizeof *(*set)->objs);
+    LY_CHECK_ERR_GOTO(!(*set)->objs, LOGMEM(LYD_CTX(tree)); ret = LY_EMEM, cleanup);
+    (*set)->size = xp_set.used;
 
-        for (i = 0; i < xp_set.used; ++i) {
-            if (xp_set.val.nodes[i].type == LYXP_NODE_ELEM) {
-                ret = ly_set_add(*set, xp_set.val.nodes[i].node, 1, NULL);
-                LY_CHECK_GOTO(ret, cleanup);
-            }
+    for (i = 0; i < xp_set.used; ++i) {
+        if (xp_set.val.nodes[i].type == LYXP_NODE_ELEM) {
+            ret = ly_set_add(*set, xp_set.val.nodes[i].node, 1, NULL);
+            LY_CHECK_GOTO(ret, cleanup);
         }
     }
 

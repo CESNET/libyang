@@ -2453,7 +2453,7 @@ LIBYANG_API_DECL void lyxp_vars_free(struct lyxp_var *vars);
  * (unless they are defined in top-level). Other predicates can still follow the aforementioned ones.
  *
  * @param[in] ctx_node XPath context node.
- * @param[in] xpath [XPath](@ref howtoXPath) to select in JSON format.
+ * @param[in] xpath [XPath](@ref howtoXPath) to select in JSON format. It must evaluate into a node set.
  * @param[out] set Set of found data nodes. In case the result is a number, a string, or a boolean,
  * the returned set is empty.
  * @return LY_SUCCESS on success, @p set is returned.
