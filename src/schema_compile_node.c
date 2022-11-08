@@ -3741,7 +3741,7 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
         }
 
         /* if in an extension, search possible groupings in it */
-        if (ctx->ext) {
+        if (!found && ctx->ext) {
             lyplg_ext_parsed_get_storage(ctx->ext, LY_STMT_GROUPING, sizeof ext_grp, (const void **)&ext_grp);
             if ((grp = match_grouping(ext_grp, name))) {
                 found = ctx->pmod;
