@@ -402,7 +402,9 @@ structure_aug_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     }
     aug_pdata->aug->nodetype = LYS_AUGMENT;
     aug_pdata->aug->flags = aug_pdata->flags;
-    lydict_insert(ctx, ext->argument, 0, &aug_pdata->aug->nodeid);
+    if (lydict_insert(ctx, ext->argument, 0, &aug_pdata->aug->nodeid)) {
+        goto emem;
+    }
     aug_pdata->aug->child = aug_pdata->child;
     /* avoid double free */
     aug_pdata->child = NULL;
