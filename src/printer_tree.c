@@ -2033,7 +2033,7 @@ trop_notifs(const void *node)
  * which are adapted to lysp nodes.
  */
 static struct tro_getters
-trop_init_getters()
+trop_init_getters(void)
 {
     return (struct tro_getters) {
                .nodetype = trop_nodetype,
@@ -2132,7 +2132,7 @@ troc_notifs(const void *node)
  * which are adapted to lysc nodes.
  */
 static struct tro_getters
-troc_init_getters()
+troc_init_getters(void)
 {
     return (struct tro_getters) {
                .nodetype = troc_nodetype,
