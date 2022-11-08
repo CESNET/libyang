@@ -26,6 +26,7 @@ extern "C" {
 #include "dict.h"
 #include "in.h"
 #include "log.h"
+#include "metadata.h"
 #include "out.h"
 #include "parser_data.h"
 #include "parser_schema.h"
