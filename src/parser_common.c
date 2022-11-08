@@ -1668,7 +1668,7 @@ lysp_stmt_revision(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct ly
     LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *revs, rev, LY_EMEM);
 
     /* store date */
-    LY_CHECK_RET(lysp_check_date(ctx, stmt->arg, LY_REV_SIZE - 1, "revision"));
+    LY_CHECK_RET(lysp_check_date(ctx, stmt->arg, strlen(stmt->arg), "revision"));
     strcpy(rev->date, stmt->arg);
 
     /* parse substatements */

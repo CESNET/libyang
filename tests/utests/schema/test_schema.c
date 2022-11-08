@@ -246,7 +246,7 @@ test_date(void **state)
     assert_int_equal(LY_EINVAL, lysp_check_date(NULL, NULL, 0, "date"));
     CHECK_LOG("Invalid argument date (lysp_check_date()).", NULL);
     assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "x", 1, "date"));
-    CHECK_LOG("Invalid argument date_len (lysp_check_date()).", NULL);
+    CHECK_LOG("Invalid length 1 of a date.", NULL);
     assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "nonsencexx", 10, "date"));
     CHECK_LOG("Invalid value \"nonsencexx\" of \"date\".", NULL);
     assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "123x-11-11", 10, "date"));

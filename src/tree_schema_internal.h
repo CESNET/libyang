@@ -140,8 +140,8 @@ enum yang_arg {
 };
 
 #define PARSER_CUR_PMOD(CTX) ((struct lysp_module *)(CTX)->parsed_mods->objs[(CTX)->parsed_mods->count - 1])
-#define PARSER_CTX(CTX) (PARSER_CUR_PMOD(CTX)->mod->ctx)
-#define LOGVAL_PARSER(CTX, ...) LOGVAL((CTX) ? PARSER_CTX(CTX) : NULL, __VA_ARGS__)
+#define PARSER_CTX(CTX) ((CTX) ? PARSER_CUR_PMOD(CTX)->mod->ctx : NULL)
+#define LOGVAL_PARSER(CTX, ...) LOGVAL(PARSER_CTX(CTX), __VA_ARGS__)
 
 struct lysp_ctx {
     LYS_INFORMAT format;             /**< parser format */

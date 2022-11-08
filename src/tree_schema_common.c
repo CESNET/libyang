@@ -145,8 +145,12 @@ lysp_check_date(struct lysp_ctx *ctx, const char *date, size_t date_len, const c
     struct tm tm, tm_;
     char *r;
 
-    LY_CHECK_ARG_RET(ctx ? PARSER_CTX(ctx) : NULL, date, LY_EINVAL);
-    LY_CHECK_ERR_RET(date_len != LY_REV_SIZE - 1, LOGARG(ctx ? PARSER_CTX(ctx) : NULL, date_len), LY_EINVAL);
+    LY_CHECK_ARG_RET(PARSER_CTX(ctx), date, LY_EINVAL);
+
+    if (date_len != LY_REV_SIZE - 1) {
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid length %" PRIu32 " of a date.", (uint32_t)date_len);
+        return LY_EINVAL;
+    }
 
     /* check format: YYYY-MM-DD */
     for (uint8_t i = 0; i < date_len; i++) {
