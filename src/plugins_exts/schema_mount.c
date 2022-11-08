@@ -238,7 +238,7 @@ schema_mount_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *UNUS
  * @param[in] ext Compiled extension instance.
  * @param[in] ext_data Extension data retrieved by the callback.
  * @param[out] config Whether the whole schema should keep its config or be set to false.
- * @param[out] shared Whether the schema is shared or inline.
+ * @param[out] shared Optional flag whether the schema is shared or inline.
  * @return LY_ERR value.
  */
 static LY_ERR
@@ -271,14 +271,16 @@ schema_mount_get_smount(const struct lysc_ext_instance *ext, const struct lyd_no
         *config = 0;
     }
 
-    /* check schema-ref */
-    if (lyd_find_path(mpoint, "shared-schema", 0, NULL)) {
-        if (lyd_find_path(mpoint, "inline", 0, NULL)) {
-            EXT_LOGERR_INT_RET(NULL, ext);
+    if (shared) {
+        /* check schema-ref */
+        if (lyd_find_path(mpoint, "shared-schema", 0, NULL)) {
+            if (lyd_find_path(mpoint, "inline", 0, NULL)) {
+                EXT_LOGERR_INT_RET(NULL, ext);
+            }
+            *shared = 0;
+        } else {
+            *shared = 1;
         }
-        *shared = 0;
-    } else {
-        *shared = 1;
     }
 
     return LY_SUCCESS;
@@ -922,38 +924,36 @@ schema_mount_cfree(const struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 LIBYANG_API_DEF LY_ERR
 lyplg_ext_schema_mount_create_context(const struct lysc_ext_instance *ext, struct ly_ctx **ctx)
 {
-    struct lyd_node *ext_data;
-    ly_bool ext_data_free;
-    ly_bool config;
-    ly_bool shared;
-    LY_ERR res;
+    struct lyd_node *ext_data = NULL;
+    ly_bool ext_data_free = 0, config;
+    LY_ERR rc = LY_SUCCESS;
 
     if (!ext->module->ctx->ext_clb) {
         return LY_EINVAL;
     }
 
-    if (strcmp(ext->def->module->name, "ietf-yang-schema-mount") ||
-            strcmp(ext->def->name, "mount-point")) {
+    if (strcmp(ext->def->module->name, "ietf-yang-schema-mount") || strcmp(ext->def->name, "mount-point")) {
         return LY_EINVAL;
     }
 
     /* get operational data with ietf-yang-library and ietf-yang-schema-mount data */
-    if ((res = lyplg_ext_get_data(ext->module->ctx, ext, (void **)&ext_data, &ext_data_free))) {
-        return res;
+    if ((rc = lyplg_ext_get_data(ext->module->ctx, ext, (void **)&ext_data, &ext_data_free))) {
+        return rc;
     }
 
     /* learn about this mount point */
-    if ((res = schema_mount_get_smount(ext, ext_data, &config, &shared))) {
-        goto out;
+    if ((rc = schema_mount_get_smount(ext, ext_data, &config, NULL))) {
+        goto cleanup;
     }
 
-    res = schema_mount_create_ctx(ext, ext_data, config, ctx);
+    /* create the context */
+    rc = schema_mount_create_ctx(ext, ext_data, config, ctx);
 
-out:
+cleanup:
     if (ext_data_free) {
         lyd_free_all(ext_data);
     }
-    return res;
+    return rc;
 }
 
 static void
@@ -1027,6 +1027,11 @@ schema_mount_sprinter_tree_node_override_parent_refs(const struct lysc_node *nod
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Schema mount schema parsed tree printer.
+ *
+ * Implementation of ::lyplg_ext_sprinter_ptree_clb callback set as lyext_plugin::printer_ptree.
+ */
 static LY_ERR
 schema_mount_sprinter_ptree(struct lysp_ext_instance *UNUSED(ext), const struct lyspr_tree_ctx *ctx,
         const char **flags, const char **UNUSED(add_opts))
@@ -1038,6 +1043,11 @@ schema_mount_sprinter_ptree(struct lysp_ext_instance *UNUSED(ext), const struct 
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Schema mount schema compiled tree printer.
+ *
+ * Implementation of ::lyplg_ext_sprinter_ctree_clb callback set as lyext_plugin::printer_ctree.
+ */
 static LY_ERR
 schema_mount_sprinter_ctree(struct lysc_ext_instance *ext, const struct lyspr_tree_ctx *ctx,
         const char **flags, const char **UNUSED(add_opts))
