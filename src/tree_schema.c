@@ -179,7 +179,7 @@ next:
         } else {
             /* top level data */
             if (ext) {
-                lyplg_ext_get_storage(ext, LY_STMT_DATA_NODE_MASK, (const void **)&last);
+                lyplg_ext_get_storage(ext, LY_STMT_DATA_NODE_MASK, sizeof last, (const void **)&last);
                 next = last;
             } else {
                 next = last = module->data;
@@ -211,7 +211,7 @@ repeat:
         } else if (!action_flag) {
             action_flag = 1;
             if (ext) {
-                lyplg_ext_get_storage(ext, LY_STMT_OP_MASK, (const void **)&next);
+                lyplg_ext_get_storage(ext, LY_STMT_OP_MASK, sizeof next, (const void **)&next);
             } else if (parent) {
                 next = (struct lysc_node *)lysc_node_actions(parent);
             } else {
@@ -220,7 +220,7 @@ repeat:
         } else if (!notif_flag) {
             notif_flag = 1;
             if (ext) {
-                lyplg_ext_get_storage(ext, LY_STMT_NOTIFICATION, (const void **)&next);
+                lyplg_ext_get_storage(ext, LY_STMT_NOTIFICATION, sizeof next, (const void **)&next);
             } else if (parent) {
                 next = (struct lysc_node *)lysc_node_notifs(parent);
             } else {

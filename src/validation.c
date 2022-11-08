@@ -348,7 +348,7 @@ lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, enum ly
             struct lysc_type *type;
 
             /* validate and store the value of the metadata */
-            lyplg_ext_get_storage(meta->annotation, LY_STMT_TYPE, (const void **)&type);
+            lyplg_ext_get_storage(meta->annotation, LY_STMT_TYPE, sizeof type, (const void **)&type);
             ret = lyd_value_validate_incomplete(LYD_CTX(meta->parent), type, &meta->value, meta->parent, *tree);
             LY_CHECK_RET(ret);
 
@@ -1541,7 +1541,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_when, struct ly_
         }
 
         LY_LIST_FOR(node->meta, meta) {
-            lyplg_ext_get_storage(meta->annotation, LY_STMT_TYPE, (const void **)&type);
+            lyplg_ext_get_storage(meta->annotation, LY_STMT_TYPE, sizeof type, (const void **)&type);
             if (type->plugin->validate) {
                 /* metadata type resolution */
                 LY_CHECK_RET(ly_set_add(meta_types, (void *)meta, 1, NULL));

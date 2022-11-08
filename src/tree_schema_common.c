@@ -381,7 +381,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_m
 
         if (ext) {
             /* search typedefs directly in the extension */
-            lyplg_ext_parsed_get_storage(ext, LY_STMT_TYPEDEF, (const void **)&ext_typedefs);
+            lyplg_ext_parsed_get_storage(ext, LY_STMT_TYPEDEF, sizeof ext_typedefs, (const void **)&ext_typedefs);
             if ((*tpdf = lysp_typedef_match(name, ext_typedefs))) {
                 /* match */
                 return LY_SUCCESS;

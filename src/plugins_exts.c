@@ -130,7 +130,7 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, const void *parsed, struct l
         struct lysp_node *pnodes, *pnode;
         struct lysc_node *node;
 
-        lyplg_ext_get_storage(ext, LY_STMT_STATUS, (const void **)&flags);
+        lyplg_ext_get_storage(ext, LY_STMT_STATUS, sizeof flags, (const void **)&flags);
         pnodes = (struct lysp_node *)parsed;
 
         /* compile nodes */
@@ -205,7 +205,7 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, const void *parsed, struct l
         const struct lysp_when *when = parsed;
 
         /* read compiled status */
-        lyplg_ext_get_storage(ext, LY_STMT_STATUS, (const void **)&flags);
+        lyplg_ext_get_storage(ext, LY_STMT_STATUS, sizeof flags, (const void **)&flags);
 
         /* compile */
         LY_CHECK_GOTO(rc = lys_compile_when(ctx, when, flags, NULL, NULL, NULL, substmt->storage), cleanup);
@@ -261,8 +261,8 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, const void *parsed, struct l
         const struct lysp_type *ptype = parsed;
 
         /* read compiled info */
-        lyplg_ext_get_storage(ext, LY_STMT_STATUS, (const void **)&flags);
-        lyplg_ext_get_storage(ext, LY_STMT_UNITS, (const void **)&units);
+        lyplg_ext_get_storage(ext, LY_STMT_STATUS, sizeof flags, (const void **)&flags);
+        lyplg_ext_get_storage(ext, LY_STMT_UNITS, sizeof units, (const void **)&units);
 
         /* compile */
         LY_CHECK_GOTO(rc = lys_compile_type(ctx, NULL, flags, ext->def->name, ptype, substmt->storage, &units, NULL), cleanup);
@@ -601,7 +601,7 @@ lyplg_ext_get_storage_p(const struct lysc_ext_instance *ext, int stmt, const voi
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_ext_get_storage(const struct lysc_ext_instance *ext, int stmt, const void **storage)
+lyplg_ext_get_storage(const struct lysc_ext_instance *ext, int stmt, uint32_t storage_size, const void **storage)
 {
     LY_ERR r;
     const void **s;
@@ -612,16 +612,35 @@ lyplg_ext_get_storage(const struct lysc_ext_instance *ext, int stmt, const void 
         return r;
     }
 
-    *storage = *s;
+    /* matters for little-endian */
+    switch (storage_size) {
+    case 1:
+        *(uint8_t *)storage = (uintptr_t)*s;
+        break;
+    case 2:
+        *(uint16_t *)storage = (uintptr_t)*s;
+        break;
+    case 4:
+        *(uint32_t *)storage = (uintptr_t)*s;
+        break;
+    case 8:
+        *(uint64_t *)storage = (uintptr_t)*s;
+        break;
+    default:
+        LOGERR(ext->module->ctx, LY_EINVAL, "Invalid storage size %" PRIu32 ".", storage_size);
+        return LY_EINVAL;
+    }
+
     return LY_SUCCESS;
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_ext_parsed_get_storage(const struct lysc_ext_instance *ext, int stmt, const void **storage)
+lyplg_ext_parsed_get_storage(const struct lysc_ext_instance *ext, int stmt, uint32_t storage_size, const void **storage)
 {
     LY_ARRAY_COUNT_TYPE u;
     const struct lysp_ext_instance *extp = NULL;
     enum ly_stmt match = 0;
+    const void **s = NULL;
 
     *storage = NULL;
 
@@ -644,11 +663,33 @@ lyplg_ext_parsed_get_storage(const struct lysc_ext_instance *ext, int stmt, cons
     /* get the substatement */
     LY_ARRAY_FOR(extp->substmts, u) {
         if ((match && (extp->substmts[u].stmt == match)) || (!match && (extp->substmts[u].stmt & stmt))) {
-            *storage = *(void **)extp->substmts[u].storage;
-            return LY_SUCCESS;
+            s = extp->substmts[u].storage;
+            break;
         }
     }
 
+    if (s) {
+        /* matters for little-endian */
+        switch (storage_size) {
+        case 1:
+            *(uint8_t *)storage = (uintptr_t)*s;
+            break;
+        case 2:
+            *(uint16_t *)storage = (uintptr_t)*s;
+            break;
+        case 4:
+            *(uint32_t *)storage = (uintptr_t)*s;
+            break;
+        case 8:
+            *(uint64_t *)storage = (uintptr_t)*s;
+            break;
+        default:
+            LOGERR(ext->module->ctx, LY_EINVAL, "Invalid storage size %" PRIu32 ".", storage_size);
+            return LY_EINVAL;
+        }
+
+        return LY_SUCCESS;
+    }
     return LY_ENOT;
 }
 

@@ -977,7 +977,7 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
     LY_CHECK_ERR_GOTO(!mt, LOGMEM(mod->ctx); ret = LY_EMEM, cleanup);
     mt->parent = parent;
     mt->annotation = ant;
-    lyplg_ext_get_storage(ant, LY_STMT_TYPE, (const void **)&ant_type);
+    lyplg_ext_get_storage(ant, LY_STMT_TYPE, sizeof ant_type, (const void **)&ant_type);
     ret = lyd_value_store(mod->ctx, &mt->value, ant_type, value, value_len, dynamic, format, prefix_data, hints,
             ctx_node, incomplete);
     LY_CHECK_ERR_GOTO(ret, free(mt), cleanup);

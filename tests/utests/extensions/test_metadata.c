@@ -43,7 +43,7 @@ test_yang(void **state)
     e = &mod->compiled->exts[0];
     assert_non_null(e->compiled);
     assert_non_null(e->substmts);
-    lyplg_ext_get_storage(e, LY_STMT_UNITS, (const void **)&units);
+    lyplg_ext_get_storage(e, LY_STMT_UNITS, sizeof units, (const void **)&units);
     assert_string_equal("meters", units);
 
     /* invalid */
@@ -122,7 +122,7 @@ test_yin(void **state)
     e = &mod->compiled->exts[0];
     assert_non_null(e->compiled);
     assert_non_null(e->substmts);
-    lyplg_ext_get_storage(e, LY_STMT_UNITS, (const void **)&units);
+    lyplg_ext_get_storage(e, LY_STMT_UNITS, sizeof units, (const void **)&units);
     assert_string_equal("meters", units);
 
     /* invalid */

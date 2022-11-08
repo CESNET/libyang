@@ -946,11 +946,13 @@ LIBYANG_API_DECL enum ly_stmt lyplg_ext_nodetype2stmt(uint16_t nodetype);
  * @param[in] ext Compiled ext instance.
  * @param[in] stmt Compiled statement. Can be a mask when the first match is returned, it is expected the storage is
  * the same for all the masked statements.
+ * @param[in] storage_size Size of the value at @p storage address (dereferenced).
  * @param[out] storage Compiled ext instance substatement storage, NULL if was not compiled.
  * @return LY_SUCCESS on success.
  * @return LY_ENOT if the substatement is not supported.
  */
-LIBYANG_API_DECL LY_ERR lyplg_ext_get_storage(const struct lysc_ext_instance *ext, int stmt, const void **storage);
+LIBYANG_API_DECL LY_ERR lyplg_ext_get_storage(const struct lysc_ext_instance *ext, int stmt, uint32_t storage_size,
+        const void **storage);
 
 /**
  * @brief Get parsed ext instance storage for a specific statement.
@@ -958,11 +960,13 @@ LIBYANG_API_DECL LY_ERR lyplg_ext_get_storage(const struct lysc_ext_instance *ex
  * @param[in] ext Compiled ext instance.
  * @param[in] stmt Parsed statement. Can be a mask when the first match is returned, it is expected the storage is
  * the same for all the masked statements.
+ * @param[in] storage_size Size of the value at @p storage address (dereferenced).
  * @param[out] storage Parsed ext instance substatement storage, NULL if was not parsed.
  * @return LY_SUCCESS on success.
  * @return LY_ENOT if the substatement is not supported.
  */
-LIBYANG_API_DECL LY_ERR lyplg_ext_parsed_get_storage(const struct lysc_ext_instance *ext, int stmt, const void **storage);
+LIBYANG_API_DECL LY_ERR lyplg_ext_parsed_get_storage(const struct lysc_ext_instance *ext, int stmt,
+        uint32_t storage_size, const void **storage);
 
 /**
  * @brief Get specific run-time extension instance data from a callback set by ::ly_ctx_set_ext_data_clb().
