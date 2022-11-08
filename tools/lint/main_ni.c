@@ -206,7 +206,7 @@ help(int shortout)
 
     printf("  -x FILE, --ext-data=FILE\n"
             "                File containing the specific data required by an extension. Required by\n"
-            "                the schema-mount extension, for example, when the mounted data are\n"
+            "                the schema-mount extension, for example, when the operational data are\n"
             "                expected in the file. File format is guessed.\n\n");
 
     printf("  -n, --not-strict\n"
