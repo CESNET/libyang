@@ -1669,7 +1669,7 @@ lysp_stmt_revision(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct ly
 
     /* store date */
     LY_CHECK_RET(lysp_check_date(ctx, stmt->arg, strlen(stmt->arg), "revision"));
-    strcpy(rev->date, stmt->arg);
+    strncpy(rev->date, stmt->arg, LY_REV_SIZE - 1);
 
     /* parse substatements */
     for (const struct lysp_stmt *child = stmt->child; child; child = child->next) {
