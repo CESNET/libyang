@@ -81,11 +81,11 @@ LY_ERR lys_precompile_uses_augments_refines(struct lysc_ctx *ctx, struct lysp_no
  * @brief Duplicate qname structure.
  *
  * @param[in] ctx libyang context.
- * @param[in,out] qname Structure to fill.
  * @param[in] orig_qname Structure to read from.
+ * @param[in,out] qname Structure to fill.
  * @return LY_ERR value.
  */
-LY_ERR lysp_qname_dup(const struct ly_ctx *ctx, struct lysp_qname *qname, const struct lysp_qname *orig_qname);
+LY_ERR lysp_qname_dup(const struct ly_ctx *ctx, const struct lysp_qname *orig_qname, struct lysp_qname *qname);
 
 /**
  * @brief Free a compiled augment temporary structure.

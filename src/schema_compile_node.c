@@ -194,7 +194,7 @@ lysc_unres_leaf_dflt_add(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, stru
 
     r->dflt = malloc(sizeof *r->dflt);
     LY_CHECK_GOTO(!r->dflt, error);
-    LY_CHECK_GOTO(lysp_qname_dup(ctx->ctx, r->dflt, dflt), error);
+    LY_CHECK_GOTO(lysp_qname_dup(ctx->ctx, dflt, r->dflt), error);
 
     return LY_SUCCESS;
 
