@@ -633,6 +633,23 @@ yin_parse_path(struct lysp_yin_ctx *ctx, struct lysp_type *type)
 }
 
 /**
+ * @brief Add extension array to context exts instances.
+ *
+ * @param[in] ctx YIN parser context.
+ * @param[in] exts Parsed extension array that is final (no realloc anymore).
+ * @return LY_ERR value.
+ */
+static LY_ERR
+yin_unres_exts_add(struct lysp_yin_ctx *ctx, struct lysp_ext_instance *exts)
+{
+    if (!exts) {
+        return LY_SUCCESS;
+    }
+
+    return ly_set_add(&ctx->ext_inst, exts, 1, NULL);
+}
+
+/**
  * @brief Parse pattern element.
  *
  * @param[in,out] ctx YIN parser context for logging and to store current state.
@@ -673,7 +690,7 @@ yin_parse_pattern(struct lysp_yin_ctx *ctx, struct lysp_type *type)
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), restr, LY_STMT_PATTERN, NULL, &restr->exts));
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, restr->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, restr->exts));
 
     return LY_SUCCESS;
 }
@@ -723,7 +740,7 @@ yin_parse_fracdigits(struct lysp_yin_ctx *ctx, struct lysp_type *type)
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), type, LY_STMT_FRACTION_DIGITS, NULL, &type->exts));
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, type->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, type->exts));
 
     return LY_SUCCESS;
 }
@@ -760,7 +777,7 @@ yin_parse_enum(struct lysp_yin_ctx *ctx, struct lysp_type *type)
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), en, LY_STMT_ENUM, NULL, &en->exts));
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, en->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, en->exts));
 
     return LY_SUCCESS;
 }
@@ -795,7 +812,7 @@ yin_parse_bit(struct lysp_yin_ctx *ctx, struct lysp_type *type)
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), en, LY_STMT_BIT, NULL, &en->exts));
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, en->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, en->exts));
 
     return LY_SUCCESS;
 }
@@ -918,7 +935,7 @@ yin_pasrse_reqinstance(struct lysp_yin_ctx *ctx, struct lysp_type *type)
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), type, LY_STMT_REQUIRE_INSTANCE, NULL, &type->exts));
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, type->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, type->exts));
 
     return LY_SUCCESS;
 }
@@ -998,7 +1015,7 @@ yin_parse_restriction(struct lysp_yin_ctx *ctx, enum ly_stmt restr_kw, struct ly
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), restr, restr_kw, NULL, &restr->exts));
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, restr->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, restr->exts));
 
     return LY_SUCCESS;
 }
@@ -1176,7 +1193,7 @@ yin_parse_value_pos(struct lysp_yin_ctx *ctx, enum ly_stmt parent_stmt, struct l
     LY_CHECK_GOTO(ret = yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), enm, parent_stmt, NULL, &enm->exts), cleanup);
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_GOTO(ret = ly_set_add(&ctx->ext_inst, enm->exts, 1, NULL), cleanup);
+    LY_CHECK_GOTO(ret = yin_unres_exts_add(ctx, enm->exts), cleanup);
 
 cleanup:
     lydict_remove(ctx->xmlctx->ctx, temp_val);
@@ -1326,7 +1343,7 @@ yin_parse_type(struct lysp_yin_ctx *ctx, enum ly_stmt parent_stmt, struct yin_su
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), type, LY_STMT_TYPE, NULL, &type->exts));
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, type->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, type->exts));
 
     return LY_SUCCESS;
 }
@@ -1552,7 +1569,7 @@ yin_parse_any(struct lysp_yin_ctx *ctx, enum ly_stmt any_kw, struct tree_node_me
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), any, any_kw, NULL, &any->exts));
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, any->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, any->exts));
 
     return LY_SUCCESS;
 }
@@ -1597,7 +1614,7 @@ yin_parse_leaf(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), leaf, LY_STMT_LEAF, NULL, &leaf->exts));
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, leaf->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, leaf->exts));
 
     return LY_SUCCESS;
 }
@@ -1644,7 +1661,7 @@ yin_parse_leaflist(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), llist, LY_STMT_LEAF_LIST, NULL, &llist->exts));
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, llist->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, llist->exts));
 
     /* check invalid combination of subelements */
     if ((llist->min) && (llist->dflts)) {
@@ -1692,7 +1709,7 @@ yin_parse_typedef(struct lysp_yin_ctx *ctx, struct tree_node_meta *typedef_meta)
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), tpdf, LY_STMT_TYPEDEF, NULL, &tpdf->exts));
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, tpdf->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, tpdf->exts));
 
     /* store data for collision check */
     if (typedef_meta->parent) {
@@ -1741,7 +1758,7 @@ yin_parse_refine(struct lysp_yin_ctx *ctx, struct lysp_refine **refines)
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), rf, LY_STMT_REFINE, NULL, &rf->exts));
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, rf->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, rf->exts));
 
     return LY_SUCCESS;
 }
@@ -1783,7 +1800,7 @@ yin_parse_uses(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), uses, LY_STMT_USES, NULL, &uses->exts));
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, uses->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, uses->exts));
 
     return LY_SUCCESS;
 }
@@ -1825,7 +1842,7 @@ yin_parse_revision(struct lysp_yin_ctx *ctx, struct lysp_revision **revs)
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), rev, LY_STMT_REVISION, NULL, &rev->exts));
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, rev->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, rev->exts));
 
     return LY_SUCCESS;
 }
@@ -1867,7 +1884,7 @@ yin_parse_include(struct lysp_yin_ctx *ctx, struct include_meta *inc_meta)
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), inc, LY_STMT_INCLUDE, NULL, &inc->exts));
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, inc->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, inc->exts));
 
     return LY_SUCCESS;
 }
@@ -2001,7 +2018,7 @@ yin_parse_import(struct lysp_yin_ctx *ctx, struct import_meta *imp_meta)
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), imp, LY_STMT_IMPORT, NULL, &imp->exts));
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, imp->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, imp->exts));
 
     /* check prefix validity */
     LY_CHECK_RET(lysp_check_prefix((struct lysp_ctx *)ctx, *imp_meta->imports, imp_meta->prefix, &imp->prefix), LY_EVALID);
@@ -2113,7 +2130,7 @@ yin_parse_when(struct lysp_yin_ctx *ctx, struct lysp_when **when_p)
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), when, LY_STMT_WHEN, NULL, &when->exts));
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, when->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, when->exts));
 
     return LY_SUCCESS;
 }
@@ -2207,7 +2224,7 @@ yin_parse_extension(struct lysp_yin_ctx *ctx, struct lysp_ext **extensions)
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), ex, LY_STMT_EXTENSION, NULL, &ex->exts));
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, ex->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, ex->exts));
 
     return LY_SUCCESS;
 }
@@ -2243,7 +2260,7 @@ yin_parse_feature(struct lysp_yin_ctx *ctx, struct lysp_feature **features)
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), feat, LY_STMT_FEATURE, NULL, &feat->exts));
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, feat->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, feat->exts));
 
     return LY_SUCCESS;
 }
@@ -2280,7 +2297,7 @@ yin_parse_identity(struct lysp_yin_ctx *ctx, struct lysp_ident **identities)
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), ident, LY_STMT_IDENTITY, NULL, &ident->exts));
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, ident->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, ident->exts));
 
     return LY_SUCCESS;
 }
@@ -2340,7 +2357,7 @@ yin_parse_list(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
     LY_CHECK_RET(ret);
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, list->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, list->exts));
 
     if (list->max && (list->min > list->max)) {
         LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_MINMAX, list->min, list->max);
@@ -2399,7 +2416,7 @@ yin_parse_notification(struct lysp_yin_ctx *ctx, struct tree_node_meta *notif_me
     LY_CHECK_RET(ret);
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, notif->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, notif->exts));
 
     return LY_SUCCESS;
 }
@@ -2451,7 +2468,7 @@ yin_parse_grouping(struct lysp_yin_ctx *ctx, struct tree_node_meta *gr_meta)
     subelems_deallocator(subelems_size, subelems);
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, grp->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, grp->exts));
 
     /* store data for collision check */
     if (!ret && grp->parent) {
@@ -2514,7 +2531,7 @@ yin_parse_container(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
     LY_CHECK_RET(ret);
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, cont->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, cont->exts));
 
     return LY_SUCCESS;
 }
@@ -2564,7 +2581,7 @@ yin_parse_case(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
     LY_CHECK_RET(ret);
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, cas->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, cas->exts));
 
     return LY_SUCCESS;
 }
@@ -2618,7 +2635,7 @@ yin_parse_choice(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
     LY_CHECK_RET(ret);
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, choice->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, choice->exts));
 
     return ret;
 }
@@ -2666,7 +2683,7 @@ yin_parse_inout(struct lysp_yin_ctx *ctx, enum ly_stmt inout_kw, struct inout_me
     LY_CHECK_RET(ret);
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, inout_meta->inout_p->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, inout_meta->inout_p->exts));
 
     if (!inout_meta->inout_p->child) {
         LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_MISSTMT, "data-def-stmt", lyplg_ext_stmt2str(inout_kw));
@@ -2728,6 +2745,9 @@ yin_parse_action(struct lysp_yin_ctx *ctx, struct tree_node_meta *act_meta)
         LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), "output", 0, &act->output.name));
     }
 
+    /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
+    LY_CHECK_RET(yin_unres_exts_add(ctx, act->exts));
+
     return LY_SUCCESS;
 }
 
@@ -2781,7 +2801,7 @@ yin_parse_augment(struct lysp_yin_ctx *ctx, struct tree_node_meta *aug_meta)
     LY_CHECK_RET(ret);
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, aug->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, aug->exts));
 
     return LY_SUCCESS;
 }
@@ -2889,7 +2909,7 @@ yin_parse_deviate(struct lysp_yin_ctx *ctx, struct lysp_deviate **deviates)
     LY_CHECK_GOTO(ret, cleanup);
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_GOTO(ret = ly_set_add(&ctx->ext_inst, d->exts, 1, NULL), cleanup);
+    LY_CHECK_GOTO(ret = yin_unres_exts_add(ctx, d->exts), cleanup);
 
     d->mod = dev_mod;
     /* insert into siblings */
@@ -2934,7 +2954,7 @@ yin_parse_deviation(struct lysp_yin_ctx *ctx, struct lysp_deviation **deviations
     LY_CHECK_GOTO(ret, cleanup);
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_GOTO(ret = ly_set_add(&ctx->ext_inst, dev->exts, 1, NULL), cleanup);
+    LY_CHECK_GOTO(ret = yin_unres_exts_add(ctx, dev->exts), cleanup);
 
 cleanup:
     if (ret) {
@@ -3777,7 +3797,7 @@ yin_parse_mod(struct lysp_yin_ctx *ctx, struct lysp_module *mod)
     LY_CHECK_RET(ret);
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, mod->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, mod->exts));
 
     /* submodules share the namespace with the module names, so there must not be
      * a submodule of the same name in the context, no need for revision matching */
@@ -3844,7 +3864,7 @@ yin_parse_submod(struct lysp_yin_ctx *ctx, struct lysp_submodule *submod)
     LY_CHECK_RET(ret);
 
     /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(ly_set_add(&ctx->ext_inst, submod->exts, 1, NULL));
+    LY_CHECK_RET(yin_unres_exts_add(ctx, submod->exts));
 
     /* submodules share the namespace with the module names, so there must not be
      * a submodule of the same name in the context, no need for revision matching */
