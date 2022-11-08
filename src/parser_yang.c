@@ -2081,8 +2081,9 @@ parse_type_pattern_modifier(struct lysp_yang_ctx *ctx, struct lysp_restr *restr)
 
     assert(buf[0] == LYSP_RESTR_PATTERN_ACK);
     buf[0] = LYSP_RESTR_PATTERN_NACK;
-    LY_CHECK_GOTO(ret = lydict_insert_zc(PARSER_CTX(ctx), buf, &restr->arg.str), cleanup);
+    ret = lydict_insert_zc(PARSER_CTX(ctx), buf, &restr->arg.str);
     buf = NULL;
+    LY_CHECK_GOTO(ret, cleanup);
 
     YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
@@ -2422,7 +2423,6 @@ parse_maxelements(struct lysp_yang_ctx *ctx, uint32_t *max, uint16_t *flags, str
         /* unbounded */
         *max = 0;
     }
-    free(buf);
 
     YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
