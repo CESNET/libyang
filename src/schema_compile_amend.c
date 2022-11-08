@@ -659,11 +659,10 @@ lysp_node_dup(const struct ly_ctx *ctx, const struct lysp_module *pmod, struct l
  * @return LY_ERR value.
  */
 static LY_ERR
-lysp_dup_single(const struct ly_ctx *ctx, const struct lysp_module *pmod, const struct lysp_node *pnode,
-        ly_bool with_links, struct lysp_node **dup_p)
+lysp_dup_single(struct lysc_ctx *cctx, const struct lysp_node *pnode, ly_bool with_links, struct lysp_node **dup_p)
 {
     LY_ERR ret = LY_SUCCESS;
-    void *mem = NULL;
+    struct lysp_node *dup = NULL;
 
     if (!pnode) {
         *dup_p = NULL;
@@ -672,63 +671,63 @@ lysp_dup_single(const struct ly_ctx *ctx, const struct lysp_module *pmod, const 
 
     switch (pnode->nodetype) {
     case LYS_CONTAINER:
-        mem = calloc(1, sizeof(struct lysp_node_container));
+        dup = calloc(1, sizeof(struct lysp_node_container));
         break;
     case LYS_LEAF:
-        mem = calloc(1, sizeof(struct lysp_node_leaf));
+        dup = calloc(1, sizeof(struct lysp_node_leaf));
         break;
     case LYS_LEAFLIST:
-        mem = calloc(1, sizeof(struct lysp_node_leaflist));
+        dup = calloc(1, sizeof(struct lysp_node_leaflist));
         break;
     case LYS_LIST:
-        mem = calloc(1, sizeof(struct lysp_node_list));
+        dup = calloc(1, sizeof(struct lysp_node_list));
         break;
     case LYS_CHOICE:
-        mem = calloc(1, sizeof(struct lysp_node_choice));
+        dup = calloc(1, sizeof(struct lysp_node_choice));
         break;
     case LYS_CASE:
-        mem = calloc(1, sizeof(struct lysp_node_case));
+        dup = calloc(1, sizeof(struct lysp_node_case));
         break;
     case LYS_ANYDATA:
     case LYS_ANYXML:
-        mem = calloc(1, sizeof(struct lysp_node_anydata));
+        dup = calloc(1, sizeof(struct lysp_node_anydata));
         break;
     case LYS_INPUT:
     case LYS_OUTPUT:
-        mem = calloc(1, sizeof(struct lysp_node_action_inout));
+        dup = calloc(1, sizeof(struct lysp_node_action_inout));
         break;
     case LYS_ACTION:
     case LYS_RPC:
-        mem = calloc(1, sizeof(struct lysp_node_action));
+        dup = calloc(1, sizeof(struct lysp_node_action));
         break;
     case LYS_NOTIF:
-        mem = calloc(1, sizeof(struct lysp_node_notif));
+        dup = calloc(1, sizeof(struct lysp_node_notif));
         break;
     default:
-        LOGINT_RET(ctx);
+        LOGINT_RET(cctx->ctx);
     }
-    LY_CHECK_ERR_GOTO(!mem, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-    LY_CHECK_GOTO(ret = lysp_node_dup(ctx, pmod, mem, pnode), cleanup);
+    LY_CHECK_ERR_GOTO(!dup, LOGMEM(cctx->ctx); ret = LY_EMEM, cleanup);
+    LY_CHECK_GOTO(ret = lysp_node_dup(cctx->ctx, cctx->pmod, dup, pnode), cleanup);
 
     if (with_links) {
         /* copy also parent, child, action, and notification pointers */
-        ((struct lysp_node *)mem)->parent = pnode->parent;
+        dup->parent = pnode->parent;
         switch (pnode->nodetype) {
         case LYS_CONTAINER:
-            ((struct lysp_node_container *)mem)->child = ((struct lysp_node_container *)pnode)->child;
-            ((struct lysp_node_container *)mem)->actions = ((struct lysp_node_container *)pnode)->actions;
-            ((struct lysp_node_container *)mem)->notifs = ((struct lysp_node_container *)pnode)->notifs;
+            ((struct lysp_node_container *)dup)->child = ((struct lysp_node_container *)pnode)->child;
+            ((struct lysp_node_container *)dup)->actions = ((struct lysp_node_container *)pnode)->actions;
+            ((struct lysp_node_container *)dup)->notifs = ((struct lysp_node_container *)pnode)->notifs;
             break;
         case LYS_LIST:
-            ((struct lysp_node_list *)mem)->child = ((struct lysp_node_list *)pnode)->child;
-            ((struct lysp_node_list *)mem)->actions = ((struct lysp_node_list *)pnode)->actions;
-            ((struct lysp_node_list *)mem)->notifs = ((struct lysp_node_list *)pnode)->notifs;
+            ((struct lysp_node_list *)dup)->child = ((struct lysp_node_list *)pnode)->child;
+            ((struct lysp_node_list *)dup)->actions = ((struct lysp_node_list *)pnode)->actions;
+            ((struct lysp_node_list *)dup)->notifs = ((struct lysp_node_list *)pnode)->notifs;
             break;
         case LYS_CHOICE:
-            ((struct lysp_node_choice *)mem)->child = ((struct lysp_node_choice *)pnode)->child;
+            ((struct lysp_node_choice *)dup)->child = ((struct lysp_node_choice *)pnode)->child;
             break;
         case LYS_CASE:
-            ((struct lysp_node_case *)mem)->child = ((struct lysp_node_case *)pnode)->child;
+            ((struct lysp_node_case *)dup)->child = ((struct lysp_node_case *)pnode)->child;
             break;
         default:
             break;
@@ -737,9 +736,9 @@ lysp_dup_single(const struct ly_ctx *ctx, const struct lysp_module *pmod, const 
 
 cleanup:
     if (ret) {
-        free(mem);
+        lysp_dev_node_free(cctx, dup);
     } else {
-        *dup_p = mem;
+        *dup_p = dup;
     }
     return ret;
 }
@@ -1766,7 +1765,7 @@ lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct lysp_node
 
         if (!*dev_pnode) {
             /* first refine on this node, create a copy first */
-            LY_CHECK_GOTO(ret = lysp_dup_single(ctx->ctx, ctx->pmod, pnode, 1, dev_pnode), cleanup);
+            LY_CHECK_GOTO(ret = lysp_dup_single(ctx, pnode, 1, dev_pnode), cleanup);
         }
 
         /* apply all the refines by changing (the copy of) the parsed node */
@@ -1797,7 +1796,7 @@ lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct lysp_node
 
         if (!*dev_pnode) {
             /* first deviation on this node, create a copy first */
-            LY_CHECK_GOTO(ret = lysp_dup_single(ctx->ctx, ctx->pmod, pnode, 1, dev_pnode), cleanup);
+            LY_CHECK_GOTO(ret = lysp_dup_single(ctx, pnode, 1, dev_pnode), cleanup);
         }
 
         /* apply all the deviates by changing (the copy of) the parsed node */
