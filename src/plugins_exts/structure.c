@@ -260,7 +260,7 @@ emem:
 }
 
 /**
- * @brief INFO printer
+ * @brief Structure schema info printer.
  *
  * Implementation of ::lyplg_ext_sprinter_info_clb set as ::lyext_plugin::printer_info
  */
@@ -430,6 +430,11 @@ structure_sprinter_cnode(const struct lysc_node *UNUSED(node), const void *UNUSE
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Structure schema compiled tree printer.
+ *
+ * Implementation of ::lyplg_ext_sprinter_ctree_clb callback set as lyext_plugin::printer_ctree.
+ */
 static LY_ERR
 structure_sprinter_ctree(struct lysc_ext_instance *ext, const struct lyspr_tree_ctx *ctx,
         const char **UNUSED(flags), const char **UNUSED(add_opts))
@@ -440,6 +445,11 @@ structure_sprinter_ctree(struct lysc_ext_instance *ext, const struct lyspr_tree_
     return rc;
 }
 
+/**
+ * @brief Structure schema parsed tree printer.
+ *
+ * Implementation of ::lyplg_ext_sprinter_ptree_clb callback set as lyext_plugin::printer_ptree.
+ */
 static LY_ERR
 structure_sprinter_ptree(struct lysp_ext_instance *ext, const struct lyspr_tree_ctx *ctx,
         const char **UNUSED(flags), const char **UNUSED(add_opts))
@@ -450,6 +460,11 @@ structure_sprinter_ptree(struct lysp_ext_instance *ext, const struct lyspr_tree_
     return rc;
 }
 
+/**
+ * @brief Augment structure schema parsed tree printer.
+ *
+ * Implementation of ::lyplg_ext_sprinter_ptree_clb callback set as lyext_plugin::printer_ptree.
+ */
 static LY_ERR
 structure_aug_sprinter_ptree(struct lysp_ext_instance *ext, const struct lyspr_tree_ctx *ctx,
         const char **UNUSED(flags), const char **UNUSED(add_opts))
@@ -465,9 +480,14 @@ structure_aug_sprinter_ptree(struct lysp_ext_instance *ext, const struct lyspr_t
     return rc;
 }
 
+/**
+ * @brief Augment structure schema compiled tree printer.
+ *
+ * Implementation of ::lyplg_ext_sprinter_ctree_clb callback set as lyext_plugin::printer_ctree.
+ */
 static LY_ERR
-structure_aug_sprinter_ctree(struct lysc_ext_instance *ext, const struct lyspr_tree_ctx *ctx,
-        const char **flags, const char **add_opts)
+structure_aug_sprinter_ctree(struct lysc_ext_instance *ext, const struct lyspr_tree_ctx *ctx, const char **flags,
+        const char **add_opts)
 {
     LY_ERR rc = LY_SUCCESS;
 
@@ -476,18 +496,17 @@ structure_aug_sprinter_ctree(struct lysc_ext_instance *ext, const struct lyspr_t
 
     assert(ctx);
 
+    /* find the parsed ext structure */
     parsed_ext = ext->module->parsed->exts;
     LY_ARRAY_FOR(parsed_ext, i) {
-        if (strcmp(parsed_ext[i].name, "sx:augment-structure")) {
-            continue;
-        } else if (strcmp(parsed_ext[i].argument, ext->argument)) {
-            continue;
+        if (!strcmp(parsed_ext[i].name, "sx:augment-structure") && !strcmp(parsed_ext[i].argument, ext->argument)) {
+            break;
         }
-
-        rc = structure_aug_sprinter_ptree(parsed_ext, ctx, flags, add_opts);
-        break;
     }
+    assert(i < LY_ARRAY_COUNT(parsed_ext));
 
+    /* for augments print the parsed tree */
+    rc = structure_aug_sprinter_ptree(parsed_ext, ctx, flags, add_opts);
     return rc;
 }
 
