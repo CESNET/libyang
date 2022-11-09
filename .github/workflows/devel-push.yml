@@ -8,24 +8,9 @@ env:
   COVERITY_PROJECT: CESNET%2Flibyang
 
 jobs:
-  git-branch:
-    name: Get git branch
-    runs-on: ubuntu-18.04
-    outputs:
-      branch-name: ${{ steps.get-git-branch.outputs.branch-name }}
-    steps:
-      - id: get-git-branch
-        run: |
-          if ${{ github.event_name == 'push' }}
-            then export GIT_BRANCH=`echo ${{ github.ref }} | cut -d'/' -f 3`
-          else
-            export GIT_BRANCH=${{ github.base_ref }}
-          fi
-          echo "::set-output name=branch-name::$GIT_BRANCH"
   build:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
-    needs: git-branch
     strategy:
       fail-fast: false
       matrix:
@@ -56,7 +41,7 @@ jobs:
           }
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Deps-packages
         shell: bash
