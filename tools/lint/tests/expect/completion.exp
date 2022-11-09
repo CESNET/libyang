@@ -10,7 +10,8 @@ if { [info exists ::env(CURRENT_SOURCE_DIR)] } {
 
 spawn $yanglint
 
-expect_output "> "
+# skip no dir and/or no history warnings
+expect_output "(YANGLINT.*)*> "
 
 expect_command "clear -ii" 0 ""
 
