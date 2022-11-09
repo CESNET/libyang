@@ -60,12 +60,12 @@ extern "C" {
  * The plugin's functionality is provided to libyang via a set of callbacks specified as an array of ::lyplg_ext_record
  * structures using the ::LYPLG_EXTENSIONS macro.
  *
- * The most important ::lyplg_ext.compile callback is responsible for processing the parsed extension instance. In this
- * phase, the callback must validate all the substatements, their values or placement of the extension instance itself.
- * If needed, the processed data can be stored in some form into the compiled schema representation of the extension
- * instance. To make the compilation process as easy as possible, libyang provides several
- * [helper functions](@ref pluginsExtensionsCompile) to handle the schema compilation context and to compile standard YANG
- * statements in the same way the libyang does it internally.
+ * The most important callbacks are ::lyplg_ext.parse and ::lyplg_ext.compile. They are responsible for parsing and
+ * compiling extension instance. This should include validating all the substatements, their values, or placement of
+ * the extension instance itself. If needed, the processed data can be stored in some form into the compiled schema
+ * representation of the extension instance. To make this task as easy as possible, libyang provides several
+ * [parsing](@ref pluginsExtensionsParse) and [compilation](@ref pluginsExtensionsCompile) helper functions to process
+ * known YANG statements exactly as if they were standard YANG statements.
  *
  * The data validation callback ::lyplg_ext.validate is used for additional validation of a data nodes that contains the
  * connected extension instance directly (as a substatement) or indirectly in case of terminal nodes via their type (no
@@ -74,25 +74,25 @@ extern "C" {
  *
  * The ::lyplg_ext.printer_info callback implement printing the compiled extension instance data when the schema (module) is
  * being printed in the ::LYS_OUT_YANG_COMPILED (info) format. As for compile callback, there are also
- * [helper functions](@ref pluginsExtensionsPrint) to access printer's context and to print standard YANG statements
+ * [helper functions](@ref pluginsExtensionsSprinterInfo) to access printer's context and to print standard YANG statements
  * placed in the extension instance by libyang itself.
  *
  * The ::lyplg_ext.printer_ctree and ::lyplg_ext.printer_ptree callbacks implement printing of YANG tree diagrams
  * (RFC 8340) for extension instance data. These callbacks are called for extension instances that have
- * parents of type LY_STMT_MODULE, LY_STMT_SUBMODULE. Or these callbacks are called if the printer_tree finds
+ * parents of type ::LY_STMT_MODULE, ::LY_STMT_SUBMODULE. Or these callbacks are called if the printer_tree finds
  * a compiled/parsed data-node containing an extension instance. The callbacks should then decide which nodes
  * should be printed within the extension instance. In addition, it is possible to register additional callbacks
  * to the printer_tree context to override the form of the each node in the extension instance.
  *
- * The last callback, ::lyplg_ext.free, is supposed to free all the data allocated by the ::lyplg_ext.compile callback.
- * To free the data created by helper function ::lys_compile_extension_instance(), the plugin can used
- * ::lyplg_ext_instance_substatements_free().
+ * The last callback, ::lyplg_ext.cfree, is supposed to free all the data allocated by the ::lyplg_ext.compile callback.
+ * To free the data created by helper function ::lyplg_ext_compile_extension_instance(), the plugin can used
+ * ::lyplg_ext_cfree_instance_substatements().
  *
  * The plugin information contains also the plugin identifier (::lyplg_type.id). This string can serve to identify the
  * specific plugin responsible to storing data value. In case the user can recognize the id string, it can access the
  * plugin specific data with the appropriate knowledge of its structure.
  *
- * Logging information from an extension plugin is possible via ::lyplg_extp_log() and ::yplg_extc_log() functions.
+ * Logging information from an extension plugin is possible via ::lyplg_ext_parse_log() and ::lyplg_ext_compile_log() functions.
  */
 
 /**
@@ -460,14 +460,19 @@ struct lysc_ext_instance {
     uint32_t plugins_extensions_apiver__ = LYPLG_EXT_API_VERSION; \
     const struct lyplg_ext_record plugins_extensions__[]
 
-/*
- * parse
+/**
+ * @defgroup pluginsExtensionsParse Plugins: Extensions parsing support
+ * @ingroup pluginsExtensions
+ *
+ * Implementing extension plugin parse callback.
+ *
+ * @{
  */
 
 /**
  * @brief Callback for parsing extension instance substatements.
  *
- * All known YANG substatements can easily be parsed using ::lys_parse_extension_instance.
+ * All known YANG substatements can easily be parsed using ::lyplg_ext_parse_extension_instance.
  *
  * @param[in] pctx Parse context.
  * @param[in,out] ext Parsed extension instance data.
@@ -512,8 +517,15 @@ LIBYANG_API_DECL const struct lysp_module *lyplg_ext_parse_get_cur_pmod(const st
  */
 LIBYANG_API_DECL LY_ERR lyplg_ext_parse_extension_instance(struct lysp_ctx *pctx, struct lysp_ext_instance *ext);
 
-/*
- * compile
+/** @} pluginsExtensionsParse */
+
+/**
+ * @defgroup pluginsExtensionsCompile Plugins: Extensions compilation support
+ * @ingroup pluginsExtensions
+ *
+ * Implementing extension plugin compile callback.
+ *
+ * @{
  */
 
 /**
@@ -543,7 +555,7 @@ LIBYANG_API_DECL LY_ERR lyplg_ext_parse_extension_instance(struct lysp_ctx *pctx
  * @brief Callback to compile extension from the lysp_ext_instance to the lysc_ext_instance. The later structure is generally prepared
  * and only the extension specific data are supposed to be added (if any).
  *
- * The parsed generic statements can be processed by the callback on its own or the ::lys_compile_extension_instance
+ * The parsed generic statements can be processed by the callback on its own or the ::lyplg_ext_compile_extension_instance()
  * function can be used to let the compilation to libyang following the standard rules for processing the YANG statements.
  *
  * @param[in] cctx Current compile context.
@@ -631,8 +643,15 @@ LIBYANG_API_DECL struct lysp_module *lyplg_ext_compile_get_pmod(const struct lys
 LIBYANG_API_DECL LY_ERR lyplg_ext_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *extp,
         struct lysc_ext_instance *ext);
 
-/*
- * sprinter info
+/** @} pluginsExtensionsCompile */
+
+/**
+ * @defgroup pluginsExtensionsSprinterInfo Plugins: Extensions schema info printer support
+ * @ingroup pluginsExtensions
+ *
+ * Implementing extension plugin schema info printer callback.
+ *
+ * @{
  */
 
 /**
@@ -684,8 +703,15 @@ LIBYANG_API_DECL uint16_t *lyplg_ext_print_get_level(const struct lyspr_ctx *ctx
 LIBYANG_API_DECL void lyplg_ext_print_info_extension_instance(struct lyspr_ctx *ctx, const struct lysc_ext_instance *ext,
         ly_bool *flag);
 
-/*
- * sprinter tree
+/** @} pluginsExtensionsSprinterInfo */
+
+/**
+ * @defgroup pluginsExtensionsSprinterTree Plugins: Extensions schema parsed and compiled tree printer support
+ * @ingroup pluginsExtensions
+ *
+ * Implementing extension plugin schema parsed and compiled tree printer callback.
+ *
+ * @{
  */
 
 /**
@@ -780,6 +806,8 @@ LIBYANG_API_DECL LY_ERR lyplg_ext_sprinter_ptree_add_ext_nodes(const struct lysp
 LIBYANG_API_DECL LY_ERR lyplg_ext_sprinter_ptree_add_nodes(const struct lyspr_tree_ctx *ctx, struct lysp_node *nodes,
         lyplg_ext_sprinter_ptree_override_clb clb);
 
+/** @} pluginsExtensionsSprinterTree */
+
 /*
  * data node
  */
@@ -859,7 +887,7 @@ typedef LY_ERR (*lyplg_ext_data_validate_clb)(struct lysc_ext_instance *ext, str
 typedef void (*lyplg_ext_parse_free_clb)(const struct ly_ctx *ctx, struct lysp_ext_instance *ext);
 
 /**
- * @brief Free the extension instance's data parsed with ::lys_parse_extension_instance().
+ * @brief Free the extension instance's data parsed with ::lyplg_ext_parse_extension_instance().
  *
  * @param[in] ctx libyang context
  * @param[in] substmts Extension instance substatements to free.
@@ -879,7 +907,7 @@ LIBYANG_API_DECL void lyplg_ext_pfree_instance_substatements(const struct ly_ctx
 typedef void (*lyplg_ext_compile_free_clb)(const struct ly_ctx *ctx, struct lysc_ext_instance *ext);
 
 /**
- * @brief Free the extension instance's data compiled with ::lys_compile_extension_instance().
+ * @brief Free the extension instance's data compiled with ::lyplg_ext_compile_extension_instance().
  *
  * @param[in] ctx libyang context
  * @param[in] substmts Extension instance substatements to free.
