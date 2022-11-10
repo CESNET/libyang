@@ -960,6 +960,9 @@ lyd_new_attr2(struct lyd_node *parent, const char *module_ns, const char *name, 
     if (!value) {
         value = "";
     }
+    if (strchr(value, ':')) {
+        LOGWRN(ctx, "Value \"%s\" prefix will never be interpreted as an XML prefix.", value);
+    }
 
     LY_CHECK_RET(lyd_create_attr(parent, &ret, ctx, name, name_len, prefix, pref_len, module_ns,
             module_ns ? strlen(module_ns) : 0, value, strlen(value), NULL, LY_VALUE_XML, NULL, LYD_HINT_DATA));
