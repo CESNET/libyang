@@ -182,11 +182,12 @@ struct lysc_unres_dflt {
 
 #define DUP_EXTS(CTX, PMOD, PARENT, PARENT_STMT, ORIG_ARRAY, NEW_ARRAY, DUP_FUNC) \
     if (ORIG_ARRAY) { \
-        LY_ARRAY_COUNT_TYPE __u; \
+        LY_ARRAY_COUNT_TYPE __u, __new_start; \
+        __new_start = LY_ARRAY_COUNT(NEW_ARRAY); \
         LY_ARRAY_CREATE_RET(CTX, NEW_ARRAY, LY_ARRAY_COUNT(ORIG_ARRAY), LY_EMEM); \
         LY_ARRAY_FOR(ORIG_ARRAY, __u) { \
             LY_ARRAY_INCREMENT(NEW_ARRAY); \
-            LY_CHECK_RET(DUP_FUNC(CTX, PMOD, PARENT, PARENT_STMT, &(ORIG_ARRAY)[__u], &(NEW_ARRAY)[__u])); \
+            LY_CHECK_RET(DUP_FUNC(CTX, PMOD, PARENT, PARENT_STMT, &(ORIG_ARRAY)[__u], &(NEW_ARRAY)[__new_start + __u])); \
         } \
     }
 
