@@ -1857,13 +1857,16 @@ LIBYANG_API_DECL LY_ERR lyd_value_compare(const struct lyd_node_term *node, cons
  * @{
  * Various options to change the ::lyd_compare_single() and ::lyd_compare_siblings() behavior.
  */
-#define LYD_COMPARE_FULL_RECURSION 0x01 /* lists and containers are the same only in case all they children
+#define LYD_COMPARE_FULL_RECURSION 0x01 /* Lists and containers are the same only in case all they children
                                            (subtree, so direct as well as indirect children) are the same. By default,
                                            containers are the same in case of the same schema node and lists are the same
                                            in case of equal keys (keyless lists do the full recursion comparison all the time). */
 #define LYD_COMPARE_DEFAULTS 0x02       /* By default, implicit and explicit default nodes are considered to be equal. This flag
                                            changes this behavior and implicit (automatically created default node) and explicit
                                            (explicitly created node with the default value) default nodes are considered different. */
+#define LYD_COMPARE_OPAQ 0x04           /* Opaque nodes can normally be never equal to data nodes. Using this flag even
+                                           opaque nodes members are compared to data node schema and value and can result
+                                           in a match. */
 /** @} datacompareoptions */
 
 /**

@@ -1166,6 +1166,82 @@ lyd_compare_schema_parents_equal(const struct lyd_node *node1, const struct lyd_
 }
 
 /**
+ * @brief Compare 2 nodes values including opaque node values.
+ *
+ * @param[in] node1 First node to compare.
+ * @param[in] node2 Second node to compare.
+ * @return LY_SUCCESS if equal.
+ * @return LY_ENOT if not equal.
+ * @return LY_ERR on error.
+ */
+static LY_ERR
+lyd_compare_single_value(const struct lyd_node *node1, const struct lyd_node *node2)
+{
+    const struct lyd_node_opaq *opaq1 = NULL, *opaq2 = NULL;
+    const char *val1, *val2, *col;
+    const struct lys_module *mod;
+    char *val_dyn = NULL;
+    LY_ERR rc = LY_SUCCESS;
+
+    if (!node1->schema) {
+        opaq1 = (struct lyd_node_opaq *)node1;
+    }
+    if (!node2->schema) {
+        opaq2 = (struct lyd_node_opaq *)node2;
+    }
+
+    if (opaq1 && opaq2 && (opaq1->format == LY_VALUE_XML) && (opaq2->format == LY_VALUE_XML)) {
+        /* opaque XML and opaque XML node */
+        if (lyxml_value_compare(LYD_CTX(node1), opaq1->value, opaq1->val_prefix_data, LYD_CTX(node2), opaq2->value,
+                opaq2->val_prefix_data)) {
+            return LY_ENOT;
+        }
+        return LY_SUCCESS;
+    }
+
+    /* get their values */
+    if (opaq1 && ((opaq1->format == LY_VALUE_XML) || (opaq1->format == LY_VALUE_STR_NS)) && (col = strchr(opaq1->value, ':'))) {
+        /* XML value with a prefix, try to transform it into a JSON (canonical) value */
+        mod = ly_resolve_prefix(LYD_CTX(node1), opaq1->value, col - opaq1->value, opaq1->format, opaq1->val_prefix_data);
+        if (!mod) {
+            /* unable to compare */
+            return LY_ENOT;
+        }
+
+        if (asprintf(&val_dyn, "%s%s", mod->name, col) == -1) {
+            LOGMEM(LYD_CTX(node1));
+            return LY_EMEM;
+        }
+        val1 = val_dyn;
+    } else {
+        val1 = lyd_get_value(node1);
+    }
+    if (opaq2 && ((opaq2->format == LY_VALUE_XML) || (opaq2->format == LY_VALUE_STR_NS)) && (col = strchr(opaq2->value, ':'))) {
+        mod = ly_resolve_prefix(LYD_CTX(node2), opaq2->value, col - opaq2->value, opaq2->format, opaq2->val_prefix_data);
+        if (!mod) {
+            return LY_ENOT;
+        }
+
+        assert(!val_dyn);
+        if (asprintf(&val_dyn, "%s%s", mod->name, col) == -1) {
+            LOGMEM(LYD_CTX(node2));
+            return LY_EMEM;
+        }
+        val2 = val_dyn;
+    } else {
+        val2 = lyd_get_value(node2);
+    }
+
+    /* compare values */
+    if (strcmp(val1, val2)) {
+        rc = LY_ENOT;
+    }
+
+    free(val_dyn);
+    return rc;
+}
+
+/**
  * @brief Internal implementation of @ref lyd_compare_single.
  * @copydoc lyd_compare_single
  * @param[in] parental_schemas_checked Flag used for optimization.
@@ -1174,14 +1250,13 @@ lyd_compare_schema_parents_equal(const struct lyd_node *node1, const struct lyd_
  * recursive calls, and this is accomplished by setting to 1 in the lyd_compare_single_ body.
  */
 static LY_ERR
-lyd_compare_single_(const struct lyd_node *node1, const struct lyd_node *node2,
-        uint32_t options, ly_bool parental_schemas_checked)
+lyd_compare_single_(const struct lyd_node *node1, const struct lyd_node *node2, uint32_t options,
+        ly_bool parental_schemas_checked)
 {
     const struct lyd_node *iter1, *iter2;
-    struct lyd_node_term *term1, *term2;
     struct lyd_node_any *any1, *any2;
-    struct lyd_node_opaq *opaq1, *opaq2;
     int len1, len2;
+    LY_ERR r;
 
     if (!node1 || !node2) {
         if (node1 == node2) {
@@ -1193,8 +1268,14 @@ lyd_compare_single_(const struct lyd_node *node1, const struct lyd_node *node2,
 
     if (LYD_CTX(node1) == LYD_CTX(node2)) {
         /* same contexts */
-        if (node1->schema != node2->schema) {
-            return LY_ENOT;
+        if (options & LYD_COMPARE_OPAQ) {
+            if (lyd_node_schema(node1) != lyd_node_schema(node2)) {
+                return LY_ENOT;
+            }
+        } else {
+            if (node1->schema != node2->schema) {
+                return LY_ENOT;
+            }
         }
     } else {
         /* different contexts */
@@ -1209,39 +1290,22 @@ lyd_compare_single_(const struct lyd_node *node1, const struct lyd_node *node2,
         }
     }
 
-    if (node1->hash != node2->hash) {
+    if (!(options & LYD_COMPARE_OPAQ) && (node1->hash != node2->hash)) {
         return LY_ENOT;
     }
     /* equal hashes do not mean equal nodes, they can be just in collision so the nodes must be checked explicitly */
 
-    if (!node1->schema) {
-        opaq1 = (struct lyd_node_opaq *)node1;
-        opaq2 = (struct lyd_node_opaq *)node2;
-        if ((strcmp(opaq1->name.name, opaq2->name.name)) || (opaq1->format != opaq2->format) ||
-                (strcmp(opaq1->name.module_ns, opaq2->name.module_ns))) {
+    if (!node1->schema || !node2->schema) {
+        if (!(options & LYD_COMPARE_OPAQ) && ((node1->schema && !node2->schema) || (!node1->schema && node2->schema))) {
             return LY_ENOT;
         }
-        switch (opaq1->format) {
-        case LY_VALUE_XML:
-            if (lyxml_value_compare(LYD_CTX(node1), opaq1->value, opaq1->val_prefix_data, LYD_CTX(node2), opaq2->value,
-                    opaq2->val_prefix_data)) {
-                return LY_ENOT;
-            }
-            break;
-        case LY_VALUE_JSON:
-            /* prefixes in JSON are unique, so it is not necessary to canonize the values */
-            if (strcmp(opaq1->value, opaq2->value)) {
-                return LY_ENOT;
-            }
-            break;
-        default:
-            /* not allowed */
-            LOGINT(LYD_CTX(node1));
-            return LY_EINT;
+        if ((r = lyd_compare_single_value(node1, node2))) {
+            return r;
         }
+
         if (options & LYD_COMPARE_FULL_RECURSION) {
-            iter1 = opaq1->child;
-            iter2 = opaq2->child;
+            iter1 = lyd_child(node1);
+            iter2 = lyd_child(node2);
             goto all_children_compare;
         }
         return LY_SUCCESS;
@@ -1254,19 +1318,10 @@ lyd_compare_single_(const struct lyd_node *node1, const struct lyd_node *node2,
                     return LY_ENOT;
                 }
             }
-
-            term1 = (struct lyd_node_term *)node1;
-            term2 = (struct lyd_node_term *)node2;
-
-            /* same contexts */
-            if (LYD_CTX(node1) == LYD_CTX(node2)) {
-                return term1->value.realtype->plugin->compare(&term1->value, &term2->value);
+            if ((r = lyd_compare_single_value(node1, node2))) {
+                return r;
             }
 
-            /* different contexts */
-            if (strcmp(lyd_get_value(node1), lyd_get_value(node2))) {
-                return LY_ENOT;
-            }
             return LY_SUCCESS;
         case LYS_CONTAINER:
         case LYS_RPC:
@@ -2508,7 +2563,7 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
     } else {
         /* no children hash table */
         for ( ; siblings; siblings = siblings->next) {
-            if (!lyd_compare_single(siblings, target, 0)) {
+            if (!lyd_compare_single(siblings, target, LYD_COMPARE_OPAQ)) {
                 break;
             }
         }
@@ -2640,7 +2695,7 @@ lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const struct lyd_
     } else {
         /* no children hash table */
         LY_LIST_FOR(siblings, siblings) {
-            if (!lyd_compare_single(target, siblings, 0)) {
+            if (!lyd_compare_single(target, siblings, LYD_COMPARE_OPAQ)) {
                 ly_set_add(*set, (void *)siblings, 1, NULL);
             }
         }
