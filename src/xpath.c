@@ -9527,7 +9527,6 @@ lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct ly
         const struct lyd_node *tree, const struct lyxp_var *vars, struct lyxp_set *set, uint32_t options)
 {
     uint32_t tok_idx = 0;
-    const struct lysc_node *snode;
     LY_ERR rc;
 
     LY_CHECK_ARG_RET(ctx, ctx, exp, set, LY_EINVAL);
@@ -9543,8 +9542,7 @@ lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct ly
         }
         tree = lyd_first_sibling(tree);
 
-        for (snode = tree->schema->parent; snode && (snode->nodetype & (LYS_CASE | LYS_CHOICE)); snode = snode->parent) {}
-        if (snode) {
+        if (lysc_data_parent(tree->schema)) {
             /* unable to evaluate absolute paths */
             LOGERR(ctx, LY_EINVAL, "Data node \"%s\" has no parent but is not instance of a top-level schema node.",
                     LYD_NAME(tree));
