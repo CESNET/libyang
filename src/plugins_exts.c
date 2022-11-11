@@ -20,6 +20,7 @@
 #include <stdlib.h>
 
 #include "common.h"
+#include "compat.h"
 #include "dict.h"
 #include "parser_internal.h"
 #include "printer_internal.h"
@@ -600,65 +601,25 @@ lyplg_ext_get_storage_p(const struct lysc_ext_instance *ext, int stmt, const voi
     return LY_ENOT;
 }
 
-static LY_ERR
-lyplg_ext_set_storage(const struct ly_ctx *ctx, const void **s, uint32_t storage_size, const void **storage)
-{
-    if (s) {
-        /* matters for little-endian */
-        switch (storage_size) {
-        case 1:
-            *(uint8_t *)storage = (uintptr_t)*s;
-            break;
-        case 2:
-            *(uint16_t *)storage = (uintptr_t)*s;
-            break;
-        case 4:
-            *(uint32_t *)storage = (uintptr_t)*s;
-            break;
-        case 8:
-            *(uint64_t *)storage = (uintptr_t)*s;
-            break;
-        default:
-            LOGERR(ctx, LY_EINVAL, "Invalid storage size %" PRIu32 ".", storage_size);
-            return LY_EINVAL;
-        }
-
-        return LY_SUCCESS;
-    } else {
-        /* zero */
-        switch (storage_size) {
-        case 1:
-            *(uint8_t *)storage = (uintptr_t)s;
-            break;
-        case 2:
-            *(uint16_t *)storage = (uintptr_t)s;
-            break;
-        case 4:
-            *(uint32_t *)storage = (uintptr_t)s;
-            break;
-        case 8:
-            *(uint64_t *)storage = (uintptr_t)s;
-            break;
-        default:
-            LOGERR(ctx, LY_EINVAL, "Invalid storage size %" PRIu32 ".", storage_size);
-            return LY_EINVAL;
-        }
-        return LY_ENOT;
-    }
-}
-
 LIBYANG_API_DEF LY_ERR
 lyplg_ext_get_storage(const struct lysc_ext_instance *ext, int stmt, uint32_t storage_size, const void **storage)
 {
-    LY_ERR rc1, rc2;
+    LY_ERR rc = LY_SUCCESS;
     const void **s;
 
     /* get pointer to the storage, is set even on error */
-    rc1 = lyplg_ext_get_storage_p(ext, stmt, &s);
+    rc = lyplg_ext_get_storage_p(ext, stmt, &s);
 
     /* assign */
-    rc2 = lyplg_ext_set_storage(ext->module->ctx, s, storage_size, storage);
-    return rc1 ? rc1 : rc2;
+    if (s) {
+        *s = htole64(*s);
+        memcpy(storage, s, storage_size);
+        *storage = le64toh(*storage);
+    } else {
+        memset(storage, 0, storage_size);
+    }
+
+    return rc;
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -694,7 +655,15 @@ lyplg_ext_parsed_get_storage(const struct lysc_ext_instance *ext, int stmt, uint
     }
 
     /* assign */
-    return lyplg_ext_set_storage(ext->module->ctx, s, storage_size, storage);
+    if (s) {
+        *s = htole64(*s);
+        memcpy(storage, s, storage_size);
+        *storage = le64toh(*storage);
+    } else {
+        memset(storage, 0, storage_size);
+    }
+
+    return LY_SUCCESS;
 }
 
 LIBYANG_API_DEF LY_ERR
