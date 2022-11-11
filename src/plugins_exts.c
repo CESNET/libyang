@@ -20,7 +20,6 @@
 #include <stdlib.h>
 
 #include "common.h"
-#include "compat.h"
 #include "dict.h"
 #include "parser_internal.h"
 #include "printer_internal.h"
@@ -612,9 +611,7 @@ lyplg_ext_get_storage(const struct lysc_ext_instance *ext, int stmt, uint32_t st
 
     /* assign */
     if (s) {
-        *s = htole64(*s);
         memcpy(storage, s, storage_size);
-        *storage = le64toh(*storage);
     } else {
         memset(storage, 0, storage_size);
     }
@@ -656,9 +653,7 @@ lyplg_ext_parsed_get_storage(const struct lysc_ext_instance *ext, int stmt, uint
 
     /* assign */
     if (s) {
-        *s = htole64(*s);
         memcpy(storage, s, storage_size);
-        *storage = le64toh(*storage);
     } else {
         memset(storage, 0, storage_size);
     }
