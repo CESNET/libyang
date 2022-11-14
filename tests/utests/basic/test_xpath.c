@@ -96,6 +96,7 @@ setup(void **state)
     UTEST_SETUP;
 
     UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, NULL, NULL);
+    lys_parse_path(UTEST_LYCTX, TESTS_DIR_MODULES_YANG "/ietf-interfaces@2014-05-08.yang", LYS_IN_YANG, NULL);
 
     return 0;
 }
@@ -483,6 +484,14 @@ test_atomize(void **state)
 
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/a:c/ll[a='val1']/ll[a='val2']/b", 0, &set));
     assert_int_equal(6, set->count);
+    ly_set_free(set, NULL);
+
+    assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/ietf-interfaces:interfaces/*", 0, &set));
+    assert_int_equal(2, set->count);
+    ly_set_free(set, NULL);
+
+    assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/*", 0, &set));
+    assert_int_equal(13, set->count);
     ly_set_free(set, NULL);
 
     /*

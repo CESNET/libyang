@@ -6584,7 +6584,7 @@ moveto_axis_scnode_next(const struct lysc_node **iter, enum lyxp_node_type *iter
             }
 
             assert(scnode);
-            if (!lysc_data_parent(scnode)) {
+            if ((axis != LYXP_AXIS_CHILD) && !lysc_data_parent(scnode)) {
                 /* iterating over top-level nodes, find next */
                 while (lysc_data_parent(*iter)) {
                     *iter = lysc_data_parent(*iter);
