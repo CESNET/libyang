@@ -201,6 +201,11 @@ test_predicate(void **state)
     assert_int_equal(3, set->count);
     ly_set_free(set, NULL);
 
+    /* nested predicate */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:c/a:ll[a:a=string(/a:l1[a:a='foo']/a:a)]/a:a", &set));
+    assert_int_equal(0, set->count);
+    ly_set_free(set, NULL);
+
     lyd_free_all(tree);
 }
 

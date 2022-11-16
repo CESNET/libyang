@@ -7702,7 +7702,7 @@ eval_name_test_try_compile_predicates(const struct lyxp_expr *exp, uint32_t *tok
         const struct lyxp_set *set, struct ly_path_predicate **predicates, enum ly_path_pred_type *pred_type)
 {
     LY_ERR rc = LY_SUCCESS;
-    uint32_t e_idx, val_start_idx, pred_idx = 0, prev_lo, pred_len = 0;
+    uint32_t e_idx, val_start_idx, pred_idx = 0, prev_lo, pred_len = 0, nested_pred;
     const struct lysc_node *key;
     char *pred = NULL;
     struct lyxp_expr *exp2 = NULL;
@@ -7754,14 +7754,22 @@ eval_name_test_try_compile_predicates(const struct lyxp_expr *exp, uint32_t *tok
             val_start_idx = e_idx;
 
             /* ']' */
-            while (lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_BRACK2)) {
-                if (!lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_OPER_LOG)) {
+            nested_pred = 1;
+            do {
+                ++e_idx;
+
+                if ((nested_pred == 1) && !lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_OPER_LOG)) {
                     /* higher priority than '=' */
                     rc = LY_ENOT;
                     goto cleanup;
+                } else if (!lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_BRACK1)) {
+                    /* nested predicate */
+                    ++nested_pred;
+                } else if (!lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_BRACK2)) {
+                    /* predicate end */
+                    --nested_pred;
                 }
-                ++e_idx;
-            }
+            } while (nested_pred);
 
             /* try to evaluate the value */
             LY_CHECK_GOTO(rc = eval_name_test_try_compile_predicate_append(exp, val_start_idx, e_idx - 1, ctx_scnode,
