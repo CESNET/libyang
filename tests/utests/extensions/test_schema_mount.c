@@ -465,6 +465,7 @@ test_parse_inline(void **state)
     const char *xml, *json;
     char *lyb;
     struct lyd_node *data;
+    const struct ly_ctx *ext_ctx;
 
     /* valid */
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
@@ -548,6 +549,7 @@ test_parse_inline(void **state)
             "</root>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    ext_ctx = LYD_CTX(lyd_child(data));
     lyd_free_siblings(data);
 
     json =
@@ -577,9 +579,10 @@ test_parse_inline(void **state)
             "}\n";
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    assert_ptr_equal(ext_ctx, LYD_CTX(lyd_child(data)));
     lyd_free_siblings(data);
 
-    /* different yang-lib data */
+    /* different yang-lib data with the same content-id */
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
             "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
             "    xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">"
@@ -647,15 +650,19 @@ test_parse_inline(void **state)
             "</schema-mounts>");
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    assert_ptr_not_equal(ext_ctx, LYD_CTX(lyd_child(data)));
+    ext_ctx = LYD_CTX(lyd_child(data));
     lyd_free_siblings(data);
 
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    assert_ptr_equal(ext_ctx, LYD_CTX(lyd_child(data)));
 
     assert_int_equal(LY_SUCCESS, lyd_print_mem(&lyb, data, LYD_LYB, 0));
     lyd_free_siblings(data);
 
     CHECK_PARSE_LYD_PARAM(lyb, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+    assert_ptr_equal(ext_ctx, LYD_CTX(lyd_child(data)));
     free(lyb);
     lyd_free_siblings(data);
 }

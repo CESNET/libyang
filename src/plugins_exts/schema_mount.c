@@ -35,9 +35,9 @@
  * @brief Internal schema mount data structure for holding all the contexts of parsed data.
  */
 struct lyplg_ext_sm {
-    struct lyplg_ext_sm_shared {
-        pthread_mutex_t lock;           /**< lock for accessing this shared structure */
+    pthread_mutex_t lock;               /**< lock for accessing this shared structure */
 
+    struct lyplg_ext_sm_shared {
         struct {
             struct ly_ctx *ctx;         /**< context shared between all data of this mount point */
             const char *mount_point;    /**< mount point name */
@@ -51,7 +51,7 @@ struct lyplg_ext_sm {
 
     struct lyplg_ext_sm_inln {
         struct {
-            struct ly_ctx *ctx;         /**< context created for single inline schema data */
+            struct ly_ctx *ctx;         /**< context created for inline schema data, may be reused if possible */
         } *schemas;                     /**< array of inline schemas */
         uint32_t schema_count;          /**< length of schemas array */
     } inln;                             /**< inline mount points */
@@ -207,6 +207,7 @@ schema_mount_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *UNUS
     if (!sm_data) {
         EXT_LOGERR_MEM_RET(cctx, ext);
     }
+    pthread_mutex_init(&sm_data->lock, NULL);
     ext->compiled = sm_data;
 
     /* find the owner module */
@@ -225,7 +226,6 @@ schema_mount_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *UNUS
             free(sm_data);
             EXT_LOGERR_MEM_RET(cctx, ext);
         }
-        pthread_mutex_init(&sm_data->shared->lock, NULL);
         sm_data->shared->ref_count = 1;
     }
 
@@ -348,6 +348,40 @@ cleanup:
 }
 
 /**
+ * @brief Get ietf-yang-library context-id from its data.
+ *
+ * @param[in] ext Compiled extension instance for logging.
+ * @param[in] ext_data Extension data retrieved by the callback with the yang-library data.
+ * @param[out] content_id Content ID in @p ext_data.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_mount_get_content_id(struct lysc_ext_instance *ext, const struct lyd_node *ext_data, const char **content_id)
+{
+    struct lyd_node *node = NULL;
+
+    *content_id = NULL;
+
+    /* get yang-library content-id or module-set-id */
+    if (ext_data) {
+        lyd_find_path(ext_data, "/ietf-yang-library:yang-library/content-id", 0, &node);
+        if (!node) {
+            lyd_find_path(ext_data, "/ietf-yang-library:modules-state/module-set-id", 0, &node);
+        }
+        if (node) {
+            *content_id = lyd_get_value(node);
+        }
+    }
+
+    if (!*content_id) {
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EVALID,
+                "Missing \"content-id\" or \"module-set-id\" in ietf-yang-library data.");
+        return LY_EVALID;
+    }
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Get schema (context) for a shared-schema mount point.
  *
  * @param[in] ext Compiled extension instance.
@@ -361,33 +395,21 @@ schema_mount_get_ctx_shared(struct lysc_ext_instance *ext, const struct lyd_node
         const struct ly_ctx **ext_ctx)
 {
     struct lyplg_ext_sm *sm_data = ext->compiled;
-    LY_ERR ret = LY_SUCCESS, r;
-    struct lyd_node *node = NULL;
+    LY_ERR rc = LY_SUCCESS, r;
     struct ly_ctx *new_ctx = NULL;
     uint32_t i;
-    const char *content_id = NULL;
+    const char *content_id;
     void *mem;
 
     assert(sm_data && sm_data->shared);
 
     /* get yang-library content-id or module-set-id */
-    if (ext_data) {
-        lyd_find_path(ext_data, "/ietf-yang-library:yang-library/content-id", 0, &node);
-        if (!node) {
-            lyd_find_path(ext_data, "/ietf-yang-library:modules-state/module-set-id", 0, &node);
-        }
-        if (node) {
-            content_id = lyd_get_value(node);
-        }
-    }
-    if (!content_id) {
-        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EVALID,
-                "Missing \"content-id\" or \"module-set-id\" in ietf-yang-library data.");
-        return LY_EVALID;
+    if ((r = schema_mount_get_content_id(ext, ext_data, &content_id))) {
+        return r;
     }
 
     /* LOCK */
-    if ((r = pthread_mutex_lock(&sm_data->shared->lock))) {
+    if ((r = pthread_mutex_lock(&sm_data->lock))) {
         lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_ESYS, "Mutex lock failed (%s).", strerror(r));
         return LY_ESYS;
     }
@@ -405,13 +427,13 @@ schema_mount_get_ctx_shared(struct lysc_ext_instance *ext, const struct lyd_node
             lyplg_ext_compile_log_path("/ietf-yang-library:yang-library/content-id", ext, LY_LLERR, LY_EVALID,
                     "Shared-schema yang-library content-id \"%s\" differs from \"%s\" used previously.",
                     content_id, sm_data->shared->schemas[i].content_id);
-            ret = LY_EVALID;
+            rc = LY_EVALID;
             goto cleanup;
         }
     } else {
         /* no schema found, create it */
         if ((r = schema_mount_create_ctx(ext, ext_data, config, &new_ctx))) {
-            ret = r;
+            rc = r;
             goto cleanup;
         }
 
@@ -419,7 +441,7 @@ schema_mount_get_ctx_shared(struct lysc_ext_instance *ext, const struct lyd_node
         mem = realloc(sm_data->shared->schemas, (i + 1) * sizeof *sm_data->shared->schemas);
         if (!mem) {
             ly_ctx_destroy(new_ctx);
-            EXT_LOGERR_MEM_GOTO(NULL, ext, ret, cleanup);
+            EXT_LOGERR_MEM_GOTO(NULL, ext, rc, cleanup);
         }
         sm_data->shared->schemas = mem;
         ++sm_data->shared->schema_count;
@@ -435,9 +457,102 @@ schema_mount_get_ctx_shared(struct lysc_ext_instance *ext, const struct lyd_node
 
 cleanup:
     /* UNLOCK */
-    pthread_mutex_unlock(&sm_data->shared->lock);
+    pthread_mutex_unlock(&sm_data->lock);
 
-    return ret;
+    return rc;
+}
+
+/**
+ * @brief Check whether ietf-yang-library data describe an existing context meaning whether it includes
+ * at least exactly all the mentioned modules.
+ *
+ * @param[in] ext Compiled extension instance for logging.
+ * @param[in] ext_data Extension data retrieved by the callback with the yang-library data.
+ * @param[in] ctx Context to consider.
+ * @return LY_SUCCESS if the context matches.
+ * @return LY_ENOT if the context differs.
+ * @return LY_ERR on error.
+ */
+static LY_ERR
+schema_mount_ctx_match(struct lysc_ext_instance *ext, const struct lyd_node *ext_data, const struct ly_ctx *ctx)
+{
+    struct ly_set *impl_mods = NULL, *imp_mods = NULL;
+    struct lyd_node *node;
+    const struct lys_module *mod;
+    const char *name, *revision;
+    LY_ERR rc = LY_ENOT, r;
+    uint32_t i;
+
+    /* collect all the implemented and imported modules, we do not really care about content-id */
+    if (!lyd_find_path(ext_data, "/ietf-yang-library:yang-library/content-id", 0, NULL)) {
+        if ((r = lyd_find_xpath(ext_data, "/ietf-yang-library:yang-library/module-set[1]/module", &impl_mods))) {
+            rc = r;
+            goto cleanup;
+        }
+        if ((r = lyd_find_xpath(ext_data, "/ietf-yang-library:yang-library/module-set[1]/import-only-module", &imp_mods))) {
+            rc = r;
+            goto cleanup;
+        }
+    } else {
+        if ((r = lyd_find_xpath(ext_data, "/ietf-yang-library:modules-state/module[conformance-type='implement']", &impl_mods))) {
+            rc = r;
+            goto cleanup;
+        }
+        if ((r = lyd_find_xpath(ext_data, "/ietf-yang-library:modules-state/module[conformance-type='import']", &imp_mods))) {
+            rc = r;
+            goto cleanup;
+        }
+    }
+
+    if (!impl_mods->count) {
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EVALID, "No implemented modules included in ietf-yang-library data.");
+        rc = LY_EVALID;
+        goto cleanup;
+    }
+
+    /* check all the implemented modules */
+    for (i = 0; i < impl_mods->count; ++i) {
+        lyd_find_path(impl_mods->dnodes[i], "name", 0, &node);
+        name = lyd_get_value(node);
+
+        lyd_find_path(impl_mods->dnodes[i], "revision", 0, &node);
+        if (node && strlen(lyd_get_value(node))) {
+            revision = lyd_get_value(node);
+        } else {
+            revision = NULL;
+        }
+
+        if (!(mod = ly_ctx_get_module(ctx, name, revision)) || !mod->implemented) {
+            /* unsuitable module */
+            goto cleanup;
+        }
+    }
+
+    /* check all the imported modules */
+    for (i = 0; i < imp_mods->count; ++i) {
+        lyd_find_path(imp_mods->dnodes[i], "name", 0, &node);
+        name = lyd_get_value(node);
+
+        lyd_find_path(imp_mods->dnodes[i], "revision", 0, &node);
+        if (node && strlen(lyd_get_value(node))) {
+            revision = lyd_get_value(node);
+        } else {
+            revision = NULL;
+        }
+
+        if (!ly_ctx_get_module(ctx, name, revision)) {
+            /* unsuitable module */
+            goto cleanup;
+        }
+    }
+
+    /* context matches and can be reused */
+    rc = LY_SUCCESS;
+
+cleanup:
+    ly_set_free(impl_mods, NULL);
+    ly_set_free(imp_mods, NULL);
+    return rc;
 }
 
 /**
@@ -454,25 +569,44 @@ schema_mount_get_ctx_inline(struct lysc_ext_instance *ext, const struct lyd_node
         const struct ly_ctx **ext_ctx)
 {
     struct lyplg_ext_sm *sm_data = ext->compiled;
-    LY_ERR r;
     struct ly_ctx *new_ctx = NULL;
     uint32_t i;
     void *mem;
+    LY_ERR rc = LY_SUCCESS, r;
 
     assert(sm_data && sm_data->shared);
 
-    i = sm_data->inln.schema_count;
+    /* LOCK */
+    if ((r = pthread_mutex_lock(&sm_data->lock))) {
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_ESYS, "Mutex lock failed (%s).", strerror(r));
+        return LY_ESYS;
+    }
 
-    /* always new schema required, create context */
+    /* try to find a context we can reuse */
+    for (i = 0; i < sm_data->inln.schema_count; ++i) {
+        r = schema_mount_ctx_match(ext, ext_data, sm_data->inln.schemas[i].ctx);
+        if (!r) {
+            /* match */
+            *ext_ctx = sm_data->inln.schemas[i].ctx;
+            goto cleanup;
+        } else if (r != LY_ENOT) {
+            /* error */
+            rc = r;
+            goto cleanup;
+        }
+    }
+
+    /* new schema required, create context */
     if ((r = schema_mount_create_ctx(ext, ext_data, config, &new_ctx))) {
-        return r;
+        rc = r;
+        goto cleanup;
     }
 
     /* new entry */
     mem = realloc(sm_data->inln.schemas, (i + 1) * sizeof *sm_data->inln.schemas);
     if (!mem) {
         ly_ctx_destroy(new_ctx);
-        EXT_LOGERR_MEM_RET(NULL, ext);
+        EXT_LOGERR_MEM_GOTO(NULL, ext, rc, cleanup);
     }
     sm_data->inln.schemas = mem;
     ++sm_data->inln.schema_count;
@@ -482,7 +616,12 @@ schema_mount_get_ctx_inline(struct lysc_ext_instance *ext, const struct lyd_node
 
     /* use the context */
     *ext_ctx = sm_data->inln.schemas[i].ctx;
-    return LY_SUCCESS;
+
+cleanup:
+    /* UNLOCK */
+    pthread_mutex_unlock(&sm_data->lock);
+
+    return rc;
 }
 
 /**
@@ -910,7 +1049,6 @@ schema_mount_cfree(const struct ly_ctx *ctx, struct lysc_ext_instance *ext)
             lydict_remove(ctx, sm_data->shared->schemas[i].content_id);
         }
         free(sm_data->shared->schemas);
-        pthread_mutex_destroy(&sm_data->shared->lock);
         free(sm_data->shared);
     }
 
@@ -918,6 +1056,8 @@ schema_mount_cfree(const struct ly_ctx *ctx, struct lysc_ext_instance *ext)
         ly_ctx_destroy(sm_data->inln.schemas[i].ctx);
     }
     free(sm_data->inln.schemas);
+
+    pthread_mutex_destroy(&sm_data->lock);
     free(sm_data);
 }
 
