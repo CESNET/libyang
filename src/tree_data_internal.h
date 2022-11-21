@@ -160,7 +160,7 @@ void lyd_del_move_root(struct lyd_node **root, const struct lyd_node *to_del, co
  * @param[in] name Element name.
  * @param[in] name_len Length of @p name.
  * @param[out] snode Found schema node, NULL if no suitable was found.
- * @param[out] ext Extension instance that provided @p snode.
+ * @param[out] ext Optional extension instance that provided @p snode.
  * @return LY_SUCCESS on success;
  * @return LY_ENOT if no extension instance parsed the data;
  * @return LY_ERR on error.
