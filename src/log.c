@@ -273,35 +273,23 @@ ly_get_log_clb(void)
 
 void
 ly_log_location(const struct lysc_node *scnode, const struct lyd_node *dnode, const char *path, const struct ly_in *in,
-        uint64_t line, ly_bool reset)
+        uint64_t line)
 {
     if (scnode) {
         ly_set_add(&log_location.scnodes, (void *)scnode, 1, NULL);
-    } else if (reset) {
-        ly_set_erase(&log_location.scnodes, NULL);
     }
-
     if (dnode) {
         ly_set_add(&log_location.dnodes, (void *)dnode, 1, NULL);
-    } else if (reset) {
-        ly_set_erase(&log_location.dnodes, NULL);
     }
-
     if (path) {
         char *s = strdup(path);
 
         LY_CHECK_ERR_RET(!s, LOGMEM(NULL), );
         ly_set_add(&log_location.paths, s, 1, NULL);
-    } else if (reset) {
-        ly_set_erase(&log_location.paths, free);
     }
-
     if (in) {
         ly_set_add(&log_location.inputs, (void *)in, 1, NULL);
-    } else if (reset) {
-        ly_set_erase(&log_location.inputs, NULL);
     }
-
     if (line) {
         log_location.line = line;
     }

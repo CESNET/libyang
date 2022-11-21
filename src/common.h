@@ -95,11 +95,9 @@ void ly_vlog(const struct ly_ctx *ctx, const char *apptag, LY_VECODE code, const
  * @param[in] path Direct path string to print.
  * @param[in] in Input handler (providing line number)
  * @param[in] line One-time line value to be reset when used.
- * @param[in] reset Flag to indicate if the not set arguments (NULLs) are intended to rewrite the current values or if they
- * are supposed to be ignored and the previous values should be kept.
  */
 void ly_log_location(const struct lysc_node *scnode, const struct lyd_node *dnode,
-        const char *path, const struct ly_in *in, uint64_t line, ly_bool reset);
+        const char *path, const struct ly_in *in, uint64_t line);
 
 /**
  * @brief Revert the specific logger's location data by number of changes made by ::ly_log_location().
@@ -112,17 +110,6 @@ void ly_log_location(const struct lysc_node *scnode, const struct lyd_node *dnod
 void ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_t path_steps, uint32_t in_steps);
 
 /**
- * @brief Initiate location data for logger, all arguments are set as provided (even NULLs) - overrides the current values.
- *
- * @param[in] SCNODE Compiled schema node.
- * @param[in] DNODE Data node.
- * @param[in] PATH Direct path string to print.
- * @param[in] IN Input handler (providing line number)
- */
-#define LOG_LOCINIT(SCNODE, DNODE, PATH, IN) \
-    ly_log_location(SCNODE, DNODE, PATH, IN, 0, 1)
-
-/**
  * @brief Update location data for logger, not provided arguments (NULLs) are kept (does not override).
  *
  * @param[in] SCNODE Compiled schema node.
@@ -131,7 +118,7 @@ void ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_
  * @param[in] IN Input handler (providing line number)
  */
 #define LOG_LOCSET(SCNODE, DNODE, PATH, IN) \
-    ly_log_location(SCNODE, DNODE, PATH, IN, 0, 0)
+    ly_log_location(SCNODE, DNODE, PATH, IN, 0)
 
 /**
  * @brief Update location data for logger, not provided arguments (NULLs) are kept (does not override).
@@ -171,7 +158,7 @@ void ly_log_dbg(uint32_t group, const char *format, ...);
 #define LOGVAL(CTX, ...) ly_vlog(CTX, NULL, __VA_ARGS__)
 #define LOGVAL_APPTAG(CTX, APPTAG, ...) ly_vlog(CTX, APPTAG, __VA_ARGS__)
 #define LOGVAL_LINE(CTX, LINE, ...) \
-    ly_log_location(NULL, NULL, NULL, NULL, LINE, 0); \
+    ly_log_location(NULL, NULL, NULL, NULL, LINE); \
     ly_vlog(CTX, NULL, __VA_ARGS__)
 
 /**

@@ -904,7 +904,7 @@ lyxml_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lyxml_ctx **xml
     xmlctx->ctx = ctx;
     xmlctx->in = in;
 
-    LOG_LOCINIT(NULL, NULL, NULL, in);
+    LOG_LOCSET(NULL, NULL, NULL, in);
 
     /* parse next element, if any */
     LY_CHECK_GOTO(ret = lyxml_next_element(xmlctx, &xmlctx->prefix, &xmlctx->prefix_len, &xmlctx->name,

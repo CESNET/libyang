@@ -297,9 +297,11 @@ test_parse_invalid(void **state)
             "  <module-set-id>1</module-set-id>"
             "</modules-state>");
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.", "Line number 1.");
+    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.",
+            "Data location \"/sm:root\", line number 1.");
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.", "Line number 1.");
+    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.",
+            "Data location \"/sm:root\", line number 1.");
 
     /* missing module in yang-library data */
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
@@ -338,9 +340,11 @@ test_parse_invalid(void **state)
             "  </mount-point>"
             "</schema-mounts>");
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.", NULL);
+    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.",
+            "Data location \"/sm:root\", line number 1.");
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.", NULL);
+    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.",
+            "Data location \"/sm:root\", line number 1.");
 
     /* callback data correct, invalid YANG data */
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
@@ -1155,7 +1159,7 @@ test_parse_shared_parent_ref(void **state)
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Invalid leafref value \"target-value\" - no target instance \"/sm:target\" with the same value.",
-            "Data location \"/ietf-interfaces:interfaces/interface[name='bu']/sm:sm-name\", line number 18.");
+            "Data location \"/ietf-interfaces:interfaces/interface[name='bu']/sm:sm-name\".");
 
     /* success */
     xml =

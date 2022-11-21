@@ -868,7 +868,7 @@ lyjson_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, ly_bool subtree, stru
     jsonctx->ctx = ctx;
     jsonctx->in = in;
 
-    LOG_LOCINIT(NULL, NULL, NULL, in);
+    LOG_LOCSET(NULL, NULL, NULL, in);
 
     /* parse JSON value, if any */
     LY_CHECK_GOTO(ret = skip_ws(jsonctx), cleanup);

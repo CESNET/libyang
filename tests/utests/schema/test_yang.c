@@ -90,7 +90,7 @@ setup(void **state)
     /* initilize and use the global easily available and customizable input handler */
     in.line = 1;
     YCTX->in = &in;
-    LOG_LOCINIT(NULL, NULL, NULL, &in);
+    LOG_LOCSET(NULL, NULL, NULL, &in);
 
     fctx.ctx = PARSER_CTX(YCTX);
     fctx.mod = pmod->mod;

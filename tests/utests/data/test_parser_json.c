@@ -555,7 +555,7 @@ test_opaq(void **state)
     /* invalid metadata */
     data = "{\"@a:foo\":\"str\",\"@a:foo3\":1,\"a:foo3\":2}";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Unknown module of node \"@a:foo\".", "Data location \"/@a:foo\", line number 1.");
+            "Unknown module of node \"@a:foo\".", "Data location \"/@a:foo\".");
 
     /* empty name */
     PARSER_CHECK_ERROR("{\"@a:foo\":{\"\":0}}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,

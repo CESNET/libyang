@@ -1325,7 +1325,7 @@ lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
             if ((r = lysp_resolve_ext_instance_log_path(pctx, ext, &path))) {
                 return r;
             }
-            LOG_LOCINIT(NULL, NULL, path, NULL);
+            LOG_LOCSET(NULL, NULL, path, NULL);
 
             /* parse */
             r = ext->record->plugin.parse(pctx, ext);

@@ -4713,7 +4713,7 @@ yang_parse_submodule(struct lysp_yang_ctx **context, struct ly_ctx *ly_ctx, stru
     (*context)->parsed_mods = main_ctx->parsed_mods;
     ly_set_add((*context)->parsed_mods, mod_p, 1, NULL);
 
-    LOG_LOCINIT(NULL, NULL, NULL, in);
+    LOG_LOCSET(NULL, NULL, NULL, in);
 
     /* skip redundant but valid characters at the beginning */
     ret = skip_redundant_chars(*context);
@@ -4783,7 +4783,7 @@ yang_parse_module(struct lysp_yang_ctx **context, struct ly_in *in, struct lys_m
     mod_p->mod = mod;
     ly_set_add((*context)->parsed_mods, mod_p, 1, NULL);
 
-    LOG_LOCINIT(NULL, NULL, NULL, in);
+    LOG_LOCSET(NULL, NULL, NULL, in);
 
     /* skip redundant but valid characters at the beginning */
     ret = skip_redundant_chars(*context);

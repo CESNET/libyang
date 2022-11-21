@@ -1796,6 +1796,10 @@ cleanup:
         lyd_json_ctx_free((struct lyd_ctx *)lydctx);
     } else {
         *lydctx_p = (struct lyd_ctx *)lydctx;
+
+        /* the JSON context is no more needed, freeing it also stops logging line numbers which would be confusing now */
+        lyjson_ctx_free(lydctx->jsonctx);
+        lydctx->jsonctx = NULL;
     }
     return rc;
 }
