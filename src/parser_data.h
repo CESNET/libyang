@@ -120,7 +120,7 @@ struct ly_in;
  * Default parser behavior:
  * - complete input file is always parsed. In case of XML, even not well-formed XML document (multiple top-level
  * elements) is parsed in its entirety,
- * - parser silently ignores data without matching schema node definition,
+ * - parser silently ignores data without matching schema node definition (for LYB format an error),
  * - list instances are checked whether they have all the keys, error is raised if not.
  *
  * Default parser validation behavior:

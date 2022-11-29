@@ -23,20 +23,24 @@
 #define CHECK_LYD_STRING(MODEL, TEXT) \
                 CHECK_LYD_STRING_PARAM(MODEL, TEXT, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK)
 
-#define CHECK_PRINT_THEN_PARSE(DATA_XML) \
-    { \
-        struct lyd_node *tree_1; \
-        struct lyd_node *tree_2; \
-        char *xml_out; \
-        CHECK_PARSE_LYD(DATA_XML, tree_1); \
-        assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0); \
-        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2)); \
-        assert_non_null(tree_2); \
-        CHECK_LYD(tree_1, tree_2); \
-        free(xml_out); \
-        lyd_free_all(tree_1); \
-        lyd_free_all(tree_2); \
-    }
+static void
+check_print_parse(void **state, const char *data_xml)
+{
+    struct lyd_node *tree_1;
+    struct lyd_node *tree_2;
+    char *lyb_out;
+
+    CHECK_PARSE_LYD(data_xml, tree_1);
+    assert_int_equal(lyd_print_mem(&lyb_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0);
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, lyb_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT,
+            0, &tree_2));
+    assert_non_null(tree_2);
+    CHECK_LYD(tree_1, tree_2);
+
+    free(lyb_out);
+    lyd_free_all(tree_1);
+    lyd_free_all(tree_2);
+}
 
 static int
 setup(void **state)
@@ -67,20 +71,20 @@ tests_leaflist(void **state)
     data_xml =
             "<cont xmlns=\"urn:test-leaflist\">\n"
             "</cont>\n";
-    CHECK_PRINT_THEN_PARSE(data_xml);
+    check_print_parse(state, data_xml);
 
     data_xml =
             "<cont xmlns=\"urn:test-leaflist\">\n"
             "  <ll>1</ll>\n"
             "</cont>\n";
-    CHECK_PRINT_THEN_PARSE(data_xml);
+    check_print_parse(state, data_xml);
 
     data_xml =
             "<cont xmlns=\"urn:test-leaflist\">\n"
             "  <ll>1</ll>\n"
             "  <ll>2</ll>\n"
             "</cont>\n";
-    CHECK_PRINT_THEN_PARSE(data_xml);
+    check_print_parse(state, data_xml);
 }
 
 static void
@@ -109,7 +113,7 @@ tests_list(void **state)
             "    <lf>1</lf>"
             "  </lst>"
             "</cont>\n";
-    CHECK_PRINT_THEN_PARSE(data_xml);
+    check_print_parse(state, data_xml);
 
     data_xml =
             "<cont xmlns=\"urn:test-list\">\n"
@@ -118,7 +122,7 @@ tests_list(void **state)
             "    <lf>2</lf>"
             "  </lst>"
             "</cont>\n";
-    CHECK_PRINT_THEN_PARSE(data_xml);
+    check_print_parse(state, data_xml);
 }
 
 static void
@@ -139,20 +143,20 @@ tests_any(void **state)
     data_xml =
             "<cont xmlns=\"urn:test-any\">\n"
             "</cont>\n";
-    CHECK_PRINT_THEN_PARSE(data_xml);
+    check_print_parse(state, data_xml);
 
     data_xml =
             "<cont xmlns=\"urn:test-any\">\n"
             "  <anxml><node>value</node></anxml>\n"
             "</cont>\n";
-    CHECK_PRINT_THEN_PARSE(data_xml);
+    check_print_parse(state, data_xml);
 
     data_xml =
             "<cont xmlns=\"urn:test-any\">\n"
             "  <anxml><node1>value</node1></anxml>\n"
             "  <anxml><node2>value</node2></anxml>\n"
             "</cont>\n";
-    CHECK_PRINT_THEN_PARSE(data_xml);
+    check_print_parse(state, data_xml);
 }
 
 static void
@@ -199,7 +203,7 @@ test_ietf_interfaces(void **state)
     assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "ietf-ip", NULL, NULL));
     assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "iana-if-type", NULL, NULL));
 
-    CHECK_PRINT_THEN_PARSE(data_xml);
+    check_print_parse(state, data_xml);
 }
 
 static void
@@ -235,7 +239,7 @@ test_origin(void **state)
     UTEST_ADD_MODULE(origin_yang, LYS_IN_YANG, NULL, NULL);
     assert_int_equal(LY_SUCCESS, lys_set_implemented(ly_ctx_get_module_latest(UTEST_LYCTX, "ietf-origin"), NULL));
 
-    CHECK_PRINT_THEN_PARSE(data_xml);
+    check_print_parse(state, data_xml);
 }
 
 static void
@@ -400,6 +404,7 @@ test_statements(void **state)
             "}\n";
 
     const char *data_xml =
+            "<one-leaf xmlns=\"urn:module2\">reference leaf</one-leaf>\n"
             "<ice-cream-shop xmlns=\"urn:module\">\n"
             "  <employees>\n"
             "    <employee>\n"
@@ -414,7 +419,6 @@ test_statements(void **state)
             "    </employee>\n"
             "  </employees>\n"
             "</ice-cream-shop>\n"
-            "<one-leaf xmlns=\"urn:module2\">reference leaf</one-leaf>\n"
             "<random xmlns=\"urn:module\">\n"
             "  <aleaf>string</aleaf>\n"
             "  <xml-data><anyxml>data</anyxml></xml-data>\n"
@@ -434,7 +438,7 @@ test_statements(void **state)
     UTEST_ADD_MODULE(links_yang, LYS_IN_YANG, NULL, NULL);
     UTEST_ADD_MODULE(statements_yang, LYS_IN_YANG, NULL, NULL);
 
-    CHECK_PRINT_THEN_PARSE(data_xml);
+    check_print_parse(state, data_xml);
 }
 
 static void
@@ -2514,7 +2518,7 @@ test_collisions(void **state)
 
     UTEST_ADD_MODULE(counters_yang, LYS_IN_YANG, NULL, NULL);
 
-    CHECK_PRINT_THEN_PARSE(data_xml);
+    check_print_parse(state, data_xml);
 
     free(counters_yang);
     free(data_xml);

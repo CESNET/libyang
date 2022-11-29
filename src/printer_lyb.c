@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief LYB printer for libyang data structure
  *
- * Copyright (c) 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -453,17 +453,22 @@ lyb_write_string(const char *str, size_t str_len, uint8_t len_size, struct ly_ou
  *
  * @param[in] out Out structure.
  * @param[in] mod Module to print.
+ * @param[in] with_features Whether to also print enabled features or not.
  * @param[in] lybctx LYB context.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_print_model(struct ly_out *out, const struct lys_module *mod, struct lylyb_ctx *lybctx)
+lyb_print_model(struct ly_out *out, const struct lys_module *mod, ly_bool with_features, struct lylyb_ctx *lybctx)
 {
+    LY_ERR rc = LY_SUCCESS;
     uint16_t revision;
+    struct ly_set feat_set = {0};
+    struct lysp_feature *f = NULL;
+    uint32_t i = 0;
     int r;
 
     /* model name length and model name */
-    LY_CHECK_RET(lyb_write_string(mod->name, 0, sizeof(uint16_t), out, lybctx));
+    LY_CHECK_GOTO(rc = lyb_write_string(mod->name, 0, sizeof(uint16_t), out, lybctx), cleanup);
 
     /* model revision as XXXX XXXX XXXX XXXX (2B) (year is offset from 2000)
      *                   YYYY YYYM MMMD DDDD */
@@ -484,12 +489,30 @@ lyb_print_model(struct ly_out *out, const struct lys_module *mod, struct lylyb_c
 
         revision |= r;
     }
-    LY_CHECK_RET(lyb_write_number(revision, sizeof revision, out, lybctx));
+    LY_CHECK_GOTO(rc = lyb_write_number(revision, sizeof revision, out, lybctx), cleanup);
+
+    if (with_features) {
+        /* collect enabled module features */
+        while ((f = lysp_feature_next(f, mod->parsed, &i))) {
+            if (f->flags & LYS_FENABLED) {
+                LY_CHECK_GOTO(rc = ly_set_add(&feat_set, f, 1, NULL), cleanup);
+            }
+        }
+
+        /* print enabled feature count and their names */
+        LY_CHECK_GOTO(rc = lyb_write_number(feat_set.count, sizeof(uint16_t), out, lybctx), cleanup);
+        for (i = 0; i < feat_set.count; ++i) {
+            f = feat_set.objs[i];
+            LY_CHECK_GOTO(rc = lyb_write_string(f->name, 0, sizeof(uint16_t), out, lybctx), cleanup);
+        }
+    }
 
     /* fill cached hashes, if not already */
     lyb_cache_module_hash(mod);
 
-    return LY_SUCCESS;
+cleanup:
+    ly_set_erase(&feat_set, NULL);
+    return rc;
 }
 
 /**
@@ -543,7 +566,7 @@ lyb_print_data_models(struct ly_out *out, const struct lyd_node *root, struct ly
 
     /* and all the used models */
     for (i = 0; i < set->count; ++i) {
-        LY_CHECK_GOTO(ret = lyb_print_model(out, set->objs[i], lybctx), cleanup);
+        LY_CHECK_GOTO(ret = lyb_print_model(out, set->objs[i], 1, lybctx), cleanup);
     }
 
 cleanup:
@@ -754,7 +777,7 @@ lyb_print_metadata(struct ly_out *out, const struct lyd_node *node, struct lyd_l
 
     if (wd_mod) {
         /* write the "default" metadata */
-        LY_CHECK_RET(lyb_print_model(out, wd_mod, lybctx->lybctx));
+        LY_CHECK_RET(lyb_print_model(out, wd_mod, 0, lybctx->lybctx));
         LY_CHECK_RET(lyb_write_string("default", 0, sizeof(uint16_t), out, lybctx->lybctx));
         LY_CHECK_RET(lyb_write_string("true", 0, sizeof(uint16_t), out, lybctx->lybctx));
     }
@@ -762,7 +785,7 @@ lyb_print_metadata(struct ly_out *out, const struct lyd_node *node, struct lyd_l
     /* write all the node metadata */
     LY_LIST_FOR(node->meta, iter) {
         /* model */
-        LY_CHECK_RET(lyb_print_model(out, iter->annotation->module, lybctx->lybctx));
+        LY_CHECK_RET(lyb_print_model(out, iter->annotation->module, 0, lybctx->lybctx));
 
         /* annotation name with length */
         LY_CHECK_RET(lyb_write_string(iter->name, 0, sizeof(uint16_t), out, lybctx->lybctx));
@@ -1188,7 +1211,7 @@ lyb_print_node(struct ly_out *out, const struct lyd_node **printed_node, struct 
 
     /* write model info first */
     if (node->schema && ((node->flags & LYD_EXT) || !lysc_data_parent(node->schema))) {
-        LY_CHECK_RET(lyb_print_model(out, node->schema->module, lybctx->lybctx));
+        LY_CHECK_RET(lyb_print_model(out, node->schema->module, 0, lybctx->lybctx));
     }
 
     if (node->flags & LYD_EXT) {

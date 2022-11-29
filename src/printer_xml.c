@@ -4,7 +4,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief XML printer for libyang data structure
  *
- * Copyright (c) 2015 - 2019 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -401,14 +401,15 @@ no_content:
             prev_lo = ly_log_options(0);
 
             /* try to parse it into a data tree */
-            if (lyd_parse_data_mem((struct ly_ctx *)LYD_CTX(node), any->value.mem, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_OPAQ | LYD_PARSE_STRICT, 0, &iter) == LY_SUCCESS) {
+            if (lyd_parse_data_mem((struct ly_ctx *)LYD_CTX(node), any->value.mem, LYD_LYB,
+                    LYD_PARSE_ONLY | LYD_PARSE_OPAQ | LYD_PARSE_STRICT, 0, &iter) == LY_SUCCESS) {
                 /* successfully parsed */
                 free(any->value.mem);
                 any->value.tree = iter;
                 any->value_type = LYD_ANYDATA_DATATREE;
             }
 
-            /* turn loggin on again */
+            /* turn logging on again */
             ly_log_options(prev_lo);
         }
 

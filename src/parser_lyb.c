@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief LYB data parser for libyang
  *
- * Copyright (c) 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -45,7 +45,8 @@ static LY_ERR _lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_ins
         struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts,
         struct ly_set *parsed, struct lyd_ctx **lydctx_p);
 
-static LY_ERR lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_set *parsed);
+static LY_ERR lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_node **first_p,
+        struct ly_set *parsed);
 
 void
 lylyb_ctx_free(struct lylyb_ctx *ctx)
@@ -338,12 +339,14 @@ lyb_read_start_siblings(struct lylyb_ctx *lybctx)
  * @param[in] lybctx LYB context.
  * @param[out] mod_name Module name, if any.
  * @param[out] mod_rev Module revision, "" if none.
+ * @param[in,out] feat_set Set to add the names of enabled features to. If not set, enabled features are not parsed.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_read_model(struct lylyb_ctx *lybctx, char **mod_name, char mod_rev[])
+lyb_read_model(struct lylyb_ctx *lybctx, char **mod_name, char mod_rev[], struct ly_set *feat_set)
 {
-    uint16_t rev, length;
+    uint16_t i, rev, length;
+    char *str;
 
     *mod_name = NULL;
     mod_rev[0] = '\0';
@@ -367,6 +370,23 @@ lyb_read_model(struct lylyb_ctx *lybctx, char **mod_name, char mod_rev[])
                 (rev & LYB_REV_MONTH_MASK) >> LYB_REV_MONTH_SHIFT, rev & LYB_REV_DAY_MASK);
     }
 
+    if (!feat_set) {
+        /* enabled features not printed */
+        return LY_SUCCESS;
+    }
+
+    /* enabled feature count */
+    lyb_read_number(&length, sizeof length, sizeof length, lybctx);
+    if (!length) {
+        return LY_SUCCESS;
+    }
+
+    /* enabled features */
+    for (i = 0; i < length; ++i) {
+        lyb_read_string(&str, sizeof length, lybctx);
+        ly_set_add(feat_set, str, 1, NULL);
+    }
+
     return LY_SUCCESS;
 }
 
@@ -375,18 +395,23 @@ lyb_read_model(struct lylyb_ctx *lybctx, char **mod_name, char mod_rev[])
  *
  * @param[in] lybctx LYB context.
  * @param[in] parse_options Flag with options for parsing.
+ * @param[in] with_features Whether the enabled features were also printed and should be read.
  * @param[out] mod Parsed module.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, const struct lys_module **mod)
+lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, ly_bool with_features, const struct lys_module **mod)
 {
     LY_ERR ret = LY_SUCCESS;
     const struct lys_module *m = NULL;
     char *mod_name = NULL, mod_rev[LY_REV_SIZE];
+    struct ly_set feat_set = {0};
+    struct lysp_feature *f = NULL;
+    uint32_t i, idx = 0;
+    ly_bool enabled;
 
     /* read module info */
-    if ((ret = lyb_read_model(lybctx, &mod_name, mod_rev))) {
+    if ((ret = lyb_read_model(lybctx, &mod_name, mod_rev, with_features ? &feat_set : NULL))) {
         goto cleanup;
     }
 
@@ -418,16 +443,41 @@ lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, const struct l
             goto cleanup;
         }
 
+        goto cleanup;
     }
 
-    if (m) {
-        /* fill cached hashes, if not already */
-        lyb_cache_module_hash(m);
+    if (with_features) {
+        /* check features */
+        while ((f = lysp_feature_next(f, m->parsed, &idx))) {
+            enabled = 0;
+            for (i = 0; i < feat_set.count; ++i) {
+                if (!strcmp(feat_set.objs[i], f->name)) {
+                    enabled = 1;
+                    break;
+                }
+            }
+
+            if (enabled && !(f->flags & LYS_FENABLED)) {
+                LOGERR(lybctx->ctx, LY_EINVAL, "Invalid context for LYB data parsing, module \"%s\" has \"%s\" feature disabled.",
+                        mod_name, f->name);
+                ret = LY_EINVAL;
+                goto cleanup;
+            } else if (!enabled && (f->flags & LYS_FENABLED)) {
+                LOGERR(lybctx->ctx, LY_EINVAL, "Invalid context for LYB data parsing, module \"%s\" has \"%s\" feature enabled.",
+                        mod_name, f->name);
+                ret = LY_EINVAL;
+                goto cleanup;
+            }
+        }
     }
+
+    /* fill cached hashes, if not already */
+    lyb_cache_module_hash(m);
 
 cleanup:
     *mod = m;
     free(mod_name);
+    ly_set_erase(&feat_set, free);
     return ret;
 }
 
@@ -454,7 +504,7 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, 
     /* read attributes */
     for (i = 0; i < count; ++i) {
         /* find model */
-        ret = lyb_parse_model(lybctx->lybctx, lybctx->parse_opts, &mod);
+        ret = lyb_parse_model(lybctx->lybctx, lybctx->parse_opts, 0, &mod);
         LY_CHECK_GOTO(ret, cleanup);
 
         if (!mod) {
@@ -1463,7 +1513,7 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
     switch (lyb_type) {
     case LYB_NODE_TOP:
         /* top-level, read module name */
-        LY_CHECK_GOTO(ret = lyb_parse_model(lybctx->lybctx, lybctx->parse_opts, &mod), cleanup);
+        LY_CHECK_GOTO(ret = lyb_parse_model(lybctx->lybctx, lybctx->parse_opts, 0, &mod), cleanup);
 
         /* read hash, find the schema node starting from mod */
         LY_CHECK_GOTO(ret = lyb_parse_schema_hash(lybctx, NULL, mod, &snode), cleanup);
@@ -1475,7 +1525,7 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
         break;
     case LYB_NODE_EXT:
         /* ext, read module name */
-        LY_CHECK_GOTO(ret = lyb_read_model(lybctx->lybctx, &mod_name, mod_rev), cleanup);
+        LY_CHECK_GOTO(ret = lyb_read_model(lybctx->lybctx, &mod_name, mod_rev, NULL), cleanup);
 
         /* read schema node name, find the nexted ext schema node */
         LY_CHECK_GOTO(ret = lyb_parse_schema_nested_ext(lybctx, parent, mod_name, &snode), cleanup);
@@ -1558,7 +1608,7 @@ lyb_parse_data_models(struct lylyb_ctx *lybctx, uint32_t parse_options)
 
         /* read modules */
         for (u = 0; u < count; ++u) {
-            ret = lyb_parse_model(lybctx, parse_options, &lybctx->models[u]);
+            ret = lyb_parse_model(lybctx, parse_options, 1, &lybctx->models[u]);
             LY_CHECK_RET(ret);
             LY_ARRAY_INCREMENT(lybctx->models);
         }
@@ -1733,8 +1783,7 @@ lyd_lyb_data_length(const char *data)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lylyb_ctx *lybctx;
-    int count, i;
-    size_t len;
+    uint32_t count, feat_count, len = 0, i, j;
     uint8_t buf[LYB_SIZE_MAX];
     uint8_t zero[LYB_SIZE_BYTES] = {0};
 
@@ -1761,7 +1810,6 @@ lyd_lyb_data_length(const char *data)
     /* read all models */
     for (i = 0; i < count; ++i) {
         /* module name length */
-        len = 0;
         lyb_read_number(&len, sizeof len, 2, lybctx);
 
         /* model name */
@@ -1769,6 +1817,18 @@ lyd_lyb_data_length(const char *data)
 
         /* revision */
         lyb_read(buf, 2, lybctx);
+
+        /* enabled feature count */
+        lyb_read_number(&feat_count, sizeof feat_count, 2, lybctx);
+
+        /* enabled features */
+        for (j = 0; j < feat_count; ++j) {
+            /* feature name length */
+            lyb_read_number(&len, sizeof len, 2, lybctx);
+
+            /* feature name */
+            lyb_read(buf, len, lybctx);
+        }
     }
 
     if (memcmp(zero, lybctx->in->current, LYB_SIZE_BYTES)) {
@@ -1795,5 +1855,5 @@ cleanup:
     ly_in_free(lybctx->in, 0);
     lylyb_ctx_free(lybctx);
 
-    return ret ? -1 : count;
+    return ret ? -1 : (int)count;
 }
