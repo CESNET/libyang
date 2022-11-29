@@ -955,9 +955,11 @@ yprp_list(struct lys_ypr_ctx *pctx, const struct lysp_node *node)
     ypr_config(pctx, node->flags, node->exts, &flag);
 
     if (list->flags & LYS_SET_MIN) {
+        ypr_close_parent(pctx, &flag);
         ypr_unsigned(pctx, LY_STMT_MIN_ELEMENTS, 0, list->exts, list->min);
     }
     if (list->flags & LYS_SET_MAX) {
+        ypr_close_parent(pctx, &flag);
         if (list->max) {
             ypr_unsigned(pctx, LY_STMT_MAX_ELEMENTS, 0, list->exts, list->max);
         } else {
