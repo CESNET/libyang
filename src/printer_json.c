@@ -1,9 +1,10 @@
 /**
  * @file printer_json.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief JSON printer for libyang data structure
  *
- * Copyright (c) 2015 - 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -758,6 +759,8 @@ json_print_array_is_last_inst(struct jsonpr_ctx *pctx, const struct lyd_node *no
 static LY_ERR
 json_print_leaf_list(struct jsonpr_ctx *pctx, const struct lyd_node *node)
 {
+    const struct lys_module *wdmod = NULL;
+
     if (!is_open_array(pctx, node)) {
         LY_CHECK_RET(json_print_member(pctx, node, 0));
         LY_CHECK_RET(json_print_array_open(pctx, node));
@@ -779,10 +782,18 @@ json_print_leaf_list(struct jsonpr_ctx *pctx, const struct lyd_node *node)
         }
     } else {
         assert(node->schema->nodetype == LYS_LEAFLIST);
+
         LY_CHECK_RET(json_print_value(pctx, LYD_CTX(node), &((const struct lyd_node_term *)node)->value));
 
-        if (node->meta && !pctx->print_sibling_metadata) {
-            pctx->print_sibling_metadata = node;
+        if (!pctx->print_sibling_metadata) {
+            if ((node->flags & LYD_DEFAULT) && (pctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) {
+                /* we have implicit OR explicit default node, get with-defaults module */
+                wdmod = ly_ctx_get_module_implemented(LYD_CTX(node), "ietf-netconf-with-defaults");
+            }
+            if (node->meta || wdmod) {
+                /* we will be printing metadata for these siblings */
+                pctx->print_sibling_metadata = node;
+            }
         }
     }
 
@@ -804,26 +815,31 @@ static LY_ERR
 json_print_metadata_leaflist(struct jsonpr_ctx *pctx)
 {
     const struct lyd_node *prev, *node, *iter;
+    const struct lys_module *wdmod = NULL;
 
     if (!pctx->print_sibling_metadata) {
         return LY_SUCCESS;
     }
 
+    if (pctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG)) {
+        /* get with-defaults module */
+        wdmod = ly_ctx_get_module_implemented(pctx->ctx, "ietf-netconf-with-defaults");
+    }
+
+    /* node is the first instance of the leaf-list */
     for (node = pctx->print_sibling_metadata, prev = pctx->print_sibling_metadata->prev;
             prev->next && matching_node(node, prev);
             node = prev, prev = node->prev) {}
-
-    /* node is the first instance of the leaf-list */
 
     LY_CHECK_RET(json_print_member(pctx, node, 1));
     ly_print_(pctx->out, "[%s", (DO_FORMAT ? "\n" : ""));
     LEVEL_INC;
     LY_LIST_FOR(node, iter) {
         PRINT_COMMA;
-        if (iter->meta) {
+        if (iter->meta || (iter->flags & LYD_DEFAULT)) {
             ly_print_(pctx->out, "%*s%s", INDENT, DO_FORMAT ? "{\n" : "{");
             LEVEL_INC;
-            LY_CHECK_RET(json_print_metadata(pctx, iter, NULL));
+            LY_CHECK_RET(json_print_metadata(pctx, iter, (iter->flags & LYD_DEFAULT) ? wdmod : NULL));
             LEVEL_DEC;
             ly_print_(pctx->out, "%s%*s}", DO_FORMAT ? "\n" : "", INDENT);
         } else {

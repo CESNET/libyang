@@ -759,16 +759,15 @@ lydjson_metadata(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, str
 next_entry:
         instance++;
 
-        /* move into array / next entry */
+        /* move into array/next entry */
         ret = lyjson_ctx_next(lydctx->jsonctx, &status);
         LY_CHECK_GOTO(ret, cleanup);
 
         if (status == LYJSON_ARRAY_CLOSED) {
-            /* we are done, move after the array */
-            ret = lyjson_ctx_next(lydctx->jsonctx, NULL);
+            /* no more metadata */
             goto cleanup;
         }
-        LY_CHECK_GOTO(status != LYJSON_OBJECT && status != LYJSON_NULL, representation_error);
+        LY_CHECK_GOTO((status != LYJSON_OBJECT) && (status != LYJSON_NULL), representation_error);
 
         if (!node || (node->schema != prev->schema)) {
             LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "Missing JSON data instance #%u of %s:%s to be coupled with metadata.",
