@@ -153,7 +153,7 @@ test_top_level(void **state)
     CHECK_LOG_CTX("Inner node (container, notif, RPC, or action) \"l2\" not found.", NULL);
 
     /* anydata */
-    assert_int_equal(lyd_new_any(NULL, mod, "any", "some-value", 0, LYD_ANYDATA_STRING, 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_any(NULL, mod, "any", "{\"node\":\"val\"}", 0, LYD_ANYDATA_STRING, 0, &node), LY_SUCCESS);
     lyd_free_tree(node);
 
     /* key-less list */

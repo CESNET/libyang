@@ -195,11 +195,85 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Convert an anydata value into a datatree.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] value Anydata value.
+ * @param[in] value_type Anydata @p value type.
+ * @param[out] tree Parsed data tree.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_create_anydata_datatree(const struct ly_ctx *ctx, const void *value, LYD_ANYDATA_VALUETYPE value_type,
+        struct lyd_node **tree)
+{
+    LY_ERR r;
+    struct ly_in *in = NULL;
+    struct lyd_ctx *lydctx = NULL;
+    uint32_t parse_opts, int_opts;
+
+    *tree = NULL;
+
+    if (!value) {
+        /* empty data tree no matter the value type */
+        return LY_SUCCESS;
+    }
+
+    if (value_type == LYD_ANYDATA_STRING) {
+        /* detect format */
+        if (((char *)value)[0] == '<') {
+            value_type = LYD_ANYDATA_XML;
+        } else if (((char *)value)[0] == '{') {
+            value_type = LYD_ANYDATA_JSON;
+        } else if (!strncmp(value, "lyb", 3)) {
+            value_type = LYD_ANYDATA_LYB;
+        } else {
+            LOGERR(ctx, LY_EINVAL, "Invalid string value of an anydata node.");
+            return LY_EINVAL;
+        }
+    }
+
+    /* create input */
+    LY_CHECK_RET(ly_in_new_memory(value, &in));
+
+    /* set options */
+    parse_opts = LYD_PARSE_ONLY | LYD_PARSE_OPAQ;
+    int_opts = LYD_INTOPT_ANY | LYD_INTOPT_WITH_SIBLINGS;
+
+    switch (value_type) {
+    case LYD_ANYDATA_DATATREE:
+    case LYD_ANYDATA_STRING:
+        /* unreachable */
+        LOGINT_RET(ctx);
+    case LYD_ANYDATA_XML:
+        r = lyd_parse_xml(ctx, NULL, NULL, tree, in, parse_opts, 0, int_opts, NULL, NULL, &lydctx);
+        break;
+    case LYD_ANYDATA_JSON:
+        r = lyd_parse_json(ctx, NULL, NULL, tree, in, parse_opts, 0, int_opts, NULL, NULL, &lydctx);
+        break;
+    case LYD_ANYDATA_LYB:
+        r = lyd_parse_lyb(ctx, NULL, NULL, tree, in, parse_opts | LYD_PARSE_STRICT, 0, int_opts, NULL, NULL, &lydctx);
+        break;
+    }
+    if (lydctx) {
+        lydctx->free(lydctx);
+    }
+    ly_in_free(in, 0);
+
+    if (r) {
+        LOGERR(ctx, LY_EINVAL, "Failed to parse anydata content into a data tree.");
+        return LY_EINVAL;
+    }
+    return LY_SUCCESS;
+}
+
 LY_ERR
 lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VALUETYPE value_type, ly_bool use_value,
         struct lyd_node **node)
 {
     LY_ERR ret;
+    struct lyd_node *tree;
     struct lyd_node_any *any;
     union lyd_any_value any_val;
 
@@ -211,6 +285,17 @@ lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VA
     any->schema = schema;
     any->prev = &any->node;
     any->flags = LYD_NEW;
+
+    if ((schema->nodetype == LYS_ANYDATA) && (value_type != LYD_ANYDATA_DATATREE)) {
+        /* only a data tree can be stored */
+        LY_CHECK_RET(lyd_create_anydata_datatree(schema->module->ctx, value, value_type, &tree));
+        if (use_value) {
+            free((void *)value);
+        }
+        use_value = 1;
+        value = tree;
+        value_type = LYD_ANYDATA_DATATREE;
+    }
 
     if (use_value) {
         switch (value_type) {

@@ -282,7 +282,7 @@ test_anydata(void **state)
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
 
-    data = "{\"a:any\":[null]}";
+    data = "{\"a:any\":{\"node\":20}}";
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
     assert_non_null(tree);
     tree = tree->next;

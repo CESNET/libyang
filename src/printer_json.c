@@ -537,6 +537,10 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
 
     assert(any->schema->nodetype & LYD_NODE_ANY);
 
+    if ((any->schema->nodetype == LYS_ANYDATA) && (any->value_type != LYD_ANYDATA_DATATREE)) {
+        LOGINT_RET(pctx->ctx);
+    }
+
     if (any->value_type == LYD_ANYDATA_LYB) {
         uint32_t parser_options = LYD_PARSE_ONLY | LYD_PARSE_OPAQ | LYD_PARSE_STRICT;
 
@@ -605,7 +609,7 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
             }
         } else {
             /* print as a string */
-            ly_print_(pctx->out, "\"%s\"", any->value.str);
+            json_print_string(pctx->out, any->value.str);
         }
         break;
     case LYD_ANYDATA_LYB:

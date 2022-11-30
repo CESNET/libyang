@@ -259,7 +259,7 @@ lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *pref
         if (parent->schema) {
             mod = parent->schema->module;
         }
-    } else {
+    } else if (!(lydctx->int_opts & LYD_INTOPT_ANY)) {
         LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX_JSON, "Top-level JSON object member \"%.*s\" must be namespace-qualified.",
                 (int)(is_attr ? name_len + 1 : name_len), is_attr ? name - 1 : name);
         ret = LY_EVALID;
@@ -1216,17 +1216,7 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, st
                 (*status != LYJSON_NUMBER) && (*status != LYJSON_STRING) && (*status != LYJSON_FALSE) &&
                 (*status != LYJSON_TRUE) && (*status != LYJSON_NULL), LY_ENOT);
     } else {
-        LY_CHECK_RET((*status != LYJSON_OBJECT) && (*status != LYJSON_OBJECT_EMPTY) && (*status != LYJSON_ARRAY), LY_ENOT);
-    }
-
-    if ((snode->nodetype == LYS_ANYDATA) && (*status == LYJSON_ARRAY)) {
-        /* only special anydata [null] allowed, 2 more moves are needed */
-        LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status));
-        LY_CHECK_RET(*status != LYJSON_NULL, LY_ENOT);
-        LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status));
-        LY_CHECK_RET(*status != LYJSON_ARRAY_CLOSED, LY_ENOT);
-
-        return lyd_create_any(snode, "[null]", LYD_ANYDATA_JSON, 0, node);
+        LY_CHECK_RET((*status != LYJSON_OBJECT) && (*status != LYJSON_OBJECT_EMPTY), LY_ENOT);
     }
 
     /* create any node */
@@ -1597,7 +1587,7 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
         case LYS_RPC:
         case LYS_ANYDATA:
         case LYS_ANYXML:
-            if (snode->nodetype & (LYS_LEAF | LYS_ANYXML)) {
+            if ((snode->nodetype == LYS_LEAF) || (snode->nodetype == LYS_ANYXML)) {
                 if (status == LYJSON_ARRAY) {
                     expected = "name/[null]";
                 } else {
@@ -1707,39 +1697,18 @@ lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_o
 
 LY_ERR
 lyd_parse_json(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
-        struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, enum lyd_type data_type,
+        struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts,
         struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_json_ctx *lydctx = NULL;
     enum LYJSON_PARSER_STATUS status;
-    uint32_t int_opts = 0;
 
     rc = lyd_parse_json_init(ctx, in, parse_opts, val_opts, &lydctx, &status);
     LY_CHECK_GOTO(rc || status == LYJSON_END || status == LYJSON_OBJECT_EMPTY, cleanup);
 
     assert(status == LYJSON_OBJECT);
 
-    switch (data_type) {
-    case LYD_TYPE_DATA_YANG:
-        if (!(parse_opts & LYD_PARSE_SUBTREE)) {
-            int_opts = LYD_INTOPT_WITH_SIBLINGS;
-        }
-        break;
-    case LYD_TYPE_RPC_YANG:
-        int_opts = LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NO_SIBLINGS;
-        break;
-    case LYD_TYPE_NOTIF_YANG:
-        int_opts = LYD_INTOPT_NOTIF | LYD_INTOPT_NO_SIBLINGS;
-        break;
-    case LYD_TYPE_REPLY_YANG:
-        int_opts = LYD_INTOPT_REPLY | LYD_INTOPT_NO_SIBLINGS;
-        break;
-    default:
-        LOGINT(ctx);
-        rc = LY_EINT;
-        goto cleanup;
-    }
     lydctx->int_opts = int_opts;
     lydctx->ext = ext;
 

@@ -388,6 +388,10 @@ xml_print_anydata(struct xmlpr_ctx *pctx, const struct lyd_node_any *node)
     uint32_t prev_opts, prev_lo;
     LY_ERR ret;
 
+    if ((node->schema->nodetype == LYS_ANYDATA) && (node->value_type != LYD_ANYDATA_DATATREE)) {
+        LOGINT_RET(pctx->ctx);
+    }
+
     xml_print_node_open(pctx, &node->node);
 
     if (!any->value.tree) {

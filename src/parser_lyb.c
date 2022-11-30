@@ -41,10 +41,6 @@
 #include "validation.h"
 #include "xml.h"
 
-static LY_ERR _lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
-        struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts,
-        struct ly_set *parsed, struct lyd_ctx **lydctx_p);
-
 static LY_ERR lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_node **first_p,
         struct ly_set *parsed);
 
@@ -908,46 +904,6 @@ lyb_skip_siblings(struct lylyb_ctx *lybctx)
 }
 
 /**
- * @brief Parse the context of anydata/anyxml node.
- *
- * @param[in] ctx libyang context.
- * @param[in] data LYB data to parse.
- * @param[out] tree Parsed tree.
- * @return LY_ERR value.
- */
-static LY_ERR
-lyb_parse_any_content(const struct ly_ctx *ctx, const char *data, struct lyd_node **tree)
-{
-    LY_ERR ret;
-    uint32_t prev_lo;
-    struct ly_in *in;
-    struct lyd_ctx *lydctx = NULL;
-
-    *tree = NULL;
-
-    LY_CHECK_RET(ly_in_new_memory(data, &in));
-
-    /* turn logging off */
-    prev_lo = ly_log_options(0);
-
-    ret = _lyd_parse_lyb(ctx, NULL, NULL, tree, in, LYD_PARSE_ONLY | LYD_PARSE_OPAQ | LYD_PARSE_STRICT, 0,
-            LYD_INTOPT_ANY | LYD_INTOPT_WITH_SIBLINGS, NULL, &lydctx);
-
-    /* turn logging on again */
-    ly_log_options(prev_lo);
-
-    ly_in_free(in, 0);
-    if (lydctx) {
-        lydctx->free(lydctx);
-    }
-    if (ret) {
-        lyd_free_siblings(*tree);
-        *tree = NULL;
-    }
-    return ret;
-}
-
-/**
  * @brief Insert new node to @p parsed set.
  *
  * Also if needed, correct @p first_p.
@@ -1243,9 +1199,11 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
         struct lyd_node **first_p, struct ly_set *parsed)
 {
     LY_ERR ret;
-    struct lyd_node *node = NULL, *tree;
+    struct lyd_node *node = NULL, *tree = NULL;
     struct lyd_meta *meta = NULL;
     LYD_ANYDATA_VALUETYPE value_type;
+    struct ly_in *in;
+    struct lyd_ctx *lydctx = NULL;
     char *value = NULL;
     uint32_t flags;
     const struct ly_ctx *ctx = lybctx->lybctx->ctx;
@@ -1256,8 +1214,7 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
 
     /* parse value type */
     lyb_read_number(&value_type, sizeof value_type, sizeof value_type, lybctx->lybctx);
-    if (value_type == LYD_ANYDATA_DATATREE) {
-        /* invalid situation */
+    if ((value_type == LYD_ANYDATA_DATATREE) || ((snode->nodetype == LYS_ANYDATA) && (value_type != LYD_ANYDATA_LYB))) {
         LOGINT(ctx);
         ret = LY_EINT;
         goto error;
@@ -1268,13 +1225,20 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
     LY_CHECK_GOTO(ret, error);
 
     if (value_type == LYD_ANYDATA_LYB) {
-        /* try to parse LYB into a data tree */
-        if (!lyb_parse_any_content(ctx, value, &tree)) {
-            /* successfully parsed */
-            free(value);
-            value = (char *)tree;
-            value_type = LYD_ANYDATA_DATATREE;
+        /* parse LYB into a data tree */
+        LY_CHECK_RET(ly_in_new_memory(value, &in));
+        ret = lyd_parse_lyb(ctx, NULL, NULL, &tree, in, LYD_PARSE_ONLY | LYD_PARSE_OPAQ | LYD_PARSE_STRICT, 0,
+                LYD_INTOPT_ANY | LYD_INTOPT_WITH_SIBLINGS, NULL, NULL, &lydctx);
+        ly_in_free(in, 0);
+        if (lydctx) {
+            lydctx->free(lydctx);
         }
+        LY_CHECK_ERR_GOTO(ret, lyd_free_siblings(tree), error);
+
+        /* use the parsed tree as the value */
+        free(value);
+        value = (char *)tree;
+        value_type = LYD_ANYDATA_DATATREE;
     }
 
     /* create the node */
@@ -1672,16 +1636,22 @@ lyb_parse_header(struct lylyb_ctx *lybctx)
     return LY_SUCCESS;
 }
 
-static LY_ERR
-_lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
+LY_ERR
+lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
         struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts,
-        struct ly_set *parsed, struct lyd_ctx **lydctx_p)
+        struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_lyb_ctx *lybctx;
 
     assert(!(parse_opts & ~LYD_PARSE_OPTS_MASK));
     assert(!(val_opts & ~LYD_VALIDATE_OPTS_MASK));
+
+    LY_CHECK_ARG_RET(ctx, !(parse_opts & LYD_PARSE_SUBTREE), LY_EINVAL);
+
+    if (subtree_sibling) {
+        *subtree_sibling = 0;
+    }
 
     lybctx = calloc(1, sizeof *lybctx);
     LY_CHECK_ERR_RET(!lybctx, LOGMEM(ctx), LY_EMEM);
@@ -1740,42 +1710,6 @@ cleanup:
         *lydctx_p = (struct lyd_ctx *)lybctx;
     }
     return rc;
-}
-
-LY_ERR
-lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
-        struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, enum lyd_type data_type,
-        struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p)
-{
-    uint32_t int_opts;
-
-    assert(!(parse_opts & ~LYD_PARSE_OPTS_MASK));
-    assert(!(val_opts & ~LYD_VALIDATE_OPTS_MASK));
-
-    LY_CHECK_ARG_RET(ctx, !(parse_opts & LYD_PARSE_SUBTREE), LY_EINVAL);
-
-    switch (data_type) {
-    case LYD_TYPE_DATA_YANG:
-        int_opts = LYD_INTOPT_WITH_SIBLINGS;
-        break;
-    case LYD_TYPE_RPC_YANG:
-        int_opts = LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NO_SIBLINGS;
-        break;
-    case LYD_TYPE_NOTIF_YANG:
-        int_opts = LYD_INTOPT_NOTIF | LYD_INTOPT_NO_SIBLINGS;
-        break;
-    case LYD_TYPE_REPLY_YANG:
-        int_opts = LYD_INTOPT_REPLY | LYD_INTOPT_NO_SIBLINGS;
-        break;
-    default:
-        LOGINT(ctx);
-        return LY_EINT;
-    }
-
-    if (subtree_sibling) {
-        *subtree_sibling = 0;
-    }
-    return _lyd_parse_lyb(ctx, ext, parent, first_p, in, parse_opts, val_opts, int_opts, parsed, lydctx_p);
 }
 
 LIBYANG_API_DEF int

@@ -1054,8 +1054,12 @@ lyb_print_node_any(struct ly_out *out, struct lyd_node_any *anydata, struct lyd_
     struct ly_out *out2 = NULL;
     struct lylyb_ctx *lybctx = lyd_lybctx->lybctx;
 
+    if ((anydata->schema->nodetype == LYS_ANYDATA) && (anydata->value_type != LYD_ANYDATA_DATATREE)) {
+        LOGINT_RET(lybctx->ctx);
+    }
+
     if (anydata->value_type == LYD_ANYDATA_DATATREE) {
-        /* will be printed as a nested LYB data tree */
+        /* will be printed as a nested LYB data tree because the used modules need to be written */
         value_type = LYD_ANYDATA_LYB;
     } else {
         value_type = anydata->value_type;

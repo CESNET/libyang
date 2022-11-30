@@ -88,22 +88,24 @@ lyd_parser_find_operation(const struct lyd_node *parent, uint32_t int_opts, stru
         return LY_SUCCESS;
     }
 
-    if (!(int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NOTIF | LYD_INTOPT_REPLY))) {
-        LOGERR(LYD_CTX(parent), LY_EINVAL, "Invalid parent %s \"%s\" node when not parsing any operation.",
-                lys_nodetype2str(iter->schema->nodetype), iter->schema->name);
-        return LY_EINVAL;
-    } else if ((iter->schema->nodetype == LYS_RPC) && !(int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_REPLY))) {
-        LOGERR(LYD_CTX(parent), LY_EINVAL, "Invalid parent RPC \"%s\" node when not parsing RPC nor rpc-reply.",
-                iter->schema->name);
-        return LY_EINVAL;
-    } else if ((iter->schema->nodetype == LYS_ACTION) && !(int_opts & (LYD_INTOPT_ACTION | LYD_INTOPT_REPLY))) {
-        LOGERR(LYD_CTX(parent), LY_EINVAL, "Invalid parent action \"%s\" node when not parsing action nor rpc-reply.",
-                iter->schema->name);
-        return LY_EINVAL;
-    } else if ((iter->schema->nodetype == LYS_NOTIF) && !(int_opts & LYD_INTOPT_NOTIF)) {
-        LOGERR(LYD_CTX(parent), LY_EINVAL, "Invalid parent notification \"%s\" node when not parsing a notification.",
-                iter->schema->name);
-        return LY_EINVAL;
+    if (!(int_opts & LYD_INTOPT_ANY)) {
+        if (!(int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NOTIF | LYD_INTOPT_REPLY))) {
+            LOGERR(LYD_CTX(parent), LY_EINVAL, "Invalid parent %s \"%s\" node when not parsing any operation.",
+                    lys_nodetype2str(iter->schema->nodetype), iter->schema->name);
+            return LY_EINVAL;
+        } else if ((iter->schema->nodetype == LYS_RPC) && !(int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_REPLY))) {
+            LOGERR(LYD_CTX(parent), LY_EINVAL, "Invalid parent RPC \"%s\" node when not parsing RPC nor rpc-reply.",
+                    iter->schema->name);
+            return LY_EINVAL;
+        } else if ((iter->schema->nodetype == LYS_ACTION) && !(int_opts & (LYD_INTOPT_ACTION | LYD_INTOPT_REPLY))) {
+            LOGERR(LYD_CTX(parent), LY_EINVAL, "Invalid parent action \"%s\" node when not parsing action nor rpc-reply.",
+                    iter->schema->name);
+            return LY_EINVAL;
+        } else if ((iter->schema->nodetype == LYS_NOTIF) && !(int_opts & LYD_INTOPT_NOTIF)) {
+            LOGERR(LYD_CTX(parent), LY_EINVAL, "Invalid parent notification \"%s\" node when not parsing a notification.",
+                    iter->schema->name);
+            return LY_EINVAL;
+        }
     }
 
     *op = (struct lyd_node *)iter;

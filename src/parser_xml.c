@@ -968,6 +968,87 @@ cleanup:
     return rc;
 }
 
+LY_ERR
+lyd_parse_xml(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
+        struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts,
+        struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_xml_ctx *lydctx;
+    ly_bool parsed_data_nodes = 0;
+    enum LYXML_PARSER_STATUS status;
+
+    assert(ctx && in && lydctx_p);
+    assert(!(parse_opts & ~LYD_PARSE_OPTS_MASK));
+    assert(!(val_opts & ~LYD_VALIDATE_OPTS_MASK));
+
+    /* init context */
+    lydctx = calloc(1, sizeof *lydctx);
+    LY_CHECK_ERR_RET(!lydctx, LOGMEM(ctx), LY_EMEM);
+    LY_CHECK_GOTO(rc = lyxml_ctx_new(ctx, in, &lydctx->xmlctx), cleanup);
+    lydctx->parse_opts = parse_opts;
+    lydctx->val_opts = val_opts;
+    lydctx->int_opts = int_opts;
+    lydctx->free = lyd_xml_ctx_free;
+    lydctx->ext = ext;
+
+    /* find the operation node if it exists already */
+    LY_CHECK_GOTO(rc = lyd_parser_find_operation(parent, int_opts, &lydctx->op_node), cleanup);
+
+    /* parse XML data */
+    while (lydctx->xmlctx->status == LYXML_ELEMENT) {
+        LY_CHECK_GOTO(rc = lydxml_subtree_r(lydctx, parent, first_p, parsed), cleanup);
+        parsed_data_nodes = 1;
+
+        if (!(int_opts & LYD_INTOPT_WITH_SIBLINGS)) {
+            break;
+        }
+    }
+
+    /* check final state */
+    if ((int_opts & LYD_INTOPT_NO_SIBLINGS) && (lydctx->xmlctx->status == LYXML_ELEMENT)) {
+        LOGVAL(ctx, LYVE_SYNTAX, "Unexpected sibling node.");
+        rc = LY_EVALID;
+        goto cleanup;
+    }
+    if ((int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NOTIF | LYD_INTOPT_REPLY)) && !lydctx->op_node) {
+        LOGVAL(ctx, LYVE_DATA, "Missing the operation node.");
+        rc = LY_EVALID;
+        goto cleanup;
+    }
+
+    if (!parsed_data_nodes) {
+        /* no data nodes were parsed */
+        lydctx->op_node = NULL;
+    }
+
+    if (parse_opts & LYD_PARSE_SUBTREE) {
+        /* check for a sibling element */
+        assert(subtree_sibling);
+        if (!lyxml_ctx_peek(lydctx->xmlctx, &status) && (status == LYXML_ELEMENT)) {
+            *subtree_sibling = 1;
+        } else {
+            *subtree_sibling = 0;
+        }
+    }
+
+cleanup:
+    /* there should be no unres stored if validation should be skipped */
+    assert(!(parse_opts & LYD_PARSE_ONLY) || (!lydctx->node_types.count && !lydctx->meta_types.count &&
+            !lydctx->node_when.count));
+
+    if (rc) {
+        lyd_xml_ctx_free((struct lyd_ctx *)lydctx);
+    } else {
+        *lydctx_p = (struct lyd_ctx *)lydctx;
+
+        /* the XML context is no more needed, freeing it also stops logging line numbers which would be confusing now */
+        lyxml_ctx_free(lydctx->xmlctx);
+        lydctx->xmlctx = NULL;
+    }
+    return rc;
+}
+
 /**
  * @brief Parse all expected non-data XML elements of a NETCONF rpc message.
  *
@@ -1601,19 +1682,22 @@ cleanup:
 }
 
 LY_ERR
-lyd_parse_xml(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
+lyd_parse_xml_netconf(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
         struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, enum lyd_type data_type,
-        struct lyd_node **envp, struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p)
+        struct lyd_node **envp, struct ly_set *parsed, struct lyd_ctx **lydctx_p)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_xml_ctx *lydctx;
     uint32_t i, int_opts = 0, close_elem = 0;
     ly_bool parsed_data_nodes = 0;
-    enum LYXML_PARSER_STATUS status;
 
     assert(ctx && in && lydctx_p);
     assert(!(parse_opts & ~LYD_PARSE_OPTS_MASK));
     assert(!(val_opts & ~LYD_VALIDATE_OPTS_MASK));
+
+    assert((data_type == LYD_TYPE_RPC_NETCONF) || (data_type == LYD_TYPE_NOTIF_NETCONF) ||
+            (data_type == LYD_TYPE_REPLY_NETCONF));
+    assert(!(parse_opts & LYD_PARSE_SUBTREE));
 
     /* init context */
     lydctx = calloc(1, sizeof *lydctx);
@@ -1625,20 +1709,6 @@ lyd_parse_xml(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
     lydctx->ext = ext;
 
     switch (data_type) {
-    case LYD_TYPE_DATA_YANG:
-        if (!(parse_opts & LYD_PARSE_SUBTREE)) {
-            int_opts = LYD_INTOPT_WITH_SIBLINGS;
-        }
-        break;
-    case LYD_TYPE_RPC_YANG:
-        int_opts = LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NO_SIBLINGS;
-        break;
-    case LYD_TYPE_NOTIF_YANG:
-        int_opts = LYD_INTOPT_NOTIF | LYD_INTOPT_NO_SIBLINGS;
-        break;
-    case LYD_TYPE_REPLY_YANG:
-        int_opts = LYD_INTOPT_REPLY | LYD_INTOPT_NO_SIBLINGS;
-        break;
     case LYD_TYPE_RPC_NETCONF:
         assert(!parent);
         rc = lydxml_env_netconf_rpc(lydctx->xmlctx, envp, &int_opts, &close_elem);
@@ -1663,7 +1733,12 @@ lyd_parse_xml(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
         }
         LY_CHECK_GOTO(rc, cleanup);
         break;
+    default:
+        LOGINT(ctx);
+        rc = LY_EINT;
+        goto cleanup;
     }
+
     lydctx->int_opts = int_opts;
 
     /* find the operation node if it exists already */
@@ -1707,16 +1782,6 @@ lyd_parse_xml(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
     if (!parsed_data_nodes) {
         /* no data nodes were parsed */
         lydctx->op_node = NULL;
-    }
-
-    if (parse_opts & LYD_PARSE_SUBTREE) {
-        /* check for a sibling element */
-        assert(subtree_sibling);
-        if (!lyxml_ctx_peek(lydctx->xmlctx, &status) && (status == LYXML_ELEMENT)) {
-            *subtree_sibling = 1;
-        } else {
-            *subtree_sibling = 0;
-        }
     }
 
 cleanup:

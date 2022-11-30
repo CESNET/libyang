@@ -1,9 +1,10 @@
 /**
  * @file tree_data.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Data tree functions
  *
- * Copyright (c) 2015 - 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -99,7 +100,7 @@ lyd_parse(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct 
     struct lyd_ctx *lydctx = NULL;
     struct ly_set parsed = {0};
     struct lyd_node *first;
-    uint32_t i;
+    uint32_t i, int_opts = 0;
     ly_bool subtree_sibling = 0;
 
     assert(ctx && (parent || first_p));
@@ -112,18 +113,23 @@ lyd_parse(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct 
     /* remember input position */
     in->func_start = in->current;
 
+    /* set internal options */
+    if (!(parse_opts & LYD_PARSE_SUBTREE)) {
+        int_opts = LYD_INTOPT_WITH_SIBLINGS;
+    }
+
     /* parse the data */
     switch (format) {
     case LYD_XML:
-        rc = lyd_parse_xml(ctx, ext, parent, first_p, in, parse_opts, val_opts, LYD_TYPE_DATA_YANG, NULL, &parsed,
+        rc = lyd_parse_xml(ctx, ext, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed,
                 &subtree_sibling, &lydctx);
         break;
     case LYD_JSON:
-        rc = lyd_parse_json(ctx, ext, parent, first_p, in, parse_opts, val_opts, LYD_TYPE_DATA_YANG, &parsed,
+        rc = lyd_parse_json(ctx, ext, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed,
                 &subtree_sibling, &lydctx);
         break;
     case LYD_LYB:
-        rc = lyd_parse_lyb(ctx, ext, parent, first_p, in, parse_opts, val_opts, LYD_TYPE_DATA_YANG, &parsed,
+        rc = lyd_parse_lyb(ctx, ext, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed,
                 &subtree_sibling, &lydctx);
         break;
     case LYD_UNKNOWN:
@@ -288,7 +294,7 @@ lyd_parse_op_(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
     struct lyd_ctx *lydctx = NULL;
     struct ly_set parsed = {0};
     struct lyd_node *first = NULL, *envp = NULL;
-    uint32_t i, parse_opts, val_opts;
+    uint32_t i, parse_opts, val_opts, int_opts = 0;
 
     if (!ctx) {
         ctx = LYD_CTX(parent);
@@ -305,20 +311,25 @@ lyd_parse_op_(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
     /* remember input position */
     in->func_start = in->current;
 
-    /* check params based on the data type */
-    if ((data_type == LYD_TYPE_RPC_NETCONF) || (data_type == LYD_TYPE_NOTIF_NETCONF)) {
-        LY_CHECK_ARG_RET(ctx, format == LYD_XML, !parent, tree, op, LY_EINVAL);
-    } else if (data_type == LYD_TYPE_REPLY_NETCONF) {
-        LY_CHECK_ARG_RET(ctx, format == LYD_XML, parent, parent->schema->nodetype & (LYS_RPC | LYS_ACTION), tree, !op,
-                LY_EINVAL);
-    }
+    /* set parse and validation opts */
     parse_opts = LYD_PARSE_ONLY | LYD_PARSE_STRICT;
     val_opts = 0;
 
-    /* parse the data */
-    switch (format) {
-    case LYD_XML:
-        rc = lyd_parse_xml(ctx, ext, parent, &first, in, parse_opts, val_opts, data_type, &envp, &parsed, NULL, &lydctx);
+    switch (data_type) {
+
+    /* special XML NETCONF data types */
+    case LYD_TYPE_RPC_NETCONF:
+    case LYD_TYPE_NOTIF_NETCONF:
+        LY_CHECK_ARG_RET(ctx, format == LYD_XML, !parent, tree, op, LY_EINVAL);
+    /* fallthrough */
+    case LYD_TYPE_REPLY_NETCONF:
+        if (data_type == LYD_TYPE_REPLY_NETCONF) {
+            LY_CHECK_ARG_RET(ctx, format == LYD_XML, parent, parent->schema->nodetype & (LYS_RPC | LYS_ACTION), tree, !op,
+                    LY_EINVAL);
+        }
+
+        /* parse the NETCONF message */
+        rc = lyd_parse_xml_netconf(ctx, ext, parent, &first, in, parse_opts, val_opts, data_type, &envp, &parsed, &lydctx);
         if (rc && envp) {
             /* special situation when the envelopes were parsed successfully */
             if (tree) {
@@ -328,12 +339,47 @@ lyd_parse_op_(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
             }
             goto cleanup;
         }
+
+        /* set out params correctly */
+        if (tree) {
+            if (envp) {
+                /* special out param meaning */
+                *tree = envp;
+            } else {
+                *tree = parent ? NULL : first;
+            }
+        }
+        if (op) {
+            *op = lydctx->op_node;
+        }
+        goto cleanup;
+
+    /* set internal opts */
+    case LYD_TYPE_RPC_YANG:
+        int_opts = LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NO_SIBLINGS;
+        break;
+    case LYD_TYPE_NOTIF_YANG:
+        int_opts = LYD_INTOPT_NOTIF | LYD_INTOPT_NO_SIBLINGS;
+        break;
+    case LYD_TYPE_REPLY_YANG:
+        int_opts = LYD_INTOPT_REPLY | LYD_INTOPT_NO_SIBLINGS;
+        break;
+    case LYD_TYPE_DATA_YANG:
+        LOGINT(ctx);
+        rc = LY_EINT;
+        goto cleanup;
+    }
+
+    /* parse the data */
+    switch (format) {
+    case LYD_XML:
+        rc = lyd_parse_xml(ctx, ext, parent, &first, in, parse_opts, val_opts, int_opts, &parsed, NULL, &lydctx);
         break;
     case LYD_JSON:
-        rc = lyd_parse_json(ctx, ext, parent, &first, in, parse_opts, val_opts, data_type, &parsed, NULL, &lydctx);
+        rc = lyd_parse_json(ctx, ext, parent, &first, in, parse_opts, val_opts, int_opts, &parsed, NULL, &lydctx);
         break;
     case LYD_LYB:
-        rc = lyd_parse_lyb(ctx, ext, parent, &first, in, parse_opts, val_opts, data_type, &parsed, NULL, &lydctx);
+        rc = lyd_parse_lyb(ctx, ext, parent, &first, in, parse_opts, val_opts, int_opts, &parsed, NULL, &lydctx);
         break;
     case LYD_UNKNOWN:
         LOGARG(ctx, format);
@@ -344,12 +390,7 @@ lyd_parse_op_(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
 
     /* set out params correctly */
     if (tree) {
-        if (envp) {
-            /* special out param meaning */
-            *tree = envp;
-        } else {
-            *tree = parent ? NULL : first;
-        }
+        *tree = parent ? NULL : first;
     }
     if (op) {
         *op = lydctx->op_node;
