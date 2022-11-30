@@ -247,6 +247,10 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct l
     struct lyd_ctx_ext_val *ext_val;
 
     if (lysc_has_when(node->schema)) {
+        if (lydctx->parse_opts & LYD_PARSE_WHEN_TRUE) {
+            /* the condition was true before */
+            node->flags |= LYD_WHEN_TRUE;
+        }
         if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {
             /* remember we need to evaluate this node's when */
             LY_CHECK_RET(ly_set_add(&lydctx->node_when, node, 1, NULL));

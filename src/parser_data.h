@@ -159,6 +159,9 @@ struct ly_in;
 #define LYD_PARSE_SUBTREE 0x400000          /**< Parse only the current data subtree with any descendants, no siblings.
                                                  Also, a new return value ::LY_ENOT is returned if there is a sibling
                                                  subtree following in the input data. */
+#define LYD_PARSE_WHEN_TRUE 0x800000        /**< Mark all the parsed nodes dependend on a when condition with the flag
+                                                 that means the condition was satisifed before. This allows for
+                                                 auto-deletion of these nodes during validation. */
 
 #define LYD_PARSE_OPTS_MASK 0xFFFF0000      /**< Mask for all the LYD_PARSE_ options. */
 
