@@ -1149,13 +1149,43 @@ lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node,
     const char *opaq_name;
     size_t opaq_name_len;
 
-    /* parse as an attribute to a node */
-    if (!attr_node && snode) {
+    if (!snode && !prefix) {
+        /* set the prefix */
+        if (parent) {
+            lydjson_get_node_prefix(parent, NULL, 0, &prefix, &prefix_len);
+        } else {
+            prefix = "";
+            prefix_len = 0;
+        }
+    }
+
+    /* parse as an attribute to a (opaque) node */
+    if (!attr_node) {
         /* try to find the instance */
-        for (struct lyd_node *iter = *first_p; iter; iter = iter->next) {
-            if (iter->schema == snode) {
-                attr_node = iter;
-                break;
+        LY_LIST_FOR(*first_p, attr_node) {
+            if (snode) {
+                if (attr_node->schema) {
+                    if (attr_node->schema == snode) {
+                        break;
+                    }
+                } else {
+                    if (!strcmp(LYD_NAME(attr_node), snode->name) &&
+                            !strcmp(((struct lyd_node_opaq *)attr_node)->name.module_name, snode->module->name)) {
+                        break;
+                    }
+                }
+            } else {
+                if (attr_node->schema) {
+                    if (!ly_strncmp(LYD_NAME(attr_node), name, name_len) &&
+                            !ly_strncmp(attr_node->schema->module->name, prefix, prefix_len)) {
+                        break;
+                    }
+                } else {
+                    if (!ly_strncmp(LYD_NAME(attr_node), name, name_len) &&
+                            !ly_strncmp(((struct lyd_node_opaq *)attr_node)->name.module_name, prefix, prefix_len)) {
+                        break;
+                    }
+                }
             }
         }
     }
