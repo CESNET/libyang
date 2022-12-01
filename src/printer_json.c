@@ -465,7 +465,8 @@ json_print_attributes(struct jsonpr_ctx *pctx, const struct lyd_node *node, ly_b
 {
     const struct lys_module *wdmod = NULL;
 
-    if ((node->flags & LYD_DEFAULT) && (pctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) {
+    if (node->schema && (node->schema->nodetype != LYS_CONTAINER) && (node->flags & LYD_DEFAULT) &&
+            (pctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) {
         /* we have implicit OR explicit default node */
         /* get with-defaults module */
         wdmod = ly_ctx_get_module_implemented(LYD_CTX(node), "ietf-netconf-with-defaults");
