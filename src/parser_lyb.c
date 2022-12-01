@@ -379,7 +379,7 @@ lyb_read_model(struct lylyb_ctx *lybctx, char **mod_name, char mod_rev[], struct
 
     /* enabled features */
     for (i = 0; i < length; ++i) {
-        lyb_read_string(&str, sizeof length, lybctx);
+        LY_CHECK_RET(lyb_read_string(&str, sizeof length, lybctx));
         ly_set_add(feat_set, str, 1, NULL);
     }
 
