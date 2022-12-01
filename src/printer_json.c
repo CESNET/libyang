@@ -408,7 +408,6 @@ json_print_attribute(struct jsonpr_ctx *pctx, const struct lyd_node_opaq *node, 
     }
 
     for (attr = node->attr; attr; attr = attr->next) {
-        PRINT_COMMA;
         json_print_member2(pctx, &node->node, attr->format, &attr->name, 0);
 
         if (attr->hints & (LYD_VALHINT_BOOLEAN | LYD_VALHINT_DECNUM)) {
