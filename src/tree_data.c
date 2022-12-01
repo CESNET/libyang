@@ -332,22 +332,16 @@ lyd_parse_op_(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
         rc = lyd_parse_xml_netconf(ctx, ext, parent, &first, in, parse_opts, val_opts, data_type, &envp, &parsed, &lydctx);
         if (rc && envp) {
             /* special situation when the envelopes were parsed successfully */
-            if (tree) {
-                *tree = envp;
-            } else {
-                lyd_free_all(envp);
-            }
+            *tree = envp;
             goto cleanup;
         }
 
         /* set out params correctly */
-        if (tree) {
-            if (envp) {
-                /* special out param meaning */
-                *tree = envp;
-            } else {
-                *tree = parent ? NULL : first;
-            }
+        if (envp) {
+            /* special out param meaning */
+            *tree = envp;
+        } else {
+            *tree = parent ? NULL : first;
         }
         if (op) {
             *op = lydctx->op_node;

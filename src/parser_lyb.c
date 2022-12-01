@@ -1243,7 +1243,6 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
 
     /* create the node */
     switch (value_type) {
-    case LYD_ANYDATA_LYB:
     case LYD_ANYDATA_DATATREE:
     case LYD_ANYDATA_STRING:
     case LYD_ANYDATA_XML:
