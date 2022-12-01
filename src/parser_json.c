@@ -1146,7 +1146,7 @@ lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node,
         enum LYJSON_PARSER_STATUS *status_p, struct lyd_node **first_p, struct lyd_node **node_p)
 {
     LY_ERR r;
-    const char *opaq_name;
+    const char *opaq_name, *mod_name;
     size_t opaq_name_len;
 
     if (!snode && !prefix) {
@@ -1169,8 +1169,8 @@ lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node,
                         break;
                     }
                 } else {
-                    if (!strcmp(LYD_NAME(attr_node), snode->name) &&
-                            !strcmp(((struct lyd_node_opaq *)attr_node)->name.module_name, snode->module->name)) {
+                    mod_name = ((struct lyd_node_opaq *)attr_node)->name.module_name;
+                    if (!strcmp(LYD_NAME(attr_node), snode->name) && mod_name && !strcmp(mod_name, snode->module->name)) {
                         break;
                     }
                 }
@@ -1181,8 +1181,9 @@ lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node,
                         break;
                     }
                 } else {
-                    if (!ly_strncmp(LYD_NAME(attr_node), name, name_len) &&
-                            !ly_strncmp(((struct lyd_node_opaq *)attr_node)->name.module_name, prefix, prefix_len)) {
+                    mod_name = ((struct lyd_node_opaq *)attr_node)->name.module_name;
+                    if (!ly_strncmp(LYD_NAME(attr_node), name, name_len) && mod_name &&
+                            !ly_strncmp(mod_name, prefix, prefix_len)) {
                         break;
                     }
                 }
