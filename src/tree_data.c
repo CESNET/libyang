@@ -936,17 +936,7 @@ lyd_unlink_tree(struct lyd_node *node)
         }
 
         /* check for NP container whether its last non-default node is not being unlinked */
-        if (node->parent->schema && (node->parent->schema->nodetype == LYS_CONTAINER) &&
-                !(node->parent->flags & LYD_DEFAULT) && !(node->parent->schema->flags & LYS_PRESENCE)) {
-            LY_LIST_FOR(node->parent->child, iter) {
-                if ((iter != node) && !(iter->flags & LYD_DEFAULT)) {
-                    break;
-                }
-            }
-            if (!iter) {
-                node->parent->flags |= LYD_DEFAULT;
-            }
-        }
+        lyd_cont_set_dflt(lyd_parent(node));
 
         node->parent = NULL;
     }

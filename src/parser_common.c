@@ -266,10 +266,13 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct l
             /* delete the metadata */
             if (prev_meta) {
                 prev_meta->next = meta2->next;
-            } else {
+            } else if (meta != &node->meta) {
                 *meta = (*meta)->next;
             }
             lyd_free_meta_single(meta2);
+
+            /* update dflt flag for all parent NP containers */
+            lyd_cont_set_dflt(lyd_parent(node));
             break;
         }
 

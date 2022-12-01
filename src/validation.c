@@ -1520,16 +1520,7 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
         LY_CHECK_RET(lyd_validate_final_r(lyd_child(node), node, node->schema, NULL, val_opts, int_opts, must_xp_opts));
 
         /* set default for containers */
-        if (node->schema && (node->schema->nodetype == LYS_CONTAINER) && !(node->schema->flags & LYS_PRESENCE)) {
-            LY_LIST_FOR(lyd_child(node), next) {
-                if (!(next->flags & LYD_DEFAULT)) {
-                    break;
-                }
-            }
-            if (!next) {
-                node->flags |= LYD_DEFAULT;
-            }
-        }
+        lyd_cont_set_dflt(node);
     }
 
     return LY_SUCCESS;

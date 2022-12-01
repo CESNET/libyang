@@ -126,6 +126,13 @@ const struct lys_module *lyd_data_next_module(struct lyd_node **next, struct lyd
 const struct lysc_node *lyd_node_schema(const struct lyd_node *node);
 
 /**
+ * @brief Set dflt flag for a NP container if applicable, recursively for parents.
+ *
+ * @param[in] node Node whose criteria for the dflt flag has changed.
+ */
+void lyd_cont_set_dflt(struct lyd_node *node);
+
+/**
  * @brief Search in the given siblings (NOT recursively) for the first schema node data instance.
  * Uses hashes - should be used whenever possible for best performance.
  *

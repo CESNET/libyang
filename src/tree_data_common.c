@@ -1010,6 +1010,35 @@ lyd_node_schema(const struct lyd_node *node)
     return schema;
 }
 
+void
+lyd_cont_set_dflt(struct lyd_node *node)
+{
+    const struct lyd_node *child;
+
+    while (node) {
+        if (!node->schema || (node->flags & LYD_DEFAULT) || !lysc_is_np_cont(node->schema)) {
+            /* not a non-dflt NP container */
+            break;
+        }
+
+        LY_LIST_FOR(lyd_child(node), child) {
+            if (!(child->flags & LYD_DEFAULT)) {
+                break;
+            }
+        }
+        if (child) {
+            /* explicit child, no dflt change */
+            break;
+        }
+
+        /* set the dflt flag */
+        node->flags |= LYD_DEFAULT;
+
+        /* check all parent containers */
+        node = lyd_parent(node);
+    }
+}
+
 /**
  * @brief Comparison callback to match schema node with a schema of a data node.
  *
