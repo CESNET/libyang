@@ -162,6 +162,9 @@ struct ly_in;
 #define LYD_PARSE_WHEN_TRUE 0x800000        /**< Mark all the parsed nodes dependend on a when condition with the flag
                                                  that means the condition was satisifed before. This allows for
                                                  auto-deletion of these nodes during validation. */
+#define LYD_PARSE_NO_NEW 0x1000000          /**< Do not set ::LYD_NEW (non-validated node flag) for any nodes. Use
+                                                 when parsing validated data to skip some validation tasks and modify
+                                                 some validation behavior (auto-deletion of cases). */
 
 #define LYD_PARSE_OPTS_MASK 0xFFFF0000      /**< Mask for all the LYD_PARSE_ options. */
 

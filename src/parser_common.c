@@ -246,6 +246,10 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct l
     struct lyd_meta *meta2, *prev_meta = NULL;
     struct lyd_ctx_ext_val *ext_val;
 
+    if (lydctx->parse_opts & LYD_PARSE_NO_NEW) {
+        node->flags &= ~LYD_NEW;
+    }
+
     if (lysc_has_when(node->schema)) {
         if (lydctx->parse_opts & LYD_PARSE_WHEN_TRUE) {
             /* the condition was true before */
