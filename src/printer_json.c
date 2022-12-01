@@ -410,11 +410,14 @@ json_print_attribute(struct jsonpr_ctx *pctx, const struct lyd_node_opaq *node, 
     for (attr = node->attr; attr; attr = attr->next) {
         json_print_member2(pctx, &node->node, attr->format, &attr->name, 0);
 
-        if (attr->hints & (LYD_VALHINT_BOOLEAN | LYD_VALHINT_DECNUM)) {
+        if (attr->hints & (LYD_VALHINT_STRING | LYD_VALHINT_OCTNUM | LYD_VALHINT_HEXNUM | LYD_VALHINT_NUM64)) {
+            json_print_string(pctx->out, attr->value);
+        } else if (attr->hints & (LYD_VALHINT_BOOLEAN | LYD_VALHINT_DECNUM)) {
             ly_print_(pctx->out, "%s", attr->value[0] ? attr->value : "null");
         } else if (attr->hints & LYD_VALHINT_EMPTY) {
             ly_print_(pctx->out, "[null]");
         } else {
+            /* unknown value format with no hints, use universal string */
             json_print_string(pctx->out, attr->value);
         }
         LEVEL_PRINTED;
