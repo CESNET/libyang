@@ -734,7 +734,6 @@ lydjson_metadata(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, str
     char *dynamic_prefname = NULL;
     size_t name_len, prefix_len = 0;
     struct lys_module *mod;
-    struct lyd_meta *meta = NULL;
     const struct ly_ctx *ctx = lydctx->jsonctx->ctx;
     ly_bool is_attr = 0;
     struct lyd_node *prev = node;
@@ -856,13 +855,12 @@ next_entry:
 
         if (node->schema) {
             /* create metadata */
-            meta = NULL;
-            ret = lyd_parser_create_meta((struct lyd_ctx *)lydctx, node, &meta, mod, name, name_len, lydctx->jsonctx->value,
+            ret = lyd_parser_create_meta((struct lyd_ctx *)lydctx, node, NULL, mod, name, name_len, lydctx->jsonctx->value,
                     lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic, LY_VALUE_JSON, NULL, LYD_HINT_DATA, node->schema);
             LY_CHECK_GOTO(ret, cleanup);
 
             /* add/correct flags */
-            ret = lyd_parse_set_data_flags(node, &meta, (struct lyd_ctx *)lydctx, NULL);
+            ret = lyd_parse_set_data_flags(node, &node->meta, (struct lyd_ctx *)lydctx, NULL);
             LY_CHECK_GOTO(ret, cleanup);
         } else {
             /* create attribute */
@@ -885,7 +883,7 @@ next_entry:
 
     if (nodetype == LYS_LEAFLIST) {
         /* continue by processing another metadata object for the following
-         * leaf-list instance since they are allways instantiated in JSON array */
+         * leaf-list instance since they are always instantiated in JSON array */
         prev = node;
         node = node->next;
         goto next_entry;
