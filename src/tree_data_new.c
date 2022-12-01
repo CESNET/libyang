@@ -245,6 +245,7 @@ lyd_create_anydata_datatree(const struct ly_ctx *ctx, const void *value, LYD_ANY
     case LYD_ANYDATA_DATATREE:
     case LYD_ANYDATA_STRING:
         /* unreachable */
+        ly_in_free(in, 0);
         LOGINT_RET(ctx);
     case LYD_ANYDATA_XML:
         r = lyd_parse_xml(ctx, NULL, NULL, tree, in, parse_opts, 0, int_opts, NULL, NULL, &lydctx);
@@ -274,7 +275,7 @@ lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VA
 {
     LY_ERR ret;
     struct lyd_node *tree;
-    struct lyd_node_any *any;
+    struct lyd_node_any *any = NULL;
     union lyd_any_value any_val;
 
     assert(schema->nodetype & LYD_NODE_ANY);
@@ -288,7 +289,7 @@ lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VA
 
     if ((schema->nodetype == LYS_ANYDATA) && (value_type != LYD_ANYDATA_DATATREE)) {
         /* only a data tree can be stored */
-        LY_CHECK_RET(lyd_create_anydata_datatree(schema->module->ctx, value, value_type, &tree));
+        LY_CHECK_GOTO(ret = lyd_create_anydata_datatree(schema->module->ctx, value, value_type, &tree), error);
         if (use_value) {
             free((void *)value);
         }
@@ -305,7 +306,7 @@ lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VA
         case LYD_ANYDATA_STRING:
         case LYD_ANYDATA_XML:
         case LYD_ANYDATA_JSON:
-            LY_CHECK_ERR_RET(lydict_insert_zc(schema->module->ctx, (void *)value, &any->value.str), free(any), LY_EMEM);
+            LY_CHECK_GOTO(ret = lydict_insert_zc(schema->module->ctx, (void *)value, &any->value.str), error);
             break;
         case LYD_ANYDATA_LYB:
             any->value.mem = (void *)value;
@@ -314,13 +315,16 @@ lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VA
         any->value_type = value_type;
     } else {
         any_val.str = value;
-        ret = lyd_any_copy_value(&any->node, &any_val, value_type);
-        LY_CHECK_ERR_RET(ret, free(any), ret);
+        LY_CHECK_GOTO(ret = lyd_any_copy_value(&any->node, &any_val, value_type), error);
     }
     lyd_hash(&any->node);
 
     *node = &any->node;
     return LY_SUCCESS;
+
+error:
+    free(any);
+    return ret;
 }
 
 LY_ERR
