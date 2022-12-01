@@ -155,6 +155,8 @@ test_top_level(void **state)
     /* anydata */
     assert_int_equal(lyd_new_any(NULL, mod, "any", "{\"node\":\"val\"}", 0, LYD_ANYDATA_STRING, 0, &node), LY_SUCCESS);
     lyd_free_tree(node);
+    assert_int_equal(lyd_new_any(NULL, mod, "any", "<node>val</node>", 0, LYD_ANYDATA_STRING, 0, &node), LY_SUCCESS);
+    lyd_free_tree(node);
 
     /* key-less list */
     assert_int_equal(lyd_new_list2(NULL, mod, "l2", "[a='a'][b='b']", 0, &node), LY_EVALID);

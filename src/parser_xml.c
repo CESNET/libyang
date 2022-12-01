@@ -420,7 +420,7 @@ restore:
  * @param[in] value Node value.
  * @param[in] value_len Length of @p value.
  * @param[in] first Node first sibling.
- * @param[in] ns Node module namespace.
+ * @param[in] ns Node module namespace, NULL for no namespace.
  * @param[out] hints Data hints to use.
  * @param[out] anchor Anchor to insert after in case of a list.
  */
@@ -469,7 +469,8 @@ lydxml_get_hints_opaq(const char *name, size_t name_len, const char *value, size
 
         opaq = (struct lyd_node_opaq *)first;
         assert(opaq->format == LY_VALUE_XML);
-        if (!ly_strncmp(opaq->name.name, name, name_len) && !strcmp(opaq->name.module_ns, ns)) {
+        if (!ly_strncmp(opaq->name.name, name, name_len) &&
+                ((ns && !strcmp(opaq->name.module_ns, ns)) || (!ns && !opaq->name.module_ns))) {
             if (opaq->value && opaq->value[0]) {
                 /* leaf-list nodes */
                 opaq->hints |= LYD_NODEHINT_LEAFLIST;
@@ -520,7 +521,15 @@ lydxml_subtree_snode(struct lyd_xml_ctx *lydctx, const struct lyd_node *parent, 
     /* get current namespace */
     ns = lyxml_ns_get(&xmlctx->ns, prefix, prefix_len);
     if (!ns) {
-        LOGVAL(ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", (int)prefix_len, prefix);
+        if (lydctx->int_opts & LYD_INTOPT_ANY) {
+            goto unknown_module;
+        }
+
+        if (prefix_len) {
+            LOGVAL(ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", (int)prefix_len, prefix);
+        } else {
+            LOGVAL(ctx, LYVE_REFERENCE, "Missing XML namespace.");
+        }
         return LY_EVALID;
     }
 
@@ -535,7 +544,7 @@ lydxml_subtree_snode(struct lyd_xml_ctx *lydctx, const struct lyd_node *parent, 
             return r;
         }
 
-        /* unknown module */
+unknown_module:
         if (lydctx->parse_opts & LYD_PARSE_STRICT) {
             LOGVAL(ctx, LYVE_REFERENCE, "No module with namespace \"%s\" in the context.", ns->uri);
             return LY_EVALID;
@@ -603,7 +612,7 @@ static LY_ERR
 lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_set *parsed)
 {
     LY_ERR ret = LY_SUCCESS;
-    const char *prefix, *name;
+    const char *prefix, *name, *ns_uri;
     size_t prefix_len, name_len;
     struct lyxml_ctx *xmlctx;
     const struct ly_ctx *ctx;
@@ -685,15 +694,15 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
 
         /* get NS again, it may have been backed up and restored */
         ns = lyxml_ns_get(&xmlctx->ns, prefix, prefix_len);
-        assert(ns);
+        ns_uri = ns ? ns->uri : NULL;
 
         /* get best-effort node hints */
         lydxml_get_hints_opaq(name, name_len, xmlctx->value, xmlctx->value_len, parent ? lyd_child(parent) : *first_p,
-                ns->uri, &hints, &insert_anchor);
+                ns_uri, &hints, &insert_anchor);
 
         /* create node */
-        ret = lyd_create_opaq(ctx, name, name_len, prefix, prefix_len, ns->uri, strlen(ns->uri), xmlctx->value,
-                xmlctx->value_len, &xmlctx->dynamic, format, val_prefix_data, hints, &node);
+        ret = lyd_create_opaq(ctx, name, name_len, prefix, prefix_len, ns_uri, ns_uri ? strlen(ns_uri) : 0,
+                xmlctx->value, xmlctx->value_len, &xmlctx->dynamic, format, val_prefix_data, hints, &node);
         LY_CHECK_GOTO(ret, error);
 
         /* parser next */
