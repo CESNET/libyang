@@ -364,7 +364,6 @@ lydjson_check_list(struct lyjson_ctx *jsonctx, const struct lysc_node *list)
     uint32_t i, status_count;
 
     assert(list && (list->nodetype == LYS_LIST));
-    assert(status == LYJSON_OBJECT);
 
     /* get all keys into a set (keys do not have if-features or anything) */
     snode = NULL;
@@ -373,10 +372,10 @@ lydjson_check_list(struct lyjson_ctx *jsonctx, const struct lysc_node *list)
         LY_CHECK_GOTO(ret, cleanup);
     }
 
-    if (status != LYJSON_OBJECT_EMPTY) {
+    if (status == LYJSON_OBJECT) {
         status_count = jsonctx->status.count;
 
-        while (key_set.count && status != LYJSON_OBJECT_CLOSED) {
+        while (key_set.count && (status != LYJSON_OBJECT_CLOSED)) {
             const char *name, *prefix;
             size_t name_len, prefix_len;
             ly_bool is_attr;
@@ -534,7 +533,7 @@ lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *sno
         case LYS_LIST:
             /* lists may not have all its keys */
             if (lydjson_check_list(jsonctx, snode)) {
-                /* invalid list, parse as opaque if it missing/has invalid some keys */
+                /* invalid list, parse as opaque if it misses/has invalid some keys */
                 ret = LY_ENOT;
             }
             break;
