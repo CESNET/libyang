@@ -773,14 +773,8 @@ json_print_leaf_list(struct jsonpr_ctx *pctx, const struct lyd_node *node)
     }
 
     if (node->schema->nodetype == LYS_LIST) {
-        if (!lyd_child(node)) {
-            /* empty, e.g. in case of filter */
-            ly_print_(pctx->out, "%s%snull", (pctx->level_printed >= pctx->level) ? "," : "", DO_FORMAT ? " " : "");
-            LEVEL_PRINTED;
-        } else {
-            /* print list's content */
-            LY_CHECK_RET(json_print_inner(pctx, node));
-        }
+        /* print list's content */
+        LY_CHECK_RET(json_print_inner(pctx, node));
     } else {
         assert(node->schema->nodetype == LYS_LEAFLIST);
 
