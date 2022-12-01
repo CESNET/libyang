@@ -736,7 +736,7 @@ lydjson_metadata(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, str
     const struct ly_ctx *ctx = lydctx->jsonctx->ctx;
     ly_bool is_attr = 0;
     struct lyd_node *prev = node;
-    uint32_t instance = 0;
+    uint32_t instance = 0, val_hints;
     uint16_t nodetype;
 
     assert(snode || node);
@@ -849,13 +849,17 @@ next_entry:
         }
 
         /* get the value */
-        ret = lyjson_ctx_next(lydctx->jsonctx, NULL);
+        ret = lyjson_ctx_next(lydctx->jsonctx, &status);
+        LY_CHECK_GOTO(ret, cleanup);
+
+        /* get value hints */
+        ret = lydjson_value_type_hint(lydctx, &status, &val_hints);
         LY_CHECK_GOTO(ret, cleanup);
 
         if (node->schema) {
             /* create metadata */
             ret = lyd_parser_create_meta((struct lyd_ctx *)lydctx, node, NULL, mod, name, name_len, lydctx->jsonctx->value,
-                    lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic, LY_VALUE_JSON, NULL, LYD_HINT_DATA, node->schema);
+                    lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic, LY_VALUE_JSON, NULL, val_hints, node->schema);
             LY_CHECK_GOTO(ret, cleanup);
 
             /* add/correct flags */
@@ -871,7 +875,7 @@ next_entry:
             /* attr2 is always changed to the created attribute */
             ret = lyd_create_attr(node, NULL, lydctx->jsonctx->ctx, name, name_len, prefix, prefix_len, module_name,
                     module_name_len, lydctx->jsonctx->value, lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic,
-                    LY_VALUE_JSON, NULL, 0);
+                    LY_VALUE_JSON, NULL, val_hints);
             LY_CHECK_GOTO(ret, cleanup);
         }
         /* next member */
