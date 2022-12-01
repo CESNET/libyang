@@ -743,6 +743,7 @@ lydjson_metadata(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, str
     assert(snode || node);
 
     nodetype = snode ? snode->nodetype : LYS_CONTAINER;
+    LOG_LOCSET(snode, NULL, NULL, NULL);
 
     /* move to the second item in the name/X pair */
     ret = lyjson_ctx_next(lydctx->jsonctx, &status);
@@ -799,14 +800,13 @@ next_entry:
         LY_CHECK_GOTO(status != LYJSON_OBJECT, representation_error);
         break;
     default:
-        LOGINT_RET(ctx);
+        LOGINT(ctx);
+        ret = LY_EINT;
+        goto cleanup;
     }
 
     /* process all the members inside a single metadata object */
     assert(status == LYJSON_OBJECT);
-
-    LOG_LOCSET(snode, NULL, NULL, NULL);
-
     while (status != LYJSON_OBJECT_CLOSED) {
         LY_CHECK_GOTO(status != LYJSON_OBJECT, representation_error);
 
@@ -897,7 +897,6 @@ representation_error:
             "The attribute(s) of %s \"%s\" is expected to be represented as JSON %s, but input data contains @%s/%s.",
             lys_nodetype2str(nodetype), node ? LYD_NAME(node) : LYD_NAME(prev), expected, lyjson_token2str(status),
             in_parent ? "" : "name");
-
     ret = LY_EVALID;
 
 cleanup:
