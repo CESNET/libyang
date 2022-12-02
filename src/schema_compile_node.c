@@ -53,6 +53,41 @@ lysc_ext_instance_dup(struct ly_ctx *ctx, struct lysc_ext_instance *orig)
 }
 
 /**
+ * @brief Add a node with a when to unres.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] when Specific compiled when to check.
+ * @param[in] node Compiled node with when(s).
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lysc_unres_when_add(struct lysc_ctx *ctx, struct lysc_when *when, struct lysc_node *node)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lysc_unres_when *w = NULL;
+
+    /* do not check must(s) in a grouping */
+    if (ctx->compile_opts & LYS_COMPILE_GROUPING) {
+        goto cleanup;
+    }
+
+    /* add new unres when */
+    w = calloc(1, sizeof *w);
+    LY_CHECK_ERR_GOTO(!w, LOGMEM(ctx->ctx); rc = LY_EMEM, cleanup);
+
+    w->node = node;
+    w->when = when;
+
+    /* add into the unres set */
+    LY_CHECK_ERR_GOTO(ly_set_add(&ctx->unres->whens, w, 1, NULL), LOGMEM(ctx->ctx); rc = LY_EMEM, cleanup);
+    w = NULL;
+
+cleanup:
+    free(w);
+    return rc;
+}
+
+/**
  * @brief Add a node with must(s) to unres.
  *
  * @param[in] ctx Compile context.
@@ -497,11 +532,8 @@ lys_compile_when(struct lysc_ctx *ctx, const struct lysp_when *when_p, uint16_t 
         *new_when = *when_c;
     }
 
-    if (!(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
-        /* do not check "when" semantics in a grouping, but repeat the check for different node because
-         * of dummy node check */
-        LY_CHECK_GOTO(rc = ly_set_add(&ctx->unres->whens, node, 0, NULL), cleanup);
-    }
+    /* add when to unres */
+    LY_CHECK_GOTO(rc = lysc_unres_when_add(ctx, *new_when, node), cleanup);
 
 cleanup:
     return rc;

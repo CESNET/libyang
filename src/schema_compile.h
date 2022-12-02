@@ -119,6 +119,14 @@ struct lys_glob_unres {
 };
 
 /**
+ * @brief Structure for storing schema node with a when expression.
+ */
+struct lysc_unres_when {
+    struct lysc_node *node;                 /**< node with the when expression */
+    struct lysc_when *when;                 /**< one when expression of the node */
+};
+
+/**
  * @brief Structure for storing schema nodes with must expressions and local module for each of them.
  */
 struct lysc_unres_must {

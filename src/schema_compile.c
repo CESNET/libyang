@@ -599,86 +599,77 @@ lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *exp
  * @brief Check when expressions of a node on a complete compiled schema tree.
  *
  * @param[in] ctx Compile context.
- * @param[in] node Node to check.
+ * @param[in] when When to check.
+ * @param[in] node Node with @p when.
  * @param[in,out] unres Global unres structure.
- * @return LY_ERECOMPILE
- * @return LY_ERR value
+ * @return LY_ERECOMPILE if the whole dep set needs to be recompiled for these whens to evaluate.
+ * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_unres_when(struct lysc_ctx *ctx, const struct lysc_node *node, struct lys_glob_unres *unres)
+lys_compile_unres_when(struct lysc_ctx *ctx, const struct lysc_when *when, const struct lysc_node *node,
+        struct lys_glob_unres *unres)
 {
-    struct lyxp_set tmp_set;
+    struct lyxp_set tmp_set = {0};
     uint32_t i, opts;
-    LY_ARRAY_COUNT_TYPE u;
-    struct lysc_when **whens = NULL;
     LY_ERR ret = LY_SUCCESS;
     const struct lys_module *mod;
 
-    LOG_LOCSET(node, NULL, NULL, NULL);
-
-    memset(&tmp_set, 0, sizeof tmp_set);
     opts = LYXP_SCNODE_SCHEMA | ((node->flags & LYS_IS_OUTPUT) ? LYXP_SCNODE_OUTPUT : 0);
 
-    whens = lysc_node_when(node);
-    LY_ARRAY_FOR(whens, u) {
-        /* first check whether all the referenced modules are implemented */
-        mod = NULL;
-        ret = lys_compile_expr_implement(ctx->ctx, whens[u]->cond, LY_VALUE_SCHEMA_RESOLVED, whens[u]->prefixes,
-                ctx->ctx->flags & LY_CTX_REF_IMPLEMENTED, unres, &mod);
-        if (ret) {
-            goto cleanup;
-        } else if (mod) {
-            LOGWRN(ctx->ctx, "When condition \"%s\" check skipped because referenced module \"%s\" is not implemented.",
-                    whens[u]->cond->expr, mod->name);
-            continue;
-        }
+    /* first check whether all the referenced modules are implemented */
+    mod = NULL;
+    ret = lys_compile_expr_implement(ctx->ctx, when->cond, LY_VALUE_SCHEMA_RESOLVED, when->prefixes,
+            ctx->ctx->flags & LY_CTX_REF_IMPLEMENTED, unres, &mod);
+    if (ret) {
+        goto cleanup;
+    } else if (mod) {
+        LOGWRN(ctx->ctx, "When condition \"%s\" check skipped because referenced module \"%s\" is not implemented.",
+                when->cond->expr, mod->name);
+        goto cleanup;
+    }
 
-        /* check "when" */
-        ret = lyxp_atomize(ctx->ctx, whens[u]->cond, node->module, LY_VALUE_SCHEMA_RESOLVED, whens[u]->prefixes,
-                whens[u]->context, whens[u]->context, &tmp_set, opts);
-        if (ret) {
-            LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Invalid when condition \"%s\".", whens[u]->cond->expr);
-            goto cleanup;
-        }
+    /* check "when" */
+    ret = lyxp_atomize(ctx->ctx, when->cond, node->module, LY_VALUE_SCHEMA_RESOLVED, when->prefixes, when->context,
+            when->context, &tmp_set, opts);
+    if (ret) {
+        LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Invalid when condition \"%s\".", when->cond->expr);
+        goto cleanup;
+    }
 
-        ctx->path[0] = '\0';
-        lysc_path(node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
-        for (i = 0; i < tmp_set.used; ++i) {
-            /* skip roots'n'stuff */
-            if ((tmp_set.val.scnodes[i].type == LYXP_NODE_ELEM) &&
-                    (tmp_set.val.scnodes[i].in_ctx != LYXP_SET_SCNODE_START_USED)) {
-                struct lysc_node *schema = tmp_set.val.scnodes[i].scnode;
+    ctx->path[0] = '\0';
+    lysc_path(node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
+    for (i = 0; i < tmp_set.used; ++i) {
+        /* skip roots'n'stuff */
+        if ((tmp_set.val.scnodes[i].type == LYXP_NODE_ELEM) &&
+                (tmp_set.val.scnodes[i].in_ctx != LYXP_SET_SCNODE_START_USED)) {
+            struct lysc_node *schema = tmp_set.val.scnodes[i].scnode;
 
-                /* XPath expression cannot reference "lower" status than the node that has the definition */
-                if (lysc_check_status(NULL, whens[u]->flags, node->module, node->name, schema->flags, schema->module,
-                        schema->name)) {
-                    LOGWRN(ctx->ctx, "When condition \"%s\" may be referencing %s node \"%s\".", whens[u]->cond->expr,
-                            (schema->flags == LYS_STATUS_OBSLT) ? "obsolete" : "deprecated", schema->name);
-                }
+            /* XPath expression cannot reference "lower" status than the node that has the definition */
+            if (lysc_check_status(NULL, when->flags, node->module, node->name, schema->flags, schema->module,
+                    schema->name)) {
+                LOGWRN(ctx->ctx, "When condition \"%s\" may be referencing %s node \"%s\".", when->cond->expr,
+                        (schema->flags == LYS_STATUS_OBSLT) ? "obsolete" : "deprecated", schema->name);
+            }
 
-                /* check dummy node children/value accessing */
-                if (lysc_data_parent(schema) == node) {
-                    LOGVAL(ctx->ctx, LYVE_SEMANTICS, "When condition is accessing its own conditional node children.");
-                    ret = LY_EVALID;
-                    goto cleanup;
-                } else if ((schema == node) && (tmp_set.val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_VAL)) {
-                    LOGVAL(ctx->ctx, LYVE_SEMANTICS, "When condition is accessing its own conditional node value.");
-                    ret = LY_EVALID;
-                    goto cleanup;
-                }
+            /* check dummy node children/value accessing */
+            if (lysc_data_parent(schema) == node) {
+                LOGVAL(ctx->ctx, LYVE_SEMANTICS, "When condition is accessing its own conditional node children.");
+                ret = LY_EVALID;
+                goto cleanup;
+            } else if ((schema == node) && (tmp_set.val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_VAL)) {
+                LOGVAL(ctx->ctx, LYVE_SEMANTICS, "When condition is accessing its own conditional node value.");
+                ret = LY_EVALID;
+                goto cleanup;
             }
         }
-
-        /* check cyclic dependencies */
-        ret = lys_compile_unres_when_cyclic(&tmp_set, node);
-        LY_CHECK_GOTO(ret, cleanup);
-
-        lyxp_set_free_content(&tmp_set);
     }
+
+    /* check cyclic dependencies */
+    ret = lys_compile_unres_when_cyclic(&tmp_set, node);
+    LY_CHECK_GOTO(ret, cleanup);
 
 cleanup:
     lyxp_set_free_content(&tmp_set);
-    LOG_LOCBACK(1, 0, 0, 0);
     return ret;
 }
 
@@ -1127,15 +1118,13 @@ lys_compile_unres_depset(struct ly_ctx *ctx, struct lys_glob_unres *unres)
     struct ly_path *path;
     LY_ARRAY_COUNT_TYPE v;
     struct lysc_unres_leafref *l;
+    struct lysc_unres_when *w;
     struct lysc_unres_must *m;
     struct lysc_unres_dflt *r;
     uint32_t i, processed_leafrefs = 0;
 
 resolve_all:
-    /* for leafref, we need 2 rounds - first detects circular chain by storing the first referred type (which
-     * can be also leafref, in case it is already resolved, go through the chain and check that it does not
-     * point to the starting leafref type). The second round stores the first non-leafref type for later data validation.
-     * Also do the same check for set of the disabled leafrefs, but without the second round. */
+    /* check disabled leafrefs first */
     while (ds_unres->disabled_leafrefs.count) {
         /* remember index, it can change before we get to free this item */
         i = ds_unres->disabled_leafrefs.count - 1;
@@ -1153,6 +1142,10 @@ resolve_all:
         ly_set_rm_index(&ds_unres->disabled_leafrefs, i, free);
     }
 
+    /* for leafref, we need 2 rounds - first detects circular chain by storing the first referred type (which
+     * can be also leafref, in case it is already resolved, go through the chain and check that it does not
+     * point to the starting leafref type). The second round stores the first non-leafref type for later data validation.
+     * Also do the same check for set of the disabled leafrefs, but without the second round. */
     for (i = processed_leafrefs; i < ds_unres->leafrefs.count; ++i) {
         l = ds_unres->leafrefs.objs[i];
         LYSC_CTX_INIT_PMOD(cctx, l->node->module->parsed, l->ext);
@@ -1189,14 +1182,15 @@ resolve_all:
     /* check when */
     while (ds_unres->whens.count) {
         i = ds_unres->whens.count - 1;
-        node = ds_unres->whens.objs[i];
-        LYSC_CTX_INIT_PMOD(cctx, node->module->parsed, NULL);
+        w = ds_unres->whens.objs[i];
+        LYSC_CTX_INIT_PMOD(cctx, w->node->module->parsed, NULL);
 
-        LOG_LOCSET(node, NULL, NULL, NULL);
-        ret = lys_compile_unres_when(&cctx, node, unres);
+        LOG_LOCSET(w->node, NULL, NULL, NULL);
+        ret = lys_compile_unres_when(&cctx, w->when, w->node, unres);
         LOG_LOCBACK(1, 0, 0, 0);
         LY_CHECK_GOTO(ret, cleanup);
 
+        free(w);
         ly_set_rm_index(&ds_unres->whens, i, NULL);
     }
 
@@ -1309,7 +1303,7 @@ lys_compile_unres_depset_erase(const struct ly_ctx *ctx, struct lys_glob_unres *
 {
     uint32_t i;
 
-    ly_set_erase(&unres->ds_unres.whens, NULL);
+    ly_set_erase(&unres->ds_unres.whens, free);
     for (i = 0; i < unres->ds_unres.musts.count; ++i) {
         lysc_unres_must_free(unres->ds_unres.musts.objs[i]);
     }
