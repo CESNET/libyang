@@ -9869,7 +9869,7 @@ lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct
     /* evaluate */
     ret = eval_expr_select(exp, &tok_idx, 0, set, options);
 
-    LOG_LOCBACK(1, 0, 0, 0);
+    LOG_LOCBACK(set->cur_scnode ? 1 : 0, 0, 0, 0);
     return ret;
 }
 
