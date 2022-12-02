@@ -656,12 +656,17 @@ static LY_ERR
 lyd_diff_find_match(const struct lyd_node *siblings, const struct lyd_node *target, ly_bool defaults,
         struct lyd_dup_inst **dup_inst_cache, struct lyd_node **match)
 {
+    LY_ERR r;
+
     if (target->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
         /* try to find the exact instance */
-        lyd_find_sibling_first(siblings, target, match);
+        r = lyd_find_sibling_first(siblings, target, match);
     } else {
         /* try to simply find the node, there cannot be more instances */
-        lyd_find_sibling_val(siblings, target->schema, NULL, 0, match);
+        r = lyd_find_sibling_val(siblings, target->schema, NULL, 0, match);
+    }
+    if (r && (r != LY_ENOTFOUND)) {
+        return r;
     }
 
     /* update match as needed */
