@@ -1559,8 +1559,8 @@ lyd_find_schema_ctx(const struct lysc_node *schema, const struct ly_ctx *trg_ctx
     do {
         /* find the next parent */
         sp = schema;
-        while (sp->parent != src_parent) {
-            sp = sp->parent;
+        while (lysc_data_parent(sp) != src_parent) {
+            sp = lysc_data_parent(sp);
         }
         src_parent = sp;
 
