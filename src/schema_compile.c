@@ -427,6 +427,86 @@ lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p
     return LY_SUCCESS;
 }
 
+LY_ERR
+lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *expr, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool implement, struct lys_glob_unres *unres, const struct lys_module **mod_p)
+{
+    uint32_t i;
+    const char *ptr, *start, **imp_f, *all_f[] = {"*", NULL};
+    const struct lys_module *mod;
+
+    assert(implement || mod_p);
+
+    for (i = 0; i < expr->used; ++i) {
+        if ((expr->tokens[i] != LYXP_TOKEN_NAMETEST) && (expr->tokens[i] != LYXP_TOKEN_LITERAL)) {
+            /* token cannot have a prefix */
+            continue;
+        }
+
+        start = expr->expr + expr->tok_pos[i];
+        if (!(ptr = ly_strnchr(start, ':', expr->tok_len[i]))) {
+            /* token without a prefix */
+            continue;
+        }
+
+        if (!(mod = ly_resolve_prefix(ctx, start, ptr - start, format, prefix_data))) {
+            /* unknown prefix, do not care right now */
+            continue;
+        }
+
+        /* unimplemented module found */
+        if (!mod->implemented && !implement) {
+            /* should not be implemented now */
+            *mod_p = mod;
+            break;
+        }
+
+        if (!mod->implemented) {
+            /* implement if not implemented */
+            imp_f = (ctx->flags & LY_CTX_ENABLE_IMP_FEATURES) ? all_f : NULL;
+            LY_CHECK_RET(lys_implement((struct lys_module *)mod, imp_f, unres));
+        }
+        if (!mod->compiled) {
+            /* compile if not implemented before or only marked for compilation */
+            LY_CHECK_RET(lys_compile((struct lys_module *)mod, &unres->ds_unres));
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Check and optionally implement modules referenced by a when expression.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] when When to check.
+ * @param[in,out] unres Global unres structure.
+ * @return LY_ERECOMPILE if the whole dep set needs to be recompiled for these whens to evaluate.
+ * @return LY_ENOT if full check of this when should be skipped.
+ * @return LY_ERR value on error.
+ */
+static LY_ERR
+lys_compile_unres_when_implement(struct lysc_ctx *ctx, const struct lysc_when *when, struct lys_glob_unres *unres)
+{
+    LY_ERR rc = LY_SUCCESS;
+    const struct lys_module *mod = NULL;
+
+    /* check whether all the referenced modules are implemented */
+    rc = lys_compile_expr_implement(ctx->ctx, when->cond, LY_VALUE_SCHEMA_RESOLVED, when->prefixes,
+            ctx->ctx->flags & LY_CTX_REF_IMPLEMENTED, unres, &mod);
+    if (rc) {
+        goto cleanup;
+    } else if (mod) {
+        LOGWRN(ctx->ctx, "When condition \"%s\" check skipped because referenced module \"%s\" is not implemented.",
+                when->cond->expr, mod->name);
+        rc = LY_ENOT;
+        goto cleanup;
+    }
+
+cleanup:
+    return rc;
+}
+
 /**
  * @brief Check when for cyclic dependencies.
  *
@@ -547,86 +627,22 @@ lysc_check_status(struct lysc_ctx *ctx, uint16_t flags1, void *mod1, const char 
     return LY_SUCCESS;
 }
 
-LY_ERR
-lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *expr, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool implement, struct lys_glob_unres *unres, const struct lys_module **mod_p)
-{
-    uint32_t i;
-    const char *ptr, *start, **imp_f, *all_f[] = {"*", NULL};
-    const struct lys_module *mod;
-
-    assert(implement || mod_p);
-
-    for (i = 0; i < expr->used; ++i) {
-        if ((expr->tokens[i] != LYXP_TOKEN_NAMETEST) && (expr->tokens[i] != LYXP_TOKEN_LITERAL)) {
-            /* token cannot have a prefix */
-            continue;
-        }
-
-        start = expr->expr + expr->tok_pos[i];
-        if (!(ptr = ly_strnchr(start, ':', expr->tok_len[i]))) {
-            /* token without a prefix */
-            continue;
-        }
-
-        if (!(mod = ly_resolve_prefix(ctx, start, ptr - start, format, prefix_data))) {
-            /* unknown prefix, do not care right now */
-            continue;
-        }
-
-        /* unimplemented module found */
-        if (!mod->implemented && !implement) {
-            /* should not be implemented now */
-            *mod_p = mod;
-            break;
-        }
-
-        if (!mod->implemented) {
-            /* implement if not implemented */
-            imp_f = (ctx->flags & LY_CTX_ENABLE_IMP_FEATURES) ? all_f : NULL;
-            LY_CHECK_RET(lys_implement((struct lys_module *)mod, imp_f, unres));
-        }
-        if (!mod->compiled) {
-            /* compile if not implemented before or only marked for compilation */
-            LY_CHECK_RET(lys_compile((struct lys_module *)mod, &unres->ds_unres));
-        }
-    }
-
-    return LY_SUCCESS;
-}
-
 /**
  * @brief Check when expressions of a node on a complete compiled schema tree.
  *
  * @param[in] ctx Compile context.
  * @param[in] when When to check.
  * @param[in] node Node with @p when.
- * @param[in,out] unres Global unres structure.
- * @return LY_ERECOMPILE if the whole dep set needs to be recompiled for these whens to evaluate.
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_unres_when(struct lysc_ctx *ctx, const struct lysc_when *when, const struct lysc_node *node,
-        struct lys_glob_unres *unres)
+lys_compile_unres_when(struct lysc_ctx *ctx, const struct lysc_when *when, const struct lysc_node *node)
 {
     struct lyxp_set tmp_set = {0};
     uint32_t i, opts;
     LY_ERR ret = LY_SUCCESS;
-    const struct lys_module *mod;
 
     opts = LYXP_SCNODE_SCHEMA | ((node->flags & LYS_IS_OUTPUT) ? LYXP_SCNODE_OUTPUT : 0);
-
-    /* first check whether all the referenced modules are implemented */
-    mod = NULL;
-    ret = lys_compile_expr_implement(ctx->ctx, when->cond, LY_VALUE_SCHEMA_RESOLVED, when->prefixes,
-            ctx->ctx->flags & LY_CTX_REF_IMPLEMENTED, unres, &mod);
-    if (ret) {
-        goto cleanup;
-    } else if (mod) {
-        LOGWRN(ctx->ctx, "When condition \"%s\" check skipped because referenced module \"%s\" is not implemented.",
-                when->cond->expr, mod->name);
-        goto cleanup;
-    }
 
     /* check "when" */
     ret = lyxp_atomize(ctx->ctx, when->cond, node->module, LY_VALUE_SCHEMA_RESOLVED, when->prefixes, when->context,
@@ -1109,7 +1125,7 @@ lys_type_leafref_next(const struct lysc_node *node, uint64_t *index)
 static LY_ERR
 lys_compile_unres_depset(struct ly_ctx *ctx, struct lys_glob_unres *unres)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR ret = LY_SUCCESS, r;
     struct lysc_node *node;
     struct lysc_type *typeiter;
     struct lysc_type_leafref *lref;
@@ -1120,7 +1136,7 @@ lys_compile_unres_depset(struct ly_ctx *ctx, struct lys_glob_unres *unres)
     struct lysc_unres_leafref *l;
     struct lysc_unres_when *w;
     struct lysc_unres_must *m;
-    struct lysc_unres_dflt *r;
+    struct lysc_unres_dflt *d;
     uint32_t i, processed_leafrefs = 0;
 
 resolve_all:
@@ -1173,21 +1189,41 @@ resolve_all:
             ++lref->realtype->refcount;
         }
 
-        /* If 'goto' will be used on the 'resolve_all' label, then
-         * the current leafref will not be processed again.
-         */
+        /* if 'goto' will be used on the 'resolve_all' label, then the current leafref will not be processed again */
         processed_leafrefs++;
     }
 
-    /* check when */
+    /* check when, first implement all the referenced modules (for the cyclic check in the next loop to work) */
+    i = 0;
+    while (i < ds_unres->whens.count) {
+        w = ds_unres->whens.objs[i];
+        LYSC_CTX_INIT_PMOD(cctx, w->node->module->parsed, NULL);
+
+        LOG_LOCSET(w->node, NULL, NULL, NULL);
+        r = lys_compile_unres_when_implement(&cctx, w->when, unres);
+        LOG_LOCBACK(w->node ? 1 : 0, 0, 0, 0);
+
+        if (r == LY_ENOT) {
+            /* skip full when check, remove from the set */
+            free(w);
+            ly_set_rm_index(&ds_unres->whens, i, NULL);
+            continue;
+        } else if (r) {
+            /* error */
+            ret = r;
+            goto cleanup;
+        }
+
+        ++i;
+    }
     while (ds_unres->whens.count) {
         i = ds_unres->whens.count - 1;
         w = ds_unres->whens.objs[i];
         LYSC_CTX_INIT_PMOD(cctx, w->node->module->parsed, NULL);
 
         LOG_LOCSET(w->node, NULL, NULL, NULL);
-        ret = lys_compile_unres_when(&cctx, w->when, w->node, unres);
-        LOG_LOCBACK(1, 0, 0, 0);
+        ret = lys_compile_unres_when(&cctx, w->when, w->node);
+        LOG_LOCBACK(w->node ? 1 : 0, 0, 0, 0);
         LY_CHECK_GOTO(ret, cleanup);
 
         free(w);
@@ -1226,19 +1262,19 @@ resolve_all:
     /* finish incomplete default values compilation */
     while (ds_unres->dflts.count) {
         i = ds_unres->dflts.count - 1;
-        r = ds_unres->dflts.objs[i];
-        LYSC_CTX_INIT_PMOD(cctx, r->leaf->module->parsed, NULL);
+        d = ds_unres->dflts.objs[i];
+        LYSC_CTX_INIT_PMOD(cctx, d->leaf->module->parsed, NULL);
 
-        LOG_LOCSET(&r->leaf->node, NULL, NULL, NULL);
-        if (r->leaf->nodetype == LYS_LEAF) {
-            ret = lys_compile_unres_leaf_dlft(&cctx, r->leaf, r->dflt, unres);
+        LOG_LOCSET(&d->leaf->node, NULL, NULL, NULL);
+        if (d->leaf->nodetype == LYS_LEAF) {
+            ret = lys_compile_unres_leaf_dlft(&cctx, d->leaf, d->dflt, unres);
         } else {
-            ret = lys_compile_unres_llist_dflts(&cctx, r->llist, r->dflt, r->dflts, unres);
+            ret = lys_compile_unres_llist_dflts(&cctx, d->llist, d->dflt, d->dflts, unres);
         }
         LOG_LOCBACK(1, 0, 0, 0);
         LY_CHECK_GOTO(ret, cleanup);
 
-        lysc_unres_dflt_free(ctx, r);
+        lysc_unres_dflt_free(ctx, d);
         ly_set_rm_index(&ds_unres->dflts, i, NULL);
     }
 
