@@ -1532,12 +1532,13 @@ finish:
  * @param[in] schema Schema node to find.
  * @param[in] trg_ctx Target context to search in.
  * @param[in] parent Data parent of @p schema, if any.
+ * @param[in] log Whether to log directly.
  * @param[out] trg_schema Found schema from @p trg_ctx to use.
  * @return LY_RRR value.
  */
 static LY_ERR
-lyd_dup_find_schema(const struct lysc_node *schema, const struct ly_ctx *trg_ctx, const struct lyd_node *parent,
-        const struct lysc_node **trg_schema)
+lyd_find_schema_ctx(const struct lysc_node *schema, const struct ly_ctx *trg_ctx, const struct lyd_node *parent,
+        ly_bool log, const struct lysc_node **trg_schema)
 {
     const struct lysc_node *src_parent = NULL, *trg_parent = NULL, *sp, *tp;
     const struct lys_module *trg_mod = NULL;
@@ -1567,8 +1568,10 @@ lyd_dup_find_schema(const struct lysc_node *schema, const struct ly_ctx *trg_ctx
             /* find the module first */
             trg_mod = ly_ctx_get_module_implemented(trg_ctx, src_parent->module->name);
             if (!trg_mod) {
-                LOGERR(trg_ctx, LY_ENOTFOUND, "Module \"%s\" not present/implemented in the target context.",
-                        src_parent->module->name);
+                if (log) {
+                    LOGERR(trg_ctx, LY_ENOTFOUND, "Module \"%s\" not present/implemented in the target context.",
+                            src_parent->module->name);
+                }
                 return LY_ENOTFOUND;
             }
         }
@@ -1583,9 +1586,11 @@ lyd_dup_find_schema(const struct lysc_node *schema, const struct ly_ctx *trg_ctx
         }
         if (!tp) {
             /* schema node not found */
-            path = lysc_path(src_parent, LYSC_PATH_LOG, NULL, 0);
-            LOGERR(trg_ctx, LY_ENOTFOUND, "Schema node \"%s\" not found in the target context.", path);
-            free(path);
+            if (log) {
+                path = lysc_path(src_parent, LYSC_PATH_LOG, NULL, 0);
+                LOGERR(trg_ctx, LY_ENOTFOUND, "Schema node \"%s\" not found in the target context.", path);
+                free(path);
+            }
             return LY_ENOTFOUND;
         }
 
@@ -1672,7 +1677,7 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
     if (trg_ctx == LYD_CTX(node)) {
         dup->schema = node->schema;
     } else {
-        ret = lyd_dup_find_schema(node->schema, trg_ctx, parent, &dup->schema);
+        ret = lyd_find_schema_ctx(node->schema, trg_ctx, parent, 1, &dup->schema);
         if (ret) {
             /* has no schema but is not an opaque node */
             free(dup);
@@ -2629,7 +2634,13 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *sc
     if ((LYD_CTX(siblings) != schema->module->ctx)) {
         /* parent of ext nodes is useless */
         parent = (siblings->flags & LYD_EXT) ? NULL : lyd_parent(siblings);
-        LY_CHECK_RET(lyd_dup_find_schema(schema, LYD_CTX(siblings), parent, &schema));
+        if (lyd_find_schema_ctx(schema, LYD_CTX(siblings), parent, 0, &schema)) {
+            /* no schema node in siblings so certainly no data node either */
+            if (match) {
+                *match = NULL;
+            }
+            return LY_ENOTFOUND;
+        }
     }
 
     if (siblings->schema && (lysc_data_parent(siblings->schema) != lysc_data_parent(schema))) {
