@@ -4025,7 +4025,7 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
                 /* find leafref target */
                 if (lyplg_type_resolve_leafref((struct lysc_type_leafref *)sleaf->type, &leaf->node, &leaf->value, set->tree,
                         &node, &errmsg)) {
-                    LOGERR(set->ctx, LY_EVALID, errmsg);
+                    LOGERR(set->ctx, LY_EVALID, "%s", errmsg);
                     free(errmsg);
                     return LY_EVALID;
                 }
