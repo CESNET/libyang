@@ -1301,7 +1301,7 @@ lyb_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options
     lybctx = calloc(1, sizeof *lybctx);
     LY_CHECK_ERR_RET(!lybctx, LOGMEM(ctx), LY_EMEM);
     lybctx->lybctx = calloc(1, sizeof *lybctx->lybctx);
-    LY_CHECK_ERR_RET(!lybctx, LOGMEM(ctx), LY_EMEM);
+    LY_CHECK_ERR_RET(!lybctx->lybctx, LOGMEM(ctx), LY_EMEM);
 
     lybctx->print_options = options;
     if (root) {
