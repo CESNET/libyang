@@ -3542,6 +3542,7 @@ lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, s
     } else {
         /* we need the implicit case first, so create a fake parsed (shorthand) case */
         cs_p = calloc(1, sizeof *cs_p);
+        LY_CHECK_ERR_RET(!cs_p, LOGMEM(ctx->ctx), LY_EMEM);
         cs_p->nodetype = LYS_CASE;
         DUP_STRING_GOTO(ctx->ctx, child_p->name, cs_p->name, ret, revert_sh_case);
         cs_p->child = child_p;
