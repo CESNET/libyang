@@ -1287,8 +1287,9 @@ schema_mount_sprinter_ctree(struct lysc_ext_instance *ext, const struct lyspr_tr
         }
     }
 
-    /* Add private plugin data. */
+    /* add private plugin data */
     st_priv = calloc(1, sizeof(*st_priv));
+    LY_CHECK_ERR_GOTO(!st_priv, rc = LY_EMEM, cleanup);
     st_priv->ext_ctx = ext_ctx;
     st_priv->refs = refs;
     rc = lyplg_ext_sprinter_tree_set_priv(ctx, st_priv, schema_mount_spriter_tree_free);
