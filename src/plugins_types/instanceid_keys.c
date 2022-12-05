@@ -61,8 +61,7 @@ instanceid_keys_print_value(const struct lyd_value_instance_identifier_keys *val
         char **str_value, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    uint16_t cur_idx = 0;
-    uint32_t str_len = 0;
+    uint32_t cur_idx = 0, str_len = 0;
     enum lyxp_token cur_tok;
     char *str_tok;
     void *mem;
