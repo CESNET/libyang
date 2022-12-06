@@ -646,7 +646,7 @@ yin_unres_exts_add(struct lysp_yin_ctx *ctx, struct lysp_ext_instance *exts)
         return LY_SUCCESS;
     }
 
-    return ly_set_add(&ctx->ext_inst, exts, 1, NULL);
+    return ly_set_add(&ctx->main_ctx->ext_inst, exts, 1, NULL);
 }
 
 /**

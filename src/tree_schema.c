@@ -1423,9 +1423,6 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
     /* resolve imports and includes */
     LY_CHECK_GOTO(ret = lysp_resolve_import_include(pctx, (struct lysp_module *)submod, new_mods), error);
 
-    /* resolve extension instance plugin records */
-    LY_CHECK_GOTO(ret = lysp_resolve_ext_instance_records(pctx), error);
-
     if (format == LYS_IN_YANG) {
         lysp_yang_ctx_free(yangctx);
     } else {
@@ -1604,6 +1601,7 @@ lysp_add_internal_ietf_netconf(struct lysp_ctx *pctx, struct lysp_module *mod)
 
     if (LY_ARRAY_COUNT(mod->exts) == 3) {
         /* first extension instances */
+        assert(pctx->main_ctx == pctx);
         LY_CHECK_RET(ly_set_add(&pctx->ext_inst, mod->exts, 1, NULL));
     }
 
@@ -1658,6 +1656,7 @@ lysp_add_internal_ietf_netconf_with_defaults(struct lysp_ctx *pctx, struct lysp_
 
     if (LY_ARRAY_COUNT(mod->exts) == 1) {
         /* first extension instance */
+        assert(pctx->main_ctx == pctx);
         LY_CHECK_RET(ly_set_add(&pctx->ext_inst, mod->exts, 1, NULL));
     }
 

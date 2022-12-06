@@ -61,7 +61,7 @@ struct lys_glob_unres;
 /**
  * @brief Loop through all substatements. Starts a for loop and ::YANG_READ_SUBSTMT_NEXT_ITER must be used at its end.
  *
- * @param[in] CTX yang parser context for logging.
+ * @param[in] CTX yang parser context.
  * @param[out] KW YANG keyword read.
  * @param[out] WORD Pointer to the keyword itself.
  * @param[out] WORD_LEN Length of the keyword.
@@ -87,7 +87,7 @@ struct lys_glob_unres;
 /**
  * @brief Next iteration of ::YANG_READ_SUBSTMT_FOR_GOTO loop.
  *
- * @param[in] CTX yang parser context for logging.
+ * @param[in] CTX yang parser context.
  * @param[out] KW YANG keyword read.
  * @param[out] WORD Pointer to the keyword itself.
  * @param[out] WORD_LEN Length of the keyword.
@@ -100,7 +100,7 @@ struct lys_glob_unres;
         goto ERR_LABEL; \
     } \
     if (KW == LY_STMT_SYNTAX_RIGHT_BRACE) { \
-        if (EXTS && (RET = ly_set_add(&(CTX)->ext_inst, (EXTS), 1, NULL))) { \
+        if (EXTS && (RET = ly_set_add(&(CTX)->main_ctx->ext_inst, (EXTS), 1, NULL))) { \
             goto ERR_LABEL; \
         } \
         __loop_end = 1; \

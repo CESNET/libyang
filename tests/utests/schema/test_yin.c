@@ -119,6 +119,7 @@ setup_ctx(void **state)
 
     /* allocate parser context */
     YCTX = calloc(1, sizeof(*YCTX));
+    YCTX->main_ctx = (struct lysp_ctx *)YCTX;
     YCTX->format = LYS_IN_YIN;
     ly_set_new(&YCTX->parsed_mods);
 
