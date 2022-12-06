@@ -264,9 +264,9 @@ lyd_owner_module(const struct lyd_node *node)
         opaq = (struct lyd_node_opaq *)node;
         switch (opaq->format) {
         case LY_VALUE_XML:
-            return ly_ctx_get_module_implemented_ns(LYD_CTX(node), opaq->name.module_ns);
+            return opaq->name.module_ns ? ly_ctx_get_module_implemented_ns(LYD_CTX(node), opaq->name.module_ns) : NULL;
         case LY_VALUE_JSON:
-            return ly_ctx_get_module_implemented(LYD_CTX(node), opaq->name.module_name);
+            return opaq->name.module_name ? ly_ctx_get_module_implemented(LYD_CTX(node), opaq->name.module_name) : NULL;
         default:
             return NULL;
         }
