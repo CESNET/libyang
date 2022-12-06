@@ -830,7 +830,7 @@ lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second,
 
         if (lysc_is_userordered(iter_second->schema)) {
             /* get userord entry */
-            userord_item = lyd_diff_userord_get(NULL, iter_second->schema, &userord);
+            userord_item = lyd_diff_userord_get(match_first, iter_second->schema, &userord);
             LY_CHECK_ERR_GOTO(!userord_item, LOGMEM(LYD_CTX(iter_second)); ret = LY_EMEM, cleanup);
 
             /* get all the attributes */
