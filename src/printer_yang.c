@@ -336,11 +336,10 @@ ypr_substmt(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t substmt_inde
         return;
     }
 
-    if (stmt_attr_info[substmt].flags & STMT_FLAG_ID) {
-        ly_print_(pctx->out, "%*s%s %s", INDENT, stmt_attr_info[substmt].name, text);
+    if (lys_stmt_flags(substmt) & LY_STMT_FLAG_ID) {
+        ly_print_(pctx->out, "%*s%s %s", INDENT, lys_stmt_str(substmt), text);
     } else {
-        ypr_text(pctx, stmt_attr_info[substmt].name, text,
-                (stmt_attr_info[substmt].flags & STMT_FLAG_YIN) ? 0 : 1, 0);
+        ypr_text(pctx, lys_stmt_str(substmt), text, (lys_stmt_flags(substmt) & LY_STMT_FLAG_YIN) ? 0 : 1, 0);
     }
 
     LEVEL++;

@@ -104,12 +104,12 @@ yprp_stmt(struct lys_ypr_ctx *pctx, struct lysp_stmt *stmt)
              the extension instance substatements in extension instances (LY_STMT_EXTENSION_INSTANCE)
              cannot find the compiled information, so it is needed to be done,
              currently it is ignored */
-    if (stmt_attr_info[stmt->kw].name) {
-        if (stmt_attr_info[stmt->kw].flags & STMT_FLAG_YIN) {
+    if (lys_stmt_str(stmt->kw)) {
+        if (lys_stmt_flags(stmt->kw) & LY_STMT_FLAG_YIN) {
             ypr_open(pctx, stmt->stmt, NULL, NULL, flag);
-            ypr_yin_arg(pctx, stmt_attr_info[stmt->kw].arg, stmt->arg);
+            ypr_yin_arg(pctx, lys_stmt_arg(stmt->kw), stmt->arg);
         } else {
-            ypr_open(pctx, stmt->stmt, stmt_attr_info[stmt->kw].arg, stmt->arg, flag);
+            ypr_open(pctx, stmt->stmt, lys_stmt_arg(stmt->kw), stmt->arg, flag);
         }
     }
 
@@ -185,23 +185,23 @@ ypr_substmt(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t substmt_inde
         return;
     }
 
-    if (stmt_attr_info[substmt].flags & STMT_FLAG_YIN) {
+    if (lys_stmt_flags(substmt) & LY_STMT_FLAG_YIN) {
         extflag = 1;
-        ypr_open(pctx, stmt_attr_info[substmt].name, NULL, NULL, extflag);
+        ypr_open(pctx, lys_stmt_str(substmt), NULL, NULL, extflag);
     } else {
-        ypr_open(pctx, stmt_attr_info[substmt].name, stmt_attr_info[substmt].arg, text, extflag);
+        ypr_open(pctx, lys_stmt_str(substmt), lys_stmt_arg(substmt), text, extflag);
     }
 
     LEVEL++;
     yprp_extension_instances(pctx, substmt, substmt_index, exts, &extflag);
 
     /* argument as yin-element */
-    if (stmt_attr_info[substmt].flags & STMT_FLAG_YIN) {
-        ypr_yin_arg(pctx, stmt_attr_info[substmt].arg, text);
+    if (lys_stmt_flags(substmt) & LY_STMT_FLAG_YIN) {
+        ypr_yin_arg(pctx, lys_stmt_arg(substmt), text);
     }
 
     LEVEL--;
-    ypr_close(pctx, stmt_attr_info[substmt].name, extflag);
+    ypr_close(pctx, lys_stmt_str(substmt), extflag);
 }
 
 static void

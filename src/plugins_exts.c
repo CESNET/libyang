@@ -536,7 +536,7 @@ lyplg_ext_stmt2str(enum ly_stmt stmt)
     if (stmt == LY_STMT_EXTENSION_INSTANCE) {
         return "extension instance";
     } else {
-        return stmt_attr_info[stmt].name;
+        return lys_stmt_str(stmt);
     }
 }
 

@@ -41,21 +41,6 @@ struct lys_glob_unres;
  */
 #define LY_MAX_BLOCK_DEPTH 500
 
-/**
- * @brief Informational structure for YANG statements
- */
-struct stmt_info_s {
-    const char *name;      /**< name of the statement */
-    const char *arg;       /**< name of YIN's attribute to present the statement */
-    uint8_t flags;         /**< various flags to clarify printing of the statement */
-
-#define STMT_FLAG_YIN 0x1 /**< has YIN element */
-#define STMT_FLAG_ID 0x2  /**< the value is identifier -> no quotes */
-};
-
-/* statements informations filled in tree_schema.c */
-extern struct stmt_info_s stmt_attr_info[];
-
 /* list of the deviate modifications strings */
 extern const char * const ly_devmod_list[];
 #define ly_devmod2str(TYPE) ly_devmod_list[TYPE]
@@ -701,6 +686,30 @@ ly_bool lys_has_compiled(const struct lys_module *mod);
  * @return Whether it has groupings or not.
  */
 ly_bool lys_has_dep_mods(const struct lys_module *mod);
+
+/**
+ * @brief Get YANG string keyword of a statement.
+ *
+ * @return YANG string keyword of the statement.
+ */
+const char *lys_stmt_str(enum ly_stmt stmt);
+
+/**
+ * @brief Get YIN argument (attribute) name of a statement.
+ *
+ * @return YIN argument name, if any.
+ */
+const char *lys_stmt_arg(enum ly_stmt stmt);
+
+#define LY_STMT_FLAG_YIN 0x1 /**< has YIN element */
+#define LY_STMT_FLAG_ID 0x2  /**< the value is identifier -> no quotes */
+
+/**
+ * @brief Get statement printer flags.
+ *
+ * @return Additional statement information as LY_STMT_FLAG_* flags.
+ */
+uint8_t lys_stmt_flags(enum ly_stmt stmt);
 
 /**
  * @brief Learn whether the module qualifies for a single dep set with only this module or not.
