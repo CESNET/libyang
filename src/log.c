@@ -38,6 +38,7 @@
 
 ATOMIC_T ly_ll = (uint_fast32_t)LY_LLWRN;
 ATOMIC_T ly_log_opts = (uint_fast32_t)(LY_LOLOG | LY_LOSTORE_LAST);
+THREAD_LOCAL uint32_t *temp_ly_log_opts;
 static ly_log_clb log_clb;
 static ATOMIC_T path_flag = 1;
 #ifndef NDEBUG
@@ -244,6 +245,12 @@ ly_log_options(uint32_t opts)
     return prev;
 }
 
+LIBYANG_API_DEF void
+ly_temp_log_options(uint32_t *opts)
+{
+    temp_ly_log_opts = opts;
+}
+
 LIBYANG_API_DEF uint32_t
 ly_log_dbg_groups(uint32_t dbg_groups)
 {
@@ -363,7 +370,8 @@ log_store(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE vec
         } while (eitem->prev->next);
         /* last error was not found */
         assert(0);
-    } else if ((ATOMIC_LOAD_RELAXED(ly_log_opts) & LY_LOSTORE_LAST) == LY_LOSTORE_LAST) {
+    } else if ((temp_ly_log_opts && ((*temp_ly_log_opts & LY_LOSTORE_LAST) == LY_LOSTORE_LAST)) ||
+            (!temp_ly_log_opts && ((ATOMIC_LOAD_RELAXED(ly_log_opts) & LY_LOSTORE_LAST) == LY_LOSTORE_LAST))) {
         /* overwrite last message */
         free(eitem->msg);
         free(eitem->path);
@@ -401,7 +409,16 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
         const char *format, va_list args)
 {
     char *msg = NULL;
-    ly_bool free_strs;
+    ly_bool free_strs, lolog, lostore;
+
+    /* learn effective logger options */
+    if (temp_ly_log_opts) {
+        lolog = *temp_ly_log_opts & LY_LOLOG;
+        lostore = *temp_ly_log_opts & LY_LOSTORE;
+    } else {
+        lolog = ATOMIC_LOAD_RELAXED(ly_log_opts) & LY_LOLOG;
+        lostore = ATOMIC_LOAD_RELAXED(ly_log_opts) & LY_LOSTORE;
+    }
 
     if (level > ATOMIC_LOAD_RELAXED(ly_ll)) {
         /* do not print or store the message */
@@ -411,7 +428,7 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
 
     if (no == LY_EMEM) {
         /* just print it, anything else would most likely fail anyway */
-        if (ATOMIC_LOAD_RELAXED(ly_log_opts) & LY_LOLOG) {
+        if (lolog) {
             if (log_clb) {
                 log_clb(level, LY_EMEM_MSG, path);
             } else {
@@ -429,7 +446,7 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
     }
 
     /* store the error/warning (if we need to store errors internally, it does not matter what are the user log options) */
-    if ((level < LY_LLVRB) && ctx && (ATOMIC_LOAD_RELAXED(ly_log_opts) & LY_LOSTORE)) {
+    if ((level < LY_LLVRB) && ctx && lostore) {
         assert(format);
         if (vasprintf(&msg, format, args) == -1) {
             LOGMEM(ctx);
@@ -454,7 +471,7 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
     }
 
     /* if we are only storing errors internally, never print the message (yet) */
-    if (ATOMIC_LOAD_RELAXED(ly_log_opts) & LY_LOLOG) {
+    if (lolog) {
         if (log_clb) {
             log_clb(level, msg, path);
         } else {

@@ -7713,7 +7713,7 @@ eval_name_test_try_compile_predicates(const struct lyxp_expr *exp, uint32_t *tok
         const struct lyxp_set *set, struct ly_path_predicate **predicates, enum ly_path_pred_type *pred_type)
 {
     LY_ERR rc = LY_SUCCESS;
-    uint32_t e_idx, val_start_idx, pred_idx = 0, prev_lo, pred_len = 0, nested_pred;
+    uint32_t e_idx, val_start_idx, pred_idx = 0, temp_lo = 0, pred_len = 0, nested_pred;
     const struct lysc_node *key;
     char *pred = NULL;
     struct lyxp_expr *exp2 = NULL;
@@ -7721,7 +7721,7 @@ eval_name_test_try_compile_predicates(const struct lyxp_expr *exp, uint32_t *tok
     assert(ctx_scnode->nodetype & (LYS_LIST | LYS_LEAFLIST));
 
     /* turn logging off */
-    prev_lo = ly_log_options(0);
+    ly_temp_log_options(&temp_lo);
 
     if (ctx_scnode->nodetype == LYS_LIST) {
         /* check for predicates "[key1=...][key2=...]..." */
@@ -7856,7 +7856,7 @@ eval_name_test_try_compile_predicates(const struct lyxp_expr *exp, uint32_t *tok
     *tok_idx = e_idx;
 
 cleanup:
-    ly_log_options(prev_lo);
+    ly_temp_log_options(NULL);
     lyxp_expr_free(set->ctx, exp2);
     free(pred);
     return rc;

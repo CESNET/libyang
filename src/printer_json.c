@@ -537,7 +537,7 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *iter;
     const struct lyd_node *prev_parent;
-    uint32_t prev_opts, prev_lo;
+    uint32_t prev_opts, temp_lo = 0;
 
     assert(any->schema->nodetype & LYD_NODE_ANY);
 
@@ -549,7 +549,7 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
         uint32_t parser_options = LYD_PARSE_ONLY | LYD_PARSE_OPAQ | LYD_PARSE_STRICT;
 
         /* turn logging off */
-        prev_lo = ly_log_options(0);
+        ly_temp_log_options(&temp_lo);
 
         /* try to parse it into a data tree */
         if (lyd_parse_data_mem(pctx->ctx, any->value.mem, LYD_LYB, parser_options, 0, &iter) == LY_SUCCESS) {
@@ -559,8 +559,8 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
             any->value_type = LYD_ANYDATA_DATATREE;
         }
 
-        /* turn loggin on again */
-        ly_log_options(prev_lo);
+        /* turn logging on again */
+        ly_temp_log_options(NULL);
     }
 
     switch (any->value_type) {

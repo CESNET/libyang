@@ -220,7 +220,7 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type **types, struct lyd_v
 {
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;
-    uint32_t prev_lo;
+    uint32_t temp_lo = 0;
 
     if (!types || !LY_ARRAY_COUNT(types)) {
         return LY_EINVAL;
@@ -228,8 +228,8 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type **types, struct lyd_v
 
     *err = NULL;
 
-    /* turn logging off */
-    prev_lo = ly_log_options(0);
+    /* turn logging temporarily off */
+    ly_temp_log_options(&temp_lo);
 
     /* use the first usable subtype to store the value */
     for (u = 0; u < LY_ARRAY_COUNT(types); ++u) {
@@ -250,25 +250,21 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type **types, struct lyd_v
     }
 
     /* restore logging */
-    ly_log_options(prev_lo);
+    ly_temp_log_options(NULL);
     return ret;
 }
 
 /**
- * @brief Fill union subvalue items: original, origin_len, format
- * prefix_data and call 'store' function for value.
+ * @brief Fill union subvalue items: original, origin_len, format prefix_data and call 'store' function for value.
  *
  * @param[in] ctx libyang context.
  * @param[in] type_u Compiled type of union.
- * @param[in] lyb_data Input LYB data consisting of index followed by
- * value (lyb_value).
+ * @param[in] lyb_data Input LYB data consisting of index followed by value (lyb_value).
  * @param[in] lyb_data_len Length of @p lyb_data.
- * @param[in] prefix_data Format-specific data for resolving any
- * prefixes (see ly_resolve_prefix()).
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ly_resolve_prefix()).
  * @param[in,out] subvalue Union subvalue to be filled.
  * @param[in,out] options Option containing LYPLG_TYPE_STORE_DYNAMIC.
- * @param[in,out] unres Global unres structure for newly implemented
- * modules.
+ * @param[in,out] unres Global unres structure for newly implemented modules.
  * @param[out] err Error information on error.
  * @return LY_ERR value.
  */
