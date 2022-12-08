@@ -954,8 +954,8 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
     old_log_opts = ly_log_options(LY_LOSTORE_LAST);
 
     if (data_type == LYD_TYPE_DATA_YANG) {
-        /* validate all the data */
-        ret = lyd_validate_all(&sibling, NULL, val_opts, diff ? &ext_diff : NULL);
+        /* validate all the modules with data */
+        ret = lyd_validate_all(&sibling, NULL, val_opts | LYD_VALIDATE_PRESENT, diff ? &ext_diff : NULL);
     } else {
         /* validate the operation */
         ret = lyd_validate_op(op_tree, dep_tree, data_type, diff ? &ext_diff : NULL);
