@@ -1,9 +1,10 @@
 /**
  * @file printer_schema.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Schema printers for libyang
  *
- * Copyright (c) 2015-2019 CESNET, z.s.p.o.
+ * Copyright (c) 2015-2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -95,10 +96,6 @@ struct lysp_submodule;
 #define LYS_PRINT_SHRINK             LY_PRINT_SHRINK /**< Flag for output without indentation and formatting new lines. */
 #define LYS_PRINT_NO_SUBSTMT         0x10            /**< Print only top-level/referede node information,
                                                           do not print information from the substatements */
-// #define LYS_PRINT_TREE_RFC        0x01 /**< Conform to the RFC8340 tree output (only for tree format) */
-// #define LYS_PRINT_TREE_GROUPING   0x02 /**< Print groupings separately (only for tree format) */
-// #define LYS_PRINT_TREE_USES       0x04 /**< Print only uses instead the resolved grouping nodes (only for tree format) */
-// #define LYS_PRINT_TREE_NO_LEAFREF 0x08 /**< Do not print the target of leafrefs (only for tree format) */
 
 /** @} schemaprinterflags */
 
@@ -123,8 +120,8 @@ typedef enum {
  * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lys_print_module(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT format, size_t line_length,
-        uint32_t options);
+LIBYANG_API_DECL LY_ERR lys_print_module(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT format,
+        size_t line_length, uint32_t options);
 
 /**
  * @brief Schema submodule printer.
@@ -194,7 +191,8 @@ LIBYANG_API_DECL LY_ERR lys_print_file(FILE *f, const struct lys_module *module,
  * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lys_print_path(const char *path, const struct lys_module *module, LYS_OUTFORMAT format, uint32_t options);
+LIBYANG_API_DECL LY_ERR lys_print_path(const char *path, const struct lys_module *module, LYS_OUTFORMAT format,
+        uint32_t options);
 
 /**
  * @brief Print schema tree in the specified format using a provided callback.
@@ -209,8 +207,8 @@ LIBYANG_API_DECL LY_ERR lys_print_path(const char *path, const struct lys_module
  * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lys_print_clb(ly_write_clb writeclb, void *user_data,
-        const struct lys_module *module, LYS_OUTFORMAT format, uint32_t options);
+LIBYANG_API_DECL LY_ERR lys_print_clb(ly_write_clb writeclb, void *user_data, const struct lys_module *module,
+        LYS_OUTFORMAT format, uint32_t options);
 
 /**
  * @brief Schema node printer.
@@ -222,7 +220,8 @@ LIBYANG_API_DECL LY_ERR lys_print_clb(ly_write_clb writeclb, void *user_data,
  * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lys_print_node(struct ly_out *out, const struct lysc_node *node, LYS_OUTFORMAT format, size_t line_length, uint32_t options);
+LIBYANG_API_DECL LY_ERR lys_print_node(struct ly_out *out, const struct lysc_node *node, LYS_OUTFORMAT format,
+        size_t line_length, uint32_t options);
 
 /** @} schematree */
 
