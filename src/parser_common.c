@@ -369,6 +369,14 @@ static LY_ERR lysp_stmt_grouping(struct lysp_ctx *ctx, const struct lysp_stmt *s
 static LY_ERR lysp_stmt_list(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_node **siblings);
 
+/**
+ * @brief Validate stmt string value.
+ *
+ * @param[in] ctx Parser context.
+ * @param[in] val_type String value type.
+ * @param[in] val Value to validate.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lysp_stmt_validate_value(struct lysp_ctx *ctx, enum yang_arg val_type, const char *val)
 {
@@ -400,6 +408,45 @@ lysp_stmt_validate_value(struct lysp_ctx *ctx, enum yang_arg val_type, const cha
 }
 
 /**
+ * @brief Duplicate statement siblings, recursively.
+ *
+ * @param[in] ctx Parser context.
+ * @param[in] stmt Statement to duplicate.
+ * @param[out] first First duplicated statement, the rest follow.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lysp_stmt_dup(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_stmt **first)
+{
+    struct lysp_stmt *child, *last = NULL;
+
+    LY_LIST_FOR(stmt, stmt) {
+        child = calloc(1, sizeof *child);
+        LY_CHECK_ERR_RET(!child, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
+
+        if (last) {
+            last->next = child;
+        } else {
+            assert(!*first);
+            *first = child;
+        }
+        last = child;
+
+        LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->stmt, 0, &child->stmt));
+        LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->arg, 0, &child->arg));
+        child->format = stmt->format;
+        LY_CHECK_RET(ly_dup_prefix_data(PARSER_CTX(ctx), stmt->format, stmt->prefix_data, &child->prefix_data));
+        child->flags = stmt->flags;
+        child->kw = stmt->kw;
+
+        /* recursively */
+        LY_CHECK_RET(lysp_stmt_dup(ctx, stmt->child, &child->child));
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Parse extension instance.
  *
  * @param[in] ctx parser context.
@@ -422,7 +469,7 @@ lysp_stmt_ext(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, enum ly_stmt i
     e->parent_stmt = insubstmt;
     e->parent_stmt_index = insubstmt_index;
     e->parsed = NULL;
-    /* TODO (duplicate) e->child = stmt->child; */
+    LY_CHECK_RET(lysp_stmt_dup(ctx, stmt->child, &e->child));
 
     /* get optional argument */
     if (stmt->arg) {
