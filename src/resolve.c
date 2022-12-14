@@ -6745,6 +6745,7 @@ resolve_when(struct lyd_node *node, int ignore_fail, struct lys_when **failed_wh
 
     assert(node);
     memset(&set, 0, sizeof set);
+    node->when_status &= LYD_WHEN;
 
     if (!(node->schema->nodetype & (LYS_NOTIF | LYS_RPC | LYS_ACTION)) && snode_get_when(node->schema)) {
         /* make the node dummy for the evaluation */
