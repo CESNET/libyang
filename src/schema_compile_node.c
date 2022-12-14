@@ -3784,7 +3784,7 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
         /* foreign module, find it first */
         mod = ly_resolve_prefix(ctx->ctx, prefix, prefix_len, LY_VALUE_SCHEMA, ctx->pmod);
         if (!mod) {
-            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid prefix used for grouping reference.", uses_p->name);
+            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid prefix used for grouping \"%s\" reference.", uses_p->name);
             return LY_EVALID;
         }
         pmod = mod->parsed;

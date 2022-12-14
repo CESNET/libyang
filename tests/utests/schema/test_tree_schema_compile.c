@@ -2528,7 +2528,7 @@ test_uses(void **state)
     CHECK_LOG_CTX("Grouping \"grp\" references itself through a uses statement.", "/bb:{uses='grp'}/{uses='grp1'}/{uses='grp2'}/{uses='grp'}");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc;uses a:missingprefix;}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid prefix used for grouping reference.", "/cc:{uses='a:missingprefix'}");
+    CHECK_LOG_CTX("Invalid prefix used for grouping \"a:missingprefix\" reference.", "/cc:{uses='a:missingprefix'}");
 
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module dd {namespace urn:dd;prefix dd;grouping grp{leaf a{type string;}}"
             "leaf a {type string;}uses grp;}", LYS_IN_YANG, &mod));
