@@ -1026,13 +1026,13 @@ trp_print_wrapper(struct trt_wrapper wr, struct ly_out *out)
  * @return 1 if node is considered empty otherwise 0.
  */
 static ly_bool
-trp_node_is_empty(struct trt_node node)
+trp_node_is_empty(const struct trt_node *node)
 {
-    const ly_bool a = TRP_EMPTY_TRT_IFFEATURES_IS_EMPTY(node.iffeatures.type);
-    const ly_bool b = TRP_TRT_TYPE_IS_EMPTY(node.type);
-    const ly_bool c = TRP_NODE_NAME_IS_EMPTY(node.name);
-    const ly_bool d = node.flags == NULL;
-    const ly_bool e = node.status == NULL;
+    const ly_bool a = TRP_EMPTY_TRT_IFFEATURES_IS_EMPTY(node->iffeatures.type);
+    const ly_bool b = TRP_TRT_TYPE_IS_EMPTY(node->type);
+    const ly_bool c = TRP_NODE_NAME_IS_EMPTY(node->name);
+    const ly_bool d = node->flags == NULL;
+    const ly_bool e = node->status == NULL;
 
     return a && b && c && d && e;
 }
@@ -1045,11 +1045,11 @@ trp_node_is_empty(struct trt_node node)
  * otherwise 0.
  */
 static ly_bool
-trp_node_body_is_empty(struct trt_node node)
+trp_node_body_is_empty(const struct trt_node *node)
 {
-    const ly_bool a = TRP_EMPTY_TRT_IFFEATURES_IS_EMPTY(node.iffeatures.type);
-    const ly_bool b = TRP_TRT_TYPE_IS_EMPTY(node.type);
-    const ly_bool c = !node.name.keys;
+    const ly_bool a = TRP_EMPTY_TRT_IFFEATURES_IS_EMPTY(node->iffeatures.type);
+    const ly_bool b = TRP_TRT_TYPE_IS_EMPTY(node->type);
+    const ly_bool c = !node->name.keys;
 
     return a && b && c;
 }
@@ -1207,24 +1207,24 @@ trp_print_iffeatures(struct trt_iffeatures iff, struct trt_cf_print cf, struct l
  * @param[in] out is output handler.
  */
 static void
-trp_print_node_up_to_name(struct trt_node node, struct ly_out *out)
+trp_print_node_up_to_name(const struct trt_node *node, struct ly_out *out)
 {
-    if (node.name.type == TRD_NODE_TRIPLE_DOT) {
-        trp_print_node_name(node.name, out);
+    if (node->name.type == TRD_NODE_TRIPLE_DOT) {
+        trp_print_node_name(node->name, out);
         return;
     }
     /* <status>--<flags> */
-    ly_print_(out, "%s", node.status);
+    ly_print_(out, "%s", node->status);
     ly_print_(out, "--");
     /* If the node is a case node, there is no space before the <name>
      * also case node has no flags.
      */
-    if (node.flags && (node.name.type != TRD_NODE_CASE)) {
-        ly_print_(out, "%s", node.flags);
+    if (node->flags && (node->name.type != TRD_NODE_CASE)) {
+        ly_print_(out, "%s", node->flags);
         ly_print_(out, " ");
     }
     /* <name> */
-    trp_print_node_name(node.name, out);
+    trp_print_node_name(node->name, out);
 }
 
 /**
@@ -1234,14 +1234,14 @@ trp_print_node_up_to_name(struct trt_node node, struct ly_out *out)
  * @param[in] out is output handler.
  */
 static void
-trp_print_divided_node_up_to_name(struct trt_node node, struct ly_out *out)
+trp_print_divided_node_up_to_name(const struct trt_node *node, struct ly_out *out)
 {
-    uint32_t space = strlen(node.flags);
+    uint32_t space = strlen(node->flags);
 
-    if (node.name.type == TRD_NODE_CASE) {
+    if (node->name.type == TRD_NODE_CASE) {
         /* :(<name> */
         space += strlen(TRD_NODE_NAME_PREFIX_CASE);
-    } else if (node.name.type == TRD_NODE_CHOICE) {
+    } else if (node->name.type == TRD_NODE_CHOICE) {
         /* (<name> */
         space += strlen(TRD_NODE_NAME_PREFIX_CHOICE);
     } else {
@@ -1266,7 +1266,7 @@ trp_print_divided_node_up_to_name(struct trt_node node, struct ly_out *out)
  * @param[in,out] out is output handler.
  */
 static void
-trp_print_node(struct trt_node node, struct trt_pck_print pck, struct trt_indent_in_node indent, struct ly_out *out)
+trp_print_node(const struct trt_node *node, struct trt_pck_print pck, struct trt_indent_in_node indent, struct ly_out *out)
 {
     ly_bool triple_dot;
     ly_bool divided;
@@ -1278,11 +1278,11 @@ trp_print_node(struct trt_node node, struct trt_pck_print pck, struct trt_indent
     }
 
     /* <status>--<flags> <name><opts> <type> <if-features> */
-    triple_dot = node.name.type == TRD_NODE_TRIPLE_DOT;
+    triple_dot = node->name.type == TRD_NODE_TRIPLE_DOT;
     divided = indent.type == TRD_INDENT_IN_NODE_DIVIDED;
 
     if (triple_dot) {
-        trp_print_node_name(node.name, out);
+        trp_print_node_name(node->name, out);
         return;
     } else if (!divided) {
         trp_print_node_up_to_name(node, out);
@@ -1295,7 +1295,7 @@ trp_print_node(struct trt_node node, struct trt_pck_print pck, struct trt_indent
     cf_print_keys.ctx = pck.tree_ctx;
     cf_print_keys.pf = pck.fps.print_keys;
 
-    trp_print_opts_keys(node.name, indent.btw_name_opts, cf_print_keys, out);
+    trp_print_opts_keys(node->name, indent.btw_name_opts, cf_print_keys, out);
 
     /* <opts>__<type> */
     if (indent.btw_opts_type > 0) {
@@ -1303,7 +1303,7 @@ trp_print_node(struct trt_node node, struct trt_pck_print pck, struct trt_indent
     }
 
     /* <type> */
-    trp_print_type(node.type, out);
+    trp_print_type(node->type, out);
 
     /* <type>__<iffeatures> */
     if (indent.btw_type_iffeatures > 0) {
@@ -1314,7 +1314,7 @@ trp_print_node(struct trt_node node, struct trt_pck_print pck, struct trt_indent
     cf_print_iffeatures.ctx = pck.tree_ctx;
     cf_print_iffeatures.pf = pck.fps.print_features_names;
 
-    trp_print_iffeatures(node.iffeatures, cf_print_iffeatures, out);
+    trp_print_iffeatures(node->iffeatures, cf_print_iffeatures, out);
 }
 
 /**
@@ -1466,7 +1466,7 @@ trp_print_keyword_stmt(struct trt_keyword_stmt ks, size_t mll, struct ly_out *ou
  * @param[in,out] out is output handler.
  */
 static void
-trp_print_line(struct trt_node node, struct trt_pck_print pck, struct trt_pck_indent indent, struct ly_out *out)
+trp_print_line(const struct trt_node *node, struct trt_pck_print pck, struct trt_pck_indent indent, struct ly_out *out)
 {
     trp_print_wrapper(indent.wrapper, out);
     trp_print_node(node, pck, indent.in_node, out);
@@ -1480,7 +1480,7 @@ trp_print_line(struct trt_node node, struct trt_pck_print pck, struct trt_pck_in
  * @param[in] out is output handler.
  */
 static void
-trp_print_line_up_to_node_name(struct trt_node node, struct trt_wrapper wr, struct ly_out *out)
+trp_print_line_up_to_node_name(const struct trt_node *node, struct trt_wrapper wr, struct ly_out *out)
 {
     trp_print_wrapper(wr, out);
     trp_print_node_up_to_name(node, out);
@@ -1496,12 +1496,12 @@ trp_print_line_up_to_node_name(struct trt_node node, struct trt_wrapper wr, stru
  * @return true if leafref must be changed to string 'leafref'.
  */
 static ly_bool
-trp_leafref_target_is_too_long(struct trt_node node, struct trt_wrapper wr, size_t mll, struct ly_out *out)
+trp_leafref_target_is_too_long(const struct trt_node *node, struct trt_wrapper wr, size_t mll, struct ly_out *out)
 {
     size_t type_len;
     struct ly_out_clb_arg *data;
 
-    if (node.type.type != TRD_TYPE_TARGET) {
+    if (node->type.type != TRD_TYPE_TARGET) {
         return 0;
     }
 
@@ -1515,7 +1515,7 @@ trp_leafref_target_is_too_long(struct trt_node node, struct trt_wrapper wr, size
     ly_print_(out, "%*c", TRD_INDENT_BTW_SIBLINGS, ' ');
     trp_print_divided_node_up_to_name(node, out);
     data->mode = TRD_PRINT;
-    type_len = strlen(node.type.str);
+    type_len = strlen(node->type.str);
 
     return data->counter + type_len > mll;
 }
@@ -1527,7 +1527,7 @@ trp_leafref_target_is_too_long(struct trt_node node, struct trt_wrapper wr, size
  * will not be divided.
  */
 static struct trt_indent_in_node
-trp_default_indent_in_node(struct trt_node node)
+trp_default_indent_in_node(const struct trt_node *node)
 {
     struct trt_indent_in_node ret;
     uint32_t opts_len = 0;
@@ -1535,13 +1535,13 @@ trp_default_indent_in_node(struct trt_node node)
     ret.type = TRD_INDENT_IN_NODE_NORMAL;
 
     /* btw_name_opts */
-    ret.btw_name_opts = node.name.keys ? TRD_INDENT_BEFORE_KEYS : 0;
+    ret.btw_name_opts = node->name.keys ? TRD_INDENT_BEFORE_KEYS : 0;
 
     /* btw_opts_type */
-    if (!(TRP_TRT_TYPE_IS_EMPTY(node.type))) {
-        if (trp_mark_is_used(node.name)) {
-            opts_len += node.name.add_opts ? strlen(node.name.add_opts) : 0;
-            opts_len += node.name.opts ? strlen(node.name.opts) : 0;
+    if (!(TRP_TRT_TYPE_IS_EMPTY(node->type))) {
+        if (trp_mark_is_used(node->name)) {
+            opts_len += node->name.add_opts ? strlen(node->name.add_opts) : 0;
+            opts_len += node->name.opts ? strlen(node->name.opts) : 0;
             ret.btw_opts_type = TRD_INDENT_BEFORE_TYPE > opts_len ? 1 : TRD_INDENT_BEFORE_TYPE - opts_len;
         } else {
             ret.btw_opts_type = TRD_INDENT_BEFORE_TYPE;
@@ -1551,7 +1551,7 @@ trp_default_indent_in_node(struct trt_node node)
     }
 
     /* btw_type_iffeatures */
-    ret.btw_type_iffeatures = node.iffeatures.type == TRD_IFF_PRESENT ? TRD_INDENT_BEFORE_IFFEATURES : 0;
+    ret.btw_type_iffeatures = node->iffeatures.type == TRD_IFF_PRESENT ? TRD_INDENT_BEFORE_IFFEATURES : 0;
 
     return ret;
 }
@@ -1591,71 +1591,57 @@ trp_indent_in_node_place_break(struct trt_indent_in_node indent)
 }
 
 /**
- * @brief Get the first half of the node based on the linebreak mark.
+ * @brief Set the first half of the node based on the linebreak mark.
  *
  * Items in the second half of the node will be empty.
  *
- * @param[in] node the whole \<node\> to be split.
- * @param[in] indent contains information in which part of the \<node\>
- * the first half ends.
- * @return first half of the node, indent is unchanged.
+ * @param[in,out] innod contains information in which part of the \<node\>
+ * the first half ends. Set first half of the node, indent is unchanged.
  */
-static struct trt_pair_indent_node
-trp_first_half_node(struct trt_node node, struct trt_indent_in_node indent)
+static void
+trp_first_half_node(struct trt_pair_indent_node *innod)
 {
-    struct trt_pair_indent_node ret = TRP_INIT_PAIR_INDENT_NODE(indent, node);
-
-    if (indent.btw_name_opts == TRD_LINEBREAK) {
-        ret.node.name.type = node.name.type;
-        ret.node.type = TRP_EMPTY_TRT_TYPE;
-        ret.node.iffeatures = TRP_EMPTY_TRT_IFFEATURES;
-    } else if (indent.btw_opts_type == TRD_LINEBREAK) {
-        ret.node.type = TRP_EMPTY_TRT_TYPE;
-        ret.node.iffeatures = TRP_EMPTY_TRT_IFFEATURES;
-    } else if (indent.btw_type_iffeatures == TRD_LINEBREAK) {
-        ret.node.iffeatures = TRP_EMPTY_TRT_IFFEATURES;
+    if (innod->indent.btw_name_opts == TRD_LINEBREAK) {
+        innod->node.type = TRP_EMPTY_TRT_TYPE;
+        innod->node.iffeatures = TRP_EMPTY_TRT_IFFEATURES;
+    } else if (innod->indent.btw_opts_type == TRD_LINEBREAK) {
+        innod->node.type = TRP_EMPTY_TRT_TYPE;
+        innod->node.iffeatures = TRP_EMPTY_TRT_IFFEATURES;
+    } else if (innod->indent.btw_type_iffeatures == TRD_LINEBREAK) {
+        innod->node.iffeatures = TRP_EMPTY_TRT_IFFEATURES;
     }
-
-    return ret;
 }
 
 /**
- * @brief Get the second half of the node based on the linebreak mark.
+ * @brief Set the second half of the node based on the linebreak mark.
  *
  * Items in the first half of the node will be empty.
  * Indentations belonging to the first node will be reset to zero.
  *
- * @param[in] node the whole \<node\> to be split.
- * @param[in] indent contains information in which part of the \<node\>
- * the second half starts.
- * @return second half of the node, indent is newly set.
+ * @param[in,out] innod contains information in which part of the \<node\>
+ * the second half starts. Set second half of the node, indent is newly set.
  */
-static struct trt_pair_indent_node
-trp_second_half_node(struct trt_node node, struct trt_indent_in_node indent)
+static void
+trp_second_half_node(struct trt_pair_indent_node *innod)
 {
-    struct trt_pair_indent_node ret = TRP_INIT_PAIR_INDENT_NODE(indent, node);
-
-    if (indent.btw_name_opts < 0) {
+    if (innod->indent.btw_name_opts < 0) {
         /* Logically, the information up to token <opts> should
          * be deleted, but the the trp_print_node function needs it to
          * create the correct indent.
          */
-        ret.indent.btw_name_opts = 0;
-        ret.indent.btw_opts_type = TRP_TRT_TYPE_IS_EMPTY(node.type) ? 0 : TRD_INDENT_BEFORE_TYPE;
-        ret.indent.btw_type_iffeatures = node.iffeatures.type == TRD_IFF_NON_PRESENT ? 0 : TRD_INDENT_BEFORE_IFFEATURES;
-    } else if (indent.btw_opts_type == TRD_LINEBREAK) {
-        ret.node.name.type = node.name.type;
-        ret.indent.btw_name_opts = 0;
-        ret.indent.btw_opts_type = 0;
-        ret.indent.btw_type_iffeatures = node.iffeatures.type == TRD_IFF_NON_PRESENT ? 0 : TRD_INDENT_BEFORE_IFFEATURES;
-    } else if (indent.btw_type_iffeatures == TRD_LINEBREAK) {
-        ret.node.name.type = node.name.type;
-        ret.node.type = TRP_EMPTY_TRT_TYPE;
-        ret.indent.btw_name_opts = 0;
-        ret.indent.btw_opts_type = 0;
-        ret.indent.btw_type_iffeatures = 0;
+        innod->indent.btw_name_opts = 0;
+        innod->indent.btw_opts_type = TRP_TRT_TYPE_IS_EMPTY(innod->node.type) ? 0 : TRD_INDENT_BEFORE_TYPE;
+        innod->indent.btw_type_iffeatures = innod->node.iffeatures.type == TRD_IFF_NON_PRESENT ? 0 : TRD_INDENT_BEFORE_IFFEATURES;
+    } else if (innod->indent.btw_opts_type == TRD_LINEBREAK) {
+        innod->indent.btw_name_opts = 0;
+        innod->indent.btw_opts_type = 0;
+        innod->indent.btw_type_iffeatures = innod->node.iffeatures.type == TRD_IFF_NON_PRESENT ? 0 : TRD_INDENT_BEFORE_IFFEATURES;
+    } else if (innod->indent.btw_type_iffeatures == TRD_LINEBREAK) {
+        innod->node.type = TRP_EMPTY_TRT_TYPE;
+        innod->indent.btw_name_opts = 0;
+        innod->indent.btw_opts_type = 0;
+        innod->indent.btw_type_iffeatures = 0;
     }
-    return ret;
 }
 
 /**
@@ -1664,37 +1650,35 @@ trp_second_half_node(struct trt_node node, struct trt_indent_in_node indent)
  * This function is recursively called itself. It's like a backend
  * function for a function ::trp_try_normal_indent_in_node().
  *
- * @param[in] node is \<node\> representation.
  * @param[in] pck contains speciall callback functions for printing.
- * @param[in] indent contains wrapper and indent in node numbers.
+ * @param[in] wrapper contains information about '|' context.
  * @param[in] mll is max line length.
  * @param[in,out] cnt counting number of characters to print.
  * @param[in,out] out is output handler.
- * @return pair of node and indentation numbers of that node.
+ * @param[in,out] innod pair of node and indentation numbers of that node.
  */
-static struct trt_pair_indent_node
-trp_try_normal_indent_in_node_(struct trt_node node, struct trt_pck_print pck, struct trt_pck_indent indent, size_t mll, size_t *cnt, struct ly_out *out)
+static void
+trp_try_normal_indent_in_node_(struct trt_pck_print pck, struct trt_wrapper wrapper, size_t mll, size_t *cnt,
+        struct ly_out *out, struct trt_pair_indent_node *innod)
 {
-    struct trt_pair_indent_node ret = TRP_INIT_PAIR_INDENT_NODE(indent.in_node, node);
-
-    trp_print_line(node, pck, indent, out);
+    trp_print_line(&innod->node, pck, TRP_INIT_PCK_INDENT(wrapper, innod->indent), out);
 
     if (*cnt <= mll) {
         /* success */
-        return ret;
+        return;
     } else {
-        ret.indent = trp_indent_in_node_place_break(ret.indent);
-        if (ret.indent.type != TRD_INDENT_IN_NODE_FAILED) {
+        innod->indent = trp_indent_in_node_place_break(innod->indent);
+        if (innod->indent.type != TRD_INDENT_IN_NODE_FAILED) {
             /* erase information in node due to line break */
-            ret = trp_first_half_node(node, ret.indent);
+            trp_first_half_node(innod);
             /* check if line fits, recursive call */
             *cnt = 0;
-            ret = trp_try_normal_indent_in_node_(ret.node, pck, TRP_INIT_PCK_INDENT(indent.wrapper, ret.indent), mll, cnt, out);
+            trp_try_normal_indent_in_node_(pck, wrapper, mll, cnt, out, innod);
             /* make sure that the result will be with the status divided
              * or eventually with status failed */
-            ret.indent.type = ret.indent.type == TRD_INDENT_IN_NODE_FAILED ? TRD_INDENT_IN_NODE_FAILED : TRD_INDENT_IN_NODE_DIVIDED;
+            innod->indent.type = innod->indent.type == TRD_INDENT_IN_NODE_FAILED ? TRD_INDENT_IN_NODE_FAILED : TRD_INDENT_IN_NODE_DIVIDED;
         }
-        return ret;
+        return;
     }
 }
 
@@ -1706,29 +1690,28 @@ trp_try_normal_indent_in_node_(struct trt_node node, struct trt_pck_print pck, s
  * @param[in] indent contains wrapper and indent in node numbers.
  * @param[in] mll is max line length.
  * @param[in,out] out is output handler.
- * @return ::TRD_INDENT_IN_NODE_DIVIDED - the node does not fit in the
- * line, some indent variable has negative value as a line break sign.
- * @return ::TRD_INDENT_IN_NODE_NORMAL - the node fits into the line,
- * all indent variables values has non-negative number.
- * @return ::TRD_INDENT_IN_NODE_FAILED - the node does not fit into the
- * line, all indent variables has negative or zero values,
- * function failed.
+ * @param[out] innod If the node does not fit in the line, some indent variable has negative value as a line break sign
+ * and therefore ::TRD_INDENT_IN_NODE_DIVIDED is set.
+ * If the node fits into the line, all indent variables values has non-negative number and therefore
+ * ::TRD_INDENT_IN_NODE_NORMAL is set.
+ * If the node does not fit into the line, all indent variables has negative or zero values, function failed
+ * and therefore ::TRD_INDENT_IN_NODE_FAILED is set.
  */
-static struct trt_pair_indent_node
-trp_try_normal_indent_in_node(struct trt_node node, struct trt_pck_print pck, struct trt_pck_indent indent, size_t mll, struct ly_out *out)
+static void
+trp_try_normal_indent_in_node(const struct trt_node *node, struct trt_pck_print pck, struct trt_pck_indent indent,
+        size_t mll, struct ly_out *out, struct trt_pair_indent_node *innod)
 {
-    struct trt_pair_indent_node ret = TRP_INIT_PAIR_INDENT_NODE(indent.in_node, node);
     struct ly_out_clb_arg *data;
+
+    *innod = TRP_INIT_PAIR_INDENT_NODE(indent.in_node, *node);
 
     /* set ly_out to counting characters */
     data = out->method.clb.arg;
 
     data->counter = 0;
     data->mode = TRD_CHAR_COUNT;
-    ret = trp_try_normal_indent_in_node_(node, pck, indent, mll, &data->counter, out);
+    trp_try_normal_indent_in_node_(pck, indent.wrapper, mll, &data->counter, out, innod);
     data->mode = TRD_PRINT;
-
-    return ret;
 }
 
 /**
@@ -1741,25 +1724,28 @@ trp_try_normal_indent_in_node(struct trt_node node, struct trt_pck_print pck, st
  * @param[in,out] out is output handler.
  */
 static void
-trp_print_divided_node(struct trt_node node, struct trt_pck_print ppck, struct trt_pck_indent ipck, size_t mll, struct ly_out *out)
+trp_print_divided_node(const struct trt_node *node, struct trt_pck_print ppck, struct trt_pck_indent ipck, size_t mll, struct ly_out *out)
 {
     ly_bool entire_node_was_printed;
-    struct trt_pair_indent_node ind_node = trp_try_normal_indent_in_node(node, ppck, ipck, mll, out);
+    struct trt_pair_indent_node innod;
 
-    if (ind_node.indent.type == TRD_INDENT_IN_NODE_FAILED) {
+    trp_try_normal_indent_in_node(node, ppck, ipck, mll, out, &innod);
+
+    if (innod.indent.type == TRD_INDENT_IN_NODE_FAILED) {
         /* nothing can be done, continue as usual */
-        ind_node.indent.type = TRD_INDENT_IN_NODE_DIVIDED;
+        innod.indent.type = TRD_INDENT_IN_NODE_DIVIDED;
     }
 
-    trp_print_line(ind_node.node, ppck, TRP_INIT_PCK_INDENT(ipck.wrapper, ind_node.indent), out);
-    entire_node_was_printed = trp_indent_in_node_are_eq(ipck.in_node, ind_node.indent);
+    trp_print_line(&innod.node, ppck, TRP_INIT_PCK_INDENT(ipck.wrapper, innod.indent), out);
+    entire_node_was_printed = trp_indent_in_node_are_eq(ipck.in_node, innod.indent);
 
     if (!entire_node_was_printed) {
         ly_print_(out, "\n");
         /* continue with second half node */
-        ind_node = trp_second_half_node(node, ind_node.indent);
+        innod.node = *node;
+        trp_second_half_node(&innod);
         /* continue with printing node */
-        trp_print_divided_node(ind_node.node, ppck, TRP_INIT_PCK_INDENT(ipck.wrapper, ind_node.indent), mll, out);
+        trp_print_divided_node(&innod.node, ppck, TRP_INIT_PCK_INDENT(ipck.wrapper, innod.indent), mll, out);
     } else {
         return;
     }
@@ -1768,60 +1754,63 @@ trp_print_divided_node(struct trt_node node, struct trt_pck_print ppck, struct t
 /**
  * @brief Printing of the wrapper and the whole node,
  * which can be divided into several lines.
- * @param[in] node is node representation.
+ * @param[in] node_p is node representation.
  * @param[in] ppck contains speciall callback functions for printing.
  * @param[in] ipck contains wrapper and indent in node numbers.
  * @param[in] mll is max line length.
  * @param[in,out] out is output handler.
  */
 static void
-trp_print_entire_node(struct trt_node node, struct trt_pck_print ppck, struct trt_pck_indent ipck, size_t mll, struct ly_out *out)
+trp_print_entire_node(const struct trt_node *node_p, struct trt_pck_print ppck, struct trt_pck_indent ipck, size_t mll,
+        struct ly_out *out)
 {
-    struct trt_pair_indent_node ind_node1;
-    struct trt_pair_indent_node ind_node2;
+    struct trt_pair_indent_node innod;
     struct trt_pck_indent tmp;
+    struct trt_node node;
 
-    if (trp_leafref_target_is_too_long(node, ipck.wrapper, mll, out)) {
+    node = *node_p;
+    if (trp_leafref_target_is_too_long(&node, ipck.wrapper, mll, out)) {
         node.type.type = TRD_TYPE_LEAFREF;
     }
 
     /* check if normal indent is possible */
-    ind_node1 = trp_try_normal_indent_in_node(node, ppck, ipck, mll, out);
+    trp_try_normal_indent_in_node(&node, ppck, ipck, mll, out, &innod);
 
-    if (ind_node1.indent.type == TRD_INDENT_IN_NODE_NORMAL) {
+    if (innod.indent.type == TRD_INDENT_IN_NODE_NORMAL) {
         /* node fits to one line */
-        trp_print_line(node, ppck, ipck, out);
-    } else if (ind_node1.indent.type == TRD_INDENT_IN_NODE_DIVIDED) {
+        trp_print_line(&node, ppck, ipck, out);
+    } else if (innod.indent.type == TRD_INDENT_IN_NODE_DIVIDED) {
         /* node will be divided */
         /* print first half */
-        tmp = TRP_INIT_PCK_INDENT(ipck.wrapper, ind_node1.indent);
+        tmp = TRP_INIT_PCK_INDENT(ipck.wrapper, innod.indent);
         /* pretend that this is normal node */
         tmp.in_node.type = TRD_INDENT_IN_NODE_NORMAL;
 
-        trp_print_line(ind_node1.node, ppck, tmp, out);
+        trp_print_line(&innod.node, ppck, tmp, out);
         ly_print_(out, "\n");
 
         /* continue with second half on new line */
-        ind_node2 = trp_second_half_node(node, ind_node1.indent);
-        tmp = TRP_INIT_PCK_INDENT(trp_wrapper_if_last_sibling(ipck.wrapper, node.last_one), ind_node2.indent);
+        innod.node = node;
+        trp_second_half_node(&innod);
+        tmp = TRP_INIT_PCK_INDENT(trp_wrapper_if_last_sibling(ipck.wrapper, node.last_one), innod.indent);
 
-        trp_print_divided_node(ind_node2.node, ppck, tmp, mll, out);
-    } else if (ind_node1.indent.type == TRD_INDENT_IN_NODE_FAILED) {
+        trp_print_divided_node(&innod.node, ppck, tmp, mll, out);
+    } else if (innod.indent.type == TRD_INDENT_IN_NODE_FAILED) {
         /* node name is too long */
-        trp_print_line_up_to_node_name(node, ipck.wrapper, out);
+        trp_print_line_up_to_node_name(&node, ipck.wrapper, out);
 
-        if (trp_node_body_is_empty(node)) {
+        if (trp_node_body_is_empty(&node)) {
             return;
         } else {
             ly_print_(out, "\n");
 
-            ind_node2 = trp_second_half_node(node, ind_node1.indent);
-            ind_node2.indent.type = TRD_INDENT_IN_NODE_DIVIDED;
-            tmp = TRP_INIT_PCK_INDENT(trp_wrapper_if_last_sibling(ipck.wrapper, node.last_one), ind_node2.indent);
+            innod.node = node;
+            trp_second_half_node(&innod);
+            innod.indent.type = TRD_INDENT_IN_NODE_DIVIDED;
+            tmp = TRP_INIT_PCK_INDENT(trp_wrapper_if_last_sibling(ipck.wrapper, node.last_one), innod.indent);
 
-            trp_print_divided_node(ind_node2.node, ppck, tmp, mll, out);
+            trp_print_divided_node(&innod.node, ppck, tmp, mll, out);
         }
-
     }
 }
 
@@ -2632,26 +2621,22 @@ tro_read_if_sibling_exists(const struct trt_tree_ctx *tc)
 /**
  * @brief Create implicit "case" node as parent of @p node.
  * @param[in] node child of implicit case node.
- * @return The case node ready to print.
+ * @param[out] case_node created case node.
  */
-static struct trt_node
-tro_create_implicit_case_node(struct trt_node node)
+static void
+tro_create_implicit_case_node(const struct trt_node *node, struct trt_node *case_node)
 {
-    struct trt_node ret;
-
-    ret.status = node.status;
-    ret.flags = TRD_FLAGS_TYPE_EMPTY;
-    ret.name.type = TRD_NODE_CASE;
-    ret.name.keys = node.name.keys;
-    ret.name.module_prefix = node.name.module_prefix;
-    ret.name.str = node.name.str;
-    ret.name.opts = node.name.opts;
-    ret.name.add_opts = node.name.add_opts;
-    ret.type = TRP_EMPTY_TRT_TYPE;
-    ret.iffeatures = TRP_EMPTY_TRT_IFFEATURES;
-    ret.last_one = node.last_one;
-
-    return ret;
+    case_node->status = node->status;
+    case_node->flags = TRD_FLAGS_TYPE_EMPTY;
+    case_node->name.type = TRD_NODE_CASE;
+    case_node->name.keys = node->name.keys;
+    case_node->name.module_prefix = node->name.module_prefix;
+    case_node->name.str = node->name.str;
+    case_node->name.opts = node->name.opts;
+    case_node->name.add_opts = node->name.add_opts;
+    case_node->type = TRP_EMPTY_TRT_TYPE;
+    case_node->iffeatures = TRP_EMPTY_TRT_IFFEATURES;
+    case_node->last_one = node->last_one;
 }
 
 /**********************************************************************
@@ -2799,7 +2784,6 @@ trop_node_charptr(uint16_t flags, trt_get_charptr_func f, const struct lysp_node
  * @param[in] nodetype is node's type obtained from the tree.
  * @param[in] flags is node's flags obtained from the tree.
  * @param[in] ca_lys_status is inherited status obtained from trt_parent_cache.
- * @param[in] no Override structure for status.
  * @return The status type.
  */
 static char *
@@ -2859,7 +2843,6 @@ trop_resolve_flags(uint16_t nodetype, uint16_t flags, trt_ancestor_type ca_ances
  * @brief Resolve node type of the current node.
  * @param[in] pn is pointer to the current node in the tree.
  * @param[in] ca_last_list is pointer to the last visited list. Obtained from the trt_parent_cache.
- * @param[in] no Override structure for opts.
  * @param[out] type Resolved type of node.
  * @param[out] opts Resolved opts of node.
  */
@@ -2892,7 +2875,6 @@ trop_resolve_node_opts(const struct lysp_node *pn, const struct lysp_node_list *
 /**
  * @brief Resolve \<type\> of the current node.
  * @param[in] pn is current node.
- * @param[in] no is override structure for type.
  * @return Resolved type.
  */
 static struct trt_type
@@ -2923,7 +2905,6 @@ trop_resolve_type(const struct lysp_node *pn)
  * @brief Resolve iffeatures.
  *
  * @param[in] pn is current parsed node.
- * @param[in] no is override structure for iffeatures.
  * @return Resolved iffeatures.
  */
 static struct trt_iffeatures
@@ -3265,7 +3246,6 @@ troc_resolve_flags(uint16_t nodetype, uint16_t flags, struct lyplg_ext_sprinter_
  *
  * @param[in] nodetype is current lysc_node.nodetype.
  * @param[in] flags is current lysc_node.flags.
- * @param[in] no Override structure for opts.
  * @param[out] type Resolved type of node.
  * @param[out] opts Resolved opts.
  */
@@ -3475,16 +3455,16 @@ troc_modi_first_sibling(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
  *********************************************************************/
 
 static uint32_t
-trb_gap_to_opts(struct trt_node node)
+trb_gap_to_opts(const struct trt_node *node)
 {
     uint32_t len = 0;
 
-    if (node.name.keys) {
+    if (node->name.keys) {
         return 0;
     }
 
-    if (node.flags) {
-        len += strlen(node.flags);
+    if (node->flags) {
+        len += strlen(node->flags);
         /* space between flags and name */
         len += 1;
     } else {
@@ -3492,7 +3472,7 @@ trb_gap_to_opts(struct trt_node node)
         len += 1;
     }
 
-    switch (node.name.type) {
+    switch (node->name.type) {
     case TRD_NODE_CASE:
         /* ':' is already counted. Plus parentheses. */
         len += 2;
@@ -3505,40 +3485,40 @@ trb_gap_to_opts(struct trt_node node)
         break;
     }
 
-    if (node.name.module_prefix) {
-        len += strlen(node.name.module_prefix);
+    if (node->name.module_prefix) {
+        len += strlen(node->name.module_prefix);
     }
-    if (node.name.str) {
-        len += strlen(node.name.str);
+    if (node->name.str) {
+        len += strlen(node->name.str);
     }
-    if (node.name.add_opts) {
-        len += strlen(node.name.add_opts);
+    if (node->name.add_opts) {
+        len += strlen(node->name.add_opts);
     }
-    if (node.name.opts) {
-        len += strlen(node.name.opts);
+    if (node->name.opts) {
+        len += strlen(node->name.opts);
     }
 
     return len;
 }
 
 static uint32_t
-trb_gap_to_type(struct trt_node node)
+trb_gap_to_type(const struct trt_node *node)
 {
     uint32_t len, opts_len;
 
-    if (node.name.keys) {
+    if (node->name.keys) {
         return 0;
     }
 
     len = trb_gap_to_opts(node);
     /* Gap between opts and type. */
     opts_len = 0;
-    opts_len += node.name.add_opts ? strlen(node.name.add_opts) : 0;
-    opts_len += node.name.opts ? strlen(node.name.opts) : 0;
+    opts_len += node->name.add_opts ? strlen(node->name.add_opts) : 0;
+    opts_len += node->name.opts ? strlen(node->name.opts) : 0;
     if (opts_len >= TRD_INDENT_BEFORE_TYPE) {
         /* At least one space should be there. */
         len += 1;
-    } else if (node.name.add_opts || node.name.opts) {
+    } else if (node->name.add_opts || node->name.opts) {
         len += TRD_INDENT_BEFORE_TYPE - opts_len;
     } else {
         len += TRD_INDENT_BEFORE_TYPE;
@@ -3556,7 +3536,7 @@ trb_gap_to_type(struct trt_node node)
  * @return Indent between \<opts\> and \<type\> for node.
  */
 static int16_t
-trb_calc_btw_opts_type(struct trt_node node, int16_t max_gap_before_type)
+trb_calc_btw_opts_type(const struct trt_node *node, int16_t max_gap_before_type)
 {
     uint32_t to_opts_len;
 
@@ -3582,11 +3562,12 @@ trb_calc_btw_opts_type(struct trt_node node, int16_t max_gap_before_type)
  * @param[in] tc is tree context.
  */
 static void
-trb_print_entire_node(struct trt_node node, uint32_t max_gap_before_type, struct trt_wrapper wr, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
+trb_print_entire_node(const struct trt_node *node, uint32_t max_gap_before_type, struct trt_wrapper wr,
+        struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
     struct trt_indent_in_node ind = trp_default_indent_in_node(node);
 
-    if ((max_gap_before_type > 0) && (node.type.type != TRD_TYPE_EMPTY)) {
+    if ((max_gap_before_type > 0) && (node->type.type != TRD_TYPE_EMPTY)) {
         /* print actual node with unified indent */
         ind.btw_opts_type = trb_calc_btw_opts_type(node, max_gap_before_type);
     }
@@ -3609,12 +3590,12 @@ trb_print_entire_node(struct trt_node node, uint32_t max_gap_before_type, struct
  * @return 1 if parent is last sibling otherwise 0.
  */
 static ly_bool
-trb_node_is_last_sibling(struct trt_fp_all fp, struct trt_tree_ctx *tc)
+trb_node_is_last_sibling(const struct trt_fp_all *fp, struct trt_tree_ctx *tc)
 {
-    if (fp.read.if_parent_exists(tc)) {
-        return !fp.read.if_sibling_exists(tc);
+    if (fp->read.if_parent_exists(tc)) {
+        return !fp->read.if_sibling_exists(tc);
     } else {
-        return !fp.read.if_sibling_exists(tc) && tc->plugin_ctx.last_schema;
+        return !fp->read.if_sibling_exists(tc) && tc->plugin_ctx.last_schema;
     }
 }
 
@@ -3636,9 +3617,9 @@ trb_max_gap_to_type(struct trt_parent_cache ca, struct trt_printer_ctx *pc, stru
 
     maxlen = 0;
     for (node = pc->fp.modify.first_sibling(ca, tc);
-            !trp_node_is_empty(node);
+            !trp_node_is_empty(&node);
             node = pc->fp.modify.next_sibling(ca, tc)) {
-        len = trb_gap_to_type(node);
+        len = trb_gap_to_type(&node);
         maxlen = maxlen < len ? len : maxlen;
     }
     pc->fp.modify.first_sibling(ca, tc);
@@ -3688,7 +3669,7 @@ trb_need_implicit_node_case(struct trt_tree_ctx *tc)
            LYS_LEAF | LYS_LEAFLIST));
 }
 
-static void trb_print_subtree_nodes(struct trt_node node, uint32_t max_gap_before_type,
+static void trb_print_subtree_nodes(struct trt_node *node, uint32_t max_gap_before_type,
         struct trt_wrapper wr, struct trt_parent_cache ca, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc);
 
 /**
@@ -3702,15 +3683,15 @@ static void trb_print_subtree_nodes(struct trt_node node, uint32_t max_gap_befor
  * @return new indentation wrapper for @p node.
  */
 static struct trt_wrapper
-trb_print_implicit_node(struct trt_node node, struct trt_wrapper wr, struct trt_printer_ctx *pc,
+trb_print_implicit_node(const struct trt_node *node, struct trt_wrapper wr, struct trt_printer_ctx *pc,
         struct trt_tree_ctx *tc)
 {
     struct trt_node case_node;
     struct trt_wrapper wr_case_child;
 
-    case_node = tro_create_implicit_case_node(node);
+    tro_create_implicit_case_node(node, &case_node);
     ly_print_(pc->out, "\n");
-    trb_print_entire_node(case_node, 0, wr, pc, tc);
+    trb_print_entire_node(&case_node, 0, wr, pc, tc);
     ly_print_(pc->out, "\n");
     wr_case_child = pc->fp.read.if_sibling_exists(tc) ?
             trp_wrapper_set_mark(wr) : trp_wrapper_set_shift(wr);
@@ -3773,7 +3754,7 @@ trb_print_parents(const struct lysc_node *node, struct trt_wrapper *wr_in, struc
     ly_print_(pc->out, "\n");
     print_node = pc->fp.read.node(TRP_EMPTY_PARENT_CACHE, tc);
     max_gap_before_type = trb_max_gap_to_type(TRP_EMPTY_PARENT_CACHE, pc, tc);
-    trb_print_entire_node(print_node, max_gap_before_type, wr, pc, tc);
+    trb_print_entire_node(&print_node, max_gap_before_type, wr, pc, tc);
 }
 
 /**
@@ -3942,6 +3923,7 @@ trb_ext_print_schemas(struct lyspr_tree_ctx *plug_ctx, ly_bool last_nodes, uint3
     LY_ARRAY_COUNT_TYPE i;
     struct trt_printer_ctx pc_dupl;
     struct trt_tree_ctx tc_dupl;
+    struct trt_node node;
 
     tc_dupl = *tc;
     pc_dupl = *pc;
@@ -3949,7 +3931,8 @@ trb_ext_print_schemas(struct lyspr_tree_ctx *plug_ctx, ly_bool last_nodes, uint3
     LY_ARRAY_FOR(plug_ctx->schemas, i) {
         trm_reset_tree_ctx_by_plugin(plug_ctx, i, pc, tc);
         tc->plugin_ctx.last_schema = last_nodes && ((i + 1) == LY_ARRAY_COUNT(plug_ctx->schemas));
-        trb_print_subtree_nodes(TRP_EMPTY_NODE, max_gap_before_type, wr, ca, pc, tc);
+        node = TRP_EMPTY_NODE;
+        trb_print_subtree_nodes(&node, max_gap_before_type, wr, ca, pc, tc);
         *tc = tc_dupl;
     }
 
@@ -4008,7 +3991,7 @@ trb_ext_print_instances(struct trt_wrapper wr, struct trt_parent_cache ca, struc
 
     ca = tro_parent_cache_for_child(ca, tc);
     /* if node is last sibling, then do not add '|' to wrapper */
-    wr = trb_node_is_last_sibling(pc->fp, tc) ?
+    wr = trb_node_is_last_sibling(&pc->fp, tc) ?
             trp_wrapper_set_shift(wr) : trp_wrapper_set_mark(wr);
 
     if (tc->lysc_tree) {
@@ -4063,7 +4046,7 @@ end:
  * the caller. Root node will also be printed. Behind last printed node
  * is no linebreak.
  *
- * @param[in] node is root of the subtree.
+ * @param[in,out] node current processed node used as iterator.
  * @param[in] max_gap_before_type is result from
  * ::trb_try_unified_indent() function for root node.
  * Set parameter to 0 if distance does not matter.
@@ -4075,7 +4058,7 @@ end:
  * @param[in,out] tc is context of tree printer.
  */
 static void
-trb_print_subtree_nodes(struct trt_node node, uint32_t max_gap_before_type, struct trt_wrapper wr,
+trb_print_subtree_nodes(struct trt_node *node, uint32_t max_gap_before_type, struct trt_wrapper wr,
         struct trt_parent_cache ca, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
     if (!trp_node_is_empty(node)) {
@@ -4085,11 +4068,11 @@ trb_print_subtree_nodes(struct trt_node node, uint32_t max_gap_before_type, stru
             trb_ext_print_instances(wr, ca, pc, tc);
         }
         /* if node is last sibling, then do not add '|' to wrapper */
-        wr = trb_node_is_last_sibling(pc->fp, tc) ?
+        wr = trb_node_is_last_sibling(&pc->fp, tc) ?
                 trp_wrapper_set_shift(wr) : trp_wrapper_set_mark(wr);
         /* go to the child */
         ca = tro_parent_cache_for_child(ca, tc);
-        node = pc->fp.modify.next_child(ca, tc);
+        *node = pc->fp.modify.next_child(ca, tc);
         if (trp_node_is_empty(node)) {
             return;
         }
@@ -4097,7 +4080,7 @@ trb_print_subtree_nodes(struct trt_node node, uint32_t max_gap_before_type, stru
         max_gap_before_type = trb_try_unified_indent(ca, pc, tc);
     } else {
         /* Root node is ignored, continue with child. */
-        node = pc->fp.modify.first_sibling(ca, tc);
+        *node = pc->fp.modify.first_sibling(ca, tc);
     }
 
     do {
@@ -4112,7 +4095,7 @@ trb_print_subtree_nodes(struct trt_node node, uint32_t max_gap_before_type, stru
             trb_print_subtree_nodes(node, max_gap_before_type, wr_case_child, ca, pc, tc);
         }
         /* go to the actual node's sibling */
-        node = pc->fp.modify.next_sibling(ca, tc);
+        *node = pc->fp.modify.next_sibling(ca, tc);
     } while (!trp_node_is_empty(node));
 
     /* get back from child node to root node */
@@ -4154,10 +4137,10 @@ trb_print_family_tree(struct trt_wrapper wr, struct trt_printer_ctx *pc, struct 
     }
 
     for (node = pc->fp.modify.first_sibling(ca, tc);
-            !trp_node_is_empty(node);
+            !trp_node_is_empty(&node);
             node = pc->fp.modify.next_sibling(ca, tc)) {
         ly_print_(pc->out, "\n");
-        trb_print_subtree_nodes(node, max_gap_before_type, wr, ca, pc, tc);
+        trb_print_subtree_nodes(&node, max_gap_before_type, wr, ca, pc, tc);
     }
 }
 
@@ -4507,6 +4490,7 @@ trm_print_plugin_ext(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
     struct trt_keyword_stmt ks, prev_ks = {0};
     struct trt_printer_ctx pc_dupl;
     struct trt_tree_ctx tc_dupl;
+    struct trt_node node;
     uint32_t max_gap_before_type;
     void *ext;
 
@@ -4540,7 +4524,8 @@ trm_print_plugin_ext(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
         trb_ext_try_unified_indent(&plug_ctx, TRP_EMPTY_PARENT_CACHE, &max_gap_before_type, pc, tc);
         LY_ARRAY_FOR(plug_ctx.schemas, j) {
             trm_reset_tree_ctx_by_plugin(&plug_ctx, j, pc, tc);
-            trb_print_subtree_nodes(TRP_EMPTY_NODE, max_gap_before_type, TRP_INIT_WRAPPER_BODY, TRP_EMPTY_PARENT_CACHE, pc, tc);
+            node = TRP_EMPTY_NODE;
+            trb_print_subtree_nodes(&node, max_gap_before_type, TRP_INIT_WRAPPER_BODY, TRP_EMPTY_PARENT_CACHE, pc, tc);
         }
 
         *tc = tc_dupl;
