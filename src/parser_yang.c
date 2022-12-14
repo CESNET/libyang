@@ -349,16 +349,13 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
     while (ctx->in->current[0] && string) {
         switch (string) {
         case STRING_SINGLE_QUOTED:
-            switch (ctx->in->current[0]) {
-            case '\'':
+            if (ctx->in->current[0] == '\'') {
                 /* string may be finished, but check for + */
                 string = STRING_PAUSED_NEXTSTRING;
                 MOVE_INPUT(ctx, 1);
-                break;
-            default:
+            } else {
                 /* check and store character */
                 LY_CHECK_RET(buf_store_char(ctx, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
-                break;
             }
             break;
         case STRING_DOUBLE_QUOTED:

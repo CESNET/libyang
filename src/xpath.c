@@ -3420,8 +3420,7 @@ warn_is_equal_type_next_type(struct lysc_type *type, struct lysc_type *prev_type
     ly_bool found = 0;
     LY_ARRAY_COUNT_TYPE u;
 
-    switch (type->basetype) {
-    case LY_TYPE_UNION:
+    if (type->basetype == LY_TYPE_UNION) {
         uni = (struct lysc_type_union *)type;
         if (!prev_type) {
             return uni->types[0];
@@ -3435,7 +3434,7 @@ warn_is_equal_type_next_type(struct lysc_type *type, struct lysc_type *prev_type
             }
         }
         return NULL;
-    default:
+    } else {
         if (prev_type) {
             assert(type == prev_type);
             return NULL;

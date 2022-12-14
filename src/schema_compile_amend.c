@@ -880,10 +880,7 @@ lys_apply_refine(struct lysc_ctx *ctx, struct lysp_refine *rfn, const struct lys
 
     /* presence */
     if (rfn->presence) {
-        switch (target->nodetype) {
-        case LYS_CONTAINER:
-            break;
-        default:
+        if (target->nodetype != LYS_CONTAINER) {
             AMEND_WRONG_NODETYPE("refine", "replace", "presence");
         }
 
@@ -1032,10 +1029,7 @@ lys_apply_deviate_add(struct lysc_ctx *ctx, struct lysp_deviate_add *d, struct l
 
     /* *unique-stmt */
     if (d->uniques) {
-        switch (target->nodetype) {
-        case LYS_LIST:
-            break;
-        default:
+        if (target->nodetype != LYS_LIST) {
             AMEND_WRONG_NODETYPE("deviation", "add", "unique");
         }
 
@@ -1259,10 +1253,7 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysp_deviate_del *d, struc
 
     /* *unique-stmt */
     if (d->uniques) {
-        switch (target->nodetype) {
-        case LYS_LIST:
-            break;
-        default:
+        if (target->nodetype != LYS_LIST) {
             AMEND_WRONG_NODETYPE("deviation", "delete", "unique");
         }
 
