@@ -1802,7 +1802,7 @@ lyd_val_op_merge_find(const struct lyd_node *op_tree, const struct lyd_node *op_
         struct lyd_node **op_subtree, struct lyd_node **tree_sibling, struct lyd_node **tree_parent)
 {
     const struct lyd_node *tree_iter, *op_iter;
-    struct lyd_node *match;
+    struct lyd_node *match = NULL;
     uint32_t i, cur_depth, op_depth;
 
     *op_subtree = NULL;

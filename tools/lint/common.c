@@ -788,7 +788,7 @@ find_schema_path(const struct ly_ctx *ctx, const char *schema_path)
 {
     const char *end, *module_name_end;
     char *module_name = NULL;
-    const struct lysc_node *node = NULL, *parent_node = NULL, *parent_node_tmp;
+    const struct lysc_node *node = NULL, *parent_node = NULL, *parent_node_tmp = NULL;
     const struct lys_module *module;
     size_t node_name_len;
     ly_bool found_exact_match = 0;
