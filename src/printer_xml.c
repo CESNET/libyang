@@ -192,11 +192,15 @@ xml_print_meta(struct xmlpr_ctx *pctx, const struct lyd_node *node)
     }
 
     /* check for NETCONF filter unqualified attributes */
-    LY_ARRAY_FOR(node->schema->exts, u) {
-        if (!strcmp(node->schema->exts[u].def->name, "get-filter-element-attributes") &&
-                !strcmp(node->schema->exts[u].def->module->name, "ietf-netconf")) {
-            filter_attrs = 1;
-            break;
+    if (!strcmp(node->schema->module->name, "notifications")) {
+        filter_attrs = 1;
+    } else {
+        LY_ARRAY_FOR(node->schema->exts, u) {
+            if (!strcmp(node->schema->exts[u].def->name, "get-filter-element-attributes") &&
+                    !strcmp(node->schema->exts[u].def->module->name, "ietf-netconf")) {
+                filter_attrs = 1;
+                break;
+            }
         }
     }
 

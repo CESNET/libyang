@@ -1,9 +1,10 @@
-/*
+/**
  * @file test_parser_xml.c
- * @author: Radek Krejci <rkrejci@cesnet.cz>
+ * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for functions from parser_xml.c
  *
- * Copyright (c) 2019-2020 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -749,6 +750,7 @@ test_filter_attributes(void **state)
     const char *feats[] = {"writable-running", NULL};
 
     assert_non_null((ly_ctx_load_module(UTEST_LYCTX, "ietf-netconf", "2011-06-01", feats)));
+    assert_non_null((ly_ctx_load_module(UTEST_LYCTX, "notifications", "2008-07-14", NULL)));
 
     data = "<get xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n"
             "  <filter type=\"xpath\" select=\"/*\"/>\n"
@@ -767,11 +769,20 @@ test_filter_attributes(void **state)
     dsc = "This parameter specifies the portion of the system\nconfiguration and state data to retrieve.";
     CHECK_LYSC_NODE(node->schema, dsc, 1, LYS_STATUS_CURR | LYS_IS_INPUT, 1, "filter", 0, LYS_ANYXML, 1, 0, NULL, 0);
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS,
-            "<get xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n"
-            "  <filter type=\"xpath\" select=\"/*\"/>\n"
-            "</get>\n");
+    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
 
+    data = "<create-subscription xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\">\n"
+            "  <filter type=\"subtree\">\n"
+            "    <inner-node xmlns=\"my:urn\"/>\n"
+            "  </filter>\n"
+            "</create-subscription>\n";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, &tree, NULL));
+    ly_in_free(in, 0);
+    assert_non_null(tree);
+
+    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
 }
 

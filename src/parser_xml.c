@@ -73,11 +73,16 @@ lydxml_metadata(struct lyd_xml_ctx *lydctx, const struct lysc_node *sparent, str
     *meta = NULL;
 
     /* check for NETCONF filter unqualified attributes */
-    LY_ARRAY_FOR(sparent->exts, u) {
-        if (!strcmp(sparent->exts[u].def->name, "get-filter-element-attributes") &&
-                !strcmp(sparent->exts[u].def->module->name, "ietf-netconf")) {
-            filter_attrs = 1;
-            break;
+    if (!strcmp(sparent->module->name, "notifications")) {
+        /* ancient module that does not even use the extension */
+        filter_attrs = 1;
+    } else {
+        LY_ARRAY_FOR(sparent->exts, u) {
+            if (!strcmp(sparent->exts[u].def->name, "get-filter-element-attributes") &&
+                    !strcmp(sparent->exts[u].def->module->name, "ietf-netconf")) {
+                filter_attrs = 1;
+                break;
+            }
         }
     }
 
