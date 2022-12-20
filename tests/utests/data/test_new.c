@@ -370,6 +370,27 @@ test_path(void **state)
             "<ll2 xmlns=\"urn:tests:a\">val3</ll2>\n");
     free(str);
     lyd_free_siblings(root);
+
+    /* anydata */
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:any", "<elem>val</elem>", 0, LYD_ANYDATA_XML, 0, &root, NULL);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+
+    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    assert_string_equal(str,
+            "<any xmlns=\"urn:tests:a\">\n"
+            "  <elem>val</elem>\n"
+            "</any>\n");
+    free(str);
+    lyd_print_mem(&str, root, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    assert_string_equal(str,
+            "{\n"
+            "  \"a:any\": {\n"
+            "    \"elem\": \"val\"\n"
+            "  }\n"
+            "}\n");
+    free(str);
+    lyd_free_siblings(root);
 }
 
 static void
