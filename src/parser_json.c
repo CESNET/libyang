@@ -1232,10 +1232,10 @@ static LY_ERR
 lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, struct lysc_ext_instance *ext,
         enum LYJSON_PARSER_STATUS *status, struct lyd_node **node)
 {
-    LY_ERR r;
+    LY_ERR rc = LY_SUCCESS;
     uint32_t prev_parse_opts, prev_int_opts;
     struct ly_in in_start;
-    char *val;
+    char *val = NULL;
     struct lyd_node *tree = NULL;
 
     assert(snode->nodetype & LYD_NODE_ANY);
@@ -1243,8 +1243,8 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, st
     /* status check according to allowed JSON types */
     if (snode->nodetype == LYS_ANYXML) {
         LY_CHECK_RET((*status != LYJSON_OBJECT) && (*status != LYJSON_OBJECT_EMPTY) && (*status != LYJSON_ARRAY) &&
-                (*status != LYJSON_NUMBER) && (*status != LYJSON_STRING) && (*status != LYJSON_FALSE) &&
-                (*status != LYJSON_TRUE) && (*status != LYJSON_NULL), LY_ENOT);
+                (*status != LYJSON_ARRAY_EMPTY) && (*status != LYJSON_NUMBER) && (*status != LYJSON_STRING) &&
+                (*status != LYJSON_FALSE) && (*status != LYJSON_TRUE) && (*status != LYJSON_NULL), LY_ENOT);
     } else {
         LY_CHECK_RET((*status != LYJSON_OBJECT) && (*status != LYJSON_OBJECT_EMPTY), LY_ENOT);
     }
@@ -1275,6 +1275,14 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, st
 
         LY_CHECK_RET(lyd_create_any(snode, tree, LYD_ANYDATA_DATATREE, 1, node));
         break;
+    case LYJSON_ARRAY_EMPTY:
+        /* store the empty array */
+        if (asprintf(&val, "[]") == -1) {
+            LOGMEM(lydctx->jsonctx->ctx);
+            return LY_EMEM;
+        }
+        LY_CHECK_GOTO(rc = lyd_create_any(snode, val, LYD_ANYDATA_JSON, 1, node), val_err);
+        break;
     case LYJSON_ARRAY:
         /* skip until the array end */
         in_start = *lydctx->jsonctx->in;
@@ -1285,11 +1293,7 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, st
             LOGMEM(lydctx->jsonctx->ctx);
             return LY_EMEM;
         }
-        r = lyd_create_any(snode, val, LYD_ANYDATA_JSON, 1, node);
-        if (r) {
-            free(val);
-            return r;
-        }
+        LY_CHECK_GOTO(rc = lyd_create_any(snode, val, LYD_ANYDATA_JSON, 1, node), val_err);
         break;
     case LYJSON_STRING:
         /* string value */
@@ -1300,11 +1304,7 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, st
             val = strndup(lydctx->jsonctx->value, lydctx->jsonctx->value_len);
             LY_CHECK_ERR_RET(!val, LOGMEM(lydctx->jsonctx->ctx), LY_EMEM);
 
-            r = lyd_create_any(snode, val, LYD_ANYDATA_STRING, 1, node);
-            if (r) {
-                free(val);
-                return r;
-            }
+            LY_CHECK_GOTO(rc = lyd_create_any(snode, val, LYD_ANYDATA_STRING, 1, node), val_err);
         }
         break;
     case LYJSON_NUMBER:
@@ -1315,11 +1315,7 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, st
         val = strndup(lydctx->jsonctx->value, lydctx->jsonctx->value_len);
         LY_CHECK_ERR_RET(!val, LOGMEM(lydctx->jsonctx->ctx), LY_EMEM);
 
-        r = lyd_create_any(snode, val, LYD_ANYDATA_JSON, 1, node);
-        if (r) {
-            free(val);
-            return r;
-        }
+        LY_CHECK_GOTO(rc = lyd_create_any(snode, val, LYD_ANYDATA_JSON, 1, node), val_err);
         break;
     case LYJSON_NULL:
         /* no value */
@@ -1334,6 +1330,10 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, st
     }
 
     return LY_SUCCESS;
+
+val_err:
+    free(val);
+    return rc;
 }
 
 /**
@@ -1574,16 +1574,41 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
         /* move to the second item in the name/X pair */
         LY_CHECK_GOTO(ret = lyjson_ctx_next(lydctx->jsonctx, &status), cleanup);
 
-        /* first check the expected representation according to the nodetype and then continue with the content */
+        /* set expected representation */
+        switch (snode->nodetype) {
+        case LYS_LEAFLIST:
+            expected = "name/array of values";
+            break;
+        case LYS_LIST:
+            expected = "name/array of objects";
+            break;
+        case LYS_LEAF:
+            if (status == LYJSON_ARRAY) {
+                expected = "name/[null]";
+            } else {
+                expected = "name/value";
+            }
+            break;
+        case LYS_CONTAINER:
+        case LYS_NOTIF:
+        case LYS_ACTION:
+        case LYS_RPC:
+        case LYS_ANYDATA:
+            expected = "name/object";
+            break;
+        case LYS_ANYXML:
+            if (status == LYJSON_ARRAY) {
+                expected = "name/array";
+            } else {
+                expected = "name/value";
+            }
+            break;
+        }
+
+        /* check the representation according to the nodetype and then continue with the content */
         switch (snode->nodetype) {
         case LYS_LEAFLIST:
         case LYS_LIST:
-            if (snode->nodetype == LYS_LEAFLIST) {
-                expected = "name/array of values";
-            } else {
-                expected = "name/array of objects";
-            }
-
             if (status == LYJSON_ARRAY_EMPTY) {
                 /* no instances, skip */
                 break;
@@ -1617,16 +1642,6 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
         case LYS_RPC:
         case LYS_ANYDATA:
         case LYS_ANYXML:
-            if ((snode->nodetype == LYS_LEAF) || (snode->nodetype == LYS_ANYXML)) {
-                if (status == LYJSON_ARRAY) {
-                    expected = "name/[null]";
-                } else {
-                    expected = "name/value";
-                }
-            } else {
-                expected = "name/object";
-            }
-
             /* process the value/object */
             ret = lydjson_parse_instance(lydctx, parent, first_p, snode, ext, name, name_len, prefix, prefix_len,
                     &status, &node);
