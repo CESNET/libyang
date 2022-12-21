@@ -145,7 +145,7 @@ lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *
     /* create list */
     LY_CHECK_GOTO(ret = lyd_create_inner(schema, &list), cleanup);
 
-    LOG_LOCSET(NULL, list, NULL, NULL);
+    LOG_LOCSET(schema, NULL, NULL, NULL);
 
     /* create and insert all the keys */
     LY_ARRAY_FOR(predicates, u) {
@@ -161,7 +161,7 @@ lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *
     list = NULL;
 
 cleanup:
-    LOG_LOCBACK(0, 1, 0, 0);
+    LOG_LOCBACK(1, 0, 0, 0);
     lyd_free_tree(list);
     return ret;
 }
