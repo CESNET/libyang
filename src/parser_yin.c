@@ -2109,7 +2109,7 @@ static int
 fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys_deviation *dev,
                    struct unres_schema *unres)
 {
-    const char *value, **stritem;
+    const char *value, *dflt, *ptr, **stritem;
     struct lyxml_elem *next, *next2, *child, *develem;
     int c_dev = 0, c_must, c_uniq, c_dflt, c_ext = 0, c_ext2;
     int f_min = 0, f_max = 0; /* flags */
@@ -2370,6 +2370,17 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
                     /* ... and replace it with the value specified in deviation */
                     dev_target->flags |= d->flags & LYS_CONFIG_MASK;
+
+                    /* "config" is explicitely set in the node */
+                    dev_target->flags |= LYS_CONFIG_SET;
+
+                    /* "config" must be set to either "yes" or "no" */
+                    assert(dev_target->flags ^ LYS_CONFIG_MASK);
+
+                    /* check and inherit new config to all the children */
+                    if (lyp_deviate_inherit_config_r(dev_target)) {
+                        goto error;
+                    }
                 }
 
                 if (lyp_yin_parse_subnode_ext(module, d, LYEXT_PAR_DEVIATE, child, LYEXT_SUBSTMT_CONFIG, 0, unres)) {
@@ -2948,7 +2959,23 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 } else if (dev_target->nodetype == LYS_LEAF) {
                     leaf = (struct lys_node_leaf *)dev_target;
                     if (d->mod == LY_DEVIATE_DEL) {
-                        if (!leaf->dflt || !ly_strequal(leaf->dflt, value, 1)) {
+                        dflt = NULL;
+                        if (leaf->dflt) {
+                            if (leaf->type.base == LY_TYPE_IDENT) {
+                                /* skip prefixes, cannot be compared reliably */
+                                if ((ptr = strchr(leaf->dflt, ':'))) {
+                                    dflt = ptr + 1;
+                                } else {
+                                    dflt = leaf->dflt;
+                                }
+                                if ((ptr = strchr(value, ':'))) {
+                                    value = ptr + 1;
+                                }
+                            } else {
+                                dflt = leaf->dflt;
+                            }
+                        }
+                        if (!dflt || !ly_strequal(dflt, value, 0)) {
                             LOGVAL(ctx, LYE_INARG, LY_VLOG_NONE, NULL, value, "default");
                             LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Value differs from the target being deleted.");
                             goto error;
@@ -4572,7 +4599,7 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
 
     for (r = 0; r < retval->ext_size; ++r) {
         /* set flag, which represent LYEXT_OPT_VALID */
-        if (retval->ext[r]->flags & LYEXT_OPT_VALID) {
+        if (retval->ext[r] && (retval->ext[r]->flags & LYEXT_OPT_VALID)) {
             retval->flags |= LYS_VALID_EXT;
             break;
         }
@@ -4794,7 +4821,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     for (r = 0; r < retval->ext_size; ++r) {
         /* set flag, which represent LYEXT_OPT_VALID */
-        if (retval->ext[r]->flags & LYEXT_OPT_VALID) {
+        if (retval->ext[r] && (retval->ext[r]->flags & LYEXT_OPT_VALID)) {
             retval->flags |= LYS_VALID_EXT;
             break;
         }
@@ -5108,7 +5135,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
 
     for (r = 0; r < retval->ext_size; ++r) {
         /* set flag, which represent LYEXT_OPT_VALID */
-        if (retval->ext[r]->flags & LYEXT_OPT_VALID) {
+        if (retval->ext[r] && (retval->ext[r]->flags & LYEXT_OPT_VALID)) {
             retval->flags |= LYS_VALID_EXT;
             break;
         }
@@ -5477,7 +5504,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     for (r = 0; r < retval->ext_size; ++r) {
         /* set flag, which represent LYEXT_OPT_VALID */
-        if (retval->ext[r]->flags & LYEXT_OPT_VALID) {
+        if (retval->ext[r] && (retval->ext[r]->flags & LYEXT_OPT_VALID)) {
             retval->flags |= LYS_VALID_EXT;
             if (retval->ext[r]->flags & LYEXT_OPT_VALID_SUBTREE) {
                 retval->flags |= LYS_VALID_EXT_SUBTREE;
@@ -5701,8 +5728,9 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
     }
 
     for (r = 0; r < retval->ext_size; ++r) {
-        /* set flag, which represent LYEXT_OPT_VALID */
-        if (retval->ext[r]->flags & LYEXT_OPT_VALID) {
+        /* extension instance may not yet be resolved */
+        if (retval->ext[r] && (retval->ext[r]->flags & LYEXT_OPT_VALID)) {
+             /* set flag, which represent LYEXT_OPT_VALID */
             retval->flags |= LYS_VALID_EXT;
             if (retval->ext[r]->flags & LYEXT_OPT_VALID_SUBTREE) {
                 retval->flags |= LYS_VALID_EXT_SUBTREE;

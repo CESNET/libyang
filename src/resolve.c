@@ -1155,12 +1155,12 @@ parse_schema_json_predicate(const char *id, const char **mod_name, int *mod_name
             ++parsed;
             ++id;
 
-            for (ptr = id; ptr && ptr[0] != quote; ++ptr) {
+            for (ptr = id; ptr[0] && ptr[0] != quote; ++ptr) {
                 if (ptr[0] == '\\') {
                     ++ptr;
                 }
             }
-            if (!ptr) {
+            if (!ptr[0]) {
                 return -parsed;
             }
             ret = ptr - id;
@@ -2355,7 +2355,7 @@ resolve_json_nodeid(const char *nodeid, const struct ly_ctx *ctx, const struct l
     } else {
         if (!mod_name) {
             str = strndup(nodeid, (name + nam_len) - nodeid);
-            LOGVAL(ctx, LYE_PATH_MISSMOD, LY_VLOG_STR, nodeid);
+            LOGVAL(ctx, LYE_PATH_MISSMOD, LY_VLOG_STR, str);
             free(str);
             return NULL;
         }
@@ -2715,7 +2715,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
             goto error;
         }
 
-        /* we will not be matching list position, keyless lists, or state leaf-lists this way */
+        /* we will not be matching list position, keyless lists, or non-configuration leaf-lists this way */
         if (((pp.schema->nodetype != LYS_LIST) || (((struct lys_node_list *)pp.schema)->keys_size && !isdigit(pp.pred[0].name[0])))
                 && ((pp.schema->nodetype != LYS_LEAFLIST) || (pp.schema->flags & LYS_CONFIG_W))) {
             sibling = resolve_json_data_node_hash(start, pp);
@@ -2744,8 +2744,8 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
 
                 /* leaf-list, did we find it with the correct value or not? */
                 if (ssibling->nodetype == LYS_LEAFLIST) {
-                    if (ssibling->flags & LYS_CONFIG_R) {
-                        /* state leaf-lists will never match */
+                    if (!(ssibling->flags & LYS_CONFIG_W)) {
+                        /* non-configuration leaf-lists will never match */
                         continue;
                     }
 
@@ -7913,7 +7913,7 @@ unres_schema_free_item(struct ly_ctx *ctx, struct unres_schema *unres, uint32_t 
         free(unres->item[i]);
         break;
     case UNRES_EXT:
-        free(unres->str_snode[i]);
+        free_ext_data(ctx, unres->str_snode[i]);
         break;
     case UNRES_EXT_FINALIZE:
         free(unres->str_snode[i]);
@@ -8567,7 +8567,7 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
     uint8_t prev_when_status;
     int rc, rc2, progress, ignore_fail, multi_error;
     enum int_log_opts prev_ilo;
-    struct ly_err_item *prev_eitem;
+    struct ly_err_item *prev_eitem = NULL;
     LY_ERR prev_ly_errno = ly_errno;
     struct lyd_node *parent;
     struct lys_when *when;

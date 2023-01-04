@@ -13,6 +13,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
 include(GNUInstallDirs)
 include(CheckSymbolExists)
 include(UseCompat)
+include(Doc)
 
 set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and toolkit written (and providing API) in C.")
 
@@ -25,7 +26,7 @@ set(CMAKE_MACOSX_RPATH TRUE)
 # micro version is changed with a set of small changes or bugfixes anywhere in the project.
 set(LIBYANG_MAJOR_VERSION 1)
 set(LIBYANG_MINOR_VERSION 0)
-set(LIBYANG_MICRO_VERSION 225)
+set(LIBYANG_MICRO_VERSION 240)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 
 # Version of the library
@@ -33,9 +34,62 @@ set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_
 # with backward compatible change and micro version is connected with any internal change of the library.
 set(LIBYANG_MAJOR_SOVERSION 1)
 set(LIBYANG_MINOR_SOVERSION 10)
-set(LIBYANG_MICRO_SOVERSION 17)
+set(LIBYANG_MICRO_SOVERSION 32)
 set(LIBYANG_SOVERSION_FULL ${LIBYANG_MAJOR_SOVERSION}.${LIBYANG_MINOR_SOVERSION}.${LIBYANG_MICRO_SOVERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_SOVERSION})
+
+set(libsrc
+    src/common.c
+    src/context.c
+    src/log.c
+    src/hash_table.c
+    src/resolve.c
+    src/validation.c
+    src/xml.c
+    src/parser.c
+    src/parser_yin.c
+    src/parser_xml.c
+    src/parser_json.c
+    src/parser_lyb.c
+    src/parser_yang_bis.c
+    src/parser_yang_lex.c
+    src/parser_yang.c
+    src/tree_schema.c
+    src/tree_data.c
+    src/plugins.c
+    src/printer.c
+    src/xpath.c
+    src/printer_yang.c
+    src/printer_yin.c
+    src/printer_json_schema.c
+    src/printer_xml.c
+    src/printer_tree.c
+    src/printer_info.c
+    src/printer_json.c
+    src/printer_lyb.c
+    src/yang_types.c)
+
+set(lintsrc
+    tools/lint/main.c
+    tools/lint/main_ni.c
+    tools/lint/commands.c
+    tools/lint/completion.c
+    tools/lint/configuration.c
+    linenoise/linenoise.c)
+
+set(resrc
+    tools/re/main.c)
+
+set(yang2yinsrc
+    tools/yang2yin/main.c)
+
+set(headers
+    src/tree_schema.h
+    src/tree_data.h
+    src/extensions.h
+    src/user_types.h
+    src/xml.h
+    src/dict.h)
 
 # check the supported platform
 if(NOT UNIX)
@@ -45,6 +99,11 @@ endif()
 # set default build type if not specified by user
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE debug)
+endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL DocOnly)
+    libyang_doc()
+    return()
 endif()
 
 set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra -std=gnu99 -fno-strict-aliasing")
@@ -138,59 +197,6 @@ endif()
 # static build requires static libpcre library
 option(ENABLE_STATIC "Build static (.a) library" OFF)
 
-set(libsrc
-    src/common.c
-    src/context.c
-    src/log.c
-    src/hash_table.c
-    src/resolve.c
-    src/validation.c
-    src/xml.c
-    src/parser.c
-    src/parser_yin.c
-    src/parser_xml.c
-    src/parser_json.c
-    src/parser_lyb.c
-    src/parser_yang_bis.c
-    src/parser_yang_lex.c
-    src/parser_yang.c
-    src/tree_schema.c
-    src/tree_data.c
-    src/plugins.c
-    src/printer.c
-    src/xpath.c
-    src/printer_yang.c
-    src/printer_yin.c
-    src/printer_json_schema.c
-    src/printer_xml.c
-    src/printer_tree.c
-    src/printer_info.c
-    src/printer_json.c
-    src/printer_lyb.c
-    src/yang_types.c)
-
-set(lintsrc
-    tools/lint/main.c
-    tools/lint/main_ni.c
-    tools/lint/commands.c
-    tools/lint/completion.c
-    tools/lint/configuration.c
-    linenoise/linenoise.c)
-
-set(resrc
-    tools/re/main.c)
-
-set(yang2yinsrc
-    tools/yang2yin/main.c)
-
-set(headers
-    src/tree_schema.h
-    src/tree_data.h
-    src/extensions.h
-    src/user_types.h
-    src/xml.h
-    src/dict.h)
-
 # link compat
 use_compat()
 
@@ -265,20 +271,7 @@ if(PKG_CONFIG_FOUND)
 endif()
 
 # generate doxygen documentation for libyang API
-find_package(Doxygen)
-if(DOXYGEN_FOUND)
-    find_program(DOT_PATH dot PATH_SUFFIXES graphviz2.38/bin graphviz/bin)
-    if(DOT_PATH)
-        set(HAVE_DOT "YES")
-    else()
-        set(HAVE_DOT "NO")
-        message(AUTHOR_WARNING "Doxygen: to generate UML diagrams please install graphviz")
-    endif()
-    add_custom_target(doc
-            COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    configure_file(Doxyfile.in Doxyfile)
-endif()
+libyang_doc()
 
 # clean cmake cache
 add_custom_target(cclean

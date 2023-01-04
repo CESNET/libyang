@@ -394,7 +394,7 @@ lyv_list_equal(void *val1_p, void *val2_p, int UNUSED(mod), void *UNUSED(cb_data
 
     switch (first->schema->nodetype) {
     case LYS_LEAFLIST:
-        if (!(first->schema->flags & LYS_CONFIG_R) && (first->schema->module->version >= LYS_VERSION_1_1)) {
+        if (!(first->schema->flags & LYS_CONFIG_W) && (first->schema->module->version >= LYS_VERSION_1_1)) {
             /* same values are allowed for non-configuration data */
             return 0;
         }

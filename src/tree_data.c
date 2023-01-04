@@ -3532,6 +3532,7 @@ lyd_diff_move_preprocess(struct diff_ordered *ordered, struct lyd_node *first, s
             /* last item */
             dist_aux->next = ordered->dist; /* ring list */
             ordered->dist_last = dist_aux;
+            dist_iter->next = dist_aux;
             break;
         }
     }
@@ -6645,8 +6646,8 @@ lyd_find_sibling(const struct lyd_node *siblings, const struct lyd_node *target,
             return -1;
         }
     }
-    if ((target->schema->nodetype == LYS_LEAFLIST) && (target->schema->flags & LYS_CONFIG_R)) {
-        LOGERR(lyd_node_module(target)->ctx, LY_EINVAL, "Invalid arguments - state leaf-list (%s()).", __func__);
+    if ((target->schema->nodetype == LYS_LEAFLIST) && !(target->schema->flags & LYS_CONFIG_W)) {
+        LOGERR(lyd_node_module(target)->ctx, LY_EINVAL, "Invalid arguments - non-configuration leaf-list (%s()).", __func__);
         return -1;
     }
 
@@ -6732,7 +6733,7 @@ lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_node *tar
     }
 
     if (((target->schema->nodetype == LYS_LIST) && !((struct lys_node_list *)target->schema)->keys_size)
-            || ((target->schema->nodetype == LYS_LEAFLIST) && (target->schema->flags & LYS_CONFIG_R))) {
+            || ((target->schema->nodetype == LYS_LEAFLIST) && !(target->schema->flags & LYS_CONFIG_W))) {
 
         /* handle key-less lists and state leaf-lists ourselves because there can be more matching instances */
 #ifdef LY_ENABLED_CACHE
@@ -6885,8 +6886,8 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lys_node *sch
         /* no argument check necessary */
         break;
     case LYS_LEAFLIST:
-        if (schema->flags & LYS_CONFIG_R) {
-            LOGERR(lys_node_module(schema)->ctx, LY_EINVAL, "Invalid arguments - state leaf-list (%s()).", __func__);
+        if (!(schema->flags & LYS_CONFIG_W)) {
+            LOGERR(lys_node_module(schema)->ctx, LY_EINVAL, "Invalid arguments - non-configuration leaf-list (%s()).", __func__);
             return -1;
         } else if (!key_or_value) {
             LOGERR(lys_node_module(schema)->ctx, LY_EINVAL, "Invalid arguments - no value for a leaf-list (%s()).", __func__);

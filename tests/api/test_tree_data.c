@@ -144,7 +144,7 @@ const char *lys_module_a = \
       <type name=\"uint8\"/>                          \
     </leaf>                                           \
     <leaf name=\"key2\">                              \
-      <type name=\"uint8\"/>                          \
+      <type name=\"string\"/>                         \
     </leaf>                                           \
     <leaf name=\"value\">                             \
       <type name=\"string\"/>                         \
@@ -605,10 +605,10 @@ test_lyd_new_path(void **state)
     assert_non_null(node);
     assert_string_equal(node->schema->name, "number64");
 
-    node = lyd_new_path(root, NULL, "/a:l[key1='111'][key2='222']", NULL, 0, 0);
-    assert_non_null(node);
-    assert_string_equal(node->schema->name, "l");
-    assert_ptr_not_equal(root->prev, root);
+    node = lyd_new_path(root, NULL, "/a:l[key1='111'][key2='\\']", NULL, 0, 0);
+    assert_null(node);
+    assert_int_equal(ly_errno, LY_EVALID);
+    ly_errno = 0;
 
     lyd_free_withsiblings(root);
 

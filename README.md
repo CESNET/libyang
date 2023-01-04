@@ -11,6 +11,11 @@ providing API) in C. The library is used e.g. in [libnetconf2](https://github.co
 [Netopeer2](https://github.com/CESNET/Netopeer2), [sysrepo](https://github.com/sysrepo/sysrepo) and
 [FRRouting](https://github.com/frrouting/frr) projects.
 
+## Deprecation Notice
+
+libyang version 1 is deprecated and while still being supported, no new features or complex bugfixes
+will be implemented. It is recommended to switch to using version 2.
+
 ## Provided Features
 
 * Parsing (and validating) schemas in YANG format.
@@ -26,16 +31,6 @@ providing API) in C. The library is used e.g. in [libnetconf2](https://github.co
 
 Current implementation covers YANG 1.0 ([RFC 6020](https://tools.ietf.org/html/rfc6020))
 as well as YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
-
-## Branches
-
-The project uses 2 main branches `master` and `devel`. Other branches should not be cloned. In `master` there are files of the
-last official *release*. Any latest improvements and changes, which were tested at least briefly are found in `devel`. On every
-new *release*, `devel` is merged into `master`.
-
-This means that when only stable official releases are to be used, either `master` can be used or specific *releases* downloaded.
-If all the latest bugfixes should be applied, `devel` branch is the  one to be used. Note that whenever **a new issue is created**
-and it occurs on the `master` branch, the **first response will likely be** to use `devel` before any further provided support.
 
 ## Packages
 

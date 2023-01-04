@@ -1538,7 +1538,7 @@ yang_fill_deviate_default(struct ly_ctx *ctx, struct lys_deviate *deviate, struc
     enum int_log_opts prev_ilo;
     int rc, i, j;
     unsigned int u;
-    const char *orig_dflt;
+    const char *orig_dflt, *ptr;
 
     u = strlen(value);
     if (dev_target->nodetype == LYS_CHOICE) {
@@ -1574,21 +1574,25 @@ yang_fill_deviate_default(struct ly_ctx *ctx, struct lys_deviate *deviate, struc
         if (deviate->mod == LY_DEVIATE_DEL) {
             orig_dflt = NULL;
             if (leaf->dflt) {
-                /* transform back into the original value */
-                ly_ilo_change(NULL, ILO_IGNORE, &prev_ilo, NULL);
-                orig_dflt = transform_json2schema(leaf->module, leaf->dflt);
-                ly_ilo_restore(NULL, prev_ilo, NULL, 0);
-                if (!orig_dflt) {
-                    orig_dflt = lydict_insert(ctx, leaf->dflt, 0);
+                if (leaf->type.base == LY_TYPE_IDENT) {
+                    /* skip prefixes, cannot be compared reliably */
+                    if ((ptr = strchr(leaf->dflt, ':'))) {
+                        orig_dflt = ptr + 1;
+                    } else {
+                        orig_dflt = leaf->dflt;
+                    }
+                    if ((ptr = strchr(value, ':'))) {
+                        value = ptr + 1;
+                    }
+                } else {
+                    orig_dflt = leaf->dflt;
                 }
             }
-            if (!orig_dflt || !ly_strequal(orig_dflt, value, 1)) {
+            if (!orig_dflt || !ly_strequal(orig_dflt, value, 0)) {
                 LOGVAL(ctx, LYE_INARG, LY_VLOG_NONE, NULL, value, "default");
                 LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Value differs from the target being deleted.");
-                lydict_remove(ctx, orig_dflt);
                 goto error;
             }
-            lydict_remove(ctx, orig_dflt);
 
             /* remove value */
             lydict_remove(ctx, leaf->dflt);
@@ -4499,9 +4503,6 @@ yang_check_deviate(struct lys_module *module, struct unres_schema *unres, struct
     }
 
     if ((deviate->flags & LYS_CONFIG_MASK)) {
-        struct lys_node *parent;
-        const struct lys_node_list *node_list;
-
         /* cannot add if it was explicitly set */
         if ((deviate->mod == LY_DEVIATE_ADD) && (dev_target->flags & LYS_CONFIG_SET)) {
             LOGVAL(module->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "config");
@@ -4526,52 +4527,9 @@ yang_check_deviate(struct lys_module *module, struct unres_schema *unres, struct
         /* "config" must be set to either "yes" or "no" */
         assert(dev_target->flags ^ LYS_CONFIG_MASK);
 
-        /* from rfc7950#page-86: All key leafs in a list MUST have the same value
-         * for their "config" as the list itself.
-         */
-        if ((node_list = lys_is_key((const struct lys_node_leaf *)dev_target, NULL))) {
-            if ((node_list->flags & LYS_CONFIG_MASK) != (dev_target->flags & LYS_CONFIG_MASK)) {
-                LOGVAL(module->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "config");
-                LOGVAL(module->ctx, LYE_SPEC, LY_VLOG_NONE, NULL,
-                    "The deviate statement causes a violation of \"config\" rules in a key leaf. "
-                    "The \"config\" value in the key leaf must be the same as in the list to which belongs.");
-                goto error;
-            }
-        }
-
-        /* from rfc7950#page-135: If the parent node is a case node,
-         * the value is the same as the case node's parent choice node.
-         */
-        if (dev_target->nodetype == LYS_CASE) {
-            parent = lys_parent(dev_target);
-            assert(parent && parent->nodetype == LYS_CHOICE);
-            if ((parent->flags & LYS_CONFIG_MASK) != (dev_target->flags & LYS_CONFIG_MASK)) {
-                LOGVAL(module->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "config");
-                LOGVAL(module->ctx, LYE_SPEC, LY_VLOG_NONE, NULL,
-                    "The deviate statement causes a violation of \"config\" rules in a case node. "
-                    "The \"config\" value in the case must be the same as in the choice to which belongs.");
-                goto error;
-            }
-        }
-
-        /* from rfc7950#page-135: If a node has "config" set to "false",
-         * no node underneath it can have "config" set to "true".
-         */
-        if (dev_target->flags & LYS_CONFIG_R) {
-            struct lys_node *next, *elem;
-            LY_TREE_DFS_BEGIN(dev_target->child, next, elem) {
-                if (elem->flags & LYS_CONFIG_W) {
-                    /* Remove current config value of the elem including LYS_CONFIG_SET.
-                     * Note that LYS_CONFIG_SET is cleared. The point is that if the config was explicitly set to yes in the node,
-                     * and at the same time the inheritance from the ancestor was projected, then the config is switched to no,
-                     * so such a config does not have the value set explicitly, but rather implicitly. Therefore, the flag is deleted.
-                     */
-                    elem->flags &= ~(LYS_CONFIG_MASK | LYS_CONFIG_SET) ;
-                    /* set "config" to "no" */
-                    elem->flags |= LYS_CONFIG_R;
-                }
-                LY_TREE_DFS_END(dev_target->child, next, elem);
-            }
+        /* check and inherit new config to all the children */
+        if (lyp_deviate_inherit_config_r(dev_target)) {
+            goto error;
         }
     }
 

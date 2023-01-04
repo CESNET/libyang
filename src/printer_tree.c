@@ -690,11 +690,6 @@ tree_print_snode(struct lyout *out, int level, uint16_t max_name_len, const stru
     /* this node is finished printing */
     ly_print(out, "\n");
 
-    if ((subtree == 1) || ((node->nodetype & mask) == LYS_USES)) {
-        /* we are printing subtree parents, finish here (or uses option) */
-        return;
-    }
-
     /* set special config flag */
     switch (node->nodetype & mask) {
     case LYS_INPUT:
@@ -704,8 +699,16 @@ tree_print_snode(struct lyout *out, int level, uint16_t max_name_len, const stru
     case LYS_NOTIF:
         opts->spec_config = 2;
         break;
+    case LYS_USES:
+        /* nothing more to print */
+        return;
     default:
         break;
+    }
+
+    if (subtree == 1) {
+        /* we are printing subtree parents, finish here */
+        return;
     }
 
 print_children:
