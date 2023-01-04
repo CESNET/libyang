@@ -4124,6 +4124,7 @@ lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysp_
 
 cleanup:
     lysc_node_container_free(&ctx->free_ctx, &fake_container);
+    FREE_ARRAY(&ctx->free_ctx, fake_container.exts, lysc_ext_instance_free);
     return rc;
 }
 
