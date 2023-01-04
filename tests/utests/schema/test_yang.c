@@ -1425,6 +1425,7 @@ test_any(void **state, enum ly_stmt kw)
     assert_int_equal(LY_SUCCESS, parse_any(YCTX, kw, NULL, (struct lysp_node **)&any));
     // CHECK_LYSP_NODE(NODE, DSC, EXTS, FLAGS, IFFEATURES, NAME, NEXT, TYPE, PARENT, REF, WHEN)
     uint16_t node_type = kw == LY_STMT_ANYDATA ? LYS_ANYDATA : LYS_ANYXML;
+
     CHECK_LYSP_NODE(any, "test", 1, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_MAND_TRUE, 1, "any", 0, node_type, 0, "test", 1);
     assert_non_null(any->musts);
     lysp_node_free(&fctx, (struct lysp_node *)any); any = NULL;

@@ -32,26 +32,26 @@
             struct lyd_node *data1;\
             struct lyd_node *data2;\
             struct lyd_node *data3;\
-    /*create*/\
+        /*create*/\
             CHECK_PARSE_LYD(XML1, data1);\
             CHECK_PARSE_LYD(XML2, data2);\
             CHECK_PARSE_LYD(XML3, data3);\
-    /* diff1 */ \
+        /* diff1 */ \
             struct lyd_node *diff1;\
             CHECK_PARSE_LYD_DIFF(data1, data2, diff1); \
             CHECK_LYD_STRING(diff1, DIFF1); \
             assert_int_equal(lyd_diff_apply_all(&data1, diff1), LY_SUCCESS); \
             CHECK_LYD(data1, data2); \
-    /* diff2 */ \
+        /* diff2 */ \
             struct lyd_node *diff2;\
             CHECK_PARSE_LYD_DIFF(data2, data3, diff2); \
             CHECK_LYD_STRING(diff2, DIFF2); \
             assert_int_equal(lyd_diff_apply_all(&data2, diff2), LY_SUCCESS);\
             CHECK_LYD(data2, data3);\
-    /* merge */ \
+        /* merge */ \
             assert_int_equal(lyd_diff_merge_all(&diff1, diff2, 0), LY_SUCCESS);\
             CHECK_LYD_STRING(diff1, MERGE); \
-    /* cleanup */ \
+        /* cleanup */ \
             lyd_free_all(data1);\
             lyd_free_all(data2);\
             lyd_free_all(data3);\

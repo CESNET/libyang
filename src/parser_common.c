@@ -333,8 +333,10 @@ lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char **file
 #elif defined _WIN32
         HANDLE h = _get_osfhandle(in->method.fd);
         FILE_NAME_INFO info;
+
         if (GetFileInformationByHandleEx(h, FileNameInfo, &info, sizeof info)) {
             char *buf = calloc(info.FileNameLength + 1 /* trailing NULL */, MB_CUR_MAX);
+
             len = wcstombs(buf, info.FileName, info.FileNameLength * MB_CUR_MAX);
             lydict_insert(ctx, buf, len, filepath);
         }
@@ -914,8 +916,8 @@ lysp_stmt_type_enum_value_pos(struct lysp_ctx *ctx, const struct lysp_stmt *stmt
 {
     size_t arg_len;
     char *ptr = NULL;
-    long long int num = 0;
-    unsigned long long int unum = 0;
+    long long num = 0;
+    unsigned long long unum = 0;
 
     if (*flags & LYS_SET_VALUE) {
         LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, lyplg_ext_stmt2str(stmt->kw));
@@ -1055,7 +1057,7 @@ lysp_stmt_type_fracdigits(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, ui
 {
     char *ptr;
     size_t arg_len;
-    unsigned long long int num;
+    unsigned long long num;
 
     if (*fracdig) {
         LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, "fraction-digits");
@@ -1946,7 +1948,7 @@ lysp_stmt_maxelements(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint32
 {
     size_t arg_len;
     char *ptr;
-    unsigned long long int num;
+    unsigned long long num;
 
     if (*flags & LYS_SET_MAX) {
         LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, "max-elements");
@@ -2012,7 +2014,7 @@ lysp_stmt_minelements(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint32
 {
     size_t arg_len;
     char *ptr;
-    unsigned long long int num;
+    unsigned long long num;
 
     if (*flags & LYS_SET_MIN) {
         LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, "min-elements");

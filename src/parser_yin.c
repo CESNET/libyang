@@ -202,7 +202,7 @@ yin_match_keyword(struct lysp_yin_ctx *ctx, const char *name, size_t name_len, c
     name = in->current;
     ly_in_free(in, 0);
 
-    if (name - start == (long int)name_len) {
+    if (name - start == (long)name_len) {
         /* this is done because of collision in yang statement value and yang argument mapped to yin element value */
         if ((kw == LY_STMT_VALUE) && (parent == LY_STMT_ERROR_MESSAGE)) {
             return LY_STMT_ARG_VALUE;
@@ -707,7 +707,7 @@ yin_parse_fracdigits(struct lysp_yin_ctx *ctx, struct lysp_type *type)
 {
     const char *temp_val = NULL;
     char *ptr;
-    unsigned long long int num;
+    unsigned long long num;
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, LY_STMT_FRACTION_DIGITS));
@@ -1132,8 +1132,8 @@ yin_parse_value_pos(struct lysp_yin_ctx *ctx, enum ly_stmt parent_stmt, struct l
     LY_ERR ret = LY_SUCCESS;
     const char *temp_val = NULL;
     char *ptr;
-    long long int num = 0;
-    unsigned long long int unum = 0;
+    long long num = 0;
+    unsigned long long unum = 0;
 
     assert(parent_stmt == LY_STMT_POSITION || parent_stmt == LY_STMT_VALUE);
 
@@ -1363,7 +1363,7 @@ yin_parse_maxelements(struct lysp_yin_ctx *ctx, uint32_t *max, uint16_t *flags, 
     LY_ERR ret = LY_SUCCESS;
     const char *temp_val = NULL;
     char *ptr;
-    unsigned long long int num;
+    unsigned long long num;
     struct yin_subelement subelems[] = {
         {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
     };
@@ -1415,7 +1415,7 @@ yin_parse_minelements(struct lysp_yin_ctx *ctx, uint32_t *min, uint16_t *flags, 
 {
     const char *temp_val = NULL;
     char *ptr;
-    unsigned long long int num;
+    unsigned long long num;
     struct yin_subelement subelems[] = {
         {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
     };

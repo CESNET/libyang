@@ -366,12 +366,12 @@ struct utest_context {
  * @param[in] TYPEDEFS expected [sized array](@ref sizedarrays) size of list of typedefs
  */
 #define CHECK_LYSP_ACTION(NODE, DSC, EXTS, FLAGS, GROUPINGS, IFFEATURES, \
-            INPUT_DATA, INPUT_EXTS, INPUT_GROUPINGS, INPUT_MUSTS, \
-            INPUT_PARENT, INPUT_TYPEDEFS, \
-            NAME, NODETYPE, \
-            OUTPUT_DATA, OUTPUT_EXTS, OUTPUT_GROUPINGS, OUTPUT_MUSTS, \
-            OUTPUT_PARENT, OUTPUT_TYPEDEFS, \
-            PARENT, REF, TYPEDEFS) \
+                INPUT_DATA, INPUT_EXTS, INPUT_GROUPINGS, INPUT_MUSTS, \
+                INPUT_PARENT, INPUT_TYPEDEFS, \
+                NAME, NODETYPE, \
+                OUTPUT_DATA, OUTPUT_EXTS, OUTPUT_GROUPINGS, OUTPUT_MUSTS, \
+                OUTPUT_PARENT, OUTPUT_TYPEDEFS, \
+                PARENT, REF, TYPEDEFS) \
     assert_non_null(NODE); \
     CHECK_STRING((NODE)->dsc, DSC); \
     CHECK_ARRAY((NODE)->exts, EXTS); \
@@ -440,13 +440,12 @@ struct utest_context {
  * @param[in] NAME   expected name of imported module
  * @param[in] PREFIX expected prefix for the data from the imported schema
  * @param[in] REF    expected reference
- * @prame[in] REV    expected reprezenting date in format "11-10-2020"
+ * @param[in] REV    expected reprezenting date in format "11-10-2020"
  */
 #define CHECK_LYSP_IMPORT(NODE, DSC, EXTS, NAME, PREFIX, REF, REV) \
     assert_non_null(NODE); \
     CHECK_STRING((NODE)->dsc, DSC); \
     CHECK_ARRAY((NODE)->exts, EXTS); \
-    /*assert_non_null((NODE)->module); // ?? it is mandatory but in some test it doesnt work */ \
     assert_string_equal((NODE)->name, NAME); \
     assert_string_equal((NODE)->prefix, PREFIX); \
     CHECK_STRING((NODE)->ref, REF); \
@@ -488,7 +487,6 @@ struct utest_context {
     assert_non_null(NODE); \
     CHECK_STRING((NODE)->argument, ARGUMENT); \
     CHECK_POINTER((NODE)->child, CHILD); \
-    /*assert_int_equal((NODE)->flags, LYS_INTERNAL);*/ \
     assert_int_equal((NODE)->parent_stmt, PARENT_STMT); \
     assert_int_equal((NODE)->parent_stmt_index, PARENT_STMT_INDEX); \
     assert_string_equal((NODE)->name, NAME); \
@@ -557,7 +555,7 @@ struct utest_context {
  * @param[in] TYPES   expected [sized array](@ref sizedarrays) size of list of sub-types
  */
 #define CHECK_LYSP_TYPE(NODE, BASES, BITS, COMPILED, ENUMS, EXTS, FLAGS, FRACTIONS_DIGITS, \
-            LENGTH, NAME, PATH, PATTERNS, PMOD, RANGE, REQUIRE_INSTANCE, TYPES) \
+                LENGTH, NAME, PATH, PATTERNS, PMOD, RANGE, REQUIRE_INSTANCE, TYPES) \
     assert_non_null(NODE);\
     CHECK_ARRAY((NODE)->bases, BASES); \
     CHECK_ARRAY((NODE)->bits, BITS); \
@@ -623,7 +621,7 @@ struct utest_context {
  * @param[in] DFLT      0-> node dosn't have default value. 1 -> node have default value
  */
 #define CHECK_LYSP_NODE_LEAF(NODE, DSC, EXTS, FLAGS, IFFEATURES, NAME, NEXT, \
-            PARENT, REF, WHEN, MUSTS, UNITS, DFLT) \
+                PARENT, REF, WHEN, MUSTS, UNITS, DFLT) \
     CHECK_LYSP_NODE(NODE, DSC, EXTS, FLAGS, IFFEATURES, NAME, NEXT, LYS_LEAF, PARENT, REF, WHEN); \
     CHECK_ARRAY((NODE)->musts, MUSTS); \
     CHECK_STRING((NODE)->units, UNITS); \
@@ -696,7 +694,7 @@ struct utest_context {
  * @param[in] WHEN    expected [sized array](@ref sizedarrays) size of list of pointers to when statements
  */
 #define CHECK_LYSC_ACTION(NODE, DSC, EXTS, FLAGS, INPUT_DATA, INPUT_MUST, INPUT_EXTS, MODULE, NAME, NODETYPE, \
-            OUTPUT_DATA, OUTPUT_MUST, OUTPUT_EXTS, PARENT, PRIV, REF, WHEN) \
+                OUTPUT_DATA, OUTPUT_MUST, OUTPUT_EXTS, PARENT, PRIV, REF, WHEN) \
     assert_non_null(NODE); \
     CHECK_STRING((NODE)->dsc, DSC); \
     CHECK_ARRAY((NODE)->exts, EXTS); \
@@ -770,7 +768,7 @@ struct utest_context {
  * @param[in] WHEN    [sized array](@ref sizedarrays) size of when node array
  */
 #define CHECK_LYSC_NODE_LIST(NODE, DSC, EXTS, FLAGS, MODULE, NAME, NEXT, \
-            PARENT, PRIV, REF, ACTIONS, CHILD, MAX, MIN, MUSTS, NOTIFS, UNIQUES, WHEN) \
+                PARENT, PRIV, REF, ACTIONS, CHILD, MAX, MIN, MUSTS, NOTIFS, UNIQUES, WHEN) \
         CHECK_LYSC_NODE(NODE, DSC, EXTS, FLAGS, MODULE, NAME, NEXT, LYS_LIST, PARENT, PRIV, REF, WHEN); \
         CHECK_POINTER((NODE)->actions, ACTIONS); \
         CHECK_POINTER((NODE)->child, CHILD); \
@@ -800,7 +798,7 @@ struct utest_context {
  * @param[in] DFLT      0-> node dosn't have default value. 1 -> node have default value
  */
 #define CHECK_LYSC_NODE_LEAF(NODE, DSC, EXTS, FLAGS, MODULE, NAME, NEXT, \
-            PARENT, PRIV, REF, WHEN, MUSTS, UNITS, DFLT) \
+                PARENT, PRIV, REF, WHEN, MUSTS, UNITS, DFLT) \
     CHECK_LYSC_NODE(NODE, DSC, EXTS, FLAGS, MODULE, NAME, NEXT, LYS_LEAF, PARENT, PRIV, REF, WHEN); \
     CHECK_ARRAY((NODE)->musts, MUSTS); \
     assert_non_null((NODE)->type); \

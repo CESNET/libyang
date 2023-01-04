@@ -205,7 +205,7 @@ ypr_substmt(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t substmt_inde
 }
 
 static void
-ypr_unsigned(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t substmt_index, void *exts, unsigned long int attr_value)
+ypr_unsigned(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t substmt_index, void *exts, unsigned long attr_value)
 {
     char *str;
 
@@ -218,7 +218,7 @@ ypr_unsigned(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t substmt_ind
 }
 
 static void
-ypr_signed(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t substmt_index, void *exts, signed long int attr_value)
+ypr_signed(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t substmt_index, void *exts, long attr_value)
 {
     char *str;
 

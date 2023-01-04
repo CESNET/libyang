@@ -1788,8 +1788,8 @@ parse_type_enum_value_pos(struct lysp_yang_ctx *ctx, enum ly_stmt val_kw, struct
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *word, *ptr;
     size_t word_len;
-    long long int num = 0;
-    unsigned long long int unum = 0;
+    long long num = 0;
+    unsigned long long unum = 0;
     enum ly_stmt kw;
 
     if (enm->flags & LYS_SET_VALUE) {
@@ -1941,7 +1941,7 @@ parse_type_fracdigits(struct lysp_yang_ctx *ctx, struct lysp_type *type)
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *word, *ptr;
     size_t word_len;
-    unsigned long long int num;
+    unsigned long long num;
     enum ly_stmt kw;
 
     if (type->fraction_digits) {
@@ -2382,7 +2382,7 @@ parse_maxelements(struct lysp_yang_ctx *ctx, uint32_t *max, uint16_t *flags, str
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *word, *ptr;
     size_t word_len;
-    unsigned long long int num;
+    unsigned long long num;
     enum ly_stmt kw;
 
     if (*flags & LYS_SET_MAX) {
@@ -2454,7 +2454,7 @@ parse_minelements(struct lysp_yang_ctx *ctx, uint32_t *min, uint16_t *flags, str
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *word, *ptr;
     size_t word_len;
-    unsigned long long int num;
+    unsigned long long num;
     enum ly_stmt kw;
 
     if (*flags & LYS_SET_MIN) {

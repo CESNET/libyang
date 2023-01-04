@@ -1328,6 +1328,7 @@ lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, pcre2_co
             &err_code, &err_offset, NULL);
     if (!code_local) {
         PCRE2_UCHAR err_msg[LY_PCRE2_MSG_LIMIT] = {0};
+
         pcre2_get_error_message(err_code, err_msg, LY_PCRE2_MSG_LIMIT);
         LOGVAL(ctx, LY_VCODE_INREGEXP, pattern, perl_regex + err_offset, err_msg);
         free(perl_regex);

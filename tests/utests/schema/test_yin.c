@@ -91,11 +91,13 @@ struct minmax_dev_meta {
 
 /* prototypes of static functions */
 enum yin_argument yin_match_argument_name(const char *name, size_t len);
+
 LY_ERR yin_parse_content(struct lysp_yin_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
         const void *parent, enum ly_stmt parent_stmt, const char **text_content, struct lysp_ext_instance **exts);
 LY_ERR yin_validate_value(struct lysp_yin_ctx *ctx, enum yang_arg val_type);
 enum ly_stmt yin_match_keyword(struct lysp_yin_ctx *ctx, const char *name, size_t name_len,
         const char *prefix, size_t prefix_len, enum ly_stmt parrent);
+
 LY_ERR yin_parse_extension_instance(struct lysp_yin_ctx *ctx, const void *parent, enum ly_stmt parent_stmt,
         LY_ARRAY_COUNT_TYPE parent_stmt_index, struct lysp_ext_instance **exts);
 LY_ERR yin_parse_element_generic(struct lysp_yin_ctx *ctx, enum ly_stmt parent, struct lysp_stmt **element);

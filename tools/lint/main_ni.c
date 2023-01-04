@@ -587,6 +587,7 @@ fill_context(int argc, char *argv[], struct context *c)
 
         case 'V': { /* --verbose */
             LY_LOG_LEVEL verbosity = ly_log_level(LY_LLERR);
+
             if (verbosity < LY_LLDBG) {
                 ++verbosity;
             }
@@ -596,6 +597,7 @@ fill_context(int argc, char *argv[], struct context *c)
 
         case 'Q': { /* --quiet */
             LY_LOG_LEVEL verbosity = ly_log_level(LY_LLERR);
+
             if (verbosity == LY_LLERR) {
                 /* turn logging off */
                 ly_log_options(LY_LOSTORE_LAST);

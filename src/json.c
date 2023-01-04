@@ -164,6 +164,7 @@ lyjson_string_(struct lyjson_ctx *jsonctx)
              * (one-char) entities and character references */
             if (len + offset + 4 >= size) {
                 size_t increment;
+
                 for (increment = BUFSIZE_STEP; len + offset + 4 >= size + increment; increment += BUFSIZE_STEP) {}
                 buf = ly_realloc(buf, size + increment);
                 LY_CHECK_ERR_RET(!buf, LOGMEM(jsonctx->ctx), LY_EMEM);
@@ -488,7 +489,7 @@ lyjson_exp_number(const struct ly_ctx *ctx, const char *in, const char *exponent
     /* Final position of decimal point in the buf. */
     int32_t dp_position;
     /* Exponent as integer. */
-    long long int e_val;
+    long long e_val;
     /* Byte for the decimal point. */
     int8_t dot;
     /* Required additional byte for the minus sign. */

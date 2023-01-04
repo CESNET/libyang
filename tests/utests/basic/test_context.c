@@ -635,6 +635,7 @@ test_ylmem(void **state)
             "</modules-state>";
 
     char *with_netconf_features = malloc(8096);
+
     strcpy(with_netconf_features,
             DATA_YANG_LIBRARY_START
             "    <module>\n"

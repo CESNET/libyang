@@ -458,6 +458,7 @@ ly_mmap(struct ly_ctx *ctx, int fd, size_t *length, void **addr)
 
     while (to_read > 0) {
         ssize_t n = read(fd, buf, to_read);
+
         if (n == 0) {
             return LY_SUCCESS;
         } else if (n < 0) {
