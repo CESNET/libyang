@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Header for schema compilation.
  *
- * Copyright (c) 2015 - 2021 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -20,9 +20,11 @@
 #include <stdint.h>
 
 #include "log.h"
+#include "plugins_exts.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_schema.h"
+#include "tree_schema_free.h"
 
 struct lyxp_expr;
 
@@ -52,9 +54,41 @@ struct lysc_ctx {
     struct lys_depset_unres *unres; /**< dependency set unres sets */
     uint32_t path_len;          /**< number of path bytes used */
     uint32_t compile_opts;      /**< various @ref scflags. */
+    struct lysf_ctx free_ctx;   /**< freeing context for errors/recompilation */
+
 #define LYSC_CTX_BUFSIZE 4078
     char path[LYSC_CTX_BUFSIZE];/**< Path identifying the schema node currently being processed */
 };
+
+/**
+ * @brief Initalize local compilation context using libyang context.
+ *
+ * @param[out] CCTX Compile context.
+ * @param[in] CTX libyang context.
+ */
+#define LYSC_CTX_INIT_CTX(CCTX, CTX) \
+    memset(&(CCTX), 0, sizeof (CCTX)); \
+    (CCTX).ctx = (CTX); \
+    (CCTX).path_len = 1; \
+    (CCTX).path[0] = '/'; \
+    (CCTX).free_ctx.ctx = (CTX)
+
+/**
+ * @brief Initalize local compilation context using a parsed module.
+ *
+ * @param[out] CCTX Compile context.
+ * @param[in] PMOD Parsed module.
+ * @param[in] EXT Ancestor extension instance.
+ */
+#define LYSC_CTX_INIT_PMOD(CCTX, PMOD, EXT) \
+    memset(&(CCTX), 0, sizeof (CCTX)); \
+    (CCTX).ctx = (PMOD)->mod->ctx; \
+    (CCTX).cur_mod = (PMOD)->mod; \
+    (CCTX).pmod = (PMOD); \
+    (CCTX).ext = (EXT); \
+    (CCTX).path_len = 1; \
+    (CCTX).path[0] = '/'; \
+    (CCTX).free_ctx.ctx = (PMOD)->mod->ctx
 
 /**
  * @brief Structure for unresolved items that may depend on any implemented module data in the dependency set
@@ -88,16 +122,18 @@ struct lys_glob_unres {
  * @brief Structure for storing schema nodes with must expressions and local module for each of them.
  */
 struct lysc_unres_must {
-    struct lysc_node *node;     /**< node with the must expression(s) */
+    struct lysc_node *node;                 /**< node with the must expression(s) */
     const struct lysp_module **local_mods;  /**< sized array of local modules for must(s) */
+    struct lysc_ext_instance *ext;          /**< ancestor extension instance of the must(s) */
 };
 
 /**
  * @brief Structure for storing leafref node and its local module.
  */
 struct lysc_unres_leafref {
-    struct lysc_node *node;     /**< leaf/leaf-list node with leafref type */
+    struct lysc_node *node;                 /**< leaf/leaf-list node with leafref type */
     const struct lysp_module *local_mod;    /**< local module of the leafref type */
+    struct lysc_ext_instance *ext;          /**< ancestor extension instance of the leafref */
 };
 
 /**
@@ -120,9 +156,9 @@ struct lysc_unres_dflt {
  * @param[out] DUP Where to store the result.
  * @param[out] RET Where to store the return code.
  */
-#define DUP_STRING(CTX, ORIG, DUP, RET) if (ORIG) {RET = lydict_insert(CTX, ORIG, 0, &DUP);}
-#define DUP_STRING_RET(CTX, ORIG, DUP) if (ORIG) {LY_ERR __ret = lydict_insert(CTX, ORIG, 0, &DUP); LY_CHECK_RET(__ret);}
-#define DUP_STRING_GOTO(CTX, ORIG, DUP, RET, GOTO) if (ORIG) {LY_CHECK_GOTO(RET = lydict_insert(CTX, ORIG, 0, &DUP), GOTO);}
+#define DUP_STRING(CTX, ORIG, DUP, RET) RET = lydict_insert(CTX, ORIG, 0, &(DUP))
+#define DUP_STRING_RET(CTX, ORIG, DUP) LY_CHECK_RET(lydict_insert(CTX, ORIG, 0, &(DUP)))
+#define DUP_STRING_GOTO(CTX, ORIG, DUP, RET, GOTO) LY_CHECK_GOTO(RET = lydict_insert(CTX, ORIG, 0, &(DUP)), GOTO)
 
 #define DUP_ARRAY(CTX, ORIG_ARRAY, NEW_ARRAY, DUP_FUNC) \
     if (ORIG_ARRAY) { \
@@ -130,7 +166,27 @@ struct lysc_unres_dflt {
         LY_ARRAY_CREATE_RET(CTX, NEW_ARRAY, LY_ARRAY_COUNT(ORIG_ARRAY), LY_EMEM); \
         LY_ARRAY_FOR(ORIG_ARRAY, __u) { \
             LY_ARRAY_INCREMENT(NEW_ARRAY); \
-            LY_CHECK_RET(DUP_FUNC(CTX, &(NEW_ARRAY)[__u], &(ORIG_ARRAY)[__u])); \
+            LY_CHECK_RET(DUP_FUNC(CTX, &(ORIG_ARRAY)[__u], &(NEW_ARRAY)[__u])); \
+        } \
+    }
+
+#define DUP_ARRAY2(CTX, PMOD, ORIG_ARRAY, NEW_ARRAY, DUP_FUNC) \
+    if (ORIG_ARRAY) { \
+        LY_ARRAY_COUNT_TYPE __u; \
+        LY_ARRAY_CREATE_RET(CTX, NEW_ARRAY, LY_ARRAY_COUNT(ORIG_ARRAY), LY_EMEM); \
+        LY_ARRAY_FOR(ORIG_ARRAY, __u) { \
+            LY_ARRAY_INCREMENT(NEW_ARRAY); \
+            LY_CHECK_RET(DUP_FUNC(CTX, PMOD, &(ORIG_ARRAY)[__u], &(NEW_ARRAY)[__u])); \
+        } \
+    }
+
+#define DUP_EXTS(CTX, PMOD, PARENT, PARENT_STMT, ORIG_ARRAY, NEW_ARRAY, DUP_FUNC) \
+    if (ORIG_ARRAY) { \
+        LY_ARRAY_COUNT_TYPE __u; \
+        LY_ARRAY_CREATE_RET(CTX, NEW_ARRAY, LY_ARRAY_COUNT(ORIG_ARRAY), LY_EMEM); \
+        LY_ARRAY_FOR(ORIG_ARRAY, __u) { \
+            LY_ARRAY_INCREMENT(NEW_ARRAY); \
+            LY_CHECK_RET(DUP_FUNC(CTX, PMOD, PARENT, PARENT_STMT, &(ORIG_ARRAY)[__u], &(NEW_ARRAY)[__u])); \
         } \
     }
 
@@ -167,7 +223,7 @@ struct lysc_unres_dflt {
         LY_ARRAY_CREATE_GOTO((CTX)->ctx, EXT_C, __u + LY_ARRAY_COUNT(EXTS_P), RET, GOTO); \
         LY_ARRAY_FOR(EXTS_P, __u) { \
             LY_ARRAY_INCREMENT(EXT_C); \
-            RET = lys_compile_ext(CTX, &(EXTS_P)[__u], &(EXT_C)[LY_ARRAY_COUNT(EXT_C) - 1], PARENT, NULL); \
+            RET = lys_compile_ext(CTX, &(EXTS_P)[__u], &(EXT_C)[LY_ARRAY_COUNT(EXT_C) - 1], PARENT); \
             if (RET == LY_ENOT) { \
                 LY_ARRAY_DECREMENT(EXT_C); \
                 RET = LY_SUCCESS; \
@@ -178,19 +234,46 @@ struct lysc_unres_dflt {
     }
 
 /**
+ * @brief Update path in the compile context, which is used for logging where the compilation failed.
+ *
+ * @param[in] ctx Compile context with the path.
+ * @param[in] parent_module Module of the current node's parent to check difference with the currently processed module
+ * (taken from @p ctx).
+ * @param[in] name Name of the node to update path with. If NULL, the last segment is removed. If the format is
+ * `{keyword}`, the following call updates the segment to the form `{keyword='name'}` (to remove this compound segment,
+ * 2 calls with NULL @p name must be used).
+ */
+void lysc_update_path(struct lysc_ctx *ctx, const struct lys_module *parent_module, const char *name);
+
+/**
  * @brief Fill in the prepared compiled extension instance structure according to the parsed extension instance.
  *
  * @param[in] ctx Compilation context.
- * @param[in] ext_p Parsed extension instance.
+ * @param[in] extp Parsed extension instance.
  * @param[in,out] ext Prepared compiled extension instance.
  * @param[in] parent Extension instance parent.
- * @param[in] ext_mod Optional module with the extension instance extension definition, set only for internal annotations.
  * @return LY_SUCCESS on success.
  * @return LY_ENOT if the extension is disabled and should be ignored.
  * @return LY_ERR on error.
  */
-LY_ERR lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext, void *parent,
-        const struct lys_module *ext_mod);
+LY_ERR lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *extp, struct lysc_ext_instance *ext, void *parent);
+
+/**
+ * @brief Compile information from the identity statement
+ *
+ * The backlinks to the identities derived from this one are supposed to be filled later via ::lys_compile_identity_bases().
+ *
+ * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p parsed_mod.
+ * @param[in] ctx libyang context.
+ * @param[in] parsed_mod Module with the identities.
+ * @param[in] identities_p Array of the parsed identity definitions to precompile.
+ * @param[in,out] identities Pointer to the storage of the (pre)compiled identities array where the new identities are
+ * supposed to be added. The storage is supposed to be initiated to NULL when the first parsed identities are going
+ * to be processed.
+ * @return LY_ERR value.
+ */
+LY_ERR lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp_module *parsed_mod,
+        const struct lysp_ident *identities_p, struct lysc_ident **identities);
 
 /**
  * @brief Find and process the referenced base identities from another identity or identityref

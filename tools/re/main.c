@@ -146,7 +146,7 @@ main(int argc, char *argv[])
                 fprintf(stderr, "yangre error: command line patterns cannot be mixed with file input.\n");
                 goto cleanup;
             }
-            infile = fopen(optarg, "r");
+            infile = fopen(optarg, "rb");
             if (!infile) {
                 fprintf(stderr, "yangre error: unable to open input file %s (%s).\n", optarg, strerror(errno));
                 goto cleanup;

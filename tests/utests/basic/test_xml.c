@@ -23,7 +23,6 @@
 #include "xml.h"
 
 LY_ERR lyxml_ns_add(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len, char *uri);
-LY_ERR lyxml_ns_rm(struct lyxml_ctx *xmlctx);
 
 static void
 test_element(void **state)
@@ -67,6 +66,20 @@ test_element(void **state)
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
     assert_int_equal(LY_EVALID, lyxml_ctx_new(UTEST_LYCTX, in, &xmlctx));
     CHECK_LOG_CTX("Unknown XML section \"<!NONSENSE/>\".", "Line number 1.");
+    ly_in_free(in, 0);
+
+    /* namespace ambiguity */
+    str = "<element xmlns=\"urn1\" xmlns=\"urn2\"/>";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_EVALID, lyxml_ctx_new(UTEST_LYCTX, in, &xmlctx));
+    CHECK_LOG_CTX("Duplicate default XML namespaces \"urn1\" and \"urn2\".", "Line number 1.");
+    ly_in_free(in, 0);
+
+    /* prefix duplicate */
+    str = "<element xmlns:a=\"urn1\" xmlns:a=\"urn2\"/>";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_EVALID, lyxml_ctx_new(UTEST_LYCTX, in, &xmlctx));
+    CHECK_LOG_CTX("Duplicate XML NS prefix \"a\" used for namespaces \"urn1\" and \"urn2\".", "Line number 1.");
     ly_in_free(in, 0);
 
     /* unqualified element */
@@ -122,7 +135,7 @@ test_element(void **state)
     ly_in_free(in, 0);
 
     /* headers and comments */
-    str = "<?xml version=\"1.0\"?>  <!-- comment --> <![CDATA[<greeting>Hello, world!</greeting>]]> <?TEST xxx?> <element/>";
+    str = "<?xml version=\"1.0\"?>  <!-- comment --> <?TEST xxx?> <element/>";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
     assert_int_equal(LY_SUCCESS, lyxml_ctx_new(UTEST_LYCTX, in, &xmlctx));
     assert_int_equal(LYXML_ELEMENT, xmlctx->status);
@@ -416,6 +429,7 @@ test_text(void **state)
     ly_in_free(in, 0);
 
     lyxml_ctx_free(xmlctx);
+    LOG_LOCBACK(0, 0, 0, 4);
 
     /* valid strings */
     str = "<a>€𠜎Øn \n&lt;&amp;&quot;&apos;&gt; &#82;&#x4f;&#x4B;</a>";
@@ -439,6 +453,18 @@ test_text(void **state)
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_ATTR_CONTENT, xmlctx->status);
     assert_true(!strncmp("$¢€𐍈", xmlctx->value, xmlctx->value_len));
+    assert_int_equal(xmlctx->ws_only, 0);
+    assert_int_equal(xmlctx->dynamic, 1);
+    ly_in_free(in, 0);
+
+    /* CDATA value */
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(">   <![CDATA[    special non-escaped chars <>&\"'  ]]>  </a>", &in));
+    xmlctx->in = in;
+    LOG_LOCINIT(NULL, NULL, NULL, in);
+    xmlctx->status = LYXML_ATTR_CONTENT;
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
+    assert_int_equal(LYXML_ELEM_CONTENT, xmlctx->status);
+    assert_true(!strncmp("       special non-escaped chars <>&\"'    ", xmlctx->value, xmlctx->value_len));
     assert_int_equal(xmlctx->ws_only, 0);
     assert_int_equal(xmlctx->dynamic, 1);
     free((char *)xmlctx->value);
@@ -502,6 +528,7 @@ test_text(void **state)
     ly_in_free(in, 0);
 
     lyxml_ctx_free(xmlctx);
+    LOG_LOCBACK(0, 0, 0, 9);
 }
 
 static void

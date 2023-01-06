@@ -128,6 +128,7 @@ cmd_verb(struct ly_ctx **UNUSED(ctx), const char *cmdline)
     } else if (argc == optind) {
         /* no argument - print current value */
         LY_LOG_LEVEL level = ly_log_level(LY_LLERR);
+
         ly_log_level(level);
         printf("Current verbosity level: ");
         if (level == LY_LLERR) {
@@ -211,6 +212,7 @@ generic_help:
 
         for (int c = 0; c < argc - optind; ++c) {
             int8_t match = 0;
+
             /* get the command of the specified name */
             for (uint16_t i = 0; commands[i].name; i++) {
                 if (strcmp(argv[optind + c], commands[i].name) == 0) {

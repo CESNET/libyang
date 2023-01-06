@@ -1,4 +1,8 @@
-cmake_minimum_required(VERSION 2.8.12)
+if(WIN32)
+    cmake_minimum_required(VERSION 3.22.0)
+else()
+    cmake_minimum_required(VERSION 2.8.12)
+endif()
 
 # force out-of-source build
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
@@ -42,11 +46,6 @@ elseif("${BUILD_TYPE_UPPER}" STREQUAL "DOCONLY")
     set(CMAKE_BUILD_TYPE "DocOnly" CACHE STRING "Build Type" FORCE)
 endif()
 
-# check the supported platform
-if(NOT UNIX)
-    message(FATAL_ERROR "Only *nix like systems are supported.")
-endif()
-
 #
 # variables
 #
@@ -61,20 +60,26 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 # set version of the project
 set(LIBYANG_MAJOR_VERSION 2)
-set(LIBYANG_MINOR_VERSION 0)
-set(LIBYANG_MICRO_VERSION 112)
+set(LIBYANG_MINOR_VERSION 1)
+set(LIBYANG_MICRO_VERSION 4)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 # set version of the library
 set(LIBYANG_MAJOR_SOVERSION 2)
-set(LIBYANG_MINOR_SOVERSION 13)
-set(LIBYANG_MICRO_SOVERSION 7)
+set(LIBYANG_MINOR_SOVERSION 25)
+set(LIBYANG_MICRO_SOVERSION 4)
 set(LIBYANG_SOVERSION_FULL ${LIBYANG_MAJOR_SOVERSION}.${LIBYANG_MINOR_SOVERSION}.${LIBYANG_MICRO_SOVERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_SOVERSION})
 
-# global C flags
-set(CMAKE_C_FLAGS                "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic -std=c11")
+if(WIN32)
+    set(C_STANDARD 11)
+    set(C_STANDARD_REQUIRED ON)
+    set(CMAKE_C_FLAGS "/Zc:preprocessor /W3 /wd4711 /w14013 /utf-8 ${CMAKE_C_FLAGS}")
+else()
+    # global C flags
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic -std=c11")
+endif()
 
-include_directories(${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src)
+include_directories(${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/src/plugins_exts)
 
 # type plugins are separate because they have their documentation generated
 set(type_plugins
@@ -86,6 +91,7 @@ set(type_plugins
     src/plugins_types/enumeration.c
     src/plugins_types/identityref.c
     src/plugins_types/instanceid.c
+    src/plugins_types/instanceid_keys.c
     src/plugins_types/integer.c
     src/plugins_types/leafref.c
     src/plugins_types/string.c
@@ -111,8 +117,9 @@ set(libsrc
     src/json.c
     src/tree_data.c
     src/tree_data_free.c
-    src/tree_data_helpers.c
+    src/tree_data_common.c
     src/tree_data_hash.c
+    src/tree_data_new.c
     src/parser_xml.c
     src/parser_json.c
     src/parser_lyb.c
@@ -127,12 +134,12 @@ set(libsrc
     src/schema_features.c
     src/tree_schema.c
     src/tree_schema_free.c
-    src/tree_schema_helpers.c
+    src/tree_schema_common.c
     src/in.c
     src/lyb.c
+    src/parser_common.c
     src/parser_yang.c
     src/parser_yin.c
-    src/parser_stmt.c
     src/printer_schema.c
     src/printer_yang.c
     src/printer_yin.c
@@ -143,6 +150,8 @@ set(libsrc
     src/plugins_exts/metadata.c
     src/plugins_exts/nacm.c
     src/plugins_exts/yangdata.c
+    src/plugins_exts/schema_mount.c
+    src/plugins_exts/structure.c
     src/xml.c
     src/xpath.c
     src/validation.c
@@ -159,8 +168,7 @@ set(headers
     src/parser_schema.h
     src/plugins.h
     src/plugins_exts.h
-    src/plugins_exts_compile.h
-    src/plugins_exts_print.h
+    src/plugins_exts/metadata.h
     src/plugins_types.h
     src/printer_data.h
     src/printer_schema.h
@@ -231,6 +239,7 @@ option(ENABLE_PERF_TESTS "Build performance tests" OFF)
 option(ENABLE_COVERAGE "Build code coverage report from tests" OFF)
 option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL" OFF)
 option(ENABLE_INTERNAL_DOCS "Generate doxygen documentation also from internal headers" OFF)
+set(YANG_MODULE_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/yang/modules/libyang" CACHE STRING "Directory where to copy the YANG modules to")
 
 if(ENABLE_INTERNAL_DOCS)
     set(doxy_files ${doxy_files} ${internal_headers})
@@ -305,7 +314,7 @@ endif()
 
 if ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
     # enable before adding tests to let them detect that format checking is available - one of the tests is format checking
-    source_format_enable()
+    source_format_enable(0.75)
 endif()
 
 # generate files
@@ -337,17 +346,46 @@ if(ENABLE_STATIC)
 else()
     set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
     add_library(yangobj OBJECT ${libsrc} ${compatsrc})
-    set_target_properties(yangobj PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
+    if(NOT WIN32)
+        set_target_properties(yangobj PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
+    endif()
+    target_compile_definitions(yangobj PRIVATE LIBYANG_BUILD)
     add_library(yang SHARED $<TARGET_OBJECTS:yangobj>)
+
+    if(WIN32)
+        find_package(dlfcn-win32 REQUIRED)
+        set(CMAKE_DL_LIBS dlfcn-win32::dl)
+    endif()
 
     #link dl
     target_link_libraries(yang ${CMAKE_DL_LIBS})
 endif()
 
+if(WIN32)
+    find_path(DIRENT_INCLUDE_DIR NAMES dirent.h REQUIRED)
+    message(STATUS "Found <dirent.h> at ${DIRENT_INCLUDE_DIR}")
+
+    set(COMPAT_POSIX_INCLUDES
+        ${CMAKE_CURRENT_SOURCE_DIR}/compat/posix-shims
+        ${DIRENT_INCLUDE_DIR})
+
+    if(TARGET yangobj)
+        target_include_directories(yangobj PRIVATE ${COMPAT_POSIX_INCLUDES})
+    endif()
+    target_include_directories(yang PRIVATE ${COMPAT_POSIX_INCLUDES})
+    include_directories(${COMPAT_POSIX_INCLUDES})
+
+    find_package(pthreads REQUIRED)
+    set(COMPAT_WIN_LIBRARIES PThreads4W::PThreads4W shlwapi.lib ws2_32)
+    target_link_libraries(yang ${COMPAT_WIN_LIBRARIES})
+endif()
+
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_SOVERSION_FULL} SOVERSION ${LIBYANG_SOVERSION})
 
-# link math
-target_link_libraries(yang m)
+if(NOT WIN32)
+    # link math
+    target_link_libraries(yang m)
+endif()
 
 # find pthreads
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
@@ -368,6 +406,9 @@ target_link_libraries(yang ${PCRE2_LIBRARIES})
 foreach(h IN LISTS gen_headers)
     list(APPEND g_headers ${PROJECT_BINARY_DIR}/${h})
 endforeach()
+
+# install the modules
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/models/" DESTINATION ${YANG_MODULE_DIR} FILES_MATCHING PATTERN "*.yang")
 
 # install all library files
 install(TARGETS yang DESTINATION ${CMAKE_INSTALL_LIBDIR})
@@ -418,7 +459,7 @@ gen_doc("${doxy_files}" ${LIBYANG_VERSION} ${LIBYANG_DESCRIPTION} ${project_logo
 
 # generate API/ABI report
 if ("${BUILD_TYPE_UPPER}" STREQUAL "ABICHECK")
-    lib_abi_check(yang "${headers}" ${LIBYANG_SOVERSION_FULL} 4de7d0740b95feb6f540c645c2dad007e3ea7bdc)
+    lib_abi_check(yang "${headers}" ${LIBYANG_SOVERSION_FULL} 003fa46e190930912e4d3f7b178c671c0662f671)
 endif()
 
 # source code format target for Makefile
@@ -434,4 +475,3 @@ add_custom_target(cclean
         COMMAND find . -iname '*cmake*' -not -name CMakeLists.txt -not -path './CMakeModules*' -exec rm -rf {} +
         COMMAND rm -rf Makefile Doxyfile
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-

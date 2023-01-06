@@ -36,7 +36,7 @@
  * | 4        | yes | `int32 *` | assigned little-endian value of the enum |
  */
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
@@ -134,7 +134,7 @@ cleanup:
     return ret;
 }
 
-API const void *
+LIBYANG_API_DEF const void *
 lyplg_type_print_enum(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
 {

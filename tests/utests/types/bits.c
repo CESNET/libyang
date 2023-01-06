@@ -626,13 +626,13 @@ test_data_xml(void **state)
 
     TEST_ERROR_XML("T0", "twelvea");
     CHECK_LOG_CTX("Invalid bit \"twelvea\".",
-            "Schema location /T0:port, line number 1.");
+            "Schema location \"/T0:port\", line number 1.");
     TEST_ERROR_XML("T0", "twelve t");
     CHECK_LOG_CTX("Invalid bit \"t\".",
-            "Schema location /T0:port, line number 1.");
+            "Schema location \"/T0:port\", line number 1.");
     TEST_ERROR_XML("T0", "ELEVEN");
     CHECK_LOG_CTX("Invalid bit \"ELEVEN\".",
-            "Schema location /T0:port, line number 1.");
+            "Schema location \"/T0:port\", line number 1.");
 
     /* empty value  */
     data = "<port xmlns=\"urn:tests:T0\"/>"; \
@@ -809,7 +809,7 @@ test_plugin_store(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value value = {0};
-    struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_BITS]);
+    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_BITS]);
     struct lysc_type *lysc_type;
     struct lysc_type lysc_type_test;
     LY_ERR ly_ret;
@@ -903,7 +903,7 @@ test_plugin_compare(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value values[10];
-    struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_BITS]);
+    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_BITS]);
     struct lysc_type *lysc_type;
     LY_ERR ly_ret;
     const char *schema;
@@ -990,7 +990,7 @@ test_plugin_print(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value values[10];
-    struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_BITS]);
+    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_BITS]);
     struct lysc_type *lysc_type;
     LY_ERR ly_ret;
     const char *schema;
@@ -1032,7 +1032,7 @@ test_plugin_dup(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value values[10];
-    struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_BITS]);
+    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_BITS]);
     struct lysc_type *lysc_type;
     const char *schema;
     LY_ERR ly_ret;

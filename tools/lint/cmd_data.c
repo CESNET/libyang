@@ -227,10 +227,8 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
                 options_validate |= LYD_VALIDATE_NO_STATE;
             } else if (!strcasecmp(optarg, "get")) {
                 options_parse |= LYD_PARSE_ONLY;
-            } else if (!strcasecmp(optarg, "getconfig") || !strcasecmp(optarg, "get-config")) {
+            } else if (!strcasecmp(optarg, "getconfig") || !strcasecmp(optarg, "get-config") || !strcasecmp(optarg, "edit")) {
                 options_parse |= LYD_PARSE_ONLY | LYD_PARSE_NO_STATE;
-            } else if (!strcasecmp(optarg, "edit")) {
-                options_parse |= LYD_PARSE_ONLY;
             } else if (!strcasecmp(optarg, "rpc") || !strcasecmp(optarg, "action")) {
                 data_type = LYD_TYPE_RPC_YANG;
             } else if (!strcasecmp(optarg, "reply") || !strcasecmp(optarg, "rpcreply")) {
@@ -316,9 +314,8 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
     }
 
     /* parse, validate and print data */
-    if (process_data(*ctx, data_type, data_merge, outformat, out,
-            options_parse, options_validate, options_print,
-            operational, &inputs, &xpaths)) {
+    if (process_data(*ctx, data_type, data_merge, outformat, out, options_parse, options_validate, options_print,
+            operational, NULL, &inputs, &xpaths)) {
         goto cleanup;
     }
 

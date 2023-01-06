@@ -55,6 +55,7 @@ cmd_load(struct ly_ctx **ctx, const char *cmdline)
         {NULL, 0, NULL, 0}
     };
     uint16_t options_ctx = 0;
+    const char *all_features[] = {"*", NULL};
     struct ly_set fset = {0};
 
     if (parse_cmdline(cmdline, &argc, &argv)) {
@@ -116,7 +117,11 @@ cmd_load(struct ly_ctx **ctx, const char *cmdline)
         }
 
         /* get features list for this module */
-        get_features(&fset, argv[optind + i], &features);
+        if (!fset.count) {
+            features = all_features;
+        } else {
+            get_features(&fset, argv[optind + i], &features);
+        }
 
         /* load the module */
         if (!ly_ctx_load_module(*ctx, argv[optind + i], revision, features)) {

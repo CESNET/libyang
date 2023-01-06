@@ -60,6 +60,11 @@ const char *schema_a =
         "            base id_a;\n"
         "        }\n"
         "    }\n"
+        "    leaf foo4 {\n"
+        "        type decimal64 {\n"
+        "            fraction-digits 5;\n"
+        "        }\n"
+        "    }\n"
         "    container c {\n"
         "        leaf x {\n"
         "            type string;\n"
@@ -103,12 +108,96 @@ test_predicate(void **state)
     struct ly_set *set;
 
     data =
-            "<foo2 xmlns=\"urn:tests:a\">50</foo2>";
+            "<foo2 xmlns=\"urn:tests:a\">50</foo2>"
+            "<l1 xmlns=\"urn:tests:a\">"
+            "  <a>a1</a>"
+            "  <b>b1</b>"
+            "  <c>c1</c>"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">"
+            "  <a>a2</a>"
+            "  <b>b2</b>"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">"
+            "  <a>a3</a>"
+            "  <b>b3</b>"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">"
+            "  <a>a4</a>"
+            "  <b>b4</b>"
+            "  <c>c4</c>"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">"
+            "  <a>a5</a>"
+            "  <b>b5</b>"
+            "  <c>c5</c>"
+            "</l1>"
+            "<c xmlns=\"urn:tests:a\">"
+            "  <x>key2</x>"
+            "  <ll>"
+            "    <a>key1</a>"
+            "    <ll>"
+            "      <a>key11</a>"
+            "      <b>val11</b>"
+            "    </ll>"
+            "    <ll>"
+            "      <a>key12</a>"
+            "      <b>val12</b>"
+            "    </ll>"
+            "    <ll>"
+            "      <a>key13</a>"
+            "      <b>val13</b>"
+            "    </ll>"
+            "  </ll>"
+            "  <ll>"
+            "    <a>key2</a>"
+            "    <ll>"
+            "      <a>key21</a>"
+            "      <b>val21</b>"
+            "    </ll>"
+            "    <ll>"
+            "      <a>key22</a>"
+            "      <b>val22</b>"
+            "    </ll>"
+            "  </ll>"
+            "  <ll>"
+            "    <a>key3</a>"
+            "    <ll>"
+            "      <a>key31</a>"
+            "      <b>val31</b>"
+            "    </ll>"
+            "    <ll>"
+            "      <a>key32</a>"
+            "      <b>val32</b>"
+            "    </ll>"
+            "  </ll>"
+            "</c>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
 
-    /* Predicate after number. */
+    /* predicate after number */
     assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/foo2[4[3 = 3]]", &set));
+    assert_int_equal(0, set->count);
+    ly_set_free(set, NULL);
+
+    /* reverse axis */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/c/child::ll[2]/preceding::ll[3]", &set));
+    assert_int_equal(1, set->count);
+    assert_string_equal("key11", lyd_get_value(lyd_child(set->dnodes[0])));
+    ly_set_free(set, NULL);
+
+    /* special predicate evaluated using hashes */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:l1[a=concat('a', '1')][b=substring('ab1',2)]", &set));
+    assert_int_equal(1, set->count);
+    ly_set_free(set, NULL);
+
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:c/ll[a=../x]", &set));
+    assert_int_equal(1, set->count);
+    ly_set_free(set, NULL);
+
+    /* cannot use hashes */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:c/ll[a=substring(ll/a,1,4)]", &set));
+    assert_int_equal(3, set->count);
     ly_set_free(set, NULL);
 
     lyd_free_all(tree);
@@ -384,19 +473,84 @@ test_atomize(void **state)
 
     /* some random paths just making sure the API function works */
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/a:*", 0, &set));
-    assert_int_equal(5, set->count);
-
+    assert_int_equal(6, set->count);
     ly_set_free(set, NULL);
 
     /* all nodes from all modules (including internal, which can change easily, so check just the test modules) */
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "//.", 0, &set));
     assert_in_range(set->count, 17, UINT32_MAX);
-
     ly_set_free(set, NULL);
 
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/a:c/ll[a='val1']/ll[a='val2']/b", 0, &set));
     assert_int_equal(6, set->count);
+    ly_set_free(set, NULL);
 
+    /*
+     * axes
+     */
+
+    /* ancestor */
+    assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "//ll[a and b]/a/ancestor::node()", 0, &set));
+    assert_int_equal(6, set->count);
+    ly_set_free(set, NULL);
+
+    /* ancestor-or-self */
+    assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "//ll[a and b]/ancestor-or-self::ll", 0, &set));
+    assert_int_equal(5, set->count);
+    ly_set_free(set, NULL);
+
+    /* attribute */
+    assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/l1/attribute::key", 0, &set));
+    assert_int_equal(1, set->count);
+    ly_set_free(set, NULL);
+
+    /* child */
+    assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/child::l1/child::a", 0, &set));
+    assert_int_equal(2, set->count);
+    ly_set_free(set, NULL);
+
+    /* descendant */
+    assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/descendant::c/descendant::b", 0, &set));
+    assert_int_equal(3, set->count);
+    ly_set_free(set, NULL);
+
+    /* descendant-or-self */
+    assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/a:*/descendant-or-self::c", 0, &set));
+    assert_int_equal(7, set->count);
+    ly_set_free(set, NULL);
+
+    /* following */
+    assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/c/x/following::a", 0, &set));
+    assert_int_equal(4, set->count);
+    ly_set_free(set, NULL);
+
+    /* following-sibling */
+    assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/c/x/following-sibling::ll", 0, &set));
+    assert_int_equal(3, set->count);
+    ly_set_free(set, NULL);
+
+    /* parent */
+    assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/child::a:*/c/parent::l1", 0, &set));
+    assert_int_equal(7, set->count);
+    ly_set_free(set, NULL);
+
+    assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/child::a:c//..", 0, &set));
+    assert_int_equal(8, set->count);
+    ly_set_free(set, NULL);
+
+    /* preceding */
+    assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/c/preceding::a", 0, &set));
+    assert_int_equal(2, set->count);
+    ly_set_free(set, NULL);
+
+    /* preceding-sibling */
+    assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/c/ll/preceding-sibling::node()", 0, &set));
+    assert_int_equal(3, set->count);
+    ly_set_free(set, NULL);
+
+    /* self */
+    assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/c/self::c/ll/ll/b/self::b", 0, &set));
+    assert_int_equal(4, set->count);
     ly_set_free(set, NULL);
 }
 
@@ -404,18 +558,29 @@ static void
 test_canonize(void **state)
 {
     const char *data =
-            "<foo2 xmlns=\"urn:tests:a\">50</foo2>";
+            "<foo2 xmlns=\"urn:tests:a\">50</foo2>"
+            "<foo3 xmlns=\"urn:tests:a\" xmlns:a=\"urn:tests:a\">a:id_b</foo3>"
+            "<foo4 xmlns=\"urn:tests:a\">250.5</foo4>";
     struct lyd_node *tree;
     struct ly_set *set;
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
 
+    /* integer */
     assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:foo2[.='050']", &set));
     assert_int_equal(1, set->count);
     ly_set_free(set, NULL);
 
-    /* TODO more use-cases once there are some type plugins that have canonical values */
+    /* identityref */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:foo3[.='id_b']", &set));
+    assert_int_equal(1, set->count);
+    ly_set_free(set, NULL);
+
+    /* decimal64 */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:foo4[.='0250.500']", &set));
+    assert_int_equal(1, set->count);
+    ly_set_free(set, NULL);
 
     lyd_free_all(tree);
 }
@@ -742,6 +907,135 @@ test_variables(void **state)
 #undef LOCAL_TEARDOWN
 }
 
+static void
+test_axes(void **state)
+{
+    const char *data;
+    struct lyd_node *tree;
+    struct ly_set *set;
+
+    data =
+            "<l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n"
+            "  <a>a1</a>\n"
+            "  <b yang:operation=\"replace\">b1</b>\n"
+            "  <c yang:operation=\"none\">c1</c>\n"
+            "</l1>\n"
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "  <a>a2</a>\n"
+            "  <b>b2</b>\n"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n"
+            "  <a yang:operation=\"none\" yang:key=\"[no-key='no-value']\">a3</a>\n"
+            "  <b>b3</b>\n"
+            "  <c yang:value=\"no-val\">c3</c>\n"
+            "</l1>"
+            "<c xmlns=\"urn:tests:a\">"
+            "  <x>val</x>"
+            "  <ll>"
+            "    <a>key1</a>"
+            "    <ll>"
+            "      <a>key11</a>"
+            "      <b>val11</b>"
+            "    </ll>"
+            "    <ll>"
+            "      <a>key12</a>"
+            "      <b>val12</b>"
+            "    </ll>"
+            "    <ll>"
+            "      <a>key13</a>"
+            "      <b>val13</b>"
+            "    </ll>"
+            "  </ll>"
+            "  <ll>"
+            "    <a>key2</a>"
+            "    <ll>"
+            "      <a>key21</a>"
+            "      <b>val21</b>"
+            "    </ll>"
+            "    <ll>"
+            "      <a>key22</a>"
+            "      <b>val22</b>"
+            "    </ll>"
+            "  </ll>"
+            "</c>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    assert_non_null(tree);
+
+    /* ancestor */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "//ll[a and b]/a/ancestor::node()", &set));
+    assert_int_equal(8, set->count);
+    ly_set_free(set, NULL);
+
+    /* ancestor-or-self */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "//ll[a and b]/ancestor-or-self::ll", &set));
+    assert_int_equal(7, set->count);
+    ly_set_free(set, NULL);
+
+    /* attribute */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/l1/@operation", &set));
+    assert_int_equal(0, set->count);
+    ly_set_free(set, NULL);
+
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/l1/attribute::key", &set));
+    assert_int_equal(0, set->count);
+    ly_set_free(set, NULL);
+
+    /* child */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/child::l1/child::a", &set));
+    assert_int_equal(3, set->count);
+    ly_set_free(set, NULL);
+
+    /* descendant */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/descendant::c/descendant::b", &set));
+    assert_int_equal(5, set->count);
+    ly_set_free(set, NULL);
+
+    /* descendant-or-self */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "//c", &set));
+    assert_int_equal(3, set->count);
+    ly_set_free(set, NULL);
+
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/descendant-or-self::node()/c", &set));
+    assert_int_equal(3, set->count);
+    ly_set_free(set, NULL);
+
+    /* following */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/c/x/following::a", &set));
+    assert_int_equal(7, set->count);
+    ly_set_free(set, NULL);
+
+    /* following-sibling */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/c/x/following-sibling::ll", &set));
+    assert_int_equal(2, set->count);
+    ly_set_free(set, NULL);
+
+    /* parent */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/child::*/c/parent::l1", &set));
+    assert_int_equal(2, set->count);
+    ly_set_free(set, NULL);
+
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/child::c//..", &set));
+    assert_int_equal(8, set->count);
+    ly_set_free(set, NULL);
+
+    /* preceding */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/c/preceding::a", &set));
+    assert_int_equal(3, set->count);
+    ly_set_free(set, NULL);
+
+    /* preceding-sibling */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/c/ll/preceding-sibling::node()", &set));
+    assert_int_equal(2, set->count);
+    ly_set_free(set, NULL);
+
+    /* self */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/c/self::c/ll/ll/b/self::b", &set));
+    assert_int_equal(5, set->count);
+    ly_set_free(set, NULL);
+
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -756,6 +1050,7 @@ main(void)
         UTEST(test_derived_from, setup),
         UTEST(test_augment, setup),
         UTEST(test_variables, setup),
+        UTEST(test_axes, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

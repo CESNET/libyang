@@ -71,9 +71,11 @@ test_data_xml(void **state)
     schema = MODULE_CREATE_YANG("defs", "identity ident1; identity ident2 {base ident1;}"
             "leaf un1 {type union {"
             "    type leafref {path /int8; require-instance true;}"
+            "    type leafref {path /int64; require-instance true;}"
             "    type union { type identityref {base ident1;} type instance-identifier {require-instance true;} }"
             "    type string {length 1..20;}}}"
             "leaf int8 {type int8 {range 10..20;}}"
+            "leaf int64 {type int64;}"
             "leaf-list llist {type string;}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
 
@@ -103,7 +105,7 @@ test_data_xml(void **state)
     TEST_ERROR_XML2("",
             "defs", "", "un1", "123456789012345678901", LY_EVALID);
     CHECK_LOG_CTX("Invalid union value \"123456789012345678901\" - no matching subtype found.",
-            "Schema location /defs:un1, line number 1.");
+            "Schema location \"/defs:un1\", line number 1.");
 }
 
 static void

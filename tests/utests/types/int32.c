@@ -60,8 +60,8 @@ test_data_xml(void **state)
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
 
     TEST_ERROR_XML("defs", "0x01");
-    CHECK_LOG_CTX("Invalid int32 value \"0x01\".",
-            "Schema location /defs:port, line number 1.");
+    CHECK_LOG_CTX("Invalid type int32 value \"0x01\".",
+            "Schema location \"/defs:port\", line number 1.");
 }
 
 int

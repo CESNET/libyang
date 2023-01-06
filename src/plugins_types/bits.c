@@ -51,15 +51,15 @@
 # define BITS_BITMAP_BYTE(bitmap, size, idx) (bitmap + idx)
 #endif
 
-API size_t
+LIBYANG_API_DEF size_t
 lyplg_type_bits_bitmap_size(const struct lysc_type_bits *type)
 {
     size_t needed_bytes, size;
 
     LY_CHECK_ARG_RET(NULL, type, type->basetype == LY_TYPE_BITS, 0);
 
-    /* minimum needed bytes to hold all the bit positions */
-    needed_bytes = (BITS_LAST_BIT_POSITION(type) / 8) + (BITS_LAST_BIT_POSITION(type) % 8 ? 1 : 0);
+    /* minimum needed bytes to hold all the bit positions (which start at 0) */
+    needed_bytes = ((BITS_LAST_BIT_POSITION(type) + 1) / 8) + ((BITS_LAST_BIT_POSITION(type) + 1) % 8 ? 1 : 0);
     LY_CHECK_ERR_RET(!needed_bytes, LOGINT(NULL), 0);
 
     if ((needed_bytes == 1) || (needed_bytes == 2)) {
@@ -79,7 +79,7 @@ lyplg_type_bits_bitmap_size(const struct lysc_type_bits *type)
     return size;
 }
 
-API ly_bool
+LIBYANG_API_DEF ly_bool
 lyplg_type_bits_is_bit_set(const char *bitmap, size_t size, uint32_t bit_position)
 {
     char bitmask;
@@ -285,7 +285,7 @@ bits_items2canon(struct lysc_type_bitenum_item **items, char **canonical)
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
@@ -367,7 +367,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyplg_type_compare_bits(const struct lyd_value *val1, const struct lyd_value *val2)
 {
     struct lyd_value_bits *v1, *v2;
@@ -386,7 +386,7 @@ lyplg_type_compare_bits(const struct lyd_value *val1, const struct lyd_value *va
     return LY_SUCCESS;
 }
 
-API const void *
+LIBYANG_API_DEF const void *
 lyplg_type_print_bits(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
 {
@@ -428,7 +428,7 @@ lyplg_type_print_bits(const struct ly_ctx *ctx, const struct lyd_value *value, L
     return value->_canonical;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyplg_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_ERR ret;
@@ -468,7 +468,7 @@ error:
     return ret;
 }
 
-API void
+LIBYANG_API_DEF void
 lyplg_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     struct lyd_value_bits *val;

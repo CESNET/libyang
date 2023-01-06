@@ -23,6 +23,7 @@
  */
 typedef struct {
     char *name;                                      /* User printable name of the function. */
+
     void (*func)(struct ly_ctx **ctx, const char *); /* Function to call to do the command. */
     void (*help_func)(void);                         /* Display command help. */
     char *helpstring;                                /* Documentation for this function. */

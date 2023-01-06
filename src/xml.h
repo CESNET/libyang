@@ -1,9 +1,10 @@
 /**
  * @file xml.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Generic XML parser routines.
  *
- * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -81,6 +82,7 @@ struct lyxml_ctx {
 
     enum LYXML_PARSER_STATUS status; /* status providing information about the last parsed object, following attributes
                                         are filled based on it */
+
     union {
         const char *prefix; /* LYXML_ELEMENT, LYXML_ATTRIBUTE - elem/attr prefix */
         const char *value;  /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT - elem/attr value */
@@ -100,6 +102,10 @@ struct lyxml_ctx {
 
     struct ly_set elements; /* list of not-yet-closed elements */
     struct ly_set ns;       /* handled with LY_SET_OPT_USEASLIST */
+
+    /* backup in members */
+    const char *b_current;
+    uint64_t b_line;
 };
 
 /**
@@ -131,6 +137,13 @@ LY_ERR lyxml_ctx_next(struct lyxml_ctx *xmlctx);
  * @return LY_ERR value.
  */
 LY_ERR lyxml_ctx_peek(struct lyxml_ctx *xmlctx, enum LYXML_PARSER_STATUS *next);
+
+/**
+ * @brief Remove all the namespaces defined in the element recently closed (removed from the xmlctx->elements).
+ *
+ * @param[in] xmlctx XML context to work with.
+ */
+void lyxml_ns_rm(struct lyxml_ctx *xmlctx);
 
 /**
  * @brief Get a namespace record for the given prefix in the current context.

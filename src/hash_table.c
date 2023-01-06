@@ -156,7 +156,7 @@ lydict_resize_val_eq(void *val1_p, void *val2_p, ly_bool mod, void *cb_data)
     return 0;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lydict_remove(const struct ly_ctx *ctx, const char *value)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -262,7 +262,7 @@ dict_insert(const struct ly_ctx *ctx, char *value, size_t len, ly_bool zerocopy,
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lydict_insert(const struct ly_ctx *ctx, const char *value, size_t len, const char **str_p)
 {
     LY_ERR result;
@@ -285,7 +285,7 @@ lydict_insert(const struct ly_ctx *ctx, const char *value, size_t len, const cha
     return result;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lydict_insert_zc(const struct ly_ctx *ctx, char *value, const char **str_p)
 {
     LY_ERR result;
@@ -426,6 +426,7 @@ lyht_resize(struct hash_table *ht, int operation)
         rec = lyht_get_rec(old_recs, ht->rec_size, i);
         if (rec->hits > 0) {
             LY_ERR ret = lyht_insert(ht, rec->val, rec->hash, NULL);
+
             assert(!ret);
             (void)ret;
         }
@@ -621,26 +622,39 @@ lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
 }
 
 LY_ERR
-lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
+lyht_find_next_with_collision_cb(struct hash_table *ht, void *val_p, uint32_t hash,
+        lyht_value_equal_cb collision_val_equal, void **match_p)
 {
     struct ht_rec *rec, *crec;
     uint32_t i, c;
     LY_ERR r;
 
-    /* found the record of the previously found value */
+    /* find the record of the previously found value */
     if (lyht_find_rec(ht, val_p, hash, 1, &crec, &i, &rec)) {
         /* not found, cannot happen */
         LOGINT_RET(NULL);
     }
 
-    /* go through collisions and find next one after the previous one */
+    /* go through collisions and find the next one after the previous one */
     c = crec->hits;
     for (++i; i < c; ++i) {
         r = lyht_find_collision(ht, &rec, crec);
         assert(!r);
         (void)r;
 
-        if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, 0, ht->cb_data)) {
+        if (rec->hash != hash) {
+            continue;
+        }
+
+        if (collision_val_equal) {
+            if (collision_val_equal(val_p, &rec->val, 0, ht->cb_data)) {
+                /* even the value matches */
+                if (match_p) {
+                    *match_p = rec->val;
+                }
+                return LY_SUCCESS;
+            }
+        } else if (ht->val_equal(val_p, &rec->val, 0, ht->cb_data)) {
             /* even the value matches */
             if (match_p) {
                 *match_p = rec->val;
@@ -651,6 +665,12 @@ lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p
 
     /* the last equal value was already returned */
     return LY_ENOTFOUND;
+}
+
+LY_ERR
+lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
+{
+    return lyht_find_next_with_collision_cb(ht, val_p, hash, NULL, match_p);
 }
 
 LY_ERR
@@ -833,4 +853,28 @@ LY_ERR
 lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash)
 {
     return lyht_remove_with_resize_cb(ht, val_p, hash, NULL);
+}
+
+uint32_t
+lyht_get_fixed_size(uint32_t item_count)
+{
+    uint32_t i, size = 0;
+
+    /* detect number of upper zero bits in the items' counter value ... */
+    for (i = (sizeof item_count * CHAR_BIT) - 1; i > 0; i--) {
+        size = item_count << i;
+        size = size >> i;
+        if (size == item_count) {
+            break;
+        }
+    }
+    assert(i);
+
+    /* ... and then we convert it to the position of the highest non-zero bit ... */
+    i = (sizeof item_count * CHAR_BIT) - i;
+
+    /* ... and by using it to shift 1 to the left we get the closest sufficient hash table size */
+    size = 1 << i;
+
+    return size;
 }

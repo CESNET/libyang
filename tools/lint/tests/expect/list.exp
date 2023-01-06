@@ -1,21 +1,19 @@
 #!/usr/bin/expect -f
 
-set timeout 1
-
-spawn $env(YANGLINT)
-expect -exact "> "
-send -- "list\r"
-expect {
-	"list\r
-List of the loaded models:\r
-    i ietf-yang-metadata@2016-08-05\r
-    I yang@2021-04-07\r
-    i ietf-inet-types@2013-07-15\r
-    i ietf-yang-types@2013-07-15\r
-    I ietf-datastores@2018-02-14\r
-    I ietf-yang-library@2019-01-04\r
-> " { }
-	timeout { exit 1 }
+if { [info exists ::env(CURRENT_SOURCE_DIR)] } {
+    source "$env(CURRENT_SOURCE_DIR)/tests/expect/common.exp"
+    set yang_dir "$env(CURRENT_SOURCE_DIR)/examples"
+} else {
+    source "common.exp"
+    set yang_dir "../../examples"
 }
+
+spawn $yanglint
+
+expect_output "> "
+
+expect_command "list" 1 "List of the loaded models:\r\n *i ietf-yang-metadata@2016-08-05\r\n *I yang@2022-06-16\r\n *i ietf-inet-types@2013-07-15\r\n *i ietf-yang-types@2013-07-15\r\n *I ietf-yang-schema-mount@2019-01-14\r\n *i ietf-yang-structure-ext@2020-06-17\r\n> "
+
 send -- "exit\r"
+
 expect eof

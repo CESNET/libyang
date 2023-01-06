@@ -27,25 +27,14 @@
 void
 cmd_feature_help(void)
 {
-    printf("Usage: feature [-h] <module> [<module>]*\n"
-            "                  Print features of all the module with state of each one.\n");
-}
-
-int
-collect_features(const struct lys_module *mod, struct ly_set *set)
-{
-    struct lysp_feature *f = NULL;
-    uint32_t idx = 0;
-
-    while ((f = lysp_feature_next(f, mod->parsed, &idx))) {
-        if (ly_set_add(set, (void *)f->name, 1, NULL)) {
-            YLMSG_E("Memory allocation failed.\n");
-            ly_set_erase(set, NULL);
-            return 1;
-        }
-    }
-
-    return 0;
+    printf("Usage: feature [-f] <module> [<module>]*\n"
+            "       feature -a [-f]\n"
+            "                  Print features of all the modules with state of each one.\n\n"
+            "  -f <module1, module2, ...>, --feature-param <module1, module2, ...>\n"
+            "                  Generate features parameter for the command \"add\" \n"
+            "                  in the form of -F <module-name>:<features>\n"
+            "  -a, --all \n"
+            "                  Print features of all implemented modules.\n");
 }
 
 void
@@ -53,29 +42,54 @@ cmd_feature(struct ly_ctx **ctx, const char *cmdline)
 {
     int argc = 0;
     char **argv = NULL;
+    char *features_output = NULL;
     int opt, opt_index, i;
+    ly_bool generate_features = 0, print_all = 0;
+    struct ly_set set = {0};
+    const struct lys_module *mod;
+    struct ly_out *out = NULL;
     struct option options[] = {
         {"help", no_argument, NULL, 'h'},
+        {"all", no_argument, NULL, 'a'},
+        {"feature-param", no_argument, NULL, 'f'},
         {NULL, 0, NULL, 0}
     };
-    struct ly_set set = {0};
-    size_t max_len;
-    uint32_t j;
-    const char *name;
 
     if (parse_cmdline(cmdline, &argc, &argv)) {
         goto cleanup;
     }
 
-    while ((opt = getopt_long(argc, argv, "h", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "haf", options, &opt_index)) != -1) {
         switch (opt) {
         case 'h':
             cmd_feature_help();
             goto cleanup;
+        case 'a':
+            print_all = 1;
+            break;
+        case 'f':
+            generate_features = 1;
+            break;
         default:
             YLMSG_E("Unknown option.\n");
             goto cleanup;
         }
+    }
+
+    if (ly_out_new_file(stdout, &out)) {
+        YLMSG_E("Unable to print to the standard output.\n");
+        goto cleanup;
+    }
+
+    if (print_all) {
+        if (print_all_features(out, *ctx, generate_features, &features_output)) {
+            YLMSG_E("Printing all features failed.\n");
+            goto cleanup;
+        }
+        if (generate_features) {
+            printf("%s\n", features_output);
+        }
+        goto cleanup;
     }
 
     if (argc == optind) {
@@ -84,7 +98,10 @@ cmd_feature(struct ly_ctx **ctx, const char *cmdline)
     }
 
     for (i = 0; i < argc - optind; i++) {
-        const struct lys_module *mod = ly_ctx_get_module_latest(*ctx, argv[optind + i]);
+        /* always erase the set, so the previous module's features don't carry over to the next module's features */
+        ly_set_erase(&set, NULL);
+
+        mod = ly_ctx_get_module_latest(*ctx, argv[optind + i]);
         if (!mod) {
             YLMSG_E("Module \"%s\" not found.\n", argv[optind + i]);
             goto cleanup;
@@ -95,31 +112,24 @@ cmd_feature(struct ly_ctx **ctx, const char *cmdline)
             goto cleanup;
         }
 
-        /* header */
-        printf("%s features:\n", mod->name);
-
-        if (set.count) {
-            /* get max len */
-            max_len = 0;
-            for (j = 0; j < set.count; ++j) {
-                name = set.objs[j];
-                if (strlen(name) > max_len) {
-                    max_len = strlen(name);
-                }
+        if (generate_features) {
+            if (generate_features_output(mod, &set, &features_output)) {
+                goto cleanup;
             }
-
-            /* print features */
-            for (j = 0; j < set.count; ++j) {
-                name = set.objs[j];
-                printf("\t%-*s (%s)\n", (int)max_len, name, lys_feature_value(mod, name) ? "off" : "on");
-            }
-
-            ly_set_erase(&set, NULL);
-        } else {
-            printf("\t(none)\n");
+            /* don't print features and their state of each module if generating features parameter */
+            continue;
         }
+
+        print_features(out, mod, &set);
+    }
+
+    if (generate_features) {
+        printf("%s\n", features_output);
     }
 
 cleanup:
     free_cmdline(argv);
+    ly_out_free(out, NULL, 0);
+    ly_set_erase(&set, NULL);
+    free(features_output);
 }

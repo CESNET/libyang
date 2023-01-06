@@ -376,10 +376,10 @@ test_data_xml(void **state)
     /* test print error */
     TEST_ERROR_XML("TPATTERN_0", "T128");
     CHECK_LOG_CTX("pattern 0 error message",
-            "Schema location /TPATTERN_0:port, line number 1.");
+            "Schema location \"/TPATTERN_0:port\", line number 1.");
     TEST_ERROR_XML("TPATTERN_0", "ahoj");
     CHECK_LOG_CTX("pattern 1 error message",
-            "Schema location /TPATTERN_0:port, line number 1.");
+            "Schema location \"/TPATTERN_0:port\", line number 1.");
 
 }
 

@@ -39,6 +39,7 @@ cmd_add_help(void)
             "                  explicitly specified).\n"
             "  -F FEATURES, --features=FEATURES\n"
             "                  Features to support, default all in all implemented modules.\n"
+            "                  Specify separately for each module.\n"
             "                  <modname>:[<feature>,]*\n"
             "  -i, --make-implemented\n"
             "                  Make the imported modules \"referenced\" from any loaded\n"
@@ -60,6 +61,7 @@ cmd_add(struct ly_ctx **ctx, const char *cmdline)
         {NULL, 0, NULL, 0}
     };
     uint16_t options_ctx = 0;
+    const char *all_features[] = {"*", NULL};
     struct ly_set fset = {0};
 
     if (parse_cmdline(cmdline, &argc, &argv)) {
@@ -138,7 +140,11 @@ cmd_add(struct ly_ctx **ctx, const char *cmdline)
         }
 
         /* get features list for this module */
-        get_features(&fset, module, &features);
+        if (!fset.count) {
+            features = all_features;
+        } else {
+            get_features(&fset, module, &features);
+        }
 
         /* temporary cleanup */
         free(dir);

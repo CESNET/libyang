@@ -30,12 +30,10 @@ setup(void **state)
             "    namespace urn:tests:a;\n"
             "    prefix a;\n"
             "    yang-version 1.1;\n"
-            "    list l1 {\n"
-            "        key \"a b c\";\n"
-            "        leaf a {type string;}\n"
-            "        leaf b {type string;}\n"
-            "        leaf c {type int16;}\n"
-            "        leaf d {type string;}}\n"
+            "    list l1 { key \"a b c\"; leaf a {type string;} leaf b {type string;} leaf c {type int16;}"
+            "        leaf d {type string;}"
+            "        container cont {leaf e {type boolean;}}"
+            "    }"
             "    leaf foo { type string;}\n"
             "    container c {\n"
             "        leaf x {type string;}\n"
@@ -85,7 +83,6 @@ test_leaf(void **state)
     leaf = (struct lyd_node_term *)tree->next->next;
     CHECK_LYD_VALUE(leaf->value, STRING, "default-val");
     assert_true(leaf->flags & LYD_DEFAULT);
-
     lyd_free_all(tree);
 
     /* make foo2 explicit */
@@ -98,7 +95,6 @@ test_leaf(void **state)
     leaf = (struct lyd_node_term *)tree;
     CHECK_LYD_VALUE(leaf->value, STRING, "default-val");
     assert_false(leaf->flags & LYD_DEFAULT);
-
     lyd_free_all(tree);
 
     /* parse foo2 but make it implicit, skip metadata xxx from missing schema */
@@ -112,8 +108,13 @@ test_leaf(void **state)
     leaf = (struct lyd_node_term *)tree;
     CHECK_LYD_VALUE(leaf->value, STRING, "default-val");
     assert_true(leaf->flags & LYD_DEFAULT);
-
     lyd_free_all(tree);
+
+    /* invalid value */
+    data = "<l1 xmlns=\"urn:tests:a\"><a>val-a</a><b>val-b</b><c>1</c><cont><e>0</e></cont></l1>";
+    PARSER_CHECK_ERROR(data, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
+            "Invalid boolean value \"0\".",
+            "Data location \"/a:l1[a='val-a'][b='val-b'][c='1']/cont/e\", line number 1.");
 }
 
 static void
@@ -133,6 +134,7 @@ test_anydata(void **state)
     tree = tree->next;
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_R | LYS_STATUS_CURR | LYS_SET_CONFIG, 1, "any",
             1, LYS_ANYDATA, 0, 0, NULL, 0);
+
     const char *data_expected =
             "<any xmlns=\"urn:tests:a\">\n"
             "  <element1>\n"
@@ -142,7 +144,6 @@ test_anydata(void **state)
             "</any>\n";
 
     CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data_expected);
-
     lyd_free_all(tree);
 }
 
@@ -167,17 +168,18 @@ test_list(void **state)
 
     /* missing keys */
     PARSER_CHECK_ERROR("<l1 xmlns=\"urn:tests:a\"><c>1</c><b>b</b></l1>", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"a\".", "Schema location /a:l1, data location /a:l1[b='b'][c='1'], line number 1.");
+            "List instance is missing its key \"a\".", "Data location \"/a:l1[b='b'][c='1']\", line number 1.");
 
     PARSER_CHECK_ERROR("<l1 xmlns=\"urn:tests:a\"><a>a</a></l1>", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"b\".", "Schema location /a:l1, data location /a:l1[a='a'], line number 1.");
+            "List instance is missing its key \"b\".", "Data location \"/a:l1[a='a']\", line number 1.");
 
     PARSER_CHECK_ERROR("<l1 xmlns=\"urn:tests:a\"><b>b</b><a>a</a></l1>", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"c\".", "Schema location /a:l1, data location /a:l1[a='a'][b='b'], line number 1.");
+            "List instance is missing its key \"c\".", "Data location \"/a:l1[a='a'][b='b']\", line number 1.");
 
     /* key duplicate */
     PARSER_CHECK_ERROR("<l1 xmlns=\"urn:tests:a\"><c>1</c><b>b</b><a>a</a><c>1</c></l1>", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Duplicate instance of \"c\".", "Schema location /a:l1/c, data location /a:l1[a='a'][b='b'][c='1'][c='1']/c, line number 1.");
+            "Duplicate instance of \"c\".",
+            "Data location \"/a:l1[a='a'][b='b'][c='1'][c='1']/c\", line number 1.");
 
     /* keys order */
     CHECK_PARSE_LYD("<l1 xmlns=\"urn:tests:a\"><d>d</d><a>a</a><c>1</c><b>b</b></l1>", 0, LYD_VALIDATE_PRESENT, tree);
@@ -191,7 +193,7 @@ test_list(void **state)
     assert_non_null(leaf = (struct lyd_node_term *)leaf->next);
     CHECK_LYSC_NODE(leaf->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "c", 1, LYS_LEAF, 1, 0, NULL, 0);
     assert_non_null(leaf = (struct lyd_node_term *)leaf->next);
-    CHECK_LYSC_NODE(leaf->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "d", 0, LYS_LEAF, 1, 0, NULL, 0);
+    CHECK_LYSC_NODE(leaf->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "d", 1, LYS_LEAF, 1, 0, NULL, 0);
     CHECK_LOG_CTX("Invalid position of the key \"b\" in a list.", NULL);
     lyd_free_all(tree);
 
@@ -209,7 +211,7 @@ test_list(void **state)
     lyd_free_all(tree);
 
     PARSER_CHECK_ERROR(data, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Invalid position of the key \"b\" in a list.", "Schema location /a:l1/b, data location /a:b, line number 1.");
+            "Invalid position of the key \"b\" in a list.", "Data location \"/a:l1[c='1']/b\", line number 1.");
 }
 
 static void
@@ -243,7 +245,7 @@ test_opaq(void **state)
     /* invalid value, no flags */
     data = "<foo3 xmlns=\"urn:tests:a\"/>";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Invalid empty uint32 value.", "Schema location /a:foo3, line number 1.");
+            "Invalid type uint32 empty value.", "Schema location \"/a:foo3\", line number 1.");
 
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
@@ -265,7 +267,8 @@ test_opaq(void **state)
             "  <d>val_d</d>\n"
             "</l1>\n";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"c\".", "Schema location /a:l1, data location /a:l1[a='val_a'][b='val_b'], line number 5.");
+            "List instance is missing its key \"c\".",
+            "Data location \"/a:l1[a='val_a'][b='val_b']\", line number 5.");
 
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
@@ -280,7 +283,8 @@ test_opaq(void **state)
             "  <c>val_c</c>\n"
             "</l1>\n";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Invalid int16 value \"val_c\".", "Schema location /a:l1/c, data location /a:l1[a='val_a'][b='val_b'], line number 4.");
+            "Invalid type int16 value \"val_c\".",
+            "Data location \"/a:l1[a='val_a'][b='val_b']/c\", line number 4.");
 
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);

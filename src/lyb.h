@@ -51,7 +51,7 @@ struct lysc_node;
  sb          = siblings_start
  se          = siblings_end
  siblings    = zero-LYB_SIZE_BYTES | (sb instance+ se)
- instance    = model hash node
+ instance    = node_type model hash node
  model       = 16bit_zero | (model_name_length model_name revision)
  node        = opaq | leaflist | list | any | inner | leaf
  opaq        = opaq_data siblings
@@ -64,6 +64,16 @@ struct lysc_node;
 
  @endverbatim
  */
+
+/**
+ * @brief LYB data node type
+ */
+enum lylyb_node_type {
+    LYB_NODE_TOP,   /**< top-level node */
+    LYB_NODE_CHILD, /**< child node with a parent */
+    LYB_NODE_OPAQ,  /**< opaque node */
+    LYB_NODE_EXT    /**< nested extension data node */
+};
 
 /**
  * @brief LYB format parser context
@@ -101,7 +111,7 @@ void lyd_lyb_ctx_free(struct lyd_ctx *lydctx);
 #define LYB_SIBLING_STEP 4
 
 /* current LYB format version */
-#define LYB_VERSION_NUM 0x03
+#define LYB_VERSION_NUM 0x04
 
 /* LYB format version mask of the header byte */
 #define LYB_VERSION_MASK 0x0F

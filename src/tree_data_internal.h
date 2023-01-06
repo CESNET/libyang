@@ -1,9 +1,10 @@
 /**
  * @file tree_data_internal.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief internal functions for YANG schema trees.
  *
- * Copyright (c) 2015 - 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -22,6 +23,7 @@
 #include <stddef.h>
 
 struct ly_path_predicate;
+struct lyd_ctx;
 struct lysc_module;
 
 #define LY_XML_SUFFIX ".xml"
@@ -116,33 +118,25 @@ const struct lys_module *lyd_mod_next_module(struct lyd_node *tree, const struct
 const struct lys_module *lyd_data_next_module(struct lyd_node **next, struct lyd_node **first);
 
 /**
- * @brief Check that a list has all its keys.
- *
- * @param[in] node List to check.
- * @return LY_SUCCESS on success.
- * @return LY_ENOT on a missing key.
- */
-LY_ERR lyd_parse_check_keys(struct lyd_node *node);
-
-/**
- * @brief Set data flags for a newly parsed node.
- *
- * @param[in] node Node to use.
- * @param[in,out] node_when Set of nodes with unresolved when.
- * @param[in,out] node_exts Set of nodes and their extension instances if they have own validation callback.
- * @param[in,out] meta Node metadata, may be removed from.
- * @param[in] parse_opts Parse options.
- */
-void lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *node_when, struct ly_set *node_exts,
-        struct lyd_meta **meta, uint32_t parse_opts);
-
-/**
  * @brief Get schema node of a data node. Useful especially for opaque nodes.
  *
  * @param[in] node Data node to use.
  * @return Schema node represented by data @p node, NULL if there is none.
  */
 const struct lysc_node *lyd_node_schema(const struct lyd_node *node);
+
+/**
+ * @brief Search in the given siblings (NOT recursively) for the first schema node data instance.
+ * Uses hashes - should be used whenever possible for best performance.
+ *
+ * @param[in] siblings Siblings to search in including preceding and succeeding nodes.
+ * @param[in] schema Target data node schema to find.
+ * @param[out] match Can be NULL, otherwise the found data node.
+ * @return LY_SUCCESS on success, @p match set.
+ * @return LY_ENOTFOUND if not found, @p match set to NULL.
+ * @return LY_ERR value if another error occurred.
+ */
+LY_ERR lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lysc_node *schema, struct lyd_node **match);
 
 /**
  * @brief Check whether a node to be deleted is the root node, move it if it is.
@@ -153,6 +147,27 @@ const struct lysc_node *lyd_node_schema(const struct lyd_node *node);
  * the first top-level sibling.
  */
 void lyd_del_move_root(struct lyd_node **root, const struct lyd_node *to_del, const struct lys_module *mod);
+
+/**
+ * @brief Try to get schema node for data with a parent based on an extension instance.
+ *
+ * @param[in] parent Parsed parent data node. Set if @p sparent is NULL.
+ * @param[in] sparent Schema parent node. Set if @p sparent is NULL.
+ * @param[in] prefix Element prefix, if any.
+ * @param[in] prefix_len Length of @p prefix.
+ * @param[in] format Format of @p prefix.
+ * @param[in] prefix_data Format-specific data.
+ * @param[in] name Element name.
+ * @param[in] name_len Length of @p name.
+ * @param[out] snode Found schema node, NULL if no suitable was found.
+ * @param[out] ext Extension instance that provided @p snode.
+ * @return LY_SUCCESS on success;
+ * @return LY_ENOT if no extension instance parsed the data;
+ * @return LY_ERR on error.
+ */
+LY_ERR ly_nested_ext_schema(const struct lyd_node *parent, const struct lysc_node *sparent, const char *prefix,
+        size_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name, size_t name_len,
+        const struct lysc_node **snode, struct lysc_ext_instance **ext);
 
 /**
  * @brief Free stored prefix data.
@@ -265,6 +280,20 @@ LY_ERR lyd_create_inner(const struct lysc_node *schema, struct lyd_node **node);
 LY_ERR lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *predicates, struct lyd_node **node);
 
 /**
+ * @brief Create a list with all its keys (cannot be used for key-less list).
+ *
+ * Hash is calculated and new node flag is set.
+ *
+ * @param[in] schema Schema node of the new data node.
+ * @param[in] keys Key list predicates.
+ * @param[in] keys_len Length of @p keys.
+ * @param[out] node Created node.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lyd_create_list2(const struct lysc_node *schema, const char *keys, size_t keys_len, struct lyd_node **node);
+
+/**
  * @brief Create an anyxml/anydata node.
  *
  * Hash is calculated and flags are properly set based on @p is_valid.
@@ -272,7 +301,7 @@ LY_ERR lyd_create_list(const struct lysc_node *schema, const struct ly_path_pred
  * @param[in] schema Schema node of the new data node.
  * @param[in] value Value of the any node.
  * @param[in] value_type Value type of the value.
- * @param[in] use_value Whether to directly assign (eat) the value or duplicate it.
+ * @param[in] use_value Whether to use dynamic @p value or duplicate it.
  * @param[out] node Created node.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value if an error occurred.
@@ -316,14 +345,14 @@ LY_ERR lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_l
  * @param[in] sparent Schema parent of the siblings, NULL if schema of @p parent can be used.
  * @param[in] mod Module of the default values, NULL for nested siblings.
  * @param[in] node_when Optional set to add nodes with "when" conditions into.
- * @param[in] node_exts Optional set to add nodes and extension instances having own validation plugin callback into it.
  * @param[in] node_types Optional set to add nodes with unresolved types into.
+ * @param[in] ext_node Optional set to add nodes with extension instance node callbacks into.
  * @param[in] impl_opts Implicit options (@ref implicitoptions).
  * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
-        const struct lys_module *mod, struct ly_set *node_when, struct ly_set *node_exts, struct ly_set *node_types,
+        const struct lys_module *mod, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *ext_node,
         uint32_t impl_opts, struct lyd_node **diff);
 
 /**
@@ -335,6 +364,26 @@ LY_ERR lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, cons
  * @return NULL if the new node should be first.
  */
 struct lyd_node *lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct lyd_node *new_node);
+
+/**
+ * @brief Insert node after a sibling.
+ *
+ * Handles inserting into NP containers and key-less lists.
+ *
+ * @param[in] sibling Sibling to insert after.
+ * @param[in] node Node to insert.
+ */
+void lyd_insert_after_node(struct lyd_node *sibling, struct lyd_node *node);
+
+/**
+ * @brief Insert node before a sibling.
+ *
+ * Handles inserting into NP containers and key-less lists.
+ *
+ * @param[in] sibling Sibling to insert before.
+ * @param[in] node Node to insert.
+ */
+void lyd_insert_before_node(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
  * @brief Insert a node into parent/siblings. Order and hashes are fully handled.
@@ -369,6 +418,7 @@ void lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta, ly_bool cle
  * @param[in] format Input format of @p value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] hints [Value hints](@ref lydvalhints) from the parser regarding the value type.
+ * @param[in] ctx_node Value context node, may be NULL for metadata.
  * @param[in] clear_dflt Whether to clear dflt flag starting from @p parent, recursively all NP containers.
  * @param[out] incomplete Whether the value needs to be resolved.
  * @return LY_SUCCESS on success.
@@ -377,7 +427,7 @@ void lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta, ly_bool cle
  */
 LY_ERR lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
         size_t name_len, const char *value, size_t value_len, ly_bool *dynamic, LY_VALUE_FORMAT format,
-        void *prefix_data, uint32_t hints, ly_bool clear_dflt, ly_bool *incomplete);
+        void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node, ly_bool clear_dflt, ly_bool *incomplete);
 
 /**
  * @brief Insert an attribute (last) into a parent
@@ -507,8 +557,27 @@ void lyd_unlink_hash(struct lyd_node *node);
  * @param[in,out] buflen Current buffer length.
  * @param[in,out] bufused Current number of characters used in @p buffer.
  * @param[in] is_static Whether buffer is static or can be reallocated.
- * @return LY_ERR
+ * @return LY_ERR value.
  */
 LY_ERR lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, ly_bool is_static);
+
+/**
+ * @brief Generate a path similar to ::lyd_path() except read the parents from a set.
+ *
+ * @param[in] dnodes Set with the data nodes, from parent to the last descendant.
+ * @param[in] pathtype Type of data path to generate.
+ * @return Generated data path.
+ */
+char *lyd_path_set(const struct ly_set *dnodes, LYD_PATH_TYPE pathtype);
+
+/**
+ * @brief Remove an object on the specific set index keeping the order of the other objects.
+ *
+ * @param[in] set Set from which a node will be removed.
+ * @param[in] index Index of the object to remove in the \p set.
+ * @param[in] destructor Optional function to free the objects being removed.
+ * @return LY_ERR value.
+ */
+LY_ERR ly_set_rm_index_ordered(struct ly_set *set, uint32_t index, void (*destructor)(void *obj));
 
 #endif /* LY_TREE_DATA_INTERNAL_H_ */

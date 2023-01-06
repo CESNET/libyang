@@ -199,8 +199,7 @@ extern "C" {
 /**
  * @brief YANG built-in types
  */
-typedef enum
-{
+typedef enum {
     LY_TYPE_UNKNOWN = 0, /**< Unknown type */
     LY_TYPE_BINARY, /**< Any binary data ([RFC 6020 sec 9.8](http://tools.ietf.org/html/rfc6020#section-9.8)) */
     LY_TYPE_UINT8, /**< 8-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
@@ -238,7 +237,8 @@ typedef enum {
     LY_VALUE_SCHEMA_RESOLVED, /**< resolved YANG schema value, prefixes map to module structures directly */
     LY_VALUE_XML,             /**< XML data value, prefixes map to XML namespace prefixes */
     LY_VALUE_JSON,            /**< JSON data value, prefixes map to module names */
-    LY_VALUE_LYB              /**< LYB data binary value, prefix mapping is type-specific (but usually like JSON) */
+    LY_VALUE_LYB,             /**< LYB data binary value, prefix mapping is type-specific (but usually like JSON) */
+    LY_VALUE_STR_NS           /**< any data format value, prefixes map to XML namespace prefixes */
 } LY_VALUE_FORMAT;
 
 /** @} trees */

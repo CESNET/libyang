@@ -852,7 +852,7 @@ test_xml(void **state)
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     assert_null(tree);
     CHECK_LOG_CTX("Duplicate instance of \"user\".",
-            "Schema location /T0:user, data location /T0:user[uid='0'].");
+            "Data location \"/T0:user[uid='0']\".");
 
     data =
             "<user xmlns=\"urn:tests:T0\">"
@@ -869,7 +869,7 @@ test_xml(void **state)
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     assert_null(tree);
     CHECK_LOG_CTX("Unique data leaf(s) \"name group\" not satisfied in \"/T0:user[uid='0']\" and \"/T0:user[uid='1']\".",
-            "Schema location /T0:user, data location /T0:user[uid='1'].");
+            "Data location \"/T0:user[uid='1']\".");
 
     /* double key */
     schema = MODULE_CREATE_YANG("T1", "list user {"
@@ -932,7 +932,7 @@ test_xml(void **state)
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     assert_null(tree);
     CHECK_LOG_CTX("Duplicate instance of \"user\".",
-            "Schema location /T1:user, data location /T1:user[uid='0'][group='User'].");
+            "Data location \"/T1:user[uid='0'][group='User']\".");
 
     /* min elements max elements */
     schema = MODULE_CREATE_YANG("T2",
@@ -1053,7 +1053,7 @@ test_xml(void **state)
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     assert_null(tree);
     CHECK_LOG_CTX("Too few \"user\" instances.",
-            "Schema location /T2:user.");
+            "Schema location \"/T2:user\".");
 
     data =
             "<user xmlns=\"urn:tests:T2\">"
@@ -1089,7 +1089,7 @@ test_xml(void **state)
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     assert_null(tree);
     CHECK_LOG_CTX("Too many \"user\" instances.",
-            "Schema location /T2:user, data location /T2:user[uid='5'].");
+            "Data location \"/T2:user[uid='5']\".");
 
     /* empty list */
     schema = MODULE_CREATE_YANG("T_EMPTY_LIST",
@@ -1205,7 +1205,7 @@ test_json(void **state)
     CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     assert_null(tree);
     CHECK_LOG_CTX("Duplicate instance of \"user\".",
-            "Schema location /T0:user, data location /T0:user[uid='0'], line number 1.");
+            "Data location \"/T0:user[uid='0']\", line number 1.");
 
     data =
             "{\"T0:user\": ["
@@ -1215,7 +1215,7 @@ test_json(void **state)
     CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     assert_null(tree);
     CHECK_LOG_CTX("Unique data leaf(s) \"name group\" not satisfied in \"/T0:user[uid='0']\" and \"/T0:user[uid='1']\".",
-            "Schema location /T0:user, data location /T0:user[uid='1'], line number 1.");
+            "Data location \"/T0:user[uid='1']\", line number 1.");
 
     /* double key */
     schema = MODULE_CREATE_YANG("T1", "list user {"
@@ -1265,7 +1265,7 @@ test_json(void **state)
     CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     assert_null(tree);
     CHECK_LOG_CTX("Duplicate instance of \"user\".",
-            "Schema location /T1:user, data location /T1:user[uid='0'][group='User'], line number 1.");
+            "Data location \"/T1:user[uid='0'][group='User']\", line number 1.");
 
     /* min elements max elements */
     schema = MODULE_CREATE_YANG("T2",
@@ -1353,7 +1353,7 @@ test_json(void **state)
     CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     assert_null(tree);
     CHECK_LOG_CTX("Too few \"user\" instances.",
-            "Schema location /T2:user, line number 1.");
+            "Schema location \"/T2:user\", line number 1.");
 
     data =
             "{\"T2:user\": ["
@@ -1367,7 +1367,7 @@ test_json(void **state)
     CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     assert_null(tree);
     CHECK_LOG_CTX("Too many \"user\" instances.",
-            "Schema location /T2:user, data location /T2:user[uid='5'], line number 1.");
+            "Data location \"/T2:user[uid='5']\", line number 1.");
 
     schema = MODULE_CREATE_YANG("T_EMPTY_LIST",
             "container user_list {"

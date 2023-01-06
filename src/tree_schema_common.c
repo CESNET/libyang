@@ -1,9 +1,10 @@
 /**
- * @file tree_schema_helpers.c
+ * @file tree_schema_common.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief Parsing and validation helper functions for schema trees
+ * @author Michal Vasko <mvasko@cesnet.cz>
+ * @brief Parsing and validation common functions for schema trees
  *
- * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -39,8 +40,89 @@
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 
+/**
+ * @brief information about YANG statements
+ */
+struct stmt_info_s stmt_attr_info[] = {
+    [LY_STMT_NONE] = {NULL, NULL, 0},
+    [LY_STMT_ACTION] = {"action", "name", STMT_FLAG_ID},
+    [LY_STMT_ANYDATA] = {"anydata", "name", STMT_FLAG_ID},
+    [LY_STMT_ANYXML] = {"anyxml", "name", STMT_FLAG_ID},
+    [LY_STMT_ARGUMENT] = {"argument", "name", STMT_FLAG_ID},
+    [LY_STMT_ARG_TEXT] = {"text", NULL, 0},
+    [LY_STMT_ARG_VALUE] = {"value", NULL, 0},
+    [LY_STMT_AUGMENT] = {"augment", "target-node", STMT_FLAG_ID},
+    [LY_STMT_BASE] = {"base", "name", STMT_FLAG_ID},
+    [LY_STMT_BELONGS_TO] = {"belongs-to", "module", STMT_FLAG_ID},
+    [LY_STMT_BIT] = {"bit", "name", STMT_FLAG_ID},
+    [LY_STMT_CASE] = {"case", "name", STMT_FLAG_ID},
+    [LY_STMT_CHOICE] = {"choice", "name", STMT_FLAG_ID},
+    [LY_STMT_CONFIG] = {"config", "value", STMT_FLAG_ID},
+    [LY_STMT_CONTACT] = {"contact", "text", STMT_FLAG_YIN},
+    [LY_STMT_CONTAINER] = {"container", "name", STMT_FLAG_ID},
+    [LY_STMT_DEFAULT] = {"default", "value", 0},
+    [LY_STMT_DESCRIPTION] = {"description", "text", STMT_FLAG_YIN},
+    [LY_STMT_DEVIATE] = {"deviate", "value", STMT_FLAG_ID},
+    [LY_STMT_DEVIATION] = {"deviation", "target-node", STMT_FLAG_ID},
+    [LY_STMT_ENUM] = {"enum", "name", STMT_FLAG_ID},
+    [LY_STMT_ERROR_APP_TAG] = {"error-app-tag", "value", 0},
+    [LY_STMT_ERROR_MESSAGE] = {"error-message", "value", STMT_FLAG_YIN},
+    [LY_STMT_EXTENSION] = {"extension", "name", STMT_FLAG_ID},
+    [LY_STMT_EXTENSION_INSTANCE] = {NULL, NULL, 0},
+    [LY_STMT_FEATURE] = {"feature", "name", STMT_FLAG_ID},
+    [LY_STMT_FRACTION_DIGITS] = {"fraction-digits", "value", STMT_FLAG_ID},
+    [LY_STMT_GROUPING] = {"grouping", "name", STMT_FLAG_ID},
+    [LY_STMT_IDENTITY] = {"identity", "name", STMT_FLAG_ID},
+    [LY_STMT_IF_FEATURE] = {"if-feature", "name", 0},
+    [LY_STMT_IMPORT] = {"import", "module", STMT_FLAG_ID},
+    [LY_STMT_INCLUDE] = {"include", "module", STMT_FLAG_ID},
+    [LY_STMT_INPUT] = {"input", NULL, 0},
+    [LY_STMT_KEY] = {"key", "value", 0},
+    [LY_STMT_LEAF] = {"leaf", "name", STMT_FLAG_ID},
+    [LY_STMT_LEAF_LIST] = {"leaf-list", "name", STMT_FLAG_ID},
+    [LY_STMT_LENGTH] = {"length", "value", 0},
+    [LY_STMT_LIST] = {"list", "name", STMT_FLAG_ID},
+    [LY_STMT_MANDATORY] = {"mandatory", "value", STMT_FLAG_ID},
+    [LY_STMT_MAX_ELEMENTS] = {"max-elements", "value", STMT_FLAG_ID},
+    [LY_STMT_MIN_ELEMENTS] = {"min-elements", "value", STMT_FLAG_ID},
+    [LY_STMT_MODIFIER] = {"modifier", "value", STMT_FLAG_ID},
+    [LY_STMT_MODULE] = {"module", "name", STMT_FLAG_ID},
+    [LY_STMT_MUST] = {"must", "condition", 0},
+    [LY_STMT_NAMESPACE] = {"namespace", "uri", 0},
+    [LY_STMT_NOTIFICATION] = {"notification", "name", STMT_FLAG_ID},
+    [LY_STMT_ORDERED_BY] = {"ordered-by", "value", STMT_FLAG_ID},
+    [LY_STMT_ORGANIZATION] = {"organization", "text", STMT_FLAG_YIN},
+    [LY_STMT_OUTPUT] = {"output", NULL, 0},
+    [LY_STMT_PATH] = {"path", "value", 0},
+    [LY_STMT_PATTERN] = {"pattern", "value", 0},
+    [LY_STMT_POSITION] = {"position", "value", STMT_FLAG_ID},
+    [LY_STMT_PREFIX] = {"prefix", "value", STMT_FLAG_ID},
+    [LY_STMT_PRESENCE] = {"presence", "value", 0},
+    [LY_STMT_RANGE] = {"range", "value", 0},
+    [LY_STMT_REFERENCE] = {"reference", "text", STMT_FLAG_YIN},
+    [LY_STMT_REFINE] = {"refine", "target-node", STMT_FLAG_ID},
+    [LY_STMT_REQUIRE_INSTANCE] = {"require-instance", "value", STMT_FLAG_ID},
+    [LY_STMT_REVISION] = {"revision", "date", STMT_FLAG_ID},
+    [LY_STMT_REVISION_DATE] = {"revision-date", "date", STMT_FLAG_ID},
+    [LY_STMT_RPC] = {"rpc", "name", STMT_FLAG_ID},
+    [LY_STMT_STATUS] = {"status", "value", STMT_FLAG_ID},
+    [LY_STMT_SUBMODULE] = {"submodule", "name", STMT_FLAG_ID},
+    [LY_STMT_SYNTAX_LEFT_BRACE] = {"{", NULL, 0},
+    [LY_STMT_SYNTAX_RIGHT_BRACE] = {"}", NULL, 0},
+    [LY_STMT_SYNTAX_SEMICOLON] = {";", NULL, 0},
+    [LY_STMT_TYPE] = {"type", "name", STMT_FLAG_ID},
+    [LY_STMT_TYPEDEF] = {"typedef", "name", STMT_FLAG_ID},
+    [LY_STMT_UNIQUE] = {"unique", "tag", 0},
+    [LY_STMT_UNITS] = {"units", "name", 0},
+    [LY_STMT_USES] = {"uses", "name", STMT_FLAG_ID},
+    [LY_STMT_VALUE] = {"value", "value", STMT_FLAG_ID},
+    [LY_STMT_WHEN] = {"when", "condition", 0},
+    [LY_STMT_YANG_VERSION] = {"yang-version", "value", STMT_FLAG_ID},
+    [LY_STMT_YIN_ELEMENT] = {"yin-element", "value", STMT_FLAG_ID},
+};
+
 LY_ERR
-lysp_check_prefix(struct lys_parser_ctx *ctx, struct lysp_import *imports, const char *module_prefix, const char **value)
+lysp_check_prefix(struct lysp_ctx *ctx, struct lysp_import *imports, const char *module_prefix, const char **value)
 {
     struct lysp_import *i;
 
@@ -58,13 +140,17 @@ lysp_check_prefix(struct lys_parser_ctx *ctx, struct lysp_import *imports, const
 }
 
 LY_ERR
-lysp_check_date(struct lys_parser_ctx *ctx, const char *date, size_t date_len, const char *stmt)
+lysp_check_date(struct lysp_ctx *ctx, const char *date, size_t date_len, const char *stmt)
 {
     struct tm tm, tm_;
     char *r;
 
-    LY_CHECK_ARG_RET(ctx ? PARSER_CTX(ctx) : NULL, date, LY_EINVAL);
-    LY_CHECK_ERR_RET(date_len != LY_REV_SIZE - 1, LOGARG(ctx ? PARSER_CTX(ctx) : NULL, date_len), LY_EINVAL);
+    LY_CHECK_ARG_RET(PARSER_CTX(ctx), date, LY_EINVAL);
+
+    if (date_len != LY_REV_SIZE - 1) {
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid length %" PRIu32 " of a date.", (uint32_t)date_len);
+        return LY_EINVAL;
+    }
 
     /* check format: YYYY-MM-DD */
     for (uint8_t i = 0; i < date_len; i++) {
@@ -84,6 +170,10 @@ lysp_check_date(struct lys_parser_ctx *ctx, const char *date, size_t date_len, c
         goto error;
     }
     memcpy(&tm_, &tm, sizeof tm);
+
+    /* DST may move the hour back resulting in a different day */
+    tm_.tm_hour = 1;
+
     mktime(&tm_); /* mktime modifies tm_ if it refers invalid date */
     if (tm.tm_mday != tm_.tm_mday) { /* e.g 2018-02-29 -> 2018-03-01 */
         /* checking days is enough, since other errors
@@ -120,39 +210,36 @@ lysp_sort_revisions(struct lysp_revision *revs)
     }
 }
 
-static const struct lysp_tpdf *
-lysp_type_match(const char *name, struct lysp_node *node)
+LY_ERR
+lysp_check_enum_name(struct lysp_ctx *ctx, const char *name, size_t name_len)
 {
-    const struct lysp_tpdf *typedefs;
-    LY_ARRAY_COUNT_TYPE u;
-
-    typedefs = lysp_node_typedefs(node);
-    LY_ARRAY_FOR(typedefs, u) {
-        if (!strcmp(name, typedefs[u].name)) {
-            /* match */
-            return &typedefs[u];
+    if (!name_len) {
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Enum name must not be zero-length.");
+        return LY_EVALID;
+    } else if (isspace(name[0]) || isspace(name[name_len - 1])) {
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Enum name must not have any leading or trailing whitespaces (\"%.*s\").",
+                (int)name_len, name);
+        return LY_EVALID;
+    } else {
+        for (size_t u = 0; u < name_len; ++u) {
+            if (iscntrl(name[u])) {
+                LOGWRN(PARSER_CTX(ctx), "Control characters in enum name should be avoided (\"%.*s\", character number %d).",
+                        (int)name_len, name, u + 1);
+                break;
+            }
         }
     }
 
-    return NULL;
+    return LY_SUCCESS;
 }
 
-static const struct lysp_node_grp *
-lysp_grouping_match(const char *name, struct lysp_node *node)
-{
-    const struct lysp_node_grp *groupings, *grp_iter;
-
-    groupings = lysp_node_groupings(node);
-    LY_LIST_FOR(groupings, grp_iter) {
-        if (!strcmp(name, grp_iter->name)) {
-            /* match */
-            return grp_iter;
-        }
-    }
-
-    return NULL;
-}
-
+/**
+ * @brief Learn built-in type from its name.
+ *
+ * @param[in] name Type name.
+ * @param[in] len Length of @p name.
+ * @return Built-in data type, ::LY_TYPE_UNKNOWN if none matches.
+ */
 static LY_DATA_TYPE
 lysp_type_str2builtin(const char *name, size_t len)
 {
@@ -227,12 +314,34 @@ lysp_type_str2builtin(const char *name, size_t len)
     return LY_TYPE_UNKNOWN;
 }
 
+/**
+ * @brief Find a typedef in a sized array.
+ *
+ * @param[in] name Typedef name.
+ * @param[in] typedefs Sized array of typedefs.
+ * @return Found typedef, NULL if none.
+ */
+static const struct lysp_tpdf *
+lysp_typedef_match(const char *name, const struct lysp_tpdf *typedefs)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    LY_ARRAY_FOR(typedefs, u) {
+        if (!strcmp(name, typedefs[u].name)) {
+            /* match */
+            return &typedefs[u];
+        }
+    }
+    return NULL;
+}
+
 LY_ERR
 lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_module *start_module,
-        LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node)
+        const struct lysc_ext_instance *ext, LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node)
 {
     const char *str, *name;
     struct lysp_tpdf *typedefs;
+    const struct lysp_tpdf *ext_typedefs;
     const struct lys_module *mod;
     const struct lysp_module *local_module;
     LY_ARRAY_COUNT_TYPE u, v;
@@ -262,16 +371,25 @@ lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_m
     }
     LY_CHECK_RET(!local_module, LY_ENOTFOUND);
 
-    if (start_node && (local_module == start_module)) {
-        /* search typedefs in parent's nodes */
-        *node = start_node;
-        while (*node) {
-            *tpdf = lysp_type_match(name, *node);
-            if (*tpdf) {
+    if (local_module == start_module) {
+        if (start_node) {
+            /* search typedefs in parent's nodes */
+            for (*node = start_node; *node; *node = (*node)->parent) {
+                *tpdf = lysp_typedef_match(name, lysp_node_typedefs(*node));
+                if (*tpdf) {
+                    /* match */
+                    return LY_SUCCESS;
+                }
+            }
+        }
+
+        if (ext) {
+            /* search typedefs directly in the extension */
+            lyplg_ext_parsed_get_storage(ext, LY_STMT_TYPEDEF, sizeof ext_typedefs, (const void **)&ext_typedefs);
+            if ((*tpdf = lysp_typedef_match(name, ext_typedefs))) {
                 /* match */
                 return LY_SUCCESS;
             }
-            *node = (*node)->parent;
         }
     }
 
@@ -304,29 +422,6 @@ lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_m
     return LY_ENOTFOUND;
 }
 
-LY_ERR
-lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_len)
-{
-    if (!name_len) {
-        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Enum name must not be zero-length.");
-        return LY_EVALID;
-    } else if (isspace(name[0]) || isspace(name[name_len - 1])) {
-        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Enum name must not have any leading or trailing whitespaces (\"%.*s\").",
-                (int)name_len, name);
-        return LY_EVALID;
-    } else {
-        for (size_t u = 0; u < name_len; ++u) {
-            if (iscntrl(name[u])) {
-                LOGWRN(PARSER_CTX(ctx), "Control characters in enum name should be avoided (\"%.*s\", character number %d).",
-                        (int)name_len, name, u + 1);
-                break;
-            }
-        }
-    }
-
-    return LY_SUCCESS;
-}
-
 /**
  * @brief Insert @p name to hash table and if @p name has already
  * been added, then log an error.
@@ -342,7 +437,7 @@ lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_l
  * @return LY_ERR, but LY_EEXIST is mapped to LY_EVALID.
  */
 static LY_ERR
-lysp_check_dup_ht_insert(struct lys_parser_ctx *ctx, struct hash_table *ht,
+lysp_check_dup_ht_insert(struct lysp_ctx *ctx, struct hash_table *ht,
         const char *name, const char *statement, const char *err_detail)
 {
     LY_ERR ret;
@@ -373,7 +468,7 @@ lysp_check_dup_ht_insert(struct lys_parser_ctx *ctx, struct hash_table *ht,
  * @return LY_EVALID in case of collision, LY_SUCCESS otherwise.
  */
 static LY_ERR
-lysp_check_dup_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const struct lysp_tpdf *tpdf,
+lysp_check_dup_typedef(struct lysp_ctx *ctx, struct lysp_node *node, const struct lysp_tpdf *tpdf,
         struct hash_table *tpdfs_global)
 {
     struct lysp_node *parent;
@@ -410,7 +505,7 @@ lysp_check_dup_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const
         }
         /* search typedefs in parent's nodes */
         for (parent = node->parent; parent; parent = parent->parent) {
-            if (lysp_type_match(name, parent)) {
+            if (lysp_typedef_match(name, lysp_node_typedefs(parent))) {
                 LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG,
                         "Duplicate identifier \"%s\" of typedef statement - name collision with another scoped type.", name);
                 return LY_EVALID;
@@ -453,7 +548,7 @@ lysp_id_cmp(void *val1, void *val2, ly_bool UNUSED(mod), void *UNUSED(cb_data))
 }
 
 LY_ERR
-lysp_check_dup_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod)
+lysp_check_dup_typedefs(struct lysp_ctx *ctx, struct lysp_module *mod)
 {
     struct hash_table *ids_global;
     const struct lysp_tpdf *typedefs;
@@ -486,6 +581,22 @@ cleanup:
     return ret;
 }
 
+static const struct lysp_node_grp *
+lysp_grouping_match(const char *name, struct lysp_node *node)
+{
+    const struct lysp_node_grp *groupings, *grp_iter;
+
+    groupings = lysp_node_groupings(node);
+    LY_LIST_FOR(groupings, grp_iter) {
+        if (!strcmp(name, grp_iter->name)) {
+            /* match */
+            return grp_iter;
+        }
+    }
+
+    return NULL;
+}
+
 /**
  * @brief Check name of a new grouping to avoid name collisions.
  *
@@ -497,7 +608,7 @@ cleanup:
  * @return LY_EVALID in case of collision, LY_SUCCESS otherwise.
  */
 static LY_ERR
-lysp_check_dup_grouping(struct lys_parser_ctx *ctx, struct lysp_node *node, const struct lysp_node_grp *grp,
+lysp_check_dup_grouping(struct lysp_ctx *ctx, struct lysp_node *node, const struct lysp_node_grp *grp,
         struct hash_table *grps_global)
 {
     struct lysp_node *parent;
@@ -552,7 +663,7 @@ lysp_check_dup_grouping(struct lys_parser_ctx *ctx, struct lysp_node *node, cons
 }
 
 LY_ERR
-lysp_check_dup_groupings(struct lys_parser_ctx *ctx, struct lysp_module *mod)
+lysp_check_dup_groupings(struct lysp_ctx *ctx, struct lysp_module *mod)
 {
     struct hash_table *ids_global;
     const struct lysp_node_grp *groupings, *grp_iter;
@@ -593,7 +704,7 @@ ly_ptrequal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_
 }
 
 LY_ERR
-lysp_check_dup_features(struct lys_parser_ctx *ctx, struct lysp_module *mod)
+lysp_check_dup_features(struct lysp_ctx *ctx, struct lysp_module *mod)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct hash_table *ht;
@@ -625,7 +736,7 @@ cleanup:
 }
 
 LY_ERR
-lysp_check_dup_identities(struct lys_parser_ctx *ctx, struct lysp_module *mod)
+lysp_check_dup_identities(struct lysp_ctx *ctx, struct lysp_module *mod)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct hash_table *ht;
@@ -756,7 +867,7 @@ lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct
  * @return LY_ERR on error.
  */
 static LY_ERR
-lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, struct lys_parser_ctx *main_ctx,
+lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, struct lysp_ctx *main_ctx,
         const char *main_name, ly_bool required, struct ly_set *new_mods, void **result)
 {
     struct ly_in *in;
@@ -810,10 +921,8 @@ cleanup:
  * @param[in] ctx libyang context where to work.
  * @param[in] name Name of module to load.
  * @param[in] revision Revision of module to load.
- * @param[in] mod_latest Module with the latest revision found in
- * context and the searchdirs should be searched, otherwise set to NULL.
- * @param[in,out] new_mods Set of all the new mods added to the context.
- * Includes this module and all of its imports.
+ * @param[in] mod_latest Module with the latest revision found in context, otherwise set to NULL.
+ * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
  * @param[out] mod Loaded module.
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
@@ -829,30 +938,46 @@ lys_parse_load_from_clb_or_file(struct ly_ctx *ctx, const char *name, const char
     struct lysp_load_module_check_data check_data = {0};
     struct ly_in *in;
 
-    /* Module not present in the context, get the input data and parse it. */
+    *mod = NULL;
+
+    if (mod_latest && (!ctx->imp_clb || (mod_latest->latest_revision & LYS_MOD_LATEST_IMPCLB)) &&
+            ((ctx->flags & LY_CTX_DISABLE_SEARCHDIRS) || (mod_latest->latest_revision & LYS_MOD_LATEST_SEARCHDIRS))) {
+        /* we are not able to find a newer revision */
+        return LY_SUCCESS;
+    }
+
     if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
 search_clb:
-        if (ctx->imp_clb && !ctx->imp_clb(name, revision, NULL, NULL, ctx->imp_clb_data, &format, &module_data,
-                &module_data_free)) {
-            LY_CHECK_RET(ly_in_new_memory(module_data, &in));
-            check_data.name = name;
-            check_data.revision = revision;
-            lys_parse_in(ctx, in, format, lysp_load_module_check, &check_data, new_mods, mod);
-            ly_in_free(in, 0);
-            if (module_data_free) {
-                module_data_free((void *)module_data, ctx->imp_clb_data);
+        /* check there is a callback and should be called */
+        if (ctx->imp_clb && (!mod_latest || !(mod_latest->latest_revision & LYS_MOD_LATEST_IMPCLB))) {
+            if (!ctx->imp_clb(name, revision, NULL, NULL, ctx->imp_clb_data, &format, &module_data, &module_data_free)) {
+                LY_CHECK_RET(ly_in_new_memory(module_data, &in));
+                check_data.name = name;
+                check_data.revision = revision;
+                lys_parse_in(ctx, in, format, lysp_load_module_check, &check_data, new_mods, mod);
+                ly_in_free(in, 0);
+                if (module_data_free) {
+                    module_data_free((void *)module_data, ctx->imp_clb_data);
+                }
             }
         }
-        if (!(*mod) && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+        if (*mod && !revision) {
+            /* we got the latest revision module from the callback */
+            (*mod)->latest_revision |= LYS_MOD_LATEST_IMPCLB;
+        } else if (!*mod && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
             goto search_file;
         }
     } else {
 search_file:
-        if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
-            /* Module was not received from the callback or there is no callback set. */
+        /* check we can use searchdirs and that we should */
+        if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS) &&
+                (!mod_latest || !(mod_latest->latest_revision & LYS_MOD_LATEST_SEARCHDIRS))) {
             lys_parse_localfile(ctx, name, revision, NULL, NULL, mod_latest ? 0 : 1, new_mods, (void **)mod);
         }
-        if (!*mod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+        if (*mod && !revision) {
+            /* we got the latest revision module in the searchdirs */
+            (*mod)->latest_revision |= LYS_MOD_LATEST_IMPCLB;
+        } else if (!*mod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
             goto search_clb;
         }
     }
@@ -869,17 +994,13 @@ search_file:
  *
  * @param[in] ctx libyang context where module is searched.
  * @param[in] name Name of the searched module.
- * @param[out] keep_search Flag set to 1 if searchpaths or module
- * callback must be searched to obtain latest available revision.
  * @return Found module from context or NULL.
  */
 static struct lys_module *
-lys_get_module_without_revision(struct ly_ctx *ctx, const char *name, ly_bool *keep_search)
+lys_get_module_without_revision(struct ly_ctx *ctx, const char *name)
 {
     struct lys_module *mod, *mod_impl;
     uint32_t index;
-
-    *keep_search = 0;
 
     /* Try to find module with LYS_MOD_IMPORTED_REV flag. */
     index = 0;
@@ -892,8 +1013,7 @@ lys_get_module_without_revision(struct ly_ctx *ctx, const char *name, ly_bool *k
     /* Try to find the implemented module. */
     mod_impl = ly_ctx_get_module_implemented(ctx, name);
     if (mod && mod_impl) {
-        LOGVRB("Implemented module \"%s@%s\" is not used for import, "
-                "revision \"%s\" is imported instead.",
+        LOGVRB("Implemented module \"%s@%s\" is not used for import, revision \"%s\" is imported instead.",
                 mod_impl->name, mod_impl->revision, mod->revision);
         return mod;
     } else if (mod_impl) {
@@ -902,7 +1022,6 @@ lys_get_module_without_revision(struct ly_ctx *ctx, const char *name, ly_bool *k
 
     /* Try to find the latest module in the current context. */
     mod = ly_ctx_get_module_latest(ctx, name);
-    *keep_search = 1;
 
     return mod;
 }
@@ -932,7 +1051,6 @@ LY_ERR
 lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struct ly_set *new_mods,
         struct lys_module **mod)
 {
-    ly_bool keep_search;
     struct lys_module *mod_latest = NULL;
 
     assert(mod && new_mods);
@@ -944,9 +1062,9 @@ lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struc
         /* Get the specific revision. */
         *mod = ly_ctx_get_module(ctx, name, revision);
     } else {
-        /* Get the requested module of the latest revision in the context. */
-        *mod = lys_get_module_without_revision(ctx, name, &keep_search);
-        if (keep_search) {
+        /* Get the requested module in a suitable revision in the context. */
+        *mod = lys_get_module_without_revision(ctx, name);
+        if (*mod && !(*mod)->implemented && !((*mod)->latest_revision & LYS_MOD_IMPORTED_REV)) {
             /* Let us now search with callback and searchpaths to check
              * if there is newer revision outside the context.
              */
@@ -957,9 +1075,7 @@ lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struc
 
     if (!*mod) {
         /* No suitable module in the context, try to load it. */
-        LY_CHECK_RET(lys_parse_load_from_clb_or_file(ctx, name, revision,
-                mod_latest, new_mods, mod));
-
+        LY_CHECK_RET(lys_parse_load_from_clb_or_file(ctx, name, revision, mod_latest, new_mods, mod));
         if (!*mod && !mod_latest) {
             LOGVAL(ctx, LYVE_REFERENCE, "Loading \"%s\" module failed.", name);
             return LY_EVALID;
@@ -986,7 +1102,7 @@ lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struc
 }
 
 LY_ERR
-lysp_check_stringchar(struct lys_parser_ctx *ctx, uint32_t c)
+lysp_check_stringchar(struct lysp_ctx *ctx, uint32_t c)
 {
     if (!is_yangutf8char(c)) {
         LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, c);
@@ -996,14 +1112,18 @@ lysp_check_stringchar(struct lys_parser_ctx *ctx, uint32_t c)
 }
 
 LY_ERR
-lysp_check_identifierchar(struct lys_parser_ctx *ctx, uint32_t c, ly_bool first, uint8_t *prefix)
+lysp_check_identifierchar(struct lysp_ctx *ctx, uint32_t c, ly_bool first, uint8_t *prefix)
 {
     if (first || (prefix && ((*prefix) == 1))) {
         if (!is_yangidentstartchar(c)) {
             if ((c < UCHAR_MAX) && isprint(c)) {
-                LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier first character '%c' (0x%04x).", (char)c, c);
+                if (ctx) {
+                    LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier first character '%c' (0x%04x).", (char)c, c);
+                }
             } else {
-                LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier first character 0x%04x.", c);
+                if (ctx) {
+                    LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier first character 0x%04x.", c);
+                }
             }
             return LY_EVALID;
         }
@@ -1017,7 +1137,9 @@ lysp_check_identifierchar(struct lys_parser_ctx *ctx, uint32_t c, ly_bool first,
     } else if ((c == ':') && prefix && ((*prefix) == 0)) {
         (*prefix) = 1;
     } else if (!is_yangidentchar(c)) {
-        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier character '%c' (0x%04x).", (char)c, c);
+        if (ctx) {
+            LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier character '%c' (0x%04x).", (char)c, c);
+        }
         return LY_EVALID;
     }
 
@@ -1035,10 +1157,10 @@ lysp_check_identifierchar(struct lys_parser_ctx *ctx, uint32_t c, ly_bool first,
  * @return LY_EVALID - YANG rule violation
  */
 static LY_ERR
-lysp_get_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc)
+lysp_main_pmod_get_submodule(struct lysp_ctx *pctx, struct lysp_include *inc)
 {
     LY_ARRAY_COUNT_TYPE i;
-    struct lysp_module *main_pmod = pctx->parsed_mod->mod->parsed;
+    struct lysp_module *main_pmod = PARSER_CUR_PMOD(pctx)->mod->parsed;
 
     LY_ARRAY_FOR(main_pmod->includes, i) {
         if (strcmp(main_pmod->includes[i].name, inc->name)) {
@@ -1048,7 +1170,7 @@ lysp_get_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc)
         if (inc->rev[0] && strncmp(inc->rev, main_pmod->includes[i].rev, LY_REV_SIZE)) {
             LOGVAL(PARSER_CTX(pctx), LYVE_REFERENCE,
                     "Submodule %s includes different revision (%s) of the submodule %s:%s included by the main module %s.",
-                    ((struct lysp_submodule *)pctx->parsed_mod)->name, inc->rev,
+                    ((struct lysp_submodule *)PARSER_CUR_PMOD(pctx))->name, inc->rev,
                     main_pmod->includes[i].name, main_pmod->includes[i].rev, main_pmod->mod->name);
             return LY_EVALID;
         }
@@ -1061,11 +1183,51 @@ lysp_get_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc)
         LOGVAL(PARSER_CTX(pctx), LYVE_REFERENCE,
                 "YANG 1.1 requires all submodules to be included from main module. "
                 "But submodule \"%s\" includes submodule \"%s\" which is not included by main module \"%s\".",
-                ((struct lysp_submodule *)pctx->parsed_mod)->name, inc->name, main_pmod->mod->name);
+                ((struct lysp_submodule *)PARSER_CUR_PMOD(pctx))->name, inc->name, main_pmod->mod->name);
         return LY_EVALID;
     } else {
         return LY_ENOT;
     }
+}
+
+/**
+ * @brief Try to find the parsed submodule in currenlty parsed modules for the given include record.
+ *
+ * @param[in] pctx main parser context
+ * @param[in] inc The include record with missing parsed submodule.
+ * @return LY_SUCCESS - the parsed submodule was found and inserted into the @p inc record
+ * @return LY_ENOT - the parsed module was not found.
+ * @return LY_EVALID - YANG rule violation
+ */
+static LY_ERR
+lysp_parsed_mods_get_submodule(struct lysp_ctx *pctx, struct lysp_include *inc)
+{
+    uint32_t i;
+    struct lysp_submodule *submod;
+
+    for (i = 0; i < pctx->parsed_mods->count - 1; ++i) {
+        submod = pctx->parsed_mods->objs[i];
+        if (!submod->is_submod) {
+            continue;
+        }
+
+        if (strcmp(submod->name, inc->name)) {
+            continue;
+        }
+
+        if (inc->rev[0] && submod->revs && strncmp(inc->rev, submod->revs[0].date, LY_REV_SIZE)) {
+            LOGVAL(PARSER_CTX(pctx), LYVE_REFERENCE,
+                    "Submodule %s includes different revision (%s) of the submodule %s:%s included by the main module %s.",
+                    ((struct lysp_submodule *)PARSER_CUR_PMOD(pctx))->name, inc->rev,
+                    submod->name, submod->revs[0].date, PARSER_CUR_PMOD(pctx)->mod->name);
+            return LY_EVALID;
+        }
+
+        inc->submodule = submod;
+        return LY_SUCCESS;
+    }
+
+    return LY_ENOT;
 }
 
 /**
@@ -1079,11 +1241,11 @@ lysp_get_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc)
  * @return LY_ERR value.
  */
 static LY_ERR
-lysp_inject_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc)
+lysp_inject_submodule(struct lysp_ctx *pctx, struct lysp_include *inc)
 {
     LY_ARRAY_COUNT_TYPE i;
     struct lysp_include *inc_new, *inc_tofill = NULL;
-    struct lysp_module *main_pmod = pctx->parsed_mod->mod->parsed;
+    struct lysp_module *main_pmod = PARSER_CUR_PMOD(pctx)->mod->parsed;
 
     /* first, try to find the corresponding record with missing parsed submodule */
     LY_ARRAY_FOR(main_pmod->includes, i) {
@@ -1111,13 +1273,13 @@ lysp_inject_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc)
 }
 
 LY_ERR
-lysp_load_submodules(struct lys_parser_ctx *pctx, struct lysp_module *pmod, struct ly_set *new_mods)
+lysp_load_submodules(struct lysp_ctx *pctx, struct lysp_module *pmod, struct ly_set *new_mods)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct ly_ctx *ctx = PARSER_CTX(pctx);
 
     LY_ARRAY_FOR(pmod->includes, u) {
-        LY_ERR ret = LY_SUCCESS;
+        LY_ERR ret = LY_SUCCESS, r;
         struct lysp_submodule *submod = NULL;
         struct lysp_include *inc = &pmod->includes[u];
 
@@ -1127,10 +1289,13 @@ lysp_load_submodules(struct lys_parser_ctx *pctx, struct lysp_module *pmod, stru
 
         if (pmod->is_submod) {
             /* try to find the submodule in the main module or its submodules */
-            ret = lysp_get_submodule(pctx, inc);
-            LY_CHECK_RET(ret && ret != LY_ENOT, ret);
-            LY_CHECK_RET(ret == LY_SUCCESS, LY_SUCCESS); /* submodule found in linked with the inc */
+            ret = lysp_main_pmod_get_submodule(pctx, inc);
+            LY_CHECK_RET(ret != LY_ENOT, ret);
         }
+
+        /* try to use currently parsed submodule */
+        r = lysp_parsed_mods_get_submodule(pctx, inc);
+        LY_CHECK_RET(r != LY_ENOT, r);
 
         /* submodule not present in the main module, get the input data and parse it */
         if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
@@ -1138,17 +1303,18 @@ search_clb:
             if (ctx->imp_clb) {
                 const char *submodule_data = NULL;
                 LYS_INFORMAT format = LYS_IN_UNKNOWN;
+
                 void (*submodule_data_free)(void *module_data, void *user_data) = NULL;
                 struct lysp_load_module_check_data check_data = {0};
                 struct ly_in *in;
 
-                if (ctx->imp_clb(pctx->parsed_mod->mod->name, NULL, inc->name,
+                if (ctx->imp_clb(PARSER_CUR_PMOD(pctx)->mod->name, NULL, inc->name,
                         inc->rev[0] ? inc->rev : NULL, ctx->imp_clb_data,
                         &format, &submodule_data, &submodule_data_free) == LY_SUCCESS) {
                     LY_CHECK_RET(ly_in_new_memory(submodule_data, &in));
                     check_data.name = inc->name;
                     check_data.revision = inc->rev[0] ? inc->rev : NULL;
-                    check_data.submoduleof = pctx->parsed_mod->mod->name;
+                    check_data.submoduleof = PARSER_CUR_PMOD(pctx)->mod->name;
                     lys_parse_submodule(ctx, in, format, pctx, lysp_load_module_check, &check_data, new_mods, &submod);
 
                     /* update inc pointer - parsing another (YANG 1.0) submodule can cause injecting
@@ -1168,8 +1334,8 @@ search_clb:
 search_file:
             if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
                 /* submodule was not received from the callback or there is no callback set */
-                lys_parse_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, pctx,
-                        pctx->parsed_mod->mod->name, 1, new_mods, (void **)&submod);
+                lys_parse_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, pctx->main_ctx,
+                        PARSER_CUR_PMOD(pctx->main_ctx)->mod->name, 1, new_mods, (void **)&submod);
 
                 /* update inc pointer - parsing another (YANG 1.0) submodule can cause injecting
                  * submodule's include into main module, where it is missing */
@@ -1194,7 +1360,8 @@ search_file:
         }
         if (!inc->submodule) {
             LOGVAL(ctx, LYVE_REFERENCE, "Including \"%s\" submodule into \"%s\" failed.", inc->name,
-                    pctx->parsed_mod->is_submod ? ((struct lysp_submodule *)pctx->parsed_mod)->name : pctx->parsed_mod->mod->name);
+                    PARSER_CUR_PMOD(pctx)->is_submod ? ((struct lysp_submodule *)PARSER_CUR_PMOD(pctx))->name :
+                    PARSER_CUR_PMOD(pctx)->mod->name);
             return LY_EVALID;
         }
     }
@@ -1202,7 +1369,7 @@ search_file:
     return LY_SUCCESS;
 }
 
-API const struct lysc_when *
+LIBYANG_API_DEF const struct lysc_when *
 lysc_has_when(const struct lysc_node *node)
 {
     struct lysc_when **when;
@@ -1222,7 +1389,7 @@ lysc_has_when(const struct lysc_node *node)
     return NULL;
 }
 
-API const struct lys_module *
+LIBYANG_API_DEF const struct lys_module *
 lysc_owner_module(const struct lysc_node *node)
 {
     if (!node) {
@@ -1233,7 +1400,7 @@ lysc_owner_module(const struct lysc_node *node)
     return node->module;
 }
 
-API const char *
+LIBYANG_API_DEF const char *
 lys_nodetype2str(uint16_t nodetype)
 {
     switch (nodetype) {
@@ -1263,43 +1430,6 @@ lys_nodetype2str(uint16_t nodetype)
         return "uses";
     default:
         return "unknown";
-    }
-}
-
-API enum ly_stmt
-lys_nodetype2stmt(uint16_t nodetype)
-{
-    switch (nodetype) {
-    case LYS_CONTAINER:
-        return LY_STMT_CONTAINER;
-    case LYS_CHOICE:
-        return LY_STMT_CHOICE;
-    case LYS_LEAF:
-        return LY_STMT_LEAF;
-    case LYS_LEAFLIST:
-        return LY_STMT_LEAF_LIST;
-    case LYS_LIST:
-        return LY_STMT_LIST;
-    case LYS_ANYXML:
-        return LY_STMT_ANYXML;
-    case LYS_ANYDATA:
-        return LY_STMT_ANYDATA;
-    case LYS_CASE:
-        return LY_STMT_CASE;
-    case LYS_RPC:
-        return LY_STMT_RPC;
-    case LYS_ACTION:
-        return LY_STMT_ACTION;
-    case LYS_NOTIF:
-        return LY_STMT_NOTIFICATION;
-    case LYS_USES:
-        return LY_STMT_USES;
-    case LYS_INPUT:
-        return LY_STMT_INPUT;
-    case LYS_OUTPUT:
-        return LY_STMT_OUTPUT;
-    default:
-        return LY_STMT_NONE;
     }
 }
 
@@ -1350,7 +1480,7 @@ lys_datatype2str(LY_DATA_TYPE basetype)
     }
 }
 
-API const struct lysp_tpdf *
+LIBYANG_API_DEF const struct lysp_tpdf *
 lysp_node_typedefs(const struct lysp_node *node)
 {
     switch (node->nodetype) {
@@ -1373,7 +1503,7 @@ lysp_node_typedefs(const struct lysp_node *node)
     }
 }
 
-API const struct lysp_node_grp *
+LIBYANG_API_DEF const struct lysp_node_grp *
 lysp_node_groupings(const struct lysp_node *node)
 {
     switch (node->nodetype) {
@@ -1415,7 +1545,7 @@ lysp_node_actions_p(struct lysp_node *node)
     }
 }
 
-API const struct lysp_node_action *
+LIBYANG_API_DEF const struct lysp_node_action *
 lysp_node_actions(const struct lysp_node *node)
 {
     struct lysp_node_action **actions;
@@ -1446,7 +1576,7 @@ lysp_node_notifs_p(struct lysp_node *node)
     }
 }
 
-API const struct lysp_node_notif *
+LIBYANG_API_DEF const struct lysp_node_notif *
 lysp_node_notifs(const struct lysp_node *node)
 {
     struct lysp_node_notif **notifs;
@@ -1486,7 +1616,7 @@ lysp_node_child_p(struct lysp_node *node)
     }
 }
 
-API const struct lysp_node *
+LIBYANG_API_DEF const struct lysp_node *
 lysp_node_child(const struct lysp_node *node)
 {
     struct lysp_node **child;
@@ -1604,7 +1734,7 @@ lysc_node_actions_p(struct lysc_node *node)
     }
 }
 
-API const struct lysc_node_action *
+LIBYANG_API_DEF const struct lysc_node_action *
 lysc_node_actions(const struct lysc_node *node)
 {
     struct lysc_node_action **actions;
@@ -1631,7 +1761,7 @@ lysc_node_notifs_p(struct lysc_node *node)
     }
 }
 
-API const struct lysc_node_notif *
+LIBYANG_API_DEF const struct lysc_node_notif *
 lysc_node_notifs(const struct lysc_node *node)
 {
     struct lysc_node_notif **notifs;
@@ -1668,7 +1798,7 @@ lysc_node_child_p(const struct lysc_node *node)
     }
 }
 
-API const struct lysc_node *
+LIBYANG_API_DEF const struct lysc_node *
 lysc_node_child(const struct lysc_node *node)
 {
     struct lysc_node **child;
@@ -1718,7 +1848,7 @@ lysc_node_musts_p(const struct lysc_node *node)
     }
 }
 
-API struct lysc_must *
+LIBYANG_API_DEF struct lysc_must *
 lysc_node_musts(const struct lysc_node *node)
 {
     struct lysc_must **must_p;
@@ -1764,7 +1894,7 @@ lysc_node_when_p(const struct lysc_node *node)
     }
 }
 
-API struct lysc_when **
+LIBYANG_API_DEF struct lysc_when **
 lysc_node_when(const struct lysc_node *node)
 {
     struct lysc_when ***when_p;
@@ -1775,17 +1905,6 @@ lysc_node_when(const struct lysc_node *node)
     } else {
         return NULL;
     }
-}
-
-struct lys_module *
-lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod)
-{
-    for (uint32_t u = 0; u < ctx->list.count; ++u) {
-        if (((struct lys_module *)ctx->list.objs[u])->parsed == mod) {
-            return (struct lys_module *)ctx->list.objs[u];
-        }
-    }
-    return NULL;
 }
 
 enum ly_stmt
@@ -2017,14 +2136,12 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
 {
     const char *tmp, *name, *prefix;
     size_t pref_len, name_len;
-    LY_ARRAY_COUNT_TYPE v;
+    LY_ARRAY_COUNT_TYPE u, v;
     const struct lys_module *mod = NULL;
+    const struct lysp_submodule *submod;
 
-    assert(ext_def);
-
-    *ext_def = NULL;
-    if (ext_mod) {
-        *ext_mod = NULL;
+    if (ext_def) {
+        *ext_def = NULL;
     }
 
     /* parse the prefix, the nodeid was previously already parsed and checked */
@@ -2032,7 +2149,7 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
     ly_parse_nodeid(&tmp, &prefix, &pref_len, &name, &name_len);
 
     /* get module where the extension definition should be placed */
-    mod = ly_resolve_prefix(ctx, prefix, pref_len, ext->format, ext->prefix_data);
+    *ext_mod = mod = ly_resolve_prefix(ctx, prefix, pref_len, ext->format, ext->prefix_data);
     if (!mod) {
         LOGVAL(ctx, LYVE_REFERENCE, "Invalid prefix \"%.*s\" used for extension instance identifier.", (int)pref_len, prefix);
         return LY_EVALID;
@@ -2042,6 +2159,11 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
         return LY_EVALID;
     }
 
+    if (!ext_def) {
+        /* we are done */
+        return LY_SUCCESS;
+    }
+
     /* find the parsed extension definition there */
     LY_ARRAY_FOR(mod->parsed->extensions, v) {
         if (!strcmp(name, mod->parsed->extensions[v].name)) {
@@ -2049,31 +2171,41 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
             break;
         }
     }
+    if (!*ext_def) {
+        LY_ARRAY_FOR(mod->parsed->includes, u) {
+            submod = mod->parsed->includes[u].submodule;
+            LY_ARRAY_FOR(submod->extensions, v) {
+                if (!strcmp(name, submod->extensions[v].name)) {
+                    *ext_def = &submod->extensions[v];
+                    break;
+                }
+            }
+        }
+    }
 
-    if (!(*ext_def)) {
+    if (!*ext_def) {
         LOGVAL(ctx, LYVE_REFERENCE, "Extension definition of extension instance \"%s\" not found.", ext->name);
         return LY_EVALID;
     }
 
-    if (ext_mod) {
-        *ext_mod = mod;
-    }
     return LY_SUCCESS;
 }
 
 LY_ERR
-lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance *ext_p, struct lysp_ext *ext_def)
+lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance *ext_p)
 {
-    if (!ext_def->argname || ext_p->argument) {
+    assert(ext_p->def);
+
+    if (!ext_p->def->argname || ext_p->argument) {
         /* nothing to do */
         return LY_SUCCESS;
     }
 
     if (ext_p->format == LY_VALUE_XML) {
-        /* Schema was parsed from YIN and an argument is expected, ... */
+        /* schema was parsed from YIN and an argument is expected, ... */
         struct lysp_stmt *stmt = NULL;
 
-        if (ext_def->flags & LYS_YINELEM_TRUE) {
+        if (ext_p->def->flags & LYS_YINELEM_TRUE) {
             /* ... argument was the first XML child element */
             for (stmt = ext_p->child; stmt && (stmt->flags & LYS_YIN_ATTR); stmt = stmt->next) {}
             if (stmt) {
@@ -2084,9 +2216,9 @@ lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance 
 
                 arg = stmt->stmt;
                 ly_parse_nodeid(&arg, &prefix_arg, &prefix_arg_len, &name_arg, &name_arg_len);
-                if (ly_strncmp(ext_def->argname, name_arg, name_arg_len)) {
+                if (ly_strncmp(ext_p->def->argname, name_arg, name_arg_len)) {
                     LOGVAL(ctx, LYVE_SEMANTICS, "Extension instance \"%s\" expects argument element \"%s\" as its first XML child, "
-                            "but \"%.*s\" element found.", ext_p->name, ext_def->argname, (int)name_arg_len, name_arg);
+                            "but \"%.*s\" element found.", ext_p->name, ext_p->def->argname, (int)name_arg_len, name_arg);
                     return LY_EVALID;
                 }
 
@@ -2098,15 +2230,14 @@ lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance 
                 if (ly_resolve_prefix(ctx, prefix_ext, prefix_ext_len, ext_p->format, ext_p->prefix_data) !=
                         ly_resolve_prefix(ctx, prefix_arg, prefix_arg_len, stmt->format, stmt->prefix_data)) {
                     LOGVAL(ctx, LYVE_SEMANTICS, "Extension instance \"%s\" element and its argument element \"%s\" are "
-                            "expected in the same namespace, but they differ.", ext_p->name, ext_def->argname);
+                            "expected in the same namespace, but they differ.", ext_p->name, ext_p->def->argname);
                     return LY_EVALID;
                 }
             }
         } else {
-            /* ... argument was one of the XML attributes which are represented as child stmt
-             * with LYS_YIN_ATTR flag */
+            /* ... argument was one of the XML attributes which are represented as child stmt with LYS_YIN_ATTR flag */
             for (stmt = ext_p->child; stmt && (stmt->flags & LYS_YIN_ATTR); stmt = stmt->next) {
-                if (!strcmp(stmt->stmt, ext_def->argname)) {
+                if (!strcmp(stmt->stmt, ext_p->def->argname)) {
                     /* this is the extension's argument */
                     break;
                 }
@@ -2121,8 +2252,8 @@ lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance 
 
     if (!ext_p->argument) {
         /* missing extension's argument */
-        LOGVAL(ctx, LYVE_SEMANTICS, "Extension instance \"%s\" misses argument %s\"%s\".",
-                ext_p->name, (ext_def->flags & LYS_YINELEM_TRUE) ? "element " : "", ext_def->argname);
+        LOGVAL(ctx, LYVE_SEMANTICS, "Extension instance \"%s\" missing argument %s\"%s\".",
+                ext_p->name, (ext_p->def->flags & LYS_YINELEM_TRUE) ? "element " : "", ext_p->def->argname);
         return LY_EVALID;
     }
 
@@ -2143,7 +2274,7 @@ lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_COUNT_TYPE index,
     return LY_ARRAY_COUNT(ext);
 }
 
-const struct lysc_node *
+LIBYANG_API_DEF const struct lysc_node *
 lysc_data_node(const struct lysc_node *schema)
 {
     const struct lysc_node *parent;
@@ -2194,16 +2325,31 @@ lys_has_compiled(const struct lys_module *mod)
 }
 
 ly_bool
-lys_has_groupings(const struct lys_module *mod)
+lys_has_dep_mods(const struct lys_module *mod)
 {
     LY_ARRAY_COUNT_TYPE u;
 
-    if (mod->parsed->groupings) {
+    /* features */
+    if (mod->parsed->features) {
         return 1;
     }
 
+    /* groupings */
+    if (mod->parsed->groupings) {
+        return 1;
+    }
     LY_ARRAY_FOR(mod->parsed->includes, u) {
         if (mod->parsed->includes[u].submodule->groupings) {
+            return 1;
+        }
+    }
+
+    /* augments (adding nodes with leafrefs) */
+    if (mod->parsed->augments) {
+        return 1;
+    }
+    LY_ARRAY_FOR(mod->parsed->includes, u) {
+        if (mod->parsed->includes[u].submodule->augments) {
             return 1;
         }
     }

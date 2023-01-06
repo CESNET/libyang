@@ -1,9 +1,10 @@
 /**
  * @file schema_compile_amend.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Header for schema compilation of augments, deviations, and refines.
  *
- * Copyright (c) 2015 - 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -34,6 +35,7 @@ struct lysc_augment {
     const struct lysp_module *aug_pmod;          /**< module where the augment is defined, for top-level augments
                                                       used to resolve prefixes, for uses augments used as the context pmod */
     const struct lysc_node *nodeid_ctx_node;     /**< nodeid context node for relative targets */
+    const struct lysp_ext_instance *ext;         /**< parent extension instance, in case the augment is from one */
 
     struct lysp_node_augment *aug_p;             /**< pointer to the parsed augment to apply */
 };
@@ -79,11 +81,11 @@ LY_ERR lys_precompile_uses_augments_refines(struct lysc_ctx *ctx, struct lysp_no
  * @brief Duplicate qname structure.
  *
  * @param[in] ctx libyang context.
- * @param[in,out] qname Structure to fill.
  * @param[in] orig_qname Structure to read from.
+ * @param[in,out] qname Structure to fill.
  * @return LY_ERR value.
  */
-LY_ERR lysp_qname_dup(const struct ly_ctx *ctx, struct lysp_qname *qname, const struct lysp_qname *orig_qname);
+LY_ERR lysp_qname_dup(const struct ly_ctx *ctx, const struct lysp_qname *orig_qname, struct lysp_qname *qname);
 
 /**
  * @brief Free a compiled augment temporary structure.
@@ -115,7 +117,7 @@ void lysc_refine_free(const struct ly_ctx *ctx, struct lysc_refine *rfn);
  * @param[in] ctx libyang context.
  * @param[in] dev_pnode Parsed node to free.
  */
-void lysp_dev_node_free(const struct ly_ctx *ctx, struct lysp_node *dev_pnode);
+void lysp_dev_node_free(struct lysc_ctx *cctx, struct lysp_node *dev_pnode);
 
 /**
  * @brief Compile and apply any precompiled deviations and refines targeting a node.

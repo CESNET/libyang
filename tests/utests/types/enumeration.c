@@ -74,21 +74,21 @@ test_data_xml(void **state)
     /* disabled feature */
     TEST_ERROR_XML("defs", "l1", "yellow");
     CHECK_LOG_CTX("Invalid enumeration value \"yellow\".",
-            "Schema location /defs:l1, line number 1.");
+            "Schema location \"/defs:l1\", line number 1.");
 
     /* leading/trailing whitespaces */
     TEST_ERROR_XML("defs", "l1", " white");
     CHECK_LOG_CTX("Invalid enumeration value \" white\".",
-            "Schema location /defs:l1, line number 1.");
+            "Schema location \"/defs:l1\", line number 1.");
 
     TEST_ERROR_XML("defs", "l1", "white\n");
     CHECK_LOG_CTX("Invalid enumeration value \"white\n\".",
-            "Schema location /defs:l1, line number 2.");
+            "Schema location \"/defs:l1\", line number 2.");
 
     /* invalid value */
     TEST_ERROR_XML("defs", "l1", "black");
     CHECK_LOG_CTX("Invalid enumeration value \"black\".",
-            "Schema location /defs:l1, line number 1.");
+            "Schema location \"/defs:l1\", line number 1.");
 }
 
 static void

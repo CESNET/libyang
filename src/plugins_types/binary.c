@@ -69,7 +69,7 @@ binary_base64_encode(const struct ly_ctx *ctx, const char *data, size_t size, ch
     }
 
     ptr = *str;
-    for (i = 0; i < size - 2; i += 3) {
+    for (i = 0; i + 2 < size; i += 3) {
         *ptr++ = b64_etable[(data[i] >> 2) & 0x3F];
         *ptr++ = b64_etable[((data[i] & 0x3) << 4) | ((int)(data[i + 1] & 0xF0) >> 4)];
         *ptr++ = b64_etable[((data[i + 1] & 0xF) << 2) | ((int)(data[i + 2] & 0xC0) >> 6)];
@@ -139,12 +139,14 @@ binary_base64_decode(const char *value, size_t value_len, void **data, size_t *s
 
     for (uint32_t i = 0, j = 0; i < octet_count; i += 4) {
         int n = b64_dtable[ptr[i]] << 18 | b64_dtable[ptr[i + 1]] << 12 | b64_dtable[ptr[i + 2]] << 6 | b64_dtable[ptr[i + 3]];
+
         str[j++] = n >> 16;
         str[j++] = n >> 8 & 0xFF;
         str[j++] = n & 0xFF;
     }
     if (pad_chars) {
         int n = b64_dtable[ptr[octet_count]] << 18 | b64_dtable[ptr[octet_count + 1]] << 12;
+
         str[*size - pad_chars] = n >> 16;
 
         if (pad_chars == 2) {
@@ -205,13 +207,59 @@ binary_base64_validate(const char *value, size_t value_len, const struct lysc_ty
     /* length restriction of the binary value */
     if (type->length) {
         const uint32_t octet_count = ((idx + pad) / 4) * 3 - pad;
+
         LY_CHECK_RET(lyplg_type_validate_range(LY_TYPE_BINARY, type->length, octet_count, value, value_len, err));
     }
 
     return LY_SUCCESS;
 }
 
-API LY_ERR
+/**
+ * @brief Remove all newlines from a base64 string if present.
+ *
+ * @param[in,out] value Value, may be dynamic and modified.
+ * @param[in,out] value_len Length of @p value, is updated.
+ * @param[in,out] options Type options, are updated.
+ * @param[out] err Error information.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+binary_base64_newlines(char **value, size_t *value_len, uint32_t *options, struct ly_err_item **err)
+{
+    char *val;
+    size_t len;
+
+    if ((*value_len < 65) || ((*value)[64] != '\n')) {
+        /* no newlines */
+        return LY_SUCCESS;
+    }
+
+    if (!(*options & LYPLG_TYPE_STORE_DYNAMIC)) {
+        /* make the value dynamic so we can modify it */
+        *value = strndup(*value, *value_len);
+        LY_CHECK_RET(!*value, LY_EMEM);
+        *options |= LYPLG_TYPE_STORE_DYNAMIC;
+    }
+
+    val = *value;
+    len = *value_len;
+    while (len > 64) {
+        if (val[64] != '\n') {
+            /* missing, error */
+            return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Newlines are expected every 64 Base64 characters.");
+        }
+
+        /* remove the newline */
+        memmove(val + 64, val + 65, len - 64);
+        --(*value_len);
+        val += 64;
+        len -= 65;
+    }
+
+    return LY_SUCCESS;
+}
+
+LIBYANG_API_DEF LY_ERR
 lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
@@ -252,8 +300,12 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
     ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret, cleanup);
 
-    /* validate */
     if (format != LY_VALUE_CANON) {
+        /* accept newline every 64 characters (PEM data) */
+        ret = binary_base64_newlines((char **)&value, &value_len, &options, err);
+        LY_CHECK_GOTO(ret, cleanup);
+
+        /* validate */
         ret = binary_base64_validate(value, value_len, type_bin, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
@@ -283,7 +335,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyplg_type_compare_binary(const struct lyd_value *val1, const struct lyd_value *val2)
 {
     struct lyd_value_binary *v1, *v2;
@@ -301,7 +353,7 @@ lyplg_type_compare_binary(const struct lyd_value *val1, const struct lyd_value *
     return LY_SUCCESS;
 }
 
-API const void *
+LIBYANG_API_DEF const void *
 lyplg_type_print_binary(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
 {
@@ -343,7 +395,7 @@ lyplg_type_print_binary(const struct ly_ctx *ctx, const struct lyd_value *value,
     return value->_canonical;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyplg_type_dup_binary(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_ERR ret;
@@ -373,7 +425,7 @@ error:
     return ret;
 }
 
-API void
+LIBYANG_API_DEF void
 lyplg_type_free_binary(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     struct lyd_value_binary *val;

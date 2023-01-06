@@ -117,7 +117,7 @@ test_schema(void **state)
             "}\n";
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, &mod));
     assert_null(mod->compiled->exts);
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - yang-data, version 1\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 yang-data v1\": "
             "Extension rc:yang-data is ignored since it appears as a non top-level statement in \"container\" statement.",
             "/b:b/{extension='rc:yang-data'}/template");
     assert_int_equal(LY_SUCCESS, lys_print_mem(&printed, mod, LYS_OUT_YANG_COMPILED, 0));
@@ -174,7 +174,7 @@ test_schema_invalid(void **state)
             "import ietf-restconf {revision-date 2017-01-26; prefix rc;}"
             "rc:yang-data template { choice x { leaf x {type string;}}}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - yang-data, version 1\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 yang-data v1\": "
             "Extension rc:yang-data is instantiated with leaf top level data node (inside a choice), "
             "but only a single container data node is allowed.",
             "/a:{extension='rc:yang-data'}/template");
@@ -183,7 +183,7 @@ test_schema_invalid(void **state)
             "import ietf-restconf {revision-date 2017-01-26; prefix rc;}"
             "rc:yang-data template { choice x { case x { container z {presence ppp;} leaf x {type string;}}}}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - yang-data, version 1\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 yang-data v1\": "
             "Extension rc:yang-data is instantiated with multiple top level data nodes (inside a single choice's case), "
             "but only a single container data node is allowed.",
             "/a:{extension='rc:yang-data'}/template");
@@ -192,7 +192,7 @@ test_schema_invalid(void **state)
             "import ietf-restconf {revision-date 2017-01-26; prefix rc;}"
             "rc:yang-data template { container x { leaf x {type string;}} container y { leaf y {type string;}}}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - yang-data, version 1\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 yang-data v1\": "
             "Extension rc:yang-data is instantiated with multiple top level data nodes, "
             "but only a single container data node is allowed.",
             "/a:{extension='rc:yang-data'}/template");
@@ -201,7 +201,7 @@ test_schema_invalid(void **state)
             "import ietf-restconf {revision-date 2017-01-26; prefix rc;}"
             "rc:yang-data template;}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - yang-data, version 1\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 yang-data v1\": "
             "Extension rc:yang-data is instantiated without any top level data node, "
             "but exactly one container data node is expected.",
             "/a:{extension='rc:yang-data'}/template");
@@ -210,15 +210,15 @@ test_schema_invalid(void **state)
             "import ietf-restconf {revision-date 2017-01-26; prefix rc;}"
             "rc:yang-data { container x { leaf x {type string;}}}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Extension instance \"rc:yang-data\" misses argument element \"name\".",
-            "/a:{extension='rc:yang-data'}");
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Extension instance \"rc:yang-data\" missing argument element \"name\".", NULL);
 
     data = "module a {yang-version 1.1; namespace urn:tests:extensions:yangdata:a; prefix self;"
             "import ietf-restconf {revision-date 2017-01-26; prefix rc;}"
             "rc:yang-data template { container x { leaf x {type string;}}}"
             "rc:yang-data template { container y { leaf y {type string;}}}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - yang-data, version 1\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 yang-data v1\": "
             "Extension rc:yang-data is instantiated multiple times.",
             "/a:{extension='rc:yang-data'}/template");
 
@@ -227,14 +227,14 @@ test_schema_invalid(void **state)
             "grouping t { leaf-list x {type string;}}"
             "rc:yang-data template { uses t;}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - yang-data, version 1\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 yang-data v1\": "
             "Extension rc:yang-data is instantiated with leaf-list top level data node, "
             "but only a single container data node is allowed.",
             "/a:{extension='rc:yang-data'}/template");
 }
 
 static void
-test_data(void **state)
+test_parse(void **state)
 {
     struct lys_module *mod;
     struct lysc_ext_instance *e;
@@ -266,7 +266,7 @@ main(void)
     const struct CMUnitTest tests[] = {
         UTEST(test_schema, setup),
         UTEST(test_schema_invalid, setup),
-        UTEST(test_data, setup),
+        UTEST(test_parse, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

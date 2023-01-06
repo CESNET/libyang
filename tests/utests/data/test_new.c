@@ -105,13 +105,13 @@ test_top_level(void **state)
     lyd_free_tree(node);
 
     assert_int_equal(lyd_new_list2(NULL, mod, "l1", "[]", 0, &node), LY_EVALID);
-    CHECK_LOG_CTX("Unexpected XPath token \"]\" (\"]\").", "Schema location /a:l1.");
+    CHECK_LOG_CTX("Unexpected XPath token \"]\" (\"]\").", "Schema location \"/a:l1\".");
 
     assert_int_equal(lyd_new_list2(NULL, mod, "l1", "[key1='a'][key2='b']", 0, &node), LY_ENOTFOUND);
-    CHECK_LOG_CTX("Not found node \"key1\" in path.", "Schema location /a:l1.");
+    CHECK_LOG_CTX("Not found node \"key1\" in path.", "Schema location \"/a:l1\".");
 
     assert_int_equal(lyd_new_list2(NULL, mod, "l1", "[a='a'][b='b'][c='c']", 0, &node), LY_EVALID);
-    CHECK_LOG_CTX("Key expected instead of leaf \"c\" in path.", "Schema location /a:l1.");
+    CHECK_LOG_CTX("Key expected instead of leaf \"c\" in path.", "Schema location \"/a:l1\".");
 
     assert_int_equal(lyd_new_list2(NULL, mod, "c", "[a='a'][b='b']", 0, &node), LY_ENOTFOUND);
     CHECK_LOG_CTX("List node \"c\" not found.", NULL);
@@ -130,7 +130,7 @@ test_top_level(void **state)
 
     /* leaf */
     assert_int_equal(lyd_new_term(NULL, mod, "foo", "[a='a'][b='b'][c='c']", 0, &node), LY_EVALID);
-    CHECK_LOG_CTX("Invalid uint16 value \"[a='a'][b='b'][c='c']\".", "Schema location /a:foo.");
+    CHECK_LOG_CTX("Invalid type uint16 value \"[a='a'][b='b'][c='c']\".", "Schema location \"/a:foo\".");
 
     assert_int_equal(lyd_new_term(NULL, mod, "c", "value", 0, &node), LY_ENOTFOUND);
     CHECK_LOG_CTX("Term node \"c\" not found.", NULL);
@@ -147,10 +147,10 @@ test_top_level(void **state)
     lyd_free_tree(node);
 
     assert_int_equal(lyd_new_inner(NULL, mod, "l1", 0, &node), LY_ENOTFOUND);
-    CHECK_LOG_CTX("Inner node (not a list) \"l1\" not found.", NULL);
+    CHECK_LOG_CTX("Inner node (container, notif, RPC, or action) \"l1\" not found.", NULL);
 
     assert_int_equal(lyd_new_inner(NULL, mod, "l2", 0, &node), LY_ENOTFOUND);
-    CHECK_LOG_CTX("Inner node (not a list) \"l2\" not found.", NULL);
+    CHECK_LOG_CTX("Inner node (container, notif, RPC, or action) \"l2\" not found.", NULL);
 
     /* anydata */
     assert_int_equal(lyd_new_any(NULL, mod, "any", "some-value", 0, LYD_ANYDATA_STRING, 0, &node), LY_SUCCESS);
@@ -158,7 +158,7 @@ test_top_level(void **state)
 
     /* key-less list */
     assert_int_equal(lyd_new_list2(NULL, mod, "l2", "[a='a'][b='b']", 0, &node), LY_EVALID);
-    CHECK_LOG_CTX("List predicate defined for keyless list \"l2\" in path.", "Schema location /a:l2.");
+    CHECK_LOG_CTX("List predicate defined for keyless list \"l2\" in path.", "Schema location \"/a:l2\".");
 
     assert_int_equal(lyd_new_list2(NULL, mod, "l2", "", 0, &node), LY_SUCCESS);
     lyd_free_tree(node);
@@ -242,7 +242,7 @@ test_path(void **state)
     /* try LYD_NEWOPT_OPAQ */
     ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:l1", NULL, 0, 0, 0, NULL, NULL);
     assert_int_equal(ret, LY_EINVAL);
-    CHECK_LOG_CTX("Predicate missing for list \"l1\" in path \"/a:l1\".", "Schema location /a:l1.");
+    CHECK_LOG_CTX("Predicate missing for list \"l1\" in path \"/a:l1\".", "Schema location \"/a:l1\".");
 
     ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:l1", NULL, 0, 0, LYD_NEW_PATH_OPAQ, NULL, &root);
     assert_int_equal(ret, LY_SUCCESS);
@@ -253,7 +253,7 @@ test_path(void **state)
 
     ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:foo", NULL, 0, 0, 0, NULL, NULL);
     assert_int_equal(ret, LY_EVALID);
-    CHECK_LOG_CTX("Invalid empty uint16 value.", "Schema location /a:foo.");
+    CHECK_LOG_CTX("Invalid type uint16 empty value.", "Schema location \"/a:foo\".");
 
     ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:foo", NULL, 0, 0, LYD_NEW_PATH_OPAQ, NULL, &root);
     assert_int_equal(ret, LY_SUCCESS);

@@ -42,20 +42,27 @@ the whole documentation and the API.
 * Support for default values in the instance data ([RFC 6243](https://tools.ietf.org/html/rfc6243)).
 * Support for YANG extensions.
 * Support for YANG Metadata ([RFC 7952](https://tools.ietf.org/html/rfc7952)).
+* Support for YANG Schema Mount ([RFC 8528](https://tools.ietf.org/html/rfc8528)).
+* Support for YANG Structure ([RFC 8791](https://tools.ietf.org/html/rfc8791)).
 * [yanglint](#yanglint) - feature-rich YANG tool.
 
 Current implementation covers YANG 1.0 ([RFC 6020](https://tools.ietf.org/html/rfc6020))
 as well as YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
 
+## Packages
+
+Binary RPM or DEB packages of the latest release can be built locally using `apkg`, look into `README` in
+the `distro` directory.
+
 ## Requirements
 
-### Build Requirements
+### Unix Build Requirements
 
 * C compiler
 * cmake >= 2.8.12
 * libpcre2 >= 10.21 (including devel package)
- * note, that PCRE is supposed to be compiled with unicode support (configure's options
-   `--enable-utf` and `--enable-unicode-properties`)
+  * note, that PCRE is supposed to be compiled with unicode support (configure's options
+    `--enable-utf` and `--enable-unicode-properties`)
 
 #### Optional
 
@@ -66,9 +73,22 @@ as well as YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
 * lcov (for code coverage)
 * genhtml (for code coverage)
 
-### Runtime Requirements
+### Unix Runtime Requirements
 
 * libpcre2 >= 10.21
+
+### Windows Build Requirements
+
+* Visual Studio 17 (2022)
+* cmake >= 3.22.0
+* libpcre2 (same considerations as on POSIX)
+* [`pthreads-win32`](https://sourceware.org/pthreads-win32/)
+* [`dirent`](https://github.com/tronkko/dirent)
+* [`dlfcn-win32`](https://github.com/dlfcn-win32/dlfcn-win32)
+* [`getopt-win32`](https://github.com/libimobiledevice-win32/getopt)
+
+The Windows version [does not support plugins](https://github.com/CESNET/libyang/commit/323c31221645052e13db83f7d0e6e51c3ce9d802), and the `yanglint` works in a [non-interactive mode](https://github.com/CESNET/libyang/commit/2e3f935ed6f4a47e65b31de5aeebcd8877d5a09b) only.
+On Windows, all YANG date-and-time values are first converted to UTC (if TZ offset was specified), and then returned with "unspecified timezone".
 
 ## Building
 
@@ -130,6 +150,8 @@ The directory path can be also changed runtime via environment variable, e.g.:
 $ LIBYANG_EXTENSIONS_PLUGINS_DIR=`pwd`/my/relative/path yanglint
 ```
 
+Note that plugins are [not available on Windows](https://github.com/CESNET/libyang/commit/323c31221645052e13db83f7d0e6e51c3ce9d802).
+
 #### Optimizations
 
 Whenever the latest revision of a schema is supposed to be loaded (import without specific revision),
@@ -174,6 +196,8 @@ If you are using `cmake` in you project, it is also possible to use the provided
 There are no bindings for other languages directly in this project but they are
 available separately.
 
+* [Python](https://github.com/CESNET/libyang-python/)
+* [C++](https://github.com/CESNET/libyang-cpp/)
 * [Rust](https://github.com/rwestphal/yang2-rs/)
 
 ## yanglint

@@ -44,12 +44,19 @@
 #define YLMSG_W(...) \
         fprintf(stderr, "YANGLINT[W]: " __VA_ARGS__)
 
+#ifndef _WIN32
+# define PATH_SEPARATOR ":"
+#else
+# define PATH_SEPARATOR ";"
+#endif
+
 /**
  * @brief Storage for the list of the features (their names) in a specific YANG module.
  */
 struct schema_features {
-    char *module;
+    char *mod_name;
     char **features;
+    ly_bool applied;
 };
 
 /**
@@ -85,6 +92,48 @@ void get_features(struct ly_set *fset, const char *module, const char ***feature
  * @param[in, out] fset Features information set (of struct schema_features *). The set is being filled.
  */
 int parse_features(const char *fstring, struct ly_set *fset);
+
+/**
+ * @brief Collect all features of a module.
+ *
+ * @param[in] mod Module to be searched for features.
+ * @param[out] set Set in which the features will be stored.
+ * @return 0 on success.
+ * @return 1 on error.
+ */
+int collect_features(const struct lys_module *mod, struct ly_set *set);
+
+/**
+ * @brief Print all features of a single module.
+ *
+ * @param[in] out The output handler for printing.
+ * @param[in] mod Module which contains the features.
+ * @param[in] set Set which holds the features.
+ */
+void print_features(struct ly_out *out, const struct lys_module *mod, const struct ly_set *set);
+
+/**
+ * @brief Generate a string, which will contain features paramater.
+ *
+ * @param[in] mod Module, for which the string will be generated.
+ * @param[in] set Set containing the features.
+ * @param[out] features_param String which will contain the output.
+ * @return 0 on success.
+ * @return 1 on error.
+ */
+int generate_features_output(const struct lys_module *mod, const struct ly_set *set, char **features_param);
+
+/**
+ * @brief Print all features of all implemented modules.
+ *
+ * @param[in] out The output handler for printing.
+ * @param[in] ctx Libyang context.
+ * @param[in] generate_features Flag expressing whether to generate features parameter.
+ * @param[out] features_param String, which will contain the output if the above flag is set.
+ * @return 0 on success.
+ * @return 1 on error.
+ */
+int print_all_features(struct ly_out *out, const struct ly_ctx *ctx, ly_bool generate_features, char **features_param);
 
 /**
  * @brief Parse path of a schema module file into the directory and module name.
@@ -186,13 +235,23 @@ int print_list(struct ly_out *out, struct ly_ctx *ctx, LYD_FORMAT outformat);
  * @param[in] options_print Printer options.
  * @param[in] operational_f Optional operational datastore file information for the case of an extended validation of
  * operation(s).
+ * @param[in] rpc_f Source RPC operation file information for parsing NETCONF rpc-reply.
  * @param[in] inputs Set of file informations of input data files.
  * @param[in] xpath The set of XPaths to be evaluated on the processed data tree, basic information about the resulting set
  * is printed. Alternative to data printing.
- * return LY_ERR value.
+ * @return LY_ERR value.
  */
 LY_ERR process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FORMAT format, struct ly_out *out,
-        uint32_t options_parse, uint32_t options_validate, uint32_t options_print,
-        struct cmdline_file *operational_f, struct ly_set *inputs, struct ly_set *xpaths);
+        uint32_t options_parse, uint32_t options_validate, uint32_t options_print, struct cmdline_file *operational_f,
+        struct cmdline_file *rpc_f, struct ly_set *inputs, struct ly_set *xpaths);
+
+/**
+ * @brief Get the node specified by the path.
+ *
+ * @param[in] ctx libyang context with schema.
+ * @param[in] schema_path Path to the wanted node.
+ * @return Pointer to the schema node specified by the path on success, NULL otherwise.
+ */
+const struct lysc_node * find_schema_path(const struct ly_ctx *ctx, const char *schema_path);
 
 #endif /* COMMON_H_ */

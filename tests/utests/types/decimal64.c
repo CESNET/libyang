@@ -79,27 +79,27 @@ test_data_xml(void **state)
 
     TEST_ERROR_XML("defs", "l1", "\n 15 \t\n  ");
     CHECK_LOG_CTX("Unsatisfied range - value \"15.0\" is out of the allowed range.",
-            "Schema location /defs:l1, line number 3.");
+            "Schema location \"/defs:l1\", line number 3.");
 
     TEST_ERROR_XML("defs", "l1", "\n 0 \t\n  ");
     CHECK_LOG_CTX("Unsatisfied range - value \"0.0\" is out of the allowed range.",
-            "Schema location /defs:l1, line number 3.");
+            "Schema location \"/defs:l1\", line number 3.");
 
     TEST_ERROR_XML("defs", "l1", "xxx");
     CHECK_LOG_CTX("Invalid 1. character of decimal64 value \"xxx\".",
-            "Schema location /defs:l1, line number 1.");
+            "Schema location \"/defs:l1\", line number 1.");
 
     TEST_ERROR_XML("defs", "l1", "");
     CHECK_LOG_CTX("Invalid empty decimal64 value.",
-            "Schema location /defs:l1, line number 1.");
+            "Schema location \"/defs:l1\", line number 1.");
 
     TEST_ERROR_XML("defs", "l1", "8.5  xxx");
     CHECK_LOG_CTX("Invalid 6. character of decimal64 value \"8.5  xxx\".",
-            "Schema location /defs:l1, line number 1.");
+            "Schema location \"/defs:l1\", line number 1.");
 
     TEST_ERROR_XML("defs", "l1", "8.55  xxx");
     CHECK_LOG_CTX("Value \"8.55\" of decimal64 type exceeds defined number (1) of fraction digits.",
-            "Schema location /defs:l1, line number 1.");
+            "Schema location \"/defs:l1\", line number 1.");
 }
 
 static void

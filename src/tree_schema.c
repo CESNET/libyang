@@ -37,105 +37,16 @@
 #include "parser_internal.h"
 #include "parser_schema.h"
 #include "path.h"
+#include "plugins_internal.h"
 #include "schema_compile.h"
 #include "schema_compile_amend.h"
 #include "schema_features.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_edit.h"
+#include "tree_schema_free.h"
 #include "tree_schema_internal.h"
 #include "xpath.h"
-
-/**
- * @brief information about YANG statements
- */
-struct stmt_info_s stmt_attr_info[] = {
-    [LY_STMT_NONE] = {NULL, NULL, 0},
-    [LY_STMT_ACTION] = {"action", "name", STMT_FLAG_ID},
-    [LY_STMT_ANYDATA] = {"anydata", "name", STMT_FLAG_ID},
-    [LY_STMT_ANYXML] = {"anyxml", "name", STMT_FLAG_ID},
-    [LY_STMT_ARGUMENT] = {"argument", "name", STMT_FLAG_ID},
-    [LY_STMT_ARG_TEXT] = {"text", NULL, 0},
-    [LY_STMT_ARG_VALUE] = {"value", NULL, 0},
-    [LY_STMT_AUGMENT] = {"augment", "target-node", STMT_FLAG_ID},
-    [LY_STMT_BASE] = {"base", "name", STMT_FLAG_ID},
-    [LY_STMT_BELONGS_TO] = {"belongs-to", "module", STMT_FLAG_ID},
-    [LY_STMT_BIT] = {"bit", "name", STMT_FLAG_ID},
-    [LY_STMT_CASE] = {"case", "name", STMT_FLAG_ID},
-    [LY_STMT_CHOICE] = {"choice", "name", STMT_FLAG_ID},
-    [LY_STMT_CONFIG] = {"config", "value", STMT_FLAG_ID},
-    [LY_STMT_CONTACT] = {"contact", "text", STMT_FLAG_YIN},
-    [LY_STMT_CONTAINER] = {"container", "name", STMT_FLAG_ID},
-    [LY_STMT_DEFAULT] = {"default", "value", 0},
-    [LY_STMT_DESCRIPTION] = {"description", "text", STMT_FLAG_YIN},
-    [LY_STMT_DEVIATE] = {"deviate", "value", STMT_FLAG_ID},
-    [LY_STMT_DEVIATION] = {"deviation", "target-node", STMT_FLAG_ID},
-    [LY_STMT_ENUM] = {"enum", "name", STMT_FLAG_ID},
-    [LY_STMT_ERROR_APP_TAG] = {"error-app-tag", "value", 0},
-    [LY_STMT_ERROR_MESSAGE] = {"error-message", "value", STMT_FLAG_YIN},
-    [LY_STMT_EXTENSION] = {"extension", "name", STMT_FLAG_ID},
-    [LY_STMT_EXTENSION_INSTANCE] = {NULL, NULL, 0},
-    [LY_STMT_FEATURE] = {"feature", "name", STMT_FLAG_ID},
-    [LY_STMT_FRACTION_DIGITS] = {"fraction-digits", "value", STMT_FLAG_ID},
-    [LY_STMT_GROUPING] = {"grouping", "name", STMT_FLAG_ID},
-    [LY_STMT_IDENTITY] = {"identity", "name", STMT_FLAG_ID},
-    [LY_STMT_IF_FEATURE] = {"if-feature", "name", 0},
-    [LY_STMT_IMPORT] = {"import", "module", STMT_FLAG_ID},
-    [LY_STMT_INCLUDE] = {"include", "module", STMT_FLAG_ID},
-    [LY_STMT_INPUT] = {"input", NULL, 0},
-    [LY_STMT_KEY] = {"key", "value", 0},
-    [LY_STMT_LEAF] = {"leaf", "name", STMT_FLAG_ID},
-    [LY_STMT_LEAF_LIST] = {"leaf-list", "name", STMT_FLAG_ID},
-    [LY_STMT_LENGTH] = {"length", "value", 0},
-    [LY_STMT_LIST] = {"list", "name", STMT_FLAG_ID},
-    [LY_STMT_MANDATORY] = {"mandatory", "value", STMT_FLAG_ID},
-    [LY_STMT_MAX_ELEMENTS] = {"max-elements", "value", STMT_FLAG_ID},
-    [LY_STMT_MIN_ELEMENTS] = {"min-elements", "value", STMT_FLAG_ID},
-    [LY_STMT_MODIFIER] = {"modifier", "value", STMT_FLAG_ID},
-    [LY_STMT_MODULE] = {"module", "name", STMT_FLAG_ID},
-    [LY_STMT_MUST] = {"must", "condition", 0},
-    [LY_STMT_NAMESPACE] = {"namespace", "uri", 0},
-    [LY_STMT_NOTIFICATION] = {"notification", "name", STMT_FLAG_ID},
-    [LY_STMT_ORDERED_BY] = {"ordered-by", "value", STMT_FLAG_ID},
-    [LY_STMT_ORGANIZATION] = {"organization", "text", STMT_FLAG_YIN},
-    [LY_STMT_OUTPUT] = {"output", NULL, 0},
-    [LY_STMT_PATH] = {"path", "value", 0},
-    [LY_STMT_PATTERN] = {"pattern", "value", 0},
-    [LY_STMT_POSITION] = {"position", "value", STMT_FLAG_ID},
-    [LY_STMT_PREFIX] = {"prefix", "value", STMT_FLAG_ID},
-    [LY_STMT_PRESENCE] = {"presence", "value", 0},
-    [LY_STMT_RANGE] = {"range", "value", 0},
-    [LY_STMT_REFERENCE] = {"reference", "text", STMT_FLAG_YIN},
-    [LY_STMT_REFINE] = {"refine", "target-node", STMT_FLAG_ID},
-    [LY_STMT_REQUIRE_INSTANCE] = {"require-instance", "value", STMT_FLAG_ID},
-    [LY_STMT_REVISION] = {"revision", "date", STMT_FLAG_ID},
-    [LY_STMT_REVISION_DATE] = {"revision-date", "date", STMT_FLAG_ID},
-    [LY_STMT_RPC] = {"rpc", "name", STMT_FLAG_ID},
-    [LY_STMT_STATUS] = {"status", "value", STMT_FLAG_ID},
-    [LY_STMT_SUBMODULE] = {"submodule", "name", STMT_FLAG_ID},
-    [LY_STMT_SYNTAX_LEFT_BRACE] = {"{", NULL, 0},
-    [LY_STMT_SYNTAX_RIGHT_BRACE] = {"}", NULL, 0},
-    [LY_STMT_SYNTAX_SEMICOLON] = {";", NULL, 0},
-    [LY_STMT_TYPE] = {"type", "name", STMT_FLAG_ID},
-    [LY_STMT_TYPEDEF] = {"typedef", "name", STMT_FLAG_ID},
-    [LY_STMT_UNIQUE] = {"unique", "tag", 0},
-    [LY_STMT_UNITS] = {"units", "name", 0},
-    [LY_STMT_USES] = {"uses", "name", STMT_FLAG_ID},
-    [LY_STMT_VALUE] = {"value", "value", STMT_FLAG_ID},
-    [LY_STMT_WHEN] = {"when", "condition", 0},
-    [LY_STMT_YANG_VERSION] = {"yang-version", "value", STMT_FLAG_ID},
-    [LY_STMT_YIN_ELEMENT] = {"yin-element", "value", STMT_FLAG_ID},
-};
-
-API const char *
-ly_stmt2str(enum ly_stmt stmt)
-{
-    if (stmt == LY_STMT_EXTENSION_INSTANCE) {
-        return "extension instance";
-    } else {
-        return stmt_attr_info[stmt].name;
-    }
-}
 
 const char * const ly_devmod_list[] = {
     [LYS_DEV_NOT_SUPPORTED] = "not-supported",
@@ -144,7 +55,7 @@ const char * const ly_devmod_list[] = {
     [LYS_DEV_REPLACE] = "replace",
 };
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lysc_tree_dfs_full(const struct lysc_node *root, lysc_dfs_clb dfs_clb, void *data)
 {
     struct lysc_node *elem, *elem2;
@@ -181,7 +92,7 @@ lysc_tree_dfs_full(const struct lysc_node *root, lysc_dfs_clb dfs_clb, void *dat
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lysc_module_dfs_full(const struct lys_module *mod, lysc_dfs_clb dfs_clb, void *data)
 {
     const struct lysc_node *root;
@@ -229,22 +140,22 @@ lys_getnext_into_case(const struct lysc_node_case *first_case, const struct lysc
  * be from an augment. If the @p ext is provided, the function is locked inside the schema tree defined in the
  * extension instance.
  *
- * ::lys_getnext_() is supposed to be called sequentially. In the first call, the \p last parameter is usually NULL
- * and function starts returning i) the first \p parent's child or ii) the first top level element specified in the
- * given extension (if provided) or iii) the first top level element of the \p module.
- * Consequent calls suppose to provide the previously returned node as the \p last parameter and still the same
- * \p parent and \p module parameters.
+ * ::lys_getnext_() is supposed to be called sequentially. In the first call, the @p last parameter is usually NULL
+ * and function starts returning i) the first @p parent's child or ii) the first top level element specified in the
+ * given extension (if provided) or iii) the first top level element of the @p module.
+ * Consequent calls suppose to provide the previously returned node as the @p last parameter and still the same
+ * @p parent and @p module parameters.
  *
  * Without options, the function is used to traverse only the schema nodes that can be paired with corresponding
- * data nodes in a data tree. By setting some \p options the behavior can be modified to the extent that
+ * data nodes in a data tree. By setting some @p options the behavior can be modified to the extent that
  * all the schema nodes are iteratively returned.
  *
  * @param[in] last Previously returned schema tree node, or NULL in case of the first call.
  * @param[in] parent Parent of the subtree where the function starts processing.
- * @param[in] module In case of iterating on top level elements, the \p parent is NULL and
+ * @param[in] module In case of iterating on top level elements, the @p parent is NULL and
  * module must be specified.
  * @param[in] ext The extension instance to provide a separate schema tree. To consider the top level elements in the tree,
- * the \p parent must be NULL. Anyway, at least one of @p parent, @p module and @p ext parameters must be specified.
+ * the @p parent must be NULL. Anyway, at least one of @p parent, @p module and @p ext parameters must be specified.
  * @param[in] options [ORed options](@ref sgetnextflags).
  * @return Next schema tree node that can be instantiated in a data tree, NULL in case there is no such element.
  */
@@ -254,7 +165,6 @@ lys_getnext_(const struct lysc_node *last, const struct lysc_node *parent, const
 {
     const struct lysc_node *next = NULL;
     ly_bool action_flag = 0, notif_flag = 0;
-    struct lysc_node **data_p = NULL;
 
     LY_CHECK_ARG_RET(NULL, parent || module || ext, NULL);
 
@@ -269,8 +179,8 @@ next:
         } else {
             /* top level data */
             if (ext) {
-                lysc_ext_substmt(ext, LY_STMT_CONTAINER /* matches all nodes */, (void **)&data_p, NULL);
-                next = last = data_p ? *data_p : NULL;
+                lyplg_ext_get_storage(ext, LY_STMT_DATA_NODE_MASK, sizeof last, (const void **)&last);
+                next = last;
             } else {
                 next = last = module->data;
             }
@@ -295,15 +205,13 @@ next:
 repeat:
     if (!next) {
         /* possibly go back to parent */
-        data_p = NULL;
         if (last && (last->parent != parent)) {
             last = last->parent;
             goto next;
         } else if (!action_flag) {
             action_flag = 1;
             if (ext) {
-                lysc_ext_substmt(ext, LY_STMT_RPC /* matches also actions */, (void **)&data_p, NULL);
-                next = data_p ? *data_p : NULL;
+                lyplg_ext_get_storage(ext, LY_STMT_OP_MASK, sizeof next, (const void **)&next);
             } else if (parent) {
                 next = (struct lysc_node *)lysc_node_actions(parent);
             } else {
@@ -312,8 +220,7 @@ repeat:
         } else if (!notif_flag) {
             notif_flag = 1;
             if (ext) {
-                lysc_ext_substmt(ext, LY_STMT_NOTIFICATION, (void **)&data_p, NULL);
-                next = data_p ? *data_p : NULL;
+                lyplg_ext_get_storage(ext, LY_STMT_NOTIFICATION, sizeof next, (const void **)&next);
             } else if (parent) {
                 next = (struct lysc_node *)lysc_node_notifs(parent);
             } else {
@@ -396,13 +303,13 @@ check:
     return next;
 }
 
-API const struct lysc_node *
+LIBYANG_API_DEF const struct lysc_node *
 lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module, uint32_t options)
 {
     return lys_getnext_(last, parent, module, NULL, options);
 }
 
-API const struct lysc_node *
+LIBYANG_API_DEF const struct lysc_node *
 lys_getnext_ext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_ext_instance *ext, uint32_t options)
 {
     return lys_getnext_(last, parent, NULL, ext, options);
@@ -441,13 +348,14 @@ lysc_ext_find_node(const struct lysc_ext_instance *ext, const struct lys_module 
     return NULL;
 }
 
-API const struct lysc_node *
+LIBYANG_API_DEF const struct lysc_node *
 lys_find_child(const struct lysc_node *parent, const struct lys_module *module, const char *name, size_t name_len,
         uint16_t nodetype, uint32_t options)
 {
     const struct lysc_node *node = NULL;
 
     LY_CHECK_ARG_RET(NULL, module, name, NULL);
+    LY_CHECK_CTX_EQUAL_RET(parent ? parent->module->ctx : NULL, module->ctx, NULL);
     if (!nodetype) {
         nodetype = LYS_NODETYPE_MASK;
     }
@@ -470,10 +378,11 @@ lys_find_child(const struct lysc_node *parent, const struct lys_module *module, 
             }
         }
     }
+
     return NULL;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_find_xpath_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *xpath, uint32_t options,
         struct ly_set **set)
 {
@@ -483,6 +392,7 @@ lys_find_xpath_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
     uint32_t i;
 
     LY_CHECK_ARG_RET(NULL, ctx || ctx_node, xpath, set, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(ctx, ctx_node ? ctx_node->module->ctx : NULL, LY_EINVAL);
     if (!(options & LYXP_SCNODE_ALL)) {
         options |= LYXP_SCNODE;
     }
@@ -497,7 +407,7 @@ lys_find_xpath_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
     LY_CHECK_GOTO(ret, cleanup);
 
     /* atomize expression */
-    ret = lyxp_atomize(ctx, exp, NULL, LY_VALUE_JSON, NULL, ctx_node, &xp_set, options);
+    ret = lyxp_atomize(ctx, exp, NULL, LY_VALUE_JSON, NULL, ctx_node, ctx_node, &xp_set, options);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate return set */
@@ -522,7 +432,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_find_expr_atoms(const struct lysc_node *ctx_node, const struct lys_module *cur_mod, const struct lyxp_expr *expr,
         const struct lysc_prefix *prefixes, uint32_t options, struct ly_set **set)
 {
@@ -531,12 +441,14 @@ lys_find_expr_atoms(const struct lysc_node *ctx_node, const struct lys_module *c
     uint32_t i;
 
     LY_CHECK_ARG_RET(NULL, cur_mod, expr, prefixes, set, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(ctx_node ? ctx_node->module->ctx : NULL, cur_mod->ctx, LY_EINVAL);
     if (!(options & LYXP_SCNODE_ALL)) {
         options = LYXP_SCNODE;
     }
 
     /* atomize expression */
-    ret = lyxp_atomize(cur_mod->ctx, expr, cur_mod, LY_VALUE_SCHEMA_RESOLVED, (void *)prefixes, ctx_node, &xp_set, options);
+    ret = lyxp_atomize(cur_mod->ctx, expr, cur_mod, LY_VALUE_SCHEMA_RESOLVED, (void *)prefixes, ctx_node, ctx_node,
+            &xp_set, options);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate return set */
@@ -567,7 +479,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_find_xpath(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *xpath, uint32_t options,
         struct ly_set **set)
 {
@@ -577,6 +489,7 @@ lys_find_xpath(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const
     uint32_t i;
 
     LY_CHECK_ARG_RET(NULL, ctx || ctx_node, xpath, set, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(ctx, ctx_node ? ctx_node->module->ctx : NULL, LY_EINVAL);
     if (!(options & LYXP_SCNODE_ALL)) {
         options = LYXP_SCNODE;
     }
@@ -589,7 +502,7 @@ lys_find_xpath(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const
     LY_CHECK_GOTO(ret, cleanup);
 
     /* atomize expression */
-    ret = lyxp_atomize(ctx, exp, NULL, LY_VALUE_JSON, NULL, ctx_node, &xp_set, options);
+    ret = lyxp_atomize(ctx, exp, NULL, LY_VALUE_JSON, NULL, ctx_node, ctx_node, &xp_set, options);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate return set */
@@ -618,7 +531,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_find_lypath_atoms(const struct ly_path *path, struct ly_set **set)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -648,7 +561,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_find_path_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *path, ly_bool output,
         struct ly_set **set)
 {
@@ -658,6 +571,7 @@ lys_find_path_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, 
     struct ly_path *p = NULL;
 
     LY_CHECK_ARG_RET(ctx, ctx || ctx_node, path, set, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(ctx, ctx_node ? ctx_node->module->ctx : NULL, LY_EINVAL);
 
     if (!ctx) {
         ctx = ctx_node->module->ctx;
@@ -681,7 +595,7 @@ cleanup:
     return ret;
 }
 
-API const struct lysc_node *
+LIBYANG_API_DEF const struct lysc_node *
 lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *path, ly_bool output)
 {
     const struct lysc_node *snode = NULL;
@@ -691,6 +605,7 @@ lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
     uint8_t oper;
 
     LY_CHECK_ARG_RET(ctx, ctx || ctx_node, NULL);
+    LY_CHECK_CTX_EQUAL_RET(ctx, ctx_node ? ctx_node->module->ctx : NULL, NULL);
 
     if (!ctx) {
         ctx = ctx_node->module->ctx;
@@ -718,76 +633,97 @@ char *
 lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LYSC_PATH_TYPE pathtype, char *buffer,
         size_t buflen)
 {
-    const struct lysc_node *iter, *par;
+    const struct lysc_node *iter, *par, *key;
     char *path = NULL;
     int len = 0;
+    ly_bool skip_schema;
 
     if (buffer) {
         LY_CHECK_ARG_RET(node->module->ctx, buflen > 1, NULL);
         buffer[0] = '\0';
     }
 
-    switch (pathtype) {
-    case LYSC_PATH_LOG:
-    case LYSC_PATH_DATA:
-        for (iter = node; iter && (iter != parent) && (len >= 0); iter = iter->parent) {
-            char *s, *id;
-            const char *slash;
+    if ((pathtype == LYSC_PATH_DATA) || (pathtype == LYSC_PATH_DATA_PATTERN)) {
+        /* skip schema-only nodes */
+        skip_schema = 1;
+    } else {
+        skip_schema = 0;
+    }
 
-            if ((pathtype == LYSC_PATH_DATA) && (iter->nodetype & (LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT))) {
-                /* schema-only node */
-                continue;
-            }
+    for (iter = node; iter && (iter != parent) && (len >= 0); iter = iter->parent) {
+        char *s;
+        const char *slash;
 
-            s = buffer ? strdup(buffer) : path;
-            id = strdup(iter->name);
-            if (parent && (iter->parent == parent)) {
-                slash = "";
-            } else {
-                slash = "/";
-            }
+        if (skip_schema && (iter->nodetype & (LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT))) {
+            /* schema-only node */
+            continue;
+        }
 
-            if (pathtype == LYSC_PATH_DATA) {
-                par = lysc_data_parent(iter);
-            } else {
-                par = iter->parent;
-            }
+        if ((pathtype == LYSC_PATH_DATA_PATTERN) && (iter->nodetype == LYS_LIST)) {
+            key = NULL;
+            while ((key = lys_getnext(key, iter, NULL, 0)) && lysc_is_key(key)) {
+                s = buffer ? strdup(buffer) : path;
 
-            if (!par || (par->module != iter->module)) {
-                /* print prefix */
+                /* print key predicate */
                 if (buffer) {
-                    len = snprintf(buffer, buflen, "%s%s:%s%s", slash, iter->module->name, id, s ? s : "");
+                    len = snprintf(buffer, buflen, "[%s='%%s']%s", key->name, s ? s : "");
                 } else {
-                    len = asprintf(&path, "%s%s:%s%s", slash, iter->module->name, id, s ? s : "");
+                    len = asprintf(&path, "[%s='%%s']%s", key->name, s ? s : "");
                 }
-            } else {
-                /* prefix is the same as in parent */
-                if (buffer) {
-                    len = snprintf(buffer, buflen, "%s%s%s", slash, id, s ? s : "");
-                } else {
-                    len = asprintf(&path, "%s%s%s", slash, id, s ? s : "");
-                }
-            }
-            free(s);
-            free(id);
+                free(s);
 
-            if (buffer && (buflen <= (size_t)len)) {
-                /* not enough space in buffer */
-                break;
+                if (buffer && (buflen <= (size_t)len)) {
+                    /* not enough space in buffer */
+                    break;
+                }
             }
         }
 
-        if (len < 0) {
-            free(path);
-            path = NULL;
-        } else if (len == 0) {
+        s = buffer ? strdup(buffer) : path;
+        if (parent && (iter->parent == parent)) {
+            slash = "";
+        } else {
+            slash = "/";
+        }
+
+        if (skip_schema) {
+            par = lysc_data_parent(iter);
+        } else {
+            par = iter->parent;
+        }
+
+        if (!par || (par->module != iter->module)) {
+            /* print prefix */
             if (buffer) {
-                strcpy(buffer, "/");
+                len = snprintf(buffer, buflen, "%s%s:%s%s", slash, iter->module->name, iter->name, s ? s : "");
             } else {
-                path = strdup("/");
+                len = asprintf(&path, "%s%s:%s%s", slash, iter->module->name, iter->name, s ? s : "");
+            }
+        } else {
+            /* prefix is the same as in parent */
+            if (buffer) {
+                len = snprintf(buffer, buflen, "%s%s%s", slash, iter->name, s ? s : "");
+            } else {
+                len = asprintf(&path, "%s%s%s", slash, iter->name, s ? s : "");
             }
         }
-        break;
+        free(s);
+
+        if (buffer && (buflen <= (size_t)len)) {
+            /* not enough space in buffer */
+            break;
+        }
+    }
+
+    if (len < 0) {
+        free(path);
+        path = NULL;
+    } else if (len == 0) {
+        if (buffer) {
+            strcpy(buffer, "/");
+        } else {
+            path = strdup("/");
+        }
     }
 
     if (buffer) {
@@ -797,7 +733,7 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
     }
 }
 
-API char *
+LIBYANG_API_DEF char *
 lysc_path(const struct lysc_node *node, LYSC_PATH_TYPE pathtype, char *buffer, size_t buflen)
 {
     return lysc_path_until(node, NULL, pathtype, buffer, buflen);
@@ -889,9 +825,9 @@ lys_unres_dep_sets_create_mod_r(struct lys_module *mod, struct ly_set *ctx_set, 
     LY_ARRAY_COUNT_TYPE u, v;
     ly_bool found;
 
-    if (!lys_has_compiled(mod) || (mod->compiled && !lys_has_recompiled(mod))) {
+    if (LYS_IS_SINGLE_DEP_SET(mod)) {
         /* is already in a separate dep set */
-        if (!lys_has_groupings(mod)) {
+        if (!lys_has_dep_mods(mod)) {
             /* break the dep set here, no modules depend on this one */
             return LY_SUCCESS;
         }
@@ -926,11 +862,9 @@ lys_unres_dep_sets_create_mod_r(struct lys_module *mod, struct ly_set *ctx_set, 
         imports = mod->parsed->includes[v].submodule->imports;
         LY_ARRAY_FOR(imports, u) {
             mod2 = imports[u].module;
-            if (!lys_has_compiled(mod2) || (mod2->compiled && !lys_has_recompiled(mod2))) {
-                if (!lys_has_groupings(mod2)) {
-                    /* break the dep set here, no modules depend on this one */
-                    continue;
-                }
+            if (LYS_IS_SINGLE_DEP_SET(mod2) && !lys_has_dep_mods(mod2)) {
+                /* break the dep set here, no modules depend on this one */
+                continue;
             }
 
             LY_CHECK_RET(lys_unres_dep_sets_create_mod_r(imports[u].module, ctx_set, dep_set, aux_set));
@@ -991,7 +925,7 @@ lys_unres_dep_sets_create_single(struct ly_set *ctx_set, struct ly_set *main_set
 
     while (i < ctx_set->count) {
         m = ctx_set->objs[i];
-        if (!lys_has_compiled(m) || (m->compiled && !lys_has_recompiled(m))) {
+        if (LYS_IS_SINGLE_DEP_SET(m)) {
             /* remove it from the set, we are processing it now */
             ly_set_rm_index(ctx_set, i, NULL);
 
@@ -1102,42 +1036,45 @@ void
 lys_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres)
 {
     uint32_t i, j, idx, prev_lo;
+    struct lysf_ctx fctx = {.ctx = ctx};
     struct ly_set *dep_set;
-    struct lys_module *m;
     LY_ERR ret;
 
     for (i = 0; i < unres->implementing.count; ++i) {
-        m = unres->implementing.objs[i];
-        assert(m->implemented);
+        fctx.mod = unres->implementing.objs[i];
+        assert(fctx.mod->implemented);
 
         /* make the module correctly non-implemented again */
-        m->implemented = 0;
-        lys_precompile_augments_deviations_revert(ctx, m);
-        lysc_module_free(m->compiled);
-        m->compiled = NULL;
+        fctx.mod->implemented = 0;
+        lys_precompile_augments_deviations_revert(ctx, fctx.mod);
+        lysc_module_free(&fctx, fctx.mod->compiled);
+        fctx.mod->compiled = NULL;
 
         /* should not be made implemented */
-        m->to_compile = 0;
+        fctx.mod->to_compile = 0;
     }
 
     for (i = 0; i < unres->creating.count; ++i) {
-        m = unres->creating.objs[i];
+        fctx.mod = unres->creating.objs[i];
 
         /* remove the module from the context */
-        ly_set_rm(&ctx->list, m, NULL);
+        ly_set_rm(&ctx->list, fctx.mod, NULL);
 
         /* remove it also from dep sets */
         for (j = 0; j < unres->dep_sets.count; ++j) {
             dep_set = unres->dep_sets.objs[j];
-            if (ly_set_contains(dep_set, m, &idx)) {
+            if (ly_set_contains(dep_set, fctx.mod, &idx)) {
                 ly_set_rm_index(dep_set, idx, NULL);
                 break;
             }
         }
 
         /* free the module */
-        lys_module_free(m);
+        lys_module_free(&fctx, fctx.mod, 1);
     }
+
+    /* remove the extensions as well */
+    lysf_ctx_erase(&fctx);
 
     if (unres->implementing.count) {
         /* recompile previous context because some implemented modules are no longer implemented,
@@ -1171,7 +1108,7 @@ lys_unres_glob_erase(struct lys_glob_unres *unres)
     assert(!unres->ds_unres.disabled.count);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_set_implemented(struct lys_module *mod, const char **features)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1202,8 +1139,16 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Resolve (find) all imported and included modules.
+ *
+ * @param[in] pctx Parser context.
+ * @param[in] pmod Parsed module to resolve.
+ * @param[out] new_mods Set with all the newly loaded modules.
+ * @return LY_ERR value.
+ */
 static LY_ERR
-lys_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *pmod, struct ly_set *new_mods)
+lysp_resolve_import_include(struct lysp_ctx *pctx, struct lysp_module *pmod, struct ly_set *new_mods)
 {
     struct lysp_import *imp;
     LY_ARRAY_COUNT_TYPE u, v;
@@ -1236,27 +1181,202 @@ lys_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *pmod
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Generate path of the given paresed node.
+ *
+ * @param[in] node Schema path of this node will be generated.
+ * @param[in] parent Build relative path only until this parent is found. If NULL, the full absolute path is printed.
+ * @return NULL in case of memory allocation error, path of the node otherwise.
+ * In case the @p buffer is NULL, the returned string is dynamically allocated and caller is responsible to free it.
+ */
+static char *
+lysp_path_until(const struct lysp_node *node, const struct lysp_node *parent, const struct lysp_module *pmod)
+{
+    const struct lysp_node *iter, *par;
+    char *path = NULL, *s;
+    const char *slash;
+    int len = 0;
+
+    for (iter = node; iter && (iter != parent) && (len >= 0); iter = iter->parent) {
+        if (parent && (iter->parent == parent)) {
+            slash = "";
+        } else {
+            slash = "/";
+        }
+
+        s = path;
+        par = iter->parent;
+        if (!par) {
+            /* print prefix */
+            len = asprintf(&path, "%s%s:%s%s", slash, pmod->mod->name, iter->name, s ? s : "");
+        } else {
+            /* prefix is the same as in parent */
+            len = asprintf(&path, "%s%s%s", slash, iter->name, s ? s : "");
+        }
+        free(s);
+    }
+
+    if (len < 0) {
+        free(path);
+        path = NULL;
+    } else if (len == 0) {
+        path = strdup("/");
+    }
+
+    return path;
+}
+
+/**
+ * @brief Build log path for a parsed extension instance.
+ *
+ * @param[in] pcxt Parse context.
+ * @param[in] ext Parsed extension instance.
+ * @param[out] path Generated path.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lysp_resolve_ext_instance_log_path(const struct lysp_ctx *pctx, const struct lysp_ext_instance *ext, char **path)
+{
+    char *buf = NULL;
+    uint32_t used = 0, size = 0;
+
+    if (ext->parent_stmt & LY_STMT_NODE_MASK) {
+        /* parsed node path */
+        buf = lysp_path_until(ext->parent, NULL, PARSER_CUR_PMOD(pctx));
+        LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(pctx)), LY_EMEM);
+        size = used = strlen(buf);
+
+        /* slash */
+        size += 1;
+        buf = realloc(buf, size + 1);
+        LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(pctx)), LY_EMEM);
+        used += sprintf(buf + used, "/");
+    } else {
+        /* module */
+        size += 1 + strlen(PARSER_CUR_PMOD(pctx)->mod->name) + 1;
+        buf = realloc(buf, size + 1);
+        LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(pctx)), LY_EMEM);
+        used += sprintf(buf + used, "/%s:", PARSER_CUR_PMOD(pctx)->mod->name);
+    }
+
+    /* extension name */
+    size += 12 + strlen(ext->name) + 2;
+    buf = realloc(buf, size + 1);
+    LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(pctx)), LY_EMEM);
+    used += sprintf(buf + used, "{extension='%s'}", ext->name);
+
+    /* extension argument */
+    if (ext->argument) {
+        size += 1 + strlen(ext->argument);
+        buf = realloc(buf, size + 1);
+        LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(pctx)), LY_EMEM);
+        used += sprintf(buf + used, "/%s", ext->argument);
+    }
+
+    *path = buf;
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Resolve (find) all extension instance records and finish their parsing.
+ *
+ * @param[in] pctx Parse context with all the parsed extension instances.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
+{
+    LY_ERR r;
+    struct lysf_ctx fctx = {.ctx = PARSER_CTX(pctx)};
+    struct lysp_ext_instance *exts, *ext;
+    const struct lys_module *mod;
+    uint32_t i;
+    LY_ARRAY_COUNT_TYPE u;
+    char *path = NULL;
+
+    /* first finish parsing all extension instances ... */
+    for (i = 0; i < pctx->ext_inst.count; ++i) {
+        exts = pctx->ext_inst.objs[i];
+        LY_ARRAY_FOR(exts, u) {
+            ext = &exts[u];
+
+            /* find the extension definition */
+            LY_CHECK_RET(lysp_ext_find_definition(PARSER_CTX(pctx), ext, &mod, &ext->def));
+
+            /* resolve the argument, if needed */
+            LY_CHECK_RET(lysp_ext_instance_resolve_argument(PARSER_CTX(pctx), ext));
+
+            /* find the extension record, if any */
+            ext->record = lyplg_ext_record_find(mod->name, mod->revision, ext->def->name);
+        }
+    }
+
+    /* ... then call the parse callback */
+    for (i = 0; i < pctx->ext_inst.count; ++i) {
+        exts = pctx->ext_inst.objs[i];
+        u = 0;
+        while (u < LY_ARRAY_COUNT(exts)) {
+            ext = &exts[u];
+            if (!ext->record || !ext->record->plugin.parse) {
+                goto next_iter;
+            }
+
+            /* set up log path */
+            if ((r = lysp_resolve_ext_instance_log_path(pctx, ext, &path))) {
+                return r;
+            }
+            LOG_LOCINIT(NULL, NULL, path, NULL);
+
+            /* parse */
+            r = ext->record->plugin.parse(pctx, ext);
+
+            LOG_LOCBACK(0, 0, 1, 0);
+            free(path);
+
+            if (r == LY_ENOT) {
+                /* instance should be ignored, remove it */
+                lysp_ext_instance_free(&fctx, ext);
+                LY_ARRAY_DECREMENT(exts);
+                if (u < LY_ARRAY_COUNT(exts)) {
+                    /* replace by the last item */
+                    *ext = exts[LY_ARRAY_COUNT(exts)];
+                } /* else if there are no more items, leave the empty array, we are not able to free it */
+                continue;
+            } else if (r) {
+                /* error */
+                return r;
+            }
+
+next_iter:
+            ++u;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
 LY_ERR
-lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
+lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, struct lysp_ctx *main_ctx,
         LY_ERR (*custom_check)(const struct ly_ctx *, struct lysp_module *, struct lysp_submodule *, void *),
         void *check_data, struct ly_set *new_mods, struct lysp_submodule **submodule)
 {
     LY_ERR ret;
     struct lysp_submodule *submod = NULL, *latest_sp;
-    struct lys_yang_parser_ctx *yangctx = NULL;
-    struct lys_yin_parser_ctx *yinctx = NULL;
-    struct lys_parser_ctx *pctx;
+    struct lysp_yang_ctx *yangctx = NULL;
+    struct lysp_yin_ctx *yinctx = NULL;
+    struct lysp_ctx *pctx;
+    struct lysf_ctx fctx = {.ctx = ctx};
 
     LY_CHECK_ARG_RET(ctx, ctx, in, LY_EINVAL);
 
     switch (format) {
     case LYS_IN_YIN:
         ret = yin_parse_submodule(&yinctx, ctx, main_ctx, in, &submod);
-        pctx = (struct lys_parser_ctx *)yinctx;
+        pctx = (struct lysp_ctx *)yinctx;
         break;
     case LYS_IN_YANG:
         ret = yang_parse_submodule(&yangctx, ctx, main_ctx, in, &submod);
-        pctx = (struct lys_parser_ctx *)yangctx;
+        pctx = (struct lysp_ctx *)yangctx;
         break;
     default:
         LOGERR(ctx, LY_EINVAL, "Invalid schema input format.");
@@ -1301,12 +1421,15 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
     lys_parser_fill_filepath(ctx, in, &submod->filepath);
 
     /* resolve imports and includes */
-    LY_CHECK_GOTO(ret = lys_resolve_import_include(pctx, (struct lysp_module *)submod, new_mods), error);
+    LY_CHECK_GOTO(ret = lysp_resolve_import_include(pctx, (struct lysp_module *)submod, new_mods), error);
+
+    /* resolve extension instance plugin records */
+    LY_CHECK_GOTO(ret = lysp_resolve_ext_instance_records(pctx), error);
 
     if (format == LYS_IN_YANG) {
-        yang_parser_ctx_free(yangctx);
+        lysp_yang_ctx_free(yangctx);
     } else {
-        yin_parser_ctx_free(yinctx);
+        lysp_yin_ctx_free(yinctx);
     }
     *submodule = submod;
     return LY_SUCCESS;
@@ -1317,11 +1440,11 @@ error:
     } else {
         LOGERR(ctx, ret, "Parsing submodule \"%s\" failed.", submod->name);
     }
-    lysp_module_free((struct lysp_module *)submod);
+    lysp_module_free(&fctx, (struct lysp_module *)submod);
     if (format == LYS_IN_YANG) {
-        yang_parser_ctx_free(yangctx);
+        lysp_yang_ctx_free(yangctx);
     } else {
-        yin_parser_ctx_free(yinctx);
+        lysp_yin_ctx_free(yinctx);
     }
     return ret;
 }
@@ -1329,31 +1452,32 @@ error:
 /**
  * @brief Add ietf-netconf metadata to the parsed module. Operation, filter, and select are added.
  *
+ * @param[in] pctx Parse context.
  * @param[in] mod Parsed module to add to.
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
 static LY_ERR
-lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
+lysp_add_internal_ietf_netconf(struct lysp_ctx *pctx, struct lysp_module *mod)
 {
-    struct lysp_ext_instance *ext_p;
+    struct lysp_ext_instance *extp;
     struct lysp_stmt *stmt;
     struct lysp_import *imp;
 
     /*
      * 1) edit-config's operation
      */
-    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, ext_p, LY_EMEM);
-    LY_CHECK_ERR_RET(!ext_p, LOGMEM(mod->mod->ctx), LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &ext_p->name));
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "operation", 0, &ext_p->argument));
-    ext_p->format = LY_VALUE_SCHEMA;
-    ext_p->prefix_data = mod;
-    ext_p->flags = LYS_INTERNAL;
-    ext_p->parent_stmt = LY_STMT_MODULE;
-    ext_p->parent_stmt_index = 0;
+    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, extp, LY_EMEM);
+    LY_CHECK_ERR_RET(!extp, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &extp->name));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "operation", 0, &extp->argument));
+    extp->format = LY_VALUE_SCHEMA;
+    extp->prefix_data = mod;
+    extp->parent = mod;
+    extp->parent_stmt = LY_STMT_MODULE;
+    extp->flags = LYS_INTERNAL;
 
-    ext_p->child = stmt = calloc(1, sizeof *ext_p->child);
+    extp->child = stmt = calloc(1, sizeof *extp->child);
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &stmt->stmt));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enumeration", 0, &stmt->arg));
@@ -1409,17 +1533,17 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
     /*
      * 2) filter's type
      */
-    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, ext_p, LY_EMEM);
-    LY_CHECK_ERR_RET(!ext_p, LOGMEM(mod->mod->ctx), LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &ext_p->name));
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &ext_p->argument));
-    ext_p->format = LY_VALUE_SCHEMA;
-    ext_p->prefix_data = mod;
-    ext_p->flags = LYS_INTERNAL;
-    ext_p->parent_stmt = LY_STMT_MODULE;
-    ext_p->parent_stmt_index = 0;
+    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, extp, LY_EMEM);
+    LY_CHECK_ERR_RET(!extp, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &extp->name));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &extp->argument));
+    extp->format = LY_VALUE_SCHEMA;
+    extp->prefix_data = mod;
+    extp->parent = mod;
+    extp->parent_stmt = LY_STMT_MODULE;
+    extp->flags = LYS_INTERNAL;
 
-    ext_p->child = stmt = calloc(1, sizeof *ext_p->child);
+    extp->child = stmt = calloc(1, sizeof *extp->child);
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &stmt->stmt));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enumeration", 0, &stmt->arg));
@@ -1460,17 +1584,17 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
     /*
      * 3) filter's select
      */
-    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, ext_p, LY_EMEM);
-    LY_CHECK_ERR_RET(!ext_p, LOGMEM(mod->mod->ctx), LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &ext_p->name));
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "select", 0, &ext_p->argument));
-    ext_p->format = LY_VALUE_SCHEMA;
-    ext_p->prefix_data = mod;
-    ext_p->flags = LYS_INTERNAL;
-    ext_p->parent_stmt = LY_STMT_MODULE;
-    ext_p->parent_stmt_index = 0;
+    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, extp, LY_EMEM);
+    LY_CHECK_ERR_RET(!extp, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &extp->name));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "select", 0, &extp->argument));
+    extp->format = LY_VALUE_SCHEMA;
+    extp->prefix_data = mod;
+    extp->parent = mod;
+    extp->parent_stmt = LY_STMT_MODULE;
+    extp->flags = LYS_INTERNAL;
 
-    ext_p->child = stmt = calloc(1, sizeof *ext_p->child);
+    extp->child = stmt = calloc(1, sizeof *extp->child);
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &stmt->stmt));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "yang_:xpath1.0", 0, &stmt->arg));
@@ -1478,15 +1602,18 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
     stmt->prefix_data = mod;
     stmt->kw = LY_STMT_TYPE;
 
+    if (LY_ARRAY_COUNT(mod->exts) == 3) {
+        /* first extension instances */
+        LY_CHECK_RET(ly_set_add(&pctx->ext_inst, mod->exts, 1, NULL));
+    }
+
     /* create new imports for the used prefixes */
     LY_ARRAY_NEW_RET(mod->mod->ctx, mod->imports, imp, LY_EMEM);
-
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "ietf-yang-metadata", 0, &imp->name));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_", 0, &imp->prefix));
     imp->flags = LYS_INTERNAL;
 
     LY_ARRAY_NEW_RET(mod->mod->ctx, mod->imports, imp, LY_EMEM);
-
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "ietf-yang-types", 0, &imp->name));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "yang_", 0, &imp->prefix));
     imp->flags = LYS_INTERNAL;
@@ -1497,31 +1624,31 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
 /**
  * @brief Add ietf-netconf-with-defaults "default" metadata to the parsed module.
  *
+ * @param[in] pctx Parse context.
  * @param[in] mod Parsed module to add to.
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
 static LY_ERR
-lys_parsed_add_internal_ietf_netconf_with_defaults(struct lysp_module *mod)
+lysp_add_internal_ietf_netconf_with_defaults(struct lysp_ctx *pctx, struct lysp_module *mod)
 {
-    struct lysp_ext_instance *ext_p;
+    struct lysp_ext_instance *extp;
     struct lysp_stmt *stmt;
     struct lysp_import *imp;
 
     /* add new extension instance */
-    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, ext_p, LY_EMEM);
+    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, extp, LY_EMEM);
 
     /* fill in the extension instance fields */
-    LY_CHECK_ERR_RET(!ext_p, LOGMEM(mod->mod->ctx), LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &ext_p->name));
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "default", 0, &ext_p->argument));
-    ext_p->format = LY_VALUE_SCHEMA;
-    ext_p->prefix_data = mod;
-    ext_p->flags = LYS_INTERNAL;
-    ext_p->parent_stmt = LY_STMT_MODULE;
-    ext_p->parent_stmt_index = 0;
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &extp->name));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "default", 0, &extp->argument));
+    extp->format = LY_VALUE_SCHEMA;
+    extp->prefix_data = mod;
+    extp->parent = mod;
+    extp->parent_stmt = LY_STMT_MODULE;
+    extp->flags = LYS_INTERNAL;
 
-    ext_p->child = stmt = calloc(1, sizeof *ext_p->child);
+    extp->child = stmt = calloc(1, sizeof *extp->child);
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &stmt->stmt));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "boolean", 0, &stmt->arg));
@@ -1529,9 +1656,13 @@ lys_parsed_add_internal_ietf_netconf_with_defaults(struct lysp_module *mod)
     stmt->prefix_data = mod;
     stmt->kw = LY_STMT_TYPE;
 
+    if (LY_ARRAY_COUNT(mod->exts) == 1) {
+        /* first extension instance */
+        LY_CHECK_RET(ly_set_add(&pctx->ext_inst, mod->exts, 1, NULL));
+    }
+
     /* create new import for the used prefix */
     LY_ARRAY_NEW_RET(mod->mod->ctx, mod->imports, imp, LY_EMEM);
-
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "ietf-yang-metadata", 0, &imp->name));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_", 0, &imp->prefix));
     imp->flags = LYS_INTERNAL;
@@ -1546,9 +1677,10 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
 {
     struct lys_module *mod = NULL, *latest, *mod_dup = NULL;
     LY_ERR ret;
-    struct lys_yang_parser_ctx *yangctx = NULL;
-    struct lys_yin_parser_ctx *yinctx = NULL;
-    struct lys_parser_ctx *pctx = NULL;
+    struct lysp_yang_ctx *yangctx = NULL;
+    struct lysp_yin_ctx *yinctx = NULL;
+    struct lysp_ctx *pctx = NULL;
+    struct lysf_ctx fctx = {.ctx = ctx};
     char *filename, *rev, *dot;
     size_t len;
     ly_bool module_created = 0;
@@ -1567,11 +1699,11 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     switch (format) {
     case LYS_IN_YIN:
         ret = yin_parse_module(&yinctx, in, mod);
-        pctx = (struct lys_parser_ctx *)yinctx;
+        pctx = (struct lysp_ctx *)yinctx;
         break;
     case LYS_IN_YANG:
         ret = yang_parse_module(&yangctx, in, mod);
-        pctx = (struct lys_parser_ctx *)yangctx;
+        pctx = (struct lysp_ctx *)yangctx;
         break;
     default:
         LOGERR(ctx, LY_EINVAL, "Invalid schema input format.");
@@ -1620,6 +1752,15 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
         goto cleanup;
     }
 
+    /* check whether there is not a namespace collision */
+    mod_dup = ly_ctx_get_module_latest_ns(ctx, mod->ns);
+    if (mod_dup && (mod_dup->revision == mod->revision)) {
+        LOGERR(ctx, LY_EINVAL, "Two different modules (\"%s\" and \"%s\") have the same namespace \"%s\".",
+                mod_dup->name, mod->name, mod->ns);
+        ret = LY_EINVAL;
+        goto cleanup;
+    }
+
     switch (in->type) {
     case LY_IN_FILEPATH:
         /* check that name and revision match filename */
@@ -1665,9 +1806,9 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
 
     /* add internal data in case specific modules were parsed */
     if (!strcmp(mod->name, "ietf-netconf")) {
-        LY_CHECK_GOTO(ret = lys_parsed_add_internal_ietf_netconf(mod->parsed), cleanup);
+        LY_CHECK_GOTO(ret = lysp_add_internal_ietf_netconf(pctx, mod->parsed), cleanup);
     } else if (!strcmp(mod->name, "ietf-netconf-with-defaults")) {
-        LY_CHECK_GOTO(ret = lys_parsed_add_internal_ietf_netconf_with_defaults(mod->parsed), cleanup);
+        LY_CHECK_GOTO(ret = lysp_add_internal_ietf_netconf_with_defaults(pctx, mod->parsed), cleanup);
     }
 
     /* add the module into newly created module set, will also be freed from there on any error */
@@ -1680,7 +1821,10 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     ctx->change_count++;
 
     /* resolve includes and all imports */
-    LY_CHECK_GOTO(ret = lys_resolve_import_include(pctx, mod->parsed, new_mods), cleanup);
+    LY_CHECK_GOTO(ret = lysp_resolve_import_include(pctx, mod->parsed, new_mods), cleanup);
+
+    /* resolve extension instance plugin records */
+    LY_CHECK_GOTO(ret = lysp_resolve_ext_instance_records(pctx), cleanup);
 
     /* check name collisions */
     LY_CHECK_GOTO(ret = lysp_check_dup_typedefs(pctx, mod->parsed), cleanup);
@@ -1694,28 +1838,30 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     /* compile identities */
     LY_CHECK_GOTO(ret = lys_compile_identities(mod), cleanup);
 
-    /* success */
-
 cleanup:
     if (ret && (ret != LY_EEXIST)) {
         if (mod && mod->name) {
             /* there are cases when path is not available for parsing error, so this additional
              * message tries to add information about the module where the error occurred */
             struct ly_err_item *e = ly_err_last(ctx);
+
             if (e && (!e->path || !strncmp(e->path, "Line ", ly_strlen_const("Line ")))) {
                 LOGERR(ctx, ret, "Parsing module \"%s\" failed.", mod->name);
             }
         }
     }
     if (!module_created) {
-        lys_module_free(mod);
+        fctx.mod = mod;
+        lys_module_free(&fctx, mod, 0);
+        lysf_ctx_erase(&fctx);
+
         mod = mod_dup;
     }
 
     if (format == LYS_IN_YANG) {
-        yang_parser_ctx_free(yangctx);
+        lysp_yang_ctx_free(yangctx);
     } else {
-        yin_parser_ctx_free(yinctx);
+        lysp_yin_ctx_free(yinctx);
     }
 
     if (!ret && module) {
@@ -1747,7 +1893,7 @@ lys_parse_get_format(const struct ly_in *in, LYS_INFORMAT format)
     return format;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char **features, struct lys_module **module)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1793,7 +1939,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct lys_module **module)
 {
     LY_ERR ret;
@@ -1809,7 +1955,7 @@ lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct 
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct lys_module **module)
 {
     LY_ERR ret;
@@ -1825,7 +1971,7 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct lys_module 
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, struct lys_module **module)
 {
     LY_ERR ret;
@@ -1842,7 +1988,7 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, struct
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_search_localfile(const char * const *searchpaths, ly_bool cwd, const char *name, const char *revision,
         char **localfile, LYS_INFORMAT *format)
 {

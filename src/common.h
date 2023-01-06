@@ -20,6 +20,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "compat.h"
+#include "config.h"
 #include "context.h"
 #include "hash_table.h"
 #include "log.h"
@@ -37,6 +39,8 @@ struct lysc_node;
     defined __SUNPRO_C || \
     defined __xlC__
 # define THREAD_LOCAL __thread
+#elif defined _MSC_VER
+# define THREAD_LOCAL __declspec(thread)
 #else
 # error "Cannot define THREAD_LOCAL"
 #endif
@@ -48,19 +52,12 @@ struct lysc_node;
 #define GETMACRO5(_1, _2, _3, _4, _5, NAME, ...) NAME
 #define GETMACRO6(_1, _2, _3, _4, _5, _6, NAME, ...) NAME
 
-/*
- * If the compiler supports attribute to mark objects as hidden, mark all
- * objects as hidden and export only objects explicitly marked to be part of
- * the public API.
- */
-#define API __attribute__((visibility("default")))
-
 /******************************************************************************
  * Logger
  *****************************************************************************/
 
-extern volatile LY_LOG_LEVEL ly_ll;
-extern volatile uint32_t ly_log_opts;
+extern ATOMIC_T ly_ll;
+extern ATOMIC_T ly_log_opts;
 
 struct ly_log_location_s {
     uint64_t line;                   /**< One-time line value being reset after use - replaces whatever is in inputs */
@@ -220,6 +217,13 @@ void ly_log_dbg(uint32_t group, const char *format, ...);
 #define LY_CHECK_ARG_RET(CTX, ...) GETMACRO6(__VA_ARGS__, LY_CHECK_ARG_RET5, LY_CHECK_ARG_RET4, LY_CHECK_ARG_RET3, \
     LY_CHECK_ARG_RET2, LY_CHECK_ARG_RET1, DUMMY) (CTX, __VA_ARGS__)
 
+#define LY_CHECK_CTX_EQUAL_RET2(CTX1, CTX2, RETVAL) if ((CTX1) && (CTX2) && ((CTX1) != (CTX2))) \
+    {LOGERR(CTX1, LY_EINVAL, "Different contexts mixed in a single function call."); return RETVAL;}
+#define LY_CHECK_CTX_EQUAL_RET3(CTX1, CTX2, CTX3, RETVAL) LY_CHECK_CTX_EQUAL_RET2(CTX1, CTX2, RETVAL); \
+    LY_CHECK_CTX_EQUAL_RET2(CTX2, CTX3, RETVAL); LY_CHECK_CTX_EQUAL_RET2(CTX1, CTX3, RETVAL)
+#define LY_CHECK_CTX_EQUAL_RET(CTX, ...) GETMACRO3(__VA_ARGS__, LY_CHECK_CTX_EQUAL_RET3, LY_CHECK_CTX_EQUAL_RET2, \
+    DUMMY) (CTX, __VA_ARGS__)
+
 /* count sequence size for LY_VCODE_INCHILDSTMT validation error code */
 size_t LY_VCODE_INSTREXP_len(const char *str);
 /* default maximum characters to print in LY_VCODE_INCHILDSTMT */
@@ -302,7 +306,6 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 
 /* RFC 7950 section 15 error messages used in type plugin validation callbacks */
 #define LY_ERRMSG_NOLREF_VAL /* LYVE_DATA */ "Invalid leafref value \"%s\" - no target instance \"%s\" with the same value."
-#define LY_ERRMSG_NOLREF_INST /* LYVE_DATA */ "Invalid leafref value \"%s\" - no existing target instance \"%s\"."
 #define LY_ERRMSG_NOINST /* LYVE_DATA */ "Invalid instance-identifier \"%s\" value - required instance not found."
 
 /******************************************************************************
@@ -324,6 +327,8 @@ struct ly_ctx {
                                            more times */
     uint16_t flags;                   /**< context settings, see @ref contextoptions */
 
+    ly_ext_data_clb ext_clb;          /**< optional callback for providing extension-specific run-time data for extensions */
+    void *ext_clb_data;               /**< optional private data for ::ly_ctx.ext_clb */
     pthread_key_t errlist_key;        /**< key for the thread-specific list of errors related to the context */
     pthread_mutex_t lyb_hash_lock;    /**< lock for storing LYB schema hashes in schema nodes */
 };
@@ -624,5 +629,11 @@ LY_ERR ly_munmap(void *addr, size_t length);
  * @return LY_SUCCESS or LY_EMEM.
  */
 LY_ERR ly_strcat(char **dest, const char *format, ...);
+
+#ifndef _WIN32
+# define PATH_SEPARATOR ":"
+#else
+# define PATH_SEPARATOR ";"
+#endif
 
 #endif /* LY_COMMON_H_ */

@@ -10,24 +10,9 @@ on:
       - devel
 
 jobs:
-  git-branch:
-    name: Get git branch
-    runs-on: ubuntu-18.04
-    outputs:
-      branch-name: ${{ steps.get-git-branch.outputs.branch-name }}
-    steps:
-      - id: get-git-branch
-        run: |
-          if ${{ github.event_name == 'push' }}
-            then export GIT_BRANCH=`echo ${{ github.ref }} | cut -d'/' -f 3`
-          else
-            export GIT_BRANCH=${{ github.base_ref }}
-          fi
-          echo "::set-output name=branch-name::$GIT_BRANCH"
-  build:
+  build-unix:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
-    needs: git-branch
     strategy:
       fail-fast: false
       matrix:
@@ -81,11 +66,11 @@ jobs:
             make-target: ""
           }
           - {
-            name: "Release, macOS 10.15, clang",
-            os: "macos-10.15",
+            name: "Release, macOS 11, clang",
+            os: "macos-11",
             build-type: "Release",
             cc: "clang",
-            options: "-DENABLE_TESTS=ON",
+            options: "-DENABLE_TESTS=ON -DPATH_EXPECT=",
             packager: "brew",
             packages: "cmocka shunit2",
             snaps: "",
@@ -93,10 +78,10 @@ jobs:
             make-target: ""
           }
           - {
-            name: "ASAN and UBSAN",
-            os: "ubuntu-18.04",
+            name: "ASAN and UBSAN, clang 14",
+            os: "ubuntu-22.04",
             build-type: "Debug",
-            cc: "clang",
+            cc: "clang-14",
             options: "-DCMAKE_C_FLAGS=-fsanitize=address,undefined -DENABLE_TESTS=ON -DENABLE_VALGRIND_TESTS=OFF",
             packager: "sudo apt-get",
             packages: "libcmocka-dev",
@@ -135,7 +120,7 @@ jobs:
         shell: bash
         working-directory: ${{ github.workspace }}
         run: |
-          git clone --branch uncrustify-0.71.0 https://github.com/uncrustify/uncrustify
+          git clone --branch uncrustify-0.75.1 https://github.com/uncrustify/uncrustify
           cd uncrustify
           mkdir build
           cd build
@@ -164,3 +149,69 @@ jobs:
         shell: bash
         working-directory: ${{ github.workspace }}/build
         run: ctest --output-on-failure
+
+  build-windows:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "Windows 2022 MSVC 16 LF"
+            os: windows-2022
+            triplet: x64-windows
+            build_type: Release
+            generators: "Visual Studio 17 2022"
+            autocrlf: input
+            eol: lf
+
+          - name: "Windows 2022 MSVC 16 no autoCRLF"
+            os: windows-2022
+            triplet: x64-windows
+            build_type: Release
+            generators: "Visual Studio 17 2022"
+
+    steps:
+      - name: Unix line endings in git
+        if: matrix.autocrlf
+        run: |
+          git config --global core.autocrlf ${{ matrix.autocrlf }}
+
+      - name: Unix line endings in git
+        if: matrix.eol
+        run: |
+          git config --global core.eol ${{ matrix.eol }}
+
+      - uses: actions/checkout@v2
+
+      - name: Get number of CPU cores
+        id: cpu-cores
+        uses: SimenB/github-actions-cpu-cores@5e7112c2e8c5b63b649a678bc2fb5920d0c8202e
+
+      - name: Install Windows dependencies
+        run: vcpkg install --triplet=${{ matrix.triplet }} pcre2 pthreads dirent dlfcn-win32 cmocka getopt
+
+      - name: Configure
+        shell: bash
+        run: |
+          cmake \
+            -S '${{ github.workspace }}/' \
+            -B '${{ github.workspace }}/'../build \
+            -G '${{ matrix.generators }}' \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} \
+            -DCMAKE_TOOLCHAIN_FILE=${VCPKG_INSTALLATION_ROOT//\\//}/scripts/buildsystems/vcpkg.cmake \
+            -DENABLE_TESTS=ON \
+            '-DCMAKE_INSTALL_PREFIX:PATH=${{ github.workspace }}'/../target
+
+      - name: Build
+        working-directory: '${{ github.workspace }}/../build'
+        run: cmake --build . -j${{ steps.cpu-cores.outputs.count }} --config ${{ matrix.build_type }}
+
+      - name: Test
+        working-directory: '${{ github.workspace }}/../build'
+        run: ctest --output-on-failure -j${{ steps.cpu-cores.outputs.count }} --build-config ${{ matrix.build_type }}
+
+      - name: Install
+        working-directory: '${{ github.workspace }}/../build'
+        run: cmake --install . --strip

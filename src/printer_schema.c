@@ -23,7 +23,7 @@
 #include "printer_internal.h"
 #include "tree_schema.h"
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_print_module(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT format, size_t line_length,
         uint32_t options)
 {
@@ -84,7 +84,7 @@ lys_print_module(struct ly_out *out, const struct lys_module *module, LYS_OUTFOR
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_print_submodule(struct ly_out *out, const struct lysp_submodule *submodule, LYS_OUTFORMAT format,
         size_t line_length, uint32_t options)
 {
@@ -132,7 +132,7 @@ lys_print_(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT fo
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format, uint32_t options)
 {
     struct ly_out *out;
@@ -146,7 +146,7 @@ lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format
     return lys_print_(out, module, format, options);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, uint32_t options)
 {
     struct ly_out *out;
@@ -157,7 +157,7 @@ lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, uint
     return lys_print_(out, module, format, options);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, uint32_t options)
 {
     struct ly_out *out;
@@ -168,7 +168,7 @@ lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, u
     return lys_print_(out, module, format, options);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_print_path(const char *path, const struct lys_module *module, LYS_OUTFORMAT format, uint32_t options)
 {
     struct ly_out *out;
@@ -179,7 +179,7 @@ lys_print_path(const char *path, const struct lys_module *module, LYS_OUTFORMAT 
     return lys_print_(out, module, format, options);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_print_clb(ly_write_clb writeclb, void *user_data, const struct lys_module *module, LYS_OUTFORMAT format, uint32_t options)
 {
     struct ly_out *out;
@@ -190,7 +190,7 @@ lys_print_clb(ly_write_clb writeclb, void *user_data, const struct lys_module *m
     return lys_print_(out, module, format, options);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_print_node(struct ly_out *out, const struct lysc_node *node, LYS_OUTFORMAT format, size_t line_length, uint32_t options)
 {
     LY_ERR ret;
