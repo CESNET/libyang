@@ -9,4 +9,5 @@ include /usr/share/dpkg/default.mk
 
 override_dh_auto_configure:
 	dh_auto_configure -- \
-		-DCMAKE_BUILD_TYPE:String="Release"
+		-DCMAKE_BUILD_TYPE:String="Release" \
+		-DENABLE_TESTS=ON
