@@ -1,3 +1,11 @@
+libyang2 (2.1.4-1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * New upstream release. (Closes: #1023794)
+  * Enable the build time tests. (Closes: #1004191)
+
+ -- Marco d'Itri <md@linux.it>  Fri, 06 Jan 2023 18:40:33 +0100
+
 libyang2 (2.0.112-6) unstable; urgency=medium
 
   * Add proper Multi-Arch headers
