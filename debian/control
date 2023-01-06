@@ -8,7 +8,7 @@ Priority: optional
 Standards-Version: 4.5.0
 Build-Depends: bison,
                cmake,
-               debhelper (>= 9.20150101),
+               debhelper-compat (= 13),
                libcmocka-dev <!nocheck>,
                libpcre3-dev,
                pkg-config
