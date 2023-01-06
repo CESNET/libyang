@@ -10,6 +10,7 @@ include /usr/share/dpkg/default.mk
 override_dh_auto_configure:
 	dh_auto_configure -- \
 		-DCMAKE_BUILD_TYPE:String="Package" \
+		-DENABLE_TESTS=ON \
 		-DENABLE_LYD_PRIV=ON \
 		-DGEN_LANGUAGE_BINDINGS=ON \
 		-DGEN_JAVA_BINDINGS=OFF \
