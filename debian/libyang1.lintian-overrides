@@ -1,2 +1,2 @@
 # plugins
-libyang1: library-not-linked-against-libc usr/lib/*/libyang1/extensions/*.so
+libyang1: library-not-linked-against-libc [usr/lib/*/libyang1/extensions/*.so]
