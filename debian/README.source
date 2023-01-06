@@ -4,12 +4,12 @@ To update this package, first import the changes from upstream:
 - git fetch --all
 
 Find the latest version:
-VERSION=$(git describe --tags $(git rev-list '--tags=v1*' --max-count=1) | sed 's/^v//')
+VERSION=$(git describe --tags $(git rev-list '--tags=v2*' --max-count=1) | sed 's/^v//')
 echo $VERSION
 
 Update debian/sid branch
-- git checkout debian/master
-- git merge v$VERSION
+- git checkout libyang2-debian-packaging
+- gbp import-ref -u$VERSION
 
 Update the debian/copyright file:
 - cme update dpkg-copyright
@@ -18,17 +18,11 @@ See also https://github.com/dod38fr/config-model/wiki/Updating-debian-copyright-
 Check patches (and cleanup if necessary):
 - gbp pq rebase --commit --drop
 
-Download upstream tarball:
-- uscan --download --verbose --download-version $VERSION
-
-Add pristine-tar:
-- pristine-tar commit ../libyang_$VERSION.orig.tar.gz v$VERSION
-
 Generate a temporary changelog:
 - gbp dch --new-version=$VERSION-1 --snapshot --auto --commit debian/
 
 Test the first build::
-- gbp buildpackage --git-ignore-new --git-pristine-tar --git-no-purge
+- gbp buildpackage --git-ignore-new --git-no-purge
 
 Regenerate the symbol file (See https://qt-kde-team.pages.debian.net/symbolfiles.html)
 - pkgkde-symbolshelper batchpatch -v $VERSION < <path_to>/buildlog
