@@ -1,3 +1,11 @@
+libyang (1.0.240-1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * New upstream release (see #1023794).
+  * Enable the build time tests. (Closes: #1004191)
+
+ -- Marco d'Itri <md@linux.it>  Fri, 06 Jan 2023 16:59:28 +0100
+
 libyang (1.0.225-1) unstable; urgency=medium
 
   * New upstream release
