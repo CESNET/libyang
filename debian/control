@@ -5,7 +5,7 @@ Maintainer: Ondřej Surý <ondrej@debian.org>
 Priority: optional
 Standards-Version: 4.5.0
 Build-Depends: cmake,
-               debhelper (>= 10),
+               debhelper-compat (= 13),
                libcmocka-dev <!nocheck>,
                libpcre2-dev,
                pkg-config
