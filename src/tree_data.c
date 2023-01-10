@@ -330,9 +330,11 @@ lyd_parse_op_(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
 
         /* parse the NETCONF message */
         rc = lyd_parse_xml_netconf(ctx, ext, parent, &first, in, parse_opts, val_opts, data_type, &envp, &parsed, &lydctx);
-        if (rc && envp) {
-            /* special situation when the envelopes were parsed successfully */
-            *tree = envp;
+        if (rc) {
+            if (envp) {
+                /* special situation when the envelopes were parsed successfully */
+                *tree = envp;
+            }
             goto cleanup;
         }
 
