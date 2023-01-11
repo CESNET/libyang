@@ -254,6 +254,8 @@ ly_in_filepath(struct ly_in *in, const char *filepath, size_t len)
 LIBYANG_API_DEF size_t
 ly_in_parsed(const struct ly_in *in)
 {
+    LY_CHECK_ARG_RET(NULL, in, 0);
+
     return in->current - in->func_start;
 }
 
@@ -295,9 +297,11 @@ ly_in_free(struct ly_in *in, ly_bool destroy)
     free(in);
 }
 
-LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_in_read(struct ly_in *in, void *buf, size_t count)
 {
+    LY_CHECK_ARG_RET(NULL, in, buf, LY_EINVAL);
+
     if (in->length && (in->length - (in->current - in->start) < count)) {
         /* EOF */
         return LY_EDENIED;
@@ -310,9 +314,11 @@ ly_in_read(struct ly_in *in, void *buf, size_t count)
     return LY_SUCCESS;
 }
 
-LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_in_skip(struct ly_in *in, size_t count)
 {
+    LY_CHECK_ARG_RET(NULL, in, LY_EINVAL);
+
     if (in->length && (in->length - (in->current - in->start) < count)) {
         /* EOF */
         return LY_EDENIED;

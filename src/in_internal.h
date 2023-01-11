@@ -1,9 +1,10 @@
 /**
  * @file in_internal.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Internal structures and functions for libyang parsers
  *
- * Copyright (c) 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -45,32 +46,5 @@ struct ly_in {
  */
 #define LY_IN_NEW_LINE(IN) \
     (IN)->line++
-
-/**
- * @brief Read bytes from an input.
- *
- * Does not count new lines, which is expected from the caller who has better idea about
- * the content of the read data and can better optimize counting.
- *
- * @param[in] in Input structure.
- * @param[in] buf Destination buffer.
- * @param[in] count Number of bytes to read.
- * @return LY_SUCCESS on success,
- * @return LY_EDENIED on EOF.
- */
-LY_ERR ly_in_read(struct ly_in *in, void *buf, size_t count);
-
-/**
- * @brief Just skip bytes in an input.
- *
- * Does not count new lines, which is expected from the caller who has better idea about
- * the content of the skipped data and can better optimize counting.
- *
- * @param[in] in Input structure.
- * @param[in] count Number of bytes to skip.
- * @return LY_SUCCESS on success,
- * @return LY_EDENIED on EOF.
- */
-LY_ERR ly_in_skip(struct ly_in *in, size_t count);
 
 #endif /* LY_IN_INTERNAL_H_ */

@@ -211,11 +211,39 @@ LIBYANG_API_DECL size_t ly_in_parsed(const struct ly_in *in);
 
 /**
  * @brief Free the input handler.
+ *
  * @param[in] in Input handler to free.
  * @param[in] destroy Flag to free the input data buffer (for LY_IN_MEMORY) or to
  * close stream/file descriptor (for LY_IN_FD and LY_IN_FILE)
  */
 LIBYANG_API_DECL void ly_in_free(struct ly_in *in, ly_bool destroy);
+
+/**
+ * @brief Read bytes from an input.
+ *
+ * Does not count new lines, which is expected from the caller who has better idea about
+ * the content of the read data and can better optimize counting.
+ *
+ * @param[in] in Input structure.
+ * @param[in] buf Destination buffer.
+ * @param[in] count Number of bytes to read.
+ * @return LY_SUCCESS on success,
+ * @return LY_EDENIED on EOF.
+ */
+LIBYANG_API_DECL LY_ERR ly_in_read(struct ly_in *in, void *buf, size_t count);
+
+/**
+ * @brief Just skip bytes in an input.
+ *
+ * Does not count new lines, which is expected from the caller who has better idea about
+ * the content of the skipped data and can better optimize counting.
+ *
+ * @param[in] in Input structure.
+ * @param[in] count Number of bytes to skip.
+ * @return LY_SUCCESS on success,
+ * @return LY_EDENIED on EOF.
+ */
+LIBYANG_API_DECL LY_ERR ly_in_skip(struct ly_in *in, size_t count);
 
 #ifdef __cplusplus
 }
