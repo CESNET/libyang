@@ -177,19 +177,21 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, const void *parsed, struct l
         break;
 
     case LY_STMT_CONFIG: {
-        const uint16_t flags = (uintptr_t)parsed;
+        uint16_t flags;
 
         if (!(ctx->compile_opts & LYS_COMPILE_NO_CONFIG)) {
+            memcpy(&flags, &parsed, 2);
             if (flags & LYS_CONFIG_MASK) {
                 /* explicitly set */
-                *(uint16_t *)substmt->storage = flags | LYS_SET_CONFIG;
+                flags |= LYS_SET_CONFIG;
             } else if (ext->parent_stmt & LY_STMT_DATA_NODE_MASK) {
                 /* inherit */
-                *(uint16_t *)substmt->storage = ((struct lysc_node *)ext->parent)->flags & LYS_CONFIG_MASK;
+                flags = ((struct lysc_node *)ext->parent)->flags & LYS_CONFIG_MASK;
             } else {
                 /* default config */
-                *(uint16_t *)substmt->storage = LYS_CONFIG_W;
+                flags = LYS_CONFIG_W;
             }
+            memcpy(substmt->storage, &flags, 2);
         } /* else leave zero */
         break;
     }
@@ -214,26 +216,26 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, const void *parsed, struct l
     case LY_STMT_FRACTION_DIGITS:
     case LY_STMT_REQUIRE_INSTANCE:
         /* just make a copy */
-        *(uint8_t *)substmt->storage = (uintptr_t)parsed;
+        memcpy(substmt->storage, &parsed, 1);
         break;
 
     case LY_STMT_MANDATORY:
     case LY_STMT_ORDERED_BY:
     case LY_STMT_STATUS:
         /* just make a copy */
-        *(uint16_t *)substmt->storage = (uintptr_t)parsed;
+        memcpy(substmt->storage, &parsed, 2);
         break;
 
     case LY_STMT_MAX_ELEMENTS:
     case LY_STMT_MIN_ELEMENTS:
         /* just make a copy */
-        *(uint32_t *)substmt->storage = (uintptr_t)parsed;
+        memcpy(substmt->storage, &parsed, 4);
         break;
 
     case LY_STMT_POSITION:
     case LY_STMT_VALUE:
         /* just make a copy */
-        *(int64_t *)substmt->storage = (uintptr_t)parsed;
+        memcpy(substmt->storage, &parsed, 8);
         break;
 
     case LY_STMT_IDENTITY:
