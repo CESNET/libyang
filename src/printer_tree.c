@@ -3795,7 +3795,7 @@ trb_ext_iter_next(ly_bool lysc_tree, void *exts, uint64_t *i)
     if (lysc_tree) {
         ce = exts;
         while (*i < LY_ARRAY_COUNT(ce)) {
-            if (trp_ext_parent_is_valid(1, &ce[*i])) {
+            if (ce->def->plugin && trp_ext_parent_is_valid(1, &ce[*i])) {
                 ext = &ce[*i];
                 break;
             }
