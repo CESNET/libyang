@@ -208,7 +208,7 @@ static LY_ERR
 lyd_create_anydata_datatree(const struct ly_ctx *ctx, const void *value, LYD_ANYDATA_VALUETYPE value_type,
         struct lyd_node **tree)
 {
-    LY_ERR r;
+    LY_ERR r = LY_SUCCESS;
     struct ly_in *in = NULL;
     struct lyd_ctx *lydctx = NULL;
     uint32_t parse_opts, int_opts;

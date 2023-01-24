@@ -418,10 +418,10 @@ lyb_union_print(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
         void *prefix_data, size_t *value_len)
 {
     void *ret = NULL;
-    LY_ERR retval;
+    LY_ERR r;
     struct ly_err_item *err;
     uint64_t num = 0;
-    uint32_t type_idx;
+    uint32_t type_idx = 0;
     ly_bool dynamic;
     size_t pval_len;
     void *pval;
@@ -435,8 +435,8 @@ lyb_union_print(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
         ctx = subvalue->ctx_node->module->ctx;
     }
     subvalue->value.realtype->plugin->free(ctx, &subvalue->value);
-    retval = union_find_type(ctx, type_u->types, subvalue, 0, NULL, NULL, &type_idx, NULL, &err);
-    LY_CHECK_RET((retval != LY_SUCCESS) && (retval != LY_EINCOMPLETE), NULL);
+    r = union_find_type(ctx, type_u->types, subvalue, 0, NULL, NULL, &type_idx, NULL, &err);
+    LY_CHECK_RET((r != LY_SUCCESS) && (r != LY_EINCOMPLETE), NULL);
 
     /* Print subvalue in LYB format. */
     pval = (void *)subvalue->value.realtype->plugin->print(NULL, &subvalue->value, LY_VALUE_LYB, prefix_data, &dynamic,
