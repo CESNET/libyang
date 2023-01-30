@@ -188,6 +188,22 @@ ly_err_last(const struct ly_ctx *ctx)
     return e ? e->prev : NULL;
 }
 
+void
+ly_err_move(struct ly_ctx *src_ctx, struct ly_ctx *trg_ctx)
+{
+    const struct ly_err_item *e;
+
+    /* clear any current errors */
+    ly_err_clean(trg_ctx, NULL);
+
+    /* get the errors in src */
+    e = pthread_getspecific(src_ctx->errlist_key);
+    pthread_setspecific(src_ctx->errlist_key, NULL);
+
+    /* set them for trg */
+    pthread_setspecific(trg_ctx->errlist_key, e);
+}
+
 LIBYANG_API_DEF void
 ly_err_free(void *ptr)
 {

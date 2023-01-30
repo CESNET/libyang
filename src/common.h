@@ -88,6 +88,14 @@ void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char 
 void ly_vlog(const struct ly_ctx *ctx, const char *apptag, LY_VECODE code, const char *format, ...);
 
 /**
+ * @brief Move error items from source to target context replacing any previous ones.
+ *
+ * @param[in] src_ctx Source context to read errors from.
+ * @param[in] trg_ctx Target context to set the errors for.
+ */
+void ly_err_move(struct ly_ctx *src_ctx, struct ly_ctx *trg_ctx);
+
+/**
  * @brief Logger's location data setter.
  *
  * @param[in] scnode Compiled schema node.
