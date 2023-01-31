@@ -96,7 +96,7 @@ test_ht_basic(void **state)
     assert_int_equal(LY_ENOTFOUND, lyht_remove(ht, &i, i));
     CHECK_LOG("Invalid argument hash (lyht_remove_with_resize_cb()).", NULL);
 
-    lyht_free(ht);
+    lyht_free(ht, NULL);
 }
 
 static void
@@ -153,7 +153,7 @@ test_ht_resize(void **state)
     }
 
     /* cleanup */
-    lyht_free(ht);
+    lyht_free(ht, NULL);
 }
 
 static void
@@ -253,7 +253,7 @@ test_ht_collisions(void **UNUSED(state))
         assert_int_equal(rec->hits, 0);
     }
 
-    lyht_free(ht);
+    lyht_free(ht, NULL);
 }
 
 int

@@ -748,7 +748,7 @@ set_remove_node_hash(struct lyxp_set *set, struct lyd_node *node, enum lyxp_node
         (void)r;
 
         if (!set->ht->used) {
-            lyht_free(set->ht);
+            lyht_free(set->ht, NULL);
             set->ht = NULL;
         }
     }
@@ -802,10 +802,10 @@ lyxp_set_free_content(struct lyxp_set *set)
 
     if (set->type == LYXP_SET_NODE_SET) {
         free(set->val.nodes);
-        lyht_free(set->ht);
+        lyht_free(set->ht, NULL);
     } else if (set->type == LYXP_SET_SCNODE_SET) {
         free(set->val.scnodes);
-        lyht_free(set->ht);
+        lyht_free(set->ht, NULL);
     } else {
         if (set->type == LYXP_SET_STRING) {
             free(set->val.str);

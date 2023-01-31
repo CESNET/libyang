@@ -53,7 +53,7 @@ lylyb_ctx_free(struct lylyb_ctx *ctx)
     LY_ARRAY_FREE(ctx->models);
 
     LY_ARRAY_FOR(ctx->sib_hts, u) {
-        lyht_free(ctx->sib_hts[u].ht);
+        lyht_free(ctx->sib_hts[u].ht, NULL);
     }
     LY_ARRAY_FREE(ctx->sib_hts);
 

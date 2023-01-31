@@ -496,7 +496,7 @@ lysp_check_dup_typedefs(struct lysp_ctx *ctx, struct lysp_module *mod)
     }
 
 cleanup:
-    lyht_free(ids_global);
+    lyht_free(ids_global, NULL);
     return ret;
 }
 
@@ -610,7 +610,7 @@ lysp_check_dup_groupings(struct lysp_ctx *ctx, struct lysp_module *mod)
     }
 
 cleanup:
-    lyht_free(ids_global);
+    lyht_free(ids_global, NULL);
     return ret;
 }
 
@@ -650,7 +650,7 @@ lysp_check_dup_features(struct lysp_ctx *ctx, struct lysp_module *mod)
     }
 
 cleanup:
-    lyht_free(ht);
+    lyht_free(ht, NULL);
     return ret;
 }
 
@@ -682,7 +682,7 @@ lysp_check_dup_identities(struct lysp_ctx *ctx, struct lysp_module *mod)
     }
 
 cleanup:
-    lyht_free(ht);
+    lyht_free(ht, NULL);
     return ret;
 }
 

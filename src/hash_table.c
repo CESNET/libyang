@@ -87,7 +87,7 @@ lydict_clean(struct dict_table *dict)
     }
 
     /* free table and destroy mutex */
-    lyht_free(dict->hash_tab);
+    lyht_free(dict->hash_tab, NULL);
     pthread_mutex_destroy(&dict->lock);
 }
 
@@ -381,12 +381,25 @@ lyht_dup(const struct hash_table *orig)
 }
 
 void
-lyht_free(struct hash_table *ht)
+lyht_free(struct hash_table *ht, void (*val_free)(void *val_p))
 {
-    if (ht) {
-        free(ht->recs);
-        free(ht);
+    struct ht_rec *rec;
+    uint32_t i;
+
+    if (!ht) {
+        return;
     }
+
+    if (val_free) {
+        for (i = 0; i < ht->size; ++i) {
+            rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+            if (rec->hits > 0) {
+                val_free(&rec->val);
+            }
+        }
+    }
+    free(ht->recs);
+    free(ht);
 }
 
 /**

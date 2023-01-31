@@ -167,8 +167,9 @@ struct hash_table *lyht_dup(const struct hash_table *orig);
  * @brief Free a hash table.
  *
  * @param[in] ht Hash table to be freed.
+ * @param[in] val_free Optional callback for freeing allthe stored values, @p val_p is a pointer to a stored value.
  */
-void lyht_free(struct hash_table *ht);
+void lyht_free(struct hash_table *ht, void (*val_free)(void *val_p));
 
 /**
  * @brief Find a value in a hash table.

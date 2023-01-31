@@ -172,7 +172,7 @@ lyb_hash_siblings(struct lysc_node *sibling, struct hash_table **ht_p)
                 if (lyht_insert(ht, &sibling, lyb_get_hash(sibling, i), NULL)) {
                     LOGINT(sibling->module->ctx);
                     lyht_set_cb(ht, lyb_hash_equal_cb);
-                    lyht_free(ht);
+                    lyht_free(ht, NULL);
                     return LY_EINT;
                 }
                 lyht_set_cb(ht, lyb_hash_equal_cb);
@@ -184,7 +184,7 @@ lyb_hash_siblings(struct lysc_node *sibling, struct hash_table **ht_p)
         if (i == LYB_HASH_BITS) {
             /* wow */
             LOGINT(sibling->module->ctx);
-            lyht_free(ht);
+            lyht_free(ht, NULL);
             return LY_EINT;
         }
     }

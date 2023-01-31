@@ -1246,7 +1246,7 @@ cleanup:
             /* failed when allocating uniquetables[j], following j are not allocated */
             break;
         }
-        lyht_free(uniqtables[v]);
+        lyht_free(uniqtables[v], NULL);
     }
     free(uniqtables);
 
