@@ -2019,13 +2019,13 @@ finish:
  */
 static LY_ERR
 lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, const struct lyd_node **sibling_src_p,
-        lyd_merge_cb merge_cb, void *cb_data, uint16_t options, struct lyd_dup_inst **dup_inst)
+        lyd_merge_cb merge_cb, void *cb_data, uint16_t options, struct hash_table **dup_inst)
 {
     const struct lyd_node *child_src, *tmp, *sibling_src;
     struct lyd_node *match_trg, *dup_src, *elem;
     struct lyd_node_opaq *opaq_trg, *opaq_src;
     struct lysc_type *type;
-    struct lyd_dup_inst *child_dup_inst = NULL;
+    struct hash_table *child_dup_inst = NULL;
     LY_ERR ret;
     ly_bool first_inst = 0;
 
@@ -2147,7 +2147,7 @@ lyd_merge(struct lyd_node **target, const struct lyd_node *source, const struct 
         lyd_merge_cb merge_cb, void *cb_data, uint16_t options, ly_bool nosiblings)
 {
     const struct lyd_node *sibling_src, *tmp;
-    struct lyd_dup_inst *dup_inst = NULL;
+    struct hash_table *dup_inst = NULL;
     ly_bool first;
     LY_ERR ret = LY_SUCCESS;
 

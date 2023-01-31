@@ -44,32 +44,65 @@
 #include "xpath.h"
 
 /**
+ * @brief Callback for checking first instance hash table values equivalence.
+ *
+ * @param[in] val1_p If not @p mod, pointer to the first instance.
+ * @param[in] val2_p If not @p mod, pointer to the found dup inst item.
+ */
+static ly_bool
+lyht_dup_inst_ht_equal_cb(void *val1_p, void *val2_p, ly_bool mod, void *UNUSED(cb_data))
+{
+    if (mod) {
+        struct lyd_dup_inst **item1 = val1_p, **item2 = val2_p;
+
+        /* equal on 2 dup inst items */
+        return *item1 == *item2 ? 1 : 0;
+    } else {
+        struct lyd_node **first_inst = val1_p;
+        struct lyd_dup_inst **item = val2_p;
+
+        /* equal on dup inst item and a first instance */
+        return (*item)->set->dnodes[0] == *first_inst ? 1 : 0;
+    }
+}
+
+/**
  * @brief Find an entry in duplicate instance cache for an instance. Create it if it does not exist.
  *
- * @param[in] first_inst Instance of the cache entry.
- * @param[in,out] dup_inst_cache Duplicate instance cache.
+ * @param[in] first_inst First instance of the cache entry.
+ * @param[in] dup_inst_ht Duplicate instance cache hash table.
  * @return Instance cache entry.
  */
 static struct lyd_dup_inst *
-lyd_dup_inst_get(const struct lyd_node *first_inst, struct lyd_dup_inst **dup_inst_cache)
+lyd_dup_inst_get(const struct lyd_node *first_inst, struct hash_table **dup_inst_ht)
 {
-    struct lyd_dup_inst *item;
-    LY_ARRAY_COUNT_TYPE u;
+    struct lyd_dup_inst **item_p, *item;
 
-    LY_ARRAY_FOR(*dup_inst_cache, u) {
-        if ((*dup_inst_cache)[u].inst_set->dnodes[0] == first_inst) {
-            return &(*dup_inst_cache)[u];
+    if (*dup_inst_ht) {
+        /* find the item of the first instance */
+        if (!lyht_find(*dup_inst_ht, &first_inst, first_inst->hash, (void **)&item_p)) {
+            return *item_p;
         }
+    } else {
+        /* create the hash table */
+        *dup_inst_ht = lyht_new(2, sizeof item, lyht_dup_inst_ht_equal_cb, NULL, 1);
+        LY_CHECK_RET(!*dup_inst_ht, NULL);
     }
 
-    /* it was not added yet, add it now */
-    LY_ARRAY_NEW_RET(LYD_CTX(first_inst), *dup_inst_cache, item, NULL);
+    /* first instance has no dup inst item, create it */
+    item = calloc(1, sizeof *item);
+    LY_CHECK_RET(!item, NULL);
+
+    /* add into the hash table */
+    if (lyht_insert(*dup_inst_ht, &item, first_inst->hash, NULL)) {
+        return NULL;
+    }
 
     return item;
 }
 
 LY_ERR
-lyd_dup_inst_next(struct lyd_node **inst, const struct lyd_node *siblings, struct lyd_dup_inst **dup_inst_cache)
+lyd_dup_inst_next(struct lyd_node **inst, const struct lyd_node *siblings, struct hash_table **dup_inst_ht)
 {
     struct lyd_dup_inst *dup_inst;
 
@@ -80,40 +113,47 @@ lyd_dup_inst_next(struct lyd_node **inst, const struct lyd_node *siblings, struc
 
     /* there can be more exact same instances (even if not allowed in invalid data) and we must make sure we do not
      * match a single node more times */
-    dup_inst = lyd_dup_inst_get(*inst, dup_inst_cache);
+    dup_inst = lyd_dup_inst_get(*inst, dup_inst_ht);
     LY_CHECK_ERR_RET(!dup_inst, LOGMEM(LYD_CTX(siblings)), LY_EMEM);
 
     if (!dup_inst->used) {
         /* we did not cache these instances yet, do so */
-        lyd_find_sibling_dup_inst_set(siblings, *inst, &dup_inst->inst_set);
-        assert(dup_inst->inst_set->count && (dup_inst->inst_set->dnodes[0] == *inst));
+        lyd_find_sibling_dup_inst_set(siblings, *inst, &dup_inst->set);
+        assert(dup_inst->set->count && (dup_inst->set->dnodes[0] == *inst));
     }
 
-    if (dup_inst->used == dup_inst->inst_set->count) {
+    if (dup_inst->used == dup_inst->set->count) {
         if (lysc_is_dup_inst_list((*inst)->schema)) {
             /* we have used all the instances */
             *inst = NULL;
         } /* else just keep using the last (ideally only) instance */
     } else {
-        assert(dup_inst->used < dup_inst->inst_set->count);
+        assert(dup_inst->used < dup_inst->set->count);
 
         /* use another instance */
-        *inst = dup_inst->inst_set->dnodes[dup_inst->used];
+        *inst = dup_inst->set->dnodes[dup_inst->used];
         ++dup_inst->used;
     }
 
     return LY_SUCCESS;
 }
 
-void
-lyd_dup_inst_free(struct lyd_dup_inst *dup_inst)
+/**
+ * @brief Callback for freeing first instance hash table values.
+ */
+static void
+lyht_dup_inst_ht_free_cb(void *val_p)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    struct lyd_dup_inst **item = val_p;
 
-    LY_ARRAY_FOR(dup_inst, u) {
-        ly_set_free(dup_inst[u].inst_set, NULL);
-    }
-    LY_ARRAY_FREE(dup_inst);
+    ly_set_free((*item)->set, NULL);
+    free(*item);
+}
+
+void
+lyd_dup_inst_free(struct hash_table *dup_inst_ht)
+{
+    lyht_free(dup_inst_ht, lyht_dup_inst_ht_free_cb);
 }
 
 struct lyd_node *
