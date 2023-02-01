@@ -381,6 +381,7 @@ LY_ERR lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const
                                                              warning is printed. */
 #define LYXP_ACCESS_TREE_ALL 0x80   /**< Explicit accessible tree of all the nodes. */
 #define LYXP_ACCESS_TREE_CONFIG 0x0100  /**< Explicit accessible tree of only configuration data. */
+#define LYXP_SCNODE_SCHEMAMOUNT LYS_FIND_SCHEMAMOUNT    /**< Nodes from mounted modules are also accessible. */
 
 /**
  * @brief Cast XPath set to another type.

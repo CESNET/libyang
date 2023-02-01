@@ -6673,6 +6673,9 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const c
     if (options & LYXP_SCNODE_OUTPUT) {
         getnext_opts |= LYS_GETNEXT_OUTPUT;
     }
+    if (options & LYXP_SCNODE_SCHEMAMOUNT) {
+        getnext_opts |= LYS_GETNEXT_WITHSCHEMAMOUNT;
+    }
 
     orig_used = set->used;
     for (i = 0; i < orig_used; ++i) {

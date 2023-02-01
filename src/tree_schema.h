@@ -1971,6 +1971,8 @@ LIBYANG_API_DECL struct lysp_feature *lysp_feature_next(const struct lysp_featur
 #define LYS_FIND_XP_OUTPUT  0x10    /**< Search RPC/action output nodes instead of input ones. */
 #define LYS_FIND_NO_MATCH_ERROR 0x40    /**< Return error if a path segment matches no nodes, otherwise only warning
                                              is printed. */
+#define LYS_FIND_SCHEMAMOUNT    0x0200  /**< Traverse also nodes from mounted modules. If any such nodes are returned,
+                                             the caller **must free** their context! */
 /** @} findxpathoptions */
 
 /**
@@ -2189,6 +2191,9 @@ LIBYANG_API_DECL const struct lysc_node *lys_getnext_ext(const struct lysc_node 
 #define LYS_GETNEXT_INTONPCONT   0x08 /**< ::lys_getnext() option to look into non-presence container, instead of returning container itself */
 #define LYS_GETNEXT_OUTPUT       0x10 /**< ::lys_getnext() option to provide RPC's/action's output schema nodes instead of input schema nodes
                                             provided by default */
+#define LYS_GETNEXT_WITHSCHEMAMOUNT 0x20    /**< ::lys_getnext() option to also traverse top-level nodes of all the mounted modules
+                                                 on the parent mount point but note that if any such nodes are returned,
+                                                 the caller **must free** their context */
 /** @} sgetnextflags */
 
 /**
