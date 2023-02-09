@@ -155,6 +155,7 @@ test_helpers(void **state)
     assert_int_equal(LY_EVALID, buf_store_char(YCTX, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
     in.current = ":";
     assert_int_equal(LY_EVALID, buf_store_char(YCTX, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
+    UTEST_LOG_CTX_CLEAN;
     /* valid colon for prefixed identifiers */
     len = size = 0;
     p = NULL;
@@ -183,6 +184,7 @@ test_helpers(void **state)
     assert_int_equal(LY_SUCCESS, lysp_check_identifierchar((struct lysp_ctx *)YCTX, ':', 0, &prefix));
     assert_int_equal(1, prefix);
     assert_int_equal(LY_EVALID, lysp_check_identifierchar((struct lysp_ctx *)YCTX, ':', 0, &prefix));
+    CHECK_LOG_CTX("Invalid identifier first character ':' (0x003a).", "Line number 1.");
     assert_int_equal(1, prefix);
     assert_int_equal(LY_SUCCESS, lysp_check_identifierchar((struct lysp_ctx *)YCTX, 'b', 0, &prefix));
     assert_int_equal(2, prefix);
@@ -887,12 +889,18 @@ test_module(void **state)
     ly_ctx_set_module_imp_clb(PARSER_CUR_PMOD(YCTX)->mod->ctx, test_imp_clb, "module xxx { namespace urn:xxx; prefix x;}");
     in.current = "module" SCHEMA_BEGINNING "include xxx;}";
     assert_int_equal(lys_parse_mem(PARSER_CUR_PMOD(YCTX)->mod->ctx, in.current, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"name\" failed.", NULL, "Including \"xxx\" submodule into \"name\" failed.", NULL);
+    CHECK_LOG_CTX("Parsing module \"name\" failed.", NULL);
+    CHECK_LOG_CTX("Including \"xxx\" submodule into \"name\" failed.", NULL);
+    CHECK_LOG_CTX("Data model \"xxx\" not found in local searchdirs.", NULL);
+    CHECK_LOG_CTX("Parsing submodule failed.", NULL);
+    CHECK_LOG_CTX("Input data contains module in situation when a submodule is expected.", NULL);
 
     ly_ctx_set_module_imp_clb(PARSER_CUR_PMOD(YCTX)->mod->ctx, test_imp_clb, "submodule xxx {belongs-to wrong-name {prefix w;}}");
     in.current = "module" SCHEMA_BEGINNING "include xxx;}";
     assert_int_equal(lys_parse_mem(PARSER_CUR_PMOD(YCTX)->mod->ctx, in.current, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"name\" failed.", NULL, "Including \"xxx\" submodule into \"name\" failed.", NULL);
+    CHECK_LOG_CTX("Parsing module \"name\" failed.", NULL);
+    CHECK_LOG_CTX("Including \"xxx\" submodule into \"name\" failed.", NULL);
+    UTEST_LOG_CTX_CLEAN;
 
     ly_ctx_set_module_imp_clb(PARSER_CUR_PMOD(YCTX)->mod->ctx, test_imp_clb, "submodule xxx {belongs-to name {prefix x;}}");
     TEST_GENERIC("include xxx;}", mod->includes,

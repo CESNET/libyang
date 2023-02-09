@@ -194,8 +194,8 @@ test_schema_yang(void **state)
             " bit first {position -1;} bit second;"
             "}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_2\" failed.", NULL,
-            "Invalid value \"-1\" of \"position\".", "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"TERR_2\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid value \"-1\" of \"position\".", "Line number 5.");
 
     /* different max value => autoadd index */
     schema = MODULE_CREATE_YANG("TERR_3", "leaf port {type bits {"
@@ -209,38 +209,38 @@ test_schema_yang(void **state)
             " bit first {position 10;} bit \"\";"
             "}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_4\" failed.", NULL,
-            "Statement argument is required.", "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"TERR_4\" failed.", NULL);
+    CHECK_LOG_CTX("Statement argument is required.", "Line number 5.");
 
     /* wrong character */
     schema = MODULE_CREATE_YANG("TERR_5", "leaf port {type bits {"
             " bit first {position 10;} bit abcd^;"
             "}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_5\" failed.", NULL,
-            "Invalid identifier character '^' (0x005e).", "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"TERR_5\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid identifier character '^' (0x005e).", "Line number 5.");
 
     schema = MODULE_CREATE_YANG("TERR_6", "leaf port {type bits {"
             " bit hi; bit hi;"
             "}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_6\" failed.", NULL,
-            "Duplicate identifier \"hi\" of bit statement.", "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"TERR_6\" failed.", NULL);
+    CHECK_LOG_CTX("Duplicate identifier \"hi\" of bit statement.", "Line number 5.");
 
     /* wrong character */
     schema = MODULE_CREATE_YANG("TERR_7", "leaf port {type bits {"
             " bit first {position 10;} bit \"ab&cd\";"
             "}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_7\" failed.", NULL,
-            "Invalid identifier character '&' (0x0026).", "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"TERR_7\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid identifier character '&' (0x0026).", "Line number 5.");
 
     schema = MODULE_CREATE_YANG("TERR_8", "leaf port {type bits {"
             " bit first {position 10;} bit \"4abcd\";"
             "}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_8\" failed.", NULL,
-            "Invalid identifier first character '4' (0x0034).", "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"TERR_8\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid identifier first character '4' (0x0034).", "Line number 5.");
 
     schema = MODULE_CREATE_YANG("TERR_9", "leaf port {type bits;}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
@@ -256,8 +256,8 @@ test_schema_yang(void **state)
             "  }}"
             "}";
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_10\" failed.", NULL,
-            "Invalid keyword \"if-feature\" as a child of \"bit\" - the statement is allowed only in YANG 1.1 modules.",
+    CHECK_LOG_CTX("Parsing module \"TERR_10\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid keyword \"if-feature\" as a child of \"bit\" - the statement is allowed only in YANG 1.1 modules.",
             "Line number 1.");
 
     schema = "module TERR_11 {"
@@ -440,8 +440,8 @@ test_schema_yin(void **state)
             "   <bit name=\"second\">"
             "</type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_2\" failed.", NULL,
-            "Invalid value \"-1\" of \"value\" attribute in \"position\" element.", "Line number 8.");
+    CHECK_LOG_CTX("Parsing module \"TERR_2\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid value \"-1\" of \"value\" attribute in \"position\" element.", "Line number 8.");
 
     /* different max value => autoadd index */
     schema = MODULE_CREATE_YIN("TERR_3",
@@ -459,9 +459,8 @@ test_schema_yin(void **state)
             "  <bit name=\"second\"/>"
             "</type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_4\" failed.", NULL,
-            "Invalid identifier first character ' ' (0x0020).",
-            "Line number 8.");
+    CHECK_LOG_CTX("Parsing module \"TERR_4\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid identifier first character ' ' (0x0020).", "Line number 8.");
 
     schema = MODULE_CREATE_YIN("TERR_5",
             "<leaf name=\"port\"> <type name=\"bits\">"
@@ -469,9 +468,8 @@ test_schema_yin(void **state)
             "  <bit name=\"second\"/>"
             "</type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_5\" failed.", NULL,
-            "Invalid identifier character ' ' (0x0020).",
-            "Line number 8.");
+    CHECK_LOG_CTX("Parsing module \"TERR_5\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid identifier character ' ' (0x0020).", "Line number 8.");
 
     schema = MODULE_CREATE_YIN("TERR_6",
             "<leaf name=\"port\"> <type name=\"bits\">"
@@ -479,9 +477,8 @@ test_schema_yin(void **state)
             "  <bit name=\"hi\"/>"
             "</type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_6\" failed.", NULL,
-            "Duplicate identifier \"hi\" of bit statement.",
-            "Line number 8.");
+    CHECK_LOG_CTX("Parsing module \"TERR_6\" failed.", NULL);
+    CHECK_LOG_CTX("Duplicate identifier \"hi\" of bit statement.", "Line number 8.");
 
     schema = MODULE_CREATE_YIN("TERR_7",
             "<leaf name=\"port\"> <type name=\"bits\">"
@@ -489,9 +486,8 @@ test_schema_yin(void **state)
             "  <bit name=\"second\"/>"
             "</type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_7\" failed.", NULL,
-            "Invalid identifier first character '4' (0x0034).",
-            "Line number 8.");
+    CHECK_LOG_CTX("Parsing module \"TERR_7\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid identifier first character '4' (0x0034).", "Line number 8.");
 
     /* TEST EMPTY NAME*/
     schema = MODULE_CREATE_YIN("TERR_8",
@@ -500,9 +496,8 @@ test_schema_yin(void **state)
             "  <bit name=\"second\"/>"
             "</type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_8\" failed.", NULL,
-            "Empty identifier is not allowed.",
-            "Line number 8.");
+    CHECK_LOG_CTX("Parsing module \"TERR_8\" failed.", NULL);
+    CHECK_LOG_CTX("Empty identifier is not allowed.", "Line number 8.");
 }
 
 static void

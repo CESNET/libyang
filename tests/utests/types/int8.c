@@ -1243,8 +1243,14 @@ test_data_json(void **state)
     TEST_SUCCESS_JSON("T0", "127", INT8, "127", 127);
     /* leading zeros */
     TEST_ERROR_JSON("T0", "015");
+    CHECK_LOG_CTX("Unexpected character \"1\" after JSON number.",
+            "Line number 1.");
     TEST_ERROR_JSON("T0", "-015");
+    CHECK_LOG_CTX("Unexpected character \"1\" after JSON number.",
+            "Line number 1.");
     TEST_ERROR_JSON("defs", "+50");
+    CHECK_LOG_CTX("Invalid character sequence \"+50}\", expected a JSON value.",
+            "Line number 1.");
     TEST_ERROR_JSON("T0", "-129");
     CHECK_LOG_CTX("Value \"-129\" is out of type int8 min/max bounds.",
             "Schema location \"/T0:port\", line number 1.");
@@ -1510,6 +1516,7 @@ test_plugin_store(void **state)
     ly_ret = type->store(UTEST_LYCTX, &lysc_type_test, val_text, strlen(val_text),
             0, LY_VALUE_XML, NULL, LYD_VALHINT_HEXNUM, NULL, &value, NULL, &err);
     assert_int_equal(LY_EINT, ly_ret);
+    UTEST_LOG_CTX_CLEAN;
 
     /*
      * ERROR TESTS
@@ -1541,6 +1548,8 @@ test_plugin_store(void **state)
             0, LY_VALUE_XML, NULL, LYD_VALHINT_DECNUM, NULL, &value, NULL, &err);
     assert_int_equal(LY_EVALID, ly_ret);
     ly_err_free(err);
+
+    UTEST_LOG_CTX_CLEAN;
 }
 
 static void

@@ -1224,97 +1224,24 @@ struct utest_context {
     _UC->in = NULL
 
 /**
- * @brief Internal macro to compare error info record with the expected error message and path.
- * If NULL is provided as MSG, no error info record (NULL) is expected.
+ * @brief Check expected last error in libyang context, which is then cleared. Can be called repeatedly to check
+ * several errors. If NULL is provided as MSG, no error info record (NULL) is expected.
  *
- * @param[in] ERR Error information record from libyang context.
  * @param[in] MSG Expected error message.
  * @param[in] PATH Expected error path.
  */
-#define _CHECK_LOG_CTX(ERR, MSG, PATH) \
-    if (!MSG) { \
-        assert_null(ERR); \
-    } else { \
-        assert_non_null(ERR); \
-        CHECK_STRING((ERR)->msg, MSG); \
-        CHECK_STRING((ERR)->path, PATH); \
+#define CHECK_LOG_CTX(MSG, PATH) \
+    { \
+        struct ly_err_item *_e = ly_err_last(_UC->ctx); \
+        if (!MSG) { \
+            assert_null(_e); \
+        } else { \
+            assert_non_null(_e); \
+            CHECK_STRING(_e->msg, MSG); \
+            CHECK_STRING(_e->path, PATH); \
+        } \
+        ly_err_clean(_UC->ctx, _e); \
     }
-
-/**`
- * @brief Internal macro to check the last libyang's context error.
- */
-#define _CHECK_LOG_CTX1(MSG, PATH) \
-    _CHECK_LOG_CTX(ly_err_last(_UC->ctx), MSG, PATH)
-
-/**
- * @brief Internal macro to check the last two libyang's context error.
- */
-#define _CHECK_LOG_CTX2(MSG1, PATH1, MSG2, PATH2) \
-        _CHECK_LOG_CTX(ly_err_last(_UC->ctx), MSG1, PATH1); \
-        _CHECK_LOG_CTX(ly_err_last(_UC->ctx)->prev, MSG2, PATH2)
-
-/**
- * @brief Internal macro to check the last three libyang's context error.
- */
-#define _CHECK_LOG_CTX3(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3) \
-        _CHECK_LOG_CTX2(MSG1, PATH1, MSG2, PATH2); \
-        _CHECK_LOG_CTX(ly_err_last(_UC->ctx)->prev->prev, MSG3, PATH3)
-
-/**
- * @brief Internal macro to check the last three libyang's context error.
- */
-#define _CHECK_LOG_CTX4(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4) \
-        _CHECK_LOG_CTX3(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3); \
-        _CHECK_LOG_CTX(ly_err_last(_UC->ctx)->prev->prev->prev, MSG4, PATH4)
-
-/**
- * @brief Internal macro to check the last three libyang's context error.
- */
-#define _CHECK_LOG_CTX5(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4, MSG5, PATH5) \
-        _CHECK_LOG_CTX4(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4); \
-        _CHECK_LOG_CTX(ly_err_last(_UC->ctx)->prev->prev->prev->prev, MSG5, PATH5)
-
-/**
- * @brief Internal macro to check the last three libyang's context error.
- */
-#define _CHECK_LOG_CTX6(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4, MSG5, PATH5, MSG6, PATH6) \
-        _CHECK_LOG_CTX5(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4, MSG5, PATH5); \
-        _CHECK_LOG_CTX(ly_err_last(_UC->ctx)->prev->prev->prev->prev->prev, MSG6, PATH6)
-
-/**
- * @brief Internal macro to check the last three libyang's context error.
- */
-#define _CHECK_LOG_CTX7(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4, MSG5, PATH5, MSG6, PATH6, MSG7, PATH7) \
-        _CHECK_LOG_CTX6(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4, MSG5, PATH5, MSG6, PATH6); \
-        _CHECK_LOG_CTX(ly_err_last(_UC->ctx)->prev->prev->prev->prev->prev->prev, MSG7, PATH7)
-
-/**
- * @brief Internal macro to check the last three libyang's context error.
- */
-#define _CHECK_LOG_CTX8(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4, MSG5, PATH5, MSG6, PATH6, MSG7, PATH7, MSG8, PATH8) \
-        _CHECK_LOG_CTX7(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4, MSG5, PATH5, MSG6, PATH6, MSG7, PATH7); \
-        _CHECK_LOG_CTX(ly_err_last(_UC->ctx)->prev->prev->prev->prev->prev->prev->prev, MSG8, PATH8)
-
-/**
- * @brief Internal helper macro to select _CHECK_LOG_CTX* macro according to the provided parameters.
- */
-#define _GET_CHECK_LOG_MACRO(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, NAME, ...) NAME
-
-/**
- * @brief Check expected error(s) in libyang context.
- *
- * Macro has variadic parameters expected to be provided in pairs of error message and error path starting
- * from the latest error. Current limit is checking at most 3 last errors. After checking, macro cleans up
- * all the errors from the libyang context.
- *
- * @param[in] MSG Expected error message.
- * @param[in] PATH Expected error path.
- */
-#define CHECK_LOG_CTX(...) \
-    _GET_CHECK_LOG_MACRO(__VA_ARGS__, _CHECK_LOG_CTX8, _INVAL, _CHECK_LOG_CTX7, _INVAL, \
-            _CHECK_LOG_CTX6, _INVAL, _CHECK_LOG_CTX5, _INVAL, _CHECK_LOG_CTX4, _INVAL, \
-            _CHECK_LOG_CTX3, _INVAL, _CHECK_LOG_CTX2, _INVAL, _CHECK_LOG_CTX1, DUMMY)(__VA_ARGS__); \
-    ly_err_clean(_UC->ctx, NULL)
 
 /**
  * @brief Check expected error in libyang context including error-app-tag.
@@ -1324,14 +1251,23 @@ struct utest_context {
  * @param[in] APPTAG Expected error-app-tag.
  */
 #define CHECK_LOG_CTX_APPTAG(MSG, PATH, APPTAG) \
-    if (!MSG) { \
-        assert_null(ly_err_last(_UC->ctx)); \
-    } else { \
-        assert_non_null(ly_err_last(_UC->ctx)); \
-        CHECK_STRING(ly_err_last(_UC->ctx)->msg, MSG); \
-        CHECK_STRING(ly_err_last(_UC->ctx)->path, PATH); \
-        CHECK_STRING(ly_err_last(_UC->ctx)->apptag, APPTAG); \
-    } \
+    { \
+        struct ly_err_item *_e = ly_err_last(_UC->ctx); \
+        if (!MSG) { \
+            assert_null(_e); \
+        } else { \
+            assert_non_null(_e); \
+            CHECK_STRING(_e->msg, MSG); \
+            CHECK_STRING(_e->path, PATH); \
+            CHECK_STRING(_e->apptag, APPTAG); \
+        } \
+        ly_err_clean(_UC->ctx, _e); \
+    }
+
+/**
+ * @brief Clear all errors stored in the libyang context.
+ */
+#define UTEST_LOG_CTX_CLEAN \
     ly_err_clean(_UC->ctx, NULL)
 
 /**
@@ -1435,7 +1371,8 @@ utest_teardown(void **state)
 {
     *state = NULL;
 
-    /* libyang context */
+    /* libyang context, no leftover messages */
+    assert_null(ly_err_last(current_utest_context->ctx));
     ly_ctx_destroy(current_utest_context->ctx);
 
     if (current_utest_context->orig_tz) {

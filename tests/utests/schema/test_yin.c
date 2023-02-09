@@ -395,11 +395,13 @@ test_validate_value(void **state)
     YCTX->xmlctx->value = "pre:b";
     YCTX->xmlctx->value_len = 5;
     assert_int_equal(yin_validate_value(YCTX, Y_IDENTIF_ARG), LY_EVALID);
+    CHECK_LOG_CTX("Invalid identifier character ':' (0x003a).", "Line number 1.");
     assert_int_equal(yin_validate_value(YCTX, Y_PREF_IDENTIF_ARG), LY_SUCCESS);
 
     YCTX->xmlctx->value = "pre:pre:b";
     YCTX->xmlctx->value_len = 9;
     assert_int_equal(yin_validate_value(YCTX, Y_PREF_IDENTIF_ARG), LY_EVALID);
+    CHECK_LOG_CTX("Invalid identifier character ':' (0x003a).", "Line number 1.");
 }
 
 static void
@@ -3230,6 +3232,8 @@ test_submodule_elem(void **state)
     assert_int_equal(lyxml_ctx_new(UTEST_LYCTX, UTEST_IN, &YCTX->xmlctx), LY_SUCCESS);
 
     assert_int_equal(yin_parse_submod(YCTX, lysp_submod), LY_SUCCESS);
+    CHECK_LOG_CTX("YANG version 1.1 expects all includes in main module, includes in submodules (mod) are not necessary.",
+            NULL);
     assert_string_equal(lysp_submod->name, "mod");
     assert_string_equal(lysp_submod->revs, "2019-02-02");
     assert_string_equal(lysp_submod->prefix, "pref");

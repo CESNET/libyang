@@ -210,8 +210,8 @@ test_schema_invalid(void **state)
             "import ietf-restconf {revision-date 2017-01-26; prefix rc;}"
             "rc:yang-data { container x { leaf x {type string;}}}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
-            "Extension instance \"rc:yang-data\" missing argument element \"name\".", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL);
+    CHECK_LOG_CTX("Extension instance \"rc:yang-data\" missing argument element \"name\".", NULL);
 
     data = "module a {yang-version 1.1; namespace urn:tests:extensions:yangdata:a; prefix self;"
             "import ietf-restconf {revision-date 2017-01-26; prefix rc;}"

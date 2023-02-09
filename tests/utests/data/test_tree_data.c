@@ -363,6 +363,8 @@ test_dup(void **state)
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree1);
     assert_int_equal(LY_EINVAL, lyd_dup_single(((struct lyd_node_inner *)tree1)->child->prev,
             (struct lyd_node_inner *)tree1->next, LYD_DUP_WITH_PARENTS, NULL));
+    CHECK_LOG_CTX("Invalid argument parent (lyd_dup_get_local_parent()) - does not interconnect with the created node's parents chain.",
+            NULL);
     lyd_free_all(tree1);
 }
 
@@ -525,6 +527,7 @@ test_data_hash(void **state)
 
     /* The run must not crash due to the assert that checks the hash. */
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG_CTX("Duplicate instance of \"ll\".", "Data location \"/test-data-hash:c/ll[.='']\", line number 1.");
     lyd_free_all(tree);
 }
 

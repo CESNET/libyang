@@ -618,16 +618,8 @@ test_schema_yin(void **state)
             "</typedef>"
             "<leaf name=\"port\"> <type name=\"my_type\"/> </leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-
-    schema = MODULE_CREATE_YIN("TDEFAULT_2",
-            "<typedef name=\"my_type\">"
-            "   <type name=\"string\">"
-            "       <length  value=\"2\"/>"
-            "   </type>"
-            "   <default value=\"a1i-j&lt;\"/>"
-            "</typedef>"
-            "<leaf name=\"port\"> <type name=\"my_type\"/> </leaf>");
-    UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
+    CHECK_LOG_CTX("Invalid default - value does not fit the type (Unsatisfied length - string \"a1i-j<\" length is not allowed.).",
+            "Schema location \"/TDEFAULT_2:port\".");
 
     schema = MODULE_CREATE_YIN("TDEFAULT_3",
             "<typedef name=\"my_type\">"
@@ -636,6 +628,8 @@ test_schema_yin(void **state)
             "</type> </typedef>"
             "<leaf name=\"port\"><type name=\"my_type\"> <pattern value=\"bcd.*\"/> </type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
+    CHECK_LOG_CTX("Invalid default - value does not fit the type (Unsatisfied pattern - \"a1i-j<\" does not conform to \"bcd.*\".).",
+            "Schema location \"/TDEFAULT_3:port\".");
 
 }
 

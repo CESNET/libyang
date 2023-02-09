@@ -1212,6 +1212,7 @@ test_action(void **state)
     struct lyd_node *tree, *op_tree;
 
     UTEST_ADD_MODULE(schema_j, LYS_IN_YANG, feats_j, NULL);
+    UTEST_LOG_CTX_CLEAN;
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(
             "<cont xmlns=\"urn:tests:j\">\n"
@@ -1304,6 +1305,7 @@ test_reply(void **state)
     struct lyd_node *tree, *op_tree;
 
     UTEST_ADD_MODULE(schema_j, LYS_IN_YANG, feats_j, NULL);
+    UTEST_LOG_CTX_CLEAN;
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(
             "<cont xmlns=\"urn:tests:j\">\n"
