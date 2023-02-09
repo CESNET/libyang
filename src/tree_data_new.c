@@ -1448,7 +1448,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
                 /* the node exists, are we supposed to update it or is it just a default? */
                 if (!(options & LYD_NEW_PATH_UPDATE) && !(node->flags & LYD_DEFAULT)) {
                     LOG_LOCSET(NULL, node, NULL, NULL);
-                    LOGVAL(ctx, LYVE_REFERENCE, "Path \"%s\" already exists", path);
+                    LOGVAL(ctx, LYVE_REFERENCE, "Path \"%s\" already exists.", path);
                     LOG_LOCBACK(0, 1, 0, 0);
                     ret = LY_EEXIST;
                     goto cleanup;
