@@ -70,6 +70,7 @@
 #cmakedefine HAVE_REALPATH
 #cmakedefine HAVE_LOCALTIME_R
 #cmakedefine HAVE_GMTIME_R
+#cmakedefine HAVE_TIMEGM
 #cmakedefine HAVE_STRPTIME
 #cmakedefine HAVE_MMAP
 #cmakedefine HAVE_DIRNAME
@@ -186,6 +187,14 @@ char *realpath(const char *path, char *resolved_path);
 
 #ifndef HAVE_LOCALTIME_R
 struct tm *localtime_r(const time_t *timep, struct tm *result);
+#endif
+
+#ifndef HAVE_TIMEGM
+# if defined (_WIN32)
+#  define timegm _mkgmtime
+# else
+#  error No timegm() implementation for this platform is available.
+# endif
 #endif
 
 #ifndef HAVE_STRPTIME
