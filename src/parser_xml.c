@@ -997,8 +997,9 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     } else if (snode->nodetype & LYD_NODE_INNER) {
         /* inner */
         r = lydxml_subtree_inner(lydctx, snode, ext, &node);
-    } else if (snode->nodetype & LYD_NODE_ANY) {
+    } else {
         /* any */
+        assert(snode->nodetype & LYD_NODE_ANY);
         r = lydxml_subtree_any(lydctx, snode, ext, &node);
     }
     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
