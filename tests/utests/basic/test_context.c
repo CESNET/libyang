@@ -1,4 +1,4 @@
-/*
+/**
  * @file test_context.c
  * @author: Radek Krejci <rkrejci@cesnet.cz>
  * @brief unit tests for functions from context.c
