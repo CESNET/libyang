@@ -1707,7 +1707,9 @@ representation_error:
     rc = LY_EVALID;
     if (lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) {
         /* try to skip the invalid data */
-        lydjson_data_skip(lydctx->jsonctx);
+        if ((r = lydjson_data_skip(lydctx->jsonctx))) {
+            rc = r;
+        }
     }
 
 cleanup:
