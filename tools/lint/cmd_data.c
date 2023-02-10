@@ -124,7 +124,7 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
     uint8_t data_merge = 0;
     uint32_t options_print = 0;
     uint32_t options_parse = YL_DEFAULT_DATA_PARSE_OPTIONS;
-    uint32_t options_validate = 0;
+    uint32_t options_validate = YL_DEFAULT_DATA_VALIDATE_OPTIONS;
     enum lyd_type data_type = 0;
     uint8_t data_type_set = 0;
     LYD_FORMAT outformat = LYD_UNKNOWN;

@@ -567,6 +567,7 @@ fill_context(int argc, char *argv[], struct context *c)
 
     c->ctx_options = YL_DEFAULT_CTX_OPTIONS;
     c->data_parse_options = YL_DEFAULT_DATA_PARSE_OPTIONS;
+    c->data_validate_options = YL_DEFAULT_DATA_VALIDATE_OPTIONS;
     c->line_length = 0;
 
     opterr = 0;
