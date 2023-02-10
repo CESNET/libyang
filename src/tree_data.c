@@ -96,7 +96,7 @@ static LY_ERR
 lyd_parse(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent, struct lyd_node **first_p,
         struct ly_in *in, LYD_FORMAT format, uint32_t parse_opts, uint32_t val_opts, struct lyd_node **op)
 {
-    LY_ERR rc = LY_SUCCESS;
+    LY_ERR r, rc = LY_SUCCESS;
     struct lyd_ctx *lydctx = NULL;
     struct ly_set parsed = {0};
     struct lyd_node *first;
@@ -121,23 +121,23 @@ lyd_parse(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct 
     /* parse the data */
     switch (format) {
     case LYD_XML:
-        rc = lyd_parse_xml(ctx, ext, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed,
+        r = lyd_parse_xml(ctx, ext, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed,
                 &subtree_sibling, &lydctx);
         break;
     case LYD_JSON:
-        rc = lyd_parse_json(ctx, ext, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed,
+        r = lyd_parse_json(ctx, ext, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed,
                 &subtree_sibling, &lydctx);
         break;
     case LYD_LYB:
-        rc = lyd_parse_lyb(ctx, ext, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed,
+        r = lyd_parse_lyb(ctx, ext, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed,
                 &subtree_sibling, &lydctx);
         break;
     case LYD_UNKNOWN:
         LOGARG(ctx, format);
-        rc = LY_EINVAL;
+        r = LY_EINVAL;
         break;
     }
-    LY_CHECK_GOTO(rc, cleanup);
+    LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
     if (parent) {
         /* get first top-level sibling */

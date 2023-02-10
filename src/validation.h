@@ -69,11 +69,12 @@ LY_ERR lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, 
  * @param[in,out] first First sibling.
  * @param[in] sparent Schema parent of the siblings, NULL for top-level siblings.
  * @param[in] mod Module of the siblings, NULL for nested siblings.
+ * @param[in] val_opts Validation options.
  * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const struct lys_module *mod,
-        struct lyd_node **diff);
+        uint32_t val_opts, struct lyd_node **diff);
 
 /**
  * @brief Validate data node with an extension instance, if any, by storing it in its unres set.

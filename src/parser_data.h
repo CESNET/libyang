@@ -196,6 +196,7 @@ struct ly_in;
 #define LYD_VALIDATE_NO_STATE   0x0001      /**< Consider state data not allowed and raise an error if they are found.
                                                  Also, no implicit state data are added. */
 #define LYD_VALIDATE_PRESENT    0x0002      /**< Validate only modules whose data actually exist. */
+#define LYD_VALIDATE_MULTI_ERROR 0x0004     /**< Do not stop validation on the first error but generate all the detected errors. */
 
 #define LYD_VALIDATE_OPTS_MASK  0x0000FFFF  /**< Mask for all the LYD_VALIDATE_* options. */
 

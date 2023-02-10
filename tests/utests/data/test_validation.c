@@ -1154,6 +1154,93 @@ test_must(void **state)
     CHECK_LOG_CTX_APPTAG("l leaf is not left", "Data location \"/i:cont/l3\".", "not-left");
 }
 
+static void
+test_multi_error(void **state)
+{
+    struct lyd_node *tree;
+    const char *schema =
+            "module ii {\n"
+            "    namespace urn:tests:ii;\n"
+            "    prefix ii;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    container cont {\n"
+            "        leaf l {\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf l2 {\n"
+            "            must \"../l = 'right'\";\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf l3 {\n"
+            "            must \"../l = 'left'\" {\n"
+            "                error-app-tag \"not-left\";\n"
+            "                error-message \"l leaf is not left\";\n"
+            "            }\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf-list ll {\n"
+            "            type uint32;\n"
+            "            min-elements 2;\n"
+            "        }\n"
+            "    }\n"
+            "}";
+    const char *data;
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    /* xml */
+    data =
+            "<cont xmlns=\"urn:tests:ii\">\n"
+            "  <l>wrong</l>\n"
+            "  <l>wrong2</l>\n"
+            "  <l2>val</l2>\n"
+            "  <l3>val</l3>\n"
+            "  <ll>ahoy</ll>\n"
+            "</cont>\n";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT | LYD_VALIDATE_MULTI_ERROR, LY_EVALID, tree);
+    CHECK_LOG_CTX_APPTAG("Too few \"ll\" instances.", "Schema location \"/ii:cont/ll\".", "too-few-elements");
+    CHECK_LOG_CTX_APPTAG("l leaf is not left", "Data location \"/ii:cont/l3\".", "not-left");
+    CHECK_LOG_CTX_APPTAG("Must condition \"../l = 'right'\" not satisfied.", "Data location \"/ii:cont/l2\".", "must-violation");
+    CHECK_LOG_CTX_APPTAG("Duplicate instance of \"l\".", "Data location \"/ii:cont/l\", line number 6.", NULL);
+    CHECK_LOG_CTX_APPTAG("Invalid type uint32 value \"ahoy\".", "Data location \"/ii:cont/ll\", line number 6.", NULL);
+
+    /* json */
+    data = "{\n"
+            "  \"ii:cont\": {\n"
+            "    \"l\": \"wrong\",\n"
+            "    \"l\": \"wrong2\",\n"
+            "    \"l2\": \"val\",\n"
+            "    \"l3\": \"val\",\n"
+            "    \"ll\": [\"ahoy\"]\n"
+            "  }\n"
+            "}\n";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT | LYD_VALIDATE_MULTI_ERROR, LY_EVALID, tree);
+    CHECK_LOG_CTX_APPTAG("Too few \"ll\" instances.", "Schema location \"/ii:cont/ll\".", "too-few-elements");
+    CHECK_LOG_CTX_APPTAG("l leaf is not left", "Data location \"/ii:cont/l3\".", "not-left");
+    CHECK_LOG_CTX_APPTAG("Must condition \"../l = 'right'\" not satisfied.", "Data location \"/ii:cont/l2\".", "must-violation");
+    CHECK_LOG_CTX_APPTAG("Duplicate instance of \"l\".", "Data location \"/ii:cont/l\", line number 8.", NULL);
+    CHECK_LOG_CTX_APPTAG("Invalid non-number-encoded uint32 value \"ahoy\".", "Data location \"/ii:cont/ll\", line number 7.", NULL);
+
+    /* validation */
+    data = "{\n"
+            "  \"ii:cont\": {\n"
+            "    \"l\": \"wrong\",\n"
+            "    \"l\": \"wrong2\",\n"
+            "    \"l2\": \"val\",\n"
+            "    \"l3\": \"val\",\n"
+            "    \"ll\": [25]\n"
+            "  }\n"
+            "}\n";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, LYD_PARSE_ONLY, 0, LY_SUCCESS, tree);
+    assert_int_equal(LY_EVALID, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT | LYD_VALIDATE_MULTI_ERROR, NULL));
+    lyd_free_tree(tree);
+    CHECK_LOG_CTX_APPTAG("Too few \"ll\" instances.", "Schema location \"/ii:cont/ll\".", "too-few-elements");
+    CHECK_LOG_CTX_APPTAG("l leaf is not left", "Data location \"/ii:cont/l3\".", "not-left");
+    CHECK_LOG_CTX_APPTAG("Must condition \"../l = 'right'\" not satisfied.", "Data location \"/ii:cont/l2\".", "must-violation");
+    CHECK_LOG_CTX_APPTAG("Duplicate instance of \"l\".", "Data location \"/ii:cont/l\".", NULL);
+}
+
 const char *schema_j =
         "module j {\n"
         "    namespace urn:tests:j;\n"
@@ -1452,6 +1539,7 @@ main(void)
         UTEST(test_defaults),
         UTEST(test_state),
         UTEST(test_must),
+        UTEST(test_multi_error),
         UTEST(test_action),
         UTEST(test_rpc),
         UTEST(test_reply),

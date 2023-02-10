@@ -1082,7 +1082,7 @@ lyb_validate_node_inner(struct lyd_lyb_ctx *lybctx, const struct lysc_node *snod
 
     if (!(lybctx->parse_opts & LYD_PARSE_ONLY)) {
         /* new node validation, autodelete CANNOT occur, all nodes are new */
-        ret = lyd_validate_new(lyd_node_child_p(node), snode, NULL, NULL);
+        ret = lyd_validate_new(lyd_node_child_p(node), snode, NULL, 0, NULL);
         LY_CHECK_RET(ret);
 
         /* add any missing default children */
