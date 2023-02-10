@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 #include <time.h>
 
 #include "common.h"
@@ -1508,6 +1509,32 @@ ly_format2str(LY_VALUE_FORMAT format)
     return NULL;
 }
 
+LIBYANG_API_DEF int
+ly_time_tz_offset(void)
+{
+    const time_t epoch_plus_11h = 60 * 60 * 11;
+    struct tm tm_local, tm_utc;
+    int result = 0;
+
+    /* init timezone */
+    tzset();
+
+    /* get local and UTC time */
+    localtime_r(&epoch_plus_11h, &tm_local);
+    gmtime_r(&epoch_plus_11h, &tm_utc);
+
+    /* hours shift in seconds */
+    result += (tm_local.tm_hour - tm_utc.tm_hour) * 3600;
+
+    /* minutes shift in seconds */
+    result += (tm_local.tm_min - tm_utc.tm_min) * 60;
+
+    /* seconds shift */
+    result += tm_local.tm_sec - tm_utc.tm_sec;
+
+    return result;
+}
+
 LIBYANG_API_DEF LY_ERR
 ly_time_str2time(const char *value, time_t *time, char **fractions_s)
 {
@@ -1575,41 +1602,24 @@ LIBYANG_API_DEF LY_ERR
 ly_time_time2str(time_t time, const char *fractions_s, char **str)
 {
     struct tm tm;
-    char zoneshift[8];
-    int32_t zonediff_h, zonediff_m;
+    char zoneshift[12];
+    int zonediff_s, zonediff_h, zonediff_m;
 
     LY_CHECK_ARG_RET(NULL, str, LY_EINVAL);
 
-    /* initialize the local timezone */
+    /* init timezone */
     tzset();
 
-#ifdef HAVE_TM_GMTOFF
     /* convert */
     if (!localtime_r(&time, &tm)) {
         return LY_ESYS;
     }
 
     /* get timezone offset */
-    if (tm.tm_gmtoff == 0) {
-        /* time is Zulu (UTC) */
-        zonediff_h = 0;
-        zonediff_m = 0;
-    } else {
-        /* timezone offset */
-        zonediff_h = tm.tm_gmtoff / 60 / 60;
-        zonediff_m = tm.tm_gmtoff / 60 % 60;
-    }
+    zonediff_s = ly_time_tz_offset();
+    zonediff_h = zonediff_s / 60 / 60;
+    zonediff_m = zonediff_s / 60 % 60;
     sprintf(zoneshift, "%+03d:%02d", zonediff_h, zonediff_m);
-#else
-    /* convert */
-    if (!gmtime_r(&time, &tm)) {
-        return LY_ESYS;
-    }
-
-    (void)zonediff_h;
-    (void)zonediff_m;
-    sprintf(zoneshift, "-00:00");
-#endif
 
     /* print */
     if (asprintf(str, "%04d-%02d-%02dT%02d:%02d:%02d%s%s%s",

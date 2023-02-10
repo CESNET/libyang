@@ -48,10 +48,6 @@ macro(USE_COMPAT)
 
     check_include_file("stdatomic.h" HAVE_STDATOMIC)
 
-    include(CheckStructHasMember)
-    check_struct_has_member("struct tm" tm_gmtoff time.h HAVE_TM_GMTOFF)
-    check_symbol_exists(timezone time.h HAVE_TIME_H_TIMEZONE)
-
     check_symbol_exists(realpath "stdlib.h" HAVE_REALPATH)
     check_symbol_exists(localtime_r "time.h" HAVE_LOCALTIME_R)
     check_symbol_exists(gmtime_r "time.h" HAVE_GMTIME_R)

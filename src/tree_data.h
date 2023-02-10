@@ -2557,6 +2557,13 @@ LIBYANG_API_DECL LY_ERR lyd_find_path(const struct lyd_node *ctx_node, const cha
 LIBYANG_API_DECL LY_ERR lyd_find_target(const struct ly_path *path, const struct lyd_node *tree, struct lyd_node **match);
 
 /**
+ * @brief Get current timezone UTC (GMT) time offset in seconds.
+ *
+ * @return Timezone shift in seconds.
+ */
+LIBYANG_API_DECL int ly_time_tz_offset(void);
+
+/**
  * @brief Convert date-and-time from string to UNIX timestamp and fractions of a second.
  *
  * @param[in] value Valid string date-and-time value.
