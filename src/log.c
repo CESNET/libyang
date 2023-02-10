@@ -47,9 +47,6 @@ ATOMIC_T ly_ldbg_groups = 0;
 
 THREAD_LOCAL struct ly_log_location_s log_location = {0};
 
-/* how many bytes add when enlarging buffers */
-#define LY_BUF_STEP 128
-
 LIBYANG_API_DEF LY_ERR
 ly_errcode(const struct ly_ctx *ctx)
 {
