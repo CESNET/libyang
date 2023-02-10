@@ -41,11 +41,18 @@ ATOMIC_T ly_log_opts = (uint_fast32_t)(LY_LOLOG | LY_LOSTORE_LAST);
 THREAD_LOCAL uint32_t *temp_ly_log_opts;
 static ly_log_clb log_clb;
 static ATOMIC_T path_flag = 1;
+THREAD_LOCAL char last_msg[LY_LAST_MSG_SIZE];
 #ifndef NDEBUG
 ATOMIC_T ly_ldbg_groups = 0;
 #endif
 
 THREAD_LOCAL struct ly_log_location_s log_location = {0};
+
+LIBYANG_API_DEF const char *
+ly_last_errmsg(void)
+{
+    return last_msg;
+}
 
 LIBYANG_API_DEF LY_ERR
 ly_errcode(const struct ly_ctx *ctx)
@@ -458,14 +465,19 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
         return;
     }
 
-    /* store the error/warning (if we need to store errors internally, it does not matter what are the user log options) */
+    /* print into a single message */
+    if (vasprintf(&msg, format, args) == -1) {
+        LOGMEM(ctx);
+        free(path);
+        return;
+    }
+
+    /* store as the last message */
+    strncpy(last_msg, msg, LY_LAST_MSG_SIZE - 1);
+
+    /* store the error/warning in the context (if we need to store errors internally, it does not matter what are
+     * the user log options) */
     if ((level < LY_LLVRB) && ctx && lostore) {
-        assert(format);
-        if (vasprintf(&msg, format, args) == -1) {
-            LOGMEM(ctx);
-            free(path);
-            return;
-        }
         if (((no & ~LY_EPLUGIN) == LY_EVALID) && (vecode == LYVE_SUCCESS)) {
             /* assume we are inheriting the error, so inherit vecode as well */
             vecode = ly_vecode(ctx);
@@ -475,11 +487,6 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
         }
         free_strs = 0;
     } else {
-        if (vasprintf(&msg, format, args) == -1) {
-            LOGMEM(ctx);
-            free(path);
-            return;
-        }
         free_strs = 1;
     }
 

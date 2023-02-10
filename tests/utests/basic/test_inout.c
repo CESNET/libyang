@@ -84,8 +84,11 @@ test_input_mem(void **UNUSED(state))
     char *str1 = "a", *str2 = "b";
 
     assert_int_equal(LY_EINVAL, ly_in_new_memory(NULL, NULL));
+    CHECK_LOG_LASTMSG("Invalid argument str (ly_in_new_memory()).");
     assert_int_equal(LY_EINVAL, ly_in_new_memory(str1, NULL));
+    CHECK_LOG_LASTMSG("Invalid argument in (ly_in_new_memory()).");
     assert_null(ly_in_memory(NULL, NULL));
+    CHECK_LOG_LASTMSG("Invalid argument in (ly_in_memory()).");
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str1, &in));
     assert_int_equal(LY_IN_MEMORY, ly_in_type(in));
@@ -103,12 +106,15 @@ test_input_fd(void **UNUSED(state))
     struct stat statbuf;
 
     assert_int_equal(LY_EINVAL, ly_in_new_fd(-1, NULL));
+    CHECK_LOG_LASTMSG("Invalid argument fd >= 0 (ly_in_new_fd()).");
     assert_int_equal(-1, ly_in_fd(NULL, -1));
+    CHECK_LOG_LASTMSG("Invalid argument in (ly_in_fd()).");
 
     assert_int_not_equal(-1, fd1 = open(TEST_INPUT_FILE, O_RDONLY));
     assert_int_not_equal(-1, fd2 = open(TEST_INPUT_FILE, O_RDONLY));
 
     assert_int_equal(LY_EINVAL, ly_in_new_fd(fd1, NULL));
+    CHECK_LOG_LASTMSG("Invalid argument in (ly_in_new_fd()).");
 
     assert_int_equal(LY_SUCCESS, ly_in_new_fd(fd1, &in));
     assert_int_equal(LY_IN_FD, ly_in_type(in));

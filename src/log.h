@@ -305,6 +305,16 @@ struct ly_err_item {
 };
 
 /**
+ * @brief Get the last (thread-specific) error message.
+ *
+ * ::ly_errmsg() should be used instead of this function but this one is useful for getting
+ * errors from functions that do not have any context accessible. Or as a simple unified logging API.
+ *
+ * @return Last generated error message.
+ */
+LIBYANG_API_DECL const char *ly_last_errmsg(void);
+
+/**
  * @brief Get the last (thread, context-specific) validation error code.
  *
  * This value is set only if ly_errno is #LY_EVALID.

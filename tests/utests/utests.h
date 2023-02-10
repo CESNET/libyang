@@ -1224,6 +1224,14 @@ struct utest_context {
     _UC->in = NULL
 
 /**
+ * @brief Check expected last error message.
+ *
+ * @param[in] MSG Expected error message.
+ */
+#define CHECK_LOG_LASTMSG(MSG) \
+    CHECK_STRING(ly_last_errmsg(), MSG)
+
+/**
  * @brief Check expected last error in libyang context, which is then cleared. Can be called repeatedly to check
  * several errors. If NULL is provided as MSG, no error info record (NULL) is expected.
  *

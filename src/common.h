@@ -56,6 +56,9 @@ struct lysc_node;
  * Logger
  *****************************************************************************/
 
+/** size of the last message buffer */
+#define LY_LAST_MSG_SIZE 512
+
 extern ATOMIC_T ly_ll;
 extern ATOMIC_T ly_log_opts;
 
