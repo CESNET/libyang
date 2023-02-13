@@ -1506,6 +1506,7 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, str
         }
     } else {
         /* error */
+        rc = r;
         goto cleanup;
     }
 
