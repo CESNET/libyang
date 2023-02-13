@@ -1008,7 +1008,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     if (snode) {
         /* add/correct flags */
         r = lyd_parse_set_data_flags(node, &meta, (struct lyd_ctx *)lydctx, ext);
-        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+        LY_CHECK_ERR_GOTO(r, rc = r; lyd_free_tree(node), cleanup);
 
         if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {
             /* store for ext instance node validation, if needed */
@@ -1021,7 +1021,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     assert(xmlctx->status == LYXML_ELEM_CLOSE);
     if (!parse_subtree) {
         r = lyxml_ctx_next(xmlctx);
-        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+        LY_CHECK_ERR_GOTO(r, rc = r; lyd_free_tree(node), cleanup);
     }
 
     /* add metadata/attributes */
@@ -1038,7 +1038,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
         lyd_insert_after(insert_anchor, node);
     } else if (ext) {
         r = lyplg_ext_insert(parent, node);
-        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+        LY_CHECK_ERR_GOTO(r, rc = r; lyd_free_tree(node), cleanup);
     } else {
         lyd_insert_node(parent, first_p, node, lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0);
     }
