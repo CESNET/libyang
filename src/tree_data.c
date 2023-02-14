@@ -1919,7 +1919,7 @@ lyd_dup_ctx_check(const struct lyd_node *node, const struct lyd_node_inner *pare
         for (iter = node; iter && !(iter->flags & LYD_EXT); iter = lyd_parent(iter)) {}
 
         if (!iter || !lyd_parent(iter) || (LYD_CTX(lyd_parent(iter)) != LYD_CTX(parent))) {
-            LOGERR(NULL, LY_EINVAL, "Different contexts used in node duplication.");
+            LOGERR(LYD_CTX(node), LY_EINVAL, "Different contexts used in node duplication.");
             return LY_EINVAL;
         }
     }
