@@ -213,8 +213,13 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
     }
 
     /* duplicate the subtree (and connect to the diff if possible) */
-    LY_CHECK_RET(lyd_dup_single(node, (struct lyd_node_inner *)diff_parent,
-            LYD_DUP_RECURSIVE | LYD_DUP_NO_META | LYD_DUP_WITH_PARENTS | LYD_DUP_WITH_FLAGS, &dup));
+    if (diff_parent) {
+        LY_CHECK_RET(lyd_dup_single_to_ctx(node, LYD_CTX(diff_parent), (struct lyd_node_inner *)diff_parent,
+                LYD_DUP_RECURSIVE | LYD_DUP_NO_META | LYD_DUP_WITH_PARENTS | LYD_DUP_WITH_FLAGS, &dup));
+    } else {
+        LY_CHECK_RET(lyd_dup_single(node, NULL,
+                LYD_DUP_RECURSIVE | LYD_DUP_NO_META | LYD_DUP_WITH_PARENTS | LYD_DUP_WITH_FLAGS, &dup));
+    }
 
     /* find the first duplicated parent */
     if (!diff_parent) {
