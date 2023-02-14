@@ -183,7 +183,10 @@ lydjson_get_node_prefix(struct lyd_node *node, const char *local_prefix, size_t 
 }
 
 /**
- * @brief Skip the current JSON item (baed on status).
+ * @brief Skip the current JSON item (based on status).
+ *
+ * The JSON context is moved to the last "status" of the JSON item so to completely
+ * finish the skip, one more JSON context move is required.
  *
  * @param[in] jsonctx JSON context with the input data to skip.
  * @return LY_ERR value.
@@ -206,7 +209,6 @@ lydjson_data_skip(struct lyjson_ctx *jsonctx)
 
     if ((status == LYJSON_OBJECT) && (current != LYJSON_OBJECT) && (current != LYJSON_ARRAY)) {
         /* no nested objects */
-        LY_CHECK_RET(lyjson_ctx_next(jsonctx, NULL));
         return LY_SUCCESS;
     }
 
@@ -283,14 +285,6 @@ lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *pref
             ret = LY_EVALID;
             goto cleanup;
         }
-        if (!(lydctx->parse_opts & LYD_PARSE_OPAQ)) {
-            /* skip element with children */
-            ret = lydjson_data_skip(lydctx->jsonctx);
-            LY_CHECK_GOTO(ret, cleanup);
-
-            ret = LY_ENOT;
-            goto cleanup;
-        }
     }
 
     /* get the schema node */
@@ -328,13 +322,6 @@ lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *pref
                             (int)name_len, name, mod->name);
                 }
                 ret = LY_EVALID;
-                goto cleanup;
-            } else if (!(lydctx->parse_opts & LYD_PARSE_OPAQ)) {
-                /* skip element with children */
-                ret = lydjson_data_skip(lydctx->jsonctx);
-                LY_CHECK_GOTO(ret, cleanup);
-
-                ret = LY_ENOT;
                 goto cleanup;
             }
         } else {
@@ -1580,19 +1567,24 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
                 first_p, &node);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
     } else if (!snode) {
-        /* parse as an opaq node */
-        assert((lydctx->parse_opts & LYD_PARSE_OPAQ) || (lydctx->int_opts));
+        if (!(lydctx->parse_opts & LYD_PARSE_OPAQ)) {
+            /* skip element with children */
+            r = lydjson_data_skip(lydctx->jsonctx);
+            LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+        } else {
+            /* parse as an opaq node */
 
-        /* opaq node cannot have an empty string as the name. */
-        if (name_len == 0) {
-            LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX_JSON, "A JSON object member name cannot be a zero-length string.");
-            r = LY_EVALID;
-            LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+            /* opaq node cannot have an empty string as the name. */
+            if (name_len == 0) {
+                LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX_JSON, "A JSON object member name cannot be a zero-length string.");
+                r = LY_EVALID;
+                LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+            }
+
+            /* move to the second item in the name/X pair and parse opaq */
+            r = lydjson_ctx_next_parse_opaq(lydctx, name, name_len, prefix, prefix_len, parent, &status, first_p, &node);
+            LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
         }
-
-        /* move to the second item in the name/X pair and parse opaq */
-        r = lydjson_ctx_next_parse_opaq(lydctx, name, name_len, prefix, prefix_len, parent, &status, first_p, &node);
-        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
     } else {
         /* parse as a standard lyd_node but it can still turn out to be an opaque node */
 

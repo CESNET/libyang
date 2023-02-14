@@ -428,12 +428,10 @@ test_list(void **state)
     assert_non_null(leaf = (struct lyd_node_term *)leaf->next);
     CHECK_LYSC_NODE(leaf->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "d", 1, LYS_LEAF, 1, 0, NULL, 0);
     CHECK_LOG_CTX(NULL, NULL);
-
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS,
             "{\"a:l1\":[{\"a\":\"a\",\"b\":\"b\",\"c\":1,\"d\":\"d\"}]}");
     lyd_free_all(tree);
 
-    /*  */
     CHECK_PARSE_LYD("{\"a:l1\":[{\"c\":1,\"b\":\"b\",\"a\":\"a\"}]}", LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, tree);
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "l1",
             1, LYS_LIST, 0, 0, NULL, 0);
@@ -448,9 +446,14 @@ test_list(void **state)
     CHECK_LYSC_NODE(leaf->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "c",
             1, LYS_LEAF, 1, 0, NULL, 0);
     CHECK_LOG_CTX(NULL, NULL);
-
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS,
             "{\"a:l1\":[{\"a\":\"a\",\"b\":\"b\",\"c\":1}]}");
+    lyd_free_all(tree);
+
+    /* skip unknown nested nodes */
+    data = "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"c\":3,\"counters\":{\"count1\":\"c1\",\"count2\":\"c2\"}}]}";
+    CHECK_PARSE_LYD(data, LYD_PARSE_ONLY, 0, tree);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"c\":3}]}");
     lyd_free_all(tree);
 
     data = "{\"a:cp\":{\"@\":{\"a:hint\":1}}}";
@@ -461,7 +464,6 @@ test_list(void **state)
             1, LYS_CONTAINER, 0, 0, NULL, 0);
     CHECK_LYD_META(tree->meta, 1, "hint", 0, 1,  INT8, "1", 1);
     assert_null(tree->meta->next);
-
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
 }
