@@ -196,7 +196,7 @@ test_compare_diff_ctx(void **state)
     data2 = "<l2 xmlns=\"urn:tests:b\"><c><x>b</x></c></l2>";
     CHECK_PARSE_LYD_PARAM_CTX(UTEST_LYCTX, data1, 0, tree1);
     CHECK_PARSE_LYD_PARAM_CTX(ctx2, data2, 0, tree2);
-    assert_int_equal(LY_ENOT, lyd_compare_single(tree1, tree2, 0));
+    assert_int_equal(LY_SUCCESS, lyd_compare_single(tree1, tree2, 0));
     lyd_free_all(tree1);
     lyd_free_all(tree2);
 
@@ -210,7 +210,7 @@ test_compare_diff_ctx(void **state)
     data2 = "<l2 xmlns=\"urn:tests:b\"><c><x>b</x></c></l2>";
     CHECK_PARSE_LYD_PARAM_CTX(UTEST_LYCTX, data1, 0, tree1);
     CHECK_PARSE_LYD_PARAM_CTX(ctx2, data2, 0, tree2);
-    assert_int_equal(LY_ENOT, lyd_compare_single(tree1, tree2, 0));
+    assert_int_equal(LY_SUCCESS, lyd_compare_single(tree1, tree2, 0));
     lyd_free_all(tree1);
     lyd_free_all(tree2);
 

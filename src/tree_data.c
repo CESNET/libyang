@@ -1149,15 +1149,6 @@ lyd_compare_schema_equal(const struct lysc_node *schema1, const struct lysc_node
         return 0;
     }
 
-    if (schema1->module->revision || schema2->module->revision) {
-        if (!schema1->module->revision || !schema2->module->revision) {
-            return 0;
-        }
-        if (strcmp(schema1->module->revision, schema2->module->revision)) {
-            return 0;
-        }
-    }
-
     return 1;
 }
 
