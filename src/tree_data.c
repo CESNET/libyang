@@ -1795,8 +1795,13 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx *trg_c
             /* use the standard context */
             trg_ctx = LYD_CTX(orig_parent);
         }
-        if (parent && (parent->schema == orig_parent->schema)) {
+        if (parent && (LYD_CTX(parent) == LYD_CTX(orig_parent)) && (parent->schema == orig_parent->schema)) {
             /* stop creating parents, connect what we have into the provided parent */
+            iter = parent;
+            repeat = 0;
+        } else if (parent && (LYD_CTX(parent) != LYD_CTX(orig_parent)) &&
+                lyd_compare_schema_equal(parent->schema, orig_parent->schema) &&
+                lyd_compare_schema_parents_equal(&parent->node, &orig_parent->node)) {
             iter = parent;
             repeat = 0;
         } else {
