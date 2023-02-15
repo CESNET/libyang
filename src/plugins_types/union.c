@@ -281,29 +281,26 @@ lyb_fill_subvalue(const struct ly_ctx *ctx, struct lysc_type_union *type_u, cons
     ret = lyb_union_validate(lyb_data, lyb_data_len, type_u, err);
     LY_CHECK_RET(ret);
 
-    /* Parse lyb_data and set the lyb_value and lyb_value_len. */
+    /* parse lyb_data and set the lyb_value and lyb_value_len */
     lyb_parse_union(lyb_data, lyb_data_len, &type_idx, &lyb_value, &lyb_value_len);
     LY_CHECK_RET(ret);
 
-    /* Store lyb_data to subvalue. */
-    ret = union_subvalue_assignment(lyb_data, lyb_data_len,
-            &subvalue->original, &subvalue->orig_len, options);
+    /* store lyb_data to subvalue */
+    ret = union_subvalue_assignment(lyb_data, lyb_data_len, &subvalue->original, &subvalue->orig_len, options);
     LY_CHECK_RET(ret);
 
     if (lyb_value) {
-        /* Resolve prefix_data and set format. */
+        /* resolve prefix_data and set format */
         ret = lyplg_type_prefix_data_new(ctx, lyb_value, lyb_value_len, LY_VALUE_LYB, prefix_data, &subvalue->format,
                 &subvalue->prefix_data);
         LY_CHECK_RET(ret);
         assert(subvalue->format == LY_VALUE_LYB);
     } else {
-        /* The lyb_parse_union() did not find lyb_value.
-         * Just set format.
-         */
+        /* lyb_parse_union() did not find lyb_value, just set format */
         subvalue->format = LY_VALUE_LYB;
     }
 
-    /* Use the specific type to store the value. */
+    /* use the specific type to store the value */
     ret = union_store_type(ctx, type_u->types[type_idx], subvalue, 0, NULL, NULL, unres, err);
 
     return ret;
@@ -329,13 +326,11 @@ lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, c
     subvalue->ctx_node = ctx_node;
 
     if (format == LY_VALUE_LYB) {
-        ret = lyb_fill_subvalue(ctx, type_u, value, value_len,
-                prefix_data, subvalue, &options, unres, err);
+        ret = lyb_fill_subvalue(ctx, type_u, value, value_len, prefix_data, subvalue, &options, unres, err);
         LY_CHECK_GOTO((ret != LY_SUCCESS) && (ret != LY_EINCOMPLETE), cleanup);
     } else {
         /* Store @p value to subvalue. */
-        ret = union_subvalue_assignment(value, value_len,
-                &subvalue->original, &subvalue->orig_len, &options);
+        ret = union_subvalue_assignment(value, value_len, &subvalue->original, &subvalue->orig_len, &options);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* store format-specific data for later prefix resolution */
