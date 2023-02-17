@@ -1,3 +1,7 @@
+%if 0%{?rhel} == 8
+%undefine __cmake_in_source_build
+%endif
+
 Name: libyang
 Version: {{ version }}
 Release: {{ release }}%{?dist}
@@ -49,13 +53,13 @@ written (and providing API) in C.
 %cmake_build
 
 %if "x%{?suse_version}" == "x"
-cd redhat-linux-build
+cd %{__cmake_builddir}
 %endif
 make doc
 
 %check
 %if "x%{?suse_version}" == "x"
-cd redhat-linux-build
+cd %{__cmake_builddir}
 %endif
 ctest --output-on-failure -V %{?_smp_mflags}
 
