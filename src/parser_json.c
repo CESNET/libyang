@@ -1542,8 +1542,19 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
         if (r == LY_ENOT) {
             /* data parsed */
             goto cleanup;
+        } else if ((r == LY_EVALID) && (lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR)) {
+            rc = r;
+
+            /* skip the invalid data */
+            if ((r = lydjson_data_skip(lydctx->jsonctx))) {
+                rc = r;
+            }
+            goto cleanup;
+        } else if (r) {
+            /* error */
+            rc = r;
+            goto cleanup;
         }
-        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
         if (!snode) {
             /* we will not be parsing it as metadata */
