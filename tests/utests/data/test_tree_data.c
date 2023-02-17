@@ -490,6 +490,11 @@ test_find_path(void **state)
     assert_int_equal(LY_SUCCESS, lyd_find_path(root, "/c:cont/nexthop[gateway='10.0.0.1']", 0, NULL));
     assert_int_equal(LY_SUCCESS, lyd_find_path(root, "/c:cont/nexthop[gateway='2100::1']", 0, NULL));
     assert_int_equal(LY_SUCCESS, lyd_find_path(root, "/c:cont/pref[.='fc00::/64']", 0, NULL));
+
+    assert_int_equal(LY_EVALID, lyd_find_path(root, "/cont", 0, NULL));
+    CHECK_LOG_CTX("Prefix missing for \"cont\" in path.", "Schema location \"/c:cont\".");
+    assert_int_equal(LY_SUCCESS, lyd_find_path(root, "nexthop[gateway='2100::1']", 0, NULL));
+
     lyd_free_all(root);
 }
 

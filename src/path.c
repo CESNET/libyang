@@ -45,7 +45,7 @@
  */
 static LY_ERR
 ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lyxp_expr *exp,
-        uint32_t *tok_idx, uint8_t prefix, uint8_t pred)
+        uint32_t *tok_idx, uint16_t prefix, uint16_t pred)
 {
     LY_ERR ret = LY_SUCCESS;
     struct ly_set *set = NULL;
@@ -242,16 +242,17 @@ token_error:
 
 LY_ERR
 ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *str_path, size_t path_len,
-        ly_bool lref, uint8_t begin, uint8_t prefix, uint8_t pred, struct lyxp_expr **expr)
+        ly_bool lref, uint16_t begin, uint16_t prefix, uint16_t pred, struct lyxp_expr **expr)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr *exp = NULL;
     uint32_t tok_idx, cur_len;
     const char *cur_node, *prev_prefix = NULL, *ptr;
+    ly_bool is_abs;
 
     assert((begin == LY_PATH_BEGIN_ABSOLUTE) || (begin == LY_PATH_BEGIN_EITHER));
     assert((prefix == LY_PATH_PREFIX_OPTIONAL) || (prefix == LY_PATH_PREFIX_MANDATORY) ||
-            (prefix == LY_PATH_PREFIX_STRICT_INHERIT));
+            (prefix == LY_PATH_PREFIX_FIRST) || (prefix == LY_PATH_PREFIX_STRICT_INHERIT));
     assert((pred == LY_PATH_PRED_KEYS) || (pred == LY_PATH_PRED_SIMPLE) || (pred == LY_PATH_PRED_LEAFREF));
 
     LOG_LOCSET(ctx_node, NULL, NULL, NULL);
@@ -275,10 +276,16 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
                     /* optional '..' */
                 } while (!lyxp_next_token(NULL, exp, &tok_idx, LYXP_TOKEN_DDOT));
             }
+
+            is_abs = 0;
+        } else {
+            is_abs = 1;
         }
     } else {
         /* '/' */
         LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, &tok_idx, LYXP_TOKEN_OPER_PATH), ret = LY_EVALID, error);
+
+        is_abs = 1;
     }
 
     do {
@@ -294,8 +301,8 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
                 ret = LY_EVALID;
                 goto error;
             }
-        } else if (prefix == LY_PATH_PREFIX_STRICT_INHERIT) {
-            if (!prev_prefix) {
+        } else if ((prefix == LY_PATH_PREFIX_FIRST) || (prefix == LY_PATH_PREFIX_STRICT_INHERIT)) {
+            if (!prev_prefix && is_abs) {
                 /* the first node must have a prefix */
                 if (!strnstr(cur_node, ":", cur_len)) {
                     LOGVAL(ctx, LYVE_XPATH, "Prefix missing for \"%.*s\" in path.", cur_len, cur_node);
@@ -305,7 +312,7 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
 
                 /* remember the first prefix */
                 prev_prefix = cur_node;
-            } else {
+            } else if (prev_prefix && (prefix == LY_PATH_PREFIX_STRICT_INHERIT)) {
                 /* the prefix must be different, if any */
                 ptr = strnstr(cur_node, ":", cur_len);
                 if (ptr) {
@@ -349,7 +356,7 @@ error:
 
 LY_ERR
 ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const char *str_path,
-        size_t path_len, uint8_t prefix, uint8_t pred, struct lyxp_expr **expr)
+        size_t path_len, uint16_t prefix, uint16_t pred, struct lyxp_expr **expr)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr *exp = NULL;
@@ -843,7 +850,7 @@ cleanup:
  */
 static LY_ERR
 _ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
-        const struct lysc_ext_instance *top_ext, const struct lyxp_expr *expr, ly_bool lref, uint8_t oper, uint8_t target,
+        const struct lysc_ext_instance *top_ext, const struct lyxp_expr *expr, ly_bool lref, uint16_t oper, uint16_t target,
         ly_bool limit_access_tree, LY_VALUE_FORMAT format, void *prefix_data, struct ly_path **path)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -971,7 +978,7 @@ cleanup:
 
 LY_ERR
 ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
-        const struct lysc_ext_instance *top_ext, const struct lyxp_expr *expr, uint8_t oper, uint8_t target,
+        const struct lysc_ext_instance *top_ext, const struct lyxp_expr *expr, uint16_t oper, uint16_t target,
         ly_bool limit_access_tree, LY_VALUE_FORMAT format, void *prefix_data, struct ly_path **path)
 {
     return _ly_path_compile(ctx, cur_mod, ctx_node, top_ext, expr, 0, oper, target, limit_access_tree, format,
@@ -980,7 +987,7 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
 
 LY_ERR
 ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const struct lysc_ext_instance *top_ext,
-        const struct lyxp_expr *expr, uint8_t oper, uint8_t target, LY_VALUE_FORMAT format, void *prefix_data,
+        const struct lyxp_expr *expr, uint16_t oper, uint16_t target, LY_VALUE_FORMAT format, void *prefix_data,
         struct ly_path **path)
 {
     return _ly_path_compile(ctx, ctx_node->module, ctx_node, top_ext, expr, 1, oper, target, 1, format, prefix_data, path);

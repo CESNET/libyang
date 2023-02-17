@@ -2899,7 +2899,7 @@ lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output,
 
     /* parse the path */
     ret = ly_path_parse(LYD_CTX(ctx_node), ctx_node->schema, path, strlen(path), 0, LY_PATH_BEGIN_EITHER,
-            LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_SIMPLE, &expr);
+            LY_PATH_PREFIX_FIRST, LY_PATH_PRED_SIMPLE, &expr);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* compile the path */

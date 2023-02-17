@@ -76,9 +76,10 @@ struct ly_path {
  * @defgroup path_prefix_options Path prefix options.
  * @{
  */
-#define LY_PATH_PREFIX_OPTIONAL     0x10    /**< prefixes in the path are optional */
+#define LY_PATH_PREFIX_OPTIONAL     0x10    /**< prefixes in the path are optional (XML path) */
 #define LY_PATH_PREFIX_MANDATORY    0x20    /**< prefixes in the path are mandatory (XML instance-identifier) */
-#define LY_PATH_PREFIX_STRICT_INHERIT 0x30  /**< prefixes in the path are mandatory in case they differ from the
+#define LY_PATH_PREFIX_FIRST        0x40    /**< prefixes in the path are mandatory only in the first node of absolute path (JSON path) */
+#define LY_PATH_PREFIX_STRICT_INHERIT 0x80  /**< prefixes in the path are mandatory in case they differ from the
                                                  previous prefixes, otherwise they are prohibited (JSON instance-identifier) */
 /** @} */
 
@@ -86,10 +87,10 @@ struct ly_path {
  * @defgroup path_pred_options Path predicate options.
  * @{
  */
-#define LY_PATH_PRED_KEYS       0x40 /* expected predicate only - [node='value']* */
-#define LY_PATH_PRED_SIMPLE     0x80 /* expected predicates - [node='value']*; [.='value']; [1] */
-#define LY_PATH_PRED_LEAFREF    0xC0 /* expected predicates only leafref - [node=current()/../../../node/node];
-                                        at least 1 ".." and 1 "node" after */
+#define LY_PATH_PRED_KEYS       0x0100    /* expected predicate only - [node='value']* */
+#define LY_PATH_PRED_SIMPLE     0x0200    /* expected predicates - [node='value']*; [.='value']; [1] */
+#define LY_PATH_PRED_LEAFREF    0x0400  /* expected predicates only leafref - [node=current()/../../../node/node];
+                                           at least 1 ".." and 1 "node" after */
 /** @} */
 
 /**
@@ -107,7 +108,7 @@ struct ly_path {
  * @return LY_ERR value.
  */
 LY_ERR ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *str_path, size_t path_len,
-        ly_bool lref, uint8_t begin, uint8_t prefix, uint8_t pred, struct lyxp_expr **expr);
+        ly_bool lref, uint16_t begin, uint16_t prefix, uint16_t pred, struct lyxp_expr **expr);
 
 /**
  * @brief Parse predicate into XPath token structure and perform all additional checks.
@@ -122,7 +123,7 @@ LY_ERR ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
  * @return LY_ERR value.
  */
 LY_ERR ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const char *str_path,
-        size_t path_len, uint8_t prefix, uint8_t pred, struct lyxp_expr **expr);
+        size_t path_len, uint16_t prefix, uint16_t pred, struct lyxp_expr **expr);
 
 /**
  * @defgroup path_oper_options Path operation options.
@@ -162,7 +163,7 @@ LY_ERR ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node 
  * @return LY_ERR value.
  */
 LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
-        const struct lysc_ext_instance *top_ext, const struct lyxp_expr *expr, uint8_t oper, uint8_t target,
+        const struct lysc_ext_instance *top_ext, const struct lyxp_expr *expr, uint16_t oper, uint16_t target,
         ly_bool limit_access_tree, LY_VALUE_FORMAT format, void *prefix_data, struct ly_path **path);
 
 /**
@@ -182,7 +183,7 @@ LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mo
  * @return LY_ERR value.
  */
 LY_ERR ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
-        const struct lysc_ext_instance *top_ext, const struct lyxp_expr *expr, uint8_t oper, uint8_t target,
+        const struct lysc_ext_instance *top_ext, const struct lyxp_expr *expr, uint16_t oper, uint16_t target,
         LY_VALUE_FORMAT format, void *prefix_data, struct ly_path **path);
 
 /**
