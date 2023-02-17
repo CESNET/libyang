@@ -982,7 +982,7 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
         if (!err) {
             lyplg_ext_compile_log(NULL, ext, LY_LLERR, ret, "Unknown validation error (err code %d).", ret);
         } else {
-            lyplg_ext_compile_log_path(err->path, ext, LY_LLERR, err->no, "%s", err->msg);
+            lyplg_ext_compile_log_err(err, ext);
         }
         goto cleanup;
     }

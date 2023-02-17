@@ -594,6 +594,14 @@ LIBYANG_API_DECL void lyplg_ext_compile_log_path(const char *path, const struct 
         LY_LOG_LEVEL level, LY_ERR err_no, const char *format, ...);
 
 /**
+ * @brief Log a message from an extension plugin using the compiled extension instance and a generated error item.
+ *
+ * @param[in] err Error item to log.
+ * @param[in] ext Compiled extension instance.
+ */
+LIBYANG_API_DEF void lyplg_ext_compile_log_err(const struct ly_err_item *err, const struct lysc_ext_instance *ext);
+
+/**
  * @brief YANG schema compilation context getter for libyang context.
  *
  * @param[in] ctx YANG schema compilation context.

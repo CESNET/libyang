@@ -200,15 +200,15 @@ test_schema_yang(void **state)
     /* ERROR TESTS NEGATIVE VALUE */
     schema = MODULE_CREATE_YANG("ERR0", "leaf port {type string {length \"-1 .. 20\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EDENIED);
-    CHECK_LOG_CTX("Invalid length restriction - value \"-1\" does not fit the type limitations.", "/ERR0:port");
+    CHECK_LOG_CTX("Invalid length restriction - value \"-1\" does not fit the type limitations.", "Path \"/ERR0:port\".");
 
     schema = MODULE_CREATE_YANG("ERR1", "leaf port {type string {length \"100 .. 18446744073709551616\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid length restriction - invalid value \"18446744073709551616\".", "/ERR1:port");
+    CHECK_LOG_CTX("Invalid length restriction - invalid value \"18446744073709551616\".", "Path \"/ERR1:port\".");
 
     schema = MODULE_CREATE_YANG("ERR2", "leaf port {type string {length \"10 .. 20 | 20 .. 30\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EEXIST);
-    CHECK_LOG_CTX("Invalid length restriction - values are not in ascending order (20).", "/ERR2:port");
+    CHECK_LOG_CTX("Invalid length restriction - values are not in ascending order (20).", "Path \"/ERR2:port\".");
 
     schema = MODULE_CREATE_YANG("ERR3",
             "typedef my_type {"
@@ -216,7 +216,7 @@ test_schema_yang(void **state)
             "}"
             "leaf port {type my_type {length \"-1 .. 15\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EDENIED);
-    CHECK_LOG_CTX("Invalid length restriction - value \"-1\" does not fit the type limitations.", "/ERR3:port");
+    CHECK_LOG_CTX("Invalid length restriction - value \"-1\" does not fit the type limitations.", "Path \"/ERR3:port\".");
 
     /*
      * PATTERN
@@ -286,7 +286,7 @@ test_schema_yang(void **state)
             "}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Regular expression \"[a-zA-Z_[a-zA-Z0-9\\-_.*\" is not valid (\"\": missing terminating ] for character class).",
-            "/TPATTERN_ERR_0:port");
+            "Path \"/TPATTERN_ERR_0:port\".");
 
     schema = MODULE_CREATE_YANG("TDEFAULT_0",
             "typedef my_type {"
@@ -323,14 +323,14 @@ test_schema_yang(void **state)
             "}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Regular expression \"\\[a]b\" is not valid (\"]b\": character group doesn't begin with '[').",
-            "/TPATTERN_BC_ERR_1:port");
+            "Path \"/TPATTERN_BC_ERR_1:port\".");
 
     schema = MODULE_CREATE_YANG("TPATTERN_BC_ERR_2", "leaf port {type string {"
             "pattern \"\\\\[a]b\";" /* pattern "\\[a]b"; */
             "}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Regular expression \"\\[a]b\" is not valid (\"]b\": character group doesn't begin with '[').",
-            "/TPATTERN_BC_ERR_2:port");
+            "Path \"/TPATTERN_BC_ERR_2:port\".");
 
     /* PATTERN AND LENGTH */
     schema = MODULE_CREATE_YANG("TPL_0",
@@ -467,26 +467,26 @@ test_schema_yin(void **state)
     schema = MODULE_CREATE_YIN("ERR0", "<leaf name=\"port\"> <type name=\"string\">"
             "<length value =\"-1 .. 20\"/> </type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EDENIED);
-    CHECK_LOG_CTX("Invalid length restriction - value \"-1\" does not fit the type limitations.", "/ERR0:port");
+    CHECK_LOG_CTX("Invalid length restriction - value \"-1\" does not fit the type limitations.", "Path \"/ERR0:port\".");
 
     schema = MODULE_CREATE_YIN("ERR1", "<leaf name=\"port\"> <type name=\"string\">"
             "<length value=\"100 .. 18446744073709551616\"/>"
             "</type> </leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid length restriction - invalid value \"18446744073709551616\".", "/ERR1:port");
+    CHECK_LOG_CTX("Invalid length restriction - invalid value \"18446744073709551616\".", "Path \"/ERR1:port\".");
 
     schema = MODULE_CREATE_YIN("ERR2", "<leaf name=\"port\">"
             "<type name=\"string\"> <length value=\"10 .. 20 | 20 .. 30\"/>"
             "</type> </leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EEXIST);
-    CHECK_LOG_CTX("Invalid length restriction - values are not in ascending order (20).", "/ERR2:port");
+    CHECK_LOG_CTX("Invalid length restriction - values are not in ascending order (20).", "Path \"/ERR2:port\".");
 
     schema = MODULE_CREATE_YIN("ERR3",
             "<typedef name=\"my_type\"> <type name=\"string\"/> </typedef>"
             "<leaf name=\"port\"> <type name=\"my_type\"> <length value=\"-1 .. 15\"/>"
             "</type> </leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EDENIED);
-    CHECK_LOG_CTX("Invalid length restriction - value \"-1\" does not fit the type limitations.", "/ERR3:port");
+    CHECK_LOG_CTX("Invalid length restriction - value \"-1\" does not fit the type limitations.", "Path \"/ERR3:port\".");
 
     /*
      * PATTERN
@@ -557,7 +557,7 @@ test_schema_yin(void **state)
             "</type> </leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Regular expression \"[a-zA-Z_][a-zA-Z0-9\\-_.*\" is not valid (\"\": missing terminating ] for character class).",
-            "/TPATTERN_ERR_0:port");
+            "Path \"/TPATTERN_ERR_0:port\".");
 
     /*
      * DEFAUT VALUE

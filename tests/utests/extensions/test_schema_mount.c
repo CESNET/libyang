@@ -75,7 +75,7 @@ test_schema(void **state)
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Extension \"yangmnt:mount-point\" instance not allowed in YANG version 1 module.",
-            "/sm:root/{extension='yangmnt:mount-point'}/root");
+            "Path \"/sm:root/{extension='yangmnt:mount-point'}/root\".");
 
     schema =
             "module sm {\n"
@@ -92,7 +92,7 @@ test_schema(void **state)
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Extension \"yangmnt:mount-point\" instance allowed only in container or list statement.",
-            "/sm:{extension='yangmnt:mount-point'}/root");
+            "Path \"/sm:{extension='yangmnt:mount-point'}/root\".");
 
     schema =
             "module sm {\n"
@@ -114,7 +114,7 @@ test_schema(void **state)
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Extension \"yangmnt:mount-point\" instance allowed only in container or list statement.",
-            "/sm:root/l/{extension='yangmnt:mount-point'}/root");
+            "Path \"/sm:root/l/{extension='yangmnt:mount-point'}/root\".");
 
     schema =
             "module sm {\n"
@@ -138,7 +138,7 @@ test_schema(void **state)
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Multiple extension \"yangmnt:mount-point\" instances.",
-            "/sm:l/{extension='yangmnt:mount-point'}/root");
+            "Path \"/sm:l/{extension='yangmnt:mount-point'}/root\".");
 
     /* valid */
     schema =
@@ -410,25 +410,25 @@ test_parse_invalid(void **state)
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Mandatory node \"type\" instance does not exist.",
-            "Schema location \"/ietf-interfaces:interfaces/interface/type\".");
+            "Data location \"/ietf-interfaces:interfaces/interface[name='bu']\".");
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Mandatory node \"type\" instance does not exist.",
-            "Schema location \"/ietf-interfaces:interfaces/interface/type\".");
+            "Data location \"/ietf-interfaces:interfaces/interface[name='bu']\".");
 
     /* same validation fail in separate validation */
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, LY_SUCCESS, data);
     assert_int_equal(LY_EVALID, lyd_validate_all(&data, NULL, LYD_VALIDATE_PRESENT, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Mandatory node \"type\" instance does not exist.",
-            "Schema location \"/ietf-interfaces:interfaces/interface/type\".");
+            "Data location \"/ietf-interfaces:interfaces/interface[name='bu']\".");
     lyd_free_siblings(data);
 
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, LY_SUCCESS, data);
     assert_int_equal(LY_EVALID, lyd_validate_all(&data, NULL, LYD_VALIDATE_PRESENT, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Mandatory node \"type\" instance does not exist.",
-            "Schema location \"/ietf-interfaces:interfaces/interface/type\".");
+            "Data location \"/ietf-interfaces:interfaces/interface[name='bu']\".");
     lyd_free_siblings(data);
 
     /* success */
@@ -878,7 +878,7 @@ test_parse_shared(void **state)
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Shared-schema yang-library content-id \"2\" differs from \"1\" used previously.",
-            "/ietf-yang-library:yang-library/content-id");
+            "Path \"/ietf-yang-library:yang-library/content-id\".");
 
     /* data for 2 mount points */
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,

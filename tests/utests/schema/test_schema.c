@@ -1266,10 +1266,10 @@ test_identity(void **state)
     assert_ptr_equal(mod->identities[1].derived[0], &mod->identities[0]);
 
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule inv_sub {belongs-to inv {prefix inv;} identity i1;}");
-    TEST_SCHEMA_ERR(0, 0, "inv", "identity i1 {base i2;}", "Unable to find base (i2) of identity \"i1\".", "/inv:{identity='i1'}");
-    TEST_SCHEMA_ERR(0, 0, "inv", "identity i1 {base i1;}", "Identity \"i1\" is derived from itself.", "/inv:{identity='i1'}");
+    TEST_SCHEMA_ERR(0, 0, "inv", "identity i1 {base i2;}", "Unable to find base (i2) of identity \"i1\".", "Path \"/inv:{identity='i1'}\".");
+    TEST_SCHEMA_ERR(0, 0, "inv", "identity i1 {base i1;}", "Identity \"i1\" is derived from itself.", "Path \"/inv:{identity='i1'}\".");
     TEST_SCHEMA_ERR(0, 0, "inv", "identity i1 {base i2;}identity i2 {base i3;}identity i3 {base i1;}",
-            "Identity \"i1\" is indirectly derived from itself.", "/inv:{identity='i3'}");
+            "Identity \"i1\" is indirectly derived from itself.", "Path \"/inv:{identity='i3'}\".");
 
     /* base in non-implemented module */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb,

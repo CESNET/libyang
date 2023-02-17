@@ -148,7 +148,7 @@ test_schema_invalid(void **state)
             "sx:structure struct {import yang;}}";
     UTEST_INVALID_MODULE(data, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid keyword \"import\" as a child of \"sx:structure struct\" extension instance.",
-            "/a:{extension='sx:structure'}/struct");
+            "Path \"/a:{extension='sx:structure'}/struct\".");
 
     data = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix self;"
             "import ietf-yang-structure-ext {prefix sx;}"
@@ -156,7 +156,7 @@ test_schema_invalid(void **state)
     UTEST_INVALID_MODULE(data, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Ext plugin \"ly2 structure v1\": "
             "Extension sx:structure must not be used as a non top-level statement in \"container\" statement.",
-            "/a:b/{extension='sx:structure'}/struct");
+            "Path \"/a:b/{extension='sx:structure'}/struct\".");
 
     data = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix self;"
             "import ietf-yang-structure-ext {prefix sx;}"
@@ -171,7 +171,7 @@ test_schema_invalid(void **state)
             "sx:structure struct { container y { leaf y {type string;}}}}";
     UTEST_INVALID_MODULE(data, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Ext plugin \"ly2 structure v1\": Extension sx:structure is instantiated multiple times.",
-            "/a:{extension='sx:structure'}/struct");
+            "Path \"/a:{extension='sx:structure'}/struct\".");
 
     data = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix self;"
             "import ietf-yang-structure-ext {prefix sx;}"
@@ -179,7 +179,7 @@ test_schema_invalid(void **state)
             "choice struct { container y { leaf y {type string;}}}}";
     UTEST_INVALID_MODULE(data, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Ext plugin \"ly2 structure v1\": Extension sx:structure collides with a choice with the same identifier.",
-            "/a:{extension='sx:structure'}/struct");
+            "Path \"/a:{extension='sx:structure'}/struct\".");
 
     /* augment-structure */
     data = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix a;"
@@ -199,7 +199,7 @@ test_schema_invalid(void **state)
             "}}";
     UTEST_INVALID_MODULE(data, LYS_IN_YANG, NULL, LY_ENOTFOUND);
     CHECK_LOG_CTX("Augment extension target node \"/a:n1\" from module \"b\" was not found.",
-            "/b:{extension='sx:augment-structure'}/{augment='/a:n1'}");
+            "Path \"/b:{extension='sx:augment-structure'}/{augment='/a:n1'}\".");
 }
 
 static void

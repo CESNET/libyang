@@ -179,7 +179,7 @@ test_schema_yang(void **state)
             "leaf port {type my_type {"
             "   bit ten {position 11;} bit two;}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid bits - position of the item \"ten\" has changed from 10 to 11 in the derived type.", "/TERR_0:port");
+    CHECK_LOG_CTX("Invalid bits - position of the item \"ten\" has changed from 10 to 11 in the derived type.", "Path \"/TERR_0:port\".");
 
     /* add new bit */
     schema = MODULE_CREATE_YANG("TERR_1", "typedef my_type{type bits {"
@@ -187,7 +187,7 @@ test_schema_yang(void **state)
             "leaf port {type my_type {"
             "   bit ten {position 10;} bit two;  bit test;}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid bits - derived type adds new item \"test\".", "/TERR_1:port");
+    CHECK_LOG_CTX("Invalid bits - derived type adds new item \"test\".", "Path \"/TERR_1:port\".");
 
     /* different max value => autoadd index */
     schema = MODULE_CREATE_YANG("TERR_2", "leaf port {type bits {"
@@ -203,7 +203,7 @@ test_schema_yang(void **state)
             "}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid bits - it is not possible to auto-assign bit position for \"second\" since the highest value is already 4294967295.",
-            "/TERR_3:port");
+            "Path \"/TERR_3:port\".");
 
     schema = MODULE_CREATE_YANG("TERR_4", "leaf port {type bits {"
             " bit first {position 10;} bit \"\";"
@@ -244,7 +244,7 @@ test_schema_yang(void **state)
 
     schema = MODULE_CREATE_YANG("TERR_9", "leaf port {type bits;}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Missing bit substatement for bits type.", "/TERR_9:port");
+    CHECK_LOG_CTX("Missing bit substatement for bits type.", "Path \"/TERR_9:port\".");
 
     /* new features of YANG 1.1 in YANG 1.0 */
     schema = "module TERR_10 {"
@@ -267,7 +267,7 @@ test_schema_yang(void **state)
             "  leaf l {type mytype {bit one;}}"
             "}";
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Bits type can be subtyped only in YANG 1.1 modules.", "/TERR_11:l");
+    CHECK_LOG_CTX("Bits type can be subtyped only in YANG 1.1 modules.", "Path \"/TERR_11:l\".");
 
     /* feature is not present */
     schema = MODULE_CREATE_YANG("IF_0", "feature f;"
@@ -415,7 +415,7 @@ test_schema_yin(void **state)
             "   <bit name=\"ten\"> <position value=\"11\"/> </bit> <bit name=\"two\"/>"
             "</type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid bits - position of the item \"ten\" has changed from 10 to 11 in the derived type.", "/TERR_0:port");
+    CHECK_LOG_CTX("Invalid bits - position of the item \"ten\" has changed from 10 to 11 in the derived type.", "Path \"/TERR_0:port\".");
 
     /* add new bit */
     schema = MODULE_CREATE_YIN("TERR_1",
@@ -431,7 +431,7 @@ test_schema_yin(void **state)
             "   <bit name=\"test\"/>"
             "</type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid bits - derived type adds new item \"test\".", "/TERR_1:port");
+    CHECK_LOG_CTX("Invalid bits - derived type adds new item \"test\".", "Path \"/TERR_1:port\".");
 
     /* different max value => autoadd index */
     schema = MODULE_CREATE_YIN("TERR_2",
@@ -451,7 +451,7 @@ test_schema_yin(void **state)
             "</type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid bits - it is not possible to auto-assign bit position for \"second\" since the highest value is already 4294967295.",
-            "/TERR_3:port");
+            "Path \"/TERR_3:port\".");
 
     schema = MODULE_CREATE_YIN("TERR_4",
             "<leaf name=\"port\"> <type name=\"bits\">"

@@ -558,7 +558,7 @@ test_opaq(void **state)
     /* invalid metadata */
     data = "{\"@a:foo\":\"str\",\"@a:foo3\":1,\"a:foo3\":2}";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Unknown module of node \"@a:foo\".", "Data location \"/@a:foo\".");
+            "Unknown module of node \"@a:foo\".", "Path \"/\".");
     CHECK_LOG_CTX("Missing JSON data instance to be coupled with @a:foo metadata.", "Data location \"/@a:foo\", line number 1.");
 
     /* empty name */

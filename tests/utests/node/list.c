@@ -193,7 +193,7 @@ test_schema_yang(void **state)
             "leaf group{type string;}"
             "}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("List min-elements 20 is bigger than max-elements 10.", "/TERR_0:user");
+    CHECK_LOG_CTX("List min-elements 20 is bigger than max-elements 10.", "Path \"/TERR_0:user\".");
 
     schema = MODULE_CREATE_YANG("TERR_0", "list user {"
             "key uid;"
@@ -389,7 +389,7 @@ test_schema_yin(void **state)
             "   <leaf name=\"group\"><type name=\"string\"/></leaf>"
             "</list>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("The list's key \"u<id\" not found.", "/T00:user");
+    CHECK_LOG_CTX("The list's key \"u<id\" not found.", "Path \"/T00:user\".");
 
     schema = MODULE_CREATE_YIN("T1", "<list name=\"user\"> "
             "   <key value=\"uid\"/>"
