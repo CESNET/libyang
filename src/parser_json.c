@@ -1576,7 +1576,7 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
 
             /* opaq node cannot have an empty string as the name. */
             if (name_len == 0) {
-                LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX_JSON, "A JSON object member name cannot be a zero-length string.");
+                LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX_JSON, "JSON object member name cannot be a zero-length string.");
                 r = LY_EVALID;
                 LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
             }
@@ -1695,8 +1695,8 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
     goto cleanup;
 
 representation_error:
-    LOGVAL(ctx, LYVE_SYNTAX_JSON, "The %s \"%s\" is expected to be represented as JSON %s, but input data contains name/%s.",
-            lys_nodetype2str(snode->nodetype), snode->name, expected, lyjson_token2str(status));
+    LOGVAL(ctx, LYVE_SYNTAX_JSON, "Expecting JSON %s but %s \"%s\" is represented in input data as name/%s.",
+            expected, lys_nodetype2str(snode->nodetype), snode->name, lyjson_token2str(status));
     rc = LY_EVALID;
     if (lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) {
         /* try to skip the invalid data */

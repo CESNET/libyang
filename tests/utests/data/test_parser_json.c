@@ -563,7 +563,7 @@ test_opaq(void **state)
 
     /* empty name */
     PARSER_CHECK_ERROR("{\"@a:foo\":{\"\":0}}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "A JSON object member name cannot be a zero-length string.", "Line number 1.");
+            "JSON object member name cannot be a zero-length string.", "Line number 1.");
 
     /* opaque data tree format print */
     data =
