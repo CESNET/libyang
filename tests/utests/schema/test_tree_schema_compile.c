@@ -2271,6 +2271,146 @@ test_type_dflt(void **state)
 }
 
 static void
+test_type_exts(void **state)
+{
+    const char *schema1, *schema2, *schema3, *schema4;
+    struct lys_module *mod;
+    const struct lysc_node *snode;
+    struct lysc_type *type;
+    struct lysc_type_union *type_u;
+
+    schema1 = "module my-extensions {\n"
+            "  namespace \"urn:my-extensions\";\n"
+            "  prefix my-ext;\n"
+            "\n"
+            "  extension shortdesc {\n"
+            "    argument shortdsc;\n"
+            "  }\n"
+            "}\n";
+    schema2 = "module module-inet {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:module-inet\";\n"
+            "  prefix mod-inet;\n"
+            "\n"
+            "  import ietf-inet-types {\n"
+            "    prefix inet;\n"
+            "  }\n"
+            "\n"
+            "  import my-extensions {\n"
+            "    prefix my-ext;\n"
+            "  }\n"
+            "\n"
+            "  typedef domain-name {\n"
+            "    type inet:domain-name {\n"
+            "      my-ext:shortdesc \"<host-name>\";\n"
+            "    }\n"
+            "  }\n"
+            "\n"
+            "  typedef ipv4-address {\n"
+            "    type inet:ipv4-address-no-zone {\n"
+            "      my-ext:shortdesc \"<A.B.C.D>\";\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+    schema3 = "module module-a {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:module-a\";\n"
+            "  prefix mod-a;\n"
+            "\n"
+            "  import module-inet {\n"
+            "    prefix mod-inet;\n"
+            "  }\n"
+            "\n"
+            "  import my-extensions {\n"
+            "    prefix my-ext;\n"
+            "  }\n"
+            "\n"
+            "  typedef server-address {\n"
+            "    type union {\n"
+            "      type mod-inet:ipv4-address {\n"
+            "        my-ext:shortdesc \"<ipv4-address>\";\n"
+            "      }\n"
+            "      type mod-inet:domain-name {\n"
+            "        my-ext:shortdesc \"<fqdn>\";\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+    schema4 = "module main-module {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:main-module\";\n"
+            "  prefix main;\n"
+            "\n"
+            "  import module-a {\n"
+            "    prefix mod-a;\n"
+            "  }\n"
+            "\n"
+            "  import module-inet {\n"
+            "    prefix mod-inet;\n"
+            "  }\n"
+            "\n"
+            "  import my-extensions {\n"
+            "    prefix my-ext;\n"
+            "  }\n"
+            "\n"
+            "  container config {\n"
+            "    leaf server {\n"
+            "      type mod-a:server-address {\n"
+            "        my-ext:shortdesc \"<server-address>\";\n"
+            "      }\n"
+            "    }\n"
+            "\n"
+            "    leaf hostname {\n"
+            "      type union {\n"
+            "        type mod-inet:domain-name;\n"
+            "        type string;\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, schema1, LYS_IN_YANG, NULL));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, schema2, LYS_IN_YANG, NULL));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, schema3, LYS_IN_YANG, NULL));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, schema4, LYS_IN_YANG, &mod));
+
+    /* server */
+    snode = lys_find_path(UTEST_LYCTX, NULL, "/main-module:config/server", 0);
+    assert_non_null(snode);
+
+    type = ((struct lysc_node_leaf *)snode)->type;
+    assert_int_equal(LY_ARRAY_COUNT(type->exts), 1);
+    assert_string_equal(type->exts[0].argument, "<server-address>");
+    type_u = (struct lysc_type_union *)type;
+    assert_int_equal(LY_ARRAY_COUNT(type_u->types), 2);
+
+    type = type_u->types[0];
+    assert_int_equal(LY_ARRAY_COUNT(type->exts), 2);
+    assert_string_equal(type->exts[0].argument, "<A.B.C.D>");
+    assert_string_equal(type->exts[1].argument, "<ipv4-address>");
+
+    type = type_u->types[1];
+    assert_int_equal(LY_ARRAY_COUNT(type->exts), 2);
+    assert_string_equal(type->exts[0].argument, "<host-name>");
+    assert_string_equal(type->exts[1].argument, "<fqdn>");
+
+    /* hostname */
+    snode = lys_find_path(UTEST_LYCTX, NULL, "/main-module:config/hostname", 0);
+    assert_non_null(snode);
+    type = ((struct lysc_node_leaf *)snode)->type;
+    assert_int_equal(LY_ARRAY_COUNT(type->exts), 0);
+    type_u = (struct lysc_type_union *)type;
+    assert_int_equal(LY_ARRAY_COUNT(type_u->types), 2);
+
+    type = type_u->types[0];
+    assert_int_equal(LY_ARRAY_COUNT(type->exts), 1);
+    assert_string_equal(type->exts[0].argument, "<host-name>");
+
+    type = type_u->types[1];
+    assert_int_equal(LY_ARRAY_COUNT(type->exts), 0);
+}
+
+static void
 test_status(void **state)
 {
 
@@ -3801,6 +3941,7 @@ main(void)
         UTEST(test_type_empty, setup),
         UTEST(test_type_union, setup),
         UTEST(test_type_dflt, setup),
+        UTEST(test_type_exts, setup),
         UTEST(test_status, setup),
         UTEST(test_node_container, setup),
         UTEST(test_node_leaflist, setup),
