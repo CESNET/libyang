@@ -49,6 +49,10 @@ lylyb_ctx_free(struct lylyb_ctx *ctx)
 {
     LY_ARRAY_COUNT_TYPE u;
 
+    if (!ctx) {
+        return;
+    }
+
     LY_ARRAY_FREE(ctx->siblings);
     LY_ARRAY_FREE(ctx->models);
 
@@ -64,6 +68,10 @@ void
 lyd_lyb_ctx_free(struct lyd_ctx *lydctx)
 {
     struct lyd_lyb_ctx *ctx = (struct lyd_lyb_ctx *)lydctx;
+
+    if (!lydctx) {
+        return;
+    }
 
     lyd_ctx_free(lydctx);
     lylyb_ctx_free(ctx->lybctx);
