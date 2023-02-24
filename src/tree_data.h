@@ -2527,6 +2527,43 @@ LIBYANG_API_DECL LY_ERR lyd_eval_xpath3(const struct lyd_node *ctx_node, const s
         const char *xpath, LY_VALUE_FORMAT format, void *prefix_data, const struct lyxp_var *vars, ly_bool *result);
 
 /**
+ * @brief XPath result type.
+ */
+typedef enum {
+    LY_XPATH_NODE_SET,  /**< XPath node set */
+    LY_XPATH_STRING,    /**< XPath string */
+    LY_XPATH_NUMBER,    /**< XPath number */
+    LY_XPATH_BOOLEAN    /**< XPath boolean */
+} LY_XPATH_TYPE;
+
+/**
+ * @brief Evaluate an XPath on data and return the result or convert it first to an expected result type.
+ *
+ * Either all return type parameters @p node_set, @p string, @p number, and @p boolean with @p ret_type
+ * are provided or exactly one of @p node_set, @p string, @p number, and @p boolean is provided with @p ret_type
+ * being obvious and hence optional.
+ *
+ * @param[in] ctx_node XPath context node, NULL for the root node.
+ * @param[in] tree Data tree to evaluate on.
+ * @param[in] cur_mod Current module of @p xpath, needed for some kinds of @p format.
+ * @param[in] xpath [XPath](@ref howtoXPath) to select.
+ * @param[in] format Format of any prefixes in @p xpath.
+ * @param[in] prefix_data Format-specific prefix data.
+ * @param[in] vars Optional [sized array](@ref sizedarrays) of XPath variables.
+ * @param[out] ret_type XPath type of the result selecting which of @p node_set, @p string, @p number, and @p boolean to use.
+ * @param[out] node_set XPath node set result.
+ * @param[out] string XPath string result.
+ * @param[out] number XPath number result.
+ * @param[out] boolean XPath boolean result.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+LIBYANG_API_DECL LY_ERR lyd_eval_xpath4(const struct lyd_node *ctx_node, const struct lyd_node *tree,
+        const struct lys_module *cur_mod, const char *xpath, LY_VALUE_FORMAT format, void *prefix_data,
+        const struct lyxp_var *vars, LY_XPATH_TYPE *ret_type, struct ly_set **node_set, char **string,
+        long double *number, ly_bool *boolean);
+
+/**
  * @brief Search in given data for a node uniquely identified by a path.
  *
  * Always works in constant (*O(1)*) complexity. To be exact, it is *O(n)* where *n* is the depth

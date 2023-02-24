@@ -2765,58 +2765,19 @@ lyd_find_sibling_opaq_next(const struct lyd_node *first, const char *name, struc
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_find_xpath4(const struct lyd_node *ctx_node, const struct lyd_node *tree, const char *xpath, LY_VALUE_FORMAT format,
-        void *prefix_data, const struct lyxp_var *vars, struct ly_set **set)
+lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set **set)
 {
-    LY_ERR ret = LY_SUCCESS;
-    struct lyxp_set xp_set = {0};
-    struct lyxp_expr *exp = NULL;
-    uint32_t i;
+    LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
 
-    LY_CHECK_ARG_RET(NULL, tree, xpath, format, set, LY_EINVAL);
+    return lyd_find_xpath4(ctx_node, ctx_node, xpath, LY_VALUE_JSON, NULL, NULL, set);
+}
 
-    *set = NULL;
+LIBYANG_API_DEF LY_ERR
+lyd_find_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct lyxp_var *vars, struct ly_set **set)
+{
+    LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
 
-    /* parse expression */
-    ret = lyxp_expr_parse((struct ly_ctx *)LYD_CTX(tree), xpath, 0, 1, &exp);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    /* evaluate expression */
-    ret = lyxp_eval(LYD_CTX(tree), exp, NULL, format, prefix_data, ctx_node, ctx_node, tree, vars, &xp_set,
-            LYXP_IGNORE_WHEN);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    if (xp_set.type != LYXP_SET_NODE_SET) {
-        LOGERR(LYD_CTX(tree), LY_EINVAL, "XPath \"%s\" result is not a node set.", xpath);
-        ret = LY_EINVAL;
-        goto cleanup;
-    }
-
-    /* allocate return set */
-    ret = ly_set_new(set);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    /* transform into ly_set, allocate memory for all the elements once (even though not all items must be
-     * elements but most likely will be) */
-    (*set)->objs = malloc(xp_set.used * sizeof *(*set)->objs);
-    LY_CHECK_ERR_GOTO(!(*set)->objs, LOGMEM(LYD_CTX(tree)); ret = LY_EMEM, cleanup);
-    (*set)->size = xp_set.used;
-
-    for (i = 0; i < xp_set.used; ++i) {
-        if (xp_set.val.nodes[i].type == LYXP_NODE_ELEM) {
-            ret = ly_set_add(*set, xp_set.val.nodes[i].node, 1, NULL);
-            LY_CHECK_GOTO(ret, cleanup);
-        }
-    }
-
-cleanup:
-    lyxp_set_free_content(&xp_set);
-    lyxp_expr_free((struct ly_ctx *)LYD_CTX(tree), exp);
-    if (ret) {
-        ly_set_free(*set, NULL);
-        *set = NULL;
-    }
-    return ret;
+    return lyd_find_xpath4(ctx_node, ctx_node, xpath, LY_VALUE_JSON, NULL, vars, set);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -2829,51 +2790,20 @@ lyd_find_xpath3(const struct lyd_node *ctx_node, const struct lyd_node *tree, co
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_find_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct lyxp_var *vars, struct ly_set **set)
+lyd_find_xpath4(const struct lyd_node *ctx_node, const struct lyd_node *tree, const char *xpath, LY_VALUE_FORMAT format,
+        void *prefix_data, const struct lyxp_var *vars, struct ly_set **set)
 {
-    LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, tree, xpath, set, LY_EINVAL);
 
-    return lyd_find_xpath4(ctx_node, ctx_node, xpath, LY_VALUE_JSON, NULL, vars, set);
+    *set = NULL;
+
+    return lyd_eval_xpath4(ctx_node, tree, NULL, xpath, format, prefix_data, vars, NULL, set, NULL, NULL, NULL);
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set **set)
+lyd_eval_xpath(const struct lyd_node *ctx_node, const char *xpath, ly_bool *result)
 {
-    LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
-
-    return lyd_find_xpath4(ctx_node, ctx_node, xpath, LY_VALUE_JSON, NULL, NULL, set);
-}
-
-LIBYANG_API_DEF LY_ERR
-lyd_eval_xpath3(const struct lyd_node *ctx_node, const struct lys_module *cur_mod, const char *xpath,
-        LY_VALUE_FORMAT format, void *prefix_data, const struct lyxp_var *vars, ly_bool *result)
-{
-    LY_ERR ret = LY_SUCCESS;
-    struct lyxp_set xp_set = {0};
-    struct lyxp_expr *exp = NULL;
-
-    LY_CHECK_ARG_RET(NULL, ctx_node, xpath, result, LY_EINVAL);
-
-    /* compile expression */
-    ret = lyxp_expr_parse((struct ly_ctx *)LYD_CTX(ctx_node), xpath, 0, 1, &exp);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    /* evaluate expression */
-    ret = lyxp_eval(LYD_CTX(ctx_node), exp, cur_mod, format, prefix_data, ctx_node, ctx_node, ctx_node, vars, &xp_set,
-            LYXP_IGNORE_WHEN);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    /* transform into boolean */
-    ret = lyxp_set_cast(&xp_set, LYXP_SET_BOOLEAN);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    /* set result */
-    *result = xp_set.val.bln;
-
-cleanup:
-    lyxp_set_free_content(&xp_set);
-    lyxp_expr_free((struct ly_ctx *)LYD_CTX(ctx_node), exp);
-    return ret;
+    return lyd_eval_xpath3(ctx_node, NULL, xpath, LY_VALUE_JSON, NULL, NULL, result);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -2883,9 +2813,107 @@ lyd_eval_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_eval_xpath(const struct lyd_node *ctx_node, const char *xpath, ly_bool *result)
+lyd_eval_xpath3(const struct lyd_node *ctx_node, const struct lys_module *cur_mod, const char *xpath,
+        LY_VALUE_FORMAT format, void *prefix_data, const struct lyxp_var *vars, ly_bool *result)
 {
-    return lyd_eval_xpath3(ctx_node, NULL, xpath, LY_VALUE_JSON, NULL, NULL, result);
+    return lyd_eval_xpath4(ctx_node, ctx_node, cur_mod, xpath, format, prefix_data, vars, NULL, NULL, NULL, NULL, result);
+}
+
+LIBYANG_API_DEF LY_ERR
+lyd_eval_xpath4(const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lys_module *cur_mod,
+        const char *xpath, LY_VALUE_FORMAT format, void *prefix_data, const struct lyxp_var *vars, LY_XPATH_TYPE *ret_type,
+        struct ly_set **node_set, char **string, long double *number, ly_bool *boolean)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyxp_set xp_set = {0};
+    struct lyxp_expr *exp = NULL;
+    uint32_t i;
+
+    LY_CHECK_ARG_RET(NULL, tree, xpath, ((ret_type && node_set && string && number && boolean) ||
+            (node_set && !string && !number && !boolean) || (!node_set && string && !number && !boolean) ||
+            (!node_set && !string && number && !boolean) || (!node_set && !string && !number && boolean)), LY_EINVAL);
+
+    /* parse expression */
+    ret = lyxp_expr_parse((struct ly_ctx *)LYD_CTX(tree), xpath, 0, 1, &exp);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* evaluate expression */
+    ret = lyxp_eval(LYD_CTX(tree), exp, cur_mod, format, prefix_data, ctx_node, ctx_node, tree, vars, &xp_set,
+            LYXP_IGNORE_WHEN);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* return expected result type without or with casting */
+    if (node_set) {
+        /* node set */
+        if (xp_set.type == LYXP_SET_NODE_SET) {
+            /* transform into a set */
+            LY_CHECK_GOTO(ret = ly_set_new(node_set), cleanup);
+            (*node_set)->objs = malloc(xp_set.used * sizeof *(*node_set)->objs);
+            LY_CHECK_ERR_GOTO(!(*node_set)->objs, LOGMEM(LYD_CTX(tree)); ret = LY_EMEM, cleanup);
+            (*node_set)->size = xp_set.used;
+            for (i = 0; i < xp_set.used; ++i) {
+                if (xp_set.val.nodes[i].type == LYXP_NODE_ELEM) {
+                    ret = ly_set_add(*node_set, xp_set.val.nodes[i].node, 1, NULL);
+                    LY_CHECK_GOTO(ret, cleanup);
+                }
+            }
+            if (ret_type) {
+                *ret_type = LY_XPATH_NODE_SET;
+            }
+        } else if (!string && !number && !boolean) {
+            LOGERR(LYD_CTX(tree), LY_EINVAL, "XPath \"%s\" result is not a node set.", xpath);
+            ret = LY_EINVAL;
+            goto cleanup;
+        }
+    }
+
+    if (string) {
+        if ((xp_set.type != LYXP_SET_STRING) && !node_set) {
+            /* cast into string */
+            LY_CHECK_GOTO(ret = lyxp_set_cast(&xp_set, LYXP_SET_STRING), cleanup);
+        }
+        if (xp_set.type == LYXP_SET_STRING) {
+            /* string */
+            *string = xp_set.val.str;
+            xp_set.val.str = NULL;
+            if (ret_type) {
+                *ret_type = LY_XPATH_STRING;
+            }
+        }
+    }
+
+    if (number) {
+        if ((xp_set.type != LYXP_SET_NUMBER) && !node_set) {
+            /* cast into number */
+            LY_CHECK_GOTO(ret = lyxp_set_cast(&xp_set, LYXP_SET_NUMBER), cleanup);
+        }
+        if (xp_set.type == LYXP_SET_NUMBER) {
+            /* number */
+            *number = xp_set.val.num;
+            if (ret_type) {
+                *ret_type = LY_XPATH_NUMBER;
+            }
+        }
+    }
+
+    if (boolean) {
+        if ((xp_set.type != LYXP_SET_BOOLEAN) && !node_set) {
+            /* cast into boolean */
+            LY_CHECK_GOTO(ret = lyxp_set_cast(&xp_set, LYXP_SET_BOOLEAN), cleanup);
+        }
+        if (xp_set.type == LYXP_SET_BOOLEAN) {
+            /* boolean */
+            *boolean = xp_set.val.bln;
+            if (ret_type) {
+                *ret_type = LY_XPATH_BOOLEAN;
+            }
+        }
+    }
+
+cleanup:
+    lyxp_set_free_content(&xp_set);
+    lyxp_expr_free((struct ly_ctx *)LYD_CTX(tree), exp);
+    return ret;
 }
 
 LIBYANG_API_DEF LY_ERR
