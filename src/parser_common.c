@@ -394,6 +394,16 @@ lysp_stmt_validate_value(struct lysp_ctx *ctx, enum yang_arg val_type, const cha
     uint32_t c;
     size_t utf8_char_len;
 
+    if (!val) {
+        if (val_type == Y_MAYBE_STR_ARG) {
+            /* fine */
+            return LY_SUCCESS;
+        }
+
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX, "Missing an expected string.");
+        return LY_EVALID;
+    }
+
     while (*val) {
         LY_CHECK_ERR_RET(ly_getutf8(&val, &c, &utf8_char_len),
                 LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, (val)[-utf8_char_len]), LY_EVALID);
