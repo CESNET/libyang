@@ -469,3 +469,68 @@ ietf-ip features:
   }
 }
 ```
+
+## YANG modules with the Schema Mount extension
+
+In these examples the non-interactive `yanglint` is used to simplify creating the context, a `yang-library` data file is
+used. The working directory is `libyang/tools/lint/examples` and *libyang* must be installed.
+
+**Print tree output of a model with Schema Mount**
+
+Command and its output:
+
+```
+$ yanglint -f tree -p . -Y sm-context-main.xml -x sm-context-extension.xml sm-main.yang
+module: sm-main
+  +--mp root* [node]
+  |  +--rw node    string
+  +--mp root2
+  +--rw root3
+     +--mp my-list* [name]
+        +--rw things/* [name]
+        |  +--rw name         -> /if:interfaces/if:interface/if:name
+        |  +--rw attribute?   uint32
+        +--rw not-compiled/
+        |  +--rw first?    string
+        |  +--rw second?   string
+        +--rw interfaces@
+        |  +--rw interface* [name]
+        |     +--rw name    string
+        |     +--rw type    identityref
+        +--rw name    string
+```
+
+**Validating and printing mounted data**
+
+Command and its output:
+
+```
+$ yanglint -f json -t config -p . -Y sm-context-main.xml -x sm-context-extension.xml sm-data.xml
+{
+  "ietf-interfaces:interfaces": {
+    "interface": [
+      {
+        "name": "eth0",
+        "type": "iana-if-type:ethernetCsmacd"
+      },
+      {
+        "name": "eth1",
+        "type": "iana-if-type:ethernetCsmacd"
+      }
+    ]
+  },
+  "sm-main:root3": {
+    "my-list": [
+      {
+        "name": "list item 1",
+        "sm-extension:things": [
+          {
+            "name": "eth0",
+            "attribute": 1
+          }
+        ]
+      }
+    ]
+  }
+}
+```
