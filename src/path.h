@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Path structure and manipulation routines.
  *
- * Copyright (c) 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -29,24 +29,25 @@ struct lysc_node;
 struct lyxp_expr;
 
 enum ly_path_pred_type {
-    LY_PATH_PREDTYPE_NONE = 0,  /**< no predicate */
     LY_PATH_PREDTYPE_POSITION,  /**< position predicate - [2] */
     LY_PATH_PREDTYPE_LIST,      /**< keys predicate - [key1='val1'][key2='val2']... */
-    LY_PATH_PREDTYPE_LEAFLIST   /**< leaflist value predicate - [.='value'] */
+    LY_PATH_PREDTYPE_LEAFLIST,  /**< leaflist value predicate - [.='value'] */
+    LY_PATH_PREDTYPE_LIST_VAR   /**< keys predicate with variable instead of value - [key1=$USER]... */
 };
 
 /**
  * @brief Structure for simple path predicate.
  */
 struct ly_path_predicate {
+    enum ly_path_pred_type type;            /**< Predicate type (see YANG ABNF) */
     union {
-        uint64_t position; /**< position value for the position-predicate */
-
+        uint64_t position;                  /**< position value for the position-predicate */
         struct {
-            const struct lysc_node *key; /**< key node of the predicate, NULL in
-                                            case of a leaf-list predicate */
-            struct lyd_value value; /**< value representation according to the
-                                       key's type, its realtype is allocated */
+            const struct lysc_node *key;    /**< key node of the predicate, NULL in case of a leaf-list predicate */
+            union {
+                struct lyd_value value;     /**< stored value representation according to the key's type (realtype ref) */
+                char *variable;             /**< XPath variable used instead of the value */
+            };
         };
     };
 };
@@ -61,7 +62,6 @@ struct ly_path {
                                        - is inner node - path is relative */
     const struct lysc_ext_instance *ext;    /**< Extension instance of @p node, if any */
     struct ly_path_predicate *predicates;   /**< [Sized array](@ref sizedarrays) of the path segment's predicates */
-    enum ly_path_pred_type pred_type;       /**< Predicate type (see YANG ABNF) */
 };
 
 /**
@@ -87,10 +87,10 @@ struct ly_path {
  * @defgroup path_pred_options Path predicate options.
  * @{
  */
-#define LY_PATH_PRED_KEYS       0x0100    /* expected predicate only - [node='value']* */
-#define LY_PATH_PRED_SIMPLE     0x0200    /* expected predicates - [node='value']*; [.='value']; [1] */
-#define LY_PATH_PRED_LEAFREF    0x0400  /* expected predicates only leafref - [node=current()/../../../node/node];
-                                           at least 1 ".." and 1 "node" after */
+#define LY_PATH_PRED_KEYS       0x0100  /** expected predicate only - [node='value']* */
+#define LY_PATH_PRED_SIMPLE     0x0200  /** expected predicates - ( [node='value'] | [node=$VAR] )*; [.='value']; [1] */
+#define LY_PATH_PRED_LEAFREF    0x0400  /** expected predicates only leafref - [node=current()/../../../node/node];
+                                            at least 1 ".." and 1 "node" after */
 /** @} */
 
 /**
@@ -199,18 +199,18 @@ LY_ERR ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node 
  * @param[in] format Format of the path.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[out] predicates Compiled predicates.
- * @param[out] pred_type Type of the compiled predicate(s).
  * @return LY_ERR value.
  */
 LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lys_module *cur_mod,
         const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint32_t *tok_idx, LY_VALUE_FORMAT format,
-        void *prefix_data, struct ly_path_predicate **predicates, enum ly_path_pred_type *pred_type);
+        void *prefix_data, struct ly_path_predicate **predicates);
 
 /**
  * @brief Resolve at least partially the target defined by ly_path structure. Not supported for leafref!
  *
  * @param[in] path Path structure specifying the target.
  * @param[in] start Starting node for relative paths, can be any for absolute paths.
+ * @param[in] vars Array of defined variables to use in predicates, may be NULL.
  * @param[out] path_idx Last found path segment index, can be NULL, set to 0 if not found.
  * @param[out] match Last found matching node, can be NULL, set to NULL if not found.
  * @return LY_ENOTFOUND if no nodes were found,
@@ -218,20 +218,22 @@ LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_nod
  * @return LY_SUCCESS when the last node in the path was found,
  * @return LY_ERR on another error.
  */
-LY_ERR ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, LY_ARRAY_COUNT_TYPE *path_idx,
-        struct lyd_node **match);
+LY_ERR ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, const struct lyxp_var *vars,
+        LY_ARRAY_COUNT_TYPE *path_idx, struct lyd_node **match);
 
 /**
  * @brief Resolve the target defined by ly_path structure. Not supported for leafref!
  *
  * @param[in] path Path structure specifying the target.
  * @param[in] start Starting node for relative paths, can be any for absolute paths.
+ * @param[in] vars Array of defined variables to use in predicates, may be NULL.
  * @param[out] match Found matching node, can be NULL, set to NULL if not found.
  * @return LY_ENOTFOUND if no nodes were found,
  * @return LY_SUCCESS when the last node in the path was found,
  * @return LY_ERR on another error.
  */
-LY_ERR ly_path_eval(const struct ly_path *path, const struct lyd_node *start, struct lyd_node **match);
+LY_ERR ly_path_eval(const struct ly_path *path, const struct lyd_node *start, const struct lyxp_var *vars,
+        struct lyd_node **match);
 
 /**
  * @brief Duplicate ly_path structure.
@@ -247,11 +249,9 @@ LY_ERR ly_path_dup(const struct ly_ctx *ctx, const struct ly_path *path, struct 
  * @brief Free ly_path_predicate structure.
  *
  * @param[in] ctx libyang context.
- * @param[in] pred_type Predicate type.
  * @param[in] predicates Predicates ([sized array](@ref sizedarrays)) to free.
  */
-void ly_path_predicates_free(const struct ly_ctx *ctx, enum ly_path_pred_type pred_type,
-        struct ly_path_predicate *predicates);
+void ly_path_predicates_free(const struct ly_ctx *ctx, struct ly_path_predicate *predicates);
 
 /**
  * @brief Free ly_path structure.

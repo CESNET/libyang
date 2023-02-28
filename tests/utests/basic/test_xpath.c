@@ -900,7 +900,7 @@ test_variables(void **state)
     LOCAL_SETUP(data, tree);
     assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var1", "\"mstr\""));
     assert_int_equal(LY_ENOTFOUND, lyd_find_xpath2(tree, "/foo[text() = $var55]", vars, &set));
-    CHECK_LOG_CTX("XPath variable \"var55\" not defined.", NULL);
+    CHECK_LOG_CTX("Variable \"var55\" not defined.", NULL);
     LOCAL_TEARDOWN(set, tree, vars);
 
     /* Syntax error in value. */

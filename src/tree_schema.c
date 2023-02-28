@@ -600,8 +600,8 @@ lys_find_lypath_atoms(const struct ly_path *path, struct ly_set **set)
     LY_ARRAY_FOR(path, u) {
         /* add nodes from the path */
         LY_CHECK_GOTO(ret = ly_set_add(*set, (void *)path[u].node, 0, NULL), cleanup);
-        if (path[u].pred_type == LY_PATH_PREDTYPE_LIST) {
-            LY_ARRAY_FOR(path[u].predicates, v) {
+        LY_ARRAY_FOR(path[u].predicates, v) {
+            if ((path[u].predicates[v].type == LY_PATH_PREDTYPE_LIST) || (path[u].predicates[v].type == LY_PATH_PREDTYPE_LIST_VAR)) {
                 /* add all the keys in a predicate */
                 LY_CHECK_GOTO(ret = ly_set_add(*set, (void *)path[u].predicates[v].key, 0, NULL), cleanup);
             }

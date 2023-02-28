@@ -1110,11 +1110,9 @@ finish:
 LIBYANG_API_DEF const struct lyd_node_term *
 lyd_target(const struct ly_path *path, const struct lyd_node *tree)
 {
-    struct lyd_node *target;
+    struct lyd_node *target = NULL;
 
-    if (ly_path_eval(path, tree, &target)) {
-        return NULL;
-    }
+    lyd_find_target(path, tree, &target);
 
     return (struct lyd_node_term *)target;
 }
@@ -2936,7 +2934,7 @@ lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output,
     LY_CHECK_GOTO(ret, cleanup);
 
     /* evaluate the path */
-    ret = ly_path_eval_partial(lypath, ctx_node, NULL, match);
+    ret = ly_path_eval_partial(lypath, ctx_node, NULL, NULL, match);
 
 cleanup:
     lyxp_expr_free(LYD_CTX(ctx_node), expr);
@@ -2952,7 +2950,7 @@ lyd_find_target(const struct ly_path *path, const struct lyd_node *tree, struct 
 
     LY_CHECK_ARG_RET(NULL, path, LY_EINVAL);
 
-    ret = ly_path_eval(path, tree, &m);
+    ret = ly_path_eval(path, tree, NULL, &m);
     if (ret) {
         if (match) {
             *match = NULL;

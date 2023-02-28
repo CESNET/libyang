@@ -90,9 +90,7 @@ node_instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, voi
         LY_ARRAY_FOR(path[u].predicates, v) {
             struct ly_path_predicate *pred = &path[u].predicates[v];
 
-            switch (path[u].pred_type) {
-            case LY_PATH_PREDTYPE_NONE:
-                break;
+            switch (pred->type) {
             case LY_PATH_PREDTYPE_POSITION:
                 /* position predicate */
                 ret = ly_strcat(&result, "[%" PRIu64 "]", pred->position);
@@ -131,6 +129,16 @@ node_instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, voi
                 ret = ly_strcat(&result, "[.=%c%s%c]", quot, strval, quot);
                 if (d) {
                     free((char *)strval);
+                }
+                break;
+            case LY_PATH_PREDTYPE_LIST_VAR:
+                /* key-predicate with a variable */
+                if (inherit_prefix) {
+                    /* always the same prefix as the parent */
+                    ret = ly_strcat(&result, "[%s=$%s]", pred->key->name, pred->variable);
+                } else {
+                    ret = ly_strcat(&result, "[%s:%s=$%s]", lyplg_type_get_prefix(pred->key->module, format, prefix_data),
+                            pred->key->name, pred->variable);
                 }
                 break;
             }
@@ -193,7 +201,7 @@ lyplg_type_store_node_instanceid(const struct ly_ctx *ctx, const struct lysc_typ
     ret = ly_path_parse(ctx, ctx_node, value, value_len, 0, LY_PATH_BEGIN_ABSOLUTE, prefix_opt, LY_PATH_PRED_SIMPLE, &exp);
     if (ret) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
-                "Invalid instance-identifier \"%.*s\" value - syntax error.", (int)value_len, (char *)value);
+                "Invalid node-instance-identifier \"%.*s\" value - syntax error.", (int)value_len, (char *)value);
         goto cleanup;
     }
 
@@ -209,7 +217,7 @@ lyplg_type_store_node_instanceid(const struct ly_ctx *ctx, const struct lysc_typ
             LY_VALUE_JSON : format, prefix_data, &path);
     if (ret) {
         ret = ly_err_new(err, ret, LYVE_DATA, NULL, NULL,
-                "Invalid instance-identifier \"%.*s\" value - semantic error.", (int)value_len, (char *)value);
+                "Invalid node-instance-identifier \"%.*s\" value - semantic error.", (int)value_len, (char *)value);
         goto cleanup;
     }
 

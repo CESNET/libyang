@@ -280,11 +280,13 @@ LY_ERR lyd_create_inner(const struct lysc_node *schema, struct lyd_node **node);
  *
  * @param[in] schema Schema node of the new data node.
  * @param[in] predicates Compiled key list predicates.
+ * @param[in] vars Array of defined variables to use in predicates, may be NULL.
  * @param[out] node Created node.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *predicates, struct lyd_node **node);
+LY_ERR lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *predicates,
+        const struct lyxp_var *vars, struct lyd_node **node);
 
 /**
  * @brief Create a list with all its keys (cannot be used for key-less list).

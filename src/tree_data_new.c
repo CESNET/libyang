@@ -134,10 +134,14 @@ lyd_create_inner(const struct lysc_node *schema, struct lyd_node **node)
 }
 
 LY_ERR
-lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *predicates, struct lyd_node **node)
+lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *predicates, const struct lyxp_var *vars,
+        struct lyd_node **node)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *list = NULL, *key;
+    const struct lyd_value *value;
+    struct lyd_value val = {0};
+    struct lyxp_var *var;
     LY_ARRAY_COUNT_TYPE u;
 
     assert((schema->nodetype == LYS_LIST) && !(schema->flags & LYS_KEYLESS));
@@ -149,7 +153,31 @@ lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *
 
     /* create and insert all the keys */
     LY_ARRAY_FOR(predicates, u) {
-        LY_CHECK_GOTO(ret = lyd_create_term2(predicates[u].key, &predicates[u].value, &key), cleanup);
+        if (predicates[u].type == LY_PATH_PREDTYPE_LIST_VAR) {
+            /* find the var */
+            if ((ret = lyxp_vars_find(schema->module->ctx, vars, predicates[u].variable, 0, &var))) {
+                goto cleanup;
+            }
+
+            /* store the value */
+            LOG_LOCSET(predicates[u].key, NULL, NULL, NULL);
+            ret = lyd_value_store(schema->module->ctx, &val, ((struct lysc_node_leaf *)predicates[u].key)->type,
+                    var->value, strlen(var->value), NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA, predicates[u].key, NULL);
+            LOG_LOCBACK(1, 0, 0, 0);
+            LY_CHECK_GOTO(ret, cleanup);
+
+            value = &val;
+        } else {
+            assert(predicates[u].type == LY_PATH_PREDTYPE_LIST);
+            value = &predicates[u].value;
+        }
+
+        ret = lyd_create_term2(predicates[u].key, value, &key);
+        if (val.realtype) {
+            val.realtype->plugin->free(schema->module->ctx, &val);
+            memset(&val, 0, sizeof val);
+        }
+        LY_CHECK_GOTO(ret, cleanup);
         lyd_insert_node(list, NULL, key, 0);
     }
 
@@ -172,7 +200,6 @@ lyd_create_list2(const struct lysc_node *schema, const char *keys, size_t keys_l
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr *expr = NULL;
     uint32_t exp_idx = 0;
-    enum ly_path_pred_type pred_type = 0;
     struct ly_path_predicate *predicates = NULL;
 
     LOG_LOCSET(schema, NULL, NULL, NULL);
@@ -183,15 +210,15 @@ lyd_create_list2(const struct lysc_node *schema, const char *keys, size_t keys_l
 
     /* compile them */
     LY_CHECK_GOTO(ret = ly_path_compile_predicate(schema->module->ctx, NULL, NULL, schema, expr, &exp_idx, LY_VALUE_JSON,
-            NULL, &predicates, &pred_type), cleanup);
+            NULL, &predicates), cleanup);
 
     /* create the list node */
-    LY_CHECK_GOTO(ret = lyd_create_list(schema, predicates, node), cleanup);
+    LY_CHECK_GOTO(ret = lyd_create_list(schema, predicates, NULL, node), cleanup);
 
 cleanup:
     LOG_LOCBACK(1, 0, 0, 0);
     lyxp_expr_free(schema->module->ctx, expr);
-    ly_path_predicates_free(schema->module->ctx, pred_type, predicates);
+    ly_path_predicates_free(schema->module->ctx, predicates);
     return ret;
 }
 
@@ -1320,18 +1347,19 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
         schema = path[u].node;
 
         if (lysc_is_dup_inst_list(schema)) {
-            if (path[u].pred_type == LY_PATH_PREDTYPE_NONE) {
+            if (!path[u].predicates) {
                 /* creating a new key-less list or state leaf-list instance */
                 create = 1;
                 new_count = u;
-            } else if (path[u].pred_type != LY_PATH_PREDTYPE_POSITION) {
+            } else if (path[u].predicates[0].type != LY_PATH_PREDTYPE_POSITION) {
                 LOG_LOCSET(schema, NULL, NULL, NULL);
                 LOGVAL(schema->module->ctx, LYVE_XPATH, "Invalid predicate for %s \"%s\" in path \"%s\".",
                         lys_nodetype2str(schema->nodetype), schema->name, str_path);
                 LOG_LOCBACK(1, 0, 0, 0);
                 return LY_EINVAL;
             }
-        } else if ((schema->nodetype == LYS_LIST) && (path[u].pred_type != LY_PATH_PREDTYPE_LIST)) {
+        } else if ((schema->nodetype == LYS_LIST) &&
+                (!path[u].predicates || (path[u].predicates[0].type != LY_PATH_PREDTYPE_LIST))) {
             if ((u < LY_ARRAY_COUNT(path) - 1) || !(options & LYD_NEW_PATH_OPAQ)) {
                 LOG_LOCSET(schema, NULL, NULL, NULL);
                 LOGVAL(schema->module->ctx, LYVE_XPATH, "Predicate missing for %s \"%s\" in path \"%s\".",
@@ -1339,7 +1367,8 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
                 LOG_LOCBACK(1, 0, 0, 0);
                 return LY_EINVAL;
             } /* else creating an opaque list */
-        } else if ((schema->nodetype == LYS_LEAFLIST) && (path[u].pred_type != LY_PATH_PREDTYPE_LEAFLIST)) {
+        } else if ((schema->nodetype == LYS_LEAFLIST) &&
+                (!path[u].predicates || (path[u].predicates[0].type != LY_PATH_PREDTYPE_LEAFLIST))) {
             r = LY_SUCCESS;
             if (options & LYD_NEW_PATH_OPAQ) {
                 r = lyd_value_validate(NULL, schema, value, value_len, NULL, NULL, NULL);
@@ -1351,8 +1380,8 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
                 ++((struct lysc_type *)val.realtype)->refcount;
 
                 /* store the new predicate so that it is used when searching for this instance */
-                path[u].pred_type = LY_PATH_PREDTYPE_LEAFLIST;
                 LY_ARRAY_NEW_RET(schema->module->ctx, path[u].predicates, pred, LY_EMEM);
+                pred->type = LY_PATH_PREDTYPE_LEAFLIST;
                 pred->value = val;
             } /* else we have opaq flag and the value is not valid, leave no predicate and then create an opaque node */
         }
@@ -1442,7 +1471,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
 
     /* try to find any existing nodes in the path */
     if (parent) {
-        ret = ly_path_eval_partial(p, parent, &path_idx, &node);
+        ret = ly_path_eval_partial(p, parent, NULL, &path_idx, &node);
         if (ret == LY_SUCCESS) {
             if (orig_count == LY_ARRAY_COUNT(p)) {
                 /* the node exists, are we supposed to update it or is it just a default? */
@@ -1487,15 +1516,14 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
             if (lysc_is_dup_inst_list(schema)) {
                 /* create key-less list instance */
                 LY_CHECK_GOTO(ret = lyd_create_inner(schema, &node), cleanup);
-            } else if ((options & LYD_NEW_PATH_OPAQ) && (p[path_idx].pred_type == LY_PATH_PREDTYPE_NONE)) {
+            } else if ((options & LYD_NEW_PATH_OPAQ) && !p[path_idx].predicates) {
                 /* creating opaque list without keys */
                 LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), NULL, 0,
                         schema->module->name, strlen(schema->module->name), NULL, 0, NULL, LY_VALUE_JSON, NULL,
                         LYD_NODEHINT_LIST, &node), cleanup);
             } else {
                 /* create standard list instance */
-                assert(p[path_idx].pred_type == LY_PATH_PREDTYPE_LIST);
-                LY_CHECK_GOTO(ret = lyd_create_list(schema, p[path_idx].predicates, &node), cleanup);
+                LY_CHECK_GOTO(ret = lyd_create_list(schema, p[path_idx].predicates, NULL, &node), cleanup);
             }
             break;
         case LYS_CONTAINER:
@@ -1505,7 +1533,8 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
             LY_CHECK_GOTO(ret = lyd_create_inner(schema, &node), cleanup);
             break;
         case LYS_LEAFLIST:
-            if ((options & LYD_NEW_PATH_OPAQ) && (p[path_idx].pred_type != LY_PATH_PREDTYPE_LEAFLIST)) {
+            if ((options & LYD_NEW_PATH_OPAQ) &&
+                    (!p[path_idx].predicates || (p[path_idx].predicates[0].type != LY_PATH_PREDTYPE_LEAFLIST))) {
                 /* we have not checked this only for dup-inst lists, otherwise it must be opaque */
                 r = LY_EVALID;
                 if (lysc_is_dup_inst_list(schema)) {
@@ -1522,13 +1551,13 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
             }
 
             /* get value to set */
-            if (p[path_idx].pred_type == LY_PATH_PREDTYPE_LEAFLIST) {
+            if (p[path_idx].predicates && (p[path_idx].predicates[0].type == LY_PATH_PREDTYPE_LEAFLIST)) {
                 val = &p[path_idx].predicates[0].value;
             }
 
             /* create a leaf-list instance */
             if (val) {
-                LY_CHECK_GOTO(ret = lyd_create_term2(schema, &p[path_idx].predicates[0].value, &node), cleanup);
+                LY_CHECK_GOTO(ret = lyd_create_term2(schema, val, &node), cleanup);
             } else {
                 LY_CHECK_GOTO(ret = lyd_create_term(schema, value, value_len, NULL, format, NULL, LYD_HINT_DATA,
                         NULL, &node), cleanup);

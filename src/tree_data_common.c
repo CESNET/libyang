@@ -220,12 +220,12 @@ lyxp_vars_set(struct lyxp_var **vars, const char *name, const char *value)
         return LY_EINVAL;
     }
 
-    /* If variable is already defined then change its value. */
-    if (*vars && !lyxp_vars_find(*vars, name, 0, &item)) {
+    /* if variable is already defined then change its value */
+    if (*vars && !lyxp_vars_find(NULL, *vars, name, 0, &item)) {
         var_value = strdup(value);
         LY_CHECK_RET(!var_value, LY_EMEM);
 
-        /* Set new value. */
+        /* update value */
         free(item->value);
         item->value = var_value;
     } else {
@@ -233,7 +233,7 @@ lyxp_vars_set(struct lyxp_var **vars, const char *name, const char *value)
         var_value = strdup(value);
         LY_CHECK_ERR_GOTO(!var_name || !var_value, ret = LY_EMEM, error);
 
-        /* Add new variable. */
+        /* add new variable */
         LY_ARRAY_NEW_GOTO(NULL, *vars, item, ret, error);
         item->name = var_name;
         item->value = var_value;

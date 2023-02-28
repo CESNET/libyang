@@ -1010,7 +1010,9 @@ struct utest_context {
         LY_ARRAY_COUNT_TYPE arr_size = sizeof(VALUE) / sizeof(VALUE[0]); \
         assert_int_equal(arr_size, LY_ARRAY_COUNT((NODE).target)); \
         for (LY_ARRAY_COUNT_TYPE it = 0; it < arr_size; it++) { \
-            assert_int_equal(VALUE[it], (NODE).target[it].pred_type); \
+            if ((NODE).target[it].predicates) { \
+                assert_int_equal(VALUE[it], (NODE).target[it].predicates[0].type); \
+            } \
         } \
     }
 

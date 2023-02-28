@@ -79,12 +79,12 @@ static void
 test_data_xml(void **state)
 {
     const char *schema, *schema2;
-    const enum ly_path_pred_type val1[] = {LY_PATH_PREDTYPE_NONE, LY_PATH_PREDTYPE_NONE};
-    const enum ly_path_pred_type val2[] = {LY_PATH_PREDTYPE_LIST, LY_PATH_PREDTYPE_NONE};
+    const enum ly_path_pred_type val1[] = {0, 0};
+    const enum ly_path_pred_type val2[] = {LY_PATH_PREDTYPE_LIST, 0};
     const enum ly_path_pred_type val3[] = {LY_PATH_PREDTYPE_LEAFLIST};
-    const enum ly_path_pred_type val4[] = {LY_PATH_PREDTYPE_LIST, LY_PATH_PREDTYPE_NONE};
-    const enum ly_path_pred_type val5[] = {LY_PATH_PREDTYPE_LIST, LY_PATH_PREDTYPE_NONE};
-    const enum ly_path_pred_type val6[] = {LY_PATH_PREDTYPE_LIST, LY_PATH_PREDTYPE_NONE};
+    const enum ly_path_pred_type val4[] = {LY_PATH_PREDTYPE_LIST, 0};
+    const enum ly_path_pred_type val5[] = {LY_PATH_PREDTYPE_LIST, 0};
+    const enum ly_path_pred_type val6[] = {LY_PATH_PREDTYPE_LIST, 0};
 
     /* xml test */
     schema = MODULE_CREATE_YANG("mod", "container cont {leaf l2 {type empty;}}");

@@ -84,9 +84,7 @@ instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, void *pr
         LY_ARRAY_FOR(path[u].predicates, v) {
             struct ly_path_predicate *pred = &path[u].predicates[v];
 
-            switch (path[u].pred_type) {
-            case LY_PATH_PREDTYPE_NONE:
-                break;
+            switch (pred->type) {
             case LY_PATH_PREDTYPE_POSITION:
                 /* position predicate */
                 ret = ly_strcat(&result, "[%" PRIu64 "]", pred->position);
@@ -127,6 +125,10 @@ instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, void *pr
                     free((char *)strval);
                 }
                 break;
+            case LY_PATH_PREDTYPE_LIST_VAR:
+                LOGINT(path[u].node->module->ctx);
+                ret = LY_EINT;
+                goto cleanup;
             }
 
             LY_CHECK_GOTO(ret, cleanup);
@@ -162,7 +164,7 @@ lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *ty
 
     /* compile instance-identifier into path */
     if (format == LY_VALUE_LYB) {
-        /* The @p value in LYB format is the same as in JSON format. */
+        /* value in LYB format is the same as in JSON format. */
         ret = lyplg_type_lypath_new(ctx, value, value_len, options, LY_VALUE_JSON, prefix_data, ctx_node,
                 unres, &path, err);
     } else {
@@ -231,7 +233,7 @@ lyplg_type_validate_instanceid(const struct ly_ctx *ctx, const struct lysc_type 
     }
 
     /* find the target in data */
-    if ((ret = ly_path_eval(storage->target, tree, NULL))) {
+    if ((ret = ly_path_eval(storage->target, tree, NULL, NULL))) {
         value = lyplg_type_print_instanceid(ctx, storage, LY_VALUE_CANON, NULL, NULL, NULL);
         path = lyd_path(ctx_node, LYD_PATH_STD, NULL, 0);
         return ly_err_new(err, ret, LYVE_DATA, path, strdup("instance-required"), LY_ERRMSG_NOINST, value);
@@ -259,37 +261,43 @@ lyplg_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_val
         struct ly_path *s1 = &val1->target[u];
         struct ly_path *s2 = &val2->target[u];
 
-        if ((s1->node != s2->node) || (s1->pred_type != s2->pred_type) ||
-                (s1->predicates && (LY_ARRAY_COUNT(s1->predicates) != LY_ARRAY_COUNT(s2->predicates)))) {
+        if ((s1->node != s2->node) || (s1->predicates && (LY_ARRAY_COUNT(s1->predicates) != LY_ARRAY_COUNT(s2->predicates)))) {
             return LY_ENOT;
         }
-        if (s1->predicates) {
-            LY_ARRAY_FOR(s1->predicates, v) {
-                struct ly_path_predicate *pred1 = &s1->predicates[v];
-                struct ly_path_predicate *pred2 = &s2->predicates[v];
+        LY_ARRAY_FOR(s1->predicates, v) {
+            struct ly_path_predicate *pred1 = &s1->predicates[v];
+            struct ly_path_predicate *pred2 = &s2->predicates[v];
 
-                switch (s1->pred_type) {
-                case LY_PATH_PREDTYPE_NONE:
-                    break;
-                case LY_PATH_PREDTYPE_POSITION:
-                    /* position predicate */
-                    if (pred1->position != pred2->position) {
-                        return LY_ENOT;
-                    }
-                    break;
-                case LY_PATH_PREDTYPE_LIST:
-                    /* key-predicate */
-                    if ((pred1->key != pred2->key) ||
-                            ((struct lysc_node_leaf *)pred1->key)->type->plugin->compare(&pred1->value, &pred2->value)) {
-                        return LY_ENOT;
-                    }
-                    break;
-                case LY_PATH_PREDTYPE_LEAFLIST:
-                    /* leaf-list predicate */
-                    if (((struct lysc_node_leaflist *)s1->node)->type->plugin->compare(&pred1->value, &pred2->value)) {
-                        return LY_ENOT;
-                    }
+            if (pred1->type != pred2->type) {
+                return LY_ENOT;
+            }
+
+            switch (pred1->type) {
+            case LY_PATH_PREDTYPE_POSITION:
+                /* position predicate */
+                if (pred1->position != pred2->position) {
+                    return LY_ENOT;
                 }
+                break;
+            case LY_PATH_PREDTYPE_LIST:
+                /* key-predicate */
+                if ((pred1->key != pred2->key) ||
+                        ((struct lysc_node_leaf *)pred1->key)->type->plugin->compare(&pred1->value, &pred2->value)) {
+                    return LY_ENOT;
+                }
+                break;
+            case LY_PATH_PREDTYPE_LEAFLIST:
+                /* leaf-list predicate */
+                if (((struct lysc_node_leaflist *)s1->node)->type->plugin->compare(&pred1->value, &pred2->value)) {
+                    return LY_ENOT;
+                }
+                break;
+            case LY_PATH_PREDTYPE_LIST_VAR:
+                /* key-predicate with a variable */
+                if ((pred1->key != pred2->key) || strcmp(pred1->variable, pred2->variable)) {
+                    return LY_ENOT;
+                }
+                break;
             }
         }
     }

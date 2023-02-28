@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Path functions
  *
- * Copyright (c) 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -11,6 +11,9 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
+
+#define _GNU_SOURCE
+
 #include "path.h"
 
 #include <assert.h>
@@ -106,8 +109,14 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
                 /* '=' */
                 LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_OPER_EQUAL), token_error);
 
-                /* Literal or Number */
-                LY_CHECK_GOTO(lyxp_next_token2(ctx, exp, tok_idx, LYXP_TOKEN_LITERAL, LYXP_TOKEN_NUMBER), token_error);
+                /* Literal, Number, or VariableReference */
+                if (lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_LITERAL) &&
+                        lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_NUMBER) &&
+                        lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_VARREF)) {
+                    /* error */
+                    lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_LITERAL);
+                    goto token_error;
+                }
 
                 /* ']' */
                 LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_BRACK2), token_error);
@@ -528,7 +537,7 @@ error:
 LY_ERR
 ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lys_module *cur_mod,
         const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint32_t *tok_idx, LY_VALUE_FORMAT format,
-        void *prefix_data, struct ly_path_predicate **predicates, enum ly_path_pred_type *pred_type)
+        void *prefix_data, struct ly_path_predicate **predicates)
 {
     LY_ERR ret = LY_SUCCESS;
     struct ly_path_predicate *p;
@@ -540,7 +549,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
     LOG_LOCSET(cur_node, NULL, NULL, NULL);
 
-    *pred_type = 0;
+    *predicates = NULL;
 
     if (lyxp_next_token(NULL, expr, tok_idx, LYXP_TOKEN_BRACK1)) {
         /* '[', no predicate */
@@ -572,11 +581,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
             }
             ++(*tok_idx);
 
-            if (!*pred_type) {
-                /* new predicate */
-                *pred_type = LY_PATH_PREDTYPE_LIST;
-            }
-            assert(*pred_type == LY_PATH_PREDTYPE_LIST);
+            /* new predicate */
             LY_ARRAY_NEW_GOTO(ctx, *predicates, p, ret, cleanup);
             p->key = key;
 
@@ -584,27 +589,38 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
             assert(expr->tokens[*tok_idx] == LYXP_TOKEN_OPER_EQUAL);
             ++(*tok_idx);
 
-            /* Literal or Number */
-            assert((expr->tokens[*tok_idx] == LYXP_TOKEN_LITERAL) || (expr->tokens[*tok_idx] == LYXP_TOKEN_NUMBER));
-            if (expr->tokens[*tok_idx] == LYXP_TOKEN_LITERAL) {
-                /* skip quotes */
-                val = expr->expr + expr->tok_pos[*tok_idx] + 1;
-                val_len = expr->tok_len[*tok_idx] - 2;
+            /* Literal, Number, or VariableReference */
+            if (expr->tokens[*tok_idx] == LYXP_TOKEN_VARREF) {
+                /* store the variable name */
+                p->variable = strndup(expr->expr + expr->tok_pos[*tok_idx], expr->tok_len[*tok_idx]);
+                LY_CHECK_ERR_GOTO(!p->variable, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+
+                p->type = LY_PATH_PREDTYPE_LIST_VAR;
+                ++(*tok_idx);
             } else {
-                val = expr->expr + expr->tok_pos[*tok_idx];
-                val_len = expr->tok_len[*tok_idx];
+                if (expr->tokens[*tok_idx] == LYXP_TOKEN_LITERAL) {
+                    /* skip quotes */
+                    val = expr->expr + expr->tok_pos[*tok_idx] + 1;
+                    val_len = expr->tok_len[*tok_idx] - 2;
+                } else {
+                    assert(expr->tokens[*tok_idx] == LYXP_TOKEN_NUMBER);
+                    val = expr->expr + expr->tok_pos[*tok_idx];
+                    val_len = expr->tok_len[*tok_idx];
+                }
+
+                /* store the value */
+                LOG_LOCSET(key, NULL, NULL, NULL);
+                ret = lyd_value_store(ctx, &p->value, ((struct lysc_node_leaf *)key)->type, val, val_len, NULL, format,
+                        prefix_data, LYD_HINT_DATA, key, NULL);
+                LOG_LOCBACK(key ? 1 : 0, 0, 0, 0);
+                LY_CHECK_ERR_GOTO(ret, p->value.realtype = NULL, cleanup);
+
+                /* "allocate" the type to avoid problems when freeing the value after the type was freed */
+                LY_ATOMIC_INC_BARRIER(((struct lysc_type *)p->value.realtype)->refcount);
+
+                p->type = LY_PATH_PREDTYPE_LIST;
+                ++(*tok_idx);
             }
-
-            /* store the value */
-            LOG_LOCSET(key, NULL, NULL, NULL);
-            ret = lyd_value_store(ctx, &p->value, ((struct lysc_node_leaf *)key)->type, val, val_len, NULL, format,
-                    prefix_data, LYD_HINT_DATA, key, NULL);
-            LOG_LOCBACK(key ? 1 : 0, 0, 0, 0);
-            LY_CHECK_ERR_GOTO(ret, p->value.realtype = NULL, cleanup);
-            ++(*tok_idx);
-
-            /* "allocate" the type to avoid problems when freeing the value after the type was freed */
-            LY_ATOMIC_INC_BARRIER(((struct lysc_type *)p->value.realtype)->refcount);
 
             /* ']' */
             assert(expr->tokens[*tok_idx] == LYXP_TOKEN_BRACK2);
@@ -622,7 +638,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
             /* names (keys) are unique - it was checked when parsing */
             LOGVAL(ctx, LYVE_XPATH, "Predicate missing for a key of %s \"%s\" in path.",
                     lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
-            ly_path_predicates_free(ctx, LY_PATH_PREDTYPE_LIST, *predicates);
+            ly_path_predicates_free(ctx, *predicates);
             *predicates = NULL;
             ret = LY_EVALID;
             goto cleanup;
@@ -638,8 +654,8 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
         ++(*tok_idx);
 
         /* new predicate */
-        *pred_type = LY_PATH_PREDTYPE_LEAFLIST;
         LY_ARRAY_NEW_GOTO(ctx, *predicates, p, ret, cleanup);
+        p->type = LY_PATH_PREDTYPE_LEAFLIST;
 
         /* '=' */
         assert(expr->tokens[*tok_idx] == LYXP_TOKEN_OPER_EQUAL);
@@ -685,8 +701,8 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
         }
 
         /* new predicate */
-        *pred_type = LY_PATH_PREDTYPE_POSITION;
         LY_ARRAY_NEW_GOTO(ctx, *predicates, p, ret, cleanup);
+        p->type = LY_PATH_PREDTYPE_POSITION;
 
         /* syntax was already checked */
         p->position = strtoull(expr->expr + expr->tok_pos[*tok_idx], (char **)&val, LY_BASE_DEC);
@@ -947,7 +963,7 @@ _ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, con
             ret = ly_path_compile_predicate_leafref(ctx_node, cur_node, expr, &tok_idx, format, prefix_data);
         } else {
             ret = ly_path_compile_predicate(ctx, cur_node, cur_mod, ctx_node, expr, &tok_idx, format, prefix_data,
-                    &p->predicates, &p->pred_type);
+                    &p->predicates);
         }
         LY_CHECK_GOTO(ret, cleanup);
     } while (!lyxp_next_token(NULL, expr, &tok_idx, LYXP_TOKEN_OPER_PATH));
@@ -994,8 +1010,8 @@ ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node *ctx_no
 }
 
 LY_ERR
-ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, LY_ARRAY_COUNT_TYPE *path_idx,
-        struct lyd_node **match)
+ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, const struct lyxp_var *vars,
+        LY_ARRAY_COUNT_TYPE *path_idx, struct lyd_node **match)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lyd_node *prev_node = NULL, *elem, *node = NULL, *target;
@@ -1017,35 +1033,37 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, L
     }
 
     LY_ARRAY_FOR(path, u) {
-        switch (path[u].pred_type) {
-        case LY_PATH_PREDTYPE_POSITION:
-            /* we cannot use hashes and want an instance on a specific position */
-            pos = 1;
-            node = NULL;
-            LYD_LIST_FOR_INST(start, path[u].node, elem) {
-                if (pos == path[u].predicates[0].position) {
-                    node = elem;
-                    break;
+        if (path[u].predicates) {
+            switch (path[u].predicates[0].type) {
+            case LY_PATH_PREDTYPE_POSITION:
+                /* we cannot use hashes and want an instance on a specific position */
+                pos = 1;
+                node = NULL;
+                LYD_LIST_FOR_INST(start, path[u].node, elem) {
+                    if (pos == path[u].predicates[0].position) {
+                        node = elem;
+                        break;
+                    }
+                    ++pos;
                 }
-                ++pos;
+                break;
+            case LY_PATH_PREDTYPE_LEAFLIST:
+                /* we will use hashes to find one leaf-list instance */
+                LY_CHECK_RET(lyd_create_term2(path[u].node, &path[u].predicates[0].value, &target));
+                lyd_find_sibling_first(start, target, &node);
+                lyd_free_tree(target);
+                break;
+            case LY_PATH_PREDTYPE_LIST_VAR:
+            case LY_PATH_PREDTYPE_LIST:
+                /* we will use hashes to find one list instance */
+                LY_CHECK_RET(lyd_create_list(path[u].node, path[u].predicates, vars, &target));
+                lyd_find_sibling_first(start, target, &node);
+                lyd_free_tree(target);
+                break;
             }
-            break;
-        case LY_PATH_PREDTYPE_LEAFLIST:
-            /* we will use hashes to find one leaf-list instance */
-            LY_CHECK_RET(lyd_create_term2(path[u].node, &path[u].predicates[0].value, &target));
-            lyd_find_sibling_first(start, target, &node);
-            lyd_free_tree(target);
-            break;
-        case LY_PATH_PREDTYPE_LIST:
-            /* we will use hashes to find one list instance */
-            LY_CHECK_RET(lyd_create_list(path[u].node, path[u].predicates, &target));
-            lyd_find_sibling_first(start, target, &node);
-            lyd_free_tree(target);
-            break;
-        case LY_PATH_PREDTYPE_NONE:
+        } else {
             /* we will use hashes to find one any/container/leaf instance */
             lyd_find_sibling_val(start, path[u].node, NULL, 0, &node);
-            break;
         }
 
         if (!node) {
@@ -1092,12 +1110,12 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, L
 }
 
 LY_ERR
-ly_path_eval(const struct ly_path *path, const struct lyd_node *start, struct lyd_node **match)
+ly_path_eval(const struct ly_path *path, const struct lyd_node *start, const struct lyxp_var *vars, struct lyd_node **match)
 {
     LY_ERR ret;
     struct lyd_node *m;
 
-    ret = ly_path_eval_partial(path, start, NULL, &m);
+    ret = ly_path_eval_partial(path, start, vars, NULL, &m);
 
     if (ret == LY_SUCCESS) {
         /* last node was found */
@@ -1129,12 +1147,13 @@ ly_path_dup(const struct ly_ctx *ctx, const struct ly_path *path, struct ly_path
         (*dup)[u].node = path[u].node;
         if (path[u].predicates) {
             LY_ARRAY_CREATE_RET(ctx, (*dup)[u].predicates, LY_ARRAY_COUNT(path[u].predicates), LY_EMEM);
-            (*dup)[u].pred_type = path[u].pred_type;
             LY_ARRAY_FOR(path[u].predicates, v) {
                 struct ly_path_predicate *pred = &path[u].predicates[v];
 
                 LY_ARRAY_INCREMENT((*dup)[u].predicates);
-                switch (path[u].pred_type) {
+                (*dup)[u].predicates[v].type = pred->type;
+
+                switch (pred->type) {
                 case LY_PATH_PREDTYPE_POSITION:
                     /* position-predicate */
                     (*dup)[u].predicates[v].position = pred->position;
@@ -1146,7 +1165,10 @@ ly_path_dup(const struct ly_ctx *ctx, const struct ly_path *path, struct ly_path
                     pred->value.realtype->plugin->duplicate(ctx, &pred->value, &(*dup)[u].predicates[v].value);
                     LY_ATOMIC_INC_BARRIER(((struct lysc_type *)pred->value.realtype)->refcount);
                     break;
-                case LY_PATH_PREDTYPE_NONE:
+                case LY_PATH_PREDTYPE_LIST_VAR:
+                    /* key-predicate with a variable */
+                    (*dup)[u].predicates[v].key = pred->key;
+                    (*dup)[u].predicates[v].variable = strdup(pred->variable);
                     break;
                 }
             }
@@ -1157,7 +1179,7 @@ ly_path_dup(const struct ly_ctx *ctx, const struct ly_path *path, struct ly_path
 }
 
 void
-ly_path_predicates_free(const struct ly_ctx *ctx, enum ly_path_pred_type pred_type, struct ly_path_predicate *predicates)
+ly_path_predicates_free(const struct ly_ctx *ctx, struct ly_path_predicate *predicates)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lysf_ctx fctx = {.ctx = (struct ly_ctx *)ctx};
@@ -1167,9 +1189,8 @@ ly_path_predicates_free(const struct ly_ctx *ctx, enum ly_path_pred_type pred_ty
     }
 
     LY_ARRAY_FOR(predicates, u) {
-        switch (pred_type) {
+        switch (predicates[u].type) {
         case LY_PATH_PREDTYPE_POSITION:
-        case LY_PATH_PREDTYPE_NONE:
             /* nothing to free */
             break;
         case LY_PATH_PREDTYPE_LIST:
@@ -1178,6 +1199,9 @@ ly_path_predicates_free(const struct ly_ctx *ctx, enum ly_path_pred_type pred_ty
                 predicates[u].value.realtype->plugin->free(ctx, &predicates[u].value);
                 lysc_type_free(&fctx, (struct lysc_type *)predicates[u].value.realtype);
             }
+            break;
+        case LY_PATH_PREDTYPE_LIST_VAR:
+            free(predicates[u].variable);
             break;
         }
     }
@@ -1194,7 +1218,7 @@ ly_path_free(const struct ly_ctx *ctx, struct ly_path *path)
     }
 
     LY_ARRAY_FOR(path, u) {
-        ly_path_predicates_free(ctx, path[u].pred_type, path[u].predicates);
+        ly_path_predicates_free(ctx, path[u].predicates);
     }
     LY_ARRAY_FREE(path);
 }
