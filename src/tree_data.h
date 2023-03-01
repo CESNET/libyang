@@ -2302,6 +2302,10 @@ typedef enum {
 /**
  * @brief Generate path of the given node in the requested format.
  *
+ * The path is constructed based on the parent node(s) of this node. When run on a node which is disconnected
+ * from its parent(s), this function might yield unexpected results such as `/example:b` instead of the expected
+ * `/example:a/b`.
+ *
  * @param[in] node Data path of this node will be generated.
  * @param[in] pathtype Format of the path to generate.
  * @param[in,out] buffer Prepared buffer of the @p buflen length to store the generated path.
