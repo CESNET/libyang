@@ -803,7 +803,7 @@ lydxml_subtree_inner(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, 
     if (snode->nodetype == LYS_LIST) {
         /* check all keys exist */
         r = lyd_parse_check_keys(*node);
-        LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
     }
 
     if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {
@@ -827,7 +827,8 @@ cleanup:
         LOG_LOCBACK(0, 1, 0, 0);
     }
     lydctx->parse_opts = prev_parse_opts;
-    if (rc && (!(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
+    if (rc && ((*node && !(*node)->hash) || !(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
+        /* list without keys is unusable or an error */
         lyd_free_tree(*node);
         *node = NULL;
     }
@@ -962,10 +963,17 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     LY_CHECK_GOTO(rc, cleanup);
 
     /* get the schema node */
-    rc = lydxml_subtree_get_snode(lydctx, parent, prefix, prefix_len, name, name_len, &snode, &ext);
-    LY_CHECK_GOTO(rc, cleanup);
-
-    if (!snode && !(lydctx->parse_opts & LYD_PARSE_OPAQ)) {
+    r = lydxml_subtree_get_snode(lydctx, parent, prefix, prefix_len, name, name_len, &snode, &ext);
+    if (r) {
+        rc = r;
+        if ((r == LY_EVALID) && (lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR)) {
+            /* skip the invalid data */
+            if ((r = lydxml_data_skip(xmlctx))) {
+                rc = r;
+            }
+        }
+        goto cleanup;
+    } else if (!snode && !(lydctx->parse_opts & LYD_PARSE_OPAQ)) {
         LOGVRB("Skipping parsing of unknown node \"%.*s\".", name_len, name);
 
         /* skip element with children */

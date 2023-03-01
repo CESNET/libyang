@@ -1202,7 +1202,7 @@ test_multi_error(void **state)
     CHECK_LOG_CTX_APPTAG("Too few \"ll\" instances.", "Schema location \"/ii:cont/ll\".", "too-few-elements");
     CHECK_LOG_CTX_APPTAG("l leaf is not left", "Data location \"/ii:cont/l3\".", "not-left");
     CHECK_LOG_CTX_APPTAG("Must condition \"../l = 'right'\" not satisfied.", "Data location \"/ii:cont/l2\".", "must-violation");
-    CHECK_LOG_CTX_APPTAG("Duplicate instance of \"l\".", "Data location \"/ii:cont/l\", line number 6.", NULL);
+    CHECK_LOG_CTX_APPTAG("Duplicate instance of \"l\".", "Data location \"/ii:cont/l\", line number 7.", NULL);
     CHECK_LOG_CTX_APPTAG("Invalid type uint32 value \"ahoy\".", "Data location \"/ii:cont/ll\", line number 6.", NULL);
 
     /* json */
