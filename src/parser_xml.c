@@ -1004,6 +1004,18 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     }
     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
     LY_CHECK_GOTO(!node, cleanup);
+    if (xmlctx->status != LYXML_ELEM_CLOSE) {
+        assert((lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) && (rc == LY_EVALID));
+
+        /* free the created node(s) */
+        lyd_free_siblings(node);
+
+        /* skip invalid data */
+        if ((r = lydxml_data_skip(xmlctx))) {
+            rc = r;
+        }
+        goto cleanup;
+    }
 
     if (snode) {
         /* add/correct flags */
