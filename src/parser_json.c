@@ -1797,13 +1797,18 @@ lyd_parse_json(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, st
     LY_CHECK_GOTO(rc = lyd_parser_find_operation(parent, int_opts, &lydctx->op_node), cleanup);
 
     /* read subtree(s) */
-    while (lydctx->jsonctx->in->current[0] && (status != LYJSON_OBJECT_CLOSED)) {
+    while (lydctx->jsonctx->in->current[0]) {
         r = lydjson_subtree_r(lydctx, parent, first_p, parsed);
         LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
         status = lyjson_ctx_status(lydctx->jsonctx, 0);
-
-        if (!(int_opts & LYD_INTOPT_WITH_SIBLINGS)) {
+        if (status == LYJSON_OBJECT_CLOSED) {
+            break;
+        } else if (status != LYJSON_OBJECT) {
+            /* fatal error for multi-error validation */
+            assert(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR);
+            goto cleanup;
+        } else if (!(int_opts & LYD_INTOPT_WITH_SIBLINGS)) {
             break;
         }
     }
