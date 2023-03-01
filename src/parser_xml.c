@@ -708,10 +708,10 @@ lydxml_subtree_term(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, const s
     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
     if (*node) {
-        LOG_LOCSET(snode, *node, NULL, NULL);
+        LOG_LOCSET(NULL, *node, NULL, NULL);
     }
 
-    if (parent && (snode->flags & LYS_KEY)) {
+    if (*node && parent && (snode->flags & LYS_KEY)) {
         /* check the key order, the anchor must never be a key */
         anchor = lyd_insert_get_next_anchor(lyd_child(parent), *node);
         if (anchor && anchor->schema && (anchor->schema->flags & LYS_KEY)) {
@@ -739,7 +739,7 @@ lydxml_subtree_term(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, const s
 
 cleanup:
     if (*node) {
-        LOG_LOCBACK(1, 1, 0, 0);
+        LOG_LOCBACK(0, 1, 0, 0);
     }
     if (rc && (!(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
         lyd_free_tree(*node);
@@ -779,9 +779,8 @@ lydxml_subtree_inner(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, 
     rc = lyd_create_inner(snode, node);
     LY_CHECK_GOTO(rc, cleanup);
 
-    if (*node) {
-        LOG_LOCSET(snode, *node, NULL, NULL);
-    }
+    assert(*node);
+    LOG_LOCSET(NULL, *node, NULL, NULL);
 
     /* parser next */
     rc = lyxml_ctx_next(xmlctx);
@@ -825,7 +824,7 @@ lydxml_subtree_inner(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, 
 
 cleanup:
     if (*node) {
-        LOG_LOCBACK(1, 1, 0, 0);
+        LOG_LOCBACK(0, 1, 0, 0);
     }
     lydctx->parse_opts = prev_parse_opts;
     if (rc && (!(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
@@ -1003,21 +1002,8 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
         r = lydxml_subtree_any(lydctx, snode, ext, &node);
     }
     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
-    LY_CHECK_GOTO(!node, cleanup);
-    if (xmlctx->status != LYXML_ELEM_CLOSE) {
-        assert((lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) && (rc == LY_EVALID));
 
-        /* free the created node(s) */
-        lyd_free_siblings(node);
-
-        /* skip invalid data */
-        if ((r = lydxml_data_skip(xmlctx))) {
-            rc = r;
-        }
-        goto cleanup;
-    }
-
-    if (snode) {
+    if (node && snode) {
         /* add/correct flags */
         r = lyd_parse_set_data_flags(node, &meta, (struct lyd_ctx *)lydctx, ext);
         LY_CHECK_ERR_GOTO(r, rc = r; lyd_free_tree(node), cleanup);
@@ -1035,6 +1021,8 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
         r = lyxml_ctx_next(xmlctx);
         LY_CHECK_ERR_GOTO(r, rc = r; lyd_free_tree(node), cleanup);
     }
+
+    LY_CHECK_GOTO(!node, cleanup);
 
     /* add metadata/attributes */
     if (snode) {
