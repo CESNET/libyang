@@ -830,11 +830,7 @@ lyjson_value(struct lyjson_ctx *jsonctx)
 
     } else if (*jsonctx->in->current == '{') {
         jsonctx->depth++;
-        if (jsonctx->depth > LY_MAX_BLOCK_DEPTH) {
-            LOGERR(jsonctx->ctx, LY_EINVAL,
-                    "The maximum number of block nestings has been exceeded.");
-            return LY_EINVAL;
-        }
+
         /* object */
         ly_in_skip(jsonctx->in, 1);
         LY_CHECK_RET(lyjson_object(jsonctx));
@@ -848,6 +844,14 @@ lyjson_value(struct lyjson_ctx *jsonctx)
         LOGVAL(jsonctx->ctx, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current),
                 jsonctx->in->current, "a JSON value");
         return LY_EVALID;
+    }
+
+    if (jsonctx->depth > LY_MAX_BLOCK_DEPTH) {
+        LOGERR(jsonctx->ctx, LY_EINVAL, "Maximum number %d of block nestings has been exceeded.", LY_MAX_BLOCK_DEPTH);
+        return LY_EINVAL;
+    } else if (jsonctx->status.count > LY_MAX_BLOCK_DEPTH * 10) {
+        LOGERR(jsonctx->ctx, LY_EINVAL, "Maximum number %d of nestings has been exceeded.", LY_MAX_BLOCK_DEPTH * 10);
+        return LY_EINVAL;
     }
 
     return LY_SUCCESS;
