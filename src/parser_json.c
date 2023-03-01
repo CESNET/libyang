@@ -1403,6 +1403,11 @@ lydjson_parse_instance_inner(struct lyd_json_ctx *lydctx, const struct lysc_node
 cleanup:
     lydctx->parse_opts = prev_parse_opts;
     LOG_LOCBACK(0, 1, 0, 0);
+    if (!(*node)->hash) {
+        /* list without keys is unusable */
+        lyd_free_tree(*node);
+        *node = NULL;
+    }
     return rc;
 }
 
@@ -1797,21 +1802,17 @@ lyd_parse_json(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, st
     LY_CHECK_GOTO(rc = lyd_parser_find_operation(parent, int_opts, &lydctx->op_node), cleanup);
 
     /* read subtree(s) */
-    while (lydctx->jsonctx->in->current[0]) {
+    while (status == LYJSON_OBJECT) {
         r = lydjson_subtree_r(lydctx, parent, first_p, parsed);
         LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
         status = lyjson_ctx_status(lydctx->jsonctx, 0);
-        if (status == LYJSON_OBJECT_CLOSED) {
-            break;
-        } else if (status != LYJSON_OBJECT) {
-            /* fatal error for multi-error validation */
-            assert(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR);
-            goto cleanup;
-        } else if (!(int_opts & LYD_INTOPT_WITH_SIBLINGS)) {
+
+        if (!(int_opts & LYD_INTOPT_WITH_SIBLINGS)) {
             break;
         }
     }
+    assert((status == LYJSON_END) || (status == LYJSON_OBJECT_CLOSED));
 
     if ((int_opts & LYD_INTOPT_NO_SIBLINGS) && lydctx->jsonctx->in->current[0] &&
             (lyjson_ctx_status(lydctx->jsonctx, 0) != LYJSON_OBJECT_CLOSED)) {
