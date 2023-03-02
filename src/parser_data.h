@@ -1,9 +1,10 @@
 /**
  * @file parser_data.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Data parsers for libyang
  *
- * Copyright (c) 2015-2020 CESNET, z.s.p.o.
+ * Copyright (c) 2015-2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -197,6 +198,11 @@ struct ly_in;
                                                  Also, no implicit state data are added. */
 #define LYD_VALIDATE_PRESENT    0x0002      /**< Validate only modules whose data actually exist. */
 #define LYD_VALIDATE_MULTI_ERROR 0x0004     /**< Do not stop validation on the first error but generate all the detected errors. */
+#define LYD_VALIDATE_OPERATIONAL 0x0008     /**< Semantic constraint violations are reported only as warnings instead
+                                                 of errors (see [RFC 8342 sec. 5.3](https://datatracker.ietf.org/doc/html/rfc8342#section-5.3)). */
+#define LYD_VALIDATE_NO_DEFAULTS 0x0010     /**< Do not add any default nodes during validation, other implicit nodes
+                                                 (such as NP containers) are still added. Validation will fail if a
+                                                 default node is required for it to pass. */
 
 #define LYD_VALIDATE_OPTS_MASK  0x0000FFFF  /**< Mask for all the LYD_VALIDATE_* options. */
 

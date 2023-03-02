@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Validation
  *
- * Copyright (c) 2019 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -252,6 +252,9 @@ lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, st
 
                     /* free */
                     lyd_free_tree(node);
+                } else if (val_opts & LYD_VALIDATE_OPERATIONAL) {
+                    /* only a warning */
+                    LOGWRN(LYD_CTX(node), "When condition \"%s\" not satisfied.", disabled->cond->expr);
                 } else {
                     /* invalid data */
                     LOGVAL(LYD_CTX(node), LY_VCODE_NOWHEN, disabled->cond->expr);
@@ -386,10 +389,11 @@ cleanup:
  *
  * @param[in] first First sibling to search in.
  * @param[in] node Data node instance to check.
+ * @param[in] val_opts Validation options.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_validate_duplicates(const struct lyd_node *first, const struct lyd_node *node)
+lyd_validate_duplicates(const struct lyd_node *first, const struct lyd_node *node, uint32_t val_opts)
 {
     struct lyd_node **match_p;
     ly_bool fail = 0;
@@ -426,10 +430,17 @@ lyd_validate_duplicates(const struct lyd_node *first, const struct lyd_node *nod
     }
 
     if (fail) {
-        LOG_LOCSET(NULL, node, NULL, NULL);
-        LOGVAL(node->schema->module->ctx, LY_VCODE_DUP, node->schema->name);
-        LOG_LOCBACK(0, 1, 0, 0);
-        return LY_EVALID;
+        if ((node->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) && (val_opts & LYD_VALIDATE_OPERATIONAL)) {
+            /* only a warning */
+            LOG_LOCSET(NULL, node, NULL, NULL);
+            LOGWRN(node->schema->module->ctx, "Duplicate instance of \"%s\".", node->schema->name);
+            LOG_LOCBACK(0, 1, 0, 0);
+        } else {
+            LOG_LOCSET(NULL, node, NULL, NULL);
+            LOGVAL(node->schema->module->ctx, LY_VCODE_DUP, node->schema->name);
+            LOG_LOCBACK(0, 1, 0, 0);
+            return LY_EVALID;
+        }
     }
     return LY_SUCCESS;
 }
@@ -826,7 +837,7 @@ lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const
 
         if (node->flags & LYD_NEW) {
             /* then check new node instance duplicities */
-            r = lyd_validate_duplicates(*first, node);
+            r = lyd_validate_duplicates(*first, node, val_opts);
             LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
             /* this node is valid */
@@ -921,10 +932,12 @@ cleanup:
  * @param[in] first First sibling to search in.
  * @param[in] parent Data parent.
  * @param[in] snode Schema node to validate.
+ * @param[in] val_opts Validation options.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_validate_mandatory(const struct lyd_node *first, const struct lyd_node *parent, const struct lysc_node *snode)
+lyd_validate_mandatory(const struct lyd_node *first, const struct lyd_node *parent, const struct lysc_node *snode,
+        uint32_t val_opts)
 {
     const struct lysc_when *disabled;
 
@@ -949,15 +962,26 @@ lyd_validate_mandatory(const struct lyd_node *first, const struct lyd_node *pare
     }
 
     if (!disabled) {
-        /* node instance not found */
-        LOG_LOCSET(parent ? NULL : snode, parent, NULL, NULL);
-        if (snode->nodetype == LYS_CHOICE) {
-            LOGVAL_APPTAG(snode->module->ctx, "missing-choice", LY_VCODE_NOMAND_CHOIC, snode->name);
+        if (val_opts & LYD_VALIDATE_OPERATIONAL) {
+            /* only a warning */
+            LOG_LOCSET(parent ? NULL : snode, parent, NULL, NULL);
+            if (snode->nodetype == LYS_CHOICE) {
+                LOGWRN(snode->module->ctx, "Mandatory choice \"%s\" data do not exist.", snode->name);
+            } else {
+                LOGWRN(snode->module->ctx, "Mandatory node \"%s\" instance does not exist.", snode->name);
+            }
+            LOG_LOCBACK(parent ? 0 : 1, parent ? 1 : 0, 0, 0);
         } else {
-            LOGVAL(snode->module->ctx, LY_VCODE_NOMAND, snode->name);
+            /* node instance not found */
+            LOG_LOCSET(parent ? NULL : snode, parent, NULL, NULL);
+            if (snode->nodetype == LYS_CHOICE) {
+                LOGVAL_APPTAG(snode->module->ctx, "missing-choice", LY_VCODE_NOMAND_CHOIC, snode->name);
+            } else {
+                LOGVAL(snode->module->ctx, LY_VCODE_NOMAND, snode->name);
+            }
+            LOG_LOCBACK(parent ? 0 : 1, parent ? 1 : 0, 0, 0);
+            return LY_EVALID;
         }
-        LOG_LOCBACK(parent ? 0 : 1, parent ? 1 : 0, 0, 0);
-        return LY_EVALID;
     }
 
     return LY_SUCCESS;
@@ -971,11 +995,12 @@ lyd_validate_mandatory(const struct lyd_node *first, const struct lyd_node *pare
  * @param[in] snode Schema node to validate.
  * @param[in] min Minimum number of elements, 0 for no restriction.
  * @param[in] max Max number of elements, 0 for no restriction.
+ * @param[in] val_opts Validation options.
  * @return LY_ERR value.
  */
 static LY_ERR
 lyd_validate_minmax(const struct lyd_node *first, const struct lyd_node *parent, const struct lysc_node *snode,
-        uint32_t min, uint32_t max)
+        uint32_t min, uint32_t max, uint32_t val_opts)
 {
     uint32_t count = 0;
     struct lyd_node *iter;
@@ -1020,15 +1045,29 @@ lyd_validate_minmax(const struct lyd_node *first, const struct lyd_node *parent,
     }
 
     if (min) {
-        LOG_LOCSET(snode, NULL, NULL, NULL);
-        LOGVAL_APPTAG(snode->module->ctx, "too-few-elements", LY_VCODE_NOMIN, snode->name);
-        LOG_LOCBACK(1, 0, 0, 0);
-        return LY_EVALID;
+        if (val_opts & LYD_VALIDATE_OPERATIONAL) {
+            /* only a warning */
+            LOG_LOCSET(snode, NULL, NULL, NULL);
+            LOGWRN(snode->module->ctx, "Too few \"%s\" instances.", snode->name);
+            LOG_LOCBACK(1, 0, 0, 0);
+        } else {
+            LOG_LOCSET(snode, NULL, NULL, NULL);
+            LOGVAL_APPTAG(snode->module->ctx, "too-few-elements", LY_VCODE_NOMIN, snode->name);
+            LOG_LOCBACK(1, 0, 0, 0);
+            return LY_EVALID;
+        }
     } else if (max) {
-        LOG_LOCSET(NULL, iter, NULL, NULL);
-        LOGVAL_APPTAG(snode->module->ctx, "too-many-elements", LY_VCODE_NOMAX, snode->name);
-        LOG_LOCBACK(0, 1, 0, 0);
-        return LY_EVALID;
+        if (val_opts & LYD_VALIDATE_OPERATIONAL) {
+            /* only a warning */
+            LOG_LOCSET(NULL, iter, NULL, NULL);
+            LOGWRN(snode->module->ctx, "Too many \"%s\" instances.", snode->name);
+            LOG_LOCBACK(0, 1, 0, 0);
+        } else {
+            LOG_LOCSET(NULL, iter, NULL, NULL);
+            LOGVAL_APPTAG(snode->module->ctx, "too-many-elements", LY_VCODE_NOMAX, snode->name);
+            LOG_LOCBACK(0, 1, 0, 0);
+            return LY_EVALID;
+        }
     }
     return LY_SUCCESS;
 }
@@ -1070,11 +1109,17 @@ lyd_val_uniq_find_leaf(const struct lysc_node_leaf *uniq_leaf, const struct lyd_
 }
 
 /**
+ * @brief Unique list validation callback argument.
+ */
+struct lyd_val_uniq_arg {
+    LY_ARRAY_COUNT_TYPE action; /**< Action to perform - 0 to compare all uniques, n to compare only n-th unique. */
+    uint32_t val_opts;          /**< Validation options. */
+};
+
+/**
  * @brief Callback for comparing 2 list unique leaf values.
  *
  * Implementation of ::lyht_value_equal_cb.
- *
- * @param[in] cb_data 0 to compare all uniques, n to compare only n-th unique.
  */
 static ly_bool
 lyd_val_uniq_list_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *cb_data)
@@ -1084,13 +1129,14 @@ lyd_val_uniq_list_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *c
     struct lyd_node *diter, *first, *second;
     struct lyd_value *val1, *val2;
     char *path1, *path2, *uniq_str, *ptr;
-    LY_ARRAY_COUNT_TYPE u, v, action;
+    LY_ARRAY_COUNT_TYPE u, v;
+    struct lyd_val_uniq_arg *arg = cb_data;
+    const uint32_t uniq_err_msg_size = 1024;
 
     assert(val1_p && val2_p);
 
     first = *((struct lyd_node **)val1_p);
     second = *((struct lyd_node **)val2_p);
-    action = (uintptr_t)cb_data;
 
     assert(first && (first->schema->nodetype == LYS_LIST));
     assert(second && (second->schema == first->schema));
@@ -1100,8 +1146,8 @@ lyd_val_uniq_list_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *c
     slist = (struct lysc_node_list *)first->schema;
 
     /* compare unique leaves */
-    if (action > 0) {
-        u = action - 1;
+    if (arg->action > 0) {
+        u = arg->action - 1;
         if (u < LY_ARRAY_COUNT(slist->uniques)) {
             goto uniquecheck;
         }
@@ -1133,13 +1179,12 @@ uniquecheck:
             }
         }
         if (v && (v == LY_ARRAY_COUNT(slist->uniques[u]))) {
-            /* all unique leafs are the same in this set, create this nice error */
+            /* all unique leaves are the same in this set, create this nice error */
             path1 = lyd_path(first, LYD_PATH_STD, NULL, 0);
             path2 = lyd_path(second, LYD_PATH_STD, NULL, 0);
 
             /* use buffer to rebuild the unique string */
-#define UNIQ_BUF_SIZE 1024
-            uniq_str = malloc(UNIQ_BUF_SIZE);
+            uniq_str = malloc(uniq_err_msg_size);
             uniq_str[0] = '\0';
             ptr = uniq_str;
             LY_ARRAY_FOR(slist->uniques[u], v) {
@@ -1148,7 +1193,7 @@ uniquecheck:
                     ++ptr;
                 }
                 ptr = lysc_path_until((struct lysc_node *)slist->uniques[u][v], &slist->node, LYSC_PATH_LOG,
-                        ptr, UNIQ_BUF_SIZE - (ptr - uniq_str));
+                        ptr, uniq_err_msg_size - (ptr - uniq_str));
                 if (!ptr) {
                     /* path will be incomplete, whatever */
                     break;
@@ -1157,18 +1202,24 @@ uniquecheck:
                 ptr += strlen(ptr);
             }
             LOG_LOCSET(NULL, second, NULL, NULL);
-            LOGVAL_APPTAG(ctx, "data-not-unique", LY_VCODE_NOUNIQ, uniq_str, path1, path2);
+            if (arg->val_opts & LYD_VALIDATE_OPERATIONAL) {
+                /* only a warning */
+                LOGWRN(ctx, "Unique data leaf(s) \"%s\" not satisfied in \"%s\" and \"%s\".", uniq_str, path1, path2);
+            } else {
+                LOGVAL_APPTAG(ctx, "data-not-unique", LY_VCODE_NOUNIQ, uniq_str, path1, path2);
+            }
             LOG_LOCBACK(0, 1, 0, 0);
 
             free(path1);
             free(path2);
             free(uniq_str);
-#undef UNIQ_BUF_SIZE
 
-            return 1;
+            if (!(arg->val_opts & LYD_VALIDATE_OPERATIONAL)) {
+                return 1;
+            }
         }
 
-        if (action > 0) {
+        if (arg->action > 0) {
             /* done */
             return 0;
         }
@@ -1183,10 +1234,12 @@ uniquecheck:
  * @param[in] first First sibling to search in.
  * @param[in] snode Schema node to validate.
  * @param[in] uniques List unique arrays to validate.
+ * @param[in] val_opts Validation options.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode, const struct lysc_node_leaf ***uniques)
+lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode, const struct lysc_node_leaf ***uniques,
+        uint32_t val_opts)
 {
     const struct lyd_node *diter;
     struct ly_set *set;
@@ -1196,7 +1249,7 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
     size_t key_len;
     ly_bool dyn;
     const void *hash_key;
-    void *cb_data;
+    struct lyd_val_uniq_arg arg, *args = NULL;
     struct hash_table **uniqtables = NULL;
     struct lyd_value *val;
     struct ly_ctx *ctx = snode->module->ctx;
@@ -1214,7 +1267,9 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
 
     if (set->count == 2) {
         /* simple comparison */
-        if (lyd_val_uniq_list_equal(&set->objs[0], &set->objs[1], 0, (void *)0)) {
+        arg.action = 0;
+        arg.val_opts = val_opts;
+        if (lyd_val_uniq_list_equal(&set->objs[0], &set->objs[1], 0, &arg)) {
             /* instance duplication */
             ret = LY_EVALID;
             goto cleanup;
@@ -1222,12 +1277,14 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
     } else if (set->count > 2) {
         /* use hashes for comparison */
         uniqtables = malloc(LY_ARRAY_COUNT(uniques) * sizeof *uniqtables);
-        LY_CHECK_ERR_GOTO(!uniqtables, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        args = malloc(LY_ARRAY_COUNT(uniques) * sizeof *args);
+        LY_CHECK_ERR_GOTO(!uniqtables || !args, LOGMEM(ctx); ret = LY_EMEM, cleanup);
         x = LY_ARRAY_COUNT(uniques);
         for (v = 0; v < x; v++) {
-            cb_data = (void *)(uintptr_t)(v + 1L);
+            args[v].action = v + 1;
+            args[v].val_opts = val_opts;
             uniqtables[v] = lyht_new(lyht_get_fixed_size(set->count), sizeof(struct lyd_node *),
-                    lyd_val_uniq_list_equal, cb_data, 0);
+                    lyd_val_uniq_list_equal, &args[v], 0);
             LY_CHECK_ERR_GOTO(!uniqtables[v], LOGMEM(ctx); ret = LY_EMEM, cleanup);
         }
 
@@ -1284,6 +1341,7 @@ cleanup:
         lyht_free(uniqtables[v], NULL);
     }
     free(uniqtables);
+    free(args);
 
     return ret;
 }
@@ -1321,19 +1379,19 @@ lyd_validate_siblings_schema_r(const struct lyd_node *first, const struct lyd_no
         if (snode->nodetype == LYS_LIST) {
             slist = (struct lysc_node_list *)snode;
             if (slist->min || slist->max) {
-                r = lyd_validate_minmax(first, parent, snode, slist->min, slist->max);
+                r = lyd_validate_minmax(first, parent, snode, slist->min, slist->max, val_opts);
                 LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
             }
         } else if (snode->nodetype == LYS_LEAFLIST) {
             sllist = (struct lysc_node_leaflist *)snode;
             if (sllist->min || sllist->max) {
-                r = lyd_validate_minmax(first, parent, snode, sllist->min, sllist->max);
+                r = lyd_validate_minmax(first, parent, snode, sllist->min, sllist->max, val_opts);
                 LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
             }
 
         } else if (snode->flags & LYS_MAND_TRUE) {
             /* check generic mandatory existence */
-            r = lyd_validate_mandatory(first, parent, snode);
+            r = lyd_validate_mandatory(first, parent, snode, val_opts);
             LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
         }
 
@@ -1341,7 +1399,7 @@ lyd_validate_siblings_schema_r(const struct lyd_node *first, const struct lyd_no
         if (snode->nodetype == LYS_LIST) {
             slist = (struct lysc_node_list *)snode;
             if (slist->uniques) {
-                r = lyd_validate_unique(first, snode, (const struct lysc_node_leaf ***)slist->uniques);
+                r = lyd_validate_unique(first, snode, (const struct lysc_node_leaf ***)slist->uniques, val_opts);
                 LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
             }
         }
@@ -1445,18 +1503,30 @@ lyd_validate_must(const struct lyd_node *node, uint32_t val_opts, uint32_t int_o
         /* check the result */
         lyxp_set_cast(&xp_set, LYXP_SET_BOOLEAN);
         if (!xp_set.val.bln) {
-            /* use specific error information */
-            emsg = musts[u].emsg;
-            eapptag = musts[u].eapptag ? musts[u].eapptag : "must-violation";
-            LOG_LOCSET(NULL, node, NULL, NULL);
-            if (emsg) {
-                LOGVAL_APPTAG(LYD_CTX(node), eapptag, LYVE_DATA, "%s", emsg);
+            if (val_opts & LYD_VALIDATE_OPERATIONAL) {
+                /* only a warning */
+                emsg = musts[u].emsg;
+                LOG_LOCSET(NULL, node, NULL, NULL);
+                if (emsg) {
+                    LOGWRN(LYD_CTX(node), "%s", emsg);
+                } else {
+                    LOGWRN(LYD_CTX(node), "Must condition \"%s\" not satisfied.", musts[u].cond->expr);
+                }
+                LOG_LOCBACK(0, 1, 0, 0);
             } else {
-                LOGVAL_APPTAG(LYD_CTX(node), eapptag, LY_VCODE_NOMUST, musts[u].cond->expr);
+                /* use specific error information */
+                emsg = musts[u].emsg;
+                eapptag = musts[u].eapptag ? musts[u].eapptag : "must-violation";
+                LOG_LOCSET(NULL, node, NULL, NULL);
+                if (emsg) {
+                    LOGVAL_APPTAG(LYD_CTX(node), eapptag, LYVE_DATA, "%s", emsg);
+                } else {
+                    LOGVAL_APPTAG(LYD_CTX(node), eapptag, LY_VCODE_NOMUST, musts[u].cond->expr);
+                }
+                LOG_LOCBACK(0, 1, 0, 0);
+                r = LY_EVALID;
+                LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
             }
-            LOG_LOCBACK(0, 1, 0, 0);
-            r = LY_EVALID;
-            LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
         }
     }
 
@@ -1657,6 +1727,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_when, struct ly_
     const struct lyd_meta *meta;
     const struct lysc_type *type;
     struct lyd_node *node;
+    uint32_t impl_opts;
 
     LYD_TREE_DFS_BEGIN(root, node) {
         if (node->flags & LYD_EXT) {
@@ -1688,8 +1759,14 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_when, struct ly_
             LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
             /* add nested defaults */
-            r = lyd_new_implicit_r(node, lyd_node_child_p(node), NULL, NULL, NULL, NULL, NULL,
-                    (val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, diff);
+            impl_opts = 0;
+            if (val_opts & LYD_VALIDATE_NO_STATE) {
+                impl_opts |= LYD_IMPLICIT_NO_STATE;
+            }
+            if (val_opts & LYD_VALIDATE_NO_DEFAULTS) {
+                impl_opts |= LYD_IMPLICIT_NO_DEFAULTS;
+            }
+            r = lyd_new_implicit_r(node, lyd_node_child_p(node), NULL, NULL, NULL, NULL, NULL, impl_opts, diff);
             LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
         }
 
@@ -1720,7 +1797,7 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
     struct lyd_node *first, *next, **first2, *iter;
     const struct lys_module *mod;
     struct ly_set node_types = {0}, meta_types = {0}, node_when = {0}, ext_node = {0}, ext_val = {0};
-    uint32_t i = 0;
+    uint32_t i = 0, impl_opts;
 
     assert(tree && ctx);
     assert((node_when_p && node_types_p && meta_types_p && ext_node_p && ext_val_p) ||
@@ -1757,9 +1834,15 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
 
         /* add all top-level defaults for this module, if going to validate subtree, do not add into unres sets
          * (lyd_validate_subtree() adds all the nodes in that case) */
+        impl_opts = 0;
+        if (val_opts & LYD_VALIDATE_NO_STATE) {
+            impl_opts |= LYD_IMPLICIT_NO_STATE;
+        }
+        if (val_opts & LYD_VALIDATE_NO_DEFAULTS) {
+            impl_opts |= LYD_IMPLICIT_NO_DEFAULTS;
+        }
         r = lyd_new_implicit_r(NULL, first2, NULL, mod, validate_subtree ? NULL : node_when_p,
-                validate_subtree ? NULL : node_types_p, validate_subtree ? NULL : ext_node_p,
-                (val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, diff);
+                validate_subtree ? NULL : node_types_p, validate_subtree ? NULL : ext_node_p, impl_opts, diff);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
         /* our first module node pointer may no longer be the first */
