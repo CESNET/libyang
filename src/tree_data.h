@@ -1531,7 +1531,11 @@ LIBYANG_API_DECL LY_ERR lyd_new_attr2(struct lyd_node *parent, const char *modul
  * For other node types, it should be NULL.
  * @param[in] options Bitmask of options, see @ref pathoptions.
  * @param[out] node Optional first created node.
- * @return LY_ERR value.
+ * @return LY_SUCCESS on success.
+ * @return LY_EEXIST if the final node to create exists (unless ::LYD_NEW_PATH_UPDATE is used).
+ * @return LY_EINVAL on invalid arguments including invalid @p path.
+ * @return LY_EVALID on invalid @p value.
+ * @return LY_ERR on other errors.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const char *value,
         uint32_t options, struct lyd_node **node);
@@ -1554,7 +1558,11 @@ LIBYANG_API_DECL LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ct
  * @param[in] options Bitmask of options, see @ref pathoptions.
  * @param[out] new_parent Optional first parent node created. If only one node was created, equals to @p new_node.
  * @param[out] new_node Optional last node created.
- * @return LY_ERR value.
+ * @return LY_SUCCESS on success.
+ * @return LY_EEXIST if the final node to create exists (unless ::LYD_NEW_PATH_UPDATE is used).
+ * @return LY_EINVAL on invalid arguments including invalid @p path.
+ * @return LY_EVALID on invalid @p value.
+ * @return LY_ERR on other errors.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
         size_t value_len, LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **new_parent,
@@ -1576,7 +1584,11 @@ LIBYANG_API_DECL LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_c
  * @param[in] value Value of the new leaf/leaf-list. For other node types, it should be NULL.
  * @param[in] options Bitmask of options, see @ref pathoptions.
  * @param[out] node Optional first created node.
- * @return LY_ERR value.
+ * @return LY_SUCCESS on success.
+ * @return LY_EEXIST if the final node to create exists (unless ::LYD_NEW_PATH_UPDATE is used).
+ * @return LY_EINVAL on invalid arguments including invalid @p path.
+ * @return LY_EVALID on invalid @p value.
+ * @return LY_ERR on other errors.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_ext_path(struct lyd_node *parent, const struct lysc_ext_instance *ext, const char *path,
         const void *value, uint32_t options, struct lyd_node **node);
