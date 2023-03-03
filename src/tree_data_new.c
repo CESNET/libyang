@@ -1471,8 +1471,8 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
 
     /* try to find any existing nodes in the path */
     if (parent) {
-        ret = ly_path_eval_partial(p, parent, NULL, &path_idx, &node);
-        if (ret == LY_SUCCESS) {
+        r = ly_path_eval_partial(p, parent, NULL, &path_idx, &node);
+        if (r == LY_SUCCESS) {
             if (orig_count == LY_ARRAY_COUNT(p)) {
                 /* the node exists, are we supposed to update it or is it just a default? */
                 if (!(options & LYD_NEW_PATH_UPDATE) && !(node->flags & LYD_DEFAULT)) {
@@ -1487,16 +1487,17 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
                 ret = lyd_new_path_update(node, value, value_len, value_type, format, &nparent, &nnode);
                 goto cleanup;
             } /* else we were not searching for the whole path */
-        } else if (ret == LY_EINCOMPLETE) {
+        } else if (r == LY_EINCOMPLETE) {
             /* some nodes were found, adjust the iterator to the next segment */
             ++path_idx;
-        } else if (ret == LY_ENOTFOUND) {
+        } else if (r == LY_ENOTFOUND) {
             /* we will create the nodes from top-level, default behavior (absolute path), or from the parent (relative path) */
             if (lysc_data_parent(p[0].node)) {
                 node = parent;
             }
         } else {
             /* error */
+            ret = r;
             goto cleanup;
         }
     }
