@@ -38,7 +38,8 @@ struct lysp_ctx;
 #define LY_DPARSER_ERR_GOTO(r, err_cmd, lydctx, label) \
         if (r) { \
             err_cmd; \
-            if ((r != LY_EVALID) || !lydctx || !(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR)) { \
+            if ((r != LY_EVALID) || !lydctx || !(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || \
+                    (ly_vecode(((struct lyd_ctx *)lydctx)->data_ctx->ctx) == LYVE_SYNTAX)) { \
                 goto label; \
             } \
         }

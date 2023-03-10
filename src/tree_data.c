@@ -137,7 +137,13 @@ lyd_parse(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct 
         r = LY_EINVAL;
         break;
     }
-    LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+    if (r) {
+        rc = r;
+        if ((r != LY_EVALID) || !lydctx || !(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) ||
+                (ly_vecode(ctx) == LYVE_SYNTAX)) {
+            goto cleanup;
+        }
+    }
 
     if (parent) {
         /* get first top-level sibling */
