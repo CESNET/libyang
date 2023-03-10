@@ -1645,26 +1645,8 @@ lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct ly
 
             /* copy subtypes of the subtype union */
             for (LY_ARRAY_COUNT_TYPE v = 0; v < LY_ARRAY_COUNT(un_aux->types); ++v) {
-                if (un_aux->types[v]->basetype == LY_TYPE_LEAFREF) {
-                    struct lysc_type_leafref *lref;
-
-                    /* duplicate the whole structure because of the instance-specific path resolving for realtype */
-                    utypes[u + additional] = calloc(1, sizeof(struct lysc_type_leafref));
-                    LY_CHECK_ERR_GOTO(!utypes[u + additional], LOGMEM(ctx->ctx); ret = LY_EMEM, error);
-                    lref = (struct lysc_type_leafref *)utypes[u + additional];
-
-                    lref->basetype = LY_TYPE_LEAFREF;
-                    ret = lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)un_aux->types[v])->path, 0, 0, &lref->path);
-                    LY_CHECK_GOTO(ret, error);
-                    lref->refcount = 1;
-                    lref->require_instance = ((struct lysc_type_leafref *)un_aux->types[v])->require_instance;
-                    ret = lyplg_type_prefix_data_dup(ctx->ctx, LY_VALUE_SCHEMA_RESOLVED,
-                            ((struct lysc_type_leafref *)un_aux->types[v])->prefixes, (void **)&lref->prefixes);
-                    LY_CHECK_GOTO(ret, error);
-                } else {
-                    utypes[u + additional] = un_aux->types[v];
-                    LY_ATOMIC_INC_BARRIER(un_aux->types[v]->refcount);
-                }
+                utypes[u + additional] = un_aux->types[v];
+                LY_ATOMIC_INC_BARRIER(un_aux->types[v]->refcount);
                 ++additional;
                 LY_ARRAY_INCREMENT(utypes);
             }
