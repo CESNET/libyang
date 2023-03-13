@@ -862,6 +862,11 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
 
     assert(node->nodetype & (LYS_LEAF | LYS_LEAFLIST));
 
+    if (lref->realtype) {
+        /* already resolved, may happen (shared union typedef with a leafref) */
+        return LY_SUCCESS;
+    }
+
     /* first implement all the modules in the path */
     LY_CHECK_RET(lys_compile_expr_implement(ctx->ctx, lref->path, LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, 1, unres, NULL));
 

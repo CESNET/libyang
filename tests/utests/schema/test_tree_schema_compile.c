@@ -1,9 +1,10 @@
-/*
+/**
  * @file test_tree_schema_compile.c
- * @author: Radek Krejci <rkrejci@cesnet.cz>
+ * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for functions from parser_yang.c
  *
- * Copyright (c) 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2018 - 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -1922,6 +1923,13 @@ test_type_leafref(void **state)
     assert_non_null(((struct lysc_node_leaf *)mod->compiled->data)->dflt);
     assert_int_equal(LY_TYPE_BOOL, ((struct lysc_node_leaf *)mod->compiled->data)->dflt->realtype->basetype);
     assert_int_equal(1, ((struct lysc_node_leaf *)mod->compiled->data)->dflt->boolean);
+
+    /* union reference */
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module m {namespace urn:m;prefix m;"
+            "typedef s-ref {type union {type leafref {path '/str';}}}"
+            "leaf str {type string {length \"1..16\" {error-message \"Custom message\";}}}"
+            "leaf ref1 {type s-ref;}"
+            "leaf ref2 {type s-ref;}}", LYS_IN_YANG, NULL));
 
     /* invalid paths */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;container a {leaf target2 {type uint8;}}"
