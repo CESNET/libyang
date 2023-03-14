@@ -1814,9 +1814,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
 
             LY_CHECK_GOTO(rc = lys_compile_type_enums(ctx, base_type_p->bits, basetype, NULL,
                     (struct lysc_type_bitenum_item **)&bits->bits), cleanup);
-        } /* else error */
-
-        if (!base && !type_p->flags) {
+        } else {
             /* type derived from bits built-in type must contain at least one bit */
             if (tpdfname) {
                 LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "bit", "bits type ", tpdfname);
@@ -1914,9 +1912,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
             assert(base_type_p);
 
             LY_CHECK_GOTO(rc = lys_compile_type_enums(ctx, base_type_p->enums, basetype, NULL, &enumeration->enums), cleanup);
-        } /* else error */
-
-        if (!base && !type_p->flags) {
+        } else {
             /* type derived from enumerations built-in type must contain at least one enum */
             if (tpdfname) {
                 LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "enum", "enumeration type ", tpdfname);
@@ -1965,9 +1961,17 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
                 goto cleanup;
             }
             LY_CHECK_GOTO(rc = lys_compile_identity_bases(ctx, type_p->pmod, type_p->bases, NULL, &idref->bases), cleanup);
-        }
+        } else if (base) {
+            /* copy all the bases */
+            const struct lysc_type_identityref *idref_base = (struct lysc_type_identityref *)base;
+            LY_ARRAY_COUNT_TYPE u;
 
-        if (!base && !type_p->flags) {
+            LY_ARRAY_CREATE_GOTO(ctx->ctx, idref->bases, LY_ARRAY_COUNT(idref_base->bases), rc, cleanup);
+            LY_ARRAY_FOR(idref_base->bases, u) {
+                idref->bases[u] = idref_base->bases[u];
+                LY_ARRAY_INCREMENT(idref->bases);
+            }
+        } else {
             /* type derived from identityref built-in type must contain at least one base */
             if (tpdfname) {
                 LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "base", "identityref type ", tpdfname);
@@ -2012,12 +2016,13 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
             LY_CHECK_GOTO(rc = lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)base)->path, 0, 0, &lref->path), cleanup);
             LY_CHECK_GOTO(rc = lyplg_type_prefix_data_dup(ctx->ctx, LY_VALUE_SCHEMA_RESOLVED,
                     ((struct lysc_type_leafref *)base)->prefixes, (void **)&lref->prefixes), cleanup);
-        } else if (tpdfname) {
-            LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "path", "leafref type ", tpdfname);
-            rc = LY_EVALID;
-            goto cleanup;
         } else {
-            LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "path", "leafref type", "");
+            /* type derived from leafref built-in type must contain path */
+            if (tpdfname) {
+                LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "path", "leafref type ", tpdfname);
+            } else {
+                LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "path", "leafref type", "");
+            }
             rc = LY_EVALID;
             goto cleanup;
         }
@@ -2063,9 +2068,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
                 LY_ATOMIC_INC_BARRIER(un->types[u]->refcount);
                 LY_ARRAY_INCREMENT(un->types);
             }
-        }
-
-        if (!base && !type_p->flags) {
+        } else {
             /* type derived from union built-in type must contain at least one type */
             if (tpdfname) {
                 LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "type", "union type ", tpdfname);
