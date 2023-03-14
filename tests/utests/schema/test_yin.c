@@ -3099,7 +3099,7 @@ test_module_elem(void **state)
 
     assert_int_equal(yin_parse_mod(YCTX, lysp_mod), LY_SUCCESS);
     assert_string_equal(lysp_mod->mod->name, "mod");
-    assert_string_equal(lysp_mod->revs, "2019-02-02");
+    assert_string_equal(lysp_mod->revs[0].date, "2019-02-02");
     assert_string_equal(lysp_mod->mod->ns, "ns");
     assert_string_equal(lysp_mod->mod->prefix, "pref");
     assert_null(lysp_mod->mod->filepath);
@@ -3235,7 +3235,7 @@ test_submodule_elem(void **state)
     CHECK_LOG_CTX("YANG version 1.1 expects all includes in main module, includes in submodules (mod) are not necessary.",
             NULL);
     assert_string_equal(lysp_submod->name, "mod");
-    assert_string_equal(lysp_submod->revs, "2019-02-02");
+    assert_string_equal(lysp_submod->revs[0].date, "2019-02-02");
     assert_string_equal(lysp_submod->prefix, "pref");
     assert_null(lysp_submod->filepath);
     assert_string_equal(lysp_submod->org, "org");
