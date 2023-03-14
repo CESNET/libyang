@@ -1765,6 +1765,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
     struct lysc_type_leafref *lref;
     struct lysc_type_union *un;
     struct lys_type_item *tpdf_item;
+    const struct lysp_type *base_type_p;
     uint32_t i;
 
     /* alloc and init */
@@ -1791,10 +1792,29 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
         /* RFC 7950 9.7 - bits */
         bits = (struct lysc_type_bits *)*type;
         if (type_p->bits) {
+            /* compile bits from this type */
             LY_CHECK_GOTO(rc = lys_compile_type_enums(ctx, type_p->bits, basetype,
                     base ? (struct lysc_type_bitenum_item *)((struct lysc_type_bits *)base)->bits : NULL,
                     (struct lysc_type_bitenum_item **)&bits->bits), cleanup);
-        }
+        } else if (base) {
+            /* recompile bits from the first superior type with bits */
+            assert(tpdf_chain->count > tpdf_chain_last);
+            base_type_p = NULL;
+            i = tpdf_chain->count;
+            do {
+                --i;
+                tpdf_item = tpdf_chain->objs[i];
+
+                if (tpdf_item->tpdf->type.bits) {
+                    base_type_p = &tpdf_item->tpdf->type;
+                    break;
+                }
+            } while (i > tpdf_chain_last);
+            assert(base_type_p);
+
+            LY_CHECK_GOTO(rc = lys_compile_type_enums(ctx, base_type_p->bits, basetype, NULL,
+                    (struct lysc_type_bitenum_item **)&bits->bits), cleanup);
+        } /* else error */
 
         if (!base && !type_p->flags) {
             /* type derived from bits built-in type must contain at least one bit */
@@ -1877,7 +1897,24 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
         if (type_p->enums) {
             LY_CHECK_GOTO(rc = lys_compile_type_enums(ctx, type_p->enums, basetype,
                     base ? ((struct lysc_type_enum *)base)->enums : NULL, &enumeration->enums), cleanup);
-        }
+        } else if (base) {
+            /* recompile enums from the first superior type with enums */
+            assert(tpdf_chain->count > tpdf_chain_last);
+            base_type_p = NULL;
+            i = tpdf_chain->count;
+            do {
+                --i;
+                tpdf_item = tpdf_chain->objs[i];
+
+                if (tpdf_item->tpdf->type.enums) {
+                    base_type_p = &tpdf_item->tpdf->type;
+                    break;
+                }
+            } while (i > tpdf_chain_last);
+            assert(base_type_p);
+
+            LY_CHECK_GOTO(rc = lys_compile_type_enums(ctx, base_type_p->enums, basetype, NULL, &enumeration->enums), cleanup);
+        } /* else error */
 
         if (!base && !type_p->flags) {
             /* type derived from enumerations built-in type must contain at least one enum */
