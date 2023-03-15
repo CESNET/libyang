@@ -5,48 +5,108 @@ if { [info exists ::env(YANGLINT)] } {
     set yanglint "../../../../build/yanglint"
 }
 
+# detect the path to the examples
+if { [info exists ::env(CURRENT_SOURCE_DIR)] } {
+    set yang_dir "$env(CURRENT_SOURCE_DIR)/examples"
+} else {
+    set yang_dir "../../examples"
+}
+
+# set the variable used to print the error message
+if { ![info exists error_verbose] } {
+    set error_verbose 1
+}
+
+# prompt of yanglint
+set prompt "> "
+# prompt of error message
+set error_prompt ">>>"
+# the beginning of error message
+set error_head "$error_prompt Check-failed"
 # set the timeout to 1 second
 set timeout 1
 
-# expect a single line of anchored regex output
-proc expect_output {output} {
-    expect {
-        -re "^${output}$" {}
-        timeout {exit 1}
+# detection on eof and timeout will be on every expect command
+expect_after {
+    eof {
+        global error_head
+        send_error "\n$error_head unexpected termination.\n"
+        exit 1
+    } timeout {
+        global error_head
+        send_error "\n$error_head timeout.\n"
+        exit 1
     }
 }
 
-# send a command and either expect some anchored regex output if specified or just an empty line
-proc expect_command {command has_output output} {
-    send -- "${command}\r"
+# Internal function. Print error message and exit script with an error return value.
+proc check_failed {pattern output} {
+    global error_verbose
+    global error_prompt
+    global error_head
 
-    if ($has_output==1) {
-        expect {
-            -re "^${command}\r\n${output}$" {}
-            timeout {exit 1}
+    set frame [info frame 1]
+    set line [dict get $frame line]
+    set file [lindex [split [dict get $frame file] /] end]
+    switch $error_verbose {
+        0 {}
+        1 { send_error "\n$error_head in $file on line $line\n" }
+        2 { send_error "\n$error_head in $file on line $line, output is:\n$output\n" }
+        3 {
+            send_error "\n$error_head in $file on line $line, expecting:\n$pattern\n"
+            send_error "$error_prompt but the output is:\n$output\n"
         }
-    } else {
-        # input echoes
-        expect {
-            -re "^${command}\r\n$" {}
-            timeout {exit 1}
-        }
-        expect {
-            -re "^> $" {}
-            timeout {exit 1}
+        default { send_error "\n$error_head unrecognized entry \"$error_verbose\" in error_verbose variable.\n" }
+    }
+    close
+    wait
+    exit 1
+}
+
+# skip no dir and/or no history warnings and prompt
+proc skip_warnings {} {
+    global prompt
+    expect -re "(YANGLINT.*)*$prompt" {}
+}
+
+# Send command (cmd) to the yanglint, then check output string (pattern) and prompt.
+# If parameter pattern is not specified, only the prompt assumed afterwards.
+proc command {cmd {pattern ""}} {
+    global prompt
+
+    send -- "${cmd}\r"
+    expect "${cmd}\r\n"
+
+    if { $pattern eq "" } {
+        # command without output
+        expect $prompt
+        return
+    }
+    # check output
+    expect {
+        -re "^${pattern}\r\n${prompt}$" {}
+        -indices -re "(.*)\r\n${prompt}$" {
+            # Pattern does not match the output. Print error and exit the script.
+            check_failed $pattern $expect_out(1,string)
         }
     }
+}
+
+# whatever is written is sent, output is ignored and then another prompt is expected
+proc next_prompt {} {
+    global prompt
+
+    send "\r"
+    expect -re "$prompt$"
 }
 
 # send a completion request and check if the anchored regex output matches
 proc expect_completion {input output} {
-    send -- "${input}\t"
+    global prompt
 
-    expect {
-        # expecting echoing input, output and 10 terminal control characters
-        -re "^${input}\r> ${output}.*\r.*$" {}
-        timeout {exit 1}
-    }
+    send -- "${input}\t"
+    # expecting echoing input, output and 10 terminal control characters
+    expect -re "^${input}\r> ${output}.*\r.*$"
 }
 
 # send a completion request and check if the anchored regex hint options match
@@ -58,11 +118,13 @@ proc expect_hint {input prev_input hints} {
     }
 
     send -- "${input}\t"
+    # expecting the hints, previous input from which the hints were generated
+    # and some number of terminal control characters
+    expect -re "^\r\n${output}\r> ${prev_input}.*\r.*$"
+}
 
-    expect {
-        # expecting the hints, previous input from which the hints were generated
-        # and some number of terminal control characters
-        -re "^\r\n${output}\r> ${prev_input}.*\r.*$" {}
-        timeout {exit 1}
-    }
+# send 'exit' and wait for eof
+proc send_exit {} {
+    send "exit\r"
+    expect eof
 }
