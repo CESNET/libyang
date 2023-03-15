@@ -1,20 +1,10 @@
 #!/usr/bin/expect -f
 
-if { [info exists ::env(CURRENT_SOURCE_DIR)] } {
-    source "$env(CURRENT_SOURCE_DIR)/tests/expect/common.exp"
-    set yang_dir "$env(CURRENT_SOURCE_DIR)/examples"
-} else {
-    source "common.exp"
-    set yang_dir "../../examples"
-}
+source [expr {[info exists ::env(CURRENT_SOURCE_DIR)] ? "$env(CURRENT_SOURCE_DIR)/tests/expect/common.exp" : "common.exp"}]
 
 spawn $yanglint
+skip_warnings
 
-# skip no dir and/or no history warnings
-expect_output "(YANGLINT.*)*> "
+command "feature -a" "yang:\r\n\t\\(none\\)\r\n\r\nietf-yang-schema-mount:\r\n\t\\(none\\)\r\n"
 
-expect_command "feature -a" 1 "yang:\r\n\t\\(none\\)\r\n\r\nietf-yang-schema-mount:\r\n\t\\(none\\)\r\n\r\n> "
-
-send -- "exit\r"
-
-expect eof
+send_exit
