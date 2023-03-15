@@ -6,7 +6,7 @@ spawn $yanglint
 skip_warnings
 
 command "clear -ii"
-command "add ${yang_dir}/ietf-ip.yang"
+command "add ${yang_models}/ietf-ip.yang"
 
 expect_completion "print -f info -P " "print -f info -P /ietf-"
 
