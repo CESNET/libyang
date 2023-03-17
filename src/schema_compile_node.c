@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Schema compilation of common nodes.
  *
- * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -43,14 +43,13 @@
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
-static struct lysc_ext_instance *
-lysc_ext_instance_dup(struct ly_ctx *ctx, struct lysc_ext_instance *orig)
-{
-    /* TODO - extensions, increase refcount */
-    (void) ctx;
-    (void) orig;
-    return NULL;
-}
+/**
+ * @brief Item for storing typedef chain item.
+ */
+struct lys_type_item {
+    const struct lysp_tpdf *tpdf;
+    struct lysp_node *node;
+};
 
 /**
  * @brief Add a node with a when to unres.
@@ -346,31 +345,48 @@ lysc_patterns_dup(struct ly_ctx *ctx, struct lysc_pattern **orig)
 /**
  * @brief Duplicate compiled range structure.
  *
- * @param[in] ctx Libyang context for logging.
+ * @param[in] ctx Compile context.
  * @param[in] orig The range structure to be duplicated.
+ * @param[in] tpdf_chain Chain of the used typedefs, traversed backwards.
+ * @param[in] tpdf_chain_last Index of the last (backwards) typedef in @p tpdf_chain to use.
  * @return New compiled range structure as a copy of @p orig.
  * @return NULL in case of memory allocation error.
  */
 static struct lysc_range *
-lysc_range_dup(struct ly_ctx *ctx, const struct lysc_range *orig)
+lysc_range_dup(struct lysc_ctx *ctx, const struct lysc_range *orig, struct ly_set *tpdf_chain, uint32_t tpdf_chain_last)
 {
     struct lysc_range *dup;
     LY_ERR ret;
+    struct lys_type_item *tpdf_item;
+    uint32_t i;
 
     assert(orig);
 
     dup = calloc(1, sizeof *dup);
-    LY_CHECK_ERR_RET(!dup, LOGMEM(ctx), NULL);
+    LY_CHECK_ERR_RET(!dup, LOGMEM(ctx->ctx), NULL);
     if (orig->parts) {
-        LY_ARRAY_CREATE_GOTO(ctx, dup->parts, LY_ARRAY_COUNT(orig->parts), ret, cleanup);
+        LY_ARRAY_CREATE_GOTO(ctx->ctx, dup->parts, LY_ARRAY_COUNT(orig->parts), ret, cleanup);
         (*((LY_ARRAY_COUNT_TYPE *)(dup->parts) - 1)) = LY_ARRAY_COUNT(orig->parts);
         memcpy(dup->parts, orig->parts, LY_ARRAY_COUNT(dup->parts) * sizeof *dup->parts);
     }
-    DUP_STRING_GOTO(ctx, orig->eapptag, dup->eapptag, ret, cleanup);
-    DUP_STRING_GOTO(ctx, orig->emsg, dup->emsg, ret, cleanup);
-    dup->exts = lysc_ext_instance_dup(ctx, orig->exts);
+    DUP_STRING_GOTO(ctx->ctx, orig->eapptag, dup->eapptag, ret, cleanup);
+    DUP_STRING_GOTO(ctx->ctx, orig->emsg, dup->emsg, ret, cleanup);
+
+    /* collect all range extensions */
+    if (tpdf_chain->count > tpdf_chain_last) {
+        i = tpdf_chain->count;
+        do {
+            --i;
+            tpdf_item = tpdf_chain->objs[i];
+            if (!tpdf_item->tpdf->type.range) {
+                continue;
+            }
+            COMPILE_EXTS_GOTO(ctx, tpdf_item->tpdf->type.range->exts, dup->exts, dup, ret, cleanup);
+        } while (i > tpdf_chain_last);
+    }
 
     return dup;
+
 cleanup:
     free(dup);
     (void) ret; /* set but not used due to the return type */
@@ -1595,6 +1611,17 @@ done:
     return ret;
 }
 
+/**
+ * @brief Compile union type.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] ptypes Parsed union types.
+ * @param[in] context_pnode Schema node where the type/typedef is placed to correctly find the base types.
+ * @param[in] context_flags Flags of the context node or the referencing typedef to correctly check status of referencing and referenced objects.
+ * @param[in] context_name Name of the context node or referencing typedef for logging.
+ * @param[out] utypes_p Array of compiled union types.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct lysp_node *context_pnode, uint16_t context_flags,
         const char *context_name, struct lysc_type ***utypes_p)
@@ -1608,6 +1635,8 @@ lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct ly
         ret = lys_compile_type(ctx, context_pnode, context_flags, context_name, &ptypes[u], &utypes[u + additional],
                 NULL, NULL);
         LY_CHECK_GOTO(ret, error);
+        LY_ATOMIC_INC_BARRIER(utypes[u + additional]->refcount);
+
         if (utypes[u + additional]->basetype == LY_TYPE_UNION) {
             /* add space for additional types from the union subtype */
             un_aux = (struct lysc_type_union *)utypes[u + additional];
@@ -1616,28 +1645,8 @@ lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct ly
 
             /* copy subtypes of the subtype union */
             for (LY_ARRAY_COUNT_TYPE v = 0; v < LY_ARRAY_COUNT(un_aux->types); ++v) {
-                if (un_aux->types[v]->basetype == LY_TYPE_LEAFREF) {
-                    struct lysc_type_leafref *lref;
-
-                    /* duplicate the whole structure because of the instance-specific path resolving for realtype */
-                    utypes[u + additional] = calloc(1, sizeof(struct lysc_type_leafref));
-                    LY_CHECK_ERR_GOTO(!utypes[u + additional], LOGMEM(ctx->ctx); ret = LY_EMEM, error);
-                    lref = (struct lysc_type_leafref *)utypes[u + additional];
-
-                    lref->basetype = LY_TYPE_LEAFREF;
-                    ret = lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)un_aux->types[v])->path, 0, 0, &lref->path);
-                    LY_CHECK_GOTO(ret, error);
-                    lref->refcount = 1;
-                    lref->require_instance = ((struct lysc_type_leafref *)un_aux->types[v])->require_instance;
-                    ret = lyplg_type_prefix_data_dup(ctx->ctx, LY_VALUE_SCHEMA_RESOLVED,
-                            ((struct lysc_type_leafref *)un_aux->types[v])->prefixes, (void **)&lref->prefixes);
-                    LY_CHECK_GOTO(ret, error);
-                    /* TODO extensions */
-
-                } else {
-                    utypes[u + additional] = un_aux->types[v];
-                    LY_ATOMIC_INC_BARRIER(un_aux->types[v]->refcount);
-                }
+                utypes[u + additional] = un_aux->types[v];
+                LY_ATOMIC_INC_BARRIER(un_aux->types[v]->refcount);
                 ++additional;
                 LY_ARRAY_INCREMENT(utypes);
             }
@@ -1664,7 +1673,68 @@ error:
 }
 
 /**
+ * @brief Allocate a new specific type structure according to the basetype.
+ *
+ * @param[in] basetype Base type of the new type.
+ * @return Specific type structure.
+ */
+static struct lysc_type *
+lys_new_type(LY_DATA_TYPE basetype)
+{
+    struct lysc_type *type = NULL;
+
+    switch (basetype) {
+    case LY_TYPE_BINARY:
+        type = calloc(1, sizeof(struct lysc_type_bin));
+        break;
+    case LY_TYPE_BITS:
+        type = calloc(1, sizeof(struct lysc_type_bits));
+        break;
+    case LY_TYPE_DEC64:
+        type = calloc(1, sizeof(struct lysc_type_dec));
+        break;
+    case LY_TYPE_STRING:
+        type = calloc(1, sizeof(struct lysc_type_str));
+        break;
+    case LY_TYPE_ENUM:
+        type = calloc(1, sizeof(struct lysc_type_enum));
+        break;
+    case LY_TYPE_INT8:
+    case LY_TYPE_UINT8:
+    case LY_TYPE_INT16:
+    case LY_TYPE_UINT16:
+    case LY_TYPE_INT32:
+    case LY_TYPE_UINT32:
+    case LY_TYPE_INT64:
+    case LY_TYPE_UINT64:
+        type = calloc(1, sizeof(struct lysc_type_num));
+        break;
+    case LY_TYPE_IDENT:
+        type = calloc(1, sizeof(struct lysc_type_identityref));
+        break;
+    case LY_TYPE_LEAFREF:
+        type = calloc(1, sizeof(struct lysc_type_leafref));
+        break;
+    case LY_TYPE_INST:
+        type = calloc(1, sizeof(struct lysc_type_instanceid));
+        break;
+    case LY_TYPE_UNION:
+        type = calloc(1, sizeof(struct lysc_type_union));
+        break;
+    case LY_TYPE_BOOL:
+    case LY_TYPE_EMPTY:
+        type = calloc(1, sizeof(struct lysc_type));
+        break;
+    case LY_TYPE_UNKNOWN:
+        break;
+    }
+
+    return type;
+}
+
+/**
  * @brief The core of the lys_compile_type() - compile information about the given type (from typedef or leaf/leaf-list).
+ *
  * @param[in] ctx Compile context.
  * @param[in] context_pnode Schema node where the type/typedef is placed to correctly find the base types.
  * @param[in] context_flags Flags of the context node or the referencing typedef to correctly check status of referencing and referenced objects.
@@ -1672,16 +1742,19 @@ error:
  * @param[in] type_p Parsed type to compile.
  * @param[in] basetype Base YANG built-in type of the type to compile.
  * @param[in] tpdfname Name of the type's typedef, serves as a flag - if it is leaf/leaf-list's type, it is NULL.
- * @param[in] base The latest base (compiled) type from which the current type is being derived.
- * @param[out] type Newly created type structure with the filled information about the type.
+ * @param[in] base Latest base (compiled) type from which the current type is being derived.
+ * @param[in] plugin Type plugin to use.
+ * @param[in] tpdf_chain Chain of the used typedefs, traversed backwards.
+ * @param[in] tpdf_chain_last Index of the last (backwards) typedef in @p tpdf_chain to use.
+ * @param[out] type Compiled type.
  * @return LY_ERR value.
  */
 static LY_ERR
 lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t context_flags, const char *context_name,
-        struct lysp_type *type_p, LY_DATA_TYPE basetype, const char *tpdfname, const struct lysc_type *base,
-        struct lysc_type **type)
+        const struct lysp_type *type_p, LY_DATA_TYPE basetype, const char *tpdfname, const struct lysc_type *base,
+        struct lyplg_type *plugin, struct ly_set *tpdf_chain, uint32_t tpdf_chain_last, struct lysc_type **type)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR rc = LY_SUCCESS;
     struct lysc_type_bin *bin;
     struct lysc_type_num *num;
     struct lysc_type_str *str;
@@ -1691,41 +1764,69 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
     struct lysc_type_identityref *idref;
     struct lysc_type_leafref *lref;
     struct lysc_type_union *un;
+    struct lys_type_item *tpdf_item;
+    const struct lysp_type *base_type_p;
+    uint32_t i;
+
+    /* alloc and init */
+    *type = lys_new_type(basetype);
+    LY_CHECK_ERR_GOTO(!(*type), LOGMEM(ctx->ctx), cleanup);
+
+    (*type)->basetype = basetype;
+    (*type)->plugin = plugin;
 
     switch (basetype) {
     case LY_TYPE_BINARY:
-        bin = (struct lysc_type_bin *)(*type);
+        bin = (struct lysc_type_bin *)*type;
 
         /* RFC 7950 9.8.1, 9.4.4 - length, number of octets it contains */
         if (type_p->length) {
-            LY_CHECK_RET(lys_compile_type_range(ctx, type_p->length, basetype, 1, 0,
-                    base ? ((struct lysc_type_bin *)base)->length : NULL, &bin->length));
+            LY_CHECK_GOTO(rc = lys_compile_type_range(ctx, type_p->length, basetype, 1, 0,
+                    base ? ((struct lysc_type_bin *)base)->length : NULL, &bin->length), cleanup);
             if (!tpdfname) {
-                COMPILE_EXTS_GOTO(ctx, type_p->length->exts, bin->length->exts, bin->length, ret, cleanup);
+                COMPILE_EXTS_GOTO(ctx, type_p->length->exts, bin->length->exts, bin->length, rc, cleanup);
             }
         }
         break;
     case LY_TYPE_BITS:
         /* RFC 7950 9.7 - bits */
-        bits = (struct lysc_type_bits *)(*type);
+        bits = (struct lysc_type_bits *)*type;
         if (type_p->bits) {
-            LY_CHECK_RET(lys_compile_type_enums(ctx, type_p->bits, basetype,
+            /* compile bits from this type */
+            LY_CHECK_GOTO(rc = lys_compile_type_enums(ctx, type_p->bits, basetype,
                     base ? (struct lysc_type_bitenum_item *)((struct lysc_type_bits *)base)->bits : NULL,
-                    (struct lysc_type_bitenum_item **)&bits->bits));
-        }
+                    (struct lysc_type_bitenum_item **)&bits->bits), cleanup);
+        } else if (base) {
+            /* recompile bits from the first superior type with bits */
+            assert(tpdf_chain->count > tpdf_chain_last);
+            base_type_p = NULL;
+            i = tpdf_chain->count;
+            do {
+                --i;
+                tpdf_item = tpdf_chain->objs[i];
 
-        if (!base && !type_p->flags) {
+                if (tpdf_item->tpdf->type.bits) {
+                    base_type_p = &tpdf_item->tpdf->type;
+                    break;
+                }
+            } while (i > tpdf_chain_last);
+            assert(base_type_p);
+
+            LY_CHECK_GOTO(rc = lys_compile_type_enums(ctx, base_type_p->bits, basetype, NULL,
+                    (struct lysc_type_bitenum_item **)&bits->bits), cleanup);
+        } else {
             /* type derived from bits built-in type must contain at least one bit */
             if (tpdfname) {
                 LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "bit", "bits type ", tpdfname);
             } else {
                 LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "bit", "bits type", "");
             }
-            return LY_EVALID;
+            rc = LY_EVALID;
+            goto cleanup;
         }
         break;
     case LY_TYPE_DEC64:
-        dec = (struct lysc_type_dec *)(*type);
+        dec = (struct lysc_type_dec *)*type;
 
         /* RFC 7950 9.3.4 - fraction-digits */
         if (!base) {
@@ -1735,7 +1836,8 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
                 } else {
                     LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "fraction-digits", "decimal64 type", "");
                 }
-                return LY_EVALID;
+                rc = LY_EVALID;
+                goto cleanup;
             }
             dec->fraction_digits = type_p->fraction_digits;
         } else {
@@ -1749,59 +1851,76 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
                     LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
                             "Invalid fraction-digits substatement for type not directly derived from decimal64 built-in type.");
                 }
-                return LY_EVALID;
+                rc = LY_EVALID;
+                goto cleanup;
             }
             dec->fraction_digits = ((struct lysc_type_dec *)base)->fraction_digits;
         }
 
         /* RFC 7950 9.2.4 - range */
         if (type_p->range) {
-            LY_CHECK_RET(lys_compile_type_range(ctx, type_p->range, basetype, 0, dec->fraction_digits,
-                    base ? ((struct lysc_type_dec *)base)->range : NULL, &dec->range));
+            LY_CHECK_GOTO(rc = lys_compile_type_range(ctx, type_p->range, basetype, 0, dec->fraction_digits,
+                    base ? ((struct lysc_type_dec *)base)->range : NULL, &dec->range), cleanup);
             if (!tpdfname) {
-                COMPILE_EXTS_GOTO(ctx, type_p->range->exts, dec->range->exts, dec->range, ret, cleanup);
+                COMPILE_EXTS_GOTO(ctx, type_p->range->exts, dec->range->exts, dec->range, rc, cleanup);
             }
         }
         break;
     case LY_TYPE_STRING:
-        str = (struct lysc_type_str *)(*type);
+        str = (struct lysc_type_str *)*type;
 
         /* RFC 7950 9.4.4 - length */
         if (type_p->length) {
-            LY_CHECK_RET(lys_compile_type_range(ctx, type_p->length, basetype, 1, 0,
-                    base ? ((struct lysc_type_str *)base)->length : NULL, &str->length));
+            LY_CHECK_GOTO(rc = lys_compile_type_range(ctx, type_p->length, basetype, 1, 0,
+                    base ? ((struct lysc_type_str *)base)->length : NULL, &str->length), cleanup);
             if (!tpdfname) {
-                COMPILE_EXTS_GOTO(ctx, type_p->length->exts, str->length->exts, str->length, ret, cleanup);
+                COMPILE_EXTS_GOTO(ctx, type_p->length->exts, str->length->exts, str->length, rc, cleanup);
             }
         } else if (base && ((struct lysc_type_str *)base)->length) {
-            str->length = lysc_range_dup(ctx->ctx, ((struct lysc_type_str *)base)->length);
+            str->length = lysc_range_dup(ctx, ((struct lysc_type_str *)base)->length, tpdf_chain, tpdf_chain_last);
         }
 
         /* RFC 7950 9.4.5 - pattern */
         if (type_p->patterns) {
-            LY_CHECK_RET(lys_compile_type_patterns(ctx, type_p->patterns,
-                    base ? ((struct lysc_type_str *)base)->patterns : NULL, &str->patterns));
+            LY_CHECK_GOTO(rc = lys_compile_type_patterns(ctx, type_p->patterns,
+                    base ? ((struct lysc_type_str *)base)->patterns : NULL, &str->patterns), cleanup);
         } else if (base && ((struct lysc_type_str *)base)->patterns) {
             str->patterns = lysc_patterns_dup(ctx->ctx, ((struct lysc_type_str *)base)->patterns);
         }
         break;
     case LY_TYPE_ENUM:
-        enumeration = (struct lysc_type_enum *)(*type);
+        enumeration = (struct lysc_type_enum *)*type;
 
         /* RFC 7950 9.6 - enum */
         if (type_p->enums) {
-            LY_CHECK_RET(lys_compile_type_enums(ctx, type_p->enums, basetype,
-                    base ? ((struct lysc_type_enum *)base)->enums : NULL, &enumeration->enums));
-        }
+            LY_CHECK_GOTO(rc = lys_compile_type_enums(ctx, type_p->enums, basetype,
+                    base ? ((struct lysc_type_enum *)base)->enums : NULL, &enumeration->enums), cleanup);
+        } else if (base) {
+            /* recompile enums from the first superior type with enums */
+            assert(tpdf_chain->count > tpdf_chain_last);
+            base_type_p = NULL;
+            i = tpdf_chain->count;
+            do {
+                --i;
+                tpdf_item = tpdf_chain->objs[i];
 
-        if (!base && !type_p->flags) {
+                if (tpdf_item->tpdf->type.enums) {
+                    base_type_p = &tpdf_item->tpdf->type;
+                    break;
+                }
+            } while (i > tpdf_chain_last);
+            assert(base_type_p);
+
+            LY_CHECK_GOTO(rc = lys_compile_type_enums(ctx, base_type_p->enums, basetype, NULL, &enumeration->enums), cleanup);
+        } else {
             /* type derived from enumerations built-in type must contain at least one enum */
             if (tpdfname) {
                 LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "enum", "enumeration type ", tpdfname);
             } else {
                 LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "enum", "enumeration type", "");
             }
-            return LY_EVALID;
+            rc = LY_EVALID;
+            goto cleanup;
         }
         break;
     case LY_TYPE_INT8:
@@ -1812,19 +1931,19 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
     case LY_TYPE_UINT32:
     case LY_TYPE_INT64:
     case LY_TYPE_UINT64:
-        num = (struct lysc_type_num *)(*type);
+        num = (struct lysc_type_num *)*type;
 
         /* RFC 6020 9.2.4 - range */
         if (type_p->range) {
-            LY_CHECK_RET(lys_compile_type_range(ctx, type_p->range, basetype, 0, 0,
-                    base ? ((struct lysc_type_num *)base)->range : NULL, &num->range));
+            LY_CHECK_GOTO(rc = lys_compile_type_range(ctx, type_p->range, basetype, 0, 0,
+                    base ? ((struct lysc_type_num *)base)->range : NULL, &num->range), cleanup);
             if (!tpdfname) {
-                COMPILE_EXTS_GOTO(ctx, type_p->range->exts, num->range->exts, num->range, ret, cleanup);
+                COMPILE_EXTS_GOTO(ctx, type_p->range->exts, num->range->exts, num->range, rc, cleanup);
             }
         }
         break;
     case LY_TYPE_IDENT:
-        idref = (struct lysc_type_identityref *)(*type);
+        idref = (struct lysc_type_identityref *)*type;
 
         /* RFC 7950 9.10.2 - base */
         if (type_p->bases) {
@@ -1838,19 +1957,29 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
                     LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
                             "Invalid base substatement for the type not directly derived from identityref built-in type.");
                 }
-                return LY_EVALID;
+                rc = LY_EVALID;
+                goto cleanup;
             }
-            LY_CHECK_RET(lys_compile_identity_bases(ctx, type_p->pmod, type_p->bases, NULL, &idref->bases));
-        }
+            LY_CHECK_GOTO(rc = lys_compile_identity_bases(ctx, type_p->pmod, type_p->bases, NULL, &idref->bases), cleanup);
+        } else if (base) {
+            /* copy all the bases */
+            const struct lysc_type_identityref *idref_base = (struct lysc_type_identityref *)base;
+            LY_ARRAY_COUNT_TYPE u;
 
-        if (!base && !type_p->flags) {
+            LY_ARRAY_CREATE_GOTO(ctx->ctx, idref->bases, LY_ARRAY_COUNT(idref_base->bases), rc, cleanup);
+            LY_ARRAY_FOR(idref_base->bases, u) {
+                idref->bases[u] = idref_base->bases[u];
+                LY_ARRAY_INCREMENT(idref->bases);
+            }
+        } else {
             /* type derived from identityref built-in type must contain at least one base */
             if (tpdfname) {
                 LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "base", "identityref type ", tpdfname);
             } else {
                 LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "base", "identityref type", "");
             }
-            return LY_EVALID;
+            rc = LY_EVALID;
+            goto cleanup;
         }
         break;
     case LY_TYPE_LEAFREF:
@@ -1866,7 +1995,8 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
                     LOGVAL(ctx->ctx, LYVE_SEMANTICS,
                             "Leafref type can be restricted by require-instance statement only in YANG 1.1 modules.");
                 }
-                return LY_EVALID;
+                rc = LY_EVALID;
+                goto cleanup;
             }
             lref->require_instance = type_p->require_instance;
         } else if (base) {
@@ -1879,32 +2009,35 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
         if (type_p->path) {
             LY_VALUE_FORMAT format;
 
-            LY_CHECK_RET(lyxp_expr_dup(ctx->ctx, type_p->path, 0, 0, &lref->path));
-            LY_CHECK_RET(lyplg_type_prefix_data_new(ctx->ctx, type_p->path->expr, strlen(type_p->path->expr),
-                    LY_VALUE_SCHEMA, type_p->pmod, &format, (void **)&lref->prefixes));
+            LY_CHECK_GOTO(rc = lyxp_expr_dup(ctx->ctx, type_p->path, 0, 0, &lref->path), cleanup);
+            LY_CHECK_GOTO(lyplg_type_prefix_data_new(ctx->ctx, type_p->path->expr, strlen(type_p->path->expr),
+                    LY_VALUE_SCHEMA, type_p->pmod, &format, (void **)&lref->prefixes), cleanup);
         } else if (base) {
-            LY_CHECK_RET(lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)base)->path, 0, 0, &lref->path));
-            LY_CHECK_RET(lyplg_type_prefix_data_dup(ctx->ctx, LY_VALUE_SCHEMA_RESOLVED,
-                    ((struct lysc_type_leafref *)base)->prefixes, (void **)&lref->prefixes));
-        } else if (tpdfname) {
-            LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "path", "leafref type ", tpdfname);
-            return LY_EVALID;
+            LY_CHECK_GOTO(rc = lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)base)->path, 0, 0, &lref->path), cleanup);
+            LY_CHECK_GOTO(rc = lyplg_type_prefix_data_dup(ctx->ctx, LY_VALUE_SCHEMA_RESOLVED,
+                    ((struct lysc_type_leafref *)base)->prefixes, (void **)&lref->prefixes), cleanup);
         } else {
-            LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "path", "leafref type", "");
-            return LY_EVALID;
+            /* type derived from leafref built-in type must contain path */
+            if (tpdfname) {
+                LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "path", "leafref type ", tpdfname);
+            } else {
+                LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "path", "leafref type", "");
+            }
+            rc = LY_EVALID;
+            goto cleanup;
         }
         break;
     case LY_TYPE_INST:
         /* RFC 7950 9.9.3 - require-instance */
         if (type_p->flags & LYS_SET_REQINST) {
-            ((struct lysc_type_instanceid *)(*type))->require_instance = type_p->require_instance;
+            ((struct lysc_type_instanceid *)*type)->require_instance = type_p->require_instance;
         } else {
             /* default is true */
-            ((struct lysc_type_instanceid *)(*type))->require_instance = 1;
+            ((struct lysc_type_instanceid *)*type)->require_instance = 1;
         }
         break;
     case LY_TYPE_UNION:
-        un = (struct lysc_type_union *)(*type);
+        un = (struct lysc_type_union *)*type;
 
         /* RFC 7950 7.4 - type */
         if (type_p->types) {
@@ -1918,20 +2051,32 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
                     LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
                             "Invalid type substatement for the type not directly derived from union built-in type.");
                 }
-                return LY_EVALID;
+                rc = LY_EVALID;
+                goto cleanup;
             }
             /* compile the type */
-            LY_CHECK_RET(lys_compile_type_union(ctx, type_p->types, context_pnode, context_flags, context_name, &un->types));
-        }
+            LY_CHECK_GOTO(rc = lys_compile_type_union(ctx, type_p->types, context_pnode, context_flags, context_name,
+                    &un->types), cleanup);
+        } else if (base) {
+            /* copy all the types */
+            const struct lysc_type_union *un_base = (struct lysc_type_union *)base;
+            LY_ARRAY_COUNT_TYPE u;
 
-        if (!base && !type_p->flags) {
+            LY_ARRAY_CREATE_GOTO(ctx->ctx, un->types, LY_ARRAY_COUNT(un_base->types), rc, cleanup);
+            LY_ARRAY_FOR(un_base->types, u) {
+                un->types[u] = un_base->types[u];
+                LY_ATOMIC_INC_BARRIER(un->types[u]->refcount);
+                LY_ARRAY_INCREMENT(un->types);
+            }
+        } else {
             /* type derived from union built-in type must contain at least one type */
             if (tpdfname) {
                 LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "type", "union type ", tpdfname);
             } else {
                 LOGVAL(ctx->ctx, LY_VCODE_MISSCHILDSTMT, "type", "union type", "");
             }
-            return LY_EVALID;
+            rc = LY_EVALID;
+            goto cleanup;
         }
         break;
     case LY_TYPE_BOOL:
@@ -1940,65 +2085,27 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
         break;
     }
 
-    if (tpdfname) {
-        switch (basetype) {
-        case LY_TYPE_BINARY:
-            type_p->compiled = *type;
-            *type = calloc(1, sizeof(struct lysc_type_bin));
-            break;
-        case LY_TYPE_BITS:
-            type_p->compiled = *type;
-            *type = calloc(1, sizeof(struct lysc_type_bits));
-            break;
-        case LY_TYPE_DEC64:
-            type_p->compiled = *type;
-            *type = calloc(1, sizeof(struct lysc_type_dec));
-            break;
-        case LY_TYPE_STRING:
-            type_p->compiled = *type;
-            *type = calloc(1, sizeof(struct lysc_type_str));
-            break;
-        case LY_TYPE_ENUM:
-            type_p->compiled = *type;
-            *type = calloc(1, sizeof(struct lysc_type_enum));
-            break;
-        case LY_TYPE_INT8:
-        case LY_TYPE_UINT8:
-        case LY_TYPE_INT16:
-        case LY_TYPE_UINT16:
-        case LY_TYPE_INT32:
-        case LY_TYPE_UINT32:
-        case LY_TYPE_INT64:
-        case LY_TYPE_UINT64:
-            type_p->compiled = *type;
-            *type = calloc(1, sizeof(struct lysc_type_num));
-            break;
-        case LY_TYPE_IDENT:
-            type_p->compiled = *type;
-            *type = calloc(1, sizeof(struct lysc_type_identityref));
-            break;
-        case LY_TYPE_LEAFREF:
-            type_p->compiled = *type;
-            *type = calloc(1, sizeof(struct lysc_type_leafref));
-            break;
-        case LY_TYPE_INST:
-            type_p->compiled = *type;
-            *type = calloc(1, sizeof(struct lysc_type_instanceid));
-            break;
-        case LY_TYPE_UNION:
-            type_p->compiled = *type;
-            *type = calloc(1, sizeof(struct lysc_type_union));
-            break;
-        case LY_TYPE_BOOL:
-        case LY_TYPE_EMPTY:
-        case LY_TYPE_UNKNOWN: /* just to complete switch */
-            break;
-        }
+    if (tpdf_chain->count > tpdf_chain_last) {
+        i = tpdf_chain->count;
+        do {
+            --i;
+            tpdf_item = tpdf_chain->objs[i];
+
+            /* compile previous typedefs extensions */
+            COMPILE_EXTS_GOTO(ctx, tpdf_item->tpdf->type.exts, (*type)->exts, *type, rc, cleanup);
+        } while (i > tpdf_chain_last);
     }
-    LY_CHECK_ERR_RET(!(*type), LOGMEM(ctx->ctx), LY_EMEM);
+
+    /* compile new parsed extensions */
+    COMPILE_EXTS_GOTO(ctx, type_p->exts, (*type)->exts, *type, rc, cleanup);
 
 cleanup:
-    return ret;
+    if (rc) {
+        LY_ATOMIC_INC_BARRIER((*type)->refcount);
+        lysc_type_free(&ctx->free_ctx, *type);
+        *type = NULL;
+    }
+    return rc;
 }
 
 LY_ERR
@@ -2007,16 +2114,13 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
 {
     LY_ERR ret = LY_SUCCESS;
     ly_bool dummyloops = 0;
-    struct type_context {
-        const struct lysp_tpdf *tpdf;
-        struct lysp_node *node;
-    } *tctx, *tctx_prev = NULL, *tctx_iter;
+    struct lys_type_item *tctx, *tctx_prev = NULL, *tctx_iter;
     LY_DATA_TYPE basetype = LY_TYPE_UNKNOWN;
-    struct lysc_type *base = NULL, *prev_type;
+    struct lysc_type *base = NULL;
     struct ly_set tpdf_chain = {0};
     struct lyplg_type *plugin;
 
-    (*type) = NULL;
+    *type = NULL;
     if (dflt) {
         *dflt = NULL;
     }
@@ -2046,7 +2150,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
             *dflt = (struct lysp_qname *)&tctx->tpdf->dflt;
         }
         if (dummyloops && (!units || *units) && dflt && *dflt) {
-            basetype = ((struct type_context *)tpdf_chain.objs[tpdf_chain.count - 1])->tpdf->type.compiled->basetype;
+            basetype = ((struct lys_type_item *)tpdf_chain.objs[tpdf_chain.count - 1])->tpdf->type.compiled->basetype;
             break;
         }
 
@@ -2076,7 +2180,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
         /* circular typedef reference detection */
         for (uint32_t u = 0; u < tpdf_chain.count; u++) {
             /* local part */
-            tctx_iter = (struct type_context *)tpdf_chain.objs[u];
+            tctx_iter = (struct lys_type_item *)tpdf_chain.objs[u];
             if (tctx_iter->tpdf == tctx->tpdf) {
                 LOGVAL(ctx->ctx, LYVE_REFERENCE,
                         "Invalid \"%s\" type reference - circular chain of types detected.", tctx->tpdf->name);
@@ -2087,7 +2191,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
         }
         for (uint32_t u = 0; u < ctx->tpdf_chain.count; u++) {
             /* global part for unions corner case */
-            tctx_iter = (struct type_context *)ctx->tpdf_chain.objs[u];
+            tctx_iter = (struct lys_type_item *)ctx->tpdf_chain.objs[u];
             if (tctx_iter->tpdf == tctx->tpdf) {
                 LOGVAL(ctx->ctx, LYVE_REFERENCE,
                         "Invalid \"%s\" type reference - circular chain of types detected.", tctx->tpdf->name);
@@ -2109,68 +2213,23 @@ preparenext:
     }
     free(tctx);
 
-    /* allocate type according to the basetype */
-    switch (basetype) {
-    case LY_TYPE_BINARY:
-        *type = calloc(1, sizeof(struct lysc_type_bin));
-        break;
-    case LY_TYPE_BITS:
-        *type = calloc(1, sizeof(struct lysc_type_bits));
-        break;
-    case LY_TYPE_BOOL:
-    case LY_TYPE_EMPTY:
-        *type = calloc(1, sizeof(struct lysc_type));
-        break;
-    case LY_TYPE_DEC64:
-        *type = calloc(1, sizeof(struct lysc_type_dec));
-        break;
-    case LY_TYPE_ENUM:
-        *type = calloc(1, sizeof(struct lysc_type_enum));
-        break;
-    case LY_TYPE_IDENT:
-        *type = calloc(1, sizeof(struct lysc_type_identityref));
-        break;
-    case LY_TYPE_INST:
-        *type = calloc(1, sizeof(struct lysc_type_instanceid));
-        break;
-    case LY_TYPE_LEAFREF:
-        *type = calloc(1, sizeof(struct lysc_type_leafref));
-        break;
-    case LY_TYPE_STRING:
-        *type = calloc(1, sizeof(struct lysc_type_str));
-        break;
-    case LY_TYPE_UNION:
-        *type = calloc(1, sizeof(struct lysc_type_union));
-        break;
-    case LY_TYPE_INT8:
-    case LY_TYPE_UINT8:
-    case LY_TYPE_INT16:
-    case LY_TYPE_UINT16:
-    case LY_TYPE_INT32:
-    case LY_TYPE_UINT32:
-    case LY_TYPE_INT64:
-    case LY_TYPE_UINT64:
-        *type = calloc(1, sizeof(struct lysc_type_num));
-        break;
-    case LY_TYPE_UNKNOWN:
+    /* basic checks */
+    if (basetype == LY_TYPE_UNKNOWN) {
         LOGVAL(ctx->ctx, LYVE_REFERENCE,
                 "Referenced type \"%s\" not found.", tctx_prev ? tctx_prev->tpdf->type.name : type_p->name);
         ret = LY_EVALID;
         goto cleanup;
     }
-    LY_CHECK_ERR_GOTO(!(*type), LOGMEM(ctx->ctx), cleanup);
     if (~type_substmt_map[basetype] & type_p->flags) {
         LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Invalid type restrictions for %s type.",
                 ly_data_type2str[basetype]);
-        free(*type);
-        (*type) = NULL;
         ret = LY_EVALID;
         goto cleanup;
     }
 
     /* get restrictions from the referred typedefs */
     for (uint32_t u = tpdf_chain.count - 1; u + 1 > 0; --u) {
-        tctx = (struct type_context *)tpdf_chain.objs[u];
+        tctx = (struct lys_type_item *)tpdf_chain.objs[u];
 
         /* remember the typedef context for circular check */
         ret = ly_set_add(&ctx->tpdf_chain, tctx, 1, NULL);
@@ -2195,15 +2254,14 @@ preparenext:
         }
         assert(plugin);
 
-        if ((basetype != LY_TYPE_LEAFREF) && (u != tpdf_chain.count - 1) && !(tctx->tpdf->type.flags) &&
-                (plugin == base->plugin)) {
+        if ((basetype != LY_TYPE_LEAFREF) && (u != tpdf_chain.count - 1) && !tctx->tpdf->type.flags &&
+                !tctx->tpdf->type.exts && (plugin == base->plugin)) {
             /* no change, reuse the compiled base */
             ((struct lysp_tpdf *)tctx->tpdf)->type.compiled = base;
             LY_ATOMIC_INC_BARRIER(base->refcount);
             continue;
         }
 
-        LY_ATOMIC_INC_BARRIER((*type)->refcount);
         if (~type_substmt_map[basetype] & tctx->tpdf->type.flags) {
             LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Invalid type \"%s\" restriction(s) for %s type.",
                     tctx->tpdf->name, ly_data_type2str[basetype]);
@@ -2217,39 +2275,30 @@ preparenext:
             goto cleanup;
         }
 
-        (*type)->basetype = basetype;
-        (*type)->plugin = plugin;
-
-        /* collect extensions */
-        COMPILE_EXTS_GOTO(ctx, tctx->tpdf->type.exts, (*type)->exts, (*type), ret, cleanup);
-
-        /* compile the new typedef */
-        prev_type = *type;
-        ret = lys_compile_type_(ctx, tctx->node, tctx->tpdf->flags, tctx->tpdf->name,
-                &((struct lysp_tpdf *)tctx->tpdf)->type, basetype, tctx->tpdf->name, base, type);
+        /* compile the typedef type */
+        ret = lys_compile_type_(ctx, tctx->node, tctx->tpdf->flags, tctx->tpdf->name, &tctx->tpdf->type, basetype,
+                tctx->tpdf->name, base, plugin, &tpdf_chain, u + 1, &base);
         LY_CHECK_GOTO(ret, cleanup);
-        base = prev_type;
+
+        /* store separately compiled typedef type to be reused */
+        ((struct lysp_tpdf *)tctx->tpdf)->type.compiled = base;
+        LY_ATOMIC_INC_BARRIER(base->refcount);
     }
+
     /* remove the processed typedef contexts from the stack for circular check */
     ctx->tpdf_chain.count = ctx->tpdf_chain.count - tpdf_chain.count;
 
     /* process the type definition in leaf */
-    if (type_p->flags || !base || (basetype == LY_TYPE_LEAFREF)) {
-        /* get restrictions from the node itself */
-        (*type)->basetype = basetype;
-        (*type)->plugin = base ? base->plugin : lyplg_type_plugin_find("", NULL, ly_data_type2str[basetype]);
-        LY_ATOMIC_INC_BARRIER((*type)->refcount);
+    if (type_p->flags || type_p->exts || !base || (basetype == LY_TYPE_LEAFREF)) {
+        /* leaf type has changes that need to be compiled into the type */
+        plugin = base ? base->plugin : lyplg_type_plugin_find("", NULL, ly_data_type2str[basetype]);
         ret = lys_compile_type_(ctx, context_pnode, context_flags, context_name, (struct lysp_type *)type_p, basetype,
-                NULL, base, type);
+                NULL, base, plugin, &tpdf_chain, 0, type);
         LY_CHECK_GOTO(ret, cleanup);
-    } else if ((basetype != LY_TYPE_BOOL) && (basetype != LY_TYPE_EMPTY)) {
-        /* no specific restriction in leaf's type definition, copy from the base */
-        free(*type);
-        (*type) = base;
-        LY_ATOMIC_INC_BARRIER((*type)->refcount);
+    } else {
+        /* no changes of the type in the leaf, just use the base compiled type */
+        *type = base;
     }
-
-    COMPILE_EXTS_GOTO(ctx, type_p->exts, (*type)->exts, (*type), ret, cleanup);
 
 cleanup:
     ly_set_erase(&tpdf_chain, free);
@@ -2874,6 +2923,7 @@ lys_compile_node_type(struct lysc_ctx *ctx, struct lysp_node *context_node, stru
 
     LY_CHECK_RET(lys_compile_type(ctx, context_node, leaf->flags, leaf->name, type_p, &leaf->type,
             leaf->units ? NULL : &leaf->units, &dflt));
+    LY_ATOMIC_INC_BARRIER(leaf->type->refcount);
 
     /* store default value, if any */
     if (dflt && !(leaf->flags & LYS_SET_DFLT)) {

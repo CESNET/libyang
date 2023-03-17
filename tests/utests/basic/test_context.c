@@ -1,4 +1,4 @@
-/*
+/**
  * @file test_context.c
  * @author: Radek Krejci <rkrejci@cesnet.cz>
  * @brief unit tests for functions from context.c
@@ -298,8 +298,8 @@ test_models(void **state)
     assert_int_equal(LY_EVALID, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod1));
     lys_unres_glob_erase(&unres);
     ly_in_free(in, 0);
-    CHECK_LOG_CTX("Parsing module \"y\" failed.", NULL,
-            "Name collision between module and submodule of name \"y\".", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"y\" failed.", NULL);
+    CHECK_LOG_CTX("Name collision between module and submodule of name \"y\".", "Line number 1.");
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module a {namespace urn:a;prefix a;include y;revision 2018-10-30; }", &in));
     assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod1));
@@ -308,8 +308,8 @@ test_models(void **state)
     assert_int_equal(LY_EVALID, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod1));
     lys_unres_glob_erase(&unres);
     ly_in_free(in, 0);
-    CHECK_LOG_CTX("Parsing module \"y\" failed.", NULL,
-            "Name collision between module and submodule of name \"y\".", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"y\" failed.", NULL);
+    CHECK_LOG_CTX("Name collision between module and submodule of name \"y\".", "Line number 1.");
 
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule y {belongs-to b {prefix b;}}");
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module b {namespace urn:b;prefix b;include y;}", &in));
@@ -317,10 +317,10 @@ test_models(void **state)
     lys_unres_glob_revert(UTEST_LYCTX, &unres);
     lys_unres_glob_erase(&unres);
     ly_in_free(in, 0);
-    CHECK_LOG_CTX("Parsing module \"b\" failed.", NULL,
-            "Including \"y\" submodule into \"b\" failed.", NULL,
-            "Parsing submodule failed.", NULL,
-            "Name collision between submodules of name \"y\".", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"b\" failed.", NULL);
+    CHECK_LOG_CTX("Including \"y\" submodule into \"b\" failed.", NULL);
+    CHECK_LOG_CTX("Parsing submodule failed.", NULL);
+    CHECK_LOG_CTX("Name collision between submodules of name \"y\".", "Line number 1.");
 
     /* selecting correct revision of the submodules */
     ly_ctx_reset_latests(UTEST_LYCTX);
@@ -337,19 +337,6 @@ test_models(void **state)
     ly_in_free(in, 0);
     assert_non_null(mod1->compiled);
     assert_non_null(mod1->parsed);
-
-#if 0
-    /* TODO in case we are able to remove the parsed schema, here we will test how it will handle missing import parsed schema */
-
-    assert_int_equal(LY_SUCCESS, ly_in_new_memory("module z {namespace urn:z;prefix z;import w {prefix w;revision-date 2018-10-24;}}", &in));
-    /* mod1->parsed is necessary to compile mod2 because of possible groupings, typedefs, ... */
-    ly_ctx_set_module_imp_clb(UTEST_LYCTX, NULL, NULL);
-    assert_int_equal(LY_ENOTFOUND, lys_create_module(UTEST_LYCTX, in, LYS_IN_YANG, 1, NULL, NULL, &mod2));
-    /*logbuf_assert("Unable to reload \"w\" module to import it into \"z\", source data not found.");*/
-    CHECK_LOG_CTX("Recompilation of module \"w\" failed.", NULL);
-    assert_null(mod2);
-    ly_in_free(in, 0);
-#endif
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module z {namespace urn:z;prefix z;import w {prefix w;revision-date 2018-10-24;}}", &in));
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module w {namespace urn:w;prefix w;revision 2018-10-24;}");
@@ -425,6 +412,7 @@ test_imports(void **state)
             "import a {prefix a;}"
             "}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
+    ly_err_clean(UTEST_LYCTX, NULL);
 }
 
 static void

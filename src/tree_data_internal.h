@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief internal functions for YANG schema trees.
  *
- * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -34,31 +34,31 @@ struct lysc_module;
 #define LY_LYB_SUFFIX_LEN 4
 
 /**
- * @brief Internal structure for remembering "used" instances of lists with duplicate instances allowed.
+ * @brief Internal item structure for remembering "used" instances of duplicate node instances.
  */
 struct lyd_dup_inst {
-    struct ly_set *inst_set;
+    struct ly_set *set;
     uint32_t used;
 };
 
 /**
- * @brief Update a found inst using a duplicate instance cache. Needs to be called for every "used"
+ * @brief Update a found inst using a duplicate instance cache hash table. Needs to be called for every "used"
  * (that should not be considered next time) instance.
  *
  * @param[in,out] inst Found instance, is updated so that the same instance is not returned twice.
  * @param[in] siblings Siblings where @p inst was found.
- * @param[in,out] dup_inst_cache Duplicate instance cache.
+ * @param[in] dup_inst_ht Duplicate instance cache hash table.
  * @return LY_ERR value.
  */
 LY_ERR lyd_dup_inst_next(struct lyd_node **inst, const struct lyd_node *siblings,
-        struct lyd_dup_inst **dup_inst_cache);
+        struct hash_table **dup_inst_ht);
 
 /**
  * @brief Free duplicate instance cache.
  *
- * @param[in] dup_inst Duplicate instance cache to free.
+ * @param[in] dup_inst Duplicate instance cache hash table to free.
  */
-void lyd_dup_inst_free(struct lyd_dup_inst *dup_inst);
+void lyd_dup_inst_free(struct hash_table *dup_inst_ht);
 
 /**
  * @brief Just like ::lys_getnext() but iterates over all data instances of the schema nodes.
@@ -280,11 +280,13 @@ LY_ERR lyd_create_inner(const struct lysc_node *schema, struct lyd_node **node);
  *
  * @param[in] schema Schema node of the new data node.
  * @param[in] predicates Compiled key list predicates.
+ * @param[in] vars Array of defined variables to use in predicates, may be NULL.
  * @param[out] node Created node.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *predicates, struct lyd_node **node);
+LY_ERR lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *predicates,
+        const struct lyxp_var *vars, struct lyd_node **node);
 
 /**
  * @brief Create a list with all its keys (cannot be used for key-less list).

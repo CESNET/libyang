@@ -172,7 +172,7 @@ lyb_hash_siblings(struct lysc_node *sibling, struct hash_table **ht_p)
                 if (lyht_insert(ht, &sibling, lyb_get_hash(sibling, i), NULL)) {
                     LOGINT(sibling->module->ctx);
                     lyht_set_cb(ht, lyb_hash_equal_cb);
-                    lyht_free(ht);
+                    lyht_free(ht, NULL);
                     return LY_EINT;
                 }
                 lyht_set_cb(ht, lyb_hash_equal_cb);
@@ -184,7 +184,7 @@ lyb_hash_siblings(struct lysc_node *sibling, struct hash_table **ht_p)
         if (i == LYB_HASH_BITS) {
             /* wow */
             LOGINT(sibling->module->ctx);
-            lyht_free(ht);
+            lyht_free(ht, NULL);
             return LY_EINT;
         }
     }
@@ -1258,30 +1258,21 @@ lyb_print_siblings(struct ly_out *out, const struct lyd_node *node, struct lyd_l
 {
     struct hash_table *sibling_ht = NULL;
     const struct lys_module *prev_mod = NULL;
-    ly_bool top_level;
-
-    top_level = !LY_ARRAY_COUNT(lybctx->lybctx->siblings);
 
     LY_CHECK_RET(lyb_write_start_siblings(out, lybctx->lybctx));
 
-    if (top_level) {
-        /* write all the siblings */
-        LY_LIST_FOR(node, node) {
-            /* do not reuse sibling hash tables from different modules */
-            if (!node->schema || (node->schema->module != prev_mod)) {
-                sibling_ht = NULL;
-                prev_mod = node->schema ? node->schema->module : NULL;
-            }
-
-            LY_CHECK_RET(lyb_print_node(out, &node, &sibling_ht, lybctx));
-
-            if (!(lybctx->print_options & LYD_PRINT_WITHSIBLINGS)) {
-                break;
-            }
+    /* write all the siblings */
+    LY_LIST_FOR(node, node) {
+        /* do not reuse top-level sibling hash tables from different modules */
+        if (!node->schema || (!lysc_data_parent(node->schema) && (node->schema->module != prev_mod))) {
+            sibling_ht = NULL;
+            prev_mod = node->schema ? node->schema->module : NULL;
         }
-    } else {
-        LY_LIST_FOR(node, node) {
-            LY_CHECK_RET(lyb_print_node(out, &node, &sibling_ht, lybctx));
+
+        LY_CHECK_RET(lyb_print_node(out, &node, &sibling_ht, lybctx));
+
+        if (!lyd_parent(node) && !(lybctx->print_options & LYD_PRINT_WITHSIBLINGS)) {
+            break;
         }
     }
 
@@ -1299,9 +1290,9 @@ lyb_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options
     const struct ly_ctx *ctx = root ? LYD_CTX(root) : NULL;
 
     lybctx = calloc(1, sizeof *lybctx);
-    LY_CHECK_ERR_RET(!lybctx, LOGMEM(ctx), LY_EMEM);
+    LY_CHECK_ERR_GOTO(!lybctx, LOGMEM(ctx); ret = LY_EMEM, cleanup);
     lybctx->lybctx = calloc(1, sizeof *lybctx->lybctx);
-    LY_CHECK_ERR_RET(!lybctx->lybctx, LOGMEM(ctx), LY_EMEM);
+    LY_CHECK_ERR_GOTO(!lybctx->lybctx, LOGMEM(ctx); ret = LY_EMEM, cleanup);
 
     lybctx->print_options = options;
     if (root) {

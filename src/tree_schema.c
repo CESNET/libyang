@@ -37,6 +37,7 @@
 #include "parser_internal.h"
 #include "parser_schema.h"
 #include "path.h"
+#include "plugins_exts.h"
 #include "plugins_internal.h"
 #include "schema_compile.h"
 #include "schema_compile_amend.h"
@@ -164,7 +165,11 @@ lys_getnext_(const struct lysc_node *last, const struct lysc_node *parent, const
         const struct lysc_ext_instance *ext, uint32_t options)
 {
     const struct lysc_node *next = NULL;
-    ly_bool action_flag = 0, notif_flag = 0;
+    ly_bool action_flag = 0, notif_flag = 0, sm_flag = options & LYS_GETNEXT_WITHSCHEMAMOUNT ? 0 : 1;
+    LY_ARRAY_COUNT_TYPE u;
+    struct ly_ctx *sm_ctx = NULL;
+    const struct lys_module *mod;
+    uint32_t idx;
 
     LY_CHECK_ARG_RET(NULL, parent || module || ext, NULL);
 
@@ -172,7 +177,7 @@ next:
     if (!last) {
         /* first call */
 
-        /* get know where to start */
+        /* learn where to start */
         if (parent) {
             /* schema subtree */
             next = last = lysc_node_child(parent);
@@ -204,8 +209,29 @@ next:
 
 repeat:
     if (!next) {
-        /* possibly go back to parent */
-        if (last && (last->parent != parent)) {
+        if (last && !sm_flag && parent && (last->module->ctx != parent->module->ctx)) {
+            sm_flag = 1;
+
+            /* find the module of last */
+            sm_ctx = last->module->ctx;
+            idx = 0;
+            while ((mod = ly_ctx_get_module_iter(sm_ctx, &idx))) {
+                if (mod == last->module) {
+                    break;
+                }
+            }
+            assert(mod);
+
+            /* get node from the next mounted module */
+            while (!next && (mod = ly_ctx_get_module_iter(sm_ctx, &idx))) {
+                if (!mod->implemented) {
+                    continue;
+                }
+
+                next = lys_getnext(NULL, NULL, mod->compiled, options & ~LYS_GETNEXT_WITHSCHEMAMOUNT);
+            }
+        } else if (last && (last->parent != parent)) {
+            /* go back to parent */
             last = last->parent;
             goto next;
         } else if (!action_flag) {
@@ -225,6 +251,35 @@ repeat:
                 next = (struct lysc_node *)lysc_node_notifs(parent);
             } else {
                 next = (struct lysc_node *)module->notifs;
+            }
+        } else if (!sm_flag) {
+            sm_flag = 1;
+            if (parent) {
+                LY_ARRAY_FOR(parent->exts, u) {
+                    if (!strcmp(parent->exts[u].def->name, "mount-point") &&
+                            !strcmp(parent->exts[u].def->module->name, "ietf-yang-schema-mount")) {
+                        lyplg_ext_schema_mount_create_context(&parent->exts[u], &sm_ctx);
+                        if (sm_ctx) {
+                            /* some usable context created */
+                            break;
+                        }
+                    }
+                }
+                if (sm_ctx) {
+                    /* get the first node from the first usable module */
+                    idx = 0;
+                    while (!next && (mod = ly_ctx_get_module_iter(sm_ctx, &idx))) {
+                        if (!mod->implemented) {
+                            continue;
+                        }
+
+                        next = lys_getnext(NULL, NULL, mod->compiled, options & ~LYS_GETNEXT_WITHSCHEMAMOUNT);
+                    }
+                    if (!next) {
+                        /* no nodes found */
+                        ly_ctx_destroy(sm_ctx);
+                    }
+                }
             }
         } else {
             return NULL;
@@ -545,8 +600,8 @@ lys_find_lypath_atoms(const struct ly_path *path, struct ly_set **set)
     LY_ARRAY_FOR(path, u) {
         /* add nodes from the path */
         LY_CHECK_GOTO(ret = ly_set_add(*set, (void *)path[u].node, 0, NULL), cleanup);
-        if (path[u].pred_type == LY_PATH_PREDTYPE_LIST) {
-            LY_ARRAY_FOR(path[u].predicates, v) {
+        LY_ARRAY_FOR(path[u].predicates, v) {
+            if ((path[u].predicates[v].type == LY_PATH_PREDTYPE_LIST) || (path[u].predicates[v].type == LY_PATH_PREDTYPE_LIST_VAR)) {
                 /* add all the keys in a predicate */
                 LY_CHECK_GOTO(ret = ly_set_add(*set, (void *)path[u].predicates[v].key, 0, NULL), cleanup);
             }

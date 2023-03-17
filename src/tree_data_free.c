@@ -166,7 +166,7 @@ lyd_free_subtree(struct lyd_node *node, ly_bool top)
         ly_free_prefix_data(opaq->format, opaq->val_prefix_data);
     } else if (node->schema->nodetype & LYD_NODE_INNER) {
         /* remove children hash table in case of inner data node */
-        lyht_free(((struct lyd_node_inner *)node)->children_ht);
+        lyht_free(((struct lyd_node_inner *)node)->children_ht, NULL);
         ((struct lyd_node_inner *)node)->children_ht = NULL;
 
         /* free the children */

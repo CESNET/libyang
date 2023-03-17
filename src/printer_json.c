@@ -294,18 +294,21 @@ json_print_member2(struct jsonpr_ctx *pctx, const struct lyd_node *parent, LY_VA
 
     /* determine prefix string */
     if (name) {
-        const struct lys_module *mod;
-
         switch (format) {
         case LY_VALUE_JSON:
             module_name = name->module_name;
             break;
-        case LY_VALUE_XML:
-            mod = ly_ctx_get_module_implemented_ns(pctx->ctx, name->module_ns);
+        case LY_VALUE_XML: {
+            const struct lys_module *mod = NULL;
+
+            if (name->module_ns) {
+                mod = ly_ctx_get_module_implemented_ns(pctx->ctx, name->module_ns);
+            }
             if (mod) {
                 module_name = mod->name;
             }
             break;
+        }
         default:
             /* cannot be created */
             LOGINT_RET(pctx->ctx);

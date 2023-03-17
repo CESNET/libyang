@@ -1,4 +1,4 @@
-/*
+/**
  * @file test_set.c
  * @author: Radek Krejci <rkrejci@cesnet.cz>
  * @brief unit tests for functions from set.c

@@ -411,7 +411,7 @@ lys_compile_iffeature(const struct ly_ctx *ctx, const struct lysp_qname *qname, 
     LY_ARRAY_CREATE_RET(ctx, iff->features, f_size, LY_EMEM);
     iff->expr = calloc((j = (expr_size / IFF_RECORDS_IN_BYTE) + ((expr_size % IFF_RECORDS_IN_BYTE) ? 1 : 0)), sizeof *iff->expr);
     stack.stack = malloc(expr_size * sizeof *stack.stack);
-    LY_CHECK_ERR_GOTO(!stack.stack || !iff->expr, LOGMEM(ctx); rc = LY_EMEM, error);
+    LY_CHECK_ERR_GOTO(!stack.stack || !iff->expr, LOGMEM(ctx); rc = LY_EMEM, cleanup);
 
     stack.size = expr_size;
     f_size--; expr_size--; /* used as indexes from now */
@@ -473,7 +473,7 @@ lys_compile_iffeature(const struct ly_ctx *ctx, const struct lysp_qname *qname, 
                 LOGVAL(ctx, LYVE_SYNTAX_YANG, "Invalid value \"%s\" of if-feature - unable to find feature \"%.*s\".",
                         qname->str, (int)(j - i), &c[i]);
                 rc = LY_EVALID;
-                goto error;
+                goto cleanup;
             }
             iff->features[f_size] = f;
             LY_ARRAY_INCREMENT(iff->features);
@@ -489,14 +489,16 @@ lys_compile_iffeature(const struct ly_ctx *ctx, const struct lysp_qname *qname, 
         /* not all expected operators and operands found */
         LOGVAL(ctx, LYVE_SYNTAX_YANG, "Invalid value \"%s\" of if-feature - processing error.", qname->str);
         rc = LY_EINT;
-    } else {
-        rc = LY_SUCCESS;
     }
 
-error:
-    /* cleanup */
+cleanup:
+    if (rc) {
+        LY_ARRAY_FREE(iff->features);
+        iff->features = NULL;
+        free(iff->expr);
+        iff->expr = NULL;
+    }
     iff_stack_clean(&stack);
-
     return rc;
 }
 

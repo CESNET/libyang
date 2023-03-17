@@ -1,9 +1,10 @@
-/*
+/**
  * @file test_tree_schema_compile.c
- * @author: Radek Krejci <rkrejci@cesnet.cz>
+ * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for functions from parser_yang.c
  *
- * Copyright (c) 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2018 - 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -82,6 +83,7 @@ test_module(void **state)
     ly_in_free(in, 0);
     assert_int_equal(0, mod->implemented);
     assert_int_equal(LY_EINVAL, lys_set_implemented(mod, feats));
+    CHECK_LOG_CTX("Feature \"invalid\" not found in module \"test\".", NULL);
     assert_int_equal(LY_SUCCESS, lys_set_implemented(mod, NULL));
     assert_non_null(mod->compiled);
     assert_string_equal("test", mod->name);
@@ -112,7 +114,7 @@ test_module(void **state)
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
     assert_int_equal(LY_EEXIST, lys_parse(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &mod));
     ly_in_free(in, 0);
-    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "/aa:a");
+    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "Path \"/aa:a\".");
 }
 
 static void
@@ -127,7 +129,7 @@ test_name_collisions(void **state)
             "  leaf c {type empty;}"
             "}";
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, yang_data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"c\" of data definition/RPC/action/notification statement.", "/a:c");
+    CHECK_LOG_CTX("Duplicate identifier \"c\" of data definition/RPC/action/notification statement.", "Path \"/a:c\".");
     UTEST_LOG_CLEAN;
 
     yang_data = "module a {namespace urn:a;prefix a;"
@@ -136,7 +138,7 @@ test_name_collisions(void **state)
             "  notification c;"
             "}";
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, yang_data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"c\" of data definition/RPC/action/notification statement.", "/a:c");
+    CHECK_LOG_CTX("Duplicate identifier \"c\" of data definition/RPC/action/notification statement.", "Path \"/a:c\".");
     UTEST_LOG_CLEAN;
 
     yang_data = "module a {namespace urn:a;prefix a;"
@@ -145,7 +147,7 @@ test_name_collisions(void **state)
             "  rpc c;"
             "}";
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, yang_data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"c\" of data definition/RPC/action/notification statement.", "/a:c");
+    CHECK_LOG_CTX("Duplicate identifier \"c\" of data definition/RPC/action/notification statement.", "Path \"/a:c\".");
     UTEST_LOG_CLEAN;
 
     yang_data = "module a {namespace urn:a;prefix a;"
@@ -159,7 +161,7 @@ test_name_collisions(void **state)
             "  }"
             "}";
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, yang_data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"c\" of data definition/RPC/action/notification statement.", "/a:ch/c/c");
+    CHECK_LOG_CTX("Duplicate identifier \"c\" of data definition/RPC/action/notification statement.", "Path \"/a:ch/c/c\".");
     UTEST_LOG_CLEAN;
 
     /* nested */
@@ -168,7 +170,7 @@ test_name_collisions(void **state)
             "container a;"
             "}}}";
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, yang_data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "/a:c/l/a");
+    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "Path \"/a:c/l/a\".");
     UTEST_LOG_CLEAN;
 
     yang_data = "module a {yang-version 1.1;namespace urn:a;prefix a;container c { list l {key \"k\"; leaf k {type string;}"
@@ -176,7 +178,7 @@ test_name_collisions(void **state)
             "notification a;"
             "}}}";
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, yang_data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "/a:c/l/a");
+    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "Path \"/a:c/l/a\".");
     UTEST_LOG_CLEAN;
 
     yang_data = "module a {yang-version 1.1;namespace urn:a;prefix a;container c { list l {key \"k\"; leaf k {type string;}"
@@ -184,7 +186,7 @@ test_name_collisions(void **state)
             "action a;"
             "}}}";
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, yang_data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "/a:c/l/a");
+    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "Path \"/a:c/l/a\".");
     UTEST_LOG_CLEAN;
 
     /* grouping */
@@ -250,15 +252,6 @@ test_node_leaflist(void **state)
     assert_non_null(((struct lysc_type_leafref *)type)->realtype);
     assert_int_equal(LY_TYPE_INT8, ((struct lysc_type_leafref *)type)->realtype->basetype);
 
-    /* now test for string type is in file ./tests/utests/types/string.c */
-#if 0
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module b {namespace urn:b;prefix b;leaf-list ll {type string;}}", LYS_IN_YANG, &mod));
-    assert_non_null(mod->compiled);
-    assert_non_null((ll = (struct lysc_node_leaflist *)mod->compiled->data));
-    assert_int_equal(0, ll->min);
-    assert_int_equal((uint32_t)-1, ll->max);
-#endif
-
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module c {yang-version 1.1;namespace urn:c;prefix c;typedef mytype {type int8;default 10;}"
             "leaf-list ll1 {type mytype;default 1; default 1; config false;}"
             "leaf-list ll2 {type mytype; ordered-by user;}}", LYS_IN_YANG, &mod));
@@ -304,7 +297,7 @@ test_node_leaflist(void **state)
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;leaf-list ll {type empty;}}",
             LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.", "/aa:ll");
+    CHECK_LOG_CTX("Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.", "Path \"/aa:ll\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {yang-version 1.1;namespace urn:bb;prefix bb;leaf-list ll {type empty; default x;}}", LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Invalid default - value does not fit the type (Invalid empty value length 1.).", "Schema location \"/bb:ll\".");
@@ -317,12 +310,13 @@ test_node_leaflist(void **state)
     assert_int_equal(3, LY_ARRAY_COUNT(ll->dflts));
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd {yang-version 1.1;namespace urn:dd;prefix dd;"
             "leaf-list ll {type string; default one;default two;default one;}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Configuration leaf-list has multiple defaults of the same value \"one\".", "/dd:ll");
+    CHECK_LOG_CTX("Configuration leaf-list has multiple defaults of the same value \"one\".", "Path \"/dd:ll\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {yang-version 1.1; namespace urn:ee;prefix ee;"
             "leaf ref {type instance-identifier {require-instance true;} default \"/ee:g\";}}", LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Invalid default - value does not fit the type "
             "(Invalid instance-identifier \"/ee:g\" value - semantic error.).", "Schema location \"/ee:ref\".");
+    CHECK_LOG_CTX("Not found node \"g\" in path.", "Schema location \"/ee:ref\".");
 }
 
 static void
@@ -412,11 +406,11 @@ test_node_list(void **state)
 
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;list l;}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Missing key in list representing configuration data.", "/aa:l");
+    CHECK_LOG_CTX("Missing key in list representing configuration data.", "Path \"/aa:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {yang-version 1.1; namespace urn:bb;prefix bb;"
             "list l {key x; leaf x {type string; when 1;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("List's key must not have any \"when\" statement.", "/bb:l/x");
+    CHECK_LOG_CTX("List's key must not have any \"when\" statement.", "Path \"/bb:l/x\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {yang-version 1.1;namespace urn:cc;prefix cc;feature f;"
             "list l {key x; leaf x {type string; if-feature f;}}}", LYS_IN_YANG, NULL));
@@ -424,43 +418,43 @@ test_node_list(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd {namespace urn:dd;prefix dd;"
             "list l {key x; leaf x {type string; config false;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Key of a configuration list must not be a state leaf.", "/dd:l/x");
+    CHECK_LOG_CTX("Key of a configuration list must not be a state leaf.", "Path \"/dd:l/x\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;"
             "list l {config false;key x; leaf x {type string; config true;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Configuration node cannot be child of any state data node.", "/ee:l/x");
+    CHECK_LOG_CTX("Configuration node cannot be child of any state data node.", "Path \"/ee:l/x\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff {namespace urn:ff;prefix ff;"
             "list l {key x; leaf-list x {type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("The list's key \"x\" not found.", "/ff:l");
+    CHECK_LOG_CTX("The list's key \"x\" not found.", "Path \"/ff:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module gg {namespace urn:gg;prefix gg;"
             "list l {key x; unique y;leaf x {type string;} leaf-list y {type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Unique's descendant-schema-nodeid \"y\" refers to leaf-list node instead of a leaf.", "/gg:l");
+    CHECK_LOG_CTX("Unique's descendant-schema-nodeid \"y\" refers to leaf-list node instead of a leaf.", "Path \"/gg:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module hh {namespace urn:hh;prefix hh;"
             "list l {key x; unique \"x y\";leaf x {type string;} leaf y {config false; type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Unique statement \"x y\" refers to leaves with different config type.", "/hh:l");
+    CHECK_LOG_CTX("Unique statement \"x y\" refers to leaves with different config type.", "Path \"/hh:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ii {namespace urn:ii;prefix ii;"
             "list l {key x; unique a:x;leaf x {type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid descendant-schema-nodeid value \"a:x\" - prefix \"a\" not defined in module \"ii\".", "/ii:l");
+    CHECK_LOG_CTX("Invalid descendant-schema-nodeid value \"a:x\" - prefix \"a\" not defined in module \"ii\".", "Path \"/ii:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module jj {namespace urn:jj;prefix jj;"
             "list l {key x; unique c/x;leaf x {type string;}container c {leaf y {type string;}}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid descendant-schema-nodeid value \"c/x\" - target node not found.", "/jj:l");
+    CHECK_LOG_CTX("Invalid descendant-schema-nodeid value \"c/x\" - target node not found.", "Path \"/jj:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module kk {namespace urn:kk;prefix kk;"
             "list l {key x; unique c^y;leaf x {type string;}container c {leaf y {type string;}}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid descendant-schema-nodeid value \"c^\" - missing \"/\" as node-identifier separator.", "/kk:l");
+    CHECK_LOG_CTX("Invalid descendant-schema-nodeid value \"c^\" - missing \"/\" as node-identifier separator.", "Path \"/kk:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ll {namespace urn:ll;prefix ll;"
             "list l {key \"x y x\";leaf x {type string;}leaf y {type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicated key identifier \"x\".", "/ll:l");
+    CHECK_LOG_CTX("Duplicated key identifier \"x\".", "Path \"/ll:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm {namespace urn:mm;prefix mm;"
             "list l {key x;leaf x {type empty;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("List's key cannot be of \"empty\" type until it is in YANG 1.1 module.", "/mm:l/x");
+    CHECK_LOG_CTX("List's key cannot be of \"empty\" type until it is in YANG 1.1 module.", "Path \"/mm:l/x\".");
 }
 
 static void
@@ -499,26 +493,26 @@ test_node_choice(void **state)
 
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;"
             "choice ch {case a {leaf x {type string;}}leaf x {type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"x\" of data definition/RPC/action/notification statement.", "/aa:ch/x/x");
+    CHECK_LOG_CTX("Duplicate identifier \"x\" of data definition/RPC/action/notification statement.", "Path \"/aa:ch/x/x\".");
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module aa2 {namespace urn:aa2;prefix aa;"
             "choice ch {case a {leaf y {type string;}}case b {leaf y {type string;}}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"y\" of data definition/RPC/action/notification statement.", "/aa2:ch/b/y");
+    CHECK_LOG_CTX("Duplicate identifier \"y\" of data definition/RPC/action/notification statement.", "Path \"/aa2:ch/b/y\".");
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;"
             "choice ch {case a {leaf x {type string;}}leaf a {type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"a\" of case statement.", "/bb:ch/a");
+    CHECK_LOG_CTX("Duplicate identifier \"a\" of case statement.", "Path \"/bb:ch/a\".");
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module bb2 {namespace urn:bb2;prefix bb;"
             "choice ch {case b {leaf x {type string;}}case b {leaf y {type string;}}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"b\" of case statement.", "/bb2:ch/b");
+    CHECK_LOG_CTX("Duplicate identifier \"b\" of case statement.", "Path \"/bb2:ch/b\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ca {namespace urn:ca;prefix ca;"
             "choice ch {default c;case a {leaf x {type string;}}case b {leaf y {type string;}}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Default case \"c\" not found.", "/ca:ch");
+    CHECK_LOG_CTX("Default case \"c\" not found.", "Path \"/ca:ch\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cb {namespace urn:cb;prefix cb; import a {prefix a;}"
             "choice ch {default a:a;case a {leaf x {type string;}}case b {leaf y {type string;}}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Default case \"a:a\" not found.", "/cb:ch");
+    CHECK_LOG_CTX("Default case \"a:a\" not found.", "Path \"/cb:ch\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc;"
             "choice ch {default a;case a {leaf x {mandatory true;type string;}}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Mandatory node \"x\" under the default case \"a\".", "/cc:ch");
+    CHECK_LOG_CTX("Mandatory node \"x\" under the default case \"a\".", "Path \"/cc:ch\".");
     /* TODO check with mandatory nodes from augment placed into the case */
 }
 
@@ -544,8 +538,9 @@ test_node_anydata(void **state)
 
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;anydata any;}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
-            "Invalid keyword \"anydata\" as a child of \"module\" - the statement is allowed only in YANG 1.1 modules.", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid keyword \"anydata\" as a child of \"module\" - the statement is allowed only in YANG 1.1 modules.",
+            "Line number 1.");
 }
 
 static void
@@ -579,31 +574,32 @@ test_action(void **state)
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;container top {action x;}}",
             LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
-            "Invalid keyword \"action\" as a child of \"container\" - the statement is allowed only in YANG 1.1 modules.", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid keyword \"action\" as a child of \"container\" - the statement is allowed only in YANG 1.1 modules.",
+            "Line number 1.");
 
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;leaf x{type string;} rpc x;}",
             LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"x\" of data definition/RPC/action/notification statement.", "/bb:x");
+    CHECK_LOG_CTX("Duplicate identifier \"x\" of data definition/RPC/action/notification statement.", "Path \"/bb:x\".");
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module cc {yang-version 1.1; namespace urn:cc;prefix cc;container c {leaf y {type string;} action y;}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"y\" of data definition/RPC/action/notification statement.", "/cc:c/y");
+    CHECK_LOG_CTX("Duplicate identifier \"y\" of data definition/RPC/action/notification statement.", "Path \"/cc:c/y\".");
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module dd {yang-version 1.1; namespace urn:dd;prefix dd;container c {action z; action z;}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"z\" of data definition/RPC/action/notification statement.", "/dd:c/z");
+    CHECK_LOG_CTX("Duplicate identifier \"z\" of data definition/RPC/action/notification statement.", "Path \"/dd:c/z\".");
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule eesub {belongs-to ee {prefix ee;} notification w;}");
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module ee {yang-version 1.1; namespace urn:ee;prefix ee;include eesub; rpc w;}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"w\" of data definition/RPC/action/notification statement.", "/ee:w");
+    CHECK_LOG_CTX("Duplicate identifier \"w\" of data definition/RPC/action/notification statement.", "Path \"/ee:w\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff {yang-version 1.1; namespace urn:ff;prefix ff; rpc test {input {container a {leaf b {type string;}}}}"
             "augment /test/input/a {action invalid {input {leaf x {type string;}}}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Action \"invalid\" is placed inside another RPC/action.", "/ff:{augment='/test/input/a'}/invalid");
+    CHECK_LOG_CTX("Action \"invalid\" is placed inside another RPC/action.", "Path \"/ff:{augment='/test/input/a'}/invalid\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module gg {yang-version 1.1; namespace urn:gg;prefix gg; notification test {container a {leaf b {type string;}}}"
             "augment /test/a {action invalid {input {leaf x {type string;}}}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Action \"invalid\" is placed inside notification.", "/gg:{augment='/test/a'}/invalid");
+    CHECK_LOG_CTX("Action \"invalid\" is placed inside notification.", "Path \"/gg:{augment='/test/a'}/invalid\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module hh {yang-version 1.1; namespace urn:hh;prefix hh; notification test {container a {uses grp;}}"
             "grouping grp {action invalid {input {leaf x {type string;}}}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Action \"invalid\" is placed inside notification.", "/hh:test/a/{uses='grp'}/invalid");
+    CHECK_LOG_CTX("Action \"invalid\" is placed inside notification.", "Path \"/hh:test/a/{uses='grp'}/invalid\".");
 }
 
 static void
@@ -650,30 +646,31 @@ test_notification(void **state)
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;container top {notification x;}}",
             LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
-            "Invalid keyword \"notification\" as a child of \"container\" - the statement is allowed only in YANG 1.1 modules.", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid keyword \"notification\" as a child of \"container\" - the statement is allowed only in YANG 1.1 modules.",
+            "Line number 1.");
 
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;leaf x{type string;} notification x;}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"x\" of data definition/RPC/action/notification statement.", "/bb:x");
+    CHECK_LOG_CTX("Duplicate identifier \"x\" of data definition/RPC/action/notification statement.", "Path \"/bb:x\".");
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module cc {yang-version 1.1; namespace urn:cc;prefix cc;container c {leaf y {type string;} notification y;}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"y\" of data definition/RPC/action/notification statement.", "/cc:c/y");
+    CHECK_LOG_CTX("Duplicate identifier \"y\" of data definition/RPC/action/notification statement.", "Path \"/cc:c/y\".");
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module dd {yang-version 1.1; namespace urn:dd;prefix dd;container c {notification z; notification z;}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"z\" of data definition/RPC/action/notification statement.", "/dd:c/z");
+    CHECK_LOG_CTX("Duplicate identifier \"z\" of data definition/RPC/action/notification statement.", "Path \"/dd:c/z\".");
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule eesub {belongs-to ee {prefix ee;} rpc w;}");
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module ee {yang-version 1.1; namespace urn:ee;prefix ee;include eesub; notification w;}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"w\" of data definition/RPC/action/notification statement.", "/ee:w");
+    CHECK_LOG_CTX("Duplicate identifier \"w\" of data definition/RPC/action/notification statement.", "Path \"/ee:w\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff {yang-version 1.1; namespace urn:ff;prefix ff; rpc test {input {container a {leaf b {type string;}}}}"
             "augment /test/input/a {notification invalid {leaf x {type string;}}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Notification \"invalid\" is placed inside RPC/action.", "/ff:{augment='/test/input/a'}/invalid");
+    CHECK_LOG_CTX("Notification \"invalid\" is placed inside RPC/action.", "Path \"/ff:{augment='/test/input/a'}/invalid\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module gg {yang-version 1.1; namespace urn:gg;prefix gg; notification test {container a {leaf b {type string;}}}"
             "augment /test/a {notification invalid {leaf x {type string;}}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Notification \"invalid\" is placed inside another notification.", "/gg:{augment='/test/a'}/invalid");
+    CHECK_LOG_CTX("Notification \"invalid\" is placed inside another notification.", "Path \"/gg:{augment='/test/a'}/invalid\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module hh {yang-version 1.1; namespace urn:hh;prefix hh; rpc test {input {container a {uses grp;}}}"
             "grouping grp {notification invalid {leaf x {type string;}}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Notification \"invalid\" is placed inside RPC/action.", "/hh:test/input/a/{uses='grp'}/invalid");
+    CHECK_LOG_CTX("Notification \"invalid\" is placed inside RPC/action.", "Path \"/hh:test/input/a/{uses='grp'}/invalid\".");
 }
 
 /**
@@ -685,21 +682,6 @@ test_type_range(void **state)
 {
     struct lys_module *mod;
     struct lysc_type *type;
-
-#if 0
-    /*test about int8 should be in tests/utests/types/int8.c*/
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {namespace urn:a;prefix a;leaf l {type int8 {range min..10|max;}}}", LYS_IN_YANG, &mod));
-    type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
-    assert_non_null(type);
-    assert_int_equal(LY_TYPE_INT8, type->basetype);
-    assert_non_null(((struct lysc_type_num *)type)->range);
-    assert_non_null(((struct lysc_type_num *)type)->range->parts);
-    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_type_num *)type)->range->parts));
-    assert_int_equal(-128, ((struct lysc_type_num *)type)->range->parts[0].min_64);
-    assert_int_equal(10, ((struct lysc_type_num *)type)->range->parts[0].max_64);
-    assert_int_equal(127, ((struct lysc_type_num *)type)->range->parts[1].min_64);
-    assert_int_equal(127, ((struct lysc_type_num *)type)->range->parts[1].max_64);
-#endif
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module b {namespace urn:b;prefix b;leaf l {type int16 {range min..10|max;}}}", LYS_IN_YANG, &mod));
     type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
@@ -937,83 +919,56 @@ test_type_length(void **state)
     assert_int_equal(10, ((struct lysc_type_bin *)type)->length->parts[0].min_u64);
     assert_int_equal(100, ((struct lysc_type_bin *)type)->length->parts[0].max_u64);
 
-    /* new string is tested in file ./tests/utests/types/string.c */
-#if 0
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module l {namespace urn:l;prefix l;typedef mytype {type string {length 10..100;}}"
-            "typedef mytype2 {type mytype {pattern '[0-9]*';}} leaf l {type mytype2 {pattern '[0-4]*';}}}", LYS_IN_YANG, &mod));
-    type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
-    assert_non_null(type);
-    assert_int_equal(LY_TYPE_STRING, type->basetype);
-    assert_int_equal(1, type->refcount);
-    assert_non_null(((struct lysc_type_str *)type)->length);
-    assert_non_null(((struct lysc_type_str *)type)->length->parts);
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_str *)type)->length->parts));
-    assert_int_equal(10, ((struct lysc_type_str *)type)->length->parts[0].min_u64);
-    assert_int_equal(100, ((struct lysc_type_str *)type)->length->parts[0].max_u64);
-
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module m {namespace urn:m;prefix m;typedef mytype {type string {length 10;}}"
-            "leaf l {type mytype {length min..max;}}}", LYS_IN_YANG, &mod));
-    type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
-    assert_non_null(type);
-    assert_int_equal(LY_TYPE_STRING, type->basetype);
-    assert_int_equal(1, type->refcount);
-    assert_non_null(((struct lysc_type_str *)type)->length);
-    assert_non_null(((struct lysc_type_str *)type)->length->parts);
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_str *)type)->length->parts));
-    assert_int_equal(10, ((struct lysc_type_str *)type)->length->parts[0].min_u64);
-    assert_int_equal(10, ((struct lysc_type_str *)type)->length->parts[0].max_u64);
-#endif
-
     /* invalid values */
     assert_int_equal(LY_EDENIED, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;leaf l {type binary {length -10;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid length restriction - value \"-10\" does not fit the type limitations.", "/aa:l");
+    CHECK_LOG_CTX("Invalid length restriction - value \"-10\" does not fit the type limitations.", "Path \"/aa:l\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;leaf l {type binary {length 18446744073709551616;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid length restriction - invalid value \"18446744073709551616\".", "/bb:l");
+    CHECK_LOG_CTX("Invalid length restriction - invalid value \"18446744073709551616\".", "Path \"/bb:l\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc;leaf l {type binary {length \"max .. 10\";}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid length restriction - unexpected data after max keyword (.. 10).", "/cc:l");
+    CHECK_LOG_CTX("Invalid length restriction - unexpected data after max keyword (.. 10).", "Path \"/cc:l\".");
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module dd {namespace urn:dd;prefix dd;leaf l {type binary {length 50..10;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid length restriction - values are not in ascending order (10).", "/dd:l");
+    CHECK_LOG_CTX("Invalid length restriction - values are not in ascending order (10).", "Path \"/dd:l\".");
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;leaf l {type binary {length \"50 | 10\";}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid length restriction - values are not in ascending order (10).", "/ee:l");
+    CHECK_LOG_CTX("Invalid length restriction - values are not in ascending order (10).", "Path \"/ee:l\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff {namespace urn:ff;prefix ff;leaf l {type binary {length \"x\";}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid length restriction - unexpected data (x).", "/ff:l");
+    CHECK_LOG_CTX("Invalid length restriction - unexpected data (x).", "Path \"/ff:l\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module gg {namespace urn:gg;prefix gg;leaf l {type binary {length \"50 | min\";}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid length restriction - unexpected data before min keyword (50 | ).", "/gg:l");
+    CHECK_LOG_CTX("Invalid length restriction - unexpected data before min keyword (50 | ).", "Path \"/gg:l\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module hh {namespace urn:hh;prefix hh;leaf l {type binary {length \"| 50\";}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid length restriction - unexpected beginning of the expression (| 50).", "/hh:l");
+    CHECK_LOG_CTX("Invalid length restriction - unexpected beginning of the expression (| 50).", "Path \"/hh:l\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ii {namespace urn:ii;prefix ii;leaf l {type binary {length \"10 ..\";}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid length restriction - unexpected end of the expression after \"..\" (10 ..).", "/ii:l");
+    CHECK_LOG_CTX("Invalid length restriction - unexpected end of the expression after \"..\" (10 ..).", "Path \"/ii:l\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module jj {namespace urn:jj;prefix jj;leaf l {type binary {length \".. 10\";}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid length restriction - unexpected \"..\" without a lower bound.", "/jj:l");
+    CHECK_LOG_CTX("Invalid length restriction - unexpected \"..\" without a lower bound.", "Path \"/jj:l\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module kk {namespace urn:kk;prefix kk;leaf l {type binary {length \"10 |\";}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid length restriction - unexpected end of the expression (10 |).", "/kk:l");
+    CHECK_LOG_CTX("Invalid length restriction - unexpected end of the expression (10 |).", "Path \"/kk:l\".");
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module kl {namespace urn:kl;prefix kl;leaf l {type binary {length \"10..20 | 15..30\";}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid length restriction - values are not in ascending order (15).", "/kl:l");
+    CHECK_LOG_CTX("Invalid length restriction - values are not in ascending order (15).", "Path \"/kl:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ll {namespace urn:ll;prefix ll;typedef mytype {type binary {length 10;}}"
             "leaf l {type mytype {length 11;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid length restriction - the derived restriction (11) is not equally or more limiting.", "/ll:l");
+    CHECK_LOG_CTX("Invalid length restriction - the derived restriction (11) is not equally or more limiting.", "Path \"/ll:l\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm {namespace urn:mm;prefix mm;typedef mytype {type binary {length 10..100;}}"
             "leaf l {type mytype {length 1..11;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid length restriction - the derived restriction (1..11) is not equally or more limiting.", "/mm:l");
+    CHECK_LOG_CTX("Invalid length restriction - the derived restriction (1..11) is not equally or more limiting.", "Path \"/mm:l\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module nn {namespace urn:nn;prefix nn;typedef mytype {type binary {length 10..100;}}"
             "leaf l {type mytype {length 20..110;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid length restriction - the derived restriction (20..110) is not equally or more limiting.", "/nn:l");
+    CHECK_LOG_CTX("Invalid length restriction - the derived restriction (20..110) is not equally or more limiting.", "Path \"/nn:l\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module oo {namespace urn:oo;prefix oo;typedef mytype {type binary {length 10..100;}}"
             "leaf l {type mytype {length 20..30|110..120;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid length restriction - the derived restriction (20..30|110..120) is not equally or more limiting.", "/oo:l");
+    CHECK_LOG_CTX("Invalid length restriction - the derived restriction (20..30|110..120) is not equally or more limiting.", "Path \"/oo:l\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module pp {namespace urn:pp;prefix pp;typedef mytype {type binary {length 10..11;}}"
             "leaf l {type mytype {length 15;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid length restriction - the derived restriction (15) is not equally or more limiting.", "/pp:l");
+    CHECK_LOG_CTX("Invalid length restriction - the derived restriction (15) is not equally or more limiting.", "Path \"/pp:l\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module qq {namespace urn:qq;prefix qq;typedef mytype {type binary {length 10..20|30..40;}}"
             "leaf l {type mytype {length 15..35;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid length restriction - the derived restriction (15..35) is not equally or more limiting.", "/qq:l");
+    CHECK_LOG_CTX("Invalid length restriction - the derived restriction (15..35) is not equally or more limiting.", "Path \"/qq:l\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module rr {namespace urn:rr;prefix rr;typedef mytype {type binary {length 10;}}"
             "leaf l {type mytype {length 10..35;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid length restriction - the derived restriction (10..35) is not equally or more limiting.", "/rr:l");
+    CHECK_LOG_CTX("Invalid length restriction - the derived restriction (10..35) is not equally or more limiting.", "Path \"/rr:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ss {namespace urn:ss;prefix ss;leaf l {type binary {pattern '[0-9]*';}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid type restrictions for binary type.", "/ss:l");
+    CHECK_LOG_CTX("Invalid type restrictions for binary type.", "Path \"/ss:l\".");
 }
 
 static void
@@ -1152,61 +1107,63 @@ test_type_enum(void **state)
     /* invalid cases */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; feature f; leaf l {type enumeration {"
             "enum one {if-feature f;}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
-            "Invalid keyword \"if-feature\" as a child of \"enum\" - the statement is allowed only in YANG 1.1 modules.", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid keyword \"if-feature\" as a child of \"enum\" - the statement is allowed only in YANG 1.1 modules.",
+            "Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
             "enum one {value -2147483649;}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
-            "Invalid value \"-2147483649\" of \"value\".", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid value \"-2147483649\" of \"value\".", "Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
             "enum one {value 2147483648;}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
-            "Invalid value \"2147483648\" of \"value\".", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid value \"2147483648\" of \"value\".", "Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
             "enum one; enum one;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
-            "Duplicate identifier \"one\" of enum statement.", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL);
+    CHECK_LOG_CTX("Duplicate identifier \"one\" of enum statement.", "Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
             "enum '';}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
-            "Enum name must not be zero-length.", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL);
+    CHECK_LOG_CTX("Enum name must not be zero-length.", "Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
             "enum ' x';}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
-            "Enum name must not have any leading or trailing whitespaces (\" x\").", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL);
+    CHECK_LOG_CTX("Enum name must not have any leading or trailing whitespaces (\" x\").", "Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
             "enum 'x ';}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
-            "Enum name must not have any leading or trailing whitespaces (\"x \").", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL);
+    CHECK_LOG_CTX("Enum name must not have any leading or trailing whitespaces (\"x \").", "Line number 1.");
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
             "enum 'inva\nlid';}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Control characters in enum name should be avoided (\"inva\nlid\", character number 5).", NULL);
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb; leaf l {type enumeration;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Missing enum substatement for enumeration type.", "/bb:l");
+    CHECK_LOG_CTX("Missing enum substatement for enumeration type.", "Path \"/bb:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {yang-version 1.1;namespace urn:cc;prefix cc;typedef mytype {type enumeration {enum one;}}"
             "leaf l {type mytype {enum two;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid enumeration - derived type adds new item \"two\".", "/cc:l");
+    CHECK_LOG_CTX("Invalid enumeration - derived type adds new item \"two\".", "Path \"/cc:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd {yang-version 1.1;namespace urn:dd;prefix dd;typedef mytype {type enumeration {enum one;}}"
             "leaf l {type mytype {enum one {value 1;}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid enumeration - value of the item \"one\" has changed from 0 to 1 in the derived type.", "/dd:l");
+    CHECK_LOG_CTX("Invalid enumeration - value of the item \"one\" has changed from 0 to 1 in the derived type.", "Path \"/dd:l\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;leaf l {type enumeration {enum x {value 2147483647;}enum y;}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid enumeration - it is not possible to auto-assign enum value for \"y\" since the highest value is already 2147483647.", "/ee:l");
+    CHECK_LOG_CTX("Invalid enumeration - it is not possible to auto-assign enum value for \"y\" since the highest value is already 2147483647.",
+            "Path \"/ee:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff {namespace urn:ff;prefix ff;leaf l {type enumeration {enum x {value 1;}enum y {value 1;}}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid enumeration - value 1 collide in items \"y\" and \"x\".", "/ff:l");
+    CHECK_LOG_CTX("Invalid enumeration - value 1 collide in items \"y\" and \"x\".", "Path \"/ff:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module gg {namespace urn:gg;prefix gg;typedef mytype {type enumeration;}"
             "leaf l {type mytype {enum one;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Missing enum substatement for enumeration type mytype.", "/gg:l");
+    CHECK_LOG_CTX("Missing enum substatement for enumeration type mytype.", "Path \"/gg:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module hh {namespace urn:hh;prefix hh; typedef mytype {type enumeration {enum one;}}"
             "leaf l {type mytype {enum one;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Enumeration type can be subtyped only in YANG 1.1 modules.", "/hh:l");
+    CHECK_LOG_CTX("Enumeration type can be subtyped only in YANG 1.1 modules.", "Path \"/hh:l\".");
 }
 
 static void
@@ -1256,43 +1213,43 @@ test_type_dec64(void **state)
 
     /* invalid cases */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type decimal64 {fraction-digits 0;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
-            "Invalid value \"0\" of \"fraction-digits\".", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid value \"0\" of \"fraction-digits\".", "Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type decimal64 {fraction-digits -1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
-            "Invalid value \"-1\" of \"fraction-digits\".", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid value \"-1\" of \"fraction-digits\".", "Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type decimal64 {fraction-digits 19;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
-            "Value \"19\" is out of \"fraction-digits\" bounds.", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL);
+    CHECK_LOG_CTX("Value \"19\" is out of \"fraction-digits\" bounds.", "Line number 1.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type decimal64;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Missing fraction-digits substatement for decimal64 type.", "/aa:l");
+    CHECK_LOG_CTX("Missing fraction-digits substatement for decimal64 type.", "Path \"/aa:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ab {namespace urn:ab;prefix ab; typedef mytype {type decimal64;}leaf l {type mytype;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Missing fraction-digits substatement for decimal64 type mytype.", "/ab:l");
+    CHECK_LOG_CTX("Missing fraction-digits substatement for decimal64 type mytype.", "Path \"/ab:l\".");
 
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb; leaf l {type decimal64 {fraction-digits 2;"
             "range '3.142';}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Range boundary \"3.142\" of decimal64 type exceeds defined number (2) of fraction digits.", "/bb:l");
+    CHECK_LOG_CTX("Range boundary \"3.142\" of decimal64 type exceeds defined number (2) of fraction digits.", "Path \"/bb:l\".");
 
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc; leaf l {type decimal64 {fraction-digits 2;"
             "range '4 | 3.14';}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid range restriction - values are not in ascending order (3.14).", "/cc:l");
+    CHECK_LOG_CTX("Invalid range restriction - values are not in ascending order (3.14).", "Path \"/cc:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd {namespace urn:dd;prefix dd; typedef mytype {type decimal64 {fraction-digits 2;}}"
             "leaf l {type mytype {fraction-digits 3;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid fraction-digits substatement for type not directly derived from decimal64 built-in type.", "/dd:l");
+    CHECK_LOG_CTX("Invalid fraction-digits substatement for type not directly derived from decimal64 built-in type.", "Path \"/dd:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module de {namespace urn:de;prefix de; typedef mytype {type decimal64 {fraction-digits 2;}}"
             "typedef mytype2 {type mytype {fraction-digits 3;}}leaf l {type mytype2;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid fraction-digits substatement for type \"mytype2\" not directly derived from decimal64 built-in type.", "/de:l");
+    CHECK_LOG_CTX("Invalid fraction-digits substatement for type \"mytype2\" not directly derived from decimal64 built-in type.", "Path \"/de:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;typedef mytype {type decimal64 {"
             "fraction-digits 18;range '-10 .. 0';}}leaf l {type mytype;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid range restriction - invalid value \"-10000000000000000000\".", "/ee:l");
+    CHECK_LOG_CTX("Invalid range restriction - invalid value \"-10000000000000000000\".", "Path \"/ee:l\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;typedef mytype {type decimal64 {"
             "fraction-digits 18;range '0 .. 10';}}leaf l {type mytype;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid range restriction - invalid value \"10000000000000000000\".", "/ee:l");
+    CHECK_LOG_CTX("Invalid range restriction - invalid value \"10000000000000000000\".", "Path \"/ee:l\".");
 }
 
 static void
@@ -1321,11 +1278,11 @@ test_type_instanceid(void **state)
 
     /* invalid cases */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type instance-identifier {require-instance yes;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
-            "Invalid value \"yes\" of \"require-instance\".", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid value \"yes\" of \"require-instance\".", "Line number 1.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type instance-identifier {fraction-digits 1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid type restrictions for instance-identifier type.", "/aa:l");
+    CHECK_LOG_CTX("Invalid type restrictions for instance-identifier type.", "Path \"/aa:l\".");
 }
 
 static ly_bool
@@ -1721,29 +1678,29 @@ test_type_identityref(void **state)
 
     /* invalid cases */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type identityref;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Missing base substatement for identityref type.", "/aa:l");
+    CHECK_LOG_CTX("Missing base substatement for identityref type.", "Path \"/aa:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb; typedef mytype {type identityref;}"
             "leaf l {type mytype;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Missing base substatement for identityref type mytype.", "/bb:l");
+    CHECK_LOG_CTX("Missing base substatement for identityref type mytype.", "Path \"/bb:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc; identity i; typedef mytype {type identityref {base i;}}"
             "leaf l {type mytype {base i;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid base substatement for the type not directly derived from identityref built-in type.", "/cc:l");
+    CHECK_LOG_CTX("Invalid base substatement for the type not directly derived from identityref built-in type.", "Path \"/cc:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd {namespace urn:dd;prefix dd; identity i; typedef mytype {type identityref {base i;}}"
             "typedef mytype2 {type mytype {base i;}}leaf l {type mytype2;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid base substatement for the type \"mytype2\" not directly derived from identityref built-in type.", "/dd:l");
+    CHECK_LOG_CTX("Invalid base substatement for the type \"mytype2\" not directly derived from identityref built-in type.", "Path \"/dd:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee; identity i; identity j;"
             "leaf l {type identityref {base i;base j;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Multiple bases in identityref type are allowed only in YANG 1.1 modules.", "/ee:l");
+    CHECK_LOG_CTX("Multiple bases in identityref type are allowed only in YANG 1.1 modules.", "Path \"/ee:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff {namespace urn:ff;prefix ff; identity i;leaf l {type identityref {base j;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Unable to find base (j) of identityref.", "/ff:l");
+    CHECK_LOG_CTX("Unable to find base (j) of identityref.", "Path \"/ff:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module gg {namespace urn:gg;prefix gg;leaf l {type identityref {base x:j;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid prefix used for base (x:j) of identityref.", "/gg:l");
+    CHECK_LOG_CTX("Invalid prefix used for base (x:j) of identityref.", "Path \"/gg:l\".");
 }
 
 static void
@@ -1759,18 +1716,27 @@ test_type_leafref(void **state)
     path = "invalid_path";
     assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
+    CHECK_LOG_CTX("Unexpected XPath token \"NameTest\" (\"invalid_path\"), expected \"..\".", NULL);
+
     path = "..";
     assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
+    CHECK_LOG_CTX("Unexpected XPath expression end.", NULL);
+
     path = "..[";
     assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
+    CHECK_LOG_CTX("Unparsed characters \"[\" left at the end of an XPath expression.", NULL);
+
     path = "../";
     assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
+    CHECK_LOG_CTX("Unexpected XPath expression end.", NULL);
+
     path = "/";
     assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
+    CHECK_LOG_CTX("Unexpected XPath expression end.", NULL);
 
     path = "../../pref:id/xxx[predicate]/invalid!!!";
     assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
@@ -1861,6 +1827,7 @@ test_type_leafref(void **state)
             "leaf target {if-feature 'f1'; type boolean;}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Target of leafref \"ref1\" cannot be referenced because it is disabled.", "Schema location \"/e:ref1\".");
+    CHECK_LOG_CTX("Not found node \"target\" in path.", "Schema location \"/e:ref1\".");
 
     str = "module en {yang-version 1.1;namespace urn:en;prefix en;feature f1;"
             "leaf ref1 {if-feature 'f1'; type leafref {path /target;}}"
@@ -1881,6 +1848,7 @@ test_type_leafref(void **state)
             "leaf ref {must \"/cl:h > 0\"; type uint16;}}", LYS_IN_YANG, &mod));
     ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_REF_IMPLEMENTED);
     CHECK_LOG_CTX("Target of leafref \"g\" cannot be referenced because it is disabled.", "Schema location \"/cl:g\".");
+    CHECK_LOG_CTX("Not found node \"f\" in path.", "Schema location \"/cl:g\".");
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module f {namespace urn:f;prefix f;"
             "list interface{key name;leaf name{type string;}list address {key ip;leaf ip {type string;}}}"
@@ -1956,6 +1924,13 @@ test_type_leafref(void **state)
     assert_int_equal(LY_TYPE_BOOL, ((struct lysc_node_leaf *)mod->compiled->data)->dflt->realtype->basetype);
     assert_int_equal(1, ((struct lysc_node_leaf *)mod->compiled->data)->dflt->boolean);
 
+    /* union reference */
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module m {namespace urn:m;prefix m;"
+            "typedef s-ref {type union {type leafref {path '/str';}}}"
+            "leaf str {type string {length \"1..16\" {error-message \"Custom message\";}}}"
+            "leaf ref1 {type s-ref;}"
+            "leaf ref2 {type s-ref;}}", LYS_IN_YANG, NULL));
+
     /* invalid paths */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;container a {leaf target2 {type uint8;}}"
             "leaf ref1 {type leafref {path ../a/invalid;}}}", LYS_IN_YANG, &mod));
@@ -1972,8 +1947,8 @@ test_type_leafref(void **state)
     CHECK_LOG_CTX("List predicate defined for container \"a\" in path.", "Schema location \"/dd:ref1\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;\n  container a {leaf target2 {type uint8;}}\n"
             "leaf ref1 {type leafref {path /a!invalid;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"ee\" failed.", NULL,
-            "Invalid character 0x21 ('!'), perhaps \"a\" is supposed to be a function call.", "Line number 3.");
+    CHECK_LOG_CTX("Parsing module \"ee\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid character 0x21 ('!'), perhaps \"a\" is supposed to be a function call.", "Line number 3.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff {namespace urn:ff;prefix ff;container a {leaf target2 {type uint8;}}"
             "leaf ref1 {type leafref {path /a;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid leafref path \"/a\" - target node is container instead of leaf or leaf-list.", "Schema location \"/ff:ref1\".");
@@ -1983,36 +1958,36 @@ test_type_leafref(void **state)
             "Schema location \"/gg:ref1\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module hh {namespace urn:hh;prefix hh;"
             "leaf ref1 {type leafref;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Missing path substatement for leafref type.", "/hh:ref1");
+    CHECK_LOG_CTX("Missing path substatement for leafref type.", "Path \"/hh:ref1\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ii {namespace urn:ii;prefix ii;typedef mytype {type leafref;}"
             "leaf ref1 {type mytype;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Missing path substatement for leafref type mytype.", "/ii:ref1");
+    CHECK_LOG_CTX("Missing path substatement for leafref type mytype.", "Path \"/ii:ref1\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module kk {namespace urn:kk;prefix kk;"
             "leaf ref {type leafref {path /target;}}leaf target {type string;config false;}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid leafref path \"/target\" - target is supposed to represent configuration data (as the leafref does), but it does not.", "Schema location \"/kk:ref\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ll {namespace urn:ll;prefix ll;"
             "leaf ref {type leafref {path /target; require-instance true;}}leaf target {type string;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Leafref type can be restricted by require-instance statement only in YANG 1.1 modules.", "/ll:ref");
+    CHECK_LOG_CTX("Leafref type can be restricted by require-instance statement only in YANG 1.1 modules.", "Path \"/ll:ref\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm {namespace urn:mm;prefix mm;typedef mytype {type leafref {path /target;require-instance false;}}"
             "leaf ref {type mytype;}leaf target {type string;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Leafref type \"mytype\" can be restricted by require-instance statement only in YANG 1.1 modules.", "/mm:ref");
+    CHECK_LOG_CTX("Leafref type \"mytype\" can be restricted by require-instance statement only in YANG 1.1 modules.", "Path \"/mm:ref\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module nn {namespace urn:nn;prefix nn;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
             "leaf ifname{type leafref{ path \"../interface/name\";}}\n"
             "leaf address {type leafref{\n path \"/interface[name is current()/../ifname]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"nn\" failed.", NULL,
-            "Invalid character 0x69 ('i'), perhaps \"name\" is supposed to be a function call.", "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"nn\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid character 0x69 ('i'), perhaps \"name\" is supposed to be a function call.", "Line number 5.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module oo {namespace urn:oo;prefix oo;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
             "leaf ifname{type leafref{ path \"../interface/name\";}}\n"
             "leaf address {type leafref{\n path \"/interface[name=current()/../ifname/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"oo\" failed.", NULL,
-            "Unexpected XPath expression end.", "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"oo\" failed.", NULL);
+    CHECK_LOG_CTX("Unexpected XPath expression end.", "Line number 5.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module pp {namespace urn:pp;prefix pp;"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
@@ -2034,56 +2009,56 @@ test_type_leafref(void **state)
             "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}\n"
             "leaf address {type leafref{ path \"/interface[name=current() /  .. / ifname][name=current()/../test]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"rr\" failed.", NULL,
-            "Duplicate predicate key \"name\" in path.", "Line number 4.");
+    CHECK_LOG_CTX("Parsing module \"rr\" failed.", NULL);
+    CHECK_LOG_CTX("Duplicate predicate key \"name\" in path.", "Line number 4.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ss {namespace urn:ss;prefix ss;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
             "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}\n"
             "leaf address {type leafref{ path \"/interface[name = ../ifname]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"ss\" failed.", NULL,
-            "Unexpected XPath token \"..\" (\"../ifname]/ip\"), expected \"FunctionName\".", "Line number 4.");
+    CHECK_LOG_CTX("Parsing module \"ss\" failed.", NULL);
+    CHECK_LOG_CTX("Unexpected XPath token \"..\" (\"../ifname]/ip\"), expected \"FunctionName\".", "Line number 4.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module tt {namespace urn:tt;prefix tt;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
             "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}\n"
             "leaf address {type leafref{ path \"/interface[name = current()../ifname]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"tt\" failed.", NULL,
-            "Unexpected XPath token \"..\" (\"../ifname]/ip\"), expected \"]\".", "Line number 4.");
+    CHECK_LOG_CTX("Parsing module \"tt\" failed.", NULL);
+    CHECK_LOG_CTX("Unexpected XPath token \"..\" (\"../ifname]/ip\"), expected \"]\".", "Line number 4.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module uu {namespace urn:uu;prefix uu;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
             "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}\n"
             "leaf address {type leafref{ path \"/interface[name = current()/..ifname]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"uu\" failed.", NULL,
-            "Invalid character 'i'[31] of expression '/interface[name = current()/..ifname]/ip'.", "Line number 4.");
+    CHECK_LOG_CTX("Parsing module \"uu\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid character 'i'[31] of expression '/interface[name = current()/..ifname]/ip'.", "Line number 4.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module vv {namespace urn:vv;prefix vv;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
             "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}\n"
             "leaf address {type leafref{ path \"/interface[name = current()/ifname]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"vv\" failed.", NULL,
-            "Unexpected XPath token \"NameTest\" (\"ifname]/ip\"), expected \"..\".", "Line number 4.");
+    CHECK_LOG_CTX("Parsing module \"vv\" failed.", NULL);
+    CHECK_LOG_CTX("Unexpected XPath token \"NameTest\" (\"ifname]/ip\"), expected \"..\".", "Line number 4.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ww {namespace urn:ww;prefix ww;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
             "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}\n"
             "leaf address {type leafref{ path \"/interface[name = current()/../]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"ww\" failed.", NULL,
-            "Unexpected XPath token \"]\" (\"]/ip\").", "Line number 4.");
+    CHECK_LOG_CTX("Parsing module \"ww\" failed.", NULL);
+    CHECK_LOG_CTX("Unexpected XPath token \"]\" (\"]/ip\").", "Line number 4.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module xx {namespace urn:xx;prefix xx;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
             "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}\n"
             "leaf address {type leafref{ path \"/interface[name = current()/../#node]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"xx\" failed.", NULL,
-            "Invalid character '#'[32] of expression '/interface[name = current()/../#node]/ip'.", "Line number 4.");
+    CHECK_LOG_CTX("Parsing module \"xx\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid character '#'[32] of expression '/interface[name = current()/../#node]/ip'.", "Line number 4.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module yy {namespace urn:yy;prefix yy;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
@@ -2143,7 +2118,7 @@ test_type_empty(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;typedef mytype {type empty; default x;}"
             "leaf l {type mytype;}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid type \"mytype\" - \"empty\" type must not have a default value (x).", "/bb:l");
+    CHECK_LOG_CTX("Invalid type \"mytype\" - \"empty\" type must not have a default value (x).", "Path \"/bb:l\".");
 }
 
 static void
@@ -2197,25 +2172,25 @@ test_type_union(void **state)
     /* invalid unions */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;typedef mytype {type union;}"
             "leaf l {type mytype;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Missing type substatement for union type mytype.", "/aa:l");
+    CHECK_LOG_CTX("Missing type substatement for union type mytype.", "Path \"/aa:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;leaf l {type union;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Missing type substatement for union type.", "/bb:l");
+    CHECK_LOG_CTX("Missing type substatement for union type.", "Path \"/bb:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc;typedef mytype {type union{type int8; type string;}}"
             "leaf l {type mytype {type string;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid type substatement for the type not directly derived from union built-in type.", "/cc:l");
+    CHECK_LOG_CTX("Invalid type substatement for the type not directly derived from union built-in type.", "Path \"/cc:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd {namespace urn:dd;prefix dd;typedef mytype {type union{type int8; type string;}}"
             "typedef mytype2 {type mytype {type string;}}leaf l {type mytype2;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid type substatement for the type \"mytype2\" not directly derived from union built-in type.", "/dd:l");
+    CHECK_LOG_CTX("Invalid type substatement for the type \"mytype2\" not directly derived from union built-in type.", "Path \"/dd:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;typedef mytype {type union{type mytype; type string;}}"
             "leaf l {type mytype;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid \"mytype\" type reference - circular chain of types detected.", "/ee:l");
+    CHECK_LOG_CTX("Invalid \"mytype\" type reference - circular chain of types detected.", "Path \"/ee:l\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ef {namespace urn:ef;prefix ef;typedef mytype {type mytype2;}"
             "typedef mytype2 {type mytype;} leaf l {type mytype;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid \"mytype\" type reference - circular chain of types detected.", "/ef:l");
+    CHECK_LOG_CTX("Invalid \"mytype\" type reference - circular chain of types detected.", "Path \"/ef:l\".");
 }
 
 static void
@@ -2304,20 +2279,173 @@ test_type_dflt(void **state)
 }
 
 static void
+test_type_exts(void **state)
+{
+    const char *schema1, *schema2, *schema3, *schema4;
+    struct lys_module *mod;
+    const struct lysc_node *snode;
+    struct lysc_type *type;
+    struct lysc_type_union *type_u;
+
+    schema1 = "module my-extensions {\n"
+            "  namespace \"urn:my-extensions\";\n"
+            "  prefix my-ext;\n"
+            "\n"
+            "  extension shortdesc {\n"
+            "    argument shortdsc;\n"
+            "  }\n"
+            "}\n";
+    schema2 = "module module-inet {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:module-inet\";\n"
+            "  prefix mod-inet;\n"
+            "\n"
+            "  import ietf-inet-types {\n"
+            "    prefix inet;\n"
+            "  }\n"
+            "\n"
+            "  import my-extensions {\n"
+            "    prefix my-ext;\n"
+            "  }\n"
+            "\n"
+            "  typedef domain-name {\n"
+            "    type inet:domain-name {\n"
+            "      my-ext:shortdesc \"<host-name>\";\n"
+            "    }\n"
+            "  }\n"
+            "\n"
+            "  typedef ipv4-address {\n"
+            "    type inet:ipv4-address-no-zone {\n"
+            "      my-ext:shortdesc \"<A.B.C.D>\";\n"
+            "    }\n"
+            "  }\n"
+            "  typedef my-enum {\n"
+            "    type enumeration {\n"
+            "      enum one;\n"
+            "      enum two;\n"
+            "      enum three;\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+    schema3 = "module module-a {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:module-a\";\n"
+            "  prefix mod-a;\n"
+            "\n"
+            "  import module-inet {\n"
+            "    prefix mod-inet;\n"
+            "  }\n"
+            "\n"
+            "  import my-extensions {\n"
+            "    prefix my-ext;\n"
+            "  }\n"
+            "\n"
+            "  typedef server-address {\n"
+            "    type union {\n"
+            "      type mod-inet:ipv4-address {\n"
+            "        my-ext:shortdesc \"<ipv4-address>\";\n"
+            "      }\n"
+            "      type mod-inet:domain-name {\n"
+            "        my-ext:shortdesc \"<fqdn>\";\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+    schema4 = "module main-module {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:main-module\";\n"
+            "  prefix main;\n"
+            "\n"
+            "  import module-a {\n"
+            "    prefix mod-a;\n"
+            "  }\n"
+            "\n"
+            "  import module-inet {\n"
+            "    prefix mod-inet;\n"
+            "  }\n"
+            "\n"
+            "  import my-extensions {\n"
+            "    prefix my-ext;\n"
+            "  }\n"
+            "\n"
+            "  container config {\n"
+            "    leaf server {\n"
+            "      type mod-a:server-address {\n"
+            "        my-ext:shortdesc \"<server-address>\";\n"
+            "      }\n"
+            "    }\n"
+            "\n"
+            "    leaf hostname {\n"
+            "      type union {\n"
+            "        type mod-inet:domain-name;\n"
+            "        type string;\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "\n"
+            "  leaf my-leaf {\n"
+            "    type mod-inet:my-enum {\n"
+            "      my-ext:shortdesc \"my enum\";\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, schema1, LYS_IN_YANG, NULL));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, schema2, LYS_IN_YANG, NULL));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, schema3, LYS_IN_YANG, NULL));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, schema4, LYS_IN_YANG, &mod));
+
+    /* server */
+    snode = lys_find_path(UTEST_LYCTX, NULL, "/main-module:config/server", 0);
+    assert_non_null(snode);
+
+    type = ((struct lysc_node_leaf *)snode)->type;
+    assert_int_equal(LY_ARRAY_COUNT(type->exts), 1);
+    assert_string_equal(type->exts[0].argument, "<server-address>");
+    type_u = (struct lysc_type_union *)type;
+    assert_int_equal(LY_ARRAY_COUNT(type_u->types), 2);
+
+    type = type_u->types[0];
+    assert_int_equal(LY_ARRAY_COUNT(type->exts), 2);
+    assert_string_equal(type->exts[0].argument, "<A.B.C.D>");
+    assert_string_equal(type->exts[1].argument, "<ipv4-address>");
+
+    type = type_u->types[1];
+    assert_int_equal(LY_ARRAY_COUNT(type->exts), 2);
+    assert_string_equal(type->exts[0].argument, "<host-name>");
+    assert_string_equal(type->exts[1].argument, "<fqdn>");
+
+    /* hostname */
+    snode = lys_find_path(UTEST_LYCTX, NULL, "/main-module:config/hostname", 0);
+    assert_non_null(snode);
+    type = ((struct lysc_node_leaf *)snode)->type;
+    assert_int_equal(LY_ARRAY_COUNT(type->exts), 0);
+    type_u = (struct lysc_type_union *)type;
+    assert_int_equal(LY_ARRAY_COUNT(type_u->types), 2);
+
+    type = type_u->types[0];
+    assert_int_equal(LY_ARRAY_COUNT(type->exts), 1);
+    assert_string_equal(type->exts[0].argument, "<host-name>");
+
+    type = type_u->types[1];
+    assert_int_equal(LY_ARRAY_COUNT(type->exts), 0);
+}
+
+static void
 test_status(void **state)
 {
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;"
             "container c {status deprecated; leaf l {status current; type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Status \"current\" of \"l\" is in conflict with \"deprecated\" status of parent \"c\".", "/aa:c/l");
+    CHECK_LOG_CTX("Status \"current\" of \"l\" is in conflict with \"deprecated\" status of parent \"c\".", "Path \"/aa:c/l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;"
             "container c {status obsolete; leaf l {status current; type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Status \"current\" of \"l\" is in conflict with \"obsolete\" status of parent \"c\".", "/bb:c/l");
+    CHECK_LOG_CTX("Status \"current\" of \"l\" is in conflict with \"obsolete\" status of parent \"c\".", "Path \"/bb:c/l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc;"
             "container c {status obsolete; leaf l {status deprecated; type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Status \"deprecated\" of \"l\" is in conflict with \"obsolete\" status of parent \"c\".", "/cc:c/l");
+    CHECK_LOG_CTX("Status \"deprecated\" of \"l\" is in conflict with \"obsolete\" status of parent \"c\".", "Path \"/cc:c/l\".");
 
     /* just a warning */
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:dd;prefix d;"
@@ -2344,11 +2472,12 @@ test_grouping(void **state)
     /* invalid - error in a non-instantiated grouping */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;"
             "grouping grp {leaf x {type leafref;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Missing path substatement for leafref type.", "/aa:{grouping='grp'}/x");
-    UTEST_LOG_CLEAN;
+    CHECK_LOG_CTX("Missing path substatement for leafref type.", "Path \"/aa:{grouping='grp'}/x\".");
+
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;"
             "container a {grouping grp {leaf x {type leafref;}}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Missing path substatement for leafref type.", "/aa:a/{grouping='grp'}/x");
+    CHECK_LOG_CTX("Missing path substatement for leafref type.", "Path \"/aa:a/{grouping='grp'}/x\".");
+    CHECK_LOG_CTX("Locally scoped grouping \"grp\" not used.", NULL);
 
     /* config check */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module z1 {namespace urn:z1;prefix z1;"
@@ -2519,52 +2648,53 @@ test_uses(void **state)
 
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;uses missinggrp;}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Grouping \"missinggrp\" referenced by a uses statement not found.", "/aa:{uses='missinggrp'}");
+    CHECK_LOG_CTX("Grouping \"missinggrp\" referenced by a uses statement not found.", "Path \"/aa:{uses='missinggrp'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;uses grp;"
             "grouping grp {leaf a{type string;}uses grp1;}"
             "grouping grp1 {leaf b {type string;}uses grp2;}"
             "grouping grp2 {leaf c {type string;}uses grp;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Grouping \"grp\" references itself through a uses statement.", "/bb:{uses='grp'}/{uses='grp1'}/{uses='grp2'}/{uses='grp'}");
+    CHECK_LOG_CTX("Grouping \"grp\" references itself through a uses statement.", "Path \"/bb:{uses='grp'}/{uses='grp1'}/{uses='grp2'}/{uses='grp'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc;uses a:missingprefix;}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid prefix used for grouping \"a:missingprefix\" reference.", "/cc:{uses='a:missingprefix'}");
+    CHECK_LOG_CTX("Invalid prefix used for grouping \"a:missingprefix\" reference.", "Path \"/cc:{uses='a:missingprefix'}\".");
 
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module dd {namespace urn:dd;prefix dd;grouping grp{leaf a{type string;}}"
             "leaf a {type string;}uses grp;}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "/dd:{uses='grp'}/dd:a");
+    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "Path \"/dd:{uses='grp'}/dd:a\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;grouping grp {leaf l {type string; status deprecated;}}"
             "uses grp {status obsolete;}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Inherited schema-only status \"obsolete\" is in conflict with \"deprecated\" status of \"l\".",
-            "/ee:{uses='grp'}/ee:l");
+            "Path \"/ee:{uses='grp'}/ee:l\".");
 
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module ff {namespace urn:ff;prefix ff;grouping grp {leaf l {type string;}}"
             "leaf l {type int8;}uses grp;}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Duplicate identifier \"l\" of data definition/RPC/action/notification statement.", "/ff:{uses='grp'}/ff:l");
+    CHECK_LOG_CTX("Duplicate identifier \"l\" of data definition/RPC/action/notification statement.", "Path \"/ff:{uses='grp'}/ff:l\".");
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module fg {namespace urn:fg;prefix fg;grouping grp {leaf m {type string;}}"
             "uses grp;leaf m {type int8;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Duplicate identifier \"m\" of data definition/RPC/action/notification statement.", "/fg:m");
+    CHECK_LOG_CTX("Duplicate identifier \"m\" of data definition/RPC/action/notification statement.", "Path \"/fg:m\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module gg {namespace urn:gg;prefix gg; grouping grp {container g;}"
             "leaf g {type string;}"
             "container top {uses grp {augment /g {leaf x {type int8;}}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid descendant-schema-nodeid value \"/g\" - name test expected instead of \"/\".", "/gg:top/{uses='grp'}/{augment='/g'}");
+    CHECK_LOG_CTX("Invalid descendant-schema-nodeid value \"/g\" - name test expected instead of \"/\".",
+            "Path \"/gg:top/{uses='grp'}/{augment='/g'}\".");
 
     assert_int_equal(LY_ENOTFOUND, lys_parse_mem(UTEST_LYCTX, "module hh {yang-version 1.1;namespace urn:hh;prefix hh;"
             "grouping grp {notification g { description \"super g\";}}"
             "container top {notification h; uses grp {refine h {description \"ultra h\";}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Refine(s) target node \"h\" in grouping \"grp\" was not found.", "/hh:top/{uses='grp'}");
+    CHECK_LOG_CTX("Refine(s) target node \"h\" in grouping \"grp\" was not found.", "Path \"/hh:top/{uses='grp'}\".");
 
     assert_int_equal(LY_ENOTFOUND, lys_parse_mem(UTEST_LYCTX, "module ii {yang-version 1.1;namespace urn:ii;prefix ii;"
             "grouping grp {action g { description \"super g\";}}"
             "container top {action i; uses grp {refine i {description \"ultra i\";}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Refine(s) target node \"i\" in grouping \"grp\" was not found.", "/ii:top/{uses='grp'}");
+    CHECK_LOG_CTX("Refine(s) target node \"i\" in grouping \"grp\" was not found.", "Path \"/ii:top/{uses='grp'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module jj {yang-version 1.1;namespace urn:jj;prefix jj;"
             "grouping grp {leaf j { when \"1\"; type invalid;}}"
             "container top {uses grp;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Referenced type \"invalid\" not found.", "/jj:top/{uses='grp'}/j");
+    CHECK_LOG_CTX("Referenced type \"invalid\" not found.", "Path \"/jj:top/{uses='grp'}/j\".");
 }
 
 static void
@@ -2666,65 +2796,71 @@ test_refine(void **state)
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;import grp {prefix g;}"
             "uses g:grp {refine c {default hello;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid refine of container node - it is not possible to replace \"default\" property.", "/aa:{uses='g:grp'}/aa:c/{refine='c'}");
+    CHECK_LOG_CTX("Invalid refine of container node - it is not possible to replace \"default\" property.",
+            "Path \"/aa:{uses='g:grp'}/aa:c/{refine='c'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;import grp {prefix g;}"
             "uses g:grp {refine c/l {default hello; default world;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid refine of leaf with too many (2) default properties.", "/bb:{uses='g:grp'}/bb:c/l/{refine='c/l'}");
+    CHECK_LOG_CTX("Invalid refine of leaf with too many (2) default properties.", "Path \"/bb:{uses='g:grp'}/bb:c/l/{refine='c/l'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc;import grp {prefix g;}"
             "uses g:grp {refine c/ll {default hello; default world;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid refine of default in leaf-list - the default statement is allowed only in YANG 1.1 modules.", "/cc:{uses='g:grp'}/cc:c/ll/{refine='c/ll'}");
+    CHECK_LOG_CTX("Invalid refine of default in leaf-list - the default statement is allowed only in YANG 1.1 modules.",
+            "Path \"/cc:{uses='g:grp'}/cc:c/ll/{refine='c/ll'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd {namespace urn:dd;prefix dd;import grp {prefix g;}"
             "uses g:grp {refine c/ll {mandatory true;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid refine of leaf-list node - it is not possible to replace \"mandatory\" property.", "/dd:{uses='g:grp'}/dd:c/ll/{refine='c/ll'}");
+    CHECK_LOG_CTX("Invalid refine of leaf-list node - it is not possible to replace \"mandatory\" property.",
+            "Path \"/dd:{uses='g:grp'}/dd:c/ll/{refine='c/ll'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;import grp {prefix g;}"
             "uses g:grp {refine c/l {mandatory true;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/ee:{uses='g:grp'}/ee:c/l",
-            "Invalid mandatory leaf with a default value.", "/ee:{uses='g:grp'}/ee:c/l");
+    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "Path \"/ee:{uses='g:grp'}/ee:c/l\".");
+    CHECK_LOG_CTX("Invalid mandatory leaf with a default value.", "Path \"/ee:{uses='g:grp'}/ee:c/l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ef {namespace urn:ef;prefix ef;import grp {prefix g;}"
             "uses g:grp {refine c/ch {mandatory true;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/ef:{uses='g:grp'}/ef:c/ch",
-            "Invalid mandatory choice with a default case.", "/ef:{uses='g:grp'}/ef:c/ch");
+    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "Path \"/ef:{uses='g:grp'}/ef:c/ch\".");
+    CHECK_LOG_CTX("Invalid mandatory choice with a default case.", "Path \"/ef:{uses='g:grp'}/ef:c/ch\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff {namespace urn:ff;prefix ff;import grp {prefix g;}"
             "uses g:grp {refine c/ch/ca/ca {mandatory true;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Mandatory node \"ca\" under the default case \"ca\".", "/ff:{uses='g:grp'}/ff:c/ch");
+    CHECK_LOG_CTX("Mandatory node \"ca\" under the default case \"ca\".", "Path \"/ff:{uses='g:grp'}/ff:c/ch\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module gg {namespace urn:gg;prefix gg;import grp {prefix g;}"
             "uses g:grp {refine c/x {default hello;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/gg:{uses='g:grp'}/gg:c/x",
-            "Invalid mandatory leaf with a default value.", "/gg:{uses='g:grp'}/gg:c/x");
+    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "Path \"/gg:{uses='g:grp'}/gg:c/x\".");
+    CHECK_LOG_CTX("Invalid mandatory leaf with a default value.", "Path \"/gg:{uses='g:grp'}/gg:c/x\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module hh {namespace urn:hh;prefix hh;import grp {prefix g;}"
             "uses g:grp {refine c/c/l {config true;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/hh:{uses='g:grp'}/hh:c/c/l",
-            "Configuration node cannot be child of any state data node.", "/hh:{uses='g:grp'}/hh:c/c/l");
+    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "Path \"/hh:{uses='g:grp'}/hh:c/c/l\".");
+    CHECK_LOG_CTX("Configuration node cannot be child of any state data node.", "Path \"/hh:{uses='g:grp'}/hh:c/c/l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ii {namespace urn:ii;prefix ii;grouping grp {leaf l {type string; status deprecated;}}"
             "uses grp {status obsolete;}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Inherited schema-only status \"obsolete\" is in conflict with \"deprecated\" status of \"l\".",
-            "/ii:{uses='grp'}/ii:l");
+            "Path \"/ii:{uses='grp'}/ii:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module jj {namespace urn:jj;prefix jj;import grp {prefix g;}"
             "uses g:grp {refine c/x {presence nonsence;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid refine of leaf node - it is not possible to replace \"presence\" property.", "/jj:{uses='g:grp'}/jj:c/x/{refine='c/x'}");
+    CHECK_LOG_CTX("Invalid refine of leaf node - it is not possible to replace \"presence\" property.",
+            "Path \"/jj:{uses='g:grp'}/jj:c/x/{refine='c/x'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module kk {namespace urn:kk;prefix kk;import grp {prefix g;}"
             "uses g:grp {refine c/ch {must 1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid refine of choice node - it is not possible to add \"must\" property.", "/kk:{uses='g:grp'}/kk:c/ch/{refine='c/ch'}");
+    CHECK_LOG_CTX("Invalid refine of choice node - it is not possible to add \"must\" property.",
+            "Path \"/kk:{uses='g:grp'}/kk:c/ch/{refine='c/ch'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ll {namespace urn:ll;prefix ll;import grp {prefix g;}"
             "uses g:grp {refine c/x {min-elements 1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid refine of leaf node - it is not possible to replace \"min-elements\" property.", "/ll:{uses='g:grp'}/ll:c/x/{refine='c/x'}");
+    CHECK_LOG_CTX("Invalid refine of leaf node - it is not possible to replace \"min-elements\" property.",
+            "Path \"/ll:{uses='g:grp'}/ll:c/x/{refine='c/x'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm {namespace urn:mm;prefix mm;import grp {prefix g;}"
             "uses g:grp {refine c/ll {min-elements 1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/mm:{uses='g:grp'}/mm:c/ll",
-            "The default statement is present on leaf-list with a nonzero min-elements.", "/mm:{uses='g:grp'}/mm:c/ll");
+    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "Path \"/mm:{uses='g:grp'}/mm:c/ll\".");
+    CHECK_LOG_CTX("The default statement is present on leaf-list with a nonzero min-elements.", "Path \"/mm:{uses='g:grp'}/mm:c/ll\".");
 }
 
 static void
@@ -2867,40 +3003,41 @@ test_augment(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; container c {leaf a {type string;}}"
             "augment /x/ {leaf a {type int8;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid absolute-schema-nodeid value \"/x/\" - unexpected end of expression.", "/aa:{augment='/x/'}");
+    CHECK_LOG_CTX("Invalid absolute-schema-nodeid value \"/x/\" - unexpected end of expression.", "Path \"/aa:{augment='/x/'}\".");
 
     assert_int_equal(LY_ENOTFOUND, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; container c {leaf a {type string;}}"
             "augment /x {leaf a {type int8;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Augment target node \"/x\" from module \"aa\" was not found.", "/aa:{augment='/x'}");
+    CHECK_LOG_CTX("Augment target node \"/x\" from module \"aa\" was not found.", "Path \"/aa:{augment='/x'}\".");
 
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb; container c {leaf a {type string;}}"
             "augment /c {leaf a {type int8;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "/bb:{augment='/c'}/a");
+    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "Path \"/bb:{augment='/c'}/a\".");
 
     assert_int_equal(LY_ENOTFOUND, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc; container c {leaf a {type string;}}"
             "augment /c/a {leaf a {type int8;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Augment target node \"/c/a\" from module \"cc\" was not found.", "/cc:{augment='/c/a'}");
+    CHECK_LOG_CTX("Augment target node \"/c/a\" from module \"cc\" was not found.", "Path \"/cc:{augment='/c/a'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd {namespace urn:dd;prefix dd; container c {leaf a {type string;}}"
             "augment /c {case b {leaf d {type int8;}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid augment of container node which is not allowed to contain case node \"b\".", "/dd:{augment='/c'}");
+    CHECK_LOG_CTX("Invalid augment of container node which is not allowed to contain case node \"b\".", "Path \"/dd:{augment='/c'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee; import himp {prefix hi;}"
             "augment /hi:top {container c {leaf d {mandatory true; type int8;}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid augment adding mandatory node \"c\" without making it conditional via when statement.", "/ee:{augment='/hi:top'}");
+    CHECK_LOG_CTX("Invalid augment adding mandatory node \"c\" without making it conditional via when statement.", "Path \"/ee:{augment='/hi:top'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff {namespace urn:ff;prefix ff; container top;"
             "augment ../top {leaf x {type int8;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid absolute-schema-nodeid value \"../top\" - \"/\" expected instead of \"..\".", "/ff:{augment='../top'}");
+    CHECK_LOG_CTX("Invalid absolute-schema-nodeid value \"../top\" - \"/\" expected instead of \"..\".", "Path \"/ff:{augment='../top'}\".");
 
     assert_int_equal(LY_ENOTFOUND, lys_parse_mem(UTEST_LYCTX, "module gg {namespace urn:gg;prefix gg; rpc func;"
             "augment /func {leaf x {type int8;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Augment target node \"/func\" from module \"gg\" was not found.", "/gg:{augment='/func'}");
+    CHECK_LOG_CTX("Augment target node \"/func\" from module \"gg\" was not found.", "Path \"/gg:{augment='/func'}\".");
 
     assert_int_equal(LY_ENOTFOUND, lys_parse_mem(UTEST_LYCTX, "module hh {namespace urn:hh;prefix hh;import himp {prefix hi;}"
             "augment /hi:func/input {leaf x {type string;}}"
             "augment /hi:func/output {leaf y {type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Augment target node \"/hi:func/input\" from module \"hh\" was not found.", "/hh:{augment='/hi:func/input'}");
+    CHECK_LOG_CTX("Augment target node \"/hi:func/input\" from module \"hh\" was not found.", "Path \"/hh:{augment='/hi:func/input'}\".");
+    CHECK_LOG_CTX("Augment target node \"/hi:func/output\" from module \"hh\" was not found.", "Path \"/hh:{augment='/hi:func/output'}\".");
 }
 
 static void
@@ -3356,194 +3493,202 @@ test_deviation(void **state)
 
     assert_int_equal(LY_ENOTFOUND, lys_parse_mem(UTEST_LYCTX, "module aa1 {namespace urn:aa1;prefix aa1;import a {prefix a;}"
             "deviation /a:top/a:z {deviate not-supported;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Deviation(s) target node \"/a:top/a:z\" from module \"aa1\" was not found.", "/a:{deviation='/a:top/a:z'}");
+    CHECK_LOG_CTX("Deviation(s) target node \"/a:top/a:z\" from module \"aa1\" was not found.", "Path \"/a:{deviation='/a:top/a:z'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa2 {namespace urn:aa2;prefix aa2;import a {prefix a;}"
             "deviation /a:top/a:a {deviate not-supported;}"
             "deviation /a:top/a:a {deviate add {default error;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Multiple deviations of \"/a:top/a:a\" with one of them being \"not-supported\".", "/aa2:{deviation='/a:top/a:a'}");
+    CHECK_LOG_CTX("Multiple deviations of \"/a:top/a:a\" with one of them being \"not-supported\".", "Path \"/aa2:{deviation='/a:top/a:a'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;import a {prefix a;}"
             "deviation a:top/a:a {deviate not-supported;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid absolute-schema-nodeid value \"a:top/a:a\" - \"/\" expected instead of \"a:top\".", "/bb:{deviation='a:top/a:a'}");
+    CHECK_LOG_CTX("Invalid absolute-schema-nodeid value \"a:top/a:a\" - \"/\" expected instead of \"a:top\".", "Path \"/bb:{deviation='a:top/a:a'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc; container c;"
             "deviation /c {deviate add {units meters;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation of container node - it is not possible to add \"units\" property.", "/cc:{deviation='/c'}");
+    CHECK_LOG_CTX("Invalid deviation of container node - it is not possible to add \"units\" property.", "Path \"/cc:{deviation='/c'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cd {namespace urn:cd;prefix cd; leaf c {type string; units centimeters;}"
             "deviation /c {deviate add {units meters;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation adding \"units\" property which already exists (with value \"centimeters\").", "/cd:{deviation='/c'}");
+    CHECK_LOG_CTX("Invalid deviation adding \"units\" property which already exists (with value \"centimeters\").", "Path \"/cd:{deviation='/c'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd1 {namespace urn:dd1;prefix dd1; container c;"
             "deviation /c {deviate delete {units meters;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation of container node - it is not possible to delete \"units\" property.", "/dd1:{deviation='/c'}");
+    CHECK_LOG_CTX("Invalid deviation of container node - it is not possible to delete \"units\" property.", "Path \"/dd1:{deviation='/c'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd2 {namespace urn:dd2;prefix dd2; leaf c {type string;}"
             "deviation /c {deviate delete {units meters;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation deleting \"units\" property \"meters\" which is not present.", "/dd2:{deviation='/c'}");
+    CHECK_LOG_CTX("Invalid deviation deleting \"units\" property \"meters\" which is not present.", "Path \"/dd2:{deviation='/c'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd3 {namespace urn:dd3;prefix dd3; leaf c {type string; units centimeters;}"
             "deviation /c {deviate delete {units meters;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid deviation deleting \"units\" property \"meters\" which does not match the target's property value \"centimeters\".",
-            "/dd3:{deviation='/c'}");
+            "Path \"/dd3:{deviation='/c'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee1 {namespace urn:ee1;prefix ee1; container c;"
             "deviation /c {deviate replace {units meters;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation of container node - it is not possible to replace \"units\" property.", "/ee1:{deviation='/c'}");
+    CHECK_LOG_CTX("Invalid deviation of container node - it is not possible to replace \"units\" property.", "Path \"/ee1:{deviation='/c'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee2 {namespace urn:ee2;prefix ee2; leaf c {type string;}"
             "deviation /c {deviate replace {units meters;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation replacing \"units\" property \"meters\" which is not present.", "/ee2:{deviation='/c'}");
+    CHECK_LOG_CTX("Invalid deviation replacing \"units\" property \"meters\" which is not present.", "Path \"/ee2:{deviation='/c'}\".");
 
     /* the default is already deleted in /e:a byt module f */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff1 {namespace urn:ff1;prefix ff1; import e {prefix e;}"
             "deviation /e:a {deviate delete {default x:aa;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation deleting \"default\" property \"x:aa\" which is not present.", "/ff1:{deviation='/e:a'}");
+    CHECK_LOG_CTX("Invalid deviation deleting \"default\" property \"x:aa\" which is not present.", "Path \"/ff1:{deviation='/e:a'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff3 {namespace urn:ff3;prefix ff3; import e {prefix e;}"
             "deviation /e:b {deviate delete {default e:b;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation deleting \"default\" property \"e:b\" which does not match the target's property value \"x:ba\".", "/ff3:{deviation='/e:b'}");
+    CHECK_LOG_CTX("Invalid deviation deleting \"default\" property \"e:b\" which does not match the target's property value \"x:ba\".",
+            "Path \"/ff3:{deviation='/e:b'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff5 {namespace urn:ff5;prefix ff5; anyxml a;"
             "deviation /a {deviate delete {default x;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation of anyxml node - it is not possible to delete \"default\" property.", "/ff5:{deviation='/a'}");
+    CHECK_LOG_CTX("Invalid deviation of anyxml node - it is not possible to delete \"default\" property.", "Path \"/ff5:{deviation='/a'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff6 {namespace urn:ff6;prefix ff6; import e {prefix e;}"
             "deviation /e:c {deviate delete {default hi;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation deleting \"default\" property \"hi\" which does not match the target's property value \"hello\".", "/ff6:{deviation='/e:c'}");
+    CHECK_LOG_CTX("Invalid deviation deleting \"default\" property \"hi\" which does not match the target's property value \"hello\".",
+            "Path \"/ff6:{deviation='/e:c'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff7 {namespace urn:ff7;prefix ff7; import e {prefix e;}"
             "deviation /e:d {deviate delete {default hi;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation deleting \"default\" property \"hi\" which does not match any of the target's property values.", "/ff7:{deviation='/e:d'}");
+    CHECK_LOG_CTX("Invalid deviation deleting \"default\" property \"hi\" which does not match any of the target's property values.",
+            "Path \"/ff7:{deviation='/e:d'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module gg1 {namespace urn:gg1;prefix gg1; import e {prefix e;}"
             "deviation /e:b {deviate add {default e:a;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation adding \"default\" property which already exists (with value \"x:ba\").", "/gg1:{deviation='/e:b'}");
+    CHECK_LOG_CTX("Invalid deviation adding \"default\" property which already exists (with value \"x:ba\").", "Path \"/gg1:{deviation='/e:b'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module gg2 {namespace urn:gg2;prefix gg2; import e {prefix e;}"
             "deviation /e:a {deviate add {default x:a;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/e:a",
-            "Default case prefix \"x\" not found in imports of \"gg2\".", "/e:a");
+    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "Path \"/e:a\".");
+    CHECK_LOG_CTX("Default case prefix \"x\" not found in imports of \"gg2\".", "Path \"/e:a\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module gg3 {namespace urn:gg3;prefix gg3; import e {prefix e;}"
             "deviation /e:a {deviate add {default a;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/e:a",
-            "Default case \"a\" not found.", "/e:a");
+    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "Path \"/e:a\".");
+    CHECK_LOG_CTX("Default case \"a\" not found.", "Path \"/e:a\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module gg4 {namespace urn:gg4;prefix gg4; import e {prefix e;}"
             "deviation /e:c {deviate add {default hi;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation adding \"default\" property which already exists (with value \"hello\").", "/gg4:{deviation='/e:c'}");
+    CHECK_LOG_CTX("Invalid deviation adding \"default\" property which already exists (with value \"hello\").", "Path \"/gg4:{deviation='/e:c'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module gg4 {namespace urn:gg4;prefix gg4; import e {prefix e;}"
             "deviation /e:a {deviate add {default e:ac;}}}", LYS_IN_YANG, &mod));
-    /*CHECK_LOG_CTX("Invalid deviation adding \"default\" property \"e:ac\" of choice - mandatory node \"ac\" under the default case.", "/gg4:{deviation='/e:a'}");*/
-    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/e:a");
+    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "Path \"/e:a\".");
+    CHECK_LOG_CTX("Mandatory node \"ac\" under the default case \"e:ac\".", "Path \"/e:a\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module gg5 {namespace urn:gg5;prefix gg5; leaf x {type string; mandatory true;}"
             "deviation /x {deviate add {default error;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/gg5:{deviation='/x'}",
-            "Invalid mandatory leaf with a default value.", "/gg5:{deviation='/x'}");
+    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "Path \"/gg5:{deviation='/x'}\".");
+    CHECK_LOG_CTX("Invalid mandatory leaf with a default value.", "Path \"/gg5:{deviation='/x'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module hh1 {yang-version 1.1; namespace urn:hh1;prefix hh1; import e {prefix e;}"
             "deviation /e:d {deviate replace {default hi;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation of leaf-list node - it is not possible to replace \"default\" property.", "/hh1:{deviation='/e:d'}");
+    CHECK_LOG_CTX("Invalid deviation of leaf-list node - it is not possible to replace \"default\" property.",
+            "Path \"/hh1:{deviation='/e:d'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ii1 {namespace urn:ii1;prefix ii1; import i {prefix i;}"
             "deviation /i:l1 {deviate delete {unique x;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation deleting \"unique\" property \"x\" which does not match any of the target's property values.", "/ii1:{deviation='/i:l1'}");
+    CHECK_LOG_CTX("Invalid deviation deleting \"unique\" property \"x\" which does not match any of the target's property values.",
+            "Path \"/ii1:{deviation='/i:l1'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ii2 {namespace urn:ii2;prefix ii2; import i {prefix i;} leaf x { type string;}"
             "deviation /i:l2 {deviate delete {unique d;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation deleting \"unique\" property \"d\" which does not match any of the target's property values.", "/ii2:{deviation='/i:l2'}");
+    CHECK_LOG_CTX("Invalid deviation deleting \"unique\" property \"d\" which does not match any of the target's property values.",
+            "Path \"/ii2:{deviation='/i:l2'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ii3 {namespace urn:ii3;prefix ii3; leaf x { type string;}"
             "deviation /x {deviate delete {unique d;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation of leaf node - it is not possible to delete \"unique\" property.", "/ii3:{deviation='/x'}");
+    CHECK_LOG_CTX("Invalid deviation of leaf node - it is not possible to delete \"unique\" property.", "Path \"/ii3:{deviation='/x'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ii4 {namespace urn:ii4;prefix ii4; leaf x { type string;}"
             "deviation /x {deviate add {unique d;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation of leaf node - it is not possible to add \"unique\" property.", "/ii4:{deviation='/x'}");
+    CHECK_LOG_CTX("Invalid deviation of leaf node - it is not possible to add \"unique\" property.", "Path \"/ii4:{deviation='/x'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module jj1 {namespace urn:jj1;prefix jj1; choice ch {case a {leaf a{type string;}}}"
             "deviation /ch/a {deviate add {config false;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation of case node - it is not possible to add \"config\" property.", "/jj1:{deviation='/ch/a'}");
+    CHECK_LOG_CTX("Invalid deviation of case node - it is not possible to add \"config\" property.", "Path \"/jj1:{deviation='/ch/a'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module jj2 {namespace urn:jj2;prefix jj2; container top {config false; leaf x {type string;}}"
             "deviation /top/x {deviate add {config true;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/jj2:{deviation='/top/x'}",
-            "Configuration node cannot be child of any state data node.", "/jj2:{deviation='/top/x'}");
+    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "Path \"/jj2:{deviation='/top/x'}\".");
+    CHECK_LOG_CTX("Configuration node cannot be child of any state data node.", "Path \"/jj2:{deviation='/top/x'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module jj3 {namespace urn:jj3;prefix jj3; container top {leaf x {type string;}}"
             "deviation /top/x {deviate replace {config false;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation replacing \"config\" property \"config false\" which is not present.", "/jj3:{deviation='/top/x'}");
+    CHECK_LOG_CTX("Invalid deviation replacing \"config\" property \"config false\" which is not present.", "Path \"/jj3:{deviation='/top/x'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module jj4 {namespace urn:jj4;prefix jj4; choice ch {case a {leaf a{type string;}}}"
             "deviation /ch/a {deviate replace {config false;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation of case node - it is not possible to replace \"config\" property.", "/jj4:{deviation='/ch/a'}");
+    CHECK_LOG_CTX("Invalid deviation of case node - it is not possible to replace \"config\" property.", "Path \"/jj4:{deviation='/ch/a'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module jj5 {namespace urn:jj5;prefix jj5; container top {leaf x {type string; config true;}}"
             "deviation /top {deviate add {config false;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/jj5:top",
-            "Configuration node cannot be child of any state data node.", "/jj5:top/x");
+    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "Path \"/jj5:top\".");
+    CHECK_LOG_CTX("Configuration node cannot be child of any state data node.", "Path \"/jj5:top/x\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module jj6 {namespace urn:jj6;prefix jj6; leaf x {config false; type string;}"
             "deviation /x {deviate add {config true;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation adding \"config\" property which already exists (with value \"config false\").", "/jj6:{deviation='/x'}");
+    CHECK_LOG_CTX("Invalid deviation adding \"config\" property which already exists (with value \"config false\").",
+            "Path \"/jj6:{deviation='/x'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module kk1 {namespace urn:kk1;prefix kk1; container top {leaf a{type string;}}"
             "deviation /top {deviate add {mandatory true;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation of container node - it is not possible to add \"mandatory\" property.", "/kk1:{deviation='/top'}");
+    CHECK_LOG_CTX("Invalid deviation of container node - it is not possible to add \"mandatory\" property.", "Path \"/kk1:{deviation='/top'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module kk2 {namespace urn:kk2;prefix kk2; container top {leaf a{type string;}}"
             "deviation /top {deviate replace {mandatory true;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation of container node - it is not possible to replace \"mandatory\" property.", "/kk2:{deviation='/top'}");
+    CHECK_LOG_CTX("Invalid deviation of container node - it is not possible to replace \"mandatory\" property.", "Path \"/kk2:{deviation='/top'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module kk3 {namespace urn:kk3;prefix kk3; container top {leaf x {type string;}}"
             "deviation /top/x {deviate replace {mandatory true;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation replacing \"mandatory\" property \"mandatory true\" which is not present.", "/kk3:{deviation='/top/x'}");
+    CHECK_LOG_CTX("Invalid deviation replacing \"mandatory\" property \"mandatory true\" which is not present.", "Path \"/kk3:{deviation='/top/x'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module kk4 {namespace urn:kk4;prefix kk4; leaf x {mandatory true; type string;}"
             "deviation /x {deviate add {mandatory false;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation adding \"mandatory\" property which already exists (with value \"mandatory true\").", "/kk4:{deviation='/x'}");
+    CHECK_LOG_CTX("Invalid deviation adding \"mandatory\" property which already exists (with value \"mandatory true\").",
+            "Path \"/kk4:{deviation='/x'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ll1 {namespace urn:ll1;prefix ll1; leaf x {default test; type string;}"
             "deviation /x {deviate add {mandatory true;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/ll1:{deviation='/x'}",
-            "Invalid mandatory leaf with a default value.", "/ll1:{deviation='/x'}");
+    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "Path \"/ll1:{deviation='/x'}\".");
+    CHECK_LOG_CTX("Invalid mandatory leaf with a default value.", "Path \"/ll1:{deviation='/x'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ll2 {yang-version 1.1; namespace urn:ll2;prefix ll2; leaf-list x {default test; type string;}"
             "deviation /x {deviate add {min-elements 1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/ll2:{deviation='/x'}",
-            "The default statement is present on leaf-list with a nonzero min-elements.", "/ll2:{deviation='/x'}");
+    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "Path \"/ll2:{deviation='/x'}\".");
+    CHECK_LOG_CTX("The default statement is present on leaf-list with a nonzero min-elements.", "Path \"/ll2:{deviation='/x'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ll2 {namespace urn:ll2;prefix ll2; choice ch {default a; leaf a {type string;} leaf b {type string;}}"
             "deviation /ch {deviate add {mandatory true;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/ll2:ch",
-            "Invalid mandatory choice with a default case.", "/ll2:ch");
+    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "Path \"/ll2:ch\".");
+    CHECK_LOG_CTX("Invalid mandatory choice with a default case.", "Path \"/ll2:ch\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm1 {namespace urn:mm1;prefix mm1; leaf-list x {min-elements 10; type string;}"
             "deviation /x {deviate add {max-elements 5;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/mm1:{deviation='/x'}",
-            "Leaf-list min-elements 10 is bigger than max-elements 5.", "/mm1:{deviation='/x'}");
+    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "Path \"/mm1:{deviation='/x'}\".");
+    CHECK_LOG_CTX("Leaf-list min-elements 10 is bigger than max-elements 5.", "Path \"/mm1:{deviation='/x'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm2 {namespace urn:mm2;prefix mm2; leaf-list x {max-elements 10; type string;}"
             "deviation /x {deviate add {min-elements 20;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/mm2:{deviation='/x'}",
-            "Leaf-list min-elements 20 is bigger than max-elements 10.", "/mm2:{deviation='/x'}");
+    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "Path \"/mm2:{deviation='/x'}\".");
+    CHECK_LOG_CTX("Leaf-list min-elements 20 is bigger than max-elements 10.", "Path \"/mm2:{deviation='/x'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm3 {namespace urn:mm3;prefix mm3; list x {min-elements 5; max-elements 10; config false;}"
             "deviation /x {deviate replace {max-elements 1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/mm3:{deviation='/x'}",
-            "List min-elements 5 is bigger than max-elements 1.", "/mm3:{deviation='/x'}");
+    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "Path \"/mm3:{deviation='/x'}\".");
+    CHECK_LOG_CTX("List min-elements 5 is bigger than max-elements 1.", "Path \"/mm3:{deviation='/x'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm4 {namespace urn:mm4;prefix mm4; list x {min-elements 5; max-elements 10; config false;}"
             "deviation /x {deviate replace {min-elements 20;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/mm4:{deviation='/x'}",
-            "List min-elements 20 is bigger than max-elements 10.", "/mm4:{deviation='/x'}");
+    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "Path \"/mm4:{deviation='/x'}\".");
+    CHECK_LOG_CTX("List min-elements 20 is bigger than max-elements 10.", "Path \"/mm4:{deviation='/x'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm5 {namespace urn:mm5;prefix mm5; leaf-list x {type string; min-elements 5;}"
             "deviation /x {deviate add {min-elements 1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation adding \"min-elements\" property which already exists (with value \"5\").", "/mm5:{deviation='/x'}");
+    CHECK_LOG_CTX("Invalid deviation adding \"min-elements\" property which already exists (with value \"5\").", "Path \"/mm5:{deviation='/x'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm6 {namespace urn:mm6;prefix mm6; list x {config false; min-elements 5;}"
             "deviation /x {deviate add {min-elements 1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation adding \"min-elements\" property which already exists (with value \"5\").", "/mm6:{deviation='/x'}");
+    CHECK_LOG_CTX("Invalid deviation adding \"min-elements\" property which already exists (with value \"5\").", "Path \"/mm6:{deviation='/x'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm7 {namespace urn:mm7;prefix mm7; leaf-list x {type string; max-elements 5;}"
             "deviation /x {deviate add {max-elements 1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation adding \"max-elements\" property which already exists (with value \"5\").", "/mm7:{deviation='/x'}");
+    CHECK_LOG_CTX("Invalid deviation adding \"max-elements\" property which already exists (with value \"5\").", "Path \"/mm7:{deviation='/x'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm8 {namespace urn:mm8;prefix mm8; list x {config false; max-elements 5;}"
             "deviation /x {deviate add {max-elements 1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation adding \"max-elements\" property which already exists (with value \"5\").", "/mm8:{deviation='/x'}");
+    CHECK_LOG_CTX("Invalid deviation adding \"max-elements\" property which already exists (with value \"5\").", "Path \"/mm8:{deviation='/x'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm9 {namespace urn:mm9;prefix mm9; leaf-list x {type string;}"
             "deviation /x {deviate replace {min-elements 1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation replacing \"min-elements\" property which is not present.", "/mm9:{deviation='/x'}");
+    CHECK_LOG_CTX("Invalid deviation replacing \"min-elements\" property which is not present.", "Path \"/mm9:{deviation='/x'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm10 {namespace urn:mm10;prefix mm10; list x {config false;}"
             "deviation /x {deviate replace {min-elements 1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation replacing \"min-elements\" property which is not present.", "/mm10:{deviation='/x'}");
+    CHECK_LOG_CTX("Invalid deviation replacing \"min-elements\" property which is not present.", "Path \"/mm10:{deviation='/x'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm11 {namespace urn:mm11;prefix mm11; leaf-list x {type string;}"
             "deviation /x {deviate replace {max-elements 1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation replacing \"max-elements\" property which is not present.", "/mm11:{deviation='/x'}");
+    CHECK_LOG_CTX("Invalid deviation replacing \"max-elements\" property which is not present.", "Path \"/mm11:{deviation='/x'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm12 {namespace urn:mm12;prefix mm12; list x {config false; }"
             "deviation /x {deviate replace {max-elements 1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation replacing \"max-elements\" property which is not present.", "/mm12:{deviation='/x'}");
+    CHECK_LOG_CTX("Invalid deviation replacing \"max-elements\" property which is not present.", "Path \"/mm12:{deviation='/x'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module nn1 {namespace urn:nn1;prefix nn1; anyxml x;"
             "deviation /x {deviate replace {type string;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation of anyxml node - it is not possible to replace \"type\" property.", "/nn1:{deviation='/x'}");
+    CHECK_LOG_CTX("Invalid deviation of anyxml node - it is not possible to replace \"type\" property.", "Path \"/nn1:{deviation='/x'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module nn2 {namespace urn:nn2;prefix nn2; leaf-list x {type string;}"
             "deviation /x {deviate replace {type empty;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/nn2:{deviation='/x'}",
-            "Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.", "/nn2:{deviation='/x'}");
+    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "Path \"/nn2:{deviation='/x'}\".");
+    CHECK_LOG_CTX("Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.", "Path \"/nn2:{deviation='/x'}\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module oo1 {namespace urn:oo1;prefix oo1; leaf x {type uint16; default 300;}"
             "deviation /x {deviate replace {type uint8;}}}", LYS_IN_YANG, &mod));
@@ -3563,6 +3708,7 @@ test_deviation(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module pp1 {namespace urn:pp1;prefix pp1; import pp {prefix pp;}"
             "deviation /pp:c/pp:x {deviate not-supported;}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Target of leafref \"l\" cannot be referenced because it is disabled.", "Schema location \"/pp:l\".");
+    CHECK_LOG_CTX("Not found node \"x\" in path.", "Schema location \"/pp:l\".");
 }
 
 static void
@@ -3816,6 +3962,7 @@ main(void)
         UTEST(test_type_empty, setup),
         UTEST(test_type_union, setup),
         UTEST(test_type_dflt, setup),
+        UTEST(test_type_exts, setup),
         UTEST(test_status, setup),
         UTEST(test_node_container, setup),
         UTEST(test_node_leaflist, setup),

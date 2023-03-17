@@ -44,32 +44,65 @@
 #include "xpath.h"
 
 /**
+ * @brief Callback for checking first instance hash table values equivalence.
+ *
+ * @param[in] val1_p If not @p mod, pointer to the first instance.
+ * @param[in] val2_p If not @p mod, pointer to the found dup inst item.
+ */
+static ly_bool
+lyht_dup_inst_ht_equal_cb(void *val1_p, void *val2_p, ly_bool mod, void *UNUSED(cb_data))
+{
+    if (mod) {
+        struct lyd_dup_inst **item1 = val1_p, **item2 = val2_p;
+
+        /* equal on 2 dup inst items */
+        return *item1 == *item2 ? 1 : 0;
+    } else {
+        struct lyd_node **first_inst = val1_p;
+        struct lyd_dup_inst **item = val2_p;
+
+        /* equal on dup inst item and a first instance */
+        return (*item)->set->dnodes[0] == *first_inst ? 1 : 0;
+    }
+}
+
+/**
  * @brief Find an entry in duplicate instance cache for an instance. Create it if it does not exist.
  *
- * @param[in] first_inst Instance of the cache entry.
- * @param[in,out] dup_inst_cache Duplicate instance cache.
+ * @param[in] first_inst First instance of the cache entry.
+ * @param[in] dup_inst_ht Duplicate instance cache hash table.
  * @return Instance cache entry.
  */
 static struct lyd_dup_inst *
-lyd_dup_inst_get(const struct lyd_node *first_inst, struct lyd_dup_inst **dup_inst_cache)
+lyd_dup_inst_get(const struct lyd_node *first_inst, struct hash_table **dup_inst_ht)
 {
-    struct lyd_dup_inst *item;
-    LY_ARRAY_COUNT_TYPE u;
+    struct lyd_dup_inst **item_p, *item;
 
-    LY_ARRAY_FOR(*dup_inst_cache, u) {
-        if ((*dup_inst_cache)[u].inst_set->dnodes[0] == first_inst) {
-            return &(*dup_inst_cache)[u];
+    if (*dup_inst_ht) {
+        /* find the item of the first instance */
+        if (!lyht_find(*dup_inst_ht, &first_inst, first_inst->hash, (void **)&item_p)) {
+            return *item_p;
         }
+    } else {
+        /* create the hash table */
+        *dup_inst_ht = lyht_new(2, sizeof item, lyht_dup_inst_ht_equal_cb, NULL, 1);
+        LY_CHECK_RET(!*dup_inst_ht, NULL);
     }
 
-    /* it was not added yet, add it now */
-    LY_ARRAY_NEW_RET(LYD_CTX(first_inst), *dup_inst_cache, item, NULL);
+    /* first instance has no dup inst item, create it */
+    item = calloc(1, sizeof *item);
+    LY_CHECK_RET(!item, NULL);
+
+    /* add into the hash table */
+    if (lyht_insert(*dup_inst_ht, &item, first_inst->hash, NULL)) {
+        return NULL;
+    }
 
     return item;
 }
 
 LY_ERR
-lyd_dup_inst_next(struct lyd_node **inst, const struct lyd_node *siblings, struct lyd_dup_inst **dup_inst_cache)
+lyd_dup_inst_next(struct lyd_node **inst, const struct lyd_node *siblings, struct hash_table **dup_inst_ht)
 {
     struct lyd_dup_inst *dup_inst;
 
@@ -80,40 +113,47 @@ lyd_dup_inst_next(struct lyd_node **inst, const struct lyd_node *siblings, struc
 
     /* there can be more exact same instances (even if not allowed in invalid data) and we must make sure we do not
      * match a single node more times */
-    dup_inst = lyd_dup_inst_get(*inst, dup_inst_cache);
+    dup_inst = lyd_dup_inst_get(*inst, dup_inst_ht);
     LY_CHECK_ERR_RET(!dup_inst, LOGMEM(LYD_CTX(siblings)), LY_EMEM);
 
     if (!dup_inst->used) {
         /* we did not cache these instances yet, do so */
-        lyd_find_sibling_dup_inst_set(siblings, *inst, &dup_inst->inst_set);
-        assert(dup_inst->inst_set->count && (dup_inst->inst_set->dnodes[0] == *inst));
+        lyd_find_sibling_dup_inst_set(siblings, *inst, &dup_inst->set);
+        assert(dup_inst->set->count && (dup_inst->set->dnodes[0] == *inst));
     }
 
-    if (dup_inst->used == dup_inst->inst_set->count) {
+    if (dup_inst->used == dup_inst->set->count) {
         if (lysc_is_dup_inst_list((*inst)->schema)) {
             /* we have used all the instances */
             *inst = NULL;
         } /* else just keep using the last (ideally only) instance */
     } else {
-        assert(dup_inst->used < dup_inst->inst_set->count);
+        assert(dup_inst->used < dup_inst->set->count);
 
         /* use another instance */
-        *inst = dup_inst->inst_set->dnodes[dup_inst->used];
+        *inst = dup_inst->set->dnodes[dup_inst->used];
         ++dup_inst->used;
     }
 
     return LY_SUCCESS;
 }
 
-void
-lyd_dup_inst_free(struct lyd_dup_inst *dup_inst)
+/**
+ * @brief Callback for freeing first instance hash table values.
+ */
+static void
+lyht_dup_inst_ht_free_cb(void *val_p)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    struct lyd_dup_inst **item = val_p;
 
-    LY_ARRAY_FOR(dup_inst, u) {
-        ly_set_free(dup_inst[u].inst_set, NULL);
-    }
-    LY_ARRAY_FREE(dup_inst);
+    ly_set_free((*item)->set, NULL);
+    free(*item);
+}
+
+void
+lyd_dup_inst_free(struct hash_table *dup_inst_ht)
+{
+    lyht_free(dup_inst_ht, lyht_dup_inst_ht_free_cb);
 }
 
 struct lyd_node *
@@ -180,12 +220,12 @@ lyxp_vars_set(struct lyxp_var **vars, const char *name, const char *value)
         return LY_EINVAL;
     }
 
-    /* If variable is already defined then change its value. */
-    if (*vars && !lyxp_vars_find(*vars, name, 0, &item)) {
+    /* if variable is already defined then change its value */
+    if (*vars && !lyxp_vars_find(NULL, *vars, name, 0, &item)) {
         var_value = strdup(value);
         LY_CHECK_RET(!var_value, LY_EMEM);
 
-        /* Set new value. */
+        /* update value */
         free(item->value);
         item->value = var_value;
     } else {
@@ -193,7 +233,7 @@ lyxp_vars_set(struct lyxp_var **vars, const char *name, const char *value)
         var_value = strdup(value);
         LY_CHECK_ERR_GOTO(!var_name || !var_value, ret = LY_EMEM, error);
 
-        /* Add new variable. */
+        /* add new variable */
         LY_ARRAY_NEW_GOTO(NULL, *vars, item, ret, error);
         item->name = var_name;
         item->value = var_value;
@@ -477,15 +517,10 @@ lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const
             /* log only in case the ctx was provided as input parameter */
             if (err->path) {
                 LOG_LOCSET(NULL, NULL, err->path, NULL);
-            } else {
-                /* use at least the schema path */
-                LOG_LOCSET(node, NULL, NULL, NULL);
             }
             LOGVAL_ERRITEM(ctx, err);
             if (err->path) {
                 LOG_LOCBACK(0, 0, 1, 0);
-            } else {
-                LOG_LOCBACK(1, 0, 0, 0);
             }
         }
         ly_err_free(err);
@@ -754,11 +789,13 @@ cleanup:
 LIBYANG_API_DEF LY_ERR
 lyd_parse_opaq_error(const struct lyd_node *node)
 {
+    LY_ERR rc = LY_SUCCESS;
     const struct ly_ctx *ctx;
     const struct lyd_node_opaq *opaq;
     const struct lyd_node *parent;
     const struct lys_module *mod;
     const struct lysc_node *snode;
+    uint32_t loc_node = 0, loc_path = 0;
 
     LY_CHECK_ARG_RET(LYD_CTX(node), node, !node->schema, !lyd_parent(node) || lyd_parent(node)->schema, LY_EINVAL);
 
@@ -766,9 +803,18 @@ lyd_parse_opaq_error(const struct lyd_node *node)
     opaq = (struct lyd_node_opaq *)node;
     parent = lyd_parent(node);
 
+    if (lyd_parent(node)) {
+        LOG_LOCSET(NULL, lyd_parent(node), NULL, NULL);
+        ++loc_node;
+    } else {
+        LOG_LOCSET(NULL, NULL, "/", NULL);
+        ++loc_path;
+    }
+
     if (!opaq->name.module_ns) {
         LOGVAL(ctx, LYVE_REFERENCE, "Unknown module of node \"%s\".", opaq->name.name);
-        return LY_EVALID;
+        rc = LY_EVALID;
+        goto cleanup;
     }
 
     /* module */
@@ -779,7 +825,8 @@ lyd_parse_opaq_error(const struct lyd_node *node)
             if (!mod) {
                 LOGVAL(ctx, LYVE_REFERENCE, "No (implemented) module with namespace \"%s\" of node \"%s\" in the context.",
                         opaq->name.module_ns, opaq->name.name);
-                return LY_EVALID;
+                rc = LY_EVALID;
+                goto cleanup;
             }
         } else {
             /* inherit */
@@ -793,7 +840,8 @@ lyd_parse_opaq_error(const struct lyd_node *node)
             if (!mod) {
                 LOGVAL(ctx, LYVE_REFERENCE, "No (implemented) module named \"%s\" of node \"%s\" in the context.",
                         opaq->name.module_name, opaq->name.name);
-                return LY_EVALID;
+                rc = LY_EVALID;
+                goto cleanup;
             }
         } else {
             /* inherit */
@@ -802,7 +850,8 @@ lyd_parse_opaq_error(const struct lyd_node *node)
         break;
     default:
         LOGERR(ctx, LY_EINVAL, "Unsupported value format.");
-        return LY_EINVAL;
+        rc = LY_EINVAL;
+        goto cleanup;
     }
 
     /* schema */
@@ -818,29 +867,45 @@ lyd_parse_opaq_error(const struct lyd_node *node)
         } else {
             LOGVAL(ctx, LYVE_REFERENCE, "Node \"%s\" not found in the \"%s\" module.", opaq->name.name, mod->name);
         }
-        return LY_EVALID;
+        rc = LY_EVALID;
+        goto cleanup;
     }
+
+    /* schema node exists */
+    LOG_LOCBACK(0, loc_node, loc_path, 0);
+    loc_node = 0;
+    loc_path = 0;
+    LOG_LOCSET(NULL, node, NULL, NULL);
+    ++loc_node;
 
     if (snode->nodetype & LYD_NODE_TERM) {
         /* leaf / leaf-list */
-        LY_CHECK_RET(lys_value_validate(ctx, snode, opaq->value, strlen(opaq->value), opaq->format, opaq->val_prefix_data));
+        rc = lys_value_validate(ctx, snode, opaq->value, strlen(opaq->value), opaq->format, opaq->val_prefix_data);
+        LY_CHECK_GOTO(rc, cleanup);
     } else if (snode->nodetype == LYS_LIST) {
         /* list */
-        LY_CHECK_RET(lyd_parse_opaq_list_error(node, snode));
+        rc = lyd_parse_opaq_list_error(node, snode);
+        LY_CHECK_GOTO(rc, cleanup);
     } else if (snode->nodetype & LYD_NODE_INNER) {
         /* inner node */
         if (opaq->value) {
             LOGVAL(ctx, LYVE_DATA, "Invalid value \"%s\" for %s \"%s\".", opaq->value,
                     lys_nodetype2str(snode->nodetype), snode->name);
-            return LY_EVALID;
+            rc = LY_EVALID;
+            goto cleanup;
         }
     } else {
         LOGERR(ctx, LY_EINVAL, "Unexpected opaque schema node %s \"%s\".", lys_nodetype2str(snode->nodetype), snode->name);
-        return LY_EINVAL;
+        rc = LY_EINVAL;
+        goto cleanup;
     }
 
     LOGERR(ctx, LY_EINVAL, "Unexpected valid opaque node %s \"%s\".", lys_nodetype2str(snode->nodetype), snode->name);
-    return LY_EINVAL;
+    rc = LY_EINVAL;
+
+cleanup:
+    LOG_LOCBACK(0, loc_node, loc_path, 0);
+    return rc;
 }
 
 LIBYANG_API_DEF const char *
@@ -1468,6 +1533,32 @@ ly_format2str(LY_VALUE_FORMAT format)
     return NULL;
 }
 
+LIBYANG_API_DEF int
+ly_time_tz_offset(void)
+{
+    const time_t epoch_plus_11h = 60 * 60 * 11;
+    struct tm tm_local, tm_utc;
+    int result = 0;
+
+    /* init timezone */
+    tzset();
+
+    /* get local and UTC time */
+    localtime_r(&epoch_plus_11h, &tm_local);
+    gmtime_r(&epoch_plus_11h, &tm_utc);
+
+    /* hours shift in seconds */
+    result += (tm_local.tm_hour - tm_utc.tm_hour) * 3600;
+
+    /* minutes shift in seconds */
+    result += (tm_local.tm_min - tm_utc.tm_min) * 60;
+
+    /* seconds shift */
+    result += tm_local.tm_sec - tm_utc.tm_sec;
+
+    return result;
+}
+
 LIBYANG_API_DEF LY_ERR
 ly_time_str2time(const char *value, time_t *time, char **fractions_s)
 {
@@ -1535,41 +1626,24 @@ LIBYANG_API_DEF LY_ERR
 ly_time_time2str(time_t time, const char *fractions_s, char **str)
 {
     struct tm tm;
-    char zoneshift[8];
-    int32_t zonediff_h, zonediff_m;
+    char zoneshift[12];
+    int zonediff_s, zonediff_h, zonediff_m;
 
     LY_CHECK_ARG_RET(NULL, str, LY_EINVAL);
 
-    /* initialize the local timezone */
+    /* init timezone */
     tzset();
 
-#ifdef HAVE_TM_GMTOFF
     /* convert */
     if (!localtime_r(&time, &tm)) {
         return LY_ESYS;
     }
 
     /* get timezone offset */
-    if (tm.tm_gmtoff == 0) {
-        /* time is Zulu (UTC) */
-        zonediff_h = 0;
-        zonediff_m = 0;
-    } else {
-        /* timezone offset */
-        zonediff_h = tm.tm_gmtoff / 60 / 60;
-        zonediff_m = tm.tm_gmtoff / 60 % 60;
-    }
+    zonediff_s = ly_time_tz_offset();
+    zonediff_h = zonediff_s / 60 / 60;
+    zonediff_m = zonediff_s / 60 % 60;
     sprintf(zoneshift, "%+03d:%02d", zonediff_h, zonediff_m);
-#else
-    /* convert */
-    if (!gmtime_r(&time, &tm)) {
-        return LY_ESYS;
-    }
-
-    (void)zonediff_h;
-    (void)zonediff_m;
-    sprintf(zoneshift, "-00:00");
-#endif
 
     /* print */
     if (asprintf(str, "%04d-%02d-%02dT%02d:%02d:%02d%s%s%s",

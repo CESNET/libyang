@@ -748,7 +748,7 @@ set_remove_node_hash(struct lyxp_set *set, struct lyd_node *node, enum lyxp_node
         (void)r;
 
         if (!set->ht->used) {
-            lyht_free(set->ht);
+            lyht_free(set->ht, NULL);
             set->ht = NULL;
         }
     }
@@ -802,10 +802,10 @@ lyxp_set_free_content(struct lyxp_set *set)
 
     if (set->type == LYXP_SET_NODE_SET) {
         free(set->val.nodes);
-        lyht_free(set->ht);
+        lyht_free(set->ht, NULL);
     } else if (set->type == LYXP_SET_SCNODE_SET) {
         free(set->val.scnodes);
-        lyht_free(set->ht);
+        lyht_free(set->ht, NULL);
     } else {
         if (set->type == LYXP_SET_STRING) {
             free(set->val.str);
@@ -4030,7 +4030,7 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
                 }
             } else {
                 assert(sleaf->type->basetype == LY_TYPE_INST);
-                if (ly_path_eval(leaf->value.target, set->tree, &node)) {
+                if (ly_path_eval(leaf->value.target, set->tree, NULL, &node)) {
                     LOGERR(set->ctx, LY_EVALID, "Invalid instance-identifier \"%s\" value - required instance not found.",
                             lyd_get_value(&leaf->node));
                     return LY_EVALID;
@@ -6144,7 +6144,7 @@ moveto_node_hash_child(struct lyxp_set *set, const struct lysc_node *scnode, con
 
     /* create specific data instance if needed */
     if (scnode->nodetype == LYS_LIST) {
-        LY_CHECK_GOTO(ret = lyd_create_list(scnode, predicates, &inst), cleanup);
+        LY_CHECK_GOTO(ret = lyd_create_list(scnode, predicates, NULL, &inst), cleanup);
     } else if (scnode->nodetype == LYS_LEAFLIST) {
         LY_CHECK_GOTO(ret = lyd_create_term2(scnode, &predicates[0].value, &inst), cleanup);
     }
@@ -6672,6 +6672,9 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const c
     getnext_opts = 0;
     if (options & LYXP_SCNODE_OUTPUT) {
         getnext_opts |= LYS_GETNEXT_OUTPUT;
+    }
+    if (options & LYXP_SCNODE_SCHEMAMOUNT) {
+        getnext_opts |= LYS_GETNEXT_WITHSCHEMAMOUNT;
     }
 
     orig_used = set->used;
@@ -7702,14 +7705,13 @@ cleanup:
  * @param[in] ctx_scnode Found schema node as the context for the predicate.
  * @param[in] set Context set.
  * @param[out] predicates Parsed predicates.
- * @param[out] pred_type Type of @p predicates.
  * @return LY_SUCCESS on success,
  * @return LY_ENOT if a predicate could not be compiled.
  * @return LY_ERR on any error.
  */
 static LY_ERR
 eval_name_test_try_compile_predicates(const struct lyxp_expr *exp, uint32_t *tok_idx, const struct lysc_node *ctx_scnode,
-        const struct lyxp_set *set, struct ly_path_predicate **predicates, enum ly_path_pred_type *pred_type)
+        const struct lyxp_set *set, struct ly_path_predicate **predicates)
 {
     LY_ERR rc = LY_SUCCESS;
     uint32_t e_idx, val_start_idx, pred_idx = 0, temp_lo = 0, pred_len = 0, nested_pred;
@@ -7848,7 +7850,7 @@ eval_name_test_try_compile_predicates(const struct lyxp_expr *exp, uint32_t *tok
 
     /* compile */
     rc = ly_path_compile_predicate(set->ctx, set->cur_node ? set->cur_node->schema : NULL, set->cur_mod, ctx_scnode, exp2,
-            &pred_idx, LY_VALUE_JSON, NULL, predicates, pred_type);
+            &pred_idx, LY_VALUE_JSON, NULL, predicates);
     LY_CHECK_GOTO(rc, cleanup);
 
     /* success, the predicate must include all the needed information for hash-based search */
@@ -8018,7 +8020,6 @@ eval_name_test_with_predicate(const struct lyxp_expr *exp, uint32_t *tok_idx, en
     const struct lys_module *moveto_mod = NULL;
     const struct lysc_node *scnode = NULL;
     struct ly_path_predicate *predicates = NULL;
-    enum ly_path_pred_type pred_type = 0;
     int scnode_skip_pred = 0;
 
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
@@ -8060,7 +8061,7 @@ eval_name_test_with_predicate(const struct lyxp_expr *exp, uint32_t *tok_idx, en
 
         if (scnode && (scnode->nodetype & (LYS_LIST | LYS_LEAFLIST))) {
             /* try to create the predicates */
-            if (eval_name_test_try_compile_predicates(exp, tok_idx, scnode, set, &predicates, &pred_type)) {
+            if (eval_name_test_try_compile_predicates(exp, tok_idx, scnode, set, &predicates)) {
                 /* hashes cannot be used */
                 scnode = NULL;
             }
@@ -8177,7 +8178,7 @@ cleanup:
     }
     if (!(options & LYXP_SKIP_EXPR)) {
         lydict_remove(set->ctx, ncname_dict);
-        ly_path_predicates_free(set->ctx, pred_type, predicates);
+        ly_path_predicates_free(set->ctx, predicates);
     }
     return rc;
 }
@@ -8698,27 +8699,30 @@ eval_number(struct ly_ctx *ctx, const struct lyxp_expr *exp, uint32_t *tok_idx, 
 }
 
 LY_ERR
-lyxp_vars_find(struct lyxp_var *vars, const char *name, size_t name_len, struct lyxp_var **var)
+lyxp_vars_find(const struct ly_ctx *ctx, const struct lyxp_var *vars, const char *name, size_t name_len,
+        struct lyxp_var **var)
 {
-    LY_ERR ret = LY_ENOTFOUND;
     LY_ARRAY_COUNT_TYPE u;
 
-    assert(vars && name);
+    assert(name);
 
-    name_len = name_len ? name_len : strlen(name);
+    if (!name_len) {
+        name_len = strlen(name);
+    }
 
     LY_ARRAY_FOR(vars, u) {
         if (!strncmp(vars[u].name, name, name_len)) {
-            ret = LY_SUCCESS;
-            break;
+            if (var) {
+                *var = (struct lyxp_var *)&vars[u];
+            }
+            return LY_SUCCESS;
         }
     }
 
-    if (var && !ret) {
-        *var = &vars[u];
+    if (ctx) {
+        LOGERR(ctx, LY_ENOTFOUND, "Variable \"%.*s\" not defined.", (int)name_len, name);
     }
-
-    return ret;
+    return LY_ENOTFOUND;
 }
 
 /**
@@ -8737,17 +8741,14 @@ eval_variable_reference(const struct lyxp_expr *exp, uint32_t *tok_idx, struct l
     LY_ERR ret;
     const char *name;
     struct lyxp_var *var;
-    const struct lyxp_var *vars;
     struct lyxp_expr *tokens = NULL;
     uint32_t token_index, name_len;
-
-    vars = set->vars;
 
     /* find out the name and value of the variable */
     name = &exp->expr[exp->tok_pos[*tok_idx]];
     name_len = exp->tok_len[*tok_idx];
-    ret = lyxp_vars_find((struct lyxp_var *)vars, name, name_len, &var);
-    LY_CHECK_ERR_RET(ret, LOGERR(set->ctx, ret, "XPath variable \"%.*s\" not defined.", (int)name_len, name), ret);
+    ret = lyxp_vars_find(set->ctx, set->vars, name, name_len, &var);
+    LY_CHECK_RET(ret);
 
     /* parse value */
     ret = lyxp_expr_parse(set->ctx, var->value, 0, 1, &tokens);

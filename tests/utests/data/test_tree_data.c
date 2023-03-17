@@ -196,7 +196,7 @@ test_compare_diff_ctx(void **state)
     data2 = "<l2 xmlns=\"urn:tests:b\"><c><x>b</x></c></l2>";
     CHECK_PARSE_LYD_PARAM_CTX(UTEST_LYCTX, data1, 0, tree1);
     CHECK_PARSE_LYD_PARAM_CTX(ctx2, data2, 0, tree2);
-    assert_int_equal(LY_ENOT, lyd_compare_single(tree1, tree2, 0));
+    assert_int_equal(LY_SUCCESS, lyd_compare_single(tree1, tree2, 0));
     lyd_free_all(tree1);
     lyd_free_all(tree2);
 
@@ -210,7 +210,7 @@ test_compare_diff_ctx(void **state)
     data2 = "<l2 xmlns=\"urn:tests:b\"><c><x>b</x></c></l2>";
     CHECK_PARSE_LYD_PARAM_CTX(UTEST_LYCTX, data1, 0, tree1);
     CHECK_PARSE_LYD_PARAM_CTX(ctx2, data2, 0, tree2);
-    assert_int_equal(LY_ENOT, lyd_compare_single(tree1, tree2, 0));
+    assert_int_equal(LY_SUCCESS, lyd_compare_single(tree1, tree2, 0));
     lyd_free_all(tree1);
     lyd_free_all(tree2);
 
@@ -363,6 +363,8 @@ test_dup(void **state)
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree1);
     assert_int_equal(LY_EINVAL, lyd_dup_single(((struct lyd_node_inner *)tree1)->child->prev,
             (struct lyd_node_inner *)tree1->next, LYD_DUP_WITH_PARENTS, NULL));
+    CHECK_LOG_CTX("Invalid argument parent (lyd_dup_get_local_parent()) - does not interconnect with the created node's parents chain.",
+            NULL);
     lyd_free_all(tree1);
 }
 
@@ -488,6 +490,11 @@ test_find_path(void **state)
     assert_int_equal(LY_SUCCESS, lyd_find_path(root, "/c:cont/nexthop[gateway='10.0.0.1']", 0, NULL));
     assert_int_equal(LY_SUCCESS, lyd_find_path(root, "/c:cont/nexthop[gateway='2100::1']", 0, NULL));
     assert_int_equal(LY_SUCCESS, lyd_find_path(root, "/c:cont/pref[.='fc00::/64']", 0, NULL));
+
+    assert_int_equal(LY_EVALID, lyd_find_path(root, "/cont", 0, NULL));
+    CHECK_LOG_CTX("Prefix missing for \"cont\" in path.", "Schema location \"/c:cont\".");
+    assert_int_equal(LY_SUCCESS, lyd_find_path(root, "nexthop[gateway='2100::1']", 0, NULL));
+
     lyd_free_all(root);
 }
 
@@ -525,6 +532,7 @@ test_data_hash(void **state)
 
     /* The run must not crash due to the assert that checks the hash. */
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG_CTX("Duplicate instance of \"ll\".", "Data location \"/test-data-hash:c/ll[.='']\", line number 1.");
     lyd_free_all(tree);
 }
 

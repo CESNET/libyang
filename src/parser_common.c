@@ -180,9 +180,16 @@ LY_ERR
 lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, const void *value, size_t value_len,
         ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, struct lyd_node **node)
 {
+    LY_ERR r;
     ly_bool incomplete;
 
-    LY_CHECK_RET(lyd_create_term(schema, value, value_len, dynamic, format, prefix_data, hints, &incomplete, node));
+    if ((r = lyd_create_term(schema, value, value_len, dynamic, format, prefix_data, hints, &incomplete, node))) {
+        if (lydctx->data_ctx->ctx != schema->module->ctx) {
+            /* move errors to the main context */
+            ly_err_move(schema->module->ctx, (struct ly_ctx *)lydctx->data_ctx->ctx);
+        }
+        return r;
+    }
 
     if (incomplete && !(lydctx->parse_opts & LYD_PARSE_ONLY)) {
         LY_CHECK_RET(ly_set_add(&lydctx->node_types, *node, 1, NULL));
@@ -386,6 +393,16 @@ lysp_stmt_validate_value(struct lysp_ctx *ctx, enum yang_arg val_type, const cha
     ly_bool first = 1;
     uint32_t c;
     size_t utf8_char_len;
+
+    if (!val) {
+        if (val_type == Y_MAYBE_STR_ARG) {
+            /* fine */
+            return LY_SUCCESS;
+        }
+
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX, "Missing an expected string.");
+        return LY_EVALID;
+    }
 
     while (*val) {
         LY_CHECK_ERR_RET(ly_getutf8(&val, &c, &utf8_char_len),

@@ -1531,7 +1531,11 @@ LIBYANG_API_DECL LY_ERR lyd_new_attr2(struct lyd_node *parent, const char *modul
  * For other node types, it should be NULL.
  * @param[in] options Bitmask of options, see @ref pathoptions.
  * @param[out] node Optional first created node.
- * @return LY_ERR value.
+ * @return LY_SUCCESS on success.
+ * @return LY_EEXIST if the final node to create exists (unless ::LYD_NEW_PATH_UPDATE is used).
+ * @return LY_EINVAL on invalid arguments including invalid @p path.
+ * @return LY_EVALID on invalid @p value.
+ * @return LY_ERR on other errors.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const char *value,
         uint32_t options, struct lyd_node **node);
@@ -1554,7 +1558,11 @@ LIBYANG_API_DECL LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ct
  * @param[in] options Bitmask of options, see @ref pathoptions.
  * @param[out] new_parent Optional first parent node created. If only one node was created, equals to @p new_node.
  * @param[out] new_node Optional last node created.
- * @return LY_ERR value.
+ * @return LY_SUCCESS on success.
+ * @return LY_EEXIST if the final node to create exists (unless ::LYD_NEW_PATH_UPDATE is used).
+ * @return LY_EINVAL on invalid arguments including invalid @p path.
+ * @return LY_EVALID on invalid @p value.
+ * @return LY_ERR on other errors.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
         size_t value_len, LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **new_parent,
@@ -1576,7 +1584,11 @@ LIBYANG_API_DECL LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_c
  * @param[in] value Value of the new leaf/leaf-list. For other node types, it should be NULL.
  * @param[in] options Bitmask of options, see @ref pathoptions.
  * @param[out] node Optional first created node.
- * @return LY_ERR value.
+ * @return LY_SUCCESS on success.
+ * @return LY_EEXIST if the final node to create exists (unless ::LYD_NEW_PATH_UPDATE is used).
+ * @return LY_EINVAL on invalid arguments including invalid @p path.
+ * @return LY_EVALID on invalid @p value.
+ * @return LY_ERR on other errors.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_ext_path(struct lyd_node *parent, const struct lysc_ext_instance *ext, const char *path,
         const void *value, uint32_t options, struct lyd_node **node);
@@ -2302,6 +2314,10 @@ typedef enum {
 /**
  * @brief Generate path of the given node in the requested format.
  *
+ * The path is constructed based on the parent node(s) of this node. When run on a node which is disconnected
+ * from its parent(s), this function might yield unexpected results such as `/example:b` instead of the expected
+ * `/example:a/b`.
+ *
  * @param[in] node Data path of this node will be generated.
  * @param[in] pathtype Format of the path to generate.
  * @param[in,out] buffer Prepared buffer of the @p buflen length to store the generated path.
@@ -2527,6 +2543,43 @@ LIBYANG_API_DECL LY_ERR lyd_eval_xpath3(const struct lyd_node *ctx_node, const s
         const char *xpath, LY_VALUE_FORMAT format, void *prefix_data, const struct lyxp_var *vars, ly_bool *result);
 
 /**
+ * @brief XPath result type.
+ */
+typedef enum {
+    LY_XPATH_NODE_SET,  /**< XPath node set */
+    LY_XPATH_STRING,    /**< XPath string */
+    LY_XPATH_NUMBER,    /**< XPath number */
+    LY_XPATH_BOOLEAN    /**< XPath boolean */
+} LY_XPATH_TYPE;
+
+/**
+ * @brief Evaluate an XPath on data and return the result or convert it first to an expected result type.
+ *
+ * Either all return type parameters @p node_set, @p string, @p number, and @p boolean with @p ret_type
+ * are provided or exactly one of @p node_set, @p string, @p number, and @p boolean is provided with @p ret_type
+ * being obvious and hence optional.
+ *
+ * @param[in] ctx_node XPath context node, NULL for the root node.
+ * @param[in] tree Data tree to evaluate on.
+ * @param[in] cur_mod Current module of @p xpath, needed for some kinds of @p format.
+ * @param[in] xpath [XPath](@ref howtoXPath) to select.
+ * @param[in] format Format of any prefixes in @p xpath.
+ * @param[in] prefix_data Format-specific prefix data.
+ * @param[in] vars Optional [sized array](@ref sizedarrays) of XPath variables.
+ * @param[out] ret_type XPath type of the result selecting which of @p node_set, @p string, @p number, and @p boolean to use.
+ * @param[out] node_set XPath node set result.
+ * @param[out] string XPath string result.
+ * @param[out] number XPath number result.
+ * @param[out] boolean XPath boolean result.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+LIBYANG_API_DECL LY_ERR lyd_eval_xpath4(const struct lyd_node *ctx_node, const struct lyd_node *tree,
+        const struct lys_module *cur_mod, const char *xpath, LY_VALUE_FORMAT format, void *prefix_data,
+        const struct lyxp_var *vars, LY_XPATH_TYPE *ret_type, struct ly_set **node_set, char **string,
+        long double *number, ly_bool *boolean);
+
+/**
  * @brief Search in given data for a node uniquely identified by a path.
  *
  * Always works in constant (*O(1)*) complexity. To be exact, it is *O(n)* where *n* is the depth
@@ -2555,6 +2608,13 @@ LIBYANG_API_DECL LY_ERR lyd_find_path(const struct lyd_node *ctx_node, const cha
  * @return LY_ERR on other errors.
  */
 LIBYANG_API_DECL LY_ERR lyd_find_target(const struct ly_path *path, const struct lyd_node *tree, struct lyd_node **match);
+
+/**
+ * @brief Get current timezone UTC (GMT) time offset in seconds.
+ *
+ * @return Timezone shift in seconds.
+ */
+LIBYANG_API_DECL int ly_time_tz_offset(void);
 
 /**
  * @brief Convert date-and-time from string to UNIX timestamp and fractions of a second.

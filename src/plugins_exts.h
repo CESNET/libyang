@@ -594,6 +594,14 @@ LIBYANG_API_DECL void lyplg_ext_compile_log_path(const char *path, const struct 
         LY_LOG_LEVEL level, LY_ERR err_no, const char *format, ...);
 
 /**
+ * @brief Log a message from an extension plugin using the compiled extension instance and a generated error item.
+ *
+ * @param[in] err Error item to log.
+ * @param[in] ext Compiled extension instance.
+ */
+LIBYANG_API_DEF void lyplg_ext_compile_log_err(const struct ly_err_item *err, const struct lysc_ext_instance *ext);
+
+/**
  * @brief YANG schema compilation context getter for libyang context.
  *
  * @param[in] ctx YANG schema compilation context.
@@ -1030,11 +1038,10 @@ LIBYANG_API_DECL LY_ERR lyplg_ext_schema_mount_get_parent_ref(const struct lysc_
 
 /**
  * @brief Allocate a new context for a particular instance of the yangmnt:mount-point extension.
- * Caller is responsible for destroying the resulting context.
+ * Caller is responsible for **freeing** the created context.
  *
  * @param[in] ext Compiled extension instance.
- * @param[out] ctx A context with modules loaded from the list found in
- * the extension data.
+ * @param[out] ctx Context with modules loaded from the list found in the extension data.
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyplg_ext_schema_mount_create_context(const struct lysc_ext_instance *ext, struct ly_ctx **ctx);

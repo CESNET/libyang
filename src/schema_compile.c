@@ -862,6 +862,11 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
 
     assert(node->nodetype & (LYS_LEAF | LYS_LEAFLIST));
 
+    if (lref->realtype) {
+        /* already resolved, may happen (shared union typedef with a leafref) */
+        return LY_SUCCESS;
+    }
+
     /* first implement all the modules in the path */
     LY_CHECK_RET(lys_compile_expr_implement(ctx->ctx, lref->path, LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, 1, unres, NULL));
 
@@ -1748,7 +1753,7 @@ lys_has_compiled_import_r(struct lys_module *mod)
 LY_ERR
 lys_implement(struct lys_module *mod, const char **features, struct lys_glob_unres *unres)
 {
-    LY_ERR ret;
+    LY_ERR r;
     struct lys_module *m;
 
     assert(!mod->implemented);
@@ -1757,21 +1762,15 @@ lys_implement(struct lys_module *mod, const char **features, struct lys_glob_unr
     m = ly_ctx_get_module_implemented(mod->ctx, mod->name);
     if (m) {
         assert(m != mod);
-        if (!strcmp(mod->name, "yang") && (strcmp(m->revision, mod->revision) > 0)) {
-            /* special case for newer internal module, continue */
-            LOGVRB("Internal module \"%s@%s\" is already implemented in revision \"%s\", using it instead.",
-                    mod->name, mod->revision ? mod->revision : "<none>", m->revision ? m->revision : "<none>");
-        } else {
-            LOGERR(mod->ctx, LY_EDENIED, "Module \"%s@%s\" is already implemented in revision \"%s\".",
-                    mod->name, mod->revision ? mod->revision : "<none>", m->revision ? m->revision : "<none>");
-            return LY_EDENIED;
-        }
+        LOGERR(mod->ctx, LY_EDENIED, "Module \"%s@%s\" is already implemented in revision \"%s\".",
+                mod->name, mod->revision ? mod->revision : "<none>", m->revision ? m->revision : "<none>");
+        return LY_EDENIED;
     }
 
     /* set features */
-    ret = lys_set_features(mod->parsed, features);
-    if (ret && (ret != LY_EEXIST)) {
-        return ret;
+    r = lys_set_features(mod->parsed, features);
+    if (r && (r != LY_EEXIST)) {
+        return r;
     }
 
     /*

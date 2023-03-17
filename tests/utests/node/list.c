@@ -169,8 +169,8 @@ test_schema_yang(void **state)
             "leaf group{type string;}"
             "}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL,
-            "Invalid value \"-1\" of \"max-elements\".", "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid value \"-1\" of \"max-elements\".", "Line number 5.");
 
     schema = MODULE_CREATE_YANG("TERR_0", "list user {"
             "key uid;"
@@ -181,8 +181,8 @@ test_schema_yang(void **state)
             "leaf group{type string;}"
             "}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL,
-            "Value \"4294967298\" is out of \"max-elements\" bounds.", "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL);
+    CHECK_LOG_CTX("Value \"4294967298\" is out of \"max-elements\" bounds.", "Line number 5.");
 
     schema = MODULE_CREATE_YANG("TERR_0", "list user {"
             "key uid;"
@@ -193,7 +193,7 @@ test_schema_yang(void **state)
             "leaf group{type string;}"
             "}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("List min-elements 20 is bigger than max-elements 10.", "/TERR_0:user");
+    CHECK_LOG_CTX("List min-elements 20 is bigger than max-elements 10.", "Path \"/TERR_0:user\".");
 
     schema = MODULE_CREATE_YANG("TERR_0", "list user {"
             "key uid;"
@@ -204,8 +204,8 @@ test_schema_yang(void **state)
             "leaf group{type string;}"
             "}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL,
-            "Invalid value \"-1\" of \"min-elements\".", "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid value \"-1\" of \"min-elements\".", "Line number 5.");
 
     schema = MODULE_CREATE_YANG("TERR_0", "list user {"
             "key uid;"
@@ -215,8 +215,8 @@ test_schema_yang(void **state)
             "leaf group{type string;}"
             "}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL,
-            "Duplicate keyword \"key\".", "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL);
+    CHECK_LOG_CTX("Duplicate keyword \"key\".", "Line number 5.");
 
     schema = MODULE_CREATE_YANG("T6", "list user {"
             "config false;"
@@ -282,8 +282,8 @@ test_schema_yang(void **state)
             "leaf group{type string;}"
             "}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERROR0\" failed.", NULL,
-            "Invalid value \"systeme\" of \"ordered-by\".", "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"TERROR0\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid value \"systeme\" of \"ordered-by\".", "Line number 5.");
 
     schema = MODULE_CREATE_YANG("TERROR0", "list \"\" {"
             "key uid;"
@@ -294,8 +294,8 @@ test_schema_yang(void **state)
             "leaf group{type string;}"
             "}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERROR0\" failed.", NULL,
-            "Statement argument is required.", "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"TERROR0\" failed.", NULL);
+    CHECK_LOG_CTX("Statement argument is required.", "Line number 5.");
 
     schema = MODULE_CREATE_YANG("T9", "list user {"
             "key uid;"
@@ -389,7 +389,7 @@ test_schema_yin(void **state)
             "   <leaf name=\"group\"><type name=\"string\"/></leaf>"
             "</list>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("The list's key \"u<id\" not found.", "/T00:user");
+    CHECK_LOG_CTX("The list's key \"u<id\" not found.", "Path \"/T00:user\".");
 
     schema = MODULE_CREATE_YIN("T1", "<list name=\"user\"> "
             "   <key value=\"uid\"/>"
@@ -498,8 +498,8 @@ test_schema_yin(void **state)
             "   <leaf name=\"uid\"> <type name=\"int32\"> </leaf>"
             "</list>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL,
-            "Invalid value \"-1\" of \"value\" attribute in \"max-elements\" element.", "Line number 8.");
+    CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid value \"-1\" of \"value\" attribute in \"max-elements\" element.", "Line number 8.");
 
     schema = MODULE_CREATE_YIN("TERR_0",
             "<list name=\"user\">"
@@ -511,8 +511,8 @@ test_schema_yin(void **state)
             "   <leaf name=\"group\"> <type name=\"string\"/>  </leaf>"
             "</list>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL,
-            "Value \"4294967298\" of \"value\" attribute in \"max-elements\" element is out of bounds.", "Line number 8.");
+    CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL);
+    CHECK_LOG_CTX("Value \"4294967298\" of \"value\" attribute in \"max-elements\" element is out of bounds.", "Line number 8.");
 
     schema = MODULE_CREATE_YIN("TERR_0",
             "<list name=\"user\">"
@@ -524,8 +524,9 @@ test_schema_yin(void **state)
             "   <leaf name=\"group\"> <type name=\"string\"/> </leaf>"
             "</list>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL,
-            "Invalid combination of min-elements and max-elements: min value 20 is bigger than the max value 10.", "Line number 8.");
+    CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid combination of min-elements and max-elements: min value 20 is bigger than the max value 10.",
+            "Line number 8.");
 
     schema = MODULE_CREATE_YIN("TERR_0",
             "<list name=\"user\">"
@@ -537,8 +538,8 @@ test_schema_yin(void **state)
             "   <leaf name=\"group\"> <type name=\"string\"/> </leaf>"
             "</list>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL,
-            "Value \"-1\" of \"value\" attribute in \"min-elements\" element is out of bounds.", "Line number 8.");
+    CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL);
+    CHECK_LOG_CTX("Value \"-1\" of \"value\" attribute in \"min-elements\" element is out of bounds.", "Line number 8.");
 
     schema = MODULE_CREATE_YIN("TERR_0",
             "<list name=\"user\">"
@@ -549,8 +550,8 @@ test_schema_yin(void **state)
             "   <leaf name=\"group\"> <type name=\"string\"/> </leaf>"
             "</list>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL,
-            "Redefinition of \"key\" sub-element in \"list\" element.", "Line number 8.");
+    CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL);
+    CHECK_LOG_CTX("Redefinition of \"key\" sub-element in \"list\" element.", "Line number 8.");
 
     schema = MODULE_CREATE_YIN("T6",
             "<list name=\"user\">"
@@ -620,8 +621,8 @@ test_schema_yin(void **state)
             "   <leaf name=\"group\"><type name=\"string\"/> </leaf>"
             "</list>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"TERROR0\" failed.", NULL,
-            "Invalid value \"systeme\" of \"value\" attribute in \"ordered-by\" element. Valid values are \"system\" and \"user\".",
+    CHECK_LOG_CTX("Parsing module \"TERROR0\" failed.", NULL);
+    CHECK_LOG_CTX("Invalid value \"systeme\" of \"value\" attribute in \"ordered-by\" element. Valid values are \"system\" and \"user\".",
             "Line number 8.");
 
     schema = MODULE_CREATE_YIN("T_DEFS1",

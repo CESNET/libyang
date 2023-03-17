@@ -124,12 +124,59 @@ test_plugin_lyb(void **state)
     TEST_SUCCESS_LYB("lyb", "un1", "");
 }
 
+static void
+test_validation(void **state)
+{
+    const char *schema, *data;
+    struct lyd_node *tree;
+    char *out;
+
+    schema = MODULE_CREATE_YANG("val",
+            "leaf l1 {\n"
+            "  type union {\n"
+            "   type uint32 {\n"
+            "      range \"0..1048575\";\n"
+            "    }\n"
+            "    type enumeration {\n"
+            "      enum auto;\n"
+            "    }\n"
+            "  }\n"
+            "}\n"
+            "leaf int8 {type int8 {range 10..20;}}\n"
+            "leaf l2 {\n"
+            "  type union {\n"
+            "    type leafref {path /int8; require-instance true;}\n"
+            "    type string;\n"
+            "  }\n"
+            "}\n");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    /* parse from LYB */
+    data = "<l1 xmlns=\"urn:tests:val\">auto</l1><int8 xmlns=\"urn:tests:val\">15</int8><l2 xmlns=\"urn:tests:val\">15</l2>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&out, tree, LYD_LYB, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS));
+    lyd_free_all(tree);
+    CHECK_PARSE_LYD_PARAM(out, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    free(out);
+
+    /* validate */
+    assert_int_equal(LY_SUCCESS, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT, NULL));
+
+    /* print and compare */
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&out, tree, LYD_XML, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS));
+    assert_string_equal(out, data);
+
+    free(out);
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_data_xml),
         UTEST(test_plugin_lyb),
+        UTEST(test_validation),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

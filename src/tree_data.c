@@ -96,7 +96,7 @@ static LY_ERR
 lyd_parse(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent, struct lyd_node **first_p,
         struct ly_in *in, LYD_FORMAT format, uint32_t parse_opts, uint32_t val_opts, struct lyd_node **op)
 {
-    LY_ERR rc = LY_SUCCESS;
+    LY_ERR r, rc = LY_SUCCESS;
     struct lyd_ctx *lydctx = NULL;
     struct ly_set parsed = {0};
     struct lyd_node *first;
@@ -121,23 +121,29 @@ lyd_parse(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct 
     /* parse the data */
     switch (format) {
     case LYD_XML:
-        rc = lyd_parse_xml(ctx, ext, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed,
+        r = lyd_parse_xml(ctx, ext, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed,
                 &subtree_sibling, &lydctx);
         break;
     case LYD_JSON:
-        rc = lyd_parse_json(ctx, ext, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed,
+        r = lyd_parse_json(ctx, ext, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed,
                 &subtree_sibling, &lydctx);
         break;
     case LYD_LYB:
-        rc = lyd_parse_lyb(ctx, ext, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed,
+        r = lyd_parse_lyb(ctx, ext, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed,
                 &subtree_sibling, &lydctx);
         break;
     case LYD_UNKNOWN:
         LOGARG(ctx, format);
-        rc = LY_EINVAL;
+        r = LY_EINVAL;
         break;
     }
-    LY_CHECK_GOTO(rc, cleanup);
+    if (r) {
+        rc = r;
+        if ((r != LY_EVALID) || !lydctx || !(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) ||
+                (ly_vecode(ctx) == LYVE_SYNTAX)) {
+            goto cleanup;
+        }
+    }
 
     if (parent) {
         /* get first top-level sibling */
@@ -1110,11 +1116,9 @@ finish:
 LIBYANG_API_DEF const struct lyd_node_term *
 lyd_target(const struct ly_path *path, const struct lyd_node *tree)
 {
-    struct lyd_node *target;
+    struct lyd_node *target = NULL;
 
-    if (ly_path_eval(path, tree, &target)) {
-        return NULL;
-    }
+    lyd_find_target(path, tree, &target);
 
     return (struct lyd_node_term *)target;
 }
@@ -1147,15 +1151,6 @@ lyd_compare_schema_equal(const struct lysc_node *schema1, const struct lysc_node
 
     if (strcmp(schema1->module->name, schema2->module->name)) {
         return 0;
-    }
-
-    if (schema1->module->revision || schema2->module->revision) {
-        if (!schema1->module->revision || !schema2->module->revision) {
-            return 0;
-        }
-        if (strcmp(schema1->module->revision, schema2->module->revision)) {
-            return 0;
-        }
     }
 
     return 1;
@@ -1804,8 +1799,13 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx *trg_c
             /* use the standard context */
             trg_ctx = LYD_CTX(orig_parent);
         }
-        if (parent && (parent->schema == orig_parent->schema)) {
+        if (parent && (LYD_CTX(parent) == LYD_CTX(orig_parent)) && (parent->schema == orig_parent->schema)) {
             /* stop creating parents, connect what we have into the provided parent */
+            iter = parent;
+            repeat = 0;
+        } else if (parent && (LYD_CTX(parent) != LYD_CTX(orig_parent)) &&
+                lyd_compare_schema_equal(parent->schema, orig_parent->schema) &&
+                lyd_compare_schema_parents_equal(&parent->node, &orig_parent->node)) {
             iter = parent;
             repeat = 0;
         } else {
@@ -1923,7 +1923,7 @@ lyd_dup_ctx_check(const struct lyd_node *node, const struct lyd_node_inner *pare
         for (iter = node; iter && !(iter->flags & LYD_EXT); iter = lyd_parent(iter)) {}
 
         if (!iter || !lyd_parent(iter) || (LYD_CTX(lyd_parent(iter)) != LYD_CTX(parent))) {
-            LOGERR(NULL, LY_EINVAL, "Different contexts used in node duplication.");
+            LOGERR(LYD_CTX(node), LY_EINVAL, "Different contexts used in node duplication.");
             return LY_EINVAL;
         }
     }
@@ -2019,13 +2019,13 @@ finish:
  */
 static LY_ERR
 lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, const struct lyd_node **sibling_src_p,
-        lyd_merge_cb merge_cb, void *cb_data, uint16_t options, struct lyd_dup_inst **dup_inst)
+        lyd_merge_cb merge_cb, void *cb_data, uint16_t options, struct hash_table **dup_inst)
 {
     const struct lyd_node *child_src, *tmp, *sibling_src;
     struct lyd_node *match_trg, *dup_src, *elem;
     struct lyd_node_opaq *opaq_trg, *opaq_src;
     struct lysc_type *type;
-    struct lyd_dup_inst *child_dup_inst = NULL;
+    struct hash_table *child_dup_inst = NULL;
     LY_ERR ret;
     ly_bool first_inst = 0;
 
@@ -2147,7 +2147,7 @@ lyd_merge(struct lyd_node **target, const struct lyd_node *source, const struct 
         lyd_merge_cb merge_cb, void *cb_data, uint16_t options, ly_bool nosiblings)
 {
     const struct lyd_node *sibling_src, *tmp;
-    struct lyd_dup_inst *dup_inst = NULL;
+    struct hash_table *dup_inst = NULL;
     ly_bool first;
     LY_ERR ret = LY_SUCCESS;
 
@@ -2769,58 +2769,19 @@ lyd_find_sibling_opaq_next(const struct lyd_node *first, const char *name, struc
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_find_xpath4(const struct lyd_node *ctx_node, const struct lyd_node *tree, const char *xpath, LY_VALUE_FORMAT format,
-        void *prefix_data, const struct lyxp_var *vars, struct ly_set **set)
+lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set **set)
 {
-    LY_ERR ret = LY_SUCCESS;
-    struct lyxp_set xp_set = {0};
-    struct lyxp_expr *exp = NULL;
-    uint32_t i;
+    LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
 
-    LY_CHECK_ARG_RET(NULL, tree, xpath, format, set, LY_EINVAL);
+    return lyd_find_xpath4(ctx_node, ctx_node, xpath, LY_VALUE_JSON, NULL, NULL, set);
+}
 
-    *set = NULL;
+LIBYANG_API_DEF LY_ERR
+lyd_find_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct lyxp_var *vars, struct ly_set **set)
+{
+    LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
 
-    /* parse expression */
-    ret = lyxp_expr_parse((struct ly_ctx *)LYD_CTX(tree), xpath, 0, 1, &exp);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    /* evaluate expression */
-    ret = lyxp_eval(LYD_CTX(tree), exp, NULL, format, prefix_data, ctx_node, ctx_node, tree, vars, &xp_set,
-            LYXP_IGNORE_WHEN);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    if (xp_set.type != LYXP_SET_NODE_SET) {
-        LOGERR(LYD_CTX(tree), LY_EINVAL, "XPath \"%s\" result is not a node set.", xpath);
-        ret = LY_EINVAL;
-        goto cleanup;
-    }
-
-    /* allocate return set */
-    ret = ly_set_new(set);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    /* transform into ly_set, allocate memory for all the elements once (even though not all items must be
-     * elements but most likely will be) */
-    (*set)->objs = malloc(xp_set.used * sizeof *(*set)->objs);
-    LY_CHECK_ERR_GOTO(!(*set)->objs, LOGMEM(LYD_CTX(tree)); ret = LY_EMEM, cleanup);
-    (*set)->size = xp_set.used;
-
-    for (i = 0; i < xp_set.used; ++i) {
-        if (xp_set.val.nodes[i].type == LYXP_NODE_ELEM) {
-            ret = ly_set_add(*set, xp_set.val.nodes[i].node, 1, NULL);
-            LY_CHECK_GOTO(ret, cleanup);
-        }
-    }
-
-cleanup:
-    lyxp_set_free_content(&xp_set);
-    lyxp_expr_free((struct ly_ctx *)LYD_CTX(tree), exp);
-    if (ret) {
-        ly_set_free(*set, NULL);
-        *set = NULL;
-    }
-    return ret;
+    return lyd_find_xpath4(ctx_node, ctx_node, xpath, LY_VALUE_JSON, NULL, vars, set);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -2833,51 +2794,20 @@ lyd_find_xpath3(const struct lyd_node *ctx_node, const struct lyd_node *tree, co
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_find_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct lyxp_var *vars, struct ly_set **set)
+lyd_find_xpath4(const struct lyd_node *ctx_node, const struct lyd_node *tree, const char *xpath, LY_VALUE_FORMAT format,
+        void *prefix_data, const struct lyxp_var *vars, struct ly_set **set)
 {
-    LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, tree, xpath, set, LY_EINVAL);
 
-    return lyd_find_xpath4(ctx_node, ctx_node, xpath, LY_VALUE_JSON, NULL, vars, set);
+    *set = NULL;
+
+    return lyd_eval_xpath4(ctx_node, tree, NULL, xpath, format, prefix_data, vars, NULL, set, NULL, NULL, NULL);
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set **set)
+lyd_eval_xpath(const struct lyd_node *ctx_node, const char *xpath, ly_bool *result)
 {
-    LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
-
-    return lyd_find_xpath4(ctx_node, ctx_node, xpath, LY_VALUE_JSON, NULL, NULL, set);
-}
-
-LIBYANG_API_DEF LY_ERR
-lyd_eval_xpath3(const struct lyd_node *ctx_node, const struct lys_module *cur_mod, const char *xpath,
-        LY_VALUE_FORMAT format, void *prefix_data, const struct lyxp_var *vars, ly_bool *result)
-{
-    LY_ERR ret = LY_SUCCESS;
-    struct lyxp_set xp_set = {0};
-    struct lyxp_expr *exp = NULL;
-
-    LY_CHECK_ARG_RET(NULL, ctx_node, xpath, result, LY_EINVAL);
-
-    /* compile expression */
-    ret = lyxp_expr_parse((struct ly_ctx *)LYD_CTX(ctx_node), xpath, 0, 1, &exp);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    /* evaluate expression */
-    ret = lyxp_eval(LYD_CTX(ctx_node), exp, cur_mod, format, prefix_data, ctx_node, ctx_node, ctx_node, vars, &xp_set,
-            LYXP_IGNORE_WHEN);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    /* transform into boolean */
-    ret = lyxp_set_cast(&xp_set, LYXP_SET_BOOLEAN);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    /* set result */
-    *result = xp_set.val.bln;
-
-cleanup:
-    lyxp_set_free_content(&xp_set);
-    lyxp_expr_free((struct ly_ctx *)LYD_CTX(ctx_node), exp);
-    return ret;
+    return lyd_eval_xpath3(ctx_node, NULL, xpath, LY_VALUE_JSON, NULL, NULL, result);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -2887,9 +2817,107 @@ lyd_eval_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_eval_xpath(const struct lyd_node *ctx_node, const char *xpath, ly_bool *result)
+lyd_eval_xpath3(const struct lyd_node *ctx_node, const struct lys_module *cur_mod, const char *xpath,
+        LY_VALUE_FORMAT format, void *prefix_data, const struct lyxp_var *vars, ly_bool *result)
 {
-    return lyd_eval_xpath3(ctx_node, NULL, xpath, LY_VALUE_JSON, NULL, NULL, result);
+    return lyd_eval_xpath4(ctx_node, ctx_node, cur_mod, xpath, format, prefix_data, vars, NULL, NULL, NULL, NULL, result);
+}
+
+LIBYANG_API_DEF LY_ERR
+lyd_eval_xpath4(const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lys_module *cur_mod,
+        const char *xpath, LY_VALUE_FORMAT format, void *prefix_data, const struct lyxp_var *vars, LY_XPATH_TYPE *ret_type,
+        struct ly_set **node_set, char **string, long double *number, ly_bool *boolean)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyxp_set xp_set = {0};
+    struct lyxp_expr *exp = NULL;
+    uint32_t i;
+
+    LY_CHECK_ARG_RET(NULL, tree, xpath, ((ret_type && node_set && string && number && boolean) ||
+            (node_set && !string && !number && !boolean) || (!node_set && string && !number && !boolean) ||
+            (!node_set && !string && number && !boolean) || (!node_set && !string && !number && boolean)), LY_EINVAL);
+
+    /* parse expression */
+    ret = lyxp_expr_parse((struct ly_ctx *)LYD_CTX(tree), xpath, 0, 1, &exp);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* evaluate expression */
+    ret = lyxp_eval(LYD_CTX(tree), exp, cur_mod, format, prefix_data, ctx_node, ctx_node, tree, vars, &xp_set,
+            LYXP_IGNORE_WHEN);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* return expected result type without or with casting */
+    if (node_set) {
+        /* node set */
+        if (xp_set.type == LYXP_SET_NODE_SET) {
+            /* transform into a set */
+            LY_CHECK_GOTO(ret = ly_set_new(node_set), cleanup);
+            (*node_set)->objs = malloc(xp_set.used * sizeof *(*node_set)->objs);
+            LY_CHECK_ERR_GOTO(!(*node_set)->objs, LOGMEM(LYD_CTX(tree)); ret = LY_EMEM, cleanup);
+            (*node_set)->size = xp_set.used;
+            for (i = 0; i < xp_set.used; ++i) {
+                if (xp_set.val.nodes[i].type == LYXP_NODE_ELEM) {
+                    ret = ly_set_add(*node_set, xp_set.val.nodes[i].node, 1, NULL);
+                    LY_CHECK_GOTO(ret, cleanup);
+                }
+            }
+            if (ret_type) {
+                *ret_type = LY_XPATH_NODE_SET;
+            }
+        } else if (!string && !number && !boolean) {
+            LOGERR(LYD_CTX(tree), LY_EINVAL, "XPath \"%s\" result is not a node set.", xpath);
+            ret = LY_EINVAL;
+            goto cleanup;
+        }
+    }
+
+    if (string) {
+        if ((xp_set.type != LYXP_SET_STRING) && !node_set) {
+            /* cast into string */
+            LY_CHECK_GOTO(ret = lyxp_set_cast(&xp_set, LYXP_SET_STRING), cleanup);
+        }
+        if (xp_set.type == LYXP_SET_STRING) {
+            /* string */
+            *string = xp_set.val.str;
+            xp_set.val.str = NULL;
+            if (ret_type) {
+                *ret_type = LY_XPATH_STRING;
+            }
+        }
+    }
+
+    if (number) {
+        if ((xp_set.type != LYXP_SET_NUMBER) && !node_set) {
+            /* cast into number */
+            LY_CHECK_GOTO(ret = lyxp_set_cast(&xp_set, LYXP_SET_NUMBER), cleanup);
+        }
+        if (xp_set.type == LYXP_SET_NUMBER) {
+            /* number */
+            *number = xp_set.val.num;
+            if (ret_type) {
+                *ret_type = LY_XPATH_NUMBER;
+            }
+        }
+    }
+
+    if (boolean) {
+        if ((xp_set.type != LYXP_SET_BOOLEAN) && !node_set) {
+            /* cast into boolean */
+            LY_CHECK_GOTO(ret = lyxp_set_cast(&xp_set, LYXP_SET_BOOLEAN), cleanup);
+        }
+        if (xp_set.type == LYXP_SET_BOOLEAN) {
+            /* boolean */
+            *boolean = xp_set.val.bln;
+            if (ret_type) {
+                *ret_type = LY_XPATH_BOOLEAN;
+            }
+        }
+    }
+
+cleanup:
+    lyxp_set_free_content(&xp_set);
+    lyxp_expr_free((struct ly_ctx *)LYD_CTX(tree), exp);
+    return ret;
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -2903,7 +2931,7 @@ lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output,
 
     /* parse the path */
     ret = ly_path_parse(LYD_CTX(ctx_node), ctx_node->schema, path, strlen(path), 0, LY_PATH_BEGIN_EITHER,
-            LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_SIMPLE, &expr);
+            LY_PATH_PREFIX_FIRST, LY_PATH_PRED_SIMPLE, &expr);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* compile the path */
@@ -2912,7 +2940,7 @@ lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output,
     LY_CHECK_GOTO(ret, cleanup);
 
     /* evaluate the path */
-    ret = ly_path_eval_partial(lypath, ctx_node, NULL, match);
+    ret = ly_path_eval_partial(lypath, ctx_node, NULL, NULL, match);
 
 cleanup:
     lyxp_expr_free(LYD_CTX(ctx_node), expr);
@@ -2928,7 +2956,7 @@ lyd_find_target(const struct ly_path *path, const struct lyd_node *tree, struct 
 
     LY_CHECK_ARG_RET(NULL, path, LY_EINVAL);
 
-    ret = ly_path_eval(path, tree, &m);
+    ret = ly_path_eval(path, tree, NULL, &m);
     if (ret) {
         if (match) {
             *match = NULL;

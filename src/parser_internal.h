@@ -1,9 +1,10 @@
 /**
  * @file parser_internal.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Internal structures and functions for libyang parsers
  *
- * Copyright (c) 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -25,6 +26,23 @@ struct lysp_stmt;
 struct lysp_yang_ctx;
 struct lysp_yin_ctx;
 struct lysp_ctx;
+
+/**
+ * @brief Check data parser error taking into account multi-error validation.
+ *
+ * @param[in] r Local return value.
+ * @param[in] err_cmd Command to perform on any error.
+ * @param[in] lydctx Data parser context.
+ * @param[in] label Label to go to on fatal error.
+ */
+#define LY_DPARSER_ERR_GOTO(r, err_cmd, lydctx, label) \
+        if (r) { \
+            err_cmd; \
+            if ((r != LY_EVALID) || !lydctx || !(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || \
+                    (ly_vecode(((struct lyd_ctx *)lydctx)->data_ctx->ctx) == LYVE_SYNTAX)) { \
+                goto label; \
+            } \
+        }
 
 /**
  * @brief Callback for ::lyd_ctx to free the structure

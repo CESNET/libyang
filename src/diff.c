@@ -213,8 +213,13 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
     }
 
     /* duplicate the subtree (and connect to the diff if possible) */
-    LY_CHECK_RET(lyd_dup_single(node, (struct lyd_node_inner *)diff_parent,
-            LYD_DUP_RECURSIVE | LYD_DUP_NO_META | LYD_DUP_WITH_PARENTS | LYD_DUP_WITH_FLAGS, &dup));
+    if (diff_parent) {
+        LY_CHECK_RET(lyd_dup_single_to_ctx(node, LYD_CTX(diff_parent), (struct lyd_node_inner *)diff_parent,
+                LYD_DUP_RECURSIVE | LYD_DUP_NO_META | LYD_DUP_WITH_PARENTS | LYD_DUP_WITH_FLAGS, &dup));
+    } else {
+        LY_CHECK_RET(lyd_dup_single(node, NULL,
+                LYD_DUP_RECURSIVE | LYD_DUP_NO_META | LYD_DUP_WITH_PARENTS | LYD_DUP_WITH_FLAGS, &dup));
+    }
 
     /* find the first duplicated parent */
     if (!diff_parent) {
@@ -648,13 +653,13 @@ lyd_diff_attrs(const struct lyd_node *first, const struct lyd_node *second, uint
  * @param[in] siblings Siblings to search in.
  * @param[in] target Target node to search for.
  * @param[in] defaults Whether to consider (or ignore) default values.
- * @param[in,out] dup_inst_cache Duplicate instance cache.
+ * @param[in,out] dup_inst_ht Duplicate instance cache.
  * @param[out] match Found match, NULL if no matching node found.
  * @return LY_ERR value.
  */
 static LY_ERR
 lyd_diff_find_match(const struct lyd_node *siblings, const struct lyd_node *target, ly_bool defaults,
-        struct lyd_dup_inst **dup_inst_cache, struct lyd_node **match)
+        struct hash_table **dup_inst_ht, struct lyd_node **match)
 {
     LY_ERR r;
 
@@ -670,7 +675,7 @@ lyd_diff_find_match(const struct lyd_node *siblings, const struct lyd_node *targ
     }
 
     /* update match as needed */
-    LY_CHECK_RET(lyd_dup_inst_next(match, siblings, dup_inst_cache));
+    LY_CHECK_RET(lyd_dup_inst_next(match, siblings, dup_inst_ht));
 
     if (*match && ((*match)->flags & LYD_DEFAULT) && !defaults) {
         /* ignore default nodes */
@@ -728,7 +733,7 @@ lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second,
     const struct lyd_node *iter_first, *iter_second;
     struct lyd_node *match_second, *match_first;
     struct lyd_diff_userord *userord = NULL, *userord_item;
-    struct lyd_dup_inst *dup_inst_first = NULL, *dup_inst_second = NULL;
+    struct hash_table *dup_inst_first = NULL, *dup_inst_second = NULL;
     LY_ARRAY_COUNT_TYPE u;
     enum lyd_diff_op op;
     const char *orig_default;
@@ -1079,14 +1084,14 @@ lyd_diff_insert(struct lyd_node **first_node, struct lyd_node *parent_node, stru
  */
 static LY_ERR
 lyd_diff_apply_r(struct lyd_node **first_node, struct lyd_node *parent_node, const struct lyd_node *diff_node,
-        lyd_diff_cb diff_cb, void *cb_data, struct lyd_dup_inst **dup_inst)
+        lyd_diff_cb diff_cb, void *cb_data, struct hash_table **dup_inst)
 {
     LY_ERR ret;
     struct lyd_node *match, *diff_child;
     const char *str_val, *meta_str;
     enum lyd_diff_op op;
     struct lyd_meta *meta;
-    struct lyd_dup_inst *child_dup_inst = NULL;
+    struct hash_table *child_dup_inst = NULL;
     const struct ly_ctx *ctx = LYD_CTX(diff_node);
 
     /* read all the valid attributes */
@@ -1242,7 +1247,7 @@ lyd_diff_apply_module(struct lyd_node **data, const struct lyd_node *diff, const
         lyd_diff_cb diff_cb, void *cb_data)
 {
     const struct lyd_node *root;
-    struct lyd_dup_inst *dup_inst = NULL;
+    struct hash_table *dup_inst = NULL;
     LY_ERR ret = LY_SUCCESS;
 
     LY_LIST_FOR(diff, root) {
@@ -1757,12 +1762,12 @@ lyd_diff_is_redundant(struct lyd_node *diff)
  */
 static LY_ERR
 lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, lyd_diff_cb diff_cb, void *cb_data,
-        struct lyd_dup_inst **dup_inst, uint16_t options, struct lyd_node **diff)
+        struct hash_table **dup_inst, uint16_t options, struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *child, *diff_node = NULL;
     enum lyd_diff_op src_op, cur_op;
-    struct lyd_dup_inst *child_dup_inst = NULL;
+    struct hash_table *child_dup_inst = NULL;
 
     /* get source node operation */
     LY_CHECK_RET(lyd_diff_get_op(src_diff, &src_op));
@@ -1868,7 +1873,7 @@ lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_diff, c
         lyd_diff_cb diff_cb, void *cb_data, uint16_t options)
 {
     const struct lyd_node *src_root;
-    struct lyd_dup_inst *dup_inst = NULL;
+    struct hash_table *dup_inst = NULL;
     LY_ERR ret = LY_SUCCESS;
 
     LY_LIST_FOR(src_diff, src_root) {
@@ -1891,7 +1896,7 @@ lyd_diff_merge_tree(struct lyd_node **diff_first, struct lyd_node *diff_parent, 
         lyd_diff_cb diff_cb, void *cb_data, uint16_t options)
 {
     LY_ERR ret;
-    struct lyd_dup_inst *dup_inst = NULL;
+    struct hash_table *dup_inst = NULL;
 
     if (!src_sibling) {
         return LY_SUCCESS;

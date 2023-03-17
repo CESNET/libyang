@@ -41,14 +41,18 @@ ATOMIC_T ly_log_opts = (uint_fast32_t)(LY_LOLOG | LY_LOSTORE_LAST);
 THREAD_LOCAL uint32_t *temp_ly_log_opts;
 static ly_log_clb log_clb;
 static ATOMIC_T path_flag = 1;
+THREAD_LOCAL char last_msg[LY_LAST_MSG_SIZE];
 #ifndef NDEBUG
 ATOMIC_T ly_ldbg_groups = 0;
 #endif
 
 THREAD_LOCAL struct ly_log_location_s log_location = {0};
 
-/* how many bytes add when enlarging buffers */
-#define LY_BUF_STEP 128
+LIBYANG_API_DEF const char *
+ly_last_errmsg(void)
+{
+    return last_msg;
+}
 
 LIBYANG_API_DEF LY_ERR
 ly_errcode(const struct ly_ctx *ctx)
@@ -186,6 +190,22 @@ ly_err_last(const struct ly_ctx *ctx)
 
     e = pthread_getspecific(ctx->errlist_key);
     return e ? e->prev : NULL;
+}
+
+void
+ly_err_move(struct ly_ctx *src_ctx, struct ly_ctx *trg_ctx)
+{
+    const struct ly_err_item *e;
+
+    /* clear any current errors */
+    ly_err_clean(trg_ctx, NULL);
+
+    /* get the errors in src */
+    e = pthread_getspecific(src_ctx->errlist_key);
+    pthread_setspecific(src_ctx->errlist_key, NULL);
+
+    /* set them for trg */
+    pthread_setspecific(trg_ctx->errlist_key, e);
 }
 
 LIBYANG_API_DEF void
@@ -445,14 +465,19 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
         return;
     }
 
-    /* store the error/warning (if we need to store errors internally, it does not matter what are the user log options) */
+    /* print into a single message */
+    if (vasprintf(&msg, format, args) == -1) {
+        LOGMEM(ctx);
+        free(path);
+        return;
+    }
+
+    /* store as the last message */
+    strncpy(last_msg, msg, LY_LAST_MSG_SIZE - 1);
+
+    /* store the error/warning in the context (if we need to store errors internally, it does not matter what are
+     * the user log options) */
     if ((level < LY_LLVRB) && ctx && lostore) {
-        assert(format);
-        if (vasprintf(&msg, format, args) == -1) {
-            LOGMEM(ctx);
-            free(path);
-            return;
-        }
         if (((no & ~LY_EPLUGIN) == LY_EVALID) && (vecode == LYVE_SUCCESS)) {
             /* assume we are inheriting the error, so inherit vecode as well */
             vecode = ly_vecode(ctx);
@@ -462,11 +487,6 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
         }
         free_strs = 0;
     } else {
-        if (vasprintf(&msg, format, args) == -1) {
-            LOGMEM(ctx);
-            free(path);
-            return;
-        }
         free_strs = 1;
     }
 
@@ -598,8 +618,8 @@ ly_vlog_build_path(const struct ly_ctx *ctx, char **path)
 
     if (log_location.paths.count && ((const char *)(log_location.paths.objs[log_location.paths.count - 1]))[0]) {
         /* simply get what is in the provided path string */
-        *path = strdup((const char *)log_location.paths.objs[log_location.paths.count - 1]);
-        LY_CHECK_ERR_RET(!(*path), LOGMEM(ctx), LY_EMEM);
+        r = asprintf(path, "Path \"%s\".", (const char *)log_location.paths.objs[log_location.paths.count - 1]);
+        LY_CHECK_ERR_RET(r == -1, LOGMEM(ctx), LY_EMEM);
     } else {
         /* data/schema node */
         if (log_location.dnodes.count) {
@@ -680,12 +700,12 @@ ly_vlog(const struct ly_ctx *ctx, const char *apptag, LY_VECODE code, const char
  * @param[in] plugin_name Name of the plugin generating the message.
  * @param[in] level Log message level (error, warning, etc.)
  * @param[in] err_no Error type code.
- * @param[in] path Optional path of the error.
+ * @param[in] path Optional path of the error, used if set.
  * @param[in] format Format string to print.
  * @param[in] ap Var arg list for @p format.
  */
 static void
-ly_ext_log(const struct ly_ctx *ctx, const char *plugin_name, LY_LOG_LEVEL level, LY_ERR err_no, const char *path,
+ly_ext_log(const struct ly_ctx *ctx, const char *plugin_name, LY_LOG_LEVEL level, LY_ERR err_no, char *path,
         const char *format, va_list ap)
 {
     char *plugin_msg;
@@ -698,8 +718,7 @@ ly_ext_log(const struct ly_ctx *ctx, const char *plugin_name, LY_LOG_LEVEL level
         return;
     }
 
-    log_vprintf(ctx, level, (level == LY_LLERR ? LY_EPLUGIN : 0) | err_no, LYVE_OTHER, path ? strdup(path) : NULL, NULL,
-            plugin_msg, ap);
+    log_vprintf(ctx, level, (level == LY_LLERR ? LY_EPLUGIN : 0) | err_no, LYVE_OTHER, path, NULL, plugin_msg, ap);
     free(plugin_msg);
 }
 
@@ -717,8 +736,6 @@ lyplg_ext_parse_log(const struct lysp_ctx *pctx, const struct lysp_ext_instance 
     va_start(ap, format);
     ly_ext_log(PARSER_CTX(pctx), ext->record->plugin.id, level, err_no, path, format, ap);
     va_end(ap);
-
-    free(path);
 }
 
 LIBYANG_API_DEF void
@@ -726,9 +743,15 @@ lyplg_ext_compile_log(const struct lysc_ctx *cctx, const struct lysc_ext_instanc
         const char *format, ...)
 {
     va_list ap;
+    char *path = NULL;
+
+    if (cctx && (asprintf(&path, "Path \"%s\".", cctx->path) == -1)) {
+        LOGMEM(cctx->ctx);
+        return;
+    }
 
     va_start(ap, format);
-    ly_ext_log(ext->module->ctx, ext->def->plugin->id, level, err_no, cctx ? cctx->path : NULL, format, ap);
+    ly_ext_log(ext->module->ctx, ext->def->plugin->id, level, err_no, path, format, ap);
     va_end(ap);
 }
 
@@ -737,10 +760,35 @@ lyplg_ext_compile_log_path(const char *path, const struct lysc_ext_instance *ext
         const char *format, ...)
 {
     va_list ap;
+    char *log_path = NULL;
+
+    if (path && (asprintf(&log_path, "Path \"%s\".", path) == -1)) {
+        LOGMEM(ext->module->ctx);
+        return;
+    }
 
     va_start(ap, format);
-    ly_ext_log(ext->module->ctx, ext->def->plugin->id, level, err_no, path, format, ap);
+    ly_ext_log(ext->module->ctx, ext->def->plugin->id, level, err_no, log_path, format, ap);
     va_end(ap);
+}
+
+/**
+ * @brief Serves only for creating ap.
+ */
+static void
+_lyplg_ext_compile_log_err(const struct ly_err_item *err, const struct lysc_ext_instance *ext, ...)
+{
+    va_list ap;
+
+    va_start(ap, ext);
+    ly_ext_log(ext->module->ctx, ext->def->plugin->id, err->level, err->no, err->path ? strdup(err->path) : NULL, "%s", ap);
+    va_end(ap);
+}
+
+LIBYANG_API_DEF void
+lyplg_ext_compile_log_err(const struct ly_err_item *err, const struct lysc_ext_instance *ext)
+{
+    _lyplg_ext_compile_log_err(err, ext, err->msg);
 }
 
 /**

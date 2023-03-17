@@ -75,7 +75,7 @@ test_schema(void **state)
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Extension \"yangmnt:mount-point\" instance not allowed in YANG version 1 module.",
-            "/sm:root/{extension='yangmnt:mount-point'}/root");
+            "Path \"/sm:root/{extension='yangmnt:mount-point'}/root\".");
 
     schema =
             "module sm {\n"
@@ -92,7 +92,7 @@ test_schema(void **state)
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Extension \"yangmnt:mount-point\" instance allowed only in container or list statement.",
-            "/sm:{extension='yangmnt:mount-point'}/root");
+            "Path \"/sm:{extension='yangmnt:mount-point'}/root\".");
 
     schema =
             "module sm {\n"
@@ -114,7 +114,7 @@ test_schema(void **state)
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Extension \"yangmnt:mount-point\" instance allowed only in container or list statement.",
-            "/sm:root/l/{extension='yangmnt:mount-point'}/root");
+            "Path \"/sm:root/l/{extension='yangmnt:mount-point'}/root\".");
 
     schema =
             "module sm {\n"
@@ -138,7 +138,7 @@ test_schema(void **state)
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Multiple extension \"yangmnt:mount-point\" instances.",
-            "/sm:l/{extension='yangmnt:mount-point'}/root");
+            "Path \"/sm:l/{extension='yangmnt:mount-point'}/root\".");
 
     /* valid */
     schema =
@@ -410,25 +410,25 @@ test_parse_invalid(void **state)
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Mandatory node \"type\" instance does not exist.",
-            "Schema location \"/ietf-interfaces:interfaces/interface/type\".");
+            "Data location \"/ietf-interfaces:interfaces/interface[name='bu']\".");
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Mandatory node \"type\" instance does not exist.",
-            "Schema location \"/ietf-interfaces:interfaces/interface/type\".");
+            "Data location \"/ietf-interfaces:interfaces/interface[name='bu']\".");
 
     /* same validation fail in separate validation */
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, LY_SUCCESS, data);
     assert_int_equal(LY_EVALID, lyd_validate_all(&data, NULL, LYD_VALIDATE_PRESENT, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Mandatory node \"type\" instance does not exist.",
-            "Schema location \"/ietf-interfaces:interfaces/interface/type\".");
+            "Data location \"/ietf-interfaces:interfaces/interface[name='bu']\".");
     lyd_free_siblings(data);
 
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, LY_SUCCESS, data);
     assert_int_equal(LY_EVALID, lyd_validate_all(&data, NULL, LYD_VALIDATE_PRESENT, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Mandatory node \"type\" instance does not exist.",
-            "Schema location \"/ietf-interfaces:interfaces/interface/type\".");
+            "Data location \"/ietf-interfaces:interfaces/interface[name='bu']\".");
     lyd_free_siblings(data);
 
     /* success */
@@ -878,7 +878,7 @@ test_parse_shared(void **state)
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Shared-schema yang-library content-id \"2\" differs from \"1\" used previously.",
-            "/ietf-yang-library:yang-library/content-id");
+            "Path \"/ietf-yang-library:yang-library/content-id\".");
 
     /* data for 2 mount points */
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
@@ -1549,6 +1549,108 @@ test_new(void **state)
     lyd_free_siblings(data);
 }
 
+static void
+test_lys_getnext(void **state)
+{
+    const struct lysc_node *parent, *node;
+    struct ly_ctx *sm_ctx;
+
+    ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
+            "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
+            "    xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">"
+            "  <module-set>"
+            "    <name>test-set</name>"
+            "    <module>"
+            "      <name>ietf-datastores</name>"
+            "      <revision>2018-02-14</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-datastores</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>ietf-yang-library</name>"
+            "      <revision>2019-01-04</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>ietf-yang-schema-mount</name>"
+            "      <revision>2019-01-14</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>ietf-interfaces</name>"
+            "      <revision>2014-05-08</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-interfaces</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>iana-if-type</name>"
+            "      <revision>2014-05-08</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:iana-if-type</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>ietf-ip</name>"
+            "      <revision>2014-06-16</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-ip</namespace>"
+            "    </module>"
+            "    <import-only-module>"
+            "      <name>ietf-yang-types</name>"
+            "      <revision>2013-07-15</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace>"
+            "    </import-only-module>"
+            "  </module-set>"
+            "  <schema>"
+            "    <name>test-schema</name>"
+            "    <module-set>test-set</module-set>"
+            "  </schema>"
+            "  <datastore>"
+            "    <name>ds:running</name>"
+            "    <schema>test-schema</schema>"
+            "  </datastore>"
+            "  <datastore>"
+            "    <name>ds:operational</name>"
+            "    <schema>test-schema</schema>"
+            "  </datastore>"
+            "  <content-id>1</content-id>"
+            "</yang-library>"
+            "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
+            "  <module-set-id>1</module-set-id>"
+            "</modules-state>"
+            "<schema-mounts xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount\">"
+            "  <mount-point>"
+            "    <module>sm</module>"
+            "    <label>root</label>"
+            "    <shared-schema/>"
+            "  </mount-point>"
+            "</schema-mounts>");
+
+    parent = lys_find_path(UTEST_LYCTX, NULL, "/sm:root", 0);
+    assert_non_null(parent);
+
+    node = lys_getnext(NULL, parent, NULL, LYS_GETNEXT_WITHSCHEMAMOUNT);
+    assert_non_null(node);
+    assert_string_equal(node->name, "schema-mounts");
+    sm_ctx = node->module->ctx;
+
+    node = lys_getnext(node, parent, NULL, LYS_GETNEXT_WITHSCHEMAMOUNT);
+    assert_non_null(node);
+    assert_string_equal(node->name, "yang-library");
+
+    node = lys_getnext(node, parent, NULL, LYS_GETNEXT_WITHSCHEMAMOUNT);
+    assert_non_null(node);
+    assert_string_equal(node->name, "modules-state");
+
+    node = lys_getnext(node, parent, NULL, LYS_GETNEXT_WITHSCHEMAMOUNT);
+    assert_non_null(node);
+    assert_string_equal(node->name, "interfaces");
+
+    node = lys_getnext(node, parent, NULL, LYS_GETNEXT_WITHSCHEMAMOUNT);
+    assert_non_null(node);
+    assert_string_equal(node->name, "interfaces-state");
+
+    node = lys_getnext(node, parent, NULL, LYS_GETNEXT_WITHSCHEMAMOUNT);
+    assert_null(node);
+
+    ly_ctx_destroy(sm_ctx);
+}
+
 int
 main(void)
 {
@@ -1560,6 +1662,7 @@ main(void)
         UTEST(test_parse_shared_parent_ref, setup),
         UTEST(test_parse_config, setup),
         UTEST(test_new, setup),
+        UTEST(test_lys_getnext, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

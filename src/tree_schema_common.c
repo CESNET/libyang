@@ -496,7 +496,7 @@ lysp_check_dup_typedefs(struct lysp_ctx *ctx, struct lysp_module *mod)
     }
 
 cleanup:
-    lyht_free(ids_global);
+    lyht_free(ids_global, NULL);
     return ret;
 }
 
@@ -610,7 +610,7 @@ lysp_check_dup_groupings(struct lysp_ctx *ctx, struct lysp_module *mod)
     }
 
 cleanup:
-    lyht_free(ids_global);
+    lyht_free(ids_global, NULL);
     return ret;
 }
 
@@ -650,7 +650,7 @@ lysp_check_dup_features(struct lysp_ctx *ctx, struct lysp_module *mod)
     }
 
 cleanup:
-    lyht_free(ht);
+    lyht_free(ht, NULL);
     return ret;
 }
 
@@ -682,7 +682,7 @@ lysp_check_dup_identities(struct lysp_ctx *ctx, struct lysp_module *mod)
     }
 
 cleanup:
-    lyht_free(ht);
+    lyht_free(ht, NULL);
     return ret;
 }
 
@@ -921,7 +921,7 @@ lys_get_module_without_revision(struct ly_ctx *ctx, const char *name)
     struct lys_module *mod, *mod_impl;
     uint32_t index;
 
-    /* Try to find module with LYS_MOD_IMPORTED_REV flag. */
+    /* try to find module with LYS_MOD_IMPORTED_REV flag */
     index = 0;
     while ((mod = ly_ctx_get_module_iter(ctx, &index))) {
         if (!strcmp(mod->name, name) && (mod->latest_revision & LYS_MOD_IMPORTED_REV)) {
@@ -929,17 +929,19 @@ lys_get_module_without_revision(struct ly_ctx *ctx, const char *name)
         }
     }
 
-    /* Try to find the implemented module. */
+    /* try to find the implemented module */
     mod_impl = ly_ctx_get_module_implemented(ctx, name);
-    if (mod && mod_impl) {
-        LOGVRB("Implemented module \"%s@%s\" is not used for import, revision \"%s\" is imported instead.",
-                mod_impl->name, mod_impl->revision, mod->revision);
+    if (mod) {
+        if (mod_impl && (mod != mod_impl)) {
+            LOGVRB("Implemented module \"%s@%s\" is not used for import, revision \"%s\" is imported instead.",
+                    mod_impl->name, mod_impl->revision, mod->revision);
+        }
         return mod;
     } else if (mod_impl) {
         return mod_impl;
     }
 
-    /* Try to find the latest module in the current context. */
+    /* try to find the latest module in the current context */
     mod = ly_ctx_get_module_latest(ctx, name);
 
     return mod;
@@ -949,10 +951,8 @@ lys_get_module_without_revision(struct ly_ctx *ctx, const char *name)
  * @brief Check if a circular dependency exists between modules.
  *
  * @param[in] ctx libyang context for log an error.
- * @param[in,out] mod Examined module which is set to NULL
- * if the circular dependency is detected.
- * @return LY_SUCCESS if no circular dependecy is detected,
- * otherwise LY_EVALID.
+ * @param[in,out] mod Examined module which is set to NULL if the circular dependency is detected.
+ * @return LY_SUCCESS if no circular dependecy is detected, otherwise LY_EVALID.
  */
 static LY_ERR
 lys_check_circular_dependency(struct ly_ctx *ctx, struct lys_module **mod)

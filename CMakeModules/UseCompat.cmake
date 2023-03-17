@@ -27,6 +27,7 @@ macro(USE_COMPAT)
     set(CMAKE_REQUIRED_DEFINITIONS -D_POSIX_C_SOURCE=200809L)
     list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
     list(APPEND CMAKE_REQUIRED_DEFINITIONS -D__BSD_VISIBLE=1)
+    list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_DEFAULT_SOURCE)
     set(CMAKE_REQUIRED_LIBRARIES pthread)
 
     check_symbol_exists(vdprintf "stdio.h;stdarg.h" HAVE_VDPRINTF)
@@ -47,13 +48,10 @@ macro(USE_COMPAT)
 
     check_include_file("stdatomic.h" HAVE_STDATOMIC)
 
-    include(CheckStructHasMember)
-    check_struct_has_member("struct tm" tm_gmtoff time.h HAVE_TM_GMTOFF)
-    check_symbol_exists(timezone time.h HAVE_TIME_H_TIMEZONE)
-
     check_symbol_exists(realpath "stdlib.h" HAVE_REALPATH)
     check_symbol_exists(localtime_r "time.h" HAVE_LOCALTIME_R)
     check_symbol_exists(gmtime_r "time.h" HAVE_GMTIME_R)
+    check_function_exists(timegm HAVE_TIMEGM)
     check_symbol_exists(strptime "time.h" HAVE_STRPTIME)
     check_symbol_exists(mmap "sys/mman.h" HAVE_MMAP)
     check_symbol_exists(dirname "libgen.h" HAVE_DIRNAME)

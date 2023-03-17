@@ -381,6 +381,7 @@ LY_ERR lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const
                                                              warning is printed. */
 #define LYXP_ACCESS_TREE_ALL 0x80   /**< Explicit accessible tree of all the nodes. */
 #define LYXP_ACCESS_TREE_CONFIG 0x0100  /**< Explicit accessible tree of only configuration data. */
+#define LYXP_SCNODE_SCHEMAMOUNT LYS_FIND_SCHEMAMOUNT    /**< Nodes from mounted modules are also accessible. */
 
 /**
  * @brief Cast XPath set to another type.
@@ -496,15 +497,17 @@ LY_ERR lyxp_next_token2(const struct ly_ctx *ctx, const struct lyxp_expr *exp, u
         enum lyxp_token want_tok1, enum lyxp_token want_tok2);
 
 /**
- * @brief Find variable named @name in @p vars.
+ * @brief Find variable named @p name in @p vars.
  *
+ * @param[in] ctx Context for logging, not logged if NULL.
  * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
  * @param[in] name Name of the variable being searched.
  * @param[in] name_len Name length can be set to 0 if @p name is terminated by null byte.
  * @param[out] var Variable that was found. The parameter is optional.
  * @return LY_SUCCESS if the variable was found, otherwise LY_ENOTFOUND.
  */
-LY_ERR lyxp_vars_find(struct lyxp_var *vars, const char *name, size_t name_len, struct lyxp_var **var);
+LY_ERR lyxp_vars_find(const struct ly_ctx *ctx, const struct lyxp_var *vars, const char *name, size_t name_len,
+        struct lyxp_var **var);
 
 /**
  * @brief Frees a parsed XPath expression. @p expr should not be used afterwards.

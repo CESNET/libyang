@@ -49,11 +49,15 @@ lylyb_ctx_free(struct lylyb_ctx *ctx)
 {
     LY_ARRAY_COUNT_TYPE u;
 
+    if (!ctx) {
+        return;
+    }
+
     LY_ARRAY_FREE(ctx->siblings);
     LY_ARRAY_FREE(ctx->models);
 
     LY_ARRAY_FOR(ctx->sib_hts, u) {
-        lyht_free(ctx->sib_hts[u].ht);
+        lyht_free(ctx->sib_hts[u].ht, NULL);
     }
     LY_ARRAY_FREE(ctx->sib_hts);
 
@@ -64,6 +68,10 @@ void
 lyd_lyb_ctx_free(struct lyd_ctx *lydctx)
 {
     struct lyd_lyb_ctx *ctx = (struct lyd_lyb_ctx *)lydctx;
+
+    if (!lydctx) {
+        return;
+    }
 
     lyd_ctx_free(lydctx);
     lylyb_ctx_free(ctx->lybctx);
@@ -1082,7 +1090,7 @@ lyb_validate_node_inner(struct lyd_lyb_ctx *lybctx, const struct lysc_node *snod
 
     if (!(lybctx->parse_opts & LYD_PARSE_ONLY)) {
         /* new node validation, autodelete CANNOT occur, all nodes are new */
-        ret = lyd_validate_new(lyd_node_child_p(node), snode, NULL, NULL);
+        ret = lyd_validate_new(lyd_node_child_p(node), snode, NULL, 0, NULL);
         LY_CHECK_RET(ret);
 
         /* add any missing default children */

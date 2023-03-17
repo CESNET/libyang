@@ -1,4 +1,4 @@
-/*
+/**
  * @file test_json.c
  * @author: Radek Krejci <rkrejci@cesnet.cz>
  * @brief unit tests for a generic JSON parser
@@ -532,68 +532,12 @@ test_string(void **state)
     str = "";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
 
-#if 0
-    /* simple string */
-    str = "\"hello\"";
-    assert_int_equal(LY_SUCCESS, lyjson_ctx_new(UTEST_LYCTX, in, 0, &jsonctx));
-    assert_int_equal(LYJSON_STRING, lyjson_ctx_status(jsonctx, 0));
-    assert_ptr_equal(&str[1], jsonctx->value);
-    assert_int_equal(5, jsonctx->value_len);
-    assert_int_equal(0, jsonctx->dynamic);
-    lyjson_ctx_free(jsonctx);
-
-    /* 4-byte utf8 character */
-    str = "\"\\t𠜎\"";
-    assert_non_null(ly_in_memory(in, str));
-    assert_int_equal(LY_SUCCESS, lyjson_ctx_new(UTEST_LYCTX, in, 0, &jsonctx));
-    assert_int_equal(LYJSON_STRING, lyjson_ctx_status(jsonctx, 0));
-    assert_string_equal("\t𠜎", jsonctx->value);
-    assert_int_equal(5, jsonctx->value_len);
-    assert_int_equal(1, jsonctx->dynamic);
-    lyjson_ctx_free(jsonctx);
-
-    /* valid escape sequences - note that here it mixes valid JSON string characters (RFC 7159, sec. 7) and
-     * valid characters in YANG string type (RFC 7950, sec. 9.4). Since the latter is a subset of JSON string,
-     * the YANG string type's restrictions apply to the JSON escape sequences */
-    str = "\"\\\" \\\\ \\r \\/ \\n \\t \\u20ac\"";
-    assert_non_null(ly_in_memory(in, str));
-    assert_int_equal(LY_SUCCESS, lyjson_ctx_new(UTEST_LYCTX, in, 0, &jsonctx));
-    assert_int_equal(LYJSON_STRING, lyjson_ctx_status(jsonctx, 0));
-    assert_string_equal("\" \\ \r / \n \t €", jsonctx->value);
-    assert_int_equal(15, jsonctx->value_len);
-    assert_int_equal(1, jsonctx->dynamic);
-    lyjson_ctx_free(jsonctx);
-
-    /* backspace and form feed are valid JSON escape sequences, but the control characters they represents are not allowed values for YANG string type */
-    str = "\"\\b\"";
-    assert_non_null(ly_in_memory(in, str));
-    assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, 0, &jsonctx));
-    CHECK_LOG_CTX("Invalid character reference \"\\b\" (0x00000008).", "Line number 1.");
-
-    str = "\"\\f\"";
-    assert_non_null(ly_in_memory(in, str));
-    assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, 0, &jsonctx));
-    CHECK_LOG_CTX("Invalid character reference \"\\f\" (0x0000000c).", "Line number 1.");
-#endif
-
     /* unterminated string */
     str = "\"unterminated string";
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, 0, &jsonctx));
     CHECK_LOG_CTX("Missing quotation-mark at the end of a JSON string.", "Line number 1.");
-#if 0
-    /* invalid escape sequence */
-    str = "\"char \\x \"";
-    assert_non_null(ly_in_memory(in, str));
-    assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, 0, &jsonctx));
-    CHECK_LOG_CTX("Invalid character escape sequence \\x.", "Line number 1.");
-
-    /* new line is allowed only as escaped character in JSON */
-    str = "\"\n\"";
-    assert_non_null(ly_in_memory(in, str));
-    assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, 0, &jsonctx));
-    CHECK_LOG_CTX("Invalid character in JSON string \"\n\" (0x0000000a).", "Line number 1.");
-#endif
+    CHECK_LOG_CTX("Unexpected end-of-input.", "Line number 1.");
 
     ly_in_free(in, 0);
 }

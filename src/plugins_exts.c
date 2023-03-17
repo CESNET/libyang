@@ -94,6 +94,8 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, const void *parsed, struct l
     ly_bool length_restr = 0;
     LY_DATA_TYPE basetype;
 
+    assert(parsed);
+
     /* compilation wthout any storage */
     if (substmt->stmt == LY_STMT_IF_FEATURE) {
         ly_bool enabled;
@@ -106,8 +108,8 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, const void *parsed, struct l
         }
     }
 
-    if (!substmt->storage || !parsed) {
-        /* nothing to store or nothing parsed to compile */
+    if (!substmt->storage) {
+        /* nothing to store */
         goto cleanup;
     }
 
@@ -268,6 +270,7 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, const void *parsed, struct l
 
         /* compile */
         LY_CHECK_GOTO(rc = lys_compile_type(ctx, NULL, flags, ext->def->name, ptype, substmt->storage, &units, NULL), cleanup);
+        LY_ATOMIC_INC_BARRIER((*(struct lysc_type **)substmt->storage)->refcount);
         break;
     }
     case LY_STMT_EXTENSION_INSTANCE: {
@@ -335,8 +338,8 @@ lyplg_ext_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext
         stmtp = extp->substmts[u].stmt;
         storagep = *(void **)extp->substmts[u].storage;
 
-        if (ly_set_contains(&storagep_compiled, storagep, NULL)) {
-            /* this parsed statement has already been compiled (for example, if it is a linked list of parsed nodes) */
+        if (!storagep || ly_set_contains(&storagep_compiled, storagep, NULL)) {
+            /* nothing parsed or already compiled (for example, if it is a linked list of parsed nodes) */
             continue;
         }
 

@@ -290,6 +290,7 @@ test_path(void **state)
 
     ret = lyd_new_path2(root, NULL, "/a:c2/l3[1]", NULL, 0, 0, 0, NULL, &node);
     assert_int_equal(ret, LY_EEXIST);
+    CHECK_LOG_CTX("Path \"/a:c2/l3[1]\" already exists.", "Data location \"/a:c2/l3[1]\".");
 
     ret = lyd_new_path2(root, NULL, "/a:c2/l3[2]/x", "val2", 0, 0, 0, NULL, &node);
     assert_int_equal(ret, LY_SUCCESS);
@@ -348,6 +349,7 @@ test_path(void **state)
 
     ret = lyd_new_path2(root, NULL, "/a:ll2[1]", "", 0, 0, 0, NULL, &node);
     assert_int_equal(ret, LY_EEXIST);
+    CHECK_LOG_CTX("Path \"/a:ll2[1]\" already exists.", "Data location \"/a:ll2[1]\".");
 
     ret = lyd_new_path2(root, NULL, "/a:ll2[2]", "val2", 0, 0, 0, NULL, &node);
     assert_int_equal(ret, LY_SUCCESS);
@@ -362,6 +364,7 @@ test_path(void **state)
 
     ret = lyd_new_path2(root, NULL, "/a:ll2[3][.='val3']", NULL, 0, 0, 0, NULL, &node);
     assert_int_equal(ret, LY_EVALID);
+    CHECK_LOG_CTX("Unparsed characters \"[.='val3']\" left at the end of path.", NULL);
 
     lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     assert_string_equal(str,

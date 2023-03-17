@@ -123,6 +123,7 @@ lyplg_type_store_instanceid_keys(const struct ly_ctx *ctx, const struct lysc_typ
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
     struct lyd_value_instance_identifier_keys *val;
+    uint32_t log_opts = LY_LOSTORE;
     char *canon;
 
     /* init storage */
@@ -152,10 +153,15 @@ lyplg_type_store_instanceid_keys(const struct ly_ctx *ctx, const struct lysc_typ
                 ((char *)value)[0]);
         goto cleanup;
     }
+
+    /* do not log */
+    ly_temp_log_options(&log_opts);
     ret = ly_path_parse_predicate(ctx, NULL, value_len ? value : "", value_len, LY_PATH_PREFIX_OPTIONAL,
             LY_PATH_PRED_KEYS, &val->keys);
+    ly_temp_log_options(NULL);
     if (ret) {
         ret = ly_err_new(err, ret, LYVE_DATA, NULL, NULL, "%s", ly_errmsg(ctx));
+        ly_err_clean((struct ly_ctx *)ctx, NULL);
         goto cleanup;
     }
     val->ctx = ctx;

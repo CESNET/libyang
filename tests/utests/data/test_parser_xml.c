@@ -170,17 +170,21 @@ test_list(void **state)
     /* missing keys */
     PARSER_CHECK_ERROR("<l1 xmlns=\"urn:tests:a\"><c>1</c><b>b</b></l1>", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
             "List instance is missing its key \"a\".", "Data location \"/a:l1[b='b'][c='1']\", line number 1.");
+    CHECK_LOG_CTX("Invalid position of the key \"b\" in a list.", NULL);
 
     PARSER_CHECK_ERROR("<l1 xmlns=\"urn:tests:a\"><a>a</a></l1>", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
             "List instance is missing its key \"b\".", "Data location \"/a:l1[a='a']\", line number 1.");
 
     PARSER_CHECK_ERROR("<l1 xmlns=\"urn:tests:a\"><b>b</b><a>a</a></l1>", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
             "List instance is missing its key \"c\".", "Data location \"/a:l1[a='a'][b='b']\", line number 1.");
+    CHECK_LOG_CTX("Invalid position of the key \"a\" in a list.", NULL);
 
     /* key duplicate */
     PARSER_CHECK_ERROR("<l1 xmlns=\"urn:tests:a\"><c>1</c><b>b</b><a>a</a><c>1</c></l1>", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
             "Duplicate instance of \"c\".",
             "Data location \"/a:l1[a='a'][b='b'][c='1'][c='1']/c\", line number 1.");
+    CHECK_LOG_CTX("Invalid position of the key \"a\" in a list.", NULL);
+    CHECK_LOG_CTX("Invalid position of the key \"b\" in a list.", NULL);
 
     /* keys order */
     CHECK_PARSE_LYD("<l1 xmlns=\"urn:tests:a\"><d>d</d><a>a</a><c>1</c><b>b</b></l1>", 0, LYD_VALIDATE_PRESENT, tree);
@@ -209,6 +213,7 @@ test_list(void **state)
     assert_non_null(leaf = (struct lyd_node_term *)leaf->next);
     CHECK_LYSC_NODE(leaf->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "c", 1, LYS_LEAF, 1, 0, NULL, 0);
     CHECK_LOG_CTX("Invalid position of the key \"a\" in a list.", NULL);
+    CHECK_LOG_CTX("Invalid position of the key \"b\" in a list.", NULL);
     lyd_free_all(tree);
 
     PARSER_CHECK_ERROR(data, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, tree, LY_EVALID,

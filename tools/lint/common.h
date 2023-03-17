@@ -33,6 +33,11 @@
 #define YL_DEFAULT_DATA_PARSE_OPTIONS LYD_PARSE_STRICT
 
 /**
+ * @brief Default data validation flags.
+ */
+#define YL_DEFAULT_DATA_VALIDATE_OPTIONS LYD_VALIDATE_MULTI_ERROR
+
+/**
  * @brief log error message
  */
 #define YLMSG_E(...) \
