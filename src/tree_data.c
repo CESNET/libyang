@@ -1321,8 +1321,12 @@ lyd_compare_single_(const struct lyd_node *node1, const struct lyd_node *node2, 
         if (!(options & LYD_COMPARE_OPAQ) && ((node1->schema && !node2->schema) || (!node1->schema && node2->schema))) {
             return LY_ENOT;
         }
-        if ((r = lyd_compare_single_value(node1, node2))) {
-            return r;
+        if ((!node1->schema && !node2->schema) || (node1->schema && (node1->schema->nodetype & LYD_NODE_TERM)) ||
+                (node2->schema && (node2->schema->nodetype & LYD_NODE_TERM))) {
+            /* compare values only if there are any to compare */
+            if ((r = lyd_compare_single_value(node1, node2))) {
+                return r;
+            }
         }
 
         if (options & LYD_COMPARE_FULL_RECURSION) {
