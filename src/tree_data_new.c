@@ -1347,13 +1347,14 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
         schema = path[u].node;
 
         if (lysc_is_dup_inst_list(schema)) {
-            if (!path[u].predicates) {
+            if (!path[u].predicates ||
+                    ((schema->nodetype == LYS_LEAFLIST) && (path[u].predicates[0].type == LY_PATH_PREDTYPE_LEAFLIST))) {
                 /* creating a new key-less list or state leaf-list instance */
                 create = 1;
                 new_count = u;
             } else if (path[u].predicates[0].type != LY_PATH_PREDTYPE_POSITION) {
                 LOG_LOCSET(schema, NULL, NULL, NULL);
-                LOGVAL(schema->module->ctx, LYVE_XPATH, "Invalid predicate for %s \"%s\" in path \"%s\".",
+                LOGVAL(schema->module->ctx, LYVE_XPATH, "Invalid predicate for state %s \"%s\" in path \"%s\".",
                         lys_nodetype2str(schema->nodetype), schema->name, str_path);
                 LOG_LOCBACK(1, 0, 0, 0);
                 return LY_EINVAL;

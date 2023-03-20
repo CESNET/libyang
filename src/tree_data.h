@@ -1519,7 +1519,8 @@ LIBYANG_API_DECL LY_ERR lyd_new_attr2(struct lyd_node *parent, const char *modul
  * Also, if a leaf-list is being created and both a predicate is defined in @p path
  * and @p value is set, the predicate is preferred.
  *
- * For key-less lists and non-configuration leaf-lists, positional predicates should be used (indices starting from 1).
+ * For key-less lists, positional predicates must be used (indices starting from 1). For non-configuration leaf-lists
+ * either positional predicate can be used or leaf-list predicate, when an instance is always created at the end.
  * If no predicate is used for these nodes, they are always created.
  *
  * @param[in] parent Data parent to add to/modify, can be NULL. Note that in case a first top-level sibling is used,
