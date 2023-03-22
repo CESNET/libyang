@@ -1675,7 +1675,7 @@ LIBYANG_API_DECL LY_ERR lyd_change_term(struct lyd_node *term, const char *val_s
  * is always cleared.
  *
  * @param[in] term Term node to change.
- * @param[in] value New value to set in binary format, see @ref howtoDataLYB.
+ * @param[in] value New value to set in binary format (usually a pointer), see @ref howtoDataLYB.
  * @param[in] value_len Length of @p value.
  * @return LY_SUCCESS if value was changed,
  * @return LY_EEXIST if value was the same and only the default flag was cleared,
