@@ -1,0 +1,10 @@
+source [expr {[info exists ::env(TESTS_DIR)] ? "$env(TESTS_DIR)/interactive/ly.tcl" : "ly.tcl"}]
+
+test clear_ietf_yang_library {clear --yang-library} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    # add models
+    ly_cmd "clear -y"
+    ly_cmd "list" "I ietf-yang-library"
+}}
+
+cleanupTests
