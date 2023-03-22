@@ -657,6 +657,25 @@ ly_ctx_get_change_count(const struct ly_ctx *ctx)
     return ctx->change_count;
 }
 
+LIBYANG_API_DEF uint32_t
+ly_ctx_get_modules_hash(const struct ly_ctx *ctx)
+{
+    const struct lys_module *mod;
+    uint32_t i = ly_ctx_internal_modules_count(ctx), hash = 0;
+
+    LY_CHECK_ARG_RET(ctx, ctx, 0);
+
+    while ((mod = ly_ctx_get_module_iter(ctx, &i))) {
+        hash = dict_hash_multi(hash, mod->name, strlen(mod->name));
+        if (mod->revision) {
+            hash = dict_hash_multi(hash, mod->revision, strlen(mod->revision));
+        }
+    }
+
+    hash = dict_hash_multi(hash, NULL, 0);
+    return hash;
+}
+
 LIBYANG_API_DEF ly_module_imp_clb
 ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data)
 {

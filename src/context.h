@@ -370,6 +370,15 @@ LIBYANG_API_DECL LY_ERR ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option
 LIBYANG_API_DECL uint16_t ly_ctx_get_change_count(const struct ly_ctx *ctx);
 
 /**
+ * @brief Get the hash of all the modules in the context with their revision. Since order of the modules is significant,
+ * even when 2 contexts have the same modules but loaded in a different order, the hash will differ.
+ *
+ * @param[in] ctx Context to be examined.
+ * @return Context modules hash.
+ */
+LIBYANG_API_DECL uint32_t ly_ctx_get_modules_hash(const struct ly_ctx *ctx);
+
+/**
  * @brief Callback for freeing returned module data in #ly_module_imp_clb.
  *
  * @param[in] module_data Data to free.
@@ -630,7 +639,8 @@ LIBYANG_API_DECL struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const
  * If the data identifier can be limited to the existence and changes of this context, the following
  * last 2 parameters can be used:
  *
- * "%u" as @p content_id_format and ::ly_ctx_get_change_count() as its parameter.
+ * "%u" as @p content_id_format and ::ly_ctx_get_change_count() as its parameter;
+ * "%u" as @p content_id_format and ::ly_ctx_get_modules_hash() as its parameter.
  *
  * @param[in] ctx Context with the modules.
  * @param[out] root Generated yang-library data.
