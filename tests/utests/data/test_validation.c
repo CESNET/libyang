@@ -1219,7 +1219,7 @@ test_multi_error(void **state)
     CHECK_LOG_CTX_APPTAG("Too few \"ll\" instances.", "Schema location \"/ii:cont/ll\".", "too-few-elements");
     CHECK_LOG_CTX_APPTAG("l leaf is not left", "Data location \"/ii:cont/l3\".", "not-left");
     CHECK_LOG_CTX_APPTAG("Must condition \"../l = 'right'\" not satisfied.", "Data location \"/ii:cont/l2\".", "must-violation");
-    CHECK_LOG_CTX_APPTAG("Duplicate instance of \"l\".", "Data location \"/ii:cont/l\", line number 8.", NULL);
+    CHECK_LOG_CTX_APPTAG("Duplicate instance of \"l\".", "Data location \"/ii:cont/l\", line number 9.", NULL);
     CHECK_LOG_CTX_APPTAG("Invalid non-number-encoded uint32 value \"ahoy\".", "Data location \"/ii:cont/ll\", line number 7.", NULL);
 
     /* validation */
@@ -1511,7 +1511,7 @@ test_case(void **state)
             "  }\n"
             "}\n", LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     CHECK_LOG_CTX("Data for both cases \"v0\" and \"v2\" exist.",
-            "Data location \"/k:ch\", line number 5.");
+            "Data location \"/k:ch\", line number 6.");
 
     CHECK_PARSE_LYD_PARAM(
             "{\n"
@@ -1521,7 +1521,7 @@ test_case(void **state)
             "  }\n"
             "}\n", LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     CHECK_LOG_CTX("Data for both cases \"v0\" and \"v2\" exist.",
-            "Data location \"/k:ch\", line number 5.");
+            "Data location \"/k:ch\", line number 6.");
 }
 
 int

@@ -1243,10 +1243,10 @@ test_data_json(void **state)
     TEST_SUCCESS_JSON("T0", "127", INT8, "127", 127);
     /* leading zeros */
     TEST_ERROR_JSON("T0", "015");
-    CHECK_LOG_CTX("Unexpected character \"1\" after JSON number.",
+    CHECK_LOG_CTX("Invalid character sequence \"15}\", expected a JSON object-end or next item.",
             "Line number 1.");
     TEST_ERROR_JSON("T0", "-015");
-    CHECK_LOG_CTX("Unexpected character \"1\" after JSON number.",
+    CHECK_LOG_CTX("Invalid character sequence \"15}\", expected a JSON object-end or next item.",
             "Line number 1.");
     TEST_ERROR_JSON("defs", "+50");
     CHECK_LOG_CTX("Invalid character sequence \"+50}\", expected a JSON value.",

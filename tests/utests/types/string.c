@@ -868,7 +868,7 @@ test_data_json(void **state)
     CHECK_LOG_CTX("Invalid character reference \"\\f\" (0x0000000c).", "Line number 1.");
 
     TEST_ERROR_JSON("T0", "\"");
-    CHECK_LOG_CTX("Unexpected character \"\"\" after JSON string.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid character sequence \"\"}\", expected a JSON object-end or next item.", "Line number 1.");
 
     TEST_ERROR_JSON("T0", "aabb \\x");
     CHECK_LOG_CTX("Invalid character escape sequence \\x.", "Line number 1.");
