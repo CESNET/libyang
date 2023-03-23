@@ -815,6 +815,7 @@ lys_compile_unres_disabled_bitenum(struct lysc_ctx *ctx, struct lysc_node_leaf *
     struct lysc_type **t;
     LY_ARRAY_COUNT_TYPE u, count;
     struct lysc_type_enum *ent;
+    ly_bool has_value = 0;
 
     if (leaf->type->basetype == LY_TYPE_UNION) {
         t = ((struct lysc_type_union *)leaf->type)->types;
@@ -829,12 +830,17 @@ lys_compile_unres_disabled_bitenum(struct lysc_ctx *ctx, struct lysc_node_leaf *
             ent = (struct lysc_type_enum *)(t[u]);
             lys_compile_unres_disabled_bitenum_remove(&ctx->free_ctx, ent->enums);
 
-            if (!LY_ARRAY_COUNT(ent->enums)) {
-                LOGVAL(ctx->ctx, LYVE_SEMANTICS, "%s type of node \"%s\" without any (or all disabled) valid values.",
-                        (ent->basetype == LY_TYPE_BITS) ? "Bits" : "Enumeration", leaf->name);
-                return LY_EVALID;
+            if (LY_ARRAY_COUNT(ent->enums)) {
+                has_value = 1;
             }
+        } else {
+            has_value = 1;
         }
+    }
+
+    if (!has_value) {
+        LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Node \"%s\" without any (or all disabled) valid values.", leaf->name);
+        return LY_EVALID;
     }
 
     return LY_SUCCESS;

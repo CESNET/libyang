@@ -1159,7 +1159,7 @@ test_disabled_enum(void **state)
             "}}"
             "}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Enumeration type of node \"l\" without any (or all disabled) valid values.", "Schema location \"/a:l\".");
+    CHECK_LOG_CTX("Node \"l\" without any (or all disabled) valid values.", "Schema location \"/a:l\".");
 
     /* disabled default value */
     str = "module a {"
