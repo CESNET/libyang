@@ -8,10 +8,14 @@ set timeout 1
 set prompt "> "
 # turn off dialog between expect and yanglint
 log_user 0
+# setting some large terminal width
+stty columns 720
 
 variable ly_setup {
     spawn $::env(YANGLINT)
     ly_skip_warnings
+    # Searchpath is set, so modules can be loaded via the 'load' command.
+    ly_cmd "searchpath $::env(YANG_MODULES_DIR)"
 }
 
 variable ly_cleanup {
