@@ -394,7 +394,7 @@ lydjson_check_list(struct lyjson_ctx *jsonctx, const struct lysc_node *list)
 
                 if (snode) {
                     /* we have the key, validate the value */
-                    if ((status < LYJSON_NUMBER) && (status > LYJSON_NULL)) {
+                    if ((status < LYJSON_NUMBER) || (status > LYJSON_NULL)) {
                         /* not a terminal */
                         rc = LY_ENOT;
                         goto cleanup;
