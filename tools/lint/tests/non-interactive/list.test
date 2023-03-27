@@ -15,6 +15,10 @@ test list_format_json {list --format json} {
     ly_cmd "-y -f json -l" [regex_json_pairs $modules "name"]
 } {}
 
+test list_ietf_yang_library {Error due to missing ietf-yang-library} {
+    ly_cmd_err "-f xml -l" "Module \"ietf-yang-library\" is not implemented."
+} {}
+
 test list_bad_format {Error due to bad format} {
     ly_cmd_err "-f csv -l" "Unknown output format csv"
 } {}

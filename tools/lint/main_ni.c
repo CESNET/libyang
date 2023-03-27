@@ -965,7 +965,8 @@ main_ni(int argc, char *argv[])
 
     if (c.list) {
         /* print the list of schemas */
-        print_list(c.out, c.ctx, c.data_out_format);
+        ret = print_list(c.out, c.ctx, c.data_out_format);
+        goto cleanup;
     } else {
         if (c.feature_param_format) {
             for (u = 0; u < c.schema_modules.count; u++) {
