@@ -29,11 +29,11 @@ void
 cmd_searchpath_help(void)
 {
     printf("Usage: searchpath [--clear] [<modules-dir-path> ...]\n"
-            "                  Set paths of directories where to search for imports and\n"
-            "                  includes of the schema modules. The current working directory\n"
-            "                  and the path of the module being added is used implicitly.\n"
-            "                  The 'load' command uses these paths to search even for the\n"
-            "                  schema modules to be loaded.\n");
+            "                  Set paths of directories where to search for imports and includes\n"
+            "                  of the schema modules. Subdirectories are also searched. The current\n"
+            "                  working directory and the path of the module being added is used implicitly.\n"
+            "                  The 'load' command uses these paths to search even for the schema modules\n"
+            "                  to be loaded.\n");
 }
 
 void

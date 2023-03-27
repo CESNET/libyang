@@ -33,11 +33,11 @@ combination with the command name you are interested in:
 ```
 > help searchpath
 Usage: searchpath [--clear] [<modules-dir-path> ...]
-                  Set paths of directories where to search for imports and
-                  includes of the schema modules. The current working directory
-                  and the path of the module being added is used implicitly.
-                  The 'load' command uses these paths to search even for the
-                  schema modules to be loaded.
+                  Set paths of directories where to search for imports and includes
+                  of the schema modules. Subdirectories are also searched. The current
+                  working directory and the path of the module being added is used implicitly.
+                  The 'load' command uses these paths to search even for the schema modules
+                  to be loaded.
 ```
 
 The input files referred in this document are available together with this
