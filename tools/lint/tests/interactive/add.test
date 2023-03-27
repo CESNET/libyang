@@ -16,4 +16,10 @@ test add_disable_searchdir_twice {add -D -D} {
     ly_cmd_err "add -D -D $mdir/ietf-ip.yang" "Loading \"ietf-interfaces\" module failed."
 }}
 
+test add_with_feature {Add module with feature} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "add --feature modfeature:ftr2 $mdir/modfeature.yang"
+    ly_cmd "feature -a" "modfeature:\r\n\tftr1 \\(off\\)\r\n\tftr2 \\(on\\)"
+}}
+
 cleanupTests
