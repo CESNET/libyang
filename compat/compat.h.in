@@ -71,7 +71,6 @@
 #cmakedefine HAVE_TIMEGM
 #cmakedefine HAVE_STRPTIME
 #cmakedefine HAVE_MMAP
-#cmakedefine HAVE_DIRNAME
 #cmakedefine HAVE_STRCASECMP
 #cmakedefine HAVE_SETENV
 
