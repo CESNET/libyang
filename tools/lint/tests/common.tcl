@@ -6,6 +6,9 @@ if { ![info exists ::env(TESTS_DIR)] } {
     set ::env(TESTS_DIR) "../"
     set ::env(YANG_MODULES_DIR) "../modules"
     set ::env(YANGLINT) "../../../../build/yanglint"
+    ::tcltest::testConstraint ctest false
+} else {
+    ::tcltest::testConstraint ctest true
 }
 
 # prompt of error message
