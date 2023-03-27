@@ -68,7 +68,7 @@ cmd_add(struct ly_ctx **ctx, const char *cmdline)
         goto cleanup;
     }
 
-    while ((opt = getopt_long(argc, argv, "D:F:hi", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "DF:hi", options, &opt_index)) != -1) {
         switch (opt) {
         case 'D': /* --disable--search */
             if (options_ctx & LY_CTX_DISABLE_SEARCHDIRS) {
