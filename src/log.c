@@ -178,7 +178,7 @@ ly_err_first(const struct ly_ctx *ctx)
 {
     LY_CHECK_ARG_RET(NULL, ctx, NULL);
 
-    return pthread_getspecific(ctx->errlist_key);
+    return ctx->errlist;
 }
 
 LIBYANG_API_DEF struct ly_err_item *
@@ -188,7 +188,7 @@ ly_err_last(const struct ly_ctx *ctx)
 
     LY_CHECK_ARG_RET(NULL, ctx, NULL);
 
-    e = pthread_getspecific(ctx->errlist_key);
+    e = ctx->errlist;
     return e ? e->prev : NULL;
 }
 
@@ -201,11 +201,11 @@ ly_err_move(struct ly_ctx *src_ctx, struct ly_ctx *trg_ctx)
     ly_err_clean(trg_ctx, NULL);
 
     /* get the errors in src */
-    e = pthread_getspecific(src_ctx->errlist_key);
-    pthread_setspecific(src_ctx->errlist_key, NULL);
+    e = src_ctx->errlist;
+    src_ctx->errlist = NULL;
 
     /* set them for trg */
-    pthread_setspecific(trg_ctx->errlist_key, e);
+    trg_ctx->errlist = e;
 }
 
 LIBYANG_API_DEF void
@@ -243,7 +243,7 @@ ly_err_clean(struct ly_ctx *ctx, struct ly_err_item *eitem)
     } else {
         /* free all err */
         ly_err_free(first);
-        pthread_setspecific(ctx->errlist_key, NULL);
+        ctx->errlist = NULL;
     }
 }
 
@@ -357,13 +357,13 @@ ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_t pat
 }
 
 static LY_ERR
-log_store(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE vecode, char *msg, char *path, char *apptag)
+log_store(struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE vecode, char *msg, char *path, char *apptag)
 {
     struct ly_err_item *eitem, *last;
 
     assert(ctx && (level < LY_LLVRB));
 
-    eitem = pthread_getspecific(ctx->errlist_key);
+    eitem = ctx->errlist;
     if (!eitem) {
         /* if we are only to fill in path, there must have been an error stored */
         assert(msg);
@@ -372,7 +372,7 @@ log_store(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE vec
         eitem->prev = eitem;
         eitem->next = NULL;
 
-        pthread_setspecific(ctx->errlist_key, eitem);
+        ctx->errlist = eitem;
     } else if (!msg) {
         /* only filling the path */
         assert(path);

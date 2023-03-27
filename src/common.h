@@ -327,7 +327,7 @@ struct ly_ctx {
 
     ly_ext_data_clb ext_clb;          /**< optional callback for providing extension-specific run-time data for extensions */
     void *ext_clb_data;               /**< optional private data for ::ly_ctx.ext_clb */
-    pthread_key_t errlist_key;        /**< key for the thread-specific list of errors related to the context */
+    struct ly_err_item *errlist;
     pthread_mutex_t lyb_hash_lock;    /**< lock for storing LYB schema hashes in schema nodes */
 };
 

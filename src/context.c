@@ -251,9 +251,6 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     /* plugins */
     LY_CHECK_ERR_GOTO(lyplg_init(), LOGINT(NULL); rc = LY_EINT, cleanup);
 
-    /* initialize thread-specific keys */
-    while ((pthread_key_create(&ctx->errlist_key, ly_err_free)) == EAGAIN) {}
-
     /* init LYB hash lock */
     pthread_mutex_init(&ctx->lyb_hash_lock, NULL);
 
@@ -1281,7 +1278,6 @@ ly_ctx_destroy(struct ly_ctx *ctx)
 
     /* clean the error list */
     ly_err_clean(ctx, 0);
-    pthread_key_delete(ctx->errlist_key);
 
     /* dictionary */
     lydict_clean(&ctx->dict);
