@@ -172,7 +172,8 @@ help(int shortout)
     printf("  -p PATH, --path=PATH\n"
             "                Search path for schema (YANG/YIN) modules. The option can be\n"
             "                used multiple times. The current working directory and the\n"
-            "                path of the module being added is used implicitly.\n\n");
+            "                path of the module being added is used implicitly. Subdirectories\n"
+            "                are also searched\n\n");
 
     printf("  -D, --disable-searchdir\n"
             "                Do not implicitly search in current working directory for\n"
