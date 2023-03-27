@@ -18,7 +18,6 @@
 #include "cmd.h"
 
 #include <getopt.h>
-#include <libgen.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -135,7 +134,7 @@ cmd_add(struct ly_ctx **ctx, const char *cmdline)
         }
 
         /* add temporarily also the path of the module itself */
-        if (ly_ctx_set_searchdir(*ctx, dirname(dir)) == LY_EEXIST) {
+        if (ly_ctx_set_searchdir(*ctx, dir) == LY_EEXIST) {
             path_unset = 0;
         }
 

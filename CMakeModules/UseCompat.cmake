@@ -54,7 +54,6 @@ macro(USE_COMPAT)
     check_function_exists(timegm HAVE_TIMEGM)
     check_symbol_exists(strptime "time.h" HAVE_STRPTIME)
     check_symbol_exists(mmap "sys/mman.h" HAVE_MMAP)
-    check_symbol_exists(dirname "libgen.h" HAVE_DIRNAME)
     check_symbol_exists(setenv "stdlib.h" HAVE_SETENV)
 
     unset(CMAKE_REQUIRED_DEFINITIONS)
