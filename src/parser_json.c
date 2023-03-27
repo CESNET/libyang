@@ -800,7 +800,8 @@ next_entry:
     assert(status == LYJSON_OBJECT);
     do {
         LY_CHECK_GOTO(rc = lyjson_ctx_next(lydctx->jsonctx, &status), cleanup);
-        assert(status == LYJSON_OBJECT_NAME);
+        LY_CHECK_GOTO(status != LYJSON_OBJECT_NAME, representation_error);
+
         lydjson_parse_name(lydctx->jsonctx->value, lydctx->jsonctx->value_len, &name, &name_len, &prefix, &prefix_len, &is_attr);
         lyjson_ctx_give_dynamic_value(lydctx->jsonctx, &dynamic_prefname);
 
