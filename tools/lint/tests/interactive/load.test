@@ -1,0 +1,9 @@
+source [expr {[info exists ::env(TESTS_DIR)] ? "$env(TESTS_DIR)/interactive/ly.tcl" : "ly.tcl"}]
+
+test load_with_feature {Load module with feature} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load --feature modfeature:ftr2 modfeature"
+    ly_cmd "feature -a" "modfeature:\r\n\tftr1 \\(off\\)\r\n\tftr2 \\(on\\)"
+}}
+
+cleanupTests
