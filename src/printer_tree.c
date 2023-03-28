@@ -3856,25 +3856,33 @@ trb_ext_iter(const struct trt_tree_ctx *tc, uint64_t *i)
  * @param[in] compiled if @p ext is lysc structure.
  * @param[in] ext current processed extension.
  * @param[out] plug_ctx is plugin context which will be initialized.
+ * @param[out] ignore plugin callback is NULL.
  * @return LY_ERR value.
  */
 static LY_ERR
-tro_ext_printer_tree(ly_bool compiled, void *ext, const struct lyspr_tree_ctx *plug_ctx)
+tro_ext_printer_tree(ly_bool compiled, void *ext, const struct lyspr_tree_ctx *plug_ctx, ly_bool *ignore)
 {
     struct lysc_ext_instance *ext_comp;
     struct lysp_ext_instance *ext_pars;
+    const struct lyplg_ext *plugin;
     const char *flags = NULL, *add_opts = NULL;
 
     if (compiled) {
         ext_comp = ext;
-        if (ext_comp->def->plugin->printer_ctree) {
-            return ext_comp->def->plugin->printer_ctree(ext, plug_ctx, &flags, &add_opts);
+        plugin = ext_comp->def->plugin;
+        if (!plugin->printer_ctree) {
+            *ignore = 1;
+            return LY_SUCCESS;
         }
+        return plugin->printer_ctree(ext, plug_ctx, &flags, &add_opts);
     } else {
         ext_pars = ext;
-        if (ext_pars->record->plugin.printer_ptree) {
-            return ext_pars->record->plugin.printer_ptree(ext, plug_ctx, &flags, &add_opts);
+        plugin = &ext_pars->record->plugin;
+        if (!plugin->printer_ptree) {
+            *ignore = 1;
+            return LY_SUCCESS;
         }
+        return plugin->printer_ptree(ext, plug_ctx, &flags, &add_opts);
     }
 
     return LY_SUCCESS;
@@ -3992,7 +4000,7 @@ trb_ext_print_instances(struct trt_wrapper wr, struct trt_parent_cache ca, struc
     LY_ARRAY_COUNT_TYPE i;
     uint64_t last_instance = UINT64_MAX;
     void *ext;
-    ly_bool child_exists;
+    ly_bool child_exists, ignore = 0;
     uint32_t max, max_gap_before_type = 0;
 
     ca = tro_parent_cache_for_child(ca, tc);
@@ -4010,8 +4018,12 @@ trb_ext_print_instances(struct trt_wrapper wr, struct trt_parent_cache ca, struc
     while ((ext = trb_ext_iter(tc, &i))) {
         struct lyspr_tree_ctx plug_ctx = {0};
 
-        rc = tro_ext_printer_tree(tc->lysc_tree, ext, &plug_ctx);
+        rc = tro_ext_printer_tree(tc->lysc_tree, ext, &plug_ctx, &ignore);
         LY_CHECK_ERR_GOTO(rc, tc->last_error = rc, end);
+        if (ignore) {
+            ignore = 0;
+            continue;
+        }
         trb_ext_try_unified_indent(&plug_ctx, ca, &max_gap_before_type, pc, tc);
         if (plug_ctx.schemas) {
             last_instance = i;
@@ -4030,8 +4042,12 @@ trb_ext_print_instances(struct trt_wrapper wr, struct trt_parent_cache ca, struc
     while ((ext = trb_ext_iter(tc, &i))) {
         struct lyspr_tree_ctx plug_ctx = {0};
 
-        rc = tro_ext_printer_tree(tc->lysc_tree, ext, &plug_ctx);
+        rc = tro_ext_printer_tree(tc->lysc_tree, ext, &plug_ctx, &ignore);
         LY_CHECK_ERR_GOTO(rc, tc->last_error = rc, end);
+        if (ignore) {
+            ignore = 0;
+            continue;
+        }
         if (!child_exists && (last_instance == i)) {
             trb_ext_print_schemas(&plug_ctx, 1, max_gap_before_type, wr, ca, pc, tc);
         } else {
@@ -4497,6 +4513,7 @@ trm_print_plugin_ext(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
     struct trt_printer_ctx pc_dupl;
     struct trt_tree_ctx tc_dupl;
     struct trt_node node;
+    ly_bool ignore = 0;
     uint32_t max_gap_before_type;
     void *ext;
 
@@ -4510,9 +4527,10 @@ trm_print_plugin_ext(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
     while ((ext = trb_mod_ext_iter(tc, &i))) {
         struct lyspr_tree_ctx plug_ctx = {0};
 
-        rc = tro_ext_printer_tree(tc->lysc_tree, ext, &plug_ctx);
+        rc = tro_ext_printer_tree(tc->lysc_tree, ext, &plug_ctx, &ignore);
         LY_CHECK_ERR_GOTO(rc, tc->last_error = rc, end);
-        if (!plug_ctx.schemas) {
+        if (!plug_ctx.schemas || ignore) {
+            ignore = 0;
             continue;
         }
 
