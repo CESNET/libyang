@@ -2611,7 +2611,7 @@ LIBYANG_API_DECL LY_ERR lyd_find_path(const struct lyd_node *ctx_node, const cha
 LIBYANG_API_DECL LY_ERR lyd_find_target(const struct ly_path *path, const struct lyd_node *tree, struct lyd_node **match);
 
 /**
- * @brief Get current timezone UTC (GMT) time offset in seconds.
+ * @brief Get current timezone UTC (GMT) time offset in seconds. Changes based on the current DST setting.
  *
  * @return Timezone shift in seconds.
  */

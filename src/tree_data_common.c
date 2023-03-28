@@ -1536,16 +1536,24 @@ ly_format2str(LY_VALUE_FORMAT format)
 LIBYANG_API_DEF int
 ly_time_tz_offset(void)
 {
-    const time_t epoch_plus_11h = 60 * 60 * 11;
+    time_t now;
     struct tm tm_local, tm_utc;
     int result = 0;
 
     /* init timezone */
     tzset();
 
+    /* get current timestamp (need to use it to account for DST) */
+    now = time(NULL);
+
     /* get local and UTC time */
-    localtime_r(&epoch_plus_11h, &tm_local);
-    gmtime_r(&epoch_plus_11h, &tm_utc);
+    localtime_r(&now, &tm_local);
+    gmtime_r(&now, &tm_utc);
+
+    /* account for year/month/day change by adding/subtracting from the hours */
+    if (tm_local.tm_mday != tm_utc.tm_mday) {
+        tm_local.tm_hour += (tm_local.tm_mday - tm_utc.tm_mday) * 24;
+    }
 
     /* hours shift in seconds */
     result += (tm_local.tm_hour - tm_utc.tm_hour) * 3600;
@@ -1639,7 +1647,7 @@ ly_time_time2str(time_t time, const char *fractions_s, char **str)
         return LY_ESYS;
     }
 
-    /* get timezone offset */
+    /* get timezone offset (do not use tm_gmtoff to avoid portability problems) */
     zonediff_s = ly_time_tz_offset();
     zonediff_h = zonediff_s / 60 / 60;
     zonediff_m = zonediff_s / 60 % 60;
