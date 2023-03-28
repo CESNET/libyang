@@ -2,6 +2,12 @@ source [expr {[info exists ::env(TESTS_DIR)] ? "$env(TESTS_DIR)/interactive/ly.t
 
 set mdir $::env(YANG_MODULES_DIR)
 
+test add_basic {} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "add $mdir/modleafref.yang"
+    ly_cmd "list" "I modleafref\r.*I modleaf"
+}}
+
 test add_disable_searchdir_once {add --disable-searchdir} {
 -setup $ly_setup -cleanup $ly_cleanup -constraints {!ctest} -body {
     ly_cmd "add $mdir/modimp-cwd.yang"
@@ -20,6 +26,24 @@ test add_with_feature {Add module with feature} {
 -setup $ly_setup -cleanup $ly_cleanup -body {
     ly_cmd "add --feature modfeature:ftr2 $mdir/modfeature.yang"
     ly_cmd "feature -a" "modfeature:\r\n\tftr1 \\(off\\)\r\n\tftr2 \\(on\\)"
+}}
+
+test add_make_implemented_once {add --make-implemented} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_ignore "add $mdir/modmust.yang"
+    ly_cmd "list" "I modmust\r.*i modleaf"
+    ly_cmd "clear"
+    ly_ignore "add -i $mdir/modmust.yang"
+    ly_cmd "list" "I modmust\r.*I modleaf"
+}}
+
+test add_make_implemented_twice {add -i -i} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "add $mdir/modimp-type.yang"
+    ly_cmd "list" "I modimp-type\r.*i modtypedef"
+    ly_cmd "clear"
+    ly_cmd "add -i -i $mdir/modimp-type.yang"
+    ly_cmd "list" "I modimp-type\r.*I modtypedef"
 }}
 
 cleanupTests
