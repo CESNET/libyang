@@ -2365,6 +2365,43 @@ structure(void **state)
     TEST_LOCAL_TEARDOWN;
 }
 
+static void
+annotation(void **state)
+{
+    TEST_LOCAL_SETUP;
+
+    orig =
+            "module ann {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:example:ann\";\n"
+            "  prefix an;\n"
+            "\n"
+            "  import ietf-yang-metadata {\n"
+            "    prefix md;\n"
+            "  }\n"
+            "\n"
+            "  leaf lf1 {\n"
+            "    type string;\n"
+            "  }\n"
+            "  md:annotation avalue {\n"
+            "    type string;\n"
+            "  }\n"
+            "}\n";
+
+    expect =
+            "module: ann\n"
+            "  +--rw lf1?   string\n";
+
+    /* annotation is ignored without error message */
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_out_reset(UTEST_OUT);
+
+    TEST_LOCAL_TEARDOWN;
+}
+
 int
 main(void)
 {
@@ -2399,6 +2436,7 @@ main(void)
         UTEST(yang_data),
         UTEST(mount_point),
         UTEST(structure),
+        UTEST(annotation),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
