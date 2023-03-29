@@ -1,0 +1,27 @@
+source [expr {[info exists ::env(TESTS_DIR)] ? "$env(TESTS_DIR)/interactive/ly.tcl" : "ly.tcl"}]
+
+test print_yang {} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modleaf"
+    ly_cmd "print -f yang modleaf" "leaf lfl"
+}}
+
+test print_yin {} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modleaf"
+    ly_cmd "print -f yin modleaf" "<leaf name=\"lfl\">"
+}}
+
+test print_info {} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modleaf"
+    ly_cmd "print -f info modleaf" "status current"
+}}
+
+test print_tree {} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modleaf"
+    ly_cmd "print -f tree modleaf" "\\+--rw lfl"
+}}
+
+cleanupTests
