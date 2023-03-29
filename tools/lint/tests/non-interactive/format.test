@@ -1,0 +1,34 @@
+source [expr {[info exists ::env(TESTS_DIR)] ? "$env(TESTS_DIR)/non-interactive/ly.tcl" : "ly.tcl"}]
+
+set mdir $::env(YANG_MODULES_DIR)
+
+test format_yang {} {
+    ly_cmd "-f yang $mdir/modleaf.yang" "leaf lfl"
+} {}
+
+test format_yin {} {
+    ly_cmd "-f yin $mdir/modleaf.yang" "<leaf name=\"lfl\">"
+} {}
+
+test format_info {} {
+    ly_cmd "-f info $mdir/modleaf.yang" "status current"
+} {}
+
+test format_tree {} {
+    ly_cmd "-f tree $mdir/modleaf.yang" "\\+--rw lfl"
+} {}
+
+test format_feature_param_one_module {Show features for one module} {
+    ly_cmd "-f feature-param $mdir/ietf-ip.yang" " -F ietf-ip:ipv4-non-contiguous-netmasks,ipv6-privacy-autoconf" -ex
+} {}
+
+test format_feature_param_more_modules {Show a mix of modules with and without features} {
+
+    set features " -F modfeature:ftr1,ftr2\
+-F modleaf:\
+-F ietf-ip:ipv4-non-contiguous-netmasks,ipv6-privacy-autoconf"
+
+    ly_cmd "-f feature-param $mdir/modfeature.yang $mdir/modleaf.yang $mdir/ietf-ip.yang" $features -ex
+} {}
+
+cleanupTests
