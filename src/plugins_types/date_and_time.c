@@ -53,7 +53,6 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_str *type_dat = (struct lysc_type_str *)type;
     struct lyd_value_date_and_time *val;
-    struct tm tm;
     uint32_t i;
     char c;
 
@@ -111,27 +110,13 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
     ret = lyplg_type_validate_patterns(type_dat->patterns, value, value_len, err);
     LY_CHECK_GOTO(ret, cleanup);
 
-    /* pattern validation succeeded, convert to UNIX time and fractions of second */
+    /* convert to UNIX time and fractions of second */
     ret = ly_time_str2time(value, &val->time, &val->fractions_s);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (!strncmp(((char *)value + value_len) - 6, "-00:00", 6)) {
-        /* unknown timezone, move the timestamp to UTC */
-        val->time -= ly_time_tz_offset();
+        /* unknown timezone */
         val->unknown_tz = 1;
-
-        /* DST may apply, adjust accordingly */
-        if (!localtime_r(&val->time, &tm)) {
-            ret = ly_err_new(err, LY_ESYS, LYVE_DATA, NULL, NULL, "localtime_r() call failed (%s).", strerror(errno));
-            goto cleanup;
-        } else if (tm.tm_isdst < 0) {
-            ret = ly_err_new(err, LY_EINT, LYVE_DATA, NULL, NULL, "Failed to get DST information.");
-            goto cleanup;
-        }
-        if (tm.tm_isdst) {
-            /* move an hour back */
-            val->time -= 3600;
-        }
     }
 
     if (format == LY_VALUE_CANON) {
@@ -193,6 +178,7 @@ lyplg_type_print_date_and_time(const struct ly_ctx *ctx, const struct lyd_value 
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
 {
     struct lyd_value_date_and_time *val;
+    struct tm tm;
     char *ret;
 
     LYD_VALUE_GET(value, val);
@@ -223,14 +209,20 @@ lyplg_type_print_date_and_time(const struct ly_ctx *ctx, const struct lyd_value 
 
     /* generate canonical value if not already */
     if (!value->_canonical) {
-        /* get the canonical value */
-        if (ly_time_time2str(val->time, val->fractions_s, &ret)) {
-            return NULL;
-        }
-
         if (val->unknown_tz) {
-            /* date and time is correct, fix only the timezone */
-            strcpy((ret + strlen(ret)) - 6, "-00:00");
+            /* ly_time_time2str but always using GMT */
+            if (!gmtime_r(&val->time, &tm)) {
+                return NULL;
+            }
+            if (asprintf(&ret, "%04d-%02d-%02dT%02d:%02d:%02d%s%s-00:00",
+                    tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
+                    val->fractions_s ? "." : "", val->fractions_s ? val->fractions_s : "") == -1) {
+                return NULL;
+            }
+        } else {
+            if (ly_time_time2str(val->time, val->fractions_s, &ret)) {
+                return NULL;
+            }
         }
 
         /* store it */
