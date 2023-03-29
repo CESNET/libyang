@@ -1668,6 +1668,59 @@ print_compiled_node(void **state)
     TEST_LOCAL_TEARDOWN;
 }
 
+static void
+print_compiled_node_augment(void **state)
+{
+    TEST_LOCAL_SETUP;
+    const struct lysc_node *node;
+
+    orig =
+            "module b26xx {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"xx:y\";\n"
+            "  prefix xx;\n"
+            "  container c;\n"
+            "}\n";
+
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+
+    /* module with import statement */
+    orig =
+            "module b26 {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"x:y\";\n"
+            "  prefix x;\n"
+            "\n"
+            "  import b26xx {\n"
+            "    prefix xx;\n"
+            "  }\n"
+            "\n"
+            "  augment \"/xx:c\" {\n"
+            "    container e;\n"
+            "  }\n"
+            "}\n";
+
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+
+    /* pyang -f tree --tree-path /c/e ... but prefixes modified */
+    expect =
+            "module: b26\n"
+            "  +--rw xx:c\n"
+            "     +--rw e\n";
+
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    node = lys_find_path(UTEST_LYCTX, NULL, "/b26xx:c/b26:e", 0);
+    CHECK_POINTER(node, 1);
+    assert_int_equal(LY_SUCCESS, lys_print_node(UTEST_OUT, node, LYS_OUT_TREE, 72, 0));
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_out_reset(UTEST_OUT);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
+    TEST_LOCAL_TEARDOWN;
+}
+
 static LY_ERR
 local_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
         const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
@@ -2457,6 +2510,7 @@ main(void)
         UTEST(transition_between_rpc_and_notif),
         UTEST(local_augment),
         UTEST(print_compiled_node),
+        UTEST(print_compiled_node_augment),
         UTEST(print_parsed_submodule),
         UTEST(yang_data),
         UTEST(mount_point),
