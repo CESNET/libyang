@@ -1574,6 +1574,7 @@ print_compiled_node(void **state)
             "  yang-version 1.1;\n"
             "  namespace \"x:y\";\n"
             "  prefix x;\n"
+            "\n"
             "  container g {\n"
             "    leaf a {\n"
             "      type string;\n"
@@ -1585,6 +1586,12 @@ print_compiled_node(void **state)
             "      }\n"
             "      leaf c {\n"
             "        type string;\n"
+            "      }\n"
+            "      list l {\n"
+            "        key \"ip\";\n"
+            "        leaf ip {\n"
+            "          type string;\n"
+            "        }\n"
             "      }\n"
             "    }\n"
             "  }\n"
@@ -1610,13 +1617,31 @@ print_compiled_node(void **state)
 
     ly_out_reset(UTEST_OUT);
 
+    /* pyang -f tree --tree-path /g/h/l */
+    expect =
+            "module: a26\n"
+            "  +--rw g\n"
+            "     +--rw h\n"
+            "        +--rw l* [ip]\n"
+            "           +--rw ip    string\n";
+
+    node = lys_find_path(UTEST_LYCTX, NULL, "/a26:g/h/l", 0);
+    CHECK_POINTER(node, 1);
+    assert_int_equal(LY_SUCCESS, lys_print_node(UTEST_OUT, node, LYS_OUT_TREE, 72, 0));
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+
     /* pyang -f tree --tree-path /g/h */
     expect =
             "module: a26\n"
             "  +--rw g\n"
             "     +--rw h\n"
             "        +--rw b    string\n"
-            "        +--rw c?   string\n";
+            "        +--rw c?   string\n"
+            "        +--rw l* [ip]\n"
+            "           +--rw ip    string\n";
 
     node = lys_find_path(UTEST_LYCTX, NULL, "/a26:g/h", 0);
     CHECK_POINTER(node, 1);
