@@ -3426,7 +3426,7 @@ troc_modi_first_sibling(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
         /* current node is top-node */
         switch (tc->section) {
         case TRD_SECT_MODULE:
-            tc->cn = tc->cmod->data;
+            tc->cn = tc->cn->module->compiled->data;
             break;
         case TRD_SECT_RPCS:
             tc->cn = (const struct lysc_node *)tc->cmod->rpcs;
