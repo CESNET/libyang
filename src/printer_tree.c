@@ -3754,6 +3754,7 @@ trb_print_parents(const struct lysc_node *node, struct trt_wrapper *wr_in, struc
     ly_print_(pc->out, "\n");
     print_node = pc->fp.read.node(TRP_EMPTY_PARENT_CACHE, tc);
     max_gap_before_type = trb_max_gap_to_type(TRP_EMPTY_PARENT_CACHE, pc, tc);
+    tc->cn = node;
     trb_print_entire_node(&print_node, max_gap_before_type, wr, pc, tc);
 }
 
