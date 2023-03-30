@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Context implementations
  *
- * Copyright (c) 2015 - 2021 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -228,6 +228,17 @@ cleanup:
     return mod;
 }
 
+/**
+ * @brief Hash table value-equal callback for comparing context error hash table record.
+ */
+static ly_bool
+ly_ctx_ht_err_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
+{
+    struct ly_ctx_err_rec *err1 = val1_p, *err2 = val2_p;
+
+    return err1->tid == err2->tid;
+}
+
 LIBYANG_API_DEF LY_ERR
 ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
 {
@@ -251,8 +262,9 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     /* plugins */
     LY_CHECK_ERR_GOTO(lyplg_init(), LOGINT(NULL); rc = LY_EINT, cleanup);
 
-    /* initialize thread-specific keys */
-    while ((pthread_key_create(&ctx->errlist_key, ly_err_free)) == EAGAIN) {}
+    /* initialize thread-specific error hash table */
+    ctx->err_ht = lyht_new(1, sizeof(struct ly_ctx_err_rec), ly_ctx_ht_err_equal_cb, NULL, 1);
+    LY_CHECK_ERR_GOTO(!ctx->err_ht, rc = LY_EMEM, cleanup);
 
     /* init LYB hash lock */
     pthread_mutex_init(&ctx->lyb_hash_lock, NULL);
@@ -1247,6 +1259,19 @@ error:
     return ret;
 }
 
+/**
+ * @brief Callback for freeing context error hash table values.
+ *
+ * @param[in] val_p Pointer to a pointer to an error item to free with all the siblings.
+ */
+static void
+ly_ctx_ht_err_rec_free(void *val_p)
+{
+    struct ly_ctx_err_rec *err = val_p;
+
+    ly_err_free(err->err);
+}
+
 LIBYANG_API_DEF void
 ly_ctx_destroy(struct ly_ctx *ctx)
 {
@@ -1279,9 +1304,8 @@ ly_ctx_destroy(struct ly_ctx *ctx)
     /* leftover unres */
     lys_unres_glob_erase(&ctx->unres);
 
-    /* clean the error list */
-    ly_err_clean(ctx, 0);
-    pthread_key_delete(ctx->errlist_key);
+    /* clean the error hash table */
+    lyht_free(ctx->err_ht, ly_ctx_ht_err_rec_free);
 
     /* dictionary */
     lydict_clean(&ctx->dict);

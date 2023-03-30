@@ -311,6 +311,14 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
  *****************************************************************************/
 
 /**
+ * @brief Context error hash table record.
+ */
+struct ly_ctx_err_rec {
+    struct ly_err_item *err;          /** pointer to the error items, if any */
+    pthread_t tid;                    /** pthread thread ID */
+};
+
+/**
  * @brief Context of the YANG schemas
  */
 struct ly_ctx {
@@ -327,7 +335,7 @@ struct ly_ctx {
 
     ly_ext_data_clb ext_clb;          /**< optional callback for providing extension-specific run-time data for extensions */
     void *ext_clb_data;               /**< optional private data for ::ly_ctx.ext_clb */
-    pthread_key_t errlist_key;        /**< key for the thread-specific list of errors related to the context */
+    struct ly_ht *err_ht;             /**< hash table of thread-specific list of errors related to the context */
     pthread_mutex_t lyb_hash_lock;    /**< lock for storing LYB schema hashes in schema nodes */
 };
 

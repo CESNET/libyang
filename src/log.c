@@ -173,77 +173,112 @@ ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VECODE vecode, char *path,
     return e->no;
 }
 
+/**
+ * @brief Get error record from error hash table of a context for the current thread.
+ *
+ * @param[in] ctx Context to use.
+ * @return Thread error record, if any.
+ */
+static struct ly_ctx_err_rec *
+ly_err_get_rec(const struct ly_ctx *ctx)
+{
+    struct ly_ctx_err_rec rec, *match = NULL;
+
+    /* prepare record */
+    rec.tid = pthread_self();
+
+    /* get the pointer to the matching record */
+    lyht_find(ctx->err_ht, &rec, dict_hash((void *)&rec.tid, sizeof rec.tid), (void **)&match);
+
+    return match;
+}
+
 LIBYANG_API_DEF struct ly_err_item *
 ly_err_first(const struct ly_ctx *ctx)
 {
+    struct ly_ctx_err_rec *rec;
+
     LY_CHECK_ARG_RET(NULL, ctx, NULL);
 
-    return pthread_getspecific(ctx->errlist_key);
+    /* get the pointer to the matching record */
+    rec = ly_err_get_rec(ctx);
+
+    return rec ? rec->err : NULL;
 }
 
 LIBYANG_API_DEF struct ly_err_item *
 ly_err_last(const struct ly_ctx *ctx)
 {
-    const struct ly_err_item *e;
+    struct ly_ctx_err_rec *rec;
 
     LY_CHECK_ARG_RET(NULL, ctx, NULL);
 
-    e = pthread_getspecific(ctx->errlist_key);
-    return e ? e->prev : NULL;
+    /* get the pointer to the matching record */
+    if (!(rec = ly_err_get_rec(ctx))) {
+        return NULL;
+    }
+
+    return rec->err ? rec->err->prev : NULL;
 }
 
 void
 ly_err_move(struct ly_ctx *src_ctx, struct ly_ctx *trg_ctx)
 {
-    const struct ly_err_item *e;
+    struct ly_ctx_err_rec *rec;
+    struct ly_err_item *err = NULL;
 
-    /* clear any current errors */
-    ly_err_clean(trg_ctx, NULL);
-
-    /* get the errors in src */
-    e = pthread_getspecific(src_ctx->errlist_key);
-    pthread_setspecific(src_ctx->errlist_key, NULL);
+    /* get and remove the errors from src */
+    rec = ly_err_get_rec(src_ctx);
+    if (rec) {
+        err = rec->err;
+        rec->err = NULL;
+    }
 
     /* set them for trg */
-    pthread_setspecific(trg_ctx->errlist_key, e);
+    rec = ly_err_get_rec(trg_ctx);
+    ly_err_free(rec->err);
+    rec->err = err;
 }
 
 LIBYANG_API_DEF void
 ly_err_free(void *ptr)
 {
-    struct ly_err_item *i, *next;
+    struct ly_err_item *e, *next;
 
     /* clean the error list */
-    for (i = (struct ly_err_item *)ptr; i; i = next) {
-        next = i->next;
-        free(i->msg);
-        free(i->path);
-        free(i->apptag);
-        free(i);
+    LY_LIST_FOR_SAFE(ptr, next, e) {
+        free(e->msg);
+        free(e->path);
+        free(e->apptag);
+        free(e);
     }
 }
 
 LIBYANG_API_DEF void
 ly_err_clean(struct ly_ctx *ctx, struct ly_err_item *eitem)
 {
-    struct ly_err_item *i, *first;
+    struct ly_ctx_err_rec *rec;
+    struct ly_err_item *e;
 
-    first = ly_err_first(ctx);
-    if (first == eitem) {
+    if (!(rec = ly_err_get_rec(ctx))) {
+        return;
+    }
+    if (rec->err == eitem) {
         eitem = NULL;
     }
-    if (eitem) {
+
+    if (!eitem) {
+        /* free all err */
+        ly_err_free(rec->err);
+        rec->err = NULL;
+    } else {
         /* disconnect the error */
-        for (i = first; i && (i->next != eitem); i = i->next) {}
-        assert(i);
-        i->next = NULL;
-        first->prev = i;
+        for (e = rec->err; e && (e->next != eitem); e = e->next) {}
+        assert(e);
+        e->next = NULL;
+        rec->err->prev = e;
         /* free this err and newer */
         ly_err_free(eitem);
-    } else {
-        /* free all err */
-        ly_err_free(first);
-        pthread_setspecific(ctx->errlist_key, NULL);
     }
 }
 
@@ -356,64 +391,89 @@ ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_t pat
     }
 }
 
+/**
+ * @brief Store generated error in a context.
+ *
+ * @param[in] ctx Context to use.
+ * @param[in] level Message log level.
+ * @param[in] no Error number.
+ * @param[in] vecode Error validation error code.
+ * @param[in] msg Error message, always spent.
+ * @param[in] path Error path, always spent.
+ * @param[in] apptag Error app tag, always spent.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 log_store(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE vecode, char *msg, char *path, char *apptag)
 {
-    struct ly_err_item *eitem, *last;
+    struct ly_ctx_err_rec *rec, new;
+    struct ly_err_item *e, *last;
+    LY_ERR r;
 
     assert(ctx && (level < LY_LLVRB));
 
-    eitem = pthread_getspecific(ctx->errlist_key);
-    if (!eitem) {
+    if (!(rec = ly_err_get_rec(ctx))) {
+        /* insert a new record */
+        new.err = NULL;
+        new.tid = pthread_self();
+        r = lyht_insert(ctx->err_ht, &new, dict_hash((void *)&new.tid, sizeof new.tid), (void **)&rec);
+        if (r) {
+            /* should never happen */
+            return r;
+        }
+    }
+
+    e = rec->err;
+    if (!e) {
         /* if we are only to fill in path, there must have been an error stored */
         assert(msg);
-        eitem = malloc(sizeof *eitem);
-        LY_CHECK_GOTO(!eitem, mem_fail);
-        eitem->prev = eitem;
-        eitem->next = NULL;
+        e = malloc(sizeof *e);
+        LY_CHECK_GOTO(!e, mem_fail);
+        e->prev = e;
+        e->next = NULL;
 
-        pthread_setspecific(ctx->errlist_key, eitem);
+        rec->err = e;
     } else if (!msg) {
         /* only filling the path */
         assert(path);
 
         /* find last error */
-        eitem = eitem->prev;
+        e = e->prev;
         do {
-            if (eitem->level == LY_LLERR) {
+            if (e->level == LY_LLERR) {
                 /* fill the path */
-                free(eitem->path);
-                eitem->path = path;
+                free(e->path);
+                e->path = path;
                 return LY_SUCCESS;
             }
-            eitem = eitem->prev;
-        } while (eitem->prev->next);
+            e = e->prev;
+        } while (e->prev->next);
         /* last error was not found */
         assert(0);
     } else if ((temp_ly_log_opts && ((*temp_ly_log_opts & LY_LOSTORE_LAST) == LY_LOSTORE_LAST)) ||
             (!temp_ly_log_opts && ((ATOMIC_LOAD_RELAXED(ly_log_opts) & LY_LOSTORE_LAST) == LY_LOSTORE_LAST))) {
         /* overwrite last message */
-        free(eitem->msg);
-        free(eitem->path);
-        free(eitem->apptag);
+        free(e->msg);
+        free(e->path);
+        free(e->apptag);
     } else {
         /* store new message */
-        last = eitem->prev;
-        eitem->prev = malloc(sizeof *eitem);
-        LY_CHECK_GOTO(!eitem->prev, mem_fail);
-        eitem = eitem->prev;
-        eitem->prev = last;
-        eitem->next = NULL;
-        last->next = eitem;
+        last = e->prev;
+        e->prev = malloc(sizeof *e);
+        LY_CHECK_GOTO(!e->prev, mem_fail);
+        e = e->prev;
+        e->prev = last;
+        e->next = NULL;
+        last->next = e;
     }
 
     /* fill in the information */
-    eitem->level = level;
-    eitem->no = no;
-    eitem->vecode = vecode;
-    eitem->msg = msg;
-    eitem->path = path;
-    eitem->apptag = apptag;
+    e->level = level;
+    e->no = no;
+    e->vecode = vecode;
+    e->msg = msg;
+    e->path = path;
+    e->apptag = apptag;
     return LY_SUCCESS;
 
 mem_fail:
