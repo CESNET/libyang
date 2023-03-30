@@ -195,6 +195,34 @@ ly_err_get_rec(const struct ly_ctx *ctx)
     return match;
 }
 
+/**
+ * @brief Insert new error record to error hash table of a context for the current thread.
+ *
+ * @param[in] ctx Context to use.
+ * @return Thread error record.
+ */
+static struct ly_ctx_err_rec *
+ly_err_new_rec(const struct ly_ctx *ctx)
+{
+    struct ly_ctx_err_rec new, *rec;
+    LY_ERR r;
+
+    /* insert a new record */
+    new.err = NULL;
+    new.tid = pthread_self();
+
+    /* reuse lock */
+    /* LOCK */
+    pthread_mutex_lock((pthread_mutex_t *)&ctx->lyb_hash_lock);
+
+    r = lyht_insert(ctx->err_ht, &new, dict_hash((void *)&new.tid, sizeof new.tid), (void **)&rec);
+
+    /* UNLOCK */
+    pthread_mutex_unlock((pthread_mutex_t *)&ctx->lyb_hash_lock);
+
+    return r ? NULL : rec;
+}
+
 LIBYANG_API_DEF struct ly_err_item *
 ly_err_first(const struct ly_ctx *ctx)
 {
@@ -237,7 +265,13 @@ ly_err_move(struct ly_ctx *src_ctx, struct ly_ctx *trg_ctx)
     }
 
     /* set them for trg */
-    rec = ly_err_get_rec(trg_ctx);
+    if (!(rec = ly_err_get_rec(trg_ctx))) {
+        if (!(rec = ly_err_new_rec(trg_ctx))) {
+            LOGINT(NULL);
+            ly_err_free(err);
+            return;
+        }
+    }
     ly_err_free(rec->err);
     rec->err = err;
 }
@@ -408,29 +442,14 @@ ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_t pat
 static LY_ERR
 log_store(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE vecode, char *msg, char *path, char *apptag)
 {
-    struct ly_ctx_err_rec *rec, new;
+    struct ly_ctx_err_rec *rec;
     struct ly_err_item *e, *last;
-    LY_ERR r;
 
     assert(ctx && (level < LY_LLVRB));
 
     if (!(rec = ly_err_get_rec(ctx))) {
-        /* insert a new record */
-        new.err = NULL;
-        new.tid = pthread_self();
-
-        /* reuse lock */
-        /* LOCK */
-        pthread_mutex_lock((pthread_mutex_t *)&ctx->lyb_hash_lock);
-
-        r = lyht_insert(ctx->err_ht, &new, dict_hash((void *)&new.tid, sizeof new.tid), (void **)&rec);
-
-        /* UNLOCK */
-        pthread_mutex_unlock((pthread_mutex_t *)&ctx->lyb_hash_lock);
-
-        if (r) {
-            /* should never happen */
-            return r;
+        if (!(rec = ly_err_new_rec(ctx))) {
+            goto mem_fail;
         }
     }
 
