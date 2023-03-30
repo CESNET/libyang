@@ -182,13 +182,15 @@ ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VECODE vecode, char *path,
 static struct ly_ctx_err_rec *
 ly_err_get_rec(const struct ly_ctx *ctx)
 {
-    struct ly_ctx_err_rec rec, *match = NULL;
+    struct ly_ctx_err_rec rec, *match;
 
     /* prepare record */
     rec.tid = pthread_self();
 
     /* get the pointer to the matching record */
-    lyht_find(ctx->err_ht, &rec, dict_hash((void *)&rec.tid, sizeof rec.tid), (void **)&match);
+    if (lyht_find(ctx->err_ht, &rec, dict_hash((void *)&rec.tid, sizeof rec.tid), (void **)&match)) {
+        return NULL;
+    }
 
     return match;
 }
