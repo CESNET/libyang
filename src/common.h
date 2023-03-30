@@ -314,7 +314,7 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
  * @brief Context of the YANG schemas
  */
 struct ly_ctx {
-    struct dict_table dict;           /**< dictionary to effectively store strings used in the context related structures */
+    struct ly_dict dict;              /**< dictionary to effectively store strings used in the context related structures */
     struct ly_set search_paths;       /**< set of directories where to search for schema's imports/includes */
     struct ly_set list;               /**< set of loaded YANG schemas */
     ly_module_imp_clb imp_clb;        /**< optional callback for retrieving missing included or imported models */

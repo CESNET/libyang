@@ -95,7 +95,7 @@ struct lylyb_ctx {
     /* LYB printer only */
     struct lyd_lyb_sib_ht {
         struct lysc_node *first_sibling;
-        struct hash_table *ht;
+        struct ly_ht *ht;
     } *sib_hts;
 };
 

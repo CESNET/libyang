@@ -81,7 +81,7 @@ lyb_ptr_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(c
  * @return LY_EEXIST when the whole hash sequence sollides.
  */
 static LY_ERR
-lyb_hash_sequence_check(struct hash_table *ht, struct lysc_node *sibling, LYB_HASH ht_col_id, LYB_HASH compare_col_id)
+lyb_hash_sequence_check(struct ly_ht *ht, struct lysc_node *sibling, LYB_HASH ht_col_id, LYB_HASH compare_col_id)
 {
     struct lysc_node **col_node;
 
@@ -123,9 +123,9 @@ lyb_hash_sequence_check(struct hash_table *ht, struct lysc_node *sibling, LYB_HA
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_hash_siblings(struct lysc_node *sibling, struct hash_table **ht_p)
+lyb_hash_siblings(struct lysc_node *sibling, struct ly_ht **ht_p)
 {
-    struct hash_table *ht;
+    struct ly_ht *ht;
     const struct lysc_node *parent;
     const struct lys_module *mod;
     LYB_HASH i;
@@ -205,7 +205,7 @@ lyb_hash_siblings(struct lysc_node *sibling, struct hash_table **ht_p)
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_hash_find(struct hash_table *ht, struct lysc_node *node, LYB_HASH *hash_p)
+lyb_hash_find(struct ly_ht *ht, struct lysc_node *node, LYB_HASH *hash_p)
 {
     LYB_HASH hash;
     uint32_t i;
@@ -856,7 +856,7 @@ lyb_print_attributes(struct ly_out *out, const struct lyd_node_opaq *node, struc
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_print_schema_hash(struct ly_out *out, struct lysc_node *schema, struct hash_table **sibling_ht, struct lylyb_ctx *lybctx)
+lyb_print_schema_hash(struct ly_out *out, struct lysc_node *schema, struct ly_ht **sibling_ht, struct lylyb_ctx *lybctx)
 {
     LY_ARRAY_COUNT_TYPE u;
     uint32_t i;
@@ -1205,7 +1205,7 @@ lyb_print_node_list(struct ly_out *out, const struct lyd_node *node, struct lyd_
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_print_node(struct ly_out *out, const struct lyd_node **printed_node, struct hash_table **sibling_ht,
+lyb_print_node(struct ly_out *out, const struct lyd_node **printed_node, struct ly_ht **sibling_ht,
         struct lyd_lyb_ctx *lybctx)
 {
     const struct lyd_node *node = *printed_node;
@@ -1256,7 +1256,7 @@ lyb_print_node(struct ly_out *out, const struct lyd_node **printed_node, struct 
 static LY_ERR
 lyb_print_siblings(struct ly_out *out, const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
 {
-    struct hash_table *sibling_ht = NULL;
+    struct ly_ht *sibling_ht = NULL;
     const struct lys_module *prev_mod = NULL;
 
     LY_CHECK_RET(lyb_write_start_siblings(out, lybctx->lybctx));

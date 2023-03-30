@@ -121,7 +121,7 @@ lyd_hash_table_val_equal(void *val1_p, void *val2_p, ly_bool mod, void *UNUSED(c
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_insert_hash_add(struct hash_table *ht, struct lyd_node *node, ly_bool empty_ht)
+lyd_insert_hash_add(struct ly_ht *ht, struct lyd_node *node, ly_bool empty_ht)
 {
     uint32_t hash;
 

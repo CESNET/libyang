@@ -70,7 +70,7 @@ typedef ly_bool (*lyht_value_equal_cb)(void *val1_p, void *val2_p, ly_bool mod, 
 /**
  * @brief Generic hash table record.
  */
-struct ht_rec {
+struct ly_ht_rec {
     uint32_t hash;        /* hash of the value */
     int32_t hits;         /* collision/overflow value count - 1 (a filled entry has 1 hit,
                            * special value -1 means a deleted record) */
@@ -85,7 +85,7 @@ struct ht_rec {
  * Removal is lazy (removed records are only marked), but
  * if possible, they are fully emptied.
  */
-struct hash_table {
+struct ly_ht {
     uint32_t used;        /* number of values stored in the hash table (filled records) */
     uint32_t size;        /* always holds 2^x == size (is power of 2), actually number of records allocated */
     uint32_t invalid;     /* number of invalid records (deleted) */
@@ -98,7 +98,7 @@ struct hash_table {
     unsigned char *recs;  /* pointer to the hash table itself (array of struct ht_rec) */
 };
 
-struct dict_rec {
+struct ly_dict_rec {
     char *value;
     uint32_t refcount;
 };
@@ -106,8 +106,8 @@ struct dict_rec {
 /**
  * dictionary to store repeating strings
  */
-struct dict_table {
-    struct hash_table *hash_tab;
+struct ly_dict {
+    struct ly_ht *hash_tab;
     pthread_mutex_t lock;
 };
 
@@ -116,14 +116,14 @@ struct dict_table {
  *
  * @param[in] dict Dictionary table to initiate
  */
-void lydict_init(struct dict_table *dict);
+void lydict_init(struct ly_dict *dict);
 
 /**
  * @brief Cleanup the dictionary content
  *
  * @param[in] dict Dictionary table to cleanup
  */
-void lydict_clean(struct dict_table *dict);
+void lydict_clean(struct ly_dict *dict);
 
 /**
  * @brief Create new hash table.
@@ -135,7 +135,7 @@ void lydict_clean(struct dict_table *dict);
  * @param[in] resize Whether to resize the table on too few/too many records taken.
  * @return Empty hash table, NULL on error.
  */
-struct hash_table *lyht_new(uint32_t size, uint16_t val_size, lyht_value_equal_cb val_equal, void *cb_data, uint16_t resize);
+struct ly_ht *lyht_new(uint32_t size, uint16_t val_size, lyht_value_equal_cb val_equal, void *cb_data, uint16_t resize);
 
 /**
  * @brief Set hash table value equal callback.
@@ -144,7 +144,7 @@ struct hash_table *lyht_new(uint32_t size, uint16_t val_size, lyht_value_equal_c
  * @param[in] new_val_equal New callback for checking value equivalence.
  * @return Previous callback for checking value equivalence.
  */
-lyht_value_equal_cb lyht_set_cb(struct hash_table *ht, lyht_value_equal_cb new_val_equal);
+lyht_value_equal_cb lyht_set_cb(struct ly_ht *ht, lyht_value_equal_cb new_val_equal);
 
 /**
  * @brief Set hash table value equal callback user data.
@@ -153,7 +153,7 @@ lyht_value_equal_cb lyht_set_cb(struct hash_table *ht, lyht_value_equal_cb new_v
  * @param[in] new_cb_data New data for values callback.
  * @return Previous data for values callback.
  */
-void *lyht_set_cb_data(struct hash_table *ht, void *new_cb_data);
+void *lyht_set_cb_data(struct ly_ht *ht, void *new_cb_data);
 
 /**
  * @brief Make a duplicate of an existing hash table.
@@ -161,7 +161,7 @@ void *lyht_set_cb_data(struct hash_table *ht, void *new_cb_data);
  * @param[in] orig Original hash table to duplicate.
  * @return Duplicated hash table @p orig, NULL on error.
  */
-struct hash_table *lyht_dup(const struct hash_table *orig);
+struct ly_ht *lyht_dup(const struct ly_ht *orig);
 
 /**
  * @brief Free a hash table.
@@ -169,7 +169,7 @@ struct hash_table *lyht_dup(const struct hash_table *orig);
  * @param[in] ht Hash table to be freed.
  * @param[in] val_free Optional callback for freeing allthe stored values, @p val_p is a pointer to a stored value.
  */
-void lyht_free(struct hash_table *ht, void (*val_free)(void *val_p));
+void lyht_free(struct ly_ht *ht, void (*val_free)(void *val_p));
 
 /**
  * @brief Find a value in a hash table.
@@ -181,7 +181,7 @@ void lyht_free(struct hash_table *ht, void (*val_free)(void *val_p));
  * @return LY_SUCCESS if value was found,
  * @return LY_ENOTFOUND if not found.
  */
-LY_ERR lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p);
+LY_ERR lyht_find(struct ly_ht *ht, void *val_p, uint32_t hash, void **match_p);
 
 /**
  * @brief Find another equal value in the hash table.
@@ -193,7 +193,7 @@ LY_ERR lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, void **match
  * @return LY_SUCCESS if value was found,
  * @return LY_ENOTFOUND if not found.
  */
-LY_ERR lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p);
+LY_ERR lyht_find_next(struct ly_ht *ht, void *val_p, uint32_t hash, void **match_p);
 
 /**
  * @brief Find another equal value in the hash table. Same functionality as ::lyht_find_next()
@@ -207,7 +207,7 @@ LY_ERR lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **
  * @return LY_SUCCESS if value was found,
  * @return LY_ENOTFOUND if not found.
  */
-LY_ERR lyht_find_next_with_collision_cb(struct hash_table *ht, void *val_p, uint32_t hash,
+LY_ERR lyht_find_next_with_collision_cb(struct ly_ht *ht, void *val_p, uint32_t hash,
         lyht_value_equal_cb collision_val_equal, void **match_p);
 
 /**
@@ -222,7 +222,7 @@ LY_ERR lyht_find_next_with_collision_cb(struct hash_table *ht, void *val_p, uint
  * @return LY_EEXIST in case the value is already present.
  * @return LY_EMEM in case of memory allocation failure.
  */
-LY_ERR lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p);
+LY_ERR lyht_insert(struct ly_ht *ht, void *val_p, uint32_t hash, void **match_p);
 
 /**
  * @brief Insert a value into hash table. Same functionality as ::lyht_insert()
@@ -239,7 +239,7 @@ LY_ERR lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash, void **mat
  * @return LY_EEXIST in case the value is already present.
  * @return LY_EMEM in case of memory allocation failure.
  */
-LY_ERR lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, lyht_value_equal_cb resize_val_equal,
+LY_ERR lyht_insert_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_value_equal_cb resize_val_equal,
         void **match_p);
 
 /**
@@ -252,7 +252,7 @@ LY_ERR lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t h
  * @return LY_SUCCESS on success,
  * @return LY_ENOTFOUND if value was not found.
  */
-LY_ERR lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash);
+LY_ERR lyht_remove(struct ly_ht *ht, void *val_p, uint32_t hash);
 
 /**
  * @brief Remove a value from a hash table. Same functionality as ::lyht_remove()
@@ -267,7 +267,7 @@ LY_ERR lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash);
  * @return LY_SUCCESS on success,
  * @return LY_ENOTFOUND if value was not found.
  */
-LY_ERR lyht_remove_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, lyht_value_equal_cb resize_val_equal);
+LY_ERR lyht_remove_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_value_equal_cb resize_val_equal);
 
 /**
  * @brief Get suitable size of a hash table for a fixed number of items.

@@ -291,7 +291,7 @@ struct lyxp_set {
     /* this is valid only for type LYXP_SET_NODE_SET and LYXP_SET_SCNODE_SET */
     uint32_t used;              /**< Number of nodes in the set. */
     uint32_t size;              /**< Allocated size for the set. */
-    struct hash_table *ht;      /**< Hash table for quick determination of whether a node is in the set. */
+    struct ly_ht *ht;           /**< Hash table for quick determination of whether a node is in the set. */
 
     /* XPath context information, this is valid only for type LYXP_SET_NODE_SET */
     uint32_t ctx_pos;           /**< Position of the current examined node in the set. */

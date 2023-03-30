@@ -1250,7 +1250,7 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
     ly_bool dyn;
     const void *hash_key;
     struct lyd_val_uniq_arg arg, *args = NULL;
-    struct hash_table **uniqtables = NULL;
+    struct ly_ht **uniqtables = NULL;
     struct lyd_value *val;
     struct ly_ctx *ctx = snode->module->ctx;
 

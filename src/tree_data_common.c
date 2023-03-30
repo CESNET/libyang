@@ -74,7 +74,7 @@ lyht_dup_inst_ht_equal_cb(void *val1_p, void *val2_p, ly_bool mod, void *UNUSED(
  * @return Instance cache entry.
  */
 static struct lyd_dup_inst *
-lyd_dup_inst_get(const struct lyd_node *first_inst, struct hash_table **dup_inst_ht)
+lyd_dup_inst_get(const struct lyd_node *first_inst, struct ly_ht **dup_inst_ht)
 {
     struct lyd_dup_inst **item_p, *item;
 
@@ -102,7 +102,7 @@ lyd_dup_inst_get(const struct lyd_node *first_inst, struct hash_table **dup_inst
 }
 
 LY_ERR
-lyd_dup_inst_next(struct lyd_node **inst, const struct lyd_node *siblings, struct hash_table **dup_inst_ht)
+lyd_dup_inst_next(struct lyd_node **inst, const struct lyd_node *siblings, struct ly_ht **dup_inst_ht)
 {
     struct lyd_dup_inst *dup_inst;
 
@@ -151,7 +151,7 @@ lyht_dup_inst_ht_free_cb(void *val_p)
 }
 
 void
-lyd_dup_inst_free(struct hash_table *dup_inst_ht)
+lyd_dup_inst_free(struct ly_ht *dup_inst_ht)
 {
     lyht_free(dup_inst_ht, lyht_dup_inst_ht_free_cb);
 }

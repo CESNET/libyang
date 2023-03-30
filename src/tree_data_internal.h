@@ -50,15 +50,14 @@ struct lyd_dup_inst {
  * @param[in] dup_inst_ht Duplicate instance cache hash table.
  * @return LY_ERR value.
  */
-LY_ERR lyd_dup_inst_next(struct lyd_node **inst, const struct lyd_node *siblings,
-        struct hash_table **dup_inst_ht);
+LY_ERR lyd_dup_inst_next(struct lyd_node **inst, const struct lyd_node *siblings, struct ly_ht **dup_inst_ht);
 
 /**
  * @brief Free duplicate instance cache.
  *
  * @param[in] dup_inst Duplicate instance cache hash table to free.
  */
-void lyd_dup_inst_free(struct hash_table *dup_inst_ht);
+void lyd_dup_inst_free(struct ly_ht *dup_inst_ht);
 
 /**
  * @brief Just like ::lys_getnext() but iterates over all data instances of the schema nodes.

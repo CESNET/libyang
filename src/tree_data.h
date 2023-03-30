@@ -822,7 +822,7 @@ struct lyd_node_inner {
     };                                      /**< common part corresponding to ::lyd_node */
 
     struct lyd_node *child;          /**< pointer to the first child node. */
-    struct hash_table *children_ht;  /**< hash table with all the direct children (except keys for a list, lists without keys) */
+    struct ly_ht *children_ht;  /**< hash table with all the direct children (except keys for a list, lists without keys) */
 
 #define LYD_HT_MIN_ITEMS 4           /**< minimal number of children to create ::lyd_node_inner.children_ht hash table. */
 };

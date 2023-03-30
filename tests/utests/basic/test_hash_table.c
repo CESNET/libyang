@@ -19,7 +19,7 @@
 #include "common.h"
 #include "hash_table.h"
 
-struct ht_rec *lyht_get_rec(unsigned char *recs, uint16_t rec_size, uint32_t idx);
+struct ly_ht_rec *lyht_get_rec(unsigned char *recs, uint16_t rec_size, uint32_t idx);
 
 static void
 test_invalid_arguments(void **state)
@@ -83,7 +83,7 @@ static void
 test_ht_basic(void **state)
 {
     uint32_t i;
-    struct hash_table *ht;
+    struct ly_ht *ht;
 
     assert_non_null(ht = lyht_new(8, sizeof(int), ht_equal_clb, NULL, 0));
 
@@ -103,8 +103,8 @@ static void
 test_ht_resize(void **state)
 {
     uint32_t i;
-    struct ht_rec *rec;
-    struct hash_table *ht;
+    struct ly_ht_rec *rec;
+    struct ly_ht *ht;
 
     assert_non_null(ht = lyht_new(8, sizeof(int), ht_equal_clb, NULL, 1));
     assert_int_equal(8, ht->size);
@@ -162,8 +162,8 @@ test_ht_collisions(void **UNUSED(state))
 #define GET_REC_INT(rec) (*((uint32_t *)&(rec)->val))
 
     uint32_t i;
-    struct ht_rec *rec;
-    struct hash_table *ht;
+    struct ly_ht_rec *rec;
+    struct ly_ht *ht;
 
     assert_non_null(ht = lyht_new(8, sizeof(int), ht_equal_clb, NULL, 1));
 

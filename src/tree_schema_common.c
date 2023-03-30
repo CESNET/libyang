@@ -350,14 +350,13 @@ lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_m
  * @param[in,out] ctx Context to log the error.
  * @param[in,out] ht Hash table with top-level names.
  * @param[in] name Inserted top-level identifier.
- * @param[in] statement The name of the statement type from which
- * @p name originated (eg typedef, feature, ...).
+ * @param[in] statement The name of the statement type from which @p name originated (eg typedef, feature, ...).
  * @param[in] err_detail Optional error specification.
  * @return LY_ERR, but LY_EEXIST is mapped to LY_EVALID.
  */
 static LY_ERR
-lysp_check_dup_ht_insert(struct lysp_ctx *ctx, struct hash_table *ht,
-        const char *name, const char *statement, const char *err_detail)
+lysp_check_dup_ht_insert(struct lysp_ctx *ctx, struct ly_ht *ht, const char *name, const char *statement,
+        const char *err_detail)
 {
     LY_ERR ret;
     uint32_t hash;
@@ -388,7 +387,7 @@ lysp_check_dup_ht_insert(struct lysp_ctx *ctx, struct hash_table *ht,
  */
 static LY_ERR
 lysp_check_dup_typedef(struct lysp_ctx *ctx, struct lysp_node *node, const struct lysp_tpdf *tpdf,
-        struct hash_table *tpdfs_global)
+        struct ly_ht *tpdfs_global)
 {
     struct lysp_node *parent;
     uint32_t hash;
@@ -469,7 +468,7 @@ lysp_id_cmp(void *val1, void *val2, ly_bool UNUSED(mod), void *UNUSED(cb_data))
 LY_ERR
 lysp_check_dup_typedefs(struct lysp_ctx *ctx, struct lysp_module *mod)
 {
-    struct hash_table *ids_global;
+    struct ly_ht *ids_global;
     const struct lysp_tpdf *typedefs;
     LY_ARRAY_COUNT_TYPE u, v;
     uint32_t i;
@@ -528,7 +527,7 @@ lysp_grouping_match(const char *name, struct lysp_node *node)
  */
 static LY_ERR
 lysp_check_dup_grouping(struct lysp_ctx *ctx, struct lysp_node *node, const struct lysp_node_grp *grp,
-        struct hash_table *grps_global)
+        struct ly_ht *grps_global)
 {
     struct lysp_node *parent;
     uint32_t hash;
@@ -584,7 +583,7 @@ lysp_check_dup_grouping(struct lysp_ctx *ctx, struct lysp_node *node, const stru
 LY_ERR
 lysp_check_dup_groupings(struct lysp_ctx *ctx, struct lysp_module *mod)
 {
-    struct hash_table *ids_global;
+    struct ly_ht *ids_global;
     const struct lysp_node_grp *groupings, *grp_iter;
     LY_ARRAY_COUNT_TYPE u;
     uint32_t i;
@@ -626,7 +625,7 @@ LY_ERR
 lysp_check_dup_features(struct lysp_ctx *ctx, struct lysp_module *mod)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct hash_table *ht;
+    struct ly_ht *ht;
     struct lysp_feature *f;
     LY_ERR ret = LY_SUCCESS;
 
@@ -658,7 +657,7 @@ LY_ERR
 lysp_check_dup_identities(struct lysp_ctx *ctx, struct lysp_module *mod)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct hash_table *ht;
+    struct ly_ht *ht;
     struct lysp_ident *i;
     LY_ERR ret = LY_SUCCESS;
 
