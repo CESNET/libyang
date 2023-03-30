@@ -50,4 +50,10 @@ test print_tree_path_single_node {Print node in tree format} {
     ly_cmd "print -f tree -q -P $ipv6_path" "\\+--rw address\\* \\\[ip\\\]$"
 }}
 
+test print_tree_path_single_node_line_length {Print node in the tree format and limit row size} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load ietf-ip"
+    ly_cmd "print -f tree -L 20 -q -P $ipv6_path" "\\+--rw address\\*\r\n *\\\[ip\\\]$"
+}}
+
 cleanupTests

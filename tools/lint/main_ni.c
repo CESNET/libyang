@@ -984,7 +984,7 @@ main_ni(int argc, char *argv[])
             ly_print(c.out, "%s\n", features_output);
         } else if (c.schema_out_format) {
             if (c.schema_node) {
-                ret = lys_print_node(c.out, c.schema_node, c.schema_out_format, 0, c.schema_print_options);
+                ret = lys_print_node(c.out, c.schema_node, c.schema_out_format, c.line_length, c.schema_print_options);
                 if (ret) {
                     YLMSG_E("Unable to print schema node %s.\n", c.schema_node_path);
                     goto cleanup;

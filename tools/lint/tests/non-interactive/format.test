@@ -27,6 +27,10 @@ test format_tree_path_single_node {Print node in tree format} {
     ly_cmd "-f tree -q -P $ipv6_path $mdir/ietf-ip.yang" "\\+--rw address\\* \\\[ip\\\]$"
 } {}
 
+test format_tree_path_single_node_line_length {Print node in the tree format and limit row size} {
+    ly_cmd "-f tree -L 20 -q -P $ipv6_path $mdir/ietf-ip.yang" "\\+--rw address\\*\n *\\\[ip\\\]$"
+} {}
+
 test format_feature_param_one_module {Show features for one module} {
     ly_cmd "-f feature-param $mdir/ietf-ip.yang" " -F ietf-ip:ipv4-non-contiguous-netmasks,ipv6-privacy-autoconf" -ex
 } {}

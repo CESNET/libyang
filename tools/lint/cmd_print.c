@@ -249,7 +249,7 @@ cmd_print(struct ly_ctx **ctx, const char *cmdline)
             goto cleanup;
         }
 
-        if (lys_print_node(out, node, format, 0, options_print)) {
+        if (lys_print_node(out, node, format, line_length, options_print)) {
             YLMSG_E("Unable to print schema node %s.\n", node_path);
             goto cleanup;
         }
