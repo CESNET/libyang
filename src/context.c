@@ -236,7 +236,7 @@ ly_ctx_ht_err_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UN
 {
     struct ly_ctx_err_rec *err1 = val1_p, *err2 = val2_p;
 
-    return err1->tid == err2->tid;
+    return !memcmp(&err1->tid, &err2->tid, sizeof err1->tid);
 }
 
 LIBYANG_API_DEF LY_ERR
