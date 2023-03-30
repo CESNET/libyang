@@ -416,7 +416,16 @@ log_store(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE vec
         /* insert a new record */
         new.err = NULL;
         new.tid = pthread_self();
+
+        /* reuse lock */
+        /* LOCK */
+        pthread_mutex_lock((pthread_mutex_t *)&ctx->lyb_hash_lock);
+
         r = lyht_insert(ctx->err_ht, &new, dict_hash((void *)&new.tid, sizeof new.tid), (void **)&rec);
+
+        /* UNLOCK */
+        pthread_mutex_unlock((pthread_mutex_t *)&ctx->lyb_hash_lock);
+
         if (r) {
             /* should never happen */
             return r;
