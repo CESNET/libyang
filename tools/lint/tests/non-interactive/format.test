@@ -7,8 +7,16 @@ test format_yang {} {
     ly_cmd "-f yang $mdir/modleaf.yang" "leaf lfl"
 } {}
 
+test format_yang_submodule {Print submodule in yang format} {
+    ly_cmd "-s modsub -f yang $mdir/modinclude.yang" "submodule modsub"
+} {}
+
 test format_yin {} {
     ly_cmd "-f yin $mdir/modleaf.yang" "<leaf name=\"lfl\">"
+} {}
+
+test format_yin_submodule {Print submodule in yin format} {
+    ly_cmd "-s modsub -f yin $mdir/modinclude.yang" "<submodule name=\"modsub\""
 } {}
 
 test format_info {} {
@@ -17,6 +25,10 @@ test format_info {} {
 
 test format_tree {} {
     ly_cmd "-f tree $mdir/modleaf.yang" "\\+--rw lfl"
+} {}
+
+test format_tree_submodule {Print submodule in tree format} {
+    ly_cmd "-s modsub -f tree $mdir/modinclude.yang" "submodule: modsub"
 } {}
 
 test format_tree_path {Print subtree in tree format} {
