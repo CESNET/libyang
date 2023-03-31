@@ -326,6 +326,49 @@ cleanup:
 }
 
 /**
+ * @brief Create a namespace and add it into a set.
+ *
+ * @param[in] set Set of namespaces to add to.
+ * @param[in] pref Namespace prefix.
+ * @param[in] uri Namespace URI.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+xpath10_add_ns(struct ly_set *set, const char *pref, const char *uri)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyxml_ns *ns = NULL;
+
+    /* create new ns */
+    ns = calloc(1, sizeof *ns);
+    if (!ns) {
+        rc = LY_EMEM;
+        goto cleanup;
+    }
+    ns->prefix = strdup(pref);
+    ns->uri = strdup(uri);
+    if (!ns->prefix || !ns->uri) {
+        rc = LY_EMEM;
+        goto cleanup;
+    }
+    ns->depth = 1;
+
+    /* add into the XML namespace set */
+    if ((rc = ly_set_add(set, ns, 1, NULL))) {
+        goto cleanup;
+    }
+    ns = NULL;
+
+cleanup:
+    if (ns) {
+        free(ns->prefix);
+        free(ns->uri);
+        free(ns);
+    }
+    return rc;
+}
+
+/**
  * @brief Implementation of ::lyplg_type_validate_clb for the xpath1.0 ietf-yang-types type.
  */
 static LY_ERR
@@ -338,7 +381,6 @@ lyplg_type_validate_xpath10(const struct ly_ctx *UNUSED(ctx), const struct lysc_
     struct ly_set *set = NULL;
     uint32_t i;
     const char *pref, *uri;
-    struct lyxml_ns *ns;
 
     *err = NULL;
     LYD_VALUE_GET(storage, val);
@@ -371,28 +413,8 @@ lyplg_type_validate_xpath10(const struct ly_ctx *UNUSED(ctx), const struct lysc_
         assert(!strcmp(LYD_NAME(lyd_child(set->dnodes[i])->next), "uri"));
         uri = lyd_get_value(lyd_child(set->dnodes[i])->next);
 
-        /* create new ns */
-        ns = calloc(1, sizeof *ns);
-        if (!ns) {
-            ret = LY_EMEM;
-            goto cleanup;
-        }
-        ns->prefix = strdup(pref);
-        ns->uri = strdup(uri);
-        if (!ns->prefix || !ns->uri) {
-            free(ns->prefix);
-            free(ns->uri);
-            free(ns);
-            ret = LY_EMEM;
-            goto cleanup;
-        }
-        ns->depth = 1;
-
-        /* add into the XML namespace set */
-        if ((ret = ly_set_add(val->prefix_data, ns, 1, NULL))) {
-            free(ns->prefix);
-            free(ns->uri);
-            free(ns);
+        /* new NS */
+        if ((ret = xpath10_add_ns(val->prefix_data, pref, uri))) {
             goto cleanup;
         }
     }
