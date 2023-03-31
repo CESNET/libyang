@@ -1183,7 +1183,6 @@ lysp_inject_submodule(struct lysp_ctx *pctx, struct lysp_include *inc)
         DUP_STRING_RET(PARSER_CTX(pctx), inc->name, inc_new->name);
         DUP_STRING_RET(PARSER_CTX(pctx), inc->dsc, inc_new->dsc);
         DUP_STRING_RET(PARSER_CTX(pctx), inc->ref, inc_new->ref);
-        /* TODO duplicate extensions */
         memcpy(inc_new->rev, inc->rev, LY_REV_SIZE);
         inc_new->injected = 1;
     }
