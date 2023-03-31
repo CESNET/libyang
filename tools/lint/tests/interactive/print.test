@@ -8,10 +8,22 @@ test print_yang {} {
     ly_cmd "print -f yang modleaf" "leaf lfl"
 }}
 
+test print_yang_submodule {Print submodule in yang format} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modinclude"
+    ly_cmd "print -f yang modsub" "submodule modsub"
+}}
+
 test print_yin {} {
 -setup $ly_setup -cleanup $ly_cleanup -body {
     ly_cmd "load modleaf"
     ly_cmd "print -f yin modleaf" "<leaf name=\"lfl\">"
+}}
+
+test print_yin_submodule {Print submodule in yin format} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modinclude"
+    ly_cmd "print -f yin modsub" "<submodule name=\"modsub\""
 }}
 
 test print_info {} {
@@ -36,6 +48,12 @@ test print_tree {} {
 -setup $ly_setup -cleanup $ly_cleanup -body {
     ly_cmd "load modleaf"
     ly_cmd "print -f tree modleaf" "\\+--rw lfl"
+}}
+
+test print_tree_submodule {Print submodule in tree format} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modinclude"
+    ly_cmd "print -f tree modsub" "submodule: modsub"
 }}
 
 test print_tree_path {Print subtree in tree format} {
