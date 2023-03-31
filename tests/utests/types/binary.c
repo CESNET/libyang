@@ -52,14 +52,15 @@ test_plugin_store(void **state)
     struct lys_module *mod;
     struct lyd_value value = {0};
     struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_BINARY]);
-    struct lysc_type *lysc_type;
+    struct lysc_type *lysc_type, *lysc_type2;
     LY_ERR ly_ret;
     const char *schema;
 
     /* create schema. Prepare common used variables */
-    schema = MODULE_CREATE_YANG("a", "leaf l {type binary;}");
+    schema = MODULE_CREATE_YANG("a", "leaf l {type binary;} leaf k {type binary {length 4..8;}}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+    lysc_type2 = ((struct lysc_node_leaf *)mod->compiled->data->next)->type;
 
     /* check proper type */
     assert_string_equal("libyang 2 - binary, version 1", type->id);
@@ -176,6 +177,35 @@ test_plugin_store(void **state)
     assert_ptr_equal(value.realtype, lysc_type);
     type->free(UTEST_LYCTX, &value);
 
+    /* length check */
+    val = "Zm91cg==";
+    dec_val = "four";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type2, val, strlen(val),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
+    CHECK_LYD_VALUE(value, BINARY, val, dec_val, strlen(dec_val));
+    assert_ptr_equal(value.realtype, lysc_type2);
+    type->free(UTEST_LYCTX, &value);
+
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type2, dec_val, strlen(dec_val),
+            0, LY_VALUE_LYB, NULL, 0, NULL, &value, NULL, &err));
+    CHECK_LYD_VALUE(value, BINARY, val, dec_val, strlen(dec_val));
+    assert_ptr_equal(value.realtype, lysc_type2);
+    type->free(UTEST_LYCTX, &value);
+
+    val = "ZWlnaHQwMTI=";
+    dec_val = "eight012";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type2, val, strlen(val),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
+    CHECK_LYD_VALUE(value, BINARY, val, dec_val, strlen(dec_val));
+    assert_ptr_equal(value.realtype, lysc_type2);
+    type->free(UTEST_LYCTX, &value);
+
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type2, dec_val, strlen(dec_val),
+            0, LY_VALUE_LYB, NULL, 0, NULL, &value, NULL, &err));
+    CHECK_LYD_VALUE(value, BINARY, val, dec_val, strlen(dec_val));
+    assert_ptr_equal(value.realtype, lysc_type2);
+    type->free(UTEST_LYCTX, &value);
+
     /*
      * ERROR TESTS
      */
@@ -193,6 +223,14 @@ test_plugin_store(void **state)
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err);
     assert_int_equal(LY_EVALID, ly_ret);
     assert_string_equal(err->msg, "Base64 encoded value length must be divisible by 4.");
+    ly_err_free(err);
+
+    val = "MTIz";
+    err = NULL;
+    ly_ret = type->store(UTEST_LYCTX, lysc_type2, val, strlen(val),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err);
+    assert_int_equal(LY_EVALID, ly_ret);
+    assert_string_equal(err->msg, "Unsatisfied length - string \"MTIz\" length is not allowed.");
     ly_err_free(err);
 }
 

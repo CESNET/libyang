@@ -3,7 +3,7 @@
  * @author Michal Vaško <mvasko@cesnet.cz>
  * @brief test for ietf-yang-types values
  *
- * Copyright (c) 2021 CESNET, z.s.p.o.
+ * Copyright (c) 2021 - 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -173,6 +173,31 @@ test_print(void **state)
 }
 
 static void
+test_duplicate(void **state)
+{
+    const char *schema = MODULE_CREATE_YANG("a", "leaf l1 {type yang:date-and-time;} leaf l2 {type yang:xpath1.0;}");
+    const char *data, *expected;
+    struct lyd_node *tree, *dup;
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    data = "<l1 xmlns=\"urn:tests:a\">2005-05-25T23:15:15.88888+04:30</l1>"
+            "<l2 xmlns=\"urn:tests:a\" xmlns:aa=\"urn:tests:a\">/aa:l2[. = '/aa:l2']</l2>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+
+    /* duplicate */
+    assert_int_equal(LY_SUCCESS, lyd_dup_siblings(tree, NULL, 0, &dup));
+
+    /* print */
+    expected = "<l1 xmlns=\"urn:tests:a\">2005-05-25T16:45:15.88888-02:00</l1>"
+            "<l2 xmlns=\"urn:tests:a\" xmlns:pref=\"urn:tests:a\">/pref:l2[.='/pref:l2']</l2>";
+    CHECK_LYD_STRING_PARAM(dup, expected, LYD_XML, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS);
+
+    lyd_free_siblings(tree);
+    lyd_free_siblings(dup);
+}
+
+static void
 test_lyb(void **state)
 {
     const char *schema;
@@ -198,6 +223,7 @@ main(void)
     const struct CMUnitTest tests[] = {
         UTEST(test_data_xml),
         UTEST(test_print),
+        UTEST(test_duplicate),
         UTEST(test_lyb),
     };
 
