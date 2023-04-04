@@ -123,6 +123,8 @@ lyxp_token2str(enum lyxp_token tok)
         return "@";
     case LYXP_TOKEN_COMMA:
         return ",";
+    case LYXP_TOKEN_DCOLON:
+        return "::";
     case LYXP_TOKEN_NAMETEST:
         return "NameTest";
     case LYXP_TOKEN_NODETYPE:
@@ -147,6 +149,8 @@ lyxp_token2str(enum lyxp_token tok)
         return "Operator(Path)";
     case LYXP_TOKEN_OPER_RPATH:
         return "Operator(Recursive Path)";
+    case LYXP_TOKEN_AXISNAME:
+        return "AxisName";
     case LYXP_TOKEN_LITERAL:
         return "Literal";
     case LYXP_TOKEN_NUMBER:
