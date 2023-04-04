@@ -498,7 +498,7 @@ lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const
     struct lyd_value storage;
     struct lysc_type *type;
 
-    LY_CHECK_ARG_RET(ctx, node, value, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, node, LY_EINVAL);
 
     if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
         LOGARG(ctx, node);
