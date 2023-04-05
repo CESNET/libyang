@@ -9,6 +9,13 @@ test data_present_via_mandatory {validation of mandatory-stmt will pass only wit
     ly_cmd "data -e $ddir/modleaf.xml"
 }}
 
+test data_present_merge {validation with --present and --merge} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modleaf modmandatory moddefault"
+    ly_cmd_err "data -m $ddir/modleaf.xml $ddir/moddefault.xml" "Mandatory node \"lft\" instance does not exist."
+    ly_cmd "data -e -m $ddir/modleaf.xml $ddir/moddefault.xml"
+}}
+
 test data_present_merge_invalid {using --present and --merge but data are invalid} {
 -setup $ly_setup -cleanup $ly_cleanup -body {
     ly_cmd "load modleaf modmandatory"
