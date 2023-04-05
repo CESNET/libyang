@@ -755,7 +755,7 @@ process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FOR
 
     if (merge) {
         /* validate the merged result */
-        ret = lyd_validate_all(&merged_tree, ctx, LYD_VALIDATE_PRESENT, NULL);
+        ret = lyd_validate_all(&merged_tree, ctx, options_validate, NULL);
         if (ret) {
             YLMSG_E("Merged data are not valid.\n");
             goto cleanup;
