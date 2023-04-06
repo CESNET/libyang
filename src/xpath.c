@@ -4278,9 +4278,25 @@ xpath_false(struct lyxp_set **UNUSED(args), uint32_t UNUSED(arg_count), struct l
  * @return LY_ERR
  */
 static LY_ERR
-xpath_floor(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set *set, uint32_t UNUSED(options))
+xpath_floor(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set *set, uint32_t options)
 {
-    LY_ERR rc;
+    struct lysc_node_leaf *sleaf;
+    LY_ERR rc = LY_SUCCESS;
+
+    if (options & LYXP_SCNODE_ALL) {
+        if (args[0]->type != LYXP_SET_SCNODE_SET) {
+            LOGWRN(set->ctx, "Argument #1 of %s not a node-set as expected.", __func__);
+        } else if ((sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
+            if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+                LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype),
+                        sleaf->name);
+            } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_DEC64)) {
+                LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"decimal64\".", __func__, sleaf->name);
+            }
+        }
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
+        return rc;
+    }
 
     rc = lyxp_set_cast(args[0], LYXP_SET_NUMBER);
     LY_CHECK_RET(rc);
