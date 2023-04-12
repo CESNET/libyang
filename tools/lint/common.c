@@ -588,6 +588,8 @@ evaluate_xpath(const struct lyd_node *tree, const char *xpath)
                             key->schema->name, lyd_get_value(key));
                 }
                 printf(")\n");
+            } else {
+                printf("\n");
             }
         }
     }
