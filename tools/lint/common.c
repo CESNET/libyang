@@ -606,6 +606,7 @@ process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FOR
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *tree = NULL, *op = NULL, *envp = NULL, *merged_tree = NULL, *oper_tree = NULL;
     char *path = NULL;
+    const char *xpath;
     struct ly_set *set = NULL;
 
     /* additional operational datastore */
@@ -769,7 +770,15 @@ process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FOR
         }
 
         for (uint32_t u = 0; xpaths && (u < xpaths->count); ++u) {
-            if (evaluate_xpath(merged_tree, (const char *)xpaths->objs[u])) {
+            xpath = (const char *)xpaths->objs[u];
+            ly_set_free(set, NULL);
+            ret = lys_find_xpath(ctx, NULL, xpath, LYS_FIND_NO_MATCH_ERROR, &set);
+            if (ret || !set->count) {
+                ret = (ret == LY_SUCCESS) ? LY_EINVAL : ret;
+                YLMSG_E("The requested xpath failed.\n");
+                goto cleanup;
+            }
+            if (evaluate_xpath(merged_tree, xpath)) {
                 goto cleanup;
             }
         }
