@@ -102,6 +102,9 @@ struct context {
 
     /* storage for --reply-rpc */
     struct cmdline_file reply_rpc;
+
+    /* storage for --data-xpath */
+    struct ly_set data_xpath;
 };
 
 static void
@@ -110,6 +113,7 @@ erase_context(struct context *c)
     /* data */
     ly_set_erase(&c->data_inputs, free_cmdline_file);
     ly_in_free(c->data_operational.in, 1);
+    ly_set_erase(&c->data_xpath, NULL);
 
     /* schema */
     ly_set_erase(&c->schema_features, free_features);
@@ -251,6 +255,13 @@ help(int shortout)
             "                        nodes with the attribute.\n"
             "      trim            - Remove all nodes with a default value.\n"
             "      implicit-tagged - Add missing nodes and mark them with the attribute.\n\n");
+
+    printf("  -E XPATH, --data-xpath=XPATH\n"
+            "                Evaluate XPATH expression over the data and print the nodes satysfying\n"
+            "                the expression. The output format is specific and the option cannot\n"
+            "                be combined with the -f and -d options. Also all the data\n"
+            "                inputs are merged into a single data tree where the expression\n"
+            "                is evaluated, so the -m option is always set implicitly.\n\n");
 
     printf("  -l, --list    Print info about the loaded schemas.\n"
             "                (i - imported module, I - implemented module)\n"
@@ -554,6 +565,7 @@ fill_context(int argc, char *argv[], struct context *c)
         {"present",           no_argument,       NULL, 'e'},
         {"type",              required_argument, NULL, 't'},
         {"default",           required_argument, NULL, 'd'},
+        {"data-xpath",        required_argument, NULL, 'E'},
         {"list",              no_argument,       NULL, 'l'},
         {"tree-line-length",  required_argument, NULL, 'L'},
         {"output",            required_argument, NULL, 'o'},
@@ -577,9 +589,9 @@ fill_context(int argc, char *argv[], struct context *c)
 
     opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:net:d:lL:o:O:R:myY:Xx:G:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:neE:t:d:lL:o:O:R:myY:Xx:G:", options, &opt_index)) != -1)
 #else
-    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:net:d:lL:o:O:R:myY:Xx:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:neE:t:d:lL:o:O:R:myY:Xx:", options, &opt_index)) != -1)
 #endif
     {
         switch (opt) {
@@ -770,6 +782,13 @@ fill_context(int argc, char *argv[], struct context *c)
             }
             break;
 
+        case 'E': /* --data-xpath */
+            if (ly_set_add(&c->data_xpath, optarg, 0, NULL)) {
+                YLMSG_E("Storing XPath \"%s\" failed.\n", optarg);
+                return -1;
+            }
+            break;
+
         case 'l': /* --list */
             c->list = 1;
             break;
@@ -863,6 +882,18 @@ fill_context(int argc, char *argv[], struct context *c)
         help(1);
         YLMSG_E("Missing <schema> to process.\n");
         return 1;
+    }
+
+    if (c->data_xpath.count) {
+        c->data_merge = 1;
+    }
+    if (c->data_xpath.count && (c->schema_out_format || c->data_out_format)) {
+        YLMSG_E("The --format option cannot be combined with --data-xpath option.\n");
+        return -1;
+    }
+    if (c->data_xpath.count && (c->data_print_options & LYD_PRINT_WD_MASK)) {
+        YLMSG_E("The --default option cannot be combined with --data-xpath option.\n");
+        return -1;
     }
 
     if (c->data_merge) {
@@ -1021,7 +1052,8 @@ main_ni(int argc, char *argv[])
         /* do the data validation despite the schema was printed */
         if (c.data_inputs.size) {
             ret = process_data(c.ctx, c.data_type, c.data_merge, c.data_out_format, c.out, c.data_parse_options,
-                    c.data_validate_options, c.data_print_options, &c.data_operational, &c.reply_rpc, &c.data_inputs, NULL);
+                    c.data_validate_options, c.data_print_options, &c.data_operational, &c.reply_rpc, &c.data_inputs,
+                    &c.data_xpath);
             if (ret) {
                 goto cleanup;
             }
