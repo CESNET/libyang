@@ -36,6 +36,12 @@ test data_xpath_container {--xpath to container} {
     ly_cmd "data -x /moddatanodes:dnc/con $data" "container \"con\""
 }}
 
+test data_xpath_wrong_path {--xpath to a non-existent node} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load moddatanodes"
+    ly_cmd_err "data -x /moddatanodes:dnc/wrng $data" "xpath failed"
+}}
+
 test data_xpath_err_default {--xpath cannot be combined with --default} {
 -setup $ly_setup -cleanup $ly_cleanup -body {
     ly_cmd "load moddatanodes ietf-netconf-with-defaults"
