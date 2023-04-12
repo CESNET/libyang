@@ -284,6 +284,11 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
         cmd_data_help();
         goto cleanup;
     }
+    if (xpaths.count && (options_print & LYD_PRINT_WD_MASK)) {
+        YLMSG_E("The --default option cannot be combined with --xpath option.\n");
+        cmd_data_help();
+        goto cleanup;
+    }
 
     if (operational && !data_type) {
         YLMSG_W("Operational datastore takes effect only with RPCs/Actions/Replies/Notifications input data types.\n");
