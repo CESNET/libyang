@@ -15,4 +15,11 @@ test data_type_config {data --type config} {
     ly_cmd "data -t config $ddir/modconfig2.xml"
 }}
 
+test data_type_get {data --type get} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modleafref"
+    ly_cmd_err "data -t data $ddir/modleafref2.xml" "Invalid leafref value"
+    ly_cmd "data -t get $ddir/modleafref2.xml"
+}}
+
 cleanupTests
