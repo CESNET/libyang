@@ -1,0 +1,15 @@
+source [expr {[info exists ::env(TESTS_DIR)] ? "$env(TESTS_DIR)/non-interactive/ly.tcl" : "ly.tcl"}]
+
+set mdir "$::env(YANG_MODULES_DIR)"
+set ddir "$::env(TESTS_DIR)/data"
+
+test data_type_data {data --type data} {
+    ly_cmd "-t data $mdir/modconfig.yang $ddir/modconfig.xml"
+} {}
+
+test data_type_config {data --type config} {
+    ly_cmd_err "-t config $mdir/modconfig.yang $ddir/modconfig.xml" "Unexpected data state node \"lff\""
+    ly_cmd "-t config $mdir/modconfig.yang $ddir/modconfig2.xml"
+} {}
+
+cleanupTests
