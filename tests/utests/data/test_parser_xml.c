@@ -42,6 +42,7 @@ setup(void **state)
             "        notification n1 { leaf nl {type string;}}}\n"
             "    container cp {presence \"container switch\"; leaf y {type string;} leaf z {type int8;}}\n"
             "    anydata any {config false;}\n"
+            "    anyxml anyx;\n"
             "    leaf foo2 { type string; default \"default-val\"; }\n"
             "    leaf foo3 { type uint32; }\n"
             "    notification n2;}";
@@ -122,6 +123,7 @@ static void
 test_anydata(void **state)
 {
     const char *data;
+    char *str;
     struct lyd_node *tree;
 
     data = "<any xmlns=\"urn:tests:a\">\n"
@@ -144,6 +146,49 @@ test_anydata(void **state)
             "  <element1a/>\n"
             "</any>\n";
 
+    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data_expected);
+
+    assert_int_equal(LY_SUCCESS, lyd_any_value_str(tree, &str));
+    lyd_free_all(tree);
+
+    assert_int_equal(LY_SUCCESS, lyd_new_path2(NULL, UTEST_LYCTX, "/a:any", str, strlen(str), LYD_ANYDATA_XML, 0, &tree, NULL));
+    free(str);
+    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data_expected);
+    lyd_free_all(tree);
+}
+
+static void
+test_anyxml(void **state)
+{
+    const char *data;
+    char *str;
+    struct lyd_node *tree;
+
+    data = "<anyx xmlns=\"urn:tests:a\">\n"
+            "  <element1>\n"
+            "    <element2 x:attr2=\"test\" xmlns:x=\"urn:x\">data</element2>\n"
+            "  </element1>\n"
+            "  <element1a/>\n"
+            "</anyx>\n";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_non_null(tree);
+    tree = tree->next;
+
+    const char *data_expected =
+            "<anyx xmlns=\"urn:tests:a\">\n"
+            "  <element1>\n"
+            "    <element2 xmlns:x=\"urn:x\" x:attr2=\"test\">data</element2>\n"
+            "  </element1>\n"
+            "  <element1a/>\n"
+            "</anyx>\n";
+
+    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data_expected);
+
+    assert_int_equal(LY_SUCCESS, lyd_any_value_str(tree, &str));
+    lyd_free_all(tree);
+
+    assert_int_equal(LY_SUCCESS, lyd_new_path2(NULL, UTEST_LYCTX, "/a:anyx", str, strlen(str), LYD_ANYDATA_XML, 0, &tree, NULL));
+    free(str);
     CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data_expected);
     lyd_free_all(tree);
 }
@@ -823,6 +868,7 @@ main(void)
     const struct CMUnitTest tests[] = {
         UTEST(test_leaf, setup),
         UTEST(test_anydata, setup),
+        UTEST(test_anyxml, setup),
         UTEST(test_list, setup),
         UTEST(test_container, setup),
         UTEST(test_opaq, setup),
