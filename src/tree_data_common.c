@@ -304,12 +304,21 @@ lyd_owner_module(const struct lyd_node *node)
         opaq = (struct lyd_node_opaq *)node;
         switch (opaq->format) {
         case LY_VALUE_XML:
-            return opaq->name.module_ns ? ly_ctx_get_module_implemented_ns(LYD_CTX(node), opaq->name.module_ns) : NULL;
+            if (opaq->name.module_ns) {
+                return ly_ctx_get_module_implemented_ns(LYD_CTX(node), opaq->name.module_ns);
+            }
+            break;
         case LY_VALUE_JSON:
-            return opaq->name.module_name ? ly_ctx_get_module_implemented(LYD_CTX(node), opaq->name.module_name) : NULL;
+            if (opaq->name.module_name) {
+                return ly_ctx_get_module_implemented(LYD_CTX(node), opaq->name.module_name);
+            }
+            break;
         default:
             return NULL;
         }
+
+        /* try a parent */
+        return lyd_owner_module(lyd_parent(node));
     }
 
     return lysc_owner_module(node->schema);
