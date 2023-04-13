@@ -12,4 +12,9 @@ test data_type_config {data --type config} {
     ly_cmd "-t config $mdir/modconfig.yang $ddir/modconfig2.xml"
 } {}
 
+test data_type_get {data --type get} {
+    ly_cmd_err "-t data $mdir/modleafref.yang $ddir/modleafref2.xml" "Invalid leafref value"
+    ly_cmd "-t get $mdir/modleafref.yang $ddir/modleafref2.xml"
+} {}
+
 cleanupTests
