@@ -22,4 +22,32 @@ test data_type_get {data --type get} {
     ly_cmd "data -t get $ddir/modleafref2.xml"
 }}
 
+test data_type_getconfig_no_state {No state node for data --type getconfig} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modconfig"
+    ly_cmd_err "data -t getconfig $ddir/modconfig.xml" "Unexpected data state node \"lff\""
+    ly_cmd "data -t getconfig $ddir/modconfig2.xml"
+}}
+
+test data_type_getconfig_parse_only {No validation performed for data --type getconfig} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modleafref"
+    ly_cmd_err "data -t data $ddir/modleafref2.xml" "Invalid leafref value"
+    ly_cmd "data -t getconfig $ddir/modleafref2.xml"
+}}
+
+test data_type_edit_no_state {No state node for data --type edit} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modconfig"
+    ly_cmd_err "data -t edit $ddir/modconfig.xml" "Unexpected data state node \"lff\""
+    ly_cmd "data -t edit $ddir/modconfig2.xml"
+}}
+
+test data_type_edit_parse_only {No validation performed for data --type edit} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modleafref"
+    ly_cmd_err "data -t data $ddir/modleafref2.xml" "Invalid leafref value"
+    ly_cmd "data -t edit $ddir/modleafref2.xml"
+}}
+
 cleanupTests

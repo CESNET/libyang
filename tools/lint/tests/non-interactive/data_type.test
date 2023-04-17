@@ -17,4 +17,19 @@ test data_type_get {data --type get} {
     ly_cmd "-t get $mdir/modleafref.yang $ddir/modleafref2.xml"
 } {}
 
+test data_type_getconfig_no_state {No state node for data --type getconfig} {
+    ly_cmd_err "-t getconfig $mdir/modconfig.yang $ddir/modconfig.xml" "Unexpected data state node \"lff\""
+    ly_cmd "-t getconfig $mdir/modconfig.yang $ddir/modconfig2.xml"
+} {}
+
+test data_type_getconfig_parse_only {No validation performed for data --type getconfig} {
+    ly_cmd_err "-t data $mdir/modleafref.yang $ddir/modleafref2.xml" "Invalid leafref value"
+    ly_cmd "-t getconfig $mdir/modleafref.yang $ddir/modleafref2.xml"
+} {}
+
+test data_type_edit_parse_only {No validation performed for data --type edit} {
+    ly_cmd_err "-t data $mdir/modleafref.yang $ddir/modleafref2.xml" "Invalid leafref value"
+    ly_cmd "-t edit $mdir/modleafref.yang $ddir/modleafref2.xml"
+} {}
+
 cleanupTests
