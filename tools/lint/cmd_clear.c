@@ -64,7 +64,7 @@ cmd_clear(struct ly_ctx **ctx, const char *cmdline)
         goto cleanup;
     }
 
-    while ((opt = getopt_long(argc, argv, "iyh", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, commands[CMD_CLEAR].optstring, options, &opt_index)) != -1) {
         switch (opt) {
         case 'i':
             if (options_ctx & LY_CTX_REF_IMPLEMENTED) {

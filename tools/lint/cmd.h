@@ -27,12 +27,32 @@ typedef struct {
     void (*func)(struct ly_ctx **ctx, const char *); /* Function to call to do the command. */
     void (*help_func)(void);                         /* Display command help. */
     char *helpstring;                                /* Documentation for this function. */
+    char *optstring;                                 /* Option characters used in function getopt_long. */
 } COMMAND;
 
 /**
  * @brief The list of available commands.
  */
 extern COMMAND commands[];
+
+/**
+ * @brief Index for global variable ::commands.
+ */
+enum COMMAND_INDEX {
+    CMD_HELP = 0,
+    CMD_ADD,
+    CMD_LOAD,
+    CMD_PRINT,
+    CMD_DATA,
+    CMD_LIST,
+    CMD_FEATURE,
+    CMD_SEARCHPATH,
+    CMD_CLEAR,
+    CMD_VERB,
+#ifndef NDEBUG
+    CMD_DEBUG,
+#endif
+};
 
 /* cmd_add.c */
 void cmd_add(struct ly_ctx **ctx, const char *cmdline);

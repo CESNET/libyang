@@ -54,7 +54,7 @@ cmd_debug(struct ly_ctx **UNUSED(ctx), const char *cmdline)
         goto cleanup;
     }
 
-    while ((opt = getopt_long(argc, argv, "h", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, commands[CMD_DEBUG].optstring, options, &opt_index)) != -1) {
         switch (opt) {
         case 'h':
             cmd_debug_help();
@@ -110,7 +110,7 @@ cmd_verb(struct ly_ctx **UNUSED(ctx), const char *cmdline)
         goto cleanup;
     }
 
-    while ((opt = getopt_long(argc, argv, "h", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, commands[CMD_VERB].optstring, options, &opt_index)) != -1) {
         switch (opt) {
         case 'h':
             cmd_verb_help();
@@ -188,7 +188,7 @@ cmd_help(struct ly_ctx **UNUSED(ctx), const char *cmdline)
         goto cleanup;
     }
 
-    while ((opt = getopt_long(argc, argv, "h", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, commands[CMD_HELP].optstring, options, &opt_index)) != -1) {
         switch (opt) {
         case 'h':
             cmd_help_help();
@@ -237,23 +237,24 @@ cleanup:
     free_cmdline(argv);
 }
 
+/* Also keep enum COMMAND_INDEX updated. */
 COMMAND commands[] = {
-    {"help", cmd_help, cmd_help_help, "Display commands description"},
-    {"add", cmd_add, cmd_add_help, "Add a new module from a specific file"},
-    {"load", cmd_load, cmd_load_help, "Load a new schema from the searchdirs"},
-    {"print", cmd_print, cmd_print_help, "Print a module"},
-    {"data", cmd_data, cmd_data_help, "Load, validate and optionally print instance data"},
-    {"list", cmd_list, cmd_list_help, "List all the loaded modules"},
-    {"feature", cmd_feature, cmd_feature_help, "Print all features of module(s) with their state"},
-    {"searchpath", cmd_searchpath, cmd_searchpath_help, "Print/set the search path(s) for schemas"},
-    {"clear", cmd_clear, cmd_clear_help, "Clear the context - remove all the loaded modules"},
-    {"verb", cmd_verb, cmd_verb_help, "Change verbosity"},
+    {"help", cmd_help, cmd_help_help, "Display commands description", "h"},
+    {"add", cmd_add, cmd_add_help, "Add a new module from a specific file", "DF:hi"},
+    {"load", cmd_load, cmd_load_help, "Load a new schema from the searchdirs", "F:hi"},
+    {"print", cmd_print, cmd_print_help, "Print a module", "f:hL:o:P:q"},
+    {"data", cmd_data, cmd_data_help, "Load, validate and optionally print instance data", "d:ef:F:hmo:O:r:nt:x:"},
+    {"list", cmd_list, cmd_list_help, "List all the loaded modules", "f:h"},
+    {"feature", cmd_feature, cmd_feature_help, "Print all features of module(s) with their state", "haf"},
+    {"searchpath", cmd_searchpath, cmd_searchpath_help, "Print/set the search path(s) for schemas", "ch"},
+    {"clear", cmd_clear, cmd_clear_help, "Clear the context - remove all the loaded modules", "iyh"},
+    {"verb", cmd_verb, cmd_verb_help, "Change verbosity", "h"},
 #ifndef NDEBUG
-    {"debug", cmd_debug, cmd_debug_help, "Display specific debug message groups"},
+    {"debug", cmd_debug, cmd_debug_help, "Display specific debug message groups", "h"},
 #endif
-    {"quit", cmd_quit, NULL, "Quit the program"},
+    {"quit", cmd_quit, NULL, "Quit the program", "h"},
     /* synonyms for previous commands */
-    {"?", cmd_help, NULL, "Display commands description"},
-    {"exit", cmd_quit, NULL, "Quit the program"},
-    {NULL, NULL, NULL, NULL}
+    {"?", cmd_help, NULL, "Display commands description", "h"},
+    {"exit", cmd_quit, NULL, "Quit the program", "h"},
+    {NULL, NULL, NULL, NULL, NULL}
 };

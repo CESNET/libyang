@@ -55,7 +55,7 @@ cmd_list(struct ly_ctx **ctx, const char *cmdline)
         goto cleanup;
     }
 
-    while ((opt = getopt_long(argc, argv, "f:h", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, commands[CMD_LIST].optstring, options, &opt_index)) != -1) {
         switch (opt) {
         case 'f': /* --format */
             if (!strcasecmp(optarg, "xml")) {

@@ -138,7 +138,7 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
         goto cleanup;
     }
 
-    while ((opt = getopt_long(argc, argv, "d:ef:F:hmo:O:r:nt:x:", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, commands[CMD_DATA].optstring, options, &opt_index)) != -1) {
         switch (opt) {
         case 'd': /* --default */
             if (!strcasecmp(optarg, "all")) {

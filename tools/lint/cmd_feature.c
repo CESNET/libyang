@@ -59,7 +59,7 @@ cmd_feature(struct ly_ctx **ctx, const char *cmdline)
         goto cleanup;
     }
 
-    while ((opt = getopt_long(argc, argv, "haf", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, commands[CMD_FEATURE].optstring, options, &opt_index)) != -1) {
         switch (opt) {
         case 'h':
             cmd_feature_help();

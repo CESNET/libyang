@@ -62,7 +62,7 @@ cmd_load(struct ly_ctx **ctx, const char *cmdline)
         goto cleanup;
     }
 
-    while ((opt = getopt_long(argc, argv, "F:hi", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, commands[CMD_LOAD].optstring, options, &opt_index)) != -1) {
         switch (opt) {
         case 'F': /* --features */
             if (parse_features(optarg, &fset)) {
