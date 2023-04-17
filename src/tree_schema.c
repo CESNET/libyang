@@ -633,7 +633,8 @@ lys_find_path_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, 
     }
 
     /* parse */
-    ret = lyxp_expr_parse(ctx, path, strlen(path), 0, &expr);
+    ret = ly_path_parse(ctx, ctx_node, path, strlen(path), 0, LY_PATH_BEGIN_EITHER, LY_PATH_PREFIX_FIRST,
+            LY_PATH_PRED_SIMPLE, &expr);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* compile */
@@ -654,7 +655,7 @@ LIBYANG_API_DEF const struct lysc_node *
 lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *path, ly_bool output)
 {
     const struct lysc_node *snode = NULL;
-    struct lyxp_expr *exp = NULL;
+    struct lyxp_expr *expr = NULL;
     struct ly_path *p = NULL;
     LY_ERR ret;
     uint8_t oper;
@@ -667,12 +668,13 @@ lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
     }
 
     /* parse */
-    ret = lyxp_expr_parse(ctx, path, strlen(path), 0, &exp);
+    ret = ly_path_parse(ctx, ctx_node, path, strlen(path), 0, LY_PATH_BEGIN_EITHER, LY_PATH_PREFIX_FIRST,
+            LY_PATH_PRED_SIMPLE, &expr);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* compile */
     oper = output ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
-    ret = ly_path_compile(ctx, NULL, ctx_node, NULL, exp, oper, LY_PATH_TARGET_MANY, 0, LY_VALUE_JSON, NULL, &p);
+    ret = ly_path_compile(ctx, NULL, ctx_node, NULL, expr, oper, LY_PATH_TARGET_MANY, 0, LY_VALUE_JSON, NULL, &p);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* get last node */
@@ -680,7 +682,7 @@ lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
 
 cleanup:
     ly_path_free(ctx, p);
-    lyxp_expr_free(ctx, exp);
+    lyxp_expr_free(ctx, expr);
     return snode;
 }
 
