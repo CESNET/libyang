@@ -164,7 +164,7 @@ cmd_print(struct ly_ctx **ctx, const char *cmdline)
         goto cleanup;
     }
 
-    while ((opt = getopt_long(argc, argv, "f:hL:o:P:q", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, commands[CMD_PRINT].optstring, options, &opt_index)) != -1) {
         switch (opt) {
         case 'o': /* --output */
             if (out) {

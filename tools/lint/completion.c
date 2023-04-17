@@ -76,6 +76,34 @@ get_cmd_completion(const char *hint, char ***matches, unsigned int *match_count)
 }
 
 /**
+ * @brief Provides completion for arguments.
+ *
+ * @param[in] hint User input.
+ * @param[in] args Array of all possible arguments. The last element must be NULL.
+ * @param[out] matches Matches provided to the user as a completion hint.
+ * @param[out] match_count Number of matches.
+ */
+static void
+get_arg_completion(const char *hint, const char **args, char ***matches, unsigned int *match_count)
+{
+    int i;
+
+    *match_count = 0;
+    *matches = NULL;
+
+    for (i = 0; args[i]; i++) {
+        if (!strncmp(hint, args[i], strlen(hint))) {
+            cmd_completion_add_match(args[i], matches, match_count);
+        }
+    }
+    if (*match_count == 0) {
+        for (i = 0; args[i]; i++) {
+            cmd_completion_add_match(args[i], matches, match_count);
+        }
+    }
+}
+
+/**
  * @brief Provides completion for module names.
  *
  * @param[in] hint User input.
@@ -277,6 +305,65 @@ cleanup:
 }
 
 /**
+ * @brief Get all possible argument hints for option.
+ *
+ * @param[in] hint User input.
+ * @param[out] matches Matches provided to the user as a completion hint.
+ * @param[out] match_count Number of matches.
+ */
+static void
+get_print_format_arg(const char *hint, char ***matches, unsigned int *match_count)
+{
+    const char *args[] = {"yang", "yin", "tree", "info", NULL};
+
+    get_arg_completion(hint, args, matches, match_count);
+}
+
+/**
+ * @copydoc get_print_format_arg
+ */
+static void
+get_data_type_arg(const char *hint, char ***matches, unsigned int *match_count)
+{
+    const char *args[] = {"data", "config", "get", "getconfig", "edit", "rpc", "reply", "notif", NULL};
+
+    get_arg_completion(hint, args, matches, match_count);
+}
+
+/**
+ * @copydoc get_print_format_arg
+ */
+static void
+get_data_in_format_arg(const char *hint, char ***matches, unsigned int *match_count)
+{
+    const char *args[] = {"xml", "json", "lyb", NULL};
+
+    get_arg_completion(hint, args, matches, match_count);
+}
+
+/**
+ * @copydoc get_print_format_arg
+ */
+static void
+get_data_default_arg(const char *hint, char ***matches, unsigned int *match_count)
+{
+    const char *args[] = {"all", "all-tagged", "trim", "implicit-tagged", NULL};
+
+    get_arg_completion(hint, args, matches, match_count);
+}
+
+/**
+ * @copydoc get_print_format_arg
+ */
+static void
+get_list_format_arg(const char *hint, char ***matches, unsigned int *match_count)
+{
+    const char *args[] = {"xml", "json", NULL};
+
+    get_arg_completion(hint, args, matches, match_count);
+}
+
+/**
  * @brief Get the string before the hint, which autocompletion is for.
  *
  * @param[in] buf Complete user input.
@@ -315,22 +402,30 @@ void
 complete_cmd(const char *buf, const char *hint, linenoiseCompletions *lc)
 {
     struct autocomplete {
-        const char *cmd;    /**< command */
-        const char *opt;    /**< optional option */
-        int last_opt;       /**< whether to autocomplete even if an option is last in the hint */
-
+        enum COMMAND_INDEX ci;      /**< command index to global variable 'commands' */
+        const char *opt;            /**< optional option */
         void (*ln_cb)(const char *, const char *, linenoiseCompletions *);  /**< linenoise callback to call */
         void (*yl_cb)(const char *, char ***, unsigned int *);              /**< yanglint callback to call */
     } ac[] = {
-        {"add", NULL, 1, linenoisePathCompletion, NULL},
-        {"searchpath", NULL, 0, linenoisePathCompletion, NULL},
-        {"data", NULL, 0, linenoisePathCompletion, NULL},
-        {"print", NULL, 0, NULL, get_model_completion},
-        {"feature", NULL, 0, NULL, get_model_completion},
-        {"print", "-P", 1, NULL, get_schema_completion},
+        {CMD_ADD,         NULL,    linenoisePathCompletion, NULL},
+        {CMD_PRINT,       "-f",    NULL, get_print_format_arg},
+        {CMD_PRINT,       "-P",    NULL, get_schema_completion},
+        {CMD_PRINT,       "-o",    linenoisePathCompletion, NULL},
+        {CMD_PRINT,       NULL,    NULL, get_model_completion},
+        {CMD_SEARCHPATH,  NULL,    linenoisePathCompletion, NULL},
+        {CMD_DATA,        "-t",    NULL, get_data_type_arg},
+        {CMD_DATA,        "-O",    linenoisePathCompletion, NULL},
+        {CMD_DATA,        "-f",    NULL, get_data_in_format_arg},
+        {CMD_DATA,        "-F",    NULL, get_data_in_format_arg},
+        {CMD_DATA,        "-d",    NULL, get_data_default_arg},
+        {CMD_DATA,        "-o",    linenoisePathCompletion, NULL},
+        {CMD_DATA,        NULL,    linenoisePathCompletion, NULL},
+        {CMD_LIST,        NULL,    NULL, get_list_format_arg},
+        {CMD_FEATURE,     NULL,    NULL, get_model_completion},
     };
-    size_t cmd_len;
-    const char *last;
+    size_t name_len;
+    const char *last, *name, *getoptstr;
+    char opt[3] = {'\0', ':', '\0'};
     char **matches = NULL;
     unsigned int match_count = 0, i;
 
@@ -340,24 +435,27 @@ complete_cmd(const char *buf, const char *hint, linenoiseCompletions *lc)
 
     } else {
         for (i = 0; i < (sizeof ac / sizeof *ac); ++i) {
-            cmd_len = strlen(ac[i].cmd);
-            if (strncmp(buf, ac[i].cmd, cmd_len) || (buf[cmd_len] != ' ')) {
+            /* Find the right command. */
+            name = commands[ac[i].ci].name;
+            name_len = strlen(name);
+            if (strncmp(buf, name, name_len) || (buf[name_len] != ' ')) {
                 /* not this command */
                 continue;
             }
 
+            /* Select based on the right option. */
             last = get_last_str(buf, hint);
-            if (ac[i].opt && strncmp(ac[i].opt, last, strlen(ac[i].opt))) {
-                /* autocompletion for (another) option */
+            opt[0] = (last[0] == '-') && last[1] ? last[1] : '\0';
+            getoptstr = commands[ac[i].ci].optstring;
+            if (!ac[i].opt && opt[0] && strstr(getoptstr, opt)) {
+                /* completion for the argument must be defined */
                 continue;
-            }
-            if (!ac[i].last_opt && (last[0] == '-')) {
-                /* autocompletion for the command, not an option */
+            } else if (ac[i].opt && opt[0] && strncmp(ac[i].opt, last, strlen(ac[i].opt))) {
+                /* completion for (another) option */
                 continue;
-            }
-            if ((last != buf) && (last[0] != '-')) {
-                /* autocompleted */
-                return;
+            } else if (ac[i].opt && !opt[0]) {
+                /* completion is defined for option */
+                continue;
             }
 
             /* callback */

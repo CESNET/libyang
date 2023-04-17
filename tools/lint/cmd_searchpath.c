@@ -53,7 +53,7 @@ cmd_searchpath(struct ly_ctx **ctx, const char *cmdline)
         goto cleanup;
     }
 
-    while ((opt = getopt_long(argc, argv, "ch", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, commands[CMD_SEARCHPATH].optstring, options, &opt_index)) != -1) {
         switch (opt) {
         case 'c':
             ly_ctx_unset_searchdir(*ctx, NULL);

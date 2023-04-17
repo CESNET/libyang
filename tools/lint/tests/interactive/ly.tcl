@@ -165,7 +165,7 @@ proc ly_hint {input prev_input hints} {
     send -- "${input}\t"
     # expecting the hints, previous input from which the hints were generated
     # and some number of terminal control characters
-    expect -re "^\r\n${output}\r> ${prev_input}.*\r.*$"
+    expect -re "${output}\r> ${prev_input}.*\r.*$"
 }
 
 # Send 'exit' and wait for eof.
