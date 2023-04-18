@@ -37,4 +37,24 @@ test data_type_edit_parse_only {No validation performed for data --type edit} {
     ly_cmd "-t edit $mdir/modleafref.yang $ddir/modleafref2.xml"
 } {}
 
+test data_type_rpc {Validation of rpc-statement by data --type rpc} {
+    ly_cmd_err "-t rpc $mdir/modleaf.yang $ddir/modleaf.xml" "Missing the operation node."
+    ly_cmd "-t rpc $mdir/modrpc.yang $ddir/modrpc.xml"
+} {}
+
+test data_type_rpc_reply {Validation of rpc-reply by data --type reply} {
+    ly_cmd_err "-t rpc $mdir/modleaf.yang $ddir/modleaf.xml" "Missing the operation node."
+    ly_cmd "-t reply $mdir/modrpc.yang $ddir/modrpc_reply.xml"
+} {}
+
+test data_type_rpc_action {Validation of action-statement by data --type rpc} {
+    ly_cmd_err "-t rpc $mdir/modleaf.yang $ddir/modleaf.xml" "Missing the operation node."
+    ly_cmd "-t rpc $mdir/modaction.yang $ddir/modaction.xml"
+} {}
+
+test data_type_rpc_action_reply {Validation of action-reply by data --type reply} {
+    ly_cmd_err "-t rpc $mdir/modleaf.yang $ddir/modleaf.xml" "Missing the operation node."
+    ly_cmd "-t reply $mdir/modaction.yang $ddir/modaction_reply.xml"
+} {}
+
 cleanupTests
