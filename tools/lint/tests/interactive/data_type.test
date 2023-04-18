@@ -50,4 +50,32 @@ test data_type_edit_parse_only {No validation performed for data --type edit} {
     ly_cmd "data -t edit $ddir/modleafref2.xml"
 }}
 
+test data_type_rpc {Validation of rpc-statement by data --type rpc} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modrpc modleaf"
+    ly_cmd_err "data -t rpc $ddir/modleaf.xml" "Missing the operation node."
+    ly_cmd "data -t rpc $ddir/modrpc.xml"
+}}
+
+test data_type_rpc_reply {Validation of rpc-reply by data --type reply} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modrpc modleaf"
+    ly_cmd_err "data -t rpc $ddir/modleaf.xml" "Missing the operation node."
+    ly_cmd "data -t reply $ddir/modrpc_reply.xml"
+}}
+
+test data_type_rpc_action {Validation of action-statement by data --type rpc} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modaction modleaf"
+    ly_cmd_err "data -t rpc $ddir/modleaf.xml" "Missing the operation node."
+    ly_cmd "data -t rpc $ddir/modaction.xml"
+}}
+
+test data_type_rpc_action_reply {Validation of action-reply by data --type reply} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modaction modleaf"
+    ly_cmd_err "data -t rpc $ddir/modleaf.xml" "Missing the operation node."
+    ly_cmd "data -t reply $ddir/modaction_reply.xml"
+}}
+
 cleanupTests
