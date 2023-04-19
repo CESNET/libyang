@@ -78,4 +78,12 @@ test data_type_rpc_action_reply {Validation of action-reply by data --type reply
     ly_cmd "data -t reply $ddir/modaction_reply.xml"
 }}
 
+test data_type_notif {Validation of notification-statement by data --type notif} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modnotif modleaf"
+    ly_cmd_err "data -t notif $ddir/modleaf.xml" "Missing the operation node."
+    ly_cmd "data -t notif $ddir/modnotif.xml"
+    ly_cmd "data -t notif $ddir/modnotif2.xml"
+}}
+
 cleanupTests
