@@ -361,7 +361,7 @@ lysp_check_dup_ht_insert(struct lysp_ctx *ctx, struct ly_ht *ht, const char *nam
     LY_ERR ret;
     uint32_t hash;
 
-    hash = dict_hash(name, strlen(name));
+    hash = lyht_hash(name, strlen(name));
     ret = lyht_insert(ht, &name, hash, NULL);
     if (ret == LY_EEXIST) {
         if (err_detail) {
@@ -433,7 +433,7 @@ lysp_check_dup_typedef(struct lysp_ctx *ctx, struct lysp_node *node, const struc
 
     /* check collision with the top-level typedefs */
     if (node) {
-        hash = dict_hash(name, name_len);
+        hash = lyht_hash(name, name_len);
         if (!lyht_find(tpdfs_global, &name, hash, NULL)) {
             LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG,
                     "Duplicate identifier \"%s\" of typedef statement - scoped type collide with a top-level type.", name);
@@ -566,7 +566,7 @@ lysp_check_dup_grouping(struct lysp_ctx *ctx, struct lysp_node *node, const stru
 
     /* check collision with the top-level groupings */
     if (node) {
-        hash = dict_hash(name, name_len);
+        hash = lyht_hash(name, name_len);
         if (!lyht_find(grps_global, &name, hash, NULL)) {
             LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG,
                     "Duplicate identifier \"%s\" of grouping statement - scoped grouping collide with a top-level grouping.", name);

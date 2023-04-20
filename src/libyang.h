@@ -39,6 +39,7 @@ extern "C" {
 
 /*
  * The following headers are supposed to be included explicitly:
+ * - hash_table.h
  * - metadata.h
  * - plugins_types.h
  * - plugins_exts.h

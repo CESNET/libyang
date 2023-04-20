@@ -110,6 +110,7 @@ set(libsrc
     src/common.c
     src/log.c
     src/hash_table.c
+    src/dict.c
     src/set.c
     src/path.c
     src/diff.c
@@ -159,6 +160,7 @@ set(libsrc
 
 set(headers
     src/context.h
+    src/hash_table.h
     src/dict.h
     src/in.h
     src/libyang.h
@@ -181,7 +183,7 @@ set(headers
 set(internal_headers
     src/common.h
     src/diff.h
-    src/hash_table.h
+    src/hash_table_internal.h
     src/in_internal.h
     src/json.h
     src/lyb.h

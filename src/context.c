@@ -680,25 +680,25 @@ ly_ctx_get_modules_hash(const struct ly_ctx *ctx)
 
     while ((mod = ly_ctx_get_module_iter(ctx, &i))) {
         /* name */
-        hash = dict_hash_multi(hash, mod->name, strlen(mod->name));
+        hash = lyht_hash_multi(hash, mod->name, strlen(mod->name));
 
         /* revision */
         if (mod->revision) {
-            hash = dict_hash_multi(hash, mod->revision, strlen(mod->revision));
+            hash = lyht_hash_multi(hash, mod->revision, strlen(mod->revision));
         }
 
         /* enabled features */
         while ((f = lysp_feature_next(f, mod->parsed, &fi))) {
             if (f->flags & LYS_FENABLED) {
-                hash = dict_hash_multi(hash, f->name, strlen(f->name));
+                hash = lyht_hash_multi(hash, f->name, strlen(f->name));
             }
         }
 
         /* imported/implemented */
-        hash = dict_hash_multi(hash, (char *)&mod->implemented, sizeof mod->implemented);
+        hash = lyht_hash_multi(hash, (char *)&mod->implemented, sizeof mod->implemented);
     }
 
-    hash = dict_hash_multi(hash, NULL, 0);
+    hash = lyht_hash_multi(hash, NULL, 0);
     return hash;
 }
 

@@ -23,7 +23,7 @@
 #include "compat.h"
 #include "config.h"
 #include "context.h"
-#include "hash_table.h"
+#include "hash_table_internal.h"
 #include "log.h"
 #include "schema_compile.h"
 #include "set.h"

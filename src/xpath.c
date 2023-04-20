@@ -695,9 +695,9 @@ set_insert_node_hash(struct lyxp_set *set, struct lyd_node *node, enum lyxp_node
             hnode.node = set->val.nodes[i].node;
             hnode.type = set->val.nodes[i].type;
 
-            hash = dict_hash_multi(0, (const char *)&hnode.node, sizeof hnode.node);
-            hash = dict_hash_multi(hash, (const char *)&hnode.type, sizeof hnode.type);
-            hash = dict_hash_multi(hash, NULL, 0);
+            hash = lyht_hash_multi(0, (const char *)&hnode.node, sizeof hnode.node);
+            hash = lyht_hash_multi(hash, (const char *)&hnode.type, sizeof hnode.type);
+            hash = lyht_hash_multi(hash, NULL, 0);
 
             r = lyht_insert(set->ht, &hnode, hash, NULL);
             assert(!r);
@@ -715,9 +715,9 @@ set_insert_node_hash(struct lyxp_set *set, struct lyd_node *node, enum lyxp_node
         hnode.node = node;
         hnode.type = type;
 
-        hash = dict_hash_multi(0, (const char *)&hnode.node, sizeof hnode.node);
-        hash = dict_hash_multi(hash, (const char *)&hnode.type, sizeof hnode.type);
-        hash = dict_hash_multi(hash, NULL, 0);
+        hash = lyht_hash_multi(0, (const char *)&hnode.node, sizeof hnode.node);
+        hash = lyht_hash_multi(hash, (const char *)&hnode.type, sizeof hnode.type);
+        hash = lyht_hash_multi(hash, NULL, 0);
 
         r = lyht_insert(set->ht, &hnode, hash, NULL);
         assert(!r);
@@ -743,9 +743,9 @@ set_remove_node_hash(struct lyxp_set *set, struct lyd_node *node, enum lyxp_node
         hnode.node = node;
         hnode.type = type;
 
-        hash = dict_hash_multi(0, (const char *)&hnode.node, sizeof hnode.node);
-        hash = dict_hash_multi(hash, (const char *)&hnode.type, sizeof hnode.type);
-        hash = dict_hash_multi(hash, NULL, 0);
+        hash = lyht_hash_multi(0, (const char *)&hnode.node, sizeof hnode.node);
+        hash = lyht_hash_multi(hash, (const char *)&hnode.type, sizeof hnode.type);
+        hash = lyht_hash_multi(hash, NULL, 0);
 
         r = lyht_remove(set->ht, &hnode, hash);
         assert(!r);
@@ -776,9 +776,9 @@ set_dup_node_hash_check(const struct lyxp_set *set, struct lyd_node *node, enum 
     hnode.node = node;
     hnode.type = type;
 
-    hash = dict_hash_multi(0, (const char *)&hnode.node, sizeof hnode.node);
-    hash = dict_hash_multi(hash, (const char *)&hnode.type, sizeof hnode.type);
-    hash = dict_hash_multi(hash, NULL, 0);
+    hash = lyht_hash_multi(0, (const char *)&hnode.node, sizeof hnode.node);
+    hash = lyht_hash_multi(hash, (const char *)&hnode.type, sizeof hnode.type);
+    hash = lyht_hash_multi(hash, NULL, 0);
 
     if (!lyht_find(set->ht, &hnode, hash, (void **)&match_p)) {
         if ((skip_idx > -1) && (set->val.nodes[skip_idx].node == match_p->node) && (set->val.nodes[skip_idx].type == match_p->type)) {
@@ -1789,9 +1789,9 @@ set_sort(struct lyxp_set *set)
             hnode.node = set->val.nodes[i].node;
             hnode.type = set->val.nodes[i].type;
 
-            hash = dict_hash_multi(0, (const char *)&hnode.node, sizeof hnode.node);
-            hash = dict_hash_multi(hash, (const char *)&hnode.type, sizeof hnode.type);
-            hash = dict_hash_multi(hash, NULL, 0);
+            hash = lyht_hash_multi(0, (const char *)&hnode.node, sizeof hnode.node);
+            hash = lyht_hash_multi(hash, (const char *)&hnode.type, sizeof hnode.type);
+            hash = lyht_hash_multi(hash, NULL, 0);
 
             assert(!lyht_find(set->ht, &hnode, hash, NULL));
         }

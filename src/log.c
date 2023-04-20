@@ -188,7 +188,7 @@ ly_err_get_rec(const struct ly_ctx *ctx)
     rec.tid = pthread_self();
 
     /* get the pointer to the matching record */
-    if (lyht_find(ctx->err_ht, &rec, dict_hash((void *)&rec.tid, sizeof rec.tid), (void **)&match)) {
+    if (lyht_find(ctx->err_ht, &rec, lyht_hash((void *)&rec.tid, sizeof rec.tid), (void **)&match)) {
         return NULL;
     }
 
@@ -215,7 +215,7 @@ ly_err_new_rec(const struct ly_ctx *ctx)
     /* LOCK */
     pthread_mutex_lock((pthread_mutex_t *)&ctx->lyb_hash_lock);
 
-    r = lyht_insert(ctx->err_ht, &new, dict_hash((void *)&new.tid, sizeof new.tid), (void **)&rec);
+    r = lyht_insert(ctx->err_ht, &new, lyht_hash((void *)&new.tid, sizeof new.tid), (void **)&rec);
 
     /* UNLOCK */
     pthread_mutex_unlock((pthread_mutex_t *)&ctx->lyb_hash_lock);

@@ -1158,9 +1158,9 @@ lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lysc_node 
     parent = siblings->parent;
     if (parent && parent->schema && parent->children_ht) {
         /* calculate our hash */
-        hash = dict_hash_multi(0, schema->module->name, strlen(schema->module->name));
-        hash = dict_hash_multi(hash, schema->name, strlen(schema->name));
-        hash = dict_hash_multi(hash, NULL, 0);
+        hash = lyht_hash_multi(0, schema->module->name, strlen(schema->module->name));
+        hash = lyht_hash_multi(hash, schema->name, strlen(schema->name));
+        hash = lyht_hash_multi(hash, NULL, 0);
 
         /* use special hash table function */
         ht_cb = lyht_set_cb(parent->children_ht, lyd_hash_table_schema_val_equal);
