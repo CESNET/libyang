@@ -385,8 +385,8 @@ lydjson_check_list(struct lyjson_ctx *jsonctx, const struct lysc_node *list)
 
             if (!is_attr && !prefix) {
                 for (i = 0; i < key_set.count; ++i) {
-                    snode = (const struct lysc_node *)key_set.objs[i];
-                    if (!ly_strncmp(snode->name, name, name_len)) {
+                    if (!ly_strncmp(key_set.snodes[i]->name, name, name_len)) {
+                        snode = key_set.snodes[i];
                         break;
                     }
                 }
