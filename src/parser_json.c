@@ -377,7 +377,9 @@ lydjson_check_list(struct lyjson_ctx *jsonctx, const struct lysc_node *list)
 
             /* match the key */
             LY_CHECK_GOTO(rc = lyjson_ctx_next(jsonctx, &status), cleanup);
-            assert(status == LYJSON_OBJECT_NAME);
+            if (status != LYJSON_OBJECT_NAME) {
+                break;
+            }
             snode = NULL;
             lydjson_parse_name(jsonctx->value, jsonctx->value_len, &name, &name_len, &prefix, &prefix_len, &is_attr);
 
