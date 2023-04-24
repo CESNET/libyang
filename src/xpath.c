@@ -1997,11 +1997,11 @@ lyxp_next_token2(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint32_t
  * @brief Stack operation push on the repeat array.
  *
  * @param[in] exp Expression to use.
- * @param[in] tok_idx Position in the expresion \p exp.
- * @param[in] repeat_op_idx Index from \p exp of the operator token. This value is pushed.
+ * @param[in] tok_idx Position in the expresion @p exp.
+ * @param[in] repeat_expr_type Repeated expression type, this value is pushed.
  */
 static void
-exp_repeat_push(struct lyxp_expr *exp, uint32_t tok_idx, uint32_t repeat_op_idx)
+exp_repeat_push(struct lyxp_expr *exp, uint32_t tok_idx, enum lyxp_expr_type repeat_expr_type)
 {
     uint32_t i;
 
@@ -2009,12 +2009,12 @@ exp_repeat_push(struct lyxp_expr *exp, uint32_t tok_idx, uint32_t repeat_op_idx)
         for (i = 0; exp->repeat[tok_idx][i]; ++i) {}
         exp->repeat[tok_idx] = realloc(exp->repeat[tok_idx], (i + 2) * sizeof *exp->repeat[tok_idx]);
         LY_CHECK_ERR_RET(!exp->repeat[tok_idx], LOGMEM(NULL), );
-        exp->repeat[tok_idx][i] = repeat_op_idx;
+        exp->repeat[tok_idx][i] = repeat_expr_type;
         exp->repeat[tok_idx][i + 1] = 0;
     } else {
         exp->repeat[tok_idx] = calloc(2, sizeof *exp->repeat[tok_idx]);
         LY_CHECK_ERR_RET(!exp->repeat[tok_idx], LOGMEM(NULL), );
-        exp->repeat[tok_idx][0] = repeat_op_idx;
+        exp->repeat[tok_idx][0] = repeat_expr_type;
     }
 }
 
