@@ -145,6 +145,14 @@ test_compare(void **state)
     assert_int_equal(LY_SUCCESS, lyd_compare_single(tree1, tree2, 0));
     lyd_free_all(tree1);
     lyd_free_all(tree2);
+
+    data1 = "<c xmlns=\"urn:tests:a\"><x>c</x><x>a</x><x>b</x></c>";
+    data2 = "<c xmlns=\"urn:tests:a\"><x>a</x><x>b</x><x>c</x></c>";
+    CHECK_PARSE_LYD(data1, 0, LYD_VALIDATE_PRESENT, tree1);
+    CHECK_PARSE_LYD(data2, 0, LYD_VALIDATE_PRESENT, tree2);
+    assert_int_equal(LY_SUCCESS, lyd_compare_single(tree1, tree2, LYD_COMPARE_FULL_RECURSION));
+    lyd_free_all(tree1);
+    lyd_free_all(tree2);
 }
 
 static void

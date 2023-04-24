@@ -52,6 +52,9 @@
 #include "xml.h"
 #include "xpath.h"
 
+static LY_ERR lyd_compare_siblings_(const struct lyd_node *node1, const struct lyd_node *node2, uint32_t options,
+        ly_bool parental_schemas_checked);
+
 static LYD_FORMAT
 lyd_parse_get_format(const struct ly_in *in, LYD_FORMAT format)
 {
@@ -1264,30 +1267,21 @@ lyd_compare_single_value(const struct lyd_node *node1, const struct lyd_node *no
 }
 
 /**
- * @brief Internal implementation of @ref lyd_compare_single.
- * @copydoc lyd_compare_single
- * @param[in] parental_schemas_checked Flag used for optimization.
- * When this function is called for the first time, the flag must be set to 0.
- * The @ref lyd_compare_schema_parents_equal should be called only once during
- * recursive calls, and this is accomplished by setting to 1 in the lyd_compare_single_ body.
+ * @brief Compare 2 data nodes if they are equivalent regarding the schema tree.
+ *
+ * Works correctly even if @p node1 and @p node2 have different contexts.
+ *
+ * @param[in] node1 The first node to compare.
+ * @param[in] node2 The second node to compare.
+ * @param[in] options Various @ref datacompareoptions.
+ * @param[in] parental_schemas_checked Flag set if parent schemas were checked for match.
+ * @return LY_SUCCESS if the nodes are equivalent.
+ * @return LY_ENOT if the nodes are not equivalent.
  */
 static LY_ERR
-lyd_compare_single_(const struct lyd_node *node1, const struct lyd_node *node2, uint32_t options,
+lyd_compare_single_schema(const struct lyd_node *node1, const struct lyd_node *node2, uint32_t options,
         ly_bool parental_schemas_checked)
 {
-    const struct lyd_node *iter1, *iter2;
-    struct lyd_node_any *any1, *any2;
-    int len1, len2;
-    LY_ERR r;
-
-    if (!node1 || !node2) {
-        if (node1 == node2) {
-            return LY_SUCCESS;
-        } else {
-            return LY_ENOT;
-        }
-    }
-
     if (LYD_CTX(node1) == LYD_CTX(node2)) {
         /* same contexts */
         if (options & LYD_COMPARE_OPAQ) {
@@ -1312,6 +1306,28 @@ lyd_compare_single_(const struct lyd_node *node1, const struct lyd_node *node2, 
         }
     }
 
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Compare 2 data nodes if they are equivalent regarding the data they contain.
+ *
+ * Works correctly even if @p node1 and @p node2 have different contexts.
+ *
+ * @param[in] node1 The first node to compare.
+ * @param[in] node2 The second node to compare.
+ * @param[in] options Various @ref datacompareoptions.
+ * @return LY_SUCCESS if the nodes are equivalent.
+ * @return LY_ENOT if the nodes are not equivalent.
+ */
+static LY_ERR
+lyd_compare_single_data(const struct lyd_node *node1, const struct lyd_node *node2, uint32_t options)
+{
+    const struct lyd_node *iter1, *iter2;
+    struct lyd_node_any *any1, *any2;
+    int len1, len2;
+    LY_ERR r;
+
     if (!(options & LYD_COMPARE_OPAQ) && (node1->hash != node2->hash)) {
         return LY_ENOT;
     }
@@ -1330,9 +1346,7 @@ lyd_compare_single_(const struct lyd_node *node1, const struct lyd_node *node2, 
         }
 
         if (options & LYD_COMPARE_FULL_RECURSION) {
-            iter1 = lyd_child(node1);
-            iter2 = lyd_child(node2);
-            goto all_children_compare;
+            return lyd_compare_siblings_(lyd_child(node1), lyd_child(node2), options, 1);
         }
         return LY_SUCCESS;
     } else {
@@ -1359,9 +1373,7 @@ lyd_compare_single_(const struct lyd_node *node1, const struct lyd_node *node2, 
                 }
             }
             if (options & LYD_COMPARE_FULL_RECURSION) {
-                iter1 = lyd_child(node1);
-                iter2 = lyd_child(node2);
-                goto all_children_compare;
+                return lyd_compare_siblings_(lyd_child(node1), lyd_child(node2), options, 1);
             }
             return LY_SUCCESS;
         case LYS_LIST:
@@ -1373,31 +1385,23 @@ lyd_compare_single_(const struct lyd_node *node1, const struct lyd_node *node2, 
                 for (const struct lysc_node *key = lysc_node_child(node1->schema);
                         key && (key->flags & LYS_KEY);
                         key = key->next) {
-                    if (lyd_compare_single_(iter1, iter2, options, parental_schemas_checked)) {
-                        return LY_ENOT;
+                    if (!node1 || !node2) {
+                        return (node1 == node2) ? LY_SUCCESS : LY_ENOT;
                     }
+                    r = lyd_compare_single_schema(iter1, iter2, options, 1);
+                    LY_CHECK_RET(r);
+                    r = lyd_compare_single_data(iter1, iter2, options);
+                    LY_CHECK_RET(r);
+
                     iter1 = iter1->next;
                     iter2 = iter2->next;
                 }
+
+                return LY_SUCCESS;
             } else {
                 /* lists without keys, their equivalence is based on equivalence of all the children (both direct and indirect) */
-
-all_children_compare:
-                if (!iter1 && !iter2) {
-                    /* no children, nothing to compare */
-                    return LY_SUCCESS;
-                }
-
-                for ( ; iter1 && iter2; iter1 = iter1->next, iter2 = iter2->next) {
-                    if (lyd_compare_single_(iter1, iter2, options | LYD_COMPARE_FULL_RECURSION, parental_schemas_checked)) {
-                        return LY_ENOT;
-                    }
-                }
-                if (iter1 || iter2) {
-                    return LY_ENOT;
-                }
+                return lyd_compare_siblings_(iter1, iter2, options, 1);
             }
-            return LY_SUCCESS;
         case LYS_ANYXML:
         case LYS_ANYDATA:
             any1 = (struct lyd_node_any *)node1;
@@ -1408,9 +1412,7 @@ all_children_compare:
             }
             switch (any1->value_type) {
             case LYD_ANYDATA_DATATREE:
-                iter1 = any1->value.tree;
-                iter2 = any2->value.tree;
-                goto all_children_compare;
+                return lyd_compare_siblings_(any1->value.tree, any2->value.tree, options, 1);
             case LYD_ANYDATA_STRING:
             case LYD_ANYDATA_XML:
             case LYD_ANYDATA_JSON:
@@ -1440,23 +1442,77 @@ all_children_compare:
     return LY_EINT;
 }
 
+/**
+ * @brief Compare all siblings at a node level.
+ *
+ * @param[in] node1 First sibling list.
+ * @param[in] node2 Second sibling list.
+ * @param[in] options Various @ref datacompareoptions.
+ * @param[in] parental_schemas_checked Flag set if parent schemas were checked for match.
+ * @return LY_SUCCESS if equal.
+ * @return LY_ENOT if not equal.
+ * @return LY_ERR on error.
+ */
+static LY_ERR
+lyd_compare_siblings_(const struct lyd_node *node1, const struct lyd_node *node2, uint32_t options,
+        ly_bool parental_schemas_checked)
+{
+    LY_ERR r;
+    const struct lyd_node *iter2;
+
+    while (node1 && node2) {
+        /* schema match */
+        r = lyd_compare_single_schema(node1, node2, options, parental_schemas_checked);
+        LY_CHECK_RET(r);
+
+        if (node1->schema && (((node1->schema->nodetype == LYS_LIST) && !(node1->schema->flags & LYS_KEYLESS)) ||
+                ((node1->schema->nodetype == LYS_LEAFLIST) && (node1->schema->flags & LYS_CONFIG_W))) &&
+                (node1->schema->flags & LYS_ORDBY_SYSTEM)) {
+            /* find a matching instance in case they are ordered differently */
+            r = lyd_find_sibling_first(node2, node1, (struct lyd_node **)&iter2);
+            if (r == LY_ENOTFOUND) {
+                /* no matching instance, data not equal */
+                r = LY_ENOT;
+            }
+            LY_CHECK_RET(r);
+        } else {
+            /* compare with the current node */
+            iter2 = node2;
+        }
+
+        /* data match */
+        r = lyd_compare_single_data(node1, iter2, options | LYD_COMPARE_FULL_RECURSION);
+        LY_CHECK_RET(r);
+
+        node1 = node1->next;
+        node2 = node2->next;
+    }
+
+    return (node1 || node2) ? LY_ENOT : LY_SUCCESS;
+}
+
 LIBYANG_API_DEF LY_ERR
 lyd_compare_single(const struct lyd_node *node1, const struct lyd_node *node2, uint32_t options)
 {
-    return lyd_compare_single_(node1, node2, options, 0);
+    LY_ERR r;
+
+    if (!node1 || !node2) {
+        return (node1 == node2) ? LY_SUCCESS : LY_ENOT;
+    }
+
+    /* schema match */
+    if ((r = lyd_compare_single_schema(node1, node2, options, 0))) {
+        return r;
+    }
+
+    /* data match */
+    return lyd_compare_single_data(node1, node2, options);
 }
 
 LIBYANG_API_DEF LY_ERR
 lyd_compare_siblings(const struct lyd_node *node1, const struct lyd_node *node2, uint32_t options)
 {
-    for ( ; node1 && node2; node1 = node1->next, node2 = node2->next) {
-        LY_CHECK_RET(lyd_compare_single(node1, node2, options));
-    }
-
-    if (node1 == node2) {
-        return LY_SUCCESS;
-    }
-    return LY_ENOT;
+    return lyd_compare_siblings_(node1, node2, options, 0);
 }
 
 LIBYANG_API_DEF LY_ERR
