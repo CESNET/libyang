@@ -1385,8 +1385,8 @@ lyd_compare_single_data(const struct lyd_node *node1, const struct lyd_node *nod
                 for (const struct lysc_node *key = lysc_node_child(node1->schema);
                         key && (key->flags & LYS_KEY);
                         key = key->next) {
-                    if (!node1 || !node2) {
-                        return (node1 == node2) ? LY_SUCCESS : LY_ENOT;
+                    if (!iter1 || !iter2) {
+                        return (iter1 == iter2) ? LY_SUCCESS : LY_ENOT;
                     }
                     r = lyd_compare_single_schema(iter1, iter2, options, 1);
                     LY_CHECK_RET(r);
