@@ -2611,11 +2611,19 @@ LIBYANG_API_DECL LY_ERR lyd_find_path(const struct lyd_node *ctx_node, const cha
 LIBYANG_API_DECL LY_ERR lyd_find_target(const struct ly_path *path, const struct lyd_node *tree, struct lyd_node **match);
 
 /**
- * @brief Get current timezone UTC (GMT) time offset in seconds. Changes based on the current DST setting.
+ * @brief Get current timezone (including DST setting) UTC (GMT) time offset in seconds.
  *
  * @return Timezone shift in seconds.
  */
 LIBYANG_API_DECL int ly_time_tz_offset(void);
+
+/**
+ * @brief Get UTC (GMT) timezone offset in seconds at a specific timestamp (including DST setting).
+ *
+ * @param[in] time Timestamp to get the offset at.
+ * @return Timezone shift in seconds.
+ */
+LIBYANG_API_DECL int ly_time_tz_offset_at(time_t time);
 
 /**
  * @brief Convert date-and-time from string to UNIX timestamp and fractions of a second.

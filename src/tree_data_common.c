@@ -1545,23 +1545,35 @@ ly_format2str(LY_VALUE_FORMAT format)
 LIBYANG_API_DEF int
 ly_time_tz_offset(void)
 {
-    time_t now;
+    return ly_time_tz_offset_at(time(NULL));
+}
+
+LIBYANG_API_DEF int
+ly_time_tz_offset_at(time_t time)
+{
     struct tm tm_local, tm_utc;
     int result = 0;
 
     /* init timezone */
     tzset();
 
-    /* get current timestamp (need to use it to account for DST) */
-    now = time(NULL);
-
     /* get local and UTC time */
-    localtime_r(&now, &tm_local);
-    gmtime_r(&now, &tm_utc);
+    localtime_r(&time, &tm_local);
+    gmtime_r(&time, &tm_utc);
 
-    /* account for year/month/day change by adding/subtracting from the hours */
-    if (tm_local.tm_mday != tm_utc.tm_mday) {
-        tm_local.tm_hour += (tm_local.tm_mday - tm_utc.tm_mday) * 24;
+    /* account for year/month/day change by adding/subtracting from the hours, the change cannot be more than 1 day */
+    if (tm_local.tm_year < tm_utc.tm_year) {
+        tm_utc.tm_hour += 24;
+    } else if (tm_local.tm_year > tm_utc.tm_year) {
+        tm_local.tm_hour += 24;
+    } else if (tm_local.tm_mon < tm_utc.tm_mon) {
+        tm_utc.tm_hour += 24;
+    } else if (tm_local.tm_mon > tm_utc.tm_mon) {
+        tm_local.tm_hour += 24;
+    } else if (tm_local.tm_mday < tm_utc.tm_mday) {
+        tm_utc.tm_hour += 24;
+    } else if (tm_local.tm_mday > tm_utc.tm_mday) {
+        tm_local.tm_hour += 24;
     }
 
     /* hours shift in seconds */
@@ -1657,7 +1669,7 @@ ly_time_time2str(time_t time, const char *fractions_s, char **str)
     }
 
     /* get timezone offset (do not use tm_gmtoff to avoid portability problems) */
-    zonediff_s = ly_time_tz_offset();
+    zonediff_s = ly_time_tz_offset_at(time);
     zonediff_h = zonediff_s / 60 / 60;
     zonediff_m = zonediff_s / 60 % 60;
     sprintf(zoneshift, "%+03d:%02d", zonediff_h, zonediff_m);
