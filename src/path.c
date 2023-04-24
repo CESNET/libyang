@@ -109,6 +109,11 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
                 /* '=' */
                 LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_OPER_EQUAL), token_error);
 
+                /* fill repeat */
+                exp->repeat[*tok_idx - 2] = calloc(2, sizeof *exp->repeat[*tok_idx]);
+                LY_CHECK_ERR_GOTO(!exp->repeat[*tok_idx - 2], LOGMEM(NULL); ret = LY_EMEM, cleanup);
+                exp->repeat[*tok_idx - 2][0] = LYXP_EXPR_EQUALITY;
+
                 /* Literal, Number, or VariableReference */
                 if (lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_LITERAL) &&
                         lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_NUMBER) &&
@@ -129,6 +134,11 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
 
             /* '=' */
             LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_OPER_EQUAL), token_error);
+
+            /* fill repeat */
+            exp->repeat[*tok_idx - 2] = calloc(2, sizeof *exp->repeat[*tok_idx]);
+            LY_CHECK_ERR_GOTO(!exp->repeat[*tok_idx - 2], LOGMEM(NULL); ret = LY_EMEM, cleanup);
+            exp->repeat[*tok_idx - 2][0] = LYXP_EXPR_EQUALITY;
 
             /* Literal or Number */
             LY_CHECK_GOTO(lyxp_next_token2(ctx, exp, tok_idx, LYXP_TOKEN_LITERAL, LYXP_TOKEN_NUMBER), token_error);
@@ -186,6 +196,11 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
 
                 /* '=' */
                 LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_OPER_EQUAL), token_error);
+
+                /* fill repeat */
+                exp->repeat[*tok_idx - 2] = calloc(2, sizeof *exp->repeat[*tok_idx]);
+                LY_CHECK_ERR_GOTO(!exp->repeat[*tok_idx - 2], LOGMEM(NULL); ret = LY_EMEM, cleanup);
+                exp->repeat[*tok_idx - 2][0] = LYXP_EXPR_EQUALITY;
 
                 /* FuncName */
                 LY_CHECK_GOTO(lyxp_check_token(ctx, exp, *tok_idx, LYXP_TOKEN_FUNCNAME), token_error);
@@ -266,9 +281,13 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
 
     LOG_LOCSET(ctx_node, NULL, NULL, NULL);
 
-    /* parse as a generic XPath expression */
-    LY_CHECK_GOTO(ret = lyxp_expr_parse(ctx, str_path, path_len, 1, &exp), error);
+    /* parse as a generic XPath expression, reparse is performed manually */
+    LY_CHECK_GOTO(ret = lyxp_expr_parse(ctx, str_path, path_len, 0, &exp), error);
     tok_idx = 0;
+
+    /* alloc empty repeat (only '=', filled manually) */
+    exp->repeat = calloc(exp->size, sizeof *exp->repeat);
+    LY_CHECK_ERR_GOTO(!exp->repeat, LOGMEM(ctx); ret = LY_EMEM, error);
 
     if (begin == LY_PATH_BEGIN_EITHER) {
         /* is the path relative? */
@@ -376,9 +395,13 @@ ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
 
     LOG_LOCSET(cur_node, NULL, NULL, NULL);
 
-    /* parse as a generic XPath expression */
+    /* parse as a generic XPath expression, reparse is performed manually */
     LY_CHECK_GOTO(ret = lyxp_expr_parse(ctx, str_path, path_len, 0, &exp), error);
     tok_idx = 0;
+
+    /* alloc empty repeat (only '=', filled manually) */
+    exp->repeat = calloc(exp->size, sizeof *exp->repeat);
+    LY_CHECK_ERR_GOTO(!exp->repeat, LOGMEM(ctx); ret = LY_EMEM, error);
 
     LY_CHECK_GOTO(ret = ly_path_check_predicate(ctx, cur_node, exp, &tok_idx, prefix, pred), error);
 

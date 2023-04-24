@@ -1726,7 +1726,7 @@ test_type_leafref(void **state)
     path = "..[";
     assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
-    CHECK_LOG_CTX("Unparsed characters \"[\" left at the end of an XPath expression.", NULL);
+    CHECK_LOG_CTX("Unexpected XPath token \"[\" (\"[\"), expected \"Operator(Path)\".", NULL);
 
     path = "../";
     assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
@@ -2026,7 +2026,7 @@ test_type_leafref(void **state)
             "leaf address {type leafref{ path \"/interface[name = current()../ifname]/ip\";}}}",
             LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Parsing module \"tt\" failed.", NULL);
-    CHECK_LOG_CTX("Unexpected XPath token \"..\" (\"../ifname]/ip\"), expected \"]\".", "Line number 4.");
+    CHECK_LOG_CTX("Unexpected XPath token \"..\" (\"../ifname]/ip\"), expected \"Operator(Path)\".", "Line number 4.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module uu {namespace urn:uu;prefix uu;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
@@ -2050,7 +2050,7 @@ test_type_leafref(void **state)
             "leaf address {type leafref{ path \"/interface[name = current()/../]/ip\";}}}",
             LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Parsing module \"ww\" failed.", NULL);
-    CHECK_LOG_CTX("Unexpected XPath token \"]\" (\"]/ip\").", "Line number 4.");
+    CHECK_LOG_CTX("Unexpected XPath token \"]\" (\"]/ip\"), expected \"NameTest\".", "Line number 4.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module xx {namespace urn:xx;prefix xx;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"

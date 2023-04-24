@@ -214,7 +214,7 @@ test_data_xml(void **state)
             "defs", "xmlns:m=\"urn:tests:mod\"", "l1", "[1]", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"[1]\" value - syntax error.",
             "Schema location \"/defs:l1\", line number 1.");
-    CHECK_LOG_CTX("Unexpected XPath token \"[\" (\"[1]\").",
+    CHECK_LOG_CTX("Unexpected XPath token \"[\" (\"[1]\"), expected \"Operator(Path)\".",
             "Schema location \"/defs:l1\", line number 1.");
 
     TEST_ERROR_XML2("<cont xmlns=\"urn:tests:mod\"><l2/></cont>",
