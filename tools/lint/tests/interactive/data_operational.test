@@ -27,4 +27,35 @@ test data_operational_datastore_with_unknown_data {unknown data are ignored} {
     ly_cmd "data -t rpc -O $ddir/modmandatory_invalid.xml $ddir/modrpc.xml"
 }}
 
+test data_operational_notif_leafref {--operational data is referenced from notification-leafref} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modoper-leafref"
+    ly_cmd "data -t notif -O $ddir/modconfig.xml $ddir/modoper_leafref_notif.xml"
+}}
+
+test data_operational_nested_notif_leafref {--operational data is referenced from nested-notification-leafref} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modoper-leafref"
+    ly_cmd "data -t notif -O $ddir/modoper_leafref_ds.xml $ddir/modoper_leafref_notif2.xml"
+}}
+
+test data_operational_nested_notif_parent_missing {--operational data are invalid due to missing parent node} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modoper-leafref"
+    set msg "klf='key_val']\" not found in the operational data"
+    ly_cmd_err "data -t notif -O $ddir/modconfig.xml $ddir/modoper_leafref_notif2.xml" $msg
+}}
+
+test data_operational_action_leafref {--operational data is referenced from action-leafref} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modoper-leafref"
+    ly_cmd "data -t rpc -O $ddir/modoper_leafref_ds.xml $ddir/modoper_leafref_action.xml"
+}}
+
+test data_operational_rpc_leafref {--operational data is referenced from rpc-leafref} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modoper-leafref"
+    ly_cmd "data -t rpc -O $ddir/modconfig.xml $ddir/modoper_leafref_rpc.xml"
+}}
+
 cleanupTests
