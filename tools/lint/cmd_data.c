@@ -194,7 +194,7 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
             break;
         case 'O': { /* --operational */
             struct ly_in *in;
-            LYD_FORMAT f;
+            LYD_FORMAT f = LYD_UNKNOWN;
 
             if (operational) {
                 YLMSG_E("The operational datastore (-O) cannot be set multiple times.\n");

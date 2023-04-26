@@ -16,4 +16,8 @@ test data_operational_missing {--operational is omitted and the datastore conten
     ly_cmd_err "$mdir/modoper-leafref.yang $ddir/modoper_leafref_notif_err.xml" "Failed to parse input data file"
 } {}
 
+test data_operational_datastore_with_unknown_data {unknown data are ignored} {
+    ly_cmd "-t rpc -O $ddir/modmandatory_invalid.xml $mdir/modrpc.yang $ddir/modrpc.xml"
+} {}
+
 cleanupTests
