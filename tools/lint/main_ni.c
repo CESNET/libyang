@@ -908,12 +908,12 @@ fill_context(int argc, char *argv[], struct context *c)
     }
 
     if (c->data_operational.path && !c->data_type) {
-        YLMSG_E("Operational datastore takes effect only with RPCs/Actions/Replies/Notification input data types.\n");
+        YLMSG_W("Operational datastore takes effect only with RPCs/Actions/Replies/Notification input data types.\n");
         c->data_operational.path = NULL;
     }
 
     if (c->reply_rpc.path && (c->data_type != LYD_TYPE_REPLY_NETCONF)) {
-        YLMSG_E("Source RPC is needed only for NETCONF Reply input data type.\n");
+        YLMSG_W("Source RPC is needed only for NETCONF Reply input data type.\n");
         c->data_operational.path = NULL;
     } else if (!c->reply_rpc.path && (c->data_type == LYD_TYPE_REPLY_NETCONF)) {
         YLMSG_E("Missing source RPC (-R) for NETCONF Reply input data type.\n");
@@ -921,7 +921,7 @@ fill_context(int argc, char *argv[], struct context *c)
     }
 
     if ((c->schema_out_format != LYS_OUT_TREE) && c->line_length) {
-        YLMSG_E("--tree-line-length take effect only in case of the tree output format.\n");
+        YLMSG_W("--tree-line-length take effect only in case of the tree output format.\n");
     }
 
     /* default output stream */

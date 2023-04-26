@@ -21,6 +21,11 @@ test data_operational_missing {--operational is omitted and the datastore conten
     ly_cmd_err "data $ddir/modoper_leafref_notif_err.xml" "Failed to parse input data file"
 }}
 
+test data_operational_wrong_type {data are not defined as an operation} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd_wrn "data -t data -O $ddir/modconfig.xml $ddir/modleaf.xml" $err1
+}}
+
 test data_operational_datastore_with_unknown_data {unknown data are ignored} {
 -setup $ly_setup -cleanup $ly_cleanup -body {
     ly_cmd "load modrpc"
