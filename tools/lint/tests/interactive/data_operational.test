@@ -32,6 +32,14 @@ test data_operational_datastore_with_unknown_data {unknown data are ignored} {
     ly_cmd "data -t rpc -O $ddir/modmandatory_invalid.xml $ddir/modrpc.xml"
 }}
 
+test data_operational_empty_datastore {datastore is considered empty because it contains unknown data} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modrpc modnotif"
+    ly_cmd "data -t rpc -O $ddir/modmandatory_invalid.xml $ddir/modrpc.xml"
+    set msg "parent \"/modnotif:con\" not found in the operational data"
+    ly_cmd_err "data -t notif -O $ddir/modmandatory_invalid.xml $ddir/modnotif.xml" $msg
+}}
+
 test data_operational_notif_leafref {--operational data is referenced from notification-leafref} {
 -setup $ly_setup -cleanup $ly_cleanup -body {
     ly_cmd "load modoper-leafref"

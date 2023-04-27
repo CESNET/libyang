@@ -598,6 +598,60 @@ evaluate_xpath(const struct lyd_node *tree, const char *xpath)
     return 0;
 }
 
+/**
+ * @brief Checking that a parent data node exists in the datastore for the nested-notification and action.
+ *
+ * @param[in] op Operation to check.
+ * @param[in] oper_tree Data from datastore.
+ * @param[in] operational_f Operational datastore file information.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+check_operation_parent(struct lyd_node *op, struct lyd_node *oper_tree, struct cmdline_file *operational_f)
+{
+    LY_ERR ret;
+    struct ly_set *set = NULL;
+    char *path = NULL;
+
+    if (!op || !lyd_parent(op)) {
+        /* The function is defined only for nested-notification and action. */
+        return LY_SUCCESS;
+    }
+
+    if (!operational_f || (operational_f && !operational_f->in)) {
+        YLMSG_E("The --operational parameter needed to validate operation \"%s\" is missing.\n", LYD_NAME(op));
+        ret = LY_EVALID;
+        goto cleanup;
+    }
+
+    path = lyd_path(lyd_parent(op), LYD_PATH_STD, NULL, 0);
+    if (!path) {
+        ret = LY_EMEM;
+        goto cleanup;
+    }
+
+    if (!oper_tree) {
+        YLMSG_W("Operational datastore is empty or contains unknown data.\n");
+        YLMSG_E("Operation \"%s\" parent \"%s\" not found in the operational data.\n", LYD_NAME(op), path);
+        ret = LY_EVALID;
+        goto cleanup;
+    }
+    if ((ret = lyd_find_xpath(oper_tree, path, &set))) {
+        goto cleanup;
+    }
+    if (!set->count) {
+        YLMSG_E("Operation \"%s\" parent \"%s\" not found in the operational data.\n", LYD_NAME(op), path);
+        ret = LY_EVALID;
+        goto cleanup;
+    }
+
+cleanup:
+    ly_set_free(set, NULL);
+    free(path);
+
+    return ret;
+}
+
 LY_ERR
 process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FORMAT format, struct ly_out *out,
         uint32_t options_parse, uint32_t options_validate, uint32_t options_print, struct cmdline_file *operational_f,
@@ -605,7 +659,6 @@ process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FOR
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *tree = NULL, *op = NULL, *envp = NULL, *merged_tree = NULL, *oper_tree = NULL;
-    char *path = NULL;
     const char *xpath;
     struct ly_set *set = NULL;
 
@@ -731,21 +784,8 @@ process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FOR
                 goto cleanup;
             }
 
-            if (op && oper_tree && lyd_parent(op)) {
-                /* check operation parent existence */
-                path = lyd_path(lyd_parent(op), LYD_PATH_STD, NULL, 0);
-                if (!path) {
-                    ret = LY_EMEM;
-                    goto cleanup;
-                }
-                if ((ret = lyd_find_xpath(oper_tree, path, &set))) {
-                    goto cleanup;
-                }
-                if (!set->count) {
-                    YLMSG_E("Operation \"%s\" parent \"%s\" not found in the operational data.\n", LYD_NAME(op), path);
-                    ret = LY_EVALID;
-                    goto cleanup;
-                }
+            if ((ret = check_operation_parent(op, oper_tree, operational_f))) {
+                goto cleanup;
             }
         }
 
@@ -789,7 +829,6 @@ cleanup:
     lyd_free_all(envp);
     lyd_free_all(merged_tree);
     lyd_free_all(oper_tree);
-    free(path);
     ly_set_free(set, NULL);
     return ret;
 }
