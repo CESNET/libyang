@@ -68,9 +68,9 @@ cmd_data_help(void)
             "  -O FILE, --operational=FILE\n"
             "                Provide optional data to extend validation of the 'rpc',\n"
             "                'reply' or 'notif' TYPEs. The FILE is supposed to contain\n"
-            "                the :running configuration datastore and state data\n"
-            "                (operational datastore) referenced from the RPC/Notification.\n\n"
-
+            "                the operational datastore referenced from the operation.\n"
+            "                In case of a nested notification or action, its parent\n"
+            "                existence is also checked in these operational data.\n\n"
             "  -f FORMAT, --format=FORMAT\n"
             "                Print the data in one of the following formats:\n"
             "                xml, json, lyb\n"

@@ -153,7 +153,8 @@ help(int shortout)
             "        printing them in the specified format.\n\n"
             "    yanglint -t (nc-)rpc/notif [-O <operational-file>] <schema>... <file>\n"
             "        Validates the YANG/NETCONF RPC/notification <file> according to the <schema>(s) using\n"
-            "        <operational-file> with possible references to the operational datastore data.\n\n"
+            "        <operational-file> with possible references to the operational datastore data.\n"
+            "        To validate nested-notification or action, the <operational-file> is required.\n\n"
             "    yanglint -t nc-reply -R <rpc-file> [-O <operational-file>] <schema>... <file>\n"
             "        Validates the NETCONF rpc-reply <file> of RPC <rpc-file> according to the <schema>(s)\n"
             "        using <operational-file> with possible references to the operational datastore data.\n\n"
@@ -282,8 +283,8 @@ help(int shortout)
             "                Provide optional data to extend validation of the '(nc-)rpc',\n"
             "                '(nc-)reply' or '(nc-)notif' TYPEs. The FILE is supposed to contain\n"
             "                the operational datastore referenced from the operation.\n"
-            "                In case of a nested operation, its parent existence is also\n"
-            "                checked in these operational data.\n\n");
+            "                In case of a nested notification or action, its parent existence\n"
+            "                is also checked in these operational data.\n\n");
 
     printf("  -R FILE, --reply-rpc=FILE\n"
             "                Provide source RPC for parsing of the 'nc-reply' TYPE. The FILE\n"
