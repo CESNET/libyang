@@ -55,6 +55,7 @@ const char *schema_a = "module a {\n"
         "  anydata any {\n"
         "    config false;\n"
         "  }\n"
+        "  anyxml anyx;\n"
         "  leaf-list ll2 {\n"
         "    config false;\n"
         "    type string;\n"
@@ -390,6 +391,55 @@ test_path(void **state)
             "{\n"
             "  \"a:any\": {\n"
             "    \"elem\": \"val\"\n"
+            "  }\n"
+            "}\n");
+    free(str);
+    lyd_free_siblings(root);
+
+    /* anyxml */
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:anyx", "<a/><b/><c/>", 0, LYD_ANYDATA_XML, 0, &root, NULL);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+
+    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    assert_string_equal(str,
+            "<anyx xmlns=\"urn:tests:a\">\n"
+            "  <a/>\n"
+            "  <b/>\n"
+            "  <c/>\n"
+            "</anyx>\n");
+    free(str);
+    lyd_print_mem(&str, root, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    assert_string_equal(str,
+            "{\n"
+            "  \"a:anyx\": {\n"
+            "    \"a\": [null],\n"
+            "    \"b\": [null],\n"
+            "    \"c\": [null]\n"
+            "  }\n"
+            "}\n");
+    free(str);
+    lyd_free_siblings(root);
+
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:anyx", "{\"a\":[null],\"b\":[null],\"c\":[null]}", 0, LYD_ANYDATA_JSON, 0, &root, NULL);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+
+    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    assert_string_equal(str,
+            "<anyx xmlns=\"urn:tests:a\">\n"
+            "  <a/>\n"
+            "  <b/>\n"
+            "  <c/>\n"
+            "</anyx>\n");
+    free(str);
+    lyd_print_mem(&str, root, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    assert_string_equal(str,
+            "{\n"
+            "  \"a:anyx\": {\n"
+            "    \"a\": [null],\n"
+            "    \"b\": [null],\n"
+            "    \"c\": [null]\n"
             "  }\n"
             "}\n");
     free(str);
