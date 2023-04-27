@@ -299,6 +299,10 @@ lyd_create_any_datatree(const struct ly_ctx *ctx, struct ly_in *value_in, LYD_AN
         /* restore logging */
         ly_temp_log_options(NULL);
     }
+    if (rc && *tree) {
+        lyd_free_siblings(*tree);
+        *tree = NULL;
+    }
     return rc;
 }
 
