@@ -68,22 +68,27 @@ test data_type_rpc_action {Validation of action-statement by data --type rpc} {
 -setup $ly_setup -cleanup $ly_cleanup -body {
     ly_cmd "load modaction modleaf"
     ly_cmd_err "data -t rpc $ddir/modleaf.xml" "Missing the operation node."
-    ly_cmd "data -t rpc $ddir/modaction.xml"
+    ly_cmd "data -t rpc -O $ddir/modaction_ds.xml $ddir/modaction.xml"
 }}
 
 test data_type_rpc_action_reply {Validation of action-reply by data --type reply} {
 -setup $ly_setup -cleanup $ly_cleanup -body {
     ly_cmd "load modaction modleaf"
     ly_cmd_err "data -t rpc $ddir/modleaf.xml" "Missing the operation node."
-    ly_cmd "data -t reply $ddir/modaction_reply.xml"
+    ly_cmd "data -t reply -O $ddir/modaction_ds.xml $ddir/modaction_reply.xml"
 }}
 
 test data_type_notif {Validation of notification-statement by data --type notif} {
 -setup $ly_setup -cleanup $ly_cleanup -body {
     ly_cmd "load modnotif modleaf"
     ly_cmd_err "data -t notif $ddir/modleaf.xml" "Missing the operation node."
-    ly_cmd "data -t notif $ddir/modnotif.xml"
     ly_cmd "data -t notif $ddir/modnotif2.xml"
+}}
+
+test data_type_notif_nested {Validation of nested-notification-statement by data --type notif} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modnotif modleaf"
+    ly_cmd "data -t notif -O $ddir/modnotif_ds.xml $ddir/modnotif.xml"
 }}
 
 cleanupTests
