@@ -1,9 +1,10 @@
 /**
  * @file common.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief common internal definitions for libyang
  *
- * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -43,6 +44,13 @@ struct lysc_node;
 # define THREAD_LOCAL __declspec(thread)
 #else
 # error "Cannot define THREAD_LOCAL"
+#endif
+
+/** platform-specific environment variable path separator */
+#ifndef _WIN32
+# define PATH_SEPARATOR ":"
+#else
+# define PATH_SEPARATOR ";"
 #endif
 
 #define GETMACRO1(_1, NAME, ...) NAME
@@ -378,7 +386,6 @@ struct lys_module *ly_ctx_get_module_implemented2(const struct ly_ctx *ctx, cons
  *
  * @param[in] ptr Memory to reallocate.
  * @param[in] size New size of the memory block.
- *
  * @return Pointer to the new memory, NULL on error.
  */
 void *ly_realloc(void *ptr, size_t size);
@@ -504,7 +511,7 @@ LY_ERR ly_value_prefix_next(const char *str_begin, const char *str_end, uint32_t
 LY_ERR ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read);
 
 /**
- * Store UTF-8 character specified as 4byte integer into the dst buffer.
+ * @brief Store UTF-8 character specified as 4byte integer into the dst buffer.
  *
  * UTF-8 mapping:
  * 00000000 -- 0000007F:    0xxxxxxx
@@ -514,7 +521,7 @@ LY_ERR ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read);
  *
  * Includes checking for valid characters (following RFC 7950, sec 9.4)
  *
- * @param[in, out] dst Destination buffer to store the UTF-8 character, must provide enough space (up to 4 bytes) for storing the UTF-8 character.
+ * @param[in,out] dst Destination buffer to store the UTF-8 character, must provide enough space (up to 4 bytes) for storing the UTF-8 character.
  * @param[in] value 32b value of the UTF-8 character to store.
  * @param[out] bytes_written Number of bytes written into @p dst (size of the written UTF-8 character).
  * @return LY_SUCCESS on success
@@ -524,6 +531,7 @@ LY_ERR ly_pututf8(char *dst, uint32_t value, size_t *bytes_written);
 
 /**
  * @brief Get number of characters in the @p str, taking multibyte characters into account.
+ *
  * @param[in] str String to examine.
  * @param[in] bytes Number of valid bytes that are supposed to be taken into account in @p str.
  * This parameter is useful mainly for non NULL-terminated strings. In case of NULL-terminated
@@ -534,6 +542,7 @@ size_t ly_utf8len(const char *str, size_t bytes);
 
 /**
  * @brief Parse signed integer with possible limitation.
+ *
  * @param[in] val_str String value containing signed integer, note that
  * nothing else than whitespaces are expected after the value itself.
  * @param[in] val_len Length of the @p val_str string.
@@ -552,6 +561,7 @@ LY_ERR ly_parse_int(const char *val_str, size_t val_len, int64_t min, int64_t ma
 
 /**
  * @brief Parse unsigned integer with possible limitation.
+ *
  * @param[in] val_str String value containing unsigned integer, note that
  * nothing else than whitespaces are expected after the value itself.
  * @param[in] val_len Length of the @p val_str string.
@@ -572,7 +582,7 @@ LY_ERR ly_parse_uint(const char *val_str, size_t val_len, uint64_t max, int base
  *
  * node-identifier     = [prefix ":"] identifier
  *
- * @param[in, out] id Identifier to parse. When returned, it points to the first character which is not part of the identifier.
+ * @param[in,out] id Identifier to parse. When returned, it points to the first character which is not part of the identifier.
  * @param[out] prefix Node's prefix, NULL if there is not any.
  * @param[out] prefix_len Length of the node's prefix, 0 if there is not any.
  * @param[out] name Node's name.
@@ -584,7 +594,7 @@ LY_ERR ly_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len,
 /**
  * @brief parse instance-identifier's predicate, supports key-predicate, leaf-list-predicate and pos rules from YANG ABNF Grammar.
  *
- * @param[in, out] pred Predicate string (including the leading '[') to parse. The string is updated according to what was parsed
+ * @param[in,out] pred Predicate string (including the leading '[') to parse. The string is updated according to what was parsed
  * (even for error case, so it can be used to determine which substring caused failure).
  * @param[in] limit Limiting length of the @p pred. Function expects NULL terminated string which is not overread.
  * The limit value is not checked with each character, so it can be overread and the failure is detected later.
@@ -629,17 +639,11 @@ LY_ERR ly_munmap(void *addr, size_t length);
 /**
  * @brief Concatenate formating string to the @p dest.
  *
- * @param[in, out] dest String to be concatenated by @p format.
- *                 Note that the input string can be reallocated during concatenation.
+ * @param[in,out] dest String to be concatenated by @p format.
+ * Note that the input string can be reallocated during concatenation.
  * @param[in] format Formating string (as for printf) which is supposed to be added after @p dest.
  * @return LY_SUCCESS or LY_EMEM.
  */
 LY_ERR ly_strcat(char **dest, const char *format, ...);
-
-#ifndef _WIN32
-# define PATH_SEPARATOR ":"
-#else
-# define PATH_SEPARATOR ";"
-#endif
 
 #endif /* LY_COMMON_H_ */
