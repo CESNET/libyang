@@ -946,8 +946,7 @@ lydjson_maintain_children(struct lyd_node *parent, struct lyd_node **first_p, st
  * @param[in] name_len Length of the @p name string.
  * @param[in] prefix Prefix of the opaq node to create.
  * @param[in] prefix_len Length of the @p prefx string.
- * @param[in] parent Data parent of the opaq node to create, can be NULL in case of top level,
- * but must be set if @p first is not.
+ * @param[in] parent Data parent of the opaq node, to inherit module name from.
  * @param[in,out] status_inner_p In case of processing JSON array, this parameter points to a standalone
  * context status of the array content. Otherwise, it is supposed to be the same as @p status_p.
  * @param[out] node_p Pointer to the created opaq node.
@@ -973,8 +972,15 @@ lydjson_create_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_l
         LY_CHECK_RET(lydjson_value_type_hint(lydctx, status_inner_p, &type_hint));
     }
 
-    /* create node */
+    /* get the module name */
     lydjson_get_node_prefix(parent, prefix, prefix_len, &module_name, &module_name_len);
+    if (!module_name && !parent && lydctx->any_schema) {
+        /* in an anyxml/anydata tree, parsing first node, use the previous any schema node */
+        module_name = lydctx->any_schema->module->name;
+        module_name_len = strlen(module_name);
+    }
+
+    /* create node */
     ret = lyd_create_opaq(lydctx->jsonctx->ctx, name, name_len, prefix, prefix_len, module_name, module_name_len, value,
             value_len, &dynamic, LY_VALUE_JSON, NULL, type_hint, node_p);
     if (dynamic) {
@@ -1257,6 +1263,7 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, st
         lydctx->parse_opts |= LYD_PARSE_OPAQ | (ext ? LYD_PARSE_ONLY : 0);
         prev_int_opts = lydctx->int_opts;
         lydctx->int_opts |= LYD_INTOPT_ANY | LYD_INTOPT_WITH_SIBLINGS;
+        lydctx->any_schema = snode;
 
         /* process the anydata content */
         do {
@@ -1269,6 +1276,7 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, st
         /* restore parser options */
         lydctx->parse_opts = prev_parse_opts;
         lydctx->int_opts = prev_int_opts;
+        lydctx->any_schema = NULL;
 
         /* finish linking metadata */
         r = lydjson_metadata_finish(lydctx, &tree);

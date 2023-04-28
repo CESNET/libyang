@@ -136,7 +136,8 @@ struct lyd_json_ctx {
     /* callbacks */
     lyd_ctx_free_clb free;
 
-    struct lyjson_ctx *jsonctx;    /**< JSON context */
+    struct lyjson_ctx *jsonctx;         /**< JSON context */
+    const struct lysc_node *any_schema; /**< parent anyxml/anydata schema node if parsing nested data tree */
 };
 
 /**
