@@ -2,6 +2,7 @@ source [expr {[info exists ::env(TESTS_DIR)] ? "$env(TESTS_DIR)/non-interactive/
 
 set mdir "$::env(YANG_MODULES_DIR)"
 set ddir "$::env(TESTS_DIR)/data"
+set modnc "$mdir/ietf-netconf@2011-06-01.yang"
 
 test data_type_data {data --type data} {
     ly_cmd "-t data $mdir/modconfig.yang $ddir/modconfig.xml"
@@ -40,6 +41,11 @@ test data_type_edit_parse_only {No validation performed for data --type edit} {
 test data_type_rpc {Validation of rpc-statement by data --type rpc} {
     ly_cmd_err "-t rpc $mdir/modleaf.yang $ddir/modleaf.xml" "Missing the operation node."
     ly_cmd "-t rpc $mdir/modrpc.yang $ddir/modrpc.xml"
+} {}
+
+test data_type_rpc_nc {Validation of rpc-statement by data --type nc-rpc} {
+    ly_cmd_err "-t nc-rpc $modnc $mdir/modleaf.yang $ddir/modleaf.xml" "Missing NETCONF <rpc> envelope"
+    ly_cmd "-t nc-rpc $modnc $mdir/modrpc.yang $ddir/modrpc_nc.xml"
 } {}
 
 test data_type_rpc_reply {Validation of rpc-reply by data --type reply} {
