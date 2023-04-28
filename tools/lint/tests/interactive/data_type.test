@@ -57,6 +57,13 @@ test data_type_rpc {Validation of rpc-statement by data --type rpc} {
     ly_cmd "data -t rpc $ddir/modrpc.xml"
 }}
 
+test data_type_rpc_nc {Validation of rpc-statement by data --type nc-rpc} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modrpc modleaf ietf-netconf"
+    ly_cmd_err "data -t nc-rpc $ddir/modleaf.xml" "Missing NETCONF <rpc> envelope"
+    ly_cmd "data -t nc-rpc $ddir/modrpc_nc.xml"
+}}
+
 test data_type_rpc_reply {Validation of rpc-reply by data --type reply} {
 -setup $ly_setup -cleanup $ly_cleanup -body {
     ly_cmd "load modrpc modleaf"

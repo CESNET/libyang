@@ -47,6 +47,8 @@ cmd_data_help(void)
             "        edit          - Content of the NETCONF <edit-config> operation.\n"
             "        rpc           - Content of the NETCONF <rpc> message, defined as YANG's\n"
             "                        RPC/Action input statement.\n"
+            "        nc-rpc        - Similar to 'rpc' but expect and check also the NETCONF\n"
+            "                        envelopes <rpc> or <action>.\n"
             "        reply         - Reply to the RPC/Action. Note that the reply data are\n"
             "                        expected inside a container representing the original\n"
             "                        RPC/Action. This is necessary to identify appropriate\n"
@@ -231,6 +233,8 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
                 options_parse |= LYD_PARSE_ONLY | LYD_PARSE_NO_STATE;
             } else if (!strcasecmp(optarg, "rpc") || !strcasecmp(optarg, "action")) {
                 data_type = LYD_TYPE_RPC_YANG;
+            } else if (!strcasecmp(optarg, "nc-rpc")) {
+                data_type = LYD_TYPE_RPC_NETCONF;
             } else if (!strcasecmp(optarg, "reply") || !strcasecmp(optarg, "rpcreply")) {
                 data_type = LYD_TYPE_REPLY_YANG;
             } else if (!strcasecmp(optarg, "notif") || !strcasecmp(optarg, "notification")) {
