@@ -28,17 +28,21 @@
 
 #include "common.h"
 
-void
-cmd_data_help(void)
+static void
+cmd_data_help_header(void)
 {
     printf("Usage: data [-emn] [-t TYPE]\n"
             "            [-F FORMAT] [-f FORMAT] [-d DEFAULTS] [-o OUTFILE] <data1> ...\n"
             "       data [-n] -t (rpc | notif | reply) [-O FILE]\n"
             "            [-F FORMAT] [-f FORMAT] [-d DEFAULTS] [-o OUTFILE] <data1> ...\n"
             "       data [-en] [-t TYPE] [-F FORMAT] -x XPATH [-o OUTFILE] <data1> ...\n"
-            "                  Parse, validate and optionally print data instances\n\n"
+            "                  Parse, validate and optionally print data instances\n");
+}
 
-            "  -t TYPE, --type=TYPE\n"
+static void
+cmd_data_help_type(void)
+{
+    printf("  -t TYPE, --type=TYPE\n"
             "                Specify data tree type in the input data file(s):\n"
             "        data          - Complete datastore with status data (default type).\n"
             "        config        - Configuration datastore (without status data).\n"
@@ -54,9 +58,59 @@ cmd_data_help(void)
             "                        RPC/Action. This is necessary to identify appropriate\n"
             "                        data definitions in the schema module.\n"
             "        notif         - Notification instance (content of the <notification>\n"
-            "                        element without <eventTime>).\n\n"
+            "                        element without <eventTime>).\n");
+}
 
-            "  -e, --present Validate only with the schema modules whose data actually\n"
+static void
+cmd_data_help_format(void)
+{
+    printf("  -f FORMAT, --format=FORMAT\n"
+            "                Print the data in one of the following formats:\n"
+            "                xml, json, lyb\n"
+            "                Note that the LYB format requires the -o option specified.\n");
+}
+
+static void
+cmd_data_help_in_format(void)
+{
+    printf("  -F FORMAT, --in-format=FORMAT\n"
+            "                Load the data in one of the following formats:\n"
+            "                xml, json, lyb\n"
+            "                If input format not specified, it is detected from the file extension.\n");
+}
+
+static void
+cmd_data_help_default(void)
+{
+    printf("  -d MODE, --default=MODE\n"
+            "                Print data with default values, according to the MODE\n"
+            "                (to print attributes, ietf-netconf-with-defaults model\n"
+            "                must be loaded):\n"
+            "      all             - Add missing default nodes.\n"
+            "      all-tagged      - Add missing default nodes and mark all the default\n"
+            "                        nodes with the attribute.\n"
+            "      trim            - Remove all nodes with a default value.\n"
+            "      implicit-tagged - Add missing nodes and mark them with the attribute.\n");
+}
+
+static void
+cmd_data_help_xpath(void)
+{
+    printf("  -x XPATH, --xpath=XPATH\n"
+            "                Evaluate XPATH expression and print the nodes satysfying the.\n"
+            "                expression. The output format is specific and the option cannot\n"
+            "                be combined with the -f and -d options. Also all the data\n"
+            "                inputs are merged into a single data tree where the expression\n"
+            "                is evaluated, so the -m option is always set implicitly.\n");
+}
+
+void
+cmd_data_help(void)
+{
+    cmd_data_help_header();
+    printf("\n");
+    cmd_data_help_type();
+    printf("  -e, --present Validate only with the schema modules whose data actually\n"
             "                exist in the provided input data files. Takes effect only\n"
             "                with the 'data' or 'config' TYPEs. Used to avoid requiring\n"
             "                mandatory nodes from modules which data are not present in the\n"
@@ -66,40 +120,19 @@ cmd_data_help(void)
             "                In case of using -x option, the data are always merged.\n"
             "  -n, --not-strict\n"
             "                Do not require strict data parsing (silently skip unknown data),\n"
-            "                has no effect for schemas.\n\n"
+            "                has no effect for schemas.\n"
             "  -O FILE, --operational=FILE\n"
             "                Provide optional data to extend validation of the 'rpc',\n"
             "                'reply' or 'notif' TYPEs. The FILE is supposed to contain\n"
             "                the operational datastore referenced from the operation.\n"
             "                In case of a nested notification or action, its parent\n"
-            "                existence is also checked in these operational data.\n\n"
-            "  -f FORMAT, --format=FORMAT\n"
-            "                Print the data in one of the following formats:\n"
-            "                xml, json, lyb\n"
-            "                Note that the LYB format requires the -o option specified.\n"
-            "  -F FORMAT, --in-format=FORMAT\n"
-            "                Load the data in one of the following formats:\n"
-            "                xml, json, lyb\n"
-            "                If input format not specified, it is detected from the file extension.\n"
-            "  -d MODE, --default=MODE\n"
-            "                Print data with default values, according to the MODE\n"
-            "                (to print attributes, ietf-netconf-with-defaults model\n"
-            "                must be loaded):\n"
-            "      all             - Add missing default nodes.\n"
-            "      all-tagged      - Add missing default nodes and mark all the default\n"
-            "                        nodes with the attribute.\n"
-            "      trim            - Remove all nodes with a default value.\n"
-            "      implicit-tagged - Add missing nodes and mark them with the attribute.\n"
-            "  -o OUTFILE, --output=OUTFILE\n"
-            "                Write the output to OUTFILE instead of stdout.\n\n"
-
-            "  -x XPATH, --xpath=XPATH\n"
-            "                Evaluate XPATH expression and print the nodes satysfying the.\n"
-            "                expression. The output format is specific and the option cannot\n"
-            "                be combined with the -f and -d options. Also all the data\n"
-            "                inputs are merged into a single data tree where the expression\n"
-            "                is evaluated, so the -m option is always set implicitly.\n\n");
-
+            "                existence is also checked in these operational data.\n");
+    cmd_data_help_format();
+    cmd_data_help_in_format();
+    printf("  -o OUTFILE, --output=OUTFILE\n"
+            "                Write the output to OUTFILE instead of stdout.\n");
+    cmd_data_help_xpath();
+    printf("\n");
 }
 
 void
@@ -153,7 +186,7 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
                 options_print = (options_print & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_IMPL_TAG;
             } else {
                 YLMSG_E("Unknown default mode %s\n", optarg);
-                cmd_data_help();
+                cmd_data_help_default();
                 goto cleanup;
             }
             break;
@@ -166,7 +199,7 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
                 outformat = LYD_LYB;
             } else {
                 YLMSG_E("Unknown output format %s\n", optarg);
-                cmd_data_help();
+                cmd_data_help_format();
                 goto cleanup;
             }
             break;
@@ -179,7 +212,7 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
                 informat = LYD_LYB;
             } else {
                 YLMSG_E("Unknown input format %s\n", optarg);
-                cmd_data_help();
+                cmd_data_help_in_format();
                 goto cleanup;
             }
             break;
@@ -243,7 +276,7 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
                 /* default option */
             } else {
                 YLMSG_E("Unknown data tree type %s.\n", optarg);
-                cmd_data_help();
+                cmd_data_help_type();
                 goto cleanup;
             }
 
@@ -285,12 +318,12 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
 
     if (xpaths.count && outformat) {
         YLMSG_E("The --format option cannot be combined with --xpath option.\n");
-        cmd_data_help();
+        cmd_data_help_xpath();
         goto cleanup;
     }
     if (xpaths.count && (options_print & LYD_PRINT_WD_MASK)) {
         YLMSG_E("The --default option cannot be combined with --xpath option.\n");
-        cmd_data_help();
+        cmd_data_help_xpath();
         goto cleanup;
     }
 
