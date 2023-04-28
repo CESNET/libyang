@@ -68,8 +68,18 @@ test data_type_notif {Validation of notification-statement by data --type notif}
     ly_cmd "-t notif $mdir/modnotif.yang $ddir/modnotif2.xml"
 } {}
 
+test data_type_notif_nc {Validation of notification-statement by data --type nc-notif} {
+    ly_cmd_err "-t nc-notif $modnc $mdir/modleaf.yang $ddir/modleaf.xml" "Missing NETCONF <notification> envelope"
+    ly_cmd "-t nc-notif $modnc $mdir/modnotif.yang $ddir/modnotif2_nc.xml"
+} {}
+
 test data_type_notif_nested {Validation of nested-notification-statement by data --type notif} {
     ly_cmd "-t notif -O $ddir/modnotif_ds.xml $mdir/modnotif.yang $ddir/modnotif.xml"
+} {}
+
+test data_type_notif_nested_nc {Validation of nested-notification-statement by data --type nc-notif} {
+    ly_cmd_err "-t nc-notif $modnc $mdir/modleaf.yang $ddir/modleaf.xml" "Missing NETCONF <notification> envelope"
+    ly_cmd "-t nc-notif -O $ddir/modnotif_ds.xml $modnc $mdir/modnotif.yang $ddir/modnotif_nc.xml"
 } {}
 
 cleanupTests

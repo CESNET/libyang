@@ -58,7 +58,10 @@ cmd_data_help_type(void)
             "                        RPC/Action. This is necessary to identify appropriate\n"
             "                        data definitions in the schema module.\n"
             "        notif         - Notification instance (content of the <notification>\n"
-            "                        element without <eventTime>).\n");
+            "                        element without <eventTime>).\n"
+            "        nc-notif      - Similar to 'notif' but expect and check also the NETCONF\n"
+            "                        envelope <notification> with element <eventTime> and its\n"
+            "                        sibling as the actual notification.\n");
 }
 
 static void
@@ -272,6 +275,8 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
                 data_type = LYD_TYPE_REPLY_YANG;
             } else if (!strcasecmp(optarg, "notif") || !strcasecmp(optarg, "notification")) {
                 data_type = LYD_TYPE_NOTIF_YANG;
+            } else if (!strcasecmp(optarg, "nc-notif")) {
+                data_type = LYD_TYPE_NOTIF_NETCONF;
             } else if (!strcasecmp(optarg, "data")) {
                 /* default option */
             } else {
