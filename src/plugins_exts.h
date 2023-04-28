@@ -923,7 +923,10 @@ typedef void (*lyplg_ext_compile_free_clb)(const struct ly_ctx *ctx, struct lysc
 LIBYANG_API_DECL void lyplg_ext_cfree_instance_substatements(const struct ly_ctx *ctx, struct lysc_ext_substmt *substmts);
 
 /**
- * @brief Extension plugin implementing various aspects of a YANG extension
+ * @brief Extension plugin implementing various aspects of a YANG extension.
+ *
+ * Every plugin should have at least either ::parse() or ::compile() callback defined but other than that **all**
+ * the callbacks are **optional**.
  */
 struct lyplg_ext {
     const char *id;                         /**< plugin identification (mainly for distinguish incompatible versions
