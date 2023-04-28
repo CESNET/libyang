@@ -1514,9 +1514,10 @@ error:
 static LY_ERR
 lysp_add_internal_ietf_netconf(struct lysp_ctx *pctx, struct lysp_module *mod)
 {
-    struct lysp_ext_instance *extp;
+    struct lysp_ext_instance *extp, *prev_exts = mod->exts;
     struct lysp_stmt *stmt;
     struct lysp_import *imp;
+    uint32_t idx;
 
     /*
      * 1) edit-config's operation
@@ -1656,10 +1657,16 @@ lysp_add_internal_ietf_netconf(struct lysp_ctx *pctx, struct lysp_module *mod)
     stmt->prefix_data = mod;
     stmt->kw = LY_STMT_TYPE;
 
-    if (LY_ARRAY_COUNT(mod->exts) == 3) {
+    if (!prev_exts) {
         /* first extension instances */
         assert(pctx->main_ctx == pctx);
         LY_CHECK_RET(ly_set_add(&pctx->ext_inst, mod->exts, 1, NULL));
+    } else {
+        /* replace previously stored extension instances */
+        if (!ly_set_contains(&pctx->ext_inst, prev_exts, &idx)) {
+            LOGINT_RET(mod->mod->ctx);
+        }
+        pctx->ext_inst.objs[idx] = mod->exts;
     }
 
     /* create new imports for the used prefixes */
@@ -1687,9 +1694,10 @@ lysp_add_internal_ietf_netconf(struct lysp_ctx *pctx, struct lysp_module *mod)
 static LY_ERR
 lysp_add_internal_ietf_netconf_with_defaults(struct lysp_ctx *pctx, struct lysp_module *mod)
 {
-    struct lysp_ext_instance *extp;
+    struct lysp_ext_instance *extp, *prev_exts = mod->exts;
     struct lysp_stmt *stmt;
     struct lysp_import *imp;
+    uint32_t idx;
 
     /* add new extension instance */
     LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, extp, LY_EMEM);
@@ -1711,10 +1719,16 @@ lysp_add_internal_ietf_netconf_with_defaults(struct lysp_ctx *pctx, struct lysp_
     stmt->prefix_data = mod;
     stmt->kw = LY_STMT_TYPE;
 
-    if (LY_ARRAY_COUNT(mod->exts) == 1) {
-        /* first extension instance */
+    if (!prev_exts) {
+        /* first extension instances */
         assert(pctx->main_ctx == pctx);
         LY_CHECK_RET(ly_set_add(&pctx->ext_inst, mod->exts, 1, NULL));
+    } else {
+        /* replace previously stored extension instances */
+        if (!ly_set_contains(&pctx->ext_inst, prev_exts, &idx)) {
+            LOGINT_RET(mod->mod->ctx);
+        }
+        pctx->ext_inst.objs[idx] = mod->exts;
     }
 
     /* create new import for the used prefix */
