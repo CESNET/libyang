@@ -3867,11 +3867,17 @@ tro_ext_printer_tree(ly_bool compiled, void *ext, const struct lyspr_tree_ctx *p
 
     if (compiled) {
         ext_comp = ext;
-        return ext_comp->def->plugin->printer_ctree(ext, plug_ctx, &flags, &add_opts);
+        if (ext_comp->def->plugin->printer_ctree) {
+            return ext_comp->def->plugin->printer_ctree(ext, plug_ctx, &flags, &add_opts);
+        }
     } else {
         ext_pars = ext;
-        return ext_pars->record->plugin.printer_ptree(ext, plug_ctx, &flags, &add_opts);
+        if (ext_pars->record->plugin.printer_ptree) {
+            return ext_pars->record->plugin.printer_ptree(ext, plug_ctx, &flags, &add_opts);
+        }
     }
+
+    return LY_SUCCESS;
 }
 
 /**
