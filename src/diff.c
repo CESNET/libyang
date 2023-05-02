@@ -663,7 +663,10 @@ lyd_diff_find_match(const struct lyd_node *siblings, const struct lyd_node *targ
 {
     LY_ERR r;
 
-    if (target->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+    if (!target->schema) {
+        /* try to find the same opaque node */
+        r = lyd_find_sibling_opaq_next(siblings, LYD_NAME(target), match);
+    } else if (target->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
         /* try to find the exact instance */
         r = lyd_find_sibling_first(siblings, target, match);
     } else {
@@ -925,6 +928,60 @@ lyd_diff_siblings(const struct lyd_node *first, const struct lyd_node *second, u
 }
 
 /**
+ * @brief Find metadata/an attribute of a node.
+ *
+ * @param[in] node Node to search.
+ * @param[in] name Metadata/attribute name.
+ * @param[out] meta Metadata found, NULL if not found.
+ * @param[out] attr Attribute found, NULL if not found.
+ */
+static void
+lyd_diff_find_meta(const struct lyd_node *node, const char *name, struct lyd_meta **meta, struct lyd_attr **attr)
+{
+    struct lyd_meta *m;
+    struct lyd_attr *a;
+
+    *meta = NULL;
+    *attr = NULL;
+
+    if (node->schema) {
+        LY_LIST_FOR(node->meta, m) {
+            if (!strcmp(m->name, name) && !strcmp(m->annotation->module->name, "yang")) {
+                *meta = m;
+                break;
+            }
+        }
+    } else {
+        LY_LIST_FOR(((struct lyd_node_opaq *)node)->attr, a) {
+            /* name */
+            if (strcmp(a->name.name, name)) {
+                continue;
+            }
+
+            /* module */
+            switch (a->format) {
+            case LY_VALUE_JSON:
+                if (strcmp(a->name.module_name, "yang")) {
+                    continue;
+                }
+                break;
+            case LY_VALUE_XML:
+                if (strcmp(a->name.module_ns, "urn:ietf:params:xml:ns:yang:1")) {
+                    continue;
+                }
+                break;
+            default:
+                LOGINT(LYD_CTX(node));
+                return;
+            }
+
+            *attr = a;
+            break;
+        }
+    }
+}
+
+/**
  * @brief Learn operation of a diff node.
  *
  * @param[in] diff_node Diff node.
@@ -935,35 +992,31 @@ static LY_ERR
 lyd_diff_get_op(const struct lyd_node *diff_node, enum lyd_diff_op *op)
 {
     struct lyd_meta *meta = NULL;
+    struct lyd_attr *attr = NULL;
     const struct lyd_node *diff_parent;
     const char *str;
     char *path;
 
     for (diff_parent = diff_node; diff_parent; diff_parent = lyd_parent(diff_parent)) {
-        LY_LIST_FOR(diff_parent->meta, meta) {
-            if (!strcmp(meta->name, "operation") && !strcmp(meta->annotation->module->name, "yang")) {
-                str = lyd_get_meta_value(meta);
-                if ((str[0] == 'r') && (diff_parent != diff_node)) {
-                    /* we do not care about this operation if it's in our parent */
-                    continue;
-                }
-                *op = lyd_diff_str2op(str);
-                break;
-            }
+        lyd_diff_find_meta(diff_parent, "operation", &meta, &attr);
+        if (!meta && !attr) {
+            continue;
         }
-        if (meta) {
-            break;
+
+        str = meta ? lyd_get_meta_value(meta) : attr->value;
+        if ((str[0] == 'r') && (diff_parent != diff_node)) {
+            /* we do not care about this operation if it's in our parent */
+            continue;
         }
+        *op = lyd_diff_str2op(str);
+        return LY_SUCCESS;
     }
 
-    if (!meta) {
-        path = lyd_path(diff_node, LYD_PATH_STD, NULL, 0);
-        LOGERR(LYD_CTX(diff_node), LY_EINVAL, "Node \"%s\" without an operation.", path);
-        free(path);
-        return LY_EINT;
-    }
-
-    return LY_SUCCESS;
+    /* operation not found */
+    path = lyd_path(diff_node, LYD_PATH_STD, NULL, 0);
+    LOGERR(LYD_CTX(diff_node), LY_EINVAL, "Node \"%s\" without an operation.", path);
+    free(path);
+    return LY_EINT;
 }
 
 /**
@@ -1304,24 +1357,24 @@ lyd_diff_merge_none(struct lyd_node *diff_match, enum lyd_diff_op cur_op, const 
 }
 
 /**
- * @brief Remove an attribute from a node.
+ * @brief Remove metadata/an attribute from a node.
  *
- * @param[in] node Node with the metadata.
- * @param[in] name Metadata name.
+ * @param[in] node Node to update.
+ * @param[in] name Metadata/attribute name.
  */
 static void
 lyd_diff_del_meta(struct lyd_node *node, const char *name)
 {
     struct lyd_meta *meta;
+    struct lyd_attr *attr;
 
-    LY_LIST_FOR(node->meta, meta) {
-        if (!strcmp(meta->name, name) && !strcmp(meta->annotation->module->name, "yang")) {
-            lyd_free_meta_single(meta);
-            return;
-        }
+    lyd_diff_find_meta(node, name, &meta, &attr);
+
+    if (meta) {
+        lyd_free_meta_single(meta);
+    } else if (attr) {
+        lyd_free_attr_single(LYD_CTX(node), attr);
     }
-
-    assert(0);
 }
 
 /**
@@ -1335,16 +1388,13 @@ lyd_diff_del_meta(struct lyd_node *node, const char *name)
 static LY_ERR
 lyd_diff_change_op(struct lyd_node *node, enum lyd_diff_op op)
 {
-    struct lyd_meta *meta;
+    lyd_diff_del_meta(node, "operation");
 
-    LY_LIST_FOR(node->meta, meta) {
-        if (!strcmp(meta->name, "operation") && !strcmp(meta->annotation->module->name, "yang")) {
-            lyd_free_meta_single(meta);
-            break;
-        }
+    if (node->schema) {
+        return lyd_new_meta(LYD_CTX(node), node, NULL, "yang:operation", lyd_diff_op2str(op), 0, NULL);
+    } else {
+        return lyd_new_attr(node, "yang", "operation", lyd_diff_op2str(op), NULL);
     }
-
-    return lyd_new_meta(LYD_CTX(node), node, NULL, "yang:operation", lyd_diff_op2str(op), 0, NULL);
 }
 
 /**
@@ -1728,17 +1778,24 @@ lyd_diff_is_redundant(struct lyd_node *diff)
              */
             return 1;
         }
-    } else if ((op == LYD_DIFF_OP_NONE) && (diff->schema->nodetype & LYD_NODE_TERM)) {
-        /* check whether at least the default flags are different */
-        meta = lyd_find_meta(diff->meta, mod, "orig-default");
-        assert(meta);
-        str = lyd_get_meta_value(meta);
-
-        /* if previous and current dflt flags are the same, this node is redundant */
-        if ((!strcmp(str, "true") && (diff->flags & LYD_DEFAULT)) || (!strcmp(str, "false") && !(diff->flags & LYD_DEFAULT))) {
+    } else if (op == LYD_DIFF_OP_NONE) {
+        if (!diff->schema) {
+            /* opaque node with none must be redundant */
             return 1;
         }
-        return 0;
+
+        if (diff->schema->nodetype & LYD_NODE_TERM) {
+            /* check whether at least the default flags are different */
+            meta = lyd_find_meta(diff->meta, mod, "orig-default");
+            assert(meta);
+            str = lyd_get_meta_value(meta);
+
+            /* if previous and current dflt flags are the same, this node is redundant */
+            if ((!strcmp(str, "true") && (diff->flags & LYD_DEFAULT)) || (!strcmp(str, "false") && !(diff->flags & LYD_DEFAULT))) {
+                return 1;
+            }
+            return 0;
+        }
     }
 
     if (!child && (op == LYD_DIFF_OP_NONE)) {
