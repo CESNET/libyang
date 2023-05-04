@@ -329,7 +329,8 @@ enum lyd_type {
 /** @} datatype */
 
 /**
- * @brief Parse YANG data into an operation data tree.
+ * @brief Parse YANG data into an operation data tree. Specific parsing flags ::LYD_PARSE_ONLY, ::LYD_PARSE_STRICT and
+ * no validation flags are used.
  *
  * At least one of @p parent, @p tree, or @p op must always be set.
  *
