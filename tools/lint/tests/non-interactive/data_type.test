@@ -66,9 +66,23 @@ test data_type_rpc_action {Validation of action-statement by data --type rpc} {
     ly_cmd "-t rpc -O $ddir/modaction_ds.xml $mdir/modaction.yang $ddir/modaction.xml"
 } {}
 
+test data_type_rpc_action_nc {Validation of action-statement by data --type nc-rpc} {
+    ly_cmd_err "-t nc-rpc $mdir/modleaf.yang $ddir/modleaf.xml" "Missing NETCONF <rpc> envelope"
+    ly_cmd "-t nc-rpc -O $ddir/modaction_ds.xml $mdir/modaction.yang $ddir/modaction_nc.xml"
+} {}
+
 test data_type_rpc_action_reply {Validation of action-reply by data --type reply} {
     ly_cmd_err "-t rpc $mdir/modleaf.yang $ddir/modleaf.xml" "Missing the operation node."
     ly_cmd "-t reply -O $ddir/modaction_ds.xml $mdir/modaction.yang $ddir/modaction_reply.xml"
+} {}
+
+test data_type_rpc_action_reply_nc {Validation of action-reply by data --type nc-reply} {
+    set err1 "Missing NETCONF <rpc-reply> envelope"
+    set err2 "operational parameter needed"
+    ly_cmd_err "-t nc-reply -R $ddir/modaction_nc.xml $mdir/modaction.yang $mdir/modleaf.yang $ddir/modleaf.xml" $err1
+    ly_cmd_err "-t nc-reply $mdir/modaction.yang $ddir/modaction_reply_nc.xml" "Missing source RPC"
+    ly_cmd_err "-t nc-reply -R $ddir/modaction_nc.xml $mdir/modaction.yang $ddir/modaction_reply_nc.xml" $err2
+    ly_cmd "-t nc-reply -O $ddir/modaction_ds.xml -R $ddir/modaction_nc.xml $mdir/modaction.yang $ddir/modaction_reply_nc.xml"
 } {}
 
 test data_type_notif {Validation of notification-statement by data --type notif} {
