@@ -65,10 +65,22 @@ test data_operational_action_leafref {--operational data is referenced from acti
     ly_cmd "data -t rpc -O $ddir/modoper_leafref_ds.xml $ddir/modoper_leafref_action.xml"
 }}
 
+test data_operational_action_reply_leafref {--operational data is referenced from action-leafref output} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modoper-leafref"
+    ly_cmd "data -t reply -O $ddir/modoper_leafref_ds.xml $ddir/modoper_leafref_action_reply.xml"
+}}
+
 test data_operational_rpc_leafref {--operational data is referenced from rpc-leafref} {
 -setup $ly_setup -cleanup $ly_cleanup -body {
     ly_cmd "load modoper-leafref"
     ly_cmd "data -t rpc -O $ddir/modconfig.xml $ddir/modoper_leafref_rpc.xml"
+}}
+
+test data_operational_rpc_reply_leafref {--operational data is referenced from rpc-leafref output} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modoper-leafref"
+    ly_cmd "data -t reply -O $ddir/modconfig.xml $ddir/modoper_leafref_rpc_reply.xml"
 }}
 
 cleanupTests
