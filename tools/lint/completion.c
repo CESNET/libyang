@@ -415,6 +415,7 @@ complete_cmd(const char *buf, const char *hint, linenoiseCompletions *lc)
         {CMD_SEARCHPATH,  NULL,    linenoisePathCompletion, NULL},
         {CMD_DATA,        "-t",    NULL, get_data_type_arg},
         {CMD_DATA,        "-O",    linenoisePathCompletion, NULL},
+        {CMD_DATA,        "-R",    linenoisePathCompletion, NULL},
         {CMD_DATA,        "-f",    NULL, get_data_in_format_arg},
         {CMD_DATA,        "-F",    NULL, get_data_in_format_arg},
         {CMD_DATA,        "-d",    NULL, get_data_default_arg},

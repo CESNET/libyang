@@ -57,6 +57,10 @@ cmd_data_help_type(void)
             "                        expected inside a container representing the original\n"
             "                        RPC/Action. This is necessary to identify appropriate\n"
             "                        data definitions in the schema module.\n"
+            "        nc-reply      - Similar to 'reply' but expect and check also the NETCONF\n"
+            "                        envelope <rpc-reply> with output data nodes as direct\n"
+            "                        descendants. The original RPC/action invocation is expected\n"
+            "                        in a separate parameter '-R' and is parsed as 'nc-rpc'.\n"
             "        notif         - Notification instance (content of the <notification>\n"
             "                        element without <eventTime>).\n"
             "        nc-notif      - Similar to 'notif' but expect and check also the NETCONF\n"
@@ -129,7 +133,10 @@ cmd_data_help(void)
             "                'reply' or 'notif' TYPEs. The FILE is supposed to contain\n"
             "                the operational datastore referenced from the operation.\n"
             "                In case of a nested notification or action, its parent\n"
-            "                existence is also checked in these operational data.\n");
+            "                existence is also checked in these operational data.\n"
+            "  -R FILE, --reply-rpc=FILE\n"
+            "                Provide source RPC for parsing of the 'nc-reply' TYPE. The FILE\n"
+            "                is supposed to contain the source 'nc-rpc' operation of the reply.\n");
     cmd_data_help_format();
     cmd_data_help_in_format();
     printf("  -o OUTFILE, --output=OUTFILE\n"
@@ -153,6 +160,7 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
         {"merge",       no_argument,       NULL, 'm'},
         {"output",      required_argument, NULL, 'o'},
         {"operational", required_argument, NULL, 'O'},
+        {"reply-rpc",   required_argument, NULL, 'R'},
         {"not-strict",  no_argument,       NULL, 'n'},
         {"type",        required_argument, NULL, 't'},
         {"xpath",       required_argument, NULL, 'x'},
@@ -169,6 +177,7 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
     LYD_FORMAT informat = LYD_UNKNOWN;
     struct ly_out *out = NULL;
     struct cmdline_file *operational = NULL;
+    struct cmdline_file *reply_rpc = NULL;
     struct ly_set inputs = {0};
     struct ly_set xpaths = {0};
 
@@ -244,7 +253,20 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
             operational = fill_cmdline_file(NULL, in, optarg, f);
             break;
         } /* case 'O' */
+        case 'R': { /* --reply-rpc */
+            struct ly_in *in;
+            LYD_FORMAT f = LYD_UNKNOWN;
 
+            if (reply_rpc) {
+                YLMSG_E("The PRC of the reply (-R) cannot be set multiple times.\n");
+                goto cleanup;
+            }
+            if (get_input(optarg, NULL, &f, &in)) {
+                goto cleanup;
+            }
+            reply_rpc = fill_cmdline_file(NULL, in, optarg, f);
+            break;
+        } /* case 'R' */
         case 'e': /* --present */
             options_validate |= LYD_VALIDATE_PRESENT;
             break;
@@ -273,6 +295,8 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
                 data_type = LYD_TYPE_RPC_NETCONF;
             } else if (!strcasecmp(optarg, "reply") || !strcasecmp(optarg, "rpcreply")) {
                 data_type = LYD_TYPE_REPLY_YANG;
+            } else if (!strcasecmp(optarg, "nc-reply")) {
+                data_type = LYD_TYPE_REPLY_NETCONF;
             } else if (!strcasecmp(optarg, "notif") || !strcasecmp(optarg, "notification")) {
                 data_type = LYD_TYPE_NOTIF_YANG;
             } else if (!strcasecmp(optarg, "nc-notif")) {
@@ -338,6 +362,15 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
         operational = NULL;
     }
 
+    if (reply_rpc && (data_type != LYD_TYPE_REPLY_NETCONF)) {
+        YLMSG_W("Source RPC is needed only for NETCONF Reply input data type.\n");
+        free_cmdline_file(operational);
+        operational = NULL;
+    } else if (!reply_rpc && (data_type == LYD_TYPE_REPLY_NETCONF)) {
+        YLMSG_E("Missing source RPC (-R) for NETCONF Reply input data type.\n");
+        goto cleanup;
+    }
+
     /* process input data files provided as standalone command line arguments */
     for (int i = 0; i < argc - optind; i++) {
         struct ly_in *in;
@@ -362,7 +395,7 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
 
     /* parse, validate and print data */
     if (process_data(*ctx, data_type, data_merge, outformat, out, options_parse, options_validate, options_print,
-            operational, NULL, &inputs, &xpaths)) {
+            operational, reply_rpc, &inputs, &xpaths)) {
         goto cleanup;
     }
 

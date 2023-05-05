@@ -50,7 +50,15 @@ test data_type_rpc_nc {Validation of rpc-statement by data --type nc-rpc} {
 
 test data_type_rpc_reply {Validation of rpc-reply by data --type reply} {
     ly_cmd_err "-t rpc $mdir/modleaf.yang $ddir/modleaf.xml" "Missing the operation node."
+    ly_cmd_wrn "-t reply -R $ddir/modrpc.xml $mdir/modrpc.yang $ddir/modrpc_reply.xml" "needed only for NETCONF"
     ly_cmd "-t reply $mdir/modrpc.yang $ddir/modrpc_reply.xml"
+} {}
+
+test data_type_rpc_reply_nc {Validation of rpc-reply by data --type nc-reply} {
+    set err1 "Missing NETCONF <rpc-reply> envelope"
+    ly_cmd_err "-t nc-reply -R $ddir/modrpc_nc.xml $mdir/modrpc.yang $mdir/modleaf.yang $ddir/modleaf.xml" $err1
+    ly_cmd_err "-t nc-reply $mdir/modrpc.yang $ddir/modrpc_reply_nc.xml" "Missing source RPC"
+    ly_cmd "-t nc-reply -R $ddir/modrpc_nc.xml $mdir/modrpc.yang $ddir/modrpc_reply_nc.xml"
 } {}
 
 test data_type_rpc_action {Validation of action-statement by data --type rpc} {
