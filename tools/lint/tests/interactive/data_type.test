@@ -68,7 +68,16 @@ test data_type_rpc_reply {Validation of rpc-reply by data --type reply} {
 -setup $ly_setup -cleanup $ly_cleanup -body {
     ly_cmd "load modrpc modleaf"
     ly_cmd_err "data -t rpc $ddir/modleaf.xml" "Missing the operation node."
+    ly_cmd_wrn "data -t reply -R $ddir/modrpc.xml $ddir/modrpc_reply.xml" "needed only for NETCONF"
     ly_cmd "data -t reply $ddir/modrpc_reply.xml"
+}}
+
+test data_type_rpc_reply_nc {Validation of rpc-reply by data --type nc-reply} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modrpc modleaf"
+    ly_cmd_err "data -t nc-reply -R $ddir/modrpc_nc.xml $ddir/modleaf.xml" "Missing NETCONF <rpc-reply> envelope"
+    ly_cmd_err "data -t nc-reply $ddir/modrpc_reply_nc.xml" "Missing source RPC"
+    ly_cmd "data -t nc-reply -R $ddir/modrpc_nc.xml $ddir/modrpc_reply_nc.xml"
 }}
 
 test data_type_rpc_action {Validation of action-statement by data --type rpc} {

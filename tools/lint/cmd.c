@@ -243,7 +243,7 @@ COMMAND commands[] = {
     {"add", cmd_add, cmd_add_help, "Add a new module from a specific file", "DF:hi"},
     {"load", cmd_load, cmd_load_help, "Load a new schema from the searchdirs", "F:hi"},
     {"print", cmd_print, cmd_print_help, "Print a module", "f:hL:o:P:q"},
-    {"data", cmd_data, cmd_data_help, "Load, validate and optionally print instance data", "d:ef:F:hmo:O:r:nt:x:"},
+    {"data", cmd_data, cmd_data_help, "Load, validate and optionally print instance data", "d:ef:F:hmo:O:R:r:nt:x:"},
     {"list", cmd_list, cmd_list_help, "List all the loaded modules", "f:h"},
     {"feature", cmd_feature, cmd_feature_help, "Print all features of module(s) with their state", "haf"},
     {"searchpath", cmd_searchpath, cmd_searchpath_help, "Print/set the search path(s) for schemas", "ch"},
