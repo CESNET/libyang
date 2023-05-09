@@ -9336,11 +9336,13 @@ eval_and_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t repeat, s
     rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_AND, set, options);
     LY_CHECK_GOTO(rc, cleanup);
 
-    /* cast to boolean, we know that will be the final result */
-    if (!(options & LYXP_SKIP_EXPR) && (options & LYXP_SCNODE_ALL)) {
-        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
-    } else {
-        lyxp_set_cast(set, LYXP_SET_BOOLEAN);
+    if (!(options & LYXP_SKIP_EXPR)) {
+        if (options & LYXP_SCNODE_ALL) {
+            set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
+        } else {
+            /* cast to boolean, we know that will be the final result */
+            lyxp_set_cast(set, LYXP_SET_BOOLEAN);
+        }
     }
 
     /* ('and' EqualityExpr)* */
@@ -9406,11 +9408,13 @@ eval_or_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t repeat, st
     rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_OR, set, options);
     LY_CHECK_GOTO(rc, cleanup);
 
-    /* cast to boolean, we know that will be the final result */
-    if (!(options & LYXP_SKIP_EXPR) && (options & LYXP_SCNODE_ALL)) {
-        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
-    } else {
-        lyxp_set_cast(set, LYXP_SET_BOOLEAN);
+    if (!(options & LYXP_SKIP_EXPR)) {
+        if (options & LYXP_SCNODE_ALL) {
+            set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
+        } else {
+            /* cast to boolean, we know that will be the final result */
+            lyxp_set_cast(set, LYXP_SET_BOOLEAN);
+        }
     }
 
     /* ('or' AndExpr)* */
