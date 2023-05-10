@@ -14,4 +14,15 @@ test data_merge_validation_failed {Data is merged but validation failed.} {
     ly_cmd_err "-m $mdir/modmerge.yang $ddir/modmerge.xml $ddir/modmerge2.xml" "Merged data are not valid"
 } {}
 
+test data_merge_dataconfig {The merge option has effect only for 'data' and 'config' TYPEs} {
+    set wrn1 "option has effect only for"
+    ly_cmd_wrn "-m -t rpc $mdir/modrpc.yang $ddir/modrpc.xml $ddir/modrpc.xml" $wrn1
+    ly_cmd_wrn "-m -t notif $mdir/modnotif.yang $ddir/modnotif2.xml $ddir/modnotif2.xml" $wrn1
+    ly_cmd_wrn "-m -t get $mdir/modconfig.yang $mdir/modleaf.yang $ddir/modleaf.xml $ddir/modconfig.xml" $wrn1
+    ly_cmd_wrn "-m -t getconfig $mdir/modconfig.yang $mdir/modleaf.yang $ddir/modleaf.xml $ddir/modconfig2.xml" $wrn1
+    ly_cmd_wrn "-m -t edit $mdir/modconfig.yang $mdir/modleaf.yang $ddir/modleaf.xml $ddir/modconfig2.xml" $wrn1
+    ly_cmd "-m -t config $mdir/modconfig.yang $mdir/modleaf.yang $ddir/modleaf.xml $ddir/modconfig2.xml"
+    ly_cmd "-m -t data $mdir/modconfig.yang $mdir/modleaf.yang $ddir/modleaf.xml $ddir/modconfig.xml"
+} {}
+
 cleanupTests
