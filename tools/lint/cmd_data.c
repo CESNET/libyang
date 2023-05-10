@@ -336,6 +336,7 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
     if (data_merge) {
         if (data_type || (options_parse & LYD_PARSE_ONLY)) {
             /* switch off the option, incompatible input data type */
+            YLMSG_W("The --merge option has effect only for 'data' and 'config' TYPEs\n");
             data_merge = 0;
         } else {
             /* postpone validation after the merge of all the input data */

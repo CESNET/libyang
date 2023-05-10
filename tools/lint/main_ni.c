@@ -901,6 +901,7 @@ fill_context(int argc, char *argv[], struct context *c)
     if (c->data_merge) {
         if (c->data_type || (c->data_parse_options & LYD_PARSE_ONLY)) {
             /* switch off the option, incompatible input data type */
+            YLMSG_W("The --merge option has effect only for 'data' and 'config' TYPEs\n");
             c->data_merge = 0;
         } else {
             /* postpone validation after the merge of all the input data */
