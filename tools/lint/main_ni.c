@@ -261,7 +261,7 @@ help(int shortout)
             "      implicit-tagged - Add missing nodes and mark them with the attribute.\n\n");
 
     printf("  -E XPATH, --data-xpath=XPATH\n"
-            "                Evaluate XPATH expression over the data and print the nodes satysfying\n"
+            "                Evaluate XPATH expression over the data and print the nodes satisfying\n"
             "                the expression. The output format is specific and the option cannot\n"
             "                be combined with the -f and -d options. Also all the data\n"
             "                inputs are merged into a single data tree where the expression\n"
