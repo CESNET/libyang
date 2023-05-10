@@ -104,7 +104,7 @@ static void
 cmd_data_help_xpath(void)
 {
     printf("  -x XPATH, --xpath=XPATH\n"
-            "                Evaluate XPATH expression and print the nodes satysfying the.\n"
+            "                Evaluate XPATH expression and print the nodes satisfying the\n"
             "                expression. The output format is specific and the option cannot\n"
             "                be combined with the -f and -d options. Also all the data\n"
             "                inputs are merged into a single data tree where the expression\n"

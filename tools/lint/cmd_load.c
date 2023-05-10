@@ -31,7 +31,7 @@ cmd_load_help(void)
 {
     printf("Usage: load [-i] <module-name1>[@<revision>] [<module-name2>[@revision] ...]\n"
             "                  Add a new module of the specified name, yanglint will find\n"
-            "                  them in searchpaths. if the <revision> of the module not\n"
+            "                  them in searchpaths. If the <revision> of the module not\n"
             "                  specified, the latest revision available is loaded.\n\n"
             "  -F FEATURES, --features=FEATURES\n"
             "                  Features to support, default all in all implemented modules.\n"
