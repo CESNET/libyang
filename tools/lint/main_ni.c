@@ -585,6 +585,7 @@ fill_context(int argc, char *argv[], struct context *c)
         {NULL,               0,                 NULL, 0}
     };
     uint8_t data_type_set = 0;
+    uint32_t temp_lo = 0;
 
     c->ctx_options = YL_DEFAULT_CTX_OPTIONS;
     c->data_parse_options = YL_DEFAULT_DATA_PARSE_OPTIONS;
@@ -962,10 +963,15 @@ fill_context(int argc, char *argv[], struct context *c)
     }
 
     if (c->schema_node_path) {
+        /* turn off logging so that the message is not repeated */
+        ly_temp_log_options(&temp_lo);
+        /* search operation input */
         c->schema_node = lys_find_path(c->ctx, NULL, c->schema_node_path, 0);
         if (!c->schema_node) {
+            /* restore logging so an error may be displayed */
+            ly_temp_log_options(NULL);
+            /* search operation output */
             c->schema_node = lys_find_path(c->ctx, NULL, c->schema_node_path, 1);
-
             if (!c->schema_node) {
                 YLMSG_E("Invalid schema path.\n");
                 return -1;
