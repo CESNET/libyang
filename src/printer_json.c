@@ -418,7 +418,7 @@ json_print_attribute(struct jsonpr_ctx *pctx, const struct lyd_node_opaq *node, 
     struct lyd_attr *attr;
 
     if (wdmod) {
-        ly_print_(pctx->out, "%*s\"%s:default\":true", INDENT, wdmod->name);
+        ly_print_(pctx->out, "%*s\"%s:default\":%strue", INDENT, wdmod->name, DO_FORMAT ? " " : "");
         LEVEL_PRINTED;
     }
 
@@ -455,7 +455,7 @@ json_print_metadata(struct jsonpr_ctx *pctx, const struct lyd_node *node, const 
     struct lyd_meta *meta;
 
     if (wdmod) {
-        ly_print_(pctx->out, "%*s\"%s:default\":true", INDENT, wdmod->name);
+        ly_print_(pctx->out, "%*s\"%s:default\":%strue", INDENT, wdmod->name, DO_FORMAT ? " " : "");
         LEVEL_PRINTED;
     }
 
