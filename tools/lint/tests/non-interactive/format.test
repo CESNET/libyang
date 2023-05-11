@@ -36,6 +36,10 @@ test format_data_json {Print data in json format} {
     ly_cmd "-f json $mdir/modleaf.yang $ddir/modleaf.xml" "{\n  \"modleaf:lfl\": 7\n}"
 } {}
 
+test format_data_lyb_err {Printing in LYB format: expect error due to missing parameter} {
+    ly_cmd_err "-f lyb $mdir/modleaf.yang $ddir/modleaf.xml" "The LYB format requires the -o"
+} {}
+
 test format_tree_submodule {Print submodule in tree format} {
     ly_cmd "-s modsub -f tree $mdir/modinclude.yang" "submodule: modsub"
 } {}

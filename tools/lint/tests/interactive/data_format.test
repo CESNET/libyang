@@ -14,4 +14,10 @@ test data_format_json {Print data in json format} {
     ly_cmd "data -f json $ddir/modleaf.xml" "{\r\n  \"modleaf:lfl\": 7\r\n}"
 }}
 
+test data_format_lyb_err {Print data in lyb format} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modleaf"
+    ly_cmd_err "data -f lyb $ddir/modleaf.xml" "The LYB format requires the -o"
+}}
+
 cleanupTests
