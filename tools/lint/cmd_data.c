@@ -372,6 +372,11 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
         goto cleanup;
     }
 
+    if (!out && (outformat == LYD_LYB)) {
+        YLMSG_E("The LYB format requires the -o option specified.\n");
+        goto cleanup;
+    }
+
     /* process input data files provided as standalone command line arguments */
     for (int i = 0; i < argc - optind; i++) {
         struct ly_in *in;

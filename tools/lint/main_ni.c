@@ -927,6 +927,10 @@ fill_context(int argc, char *argv[], struct context *c)
         YLMSG_W("--tree-line-length take effect only in case of the tree output format.\n");
     }
 
+    if (!c->out && (c->data_out_format == LYD_LYB)) {
+        YLMSG_E("The LYB format requires the -o option specified.\n");
+        return -1;
+    }
     /* default output stream */
     if (!c->out) {
         if (ly_out_new_file(stdout, &c->out)) {
