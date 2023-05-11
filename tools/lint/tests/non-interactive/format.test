@@ -1,6 +1,7 @@
 source [expr {[info exists ::env(TESTS_DIR)] ? "$env(TESTS_DIR)/non-interactive/ly.tcl" : "ly.tcl"}]
 
 set mdir $::env(YANG_MODULES_DIR)
+set ddir $::env(TESTS_DIR)/data
 set ipv6_path "/ietf-interfaces:interfaces/interface/ietf-ip:ipv6/address"
 
 test format_yang {} {
@@ -25,6 +26,14 @@ test format_info {} {
 
 test format_tree {} {
     ly_cmd "-f tree $mdir/modleaf.yang" "\\+--rw lfl"
+} {}
+
+test format_data_xml {Print data in xml format} {
+    ly_cmd "-f xml $mdir/modleaf.yang $ddir/modleaf.xml" "<lfl xmlns=\"urn:yanglint:modleaf\">7</lfl>"
+} {}
+
+test format_data_json {Print data in json format} {
+    ly_cmd "-f json $mdir/modleaf.yang $ddir/modleaf.xml" "{\n  \"modleaf:lfl\": 7\n}"
 } {}
 
 test format_tree_submodule {Print submodule in tree format} {
