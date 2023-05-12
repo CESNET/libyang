@@ -1998,7 +1998,6 @@ lyd_parse_json_restconf(const struct ly_ctx *ctx, const struct lysc_ext_instance
     struct lyd_json_ctx *lydctx;
     enum LYJSON_PARSER_STATUS status;
     uint32_t i, int_opts = 0, close_elem = 0;
-    ly_bool parsed_data_nodes = 0;
 
     assert(ctx && in && lydctx_p);
     assert(!(parse_opts & ~LYD_PARSE_OPTS_MASK));
@@ -2054,7 +2053,6 @@ lyd_parse_json_restconf(const struct ly_ctx *ctx, const struct lysc_ext_instance
     do {
         r = lydjson_subtree_r(lydctx, parent, first_p, parsed);
         LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
-        parsed_data_nodes = 1;
 
         status = lyjson_ctx_status(lydctx->jsonctx);
 
@@ -2092,11 +2090,6 @@ lyd_parse_json_restconf(const struct ly_ctx *ctx, const struct lysc_ext_instance
     /* finish linking metadata */
     r = lydjson_metadata_finish(lydctx, parent ? lyd_node_child_p(parent) : first_p);
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-
-    if (!parsed_data_nodes) {
-        /* no data nodes were parsed */
-        lydctx->op_node = NULL;
-    }
 
 cleanup:
     /* there should be no unres stored if validation should be skipped */
