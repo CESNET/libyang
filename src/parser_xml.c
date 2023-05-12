@@ -1278,57 +1278,6 @@ cleanup:
 }
 
 /**
- * @brief Validate eventTime date-and-time value.
- *
- * @param[in] node Opaque eventTime node.
- * @return LY_SUCCESS on success.
- * @return LY_ERR value on error.
- */
-static LY_ERR
-lydxml_env_netconf_eventtime_validate(const struct lyd_node *node)
-{
-    LY_ERR rc = LY_SUCCESS;
-    struct ly_ctx *ctx = (struct ly_ctx *)LYD_CTX(node);
-    struct lysc_ctx cctx;
-    const struct lys_module *mod;
-    LY_ARRAY_COUNT_TYPE u;
-    struct ly_err_item *err = NULL;
-    struct lysp_type *type_p = NULL;
-    struct lysc_pattern **patterns = NULL;
-    const char *value;
-
-    LYSC_CTX_INIT_CTX(cctx, ctx);
-
-    /* get date-and-time parsed type */
-    mod = ly_ctx_get_module_latest(ctx, "ietf-yang-types");
-    assert(mod);
-    LY_ARRAY_FOR(mod->parsed->typedefs, u) {
-        if (!strcmp(mod->parsed->typedefs[u].name, "date-and-time")) {
-            type_p = &mod->parsed->typedefs[u].type;
-            break;
-        }
-    }
-    assert(type_p);
-
-    /* compile patterns */
-    assert(type_p->patterns);
-    LY_CHECK_GOTO(rc = lys_compile_type_patterns(&cctx, type_p->patterns, NULL, &patterns), cleanup);
-
-    /* validate */
-    value = lyd_get_value(node);
-    rc = lyplg_type_validate_patterns(patterns, value, strlen(value), &err);
-
-cleanup:
-    FREE_ARRAY(&cctx.free_ctx, patterns, lysc_pattern_free);
-    if (rc && err) {
-        LOGVAL_ERRITEM(ctx, err);
-        ly_err_free(err);
-        LOGVAL(ctx, LYVE_DATA, "Invalid \"eventTime\" in the notification.");
-    }
-    return rc;
-}
-
-/**
  * @brief Parse all expected non-data XML elements of a NETCONF notification message.
  *
  * @param[in] xmlctx XML parser context.
@@ -1369,7 +1318,7 @@ lydxml_env_netconf_notif(struct lyxml_ctx *xmlctx, struct lyd_node **envp, uint3
     lyd_insert_node(*envp, NULL, child, 0);
 
     /* validate value */
-    r = lydxml_env_netconf_eventtime_validate(child);
+    r = lyd_parser_notif_eventtime_validate(child);
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
     /* finish child parsing */
@@ -1868,9 +1817,6 @@ lyd_parse_xml_netconf(const struct ly_ctx *ctx, const struct lysc_ext_instance *
     assert(ctx && in && lydctx_p);
     assert(!(parse_opts & ~LYD_PARSE_OPTS_MASK));
     assert(!(val_opts & ~LYD_VALIDATE_OPTS_MASK));
-
-    assert((data_type == LYD_TYPE_RPC_NETCONF) || (data_type == LYD_TYPE_NOTIF_NETCONF) ||
-            (data_type == LYD_TYPE_REPLY_NETCONF));
     assert(!(parse_opts & LYD_PARSE_SUBTREE));
 
     /* init context */
@@ -1906,6 +1852,32 @@ lyd_parse_xml_netconf(const struct ly_ctx *ctx, const struct lysc_ext_instance *
             LOGVAL(ctx, LYVE_DATA, "Missing NETCONF <rpc-reply> envelope or in incorrect namespace.");
         }
         LY_CHECK_GOTO(rc, cleanup);
+        break;
+    case LYD_TYPE_RPC_RESTCONF:
+        assert(parent);
+
+        /* parse "input" */
+        rc = lydxml_envelope(lydctx->xmlctx, "input", lyd_owner_module(parent)->ns, 0, envp);
+        if (rc == LY_ENOT) {
+            LOGVAL(ctx, LYVE_DATA, "Missing RESTCONF \"input\" object or in incorrect namespace.");
+        }
+        LY_CHECK_GOTO(rc, cleanup);
+
+        int_opts = LYD_INTOPT_WITH_SIBLINGS | LYD_INTOPT_RPC | LYD_INTOPT_ACTION;
+        close_elem = 1;
+        break;
+    case LYD_TYPE_REPLY_RESTCONF:
+        assert(parent);
+
+        /* parse "output" */
+        rc = lydxml_envelope(lydctx->xmlctx, "output", lyd_owner_module(parent)->ns, 0, envp);
+        if (rc == LY_ENOT) {
+            LOGVAL(ctx, LYVE_DATA, "Missing RESTCONF \"output\" object or in incorrect namespace.");
+        }
+        LY_CHECK_GOTO(rc, cleanup);
+
+        int_opts = LYD_INTOPT_WITH_SIBLINGS | LYD_INTOPT_REPLY;
+        close_elem = 1;
         break;
     default:
         LOGINT(ctx);

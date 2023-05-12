@@ -777,6 +777,82 @@ test_reply(void **state)
     /* TODO */
 }
 
+static void
+test_restconf_rpc(void **state)
+{
+    const char *data;
+    struct ly_in *in;
+    struct lyd_node *tree, *envp;
+
+    assert_non_null((ly_ctx_load_module(UTEST_LYCTX, "ietf-netconf-nmda", "2019-01-07", NULL)));
+
+    assert_int_equal(LY_SUCCESS, lyd_new_path(NULL, UTEST_LYCTX, "/ietf-netconf-nmda:edit-data", NULL, 0, &tree));
+
+    data = "{\"ietf-netconf-nmda:input\":{"
+            "\"datastore\":\"ietf-datastores:running\","
+            "\"config\":{\"a:cp\":{\"z\":[null],\"@z\":{\"ietf-netconf:operation\":\"replace\"}},"
+            "\"a:l1\":[{\"@\":{\"ietf-netconf:operation\":\"replace\"},\"a\":\"val_a\",\"b\":\"val_b\",\"c\":\"val_c\"}]}"
+            "}}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, tree, in, LYD_JSON, LYD_TYPE_RPC_RESTCONF, &envp, NULL));
+    ly_in_free(in, 0);
+
+    /* the same just connected to the edit-data RPC */
+    data = "{\"ietf-netconf-nmda:edit-data\":{"
+            "\"datastore\":\"ietf-datastores:running\","
+            "\"config\":{\"a:cp\":{\"z\":[null],\"@z\":{\"ietf-netconf:operation\":\"replace\"}},"
+            "\"a:l1\":[{\"@\":{\"ietf-netconf:operation\":\"replace\"},\"a\":\"val_a\",\"b\":\"val_b\",\"c\":\"val_c\"}]}"
+            "}}";
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
+    lyd_free_all(envp);
+}
+
+static void
+test_restconf_notification(void **state)
+{
+    const char *data;
+    struct ly_in *in;
+    struct lyd_node *tree, *ntf;
+
+    data = "{\"ietf-restconf:notification\":{\"eventTime\":\"2013-12-21T00:01:00Z\",\"a:c\":{\"n1\":{\"nl\":\"value\"}}}}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_NOTIF_RESTCONF, &tree, &ntf));
+    ly_in_free(in, 0);
+
+    /* envelopes separately */
+    data = "{\"ietf-restconf:notification\":{\"eventTime\":\"2013-12-21T00:01:00Z\"}}";
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+
+    /* notification with the parent node */
+    data = "{\"a:c\":{\"n1\":{\"nl\":\"value\"}}}";
+    CHECK_LYD_STRING(lyd_parent(ntf), LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+
+    lyd_free_all(tree);
+    lyd_free_all(ntf);
+}
+
+static void
+test_restconf_reply(void **state)
+{
+    const char *data;
+    struct ly_in *in;
+    struct lyd_node *tree, *envp;
+
+    assert_int_equal(LY_SUCCESS, lyd_new_path(NULL, UTEST_LYCTX, "/a:c/act", NULL, 0, &tree));
+
+    data = "{\"a:output\":{\"al\":25}}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, lyd_child(tree), in, LYD_JSON, LYD_TYPE_REPLY_RESTCONF, &envp, NULL));
+    ly_in_free(in, 0);
+
+    /* connected to the RPC with the parent */
+    data = "{\"a:c\":{\"act\":{\"al\":25}}}";
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
+    lyd_free_all(envp);
+}
+
 int
 main(void)
 {
@@ -792,6 +868,9 @@ main(void)
         UTEST(test_action, setup),
         UTEST(test_notification, setup),
         UTEST(test_reply, setup),
+        UTEST(test_restconf_rpc, setup),
+        UTEST(test_restconf_notification, setup),
+        UTEST(test_restconf_reply, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

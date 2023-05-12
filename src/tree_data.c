@@ -261,28 +261,7 @@ lyd_parse_data_path(const struct ly_ctx *ctx, const char *path, LYD_FORMAT forma
  *
  * At least one of @p parent, @p tree, or @p op must always be set.
  *
- * Specific @p data_type values have different parameter meaning as follows:
- * - ::LYD_TYPE_RPC_NETCONF:
- *   - @p parent - must be NULL, the whole RPC is expected;
- *   - @p format - must be ::LYD_XML, NETCONF supports only this format;
- *   - @p tree - must be provided, all the NETCONF-specific XML envelopes will be returned here as
- *               a separate opaque data tree, even if the function fails, this may be returned;
- *   - @p op - must be provided, the RPC/action data tree itself will be returned here, pointing to the operation;
- *
- * - ::LYD_TYPE_NOTIF_NETCONF:
- *   - @p parent - must be NULL, the whole notification is expected;
- *   - @p format - must be ::LYD_XML, NETCONF supports only this format;
- *   - @p tree - must be provided, all the NETCONF-specific XML envelopes will be returned here as
- *               a separate opaque data tree, even if the function fails, this may be returned;
- *   - @p op - must be provided, the notification data tree itself will be returned here, pointing to the operation;
- *
- * - ::LYD_TYPE_REPLY_NETCONF:
- *   - @p parent - must be set, pointing to the invoked RPC operation (RPC or action) node;
- *   - @p format - must be ::LYD_XML, NETCONF supports only this format;
- *   - @p tree - must be provided, all the NETCONF-specific XML envelopes will be returned here as
- *               a separate opaque data tree, even if the function fails, this may be returned;
- *   - @p op - must be NULL, the reply is appended to the RPC;
- *   Note that there are 3 kinds of NETCONF replies - ok, error, and data. Only data reply appends any nodes to the RPC.
+ * Specific @p data_type values have different parameter meaning as mentioned for ::lyd_parse_op().
  *
  * @param[in] ctx libyang context.
  * @param[in] ext Extension instance providing the specific schema tree to match with the data being parsed.
@@ -304,6 +283,7 @@ lyd_parse_op_(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
     struct ly_set parsed = {0};
     struct lyd_node *first = NULL, *envp = NULL;
     uint32_t i, parse_opts, val_opts, int_opts = 0;
+    ly_bool proto_msg = 0;
 
     if (!ctx) {
         ctx = LYD_CTX(parent);
@@ -325,20 +305,51 @@ lyd_parse_op_(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
     val_opts = 0;
 
     switch (data_type) {
-
-    /* special XML NETCONF data types */
     case LYD_TYPE_RPC_NETCONF:
     case LYD_TYPE_NOTIF_NETCONF:
         LY_CHECK_ARG_RET(ctx, format == LYD_XML, !parent, tree, op, LY_EINVAL);
-    /* fallthrough */
+        proto_msg = 1;
+        break;
     case LYD_TYPE_REPLY_NETCONF:
-        if (data_type == LYD_TYPE_REPLY_NETCONF) {
-            LY_CHECK_ARG_RET(ctx, format == LYD_XML, parent, parent->schema->nodetype & (LYS_RPC | LYS_ACTION), tree, !op,
-                    LY_EINVAL);
-        }
+        LY_CHECK_ARG_RET(ctx, format == LYD_XML, parent, parent->schema, parent->schema->nodetype & (LYS_RPC | LYS_ACTION),
+                tree, !op, LY_EINVAL);
+        proto_msg = 1;
+        break;
+    case LYD_TYPE_RPC_RESTCONF:
+    case LYD_TYPE_REPLY_RESTCONF:
+        LY_CHECK_ARG_RET(ctx, parent, parent->schema, parent->schema->nodetype & (LYS_RPC | LYS_ACTION), tree, !op, LY_EINVAL);
+        proto_msg = 1;
+        break;
+    case LYD_TYPE_NOTIF_RESTCONF:
+        LY_CHECK_ARG_RET(ctx, format == LYD_JSON, !parent, tree, op, LY_EINVAL);
+        proto_msg = 1;
+        break;
 
-        /* parse the NETCONF message */
-        rc = lyd_parse_xml_netconf(ctx, ext, parent, &first, in, parse_opts, val_opts, data_type, &envp, &parsed, &lydctx);
+    /* set internal opts */
+    case LYD_TYPE_RPC_YANG:
+        int_opts = LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NO_SIBLINGS;
+        break;
+    case LYD_TYPE_NOTIF_YANG:
+        int_opts = LYD_INTOPT_NOTIF | LYD_INTOPT_NO_SIBLINGS;
+        break;
+    case LYD_TYPE_REPLY_YANG:
+        int_opts = LYD_INTOPT_REPLY | LYD_INTOPT_NO_SIBLINGS;
+        break;
+    case LYD_TYPE_DATA_YANG:
+        LOGINT(ctx);
+        rc = LY_EINT;
+        goto cleanup;
+    }
+
+    /* parse a full protocol message */
+    if (proto_msg) {
+        if (format == LYD_XML) {
+            /* parse the NETCONF (or RESTCONF XML) message */
+            rc = lyd_parse_xml_netconf(ctx, ext, parent, &first, in, parse_opts, val_opts, data_type, &envp, &parsed, &lydctx);
+        } else {
+            /* parse the RESTCONF message */
+            rc = lyd_parse_json_restconf(ctx, ext, parent, &first, in, parse_opts, val_opts, data_type, &envp, &parsed, &lydctx);
+        }
         if (rc) {
             if (envp) {
                 /* special situation when the envelopes were parsed successfully */
@@ -357,21 +368,6 @@ lyd_parse_op_(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
         if (op) {
             *op = lydctx->op_node;
         }
-        goto cleanup;
-
-    /* set internal opts */
-    case LYD_TYPE_RPC_YANG:
-        int_opts = LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NO_SIBLINGS;
-        break;
-    case LYD_TYPE_NOTIF_YANG:
-        int_opts = LYD_INTOPT_NOTIF | LYD_INTOPT_NO_SIBLINGS;
-        break;
-    case LYD_TYPE_REPLY_YANG:
-        int_opts = LYD_INTOPT_REPLY | LYD_INTOPT_NO_SIBLINGS;
-        break;
-    case LYD_TYPE_DATA_YANG:
-        LOGINT(ctx);
-        rc = LY_EINT;
         goto cleanup;
     }
 

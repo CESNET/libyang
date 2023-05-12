@@ -59,6 +59,7 @@ struct lysc_node;
 #define GETMACRO4(_1, _2, _3, _4, NAME, ...) NAME
 #define GETMACRO5(_1, _2, _3, _4, _5, NAME, ...) NAME
 #define GETMACRO6(_1, _2, _3, _4, _5, _6, NAME, ...) NAME
+#define GETMACRO7(_1, _2, _3, _4, _5, _6, _7, NAME, ...) NAME
 
 /******************************************************************************
  * Logger
@@ -220,8 +221,10 @@ void ly_log_dbg(uint32_t group, const char *format, ...);
     LY_CHECK_ARG_RET1(CTX, ARG4, RETVAL)
 #define LY_CHECK_ARG_RET5(CTX, ARG1, ARG2, ARG3, ARG4, ARG5, RETVAL) LY_CHECK_ARG_RET4(CTX, ARG1, ARG2, ARG3, ARG4, RETVAL);\
     LY_CHECK_ARG_RET1(CTX, ARG5, RETVAL)
-#define LY_CHECK_ARG_RET(CTX, ...) GETMACRO6(__VA_ARGS__, LY_CHECK_ARG_RET5, LY_CHECK_ARG_RET4, LY_CHECK_ARG_RET3, \
-    LY_CHECK_ARG_RET2, LY_CHECK_ARG_RET1, DUMMY) (CTX, __VA_ARGS__)
+#define LY_CHECK_ARG_RET6(CTX, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, RETVAL) LY_CHECK_ARG_RET5(CTX, ARG1, ARG2, ARG3, ARG4, ARG5, RETVAL);\
+    LY_CHECK_ARG_RET1(CTX, ARG6, RETVAL)
+#define LY_CHECK_ARG_RET(CTX, ...) GETMACRO7(__VA_ARGS__, LY_CHECK_ARG_RET6, LY_CHECK_ARG_RET5, LY_CHECK_ARG_RET4, \
+    LY_CHECK_ARG_RET3, LY_CHECK_ARG_RET2, LY_CHECK_ARG_RET1, DUMMY) (CTX, __VA_ARGS__)
 
 #define LY_CHECK_CTX_EQUAL_RET2(CTX1, CTX2, RETVAL) if ((CTX1) && (CTX2) && ((CTX1) != (CTX2))) \
     {LOGERR(CTX1, LY_EINVAL, "Different contexts mixed in a single function call."); return RETVAL;}

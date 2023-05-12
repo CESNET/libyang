@@ -310,21 +310,29 @@ LIBYANG_API_DECL LY_ERR lyd_parse_ext_data(const struct lysc_ext_instance *ext, 
  * @{
  */
 enum lyd_type {
-    LYD_TYPE_DATA_YANG = 0, /* generic YANG instance data */
-    LYD_TYPE_RPC_YANG,      /* instance of a YANG RPC/action request with only "input" data children,
-                               including all parents in case of an action */
-    LYD_TYPE_NOTIF_YANG,    /* instance of a YANG notification, including all parents in case of a nested one */
-    LYD_TYPE_REPLY_YANG,    /* instance of a YANG RPC/action reply with only "output" data children,
-                               including all parents in case of an action */
+    LYD_TYPE_DATA_YANG = 0,     /* generic YANG instance data */
+    LYD_TYPE_RPC_YANG,          /* instance of a YANG RPC/action request with only "input" data children,
+                                   including all parents in case of an action */
+    LYD_TYPE_NOTIF_YANG,        /* instance of a YANG notification, including all parents in case of a nested one */
+    LYD_TYPE_REPLY_YANG,        /* instance of a YANG RPC/action reply with only "output" data children,
+                                   including all parents in case of an action */
 
-    LYD_TYPE_RPC_NETCONF,   /* complete NETCONF RPC invocation as defined for
-                               [RPC](https://tools.ietf.org/html/rfc7950#section-7.14.4) and
-                               [action](https://tools.ietf.org/html/rfc7950#section-7.15.2) */
-    LYD_TYPE_NOTIF_NETCONF, /* complete NETCONF notification message as defined for
-                               [notification](https://tools.ietf.org/html/rfc7950#section-7.16.2) */
-    LYD_TYPE_REPLY_NETCONF  /* complete NETCONF RPC reply as defined for
-                               [RPC](https://tools.ietf.org/html/rfc7950#section-7.14.4) and
-                               [action](https://tools.ietf.org/html/rfc7950#section-7.15.2) */
+    LYD_TYPE_RPC_NETCONF,       /* complete NETCONF RPC invocation as defined for
+                                   [RPC](https://tools.ietf.org/html/rfc7950#section-7.14.4) and
+                                   [action](https://tools.ietf.org/html/rfc7950#section-7.15.2) */
+    LYD_TYPE_NOTIF_NETCONF,     /* complete NETCONF notification message as defined for
+                                   [notification](https://tools.ietf.org/html/rfc7950#section-7.16.2) */
+    LYD_TYPE_REPLY_NETCONF,     /* complete NETCONF RPC reply as defined for
+                                   [RPC](https://tools.ietf.org/html/rfc7950#section-7.14.4) and
+                                   [action](https://tools.ietf.org/html/rfc7950#section-7.15.2) */
+
+    LYD_TYPE_RPC_RESTCONF,      /* message-body of a RESTCONF operation input parameters
+                                   ([ref](https://www.rfc-editor.org/rfc/rfc8040.html#section-3.6.1)) */
+    LYD_TYPE_NOTIF_RESTCONF,    /* RESTCONF JSON notification data
+                                   ([ref](https://www.rfc-editor.org/rfc/rfc8040.html#section-6.4)), to parse
+                                   a notification in XML, use ::LYD_TYPE_NOTIF_NETCONF */
+    LYD_TYPE_REPLY_RESTCONF     /* message-body of a RESTCONF operation output parameters
+                                   ([ref](https://www.rfc-editor.org/rfc/rfc8040.html#section-3.6.2)) */
 };
 /** @} datatype */
 
@@ -356,6 +364,28 @@ enum lyd_type {
  *               a separate opaque data tree, even if the function fails, this may be returned;
  *   - @p op - must be NULL, the reply is appended to the RPC;
  *   Note that there are 3 kinds of NETCONF replies - ok, error, and data. Only data reply appends any nodes to the RPC.
+ *
+ * - ::LYD_TYPE_RPC_RESTCONF:
+ *   - @p parent - must be set, pointing to the invoked RPC operation (RPC or action) node;
+ *   - @p format - can be both ::LYD_JSON and ::LYD_XML;
+ *   - @p tree - must be provided, all the RESTCONF-specific JSON objects will be returned here as
+ *               a separate opaque data tree, even if the function fails, this may be returned;
+ *   - @p op - must be NULL, @p parent points to the operation;
+ *
+ * - ::LYD_TYPE_NOTIF_RESTCONF:
+ *   - @p parent - must be NULL, the whole notification is expected;
+ *   - @p format - must be ::LYD_JSON, XML-formatted notifications are parsed using ::LYD_TYPE_NOTIF_NETCONF;
+ *   - @p tree - must be provided, all the RESTCONF-specific JSON objects will be returned here as
+ *               a separate opaque data tree, even if the function fails, this may be returned;
+ *   - @p op - must be provided, the notification data tree itself will be returned here, pointing to the operation;
+ *
+ * - ::LYD_TYPE_REPLY_RESTCONF:
+ *   - @p parent - must be set, pointing to the invoked RPC operation (RPC or action) node;
+ *   - @p format - can be both ::LYD_JSON and ::LYD_XML;
+ *   - @p tree - must be provided, all the RESTCONF-specific JSON objects will be returned here as
+ *               a separate opaque data tree, even if the function fails, this may be returned;
+ *   - @p op - must be NULL, @p parent points to the operation;
+ *   Note that error reply should be parsed as 'yang-data' extension data.
  *
  * @param[in] ctx libyang context.
  * @param[in] parent Optional parent to connect the parsed nodes to.

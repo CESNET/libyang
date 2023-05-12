@@ -1862,3 +1862,255 @@ cleanup:
     }
     return rc;
 }
+
+/**
+ * @brief Parse a specific JSON object into an opaque node.
+ *
+ * @param[in] jsonctx JSON parser context.
+ * @param[in] name Name of the object.
+ * @param[in] module Module name of the object, NULL if none expected.
+ * @param[in] value Whether a value is expected.
+ * @param[out] evnp Parsed envelope (opaque node).
+ * @return LY_SUCCESS on success.
+ * @return LY_ENOT if the specified object did not match.
+ * @return LY_ERR value on error.
+ */
+static LY_ERR
+lydjson_envelope(struct lyjson_ctx *jsonctx, const char *name, const char *module, ly_bool value, struct lyd_node **envp)
+{
+    LY_ERR rc = LY_SUCCESS, r;
+    enum LYJSON_PARSER_STATUS status = lyjson_ctx_status(jsonctx);
+    const char *nam, *prefix, *val = NULL;
+    size_t nam_len, prefix_len, val_len = 0;
+    ly_bool is_meta;
+
+    assert(status == LYJSON_OBJECT);
+
+    *envp = NULL;
+
+    r = lyjson_ctx_next(jsonctx, &status);
+    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+    if (status == LYJSON_OBJECT_CLOSED) {
+        LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Empty JSON object.");
+        rc = LY_EVALID;
+        goto cleanup;
+    }
+
+    /* process the name */
+    assert(status == LYJSON_OBJECT_NAME);
+    lydjson_parse_name(jsonctx->value, jsonctx->value_len, &nam, &nam_len, &prefix, &prefix_len, &is_meta);
+    if (is_meta) {
+        LOGVAL(jsonctx->ctx, LYVE_DATA, "Unexpected metadata.");
+        rc = LY_EVALID;
+        goto cleanup;
+    } else if (module && ly_strncmp(module, prefix, prefix_len)) {
+        LOGVAL(jsonctx->ctx, LYVE_DATA, "Unexpected module \"%.*s\" instead of \"%s\".", (int)prefix_len, prefix, module);
+        rc = LY_EVALID;
+        goto cleanup;
+    } else if (ly_strncmp(name, nam, nam_len)) {
+        LOGVAL(jsonctx->ctx, LYVE_DATA, "Unexpected object \"%.*s\" instead of \"%s\".", (int)nam_len, nam, name);
+        rc = LY_EVALID;
+        goto cleanup;
+    }
+
+    r = lyjson_ctx_next(jsonctx, &status);
+    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+
+    if (value) {
+        if (status != LYJSON_STRING) {
+            LOGVAL(jsonctx->ctx, LYVE_SYNTAX_JSON, "Expecting JSON %s but %s found.", lyjson_token2str(LYJSON_STRING),
+                    lyjson_token2str(status));
+            rc = LY_EVALID;
+            goto cleanup;
+        }
+
+        val = jsonctx->value;
+        val_len = jsonctx->value_len;
+
+        r = lyjson_ctx_next(jsonctx, &status);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+    }
+
+    /* create node */
+    rc = lyd_create_opaq(jsonctx->ctx, name, strlen(name), prefix, prefix_len, prefix, prefix_len, val, val_len,
+            NULL, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, envp);
+    LY_CHECK_GOTO(rc, cleanup);
+
+cleanup:
+    if (rc) {
+        lyd_free_tree(*envp);
+        *envp = NULL;
+    }
+    return rc;
+}
+
+/**
+ * @brief Parse all expected non-data JSON objects of a RESTCONF notification message.
+ *
+ * @param[in] jsonctx JSON parser context.
+ * @param[out] evnp Parsed envelope(s) (opaque node).
+ * @param[out] int_opts Internal options for parsing the rest of YANG data.
+ * @param[out] close_elem Number of parsed opened objects that need to be closed.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+static LY_ERR
+lydjson_env_restconf_notif(struct lyjson_ctx *jsonctx, struct lyd_node **envp, uint32_t *int_opts, uint32_t *close_elem)
+{
+    LY_ERR rc = LY_SUCCESS, r;
+    struct lyd_node *child;
+
+    assert(envp && !*envp);
+
+    /* parse "notification" */
+    r = lydjson_envelope(jsonctx, "notification", "ietf-restconf", 0, envp);
+    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+
+    /* parse "eventTime" */
+    r = lydjson_envelope(jsonctx, "eventTime", NULL, 1, &child);
+    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+
+    /* insert */
+    lyd_insert_node(*envp, NULL, child, 0);
+
+    /* validate value */
+    r = lyd_parser_notif_eventtime_validate(child);
+    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+
+    /* RESTCONF notification */
+    *int_opts = LYD_INTOPT_NO_SIBLINGS | LYD_INTOPT_NOTIF;
+    *close_elem = 1;
+
+cleanup:
+    if (rc) {
+        lyd_free_tree(*envp);
+        *envp = NULL;
+    }
+    return rc;
+}
+
+LY_ERR
+lyd_parse_json_restconf(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
+        struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, enum lyd_type data_type,
+        struct lyd_node **envp, struct ly_set *parsed, struct lyd_ctx **lydctx_p)
+{
+    LY_ERR rc = LY_SUCCESS, r;
+    struct lyd_json_ctx *lydctx;
+    enum LYJSON_PARSER_STATUS status;
+    uint32_t i, int_opts = 0, close_elem = 0;
+    ly_bool parsed_data_nodes = 0;
+
+    assert(ctx && in && lydctx_p);
+    assert(!(parse_opts & ~LYD_PARSE_OPTS_MASK));
+    assert(!(val_opts & ~LYD_VALIDATE_OPTS_MASK));
+
+    assert((data_type == LYD_TYPE_RPC_RESTCONF) || (data_type == LYD_TYPE_NOTIF_RESTCONF) ||
+            (data_type == LYD_TYPE_REPLY_RESTCONF));
+    assert(!(parse_opts & LYD_PARSE_SUBTREE));
+
+    /* init context */
+    rc = lyd_parse_json_init(ctx, in, parse_opts, val_opts, &lydctx);
+    LY_CHECK_GOTO(rc, cleanup);
+    lydctx->ext = ext;
+
+    switch (data_type) {
+    case LYD_TYPE_RPC_RESTCONF:
+        assert(parent);
+
+        /* parse "input" */
+        rc = lydjson_envelope(lydctx->jsonctx, "input", lyd_owner_module(parent)->name, 0, envp);
+        LY_CHECK_GOTO(rc, cleanup);
+
+        int_opts = LYD_INTOPT_WITH_SIBLINGS | LYD_INTOPT_RPC | LYD_INTOPT_ACTION;
+        close_elem = 1;
+        break;
+    case LYD_TYPE_NOTIF_RESTCONF:
+        assert(!parent);
+        rc = lydjson_env_restconf_notif(lydctx->jsonctx, envp, &int_opts, &close_elem);
+        LY_CHECK_GOTO(rc, cleanup);
+        break;
+    case LYD_TYPE_REPLY_RESTCONF:
+        assert(parent);
+
+        /* parse "output" */
+        rc = lydjson_envelope(lydctx->jsonctx, "output", lyd_owner_module(parent)->name, 0, envp);
+        LY_CHECK_GOTO(rc, cleanup);
+
+        int_opts = LYD_INTOPT_WITH_SIBLINGS | LYD_INTOPT_REPLY;
+        close_elem = 1;
+        break;
+    default:
+        LOGINT(ctx);
+        rc = LY_EINT;
+        goto cleanup;
+    }
+
+    lydctx->int_opts = int_opts;
+
+    /* find the operation node if it exists already */
+    LY_CHECK_GOTO(rc = lyd_parser_find_operation(parent, int_opts, &lydctx->op_node), cleanup);
+
+    /* read subtree(s) */
+    do {
+        r = lydjson_subtree_r(lydctx, parent, first_p, parsed);
+        LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+        parsed_data_nodes = 1;
+
+        status = lyjson_ctx_status(lydctx->jsonctx);
+
+        if (!(int_opts & LYD_INTOPT_WITH_SIBLINGS)) {
+            break;
+        }
+    } while (status == LYJSON_OBJECT_NEXT);
+    assert((status == LYJSON_END) || (status == LYJSON_OBJECT_CLOSED));
+
+    /* close all opened elements */
+    for (i = 0; i < close_elem; ++i) {
+        if (status != LYJSON_OBJECT_CLOSED) {
+            LOGVAL(ctx, LYVE_SYNTAX_JSON, "Expecting JSON %s but %s found.", lyjson_token2str(LYJSON_OBJECT_CLOSED),
+                    lyjson_token2str(status));
+            rc = LY_EVALID;
+            goto cleanup;
+        }
+
+        r = lyjson_ctx_next(lydctx->jsonctx, &status);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+    }
+
+    if ((int_opts & LYD_INTOPT_NO_SIBLINGS) && lydctx->jsonctx->in->current[0] &&
+            (lyjson_ctx_status(lydctx->jsonctx) != LYJSON_OBJECT_CLOSED)) {
+        LOGVAL(ctx, LYVE_SYNTAX, "Unexpected sibling node.");
+        r = LY_EVALID;
+        LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+    }
+    if ((int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NOTIF | LYD_INTOPT_REPLY)) && !lydctx->op_node) {
+        LOGVAL(ctx, LYVE_DATA, "Missing the operation node.");
+        r = LY_EVALID;
+        LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+    }
+
+    /* finish linking metadata */
+    r = lydjson_metadata_finish(lydctx, parent ? lyd_node_child_p(parent) : first_p);
+    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+
+    if (!parsed_data_nodes) {
+        /* no data nodes were parsed */
+        lydctx->op_node = NULL;
+    }
+
+cleanup:
+    /* there should be no unres stored if validation should be skipped */
+    assert(!(parse_opts & LYD_PARSE_ONLY) || (!lydctx->node_types.count && !lydctx->meta_types.count &&
+            !lydctx->node_when.count));
+
+    if (rc) {
+        lyd_json_ctx_free((struct lyd_ctx *)lydctx);
+    } else {
+        *lydctx_p = (struct lyd_ctx *)lydctx;
+
+        /* the JSON context is no more needed, freeing it also stops logging line numbers which would be confusing now */
+        lyjson_ctx_free(lydctx->jsonctx);
+        lydctx->jsonctx = NULL;
+    }
+    return rc;
+}

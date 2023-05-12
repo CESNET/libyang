@@ -789,6 +789,64 @@ test_netconf_reply_or_notification(void **state)
 }
 
 static void
+test_restconf_rpc(void **state)
+{
+    const char *data;
+    struct ly_in *in;
+    struct lyd_node *tree, *envp;
+
+    assert_non_null((ly_ctx_load_module(UTEST_LYCTX, "ietf-netconf-nmda", "2019-01-07", NULL)));
+
+    assert_int_equal(LY_SUCCESS, lyd_new_path(NULL, UTEST_LYCTX, "/ietf-netconf-nmda:edit-data", NULL, 0, &tree));
+
+    data = "<input xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-nmda\">"
+            "<datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore>"
+            "<config>"
+            "<cp xmlns=\"urn:tests:a\"><z xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"replace\"/></cp>"
+            "<l1 xmlns=\"urn:tests:a\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"replace\">"
+            "<a>val_a</a><b>val_b</b><c>val_c</c>"
+            "</l1>"
+            "</config></input>";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, tree, in, LYD_XML, LYD_TYPE_RPC_RESTCONF, &envp, NULL));
+    ly_in_free(in, 0);
+
+    /* the same just connected to the edit-data RPC */
+    data = "<edit-data xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-nmda\">"
+            "<datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore>"
+            "<config>"
+            "<cp xmlns=\"urn:tests:a\"><z xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"replace\"/></cp>"
+            "<l1 xmlns=\"urn:tests:a\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"replace\">"
+            "<a>val_a</a><b>val_b</b><c>val_c</c>"
+            "</l1>"
+            "</config></edit-data>";
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
+    lyd_free_all(envp);
+}
+
+static void
+test_restconf_reply(void **state)
+{
+    const char *data;
+    struct ly_in *in;
+    struct lyd_node *tree, *envp;
+
+    assert_int_equal(LY_SUCCESS, lyd_new_path(NULL, UTEST_LYCTX, "/a:c/act", NULL, 0, &tree));
+
+    data = "<output xmlns=\"urn:tests:a\"><al>25</al></output>";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, lyd_child(tree), in, LYD_XML, LYD_TYPE_REPLY_RESTCONF, &envp, NULL));
+    ly_in_free(in, 0);
+
+    /* connected to the RPC with the parent */
+    data = "<c xmlns=\"urn:tests:a\"><act><al>25</al></act></c>";
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
+    lyd_free_all(envp);
+}
+
+static void
 test_filter_attributes(void **state)
 {
     const char *data;
@@ -879,6 +937,8 @@ main(void)
         UTEST(test_netconf_rpc, setup),
         UTEST(test_netconf_action, setup),
         UTEST(test_netconf_reply_or_notification, setup),
+        UTEST(test_restconf_rpc, setup),
+        UTEST(test_restconf_reply, setup),
         UTEST(test_filter_attributes, setup),
         UTEST(test_data_skip, setup),
     };
