@@ -1,6 +1,7 @@
 module yang {
   namespace "urn:ietf:params:xml:ns:yang:1";
   prefix yang;
+  yang-version 1.1;
 
   import ietf-yang-metadata {
     prefix md;
