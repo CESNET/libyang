@@ -204,16 +204,33 @@ int parse_cmdline(const char *cmdline, int *argc_p, char **argv_p[]);
 void free_cmdline(char *argv[]);
 
 /**
- * @brief Get expected format of the @p filename's content according to the @p filename's suffix.
+ * @brief Get schema format of the @p filename's content according to the @p filename's suffix.
+ *
  * @param[in] filename Name of the file to examine.
- * @param[out] schema Pointer to a variable to store the expected input schema format. Do not provide the pointer in case a
- * schema format is not expected.
- * @param[out] data Pointer to a variable to store the expected input data format. Do not provide the pointer in case a data
- * format is not expected.
+ * @return Detected schema input format.
+ */
+LYS_INFORMAT get_schema_format(const char *filename);
+
+/**
+ * @brief Get data format of the @p filename's content according to the @p filename's suffix.
+ *
+ * @param[in] filename Name of the file to examine.
+ * @return Detected data input format.
+ */
+LYD_FORMAT get_data_format(const char *filename);
+
+/**
+ * @brief Get format of the @p filename's content according to the @p filename's suffix.
+ *
+ * Either the @p schema or @p data parameter is set.
+ *
+ * @param[in] filename Name of the file to examine.
+ * @param[out] schema_form Pointer to a variable to store the input schema format.
+ * @param[out] data_form Pointer to a variable to store the expected input data format.
  * @return zero in case a format was successfully detected.
  * @return nonzero in case it is not possible to get valid format from the @p filename.
  */
-int get_format(const char *filename, LYS_INFORMAT *schema, LYD_FORMAT *data);
+int get_format(const char *filepath, LYS_INFORMAT *schema_form, LYD_FORMAT *data_form);
 
 /**
  * @brief Print list of schemas in the context.

@@ -94,6 +94,9 @@ struct context {
     /* value of --format in case of data format */
     LYD_FORMAT data_out_format;
 
+    /* value of --in-format in case of data format */
+    LYD_FORMAT data_in_format;
+
     /* input data files (struct cmdline_file *) */
     struct ly_set data_inputs;
 
@@ -176,6 +179,11 @@ help(int shortout)
             "                Convert input into FORMAT. Supported formats: \n"
             "                yang, yin, tree, info and feature-param for schemas,\n"
             "                xml, json, and lyb for data.\n\n");
+
+    printf("  -I FORMAT, --in-format=FORMAT\n"
+            "                Load the data in one of the following formats:\n"
+            "                xml, json, lyb\n"
+            "                If input format not specified, it is detected from the file extension.\n\n");
 
     printf("  -p PATH, --path=PATH\n"
             "                Search path for schema (YANG/YIN) modules. The option can be\n"
@@ -440,7 +448,7 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
 
     for (int i = 0; i < argc - optind; i++) {
         LYS_INFORMAT format_schema = LYS_IN_UNKNOWN;
-        LYD_FORMAT format_data = LYD_UNKNOWN;
+        LYD_FORMAT format_data = c->data_in_format;
 
         if (get_input(argv[optind + i], &format_schema, &format_data, &in)) {
             goto error;
@@ -561,6 +569,7 @@ fill_context(int argc, char *argv[], struct context *c)
         {"disable-searchdir", no_argument,       NULL, 'D'},
         {"features",          required_argument, NULL, 'F'},
         {"make-implemented",  no_argument,       NULL, 'i'},
+        {"in-format",         required_argument, NULL, 'I'},
         {"schema-node",       required_argument, NULL, 'P'},
         {"single-node",       no_argument,       NULL, 'q'},
         {"submodule",         required_argument, NULL, 's'},
@@ -594,9 +603,9 @@ fill_context(int argc, char *argv[], struct context *c)
 
     opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:neE:t:d:lL:o:O:R:myY:Xx:G:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neE:t:d:lL:o:O:R:myY:Xx:G:", options, &opt_index)) != -1)
 #else
-    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:neE:t:d:lL:o:O:R:myY:Xx:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neE:t:d:lL:o:O:R:myY:Xx:", options, &opt_index)) != -1)
 #endif
     {
         switch (opt) {
@@ -657,6 +666,20 @@ fill_context(int argc, char *argv[], struct context *c)
                 c->feature_param_format = 1;
             } else {
                 YLMSG_E("Unknown output format %s\n", optarg);
+                help(1);
+                return -1;
+            }
+            break;
+
+        case 'I': /* --in-format */
+            if (!strcasecmp(optarg, "xml")) {
+                c->data_in_format = LYD_XML;
+            } else if (!strcasecmp(optarg, "json")) {
+                c->data_in_format = LYD_JSON;
+            } else if (!strcasecmp(optarg, "lyb")) {
+                c->data_in_format = LYD_LYB;
+            } else {
+                YLMSG_E("Unknown input format %s\n", optarg);
                 help(1);
                 return -1;
             }
