@@ -73,11 +73,8 @@ get_input(const char *filepath, LYS_INFORMAT *format_schema, LYD_FORMAT *format_
         return -1;
     }
 
-    if ((format_schema && !*format_schema) || (format_data && !*format_data)) {
-        /* get the file format */
-        if (get_format(filepath, format_schema, format_data)) {
-            return -1;
-        }
+    if (get_format(filepath, format_schema, format_data)) {
+        return -1;
     }
 
     if (ly_in_new_filepath(filepath, 0, in)) {
@@ -448,52 +445,76 @@ parse_cmdline(const char *cmdline, int *argc_p, char **argv_p[])
     return 0;
 }
 
-int
-get_format(const char *filename, LYS_INFORMAT *schema, LYD_FORMAT *data)
+LYS_INFORMAT
+get_schema_format(const char *filename)
 {
     char *ptr;
-    LYS_INFORMAT informat_s;
-    LYD_FORMAT informat_d;
 
-    /* get the file format */
     if ((ptr = strrchr(filename, '.')) != NULL) {
         ++ptr;
         if (!strcmp(ptr, "yang")) {
-            informat_s = LYS_IN_YANG;
-            informat_d = 0;
+            return LYS_IN_YANG;
         } else if (!strcmp(ptr, "yin")) {
-            informat_s = LYS_IN_YIN;
-            informat_d = 0;
-        } else if (!strcmp(ptr, "xml")) {
-            informat_s = 0;
-            informat_d = LYD_XML;
-        } else if (!strcmp(ptr, "json")) {
-            informat_s = 0;
-            informat_d = LYD_JSON;
-        } else if (!strcmp(ptr, "lyb")) {
-            informat_s = 0;
-            informat_d = LYD_LYB;
+            return LYS_IN_YIN;
         } else {
-            YLMSG_E("Input file \"%s\" in an unknown format \"%s\".\n", filename, ptr);
-            return 0;
+            return LYS_IN_UNKNOWN;
         }
     } else {
-        YLMSG_E("Input file \"%s\" without file extension - unknown format.\n", filename);
-        return 1;
+        return LYS_IN_UNKNOWN;
+    }
+}
+
+LYD_FORMAT
+get_data_format(const char *filename)
+{
+    char *ptr;
+
+    if ((ptr = strrchr(filename, '.')) != NULL) {
+        ++ptr;
+        if (!strcmp(ptr, "xml")) {
+            return LYD_XML;
+        } else if (!strcmp(ptr, "json")) {
+            return LYD_JSON;
+        } else if (!strcmp(ptr, "lyb")) {
+            return LYD_LYB;
+        } else {
+            return LYD_UNKNOWN;
+        }
+    } else {
+        return LYD_UNKNOWN;
+    }
+}
+
+int
+get_format(const char *filepath, LYS_INFORMAT *schema_form, LYD_FORMAT *data_form)
+{
+    LYS_INFORMAT schema;
+    LYD_FORMAT data;
+
+    schema = !schema_form || !*schema_form ? LYS_IN_UNKNOWN : *schema_form;
+    data = !data_form || !*data_form ? LYD_UNKNOWN : *data_form;
+
+    if (!schema) {
+        schema = get_schema_format(filepath);
+    }
+    if (!data) {
+        data = get_data_format(filepath);
     }
 
-    if (informat_d) {
-        if (!data) {
-            YLMSG_E("Input file \"%s\" not expected to contain data instances (unexpected format).\n", filename);
-            return 2;
-        }
-        (*data) = informat_d;
-    } else if (informat_s) {
-        if (!schema) {
-            YLMSG_E("Input file \"%s\" not expected to contain schema definition (unexpected format).\n", filename);
-            return 3;
-        }
-        (*schema) = informat_s;
+    if (!schema && !data) {
+        YLMSG_E("Input schema format for %s file not recognized.", filepath);
+        return -1;
+    } else if (!data && !schema) {
+        YLMSG_E("Input data format for %s file not recognized.", filepath);
+        return -1;
+    }
+    assert(schema || data);
+
+    if (schema_form) {
+        *schema_form = schema;
+    }
+    if (data_form) {
+        *data_form = data;
     }
 
     return 0;
