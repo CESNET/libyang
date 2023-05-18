@@ -209,6 +209,29 @@ test_plugin_lyb(void **state)
     TEST_SUCCESS_LYB("lyb", "lst", "key_str", "lref", "key_str");
 }
 
+static void
+test_data_xpath_json(void **state)
+{
+    const char *schema, *data;
+    struct lyd_node *tree;
+
+    /* json xpath test */
+    schema = MODULE_CREATE_YANG("xp_test",
+            "list l1 {key t1; leaf t1 {type uint8;} list l2 {key t2;leaf t2 {type uint8;}}}"
+            "leaf r1 {type leafref {path \"../l1/t1\";}}"
+            "leaf r2 {type leafref {path \"deref(../r1)/../l2/t2\";}}");
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    data = "{"
+            "  \"xp_test:l1\":[{\"t1\": 1,\"l2\":[{\"t2\": 2}]}],"
+            "  \"xp_test:r1\": 1,"
+            "  \"xp_test:r2\": 2"
+            "}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -216,6 +239,7 @@ main(void)
         UTEST(test_data_xml),
         UTEST(test_data_json),
         UTEST(test_plugin_lyb),
+        UTEST(test_data_xpath_json),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
