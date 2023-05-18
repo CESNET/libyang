@@ -954,3 +954,26 @@ ext_data_clb(const struct lysc_ext_instance *ext, void *user_data, void **ext_da
     *ext_data_free = 1;
     return LY_SUCCESS;
 }
+
+LY_ERR
+searchpath_strcat(char **searchpaths, const char *path)
+{
+    uint64_t len;
+    char *new;
+
+    if (!(*searchpaths)) {
+        *searchpaths = strdup(path);
+        return LY_SUCCESS;
+    }
+
+    len = strlen(*searchpaths) + strlen(path) + strlen(PATH_SEPARATOR);
+    new = realloc(*searchpaths, sizeof(char) * len + 1);
+    if (!new) {
+        return LY_EMEM;
+    }
+    strcat(new, PATH_SEPARATOR);
+    strcat(new, path);
+    *searchpaths = new;
+
+    return LY_SUCCESS;
+}
