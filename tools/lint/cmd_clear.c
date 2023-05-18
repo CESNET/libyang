@@ -91,6 +91,9 @@ cmd_clear(struct ly_ctx **ctx, const char *cmdline)
         goto cleanup;
     }
 
+    /* Global variables in commands are also deleted. */
+    cmd_free();
+
     ly_ctx_destroy(*ctx);
     *ctx = ctx_new;
 

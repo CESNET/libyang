@@ -25,7 +25,6 @@
 #include <sys/stat.h>
 
 #include "libyang.h"
-#include "plugins_exts.h"
 
 #include "common.h"
 #include "out.h"
@@ -360,22 +359,6 @@ get_features_not_applied(const struct ly_set *fset)
     }
 
     return NULL;
-}
-
-static LY_ERR
-ext_data_clb(const struct lysc_ext_instance *ext, void *user_data, void **ext_data, ly_bool *ext_data_free)
-{
-    struct ly_ctx *ctx;
-    struct lyd_node *data = NULL;
-
-    ctx = ext->module->ctx;
-    if (user_data) {
-        lyd_parse_data_path(ctx, user_data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &data);
-    }
-
-    *ext_data = data;
-    *ext_data_free = 1;
-    return LY_SUCCESS;
 }
 
 static LY_ERR

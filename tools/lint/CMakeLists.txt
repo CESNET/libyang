@@ -17,6 +17,7 @@ set(lintsrc
     cmd_load.c
     cmd_print.c
     cmd_searchpath.c
+    cmd_extdata.c
     common.c
 )
 if(YANGLINT_INTERACTIVE)

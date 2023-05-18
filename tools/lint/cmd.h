@@ -26,6 +26,7 @@ typedef struct {
 
     void (*func)(struct ly_ctx **ctx, const char *); /* Function to call to do the command. */
     void (*help_func)(void);                         /* Display command help. */
+    void (*free_func)(void);                         /* Freeing global variables allocated by the command. */
     char *helpstring;                                /* Documentation for this function. */
     char *optstring;                                 /* Option characters used in function getopt_long. */
 } COMMAND;
@@ -47,12 +48,18 @@ enum COMMAND_INDEX {
     CMD_LIST,
     CMD_FEATURE,
     CMD_SEARCHPATH,
+    CMD_EXTDATA,
     CMD_CLEAR,
     CMD_VERB,
 #ifndef NDEBUG
     CMD_DEBUG,
 #endif
 };
+
+/**
+ * @brief For each cmd, call the COMMAND.free_func in the variable 'commands'.
+ */
+void cmd_free(void);
 
 /* cmd_add.c */
 void cmd_add(struct ly_ctx **ctx, const char *cmdline);
@@ -85,5 +92,10 @@ void cmd_print_help(void);
 /* cmd_searchpath.c */
 void cmd_searchpath(struct ly_ctx **ctx, const char *cmdline);
 void cmd_searchpath_help(void);
+
+/* cmd_extdata.c */
+void cmd_extdata(struct ly_ctx **ctx, const char *cmdline);
+void cmd_extdata_help(void);
+void cmd_extdata_free(void);
 
 #endif /* COMMANDS_H_ */

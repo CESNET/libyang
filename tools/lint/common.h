@@ -276,4 +276,15 @@ LY_ERR process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, 
  */
 const struct lysc_node *find_schema_path(const struct ly_ctx *ctx, const char *schema_path);
 
+/**
+ * @brief General callback providing run-time extension instance data.
+ *
+ * @param[in] ext Compiled extension instance.
+ * @param[in] user_data User-supplied callback data.
+ * @param[out] ext_data Provided extension instance data.
+ * @param[out] ext_data_free Whether the extension instance should free @p ext_data or not.
+ * @return LY_ERR value.
+ */
+LY_ERR ext_data_clb(const struct lysc_ext_instance *ext, void *user_data, void **ext_data, ly_bool *ext_data_free);
+
 #endif /* COMMON_H_ */
