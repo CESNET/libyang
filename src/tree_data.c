@@ -99,7 +99,7 @@ static LY_ERR
 lyd_parse(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent, struct lyd_node **first_p,
         struct ly_in *in, LYD_FORMAT format, uint32_t parse_opts, uint32_t val_opts, struct lyd_node **op)
 {
-    LY_ERR r, rc = LY_SUCCESS;
+    LY_ERR r = LY_SUCCESS, rc = LY_SUCCESS;
     struct lyd_ctx *lydctx = NULL;
     struct ly_set parsed = {0};
     struct lyd_node *first;
