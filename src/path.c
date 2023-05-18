@@ -264,6 +264,40 @@ token_error:
     return LY_EVALID;
 }
 
+/**
+ * @brief Skips already parsed XPath FunctionName the corresponding schema node
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] exp Parsed path.
+ * @param[in,out] tok_idx Index in @p exp, is adjusted.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+ly_path_skip_function(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint32_t *tok_idx)
+{
+    LY_ERR ret = LY_SUCCESS;
+    /* mandatory FunctionName */
+    LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_FUNCNAME), ret = LY_EVALID, error);
+
+    /* mandatory '(' */
+    LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_PAR1), ret = LY_EVALID, error);
+
+    /* mandatory 'Expr' */
+    while (lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_PAR2) && lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_FUNCNAME)){
+         (*tok_idx)++;
+    }
+
+    /* embedded function inside function ')' */
+    if (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_FUNCNAME)) {
+        LY_CHECK_ERR_GOTO(ly_path_skip_function(ctx, exp, tok_idx), ret = LY_EVALID, error);
+    }
+
+    /* mandatory ')' */
+    LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_PAR2), ret = LY_EVALID, error);
+error:
+    return ret;
+}
+
 LY_ERR
 ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *str_path, size_t path_len,
         ly_bool lref, uint16_t begin, uint16_t prefix, uint16_t pred, struct lyxp_expr **expr)
@@ -294,6 +328,14 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
         if (lyxp_next_token(NULL, exp, &tok_idx, LYXP_TOKEN_OPER_PATH)) {
             /* relative path check specific to leafref */
             if (lref) {
+                /* optional function 'deref..' */
+                if (!lyxp_check_token(NULL, exp, tok_idx, LYXP_TOKEN_FUNCNAME)) {
+                    LY_CHECK_ERR_GOTO(ly_path_skip_function(ctx, exp, &tok_idx), ret = LY_EVALID, error);
+
+                    /* '/' */
+                    LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, &tok_idx, LYXP_TOKEN_OPER_PATH), ret = LY_EVALID, error);
+                }
+
                 /* mandatory '..' */
                 LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, &tok_idx, LYXP_TOKEN_DDOT), ret = LY_EVALID, error);
 
@@ -866,6 +908,75 @@ cleanup:
 }
 
 /**
+ * @brief Compile path using XPath functions into ly_path structure.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] cur_mod Current module of the path (where it was "instantiated"), ignored of @p lref. Used for nodes
+ * without a prefix for ::LY_VALUE_SCHEMA and ::LY_VALUE_SCHEMA_RESOLVED format.
+ * @param[in] ctx_node Optional context node, mandatory of @p lref.
+ * @param[in] top_ext Extension instance containing the definition of the data being created. It is used to find the top-level
+ * node inside the extension instance instead of a module. Note that this is the case not only if the @p ctx_node is NULL,
+ * but also if the relative path starting in @p ctx_node reaches the document root via double dots.
+ * @param[in] expr Parsed path.
+ * @param[in] format Format of the path.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
+ * @param[in] getnext_opts Options to be used for ::lys_getnext() calls.
+ * @param[out] path Compiled path.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+_ly_path_compile_function(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
+        const struct lysc_ext_instance *top_ext, const struct lyxp_expr *expr, LY_VALUE_FORMAT format, void *prefix_data,
+        uint32_t getnext_opts, struct ly_path **path)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct ly_path *p = NULL;
+    struct lyxp_set tmp_set = {0};
+    int32_t i;
+    uint32_t opts;
+    struct lysc_node *schema = NULL;
+    const struct lysc_node *node2;
+    struct lysc_ext_instance *ext = NULL;
+    opts = LYXP_SCNODE_SCHEMA | ((ctx_node->flags & LYS_IS_OUTPUT) ? LYXP_SCNODE_OUTPUT : 0);
+    ret = lyxp_atomize(ctx, expr, cur_mod, LY_VALUE_SCHEMA_RESOLVED,
+                    prefix_data, ctx_node, ctx_node, &tmp_set, opts);
+    if (ret) {
+        LOGVAL(ctx, LYVE_XPATH, "Invalid path \"%s\".", expr->expr);
+        goto cleanup;
+    }
+
+    for (i = tmp_set.used - 1; i >= 0; --i) {
+        /* skip roots'n'stuff */
+        if ((tmp_set.val.scnodes[i].type == LYXP_NODE_ELEM) &&
+            (tmp_set.val.scnodes[i].in_ctx != LYXP_SET_SCNODE_START_USED)) {
+            schema = tmp_set.val.scnodes[i].scnode;
+            break;
+        }
+    }
+
+    if (!schema) {
+        ret = LY_ENOTFOUND;
+        LOGVAL(ctx, LYVE_XPATH, "Invalid path \"%s\".", expr->expr);
+        goto cleanup;
+    }
+
+    LY_CHECK_GOTO(ret = ly_path_compile_snode(ctx, schema->parent, cur_mod, schema->parent, expr, expr->used-1,
+            format, prefix_data, top_ext, getnext_opts, &node2, &ext), cleanup);
+
+    LY_ARRAY_NEW_GOTO(ctx, *path, p, ret, cleanup);
+    p->node = schema;
+    p->ext = ext;
+
+cleanup:
+    lyxp_set_free_content(&tmp_set);
+    if (ret) {
+        *path = NULL;
+    }
+    LOG_LOCBACK(1, 0, 0, 0);
+    return (ret == LY_ENOTFOUND) ? LY_EVALID : ret;
+}
+
+/**
  * @brief Compile path into ly_path structure. Any predicates of a leafref are only checked, not compiled.
  *
  * @param[in] ctx libyang context.
@@ -920,6 +1031,13 @@ _ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, con
         getnext_opts = LYS_GETNEXT_OUTPUT;
     } else {
         getnext_opts = 0;
+    }
+
+    if (lref && expr->tokens[tok_idx] == LYXP_TOKEN_FUNCNAME) {
+        /* function */
+        ret = _ly_path_compile_function(ctx, cur_mod, ctx_node, top_ext, expr, format, prefix_data,
+                getnext_opts, path);
+        goto cleanup;
     }
 
     if (expr->tokens[tok_idx] == LYXP_TOKEN_OPER_PATH) {
