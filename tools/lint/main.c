@@ -95,6 +95,9 @@ main(int argc, char *argv[])
         free(cmdline);
     }
 
+    /* Global variables in commands are freed. */
+    cmd_free();
+
     store_config();
     ly_ctx_destroy(ctx);
 
