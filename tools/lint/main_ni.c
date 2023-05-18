@@ -361,29 +361,6 @@ get_features_not_applied(const struct ly_set *fset)
     return NULL;
 }
 
-static LY_ERR
-searchpath_strcat(char **searchpaths, const char *path)
-{
-    uint64_t len;
-    char *new;
-
-    if (!(*searchpaths)) {
-        *searchpaths = strdup(path);
-        return LY_SUCCESS;
-    }
-
-    len = strlen(*searchpaths) + strlen(path) + strlen(PATH_SEPARATOR);
-    new = realloc(*searchpaths, sizeof(char) * len + 1);
-    if (!new) {
-        return LY_EMEM;
-    }
-    strcat(new, PATH_SEPARATOR);
-    strcat(new, path);
-    *searchpaths = new;
-
-    return LY_SUCCESS;
-}
-
 static int
 fill_context_inputs(int argc, char *argv[], struct context *c)
 {

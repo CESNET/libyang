@@ -260,7 +260,7 @@ COMMAND commands[] = {
     {"feature", cmd_feature, cmd_feature_help, NULL, "Print all features of module(s) with their state", "haf"},
     {"searchpath", cmd_searchpath, cmd_searchpath_help, NULL, "Print/set the search path(s) for schemas", "ch"},
     {"extdata", cmd_extdata, cmd_extdata_help, cmd_extdata_free, "Set the specific data required by an extension", "ch"},
-    {"clear", cmd_clear, cmd_clear_help, NULL, "Clear the context - remove all the loaded modules", "iyh"},
+    {"clear", cmd_clear, cmd_clear_help, NULL, "Clear the context - remove all the loaded modules", "iyhY:"},
     {"verb", cmd_verb, cmd_verb_help, NULL, "Change verbosity", "h"},
 #ifndef NDEBUG
     {"debug", cmd_debug, cmd_debug_help, NULL, "Display specific debug message groups", "h"},

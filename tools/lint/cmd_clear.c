@@ -38,11 +38,36 @@ cmd_clear_help(void)
             "  -y, --yang-library\n"
             "                  Load and implement internal \"ietf-yang-library\" YANG module.\n"
             "                  Note that this module includes definitions of mandatory state\n"
-            "                  data that can result in unexpected data validation errors.\n");
-#if 0
-    "                  If <yang-library-data> path specified, load the modules\n"
-    "                  according to the provided yang library data.\n"
-#endif
+            "                  data that can result in unexpected data validation errors.\n"
+            "  -Y FILE, --yang-library-file=FILE\n"
+            "                Parse FILE with \"ietf-yang-library\" data and use them to\n"
+            "                create an exact YANG schema context. Searchpaths defined so far\n"
+            "                are used, but then deleted.\n");
+}
+
+/**
+ * @brief Convert searchpaths into single string.
+ *
+ * @param[in] ctx Context with searchpaths.
+ * @param[out] searchpaths Collection of paths in the single string. Paths are delimited by colon ":"
+ * (on Windows, used semicolon ";" instead).
+ * @return LY_ERR value.
+ */
+static LY_ERR
+searchpaths_to_str(const struct ly_ctx *ctx, char **searchpaths)
+{
+    uint32_t i;
+    int rc = 0;
+    const char * const *dirs = ly_ctx_get_searchdirs(ctx);
+
+    for (i = 0; dirs[i]; ++i) {
+        rc = searchpath_strcat(searchpaths, dirs[i]);
+        if (!rc) {
+            break;
+        }
+    }
+
+    return rc;
 }
 
 void
@@ -52,13 +77,16 @@ cmd_clear(struct ly_ctx **ctx, const char *cmdline)
     char **argv = NULL;
     int opt, opt_index;
     struct option options[] = {
-        {"make-implemented", no_argument, NULL, 'i'},
-        {"yang-library",     no_argument, NULL, 'y'},
+        {"make-implemented",    no_argument, NULL, 'i'},
+        {"yang-library",        no_argument, NULL, 'y'},
+        {"yang-library-file",   no_argument, NULL, 'Y'},
         {"help",             no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
     };
     uint16_t options_ctx = LY_CTX_NO_YANGLIBRARY;
-    struct ly_ctx *ctx_new;
+    struct ly_ctx *ctx_new = NULL;
+    char *ylibfile = NULL;
+    char *searchpaths = NULL;
 
     if (parse_cmdline(cmdline, &argc, &argv)) {
         goto cleanup;
@@ -77,6 +105,10 @@ cmd_clear(struct ly_ctx **ctx, const char *cmdline)
         case 'y':
             options_ctx &= ~LY_CTX_NO_YANGLIBRARY;
             break;
+        case 'Y':
+            options_ctx &= ~LY_CTX_NO_YANGLIBRARY;
+            ylibfile = optarg;
+            break;
         case 'h':
             cmd_clear_help();
             goto cleanup;
@@ -86,9 +118,21 @@ cmd_clear(struct ly_ctx **ctx, const char *cmdline)
         }
     }
 
-    if (ly_ctx_new(NULL, options_ctx, &ctx_new)) {
-        YLMSG_W("Failed to create context.\n");
-        goto cleanup;
+    if (ylibfile) {
+        /* Create context according to the provided yang-library data in a file but use already defined searchpaths. */
+        if (searchpaths_to_str(*ctx, &searchpaths)) {
+            YLMSG_E("Storing searchpaths failed.\n");
+            goto cleanup;
+        }
+        if (ly_ctx_new_ylpath(searchpaths, ylibfile, LYD_UNKNOWN, options_ctx, &ctx_new)) {
+            YLMSG_E("Unable to create libyang context with yang-library data.\n");
+            goto cleanup;
+        }
+    } else {
+        if (ly_ctx_new(NULL, options_ctx, &ctx_new)) {
+            YLMSG_W("Failed to create context.\n");
+            goto cleanup;
+        }
     }
 
     /* Global variables in commands are also deleted. */
@@ -99,4 +143,5 @@ cmd_clear(struct ly_ctx **ctx, const char *cmdline)
 
 cleanup:
     free_cmdline(argv);
+    free(searchpaths);
 }

@@ -287,4 +287,14 @@ const struct lysc_node *find_schema_path(const struct ly_ctx *ctx, const char *s
  */
 LY_ERR ext_data_clb(const struct lysc_ext_instance *ext, void *user_data, void **ext_data, ly_bool *ext_data_free);
 
+/**
+ * @brief Concatenation of paths into one string.
+ *
+ * @param[in,out] searchpaths Collection of paths in the single string. Paths are delimited by colon ":"
+ * (on Windows, used semicolon ";" instead).
+ * @param[in] path Path to add.
+ * @return LY_ERR value.
+ */
+LY_ERR searchpath_strcat(char **searchpaths, const char *path);
+
 #endif /* COMMON_H_ */
