@@ -424,14 +424,12 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
                 goto error;
             }
 
+            mod = NULL;
             if (c->yang_lib_file) {
                 /* just get the module, it should already be parsed */
                 mod = ly_ctx_get_module_implemented(c->ctx, module);
-                if (!mod) {
-                    YLMSG_E("Schema module \"%s\" not implemented in yang-library data.\n", module);
-                    goto error;
-                }
-            } else {
+            }
+            if (!mod) {
                 /* add temporarily also the path of the module itself */
                 if (ly_ctx_set_searchdir(c->ctx, dir) == LY_EEXIST) {
                     path_unset = 0;
