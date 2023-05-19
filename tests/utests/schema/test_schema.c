@@ -1086,7 +1086,8 @@ test_key_order(void **state)
     const struct lysc_node *node;
 
     struct module_clb_list list1[] = {
-        {"a", "module a {"
+        {
+            "a", "module a {"
             "yang-version 1.1;"
             "namespace urn:test:a;"
             "prefix a;"
@@ -1095,7 +1096,8 @@ test_key_order(void **state)
             "  leaf k2 {type string;}"
             "  leaf k1 {type string;}"
             "}"
-            "}"},
+            "}"
+        },
         {NULL, NULL}
     };
 
@@ -1109,7 +1111,8 @@ test_key_order(void **state)
     assert_string_equal("k2", node->name);
 
     struct module_clb_list list2[] = {
-        {"b", "module b {"
+        {
+            "b", "module b {"
             "yang-version 1.1;"
             "namespace urn:test:b;"
             "prefix b;"
@@ -1124,7 +1127,8 @@ test_key_order(void **state)
             "  leaf k1 {type string;}"
             "  leaf k3 {type string;}"
             "}"
-            "}"},
+            "}"
+        },
         {NULL, NULL}
     };
 
