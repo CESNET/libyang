@@ -3486,7 +3486,8 @@ trb_gap_to_opts(const struct trt_node *node)
     }
 
     if (node->name.module_prefix) {
-        len += strlen(node->name.module_prefix);
+        /* prefix_name and ':' */
+        len += strlen(node->name.module_prefix) + 1;
     }
     if (node->name.str) {
         len += strlen(node->name.str);
