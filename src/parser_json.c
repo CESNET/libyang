@@ -161,24 +161,24 @@ lydjson_get_node_prefix(struct lyd_node *node, const char *local_prefix, size_t 
         return LY_SUCCESS;
     }
 
-    *prefix_p = NULL;
     while (node) {
         if (node->schema) {
-            *prefix_p = node->schema->module->name;
+            module_name = node->schema->module->name;
             break;
         }
         onode = (struct lyd_node_opaq *)node;
         if (onode->name.module_name) {
-            *prefix_p = onode->name.module_name;
+            module_name = onode->name.module_name;
             break;
         } else if (onode->name.prefix) {
-            *prefix_p = onode->name.prefix;
+            module_name = onode->name.prefix;
             break;
         }
         node = lyd_parent(node);
     }
-    *prefix_len_p = ly_strlen(module_name);
 
+    *prefix_p = module_name;
+    *prefix_len_p = ly_strlen(module_name);
     return LY_SUCCESS;
 }
 
