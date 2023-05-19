@@ -11,4 +11,8 @@ test ylf_make_implemented {apply --yang-library-file and --make-implemented} {
     ly_cmd "-Y $ddir/modimp_type_ctx.xml -p $mdir -i -i -l" "I modimp-type.*I modtypedef"
 } {}
 
+test ylf_augment_ctx {Setup context by yang-library-file and augment module} {
+    ly_cmd "-Y $ddir/modconfig_ctx.xml -p $mdir -f tree $mdir/modconfig.yang $mdir/modconfig-augment.yang" "mca:alf"
+} {}
+
 cleanupTests
