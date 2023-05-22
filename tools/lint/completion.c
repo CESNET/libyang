@@ -363,6 +363,17 @@ get_list_format_arg(const char *hint, char ***matches, unsigned int *match_count
     get_arg_completion(hint, args, matches, match_count);
 }
 
+/**
+ * @copydoc get_print_format_arg
+ */
+static void
+get_verb_arg(const char *hint, char ***matches, unsigned int *match_count)
+{
+    const char *args[] = {"error", "warning", "verbose", "debug", NULL};
+
+    get_arg_completion(hint, args, matches, match_count);
+}
+
 #ifndef NDEBUG
 /**
  * @copydoc get_print_format_arg
@@ -439,6 +450,7 @@ complete_cmd(const char *buf, const char *hint, linenoiseCompletions *lc)
         {CMD_DATA,        NULL,    linenoisePathCompletion, NULL},
         {CMD_LIST,        NULL,    NULL, get_list_format_arg},
         {CMD_FEATURE,     NULL,    NULL, get_model_completion},
+        {CMD_VERB,        NULL,    NULL, get_verb_arg},
 #ifndef NDEBUG
         {CMD_DEBUG,       NULL,    NULL, get_debug_arg},
 #endif
