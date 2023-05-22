@@ -35,7 +35,7 @@ extern int done;
 void
 cmd_debug_help(void)
 {
-    printf("Usage: debug (dict | xpath)+\n");
+    printf("Usage: debug (dict | xpath | dep-sets)+\n");
 }
 
 void
@@ -75,6 +75,8 @@ cmd_debug(struct ly_ctx **UNUSED(ctx), const char *cmdline)
             dbg_groups |= LY_LDGDICT;
         } else if (!strcasecmp("xpath", argv[optind + i])) {
             dbg_groups |= LY_LDGXPATH;
+        } else if (!strcasecmp("dep-sets", argv[optind + i])) {
+            dbg_groups |= LY_LDGDEPSETS;
         } else {
             YLMSG_E("Unknown debug group \"%s\"\n", argv[optind + 1]);
             goto cleanup;
