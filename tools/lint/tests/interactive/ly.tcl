@@ -173,3 +173,27 @@ proc ly_exit {} {
     send "exit\r"
     expect eof
 }
+
+# Check if yanglint supports the specified command.
+# Parameter cmd is a command to be found.
+# Return true if command is found otherwise false.
+proc ly_cmd_exists {cmd} {
+    global prompt
+    set rc true
+    spawn $::env(YANGLINT)
+    ly_skip_warnings
+
+    send -- "help\r"
+    expect -- "help\r\n"
+
+    set failure_pattern "\r\n${prompt}$"
+    expect {
+        -re "${cmd}.*\r\n${prompt}$" {}
+        -re $failure_pattern {
+            set rc false
+        }
+    }
+
+    ly_exit
+    return $rc
+}

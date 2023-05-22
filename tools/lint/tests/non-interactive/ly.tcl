@@ -92,3 +92,19 @@ proc ly_cmd_wrn {cmd pattern} {
     }
     return
 }
+
+# Check if yanglint supports the specified option.
+# Parameter opt is a option to be found.
+# Return true if option is found otherwise false.
+proc ly_opt_exists {opt} {
+    namespace import ly::private::*
+    lassign [ly_exec "--help"] rc msg
+    if { $rc != 0 } {
+        error "unexpected return code $rc:\n$msg\n"
+    }
+    if { [output_check $opt $msg] } {
+        return false
+    } else {
+        return true
+    }
+}
