@@ -215,6 +215,8 @@ test_data_xpath_json(void **state)
     const char *schema, *data;
     struct lyd_node *tree;
 
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_LEAFREF_EXTENDED);
+
     /* json xpath test */
     schema = MODULE_CREATE_YANG("xp_test",
             "list l1 {key t1; leaf t1 {type uint8;} list l2 {key t2;leaf t2 {type uint8;}}}"

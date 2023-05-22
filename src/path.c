@@ -276,6 +276,7 @@ static LY_ERR
 ly_path_skip_function(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint32_t *tok_idx)
 {
     LY_ERR ret = LY_SUCCESS;
+
     /* mandatory FunctionName */
     LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_FUNCNAME), ret = LY_EVALID, error);
 
@@ -283,8 +284,8 @@ ly_path_skip_function(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uin
     LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_PAR1), ret = LY_EVALID, error);
 
     /* mandatory 'Expr' */
-    while (lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_PAR2) && lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_FUNCNAME)){
-         (*tok_idx)++;
+    while (lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_PAR2) && lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_FUNCNAME)) {
+        (*tok_idx)++;
     }
 
     /* embedded function inside function ')' */
@@ -329,7 +330,7 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
             /* relative path check specific to leafref */
             if (lref) {
                 /* optional function 'deref..' */
-                if (ctx && (ly_ctx_get_options(ctx) & LY_CTX_ENABLE_XPATH_IN_LEAFREF) && !lyxp_check_token(NULL, exp, tok_idx, LYXP_TOKEN_FUNCNAME)) {
+                if ((ly_ctx_get_options(ctx) & LY_CTX_LEAFREF_EXTENDED) && !lyxp_check_token(NULL, exp, tok_idx, LYXP_TOKEN_FUNCNAME)) {
                     LY_CHECK_ERR_GOTO(ly_path_skip_function(ctx, exp, &tok_idx), ret = LY_EVALID, error);
 
                     /* '/' */
@@ -908,7 +909,7 @@ cleanup:
 }
 
 /**
- * @brief Compile path using XPath functions into ly_path structure.
+ * @brief Compile path using XPath function into ly_path structure.
  *
  * @param[in] ctx libyang context.
  * @param[in] cur_mod Current module of the path (where it was "instantiated"), ignored of @p lref. Used for nodes
@@ -925,7 +926,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-_ly_path_compile_function(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
+ly_path_compile_function(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
         const struct lysc_ext_instance *top_ext, const struct lyxp_expr *expr, LY_VALUE_FORMAT format, void *prefix_data,
         uint32_t getnext_opts, struct ly_path **path)
 {
@@ -937,32 +938,39 @@ _ly_path_compile_function(const struct ly_ctx *ctx, const struct lys_module *cur
     struct lysc_node *schema = NULL;
     const struct lysc_node *node2;
     struct lysc_ext_instance *ext = NULL;
+
     opts = LYXP_SCNODE_SCHEMA | ((ctx_node->flags & LYS_IS_OUTPUT) ? LYXP_SCNODE_OUTPUT : 0);
+    /* atomizing whole path */
     ret = lyxp_atomize(ctx, expr, cur_mod, LY_VALUE_SCHEMA_RESOLVED,
-                    prefix_data, ctx_node, ctx_node, &tmp_set, opts);
+            prefix_data, ctx_node, ctx_node, &tmp_set, opts);
     if (ret) {
         LOGVAL(ctx, LYVE_XPATH, "Invalid path \"%s\".", expr->expr);
         goto cleanup;
     }
 
+    /* as there is no direct relationship between number path elements and returned sets, we are
+     * taking just the last one which should correspond to the final schema node */
     for (i = tmp_set.used - 1; i >= 0; --i) {
         /* skip roots'n'stuff */
         if ((tmp_set.val.scnodes[i].type == LYXP_NODE_ELEM) &&
-            (tmp_set.val.scnodes[i].in_ctx != LYXP_SET_SCNODE_START_USED)) {
+                (tmp_set.val.scnodes[i].in_ctx != LYXP_SET_SCNODE_START_USED)) {
             schema = tmp_set.val.scnodes[i].scnode;
             break;
         }
     }
 
+    /* verify that we have valid schema node */
     if (!schema) {
         ret = LY_ENOTFOUND;
         LOGVAL(ctx, LYVE_XPATH, "Invalid path \"%s\".", expr->expr);
         goto cleanup;
     }
 
-    LY_CHECK_GOTO(ret = ly_path_compile_snode(ctx, schema->parent, cur_mod, schema->parent, expr, expr->used-1,
+    /* compile the schema node to get node extensions */
+    LY_CHECK_GOTO(ret = ly_path_compile_snode(ctx, schema->parent, cur_mod, schema->parent, expr, expr->used - 1,
             format, prefix_data, top_ext, getnext_opts, &node2, &ext), cleanup);
 
+    /* store the result */
     LY_ARRAY_NEW_GOTO(ctx, *path, p, ret, cleanup);
     p->node = schema;
     p->ext = ext;
@@ -1033,9 +1041,9 @@ _ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, con
         getnext_opts = 0;
     }
 
-    if (lref && ctx && (ly_ctx_get_options(ctx) & LY_CTX_ENABLE_XPATH_IN_LEAFREF) && expr->tokens[tok_idx] == LYXP_TOKEN_FUNCNAME) {
+    if (lref && (ly_ctx_get_options(ctx) & LY_CTX_LEAFREF_EXTENDED) && (expr->tokens[tok_idx] == LYXP_TOKEN_FUNCNAME)) {
         /* function */
-        ret = _ly_path_compile_function(ctx, cur_mod, ctx_node, top_ext, expr, format, prefix_data,
+        ret = ly_path_compile_function(ctx, cur_mod, ctx_node, top_ext, expr, format, prefix_data,
                 getnext_opts, path);
         goto cleanup;
     }

@@ -197,7 +197,7 @@ struct ly_ctx;
 #define LY_CTX_ENABLE_IMP_FEATURES 0x0100 /**< By default, all features of newly implemented imported modules of
                                         a module that is being loaded are disabled. With this flag they all become
                                         enabled. */
-#define LY_CTX_ENABLE_XPATH_IN_LEAFREF 0x0200 /**< By default, path attribute of leafref accepts only path as defined in RFC 7950.
+#define LY_CTX_LEAFREF_EXTENDED 0x0200 /**< By default, path attribute of leafref accepts only path as defined in RFC 7950.
                                         By using this option, the path attribute will also allow using XPath functions as deref() */
 
 /** @} contextoptions */

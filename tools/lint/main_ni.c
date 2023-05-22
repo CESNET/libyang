@@ -287,6 +287,9 @@ help(int shortout)
             "                create an exact YANG schema context. If specified, the '-F'\n"
             "                parameter (enabled features) is ignored.\n\n");
 
+    printf("  -X, --xpath-in-leafref\n"
+            "                Allow usage of XPath within leafref\n\n");
+
 #ifndef NDEBUG
     printf("  -G GROUPS, --debug=GROUPS\n"
             "                Enable printing of specific debugging message group\n"
@@ -558,6 +561,7 @@ fill_context(int argc, char *argv[], struct context *c)
         {"merge",             no_argument,       NULL, 'm'},
         {"yang-library",      no_argument,       NULL, 'y'},
         {"yang-library-file", required_argument, NULL, 'Y'},
+        {"xpath-in-leafref",  no_argument,       NULL, 'X'},
 #ifndef NDEBUG
         {"debug",            required_argument, NULL, 'G'},
 #endif
@@ -572,9 +576,9 @@ fill_context(int argc, char *argv[], struct context *c)
 
     opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:net:d:lL:o:O:R:myY:x:G:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:net:d:lL:o:O:R:myY:Xx:G:", options, &opt_index)) != -1)
 #else
-    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:net:d:lL:o:O:R:myY:x:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:net:d:lL:o:O:R:myY:Xx:", options, &opt_index)) != -1)
 #endif
     {
         switch (opt) {
@@ -812,6 +816,10 @@ fill_context(int argc, char *argv[], struct context *c)
         case 'Y': /* --yang-library-file */
             c->ctx_options &= ~LY_CTX_NO_YANGLIBRARY;
             c->yang_lib_file = optarg;
+            break;
+
+        case 'X': /* --xpath-in-leafref */
+            c->ctx_options |= LY_CTX_LEAFREF_EXTENDED;
             break;
 
 #ifndef NDEBUG
