@@ -329,7 +329,7 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
             /* relative path check specific to leafref */
             if (lref) {
                 /* optional function 'deref..' */
-                if (!lyxp_check_token(NULL, exp, tok_idx, LYXP_TOKEN_FUNCNAME)) {
+                if (ctx && (ly_ctx_get_options(ctx) & LY_CTX_ENABLE_XPATH_IN_LEAFREF) && !lyxp_check_token(NULL, exp, tok_idx, LYXP_TOKEN_FUNCNAME)) {
                     LY_CHECK_ERR_GOTO(ly_path_skip_function(ctx, exp, &tok_idx), ret = LY_EVALID, error);
 
                     /* '/' */
@@ -1033,7 +1033,7 @@ _ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, con
         getnext_opts = 0;
     }
 
-    if (lref && expr->tokens[tok_idx] == LYXP_TOKEN_FUNCNAME) {
+    if (lref && ctx && (ly_ctx_get_options(ctx) & LY_CTX_ENABLE_XPATH_IN_LEAFREF) && expr->tokens[tok_idx] == LYXP_TOKEN_FUNCNAME) {
         /* function */
         ret = _ly_path_compile_function(ctx, cur_mod, ctx_node, top_ext, expr, format, prefix_data,
                 getnext_opts, path);
