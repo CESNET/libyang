@@ -422,6 +422,20 @@ ly_bool lyxp_set_scnode_contains(struct lyxp_set *set, const struct lysc_node *n
 void lyxp_set_scnode_merge(struct lyxp_set *set1, struct lyxp_set *set2);
 
 /**
+ * @brief Insert schema node into set.
+ *
+ * @param[in] set Set to insert into.
+ * @param[in] node Node to insert.
+ * @param[in] node_type Node type of @p node.
+ * @param[in] axis Axis that @p node was reached on.
+ * @param[out] index_p Optional pointer to store the index of the inserted @p node.
+ * @return LY_SUCCESS on success.
+ * @return LY_EMEM on memory allocation failure.
+ */
+LY_ERR lyxp_set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type,
+        enum lyxp_axis axis, uint32_t *index_p);
+
+/**
  * @brief Parse an XPath expression into a structure of tokens.
  *        Logs directly.
  *

@@ -43,8 +43,6 @@
 #include "tree_schema_internal.h"
 #include "xml.h"
 
-static LY_ERR set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type,
-        enum lyxp_axis axis, uint32_t *index_p);
 static LY_ERR reparse_or_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t depth);
 static LY_ERR eval_expr_select(const struct lyxp_expr *exp, uint32_t *tok_idx, enum lyxp_expr_type etype,
         struct lyxp_set *set, uint32_t options);
@@ -893,7 +891,7 @@ set_copy(struct lyxp_set *set)
                     (set->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_START)) {
                 uint32_t idx;
 
-                LY_CHECK_ERR_RET(set_scnode_insert_node(ret, set->val.scnodes[i].scnode, set->val.scnodes[i].type,
+                LY_CHECK_ERR_RET(lyxp_set_scnode_insert_node(ret, set->val.scnodes[i].scnode, set->val.scnodes[i].type,
                         set->val.scnodes[i].axis, &idx), lyxp_set_free(ret), NULL);
                 /* coverity seems to think scnodes can be NULL */
                 if (!ret->val.scnodes) {
@@ -1318,19 +1316,8 @@ set_insert_node(struct lyxp_set *set, const struct lyd_node *node, uint32_t pos,
     set_insert_node_hash(set, (struct lyd_node *)node, node_type);
 }
 
-/**
- * @brief Insert schema node into set.
- *
- * @param[in] set Set to insert into.
- * @param[in] node Node to insert.
- * @param[in] node_type Node type of @p node.
- * @param[in] axis Axis that @p node was reached on.
- * @param[out] index_p Optional pointer to store index if the inserted @p node.
- * @return LY_SUCCESS on success.
- * @return LY_EMEM on memory allocation failure.
- */
-static LY_ERR
-set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type,
+LY_ERR
+lyxp_set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type,
         enum lyxp_axis axis, uint32_t *index_p)
 {
     uint32_t index;
@@ -1350,7 +1337,7 @@ set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node *node, enum 
     }
 
     if (lyxp_set_scnode_contains(set, node, node_type, -1, &index)) {
-        /* BUG if axes differs, this new one is thrown away */
+        /* BUG if axes differ, this new one is thrown away */
         set->val.scnodes[index].in_ctx = LYXP_SET_SCNODE_ATOM_CTX;
     } else {
         if (set->used == set->size) {
@@ -3938,10 +3925,10 @@ xpath_current(struct lyxp_set **args, uint32_t arg_count, struct lyxp_set *set, 
         set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
 
         if (set->cur_scnode) {
-            LY_CHECK_RET(set_scnode_insert_node(set, set->cur_scnode, LYXP_NODE_ELEM, LYXP_AXIS_SELF, NULL));
+            LY_CHECK_RET(lyxp_set_scnode_insert_node(set, set->cur_scnode, LYXP_NODE_ELEM, LYXP_AXIS_SELF, NULL));
         } else {
             /* root node */
-            LY_CHECK_RET(set_scnode_insert_node(set, NULL, set->root_type, LYXP_AXIS_SELF, NULL));
+            LY_CHECK_RET(lyxp_set_scnode_insert_node(set, NULL, set->root_type, LYXP_AXIS_SELF, NULL));
         }
     } else {
         lyxp_set_free_content(set);
@@ -4007,7 +3994,7 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
                 target = p[LY_ARRAY_COUNT(p) - 1].node;
                 ly_path_free(set->ctx, p);
 
-                LY_CHECK_RET(set_scnode_insert_node(set, target, LYXP_NODE_ELEM, LYXP_AXIS_SELF, NULL));
+                LY_CHECK_RET(lyxp_set_scnode_insert_node(set, target, LYXP_NODE_ELEM, LYXP_AXIS_SELF, NULL));
             } /* else the target was found before but is disabled so it was removed */
         }
 
@@ -5661,7 +5648,7 @@ moveto_root(struct lyxp_set *set, uint32_t options)
 
     if (options & LYXP_SCNODE_ALL) {
         set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
-        LY_CHECK_RET(set_scnode_insert_node(set, NULL, set->root_type, LYXP_AXIS_SELF, NULL));
+        LY_CHECK_RET(lyxp_set_scnode_insert_node(set, NULL, set->root_type, LYXP_AXIS_SELF, NULL));
     } else {
         set->type = LYXP_SET_NODE_SET;
         set->used = 0;
@@ -6714,7 +6701,7 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const c
             }
 
             /* insert */
-            LY_CHECK_RET(set_scnode_insert_node(set, iter, iter_type, axis, &idx));
+            LY_CHECK_RET(lyxp_set_scnode_insert_node(set, iter, iter_type, axis, &idx));
 
             /* we need to prevent these nodes from being considered in this moveto */
             if ((idx < orig_used) && (idx > i)) {
@@ -6727,7 +6714,7 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const c
                 (set->val.scnodes[i].type == LYXP_NODE_ELEM) && !ly_nested_ext_schema(NULL, set->val.scnodes[i].scnode,
                 moveto_mod->name, strlen(moveto_mod->name), LY_VALUE_JSON, NULL, ncname, strlen(ncname), &iter, NULL)) {
             /* there is a matching node from an extension, use it */
-            LY_CHECK_RET(set_scnode_insert_node(set, iter, LYXP_NODE_ELEM, axis, &idx));
+            LY_CHECK_RET(lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM, axis, &idx));
             if ((idx < orig_used) && (idx > i)) {
                 set->val.scnodes[idx].in_ctx = LYXP_SET_SCNODE_ATOM_NEW_CTX;
                 temp_ctx = 1;
@@ -6871,7 +6858,7 @@ moveto_scnode_dfs(struct lyxp_set *set, const struct lysc_node *start, uint32_t 
                     goto skip_children;
                 }
             } else {
-                LY_CHECK_RET(set_scnode_insert_node(set, elem, LYXP_NODE_ELEM, LYXP_AXIS_DESCENDANT, NULL));
+                LY_CHECK_RET(lyxp_set_scnode_insert_node(set, elem, LYXP_NODE_ELEM, LYXP_AXIS_DESCENDANT, NULL));
             }
         } else if (rc == LY_EINVAL) {
             goto skip_children;
@@ -9876,7 +9863,7 @@ lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct
     memset(set, 0, sizeof *set);
     set->type = LYXP_SET_SCNODE_SET;
     set->root_type = lyxp_get_root_type(NULL, ctx_scnode, options);
-    LY_CHECK_RET(set_scnode_insert_node(set, ctx_scnode, ctx_scnode ? LYXP_NODE_ELEM : set->root_type, LYXP_AXIS_SELF, NULL));
+    LY_CHECK_RET(lyxp_set_scnode_insert_node(set, ctx_scnode, ctx_scnode ? LYXP_NODE_ELEM : set->root_type, LYXP_AXIS_SELF, NULL));
     set->val.scnodes[0].in_ctx = LYXP_SET_SCNODE_START;
 
     set->ctx = (struct ly_ctx *)ctx;

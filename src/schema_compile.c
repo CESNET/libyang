@@ -519,7 +519,7 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
 {
     struct lyxp_set tmp_set;
     struct lyxp_set_scnode *xp_scnode;
-    uint32_t i, j;
+    uint32_t i, j, idx;
     LY_ARRAY_COUNT_TYPE u;
     LY_ERR ret = LY_SUCCESS;
 
@@ -565,36 +565,46 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
                 }
 
                 for (j = 0; j < tmp_set.used; ++j) {
-                    /* skip roots'n'stuff */
-                    if (tmp_set.val.scnodes[j].type == LYXP_NODE_ELEM) {
-                        /* try to find this node in our set */
-                        uint32_t idx;
-
-                        if (lyxp_set_scnode_contains(set, tmp_set.val.scnodes[j].scnode, LYXP_NODE_ELEM, -1, &idx) &&
-                                (set->val.scnodes[idx].in_ctx == LYXP_SET_SCNODE_START_USED)) {
-                            LOGVAL(set->ctx, LYVE_SEMANTICS, "When condition cyclic dependency on the node \"%s\".",
-                                    tmp_set.val.scnodes[j].scnode->name);
-                            ret = LY_EVALID;
-                            LOG_LOCBACK(1, 0, 0, 0);
-                            goto cleanup;
-                        }
-
-                        /* needs to be checked, if in both sets, will be ignored */
-                        tmp_set.val.scnodes[j].in_ctx = LYXP_SET_SCNODE_ATOM_CTX;
-                    } else {
-                        /* no when, nothing to check */
+                    if (tmp_set.val.scnodes[j].type != LYXP_NODE_ELEM) {
+                        /* skip roots'n'stuff, no when, nothing to check */
                         tmp_set.val.scnodes[j].in_ctx = LYXP_SET_SCNODE_ATOM_NODE;
+                        continue;
+                    }
+
+                    /* try to find this node in our set */
+                    if (lyxp_set_scnode_contains(set, tmp_set.val.scnodes[j].scnode, LYXP_NODE_ELEM, -1, &idx) &&
+                            (set->val.scnodes[idx].in_ctx == LYXP_SET_SCNODE_START_USED)) {
+                        LOGVAL(set->ctx, LYVE_SEMANTICS, "When condition cyclic dependency on the node \"%s\".",
+                                tmp_set.val.scnodes[j].scnode->name);
+                        ret = LY_EVALID;
+                        LOG_LOCBACK(1, 0, 0, 0);
+                        goto cleanup;
+                    }
+
+                    /* needs to be checked, if in both sets, will be ignored */
+                    tmp_set.val.scnodes[j].in_ctx = LYXP_SET_SCNODE_ATOM_CTX;
+                }
+
+                if (when->context != node) {
+                    /* node actually depends on this "when", not the context node */
+                    assert(tmp_set.val.scnodes[0].scnode == when->context);
+                    if (tmp_set.val.scnodes[0].in_ctx == LYXP_SET_SCNODE_START_USED) {
+                        /* replace the non-traversed context node with the dependent node */
+                        tmp_set.val.scnodes[0].scnode = (struct lysc_node *)node;
+                    } else {
+                        /* context node was traversed, so just add the dependent node */
+                        ret = lyxp_set_scnode_insert_node(&tmp_set, node, LYXP_SET_SCNODE_START_USED, LYXP_AXIS_CHILD, NULL);
+                        LY_CHECK_ERR_GOTO(ret, LOG_LOCBACK(1, 0, 0, 0), cleanup);
                     }
                 }
 
                 /* merge this set into the global when set */
                 lyxp_set_scnode_merge(set, &tmp_set);
             }
+            LOG_LOCBACK(1, 0, 0, 0);
 
             /* check when of non-data parents as well */
             node = node->parent;
-
-            LOG_LOCBACK(1, 0, 0, 0);
         } while (node && (node->nodetype & (LYS_CASE | LYS_CHOICE)));
 
         /* this node when was checked (xp_scnode could have been reallocd) */
@@ -640,6 +650,7 @@ lys_compile_unres_when(struct lysc_ctx *ctx, const struct lysc_when *when, const
 {
     struct lyxp_set tmp_set = {0};
     uint32_t i, opts;
+    struct lysc_node *schema;
     LY_ERR ret = LY_SUCCESS;
 
     opts = LYXP_SCNODE_SCHEMA | ((node->flags & LYS_IS_OUTPUT) ? LYXP_SCNODE_OUTPUT : 0);
@@ -655,28 +666,45 @@ lys_compile_unres_when(struct lysc_ctx *ctx, const struct lysc_when *when, const
     ctx->path[0] = '\0';
     lysc_path(node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
     for (i = 0; i < tmp_set.used; ++i) {
-        /* skip roots'n'stuff */
-        if ((tmp_set.val.scnodes[i].type == LYXP_NODE_ELEM) &&
-                (tmp_set.val.scnodes[i].in_ctx != LYXP_SET_SCNODE_START_USED)) {
-            struct lysc_node *schema = tmp_set.val.scnodes[i].scnode;
+        if (tmp_set.val.scnodes[i].type != LYXP_NODE_ELEM) {
+            /* skip roots'n'stuff */
+            continue;
+        } else if (tmp_set.val.scnodes[i].in_ctx == LYXP_SET_SCNODE_START_USED) {
+            /* context node not actually traversed */
+            continue;
+        }
 
-            /* XPath expression cannot reference "lower" status than the node that has the definition */
-            if (lysc_check_status(NULL, when->flags, node->module, node->name, schema->flags, schema->module,
-                    schema->name)) {
-                LOGWRN(ctx->ctx, "When condition \"%s\" may be referencing %s node \"%s\".", when->cond->expr,
-                        (schema->flags == LYS_STATUS_OBSLT) ? "obsolete" : "deprecated", schema->name);
-            }
+        schema = tmp_set.val.scnodes[i].scnode;
 
-            /* check dummy node children/value accessing */
-            if (lysc_data_parent(schema) == node) {
-                LOGVAL(ctx->ctx, LYVE_SEMANTICS, "When condition is accessing its own conditional node children.");
-                ret = LY_EVALID;
-                goto cleanup;
-            } else if ((schema == node) && (tmp_set.val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_VAL)) {
-                LOGVAL(ctx->ctx, LYVE_SEMANTICS, "When condition is accessing its own conditional node value.");
-                ret = LY_EVALID;
-                goto cleanup;
-            }
+        /* XPath expression cannot reference "lower" status than the node that has the definition */
+        if (lysc_check_status(NULL, when->flags, node->module, node->name, schema->flags, schema->module,
+                schema->name)) {
+            LOGWRN(ctx->ctx, "When condition \"%s\" may be referencing %s node \"%s\".", when->cond->expr,
+                    (schema->flags == LYS_STATUS_OBSLT) ? "obsolete" : "deprecated", schema->name);
+        }
+
+        /* check dummy node children/value accessing */
+        if (lysc_data_parent(schema) == node) {
+            LOGVAL(ctx->ctx, LYVE_SEMANTICS, "When condition is accessing its own conditional node children.");
+            ret = LY_EVALID;
+            goto cleanup;
+        } else if ((schema == node) && (tmp_set.val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_VAL)) {
+            LOGVAL(ctx->ctx, LYVE_SEMANTICS, "When condition is accessing its own conditional node value.");
+            ret = LY_EVALID;
+            goto cleanup;
+        }
+    }
+
+    if (when->context != node) {
+        /* node actually depends on this "when", not the context node */
+        assert(tmp_set.val.scnodes[0].scnode == when->context);
+        if (tmp_set.val.scnodes[0].in_ctx == LYXP_SET_SCNODE_START_USED) {
+            /* replace the non-traversed context node with the dependent node */
+            tmp_set.val.scnodes[0].scnode = (struct lysc_node *)node;
+        } else {
+            /* context node was traversed, so just add the dependent node */
+            ret = lyxp_set_scnode_insert_node(&tmp_set, node, LYXP_SET_SCNODE_START_USED, LYXP_AXIS_CHILD, NULL);
+            LY_CHECK_GOTO(ret, cleanup);
         }
     }
 

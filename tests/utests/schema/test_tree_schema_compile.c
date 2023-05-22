@@ -3901,6 +3901,55 @@ test_when(void **state)
             "  }"
             "}",
             LYS_IN_YANG, NULL));
+
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb,
+            "module d1 {"
+            "  namespace urn:d1;"
+            "  prefix d1;"
+            "  container ifm {"
+            "    container interfaces {"
+            "      list interface {"
+            "        key \"name\";"
+            "        leaf name {"
+            "          type string;"
+            "        }"
+            "        container ethernet {"
+            "          container main-interface {"
+            "            container l2-attribute {"
+            "              when \"not(/d1:ifm/d1:interfaces/d1:interface/d1:trunk/d1:members/d1:member[d1:name=current()/../../../d1:name])\";"
+            "              presence \"\";"
+            "            }"
+            "          }"
+            "        }"
+            "        container trunk {"
+            "          container members {"
+            "            list member {"
+            "              key \"name\";"
+            "              leaf name {"
+            "                type string;"
+            "              }"
+            "            }"
+            "          }"
+            "        }"
+            "      }"
+            "    }"
+            "  }"
+            "}");
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX,
+            "module d2 {"
+            "  namespace \"urn:d2\";"
+            "  prefix d2;"
+            "  import d1 {"
+            "    prefix d1;"
+            "  }"
+            "  augment \"/d1:ifm/d1:interfaces/d1:interface/d1:ethernet/d1:main-interface\" {"
+            "    when \"not(d1:l2-attribute)\";"
+            "    container extra-attribute {"
+            "      presence \"\";"
+            "    }"
+            "  }"
+            "}",
+            LYS_IN_YANG, NULL));
 }
 
 static void
