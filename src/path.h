@@ -62,6 +62,7 @@ struct ly_path {
                                        - is inner node - path is relative */
     const struct lysc_ext_instance *ext;    /**< Extension instance of @p node, if any */
     struct ly_path_predicate *predicates;   /**< [Sized array](@ref sizedarrays) of the path segment's predicates */
+    const struct lysc_node_leaf *deref_node;     /**< Optional dereferenced node */
 };
 
 /**

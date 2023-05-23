@@ -1036,6 +1036,7 @@ ly_path_compile_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node
     LY_CHECK_ERR_GOTO(ly_path_parse(ctx, ctx_node, new_path, pos, 1, LY_PATH_BEGIN_EITHER, LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &new_path_expr), ret = LY_EVALID, cleanup);
     LY_CHECK_ERR_GOTO(ly_path_compile_leafref(ctx, ctx_node, top_ext, new_path_expr, oper, target, format, prefix_data, path), ret = LY_EVALID, cleanup);
     lyxp_expr_free(ctx, new_path_expr);
+    (*path)[0].deref_node = deref_leaf_node;
 
 cleanup:
     if (ret) {
