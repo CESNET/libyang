@@ -265,36 +265,61 @@ token_error:
 }
 
 /**
- * @brief Skips already parsed XPath FunctionName the corresponding schema node
+ * @brief Parse deref XPath function and perform all additional checks.
  *
  * @param[in] ctx libyang context.
+ * @param[in] ctx_node Optional context node, used for logging.
  * @param[in] exp Parsed path.
  * @param[in,out] tok_idx Index in @p exp, is adjusted.
  * @return LY_ERR value.
  */
 static LY_ERR
-ly_path_skip_function(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint32_t *tok_idx)
+ly_path_parse_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const struct lyxp_expr *exp, uint32_t *tok_idx)
 {
     LY_ERR ret = LY_SUCCESS;
+    size_t arg_len;
+    uint32_t begin_token, end_token;
+    struct lyxp_expr *arg_expr = NULL;
 
     /* mandatory FunctionName */
     LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_FUNCNAME), ret = LY_EVALID, error);
+    if (exp->used <= *tok_idx + 1) {
+        if (ctx) {
+            LOGVAL(ctx, LY_VCODE_XP_EOF);
+        }
+        return LY_EINCOMPLETE;
+    }
+
+    if (!strncmp(&exp->expr[exp->tok_pos[*tok_idx]], "deref", 5)) {
+        LOGVAL(ctx, LYVE_XPATH, "Unexpected XPath function \"%.*s\" in path, expected \"deref(...)\"", exp->tok_len[*tok_idx], exp->tok_pos[*tok_idx]);
+        ret = LY_EVALID;
+        goto error;
+    }
 
     /* mandatory '(' */
     LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_PAR1), ret = LY_EVALID, error);
+    begin_token = *tok_idx;
 
-    /* mandatory 'Expr' */
+    /* count tokens till ')' */
     while (lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_PAR2) && lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_FUNCNAME)) {
         (*tok_idx)++;
     }
 
     /* embedded function inside function ')' */
     if (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_FUNCNAME)) {
-        LY_CHECK_ERR_GOTO(ly_path_skip_function(ctx, exp, tok_idx), ret = LY_EVALID, error);
+        LOGVAL(ctx, LYVE_XPATH, "Embedded function XPath function inside deref function within the path is not allowed");
+        ret = LY_EVALID;
+        goto error;
     }
 
     /* mandatory ')' */
     LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_PAR2), ret = LY_EVALID, error);
+    end_token = *tok_idx - 1;
+
+    /* verify the path of deref argument */
+    arg_len = exp->tok_pos[end_token] - exp->tok_pos[begin_token];
+    LY_CHECK_ERR_GOTO(ly_path_parse(ctx, ctx_node, &exp->expr[exp->tok_pos[begin_token]], arg_len, 1, LY_PATH_BEGIN_EITHER, LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &arg_expr), ret = LY_EVALID, error);
+    lyxp_expr_free(ctx, arg_expr);
 error:
     return ret;
 }
@@ -331,7 +356,7 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
             if (lref) {
                 /* optional function 'deref..' */
                 if ((ly_ctx_get_options(ctx) & LY_CTX_LEAFREF_EXTENDED) && !lyxp_check_token(NULL, exp, tok_idx, LYXP_TOKEN_FUNCNAME)) {
-                    LY_CHECK_ERR_GOTO(ly_path_skip_function(ctx, exp, &tok_idx), ret = LY_EVALID, error);
+                    LY_CHECK_ERR_GOTO(ly_path_parse_deref(ctx, ctx_node, exp, &tok_idx), ret = LY_EVALID, error);
 
                     /* '/' */
                     LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, &tok_idx, LYXP_TOKEN_OPER_PATH), ret = LY_EVALID, error);
@@ -909,74 +934,110 @@ cleanup:
 }
 
 /**
- * @brief Compile path using XPath function into ly_path structure.
+ * @brief Compile deref XPath function into ly_path structure.
  *
  * @param[in] ctx libyang context.
- * @param[in] cur_mod Current module of the path (where it was "instantiated"), ignored of @p lref. Used for nodes
- * without a prefix for ::LY_VALUE_SCHEMA and ::LY_VALUE_SCHEMA_RESOLVED format.
  * @param[in] ctx_node Optional context node, mandatory of @p lref.
  * @param[in] top_ext Extension instance containing the definition of the data being created. It is used to find the top-level
  * node inside the extension instance instead of a module. Note that this is the case not only if the @p ctx_node is NULL,
  * but also if the relative path starting in @p ctx_node reaches the document root via double dots.
  * @param[in] expr Parsed path.
+ * @param[in] oper Oper option (@ref path_oper_options).
+ * @param[in] target Target option (@ref path_target_options).
  * @param[in] format Format of the path.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
- * @param[in] getnext_opts Options to be used for ::lys_getnext() calls.
+ * @param[in,out] tok_idx Index in @p exp, is adjusted.
  * @param[out] path Compiled path.
  * @return LY_ERR value.
  */
 static LY_ERR
-ly_path_compile_function(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
-        const struct lysc_ext_instance *top_ext, const struct lyxp_expr *expr, LY_VALUE_FORMAT format, void *prefix_data,
-        uint32_t getnext_opts, struct ly_path **path)
+ly_path_compile_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
+        const struct lysc_ext_instance *top_ext, const struct lyxp_expr *expr, uint16_t oper, uint16_t target,
+        LY_VALUE_FORMAT format, void *prefix_data, uint32_t *tok_idx, struct ly_path **path)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct ly_path *p = NULL;
-    struct lyxp_set tmp_set = {0};
-    int32_t i;
-    uint32_t opts;
-    struct lysc_node *schema = NULL;
-    const struct lysc_node *node2;
-    struct lysc_ext_instance *ext = NULL;
+    struct lyxp_expr expr2;
+    struct ly_path *arg_path = NULL;
+    struct lysc_node_leaf *deref_leaf_node;
+    struct lysc_type_leafref *lref;
+    char new_path[LYSC_CTX_BUFSIZE] = {'\0'};
+    size_t pos = 0;
+    size_t len = 0;
+    size_t u;
 
-    opts = LYXP_SCNODE_SCHEMA | ((ctx_node->flags & LYS_IS_OUTPUT) ? LYXP_SCNODE_OUTPUT : 0);
-    /* atomizing whole path */
-    ret = lyxp_atomize(ctx, expr, cur_mod, LY_VALUE_SCHEMA_RESOLVED,
-            prefix_data, ctx_node, ctx_node, &tmp_set, opts);
-    if (ret) {
-        LOGVAL(ctx, LYVE_XPATH, "Invalid path \"%s\".", expr->expr);
-        goto cleanup;
+    /* skip deref keyword and '(' '' */
+    *tok_idx += 2;
+
+    /* emebedded functions were already identified count tokens till ')' */
+    while (lyxp_check_token(NULL, expr, *tok_idx, LYXP_TOKEN_PAR2)) {
+        (*tok_idx)++;
     }
 
-    /* as there is no direct relationship between number path elements and returned sets, we are
-     * taking just the last one which should correspond to the final schema node */
-    for (i = tmp_set.used - 1; i >= 0; --i) {
-        /* skip roots'n'stuff */
-        if ((tmp_set.val.scnodes[i].type == LYXP_NODE_ELEM) &&
-                (tmp_set.val.scnodes[i].in_ctx != LYXP_SET_SCNODE_START_USED)) {
-            schema = tmp_set.val.scnodes[i].scnode;
-            break;
-        }
+    /* prepare expr representing just deref arg */
+    expr2.tokens = &expr->tokens[2];
+    expr2.tok_pos = &expr->tok_pos[2];
+    expr2.tok_len = &expr->tok_len[2];
+    expr2.repeat = &expr->repeat[2];
+    expr2.used = *tok_idx - 2;
+    expr2.size = expr->size - 2;
+    expr2.expr = expr->expr;
+
+    /* compile just deref arg */
+    ly_path_compile_leafref(ctx, ctx_node, top_ext, &expr2, oper, target, format, prefix_data, &arg_path);
+
+    deref_leaf_node = (struct lysc_node_leaf *)arg_path[LY_ARRAY_COUNT(arg_path) - 1].node;
+    lref = (struct lysc_type_leafref *)deref_leaf_node->type;
+    ly_path_free(ctx, arg_path);
+
+    /* copy leafref path except the last segment */
+    for (u = 0; u < lref->path->used - 2; u++) {
+        len += lref->path->tok_len[u];
     }
+    strncpy(&new_path[pos], lref->path->expr, len);
+    pos += len;
 
-    /* verify that we have valid schema node */
-    if (!schema) {
-        ret = LY_ENOTFOUND;
-        LOGVAL(ctx, LYVE_XPATH, "Invalid path \"%s\".", expr->expr);
-        goto cleanup;
+    /* add '[' */
+    new_path[pos] = '[';
+    ++pos;
+
+    /* add key predicate */
+    u = lref->path->used - 1;
+    strncpy(&new_path[pos], &lref->path->expr[lref->path->tok_pos[u]], lref->path->tok_len[u]);
+    pos += lref->path->tok_len[u];
+
+    /* add ' = current()/' */
+    strcpy(&new_path[pos], " = current()/");
+    pos += 13;
+
+    /* add deref arg */
+    len = 0;
+    for (u = 0; u < expr2.used; u++) {
+        len += expr2.tok_len[u];
     }
+    strncpy(&new_path[pos], &expr2.expr[expr2.tok_pos[0]], len);
+    pos += len;
 
-    /* compile the schema node to get node extensions */
-    LY_CHECK_GOTO(ret = ly_path_compile_snode(ctx, schema->parent, cur_mod, schema->parent, expr, expr->used - 1,
-            format, prefix_data, top_ext, getnext_opts, &node2, &ext), cleanup);
+    /* add ']' */
+    new_path[pos] = ']';
+    ++pos;
 
-    /* store the result */
-    LY_ARRAY_NEW_GOTO(ctx, *path, p, ret, cleanup);
-    p->node = schema;
-    p->ext = ext;
+    /* skip ')' */
+    (*tok_idx)++;
+
+    /* skip '..' */
+    (*tok_idx)++;
+
+    /* add the last part after deref() */
+    strcpy(&new_path[pos], &expr->expr[expr->tok_pos[*tok_idx + 1]]);
+    pos = strlen(new_path);
+
+    struct lyxp_expr *new_path_expr = NULL;
+
+    LY_CHECK_ERR_GOTO(ly_path_parse(ctx, ctx_node, new_path, pos, 1, LY_PATH_BEGIN_EITHER, LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &new_path_expr), ret = LY_EVALID, cleanup);
+    LY_CHECK_ERR_GOTO(ly_path_compile_leafref(ctx, ctx_node, top_ext, new_path_expr, oper, target, format, prefix_data, path), ret = LY_EVALID, cleanup);
+    lyxp_expr_free(ctx, new_path_expr);
 
 cleanup:
-    lyxp_set_free_content(&tmp_set);
     if (ret) {
         *path = NULL;
     }
@@ -1042,13 +1103,11 @@ _ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, con
     }
 
     if (lref && (ly_ctx_get_options(ctx) & LY_CTX_LEAFREF_EXTENDED) && (expr->tokens[tok_idx] == LYXP_TOKEN_FUNCNAME)) {
-        /* function */
-        ret = ly_path_compile_function(ctx, cur_mod, ctx_node, top_ext, expr, format, prefix_data,
-                getnext_opts, path);
+        /* deref function */
+        ret = ly_path_compile_deref(ctx, ctx_node, top_ext, expr, oper, target, format, prefix_data, &tok_idx, path);
+        ctx_node = (*path)[LY_ARRAY_COUNT(*path) - 1].node;
         goto cleanup;
-    }
-
-    if (expr->tokens[tok_idx] == LYXP_TOKEN_OPER_PATH) {
+    } else if (expr->tokens[tok_idx] == LYXP_TOKEN_OPER_PATH) {
         /* absolute path */
         ctx_node = NULL;
 

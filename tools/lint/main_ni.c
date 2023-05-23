@@ -287,8 +287,8 @@ help(int shortout)
             "                create an exact YANG schema context. If specified, the '-F'\n"
             "                parameter (enabled features) is ignored.\n\n");
 
-    printf("  -X, --xpath-in-leafref\n"
-            "                Allow usage of XPath within leafref\n\n");
+    printf("  -X, --enable-deref-within-leafref\n"
+            "                Allow usage of deref() XPath function within leafref\n\n");
 
 #ifndef NDEBUG
     printf("  -G GROUPS, --debug=GROUPS\n"
@@ -561,7 +561,7 @@ fill_context(int argc, char *argv[], struct context *c)
         {"merge",             no_argument,       NULL, 'm'},
         {"yang-library",      no_argument,       NULL, 'y'},
         {"yang-library-file", required_argument, NULL, 'Y'},
-        {"xpath-in-leafref",  no_argument,       NULL, 'X'},
+        {"enable-deref-within-leafref",  no_argument,       NULL, 'X'},
 #ifndef NDEBUG
         {"debug",            required_argument, NULL, 'G'},
 #endif
@@ -818,7 +818,7 @@ fill_context(int argc, char *argv[], struct context *c)
             c->yang_lib_file = optarg;
             break;
 
-        case 'X': /* --xpath-in-leafref */
+        case 'X': /* --enable-deref-within-leafref */
             c->ctx_options |= LY_CTX_LEAFREF_EXTENDED;
             break;
 
