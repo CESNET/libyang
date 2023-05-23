@@ -958,8 +958,9 @@ ly_path_compile_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr expr2;
     struct ly_path *arg_path = NULL;
-    struct lysc_node_leaf *deref_leaf_node;
-    struct lysc_type_leafref *lref;
+    const struct lysc_node *deref_node;
+    const struct lysc_node_leaf *deref_leaf_node;
+    const struct lysc_type_leafref *lref;
     char new_path[LYSC_CTX_BUFSIZE] = {'\0'};
     size_t pos = 0;
     size_t len = 0;
@@ -983,10 +984,10 @@ ly_path_compile_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node
     expr2.expr = expr->expr;
 
     /* compile just deref arg */
-    ly_path_compile_leafref(ctx, ctx_node, top_ext, &expr2, oper, target, format, prefix_data, &arg_path);
-
-    deref_leaf_node = (struct lysc_node_leaf *)arg_path[LY_ARRAY_COUNT(arg_path) - 1].node;
-    lref = (struct lysc_type_leafref *)deref_leaf_node->type;
+    LY_CHECK_ERR_GOTO(ly_path_compile_leafref(ctx, ctx_node, top_ext, &expr2, oper, target, format, prefix_data, &arg_path), ret = LY_EVALID, cleanup);
+    deref_node = arg_path[LY_ARRAY_COUNT(arg_path) - 1].node;
+    deref_leaf_node = (const struct lysc_node_leaf *)deref_node;
+    lref = (const struct lysc_type_leafref *)deref_leaf_node->type;
     ly_path_free(ctx, arg_path);
 
     /* copy leafref path except the last segment */
@@ -1036,7 +1037,11 @@ ly_path_compile_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node
     LY_CHECK_ERR_GOTO(ly_path_parse(ctx, ctx_node, new_path, pos, 1, LY_PATH_BEGIN_EITHER, LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &new_path_expr), ret = LY_EVALID, cleanup);
     LY_CHECK_ERR_GOTO(ly_path_compile_leafref(ctx, ctx_node, top_ext, new_path_expr, oper, target, format, prefix_data, path), ret = LY_EVALID, cleanup);
     lyxp_expr_free(ctx, new_path_expr);
-    (*path)[0].deref_node = deref_leaf_node;
+
+    /* compile deref leafref to get store its target */
+    LY_CHECK_ERR_GOTO(ly_path_compile_leafref(ctx, deref_node, top_ext, lref->path, oper, target, format, prefix_data, &arg_path), ret = LY_EVALID, cleanup);
+    (*path)[0].deref_node = arg_path[LY_ARRAY_COUNT(arg_path) - 1].node;
+    ly_path_free(ctx, arg_path);
 
 cleanup:
     if (ret) {
