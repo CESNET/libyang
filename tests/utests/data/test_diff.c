@@ -17,15 +17,15 @@
 
 #include "libyang.h"
 
-#define CHECK_PARSE_LYD(INPUT, MODEL) \
-        CHECK_PARSE_LYD_PARAM(INPUT, LYD_XML, LYD_PARSE_ONLY, 0, LY_SUCCESS, MODEL)
+#define CHECK_PARSE_LYD(INPUT, OUTPUT) \
+        CHECK_PARSE_LYD_PARAM(INPUT, LYD_XML, LYD_PARSE_ONLY, 0, LY_SUCCESS, OUTPUT)
 
-#define CHECK_LYD_STRING(IN_MODEL, TEXT) \
-        CHECK_LYD_STRING_PARAM(IN_MODEL, TEXT, LYD_XML, LYD_PRINT_WITHSIBLINGS)
+#define CHECK_LYD_STRING(INPUT, TEXT) \
+        CHECK_LYD_STRING_PARAM(INPUT, TEXT, LYD_XML, LYD_PRINT_WITHSIBLINGS)
 
-#define CHECK_PARSE_LYD_DIFF(INPUT_1, INPUT_2, OUT_MODEL) \
-        assert_int_equal(LY_SUCCESS, lyd_diff_siblings(INPUT_1, INPUT_2, 0, &OUT_MODEL));\
-        assert_non_null(OUT_MODEL)
+#define CHECK_PARSE_LYD_DIFF(INPUT_1, INPUT_2, OUT_DIFF) \
+        assert_int_equal(LY_SUCCESS, lyd_diff_siblings(INPUT_1, INPUT_2, 0, &OUT_DIFF));\
+        assert_non_null(OUT_DIFF)
 
 #define TEST_DIFF_3(XML1, XML2, XML3, DIFF1, DIFF2, MERGE) \
         { \
@@ -639,6 +639,126 @@ test_list(void **state)
 }
 
 static void
+test_nested_list(void **state)
+{
+    struct lyd_node *data1, *data2, *diff;
+    const char *xml1, *xml2;
+
+    (void) state;
+
+    xml1 =
+            "<df xmlns=\"urn:libyang:tests:defaults\">"
+            "  <list>"
+            "    <name>n1</name>"
+            "    <value>25</value>"
+            "    <list2>"
+            "      <name2>n22</name2>"
+            "      <value2>26</value2>"
+            "    </list2>"
+            "  </list>"
+            "  <list>"
+            "    <name>n2</name>"
+            "    <value>25</value>"
+            "    <list2>"
+            "      <name2>n22</name2>"
+            "      <value2>26</value2>"
+            "    </list2>"
+            "  </list>"
+            "  <list>"
+            "    <name>n3</name>"
+            "    <value>25</value>"
+            "    <list2>"
+            "      <name2>n22</name2>"
+            "      <value2>26</value2>"
+            "    </list2>"
+            "  </list>"
+            "  <list>"
+            "    <name>n4</name>"
+            "    <value>25</value>"
+            "    <list2>"
+            "      <name2>n22</name2>"
+            "      <value2>26</value2>"
+            "    </list2>"
+            "  </list>"
+            "  <list>"
+            "    <name>n0</name>"
+            "    <value>26</value>"
+            "    <list2>"
+            "      <name2>n22</name2>"
+            "      <value2>26</value2>"
+            "    </list2>"
+            "    <list2>"
+            "      <name2>n23</name2>"
+            "      <value2>26</value2>"
+            "    </list2>"
+            "  </list>"
+            "</df>";
+    xml2 =
+            "<df xmlns=\"urn:libyang:tests:defaults\">"
+            "  <list>"
+            "    <name>n0</name>"
+            "    <value>30</value>"
+            "    <list2>"
+            "      <name2>n23</name2>"
+            "      <value2>26</value2>"
+            "    </list2>"
+            "  </list>"
+            "</df>";
+
+    CHECK_PARSE_LYD(xml1, data1);
+    CHECK_PARSE_LYD(xml2, data2);
+    CHECK_PARSE_LYD_DIFF(data1, data2, diff);
+
+    CHECK_LYD_STRING(diff,
+            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
+            "  <list yang:operation=\"delete\">\n"
+            "    <name>n1</name>\n"
+            "    <value>25</value>\n"
+            "    <list2>\n"
+            "      <name2>n22</name2>\n"
+            "      <value2>26</value2>\n"
+            "    </list2>\n"
+            "  </list>\n"
+            "  <list yang:operation=\"delete\">\n"
+            "    <name>n2</name>\n"
+            "    <value>25</value>\n"
+            "    <list2>\n"
+            "      <name2>n22</name2>\n"
+            "      <value2>26</value2>\n"
+            "    </list2>\n"
+            "  </list>\n"
+            "  <list yang:operation=\"delete\">\n"
+            "    <name>n3</name>\n"
+            "    <value>25</value>\n"
+            "    <list2>\n"
+            "      <name2>n22</name2>\n"
+            "      <value2>26</value2>\n"
+            "    </list2>\n"
+            "  </list>\n"
+            "  <list yang:operation=\"delete\">\n"
+            "    <name>n4</name>\n"
+            "    <value>25</value>\n"
+            "    <list2>\n"
+            "      <name2>n22</name2>\n"
+            "      <value2>26</value2>\n"
+            "    </list2>\n"
+            "  </list>\n"
+            "  <list yang:operation=\"none\">\n"
+            "    <name>n0</name>\n"
+            "    <value yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"26\">30</value>\n"
+            "    <list2 yang:operation=\"delete\">\n"
+            "      <name2>n22</name2>\n"
+            "      <value2>26</value2>\n"
+            "    </list2>\n"
+            "  </list>\n"
+            "</df>\n");
+
+    lyd_free_all(data1);
+    lyd_free_all(data2);
+    lyd_free_all(diff);
+}
+
+static void
 test_userord_llist(void **state)
 {
     (void) state;
@@ -1209,6 +1329,7 @@ main(void)
         UTEST(test_delete_merge, setup),
         UTEST(test_leaf, setup),
         UTEST(test_list, setup),
+        UTEST(test_nested_list, setup),
         UTEST(test_userord_llist, setup),
         UTEST(test_userord_llist2, setup),
         UTEST(test_userord_mix, setup),

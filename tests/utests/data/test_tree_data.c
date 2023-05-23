@@ -371,7 +371,7 @@ test_dup(void **state)
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree1);
     assert_int_equal(LY_EINVAL, lyd_dup_single(((struct lyd_node_inner *)tree1)->child->prev,
             (struct lyd_node_inner *)tree1->next, LYD_DUP_WITH_PARENTS, NULL));
-    CHECK_LOG_CTX("Invalid argument parent (lyd_dup_get_local_parent()) - does not interconnect with the created node's parents chain.",
+    CHECK_LOG_CTX("None of the duplicated node \"c\" schema parents match the provided parent \"c\".",
             NULL);
     lyd_free_all(tree1);
 }

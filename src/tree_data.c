@@ -1834,10 +1834,11 @@ error:
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx *trg_ctx, const struct lyd_node_inner *parent,
-        uint32_t options, struct lyd_node **dup_parent, struct lyd_node_inner **local_parent)
+lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_node *parent,
+        uint32_t options, struct lyd_node **dup_parent, struct lyd_node **local_parent)
 {
-    const struct lyd_node_inner *orig_parent, *iter;
+    const struct lyd_node *orig_parent;
+    struct lyd_node *iter;
     ly_bool repeat = 1, ext_parent = 0;
 
     *dup_parent = NULL;
@@ -1846,7 +1847,7 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx *trg_c
     if (node->flags & LYD_EXT) {
         ext_parent = 1;
     }
-    for (orig_parent = node->parent; repeat && orig_parent; orig_parent = orig_parent->parent) {
+    for (orig_parent = lyd_parent(node); repeat && orig_parent; orig_parent = lyd_parent(orig_parent)) {
         if (ext_parent) {
             /* use the standard context */
             trg_ctx = LYD_CTX(orig_parent);
@@ -1857,32 +1858,23 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx *trg_c
             repeat = 0;
         } else if (parent && (LYD_CTX(parent) != LYD_CTX(orig_parent)) &&
                 lyd_compare_schema_equal(parent->schema, orig_parent->schema) &&
-                lyd_compare_schema_parents_equal(&parent->node, &orig_parent->node)) {
+                lyd_compare_schema_parents_equal(parent, orig_parent)) {
             iter = parent;
             repeat = 0;
         } else {
             iter = NULL;
-            LY_CHECK_RET(lyd_dup_r((struct lyd_node *)orig_parent, trg_ctx, NULL, 0, (struct lyd_node **)&iter, options,
-                    (struct lyd_node **)&iter));
+            LY_CHECK_RET(lyd_dup_r(orig_parent, trg_ctx, NULL, 0, &iter, options, &iter));
         }
+
         if (!*local_parent) {
-            *local_parent = (struct lyd_node_inner *)iter;
+            /* update local parent (created parent) */
+            *local_parent = iter;
         }
-        if (iter->child) {
-            /* 1) list - add after keys
-             * 2) provided parent with some children */
-            iter->child->prev->next = *dup_parent;
-            if (*dup_parent) {
-                (*dup_parent)->prev = iter->child->prev;
-                iter->child->prev = *dup_parent;
-            }
-        } else {
-            ((struct lyd_node_inner *)iter)->child = *dup_parent;
-        }
+
         if (*dup_parent) {
-            (*dup_parent)->parent = (struct lyd_node_inner *)iter;
+            lyd_insert_node(iter, NULL, *dup_parent, 0);
         }
-        *dup_parent = (struct lyd_node *)iter;
+        *dup_parent = iter;
         if (orig_parent->flags & LYD_EXT) {
             ext_parent = 1;
         }
@@ -1890,8 +1882,8 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx *trg_c
 
     if (repeat && parent) {
         /* given parent and created parents chain actually do not interconnect */
-        LOGERR(trg_ctx, LY_EINVAL,
-                "Invalid argument parent (%s()) - does not interconnect with the created node's parents chain.", __func__);
+        LOGERR(trg_ctx, LY_EINVAL, "None of the duplicated node \"%s\" schema parents match the provided parent \"%s\".",
+                LYD_NAME(node), LYD_NAME(parent));
         return LY_EINVAL;
     }
 
@@ -1899,14 +1891,14 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx *trg_c
 }
 
 static LY_ERR
-lyd_dup(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_node_inner *parent, uint32_t options,
+lyd_dup(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_node *parent, uint32_t options,
         ly_bool nosiblings, struct lyd_node **dup)
 {
     LY_ERR rc;
     const struct lyd_node *orig;          /* original node to be duplicated */
     struct lyd_node *first = NULL;        /* the first duplicated node, this is returned */
     struct lyd_node *top = NULL;          /* the most higher created node */
-    struct lyd_node_inner *local_parent = NULL; /* the direct parent node for the duplicated node(s) */
+    struct lyd_node *local_parent = NULL; /* the direct parent node for the duplicated node(s) */
 
     assert(node && trg_ctx);
 
@@ -1921,7 +1913,7 @@ lyd_dup(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_no
         if (lysc_is_key(orig->schema)) {
             if (local_parent) {
                 /* the key must already exist in the parent */
-                rc = lyd_find_sibling_schema(local_parent->child, orig->schema, first ? NULL : &first);
+                rc = lyd_find_sibling_schema(lyd_child(local_parent), orig->schema, first ? NULL : &first);
                 LY_CHECK_ERR_GOTO(rc, LOGINT(trg_ctx), error);
             } else {
                 assert(!(options & LYD_DUP_WITH_PARENTS));
@@ -1931,8 +1923,7 @@ lyd_dup(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_no
             }
         } else {
             /* if there is no local parent, it will be inserted into first */
-            rc = lyd_dup_r(orig, trg_ctx, local_parent ? &local_parent->node : NULL, 0, &first, options,
-                    first ? NULL : &first);
+            rc = lyd_dup_r(orig, trg_ctx, local_parent, 0, &first, options, first ? NULL : &first);
             LY_CHECK_GOTO(rc, error);
         }
         if (nosiblings) {
@@ -1989,7 +1980,7 @@ lyd_dup_single(const struct lyd_node *node, struct lyd_node_inner *parent, uint3
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
     LY_CHECK_RET(lyd_dup_ctx_check(node, parent));
 
-    return lyd_dup(node, LYD_CTX(node), parent, options, 1, dup);
+    return lyd_dup(node, LYD_CTX(node), (struct lyd_node *)parent, options, 1, dup);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -1998,7 +1989,7 @@ lyd_dup_single_to_ctx(const struct lyd_node *node, const struct ly_ctx *trg_ctx,
 {
     LY_CHECK_ARG_RET(trg_ctx, node, trg_ctx, LY_EINVAL);
 
-    return lyd_dup(node, trg_ctx, parent, options, 1, dup);
+    return lyd_dup(node, trg_ctx, (struct lyd_node *)parent, options, 1, dup);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -2007,7 +1998,7 @@ lyd_dup_siblings(const struct lyd_node *node, struct lyd_node_inner *parent, uin
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
     LY_CHECK_RET(lyd_dup_ctx_check(node, parent));
 
-    return lyd_dup(node, LYD_CTX(node), parent, options, 0, dup);
+    return lyd_dup(node, LYD_CTX(node), (struct lyd_node *)parent, options, 0, dup);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -2016,7 +2007,7 @@ lyd_dup_siblings_to_ctx(const struct lyd_node *node, const struct ly_ctx *trg_ct
 {
     LY_CHECK_ARG_RET(trg_ctx, node, trg_ctx, LY_EINVAL);
 
-    return lyd_dup(node, trg_ctx, parent, options, 0, dup);
+    return lyd_dup(node, trg_ctx, (struct lyd_node *)parent, options, 0, dup);
 }
 
 LIBYANG_API_DEF LY_ERR
