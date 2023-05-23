@@ -3718,7 +3718,6 @@ yin_parse_content(struct lysp_yin_ctx *ctx, struct yin_subelement *subelem_info,
                 ret = LY_EINT;
             }
             LY_CHECK_GOTO(ret, cleanup);
-            subelem = NULL;
 
             LY_CHECK_GOTO(ret = lyxml_ctx_next(ctx->xmlctx), cleanup);
         }
