@@ -28,6 +28,12 @@ extern "C" {
 #include "log.h"
 
 /**
+ * @struct ly_ht
+ * @brief libyang hash table.
+ */
+struct ly_ht;
+
+/**
  * @brief Compute hash from (several) string(s).
  *
  * Usage:
