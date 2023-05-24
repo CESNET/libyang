@@ -16,7 +16,6 @@
 #ifndef LY_HASH_TABLE_H_
 #define LY_HASH_TABLE_H_
 
-#include <pthread.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -24,7 +23,6 @@
 extern "C" {
 #endif
 
-#include "compat.h"
 #include "log.h"
 
 /**
