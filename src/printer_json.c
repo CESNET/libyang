@@ -14,6 +14,7 @@
  */
 
 #include <assert.h>
+#include <ctype.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -219,31 +220,38 @@ json_nscmp(const struct lyd_node *node1, const struct lyd_node *node2)
 static LY_ERR
 json_print_string(struct ly_out *out, const char *text)
 {
-    uint64_t i, n;
+    uint64_t i;
 
     if (!text) {
         return LY_SUCCESS;
     }
 
     ly_write_(out, "\"", 1);
-    for (i = n = 0; text[i]; i++) {
-        const unsigned char ascii = text[i];
+    for (i = 0; text[i]; i++) {
+        const unsigned char byte = text[i];
 
-        if (ascii < 0x20) {
-            /* control character */
-            ly_print_(out, "\\u%.4X", ascii);
-        } else {
-            switch (ascii) {
-            case '"':
-                ly_print_(out, "\\\"");
-                break;
-            case '\\':
-                ly_print_(out, "\\\\");
-                break;
-            default:
+        switch (byte) {
+        case '"':
+            ly_print_(out, "\\\"");
+            break;
+        case '\\':
+            ly_print_(out, "\\\\");
+            break;
+        case '\r':
+            ly_print_(out, "\\r");
+            break;
+        case '\t':
+            ly_print_(out, "\\t");
+            break;
+        default:
+            if (iscntrl(byte)) {
+                /* control character */
+                ly_print_(out, "\\u%.4X", byte);
+            } else {
+                /* printable character (even non-ASCII UTF8) */
                 ly_write_(out, &text[i], 1);
-                n++;
             }
+            break;
         }
     }
     ly_write_(out, "\"", 1);
