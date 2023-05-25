@@ -338,6 +338,55 @@ cleanup:
 }
 
 /**
+ * @brief Get the hint for the data type parsers according to the current JSON parser context.
+ *
+ * @param[in] jsonctx JSON parser context. The context is supposed to be on a value.
+ * @param[in,out] status Pointer to the current context status,
+ * in some circumstances the function manipulates with the context so the status is updated.
+ * @param[out] type_hint_p Pointer to the variable to store the result.
+ * @return LY_SUCCESS in case of success.
+ * @return LY_EINVAL in case of invalid context status not referring to a value.
+ */
+static LY_ERR
+lydjson_value_type_hint(struct lyjson_ctx *jsonctx, enum LYJSON_PARSER_STATUS *status_p, uint32_t *type_hint_p)
+{
+    *type_hint_p = 0;
+
+    if (*status_p == LYJSON_ARRAY) {
+        /* only [null] */
+        LY_CHECK_RET(lyjson_ctx_next(jsonctx, status_p));
+        if (*status_p != LYJSON_NULL) {
+            LOGVAL(jsonctx->ctx, LYVE_SYNTAX_JSON,
+                    "Expected JSON name/value or special name/[null], but input data contains name/[%s].",
+                    lyjson_token2str(*status_p));
+            return LY_EINVAL;
+        }
+
+        LY_CHECK_RET(lyjson_ctx_next(jsonctx, NULL));
+        if (lyjson_ctx_status(jsonctx) != LYJSON_ARRAY_CLOSED) {
+            LOGVAL(jsonctx->ctx, LYVE_SYNTAX_JSON, "Expected array end, but input data contains %s.",
+                    lyjson_token2str(*status_p));
+            return LY_EINVAL;
+        }
+
+        *type_hint_p = LYD_VALHINT_EMPTY;
+    } else if (*status_p == LYJSON_STRING) {
+        *type_hint_p = LYD_VALHINT_STRING | LYD_VALHINT_NUM64;
+    } else if (*status_p == LYJSON_NUMBER) {
+        *type_hint_p = LYD_VALHINT_DECNUM;
+    } else if ((*status_p == LYJSON_FALSE) || (*status_p == LYJSON_TRUE)) {
+        *type_hint_p = LYD_VALHINT_BOOLEAN;
+    } else if (*status_p == LYJSON_NULL) {
+        *type_hint_p = 0;
+    } else {
+        LOGVAL(jsonctx->ctx, LYVE_SYNTAX_JSON, "Unexpected input data %s.", lyjson_token2str(*status_p));
+        return LY_EINVAL;
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Check that the input data are parseable as the @p list.
  *
  * Checks for all the list's keys. Function does not revert the context state.
@@ -354,7 +403,7 @@ lydjson_check_list(struct lyjson_ctx *jsonctx, const struct lysc_node *list)
     enum LYJSON_PARSER_STATUS status = lyjson_ctx_status(jsonctx);
     struct ly_set key_set = {0};
     const struct lysc_node *snode;
-    uint32_t i;
+    uint32_t i, hints;
 
     assert(list && (list->nodetype == LYS_LIST));
 
@@ -402,7 +451,9 @@ lydjson_check_list(struct lyjson_ctx *jsonctx, const struct lysc_node *list)
                         goto cleanup;
                     }
 
-                    rc = lys_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, LY_VALUE_JSON, NULL);
+                    rc = lydjson_value_type_hint(jsonctx, &status, &hints);
+                    LY_CHECK_GOTO(rc, cleanup);
+                    rc = ly_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, LY_VALUE_JSON, NULL, hints);
                     LY_CHECK_GOTO(rc, cleanup);
 
                     /* key with a valid value, remove from the set */
@@ -427,55 +478,6 @@ lydjson_check_list(struct lyjson_ctx *jsonctx, const struct lysc_node *list)
 cleanup:
     ly_set_erase(&key_set, NULL);
     return rc;
-}
-
-/**
- * @brief Get the hint for the data type parsers according to the current JSON parser context.
- *
- * @param[in] lydctx JSON data parser context. The context is supposed to be on a value.
- * @param[in,out] status Pointer to the current context status,
- * in some circumstances the function manipulates with the context so the status is updated.
- * @param[out] type_hint_p Pointer to the variable to store the result.
- * @return LY_SUCCESS in case of success.
- * @return LY_EINVAL in case of invalid context status not referring to a value.
- */
-static LY_ERR
-lydjson_value_type_hint(struct lyd_json_ctx *lydctx, enum LYJSON_PARSER_STATUS *status_p, uint32_t *type_hint_p)
-{
-    *type_hint_p = 0;
-
-    if (*status_p == LYJSON_ARRAY) {
-        /* only [null] */
-        LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status_p));
-        if (*status_p != LYJSON_NULL) {
-            LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX_JSON,
-                    "Expected JSON name/value or special name/[null], but input data contains name/[%s].",
-                    lyjson_token2str(*status_p));
-            return LY_EINVAL;
-        }
-
-        LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, NULL));
-        if (lyjson_ctx_status(lydctx->jsonctx) != LYJSON_ARRAY_CLOSED) {
-            LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX_JSON, "Expected array end, but input data contains %s.",
-                    lyjson_token2str(*status_p));
-            return LY_EINVAL;
-        }
-
-        *type_hint_p = LYD_VALHINT_EMPTY;
-    } else if (*status_p == LYJSON_STRING) {
-        *type_hint_p = LYD_VALHINT_STRING | LYD_VALHINT_NUM64;
-    } else if (*status_p == LYJSON_NUMBER) {
-        *type_hint_p = LYD_VALHINT_DECNUM;
-    } else if ((*status_p == LYJSON_FALSE) || (*status_p == LYJSON_TRUE)) {
-        *type_hint_p = LYD_VALHINT_BOOLEAN;
-    } else if (*status_p == LYJSON_NULL) {
-        *type_hint_p = 0;
-    } else {
-        LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX_JSON, "Unexpected input data %s.", lyjson_token2str(*status_p));
-        return LY_EINVAL;
-    }
-
-    return LY_SUCCESS;
 }
 
 /**
@@ -518,12 +520,10 @@ lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *sno
         case LYS_LEAFLIST:
         case LYS_LEAF:
             /* value may not be valid in which case we parse it as an opaque node */
-            ret = lydjson_value_type_hint(lydctx, &status, type_hint_p);
-            if (ret) {
+            if ((ret = lydjson_value_type_hint(jsonctx, &status, type_hint_p))) {
                 break;
             }
-
-            if (lys_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, LY_VALUE_JSON, NULL)) {
+            if (ly_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, LY_VALUE_JSON, NULL, *type_hint_p)) {
                 ret = LY_ENOT;
             }
             break;
@@ -536,7 +536,7 @@ lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *sno
             break;
         }
     } else if (snode->nodetype & LYD_NODE_TERM) {
-        ret = lydjson_value_type_hint(lydctx, &status, type_hint_p);
+        ret = lydjson_value_type_hint(jsonctx, &status, type_hint_p);
     }
 
     /* restore parser */
@@ -846,7 +846,7 @@ next_entry:
         LY_CHECK_GOTO(rc = lyjson_ctx_next(lydctx->jsonctx, &status), cleanup);
 
         /* get value hints */
-        LY_CHECK_GOTO(rc = lydjson_value_type_hint(lydctx, &status, &val_hints), cleanup);
+        LY_CHECK_GOTO(rc = lydjson_value_type_hint(lydctx->jsonctx, &status, &val_hints), cleanup);
 
         if (node->schema) {
             /* create metadata */
@@ -969,7 +969,7 @@ lydjson_create_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_l
         dynamic = lydctx->jsonctx->dynamic;
         lydctx->jsonctx->dynamic = 0;
 
-        LY_CHECK_RET(lydjson_value_type_hint(lydctx, status_inner_p, &type_hint));
+        LY_CHECK_RET(lydjson_value_type_hint(lydctx->jsonctx, status_inner_p, &type_hint));
     }
 
     /* get the module name */

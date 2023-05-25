@@ -286,7 +286,7 @@ lydxml_check_list(struct lyxml_ctx *xmlctx, const struct lysc_node *list)
         assert(xmlctx->status == LYXML_ELEM_CONTENT);
         if (i < key_set.count) {
             /* validate the value */
-            r = lys_value_validate(NULL, snode, xmlctx->value, xmlctx->value_len, LY_VALUE_XML, &xmlctx->ns);
+            r = ly_value_validate(NULL, snode, xmlctx->value, xmlctx->value_len, LY_VALUE_XML, &xmlctx->ns, LYD_HINT_DATA);
             if (!r) {
                 /* key with a valid value, remove from the set */
                 ly_set_rm_index(&key_set, i, NULL);
@@ -392,7 +392,7 @@ lydxml_data_check_opaq(struct lyd_xml_ctx *lydctx, const struct lysc_node **snod
 
     if ((*snode)->nodetype & LYD_NODE_TERM) {
         /* value may not be valid in which case we parse it as an opaque node */
-        if (lys_value_validate(NULL, *snode, xmlctx->value, xmlctx->value_len, LY_VALUE_XML, &xmlctx->ns)) {
+        if (ly_value_validate(NULL, *snode, xmlctx->value, xmlctx->value_len, LY_VALUE_XML, &xmlctx->ns, LYD_HINT_DATA)) {
             LOGVRB("Parsing opaque term node \"%s\" with invalid value \"%.*s\".", (*snode)->name, xmlctx->value_len,
                     xmlctx->value);
             *snode = NULL;

@@ -45,6 +45,7 @@ setup(void **state)
             "leaf-list ll1 { type uint8; }"
             "leaf foo2 { type string; default \"default-val\"; }"
             "leaf foo3 { type uint32; }"
+            "leaf foo4 { type uint64; }"
             "notification n2;}";
 
     UTEST_SETUP;
@@ -523,6 +524,19 @@ test_opaq(void **state)
     /* special chars */
     data = "{\"a:foo3\":\"ab\\\"\\\\\\r\\t\"}";
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
+
+    /* wrong encoding */
+    data = "{\"a:foo3\":\"25\"}";
+    CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
+    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0, LY_VALUE_JSON, "foo3", 0, 0, NULL,  0,  "25");
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
+
+    data = "{\"a:foo4\":25}";
+    CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
+    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0, LY_VALUE_JSON, "foo4", 0, 0, NULL,  0,  "25");
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
 

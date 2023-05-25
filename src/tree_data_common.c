@@ -499,8 +499,8 @@ lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *
 }
 
 LY_ERR
-lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
-        LY_VALUE_FORMAT format, void *prefix_data)
+ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
+        LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints)
 {
     LY_ERR rc = LY_SUCCESS;
     struct ly_err_item *err = NULL;
@@ -515,8 +515,8 @@ lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const
     }
 
     type = ((struct lysc_node_leaf *)node)->type;
-    rc = type->plugin->store(ctx ? ctx : node->module->ctx, type, value, value_len, 0, format, prefix_data,
-            LYD_HINT_SCHEMA, node, &storage, NULL, &err);
+    rc = type->plugin->store(ctx ? ctx : node->module->ctx, type, value, value_len, 0, format, prefix_data, hints, node,
+            &storage, NULL, &err);
     if (rc == LY_EINCOMPLETE) {
         /* actually success since we do not provide the context tree and call validation with
          * LY_TYPE_OPTS_INCOMPLETE_DATA */
@@ -778,8 +778,8 @@ lyd_parse_opaq_list_error(const struct lyd_node *node, const struct lysc_node *s
         ly_set_rm_index(&key_set, i, NULL);
 
         /* check value */
-        ret = lys_value_validate(LYD_CTX(node), key, opaq_k->value, strlen(opaq_k->value), opaq_k->format,
-                opaq_k->val_prefix_data);
+        ret = ly_value_validate(LYD_CTX(node), key, opaq_k->value, strlen(opaq_k->value), opaq_k->format,
+                opaq_k->val_prefix_data, opaq_k->hints);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -889,7 +889,7 @@ lyd_parse_opaq_error(const struct lyd_node *node)
 
     if (snode->nodetype & LYD_NODE_TERM) {
         /* leaf / leaf-list */
-        rc = lys_value_validate(ctx, snode, opaq->value, strlen(opaq->value), opaq->format, opaq->val_prefix_data);
+        rc = ly_value_validate(ctx, snode, opaq->value, strlen(opaq->value), opaq->format, opaq->val_prefix_data, opaq->hints);
         LY_CHECK_GOTO(rc, cleanup);
     } else if (snode->nodetype == LYS_LIST) {
         /* list */

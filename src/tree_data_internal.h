@@ -506,8 +506,7 @@ LY_ERR lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc
         const struct lyd_node *ctx_node, const struct lyd_node *tree);
 
 /**
- * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value coming
- * from a schema.
+ * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.
  *
  * This function check just the type's restriction, if you want to check also the data tree context (e.g. in case of
  * require-instance restriction), use ::lyd_value_validate().
@@ -518,11 +517,12 @@ LY_ERR lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc
  * @param[in] value_len Length of the given @p value (mandatory).
  * @param[in] format Value prefix format.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
+ * @param[in] hints Value encoding hints.
  * @return LY_SUCCESS on success
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
-        LY_VALUE_FORMAT format, void *prefix_data);
+LY_ERR ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
+        LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints);
 
 /**
  * @defgroup datahash Data nodes hash manipulation
