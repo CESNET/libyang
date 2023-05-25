@@ -1168,7 +1168,7 @@ lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
 
     /* create node */
     ret = lyd_create_opaq(ctx, name, strlen(name), prefix, ly_strlen(prefix), module_key, ly_strlen(module_key),
-            value, strlen(value), &dynamic, format, val_prefix_data, 0, &node);
+            value, strlen(value), &dynamic, format, val_prefix_data, LYD_HINT_DATA, &node);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* process children */
