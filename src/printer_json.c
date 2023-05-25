@@ -908,7 +908,7 @@ json_print_opaq(struct jsonpr_ctx *pctx, const struct lyd_node_opaq *node)
             ly_print_(pctx->out, "%s", node->value);
         } else {
             /* string or a large number */
-            ly_print_(pctx->out, "\"%s\"", node->value);
+            json_print_string(pctx->out, node->value);
         }
         LEVEL_PRINTED;
 
