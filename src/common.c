@@ -258,6 +258,7 @@ ly_pututf8(char *dst, uint32_t value, size_t *bytes_written)
                 (value != 0x09) &&
                 (value != 0x0a) &&
                 (value != 0x0d)) {
+            /* valid UTF8 but not YANG string character */
             return LY_EINVAL;
         }
 
