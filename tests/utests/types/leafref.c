@@ -219,16 +219,23 @@ test_data_xpath_json(void **state)
 
     /* json xpath test */
     schema = MODULE_CREATE_YANG("xp_test",
-            "list l1 {key t1; leaf t1 {type uint8;} list l2 {key t2;leaf t2 {type uint8;}}}"
+            "list l1 {key t1;"
+            "leaf t1 {type uint8;}"
+            "list l2 {key t2;"
+            "leaf t2 {type uint8;}"
+            "leaf-list l3 {type uint8;}"
+            "}}"
             "leaf r1 {type leafref {path \"../l1/t1\";}}"
-            "leaf r2 {type leafref {path \"deref(../r1)/../l2/t2\";}}");
+            "leaf r2 {type leafref {path \"deref(../r1)/../l2/t2\";}}"
+            "leaf r3 {type leafref {path \"deref(../r2)/../l3\";}}");
 
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
 
     data = "{"
-            "  \"xp_test:l1\":[{\"t1\": 1,\"l2\":[{\"t2\": 2}]}],"
+            "  \"xp_test:l1\":[{\"t1\": 1,\"l2\":[{\"t2\": 2,\"l3\":[3]}]}],"
             "  \"xp_test:r1\": 1,"
-            "  \"xp_test:r2\": 2"
+            "  \"xp_test:r2\": 2,"
+            "  \"xp_test:r3\": 3"
             "}";
     CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
     lyd_free_all(tree);
