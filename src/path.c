@@ -1049,9 +1049,12 @@ ly_path_compile_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node
     begin_token = *tok_idx;
 
     /* emebedded functions were already identified count tokens till ')' */
-    while (lyxp_check_token(NULL, expr, *tok_idx, LYXP_TOKEN_PAR2)) {
+    while (lyxp_check_token(NULL, expr, *tok_idx, LYXP_TOKEN_PAR2) && (*tok_idx < expr->used)) {
         (*tok_idx)++;
     }
+
+    /* properly parsed path must have ')' within the tokens */
+    assert(!lyxp_check_token(NULL, expr, *tok_idx, LYXP_TOKEN_PAR2));
 
     /* prepare expr representing just deref arg */
     expr2.tokens = &expr->tokens[begin_token];
