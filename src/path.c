@@ -938,7 +938,7 @@ cleanup:
  * @param[out] dup Duplicated predicates.
  * @return LY_ERR value.
  */
-LY_ERR
+static LY_ERR
 ly_path_dup_predicates(const struct ly_ctx *ctx, const struct ly_path_predicate *pred, struct ly_path_predicate **dup)
 {
     LY_ARRAY_COUNT_TYPE u;
@@ -1106,6 +1106,7 @@ ly_path_compile_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node
 cleanup:
     ly_path_free(ctx, path2);
     if (ret) {
+        ly_path_free(ctx, *path);
         *path = NULL;
     }
     LOG_LOCBACK(1, 0, 0, 0);
