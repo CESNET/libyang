@@ -5,10 +5,23 @@ if { ![info exists ::env(TESTS_DIR)] } {
     # the script is not run via 'ctest' so paths must be set
     set ::env(TESTS_DIR) "../"
     set ::env(YANG_MODULES_DIR) "../modules"
-    set ::env(YANGLINT) "../../../../build/yanglint"
+    set ::env(YANGLINT) "../../../../build"
     ::tcltest::testConstraint ctest false
 } else {
     ::tcltest::testConstraint ctest true
+}
+
+# Complete the path for yanglint. For example, on Windows, yanglint can be located in the Debug or Release subdirectory.
+# Note that Release build takes precedence over Debug.
+set conftypes {{} Release Debug E}
+foreach i $conftypes {
+    if { [file executable "$::env(YANGLINT)/$i/yanglint"] || [file executable "$::env(YANGLINT)/$i/yanglint.exe"] } {
+        append ::env(YANGLINT) "/$i/yanglint"
+        break
+    }
+}
+if { $i == "E" } {
+    error "yanglint executable not found"
 }
 
 # prompt of error message
