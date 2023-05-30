@@ -170,7 +170,7 @@ LIBYANG_API_DECL void ly_temp_log_options(uint32_t *opts);
  * @param[in] dbg_groups Bitfield of enabled debug message groups (see @ref dbggroup).
  * @return Previous options bitfield.
  */
-uint32_t ly_log_dbg_groups(uint32_t dbg_groups);
+LIBYANG_API_DECL uint32_t ly_log_dbg_groups(uint32_t dbg_groups);
 
 #endif
 
