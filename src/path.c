@@ -996,17 +996,14 @@ ly_path_append(const struct ly_ctx *ctx, const struct ly_path *src, struct ly_pa
 
     LY_ARRAY_CREATE_RET(ctx, *dst, LY_ARRAY_COUNT(src), LY_EMEM);
     LY_ARRAY_FOR(src, u) {
-        LY_ARRAY_NEW_GOTO(ctx, *dst, p, ret, error);
+        LY_ARRAY_NEW_GOTO(ctx, *dst, p, ret, cleanup);
         p->node = src[u].node;
         p->ext = src[u].ext;
-        LY_CHECK_GOTO(ret = ly_path_dup_predicates(ctx, src[u].predicates, &p->predicates), error);
+        LY_CHECK_GOTO(ret = ly_path_dup_predicates(ctx, src[u].predicates, &p->predicates), cleanup);
     }
 
-    return LY_SUCCESS;
-
-error:
-    ly_path_free(ctx, *dst);
-    return (ret == LY_ENOTFOUND) ? LY_EVALID : ret;
+cleanup:
+    return ret;
 }
 
 /**
@@ -1040,6 +1037,8 @@ ly_path_compile_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node
     const struct lysc_type_leafref *lref;
     uint32_t begin_token;
 
+    *path = NULL;
+
     /* properly parsed path must always starts with 'deref' and '(' */
     assert(!lyxp_check_token(NULL, expr, *tok_idx, LYXP_TOKEN_FUNCNAME));
     assert(!strncmp(&expr->expr[expr->tok_pos[*tok_idx]], "deref", 5));
@@ -1066,20 +1065,20 @@ ly_path_compile_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node
     expr2.expr = expr->expr;
 
     /* compile just deref arg, append it to the path and find dereferenced lref for next operations */
-    LY_CHECK_ERR_GOTO(ly_path_compile_leafref(ctx, ctx_node, top_ext, &expr2, oper, target, format, prefix_data,
-            &path2), ret = LY_EVALID, cleanup);
+    LY_CHECK_GOTO(ret = ly_path_compile_leafref(ctx, ctx_node, top_ext, &expr2, oper, target, format, prefix_data,
+            &path2), cleanup);
     node2 = path2[LY_ARRAY_COUNT(path2) - 1].node;
     deref_leaf_node = (const struct lysc_node_leaf *)node2;
     lref = (const struct lysc_type_leafref *)deref_leaf_node->type;
-    LY_CHECK_ERR_GOTO(ly_path_append(ctx, path2, path), ret = LY_EVALID, cleanup);
+    LY_CHECK_GOTO(ret = ly_path_append(ctx, path2, path), cleanup);
     ly_path_free(ctx, path2);
     path2 = NULL;
 
     /* compile dereferenced leafref expression and append it to the path */
-    LY_CHECK_ERR_GOTO(ly_path_compile_leafref(ctx, node2, top_ext, lref->path, oper, target, format, prefix_data,
-            &path2), ret = LY_EVALID, cleanup);
+    LY_CHECK_GOTO(ret = ly_path_compile_leafref(ctx, node2, top_ext, lref->path, oper, target, format, prefix_data,
+            &path2), cleanup);
     node2 = path2[LY_ARRAY_COUNT(path2) - 1].node;
-    LY_CHECK_ERR_GOTO(ly_path_append(ctx, path2, path), ret = LY_EVALID, cleanup);
+    LY_CHECK_GOTO(ret = ly_path_append(ctx, path2, path), cleanup);
     ly_path_free(ctx, path2);
     path2 = NULL;
 
@@ -1099,9 +1098,9 @@ ly_path_compile_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node
     expr2.expr = expr->expr;
 
     /* compile rest of the path and append it to the path */
-    LY_CHECK_ERR_GOTO(ly_path_compile_leafref(ctx, node2, top_ext, &expr2, oper, target, format, prefix_data, &path2),
-            ret = LY_EVALID, cleanup);
-    LY_CHECK_ERR_GOTO(ly_path_append(ctx, path2, path), ret = LY_EVALID, cleanup);
+    LY_CHECK_GOTO(ret = ly_path_compile_leafref(ctx, node2, top_ext, &expr2, oper, target, format, prefix_data, &path2),
+            cleanup);
+    LY_CHECK_GOTO(ret = ly_path_append(ctx, path2, path), cleanup);
 
 cleanup:
     ly_path_free(ctx, path2);
@@ -1109,8 +1108,7 @@ cleanup:
         ly_path_free(ctx, *path);
         *path = NULL;
     }
-    LOG_LOCBACK(1, 0, 0, 0);
-    return (ret == LY_ENOTFOUND) ? LY_EVALID : ret;
+    return ret;
 }
 
 /**
