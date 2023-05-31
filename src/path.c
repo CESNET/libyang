@@ -264,6 +264,60 @@ token_error:
     return LY_EVALID;
 }
 
+/**
+ * @brief Parse deref XPath function and perform all additional checks.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] ctx_node Optional context node, used for logging.
+ * @param[in] exp Parsed path.
+ * @param[in,out] tok_idx Index in @p exp, is adjusted.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+ly_path_parse_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const struct lyxp_expr *exp,
+        uint32_t *tok_idx)
+{
+    size_t arg_len;
+    uint32_t begin_token, end_token;
+    struct lyxp_expr *arg_expr = NULL;
+
+    /* mandatory FunctionName */
+    LY_CHECK_RET(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_FUNCNAME), LY_EVALID);
+    if (!strncmp(&exp->expr[exp->tok_pos[*tok_idx]], "deref", 5)) {
+        LOGVAL(ctx, LYVE_XPATH, "Unexpected XPath function \"%.*s\" in path, expected \"deref(...)\"",
+                exp->tok_len[*tok_idx], exp->tok_pos[*tok_idx]);
+        return LY_EVALID;
+    }
+
+    /* mandatory '(' */
+    LY_CHECK_RET(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_PAR1), LY_EVALID);
+    begin_token = *tok_idx;
+
+    /* count tokens till ')' */
+    while (lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_PAR2) && *tok_idx < exp->used) {
+        /* emebedded functions are not allowed */
+        if (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_FUNCNAME)) {
+            LOGVAL(ctx, LYVE_XPATH, "Embedded function XPath function inside deref function within the path"
+                    "is not allowed");
+            return LY_EVALID;
+        }
+
+        (*tok_idx)++;
+    }
+
+    /* mandatory ')' */
+    LY_CHECK_RET(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_PAR2), LY_EVALID);
+    end_token = *tok_idx - 1;
+
+    /* parse the path of deref argument */
+    arg_len = exp->tok_pos[end_token] - exp->tok_pos[begin_token];
+    LY_CHECK_RET(ly_path_parse(ctx, ctx_node, &exp->expr[exp->tok_pos[begin_token]], arg_len, 1,
+            LY_PATH_BEGIN_EITHER, LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &arg_expr), LY_EVALID);
+    lyxp_expr_free(ctx, arg_expr);
+
+    return LY_SUCCESS;
+}
+
 LY_ERR
 ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *str_path, size_t path_len,
         ly_bool lref, uint16_t begin, uint16_t prefix, uint16_t pred, struct lyxp_expr **expr)
@@ -294,12 +348,23 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
         if (lyxp_next_token(NULL, exp, &tok_idx, LYXP_TOKEN_OPER_PATH)) {
             /* relative path check specific to leafref */
             if (lref) {
+                /* optional function 'deref..' */
+                if ((ly_ctx_get_options(ctx) & LY_CTX_LEAFREF_EXTENDED) &&
+                        !lyxp_check_token(NULL, exp, tok_idx, LYXP_TOKEN_FUNCNAME)) {
+                    LY_CHECK_ERR_GOTO(ly_path_parse_deref(ctx, ctx_node, exp, &tok_idx), ret = LY_EVALID, error);
+
+                    /* '/' */
+                    LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, &tok_idx, LYXP_TOKEN_OPER_PATH), ret = LY_EVALID,
+                            error);
+                }
+
                 /* mandatory '..' */
                 LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, &tok_idx, LYXP_TOKEN_DDOT), ret = LY_EVALID, error);
 
                 do {
                     /* '/' */
-                    LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, &tok_idx, LYXP_TOKEN_OPER_PATH), ret = LY_EVALID, error);
+                    LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, &tok_idx, LYXP_TOKEN_OPER_PATH), ret = LY_EVALID,
+                            error);
 
                     /* optional '..' */
                 } while (!lyxp_next_token(NULL, exp, &tok_idx, LYXP_TOKEN_DDOT));
@@ -866,6 +931,189 @@ cleanup:
 }
 
 /**
+ * @brief Duplicate ly_path_predicate structure.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] pred The array of path predicates.
+ * @param[out] dup Duplicated predicates.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+ly_path_dup_predicates(const struct ly_ctx *ctx, const struct ly_path_predicate *pred, struct ly_path_predicate **dup)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    if (!pred) {
+        return LY_SUCCESS;
+    }
+
+    LY_ARRAY_CREATE_RET(ctx, *dup, LY_ARRAY_COUNT(pred), LY_EMEM);
+    LY_ARRAY_FOR(pred, u) {
+        LY_ARRAY_INCREMENT(*dup);
+        (*dup)[u].type = pred->type;
+
+        switch (pred->type) {
+        case LY_PATH_PREDTYPE_POSITION:
+            /* position-predicate */
+            (*dup)[u].position = pred->position;
+            break;
+        case LY_PATH_PREDTYPE_LIST:
+        case LY_PATH_PREDTYPE_LEAFLIST:
+            /* key-predicate or leaf-list-predicate */
+            (*dup)[u].key = pred->key;
+            pred->value.realtype->plugin->duplicate(ctx, &pred->value, &(*dup)[u].value);
+            LY_ATOMIC_INC_BARRIER(((struct lysc_type *)pred->value.realtype)->refcount);
+            break;
+        case LY_PATH_PREDTYPE_LIST_VAR:
+            /* key-predicate with a variable */
+            (*dup)[u].key = pred->key;
+            (*dup)[u].variable = strdup(pred->variable);
+            break;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Appends path elements from source to destination array
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] src The source path
+ * @param[in,out] dst The destination path
+ * @return LY_ERR value.
+ */
+static LY_ERR
+ly_path_append(const struct ly_ctx *ctx, const struct ly_path *src, struct ly_path **dst)
+{
+    LY_ERR ret = LY_SUCCESS;
+    LY_ARRAY_COUNT_TYPE u;
+    struct ly_path *p;
+
+    if (!src) {
+        return LY_SUCCESS;
+    }
+
+    LY_ARRAY_CREATE_RET(ctx, *dst, LY_ARRAY_COUNT(src), LY_EMEM);
+    LY_ARRAY_FOR(src, u) {
+        LY_ARRAY_NEW_GOTO(ctx, *dst, p, ret, error);
+        p->node = src[u].node;
+        p->ext = src[u].ext;
+        LY_CHECK_GOTO(ret = ly_path_dup_predicates(ctx, src[u].predicates, &p->predicates), error);
+    }
+
+    return LY_SUCCESS;
+
+error:
+    ly_path_free(ctx, *dst);
+    return (ret == LY_ENOTFOUND) ? LY_EVALID : ret;
+}
+
+/**
+ * @brief Compile deref XPath function into ly_path structure.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] ctx_node Optional context node, mandatory of @p lref.
+ * @param[in] top_ext Extension instance containing the definition of the data being created. It is used to find
+ * the top-level node inside the extension instance instead of a module. Note that this is the case not only if
+ * the @p ctx_node is NULL, but also if the relative path starting in @p ctx_node reaches the document root
+ * via double dots.
+ * @param[in] expr Parsed path.
+ * @param[in] oper Oper option (@ref path_oper_options).
+ * @param[in] target Target option (@ref path_target_options).
+ * @param[in] format Format of the path.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
+ * @param[in,out] tok_idx Index in @p exp, is adjusted.
+ * @param[out] path Compiled path.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+ly_path_compile_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
+        const struct lysc_ext_instance *top_ext, const struct lyxp_expr *expr, uint16_t oper, uint16_t target,
+        LY_VALUE_FORMAT format, void *prefix_data, uint32_t *tok_idx, struct ly_path **path)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyxp_expr expr2;
+    struct ly_path *path2 = NULL;
+    const struct lysc_node *node2;
+    const struct lysc_node_leaf *deref_leaf_node;
+    const struct lysc_type_leafref *lref;
+    uint32_t begin_token;
+
+    /* properly parsed path must always starts with 'deref' and '(' */
+    assert(!lyxp_check_token(NULL, expr, *tok_idx, LYXP_TOKEN_FUNCNAME));
+    assert(!strncmp(&expr->expr[expr->tok_pos[*tok_idx]], "deref", 5));
+    (*tok_idx)++;
+    assert(!lyxp_check_token(NULL, expr, *tok_idx, LYXP_TOKEN_PAR1));
+    (*tok_idx)++;
+    begin_token = *tok_idx;
+
+    /* emebedded functions were already identified count tokens till ')' */
+    while (lyxp_check_token(NULL, expr, *tok_idx, LYXP_TOKEN_PAR2) && (*tok_idx < expr->used)) {
+        (*tok_idx)++;
+    }
+
+    /* properly parsed path must have ')' within the tokens */
+    assert(!lyxp_check_token(NULL, expr, *tok_idx, LYXP_TOKEN_PAR2));
+
+    /* prepare expr representing just deref arg */
+    expr2.tokens = &expr->tokens[begin_token];
+    expr2.tok_pos = &expr->tok_pos[begin_token];
+    expr2.tok_len = &expr->tok_len[begin_token];
+    expr2.repeat = &expr->repeat[begin_token];
+    expr2.used = *tok_idx - begin_token;
+    expr2.size = expr->size - begin_token;
+    expr2.expr = expr->expr;
+
+    /* compile just deref arg, append it to the path and find dereferenced lref for next operations */
+    LY_CHECK_ERR_GOTO(ly_path_compile_leafref(ctx, ctx_node, top_ext, &expr2, oper, target, format, prefix_data,
+            &path2), ret = LY_EVALID, cleanup);
+    node2 = path2[LY_ARRAY_COUNT(path2) - 1].node;
+    deref_leaf_node = (const struct lysc_node_leaf *)node2;
+    lref = (const struct lysc_type_leafref *)deref_leaf_node->type;
+    LY_CHECK_ERR_GOTO(ly_path_append(ctx, path2, path), ret = LY_EVALID, cleanup);
+    ly_path_free(ctx, path2);
+    path2 = NULL;
+
+    /* compile dereferenced leafref expression and append it to the path */
+    LY_CHECK_ERR_GOTO(ly_path_compile_leafref(ctx, node2, top_ext, lref->path, oper, target, format, prefix_data,
+            &path2), ret = LY_EVALID, cleanup);
+    node2 = path2[LY_ARRAY_COUNT(path2) - 1].node;
+    LY_CHECK_ERR_GOTO(ly_path_append(ctx, path2, path), ret = LY_EVALID, cleanup);
+    ly_path_free(ctx, path2);
+    path2 = NULL;
+
+    /* properly parsed path must always continue with ')' and '/' */
+    assert(!lyxp_check_token(NULL, expr, *tok_idx, LYXP_TOKEN_PAR2));
+    (*tok_idx)++;
+    assert(!lyxp_check_token(NULL, expr, *tok_idx, LYXP_TOKEN_OPER_PATH));
+    (*tok_idx)++;
+
+    /* prepare expr representing rest of the path after deref */
+    expr2.tokens = &expr->tokens[*tok_idx];
+    expr2.tok_pos = &expr->tok_pos[*tok_idx];
+    expr2.tok_len = &expr->tok_len[*tok_idx];
+    expr2.repeat = &expr->repeat[*tok_idx];
+    expr2.used = expr->used - *tok_idx;
+    expr2.size = expr->size - *tok_idx;
+    expr2.expr = expr->expr;
+
+    /* compile rest of the path and append it to the path */
+    LY_CHECK_ERR_GOTO(ly_path_compile_leafref(ctx, node2, top_ext, &expr2, oper, target, format, prefix_data, &path2),
+            ret = LY_EVALID, cleanup);
+    LY_CHECK_ERR_GOTO(ly_path_append(ctx, path2, path), ret = LY_EVALID, cleanup);
+
+cleanup:
+    ly_path_free(ctx, path2);
+    if (ret) {
+        ly_path_free(ctx, *path);
+        *path = NULL;
+    }
+    LOG_LOCBACK(1, 0, 0, 0);
+    return (ret == LY_ENOTFOUND) ? LY_EVALID : ret;
+}
+
+/**
  * @brief Compile path into ly_path structure. Any predicates of a leafref are only checked, not compiled.
  *
  * @param[in] ctx libyang context.
@@ -922,7 +1170,13 @@ _ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, con
         getnext_opts = 0;
     }
 
-    if (expr->tokens[tok_idx] == LYXP_TOKEN_OPER_PATH) {
+    if (lref && (ly_ctx_get_options(ctx) & LY_CTX_LEAFREF_EXTENDED) &&
+            (expr->tokens[tok_idx] == LYXP_TOKEN_FUNCNAME)) {
+        /* deref function */
+        ret = ly_path_compile_deref(ctx, ctx_node, top_ext, expr, oper, target, format, prefix_data, &tok_idx, path);
+        ctx_node = (*path)[LY_ARRAY_COUNT(*path) - 1].node;
+        goto cleanup;
+    } else if (expr->tokens[tok_idx] == LYXP_TOKEN_OPER_PATH) {
         /* absolute path */
         ctx_node = NULL;
 
@@ -1158,7 +1412,8 @@ ly_path_eval(const struct ly_path *path, const struct lyd_node *start, const str
 LY_ERR
 ly_path_dup(const struct ly_ctx *ctx, const struct ly_path *path, struct ly_path **dup)
 {
-    LY_ARRAY_COUNT_TYPE u, v;
+    LY_ERR ret = LY_SUCCESS;
+    LY_ARRAY_COUNT_TYPE u;
 
     if (!path) {
         return LY_SUCCESS;
@@ -1168,34 +1423,8 @@ ly_path_dup(const struct ly_ctx *ctx, const struct ly_path *path, struct ly_path
     LY_ARRAY_FOR(path, u) {
         LY_ARRAY_INCREMENT(*dup);
         (*dup)[u].node = path[u].node;
-        if (path[u].predicates) {
-            LY_ARRAY_CREATE_RET(ctx, (*dup)[u].predicates, LY_ARRAY_COUNT(path[u].predicates), LY_EMEM);
-            LY_ARRAY_FOR(path[u].predicates, v) {
-                struct ly_path_predicate *pred = &path[u].predicates[v];
-
-                LY_ARRAY_INCREMENT((*dup)[u].predicates);
-                (*dup)[u].predicates[v].type = pred->type;
-
-                switch (pred->type) {
-                case LY_PATH_PREDTYPE_POSITION:
-                    /* position-predicate */
-                    (*dup)[u].predicates[v].position = pred->position;
-                    break;
-                case LY_PATH_PREDTYPE_LIST:
-                case LY_PATH_PREDTYPE_LEAFLIST:
-                    /* key-predicate or leaf-list-predicate */
-                    (*dup)[u].predicates[v].key = pred->key;
-                    pred->value.realtype->plugin->duplicate(ctx, &pred->value, &(*dup)[u].predicates[v].value);
-                    LY_ATOMIC_INC_BARRIER(((struct lysc_type *)pred->value.realtype)->refcount);
-                    break;
-                case LY_PATH_PREDTYPE_LIST_VAR:
-                    /* key-predicate with a variable */
-                    (*dup)[u].predicates[v].key = pred->key;
-                    (*dup)[u].predicates[v].variable = strdup(pred->variable);
-                    break;
-                }
-            }
-        }
+        (*dup)[u].ext = path[u].ext;
+        LY_CHECK_RET(ret = ly_path_dup_predicates(ctx, path[u].predicates, &(*dup)[u].predicates), ret);
     }
 
     return LY_SUCCESS;

@@ -257,6 +257,6 @@ LY_ERR process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, 
  * @param[in] schema_path Path to the wanted node.
  * @return Pointer to the schema node specified by the path on success, NULL otherwise.
  */
-const struct lysc_node * find_schema_path(const struct ly_ctx *ctx, const char *schema_path);
+const struct lysc_node *find_schema_path(const struct ly_ctx *ctx, const char *schema_path);
 
 #endif /* COMMON_H_ */

@@ -537,7 +537,7 @@ lyht_remove_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_va
     int32_t i;
     ly_bool first_matched = 0;
     LY_ERR r, ret = LY_SUCCESS;
-    lyht_value_equal_cb old_val_equal;
+    lyht_value_equal_cb old_val_equal = NULL;
 
     LY_CHECK_ERR_RET(lyht_find_first(ht, hash, &rec), LOGARG(NULL, hash), LY_ENOTFOUND); /* hash not found */
 

@@ -6662,7 +6662,7 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const c
 {
     ly_bool temp_ctx = 0;
     uint32_t getnext_opts, orig_used, i, mod_idx, idx;
-    const struct lys_module *mod;
+    const struct lys_module *mod = NULL;
     const struct lysc_node *iter;
     enum lyxp_node_type iter_type;
 
