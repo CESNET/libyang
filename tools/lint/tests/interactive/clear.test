@@ -2,6 +2,13 @@ source [expr {[info exists ::env(TESTS_DIR)] ? "$env(TESTS_DIR)/interactive/ly.t
 
 set mdir $::env(YANG_MODULES_DIR)
 
+test clear_searchpath {searchpath is also deleted} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "searchpath ./"
+    ly_cmd "clear"
+    ly_cmd "searchpath" "List of the searchpaths:" -ex
+}}
+
 test clear_make_implemented_once {clear --make-implemented} {
 -setup $ly_setup -cleanup $ly_cleanup -body {
     ly_cmd "clear -i"
