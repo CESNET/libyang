@@ -367,7 +367,7 @@ LIBYANG_API_DEF LY_ERR lyplg_type_xpath10_print_token(const char *token, uint16_
  * @param[in] format Format of the prefix (::lyplg_type_print_clb's format parameter).
  * @param[in] prefix_data Format-specific data (::lyplg_type_print_clb's prefix_data parameter).
  * @return Module prefix to print.
- * @return NULL on error.
+ * @return NULL on using the current module/namespace.
  */
 LIBYANG_API_DECL const char *lyplg_type_get_prefix(const struct lys_module *mod, LY_VALUE_FORMAT format, void *prefix_data);
 

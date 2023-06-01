@@ -343,15 +343,19 @@ json_print_member2(struct jsonpr_ctx *pctx, const struct lyd_node *parent, LY_VA
  * @param[in] pctx JSON printer context.
  * @param[in] ctx Context used to print the value.
  * @param[in] val Data value to be printed.
+ * @param[in] local_mod Module of the current node.
  * @return LY_ERR value.
  */
 static LY_ERR
-json_print_value(struct jsonpr_ctx *pctx, const struct ly_ctx *ctx, const struct lyd_value *val)
+json_print_value(struct jsonpr_ctx *pctx, const struct ly_ctx *ctx, const struct lyd_value *val,
+        const struct lys_module *local_mod)
 {
     ly_bool dynamic;
     LY_DATA_TYPE basetype;
-    const char *value = val->realtype->plugin->print(ctx, val, LY_VALUE_JSON, NULL, &dynamic, NULL);
+    const char *value;
 
+    value = val->realtype->plugin->print(ctx, val, LY_VALUE_JSON, (void *)local_mod, &dynamic, NULL);
+    LY_CHECK_RET(!value, LY_EINVAL);
     basetype = val->realtype->basetype;
 
 print_val:
@@ -458,7 +462,7 @@ json_print_metadata(struct jsonpr_ctx *pctx, const struct lyd_node *node, const 
     for (meta = node->meta; meta; meta = meta->next) {
         PRINT_COMMA;
         ly_print_(pctx->out, "%*s\"%s:%s\":%s", INDENT, meta->annotation->module->name, meta->name, DO_FORMAT ? " " : "");
-        LY_CHECK_RET(json_print_value(pctx, LYD_CTX(node), &meta->value));
+        LY_CHECK_RET(json_print_value(pctx, LYD_CTX(node), &meta->value, NULL));
         LEVEL_PRINTED;
     }
 
@@ -526,7 +530,7 @@ static LY_ERR
 json_print_leaf(struct jsonpr_ctx *pctx, const struct lyd_node *node)
 {
     LY_CHECK_RET(json_print_member(pctx, node, 0));
-    LY_CHECK_RET(json_print_value(pctx, LYD_CTX(node), &((const struct lyd_node_term *)node)->value));
+    LY_CHECK_RET(json_print_value(pctx, LYD_CTX(node), &((const struct lyd_node_term *)node)->value, node->schema->module));
     LEVEL_PRINTED;
 
     /* print attributes as sibling */
@@ -791,7 +795,7 @@ json_print_leaf_list(struct jsonpr_ctx *pctx, const struct lyd_node *node)
     } else {
         assert(node->schema->nodetype == LYS_LEAFLIST);
 
-        LY_CHECK_RET(json_print_value(pctx, LYD_CTX(node), &((const struct lyd_node_term *)node)->value));
+        LY_CHECK_RET(json_print_value(pctx, LYD_CTX(node), &((const struct lyd_node_term *)node)->value, node->schema->module));
 
         if (!pctx->print_sibling_metadata) {
             if ((node->flags & LYD_DEFAULT) && (pctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) {

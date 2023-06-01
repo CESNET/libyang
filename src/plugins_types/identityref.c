@@ -50,8 +50,16 @@ static LY_ERR
 identityref_ident2str(const struct lysc_ident *ident, LY_VALUE_FORMAT format, void *prefix_data, char **str, size_t *str_len)
 {
     int len;
+    const char *prefix;
 
-    len = asprintf(str, "%s:%s", lyplg_type_get_prefix(ident->module, format, prefix_data), ident->name);
+    /* get the prefix, may be NULL for no prefix and the default namespace */
+    prefix = lyplg_type_get_prefix(ident->module, format, prefix_data);
+
+    if (prefix) {
+        len = asprintf(str, "%s:%s", prefix, ident->name);
+    } else {
+        len = asprintf(str, "%s", ident->name);
+    }
     if (len == -1) {
         return LY_EMEM;
     }
@@ -269,8 +277,8 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
             LY_CHECK_GOTO(ret, cleanup);
         }
     } else {
-        /* JSON format with prefix is the canonical one */
-        ret = identityref_ident2str(ident, LY_VALUE_JSON, NULL, &canon, NULL);
+        /* JSON format is the canonical one */
+        ret = identityref_ident2str(ident, LY_VALUE_JSON, ctx_node ? ctx_node->module : NULL, &canon, NULL);
         LY_CHECK_GOTO(ret, cleanup);
 
         ret = lydict_insert_zc(ctx, canon, &storage->_canonical);

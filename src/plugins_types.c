@@ -224,24 +224,52 @@ ly_schema_resolved_get_prefix(const struct lys_module *mod, void *prefix_data)
 }
 
 /**
- * @brief Simply return module local prefix. Also, store the module in a set.
+ * @brief Get prefix for XML print.
+ *
+ * @param[in] mod Module whose prefix to get.
+ * @param[in,out] prefix_data Set of used modules in the print. If @p mod is found in this set, no string (prefix) is
+ * returned.
+ * @return Prefix to print, may be NULL if the default namespace should be used.
  */
 static const char *
 ly_xml_get_prefix(const struct lys_module *mod, void *prefix_data)
 {
-    struct ly_set *ns_list = prefix_data;
+    struct ly_set *mods = prefix_data;
+    uint32_t i;
 
-    LY_CHECK_RET(ly_set_add(ns_list, (void *)mod, 0, NULL), NULL);
+    /* first is the local module */
+    assert(mods->count);
+    if (mods->objs[0] == mod) {
+        return NULL;
+    }
+
+    /* check for duplicates in the rest of the modules and add there */
+    for (i = 1; i < mods->count; ++i) {
+        if (mods->objs[i] == mod) {
+            break;
+        }
+    }
+    if (i == mods->count) {
+        LY_CHECK_RET(ly_set_add(mods, (void *)mod, 1, NULL), NULL);
+    }
+
+    /* return the prefix */
     return mod->prefix;
 }
 
 /**
- * @brief Simply return module name.
+ * @brief Get prefix for JSON print.
+ *
+ * @param[in] mod Module whose prefix to get.
+ * @param[in] prefix_data Current local module, may be NULL. If it matches @p mod, no string (preifx) is returned.
+ * @return Prefix (module name) to print, may be NULL if the default module should be used.
  */
 static const char *
-ly_json_get_prefix(const struct lys_module *mod, void *UNUSED(prefix_data))
+ly_json_get_prefix(const struct lys_module *mod, void *prefix_data)
 {
-    return mod->name;
+    const struct lys_module *local_mod = prefix_data;
+
+    return (local_mod == mod) ? NULL : mod->name;
 }
 
 const char *

@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief ietf-yang-types xpath1.0 type plugin.
  *
- * Copyright (c) 2021 CESNET, z.s.p.o.
+ * Copyright (c) 2021 - 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -57,12 +57,9 @@ lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_n
     while (!(ret = ly_value_prefix_next(str_begin, token + tok_len, &len, &is_prefix, &str_next)) && len) {
         if (!is_prefix) {
             if (!has_prefix && is_nametest && (get_format == LY_VALUE_XML) && *context_mod) {
-                /* prefix is always needed, get it in the target format */
+                /* get the prefix */
                 prefix = lyplg_type_get_prefix(*context_mod, get_format, get_prefix_data);
-                if (!prefix) {
-                    ret = ly_err_new(err, LY_EINT, LYVE_DATA, NULL, NULL, "Internal error.");
-                    goto cleanup;
-                }
+                assert(prefix);
 
                 /* append the nametest and prefix */
                 mem = realloc(str, str_len + strlen(prefix) + 1 + len + 1);
@@ -94,10 +91,7 @@ lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_n
                 if (mod) {
                     /* get the prefix in the target format */
                     prefix = lyplg_type_get_prefix(mod, get_format, get_prefix_data);
-                    if (!prefix) {
-                        ret = ly_err_new(err, LY_EINT, LYVE_DATA, NULL, NULL, "Internal error.");
-                        goto cleanup;
-                    }
+                    assert(prefix);
                     pref_len = strlen(prefix);
                 } else {
                     /* invalid prefix, just copy it */
@@ -223,13 +217,25 @@ lyplg_type_print_xpath10_value(const struct lyd_value_xpath10 *xp_val, LY_VALUE_
     LY_ERR ret = LY_SUCCESS;
     uint16_t expr_idx = 0;
     uint32_t str_len = 0;
+    const struct lys_module *local_mod = NULL;
+    struct ly_set *mods;
 
     *str_value = NULL;
     *err = NULL;
 
+    if (format == LY_VALUE_XML) {
+        /* null the local module so that all the prefixes are printed */
+        mods = prefix_data;
+        local_mod = mods->objs[0];
+        mods->objs[0] = NULL;
+    }
+
     /* recursively print the expression */
     ret = xpath10_print_subexpr_r(&expr_idx, 0, NULL, xp_val, format, prefix_data, str_value, &str_len, err);
 
+    if (local_mod) {
+        mods->objs[0] = (void *)local_mod;
+    }
     if (ret) {
         free(*str_value);
         *str_value = NULL;

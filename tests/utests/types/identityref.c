@@ -27,15 +27,6 @@
     NODES \
     "}\n"
 
-#define TEST_SUCCESS_XML(MOD_NAME, NAMESPACES, NODE_NAME, DATA, TYPE, ...) \
-    { \
-        struct lyd_node *tree; \
-        const char *data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\" " NAMESPACES ">" DATA "</" NODE_NAME ">"; \
-        CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree); \
-        CHECK_LYD_NODE_TERM((struct lyd_node_term *)tree, 0, 0, 0, 0, 1, TYPE, __VA_ARGS__); \
-        lyd_free_all(tree); \
-    }
-
 #define TEST_ERROR_XML(MOD_NAME, NAMESPACES, NODE_NAME, DATA) \
     {\
         struct lyd_node *tree; \
@@ -64,21 +55,44 @@ static void
 test_data_xml(void **state)
 {
     const char *schema, *schema2;
+    struct lyd_node *tree;
+    const char *data;
 
     /* xml test */
-    schema = MODULE_CREATE_YANG("ident-base", "identity ident-base;"
-            "identity ident-imp {base ident-base;}");
+    schema = "module ident-base {"
+            "  yang-version 1.1;"
+            "  namespace \"urn:tests:ident-base\";"
+            "  prefix ib;"
+            "  identity ident-base;"
+            "  identity ident-imp {base ident-base;}"
+            "}";
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
 
-    schema2 = MODULE_CREATE_YANG("defs", "import ident-base {prefix ib;}"
-            "identity ident1 {base ib:ident-base;}"
-            "leaf l1 {type identityref {base ib:ident-base;}}");
+    schema2 = "module defs {"
+            "  yang-version 1.1;"
+            "  namespace \"urn:tests:defs\";"
+            "  prefix d;"
+            "  import ident-base {prefix ib;}"
+            "  identity ident1 {base ib:ident-base;}"
+            "  leaf l1 {type identityref {base ib:ident-base;}}"
+            "}";
     UTEST_ADD_MODULE(schema2, LYS_IN_YANG, NULL, NULL);
 
-    TEST_SUCCESS_XML("defs", "", "l1", "ident1", IDENT, "defs:ident1", "ident1");
+    /* local ident, XML/JSON print */
+    data = "<l1 xmlns=\"urn:tests:defs\">ident1</l1>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    CHECK_LYD_NODE_TERM((struct lyd_node_term *)tree, 0, 0, 0, 0, 1, IDENT, "ident1", "ident1");
+    CHECK_LYD_STRING_PARAM(tree, data, LYD_XML, LYD_PRINT_SHRINK);
+    CHECK_LYD_STRING_PARAM(tree, "{\"defs:l1\":\"ident1\"}", LYD_JSON, LYD_PRINT_SHRINK);
+    lyd_free_all(tree);
 
-    TEST_SUCCESS_XML("defs", "xmlns:i=\"urn:tests:ident-base\"", "l1", "i:ident-imp", IDENT, "ident-base:ident-imp",
-            "ident-imp");
+    /* foreign ident, XML/JSON print */
+    data = "<l1 xmlns=\"urn:tests:defs\" xmlns:ib=\"urn:tests:ident-base\">ib:ident-imp</l1>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    CHECK_LYD_NODE_TERM((struct lyd_node_term *)tree, 0, 0, 0, 0, 1, IDENT, "ident-base:ident-imp", "ident-imp");
+    CHECK_LYD_STRING_PARAM(tree, data, LYD_XML, LYD_PRINT_SHRINK);
+    CHECK_LYD_STRING_PARAM(tree, "{\"defs:l1\":\"ident-base:ident-imp\"}", LYD_JSON, LYD_PRINT_SHRINK);
+    lyd_free_all(tree);
 
     /* invalid value */
     TEST_ERROR_XML("defs", "", "l1", "fast-ethernet");

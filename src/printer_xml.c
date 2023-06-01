@@ -178,6 +178,8 @@ xml_print_meta(struct xmlpr_ctx *pctx, const struct lyd_node *node)
     struct ly_set ns_list = {0};
     LY_ARRAY_COUNT_TYPE u;
     ly_bool dynamic, filter_attrs = 0;
+    const char *value;
+    uint32_t i;
 
     /* with-defaults */
     if (node->schema->nodetype & LYD_NODE_TERM) {
@@ -205,11 +207,14 @@ xml_print_meta(struct xmlpr_ctx *pctx, const struct lyd_node *node)
     }
 
     for (meta = node->meta; meta; meta = meta->next) {
-        const char *value = meta->value.realtype->plugin->print(LYD_CTX(node), &meta->value, LY_VALUE_XML, &ns_list,
-                &dynamic, NULL);
+        /* store the module of the default namespace, NULL because there is none */
+        ly_set_add(&ns_list, NULL, 0, NULL);
+
+        /* print the value */
+        value = meta->value.realtype->plugin->print(LYD_CTX(node), &meta->value, LY_VALUE_XML, &ns_list, &dynamic, NULL);
 
         /* print namespaces connected with the value's prefixes */
-        for (uint32_t i = 0; i < ns_list.count; ++i) {
+        for (i = 1; i < ns_list.count; ++i) {
             mod = ns_list.objs[i];
             xml_print_ns(pctx, mod->ns, mod->prefix, 1);
         }
@@ -314,22 +319,32 @@ static LY_ERR xml_print_node(struct xmlpr_ctx *pctx, const struct lyd_node *node
 static LY_ERR
 xml_print_term(struct xmlpr_ctx *pctx, const struct lyd_node_term *node)
 {
+    LY_ERR rc = LY_SUCCESS;
     struct ly_set ns_list = {0};
-    ly_bool dynamic;
-    const char *value;
+    ly_bool dynamic = 0;
+    const char *value = NULL;
+    const struct lys_module *mod;
+    uint32_t i;
 
-    xml_print_node_open(pctx, &node->node);
+    /* store the module of the default namespace */
+    if ((rc = ly_set_add(&ns_list, node->schema->module, 0, NULL))) {
+        LOGMEM(pctx->ctx);
+        goto cleanup;
+    }
+
+    /* print the value */
     value = ((struct lysc_node_leaf *)node->schema)->type->plugin->print(LYD_CTX(node), &node->value, LY_VALUE_XML,
             &ns_list, &dynamic, NULL);
-    LY_CHECK_RET(!value, LY_EINVAL);
+    LY_CHECK_ERR_GOTO(!value, rc = LY_EINVAL, cleanup);
+
+    /* print node opening */
+    xml_print_node_open(pctx, &node->node);
 
     /* print namespaces connected with the values's prefixes */
-    for (uint32_t u = 0; u < ns_list.count; ++u) {
-        const struct lys_module *mod = (const struct lys_module *)ns_list.objs[u];
-
+    for (i = 1; i < ns_list.count; ++i) {
+        mod = ns_list.objs[i];
         ly_print_(pctx->out, " xmlns:%s=\"%s\"", mod->prefix, mod->ns);
     }
-    ly_set_erase(&ns_list, NULL);
 
     if (!value[0]) {
         ly_print_(pctx->out, "/>%s", DO_FORMAT ? "\n" : "");
@@ -338,11 +353,13 @@ xml_print_term(struct xmlpr_ctx *pctx, const struct lyd_node_term *node)
         lyxml_dump_text(pctx->out, value, 0);
         ly_print_(pctx->out, "</%s>%s", node->schema->name, DO_FORMAT ? "\n" : "");
     }
+
+cleanup:
+    ly_set_erase(&ns_list, NULL);
     if (dynamic) {
         free((void *)value);
     }
-
-    return LY_SUCCESS;
+    return rc;
 }
 
 /**

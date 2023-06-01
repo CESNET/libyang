@@ -50,12 +50,19 @@ instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, void *pr
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u, v;
     char *result = NULL, quot;
-    const struct lys_module *mod = NULL;
+    const struct lys_module *mod = NULL, *local_mod = NULL;
+    struct ly_set *mods;
     ly_bool inherit_prefix = 0, d;
     const char *strval;
 
     switch (format) {
     case LY_VALUE_XML:
+        /* null the local module so that all the prefixes are printed */
+        mods = prefix_data;
+        local_mod = mods->objs[0];
+        mods->objs[0] = NULL;
+
+    /* fallthrough */
     case LY_VALUE_SCHEMA:
     case LY_VALUE_SCHEMA_RESOLVED:
         /* everything is prefixed */
@@ -136,6 +143,9 @@ instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, void *pr
     }
 
 cleanup:
+    if (local_mod) {
+        mods->objs[0] = (void *)local_mod;
+    }
     if (ret) {
         free(result);
     } else {

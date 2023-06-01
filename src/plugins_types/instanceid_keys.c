@@ -67,9 +67,17 @@ instanceid_keys_print_value(const struct lyd_value_instance_identifier_keys *val
     void *mem;
     const char *cur_exp_ptr;
     ly_bool is_nt;
-    const struct lys_module *context_mod = NULL;
+    const struct lys_module *context_mod = NULL, *local_mod = NULL;
+    struct ly_set *mods;
 
     *str_value = NULL;
+
+    if (format == LY_VALUE_XML) {
+        /* null the local module so that all the prefixes are printed */
+        mods = prefix_data;
+        local_mod = mods->objs[0];
+        mods->objs[0] = NULL;
+    }
 
     while (cur_idx < val->keys->used) {
         cur_tok = val->keys->tokens[cur_idx];
@@ -79,11 +87,15 @@ instanceid_keys_print_value(const struct lyd_value_instance_identifier_keys *val
             /* tokens that may include prefixes, get them in the target format */
             is_nt = (cur_tok == LYXP_TOKEN_NAMETEST) ? 1 : 0;
             LY_CHECK_GOTO(ret = lyplg_type_xpath10_print_token(cur_exp_ptr, val->keys->tok_len[cur_idx], is_nt, &context_mod,
-                    val->ctx, val->format, val->prefix_data, format, prefix_data, &str_tok, err), error);
+                    val->ctx, val->format, val->prefix_data, format, prefix_data, &str_tok, err), cleanup);
 
             /* append the converted token */
             mem = realloc(*str_value, str_len + strlen(str_tok) + 1);
-            LY_CHECK_ERR_GOTO(!mem, free(str_tok), error_mem);
+            if (!mem) {
+                free(str_tok);
+                ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory.");
+                goto cleanup;
+            }
             *str_value = mem;
             str_len += sprintf(*str_value + str_len, "%s", str_tok);
             free(str_tok);
@@ -93,7 +105,10 @@ instanceid_keys_print_value(const struct lyd_value_instance_identifier_keys *val
         } else {
             /* just copy the token */
             mem = realloc(*str_value, str_len + val->keys->tok_len[cur_idx] + 1);
-            LY_CHECK_GOTO(!mem, error_mem);
+            if (!mem) {
+                ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory.");
+                goto cleanup;
+            }
             *str_value = mem;
             str_len += sprintf(*str_value + str_len, "%.*s", (int)val->keys->tok_len[cur_idx], cur_exp_ptr);
 
@@ -102,13 +117,14 @@ instanceid_keys_print_value(const struct lyd_value_instance_identifier_keys *val
         }
     }
 
-    return LY_SUCCESS;
-
-error_mem:
-    ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory.");
-
-error:
-    free(*str_value);
+cleanup:
+    if (local_mod) {
+        mods->objs[0] = (void *)local_mod;
+    }
+    if (ret) {
+        free(*str_value);
+        *str_value = NULL;
+    }
     return ret;
 }
 
