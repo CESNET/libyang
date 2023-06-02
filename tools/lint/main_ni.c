@@ -123,6 +123,9 @@ erase_context(struct context *c)
     free(c->searchpaths);
     c->searchpaths = NULL;
 
+    /* --reply-rpc */
+    ly_in_free(c->reply_rpc.in, 1);
+
     ly_out_free(c->out, NULL,  0);
     ly_ctx_destroy(c->ctx);
 
