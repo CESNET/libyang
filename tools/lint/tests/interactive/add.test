@@ -46,4 +46,14 @@ test add_make_implemented_twice {add -i -i} {
     ly_cmd "list" "I modimp-type\r.*I modtypedef"
 }}
 
+test add_extended_leafref_enabled {Valid module with --extended-leafref option} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "add -X $mdir/modextleafref.yang"
+}}
+
+test add_extended_leafref_disabled {Expected error if --extended-leafref is not set} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd_err "add $mdir/modextleafref.yang" "Unexpected XPath token \"FunctionName\""
+}}
+
 cleanupTests
