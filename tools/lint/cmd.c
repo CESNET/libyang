@@ -254,8 +254,8 @@ cleanup:
 /* Also keep enum COMMAND_INDEX updated. */
 COMMAND commands[] = {
     {"help", cmd_help, cmd_help_help, NULL, "Display commands description", "h"},
-    {"add", cmd_add, cmd_add_help, NULL, "Add a new module from a specific file", "DF:hi"},
-    {"load", cmd_load, cmd_load_help, NULL, "Load a new schema from the searchdirs", "F:hi"},
+    {"add", cmd_add, cmd_add_help, NULL, "Add a new module from a specific file", "DF:hiX"},
+    {"load", cmd_load, cmd_load_help, NULL, "Load a new schema from the searchdirs", "F:hiX"},
     {"print", cmd_print, cmd_print_help, NULL, "Print a module", "f:hL:o:P:q"},
     {"data", cmd_data, cmd_data_help, NULL, "Load, validate and optionally print instance data", "d:ef:F:hmo:O:R:r:nt:x:"},
     {"list", cmd_list, cmd_list_help, NULL, "List all the loaded modules", "f:h"},

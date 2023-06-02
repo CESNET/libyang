@@ -43,7 +43,9 @@ cmd_add_help(void)
             "  -i, --make-implemented\n"
             "                  Make the imported modules \"referenced\" from any loaded\n"
             "                  <schema> module also implemented. If specified a second time,\n"
-            "                  all the modules are set implemented.\n");
+            "                  all the modules are set implemented.\n"
+            "  -X, --extended-leafref\n"
+            "                  Allow usage of deref() XPath function within leafref.\n");
 }
 
 void
@@ -57,6 +59,7 @@ cmd_add(struct ly_ctx **ctx, const char *cmdline)
         {"features", required_argument, NULL, 'F'},
         {"help", no_argument, NULL, 'h'},
         {"make-implemented", no_argument, NULL, 'i'},
+        {"extended-leafref", no_argument, NULL, 'X'},
         {NULL, 0, NULL, 0}
     };
     uint16_t options_ctx = 0;
@@ -98,6 +101,10 @@ cmd_add(struct ly_ctx **ctx, const char *cmdline)
             } else {
                 options_ctx |= LY_CTX_REF_IMPLEMENTED;
             }
+            break;
+
+        case 'X': /* --extended-leafref */
+            options_ctx |= LY_CTX_LEAFREF_EXTENDED;
             break;
 
         default:
