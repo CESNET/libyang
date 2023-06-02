@@ -634,6 +634,8 @@ ly_log_dbg(uint32_t group, const char *format, ...)
     va_start(ap, format);
     log_vprintf(NULL, LY_LLDBG, 0, 0, NULL, NULL, dbg_format, ap);
     va_end(ap);
+
+    free(dbg_format);
 }
 
 #endif
