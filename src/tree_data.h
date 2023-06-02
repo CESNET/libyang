@@ -2144,7 +2144,7 @@ LIBYANG_API_DECL LY_ERR lyd_merge_module(struct lyd_node **target, const struct 
  * @param[in] first First data tree.
  * @param[in] second Second data tree.
  * @param[in] options Bitmask of options flags, see @ref diffoptions.
- * @param[out] diff Generated diff.
+ * @param[out] diff Generated diff, NULL if there are no differences.
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
@@ -2159,7 +2159,7 @@ LIBYANG_API_DECL LY_ERR lyd_diff_tree(const struct lyd_node *first, const struct
  * @param[in] first First data tree.
  * @param[in] second Second data tree.
  * @param[in] options Bitmask of options flags, see @ref diffoptions.
- * @param[out] diff Generated diff.
+ * @param[out] diff Generated diff, NULL if there are no differences.
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
