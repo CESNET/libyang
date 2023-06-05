@@ -454,7 +454,7 @@ test_node_list(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm {namespace urn:mm;prefix mm;"
             "list l {key x;leaf x {type empty;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("List's key cannot be of \"empty\" type until it is in YANG 1.1 module.", "Path \"/mm:l/x\".");
+    CHECK_LOG_CTX("List key of the \"empty\" type is allowed only in YANG 1.1 modules.", "Path \"/mm:l/x\".");
 }
 
 static void

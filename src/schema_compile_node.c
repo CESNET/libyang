@@ -3417,7 +3417,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
             /* YANG 1.0 denies key to be of empty type */
             if (key->type->basetype == LY_TYPE_EMPTY) {
                 LOGVAL(ctx->ctx, LYVE_SEMANTICS,
-                        "List's key cannot be of \"empty\" type until it is in YANG 1.1 module.");
+                        "List key of the \"empty\" type is allowed only in YANG 1.1 modules.");
                 return LY_EVALID;
             }
         } else {
