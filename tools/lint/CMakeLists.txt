@@ -18,6 +18,10 @@ set(lintsrc
     cmd_print.c
     cmd_searchpath.c
     cmd_extdata.c
+    cmd_help.c
+    cmd_verb.c
+    cmd_debug.c
+    yl_opt.c
     common.c
 )
 if(YANGLINT_INTERACTIVE)

@@ -2,9 +2,10 @@
  * @file cmd_print.c
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Adam Piecek <piecek@cesnet.cz>
  * @brief 'print' command of the libyang's yanglint tool.
  *
- * Copyright (c) 2015-2020 CESNET, z.s.p.o.
+ * Copyright (c) 2015-2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -27,6 +28,7 @@
 #include "libyang.h"
 
 #include "common.h"
+#include "yl_opt.h"
 
 void
 cmd_print_help(void)
@@ -54,8 +56,112 @@ cmd_print_help(void)
             "                  Write the output to OUTFILE instead of stdout.\n");
 }
 
+int
+cmd_print_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
+{
+    int rc = 0, argc = 0;
+    int opt, opt_index;
+    struct option options[] = {
+        {"format", required_argument, NULL, 'f'},
+        {"help", no_argument, NULL, 'h'},
+        {"tree-line-length", required_argument, NULL, 'L'},
+        {"output", required_argument, NULL, 'o'},
+        {"schema-node", required_argument, NULL, 'P'},
+        {"single-node", no_argument, NULL, 'q'},
+        {NULL, 0, NULL, 0}
+    };
+
+    yo->schema_out_format = LYS_OUT_TREE;
+
+    if ((rc = parse_cmdline(cmdline, &argc, &yo->argv))) {
+        return rc;
+    }
+
+    while ((opt = getopt_long(argc, yo->argv, commands[CMD_PRINT].optstring, options, &opt_index)) != -1) {
+        switch (opt) {
+        case 'o': /* --output */
+            if (yo->out) {
+                if (ly_out_filepath(yo->out, optarg) != NULL) {
+                    YLMSG_E("Unable to use output file %s for printing output.\n", optarg);
+                    return 1;
+                }
+            } else {
+                if (ly_out_new_filepath(optarg, &yo->out)) {
+                    YLMSG_E("Unable to use output file %s for printing output.\n", optarg);
+                    return 1;
+                }
+            }
+            break;
+
+        case 'f': /* --format */
+            if (!strcasecmp(optarg, "yang")) {
+                yo->schema_out_format = LYS_OUT_YANG;
+            } else if (!strcasecmp(optarg, "yin")) {
+                yo->schema_out_format = LYS_OUT_YIN;
+            } else if (!strcasecmp(optarg, "info")) {
+                yo->schema_out_format = LYS_OUT_YANG_COMPILED;
+            } else if (!strcasecmp(optarg, "tree")) {
+                yo->schema_out_format = LYS_OUT_TREE;
+            } else {
+                YLMSG_E("Unknown output format %s\n", optarg);
+                cmd_print_help();
+                return 1;
+            }
+            break;
+
+        case 'L': /* --tree-line-length */
+            yo->line_length = atoi(optarg);
+            break;
+
+        case 'P': /* --schema-node */
+            yo->schema_node_path = optarg;
+            break;
+
+        case 'q': /* --single-node */
+            yo->schema_print_options |= LYS_PRINT_NO_SUBSTMT;
+            break;
+
+        case 'h':
+            cmd_print_help();
+            return 1;
+        default:
+            YLMSG_E("Unknown option.\n");
+            return 1;
+        }
+    }
+
+    *posv = &yo->argv[optind];
+    *posc = argc - optind;
+
+    return 0;
+}
+
+int
+cmd_print_dep(struct yl_opt *yo, int posc)
+{
+    /* file name */
+    if (!posc && !yo->schema_node_path) {
+        YLMSG_E("Missing the name of the module to print.\n");
+        return 1;
+    }
+
+    if ((yo->schema_out_format != LYS_OUT_TREE) && yo->line_length) {
+        YLMSG_E("--tree-line-length take effect only in case of the tree output format.\n");
+        return 1;
+    }
+
+    if (!yo->out) {
+        if (ly_out_new_file(stdout, &yo->out)) {
+            YLMSG_E("Could not use stdout to print output.\n");
+        }
+        yo->out_stdout = 1;
+    }
+
+    return 0;
+}
+
 static LY_ERR
-cmd_print_submodule(struct ly_out *out, struct ly_ctx **ctx, char *name, char *revision, LYS_OUTFORMAT format, size_t line_length, uint32_t options)
+print_submodule(struct ly_out *out, struct ly_ctx **ctx, char *name, char *revision, LYS_OUTFORMAT format, size_t line_length, uint32_t options)
 {
     LY_ERR erc;
     const struct lysp_submodule *submodule;
@@ -72,7 +178,7 @@ cmd_print_submodule(struct ly_out *out, struct ly_ctx **ctx, char *name, char *r
 }
 
 static LY_ERR
-cmd_print_module(struct ly_out *out, struct ly_ctx **ctx, char *name, char *revision, LYS_OUTFORMAT format, size_t line_length, uint32_t options)
+print_module(struct ly_out *out, struct ly_ctx **ctx, char *name, char *revision, LYS_OUTFORMAT format, size_t line_length, uint32_t options)
 {
     LY_ERR erc;
     struct lys_module *module;
@@ -88,178 +194,86 @@ cmd_print_module(struct ly_out *out, struct ly_ctx **ctx, char *name, char *revi
     return erc;
 }
 
-static void
-cmd_print_modules(int argc, char **argv, struct ly_out *out, struct ly_ctx **ctx, LYS_OUTFORMAT format, size_t line_length, uint32_t options)
+static int
+cmd_print_module(const char *posv, struct ly_out *out, struct ly_ctx **ctx, LYS_OUTFORMAT format,
+        size_t line_length, uint32_t options)
 {
+    int rc = 0;
     LY_ERR erc;
-    char *name, *revision;
+    char *name = NULL, *revision;
     ly_bool search_submodul;
-    const int stop = argc - optind;
 
-    for (int i = 0; i < stop; i++) {
-        name = argv[optind + i];
-        /* get revision */
-        revision = strchr(name, '@');
-        if (revision) {
-            revision[0] = '\0';
-            ++revision;
-        }
-
-        erc = cmd_print_module(out, ctx, name, revision, format, line_length, options);
-
-        if (erc == LY_ENOTFOUND) {
-            search_submodul = 1;
-            erc = cmd_print_submodule(out, ctx, name, revision, format, line_length, options);
-        } else {
-            search_submodul = 0;
-        }
-
-        if (erc == LY_SUCCESS) {
-            /* for YANG Tree Diagrams printing it's more readable to print a blank line between modules. */
-            if ((format == LYS_OUT_TREE) && (i + 1 < stop)) {
-                ly_print(out, "\n");
-            }
-            continue;
-        } else if (erc == LY_ENOTFOUND) {
-            if (revision) {
-                YLMSG_E("No (sub)module \"%s\" in revision %s found.\n", name, revision);
-            } else {
-                YLMSG_E("No (sub)module \"%s\" found.\n", name);
-            }
-            break;
-        } else {
-            if (search_submodul) {
-                YLMSG_E("Unable to print submodule %s.\n", name);
-            } else {
-                YLMSG_E("Unable to print module %s.\n", name);
-            }
-            break;
-        }
+    name = strdup(posv);
+    /* get revision */
+    revision = strchr(name, '@');
+    if (revision) {
+        revision[0] = '\0';
+        ++revision;
     }
+
+    erc = print_module(out, ctx, name, revision, format, line_length, options);
+
+    if (erc == LY_ENOTFOUND) {
+        search_submodul = 1;
+        erc = print_submodule(out, ctx, name, revision, format, line_length, options);
+    } else {
+        search_submodul = 0;
+    }
+
+    if (erc == LY_SUCCESS) {
+        rc = 0;
+    } else if (erc == LY_ENOTFOUND) {
+        if (revision) {
+            YLMSG_E("No (sub)module \"%s\" in revision %s found.\n", name, revision);
+        } else {
+            YLMSG_E("No (sub)module \"%s\" found.\n", name);
+        }
+        rc = 1;
+    } else {
+        if (search_submodul) {
+            YLMSG_E("Unable to print submodule %s.\n", name);
+        } else {
+            YLMSG_E("Unable to print module %s.\n", name);
+        }
+        rc = 1;
+    }
+
+    free(name);
+    return rc;
 }
 
-void
-cmd_print(struct ly_ctx **ctx, const char *cmdline)
+int
+cmd_print_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
 {
-    int argc = 0;
-    char **argv = NULL;
-    int opt, opt_index;
-    struct option options[] = {
-        {"format", required_argument, NULL, 'f'},
-        {"help", no_argument, NULL, 'h'},
-        {"tree-line-length", required_argument, NULL, 'L'},
-        {"output", required_argument, NULL, 'o'},
-        {"schema-node", required_argument, NULL, 'P'},
-        {"single-node", no_argument, NULL, 'q'},
-        {NULL, 0, NULL, 0}
-    };
-    uint16_t options_print = 0;
-    const char *node_path = NULL;
-    LYS_OUTFORMAT format = LYS_OUT_TREE;
-    struct ly_out *out = NULL;
-    ly_bool out_stdout = 0;
-    size_t line_length = 0;
+    int rc = 0;
 
-    if (parse_cmdline(cmdline, &argc, &argv)) {
-        goto cleanup;
-    }
-
-    while ((opt = getopt_long(argc, argv, commands[CMD_PRINT].optstring, options, &opt_index)) != -1) {
-        switch (opt) {
-        case 'o': /* --output */
-            if (out) {
-                if (ly_out_filepath(out, optarg) != NULL) {
-                    YLMSG_E("Unable to use output file %s for printing output.\n", optarg);
-                    goto cleanup;
-                }
-            } else {
-                if (ly_out_new_filepath(optarg, &out)) {
-                    YLMSG_E("Unable to use output file %s for printing output.\n", optarg);
-                    goto cleanup;
-                }
-            }
-            break;
-
-        case 'f': /* --format */
-            if (!strcasecmp(optarg, "yang")) {
-                format = LYS_OUT_YANG;
-            } else if (!strcasecmp(optarg, "yin")) {
-                format = LYS_OUT_YIN;
-            } else if (!strcasecmp(optarg, "info")) {
-                format = LYS_OUT_YANG_COMPILED;
-            } else if (!strcasecmp(optarg, "tree")) {
-                format = LYS_OUT_TREE;
-            } else {
-                YLMSG_E("Unknown output format %s\n", optarg);
-                cmd_print_help();
-                goto cleanup;
-            }
-            break;
-
-        case 'L': /* --tree-line-length */
-            line_length = atoi(optarg);
-            break;
-
-        case 'P': /* --schema-node */
-            node_path = optarg;
-            break;
-
-        case 'q': /* --single-node */
-            options_print |= LYS_PRINT_NO_SUBSTMT;
-            break;
-
-        case 'h':
-            cmd_print_help();
-            goto cleanup;
-        default:
-            YLMSG_E("Unknown option.\n");
-            goto cleanup;
-        }
-    }
-
-    /* file name */
-    if ((argc == optind) && !node_path) {
-        YLMSG_E("Missing the name of the module to print.\n");
-        goto cleanup;
-    }
-
-    if ((format != LYS_OUT_TREE) && line_length) {
-        YLMSG_E("--tree-line-length take effect only in case of the tree output format.\n");
-        goto cleanup;
-    }
-
-    if (!out) {
-        if (ly_out_new_file(stdout, &out)) {
-            YLMSG_E("Could not use stdout to print output.\n");
-            goto cleanup;
-        }
-        out_stdout = 1;
-    }
-
-    if (format == LYS_OUT_TREE) {
+    if (yo->schema_out_format == LYS_OUT_TREE) {
         /* print tree from lysc_nodes */
         ly_ctx_set_options(*ctx, LY_CTX_SET_PRIV_PARSED);
     }
 
-    if (node_path) {
+    if (yo->schema_node_path) {
         const struct lysc_node *node;
 
-        node = find_schema_path(*ctx, node_path);
+        node = find_schema_path(*ctx, yo->schema_node_path);
         if (!node) {
-            YLMSG_E("The requested schema node \"%s\" does not exists.\n", node_path);
-            goto cleanup;
+            YLMSG_E("The requested schema node \"%s\" does not exists.\n", yo->schema_node_path);
+            return 1;
         }
 
-        if (lys_print_node(out, node, format, line_length, options_print)) {
-            YLMSG_E("Unable to print schema node %s.\n", node_path);
-            goto cleanup;
+        if (lys_print_node(yo->out, node, yo->schema_out_format, yo->line_length, yo->schema_print_options)) {
+            YLMSG_E("Unable to print schema node %s.\n", yo->schema_node_path);
+            return 1;
         }
     } else {
-        cmd_print_modules(argc, argv, out, ctx, format, line_length, options_print);
-        goto cleanup;
+        rc = cmd_print_module(posv, yo->out, ctx, yo->schema_out_format, yo->line_length, yo->schema_print_options);
+        if (!yo->last_one) {
+            /* for YANG Tree Diagrams printing it's more readable to print a blank line between modules. */
+            if (yo->schema_out_format == LYS_OUT_TREE) {
+                ly_print(yo->out, "\n");
+            }
+        }
     }
 
-cleanup:
-    free_cmdline(argv);
-    ly_out_free(out, NULL, out_stdout ? 0 : 1);
+    return rc;
 }

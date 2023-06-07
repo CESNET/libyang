@@ -2,9 +2,10 @@
  * @file main_ni.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @author Michal Vasko <mvasko@cesnet.cz>
+ * @author Adam Piecek <piecek@cesnet.cz>
  * @brief libyang's yanglint tool - non-interactive code
  *
- * Copyright (c) 2020 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -29,112 +30,7 @@
 #include "common.h"
 #include "out.h"
 #include "tools/config.h"
-
-/**
- * @brief Context structure to hold and pass variables in a structured form.
- */
-struct context {
-    /* libyang context for the run */
-    const char *yang_lib_file;
-    uint16_t ctx_options;
-    struct ly_ctx *ctx;
-
-    /* prepared output (--output option or stdout by default) */
-    struct ly_out *out;
-
-    char *searchpaths;
-
-    /* options flags */
-    uint8_t list;        /* -l option to print list of schemas */
-
-    /* line length for 'tree' format */
-    size_t line_length; /* --tree-line-length */
-
-    /*
-     * schema
-     */
-    /* set schema modules' features via --features option (struct schema_features *) */
-    struct ly_set schema_features;
-
-    /* set of loaded schema modules (struct lys_module *) */
-    struct ly_set schema_modules;
-
-    /* options to parse and print schema modules */
-    uint32_t schema_parse_options;
-    uint32_t schema_print_options;
-
-    /* specification of printing schema node subtree, option --schema-node */
-    const char *schema_node_path;
-    const struct lysc_node *schema_node;
-    const char *submodule;
-
-    /* name of file containing explicit context passed to callback
-     * for schema-mount extension.  This also causes a callback to
-     * be registered.
-     */
-    char *schema_context_filename;
-
-    /* value of --format in case of schema format */
-    LYS_OUTFORMAT schema_out_format;
-    ly_bool feature_param_format;
-
-    /*
-     * data
-     */
-    /* various options based on --type option */
-    enum lyd_type data_type;
-    uint32_t data_parse_options;
-    uint32_t data_validate_options;
-    uint32_t data_print_options;
-
-    /* flag for --merge option */
-    uint8_t data_merge;
-
-    /* value of --format in case of data format */
-    LYD_FORMAT data_out_format;
-
-    /* value of --in-format in case of data format */
-    LYD_FORMAT data_in_format;
-
-    /* input data files (struct cmdline_file *) */
-    struct ly_set data_inputs;
-
-    /* storage for --operational */
-    struct cmdline_file data_operational;
-
-    /* storage for --reply-rpc */
-    struct cmdline_file reply_rpc;
-
-    /* storage for --data-xpath */
-    struct ly_set data_xpath;
-};
-
-static void
-erase_context(struct context *c)
-{
-    /* data */
-    ly_set_erase(&c->data_inputs, free_cmdline_file);
-    ly_in_free(c->data_operational.in, 1);
-    ly_set_erase(&c->data_xpath, NULL);
-
-    /* schema */
-    ly_set_erase(&c->schema_features, free_features);
-    ly_set_erase(&c->schema_modules, NULL);
-
-    /* context */
-    free(c->searchpaths);
-    c->searchpaths = NULL;
-
-    /* --reply-rpc */
-    ly_in_free(c->reply_rpc.in, 1);
-
-    ly_out_free(c->out, NULL,  0);
-    ly_ctx_destroy(c->ctx);
-
-    if (c->schema_context_filename) {
-        free(c->schema_context_filename);
-    }
-}
+#include "yl_opt.h"
 
 static void
 version(void)
@@ -362,55 +258,60 @@ get_features_not_applied(const struct ly_set *fset)
 }
 
 static int
-fill_context_inputs(int argc, char *argv[], struct context *c)
+fill_context_inputs(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
 {
     struct ly_in *in = NULL;
     struct schema_features *sf;
     struct lys_module *mod;
     const char *all_features[] = {"*", NULL};
-    char *dir = NULL, *module = NULL;
+    char *dir = NULL, *module = NULL, *filepath = NULL;
 
     /* Create libyang context. */
-    if (c->yang_lib_file) {
+    if (yo->yang_lib_file) {
         /* ignore features */
-        ly_set_erase(&c->schema_features, free_features);
+        ly_set_erase(&yo->schema_features, free_features);
 
-        if (ly_ctx_new_ylpath(c->searchpaths, c->yang_lib_file, LYD_UNKNOWN, c->ctx_options, &c->ctx)) {
+        if (ly_ctx_new_ylpath(yo->searchpaths, yo->yang_lib_file, LYD_UNKNOWN, yo->ctx_options, ctx)) {
             YLMSG_E("Unable to modify libyang context with yang-library data.\n");
             return -1;
         }
     } else {
         /* set imp feature flag if all should be enabled */
-        c->ctx_options |= !c->schema_features.count ? LY_CTX_ENABLE_IMP_FEATURES : 0;
+        yo->ctx_options |= !yo->schema_features.count ? LY_CTX_ENABLE_IMP_FEATURES : 0;
 
-        if (ly_ctx_new(c->searchpaths, c->ctx_options, &c->ctx)) {
+        if (ly_ctx_new(yo->searchpaths, yo->ctx_options, ctx)) {
             YLMSG_E("Unable to create libyang context\n");
             return -1;
         }
     }
 
     /* set callback providing run-time extension instance data */
-    if (c->schema_context_filename) {
-        ly_ctx_set_ext_data_clb(c->ctx, ext_data_clb, c->schema_context_filename);
+    if (yo->schema_context_filename) {
+        ly_ctx_set_ext_data_clb(*ctx, ext_data_clb, yo->schema_context_filename);
     }
 
     /* process the operational and/or reply RPC content if any */
-    if (c->data_operational.path) {
-        if (get_input(c->data_operational.path, NULL, &c->data_operational.format, &c->data_operational.in)) {
+    if (yo->data_operational.path) {
+        if (get_input(yo->data_operational.path, NULL, &yo->data_operational.format, &yo->data_operational.in)) {
             return -1;
         }
     }
-    if (c->reply_rpc.path) {
-        if (get_input(c->reply_rpc.path, NULL, &c->reply_rpc.format, &c->reply_rpc.in)) {
+    if (yo->reply_rpc.path) {
+        if (get_input(yo->reply_rpc.path, NULL, &yo->reply_rpc.format, &yo->reply_rpc.in)) {
             return -1;
         }
     }
 
     for (int i = 0; i < argc - optind; i++) {
         LYS_INFORMAT format_schema = LYS_IN_UNKNOWN;
-        LYD_FORMAT format_data = c->data_in_format;
+        LYD_FORMAT format_data = yo->data_in_format;
 
-        if (get_input(argv[optind + i], &format_schema, &format_data, &in)) {
+        filepath = argv[optind + i];
+
+        if (!filepath) {
+            goto error;
+        }
+        if (get_input(filepath, &format_schema, &format_data, &in)) {
             goto error;
         }
 
@@ -420,33 +321,33 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
             const char **features;
 
             /* parse the input */
-            if (parse_schema_path(argv[optind + i], &dir, &module)) {
+            if (parse_schema_path(filepath, &dir, &module)) {
                 goto error;
             }
 
             mod = NULL;
-            if (c->yang_lib_file) {
+            if (yo->yang_lib_file) {
                 /* just get the module, it should already be parsed */
-                mod = ly_ctx_get_module_implemented(c->ctx, module);
+                mod = ly_ctx_get_module_implemented(*ctx, module);
             }
             if (!mod) {
                 /* add temporarily also the path of the module itself */
-                if (ly_ctx_set_searchdir(c->ctx, dir) == LY_EEXIST) {
+                if (ly_ctx_set_searchdir(*ctx, dir) == LY_EEXIST) {
                     path_unset = 0;
                 }
 
                 /* get features list for this module */
-                if (!c->schema_features.count) {
+                if (!yo->schema_features.count) {
                     features = all_features;
                 } else {
-                    get_features(&c->schema_features, module, &features);
+                    get_features(&yo->schema_features, module, &features);
                 }
 
                 /* parse module */
-                ret = lys_parse(c->ctx, in, format_schema, features, &mod);
-                ly_ctx_unset_searchdir_last(c->ctx, path_unset);
+                ret = lys_parse(*ctx, in, format_schema, features, &mod);
+                ly_ctx_unset_searchdir_last(*ctx, path_unset);
                 if (ret) {
-                    YLMSG_E("Parsing schema module \"%s\" failed.\n", argv[optind + i]);
+                    YLMSG_E("Parsing schema module \"%s\" failed.\n", filepath);
                     goto error;
                 }
             }
@@ -457,15 +358,15 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
             free(module);
             module = NULL;
 
-            if (c->schema_out_format || c->feature_param_format) {
+            if (yo->schema_out_format || yo->feature_param_format) {
                 /* module will be printed */
-                if (ly_set_add(&c->schema_modules, (void *)mod, 1, NULL)) {
-                    YLMSG_E("Storing parsed schema module (%s) for print failed.\n", argv[optind + i]);
+                if (ly_set_add(&yo->schema_modules, (void *)mod, 1, NULL)) {
+                    YLMSG_E("Storing parsed schema module (%s) for print failed.\n", filepath);
                     goto error;
                 }
             }
         } else if (format_data) {
-            if (!fill_cmdline_file(&c->data_inputs, in, argv[optind + i], format_data)) {
+            if (!fill_cmdline_file(&yo->data_inputs, in, filepath, format_data)) {
                 goto error;
             }
             in = NULL;
@@ -476,11 +377,11 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
     }
 
     /* check that all specified features were applied, apply now if possible */
-    while ((sf = get_features_not_applied(&c->schema_features))) {
+    while ((sf = get_features_not_applied(&yo->schema_features))) {
         /* try to find implemented or the latest revision of this module */
-        mod = ly_ctx_get_module_implemented(c->ctx, sf->mod_name);
+        mod = ly_ctx_get_module_implemented(*ctx, sf->mod_name);
         if (!mod) {
-            mod = ly_ctx_get_module_latest(c->ctx, sf->mod_name);
+            mod = ly_ctx_get_module_latest(*ctx, sf->mod_name);
         }
         if (!mod) {
             YLMSG_E("Specified features not applied, module \"%s\" not loaded.\n", sf->mod_name);
@@ -512,7 +413,7 @@ error:
  * return 1 in case of success, but expect to exit.
  */
 static int
-fill_context(int argc, char *argv[], struct context *c)
+fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
 {
     int ret;
 
@@ -554,10 +455,10 @@ fill_context(int argc, char *argv[], struct context *c)
     uint8_t data_type_set = 0;
     uint32_t temp_lo = 0;
 
-    c->ctx_options = YL_DEFAULT_CTX_OPTIONS;
-    c->data_parse_options = YL_DEFAULT_DATA_PARSE_OPTIONS;
-    c->data_validate_options = YL_DEFAULT_DATA_VALIDATE_OPTIONS;
-    c->line_length = 0;
+    yo->ctx_options = YL_DEFAULT_CTX_OPTIONS;
+    yo->data_parse_options = YL_DEFAULT_DATA_PARSE_OPTIONS;
+    yo->data_validate_options = YL_DEFAULT_DATA_VALIDATE_OPTIONS;
+    yo->line_length = 0;
 
     opterr = 0;
 #ifndef NDEBUG
@@ -600,28 +501,28 @@ fill_context(int argc, char *argv[], struct context *c)
 
         case 'f': /* --format */
             if (!strcasecmp(optarg, "yang")) {
-                c->schema_out_format = LYS_OUT_YANG;
-                c->data_out_format = 0;
+                yo->schema_out_format = LYS_OUT_YANG;
+                yo->data_out_format = 0;
             } else if (!strcasecmp(optarg, "yin")) {
-                c->schema_out_format = LYS_OUT_YIN;
-                c->data_out_format = 0;
+                yo->schema_out_format = LYS_OUT_YIN;
+                yo->data_out_format = 0;
             } else if (!strcasecmp(optarg, "info")) {
-                c->schema_out_format = LYS_OUT_YANG_COMPILED;
-                c->data_out_format = 0;
+                yo->schema_out_format = LYS_OUT_YANG_COMPILED;
+                yo->data_out_format = 0;
             } else if (!strcasecmp(optarg, "tree")) {
-                c->schema_out_format = LYS_OUT_TREE;
-                c->data_out_format = 0;
+                yo->schema_out_format = LYS_OUT_TREE;
+                yo->data_out_format = 0;
             } else if (!strcasecmp(optarg, "xml")) {
-                c->schema_out_format = 0;
-                c->data_out_format = LYD_XML;
+                yo->schema_out_format = 0;
+                yo->data_out_format = LYD_XML;
             } else if (!strcasecmp(optarg, "json")) {
-                c->schema_out_format = 0;
-                c->data_out_format = LYD_JSON;
+                yo->schema_out_format = 0;
+                yo->data_out_format = LYD_JSON;
             } else if (!strcasecmp(optarg, "lyb")) {
-                c->schema_out_format = 0;
-                c->data_out_format = LYD_LYB;
+                yo->schema_out_format = 0;
+                yo->data_out_format = LYD_LYB;
             } else if (!strcasecmp(optarg, "feature-param")) {
-                c->feature_param_format = 1;
+                yo->feature_param_format = 1;
             } else {
                 YLMSG_E("Unknown output format %s\n", optarg);
                 help(1);
@@ -631,11 +532,11 @@ fill_context(int argc, char *argv[], struct context *c)
 
         case 'I': /* --in-format */
             if (!strcasecmp(optarg, "xml")) {
-                c->data_in_format = LYD_XML;
+                yo->data_in_format = LYD_XML;
             } else if (!strcasecmp(optarg, "json")) {
-                c->data_in_format = LYD_JSON;
+                yo->data_in_format = LYD_JSON;
             } else if (!strcasecmp(optarg, "lyb")) {
-                c->data_in_format = LYD_LYB;
+                yo->data_in_format = LYD_LYB;
             } else {
                 YLMSG_E("Unknown input format %s\n", optarg);
                 help(1);
@@ -655,7 +556,7 @@ fill_context(int argc, char *argv[], struct context *c)
                 return -1;
             }
 
-            if (searchpath_strcat(&c->searchpaths, optarg)) {
+            if (searchpath_strcat(&yo->searchpaths, optarg)) {
                 YLMSG_E("Storing searchpath failed.\n");
                 return -1;
             }
@@ -664,54 +565,54 @@ fill_context(int argc, char *argv[], struct context *c)
         } /* case 'p' */
 
         case 'D': /* --disable-search */
-            if (c->ctx_options & LY_CTX_DISABLE_SEARCHDIRS) {
+            if (yo->ctx_options & LY_CTX_DISABLE_SEARCHDIRS) {
                 YLMSG_W("The -D option specified too many times.\n");
             }
-            if (c->ctx_options & LY_CTX_DISABLE_SEARCHDIR_CWD) {
-                c->ctx_options &= ~LY_CTX_DISABLE_SEARCHDIR_CWD;
-                c->ctx_options |= LY_CTX_DISABLE_SEARCHDIRS;
+            if (yo->ctx_options & LY_CTX_DISABLE_SEARCHDIR_CWD) {
+                yo->ctx_options &= ~LY_CTX_DISABLE_SEARCHDIR_CWD;
+                yo->ctx_options |= LY_CTX_DISABLE_SEARCHDIRS;
             } else {
-                c->ctx_options |= LY_CTX_DISABLE_SEARCHDIR_CWD;
+                yo->ctx_options |= LY_CTX_DISABLE_SEARCHDIR_CWD;
             }
             break;
 
         case 'F': /* --features */
-            if (parse_features(optarg, &c->schema_features)) {
+            if (parse_features(optarg, &yo->schema_features)) {
                 return -1;
             }
             break;
 
         case 'i': /* --make-implemented */
-            if (c->ctx_options & LY_CTX_REF_IMPLEMENTED) {
-                c->ctx_options &= ~LY_CTX_REF_IMPLEMENTED;
-                c->ctx_options |= LY_CTX_ALL_IMPLEMENTED;
+            if (yo->ctx_options & LY_CTX_REF_IMPLEMENTED) {
+                yo->ctx_options &= ~LY_CTX_REF_IMPLEMENTED;
+                yo->ctx_options |= LY_CTX_ALL_IMPLEMENTED;
             } else {
-                c->ctx_options |= LY_CTX_REF_IMPLEMENTED;
+                yo->ctx_options |= LY_CTX_REF_IMPLEMENTED;
             }
             break;
 
         case 'P': /* --schema-node */
-            c->schema_node_path = optarg;
+            yo->schema_node_path = optarg;
             break;
 
         case 'q': /* --single-node */
-            c->schema_print_options |= LYS_PRINT_NO_SUBSTMT;
+            yo->schema_print_options |= LYS_PRINT_NO_SUBSTMT;
             break;
 
         case 's': /* --submodule */
-            c->submodule = optarg;
+            yo->submodule = optarg;
             break;
 
         case 'x': /* --ext-data */
-            c->schema_context_filename = strdup(optarg);
+            yo->schema_context_filename = optarg;
             break;
 
         case 'n': /* --not-strict */
-            c->data_parse_options &= ~LYD_PARSE_STRICT;
+            yo->data_parse_options &= ~LYD_PARSE_STRICT;
             break;
 
         case 'e': /* --present */
-            c->data_validate_options |= LYD_VALIDATE_PRESENT;
+            yo->data_validate_options |= LYD_VALIDATE_PRESENT;
             break;
 
         case 't': /* --type */
@@ -721,24 +622,24 @@ fill_context(int argc, char *argv[], struct context *c)
             }
 
             if (!strcasecmp(optarg, "config")) {
-                c->data_parse_options |= LYD_PARSE_NO_STATE;
-                c->data_validate_options |= LYD_VALIDATE_NO_STATE;
+                yo->data_parse_options |= LYD_PARSE_NO_STATE;
+                yo->data_validate_options |= LYD_VALIDATE_NO_STATE;
             } else if (!strcasecmp(optarg, "get")) {
-                c->data_parse_options |= LYD_PARSE_ONLY;
+                yo->data_parse_options |= LYD_PARSE_ONLY;
             } else if (!strcasecmp(optarg, "getconfig") || !strcasecmp(optarg, "get-config") || !strcasecmp(optarg, "edit")) {
-                c->data_parse_options |= LYD_PARSE_ONLY | LYD_PARSE_NO_STATE;
+                yo->data_parse_options |= LYD_PARSE_ONLY | LYD_PARSE_NO_STATE;
             } else if (!strcasecmp(optarg, "rpc")) {
-                c->data_type = LYD_TYPE_RPC_YANG;
+                yo->data_type = LYD_TYPE_RPC_YANG;
             } else if (!strcasecmp(optarg, "nc-rpc")) {
-                c->data_type = LYD_TYPE_RPC_NETCONF;
+                yo->data_type = LYD_TYPE_RPC_NETCONF;
             } else if (!strcasecmp(optarg, "reply")) {
-                c->data_type = LYD_TYPE_REPLY_YANG;
+                yo->data_type = LYD_TYPE_REPLY_YANG;
             } else if (!strcasecmp(optarg, "nc-reply")) {
-                c->data_type = LYD_TYPE_REPLY_NETCONF;
+                yo->data_type = LYD_TYPE_REPLY_NETCONF;
             } else if (!strcasecmp(optarg, "notif")) {
-                c->data_type = LYD_TYPE_NOTIF_YANG;
+                yo->data_type = LYD_TYPE_NOTIF_YANG;
             } else if (!strcasecmp(optarg, "nc-notif")) {
-                c->data_type = LYD_TYPE_NOTIF_NETCONF;
+                yo->data_type = LYD_TYPE_NOTIF_NETCONF;
             } else if (!strcasecmp(optarg, "data")) {
                 /* default option */
             } else {
@@ -752,13 +653,13 @@ fill_context(int argc, char *argv[], struct context *c)
 
         case 'd': /* --default */
             if (!strcasecmp(optarg, "all")) {
-                c->data_print_options = (c->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_ALL;
+                yo->data_print_options = (yo->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_ALL;
             } else if (!strcasecmp(optarg, "all-tagged")) {
-                c->data_print_options = (c->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_ALL_TAG;
+                yo->data_print_options = (yo->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_ALL_TAG;
             } else if (!strcasecmp(optarg, "trim")) {
-                c->data_print_options = (c->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_TRIM;
+                yo->data_print_options = (yo->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_TRIM;
             } else if (!strcasecmp(optarg, "implicit-tagged")) {
-                c->data_print_options = (c->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_IMPL_TAG;
+                yo->data_print_options = (yo->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_IMPL_TAG;
             } else {
                 YLMSG_E("Unknown default mode %s\n", optarg);
                 help(1);
@@ -767,26 +668,26 @@ fill_context(int argc, char *argv[], struct context *c)
             break;
 
         case 'E': /* --data-xpath */
-            if (ly_set_add(&c->data_xpath, optarg, 0, NULL)) {
+            if (ly_set_add(&yo->data_xpath, optarg, 0, NULL)) {
                 YLMSG_E("Storing XPath \"%s\" failed.\n", optarg);
                 return -1;
             }
             break;
 
         case 'l': /* --list */
-            c->list = 1;
+            yo->list = 1;
             break;
 
         case 'L': /* --tree-line-length */
-            c->line_length = atoi(optarg);
+            yo->line_length = atoi(optarg);
             break;
 
         case 'o': /* --output */
-            if (c->out) {
+            if (yo->out) {
                 YLMSG_E("Only a single output can be specified.\n");
                 return -1;
             } else {
-                if (ly_out_new_filepath(optarg, &c->out)) {
+                if (ly_out_new_filepath(optarg, &yo->out)) {
                     YLMSG_E("Unable open output file %s (%s)\n", optarg, strerror(errno));
                     return -1;
                 }
@@ -794,36 +695,36 @@ fill_context(int argc, char *argv[], struct context *c)
             break;
 
         case 'O': /* --operational */
-            if (c->data_operational.path) {
+            if (yo->data_operational.path) {
                 YLMSG_E("The operational datastore (-O) cannot be set multiple times.\n");
                 return -1;
             }
-            c->data_operational.path = optarg;
+            yo->data_operational.path = optarg;
             break;
 
         case 'R': /* --reply-rpc */
-            if (c->reply_rpc.path) {
+            if (yo->reply_rpc.path) {
                 YLMSG_E("The PRC of the reply (-R) cannot be set multiple times.\n");
                 return -1;
             }
-            c->reply_rpc.path = optarg;
+            yo->reply_rpc.path = optarg;
             break;
 
         case 'm': /* --merge */
-            c->data_merge = 1;
+            yo->data_merge = 1;
             break;
 
         case 'y': /* --yang-library */
-            c->ctx_options &= ~LY_CTX_NO_YANGLIBRARY;
+            yo->ctx_options &= ~LY_CTX_NO_YANGLIBRARY;
             break;
 
         case 'Y': /* --yang-library-file */
-            c->ctx_options &= ~LY_CTX_NO_YANGLIBRARY;
-            c->yang_lib_file = optarg;
+            yo->ctx_options &= ~LY_CTX_NO_YANGLIBRARY;
+            yo->yang_lib_file = optarg;
             break;
 
         case 'X': /* --extended-leafref */
-            c->ctx_options |= LY_CTX_LEAFREF_EXTENDED;
+            yo->ctx_options |= LY_CTX_LEAFREF_EXTENDED;
             break;
 
 #ifndef NDEBUG
@@ -862,102 +763,102 @@ fill_context(int argc, char *argv[], struct context *c)
     }
 
     /* additional checks for the options combinations */
-    if (!c->list && (optind >= argc)) {
+    if (!yo->list && (optind >= argc)) {
         help(1);
         YLMSG_E("Missing <schema> to process.\n");
         return 1;
     }
 
-    if (c->data_xpath.count) {
-        c->data_merge = 1;
+    if (yo->data_xpath.count) {
+        yo->data_merge = 1;
     }
-    if (c->data_xpath.count && (c->schema_out_format || c->data_out_format)) {
+    if (yo->data_xpath.count && (yo->schema_out_format || yo->data_out_format)) {
         YLMSG_E("The --format option cannot be combined with --data-xpath option.\n");
         return -1;
     }
-    if (c->data_xpath.count && (c->data_print_options & LYD_PRINT_WD_MASK)) {
+    if (yo->data_xpath.count && (yo->data_print_options & LYD_PRINT_WD_MASK)) {
         YLMSG_E("The --default option cannot be combined with --data-xpath option.\n");
         return -1;
     }
 
-    if (c->data_merge) {
-        if (c->data_type || (c->data_parse_options & LYD_PARSE_ONLY)) {
+    if (yo->data_merge) {
+        if (yo->data_type || (yo->data_parse_options & LYD_PARSE_ONLY)) {
             /* switch off the option, incompatible input data type */
             YLMSG_W("The --merge option has effect only for 'data' and 'config' TYPEs\n");
-            c->data_merge = 0;
+            yo->data_merge = 0;
         } else {
             /* postpone validation after the merge of all the input data */
-            c->data_parse_options |= LYD_PARSE_ONLY;
+            yo->data_parse_options |= LYD_PARSE_ONLY;
         }
     }
 
-    if (c->data_operational.path && !c->data_type) {
+    if (yo->data_operational.path && !yo->data_type) {
         YLMSG_W("Operational datastore takes effect only with RPCs/Actions/Replies/Notification input data types.\n");
-        c->data_operational.path = NULL;
+        yo->data_operational.path = NULL;
     }
 
-    if (c->reply_rpc.path && (c->data_type != LYD_TYPE_REPLY_NETCONF)) {
+    if (yo->reply_rpc.path && (yo->data_type != LYD_TYPE_REPLY_NETCONF)) {
         YLMSG_W("Source RPC is needed only for NETCONF Reply input data type.\n");
-        c->data_operational.path = NULL;
-    } else if (!c->reply_rpc.path && (c->data_type == LYD_TYPE_REPLY_NETCONF)) {
+        yo->data_operational.path = NULL;
+    } else if (!yo->reply_rpc.path && (yo->data_type == LYD_TYPE_REPLY_NETCONF)) {
         YLMSG_E("Missing source RPC (-R) for NETCONF Reply input data type.\n");
         return -1;
     }
 
-    if ((c->schema_out_format != LYS_OUT_TREE) && c->line_length) {
+    if ((yo->schema_out_format != LYS_OUT_TREE) && yo->line_length) {
         YLMSG_W("--tree-line-length take effect only in case of the tree output format.\n");
     }
 
-    if (!c->out && (c->data_out_format == LYD_LYB)) {
+    if (!yo->out && (yo->data_out_format == LYD_LYB)) {
         YLMSG_E("The LYB format requires the -o option specified.\n");
         return -1;
     }
     /* default output stream */
-    if (!c->out) {
-        if (ly_out_new_file(stdout, &c->out)) {
+    if (!yo->out) {
+        if (ly_out_new_file(stdout, &yo->out)) {
             YLMSG_E("Unable to set stdout as output.\n");
             return -1;
         }
     }
 
-    if (c->schema_out_format == LYS_OUT_TREE) {
+    if (yo->schema_out_format == LYS_OUT_TREE) {
         /* print tree from lysc_nodes */
-        c->ctx_options |= LY_CTX_SET_PRIV_PARSED;
+        yo->ctx_options |= LY_CTX_SET_PRIV_PARSED;
     }
 
     /* process input files provided as standalone command line arguments,
      * schema modules are parsed and inserted into the context,
      * data files are just checked and prepared into internal structures for further processing */
-    ret = fill_context_inputs(argc, argv, c);
+    ret = fill_context_inputs(argc, argv, yo, ctx);
     if (ret) {
         return ret;
     }
 
     /* the second batch of checks */
-    if (c->schema_print_options && !c->schema_out_format) {
+    if (yo->schema_print_options && !yo->schema_out_format) {
         YLMSG_W("Schema printer options specified, but the schema output format is missing.\n");
     }
-    if (c->schema_parse_options && !c->schema_modules.count) {
+    if (yo->schema_parse_options && !yo->schema_modules.count) {
         YLMSG_W("Schema parser options specified, but no schema input file provided.\n");
     }
-    if (c->data_print_options && !c->data_out_format) {
+    if (yo->data_print_options && !yo->data_out_format) {
         YLMSG_W("data printer options specified, but the data output format is missing.\n");
     }
-    if (((c->data_parse_options != YL_DEFAULT_DATA_PARSE_OPTIONS) || c->data_type) && !c->data_inputs.count) {
+    if (((yo->data_parse_options != YL_DEFAULT_DATA_PARSE_OPTIONS) || yo->data_type) && !yo->data_inputs.count) {
         YLMSG_W("Data parser options specified, but no data input file provided.\n");
     }
 
-    if (c->schema_node_path) {
+    if (yo->schema_node_path) {
         /* turn off logging so that the message is not repeated */
         ly_temp_log_options(&temp_lo);
         /* search operation input */
-        c->schema_node = lys_find_path(c->ctx, NULL, c->schema_node_path, 0);
-        if (!c->schema_node) {
+        yo->schema_node = lys_find_path(*ctx, NULL, yo->schema_node_path, 0);
+        if (!yo->schema_node) {
             /* restore logging so an error may be displayed */
             ly_temp_log_options(NULL);
             /* search operation output */
-            c->schema_node = lys_find_path(c->ctx, NULL, c->schema_node_path, 1);
-            if (!c->schema_node) {
+            yo->schema_node = lys_find_path(*ctx, NULL, yo->schema_node_path, 1);
+            if (!yo->schema_node) {
                 YLMSG_E("Invalid schema path.\n");
                 return -1;
             }
@@ -971,7 +872,8 @@ int
 main_ni(int argc, char *argv[])
 {
     int ret = EXIT_SUCCESS, r;
-    struct context c = {0};
+    struct yl_opt yo = {0};
+    struct ly_ctx *ctx = NULL;
     char *features_output = NULL;
     struct ly_set set = {0};
     uint32_t u;
@@ -979,7 +881,7 @@ main_ni(int argc, char *argv[])
     /* set callback for printing libyang messages */
     ly_set_log_clb(libyang_verbclb, 1);
 
-    r = fill_context(argc, argv, &c);
+    r = fill_context(argc, argv, &yo, &ctx);
     if (r < 0) {
         ret = EXIT_FAILURE;
     }
@@ -989,54 +891,54 @@ main_ni(int argc, char *argv[])
 
     /* do the required job - parse, validate, print */
 
-    if (c.list) {
+    if (yo.list) {
         /* print the list of schemas */
-        ret = print_list(c.out, c.ctx, c.data_out_format);
+        ret = print_list(yo.out, ctx, yo.data_out_format);
         goto cleanup;
     } else {
-        if (c.feature_param_format) {
-            for (u = 0; u < c.schema_modules.count; u++) {
-                if (collect_features(c.schema_modules.objs[u], &set)) {
+        if (yo.feature_param_format) {
+            for (u = 0; u < yo.schema_modules.count; u++) {
+                if (collect_features(yo.schema_modules.objs[u], &set)) {
                     YLMSG_E("Unable to read features from a module.\n");
                     goto cleanup;
                 }
-                if (generate_features_output(c.schema_modules.objs[u], &set, &features_output)) {
+                if (generate_features_output(yo.schema_modules.objs[u], &set, &features_output)) {
                     YLMSG_E("Unable to generate feature command output.\n");
                     goto cleanup;
                 }
                 ly_set_erase(&set, NULL);
             }
-            ly_print(c.out, "%s\n", features_output);
-        } else if (c.schema_out_format) {
-            if (c.schema_node) {
-                ret = lys_print_node(c.out, c.schema_node, c.schema_out_format, c.line_length, c.schema_print_options);
+            ly_print(yo.out, "%s\n", features_output);
+        } else if (yo.schema_out_format) {
+            if (yo.schema_node) {
+                ret = lys_print_node(yo.out, yo.schema_node, yo.schema_out_format, yo.line_length, yo.schema_print_options);
                 if (ret) {
-                    YLMSG_E("Unable to print schema node %s.\n", c.schema_node_path);
+                    YLMSG_E("Unable to print schema node %s.\n", yo.schema_node_path);
                     goto cleanup;
                 }
-            } else if (c.submodule) {
-                const struct lysp_submodule *submod = ly_ctx_get_submodule_latest(c.ctx, c.submodule);
+            } else if (yo.submodule) {
+                const struct lysp_submodule *submod = ly_ctx_get_submodule_latest(ctx, yo.submodule);
 
                 if (!submod) {
-                    YLMSG_E("Unable to find submodule %s.\n", c.submodule);
+                    YLMSG_E("Unable to find submodule %s.\n", yo.submodule);
                     goto cleanup;
                 }
 
-                ret = lys_print_submodule(c.out, submod, c.schema_out_format, c.line_length, c.schema_print_options);
+                ret = lys_print_submodule(yo.out, submod, yo.schema_out_format, yo.line_length, yo.schema_print_options);
                 if (ret) {
                     YLMSG_E("Unable to print submodule %s.\n", submod->name);
                     goto cleanup;
                 }
             } else {
-                for (u = 0; u < c.schema_modules.count; ++u) {
-                    ret = lys_print_module(c.out, (struct lys_module *)c.schema_modules.objs[u], c.schema_out_format,
-                            c.line_length, c.schema_print_options);
+                for (u = 0; u < yo.schema_modules.count; ++u) {
+                    ret = lys_print_module(yo.out, (struct lys_module *)yo.schema_modules.objs[u], yo.schema_out_format,
+                            yo.line_length, yo.schema_print_options);
                     /* for YANG Tree Diagrams printing it's more readable to print a blank line between modules. */
-                    if ((c.schema_out_format == LYS_OUT_TREE) && (u + 1 < c.schema_modules.count)) {
-                        ly_print(c.out, "\n");
+                    if ((yo.schema_out_format == LYS_OUT_TREE) && (u + 1 < yo.schema_modules.count)) {
+                        ly_print(yo.out, "\n");
                     }
                     if (ret) {
-                        YLMSG_E("Unable to print module %s.\n", ((struct lys_module *)c.schema_modules.objs[u])->name);
+                        YLMSG_E("Unable to print module %s.\n", ((struct lys_module *)yo.schema_modules.objs[u])->name);
                         goto cleanup;
                     }
                 }
@@ -1044,10 +946,10 @@ main_ni(int argc, char *argv[])
         }
 
         /* do the data validation despite the schema was printed */
-        if (c.data_inputs.size) {
-            ret = process_data(c.ctx, c.data_type, c.data_merge, c.data_out_format, c.out, c.data_parse_options,
-                    c.data_validate_options, c.data_print_options, &c.data_operational, &c.reply_rpc, &c.data_inputs,
-                    &c.data_xpath);
+        if (yo.data_inputs.size) {
+            ret = process_data(ctx, yo.data_type, yo.data_merge, yo.data_out_format, yo.out, yo.data_parse_options,
+                    yo.data_validate_options, yo.data_print_options, &yo.data_operational, &yo.reply_rpc, &yo.data_inputs,
+                    &yo.data_xpath);
             if (ret) {
                 goto cleanup;
             }
@@ -1056,7 +958,8 @@ main_ni(int argc, char *argv[])
 
 cleanup:
     /* cleanup */
-    erase_context(&c);
+    yl_opt_erase(&yo);
+    ly_ctx_destroy(ctx);
     free(features_output);
     ly_set_erase(&set, NULL);
 

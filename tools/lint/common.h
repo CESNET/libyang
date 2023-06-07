@@ -1,9 +1,10 @@
 /**
  * @file common.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Adam Piecek <piecek@cesnet.cz>
  * @brief libyang's yanglint tool - common functions and definitions for both interactive and non-interactive mode.
  *
- * Copyright (c) 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -55,6 +56,8 @@
 # define PATH_SEPARATOR ";"
 #endif
 
+struct cmdline_file;
+
 /**
  * @brief Storage for the list of the features (their names) in a specific YANG module.
  */
@@ -62,15 +65,6 @@ struct schema_features {
     char *mod_name;
     char **features;
     ly_bool applied;
-};
-
-/**
- * @brief Data connected with a file provided on a command line as a file path.
- */
-struct cmdline_file {
-    struct ly_in *in;
-    const char *path;
-    LYD_FORMAT format;
 };
 
 /**
@@ -86,7 +80,7 @@ void free_features(void *flist);
  * @param[in] module Name of the YANG module which features should be found.
  * @param[out] features Pointer to the list of features being returned.
  */
-void get_features(struct ly_set *fset, const char *module, const char ***features);
+void get_features(const struct ly_set *fset, const char *module, const char ***features);
 
 /**
  * @brief Parse features being specified for the specific YANG module.
@@ -168,40 +162,6 @@ int parse_schema_path(const char *path, char **dir, char **module);
  * @return -1 on failure.
  */
 int get_input(const char *filepath, LYS_INFORMAT *format_schema, LYD_FORMAT *format_data, struct ly_in **in);
-
-/**
- * @brief Free the command line file data (struct cmdline_file *)
- * @param[in,out] cmdline_file The (struct cmdline_file *) to free.
- */
-void free_cmdline_file(void *cmdline_file);
-
-/**
- * @brief Create and fill the command line file data (struct cmdline_file *).
- * @param[in] set Optional parameter in case the record is supposed to be added into a set.
- * @param[in] in Input file handler.
- * @param[in] path Filepath of the file.
- * @param[in] format Format of the data file.
- * @return The created command line file structure.
- * @return NULL on failure
- */
-struct cmdline_file *fill_cmdline_file(struct ly_set *set, struct ly_in *in, const char *path, LYD_FORMAT format);
-
-/**
- * @brief Helper function to prepare argc, argv pair from a command line string.
- *
- * @param[in] cmdline Complete command line string.
- * @param[out] argc_p Pointer to store argc value.
- * @param[out] argv_p Pointer to store argv vector.
- * @return 0 on success, non-zero on failure.
- */
-int parse_cmdline(const char *cmdline, int *argc_p, char **argv_p[]);
-
-/**
- * @brief Destructor for the argument vector prepared by ::parse_cmdline().
- *
- * @param[in,out] argv Argument vector to destroy.
- */
-void free_cmdline(char *argv[]);
 
 /**
  * @brief Get schema format of the @p filename's content according to the @p filename's suffix.

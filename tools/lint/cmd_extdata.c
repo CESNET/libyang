@@ -24,6 +24,7 @@
 #include "libyang.h"
 
 #include "common.h"
+#include "yl_opt.h"
 
 char *filename;
 
@@ -43,59 +44,72 @@ cmd_extdata_help(void)
             "                 expected in the file. File format is guessed.\n");
 }
 
-void
-cmd_extdata(struct ly_ctx **ctx, const char *cmdline)
+int
+cmd_extdata_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
 {
-    int argc = 0;
-    char **argv = NULL;
+    int rc = 0, argc = 0;
     int opt, opt_index;
     struct option options[] = {
         {"clear", no_argument, NULL, 'c'},
         {"help", no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
     };
-    int8_t cleared = 0;
-    int8_t file_count = 0;
 
-    if (parse_cmdline(cmdline, &argc, &argv)) {
-        goto cleanup;
+    if ((rc = parse_cmdline(cmdline, &argc, &yo->argv))) {
+        return rc;
     }
 
-    while ((opt = getopt_long(argc, argv, commands[CMD_EXTDATA].optstring, options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, yo->argv, commands[CMD_EXTDATA].optstring, options, &opt_index)) != -1) {
         switch (opt) {
         case 'c':
-            ly_ctx_set_ext_data_clb(*ctx, NULL, NULL);
+            yo->extdata_unset = 1;
             free(filename);
             filename = NULL;
-            cleared = 1;
             break;
         case 'h':
             cmd_extdata_help();
-            goto cleanup;
+            return 1;
         default:
             YLMSG_E("Unknown option.\n");
-            goto cleanup;
+            return 1;
         }
     }
 
-    file_count = argc - 1 - cleared;
+    *posv = &yo->argv[optind];
+    *posc = argc - optind;
 
-    if (!cleared && (file_count == 0)) {
+    return 0;
+}
+
+int
+cmd_extdata_dep(struct yl_opt *yo, int posc)
+{
+    if (!yo->extdata_unset && (posc > 1)) {
+        YLMSG_E("Only one file must be entered.\n");
+        return 1;
+    }
+
+    return 0;
+}
+
+int
+cmd_extdata_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
+{
+    if (yo->extdata_unset) {
+        ly_ctx_set_ext_data_clb(*ctx, NULL, NULL);
+    } else if (!yo->extdata_unset && !posv) {
         /* no argument - print the current file */
         printf("%s\n", filename ? filename : "No file set.");
-    } else if (file_count == 1) {
+    } else if (posv) {
         /* set callback providing run-time extension instance data */
         free(filename);
-        filename = strdup(argv[optind]);
+        filename = strdup(posv);
         if (!filename) {
             YLMSG_E("Memory allocation error.\n");
-            goto cleanup;
+            return 1;
         }
         ly_ctx_set_ext_data_clb(*ctx, ext_data_clb, filename);
-    } else if (!cleared) {
-        YLMSG_E("Only one file must be entered.\n");
     }
 
-cleanup:
-    free_cmdline(argv);
+    return 0;
 }
