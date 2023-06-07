@@ -2,9 +2,10 @@
  * @file cmd_list.c
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Adam Piecek <piecek@cesnet.cz>
  * @brief 'list' command of the libyang's yanglint tool.
  *
- * Copyright (c) 2015-2020 CESNET, z.s.p.o.
+ * Copyright (c) 2015-2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -24,6 +25,7 @@
 #include "libyang.h"
 
 #include "common.h"
+#include "yl_opt.h"
 
 void
 cmd_list_help(void)
@@ -37,53 +39,70 @@ cmd_list_help(void)
             "                  modules.\n");
 }
 
-void
-cmd_list(struct ly_ctx **ctx, const char *cmdline)
+int
+cmd_list_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
 {
-    int argc = 0;
-    char **argv = NULL;
+    int rc = 0, argc = 0;
     int opt, opt_index;
     struct option options[] = {
         {"format", required_argument, NULL, 'f'},
         {"help", no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
     };
-    LYD_FORMAT format = LYD_UNKNOWN;
-    struct ly_out *out = NULL;
 
-    if (parse_cmdline(cmdline, &argc, &argv)) {
-        goto cleanup;
+    yo->data_out_format = LYD_UNKNOWN;
+
+    if ((rc = parse_cmdline(cmdline, &argc, &yo->argv))) {
+        return rc;
     }
 
-    while ((opt = getopt_long(argc, argv, commands[CMD_LIST].optstring, options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, yo->argv, commands[CMD_LIST].optstring, options, &opt_index)) != -1) {
         switch (opt) {
         case 'f': /* --format */
             if (!strcasecmp(optarg, "xml")) {
-                format = LYD_XML;
+                yo->data_out_format = LYD_XML;
             } else if (!strcasecmp(optarg, "json")) {
-                format = LYD_JSON;
+                yo->data_out_format = LYD_JSON;
             } else {
                 YLMSG_E("Unknown output format %s\n", optarg);
                 cmd_list_help();
-                goto cleanup;
+                return 1;
             }
             break;
         case 'h':
             cmd_list_help();
-            goto cleanup;
+            return 1;
         default:
             YLMSG_E("Unknown option.\n");
-            goto cleanup;
+            return 1;
         }
     }
 
-    if (!ly_out_new_file(stdout, &out)) {
-        print_list(out, *ctx, format);
-        ly_out_free(out, NULL,  0);
-    } else {
-        YLMSG_E("Unable to print to the standard output.\n");
-    }
+    *posv = &yo->argv[optind];
+    *posc = argc - optind;
 
-cleanup:
-    free_cmdline(argv);
+    return 0;
+}
+
+int
+cmd_list_dep(struct yl_opt *yo, int posc)
+{
+    if (posc) {
+        YLMSG_E("No positional arguments are allowed.\n");
+        return 1;
+    }
+    if (ly_out_new_file(stdout, &yo->out)) {
+        YLMSG_E("Unable to print to the standard output.\n");
+        return 1;
+    }
+    yo->out_stdout = 1;
+
+    return 0;
+}
+
+int
+cmd_list_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
+{
+    (void) posv;
+    return print_list(yo->out, *ctx, yo->data_out_format);
 }

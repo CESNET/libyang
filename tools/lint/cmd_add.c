@@ -2,9 +2,10 @@
  * @file cmd_add.c
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Adam Piecek <piecek@cesnet.cz>
  * @brief 'add' command of the libyang's yanglint tool.
  *
- * Copyright (c) 2015-2020 CESNET, z.s.p.o.
+ * Copyright (c) 2015-2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -17,6 +18,7 @@
 
 #include "cmd.h"
 
+#include <assert.h>
 #include <getopt.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -25,6 +27,7 @@
 #include "libyang.h"
 
 #include "common.h"
+#include "yl_opt.h"
 
 void
 cmd_add_help(void)
@@ -48,11 +51,10 @@ cmd_add_help(void)
             "                  Allow usage of deref() XPath function within leafref.\n");
 }
 
-void
-cmd_add(struct ly_ctx **ctx, const char *cmdline)
+int
+cmd_add_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
 {
-    int argc = 0;
-    char **argv = NULL;
+    int rc = 0, argc = 0;
     int opt, opt_index;
     struct option options[] = {
         {"disable-searchdir", no_argument, NULL, 'D'},
@@ -62,121 +64,123 @@ cmd_add(struct ly_ctx **ctx, const char *cmdline)
         {"extended-leafref", no_argument, NULL, 'X'},
         {NULL, 0, NULL, 0}
     };
-    uint16_t options_ctx = 0;
-    const char *all_features[] = {"*", NULL};
-    struct ly_set fset = {0};
 
-    if (parse_cmdline(cmdline, &argc, &argv)) {
-        goto cleanup;
+    if ((rc = parse_cmdline(cmdline, &argc, &yo->argv))) {
+        return rc;
     }
 
-    while ((opt = getopt_long(argc, argv, commands[CMD_ADD].optstring, options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, yo->argv, commands[CMD_ADD].optstring, options, &opt_index)) != -1) {
         switch (opt) {
         case 'D': /* --disable--search */
-            if (options_ctx & LY_CTX_DISABLE_SEARCHDIRS) {
+            if (yo->ctx_options & LY_CTX_DISABLE_SEARCHDIRS) {
                 YLMSG_W("The -D option specified too many times.\n");
             }
-            if (options_ctx & LY_CTX_DISABLE_SEARCHDIR_CWD) {
-                options_ctx &= ~LY_CTX_DISABLE_SEARCHDIR_CWD;
-                options_ctx |= LY_CTX_DISABLE_SEARCHDIRS;
+            if (yo->ctx_options & LY_CTX_DISABLE_SEARCHDIR_CWD) {
+                yo->ctx_options &= ~LY_CTX_DISABLE_SEARCHDIR_CWD;
+                yo->ctx_options |= LY_CTX_DISABLE_SEARCHDIRS;
             } else {
-                options_ctx |= LY_CTX_DISABLE_SEARCHDIR_CWD;
+                yo->ctx_options |= LY_CTX_DISABLE_SEARCHDIR_CWD;
             }
             break;
 
         case 'F': /* --features */
-            if (parse_features(optarg, &fset)) {
-                goto cleanup;
+            if (parse_features(optarg, &yo->schema_features)) {
+                return 1;
             }
             break;
 
         case 'h':
             cmd_add_help();
-            goto cleanup;
+            return 1;
 
         case 'i': /* --make-implemented */
-            if (options_ctx & LY_CTX_REF_IMPLEMENTED) {
-                options_ctx &= ~LY_CTX_REF_IMPLEMENTED;
-                options_ctx |= LY_CTX_ALL_IMPLEMENTED;
+            if (yo->ctx_options & LY_CTX_REF_IMPLEMENTED) {
+                yo->ctx_options &= ~LY_CTX_REF_IMPLEMENTED;
+                yo->ctx_options |= LY_CTX_ALL_IMPLEMENTED;
             } else {
-                options_ctx |= LY_CTX_REF_IMPLEMENTED;
+                yo->ctx_options |= LY_CTX_REF_IMPLEMENTED;
             }
             break;
 
         case 'X': /* --extended-leafref */
-            options_ctx |= LY_CTX_LEAFREF_EXTENDED;
+            yo->ctx_options |= LY_CTX_LEAFREF_EXTENDED;
             break;
 
         default:
             YLMSG_E("Unknown option.\n");
-            goto cleanup;
+            return 1;
         }
     }
 
-    if (argc == optind) {
+    *posv = &yo->argv[optind];
+    *posc = argc - optind;
+
+    return 0;
+}
+
+int
+cmd_add_dep(struct yl_opt *yo, int posc)
+{
+    if (yo->interactive && !posc) {
         /* no argument */
         cmd_add_help();
-        goto cleanup;
+        return 1;
     }
-
-    if (!fset.count) {
+    if (!yo->schema_features.count) {
         /* no features, enable all of them */
-        options_ctx |= LY_CTX_ENABLE_IMP_FEATURES;
+        yo->ctx_options |= LY_CTX_ENABLE_IMP_FEATURES;
     }
 
-    if (options_ctx) {
-        ly_ctx_set_options(*ctx, options_ctx);
+    return 0;
+}
+
+int
+cmd_add_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
+{
+    const char *all_features[] = {"*", NULL};
+    LY_ERR ret;
+    uint8_t path_unset = 1; /* flag to unset the path from the searchpaths list (if not already present) */
+    char *dir, *module;
+    const char **features = NULL;
+    struct ly_in *in = NULL;
+
+    assert(posv);
+
+    if (yo->ctx_options) {
+        ly_ctx_set_options(*ctx, yo->ctx_options);
+        yo->ctx_options = 0;
     }
 
-    for (int i = 0; i < argc - optind; i++) {
-        /* process the schema module files */
-        LY_ERR ret;
-        uint8_t path_unset = 1; /* flag to unset the path from the searchpaths list (if not already present) */
-        char *dir, *module;
-        const char **features = NULL;
-        struct ly_in *in = NULL;
-
-        if (parse_schema_path(argv[optind + i], &dir, &module)) {
-            goto cleanup;
-        }
-
-        /* add temporarily also the path of the module itself */
-        if (ly_ctx_set_searchdir(*ctx, dir) == LY_EEXIST) {
-            path_unset = 0;
-        }
-
-        /* get features list for this module */
-        if (!fset.count) {
-            features = all_features;
-        } else {
-            get_features(&fset, module, &features);
-        }
-
-        /* temporary cleanup */
-        free(dir);
-        free(module);
-
-        /* prepare input handler */
-        ret = ly_in_new_filepath(argv[optind + i], 0, &in);
-        if (ret) {
-            goto cleanup;
-        }
-
-        /* parse the file */
-        ret = lys_parse(*ctx, in, LYS_IN_UNKNOWN, features, NULL);
-        ly_in_free(in, 1);
-        ly_ctx_unset_searchdir_last(*ctx, path_unset);
-
-        if (ret) {
-            /* libyang printed the error messages */
-            goto cleanup;
-        }
+    if (parse_schema_path(posv, &dir, &module)) {
+        return 1;
     }
 
-cleanup:
-    if (options_ctx) {
-        ly_ctx_unset_options(*ctx, options_ctx);
+    /* add temporarily also the path of the module itself */
+    if (ly_ctx_set_searchdir(*ctx, dir) == LY_EEXIST) {
+        path_unset = 0;
     }
-    ly_set_erase(&fset, free_features);
-    free_cmdline(argv);
+
+    /* get features list for this module */
+    if (!yo->schema_features.count) {
+        features = all_features;
+    } else {
+        get_features(&yo->schema_features, module, &features);
+    }
+
+    /* temporary cleanup */
+    free(dir);
+    free(module);
+
+    /* prepare input handler */
+    ret = ly_in_new_filepath(posv, 0, &in);
+    if (ret) {
+        return 1;
+    }
+
+    /* parse the file */
+    ret = lys_parse(*ctx, in, LYS_IN_UNKNOWN, features, NULL);
+    ly_in_free(in, 1);
+    ly_ctx_unset_searchdir_last(*ctx, path_unset);
+
+    return ret;
 }

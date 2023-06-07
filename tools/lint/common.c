@@ -1,9 +1,10 @@
 /**
  * @file common.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Adam Piecek <piecek@cesnet.cz>
  * @brief libyang's yanglint tool - common functions for both interactive and non-interactive mode.
  *
- * Copyright (c) 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -28,6 +29,7 @@
 #include "compat.h"
 #include "libyang.h"
 #include "plugins_exts.h"
+#include "yl_opt.h"
 
 int
 parse_schema_path(const char *path, char **dir, char **module)
@@ -104,7 +106,7 @@ free_features(void *flist)
 }
 
 void
-get_features(struct ly_set *fset, const char *module, const char ***features)
+get_features(const struct ly_set *fset, const char *module, const char ***features)
 {
     /* get features list for this module */
     for (uint32_t u = 0; u < fset->count; ++u) {
@@ -183,29 +185,6 @@ parse_features(const char *fstring, struct ly_set *fset)
     rec->features[count++] = NULL;
 
     return 0;
-}
-
-struct cmdline_file *
-fill_cmdline_file(struct ly_set *set, struct ly_in *in, const char *path, LYD_FORMAT format)
-{
-    struct cmdline_file *rec;
-
-    rec = malloc(sizeof *rec);
-    if (!rec) {
-        YLMSG_E("Allocating memory for data file information failed.\n");
-        return NULL;
-    }
-    rec->in = in;
-    rec->path = path;
-    rec->format = format;
-
-    if (set && ly_set_add(set, rec, 1, NULL)) {
-        free(rec);
-        YLMSG_E("Storing data file information failed.\n");
-        return NULL;
-    }
-
-    return rec;
 }
 
 int
@@ -346,104 +325,6 @@ print_all_features(struct ly_out *out, const struct ly_ctx *ctx, ly_bool generat
 cleanup:
     ly_set_erase(&set, NULL);
     return ret;
-}
-
-void
-free_cmdline_file(void *cmdline_file)
-{
-    struct cmdline_file *rec = (struct cmdline_file *)cmdline_file;
-
-    if (rec) {
-        ly_in_free(rec->in, 1);
-        free(rec);
-    }
-}
-
-void
-free_cmdline(char *argv[])
-{
-    if (argv) {
-        free(argv[0]);
-        free(argv);
-    }
-}
-
-int
-parse_cmdline(const char *cmdline, int *argc_p, char **argv_p[])
-{
-    int count;
-    char **vector;
-    char *ptr;
-    char qmark = 0;
-
-    assert(cmdline);
-    assert(argc_p);
-    assert(argv_p);
-
-    /* init */
-    optind = 0; /* reinitialize getopt() */
-    count = 1;
-    vector = malloc((count + 1) * sizeof *vector);
-    vector[0] = strdup(cmdline);
-
-    /* command name */
-    strtok(vector[0], " ");
-
-    /* arguments */
-    while ((ptr = strtok(NULL, " "))) {
-        size_t len;
-        void *r;
-
-        len = strlen(ptr);
-
-        if (qmark) {
-            /* still in quotated text */
-            /* remove NULL termination of the previous token since it is not a token,
-             * but a part of the quotation string */
-            ptr[-1] = ' ';
-
-            if ((ptr[len - 1] == qmark) && (ptr[len - 2] != '\\')) {
-                /* end of quotation */
-                qmark = 0;
-                /* shorten the argument by the terminating quotation mark */
-                ptr[len - 1] = '\0';
-            }
-            continue;
-        }
-
-        /* another token in cmdline */
-        ++count;
-        r = realloc(vector, (count + 1) * sizeof *vector);
-        if (!r) {
-            YLMSG_E("Memory allocation failed (%s:%d, %s).\n", __FILE__, __LINE__, strerror(errno));
-            free(vector);
-            return -1;
-        }
-        vector = r;
-        vector[count - 1] = ptr;
-
-        if ((ptr[0] == '"') || (ptr[0] == '\'')) {
-            /* remember the quotation mark to identify end of quotation */
-            qmark = ptr[0];
-
-            /* move the remembered argument after the quotation mark */
-            ++vector[count - 1];
-
-            /* check if the quotation is terminated within this token */
-            if ((ptr[len - 1] == qmark) && (ptr[len - 2] != '\\')) {
-                /* end of quotation */
-                qmark = 0;
-                /* shorten the argument by the terminating quotation mark */
-                ptr[len - 1] = '\0';
-            }
-        }
-    }
-    vector[count] = NULL;
-
-    *argc_p = count;
-    *argv_p = vector;
-
-    return 0;
 }
 
 LYS_INFORMAT

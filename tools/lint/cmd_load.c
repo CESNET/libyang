@@ -2,9 +2,10 @@
  * @file cmd_load.c
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Adam Piecek <piecek@cesnet.cz>
  * @brief 'load' command of the libyang's yanglint tool.
  *
- * Copyright (c) 2015-2020 CESNET, z.s.p.o.
+ * Copyright (c) 2015-2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -17,6 +18,7 @@
 
 #include "cmd.h"
 
+#include <assert.h>
 #include <getopt.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -25,6 +27,7 @@
 #include "libyang.h"
 
 #include "common.h"
+#include "yl_opt.h"
 
 void
 cmd_load_help(void)
@@ -44,11 +47,10 @@ cmd_load_help(void)
             "                  Allow usage of deref() XPath function within leafref.\n");
 }
 
-void
-cmd_load(struct ly_ctx **ctx, const char *cmdline)
+int
+cmd_load_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
 {
-    int argc = 0;
-    char **argv = NULL;
+    int rc, argc = 0;
     int opt, opt_index;
     struct option options[] = {
         {"features", required_argument, NULL, 'F'},
@@ -57,90 +59,98 @@ cmd_load(struct ly_ctx **ctx, const char *cmdline)
         {"extended-leafref", no_argument, NULL, 'X'},
         {NULL, 0, NULL, 0}
     };
-    uint16_t options_ctx = 0;
-    const char *all_features[] = {"*", NULL};
-    struct ly_set fset = {0};
 
-    if (parse_cmdline(cmdline, &argc, &argv)) {
-        goto cleanup;
+    if ((rc = parse_cmdline(cmdline, &argc, &yo->argv))) {
+        return rc;
     }
 
-    while ((opt = getopt_long(argc, argv, commands[CMD_LOAD].optstring, options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, yo->argv, commands[CMD_LOAD].optstring, options, &opt_index)) != -1) {
         switch (opt) {
         case 'F': /* --features */
-            if (parse_features(optarg, &fset)) {
-                goto cleanup;
+            if (parse_features(optarg, &yo->schema_features)) {
+                return 1;
             }
             break;
 
         case 'h':
             cmd_load_help();
-            goto cleanup;
+            return 1;
 
         case 'i': /* --make-implemented */
-            if (options_ctx & LY_CTX_REF_IMPLEMENTED) {
-                options_ctx &= ~LY_CTX_REF_IMPLEMENTED;
-                options_ctx |= LY_CTX_ALL_IMPLEMENTED;
+            if (yo->ctx_options & LY_CTX_REF_IMPLEMENTED) {
+                yo->ctx_options &= ~LY_CTX_REF_IMPLEMENTED;
+                yo->ctx_options |= LY_CTX_ALL_IMPLEMENTED;
             } else {
-                options_ctx |= LY_CTX_REF_IMPLEMENTED;
+                yo->ctx_options |= LY_CTX_REF_IMPLEMENTED;
             }
             break;
 
         case 'X': /* --extended-leafref */
-            options_ctx |= LY_CTX_LEAFREF_EXTENDED;
+            yo->ctx_options |= LY_CTX_LEAFREF_EXTENDED;
             break;
 
         default:
             YLMSG_E("Unknown option.\n");
-            goto cleanup;
+            return 1;
         }
     }
 
-    if (argc == optind) {
+    *posv = &yo->argv[optind];
+    *posc = argc - optind;
+
+    return 0;
+}
+
+int
+cmd_load_dep(struct yl_opt *yo, int posc)
+{
+    if (yo->interactive && !posc) {
         /* no argument */
-        cmd_add_help();
-        goto cleanup;
+        cmd_load_help();
+        return 1;
     }
 
-    if (!fset.count) {
+    if (!yo->schema_features.count) {
         /* no features, enable all of them */
-        options_ctx |= LY_CTX_ENABLE_IMP_FEATURES;
+        yo->ctx_options |= LY_CTX_ENABLE_IMP_FEATURES;
     }
 
-    if (options_ctx) {
-        ly_ctx_set_options(*ctx, options_ctx);
+    return 0;
+}
+
+int
+cmd_load_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
+{
+    const char *all_features[] = {"*", NULL};
+    char *revision;
+    const char **features = NULL;
+
+    assert(posv);
+
+    if (yo->ctx_options) {
+        ly_ctx_set_options(*ctx, yo->ctx_options);
+        yo->ctx_options = 0;
     }
 
-    for (int i = 0; i < argc - optind; i++) {
-        /* process the schema module files */
-        char *revision;
-        const char **features = NULL;
-
-        /* get revision */
-        revision = strchr(argv[optind + i], '@');
-        if (revision) {
-            revision[0] = '\0';
-            ++revision;
-        }
-
-        /* get features list for this module */
-        if (!fset.count) {
-            features = all_features;
-        } else {
-            get_features(&fset, argv[optind + i], &features);
-        }
-
-        /* load the module */
-        if (!ly_ctx_load_module(*ctx, argv[optind + i], revision, features)) {
-            /* libyang printed the error messages */
-            goto cleanup;
-        }
+    /* get revision */
+    revision = strchr(posv, '@');
+    if (revision) {
+        revision[0] = '\0';
+        ++revision;
     }
 
-cleanup:
-    if (options_ctx) {
-        ly_ctx_unset_options(*ctx, options_ctx);
+    /* get features list for this module */
+    if (!yo->schema_features.count) {
+        features = all_features;
+    } else {
+        get_features(&yo->schema_features, posv, &features);
     }
-    ly_set_erase(&fset, free_features);
-    free_cmdline(argv);
+
+    /* load the module */
+    if (!ly_ctx_load_module(*ctx, posv, revision, features)) {
+        /* libyang printed the error messages */
+        return 1;
+    }
+
+    return 0;
 }
