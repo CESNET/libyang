@@ -140,14 +140,13 @@ int
 cmd_print_dep(struct yl_opt *yo, int posc)
 {
     /* file name */
-    if (!posc && !yo->schema_node_path) {
+    if (yo->interactive && !posc && !yo->schema_node_path) {
         YLMSG_E("Missing the name of the module to print.\n");
         return 1;
     }
 
     if ((yo->schema_out_format != LYS_OUT_TREE) && yo->line_length) {
-        YLMSG_E("--tree-line-length take effect only in case of the tree output format.\n");
-        return 1;
+        YLMSG_W("--tree-line-length take effect only in case of the tree output format.\n");
     }
 
     if (!yo->out) {
