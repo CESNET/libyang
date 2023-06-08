@@ -761,9 +761,8 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
     if (cmd_data_dep(yo, 0)) {
         return -1;
     }
-
-    if ((yo->schema_out_format != LYS_OUT_TREE) && yo->line_length) {
-        YLMSG_W("--tree-line-length take effect only in case of the tree output format.\n");
+    if (cmd_print_dep(yo, 0)) {
+        return -1;
     }
 
     if (yo->schema_out_format == LYS_OUT_TREE) {
