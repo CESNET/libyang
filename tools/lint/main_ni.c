@@ -394,6 +394,44 @@ error:
     return -1;
 }
 
+#ifndef NDEBUG
+/**
+ * @brief Enable specific debugging messages.
+ *
+ * @param[in] groups String in the form <group>[,group>]*.
+ * @param[in,out] yo Options for yanglint.
+ * return 0 on success.
+ */
+static int
+set_debug_groups(char *groups, struct yl_opt *yo)
+{
+    int rc;
+    char *str, *end;
+
+    /* Process all debug arguments except the last one. */
+    for (str = groups; (end = strchr(str, ',')); str = end + 1) {
+        /* Temporary modify input string. */
+        *end = '\0';
+        rc = cmd_debug_exec(NULL, yo, str);
+        *end = ',';
+        if (rc) {
+            return -1;
+        }
+    }
+    /* Process single/last debug argument. */
+    if (cmd_debug_exec(NULL, yo, str)) {
+        return -1;
+    }
+    /* All debug arguments are valid, so they can apply. */
+    if (cmd_debug_fin(NULL, yo)) {
+        return -1;
+    }
+
+    return 0;
+}
+
+#endif
+
 /**
  * @brief Process command line options and store the settings into the context.
  *
@@ -705,33 +743,12 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
             break;
 
 #ifndef NDEBUG
-        case 'G': { /* --debug */
-            uint32_t dbg_groups = 0;
-            const char *ptr = optarg;
-
-            while (ptr[0]) {
-                if (!strncasecmp(ptr, "dict", sizeof "dict" - 1)) {
-                    dbg_groups |= LY_LDGDICT;
-                    ptr += sizeof "dict" - 1;
-                } else if (!strncasecmp(ptr, "xpath", sizeof "xpath" - 1)) {
-                    dbg_groups |= LY_LDGXPATH;
-                    ptr += sizeof "xpath" - 1;
-                } else if (!strncasecmp(ptr, "dep-sets", sizeof "dep-sets" - 1)) {
-                    dbg_groups |= LY_LDGDEPSETS;
-                    ptr += sizeof "dep-sets" - 1;
-                }
-
-                if (ptr[0]) {
-                    if (ptr[0] != ',') {
-                        YLMSG_E("Unknown debug group string \"%s\"\n", optarg);
-                        return -1;
-                    }
-                    ++ptr;
-                }
+        case 'G':   /* --debug */
+            if (set_debug_groups(optarg, yo)) {
+                return -1;
             }
-            ly_log_dbg_groups(dbg_groups);
             break;
-        } /* case 'G' */
+            /* case 'G' */
 #endif
         default:
             YLMSG_E("Invalid option or missing argument: -%c\n", optopt);
