@@ -534,22 +534,10 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
             break;
 
         case 'p': { /* --path */
-            struct stat st;
-
-            if (stat(optarg, &st) == -1) {
-                YLMSG_E("Unable to use search path (%s) - %s.\n", optarg, strerror(errno));
-                return -1;
-            }
-            if (!S_ISDIR(st.st_mode)) {
-                YLMSG_E("Provided search path is not a directory.\n");
-                return -1;
-            }
-
             if (searchpath_strcat(&yo->searchpaths, optarg)) {
                 YLMSG_E("Storing searchpath failed.\n");
                 return -1;
             }
-
             break;
         } /* case 'p' */
 
