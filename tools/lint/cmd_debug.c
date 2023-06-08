@@ -27,10 +27,30 @@
 #include "common.h"
 #include "yl_opt.h"
 
+struct debug_groups {
+    char *name;
+    uint32_t flag;
+} const dg [] = {
+    {"dict", LY_LDGDICT},
+    {"xpath", LY_LDGXPATH},
+    {"dep-sets", LY_LDGDEPSETS},
+};
+#define DG_LENGTH (sizeof dg / sizeof *dg)
+
 void
 cmd_debug_help(void)
 {
-    printf("Usage: debug (dict | xpath | dep-sets)+\n");
+    uint32_t i;
+
+    printf("Usage: debug (");
+    for (i = 0; i < DG_LENGTH; i++) {
+        if ((i + 1) == DG_LENGTH) {
+            printf("%s", dg[i].name);
+        } else {
+            printf("%s | ", dg[i].name);
+        }
+    }
+    printf(")+\n");
 }
 
 int
@@ -69,7 +89,7 @@ cmd_debug_dep(struct yl_opt *yo, int posc)
 {
     (void) yo;
 
-    if (!posc) {
+    if (yo->interactive && !posc) {
         /* no argument */
         cmd_debug_help();
         return 1;
@@ -82,16 +102,21 @@ int
 cmd_debug_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
 {
     (void) ctx;
+    uint32_t i;
+    ly_bool set;
 
     assert(posv);
 
-    if (!strcasecmp("dict", posv)) {
-        yo->dbg_groups |= LY_LDGDICT;
-    } else if (!strcasecmp("xpath", posv)) {
-        yo->dbg_groups |= LY_LDGXPATH;
-    } else if (!strcasecmp("dep-sets", posv)) {
-        yo->dbg_groups |= LY_LDGDEPSETS;
-    } else {
+    set = 0;
+    for (i = 0; i < DG_LENGTH; i++) {
+        if (!strcasecmp(posv, dg[i].name)) {
+            yo->dbg_groups |= dg[i].flag;
+            set = 1;
+            break;
+        }
+    }
+
+    if (!set) {
         YLMSG_E("Unknown debug group \"%s\"\n", posv);
         return 1;
     }
