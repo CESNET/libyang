@@ -3991,6 +3991,68 @@ test_must(void **state)
             LYS_IN_YANG, NULL));
     /* no warnings */
     CHECK_LOG_CTX(NULL, NULL);
+
+    /* must referencing disabled leafref in another module */
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb,
+            "module b-imp {"
+            "  yang-version 1.1;"
+            "  namespace \"urn:b-imp\";"
+            "  prefix \"bi\";"
+            ""
+            "  feature feat;"
+            ""
+            "  grouping band-capabilities {"
+            "    leaf band-number {"
+            "      type uint16;"
+            "    }"
+            ""
+            "    container sub-band-info {"
+            "      when \"../band-number = '46'\";"
+            "      if-feature \"bi:feat\";"
+            "      leaf number-of-laa-scarriers {"
+            "        type uint8;"
+            "      }"
+            "    }"
+            "  }"
+            ""
+            "  container module-capability {"
+            "    list band-capabilities {"
+            "      key band-number;"
+            "      config false;"
+            "      uses band-capabilities;"
+            "    }"
+            "    container rw-sub-band-info {"
+            "      if-feature \"bi:feat\";"
+            "      leaf rw-number-of-laa-scarriers {"
+            "        type leafref {"
+            "          path \"/module-capability/band-capabilities/sub-band-info/number-of-laa-scarriers\";"
+            "          require-instance false;"
+            "        }"
+            "      }"
+            "    }"
+            "  }"
+            "}");
+
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_REF_IMPLEMENTED);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX,
+            "module b {"
+            "  yang-version 1.1;"
+            "  namespace \"urn:b\";"
+            "  prefix \"b\";"
+            ""
+            "  import b-imp {"
+            "    prefix \"bi\";"
+            "  }"
+            ""
+            "  container laa-config {"
+            "    must \"number-of-laa-scarriers <= /bi:module-capability/bi:rw-sub-band-info/bi:rw-number-of-laa-scarriers\";"
+            "  }"
+            "}",
+            LYS_IN_YANG, NULL));
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_REF_IMPLEMENTED);
+
+    CHECK_LOG_CTX("Schema node \"number-of-laa-scarriers\" not found; in expr \"number-of-laa-scarriers\" "
+            "with context node \"/b:laa-config\".", NULL);
 }
 
 int

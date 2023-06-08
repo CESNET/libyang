@@ -437,6 +437,10 @@ lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *exp
 
     assert(implement || mod_p);
 
+    if (mod_p) {
+        *mod_p = NULL;
+    }
+
     for (i = 0; i < expr->used; ++i) {
         if ((expr->tokens[i] != LYXP_TOKEN_NAMETEST) && (expr->tokens[i] != LYXP_TOKEN_LITERAL)) {
             /* token cannot have a prefix */
@@ -473,38 +477,6 @@ lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *exp
     }
 
     return LY_SUCCESS;
-}
-
-/**
- * @brief Check and optionally implement modules referenced by a when expression.
- *
- * @param[in] ctx Compile context.
- * @param[in] when When to check.
- * @param[in,out] unres Global unres structure.
- * @return LY_ERECOMPILE if the whole dep set needs to be recompiled for these whens to evaluate.
- * @return LY_ENOT if full check of this when should be skipped.
- * @return LY_ERR value on error.
- */
-static LY_ERR
-lys_compile_unres_when_implement(struct lysc_ctx *ctx, const struct lysc_when *when, struct lys_glob_unres *unres)
-{
-    LY_ERR rc = LY_SUCCESS;
-    const struct lys_module *mod = NULL;
-
-    /* check whether all the referenced modules are implemented */
-    rc = lys_compile_expr_implement(ctx->ctx, when->cond, LY_VALUE_SCHEMA_RESOLVED, when->prefixes,
-            ctx->ctx->flags & LY_CTX_REF_IMPLEMENTED, unres, &mod);
-    if (rc) {
-        goto cleanup;
-    } else if (mod) {
-        LOGWRN(ctx->ctx, "When condition \"%s\" check skipped because referenced module \"%s\" is not implemented.",
-                when->cond->expr, mod->name);
-        rc = LY_ENOT;
-        goto cleanup;
-    }
-
-cleanup:
-    return rc;
 }
 
 /**
@@ -723,20 +695,16 @@ cleanup:
  * @param[in] ctx Compile context.
  * @param[in] node Node to check.
  * @param[in] local_mods Sized array of local modules for musts of @p node at the same index.
- * @param[in,out] unres Global unres structure.
- * @return LY_ERECOMPILE
- * @return LY_ERR value
+ * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_unres_must(struct lysc_ctx *ctx, const struct lysc_node *node, const struct lysp_module **local_mods,
-        struct lys_glob_unres *unres)
+lys_compile_unres_must(struct lysc_ctx *ctx, const struct lysc_node *node, const struct lysp_module **local_mods)
 {
     struct lyxp_set tmp_set;
     uint32_t i, opts;
     LY_ARRAY_COUNT_TYPE u;
-    struct lysc_must *musts = NULL;
+    struct lysc_must *musts;
     LY_ERR ret = LY_SUCCESS;
-    const struct lys_module *mod;
     uint16_t flg;
 
     LOG_LOCSET(node, NULL, NULL, NULL);
@@ -746,18 +714,6 @@ lys_compile_unres_must(struct lysc_ctx *ctx, const struct lysc_node *node, const
 
     musts = lysc_node_musts(node);
     LY_ARRAY_FOR(musts, u) {
-        /* first check whether all the referenced modules are implemented */
-        mod = NULL;
-        ret = lys_compile_expr_implement(ctx->ctx, musts[u].cond, LY_VALUE_SCHEMA_RESOLVED, musts[u].prefixes,
-                ctx->ctx->flags & LY_CTX_REF_IMPLEMENTED, unres, &mod);
-        if (ret) {
-            goto cleanup;
-        } else if (mod) {
-            LOGWRN(ctx->ctx, "Must condition \"%s\" check skipped because referenced module \"%s\" is not implemented.",
-                    musts[u].cond->expr, mod->name);
-            continue;
-        }
-
         /* check "must" */
         ret = lyxp_atomize(ctx->ctx, musts[u].cond, node->module, LY_VALUE_SCHEMA_RESOLVED, musts[u].prefixes, node,
                 node, &tmp_set, opts);
@@ -881,13 +837,11 @@ lys_compile_unres_disabled_bitenum(struct lysc_ctx *ctx, struct lysc_node_leaf *
  * @param[in] node Context node for the leafref.
  * @param[in] lref Leafref to check/resolve.
  * @param[in] local_mod Local module for the leafref type.
- * @param[in,out] unres Global unres structure.
- * @return LY_ERECOMPILE if context recompilation is needed,
  * @return LY_ERR value.
  */
 static LY_ERR
 lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, struct lysc_type_leafref *lref,
-        const struct lysp_module *local_mod, struct lys_glob_unres *unres)
+        const struct lysp_module *local_mod)
 {
     const struct lysc_node *target = NULL;
     struct ly_path *p;
@@ -900,9 +854,6 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
         /* already resolved, may happen (shared union typedef with a leafref) */
         return LY_SUCCESS;
     }
-
-    /* first implement all the modules in the path */
-    LY_CHECK_RET(lys_compile_expr_implement(ctx->ctx, lref->path, LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, 1, unres, NULL));
 
     /* try to find the target, current module is that of the context node (RFC 7950 6.4.1 second bullet) */
     LY_CHECK_RET(ly_path_compile_leafref(ctx->ctx, node, ctx->ext, lref->path,
@@ -973,6 +924,7 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
  * @param[in] dflt_pmod Parsed module of the @p dflt to resolve possible prefixes.
  * @param[in,out] storage Storage for the compiled default value.
  * @param[in,out] unres Global unres structure for newly implemented modules.
+ * @return LY_ERECOMPILE if the whole dep set needs to be recompiled for the value to be checked.
  * @return LY_ERR value.
  */
 static LY_ERR
@@ -1153,6 +1105,108 @@ lys_type_leafref_next(const struct lysc_node *node, uint64_t *index)
 }
 
 /**
+ * @brief Implement all referenced modules by leafrefs, when and must conditions.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] unres Global unres structure with the sets to resolve.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERECOMPILE if the whole dep set needs to be recompiled with the new implemented modules.
+ * @return LY_ERR value on error.
+ */
+static LY_ERR
+lys_compile_unres_depset_implement(struct ly_ctx *ctx, struct lys_glob_unres *unres)
+{
+    struct lys_depset_unres *ds_unres = &unres->ds_unres;
+    struct lysc_type_leafref *lref;
+    const struct lys_module *mod;
+    LY_ARRAY_COUNT_TYPE u;
+    struct lysc_unres_leafref *l;
+    struct lysc_unres_when *w;
+    struct lysc_unres_must *m;
+    struct lysc_must *musts;
+    ly_bool not_implemented;
+    uint32_t di = 0, li = 0, wi = 0, mi = 0;
+
+implement_all:
+    /* disabled leafrefs - even those because we need to check their target exists */
+    while (di < ds_unres->disabled_leafrefs.count) {
+        l = ds_unres->disabled_leafrefs.objs[di];
+
+        u = 0;
+        while ((lref = lys_type_leafref_next(l->node, &u))) {
+            LY_CHECK_RET(lys_compile_expr_implement(ctx, lref->path, LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, 1, unres, NULL));
+        }
+
+        ++di;
+    }
+
+    /* leafrefs */
+    while (li < ds_unres->leafrefs.count) {
+        l = ds_unres->leafrefs.objs[li];
+
+        u = 0;
+        while ((lref = lys_type_leafref_next(l->node, &u))) {
+            LY_CHECK_RET(lys_compile_expr_implement(ctx, lref->path, LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, 1, unres, NULL));
+        }
+
+        ++li;
+    }
+
+    /* when conditions */
+    while (wi < ds_unres->whens.count) {
+        w = ds_unres->whens.objs[wi];
+
+        LY_CHECK_RET(lys_compile_expr_implement(ctx, w->when->cond, LY_VALUE_SCHEMA_RESOLVED, w->when->prefixes,
+                ctx->flags & LY_CTX_REF_IMPLEMENTED, unres, &mod));
+        if (mod) {
+            LOGWRN(ctx, "When condition \"%s\" check skipped because referenced module \"%s\" is not implemented.",
+                    w->when->cond->expr, mod->name);
+
+            /* remove from the set to skip the check */
+            ly_set_rm_index(&ds_unres->whens, wi, free);
+            continue;
+        }
+
+        ++wi;
+    }
+
+    /* must conditions */
+    while (mi < ds_unres->musts.count) {
+        m = ds_unres->musts.objs[mi];
+
+        not_implemented = 0;
+        musts = lysc_node_musts(m->node);
+        LY_ARRAY_FOR(musts, u) {
+            LY_CHECK_RET(lys_compile_expr_implement(ctx, musts[u].cond, LY_VALUE_SCHEMA_RESOLVED, musts[u].prefixes,
+                    ctx->flags & LY_CTX_REF_IMPLEMENTED, unres, &mod));
+            if (mod) {
+                LOGWRN(ctx, "Must condition \"%s\" check skipped because referenced module \"%s\" is not implemented.",
+                        musts[u].cond->expr, mod->name);
+
+                /* need to implement modules from all the expressions */
+                not_implemented = 1;
+            }
+        }
+
+        if (not_implemented) {
+            /* remove from the set to skip the check */
+            lysc_unres_must_free(m);
+            ly_set_rm_index(&ds_unres->musts, mi, NULL);
+            continue;
+        }
+
+        ++mi;
+    }
+
+    if ((di < ds_unres->disabled_leafrefs.count) || (li < ds_unres->leafrefs.count) || (wi < ds_unres->whens.count)) {
+        /* new items in the sets */
+        goto implement_all;
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Finish dependency set compilation by resolving all the unres sets.
  *
  * @param[in] ctx libyang context.
@@ -1164,7 +1218,7 @@ lys_type_leafref_next(const struct lysc_node *node, uint64_t *index)
 static LY_ERR
 lys_compile_unres_depset(struct ly_ctx *ctx, struct lys_glob_unres *unres)
 {
-    LY_ERR ret = LY_SUCCESS, r;
+    LY_ERR ret = LY_SUCCESS;
     struct lysc_node *node;
     struct lysc_type *typeiter;
     struct lysc_type_leafref *lref;
@@ -1179,7 +1233,12 @@ lys_compile_unres_depset(struct ly_ctx *ctx, struct lys_glob_unres *unres)
     uint32_t i, processed_leafrefs = 0;
 
 resolve_all:
-    /* check disabled leafrefs first */
+    /* implement all referenced modules to get final ds_unres set */
+    if ((ret = lys_compile_unres_depset_implement(ctx, unres))) {
+        goto cleanup;
+    }
+
+    /* check disabled leafrefs */
     while (ds_unres->disabled_leafrefs.count) {
         /* remember index, it can change before we get to free this item */
         i = ds_unres->disabled_leafrefs.count - 1;
@@ -1189,7 +1248,7 @@ resolve_all:
         LOG_LOCSET(l->node, NULL, NULL, NULL);
         v = 0;
         while ((ret == LY_SUCCESS) && (lref = lys_type_leafref_next(l->node, &v))) {
-            ret = lys_compile_unres_leafref(&cctx, l->node, lref, l->local_mod, unres);
+            ret = lys_compile_unres_leafref(&cctx, l->node, lref, l->local_mod);
         }
         LOG_LOCBACK(1, 0, 0, 0);
         LY_CHECK_GOTO(ret, cleanup);
@@ -1208,7 +1267,7 @@ resolve_all:
         LOG_LOCSET(l->node, NULL, NULL, NULL);
         v = 0;
         while ((ret == LY_SUCCESS) && (lref = lys_type_leafref_next(l->node, &v))) {
-            ret = lys_compile_unres_leafref(&cctx, l->node, lref, l->local_mod, unres);
+            ret = lys_compile_unres_leafref(&cctx, l->node, lref, l->local_mod);
         }
         LOG_LOCBACK(1, 0, 0, 0);
         LY_CHECK_GOTO(ret, cleanup);
@@ -1232,29 +1291,7 @@ resolve_all:
         processed_leafrefs++;
     }
 
-    /* check when, first implement all the referenced modules (for the cyclic check in the next loop to work) */
-    i = 0;
-    while (i < ds_unres->whens.count) {
-        w = ds_unres->whens.objs[i];
-        LYSC_CTX_INIT_PMOD(cctx, w->node->module->parsed, NULL);
-
-        LOG_LOCSET(w->node, NULL, NULL, NULL);
-        r = lys_compile_unres_when_implement(&cctx, w->when, unres);
-        LOG_LOCBACK(w->node ? 1 : 0, 0, 0, 0);
-
-        if (r == LY_ENOT) {
-            /* skip full when check, remove from the set */
-            free(w);
-            ly_set_rm_index(&ds_unres->whens, i, NULL);
-            continue;
-        } else if (r) {
-            /* error */
-            ret = r;
-            goto cleanup;
-        }
-
-        ++i;
-    }
+    /* check when, the referenced modules must be implemented now */
     while (ds_unres->whens.count) {
         i = ds_unres->whens.count - 1;
         w = ds_unres->whens.objs[i];
@@ -1276,7 +1313,7 @@ resolve_all:
         LYSC_CTX_INIT_PMOD(cctx, m->node->module->parsed, m->ext);
 
         LOG_LOCSET(m->node, NULL, NULL, NULL);
-        ret = lys_compile_unres_must(&cctx, m->node, m->local_mods, unres);
+        ret = lys_compile_unres_must(&cctx, m->node, m->local_mods);
         LOG_LOCBACK(1, 0, 0, 0);
         LY_CHECK_GOTO(ret, cleanup);
 
@@ -1317,7 +1354,7 @@ resolve_all:
         ly_set_rm_index(&ds_unres->dflts, i, NULL);
     }
 
-    /* some unres items may have been added */
+    /* some unres items may have been added by the default values */
     if ((processed_leafrefs != ds_unres->leafrefs.count) || ds_unres->disabled_leafrefs.count ||
             ds_unres->whens.count || ds_unres->musts.count || ds_unres->dflts.count) {
         goto resolve_all;
