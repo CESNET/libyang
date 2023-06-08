@@ -27,6 +27,7 @@
 
 #include "libyang.h"
 
+#include "cmd.h"
 #include "common.h"
 #include "out.h"
 #include "tools/config.h"
@@ -288,18 +289,6 @@ fill_context_inputs(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **c
     /* set callback providing run-time extension instance data */
     if (yo->schema_context_filename) {
         ly_ctx_set_ext_data_clb(*ctx, ext_data_clb, yo->schema_context_filename);
-    }
-
-    /* process the operational and/or reply RPC content if any */
-    if (yo->data_operational.path) {
-        if (get_input(yo->data_operational.path, NULL, &yo->data_operational.format, &yo->data_operational.in)) {
-            return -1;
-        }
-    }
-    if (yo->reply_rpc.path) {
-        if (get_input(yo->reply_rpc.path, NULL, &yo->reply_rpc.format, &yo->reply_rpc.in)) {
-            return -1;
-        }
     }
 
     for (int i = 0; i < argc - optind; i++) {
@@ -769,56 +758,12 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
         return 1;
     }
 
-    if (yo->data_xpath.count) {
-        yo->data_merge = 1;
-    }
-    if (yo->data_xpath.count && (yo->schema_out_format || yo->data_out_format)) {
-        YLMSG_E("The --format option cannot be combined with --data-xpath option.\n");
-        return -1;
-    }
-    if (yo->data_xpath.count && (yo->data_print_options & LYD_PRINT_WD_MASK)) {
-        YLMSG_E("The --default option cannot be combined with --data-xpath option.\n");
-        return -1;
-    }
-
-    if (yo->data_merge) {
-        if (yo->data_type || (yo->data_parse_options & LYD_PARSE_ONLY)) {
-            /* switch off the option, incompatible input data type */
-            YLMSG_W("The --merge option has effect only for 'data' and 'config' TYPEs\n");
-            yo->data_merge = 0;
-        } else {
-            /* postpone validation after the merge of all the input data */
-            yo->data_parse_options |= LYD_PARSE_ONLY;
-        }
-    }
-
-    if (yo->data_operational.path && !yo->data_type) {
-        YLMSG_W("Operational datastore takes effect only with RPCs/Actions/Replies/Notification input data types.\n");
-        yo->data_operational.path = NULL;
-    }
-
-    if (yo->reply_rpc.path && (yo->data_type != LYD_TYPE_REPLY_NETCONF)) {
-        YLMSG_W("Source RPC is needed only for NETCONF Reply input data type.\n");
-        yo->data_operational.path = NULL;
-    } else if (!yo->reply_rpc.path && (yo->data_type == LYD_TYPE_REPLY_NETCONF)) {
-        YLMSG_E("Missing source RPC (-R) for NETCONF Reply input data type.\n");
+    if (cmd_data_dep(yo, 0)) {
         return -1;
     }
 
     if ((yo->schema_out_format != LYS_OUT_TREE) && yo->line_length) {
         YLMSG_W("--tree-line-length take effect only in case of the tree output format.\n");
-    }
-
-    if (!yo->out && (yo->data_out_format == LYD_LYB)) {
-        YLMSG_E("The LYB format requires the -o option specified.\n");
-        return -1;
-    }
-    /* default output stream */
-    if (!yo->out) {
-        if (ly_out_new_file(stdout, &yo->out)) {
-            YLMSG_E("Unable to set stdout as output.\n");
-            return -1;
-        }
     }
 
     if (yo->schema_out_format == LYS_OUT_TREE) {
