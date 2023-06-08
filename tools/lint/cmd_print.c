@@ -81,13 +81,11 @@ cmd_print_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
         switch (opt) {
         case 'o': /* --output */
             if (yo->out) {
-                if (ly_out_filepath(yo->out, optarg) != NULL) {
-                    YLMSG_E("Unable to use output file %s for printing output.\n", optarg);
-                    return 1;
-                }
+                YLMSG_E("Only a single output can be specified.\n");
+                return 1;
             } else {
                 if (ly_out_new_filepath(optarg, &yo->out)) {
-                    YLMSG_E("Unable to use output file %s for printing output.\n", optarg);
+                    YLMSG_E("Unable open output file %s (%s)\n", optarg, strerror(errno));
                     return 1;
                 }
             }
