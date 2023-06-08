@@ -1,7 +1,7 @@
 source [expr {[info exists ::env(TESTS_DIR)] ? "$env(TESTS_DIR)/interactive/ly.tcl" : "ly.tcl"}]
 
 set ddir "$::env(TESTS_DIR)/data"
-set err1 "Operational datastore takes effect only with RPCs/Actions/Replies/Notifications input data types"
+set err1 "Operational datastore takes effect only with RPCs/Actions/Replies/Notification input data types"
 
 test data_operational_twice {it is not allowed to specify more than one --operational parameter} {
 -setup $ly_setup -cleanup $ly_cleanup -body {

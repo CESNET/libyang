@@ -334,7 +334,7 @@ cmd_data_dep(struct yl_opt *yo, int posc)
         yo->data_merge = 1;
     }
 
-    if (yo->data_xpath.count && yo->data_out_format) {
+    if (yo->data_xpath.count && (yo->schema_out_format || yo->data_out_format)) {
         YLMSG_E("The --format option cannot be combined with --xpath option.\n");
         if (yo->interactive) {
             cmd_data_help_xpath();
@@ -350,7 +350,7 @@ cmd_data_dep(struct yl_opt *yo, int posc)
     }
 
     if (yo->data_operational.path && !yo->data_type) {
-        YLMSG_W("Operational datastore takes effect only with RPCs/Actions/Replies/Notifications input data types.\n");
+        YLMSG_W("Operational datastore takes effect only with RPCs/Actions/Replies/Notification input data types.\n");
         yo->data_operational.path = NULL;
     }
 
