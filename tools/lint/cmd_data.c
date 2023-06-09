@@ -194,13 +194,7 @@ cmd_data_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
             }
             break;
         case 'F': /* --in-format */
-            if (!strcasecmp(optarg, "xml")) {
-                yo->data_in_format = LYD_XML;
-            } else if (!strcasecmp(optarg, "json")) {
-                yo->data_in_format = LYD_JSON;
-            } else if (!strcasecmp(optarg, "lyb")) {
-                yo->data_in_format = LYD_LYB;
-            } else {
+            if (yo_opt_update_data_in_format(optarg, yo)) {
                 YLMSG_E("Unknown input format %s\n", optarg);
                 cmd_data_help_in_format();
                 return 1;
