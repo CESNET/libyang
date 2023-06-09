@@ -246,6 +246,17 @@ yo_opt_update_make_implemented(struct yl_opt *yo)
 }
 
 void
+yo_opt_update_disable_searchdir(struct yl_opt *yo)
+{
+    if (yo->ctx_options & LY_CTX_DISABLE_SEARCHDIR_CWD) {
+        yo->ctx_options &= ~LY_CTX_DISABLE_SEARCHDIR_CWD;
+        yo->ctx_options |= LY_CTX_DISABLE_SEARCHDIRS;
+    } else {
+        yo->ctx_options |= LY_CTX_DISABLE_SEARCHDIR_CWD;
+    }
+}
+
+void
 free_cmdline(char *argv[])
 {
     if (argv) {

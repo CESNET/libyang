@@ -75,12 +75,7 @@ cmd_add_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
             if (yo->ctx_options & LY_CTX_DISABLE_SEARCHDIRS) {
                 YLMSG_W("The -D option specified too many times.\n");
             }
-            if (yo->ctx_options & LY_CTX_DISABLE_SEARCHDIR_CWD) {
-                yo->ctx_options &= ~LY_CTX_DISABLE_SEARCHDIR_CWD;
-                yo->ctx_options |= LY_CTX_DISABLE_SEARCHDIRS;
-            } else {
-                yo->ctx_options |= LY_CTX_DISABLE_SEARCHDIR_CWD;
-            }
+            yo_opt_update_disable_searchdir(yo);
             break;
 
         case 'F': /* --features */
