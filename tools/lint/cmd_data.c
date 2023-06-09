@@ -254,28 +254,7 @@ cmd_data_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
                 return 1;
             }
 
-            if (!strcasecmp(optarg, "config")) {
-                yo->data_parse_options |= LYD_PARSE_NO_STATE;
-                yo->data_validate_options |= LYD_VALIDATE_NO_STATE;
-            } else if (!strcasecmp(optarg, "get")) {
-                yo->data_parse_options |= LYD_PARSE_ONLY;
-            } else if (!strcasecmp(optarg, "getconfig") || !strcasecmp(optarg, "get-config") || !strcasecmp(optarg, "edit")) {
-                yo->data_parse_options |= LYD_PARSE_ONLY | LYD_PARSE_NO_STATE;
-            } else if (!strcasecmp(optarg, "rpc") || !strcasecmp(optarg, "action")) {
-                yo->data_type = LYD_TYPE_RPC_YANG;
-            } else if (!strcasecmp(optarg, "nc-rpc")) {
-                yo->data_type = LYD_TYPE_RPC_NETCONF;
-            } else if (!strcasecmp(optarg, "reply") || !strcasecmp(optarg, "rpcreply")) {
-                yo->data_type = LYD_TYPE_REPLY_YANG;
-            } else if (!strcasecmp(optarg, "nc-reply")) {
-                yo->data_type = LYD_TYPE_REPLY_NETCONF;
-            } else if (!strcasecmp(optarg, "notif") || !strcasecmp(optarg, "notification")) {
-                yo->data_type = LYD_TYPE_NOTIF_YANG;
-            } else if (!strcasecmp(optarg, "nc-notif")) {
-                yo->data_type = LYD_TYPE_NOTIF_NETCONF;
-            } else if (!strcasecmp(optarg, "data")) {
-                /* default option */
-            } else {
+            if (yl_opt_update_data_type(optarg, yo)) {
                 YLMSG_E("Unknown data tree type %s.\n", optarg);
                 cmd_data_help_type();
                 return 1;

@@ -169,6 +169,37 @@ yl_opt_update_out_format(const char *arg, struct yl_opt *yo)
     return 1;
 }
 
+int
+yl_opt_update_data_type(const char *arg, struct yl_opt *yo)
+{
+    if (!strcasecmp(arg, "config")) {
+        yo->data_parse_options |= LYD_PARSE_NO_STATE;
+        yo->data_validate_options |= LYD_VALIDATE_NO_STATE;
+    } else if (!strcasecmp(arg, "get")) {
+        yo->data_parse_options |= LYD_PARSE_ONLY;
+    } else if (!strcasecmp(arg, "getconfig") || !strcasecmp(arg, "get-config") || !strcasecmp(arg, "edit")) {
+        yo->data_parse_options |= LYD_PARSE_ONLY | LYD_PARSE_NO_STATE;
+    } else if (!strcasecmp(arg, "rpc") || !strcasecmp(arg, "action")) {
+        yo->data_type = LYD_TYPE_RPC_YANG;
+    } else if (!strcasecmp(arg, "nc-rpc")) {
+        yo->data_type = LYD_TYPE_RPC_NETCONF;
+    } else if (!strcasecmp(arg, "reply") || !strcasecmp(arg, "rpcreply")) {
+        yo->data_type = LYD_TYPE_REPLY_YANG;
+    } else if (!strcasecmp(arg, "nc-reply")) {
+        yo->data_type = LYD_TYPE_REPLY_NETCONF;
+    } else if (!strcasecmp(arg, "notif") || !strcasecmp(arg, "notification")) {
+        yo->data_type = LYD_TYPE_NOTIF_YANG;
+    } else if (!strcasecmp(arg, "nc-notif")) {
+        yo->data_type = LYD_TYPE_NOTIF_NETCONF;
+    } else if (!strcasecmp(arg, "data")) {
+        /* default option */
+    } else {
+        return 1;
+    }
+
+    return 0;
+}
+
 void
 free_cmdline(char *argv[])
 {
