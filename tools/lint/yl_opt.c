@@ -235,6 +235,17 @@ yo_opt_update_data_in_format(const char *arg, struct yl_opt *yo)
 }
 
 void
+yo_opt_update_make_implemented(struct yl_opt *yo)
+{
+    if (yo->ctx_options & LY_CTX_REF_IMPLEMENTED) {
+        yo->ctx_options &= ~LY_CTX_REF_IMPLEMENTED;
+        yo->ctx_options |= LY_CTX_ALL_IMPLEMENTED;
+    } else {
+        yo->ctx_options |= LY_CTX_REF_IMPLEMENTED;
+    }
+}
+
+void
 free_cmdline(char *argv[])
 {
     if (argv) {
