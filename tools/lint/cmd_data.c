@@ -181,15 +181,7 @@ cmd_data_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
     while ((opt = getopt_long(argc, yo->argv, commands[CMD_DATA].optstring, options, &opt_index)) != -1) {
         switch (opt) {
         case 'd': /* --default */
-            if (!strcasecmp(optarg, "all")) {
-                yo->data_print_options = (yo->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_ALL;
-            } else if (!strcasecmp(optarg, "all-tagged")) {
-                yo->data_print_options = (yo->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_ALL_TAG;
-            } else if (!strcasecmp(optarg, "trim")) {
-                yo->data_print_options = (yo->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_TRIM;
-            } else if (!strcasecmp(optarg, "implicit-tagged")) {
-                yo->data_print_options = (yo->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_IMPL_TAG;
-            } else {
+            if (yo_opt_update_data_default(optarg, yo)) {
                 YLMSG_E("Unknown default mode %s\n", optarg);
                 cmd_data_help_default();
                 return 1;

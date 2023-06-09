@@ -622,15 +622,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
             break;
 
         case 'd': /* --default */
-            if (!strcasecmp(optarg, "all")) {
-                yo->data_print_options = (yo->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_ALL;
-            } else if (!strcasecmp(optarg, "all-tagged")) {
-                yo->data_print_options = (yo->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_ALL_TAG;
-            } else if (!strcasecmp(optarg, "trim")) {
-                yo->data_print_options = (yo->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_TRIM;
-            } else if (!strcasecmp(optarg, "implicit-tagged")) {
-                yo->data_print_options = (yo->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_IMPL_TAG;
-            } else {
+            if (yo_opt_update_data_default(optarg, yo)) {
                 YLMSG_E("Unknown default mode %s\n", optarg);
                 help(1);
                 return -1;

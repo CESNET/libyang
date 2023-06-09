@@ -200,6 +200,24 @@ yl_opt_update_data_type(const char *arg, struct yl_opt *yo)
     return 0;
 }
 
+int
+yo_opt_update_data_default(const char *arg, struct yl_opt *yo)
+{
+    if (!strcasecmp(arg, "all")) {
+        yo->data_print_options = (yo->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_ALL;
+    } else if (!strcasecmp(arg, "all-tagged")) {
+        yo->data_print_options = (yo->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_ALL_TAG;
+    } else if (!strcasecmp(arg, "trim")) {
+        yo->data_print_options = (yo->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_TRIM;
+    } else if (!strcasecmp(arg, "implicit-tagged")) {
+        yo->data_print_options = (yo->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_IMPL_TAG;
+    } else {
+        return 1;
+    }
+
+    return 0;
+}
+
 void
 free_cmdline(char *argv[])
 {
