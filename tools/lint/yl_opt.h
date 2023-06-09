@@ -179,6 +179,15 @@ int yl_opt_update_data_out_format(const char *arg, struct yl_opt *yo);
 int yl_opt_update_out_format(const char *arg, struct yl_opt *yo);
 
 /**
+ * @brief Update @p yo according to the @p arg of the data --type parameter.
+ *
+ * @param[in] arg Format parameter argument (for example config, rpc, ...).
+ * @param[out] yo yanglint options used to update.
+ * @return 0 on success.
+ */
+int yl_opt_update_data_type(const char *arg, struct yl_opt *yo);
+
+/**
  * @brief Helper function to prepare argc, argv pair from a command line string.
  *
  * @param[in] cmdline Complete command line string.
