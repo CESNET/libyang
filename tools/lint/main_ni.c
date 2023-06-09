@@ -534,13 +534,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
             break;
 
         case 'I': /* --in-format */
-            if (!strcasecmp(optarg, "xml")) {
-                yo->data_in_format = LYD_XML;
-            } else if (!strcasecmp(optarg, "json")) {
-                yo->data_in_format = LYD_JSON;
-            } else if (!strcasecmp(optarg, "lyb")) {
-                yo->data_in_format = LYD_LYB;
-            } else {
+            if (yo_opt_update_data_in_format(optarg, yo)) {
                 YLMSG_E("Unknown input format %s\n", optarg);
                 help(1);
                 return -1;

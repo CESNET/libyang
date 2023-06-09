@@ -218,6 +218,22 @@ yo_opt_update_data_default(const char *arg, struct yl_opt *yo)
     return 0;
 }
 
+int
+yo_opt_update_data_in_format(const char *arg, struct yl_opt *yo)
+{
+    if (!strcasecmp(arg, "xml")) {
+        yo->data_in_format = LYD_XML;
+    } else if (!strcasecmp(arg, "json")) {
+        yo->data_in_format = LYD_JSON;
+    } else if (!strcasecmp(arg, "lyb")) {
+        yo->data_in_format = LYD_LYB;
+    } else {
+        return 1;
+    }
+
+    return 0;
+}
+
 void
 free_cmdline(char *argv[])
 {
