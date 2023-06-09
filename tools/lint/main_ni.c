@@ -568,12 +568,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
             break;
 
         case 'i': /* --make-implemented */
-            if (yo->ctx_options & LY_CTX_REF_IMPLEMENTED) {
-                yo->ctx_options &= ~LY_CTX_REF_IMPLEMENTED;
-                yo->ctx_options |= LY_CTX_ALL_IMPLEMENTED;
-            } else {
-                yo->ctx_options |= LY_CTX_REF_IMPLEMENTED;
-            }
+            yo_opt_update_make_implemented(yo);
             break;
 
         case 'P': /* --schema-node */

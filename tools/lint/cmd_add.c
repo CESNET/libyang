@@ -94,12 +94,7 @@ cmd_add_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
             return 1;
 
         case 'i': /* --make-implemented */
-            if (yo->ctx_options & LY_CTX_REF_IMPLEMENTED) {
-                yo->ctx_options &= ~LY_CTX_REF_IMPLEMENTED;
-                yo->ctx_options |= LY_CTX_ALL_IMPLEMENTED;
-            } else {
-                yo->ctx_options |= LY_CTX_REF_IMPLEMENTED;
-            }
+            yo_opt_update_make_implemented(yo);
             break;
 
         case 'X': /* --extended-leafref */

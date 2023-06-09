@@ -206,6 +206,13 @@ int yo_opt_update_data_default(const char *arg, struct yl_opt *yo);
 int yo_opt_update_data_in_format(const char *arg, struct yl_opt *yo);
 
 /**
+ * @brief Update @p yo according to the --make-implemented parameter.
+ *
+ * @param[in,out] yo yanglint options used to update.
+ */
+void yo_opt_update_make_implemented(struct yl_opt *yo);
+
+/**
  * @brief Helper function to prepare argc, argv pair from a command line string.
  *
  * @param[in] cmdline Complete command line string.
