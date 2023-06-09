@@ -527,31 +527,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
         } /* case 'Q' */
 
         case 'f': /* --format */
-            if (!strcasecmp(optarg, "yang")) {
-                yo->schema_out_format = LYS_OUT_YANG;
-                yo->data_out_format = 0;
-            } else if (!strcasecmp(optarg, "yin")) {
-                yo->schema_out_format = LYS_OUT_YIN;
-                yo->data_out_format = 0;
-            } else if (!strcasecmp(optarg, "info")) {
-                yo->schema_out_format = LYS_OUT_YANG_COMPILED;
-                yo->data_out_format = 0;
-            } else if (!strcasecmp(optarg, "tree")) {
-                yo->schema_out_format = LYS_OUT_TREE;
-                yo->data_out_format = 0;
-            } else if (!strcasecmp(optarg, "xml")) {
-                yo->schema_out_format = 0;
-                yo->data_out_format = LYD_XML;
-            } else if (!strcasecmp(optarg, "json")) {
-                yo->schema_out_format = 0;
-                yo->data_out_format = LYD_JSON;
-            } else if (!strcasecmp(optarg, "lyb")) {
-                yo->schema_out_format = 0;
-                yo->data_out_format = LYD_LYB;
-            } else if (!strcasecmp(optarg, "feature-param")) {
-                yo->feature_param_format = 1;
-            } else {
-                YLMSG_E("Unknown output format %s\n", optarg);
+            if (yl_opt_update_out_format(optarg, yo)) {
                 help(1);
                 return -1;
             }
@@ -571,13 +547,13 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
             }
             break;
 
-        case 'p': { /* --path */
+        case 'p':   /* --path */
             if (searchpath_strcat(&yo->searchpaths, optarg)) {
                 YLMSG_E("Storing searchpath failed.\n");
                 return -1;
             }
             break;
-        } /* case 'p' */
+        /* case 'p' */
 
         case 'D': /* --disable-search */
             if (yo->ctx_options & LY_CTX_DISABLE_SEARCHDIRS) {

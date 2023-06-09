@@ -152,6 +152,33 @@ struct yl_opt {
 void yl_opt_erase(struct yl_opt *yo);
 
 /**
+ * @brief Update @p yo according to the @p arg of the schema --format parameter.
+ *
+ * @param[in] arg Format parameter argument (for example yang, yin, ...).
+ * @param[out] yo yanglint options used to update.
+ * @return 0 on success.
+ */
+int yl_opt_update_schema_out_format(const char *arg, struct yl_opt *yo);
+
+/**
+ * @brief Update @p yo according to the @p arg of the data --format parameter.
+ *
+ * @param[in] arg Format parameter argument (for example xml, json, ...).
+ * @param[out] yo yanglint options used to update.
+ * @return 0 on success.
+ */
+int yl_opt_update_data_out_format(const char *arg, struct yl_opt *yo);
+
+/**
+ * @brief Update @p yo according to the @p arg of the general --format parameter.
+ *
+ * @param[in] arg Format parameter argument (for example yang, xml, ...).
+ * @param[out] yo yanglint options used to update.
+ * @return 0 on success.
+ */
+int yl_opt_update_out_format(const char *arg, struct yl_opt *yo);
+
+/**
  * @brief Helper function to prepare argc, argv pair from a command line string.
  *
  * @param[in] cmdline Complete command line string.

@@ -99,6 +99,76 @@ yl_opt_erase(struct yl_opt *yo)
     yo->interactive = interactive;
 }
 
+int
+yl_opt_update_schema_out_format(const char *arg, struct yl_opt *yo)
+{
+    if (!strcasecmp(arg, "yang")) {
+        yo->schema_out_format = LYS_OUT_YANG;
+        yo->data_out_format = 0;
+    } else if (!strcasecmp(arg, "yin")) {
+        yo->schema_out_format = LYS_OUT_YIN;
+        yo->data_out_format = 0;
+    } else if (!strcasecmp(arg, "info")) {
+        yo->schema_out_format = LYS_OUT_YANG_COMPILED;
+        yo->data_out_format = 0;
+    } else if (!strcasecmp(arg, "tree")) {
+        yo->schema_out_format = LYS_OUT_TREE;
+        yo->data_out_format = 0;
+    } else {
+        return 1;
+    }
+
+    return 0;
+}
+
+int
+yl_opt_update_data_out_format(const char *arg, struct yl_opt *yo)
+{
+    if (!strcasecmp(arg, "xml")) {
+        yo->schema_out_format = 0;
+        yo->data_out_format = LYD_XML;
+    } else if (!strcasecmp(arg, "json")) {
+        yo->schema_out_format = 0;
+        yo->data_out_format = LYD_JSON;
+    } else if (!strcasecmp(arg, "lyb")) {
+        yo->schema_out_format = 0;
+        yo->data_out_format = LYD_LYB;
+    } else {
+        return 1;
+    }
+
+    return 0;
+}
+
+static int
+yl_opt_update_other_out_format(const char *arg, struct yl_opt *yo)
+{
+    if (!strcasecmp(arg, "feature-param")) {
+        yo->feature_param_format = 1;
+    } else {
+        return 1;
+    }
+
+    return 0;
+}
+
+int
+yl_opt_update_out_format(const char *arg, struct yl_opt *yo)
+{
+    if (!yl_opt_update_schema_out_format(arg, yo)) {
+        return 0;
+    }
+    if (!yl_opt_update_data_out_format(arg, yo)) {
+        return 0;
+    }
+    if (!yl_opt_update_other_out_format(arg, yo)) {
+        return 0;
+    }
+
+    YLMSG_E("Unknown output format %s\n", arg);
+    return 1;
+}
+
 void
 free_cmdline(char *argv[])
 {

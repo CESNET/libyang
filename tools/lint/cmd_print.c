@@ -92,16 +92,7 @@ cmd_print_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
             break;
 
         case 'f': /* --format */
-            if (!strcasecmp(optarg, "yang")) {
-                yo->schema_out_format = LYS_OUT_YANG;
-            } else if (!strcasecmp(optarg, "yin")) {
-                yo->schema_out_format = LYS_OUT_YIN;
-            } else if (!strcasecmp(optarg, "info")) {
-                yo->schema_out_format = LYS_OUT_YANG_COMPILED;
-            } else if (!strcasecmp(optarg, "tree")) {
-                yo->schema_out_format = LYS_OUT_TREE;
-            } else {
-                YLMSG_E("Unknown output format %s\n", optarg);
+            if (yl_opt_update_schema_out_format(optarg, yo)) {
                 cmd_print_help();
                 return 1;
             }
