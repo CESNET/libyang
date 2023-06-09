@@ -549,16 +549,11 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
             break;
         /* case 'p' */
 
-        case 'D': /* --disable-search */
+        case 'D': /* --disable-searchdir */
             if (yo->ctx_options & LY_CTX_DISABLE_SEARCHDIRS) {
                 YLMSG_W("The -D option specified too many times.\n");
             }
-            if (yo->ctx_options & LY_CTX_DISABLE_SEARCHDIR_CWD) {
-                yo->ctx_options &= ~LY_CTX_DISABLE_SEARCHDIR_CWD;
-                yo->ctx_options |= LY_CTX_DISABLE_SEARCHDIRS;
-            } else {
-                yo->ctx_options |= LY_CTX_DISABLE_SEARCHDIR_CWD;
-            }
+            yo_opt_update_disable_searchdir(yo);
             break;
 
         case 'F': /* --features */
