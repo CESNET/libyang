@@ -80,7 +80,7 @@ get_input(const char *filepath, LYS_INFORMAT *format_schema, LYD_FORMAT *format_
         return -1;
     }
 
-    if (ly_in_new_filepath(filepath, 0, in)) {
+    if (in && ly_in_new_filepath(filepath, 0, in)) {
         YLMSG_E("Unable to process input file.\n");
         return -1;
     }

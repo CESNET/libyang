@@ -124,25 +124,49 @@ cmd_add_dep(struct yl_opt *yo, int posc)
     return 0;
 }
 
+static int
+store_parsed_module(const char *filepath, struct lys_module *mod, struct yl_opt *yo)
+{
+    assert(!yo->interactive);
+
+    if (yo->schema_out_format || yo->feature_param_format) {
+        if (ly_set_add(&yo->schema_modules, (void *)mod, 1, NULL)) {
+            YLMSG_E("Storing parsed schema module (%s) for print failed.\n", filepath);
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 int
 cmd_add_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
 {
     const char *all_features[] = {"*", NULL};
     LY_ERR ret;
     uint8_t path_unset = 1; /* flag to unset the path from the searchpaths list (if not already present) */
-    char *dir, *module;
+    char *dir, *modname = NULL;
     const char **features = NULL;
     struct ly_in *in = NULL;
+    struct lys_module *mod;
 
     assert(posv);
 
     if (yo->ctx_options) {
         ly_ctx_set_options(*ctx, yo->ctx_options);
-        yo->ctx_options = 0;
     }
 
-    if (parse_schema_path(posv, &dir, &module)) {
+    if (parse_schema_path(posv, &dir, &modname)) {
         return 1;
+    }
+
+    if (!yo->interactive) {
+        /* The module should already be parsed if yang_lib_file was set. */
+        if (yo->yang_lib_file && (mod = ly_ctx_get_module_implemented(*ctx, modname))) {
+            ret = store_parsed_module(posv, mod, yo);
+            goto cleanup;
+        }
+        /* parse module */
     }
 
     /* add temporarily also the path of the module itself */
@@ -154,23 +178,32 @@ cmd_add_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
     if (!yo->schema_features.count) {
         features = all_features;
     } else {
-        get_features(&yo->schema_features, module, &features);
+        get_features(&yo->schema_features, modname, &features);
     }
-
-    /* temporary cleanup */
-    free(dir);
-    free(module);
 
     /* prepare input handler */
     ret = ly_in_new_filepath(posv, 0, &in);
     if (ret) {
-        return 1;
+        goto cleanup;
     }
 
     /* parse the file */
-    ret = lys_parse(*ctx, in, LYS_IN_UNKNOWN, features, NULL);
+    ret = lys_parse(*ctx, in, LYS_IN_UNKNOWN, features, &mod);
     ly_in_free(in, 1);
     ly_ctx_unset_searchdir_last(*ctx, path_unset);
+    if (ret) {
+        goto cleanup;
+    }
+
+    if (!yo->interactive) {
+        if ((ret = store_parsed_module(posv, mod, yo))) {
+            goto cleanup;
+        }
+    }
+
+cleanup:
+    free(dir);
+    free(modname);
 
     return ret;
 }

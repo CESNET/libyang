@@ -264,8 +264,7 @@ fill_context_inputs(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **c
     struct ly_in *in = NULL;
     struct schema_features *sf;
     struct lys_module *mod;
-    const char *all_features[] = {"*", NULL};
-    char *dir = NULL, *module = NULL, *filepath = NULL;
+    char *filepath = NULL;
 
     /* Create libyang context. */
     if (yo->yang_lib_file) {
@@ -300,69 +299,24 @@ fill_context_inputs(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **c
         if (!filepath) {
             goto error;
         }
-        if (get_input(filepath, &format_schema, &format_data, &in)) {
+        if (get_input(filepath, &format_schema, &format_data, NULL)) {
             goto error;
         }
 
         if (format_schema) {
-            LY_ERR ret;
-            uint8_t path_unset = 1; /* flag to unset the path from the searchpaths list (if not already present) */
-            const char **features;
-
-            /* parse the input */
-            if (parse_schema_path(filepath, &dir, &module)) {
+            if (cmd_add_exec(ctx, yo, filepath)) {
                 goto error;
             }
-
-            mod = NULL;
-            if (yo->yang_lib_file) {
-                /* just get the module, it should already be parsed */
-                mod = ly_ctx_get_module_implemented(*ctx, module);
+        } else {
+            if (ly_in_new_filepath(filepath, 0, &in)) {
+                YLMSG_E("Unable to process input file.\n");
+                goto error;
             }
-            if (!mod) {
-                /* add temporarily also the path of the module itself */
-                if (ly_ctx_set_searchdir(*ctx, dir) == LY_EEXIST) {
-                    path_unset = 0;
-                }
-
-                /* get features list for this module */
-                if (!yo->schema_features.count) {
-                    features = all_features;
-                } else {
-                    get_features(&yo->schema_features, module, &features);
-                }
-
-                /* parse module */
-                ret = lys_parse(*ctx, in, format_schema, features, &mod);
-                ly_ctx_unset_searchdir_last(*ctx, path_unset);
-                if (ret) {
-                    YLMSG_E("Parsing schema module \"%s\" failed.\n", filepath);
-                    goto error;
-                }
-            }
-
-            /* temporary cleanup */
-            free(dir);
-            dir = NULL;
-            free(module);
-            module = NULL;
-
-            if (yo->schema_out_format || yo->feature_param_format) {
-                /* module will be printed */
-                if (ly_set_add(&yo->schema_modules, (void *)mod, 1, NULL)) {
-                    YLMSG_E("Storing parsed schema module (%s) for print failed.\n", filepath);
-                    goto error;
-                }
-            }
-        } else if (format_data) {
             if (!fill_cmdline_file(&yo->data_inputs, in, filepath, format_data)) {
                 goto error;
             }
             in = NULL;
         }
-
-        ly_in_free(in, 1);
-        in = NULL;
     }
 
     /* check that all specified features were applied, apply now if possible */
@@ -389,8 +343,6 @@ fill_context_inputs(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **c
 
 error:
     ly_in_free(in, 1);
-    free(dir);
-    free(module);
     return -1;
 }
 
