@@ -403,68 +403,6 @@ get_format(const char *filepath, LYS_INFORMAT *schema_form, LYD_FORMAT *data_for
 }
 
 int
-print_list(struct ly_out *out, struct ly_ctx *ctx, LYD_FORMAT outformat)
-{
-    struct lyd_node *ylib;
-    uint32_t idx = 0, has_modules = 0;
-    const struct lys_module *mod;
-
-    if (outformat != LYD_UNKNOWN) {
-        if (ly_ctx_get_yanglib_data(ctx, &ylib, "%u", ly_ctx_get_change_count(ctx))) {
-            YLMSG_E("Getting context info (ietf-yang-library data) failed. If the YANG module is missing or not implemented, use an option to add it internally.\n");
-            return 1;
-        }
-
-        lyd_print_all(out, ylib, outformat, 0);
-        lyd_free_all(ylib);
-        return 0;
-    }
-
-    /* iterate schemas in context and provide just the basic info */
-    ly_print(out, "List of the loaded models:\n");
-    while ((mod = ly_ctx_get_module_iter(ctx, &idx))) {
-        has_modules++;
-
-        /* conformance print */
-        if (mod->implemented) {
-            ly_print(out, "    I");
-        } else {
-            ly_print(out, "    i");
-        }
-
-        /* module print */
-        ly_print(out, " %s", mod->name);
-        if (mod->revision) {
-            ly_print(out, "@%s", mod->revision);
-        }
-
-        /* submodules print */
-        if (mod->parsed && mod->parsed->includes) {
-            uint64_t u = 0;
-
-            ly_print(out, " (");
-            LY_ARRAY_FOR(mod->parsed->includes, u) {
-                ly_print(out, "%s%s", !u ? "" : ",", mod->parsed->includes[u].name);
-                if (mod->parsed->includes[u].rev[0]) {
-                    ly_print(out, "@%s", mod->parsed->includes[u].rev);
-                }
-            }
-            ly_print(out, ")");
-        }
-
-        /* finish the line */
-        ly_print(out, "\n");
-    }
-
-    if (!has_modules) {
-        ly_print(out, "\t(none)\n");
-    }
-
-    ly_print_flush(out);
-    return 0;
-}
-
-int
 evaluate_xpath(const struct lyd_node *tree, const char *xpath)
 {
     struct ly_set *set = NULL;

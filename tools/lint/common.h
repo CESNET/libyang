@@ -193,18 +193,6 @@ LYD_FORMAT get_data_format(const char *filename);
 int get_format(const char *filepath, LYS_INFORMAT *schema_form, LYD_FORMAT *data_form);
 
 /**
- * @brief Print list of schemas in the context.
- *
- * @param[in] out Output handler where to print.
- * @param[in] ctx Context to print.
- * @param[in] outformat Optional output format. If not specified (:LYD_UNKNOWN), a simple list with single module per line
- * is printed. Otherwise, the ietf-yang-library data are printed in the specified format.
- * @return zero in case the data successfully printed.
- * @return nonzero in case of error.
- */
-int print_list(struct ly_out *out, struct ly_ctx *ctx, LYD_FORMAT outformat);
-
-/**
  * @brief Process the input data files - parse, validate and print according to provided options.
  *
  * @param[in] ctx libyang context with schema.
