@@ -157,7 +157,7 @@ int parse_schema_path(const char *path, char **dir, char **module);
  * prohibited and such files are refused.
  * @param[out] format_data Format of the data detected from the file name. If NULL specified, the data formats are
  * prohibited and such files are refused.
- * @param[out] in Created input handler referring the file behind the @p filepath.
+ * @param[out] in Created input handler referring the file behind the @p filepath. Can be NULL.
  * @return 0 on success.
  * @return -1 on failure.
  */
