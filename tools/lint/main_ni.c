@@ -258,41 +258,101 @@ get_features_not_applied(const struct ly_set *fset)
     return NULL;
 }
 
+/**
+ * @brief Create the libyang context.
+ *
+ * @param[in] yang_lib_file Context can be defined in yang library file.
+ * @param[in] searchpaths Directories in which modules are searched.
+ * @param[in,out] schema_features Set of features.
+ * @param[in,out] ctx_options Options for libyang context.
+ * @param[out] ctx Context for libyang.
+ * @return 0 on success.
+ */
 static int
-fill_context_inputs(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
+create_ly_context(const char *yang_lib_file, const char *searchpaths, struct ly_set *schema_features,
+        uint16_t *ctx_options, struct ly_ctx **ctx)
 {
-    struct ly_in *in = NULL;
-    struct schema_features *sf;
-    struct lys_module *mod;
-    char *filepath = NULL;
-
-    /* Create libyang context. */
-    if (yo->yang_lib_file) {
+    if (yang_lib_file) {
         /* ignore features */
-        ly_set_erase(&yo->schema_features, free_features);
+        ly_set_erase(schema_features, free_features);
 
-        if (ly_ctx_new_ylpath(yo->searchpaths, yo->yang_lib_file, LYD_UNKNOWN, yo->ctx_options, ctx)) {
+        if (ly_ctx_new_ylpath(searchpaths, yang_lib_file, LYD_UNKNOWN, *ctx_options, ctx)) {
             YLMSG_E("Unable to modify libyang context with yang-library data.\n");
             return -1;
         }
     } else {
         /* set imp feature flag if all should be enabled */
-        yo->ctx_options |= !yo->schema_features.count ? LY_CTX_ENABLE_IMP_FEATURES : 0;
+        (*ctx_options) |= !schema_features->count ? LY_CTX_ENABLE_IMP_FEATURES : 0;
 
-        if (ly_ctx_new(yo->searchpaths, yo->ctx_options, ctx)) {
+        if (ly_ctx_new(searchpaths, *ctx_options, ctx)) {
             YLMSG_E("Unable to create libyang context\n");
             return -1;
         }
     }
 
-    /* set callback providing run-time extension instance data */
-    if (yo->schema_context_filename) {
-        ly_ctx_set_ext_data_clb(*ctx, ext_data_clb, yo->schema_context_filename);
+    return 0;
+}
+
+/**
+ * @brief Implement module if some feature has not been applied.
+ *
+ * @param[in] schema_features Set of features.
+ * @param[in,out] ctx Context for libyang.
+ * @return 0 on success.
+ */
+static int
+apply_features(struct ly_set *schema_features, struct ly_ctx *ctx)
+{
+    struct schema_features *sf;
+    struct lys_module *mod;
+
+    /* check that all specified features were applied, apply now if possible */
+    while ((sf = get_features_not_applied(schema_features))) {
+        /* try to find implemented or the latest revision of this module */
+        mod = ly_ctx_get_module_implemented(ctx, sf->mod_name);
+        if (!mod) {
+            mod = ly_ctx_get_module_latest(ctx, sf->mod_name);
+        }
+        if (!mod) {
+            YLMSG_E("Specified features not applied, module \"%s\" not loaded.\n", sf->mod_name);
+            return 1;
+        }
+
+        /* we have the module, implement it if needed and enable the specific features */
+        if (lys_set_implemented(mod, (const char **)sf->features)) {
+            YLMSG_E("Implementing module \"%s\" failed.\n", mod->name);
+            return 1;
+        }
+        sf->applied = 1;
     }
 
+    return 0;
+}
+
+/**
+ * @brief Parse and compile modules, data are only stored for later processing.
+ *
+ * @param[in] argc Number of strings in @p argv.
+ * @param[in] argv Strings from command line.
+ * @param[in] optind Index to the first input file in @p argv.
+ * @param[in] data_in_format Specified input data format.
+ * @param[in,out] ctx Context for libyang.
+ * @param[in,out] yo Options for yanglint.
+ * @param[out] data_inputs Set of data file inputs.
+ * @return 0 on success.
+ */
+static int
+fill_context_inputs(int argc, char *argv[], int optind, LYD_FORMAT data_in_format, struct ly_ctx *ctx,
+        struct yl_opt *yo, struct ly_set *data_inputs)
+{
+    struct ly_in *in = NULL;
+    char *filepath = NULL;
+    LYS_INFORMAT format_schema;
+    LYD_FORMAT format_data;
+
     for (int i = 0; i < argc - optind; i++) {
-        LYS_INFORMAT format_schema = LYS_IN_UNKNOWN;
-        LYD_FORMAT format_data = yo->data_in_format;
+        format_schema = LYS_IN_UNKNOWN;
+        format_data = data_in_format;
 
         filepath = argv[optind + i];
 
@@ -304,7 +364,7 @@ fill_context_inputs(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **c
         }
 
         if (format_schema) {
-            if (cmd_add_exec(ctx, yo, filepath)) {
+            if (cmd_add_exec(&ctx, yo, filepath)) {
                 goto error;
             }
         } else {
@@ -312,31 +372,16 @@ fill_context_inputs(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **c
                 YLMSG_E("Unable to process input file.\n");
                 goto error;
             }
-            if (!fill_cmdline_file(&yo->data_inputs, in, filepath, format_data)) {
+            if (!fill_cmdline_file(data_inputs, in, filepath, format_data)) {
                 goto error;
             }
             in = NULL;
         }
     }
 
-    /* check that all specified features were applied, apply now if possible */
-    while ((sf = get_features_not_applied(&yo->schema_features))) {
-        /* try to find implemented or the latest revision of this module */
-        mod = ly_ctx_get_module_implemented(*ctx, sf->mod_name);
-        if (!mod) {
-            mod = ly_ctx_get_module_latest(*ctx, sf->mod_name);
-        }
-        if (!mod) {
-            YLMSG_E("Specified features not applied, module \"%s\" not loaded.\n", sf->mod_name);
-            goto error;
-        }
-
-        /* we have the module, implement it if needed and enable the specific features */
-        if (lys_set_implemented(mod, (const char **)sf->features)) {
-            YLMSG_E("Implementing module \"%s\" failed.\n", mod->name);
-            goto error;
-        }
-        sf->applied = 1;
+    /* Check that all specified features were applied, apply now if possible. */
+    if (apply_features(&yo->schema_features, ctx)) {
+        return -1;
     }
 
     return 0;
@@ -394,8 +439,6 @@ set_debug_groups(char *groups, struct yl_opt *yo)
 static int
 fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
 {
-    int ret;
-
     int opt, opt_index;
     struct option options[] = {
         {"help",              no_argument,       NULL, 'h'},
@@ -658,12 +701,19 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
         yo->ctx_options |= LY_CTX_SET_PRIV_PARSED;
     }
 
-    /* process input files provided as standalone command line arguments,
-     * schema modules are parsed and inserted into the context,
-     * data files are just checked and prepared into internal structures for further processing */
-    ret = fill_context_inputs(argc, argv, yo, ctx);
-    if (ret) {
-        return ret;
+    /* Create the libyang context. */
+    if (create_ly_context(yo->yang_lib_file, yo->searchpaths, &yo->schema_features, &yo->ctx_options, ctx)) {
+        return -1;
+    }
+
+    /* Set callback providing run-time extension instance data. */
+    if (yo->schema_context_filename) {
+        ly_ctx_set_ext_data_clb(*ctx, ext_data_clb, yo->schema_context_filename);
+    }
+
+    /* Schema modules and data files are just checked and prepared into internal structures for further processing. */
+    if (fill_context_inputs(argc, argv, optind, yo->data_in_format, *ctx, yo, &yo->data_inputs)) {
+        return -1;
     }
 
     /* the second batch of checks */
