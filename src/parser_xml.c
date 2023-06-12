@@ -1147,7 +1147,8 @@ lyd_parse_xml(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
 {
     LY_ERR r, rc = LY_SUCCESS;
     struct lyd_xml_ctx *lydctx;
-    ly_bool parsed_data_nodes = 0;
+    ly_bool parsed_data_nodes = 0, close_elem = 0;
+    struct lyd_node *act = NULL;
     enum LYXML_PARSER_STATUS status;
 
     assert(ctx && in && lydctx_p);
@@ -1167,6 +1168,14 @@ lyd_parse_xml(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
     /* find the operation node if it exists already */
     LY_CHECK_GOTO(rc = lyd_parser_find_operation(parent, int_opts, &lydctx->op_node), cleanup);
 
+    if ((int_opts & LYD_INTOPT_RPC) && (int_opts & LYD_INTOPT_ACTION)) {
+        /* can be either, try to parse "action" */
+        if (!lydxml_envelope(lydctx->xmlctx, "action", "urn:ietf:params:xml:ns:yang:1", 0, &act)) {
+            close_elem = 1;
+            int_opts &= ~LYD_INTOPT_RPC;
+        }
+    }
+
     /* parse XML data */
     while (lydctx->xmlctx->status == LYXML_ELEMENT) {
         r = lydxml_subtree_r(lydctx, parent, first_p, parsed);
@@ -1177,6 +1186,19 @@ lyd_parse_xml(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
         if (!(int_opts & LYD_INTOPT_WITH_SIBLINGS)) {
             break;
         }
+    }
+
+    /* close an opened element */
+    if (close_elem) {
+        if (lydctx->xmlctx->status != LYXML_ELEM_CLOSE) {
+            assert(lydctx->xmlctx->status == LYXML_ELEMENT);
+            LOGVAL(lydctx->xmlctx->ctx, LYVE_SYNTAX, "Unexpected child element \"%.*s\".",
+                    (int)lydctx->xmlctx->name_len, lydctx->xmlctx->name);
+            rc = LY_EVALID;
+            goto cleanup;
+        }
+
+        LY_CHECK_GOTO(rc = lyxml_ctx_next(lydctx->xmlctx), cleanup);
     }
 
     /* check final state */
@@ -1211,6 +1233,7 @@ cleanup:
     assert(!(parse_opts & LYD_PARSE_ONLY) || (!lydctx->node_types.count && !lydctx->meta_types.count &&
             !lydctx->node_when.count));
 
+    lyd_free_tree(act);
     if (rc && (!(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
         lyd_xml_ctx_free((struct lyd_ctx *)lydctx);
     } else {
