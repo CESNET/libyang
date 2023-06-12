@@ -775,7 +775,7 @@ main_ni(int argc, char *argv[])
 
     if (yo.list) {
         /* print the list of schemas */
-        ret = print_list(yo.out, ctx, yo.data_out_format);
+        ret = cmd_list_exec(&ctx, &yo, NULL);
         goto cleanup;
     } else {
         if (yo.feature_param_format) {
