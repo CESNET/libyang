@@ -631,8 +631,33 @@ test_netconf_rpc(void **state)
     lyd_free_all(tree);
     lyd_free_all(op);
 
-    /* wrong namespace, element name, whatever... */
-    /* TODO */
+    /* invalid anyxml nested metadata value */
+    data = "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"1\" pid=\"4114692032\">\n"
+            "  <copy-config>\n"
+            "    <target>\n"
+            "      <running/>\n"
+            "    </target>\n"
+            "    <source>\n"
+            "      <config>\n"
+            "        <l1 xmlns=\"urn:tests:a\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n"
+            "          <a>val_a</a>\n"
+            "          <b>val_b</b>\n"
+            "          <c>5</c>\n"
+            "          <cont nc:operation=\"merge\">\n"
+            "            <e nc:operation=\"merge2\">false</e>\n"
+            "          </cont>\n"
+            "        </l1>\n"
+            "      </config>\n"
+            "    </source>\n"
+            "  </copy-config>\n"
+            "</rpc>\n";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_NETCONF, &tree, &op));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Invalid enumeration value \"merge2\".",
+            "Data location \"/ietf-netconf:copy-config/source/config/a:l1[a='val_a'][b='val_b'][c='5']/cont/e\", line number 13.");
+    lyd_free_all(tree);
+    assert_null(op);
 }
 
 static void

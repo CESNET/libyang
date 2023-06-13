@@ -75,6 +75,8 @@ lydxml_metadata(struct lyd_xml_ctx *lydctx, const struct lysc_node *sparent, str
 
     *meta = NULL;
 
+    LOG_LOCSET(sparent, NULL, NULL, NULL);
+
     /* check for NETCONF filter unqualified attributes */
     if (!strcmp(sparent->module->name, "notifications")) {
         /* ancient module that does not even use the extension */
@@ -163,6 +165,7 @@ create_meta:
     }
 
 cleanup:
+    LOG_LOCBACK(1, 0, 0, 0);
     if (ret) {
         lyd_free_meta_siblings(*meta);
         *meta = NULL;
@@ -853,6 +856,7 @@ lydxml_subtree_any(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, co
     uint32_t prev_parse_opts = lydctx->parse_opts, prev_int_opts = lydctx->int_opts;
     struct lyd_node *child = NULL;
     char *val = NULL;
+    ly_bool log_node = 0;
 
     *node = NULL;
 
@@ -878,6 +882,14 @@ lydxml_subtree_any(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, co
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
         val = NULL;
     } else {
+        /* create node */
+        r = lyd_create_any(snode, NULL, LYD_ANYDATA_DATATREE, 1, node);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+
+        assert(*node);
+        LOG_LOCSET(NULL, *node, NULL, NULL);
+        log_node = 1;
+
         /* parser next */
         r = lyxml_ctx_next(xmlctx);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
@@ -893,17 +905,15 @@ lydxml_subtree_any(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, co
             LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
         }
 
-        /* restore options */
-        lydctx->parse_opts = prev_parse_opts;
-        lydctx->int_opts = prev_int_opts;
-
-        /* create node */
-        r = lyd_create_any(snode, child, LYD_ANYDATA_DATATREE, 1, node);
-        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+        /* assign the data tree */
+        ((struct lyd_node_any *)*node)->value.tree = child;
         child = NULL;
     }
 
 cleanup:
+    if (log_node) {
+        LOG_LOCBACK(0, 1, 0, 0);
+    }
     lydctx->parse_opts = prev_parse_opts;
     lydctx->int_opts = prev_int_opts;
     free(val);
