@@ -119,9 +119,6 @@ cmd_feature_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
         goto cleanup;
     }
 
-    /* always erase the set, so the previous module's features don't carry over to the next module's features */
-    ly_set_erase(&set, NULL);
-
     mod = ly_ctx_get_module_latest(*ctx, posv);
     if (!mod) {
         YLMSG_E("Module \"%s\" not found.\n", posv);
@@ -144,7 +141,9 @@ cmd_feature_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
         goto cleanup;
     }
 
-    print_features(yo->out, mod, &set);
+    if (yo->interactive) {
+        print_features(yo->out, mod, &set);
+    }
 
 cleanup:
     ly_set_erase(&set, NULL);
