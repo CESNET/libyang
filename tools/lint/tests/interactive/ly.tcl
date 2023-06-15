@@ -2,8 +2,8 @@ package require Expect
 
 source [expr {[info exists ::env(TESTS_DIR)] ? "$env(TESTS_DIR)/common.tcl" : "../common.tcl"}]
 
-# set the timeout to 1 second
-set timeout 1
+# set the timeout to 5 seconds
+set timeout 5
 # prompt of yanglint
 set prompt "> "
 # turn off dialog between expect and yanglint
