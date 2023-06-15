@@ -769,17 +769,13 @@ main_ni(int argc, char *argv[])
     } else {
         if (yo.feature_param_format) {
             for (u = 0; u < yo.schema_modules.count; u++) {
-                if (collect_features(yo.schema_modules.objs[u], &set)) {
-                    YLMSG_E("Unable to read features from a module.\n");
+                if ((ret = cmd_feature_exec(&ctx, &yo, ((struct lys_module *)yo.schema_modules.objs[u])->name))) {
                     goto cleanup;
                 }
-                if (generate_features_output(yo.schema_modules.objs[u], &set, &features_output)) {
-                    YLMSG_E("Unable to generate feature command output.\n");
-                    goto cleanup;
-                }
-                ly_set_erase(&set, NULL);
             }
-            ly_print(yo.out, "%s\n", features_output);
+            if ((ret = cmd_feature_fin(ctx, &yo))) {
+                goto cleanup;
+            }
         } else if (yo.schema_out_format) {
             if (yo.schema_node) {
                 ret = lys_print_node(yo.out, yo.schema_node, yo.schema_out_format, yo.line_length, yo.schema_print_options);
