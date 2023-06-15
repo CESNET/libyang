@@ -230,6 +230,51 @@ cmd_print_module(const char *posv, struct ly_out *out, struct ly_ctx **ctx, LYS_
     return rc;
 }
 
+/**
+ * @brief Print schema node path.
+ *
+ * @param[in] ctx Context for libyang.
+ * @param[in] yo Context for yanglint.
+ * @return 0 on success.
+ */
+static int
+print_node(struct ly_ctx *ctx, struct yl_opt *yo)
+{
+    const struct lysc_node *node;
+    uint32_t temp_lo = 0;
+
+    if (yo->interactive) {
+        /* Use the same approach as for completion. */
+        node = find_schema_path(ctx, yo->schema_node_path);
+        if (!node) {
+            YLMSG_E("The requested schema node \"%s\" does not exists.\n", yo->schema_node_path);
+            return 1;
+        }
+    } else {
+        /* turn off logging so that the message is not repeated */
+        ly_temp_log_options(&temp_lo);
+        /* search operation input */
+        node = lys_find_path(ctx, NULL, yo->schema_node_path, 0);
+        if (!node) {
+            /* restore logging so an error may be displayed */
+            ly_temp_log_options(NULL);
+            /* search operation output */
+            node = lys_find_path(ctx, NULL, yo->schema_node_path, 1);
+            if (!node) {
+                YLMSG_E("Invalid schema path.\n");
+                return 1;
+            }
+        }
+    }
+
+    if (lys_print_node(yo->out, node, yo->schema_out_format, yo->line_length, yo->schema_print_options)) {
+        YLMSG_E("Unable to print schema node %s.\n", yo->schema_node_path);
+        return 1;
+    }
+
+    return 0;
+}
+
 int
 cmd_print_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
 {
@@ -241,25 +286,11 @@ cmd_print_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
     }
 
     if (yo->schema_node_path) {
-        const struct lysc_node *node;
-
-        node = find_schema_path(*ctx, yo->schema_node_path);
-        if (!node) {
-            YLMSG_E("The requested schema node \"%s\" does not exists.\n", yo->schema_node_path);
-            return 1;
-        }
-
-        if (lys_print_node(yo->out, node, yo->schema_out_format, yo->line_length, yo->schema_print_options)) {
-            YLMSG_E("Unable to print schema node %s.\n", yo->schema_node_path);
-            return 1;
-        }
+        rc = print_node(*ctx, yo);
     } else {
         rc = cmd_print_module(posv, yo->out, ctx, yo->schema_out_format, yo->line_length, yo->schema_print_options);
-        if (!yo->last_one) {
-            /* for YANG Tree Diagrams printing it's more readable to print a blank line between modules. */
-            if (yo->schema_out_format == LYS_OUT_TREE) {
-                ly_print(yo->out, "\n");
-            }
+        if (!yo->last_one && (yo->schema_out_format == LYS_OUT_TREE)) {
+            ly_print(yo->out, "\n");
         }
     }
 

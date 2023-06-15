@@ -93,7 +93,6 @@ struct yl_opt {
 
     /* specification of printing schema node subtree, option --schema-node */
     char *schema_node_path;
-    const struct lysc_node *schema_node;
     char *submodule;
 
     /* name of file containing explicit context passed to callback

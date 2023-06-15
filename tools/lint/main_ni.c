@@ -464,7 +464,6 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
         {NULL,               0,                 NULL, 0}
     };
     uint8_t data_type_set = 0;
-    uint32_t temp_lo = 0;
 
     yo->ctx_options = YL_DEFAULT_CTX_OPTIONS;
     yo->data_parse_options = YL_DEFAULT_DATA_PARSE_OPTIONS;
@@ -719,23 +718,6 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
         YLMSG_W("Data parser options specified, but no data input file provided.\n");
     }
 
-    if (yo->schema_node_path) {
-        /* turn off logging so that the message is not repeated */
-        ly_temp_log_options(&temp_lo);
-        /* search operation input */
-        yo->schema_node = lys_find_path(*ctx, NULL, yo->schema_node_path, 0);
-        if (!yo->schema_node) {
-            /* restore logging so an error may be displayed */
-            ly_temp_log_options(NULL);
-            /* search operation output */
-            yo->schema_node = lys_find_path(*ctx, NULL, yo->schema_node_path, 1);
-            if (!yo->schema_node) {
-                YLMSG_E("Invalid schema path.\n");
-                return -1;
-            }
-        }
-    }
-
     return 0;
 }
 
@@ -777,10 +759,8 @@ main_ni(int argc, char *argv[])
                 goto cleanup;
             }
         } else if (yo.schema_out_format) {
-            if (yo.schema_node) {
-                ret = lys_print_node(yo.out, yo.schema_node, yo.schema_out_format, yo.line_length, yo.schema_print_options);
-                if (ret) {
-                    YLMSG_E("Unable to print schema node %s.\n", yo.schema_node_path);
+            if (yo.schema_node_path) {
+                if ((ret = cmd_print_exec(&ctx, &yo, NULL))) {
                     goto cleanup;
                 }
             } else if (yo.submodule) {
