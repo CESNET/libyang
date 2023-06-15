@@ -373,6 +373,305 @@ cmd_data_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
     return 0;
 }
 
+/**
+ * @brief Evaluate xpath adn print result.
+ *
+ * @param[in] tree Data tree.
+ * @param[in] xpath Xpath to evaluate.
+ * @return 0 on success.
+ */
+static int
+evaluate_xpath(const struct lyd_node *tree, const char *xpath)
+{
+    struct ly_set *set = NULL;
+
+    if (lyd_find_xpath(tree, xpath, &set)) {
+        return -1;
+    }
+
+    /* print result */
+    printf("XPath \"%s\" evaluation result:\n", xpath);
+    if (!set->count) {
+        printf("\tEmpty\n");
+    } else {
+        for (uint32_t u = 0; u < set->count; ++u) {
+            struct lyd_node *node = (struct lyd_node *)set->objs[u];
+
+            printf("  %s \"%s\"", lys_nodetype2str(node->schema->nodetype), node->schema->name);
+            if (node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+                printf(" (value: \"%s\")\n", lyd_get_value(node));
+            } else if (node->schema->nodetype == LYS_LIST) {
+                printf(" (");
+                for (struct lyd_node *key = ((struct lyd_node_inner *)node)->child; key && lysc_is_key(key->schema); key = key->next) {
+                    printf("%s\"%s\": \"%s\";", (key != ((struct lyd_node_inner *)node)->child) ? " " : "",
+                            key->schema->name, lyd_get_value(key));
+                }
+                printf(")\n");
+            } else {
+                printf("\n");
+            }
+        }
+    }
+
+    ly_set_free(set, NULL);
+    return 0;
+}
+
+/**
+ * @brief Checking that a parent data node exists in the datastore for the nested-notification and action.
+ *
+ * @param[in] op Operation to check.
+ * @param[in] oper_tree Data from datastore.
+ * @param[in] operational_f Operational datastore file information.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+check_operation_parent(struct lyd_node *op, struct lyd_node *oper_tree, struct cmdline_file *operational_f)
+{
+    LY_ERR ret;
+    struct ly_set *set = NULL;
+    char *path = NULL;
+
+    if (!op || !lyd_parent(op)) {
+        /* The function is defined only for nested-notification and action. */
+        return LY_SUCCESS;
+    }
+
+    if (!operational_f || (operational_f && !operational_f->in)) {
+        YLMSG_E("The --operational parameter needed to validate operation \"%s\" is missing.\n", LYD_NAME(op));
+        ret = LY_EVALID;
+        goto cleanup;
+    }
+
+    path = lyd_path(lyd_parent(op), LYD_PATH_STD, NULL, 0);
+    if (!path) {
+        ret = LY_EMEM;
+        goto cleanup;
+    }
+
+    if (!oper_tree) {
+        YLMSG_W("Operational datastore is empty or contains unknown data.\n");
+        YLMSG_E("Operation \"%s\" parent \"%s\" not found in the operational data.\n", LYD_NAME(op), path);
+        ret = LY_EVALID;
+        goto cleanup;
+    }
+    if ((ret = lyd_find_xpath(oper_tree, path, &set))) {
+        goto cleanup;
+    }
+    if (!set->count) {
+        YLMSG_E("Operation \"%s\" parent \"%s\" not found in the operational data.\n", LYD_NAME(op), path);
+        ret = LY_EVALID;
+        goto cleanup;
+    }
+
+cleanup:
+    ly_set_free(set, NULL);
+    free(path);
+
+    return ret;
+}
+
+/**
+ * @brief Process the input data files - parse, validate and print according to provided options.
+ *
+ * @param[in] ctx libyang context with schema.
+ * @param[in] type The type of data in the input files.
+ * @param[in] merge Flag if the data should be merged before validation.
+ * @param[in] out_format Data format for printing.
+ * @param[in] out The output handler for printing.
+ * @param[in] parse_options Parser options.
+ * @param[in] validate_options Validation options.
+ * @param[in] print_options Printer options.
+ * @param[in] operational Optional operational datastore file information for the case of an extended validation of
+ * operation(s).
+ * @param[in] reply_rpc Source RPC operation file information for parsing NETCONF rpc-reply.
+ * @param[in] inputs Set of file informations of input data files.
+ * @param[in] xpaths The set of XPaths to be evaluated on the processed data tree, basic information about the resulting set
+ * is printed. Alternative to data printing.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+process_data(struct ly_ctx *ctx, enum lyd_type type, uint8_t merge, LYD_FORMAT out_format,
+        struct ly_out *out, uint32_t parse_options, uint32_t validate_options, uint32_t print_options,
+        struct cmdline_file *operational, struct cmdline_file *reply_rpc, struct ly_set *inputs,
+        struct ly_set *xpaths)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyd_node *tree = NULL, *op = NULL, *envp = NULL, *merged_tree = NULL, *oper_tree = NULL;
+    const char *xpath;
+    struct ly_set *set = NULL;
+
+    /* additional operational datastore */
+    if (operational && operational->in) {
+        ret = lyd_parse_data(ctx, NULL, operational->in, operational->format, LYD_PARSE_ONLY, 0, &oper_tree);
+        if (ret) {
+            YLMSG_E("Failed to parse operational datastore file \"%s\".\n", operational->path);
+            goto cleanup;
+        }
+    }
+
+    for (uint32_t u = 0; u < inputs->count; ++u) {
+        struct cmdline_file *input_f = (struct cmdline_file *)inputs->objs[u];
+
+        switch (type) {
+        case LYD_TYPE_DATA_YANG:
+            ret = lyd_parse_data(ctx, NULL, input_f->in, input_f->format, parse_options, validate_options, &tree);
+            break;
+        case LYD_TYPE_RPC_YANG:
+        case LYD_TYPE_REPLY_YANG:
+        case LYD_TYPE_NOTIF_YANG:
+            ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, type, &tree, &op);
+            break;
+        case LYD_TYPE_RPC_NETCONF:
+        case LYD_TYPE_NOTIF_NETCONF:
+            ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, type, &envp, &op);
+
+            /* adjust pointers */
+            for (tree = op; lyd_parent(tree); tree = lyd_parent(tree)) {}
+            break;
+        case LYD_TYPE_REPLY_NETCONF:
+            /* parse source RPC operation */
+            assert(reply_rpc && reply_rpc->in);
+            ret = lyd_parse_op(ctx, NULL, reply_rpc->in, reply_rpc->format, LYD_TYPE_RPC_NETCONF, &envp, &op);
+            if (ret) {
+                YLMSG_E("Failed to parse source NETCONF RPC operation file \"%s\".\n", reply_rpc->path);
+                goto cleanup;
+            }
+
+            /* adjust pointers */
+            for (tree = op; lyd_parent(tree); tree = lyd_parent(tree)) {}
+
+            /* free input */
+            lyd_free_siblings(lyd_child(op));
+
+            /* we do not care */
+            lyd_free_all(envp);
+            envp = NULL;
+
+            ret = lyd_parse_op(ctx, op, input_f->in, input_f->format, type, &envp, NULL);
+            break;
+        default:
+            YLMSG_E("Internal error (%s:%d).\n", __FILE__, __LINE__);
+            goto cleanup;
+        }
+
+        if (ret) {
+            YLMSG_E("Failed to parse input data file \"%s\".\n", input_f->path);
+            goto cleanup;
+        }
+
+        if (merge) {
+            /* merge the data so far parsed for later validation and print */
+            if (!merged_tree) {
+                merged_tree = tree;
+            } else {
+                ret = lyd_merge_siblings(&merged_tree, tree, LYD_MERGE_DESTRUCT);
+                if (ret) {
+                    YLMSG_E("Merging %s with previous data failed.\n", input_f->path);
+                    goto cleanup;
+                }
+            }
+            tree = NULL;
+        } else if (out_format) {
+            /* print */
+            switch (type) {
+            case LYD_TYPE_DATA_YANG:
+                lyd_print_all(out, tree, out_format, print_options);
+                break;
+            case LYD_TYPE_RPC_YANG:
+            case LYD_TYPE_REPLY_YANG:
+            case LYD_TYPE_NOTIF_YANG:
+            case LYD_TYPE_RPC_NETCONF:
+            case LYD_TYPE_NOTIF_NETCONF:
+                lyd_print_tree(out, tree, out_format, print_options);
+                break;
+            case LYD_TYPE_REPLY_NETCONF:
+                /* just the output */
+                lyd_print_tree(out, lyd_child(tree), out_format, print_options);
+                break;
+            default:
+                assert(0);
+            }
+        } else {
+            /* validation of the RPC/Action/reply/Notification with the operational datastore, if any */
+            switch (type) {
+            case LYD_TYPE_DATA_YANG:
+                /* already validated */
+                break;
+            case LYD_TYPE_RPC_YANG:
+            case LYD_TYPE_RPC_NETCONF:
+                ret = lyd_validate_op(tree, oper_tree, LYD_TYPE_RPC_YANG, NULL);
+                break;
+            case LYD_TYPE_REPLY_YANG:
+            case LYD_TYPE_REPLY_NETCONF:
+                ret = lyd_validate_op(tree, oper_tree, LYD_TYPE_REPLY_YANG, NULL);
+                break;
+            case LYD_TYPE_NOTIF_YANG:
+            case LYD_TYPE_NOTIF_NETCONF:
+                ret = lyd_validate_op(tree, oper_tree, LYD_TYPE_NOTIF_YANG, NULL);
+                break;
+            default:
+                assert(0);
+            }
+            if (ret) {
+                if (operational->path) {
+                    YLMSG_E("Failed to validate input data file \"%s\" with operational datastore \"%s\".\n",
+                            input_f->path, operational->path);
+                } else {
+                    YLMSG_E("Failed to validate input data file \"%s\".\n", input_f->path);
+                }
+                goto cleanup;
+            }
+
+            if ((ret = check_operation_parent(op, oper_tree, operational))) {
+                goto cleanup;
+            }
+        }
+
+        /* next iter */
+        lyd_free_all(tree);
+        tree = NULL;
+        lyd_free_all(envp);
+        envp = NULL;
+    }
+
+    if (merge) {
+        /* validate the merged result */
+        ret = lyd_validate_all(&merged_tree, ctx, validate_options, NULL);
+        if (ret) {
+            YLMSG_E("Merged data are not valid.\n");
+            goto cleanup;
+        }
+
+        if (out_format) {
+            /* and print it */
+            lyd_print_all(out, merged_tree, out_format, print_options);
+        }
+
+        for (uint32_t u = 0; xpaths && (u < xpaths->count); ++u) {
+            xpath = (const char *)xpaths->objs[u];
+            ly_set_free(set, NULL);
+            ret = lys_find_xpath(ctx, NULL, xpath, LYS_FIND_NO_MATCH_ERROR, &set);
+            if (ret || !set->count) {
+                ret = (ret == LY_SUCCESS) ? LY_EINVAL : ret;
+                YLMSG_E("The requested xpath failed.\n");
+                goto cleanup;
+            }
+            if (evaluate_xpath(merged_tree, xpath)) {
+                goto cleanup;
+            }
+        }
+    }
+
+cleanup:
+    lyd_free_all(tree);
+    lyd_free_all(envp);
+    lyd_free_all(merged_tree);
+    lyd_free_all(oper_tree);
+    ly_set_free(set, NULL);
+    return ret;
+}
+
 int
 cmd_data_fin(struct ly_ctx *ctx, struct yl_opt *yo)
 {

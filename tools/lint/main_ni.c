@@ -338,14 +338,12 @@ apply_features(struct ly_set *schema_features, struct ly_ctx *ctx)
  * @param[in] data_in_format Specified input data format.
  * @param[in,out] ctx Context for libyang.
  * @param[in,out] yo Options for yanglint.
- * @param[out] data_inputs Set of data file inputs.
  * @return 0 on success.
  */
 static int
 fill_context_inputs(int argc, char *argv[], int optind, LYD_FORMAT data_in_format, struct ly_ctx *ctx,
-        struct yl_opt *yo, struct ly_set *data_inputs)
+        struct yl_opt *yo)
 {
-    struct ly_in *in = NULL;
     char *filepath = NULL;
     LYS_INFORMAT format_schema;
     LYD_FORMAT format_data;
@@ -357,25 +355,20 @@ fill_context_inputs(int argc, char *argv[], int optind, LYD_FORMAT data_in_forma
         filepath = argv[optind + i];
 
         if (!filepath) {
-            goto error;
+            return -1;
         }
-        if (get_input(filepath, &format_schema, &format_data, NULL)) {
-            goto error;
+        if (get_format(filepath, &format_schema, &format_data)) {
+            return -1;
         }
 
         if (format_schema) {
             if (cmd_add_exec(&ctx, yo, filepath)) {
-                goto error;
+                return -1;
             }
         } else {
-            if (ly_in_new_filepath(filepath, 0, &in)) {
-                YLMSG_E("Unable to process input file.\n");
-                goto error;
+            if (cmd_data_exec(&ctx, yo, filepath)) {
+                return -1;
             }
-            if (!fill_cmdline_file(data_inputs, in, filepath, format_data)) {
-                goto error;
-            }
-            in = NULL;
         }
     }
 
@@ -385,10 +378,6 @@ fill_context_inputs(int argc, char *argv[], int optind, LYD_FORMAT data_in_forma
     }
 
     return 0;
-
-error:
-    ly_in_free(in, 1);
-    return -1;
 }
 
 #ifndef NDEBUG
@@ -712,7 +701,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
     }
 
     /* Schema modules and data files are just checked and prepared into internal structures for further processing. */
-    if (fill_context_inputs(argc, argv, optind, yo->data_in_format, *ctx, yo, &yo->data_inputs)) {
+    if (fill_context_inputs(argc, argv, optind, yo->data_in_format, *ctx, yo)) {
         return -1;
     }
 
@@ -829,10 +818,7 @@ main_ni(int argc, char *argv[])
 
         /* do the data validation despite the schema was printed */
         if (yo.data_inputs.size) {
-            ret = process_data(ctx, yo.data_type, yo.data_merge, yo.data_out_format, yo.out, yo.data_parse_options,
-                    yo.data_validate_options, yo.data_print_options, &yo.data_operational, &yo.reply_rpc, &yo.data_inputs,
-                    &yo.data_xpath);
-            if (ret) {
+            if ((ret = cmd_data_fin(ctx, &yo))) {
                 goto cleanup;
             }
         }
