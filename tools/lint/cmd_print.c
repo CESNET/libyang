@@ -145,6 +145,11 @@ cmd_print_dep(struct yl_opt *yo, int posc)
         yo->out_stdout = 1;
     }
 
+    if (yo->schema_out_format == LYS_OUT_TREE) {
+        /* print tree from lysc_nodes */
+        yo->ctx_options |= LY_CTX_SET_PRIV_PARSED;
+    }
+
     return 0;
 }
 
@@ -161,6 +166,14 @@ print_submodule(struct ly_out *out, struct ly_ctx **ctx, char *name, char *revis
     erc = submodule ?
             lys_print_submodule(out, submodule, format, line_length, options) :
             LY_ENOTFOUND;
+
+    if (!erc) {
+        return 0;
+    } else if ((erc == LY_ENOTFOUND) && revision) {
+        YLMSG_E("No submodule \"%s\" found.\n", name);
+    } else {
+        YLMSG_E("Unable to print submodule %s.\n", name);
+    }
 
     return erc;
 }
@@ -179,6 +192,14 @@ print_module(struct ly_out *out, struct ly_ctx **ctx, char *name, char *revision
             lys_print_module(out, module, format, line_length, options) :
             LY_ENOTFOUND;
 
+    if (!erc) {
+        return 0;
+    } else if ((erc == LY_ENOTFOUND) && revision) {
+        YLMSG_E("No module \"%s\" found.\n", name);
+    } else {
+        YLMSG_E("Unable to print module %s.\n", name);
+    }
+
     return erc;
 }
 
@@ -186,10 +207,8 @@ static int
 cmd_print_module(const char *posv, struct ly_out *out, struct ly_ctx **ctx, LYS_OUTFORMAT format,
         size_t line_length, uint32_t options)
 {
-    int rc = 0;
     LY_ERR erc;
     char *name = NULL, *revision;
-    ly_bool search_submodul;
 
     name = strdup(posv);
     /* get revision */
@@ -202,32 +221,11 @@ cmd_print_module(const char *posv, struct ly_out *out, struct ly_ctx **ctx, LYS_
     erc = print_module(out, ctx, name, revision, format, line_length, options);
 
     if (erc == LY_ENOTFOUND) {
-        search_submodul = 1;
         erc = print_submodule(out, ctx, name, revision, format, line_length, options);
-    } else {
-        search_submodul = 0;
-    }
-
-    if (erc == LY_SUCCESS) {
-        rc = 0;
-    } else if (erc == LY_ENOTFOUND) {
-        if (revision) {
-            YLMSG_E("No (sub)module \"%s\" in revision %s found.\n", name, revision);
-        } else {
-            YLMSG_E("No (sub)module \"%s\" found.\n", name);
-        }
-        rc = 1;
-    } else {
-        if (search_submodul) {
-            YLMSG_E("Unable to print submodule %s.\n", name);
-        } else {
-            YLMSG_E("Unable to print module %s.\n", name);
-        }
-        rc = 1;
     }
 
     free(name);
-    return rc;
+    return erc;
 }
 
 /**
@@ -280,13 +278,16 @@ cmd_print_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
 {
     int rc = 0;
 
-    if (yo->schema_out_format == LYS_OUT_TREE) {
+    if (yo->ctx_options & LY_CTX_SET_PRIV_PARSED) {
         /* print tree from lysc_nodes */
         ly_ctx_set_options(*ctx, LY_CTX_SET_PRIV_PARSED);
     }
 
     if (yo->schema_node_path) {
         rc = print_node(*ctx, yo);
+    } else if (!yo->interactive && yo->submodule) {
+        rc = print_submodule(yo->out, ctx, yo->submodule, NULL, yo->schema_out_format, yo->line_length,
+                yo->schema_print_options);
     } else {
         rc = cmd_print_module(posv, yo->out, ctx, yo->schema_out_format, yo->line_length, yo->schema_print_options);
         if (!yo->last_one && (yo->schema_out_format == LYS_OUT_TREE)) {
