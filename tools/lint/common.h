@@ -193,29 +193,6 @@ LYD_FORMAT get_data_format(const char *filename);
 int get_format(const char *filepath, LYS_INFORMAT *schema_form, LYD_FORMAT *data_form);
 
 /**
- * @brief Process the input data files - parse, validate and print according to provided options.
- *
- * @param[in] ctx libyang context with schema.
- * @param[in] data_type The type of data in the input files.
- * @param[in] merge Flag if the data should be merged before validation.
- * @param[in] format Data format for printing.
- * @param[in] out The output handler for printing.
- * @param[in] options_parse Parser options.
- * @param[in] options_validate Validation options.
- * @param[in] options_print Printer options.
- * @param[in] operational_f Optional operational datastore file information for the case of an extended validation of
- * operation(s).
- * @param[in] rpc_f Source RPC operation file information for parsing NETCONF rpc-reply.
- * @param[in] inputs Set of file informations of input data files.
- * @param[in] xpath The set of XPaths to be evaluated on the processed data tree, basic information about the resulting set
- * is printed. Alternative to data printing.
- * @return LY_ERR value.
- */
-LY_ERR process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FORMAT format, struct ly_out *out,
-        uint32_t options_parse, uint32_t options_validate, uint32_t options_print, struct cmdline_file *operational_f,
-        struct cmdline_file *rpc_f, struct ly_set *inputs, struct ly_set *xpaths);
-
-/**
  * @brief Get the node specified by the path.
  *
  * @param[in] ctx libyang context with schema.
