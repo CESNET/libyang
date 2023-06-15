@@ -684,11 +684,6 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
         return -1;
     }
 
-    if (yo->schema_out_format == LYS_OUT_TREE) {
-        /* print tree from lysc_nodes */
-        yo->ctx_options |= LY_CTX_SET_PRIV_PARSED;
-    }
-
     /* Create the libyang context. */
     if (create_ly_context(yo->yang_lib_file, yo->searchpaths, &yo->schema_features, &yo->ctx_options, ctx)) {
         return -1;
@@ -748,55 +743,37 @@ main_ni(int argc, char *argv[])
         /* print the list of schemas */
         ret = cmd_list_exec(&ctx, &yo, NULL);
         goto cleanup;
-    } else {
-        if (yo.feature_param_format) {
-            for (u = 0; u < yo.schema_modules.count; u++) {
-                if ((ret = cmd_feature_exec(&ctx, &yo, ((struct lys_module *)yo.schema_modules.objs[u])->name))) {
-                    goto cleanup;
-                }
-            }
-            if ((ret = cmd_feature_fin(ctx, &yo))) {
+    }
+    if (yo.feature_param_format) {
+        for (u = 0; u < yo.schema_modules.count; u++) {
+            if ((ret = cmd_feature_exec(&ctx, &yo, ((struct lys_module *)yo.schema_modules.objs[u])->name))) {
                 goto cleanup;
-            }
-        } else if (yo.schema_out_format) {
-            if (yo.schema_node_path) {
-                if ((ret = cmd_print_exec(&ctx, &yo, NULL))) {
-                    goto cleanup;
-                }
-            } else if (yo.submodule) {
-                const struct lysp_submodule *submod = ly_ctx_get_submodule_latest(ctx, yo.submodule);
-
-                if (!submod) {
-                    YLMSG_E("Unable to find submodule %s.\n", yo.submodule);
-                    goto cleanup;
-                }
-
-                ret = lys_print_submodule(yo.out, submod, yo.schema_out_format, yo.line_length, yo.schema_print_options);
-                if (ret) {
-                    YLMSG_E("Unable to print submodule %s.\n", submod->name);
-                    goto cleanup;
-                }
-            } else {
-                for (u = 0; u < yo.schema_modules.count; ++u) {
-                    ret = lys_print_module(yo.out, (struct lys_module *)yo.schema_modules.objs[u], yo.schema_out_format,
-                            yo.line_length, yo.schema_print_options);
-                    /* for YANG Tree Diagrams printing it's more readable to print a blank line between modules. */
-                    if ((yo.schema_out_format == LYS_OUT_TREE) && (u + 1 < yo.schema_modules.count)) {
-                        ly_print(yo.out, "\n");
-                    }
-                    if (ret) {
-                        YLMSG_E("Unable to print module %s.\n", ((struct lys_module *)yo.schema_modules.objs[u])->name);
-                        goto cleanup;
-                    }
-                }
             }
         }
-
-        /* do the data validation despite the schema was printed */
-        if (yo.data_inputs.size) {
-            if ((ret = cmd_data_fin(ctx, &yo))) {
+        if ((ret = cmd_feature_fin(ctx, &yo))) {
+            goto cleanup;
+        }
+    } else if (yo.schema_out_format && yo.schema_node_path) {
+        if ((ret = cmd_print_exec(&ctx, &yo, NULL))) {
+            goto cleanup;
+        }
+    } else if (yo.schema_out_format && yo.submodule) {
+        if ((ret = cmd_print_exec(&ctx, &yo, yo.submodule))) {
+            goto cleanup;
+        }
+    } else if (yo.schema_out_format) {
+        for (u = 0; u < yo.schema_modules.count; ++u) {
+            yo.last_one = (u + 1) == yo.schema_modules.count;
+            if ((ret = cmd_print_exec(&ctx, &yo, ((struct lys_module *)yo.schema_modules.objs[u])->name))) {
                 goto cleanup;
             }
+        }
+    }
+
+    /* do the data validation despite the schema was printed */
+    if (yo.data_inputs.size) {
+        if ((ret = cmd_data_fin(ctx, &yo))) {
+            goto cleanup;
         }
     }
 
