@@ -47,27 +47,46 @@ written (and providing API) in C.
 
 %prep
 %autosetup -p1
+%if 0%{?rhel} && 0%{?rhel} < 8
+    mkdir build
+%endif
 
 %build
-%cmake -DCMAKE_BUILD_TYPE=RELWITHDEBINFO
-%cmake_build
-
-%if "x%{?suse_version}" == "x"
-cd %{__cmake_builddir}
+%if 0%{?rhel} && 0%{?rhel} < 8
+  cd build
+  cmake \
+    -DCMAKE_INSTALL_PREFIX:PATH=%{_prefix} \
+    -DCMAKE_BUILD_TYPE:String="Release" \
+    -DCMAKE_C_FLAGS="${RPM_OPT_FLAGS}" \
+    -DCMAKE_CXX_FLAGS="${RPM_OPT_FLAGS}" \
+    ..
+  make
+%else
+  %cmake -DCMAKE_BUILD_TYPE=RELWITHDEBINFO
+  %cmake_build
+  %if "x%{?suse_version}" == "x"
+    cd %{__cmake_builddir}
+  %endif
 %endif
 make doc
 
 %check
-%if "x%{?suse_version}" == "x"
-cd %{__cmake_builddir}
+%if ( 0%{?rhel} == 0 ) || 0%{?rhel} > 7
+  %if "x%{?suse_version}" == "x"
+    cd %{__cmake_builddir}
+  %endif
 %endif
 ctest --output-on-failure -V %{?_smp_mflags}
 
 %install
-%cmake_install
-
 mkdir -m0755 -p %{buildroot}/%{_docdir}/libyang
-cp -a doc/html %{buildroot}/%{_docdir}/libyang/html
+%if 0%{?rhel} && 0%{?rhel} < 8
+  cd build
+  make DESTDIR=%{buildroot} install
+%else
+  %cmake_install
+  cp -a doc/html %{buildroot}/%{_docdir}/libyang/html
+%endif
 
 %files
 %license LICENSE
