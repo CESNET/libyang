@@ -174,26 +174,15 @@ proc ly_exit {} {
     expect eof
 }
 
-# Check if yanglint supports the specified command.
-# Parameter cmd is a command to be found.
-# Return true if command is found otherwise false.
-proc ly_cmd_exists {cmd} {
-    global prompt
-    set rc true
-    spawn $::env(YANGLINT)
-    ly_skip_warnings
-
-    send -- "help\r"
-    expect -- "help\r\n"
-
-    set failure_pattern "\r\n${prompt}$"
-    expect {
-        -re "${cmd}.*\r\n${prompt}$" {}
-        -re $failure_pattern {
-            set rc false
-        }
+# Check if yanglint is configured as DEBUG.
+# Return 1 on success.
+proc yanglint_debug {} {
+    # Call non-interactive yanglint with --help.
+    set output [exec -- $::env(YANGLINT) "-h"]
+    # Find option --debug.
+    if { [regexp -- "--debug=GROUPS" $output] } {
+        return 1
+    } else {
+        return 0
     }
-
-    ly_exit
-    return $rc
 }
