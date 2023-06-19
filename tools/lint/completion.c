@@ -137,8 +137,8 @@ get_model_completion(const char *hint, char ***matches, unsigned int *match_coun
  * @brief Add all child nodes of a single node to the completion hint.
  *
  * @param[in] last_node Node of which children will be added to the hint.
- * @param matches[out] Matches provided to the user as a completion hint.
- * @param match_count[out] Number of matches.
+ * @param[out] matches Matches provided to the user as a completion hint.
+ * @param[out] match_count Number of matches.
  */
 static void
 single_hint_add_children(const struct lysc_node *last_node, char ***matches, unsigned int *match_count)
