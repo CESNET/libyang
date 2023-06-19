@@ -1372,28 +1372,30 @@ lyd_compare_single_data(const struct lyd_node *node1, const struct lyd_node *nod
             iter1 = lyd_child(node1);
             iter2 = lyd_child(node2);
 
-            if (!(node1->schema->flags & LYS_KEYLESS) && !(options & LYD_COMPARE_FULL_RECURSION)) {
-                /* lists with keys, their equivalence is based on their keys */
-                for (const struct lysc_node *key = lysc_node_child(node1->schema);
-                        key && (key->flags & LYS_KEY);
-                        key = key->next) {
-                    if (!iter1 || !iter2) {
-                        return (iter1 == iter2) ? LY_SUCCESS : LY_ENOT;
-                    }
-                    r = lyd_compare_single_schema(iter1, iter2, options, 1);
-                    LY_CHECK_RET(r);
-                    r = lyd_compare_single_data(iter1, iter2, options);
-                    LY_CHECK_RET(r);
-
-                    iter1 = iter1->next;
-                    iter2 = iter2->next;
-                }
-
-                return LY_SUCCESS;
-            } else {
-                /* lists without keys, their equivalence is based on equivalence of all the children (both direct and indirect) */
+            if (options & LYD_COMPARE_FULL_RECURSION) {
                 return lyd_compare_siblings_(iter1, iter2, options, 1);
+            } else if (node1->schema->flags & LYS_KEYLESS) {
+                /* always equal */
+                return LY_SUCCESS;
             }
+
+            /* lists with keys, their equivalence is based on their keys */
+            for (const struct lysc_node *key = lysc_node_child(node1->schema);
+                    key && (key->flags & LYS_KEY);
+                    key = key->next) {
+                if (!iter1 || !iter2) {
+                    return (iter1 == iter2) ? LY_SUCCESS : LY_ENOT;
+                }
+                r = lyd_compare_single_schema(iter1, iter2, options, 1);
+                LY_CHECK_RET(r);
+                r = lyd_compare_single_data(iter1, iter2, options);
+                LY_CHECK_RET(r);
+
+                iter1 = iter1->next;
+                iter2 = iter2->next;
+            }
+
+            return LY_SUCCESS;
         case LYS_ANYXML:
         case LYS_ANYDATA:
             any1 = (struct lyd_node_any *)node1;
@@ -2618,7 +2620,7 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
             /* we must search the instances from beginning to find the first matching one */
             found = 0;
             LYD_LIST_FOR_INST(siblings, target->schema, iter) {
-                if (!lyd_compare_single(target, iter, 0)) {
+                if (!lyd_compare_single(target, iter, LYD_COMPARE_FULL_RECURSION)) {
                     found = 1;
                     break;
                 }
@@ -2640,8 +2642,14 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
     } else {
         /* no children hash table */
         for ( ; siblings; siblings = siblings->next) {
-            if (!lyd_compare_single(siblings, target, LYD_COMPARE_OPAQ)) {
-                break;
+            if (lysc_is_dup_inst_list(target->schema)) {
+                if (!lyd_compare_single(siblings, target, LYD_COMPARE_FULL_RECURSION)) {
+                    break;
+                }
+            } else {
+                if (!lyd_compare_single(siblings, target, LYD_COMPARE_OPAQ)) {
+                    break;
+                }
             }
         }
     }
@@ -2728,6 +2736,7 @@ lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const struct lyd_
 {
     struct lyd_node **match_p, *first, *iter;
     struct lyd_node_inner *parent;
+    uint32_t comp_opts;
 
     LY_CHECK_ARG_RET(NULL, target, set, LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(siblings ? LYD_CTX(siblings) : NULL, LYD_CTX(target), LY_EINVAL);
@@ -2738,6 +2747,9 @@ lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const struct lyd_
         /* no data or schema mismatch */
         return LY_ENOTFOUND;
     }
+
+    /* set options */
+    comp_opts = LYD_COMPARE_OPAQ | (lysc_is_dup_inst_list(target->schema) ? LYD_COMPARE_FULL_RECURSION : 0);
 
     /* get first sibling */
     siblings = lyd_first_sibling(siblings);
@@ -2763,7 +2775,7 @@ lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const struct lyd_
             }
             while (iter) {
                 /* add all found nodes into the set */
-                if ((iter != first) && !lyd_compare_single(iter, target, 0) && ly_set_add(*set, iter, 1, NULL)) {
+                if ((iter != first) && !lyd_compare_single(iter, target, comp_opts) && ly_set_add(*set, iter, 1, NULL)) {
                     goto error;
                 }
 
@@ -2778,7 +2790,7 @@ lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const struct lyd_
     } else {
         /* no children hash table */
         LY_LIST_FOR(siblings, siblings) {
-            if (!lyd_compare_single(target, siblings, LYD_COMPARE_OPAQ)) {
+            if (!lyd_compare_single(target, siblings, comp_opts)) {
                 ly_set_add(*set, (void *)siblings, 1, NULL);
             }
         }

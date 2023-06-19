@@ -366,7 +366,7 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
     LY_ERR rc = LY_SUCCESS;
     const struct lysc_node *schema;
     size_t buflen, bufused;
-    uint32_t first_pos, second_pos;
+    uint32_t first_pos, second_pos, comp_opts;
 
     assert(first || second);
 
@@ -402,7 +402,8 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
     } else if (!first) {
         *op = LYD_DIFF_OP_CREATE;
     } else {
-        if (lyd_compare_single(second, userord_item->inst[second_pos], 0)) {
+        comp_opts = lysc_is_dup_inst_list(second->schema) ? LYD_COMPARE_FULL_RECURSION : 0;
+        if (lyd_compare_single(second, userord_item->inst[second_pos], comp_opts)) {
             /* in first, there is a different instance on the second position, we are going to move 'first' node */
             *op = LYD_DIFF_OP_REPLACE;
         } else if ((options & LYD_DIFF_DEFAULTS) && ((first->flags & LYD_DEFAULT) != (second->flags & LYD_DEFAULT))) {

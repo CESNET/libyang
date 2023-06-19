@@ -1,9 +1,9 @@
 /**
  * @file test_tree_data.c
- * @author: Radek Krejci <rkrejci@cesnet.cz>
- * @brief unit tests for functions from tress_data.c
+ * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @brief unit tests for functions from tree_data.c
  *
- * Copyright (c) 2018-2019 CESNET, z.s.p.o.
+ * Copyright (c) 2018-2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -100,7 +100,7 @@ test_compare(void **state)
     data2 = "<l2 xmlns=\"urn:tests:a\"><c><x>b</x></c></l2>";
     CHECK_PARSE_LYD(data1, 0, LYD_VALIDATE_PRESENT, tree1);
     CHECK_PARSE_LYD(data2, 0, LYD_VALIDATE_PRESENT, tree2);
-    assert_int_equal(LY_ENOT, lyd_compare_single(tree1->next, tree2->next, 0));
+    assert_int_equal(LY_ENOT, lyd_compare_single(tree1->next, tree2->next, LYD_COMPARE_FULL_RECURSION));
     assert_int_equal(LY_SUCCESS, lyd_compare_single(tree1->next->next, tree2->next, 0));
     lyd_free_all(tree1);
     lyd_free_all(tree2);
