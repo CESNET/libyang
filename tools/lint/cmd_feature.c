@@ -152,7 +152,7 @@ cleanup:
 }
 
 int
-cmd_feature_fin(struct ly_ctx *ctx, struct yl_opt *yo)
+cmd_feature_print_fparam(struct ly_ctx *ctx, struct yl_opt *yo)
 {
     (void) ctx;
 

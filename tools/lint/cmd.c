@@ -69,7 +69,7 @@ COMMAND commands[] = {
         "Print a module", "f:hL:o:P:q"
     },
     {
-        "data", cmd_data_opt, cmd_data_dep, cmd_data_exec, cmd_data_fin, cmd_data_help, NULL,
+        "data", cmd_data_opt, cmd_data_dep, cmd_data_store, cmd_data_process, cmd_data_help, NULL,
         "Load, validate and optionally print instance data", "d:ef:F:hmo:O:R:r:nt:x:"
     },
     {
@@ -77,7 +77,7 @@ COMMAND commands[] = {
         "List all the loaded modules", "f:h"
     },
     {
-        "feature", cmd_feature_opt, cmd_feature_dep, cmd_feature_exec, cmd_feature_fin, cmd_feature_help, NULL,
+        "feature", cmd_feature_opt, cmd_feature_dep, cmd_feature_exec, cmd_feature_print_fparam, cmd_feature_help, NULL,
         "Print all features of module(s) with their state", "haf"
     },
     {
@@ -98,7 +98,7 @@ COMMAND commands[] = {
     },
 #ifndef NDEBUG
     {
-        "debug", cmd_debug_opt, cmd_debug_dep, cmd_debug_exec, cmd_debug_fin, cmd_debug_help, NULL,
+        "debug", cmd_debug_opt, cmd_debug_dep, cmd_debug_store, cmd_debug_setlog, cmd_debug_help, NULL,
         "Display specific debug message groups", "h"
     },
 #endif

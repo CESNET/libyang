@@ -366,7 +366,7 @@ fill_context_inputs(int argc, char *argv[], int optind, LYD_FORMAT data_in_forma
                 return -1;
             }
         } else {
-            if (cmd_data_exec(&ctx, yo, filepath)) {
+            if (cmd_data_store(&ctx, yo, filepath)) {
                 return -1;
             }
         }
@@ -398,18 +398,18 @@ set_debug_groups(char *groups, struct yl_opt *yo)
     for (str = groups; (end = strchr(str, ',')); str = end + 1) {
         /* Temporary modify input string. */
         *end = '\0';
-        rc = cmd_debug_exec(NULL, yo, str);
+        rc = cmd_debug_store(NULL, yo, str);
         *end = ',';
         if (rc) {
             return -1;
         }
     }
     /* Process single/last debug argument. */
-    if (cmd_debug_exec(NULL, yo, str)) {
+    if (cmd_debug_store(NULL, yo, str)) {
         return -1;
     }
     /* All debug arguments are valid, so they can apply. */
-    if (cmd_debug_fin(NULL, yo)) {
+    if (cmd_debug_setlog(NULL, yo)) {
         return -1;
     }
 
@@ -750,7 +750,7 @@ main_ni(int argc, char *argv[])
                 goto cleanup;
             }
         }
-        if ((ret = cmd_feature_fin(ctx, &yo))) {
+        if ((ret = cmd_feature_print_fparam(ctx, &yo))) {
             goto cleanup;
         }
     } else if (yo.schema_out_format && yo.schema_node_path) {
@@ -772,7 +772,7 @@ main_ni(int argc, char *argv[])
 
     /* do the data validation despite the schema was printed */
     if (yo.data_inputs.size) {
-        if ((ret = cmd_data_fin(ctx, &yo))) {
+        if ((ret = cmd_data_process(ctx, &yo))) {
             goto cleanup;
         }
     }

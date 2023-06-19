@@ -350,7 +350,7 @@ cmd_data_dep(struct yl_opt *yo, int posc)
 }
 
 int
-cmd_data_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
+cmd_data_store(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
 {
     (void) ctx;
     struct ly_in *in;
@@ -673,7 +673,7 @@ cleanup:
 }
 
 int
-cmd_data_fin(struct ly_ctx *ctx, struct yl_opt *yo)
+cmd_data_process(struct ly_ctx *ctx, struct yl_opt *yo)
 {
     /* parse, validate and print data */
     if (process_data(ctx, yo->data_type, yo->data_merge, yo->data_out_format, yo->out, yo->data_parse_options,

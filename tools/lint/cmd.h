@@ -165,7 +165,7 @@ int cmd_data_dep(struct yl_opt *yo, int posc);
  * @param[in] posv Path to the file where the data is located.
  * @return 0 on success.
  */
-int cmd_data_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv);
+int cmd_data_store(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv);
 
 /**
  * @brief Parse, validate and optionally print data instances.
@@ -174,7 +174,7 @@ int cmd_data_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv);
  * @param[in] yo Context of yanglint. All necessary parameters should already be set.
  * @return 0 on success.
  */
-int cmd_data_fin(struct ly_ctx *ctx, struct yl_opt *yo);
+int cmd_data_process(struct ly_ctx *ctx, struct yl_opt *yo);
 void cmd_data_help(void);
 
 /* cmd_list.c */
@@ -229,7 +229,7 @@ int cmd_feature_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv);
  * @param[in,out] yo context for yanglint. All necessary parameters should already be set.
  * @return 0 on success.
  */
-int cmd_feature_fin(struct ly_ctx *ctx, struct yl_opt *yo);
+int cmd_feature_print_fparam(struct ly_ctx *ctx, struct yl_opt *yo);
 void cmd_feature_help(void);
 
 /* cmd_load.c */
@@ -381,7 +381,7 @@ int cmd_debug_dep(struct yl_opt *yo, int posc);
  * @param[in] posv Name of the debug type to be set.
  * @return 0 on success.
  */
-int cmd_debug_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv);
+int cmd_debug_store(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv);
 
 /**
  * @brief Set debug logging.
@@ -390,7 +390,7 @@ int cmd_debug_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv);
  * @param[in,out] yo context for yanglint. All necessary parameters should already be set.
  * @return 0 on success.
  */
-int cmd_debug_fin(struct ly_ctx *ctx, struct yl_opt *yo);
+int cmd_debug_setlog(struct ly_ctx *ctx, struct yl_opt *yo);
 void cmd_debug_help(void);
 
 #endif /* COMMANDS_H_ */

@@ -99,7 +99,7 @@ cmd_debug_dep(struct yl_opt *yo, int posc)
 }
 
 int
-cmd_debug_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
+cmd_debug_store(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
 {
     (void) ctx;
     uint32_t i;
@@ -125,7 +125,7 @@ cmd_debug_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
 }
 
 int
-cmd_debug_fin(struct ly_ctx *ctx, struct yl_opt *yo)
+cmd_debug_setlog(struct ly_ctx *ctx, struct yl_opt *yo)
 {
     (void) ctx;
     return ly_log_dbg_groups(yo->dbg_groups);
