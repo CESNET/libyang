@@ -384,7 +384,7 @@ fill_context_inputs(int argc, char *argv[], int optind, LYD_FORMAT data_in_forma
 /**
  * @brief Enable specific debugging messages.
  *
- * @param[in] groups String in the form <group>[,group>]*.
+ * @param[in] groups String in the form "<group>[,group>]*".
  * @param[in,out] yo Options for yanglint.
  * return 0 on success.
  */

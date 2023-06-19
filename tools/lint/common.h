@@ -85,7 +85,7 @@ void get_features(const struct ly_set *fset, const char *module, const char ***f
 /**
  * @brief Parse features being specified for the specific YANG module.
  *
- * Format of the input @p fstring is as follows: <module_name>:[<feature>,]*
+ * Format of the input @p fstring is as follows: "<module_name>:[<feature>,]*"
  *
  * @param[in] fstring Input string to be parsed.
  * @param[in, out] fset Features information set (of struct schema_features *). The set is being filled.
@@ -140,7 +140,7 @@ int print_all_features(struct ly_out *out, const struct ly_ctx *ctx, ly_bool gen
  * @param[in] path Schema module file path to be parsed.
  * @param[out] dir Pointer to the directory path where the file resides. Caller is expected to free the returned string.
  * @param[out] module Pointer to the name of the module (without file suffixes or revision information) specified by the
- * @path. Caller is expected to free the returned string.
+ * @p path. Caller is expected to free the returned string.
  * @return 0 on success
  * @return -1 on error
  */
@@ -184,7 +184,7 @@ LYD_FORMAT get_data_format(const char *filename);
  *
  * Either the @p schema or @p data parameter is set.
  *
- * @param[in] filename Name of the file to examine.
+ * @param[in] filepath Name of the file to examine.
  * @param[out] schema_form Pointer to a variable to store the input schema format.
  * @param[out] data_form Pointer to a variable to store the expected input data format.
  * @return zero in case a format was successfully detected.
