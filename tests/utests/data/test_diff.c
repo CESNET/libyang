@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief tests for lyd_diff()
  *
- * Copyright (c) 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -116,6 +116,12 @@ const char *schema1 =
         ""
         "            leaf l2 {\n"
         "                type int32;\n"
+        "            }\n"
+        ""
+        "            container cont {\n"
+        "                leaf l3 {\n"
+        "                    type string;\n"
+        "                }\n"
         "            }\n"
         "        }\n"
         ""
@@ -1077,6 +1083,9 @@ test_userord_list3(void **state)
             "  </ul>\n"
             "  <ul>\n"
             "    <l1>c</l1>\n"
+            "    <cont>\n"
+            "      <l3>val1</l3>\n"
+            "    </cont>\n"
             "  </ul>\n"
             "  <ul>\n"
             "    <l1>d</l1>\n"
@@ -1088,6 +1097,9 @@ test_userord_list3(void **state)
             "  <ul>\n"
             "    <l1>c</l1>\n"
             "    <l2>3</l2>\n"
+            "    <cont>\n"
+            "      <l3>val2</l3>\n"
+            "    </cont>\n"
             "  </ul>\n"
             "  <ul>\n"
             "    <l1>a</l1>\n"
@@ -1110,6 +1122,9 @@ test_userord_list3(void **state)
             "  <ul>\n"
             "    <l1>c</l1>\n"
             "    <l2>3</l2>\n"
+            "    <cont>\n"
+            "      <l3>val2</l3>\n"
+            "    </cont>\n"
             "  </ul>\n"
             "  <ul>\n"
             "    <l1>d</l1>\n"
@@ -1126,6 +1141,9 @@ test_userord_list3(void **state)
             "  <ul yang:operation=\"replace\" yang:key=\"\" yang:orig-key=\"[l1='b']\">\n"
             "    <l1>c</l1>\n"
             "    <l2 yang:operation=\"create\">3</l2>\n"
+            "    <cont yang:operation=\"none\">\n"
+            "      <l3 yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"val1\">val2</l3>\n"
+            "    </cont>\n"
             "  </ul>\n"
             "  <ul yang:operation=\"replace\" yang:key=\"[l1='a']\" yang:orig-key=\"[l1='b']\">\n"
             "    <l1>d</l1>\n"
@@ -1144,6 +1162,9 @@ test_userord_list3(void **state)
             "  <ul yang:operation=\"replace\" yang:key=\"\" yang:orig-key=\"[l1='b']\">\n"
             "    <l1>c</l1>\n"
             "    <l2 yang:operation=\"create\">3</l2>\n"
+            "    <cont yang:operation=\"none\">\n"
+            "      <l3 yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"val1\">val2</l3>\n"
+            "    </cont>\n"
             "  </ul>\n"
             "  <ul yang:operation=\"replace\" yang:key=\"[l1='a']\" yang:orig-key=\"[l1='b']\">\n"
             "    <l1>d</l1>\n"

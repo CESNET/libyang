@@ -290,6 +290,7 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
     struct lyd_node *dup, *siblings, *match = NULL, *diff_parent = NULL, *elem;
     const struct lyd_node *parent = NULL;
     enum lyd_diff_op cur_op;
+    struct lyd_meta *meta;
 
     assert(diff);
 
@@ -341,8 +342,19 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
         assert(!lyd_diff_get_op(diff_parent, &cur_op) && (cur_op == LYD_DIFF_OP_NONE));
         (void)cur_op;
 
-        /* will be replaced by the new operation */
+        /* will be replaced by the new operation but keep the current op for descendants */
         lyd_diff_del_meta(diff_parent, "operation");
+        LY_LIST_FOR(lyd_child_no_keys(diff_parent), elem) {
+            lyd_diff_find_meta(elem, "operation", &meta, NULL);
+            if (meta) {
+                /* explicit operation, fine */
+                continue;
+            }
+
+            /* set the none operation */
+            LY_CHECK_RET(lyd_new_meta(NULL, elem, NULL, "yang:operation", "none", 0, NULL));
+        }
+
         dup = diff_parent;
     } else {
         /* duplicate the subtree (and connect to the diff if possible) */
