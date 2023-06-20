@@ -1062,6 +1062,103 @@ test_userord_list2(void **state)
 }
 
 static void
+test_userord_list3(void **state)
+{
+    (void) state;
+    const char *xml1 =
+            "<df xmlns=\"urn:libyang:tests:defaults\">\n"
+            "  <ul>\n"
+            "    <l1>a</l1>\n"
+            "    <l2>1</l2>\n"
+            "  </ul>\n"
+            "  <ul>\n"
+            "    <l1>b</l1>\n"
+            "    <l2>2</l2>\n"
+            "  </ul>\n"
+            "  <ul>\n"
+            "    <l1>c</l1>\n"
+            "  </ul>\n"
+            "  <ul>\n"
+            "    <l1>d</l1>\n"
+            "    <l2>4</l2>\n"
+            "  </ul>\n"
+            "</df>\n";
+    const char *xml2 =
+            "<df xmlns=\"urn:libyang:tests:defaults\">\n"
+            "  <ul>\n"
+            "    <l1>c</l1>\n"
+            "    <l2>3</l2>\n"
+            "  </ul>\n"
+            "  <ul>\n"
+            "    <l1>a</l1>\n"
+            "    <l2>1</l2>\n"
+            "  </ul>\n"
+            "  <ul>\n"
+            "    <l1>d</l1>\n"
+            "    <l2>44</l2>\n"
+            "  </ul>\n"
+            "  <ul>\n"
+            "    <l1>b</l1>\n"
+            "    <l2>2</l2>\n"
+            "  </ul>\n"
+            "</df>\n";
+    const char *xml3 =
+            "<df xmlns=\"urn:libyang:tests:defaults\">\n"
+            "  <ul>\n"
+            "    <l1>a</l1>\n"
+            "  </ul>\n"
+            "  <ul>\n"
+            "    <l1>c</l1>\n"
+            "    <l2>3</l2>\n"
+            "  </ul>\n"
+            "  <ul>\n"
+            "    <l1>d</l1>\n"
+            "    <l2>44</l2>\n"
+            "  </ul>\n"
+            "  <ul>\n"
+            "    <l1>b</l1>\n"
+            "    <l2>2</l2>\n"
+            "  </ul>\n"
+            "</df>\n";
+
+    const char *out_diff_1 =
+            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
+            "  <ul yang:operation=\"replace\" yang:key=\"\" yang:orig-key=\"[l1='b']\">\n"
+            "    <l1>c</l1>\n"
+            "    <l2 yang:operation=\"create\">3</l2>\n"
+            "  </ul>\n"
+            "  <ul yang:operation=\"replace\" yang:key=\"[l1='a']\" yang:orig-key=\"[l1='b']\">\n"
+            "    <l1>d</l1>\n"
+            "    <l2 yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"4\">44</l2>\n"
+            "  </ul>\n"
+            "</df>\n";
+    const char *out_diff_2 =
+            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
+            "  <ul yang:operation=\"replace\" yang:key=\"\" yang:orig-key=\"[l1='c']\">\n"
+            "    <l1>a</l1>\n"
+            "    <l2 yang:operation=\"delete\">1</l2>\n"
+            "  </ul>\n"
+            "</df>\n";
+    const char *out_merge =
+            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
+            "  <ul yang:operation=\"replace\" yang:key=\"\" yang:orig-key=\"[l1='b']\">\n"
+            "    <l1>c</l1>\n"
+            "    <l2 yang:operation=\"create\">3</l2>\n"
+            "  </ul>\n"
+            "  <ul yang:operation=\"replace\" yang:key=\"[l1='a']\" yang:orig-key=\"[l1='b']\">\n"
+            "    <l1>d</l1>\n"
+            "    <l2 yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"4\">44</l2>\n"
+            "  </ul>\n"
+            "  <ul yang:key=\"\" yang:orig-key=\"[l1='c']\" yang:operation=\"replace\">\n"
+            "    <l1>a</l1>\n"
+            "    <l2 yang:operation=\"delete\">1</l2>\n"
+            "  </ul>\n"
+            "</df>\n";
+
+    TEST_DIFF_3(xml1, xml2, xml3, out_diff_1, out_diff_2, out_merge);
+}
+
+static void
 test_keyless_list(void **state)
 {
     (void) state;
@@ -1335,6 +1432,7 @@ main(void)
         UTEST(test_userord_mix, setup),
         UTEST(test_userord_list, setup),
         UTEST(test_userord_list2, setup),
+        UTEST(test_userord_list3, setup),
         UTEST(test_keyless_list, setup),
         UTEST(test_state_llist, setup),
         UTEST(test_wd, setup),

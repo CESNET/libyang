@@ -161,6 +161,127 @@ cleanup:
     return rc;
 }
 
+/**
+ * @brief Find metadata/an attribute of a node.
+ *
+ * @param[in] node Node to search.
+ * @param[in] name Metadata/attribute name.
+ * @param[out] meta Metadata found, NULL if not found.
+ * @param[out] attr Attribute found, NULL if not found.
+ */
+static void
+lyd_diff_find_meta(const struct lyd_node *node, const char *name, struct lyd_meta **meta, struct lyd_attr **attr)
+{
+    struct lyd_meta *m;
+    struct lyd_attr *a;
+
+    if (meta) {
+        *meta = NULL;
+    }
+    if (attr) {
+        *attr = NULL;
+    }
+
+    if (node->schema) {
+        assert(meta);
+
+        LY_LIST_FOR(node->meta, m) {
+            if (!strcmp(m->name, name) && !strcmp(m->annotation->module->name, "yang")) {
+                *meta = m;
+                break;
+            }
+        }
+    } else {
+        assert(attr);
+
+        LY_LIST_FOR(((struct lyd_node_opaq *)node)->attr, a) {
+            /* name */
+            if (strcmp(a->name.name, name)) {
+                continue;
+            }
+
+            /* module */
+            switch (a->format) {
+            case LY_VALUE_JSON:
+                if (strcmp(a->name.module_name, "yang")) {
+                    continue;
+                }
+                break;
+            case LY_VALUE_XML:
+                if (strcmp(a->name.module_ns, "urn:ietf:params:xml:ns:yang:1")) {
+                    continue;
+                }
+                break;
+            default:
+                LOGINT(LYD_CTX(node));
+                return;
+            }
+
+            *attr = a;
+            break;
+        }
+    }
+}
+
+/**
+ * @brief Learn operation of a diff node.
+ *
+ * @param[in] diff_node Diff node.
+ * @param[out] op Operation.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_diff_get_op(const struct lyd_node *diff_node, enum lyd_diff_op *op)
+{
+    struct lyd_meta *meta = NULL;
+    struct lyd_attr *attr = NULL;
+    const struct lyd_node *diff_parent;
+    const char *str;
+    char *path;
+
+    for (diff_parent = diff_node; diff_parent; diff_parent = lyd_parent(diff_parent)) {
+        lyd_diff_find_meta(diff_parent, "operation", &meta, &attr);
+        if (!meta && !attr) {
+            continue;
+        }
+
+        str = meta ? lyd_get_meta_value(meta) : attr->value;
+        if ((str[0] == 'r') && (diff_parent != diff_node)) {
+            /* we do not care about this operation if it's in our parent */
+            continue;
+        }
+        *op = lyd_diff_str2op(str);
+        return LY_SUCCESS;
+    }
+
+    /* operation not found */
+    path = lyd_path(diff_node, LYD_PATH_STD, NULL, 0);
+    LOGERR(LYD_CTX(diff_node), LY_EINVAL, "Node \"%s\" without an operation.", path);
+    free(path);
+    return LY_EINT;
+}
+
+/**
+ * @brief Remove metadata/an attribute from a node.
+ *
+ * @param[in] node Node to update.
+ * @param[in] name Metadata/attribute name.
+ */
+static void
+lyd_diff_del_meta(struct lyd_node *node, const char *name)
+{
+    struct lyd_meta *meta;
+    struct lyd_attr *attr;
+
+    lyd_diff_find_meta(node, name, &meta, &attr);
+
+    if (meta) {
+        lyd_free_meta_single(meta);
+    } else if (attr) {
+        lyd_free_attr_single(LYD_CTX(node), attr);
+    }
+}
+
 LY_ERR
 lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_default, const char *orig_value,
         const char *key, const char *value, const char *position, const char *orig_key, const char *orig_position,
@@ -168,6 +289,7 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
 {
     struct lyd_node *dup, *siblings, *match = NULL, *diff_parent = NULL, *elem;
     const struct lyd_node *parent = NULL;
+    enum lyd_diff_op cur_op;
 
     assert(diff);
 
@@ -189,14 +311,16 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
 
     /* find the first existing parent */
     siblings = *diff;
-    while (1) {
+    do {
         /* find next node parent */
         parent = node;
         while (parent->parent && (!diff_parent || (parent->parent->schema != diff_parent->schema))) {
             parent = lyd_parent(parent);
         }
-        if (parent == node) {
-            /* no more parents to find */
+
+        if (lysc_is_dup_inst_list(parent->schema)) {
+            /* assume it never exists, we are not able to distinguish whether it does or not */
+            match = NULL;
             break;
         }
 
@@ -210,41 +334,51 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
 
         /* move down in the diff */
         siblings = lyd_child_no_keys(match);
-    }
+    } while (parent != node);
 
-    /* duplicate the subtree (and connect to the diff if possible) */
-    if (diff_parent) {
-        LY_CHECK_RET(lyd_dup_single_to_ctx(node, LYD_CTX(diff_parent), (struct lyd_node_inner *)diff_parent,
-                LYD_DUP_RECURSIVE | LYD_DUP_NO_META | LYD_DUP_WITH_PARENTS | LYD_DUP_WITH_FLAGS, &dup));
+    if (match && (parent == node)) {
+        /* special case when there is already an operation on our descendant */
+        assert(!lyd_diff_get_op(diff_parent, &cur_op) && (cur_op == LYD_DIFF_OP_NONE));
+        (void)cur_op;
+
+        /* will be replaced by the new operation */
+        lyd_diff_del_meta(diff_parent, "operation");
+        dup = diff_parent;
     } else {
-        LY_CHECK_RET(lyd_dup_single(node, NULL,
-                LYD_DUP_RECURSIVE | LYD_DUP_NO_META | LYD_DUP_WITH_PARENTS | LYD_DUP_WITH_FLAGS, &dup));
-    }
-
-    /* find the first duplicated parent */
-    if (!diff_parent) {
-        diff_parent = lyd_parent(dup);
-        while (diff_parent && diff_parent->parent) {
-            diff_parent = lyd_parent(diff_parent);
+        /* duplicate the subtree (and connect to the diff if possible) */
+        if (diff_parent) {
+            LY_CHECK_RET(lyd_dup_single_to_ctx(node, LYD_CTX(diff_parent), (struct lyd_node_inner *)diff_parent,
+                    LYD_DUP_RECURSIVE | LYD_DUP_NO_META | LYD_DUP_WITH_PARENTS | LYD_DUP_WITH_FLAGS, &dup));
+        } else {
+            LY_CHECK_RET(lyd_dup_single(node, NULL,
+                    LYD_DUP_RECURSIVE | LYD_DUP_NO_META | LYD_DUP_WITH_PARENTS | LYD_DUP_WITH_FLAGS, &dup));
         }
-    } else {
-        diff_parent = dup;
-        while (diff_parent->parent && (diff_parent->parent->schema == parent->schema)) {
-            diff_parent = lyd_parent(diff_parent);
+
+        /* find the first duplicated parent */
+        if (!diff_parent) {
+            diff_parent = lyd_parent(dup);
+            while (diff_parent && diff_parent->parent) {
+                diff_parent = lyd_parent(diff_parent);
+            }
+        } else {
+            diff_parent = dup;
+            while (diff_parent->parent && (diff_parent->parent->schema == parent->schema)) {
+                diff_parent = lyd_parent(diff_parent);
+            }
         }
-    }
 
-    /* no parent existed, must be manually connected */
-    if (!diff_parent) {
-        /* there actually was no parent to duplicate */
-        lyd_insert_sibling(*diff, dup, diff);
-    } else if (!diff_parent->parent) {
-        lyd_insert_sibling(*diff, diff_parent, diff);
-    }
+        /* no parent existed, must be manually connected */
+        if (!diff_parent) {
+            /* there actually was no parent to duplicate */
+            lyd_insert_sibling(*diff, dup, diff);
+        } else if (!diff_parent->parent) {
+            lyd_insert_sibling(*diff, diff_parent, diff);
+        }
 
-    /* add parent operation, if any */
-    if (diff_parent && (diff_parent != dup)) {
-        LY_CHECK_RET(lyd_new_meta(NULL, diff_parent, NULL, "yang:operation", "none", 0, NULL));
+        /* add parent operation, if any */
+        if (diff_parent && (diff_parent != dup)) {
+            LY_CHECK_RET(lyd_new_meta(NULL, diff_parent, NULL, "yang:operation", "none", 0, NULL));
+        }
     }
 
     /* add subtree operation */
@@ -929,98 +1063,6 @@ lyd_diff_siblings(const struct lyd_node *first, const struct lyd_node *second, u
 }
 
 /**
- * @brief Find metadata/an attribute of a node.
- *
- * @param[in] node Node to search.
- * @param[in] name Metadata/attribute name.
- * @param[out] meta Metadata found, NULL if not found.
- * @param[out] attr Attribute found, NULL if not found.
- */
-static void
-lyd_diff_find_meta(const struct lyd_node *node, const char *name, struct lyd_meta **meta, struct lyd_attr **attr)
-{
-    struct lyd_meta *m;
-    struct lyd_attr *a;
-
-    *meta = NULL;
-    *attr = NULL;
-
-    if (node->schema) {
-        LY_LIST_FOR(node->meta, m) {
-            if (!strcmp(m->name, name) && !strcmp(m->annotation->module->name, "yang")) {
-                *meta = m;
-                break;
-            }
-        }
-    } else {
-        LY_LIST_FOR(((struct lyd_node_opaq *)node)->attr, a) {
-            /* name */
-            if (strcmp(a->name.name, name)) {
-                continue;
-            }
-
-            /* module */
-            switch (a->format) {
-            case LY_VALUE_JSON:
-                if (strcmp(a->name.module_name, "yang")) {
-                    continue;
-                }
-                break;
-            case LY_VALUE_XML:
-                if (strcmp(a->name.module_ns, "urn:ietf:params:xml:ns:yang:1")) {
-                    continue;
-                }
-                break;
-            default:
-                LOGINT(LYD_CTX(node));
-                return;
-            }
-
-            *attr = a;
-            break;
-        }
-    }
-}
-
-/**
- * @brief Learn operation of a diff node.
- *
- * @param[in] diff_node Diff node.
- * @param[out] op Operation.
- * @return LY_ERR value.
- */
-static LY_ERR
-lyd_diff_get_op(const struct lyd_node *diff_node, enum lyd_diff_op *op)
-{
-    struct lyd_meta *meta = NULL;
-    struct lyd_attr *attr = NULL;
-    const struct lyd_node *diff_parent;
-    const char *str;
-    char *path;
-
-    for (diff_parent = diff_node; diff_parent; diff_parent = lyd_parent(diff_parent)) {
-        lyd_diff_find_meta(diff_parent, "operation", &meta, &attr);
-        if (!meta && !attr) {
-            continue;
-        }
-
-        str = meta ? lyd_get_meta_value(meta) : attr->value;
-        if ((str[0] == 'r') && (diff_parent != diff_node)) {
-            /* we do not care about this operation if it's in our parent */
-            continue;
-        }
-        *op = lyd_diff_str2op(str);
-        return LY_SUCCESS;
-    }
-
-    /* operation not found */
-    path = lyd_path(diff_node, LYD_PATH_STD, NULL, 0);
-    LOGERR(LYD_CTX(diff_node), LY_EINVAL, "Node \"%s\" without an operation.", path);
-    free(path);
-    return LY_EINT;
-}
-
-/**
  * @brief Insert a diff node into a data tree.
  *
  * @param[in,out] first_node First sibling of the data tree.
@@ -1355,27 +1397,6 @@ lyd_diff_merge_none(struct lyd_node *diff_match, enum lyd_diff_op cur_op, const 
     }
 
     return LY_SUCCESS;
-}
-
-/**
- * @brief Remove metadata/an attribute from a node.
- *
- * @param[in] node Node to update.
- * @param[in] name Metadata/attribute name.
- */
-static void
-lyd_diff_del_meta(struct lyd_node *node, const char *name)
-{
-    struct lyd_meta *meta;
-    struct lyd_attr *attr;
-
-    lyd_diff_find_meta(node, name, &meta, &attr);
-
-    if (meta) {
-        lyd_free_meta_single(meta);
-    } else if (attr) {
-        lyd_free_attr_single(LYD_CTX(node), attr);
-    }
 }
 
 /**
