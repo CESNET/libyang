@@ -291,6 +291,7 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
     const struct lyd_node *parent = NULL;
     enum lyd_diff_op cur_op;
     struct lyd_meta *meta;
+    uint32_t diff_opts;
 
     assert(diff);
 
@@ -341,6 +342,14 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
         /* special case when there is already an operation on our descendant */
         assert(!lyd_diff_get_op(diff_parent, &cur_op) && (cur_op == LYD_DIFF_OP_NONE));
         (void)cur_op;
+
+        /* move it to the end where it is expected (matters for user-ordered lists) */
+        if (lysc_is_userordered(diff_parent->schema)) {
+            for (elem = diff_parent; elem->next && (elem->next->schema == elem->schema); elem = elem->next) {}
+            if (elem != diff_parent) {
+                LY_CHECK_RET(lyd_insert_after(elem, diff_parent));
+            }
+        }
 
         /* will be replaced by the new operation but keep the current op for descendants */
         lyd_diff_del_meta(diff_parent, "operation");
