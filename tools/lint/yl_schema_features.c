@@ -27,7 +27,7 @@
 void
 yl_schema_features_free(void *flist)
 {
-    struct schema_features *rec = (struct schema_features *)flist;
+    struct yl_schema_features *rec = (struct yl_schema_features *)flist;
 
     if (rec) {
         free(rec->mod_name);
@@ -46,7 +46,7 @@ get_features(const struct ly_set *fset, const char *module, const char ***featur
 {
     /* get features list for this module */
     for (uint32_t u = 0; u < fset->count; ++u) {
-        struct schema_features *sf = (struct schema_features *)fset->objs[u];
+        struct yl_schema_features *sf = (struct yl_schema_features *)fset->objs[u];
 
         if (!strcmp(module, sf->mod_name)) {
             /* matched module - explicitly set features */
@@ -63,7 +63,7 @@ get_features(const struct ly_set *fset, const char *module, const char ***featur
 int
 parse_features(const char *fstring, struct ly_set *fset)
 {
-    struct schema_features *rec;
+    struct yl_schema_features *rec;
     uint32_t count;
     char *p, **fp;
 
