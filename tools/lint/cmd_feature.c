@@ -93,11 +93,6 @@ cmd_feature_dep(struct yl_opt *yo, int posc)
         return 1;
     }
 
-    if (yo->feature_print_all && posc) {
-        YLMSG_E("No positional arguments are allowed.\n");
-        return 1;
-    }
-
     return 0;
 }
 
@@ -157,7 +152,7 @@ cmd_feature_print_fparam(struct ly_ctx *ctx, struct yl_opt *yo)
 {
     (void) ctx;
 
-    if (yo->feature_param_format) {
+    if (!yo->feature_print_all && yo->feature_param_format) {
         printf("%s\n", yo->features_output);
     }
 
