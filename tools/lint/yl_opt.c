@@ -82,7 +82,6 @@ yl_opt_erase(struct yl_opt *yo)
     /* schema */
     ly_set_erase(&yo->schema_features, yl_schema_features_free);
     ly_set_erase(&yo->schema_modules, NULL);
-    free(yo->features_output);
 
     /* context */
     free(yo->searchpaths);

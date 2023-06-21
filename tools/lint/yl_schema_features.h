@@ -57,46 +57,28 @@ void get_features(const struct ly_set *fset, const char *module, const char ***f
 int parse_features(const char *fstring, struct ly_set *fset);
 
 /**
- * @brief Collect all features of a module.
- *
- * @param[in] mod Module to be searched for features.
- * @param[out] set Set in which the features will be stored.
- * @return 0 on success.
- * @return 1 on error.
- */
-int collect_features(const struct lys_module *mod, struct ly_set *set);
-
-/**
  * @brief Print all features of a single module.
  *
  * @param[in] out The output handler for printing.
- * @param[in] mod Module which contains the features.
- * @param[in] set Set which holds the features.
+ * @param[in] mod Module which can contains the features.
  */
-void print_features(struct ly_out *out, const struct lys_module *mod, const struct ly_set *set);
+void print_features(struct ly_out *out, const struct lys_module *mod);
 
 /**
- * @brief Generate a string, which will contain features paramater.
+ * @brief Print all features in the 'feature-param' format.
  *
- * @param[in] mod Module, for which the string will be generated.
- * @param[in] set Set containing the features.
- * @param[out] features_param String which will contain the output.
- * @return 0 on success.
- * @return 1 on error.
+ * @param[in] out The output handler for printing.
+ * @param[in] mod Module which can contains the features.
  */
-int generate_features_output(const struct lys_module *mod, const struct ly_set *set, char **features_param);
+void print_feature_param(struct ly_out *out, const struct lys_module *mod);
 
 /**
  * @brief Print all features of all implemented modules.
  *
  * @param[in] out The output handler for printing.
  * @param[in] ctx Libyang context.
- * @param[in] generate_features Flag expressing whether to generate features parameter.
- * @param[out] features_param String, which will contain the output if the above flag is set.
- * @return 0 on success.
- * @return 1 on error.
+ * @param[in] feature_param Flag expressing whether to print features parameter.
  */
-int print_all_features(struct ly_out *out, const struct ly_ctx *ctx, uint8_t generate_features, char **features_param);
-
+void print_all_features(struct ly_out *out, const struct ly_ctx *ctx, uint8_t feature_param);
 
 #endif /* YL_SCHEMA_FEATURES_H_ */

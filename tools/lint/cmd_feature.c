@@ -99,62 +99,33 @@ cmd_feature_dep(struct yl_opt *yo, int posc)
 int
 cmd_feature_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
 {
-    int rc = 0;
-    struct ly_set set = {0};
     const struct lys_module *mod;
 
     if (yo->feature_print_all) {
-        if (print_all_features(yo->out, *ctx, yo->feature_param_format, &yo->features_output)) {
-            YLMSG_E("Printing all features failed.\n");
-            rc = 1;
-            goto cleanup;
-        }
-        if (yo->feature_param_format) {
-            printf("%s\n", yo->features_output);
-        }
-        goto cleanup;
+        print_all_features(yo->out, *ctx, yo->feature_param_format);
+        return 0;
     }
 
     mod = ly_ctx_get_module_latest(*ctx, posv);
     if (!mod) {
         YLMSG_E("Module \"%s\" not found.\n", posv);
-        rc = 1;
-        goto cleanup;
-    }
-
-    /* collect features of the module */
-    if (collect_features(mod, &set)) {
-        rc = 1;
-        goto cleanup;
+        return 1;
     }
 
     if (yo->feature_param_format) {
-        if (generate_features_output(mod, &set, &yo->features_output)) {
-            rc = 1;
-            goto cleanup;
-        }
-        /* don't print features and their state of each module if generating features parameter */
-        goto cleanup;
+        print_feature_param(yo->out, mod);
+    } else {
+        print_features(yo->out, mod);
     }
 
-    if (yo->interactive) {
-        print_features(yo->out, mod, &set);
-    }
-
-cleanup:
-    ly_set_erase(&set, NULL);
-
-    return rc;
+    return 0;
 }
 
 int
-cmd_feature_print_fparam(struct ly_ctx *ctx, struct yl_opt *yo)
+cmd_feature_fin(struct ly_ctx *ctx, struct yl_opt *yo)
 {
     (void) ctx;
 
-    if (!yo->feature_print_all && yo->feature_param_format) {
-        printf("%s\n", yo->features_output);
-    }
-
+    ly_print(yo->out, "\n");
     return 0;
 }
