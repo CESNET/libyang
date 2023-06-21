@@ -245,11 +245,11 @@ libyang_verbclb(LY_LOG_LEVEL level, const char *msg, const char *path)
     }
 }
 
-static struct schema_features *
+static struct yl_schema_features *
 get_features_not_applied(const struct ly_set *fset)
 {
     for (uint32_t u = 0; u < fset->count; ++u) {
-        struct schema_features *sf = fset->objs[u];
+        struct yl_schema_features *sf = fset->objs[u];
 
         if (!sf->applied) {
             return sf;
@@ -304,7 +304,7 @@ create_ly_context(const char *yang_lib_file, const char *searchpaths, struct ly_
 static int
 apply_features(struct ly_set *schema_features, struct ly_ctx *ctx)
 {
-    struct schema_features *sf;
+    struct yl_schema_features *sf;
     struct lys_module *mod;
 
     /* check that all specified features were applied, apply now if possible */
