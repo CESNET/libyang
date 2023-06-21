@@ -366,13 +366,18 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
 
         dup = diff_parent;
     } else {
+        diff_opts = LYD_DUP_NO_META | LYD_DUP_WITH_PARENTS | LYD_DUP_WITH_FLAGS;
+        if ((op != LYD_DIFF_OP_REPLACE) || !lysc_is_userordered(node->schema) || (node->schema->flags & LYS_CONFIG_R)) {
+            /* move applies only to the user-ordered list, no descendants */
+            diff_opts |= LYD_DUP_RECURSIVE;
+        }
+
         /* duplicate the subtree (and connect to the diff if possible) */
         if (diff_parent) {
             LY_CHECK_RET(lyd_dup_single_to_ctx(node, LYD_CTX(diff_parent), (struct lyd_node_inner *)diff_parent,
-                    LYD_DUP_RECURSIVE | LYD_DUP_NO_META | LYD_DUP_WITH_PARENTS | LYD_DUP_WITH_FLAGS, &dup));
+                    diff_opts, &dup));
         } else {
-            LY_CHECK_RET(lyd_dup_single(node, NULL,
-                    LYD_DUP_RECURSIVE | LYD_DUP_NO_META | LYD_DUP_WITH_PARENTS | LYD_DUP_WITH_FLAGS, &dup));
+            LY_CHECK_RET(lyd_dup_single(node, NULL, diff_opts, &dup));
         }
 
         /* find the first duplicated parent */
