@@ -223,13 +223,13 @@ int cmd_feature_dep(struct yl_opt *yo, int posc);
 int cmd_feature_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv);
 
 /**
- * @brief Generate features for the command 'add'.
+ * @brief Printing of features ends.
  *
- * @param[in,out] ctx context for libyang.
- * @param[in,out] yo context for yanglint. All necessary parameters should already be set.
+ * @param[in] ctx context for libyang. Not used.
+ * @param[in] yo context for yanglint.
  * @return 0 on success.
  */
-int cmd_feature_print_fparam(struct ly_ctx *ctx, struct yl_opt *yo);
+int cmd_feature_fin(struct ly_ctx *ctx, struct yl_opt *yo);
 void cmd_feature_help(void);
 
 /* cmd_load.c */

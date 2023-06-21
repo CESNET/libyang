@@ -106,7 +106,6 @@ struct yl_opt {
     LYS_OUTFORMAT schema_out_format;
     ly_bool feature_param_format;
     ly_bool feature_print_all;
-    char *features_output;
 
     /*
      * data

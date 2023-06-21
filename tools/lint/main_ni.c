@@ -751,9 +751,7 @@ main_ni(int argc, char *argv[])
                 goto cleanup;
             }
         }
-        if ((ret = cmd_feature_print_fparam(ctx, &yo))) {
-            goto cleanup;
-        }
+        cmd_feature_fin(ctx, &yo);
     } else if (yo.schema_out_format && yo.schema_node_path) {
         if ((ret = cmd_print_exec(&ctx, &yo, NULL))) {
             goto cleanup;

@@ -77,7 +77,7 @@ COMMAND commands[] = {
         "List all the loaded modules", "f:h"
     },
     {
-        "feature", cmd_feature_opt, cmd_feature_dep, cmd_feature_exec, cmd_feature_print_fparam, cmd_feature_help, NULL,
+        "feature", cmd_feature_opt, cmd_feature_dep, cmd_feature_exec, cmd_feature_fin, cmd_feature_help, NULL,
         "Print all features of module(s) with their state", "haf"
     },
     {
