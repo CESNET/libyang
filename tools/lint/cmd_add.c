@@ -28,6 +28,7 @@
 
 #include "common.h"
 #include "yl_opt.h"
+#include "yl_schema_features.h"
 
 void
 cmd_add_help(void)

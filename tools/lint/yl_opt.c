@@ -23,6 +23,7 @@
 
 #include "common.h"
 #include "yl_opt.h"
+#include "yl_schema_features.h"
 
 struct cmdline_file *
 fill_cmdline_file(struct ly_set *set, struct ly_in *in, const char *path, LYD_FORMAT format)
@@ -79,7 +80,7 @@ yl_opt_erase(struct yl_opt *yo)
     ly_set_erase(&yo->data_xpath, NULL);
 
     /* schema */
-    ly_set_erase(&yo->schema_features, free_features);
+    ly_set_erase(&yo->schema_features, yl_schema_features_free);
     ly_set_erase(&yo->schema_modules, NULL);
     free(yo->features_output);
 
