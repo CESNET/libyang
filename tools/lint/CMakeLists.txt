@@ -22,6 +22,7 @@ set(lintsrc
     cmd_verb.c
     cmd_debug.c
     yl_opt.c
+    yl_schema_features.c
     common.c
 )
 if(YANGLINT_INTERACTIVE)

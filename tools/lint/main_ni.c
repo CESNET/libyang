@@ -32,6 +32,7 @@
 #include "out.h"
 #include "tools/config.h"
 #include "yl_opt.h"
+#include "yl_schema_features.h"
 
 static void
 version(void)
@@ -274,7 +275,7 @@ create_ly_context(const char *yang_lib_file, const char *searchpaths, struct ly_
 {
     if (yang_lib_file) {
         /* ignore features */
-        ly_set_erase(schema_features, free_features);
+        ly_set_erase(schema_features, yl_schema_features_free);
 
         if (ly_ctx_new_ylpath(searchpaths, yang_lib_file, LYD_UNKNOWN, *ctx_options, ctx)) {
             YLMSG_E("Unable to modify libyang context with yang-library data.\n");
