@@ -3,7 +3,7 @@ source [expr {[info exists ::env(TESTS_DIR)] ? "$env(TESTS_DIR)/interactive/ly.t
 set mdir $::env(YANG_MODULES_DIR)
 
 variable ly_setup {
-    spawn $::env(YANGLINT)
+    spawn $TUT
     ly_skip_warnings
 }
 
