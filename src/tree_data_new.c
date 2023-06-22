@@ -1527,7 +1527,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
     }
 
     /* parse path */
-    LY_CHECK_GOTO(ret = ly_path_parse(ctx, NULL, path, strlen(path), 0, LY_PATH_BEGIN_EITHER, LY_PATH_PREFIX_OPTIONAL,
+    LY_CHECK_GOTO(ret = ly_path_parse(ctx, NULL, path, strlen(path), 0, LY_PATH_BEGIN_EITHER, LY_PATH_PREFIX_FIRST,
             LY_PATH_PRED_SIMPLE, &exp), cleanup);
 
     /* compile path */
