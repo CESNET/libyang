@@ -1,26 +1,33 @@
+# @brief Common functions and variables for Tool Under Test (TUT).
+#
+# The script requires variables:
+# TUT_PATH - Assumed absolute path to the directory in which the TUT is located.
+# TUT_NAME - TUT name (without path).
+#
+# The script sets the variables:
+# TUT - The path (including the name) of the executable TUT.
+# error_prompt - Delimiter on error.
+# error_head - Header on error.
+
 package require Expect
 
-source [expr {[info exists ::env(TESTS_DIR)] ? "$env(TESTS_DIR)/common.tcl" : "../common.tcl"}]
-
-# set the timeout to 5 seconds
-set timeout 5
-# prompt of yanglint
-set prompt "> "
-# turn off dialog between expect and yanglint
-log_user 0
-# setting some large terminal width
-stty columns 720
-
-variable ly_setup {
-    spawn $::env(YANGLINT)
-    ly_skip_warnings
-    # Searchpath is set, so modules can be loaded via the 'load' command.
-    ly_cmd "searchpath $::env(YANG_MODULES_DIR)"
+# Complete the path for Tool Under Test (TUT). For example, on Windows, TUT can be located in the Debug or Release
+# subdirectory. Note that Release build takes precedence over Debug.
+set conftypes {{} Release Debug}
+foreach i $conftypes {
+    if { [file executable "$TUT_PATH/$i/$TUT_NAME"] || [file executable "$TUT_PATH/$i/$TUT_NAME.exe"] } {
+        set TUT "$TUT_PATH/$i/$TUT_NAME"
+        break
+    }
+}
+if {![info exists TUT]} {
+    error "$TUT_NAME executable not found"
 }
 
-variable ly_cleanup {
-    ly_exit
-}
+# prompt of error message
+set error_prompt ">>>"
+# the beginning of error message
+set error_head "$error_prompt Check-failed"
 
 # detection on eof and timeout will be on every expect command
 expect_after {
@@ -38,12 +45,6 @@ tcltest::loadTestedCommands
 
 # namespace of internal functions
 namespace eval ly::private {}
-
-# Skip no dir and/or no history warnings and prompt.
-proc ly_skip_warnings {} {
-    global prompt
-    expect -re "(YANGLINT.*)*$prompt" {}
-}
 
 # Send command 'cmd' to the process, then check output string by 'pattern'.
 # Parameter cmd is a string of arguments.
@@ -101,35 +102,19 @@ proc ly_cmd {cmd {pattern ""} {opt ""}} {
     }
 }
 
-# Send command 'cmd' to the process, expect error header and then check output string by 'pattern'.
+# Send command 'cmd' to the process, expect some header and then check output string by 'pattern'.
+# This function is useful for checking an error that appears in the form of a header.
+# Parameter header is the expected header on the output.
 # Parameter cmd is a string of arguments.
 # Parameter pattern is a regex. It must not contain a prompt.
-proc ly_cmd_err {cmd pattern} {
+proc ly_cmd_header {cmd header pattern} {
     global prompt
 
     send -- "${cmd}\r"
     expect -- "${cmd}\r\n"
 
     expect {
-        -re "YANGLINT\\\[E\\\]: .*${pattern}.*\r\n${prompt}$" {}
-        -re "libyang\\\[\[0-9]+\\\]: .*${pattern}.*\r\n${prompt}$" {}
-        -re "\r\n${prompt}$" {
-            error "unexpected output:\n$expect_out(buffer)"
-        }
-    }
-}
-
-# Send command 'cmd' to the process, expect warning header and then check output string by 'pattern'.
-# Parameter cmd is a string of arguments.
-# Parameter pattern is a regex. It must not contain a prompt.
-proc ly_cmd_wrn {cmd pattern} {
-    global prompt
-
-    send -- "${cmd}\r"
-    expect -- "${cmd}\r\n"
-
-    expect {
-        -re "YANGLINT\\\[W\\\]: .*${pattern}.*\r\n${prompt}$" {}
+        -re "$header .*${pattern}.*\r\n${prompt}$" {}
         -re "\r\n${prompt}$" {
             error "unexpected output:\n$expect_out(buffer)"
         }
@@ -151,11 +136,13 @@ proc ly_completion {input output} {
 
     send -- "${input}\t"
     # expecting echoing input, output and 10 terminal control characters
-    expect -re "^${input}\r> ${output}.*\r.*$"
+    expect -re "^${input}\r${prompt}${output}.*\r.*$"
 }
 
 # Send a completion request and check if the anchored regex hint options match.
 proc ly_hint {input prev_input hints} {
+    global prompt
+
     set output {}
     foreach i $hints {
         # each element might have some number of spaces and CRLF around it
@@ -165,24 +152,5 @@ proc ly_hint {input prev_input hints} {
     send -- "${input}\t"
     # expecting the hints, previous input from which the hints were generated
     # and some number of terminal control characters
-    expect -re "${output}\r> ${prev_input}.*\r.*$"
-}
-
-# Send 'exit' and wait for eof.
-proc ly_exit {} {
-    send "exit\r"
-    expect eof
-}
-
-# Check if yanglint is configured as DEBUG.
-# Return 1 on success.
-proc yanglint_debug {} {
-    # Call non-interactive yanglint with --help.
-    set output [exec -- $::env(YANGLINT) "-h"]
-    # Find option --debug.
-    if { [regexp -- "--debug=GROUPS" $output] } {
-        return 1
-    } else {
-        return 0
-    }
+    expect -re "${output}\r${prompt}${prev_input}.*\r.*$"
 }

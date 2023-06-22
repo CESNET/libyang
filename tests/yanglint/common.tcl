@@ -1,33 +1,35 @@
+# @brief Common functions and variables for yanglint-interactive and yanglint-non-interactive.
+#
+# The script requires variables:
+# ::env(TESTS_DIR) - Main test directory. Must be set if the script is run via ctest.
+#
+# The script sets the variables:
+# ::env(TESTS_DIR) - Main test directory. It is set by default if not defined.
+# ::env(YANG_MODULES_DIR) - Directory of YANG modules.
+# TUT_PATH - Assumed absolute path to the directory in which the TUT is located.
+# TUT_NAME - TUT name (without path).
+# ::tcltest::testConstraint ctest - A tcltest variable that is set to true if the script is run via ctest. Causes tests
+#   to be a skipped.
+
 package require tcltest
 namespace import ::tcltest::test ::tcltest::cleanupTests
 
+# Set directory paths for testing yanglint.
 if { ![info exists ::env(TESTS_DIR)] } {
     # the script is not run via 'ctest' so paths must be set
     set ::env(TESTS_DIR) "../"
     set ::env(YANG_MODULES_DIR) "../modules"
-    set ::env(YANGLINT) "../../../../build"
+    set TUT_PATH "../../../build"
     ::tcltest::testConstraint ctest false
 } else {
+    # cmake (ctest) already sets ::env variables
+    set TUT_PATH $::env(YANGLINT)
     ::tcltest::testConstraint ctest true
 }
 
-# Complete the path for yanglint. For example, on Windows, yanglint can be located in the Debug or Release subdirectory.
-# Note that Release build takes precedence over Debug.
-set conftypes {{} Release Debug E}
-foreach i $conftypes {
-    if { [file executable "$::env(YANGLINT)/$i/yanglint"] || [file executable "$::env(YANGLINT)/$i/yanglint.exe"] } {
-        append ::env(YANGLINT) "/$i/yanglint"
-        break
-    }
-}
-if { $i == "E" } {
-    error "yanglint executable not found"
-}
+set TUT_NAME "yanglint"
 
-# prompt of error message
-set error_prompt ">>>"
-# the beginning of error message
-set error_head "$error_prompt Check-failed"
+# The script continues by defining functions specific to the yanglint tool.
 
 namespace eval uti {
     namespace export *

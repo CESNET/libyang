@@ -1,4 +1,34 @@
-source [expr {[info exists ::env(TESTS_DIR)] ? "$env(TESTS_DIR)/common.tcl" : "../common.tcl"}]
+# @brief Common functions and variables for Tool Under Test (TUT).
+#
+# The script requires variables:
+# TUT_PATH - Assumed absolute path to the directory in which the TUT is located.
+# TUT_NAME - TUT name (without path).
+#
+# The script sets the variables:
+# TUT - The path (including the name) of the executable TUT.
+# error_prompt - Delimiter on error.
+# error_head - Header on error.
+
+# Complete the path for Tool Under Test (TUT). For example, on Windows, TUT can be located in the Debug or Release
+# subdirectory. Note that Release build takes precedence over Debug.
+set conftypes {{} Release Debug}
+foreach i $conftypes {
+    if { [file executable "$TUT_PATH/$i/$TUT_NAME"] || [file executable "$TUT_PATH/$i/$TUT_NAME.exe"] } {
+        set TUT "$TUT_PATH/$i/$TUT_NAME"
+        break
+    }
+}
+if {![info exists TUT]} {
+    error "$TUT_NAME executable not found"
+}
+
+# prompt of error message
+set error_prompt ">>>"
+# the beginning of error message
+set error_head "$error_prompt Check-failed"
+
+# Run commands from command line
+tcltest::loadTestedCommands
 
 # namespace of internal functions
 namespace eval ly::private {
@@ -10,8 +40,9 @@ namespace eval ly::private {
 # Parameter wrn is a flag. Set to 1 if stderr should be ignored.
 # Returns a pair where the first is the return code and the second is the output.
 proc ly::private::ly_exec {cmd {wrn ""}} {
+    global TUT
     try {
-        set results [exec -- $::env(YANGLINT) {*}$cmd]
+        set results [exec -- $TUT {*}$cmd]
         set status 0
     } trap CHILDSTATUS {results options} {
         # return code is not 0
