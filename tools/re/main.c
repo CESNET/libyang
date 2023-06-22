@@ -315,7 +315,9 @@ cleanup:
     }
     free(patterns);
     free(invert_match);
-    free(modstr);
+    if (modstr != module_start) {
+        free(modstr);
+    }
     if (infile) {
         fclose(infile);
         free(str);
