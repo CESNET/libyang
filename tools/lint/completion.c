@@ -136,21 +136,21 @@ get_model_completion(const char *hint, char ***matches, unsigned int *match_coun
 /**
  * @brief Add all child nodes of a single node to the completion hint.
  *
- * @param[in] last_node Node of which children will be added to the hint.
+ * @param[in] parent Node of which children will be added to the hint.
  * @param[out] matches Matches provided to the user as a completion hint.
  * @param[out] match_count Number of matches.
  */
 static void
-single_hint_add_children(const struct lysc_node *last_node, char ***matches, unsigned int *match_count)
+single_hint_add_children(const struct lysc_node *parent, char ***matches, unsigned int *match_count)
 {
     const struct lysc_node *node = NULL;
     char *match;
 
-    if (!last_node) {
+    if (!parent) {
         return;
     }
 
-    while ((node = lys_getnext(node, last_node, NULL, LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHCHOICE))) {
+    while ((node = lys_getnext(node, parent, NULL, LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHCHOICE))) {
         match = lysc_path(node, LYSC_PATH_LOG, NULL, 0);
         cmd_completion_add_match(match, matches, match_count);
         free(match);
