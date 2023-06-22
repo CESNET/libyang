@@ -43,14 +43,18 @@ cmd_completion_add_match(const char *match, char ***matches, unsigned int *match
 {
     void *p;
 
-    ++(*match_count);
-    p = realloc(*matches, *match_count * sizeof **matches);
+    p = realloc(*matches, (*match_count + 1) * sizeof **matches);
     if (!p) {
         YLMSG_E("Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
         return;
     }
     *matches = p;
-    (*matches)[*match_count - 1] = strdup(match);
+    (*matches)[*match_count] = strdup(match);
+    if (!((*matches)[*match_count])) {
+        YLMSG_E("Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+        return;
+    }
+    ++(*match_count);
 }
 
 /**
