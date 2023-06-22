@@ -88,22 +88,38 @@ static int
 add_pattern(char ***patterns, int **inverts, int *counter, char *pattern)
 {
     void *reallocated1, *reallocated2;
+    int orig_counter;
 
-    (*counter)++;
-    reallocated1 = realloc(*patterns, *counter * sizeof **patterns);
-    reallocated2 = realloc(*inverts, *counter * sizeof **inverts);
-    if (!reallocated1 || !reallocated2) {
-        fprintf(stderr, "yangre error: memory allocation error.\n");
-        free(reallocated1);
-        free(reallocated2);
-        return EXIT_FAILURE;
+    /* Store the original number of items. */
+    orig_counter = *counter;
+
+    /* Reallocate 'patterns' memory with additional space. */
+    reallocated1 = realloc(*patterns, (orig_counter + 1) * sizeof **patterns);
+    if (!reallocated1) {
+        goto error;
     }
     (*patterns) = reallocated1;
-    (*patterns)[*counter - 1] = strdup(pattern);
+    /* Allocated memory is now larger. */
+    (*counter)++;
+    /* Copy the pattern and store it to the additonal space. */
+    (*patterns)[orig_counter] = strdup(pattern);
+    if (!(*patterns)[orig_counter]) {
+        goto error;
+    }
+
+    /* Reallocate 'inverts' memory with additional space. */
+    reallocated2 = realloc(*inverts, (orig_counter + 1) * sizeof **inverts);
+    if (!reallocated2) {
+        goto error;
+    }
     (*inverts) = reallocated2;
-    (*inverts)[*counter - 1] = 0;
+    (*inverts)[orig_counter] = 0;
 
     return EXIT_SUCCESS;
+
+error:
+    fprintf(stderr, "yangre error: memory allocation error.\n");
+    return EXIT_FAILURE;
 }
 
 int

@@ -63,26 +63,21 @@ get_features(const struct ly_set *fset, const char *module, const char ***featur
 int
 parse_features(const char *fstring, struct ly_set *fset)
 {
-    struct yl_schema_features *rec;
+    struct yl_schema_features *rec = NULL;
     uint32_t count;
     char *p, **fp;
 
     rec = calloc(1, sizeof *rec);
     if (!rec) {
         YLMSG_E("Unable to allocate features information record (%s).\n", strerror(errno));
-        return -1;
-    }
-    if (ly_set_add(fset, rec, 1, NULL)) {
-        YLMSG_E("Unable to store features information (%s).\n", strerror(errno));
-        free(rec);
-        return -1;
+        goto error;
     }
 
     /* fill the record */
     p = strchr(fstring, ':');
     if (!p) {
         YLMSG_E("Invalid format of the features specification (%s).\n", fstring);
-        return -1;
+        goto error;
     }
     rec->mod_name = strndup(fstring, p - fstring);
 
@@ -103,7 +98,7 @@ parse_features(const char *fstring, struct ly_set *fset)
             fp = realloc(rec->features, (count + 1) * sizeof *rec->features);
             if (!fp) {
                 YLMSG_E("Unable to store features list information (%s).\n", strerror(errno));
-                return -1;
+                goto error;
             }
             rec->features = fp;
             fp = &rec->features[count++]; /* array item to set */
@@ -115,12 +110,23 @@ parse_features(const char *fstring, struct ly_set *fset)
     fp = realloc(rec->features, (count + 1) * sizeof *rec->features);
     if (!fp) {
         YLMSG_E("Unable to store features list information (%s).\n", strerror(errno));
-        return -1;
+        goto error;
     }
     rec->features = fp;
     rec->features[count++] = NULL;
 
+    /* Store record to the output set. */
+    if (ly_set_add(fset, rec, 1, NULL)) {
+        YLMSG_E("Unable to store features information (%s).\n", strerror(errno));
+        goto error;
+    }
+    rec = NULL;
+
     return 0;
+
+error:
+    yl_schema_features_free(rec);
+    return -1;
 }
 
 void
