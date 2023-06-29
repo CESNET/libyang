@@ -76,7 +76,7 @@ if(ENABLE_TESTS)
     # tests of interactive mode using tclsh
     find_program(PATH_TCLSH NAMES tclsh)
     if(NOT PATH_TCLSH)
-        message(WARNING "'tclsh' not found! The yanglint(1) interactive tests will not be available.")
+        message(WARNING "'tclsh' not found! The yanglint(1) tests will not be available.")
     else()
         if(YANGLINT_INTERACTIVE)
             add_yanglint_test(NAME interactive VIA tclsh SCRIPT interactive/all.tcl)
