@@ -34,7 +34,9 @@ help(void)
     fprintf(stdout, "    yangre [-hv]\n");
     fprintf(stdout, "    yangre [-V] -p <regexp1> [-i] [-p <regexp2> [-i] ...] <string>\n");
     fprintf(stdout, "    yangre [-V] -f <file>\n");
-    fprintf(stdout, "Returns 0 if string matches the pattern(s), 1 if not and -1 on error.\n\n");
+    fprintf(stdout, "Returns 0 if string matches the pattern(s) or if otherwise successful.\n");
+    fprintf(stdout, "Returns 1 on error.\n");
+    fprintf(stdout, "Returns 2 if string does not match the pattern(s).\n\n");
     fprintf(stdout, "Options:\n"
             "  -h, --help              Show this help message and exit.\n"
             "  -v, --version           Show version number and exit.\n"
@@ -115,18 +117,18 @@ add_pattern(char ***patterns, int **inverts, int *counter, char *pattern)
     (*inverts) = reallocated2;
     (*inverts)[orig_counter] = 0;
 
-    return EXIT_SUCCESS;
+    return 0;
 
 error:
     fprintf(stderr, "yangre error: memory allocation error.\n");
-    return EXIT_FAILURE;
+    return 1;
 }
 
 int
 main(int argc, char *argv[])
 {
     LY_ERR match;
-    int i, opt_index = 0, ret = -1, verbose = 0, blankline = 0;
+    int i, opt_index = 0, ret = 1, verbose = 0, blankline = 0;
     struct option options[] = {
         {"help",             no_argument,       NULL, 'h'},
         {"file",             required_argument, NULL, 'f'},
@@ -144,13 +146,14 @@ main(int argc, char *argv[])
     FILE *infile = NULL;
     size_t len = 0;
     ssize_t l;
+    ly_bool info_printed = 0;
 
     opterr = 0;
     while ((i = getopt_long(argc, argv, "hf:ivVp:", options, &opt_index)) != -1) {
         switch (i) {
         case 'h':
             help();
-            ret = -2; /* continue to allow printing version and help at once */
+            info_printed = 1;
             break;
         case 'f':
             if (infile) {
@@ -221,7 +224,7 @@ main(int argc, char *argv[])
             break;
         case 'v':
             version();
-            ret = -2; /* continue to allow printing version and help at once */
+            info_printed = 1;
             break;
         case 'V':
             verbose = 1;
@@ -237,7 +240,8 @@ main(int argc, char *argv[])
         }
     }
 
-    if (ret == -2) {
+    if (info_printed) {
+        ret = 0;
         goto cleanup;
     }
 
@@ -303,9 +307,9 @@ main(int argc, char *argv[])
     if (match == LY_SUCCESS) {
         ret = 0;
     } else if (match == LY_EVALID) {
-        ret = 1;
+        ret = 2;
     } else {
-        ret = -1;
+        ret = 1;
     }
 
 cleanup:
