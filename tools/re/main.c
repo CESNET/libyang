@@ -271,6 +271,25 @@ error:
     return 1;
 }
 
+static void
+print_verbose(struct ly_ctx *ctx, char **patterns, int *invert_match, int patterns_count, char *str, LY_ERR match)
+{
+    int i;
+
+    for (i = 0; i < patterns_count; i++) {
+        fprintf(stdout, "pattern  %d: %s\n", i + 1, patterns[i]);
+        fprintf(stdout, "matching %d: %s\n", i + 1, invert_match[i] ? "inverted" : "regular");
+    }
+    fprintf(stdout, "string    : %s\n", str);
+    if (match == LY_SUCCESS) {
+        fprintf(stdout, "result    : matching\n");
+    } else if (match == LY_EVALID) {
+        fprintf(stdout, "result    : not matching\n");
+    } else {
+        fprintf(stdout, "result    : error (%s)\n", ly_errmsg(ctx));
+    }
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -386,18 +405,7 @@ main(int argc, char *argv[])
     match = lyd_value_validate(ctx, mod->compiled->data, str, strlen(str), NULL, NULL, NULL);
 
     if (verbose) {
-        for (i = 0; i < patterns_count; i++) {
-            fprintf(stdout, "pattern  %d: %s\n", i + 1, patterns[i]);
-            fprintf(stdout, "matching %d: %s\n", i + 1, invert_match[i] ? "inverted" : "regular");
-        }
-        fprintf(stdout, "string    : %s\n", str);
-        if (match == LY_SUCCESS) {
-            fprintf(stdout, "result    : matching\n");
-        } else if (match == LY_EVALID) {
-            fprintf(stdout, "result    : not matching\n");
-        } else {
-            fprintf(stdout, "result    : error (%s)\n", ly_errmsg(ctx));
-        }
+        print_verbose(ctx, patterns, invert_match, patterns_count, str, match);
     }
     if (match == LY_SUCCESS) {
         ret = 0;
