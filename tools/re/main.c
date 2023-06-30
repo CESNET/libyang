@@ -77,16 +77,6 @@ pattern_error(LY_LOG_LEVEL level, const char *msg, const char *path)
     }
 }
 
-static const char *module_start = "module yangre {"
-        "yang-version 1.1;"
-        "namespace urn:cesnet:libyang:yangre;"
-        "prefix re;"
-        "leaf pattern {"
-        "  type string {";
-static const char *module_invertmatch = " { modifier invert-match; }";
-static const char *module_match = ";";
-static const char *module_end = "}}}";
-
 static int
 add_pattern(char ***patterns, int **inverts, int *counter, char *pattern)
 {
@@ -202,6 +192,85 @@ error:
     return 1;
 }
 
+static char *
+modstr_init(void)
+{
+    const char *module_start = "module yangre {"
+            "yang-version 1.1;"
+            "namespace urn:cesnet:libyang:yangre;"
+            "prefix re;"
+            "leaf pattern {"
+            "  type string {";
+
+    return strdup(module_start);
+}
+
+static char *
+modstr_add_pattern(char **modstr, const char *pattern, int invert_match)
+{
+    char *new;
+    const char *module_invertmatch = " { modifier invert-match; }";
+    const char *module_match = ";";
+
+    if (asprintf(&new, "%s pattern %s%s", *modstr, pattern, invert_match ? module_invertmatch : module_match) == -1) {
+        fprintf(stderr, "yangre error: memory allocation failed.\n");
+        return NULL;
+    }
+    free(*modstr);
+    *modstr = NULL;
+
+    return new;
+}
+
+static char *
+modstr_add_ending(char **modstr)
+{
+    char *new;
+    static const char *module_end = "}}}";
+
+    if (asprintf(&new, "%s%s", *modstr, module_end) == -1) {
+        fprintf(stderr, "yangre error: memory allocation failed.\n");
+        return NULL;
+    }
+    free(*modstr);
+    *modstr = NULL;
+
+    return new;
+}
+
+static int
+create_module(char **patterns, int *invert_match, int patterns_count, char **mod)
+{
+    int i;
+    char *new = NULL, *modstr;
+
+    if (!(modstr = modstr_init())) {
+        goto error;
+    }
+
+    for (i = 0; i < patterns_count; i++) {
+        if (!(new = modstr_add_pattern(&modstr, patterns[i], invert_match[i]))) {
+            goto error;
+        }
+        modstr = new;
+    }
+
+    if (!(new = modstr_add_ending(&modstr))) {
+        goto error;
+    }
+
+    *mod = new;
+
+    return 0;
+
+error:
+    *mod = NULL;
+    free(new);
+    free(modstr);
+
+    return 1;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -216,7 +285,7 @@ main(int argc, char *argv[])
         {"verbose",          no_argument,       NULL, 'V'},
         {NULL,               0,                 NULL, 0}
     };
-    char **patterns = NULL, *str = NULL, *modstr = NULL, *s;
+    char **patterns = NULL, *str = NULL, *modstr = NULL;
     int *invert_match = NULL;
     int patterns_count = 0;
     struct ly_ctx *ctx = NULL;
@@ -300,24 +369,9 @@ main(int argc, char *argv[])
         str = argv[optind];
     }
 
-    for (modstr = (char *)module_start, i = 0; i < patterns_count; i++) {
-        if (asprintf(&s, "%s pattern %s%s", modstr, patterns[i], invert_match[i] ? module_invertmatch : module_match) == -1) {
-            fprintf(stderr, "yangre error: memory allocation failed.\n");
-            goto cleanup;
-        }
-        if (modstr != module_start) {
-            free(modstr);
-        }
-        modstr = s;
-    }
-    if (asprintf(&s, "%s%s", modstr, module_end) == -1) {
-        fprintf(stderr, "yangre error: memory allocation failed.\n");
+    if (create_module(patterns, invert_match, patterns_count, &modstr)) {
         goto cleanup;
     }
-    if (modstr != module_start) {
-        free(modstr);
-    }
-    modstr = s;
 
     if (ly_ctx_new(NULL, 0, &ctx)) {
         goto cleanup;
@@ -360,9 +414,7 @@ cleanup:
     }
     free(patterns);
     free(invert_match);
-    if (modstr != module_start) {
-        free(modstr);
-    }
+    free(modstr);
     if (infile) {
         fclose(infile);
         free(str);
