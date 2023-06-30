@@ -1,6 +1,7 @@
 /**
  * @file main.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Adam Piecek <piecek@cesnet.cz>
  * @brief libyang's YANG Regular Expression tool
  *
  * Copyright (c) 2017 CESNET, z.s.p.o.
@@ -26,6 +27,11 @@
 
 #include "compat.h"
 #include "tools/config.h"
+
+struct yr_pattern {
+    char *expr;
+    ly_bool invert;
+};
 
 void
 help(void)
@@ -78,35 +84,28 @@ pattern_error(LY_LOG_LEVEL level, const char *msg, const char *path)
 }
 
 static int
-add_pattern(char ***patterns, int **inverts, int *counter, char *pattern)
+add_pattern(struct yr_pattern **patterns, int *counter, char *pattern)
 {
-    void *reallocated1, *reallocated2;
+    void *reallocated;
     int orig_counter;
 
     /* Store the original number of items. */
     orig_counter = *counter;
 
     /* Reallocate 'patterns' memory with additional space. */
-    reallocated1 = realloc(*patterns, (orig_counter + 1) * sizeof **patterns);
-    if (!reallocated1) {
+    reallocated = realloc(*patterns, (orig_counter + 1) * sizeof **patterns);
+    if (!reallocated) {
         goto error;
     }
-    (*patterns) = reallocated1;
+    (*patterns) = reallocated;
     /* Allocated memory is now larger. */
     (*counter)++;
     /* Copy the pattern and store it to the additonal space. */
-    (*patterns)[orig_counter] = strdup(pattern);
-    if (!(*patterns)[orig_counter]) {
+    (*patterns)[orig_counter].expr = strdup(pattern);
+    if (!(*patterns)[orig_counter].expr) {
         goto error;
     }
-
-    /* Reallocate 'inverts' memory with additional space. */
-    reallocated2 = realloc(*inverts, (orig_counter + 1) * sizeof **inverts);
-    if (!reallocated2) {
-        goto error;
-    }
-    (*inverts) = reallocated2;
-    (*inverts)[orig_counter] = 0;
+    (*patterns)[orig_counter].invert = 0;
 
     return 0;
 
@@ -121,14 +120,12 @@ error:
  * @param[in] filepath File to parse. Contains patterns and string.
  * @param[out] infile The file descriptor of @p filepath.
  * @param[out] patterns Storage of patterns.
- * @param[out] invert_match Array of flags indicates which patterns are inverted.
- * @param[out] patterns_count Number of items in @p patterns (and @p invert_match too).
+ * @param[out] patterns_count Number of items in @p patterns.
  * @param[out] strarg The string-argument to check.
  * @return 0 on success.
  */
 static int
-parse_patterns_file(const char *filepath, FILE **infile, char ***patterns, int **invert_match, int *patterns_count,
-        char **strarg)
+parse_patterns_file(const char *filepath, FILE **infile, struct yr_pattern **patterns, int *patterns_count, char **strarg)
 {
     int blankline = 0;
     char *str = NULL;
@@ -157,13 +154,12 @@ parse_patterns_file(const char *filepath, FILE **infile, char ***patterns, int *
             *strarg = str;
             break;
             /* else read the patterns */
-        } else if (add_pattern(patterns, invert_match, patterns_count,
-                    (str[0] == ' ') ? &str[1] : str)) {
+        } else if (add_pattern(patterns, patterns_count, (str[0] == ' ') ? &str[1] : str)) {
             goto error;
         }
         if (str[0] == ' ') {
             /* set invert-match */
-            (*invert_match)[*patterns_count - 1] = 1;
+            (*patterns)[*patterns_count - 1].invert = 1;
         }
     }
     assert(str);
@@ -206,13 +202,14 @@ modstr_init(void)
 }
 
 static char *
-modstr_add_pattern(char **modstr, const char *pattern, int invert_match)
+modstr_add_pattern(char **modstr, const struct yr_pattern *pattern)
 {
     char *new;
     const char *module_invertmatch = " { modifier invert-match; }";
     const char *module_match = ";";
 
-    if (asprintf(&new, "%s pattern %s%s", *modstr, pattern, invert_match ? module_invertmatch : module_match) == -1) {
+    if (asprintf(&new, "%s pattern %s%s", *modstr, pattern->expr,
+            pattern->invert ? module_invertmatch : module_match) == -1) {
         fprintf(stderr, "yangre error: memory allocation failed.\n");
         return NULL;
     }
@@ -239,7 +236,7 @@ modstr_add_ending(char **modstr)
 }
 
 static int
-create_module(char **patterns, int *invert_match, int patterns_count, char **mod)
+create_module(struct yr_pattern *patterns, int patterns_count, char **mod)
 {
     int i;
     char *new = NULL, *modstr;
@@ -249,7 +246,7 @@ create_module(char **patterns, int *invert_match, int patterns_count, char **mod
     }
 
     for (i = 0; i < patterns_count; i++) {
-        if (!(new = modstr_add_pattern(&modstr, patterns[i], invert_match[i]))) {
+        if (!(new = modstr_add_pattern(&modstr, &patterns[i]))) {
             goto error;
         }
         modstr = new;
@@ -272,13 +269,13 @@ error:
 }
 
 static void
-print_verbose(struct ly_ctx *ctx, char **patterns, int *invert_match, int patterns_count, char *str, LY_ERR match)
+print_verbose(struct ly_ctx *ctx, struct yr_pattern *patterns, int patterns_count, char *str, LY_ERR match)
 {
     int i;
 
     for (i = 0; i < patterns_count; i++) {
-        fprintf(stdout, "pattern  %d: %s\n", i + 1, patterns[i]);
-        fprintf(stdout, "matching %d: %s\n", i + 1, invert_match[i] ? "inverted" : "regular");
+        fprintf(stdout, "pattern  %d: %s\n", i + 1, patterns[i].expr);
+        fprintf(stdout, "matching %d: %s\n", i + 1, patterns[i].invert ? "inverted" : "regular");
     }
     fprintf(stdout, "string    : %s\n", str);
     if (match == LY_SUCCESS) {
@@ -304,8 +301,8 @@ main(int argc, char *argv[])
         {"verbose",          no_argument,       NULL, 'V'},
         {NULL,               0,                 NULL, 0}
     };
-    char **patterns = NULL, *str = NULL, *modstr = NULL;
-    int *invert_match = NULL;
+    struct yr_pattern *patterns = NULL;
+    char *str = NULL, *modstr = NULL;
     int patterns_count = 0;
     struct ly_ctx *ctx = NULL;
     struct lys_module *mod;
@@ -329,17 +326,17 @@ main(int argc, char *argv[])
                 fprintf(stderr, "yangre error: command line patterns cannot be mixed with file input.\n");
                 goto cleanup;
             }
-            if (parse_patterns_file(optarg, &infile, &patterns, &invert_match, &patterns_count, &str)) {
+            if (parse_patterns_file(optarg, &infile, &patterns, &patterns_count, &str)) {
                 goto cleanup;
             }
             break;
         case 'i':
-            if (!patterns_count || invert_match[patterns_count - 1]) {
+            if (!patterns_count || patterns[patterns_count - 1].invert) {
                 help();
                 fprintf(stderr, "yangre error: invert-match option must follow some pattern.\n");
                 goto cleanup;
             }
-            invert_match[patterns_count - 1] = 1;
+            patterns[patterns_count - 1].invert = 1;
             break;
         case 'p':
             if (infile) {
@@ -347,7 +344,7 @@ main(int argc, char *argv[])
                 fprintf(stderr, "yangre error: command line patterns cannot be mixed with file input.\n");
                 goto cleanup;
             }
-            if (add_pattern(&patterns, &invert_match, &patterns_count, optarg)) {
+            if (add_pattern(&patterns, &patterns_count, optarg)) {
                 goto cleanup;
             }
             break;
@@ -388,7 +385,7 @@ main(int argc, char *argv[])
         str = argv[optind];
     }
 
-    if (create_module(patterns, invert_match, patterns_count, &modstr)) {
+    if (create_module(patterns, patterns_count, &modstr)) {
         goto cleanup;
     }
 
@@ -405,7 +402,7 @@ main(int argc, char *argv[])
     match = lyd_value_validate(ctx, mod->compiled->data, str, strlen(str), NULL, NULL, NULL);
 
     if (verbose) {
-        print_verbose(ctx, patterns, invert_match, patterns_count, str, match);
+        print_verbose(ctx, patterns, patterns_count, str, match);
     }
     if (match == LY_SUCCESS) {
         ret = 0;
@@ -418,10 +415,11 @@ main(int argc, char *argv[])
 cleanup:
     ly_ctx_destroy(ctx);
     for (i = 0; i < patterns_count; i++) {
-        free(patterns[i]);
+        free(patterns[i].expr);
     }
-    free(patterns);
-    free(invert_match);
+    if (patterns_count) {
+        free(patterns);
+    }
     free(modstr);
     if (infile) {
         fclose(infile);
