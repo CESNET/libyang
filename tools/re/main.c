@@ -14,6 +14,7 @@
 
 #define _GNU_SOURCE /* asprintf, strdup */
 
+#include <assert.h>
 #include <errno.h>
 #include <getopt.h>
 #include <stdio.h>
@@ -124,11 +125,88 @@ error:
     return 1;
 }
 
+/**
+ * @brief Open the @p filepath, parse patterns and given string-argument.
+ *
+ * @param[in] filepath File to parse. Contains patterns and string.
+ * @param[out] infile The file descriptor of @p filepath.
+ * @param[out] patterns Storage of patterns.
+ * @param[out] invert_match Array of flags indicates which patterns are inverted.
+ * @param[out] patterns_count Number of items in @p patterns (and @p invert_match too).
+ * @param[out] strarg The string-argument to check.
+ * @return 0 on success.
+ */
+static int
+parse_patterns_file(const char *filepath, FILE **infile, char ***patterns, int **invert_match, int *patterns_count,
+        char **strarg)
+{
+    int blankline = 0;
+    char *str = NULL;
+    size_t len = 0;
+    ssize_t l;
+
+    *infile = fopen(filepath, "rb");
+    if (!(*infile)) {
+        fprintf(stderr, "yangre error: unable to open input file %s (%s).\n", optarg, strerror(errno));
+        goto error;
+    }
+
+    while ((l = getline(&str, &len, *infile)) != -1) {
+        if (!blankline && (str[0] == '\n')) {
+            /* blank line */
+            blankline = 1;
+            continue;
+        }
+        if ((str[0] != '\n') && (str[l - 1] == '\n')) {
+            /* remove ending newline */
+            str[l - 1] = '\0';
+        }
+        if (blankline) {
+            /* done - str is now the string to check */
+            blankline = 0;
+            *strarg = str;
+            break;
+            /* else read the patterns */
+        } else if (add_pattern(patterns, invert_match, patterns_count,
+                    (str[0] == ' ') ? &str[1] : str)) {
+            goto error;
+        }
+        if (str[0] == ' ') {
+            /* set invert-match */
+            (*invert_match)[*patterns_count - 1] = 1;
+        }
+    }
+    assert(str);
+    if (blankline && (str[0] != '\0')) {
+        /* corner case, no input after blankline meaning the pattern to check is empty */
+        free(str);
+        str = malloc(sizeof(char));
+        if (!str) {
+            fprintf(stderr, "yangre error: memory allocation failed.\n");
+            goto error;
+        }
+        str[0] = '\0';
+    }
+    *strarg = str;
+
+    return 0;
+
+error:
+    free(str);
+    if (*infile) {
+        fclose(*infile);
+        *infile = NULL;
+    }
+    *strarg = NULL;
+
+    return 1;
+}
+
 int
 main(int argc, char *argv[])
 {
     LY_ERR match;
-    int i, opt_index = 0, ret = 1, verbose = 0, blankline = 0;
+    int i, opt_index = 0, ret = 1, verbose = 0;
     struct option options[] = {
         {"help",             no_argument,       NULL, 'h'},
         {"file",             required_argument, NULL, 'f'},
@@ -144,8 +222,6 @@ main(int argc, char *argv[])
     struct ly_ctx *ctx = NULL;
     struct lys_module *mod;
     FILE *infile = NULL;
-    size_t len = 0;
-    ssize_t l;
     ly_bool info_printed = 0;
 
     opterr = 0;
@@ -165,43 +241,8 @@ main(int argc, char *argv[])
                 fprintf(stderr, "yangre error: command line patterns cannot be mixed with file input.\n");
                 goto cleanup;
             }
-            infile = fopen(optarg, "rb");
-            if (!infile) {
-                fprintf(stderr, "yangre error: unable to open input file %s (%s).\n", optarg, strerror(errno));
+            if (parse_patterns_file(optarg, &infile, &patterns, &invert_match, &patterns_count, &str)) {
                 goto cleanup;
-            }
-
-            while ((l = getline(&str, &len, infile)) != -1) {
-                if (!blankline && (str[0] == '\n')) {
-                    /* blank line */
-                    blankline = 1;
-                    continue;
-                }
-                if ((str[0] != '\n') && (str[l - 1] == '\n')) {
-                    /* remove ending newline */
-                    str[l - 1] = '\0';
-                }
-                if (blankline) {
-                    /* done - str is now the string to check */
-                    blankline = 0;
-                    break;
-                    /* else read the patterns */
-                } else if (add_pattern(&patterns, &invert_match, &patterns_count,
-                        (str[0] == ' ') ? &str[1] : str)) {
-                    goto cleanup;
-                }
-                if (str[0] == ' ') {
-                    /* set invert-match */
-                    invert_match[patterns_count - 1] = 1;
-                }
-            }
-            if (blankline) {
-                /* corner case, no input after blankline meaning the pattern to check is empty */
-                if (str != NULL) {
-                    free(str);
-                }
-                str = malloc(sizeof(char));
-                str[0] = '\0';
             }
             break;
         case 'i':
