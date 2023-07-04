@@ -101,7 +101,7 @@ nacm_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 
     /* check for duplication */
     LY_ARRAY_FOR(parent->exts, u) {
-        if ((&parent->exts[u] != ext) && parent->exts[u].record && (parent->exts[u].record->plugin.id == ext->record->plugin.id)) {
+        if ((&parent->exts[u] != ext) && parent->exts[u].record && !strcmp(parent->exts[u].record->plugin.id, ext->record->plugin.id)) {
             /* duplication of a NACM extension on a single node
              * We check for all NACM plugins since we want to catch even the situation that there is default-deny-all
              * AND default-deny-write */
