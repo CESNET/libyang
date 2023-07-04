@@ -1546,7 +1546,7 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
     size_t name_len, prefix_len = 0;
     ly_bool is_meta = 0, parse_subtree;
     const struct lysc_node *snode = NULL;
-    struct lysc_ext_instance *ext;
+    struct lysc_ext_instance *ext = NULL;
     struct lyd_node *node = NULL, *attr_node = NULL;
     const struct ly_ctx *ctx = lydctx->jsonctx->ctx;
     char *value = NULL;
