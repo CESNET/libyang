@@ -113,6 +113,34 @@ error:
     return 1;
 }
 
+static int
+create_empty_string(char **str)
+{
+    free(*str);
+    *str = malloc(sizeof(char));
+    if (!(*str)) {
+        fprintf(stderr, "yangre error: memory allocation failed.\n");
+        return 1;
+    }
+    (*str)[0] = '\0';
+
+    return 0;
+}
+
+static ly_bool
+file_is_empty(FILE *fp)
+{
+    int c;
+
+    c = fgetc(fp);
+    if (c == EOF) {
+        return 1;
+    } else {
+        ungetc(c, fp);
+        return 0;
+    }
+}
+
 /**
  * @brief Open the @p filepath, parse patterns and given string-argument.
  *
@@ -135,6 +163,12 @@ parse_patterns_file(const char *filepath, FILE **infile, struct yr_pattern **pat
     if (!(*infile)) {
         fprintf(stderr, "yangre error: unable to open input file %s (%s).\n", optarg, strerror(errno));
         goto error;
+    }
+    if (file_is_empty(*infile)) {
+        if (create_empty_string(strarg)) {
+            goto error;
+        }
+        return 0;
     }
 
     while ((l = getline(&str, &len, *infile)) != -1) {
@@ -167,13 +201,9 @@ parse_patterns_file(const char *filepath, FILE **infile, struct yr_pattern **pat
     }
     if (!str || (blankline && (str[0] != '\0'))) {
         /* corner case, no input after blankline meaning the pattern to check is empty */
-        free(str);
-        str = malloc(sizeof(char));
-        if (!str) {
-            fprintf(stderr, "yangre error: memory allocation failed.\n");
+        if (create_empty_string(&str)) {
             goto error;
         }
-        str[0] = '\0';
     }
     *strarg = str;
 
