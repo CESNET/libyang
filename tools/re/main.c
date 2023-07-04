@@ -15,7 +15,6 @@
 
 #define _GNU_SOURCE /* asprintf, strdup */
 
-#include <assert.h>
 #include <errno.h>
 #include <getopt.h>
 #include <stdio.h>
@@ -139,14 +138,18 @@ parse_patterns_file(const char *filepath, FILE **infile, struct yr_pattern **pat
     }
 
     while ((l = getline(&str, &len, *infile)) != -1) {
-        if (!blankline && (str[0] == '\n')) {
+        if (!blankline && ((str[0] == '\n') || ((str[0] == '\r') && (str[1] == '\n')))) {
             /* blank line */
             blankline = 1;
             continue;
         }
-        if ((str[0] != '\n') && (str[l - 1] == '\n')) {
+        if ((str[0] != '\n') && (str[0] != '\r') && (str[l - 1] == '\n')) {
             /* remove ending newline */
-            str[l - 1] = '\0';
+            if ((l > 1) && (str[l - 2] == '\r') && (str[l - 1] == '\n')) {
+                str[l - 2] = '\0';
+            } else {
+                str[l - 1] = '\0';
+            }
         }
         if (blankline) {
             /* done - str is now the string to check */
@@ -162,8 +165,7 @@ parse_patterns_file(const char *filepath, FILE **infile, struct yr_pattern **pat
             (*patterns)[*patterns_count - 1].invert = 1;
         }
     }
-    assert(str);
-    if (blankline && (str[0] != '\0')) {
+    if (!str || (blankline && (str[0] != '\0'))) {
         /* corner case, no input after blankline meaning the pattern to check is empty */
         free(str);
         str = malloc(sizeof(char));

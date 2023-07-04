@@ -86,9 +86,9 @@ vasprintf(char **strp, const char *fmt, va_list ap)
 ssize_t
 getline(char **lineptr, size_t *n, FILE *stream)
 {
-    static char line[256];
+    static char chunk[256];
     char *ptr;
-    ssize_t len;
+    ssize_t len, written;
 
     if (!lineptr || !n) {
         errno = EINVAL;
@@ -99,28 +99,31 @@ getline(char **lineptr, size_t *n, FILE *stream)
         return -1;
     }
 
-    if (!fgets(line, 256, stream)) {
-        return -1;
-    }
-
-    ptr = strchr(line, '\n');
-    if (ptr) {
-        *ptr = '\0';
-    }
-
-    len = strlen(line);
-
-    if (len + 1 < 256) {
-        ptr = realloc(*lineptr, 256);
-        if (!ptr) {
-            return -1;
+    *n = *lineptr ? *n : 0;
+    written = 0;
+    while (fgets(chunk, sizeof(chunk), stream)) {
+        len = strlen(chunk);
+        if (written + len > *n) {
+            ptr = realloc(*lineptr, *n + sizeof(chunk));
+            if (!ptr) {
+                return -1;
+            }
+            *lineptr = ptr;
+            *n = *n + sizeof(chunk);
         }
-        *lineptr = ptr;
-        *n = 256;
+        memcpy(*lineptr + written, &chunk, len);
+        written += len;
+        if ((*lineptr)[written - 1] == '\n') {
+            break;
+        }
+    }
+    if (written) {
+        (*lineptr)[written] = '\0';
+    } else {
+        written = -1;
     }
 
-    strcpy(*lineptr, line);
-    return len;
+    return written;
 }
 
 #endif
