@@ -294,14 +294,14 @@ typedef enum {
  * @brief Libyang full error structure.
  */
 struct ly_err_item {
-    LY_LOG_LEVEL level;
-    LY_ERR no;
-    LY_VECODE vecode;
-    char *msg;
-    char *path;
-    char *apptag;
-    struct ly_err_item *next;
-    struct ly_err_item *prev; /* first item's prev points to the last item */
+    LY_LOG_LEVEL level;         /**< error (message) log level */
+    LY_ERR no;                  /**< error code */
+    LY_VECODE vecode;           /**< validation error code, if any */
+    char *msg;                  /**< error message */
+    char *path;                 /**< error path that caused the error, if any */
+    char *apptag;               /**< error-app-tag, if any */
+    struct ly_err_item *next;   /**< next error item */
+    struct ly_err_item *prev;   /**< previous error item, points to the last item for the ifrst item */
 };
 
 /**
