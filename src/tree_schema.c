@@ -442,7 +442,7 @@ lys_find_xpath_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
         struct ly_set **set)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lyxp_set xp_set;
+    struct lyxp_set xp_set = {0};
     struct lyxp_expr *exp = NULL;
     uint32_t i;
 
@@ -455,7 +455,9 @@ lys_find_xpath_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
         ctx = ctx_node->module->ctx;
     }
 
-    memset(&xp_set, 0, sizeof xp_set);
+    /* allocate return set */
+    ret = ly_set_new(set);
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* compile expression */
     ret = lyxp_expr_parse(ctx, xpath, 0, 1, &exp);
@@ -463,10 +465,6 @@ lys_find_xpath_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
 
     /* atomize expression */
     ret = lyxp_atomize(ctx, exp, NULL, LY_VALUE_JSON, NULL, ctx_node, ctx_node, &xp_set, options);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    /* allocate return set */
-    ret = ly_set_new(set);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* transform into ly_set */
@@ -501,13 +499,13 @@ lys_find_expr_atoms(const struct lysc_node *ctx_node, const struct lys_module *c
         options = LYXP_SCNODE;
     }
 
+    /* allocate return set */
+    ret = ly_set_new(set);
+    LY_CHECK_GOTO(ret, cleanup);
+
     /* atomize expression */
     ret = lyxp_atomize(cur_mod->ctx, expr, cur_mod, LY_VALUE_SCHEMA_RESOLVED, (void *)prefixes, ctx_node, ctx_node,
             &xp_set, options);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    /* allocate return set */
-    ret = ly_set_new(set);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* transform into ly_set */
@@ -552,16 +550,16 @@ lys_find_xpath(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const
         ctx = ctx_node->module->ctx;
     }
 
+    /* allocate return set */
+    ret = ly_set_new(set);
+    LY_CHECK_GOTO(ret, cleanup);
+
     /* compile expression */
     ret = lyxp_expr_parse(ctx, xpath, 0, 1, &exp);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* atomize expression */
     ret = lyxp_atomize(ctx, exp, NULL, LY_VALUE_JSON, NULL, ctx_node, ctx_node, &xp_set, options);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    /* allocate return set */
-    ret = ly_set_new(set);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* transform into ly_set */
