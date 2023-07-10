@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Logger routines implementations
  *
- * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -48,12 +48,6 @@ ATOMIC_T ly_ldbg_groups = 0;
 
 THREAD_LOCAL struct ly_log_location_s log_location = {0};
 
-LIBYANG_API_DEF const char *
-ly_last_errmsg(void)
-{
-    return last_msg;
-}
-
 LIBYANG_API_DEF LY_ERR
 ly_errcode(const struct ly_ctx *ctx)
 {
@@ -65,6 +59,47 @@ ly_errcode(const struct ly_ctx *ctx)
     }
 
     return LY_SUCCESS;
+}
+
+LIBYANG_API_DEF const char *
+ly_strerrcode(LY_ERR err)
+{
+    /* ignore plugin flag */
+    err &= ~LY_EPLUGIN;
+
+    switch (err) {
+    case LY_SUCCESS:
+        return NULL;
+    case LY_EMEM:
+        return "Out of memory";
+    case LY_ESYS:
+        return "System call failed";
+    case LY_EINVAL:
+        return "Invalid value";
+    case LY_EEXIST:
+        return "Already exists";
+    case LY_ENOTFOUND:
+        return "Not found";
+    case LY_EINT:
+        return "Internal error";
+    case LY_EVALID:
+        return "Validation failed";
+    case LY_EDENIED:
+        return "Operation denied";
+    case LY_EINCOMPLETE:
+        return "Operation incomplete";
+    case LY_ERECOMPILE:
+        return "Recompilation required";
+    case LY_ENOT:
+        return "Negative result";
+    case LY_EOTHER:
+        return "Another failure reason";
+    case LY_EPLUGIN:
+        break;
+    }
+
+    /* unreachable */
+    return NULL;
 }
 
 LIBYANG_API_DEF LY_VECODE
@@ -81,6 +116,38 @@ ly_vecode(const struct ly_ctx *ctx)
 }
 
 LIBYANG_API_DEF const char *
+ly_strvecode(LY_VECODE vecode)
+{
+    switch (vecode) {
+    case LYVE_SUCCESS:
+        return NULL;
+    case LYVE_SYNTAX:
+        return "General syntax error";
+    case LYVE_SYNTAX_YANG:
+        return "YANG syntax error";
+    case LYVE_SYNTAX_YIN:
+        return "YIN syntax error";
+    case LYVE_REFERENCE:
+        return "Reference error";
+    case LYVE_XPATH:
+        return "XPath error";
+    case LYVE_SEMANTICS:
+        return "Semantic error";
+    case LYVE_SYNTAX_XML:
+        return "XML syntax error";
+    case LYVE_SYNTAX_JSON:
+        return "JSON syntax error";
+    case LYVE_DATA:
+        return "YANG data error";
+    case LYVE_OTHER:
+        return "Another error";
+    }
+
+    /* unreachable */
+    return NULL;
+}
+
+LIBYANG_API_DEF const char *
 ly_errmsg(const struct ly_ctx *ctx)
 {
     struct ly_err_item *i;
@@ -93,6 +160,12 @@ ly_errmsg(const struct ly_ctx *ctx)
     }
 
     return NULL;
+}
+
+LIBYANG_API_DEF const char *
+ly_last_errmsg(void)
+{
+    return last_msg;
 }
 
 LIBYANG_API_DEF const char *

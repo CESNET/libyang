@@ -305,14 +305,20 @@ struct ly_err_item {
 };
 
 /**
- * @brief Get the last (thread-specific) error message.
+ * @brief Get the last (thread, context-specific) error code.
  *
- * ::ly_errmsg() should be used instead of this function but this one is useful for getting
- * errors from functions that do not have any context accessible. Or as a simple unified logging API.
- *
- * @return Last generated error message.
+ * @param[in] ctx Relative context.
+ * @return LY_ERR value of the last error code.
  */
-LIBYANG_API_DECL const char *ly_last_errmsg(void);
+LIBYANG_API_DECL LY_ERR ly_errcode(const struct ly_ctx *ctx);
+
+/**
+ * @brief Get human-readable error message for an error code.
+ *
+ * @param[in] err Error code.
+ * @return String error message, NULL if none reported.
+ */
+LIBYANG_API_DECL const char *ly_strerrcode(LY_ERR err);
 
 /**
  * @brief Get the last (thread, context-specific) validation error code.
@@ -325,12 +331,12 @@ LIBYANG_API_DECL const char *ly_last_errmsg(void);
 LIBYANG_API_DECL LY_VECODE ly_vecode(const struct ly_ctx *ctx);
 
 /**
- * @brief Get the last (thread, context-specific) error code.
+ * @brief Get human-readable error message for a validation error code.
  *
- * @param[in] ctx Relative context.
- * @return LY_ERR value of the last error code.
+ * @param[in] vecode Validation error code.
+ * @return String error message, NULL if none reported.
  */
-LIBYANG_API_DECL LY_ERR ly_errcode(const struct ly_ctx *ctx);
+LIBYANG_API_DECL const char *ly_strvecode(LY_VECODE vecode);
 
 /**
  * @brief Get the last (thread, context-specific) error message. If the coresponding module defined
@@ -343,6 +349,16 @@ LIBYANG_API_DECL LY_ERR ly_errcode(const struct ly_ctx *ctx);
  * @return Text of the last error message, empty string if there is no error.
  */
 LIBYANG_API_DECL const char *ly_errmsg(const struct ly_ctx *ctx);
+
+/**
+ * @brief Get the last (thread-specific) error message.
+ *
+ * ::ly_errmsg() should be used instead of this function but this one is useful for getting
+ * errors from functions that do not have any context accessible. Or as a simple unified logging API.
+ *
+ * @return Last generated error message.
+ */
+LIBYANG_API_DECL const char *ly_last_errmsg(void);
 
 /**
  * @brief Get the last (thread, context-specific) path of the element where was an error.
