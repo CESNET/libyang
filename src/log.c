@@ -69,7 +69,7 @@ ly_strerrcode(LY_ERR err)
 
     switch (err) {
     case LY_SUCCESS:
-        return NULL;
+        return "Success";
     case LY_EMEM:
         return "Out of memory";
     case LY_ESYS:
@@ -120,7 +120,7 @@ ly_strvecode(LY_VECODE vecode)
 {
     switch (vecode) {
     case LYVE_SUCCESS:
-        return NULL;
+        return "Success";
     case LYVE_SYNTAX:
         return "General syntax error";
     case LYVE_SYNTAX_YANG:

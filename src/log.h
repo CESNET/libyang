@@ -316,7 +316,7 @@ LIBYANG_API_DECL LY_ERR ly_errcode(const struct ly_ctx *ctx);
  * @brief Get human-readable error message for an error code.
  *
  * @param[in] err Error code.
- * @return String error message, NULL if none reported.
+ * @return String error message.
  */
 LIBYANG_API_DECL const char *ly_strerrcode(LY_ERR err);
 
@@ -334,7 +334,7 @@ LIBYANG_API_DECL LY_VECODE ly_vecode(const struct ly_ctx *ctx);
  * @brief Get human-readable error message for a validation error code.
  *
  * @param[in] vecode Validation error code.
- * @return String error message, NULL if none reported.
+ * @return String error message.
  */
 LIBYANG_API_DECL const char *ly_strvecode(LY_VECODE vecode);
 
