@@ -99,7 +99,7 @@ ly_strerrcode(LY_ERR err)
     }
 
     /* unreachable */
-    return NULL;
+    return "Unknown";
 }
 
 LIBYANG_API_DEF LY_VECODE
@@ -144,7 +144,7 @@ ly_strvecode(LY_VECODE vecode)
     }
 
     /* unreachable */
-    return NULL;
+    return "Unknown";
 }
 
 LIBYANG_API_DEF const char *
