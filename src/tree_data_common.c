@@ -748,8 +748,8 @@ lyd_parse_opaq_list_error(const struct lyd_node *node, const struct lysc_node *s
     assert(!node->schema);
 
     /* get all keys into a set */
-    while ((key = lys_getnext(key, snode, NULL, 0)) && (snode->flags & LYS_KEY)) {
-        LY_CHECK_GOTO(ret = ly_set_add(&key_set, (void *)snode, 1, NULL), cleanup);
+    while ((key = lys_getnext(key, snode, NULL, 0)) && (key->flags & LYS_KEY)) {
+        LY_CHECK_GOTO(ret = ly_set_add(&key_set, (void *)key, 1, NULL), cleanup);
     }
 
     LY_LIST_FOR(lyd_child(node), child) {
