@@ -804,7 +804,8 @@ keyword_start:
             MOVE_INPUT(ctx, 1);
             goto extension;
         case '{':
-            /* allowed only for input and output statements which can be without arguments */
+        case ';':
+            /* allowed only for input and output statements which are without arguments */
             if ((*kw == LY_STMT_INPUT) || (*kw == LY_STMT_OUTPUT)) {
                 break;
             }
@@ -2858,11 +2859,6 @@ parse_inout(struct lysp_yang_ctx *ctx, enum ly_stmt inout_kw, struct lysp_node *
             return LY_EVALID;
         }
         YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, inout_p->exts, ret, cleanup);
-    }
-
-    if (!inout_p->child) {
-        LOGVAL_PARSER(ctx, LY_VCODE_MISSTMT, "data-def-stmt", lyplg_ext_stmt2str(inout_kw));
-        return LY_EVALID;
     }
 
 cleanup:
