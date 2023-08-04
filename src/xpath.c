@@ -701,14 +701,14 @@ set_insert_node_hash(struct lyxp_set *set, struct lyd_node *node, enum lyxp_node
             assert(!r);
             (void)r;
 
-            if (hnode.node == node) {
+            if ((hnode.node == node) && (hnode.type == type)) {
                 /* it was just added, do not add it twice */
-                node = NULL;
+                return;
             }
         }
     }
 
-    if (set->ht && node) {
+    if (set->ht) {
         /* add the new node into hash table */
         hnode.node = node;
         hnode.type = type;
