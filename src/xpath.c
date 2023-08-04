@@ -991,11 +991,7 @@ set_fill_set(struct lyxp_set *trg, const struct lyxp_set *src)
         return;
     }
 
-    if (trg->type == LYXP_SET_NODE_SET) {
-        free(trg->val.nodes);
-    } else if (trg->type == LYXP_SET_STRING) {
-        free(trg->val.str);
-    }
+    lyxp_set_free_content(trg);
     set_init(trg, src);
 
     if (src->type == LYXP_SET_SCNODE_SET) {
