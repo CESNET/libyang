@@ -1529,6 +1529,12 @@ LIBYANG_API_DECL LY_ERR lyd_new_attr2(struct lyd_node *parent, const char *modul
                                             to unexpected behavior. */
 #define LYD_NEW_PATH_WITH_OPAQ 0x20 /**< Consider opaque nodes normally when searching for existing nodes. */
 
+#define LYD_NEW_PATH_JSON_VALUE  0x40   /**< Interpret the provided leaf/leaf-list @p value as being in the JSON format.
+                                             Specifically, strings are quoted as per IETF rfc 8259
+                                                `string = quotation-mark *char quotation-mark`
+                                            Example, `const char * data = "\"Great View\"";` should be processed as
+                                            `const value = "Great View";` */
+
 /** @} pathoptions */
 
 /**

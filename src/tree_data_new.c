@@ -1616,6 +1616,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
     const struct lyd_value *val = NULL;
     LY_ARRAY_COUNT_TYPE path_idx = 0, orig_count = 0;
     LY_VALUE_FORMAT format;
+    const char *str_value = value;
 
     assert(parent || ctx);
     assert(path && ((path[0] == '/') || parent));
@@ -1627,6 +1628,16 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
     if (value && !value_len) {
         value_len = strlen(value);
     }
+    if (options & LYD_NEW_PATH_JSON_VALUE) {
+        /* if it starts and ends in double-quotes, it can only be a string value */
+        if ((value_len > 1) && str_value &&
+                ('"' == str_value[0]) && ('"' == str_value[value_len - 1])) {
+            /* remove the quotes */
+            value = ++str_value;
+            value_len -= 2;
+        }
+    }
+
     if (options & LYD_NEW_PATH_BIN_VALUE) {
         format = LY_VALUE_LYB;
     } else if (options & LYD_NEW_PATH_CANON_VALUE) {

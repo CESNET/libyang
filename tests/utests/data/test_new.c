@@ -495,6 +495,42 @@ test_path_ext(void **state)
     lyd_free_tree(root);
 }
 
+static void
+test_path_json_val(void **state)
+{
+    LY_ERR ret;
+    struct ly_ctx *ctx;
+    struct lyd_node *root, *node, *parent;
+    struct lys_module *mod;
+    LYD_ANYDATA_VALUETYPE type = LYD_ANYDATA_STRING;
+    uint32_t opts[2] = {LYD_NEW_PATH_JSON_VALUE, 0};
+    char *val[5][2] = {{"val", "\"val\""}, {"val2", "\"val2\""}, {"val3", "\"val3\""}, {"val4", "val4"}, {"", "\"\""}};
+    char *exp_val[5][2] = {{"val", "val"}, {"val2", "\"val2\""}, {"val3", "\"val3\""}, {"val4", "val4"}, {"", "\"\""}};
+    char *path[5] = {"/a:c/x[.='val']", "/a:c/x", "x", "x", "x"};
+
+    int i, j;
+
+    UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, NULL, &mod);
+
+    for (i = 0; i < 2; i++) {
+        root = node = parent = NULL;
+        ctx = UTEST_LYCTX;
+
+        for (j = 0; j < 5; j++) {
+            ret = lyd_new_path2(root, ctx, path[j], val[j][i], 0, type, opts[i], root ? &parent : &root, &node);
+            assert_int_equal(ret, LY_SUCCESS);
+            assert_non_null(root);
+            assert_string_equal(root->schema->name, "c");
+            assert_non_null(node);
+            assert_string_equal(node->schema->name, "x");
+            assert_string_equal(lyd_get_value(node), exp_val[j][i]);
+            node = NULL;
+            ctx = NULL;
+        }
+        lyd_free_tree(root);
+    }
+}
+
 int
 main(void)
 {
@@ -503,6 +539,7 @@ main(void)
         UTEST(test_opaq),
         UTEST(test_path),
         UTEST(test_path_ext),
+        UTEST(test_path_json_val),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
