@@ -1873,7 +1873,7 @@ trp_ext_is_present(ly_bool lysc_tree, const void *node)
     } else {
         pn = (const struct lysp_node *)node;
         LY_ARRAY_FOR(pn->exts, i) {
-            if (!(pn->exts && pn->exts->record->plugin.printer_ptree)) {
+            if (!(pn->exts && pn->exts->record && pn->exts->record->plugin.printer_ptree)) {
                 continue;
             }
             if (!trp_ext_parent_is_valid(0, &pn->exts[i])) {
