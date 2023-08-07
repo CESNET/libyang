@@ -447,8 +447,8 @@ lydxml_get_hints_opaq(const char *name, size_t name_len, const char *value, size
     *anchor = NULL;
 
     if (!value_len) {
-        /* no value */
-        *hints |= LYD_VALHINT_EMPTY;
+        /* no value but it may also be zero-length string */
+        *hints |= LYD_VALHINT_EMPTY | LYD_VALHINT_STRING;
     } else if (!strncmp(value, "true", value_len) || !strncmp(value, "false", value_len)) {
         /* boolean value */
         *hints |= LYD_VALHINT_BOOLEAN;
