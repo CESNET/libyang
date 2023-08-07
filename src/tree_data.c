@@ -2613,7 +2613,7 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
     siblings = lyd_first_sibling(siblings);
 
     parent = siblings->parent;
-    if (parent && parent->schema && parent->children_ht) {
+    if (target->schema && parent && parent->schema && parent->children_ht) {
         assert(target->hash);
 
         if (lysc_is_dup_inst_list(target->schema)) {
@@ -2640,7 +2640,7 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
             }
         }
     } else {
-        /* no children hash table */
+        /* no children hash table or cannot be used */
         for ( ; siblings; siblings = siblings->next) {
             if (lysc_is_dup_inst_list(target->schema)) {
                 if (!lyd_compare_single(siblings, target, LYD_COMPARE_FULL_RECURSION)) {
