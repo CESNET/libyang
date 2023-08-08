@@ -489,6 +489,10 @@ lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct ly
 
         /* get the first schema sibling */
         schema = lys_getnext(NULL, sparent, new_node->schema->module->compiled, getnext_opts);
+        if (!schema) {
+            /* must be a top-level extension instance data, insert at the end */
+            return first_sibling->prev;
+        }
 
         found = 0;
         LY_LIST_FOR(match, match) {
@@ -511,8 +515,12 @@ lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct ly
                     /* current node (match) is a data node still before the new node, continue search in data */
                     break;
                 }
+
                 schema = lys_getnext(schema, sparent, new_node->schema->module->compiled, getnext_opts);
-                assert(schema);
+                if (!schema) {
+                    /* must be a top-level extension instance data, insert at the end */
+                    return first_sibling->prev;
+                }
             }
 
             if (found && (match->schema != new_node->schema)) {
