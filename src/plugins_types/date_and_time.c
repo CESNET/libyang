@@ -113,7 +113,7 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
     /* convert to UNIX time and fractions of second */
     ret = ly_time_str2time(value, &val->time, &val->fractions_s);
     if (ret) {
-        ret = ly_err_new(err, ret, 0, NULL, NULL, ly_last_errmsg());
+        ret = ly_err_new(err, ret, 0, NULL, NULL, "%s", ly_last_errmsg());
         goto cleanup;
     }
 
