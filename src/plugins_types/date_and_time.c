@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief ietf-yang-types date-and-time type plugin.
  *
- * Copyright (c) 2019-2021 CESNET, z.s.p.o.
+ * Copyright (c) 2019-2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -112,7 +112,10 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
 
     /* convert to UNIX time and fractions of second */
     ret = ly_time_str2time(value, &val->time, &val->fractions_s);
-    LY_CHECK_GOTO(ret, cleanup);
+    if (ret) {
+        ret = ly_err_new(err, ret, 0, NULL, NULL, ly_last_errmsg());
+        goto cleanup;
+    }
 
     if (!strncmp(((char *)value + value_len) - 6, "-00:00", 6)) {
         /* unknown timezone */

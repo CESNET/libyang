@@ -52,11 +52,11 @@
         lyd_free_all(tree); \
     }
 
-#define TEST_ERROR_XML(MOD_NAME, NODE_NAME, DATA) \
+#define TEST_ERROR_XML(MOD_NAME, NODE_NAME, DATA, RET) \
     {\
         struct lyd_node *tree; \
         const char *data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</" NODE_NAME ">"; \
-        CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree); \
+        CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, RET, tree); \
         assert_null(tree); \
     }
 
@@ -111,10 +111,16 @@ test_data_xml(void **state)
     TEST_SUCCESS_XML("a", "l", "2017-02-01T00:00:00-00:00", STRING, "2017-02-01T00:00:00-00:00");
     TEST_SUCCESS_XML("a", "l", "2021-02-29T00:00:00-00:00", STRING, "2021-03-01T00:00:00-00:00");
 
-    TEST_ERROR_XML("a", "l", "2005-05-31T23:15:15.-08:00");
+    TEST_ERROR_XML("a", "l", "2005-05-31T23:15:15.-08:00", LY_EVALID);
     CHECK_LOG_CTX("Unsatisfied pattern - \"2005-05-31T23:15:15.-08:00\" does not conform to "
             "\"\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[\\+\\-]\\d{2}:\\d{2})\".",
             "Schema location \"/a:l\", line number 1.");
+
+    TEST_ERROR_XML("a", "l", "2023-16-15T20:13:01+01:00", LY_EINVAL);
+    CHECK_LOG_CTX("Invalid date-and-time month \"15\".", "Schema location \"/a:l\", line number 1.");
+
+    TEST_ERROR_XML("a", "l", "2023-10-15T20:13:01+95:00", LY_EINVAL);
+    CHECK_LOG_CTX("Invalid date-and-time timezone hour \"95\".", "Schema location \"/a:l\", line number 1.");
 
     /* hex-string */
     TEST_SUCCESS_XML("a", "l21", "DB:BA:12:54:fa", STRING, "db:ba:12:54:fa");
@@ -131,10 +137,10 @@ test_data_xml(void **state)
             "/a:node1/node2[node3/b:node4]/b:node5 | b:node6 and (b:node7)");
     TEST_SUCCESS_XML("a", "l3", "/l3[. = '4']", STRING, "/l3[.='4']");
 
-    TEST_ERROR_XML("a", "l3", "/a:l3[. = '4']");
+    TEST_ERROR_XML("a", "l3", "/a:l3[. = '4']", LY_EVALID);
     CHECK_LOG_CTX("Failed to resolve prefix \"a\".", "Schema location \"/a:l3\", line number 1.");
     TEST_ERROR_XML("a\" xmlns:yl=\"urn:ietf:params:xml:ns:yang:ietf-yang-library", "l3",
-            "/yl:yang-library/yl:datastore/yl::name");
+            "/yl:yang-library/yl:datastore/yl::name", LY_EVALID);
     CHECK_LOG_CTX("Storing value failed.", "Schema location \"/a:l3\", line number 1.");
     CHECK_LOG_CTX("Invalid character 'y'[31] of expression '/yl:yang-library/yl:datastore/yl::name'.",
             "Schema location \"/a:l3\", line number 1.");

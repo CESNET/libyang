@@ -1606,6 +1606,28 @@ ly_time_str2time(const char *value, time_t *time, char **fractions_s)
     tm.tm_min = atoi(&value[14]);
     tm.tm_sec = atoi(&value[17]);
 
+    /* explicit checks for some gross errors */
+    if (tm.tm_mon > 11) {
+        LOGERR(NULL, LY_EINVAL, "Invalid date-and-time month \"%d\".", tm.tm_mon);
+        return LY_EINVAL;
+    }
+    if ((tm.tm_mday < 1) || (tm.tm_mday > 31)) {
+        LOGERR(NULL, LY_EINVAL, "Invalid date-and-time day of month \"%d\".", tm.tm_mday);
+        return LY_EINVAL;
+    }
+    if (tm.tm_hour > 23) {
+        LOGERR(NULL, LY_EINVAL, "Invalid date-and-time hours \"%d\".", tm.tm_hour);
+        return LY_EINVAL;
+    }
+    if (tm.tm_min > 59) {
+        LOGERR(NULL, LY_EINVAL, "Invalid date-and-time minutes \"%d\".", tm.tm_min);
+        return LY_EINVAL;
+    }
+    if (tm.tm_sec > 60) {
+        LOGERR(NULL, LY_EINVAL, "Invalid date-and-time seconds \"%d\".", tm.tm_sec);
+        return LY_EINVAL;
+    }
+
     t = timegm(&tm);
     i = 19;
 
@@ -1626,12 +1648,24 @@ ly_time_str2time(const char *value, time_t *time, char **fractions_s)
         shift = 0;
     } else {
         shift = strtol(&value[i], NULL, 10);
+        if (shift > 23) {
+            LOGERR(NULL, LY_EINVAL, "Invalid date-and-time timezone hour \"%" PRIi64 "\".", shift);
+            return LY_EINVAL;
+        }
         shift = shift * 60 * 60; /* convert from hours to seconds */
-        shift_m = strtol(&value[i + 4], NULL, 10) * 60; /* includes conversion from minutes to seconds */
+
+        shift_m = strtol(&value[i + 4], NULL, 10);
+        if (shift_m > 59) {
+            LOGERR(NULL, LY_EINVAL, "Invalid date-and-time timezone minutes \"%" PRIi64 "\".", shift_m);
+            return LY_EINVAL;
+        }
+        shift_m *= 60; /* convert from minutes to seconds */
+
         /* correct sign */
         if (shift < 0) {
             shift_m *= -1;
         }
+
         /* connect hours and minutes of the shift */
         shift = shift + shift_m;
     }
