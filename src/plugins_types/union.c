@@ -172,6 +172,8 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type *type, struct lyd_va
     const void *value = NULL;
     size_t value_len = 0;
 
+    *err = NULL;
+
     if (subvalue->format == LY_VALUE_LYB) {
         lyb_parse_union(subvalue->original, subvalue->orig_len, NULL, &value, &value_len);
     } else {
@@ -220,7 +222,10 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type **types, struct lyd_v
 {
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;
+    struct ly_err_item **errs = NULL, *e;
     uint32_t temp_lo = 0;
+    char *msg = NULL;
+    int msg_len = 0;
 
     if (!types || !LY_ARRAY_COUNT(types)) {
         return LY_EINVAL;
@@ -228,28 +233,52 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type **types, struct lyd_v
 
     *err = NULL;
 
+    /* alloc errors */
+    errs = calloc(LY_ARRAY_COUNT(types), sizeof *errs);
+    LY_CHECK_RET(!errs, LY_EMEM);
+
     /* turn logging temporarily off */
     ly_temp_log_options(&temp_lo);
 
     /* use the first usable subtype to store the value */
     for (u = 0; u < LY_ARRAY_COUNT(types); ++u) {
-        ret = union_store_type(ctx, types[u], subvalue, resolve, ctx_node, tree, unres, err);
+        ret = union_store_type(ctx, types[u], subvalue, resolve, ctx_node, tree, unres, &e);
         if ((ret == LY_SUCCESS) || (ret == LY_EINCOMPLETE)) {
             break;
         }
 
-        ly_err_free(*err);
-        *err = NULL;
+        errs[u] = e;
     }
 
     if (u == LY_ARRAY_COUNT(types)) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid union value \"%.*s\" - no matching subtype found.",
+        /* create the full error */
+        msg_len = asprintf(&msg, "Invalid union value \"%.*s\" - no matching subtype found:\n",
                 (int)subvalue->orig_len, (char *)subvalue->original);
+        if (msg_len == -1) {
+            LY_CHECK_ERR_GOTO(!errs, ret = LY_EMEM, cleanup);
+        }
+        for (u = 0; u < LY_ARRAY_COUNT(types); ++u) {
+            if (!errs[u]) {
+                /* no error for some reason */
+                continue;
+            }
+
+            msg = ly_realloc(msg, msg_len + 4 + strlen(types[u]->plugin->id) + 2 + strlen(errs[u]->msg) + 2);
+            LY_CHECK_ERR_GOTO(!msg, ret = LY_EMEM, cleanup);
+            msg_len += sprintf(msg + msg_len, "    %s: %s\n", types[u]->plugin->id, errs[u]->msg);
+        }
+
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "%s", msg);
     } else if (type_idx) {
         *type_idx = u;
     }
 
-    /* restore logging */
+cleanup:
+    for (u = 0; u < LY_ARRAY_COUNT(types); ++u) {
+        ly_err_free(errs[u]);
+    }
+    free(errs);
+    free(msg);
     ly_temp_log_options(NULL);
     return ret;
 }
