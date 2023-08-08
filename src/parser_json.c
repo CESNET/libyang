@@ -2010,7 +2010,7 @@ lyd_parse_json_restconf(const struct ly_ctx *ctx, const struct lysc_ext_instance
         struct lyd_node **envp, struct ly_set *parsed, struct lyd_ctx **lydctx_p)
 {
     LY_ERR rc = LY_SUCCESS, r;
-    struct lyd_json_ctx *lydctx;
+    struct lyd_json_ctx *lydctx = NULL;
     enum LYJSON_PARSER_STATUS status;
     uint32_t i, int_opts = 0, close_elem = 0;
 
@@ -2108,7 +2108,7 @@ lyd_parse_json_restconf(const struct ly_ctx *ctx, const struct lysc_ext_instance
 
 cleanup:
     /* there should be no unres stored if validation should be skipped */
-    assert(!(parse_opts & LYD_PARSE_ONLY) || (!lydctx->node_types.count && !lydctx->meta_types.count &&
+    assert(!(parse_opts & LYD_PARSE_ONLY) || !lydctx || (!lydctx->node_types.count && !lydctx->meta_types.count &&
             !lydctx->node_when.count));
 
     if (rc) {
