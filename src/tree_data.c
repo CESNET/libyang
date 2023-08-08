@@ -410,7 +410,7 @@ cleanup:
                 lyd_free_tree(parsed.dnodes[i]);
             } while (i);
         }
-        if (tree && ((format != LYD_XML) || !envp)) {
+        if (tree && !envp) {
             *tree = NULL;
         }
         if (op) {
