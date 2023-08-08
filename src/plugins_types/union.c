@@ -227,11 +227,11 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type **types, struct lyd_v
     char *msg = NULL;
     int msg_len = 0;
 
+    *err = NULL;
+
     if (!types || !LY_ARRAY_COUNT(types)) {
         return LY_EINVAL;
     }
-
-    *err = NULL;
 
     /* alloc errors */
     errs = calloc(LY_ARRAY_COUNT(types), sizeof *errs);
@@ -468,6 +468,7 @@ lyb_union_print(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
     }
     subvalue->value.realtype->plugin->free(ctx, &subvalue->value);
     r = union_find_type(ctx, type_u->types, subvalue, 0, NULL, NULL, &type_idx, NULL, &err);
+    ly_err_free(err);
     LY_CHECK_RET((r != LY_SUCCESS) && (r != LY_EINCOMPLETE), NULL);
 
     /* Print subvalue in LYB format. */
