@@ -416,7 +416,8 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
                 }
                 break;
             case '\r':
-                if (ctx->in->current[1] != '\n') {
+                /* newline may be escaped */
+                if ((ctx->in->current[1] != '\n') && strncmp(&ctx->in->current[1], "\\n", 2)) {
                     LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, ctx->in->current[0]);
                     return LY_EVALID;
                 }
