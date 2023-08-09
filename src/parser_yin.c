@@ -488,7 +488,7 @@ yin_parse_attribute(struct lysp_yin_ctx *ctx, enum yin_argument arg_type, const 
                 INSERT_STRING_RET(ctx->xmlctx->ctx, ctx->xmlctx->value, ctx->xmlctx->value_len, ctx->xmlctx->dynamic, *arg_val);
                 LY_CHECK_RET(!(*arg_val), LY_EMEM);
             } else {
-                LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_UNEXP_ATTR, ctx->xmlctx->name_len,
+                LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_UNEXP_ATTR, (int)ctx->xmlctx->name_len,
                         ctx->xmlctx->name, lyplg_ext_stmt2str(current_element));
                 return LY_EVALID;
             }
@@ -3185,7 +3185,7 @@ yin_parse_extension_instance_arg(struct lysp_yin_ctx *ctx, enum ly_stmt parent_s
                 ctx->xmlctx->prefix_len, parent_stmt);
         if (((parent_stmt == LY_STMT_ERROR_MESSAGE) && (child != LY_STMT_ARG_VALUE)) ||
                 ((parent_stmt != LY_STMT_ERROR_MESSAGE) && (child != LY_STMT_ARG_TEXT))) {
-            LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_UNEXP_SUBELEM, ctx->xmlctx->name_len, ctx->xmlctx->name,
+            LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_UNEXP_SUBELEM, (int)ctx->xmlctx->name_len, ctx->xmlctx->name,
                     lyplg_ext_stmt2str(parent_stmt));
             return LY_EVALID;
         }
@@ -3256,7 +3256,7 @@ yin_parse_element_generic(struct lysp_yin_ctx *ctx, enum ly_stmt parent_stmt, st
     last = (*element)->child;
     if ((*element)->kw == LY_STMT_NONE) {
         /* unrecognized element */
-        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_UNEXP_SUBELEM, ctx->xmlctx->name_len, ctx->xmlctx->name,
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_UNEXP_SUBELEM, (int)ctx->xmlctx->name_len, ctx->xmlctx->name,
                 lyplg_ext_stmt2str(parent_stmt));
         ret = LY_EVALID;
         goto cleanup;
@@ -3422,7 +3422,7 @@ yin_parse_extension_instance(struct lysp_yin_ctx *ctx, const void *parent, enum 
         }
     } else if (ctx->xmlctx->value_len) {
         /* invalid text content */
-        LOGVAL_PARSER(ctx, LYVE_SYNTAX, "Extension instance \"%s\" with unexpected text content \".*s\".", ext_name,
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX, "Extension instance \"%s\" with unexpected text content \"%.*s\".", ext_name,
                 (int)ctx->xmlctx->value_len, ctx->xmlctx->value);
         return LY_EVALID;
     }
@@ -3479,7 +3479,7 @@ yin_parse_content(struct lysp_yin_ctx *ctx, struct yin_subelement *subelem_info,
                 if ((parent_stmt == LY_STMT_DEVIATE) && isdevsub(cur_stmt)) {
                     LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INDEV_YIN, lyplg_ext_stmt2str(cur_stmt));
                 } else {
-                    LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_UNEXP_SUBELEM, ctx->xmlctx->name_len,
+                    LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_UNEXP_SUBELEM, (int)ctx->xmlctx->name_len,
                             ctx->xmlctx->name, lyplg_ext_stmt2str(parent_stmt));
                 }
                 ret = LY_EVALID;

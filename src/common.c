@@ -338,10 +338,10 @@ ly_utf8len(const char *str, size_t bytes)
     return len;
 }
 
-size_t
+int
 LY_VCODE_INSTREXP_len(const char *str)
 {
-    size_t len = 0;
+    int len = 0;
 
     if (!str) {
         return len;

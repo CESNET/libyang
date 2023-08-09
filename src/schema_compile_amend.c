@@ -1351,7 +1351,7 @@ lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysp_deviate_rpl *d, stru
             LY_CHECK_GOTO(ret = lysp_qname_dup(ctx->ctx, &d->dflt, &((struct lysp_node_leaf *)target)->dflt), cleanup);
             break;
         case LYS_CHOICE:
-            DEV_CHECK_PRESENCE(struct lysp_node_choice *, dflt.str, "replacing", "default", d->dflt);
+            DEV_CHECK_PRESENCE(struct lysp_node_choice *, dflt.str, "replacing", "default", d->dflt.str);
 
             lydict_remove(ctx->ctx, ((struct lysp_node_choice *)target)->dflt.str);
             LY_CHECK_GOTO(ret = lysp_qname_dup(ctx->ctx, &d->dflt, &((struct lysp_node_choice *)target)->dflt), cleanup);

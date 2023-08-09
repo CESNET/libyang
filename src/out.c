@@ -630,9 +630,9 @@ repeat:
         }
         LOGERR(NULL, LY_ESYS, "%s: writing data failed (%s).", __func__, strerror(errno));
         written = 0;
-    } else if ((size_t)written != len) {
-        LOGERR(NULL, LY_ESYS, "%s: writing data failed (unable to write %u from %u data).", __func__,
-                len - (size_t)written, len);
+    } else if (written != len) {
+        LOGERR(NULL, LY_ESYS, "%s: writing data failed (unable to write %" PRIu32 " from %" PRIu32 " data).", __func__,
+                (uint32_t)(len - written), (uint32_t)len);
         ret = LY_ESYS;
     } else {
         if (out->type == LY_OUT_FDSTREAM) {

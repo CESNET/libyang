@@ -104,7 +104,7 @@ lysp_check_date(struct lysp_ctx *ctx, const char *date, size_t date_len, const c
 
 error:
     if (stmt) {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, date_len, date, stmt);
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)date_len, date, stmt);
     }
     return LY_EINVAL;
 }
@@ -140,10 +140,10 @@ lysp_check_enum_name(struct lysp_ctx *ctx, const char *name, size_t name_len)
                 (int)name_len, name);
         return LY_EVALID;
     } else {
-        for (size_t u = 0; u < name_len; ++u) {
+        for (uint32_t u = 0; u < name_len; ++u) {
             if (iscntrl(name[u])) {
-                LOGWRN(PARSER_CTX(ctx), "Control characters in enum name should be avoided (\"%.*s\", character number %d).",
-                        (int)name_len, name, u + 1);
+                LOGWRN(PARSER_CTX(ctx), "Control characters in enum name should be avoided "
+                        "(\"%.*s\", character number %" PRIu32 ").", (int)name_len, name, u + 1);
                 break;
             }
         }

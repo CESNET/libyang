@@ -435,12 +435,11 @@ static LY_ERR
 lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *length, ly_bool *ws_only, ly_bool *dynamic)
 {
     const struct ly_ctx *ctx = xmlctx->ctx; /* shortcut */
-    const char *in = xmlctx->in->current, *start, *in_aux;
+    const char *in = xmlctx->in->current, *start, *in_aux, *p;
     char *buf = NULL;
     size_t offset;   /* read offset in input buffer */
     size_t len;      /* length of the output string (write offset in output buffer) */
     size_t size = 0; /* size of the output buffer */
-    void *p;
     uint32_t n;
     size_t u;
     ly_bool ws = 1;
@@ -487,7 +486,7 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *
                 }
                 offset = 0;
             } else {
-                p = (void *)&in[offset - 1];
+                p = &in[offset - 1];
                 /* character reference */
                 ++offset;
                 if (isdigit(in[offset])) {
@@ -506,7 +505,7 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *
                         n = (LY_BASE_HEX * n) + u;
                     }
                 } else {
-                    LOGVAL(ctx, LYVE_SYNTAX, "Invalid character reference \"%.*s\".", 12, p);
+                    LOGVAL(ctx, LYVE_SYNTAX, "Invalid character reference \"%.12s\".", p);
                     goto error;
 
                 }
@@ -517,7 +516,7 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *
                 }
                 ++offset;
                 if (ly_pututf8(&buf[len], n, &u)) {
-                    LOGVAL(ctx, LYVE_SYNTAX, "Invalid character reference \"%.*s\" (0x%08x).", 12, p, n);
+                    LOGVAL(ctx, LYVE_SYNTAX, "Invalid character reference \"%.12s\" (0x%08x).", p, n);
                     goto error;
                 }
                 len += u;

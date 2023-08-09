@@ -2981,7 +2981,7 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
             parsed++;
             ncname_len = parse_ncname(&expr_str[parsed]);
             LY_CHECK_ERR_GOTO(ncname_len < 1, LOGVAL(ctx, LY_VCODE_XP_INEXPR, expr_str[parsed - ncname_len],
-                    parsed - ncname_len + 1, expr_str); ret = LY_EVALID, error);
+                    (uint32_t)(parsed - ncname_len + 1), expr_str); ret = LY_EVALID, error);
             tok_len = ncname_len;
             LY_CHECK_ERR_GOTO(expr_str[parsed + tok_len] == ':',
                     LOGVAL(ctx, LYVE_XPATH, "Variable with prefix is not supported."); ret = LY_EVALID,
@@ -3071,7 +3071,7 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
                 ret = LY_EVALID;
                 goto error;
             } else {
-                LOGVAL(ctx, LY_VCODE_XP_INEXPR, expr_str[parsed], parsed + 1, expr_str);
+                LOGVAL(ctx, LY_VCODE_XP_INEXPR, expr_str[parsed], (uint32_t)(parsed + 1), expr_str);
                 ret = LY_EVALID;
                 goto error;
             }
@@ -3083,7 +3083,7 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
             } else {
                 ncname_len = parse_ncname(&expr_str[parsed]);
                 LY_CHECK_ERR_GOTO(ncname_len < 1, LOGVAL(ctx, LY_VCODE_XP_INEXPR, expr_str[parsed - ncname_len],
-                        parsed - ncname_len + 1, expr_str); ret = LY_EVALID, error);
+                        (uint32_t)(parsed - ncname_len + 1), expr_str); ret = LY_EVALID, error);
             }
             tok_len = ncname_len;
 
@@ -3091,7 +3091,8 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
             if (!strncmp(&expr_str[parsed + tok_len], "::", 2)) {
                 /* axis */
                 LY_CHECK_ERR_GOTO(expr_parse_axis(&expr_str[parsed], ncname_len),
-                        LOGVAL(ctx, LY_VCODE_XP_INEXPR, expr_str[parsed], parsed + 1, expr_str); ret = LY_EVALID, error);
+                        LOGVAL(ctx, LY_VCODE_XP_INEXPR, expr_str[parsed], (uint32_t)(parsed + 1), expr_str); ret = LY_EVALID,
+                        error);
                 tok_type = LYXP_TOKEN_AXISNAME;
 
                 LY_CHECK_GOTO(ret = exp_add_token(ctx, expr, tok_type, parsed, tok_len), error);
@@ -3109,7 +3110,7 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
                 } else {
                     ncname_len = parse_ncname(&expr_str[parsed]);
                     LY_CHECK_ERR_GOTO(ncname_len < 1, LOGVAL(ctx, LY_VCODE_XP_INEXPR, expr_str[parsed - ncname_len],
-                            parsed - ncname_len + 1, expr_str); ret = LY_EVALID, error);
+                            (uint32_t)(parsed - ncname_len + 1), expr_str); ret = LY_EVALID, error);
                 }
                 tok_len = ncname_len;
 
@@ -3123,7 +3124,7 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
                 } else {
                     ncname_len = parse_ncname(&expr_str[parsed + tok_len]);
                     LY_CHECK_ERR_GOTO(ncname_len < 1, LOGVAL(ctx, LY_VCODE_XP_INEXPR, expr_str[parsed - ncname_len],
-                            parsed - ncname_len + 1, expr_str); ret = LY_EVALID, error);
+                            (uint32_t)(parsed - ncname_len + 1), expr_str); ret = LY_EVALID, error);
                     tok_len += ncname_len;
                 }
                 /* remove old flags to prevent ambiguities */
@@ -5591,7 +5592,7 @@ moveto_resolve_model(const char **qname, uint32_t *qname_len, const struct lyxp_
 
         /* check for errors and non-implemented modules, as they are not valid */
         if (!mod || !mod->implemented) {
-            LOGVAL(set->ctx, LY_VCODE_XP_INMOD, pref_len, *qname);
+            LOGVAL(set->ctx, LY_VCODE_XP_INMOD, (int)pref_len, *qname);
             return LY_EVALID;
         }
 

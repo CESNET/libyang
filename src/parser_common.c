@@ -667,7 +667,7 @@ lysp_stmt_text_fields(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, const 
 static LY_ERR
 lysp_stmt_status(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint16_t *flags, struct lysp_ext_instance **exts)
 {
-    size_t arg_len;
+    int arg_len;
 
     if (*flags & LYS_STATUS_MASK) {
         LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, "status");
@@ -760,7 +760,7 @@ lysp_stmt_when(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_w
 static LY_ERR
 lysp_stmt_config(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint16_t *flags, struct lysp_ext_instance **exts)
 {
-    size_t arg_len;
+    int arg_len;
 
     if (*flags & LYS_CONFIG_MASK) {
         LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, "config");
@@ -806,7 +806,7 @@ static LY_ERR
 lysp_stmt_mandatory(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint16_t *flags,
         struct lysp_ext_instance **exts)
 {
-    size_t arg_len;
+    int arg_len;
 
     if (*flags & LYS_MAND_MASK) {
         LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, "mandatory");
@@ -976,7 +976,7 @@ static LY_ERR
 lysp_stmt_type_enum_value_pos(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, int64_t *value, uint16_t *flags,
         struct lysp_ext_instance **exts)
 {
-    size_t arg_len;
+    int arg_len;
     char *ptr = NULL;
     long long num = 0;
     unsigned long long unum = 0;
@@ -1011,7 +1011,7 @@ lysp_stmt_type_enum_value_pos(struct lysp_ctx *ctx, const struct lysp_stmt *stmt
         }
     }
     /* we have not parsed the whole argument */
-    if ((size_t)(ptr - stmt->arg) != arg_len) {
+    if (ptr - stmt->arg != arg_len) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, arg_len, stmt->arg, lyplg_ext_stmt2str(stmt->kw));
         goto error;
     }
@@ -1118,7 +1118,7 @@ lysp_stmt_type_fracdigits(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, ui
         struct lysp_ext_instance **exts)
 {
     char *ptr;
-    size_t arg_len;
+    int arg_len;
     unsigned long long num;
 
     if (*fracdig) {
@@ -1136,7 +1136,7 @@ lysp_stmt_type_fracdigits(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, ui
     errno = 0;
     num = strtoull(stmt->arg, &ptr, LY_BASE_DEC);
     /* we have not parsed the whole argument */
-    if ((size_t)(ptr - stmt->arg) != arg_len) {
+    if (ptr - stmt->arg != arg_len) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, arg_len, stmt->arg, "fraction-digits");
         return LY_EVALID;
     }
@@ -1174,7 +1174,7 @@ static LY_ERR
 lysp_stmt_type_reqinstance(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint8_t *reqinst, uint16_t *flags,
         struct lysp_ext_instance **exts)
 {
-    size_t arg_len;
+    int arg_len;
 
     if (*flags & LYS_SET_REQINST) {
         LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, "require-instance");
@@ -1217,7 +1217,7 @@ static LY_ERR
 lysp_stmt_type_pattern_modifier(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, const char **pat,
         struct lysp_ext_instance **exts)
 {
-    size_t arg_len;
+    int arg_len;
     char *buf;
 
     if ((*pat)[0] == LYSP_RESTR_PATTERN_NACK) {
@@ -1400,7 +1400,7 @@ lysp_stmt_yangver(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint8_t *v
     } else if (!strcmp(stmt->arg, "1.1")) {
         *version = LYS_VERSION_1_1;
     } else {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, strlen(stmt->arg), stmt->arg, "yang-version");
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)strlen(stmt->arg), stmt->arg, "yang-version");
         return LY_EVALID;
     }
 
@@ -1480,7 +1480,7 @@ lysp_stmt_yinelem(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint16_t *
     } else if (!strcmp(stmt->arg, "false")) {
         *flags |= LYS_YINELEM_FALSE;
     } else {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, strlen(stmt->arg), stmt->arg, "yin-element");
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)strlen(stmt->arg), stmt->arg, "yin-element");
         return LY_EVALID;
     }
 
@@ -2008,7 +2008,7 @@ static LY_ERR
 lysp_stmt_maxelements(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint32_t *max, uint16_t *flags,
         struct lysp_ext_instance **exts)
 {
-    size_t arg_len;
+    int arg_len;
     char *ptr;
     unsigned long long num;
 
@@ -2031,7 +2031,7 @@ lysp_stmt_maxelements(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint32
         errno = 0;
         num = strtoull(stmt->arg, &ptr, LY_BASE_DEC);
         /* we have not parsed the whole argument */
-        if ((size_t)(ptr - stmt->arg) != arg_len) {
+        if (ptr - stmt->arg != arg_len) {
             LOGVAL_PARSER(ctx, LY_VCODE_INVAL, arg_len, stmt->arg, "max-elements");
             return LY_EVALID;
         }
@@ -2074,7 +2074,7 @@ static LY_ERR
 lysp_stmt_minelements(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint32_t *min, uint16_t *flags,
         struct lysp_ext_instance **exts)
 {
-    size_t arg_len;
+    int arg_len;
     char *ptr;
     unsigned long long num;
 
@@ -2096,7 +2096,7 @@ lysp_stmt_minelements(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint32
     errno = 0;
     num = strtoull(stmt->arg, &ptr, LY_BASE_DEC);
     /* we have not parsed the whole argument */
-    if ((size_t)(ptr - stmt->arg) != arg_len) {
+    if (ptr - stmt->arg != arg_len) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, arg_len, stmt->arg, "min-elements");
         return LY_EVALID;
     }
@@ -2132,7 +2132,7 @@ lysp_stmt_minelements(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint32
 static LY_ERR
 lysp_stmt_orderedby(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint16_t *flags, struct lysp_ext_instance **exts)
 {
-    size_t arg_len;
+    int arg_len;
 
     if (*flags & LYS_ORDBY_MASK) {
         LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, "ordered-by");

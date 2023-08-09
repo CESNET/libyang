@@ -396,7 +396,7 @@ lydxml_data_check_opaq(struct lyd_xml_ctx *lydctx, const struct lysc_node **snod
     if ((*snode)->nodetype & LYD_NODE_TERM) {
         /* value may not be valid in which case we parse it as an opaque node */
         if (ly_value_validate(NULL, *snode, xmlctx->value, xmlctx->value_len, LY_VALUE_XML, &xmlctx->ns, LYD_HINT_DATA)) {
-            LOGVRB("Parsing opaque term node \"%s\" with invalid value \"%.*s\".", (*snode)->name, xmlctx->value_len,
+            LOGVRB("Parsing opaque term node \"%s\" with invalid value \"%.*s\".", (*snode)->name, (int)xmlctx->value_len,
                     xmlctx->value);
             *snode = NULL;
         }
@@ -557,7 +557,13 @@ lydxml_subtree_get_snode(struct lyd_xml_ctx *lydctx, const struct lyd_node *pare
 
 unknown_module:
         if (lydctx->parse_opts & LYD_PARSE_STRICT) {
-            LOGVAL(ctx, LYVE_REFERENCE, "No module with namespace \"%s\" in the context.", ns->uri);
+            if (ns) {
+                LOGVAL(ctx, LYVE_REFERENCE, "No module with namespace \"%s\" in the context.", ns->uri);
+            } else if (prefix_len) {
+                LOGVAL(ctx, LYVE_REFERENCE, "No module with namespace \"%.*s\" in the context.", (int)prefix_len, prefix);
+            } else {
+                LOGVAL(ctx, LYVE_REFERENCE, "No default namespace in the context.");
+            }
             return LY_EVALID;
         }
         return LY_SUCCESS;
@@ -862,7 +868,7 @@ lydxml_subtree_any(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, co
     if ((snode->nodetype == LYS_ANYDATA) && !xmlctx->ws_only) {
         /* value in anydata node, we expect a tree */
         LOGVAL(xmlctx->ctx, LYVE_SYNTAX, "Text value \"%.*s\" inside an anydata node \"%s\" found.",
-                (int)xmlctx->value_len < 20 ? xmlctx->value_len : 20, xmlctx->value, snode->name);
+                xmlctx->value_len < 20 ? (int)xmlctx->value_len : 20, xmlctx->value, snode->name);
         r = LY_EVALID;
         LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
     }
@@ -983,7 +989,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
         }
         goto cleanup;
     } else if (!snode && !(lydctx->parse_opts & LYD_PARSE_OPAQ)) {
-        LOGVRB("Skipping parsing of unknown node \"%.*s\".", name_len, name);
+        LOGVRB("Skipping parsing of unknown node \"%.*s\".", (int)name_len, name);
 
         /* skip element with children */
         rc = lydxml_data_skip(xmlctx);

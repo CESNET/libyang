@@ -87,7 +87,7 @@ struct ly_log_location_s {
  * @param[in] no Error type code.
  * @param[in] format Format string to print.
  */
-void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char *format, ...);
+void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char *format, ...) _FORMAT_PRINTF(4, 5);
 
 /**
  * @brief Print Validation error and store it into the context (if provided).
@@ -97,7 +97,7 @@ void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char 
  * @param[in] code Validation error code.
  * @param[in] format Format string to print.
  */
-void ly_vlog(const struct ly_ctx *ctx, const char *apptag, LY_VECODE code, const char *format, ...);
+void ly_vlog(const struct ly_ctx *ctx, const char *apptag, LY_VECODE code, const char *format, ...) _FORMAT_PRINTF(4, 5);
 
 /**
  * @brief Move error items from source to target context replacing any previous ones.
@@ -234,7 +234,8 @@ void ly_log_dbg(uint32_t group, const char *format, ...);
     DUMMY) (CTX, __VA_ARGS__)
 
 /* count sequence size for LY_VCODE_INCHILDSTMT validation error code */
-size_t LY_VCODE_INSTREXP_len(const char *str);
+int LY_VCODE_INSTREXP_len(const char *str);
+
 /* default maximum characters to print in LY_VCODE_INCHILDSTMT */
 #define LY_VCODE_INSTREXP_MAXLEN 20
 
@@ -457,7 +458,8 @@ LY_ERR ly_strntou8(const char *nptr, size_t len, uint8_t *ret);
  * If no string remains, it is set to NULL.
  * @return LY_ERR value.
  */
-LY_ERR ly_value_prefix_next(const char *str_begin, const char *str_end, uint32_t *len, ly_bool *is_prefix, const char **str_next);
+LY_ERR ly_value_prefix_next(const char *str_begin, const char *str_end, uint32_t *len, ly_bool *is_prefix,
+        const char **str_next);
 
 /**
  * @brief Wrapper around strlen() to handle NULL strings.
@@ -647,6 +649,6 @@ LY_ERR ly_munmap(void *addr, size_t length);
  * @param[in] format Formating string (as for printf) which is supposed to be added after @p dest.
  * @return LY_SUCCESS or LY_EMEM.
  */
-LY_ERR ly_strcat(char **dest, const char *format, ...);
+LY_ERR ly_strcat(char **dest, const char *format, ...) _FORMAT_PRINTF(2, 3);
 
 #endif /* LY_COMMON_H_ */

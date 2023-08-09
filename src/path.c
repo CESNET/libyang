@@ -285,7 +285,7 @@ ly_path_parse_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, 
     LY_CHECK_RET(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_FUNCNAME), LY_EVALID);
     if (!strncmp(&exp->expr[exp->tok_pos[*tok_idx]], "deref", 5)) {
         LOGVAL(ctx, LYVE_XPATH, "Unexpected XPath function \"%.*s\" in path, expected \"deref(...)\"",
-                exp->tok_len[*tok_idx], exp->tok_pos[*tok_idx]);
+                exp->tok_len[*tok_idx], exp->expr + exp->tok_pos[*tok_idx]);
         return LY_EVALID;
     }
 

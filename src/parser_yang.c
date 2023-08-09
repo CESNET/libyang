@@ -934,7 +934,8 @@ parse_ext(struct lysp_yang_ctx *ctx, const char *ext_name, size_t ext_name_len, 
     LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *exts, e, LY_EMEM);
 
     if (!ly_strnchr(ext_name, ':', ext_name_len)) {
-        LOGVAL_PARSER(ctx, LYVE_SYNTAX, "Extension instance \"%*.s\" without the mandatory prefix.", ext_name_len, ext_name);
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX, "Extension instance \"%.*s\" without the mandatory prefix.",
+                (int)ext_name_len, ext_name);
         return LY_EVALID;
     }
 
@@ -1041,7 +1042,7 @@ parse_yangversion(struct lysp_yang_ctx *ctx, struct lysp_module *mod)
     } else if ((word_len == ly_strlen_const("1.1")) && !strncmp(word, "1.1", word_len)) {
         mod->version = LYS_VERSION_1_1;
     } else {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "yang-version");
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, "yang-version");
         free(buf);
         return LY_EVALID;
     }
@@ -1452,7 +1453,7 @@ parse_config(struct lysp_yang_ctx *ctx, uint16_t *flags, struct lysp_ext_instanc
     } else if ((word_len == ly_strlen_const("false")) && !strncmp(word, "false", word_len)) {
         *flags |= LYS_CONFIG_R;
     } else {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "config");
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, "config");
         free(buf);
         return LY_EVALID;
     }
@@ -1503,7 +1504,7 @@ parse_mandatory(struct lysp_yang_ctx *ctx, uint16_t *flags, struct lysp_ext_inst
     } else if ((word_len == ly_strlen_const("false")) && !strncmp(word, "false", word_len)) {
         *flags |= LYS_MAND_FALSE;
     } else {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "mandatory");
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, "mandatory");
         free(buf);
         return LY_EVALID;
     }
@@ -1624,7 +1625,7 @@ parse_status(struct lysp_yang_ctx *ctx, uint16_t *flags, struct lysp_ext_instanc
     } else if ((word_len == ly_strlen_const("obsolete")) && !strncmp(word, "obsolete", word_len)) {
         *flags |= LYS_STATUS_OBSLT;
     } else {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "status");
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, "status");
         free(buf);
         return LY_EVALID;
     }
@@ -1805,7 +1806,7 @@ parse_type_enum_value_pos(struct lysp_yang_ctx *ctx, enum ly_stmt val_kw, struct
     LY_CHECK_RET(get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len));
 
     if (!word_len || (word[0] == '+') || ((word[0] == '0') && (word_len > 1)) || ((val_kw == LY_STMT_POSITION) && !strncmp(word, "-0", 2))) {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, lyplg_ext_stmt2str(val_kw));
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, lyplg_ext_stmt2str(val_kw));
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -1814,26 +1815,26 @@ parse_type_enum_value_pos(struct lysp_yang_ctx *ctx, enum ly_stmt val_kw, struct
     if (val_kw == LY_STMT_VALUE) {
         num = strtoll(word, &ptr, LY_BASE_DEC);
         if ((num < INT64_C(-2147483648)) || (num > INT64_C(2147483647))) {
-            LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, lyplg_ext_stmt2str(val_kw));
+            LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, lyplg_ext_stmt2str(val_kw));
             ret = LY_EVALID;
             goto cleanup;
         }
     } else {
         unum = strtoull(word, &ptr, LY_BASE_DEC);
         if (unum > UINT64_C(4294967295)) {
-            LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, lyplg_ext_stmt2str(val_kw));
+            LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, lyplg_ext_stmt2str(val_kw));
             ret = LY_EVALID;
             goto cleanup;
         }
     }
     /* we have not parsed the whole argument */
     if ((size_t)(ptr - word) != word_len) {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, lyplg_ext_stmt2str(val_kw));
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, lyplg_ext_stmt2str(val_kw));
         ret = LY_EVALID;
         goto cleanup;
     }
     if (errno == ERANGE) {
-        LOGVAL_PARSER(ctx, LY_VCODE_OOB, word_len, word, lyplg_ext_stmt2str(val_kw));
+        LOGVAL_PARSER(ctx, LY_VCODE_OOB, (int)word_len, word, lyplg_ext_stmt2str(val_kw));
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -1955,7 +1956,7 @@ parse_type_fracdigits(struct lysp_yang_ctx *ctx, struct lysp_type *type)
     LY_CHECK_GOTO(ret = get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len), cleanup);
 
     if (!word_len || (word[0] == '0') || !isdigit(word[0])) {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "fraction-digits");
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, "fraction-digits");
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -1964,12 +1965,12 @@ parse_type_fracdigits(struct lysp_yang_ctx *ctx, struct lysp_type *type)
     num = strtoull(word, &ptr, LY_BASE_DEC);
     /* we have not parsed the whole argument */
     if ((size_t)(ptr - word) != word_len) {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "fraction-digits");
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, "fraction-digits");
         ret = LY_EVALID;
         goto cleanup;
     }
     if ((errno == ERANGE) || (num > LY_TYPE_DEC64_FD_MAX)) {
-        LOGVAL_PARSER(ctx, LY_VCODE_OOB, word_len, word, "fraction-digits");
+        LOGVAL_PARSER(ctx, LY_VCODE_OOB, (int)word_len, word, "fraction-digits");
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -2020,7 +2021,7 @@ parse_type_reqinstance(struct lysp_yang_ctx *ctx, struct lysp_type *type)
     if ((word_len == ly_strlen_const("true")) && !strncmp(word, "true", word_len)) {
         type->require_instance = 1;
     } else if ((word_len != ly_strlen_const("false")) || strncmp(word, "false", word_len)) {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "require-instance");
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, "require-instance");
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -2067,7 +2068,7 @@ parse_type_pattern_modifier(struct lysp_yang_ctx *ctx, struct lysp_restr *restr)
     LY_CHECK_GOTO(ret = get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len), cleanup);
 
     if ((word_len != ly_strlen_const("invert-match")) || strncmp(word, "invert-match", word_len)) {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "modifier");
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, "modifier");
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -2397,7 +2398,7 @@ parse_maxelements(struct lysp_yang_ctx *ctx, uint32_t *max, uint16_t *flags, str
     LY_CHECK_GOTO(ret = get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len), cleanup);
 
     if (!word_len || (word[0] == '0') || ((word[0] != 'u') && !isdigit(word[0]))) {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "max-elements");
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, "max-elements");
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -2407,12 +2408,12 @@ parse_maxelements(struct lysp_yang_ctx *ctx, uint32_t *max, uint16_t *flags, str
         num = strtoull(word, &ptr, LY_BASE_DEC);
         /* we have not parsed the whole argument */
         if ((size_t)(ptr - word) != word_len) {
-            LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "max-elements");
+            LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, "max-elements");
             ret = LY_EVALID;
             goto cleanup;
         }
         if ((errno == ERANGE) || (num > UINT32_MAX)) {
-            LOGVAL_PARSER(ctx, LY_VCODE_OOB, word_len, word, "max-elements");
+            LOGVAL_PARSER(ctx, LY_VCODE_OOB, (int)word_len, word, "max-elements");
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -2469,7 +2470,7 @@ parse_minelements(struct lysp_yang_ctx *ctx, uint32_t *min, uint16_t *flags, str
     LY_CHECK_GOTO(ret = get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len), cleanup);
 
     if (!word_len || !isdigit(word[0]) || ((word[0] == '0') && (word_len > 1))) {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "min-elements");
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, "min-elements");
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -2478,12 +2479,12 @@ parse_minelements(struct lysp_yang_ctx *ctx, uint32_t *min, uint16_t *flags, str
     num = strtoull(word, &ptr, LY_BASE_DEC);
     /* we have not parsed the whole argument */
     if ((size_t)(ptr - word) != word_len) {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "min-elements");
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, "min-elements");
         ret = LY_EVALID;
         goto cleanup;
     }
     if ((errno == ERANGE) || (num > UINT32_MAX)) {
-        LOGVAL_PARSER(ctx, LY_VCODE_OOB, word_len, word, "min-elements");
+        LOGVAL_PARSER(ctx, LY_VCODE_OOB, (int)word_len, word, "min-elements");
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -2535,7 +2536,7 @@ parse_orderedby(struct lysp_yang_ctx *ctx, struct lysp_node *llist)
     } else if ((word_len == ly_strlen_const("user")) && !strncmp(word, "user", word_len)) {
         llist->flags |= LYS_ORDBY_USER;
     } else {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "ordered-by");
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, "ordered-by");
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -3712,7 +3713,7 @@ parse_yinelement(struct lysp_yang_ctx *ctx, struct lysp_ext *ext)
     } else if ((word_len == ly_strlen_const("false")) && !strncmp(word, "false", word_len)) {
         ext->flags |= LYS_YINELEM_FALSE;
     } else {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "yin-element");
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, "yin-element");
         free(buf);
         return LY_EVALID;
     }
@@ -3865,7 +3866,7 @@ parse_deviate(struct lysp_yang_ctx *ctx, struct lysp_deviate **deviates)
     } else if ((word_len == ly_strlen_const("delete")) && !strncmp(word, "delete", word_len)) {
         dev_mod = LYS_DEV_DELETE;
     } else {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "deviate");
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, "deviate");
         ret = LY_EVALID;
         goto cleanup;
     }

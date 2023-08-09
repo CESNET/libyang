@@ -489,8 +489,8 @@ lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *
             LOGVAL_ERRITEM(ctx, err);
             ly_err_free(err);
         } else {
-            LOGVAL(ctx, LYVE_OTHER, "Resolving value \"%s\" failed.", type->plugin->print(ctx, val, LY_VALUE_CANON,
-                    NULL, NULL, NULL));
+            LOGVAL(ctx, LYVE_OTHER, "Resolving value \"%s\" failed.",
+                    (char *)type->plugin->print(ctx, val, LY_VALUE_CANON, NULL, NULL, NULL));
         }
         return ret;
     }

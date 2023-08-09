@@ -701,7 +701,7 @@ lyb_print_term_value(struct lyd_node_term *term, struct ly_out *out, struct lyly
 
         if (value_len > UINT32_MAX) {
             LOGERR(lybctx->ctx, LY_EINT, "The maximum length of the LYB data "
-                    "from a term node must not exceed %lu.", UINT32_MAX);
+                    "from a term node must not exceed %" PRIu32 ".", UINT32_MAX);
             ret = LY_EINT;
             goto cleanup;
         }
