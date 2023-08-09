@@ -646,13 +646,12 @@ lydxml_subtree_opaq(struct lyd_xml_ctx *lydctx, const struct lyd_node *sibling, 
         xmlctx->dynamic = 0;
         xmlctx->value = "";
         xmlctx->value_len = 0;
-        format = LY_VALUE_XML;
-    } else {
-        /* get value prefixes */
-        rc = ly_store_prefix_data(xmlctx->ctx, xmlctx->value, xmlctx->value_len, LY_VALUE_XML, &xmlctx->ns, &format,
-                &val_prefix_data);
-        LY_CHECK_GOTO(rc, cleanup);
     }
+
+    /* get value prefixes, if any */
+    rc = ly_store_prefix_data(xmlctx->ctx, xmlctx->value, xmlctx->value_len, LY_VALUE_XML, &xmlctx->ns, &format,
+            &val_prefix_data);
+    LY_CHECK_GOTO(rc, cleanup);
 
     /* get NS again, it may have been backed up and restored */
     ns = lyxml_ns_get(&xmlctx->ns, prefix, prefix_len);
