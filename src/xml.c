@@ -222,17 +222,29 @@ cleanup:
 void
 lyxml_ns_rm(struct lyxml_ctx *xmlctx)
 {
-    for (uint32_t u = xmlctx->ns.count - 1; u + 1 > 0; --u) {
-        if (((struct lyxml_ns *)xmlctx->ns.objs[u])->depth != xmlctx->elements.count + 1) {
+    struct lyxml_ns *ns;
+    uint32_t u;
+
+    if (!xmlctx->ns.count) {
+        return;
+    }
+
+    u = xmlctx->ns.count;
+    do {
+        --u;
+        ns = (struct lyxml_ns *)xmlctx->ns.objs[u];
+
+        if (ns->depth != xmlctx->elements.count + 1) {
             /* we are done, the namespaces from a single element are supposed to be together */
             break;
         }
+
         /* remove the ns structure */
-        free(((struct lyxml_ns *)xmlctx->ns.objs[u])->prefix);
-        free(((struct lyxml_ns *)xmlctx->ns.objs[u])->uri);
-        free(xmlctx->ns.objs[u]);
+        free(ns->prefix);
+        free(ns->uri);
+        free(ns);
         --xmlctx->ns.count;
-    }
+    } while (u);
 
     if (!xmlctx->ns.count) {
         /* cleanup the xmlctx's namespaces storage */
@@ -244,9 +256,17 @@ const struct lyxml_ns *
 lyxml_ns_get(const struct ly_set *ns_set, const char *prefix, size_t prefix_len)
 {
     struct lyxml_ns *ns;
+    uint32_t u;
 
-    for (uint32_t u = ns_set->count - 1; u + 1 > 0; --u) {
+    if (!ns_set->count) {
+        return NULL;
+    }
+
+    u = ns_set->count;
+    do {
+        --u;
         ns = (struct lyxml_ns *)ns_set->objs[u];
+
         if (prefix && prefix_len) {
             if (ns->prefix && !ly_strncmp(ns->prefix, prefix, prefix_len)) {
                 return ns;
@@ -255,7 +275,7 @@ lyxml_ns_get(const struct ly_set *ns_set, const char *prefix, size_t prefix_len)
             /* default namespace */
             return ns;
         }
-    }
+    } while (u);
 
     return NULL;
 }
