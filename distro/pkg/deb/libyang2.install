@@ -1,2 +1,2 @@
 usr/lib/*/*.so.*
-usr/share/yang
+usr/share/yang/modules/libyang
