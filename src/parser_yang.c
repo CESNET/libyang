@@ -421,6 +421,9 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
                     LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, ctx->in->current[0]);
                     return LY_EVALID;
                 }
+
+                /* skip this character, do not store it */
+                ++ctx->in->current;
             /* fallthrough */
             case '\n':
                 if (block_indent) {
