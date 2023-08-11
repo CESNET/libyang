@@ -628,9 +628,7 @@ yprc_must(struct lys_ypr_ctx *pctx, const struct lysc_must *must, ly_bool *flag)
     ly_bool inner_flag = 0;
 
     ypr_open(pctx->out, flag);
-    ly_print_(pctx->out, "%*smust \"", INDENT);
-    ypr_encode(pctx->out, must->cond->expr, -1);
-    ly_print_(pctx->out, "\"");
+    ypr_text(pctx, "must", must->cond->expr, 1, 0);
 
     LEVEL++;
     yprc_extension_instances(pctx, LY_STMT_MUST, 0, must->exts, &inner_flag);
@@ -773,9 +771,7 @@ yprp_when(struct lys_ypr_ctx *pctx, const struct lysp_when *when, ly_bool *flag)
     }
     ypr_open(pctx->out, flag);
 
-    ly_print_(pctx->out, "%*swhen \"", INDENT);
-    ypr_encode(pctx->out, when->cond, -1);
-    ly_print_(pctx->out, "\"");
+    ypr_text(pctx, "when", when->cond, 1, 0);
 
     LEVEL++;
     yprp_extension_instances(pctx, LY_STMT_WHEN, 0, when->exts, &inner_flag);
@@ -795,9 +791,7 @@ yprc_when(struct lys_ypr_ctx *pctx, const struct lysc_when *when, ly_bool *flag)
     }
     ypr_open(pctx->out, flag);
 
-    ly_print_(pctx->out, "%*swhen \"", INDENT);
-    ypr_encode(pctx->out, when->cond->expr, -1);
-    ly_print_(pctx->out, "\"");
+    ypr_text(pctx, "when", when->cond->expr, 1, 0);
 
     LEVEL++;
     yprc_extension_instances(pctx, LY_STMT_WHEN, 0, when->exts, &inner_flag);
