@@ -417,7 +417,7 @@ ly_vprint_(struct ly_out *out, const char *format, va_list ap)
 {
     LY_ERR ret;
     int written = 0;
-    char *msg = NULL, *aux;
+    char *msg = NULL;
 
     switch (out->type) {
     case LY_OUT_FD:
@@ -433,15 +433,13 @@ ly_vprint_(struct ly_out *out, const char *format, va_list ap)
             break;
         }
         if (out->method.mem.len + written + 1 > out->method.mem.size) {
-            aux = ly_realloc(*out->method.mem.buf, out->method.mem.len + written + 1);
-            if (!aux) {
-                out->method.mem.buf = NULL;
+            *out->method.mem.buf = ly_realloc(*out->method.mem.buf, out->method.mem.len + written + 1);
+            if (!*out->method.mem.buf) {
                 out->method.mem.len = 0;
                 out->method.mem.size = 0;
                 LOGMEM(NULL);
                 return LY_EMEM;
             }
-            *out->method.mem.buf = aux;
             out->method.mem.size = out->method.mem.len + written + 1;
         }
         if (written) {
