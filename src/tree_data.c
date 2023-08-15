@@ -2655,7 +2655,7 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
                     break;
                 }
             } else {
-                if (!lyd_compare_single(siblings, target, LYD_COMPARE_OPAQ)) {
+                if (!lyd_compare_single(siblings, target, 0)) {
                     break;
                 }
             }
@@ -2757,7 +2757,7 @@ lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const struct lyd_
     }
 
     /* set options */
-    comp_opts = LYD_COMPARE_OPAQ | (lysc_is_dup_inst_list(target->schema) ? LYD_COMPARE_FULL_RECURSION : 0);
+    comp_opts = (lysc_is_dup_inst_list(target->schema) ? LYD_COMPARE_FULL_RECURSION : 0);
 
     /* get first sibling */
     siblings = lyd_first_sibling(siblings);

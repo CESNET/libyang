@@ -1142,7 +1142,6 @@ lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lysc_node 
 {
     struct lyd_node **match_p;
     struct lyd_node_inner *parent;
-    const struct lysc_node *cur_schema;
     uint32_t hash;
     lyht_value_equal_cb ht_cb;
 
@@ -1185,24 +1184,21 @@ lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lysc_node 
             }
         }
 
-        /* search manually without hashes */
-        for ( ; siblings; siblings = siblings->next) {
-            cur_schema = lyd_node_schema(siblings);
-            if (!cur_schema) {
-                /* some unknown opaque node */
-                continue;
-            }
-
+        /* search manually without hashes and ignore opaque nodes (cannot be found by hashes) */
+        for ( ; siblings && siblings->schema; siblings = siblings->next) {
             /* schema match is enough */
-            if (cur_schema->module->ctx == schema->module->ctx) {
-                if (cur_schema == schema) {
+            if (LYD_CTX(siblings) == schema->module->ctx) {
+                if (siblings->schema == schema) {
                     break;
                 }
             } else {
-                if (!strcmp(cur_schema->name, schema->name) && !strcmp(cur_schema->module->name, schema->module->name)) {
+                if (!strcmp(LYD_NAME(siblings), schema->name) && !strcmp(siblings->schema->module->name, schema->module->name)) {
                     break;
                 }
             }
+        }
+        if (siblings && !siblings->schema) {
+            siblings = NULL;
         }
     }
 

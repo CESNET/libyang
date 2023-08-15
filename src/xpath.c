@@ -6172,6 +6172,10 @@ moveto_node_hash_child(struct lyxp_set *set, const struct lysc_node *scnode, con
         } else {
             r = lyd_find_sibling_val(siblings, scnode, NULL, 0, &sub);
         }
+        if (r == LY_ENOTFOUND) {
+            /* may still be an opaque node */
+            r = lyd_find_sibling_opaq_next(siblings, scnode->name, &sub);
+        }
         LY_CHECK_ERR_GOTO(r && (r != LY_ENOTFOUND), ret = r, cleanup);
 
         /* when check */
