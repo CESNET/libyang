@@ -634,7 +634,10 @@ lydxml_subtree_opaq(struct lyd_xml_ctx *lydctx, const struct lyd_node *sibling, 
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyxml_ctx *xmlctx = lydctx->xmlctx;
-    const char *ns_uri;
+    struct lyd_node_opaq *opaq;
+    const char *ns_uri, *value = NULL;
+    size_t value_len;
+    ly_bool ws_only, dynamic = 0;
     const struct lyxml_ns *ns;
     uint32_t hints;
     void *val_prefix_data = NULL;
@@ -644,19 +647,17 @@ lydxml_subtree_opaq(struct lyd_xml_ctx *lydctx, const struct lyd_node *sibling, 
 
     *node = NULL;
 
-    if (xmlctx->ws_only) {
-        /* ignore WS-only value */
-        if (xmlctx->dynamic) {
-            free((char *)xmlctx->value);
-        }
+    /* remember the value */
+    value = xmlctx->value;
+    value_len = xmlctx->value_len;
+    ws_only = xmlctx->ws_only;
+    dynamic = xmlctx->dynamic;
+    if (dynamic) {
         xmlctx->dynamic = 0;
-        xmlctx->value = "";
-        xmlctx->value_len = 0;
     }
 
     /* get value prefixes, if any */
-    rc = ly_store_prefix_data(xmlctx->ctx, xmlctx->value, xmlctx->value_len, LY_VALUE_XML, &xmlctx->ns, &format,
-            &val_prefix_data);
+    rc = ly_store_prefix_data(xmlctx->ctx, value, value_len, LY_VALUE_XML, &xmlctx->ns, &format, &val_prefix_data);
     LY_CHECK_GOTO(rc, cleanup);
 
     /* get NS again, it may have been backed up and restored */
@@ -666,11 +667,10 @@ lydxml_subtree_opaq(struct lyd_xml_ctx *lydctx, const struct lyd_node *sibling, 
     /* get best-effort node hints */
     lydxml_get_hints_opaq(name, name_len, xmlctx->value, xmlctx->value_len, sibling, ns_uri, &hints, insert_anchor);
 
-    /* create node */
-    rc = lyd_create_opaq(xmlctx->ctx, name, name_len, prefix, prefix_len, ns_uri, ns_uri ? strlen(ns_uri) : 0,
-            xmlctx->value, xmlctx->value_len, &xmlctx->dynamic, format, val_prefix_data, hints, node);
+    /* create the node without value */
+    rc = lyd_create_opaq(xmlctx->ctx, name, name_len, prefix, prefix_len, ns_uri, ns_uri ? strlen(ns_uri) : 0, NULL, 0,
+            NULL, format, NULL, hints, node);
     LY_CHECK_GOTO(rc, cleanup);
-    val_prefix_data = NULL;
 
     /* parser next */
     rc = lyxml_ctx_next(xmlctx);
@@ -682,8 +682,34 @@ lydxml_subtree_opaq(struct lyd_xml_ctx *lydctx, const struct lyd_node *sibling, 
         LY_CHECK_GOTO(rc, cleanup);
     }
 
+    /* update the value */
+    opaq = (struct lyd_node_opaq *)*node;
+    if (opaq->child) {
+        if (!ws_only) {
+            LOGVAL(xmlctx->ctx, LYVE_SYNTAX_XML, "Mixed XML content node \"%s\" found, not supported.", LYD_NAME(opaq));
+            rc = LY_EVALID;
+            goto cleanup;
+        }
+    } else if (value_len) {
+        lydict_remove(xmlctx->ctx, opaq->value);
+        if (dynamic) {
+            LY_CHECK_GOTO(rc = lydict_insert_zc(xmlctx->ctx, (char *)value, &opaq->value), cleanup);
+            dynamic = 0;
+        } else {
+            LY_CHECK_GOTO(rc = lydict_insert(xmlctx->ctx, value, value_len, &opaq->value), cleanup);
+        }
+    }
+
+    /* always store val_prefix_data because the format requires them */
+    assert(!opaq->val_prefix_data);
+    opaq->val_prefix_data = val_prefix_data;
+    val_prefix_data = NULL;
+
 cleanup:
     ly_free_prefix_data(format, val_prefix_data);
+    if (dynamic) {
+        free((char *)value);
+    }
     if (rc) {
         lyd_free_tree(*node);
         *node = NULL;
@@ -1386,9 +1412,11 @@ lydxml_opaq_r(struct lyxml_ctx *xmlctx, struct lyd_node *parent)
     LY_ERR rc = LY_SUCCESS;
     const struct lyxml_ns *ns;
     struct lyd_attr *attr = NULL;
-    struct lyd_node *child = NULL;
-    const char *name, *prefix;
-    size_t name_len, prefix_len;
+    struct lyd_node *node = NULL;
+    struct lyd_node_opaq *opaq;
+    const char *name, *prefix, *value = NULL;
+    size_t name_len, prefix_len, value_len;
+    ly_bool ws_only, dynamic = 0;
 
     assert(xmlctx->status == LYXML_ELEMENT);
 
@@ -1409,14 +1437,23 @@ lydxml_opaq_r(struct lyxml_ctx *xmlctx, struct lyd_node *parent)
         LY_CHECK_RET(lydxml_attrs(xmlctx, &attr));
     }
 
-    /* create node */
+    /* remember the value */
     assert(xmlctx->status == LYXML_ELEM_CONTENT);
-    rc = lyd_create_opaq(xmlctx->ctx, name, name_len, prefix, prefix_len, ns->uri, strlen(ns->uri), xmlctx->value,
-            xmlctx->ws_only ? 0 : xmlctx->value_len, NULL, LY_VALUE_XML, NULL, 0, &child);
+    value = xmlctx->value;
+    value_len = xmlctx->value_len;
+    ws_only = xmlctx->ws_only;
+    dynamic = xmlctx->dynamic;
+    if (dynamic) {
+        xmlctx->dynamic = 0;
+    }
+
+    /* create the node without value */
+    rc = lyd_create_opaq(xmlctx->ctx, name, name_len, prefix, prefix_len, ns->uri, strlen(ns->uri), NULL, 0, NULL,
+            LY_VALUE_XML, NULL, 0, &node);
     LY_CHECK_GOTO(rc, cleanup);
 
     /* assign atributes */
-    ((struct lyd_node_opaq *)child)->attr = attr;
+    ((struct lyd_node_opaq *)node)->attr = attr;
     attr = NULL;
 
     /* parser next element */
@@ -1424,17 +1461,38 @@ lydxml_opaq_r(struct lyxml_ctx *xmlctx, struct lyd_node *parent)
 
     /* parse all the descendants */
     while (xmlctx->status == LYXML_ELEMENT) {
-        rc = lydxml_opaq_r(xmlctx, child);
+        rc = lydxml_opaq_r(xmlctx, node);
         LY_CHECK_GOTO(rc, cleanup);
     }
 
     /* insert */
-    lyd_insert_node(parent, NULL, child, 1);
+    lyd_insert_node(parent, NULL, node, 1);
+
+    /* update the value */
+    opaq = (struct lyd_node_opaq *)node;
+    if (opaq->child) {
+        if (!ws_only) {
+            LOGVAL(xmlctx->ctx, LYVE_SYNTAX_XML, "Mixed XML content node \"%s\" found, not supported.", LYD_NAME(node));
+            rc = LY_EVALID;
+            goto cleanup;
+        }
+    } else if (value_len) {
+        lydict_remove(xmlctx->ctx, opaq->value);
+        if (dynamic) {
+            LY_CHECK_GOTO(rc = lydict_insert_zc(xmlctx->ctx, (char *)value, &opaq->value), cleanup);
+            dynamic = 0;
+        } else {
+            LY_CHECK_GOTO(rc = lydict_insert(xmlctx->ctx, value, value_len, &opaq->value), cleanup);
+        }
+    }
 
 cleanup:
     lyd_free_attr_siblings(xmlctx->ctx, attr);
+    if (dynamic) {
+        free((char *)value);
+    }
     if (rc) {
-        lyd_free_tree(child);
+        lyd_free_tree(node);
     }
     return rc;
 }

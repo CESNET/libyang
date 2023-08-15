@@ -145,7 +145,8 @@ test_anydata(void **state)
             "  <cont>\n"
             "    <elem1 xmlns=\"urn:tests:defs\">\n"
             "      <elem2 xmlns=\"urn:tests:types\" xmlns:defs=\"urn:tests:defs\" xmlns:defaults=\"urn:defaults\" "
-            "defs:attr1=\"defaults:val\" attr2=\"/defaults:node/defs:node2\"/>\n"
+            "defs:attr1=\"defaults:val\" attr2=\"/defaults:node/defs:node2\">\n"
+            "      </elem2>\n"
             "    </elem1>\n"
             "  </cont>\n"
             "</any>\n";
