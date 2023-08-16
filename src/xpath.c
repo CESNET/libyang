@@ -5647,8 +5647,7 @@ moveto_root(struct lyxp_set *set, uint32_t options)
         set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
         LY_CHECK_RET(lyxp_set_scnode_insert_node(set, NULL, set->root_type, LYXP_AXIS_SELF, NULL));
     } else {
-        set->type = LYXP_SET_NODE_SET;
-        set->used = 0;
+        lyxp_set_free_content(set);
         set_insert_node(set, NULL, 0, set->root_type, 0);
         set->non_child_axis = 0;
     }
