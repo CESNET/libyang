@@ -816,8 +816,8 @@ lyd_parse_opaq_error(const struct lyd_node *node)
     opaq = (struct lyd_node_opaq *)node;
     parent = lyd_parent(node);
 
-    if (lyd_parent(node)) {
-        LOG_LOCSET(NULL, lyd_parent(node), NULL, NULL);
+    if (parent) {
+        LOG_LOCSET(NULL, parent, NULL, NULL);
         ++loc_node;
     } else {
         LOG_LOCSET(NULL, NULL, "/", NULL);
