@@ -2436,6 +2436,8 @@ LIBYANG_API_DECL void lyxp_vars_free(struct lyxp_var *vars);
  * `leaf-list[.=...]`, these instances are found using hashes with constant (*O(1)*) complexity
  * (unless they are defined in top-level). Other predicates can still follow the aforementioned ones.
  *
+ * Opaque nodes are part of the evaluation.
+ *
  * @param[in] ctx_node XPath context node.
  * @param[in] xpath [XPath](@ref howtoXPath) to select in JSON format. It must evaluate into a node set.
  * @param[out] set Set of found data nodes. In case the result is a number, a string, or a boolean,
@@ -2585,6 +2587,8 @@ LIBYANG_API_DECL LY_ERR lyd_eval_xpath4(const struct lyd_node *ctx_node, const s
  *
  * Always works in constant (*O(1)*) complexity. To be exact, it is *O(n)* where *n* is the depth
  * of the path used.
+ *
+ * Opaque nodes are NEVER found/traversed.
  *
  * @param[in] ctx_node Path context node.
  * @param[in] path [Path](@ref howtoXPath) to find.

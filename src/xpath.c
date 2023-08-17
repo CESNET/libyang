@@ -5671,6 +5671,8 @@ static LY_ERR
 moveto_node_check(const struct lyd_node *node, enum lyxp_node_type node_type, const struct lyxp_set *set,
         const char *node_name, const struct lys_module *moveto_mod, uint32_t options)
 {
+    const struct lysc_node *schema;
+
     if ((node_type == LYXP_NODE_ROOT_CONFIG) || (node_type == LYXP_NODE_ROOT)) {
         assert(node_type == set->root_type);
 
@@ -5684,39 +5686,40 @@ moveto_node_check(const struct lyd_node *node, enum lyxp_node_type node_type, co
         return LY_ENOT;
     }
 
-    if (!node->schema) {
-        /* opaque node never matches */
+    /* get schema node even of an opaque node */
+    schema = lyd_node_schema(node);
+    if (!schema) {
+        /* unknown opaque node never matches */
         return LY_ENOT;
     }
 
     /* module check */
     if (moveto_mod) {
-        if ((set->ctx == LYD_CTX(node)) && (node->schema->module != moveto_mod)) {
+        if ((set->ctx == LYD_CTX(node)) && (schema->module != moveto_mod)) {
             return LY_ENOT;
-        } else if ((set->ctx != LYD_CTX(node)) && strcmp(node->schema->module->name, moveto_mod->name)) {
+        } else if ((set->ctx != LYD_CTX(node)) && strcmp(schema->module->name, moveto_mod->name)) {
             return LY_ENOT;
         }
     }
 
     /* context check */
-    if ((set->root_type == LYXP_NODE_ROOT_CONFIG) && (node->schema->flags & LYS_CONFIG_R)) {
+    if ((set->root_type == LYXP_NODE_ROOT_CONFIG) && (schema->flags & LYS_CONFIG_R)) {
         return LY_EINVAL;
-    } else if (set->context_op && (node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) &&
-            (node->schema != set->context_op)) {
+    } else if (set->context_op && (schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && (schema != set->context_op)) {
         return LY_EINVAL;
     }
 
     /* name check */
     if (node_name) {
-        if ((set->ctx == LYD_CTX(node)) && (node->schema->name != node_name)) {
+        if ((set->ctx == LYD_CTX(node)) && (schema->name != node_name)) {
             return LY_ENOT;
-        } else if ((set->ctx != LYD_CTX(node)) && strcmp(node->schema->name, node_name)) {
+        } else if ((set->ctx != LYD_CTX(node)) && strcmp(schema->name, node_name)) {
             return LY_ENOT;
         }
     }
 
     /* when check, accept the context node because it should only be the path ".", we have checked the when is valid before */
-    if (!(options & LYXP_IGNORE_WHEN) && lysc_has_when(node->schema) && !(node->flags & LYD_WHEN_TRUE) &&
+    if (!(options & LYXP_IGNORE_WHEN) && lysc_has_when(schema) && !(node->flags & LYD_WHEN_TRUE) &&
             (node != set->cur_node)) {
         return LY_EINCOMPLETE;
     }

@@ -327,6 +327,8 @@ const char *lyxp_token2str(enum lyxp_token tok);
  * @brief Evaluate an XPath expression on data. Be careful when using this function, the result can often
  * be confusing without thorough understanding of XPath evaluation rules defined in RFC 7950.
  *
+ * Traverses (valid) opaque nodes in the evaluation.
+ *
  * @param[in] ctx libyang context to use.
  * @param[in] exp Parsed XPath expression to be evaluated.
  * @param[in] cur_mod Current module for the expression (where it was "instantiated").
