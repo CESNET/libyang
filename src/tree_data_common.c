@@ -758,10 +758,8 @@ lyd_parse_opaq_list_error(const struct lyd_node *node, const struct lysc_node *s
 
     LY_LIST_FOR(lyd_child(node), child) {
         if (child->schema) {
-            LOGERR(LYD_CTX(node), LY_EINVAL, "Unexpected node %s \"%s\".", lys_nodetype2str(child->schema->nodetype),
-                    LYD_NAME(child));
-            ret = LY_EINVAL;
-            goto cleanup;
+            /* skip data nodes, opaque nodes are after them */
+            continue;
         }
 
         opaq_k = (struct lyd_node_opaq *)child;
