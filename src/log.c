@@ -741,7 +741,7 @@ ly_vlog_build_path_append(char **str, const struct lysc_node *snode, const struc
     if (snode->nodetype & (LYS_CHOICE | LYS_CASE)) {
         /* schema-only node */
         return LY_SUCCESS;
-    } else if (lysc_data_parent(snode) != parent->schema) {
+    } else if (lysc_data_parent(snode) != lyd_node_schema(parent)) {
         /* not a direct descendant node */
         return LY_SUCCESS;
     }

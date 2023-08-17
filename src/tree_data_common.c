@@ -526,10 +526,14 @@ ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const 
             /* log only in case the ctx was provided as input parameter */
             if (err->path) {
                 LOG_LOCSET(NULL, NULL, err->path, NULL);
+            } else {
+                LOG_LOCSET(node, NULL, NULL, NULL);
             }
             LOGVAL_ERRITEM(ctx, err);
             if (err->path) {
                 LOG_LOCBACK(0, 0, 1, 0);
+            } else {
+                LOG_LOCBACK(1, 0, 1, 0);
             }
         }
         ly_err_free(err);
