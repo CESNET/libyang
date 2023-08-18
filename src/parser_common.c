@@ -157,6 +157,63 @@ lyd_parser_find_operation(const struct lyd_node *parent, uint32_t int_opts, stru
     return LY_SUCCESS;
 }
 
+const struct lysc_node *
+lyd_parser_node_schema(const struct lyd_node *node)
+{
+    uint32_t i;
+    const struct lyd_node *iter;
+    const struct lysc_node *schema = NULL;
+    const struct lys_module *mod;
+
+    if (!node) {
+        return NULL;
+    } else if (node->schema) {
+        /* simplest case */
+        return node->schema;
+    }
+
+    /* find the first schema node in the parsed nodes */
+    i = ly_log_location_dnode_count();
+    if (i) {
+        do {
+            --i;
+            if (ly_log_location_dnode(i)->schema) {
+                /* this node is processed */
+                schema = ly_log_location_dnode(i)->schema;
+                ++i;
+                break;
+            }
+        } while (i);
+    }
+
+    /* get schema node of an opaque node */
+    do {
+        /* get next data node */
+        if (i == ly_log_location_dnode_count()) {
+            iter = node;
+        } else {
+            iter = ly_log_location_dnode(i);
+        }
+        assert(!iter->schema);
+
+        /* get module */
+        mod = lyd_owner_module(iter);
+        if (!mod) {
+            /* unknown module, no schema node */
+            schema = NULL;
+            break;
+        }
+
+        /* get schema node */
+        schema = lys_find_child(schema, mod, LYD_NAME(iter), 0, 0, 0);
+
+        /* move to the descendant */
+        ++i;
+    } while (schema && (iter != node));
+
+    return schema;
+}
+
 LY_ERR
 lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode)
 {

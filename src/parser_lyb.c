@@ -1171,6 +1171,9 @@ lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
             value, strlen(value), &dynamic, format, val_prefix_data, LYD_HINT_DATA, &node);
     LY_CHECK_GOTO(ret, cleanup);
 
+    assert(node);
+    LOG_LOCSET(NULL, node, NULL, NULL);
+
     /* process children */
     ret = lyb_parse_siblings(lybctx, node, NULL, NULL);
     LY_CHECK_GOTO(ret, cleanup);
@@ -1178,8 +1181,12 @@ lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     /* register parsed opaq node */
     lyb_finish_opaq(lybctx, parent, flags, &attr, &node, first_p, parsed);
     assert(!attr && !node);
+    LOG_LOCBACK(0, 1, 0, 0);
 
 cleanup:
+    if (node) {
+        LOG_LOCBACK(0, 1, 0, 0);
+    }
     free(prefix);
     free(module_key);
     free(name);
@@ -1265,9 +1272,13 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
         goto error;
     }
 
+    assert(node);
+    LOG_LOCSET(NULL, node, NULL, NULL);
+
     /* register parsed anydata node */
     lyb_finish_node(lybctx, parent, flags, &meta, &node, first_p, parsed);
 
+    LOG_LOCBACK(0, 1, 0, 0);
     return LY_SUCCESS;
 
 error:
@@ -1304,6 +1315,9 @@ lyb_parse_node_inner(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const 
     ret = lyd_create_inner(snode, &node);
     LY_CHECK_GOTO(ret, error);
 
+    assert(node);
+    LOG_LOCSET(NULL, node, NULL, NULL);
+
     /* process children */
     ret = lyb_parse_siblings(lybctx, node, NULL, NULL);
     LY_CHECK_GOTO(ret, error);
@@ -1320,9 +1334,13 @@ lyb_parse_node_inner(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const 
     /* register parsed node */
     lyb_finish_node(lybctx, parent, flags, &meta, &node, first_p, parsed);
 
+    LOG_LOCBACK(0, 1, 0, 0);
     return LY_SUCCESS;
 
 error:
+    if (node) {
+        LOG_LOCBACK(0, 1, 0, 0);
+    }
     lyd_free_meta_siblings(meta);
     lyd_free_tree(node);
     return ret;
@@ -1355,8 +1373,12 @@ lyb_parse_node_leaf(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
     ret = lyb_create_term(lybctx, snode, &node);
     LY_CHECK_GOTO(ret, error);
 
+    assert(node);
+    LOG_LOCSET(NULL, node, NULL, NULL);
+
     lyb_finish_node(lybctx, parent, flags, &meta, &node, first_p, parsed);
 
+    LOG_LOCBACK(0, 1, 0, 0);
     return LY_SUCCESS;
 
 error:
@@ -1416,6 +1438,7 @@ lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
     struct lyd_node *node = NULL;
     struct lyd_meta *meta = NULL;
     uint32_t flags;
+    ly_bool log_node = 0;
 
     /* register a new sibling */
     ret = lyb_read_start_siblings(lybctx->lybctx);
@@ -1429,6 +1452,10 @@ lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
         /* create list node */
         ret = lyd_create_inner(snode, &node);
         LY_CHECK_GOTO(ret, error);
+
+        assert(node);
+        LOG_LOCSET(NULL, node, NULL, NULL);
+        log_node = 1;
 
         /* process children */
         ret = lyb_parse_siblings(lybctx, node, NULL, NULL);
@@ -1445,6 +1472,9 @@ lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
 
         /* register parsed list node */
         lyb_finish_node(lybctx, parent, flags, &meta, &node, first_p, parsed);
+
+        LOG_LOCBACK(0, 1, 0, 0);
+        log_node = 0;
     }
 
     /* end the sibling */
@@ -1454,6 +1484,9 @@ lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
     return LY_SUCCESS;
 
 error:
+    if (log_node) {
+        LOG_LOCBACK(0, 1, 0, 0);
+    }
     lyd_free_meta_siblings(meta);
     lyd_free_tree(node);
     return ret;
@@ -1492,7 +1525,7 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
     case LYB_NODE_CHILD:
     case LYB_NODE_OPAQ:
         /* read hash, find the schema node starting from parent schema, if any */
-        LY_CHECK_GOTO(ret = lyb_parse_schema_hash(lybctx, parent ? parent->schema : NULL, NULL, &snode), cleanup);
+        LY_CHECK_GOTO(ret = lyb_parse_schema_hash(lybctx, lyd_parser_node_schema(parent), NULL, &snode), cleanup);
         break;
     case LYB_NODE_EXT:
         /* ext, read module name */

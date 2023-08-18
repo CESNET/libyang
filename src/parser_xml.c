@@ -570,46 +570,45 @@ unknown_module:
     }
 
     /* get the schema node */
-    if (mod) {
-        if (!parent && lydctx->ext) {
-            *snode = lysc_ext_find_node(lydctx->ext, mod, name, name_len, 0, getnext_opts);
-        } else {
-            *snode = lys_find_child(parent ? parent->schema : NULL, mod, name, name_len, 0, getnext_opts);
+    if (!parent && lydctx->ext) {
+        *snode = lysc_ext_find_node(lydctx->ext, mod, name, name_len, 0, getnext_opts);
+    } else {
+        /* try to find parent schema node even if it is an opaque node (not connected to the parent) */
+        *snode = lys_find_child(lyd_parser_node_schema(parent), mod, name, name_len, 0, getnext_opts);
+    }
+    if (!*snode) {
+        /* check for extension data */
+        r = ly_nested_ext_schema(parent, NULL, prefix, prefix_len, LY_VALUE_XML, &lydctx->xmlctx->ns, name,
+                name_len, snode, ext);
+        if (r != LY_ENOT) {
+            /* success or error */
+            return r;
         }
-        if (!*snode) {
-            /* check for extension data */
-            r = ly_nested_ext_schema(parent, NULL, prefix, prefix_len, LY_VALUE_XML, &lydctx->xmlctx->ns, name,
-                    name_len, snode, ext);
-            if (r != LY_ENOT) {
-                /* success or error */
-                return r;
-            }
 
-            /* unknown data node */
-            if (lydctx->parse_opts & LYD_PARSE_STRICT) {
-                if (parent) {
-                    LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found as a child of \"%s\" node.",
-                            (int)name_len, name, LYD_NAME(parent));
-                } else if (lydctx->ext) {
-                    if (lydctx->ext->argument) {
-                        LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the \"%s\" %s extension instance.",
-                                (int)name_len, name, lydctx->ext->argument, lydctx->ext->def->name);
-                    } else {
-                        LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the %s extension instance.",
-                                (int)name_len, name, lydctx->ext->def->name);
-                    }
+        /* unknown data node */
+        if (lydctx->parse_opts & LYD_PARSE_STRICT) {
+            if (parent) {
+                LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found as a child of \"%s\" node.",
+                        (int)name_len, name, LYD_NAME(parent));
+            } else if (lydctx->ext) {
+                if (lydctx->ext->argument) {
+                    LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the \"%s\" %s extension instance.",
+                            (int)name_len, name, lydctx->ext->argument, lydctx->ext->def->name);
                 } else {
-                    LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the \"%s\" module.",
-                            (int)name_len, name, mod->name);
+                    LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the %s extension instance.",
+                            (int)name_len, name, lydctx->ext->def->name);
                 }
-                return LY_EVALID;
+            } else {
+                LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the \"%s\" module.",
+                        (int)name_len, name, mod->name);
             }
-            return LY_SUCCESS;
-        } else {
-            /* check that schema node is valid and can be used */
-            LY_CHECK_RET(lyd_parser_check_schema((struct lyd_ctx *)lydctx, *snode));
-            LY_CHECK_RET(lydxml_data_check_opaq(lydctx, snode));
+            return LY_EVALID;
         }
+        return LY_SUCCESS;
+    } else {
+        /* check that schema node is valid and can be used */
+        LY_CHECK_RET(lyd_parser_check_schema((struct lyd_ctx *)lydctx, *snode));
+        LY_CHECK_RET(lydxml_data_check_opaq(lydctx, snode));
     }
 
     return LY_SUCCESS;
@@ -672,6 +671,9 @@ lydxml_subtree_opaq(struct lyd_xml_ctx *lydctx, const struct lyd_node *sibling, 
             NULL, format, NULL, hints, node);
     LY_CHECK_GOTO(rc, cleanup);
 
+    assert(*node);
+    LOG_LOCSET(NULL, *node, NULL, NULL);
+
     /* parser next */
     rc = lyxml_ctx_next(xmlctx);
     LY_CHECK_GOTO(rc, cleanup);
@@ -706,6 +708,9 @@ lydxml_subtree_opaq(struct lyd_xml_ctx *lydctx, const struct lyd_node *sibling, 
     val_prefix_data = NULL;
 
 cleanup:
+    if (*node) {
+        LOG_LOCBACK(0, 1, 0, 0);
+    }
     ly_free_prefix_data(format, val_prefix_data);
     if (dynamic) {
         free((char *)value);

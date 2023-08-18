@@ -500,6 +500,22 @@ ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_t pat
     }
 }
 
+const struct lyd_node *
+ly_log_location_dnode(uint32_t idx)
+{
+    if (idx < log_location.dnodes.count) {
+        return log_location.dnodes.dnodes[idx];
+    }
+
+    return NULL;
+}
+
+uint32_t
+ly_log_location_dnode_count(void)
+{
+    return log_location.dnodes.count;
+}
+
 /**
  * @brief Store generated error in a context.
  *

@@ -358,6 +358,14 @@ LY_ERR lyd_parser_notif_eventtime_validate(const struct lyd_node *node);
 LY_ERR lyd_parser_find_operation(const struct lyd_node *parent, uint32_t int_opts, struct lyd_node **op);
 
 /**
+ * @brief Get schema node of a node being parsed, use nodes stored for logging.
+ *
+ * @param[in] node Node whose schema node to get.
+ * @return Schema node even for an opaque node, NULL if none found.
+ */
+const struct lysc_node *lyd_parser_node_schema(const struct lyd_node *node);
+
+/**
  * @brief Check that a data node representing the @p snode is suitable based on options.
  *
  * @param[in] lydctx Common data parsers context.

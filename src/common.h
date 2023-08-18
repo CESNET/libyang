@@ -130,6 +130,21 @@ void ly_log_location(const struct lysc_node *scnode, const struct lyd_node *dnod
 void ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_t path_steps, uint32_t in_steps);
 
 /**
+ * @brief Get the stored data node for logging at the index.
+ *
+ * @param[in] idx Index of the data node.
+ * @return Logged data node, NULL if out of range.
+ */
+const struct lyd_node *ly_log_location_dnode(uint32_t idx);
+
+/**
+ * @brief Get the count of stored data nodes for logging.
+ *
+ * @return Count of the data nodes.
+ */
+uint32_t ly_log_location_dnode_count(void);
+
+/**
  * @brief Update location data for logger, not provided arguments (NULLs) are kept (does not override).
  *
  * @param[in] SCNODE Compiled schema node.

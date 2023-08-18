@@ -697,7 +697,7 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling_p, stru
     lyd_insert_hash(node);
 
     /* finish hashes for our parent, if needed and possible */
-    if (node->schema && (node->schema->flags & LYS_KEY) && parent && lyd_insert_has_keys(parent)) {
+    if (node->schema && (node->schema->flags & LYS_KEY) && parent && parent->schema && lyd_insert_has_keys(parent)) {
         lyd_hash(parent);
 
         /* now we can insert even the list into its parent HT */

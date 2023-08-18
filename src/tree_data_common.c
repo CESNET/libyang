@@ -757,17 +757,10 @@ lyd_parse_opaq_list_error(const struct lyd_node *node, const struct lysc_node *s
     }
 
     LY_LIST_FOR(lyd_child(node), child) {
-        if (child->schema) {
-            /* skip data nodes, opaque nodes are after them */
-            continue;
-        }
-
-        opaq_k = (struct lyd_node_opaq *)child;
-
         /* find the key schema node */
         for (i = 0; i < key_set.count; ++i) {
             key = key_set.snodes[i];
-            if (!strcmp(key->name, opaq_k->name.name)) {
+            if (!strcmp(key->name, LYD_NAME(child))) {
                 break;
             }
         }
@@ -779,7 +772,13 @@ lyd_parse_opaq_list_error(const struct lyd_node *node, const struct lysc_node *s
         /* key found */
         ly_set_rm_index(&key_set, i, NULL);
 
+        if (child->schema) {
+            /* valid key */
+            continue;
+        }
+
         /* check value */
+        opaq_k = (struct lyd_node_opaq *)child;
         ret = ly_value_validate(LYD_CTX(node), key, opaq_k->value, strlen(opaq_k->value), opaq_k->format,
                 opaq_k->val_prefix_data, opaq_k->hints);
         LY_CHECK_GOTO(ret, cleanup);
@@ -1059,27 +1058,30 @@ lyd_node_schema(const struct lyd_node *node)
         return node->schema;
     }
 
+    /* find the first schema node in the parents */
+    for (iter = lyd_parent(node); iter && !iter->schema; iter = lyd_parent(iter)) {}
+    if (iter) {
+        prev_iter = iter;
+        schema = prev_iter->schema;
+    }
+
     /* get schema node of an opaque node */
     do {
         /* get next data node */
         for (iter = node; lyd_parent(iter) != prev_iter; iter = lyd_parent(iter)) {}
 
-        /* get equivalent schema node */
-        if (iter->schema) {
-            schema = iter->schema;
-        } else {
-            /* get module */
-            mod = lyd_owner_module(iter);
-            if (!mod && !schema) {
-                /* top-level opaque node has unknown module */
-                break;
-            }
-
-            /* get schema node */
-            schema = lys_find_child(schema, mod ? mod : schema->module, LYD_NAME(iter), 0, 0, 0);
+        /* get module */
+        mod = lyd_owner_module(iter);
+        if (!mod) {
+            /* unknown module, no schema node */
+            schema = NULL;
+            break;
         }
 
-        /* remember to move to the descendant */
+        /* get schema node */
+        schema = lys_find_child(schema, mod, LYD_NAME(iter), 0, 0, 0);
+
+        /* move to the descendant */
         prev_iter = iter;
     } while (schema && (iter != node));
 

@@ -295,7 +295,7 @@ lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *pref
         if (!parent && lydctx->ext) {
             *snode = lysc_ext_find_node(lydctx->ext, mod, name, name_len, 0, getnext_opts);
         } else {
-            *snode = lys_find_child(parent ? parent->schema : NULL, mod, name, name_len, 0, getnext_opts);
+            *snode = lys_find_child(lyd_parser_node_schema(parent), mod, name, name_len, 0, getnext_opts);
         }
         if (!*snode) {
             /* check for extension data */
@@ -1018,17 +1018,23 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
         struct lyd_node *parent, enum LYJSON_PARSER_STATUS *status_p, enum LYJSON_PARSER_STATUS *status_inner_p,
         struct lyd_node **first_p, struct lyd_node **node_p)
 {
-    LY_CHECK_RET(lydjson_create_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status_inner_p, node_p));
+    LY_ERR ret = LY_SUCCESS;
+
+    LY_CHECK_GOTO(ret = lydjson_create_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status_inner_p, node_p), cleanup);
+
+    assert(*node_p);
+    LOG_LOCSET(NULL, *node_p, NULL, NULL);
 
     if ((*status_p == LYJSON_ARRAY) && (*status_inner_p == LYJSON_NULL)) {
         /* special array null value */
         ((struct lyd_node_opaq *)*node_p)->hints |= LYD_VALHINT_EMPTY;
 
         /* must be the only item */
-        LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status_inner_p));
+        LY_CHECK_GOTO(ret = lyjson_ctx_next(lydctx->jsonctx, status_inner_p), cleanup);
         if (*status_inner_p != LYJSON_ARRAY_CLOSED) {
             LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX, "Array \"null\" member with another member.");
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto cleanup;
         }
 
         goto finish;
@@ -1042,7 +1048,7 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
 
             /* but first process children of the object in the array */
             do {
-                LY_CHECK_RET(lydjson_subtree_r(lydctx, *node_p, lyd_node_child_p(*node_p), NULL));
+                LY_CHECK_GOTO(ret = lydjson_subtree_r(lydctx, *node_p, lyd_node_child_p(*node_p), NULL), cleanup);
                 *status_inner_p = lyjson_ctx_status(lydctx->jsonctx);
             } while (*status_inner_p == LYJSON_OBJECT_NEXT);
         } else {
@@ -1050,30 +1056,42 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
             ((struct lyd_node_opaq *)*node_p)->hints |= LYD_NODEHINT_LEAFLIST;
         }
 
-        LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status_inner_p));
+        LY_CHECK_GOTO(ret = lyjson_ctx_next(lydctx->jsonctx, status_inner_p), cleanup);
         if (*status_inner_p == LYJSON_ARRAY_CLOSED) {
             goto finish;
         }
         assert(*status_inner_p == LYJSON_ARRAY_NEXT);
 
         /* continue with the next instance */
-        LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status_inner_p));
-        assert(node_p);
+        LY_CHECK_GOTO(ret = lyjson_ctx_next(lydctx->jsonctx, status_inner_p), cleanup);
+        assert(*node_p);
         lydjson_maintain_children(parent, first_p, node_p, lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0, NULL);
-        LY_CHECK_RET(lydjson_create_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status_inner_p, node_p));
+
+        LOG_LOCBACK(0, 1, 0, 0);
+
+        LY_CHECK_GOTO(ret = lydjson_create_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status_inner_p, node_p), cleanup);
+
+        assert(*node_p);
+        LOG_LOCSET(NULL, *node_p, NULL, NULL);
     }
 
     if (*status_p == LYJSON_OBJECT) {
         /* process children */
         do {
-            LY_CHECK_RET(lydjson_subtree_r(lydctx, *node_p, lyd_node_child_p(*node_p), NULL));
+            LY_CHECK_GOTO(ret = lydjson_subtree_r(lydctx, *node_p, lyd_node_child_p(*node_p), NULL), cleanup);
             *status_p = lyjson_ctx_status(lydctx->jsonctx);
         } while (*status_p == LYJSON_OBJECT_NEXT);
     }
 
 finish:
     /* finish linking metadata */
-    return lydjson_metadata_finish(lydctx, lyd_node_child_p(*node_p));
+    ret = lydjson_metadata_finish(lydctx, lyd_node_child_p(*node_p));
+
+cleanup:
+    if (*node_p) {
+        LOG_LOCBACK(0, 1, 0, 0);
+    }
+    return ret;
 }
 
 /**
