@@ -490,8 +490,8 @@ lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct ly
         /* get the first schema sibling */
         schema = lys_getnext(NULL, sparent, new_node->schema->module->compiled, getnext_opts);
         if (!schema) {
-            /* must be a top-level extension instance data, insert at the end */
-            return first_sibling->prev;
+            /* must be a top-level extension instance data, no anchor */
+            return NULL;
         }
 
         found = 0;
@@ -518,8 +518,8 @@ lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct ly
 
                 schema = lys_getnext(schema, sparent, new_node->schema->module->compiled, getnext_opts);
                 if (!schema) {
-                    /* must be a top-level extension instance data, insert at the end */
-                    return first_sibling->prev;
+                    /* must be a top-level extension instance data, no anchor */
+                    return NULL;
                 }
             }
 
