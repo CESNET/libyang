@@ -673,6 +673,14 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling_p, stru
     } else {
         /* find the anchor, our next node, so we can insert before it */
         anchor = lyd_insert_get_next_anchor(first_sibling, node);
+
+        /* cannot insert data node after opaque nodes */
+        if (node->schema && first_sibling && !first_sibling->prev->schema) {
+            anchor = first_sibling->prev;
+            while ((anchor != first_sibling) && !anchor->prev->schema) {
+                anchor = anchor->prev;
+            }
+        }
     }
 
     if (anchor) {
