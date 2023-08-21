@@ -225,9 +225,9 @@ lydjson_data_skip(struct lyjson_ctx *jsonctx)
         }
         break;
     default:
-        /* no other status expected */
-        LOGINT(jsonctx->ctx);
-        return LY_EINT;
+        /* no other status really expected, just go to next */
+        LY_CHECK_RET(lyjson_ctx_next(jsonctx, &current));
+        break;
     }
 
     return LY_SUCCESS;
@@ -721,7 +721,7 @@ cleanup:
 static LY_ERR
 lydjson_metadata(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, struct lyd_node *node)
 {
-    LY_ERR rc = LY_SUCCESS;
+    LY_ERR rc = LY_SUCCESS, r;
     enum LYJSON_PARSER_STATUS status;
     const char *expected;
     ly_bool in_parent = 0;
@@ -897,6 +897,12 @@ representation_error:
     rc = LY_EVALID;
 
 cleanup:
+    if ((rc == LY_EVALID) && (lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR)) {
+        /* try to skip the invalid data */
+        if ((r = lydjson_data_skip(lydctx->jsonctx))) {
+            rc = r;
+        }
+    }
     free(dynamic_prefname);
     LOG_LOCBACK(1, 0, 0, 0);
     return rc;
