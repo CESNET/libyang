@@ -1614,8 +1614,8 @@ next_iter:
     LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
     LY_LIST_FOR(first, node) {
-        if (!node->parent && mod && (lyd_owner_module(node) != mod)) {
-            /* all top-level data from this module checked */
+        if (!node->schema || (!node->parent && mod && (lyd_owner_module(node) != mod))) {
+            /* only opaque data following or all top-level data from this module checked */
             break;
         }
 
