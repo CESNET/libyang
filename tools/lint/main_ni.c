@@ -278,7 +278,7 @@ create_ly_context(const char *yang_lib_file, const char *searchpaths, struct ly_
         ly_set_erase(schema_features, yl_schema_features_free);
 
         if (ly_ctx_new_ylpath(searchpaths, yang_lib_file, LYD_UNKNOWN, *ctx_options, ctx)) {
-            YLMSG_E("Unable to modify libyang context with yang-library data.\n");
+            YLMSG_E("Unable to modify libyang context with yang-library data.");
             return -1;
         }
     } else {
@@ -286,7 +286,7 @@ create_ly_context(const char *yang_lib_file, const char *searchpaths, struct ly_
         (*ctx_options) |= !schema_features->count ? LY_CTX_ENABLE_IMP_FEATURES : 0;
 
         if (ly_ctx_new(searchpaths, *ctx_options, ctx)) {
-            YLMSG_E("Unable to create libyang context\n");
+            YLMSG_E("Unable to create libyang context.");
             return -1;
         }
     }
@@ -315,13 +315,13 @@ apply_features(struct ly_set *schema_features, struct ly_ctx *ctx)
             mod = ly_ctx_get_module_latest(ctx, sf->mod_name);
         }
         if (!mod) {
-            YLMSG_E("Specified features not applied, module \"%s\" not loaded.\n", sf->mod_name);
+            YLMSG_E("Specified features not applied, module \"%s\" not loaded.", sf->mod_name);
             return 1;
         }
 
         /* we have the module, implement it if needed and enable the specific features */
         if (lys_set_implemented(mod, (const char **)sf->features)) {
-            YLMSG_E("Implementing module \"%s\" failed.\n", mod->name);
+            YLMSG_E("Implementing module \"%s\" failed.", mod->name);
             return 1;
         }
         sf->applied = 1;
@@ -519,7 +519,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
 
         case 'I': /* --in-format */
             if (yo_opt_update_data_in_format(optarg, yo)) {
-                YLMSG_E("Unknown input format %s\n", optarg);
+                YLMSG_E("Unknown input format %s.", optarg);
                 help(1);
                 return -1;
             }
@@ -527,7 +527,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
 
         case 'p':   /* --path */
             if (searchpath_strcat(&yo->searchpaths, optarg)) {
-                YLMSG_E("Storing searchpath failed.\n");
+                YLMSG_E("Storing searchpath failed.");
                 return -1;
             }
             break;
@@ -535,7 +535,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
 
         case 'D': /* --disable-searchdir */
             if (yo->ctx_options & LY_CTX_DISABLE_SEARCHDIRS) {
-                YLMSG_W("The -D option specified too many times.\n");
+                YLMSG_W("The -D option specified too many times.");
             }
             yo_opt_update_disable_searchdir(yo);
             break;
@@ -576,12 +576,12 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
 
         case 't': /* --type */
             if (data_type_set) {
-                YLMSG_E("The data type (-t) cannot be set multiple times.\n");
+                YLMSG_E("The data type (-t) cannot be set multiple times.");
                 return -1;
             }
 
             if (yl_opt_update_data_type(optarg, yo)) {
-                YLMSG_E("Unknown data tree type %s\n", optarg);
+                YLMSG_E("Unknown data tree type %s.", optarg);
                 help(1);
                 return -1;
             }
@@ -591,7 +591,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
 
         case 'd': /* --default */
             if (yo_opt_update_data_default(optarg, yo)) {
-                YLMSG_E("Unknown default mode %s\n", optarg);
+                YLMSG_E("Unknown default mode %s.", optarg);
                 help(1);
                 return -1;
             }
@@ -599,7 +599,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
 
         case 'E': /* --data-xpath */
             if (ly_set_add(&yo->data_xpath, optarg, 0, NULL)) {
-                YLMSG_E("Storing XPath \"%s\" failed.\n", optarg);
+                YLMSG_E("Storing XPath \"%s\" failed.", optarg);
                 return -1;
             }
             break;
@@ -614,11 +614,11 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
 
         case 'o': /* --output */
             if (yo->out) {
-                YLMSG_E("Only a single output can be specified.\n");
+                YLMSG_E("Only a single output can be specified.");
                 return -1;
             } else {
                 if (ly_out_new_filepath(optarg, &yo->out)) {
-                    YLMSG_E("Unable open output file %s (%s)\n", optarg, strerror(errno));
+                    YLMSG_E("Unable open output file %s (%s).", optarg, strerror(errno));
                     return -1;
                 }
             }
@@ -626,7 +626,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
 
         case 'O': /* --operational */
             if (yo->data_operational.path) {
-                YLMSG_E("The operational datastore (-O) cannot be set multiple times.\n");
+                YLMSG_E("The operational datastore (-O) cannot be set multiple times.");
                 return -1;
             }
             yo->data_operational.path = optarg;
@@ -634,7 +634,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
 
         case 'R': /* --reply-rpc */
             if (yo->reply_rpc.path) {
-                YLMSG_E("The PRC of the reply (-R) cannot be set multiple times.\n");
+                YLMSG_E("The PRC of the reply (-R) cannot be set multiple times.");
                 return -1;
             }
             yo->reply_rpc.path = optarg;
@@ -666,7 +666,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
             /* case 'G' */
 #endif
         default:
-            YLMSG_E("Invalid option or missing argument: -%c\n", optopt);
+            YLMSG_E("Invalid option or missing argument: -%c.", optopt);
             return -1;
         } /* switch */
     }
@@ -674,7 +674,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
     /* additional checks for the options combinations */
     if (!yo->list && (optind >= argc)) {
         help(1);
-        YLMSG_E("Missing <schema> to process.\n");
+        YLMSG_E("Missing <schema> to process.");
         return 1;
     }
 
@@ -702,16 +702,16 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
 
     /* the second batch of checks */
     if (yo->schema_print_options && !yo->schema_out_format) {
-        YLMSG_W("Schema printer options specified, but the schema output format is missing.\n");
+        YLMSG_W("Schema printer options specified, but the schema output format is missing.");
     }
     if (yo->schema_parse_options && !yo->schema_modules.count) {
-        YLMSG_W("Schema parser options specified, but no schema input file provided.\n");
+        YLMSG_W("Schema parser options specified, but no schema input file provided.");
     }
     if (yo->data_print_options && !yo->data_out_format) {
-        YLMSG_W("data printer options specified, but the data output format is missing.\n");
+        YLMSG_W("data printer options specified, but the data output format is missing.");
     }
     if (((yo->data_parse_options != YL_DEFAULT_DATA_PARSE_OPTIONS) || yo->data_type) && !yo->data_inputs.count) {
-        YLMSG_W("Data parser options specified, but no data input file provided.\n");
+        YLMSG_W("Data parser options specified, but no data input file provided.");
     }
 
     return 0;

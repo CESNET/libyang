@@ -182,7 +182,7 @@ cmd_data_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
         switch (opt) {
         case 'd': /* --default */
             if (yo_opt_update_data_default(optarg, yo)) {
-                YLMSG_E("Unknown default mode %s\n", optarg);
+                YLMSG_E("Unknown default mode %s.", optarg);
                 cmd_data_help_default();
                 return 1;
             }
@@ -195,32 +195,32 @@ cmd_data_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
             break;
         case 'F': /* --in-format */
             if (yo_opt_update_data_in_format(optarg, yo)) {
-                YLMSG_E("Unknown input format %s\n", optarg);
+                YLMSG_E("Unknown input format %s.", optarg);
                 cmd_data_help_in_format();
                 return 1;
             }
             break;
         case 'o': /* --output */
             if (yo->out) {
-                YLMSG_E("Only a single output can be specified.\n");
+                YLMSG_E("Only a single output can be specified.");
                 return 1;
             } else {
                 if (ly_out_new_filepath(optarg, &yo->out)) {
-                    YLMSG_E("Unable open output file %s (%s)\n", optarg, strerror(errno));
+                    YLMSG_E("Unable open output file %s (%s).", optarg, strerror(errno));
                     return 1;
                 }
             }
             break;
         case 'O':   /* --operational */
             if (yo->data_operational.path) {
-                YLMSG_E("The operational datastore (-O) cannot be set multiple times.\n");
+                YLMSG_E("The operational datastore (-O) cannot be set multiple times.");
                 return 1;
             }
             yo->data_operational.path = optarg;
             break;
         case 'R':   /* --reply-rpc */
             if (yo->reply_rpc.path) {
-                YLMSG_E("The PRC of the reply (-R) cannot be set multiple times.\n");
+                YLMSG_E("The PRC of the reply (-R) cannot be set multiple times.");
                 return 1;
             }
             yo->reply_rpc.path = optarg;
@@ -236,12 +236,12 @@ cmd_data_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
             break;
         case 't': /* --type */
             if (data_type_set) {
-                YLMSG_E("The data type (-t) cannot be set multiple times.\n");
+                YLMSG_E("The data type (-t) cannot be set multiple times.");
                 return 1;
             }
 
             if (yl_opt_update_data_type(optarg, yo)) {
-                YLMSG_E("Unknown data tree type %s.\n", optarg);
+                YLMSG_E("Unknown data tree type %s.", optarg);
                 cmd_data_help_type();
                 return 1;
             }
@@ -251,7 +251,7 @@ cmd_data_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
 
         case 'x': /* --xpath */
             if (ly_set_add(&yo->data_xpath, optarg, 0, NULL)) {
-                YLMSG_E("Storing XPath \"%s\" failed.\n", optarg);
+                YLMSG_E("Storing XPath \"%s\" failed.", optarg);
                 return 1;
             }
             break;
@@ -260,7 +260,7 @@ cmd_data_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
             cmd_data_help();
             return 1;
         default:
-            YLMSG_E("Unknown option.\n");
+            YLMSG_E("Unknown option.");
             return 1;
         }
     }
@@ -275,14 +275,14 @@ int
 cmd_data_dep(struct yl_opt *yo, int posc)
 {
     if (yo->interactive && !posc) {
-        YLMSG_E("Missing the data file to process.\n");
+        YLMSG_E("Missing the data file to process.");
         return 1;
     }
 
     if (yo->data_merge) {
         if (yo->data_type || (yo->data_parse_options & LYD_PARSE_ONLY)) {
             /* switch off the option, incompatible input data type */
-            YLMSG_W("The --merge option has effect only for 'data' and 'config' TYPEs\n");
+            YLMSG_W("The --merge option has effect only for 'data' and 'config' TYPEs.");
             yo->data_merge = 0;
         } else {
             /* postpone validation after the merge of all the input data */
@@ -293,14 +293,14 @@ cmd_data_dep(struct yl_opt *yo, int posc)
     }
 
     if (yo->data_xpath.count && (yo->schema_out_format || yo->data_out_format)) {
-        YLMSG_E("The --format option cannot be combined with --xpath option.\n");
+        YLMSG_E("The --format option cannot be combined with --xpath option.");
         if (yo->interactive) {
             cmd_data_help_xpath();
         }
         return 1;
     }
     if (yo->data_xpath.count && (yo->data_print_options & LYD_PRINT_WD_MASK)) {
-        YLMSG_E("The --default option cannot be combined with --xpath option.\n");
+        YLMSG_E("The --default option cannot be combined with --xpath option.");
         if (yo->interactive) {
             cmd_data_help_xpath();
         }
@@ -308,27 +308,27 @@ cmd_data_dep(struct yl_opt *yo, int posc)
     }
 
     if (yo->data_operational.path && !yo->data_type) {
-        YLMSG_W("Operational datastore takes effect only with RPCs/Actions/Replies/Notification input data types.\n");
+        YLMSG_W("Operational datastore takes effect only with RPCs/Actions/Replies/Notification input data types.");
         yo->data_operational.path = NULL;
     }
 
     if (yo->reply_rpc.path && (yo->data_type != LYD_TYPE_REPLY_NETCONF)) {
-        YLMSG_W("Source RPC is needed only for NETCONF Reply input data type.\n");
+        YLMSG_W("Source RPC is needed only for NETCONF Reply input data type.");
         yo->data_operational.path = NULL;
     } else if (!yo->reply_rpc.path && (yo->data_type == LYD_TYPE_REPLY_NETCONF)) {
-        YLMSG_E("Missing source RPC (-R) for NETCONF Reply input data type.\n");
+        YLMSG_E("Missing source RPC (-R) for NETCONF Reply input data type.");
         return 1;
     }
 
     if (!yo->out && (yo->data_out_format == LYD_LYB)) {
-        YLMSG_E("The LYB format requires the -o option specified.\n");
+        YLMSG_E("The LYB format requires the -o option specified.");
         return 1;
     }
 
     /* default output stream */
     if (!yo->out) {
         if (ly_out_new_file(stdout, &yo->out)) {
-            YLMSG_E("Unable to set stdout as output.\n");
+            YLMSG_E("Unable to set stdout as output.");
             return 1;
         }
         yo->out_stdout = 1;
@@ -438,7 +438,7 @@ check_operation_parent(struct lyd_node *op, struct lyd_node *oper_tree, struct c
     }
 
     if (!operational_f || (operational_f && !operational_f->in)) {
-        YLMSG_E("The --operational parameter needed to validate operation \"%s\" is missing.\n", LYD_NAME(op));
+        YLMSG_E("The --operational parameter needed to validate operation \"%s\" is missing.", LYD_NAME(op));
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -450,8 +450,8 @@ check_operation_parent(struct lyd_node *op, struct lyd_node *oper_tree, struct c
     }
 
     if (!oper_tree) {
-        YLMSG_W("Operational datastore is empty or contains unknown data.\n");
-        YLMSG_E("Operation \"%s\" parent \"%s\" not found in the operational data.\n", LYD_NAME(op), path);
+        YLMSG_W("Operational datastore is empty or contains unknown data.");
+        YLMSG_E("Operation \"%s\" parent \"%s\" not found in the operational data.", LYD_NAME(op), path);
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -459,7 +459,7 @@ check_operation_parent(struct lyd_node *op, struct lyd_node *oper_tree, struct c
         goto cleanup;
     }
     if (!set->count) {
-        YLMSG_E("Operation \"%s\" parent \"%s\" not found in the operational data.\n", LYD_NAME(op), path);
+        YLMSG_E("Operation \"%s\" parent \"%s\" not found in the operational data.", LYD_NAME(op), path);
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -505,7 +505,7 @@ process_data(struct ly_ctx *ctx, enum lyd_type type, uint8_t merge, LYD_FORMAT o
     if (operational && operational->in) {
         ret = lyd_parse_data(ctx, NULL, operational->in, operational->format, LYD_PARSE_ONLY, 0, &oper_tree);
         if (ret) {
-            YLMSG_E("Failed to parse operational datastore file \"%s\".\n", operational->path);
+            YLMSG_E("Failed to parse operational datastore file \"%s\".", operational->path);
             goto cleanup;
         }
     }
@@ -534,7 +534,7 @@ process_data(struct ly_ctx *ctx, enum lyd_type type, uint8_t merge, LYD_FORMAT o
             assert(reply_rpc && reply_rpc->in);
             ret = lyd_parse_op(ctx, NULL, reply_rpc->in, reply_rpc->format, LYD_TYPE_RPC_NETCONF, &envp, &op);
             if (ret) {
-                YLMSG_E("Failed to parse source NETCONF RPC operation file \"%s\".\n", reply_rpc->path);
+                YLMSG_E("Failed to parse source NETCONF RPC operation file \"%s\".", reply_rpc->path);
                 goto cleanup;
             }
 
@@ -551,12 +551,12 @@ process_data(struct ly_ctx *ctx, enum lyd_type type, uint8_t merge, LYD_FORMAT o
             ret = lyd_parse_op(ctx, op, input_f->in, input_f->format, type, &envp, NULL);
             break;
         default:
-            YLMSG_E("Internal error (%s:%d).\n", __FILE__, __LINE__);
+            YLMSG_E("Internal error (%s:%d).", __FILE__, __LINE__);
             goto cleanup;
         }
 
         if (ret) {
-            YLMSG_E("Failed to parse input data file \"%s\".\n", input_f->path);
+            YLMSG_E("Failed to parse input data file \"%s\".", input_f->path);
             goto cleanup;
         }
 
@@ -567,7 +567,7 @@ process_data(struct ly_ctx *ctx, enum lyd_type type, uint8_t merge, LYD_FORMAT o
             } else {
                 ret = lyd_merge_siblings(&merged_tree, tree, LYD_MERGE_DESTRUCT);
                 if (ret) {
-                    YLMSG_E("Merging %s with previous data failed.\n", input_f->path);
+                    YLMSG_E("Merging %s with previous data failed.", input_f->path);
                     goto cleanup;
                 }
             }
@@ -615,10 +615,10 @@ process_data(struct ly_ctx *ctx, enum lyd_type type, uint8_t merge, LYD_FORMAT o
             }
             if (ret) {
                 if (operational->path) {
-                    YLMSG_E("Failed to validate input data file \"%s\" with operational datastore \"%s\".\n",
+                    YLMSG_E("Failed to validate input data file \"%s\" with operational datastore \"%s\".",
                             input_f->path, operational->path);
                 } else {
-                    YLMSG_E("Failed to validate input data file \"%s\".\n", input_f->path);
+                    YLMSG_E("Failed to validate input data file \"%s\".", input_f->path);
                 }
                 goto cleanup;
             }
@@ -639,7 +639,7 @@ process_data(struct ly_ctx *ctx, enum lyd_type type, uint8_t merge, LYD_FORMAT o
         /* validate the merged result */
         ret = lyd_validate_all(&merged_tree, ctx, validate_options, NULL);
         if (ret) {
-            YLMSG_E("Merged data are not valid.\n");
+            YLMSG_E("Merged data are not valid.");
             goto cleanup;
         }
 
@@ -654,7 +654,7 @@ process_data(struct ly_ctx *ctx, enum lyd_type type, uint8_t merge, LYD_FORMAT o
             ret = lys_find_xpath(ctx, NULL, xpath, LYS_FIND_NO_MATCH_ERROR, &set);
             if (ret || !set->count) {
                 ret = (ret == LY_SUCCESS) ? LY_EINVAL : ret;
-                YLMSG_E("The requested xpath failed.\n");
+                YLMSG_E("The requested xpath failed.");
                 goto cleanup;
             }
             if (evaluate_xpath(merged_tree, xpath)) {

@@ -56,7 +56,7 @@ main(int argc, char *argv[])
     load_config();
 
     if (ly_ctx_new(NULL, YL_DEFAULT_CTX_OPTIONS, &ctx)) {
-        YLMSG_E("Failed to create context.\n");
+        YLMSG_E("Failed to create context.");
         return 1;
     }
 
@@ -116,7 +116,7 @@ main(int argc, char *argv[])
 
         if (!cmd_found) {
             /* if unknown command specified, tell it to user */
-            YLMSG_E("Unknown command \"%.*s\", type 'help' for more information.\n", cmdlen, cmdline);
+            YLMSG_E("Unknown command \"%.*s\", type 'help' for more information.", cmdlen, cmdline);
         }
 
         linenoiseHistoryAdd(cmdline);

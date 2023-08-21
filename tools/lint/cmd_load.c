@@ -86,7 +86,7 @@ cmd_load_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
             break;
 
         default:
-            YLMSG_E("Unknown option.\n");
+            YLMSG_E("Unknown option.");
             return 1;
         }
     }

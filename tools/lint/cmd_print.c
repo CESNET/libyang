@@ -81,11 +81,11 @@ cmd_print_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
         switch (opt) {
         case 'o': /* --output */
             if (yo->out) {
-                YLMSG_E("Only a single output can be specified.\n");
+                YLMSG_E("Only a single output can be specified.");
                 return 1;
             } else {
                 if (ly_out_new_filepath(optarg, &yo->out)) {
-                    YLMSG_E("Unable open output file %s (%s)\n", optarg, strerror(errno));
+                    YLMSG_E("Unable open output file %s (%s).", optarg, strerror(errno));
                     return 1;
                 }
             }
@@ -114,7 +114,7 @@ cmd_print_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
             cmd_print_help();
             return 1;
         default:
-            YLMSG_E("Unknown option.\n");
+            YLMSG_E("Unknown option.");
             return 1;
         }
     }
@@ -130,17 +130,17 @@ cmd_print_dep(struct yl_opt *yo, int posc)
 {
     /* file name */
     if (yo->interactive && !posc && !yo->schema_node_path) {
-        YLMSG_E("Missing the name of the module to print.\n");
+        YLMSG_E("Missing the name of the module to print.");
         return 1;
     }
 
     if ((yo->schema_out_format != LYS_OUT_TREE) && yo->line_length) {
-        YLMSG_W("--tree-line-length take effect only in case of the tree output format.\n");
+        YLMSG_W("--tree-line-length take effect only in case of the tree output format.");
     }
 
     if (!yo->out) {
         if (ly_out_new_file(stdout, &yo->out)) {
-            YLMSG_E("Could not use stdout to print output.\n");
+            YLMSG_E("Could not use stdout to print output.");
         }
         yo->out_stdout = 1;
     }
@@ -170,9 +170,9 @@ print_submodule(struct ly_out *out, struct ly_ctx **ctx, char *name, char *revis
     if (!erc) {
         return 0;
     } else if ((erc == LY_ENOTFOUND) && revision) {
-        YLMSG_E("No submodule \"%s\" found.\n", name);
+        YLMSG_E("No submodule \"%s\" found.", name);
     } else {
-        YLMSG_E("Unable to print submodule %s.\n", name);
+        YLMSG_E("Unable to print submodule %s.", name);
     }
 
     return erc;
@@ -195,9 +195,9 @@ print_module(struct ly_out *out, struct ly_ctx **ctx, char *name, char *revision
     if (!erc) {
         return 0;
     } else if ((erc == LY_ENOTFOUND) && revision) {
-        YLMSG_E("No module \"%s\" found.\n", name);
+        YLMSG_E("No module \"%s\" found.", name);
     } else {
-        YLMSG_E("Unable to print module %s.\n", name);
+        YLMSG_E("Unable to print module %s.", name);
     }
 
     return erc;
@@ -245,7 +245,7 @@ print_node(struct ly_ctx *ctx, struct yl_opt *yo)
         /* Use the same approach as for completion. */
         node = find_schema_path(ctx, yo->schema_node_path);
         if (!node) {
-            YLMSG_E("The requested schema node \"%s\" does not exists.\n", yo->schema_node_path);
+            YLMSG_E("The requested schema node \"%s\" does not exists.", yo->schema_node_path);
             return 1;
         }
     } else {
@@ -259,14 +259,14 @@ print_node(struct ly_ctx *ctx, struct yl_opt *yo)
             /* search operation output */
             node = lys_find_path(ctx, NULL, yo->schema_node_path, 1);
             if (!node) {
-                YLMSG_E("Invalid schema path.\n");
+                YLMSG_E("Invalid schema path.");
                 return 1;
             }
         }
     }
 
     if (lys_print_node(yo->out, node, yo->schema_out_format, yo->line_length, yo->schema_print_options)) {
-        YLMSG_E("Unable to print schema node %s.\n", yo->schema_node_path);
+        YLMSG_E("Unable to print schema node %s.", yo->schema_node_path);
         return 1;
     }
 

@@ -68,7 +68,7 @@ cmd_feature_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
             yo->feature_param_format = 1;
             break;
         default:
-            YLMSG_E("Unknown option.\n");
+            YLMSG_E("Unknown option.");
             return 1;
         }
     }
@@ -83,13 +83,13 @@ int
 cmd_feature_dep(struct yl_opt *yo, int posc)
 {
     if (ly_out_new_file(stdout, &yo->out)) {
-        YLMSG_E("Unable to print to the standard output.\n");
+        YLMSG_E("Unable to print to the standard output.");
         return 1;
     }
     yo->out_stdout = 1;
 
     if (yo->interactive && !yo->feature_print_all && !posc) {
-        YLMSG_E("Missing modules to print.\n");
+        YLMSG_E("Missing modules to print.");
         return 1;
     }
 
@@ -108,7 +108,7 @@ cmd_feature_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
 
     mod = ly_ctx_get_module_latest(*ctx, posv);
     if (!mod) {
-        YLMSG_E("Module \"%s\" not found.\n", posv);
+        YLMSG_E("Module \"%s\" not found.", posv);
         return 1;
     }
 

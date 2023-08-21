@@ -73,7 +73,7 @@ cmd_debug_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
             cmd_debug_help();
             return 1;
         default:
-            YLMSG_E("Unknown option.\n");
+            YLMSG_E("Unknown option.");
             return 1;
         }
     }
@@ -117,7 +117,7 @@ cmd_debug_store(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
     }
 
     if (!set) {
-        YLMSG_E("Unknown debug group \"%s\"\n", posv);
+        YLMSG_E("Unknown debug group \"%s\".", posv);
         return 1;
     }
 

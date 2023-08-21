@@ -42,13 +42,13 @@
  * @brief log error message
  */
 #define YLMSG_E(...) \
-        fprintf(stderr, "YANGLINT[E]: " __VA_ARGS__)
+        yl_log(1, __VA_ARGS__);
 
 /**
  * @brief log warning message
  */
 #define YLMSG_W(...) \
-        fprintf(stderr, "YANGLINT[W]: " __VA_ARGS__)
+        yl_log(0, __VA_ARGS__);
 
 #ifndef _WIN32
 # define PATH_SEPARATOR ":"
@@ -57,6 +57,15 @@
 #endif
 
 struct cmdline_file;
+
+/**
+ * @brief Log a yanglint message.
+ *
+ * @param[in] err Whether the message is an error or a warning.
+ * @param[in] format Message format.
+ * @param[in] ... Format arguments.
+ */
+void yl_log(ly_bool err, const char *format, ...);
 
 /**
  * @brief Parse path of a schema module file into the directory and module name.

@@ -64,7 +64,7 @@ cmd_list_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
             } else if (!strcasecmp(optarg, "json")) {
                 yo->data_out_format = LYD_JSON;
             } else {
-                YLMSG_E("Unknown output format %s\n", optarg);
+                YLMSG_E("Unknown output format %s.", optarg);
                 cmd_list_help();
                 return 1;
             }
@@ -73,7 +73,7 @@ cmd_list_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
             cmd_list_help();
             return 1;
         default:
-            YLMSG_E("Unknown option.\n");
+            YLMSG_E("Unknown option.");
             return 1;
         }
     }
@@ -88,11 +88,11 @@ int
 cmd_list_dep(struct yl_opt *yo, int posc)
 {
     if (posc) {
-        YLMSG_E("No positional arguments are allowed.\n");
+        YLMSG_E("No positional arguments are allowed.");
         return 1;
     }
     if (ly_out_new_file(stdout, &yo->out)) {
-        YLMSG_E("Unable to print to the standard output.\n");
+        YLMSG_E("Unable to print to the standard output.");
         return 1;
     }
     yo->out_stdout = 1;
@@ -114,7 +114,8 @@ print_yang_lib_data(struct ly_ctx *ctx, LYD_FORMAT data_out_format, struct ly_ou
     struct lyd_node *ylib;
 
     if (ly_ctx_get_yanglib_data(ctx, &ylib, "%u", ly_ctx_get_change_count(ctx))) {
-        YLMSG_E("Getting context info (ietf-yang-library data) failed. If the YANG module is missing or not implemented, use an option to add it internally.\n");
+        YLMSG_E("Getting context info (ietf-yang-library data) failed. If the YANG module is missing or not implemented, "
+                "use an option to add it internally.");
         return 1;
     }
 

@@ -83,7 +83,7 @@ cmd_clear_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
             yo->ctx_options &= ~LY_CTX_NO_YANGLIBRARY;
             yo->yang_lib_file = optarg;
             if (!yo->yang_lib_file) {
-                YLMSG_E("Memory allocation error.\n");
+                YLMSG_E("Memory allocation error.");
                 return 1;
             }
             break;
@@ -91,7 +91,7 @@ cmd_clear_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
             cmd_clear_help();
             return 1;
         default:
-            YLMSG_E("Unknown option.\n");
+            YLMSG_E("Unknown option.");
             return 1;
         }
     }
@@ -108,7 +108,7 @@ cmd_clear_dep(struct yl_opt *yo, int posc)
     (void) yo;
 
     if (posc) {
-        YLMSG_E("No positional arguments are allowed.\n");
+        YLMSG_E("No positional arguments are allowed.");
         return 1;
     }
 
@@ -148,16 +148,16 @@ cmd_clear_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
 
     if (yo->yang_lib_file) {
         if (searchpaths_to_str(*ctx, &yo->searchpaths)) {
-            YLMSG_E("Storing searchpaths failed.\n");
+            YLMSG_E("Storing searchpaths failed.");
             return 1;
         }
         if (ly_ctx_new_ylpath(yo->searchpaths, yo->yang_lib_file, LYD_UNKNOWN, yo->ctx_options, &ctx_new)) {
-            YLMSG_E("Unable to create libyang context with yang-library data.\n");
+            YLMSG_E("Unable to create libyang context with yang-library data.");
             return 1;
         }
     } else {
         if (ly_ctx_new(NULL, yo->ctx_options, &ctx_new)) {
-            YLMSG_W("Failed to create context.\n");
+            YLMSG_W("Failed to create context.");
             return 1;
         }
     }

@@ -62,7 +62,7 @@ cmd_searchpath_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *po
             cmd_searchpath_help();
             return 1;
         default:
-            YLMSG_E("Unknown option.\n");
+            YLMSG_E("Unknown option.");
             return 1;
         }
     }

@@ -74,7 +74,7 @@ cmd_add_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
         switch (opt) {
         case 'D': /* --disable--search */
             if (yo->ctx_options & LY_CTX_DISABLE_SEARCHDIRS) {
-                YLMSG_W("The -D option specified too many times.\n");
+                YLMSG_W("The -D option specified too many times.");
             }
             yo_opt_update_disable_searchdir(yo);
             break;
@@ -98,7 +98,7 @@ cmd_add_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
             break;
 
         default:
-            YLMSG_E("Unknown option.\n");
+            YLMSG_E("Unknown option.");
             return 1;
         }
     }
@@ -132,7 +132,7 @@ store_parsed_module(const char *filepath, struct lys_module *mod, struct yl_opt 
 
     if (yo->schema_out_format || yo->feature_param_format) {
         if (ly_set_add(&yo->schema_modules, (void *)mod, 1, NULL)) {
-            YLMSG_E("Storing parsed schema module (%s) for print failed.\n", filepath);
+            YLMSG_E("Storing parsed schema module (%s) for print failed.", filepath);
             return 1;
         }
     }

@@ -49,7 +49,7 @@ cmd_verb_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
             cmd_verb_help();
             return 1;
         } else {
-            YLMSG_E("Unknown option.\n");
+            YLMSG_E("Unknown option.");
             return 1;
         }
     }
@@ -66,7 +66,7 @@ cmd_verb_dep(struct yl_opt *yo, int posc)
     (void) yo;
 
     if (posc > 1) {
-        YLMSG_E("Only a single verbosity level can be set.\n");
+        YLMSG_E("Only a single verbosity level can be set.");
         cmd_verb_help();
         return 1;
     }
@@ -105,7 +105,7 @@ cmd_verb_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
         } else if (!strcasecmp("debug", posv) || !strcmp("3", posv)) {
             ly_log_level(LY_LLDBG);
         } else {
-            YLMSG_E("Unknown verbosity \"%s\"\n", posv);
+            YLMSG_E("Unknown verbosity \"%s\".", posv);
             return 1;
         }
     }

@@ -70,7 +70,7 @@ cmd_extdata_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
             cmd_extdata_help();
             return 1;
         default:
-            YLMSG_E("Unknown option.\n");
+            YLMSG_E("Unknown option.");
             return 1;
         }
     }
@@ -85,7 +85,7 @@ int
 cmd_extdata_dep(struct yl_opt *yo, int posc)
 {
     if (!yo->extdata_unset && (posc > 1)) {
-        YLMSG_E("Only one file must be entered.\n");
+        YLMSG_E("Only one file must be entered.");
         return 1;
     }
 
@@ -105,7 +105,7 @@ cmd_extdata_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
         free(filename);
         filename = strdup(posv);
         if (!filename) {
-            YLMSG_E("Memory allocation error.\n");
+            YLMSG_E("Memory allocation error.");
             return 1;
         }
         ly_ctx_set_ext_data_clb(*ctx, ext_data_clb, filename);

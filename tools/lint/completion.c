@@ -45,13 +45,13 @@ cmd_completion_add_match(const char *match, char ***matches, unsigned int *match
 
     p = realloc(*matches, (*match_count + 1) * sizeof **matches);
     if (!p) {
-        YLMSG_E("Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+        YLMSG_E("Memory allocation failed (%s:%d, %s).", __FILE__, __LINE__, strerror(errno));
         return;
     }
     *matches = p;
     (*matches)[*match_count] = strdup(match);
     if (!((*matches)[*match_count])) {
-        YLMSG_E("Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+        YLMSG_E("Memory allocation failed (%s:%d, %s).", __FILE__, __LINE__, strerror(errno));
         return;
     }
     ++(*match_count);
@@ -189,13 +189,13 @@ add_all_children_nodes(const struct lysc_module *module, const struct lysc_node 
         if (parent && (node->module != parent->module)) {
             /* augmented node */
             if (asprintf(&node_name, "%s:%s", node->module->name, node->name) == -1) {
-                YLMSG_E("Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+                YLMSG_E("Memory allocation failed (%s:%d, %s).", __FILE__, __LINE__, strerror(errno));
                 break;
             }
         } else {
             node_name = strdup(node->name);
             if (!node_name) {
-                YLMSG_E("Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+                YLMSG_E("Memory allocation failed (%s:%d, %s).", __FILE__, __LINE__, strerror(errno));
                 break;
             }
         }
@@ -261,7 +261,7 @@ get_schema_completion(const char *hint, char ***matches, unsigned int *match_cou
         /* module name known */
         module_name = strndup(start, end - start);
         if (!module_name) {
-            YLMSG_E("Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+            YLMSG_E("Memory allocation failed (%s:%d, %s).", __FILE__, __LINE__, strerror(errno));
             rc = 1;
             goto cleanup;
         }
@@ -287,7 +287,7 @@ get_schema_completion(const char *hint, char ***matches, unsigned int *match_cou
         /* get rid of stuff after the last '/' to obtain the parent node */
         path = strndup(hint, start - hint);
         if (!path) {
-            YLMSG_E("Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+            YLMSG_E("Memory allocation failed (%s:%d, %s).", __FILE__, __LINE__, strerror(errno));
             rc = 1;
             goto cleanup;
         }

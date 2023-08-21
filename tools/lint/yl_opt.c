@@ -32,7 +32,7 @@ fill_cmdline_file(struct ly_set *set, struct ly_in *in, const char *path, LYD_FO
 
     rec = malloc(sizeof *rec);
     if (!rec) {
-        YLMSG_E("Allocating memory for data file information failed.\n");
+        YLMSG_E("Allocating memory for data file information failed.");
         return NULL;
     }
     rec->in = in;
@@ -41,7 +41,7 @@ fill_cmdline_file(struct ly_set *set, struct ly_in *in, const char *path, LYD_FO
 
     if (set && ly_set_add(set, rec, 1, NULL)) {
         free(rec);
-        YLMSG_E("Storing data file information failed.\n");
+        YLMSG_E("Storing data file information failed.");
         return NULL;
     }
 
@@ -165,7 +165,7 @@ yl_opt_update_out_format(const char *arg, struct yl_opt *yo)
         return 0;
     }
 
-    YLMSG_E("Unknown output format %s\n", arg);
+    YLMSG_E("Unknown output format %s.", arg);
     return 1;
 }
 
@@ -312,7 +312,7 @@ parse_cmdline(const char *cmdline, int *argc_p, char **argv_p[])
         ++count;
         r = realloc(vector, (count + 1) * sizeof *vector);
         if (!r) {
-            YLMSG_E("Memory allocation failed (%s:%d, %s).\n", __FILE__, __LINE__, strerror(errno));
+            YLMSG_E("Memory allocation failed (%s:%d, %s).", __FILE__, __LINE__, strerror(errno));
             free(vector);
             return -1;
         }

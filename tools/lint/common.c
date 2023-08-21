@@ -20,6 +20,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,6 +30,19 @@
 #include "libyang.h"
 #include "plugins_exts.h"
 #include "yl_opt.h"
+
+void
+yl_log(ly_bool err, const char *format, ...)
+{
+    char msg[256];
+    va_list ap;
+
+    va_start(ap, format);
+    vsnprintf(msg, 256, format, ap);
+    va_end(ap);
+
+    fprintf(stderr, "YANGLINT[%c]: %s\n", err ? 'E' : 'W', msg);
+}
 
 int
 parse_schema_path(const char *path, char **dir, char **module)
@@ -67,11 +81,11 @@ get_input(const char *filepath, LYS_INFORMAT *format_schema, LYD_FORMAT *format_
 
     /* check that the filepath exists and is a regular file */
     if (stat(filepath, &st) == -1) {
-        YLMSG_E("Unable to use input filepath (%s) - %s.\n", filepath, strerror(errno));
+        YLMSG_E("Unable to use input filepath (%s) - %s.", filepath, strerror(errno));
         return -1;
     }
     if (!S_ISREG(st.st_mode)) {
-        YLMSG_E("Provided input file (%s) is not a regular file.\n", filepath);
+        YLMSG_E("Provided input file (%s) is not a regular file.", filepath);
         return -1;
     }
 
@@ -80,7 +94,7 @@ get_input(const char *filepath, LYS_INFORMAT *format_schema, LYD_FORMAT *format_
     }
 
     if (in && ly_in_new_filepath(filepath, 0, in)) {
-        YLMSG_E("Unable to process input file.\n");
+        YLMSG_E("Unable to process input file.");
         return -1;
     }
 
@@ -191,7 +205,7 @@ find_schema_path(const struct ly_ctx *ctx, const char *schema_path)
             /* - 1 because module_name_end points to ':' */
             module_name = strndup(schema_path + 1, module_name_end - schema_path - 1);
             if (!module_name) {
-                YLMSG_E("Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+                YLMSG_E("Memory allocation failed (%s:%d, %s).", __FILE__, __LINE__, strerror(errno));
                 parent_node = NULL;
                 goto cleanup;
             }
