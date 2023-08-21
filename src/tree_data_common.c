@@ -804,14 +804,15 @@ lyd_parse_opaq_error(const struct lyd_node *node)
     const struct lyd_node_opaq *opaq;
     const struct lyd_node *parent;
     const struct lys_module *mod;
-    const struct lysc_node *snode;
+    const struct lysc_node *sparent, *snode;
     uint32_t loc_node = 0, loc_path = 0;
 
-    LY_CHECK_ARG_RET(LYD_CTX(node), node, !node->schema, !lyd_parent(node) || lyd_parent(node)->schema, LY_EINVAL);
+    LY_CHECK_ARG_RET(LYD_CTX(node), node, !node->schema, LY_EINVAL);
 
     ctx = LYD_CTX(node);
     opaq = (struct lyd_node_opaq *)node;
     parent = lyd_parent(node);
+    sparent = lyd_node_schema(parent);
 
     if (parent) {
         LOG_LOCSET(NULL, parent, NULL, NULL);
@@ -830,7 +831,7 @@ lyd_parse_opaq_error(const struct lyd_node *node)
     /* module */
     switch (opaq->format) {
     case LY_VALUE_XML:
-        if (!parent || strcmp(opaq->name.module_ns, parent->schema->module->ns)) {
+        if (!sparent || strcmp(opaq->name.module_ns, sparent->module->ns)) {
             mod = ly_ctx_get_module_implemented_ns(ctx, opaq->name.module_ns);
             if (!mod) {
                 LOGVAL(ctx, LYVE_REFERENCE, "No (implemented) module with namespace \"%s\" of node \"%s\" in the context.",
@@ -840,12 +841,12 @@ lyd_parse_opaq_error(const struct lyd_node *node)
             }
         } else {
             /* inherit */
-            mod = parent->schema->module;
+            mod = sparent->module;
         }
         break;
     case LY_VALUE_JSON:
     case LY_VALUE_LYB:
-        if (!parent || strcmp(opaq->name.module_name, parent->schema->module->name)) {
+        if (!sparent || strcmp(opaq->name.module_name, sparent->module->name)) {
             mod = ly_ctx_get_module_implemented(ctx, opaq->name.module_name);
             if (!mod) {
                 LOGVAL(ctx, LYVE_REFERENCE, "No (implemented) module named \"%s\" of node \"%s\" in the context.",
@@ -855,7 +856,7 @@ lyd_parse_opaq_error(const struct lyd_node *node)
             }
         } else {
             /* inherit */
-            mod = parent->schema->module;
+            mod = sparent->module;
         }
         break;
     default:
@@ -865,15 +866,15 @@ lyd_parse_opaq_error(const struct lyd_node *node)
     }
 
     /* schema */
-    snode = lys_find_child(parent ? parent->schema : NULL, mod, opaq->name.name, 0, 0, 0);
-    if (!snode && parent && parent->schema && (parent->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
+    snode = lys_find_child(sparent, mod, opaq->name.name, 0, 0, 0);
+    if (!snode && sparent && (sparent->nodetype & (LYS_RPC | LYS_ACTION))) {
         /* maybe output node */
-        snode = lys_find_child(parent->schema, mod, opaq->name.name, 0, 0, LYS_GETNEXT_OUTPUT);
+        snode = lys_find_child(sparent, mod, opaq->name.name, 0, 0, LYS_GETNEXT_OUTPUT);
     }
     if (!snode) {
-        if (parent) {
+        if (sparent) {
             LOGVAL(ctx, LYVE_REFERENCE, "Node \"%s\" not found as a child of \"%s\" node.", opaq->name.name,
-                    LYD_NAME(parent));
+                    sparent->name);
         } else {
             LOGVAL(ctx, LYVE_REFERENCE, "Node \"%s\" not found in the \"%s\" module.", opaq->name.name, mod->name);
         }
