@@ -103,6 +103,24 @@ lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, uint3
 }
 
 LIBYANG_API_DEF LY_ERR
+lyd_print_mem_len(char **strp, const struct lyd_node *root, LYD_FORMAT format, uint32_t options, size_t *len)
+{
+    LY_ERR ret;
+    struct ly_out *out;
+
+    LY_CHECK_ARG_RET(NULL, strp && len, LY_EINVAL);
+
+    /* init */
+    *strp = NULL;
+
+    LY_CHECK_RET(ly_out_new_memory(strp, 0, &out));
+    ret = lyd_print_(out, root, format, options);
+    *len = out->printed;
+    ly_out_free(out, NULL, 0);
+    return ret;
+}
+
+LIBYANG_API_DEF LY_ERR
 lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, uint32_t options)
 {
     LY_ERR ret;
