@@ -1072,6 +1072,14 @@ LIBYANG_API_DECL struct lyd_node *lyd_child_no_keys(const struct lyd_node *node)
 LIBYANG_API_DECL const struct lys_module *lyd_owner_module(const struct lyd_node *node);
 
 /**
+ * @brief Get the module of a node. Useful mainly for opaque nodes.
+ *
+ * @param[in] node Node to examine.
+ * @return Module of the node.
+ */
+LIBYANG_API_DECL const struct lys_module *lyd_node_module(const struct lyd_node *node);
+
+/**
  * @brief Check whether a node value equals to its default one.
  *
  * @param[in] node Term node to test.

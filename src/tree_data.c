@@ -2418,9 +2418,9 @@ lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size
             for (iter = node, i = 1; i < depth; iter = lyd_parent(iter), ++i) {}
 iter_print:
             /* get the module */
-            mod = iter->schema ? iter->schema->module : lyd_owner_module(iter);
+            mod = lyd_node_module(iter);
             parent = lyd_parent(iter);
-            prev_mod = (parent && parent->schema) ? parent->schema->module : lyd_owner_module(parent);
+            prev_mod = lyd_node_module(parent);
             if (prev_mod == mod) {
                 mod = NULL;
             }
@@ -2490,7 +2490,7 @@ lyd_path_set(const struct ly_set *dnodes, LYD_PATH_TYPE pathtype)
         for (depth = 1; depth <= dnodes->count; ++depth) {
             /* current node */
             iter = dnodes->dnodes[depth - 1];
-            mod = iter->schema ? iter->schema->module : lyd_owner_module(iter);
+            mod = lyd_node_module(iter);
 
             /* parent */
             parent = (depth > 1) ? dnodes->dnodes[depth - 2] : NULL;
@@ -2499,7 +2499,7 @@ lyd_path_set(const struct ly_set *dnodes, LYD_PATH_TYPE pathtype)
                     (!lysc_data_parent(iter->schema) && (LYD_CTX(iter) != LYD_CTX(parent))));
 
             /* get module to print, if any */
-            prev_mod = (parent && parent->schema) ? parent->schema->module : lyd_owner_module(parent);
+            prev_mod = lyd_node_module(parent);
             if (prev_mod == mod) {
                 mod = NULL;
             }

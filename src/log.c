@@ -764,7 +764,7 @@ ly_vlog_build_path_append(char **str, const struct lysc_node *snode, const struc
 
     /* get module to print, if any */
     mod = snode->module;
-    prev_mod = (parent->schema) ? parent->schema->module : lyd_owner_module(parent);
+    prev_mod = lyd_node_module(parent);
     if (prev_mod == mod) {
         mod = NULL;
     }

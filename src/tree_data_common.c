@@ -300,7 +300,12 @@ lyd_owner_module(const struct lyd_node *node)
         return NULL;
     }
 
+    while (!node->schema && node->parent) {
+        node = lyd_parent(node);
+    }
+
     if (!node->schema) {
+        /* top-level opaque node */
         opaq = (struct lyd_node_opaq *)node;
         switch (opaq->format) {
         case LY_VALUE_XML:
@@ -317,11 +322,44 @@ lyd_owner_module(const struct lyd_node *node)
             return NULL;
         }
 
-        /* try a parent */
-        return lyd_owner_module(lyd_parent(node));
+        return NULL;
     }
 
     return lysc_owner_module(node->schema);
+}
+
+LIBYANG_API_DEF const struct lys_module *
+lyd_node_module(const struct lyd_node *node)
+{
+    const struct lyd_node_opaq *opaq;
+
+    while (node) {
+        /* data node */
+        if (node->schema) {
+            return node->schema->module;
+        }
+
+        /* opaque node */
+        opaq = (struct lyd_node_opaq *)node;
+        switch (opaq->format) {
+        case LY_VALUE_XML:
+            if (opaq->name.module_ns) {
+                return ly_ctx_get_module_implemented_ns(LYD_CTX(node), opaq->name.module_ns);
+            }
+            break;
+        case LY_VALUE_JSON:
+            if (opaq->name.module_name) {
+                return ly_ctx_get_module_implemented(LYD_CTX(node), opaq->name.module_name);
+            }
+            break;
+        default:
+            break;
+        }
+
+        node = lyd_parent(node);
+    }
+
+    return NULL;
 }
 
 void
@@ -1072,7 +1110,7 @@ lyd_node_schema(const struct lyd_node *node)
         for (iter = node; lyd_parent(iter) != prev_iter; iter = lyd_parent(iter)) {}
 
         /* get module */
-        mod = lyd_owner_module(iter);
+        mod = lyd_node_module(iter);
         if (!mod) {
             /* unknown module, no schema node */
             schema = NULL;

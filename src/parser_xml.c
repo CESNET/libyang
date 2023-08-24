@@ -1944,7 +1944,7 @@ lyd_parse_xml_netconf(const struct ly_ctx *ctx, const struct lysc_ext_instance *
         assert(parent);
 
         /* parse "input" */
-        rc = lydxml_envelope(lydctx->xmlctx, "input", lyd_owner_module(parent)->ns, 0, envp);
+        rc = lydxml_envelope(lydctx->xmlctx, "input", lyd_node_module(parent)->ns, 0, envp);
         if (rc == LY_ENOT) {
             LOGVAL(ctx, LYVE_DATA, "Missing RESTCONF \"input\" object or in incorrect namespace.");
         }
@@ -1957,7 +1957,7 @@ lyd_parse_xml_netconf(const struct ly_ctx *ctx, const struct lysc_ext_instance *
         assert(parent);
 
         /* parse "output" */
-        rc = lydxml_envelope(lydctx->xmlctx, "output", lyd_owner_module(parent)->ns, 0, envp);
+        rc = lydxml_envelope(lydctx->xmlctx, "output", lyd_node_module(parent)->ns, 0, envp);
         if (rc == LY_ENOT) {
             LOGVAL(ctx, LYVE_DATA, "Missing RESTCONF \"output\" object or in incorrect namespace.");
         }

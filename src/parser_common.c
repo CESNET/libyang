@@ -197,7 +197,7 @@ lyd_parser_node_schema(const struct lyd_node *node)
         assert(!iter->schema);
 
         /* get module */
-        mod = lyd_owner_module(iter);
+        mod = lyd_node_module(iter);
         if (!mod) {
             /* unknown module, no schema node */
             schema = NULL;

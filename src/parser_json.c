@@ -2056,7 +2056,7 @@ lyd_parse_json_restconf(const struct ly_ctx *ctx, const struct lysc_ext_instance
         assert(parent);
 
         /* parse "input" */
-        rc = lydjson_envelope(lydctx->jsonctx, "input", lyd_owner_module(parent)->name, 0, envp);
+        rc = lydjson_envelope(lydctx->jsonctx, "input", lyd_node_module(parent)->name, 0, envp);
         LY_CHECK_GOTO(rc, cleanup);
 
         int_opts = LYD_INTOPT_WITH_SIBLINGS | LYD_INTOPT_RPC | LYD_INTOPT_ACTION;
@@ -2071,7 +2071,7 @@ lyd_parse_json_restconf(const struct ly_ctx *ctx, const struct lysc_ext_instance
         assert(parent);
 
         /* parse "output" */
-        rc = lydjson_envelope(lydctx->jsonctx, "output", lyd_owner_module(parent)->name, 0, envp);
+        rc = lydjson_envelope(lydctx->jsonctx, "output", lyd_node_module(parent)->name, 0, envp);
         LY_CHECK_GOTO(rc, cleanup);
 
         int_opts = LYD_INTOPT_WITH_SIBLINGS | LYD_INTOPT_REPLY;

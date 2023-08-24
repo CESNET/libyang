@@ -4502,7 +4502,7 @@ static LY_ERR
 xpath_name(struct lyxp_set **args, uint32_t arg_count, struct lyxp_set *set, uint32_t options)
 {
     struct lyxp_set_node *item;
-    struct lys_module *mod = NULL;
+    const struct lys_module *mod = NULL;
     char *str;
     const char *name = NULL;
 
@@ -4548,8 +4548,8 @@ xpath_name(struct lyxp_set **args, uint32_t arg_count, struct lyxp_set *set, uin
         /* keep NULL */
         break;
     case LYXP_NODE_ELEM:
-        mod = item->node->schema->module;
-        name = item->node->schema->name;
+        mod = lyd_node_module(item->node);
+        name = LYD_NAME(item->node);
         break;
     case LYXP_NODE_META:
         mod = ((struct lyd_meta *)item->node)->annotation->module;
@@ -4584,7 +4584,7 @@ static LY_ERR
 xpath_namespace_uri(struct lyxp_set **args, uint32_t arg_count, struct lyxp_set *set, uint32_t options)
 {
     struct lyxp_set_node *item;
-    struct lys_module *mod;
+    const struct lys_module *mod;
 
     /* suppress unused variable warning */
     (void)options;
@@ -4634,7 +4634,7 @@ xpath_namespace_uri(struct lyxp_set **args, uint32_t arg_count, struct lyxp_set 
     case LYXP_NODE_ELEM:
     case LYXP_NODE_META:
         if (item->type == LYXP_NODE_ELEM) {
-            mod = item->node->schema->module;
+            mod = lyd_node_module(item->node);
         } else { /* LYXP_NODE_META */
             /* annotations */
             mod = ((struct lyd_meta *)item->node)->annotation->module;
