@@ -340,9 +340,14 @@ use_compat()
 # create static libyang library
 if(ENABLE_STATIC)
     add_definitions(-DSTATIC)
-    set(CMAKE_EXE_LINKER_FLAGS -static)
-    set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+
+    # allow binaries compilation linking both static and dynamic libraries never linking static glibc
+    #set(CMAKE_EXE_LINKER_FLAGS -static)
+
+    # prefer static libraries
+    set(CMAKE_FIND_LIBRARY_SUFFIXES .a;.so)
     set(CMAKE_LINK_SEARCH_START_STATIC TRUE)
+
     set(CMAKE_EXE_LINK_DYNAMIC_C_FLAGS)       # remove -Wl,-Bdynamic
     set(CMAKE_EXE_LINK_DYNAMIC_CXX_FLAGS)
     add_library(yang STATIC ${libsrc} ${compatsrc})
@@ -385,19 +390,15 @@ endif()
 
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_SOVERSION_FULL} SOVERSION ${LIBYANG_SOVERSION})
 
+# link math
 if(NOT WIN32)
-    # link math
     target_link_libraries(yang m)
 endif()
 
 # find pthreads
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 find_package(Threads REQUIRED)
-if(ENABLE_STATIC)
-    target_link_libraries(yang -Wl,--whole-archive ${CMAKE_THREAD_LIBS_INIT} -Wl,--no-whole-archive)
-else()
-    target_link_libraries(yang ${CMAKE_THREAD_LIBS_INIT})
-endif()
+target_link_libraries(yang ${CMAKE_THREAD_LIBS_INIT})
 
 # find PCRE2 library
 unset(PCRE2_LIBRARY CACHE)
