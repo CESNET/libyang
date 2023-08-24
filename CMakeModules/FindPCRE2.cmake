@@ -28,7 +28,6 @@ else()
     else()
         find_library(PCRE2_LIBRARY
             NAMES
-            libpcre2.a
             pcre2-8
             PATHS
             /usr/lib
