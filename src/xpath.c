@@ -286,18 +286,19 @@ print_set_debug(struct lyxp_set *set)
                 LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ROOT CONFIG", i + 1, item->pos);
                 break;
             case LYXP_NODE_ELEM:
-                if ((item->node->schema->nodetype == LYS_LIST) && (lyd_child(item->node)->schema->nodetype == LYS_LEAF)) {
+                if (item->node->schema && (item->node->schema->nodetype == LYS_LIST) &&
+                        (lyd_child(item->node)->schema->nodetype == LYS_LEAF)) {
                     LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ELEM %s (1st child val: %s)", i + 1, item->pos,
                             item->node->schema->name, lyd_get_value(lyd_child(item->node)));
-                } else if (item->node->schema->nodetype == LYS_LEAFLIST) {
+                } else if ((!item->node->schema && !lyd_child(item->node)) || (item->node->schema->nodetype == LYS_LEAFLIST)) {
                     LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ELEM %s (val: %s)", i + 1, item->pos,
-                            item->node->schema->name, lyd_get_value(item->node));
+                            LYD_NAME(item->node), lyd_get_value(item->node));
                 } else {
-                    LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ELEM %s", i + 1, item->pos, item->node->schema->name);
+                    LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ELEM %s", i + 1, item->pos, LYD_NAME(item->node));
                 }
                 break;
             case LYXP_NODE_TEXT:
-                if (item->node->schema->nodetype & LYS_ANYDATA) {
+                if (item->node->schema && (item->node->schema->nodetype & LYS_ANYDATA)) {
                     LOGDBG(LY_LDGXPATH, "\t%d (pos %u): TEXT <%s>", i + 1, item->pos,
                             item->node->schema->nodetype == LYS_ANYXML ? "anyxml" : "anydata");
                 } else {
@@ -418,13 +419,14 @@ cast_string_recursive(const struct lyd_node *node, struct lyxp_set *set, uint32_
 {
     char *buf, *line, *ptr = NULL;
     const char *value_str;
+    uint16_t nodetype;
     const struct lyd_node *child;
     enum lyxp_node_type child_type;
     struct lyd_node *tree;
     struct lyd_node_any *any;
     LY_ERR rc;
 
-    if ((set->root_type == LYXP_NODE_ROOT_CONFIG) && node && (node->schema->flags & LYS_CONFIG_R)) {
+    if ((set->root_type == LYXP_NODE_ROOT_CONFIG) && node && node->schema && (node->schema->flags & LYS_CONFIG_R)) {
         return LY_SUCCESS;
     }
 
@@ -450,7 +452,15 @@ cast_string_recursive(const struct lyd_node *node, struct lyxp_set *set, uint32_
 
         --indent;
     } else {
-        switch (node->schema->nodetype) {
+        if (node->schema) {
+            nodetype = node->schema->nodetype;
+        } else if (lyd_child(node)) {
+            nodetype = LYS_CONTAINER;
+        } else {
+            nodetype = LYS_LEAF;
+        }
+
+        switch (nodetype) {
         case LYS_CONTAINER:
         case LYS_LIST:
         case LYS_RPC:
@@ -1432,7 +1442,7 @@ dfs_search:
                 LYD_TREE_DFS_continue = 0;
             }
 
-            if (!elem->schema || ((root_type == LYXP_NODE_ROOT_CONFIG) && (elem->schema->flags & LYS_CONFIG_R))) {
+            if ((root_type == LYXP_NODE_ROOT_CONFIG) && (elem->schema->flags & LYS_CONFIG_R)) {
                 /* skip */
                 LYD_TREE_DFS_continue = 1;
             } else {
@@ -1649,7 +1659,7 @@ set_comp_canonize(struct lyxp_set *set, const struct lyxp_set_node *xp_node)
     /* is there anything to canonize even? */
     if (set->type == LYXP_SET_STRING) {
         /* do we have a type to use for canonization? */
-        if ((xp_node->type == LYXP_NODE_ELEM) && (xp_node->node->schema->nodetype & LYD_NODE_TERM)) {
+        if ((xp_node->type == LYXP_NODE_ELEM) && xp_node->node->schema && (xp_node->node->schema->nodetype & LYD_NODE_TERM)) {
             type = ((struct lyd_node_term *)xp_node->node)->value.realtype;
         } else if (xp_node->type == LYXP_NODE_META) {
             type = ((struct lyd_meta *)xp_node->node)->value.realtype;
@@ -4478,7 +4488,7 @@ xpath_local_name(struct lyxp_set **args, uint32_t arg_count, struct lyxp_set *se
         set_fill_string(set, "", 0);
         break;
     case LYXP_NODE_ELEM:
-        set_fill_string(set, item->node->schema->name, strlen(item->node->schema->name));
+        set_fill_string(set, LYD_NAME(item->node), strlen(LYD_NAME(item->node)));
         break;
     case LYXP_NODE_META:
         set_fill_string(set, ((struct lyd_meta *)item->node)->name, strlen(((struct lyd_meta *)item->node)->name));
@@ -5545,7 +5555,7 @@ xpath_pi_text(struct lyxp_set *set, enum lyxp_axis axis, uint32_t options)
         case LYXP_NODE_NONE:
             LOGINT_RET(set->ctx);
         case LYXP_NODE_ELEM:
-            if (set->val.nodes[i].node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+            if (!set->val.nodes[i].node->schema || (set->val.nodes[i].node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 set->val.nodes[i].type = LYXP_NODE_TEXT;
                 break;
             }
