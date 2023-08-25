@@ -1854,10 +1854,8 @@ lyd_parse_json(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, st
             break;
         }
     } while (status == LYJSON_OBJECT_NEXT);
-    assert((status == LYJSON_END) || (status == LYJSON_OBJECT_CLOSED));
 
-    if ((int_opts & LYD_INTOPT_NO_SIBLINGS) && lydctx->jsonctx->in->current[0] &&
-            (lyjson_ctx_status(lydctx->jsonctx) != LYJSON_OBJECT_CLOSED)) {
+    if ((int_opts & LYD_INTOPT_NO_SIBLINGS) && lydctx->jsonctx->in->current[0] && (status != LYJSON_OBJECT_CLOSED)) {
         LOGVAL(ctx, LYVE_SYNTAX, "Unexpected sibling node.");
         r = LY_EVALID;
         LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
@@ -1875,7 +1873,7 @@ lyd_parse_json(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, st
     if (parse_opts & LYD_PARSE_SUBTREE) {
         /* check for a sibling object */
         assert(subtree_sibling);
-        if (lydctx->jsonctx->in->current[0] == ',') {
+        if (status == LYJSON_OBJECT_NEXT) {
             *subtree_sibling = 1;
 
             /* move to the next object */

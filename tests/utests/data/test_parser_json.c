@@ -46,6 +46,7 @@ setup(void **state)
             "leaf foo2 { type string; default \"default-val\"; }"
             "leaf foo3 { type uint32; }"
             "leaf foo4 { type uint64; }"
+            "rpc r1 {input {leaf l1 {type string;} leaf l2 {type string;}}}"
             "notification n2;}";
 
     UTEST_SETUP;
@@ -651,6 +652,7 @@ static void
 test_rpc(void **state)
 {
     const char *data;
+    char *str;
     struct ly_in *in;
     struct lyd_node *tree, *op;
     const struct lyd_node *node;
@@ -700,8 +702,16 @@ test_rpc(void **state)
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
 
-    /* wrong namespace, element name, whatever... */
-    /* TODO */
+    /* append to parent */
+    assert_int_equal(LY_SUCCESS, lyd_new_path(NULL, UTEST_LYCTX, "/a:r1", NULL, 0, &op));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory("{\"l1\": \"some str\", \"l2\": \"some other str\"}", &in));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, op, in, LYD_JSON, LYD_TYPE_RPC_YANG, &tree, NULL));
+    ly_in_free(in, 0);
+
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&str, op, LYD_JSON, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK));
+    lyd_free_tree(op);
+    assert_string_equal(str, "{\"a:r1\":{\"l1\":\"some str\",\"l2\":\"some other str\"}}");
+    free(str);
 }
 
 static void

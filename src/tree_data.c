@@ -327,13 +327,13 @@ lyd_parse_op_(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
 
     /* set internal opts */
     case LYD_TYPE_RPC_YANG:
-        int_opts = LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NO_SIBLINGS;
+        int_opts = LYD_INTOPT_RPC | LYD_INTOPT_ACTION | (parent ? LYD_INTOPT_WITH_SIBLINGS : LYD_INTOPT_NO_SIBLINGS);
         break;
     case LYD_TYPE_NOTIF_YANG:
-        int_opts = LYD_INTOPT_NOTIF | LYD_INTOPT_NO_SIBLINGS;
+        int_opts = LYD_INTOPT_NOTIF | (parent ? LYD_INTOPT_WITH_SIBLINGS : LYD_INTOPT_NO_SIBLINGS);
         break;
     case LYD_TYPE_REPLY_YANG:
-        int_opts = LYD_INTOPT_REPLY | LYD_INTOPT_NO_SIBLINGS;
+        int_opts = LYD_INTOPT_REPLY | (parent ? LYD_INTOPT_WITH_SIBLINGS : LYD_INTOPT_NO_SIBLINGS);
         break;
     case LYD_TYPE_DATA_YANG:
         LOGINT(ctx);
