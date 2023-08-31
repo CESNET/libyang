@@ -2599,6 +2599,13 @@ ly_check_module_filename(const struct ly_ctx *ctx, const char *name, const char 
 
     /* check that name and revision match filename */
     basename = strrchr(filename, '/');
+#ifdef _WIN32
+    const char *backslash = strrchr(filename, '\\');
+
+    if (!basename || (basename && backslash && (backslash > basename))) {
+        basename = backslash;
+    }
+#endif
     if (!basename) {
         basename = filename;
     } else {
