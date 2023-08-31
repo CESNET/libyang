@@ -54,6 +54,7 @@ parse_schema_path(const char *path, char **dir, char **module)
 
     /* split the path to dirname and basename for further work */
     *dir = strdup(path);
+    /* FIXME: this is broken on Windows */
     *module = strrchr(*dir, '/');
     if (!(*module)) {
         *module = *dir;
