@@ -2097,7 +2097,6 @@ lyd_parse_json_restconf(const struct ly_ctx *ctx, const struct lysc_ext_instance
             break;
         }
     } while (status == LYJSON_OBJECT_NEXT);
-    assert((status == LYJSON_END) || (status == LYJSON_OBJECT_CLOSED));
 
     /* close all opened elements */
     for (i = 0; i < close_elem; ++i) {
