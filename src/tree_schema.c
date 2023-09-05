@@ -1749,8 +1749,6 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     struct lysp_yin_ctx *yinctx = NULL;
     struct lysp_ctx *pctx = NULL;
     struct lysf_ctx fctx = {.ctx = ctx};
-    char *filename, *rev, *dot;
-    size_t len;
     ly_bool module_created = 0;
 
     assert(ctx && in && new_mods);
@@ -1831,30 +1829,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
 
     switch (in->type) {
     case LY_IN_FILEPATH:
-        /* check that name and revision match filename */
-        filename = strrchr(in->method.fpath.filepath, '/');
-        if (!filename) {
-            filename = in->method.fpath.filepath;
-        } else {
-            filename++;
-        }
-        rev = strchr(filename, '@');
-        dot = strrchr(filename, '.');
-
-        /* name */
-        len = strlen(mod->name);
-        if (strncmp(filename, mod->name, len) ||
-                ((rev && (rev != &filename[len])) || (!rev && (dot != &filename[len])))) {
-            LOGWRN(ctx, "File name \"%s\" does not match module name \"%s\".", filename, mod->name);
-        }
-        if (rev) {
-            len = dot - ++rev;
-            if (!mod->parsed->revs || (len != LY_REV_SIZE - 1) || strncmp(mod->parsed->revs[0].date, rev, len)) {
-                LOGWRN(ctx, "File name \"%s\" does not match module revision \"%s\".", filename,
-                        mod->parsed->revs ? mod->parsed->revs[0].date : "none");
-            }
-        }
-
+        ly_check_module_filename(ctx, mod->name, mod->parsed->revs ? mod->parsed->revs[0].date : NULL, in->method.fpath.filepath);
         break;
     case LY_IN_FD:
     case LY_IN_FILE:

@@ -732,4 +732,14 @@ uint8_t lys_stmt_flags(enum ly_stmt stmt);
  */
 LY_ERR lyplg_ext_get_storage_p(const struct lysc_ext_instance *ext, int stmt, const void ***storage_p);
 
+/**
+ * @brief Warning if the filename does not match the expected module name and version
+ *
+ * @param[in] ctx Context for logging
+ * @param[in] name Expected module name
+ * @param[in] revision Expected module revision, or NULL if not to be checked
+ * @param[in] filename File path to be checked
+ */
+void ly_check_module_filename(const struct ly_ctx *ctx, const char *name, const char *revision, const char *filename);
+
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */

@@ -696,9 +696,8 @@ static LY_ERR
 lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data)
 {
     struct lysp_load_module_check_data *info = data;
-    const char *filename, *dot, *rev, *name;
+    const char *name;
     uint8_t latest_revision;
-    size_t len;
     struct lysp_revision *revs;
 
     name = mod ? mod->mod->name : submod->name;
@@ -739,29 +738,7 @@ lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct
         }
     }
     if (info->path) {
-        /* check that name and revision match filename */
-        filename = strrchr(info->path, '/');
-        if (!filename) {
-            filename = info->path;
-        } else {
-            filename++;
-        }
-        /* name */
-        len = strlen(name);
-        rev = strchr(filename, '@');
-        dot = strrchr(info->path, '.');
-        if (strncmp(filename, name, len) ||
-                ((rev && (rev != &filename[len])) || (!rev && (dot != &filename[len])))) {
-            LOGWRN(ctx, "File name \"%s\" does not match module name \"%s\".", filename, name);
-        }
-        /* revision */
-        if (rev) {
-            len = dot - ++rev;
-            if (!revs || (len != LY_REV_SIZE - 1) || strncmp(revs[0].date, rev, len)) {
-                LOGWRN(ctx, "File name \"%s\" does not match module revision \"%s\".", filename,
-                        revs ? revs[0].date : "none");
-            }
-        }
+        ly_check_module_filename(ctx, name, revs ? revs[0].date : NULL, info->path);
     }
     return LY_SUCCESS;
 }
@@ -2612,4 +2589,35 @@ lys_stmt_flags(enum ly_stmt stmt)
     }
 
     return 0;
+}
+
+void
+ly_check_module_filename(const struct ly_ctx *ctx, const char *name, const char *revision, const char *filename)
+{
+    const char *basename, *rev, *dot;
+    size_t len;
+
+    /* check that name and revision match filename */
+    basename = strrchr(filename, '/');
+    if (!basename) {
+        basename = filename;
+    } else {
+        basename++; /* leading slash */
+    }
+    rev = strchr(basename, '@');
+    dot = strrchr(basename, '.');
+
+    /* name */
+    len = strlen(name);
+    if (strncmp(basename, name, len) ||
+            ((rev && (rev != &basename[len])) || (!rev && (dot != &basename[len])))) {
+        LOGWRN(ctx, "File name \"%s\" does not match module name \"%s\".", basename, name);
+    }
+    if (rev) {
+        len = dot - ++rev;
+        if (!revision || (len != LY_REV_SIZE - 1) || strncmp(revision, rev, len)) {
+            LOGWRN(ctx, "File name \"%s\" does not match module revision \"%s\".", basename,
+                    revision ? revision : "none");
+        }
+    }
 }
