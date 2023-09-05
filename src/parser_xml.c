@@ -980,8 +980,8 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     const struct ly_ctx *ctx;
     struct lyd_meta *meta = NULL;
     struct lyd_attr *attr = NULL;
-    const struct lysc_node *snode;
-    struct lysc_ext_instance *ext;
+    const struct lysc_node *snode = NULL;
+    struct lysc_ext_instance *ext = NULL;
     uint32_t orig_parse_opts;
     struct lyd_node *node = NULL, *insert_anchor = NULL;
     ly_bool parse_subtree;
@@ -1007,6 +1007,32 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     /* parser next */
     rc = lyxml_ctx_next(xmlctx);
     LY_CHECK_GOTO(rc, cleanup);
+
+    if ((lydctx->int_opts & LYD_INTOPT_EVENTTIME) && !parent && name_len && !prefix_len &&
+            !ly_strncmp("eventTime", name, name_len)) {
+        /* parse eventTime, create node */
+        assert(xmlctx->status == LYXML_ELEM_CONTENT);
+        rc = lyd_create_opaq(xmlctx->ctx, name, name_len, prefix, prefix_len,
+                "urn:ietf:params:xml:ns:netconf:notification:1.0", 47, xmlctx->value,
+                xmlctx->ws_only ? 0 : xmlctx->value_len, NULL, LY_VALUE_XML, NULL, LYD_HINT_DATA, &node);
+        LY_CHECK_GOTO(rc, cleanup);
+
+        /* validate the value */
+        r = lyd_parser_notif_eventtime_validate(node);
+        LY_CHECK_ERR_GOTO(r, rc = r; lyd_free_tree(node), cleanup);
+
+        /* parser next */
+        r = lyxml_ctx_next(xmlctx);
+        LY_CHECK_ERR_GOTO(r, rc = r; lyd_free_tree(node), cleanup);
+        if (xmlctx->status != LYXML_ELEM_CLOSE) {
+            LOGVAL(ctx, LYVE_DATA, "Unexpected notification \"eventTime\" node children.");
+            rc = LY_EVALID;
+            lyd_free_tree(node);
+            goto cleanup;
+        }
+
+        goto node_parsed;
+    }
 
     /* get the schema node */
     r = lydxml_subtree_get_snode(lydctx, parent, prefix, prefix_len, name, name_len, &snode, &ext);
@@ -1057,6 +1083,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     }
     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
+node_parsed:
     if (node && snode) {
         /* add/correct flags */
         r = lyd_parse_set_data_flags(node, &meta, (struct lyd_ctx *)lydctx, ext);
@@ -1335,66 +1362,6 @@ lydxml_env_netconf_rpc(struct lyxml_ctx *xmlctx, struct lyd_node **envp, uint32_
         rc = r;
         goto cleanup;
     }
-
-cleanup:
-    if (rc) {
-        lyd_free_tree(*envp);
-        *envp = NULL;
-    }
-    return rc;
-}
-
-/**
- * @brief Parse all expected non-data XML elements of a NETCONF notification message.
- *
- * @param[in] xmlctx XML parser context.
- * @param[out] evnp Parsed envelope(s) (opaque node).
- * @param[out] int_opts Internal options for parsing the rest of YANG data.
- * @param[out] close_elem Number of parsed opened elements that need to be closed.
- * @return LY_SUCCESS on success.
- * @return LY_ERR value on error.
- */
-static LY_ERR
-lydxml_env_netconf_notif(struct lyxml_ctx *xmlctx, struct lyd_node **envp, uint32_t *int_opts, uint32_t *close_elem)
-{
-    LY_ERR rc = LY_SUCCESS, r;
-    struct lyd_node *child;
-
-    assert(envp && !*envp);
-
-    /* parse "notification" */
-    r = lydxml_envelope(xmlctx, "notification", "urn:ietf:params:xml:ns:netconf:notification:1.0", 0, envp);
-    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-
-    /* parse "eventTime" */
-    r = lydxml_envelope(xmlctx, "eventTime", "urn:ietf:params:xml:ns:netconf:notification:1.0", 1, &child);
-    if (r == LY_ENOT) {
-        LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unexpected element \"%.*s\" instead of \"eventTime\".",
-                (int)xmlctx->name_len, xmlctx->name);
-        r = LY_EVALID;
-    }
-    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-
-    /* insert */
-    lyd_insert_node(*envp, NULL, child, 0);
-
-    /* validate value */
-    r = lyd_parser_notif_eventtime_validate(child);
-    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-
-    /* finish child parsing */
-    if (xmlctx->status != LYXML_ELEM_CLOSE) {
-        assert(xmlctx->status == LYXML_ELEMENT);
-        LOGVAL(xmlctx->ctx, LYVE_SYNTAX, "Unexpected child element \"%.*s\" of \"eventTime\".",
-                (int)xmlctx->name_len, xmlctx->name);
-        rc = LY_EVALID;
-        goto cleanup;
-    }
-    LY_CHECK_GOTO(rc = lyxml_ctx_next(xmlctx), cleanup);
-
-    /* NETCONF notification */
-    *int_opts = LYD_INTOPT_NO_SIBLINGS | LYD_INTOPT_NOTIF;
-    *close_elem = 1;
 
 cleanup:
     if (rc) {
@@ -1898,6 +1865,7 @@ lyd_parse_xml_netconf(const struct ly_ctx *ctx, const struct lysc_ext_instance *
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_xml_ctx *lydctx;
+    struct lyd_node *node;
     uint32_t i, int_opts = 0, close_elem = 0;
     ly_bool parsed_data_nodes = 0;
 
@@ -1926,11 +1894,17 @@ lyd_parse_xml_netconf(const struct ly_ctx *ctx, const struct lysc_ext_instance *
         break;
     case LYD_TYPE_NOTIF_NETCONF:
         assert(!parent);
-        rc = lydxml_env_netconf_notif(lydctx->xmlctx, envp, &int_opts, &close_elem);
+
+        /* parse "notification" */
+        rc = lydxml_envelope(lydctx->xmlctx, "notification", "urn:ietf:params:xml:ns:netconf:notification:1.0", 0, envp);
         if (rc == LY_ENOT) {
             LOGVAL(ctx, LYVE_DATA, "Missing NETCONF <notification> envelope or in incorrect namespace.");
         }
         LY_CHECK_GOTO(rc, cleanup);
+
+        /* NETCONF notification */
+        int_opts = LYD_INTOPT_WITH_SIBLINGS | LYD_INTOPT_NOTIF | LYD_INTOPT_EVENTTIME;
+        close_elem = 1;
         break;
     case LYD_TYPE_REPLY_NETCONF:
         assert(parent);
@@ -2010,6 +1984,21 @@ lyd_parse_xml_netconf(const struct ly_ctx *ctx, const struct lysc_ext_instance *
         LOGVAL(ctx, LYVE_DATA, "Missing the operation node.");
         rc = LY_EVALID;
         goto cleanup;
+    }
+    if (int_opts & LYD_INTOPT_EVENTTIME) {
+        /* parse as a child of the envelope */
+        node = (*first_p)->prev;
+        if (node->schema) {
+            LOGVAL(ctx, LYVE_DATA, "Missing notification \"eventTime\" node.");
+            rc = LY_EVALID;
+            goto cleanup;
+        } else {
+            /* can be the only opaque node and an operation had to be parsed */
+            assert(!strcmp(LYD_NAME(node), "eventTime") && (*first_p)->next);
+            lyd_unlink_tree(node);
+            assert(*envp);
+            lyd_insert_child(*envp, node);
+        }
     }
 
     if (!parsed_data_nodes) {

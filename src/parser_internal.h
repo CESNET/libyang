@@ -61,6 +61,7 @@ typedef void (*lyd_ctx_free_clb)(struct lyd_ctx *ctx);
 #define LYD_INTOPT_ANY              0x10    /**< Anydata/anyxml content is being parsed, there can be anything. */
 #define LYD_INTOPT_WITH_SIBLINGS    0x20    /**< Parse the whole input with any siblings. */
 #define LYD_INTOPT_NO_SIBLINGS      0x40    /**< If there are any siblings, return an error. */
+#define LYD_INTOPT_EVENTTIME        0x80    /**< Parse notification eventTime node. */
 
 /**
  * @brief Internal (common) context for YANG data parsers.

@@ -753,6 +753,22 @@ test_netconf_reply_or_notification(void **state)
     lyd_free_all(tree);
     lyd_free_all(op2);
 
+    /* notification with a different order */
+    data = "<notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\">\n"
+            "<c xmlns=\"urn:tests:a\">\n"
+            "  <n1>\n"
+            "    <nl>value</nl>\n"
+            "  </n1>\n"
+            "</c>\n"
+            "<eventTime>2010-12-06T08:00:01Z</eventTime>\n"
+            "</notification>\n";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_NOTIF_NETCONF, &tree, &op2));
+    ly_in_free(in, 0);
+
+    lyd_free_all(tree);
+    lyd_free_all(op2);
+
     /* parse a data reply */
     data = "<rpc-reply message-id=\"55\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n"
             "  <al xmlns=\"urn:tests:a\">25</al>\n"

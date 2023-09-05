@@ -860,6 +860,15 @@ test_restconf_notification(void **state)
 
     lyd_free_all(tree);
     lyd_free_all(ntf);
+
+    /* wrong order */
+    data = "{\"ietf-restconf:notification\":{\"a:n2\":{},\"eventTime\":\"2013-12-21T00:01:00Z\"}}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_NOTIF_RESTCONF, &tree, &ntf));
+    ly_in_free(in, 0);
+
+    lyd_free_all(tree);
+    lyd_free_all(ntf);
 }
 
 static void
