@@ -1772,13 +1772,13 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
     }
 
 node_parsed:
-    /* finally connect the parsed node */
-    lydjson_maintain_children(parent, first_p, &node, lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0, ext);
-
     /* rememeber a successfully parsed node */
     if (parsed && node) {
         ly_set_add(parsed, node, 1, NULL);
     }
+
+    /* finally connect the parsed node, is zeroed */
+    lydjson_maintain_children(parent, first_p, &node, lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0, ext);
 
     if (!parse_subtree) {
         /* move after the item(s) */

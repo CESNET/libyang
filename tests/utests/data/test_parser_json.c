@@ -869,6 +869,14 @@ test_restconf_notification(void **state)
 
     lyd_free_all(tree);
     lyd_free_all(ntf);
+
+    /* unknown notification */
+    data = "{\"ietf-restconf:notification\":{\"eventTime\":\"2013-12-21T00:01:00Z\",\"invalid:n2\":{}}}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_NOTIF_RESTCONF, &tree, &ntf));
+    UTEST_LOG_CTX_CLEAN;
+    ly_in_free(in, 0);
+    lyd_free_all(tree);
 }
 
 static void
