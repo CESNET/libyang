@@ -363,7 +363,8 @@ print_val:
     switch (basetype) {
     case LY_TYPE_UNION:
         /* use the resolved type */
-        basetype = val->subvalue->value.realtype->basetype;
+        val = &val->subvalue->value;
+        basetype = val->realtype->basetype;
         goto print_val;
 
     case LY_TYPE_BINARY:
