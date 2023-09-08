@@ -110,7 +110,9 @@ xml_print_ns_opaq(struct xmlpr_ctx *pctx, LY_VALUE_FORMAT format, const struct l
 {
     switch (format) {
     case LY_VALUE_XML:
-        return xml_print_ns(pctx, name->module_ns, (prefix_opts & LYXML_PREFIX_DEFAULT) ? NULL : name->prefix, prefix_opts);
+        if (name->module_ns) {
+            return xml_print_ns(pctx, name->module_ns, (prefix_opts & LYXML_PREFIX_DEFAULT) ? NULL : name->prefix, prefix_opts);
+        }
         break;
     case LY_VALUE_JSON:
         if (name->module_name) {
