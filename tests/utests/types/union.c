@@ -114,6 +114,24 @@ test_data_xml(void **state)
 }
 
 static void
+test_data_json(void **state)
+{
+    const char *schema, *data;
+    struct lyd_node *tree;
+
+    /* xml test */
+    schema = MODULE_CREATE_YANG("defs", "leaf un21 {type union {type uint8; type string;}}"
+            "leaf un22 {type union {type uint16; type string;}}"
+            "leaf un2 {type union {type leafref {path /un21; require-instance false;} type leafref {path /un22; require-instance false;}}}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    data = "{\"defs:un2\":\"str\"}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    CHECK_LYD_STRING_PARAM(tree, data, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS);
+    lyd_free_all(tree);
+}
+
+static void
 test_plugin_lyb(void **state)
 {
     const char *schema;
@@ -180,6 +198,7 @@ main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_data_xml),
+        UTEST(test_data_json),
         UTEST(test_plugin_lyb),
         UTEST(test_validation),
     };
