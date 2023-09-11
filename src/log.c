@@ -833,7 +833,7 @@ ly_vlog_build_path(const struct ly_ctx *ctx, char **path)
 
     if (log_location.paths.count && ((const char *)(log_location.paths.objs[log_location.paths.count - 1]))[0]) {
         /* simply get what is in the provided path string */
-        r = asprintf(path, "Path \"%s\".", (const char *)log_location.paths.objs[log_location.paths.count - 1]);
+        r = asprintf(path, "Path \"%s\"", (const char *)log_location.paths.objs[log_location.paths.count - 1]);
         LY_CHECK_ERR_RET(r == -1, LOGMEM(ctx), LY_EMEM);
     } else {
         /* data/schema node */
@@ -851,28 +851,28 @@ ly_vlog_build_path(const struct ly_ctx *ctx, char **path)
             free(str);
             LY_CHECK_ERR_RET(r == -1, LOGMEM(ctx), LY_EMEM);
         }
+    }
 
-        /* line */
+    /* line */
+    prev = *path;
+    if (log_location.line) {
+        r = asprintf(path, "%s%sine number %" PRIu64, prev ? prev : "", prev ? ", l" : "L", log_location.line);
+        free(prev);
+        LY_CHECK_ERR_RET(r == -1, LOGMEM(ctx), LY_EMEM);
+
+        log_location.line = 0;
+    } else if (log_location.inputs.count) {
+        r = asprintf(path, "%s%sine number %" PRIu64, prev ? prev : "", prev ? ", l" : "L",
+                ((struct ly_in *)log_location.inputs.objs[log_location.inputs.count - 1])->line);
+        free(prev);
+        LY_CHECK_ERR_RET(r == -1, LOGMEM(ctx), LY_EMEM);
+    }
+
+    if (*path) {
         prev = *path;
-        if (log_location.line) {
-            r = asprintf(path, "%s%sine number %" PRIu64, prev ? prev : "", prev ? ", l" : "L", log_location.line);
-            free(prev);
-            LY_CHECK_ERR_RET(r == -1, LOGMEM(ctx), LY_EMEM);
-
-            log_location.line = 0;
-        } else if (log_location.inputs.count) {
-            r = asprintf(path, "%s%sine number %" PRIu64, prev ? prev : "", prev ? ", l" : "L",
-                    ((struct ly_in *)log_location.inputs.objs[log_location.inputs.count - 1])->line);
-            free(prev);
-            LY_CHECK_ERR_RET(r == -1, LOGMEM(ctx), LY_EMEM);
-        }
-
-        if (*path) {
-            prev = *path;
-            r = asprintf(path, "%s.", prev);
-            free(prev);
-            LY_CHECK_ERR_RET(r == -1, LOGMEM(ctx), LY_EMEM);
-        }
+        r = asprintf(path, "%s.", prev);
+        free(prev);
+        LY_CHECK_ERR_RET(r == -1, LOGMEM(ctx), LY_EMEM);
     }
 
     return LY_SUCCESS;
