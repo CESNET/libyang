@@ -770,7 +770,7 @@ ly_vlog_build_path_append(char **str, const struct lysc_node *snode, const struc
     }
 
     /* realloc string */
-    len = strlen(*str);
+    len = *str ? strlen(*str) : 0;
     new_len = len + 1 + (mod ? strlen(mod->name) + 1 : 0) + strlen(snode->name);
     mem = realloc(*str, new_len + 1);
     LY_CHECK_ERR_RET(!mem, LOGMEM(LYD_CTX(parent)), LY_EMEM);
