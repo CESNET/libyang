@@ -90,6 +90,15 @@ struct ly_log_location_s {
 void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char *format, ...) _FORMAT_PRINTF(4, 5);
 
 /**
+ * @brief Generate data path based on the data and schema nodes stored in the log location.
+ *
+ * @param[in] ctx Context for logging.
+ * @param[out] path Generated data path.
+ * @return LY_ERR value.
+ */
+LY_ERR ly_vlog_build_data_path(const struct ly_ctx *ctx, char **path);
+
+/**
  * @brief Print Validation error and store it into the context (if provided).
  *
  * @param[in] ctx libyang context to store the error record. If not provided, the error is just printed.
