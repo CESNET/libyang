@@ -2496,7 +2496,8 @@ lyd_path_set(const struct ly_set *dnodes, LYD_PATH_TYPE pathtype)
             parent = (depth > 1) ? dnodes->dnodes[depth - 2] : NULL;
             assert(!parent || !iter->schema || !parent->schema || (parent->schema->nodetype & LYD_NODE_ANY) ||
                     (lysc_data_parent(iter->schema) == parent->schema) ||
-                    (!lysc_data_parent(iter->schema) && (LYD_CTX(iter) != LYD_CTX(parent))));
+                    (!lysc_data_parent(iter->schema) && (LYD_CTX(iter) != LYD_CTX(parent))) ||
+                    (parent->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)));
 
             /* get module to print, if any */
             prev_mod = lyd_node_module(parent);
