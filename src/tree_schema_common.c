@@ -32,6 +32,7 @@
 #include "in_internal.h"
 #include "log.h"
 #include "parser_schema.h"
+#include "path.h"
 #include "schema_compile.h"
 #include "schema_features.h"
 #include "set.h"
@@ -1799,6 +1800,36 @@ lysc_node_when(const struct lysc_node *node)
     } else {
         return NULL;
     }
+}
+
+LIBYANG_API_DEF const struct lysc_node *
+lysc_node_lref_target(const struct lysc_node *node)
+{
+    struct lysc_type_leafref *lref;
+    struct ly_path *p;
+    const struct lysc_node *target;
+
+    if (!node || !(node->nodetype & LYD_NODE_TERM)) {
+        return NULL;
+    }
+
+    lref = (struct lysc_type_leafref *)((struct lysc_node_leaf *)node)->type;
+    if (lref->basetype != LY_TYPE_LEAFREF) {
+        return NULL;
+    }
+
+    /* compile the path */
+    if (ly_path_compile_leafref(node->module->ctx, node, NULL, lref->path,
+            (node->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY,
+            LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, &p)) {
+        return NULL;
+    }
+
+    /* get the target node */
+    target = p[LY_ARRAY_COUNT(p) - 1].node;
+    ly_path_free(node->module->ctx, p);
+
+    return target;
 }
 
 enum ly_stmt

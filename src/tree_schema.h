@@ -1887,6 +1887,14 @@ LIBYANG_API_DECL struct lysc_must *lysc_node_musts(const struct lysc_node *node)
 LIBYANG_API_DECL struct lysc_when **lysc_node_when(const struct lysc_node *node);
 
 /**
+ * @brief Get the target node of a leafref node.
+ *
+ * @param[in] node Leafref node.
+ * @return Leafref target, NULL on any error.
+ */
+LIBYANG_API_DECL const struct lysc_node *lysc_node_lref_target(const struct lysc_node *node);
+
+/**
  * @brief Callback to be called for every schema node in a DFS traversal.
  *
  * @param[in] node Current node.
