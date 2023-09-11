@@ -47,7 +47,8 @@ setup(void **state)
             "leaf foo3 { type uint32; }"
             "leaf foo4 { type uint64; }"
             "rpc r1 {input {leaf l1 {type string;} leaf l2 {type string;}}}"
-            "notification n2;}";
+            "notification n2;"
+            "}";
 
     UTEST_SETUP;
 
@@ -163,7 +164,7 @@ test_leaf(void **state)
     /* reverse solidus in JSON object member name */
     data = "{\"@a:foo\":{\"a:hi\\nt\":1},\"a:foo\":\"xxx\"}";
     assert_int_equal(LY_EINVAL, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
-    CHECK_LOG_CTX("Annotation definition for attribute \"a:hi\nt\" not found.", "Data location \"/@a:foo\", line number 1.");
+    CHECK_LOG_CTX("Annotation definition for attribute \"a:hi\nt\" not found.", "Path \"/@a:foo/@a:hi\nt\", line number 1.");
 }
 
 static void
@@ -900,6 +901,19 @@ test_restconf_reply(void **state)
     lyd_free_all(envp);
 }
 
+static void
+test_metadata(void **state)
+{
+    const char *data;
+    struct lyd_node *tree;
+
+    /* invalid metadata value */
+    data = "{\"a:c\":{\"x\":\"xval\",\"@x\":{\"a:hint\":\"value\"}}}";
+    assert_int_equal(LY_EVALID, lyd_parse_data_mem(_UC->ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
+    assert_null(tree);
+    CHECK_LOG_CTX("Invalid non-number-encoded int8 value \"value\".", "Path \"/a:c/x/@a:hint\", line number 1.");
+}
+
 int
 main(void)
 {
@@ -918,6 +932,7 @@ main(void)
         UTEST(test_restconf_rpc, setup),
         UTEST(test_restconf_notification, setup),
         UTEST(test_restconf_reply, setup),
+        UTEST(test_metadata, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

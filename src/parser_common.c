@@ -304,6 +304,8 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
         const char *name, size_t name_len, const void *value, size_t value_len, ly_bool *dynamic, LY_VALUE_FORMAT format,
         void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node)
 {
+    LY_ERR rc = LY_SUCCESS;
+    char *dpath = NULL, *path = NULL;
     ly_bool incomplete;
     struct lyd_meta *first = NULL;
 
@@ -312,11 +314,20 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
         first = *meta;
     }
 
-    LY_CHECK_RET(lyd_create_meta(parent, meta, mod, name, name_len, value, value_len, dynamic, format, prefix_data,
-            hints, ctx_node, 0, &incomplete));
+    /* generate path to the metadata */
+    LY_CHECK_RET(ly_vlog_build_data_path(lydctx->data_ctx->ctx, &dpath));
+    if (asprintf(&path, "%s/@%s:%.*s", dpath, mod->name, (int)name_len, name) == -1) {
+        LOGMEM(lydctx->data_ctx->ctx);
+        rc = LY_EMEM;
+        goto cleanup;
+    }
+    LOG_LOCSET(NULL, NULL, path, NULL);
+
+    LY_CHECK_GOTO(rc = lyd_create_meta(parent, meta, mod, name, name_len, value, value_len, dynamic, format, prefix_data,
+            hints, ctx_node, 0, &incomplete), cleanup);
 
     if (incomplete && !(lydctx->parse_opts & LYD_PARSE_ONLY)) {
-        LY_CHECK_RET(ly_set_add(&lydctx->meta_types, *meta, 1, NULL));
+        LY_CHECK_GOTO(rc = ly_set_add(&lydctx->meta_types, *meta, 1, NULL), cleanup);
     }
 
     if (first) {
@@ -324,7 +335,11 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
         *meta = first;
     }
 
-    return LY_SUCCESS;
+cleanup:
+    LOG_LOCBACK(0, 0, 1, 0);
+    free(dpath);
+    free(path);
+    return rc;
 }
 
 LY_ERR

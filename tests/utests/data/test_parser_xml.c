@@ -31,6 +31,7 @@ setup(void **state)
             "    namespace urn:tests:a;\n"
             "    prefix a;\n"
             "    yang-version 1.1;\n"
+            "    import ietf-yang-metadata {prefix md;}"
             "    list l1 { key \"a b c\"; leaf a {type string;} leaf b {type string;} leaf c {type int16;}"
             "        leaf d {type string;}"
             "        container cont {leaf e {type boolean;}}"
@@ -45,7 +46,9 @@ setup(void **state)
             "    anyxml anyx;\n"
             "    leaf foo2 { type string; default \"default-val\"; }\n"
             "    leaf foo3 { type uint32; }\n"
-            "    notification n2;}";
+            "    notification n2;"
+            "    md:annotation attr {type enumeration {enum val;}}"
+            "}";
 
     UTEST_SETUP;
 
@@ -655,7 +658,7 @@ test_netconf_rpc(void **state)
     assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_NETCONF, &tree, &op));
     ly_in_free(in, 0);
     CHECK_LOG_CTX("Invalid enumeration value \"merge2\".",
-            "Data location \"/ietf-netconf:copy-config/source/config/a:l1[a='val_a'][b='val_b'][c='5']/cont/e\", line number 13.");
+            "Path \"/ietf-netconf:copy-config/source/config/a:l1[a='val_a'][b='val_b'][c='5']/cont/e/@ietf-netconf:operation\", line number 13.");
     lyd_free_all(tree);
     assert_null(op);
 }
@@ -961,6 +964,19 @@ test_data_skip(void **state)
     lyd_free_all(tree);
 }
 
+static void
+test_metadata(void **state)
+{
+    const char *data;
+    struct lyd_node *tree;
+
+    /* invalid metadata value */
+    data = "<c xmlns=\"urn:tests:a\" xmlns:a=\"urn:tests:a\"><x a:attr=\"value\">xval</x></c>";
+    assert_int_equal(LY_EVALID, lyd_parse_data_mem(_UC->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    assert_null(tree);
+    CHECK_LOG_CTX("Invalid enumeration value \"value\".", "Path \"/a:c/x/@a:attr\", line number 1.");
+}
+
 int
 main(void)
 {
@@ -982,6 +998,7 @@ main(void)
         UTEST(test_restconf_reply, setup),
         UTEST(test_filter_attributes, setup),
         UTEST(test_data_skip, setup),
+        UTEST(test_metadata, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
