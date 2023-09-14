@@ -1004,15 +1004,7 @@ struct lyd_node_opaq {
  * @return Pointer to the parent node of the @p node.
  * @return NULL in case of the top-level node or if the @p node is NULL itself.
  */
-static inline struct lyd_node *
-lyd_parent(const struct lyd_node *node)
-{
-    if (!node || !node->parent) {
-        return NULL;
-    }
-
-    return &node->parent->node;
-}
+LIBYANG_API_DECL struct lyd_node *lyd_parent(const struct lyd_node *node);
 
 /**
  * @brief Get the child pointer of a generic data node.
@@ -1024,29 +1016,7 @@ lyd_parent(const struct lyd_node *node)
  * @param[in] node Node to use.
  * @return Pointer to the first child node (if any) of the @p node.
  */
-static inline struct lyd_node *
-lyd_child(const struct lyd_node *node)
-{
-    if (!node) {
-        return NULL;
-    }
-
-    if (!node->schema) {
-        /* opaq node */
-        return ((const struct lyd_node_opaq *)node)->child;
-    }
-
-    switch (node->schema->nodetype) {
-    case LYS_CONTAINER:
-    case LYS_LIST:
-    case LYS_RPC:
-    case LYS_ACTION:
-    case LYS_NOTIF:
-        return ((const struct lyd_node_inner *)node)->child;
-    default:
-        return NULL;
-    }
-}
+LIBYANG_API_DECL struct lyd_node *lyd_child(const struct lyd_node *node);
 
 /**
  * @brief Get the child pointer of a generic data node but skip its keys in case it is ::LYS_LIST.
@@ -1141,23 +1111,7 @@ LIBYANG_API_DECL const char *lyd_value_get_canonical(const struct ly_ctx *ctx, c
  * @param[in] node Data node to use.
  * @return Canonical value.
  */
-static inline const char *
-lyd_get_value(const struct lyd_node *node)
-{
-    if (!node) {
-        return NULL;
-    }
-
-    if (!node->schema) {
-        return ((const struct lyd_node_opaq *)node)->value;
-    } else if (node->schema->nodetype & LYD_NODE_TERM) {
-        const struct lyd_value *value = &((const struct lyd_node_term *)node)->value;
-
-        return value->_canonical ? value->_canonical : lyd_value_get_canonical(LYD_CTX(node), value);
-    }
-
-    return NULL;
-}
+LIBYANG_API_DECL const char *lyd_get_value(const struct lyd_node *node);
 
 /**
  * @brief Get anydata string value.

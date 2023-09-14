@@ -3056,3 +3056,55 @@ lyd_find_target(const struct ly_path *path, const struct lyd_node *tree, struct 
     }
     return LY_SUCCESS;
 }
+
+LIBYANG_API_DEF struct lyd_node *
+lyd_parent(const struct lyd_node *node)
+{
+    if (!node || !node->parent) {
+        return NULL;
+    }
+
+    return &node->parent->node;
+}
+
+LIBYANG_API_DEF struct lyd_node *
+lyd_child(const struct lyd_node *node)
+{
+    if (!node) {
+        return NULL;
+    }
+
+    if (!node->schema) {
+        /* opaq node */
+        return ((const struct lyd_node_opaq *)node)->child;
+    }
+
+    switch (node->schema->nodetype) {
+    case LYS_CONTAINER:
+    case LYS_LIST:
+    case LYS_RPC:
+    case LYS_ACTION:
+    case LYS_NOTIF:
+        return ((const struct lyd_node_inner *)node)->child;
+    default:
+        return NULL;
+    }
+}
+
+LIBYANG_API_DEF const char *
+lyd_get_value(const struct lyd_node *node)
+{
+    if (!node) {
+        return NULL;
+    }
+
+    if (!node->schema) {
+        return ((const struct lyd_node_opaq *)node)->value;
+    } else if (node->schema->nodetype & LYD_NODE_TERM) {
+        const struct lyd_value *value = &((const struct lyd_node_term *)node)->value;
+
+        return value->_canonical ? value->_canonical : lyd_value_get_canonical(LYD_CTX(node), value);
+    }
+
+    return NULL;
+}
