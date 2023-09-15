@@ -86,7 +86,7 @@ test_data_xml(void **state)
             "defs", "", "un1", "2", UNION, "2", STRING, "2");
 
     TEST_SUCCESS_XML2("<int8 xmlns=\"urn:tests:defs\">10</int8>",
-            "defs", "xmlns:x=\"urn:tests:defs\"", "un1", "x:ident2", UNION, "ident2", IDENT, "ident2", "ident2");
+            "defs", "xmlns:x=\"urn:tests:defs\"", "un1", "x:ident2", UNION, "defs:ident2", IDENT, "defs:ident2", "ident2");
 
     TEST_SUCCESS_XML2("<int8 xmlns=\"urn:tests:defs\">10</int8>",
             "defs", "xmlns:x=\"urn:tests:defs\"", "un1", "x:ident55", UNION, "x:ident55", STRING, "x:ident55");

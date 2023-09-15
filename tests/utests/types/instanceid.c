@@ -125,7 +125,7 @@ test_data_xml(void **state)
             "<list-ident xmlns=\"urn:tests:defs\"><id xmlns:b=\"urn:tests:defs\">b:ident-der2</id>"
             "<value>y</value></list-ident>",
             "defs", "xmlns:a=\"urn:tests:defs\"", "a:l1", "/a:list-ident[a:id='a:ident-der1']/a:value",
-            INST, "/defs:list-ident[id='ident-der1']/value", val5);
+            INST, "/defs:list-ident[id='defs:ident-der1']/value", val5);
 
     TEST_SUCCESS_XML2("<list2 xmlns=\"urn:tests:defs\"><id>defs:xxx</id><id2>x</id2></list2>"
             "<list2 xmlns=\"urn:tests:defs\"><id>a:xxx</id><id2>y</id2></list2>",

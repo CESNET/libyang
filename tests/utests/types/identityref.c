@@ -81,7 +81,7 @@ test_data_xml(void **state)
     /* local ident, XML/JSON print */
     data = "<l1 xmlns=\"urn:tests:defs\">ident1</l1>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
-    CHECK_LYD_NODE_TERM((struct lyd_node_term *)tree, 0, 0, 0, 0, 1, IDENT, "ident1", "ident1");
+    CHECK_LYD_NODE_TERM((struct lyd_node_term *)tree, 0, 0, 0, 0, 1, IDENT, "defs:ident1", "ident1");
     CHECK_LYD_STRING_PARAM(tree, data, LYD_XML, LYD_PRINT_SHRINK);
     CHECK_LYD_STRING_PARAM(tree, "{\"defs:l1\":\"ident1\"}", LYD_JSON, LYD_PRINT_SHRINK);
     lyd_free_all(tree);

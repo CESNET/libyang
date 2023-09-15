@@ -1,9 +1,10 @@
 /**
  * @file identityref.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Built-in identityref type plugin.
  *
- * Copyright (c) 2019-2021 CESNET, z.s.p.o.
+ * Copyright (c) 2019-2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -277,9 +278,12 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
             LY_CHECK_GOTO(ret, cleanup);
         }
     } else {
-        /* JSON format is the canonical one */
-        ret = identityref_ident2str(ident, LY_VALUE_JSON, ctx_node ? ctx_node->module : NULL, &canon, NULL);
-        LY_CHECK_GOTO(ret, cleanup);
+        /* JSON format with prefix is the canonical one */
+        if (asprintf(&canon, "%s:%s", ident->module->name, ident->name) == -1) {
+            LOGMEM(ctx);
+            ret = LY_EMEM;
+            goto cleanup;
+        }
 
         ret = lydict_insert_zc(ctx, canon, &storage->_canonical);
         LY_CHECK_GOTO(ret, cleanup);
@@ -315,7 +319,7 @@ lyplg_type_print_identityref(const struct ly_ctx *UNUSED(ctx), const struct lyd_
 {
     char *ret;
 
-    if ((format == LY_VALUE_CANON) || (format == LY_VALUE_JSON) || (format == LY_VALUE_LYB)) {
+    if (format == LY_VALUE_CANON) {
         if (dynamic) {
             *dynamic = 0;
         }
