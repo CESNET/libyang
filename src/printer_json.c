@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief JSON printer for libyang data structure
  *
- * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ struct jsonpr_ctx {
 
     uint16_t level_printed;     /* level where some data were already printed */
     struct ly_set open;         /* currently open array(s) */
-    const struct lyd_node *print_sibling_metadata;
+    const struct lyd_node *first_leaflist;  /**< first printed leaf-list instance, used when printing its metadata/attributes */
 };
 
 /**
@@ -410,18 +410,12 @@ print_val:
  *
  * @param[in] ctx JSON printer context.
  * @param[in] node Opaq node where the attributes are placed.
- * @param[in] wdmod With-defaults module to mark that default attribute is supposed to be printed.
  * @return LY_ERR value.
  */
 static LY_ERR
-json_print_attribute(struct jsonpr_ctx *pctx, const struct lyd_node_opaq *node, const struct lys_module *wdmod)
+json_print_attribute(struct jsonpr_ctx *pctx, const struct lyd_node_opaq *node)
 {
     struct lyd_attr *attr;
-
-    if (wdmod) {
-        ly_print_(pctx->out, "%*s\"%s:default\":%strue", INDENT, wdmod->name, DO_FORMAT ? " " : "");
-        LEVEL_PRINTED;
-    }
 
     for (attr = node->attr; attr; attr = attr->next) {
         json_print_member2(pctx, &node->node, attr->format, &attr->name, 0);
@@ -511,7 +505,7 @@ json_print_attributes(struct jsonpr_ctx *pctx, const struct lyd_node *node, ly_b
         }
         ly_print_(pctx->out, "{%s", (DO_FORMAT ? "\n" : ""));
         LEVEL_INC;
-        LY_CHECK_RET(json_print_attribute(pctx, (struct lyd_node_opaq *)node, wdmod));
+        LY_CHECK_RET(json_print_attribute(pctx, (struct lyd_node_opaq *)node));
         LEVEL_DEC;
         ly_print_(pctx->out, "%s%*s}", DO_FORMAT ? "\n" : "", INDENT);
         LEVEL_PRINTED;
@@ -798,14 +792,14 @@ json_print_leaf_list(struct jsonpr_ctx *pctx, const struct lyd_node *node)
 
         LY_CHECK_RET(json_print_value(pctx, LYD_CTX(node), &((const struct lyd_node_term *)node)->value, node->schema->module));
 
-        if (!pctx->print_sibling_metadata) {
+        if (!pctx->first_leaflist) {
             if ((node->flags & LYD_DEFAULT) && (pctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) {
                 /* we have implicit OR explicit default node, get with-defaults module */
                 wdmod = ly_ctx_get_module_implemented(LYD_CTX(node), "ietf-netconf-with-defaults");
             }
             if (node->meta || wdmod) {
                 /* we will be printing metadata for these siblings */
-                pctx->print_sibling_metadata = node;
+                pctx->first_leaflist = node;
             }
         }
     }
@@ -818,21 +812,20 @@ json_print_leaf_list(struct jsonpr_ctx *pctx, const struct lyd_node *node)
 }
 
 /**
- * @brief Print leaf-list's metadata in case they were marked in the last call to json_print_leaf_list().
+ * @brief Print leaf-list's metadata or opaque nodes attributes.
  * This function is supposed to be called when the leaf-list array is closed.
  *
  * @param[in] ctx JSON printer context.
  * @return LY_ERR value.
  */
 static LY_ERR
-json_print_metadata_leaflist(struct jsonpr_ctx *pctx)
+json_print_meta_attr_leaflist(struct jsonpr_ctx *pctx)
 {
     const struct lyd_node *prev, *node, *iter;
     const struct lys_module *wdmod = NULL;
+    const struct lyd_node_opaq *opaq = NULL;
 
-    if (!pctx->print_sibling_metadata) {
-        return LY_SUCCESS;
-    }
+    assert(pctx->first_leaflist);
 
     if (pctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG)) {
         /* get with-defaults module */
@@ -840,19 +833,31 @@ json_print_metadata_leaflist(struct jsonpr_ctx *pctx)
     }
 
     /* node is the first instance of the leaf-list */
-    for (node = pctx->print_sibling_metadata, prev = pctx->print_sibling_metadata->prev;
+    for (node = pctx->first_leaflist, prev = pctx->first_leaflist->prev;
             prev->next && matching_node(node, prev);
             node = prev, prev = node->prev) {}
 
-    LY_CHECK_RET(json_print_member(pctx, node, 1));
+    if (node->schema) {
+        LY_CHECK_RET(json_print_member(pctx, node, 1));
+    } else {
+        opaq = (struct lyd_node_opaq *)node;
+        LY_CHECK_RET(json_print_member2(pctx, lyd_parent(node), opaq->format, &opaq->name, 1));
+    }
+
     ly_print_(pctx->out, "[%s", (DO_FORMAT ? "\n" : ""));
     LEVEL_INC;
     LY_LIST_FOR(node, iter) {
         PRINT_COMMA;
-        if (iter->meta || (iter->flags & LYD_DEFAULT)) {
+        if ((iter->schema && (iter->meta || (iter->flags & LYD_DEFAULT))) || (opaq && opaq->attr)) {
             ly_print_(pctx->out, "%*s%s", INDENT, DO_FORMAT ? "{\n" : "{");
             LEVEL_INC;
-            LY_CHECK_RET(json_print_metadata(pctx, iter, (iter->flags & LYD_DEFAULT) ? wdmod : NULL));
+
+            if (iter->schema) {
+                LY_CHECK_RET(json_print_metadata(pctx, iter, (iter->flags & LYD_DEFAULT) ? wdmod : NULL));
+            } else {
+                LY_CHECK_RET(json_print_attribute(pctx, (struct lyd_node_opaq *)iter));
+            }
+
             LEVEL_DEC;
             ly_print_(pctx->out, "%s%*s}", DO_FORMAT ? "\n" : "", INDENT);
         } else {
@@ -917,8 +922,13 @@ json_print_opaq(struct jsonpr_ctx *pctx, const struct lyd_node_opaq *node)
         }
         LEVEL_PRINTED;
 
-        /* attributes */
-        json_print_attributes(pctx, (const struct lyd_node *)node, 0);
+        if (!(node->hints & LYD_NODEHINT_LEAFLIST)) {
+            /* attributes */
+            json_print_attributes(pctx, (const struct lyd_node *)node, 0);
+        } else if (!pctx->first_leaflist && node->attr) {
+            /* attributes printed later */
+            pctx->first_leaflist = &node->node;
+        }
 
     }
     if (last && (node->hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST))) {
@@ -975,9 +985,9 @@ json_print_node(struct jsonpr_ctx *pctx, const struct lyd_node *node)
 
     pctx->level_printed = pctx->level;
 
-    if (pctx->print_sibling_metadata && !matching_node(node->next, pctx->print_sibling_metadata)) {
-        json_print_metadata_leaflist(pctx);
-        pctx->print_sibling_metadata = NULL;
+    if (pctx->first_leaflist && !matching_node(node->next, pctx->first_leaflist)) {
+        json_print_meta_attr_leaflist(pctx);
+        pctx->first_leaflist = NULL;
     }
 
     return LY_SUCCESS;
