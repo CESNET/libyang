@@ -128,7 +128,7 @@ lyd_insert_hash_add(struct ly_ht *ht, struct lyd_node *node, ly_bool empty_ht)
     assert(ht && node && node->schema);
 
     /* add node itself */
-    if (lyht_insert(ht, &node, node->hash, NULL)) {
+    if (lyht_insert_no_check(ht, &node, node->hash, NULL)) {
         LOGINT_RET(LYD_CTX(node));
     }
 
