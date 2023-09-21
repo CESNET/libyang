@@ -35,9 +35,6 @@
 /** when the table is less than this much percent full, it is shrunk (half the size) */
 #define LYHT_SHRINK_PERCENTAGE 25
 
-/** when the table has less than this much percent empty records, it is rehashed to get rid of all the invalid records */
-#define LYHT_REHASH_PERCENTAGE 2
-
 /** never shrink beyond this size */
 #define LYHT_MIN_SIZE 8
 
@@ -46,31 +43,70 @@
  */
 struct ly_ht_rec {
     uint32_t hash;        /* hash of the value */
-    int32_t hits;         /* collision/overflow value count - 1 (a filled entry has 1 hit,
-                           * special value -1 means a deleted record) */
+    uint32_t next;        /* index of next collision */
     unsigned char val[1]; /* arbitrary-size value */
 } _PACKED;
+
+/* real size, without taking the val[1] in account */
+#define SIZEOF_LY_HT_REC (sizeof(struct ly_ht_rec) - 1)
 
 /**
  * @brief (Very) generic hash table.
  *
- * Hash table with open addressing collision resolution and
- * linear probing of interval 1 (next free record is used).
- * Removal is lazy (removed records are only marked), but
- * if possible, they are fully emptied.
+ * This structure implements a hash table, providing fast accesses to stored
+ * values from their hash.
+ *
+ * The hash table structure contains 2 pointers to tables that are allocated
+ * at initialization:
+ * - a table of records: each record is composed of a struct ly_ht_rec header,
+ *   followed by the user value. The header contains the hash value and a
+ *   next index that can be used to chain records.
+ * - a table of list heads: each list head entry contains the index of the
+ *   first record in the records table whose hash (modulo hash table size)
+ *   is equal to the index of the list head entry. The other matching records
+ *   are chained together.
+ *
+ * The unused records are chained in first_free_rec, which contains the index
+ * of the first unused record entry in the records table.
+ *
+ * The LYHT_NO_RECORD magic value is used when an index points to nothing.
  */
 struct ly_ht {
     uint32_t used;        /* number of values stored in the hash table (filled records) */
     uint32_t size;        /* always holds 2^x == size (is power of 2), actually number of records allocated */
-    uint32_t invalid;     /* number of invalid records (deleted) */
     lyht_value_equal_cb val_equal; /* callback for testing value equivalence */
     void *cb_data;        /* user data callback arbitrary value */
     uint16_t resize;      /* 0 - resizing is disabled, *
                            * 1 - enlarging is enabled, *
                            * 2 - both shrinking and enlarging is enabled */
     uint16_t rec_size;    /* real size (in bytes) of one record for accessing recs array */
+    uint32_t first_free_rec; /* index of the first free record */
+    uint32_t *hlists;     /* pointer to the hlists table */
     unsigned char *recs;  /* pointer to the hash table itself (array of struct ht_rec) */
 };
+
+/* index that points to nothing */
+#define LYHT_NO_RECORD UINT32_MAX
+
+/* get the record associated to */
+static inline struct ly_ht_rec *
+lyht_get_rec(unsigned char *recs, uint16_t rec_size, uint32_t idx)
+{
+    return (struct ly_ht_rec *)&recs[idx * rec_size];
+}
+
+/* Iterate all records in a hlist */
+#define LYHT_ITER_HLIST_RECS(ht, hlist_idx, rec_idx, rec)               \
+    for (rec_idx = ht->hlists[hlist_idx],                               \
+             rec = lyht_get_rec(ht->recs, ht->rec_size, rec_idx);       \
+         rec_idx != LYHT_NO_RECORD;                                     \
+         rec_idx = rec->next,                                           \
+             rec = lyht_get_rec(ht->recs, ht->rec_size, rec_idx))
+
+/* Iterate all records in the hash table */
+#define LYHT_ITER_ALL_RECS(ht, hlist_idx, rec_idx, rec)              \
+    for (hlist_idx = 0; hlist_idx < ht->size; hlist_idx++)           \
+        LYHT_ITER_HLIST_RECS(ht, hlist_idx, rec_idx, rec)
 
 /**
  * @brief Dictionary hash table record.

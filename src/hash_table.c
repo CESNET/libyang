@@ -55,10 +55,29 @@ lyht_hash(const char *key, size_t len)
     return lyht_hash_multi(hash, NULL, len);
 }
 
-struct ly_ht_rec *
-lyht_get_rec(unsigned char *recs, uint16_t rec_size, uint32_t idx)
+static LY_ERR
+lyht_init_hlists_and_records(struct ly_ht *ht)
 {
-    return (struct ly_ht_rec *)&recs[idx * rec_size];
+    struct ly_ht_rec *rec;
+    uint32_t i;
+
+    ht->recs = calloc(ht->size, ht->rec_size);
+    LY_CHECK_ERR_RET(!ht->recs, LOGMEM(NULL), LY_EMEM);
+    for (i = 0; i < ht->size; i++) {
+        rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+        if (i != ht->size)
+            rec->next = i + 1;
+        else
+            rec->next = LYHT_NO_RECORD;
+    }
+
+    ht->hlists = malloc(sizeof(ht->hlists[0]) * ht->size);
+    LY_CHECK_ERR_RET(!ht->hlists, free(ht->recs); LOGMEM(NULL), LY_EMEM);
+    for (i = 0; i < ht->size; i++)
+        ht->hlists[i] = LYHT_NO_RECORD;
+    ht->first_free_rec = 0;
+
+    return LY_SUCCESS;
 }
 
 LIBYANG_API_DEF struct ly_ht *
@@ -80,15 +99,15 @@ lyht_new(uint32_t size, uint16_t val_size, lyht_value_equal_cb val_equal, void *
 
     ht->used = 0;
     ht->size = size;
-    ht->invalid = 0;
     ht->val_equal = val_equal;
     ht->cb_data = cb_data;
     ht->resize = resize;
 
-    ht->rec_size = (sizeof(struct ly_ht_rec) - 1) + val_size;
-    /* allocate the records correctly */
-    ht->recs = calloc(size, ht->rec_size);
-    LY_CHECK_ERR_RET(!ht->recs, free(ht); LOGMEM(NULL), NULL);
+    ht->rec_size = SIZEOF_LY_HT_REC + val_size;
+    if (lyht_init_hlists_and_records(ht) != LY_SUCCESS) {
+        free(ht);
+        return NULL;
+    }
 
     return ht;
 }
@@ -120,14 +139,14 @@ lyht_dup(const struct ly_ht *orig)
 
     LY_CHECK_ARG_RET(NULL, orig, NULL);
 
-    ht = lyht_new(orig->size, orig->rec_size - (sizeof(struct ly_ht_rec) - 1), orig->val_equal, orig->cb_data, orig->resize ? 1 : 0);
+    ht = lyht_new(orig->size, orig->rec_size - SIZEOF_LY_HT_REC, orig->val_equal, orig->cb_data, orig->resize ? 1 : 0);
     if (!ht) {
         return NULL;
     }
 
-    memcpy(ht->recs, orig->recs, (size_t)orig->used * (size_t)orig->rec_size);
+    memcpy(ht->hlists, orig->hlists, sizeof(ht->hlists[0]) * orig->size);
+    memcpy(ht->recs, orig->recs, (size_t)orig->size * orig->rec_size);
     ht->used = orig->used;
-    ht->invalid = orig->invalid;
     return ht;
 }
 
@@ -135,20 +154,18 @@ LIBYANG_API_DEF void
 lyht_free(struct ly_ht *ht, void (*val_free)(void *val_p))
 {
     struct ly_ht_rec *rec;
-    uint32_t i;
+    uint32_t hlist_idx;
+    uint32_t rec_idx;
 
     if (!ht) {
         return;
     }
 
     if (val_free) {
-        for (i = 0; i < ht->size; ++i) {
-            rec = lyht_get_rec(ht->recs, ht->rec_size, i);
-            if (rec->hits > 0) {
-                val_free(&rec->val);
-            }
-        }
+        LYHT_ITER_ALL_RECS(ht, hlist_idx, rec_idx, rec)
+            val_free(&rec->val);
     }
+    free(ht->hlists);
     free(ht->recs);
     free(ht);
 }
@@ -164,11 +181,16 @@ static LY_ERR
 lyht_resize(struct ly_ht *ht, int operation)
 {
     struct ly_ht_rec *rec;
+    uint32_t *old_hlists;
     unsigned char *old_recs;
+    uint32_t old_first_free_rec;
     uint32_t i, old_size;
+    uint32_t rec_idx;
 
+    old_hlists = ht->hlists;
     old_recs = ht->recs;
     old_size = ht->size;
+    old_first_free_rec = ht->first_free_rec;
 
     if (operation > 0) {
         /* double the size */
@@ -178,18 +200,25 @@ lyht_resize(struct ly_ht *ht, int operation)
         ht->size >>= 1;
     }
 
-    ht->recs = calloc(ht->size, ht->rec_size);
-    LY_CHECK_ERR_RET(!ht->recs, LOGMEM(NULL); ht->recs = old_recs; ht->size = old_size, LY_EMEM);
+    if (lyht_init_hlists_and_records(ht) != LY_SUCCESS) {
+        ht->hlists = old_hlists;
+        ht->recs = old_recs;
+        ht->size = old_size;
+        ht->first_free_rec = old_first_free_rec;
+        return LY_EMEM;
+    }
 
-    /* reset used and invalid, it will increase again */
+    /* reset used, it will increase again */
     ht->used = 0;
-    ht->invalid = 0;
 
     /* add all the old records into the new records array */
-    for (i = 0; i < old_size; ++i) {
-        rec = lyht_get_rec(old_recs, ht->rec_size, i);
-        if (rec->hits > 0) {
-            LY_ERR ret = lyht_insert(ht, rec->val, rec->hash, NULL);
+    for (i = 0; i < old_size; i++) {
+        for (rec_idx = old_hlists[i], rec = lyht_get_rec(old_recs, ht->rec_size, rec_idx);
+             rec_idx != LYHT_NO_RECORD;
+             rec_idx = rec->next, rec = lyht_get_rec(old_recs, ht->rec_size, rec_idx)) {
+            LY_ERR ret;
+
+            ret = lyht_insert(ht, rec->val, rec->hash, NULL);
 
             assert(!ret);
             (void)ret;
@@ -198,108 +227,8 @@ lyht_resize(struct ly_ht *ht, int operation)
 
     /* final touches */
     free(old_recs);
+    free(old_hlists);
     return LY_SUCCESS;
-}
-
-/**
- * @brief Search for the first match.
- *
- * @param[in] ht Hash table to search in.
- * @param[in] hash Hash to find.
- * @param[out] rec_p Optional found record.
- * @return LY_SUCCESS hash found, returned its record,
- * @return LY_ENOTFOUND hash not found, returned the record where it would be inserted.
- */
-static LY_ERR
-lyht_find_first(struct ly_ht *ht, uint32_t hash, struct ly_ht_rec **rec_p)
-{
-    struct ly_ht_rec *rec;
-    uint32_t i, idx;
-
-    if (rec_p) {
-        *rec_p = NULL;
-    }
-
-    idx = i = hash & (ht->size - 1);
-    rec = lyht_get_rec(ht->recs, ht->rec_size, idx);
-
-    /* skip through overflow and deleted records */
-    while ((rec->hits != 0) && ((rec->hits == -1) || ((rec->hash & (ht->size - 1)) != idx))) {
-        if ((rec->hits == -1) && rec_p && !(*rec_p)) {
-            /* remember this record for return */
-            *rec_p = rec;
-        }
-        i = (i + 1) % ht->size;
-        if (i == idx) {
-            /* we went through all the records (very unlikely, but possible when many records are invalid),
-             * just return not found */
-            assert(!rec_p || *rec_p);
-            return LY_ENOTFOUND;
-        }
-        rec = lyht_get_rec(ht->recs, ht->rec_size, i);
-    }
-    if (rec->hits == 0) {
-        /* we could not find the value */
-        if (rec_p && !*rec_p) {
-            *rec_p = rec;
-        }
-        return LY_ENOTFOUND;
-    }
-
-    /* we have found a record with equal (shortened) hash */
-    if (rec_p) {
-        *rec_p = rec;
-    }
-    return LY_SUCCESS;
-}
-
-/**
- * @brief Search for the next collision.
- *
- * @param[in] ht Hash table to search in.
- * @param[in,out] last Last returned collision record.
- * @param[in] first First collision record (hits > 1).
- * @return LY_SUCCESS when hash collision found, \p last points to this next collision,
- * @return LY_ENOTFOUND when hash collision not found, \p last points to the record where it would be inserted.
- */
-static LY_ERR
-lyht_find_collision(struct ly_ht *ht, struct ly_ht_rec **last, struct ly_ht_rec *first)
-{
-    struct ly_ht_rec *empty = NULL;
-    uint32_t i, idx;
-
-    assert(last && *last);
-
-    idx = (*last)->hash & (ht->size - 1);
-    i = (((unsigned char *)*last) - ht->recs) / ht->rec_size;
-
-    do {
-        i = (i + 1) % ht->size;
-        *last = lyht_get_rec(ht->recs, ht->rec_size, i);
-        if (*last == first) {
-            /* we went through all the records (very unlikely, but possible when many records are invalid),
-             * just return an invalid record */
-            assert(empty);
-            *last = empty;
-            return LY_ENOTFOUND;
-        }
-
-        if (((*last)->hits == -1) && !empty) {
-            empty = *last;
-        }
-    } while (((*last)->hits != 0) && (((*last)->hits == -1) || (((*last)->hash & (ht->size - 1)) != idx)));
-
-    if ((*last)->hits > 0) {
-        /* we found a collision */
-        assert((*last)->hits == 1);
-        return LY_SUCCESS;
-    }
-
-    /* no next collision found, return the record where it would be inserted */
-    if (empty) {
-        *last = empty;
-    } /* else (*last)->hits == 0, it is already correct */
-    return LY_ENOTFOUND;
 }
 
 /**
@@ -319,9 +248,9 @@ static LY_ERR
 lyht_find_rec(struct ly_ht *ht, void *val_p, uint32_t hash, ly_bool mod, struct ly_ht_rec **crec_p, uint32_t *col,
         struct ly_ht_rec **rec_p)
 {
-    struct ly_ht_rec *rec, *crec;
-    uint32_t i, c;
-    LY_ERR r;
+    uint32_t hlist_idx = hash & (ht->size - 1);
+    struct ly_ht_rec *rec;
+    uint32_t rec_idx;
 
     if (crec_p) {
         *crec_p = NULL;
@@ -331,40 +260,17 @@ lyht_find_rec(struct ly_ht *ht, void *val_p, uint32_t hash, ly_bool mod, struct 
     }
     *rec_p = NULL;
 
-    if (lyht_find_first(ht, hash, &rec)) {
-        /* not found */
-        return LY_ENOTFOUND;
-    }
-    if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, mod, ht->cb_data)) {
-        /* even the value matches */
-        if (crec_p) {
-            *crec_p = rec;
-        }
-        if (col) {
-            *col = 0;
-        }
-        *rec_p = rec;
-        return LY_SUCCESS;
-    }
-
-    /* some collisions, we need to go through them, too */
-    crec = rec;
-    c = crec->hits;
-    for (i = 1; i < c; ++i) {
-        r = lyht_find_collision(ht, &rec, crec);
-        assert(!r);
-        (void)r;
-
-        /* compare values */
+    LYHT_ITER_HLIST_RECS(ht, hlist_idx, rec_idx, rec) {
         if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, mod, ht->cb_data)) {
             if (crec_p) {
-                *crec_p = crec;
-            }
-            if (col) {
-                *col = i;
+                *crec_p = rec;
             }
             *rec_p = rec;
             return LY_SUCCESS;
+        }
+
+        if (col) {
+            *col = *col + 1;
         }
     }
 
@@ -390,8 +296,8 @@ lyht_find_next_with_collision_cb(struct ly_ht *ht, void *val_p, uint32_t hash,
         lyht_value_equal_cb collision_val_equal, void **match_p)
 {
     struct ly_ht_rec *rec, *crec;
-    uint32_t i, c;
-    LY_ERR r;
+    uint32_t rec_idx;
+    uint32_t i;
 
     /* find the record of the previously found value */
     if (lyht_find_rec(ht, val_p, hash, 1, &crec, &i, &rec)) {
@@ -399,12 +305,9 @@ lyht_find_next_with_collision_cb(struct ly_ht *ht, void *val_p, uint32_t hash,
         LOGINT_RET(NULL);
     }
 
-    /* go through collisions and find the next one after the previous one */
-    c = crec->hits;
-    for (++i; i < c; ++i) {
-        r = lyht_find_collision(ht, &rec, crec);
-        assert(!r);
-        (void)r;
+    for (rec_idx = rec->next, rec = lyht_get_rec(ht->recs, ht->rec_size, rec_idx);
+         rec_idx != LYHT_NO_RECORD;
+         rec_idx = rec->next, rec = lyht_get_rec(ht->recs, ht->rec_size, rec_idx)) {
 
         if (rec->hash != hash) {
             continue;
@@ -437,63 +340,34 @@ lyht_find_next(struct ly_ht *ht, void *val_p, uint32_t hash, void **match_p)
     return lyht_find_next_with_collision_cb(ht, val_p, hash, NULL, match_p);
 }
 
-LIBYANG_API_DEF LY_ERR
-lyht_insert_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_value_equal_cb resize_val_equal,
+static LY_ERR
+__lyht_insert_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_value_equal_cb resize_val_equal,
         void **match_p)
 {
+    uint32_t hlist_idx = hash & (ht->size - 1);
     LY_ERR r, ret = LY_SUCCESS;
-    struct ly_ht_rec *rec, *crec = NULL;
-    int32_t i;
+    struct ly_ht_rec *rec;
     lyht_value_equal_cb old_val_equal = NULL;
+    uint32_t rec_idx;
 
-    if (!lyht_find_first(ht, hash, &rec)) {
-        /* we found matching shortened hash */
-        if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
-            /* even the value matches */
-            if (match_p) {
-                *match_p = (void *)&rec->val;
-            }
-            return LY_EEXIST;
+    if (lyht_find_rec(ht, val_p, hash, 1, NULL, NULL, &rec) == LY_SUCCESS) {
+        if (rec && match_p) {
+            *match_p = rec->val;
         }
-
-        /* some collisions, we need to go through them, too */
-        crec = rec;
-        for (i = 1; i < crec->hits; ++i) {
-            r = lyht_find_collision(ht, &rec, crec);
-            assert(!r);
-
-            /* compare values */
-            if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
-                if (match_p) {
-                    *match_p = (void *)&rec->val;
-                }
-                return LY_EEXIST;
-            }
-        }
-
-        /* value not found, get the record where it will be inserted */
-        r = lyht_find_collision(ht, &rec, crec);
-        assert(r);
+        return LY_EEXIST;
     }
 
-    /* insert it into the returned record */
-    assert(rec->hits < 1);
-    if (rec->hits < 0) {
-        --ht->invalid;
-    }
+    rec_idx = ht->first_free_rec;
+    assert(rec_idx < ht->size);
+    rec = lyht_get_rec(ht->recs, ht->rec_size, rec_idx);
+    ht->first_free_rec = rec->next;
+    rec->next = ht->hlists[hlist_idx];
+    ht->hlists[hlist_idx] = rec_idx;
+
     rec->hash = hash;
-    rec->hits = 1;
-    memcpy(&rec->val, val_p, ht->rec_size - (sizeof(struct ly_ht_rec) - 1));
+    memcpy(&rec->val, val_p, ht->rec_size - SIZEOF_LY_HT_REC);
     if (match_p) {
         *match_p = (void *)&rec->val;
-    }
-
-    if (crec) {
-        /* there was a collision, increase hits */
-        if (crec->hits == INT32_MAX) {
-            LOGINT(NULL);
-        }
-        ++crec->hits;
     }
 
     /* check size & enlarge if needed */
@@ -525,60 +399,50 @@ lyht_insert_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_va
 }
 
 LIBYANG_API_DEF LY_ERR
+lyht_insert_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_value_equal_cb resize_val_equal,
+        void **match_p)
+{
+    return __lyht_insert_with_resize_cb(ht, val_p, hash, resize_val_equal, match_p);
+}
+
+LIBYANG_API_DEF LY_ERR
 lyht_insert(struct ly_ht *ht, void *val_p, uint32_t hash, void **match_p)
 {
-    return lyht_insert_with_resize_cb(ht, val_p, hash, NULL, match_p);
+    return __lyht_insert_with_resize_cb(ht, val_p, hash, NULL, match_p);
 }
 
 LIBYANG_API_DEF LY_ERR
 lyht_remove_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_value_equal_cb resize_val_equal)
 {
-    struct ly_ht_rec *rec, *crec;
-    int32_t i;
-    ly_bool first_matched = 0;
+    struct ly_ht_rec *found_rec, *prev_rec, *rec;
+    uint32_t hlist_idx = hash & (ht->size - 1);
     LY_ERR r, ret = LY_SUCCESS;
     lyht_value_equal_cb old_val_equal = NULL;
+    uint32_t prev_rec_idx;
+    uint32_t rec_idx;
 
-    LY_CHECK_ERR_RET(lyht_find_first(ht, hash, &rec), LOGARG(NULL, hash), LY_ENOTFOUND); /* hash not found */
+    LY_CHECK_ERR_RET(lyht_find_rec(ht, val_p, hash, 1, NULL, NULL, &found_rec),
+                     LOGARG(NULL, hash), LY_ENOTFOUND); /* hash not found */
 
-    if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
-        /* even the value matches */
-        first_matched = 1;
-    }
-
-    /* we always need to go through collisions */
-    crec = rec;
-    for (i = 1; i < crec->hits; ++i) {
-        r = lyht_find_collision(ht, &rec, crec);
-        assert(!r);
-
-        /* compare values */
-        if (!first_matched && (rec->hash == hash) && ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
+    prev_rec_idx = LYHT_NO_RECORD;
+    LYHT_ITER_HLIST_RECS(ht, hlist_idx, rec_idx, rec) {
+        if (rec == found_rec)
             break;
-        }
+        prev_rec_idx = rec_idx;
     }
 
-    if (i < crec->hits) {
-        /* one of collisions matched, reduce collision count, remove the record */
-        assert(!first_matched);
-        --crec->hits;
-        rec->hits = -1;
-    } else if (first_matched) {
-        /* the first record matches */
-        if (crec != rec) {
-            /* ... so put the last collision in its place */
-            rec->hits = crec->hits - 1;
-            memcpy(crec, rec, ht->rec_size);
-        }
-        rec->hits = -1;
+    if (prev_rec_idx == LYHT_NO_RECORD) {
+        ht->hlists[hlist_idx] = rec->next;
     } else {
-        /* value not found even in collisions */
-        return LY_ENOTFOUND;
+        prev_rec = lyht_get_rec(ht->recs, ht->rec_size, prev_rec_idx);
+        prev_rec->next = rec->next;
     }
+
+    rec->next = ht->first_free_rec;
+    ht->first_free_rec = rec_idx;
 
     /* check size & shrink if needed */
     --ht->used;
-    ++ht->invalid;
     if (ht->resize == 2) {
         r = (ht->used * LYHT_HUNDRED_PERCENTAGE) / ht->size;
         if ((r < LYHT_SHRINK_PERCENTAGE) && (ht->size > LYHT_MIN_SIZE)) {
@@ -595,21 +459,6 @@ lyht_remove_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_va
         }
     }
 
-    /* rehash all records if needed */
-    r = ((ht->size - ht->used - ht->invalid) * 100) / ht->size;
-    if (r < LYHT_REHASH_PERCENTAGE) {
-        if (resize_val_equal) {
-            old_val_equal = lyht_set_cb(ht, resize_val_equal);
-        }
-
-        /* rehash */
-        ret = lyht_resize(ht, 0);
-
-        if (resize_val_equal) {
-            lyht_set_cb(ht, old_val_equal);
-        }
-    }
-
     return ret;
 }
 
@@ -622,23 +471,16 @@ lyht_remove(struct ly_ht *ht, void *val_p, uint32_t hash)
 LIBYANG_API_DEF uint32_t
 lyht_get_fixed_size(uint32_t item_count)
 {
-    uint32_t i, size = 0;
+    if (item_count == 0)
+        return 1;
 
-    /* detect number of upper zero bits in the items' counter value ... */
-    for (i = (sizeof item_count * CHAR_BIT) - 1; i > 0; i--) {
-        size = item_count << i;
-        size = size >> i;
-        if (size == item_count) {
-            break;
-        }
-    }
-    assert(i);
+    /* return next power of 2 (greater or equal) */
+    item_count--;
+    item_count |= item_count >> 1;
+    item_count |= item_count >> 2;
+    item_count |= item_count >> 4;
+    item_count |= item_count >> 8;
+    item_count |= item_count >> 16;
 
-    /* ... and then we convert it to the position of the highest non-zero bit ... */
-    i = (sizeof item_count * CHAR_BIT) - i;
-
-    /* ... and by using it to shift 1 to the left we get the closest sufficient hash table size */
-    size = 1 << i;
-
-    return size;
+    return item_count + 1;
 }
