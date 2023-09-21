@@ -65,10 +65,11 @@ lyht_init_hlists_and_records(struct ly_ht *ht)
     LY_CHECK_ERR_RET(!ht->recs, LOGMEM(NULL), LY_EMEM);
     for (i = 0; i < ht->size; i++) {
         rec = lyht_get_rec(ht->recs, ht->rec_size, i);
-        if (i != ht->size)
+        if (i != ht->size) {
             rec->next = i + 1;
-        else
+        } else {
             rec->next = LYHT_NO_RECORD;
+        }
     }
 
     ht->hlists = malloc(sizeof(ht->hlists[0]) * ht->size);
@@ -164,8 +165,9 @@ lyht_free(struct ly_ht *ht, void (*val_free)(void *val_p))
     }
 
     if (val_free) {
-        LYHT_ITER_ALL_RECS(ht, hlist_idx, rec_idx, rec)
+        LYHT_ITER_ALL_RECS(ht, hlist_idx, rec_idx, rec) {
             val_free(&rec->val);
+        }
     }
     free(ht->hlists);
     free(ht->recs);
@@ -216,14 +218,15 @@ lyht_resize(struct ly_ht *ht, int operation, int check)
     /* add all the old records into the new records array */
     for (i = 0; i < old_size; i++) {
         for (rec_idx = old_hlists[i].first, rec = lyht_get_rec(old_recs, ht->rec_size, rec_idx);
-             rec_idx != LYHT_NO_RECORD;
-             rec_idx = rec->next, rec = lyht_get_rec(old_recs, ht->rec_size, rec_idx)) {
+                rec_idx != LYHT_NO_RECORD;
+                rec_idx = rec->next, rec = lyht_get_rec(old_recs, ht->rec_size, rec_idx)) {
             LY_ERR ret;
 
-            if (check)
+            if (check) {
                 ret = lyht_insert(ht, rec->val, rec->hash, NULL);
-            else
+            } else {
                 ret = lyht_insert_no_check(ht, rec->val, rec->hash, NULL);
+            }
 
             assert(!ret);
             (void)ret;
@@ -311,8 +314,8 @@ lyht_find_next_with_collision_cb(struct ly_ht *ht, void *val_p, uint32_t hash,
     }
 
     for (rec_idx = rec->next, rec = lyht_get_rec(ht->recs, ht->rec_size, rec_idx);
-         rec_idx != LYHT_NO_RECORD;
-         rec_idx = rec->next, rec = lyht_get_rec(ht->recs, ht->rec_size, rec_idx)) {
+            rec_idx != LYHT_NO_RECORD;
+            rec_idx = rec->next, rec = lyht_get_rec(ht->recs, ht->rec_size, rec_idx)) {
 
         if (rec->hash != hash) {
             continue;
@@ -442,24 +445,27 @@ lyht_remove_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_va
     uint32_t rec_idx;
 
     LY_CHECK_ERR_RET(lyht_find_rec(ht, val_p, hash, 1, NULL, NULL, &found_rec),
-                     LOGARG(NULL, hash), LY_ENOTFOUND); /* hash not found */
+            LOGARG(NULL, hash), LY_ENOTFOUND);          /* hash not found */
 
     prev_rec_idx = LYHT_NO_RECORD;
     LYHT_ITER_HLIST_RECS(ht, hlist_idx, rec_idx, rec) {
-        if (rec == found_rec)
+        if (rec == found_rec) {
             break;
+        }
         prev_rec_idx = rec_idx;
     }
 
     if (prev_rec_idx == LYHT_NO_RECORD) {
         ht->hlists[hlist_idx].first = rec->next;
-        if (rec->next == LYHT_NO_RECORD)
+        if (rec->next == LYHT_NO_RECORD) {
             ht->hlists[hlist_idx].last = LYHT_NO_RECORD;
+        }
     } else {
         prev_rec = lyht_get_rec(ht->recs, ht->rec_size, prev_rec_idx);
         prev_rec->next = rec->next;
-        if (rec->next == LYHT_NO_RECORD)
+        if (rec->next == LYHT_NO_RECORD) {
             ht->hlists[hlist_idx].last = prev_rec_idx;
+        }
     }
 
     rec->next = ht->first_free_rec;
@@ -495,8 +501,9 @@ lyht_remove(struct ly_ht *ht, void *val_p, uint32_t hash)
 LIBYANG_API_DEF uint32_t
 lyht_get_fixed_size(uint32_t item_count)
 {
-    if (item_count == 0)
+    if (item_count == 0) {
         return 1;
+    }
 
     /* return next power of 2 (greater or equal) */
     item_count--;

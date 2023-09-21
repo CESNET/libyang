@@ -182,8 +182,7 @@ lyd_insert_hash(struct lyd_node *node)
             }
         }
         if (u >= LYD_HT_MIN_ITEMS) {
-            /* create hash table, insert all the children */
-            node->parent->children_ht = lyht_new(1, sizeof(struct lyd_node *), lyd_hash_table_val_equal, NULL, 1);
+            node->parent->children_ht = lyht_new(lyht_get_fixed_size(u), sizeof(struct lyd_node *), lyd_hash_table_val_equal, NULL, 1);
             LY_LIST_FOR(node->parent->child, iter) {
                 if (iter->schema) {
                     LY_CHECK_RET(lyd_insert_hash_add(node->parent->children_ht, iter, 1));
