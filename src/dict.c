@@ -70,25 +70,23 @@ lydict_clean(struct ly_dict *dict)
 {
     struct ly_dict_rec *dict_rec = NULL;
     struct ly_ht_rec *rec = NULL;
+    uint32_t hlist_idx;
+    uint32_t rec_idx;
 
     LY_CHECK_ARG_RET(NULL, dict, );
 
-    for (uint32_t i = 0; i < dict->hash_tab->size; i++) {
-        /* get ith record */
-        rec = (struct ly_ht_rec *)&dict->hash_tab->recs[i * dict->hash_tab->rec_size];
-        if (rec->hits == 1) {
-            /*
-             * this should not happen, all records inserted into
-             * dictionary are supposed to be removed using lydict_remove()
-             * before calling lydict_clean()
-             */
-            dict_rec = (struct ly_dict_rec *)rec->val;
-            LOGWRN(NULL, "String \"%s\" not freed from the dictionary, refcount %d", dict_rec->value, dict_rec->refcount);
-            /* if record wasn't removed before free string allocated for that record */
+    LYHT_ITER_ALL_RECS(dict->hash_tab, hlist_idx, rec_idx, rec) {
+        /*
+         * this should not happen, all records inserted into
+         * dictionary are supposed to be removed using lydict_remove()
+         * before calling lydict_clean()
+         */
+        dict_rec = (struct ly_dict_rec *)rec->val;
+        LOGWRN(NULL, "String \"%s\" not freed from the dictionary, refcount %d", dict_rec->value, dict_rec->refcount);
+        /* if record wasn't removed before free string allocated for that record */
 #ifdef NDEBUG
-            free(dict_rec->value);
+        free(dict_rec->value);
 #endif
-        }
     }
 
     /* free table and destroy mutex */
