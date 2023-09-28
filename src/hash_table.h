@@ -172,6 +172,19 @@ LIBYANG_API_DECL LY_ERR lyht_find_next_with_collision_cb(struct ly_ht *ht, void 
 LIBYANG_API_DECL LY_ERR lyht_insert(struct ly_ht *ht, void *val_p, uint32_t hash, void **match_p);
 
 /**
+ * @brief Insert a value into a hash table, without checking whether the value has already been inserted.
+ *
+ * @param[in] ht Hash table to insert into.
+ * @param[in] val_p Pointer to the value to insert. Be careful, if the values stored in the hash table
+ * are pointers, @p val_p must be a pointer to a pointer.
+ * @param[in] hash Hash of the stored value.
+ * @param[out] match_p Pointer to the stored value, optional
+ * @return LY_SUCCESS on success,
+ * @return LY_EMEM in case of memory allocation failure.
+ */
+LIBYANG_API_DECL LY_ERR lyht_insert_no_check(struct ly_ht *ht, void *val_p, uint32_t hash, void **match_p);
+
+/**
  * @brief Insert a value into hash table. Same functionality as ::lyht_insert()
  * but allows to specify a temporary val equal callback to be used in case the hash table
  * will be resized after successful insertion.
