@@ -117,11 +117,11 @@ test_ht_resize(void **state)
     for (i = 0; i < 16; ++i) {
         if ((i >= 2) && (i < 8)) {
             /* inserted data on indexes 2-7 */
-            assert_int_not_equal(UINT32_MAX, ht->hlists[i]);
+            assert_int_not_equal(UINT32_MAX, ht->hlists[i].first);
             assert_int_equal(LY_SUCCESS, lyht_find(ht, &i, i, NULL));
         } else {
             /* nothing otherwise */
-            assert_int_equal(UINT32_MAX, ht->hlists[i]);
+            assert_int_equal(UINT32_MAX, ht->hlists[i].first);
             assert_int_equal(LY_ENOTFOUND, lyht_find(ht, &i, i, NULL));
         }
     }
@@ -172,9 +172,9 @@ test_ht_collisions(void **UNUSED(state))
     /* check all records */
     for (i = 0; i < 8; ++i) {
         if (i == 2)
-            assert_int_not_equal(UINT32_MAX, ht->hlists[i]);
+            assert_int_not_equal(UINT32_MAX, ht->hlists[i].first);
         else
-            assert_int_equal(UINT32_MAX, ht->hlists[i]);
+            assert_int_equal(UINT32_MAX, ht->hlists[i].first);
     }
     for (i = 0; i < 8; ++i) {
         if (i >= 2 && i < 6)
@@ -182,7 +182,7 @@ test_ht_collisions(void **UNUSED(state))
         else
             assert_int_equal(LY_ENOTFOUND, lyht_find(ht, &i, 2, NULL));
     }
-    rec_idx = ht->hlists[2];
+    rec_idx = ht->hlists[2].first;
     count = 0;
     while (rec_idx != UINT32_MAX) {
         rec = lyht_get_rec(ht->recs, ht->rec_size, rec_idx);
@@ -203,9 +203,9 @@ test_ht_collisions(void **UNUSED(state))
     /* check all records */
     for (i = 0; i < 8; ++i) {
         if (i == 2)
-            assert_int_not_equal(UINT32_MAX, ht->hlists[i]);
+            assert_int_not_equal(UINT32_MAX, ht->hlists[i].first);
         else
-            assert_int_equal(UINT32_MAX, ht->hlists[i]);
+            assert_int_equal(UINT32_MAX, ht->hlists[i].first);
     }
     for (i = 0; i < 8; ++i) {
         if (i == 3 || i == 5)
@@ -213,7 +213,7 @@ test_ht_collisions(void **UNUSED(state))
         else
             assert_int_equal(LY_ENOTFOUND, lyht_find(ht, &i, 2, NULL));
     }
-    rec_idx = ht->hlists[2];
+    rec_idx = ht->hlists[2].first;
     count = 0;
     while (rec_idx != UINT32_MAX) {
         rec = lyht_get_rec(ht->recs, ht->rec_size, rec_idx);
@@ -237,7 +237,7 @@ test_ht_collisions(void **UNUSED(state))
 
     /* check all records */
     for (i = 0; i < 8; ++i) {
-        assert_int_equal(UINT32_MAX, ht->hlists[i]);
+        assert_int_equal(UINT32_MAX, ht->hlists[i].first);
     }
 
     lyht_free(ht, NULL);
