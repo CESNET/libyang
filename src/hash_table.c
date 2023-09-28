@@ -180,7 +180,7 @@ lyht_free(struct ly_ht *ht, void (*val_free)(void *val_p))
  * @return LY_ERR value.
  */
 static LY_ERR
-lyht_resize(struct ly_ht *ht, int operation)
+lyht_resize(struct ly_ht *ht, int operation, int check)
 {
     struct ly_ht_rec *rec;
     struct ly_ht_hlist *old_hlists;
@@ -220,7 +220,10 @@ lyht_resize(struct ly_ht *ht, int operation)
              rec_idx = rec->next, rec = lyht_get_rec(old_recs, ht->rec_size, rec_idx)) {
             LY_ERR ret;
 
-            ret = lyht_insert(ht, rec->val, rec->hash, NULL);
+            if (check)
+                ret = lyht_insert(ht, rec->val, rec->hash, NULL);
+            else
+                ret = lyht_insert_no_check(ht, rec->val, rec->hash, NULL);
 
             assert(!ret);
             (void)ret;
@@ -344,7 +347,7 @@ lyht_find_next(struct ly_ht *ht, void *val_p, uint32_t hash, void **match_p)
 
 static LY_ERR
 __lyht_insert_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_value_equal_cb resize_val_equal,
-        void **match_p)
+        void **match_p, int check)
 {
     uint32_t hlist_idx = hash & (ht->size - 1);
     LY_ERR r, ret = LY_SUCCESS;
@@ -352,11 +355,13 @@ __lyht_insert_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_
     lyht_value_equal_cb old_val_equal = NULL;
     uint32_t rec_idx;
 
-    if (lyht_find_rec(ht, val_p, hash, 1, NULL, NULL, &rec) == LY_SUCCESS) {
-        if (rec && match_p) {
-            *match_p = rec->val;
+    if (check) {
+        if (lyht_find_rec(ht, val_p, hash, 1, NULL, NULL, &rec) == LY_SUCCESS) {
+            if (rec && match_p) {
+                *match_p = rec->val;
+            }
+            return LY_EEXIST;
         }
-        return LY_EEXIST;
     }
 
     rec_idx = ht->first_free_rec;
@@ -393,7 +398,7 @@ __lyht_insert_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_
             }
 
             /* enlarge */
-            ret = lyht_resize(ht, 1);
+            ret = lyht_resize(ht, 1, check);
             /* if hash_table was resized, we need to find new matching value */
             if ((ret == LY_SUCCESS) && match_p) {
                 lyht_find(ht, val_p, hash, match_p);
@@ -411,13 +416,19 @@ LIBYANG_API_DEF LY_ERR
 lyht_insert_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_value_equal_cb resize_val_equal,
         void **match_p)
 {
-    return __lyht_insert_with_resize_cb(ht, val_p, hash, resize_val_equal, match_p);
+    return __lyht_insert_with_resize_cb(ht, val_p, hash, resize_val_equal, match_p, 1);
 }
 
 LIBYANG_API_DEF LY_ERR
 lyht_insert(struct ly_ht *ht, void *val_p, uint32_t hash, void **match_p)
 {
-    return __lyht_insert_with_resize_cb(ht, val_p, hash, NULL, match_p);
+    return __lyht_insert_with_resize_cb(ht, val_p, hash, NULL, match_p, 1);
+}
+
+LIBYANG_API_DEF LY_ERR
+lyht_insert_no_check(struct ly_ht *ht, void *val_p, uint32_t hash, void **match_p)
+{
+    return __lyht_insert_with_resize_cb(ht, val_p, hash, NULL, match_p, 0);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -464,7 +475,7 @@ lyht_remove_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_va
             }
 
             /* shrink */
-            ret = lyht_resize(ht, -1);
+            ret = lyht_resize(ht, -1, 1);
 
             if (resize_val_equal) {
                 lyht_set_cb(ht, old_val_equal);
