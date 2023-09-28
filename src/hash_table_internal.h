@@ -50,6 +50,11 @@ struct ly_ht_rec {
 /* real size, without taking the val[1] in account */
 #define SIZEOF_LY_HT_REC (sizeof(struct ly_ht_rec) - 1)
 
+struct ly_ht_hlist {
+    uint32_t first;
+    uint32_t last;
+};
+
 /**
  * @brief (Very) generic hash table.
  *
@@ -81,7 +86,7 @@ struct ly_ht {
                            * 2 - both shrinking and enlarging is enabled */
     uint16_t rec_size;    /* real size (in bytes) of one record for accessing recs array */
     uint32_t first_free_rec; /* index of the first free record */
-    uint32_t *hlists;     /* pointer to the hlists table */
+    struct ly_ht_hlist *hlists; /* pointer to the hlists table */
     unsigned char *recs;  /* pointer to the hash table itself (array of struct ht_rec) */
 };
 
@@ -97,7 +102,7 @@ lyht_get_rec(unsigned char *recs, uint16_t rec_size, uint32_t idx)
 
 /* Iterate all records in a hlist */
 #define LYHT_ITER_HLIST_RECS(ht, hlist_idx, rec_idx, rec)               \
-    for (rec_idx = ht->hlists[hlist_idx],                               \
+    for (rec_idx = ht->hlists[hlist_idx].first,                         \
              rec = lyht_get_rec(ht->recs, ht->rec_size, rec_idx);       \
          rec_idx != LYHT_NO_RECORD;                                     \
          rec_idx = rec->next,                                           \
