@@ -97,12 +97,14 @@ lydict_clean(struct ly_dict *dict)
 }
 
 static ly_bool
-lydict_resize_val_eq(void *val1_p, void *val2_p, ly_bool mod, void *cb_data)
+lydict_resize_val_eq(void *val1_p, void *val2_p, ly_bool mod, void *UNUSED(cb_data))
 {
+    const char *str1, *str2;
+
     LY_CHECK_ARG_RET(NULL, val1_p, val2_p, 0);
 
-    const char *str1 = ((struct ly_dict_rec *)val1_p)->value;
-    const char *str2 = ((struct ly_dict_rec *)val2_p)->value;
+    str1 = ((struct ly_dict_rec *)val1_p)->value;
+    str2 = ((struct ly_dict_rec *)val2_p)->value;
 
     LY_CHECK_ERR_RET(!str1, LOGARG(NULL, val1_p), 0);
     LY_CHECK_ERR_RET(!str2, LOGARG(NULL, val2_p), 0);
@@ -114,7 +116,9 @@ lydict_resize_val_eq(void *val1_p, void *val2_p, ly_bool mod, void *cb_data)
         }
     } else {
         /* used when finding the original value again in the resized table */
-        return lydict_val_eq(val1_p, val2_p, mod, cb_data);
+        if (str1 == str2) {
+            return 1;
+        }
     }
 
     return 0;
