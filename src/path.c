@@ -952,22 +952,22 @@ ly_path_dup_predicates(const struct ly_ctx *ctx, const struct ly_path_predicate 
         LY_ARRAY_INCREMENT(*dup);
         (*dup)[u].type = pred->type;
 
-        switch (pred->type) {
+        switch (pred[u].type) {
         case LY_PATH_PREDTYPE_POSITION:
             /* position-predicate */
-            (*dup)[u].position = pred->position;
+            (*dup)[u].position = pred[u].position;
             break;
         case LY_PATH_PREDTYPE_LIST:
         case LY_PATH_PREDTYPE_LEAFLIST:
             /* key-predicate or leaf-list-predicate */
-            (*dup)[u].key = pred->key;
-            pred->value.realtype->plugin->duplicate(ctx, &pred->value, &(*dup)[u].value);
-            LY_ATOMIC_INC_BARRIER(((struct lysc_type *)pred->value.realtype)->refcount);
+            (*dup)[u].key = pred[u].key;
+            pred[u].value.realtype->plugin->duplicate(ctx, &pred[u].value, &(*dup)[u].value);
+            LY_ATOMIC_INC_BARRIER(((struct lysc_type *)pred[u].value.realtype)->refcount);
             break;
         case LY_PATH_PREDTYPE_LIST_VAR:
             /* key-predicate with a variable */
-            (*dup)[u].key = pred->key;
-            (*dup)[u].variable = strdup(pred->variable);
+            (*dup)[u].key = pred[u].key;
+            (*dup)[u].variable = strdup(pred[u].variable);
             break;
         }
     }
