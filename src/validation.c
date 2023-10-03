@@ -395,7 +395,7 @@ cleanup:
 static LY_ERR
 lyd_validate_duplicates(const struct lyd_node *first, const struct lyd_node *node, uint32_t val_opts)
 {
-    struct lyd_node **match_p;
+    struct lyd_node **match_p, *match;
     ly_bool fail = 0;
 
     assert(node->flags & LYD_NEW);
@@ -408,7 +408,12 @@ lyd_validate_duplicates(const struct lyd_node *first, const struct lyd_node *nod
 
     /* find exactly the same next instance using hashes if possible */
     if (node->parent && node->parent->children_ht) {
-        if (!lyht_find_next(node->parent->children_ht, &node, node->hash, (void **)&match_p)) {
+        lyd_find_sibling_first(first, node, &match);
+        assert(match);
+
+        if (match != node) {
+            fail = 1;
+        } else if (!lyht_find_next(node->parent->children_ht, &node, node->hash, (void **)&match_p)) {
             fail = 1;
         }
     } else {
