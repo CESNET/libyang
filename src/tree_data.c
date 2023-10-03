@@ -102,7 +102,6 @@ lyd_parse(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct 
     LY_ERR r = LY_SUCCESS, rc = LY_SUCCESS;
     struct lyd_ctx *lydctx = NULL;
     struct ly_set parsed = {0};
-    struct lyd_node *first;
     uint32_t i, int_opts = 0;
     ly_bool subtree_sibling = 0;
 
@@ -148,11 +147,9 @@ lyd_parse(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct 
         }
     }
 
-    if (parent) {
-        /* get first top-level sibling */
-        for (first = parent; first->parent; first = lyd_parent(first)) {}
-        first = lyd_first_sibling(first);
-        first_p = &first;
+    if (parent && parsed.count) {
+        /* use the first parsed node */
+        first_p = &parsed.dnodes[0];
     }
 
     if (!(parse_opts & LYD_PARSE_ONLY)) {

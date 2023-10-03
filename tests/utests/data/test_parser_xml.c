@@ -977,6 +977,38 @@ test_metadata(void **state)
     CHECK_LOG_CTX("Invalid enumeration value \"value\".", "Path \"/a:c/x/@a:attr\", line number 1.");
 }
 
+static void
+test_subtree(void **state)
+{
+    const char *data;
+    struct ly_in *in;
+    struct lyd_node *tree;
+
+    /* prepare data with the parent */
+    data = "<l1 xmlns=\"urn:tests:a\">\n"
+            "  <a>val_a</a>\n"
+            "  <b>val_b</b>\n"
+            "  <c>1</c>\n"
+            "</l1>\n";
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+
+    /* parse a subtree of it */
+    data = "<cont xmlns=\"urn:tests:a\">\n"
+            "  <e>true</e>\n"
+            "</cont>\n";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data(UTEST_LYCTX, tree, in, LYD_XML, 0, LYD_VALIDATE_PRESENT, NULL));
+    ly_in_free(in, 0);
+
+    /* parse another container, fails */
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(UTEST_LYCTX, tree, in, LYD_XML, 0, LYD_VALIDATE_PRESENT, NULL));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Duplicate instance of \"cont\".", "Data location \"/a:l1[a='val_a'][b='val_b'][c='1']/cont\".");
+
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -999,6 +1031,7 @@ main(void)
         UTEST(test_filter_attributes, setup),
         UTEST(test_data_skip, setup),
         UTEST(test_metadata, setup),
+        UTEST(test_subtree, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

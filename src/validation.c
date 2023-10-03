@@ -1834,7 +1834,7 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
         }
 
         /* validate new top-level nodes of this module, autodelete */
-        r = lyd_validate_new(first2, NULL, mod, val_opts, diff);
+        r = lyd_validate_new(first2, *first2 ? lysc_data_parent((*first2)->schema) : NULL, mod, val_opts, diff);
         LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
         /* add all top-level defaults for this module, if going to validate subtree, do not add into unres sets
@@ -1846,7 +1846,7 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
         if (val_opts & LYD_VALIDATE_NO_DEFAULTS) {
             impl_opts |= LYD_IMPLICIT_NO_DEFAULTS;
         }
-        r = lyd_new_implicit_r(NULL, first2, NULL, mod, validate_subtree ? NULL : node_when_p,
+        r = lyd_new_implicit_r(lyd_parent(*first2), first2, NULL, mod, validate_subtree ? NULL : node_when_p,
                 validate_subtree ? NULL : node_types_p, validate_subtree ? NULL : ext_node_p, impl_opts, diff);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
