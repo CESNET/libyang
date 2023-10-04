@@ -404,7 +404,8 @@ __lyht_insert_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_
             ret = lyht_resize(ht, 1, check);
             /* if hash_table was resized, we need to find new matching value */
             if ((ret == LY_SUCCESS) && match_p) {
-                lyht_find(ht, val_p, hash, match_p);
+                ret = lyht_find(ht, val_p, hash, match_p);
+                assert(!ret);
             }
 
             if (resize_val_equal) {
