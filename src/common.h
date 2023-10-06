@@ -263,7 +263,7 @@ int LY_VCODE_INSTREXP_len(const char *str);
 /* default maximum characters to print in LY_VCODE_INCHILDSTMT */
 #define LY_VCODE_INSTREXP_MAXLEN 20
 
-#define LY_VCODE_INCHAR         LYVE_SYNTAX, "Invalid character 0x%x."
+#define LY_VCODE_INCHAR         LYVE_SYNTAX, "Invalid character 0x%hhx."
 #define LY_VCODE_INSTREXP       LYVE_SYNTAX, "Invalid character sequence \"%.*s\", expected %s."
 #define LY_VCODE_EOF            LYVE_SYNTAX, "Unexpected end-of-input."
 #define LY_VCODE_NTERM          LYVE_SYNTAX, "%s not terminated."
