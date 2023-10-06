@@ -176,12 +176,7 @@ ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read)
     uint32_t c, aux;
     size_t len;
 
-    if (bytes_read) {
-        (*bytes_read) = 0;
-    }
-
     c = (*input)[0];
-    LY_CHECK_RET(!c, LY_EINVAL);
 
     if (!(c & 0x80)) {
         /* one byte character */
@@ -238,6 +233,9 @@ ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read)
             return LY_EINVAL;
         }
     } else {
+        if (bytes_read) {
+            (*bytes_read) = 0;
+        }
         return LY_EINVAL;
     }
 
