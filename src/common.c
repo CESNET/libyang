@@ -183,7 +183,7 @@ ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read)
         len = 1;
 
         if ((c < 0x20) && (c != 0x9) && (c != 0xa) && (c != 0xd)) {
-            return LY_EINVAL;
+            goto error;
         }
     } else if ((c & 0xe0) == 0xc0) {
         /* two bytes character */
@@ -191,12 +191,12 @@ ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read)
 
         aux = (*input)[1];
         if ((aux & 0xc0) != 0x80) {
-            return LY_EINVAL;
+            goto error;
         }
         c = ((c & 0x1f) << 6) | (aux & 0x3f);
 
         if (c < 0x80) {
-            return LY_EINVAL;
+            goto error;
         }
     } else if ((c & 0xf0) == 0xe0) {
         /* three bytes character */
@@ -206,14 +206,14 @@ ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read)
         for (uint64_t i = 1; i <= 2; i++) {
             aux = (*input)[i];
             if ((aux & 0xc0) != 0x80) {
-                return LY_EINVAL;
+                goto error;
             }
 
             c = (c << 6) | (aux & 0x3f);
         }
 
         if ((c < 0x800) || ((c > 0xd7ff) && (c < 0xe000)) || (c > 0xfffd)) {
-            return LY_EINVAL;
+            goto error;
         }
     } else if ((c & 0xf8) == 0xf0) {
         /* four bytes character */
@@ -223,20 +223,17 @@ ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read)
         for (uint64_t i = 1; i <= 3; i++) {
             aux = (*input)[i];
             if ((aux & 0xc0) != 0x80) {
-                return LY_EINVAL;
+                goto error;
             }
 
             c = (c << 6) | (aux & 0x3f);
         }
 
         if ((c < 0x1000) || (c > 0x10ffff)) {
-            return LY_EINVAL;
+            goto error;
         }
     } else {
-        if (bytes_read) {
-            (*bytes_read) = 0;
-        }
-        return LY_EINVAL;
+        goto error;
     }
 
     (*utf8_char) = c;
@@ -245,6 +242,12 @@ ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read)
         (*bytes_read) = len;
     }
     return LY_SUCCESS;
+
+error:
+    if (bytes_read) {
+        (*bytes_read) = 0;
+    }
+    return LY_EINVAL;
 }
 
 /**
