@@ -473,6 +473,7 @@ LIBYANG_API_DECL LY_ERR lyplg_type_print_xpath10_value(const struct lyd_value_xp
                                              value after calling the type's store callback with this option. */
 #define LYPLG_TYPE_STORE_IMPLEMENT 0x02 /**< If a foreign module is needed to be implemented to successfully instantiate
                                              the value, make the module implemented. */
+#define LYPLG_TYPE_STORE_IS_UTF8   0x04 /**< The value is guaranteed to be a valid UTF-8 string, if applicable for the type. */
 /** @} plugintypestoreopts */
 
 /**

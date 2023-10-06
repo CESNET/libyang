@@ -540,6 +540,17 @@ LY_ERR ly_value_prefix_next(const char *str_begin, const char *str_end, uint32_t
 LY_ERR ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read);
 
 /**
+ * @brief Check an UTF-8 character is valid.
+ *
+ * @param[in] input Input string to process.
+ * @param[in] in_len Bytes left to read in @p input.
+ * @param[out] utf8_len Length of a valid UTF-8 character.
+ * @return LY_SUCCESS on success
+ * @return LY_EINVAL in case of invalid UTF-8 character.
+ */
+LY_ERR ly_checkutf8(const char *input, size_t in_len, size_t *utf8_len);
+
+/**
  * @brief Store UTF-8 character specified as 4byte integer into the dst buffer.
  *
  * UTF-8 mapping:

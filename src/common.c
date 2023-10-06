@@ -247,6 +247,157 @@ ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read)
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Check whether an UTF-8 string is equal to a hex string after a bitwise and.
+ *
+ * (input & 0x[arg1][arg3][arg5]...) == 0x[arg2][arg4][arg6]...
+ *
+ * @param[in] input UTF-8 string.
+ * @param[in] bytes Number of bytes to compare.
+ * @param[in] ... 2x @p bytes number of bytes to perform bitwise and and equality operations.
+ * @return Result of the operation.
+ */
+static int
+ly_utf8_and_equal(const char *input, uint8_t bytes, ...)
+{
+    va_list ap;
+    int i, and, byte;
+
+    va_start(ap, bytes);
+    for (i = 0; i < bytes; ++i) {
+        and = va_arg(ap, int);
+        byte = va_arg(ap, int);
+
+        /* compare each byte */
+        if (((uint8_t)input[i] & and) != (uint8_t)byte) {
+            return 0;
+        }
+    }
+    va_end(ap);
+
+    return 1;
+}
+
+/**
+ * @brief Check whether an UTF-8 string is smaller than a hex string.
+ *
+ * input < 0x[arg1][arg2]...
+ *
+ * @param[in] input UTF-8 string.
+ * @param[in] bytes Number of bytes to compare.
+ * @param[in] ... @p bytes number of bytes to compare with.
+ * @return Result of the operation.
+ */
+static int
+ly_utf8_less(const char *input, uint8_t bytes, ...)
+{
+    va_list ap;
+    int i, byte;
+
+    va_start(ap, bytes);
+    for (i = 0; i < bytes; ++i) {
+        byte = va_arg(ap, int);
+
+        /* compare until bytes differ */
+        if ((uint8_t)input[i] > (uint8_t)byte) {
+            return 0;
+        } else if ((uint8_t)input[i] < (uint8_t)byte) {
+            return 1;
+        }
+    }
+    va_end(ap);
+
+    /* equals */
+    return 0;
+}
+
+/**
+ * @brief Check whether an UTF-8 string is greater than a hex string.
+ *
+ * input > 0x[arg1][arg2]...
+ *
+ * @param[in] input UTF-8 string.
+ * @param[in] bytes Number of bytes to compare.
+ * @param[in] ... @p bytes number of bytes to compare with.
+ * @return Result of the operation.
+ */
+static int
+ly_utf8_greater(const char *input, uint8_t bytes, ...)
+{
+    va_list ap;
+    int i, byte;
+
+    va_start(ap, bytes);
+    for (i = 0; i < bytes; ++i) {
+        byte = va_arg(ap, int);
+
+        /* compare until bytes differ */
+        if ((uint8_t)input[i] > (uint8_t)byte) {
+            return 1;
+        } else if ((uint8_t)input[i] < (uint8_t)byte) {
+            return 0;
+        }
+    }
+    va_end(ap);
+
+    /* equals */
+    return 0;
+}
+
+LY_ERR
+ly_checkutf8(const char *input, size_t in_len, size_t *utf8_len)
+{
+    size_t len;
+
+    if (!(input[0] & 0x80)) {
+        /* one byte character */
+        len = 1;
+
+        if (ly_utf8_less(input, 1, 0x20) && (input[0] != 0x9) && (input[0] != 0xa) && (input[0] != 0xd)) {
+            /* invalid control characters */
+            return LY_EINVAL;
+        }
+    } else if (((input[0] & 0xe0) == 0xc0) && (in_len > 1)) {
+        /* two bytes character */
+        len = 2;
+
+        /* (input < 0xC280) || (input > 0xDFBF) || ((input & 0xE0C0) != 0xC080) */
+        if (ly_utf8_less(input, 2, 0xC2, 0x80) || ly_utf8_greater(input, 2, 0xDF, 0xBF) ||
+                !ly_utf8_and_equal(input, 2, 0xE0, 0xC0, 0xC0, 0x80)) {
+            return LY_EINVAL;
+        }
+    } else if (((input[0] & 0xf0) == 0xe0) && (in_len > 2)) {
+        /* three bytes character */
+        len = 3;
+
+        /* (input >= 0xEDA080) && (input <= 0xEDBFBF) */
+        if (!ly_utf8_less(input, 3, 0xED, 0xA0, 0x80) && !ly_utf8_greater(input, 3, 0xED, 0xBF, 0xBF)) {
+            /* reject UTF-16 surrogates */
+            return LY_EINVAL;
+        }
+
+        /* (input < 0xE0A080) || (input > 0xEFBFBF) || ((input & 0xF0C0C0) != 0xE08080) */
+        if (ly_utf8_less(input, 3, 0xE0, 0xA0, 0x80) || ly_utf8_greater(input, 3, 0xEF, 0xBF, 0xBF) ||
+                !ly_utf8_and_equal(input, 3, 0xF0, 0xE0, 0xC0, 0x80, 0xC0, 0x80)) {
+            return LY_EINVAL;
+        }
+    } else if (((input[0] & 0xf8) == 0xf0) && (in_len > 3)) {
+        /* four bytes character */
+        len = 4;
+
+        /* (input < 0xF0908080) || (input > 0xF48FBFBF) || ((input & 0xF8C0C0C0) != 0xF0808080) */
+        if (ly_utf8_less(input, 4, 0xF0, 0x90, 0x80, 0x80) || ly_utf8_greater(input, 4, 0xF4, 0x8F, 0xBF, 0xBF) ||
+                !ly_utf8_and_equal(input, 4, 0xF8, 0xF0, 0xC0, 0x80, 0xC0, 0x80, 0xC0, 0x80)) {
+            return LY_EINVAL;
+        }
+    } else {
+        return LY_EINVAL;
+    }
+
+    *utf8_len = len;
+    return LY_SUCCESS;
+}
+
 LY_ERR
 ly_pututf8(char *dst, uint32_t value, size_t *bytes_written)
 {

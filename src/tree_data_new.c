@@ -51,7 +51,7 @@
 #include "xpath.h"
 
 LY_ERR
-lyd_create_term(const struct lysc_node *schema, const char *value, size_t value_len, ly_bool *dynamic,
+lyd_create_term(const struct lysc_node *schema, const char *value, size_t value_len, ly_bool is_utf8, ly_bool *dynamic,
         LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, ly_bool *incomplete, struct lyd_node **node)
 {
     LY_ERR ret;
@@ -68,7 +68,7 @@ lyd_create_term(const struct lysc_node *schema, const char *value, size_t value_
 
     LOG_LOCSET(schema, NULL, NULL, NULL);
     ret = lyd_value_store(schema->module->ctx, &term->value, ((struct lysc_node_leaf *)term->schema)->type, value,
-            value_len, dynamic, format, prefix_data, hints, schema, incomplete);
+            value_len, is_utf8, dynamic, format, prefix_data, hints, schema, incomplete);
     LOG_LOCBACK(1, 0, 0, 0);
     LY_CHECK_ERR_RET(ret, free(term), ret);
     lyd_hash(&term->node);
@@ -162,7 +162,7 @@ lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *
             /* store the value */
             LOG_LOCSET(predicates[u].key, NULL, NULL, NULL);
             ret = lyd_value_store(schema->module->ctx, &val, ((struct lysc_node_leaf *)predicates[u].key)->type,
-                    var->value, strlen(var->value), NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA, predicates[u].key, NULL);
+                    var->value, strlen(var->value), 0, NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA, predicates[u].key, NULL);
             LOG_LOCBACK(1, 0, 0, 0);
             LY_CHECK_GOTO(ret, cleanup);
 
@@ -592,7 +592,7 @@ _lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const ch
             key_len = key_val ? strlen((char *)key_val) : 0;
         }
 
-        rc = lyd_create_term(key_s, key_val, key_len, NULL, format, NULL, LYD_HINT_DATA, NULL, &key);
+        rc = lyd_create_term(key_s, key_val, key_len, 0, NULL, format, NULL, LYD_HINT_DATA, NULL, &key);
         LY_CHECK_GOTO(rc, cleanup);
         lyd_insert_node(ret, NULL, key, 1);
     }
@@ -690,7 +690,7 @@ lyd_new_ext_list(const struct lysc_ext_instance *ext, const char *name, struct l
     for (key_s = lysc_node_child(schema); key_s && (key_s->flags & LYS_KEY); key_s = key_s->next) {
         key_val = va_arg(ap, const char *);
 
-        rc = lyd_create_term(key_s, key_val, key_val ? strlen(key_val) : 0, NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA,
+        rc = lyd_create_term(key_s, key_val, key_val ? strlen(key_val) : 0, 0, NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA,
                 NULL, &key);
         LY_CHECK_GOTO(rc, cleanup);
         lyd_insert_node(ret, NULL, key, 1);
@@ -794,7 +794,7 @@ _lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const ch
     }
     LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "Term node \"%s\" not found.", name), LY_ENOTFOUND);
 
-    LY_CHECK_RET(lyd_create_term(schema, value, value_len, NULL, format, NULL, LYD_HINT_DATA, NULL, &ret));
+    LY_CHECK_RET(lyd_create_term(schema, value, value_len, 0, NULL, format, NULL, LYD_HINT_DATA, NULL, &ret));
     if (ext) {
         ret->flags |= LYD_EXT;
     }
@@ -849,7 +849,8 @@ lyd_new_ext_term(const struct lysc_ext_instance *ext, const char *name, const ch
         }
         return LY_ENOTFOUND;
     }
-    rc = lyd_create_term(schema, val_str, val_str ? strlen(val_str) : 0, NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA, NULL, &ret);
+    rc = lyd_create_term(schema, val_str, val_str ? strlen(val_str) : 0, 0, NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA,
+            NULL, &ret);
     LY_CHECK_RET(rc);
 
     *node = ret;
@@ -962,7 +963,7 @@ lyd_new_meta(const struct ly_ctx *ctx, struct lyd_node *parent, const struct lys
         val_str = "";
     }
 
-    return lyd_create_meta(parent, meta, module, name, name_len, val_str, strlen(val_str), NULL, LY_VALUE_JSON,
+    return lyd_create_meta(parent, meta, module, name, name_len, val_str, strlen(val_str), 0, NULL, LY_VALUE_JSON,
             NULL, LYD_HINT_DATA, parent ? parent->schema : NULL, clear_dflt, NULL);
 }
 
@@ -1004,7 +1005,7 @@ lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, ly_bool clear_d
     }
 
     return lyd_create_meta(parent, meta, mod, attr->name.name, strlen(attr->name.name), attr->value, strlen(attr->value),
-            NULL, attr->format, attr->val_prefix_data, attr->hints, parent ? parent->schema : NULL, clear_dflt, NULL);
+            0, NULL, attr->format, attr->val_prefix_data, attr->hints, parent ? parent->schema : NULL, clear_dflt, NULL);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -1190,7 +1191,8 @@ _lyd_change_term(struct lyd_node *term, const void *value, size_t value_len, LY_
 
     /* parse the new value */
     LOG_LOCSET(term->schema, term, NULL, NULL);
-    ret = lyd_value_store(LYD_CTX(term), &val, type, value, value_len, NULL, format, NULL, LYD_HINT_DATA, term->schema, NULL);
+    ret = lyd_value_store(LYD_CTX(term), &val, type, value, value_len, 0, NULL, format, NULL, LYD_HINT_DATA,
+            term->schema, NULL);
     LOG_LOCBACK(term->schema ? 1 : 0, 1, 0, 0);
     LY_CHECK_GOTO(ret, cleanup);
 
@@ -1291,7 +1293,7 @@ lyd_change_meta(struct lyd_meta *meta, const char *val_str)
 
     /* parse the new value into a new meta structure */
     ret = lyd_create_meta(NULL, &m2, meta->annotation->module, meta->name, strlen(meta->name), val_str, strlen(val_str),
-            NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA, meta->parent ? meta->parent->schema : NULL, 0, NULL);
+            0, NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA, meta->parent ? meta->parent->schema : NULL, 0, NULL);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* compare original and new value */
@@ -1446,7 +1448,7 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
             if (!r) {
                 /* try to store the value */
                 LY_CHECK_RET(lyd_value_store(schema->module->ctx, &val, ((struct lysc_node_leaflist *)schema)->type,
-                        value, value_len, NULL, format, NULL, LYD_HINT_DATA, schema, NULL));
+                        value, value_len, 0, NULL, format, NULL, LYD_HINT_DATA, schema, NULL));
                 ++((struct lysc_type *)val.realtype)->refcount;
 
                 /* store the new predicate so that it is used when searching for this instance */
@@ -1630,7 +1632,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
             if (val) {
                 LY_CHECK_GOTO(ret = lyd_create_term2(schema, val, &node), cleanup);
             } else {
-                LY_CHECK_GOTO(ret = lyd_create_term(schema, value, value_len, NULL, format, NULL, LYD_HINT_DATA,
+                LY_CHECK_GOTO(ret = lyd_create_term(schema, value, value_len, 0, NULL, format, NULL, LYD_HINT_DATA,
                         NULL, &node), cleanup);
             }
             break;
@@ -1660,7 +1662,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
             }
 
             /* create a leaf instance */
-            LY_CHECK_GOTO(ret = lyd_create_term(schema, value, value_len, NULL, format, NULL, LYD_HINT_DATA, NULL,
+            LY_CHECK_GOTO(ret = lyd_create_term(schema, value, value_len, 0, NULL, format, NULL, LYD_HINT_DATA, NULL,
                     &node), cleanup);
             break;
         case LYS_ANYDATA:

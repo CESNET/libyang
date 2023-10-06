@@ -232,6 +232,7 @@ const char *ly_format2str(LY_VALUE_FORMAT format);
  * @param[in] schema Schema node of the new data node.
  * @param[in] value String value to be parsed.
  * @param[in] value_len Length of @p value, must be set correctly.
+ * @param[in] is_utf8 Whether @p value is a valid UTF-8 string, if applicable.
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
  * @param[in] format Input format of @p value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
@@ -242,8 +243,9 @@ const char *ly_format2str(LY_VALUE_FORMAT format);
  * @return LY_EINCOMPLETE in case data tree is needed to finish the validation.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_create_term(const struct lysc_node *schema, const char *value, size_t value_len, ly_bool *dynamic,
-        LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, ly_bool *incomplete, struct lyd_node **node);
+LY_ERR lyd_create_term(const struct lysc_node *schema, const char *value, size_t value_len, ly_bool is_utf8,
+        ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, ly_bool *incomplete,
+        struct lyd_node **node);
 
 /**
  * @brief Create a term (leaf/leaf-list) node from a parsed value by duplicating it.
@@ -422,6 +424,7 @@ void lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta, ly_bool cle
  * @param[in] name_len Length of @p name, must be set correctly.
  * @param[in] value String value to be parsed.
  * @param[in] value_len Length of @p value, must be set correctly.
+ * @param[in] is_utf8 Whether @p value is a valid UTF-8 string, if applicable.
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
  * @param[in] format Input format of @p value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
@@ -434,7 +437,7 @@ void lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta, ly_bool cle
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
-        size_t name_len, const char *value, size_t value_len, ly_bool *dynamic, LY_VALUE_FORMAT format,
+        size_t name_len, const char *value, size_t value_len, ly_bool is_utf8, ly_bool *dynamic, LY_VALUE_FORMAT format,
         void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node, ly_bool clear_dflt, ly_bool *incomplete);
 
 /**
@@ -478,6 +481,7 @@ LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const st
  * @param[in] type Type of the value.
  * @param[in] value Value to be parsed, must not be NULL.
  * @param[in] value_len Length of the give @p value, must be set correctly.
+ * @param[in] is_utf8 Whether @p value is a valid UTF-8 string, if applicable.
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
  * @param[in] format Input format of @p value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
@@ -488,7 +492,7 @@ LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const st
  * @return LY_ERR value on error.
  */
 LY_ERR lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct lysc_type *type, const void *value,
-        size_t value_len, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        size_t value_len, ly_bool is_utf8, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
         const struct lysc_node *ctx_node, ly_bool *incomplete);
 
 /**
