@@ -117,14 +117,6 @@ const struct lys_module *lyd_mod_next_module(struct lyd_node *tree, const struct
 const struct lys_module *lyd_data_next_module(struct lyd_node **next, struct lyd_node **first);
 
 /**
- * @brief Get schema node of a data node. Useful especially for opaque nodes.
- *
- * @param[in] node Data node to use.
- * @return Schema node represented by data @p node, NULL if there is none.
- */
-const struct lysc_node *lyd_node_schema(const struct lyd_node *node);
-
-/**
  * @brief Set dflt flag for a NP container if applicable, recursively for parents.
  *
  * @param[in] node Node whose criteria for the dflt flag has changed.

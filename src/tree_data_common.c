@@ -1091,7 +1091,7 @@ lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_A
     return LY_SUCCESS;
 }
 
-const struct lysc_node *
+LIBYANG_API_DEF const struct lysc_node *
 lyd_node_schema(const struct lyd_node *node)
 {
     const struct lysc_node *schema = NULL;

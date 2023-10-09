@@ -1134,6 +1134,14 @@ LIBYANG_API_DECL LY_ERR lyd_any_copy_value(struct lyd_node *trg, const union lyd
         LYD_ANYDATA_VALUETYPE value_type);
 
 /**
+ * @brief Get schema node of a data node. Useful especially for opaque nodes.
+ *
+ * @param[in] node Data node to use.
+ * @return Schema node represented by data @p node, NULL if there is none.
+ */
+const struct lysc_node *lyd_node_schema(const struct lyd_node *node);
+
+/**
  * @brief Create a new inner node in the data tree.
  *
  * To create list, use ::lyd_new_list() or ::lyd_new_list2().
