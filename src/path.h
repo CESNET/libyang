@@ -211,6 +211,7 @@ LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_nod
  * @param[in] path Path structure specifying the target.
  * @param[in] start Starting node for relative paths, can be any for absolute paths.
  * @param[in] vars Array of defined variables to use in predicates, may be NULL.
+ * @param[in] with_opaq Whether to consider opaque nodes or not.
  * @param[out] path_idx Last found path segment index, can be NULL, set to 0 if not found.
  * @param[out] match Last found matching node, can be NULL, set to NULL if not found.
  * @return LY_ENOTFOUND if no nodes were found,
@@ -219,7 +220,7 @@ LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_nod
  * @return LY_ERR on another error.
  */
 LY_ERR ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, const struct lyxp_var *vars,
-        LY_ARRAY_COUNT_TYPE *path_idx, struct lyd_node **match);
+        ly_bool with_opaq, LY_ARRAY_COUNT_TYPE *path_idx, struct lyd_node **match);
 
 /**
  * @brief Resolve the target defined by ly_path structure. Not supported for leafref!

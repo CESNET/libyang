@@ -3024,7 +3024,7 @@ lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output,
     LY_CHECK_GOTO(ret, cleanup);
 
     /* evaluate the path */
-    ret = ly_path_eval_partial(lypath, ctx_node, NULL, NULL, match);
+    ret = ly_path_eval_partial(lypath, ctx_node, NULL, 0, NULL, match);
 
 cleanup:
     lyxp_expr_free(LYD_CTX(ctx_node), expr);

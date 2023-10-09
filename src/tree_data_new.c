@@ -1543,7 +1543,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
 
     /* try to find any existing nodes in the path */
     if (parent) {
-        r = ly_path_eval_partial(p, parent, NULL, &path_idx, &node);
+        r = ly_path_eval_partial(p, parent, NULL, options & LYD_NEW_PATH_WITH_OPAQ, &path_idx, &node);
         if (r == LY_SUCCESS) {
             if (orig_count == LY_ARRAY_COUNT(p)) {
                 /* the node exists, are we supposed to update it or is it just a default? */

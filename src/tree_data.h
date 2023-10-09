@@ -1468,6 +1468,7 @@ LIBYANG_API_DECL LY_ERR lyd_new_attr2(struct lyd_node *parent, const char *modul
 #define LYD_NEW_PATH_CANON_VALUE 0x10   /**< Interpret the provided leaf/leaf-list @p value as being in the canonical
                                             (or JSON if no defined) ::LY_VALUE_CANON format. If it is not, it may lead
                                             to unexpected behavior. */
+#define LYD_NEW_PATH_WITH_OPAQ 0x20 /**< Consider opaque nodes normally when searching for existing nodes. */
 
 /** @} pathoptions */
 

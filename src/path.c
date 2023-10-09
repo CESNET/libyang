@@ -1286,7 +1286,7 @@ ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node *ctx_no
 
 LY_ERR
 ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, const struct lyxp_var *vars,
-        LY_ARRAY_COUNT_TYPE *path_idx, struct lyd_node **match)
+        ly_bool with_opaq, LY_ARRAY_COUNT_TYPE *path_idx, struct lyd_node **match)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lyd_node *prev_node = NULL, *elem, *node = NULL, *target;
@@ -1338,7 +1338,13 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, c
             }
         } else {
             /* we will use hashes to find one any/container/leaf instance */
-            lyd_find_sibling_val(start, path[u].node, NULL, 0, &node);
+            if (lyd_find_sibling_val(start, path[u].node, NULL, 0, &node) && with_opaq) {
+                if (!lyd_find_sibling_opaq_next(start, path[u].node->name, &node) &&
+                        (lyd_node_module(node) != path[u].node->module)) {
+                    /* non-matching opaque node */
+                    node = NULL;
+                }
+            }
         }
 
         if (!node) {
@@ -1390,7 +1396,7 @@ ly_path_eval(const struct ly_path *path, const struct lyd_node *start, const str
     LY_ERR ret;
     struct lyd_node *m;
 
-    ret = ly_path_eval_partial(path, start, vars, NULL, &m);
+    ret = ly_path_eval_partial(path, start, vars, 0, NULL, &m);
 
     if (ret == LY_SUCCESS) {
         /* last node was found */
