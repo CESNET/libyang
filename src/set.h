@@ -1,9 +1,10 @@
 /**
  * @file set.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Generic set structure and manipulation routines.
  *
- * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -81,8 +82,8 @@ LIBYANG_API_DECL LY_ERR ly_set_dup(const struct ly_set *set, void *(*duplicator)
 /**
  * @brief Add an object into the set
  *
- * @param[in] set Set where the \p object will be added.
- * @param[in] object Object to be added into the \p set;
+ * @param[in] set Set where the @p object will be added.
+ * @param[in] object Object to be added into the @p set;
  * @param[in] list flag to handle set as a list (without checking for (ignoring) duplicit items)
  * @param[out] index_p Optional pointer to return index of the added @p object. Usually it is the last index (::ly_set::count - 1),
  * but in case the duplicities are checked and the object is already in the set, the @p object is not added and index of the
@@ -94,7 +95,7 @@ LIBYANG_API_DECL LY_ERR ly_set_dup(const struct ly_set *set, void *(*duplicator)
 LIBYANG_API_DECL LY_ERR ly_set_add(struct ly_set *set, const void *object, ly_bool list, uint32_t *index_p);
 
 /**
- * @brief Add all objects from \p src to \p trg.
+ * @brief Add all objects from @p src to @p trg.
  *
  * Since it is a set, the function checks for duplicities.
  *
@@ -102,8 +103,8 @@ LIBYANG_API_DECL LY_ERR ly_set_add(struct ly_set *set, const void *object, ly_bo
  * @param[in] src Source set.
  * @param[in] list flag to handle set as a list (without checking for (ignoring) duplicit items)
  * @param[in] duplicator Optional pointer to function that duplicates the objects being added
- * from \p src into \p trg set. If not provided, the \p trg set will point to the exact same
- * objects as the \p src set.
+ * from @p src into @p trg set. If not provided, the @p trg set will point to the exact same
+ * objects as the @p src set.
  * @return LY_SUCCESS in case of success
  * @return LY_EINVAL in case of invalid input parameters.
  * @return LY_EMEM in case of memory allocation failure.
@@ -134,8 +135,8 @@ LIBYANG_API_DECL void ly_set_clean(struct ly_set *set, void (*destructor)(void *
  * Note that after removing the object from a set, indexes of other objects in the set can change
  * (the last object is placed instead of the removed object).
  *
- * @param[in] set Set from which the \p node will be removed.
- * @param[in] object The object to be removed from the \p set.
+ * @param[in] set Set from which to remove.
+ * @param[in] object The object to be removed from the @p set.
  * @param[in] destructor Optional function to free the objects being removed.
  * @return LY_ERR return value.
  */
@@ -147,12 +148,24 @@ LIBYANG_API_DECL LY_ERR ly_set_rm(struct ly_set *set, void *object, void (*destr
  * Note that after removing the object from a set, indexes of other nodes in the set can change
  * (the last object is placed instead of the removed object).
  *
- * @param[in] set Set from which a node will be removed.
- * @param[in] index Index of the object to remove in the \p set.
+ * @param[in] set Set from which to remove.
+ * @param[in] index Index of the object to remove in the @p set.
  * @param[in] destructor Optional function to free the objects being removed.
  * @return LY_ERR return value.
  */
 LIBYANG_API_DECL LY_ERR ly_set_rm_index(struct ly_set *set, uint32_t index, void (*destructor)(void *obj));
+
+/**
+ * @brief Remove an object on the specific set index.
+ *
+ * Unlike ::ly_set_rm_indes(), this function moves all the items following the removed one.
+ *
+ * @param[in] set Set from which to remove.
+ * @param[in] index Index of the object to remove in the @p set.
+ * @param[in] destructor Optional function to free the objects being removed.
+ * @return LY_ERR return value.
+ */
+LIBYANG_API_DECL LY_ERR ly_set_rm_index_ordered(struct ly_set *set, uint32_t index, void (*destructor)(void *obj));
 
 /**
  * @brief Free the ::ly_set data. If the destructor is not provided, it frees only the set structure
