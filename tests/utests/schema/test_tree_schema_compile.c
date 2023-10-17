@@ -3241,18 +3241,18 @@ test_deviation(void **state)
     assert_true(node->flags & LYS_CONFIG_R);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module l {namespace urn:l;prefix l; leaf a {config false; type string;}"
-            "container top {config false; leaf x {type string;}}"
+            "container top {leaf x {type string;}}"
             "deviation /a {deviate replace {config true;}}"
-            "deviation /top {deviate replace {config true;}}}", LYS_IN_YANG, &mod));
+            "deviation /top {deviate replace {config false;}}}", LYS_IN_YANG, &mod));
     assert_non_null(node = mod->compiled->data);
     assert_string_equal("a", node->name);
     assert_true(node->flags & LYS_CONFIG_W);
     assert_non_null(node = node->next);
     assert_string_equal("top", node->name);
-    assert_true(node->flags & LYS_CONFIG_W);
+    assert_true(node->flags & LYS_CONFIG_R);
     assert_non_null(node = lysc_node_child(node));
     assert_string_equal("x", node->name);
-    assert_true(node->flags & LYS_CONFIG_W);
+    assert_true(node->flags & LYS_CONFIG_R);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module m {namespace urn:m;prefix m;"
             "container a {leaf a {type string;}}"
@@ -3599,9 +3599,6 @@ test_deviation(void **state)
             "deviation /top/x {deviate add {config true;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "Path \"/jj2:{deviation='/top/x'}\".");
     CHECK_LOG_CTX("Configuration node cannot be child of any state data node.", "Path \"/jj2:{deviation='/top/x'}\".");
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module jj3 {namespace urn:jj3;prefix jj3; container top {leaf x {type string;}}"
-            "deviation /top/x {deviate replace {config false;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation replacing \"config\" property \"config false\" which is not present.", "Path \"/jj3:{deviation='/top/x'}\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module jj4 {namespace urn:jj4;prefix jj4; choice ch {case a {leaf a{type string;}}}"
             "deviation /ch/a {deviate replace {config false;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid deviation of case node - it is not possible to replace \"config\" property.", "Path \"/jj4:{deviation='/ch/a'}\".");

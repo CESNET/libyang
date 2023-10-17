@@ -1376,13 +1376,6 @@ lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysp_deviate_rpl *d, stru
             AMEND_WRONG_NODETYPE("deviation", "replace", "config");
         }
 
-        if (!(target->flags & LYS_CONFIG_MASK)) {
-            LOGVAL(ctx->ctx, LY_VCODE_DEV_NOT_PRESENT, "replacing", "config",
-                    d->flags & LYS_CONFIG_W ? "config true" : "config false");
-            ret = LY_EVALID;
-            goto cleanup;
-        }
-
         target->flags &= ~LYS_CONFIG_MASK;
         target->flags |= d->flags & LYS_CONFIG_MASK;
     }
