@@ -1257,6 +1257,57 @@ LIBYANG_API_DECL LY_ERR lyd_new_list2(struct lyd_node *parent, const struct lys_
         const char *keys, ly_bool output, struct lyd_node **node);
 
 /**
+ * @brief Create a new list node in the data tree.
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
+ * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
+ * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
+ * @param[in] format Format of key values.
+ * @param[in] key_values Ordered key string values of the new list instance, all must be set.
+ * @param[in] value_lengths Array of lengths of each @p key_values, may be NULL if @p key_values are 0-terminated strings.
+ * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
+ * taken into consideration. Otherwise, the output's data node is going to be created.
+ * @param[out] node Optional created node.
+ * @return LY_ERR value.
+ */
+LIBYANG_API_DECL LY_ERR lyd_new_list3(struct lyd_node *parent, const struct lys_module *module, const char *name,
+        const char **key_values, uint32_t *value_lengths, ly_bool output, struct lyd_node **node);
+
+/**
+ * @brief Create a new list node in the data tree.
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
+ * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
+ * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
+ * @param[in] format Format of key values.
+ * @param[in] key_values Ordered key binary (LYB) values of the new list instance, all must be set.
+ * @param[in] value_lengths Array of lengths of each @p key_values.
+ * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
+ * taken into consideration. Otherwise, the output's data node is going to be created.
+ * @param[out] node Optional created node.
+ * @return LY_ERR value.
+ */
+LIBYANG_API_DECL LY_ERR lyd_new_list3_bin(struct lyd_node *parent, const struct lys_module *module, const char *name,
+        const void **key_values, uint32_t *value_lengths, ly_bool output, struct lyd_node **node);
+
+/**
+ * @brief Create a new list node in the data tree.
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
+ * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
+ * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
+ * @param[in] format Format of key values.
+ * @param[in] key_values Ordered key canonical values of the new list instance, all must be set.
+ * @param[in] value_lengths Array of lengths of each @p key_values, may be NULL if @p key_values are 0-terminated strings.
+ * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
+ * taken into consideration. Otherwise, the output's data node is going to be created.
+ * @param[out] node Optional created node.
+ * @return LY_ERR value.
+ */
+LIBYANG_API_DECL LY_ERR lyd_new_list3_canon(struct lyd_node *parent, const struct lys_module *module, const char *name,
+        const char **key_values, uint32_t *value_lengths, ly_bool output, struct lyd_node **node);
+
+/**
  * @brief Create a new term node in the data tree.
  *
  * To create a top-level term node defined in an extension instance, use ::lyd_new_ext_term().

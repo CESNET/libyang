@@ -129,6 +129,14 @@ test_top_level(void **state)
     assert_int_equal(lyd_new_list2(NULL, mod, "l1", "[a=   'a']\n[b  =\t'b']", 0, &node), LY_SUCCESS);
     lyd_free_tree(node);
 
+    const char *key_vals[] = {"a", "b"};
+    assert_int_equal(lyd_new_list3(NULL, mod, "l1", key_vals, NULL, 0, &node), LY_SUCCESS);
+    lyd_free_tree(node);
+
+    uint32_t val_lens[] = {1, 1};
+    assert_int_equal(lyd_new_list3_bin(NULL, mod, "l1", (const void **)key_vals, val_lens, 0, &node), LY_SUCCESS);
+    lyd_free_tree(node);
+
     /* leaf */
     assert_int_equal(lyd_new_term(NULL, mod, "foo", "[a='a'][b='b'][c='c']", 0, &node), LY_EVALID);
     CHECK_LOG_CTX("Invalid type uint16 value \"[a='a'][b='b'][c='c']\".", "Schema location \"/a:foo\".");
