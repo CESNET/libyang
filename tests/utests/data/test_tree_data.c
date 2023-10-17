@@ -337,8 +337,7 @@ test_dup(void **state)
 
     data = "<l2 xmlns=\"urn:tests:a\"><c><x>b</x></c></l2>";
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree1);
-    assert_int_equal(LY_SUCCESS, lyd_dup_single(((struct lyd_node_inner *)((struct lyd_node_inner *)tree1->next)->child)->child, NULL,
-            LYD_DUP_WITH_PARENTS, &tree2));
+    assert_int_equal(LY_SUCCESS, lyd_dup_single(lyd_child(lyd_child(tree1->next)), NULL, LYD_DUP_WITH_PARENTS, &tree2));
     int unsigned flag = LYS_CONFIG_R | LYS_SET_ENUM;
 
     CHECK_LYSC_NODE(tree2->schema, NULL, 0, flag, 1, "x", 1, LYS_LEAF, 1, 0, NULL, 0);
@@ -360,8 +359,8 @@ test_dup(void **state)
     data = "<l2 xmlns=\"urn:tests:a\"><c><x>b</x></c></l2>";
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree1);
     assert_int_equal(LY_SUCCESS, lyd_dup_single(tree1->next, NULL, 0, &tree2));
-    assert_int_equal(LY_SUCCESS, lyd_dup_single(((struct lyd_node_inner *)((struct lyd_node_inner *)tree1->next)->child)->child,
-            (struct lyd_node_inner *)tree2, LYD_DUP_WITH_PARENTS, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_dup_single(lyd_child(lyd_child(tree1->next)), (struct lyd_node_inner *)tree2,
+            LYD_DUP_WITH_PARENTS, NULL));
     assert_int_equal(LY_SUCCESS, lyd_compare_single(tree1->next, tree2, LYD_COMPARE_FULL_RECURSION));
     lyd_free_all(tree1);
     lyd_free_all(tree2);

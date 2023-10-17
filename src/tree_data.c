@@ -1853,7 +1853,7 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx *trg_c
         uint32_t options, struct lyd_node **dup_parent, struct lyd_node **local_parent)
 {
     const struct lyd_node *orig_parent;
-    struct lyd_node *iter;
+    struct lyd_node *iter = NULL;
     ly_bool repeat = 1, ext_parent = 0;
 
     *dup_parent = NULL;
@@ -1879,17 +1879,21 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx *trg_c
         } else {
             iter = NULL;
             LY_CHECK_RET(lyd_dup_r(orig_parent, trg_ctx, NULL, 0, &iter, options, &iter));
+
+            /* insert into the previous duplicated parent */
+            if (*dup_parent) {
+                lyd_insert_node(iter, NULL, *dup_parent, 0);
+            }
+
+            /* update the last duplicated parent */
+            *dup_parent = iter;
         }
 
+        /* set the first parent */
         if (!*local_parent) {
-            /* update local parent (created parent) */
             *local_parent = iter;
         }
 
-        if (*dup_parent) {
-            lyd_insert_node(iter, NULL, *dup_parent, 0);
-        }
-        *dup_parent = iter;
         if (orig_parent->flags & LYD_EXT) {
             ext_parent = 1;
         }
@@ -1902,6 +1906,10 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx *trg_c
         return LY_EINVAL;
     }
 
+    if (*dup_parent && parent) {
+        /* last insert into a prevously-existing parent */
+        lyd_insert_node(parent, NULL, *dup_parent, 0);
+    }
     return LY_SUCCESS;
 }
 
