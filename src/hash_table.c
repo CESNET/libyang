@@ -459,8 +459,10 @@ lyht_remove_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_va
     uint32_t prev_rec_idx;
     uint32_t rec_idx;
 
-    LY_CHECK_ERR_RET(lyht_find_rec(ht, val_p, hash, 1, NULL, NULL, &found_rec),
-            LOGARG(NULL, hash), LY_ENOTFOUND);          /* hash not found */
+    if (lyht_find_rec(ht, val_p, hash, 1, ht->val_equal, NULL, NULL, &found_rec)) {
+        LOGARG(NULL, hash);
+        return LY_ENOTFOUND;
+    }
 
     prev_rec_idx = LYHT_NO_RECORD;
     LYHT_ITER_HLIST_RECS(ht, hlist_idx, rec_idx, rec) {
