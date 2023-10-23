@@ -1193,7 +1193,6 @@ lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lysc_node 
     struct lyd_node **match_p;
     struct lyd_node_inner *parent;
     uint32_t hash;
-    lyht_value_equal_cb ht_cb;
 
     assert(schema);
     if (!siblings) {
@@ -1211,19 +1210,13 @@ lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lysc_node 
         hash = lyht_hash_multi(hash, schema->name, strlen(schema->name));
         hash = lyht_hash_multi(hash, NULL, 0);
 
-        /* use special hash table function */
-        ht_cb = lyht_set_cb(parent->children_ht, lyd_hash_table_schema_val_equal);
-
-        /* find by hash */
-        if (!lyht_find(parent->children_ht, &schema, hash, (void **)&match_p)) {
+        /* find by hash but use special hash table function (and stay thread-safe) */
+        if (!lyht_find_with_val_cb(parent->children_ht, &schema, hash, lyd_hash_table_schema_val_equal, (void **)&match_p)) {
             siblings = *match_p;
         } else {
             /* not found */
             siblings = NULL;
         }
-
-        /* set the original hash table compare function back */
-        lyht_set_cb(parent->children_ht, ht_cb);
     } else {
         /* find first sibling */
         if (siblings->parent) {
