@@ -141,8 +141,6 @@ LIBYANG_API_DECL uint32_t ly_log_options(uint32_t opts);
  */
 LIBYANG_API_DECL void ly_temp_log_options(uint32_t *opts);
 
-#ifndef NDEBUG
-
 /**
  * @ingroup log
  * @defgroup dbggroup Debug messages groups
@@ -166,13 +164,12 @@ LIBYANG_API_DECL void ly_temp_log_options(uint32_t *opts);
  * @brief Enable specific debugging messages (independent of log level).
  *
  * To get the current value, the function must be called twice resetting the level by the received value.
+ * Note: does not have any effect on non-debug (Release) builds
  *
  * @param[in] dbg_groups Bitfield of enabled debug message groups (see @ref dbggroup).
  * @return Previous options bitfield.
  */
 LIBYANG_API_DECL uint32_t ly_log_dbg_groups(uint32_t dbg_groups);
-
-#endif
 
 /**
  * @brief Logger callback.
