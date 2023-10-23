@@ -1659,6 +1659,9 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
                     LOG_LOCBACK(0, 1, 0, 0);
                     ret = LY_EEXIST;
                     goto cleanup;
+                } else if ((options & LYD_NEW_PATH_UPDATE) && lysc_is_key(node->schema)) {
+                    /* fine, the key value must not be changed and has to be in the predicate to be found */
+                    goto cleanup;
                 }
 
                 /* update the existing node */
