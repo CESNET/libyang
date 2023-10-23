@@ -128,7 +128,21 @@ LIBYANG_API_DECL void lyht_free(struct ly_ht *ht, void (*val_free)(void *val_p))
  * @return LY_SUCCESS if value was found,
  * @return LY_ENOTFOUND if not found.
  */
-LIBYANG_API_DECL LY_ERR lyht_find(struct ly_ht *ht, void *val_p, uint32_t hash, void **match_p);
+LIBYANG_API_DECL LY_ERR lyht_find(const struct ly_ht *ht, void *val_p, uint32_t hash, void **match_p);
+
+/**
+ * @brief Find a value in a hash table but use a custom val_equal callback.
+ *
+ * @param[in] ht Hash table to search in.
+ * @param[in] val_p Pointer to the value to find.
+ * @param[in] hash Hash of the stored value.
+ * @param[in] val_equal Callback for checking value equivalence.
+ * @param[out] match_p Pointer to the matching value, optional.
+ * @return LY_SUCCESS if value was found,
+ * @return LY_ENOTFOUND if not found.
+ */
+LIBYANG_API_DECL LY_ERR lyht_find_with_val_cb(const struct ly_ht *ht, void *val_p, uint32_t hash,
+        lyht_value_equal_cb val_equal, void **match_p);
 
 /**
  * @brief Find another equal value in the hash table.
@@ -140,7 +154,7 @@ LIBYANG_API_DECL LY_ERR lyht_find(struct ly_ht *ht, void *val_p, uint32_t hash, 
  * @return LY_SUCCESS if value was found,
  * @return LY_ENOTFOUND if not found.
  */
-LIBYANG_API_DECL LY_ERR lyht_find_next(struct ly_ht *ht, void *val_p, uint32_t hash, void **match_p);
+LIBYANG_API_DECL LY_ERR lyht_find_next(const struct ly_ht *ht, void *val_p, uint32_t hash, void **match_p);
 
 /**
  * @brief Find another equal value in the hash table. Same functionality as ::lyht_find_next()
@@ -154,7 +168,7 @@ LIBYANG_API_DECL LY_ERR lyht_find_next(struct ly_ht *ht, void *val_p, uint32_t h
  * @return LY_SUCCESS if value was found,
  * @return LY_ENOTFOUND if not found.
  */
-LIBYANG_API_DECL LY_ERR lyht_find_next_with_collision_cb(struct ly_ht *ht, void *val_p, uint32_t hash,
+LIBYANG_API_DECL LY_ERR lyht_find_next_with_collision_cb(const struct ly_ht *ht, void *val_p, uint32_t hash,
         lyht_value_equal_cb collision_val_equal, void **match_p);
 
 /**
