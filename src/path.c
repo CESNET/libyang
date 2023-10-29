@@ -1068,7 +1068,7 @@ ly_path_compile_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node
     LY_CHECK_GOTO(ret = ly_path_compile_leafref(ctx, ctx_node, top_ext, &expr2, oper, target, format, prefix_data,
             &path2), cleanup);
     node2 = path2[LY_ARRAY_COUNT(path2) - 1].node;
-    if (node2->nodetype != LYS_LEAF && node2->nodetype != LYS_LEAFLIST) {
+    if ((node2->nodetype != LYS_LEAF) && (node2->nodetype != LYS_LEAFLIST)) {
         LOGVAL(ctx, LYVE_XPATH, "The deref function target node \"%s\" is not leaf nor leaflist", node2->name);
         ret = LY_EVALID;
         goto cleanup;
