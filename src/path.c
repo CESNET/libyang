@@ -1068,7 +1068,17 @@ ly_path_compile_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node
     LY_CHECK_GOTO(ret = ly_path_compile_leafref(ctx, ctx_node, top_ext, &expr2, oper, target, format, prefix_data,
             &path2), cleanup);
     node2 = path2[LY_ARRAY_COUNT(path2) - 1].node;
+    if (node2->nodetype != LYS_LEAF && node2->nodetype != LYS_LEAFLIST) {
+        LOGVAL(ctx, LYVE_XPATH, "The deref function target node \"%s\" is not leaf nor leaflist", node2->name);
+        ret = LY_EVALID;
+        goto cleanup;
+    }
     deref_leaf_node = (const struct lysc_node_leaf *)node2;
+    if (deref_leaf_node->type->basetype != LY_TYPE_LEAFREF) {
+        LOGVAL(ctx, LYVE_XPATH, "The deref function target node \"%s\" is not having leafref type", node2->name);
+        ret = LY_EVALID;
+        goto cleanup;
+    }
     lref = (const struct lysc_type_leafref *)deref_leaf_node->type;
     LY_CHECK_GOTO(ret = ly_path_append(ctx, path2, path), cleanup);
     ly_path_free(ctx, path2);
@@ -1172,7 +1182,6 @@ _ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, con
             (expr->tokens[tok_idx] == LYXP_TOKEN_FUNCNAME)) {
         /* deref function */
         ret = ly_path_compile_deref(ctx, ctx_node, top_ext, expr, oper, target, format, prefix_data, &tok_idx, path);
-        ctx_node = (*path)[LY_ARRAY_COUNT(*path) - 1].node;
         goto cleanup;
     } else if (expr->tokens[tok_idx] == LYXP_TOKEN_OPER_PATH) {
         /* absolute path */
