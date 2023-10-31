@@ -1075,7 +1075,7 @@ ly_path_compile_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node
     }
     deref_leaf_node = (const struct lysc_node_leaf *)node2;
     if (deref_leaf_node->type->basetype != LY_TYPE_LEAFREF) {
-        LOGVAL(ctx, LYVE_XPATH, "The deref function target node \"%s\" is not having leafref type", node2->name);
+        LOGVAL(ctx, LYVE_XPATH, "The deref function target node \"%s\" is not leafref", node2->name);
         ret = LY_EVALID;
         goto cleanup;
     }

@@ -270,7 +270,7 @@ test_xpath_invalid_schema(void **state)
             "leaf r2 {type leafref {path \"deref(../r1)/../l2/t2\";}}");
 
     UTEST_INVALID_MODULE(schema2, LYS_IN_YANG, NULL, LY_EVALID)
-    CHECK_LOG_CTX("The deref function target node \"r1\" is not having leafref type", "Schema location \"/xp_test:r2\".");
+    CHECK_LOG_CTX("The deref function target node \"r1\" is not leafref", "Schema location \"/xp_test:r2\".");
 }
 
 int
