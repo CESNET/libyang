@@ -241,6 +241,38 @@ test_data_xpath_json(void **state)
     lyd_free_all(tree);
 }
 
+static void
+test_xpath_invalid_schema(void **state)
+{
+    const char *schema1, *schema2;
+
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_LEAFREF_EXTENDED);
+    schema1 = MODULE_CREATE_YANG("xp_test",
+            "list l1 {key t1;"
+            "leaf t1 {type uint8;}"
+            "list l2 {key t2;"
+            "leaf t2 {type uint8;}"
+            "leaf-list l3 {type uint8;}"
+            "}}"
+            "leaf r1 {type leafref {path \"deref(../l1)/../l2/t2\";}}");
+
+    UTEST_INVALID_MODULE(schema1, LYS_IN_YANG, NULL, LY_EVALID)
+    CHECK_LOG_CTX("The deref function target node \"l1\" is not leaf nor leaflist", "Schema location \"/xp_test:r1\".");
+
+    schema2 = MODULE_CREATE_YANG("xp_test",
+            "list l1 {key t1;"
+            "leaf t1 {type uint8;}"
+            "list l2 {key t2;"
+            "leaf t2 {type uint8;}"
+            "leaf-list l3 {type uint8;}"
+            "}}"
+            "leaf r1 {type uint8;}"
+            "leaf r2 {type leafref {path \"deref(../r1)/../l2/t2\";}}");
+
+    UTEST_INVALID_MODULE(schema2, LYS_IN_YANG, NULL, LY_EVALID)
+    CHECK_LOG_CTX("The deref function target node \"r1\" is not leafref", "Schema location \"/xp_test:r2\".");
+}
+
 int
 main(void)
 {
@@ -249,6 +281,7 @@ main(void)
         UTEST(test_data_json),
         UTEST(test_plugin_lyb),
         UTEST(test_data_xpath_json),
+        UTEST(test_xpath_invalid_schema)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
