@@ -1962,6 +1962,8 @@ LIBYANG_API_DECL LY_ERR lyd_compare_meta(const struct lyd_meta *meta1, const str
 #define LYD_DUP_WITH_FLAGS   0x08  /**< Also copy any data node flags. That will cause the duplicated data to preserve
                                         its validation/default node state. */
 #define LYD_DUP_NO_EXT       0x10  /**< Do not duplicate nodes with the ::LYD_EXT flag (nested extension instance data). */
+#define LYD_DUP_WITH_PRIV    0x20  /**< Also copy data node private pointer. Only the pointer is copied, it still points
+                                        to the same data. */
 
 /** @} dupoptions */
 
