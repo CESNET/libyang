@@ -245,6 +245,7 @@ static void
 test_xpath_invalid_schema(void **state)
 {
     const char *schema1, *schema2;
+
     ly_ctx_set_options(UTEST_LYCTX, LY_CTX_LEAFREF_EXTENDED);
     schema1 = MODULE_CREATE_YANG("xp_test",
             "list l1 {key t1;"
