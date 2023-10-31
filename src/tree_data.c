@@ -1738,6 +1738,9 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
     } else {
         dup->flags = (node->flags & (LYD_DEFAULT | LYD_EXT)) | LYD_NEW;
     }
+    if (options & LYD_DUP_WITH_PRIV) {
+        dup->priv = node->priv;
+    }
     if (trg_ctx == LYD_CTX(node)) {
         dup->schema = node->schema;
     } else {
