@@ -157,10 +157,14 @@ struct ly_in;
                                                  modified manually. If this flag is used incorrectly (for unordered data),
                                                  the behavior is undefined and most functions executed with these
                                                  data will not work correctly. */
-#define LYD_PARSE_SUBTREE 0x400000          /**< Parse only the current data subtree with any descendants, no siblings.
+#define LYD_PARSE_SUBTREE 0x400000          /**< Parse only the first child item along with any descendants, but no
+                                                 siblings. This flag is not required when parsing data which do not
+                                                 start at the schema root; for that purpose, use lyd_parse_data's parent
+                                                 argument.
                                                  Also, a new return value ::LY_ENOT is returned if there is a sibling
                                                  subtree following in the input data. Note that if validation is requested,
-                                                 only the newly parsed subtree is validated. */
+                                                 only the newly parsed subtree is validated. This might result in
+                                                 an invalid datastore content. */
 #define LYD_PARSE_WHEN_TRUE 0x800000        /**< Mark all the parsed nodes dependend on a when condition with the flag
                                                  that means the condition was satisifed before. This allows for
                                                  auto-deletion of these nodes during validation. */
@@ -213,7 +217,8 @@ struct ly_in;
  * @brief Parse (and validate) data from the input handler as a YANG data tree.
  *
  * @param[in] ctx Context to connect with the tree being built here.
- * @param[in] parent Optional parent to connect the parsed nodes to.
+ * @param[in] parent Optional parent to connect the parsed nodes to. If provided, the data are expected to describe
+ * a subtree of the YANG model instead of starting at the schema root.
  * @param[in] in The input handle to provide the dumped data in the specified @p format to parse (and validate).
  * @param[in] format Format of the input data to be parsed. Can be 0 to try to detect format from the input handler.
  * @param[in] parse_options Options for parser, see @ref dataparseroptions.
@@ -221,6 +226,11 @@ struct ly_in;
  * @param[out] tree Full parsed data tree, note that NULL can be a valid tree. If @p parent is set, set to NULL.
  * @return LY_SUCCESS in case of successful parsing (and validation).
  * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
+ *
+ * When parsing subtrees (i.e., when @p parent is non-NULL), validation is only performed on the newly parsed data.
+ * This might result in allowing invalid datastore content when the schema contains cross-branch constraints,
+ * complicated `must` statements, etc. When a full-datastore validation is desirable, parse all subtrees
+ * first, and then request validation of the complete datastore content.
  */
 LIBYANG_API_DECL LY_ERR lyd_parse_data(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in, LYD_FORMAT format,
         uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree);
