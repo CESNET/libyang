@@ -236,7 +236,7 @@ print_expr_str(char **str, size_t *size, size_t *used, const char *format, ...)
     va_start(ap, format);
 
     /* try to append the string */
-    p = vsnprintf(*str + *used, *size - *used, format, ap);
+    p = vsnprintf(*str ? *str + *used : NULL, *size - *used, format, ap);
 
     if ((unsigned)p >= *size - *used) {
         /* realloc */
