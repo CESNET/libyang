@@ -226,9 +226,10 @@ str2axis(const char *str, uint32_t str_len)
 static void
 print_expr_struct_debug(const struct lyxp_expr *exp)
 {
-#define MSG_BUFFER_SIZE 128
-    char tmp[MSG_BUFFER_SIZE];
+    char *tmp;
     uint32_t i, j;
+    FILE *fp;
+    size_t s;
 
     if (!exp || (ly_ll < LY_LLDBG)) {
         return;
@@ -236,18 +237,21 @@ print_expr_struct_debug(const struct lyxp_expr *exp)
 
     LOGDBG(LY_LDGXPATH, "expression \"%s\":", exp->expr);
     for (i = 0; i < exp->used; ++i) {
-        sprintf(tmp, "\ttoken %s, in expression \"%.*s\"", lyxp_token2str(exp->tokens[i]), exp->tok_len[i],
+        fp = open_memstream(&tmp, &s);
+        fprintf(fp, "\ttoken %s, in expression \"%.*s\"", lyxp_token2str(exp->tokens[i]), exp->tok_len[i],
                 &exp->expr[exp->tok_pos[i]]);
         if (exp->repeat && exp->repeat[i]) {
-            sprintf(tmp + strlen(tmp), " (repeat %d", exp->repeat[i][0]);
+            fprintf(fp, " (repeat %d", exp->repeat[i][0]);
             for (j = 1; exp->repeat[i][j]; ++j) {
-                sprintf(tmp + strlen(tmp), ", %d", exp->repeat[i][j]);
+                fprintf(fp, ", %d", exp->repeat[i][j]);
             }
-            strcat(tmp, ")");
+            fprintf(fp, ")");
         }
+        fflush(fp);
         LOGDBG(LY_LDGXPATH, tmp);
+        fclose(fp);
+        free(tmp);
     }
-#undef MSG_BUFFER_SIZE
 }
 
 #ifndef NDEBUG
