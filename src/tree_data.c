@@ -1020,6 +1020,35 @@ lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta, ly_bool clear_df
     }
 }
 
+/**
+ * @brief Get the annotation definition in the module.
+ *
+ * @param[in] mod Metadata module (with the annotation definition).
+ * @param[in] name Attribute name.
+ * @param[in] name_len Length of @p name, must be set correctly.
+ * @return compiled YANG extension instance on success.
+ */
+static struct lysc_ext_instance *
+lyd_get_meta_annotation(const struct lys_module *mod, const char *name, size_t name_len)
+{
+    LY_ARRAY_COUNT_TYPE u;
+    struct lyplg_ext *plugin;
+
+    if (!mod) {
+        return NULL;
+    }
+
+    LY_ARRAY_FOR(mod->compiled->exts, u) {
+        plugin = mod->compiled->exts[u].def->plugin;
+        if (plugin && !strncmp(plugin->id, "ly2 metadata", 12) &&
+                !ly_strncmp(mod->compiled->exts[u].argument, name, name_len)) {
+            return &mod->compiled->exts[u];
+        }
+    }
+
+    return NULL;
+}
+
 LY_ERR
 lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
         size_t name_len, const char *value, size_t value_len, ly_bool is_utf8, ly_bool *dynamic, LY_VALUE_FORMAT format,
@@ -1029,18 +1058,10 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
     struct lysc_ext_instance *ant = NULL;
     const struct lysc_type *ant_type;
     struct lyd_meta *mt, *last;
-    LY_ARRAY_COUNT_TYPE u;
 
     assert((parent || meta) && mod);
 
-    LY_ARRAY_FOR(mod->compiled->exts, u) {
-        if (!strncmp(mod->compiled->exts[u].def->plugin->id, "ly2 metadata", 12) &&
-                !ly_strncmp(mod->compiled->exts[u].argument, name, name_len)) {
-            /* we have the annotation definition */
-            ant = &mod->compiled->exts[u];
-            break;
-        }
-    }
+    ant = lyd_get_meta_annotation(mod, name, name_len);
     if (!ant) {
         /* attribute is not defined as a metadata annotation (RFC 7952) */
         LOGVAL(mod->ctx, LYVE_REFERENCE, "Annotation definition for attribute \"%s:%.*s\" not found.",
