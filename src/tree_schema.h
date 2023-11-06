@@ -677,7 +677,7 @@ struct lysp_deviation {
 #define LYS_ORDBY_USER   0x40        /**< ordered-by user configuration lists, applicable only to
                                           ::lysc_node_leaflist/::lysp_node_leaflist and ::lysc_node_list/::lysp_node_list;
                                           is always set for state leaf-lists, and key-less lists */
-#define LYS_ORDBY_MASK   0x60        /**< mask for ordered-by values */
+#define LYS_ORDBY_MASK   0xC0        /**< mask for ordered-by values */
 #define LYS_YINELEM_TRUE 0x80        /**< yin-element true for extension's argument */
 #define LYS_YINELEM_FALSE 0x0100     /**< yin-element false for extension's argument */
 #define LYS_YINELEM_MASK 0x0180      /**< mask for yin-element value */
