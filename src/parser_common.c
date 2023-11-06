@@ -367,7 +367,7 @@ LY_ERR
 lyd_parse_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct lyd_ctx *lydctx,
         struct lysc_ext_instance *ext)
 {
-    struct lyd_meta *meta2, *prev_meta = NULL;
+    struct lyd_meta *meta2, *prev_meta = NULL, *next_meta = NULL;
     struct lyd_ctx_ext_val *ext_val;
 
     if (lydctx->parse_opts & LYD_PARSE_NO_NEW) {
@@ -391,13 +391,16 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct l
             /* node is default according to the metadata */
             node->flags |= LYD_DEFAULT;
 
+            next_meta = meta2->next;
+
             /* delete the metadata */
-            if (prev_meta) {
-                prev_meta->next = meta2->next;
-            } else if (meta != &node->meta) {
+            if (meta != &node->meta) {
                 *meta = (*meta)->next;
             }
             lyd_free_meta_single(meta2);
+            if (prev_meta) {
+                prev_meta->next = next_meta;
+            }
 
             /* update dflt flag for all parent NP containers */
             lyd_cont_set_dflt(lyd_parent(node));
