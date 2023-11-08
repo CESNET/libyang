@@ -14,6 +14,7 @@
 
 #define _GNU_SOURCE /* strndup */
 
+#include "plugins_internal.h"
 #include "plugins_types.h"
 
 #ifdef _WIN32
@@ -26,6 +27,7 @@
 #    include <sys/socket.h>
 #  endif
 #endif
+#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <stdint.h>
@@ -228,6 +230,35 @@ lyplg_type_compare_ipv6_address(const struct ly_ctx *UNUSED(ctx), const struct l
 }
 
 /**
+ * @brief Implementation of ::lyplg_type_sort_clb for the ipv6-address ietf-inet-types type.
+ */
+static int
+lyplg_type_sort_ipv6_address(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1,
+        const struct lyd_value *val2)
+{
+    struct lyd_value_ipv6_address *v1, *v2;
+    int cmp;
+
+    LYD_VALUE_GET(val1, v1);
+    LYD_VALUE_GET(val2, v2);
+
+    cmp = memcmp(&v1->addr, &v2->addr, sizeof v1->addr);
+    if (cmp != 0) {
+        return cmp;
+    }
+
+    if (!v1->zone && v2->zone) {
+        return -1;
+    } else if (v1->zone && !v2->zone) {
+        return 1;
+    } else if (v1->zone && v2->zone) {
+        return strcmp(v1->zone, v2->zone);
+    }
+
+    return 0;
+}
+
+/**
  * @brief Implementation of ::lyplg_type_print_clb for the ipv6-address ietf-inet-types type.
  */
 static const void *
@@ -365,7 +396,7 @@ const struct lyplg_type_record plugins_ipv6_address[] = {
         .plugin.store = lyplg_type_store_ipv6_address,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_ipv6_address,
-        .plugin.sort = NULL,
+        .plugin.sort = lyplg_type_sort_ipv6_address,
         .plugin.print = lyplg_type_print_ipv6_address,
         .plugin.duplicate = lyplg_type_dup_ipv6_address,
         .plugin.free = lyplg_type_free_ipv6_address,
