@@ -94,6 +94,7 @@ set(type_plugins
     src/plugins_types/instanceid_keys.c
     src/plugins_types/integer.c
     src/plugins_types/leafref.c
+    src/plugins_types/lyds_tree.c
     src/plugins_types/string.c
     src/plugins_types/union.c
     src/plugins_types/ipv4_address.c
@@ -134,6 +135,7 @@ set(libsrc
     src/schema_compile_node.c
     src/schema_compile_amend.c
     src/schema_features.c
+    src/tree_data_sorted.c
     src/tree_schema.c
     src/tree_schema_free.c
     src/tree_schema_common.c

@@ -209,6 +209,10 @@ xml_print_meta(struct xmlpr_ctx *pctx, const struct lyd_node *node)
     }
 
     for (meta = node->meta; meta; meta = meta->next) {
+        if (!lyd_metadata_should_print(meta)) {
+            continue;
+        }
+
         /* store the module of the default namespace, NULL because there is none */
         ly_set_add(&ns_list, NULL, 0, NULL);
 

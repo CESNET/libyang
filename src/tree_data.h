@@ -47,6 +47,7 @@ struct lyd_node_opaq;
 struct lyd_node_term;
 struct timespec;
 struct lyxp_var;
+struct rb_node;
 
 /**
  * @page howtoData Data Instances
@@ -228,11 +229,12 @@ struct lyxp_var;
  *
  * When inserting a node into data tree (no matter if the node already exists, via ::lyd_insert_child() and
  * ::lyd_insert_sibling(), or a new node is being created), the node is automatically inserted to the place respecting the
- * nodes order from the YANG schema. So the node is not inserted to the end or beginning of the siblings list, but after the
- * existing instance of the closest preceding sibling node from the schema. In case the node is opaq (it is not connected
- * with any schema node), it is placed to the end of the sibling node in the order they are inserted in. The only situation
- * when it is possible to influence the order of the nodes is the order of user-ordered list/leaf-list instances. In such
- * a case the ::lyd_insert_after() or ::lyd_insert_before() can be used.
+ * nodes order from the YANG schema. A leaf-list instances are sorted based on the value and the ::lyplg_type_sort_clb
+ * function defined in the given datatype. A list instances are ordered similarly based on keys. In case the node is opaq
+ * (it is not connected with any schema node), it is placed to the end of the sibling node in the order they are inserted in.
+ * The only situation when it is possible to influence the order of the nodes is the order of user-ordered list/leaf-list
+ * instances. In such a case the ::lyd_insert_after(), ::lyd_insert_before() can be used and ::lyd_insert_child(),
+ * ::lyd_insert_sibling() adds the node after the existing instance of the closest preceding sibling node from the schema.
  *
  * Creating data is generally possible in two ways, they can be combined. You can add nodes one-by-one based on
  * the node name and/or its parent (::lyd_new_inner(), ::lyd_new_term(), ::lyd_new_any(), ::lyd_new_list(), ::lyd_new_list2()
@@ -527,6 +529,17 @@ struct lyxp_var;
 #define LYD_CTX(node) ((node)->schema ? (node)->schema->module->ctx : ((const struct lyd_node_opaq *)(node))->ctx)
 
 /**
+ * @brief Find out if the node is the only instance, i.e. it has no siblings with the same schema.
+ *
+ * @param[in] NODE Pointer to the struct lyd_node.
+ * @return 1 @p NODE is a single instance (is alone).
+ * @return 0 @p NODE is not alone.
+ */
+#define LYD_NODE_IS_ALONE(NODE) \
+    (((NODE)->prev == NODE) || \
+        (((NODE)->prev->schema != (NODE)->schema) && (!(NODE)->next || ((NODE)->schema != (NODE)->next->schema))))
+
+/**
  * @brief Data input/output formats supported by libyang [parser](@ref howtoDataParsers) and
  * [printer](@ref howtoDataPrinters) functions.
  */
@@ -707,6 +720,13 @@ struct lyd_value_xpath10 {
     const struct ly_ctx *ctx;
     void *prefix_data;
     LY_VALUE_FORMAT format;
+};
+
+/**
+ * @brief Special lyd_value structure for lyds tree value.
+ */
+struct lyd_value_lyds_tree {
+    struct rb_node *rbt;        /**< Root of the Red-black tree. */
 };
 
 /**
@@ -2006,7 +2026,8 @@ LIBYANG_API_DECL LY_ERR lyd_compare_meta(const struct lyd_meta *meta1, const str
 
 #define LYD_DUP_RECURSIVE    0x01  /**< Duplicate not just the node but also all the children. Note that
                                         list's keys are always duplicated. */
-#define LYD_DUP_NO_META      0x02  /**< Do not duplicate metadata (or attributes) of any node. */
+#define LYD_DUP_NO_META      0x02  /**< Do not duplicate metadata (or attributes) of any node. Flag has no effect
+                                        on 'lyds_tree' metadata. */
 #define LYD_DUP_WITH_PARENTS 0x04  /**< If a nested node is being duplicated, duplicate also all the parents.
                                         Keys are also duplicated for lists. Return value does not change! */
 #define LYD_DUP_WITH_FLAGS   0x08  /**< Also copy any data node flags. That will cause the duplicated data to preserve

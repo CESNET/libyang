@@ -1285,7 +1285,9 @@ ypr_import_xmlns(struct lys_ypr_ctx *pctx, const struct lysp_module *modp, uint1
     LY_ARRAY_COUNT_TYPE u;
 
     LY_ARRAY_FOR(modp->imports, u){
-        ly_print_(pctx->out, "\n%*sxmlns:%s=\"%s\"", indent + INDENT, modp->imports[u].prefix, modp->imports[u].module->ns);
+        if (!(modp->imports[u].flags & LYS_INTERNAL)) {
+            ly_print_(pctx->out, "\n%*sxmlns:%s=\"%s\"", indent + INDENT, modp->imports[u].prefix, modp->imports[u].module->ns);
+        }
     }
 }
 

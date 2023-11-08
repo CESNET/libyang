@@ -2700,12 +2700,15 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
     /* list ordering */
     if (node->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
         if ((node->flags & (LYS_CONFIG_R | LYS_IS_OUTPUT | LYS_IS_NOTIF)) && (node->flags & LYS_ORDBY_MASK)) {
+            node->flags &= ~LYS_ORDBY_MASK;
             LOGVRB("The ordered-by statement is ignored in lists representing %s (%s).",
                     (node->flags & LYS_IS_OUTPUT) ? "RPC/action output parameters" :
                     (ctx->compile_opts & LYS_IS_NOTIF) ? "notification content" : "state data", ctx->path);
-            node->flags &= ~LYS_ORDBY_MASK;
-            node->flags |= LYS_ORDBY_SYSTEM;
-        } else if (!(node->flags & LYS_ORDBY_MASK)) {
+        }
+        if (node->flags & (LYS_IS_OUTPUT | LYS_IS_NOTIF)) {
+            /* it is probably better not to order them */
+            node->flags |= LYS_ORDBY_USER;
+        } else if (!(node->flags & LYS_ORDBY_MASK) || (node->flags & LYS_CONFIG_R)) {
             /* default ordering is system */
             node->flags |= LYS_ORDBY_SYSTEM;
         }
