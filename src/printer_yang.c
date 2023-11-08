@@ -288,8 +288,25 @@ yprp_extension_instances(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t
     LY_ARRAY_COUNT_TYPE u;
 
     LY_ARRAY_FOR(exts, u) {
+        if (exts[u].flags & LYS_INTERNAL) {
+            continue;
+        }
         yprp_extension_instance(pctx, substmt, substmt_index, &exts[u], flag);
     }
+}
+
+static ly_bool
+yprp_extension_has_printable_instances(struct lysp_ext_instance *exts)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    LY_ARRAY_FOR(exts, u) {
+        if (!(exts[u].flags & LYS_INTERNAL)) {
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 static void
@@ -2148,7 +2165,7 @@ yang_print_parsed_body(struct lys_ypr_ctx *pctx, const struct lysp_module *modp)
 
     YPR_EXTRA_LINE(modp->extensions, pctx);
 
-    if (modp->exts) {
+    if (yprp_extension_has_printable_instances(modp->exts)) {
         YPR_EXTRA_LINE_PRINT(pctx);
         yprp_extension_instances(pctx, LY_STMT_MODULE, 0, modp->exts, NULL);
     }

@@ -24,6 +24,7 @@
 #include "tree.h"
 #include "tree_data.h"
 #include "tree_data_internal.h"
+#include "tree_data_sorted.h"
 #include "tree_schema.h"
 
 static void
@@ -222,7 +223,6 @@ lyd_free_subtree(struct lyd_node *node)
     } else if (node->schema->nodetype & LYD_NODE_INNER) {
         /* remove children hash table in case of inner data node */
         lyht_free(((struct lyd_node_inner *)node)->children_ht, NULL);
-        ((struct lyd_node_inner *)node)->children_ht = NULL;
 
         /* free the children */
         LY_LIST_FOR_SAFE(lyd_child(node), next, iter) {
@@ -286,6 +286,7 @@ lyd_free_(struct lyd_node *node)
 
         /* in case of the top-level nodes (node->parent is NULL), no unlinking needed */
         if (iter->parent) {
+            lyds_free_metadata(iter);
             lyd_unlink(iter);
         }
         lyd_free_subtree(iter);

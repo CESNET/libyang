@@ -775,7 +775,7 @@ test_xml(void **state)
     /* check first item */
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
     list_tree = (void *)tree;
-    CHECK_LYD_NODE_INNER(list_tree, 1, 0, 0, 0, 1, 0, 0, 1);
+    CHECK_LYD_NODE_INNER(list_tree, 1, 0, 1, 0, 1, 0, 0, 1);
     list_leaf = (void *) list_tree->child;
     assert_string_equal(list_leaf->schema->name, "uid");
     CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 1, 1, 1, UINT32, "0", 0);
@@ -814,7 +814,7 @@ test_xml(void **state)
     /* check first item */
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
     list_tree = (void *)tree;
-    CHECK_LYD_NODE_INNER(list_tree, 1, 0, 0, 0, 1, 0, 0, 1);
+    CHECK_LYD_NODE_INNER(list_tree, 1, 0, 1, 0, 1, 0, 0, 1);
     list_leaf = (void *) list_tree->child;
     assert_string_equal(list_leaf->schema->name, "uid");
     CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 1, 1, 1, UINT32, "0", 0);
@@ -893,13 +893,13 @@ test_xml(void **state)
     /* check first item */
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
     list_tree = (void *)tree;
-    CHECK_LYD_NODE_INNER(list_tree, 1, 0, 0, 0, 1, 0, 0, 1);
+    CHECK_LYD_NODE_INNER(list_tree, 1, 0, 1, 0, 1, 0, 0, 1);
     list_leaf = (void *) list_tree->child;
     assert_string_equal(list_leaf->schema->name, "uid");
     CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 1, 1, 1, UINT32, "0", 0);
     list_leaf = (void *) list_leaf->next;
     assert_string_equal(list_leaf->schema->name, "group");
-    CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 1, 1, 1, STRING, "User");
+    CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 1, 1, 1, STRING, "Admin");
     list_leaf = (void *) list_leaf->next;
     assert_string_equal(list_leaf->schema->name, "name");
     CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 0, 1, 1, STRING, "Tomáš Novák");
@@ -911,7 +911,7 @@ test_xml(void **state)
     CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 1, 1, 1, UINT32, "0", 0);
     list_leaf = (void *) list_leaf->next;
     assert_string_equal(list_leaf->schema->name, "group");
-    CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 1, 1, 1, STRING, "Admin");
+    CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 1, 1, 1, STRING, "User");
     list_leaf = (void *) list_leaf->next;
     assert_string_equal(list_leaf->schema->name, "name");
     CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 0, 1, 1, STRING, "Tomáš Novák");
@@ -962,7 +962,7 @@ test_xml(void **state)
             "</user>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
     list_tree = (void *)tree;
-    CHECK_LYD_NODE_INNER(list_tree, 1, 0, 0, 0, 1, 0, 0, 1);
+    CHECK_LYD_NODE_INNER(list_tree, 1, 0, 1, 0, 1, 0, 0, 1);
     list_leaf = (void *) list_tree->child;
     assert_string_equal(list_leaf->schema->name, "uid");
     CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 1, 1, 1, UINT32, "0", 0);
@@ -1026,7 +1026,7 @@ test_xml(void **state)
             "</user>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
     list_tree = (void *)tree;
-    CHECK_LYD_NODE_INNER(list_tree, 1, 0, 0, 0, 1, 0, 0, 1);
+    CHECK_LYD_NODE_INNER(list_tree, 1, 0, 1, 0, 1, 0, 0, 1);
     list_tree = (void *) list_tree->next;
     CHECK_LYD_NODE_INNER(list_tree, 1, 0, 0, 0, 1, 0, 0, 1);
     list_tree = (void *) list_tree->next;
@@ -1136,7 +1136,7 @@ test_json(void **state)
 
     CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
     list_tree = (void *)tree;
-    CHECK_LYD_NODE_INNER(list_tree, 1, 0, 0, 0, 1, 0, 0, 1);
+    CHECK_LYD_NODE_INNER(list_tree, 1, 0, 1, 0, 1, 0, 0, 1);
     list_leaf = (void *) list_tree->child;
     assert_string_equal(list_leaf->schema->name, "uid");
     CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 1, 1, 1, UINT32, "0", 0);
@@ -1170,7 +1170,7 @@ test_json(void **state)
     /* check first item */
     CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
     list_tree = (void *)tree;
-    CHECK_LYD_NODE_INNER(list_tree, 1, 0, 0, 0, 1, 0, 0, 1);
+    CHECK_LYD_NODE_INNER(list_tree, 1, 0, 1, 0, 1, 0, 0, 1);
     list_leaf = (void *) list_tree->child;
     assert_string_equal(list_leaf->schema->name, "uid");
     CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 1, 1, 1, UINT32, "0", 0);
@@ -1228,13 +1228,13 @@ test_json(void **state)
             "]}";
     CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
     list_tree = (void *)tree;
-    CHECK_LYD_NODE_INNER(list_tree, 1, 0, 0, 0, 1, 0, 0, 1);
+    CHECK_LYD_NODE_INNER(list_tree, 1, 0, 1, 0, 1, 0, 0, 1);
     list_leaf = (void *) list_tree->child;
     assert_string_equal(list_leaf->schema->name, "uid");
     CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 1, 1, 1, UINT32, "0", 0);
     list_leaf = (void *) list_leaf->next;
     assert_string_equal(list_leaf->schema->name, "group");
-    CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 1, 1, 1, STRING, "User");
+    CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 1, 1, 1, STRING, "Admin");
     list_leaf = (void *) list_leaf->next;
     assert_string_equal(list_leaf->schema->name, "name");
     CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 0, 1, 1, STRING, "Jan Kuba");
@@ -1246,7 +1246,7 @@ test_json(void **state)
     CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 1, 1, 1, UINT32, "0", 0);
     list_leaf = (void *) list_leaf->next;
     assert_string_equal(list_leaf->schema->name, "group");
-    CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 1, 1, 1, STRING, "Admin");
+    CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 1, 1, 1, STRING, "User");
     list_leaf = (void *) list_leaf->next;
     assert_string_equal(list_leaf->schema->name, "name");
     CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 0, 1, 1, STRING, "Jan Kuba");
@@ -1282,7 +1282,7 @@ test_json(void **state)
 
     CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
     list_tree = (void *)tree;
-    CHECK_LYD_NODE_INNER(list_tree, 1, 0, 0, 0, 1, 0, 0, 1);
+    CHECK_LYD_NODE_INNER(list_tree, 1, 0, 1, 0, 1, 0, 0, 1);
     list_leaf = (void *) list_tree->child;
     assert_string_equal(list_leaf->schema->name, "uid");
     CHECK_LYD_NODE_TERM(list_leaf, 0, 0, 1, 1, 1, UINT32, "0", 0);
@@ -1328,7 +1328,7 @@ test_json(void **state)
             "]}";
     CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
     list_tree = (void *)tree;
-    CHECK_LYD_NODE_INNER(list_tree, 1, 0, 0, 0, 1, 0, 0, 1);
+    CHECK_LYD_NODE_INNER(list_tree, 1, 0, 1, 0, 1, 0, 0, 1);
     list_tree = (void *) list_tree->next;
     CHECK_LYD_NODE_INNER(list_tree, 1, 0, 0, 0, 1, 0, 0, 1);
     list_tree = (void *) list_tree->next;

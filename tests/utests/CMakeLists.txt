@@ -61,6 +61,7 @@ ly_add_utest(NAME tree_schema_compile SOURCES schema/test_tree_schema_compile.c)
 ly_add_utest(NAME printer_tree SOURCES schema/test_printer_tree.c)
 
 ly_add_utest(NAME tree_data SOURCES data/test_tree_data.c)
+ly_add_utest(NAME tree_data_sorted SOURCES data/test_tree_data_sorted.c)
 ly_add_utest(NAME new SOURCES data/test_new.c)
 ly_add_utest(NAME parser_xml SOURCES data/test_parser_xml.c)
 ly_add_utest(NAME printer_xml SOURCES data/test_printer_xml.c)

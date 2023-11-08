@@ -455,6 +455,9 @@ json_print_metadata(struct jsonpr_ctx *pctx, const struct lyd_node *node, const 
     }
 
     for (meta = node->meta; meta; meta = meta->next) {
+        if (!lyd_metadata_should_print(meta)) {
+            continue;
+        }
         PRINT_COMMA;
         ly_print_(pctx->out, "%*s\"%s:%s\":%s", INDENT, meta->annotation->module->name, meta->name, DO_FORMAT ? " " : "");
         LY_CHECK_RET(json_print_value(pctx, LYD_CTX(node), &meta->value, NULL));
@@ -462,6 +465,30 @@ json_print_metadata(struct jsonpr_ctx *pctx, const struct lyd_node *node, const 
     }
 
     return LY_SUCCESS;
+}
+
+/**
+ * @brief Check if a value can be printed for at least one metadata.
+ *
+ * @param[in] node Node to check.
+ * @return 1 if node has printable meta otherwise 0.
+ */
+static ly_bool
+node_has_printable_meta(const struct lyd_node *node)
+{
+    struct lyd_meta *iter;
+
+    if (!node->meta) {
+        return 0;
+    }
+
+    LY_LIST_FOR(node->meta, iter) {
+        if (lyd_metadata_should_print(iter)) {
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 /**
@@ -485,7 +512,7 @@ json_print_attributes(struct jsonpr_ctx *pctx, const struct lyd_node *node, ly_b
         wdmod = ly_ctx_get_module_implemented(LYD_CTX(node), "ietf-netconf-with-defaults");
     }
 
-    if (node->schema && (node->meta || wdmod)) {
+    if (node->schema && (wdmod || node_has_printable_meta(node))) {
         if (inner) {
             LY_CHECK_RET(json_print_member2(pctx, lyd_parent(node), LY_VALUE_JSON, NULL, 1));
         } else {
@@ -799,7 +826,7 @@ json_print_leaf_list(struct jsonpr_ctx *pctx, const struct lyd_node *node)
                 /* we have implicit OR explicit default node, get with-defaults module */
                 wdmod = ly_ctx_get_module_implemented(LYD_CTX(node), "ietf-netconf-with-defaults");
             }
-            if (node->meta || wdmod) {
+            if (wdmod || node_has_printable_meta(node)) {
                 /* we will be printing metadata for these siblings */
                 pctx->first_leaflist = node;
             }
@@ -855,7 +882,7 @@ json_print_meta_attr_leaflist(struct jsonpr_ctx *pctx)
         } else {
             iter_wdmod = NULL;
         }
-        if ((iter->schema && (iter->meta || iter_wdmod)) || (opaq && opaq->attr)) {
+        if ((iter->schema && (node_has_printable_meta(iter) || iter_wdmod)) || (opaq && opaq->attr)) {
             ly_print_(pctx->out, "%*s%s", INDENT, DO_FORMAT ? "{\n" : "{");
             LEVEL_INC;
 

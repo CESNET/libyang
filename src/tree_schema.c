@@ -1738,6 +1738,67 @@ lysp_add_internal_ietf_netconf_with_defaults(struct lysp_ctx *pctx, struct lysp_
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Define a new internal 'lyds_tree' value for metadata.
+ *
+ * The 'lyds_tree' is a data type containing a reference to a binary search tree
+ * by which the data nodes are ordered.
+ *
+ * @param[in] pctx Parse context.
+ * @param[in] mod Parsed module to add to.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error.
+ */
+static LY_ERR
+lysp_add_internal_yang(struct lysp_ctx *pctx, struct lysp_module *mod)
+{
+    struct lysp_ext_instance *extp, *prev_exts = mod->exts;
+    struct lysp_stmt *stmt;
+    struct lysp_tpdf *tpdf;
+    uint32_t idx;
+
+    /* add new typedef */
+    LY_ARRAY_NEW_RET(PARSER_CTX(pctx), mod->typedefs, tpdf, LY_EMEM);
+    LY_CHECK_RET(lydict_insert(PARSER_CTX(pctx), "lyds_tree", 0, &tpdf->name));
+    LY_CHECK_RET(lydict_insert(PARSER_CTX(pctx), "uint64", 0, &tpdf->type.name));
+    tpdf->type.pmod = mod;
+
+    /* add new extension instance */
+    LY_ARRAY_NEW_RET(PARSER_CTX(pctx), mod->exts, extp, LY_EMEM);
+
+    /* fill in the extension instance fields */
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md:annotation", 0, &extp->name));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "lyds_tree", 0, &extp->argument));
+    extp->format = LY_VALUE_SCHEMA;
+    extp->prefix_data = mod;
+    extp->parent = mod;
+    extp->parent_stmt = LY_STMT_MODULE;
+    extp->flags = LYS_INTERNAL;
+
+    /* prepare for metadata plugin */
+    extp->child = stmt = calloc(1, sizeof *extp->child);
+    LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &stmt->stmt));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "lyds_tree", 0, &stmt->arg));
+    stmt->format = LY_VALUE_SCHEMA;
+    stmt->prefix_data = mod;
+    stmt->kw = LY_STMT_TYPE;
+
+    if (!prev_exts) {
+        /* first extension instances */
+        assert(pctx->main_ctx == pctx);
+        LY_CHECK_RET(ly_set_add(&pctx->ext_inst, mod->exts, 1, NULL));
+    } else {
+        /* replace previously stored extension instances */
+        if (!ly_set_contains(&pctx->ext_inst, prev_exts, &idx)) {
+            LOGINT_RET(mod->mod->ctx);
+        }
+        pctx->ext_inst.objs[idx] = mod->exts;
+    }
+
+    return LY_SUCCESS;
+}
+
 LY_ERR
 lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
         LY_ERR (*custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
@@ -1852,6 +1913,8 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
         LY_CHECK_GOTO(ret = lysp_add_internal_ietf_netconf(pctx, mod->parsed), cleanup);
     } else if (!strcmp(mod->name, "ietf-netconf-with-defaults")) {
         LY_CHECK_GOTO(ret = lysp_add_internal_ietf_netconf_with_defaults(pctx, mod->parsed), cleanup);
+    } else if (!strcmp(mod->name, "yang")) {
+        LY_CHECK_GOTO(ret = lysp_add_internal_yang(pctx, mod->parsed), cleanup);
     }
 
     /* add the module into newly created module set, will also be freed from there on any error */

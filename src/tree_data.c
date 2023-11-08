@@ -45,6 +45,7 @@
 #include "set.h"
 #include "tree.h"
 #include "tree_data_internal.h"
+#include "tree_data_sorted.h"
 #include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
@@ -658,38 +659,52 @@ lyd_insert_has_keys(const struct lyd_node *list)
     return 1;
 }
 
-void
-lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling_p, struct lyd_node *node, ly_bool last)
+/**
+ * @brief Get the first subsequent data node that contains a different schema definition.
+ *
+ * @param[in] first_sibling First sibling, NULL if no top-level sibling exist yet.
+ * @param[in] node Node to be inserted.
+ * @return Subsequent data node with a different schema.
+ */
+static struct lyd_node *
+lyd_insert_node_find_anchor(struct lyd_node *first_sibling, struct lyd_node *node)
+{
+    struct lyd_node *anchor;
+
+    if (first_sibling && (first_sibling->flags & LYD_EXT)) {
+        return NULL;
+    }
+
+    /* find the anchor, so we can insert somewhere before it */
+    anchor = lyd_insert_get_next_anchor(first_sibling, node);
+    /* cannot insert data node after opaque nodes */
+    if (!anchor && node->schema && first_sibling && !first_sibling->prev->schema) {
+        anchor = first_sibling->prev;
+        while ((anchor != first_sibling) && !anchor->prev->schema) {
+            anchor = anchor->prev;
+        }
+    }
+
+    return anchor;
+}
+
+/**
+ * @brief Insert a node into parent/siblings.
+ *
+ * @param[in] parent Parent to insert into, NULL for top-level sibling.
+ * @param[in,out] first_sibling First sibling, NULL if no top-level sibling exist yet. Can be also NULL if @p parent is set.
+ * @param[in] node Individual node (without siblings) to insert.
+ * @param[in] last If set, do not search for the correct anchor but always insert at the end.
+ */
+static void
+lyd_insert_node_ordby_schema(struct lyd_node *parent, struct lyd_node **first_sibling_p, struct lyd_node *node,
+        ly_bool last)
 {
     struct lyd_node *anchor, *first_sibling;
 
-    /* inserting list without its keys is not supported */
-    assert((parent || first_sibling_p) && node && (node->hash || !node->schema));
-    assert(!parent || !parent->schema ||
-            (parent->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_ACTION | LYS_NOTIF)));
-
-    if (!parent && first_sibling_p && (*first_sibling_p) && (*first_sibling_p)->parent) {
-        parent = lyd_parent(*first_sibling_p);
-    }
-
     /* get first sibling */
     first_sibling = parent ? lyd_child(parent) : *first_sibling_p;
-
-    if (last || (first_sibling && (first_sibling->flags & LYD_EXT))) {
-        /* no next anchor */
-        anchor = NULL;
-    } else {
-        /* find the anchor, our next node, so we can insert before it */
-        anchor = lyd_insert_get_next_anchor(first_sibling, node);
-
-        /* cannot insert data node after opaque nodes */
-        if (!anchor && node->schema && first_sibling && !first_sibling->prev->schema) {
-            anchor = first_sibling->prev;
-            while ((anchor != first_sibling) && !anchor->prev->schema) {
-                anchor = anchor->prev;
-            }
-        }
-    }
+    anchor = !last ? lyd_insert_node_find_anchor(first_sibling, node) : NULL;
 
     if (anchor) {
         /* insert before the anchor */
@@ -707,6 +722,91 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling_p, stru
     } else {
         /* insert as the only sibling */
         *first_sibling_p = node;
+    }
+}
+
+/**
+ * @brief Insert a node into parent/siblings. It is sorted using sort callbacks in the plugin types and lyds tree.
+ *
+ * The lyds tree is a Binary search tree that allows to sort instances of the same leaf-list or list.
+ * This Binary search tree is always found in the first instance of the (leaf-)list in its metadata.
+ *
+ * @param[in] parent Parent to insert into, NULL for top-level sibling.
+ * @param[in,out] first_sibling First sibling, NULL if no top-level sibling exist yet. Can be also NULL if @p parent is set.
+ * @param[in] node Individual node (without siblings) to insert.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_insert_node_ordby_lyds(struct lyd_node *parent, struct lyd_node **first_sibling_p, struct lyd_node *node)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyd_node *anchor, *first_sibling, *leader;
+
+    /* get first sibling */
+    first_sibling = parent ? lyd_child(parent) : *first_sibling_p;
+
+    if (!parent && !first_sibling) {
+        /* insert as the only sibling */
+        *first_sibling_p = node;
+        /* node is alone, no lyds tree is created */
+    } else if (parent && !first_sibling) {
+        /* insert as the only child */
+        ret = lyds_create_metadata(node);
+        LY_CHECK_RET(ret);
+        lyd_insert_only_child(parent, node);
+    } else if (lyd_find_sibling_schema(first_sibling, node->schema, &leader) == LY_SUCCESS) {
+        /* Found the first instance of (leaf-)list, let's mark it as 'leader'. */
+        /* ensure that leader has meta set (use-case for top-level nodes) */
+        ret = lyds_create_metadata(leader);
+        LY_CHECK_RET(ret);
+        /* insert @p node to the BST tree and put him in line */
+        ret = lyds_insert(&leader, node);
+        LY_CHECK_RET(ret);
+    } else if ((anchor = lyd_insert_node_find_anchor(first_sibling, node))) {
+        /* insert before the anchor */
+        ret = lyds_create_metadata(node);
+        LY_CHECK_RET(ret);
+        lyd_insert_before_node(anchor, node);
+    } else {
+        /* insert as the last node, there is probably no other option */
+        ret = lyds_create_metadata(node);
+        LY_CHECK_RET(ret);
+        lyd_insert_after_node(first_sibling->prev, node);
+    }
+
+    if (first_sibling_p && !node->prev->next) {
+        /* move first sibling */
+        *first_sibling_p = node;
+    }
+
+    return LY_SUCCESS;
+}
+
+void
+lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling_p, struct lyd_node *node, ly_bool last)
+{
+    LY_ERR ret = LY_SUCCESS;
+
+    /* inserting list without its keys is not supported */
+    assert((parent || first_sibling_p) && node && (node->hash || !node->schema));
+    assert(!parent || !parent->schema ||
+            (parent->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_ACTION | LYS_NOTIF)));
+
+    if (!parent && first_sibling_p && (*first_sibling_p) && (*first_sibling_p)->parent) {
+        parent = lyd_parent(*first_sibling_p);
+    }
+
+    if (lyds_is_supported(node)) {
+        ret = lyd_insert_node_ordby_lyds(parent, first_sibling_p, node);
+        if (ret) {
+            /* The operation on the sorting tree unexpectedly failed due to some internal issue,
+             * but insert the node anyway although the nodes will not be sorted.
+             */
+            LOGWRN(LYD_CTX(node), "Data in \"%s\" are not sorted.", node->schema->name);
+            lyd_insert_node_ordby_schema(parent, first_sibling_p, node, last);
+        }
+    } else {
+        lyd_insert_node_ordby_schema(parent, first_sibling_p, node, last);
     }
 
     /* insert into parent HT */
@@ -910,10 +1010,16 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
 void
 lyd_unlink(struct lyd_node *node)
 {
-    struct lyd_node *iter;
+    struct lyd_node *iter, *leader;
 
     if (!node) {
         return;
+    }
+
+    /* unlink from the lyds tree */
+    if (lyds_is_supported(node)) {
+        lyd_find_sibling_val(node, node->schema, NULL, 0, &leader);
+        lyds_unlink(&leader, node);
     }
 
     /* update hashes while still linked into the tree */

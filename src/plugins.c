@@ -81,6 +81,11 @@ extern const struct lyplg_type_record plugins_xpath10[];
 extern const struct lyplg_type_record plugins_node_instanceid[];
 
 /*
+ * lyds_tree
+ */
+extern const struct lyplg_type_record plugins_lyds_tree[];
+
+/*
  * internal extension plugins records
  */
 extern struct lyplg_ext_record plugins_metadata[];
@@ -483,6 +488,9 @@ lyplg_init(void)
 
     /* ietf-netconf-acm */
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_node_instanceid), error);
+
+    /* lyds_tree */
+    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_lyds_tree), error);
 
     /* internal extensions */
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_metadata), error);

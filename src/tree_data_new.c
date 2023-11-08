@@ -43,6 +43,7 @@
 #include "set.h"
 #include "tree.h"
 #include "tree_data_internal.h"
+#include "tree_data_sorted.h"
 #include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
@@ -1272,17 +1273,19 @@ lyd_new_attr2(struct lyd_node *parent, const char *module_ns, const char *name, 
 }
 
 /**
- * @brief Change the value of @p term by @p val.
+ * @brief Change the value of @p term by @p val and reinsert the node if necessary.
  *
- * @param[in] term Term node to change.
+ * Reinserting ensures that the node is in the correct position and the data instances remain properly ordered.
+ *
+ * @param[in] term Term node to change. If it is a key, the parental list is inserted again.
  * @param[in] val New value for @p term.
  * @return LY_SUCCESS on success.
  */
 static LY_ERR
-lyd_change_term_value(struct lyd_node_term *term, struct lyd_value *val)
+lyd_change_node_value(struct lyd_node_term *term, struct lyd_value *val)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lyd_node *target;
+    struct lyd_node *target, *first;
 
     if (term->schema->nodetype == LYS_LEAFLIST) {
         target = (struct lyd_node *)term;
@@ -1296,11 +1299,24 @@ lyd_change_term_value(struct lyd_node_term *term, struct lyd_value *val)
         return LY_SUCCESS;
     }
 
-    /* unlink hash */
-    lyd_unlink_hash(target);
-    /* change value */
-    term->value.realtype->plugin->free(LYD_CTX(term), &term->value);
-    term->value = *val;
+    if (!LYD_NODE_IS_ALONE(target) && lyds_is_supported(target)) {
+        /* changing the value may cause a change in the order */
+        first = lyd_first_sibling(target);
+        first = first == target ? first->next : first;
+        /* unlink hash and unlink the target node in the lyds tree */
+        lyd_unlink_tree(target);
+        /* change value */
+        term->value.realtype->plugin->free(LYD_CTX(term), &term->value);
+        term->value = *val;
+        /* reinserting */
+        lyd_insert_node(NULL, &first, target, 0);
+    } else {
+        /* unlink hash */
+        lyd_unlink_hash(target);
+        /* change value */
+        term->value.realtype->plugin->free(LYD_CTX(term), &term->value);
+        term->value = *val;
+    }
     lyd_hash(target);
     ret = lyd_insert_hash(target);
 
@@ -1347,7 +1363,7 @@ _lyd_change_term(struct lyd_node *term, const void *value, size_t value_len, LY_
     /* compare original and new value */
     if (type->plugin->compare(LYD_CTX(term), &t->value, &val)) {
         /* values differ, switch them */
-        lyd_change_term_value(t, &val);
+        lyd_change_node_value(t, &val);
         /* make the node non-validated */
         term->flags &= LYD_NEW;
         val_change = 1;

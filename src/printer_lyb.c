@@ -765,6 +765,9 @@ lyb_print_metadata(struct ly_out *out, const struct lyd_node *node, struct lyd_l
         ++count;
     }
     for (iter = node->meta; iter; iter = iter->next) {
+        if (!lyd_metadata_should_print(iter)) {
+            continue;
+        }
         if (count == UINT8_MAX) {
             LOGERR(lybctx->lybctx->ctx, LY_EINT, "Maximum supported number of data node metadata is %u.", UINT8_MAX);
             return LY_EINT;
@@ -784,6 +787,10 @@ lyb_print_metadata(struct ly_out *out, const struct lyd_node *node, struct lyd_l
 
     /* write all the node metadata */
     LY_LIST_FOR(node->meta, iter) {
+        if (!lyd_metadata_should_print(iter)) {
+            continue;
+        }
+
         /* model */
         LY_CHECK_RET(lyb_print_model(out, iter->annotation->module, 0, lybctx->lybctx));
 
