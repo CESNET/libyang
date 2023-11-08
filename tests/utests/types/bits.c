@@ -952,6 +952,42 @@ test_plugin_compare(void **state)
 }
 
 static void
+test_plugin_sort(void **state)
+{
+    const char *schema;
+    struct lys_module *mod;
+    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_BITS]);
+    struct lysc_type *lysc_type;
+    struct ly_err_item *err = NULL;
+    struct lyd_value val1 = {0}, val2 = {0};
+
+    schema = MODULE_CREATE_YANG("T0", "leaf-list ll { type bits { bit zero; bit one; bit two; bit three;}}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+    lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+
+    /* 1000 < 1001 */
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, "three", strlen("three"),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, "three one", strlen("three one"),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+    assert_true(0 > type->sort(UTEST_LYCTX, &val1, &val2));
+    assert_true(0 < type->sort(UTEST_LYCTX, &val2, &val1));
+    assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));
+    type->free(UTEST_LYCTX, &val1);
+    type->free(UTEST_LYCTX, &val2);
+
+    /* 0011 == 0011 */
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, "zero one", strlen("zero one"),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, "one zero", strlen("one zero"),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+    assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val2));
+    assert_int_equal(0, type->sort(UTEST_LYCTX, &val2, &val1));
+    type->free(UTEST_LYCTX, &val1);
+    type->free(UTEST_LYCTX, &val2);
+}
+
+static void
 test_plugin_print(void **state)
 {
     struct ly_err_item *err = NULL;
@@ -1076,6 +1112,7 @@ main(void)
 
         UTEST(test_plugin_store),
         UTEST(test_plugin_compare),
+        UTEST(test_plugin_sort),
         UTEST(test_plugin_print),
         UTEST(test_plugin_dup),
     };
