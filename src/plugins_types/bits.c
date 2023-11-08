@@ -382,6 +382,21 @@ lyplg_type_compare_bits(const struct ly_ctx *UNUSED(ctx), const struct lyd_value
     return LY_SUCCESS;
 }
 
+LIBYANG_API_DEF int
+lyplg_type_sort_bits(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    struct lyd_value_binary *v1, *v2;
+    struct lysc_type_bits *type_bits = (struct lysc_type_bits *)val1->realtype;
+    int cmp;
+
+    LYD_VALUE_GET(val1, v1);
+    LYD_VALUE_GET(val2, v2);
+
+    cmp = memcmp(v1->data, v2->data, lyplg_type_bits_bitmap_size(type_bits));
+
+    return cmp;
+}
+
 LIBYANG_API_DEF const void *
 lyplg_type_print_bits(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
@@ -496,7 +511,7 @@ const struct lyplg_type_record plugins_bits[] = {
         .plugin.store = lyplg_type_store_bits,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_bits,
-        .plugin.sort = NULL,
+        .plugin.sort = lyplg_type_sort_bits,
         .plugin.print = lyplg_type_print_bits,
         .plugin.duplicate = lyplg_type_dup_bits,
         .plugin.free = lyplg_type_free_bits,
