@@ -88,6 +88,34 @@ test_data_xml(void **state)
 }
 
 static void
+test_plugin_sort(void **state)
+{
+    const char *v1, *v2;
+    const char *schema;
+    struct lys_module *mod;
+    struct lyd_value val1 = {0}, val2 = {0};
+    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_ENUM]);
+    struct lysc_type *lysc_type;
+    struct ly_err_item *err = NULL;
+
+    schema = MODULE_CREATE_YANG("sort", "leaf l1 {type enumeration {enum white; enum yellow; enum black;}}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+    lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+
+    v1 = "white";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+    v2 = "black";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+    assert_int_equal(1, type->sort(UTEST_LYCTX, &val1, &val2));
+    assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));
+    assert_int_equal(-1, type->sort(UTEST_LYCTX, &val2, &val1));
+    type->free(UTEST_LYCTX, &val1);
+    type->free(UTEST_LYCTX, &val2);
+}
+
+static void
 test_plugin_lyb(void **state)
 {
     const char *schema;
@@ -103,6 +131,8 @@ main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_data_xml),
+        UTEST(test_data_xml),
+        UTEST(test_plugin_sort),
         UTEST(test_plugin_lyb),
     };
 
