@@ -1500,8 +1500,8 @@ lyd_validate_must(const struct lyd_node *node, uint32_t val_opts, uint32_t int_o
         r = lyxp_eval(LYD_CTX(node), musts[u].cond, node->schema->module, LY_VALUE_SCHEMA_RESOLVED,
                 musts[u].prefixes, node, node, tree, NULL, &xp_set, LYXP_SCHEMA | xpath_options);
         if (r == LY_EINCOMPLETE) {
-            LOGINT(LYD_CTX(node));
-            r = LY_EINT;
+            LOGERR(LYD_CTX(node), LY_EINCOMPLETE,
+                    "Must \"%s\" depends on a node with a when condition, which has not been evaluated.", musts[u].cond->expr);
         }
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
