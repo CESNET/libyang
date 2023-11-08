@@ -228,6 +228,86 @@ test_lyb(void **state)
     TEST_SUCCESS_LYB("a\" xmlns:aa=\"urn:tests:a", "l2", "/aa:l2[. = '4']");
 }
 
+static void
+test_sort(void **state)
+{
+    const char *v1, *v2;
+    const char *schema;
+    struct lys_module *mod;
+    struct lyd_value val1 = {0}, val2 = {0};
+    struct lyplg_type *type = lyplg_type_plugin_find("ietf-yang-types", "2013-07-15", "date-and-time");
+    struct lysc_type *lysc_type;
+    struct ly_err_item *err = NULL;
+
+    /* create schema. Prepare common used variables */
+    schema = MODULE_CREATE_YANG("a",
+            "leaf-list ll {type yang:date-and-time;}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+    lysc_type = ((struct lysc_node_leaflist *)mod->compiled->data)->type;
+
+    /* v1 > v2, v2 < v1, v1 == v1 */
+    v1 = "2005-05-25T23:15:15Z";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+    v2 = "2005-05-25T23:15:14Z";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+    assert_true(0 < type->sort(UTEST_LYCTX, &val1, &val2));
+    assert_true(0 > type->sort(UTEST_LYCTX, &val2, &val1));
+    assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));
+    type->free(UTEST_LYCTX, &val1);
+    type->free(UTEST_LYCTX, &val2);
+
+    /* unknown timezone */
+    v1 = "2005-05-25T23:15:15Z";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+    v2 = "2005-05-25T23:15:15-00:00";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+    assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val2));
+    type->free(UTEST_LYCTX, &val1);
+    type->free(UTEST_LYCTX, &val2);
+
+    /* fractions of a second */
+    v1 = "2005-05-25T23:15:15.88888Z";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+    v2 = "2005-05-25T23:15:15.88889Z";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+    assert_true(0 > type->sort(UTEST_LYCTX, &val1, &val2));
+    assert_true(0 < type->sort(UTEST_LYCTX, &val2, &val1));
+    assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));
+    type->free(UTEST_LYCTX, &val1);
+    type->free(UTEST_LYCTX, &val2);
+
+    /* zero fractions of a second */
+    v1 = "2005-05-25T23:15:15.00Z";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+    v2 = "2005-05-25T23:15:15Z";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+    assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val2));
+    assert_int_equal(0, type->sort(UTEST_LYCTX, &val2, &val1));
+    type->free(UTEST_LYCTX, &val1);
+    type->free(UTEST_LYCTX, &val2);
+
+    /* zero fractions of a second and non-zero */
+    v1 = "2005-05-25T23:15:15.00Z";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+    v2 = "2005-05-25T23:15:15.0001Z";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+    assert_int_equal(-1, type->sort(UTEST_LYCTX, &val1, &val2));
+    assert_int_equal(1, type->sort(UTEST_LYCTX, &val2, &val1));
+    assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));
+    type->free(UTEST_LYCTX, &val1);
+    type->free(UTEST_LYCTX, &val2);
+}
+
 int
 main(void)
 {
@@ -236,6 +316,7 @@ main(void)
         UTEST(test_print),
         UTEST(test_duplicate),
         UTEST(test_lyb),
+        UTEST(test_sort),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
