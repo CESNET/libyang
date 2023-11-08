@@ -283,6 +283,48 @@ test_plugin_duplicate(void **state)
 }
 
 static void
+test_plugin_sort(void **state)
+{
+    const char *v1, *v2;
+    const char *schema;
+    struct lys_module *mod;
+    struct lyd_value val1 = {0}, val2 = {0};
+    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_BINARY]);
+    struct lysc_type *lysc_type;
+    struct ly_err_item *err = NULL;
+
+    /* create schema. Prepare common used variables */
+    schema = MODULE_CREATE_YANG("a", "leaf-list ll {type binary;}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+    lysc_type = ((struct lysc_node_leaflist *)mod->compiled->data)->type;
+
+    /* v1 < v2, v2 > v1, v1 == v1 */
+    v1 = "YWhveQ=="; /* ahoy */
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+    v2 = "YWhveg=="; /* ahoz */
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+    assert_int_equal(-1, type->sort(UTEST_LYCTX, &val1, &val2));
+    assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));
+    assert_int_equal(1, type->sort(UTEST_LYCTX, &val2, &val1));
+    type->free(UTEST_LYCTX, &val1);
+    type->free(UTEST_LYCTX, &val2);
+
+    /* v2 is shorter */
+    v1 = "YWhveQ=="; /* ahoj */
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+    v2 = "YWhv"; /* aho */
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+    assert_int_equal(1, type->sort(UTEST_LYCTX, &val1, &val2));
+    assert_int_equal(-1, type->sort(UTEST_LYCTX, &val2, &val1));
+    type->free(UTEST_LYCTX, &val1);
+    type->free(UTEST_LYCTX, &val2);
+}
+
+static void
 test_data_lyb(void **state)
 {
     const char *schema;
@@ -300,6 +342,7 @@ main(void)
         UTEST(test_plugin_store),
         UTEST(test_plugin_print),
         UTEST(test_plugin_duplicate),
+        UTEST(test_plugin_sort),
         UTEST(test_data_lyb),
     };
 

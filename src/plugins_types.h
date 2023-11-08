@@ -547,14 +547,17 @@ typedef LY_ERR (*lyplg_type_compare_clb)(const struct ly_ctx *ctx, const struct 
         const struct lyd_value *val2);
 
 /**
- * @brief Unused callback for sorting values.
+ * @brief Callback for sorting values.
+ *
+ * It can be assumed that the same context (dictionary) was used for storing both values and the realtype
+ * member of both the values is the same.
  *
  * @param[in] ctx libyang context.
  * @param[in] val1 First value to compare.
  * @param[in] val2 Second value to compare.
- * @return -1 if val1 < val2,
- * @return 0 if val1 == val2,
- * @return 1 if val1 > val2.
+ * @return Negative number if val1 < val2,
+ * @return Zero if val1 == val2,
+ * @return Positive number if val1 > val2.
  */
 typedef int (*lyplg_type_sort_clb)(const struct ly_ctx *ctx, const struct lyd_value *val1,
         const struct lyd_value *val2);
@@ -617,7 +620,7 @@ struct lyplg_type {
     lyplg_type_store_clb store;         /**< store and canonize the value in the type-specific way */
     lyplg_type_validate_clb validate;   /**< optional, validate the value in the type-specific way in data */
     lyplg_type_compare_clb compare;     /**< comparison callback to compare 2 values of the same type */
-    lyplg_type_sort_clb sort;           /**< unused comparison callback for sorting values */
+    lyplg_type_sort_clb sort;           /**< comparison callback for sorting values */
     lyplg_type_print_clb print;         /**< printer callback to get string representing the value */
     lyplg_type_dup_clb duplicate;       /**< data duplication callback */
     lyplg_type_free_clb free;           /**< optional function to free the type-spceific way stored value */
@@ -692,6 +695,12 @@ LIBYANG_API_DECL LY_ERR lyplg_type_store_binary(const struct ly_ctx *ctx, const 
  * @brief Implementation of ::lyplg_type_compare_clb for the built-in binary type.
  */
 LIBYANG_API_DECL LY_ERR lyplg_type_compare_binary(const struct ly_ctx *ctx, const struct lyd_value *val1,
+        const struct lyd_value *val2);
+
+/**
+ * @brief Implementation of ::lyplg_type_sort_clb for the built-in binary type.
+ */
+LIBYANG_API_DECL int lyplg_type_sort_binary(const struct ly_ctx *ctx, const struct lyd_value *val1,
         const struct lyd_value *val2);
 
 /**
