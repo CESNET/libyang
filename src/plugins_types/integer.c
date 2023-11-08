@@ -206,6 +206,52 @@ lyplg_type_compare_int(const struct ly_ctx *UNUSED(ctx), const struct lyd_value 
     return LY_SUCCESS;
 }
 
+LIBYANG_API_DEF int
+lyplg_type_sort_int(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    switch (val1->realtype->basetype) {
+    case LY_TYPE_INT8:
+        if (val1->int8 < val2->int8) {
+            return -1;
+        } else if (val1->int8 > val2->int8) {
+            return 1;
+        } else {
+            return 0;
+        }
+        break;
+    case LY_TYPE_INT16:
+        if (val1->int16 < val2->int16) {
+            return -1;
+        } else if (val1->int16 > val2->int16) {
+            return 1;
+        } else {
+            return 0;
+        }
+        break;
+    case LY_TYPE_INT32:
+        if (val1->int32 < val2->int32) {
+            return -1;
+        } else if (val1->int32 > val2->int32) {
+            return 1;
+        } else {
+            return 0;
+        }
+        break;
+    case LY_TYPE_INT64:
+        if (val1->int64 < val2->int64) {
+            return -1;
+        } else if (val1->int64 > val2->int64) {
+            return 1;
+        } else {
+            return 0;
+        }
+        break;
+    default:
+        break;
+    }
+    return 0;
+}
+
 LIBYANG_API_DEF const void *
 lyplg_type_print_int(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
@@ -400,6 +446,52 @@ lyplg_type_compare_uint(const struct ly_ctx *UNUSED(ctx), const struct lyd_value
     return LY_SUCCESS;
 }
 
+LIBYANG_API_DEF int
+lyplg_type_sort_uint(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    switch (val1->realtype->basetype) {
+    case LY_TYPE_UINT8:
+        if (val1->uint8 < val2->uint8) {
+            return -1;
+        } else if (val1->uint8 > val2->uint8) {
+            return 1;
+        } else {
+            return 0;
+        }
+        break;
+    case LY_TYPE_UINT16:
+        if (val1->uint16 < val2->uint16) {
+            return -1;
+        } else if (val1->uint16 > val2->uint16) {
+            return 1;
+        } else {
+            return 0;
+        }
+        break;
+    case LY_TYPE_UINT32:
+        if (val1->uint32 < val2->uint32) {
+            return -1;
+        } else if (val1->uint32 > val2->uint32) {
+            return 1;
+        } else {
+            return 0;
+        }
+        break;
+    case LY_TYPE_UINT64:
+        if (val1->uint64 < val2->uint64) {
+            return -1;
+        } else if (val1->uint64 > val2->uint64) {
+            return 1;
+        } else {
+            return 0;
+        }
+        break;
+    default:
+        break;
+    }
+    return 0;
+}
+
 LIBYANG_API_DEF const void *
 lyplg_type_print_uint(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
@@ -473,7 +565,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_uint,
-        .plugin.sort = NULL,
+        .plugin.sort = lyplg_type_sort_uint,
         .plugin.print = lyplg_type_print_uint,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
@@ -487,7 +579,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_uint,
-        .plugin.sort = NULL,
+        .plugin.sort = lyplg_type_sort_uint,
         .plugin.print = lyplg_type_print_uint,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
@@ -501,7 +593,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_uint,
-        .plugin.sort = NULL,
+        .plugin.sort = lyplg_type_sort_uint,
         .plugin.print = lyplg_type_print_uint,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
@@ -515,7 +607,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_uint,
-        .plugin.sort = NULL,
+        .plugin.sort = lyplg_type_sort_uint,
         .plugin.print = lyplg_type_print_uint,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
@@ -529,7 +621,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_int,
-        .plugin.sort = NULL,
+        .plugin.sort = lyplg_type_sort_int,
         .plugin.print = lyplg_type_print_int,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
@@ -543,7 +635,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_int,
-        .plugin.sort = NULL,
+        .plugin.sort = lyplg_type_sort_int,
         .plugin.print = lyplg_type_print_int,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
@@ -557,7 +649,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_int,
-        .plugin.sort = NULL,
+        .plugin.sort = lyplg_type_sort_int,
         .plugin.print = lyplg_type_print_int,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
@@ -571,7 +663,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_int,
-        .plugin.sort = NULL,
+        .plugin.sort = lyplg_type_sort_int,
         .plugin.print = lyplg_type_print_int,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
