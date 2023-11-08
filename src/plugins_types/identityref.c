@@ -310,6 +310,13 @@ lyplg_type_compare_identityref(const struct ly_ctx *UNUSED(ctx), const struct ly
     return LY_ENOT;
 }
 
+LIBYANG_API_DEF int
+lyplg_type_sort_identityref(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1,
+        const struct lyd_value *val2)
+{
+    return strcmp(val1->ident->name, val2->ident->name);
+}
+
 LIBYANG_API_DEF const void *
 lyplg_type_print_identityref(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len)
@@ -351,7 +358,7 @@ const struct lyplg_type_record plugins_identityref[] = {
         .plugin.store = lyplg_type_store_identityref,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_identityref,
-        .plugin.sort = NULL,
+        .plugin.sort = lyplg_type_sort_identityref,
         .plugin.print = lyplg_type_print_identityref,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
