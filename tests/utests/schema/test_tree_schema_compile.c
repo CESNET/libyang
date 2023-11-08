@@ -315,8 +315,7 @@ test_node_leaflist(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {yang-version 1.1; namespace urn:ee;prefix ee;"
             "leaf ref {type instance-identifier {require-instance true;} default \"/ee:g\";}}", LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Invalid default - value does not fit the type "
-            "(Invalid instance-identifier \"/ee:g\" value - semantic error.).", "Schema location \"/ee:ref\".");
-    CHECK_LOG_CTX("Not found node \"g\" in path.", "Schema location \"/ee:ref\".");
+            "(Invalid instance-identifier \"/ee:g\" value - semantic error: Not found node \"g\" in path.).", "Schema location \"/ee:ref\".");
 }
 
 static void

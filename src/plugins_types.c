@@ -811,6 +811,8 @@ lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr *exp = NULL;
     uint32_t prefix_opt = 0;
+    struct ly_err_item *e;
+    const char *err_fmt;
 
     LY_CHECK_ARG_RET(ctx, ctx, value, ctx_node, path, err, LY_EINVAL);
 
@@ -831,31 +833,43 @@ lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_
         break;
     }
 
+    /* remember the current last error */
+    e = ly_err_last(ctx);
+
     /* parse the value */
     ret = ly_path_parse(ctx, ctx_node, value, value_len, 0, LY_PATH_BEGIN_ABSOLUTE, prefix_opt, LY_PATH_PRED_SIMPLE, &exp);
     if (ret) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
-                "Invalid instance-identifier \"%.*s\" value - syntax error.", (int)value_len, value);
+        err_fmt = "Invalid instance-identifier \"%.*s\" value - syntax error%s%s";
         goto cleanup;
     }
 
     if (options & LYPLG_TYPE_STORE_IMPLEMENT) {
         /* implement all prefixes */
-        LY_CHECK_GOTO(ret = lys_compile_expr_implement(ctx, exp, format, prefix_data, 1, unres, NULL), cleanup);
+        ret = lys_compile_expr_implement(ctx, exp, format, prefix_data, 1, unres, NULL);
+        if (ret) {
+            err_fmt = "Failed to implement a module referenced by instance-identifier \"%.*s\"%s%s";
+            goto cleanup;
+        }
     }
 
     /* resolve it on schema tree */
     ret = ly_path_compile(ctx, NULL, ctx_node, NULL, exp, (ctx_node->flags & LYS_IS_OUTPUT) ?
             LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, 1, format, prefix_data, path);
     if (ret) {
-        ret = ly_err_new(err, ret, LYVE_DATA, NULL, NULL,
-                "Invalid instance-identifier \"%.*s\" value - semantic error.", (int)value_len, value);
+        err_fmt = "Invalid instance-identifier \"%.*s\" value - semantic error%s%s";
         goto cleanup;
     }
 
 cleanup:
     lyxp_expr_free(ctx, exp);
     if (ret) {
+        /* generate error, spend the context error, if any */
+        e = e ? e->next : ly_err_last(ctx);
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, err_fmt, (int)value_len, value, e ? ": " : ".", e ? e->msg : "");
+        if (e) {
+            ly_err_clean((struct ly_ctx *)ctx, e);
+        }
+
         ly_path_free(ctx, *path);
         *path = NULL;
     }
