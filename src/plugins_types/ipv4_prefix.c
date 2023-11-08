@@ -14,6 +14,7 @@
 
 #define _GNU_SOURCE /* strndup */
 
+#include "plugins_internal.h"
 #include "plugins_types.h"
 
 #ifdef _WIN32
@@ -26,6 +27,7 @@
 #    include <sys/socket.h>
 #  endif
 #endif
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -214,6 +216,21 @@ lyplg_type_compare_ipv4_prefix(const struct ly_ctx *UNUSED(ctx), const struct ly
 }
 
 /**
+ * @brief Implementation of ::lyplg_type_sort_clb for the ietf-inet-types ipv4-prefix type.
+ */
+static int
+lyplg_type_sort_ipv4_prefix(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1,
+        const struct lyd_value *val2)
+{
+    struct lyd_value_ipv4_prefix *v1, *v2;
+
+    LYD_VALUE_GET(val1, v1);
+    LYD_VALUE_GET(val2, v2);
+
+    return memcmp(v1, v2, sizeof *v1);
+}
+
+/**
  * @brief Implementation of ::lyplg_type_compare_clb for the ietf-inet-types ipv4-prefix type.
  */
 static const void *
@@ -324,7 +341,7 @@ const struct lyplg_type_record plugins_ipv4_prefix[] = {
         .plugin.store = lyplg_type_store_ipv4_prefix,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_ipv4_prefix,
-        .plugin.sort = NULL,
+        .plugin.sort = lyplg_type_sort_ipv4_prefix,
         .plugin.print = lyplg_type_print_ipv4_prefix,
         .plugin.duplicate = lyplg_type_dup_ipv4_prefix,
         .plugin.free = lyplg_type_free_ipv4_prefix,

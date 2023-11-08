@@ -137,12 +137,147 @@ test_data_lyb(void **state)
     TEST_SUCCESS_LYB("lyb", "l7", "::C:D:E:f:a/112");
 }
 
+static void
+test_plugin_sort(void **state)
+{
+    const char *v1, *v2;
+    const char *schema;
+    struct lys_module *mod;
+    struct lyd_value val1 = {0}, val2 = {0};
+    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_UNION]);
+    struct lysc_type *lysc_type;
+    struct ly_err_item *err = NULL;
+
+    schema = MODULE_CREATE_YANG("a",
+            "leaf l {type inet:ip-address;}"
+            "leaf l2 {type inet:ipv6-address;}"
+            "leaf l3 {type inet:ip-address-no-zone;}"
+            "leaf l4 {type inet:ipv6-address-no-zone;}"
+            "leaf l5 {type inet:ipv4-prefix;}"
+            "leaf l6 {type inet:ipv6-prefix;}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+
+    /* ipv4-address */
+    lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+
+    v1 = "192.168.0.1";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+    v2 = "192.168.0.2";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+    assert_true(0 > type->sort(UTEST_LYCTX, &val1, &val2));
+    assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));
+    assert_true(0 < type->sort(UTEST_LYCTX, &val2, &val1));
+    type->free(UTEST_LYCTX, &val1);
+    type->free(UTEST_LYCTX, &val2);
+
+    v1 = "192.168.0.1%1A";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+    v2 = "192.168.0.1";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+    assert_true(0 < type->sort(UTEST_LYCTX, &val1, &val2));
+    assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));
+    assert_true(0 > type->sort(UTEST_LYCTX, &val2, &val1));
+    type->free(UTEST_LYCTX, &val1);
+    type->free(UTEST_LYCTX, &val2);
+
+    /* ipv6-address */
+    lysc_type = ((struct lysc_node_leaflist *)mod->compiled->data->next)->type;
+    type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_STRING]);
+
+    v1 = "2008:15:0:0:0:0:feAC:1";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+    v2 = "2008:15::feac:2";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+    assert_true(0 > type->sort(UTEST_LYCTX, &val1, &val2));
+    assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));
+    assert_true(0 < type->sort(UTEST_LYCTX, &val2, &val1));
+    type->free(UTEST_LYCTX, &val1);
+    type->free(UTEST_LYCTX, &val2);
+
+    v1 = "FAAC:21:011:Da85::87:daaF%1";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+    v2 = "FAAC:21:011:Da85::87:daaF%14";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+    assert_true(0 > type->sort(UTEST_LYCTX, &val1, &val2));
+    assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));
+    assert_true(0 < type->sort(UTEST_LYCTX, &val2, &val1));
+    type->free(UTEST_LYCTX, &val1);
+    type->free(UTEST_LYCTX, &val2);
+
+    /* ipv4-address-no-zone */
+    lysc_type = ((struct lysc_node_leaflist *)mod->compiled->data->next->next)->type;
+    type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_UNION]);
+    v1 = "127.0.0.1";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+    v2 = "127.0.1.1";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+    assert_true(0 > type->sort(UTEST_LYCTX, &val1, &val2));
+    assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));
+    assert_true(0 < type->sort(UTEST_LYCTX, &val2, &val1));
+    type->free(UTEST_LYCTX, &val1);
+    type->free(UTEST_LYCTX, &val2);
+
+    /* ipv6-address-no-zone */
+    lysc_type = ((struct lysc_node_leaflist *)mod->compiled->data->next->next->next)->type;
+    type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_STRING]);
+    v1 = "A:B:c:D:e:f:1:1";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+    v2 = "A:B:c:D:e:f:1:0";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+    assert_true(0 < type->sort(UTEST_LYCTX, &val1, &val2));
+    assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));
+    assert_true(0 > type->sort(UTEST_LYCTX, &val2, &val1));
+    type->free(UTEST_LYCTX, &val1);
+    type->free(UTEST_LYCTX, &val2);
+
+    /* ipv4-prefix */
+    lysc_type = ((struct lysc_node_leaflist *)mod->compiled->data->next->next->next->next)->type;
+    v1 = "0.1.58.4/32";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+    v2 = "0.1.58.4/16";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+    assert_true(0 < type->sort(UTEST_LYCTX, &val1, &val2));
+    assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));
+    assert_true(0 > type->sort(UTEST_LYCTX, &val2, &val1));
+    type->free(UTEST_LYCTX, &val1);
+    type->free(UTEST_LYCTX, &val2);
+
+    /* ipv6-prefix */
+    lysc_type = ((struct lysc_node_leaflist *)mod->compiled->data->next->next->next->next->next)->type;
+    v1 = "::C:D:E:f:a/96";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+    v2 = "::C:D:E:f:a/112";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+    assert_true(0 < type->sort(UTEST_LYCTX, &val1, &val2));
+    assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));
+    assert_true(0 > type->sort(UTEST_LYCTX, &val2, &val1));
+    type->free(UTEST_LYCTX, &val1);
+    type->free(UTEST_LYCTX, &val2);
+}
+
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_data_xml),
         UTEST(test_data_lyb),
+        UTEST(test_plugin_sort),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -14,6 +14,7 @@
 
 #define _GNU_SOURCE /* strndup */
 
+#include "plugins_internal.h"
 #include "plugins_types.h"
 
 #ifdef _WIN32
@@ -26,6 +27,7 @@
 #    include <sys/socket.h>
 #  endif
 #endif
+#include <assert.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -143,6 +145,21 @@ lyplg_type_compare_ipv4_address_no_zone(const struct ly_ctx *UNUSED(ctx), const 
 }
 
 /**
+ * @brief Implementation of ::lyplg_type_sort_clb for the ipv4-address-no-zone ietf-inet-types type.
+ */
+static int
+lyplg_type_sort_ipv4_address_no_zone(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1,
+        const struct lyd_value *val2)
+{
+    struct lyd_value_ipv4_address_no_zone *v1, *v2;
+
+    LYD_VALUE_GET(val1, v1);
+    LYD_VALUE_GET(val2, v2);
+
+    return memcmp(&v1->addr, &v2->addr, sizeof v1->addr);
+}
+
+/**
  * @brief Implementation of ::lyplg_type_print_clb for the ipv4-address-no-zone ietf-inet-types type.
  */
 static const void *
@@ -208,7 +225,7 @@ const struct lyplg_type_record plugins_ipv4_address_no_zone[] = {
         .plugin.store = lyplg_type_store_ipv4_address_no_zone,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_ipv4_address_no_zone,
-        .plugin.sort = NULL,
+        .plugin.sort = lyplg_type_sort_ipv4_address_no_zone,
         .plugin.print = lyplg_type_print_ipv4_address_no_zone,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
