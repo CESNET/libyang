@@ -429,6 +429,34 @@ lyplg_type_compare_union(const struct ly_ctx *ctx, const struct lyd_value *val1,
     return val1->subvalue->value.realtype->plugin->compare(ctx, &val1->subvalue->value, &val2->subvalue->value);
 }
 
+LIBYANG_API_DEF int
+lyplg_type_sort_union(const struct ly_ctx *ctx, const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    int ret;
+    LY_ARRAY_COUNT_TYPE u;
+    struct lysc_type **types;
+
+    if (val1->subvalue->value.realtype == val2->subvalue->value.realtype) {
+        return val1->subvalue->value.realtype->plugin->sort(ctx, &val1->subvalue->value, &val2->subvalue->value);
+    }
+
+    /* compare according to the order of types */
+    ret = 0;
+    types = ((struct lysc_type_union *)val1->realtype)->types;
+    LY_ARRAY_FOR(types, u) {
+        if (types[u] == val1->subvalue->value.realtype) {
+            ret = 1;
+            break;
+        } else if (types[u] == val2->subvalue->value.realtype) {
+            ret = -1;
+            break;
+        }
+    }
+    assert(ret != 0);
+
+    return ret;
+}
+
 /**
  * @brief Create LYB data for printing.
  *
@@ -604,7 +632,7 @@ const struct lyplg_type_record plugins_union[] = {
         .plugin.store = lyplg_type_store_union,
         .plugin.validate = lyplg_type_validate_union,
         .plugin.compare = lyplg_type_compare_union,
-        .plugin.sort = NULL,
+        .plugin.sort = lyplg_type_sort_union,
         .plugin.print = lyplg_type_print_union,
         .plugin.duplicate = lyplg_type_dup_union,
         .plugin.free = lyplg_type_free_union,
