@@ -169,6 +169,18 @@ lyplg_type_compare_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lyd_
     return LY_SUCCESS;
 }
 
+LIBYANG_API_DEF int
+lyplg_type_sort_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    if (val1->dec64 > val2->dec64) {
+        return 1;
+    } else if (val1->dec64 < val2->dec64) {
+        return -1;
+    } else {
+        return 0;
+    }
+}
+
 LIBYANG_API_DEF const void *
 lyplg_type_print_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
@@ -226,7 +238,7 @@ const struct lyplg_type_record plugins_decimal64[] = {
         .plugin.store = lyplg_type_store_decimal64,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_decimal64,
-        .plugin.sort = NULL,
+        .plugin.sort = lyplg_type_sort_decimal64,
         .plugin.print = lyplg_type_print_decimal64,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
