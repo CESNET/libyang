@@ -112,6 +112,18 @@ lyplg_type_compare_boolean(const struct ly_ctx *UNUSED(ctx), const struct lyd_va
     return LY_SUCCESS;
 }
 
+LIBYANG_API_DEF int
+lyplg_type_sort_boolean(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    if (val1->boolean > val2->boolean) {
+        return 1;
+    } else if (val1->boolean < val2->boolean) {
+        return -1;
+    } else {
+        return 0;
+    }
+}
+
 LIBYANG_API_DEF const void *
 lyplg_type_print_boolean(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
@@ -151,7 +163,7 @@ const struct lyplg_type_record plugins_boolean[] = {
         .plugin.store = lyplg_type_store_boolean,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_boolean,
-        .plugin.sort = NULL,
+        .plugin.sort = lyplg_type_sort_boolean,
         .plugin.print = lyplg_type_print_boolean,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
