@@ -311,6 +311,94 @@ lyplg_type_compare_instanceid(const struct ly_ctx *ctx, const struct lyd_value *
     return LY_SUCCESS;
 }
 
+LIBYANG_API_DEF int
+lyplg_type_sort_instanceid(const struct ly_ctx *ctx, const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    LY_ARRAY_COUNT_TYPE u, v;
+    int cmp;
+
+#define PL_CHECK_RET(RET) \
+        if (RET > 0) { \
+            return 1; \
+        } else if (RET < 0) { \
+            return -1; \
+        }
+
+    if (val1 == val2) {
+        return LY_SUCCESS;
+    } else if (LY_ARRAY_COUNT(val1->target) > LY_ARRAY_COUNT(val2->target)) {
+        return 1;
+    } else if (LY_ARRAY_COUNT(val1->target) < LY_ARRAY_COUNT(val2->target)) {
+        return -1;
+    }
+
+    LY_ARRAY_FOR(val1->target, u) {
+        struct ly_path *s1 = &val1->target[u];
+        struct ly_path *s2 = &val2->target[u];
+
+        if (s1->node != s2->node) {
+            cmp = strcmp(val1->_canonical, val2->_canonical);
+            PL_CHECK_RET(cmp);
+            continue;
+        } else if (s1->predicates) {
+            if (LY_ARRAY_COUNT(s1->predicates) > LY_ARRAY_COUNT(s2->predicates)) {
+                return 1;
+            } else if (LY_ARRAY_COUNT(s1->predicates) < LY_ARRAY_COUNT(s2->predicates)) {
+                return -1;
+            }
+        }
+        LY_ARRAY_FOR(s1->predicates, v) {
+            struct ly_path_predicate *pred1 = &s1->predicates[v];
+            struct ly_path_predicate *pred2 = &s2->predicates[v];
+
+            if (pred1->type > pred2->type) {
+                return 1;
+            } else if (pred1->type < pred2->type) {
+                return -1;
+            }
+
+            switch (pred1->type) {
+            case LY_PATH_PREDTYPE_POSITION:
+                /* position predicate */
+                if (pred1->position > pred2->position) {
+                    return 1;
+                } else if (pred1->position < pred2->position) {
+                    return -1;
+                }
+                break;
+            case LY_PATH_PREDTYPE_LIST:
+                /* key-predicate */
+                if (pred1->key != pred2->key) {
+                    cmp = strcmp(pred1->key->name, pred2->key->name);
+                    PL_CHECK_RET(cmp);
+                } else {
+                    cmp = ((struct lysc_node_leaf *)pred1->key)->type->plugin->sort(ctx, &pred1->value, &pred2->value);
+                    PL_CHECK_RET(cmp);
+                }
+                break;
+            case LY_PATH_PREDTYPE_LEAFLIST:
+                /* leaf-list predicate */
+                cmp = ((struct lysc_node_leaflist *)s1->node)->type->plugin->sort(ctx, &pred1->value, &pred2->value);
+                PL_CHECK_RET(cmp);
+                break;
+            case LY_PATH_PREDTYPE_LIST_VAR:
+                /* key-predicate with a variable */
+                if (pred1->key != pred2->key) {
+                    cmp = strcmp(pred1->key->name, pred2->key->name);
+                    PL_CHECK_RET(cmp);
+                }
+                cmp = strcmp(pred1->variable, pred2->variable);
+                PL_CHECK_RET(cmp);
+                break;
+            }
+        }
+    }
+
+#undef PL_CHECK_RET
+
+    return 0;
+}
+
 LIBYANG_API_DEF const void *
 lyplg_type_print_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len)
@@ -386,7 +474,7 @@ const struct lyplg_type_record plugins_instanceid[] = {
         .plugin.store = lyplg_type_store_instanceid,
         .plugin.validate = lyplg_type_validate_instanceid,
         .plugin.compare = lyplg_type_compare_instanceid,
-        .plugin.sort = NULL,
+        .plugin.sort = lyplg_type_sort_instanceid,
         .plugin.print = lyplg_type_print_instanceid,
         .plugin.duplicate = lyplg_type_dup_instanceid,
         .plugin.free = lyplg_type_free_instanceid,
