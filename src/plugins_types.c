@@ -29,6 +29,7 @@
 #include "context.h"
 #include "dict.h"
 #include "path.h"
+#include "plugins_internal.h"
 #include "schema_compile.h"
 #include "set.h"
 #include "tree.h"
@@ -312,6 +313,27 @@ lyplg_type_compare_simple(const struct ly_ctx *ctx, const struct lyd_value *val1
     }
 
     return LY_ENOT;
+}
+
+LIBYANG_API_DEF int
+lyplg_type_sort_simple(const struct ly_ctx *ctx, const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    int cmp;
+    const char *can1, *can2;
+
+    can1 = lyd_value_get_canonical(ctx, val1);
+    can2 = lyd_value_get_canonical(ctx, val2);
+    if (can1 && can2) {
+        cmp = strcmp(can1, can2);
+        return cmp;
+    } else if (!can1 && can2) {
+        return -1;
+    } else if (can1 && !can2) {
+        return 1;
+    } else {
+        /* !can1 && !can2 */
+        return 0;
+    }
 }
 
 LIBYANG_API_DEF const void *
