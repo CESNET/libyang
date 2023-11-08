@@ -1272,6 +1272,42 @@ lyd_new_attr2(struct lyd_node *parent, const char *module_ns, const char *name, 
 }
 
 /**
+ * @brief Change the value of @p term by @p val.
+ *
+ * @param[in] term Term node to change.
+ * @param[in] val New value for @p term.
+ * @return LY_SUCCESS on success.
+ */
+static LY_ERR
+lyd_change_term_value(struct lyd_node_term *term, struct lyd_value *val)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyd_node *target;
+
+    if (term->schema->nodetype == LYS_LEAFLIST) {
+        target = (struct lyd_node *)term;
+    } else if ((term->schema->flags & LYS_KEY) && term->parent) {
+        target = (struct lyd_node *)term->parent;
+    } else {
+        /* just change the value */
+        term->value.realtype->plugin->free(LYD_CTX(term), &term->value);
+        term->value = *val;
+        /* leaf that is not a key, its value is not used for its hash so it does not change */
+        return LY_SUCCESS;
+    }
+
+    /* unlink hash */
+    lyd_unlink_hash(target);
+    /* change value */
+    term->value.realtype->plugin->free(LYD_CTX(term), &term->value);
+    term->value = *val;
+    lyd_hash(target);
+    ret = lyd_insert_hash(target);
+
+    return ret;
+}
+
+/**
  * @brief Change the value of a term (leaf or leaf-list) node.
  *
  * Node changed this way is always considered explicitly set, meaning its default flag
@@ -1311,8 +1347,9 @@ _lyd_change_term(struct lyd_node *term, const void *value, size_t value_len, LY_
     /* compare original and new value */
     if (type->plugin->compare(&t->value, &val)) {
         /* values differ, switch them */
-        type->plugin->free(LYD_CTX(term), &t->value);
-        t->value = val;
+        lyd_change_term_value(t, &val);
+        /* make the node non-validated */
+        term->flags &= LYD_NEW;
         val_change = 1;
     } else {
         /* same values, free the new stored one */
@@ -1330,32 +1367,14 @@ _lyd_change_term(struct lyd_node *term, const void *value, size_t value_len, LY_
         for (parent = term; parent; parent = lyd_parent(parent)) {
             parent->flags &= ~LYD_DEFAULT;
         }
+        /* make the node non-validated */
+        term->flags &= LYD_NEW;
         dflt_change = 1;
     } else {
         dflt_change = 0;
     }
 
-    if (val_change || dflt_change) {
-        /* make the node non-validated */
-        term->flags &= LYD_NEW;
-    }
-
-    if (val_change) {
-        if (term->schema->nodetype == LYS_LEAFLIST) {
-            /* leaf-list needs to be hashed again and re-inserted into parent */
-            lyd_unlink_hash(term);
-            lyd_hash(term);
-            LY_CHECK_GOTO(ret = lyd_insert_hash(term), cleanup);
-        } else if ((term->schema->flags & LYS_KEY) && term->parent) {
-            /* list needs to be updated if its key was changed */
-            assert(term->parent->schema->nodetype == LYS_LIST);
-            lyd_unlink_hash(lyd_parent(term));
-            lyd_hash(lyd_parent(term));
-            LY_CHECK_GOTO(ret = lyd_insert_hash(lyd_parent(term)), cleanup);
-        } /* else leaf that is not a key, its value is not used for its hash so it does not change */
-    }
-
-    /* retrun value */
+    /* return value */
     if (!val_change) {
         if (dflt_change) {
             /* only default flag change */
