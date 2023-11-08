@@ -581,7 +581,7 @@ typedef const void *(*lyplg_type_print_clb)(const struct ly_ctx *ctx, const stru
 /**
  * @brief Callback to duplicate data in the data structure.
  *
- * @param[in] ctx libyang context of the @p dup. Note that the context of @p original and @p dup might not be the same.
+ * @param[in] ctx libyang context of the @p original and @p dup.
  * @param[in] original Original data structure to be duplicated.
  * @param[in,out] dup Prepared data structure to be filled with the duplicated data of @p original.
  * @return LY_SUCCESS after successful duplication.

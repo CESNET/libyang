@@ -440,6 +440,18 @@ LY_ERR lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const st
         void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node, ly_bool clear_dflt, ly_bool *incomplete);
 
 /**
+ * @brief Create a copy of the metadata.
+ *
+ * @param[in] parent_ctx Target context for duplicated nodes.
+ * @param[in] meta Metadata to copy.
+ * @param[in] parent Node where to append the new metadata.
+ * @param[out] dup Optional created metadata copy.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_dup_meta_single_to_ctx(const struct ly_ctx *parent_ctx, const struct lyd_meta *meta, struct lyd_node *parent,
+        struct lyd_meta **dup);
+
+/**
  * @brief Insert an attribute (last) into a parent
  *
  * @param[in] parent Parent of the attributes.
