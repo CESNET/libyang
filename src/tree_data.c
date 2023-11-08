@@ -1020,6 +1020,28 @@ lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta, ly_bool clear_df
     }
 }
 
+void
+lyd_unlink_meta_single(struct lyd_meta *meta)
+{
+    struct lyd_meta *iter;
+
+    if (!meta) {
+        return;
+    }
+
+    if (meta->parent && (meta->parent->meta == meta)) {
+        meta->parent->meta = meta->next;
+    } else if (meta->parent) {
+        for (iter = meta->parent->meta; iter->next && (iter->next != meta); iter = iter->next) {}
+        if (iter->next) {
+            iter->next = meta->next;
+        }
+    }
+
+    meta->next = NULL;
+    meta->parent = NULL;
+}
+
 /**
  * @brief Get the annotation definition in the module.
  *

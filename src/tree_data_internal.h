@@ -414,6 +414,13 @@ void lyd_unlink(struct lyd_node *node);
 void lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta, ly_bool clear_dflt);
 
 /**
+ * @brief Unlink a single metadata instance.
+ *
+ * @param[in] meta Metadata to unlink.
+ */
+void lyd_unlink_meta_single(struct lyd_meta *meta);
+
+/**
  * @brief Create and insert a metadata (last) into a parent.
  *
  * @param[in] parent Parent of the metadata, can be NULL.
