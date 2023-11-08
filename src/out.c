@@ -29,6 +29,7 @@
 #include "common.h"
 #include "compat.h"
 #include "log.h"
+#include "metadata.h"
 #include "printer_data.h"
 #include "tree_data.h"
 #include "tree_schema.h"
@@ -87,6 +88,21 @@ lyd_node_should_print(const struct lyd_node *node, uint32_t options)
     }
 
     return 1;
+}
+
+LIBYANG_API_DEF ly_bool
+lyd_metadata_should_print(const struct lyd_meta *meta)
+{
+    const char *arg;
+
+    assert(meta->annotation);
+
+    arg = meta->annotation->argument;
+    if (!strcmp(arg, "lyds_tree")) {
+        return 0;
+    } else {
+        return 1;
+    }
 }
 
 LIBYANG_API_DEF LY_OUT_TYPE

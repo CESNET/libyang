@@ -204,7 +204,6 @@ test_leaflist(void **state)
             1, LYS_LEAFLIST, 0, 0, NULL, 0);
     ll = (struct lyd_node_term *)tree;
     CHECK_LYD_VALUE(ll->value, UINT8, "10", 10);
-    assert_null(ll->meta);
 
     assert_non_null(tree->next);
     CHECK_LYSC_NODE(tree->next->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "ll1",
@@ -227,8 +226,8 @@ test_leaflist(void **state)
             1, LYS_LEAFLIST, 0, 0, NULL, 0);
     ll = (struct lyd_node_term *)tree;
     CHECK_LYD_VALUE(ll->value, UINT8, "1", 1);
-    CHECK_LYD_META(ll->meta, 1, "hint", 1, 1,  INT8, "1", 1);
-    CHECK_LYD_META(ll->meta->next, 1, "hint", 0, 1,  INT8, "10", 10);
+    CHECK_LYD_META(ll->meta->next, 1, "hint", 1, 1,  INT8, "1", 1);
+    CHECK_LYD_META(ll->meta->next->next, 1, "hint", 0, 1,  INT8, "10", 10);
 
     assert_non_null(tree->next);
     CHECK_LYSC_NODE(tree->next->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "ll1",

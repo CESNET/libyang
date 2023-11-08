@@ -189,6 +189,15 @@ LIBYANG_API_DECL LY_ERR lyd_print_clb(ly_write_clb writeclb, void *user_data, co
  */
 LIBYANG_API_DECL ly_bool lyd_node_should_print(const struct lyd_node *node, uint32_t options);
 
+/**
+ * @brief Check whether the metadata should be printed.
+ *
+ * @param[in] meta Metadata to check.
+ * @return 0 if not,
+ * @return non-0 if should be printed.
+ */
+LIBYANG_API_DECL ly_bool lyd_metadata_should_print(const struct lyd_meta *meta);
+
 #ifdef __cplusplus
 }
 #endif
