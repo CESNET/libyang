@@ -658,6 +658,12 @@ LIBYANG_API_DECL LY_ERR lyplg_type_compare_simple(const struct ly_ctx *ctx, cons
         const struct lyd_value *val2);
 
 /**
+ * @brief Implementation of ::lyplg_type_sort_clb for a generic simple type.
+ */
+LIBYANG_API_DEF int lyplg_type_sort_simple(const struct ly_ctx *ctx, const struct lyd_value *val1,
+        const struct lyd_value *val2);
+
+/**
  * @brief Implementation of ::lyplg_type_print_clb for a generic simple type.
  */
 LIBYANG_API_DECL const void *lyplg_type_print_simple(const struct ly_ctx *ctx, const struct lyd_value *value,
