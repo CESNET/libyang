@@ -16,6 +16,7 @@
 
 #include "plugins_types.h"
 
+#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <stdint.h>
@@ -172,6 +173,91 @@ lyplg_type_compare_date_and_time(const struct ly_ctx *UNUSED(ctx), const struct 
 }
 
 /**
+ * @brief Decide if @p frac can be represented as zero.
+ *
+ * @param[in] frac Fractions of a second.
+ * @return 1 if @p frac can be represented as zero.
+ * @return 0 @p frac is not zero.
+ */
+static ly_bool
+lyplg_type_fractions_is_zero(char *frac)
+{
+    char *iter;
+
+    if (!frac) {
+        return 1;
+    }
+
+    for (iter = frac; *iter; iter++) {
+        if (*iter != '0') {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+/**
+ * @brief Compare @p f1 and @p f2 for sorting.
+ *
+ * @param[in] f1 First fractions of a second.
+ * @param[in] f2 Second fractions of a second.
+ * @return 1 if @p f1 > @p f2.
+ * @return 0 if @p f1 == @p f2.
+ * @return -1 if @p f1 < @p f2.
+ */
+static int
+lyplg_type_sort_by_fractions(char *f1, char *f2)
+{
+    ly_bool f1_is_zero, f2_is_zero;
+    int df;
+
+    f1_is_zero = lyplg_type_fractions_is_zero(f1);
+    f2_is_zero = lyplg_type_fractions_is_zero(f2);
+
+    if (f1_is_zero && !f2_is_zero) {
+        return -1;
+    } else if (!f1_is_zero && f2_is_zero) {
+        return 1;
+    } else if (f1_is_zero && f2_is_zero) {
+        return 0;
+    }
+
+    /* both f1 and f2 have some non-zero number */
+    assert(!f1_is_zero && !f2_is_zero && f1 && f2);
+    df = strcmp(f1, f2);
+    if (df > 0) {
+        return 1;
+    } else if (df < 0) {
+        return -1;
+    } else {
+        return 0;
+    }
+}
+
+/**
+ * @brief Implementation of ::lyplg_type_sort_clb for ietf-yang-types date-and-time type.
+ */
+static int
+lyplg_type_sort_date_and_time(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    struct lyd_value_date_and_time *v1, *v2;
+    double dt;
+
+    LYD_VALUE_GET(val1, v1);
+    LYD_VALUE_GET(val2, v2);
+
+    /* compare timestamps */
+    dt = difftime(v1->time, v2->time);
+    if (dt != 0) {
+        return dt;
+    }
+
+    /* compare second fractions */
+    return lyplg_type_sort_by_fractions(v1->fractions_s, v2->fractions_s);
+}
+
+/**
  * @brief Implementation of ::lyplg_type_print_clb for ietf-yang-types date-and-time type.
  */
 static const void *
@@ -316,7 +402,7 @@ const struct lyplg_type_record plugins_date_and_time[] = {
         .plugin.store = lyplg_type_store_date_and_time,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_date_and_time,
-        .plugin.sort = NULL,
+        .plugin.sort = lyplg_type_sort_date_and_time,
         .plugin.print = lyplg_type_print_date_and_time,
         .plugin.duplicate = lyplg_type_dup_date_and_time,
         .plugin.free = lyplg_type_free_date_and_time,
