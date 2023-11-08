@@ -106,6 +106,12 @@ lyplg_type_compare_leafref(const struct ly_ctx *ctx, const struct lyd_value *val
     return val1->realtype->plugin->compare(ctx, val1, val2);
 }
 
+LIBYANG_API_DEF int
+lyplg_type_sort_leafref(const struct ly_ctx *ctx, const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    return val1->realtype->plugin->sort(ctx, val1, val2);
+}
+
 LIBYANG_API_DEF const void *
 lyplg_type_print_leafref(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len)
@@ -142,7 +148,7 @@ const struct lyplg_type_record plugins_leafref[] = {
         .plugin.store = lyplg_type_store_leafref,
         .plugin.validate = lyplg_type_validate_leafref,
         .plugin.compare = lyplg_type_compare_leafref,
-        .plugin.sort = NULL,
+        .plugin.sort = lyplg_type_sort_leafref,
         .plugin.print = lyplg_type_print_leafref,
         .plugin.duplicate = lyplg_type_dup_leafref,
         .plugin.free = lyplg_type_free_leafref,
