@@ -203,11 +203,14 @@ struct ly_in;
                                                  Also, no implicit state data are added. */
 #define LYD_VALIDATE_PRESENT    0x0002      /**< Validate only modules whose data actually exist. */
 #define LYD_VALIDATE_MULTI_ERROR 0x0004     /**< Do not stop validation on the first error but generate all the detected errors. */
-#define LYD_VALIDATE_OPERATIONAL 0x0008     /**< Semantic constraint violations are reported only as warnings instead
-                                                 of errors (see [RFC 8342 sec. 5.3](https://datatracker.ietf.org/doc/html/rfc8342#section-5.3)). */
+#define LYD_VALIDATE_OPERATIONAL 0x0008     /**< Semantic constraint violations are reported only as warnings instead of
+                                                 errors (see [RFC 8342 sec. 5.3](https://datatracker.ietf.org/doc/html/rfc8342#section-5.3)). */
 #define LYD_VALIDATE_NO_DEFAULTS 0x0010     /**< Do not add any default nodes during validation, other implicit nodes
                                                  (such as NP containers) are still added. Validation will fail if a
                                                  default node is required for it to pass. */
+#define LYD_VALIDATE_NOT_FINAL 0x0020       /**< Skip final validation tasks that require for all the data nodes to
+                                                 either exist or not, based on the YANG constraints. Once the data
+                                                 satisfy this requirement, the final validation should be performed. */
 
 #define LYD_VALIDATE_OPTS_MASK  0x0000FFFF  /**< Mask for all the LYD_VALIDATE_* options. */
 
@@ -476,6 +479,10 @@ LIBYANG_API_DECL LY_ERR lyd_validate_all(struct lyd_node **tree, const struct ly
  * The data tree is modified in-place. As a result of the validation, some data might be removed
  * from the tree. In that case, the removed items are freed, not just unlinked.
  *
+ * If several modules need to be validated, the flag ::LYD_VALIDATE_NOT_FINAL should be used first for validation
+ * of each module and then ::lyd_validate_module_final() should be called also for each module. Otherwise,
+ * false-positive validation errors for foreign dependencies may occur.
+ *
  * @param[in,out] tree Data tree to recursively validate. May be changed by validation, might become NULL.
  * @param[in] module Module whose data (and schema restrictions) to validate.
  * @param[in] val_opts Validation options (@ref datavalidationoptions).
@@ -485,6 +492,20 @@ LIBYANG_API_DECL LY_ERR lyd_validate_all(struct lyd_node **tree, const struct ly
  */
 LIBYANG_API_DECL LY_ERR lyd_validate_module(struct lyd_node **tree, const struct lys_module *module, uint32_t val_opts,
         struct lyd_node **diff);
+
+/**
+ * @brief Finish validation of a module data that have previously been validated with ::LYD_VALIDATE_NOT_FINAL flag.
+ *
+ * This final validation will not add or remove any nodes.
+ *
+ * @param[in] tree Data tree to recursively validate.
+ * @param[in] module Module whose data (and schema restrictions) to validate.
+ * @param[in] val_opts Validation options (@ref datavalidationoptions).
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR error on error.
+ */
+LIBYANG_API_DECL LY_ERR lyd_validate_module_final(struct lyd_node *tree, const struct lys_module *module,
+        uint32_t val_opts);
 
 /**
  * @brief Validate an RPC/action request, reply, or notification. Only the operation data tree (input/output/notif)

@@ -1877,9 +1877,11 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
                 ext_node_p, ext_val_p, val_opts, diff);
         LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
-        /* perform final validation that assumes the data tree is final */
-        r = lyd_validate_final_r(*first2, NULL, NULL, mod, val_opts, 0, 0);
-        LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
+        if (!(val_opts & LYD_VALIDATE_NOT_FINAL)) {
+            /* perform final validation that assumes the data tree is final */
+            r = lyd_validate_final_r(*first2, NULL, NULL, mod, val_opts, 0, 0);
+            LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
+        }
     }
 
 cleanup:
@@ -1909,14 +1911,36 @@ lyd_validate_all(struct lyd_node **tree, const struct ly_ctx *ctx, uint32_t val_
 LIBYANG_API_DEF LY_ERR
 lyd_validate_module(struct lyd_node **tree, const struct lys_module *module, uint32_t val_opts, struct lyd_node **diff)
 {
-    LY_CHECK_ARG_RET(NULL, tree, *tree || module, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(*tree ? LYD_CTX(*tree) : NULL, module ? module->ctx : NULL, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, tree, module, !(val_opts & LYD_VALIDATE_PRESENT), LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(*tree ? LYD_CTX(*tree) : NULL, module->ctx, LY_EINVAL);
     if (diff) {
         *diff = NULL;
     }
 
-    return lyd_validate(tree, module, (*tree) ? LYD_CTX(*tree) : module->ctx, val_opts, 1, NULL, NULL, NULL, NULL, NULL,
-            diff);
+    return lyd_validate(tree, module, module->ctx, val_opts, 1, NULL, NULL, NULL, NULL, NULL, diff);
+}
+
+LIBYANG_API_DEF LY_ERR
+lyd_validate_module_final(struct lyd_node *tree, const struct lys_module *module, uint32_t val_opts)
+{
+    LY_ERR r, rc = LY_SUCCESS;
+    struct lyd_node *first;
+    const struct lys_module *mod;
+    uint32_t i = 0;
+
+    LY_CHECK_ARG_RET(NULL, module, !(val_opts & (LYD_VALIDATE_PRESENT | LYD_VALIDATE_NOT_FINAL)), LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(LYD_CTX(tree), module->ctx, LY_EINVAL);
+
+    /* module is unchanged but we need to get the first module data node */
+    mod = lyd_mod_next_module(tree, module, module->ctx, &i, &first);
+    assert(mod);
+
+    /* perform final validation that assumes the data tree is final */
+    r = lyd_validate_final_r(first, NULL, NULL, mod, val_opts, 0, 0);
+    LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
+
+cleanup:
+    return rc;
 }
 
 /**
