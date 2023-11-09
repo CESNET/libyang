@@ -812,7 +812,7 @@ lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_
     struct lyxp_expr *exp = NULL;
     uint32_t prefix_opt = 0;
     struct ly_err_item *e;
-    const char *err_fmt;
+    const char *err_fmt = NULL;
 
     LY_CHECK_ARG_RET(ctx, ctx, value, ctx_node, path, err, LY_EINVAL);
 
