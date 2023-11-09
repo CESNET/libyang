@@ -1693,7 +1693,7 @@ lyd_find_schema_ctx(const struct lysc_node *schema, const struct ly_ctx *trg_ctx
 /**
  * @brief Duplicate a single node and connect it into @p parent (if present) or last of @p first siblings.
  *
- * Ignores ::LYD_DUP_WITH_PARENTS and ::LYD_DUP_WITH_SIBLINGS which are supposed to be handled by lyd_dup().
+ * Ignores ::LYD_DUP_WITH_PARENTS which is supposed to be handled by lyd_dup().
  *
  * @param[in] node Node to duplicate.
  * @param[in] trg_ctx Target context for duplicated nodes.
@@ -2103,7 +2103,7 @@ finish:
  *
  * @param[in,out] first_trg First target sibling, is updated if top-level.
  * @param[in] parent_trg Target parent.
- * @param[in,out] sibling_src Source sibling to merge, set to NULL if spent.
+ * @param[in,out] sibling_src_p Source sibling to merge, set to NULL if spent.
  * @param[in] merge_cb Optional merge callback.
  * @param[in] cb_data Arbitrary callback data.
  * @param[in] options Merge options.
