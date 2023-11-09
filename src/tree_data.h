@@ -1315,7 +1315,6 @@ LIBYANG_API_DECL LY_ERR lyd_new_list2(struct lyd_node *parent, const struct lys_
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
- * @param[in] format Format of key values.
  * @param[in] key_values Ordered key string values of the new list instance, all must be set.
  * @param[in] value_lengths Array of lengths of each @p key_values, may be NULL if @p key_values are 0-terminated strings.
  * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
@@ -1332,7 +1331,6 @@ LIBYANG_API_DECL LY_ERR lyd_new_list3(struct lyd_node *parent, const struct lys_
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
- * @param[in] format Format of key values.
  * @param[in] key_values Ordered key binary (LYB) values of the new list instance, all must be set.
  * @param[in] value_lengths Array of lengths of each @p key_values.
  * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
@@ -1349,7 +1347,6 @@ LIBYANG_API_DECL LY_ERR lyd_new_list3_bin(struct lyd_node *parent, const struct 
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
- * @param[in] format Format of key values.
  * @param[in] key_values Ordered key canonical values of the new list instance, all must be set.
  * @param[in] value_lengths Array of lengths of each @p key_values, may be NULL if @p key_values are 0-terminated strings.
  * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
