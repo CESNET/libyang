@@ -423,10 +423,6 @@ lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type
 LIBYANG_API_DEF LY_ERR
 lyplg_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    if (val1->realtype != val2->realtype) {
-        return LY_ENOT;
-    }
-
     if (val1->subvalue->value.realtype != val2->subvalue->value.realtype) {
         return LY_ENOT;
     }

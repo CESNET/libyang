@@ -106,10 +106,6 @@ cleanup:
 LIBYANG_API_DEF LY_ERR
 lyplg_type_compare_boolean(const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    if (val1->realtype != val2->realtype) {
-        return LY_ENOT;
-    }
-
     if (val1->boolean != val2->boolean) {
         return LY_ENOT;
     }

@@ -216,10 +216,6 @@ lyplg_type_compare_ipv6_address(const struct lyd_value *val1, const struct lyd_v
 {
     struct lyd_value_ipv6_address *v1, *v2;
 
-    if (val1->realtype != val2->realtype) {
-        return LY_ENOT;
-    }
-
     LYD_VALUE_GET(val1, v1);
     LYD_VALUE_GET(val2, v2);
 

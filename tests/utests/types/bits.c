@@ -949,30 +949,6 @@ test_plugin_compare(void **state)
     assert_int_equal(LY_ENOT,    type->compare(&diff_type_val, &(values[1])));
     type->free(UTEST_LYCTX, &(diff_type_val));
 
-    /*
-     * derivated type add some limitations
-     */
-    diff_type_text = val_init[2];
-    diff_type = ((struct lysc_node_leaf *)mod->compiled->data->next->next)->type;
-    ly_ret = diff_type->plugin->store(UTEST_LYCTX, diff_type, diff_type_text, strlen(diff_type_text),
-            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &diff_type_val, NULL, &err);
-    assert_int_equal(LY_SUCCESS, ly_ret);
-    assert_int_equal(LY_ENOT, type->compare(&diff_type_val, &(values[2])));
-    assert_int_equal(LY_ENOT, type->compare(&diff_type_val, &(values[1])));
-    type->free(UTEST_LYCTX, &(diff_type_val));
-
-    /*
-     * different type (STRING)
-     */
-    diff_type_text = val_init[2];
-    diff_type = ((struct lysc_node_leaf *)mod->compiled->data->next->next->next)->type;
-    ly_ret = diff_type->plugin->store(UTEST_LYCTX, diff_type, diff_type_text, strlen(diff_type_text),
-            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &diff_type_val, NULL, &err);
-    assert_int_equal(LY_SUCCESS, ly_ret);
-    assert_int_equal(LY_ENOT, type->compare(&diff_type_val, &(values[2])));
-    assert_int_equal(LY_ENOT, type->compare(&diff_type_val, &(values[0])));
-    type->free(UTEST_LYCTX, &(diff_type_val));
-
     /* delete values */
     for (unsigned int it = 0; it < sizeof(val_init) / sizeof(val_init[0]); it++) {
         type->free(UTEST_LYCTX, &(values[it]));

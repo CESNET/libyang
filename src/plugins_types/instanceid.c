@@ -257,10 +257,6 @@ lyplg_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_val
 {
     LY_ARRAY_COUNT_TYPE u, v;
 
-    if (val1->realtype != val2->realtype) {
-        return LY_ENOT;
-    }
-
     if (val1 == val2) {
         return LY_SUCCESS;
     } else if (LY_ARRAY_COUNT(val1->target) != LY_ARRAY_COUNT(val2->target)) {

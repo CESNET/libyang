@@ -161,10 +161,6 @@ cleanup:
 LIBYANG_API_DEF LY_ERR
 lyplg_type_compare_decimal64(const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    if (val1->realtype != val2->realtype) {
-        return LY_ENOT;
-    }
-
     /* if type is the same, the fraction digits are, too */
     if (val1->dec64 != val2->dec64) {
         return LY_ENOT;

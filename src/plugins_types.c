@@ -307,10 +307,6 @@ lyplg_type_get_prefix(const struct lys_module *mod, LY_VALUE_FORMAT format, void
 LIBYANG_API_DEF LY_ERR
 lyplg_type_compare_simple(const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    if (val1->realtype != val2->realtype) {
-        return LY_ENOT;
-    }
-
     if (val1->_canonical == val2->_canonical) {
         return LY_SUCCESS;
     }
@@ -1056,6 +1052,9 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
         /* check whether any matches */
         for (i = 0; i < set.used; ++i) {
             if (set.val.nodes[i].type != LYXP_NODE_ELEM) {
+                continue;
+            }
+            if (((struct lyd_node_term *)set.val.nodes[i].node)->value.realtype != value->realtype) {
                 continue;
             }
 

@@ -373,10 +373,6 @@ cleanup:
 LIBYANG_API_DEF LY_ERR
 lyplg_type_compare_uint(const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    if (val1->realtype != val2->realtype) {
-        return LY_ENOT;
-    }
-
     switch (val1->realtype->basetype) {
     case LY_TYPE_UINT8:
         if (val1->uint8 != val2->uint8) {

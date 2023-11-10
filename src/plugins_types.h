@@ -523,7 +523,7 @@ LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_store_clb)(const struct ly_ctx *ctx
  * @param[in] tree External data tree (e.g. when validating RPC/Notification) with possibly referenced data.
  * @param[in,out] storage Storage of the value successfully filled by ::lyplg_type_store_clb. May be modified.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic
- *             error message is prepared instead. The error structure can be created by ::ly_err_new().
+ * error message is prepared instead. The error structure can be created by ::ly_err_new().
  * @return LY_SUCCESS on success,
  * @return LY_ERR value on error.
  */
@@ -533,12 +533,12 @@ LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_validate_clb)(const struct ly_ctx *
 /**
  * @brief Callback for comparing 2 values of the same type.
  *
- * In case the value types (::lyd_value.realtype) are different, ::LY_ENOT must always be returned.
- * It can be assumed that the same context (dictionary) was used for storing both values.
+ * It can be assumed that the same context (dictionary) was used for storing both values and the realtype
+ * member of both the values is the same.
  *
  * @param[in] val1 First value to compare.
  * @param[in] val2 Second value to compare.
- * @return LY_SUCCESS if values are same (according to the type's definition of being same).
+ * @return LY_SUCCESS if values are considered equal.
  * @return LY_ENOT if values differ.
  */
 typedef LY_ERR (*lyplg_type_compare_clb)(const struct lyd_value *val1, const struct lyd_value *val2);

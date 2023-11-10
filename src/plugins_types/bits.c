@@ -373,10 +373,6 @@ lyplg_type_compare_bits(const struct lyd_value *val1, const struct lyd_value *va
     struct lyd_value_bits *v1, *v2;
     struct lysc_type_bits *type_bits = (struct lysc_type_bits *)val1->realtype;
 
-    if (val1->realtype != val2->realtype) {
-        return LY_ENOT;
-    }
-
     LYD_VALUE_GET(val1, v1);
     LYD_VALUE_GET(val2, v2);
 

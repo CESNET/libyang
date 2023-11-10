@@ -203,10 +203,6 @@ lyplg_type_compare_ipv4_prefix(const struct lyd_value *val1, const struct lyd_va
 {
     struct lyd_value_ipv4_prefix *v1, *v2;
 
-    if (val1->realtype != val2->realtype) {
-        return LY_ENOT;
-    }
-
     LYD_VALUE_GET(val1, v1);
     LYD_VALUE_GET(val2, v2);
 
