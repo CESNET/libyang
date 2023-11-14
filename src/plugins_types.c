@@ -301,9 +301,13 @@ lyplg_type_get_prefix(const struct lys_module *mod, LY_VALUE_FORMAT format, void
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_compare_simple(const struct lyd_value *val1, const struct lyd_value *val2)
+lyplg_type_compare_simple(const struct ly_ctx *ctx, const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    if (val1->_canonical == val2->_canonical) {
+    const char *can1, *can2;
+
+    can1 = lyd_value_get_canonical(ctx, val1);
+    can2 = lyd_value_get_canonical(ctx, val2);
+    if (can1 == can2) {
         return LY_SUCCESS;
     }
 
@@ -1057,7 +1061,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
                 continue;
             }
 
-            if (!lref->plugin->compare(&((struct lyd_node_term *)set.val.nodes[i].node)->value, value)) {
+            if (!lref->plugin->compare(LYD_CTX(node), &((struct lyd_node_term *)set.val.nodes[i].node)->value, value)) {
                 break;
             }
         }
@@ -1082,7 +1086,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
                 continue;
             }
 
-            if (!lref->plugin->compare(&((struct lyd_node_term *)set.val.nodes[i].node)->value, value)) {
+            if (!lref->plugin->compare(LYD_CTX(node), &((struct lyd_node_term *)set.val.nodes[i].node)->value, value)) {
                 rc = ly_set_add(*targets, set.val.nodes[i].node, 0, NULL);
                 LY_CHECK_GOTO(rc, cleanup);
             }

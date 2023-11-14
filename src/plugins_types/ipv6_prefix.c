@@ -213,7 +213,8 @@ cleanup:
  * @brief Implementation of ::lyplg_type_compare_clb for the ietf-inet-types ipv6-prefix type.
  */
 static LY_ERR
-lyplg_type_compare_ipv6_prefix(const struct lyd_value *val1, const struct lyd_value *val2)
+lyplg_type_compare_ipv6_prefix(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1,
+        const struct lyd_value *val2)
 {
     struct lyd_value_ipv6_prefix *v1, *v2;
 

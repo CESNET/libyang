@@ -212,7 +212,8 @@ cleanup:
  * @brief Implementation of ::lyplg_type_compare_clb for the ipv6-address ietf-inet-types type.
  */
 static LY_ERR
-lyplg_type_compare_ipv6_address(const struct lyd_value *val1, const struct lyd_value *val2)
+lyplg_type_compare_ipv6_address(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1,
+        const struct lyd_value *val2)
 {
     struct lyd_value_ipv6_address *v1, *v2;
 

@@ -336,7 +336,7 @@ cleanup:
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_compare_binary(const struct lyd_value *val1, const struct lyd_value *val2)
+lyplg_type_compare_binary(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
 {
     struct lyd_value_binary *v1, *v2;
 

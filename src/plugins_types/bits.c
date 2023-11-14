@@ -368,7 +368,7 @@ cleanup:
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_compare_bits(const struct lyd_value *val1, const struct lyd_value *val2)
+lyplg_type_compare_bits(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
 {
     struct lyd_value_bits *v1, *v2;
     struct lysc_type_bits *type_bits = (struct lysc_type_bits *)val1->realtype;

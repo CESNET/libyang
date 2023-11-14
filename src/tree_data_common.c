@@ -693,7 +693,7 @@ lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t va
     LY_CHECK_RET(ret);
 
     /* compare values */
-    ret = type->plugin->compare(&node->value, &val);
+    ret = type->plugin->compare(ctx, &node->value, &val);
 
     type->plugin->free(ctx, &val);
     return ret;
@@ -720,7 +720,7 @@ lyd_is_default(const struct lyd_node *node)
         }
 
         /* compare with the default value */
-        if (!leaf->type->plugin->compare(&term->value, leaf->dflt)) {
+        if (!leaf->type->plugin->compare(LYD_CTX(node), &term->value, leaf->dflt)) {
             return 1;
         }
     } else {
@@ -731,7 +731,7 @@ lyd_is_default(const struct lyd_node *node)
 
         LY_ARRAY_FOR(llist->dflts, u) {
             /* compare with each possible default value */
-            if (!llist->type->plugin->compare(&term->value, llist->dflts[u])) {
+            if (!llist->type->plugin->compare(LYD_CTX(node), &term->value, llist->dflts[u])) {
                 return 1;
             }
         }

@@ -1173,7 +1173,7 @@ uniquecheck:
                 val2 = slist->uniques[u][v]->dflt;
             }
 
-            if (!val1 || !val2 || val1->realtype->plugin->compare(val1, val2)) {
+            if (!val1 || !val2 || val1->realtype->plugin->compare(ctx, val1, val2)) {
                 /* values differ or either one is not set */
                 break;
             }

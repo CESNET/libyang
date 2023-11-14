@@ -210,7 +210,8 @@ cleanup:
  * @brief Implementation of ::lyplg_type_compare_clb for the ipv4-address ietf-inet-types type.
  */
 static LY_ERR
-lyplg_type_compare_ipv4_address(const struct lyd_value *val1, const struct lyd_value *val2)
+lyplg_type_compare_ipv4_address(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1,
+        const struct lyd_value *val2)
 {
     struct lyd_value_ipv4_address *v1, *v2;
 
