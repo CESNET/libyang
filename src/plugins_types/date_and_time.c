@@ -149,7 +149,8 @@ cleanup:
  * @brief Implementation of ::lyplg_type_compare_clb for ietf-yang-types date-and-time type.
  */
 static LY_ERR
-lyplg_type_compare_date_and_time(const struct lyd_value *val1, const struct lyd_value *val2)
+lyplg_type_compare_date_and_time(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1,
+        const struct lyd_value *val2)
 {
     struct lyd_value_date_and_time *v1, *v2;
 

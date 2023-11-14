@@ -1221,12 +1221,12 @@ test_plugin_compare(void **state)
     }
 
     /*  BASIC TEST; */
-    assert_int_equal(LY_SUCCESS, type->compare(&(values[0]), &(values[0])));
-    assert_int_equal(LY_SUCCESS, type->compare(&(values[0]), &(values[2])));
-    assert_int_equal(LY_ENOT, type->compare(&(values[0]), &(values[1])));
-    assert_int_equal(LY_ENOT, type->compare(&(values[1]), &(values[0])));
-    assert_int_equal(LY_ENOT, type->compare(&(values[1]), &(values[2])));
-    assert_int_equal(LY_SUCCESS, type->compare(&(values[1]), &(values[3])));
+    assert_int_equal(LY_SUCCESS, type->compare(UTEST_LYCTX, &(values[0]), &(values[0])));
+    assert_int_equal(LY_SUCCESS, type->compare(UTEST_LYCTX, &(values[0]), &(values[2])));
+    assert_int_equal(LY_ENOT, type->compare(UTEST_LYCTX, &(values[0]), &(values[1])));
+    assert_int_equal(LY_ENOT, type->compare(UTEST_LYCTX, &(values[1]), &(values[0])));
+    assert_int_equal(LY_ENOT, type->compare(UTEST_LYCTX, &(values[1]), &(values[2])));
+    assert_int_equal(LY_SUCCESS, type->compare(UTEST_LYCTX, &(values[1]), &(values[3])));
 
     /* SAME TYPE but different node */
     diff_type_text = "hi";
@@ -1234,8 +1234,8 @@ test_plugin_compare(void **state)
     ly_ret = diff_type->plugin->store(UTEST_LYCTX, diff_type, diff_type_text, strlen(diff_type_text),
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &diff_type_val, NULL, &err);
     assert_int_equal(LY_SUCCESS, ly_ret);
-    assert_int_equal(LY_SUCCESS, type->compare(&diff_type_val, &(values[0])));
-    assert_int_equal(LY_ENOT, type->compare(&diff_type_val, &(values[1])));
+    assert_int_equal(LY_SUCCESS, type->compare(UTEST_LYCTX, &diff_type_val, &(values[0])));
+    assert_int_equal(LY_ENOT, type->compare(UTEST_LYCTX, &diff_type_val, &(values[1])));
     type->free(UTEST_LYCTX, &(diff_type_val));
 
     /* delete values */

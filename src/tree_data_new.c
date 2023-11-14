@@ -1345,7 +1345,7 @@ _lyd_change_term(struct lyd_node *term, const void *value, size_t value_len, LY_
     LY_CHECK_GOTO(ret, cleanup);
 
     /* compare original and new value */
-    if (type->plugin->compare(&t->value, &val)) {
+    if (type->plugin->compare(LYD_CTX(term), &t->value, &val)) {
         /* values differ, switch them */
         lyd_change_term_value(t, &val);
         /* make the node non-validated */

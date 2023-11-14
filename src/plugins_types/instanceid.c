@@ -253,7 +253,7 @@ lyplg_type_validate_instanceid(const struct ly_ctx *ctx, const struct lysc_type 
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value *val2)
+lyplg_type_compare_instanceid(const struct ly_ctx *ctx, const struct lyd_value *val1, const struct lyd_value *val2)
 {
     LY_ARRAY_COUNT_TYPE u, v;
 
@@ -288,13 +288,13 @@ lyplg_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_val
             case LY_PATH_PREDTYPE_LIST:
                 /* key-predicate */
                 if ((pred1->key != pred2->key) ||
-                        ((struct lysc_node_leaf *)pred1->key)->type->plugin->compare(&pred1->value, &pred2->value)) {
+                        ((struct lysc_node_leaf *)pred1->key)->type->plugin->compare(ctx, &pred1->value, &pred2->value)) {
                     return LY_ENOT;
                 }
                 break;
             case LY_PATH_PREDTYPE_LEAFLIST:
                 /* leaf-list predicate */
-                if (((struct lysc_node_leaflist *)s1->node)->type->plugin->compare(&pred1->value, &pred2->value)) {
+                if (((struct lysc_node_leaflist *)s1->node)->type->plugin->compare(ctx, &pred1->value, &pred2->value)) {
                     return LY_ENOT;
                 }
                 break;

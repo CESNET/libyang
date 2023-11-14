@@ -421,12 +421,12 @@ lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2)
+lyplg_type_compare_union(const struct ly_ctx *ctx, const struct lyd_value *val1, const struct lyd_value *val2)
 {
     if (val1->subvalue->value.realtype != val2->subvalue->value.realtype) {
         return LY_ENOT;
     }
-    return val1->subvalue->value.realtype->plugin->compare(&val1->subvalue->value, &val2->subvalue->value);
+    return val1->subvalue->value.realtype->plugin->compare(ctx, &val1->subvalue->value, &val2->subvalue->value);
 }
 
 /**

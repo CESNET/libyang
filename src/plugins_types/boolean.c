@@ -104,7 +104,7 @@ cleanup:
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_compare_boolean(const struct lyd_value *val1, const struct lyd_value *val2)
+lyplg_type_compare_boolean(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
 {
     if (val1->boolean != val2->boolean) {
         return LY_ENOT;
