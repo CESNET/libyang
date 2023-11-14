@@ -162,7 +162,7 @@ struct lysc_type_leafref;
 /**
  * @brief Type API version
  */
-#define LYPLG_TYPE_API_VERSION 1
+#define LYPLG_TYPE_API_VERSION 2
 
 /**
  * @brief Macro to define plugin information in external plugins
@@ -537,23 +537,27 @@ LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_validate_clb)(const struct ly_ctx *
  * It can be assumed that the same context (dictionary) was used for storing both values and the realtype
  * member of both the values is the same.
  *
+ * @param[in] ctx libyang context.
  * @param[in] val1 First value to compare.
  * @param[in] val2 Second value to compare.
  * @return LY_SUCCESS if values are considered equal.
  * @return LY_ENOT if values differ.
  */
-typedef LY_ERR (*lyplg_type_compare_clb)(const struct lyd_value *val1, const struct lyd_value *val2);
+typedef LY_ERR (*lyplg_type_compare_clb)(const struct ly_ctx *ctx, const struct lyd_value *val1,
+        const struct lyd_value *val2);
 
 /**
  * @brief Unused callback for sorting values.
  *
+ * @param[in] ctx libyang context.
  * @param[in] val1 First value to compare.
  * @param[in] val2 Second value to compare.
  * @return -1 if val1 < val2,
  * @return 0 if val1 == val2,
  * @return 1 if val1 > val2.
  */
-typedef int (*lyplg_type_sort_clb)(const struct lyd_value *val1, const struct lyd_value *val2);
+typedef int (*lyplg_type_sort_clb)(const struct ly_ctx *ctx, const struct lyd_value *val1,
+        const struct lyd_value *val2);
 
 /**
  * @brief Callback for getting the value of the data stored in @p value.
@@ -647,7 +651,8 @@ struct lyplg_type_record {
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for a generic simple type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_compare_simple(const struct lyd_value *val1, const struct lyd_value *val2);
+LIBYANG_API_DECL LY_ERR lyplg_type_compare_simple(const struct ly_ctx *ctx, const struct lyd_value *val1,
+        const struct lyd_value *val2);
 
 /**
  * @brief Implementation of ::lyplg_type_print_clb for a generic simple type.
@@ -686,7 +691,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_store_binary(const struct ly_ctx *ctx, const 
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for the built-in binary type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_compare_binary(const struct lyd_value *val1, const struct lyd_value *val2);
+LIBYANG_API_DECL LY_ERR lyplg_type_compare_binary(const struct ly_ctx *ctx, const struct lyd_value *val1,
+        const struct lyd_value *val2);
 
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the built-in binary type.
@@ -725,7 +731,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_store_bits(const struct ly_ctx *ctx, const st
 /**
  * @brief Implementation of the ::lyplg_type_compare_clb for the built-in bits type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_compare_bits(const struct lyd_value *val1, const struct lyd_value *val2);
+LIBYANG_API_DECL LY_ERR lyplg_type_compare_bits(const struct ly_ctx *ctx, const struct lyd_value *val1,
+        const struct lyd_value *val2);
 
 /**
  * @brief Implementation of the ::lyplg_type_print_clb for the built-in bits type.
@@ -764,7 +771,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_store_boolean(const struct ly_ctx *ctx, const
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for the built-in boolean type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_compare_boolean(const struct lyd_value *val1, const struct lyd_value *val2);
+LIBYANG_API_DECL LY_ERR lyplg_type_compare_boolean(const struct ly_ctx *ctx, const struct lyd_value *val1,
+        const struct lyd_value *val2);
 
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the built-in boolean type.
@@ -792,7 +800,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_store_decimal64(const struct ly_ctx *ctx, con
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for the built-in decimal64 type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_compare_decimal64(const struct lyd_value *val1, const struct lyd_value *val2);
+LIBYANG_API_DECL LY_ERR lyplg_type_compare_decimal64(const struct ly_ctx *ctx, const struct lyd_value *val1,
+        const struct lyd_value *val2);
 
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the built-in decimal64 type.
@@ -860,7 +869,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_store_identityref(const struct ly_ctx *ctx, c
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for the built-in identityref type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_compare_identityref(const struct lyd_value *val1, const struct lyd_value *val2);
+LIBYANG_API_DECL LY_ERR lyplg_type_compare_identityref(const struct ly_ctx *ctx, const struct lyd_value *val1,
+        const struct lyd_value *val2);
 
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the built-in identityref type.
@@ -894,7 +904,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_validate_instanceid(const struct ly_ctx *ctx,
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for the built-in instance-identifier type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value *val2);
+LIBYANG_API_DECL LY_ERR lyplg_type_compare_instanceid(const struct ly_ctx *ctx, const struct lyd_value *val1,
+        const struct lyd_value *val2);
 
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the built-in instance-identifier type.
@@ -933,7 +944,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_store_int(const struct ly_ctx *ctx, const str
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for the built-in signed integer types.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_compare_int(const struct lyd_value *val1, const struct lyd_value *val2);
+LIBYANG_API_DECL LY_ERR lyplg_type_compare_int(const struct ly_ctx *ctx, const struct lyd_value *val1,
+        const struct lyd_value *val2);
 
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the built-in signed integer types.
@@ -951,7 +963,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_store_uint(const struct ly_ctx *ctx, const st
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for the built-in unsigned integer types.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_compare_uint(const struct lyd_value *val1, const struct lyd_value *val2);
+LIBYANG_API_DECL LY_ERR lyplg_type_compare_uint(const struct ly_ctx *ctx, const struct lyd_value *val1,
+        const struct lyd_value *val2);
 
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the built-in unsigned integer types.
@@ -979,7 +992,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_store_leafref(const struct ly_ctx *ctx, const
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for the built-in leafref type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_compare_leafref(const struct lyd_value *val1, const struct lyd_value *val2);
+LIBYANG_API_DECL LY_ERR lyplg_type_compare_leafref(const struct ly_ctx *ctx, const struct lyd_value *val1,
+        const struct lyd_value *val2);
 
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the built-in leafref type.
@@ -1041,7 +1055,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_store_union(const struct ly_ctx *ctx, const s
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for the built-in union type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2);
+LIBYANG_API_DECL LY_ERR lyplg_type_compare_union(const struct ly_ctx *ctx, const struct lyd_value *val1,
+        const struct lyd_value *val2);
 
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the built-in union type.
@@ -1086,7 +1101,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_store_xpath10(const struct ly_ctx *ctx, const
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for the ietf-yang-types xpath1.0 type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_compare_xpath10(const struct lyd_value *val1, const struct lyd_value *val2);
+LIBYANG_API_DECL LY_ERR lyplg_type_compare_xpath10(const struct ly_ctx *ctx, const struct lyd_value *val1,
+        const struct lyd_value *val2);
 
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the ietf-yang-types xpath1.0 type.

@@ -101,9 +101,9 @@ cleanup:
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_compare_leafref(const struct lyd_value *val1, const struct lyd_value *val2)
+lyplg_type_compare_leafref(const struct ly_ctx *ctx, const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    return val1->realtype->plugin->compare(val1, val2);
+    return val1->realtype->plugin->compare(ctx, val1, val2);
 }
 
 LIBYANG_API_DEF const void *

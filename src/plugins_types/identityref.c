@@ -301,7 +301,8 @@ cleanup:
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_compare_identityref(const struct lyd_value *val1, const struct lyd_value *val2)
+lyplg_type_compare_identityref(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1,
+        const struct lyd_value *val2)
 {
     if (val1->ident == val2->ident) {
         return LY_SUCCESS;
