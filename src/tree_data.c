@@ -830,10 +830,7 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struct lyd_n
         LY_CHECK_RET(lyd_insert_check_schema(NULL, sibling->schema, node->schema));
     }
 
-    if (sibling == node) {
-        /* we need to keep the connection to siblings so we can insert into them */
-        sibling = sibling->prev;
-    }
+    sibling = lyd_first_sibling(sibling);
 
     if (node->parent || node->prev->next) {
         lyd_unlink(node);
