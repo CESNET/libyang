@@ -974,7 +974,7 @@ lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char
     struct lysc_ext_instance *ext = NULL;
     const struct ly_ctx *ctx = parent ? LYD_CTX(parent) : (module ? module->ctx : NULL);
 
-    LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, (value_type == LYD_ANYDATA_DATATREE) || value, LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
 
     if (!module) {
