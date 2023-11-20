@@ -371,7 +371,7 @@ lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, enum ly
         } while (prev_count > node_when->count);
 
         /* there could have been no cyclic when dependencies, checked during compilation */
-        assert(!node_when->count);
+        assert(!node_when->count || ((rc == LY_EVALID) && (val_opts & LYD_VALIDATE_MULTI_ERROR)));
     }
 
     if (node_types && node_types->count) {
