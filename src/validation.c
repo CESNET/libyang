@@ -189,6 +189,61 @@ lyd_validate_node_when(const struct lyd_node *tree, const struct lyd_node *node,
 }
 
 /**
+ * @brief Properly delete a node as part of auto-delete validation tasks.
+ *
+ * @param[in,out] first First sibling, is updated if needed.
+ * @param[in] del Node instance to delete.
+ * @param[in] mod Module of the siblings, NULL for nested siblings.
+ * @param[in,out] node Optional current iteration node, update it if it is deleted.
+ * @param[in,out] node_when Optional set with nodes with "when" conditions, may be removed from.
+ * @param[in,out] diff Validation diff.
+ * @return 1 if @p node auto-deleted and updated to its next sibling.
+ * @return 0 if @p node was not auto-deleted.
+ */
+static ly_bool
+lyd_validate_autodel_node_del(struct lyd_node **first, struct lyd_node *del, const struct lys_module *mod,
+        struct lyd_node **node, struct ly_set *node_types, struct lyd_node **diff)
+{
+    struct lyd_node *iter;
+    ly_bool node_autodel = 0;
+    uint32_t idx;
+
+    /* update pointers */
+    lyd_del_move_root(first, del, mod);
+    if (node && (del == *node)) {
+        *node = (*node)->next;
+        node_autodel = 1;
+    }
+
+    if (diff) {
+        /* add into diff */
+        if ((del->schema->nodetype == LYS_CONTAINER) && !(del->schema->flags & LYS_PRESENCE)) {
+            /* we do not want to track NP container changes, but remember any removed children */
+            LY_LIST_FOR(lyd_child(del), iter) {
+                lyd_val_diff_add(iter, LYD_DIFF_OP_DELETE, diff);
+            }
+        } else {
+            lyd_val_diff_add(del, LYD_DIFF_OP_DELETE, diff);
+        }
+    }
+
+    if (node_types && node_types->count) {
+        /* remove from node_types set */
+        LYD_TREE_DFS_BEGIN(del, iter) {
+            if (ly_set_contains(node_types, iter, &idx)) {
+                ly_set_rm_index(node_types, idx, NULL);
+            }
+            LYD_TREE_DFS_END(del, iter);
+        }
+    }
+
+    /* free */
+    lyd_free_tree(del);
+
+    return node_autodel;
+}
+
+/**
  * @brief Evaluate when conditions of collected unres nodes.
  *
  * @param[in,out] tree Data tree, is updated if some nodes are autodeleted.
@@ -208,9 +263,9 @@ lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, st
         uint32_t xpath_options, struct ly_set *node_types, struct lyd_node **diff)
 {
     LY_ERR rc = LY_SUCCESS, r;
-    uint32_t i, idx;
+    uint32_t i;
     const struct lysc_when *disabled;
-    struct lyd_node *node = NULL, *elem;
+    struct lyd_node *node = NULL;
 
     if (!node_when->count) {
         return LY_SUCCESS;
@@ -229,29 +284,7 @@ lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, st
                 /* when false */
                 if (node->flags & LYD_WHEN_TRUE) {
                     /* autodelete */
-                    lyd_del_move_root(tree, node, mod);
-                    if (diff) {
-                        /* add into diff */
-                        r = lyd_val_diff_add(node, LYD_DIFF_OP_DELETE, diff);
-                        LY_CHECK_ERR_GOTO(r, rc = r, error);
-                    }
-
-                    /* remove from node types set, if present */
-                    if (node_types && node_types->count) {
-                        LYD_TREE_DFS_BEGIN(node, elem) {
-                            /* only term nodes with a validation callback can be in node_types */
-                            if ((elem->schema->nodetype & LYD_NODE_TERM) &&
-                                    ((struct lysc_node_leaf *)elem->schema)->type->plugin->validate &&
-                                    ly_set_contains(node_types, elem, &idx)) {
-                                r = ly_set_rm_index(node_types, idx, NULL);
-                                LY_CHECK_ERR_GOTO(r, rc = r, error);
-                            }
-                            LYD_TREE_DFS_END(node, elem);
-                        }
-                    }
-
-                    /* free */
-                    lyd_free_tree(node);
+                    lyd_validate_autodel_node_del(tree, node, mod, NULL, node_types, diff);
                 } else if (val_opts & LYD_VALIDATE_OPERATIONAL) {
                     /* only a warning */
                     LOGWRN(LYD_CTX(node), "When condition \"%s\" not satisfied.", disabled->cond->expr);
@@ -569,45 +602,6 @@ lyd_val_has_default(const struct lysc_node *schema)
 }
 
 /**
- * @brief Properly delete a node as part of auto-delete validation tasks.
- *
- * @param[in,out] first First sibling, is updated if needed.
- * @param[in] del Node instance to delete.
- * @param[in] mod Module of the siblings, NULL for nested siblings.
- * @param[in,out] node Current iteration node, update it if it is deleted.
- * @param[in,out] diff Validation diff.
- * @return 1 if @p node auto-deleted and updated to its next sibling.
- * @return 0 if @p node was not auto-deleted.
- */
-static ly_bool
-lyd_validate_autodel_node_del(struct lyd_node **first, struct lyd_node *del, const struct lys_module *mod,
-        struct lyd_node **node, struct lyd_node **diff)
-{
-    struct lyd_node *iter;
-    ly_bool node_autodel = 0;
-
-    lyd_del_move_root(first, del, mod);
-    if (del == *node) {
-        *node = (*node)->next;
-        node_autodel = 1;
-    }
-    if (diff) {
-        /* add into diff */
-        if ((del->schema->nodetype == LYS_CONTAINER) && !(del->schema->flags & LYS_PRESENCE)) {
-            /* we do not want to track NP container changes, but remember any removed children */
-            LY_LIST_FOR(lyd_child(del), iter) {
-                lyd_val_diff_add(iter, LYD_DIFF_OP_DELETE, diff);
-            }
-        } else {
-            lyd_val_diff_add(del, LYD_DIFF_OP_DELETE, diff);
-        }
-    }
-    lyd_free_tree(del);
-
-    return node_autodel;
-}
-
-/**
  * @brief Auto-delete leaf-list default instances to prevent validation errors.
  *
  * @param[in,out] first First sibling to search in, is updated if needed.
@@ -645,7 +639,7 @@ lyd_validate_autodel_leaflist_dflt(struct lyd_node **first, struct lyd_node **no
     LYD_LIST_FOR_INST_SAFE(*first, schema, next, iter) {
         if (iter->flags & LYD_DEFAULT) {
             /* default instance found, remove it */
-            if (lyd_validate_autodel_node_del(first, iter, mod, node, diff)) {
+            if (lyd_validate_autodel_node_del(first, iter, mod, node, NULL, diff)) {
                 node_autodel = 1;
             }
         }
@@ -690,7 +684,7 @@ lyd_validate_autodel_cont_leaf_dflt(struct lyd_node **first, struct lyd_node **n
         LYD_LIST_FOR_INST_SAFE(*first, schema, next, iter) {
             if (iter->flags & LYD_DEFAULT) {
                 /* default instance, remove it */
-                if (lyd_validate_autodel_node_del(first, iter, mod, node, diff)) {
+                if (lyd_validate_autodel_node_del(first, iter, mod, node, NULL, diff)) {
                     node_autodel = 1;
                 }
             }
@@ -700,7 +694,7 @@ lyd_validate_autodel_cont_leaf_dflt(struct lyd_node **first, struct lyd_node **n
         LYD_LIST_FOR_INST(*first, schema, iter) {
             if ((iter->flags & LYD_DEFAULT) && !(iter->flags & LYD_NEW)) {
                 /* old default instance, remove it */
-                if (lyd_validate_autodel_node_del(first, iter, mod, node, diff)) {
+                if (lyd_validate_autodel_node_del(first, iter, mod, node, NULL, diff)) {
                     node_autodel = 1;
                 }
                 break;
@@ -758,7 +752,7 @@ lyd_validate_autodel_case_dflt(struct lyd_node **first, struct lyd_node **node, 
     if (!iter) {
         /* there are only default nodes of the case meaning it does not exist and neither should any default nodes
          * of the case, remove this one default node */
-        if (lyd_validate_autodel_node_del(first, *node, mod, node, diff)) {
+        if (lyd_validate_autodel_node_del(first, *node, mod, node, NULL, diff)) {
             node_autodel = 1;
         }
     }
