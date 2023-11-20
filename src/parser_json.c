@@ -1434,8 +1434,8 @@ lydjson_parse_instance_inner(struct lyd_json_ctx *lydctx, const struct lysc_node
         LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
     }
 
-    if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {
-        /* new node validation, autodelete CANNOT occur, all nodes are new */
+    if (!(lydctx->parse_opts & LYD_PARSE_ONLY) && !rc) {
+        /* new node validation, autodelete CANNOT occur (it can if multi-error), all nodes are new */
         r = lyd_validate_new(lyd_node_child_p(*node), snode, NULL, lydctx->val_opts, NULL);
         LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
