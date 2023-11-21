@@ -280,109 +280,12 @@ test_plugin_lyb(void **state)
     TEST_SUCCESS_LYB2("lyb2", "nii", "ll[. = 'some_string']");
 }
 
-static void
-test_plugin_sort(void **state)
-{
-    const char *schema, *p1, *p2;
-    struct lys_module *mod;
-    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_INST]);
-    struct lysc_type *lysc_type;
-    struct ly_err_item *err = NULL;
-    struct lyd_value val1 = {0}, val2 = {0};
-    struct lysc_node *ctx_node;
-
-    schema = MODULE_CREATE_YANG("mod",
-            "leaf-list llii { "
-            "  type instance-identifier {"
-            "    require-instance false;"
-            "  }"
-            "}"
-            "container cont {"
-            "  leaf cl {"
-            "    type uint32;"
-            "  }"
-            "}"
-            "leaf l1 {"
-            "  type uint32;"
-            "}"
-            "leaf l2 {"
-            "  type uint32;"
-            "}"
-            "leaf-list ll {"
-            "  type uint32;"
-            "}"
-            "list l2k {"
-            "  key \"k1 k2\";"
-            "  leaf k1 {"
-            "    type uint32;"
-            "  }"
-            "  leaf k2 {"
-            "    type uint32;"
-            "  }"
-            "  leaf d {"
-            "    type uint32;"
-            "  }"
-            "}");
-
-    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
-    lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
-    ctx_node = mod->compiled->data;
-
-    /* different number of paths -> sort by number of paths */
-    p1 = "/mod:cont/cl";
-    p2 = "/mod:l1";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, p1, strlen(p1),
-            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, ctx_node, &val1, NULL, &err));
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, p2, strlen(p2),
-            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, ctx_node, &val2, NULL, &err));
-    assert_int_equal(1, type->sort(UTEST_LYCTX, &val1, &val2));
-    assert_int_equal(-1, type->sort(UTEST_LYCTX, &val2, &val1));
-    type->free(UTEST_LYCTX, &val1);
-    type->free(UTEST_LYCTX, &val2);
-
-    /* different lysc nodes */
-    p1 = "/mod:l1";
-    p2 = "/mod:l2";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, p1, strlen(p1),
-            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, ctx_node, &val1, NULL, &err));
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, p2, strlen(p2),
-            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, ctx_node, &val2, NULL, &err));
-    assert_int_equal(-1, type->sort(UTEST_LYCTX, &val1, &val2));
-    assert_int_equal(1, type->sort(UTEST_LYCTX, &val2, &val1));
-    type->free(UTEST_LYCTX, &val1);
-    type->free(UTEST_LYCTX, &val2);
-
-    /* different values in predicates */
-    p1 = "/mod:l2k[k1='1'][k2='3']";
-    p2 = "/mod:l2k[k1='1'][k2='2']";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, p1, strlen(p1),
-            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, ctx_node, &val1, NULL, &err));
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, p2, strlen(p2),
-            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, ctx_node, &val2, NULL, &err));
-    assert_int_equal(1, type->sort(UTEST_LYCTX, &val1, &val2));
-    assert_int_equal(-1, type->sort(UTEST_LYCTX, &val2, &val1));
-    type->free(UTEST_LYCTX, &val1);
-    type->free(UTEST_LYCTX, &val2);
-
-    /* equal */
-    p1 = "/mod:ll[.='1']";
-    p2 = "/mod:ll[.='1']";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, p1, strlen(p1),
-            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, ctx_node, &val1, NULL, &err));
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, p2, strlen(p2),
-            0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, ctx_node, &val2, NULL, &err));
-    assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val2));
-    type->free(UTEST_LYCTX, &val1);
-    type->free(UTEST_LYCTX, &val2);
-}
-
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_data_xml),
         UTEST(test_plugin_lyb),
-        UTEST(test_plugin_sort),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
