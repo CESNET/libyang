@@ -8039,14 +8039,14 @@ eval_name_test_scnode_no_match_msg(struct lyxp_set *set, const struct lyxp_set_s
     if (ppath) {
         format = "Schema node \"%.*s\" for parent \"%s\" not found; in expr \"%.*s\" with context node \"%s\".";
         if (options & LYXP_SCNODE_ERROR) {
-            LOGERR(set->ctx, LY_EVALID, format, ncname_len, ncname, ppath, (ncname - expr) + ncname_len, expr, path);
+            LOGERR(set->ctx, LY_ENOTFOUND, format, ncname_len, ncname, ppath, (ncname - expr) + ncname_len, expr, path);
         } else {
             LOGWRN(set->ctx, format, ncname_len, ncname, ppath, (ncname - expr) + ncname_len, expr, path);
         }
     } else {
         format = "Schema node \"%.*s\" not found; in expr \"%.*s\" with context node \"%s\".";
         if (options & LYXP_SCNODE_ERROR) {
-            LOGERR(set->ctx, LY_EVALID, format, ncname_len, ncname, (ncname - expr) + ncname_len, expr, path);
+            LOGERR(set->ctx, LY_ENOTFOUND, format, ncname_len, ncname, (ncname - expr) + ncname_len, expr, path);
         } else {
             LOGWRN(set->ctx, format, ncname_len, ncname, (ncname - expr) + ncname_len, expr, path);
         }
@@ -8193,7 +8193,7 @@ moveto:
 
                 if (options & LYXP_SCNODE_ERROR) {
                     /* error */
-                    rc = LY_EVALID;
+                    rc = LY_ENOTFOUND;
                     goto cleanup;
                 }
 
