@@ -12,9 +12,6 @@ libyang is a YANG data modelling language parser and toolkit written (and
 providing API) in C. The library is used e.g. in [libnetconf2](https://github.com/CESNET/libnetconf2),
 [Netopeer2](https://github.com/CESNET/Netopeer2) or [sysrepo](https://github.com/sysrepo/sysrepo) projects.
 
-If you are interested in future plans announcements, please subscribe to the
-[Future Plans issue](https://github.com/CESNET/libyang/issues/880).
-
 ## Branches
 
 The project uses 2 main branches `master` and `devel`. Other branches should not be cloned. In `master` there are files of the
