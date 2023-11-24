@@ -197,10 +197,9 @@ lyd_free_leafref_nodes(const struct lyd_node_term *node)
  * @brief Free Data (sub)tree.
  *
  * @param[in] node Data node to be freed.
- * @param[in] top Recursion flag to unlink the root of the subtree being freed.
  */
 static void
-lyd_free_subtree(struct lyd_node *node, ly_bool top)
+lyd_free_subtree(struct lyd_node *node)
 {
     struct lyd_node *iter, *next;
     struct lyd_node_opaq *opaq = NULL;
@@ -212,7 +211,7 @@ lyd_free_subtree(struct lyd_node *node, ly_bool top)
 
         /* free the children */
         LY_LIST_FOR_SAFE(lyd_child(node), next, iter) {
-            lyd_free_subtree(iter, 0);
+            lyd_free_subtree(iter);
         }
 
         lydict_remove(LYD_CTX(opaq), opaq->name.name);
@@ -227,7 +226,7 @@ lyd_free_subtree(struct lyd_node *node, ly_bool top)
 
         /* free the children */
         LY_LIST_FOR_SAFE(lyd_child(node), next, iter) {
-            lyd_free_subtree(iter, 0);
+            lyd_free_subtree(iter);
         }
     } else if (node->schema->nodetype & LYD_NODE_ANY) {
         /* only frees the value this way */
@@ -246,11 +245,6 @@ lyd_free_subtree(struct lyd_node *node, ly_bool top)
         lyd_free_meta_siblings(node->meta);
     }
 
-    /* unlink only the nodes from the first level, nodes in subtree are freed all, so no unlink is needed */
-    if (top) {
-        lyd_unlink(node);
-    }
-
     free(node);
 }
 
@@ -266,11 +260,12 @@ lyd_free_tree(struct lyd_node *node)
         return;
     }
 
-    lyd_free_subtree(node, 1);
+    lyd_unlink(node);
+    lyd_free_subtree(node);
 }
 
 static void
-lyd_free_(struct lyd_node *node, ly_bool top)
+lyd_free_(struct lyd_node *node)
 {
     struct lyd_node *iter, *next;
 
@@ -278,10 +273,7 @@ lyd_free_(struct lyd_node *node, ly_bool top)
         return;
     }
 
-    /* get the first (top-level) sibling */
-    if (top) {
-        for ( ; node->parent; node = lyd_parent(node)) {}
-    }
+    /* get the first sibling */
     while (node->prev->next) {
         node = node->prev;
     }
@@ -293,18 +285,28 @@ lyd_free_(struct lyd_node *node, ly_bool top)
         }
 
         /* in case of the top-level nodes (node->parent is NULL), no unlinking needed */
-        lyd_free_subtree(iter, iter->parent ? 1 : 0);
+        if (iter->parent) {
+            lyd_unlink(iter);
+        }
+        lyd_free_subtree(iter);
     }
 }
 
 LIBYANG_API_DEF void
 lyd_free_siblings(struct lyd_node *node)
 {
-    lyd_free_(node, 0);
+    lyd_free_(node);
 }
 
 LIBYANG_API_DEF void
 lyd_free_all(struct lyd_node *node)
 {
-    lyd_free_(node, 1);
+    if (!node) {
+        return;
+    }
+
+    /* get top-level node */
+    for ( ; node->parent; node = lyd_parent(node)) {}
+
+    lyd_free_(node);
 }
