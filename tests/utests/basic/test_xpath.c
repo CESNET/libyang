@@ -88,6 +88,19 @@ const char *schema_a =
         "            type string;\n"
         "        }\n"
         "    }\n"
+        "\n"
+        "    rpc r {\n"
+        "        input {\n"
+        "            leaf l {\n"
+        "                type string;\n"
+        "            }\n"
+        "        }\n"
+        "        output {\n"
+        "            leaf l {\n"
+        "                type string;\n"
+        "            }\n"
+        "        }\n"
+        "    }\n"
         "}";
 
 static int
@@ -383,6 +396,31 @@ test_hash(void **state)
 }
 
 static void
+test_rpc(void **state)
+{
+    const char *data =
+            "<r xmlns=\"urn:tests:a\">\n"
+            "    <l>val</l>\n"
+            "</r>";
+    struct ly_in *in;
+    struct lyd_node *tree;
+    struct ly_set *set;
+
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_REPLY_YANG, &tree, NULL));
+    ly_in_free(in, 0);
+    assert_non_null(tree);
+
+    /* name collision input/output, hashes are not used */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:r/l", &set));
+    assert_int_equal(1, set->count);
+
+    ly_set_free(set, NULL);
+
+    lyd_free_all(tree);
+}
+
+static void
 test_toplevel(void **state)
 {
     const char *schema_b =
@@ -481,7 +519,7 @@ test_atomize(void **state)
 
     /* some random paths just making sure the API function works */
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/a:*", 0, &set));
-    assert_int_equal(6, set->count);
+    assert_int_equal(7, set->count);
     ly_set_free(set, NULL);
 
     /* all nodes from all modules (including internal, which can change easily, so check just the test modules) */
@@ -498,7 +536,7 @@ test_atomize(void **state)
     ly_set_free(set, NULL);
 
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/*", 0, &set));
-    assert_int_equal(13, set->count);
+    assert_int_equal(14, set->count);
     ly_set_free(set, NULL);
 
     /*
@@ -532,7 +570,7 @@ test_atomize(void **state)
 
     /* descendant-or-self */
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/a:*/descendant-or-self::c", 0, &set));
-    assert_int_equal(7, set->count);
+    assert_int_equal(8, set->count);
     ly_set_free(set, NULL);
 
     /* following */
@@ -547,11 +585,11 @@ test_atomize(void **state)
 
     /* parent */
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/child::a:*/c/parent::l1", 0, &set));
-    assert_int_equal(7, set->count);
+    assert_int_equal(8, set->count);
     ly_set_free(set, NULL);
 
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/child::a:c//..", 0, &set));
-    assert_int_equal(8, set->count);
+    assert_int_equal(11, set->count);
     ly_set_free(set, NULL);
 
     /* preceding */
@@ -1062,6 +1100,7 @@ main(void)
         UTEST(test_union, setup),
         UTEST(test_invalid, setup),
         UTEST(test_hash, setup),
+        UTEST(test_rpc, setup),
         UTEST(test_toplevel, setup),
         UTEST(test_atomize, setup),
         UTEST(test_canonize, setup),

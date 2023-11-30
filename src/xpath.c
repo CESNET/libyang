@@ -7943,7 +7943,7 @@ eval_name_test_with_predicate_get_scnode(const struct ly_ctx *ctx, const struct 
         uint32_t name_len, const struct lys_module *moveto_mod, enum lyxp_node_type root_type, LY_VALUE_FORMAT format,
         const struct lysc_node **found)
 {
-    const struct lysc_node *scnode;
+    const struct lysc_node *scnode, *scnode2;
     const struct lys_module *mod;
     uint32_t idx = 0;
 
@@ -7981,7 +7981,19 @@ continue_search:
         }
 
         /* search in children, do not repeat the same search */
-        scnode = lys_find_child(node->schema, moveto_mod, name, name_len, 0, 0);
+        if (node->schema->nodetype & (LYS_RPC | LYS_ACTION)) {
+            /* make sure the node is unique, whether in input or output */
+            scnode = lys_find_child(node->schema, moveto_mod, name, name_len, 0, 0);
+            scnode2 = lys_find_child(node->schema, moveto_mod, name, name_len, 0, LYS_GETNEXT_OUTPUT);
+            if (scnode && scnode2) {
+                /* conflict, do not use hashes */
+                scnode = NULL;
+            } else if (scnode2) {
+                scnode = scnode2;
+            }
+        } else {
+            scnode = lys_find_child(node->schema, moveto_mod, name, name_len, 0, 0);
+        }
     } /* else skip redundant search */
 
     /* additional context check */
