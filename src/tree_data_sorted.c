@@ -919,29 +919,52 @@ lyds_link_data_node(struct lyd_node **leader, struct lyd_node *node, struct lyd_
     }
 }
 
+/**
+ * @brief Additionally create the Red-black tree for the sorted nodes.
+ *
+ * @param[in] leader First instance of the (leaf-)list.
+ * @param[in] root_meta From the @p leader, metadata in which is the root of the Red-black tree.
+ * @param[in] rbt From the @p root_meta, root of the Red-black tree.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyds_additionally_create_rb_tree(struct lyd_node *leader, struct lyd_meta *root_meta, struct rb_node **rbt)
+{
+    LY_ERR ret;
+    struct rb_node *rbn;
+    struct lyd_node *iter;
+
+    /* let's begin with the leader */
+    ret = lyds_create_node(leader, &rbn);
+    LY_CHECK_RET(ret);
+    *rbt = rbn;
+
+    /* continue with the rest of the nodes */
+    for (iter = leader->next; iter && (iter->schema == leader->schema); iter = iter->next) {
+        ret = lyds_create_node(iter, &rbn);
+        LY_CHECK_RET(ret);
+        rb_insert_node(rbt, rbn);
+    }
+
+    /* store pointer to the root */
+    RBT_SET(root_meta, *rbt);
+
+    return LY_SUCCESS;
+}
+
 LY_ERR
-lyds_create_metadata(struct lyd_node *leader)
+lyds_create_metadata(struct lyd_node *leader, struct lyd_meta **meta_p)
 {
     LY_ERR ret;
     uint32_t i;
     struct lyd_meta *meta;
-    struct rb_node *rbn = NULL, *rbt;
     struct lys_module *modyang;
 
-    LY_CHECK_ARG_RET(NULL, leader, leader->schema, LY_EINVAL);
+    assert(leader && (!leader->prev->next || (leader->schema != leader->prev->schema)));
 
-    rbt = lyds_get_rb_tree(leader, &meta);
-    if (rbt) {
-        /* nothing to do, the metadata is already set */
-        return LY_SUCCESS;
-    }
-    LY_CHECK_RET(!LYD_NODE_IS_ALONE(leader), LY_EINT);
-
+    lyds_get_rb_tree(leader, &meta);
     if (meta) {
-        /* if the node was duplicated, then the meta is present, but its value is NULL */
-        ret = lyds_create_node(leader, &rbn);
-        LY_CHECK_RET(ret);
-        RBT_SET(meta, rbn);
+        /* nothing to do, the metadata is already set */
         return LY_SUCCESS;
     }
 
@@ -954,10 +977,14 @@ lyds_create_metadata(struct lyd_node *leader)
     }
     LY_CHECK_ERR_RET(!modyang, LOGERR(LYD_CTX(leader), LY_EINT, "The yang module is not installed."), LY_EINT);
 
-    /* create new metadata with a root that contains @p leader */
-    ret = lyd_create_meta(leader, &meta, modyang, RB_NAME, RB_NAME_LEN, (void *)leader, 0, 0, NULL,
-            LY_VALUE_LYB, NULL, LYD_HINT_DATA, leader->schema, 0, NULL);
+    /* create new metadata, its rbt is NULL */
+    ret = lyd_create_meta(leader, &meta, modyang, RB_NAME, RB_NAME_LEN, NULL, 0, 0, NULL,
+            LY_VALUE_CANON, NULL, LYD_HINT_DATA, NULL, 0, NULL);
     LY_CHECK_RET(ret);
+
+    if (meta_p) {
+        *meta_p = meta;
+    }
 
     return LY_SUCCESS;
 }
@@ -990,40 +1017,42 @@ rb_insert(struct lyd_node *node, struct rb_node **rbt, struct rb_node **rbn)
 LY_ERR
 lyds_insert(struct lyd_node **leader, struct lyd_node *node)
 {
-    LY_ERR ret = LY_SUCCESS;
-    struct rb_node *rbn, *rbt, *orig_rbt;
+    LY_ERR ret;
+    struct rb_node *rbt, *rbn;
     struct lyd_meta *root_meta;
 
-    LY_CHECK_ARG_RET(NULL, leader, node, LY_EINVAL);
+    /* @p node must not be part of another Red-black tree, only single node can satisfy this condition */
+    assert(LYD_NODE_IS_ALONE(node) && leader && node);
 
-    /* check that the @p node has no siblings */
-    if (!LYD_NODE_IS_ALONE(node)) {
-        /* @p node must not be part of another Red-black tree, only single node can satisfy this condition */
-        return LY_EINVAL;
-    }
-
-    /* Clear the @p node. It may have unnecessary data due to duplication or due to lyds_unlink_node() calls. */
+    /* Clear the @p node. It may have unnecessary data due to duplication or due to lyds_unlink() calls. */
     rbt = lyds_get_rb_tree(node, &root_meta);
     if (root_meta) {
-        assert(!rbt || (!RBN_LEFT(rbt) && !RBN_PARENT(rbt) && !RBN_RIGHT(rbt)));
-        /* node has no siblings but contains an empty tree or a tree where it is alone */
+        assert(!rbt || (!RBN_LEFT(rbt) && !RBN_RIGHT(rbt)));
+        /* metadata in @p node will certainly no longer be needed */
         lyd_free_meta_single(root_meta);
     }
 
     /* get the Red-black tree from the @p leader */
-    rbt = orig_rbt = lyds_get_rb_tree(*leader, &root_meta);
-    LY_CHECK_ERR_RET(!rbt, LOGWRN(LYD_CTX(node), "Red-black tree not found."), LY_EINT);
-
-    /* insert red-black node with @p node to the Red-black tree */
-    ret = rb_insert(node, &rbt, &rbn);
-    LY_CHECK_RET(ret);
-    if (orig_rbt != rbt) {
-        /* the root of the Red-black tree has changed due to insertion, so update the pointer to the root */
-        RBT_SET(root_meta, rbt);
+    rbt = lyds_get_rb_tree(*leader, &root_meta);
+    if (!root_meta) {
+        lyds_create_metadata(*leader, &root_meta);
+    }
+    if (!rbt) {
+        /* Due to optimization, the Red-black tree has not been created so far, so it will be
+         * created additionally now. It may still not be worth creating a tree and it may be better
+         * to insert the node by linear search instead, but that is a case for further optimization.
+         */
+        ret = lyds_additionally_create_rb_tree(*leader, root_meta, &rbt);
+        LY_CHECK_RET(ret);
     }
 
     /* Insert the node to the correct order. */
+    ret = rb_insert(node, &rbt, &rbn);
+    LY_CHECK_RET(ret);
     lyds_link_data_node(leader, node, root_meta, rbn);
+
+    /* the root of the Red-black tree may changed due to insertion, so update the pointer to the root */
+    RBT_SET(root_meta, rbt);
 
     return LY_SUCCESS;
 }
@@ -1041,11 +1070,8 @@ lyds_unlink(struct lyd_node **leader, struct lyd_node *node)
     /* get the Red-black tree from the leader */
     rbt = lyds_get_rb_tree(*leader, &root_meta);
 
-    if (LYD_NODE_IS_ALONE(node)) {
-        /* node is the leader and it is alone, so free metadata including Red-black tree */
-        lyds_get_rb_tree(node, &root_meta);
-        /* release the metadata and the Red-black tree. */
-        lyd_free_meta_single(root_meta);
+    /* find out if leader_p is alone */
+    if (!root_meta || LYD_NODE_IS_ALONE(*leader)) {
         return;
     }
 
@@ -1056,11 +1082,6 @@ lyds_unlink(struct lyd_node **leader, struct lyd_node *node)
 
     rb_remove_node(root_meta, &rbt, node, &removed);
     rb_free_node(removed);
-
-    if (!rbt) {
-        /* the Red-black tree is removed, so delete the metadata too */
-        lyd_free_meta_single(root_meta);
-    }
 }
 
 void
@@ -1071,5 +1092,17 @@ lyds_free_metadata(struct lyd_node *node)
     if (node) {
         lyds_get_rb_tree(node, &root_meta);
         lyd_free_meta_single(root_meta);
+    }
+}
+
+int
+lyds_compare_single(struct lyd_node *node1, struct lyd_node *node2)
+{
+    assert(node1 && node2 && (node1->schema == node2->schema) && lyds_is_supported(node1));
+
+    if (node1->schema->nodetype == LYS_LEAFLIST) {
+        return rb_compare_leaflists(node1, node2);
+    } else {
+        return rb_compare_lists(node1, node2);
     }
 }
