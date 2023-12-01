@@ -305,14 +305,22 @@ test_unlink_all(void **state)
             "leaf-list ll {type uint32;}}";
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
 
+    /* unlink second then first */
     assert_int_equal(lyd_new_term(NULL, mod, "ll", "1", 0, &first), LY_SUCCESS);
     assert_int_equal(lyd_new_term(NULL, mod, "ll", "2", 0, &second), LY_SUCCESS);
     assert_int_equal(lyd_insert_sibling(first, second, NULL), LY_SUCCESS);
-    lyds_unlink(&first, second);
+    lyd_unlink_tree(second);
     assert_non_null(first->meta);
-    lyds_unlink(&first, first);
-    assert_true(!first->meta && !second->meta);
+    lyd_unlink_tree(first);
+    assert_true(first->meta && !second->meta);
+
+    /* unlink first then second */
+    assert_int_equal(lyd_insert_sibling(first, second, NULL), LY_SUCCESS);
+    lyd_unlink_tree(first);
+    assert_true(!first->meta && second->meta);
+
     lyd_free_all(first);
+    lyd_free_all(second);
 }
 
 static void
@@ -337,14 +345,12 @@ test_insert_before_anchor(void **state)
 
     assert_int_equal(lyd_new_term(cont, mod, "lln", "1", 0, NULL), LY_SUCCESS);
     node = lyd_child(cont);
-    assert_true(node && node->meta);
-    assert_string_equal(node->meta->name, META_NAME);
+    assert_true(node && !node->meta);
     assert_string_equal(lyd_get_value(node), "1");
 
     assert_int_equal(lyd_new_term(cont, mod, "llm", "2", 0, NULL), LY_SUCCESS);
     node = lyd_child(cont);
-    assert_true(node && node->meta && node->next);
-    assert_string_equal(node->meta->name, META_NAME);
+    assert_true(node && !node->meta && node->next);
     assert_string_equal(lyd_get_value(node), "2");
     assert_string_equal(lyd_get_value(node->next), "1");
 
@@ -373,14 +379,12 @@ test_insert_after_anchor(void **state)
 
     assert_int_equal(lyd_new_term(cont, mod, "llm", "1", 0, NULL), LY_SUCCESS);
     node = lyd_child(cont);
-    assert_true(node && node->meta);
-    assert_string_equal(node->meta->name, META_NAME);
+    assert_true(node && !node->meta);
     assert_string_equal(lyd_get_value(node), "1");
 
     assert_int_equal(lyd_new_term(cont, mod, "lln", "2", 0, NULL), LY_SUCCESS);
     node = lyd_child(cont);
-    assert_true(node && node->meta && node->next);
-    assert_string_equal(node->meta->name, META_NAME);
+    assert_true(node && !node->meta && node->next);
     assert_string_equal(lyd_get_value(node), "1");
     assert_string_equal(lyd_get_value(node->next), "2");
 
@@ -401,8 +405,7 @@ test_insert_same_values_leaflist(void **state)
 
     assert_int_equal(lyd_new_term(cont, mod, "ll", "1", 0, NULL), LY_SUCCESS);
     n1 = lyd_child(cont);
-    assert_true(n1 && n1->meta);
-    assert_string_equal(n1->meta->name, META_NAME);
+    assert_true(n1 && !n1->meta);
     assert_string_equal(lyd_get_value(n1), "1");
 
     assert_int_equal(lyd_new_term(cont, mod, "ll", "1", 0, NULL), LY_SUCCESS);
@@ -431,8 +434,7 @@ test_insert_same_values_list(void **state)
 
     assert_int_equal(lyd_new_list(cont, mod, "lst", 0, NULL, "1"), LY_SUCCESS);
     n1 = lyd_child(cont);
-    assert_true(n1 && n1->meta);
-    assert_string_equal(n1->meta->name, META_NAME);
+    assert_true(n1 && !n1->meta);
     assert_string_equal(lyd_get_value(lyd_child(n1)), "1");
 
     assert_int_equal(lyd_new_list(cont, mod, "lst", 0, NULL, "1"), LY_SUCCESS);
@@ -525,8 +527,7 @@ test_leaflist_default(void **state)
 
     assert_int_equal(lyd_new_term(cont, mod, "ll", "2", 0, NULL), LY_SUCCESS);
     node = lyd_child(cont);
-    assert_true(node && node->meta);
-    assert_string_equal(node->meta->name, META_NAME);
+    assert_true(node && !node->meta);
     assert_string_equal(lyd_get_value(node), "2");
     assert_int_equal(lyd_new_term(cont, mod, "ll", "1", 0, NULL), LY_SUCCESS);
     node = lyd_child(cont);
@@ -582,16 +583,17 @@ test_unlink_then_insert(void **state)
     lyd_unlink_tree(lyd_child(cont));
     lyd_unlink_tree(lyd_child(cont));
     assert_null(lyd_child(cont));
-    assert_true(!first->meta && !second->meta && !third->meta);
+    assert_true(!first->meta && !second->meta && third->meta && get_rbt(third->meta));
+    assert_string_equal(third->meta->name, META_NAME);
 
-    /* insert first */
-    lyd_insert_child(cont, first);
-    assert_non_null(first->meta);
-    assert_string_equal(first->meta->name, META_NAME);
+    /* insert third */
+    lyd_insert_child(cont, third);
+    assert_non_null(third->meta);
+    assert_string_equal(third->meta->name, META_NAME);
 
     lyd_free_all(cont);
+    lyd_free_all(first);
     lyd_free_all(second);
-    lyd_free_all(third);
 }
 
 static void
@@ -728,15 +730,15 @@ test_insert_into_duplicate(void **state)
     /* create duplicate */
     assert_int_equal(lyd_dup_single(cont, NULL, LYD_DUP_RECURSIVE, &dup), LY_SUCCESS);
     node = lyd_child(dup);
-    assert_true(node && node->next && get_rbt(node->meta));
+    assert_true(node && node->next && !get_rbt(node->meta));
     assert_string_equal(node->meta->name, META_NAME);
-    assert_ptr_not_equal(get_rbt(node->meta), get_rbt(lyd_child(cont)->meta));
     /* insert into duplicate */
     assert_int_equal(lyd_new_term(dup, mod, "ll", "2", 0, NULL), LY_SUCCESS);
     assert_non_null(node->next->next);
     assert_string_equal(lyd_get_value(node), "1");
     assert_string_equal(lyd_get_value(node->next), "2");
     assert_string_equal(lyd_get_value(node->next->next), "3");
+    assert_non_null(get_rbt(node->meta));
     lyd_free_all(cont);
     lyd_free_all(dup);
 }
@@ -757,14 +759,43 @@ test_option_dup_no_meta(void **state)
     assert_int_equal(lyd_new_term(cont, mod, "ll", "3", 0, NULL), LY_SUCCESS);
     assert_int_equal(lyd_dup_siblings(cont, NULL, LYD_DUP_NO_META | LYD_DUP_RECURSIVE, &dup), LY_SUCCESS);
     node = lyd_child(dup);
-    assert_true(node && get_rbt(node->meta));
-    assert_string_equal(node->meta->name, META_NAME);
+    assert_true(node && !node->meta);
     assert_int_equal(lyd_new_term(dup, mod, "ll", "1", 0, NULL), LY_SUCCESS);
     node = lyd_child(dup);
+    assert_non_null(node->meta && get_rbt(node->meta));
+    assert_string_equal(node->meta->name, META_NAME);
     assert_string_equal(lyd_get_value(node), "1");
 
     lyd_free_all(cont);
     lyd_free_all(dup);
+}
+
+static void
+test_free_meta_single(void **state)
+{
+    const char *schema;
+    struct lys_module *mod;
+    struct lyd_node *first, *second, *third;
+
+    schema = "module a {namespace urn:tests:a;prefix a;yang-version 1.1;revision 2014-05-08;"
+            "leaf-list ll {type uint32;}}";
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+
+    /* user free metadata with lyds tree but it will created again */
+    assert_int_equal(lyd_new_term(NULL, mod, "ll", "7", 0, &first), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(NULL, mod, "ll", "8", 0, &second), LY_SUCCESS);
+    assert_int_equal(lyd_insert_sibling(first, second, NULL), LY_SUCCESS);
+    assert_non_null(first->meta);
+    assert_string_equal(first->meta->name, META_NAME);
+    lyd_free_meta_single(first->meta);
+    assert_int_equal(lyd_new_term(NULL, mod, "ll", "6", 0, &third), LY_SUCCESS);
+    lyd_insert_sibling(first, third, NULL);
+    assert_string_equal(lyd_get_value(first->prev), "6");
+    assert_string_equal(lyd_get_value(first), "7");
+    assert_string_equal(lyd_get_value(first->next), "8");
+    assert_non_null(first->prev->meta);
+    assert_string_equal(first->prev->meta->name, META_NAME);
+    lyd_free_all(first->prev);
 }
 
 static void
@@ -906,7 +937,7 @@ test_merge_siblings(void **state)
     assert_string_equal(lyd_get_value(f2->next->next->next), "22");
     lyd_free_all(f2);
 
-    /* only source tree have metadata */
+    /* only target tree have metadata */
     assert_int_equal(lyd_new_term(NULL, mod, "ll", "1", 0, &f1), LY_SUCCESS);
     assert_null(f1->meta);
     assert_int_equal(lyd_new_term(NULL, mod, "ll", "21", 0, &f2), LY_SUCCESS);
@@ -914,7 +945,7 @@ test_merge_siblings(void **state)
     assert_int_equal(lyd_insert_sibling(f2, s2, NULL), LY_SUCCESS);
     assert_non_null(f2->meta);
     assert_int_equal(lyd_merge_siblings(&f2, f1, 0), LY_SUCCESS);
-    assert_true(f2->meta && f2->next && f2->next->next);
+    assert_true(f2->meta && f2->next);
     assert_string_equal(f2->meta->name, META_NAME);
     assert_string_equal(lyd_get_value(f2), "1");
     assert_string_equal(lyd_get_value(f2->next), "21");
@@ -922,7 +953,7 @@ test_merge_siblings(void **state)
     lyd_free_all(f1);
     lyd_free_all(f2);
 
-    /* only target tree have metadata */
+    /* only source tree have metadata */
     assert_int_equal(lyd_new_term(NULL, mod, "ll", "1", 0, &f1), LY_SUCCESS);
     assert_int_equal(lyd_new_term(NULL, mod, "ll", "2", 0, &s1), LY_SUCCESS);
     assert_int_equal(lyd_insert_sibling(f1, s1, NULL), LY_SUCCESS);
@@ -990,6 +1021,46 @@ test_parse_data(void **state)
     CHECK_LYD_VALUE(((struct lyd_node_term *)tree2)->value, UINT32, "1", 1);
     free(lyb_out);
     lyd_free_all(tree2);
+    lyd_free_all(tree);
+}
+
+static void
+test_parse_ordered_data(void **state)
+{
+    const char *schema, *data;
+    struct lys_module *mod;
+    struct lyd_node *tree, *node;
+
+    schema = "module a {namespace urn:tests:a;prefix a;yang-version 1.1;revision 2014-05-08;"
+            "leaf-list ll {type uint32;}}";
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+
+    data = "{\"a:ll\":[1,2,3]}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, LYD_PARSE_ORDERED, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    assert_true(tree && !tree->meta && tree->next && tree->next->next);
+    CHECK_LYD_VALUE(((struct lyd_node_term *)tree)->value, UINT32, "1", 1);
+
+    /* unlink node with value 2 */
+    node = tree->next;
+    lyd_unlink_tree(node);
+    assert_true(tree && !tree->meta && tree->next);
+    lyd_free_all(node);
+
+    /* unlink node with value 1 */
+    node = tree;
+    tree = tree->next;
+    assert_null(tree->meta);
+    lyd_unlink_tree(node);
+    assert_true(tree && !tree->meta && !tree->next);
+
+    /* insert node with value 1 to node with value 3 */
+    lyd_insert_sibling(tree, node, NULL);
+    tree = tree->prev;
+    assert_true(tree && tree->meta && tree->next && !tree->next->meta && get_rbt(tree->meta));
+    assert_string_equal(tree->meta->name, META_NAME);
+    assert_string_equal(lyd_get_value(tree), "1");
+    assert_string_equal(lyd_get_value(tree->next), "3");
+
     lyd_free_all(tree);
 }
 
@@ -1129,9 +1200,11 @@ main(void)
         UTEST(test_insert_into_duplicate),
         UTEST(test_option_dup_no_meta),
         UTEST(test_no_metadata_remains),
+        UTEST(test_free_meta_single),
         UTEST(test_insert_multiple_keys),
         UTEST(test_merge_siblings),
         UTEST(test_parse_data),
+        UTEST(test_parse_ordered_data),
         UTEST(test_print_data),
         UTEST(test_manipulation_of_many_nodes),
         UTEST(test_lyds_free_metadata),
