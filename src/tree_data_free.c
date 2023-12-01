@@ -273,12 +273,7 @@ lyd_free_(struct lyd_node *node)
         return;
     }
 
-    /* get the first sibling */
-    while (node->prev->next) {
-        node = node->prev;
-    }
-
-    LY_LIST_FOR_SAFE(node, next, iter) {
+    LY_LIST_FOR_SAFE(lyd_first_sibling(node), next, iter) {
         if (lysc_is_key(iter->schema) && iter->parent) {
             LOGERR(LYD_CTX(iter), LY_EINVAL, "Cannot free a list key \"%s\", free the list instance instead.", LYD_NAME(iter));
             return;
