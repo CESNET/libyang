@@ -1725,7 +1725,7 @@ lyd_diff_merge_delete(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
         if (diff_match->schema->nodetype & LYD_NODE_TERM) {
             /* add orig-default meta because it is expected */
             LY_CHECK_RET(lyd_new_meta(LYD_CTX(src_diff), diff_match, NULL, "yang:orig-default",
-                    diff_match->flags & LYD_DEFAULT ? "true" : "false", 0, NULL));
+                    src_diff->flags & LYD_DEFAULT ? "true" : "false", 0, NULL));
         } else if (!lysc_is_dup_inst_list(diff_match->schema)) {
             /* keep operation for all descendants (for now) */
             LY_LIST_FOR(lyd_child_no_keys(diff_match), child) {
