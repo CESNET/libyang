@@ -1482,7 +1482,7 @@ dfs_search:
                 LYD_TREE_DFS_continue = 0;
             }
 
-            if ((root_type == LYXP_NODE_ROOT_CONFIG) && (elem->schema->flags & LYS_CONFIG_R)) {
+            if ((root_type == LYXP_NODE_ROOT_CONFIG) && elem->schema && (elem->schema->flags & LYS_CONFIG_R)) {
                 /* skip */
                 LYD_TREE_DFS_continue = 1;
             } else {
