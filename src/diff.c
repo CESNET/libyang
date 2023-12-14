@@ -1534,28 +1534,43 @@ lyd_diff_merge_replace(struct lyd_node *diff_match, enum lyd_diff_op cur_op, con
         }
         break;
     case LYD_DIFF_OP_NONE:
-        /* it is moved now */
-        assert(lysc_is_userordered(diff_match->schema) && (diff_match->schema->nodetype == LYS_LIST));
+        switch (diff_match->schema->nodetype) {
+        case LYS_LIST:
+            /* it is moved now */
+            assert(lysc_is_userordered(diff_match->schema));
 
-        /* change the operation */
-        LY_CHECK_RET(lyd_diff_change_op(diff_match, LYD_DIFF_OP_REPLACE));
+            /* change the operation */
+            LY_CHECK_RET(lyd_diff_change_op(diff_match, LYD_DIFF_OP_REPLACE));
 
-        /* set orig-meta and meta */
-        if (lysc_is_dup_inst_list(diff_match->schema)) {
-            meta_name = "position";
-            orig_meta_name = "orig-position";
-        } else {
-            meta_name = "key";
-            orig_meta_name = "orig-key";
+            /* set orig-meta and meta */
+            if (lysc_is_dup_inst_list(diff_match->schema)) {
+                meta_name = "position";
+                orig_meta_name = "orig-position";
+            } else {
+                meta_name = "key";
+                orig_meta_name = "orig-key";
+            }
+
+            meta = lyd_find_meta(src_diff->meta, mod, orig_meta_name);
+            LY_CHECK_ERR_RET(!meta, LOGERR_META(ctx, orig_meta_name, src_diff), LY_EINVAL);
+            LY_CHECK_RET(lyd_dup_meta_single(meta, diff_match, NULL));
+
+            meta = lyd_find_meta(src_diff->meta, mod, meta_name);
+            LY_CHECK_ERR_RET(!meta, LOGERR_META(ctx, meta_name, src_diff), LY_EINVAL);
+            LY_CHECK_RET(lyd_dup_meta_single(meta, diff_match, NULL));
+            break;
+        case LYS_LEAF:
+            /* only dflt flag changed, now value changed as well, update the operation */
+            LY_CHECK_RET(lyd_diff_change_op(diff_match, LYD_DIFF_OP_REPLACE));
+
+            /* modify the node value */
+            if (lyd_change_term(diff_match, lyd_get_value(src_diff))) {
+                LOGINT_RET(LYD_CTX(src_diff));
+            }
+            break;
+        default:
+            LOGINT_RET(LYD_CTX(src_diff));
         }
-
-        meta = lyd_find_meta(src_diff->meta, mod, orig_meta_name);
-        LY_CHECK_ERR_RET(!meta, LOGERR_META(ctx, orig_meta_name, src_diff), LY_EINVAL);
-        LY_CHECK_RET(lyd_dup_meta_single(meta, diff_match, NULL));
-
-        meta = lyd_find_meta(src_diff->meta, mod, meta_name);
-        LY_CHECK_ERR_RET(!meta, LOGERR_META(ctx, meta_name, src_diff), LY_EINVAL);
-        LY_CHECK_RET(lyd_dup_meta_single(meta, diff_match, NULL));
         break;
     default:
         /* delete operation is not valid */
