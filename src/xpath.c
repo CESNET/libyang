@@ -9600,7 +9600,7 @@ lyxp_get_root_type(const struct lyd_node *ctx_node, const struct lysc_node *ctx_
         /* schema */
         for (op = ctx_scnode; op && !(op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = op->parent) {}
 
-        if (op || (options & LYXP_SCNODE)) {
+        if (op || !(options & LYXP_SCNODE_SCHEMA)) {
             /* general root that can access everything */
             return LYXP_NODE_ROOT;
         } else if (!ctx_scnode || (ctx_scnode->flags & LYS_CONFIG_W)) {
