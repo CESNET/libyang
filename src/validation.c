@@ -1552,10 +1552,10 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
 {
     LY_ERR r, rc = LY_SUCCESS;
     const char *innode;
-    struct lyd_node *next = NULL, *node;
+    struct lyd_node *node;
 
     /* validate all restrictions of nodes themselves */
-    LY_LIST_FOR_SAFE(first, next, node) {
+    LY_LIST_FOR(first, node) {
         if (node->flags & LYD_EXT) {
             /* ext instance data should have already been validated */
             continue;
