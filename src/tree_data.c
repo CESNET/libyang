@@ -3062,7 +3062,7 @@ lyd_trim_xpath(struct lyd_node **tree, const char *xpath, const struct lyxp_var 
     LY_CHECK_GOTO(ret, cleanup);
 
     /* create hash table for all the parents of results */
-    parent_ht = lyht_new(32, sizeof *node, lyd_trim_equal_cb, NULL, 1);
+    parent_ht = lyht_new(32, sizeof node, lyd_trim_equal_cb, NULL, 1);
     LY_CHECK_GOTO(!parent_ht, cleanup);
 
     for (i = 0; i < xp_set.used; ++i) {
