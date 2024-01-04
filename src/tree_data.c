@@ -3015,6 +3015,139 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Hash table node equal callback.
+ */
+static ly_bool
+lyd_trim_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
+{
+    struct lyd_node *node1, *node2;
+
+    node1 = *(struct lyd_node **)val1_p;
+    node2 = *(struct lyd_node **)val2_p;
+
+    return node1 == node2;
+}
+
+LIBYANG_API_DEF LY_ERR
+lyd_trim_xpath(struct lyd_node **tree, const char *xpath, const struct lyxp_var *vars)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct ly_ctx *ctx;
+    struct lyxp_set xp_set = {0};
+    struct lyxp_expr *exp = NULL;
+    struct lyd_node *node, *parent;
+    struct lyxp_set_hash_node hnode;
+    struct ly_ht *parent_ht = NULL;
+    struct ly_set free_set = {0};
+    uint32_t i, hash;
+    ly_bool is_result;
+
+    LY_CHECK_ARG_RET(NULL, tree, xpath, LY_EINVAL);
+
+    if (!*tree) {
+        /* nothing to do */
+        goto cleanup;
+    }
+
+    *tree = lyd_first_sibling(*tree);
+    ctx = (struct ly_ctx *)LYD_CTX(*tree);
+
+    /* parse expression */
+    ret = lyxp_expr_parse(ctx, xpath, 0, 1, &exp);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* evaluate expression */
+    ret = lyxp_eval(ctx, exp, NULL, LY_VALUE_JSON, NULL, *tree, *tree, *tree, vars, &xp_set, LYXP_IGNORE_WHEN);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* create hash table for all the parents of results */
+    parent_ht = lyht_new(32, sizeof *node, lyd_trim_equal_cb, NULL, 1);
+    LY_CHECK_GOTO(!parent_ht, cleanup);
+
+    for (i = 0; i < xp_set.used; ++i) {
+        if (xp_set.val.nodes[i].type != LYXP_NODE_ELEM) {
+            /* ignore */
+            continue;
+        }
+
+        for (parent = lyd_parent(xp_set.val.nodes[i].node); parent; parent = lyd_parent(parent)) {
+            /* add the parent into parent_ht */
+            ret = lyht_insert(parent_ht, &parent, parent->hash, NULL);
+            if (ret == LY_EEXIST) {
+                /* shared parent, we are done */
+                break;
+            }
+            LY_CHECK_GOTO(ret, cleanup);
+        }
+    }
+
+    hnode.type = LYXP_NODE_ELEM;
+    LY_LIST_FOR(*tree, parent) {
+        LYD_TREE_DFS_BEGIN(parent, node) {
+            if (lysc_is_key(node->schema)) {
+                /* ignore */
+                goto next_iter;
+            }
+
+            /* check the results */
+            is_result = 0;
+            if (xp_set.ht) {
+                hnode.node = node;
+                hash = lyht_hash_multi(0, (const char *)&hnode.node, sizeof hnode.node);
+                hash = lyht_hash_multi(hash, (const char *)&hnode.type, sizeof hnode.type);
+                hash = lyht_hash_multi(hash, NULL, 0);
+
+                if (!lyht_find(xp_set.ht, &hnode, hash, NULL)) {
+                    is_result = 1;
+                }
+            } else {
+                /* not enough elements for a hash table */
+                for (i = 0; i < xp_set.used; ++i) {
+                    if (xp_set.val.nodes[i].type != LYXP_NODE_ELEM) {
+                        /* ignore */
+                        continue;
+                    }
+
+                    if (xp_set.val.nodes[i].node == node) {
+                        is_result = 1;
+                        break;
+                    }
+                }
+            }
+
+            if (is_result) {
+                /* keep the whole subtree if the node is in the results */
+                LYD_TREE_DFS_continue = 1;
+            } else if (lyht_find(parent_ht, &node, node->hash, NULL)) {
+                /* free the whole subtree if the node is not even among the selected parents */
+                ret = ly_set_add(&free_set, node, 1, NULL);
+                LY_CHECK_GOTO(ret, cleanup);
+                LYD_TREE_DFS_continue = 1;
+            } /* else keep the parent node because a subtree is in the results */
+
+next_iter:
+            LYD_TREE_DFS_END(parent, node);
+        }
+    }
+
+    /* free */
+    for (i = 0; i < free_set.count; ++i) {
+        node = free_set.dnodes[i];
+        if (*tree == node) {
+            *tree = (*tree)->next;
+        }
+        lyd_free_tree(node);
+    }
+
+cleanup:
+    lyxp_set_free_content(&xp_set);
+    lyxp_expr_free(ctx, exp);
+    lyht_free(parent_ht, NULL);
+    ly_set_erase(&free_set, NULL);
+    return ret;
+}
+
 LIBYANG_API_DEF LY_ERR
 lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output, struct lyd_node **match)
 {

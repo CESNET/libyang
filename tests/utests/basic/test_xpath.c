@@ -1092,6 +1092,154 @@ test_axes(void **state)
     lyd_free_all(tree);
 }
 
+static void
+test_trim(void **state)
+{
+    const char *data;
+    char *str1;
+    struct lyd_node *tree;
+
+    data =
+            "<l1 xmlns=\"urn:tests:a\">"
+            "  <a>a1</a>"
+            "  <b>b1</b>"
+            "  <c>c1</c>"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">"
+            "  <a>a2</a>"
+            "  <b>b2</b>"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">"
+            "  <a>a3</a>"
+            "  <b>b3</b>"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">"
+            "  <a>a4</a>"
+            "  <b>b4</b>"
+            "  <c>c4</c>"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">"
+            "  <a>a5</a>"
+            "  <b>b5</b>"
+            "  <c>c5</c>"
+            "</l1>"
+            "<foo2 xmlns=\"urn:tests:a\">50</foo2>"
+            "<c xmlns=\"urn:tests:a\">"
+            "  <x>key2</x>"
+            "  <ll>"
+            "    <a>key1</a>"
+            "    <ll>"
+            "      <a>key11</a>"
+            "      <b>val11</b>"
+            "    </ll>"
+            "    <ll>"
+            "      <a>key12</a>"
+            "      <b>val12</b>"
+            "    </ll>"
+            "    <ll>"
+            "      <a>key13</a>"
+            "      <b>val13</b>"
+            "    </ll>"
+            "  </ll>"
+            "  <ll>"
+            "    <a>key2</a>"
+            "    <ll>"
+            "      <a>key21</a>"
+            "      <b>val21</b>"
+            "    </ll>"
+            "    <ll>"
+            "      <a>key22</a>"
+            "      <b>val22</b>"
+            "    </ll>"
+            "  </ll>"
+            "  <ll>"
+            "    <a>key3</a>"
+            "    <ll>"
+            "      <a>key31</a>"
+            "      <b>val31</b>"
+            "    </ll>"
+            "    <ll>"
+            "      <a>key32</a>"
+            "      <b>val32</b>"
+            "    </ll>"
+            "  </ll>"
+            "</c>";
+
+    /* trim #1 */
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    assert_non_null(tree);
+
+    assert_int_equal(LY_SUCCESS, lyd_trim_xpath(&tree, "/a:c/ll/ll[a='key11']", NULL));
+    lyd_print_mem(&str1, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    assert_string_equal(str1,
+            "<c xmlns=\"urn:tests:a\">\n"
+            "  <ll>\n"
+            "    <a>key1</a>\n"
+            "    <ll>\n"
+            "      <a>key11</a>\n"
+            "      <b>val11</b>\n"
+            "    </ll>\n"
+            "  </ll>\n"
+            "</c>\n");
+
+    free(str1);
+    lyd_free_all(tree);
+
+    /* trim #2 */
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    assert_non_null(tree);
+
+    assert_int_equal(LY_SUCCESS, lyd_trim_xpath(&tree, "/a:c/ll/ll[contains(.,'2')]", NULL));
+    lyd_print_mem(&str1, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    assert_string_equal(str1,
+            "<c xmlns=\"urn:tests:a\">\n"
+            "  <ll>\n"
+            "    <a>key1</a>\n"
+            "    <ll>\n"
+            "      <a>key12</a>\n"
+            "      <b>val12</b>\n"
+            "    </ll>\n"
+            "  </ll>\n"
+            "  <ll>\n"
+            "    <a>key2</a>\n"
+            "    <ll>\n"
+            "      <a>key21</a>\n"
+            "      <b>val21</b>\n"
+            "    </ll>\n"
+            "    <ll>\n"
+            "      <a>key22</a>\n"
+            "      <b>val22</b>\n"
+            "    </ll>\n"
+            "  </ll>\n"
+            "  <ll>\n"
+            "    <a>key3</a>\n"
+            "    <ll>\n"
+            "      <a>key32</a>\n"
+            "      <b>val32</b>\n"
+            "    </ll>\n"
+            "  </ll>\n"
+            "</c>\n");
+
+    free(str1);
+    lyd_free_all(tree);
+
+    /* trim #3 */
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    assert_non_null(tree);
+
+    assert_int_equal(LY_SUCCESS, lyd_trim_xpath(&tree, "/l1[4]//.", NULL));
+    lyd_print_mem(&str1, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    assert_string_equal(str1,
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "  <a>a4</a>\n"
+            "  <b>b4</b>\n"
+            "  <c>c4</c>\n"
+            "</l1>\n");
+
+    free(str1);
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -1108,6 +1256,7 @@ main(void)
         UTEST(test_augment, setup),
         UTEST(test_variables, setup),
         UTEST(test_axes, setup),
+        UTEST(test_trim, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

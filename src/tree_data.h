@@ -2607,6 +2607,17 @@ LIBYANG_API_DECL LY_ERR lyd_eval_xpath4(const struct lyd_node *ctx_node, const s
         long double *number, ly_bool *boolean);
 
 /**
+ * @brief Evaluate an XPath on data and free all the nodes except the subtrees selected by the expression.
+ *
+ * @param[in,out] tree Data tree to evaluate on and trim.
+ * @param[in] xpath [XPath](@ref howtoXPath) to select in JSON format.
+ * @param[in] vars Optional [sized array](@ref sizedarrays) of XPath variables.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+LIBYANG_API_DEF LY_ERR lyd_trim_xpath(struct lyd_node **tree, const char *xpath, const struct lyxp_var *vars);
+
+/**
  * @brief Search in given data for a node uniquely identified by a path.
  *
  * Always works in constant (*O(1)*) complexity. To be exact, it is *O(n)* where *n* is the depth
