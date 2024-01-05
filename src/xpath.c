@@ -899,18 +899,21 @@ static void
 set_init(struct lyxp_set *new, const struct lyxp_set *set)
 {
     memset(new, 0, sizeof *new);
-    if (set) {
-        new->non_child_axis = set->non_child_axis;
-        new->ctx = set->ctx;
-        new->cur_node = set->cur_node;
-        new->root_type = set->root_type;
-        new->context_op = set->context_op;
-        new->tree = set->tree;
-        new->cur_mod = set->cur_mod;
-        new->format = set->format;
-        new->prefix_data = set->prefix_data;
-        new->vars = set->vars;
+    if (!set) {
+        return;
     }
+
+    new->non_child_axis = set->non_child_axis;
+    new->not_found = set->not_found;
+    new->ctx = set->ctx;
+    new->cur_node = set->cur_node;
+    new->root_type = set->root_type;
+    new->context_op = set->context_op;
+    new->tree = set->tree;
+    new->cur_mod = set->cur_mod;
+    new->format = set->format;
+    new->prefix_data = set->prefix_data;
+    new->vars = set->vars;
 }
 
 /**
@@ -7522,7 +7525,11 @@ only_parse:
             *tok_idx = orig_exp;
 
             rc = eval_expr_select(exp, tok_idx, 0, &set2, options);
-            if (rc != LY_SUCCESS) {
+            if (!rc && set2.not_found) {
+                set->not_found = 1;
+                break;
+            }
+            if (rc) {
                 lyxp_set_free_content(&set2);
                 return rc;
             }
@@ -7571,6 +7578,9 @@ only_parse:
             *tok_idx = orig_exp;
 
             rc = eval_expr_select(exp, tok_idx, 0, set, options);
+            if (!rc && set->not_found) {
+                break;
+            }
             LY_CHECK_RET(rc);
 
             set->val.scnodes[i].in_ctx = pred_in_ctx;
@@ -7590,7 +7600,7 @@ only_parse:
         set_fill_set(&set2, set);
 
         rc = eval_expr_select(exp, tok_idx, 0, &set2, options);
-        if (rc != LY_SUCCESS) {
+        if (rc) {
             lyxp_set_free_content(&set2);
             return rc;
         }
@@ -8205,8 +8215,7 @@ moveto:
 
                 if (options & LYXP_SCNODE_ERROR) {
                     /* error */
-                    rc = LY_ENOTFOUND;
-                    goto cleanup;
+                    set->not_found = 1;
                 }
 
                 /* skip the predicates and the rest of this path to not generate invalid warnings */
@@ -8248,10 +8257,8 @@ cleanup:
         /* restore options */
         options &= ~LYXP_SKIP_EXPR;
     }
-    if (!(options & LYXP_SKIP_EXPR)) {
-        lydict_remove(set->ctx, ncname_dict);
-        ly_path_predicates_free(set->ctx, predicates);
-    }
+    lydict_remove(set->ctx, ncname_dict);
+    ly_path_predicates_free(set->ctx, predicates);
     return rc;
 }
 
@@ -8423,8 +8430,9 @@ step:
             rc = eval_name_test_with_predicate(exp, tok_idx, axis, all_desc, set, options);
             if (rc == LY_ENOT) {
                 assert(options & LYXP_SCNODE_ALL);
-                /* skip the rest of this path */
                 rc = LY_SUCCESS;
+
+                /* skip the rest of this path */
                 scnode_skip_path = 1;
                 options |= LYXP_SKIP_EXPR;
             }
@@ -8673,8 +8681,9 @@ eval_function_call(const struct lyxp_expr *exp, uint32_t *tok_idx, struct lyxp_s
 
             rc = eval_expr_select(exp, tok_idx, 0, args[0], options);
             LY_CHECK_GOTO(rc, cleanup);
+            set->not_found = args[0]->not_found;
         } else {
-            rc = eval_expr_select(exp, tok_idx, 0, set, options | LYXP_SKIP_EXPR);
+            rc = eval_expr_select(exp, tok_idx, 0, set, options);
             LY_CHECK_GOTO(rc, cleanup);
         }
     }
@@ -8696,8 +8705,11 @@ eval_function_call(const struct lyxp_expr *exp, uint32_t *tok_idx, struct lyxp_s
 
             rc = eval_expr_select(exp, tok_idx, 0, args[arg_count - 1], options);
             LY_CHECK_GOTO(rc, cleanup);
+            if (args[arg_count - 1]->not_found) {
+                set->not_found = 1;
+            }
         } else {
-            rc = eval_expr_select(exp, tok_idx, 0, set, options | LYXP_SKIP_EXPR);
+            rc = eval_expr_select(exp, tok_idx, 0, set, options);
             LY_CHECK_GOTO(rc, cleanup);
         }
     }
@@ -8990,8 +9002,9 @@ static LY_ERR
 eval_union_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t repeat, struct lyxp_set *set, uint32_t options)
 {
     LY_ERR rc = LY_SUCCESS;
-    struct lyxp_set orig_set, set2;
     uint32_t i;
+    struct lyxp_set orig_set, set2;
+    ly_bool found = 0;
 
     assert(repeat);
 
@@ -9002,6 +9015,11 @@ eval_union_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t repeat,
 
     rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_UNION, set, options);
     LY_CHECK_GOTO(rc, cleanup);
+    if (set->not_found) {
+        set->not_found = 0;
+    } else {
+        found = 1;
+    }
 
     /* ('|' PathExpr)* */
     for (i = 0; i < repeat; ++i) {
@@ -9019,6 +9037,9 @@ eval_union_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t repeat,
         set_fill_set(&set2, &orig_set);
         rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_UNION, &set2, options);
         LY_CHECK_GOTO(rc, cleanup);
+        if (!set2.not_found) {
+            found = 1;
+        }
 
         /* eval */
         if (options & LYXP_SCNODE_ALL) {
@@ -9032,6 +9053,9 @@ eval_union_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t repeat,
 cleanup:
     lyxp_set_free_content(&orig_set);
     lyxp_set_free_content(&set2);
+    if (!found) {
+        set->not_found = 1;
+    }
     return rc;
 }
 
@@ -9099,7 +9123,7 @@ static LY_ERR
 eval_multiplicative_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t repeat, struct lyxp_set *set,
         uint32_t options)
 {
-    LY_ERR rc;
+    LY_ERR rc = LY_SUCCESS;
     uint32_t i, this_op;
     struct lyxp_set orig_set, set2;
 
@@ -9131,6 +9155,9 @@ eval_multiplicative_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_
         set_fill_set(&set2, &orig_set);
         rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_MULTIPLICATIVE, &set2, options);
         LY_CHECK_GOTO(rc, cleanup);
+        if (set2.not_found) {
+            set->not_found = 1;
+        }
 
         /* eval */
         if (options & LYXP_SCNODE_ALL) {
@@ -9166,7 +9193,7 @@ cleanup:
 static LY_ERR
 eval_additive_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t repeat, struct lyxp_set *set, uint32_t options)
 {
-    LY_ERR rc;
+    LY_ERR rc = LY_SUCCESS;
     uint32_t i, this_op;
     struct lyxp_set orig_set, set2;
 
@@ -9198,6 +9225,9 @@ eval_additive_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t repe
         set_fill_set(&set2, &orig_set);
         rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_ADDITIVE, &set2, options);
         LY_CHECK_GOTO(rc, cleanup);
+        if (set2.not_found) {
+            set->not_found = 1;
+        }
 
         /* eval */
         if (options & LYXP_SCNODE_ALL) {
@@ -9235,7 +9265,7 @@ cleanup:
 static LY_ERR
 eval_relational_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t repeat, struct lyxp_set *set, uint32_t options)
 {
-    LY_ERR rc;
+    LY_ERR rc = LY_SUCCESS;
     uint32_t i, this_op;
     struct lyxp_set orig_set, set2;
 
@@ -9267,6 +9297,9 @@ eval_relational_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t re
         set_fill_set(&set2, &orig_set);
         rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_RELATIONAL, &set2, options);
         LY_CHECK_GOTO(rc, cleanup);
+        if (set2.not_found) {
+            set->not_found = 1;
+        }
 
         /* eval */
         if (options & LYXP_SCNODE_ALL) {
@@ -9304,7 +9337,7 @@ cleanup:
 static LY_ERR
 eval_equality_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t repeat, struct lyxp_set *set, uint32_t options)
 {
-    LY_ERR rc;
+    LY_ERR rc = LY_SUCCESS;
     uint32_t i, this_op;
     struct lyxp_set orig_set, set2;
 
@@ -9336,6 +9369,9 @@ eval_equality_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t repe
         set_fill_set(&set2, &orig_set);
         rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_EQUALITY, &set2, options);
         LY_CHECK_GOTO(rc, cleanup);
+        if (set2.not_found) {
+            set->not_found = 1;
+        }
 
         /* eval */
         if (options & LYXP_SCNODE_ALL) {
@@ -9374,7 +9410,7 @@ cleanup:
 static LY_ERR
 eval_and_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t repeat, struct lyxp_set *set, uint32_t options)
 {
-    LY_ERR rc;
+    LY_ERR rc = LY_SUCCESS;
     struct lyxp_set orig_set, set2;
     uint32_t i;
 
@@ -9414,6 +9450,9 @@ eval_and_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t repeat, s
         set_fill_set(&set2, &orig_set);
         rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_AND, &set2, options);
         LY_CHECK_GOTO(rc, cleanup);
+        if (set2.not_found) {
+            set->not_found = 1;
+        }
 
         /* eval - just get boolean value actually */
         if (set->type == LYXP_SET_SCNODE_SET) {
@@ -9446,7 +9485,7 @@ cleanup:
 static LY_ERR
 eval_or_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t repeat, struct lyxp_set *set, uint32_t options)
 {
-    LY_ERR rc;
+    LY_ERR rc = LY_SUCCESS;
     struct lyxp_set orig_set, set2;
     uint32_t i;
 
@@ -9488,6 +9527,9 @@ eval_or_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t repeat, st
          * but it does not matter */
         rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_OR, &set2, options);
         LY_CHECK_GOTO(rc, cleanup);
+        if (set2.not_found) {
+            set->not_found = 1;
+        }
 
         /* eval - just get boolean value actually */
         if (set->type == LYXP_SET_SCNODE_SET) {
@@ -9674,7 +9716,10 @@ lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct ly
 
     /* evaluate */
     rc = eval_expr_select(exp, &tok_idx, 0, set, options);
-    if (rc != LY_SUCCESS) {
+    if (!rc && set->not_found) {
+        rc = LY_ENOTFOUND;
+    }
+    if (rc) {
         lyxp_set_free_content(set);
     }
 
@@ -9915,7 +9960,7 @@ lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct
         LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *cur_scnode,
         const struct lysc_node *ctx_scnode, struct lyxp_set *set, uint32_t options)
 {
-    LY_ERR ret;
+    LY_ERR rc;
     uint32_t tok_idx = 0;
 
     LY_CHECK_ARG_RET(ctx, ctx, exp, set, LY_EINVAL);
@@ -9943,10 +9988,13 @@ lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct
     LOG_LOCSET(set->cur_scnode, NULL, NULL, NULL);
 
     /* evaluate */
-    ret = eval_expr_select(exp, &tok_idx, 0, set, options);
+    rc = eval_expr_select(exp, &tok_idx, 0, set, options);
+    if (!rc && set->not_found) {
+        rc = LY_ENOTFOUND;
+    }
 
     LOG_LOCBACK(set->cur_scnode ? 1 : 0, 0, 0, 0);
-    return ret;
+    return rc;
 }
 
 LIBYANG_API_DEF const char *

@@ -298,6 +298,8 @@ struct lyxp_set {
     uint32_t ctx_size;          /**< Position of the last node at the time the node was examined. */
     ly_bool non_child_axis;     /**< Whether any node change was performed on a non-child axis. */
 
+    ly_bool not_found;          /**< Set if a node is not found and it is considered an error. */
+
     /* general context */
     struct ly_ctx *ctx;                     /**< General context for logging. */
 
