@@ -818,8 +818,8 @@ _lyd_new_list3(struct lyd_node *parent, const struct lys_module *module, const c
     /* create and insert all the keys */
     i = 0;
     for (key_s = lysc_node_child(ret->schema); key_s && (key_s->flags & LYS_KEY); key_s = key_s->next) {
-        key_val = key_values[i];
-        key_len = value_lengths ? value_lengths[i] : 0;
+        key_val = key_values[i] ? key_values[i] : "";
+        key_len = value_lengths ? value_lengths[i] : strlen(key_val);
 
         rc = lyd_create_term(key_s, key_val, key_len, 0, NULL, format, NULL, LYD_HINT_DATA, NULL, &key);
         LY_CHECK_GOTO(rc, cleanup);
