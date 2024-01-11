@@ -665,4 +665,13 @@ LY_ERR lyd_link_leafref_node(const struct lyd_node_term *node, const struct lyd_
  */
 LY_ERR lyd_unlink_leafref_node(const struct lyd_node_term *node, const struct lyd_node_term *leafref_node);
 
+/**
+ * @brief Unlink the specified data subtree.
+ *
+ * The lyds_unlink() is NOT called in this function.
+ *
+ * @param[in] node Data tree node to be unlinked (together with all the children).
+ */
+void lyd_unlink_ignore_lyds(struct lyd_node *node);
+
 #endif /* LY_TREE_DATA_INTERNAL_H_ */
