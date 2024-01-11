@@ -88,6 +88,45 @@ LY_ERR lyds_insert(struct lyd_node **leader, struct lyd_node *node);
 void lyds_unlink(struct lyd_node **leader, struct lyd_node *node);
 
 /**
+ * @brief Split the (leaf-)list in two.
+ *
+ * The second (leaf-)list is unlinked from the rest of the data nodes.
+ * The hash for the data nodes is removed.
+ *
+ * @param[in] leader First instance of (leaf-)list.
+ * @param[in] node Node in the (leaf-)list from which the second (leaf-)list will start.
+ * @param[out] next Data node located after the second (leaf-)list.
+ * The rest of the (leaf-)list nodes will belong under the second (leaf-)list.
+ */
+void lyds_split(struct lyd_node *leader, struct lyd_node *node, struct lyd_node **next);
+
+/**
+ * @brief Merge source (leaf-)list nodes into destination (leaf-)list nodes.
+ *
+ * Pointers in sibling data nodes (lyd_node) are modified.
+ * The hash for the data nodes will be adjusted.
+ *
+ * @param[in,out] leader_dst Destination (leaf-)list, first instance. It may not contain
+ * the lyds_tree metadata or BST. After merge @p leader_dst can be reset to new leader.
+ * @param[in] leader_src Source (leaf-)list, first instance. It may not contain the lyds_tree metadata or BST.
+ * @param[out] next Data node located after source (leaf-)list.
+ * On error, points to data node which failed to merge.
+ * @return LY_ERR value.
+ */
+LY_ERR lyds_merge(struct lyd_node **leader_dst, struct lyd_node *leader_src, struct lyd_node **next);
+
+/**
+ * @brief Compare (sort) 2 data nodes.
+ *
+ * @param[in] node1 The first node to compare.
+ * @param[in] node2 The second node to compare.
+ * @return Negative number if val1 < val2,
+ * @return Zero if val1 == val2,
+ * @return Positive number if val1 > val2.
+ */
+int lyds_compare_single(struct lyd_node *node1, struct lyd_node *node2);
+
+/**
  * @brief Release the metadata including BST.
  *
  * No more nodes can be inserted after the function is executed.
@@ -102,16 +141,5 @@ void lyds_free_metadata(struct lyd_node *node);
  * @param[in] rbt Root of the Red-black tree.
  */
 void lyds_free_tree(struct rb_node *rbt);
-
-/**
- * @brief Compare (sort) 2 data nodes.
- *
- * @param[in] node1 The first node to compare.
- * @param[in] node2 The second node to compare.
- * @return Negative number if val1 < val2,
- * @return Zero if val1 == val2,
- * @return Positive number if val1 > val2.
- */
-int lyds_compare_single(struct lyd_node *node1, struct lyd_node *node2);
 
 #endif /* _LYDS_TREE_H_ */
