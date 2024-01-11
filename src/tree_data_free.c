@@ -282,7 +282,7 @@ lyd_free_(struct lyd_node *node)
         /* in case of the top-level nodes (node->parent is NULL), no unlinking needed */
         if (iter->parent) {
             lyds_free_metadata(iter);
-            lyd_unlink(iter);
+            lyd_unlink_ignore_lyds(iter);
         }
         lyd_free_subtree(iter);
     }

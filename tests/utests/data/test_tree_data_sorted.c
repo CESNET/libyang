@@ -1173,6 +1173,324 @@ test_lyds_free_metadata(void **state)
     lyd_free_all(first);
 }
 
+static void
+test_move_whole_list(void **state)
+{
+    const char *schema;
+    struct lys_module *mod;
+    struct lyd_node *src, *dst, *node, *first;
+
+    schema = "module a {namespace urn:tests:a;prefix a;yang-version 1.1;revision 2014-05-08;"
+            "leaf-list tll {type string;}"
+            "container cn {"
+            "  leaf head {type string;}"
+            "  leaf-list ll {type string;}"
+            "  leaf tail {type string;}"
+            "}}";
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+
+    /* move into the void: top-level, nothing will happen */
+    assert_int_equal(lyd_new_term(NULL, mod, "tll", "1", 0, &src), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(NULL, mod, "tll", "2", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_insert_sibling(src, node, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_insert_sibling(NULL, src, &first), LY_SUCCESS);
+    assert_true(src && src->meta && get_rbt(src->meta) && src == first);
+    assert_string_equal(src->meta->name, META_NAME);
+    lyd_free_all(src);
+
+    /* move to childless parent: lyd_insert_child */
+    assert_int_equal(lyd_new_inner(NULL, mod, "cn", 0, &src), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(src, mod, "ll", "1", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(src, mod, "ll", "2", 0, &node), LY_SUCCESS);
+    first = lyd_child(src);
+    lyd_unlink_siblings(first);
+    assert_int_equal(lyd_new_inner(NULL, mod, "cn", 0, &dst), LY_SUCCESS);
+    assert_int_equal(lyd_insert_child(dst, first), LY_SUCCESS);
+    first = lyd_child(dst);
+    assert_true(first && first->meta && get_rbt(first->meta) && first->next);
+    assert_string_equal(first->meta->name, META_NAME);
+    assert_true(!lyd_child(src));
+    lyd_free_all(src);
+    lyd_free_all(dst);
+
+    /* move before the anchor */
+    assert_int_equal(lyd_new_inner(NULL, mod, "cn", 0, &src), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(src, mod, "ll", "1", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(src, mod, "ll", "2", 0, &node), LY_SUCCESS);
+    first = lyd_child(src);
+    lyd_unlink_siblings(lyd_child(src));
+    assert_int_equal(lyd_new_inner(NULL, mod, "cn", 0, &dst), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(dst, mod, "tail", "a", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_insert_sibling(lyd_child(dst), first, NULL), LY_SUCCESS);
+    first = lyd_child(dst);
+    assert_true(first && first->meta && get_rbt(first->meta) && first->next);
+    assert_string_equal(first->meta->name, META_NAME);
+    assert_true(!lyd_child(src));
+    lyd_free_all(src);
+    lyd_free_all(dst);
+
+    /* move to the last position */
+    assert_int_equal(lyd_new_inner(NULL, mod, "cn", 0, &src), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(src, mod, "ll", "1", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(src, mod, "ll", "2", 0, &node), LY_SUCCESS);
+    first = lyd_child(src);
+    lyd_unlink_siblings(lyd_child(src));
+    assert_int_equal(lyd_new_inner(NULL, mod, "cn", 0, &dst), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(dst, mod, "head", "a", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_insert_sibling(lyd_child(dst), first, NULL), LY_SUCCESS);
+    first = lyd_child(dst);
+    assert_true(first && first->next);
+    node = first->next;
+    assert_true(node && node->meta && get_rbt(node->meta) && node->next);
+    assert_string_equal(node->meta->name, META_NAME);
+    assert_true(!lyd_child(src));
+    lyd_free_all(src);
+    lyd_free_all(dst);
+}
+
+static void
+test_move_part_list(void **state)
+{
+    const char *schema;
+    struct lys_module *mod;
+    struct lyd_node *src, *dst, *node, *first;
+
+    schema = "module a {namespace urn:tests:a;prefix a;yang-version 1.1;revision 2014-05-08;"
+            "leaf-list tll {type string;}"
+            "container cn {"
+            "  leaf head {type string;}"
+            "  leaf-list ll {type string;}"
+            "  leaf tail {type string;}"
+            "}}";
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+
+    /* move into the void: top-level, first node is unlinked */
+    assert_int_equal(lyd_new_term(NULL, mod, "tll", "1", 0, &src), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(NULL, mod, "tll", "2", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_insert_sibling(src, node, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(NULL, mod, "tll", "3", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_insert_sibling(src, node, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_insert_sibling(NULL, src->next, &first), LY_SUCCESS);
+    assert_true(src && src->meta && get_rbt(src->meta));
+    assert_string_equal(src->meta->name, META_NAME);
+    assert_true(src && src->next);
+    assert_string_equal(lyd_get_value(first), "2");
+    lyd_free_all(src);
+    lyd_free_all(first);
+
+    /* move into the void: inner node, node is unlinked */
+    assert_int_equal(lyd_new_inner(NULL, mod, "cn", 0, &src), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(src, mod, "ll", "1", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(src, mod, "ll", "2", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(src, mod, "ll", "3", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_insert_sibling(NULL, lyd_child(src), &dst), LY_SUCCESS);
+    first = lyd_child(src);
+    assert_true(first && first->meta && get_rbt(first->meta) && first->next);
+    assert_string_equal(first->meta->name, META_NAME);
+    assert_true(dst && !dst->meta && !dst->next);
+    lyd_free_all(src);
+    lyd_free_all(dst);
+
+    /* move to childless parent: lyd_insert_child */
+    assert_int_equal(lyd_new_inner(NULL, mod, "cn", 0, &src), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(src, mod, "ll", "1", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(src, mod, "ll", "2", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(src, mod, "ll", "3", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_inner(NULL, mod, "cn", 0, &dst), LY_SUCCESS);
+    assert_int_equal(lyd_insert_child(dst, lyd_child(src)), LY_SUCCESS);
+    first = lyd_child(src);
+    assert_true(first && first->meta && get_rbt(first->meta) && first->next);
+    assert_string_equal(first->meta->name, META_NAME);
+    first = lyd_child(dst);
+    assert_true(first && !first->meta);
+    lyd_free_all(src);
+    lyd_free_all(dst);
+
+    /* move before the anchor */
+    assert_int_equal(lyd_new_inner(NULL, mod, "cn", 0, &src), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(src, mod, "ll", "1", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(src, mod, "ll", "2", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(src, mod, "ll", "3", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_inner(NULL, mod, "cn", 0, &dst), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(dst, mod, "tail", "a", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_insert_sibling(lyd_child(dst), lyd_child(src), NULL), LY_SUCCESS);
+    first = lyd_child(src);
+    assert_true(first && first->meta && get_rbt(first->meta) && first->next);
+    assert_string_equal(first->meta->name, META_NAME);
+    first = lyd_child(dst);
+    assert_true(first && !first->meta && first->next);
+    assert_string_equal(lyd_get_value(first), "1");
+    lyd_free_all(src);
+    lyd_free_all(dst);
+
+    /* move to the last position */
+    assert_int_equal(lyd_new_inner(NULL, mod, "cn", 0, &src), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(src, mod, "ll", "1", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(src, mod, "ll", "2", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(src, mod, "ll", "3", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_inner(NULL, mod, "cn", 0, &dst), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(dst, mod, "head", "a", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_insert_sibling(lyd_child(dst), lyd_child(src), NULL), LY_SUCCESS);
+    first = lyd_child(src);
+    assert_true(first && first->meta && get_rbt(first->meta) && first->next);
+    assert_string_equal(first->meta->name, META_NAME);
+    first = lyd_child(dst);
+    assert_true(first && first->next);
+    node = first->next;
+    assert_true(node && !node->meta && !node->next);
+    assert_string_equal(lyd_get_value(node), "1");
+    lyd_free_all(src);
+    lyd_free_all(dst);
+}
+
+static void
+test_merge_whole_list(void **state)
+{
+    const char *schema, *data;
+    char *check[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"};
+    struct lys_module *mod;
+    struct lyd_node *src, *dst, *first, *iter;
+    int i;
+
+    schema = "module a {namespace urn:tests:a;prefix a;yang-version 1.1;revision 2014-05-08;"
+            "leaf-list ll {type uint32;}}";
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+
+    /* src with LYD_PARSE_ORDERED and dst with LYD_PARSE_ORDERED */
+    data = "{\"a:ll\":[1,2,5,6,9,10]}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, LYD_PARSE_ORDERED, LYD_VALIDATE_PRESENT, LY_SUCCESS, src);
+    assert_true(src && !src->meta);
+    data = "{\"a:ll\":[3,4,7,8]}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, LYD_PARSE_ORDERED, LYD_VALIDATE_PRESENT, LY_SUCCESS, dst);
+    assert_true(dst && !dst->meta);
+    assert_int_equal(lyd_insert_sibling(dst, src, &first), LY_SUCCESS);
+    assert_true(first->meta && get_rbt(first->meta));
+    assert_string_equal(first->meta->name, META_NAME);
+    i = 0;
+    LY_LIST_FOR(first, iter) {
+        assert_string_equal(lyd_get_value(iter), check[i]);
+        ++i;
+    }
+    lyd_free_all(dst);
+
+    /* src with LYD_PARSE_ORDERED dst with lyds_tree */
+    data = "{\"a:ll\":[1,2,5,6,9,10]}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, LYD_PARSE_ORDERED, LYD_VALIDATE_PRESENT, LY_SUCCESS, src);
+    assert_true(src && !src->meta);
+    data = "{\"a:ll\":[3,4,7,8]}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, dst);
+    assert_true(dst && dst->meta);
+    assert_string_equal(dst->meta->name, META_NAME);
+    assert_int_equal(lyd_insert_sibling(dst, src, &first), LY_SUCCESS);
+    assert_true(first->meta && get_rbt(first->meta) && !first->next->next->meta);
+    assert_string_equal(first->meta->name, META_NAME);
+    i = 0;
+    LY_LIST_FOR(first, iter) {
+        assert_string_equal(lyd_get_value(iter), check[i]);
+        ++i;
+    }
+    lyd_free_all(dst);
+
+    /* src with lyds_tree and dst with LYD_PARSE_ORDERED */
+    data = "{\"a:ll\":[1,2,5,6,9,10]}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, src);
+    assert_true(src && src->meta);
+    assert_string_equal(src->meta->name, META_NAME);
+    data = "{\"a:ll\":[3,4,7,8]}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, LYD_PARSE_ORDERED, LYD_VALIDATE_PRESENT, LY_SUCCESS, dst);
+    assert_true(dst && !dst->meta);
+    assert_int_equal(lyd_insert_sibling(dst, src, &first), LY_SUCCESS);
+    assert_true(first->meta && get_rbt(first->meta));
+    assert_string_equal(first->meta->name, META_NAME);
+    i = 0;
+    LY_LIST_FOR(first, iter) {
+        assert_string_equal(lyd_get_value(iter), check[i]);
+        ++i;
+    }
+    lyd_free_all(dst);
+
+    /* src with lyds_tree and dst with lyds_tree */
+    data = "{\"a:ll\":[1,2,5,6,9,10]}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, src);
+    assert_true(src && src->meta);
+    assert_string_equal(src->meta->name, META_NAME);
+    data = "{\"a:ll\":[3,4,7,8]}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, dst);
+    assert_true(dst && dst->meta);
+    assert_string_equal(dst->meta->name, META_NAME);
+    assert_int_equal(lyd_insert_sibling(dst, src, &first), LY_SUCCESS);
+    assert_true(first->meta && get_rbt(first->meta));
+    assert_string_equal(first->meta->name, META_NAME);
+    i = 0;
+    LY_LIST_FOR(first, iter) {
+        assert_string_equal(lyd_get_value(iter), check[i]);
+        ++i;
+    }
+    lyd_free_all(dst);
+}
+
+static void
+test_unlink_siblings(void **state)
+{
+    const char *schema, *data;
+    struct lys_module *mod;
+    struct lyd_node *cont, *node, *first;
+
+    schema = "module a {namespace urn:tests:a;prefix a;yang-version 1.1;revision 2014-05-08;"
+            "container cn {"
+            "  leaf-list ll {type uint32;}"
+            "  leaf-list tail {type string;}"
+            "}}";
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+
+    assert_int_equal(lyd_new_inner(NULL, mod, "cn", 0, &cont), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(cont, mod, "ll", "3", 0, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(cont, mod, "ll", "1", 0, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(cont, mod, "ll", "2", 0, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(cont, mod, "tail", "a", 0, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(cont, mod, "tail", "b", 0, NULL), LY_SUCCESS);
+
+    node = lyd_child(cont)->next;
+    lyd_unlink_siblings(node);
+    first = lyd_child(cont);
+    assert_true(first && first->meta && !first->next);
+    assert_string_equal(first->meta->name, META_NAME);
+    assert_string_equal(lyd_get_value(first), "1");
+    assert_true(node && !node->meta && node->next && node->next->next && node->next->next->next);
+    assert_string_equal(lyd_get_value(node), "2");
+    assert_string_equal(lyd_get_value(node->next), "3");
+
+    lyd_free_all(node);
+    lyd_free_all(cont);
+
+    /* call lyds_split but no metadata is set */
+    data = "{\"a:cn\": {\"ll\":[1,2,3,4]} }";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, LYD_PARSE_ORDERED, LYD_VALIDATE_PRESENT, LY_SUCCESS, cont);
+    first = lyd_child(cont);
+    assert_true(!first->meta);
+    node = lyd_child(cont)->next;
+    lyd_unlink_siblings(node);
+    assert_true(node && !node->meta && node->next);
+    assert_string_equal(lyd_get_value(node), "2");
+    assert_string_equal(lyd_get_value(node->next), "3");
+    assert_string_equal(lyd_get_value(node->next->next), "4");
+    lyd_free_all(node);
+    lyd_free_all(cont);
+
+    /* call lyds_split, metadata is set, two items  */
+    assert_int_equal(lyd_new_inner(NULL, mod, "cn", 0, &cont), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(cont, mod, "ll", "1", 0, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(cont, mod, "ll", "2", 0, NULL), LY_SUCCESS);
+    first = lyd_child(cont);
+    assert_true(first->meta);
+    node = lyd_child(cont)->next;
+    lyd_unlink_siblings(node);
+    assert_true(node && !node->meta);
+    assert_string_equal(lyd_get_value(node), "2");
+    lyd_free_all(node);
+    lyd_free_all(cont);
+}
+
 int
 main(void)
 {
@@ -1208,6 +1526,10 @@ main(void)
         UTEST(test_print_data),
         UTEST(test_manipulation_of_many_nodes),
         UTEST(test_lyds_free_metadata),
+        UTEST(test_move_whole_list),
+        UTEST(test_move_part_list),
+        UTEST(test_merge_whole_list),
+        UTEST(test_unlink_siblings),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

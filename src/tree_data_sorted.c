@@ -118,6 +118,16 @@ struct rb_node {
     RBN_COLOR(DST)  = RBN_COLOR(SRC);
 
 /**
+ * @brief Reset the red-black node and set new dnode.
+ *
+ * @param[in] RBN Node to reset.
+ * @param[in] DNODE New dnode value for @p rbn.
+ */
+#define RBN_RESET(RBN, DNODE) \
+    *(RBN) = (const struct rb_node){0}; \
+    RBN_DNODE(RBN) = DNODE;
+
+/**
  * @brief Metadata name of the Red-black tree.
  */
 #define RB_NAME "lyds_tree"
@@ -1085,6 +1095,67 @@ lyds_unlink(struct lyd_node **leader, struct lyd_node *node)
 }
 
 void
+lyds_split(struct lyd_node *leader, struct lyd_node *node, struct lyd_node **next_p)
+{
+    struct rb_node *rbt, *rbn;
+    struct lyd_node *iter, *next, *start, *dst;
+    struct lyd_meta *root_meta;
+
+    assert(leader && node);
+
+    rbt = lyds_get_rb_tree(leader, &root_meta);
+    if (!rbt || (leader == node)) {
+        /* Second list is just unlinked */
+        start = node->next;
+        lyd_unlink_ignore_lyds(node);
+        dst = node;
+        LY_LIST_FOR_SAFE(start, next, iter) {
+            if (iter->schema != node->schema) {
+                break;
+            }
+            lyd_unlink_ignore_lyds(iter);
+            lyd_insert_after_node(dst, iter);
+            dst = iter;
+        }
+        *next_p = iter;
+        return;
+    }
+
+    start = node->next;
+    if (!start || (start->schema != node->schema)) {
+        /* @p node is the last node, remove from Red-black tree and unlink */
+        rb_remove_node(root_meta, &rbt, node, &rbn);
+        rb_free_node(rbn);
+        lyd_unlink_ignore_lyds(node);
+        *next_p = start;
+        goto cleanup;
+    }
+
+    /* remove @p node from Red-black tree and unlink */
+    rb_remove_node(root_meta, &rbt, node, &rbn);
+    rb_free_node(rbn);
+    lyd_unlink_ignore_lyds(node);
+
+    /* remove the rest of nodes from Red-black tree and unlink */
+    dst = node;
+    LY_LIST_FOR_SAFE(start, next, iter) {
+        if (iter->schema != node->schema) {
+            break;
+        }
+        rb_remove_node(root_meta, &rbt, iter, &rbn);
+        rb_free_node(rbn);
+        lyd_unlink_ignore_lyds(iter);
+        /* insert them to the second (leaf-)list */
+        lyd_insert_after_node(dst, iter);
+        dst = iter;
+    }
+    *next_p = iter;
+
+cleanup:
+    RBT_SET(root_meta, rbt);
+}
+
+void
 lyds_free_metadata(struct lyd_node *node)
 {
     struct lyd_meta *root_meta;
@@ -1093,6 +1164,280 @@ lyds_free_metadata(struct lyd_node *node)
         lyds_get_rb_tree(node, &root_meta);
         lyd_free_meta_single(root_meta);
     }
+}
+
+/**
+ * @brief Merge nodes (src) without Red-black tree into (dst) nodes with Red-black tree.
+ *
+ * @param[in,out] leader_dst First instance of the destination (leaf-)list.
+ * @param[in] root_meta_dst Metadata 'lyds_tree' from @p leader_dst.
+ * @param[in] rbt_dst Root of the destination Red-black tree.
+ * @param[in] leader_src First instance of the source (leaf-)list.
+ * @param[out] next_p Data node located after source (leaf-)list.
+ * On error, it points to the some node in source (leaf-)list that failed to merge.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyds_merge_nodes1(struct lyd_node **leader_dst, struct lyd_meta *root_meta_dst, struct rb_node *rbt_dst,
+        struct lyd_node *leader_src, struct lyd_node **next_p)
+{
+    LY_ERR ret;
+    struct rb_node *rbn;
+    struct lyd_node *iter, *next;
+    const struct lysc_node *schema;
+
+    schema = leader_src->schema;
+    for (iter = leader_src; iter && (iter->schema == schema); iter = next) {
+        ret = rb_insert(iter, &rbt_dst, &rbn);
+        if (ret) {
+            /* allocation failed, @p next_p must refer to failed node */
+            break;
+        }
+        next = iter->next;
+        lyd_unlink_ignore_lyds(iter);
+        lyds_link_data_node(leader_dst, iter, root_meta_dst, rbn);
+        lyd_insert_hash(iter);
+    }
+    *next_p = iter;
+
+    RBT_SET(root_meta_dst, rbt_dst);
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Merge nodes which belongs before @p leader_dst.
+ *
+ * Reminder:
+ * Merge nodes (src) with Red-black tree into (dst) nodes without Red-black tree.
+ * Create red-black nodes from destination (leaf-)list and insert them into @p rbt_src.
+ * At the end of the lyds_merge_nodes2(), rbt_src will move and become rbt_dst.
+ *
+ * @param[in,out] leader_dst First instance of the destination (leaf-)list.
+ * @param[in] leader_src First instance of the source (leaf-)list.
+ * @param[in,out] rbt_src Root of the source Red-black tree.
+ * @param[out] dst_iter Last merged node into the @p rbt_src.
+ * @param[out] next_p On error, points to data node which failed to merge.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyds_merge_nodes2_front(struct lyd_node **leader_dst, struct lyd_node *leader_src,
+        struct rb_node **rbt_src, struct rb_node **dst_iter, struct lyd_node **next_p)
+{
+    LY_ERR ret;
+    struct rb_node *prev, *iter;
+    struct lyd_node *dst;
+
+    /* insert destination leader */
+    ret = rb_insert(*leader_dst, rbt_src, dst_iter);
+    LY_CHECK_ERR_RET(ret, *next_p = leader_src, ret);
+
+    /* iterate over source RB tree and move the nodes belonging before destination leader */
+    prev = rb_prev(*dst_iter);
+    dst = *leader_dst;
+    for (iter = prev; iter; iter = rb_prev(iter)) {
+        lyd_unlink_ignore_lyds(RBN_DNODE(iter));
+        lyd_insert_before_node(dst, RBN_DNODE(iter));
+        lyd_insert_hash(RBN_DNODE(iter));
+        dst = RBN_DNODE(iter);
+    }
+    if (prev) {
+        *leader_dst = dst;
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Merge nodes which belongs between destination (leaf-)list nodes.
+ *
+ * Reminder:
+ * Merge nodes (src) with Red-black tree into (dst) nodes without Red-black tree.
+ * Create red-black nodes from destination (leaf-)list and insert them into @p rbt_src.
+ * At the end of the lyds_merge_nodes2(), rbt_src will move and become rbt_dst.
+ *
+ * @param[in,out] leader_dst First instance of the destination (leaf-)list.
+ * @param[in,out] rbt_src Root of the source Red-black tree.
+ * @param[out] dst_iter Last merged node into the @p rbt_src.
+ * @param[out] next_p On error, points to data node which failed to merge.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyds_merge_nodes2_among(struct lyd_node **leader_dst, struct rb_node **rbt_src, struct rb_node **dst_iter,
+        struct lyd_node **next_p)
+{
+    LY_ERR ret;
+    struct rb_node *rbn, *iter, *rbn_prev;
+    struct lyd_node *dst, *node;
+    const struct lysc_node *schema;
+
+    schema = (*leader_dst)->schema;
+    rbn = *dst_iter;
+    for (node = RBN_DNODE(*dst_iter); node->next && (node->schema == schema); node = dst->next) {
+        /* insert node from destination (leaf-)list into @p rbt_src */
+        rbn_prev = rbn;
+        ret = rb_insert(node->next, rbt_src, &rbn);
+        LY_CHECK_ERR_RET(ret, *next_p = RBN_DNODE(rb_next(rbn_prev)), ret);
+
+        dst = node;
+        /* move source data nodes between next-to-last inserted node and last inserted node */
+        for (iter = rb_next(rbn_prev); iter != rbn; iter = rb_next(iter)) {
+            lyd_unlink_ignore_lyds(RBN_DNODE(iter));
+            /* insert source data nodes into destination (leaf-)list */
+            lyd_insert_after_node(dst, RBN_DNODE(iter));
+            lyd_insert_hash(RBN_DNODE(iter));
+            dst = RBN_DNODE(iter);
+        }
+    }
+    *dst_iter = rbn;
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Merge nodes which belongs after destination (leaf-)list nodes.
+ *
+ * Reminder:
+ * Merge nodes (src) with Red-black tree into (dst) nodes without Red-black tree.
+ * Create red-black nodes from destination (leaf-)list and insert them into @p rbt_src.
+ * At the end of the lyds_merge_nodes2(), rbt_src will move and become rbt_dst.
+ *
+ * @param[in] dst_iter Last merged node into the @p rbt_src.
+ * @param[out] next_p Data node located after source (leaf-)list.
+ */
+static void
+lyds_merge_nodes2_back(struct rb_node *dst_iter, struct lyd_node **next_p)
+{
+    struct rb_node *iter, *begin;
+    struct lyd_node *dst;
+
+    begin = rb_next(dst_iter);
+    LY_CHECK_RET(!begin,; );
+    dst = RBN_DNODE(dst_iter);
+    for (iter = begin; iter; iter = rb_next(iter)) {
+        *next_p = RBN_DNODE(iter)->next;
+        lyd_unlink_ignore_lyds(RBN_DNODE(iter));
+        lyd_insert_after_node(dst, RBN_DNODE(iter));
+        lyd_insert_hash(RBN_DNODE(iter));
+        dst = RBN_DNODE(iter);
+    }
+}
+
+/**
+ * @brief Merge nodes (src) with Red-black tree into (dst) nodes without Red-black tree.
+ *
+ * Create red-black nodes from destination (leaf-)list and insert them into @p rbt_src.
+ * At the end of the lyds_merge_nodes2(), rbt_src will move and become rbt_dst.
+ *
+ * @param[in,out] leader_dst First instance of the destination (leaf-)list.
+ * @param[in] leader_src First instance of the source (leaf-)list.
+ * @param[in] root_meta_src Metadata 'lyds_tree' from @p leader_src.
+ * @param[in] rbt_src Root of the source Red-black tree.
+ * @param[out] next_p Data node located after source (leaf-)list.
+ * On error, points to data node which failed to merge.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyds_merge_nodes2(struct lyd_node **leader_dst, struct lyd_node *leader_src, struct lyd_meta *root_meta_src,
+        struct rb_node *rbt_src, struct lyd_node **next_p)
+{
+    LY_ERR ret;
+    struct rb_node *dst_iter;
+
+    /* merge first destination node, move source nodes which belongs before this node */
+    ret = lyds_merge_nodes2_front(leader_dst, leader_src, &rbt_src, &dst_iter, next_p);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* RB tree si moved from source to destination (leaf-)list */
+    lyds_move_meta(*leader_dst, root_meta_src);
+
+    /* merge the rest of the destination nodes, move corresponding source nodes */
+    ret = lyds_merge_nodes2_among(leader_dst, &rbt_src, &dst_iter, next_p);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* move the rest of the source nodes */
+    lyds_merge_nodes2_back(dst_iter, next_p);
+
+cleanup:
+    RBT_SET(root_meta_src, rbt_src);
+
+    return ret;
+}
+
+/**
+ * @brief Merge nodes (src) with Red-black tree into (dst) nodes with Red-black tree.
+ *
+ * Possible improvement: find out which rb_tree is bigger and then move nodes into it.
+ * Current implementation blindly guesses that the source Red-black tree is smaller.
+ *
+ * @param[in,out] leader_dst First instance of the destination (leaf-)list.
+ * @param[in] root_meta_dst Metadata 'lyds_tree' from @p leader_dst.
+ * @param[in] rbt_dst Root of the destination Red-black tree.
+ * @param[in] root_meta_src Metadata 'lyds_tree' from @p leader_src.
+ * @param[in] rbt_src Root of the source Red-black tree.
+ * @param[out] next_p Data node located after source (leaf-)list.
+ */
+static void
+lyds_merge_nodes3(struct lyd_node **leader_dst, struct lyd_meta *root_meta_dst, struct rb_node *rbt_dst,
+        struct lyd_meta *root_meta_src, struct rb_node *rbt_src, struct lyd_node **next_p)
+{
+    struct rb_node *iter, *iter_state;
+    struct lyd_node *node;
+
+    /* release source RB tree */
+    RBT_SET(root_meta_src, NULL);
+    lyd_free_meta_single(root_meta_src);
+
+    /* 'randomly' iterate over all source nodes, merge and move to the destination */
+    for (iter = rb_iter_begin(rbt_src, &iter_state); iter; iter = rb_iter_next(&iter_state)) {
+        node = RBN_DNODE(iter);
+        *next_p = node->next;
+        RBN_RESET(iter, node);
+        rb_insert_node(&rbt_dst, iter);
+        lyd_unlink_ignore_lyds(node);
+        lyds_link_data_node(leader_dst, node, root_meta_dst, iter);
+        lyd_insert_hash(node);
+    }
+
+    RBT_SET(root_meta_dst, rbt_dst);
+}
+
+LY_ERR
+lyds_merge(struct lyd_node **leader_dst, struct lyd_node *leader_src, struct lyd_node **next_p)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct rb_node *rbt_dst, *rbt_src;
+    struct lyd_meta *root_meta_dst, *root_meta_src = NULL;
+
+    assert(leader_dst && leader_src && next_p);
+
+    rbt_dst = lyds_get_rb_tree(*leader_dst, &root_meta_dst);
+    rbt_src = lyds_get_rb_tree(leader_src, &root_meta_src);
+
+    if (root_meta_src && !rbt_src) {
+        /* Release unnecessary metadata which can be empty, e.g. when duplicating a node */
+        lyd_free_meta_single(root_meta_src);
+    }
+
+    if (!rbt_dst && !rbt_src) {
+        /* create RB tree from destination nodes, merge and move source nodes */
+        LY_CHECK_RET(lyds_create_metadata(*leader_dst, &root_meta_dst));
+        LY_CHECK_RET(lyds_additionally_create_rb_tree(*leader_dst, root_meta_dst, &rbt_dst));
+        ret = lyds_merge_nodes1(leader_dst, root_meta_dst, rbt_dst, leader_src, next_p);
+    } else if (rbt_dst && !rbt_src) {
+        /* just merge and move source nodes */
+        ret = lyds_merge_nodes1(leader_dst, root_meta_dst, rbt_dst, leader_src, next_p);
+    } else if (!rbt_dst && rbt_src) {
+        /* merge destination nodes with RB tree, move RB tree and source nodes */
+        ret = lyds_merge_nodes2(leader_dst, leader_src, root_meta_src, rbt_src, next_p);
+    } else {
+        /* merge and move source nodes, release source RB tree */
+        assert(rbt_dst && rbt_src);
+        lyds_merge_nodes3(leader_dst, root_meta_dst, rbt_dst,
+                root_meta_src, rbt_src, next_p);
+    }
+
+    return ret;
 }
 
 int
