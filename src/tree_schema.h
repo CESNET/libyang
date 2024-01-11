@@ -1579,9 +1579,7 @@ struct lysc_node_choice {
         };
     };
 
-    struct lysc_node_case *cases;    /**< list of the cases (linked list). Note that all the children of all the cases are linked each other
-                                          as siblings. Their parent pointers points to the specific case they belongs to, so distinguish the
-                                          case is simple. */
+    struct lysc_node_case *cases;    /**< list of all the cases (linked list) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_node_case *dflt;     /**< default case of the choice, only a pointer into the cases array. */
 };
