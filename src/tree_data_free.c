@@ -189,7 +189,7 @@ lyd_free_subtree(struct lyd_node *node, ly_bool top)
 
     /* unlink only the nodes from the first level, nodes in subtree are freed all, so no unlink is needed */
     if (top) {
-        lyd_unlink_tree(node);
+        lyd_unlink(node);
     }
 
     free(node);

@@ -398,6 +398,13 @@ void lyd_insert_before_node(struct lyd_node *sibling, struct lyd_node *node);
 void lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, struct lyd_node *node, ly_bool last);
 
 /**
+ * @brief Unlink the specified data subtree.
+ *
+ * @param[in] node Data tree node to be unlinked (together with all the children).
+ */
+void lyd_unlink(struct lyd_node *node);
+
+/**
  * @brief Insert a metadata (last) into a parent
  *
  * @param[in] parent Parent of the metadata.

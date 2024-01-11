@@ -774,12 +774,12 @@ lyd_insert_child(struct lyd_node *parent, struct lyd_node *node)
     }
 
     if (node->parent || node->prev->next) {
-        lyd_unlink_tree(node);
+        lyd_unlink(node);
     }
 
     while (node) {
         iter = node->next;
-        lyd_unlink_tree(node);
+        lyd_unlink(node);
         lyd_insert_node(parent, NULL, node, 0);
         node = iter;
     }
@@ -801,7 +801,7 @@ lyplg_ext_insert(struct lyd_node *parent, struct lyd_node *first)
 
     while (first) {
         iter = first->next;
-        lyd_unlink_tree(first);
+        lyd_unlink(first);
         lyd_insert_node(parent, NULL, first, 1);
         first = iter;
     }
@@ -825,7 +825,7 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struct lyd_n
     }
 
     if (node->parent || node->prev->next) {
-        lyd_unlink_tree(node);
+        lyd_unlink(node);
     }
 
     while (node) {
@@ -835,7 +835,7 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struct lyd_n
         }
 
         iter = node->next;
-        lyd_unlink_tree(node);
+        lyd_unlink(node);
         lyd_insert_node(NULL, &sibling, node, 0);
         node = iter;
     }
@@ -868,7 +868,7 @@ lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
         return LY_EINVAL;
     }
 
-    lyd_unlink_tree(node);
+    lyd_unlink(node);
     lyd_insert_before_node(sibling, node);
     lyd_insert_hash(node);
 
@@ -892,26 +892,15 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
         return LY_EINVAL;
     }
 
-    lyd_unlink_tree(node);
+    lyd_unlink(node);
     lyd_insert_after_node(sibling, node);
     lyd_insert_hash(node);
 
     return LY_SUCCESS;
 }
 
-LIBYANG_API_DEF void
-lyd_unlink_siblings(struct lyd_node *node)
-{
-    struct lyd_node *next, *elem, *first = NULL;
-
-    LY_LIST_FOR_SAFE(node, next, elem) {
-        lyd_unlink_tree(elem);
-        lyd_insert_node(NULL, &first, elem, 1);
-    }
-}
-
-LIBYANG_API_DEF void
-lyd_unlink_tree(struct lyd_node *node)
+void
+lyd_unlink(struct lyd_node *node)
 {
     struct lyd_node *iter;
 
@@ -957,6 +946,35 @@ lyd_unlink_tree(struct lyd_node *node)
 
     node->next = NULL;
     node->prev = node;
+}
+
+LIBYANG_API_DEF void
+lyd_unlink_siblings(struct lyd_node *node)
+{
+    struct lyd_node *next, *elem, *first = NULL;
+
+    LY_LIST_FOR_SAFE(node, next, elem) {
+        if (lysc_is_key(elem->schema) && elem->parent) {
+            LOGERR(LYD_CTX(elem), LY_EINVAL, "Cannot unlink a list key \"%s\", unlink the list instance instead.",
+                    LYD_NAME(elem));
+            return;
+        }
+
+        lyd_unlink(elem);
+        lyd_insert_node(NULL, &first, elem, 1);
+    }
+}
+
+LIBYANG_API_DEF void
+lyd_unlink_tree(struct lyd_node *node)
+{
+    if (node && lysc_is_key(node->schema) && node->parent) {
+        LOGERR(LYD_CTX(node), LY_EINVAL, "Cannot unlink a list key \"%s\", unlink the list instance instead.",
+                LYD_NAME(node));
+        return;
+    }
+
+    lyd_unlink(node);
 }
 
 void
@@ -2179,7 +2197,7 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, co
         /* node not found, merge it */
         if (options & LYD_MERGE_DESTRUCT) {
             dup_src = (struct lyd_node *)sibling_src;
-            lyd_unlink_tree(dup_src);
+            lyd_unlink(dup_src);
             /* spend it */
             *sibling_src_p = NULL;
         } else {

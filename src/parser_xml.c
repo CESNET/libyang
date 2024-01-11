@@ -1995,7 +1995,7 @@ lyd_parse_xml_netconf(const struct ly_ctx *ctx, const struct lysc_ext_instance *
         } else {
             /* can be the only opaque node and an operation had to be parsed */
             assert(!strcmp(LYD_NAME(node), "eventTime") && (*first_p)->next);
-            lyd_unlink_tree(node);
+            lyd_unlink(node);
             assert(*envp);
             lyd_insert_child(*envp, node);
         }

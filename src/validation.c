@@ -2046,7 +2046,7 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
     op_sibling_after = op_subtree->next;
     op_parent = lyd_parent(op_subtree);
 
-    lyd_unlink_tree(op_subtree);
+    lyd_unlink(op_subtree);
     lyd_insert_node(tree_parent, &tree_sibling, op_subtree, 0);
     if (!dep_tree) {
         dep_tree = tree_sibling;
@@ -2088,7 +2088,7 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
 
 cleanup:
     /* restore operation tree */
-    lyd_unlink_tree(op_subtree);
+    lyd_unlink(op_subtree);
     if (op_sibling_before) {
         lyd_insert_after_node(op_sibling_before, op_subtree);
         lyd_insert_hash(op_subtree);
