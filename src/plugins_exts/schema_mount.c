@@ -940,7 +940,7 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
     }
 
     /* create accessible tree, remove LYD_EXT to not call this callback recursively */
-    lyd_unlink_siblings(sibling);
+    LY_CHECK_GOTO(lyd_unlink_siblings(sibling), cleanup);
     LY_LIST_FOR(sibling, iter) {
         iter->flags &= ~LYD_EXT;
     }

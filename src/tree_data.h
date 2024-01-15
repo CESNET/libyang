@@ -1860,15 +1860,19 @@ LIBYANG_API_DECL LY_ERR lyd_insert_after(struct lyd_node *sibling, struct lyd_no
  * @brief Unlink the specified node with all the following siblings.
  *
  * @param[in] node Data tree node to be unlinked (together with all the children and following siblings).
+ * @return LYS_SUCCESS on success.
+ * @return LY_ERR error on error.
  */
-LIBYANG_API_DECL void lyd_unlink_siblings(struct lyd_node *node);
+LIBYANG_API_DECL LY_ERR lyd_unlink_siblings(struct lyd_node *node);
 
 /**
  * @brief Unlink the specified data subtree.
  *
  * @param[in] node Data tree node to be unlinked (together with all the children).
+ * @return LYS_SUCCESS on success.
+ * @return LY_ERR error on error.
  */
-LIBYANG_API_DECL void lyd_unlink_tree(struct lyd_node *node);
+LIBYANG_API_DECL LY_ERR lyd_unlink_tree(struct lyd_node *node);
 
 /**
  * @brief Free all the nodes (even parents of the node) in the data tree.

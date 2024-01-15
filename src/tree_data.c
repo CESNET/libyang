@@ -1010,10 +1010,10 @@ lyd_insert_child(struct lyd_node *parent, struct lyd_node *node)
     LY_CHECK_RET(lyd_insert_check_schema(parent->schema, NULL, node->schema));
 
     if (node->parent || node->prev->next || !node->next) {
-        lyd_unlink_tree(node);
+        LY_CHECK_RET(lyd_unlink_tree(node));
         lyd_insert_node(parent, NULL, node, 0);
     } else {
-        lyd_move_nodes(parent, NULL, node);
+        LY_CHECK_RET(lyd_move_nodes(parent, NULL, node));
     }
 
     return LY_SUCCESS;
@@ -1054,10 +1054,10 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struct lyd_n
 
     first_sibling = lyd_first_sibling(sibling);
     if (node->parent || node->prev->next || !node->next) {
-        lyd_unlink_tree(node);
+        LY_CHECK_RET(lyd_unlink_tree(node));
         lyd_insert_node(NULL, &first_sibling, node, 0);
     } else {
-        lyd_move_nodes(NULL, first_sibling, node);
+        LY_CHECK_RET(lyd_move_nodes(NULL, first_sibling, node));
     }
 
     if (first) {
@@ -1189,7 +1189,7 @@ lyd_unlink(struct lyd_node *node)
     lyd_unlink_ignore_lyds(node);
 }
 
-LIBYANG_API_DEF void
+LIBYANG_API_DEF LY_ERR
 lyd_unlink_siblings(struct lyd_node *node)
 {
     struct lyd_node *next, *iter, *leader, *start;
@@ -1200,25 +1200,29 @@ lyd_unlink_siblings(struct lyd_node *node)
         lyds_split(leader, node, &start);
     } else {
         /* unlink @p node */
-        LY_CHECK_RET(lyd_unlink_check(node), );
+        LY_CHECK_RET(lyd_unlink_check(node));
         start = node->next;
         lyd_unlink_ignore_lyds(node);
     }
 
     /* continue unlinking the rest */
     LY_LIST_FOR_SAFE(start, next, iter) {
-        LY_CHECK_RET(lyd_unlink_check(iter), );
+        LY_CHECK_RET(lyd_unlink_check(iter));
         lyd_unlink_ignore_lyds(iter);
         lyd_insert_after_node(node->prev, iter);
         lyd_insert_hash(iter);
     }
+
+    return LY_SUCCESS;
 }
 
-LIBYANG_API_DEF void
+LIBYANG_API_DEF LY_ERR
 lyd_unlink_tree(struct lyd_node *node)
 {
-    LY_CHECK_RET(lyd_unlink_check(node), );
+    LY_CHECK_RET(lyd_unlink_check(node));
     lyd_unlink(node);
+
+    return LY_SUCCESS;
 }
 
 void
