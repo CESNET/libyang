@@ -1203,7 +1203,7 @@ test_move_whole_list(void **state)
     assert_int_equal(lyd_new_term(src, mod, "ll", "1", 0, &node), LY_SUCCESS);
     assert_int_equal(lyd_new_term(src, mod, "ll", "2", 0, &node), LY_SUCCESS);
     first = lyd_child(src);
-    lyd_unlink_siblings(first);
+    assert_int_equal(lyd_unlink_siblings(first), LY_SUCCESS);
     assert_int_equal(lyd_new_inner(NULL, mod, "cn", 0, &dst), LY_SUCCESS);
     assert_int_equal(lyd_insert_child(dst, first), LY_SUCCESS);
     first = lyd_child(dst);
@@ -1218,7 +1218,7 @@ test_move_whole_list(void **state)
     assert_int_equal(lyd_new_term(src, mod, "ll", "1", 0, &node), LY_SUCCESS);
     assert_int_equal(lyd_new_term(src, mod, "ll", "2", 0, &node), LY_SUCCESS);
     first = lyd_child(src);
-    lyd_unlink_siblings(lyd_child(src));
+    assert_int_equal(lyd_unlink_siblings(lyd_child(src)), LY_SUCCESS);
     assert_int_equal(lyd_new_inner(NULL, mod, "cn", 0, &dst), LY_SUCCESS);
     assert_int_equal(lyd_new_term(dst, mod, "tail", "a", 0, &node), LY_SUCCESS);
     assert_int_equal(lyd_insert_sibling(lyd_child(dst), first, NULL), LY_SUCCESS);
@@ -1234,7 +1234,7 @@ test_move_whole_list(void **state)
     assert_int_equal(lyd_new_term(src, mod, "ll", "1", 0, &node), LY_SUCCESS);
     assert_int_equal(lyd_new_term(src, mod, "ll", "2", 0, &node), LY_SUCCESS);
     first = lyd_child(src);
-    lyd_unlink_siblings(lyd_child(src));
+    assert_int_equal(lyd_unlink_siblings(lyd_child(src)), LY_SUCCESS);
     assert_int_equal(lyd_new_inner(NULL, mod, "cn", 0, &dst), LY_SUCCESS);
     assert_int_equal(lyd_new_term(dst, mod, "head", "a", 0, &node), LY_SUCCESS);
     assert_int_equal(lyd_insert_sibling(lyd_child(dst), first, NULL), LY_SUCCESS);
@@ -1451,7 +1451,7 @@ test_unlink_siblings(void **state)
     assert_int_equal(lyd_new_term(cont, mod, "tail", "b", 0, NULL), LY_SUCCESS);
 
     node = lyd_child(cont)->next;
-    lyd_unlink_siblings(node);
+    assert_int_equal(lyd_unlink_siblings(node), LY_SUCCESS);
     first = lyd_child(cont);
     assert_true(first && first->meta && !first->next);
     assert_string_equal(first->meta->name, META_NAME);
