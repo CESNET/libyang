@@ -668,10 +668,12 @@ color:
  *
  * @param[in,out] rbt Root of the Red-black tree. After the @p rbn is inserted, the root may change.
  * @param[in] rbn Node to insert.
+ * @param[out] max_p Set to 1 if the inserted node will also be maximum.
  */
 static void
-rb_insert_node(struct rb_node **rbt, struct rb_node *rbn)
+rb_insert_node(struct rb_node **rbt, struct rb_node *rbn, ly_bool *max_p)
 {
+    ly_bool max;
     struct rb_node *tmp;
     struct rb_node *parent = NULL;
     int comp = 0;
@@ -684,6 +686,7 @@ rb_insert_node(struct rb_node **rbt, struct rb_node *rbn)
         rb_compare = rb_compare_lists;
     }
 
+    max = 1;
     tmp = *rbt;
     while (tmp != NULL) {
         parent = tmp;
@@ -691,6 +694,7 @@ rb_insert_node(struct rb_node **rbt, struct rb_node *rbn)
         comp = rb_compare(RBN_DNODE(tmp), RBN_DNODE(rbn));
         if (comp > 0) {
             tmp = RBN_LEFT(tmp);
+            max = 0;
         } else {
             tmp = RBN_RIGHT(tmp);
         }
@@ -709,6 +713,10 @@ rb_insert_node(struct rb_node **rbt, struct rb_node *rbn)
     }
 
     rb_insert_color(rbt, rbn);
+
+    if (max_p) {
+        *max_p = max;
+    }
 }
 
 /**
@@ -932,28 +940,34 @@ lyds_link_data_node(struct lyd_node **leader, struct lyd_node *node, struct lyd_
 /**
  * @brief Additionally create the Red-black tree for the sorted nodes.
  *
- * @param[in] leader First instance of the (leaf-)list.
+ * @param[in,out] leader First instance of the (leaf-)list.
  * @param[in] root_meta From the @p leader, metadata in which is the root of the Red-black tree.
  * @param[in] rbt From the @p root_meta, root of the Red-black tree.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyds_additionally_create_rb_tree(struct lyd_node *leader, struct lyd_meta *root_meta, struct rb_node **rbt)
+lyds_additionally_create_rb_tree(struct lyd_node **leader, struct lyd_meta *root_meta, struct rb_node **rbt)
 {
     LY_ERR ret;
+    ly_bool max;
     struct rb_node *rbn;
     struct lyd_node *iter;
 
     /* let's begin with the leader */
-    ret = lyds_create_node(leader, &rbn);
+    ret = lyds_create_node(*leader, &rbn);
     LY_CHECK_RET(ret);
     *rbt = rbn;
 
     /* continue with the rest of the nodes */
-    for (iter = leader->next; iter && (iter->schema == leader->schema); iter = iter->next) {
+    for (iter = (*leader)->next; iter && (iter->schema == (*leader)->schema); iter = iter->next) {
         ret = lyds_create_node(iter, &rbn);
         LY_CHECK_RET(ret);
-        rb_insert_node(rbt, rbn);
+        rb_insert_node(rbt, rbn, &max);
+        if (!max) {
+            /* nodes were not sorted, they will be sorted now */
+            lyd_unlink_ignore_lyds(iter);
+            lyds_link_data_node(leader, iter, root_meta, rbn);
+        }
     }
 
     /* store pointer to the root */
@@ -1019,7 +1033,7 @@ rb_insert(struct lyd_node *node, struct rb_node **rbt, struct rb_node **rbn)
     LY_CHECK_RET(ret);
 
     /* insert red-black node with @p node to the Red-black tree */
-    rb_insert_node(rbt, *rbn);
+    rb_insert_node(rbt, *rbn, NULL);
 
     return LY_SUCCESS;
 }
@@ -1052,7 +1066,7 @@ lyds_insert(struct lyd_node **leader, struct lyd_node *node)
          * created additionally now. It may still not be worth creating a tree and it may be better
          * to insert the node by linear search instead, but that is a case for further optimization.
          */
-        ret = lyds_additionally_create_rb_tree(*leader, root_meta, &rbt);
+        ret = lyds_additionally_create_rb_tree(leader, root_meta, &rbt);
         LY_CHECK_RET(ret);
     }
 
@@ -1358,6 +1372,10 @@ lyds_merge_nodes2(struct lyd_node **leader_dst, struct lyd_node *leader_src, str
     /* move the rest of the source nodes */
     lyds_merge_nodes2_back(dst_iter, next_p);
 
+    if (*next_p && ((*next_p)->schema == (*leader_dst)->schema)) {
+        ret = lyds_merge_nodes1(leader_dst, root_meta_src, rbt_src, *next_p, next_p);
+    }
+
 cleanup:
     RBT_SET(root_meta_src, rbt_src);
 
@@ -1376,8 +1394,9 @@ cleanup:
  * @param[in] root_meta_src Metadata 'lyds_tree' from @p leader_src.
  * @param[in] rbt_src Root of the source Red-black tree.
  * @param[out] next_p Data node located after source (leaf-)list.
+ * @return LY_ERR value.
  */
-static void
+static LY_ERR
 lyds_merge_nodes3(struct lyd_node **leader_dst, struct lyd_meta *root_meta_dst, struct rb_node *rbt_dst,
         struct lyd_meta *root_meta_src, struct rb_node *rbt_src, struct lyd_node **next_p)
 {
@@ -1393,13 +1412,19 @@ lyds_merge_nodes3(struct lyd_node **leader_dst, struct lyd_meta *root_meta_dst, 
         node = RBN_DNODE(iter);
         *next_p = node->next;
         RBN_RESET(iter, node);
-        rb_insert_node(&rbt_dst, iter);
+        rb_insert_node(&rbt_dst, iter, NULL);
         lyd_unlink_ignore_lyds(node);
         lyds_link_data_node(leader_dst, node, root_meta_dst, iter);
         lyd_insert_hash(node);
     }
 
-    RBT_SET(root_meta_dst, rbt_dst);
+    if (!*next_p || ((*next_p)->schema != (*leader_dst)->schema)) {
+        RBT_SET(root_meta_dst, rbt_dst);
+    } else {
+        LY_CHECK_RET(lyds_merge_nodes1(leader_dst, root_meta_dst, rbt_dst, *next_p, next_p));
+    }
+
+    return LY_SUCCESS;
 }
 
 LY_ERR
@@ -1422,7 +1447,7 @@ lyds_merge(struct lyd_node **leader_dst, struct lyd_node *leader_src, struct lyd
     if (!rbt_dst && !rbt_src) {
         /* create RB tree from destination nodes, merge and move source nodes */
         LY_CHECK_RET(lyds_create_metadata(*leader_dst, &root_meta_dst));
-        LY_CHECK_RET(lyds_additionally_create_rb_tree(*leader_dst, root_meta_dst, &rbt_dst));
+        LY_CHECK_RET(lyds_additionally_create_rb_tree(leader_dst, root_meta_dst, &rbt_dst));
         ret = lyds_merge_nodes1(leader_dst, root_meta_dst, rbt_dst, leader_src, next_p);
     } else if (rbt_dst && !rbt_src) {
         /* just merge and move source nodes */

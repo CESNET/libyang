@@ -1491,6 +1491,55 @@ test_unlink_siblings(void **state)
     lyd_free_all(cont);
 }
 
+static void
+test_order_violation(void **state)
+{
+    const char *schema, *data;
+    struct lys_module *mod;
+    struct lyd_node *tree, *node, *dst, *first;
+
+    schema = "module a {namespace urn:tests:a;prefix a;yang-version 1.1;revision 2014-05-08;"
+            "leaf-list ll {type uint32;}}";
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+
+    /* inserting a new node causes the nodes to be sorted */
+    data = "{\"a:ll\":[1,8,2]}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, LYD_PARSE_ORDERED, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    assert_true(tree && !tree->meta && tree->next && tree->next->next);
+    assert_string_equal(lyd_get_value(tree), "1");
+    assert_string_equal(lyd_get_value(tree->next), "8");
+    assert_string_equal(lyd_get_value(tree->next->next), "2");
+#ifndef NDEBUG
+    CHECK_LOG_CTX("Data in \"ll\" are not sorted, inserted node should not be added to the end.", NULL, 0);
+#endif
+    assert_int_equal(lyd_new_term(NULL, mod, "ll", "3", 0, &node), LY_SUCCESS);
+    lyd_insert_sibling(tree, node, NULL);
+    assert_string_equal(lyd_get_value(tree), "1");
+    assert_string_equal(lyd_get_value(tree->next), "2");
+    assert_string_equal(lyd_get_value(tree->next->next), "3");
+    assert_string_equal(lyd_get_value(tree->next->next->next), "8");
+    lyd_free_all(tree);
+
+    /* move unsorted nodes causes the nodes to be sorted */
+    data = "{\"a:ll\":[1,8,2]}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, LYD_PARSE_ORDERED, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+#ifndef NDEBUG
+    CHECK_LOG_CTX("Data in \"ll\" are not sorted, inserted node should not be added to the end.", NULL, 0);
+#endif
+    data = "{\"a:ll\":[7,5]}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, LYD_PARSE_ORDERED, LYD_VALIDATE_PRESENT, LY_SUCCESS, dst);
+#ifndef NDEBUG
+    CHECK_LOG_CTX("Data in \"ll\" are not sorted, inserted node should not be added to the end.", NULL, 0);
+#endif
+    lyd_insert_sibling(dst, tree, &first);
+    assert_string_equal(lyd_get_value(first), "1");
+    assert_string_equal(lyd_get_value(first->next), "2");
+    assert_string_equal(lyd_get_value(first->next->next), "5");
+    assert_string_equal(lyd_get_value(first->next->next->next), "7");
+    assert_string_equal(lyd_get_value(first->next->next->next->next), "8");
+    lyd_free_all(first);
+}
+
 int
 main(void)
 {
@@ -1530,6 +1579,7 @@ main(void)
         UTEST(test_move_part_list),
         UTEST(test_merge_whole_list),
         UTEST(test_unlink_siblings),
+        UTEST(test_order_violation),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
