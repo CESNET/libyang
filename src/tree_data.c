@@ -1812,6 +1812,8 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
         struct lyd_node_term *orig = (struct lyd_node_term *)node;
 
         term->hash = orig->hash;
+        term->leafref_nodes = NULL;
+        term->target_node = NULL;
         if (trg_ctx == LYD_CTX(node)) {
             ret = orig->value.realtype->plugin->duplicate(trg_ctx, &orig->value, &term->value);
             LY_CHECK_ERR_GOTO(ret, LOGERR(trg_ctx, ret, "Value duplication failed."), error);
@@ -3266,4 +3268,69 @@ lyd_get_value(const struct lyd_node *node)
     }
 
     return NULL;
+}
+
+LIBYANG_API_DEF LY_ERR
+lyd_link_leafref_node(struct lyd_node_term *node, struct lyd_node_term *leafref_node)
+{
+    LY_ARRAY_COUNT_TYPE u;
+    struct lyd_node_term **item = NULL;
+
+    assert(node);
+    assert(leafref_node);
+
+    LY_ARRAY_FOR(node->leafref_nodes, u) {
+        if (node->leafref_nodes[u] == leafref_node) {
+            return LY_SUCCESS;
+        }
+    }
+
+    LY_ARRAY_NEW_RET(LYD_CTX(node), node->leafref_nodes, item, LY_EMEM);
+    *item = leafref_node;
+    leafref_node->target_node = node;
+    return LY_SUCCESS;
+}
+
+LIBYANG_API_DEF LY_ERR
+lyd_link_leafref_node_tree(struct lyd_node *tree)
+{
+    struct lyd_node *sibling, *elem, *target;
+    char *errmsg;
+    struct lyd_node_term *leafref_node;
+    struct lysc_node_leaf *leaf_schema;
+    struct lysc_type_leafref *lref;
+    LY_ERR ret;
+
+    assert(tree);
+
+    LY_LIST_FOR(tree, sibling) {
+        LYD_TREE_DFS_BEGIN(sibling, elem) {
+            if (elem->schema->nodetype & LYD_NODE_TERM) {
+                leafref_node = (struct lyd_node_term *)elem;
+                leaf_schema = (struct lysc_node_leaf *)elem->schema;
+                if (leaf_schema->type->basetype == LY_TYPE_LEAFREF) {
+                    lref = (struct lysc_type_leafref *)leaf_schema->type;
+                    if (lyplg_type_resolve_leafref(lref, elem, &leafref_node->value, tree, &target, &errmsg)) {
+                        free(errmsg);
+                    } else if (target->schema->nodetype & LYD_NODE_TERM) {
+                        ret = lyd_link_leafref_node((struct lyd_node_term *)target, leafref_node);
+                        if (ret != LY_SUCCESS) {
+                            return ret;
+                        }
+                    }
+                }
+            }
+            LYD_TREE_DFS_END(sibling, elem);
+        }
+    }
+    return LY_SUCCESS;
+}
+
+LIBYANG_API_DEF void
+lyd_unlink_leafref_node(struct lyd_node_term *node, struct lyd_node_term *leafref_node)
+{
+    assert(node);
+    assert(leafref_node);
+    leafref_node->target_node = NULL;
+    LY_ARRAY_REMOVE_VALUE(node->leafref_nodes, leafref_node);
 }

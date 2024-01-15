@@ -177,7 +177,21 @@ lyd_free_subtree(struct lyd_node *node, ly_bool top)
         /* only frees the value this way */
         lyd_any_copy_value(node, NULL, 0);
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
-        ((struct lysc_node_leaf *)node->schema)->type->plugin->free(LYD_CTX(node), &((struct lyd_node_term *)node)->value);
+        struct lyd_node_term *node_term = (struct lyd_node_term *)node;
+
+        /* remove stored value itself */
+        ((struct lysc_node_leaf *)node->schema)->type->plugin->free(LYD_CTX(node), &node_term->value);
+        /* remove stored referenced by nodes */
+        LY_ARRAY_COUNT_TYPE u;
+
+        LY_ARRAY_FOR(node_term->leafref_nodes, u) {
+            node_term->leafref_nodes[u]->target_node = NULL;
+        }
+        LY_ARRAY_FREE(node_term->leafref_nodes);
+        /* remove stored target node */
+        if (node_term->target_node) {
+            lyd_unlink_leafref_node(node_term->target_node, node_term);
+        }
     }
 
     if (!node->schema) {

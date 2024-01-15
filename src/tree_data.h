@@ -854,6 +854,14 @@ struct lyd_node_term {
     };                                      /**< common part corresponding to ::lyd_node */
 
     struct lyd_value value;          /**< node's value representation */
+    struct lyd_node_term **leafref_nodes;   /**< list of the leafref data nodes [sized array](@ref sizedarrays)).
+                                                 By default it is empty. It is filled automatically by validation
+                                                 function of leafref nodes. It can also be manipulated manually by
+                                                 using [link api](@ref lyd_link_leafref_node),
+                                                 [unlink](@ref lyd_unlink_leafref_node). Freeing of the resources is
+                                                 automatic. */
+    struct lyd_node_term *target_node;      /**< pointer to leafref target data node, by default is NULL. The logic
+                                                 is the same as for [leafref_nodes](@ref leafref_nodes). */
 };
 
 /**
@@ -2701,6 +2709,39 @@ LIBYANG_API_DECL LY_ERR ly_time_str2ts(const char *value, struct timespec *ts);
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR ly_time_ts2str(const struct timespec *ts, char **str);
+
+/**
+ * @brief Adds leafref data node to the given node.
+ *
+ * If the leafref data node was already added, it will not be added again.
+ *
+ * @param[in] node Data node to which the leafref data node will be added.
+ * @param[in] leafref_node The leafref data node, which points to given node.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+LIBYANG_API_DECL LY_ERR lyd_link_leafref_node(struct lyd_node_term *node, struct lyd_node_term *leafref_node);
+
+/**
+ * @brief Traverse through data tree including root node siblings and adds leafref data node to the given nodes
+ *
+ * @param[in] tree The data tree root node
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+LIBYANG_API_DECL LY_ERR lyd_link_leafref_node_tree(struct lyd_node *tree);
+
+/**
+ * @brief Removes leafref data node to the given node
+ *
+ * If the leafref data node was not added, it will be silently ignored
+ *
+ * @param[in] node Data node from which the leafref data node will be removed
+ * @param[in] leafref_node The leafref data node, which points to given node.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+LIBYANG_API_DECL void lyd_unlink_leafref_node(struct lyd_node_term *node, struct lyd_node_term *leafref_node);
 
 #ifdef __cplusplus
 }

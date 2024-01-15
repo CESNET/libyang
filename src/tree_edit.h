@@ -206,7 +206,7 @@ void *ly_realloc(void *ptr, size_t size);
  * @param[in] ARRAY Pointer to the array to affect.
  */
 #define LY_ARRAY_DECREMENT(ARRAY) \
-        --(*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1))
+        --(*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)); \
 
 /**
  * @brief Decrement the items counter in a ([sized array](@ref sizedarrays)) and free the whole array
@@ -230,6 +230,28 @@ void *ly_realloc(void *ptr, size_t size);
  */
 #define LY_ARRAY_FREE(ARRAY) \
         if (ARRAY){free((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1);}
+
+/**
+ * @brief Remove item from array based on value
+ *
+ * @param[in, out] ARRAY A ([sized array](@ref sizedarrays)) to be modified.
+ * @param[in] INDEX The item position to be removed.
+ */
+#define LY_ARRAY_REMOVE_VALUE(ARRAY, VALUE) \
+    { \
+        LY_ARRAY_COUNT_TYPE index__; \
+        ly_bool remove__ = 0; \
+        LY_ARRAY_FOR(ARRAY, index__) { \
+            if (ARRAY[index__] == VALUE) { \
+                remove__ = 1; \
+            } else if (remove__) { \
+                ARRAY[index__ - 1] = ARRAY[index__]; \
+            } \
+        } \
+        if (remove__) { \
+            LY_ARRAY_DECREMENT(ARRAY); \
+        } \
+    }
 
 /**
  * @brief Insert item into linked list.

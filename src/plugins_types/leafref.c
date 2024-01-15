@@ -69,6 +69,7 @@ lyplg_type_validate_leafref(const struct ly_ctx *UNUSED(ctx), const struct lysc_
     LY_ERR ret;
     struct lysc_type_leafref *type_lr = (struct lysc_type_leafref *)type;
     char *errmsg = NULL, *path;
+    struct lyd_node *target = NULL;
 
     *err = NULL;
 
@@ -78,14 +79,14 @@ lyplg_type_validate_leafref(const struct ly_ctx *UNUSED(ctx), const struct lysc_
     }
 
     /* check leafref target existence */
-    if (lyplg_type_resolve_leafref(type_lr, ctx_node, storage, tree, NULL, &errmsg)) {
+    if (lyplg_type_resolve_leafref(type_lr, ctx_node, storage, tree, &target, &errmsg)) {
         path = lyd_path(ctx_node, LYD_PATH_STD, NULL, 0);
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, path, strdup("instance-required"), "%s", errmsg);
         free(errmsg);
         return ret;
     }
 
-    return LY_SUCCESS;
+    return lyd_link_leafref_node((struct lyd_node_term *)target, (struct lyd_node_term *)ctx_node);
 }
 
 LIBYANG_API_DEF LY_ERR
