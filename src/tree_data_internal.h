@@ -393,11 +393,8 @@ void lyd_insert_before_node(struct lyd_node *sibling, struct lyd_node *node);
  * @param[in] parent Parent to insert into, NULL for top-level sibling.
  * @param[in,out] first_sibling First sibling, NULL if no top-level sibling exist yet. Can be also NULL if @p parent is set.
  * @param[in] node Individual node (without siblings) to insert.
- * @param[in] last If set, do not search for the correct anchor but always insert at the end.
- * For (leaf-)lists that have the LYS_ORDBY_SYSTEM flag set, the @p last (due to optimization) causes
- * the sorting tree (lyds_tree) not to be created. However, it is possible to implicitly create
- * the lyds_tree by inserting another node without setting the @p last. After that, the @p last MUST NOT be
- * set for a given (leaf-list) instance, as this will cause the order to be corrupted.
+ * @param[in] last If set, do not search for the correct anchor but always insert at the end. Setting the flag can
+ * break the ordering of nodes for (leaf-)lists that have the LYS_ORDBY_SYSTEM flag set.
  */
 void lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, struct lyd_node *node, ly_bool last);
 

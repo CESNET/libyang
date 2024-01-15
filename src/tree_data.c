@@ -699,8 +699,13 @@ static void
 lyd_insert_node_last(struct lyd_node *parent, struct lyd_node *first_sibling, struct lyd_node *node)
 {
     if (first_sibling) {
-        assert(!lyds_is_supported(node) || (first_sibling->prev->schema != node->schema) ||
-                lyds_compare_single(node, first_sibling->prev));
+#ifndef NDEBUG
+        if (lyds_is_supported(node) && (first_sibling->prev->schema == node->schema) &&
+                (lyds_compare_single(first_sibling->prev, node) > 0)) {
+            LOGWRN(LYD_CTX(node), "Data in \"%s\" are not sorted, inserted node should not be added to the end.",
+                    node->schema->name);
+        }
+#endif
         lyd_insert_after_node(first_sibling->prev, node);
     } else if (parent) {
         lyd_insert_only_child(parent, node);
