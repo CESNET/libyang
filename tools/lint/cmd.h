@@ -79,7 +79,7 @@ enum COMMAND_INDEX {
     CMD_EXTDATA,
     CMD_CLEAR,
     CMD_VERB,
-    CMD_DEBUG,
+    CMD_DEBUG
 };
 
 /**

@@ -219,7 +219,7 @@ help(int shortout)
 #else
             "                Unsupported for the Release build\n\n"
 #endif
-            );
+          );
 }
 
 static void
