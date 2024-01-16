@@ -196,7 +196,7 @@ struct ly_in;
  * already a case and another one was added, the previous one is silently auto-deleted. Otherwise (if data from 2 or
  * more cases were created) a validation error is raised,
  * - default values are added.
- *
+ * - target data nodes are not linked with leafref data nodes by default
  * @{
  */
 #define LYD_VALIDATE_NO_STATE   0x0001      /**< Consider state data not allowed and raise an error if they are found.

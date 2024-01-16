@@ -3279,6 +3279,10 @@ lyd_link_leafref_node(struct lyd_node_term *node, struct lyd_node_term *leafref_
     assert(node);
     assert(leafref_node);
 
+    if (!(ly_ctx_get_options(LYD_CTX(node)) & LY_CTX_LEAFREF_LINKING_ENABLED)) {
+        return LY_EDENIED;
+    }
+
     LY_ARRAY_FOR(node->leafref_nodes, u) {
         if (node->leafref_nodes[u] == leafref_node) {
             return LY_SUCCESS;
@@ -3303,6 +3307,10 @@ lyd_link_leafref_node_tree(struct lyd_node *tree)
 
     assert(tree);
 
+    if (!(ly_ctx_get_options(LYD_CTX(tree)) & LY_CTX_LEAFREF_LINKING_ENABLED)) {
+        return LY_EDENIED;
+    }
+
     LY_LIST_FOR(tree, sibling) {
         LYD_TREE_DFS_BEGIN(sibling, elem) {
             if (elem->schema->nodetype & LYD_NODE_TERM) {
@@ -3326,11 +3334,17 @@ lyd_link_leafref_node_tree(struct lyd_node *tree)
     return LY_SUCCESS;
 }
 
-LIBYANG_API_DEF void
+LIBYANG_API_DEF LY_ERR
 lyd_unlink_leafref_node(struct lyd_node_term *node, struct lyd_node_term *leafref_node)
 {
     assert(node);
     assert(leafref_node);
+
+    if (!(ly_ctx_get_options(LYD_CTX(node)) & LY_CTX_LEAFREF_LINKING_ENABLED)) {
+        return LY_EDENIED;
+    }
+
     leafref_node->target_node = NULL;
     LY_ARRAY_REMOVE_VALUE(node->leafref_nodes, leafref_node);
+    return LY_SUCCESS;
 }

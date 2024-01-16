@@ -138,6 +138,25 @@ lyd_free_attr_siblings(const struct ly_ctx *ctx, struct lyd_attr *attr)
     lyd_free_attr(ctx, attr, 1);
 }
 
+void
+lyd_free_leafref_nodes(struct lyd_node_term *node)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    assert(node);
+
+    /* remove stored referenced by nodes */
+    LY_ARRAY_FOR(node->leafref_nodes, u) {
+        node->leafref_nodes[u]->target_node = NULL;
+    }
+    LY_ARRAY_FREE(node->leafref_nodes);
+    node->leafref_nodes = NULL;
+    /* remove stored target node */
+    if (node->target_node) {
+        lyd_unlink_leafref_node(node->target_node, node);
+    }
+}
+
 /**
  * @brief Free Data (sub)tree.
  * @param[in] node Data node to be freed.
@@ -179,19 +198,8 @@ lyd_free_subtree(struct lyd_node *node, ly_bool top)
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
         struct lyd_node_term *node_term = (struct lyd_node_term *)node;
 
-        /* remove stored value itself */
         ((struct lysc_node_leaf *)node->schema)->type->plugin->free(LYD_CTX(node), &node_term->value);
-        /* remove stored referenced by nodes */
-        LY_ARRAY_COUNT_TYPE u;
-
-        LY_ARRAY_FOR(node_term->leafref_nodes, u) {
-            node_term->leafref_nodes[u]->target_node = NULL;
-        }
-        LY_ARRAY_FREE(node_term->leafref_nodes);
-        /* remove stored target node */
-        if (node_term->target_node) {
-            lyd_unlink_leafref_node(node_term->target_node, node_term);
-        }
+        lyd_free_leafref_nodes(node_term);
     }
 
     if (!node->schema) {

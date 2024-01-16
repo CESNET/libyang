@@ -600,6 +600,8 @@ test_data_leafref_nodes(void **state)
     struct lyd_node_term *target_node, *leafref_node, *wrong_node;
     const char *schema, *data, *value;
 
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_LEAFREF_LINKING_ENABLED);
+
     schema =
             "module test-data-hash {"
             "  yang-version 1.1;"
@@ -653,18 +655,18 @@ test_data_leafref_nodes(void **state)
     assert_int_equal(LY_SUCCESS, lyd_link_leafref_node(target_node, leafref_node));
     assert_int_equal(1, LY_ARRAY_COUNT(target_node->leafref_nodes));
     /* wrong link */
-    lyd_link_leafref_node(target_node, wrong_node);
+    assert_int_equal(LY_SUCCESS, lyd_link_leafref_node(target_node, wrong_node));
     assert_int_equal(2, LY_ARRAY_COUNT(target_node->leafref_nodes));
     /* wrong unlink */
-    lyd_unlink_leafref_node(target_node, wrong_node);
+    assert_int_equal(LY_SUCCESS, lyd_unlink_leafref_node(target_node, wrong_node));
     assert_int_equal(1, LY_ARRAY_COUNT(target_node->leafref_nodes));
     /* correct unlink */
-    lyd_unlink_leafref_node(target_node, leafref_node);
+    assert_int_equal(LY_SUCCESS, lyd_unlink_leafref_node(target_node, leafref_node));
     assert_int_equal(0, LY_ARRAY_COUNT(target_node->leafref_nodes));
     /* duplicate unlink */
-    lyd_unlink_leafref_node(target_node, leafref_node);
+    assert_int_equal(LY_SUCCESS, lyd_unlink_leafref_node(target_node, leafref_node));
     /* linking the whole tree */
-    lyd_link_leafref_node_tree(tree);
+    assert_int_equal(LY_SUCCESS, lyd_link_leafref_node_tree(tree));
     assert_int_equal(1, LY_ARRAY_COUNT(target_node->leafref_nodes));
     /* freeing whole tree */
     lyd_free_all(tree);

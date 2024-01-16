@@ -199,6 +199,9 @@ struct ly_ctx;
                                         enabled. */
 #define LY_CTX_LEAFREF_EXTENDED 0x0200 /**< By default, path attribute of leafref accepts only path as defined in RFC 7950.
                                         By using this option, the path attribute will also allow using XPath functions as deref() */
+#define LY_CTX_LEAFREF_LINKING_ENABLED 0x0400 /**< Link leafref nodes with its target during validation. It also enabled usage of
+                                        usage of [link](@ref lyd_link_leafref_node), [unlink](@ref lyd_unlink_leafref_node) and
+                                        [link_all](@ref lyd_link_leafref_node_all). */
 
 /** @} contextoptions */
 
