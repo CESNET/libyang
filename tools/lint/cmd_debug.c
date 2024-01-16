@@ -12,8 +12,6 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#ifndef NDEBUG
-
 #include "cmd.h"
 
 #include <assert.h>
@@ -130,5 +128,3 @@ cmd_debug_setlog(struct ly_ctx *ctx, struct yl_opt *yo)
     (void) ctx;
     return ly_log_dbg_groups(yo->dbg_groups);
 }
-
-#endif

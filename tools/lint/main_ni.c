@@ -211,12 +211,15 @@ help(int shortout)
     printf("  -X, --extended-leafref\n"
             "                Allow usage of deref() XPath function within leafref\n\n");
 
-#ifndef NDEBUG
     printf("  -G GROUPS, --debug=GROUPS\n"
+#ifndef NDEBUG
             "                Enable printing of specific debugging message group\n"
             "                (nothing will be printed unless verbosity is set to debug):\n"
-            "                <group>[,<group>]* (dict, xpath, dep-sets)\n\n");
+            "                <group>[,<group>]* (dict, xpath, dep-sets)\n\n"
+#else
+            "                Unsupported for the Release build\n\n"
 #endif
+            );
 }
 
 static void
@@ -381,7 +384,6 @@ fill_context_inputs(int argc, char *argv[], int optind, LYD_FORMAT data_in_forma
     return 0;
 }
 
-#ifndef NDEBUG
 /**
  * @brief Enable specific debugging messages.
  *
@@ -416,8 +418,6 @@ set_debug_groups(char *groups, struct yl_opt *yo)
 
     return 0;
 }
-
-#endif
 
 /**
  * @brief Process command line options and store the settings into the context.
@@ -459,9 +459,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
         {"yang-library",      no_argument,       NULL, 'y'},
         {"yang-library-file", required_argument, NULL, 'Y'},
         {"extended-leafref",  no_argument,       NULL, 'X'},
-#ifndef NDEBUG
-        {"debug",            required_argument, NULL, 'G'},
-#endif
+        {"debug",             required_argument, NULL, 'G'},
         {NULL,               0,                 NULL, 0}
     };
     uint8_t data_type_set = 0;
@@ -472,12 +470,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
     yo->line_length = 0;
 
     opterr = 0;
-#ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neE:t:d:lL:o:O:R:myY:Xx:G:", options, &opt_index)) != -1)
-#else
-    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neE:t:d:lL:o:O:R:myY:Xx:", options, &opt_index)) != -1)
-#endif
-    {
+    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neE:t:d:lL:o:O:R:myY:Xx:G:", options, &opt_index)) != -1) {
         switch (opt) {
         case 'h': /* --help */
             help(0);
@@ -657,14 +650,12 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
             yo->ctx_options |= LY_CTX_LEAFREF_EXTENDED;
             break;
 
-#ifndef NDEBUG
         case 'G':   /* --debug */
             if (set_debug_groups(optarg, yo)) {
                 return -1;
             }
             break;
-            /* case 'G' */
-#endif
+
         default:
             YLMSG_E("Invalid option or missing argument: -%c.", optopt);
             return -1;

@@ -96,12 +96,14 @@ COMMAND commands[] = {
         "verb", cmd_verb_opt, cmd_verb_dep, cmd_verb_exec, NULL, cmd_verb_help, NULL,
         "Change verbosity", "h"
     },
-#ifndef NDEBUG
     {
         "debug", cmd_debug_opt, cmd_debug_dep, cmd_debug_store, cmd_debug_setlog, cmd_debug_help, NULL,
+#ifndef NDEBUG
         "Display specific debug message groups", "h"
-    },
+#else
+        "Unsupported for the Release build", "h"
 #endif
+    },
     {"quit", NULL, NULL, cmd_quit_exec, NULL, NULL, NULL, "Quit the program", "h"},
     /* synonyms for previous commands */
     {"?", NULL, NULL, cmd_help_exec, NULL, NULL, NULL, "Display commands description", "h"},
