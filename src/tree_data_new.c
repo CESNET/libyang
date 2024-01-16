@@ -1316,7 +1316,7 @@ _lyd_change_term(struct lyd_node *term, const void *value, size_t value_len, LY_
     }
 
     /* clear links to leafref nodes */
-    if (ly_ctx_get_options(LYD_CTX(term)) & LY_CTX_LEAFREF_LINKING_ENABLED) {
+    if (ly_ctx_get_options(LYD_CTX(term)) & LY_CTX_LEAFREF_LINKING) {
         lyd_free_leafref_nodes(t);
     }
 

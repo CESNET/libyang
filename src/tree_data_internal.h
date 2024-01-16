@@ -598,4 +598,30 @@ LY_ERR ly_set_rm_index_ordered(struct ly_set *set, uint32_t index, void (*destru
  */
 void lyd_free_leafref_nodes(struct lyd_node_term *node);
 
+/**
+ * @brief Adds leafref data node to the given node.
+ *
+ * If the leafref data node was already added, it will not be added again.
+ * This API requires usage of LY_CTX_LEAFREF_LINKING context flag.
+ *
+ * @param[in] node Data node to which the leafref data node will be added.
+ * @param[in] leafref_node The leafref data node, which points to given node.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+LY_ERR lyd_link_leafref_node(struct lyd_node_term *node, struct lyd_node_term *leafref_node);
+
+/**
+ * @brief Removes leafref data node to the given node
+ *
+ * If the leafref data node was not added, it will be silently ignored.
+ * This API requires usage of LY_CTX_LEAFREF_LINKING context flag.
+ *
+ * @param[in] node Data node from which the leafref data node will be removed.
+ * @param[in] leafref_node The leafref data node, which points to given node.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+LY_ERR lyd_unlink_leafref_node(struct lyd_node_term *node, struct lyd_node_term *leafref_node);
+
 #endif /* LY_TREE_DATA_INTERNAL_H_ */

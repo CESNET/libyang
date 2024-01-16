@@ -2711,41 +2711,15 @@ LIBYANG_API_DECL LY_ERR ly_time_str2ts(const char *value, struct timespec *ts);
 LIBYANG_API_DECL LY_ERR ly_time_ts2str(const struct timespec *ts, char **str);
 
 /**
- * @brief Adds leafref data node to the given node.
- *
- * If the leafref data node was already added, it will not be added again.
- * This API requires usage of LY_CTX_LEAFREF_LINKING_ENABLED context flag.
- *
- * @param[in] node Data node to which the leafref data node will be added.
- * @param[in] leafref_node The leafref data node, which points to given node.
- * @return LY_SUCCESS on success.
- * @return LY_ERR value on error.
- */
-LIBYANG_API_DECL LY_ERR lyd_link_leafref_node(struct lyd_node_term *node, struct lyd_node_term *leafref_node);
-
-/**
  * @brief Traverse through data tree including root node siblings and adds leafref data node to the given nodes
  *
- * This API requires usage of LY_CTX_LEAFREF_LINKING_ENABLED context flag.
+ * This API requires usage of LY_CTX_LEAFREF_LINKING context flag.
  *
  * @param[in] tree The data tree root node.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value on error.
  */
 LIBYANG_API_DECL LY_ERR lyd_link_leafref_node_tree(struct lyd_node *tree);
-
-/**
- * @brief Removes leafref data node to the given node
- *
- * If the leafref data node was not added, it will be silently ignored.
- * This API requires usage of LY_CTX_LEAFREF_LINKING_ENABLED context flag.
- *
- * @param[in] node Data node from which the leafref data node will be removed.
- * @param[in] leafref_node The leafref data node, which points to given node.
- * @return LY_SUCCESS on success.
- * @return LY_ERR value on error.
- */
-LIBYANG_API_DECL LY_ERR lyd_unlink_leafref_node(struct lyd_node_term *node, struct lyd_node_term *leafref_node);
 
 #ifdef __cplusplus
 }

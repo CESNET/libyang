@@ -206,7 +206,7 @@ void *ly_realloc(void *ptr, size_t size);
  * @param[in] ARRAY Pointer to the array to affect.
  */
 #define LY_ARRAY_DECREMENT(ARRAY) \
-        --(*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)); \
+        --(*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1))
 
 /**
  * @brief Decrement the items counter in a ([sized array](@ref sizedarrays)) and free the whole array
@@ -243,9 +243,10 @@ void *ly_realloc(void *ptr, size_t size);
         ly_bool remove__ = 0; \
         LY_ARRAY_FOR(ARRAY, index__) { \
             if (ARRAY[index__] == VALUE) { \
+                if (index__ != LY_ARRAY_COUNT(ARRAY) - 1) { \
+		    memmove(&(ARRAY[index__]), &(ARRAY[LY_ARRAY_COUNT(ARRAY) - 1]), sizeof *(ARRAY)); \
+		} \
                 remove__ = 1; \
-            } else if (remove__) { \
-                ARRAY[index__ - 1] = ARRAY[index__]; \
             } \
         } \
         if (remove__) { \

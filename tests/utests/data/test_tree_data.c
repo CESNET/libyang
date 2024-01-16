@@ -597,10 +597,10 @@ static void
 test_data_leafref_nodes(void **state)
 {
     struct lyd_node *tree, *iter;
-    struct lyd_node_term *target_node, *leafref_node, *wrong_node;
+    struct lyd_node_term *target_node, *leafref_node;
     const char *schema, *data, *value;
 
-    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_LEAFREF_LINKING_ENABLED);
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_LEAFREF_LINKING);
 
     schema =
             "module test-data-hash {"
@@ -640,8 +640,6 @@ test_data_leafref_nodes(void **state)
             value = lyd_get_value(iter);
             if (strcmp(value, "asd") == 0) {
                 target_node = (struct lyd_node_term *)iter;
-            } else {
-                wrong_node = (struct lyd_node_term *)iter;
             }
         }
         if (strcmp(iter->schema->name, "ref2") == 0) {
@@ -651,37 +649,30 @@ test_data_leafref_nodes(void **state)
 
     /* verify state after leafref plugin validation */
     assert_int_equal(1, LY_ARRAY_COUNT(target_node->leafref_nodes));
-    /* duplicate link */
-    assert_int_equal(LY_SUCCESS, lyd_link_leafref_node(target_node, leafref_node));
-    assert_int_equal(1, LY_ARRAY_COUNT(target_node->leafref_nodes));
-    /* wrong link */
-    assert_int_equal(LY_SUCCESS, lyd_link_leafref_node(target_node, wrong_node));
-    assert_int_equal(2, LY_ARRAY_COUNT(target_node->leafref_nodes));
-    /* wrong unlink */
-    assert_int_equal(LY_SUCCESS, lyd_unlink_leafref_node(target_node, wrong_node));
-    assert_int_equal(1, LY_ARRAY_COUNT(target_node->leafref_nodes));
-    /* correct unlink */
-    assert_int_equal(LY_SUCCESS, lyd_unlink_leafref_node(target_node, leafref_node));
-    assert_int_equal(0, LY_ARRAY_COUNT(target_node->leafref_nodes));
-    /* duplicate unlink */
-    assert_int_equal(LY_SUCCESS, lyd_unlink_leafref_node(target_node, leafref_node));
-    /* add + value modification of target */
-    assert_int_equal(LY_SUCCESS, lyd_link_leafref_node(target_node, leafref_node));
-    assert_int_equal(1, LY_ARRAY_COUNT(target_node->leafref_nodes));
+    assert_ptr_equal(leafref_node->target_node, target_node);
+    /* value modification of target */
     assert_int_equal(LY_SUCCESS, lyd_change_term((struct lyd_node *)target_node, "ASD"));
     assert_int_equal(0, LY_ARRAY_COUNT(target_node->leafref_nodes));
-    /* change back to original value + value modification of leafref */
+    assert_null(leafref_node->target_node);
+    /* change back to original value */
     assert_int_equal(LY_SUCCESS, lyd_change_term((struct lyd_node *)target_node, "asd"));
     assert_int_equal(0, LY_ARRAY_COUNT(target_node->leafref_nodes));
-    assert_int_equal(LY_SUCCESS, lyd_link_leafref_node(target_node, leafref_node));
-    assert_int_equal(1, LY_ARRAY_COUNT(target_node->leafref_nodes));
-    assert_int_equal(LY_SUCCESS, lyd_change_term((struct lyd_node *)leafref_node, "qwe"));
-    assert_int_equal(0, LY_ARRAY_COUNT(target_node->leafref_nodes));
-    assert_int_equal(LY_SUCCESS, lyd_change_term((struct lyd_node *)leafref_node, "asd"));
-    assert_int_equal(0, LY_ARRAY_COUNT(target_node->leafref_nodes));
-    /* linking the whole tree */
+    assert_null(leafref_node->target_node);
+    /* linking the whole tree again */
     assert_int_equal(LY_SUCCESS, lyd_link_leafref_node_tree(tree));
     assert_int_equal(1, LY_ARRAY_COUNT(target_node->leafref_nodes));
+    assert_ptr_equal(leafref_node->target_node, target_node);
+    /* value modification of leafref */
+    assert_int_equal(LY_SUCCESS, lyd_change_term((struct lyd_node *)leafref_node, "qwe"));
+    assert_int_equal(0, LY_ARRAY_COUNT(target_node->leafref_nodes));
+    assert_null(leafref_node->target_node);
+    assert_int_equal(LY_SUCCESS, lyd_change_term((struct lyd_node *)leafref_node, "asd"));
+    assert_int_equal(0, LY_ARRAY_COUNT(target_node->leafref_nodes));
+    assert_null(leafref_node->target_node);
+    /* linking the whole tree again */
+    assert_int_equal(LY_SUCCESS, lyd_link_leafref_node_tree(tree));
+    assert_int_equal(1, LY_ARRAY_COUNT(target_node->leafref_nodes));
+    assert_ptr_equal(leafref_node->target_node, target_node);
     /* freeing whole tree */
     lyd_free_all(tree);
 }

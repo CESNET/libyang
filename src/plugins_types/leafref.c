@@ -25,6 +25,7 @@
 #include "common.h"
 #include "compat.h"
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
+#include "tree_data_internal.h" /* lyd_link_leafref_node */
 
 /**
  * @page howtoDataLYB LYB Binary Format
@@ -86,7 +87,7 @@ lyplg_type_validate_leafref(const struct ly_ctx *ctx, const struct lysc_type *ty
         return ret;
     }
 
-    if (ly_ctx_get_options(ctx) & LY_CTX_LEAFREF_LINKING_ENABLED) {
+    if (ly_ctx_get_options(ctx) & LY_CTX_LEAFREF_LINKING) {
         return lyd_link_leafref_node((struct lyd_node_term *)target, (struct lyd_node_term *)ctx_node);
     }
 

@@ -911,6 +911,11 @@ lyd_unlink(struct lyd_node *node)
     /* update hashes while still linked into the tree */
     lyd_unlink_hash(node);
 
+    /* unlink leafref nodes */
+    if (node->schema && (node->schema->nodetype & LYD_NODE_TERM)) {
+        lyd_free_leafref_nodes((struct lyd_node_term *)node);
+    }
+
     /* unlink from siblings */
     if (node->prev->next) {
         node->prev->next = node->next;
@@ -3279,7 +3284,7 @@ lyd_link_leafref_node(struct lyd_node_term *node, struct lyd_node_term *leafref_
     assert(node);
     assert(leafref_node);
 
-    if (!(ly_ctx_get_options(LYD_CTX(node)) & LY_CTX_LEAFREF_LINKING_ENABLED)) {
+    if (!(ly_ctx_get_options(LYD_CTX(node)) & LY_CTX_LEAFREF_LINKING)) {
         return LY_EDENIED;
     }
 
@@ -3307,7 +3312,7 @@ lyd_link_leafref_node_tree(struct lyd_node *tree)
 
     assert(tree);
 
-    if (!(ly_ctx_get_options(LYD_CTX(tree)) & LY_CTX_LEAFREF_LINKING_ENABLED)) {
+    if (!(ly_ctx_get_options(LYD_CTX(tree)) & LY_CTX_LEAFREF_LINKING)) {
         return LY_EDENIED;
     }
 
@@ -3340,7 +3345,7 @@ lyd_unlink_leafref_node(struct lyd_node_term *node, struct lyd_node_term *leafre
     assert(node);
     assert(leafref_node);
 
-    if (!(ly_ctx_get_options(LYD_CTX(node)) & LY_CTX_LEAFREF_LINKING_ENABLED)) {
+    if (!(ly_ctx_get_options(LYD_CTX(node)) & LY_CTX_LEAFREF_LINKING)) {
         return LY_EDENIED;
     }
 
