@@ -665,6 +665,20 @@ test_data_leafref_nodes(void **state)
     assert_int_equal(0, LY_ARRAY_COUNT(target_node->leafref_nodes));
     /* duplicate unlink */
     assert_int_equal(LY_SUCCESS, lyd_unlink_leafref_node(target_node, leafref_node));
+    /* add + value modification of target */
+    assert_int_equal(LY_SUCCESS, lyd_link_leafref_node(target_node, leafref_node));
+    assert_int_equal(1, LY_ARRAY_COUNT(target_node->leafref_nodes));
+    assert_int_equal(LY_SUCCESS, lyd_change_term((struct lyd_node *)target_node, "ASD"));
+    assert_int_equal(0, LY_ARRAY_COUNT(target_node->leafref_nodes));
+    /* change back to original value + value modification of leafref */
+    assert_int_equal(LY_SUCCESS, lyd_change_term((struct lyd_node *)target_node, "asd"));
+    assert_int_equal(0, LY_ARRAY_COUNT(target_node->leafref_nodes));
+    assert_int_equal(LY_SUCCESS, lyd_link_leafref_node(target_node, leafref_node));
+    assert_int_equal(1, LY_ARRAY_COUNT(target_node->leafref_nodes));
+    assert_int_equal(LY_SUCCESS, lyd_change_term((struct lyd_node *)leafref_node, "qwe"));
+    assert_int_equal(0, LY_ARRAY_COUNT(target_node->leafref_nodes));
+    assert_int_equal(LY_SUCCESS, lyd_change_term((struct lyd_node *)leafref_node, "asd"));
+    assert_int_equal(0, LY_ARRAY_COUNT(target_node->leafref_nodes));
     /* linking the whole tree */
     assert_int_equal(LY_SUCCESS, lyd_link_leafref_node_tree(tree));
     assert_int_equal(1, LY_ARRAY_COUNT(target_node->leafref_nodes));
