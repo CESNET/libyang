@@ -1726,8 +1726,10 @@ lyd_diff_merge_delete(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
 {
     struct lyd_node *child;
     struct lyd_meta *meta;
+    struct lyd_attr *attr;
     const char *meta_name;
     const struct ly_ctx *ctx = LYD_CTX(diff_match);
+    LY_ERR r;
 
     /* we can delete only exact existing nodes */
     LY_CHECK_ERR_RET(lyd_compare_single(diff_match, src_diff, 0), LOGINT(LYD_CTX(src_diff)), LY_EINT);
@@ -1741,12 +1743,7 @@ lyd_diff_merge_delete(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
             /* add orig-default meta because it is expected */
             LY_CHECK_RET(lyd_new_meta(LYD_CTX(src_diff), diff_match, NULL, "yang:orig-default",
                     src_diff->flags & LYD_DEFAULT ? "true" : "false", 0, NULL));
-        } else if (!lysc_is_dup_inst_list(diff_match->schema)) {
-            /* keep operation for all descendants (for now) */
-            LY_LIST_FOR(lyd_child_no_keys(diff_match), child) {
-                LY_CHECK_RET(lyd_diff_change_op(child, cur_op));
-            }
-        } /* else key-less list, for which all the descendants act as keys */
+        }
         break;
     case LYD_DIFF_OP_REPLACE:
         /* remove the redundant metadata */
@@ -1794,6 +1791,29 @@ lyd_diff_merge_delete(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
         LOGERR_MERGEOP(LYD_CTX(diff_match), diff_match, cur_op, LYD_DIFF_OP_DELETE);
         return LY_EINVAL;
     }
+
+    if (!lysc_is_dup_inst_list(diff_match->schema)) {
+        /* keep operation without one for descendants that are yet to be merged */
+        LY_LIST_FOR(lyd_child_no_keys(diff_match), child) {
+            lyd_diff_find_meta(child, "operation", &meta, &attr);
+            if (meta || attr) {
+                continue;
+            }
+
+            if (!child->schema) {
+                r = lyd_find_sibling_opaq_next(lyd_child(src_diff), LYD_NAME(child), NULL);
+            } else if (child->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+                r = lyd_find_sibling_first(lyd_child(src_diff), child, NULL);
+            } else {
+                r = lyd_find_sibling_val(lyd_child(src_diff), child->schema, NULL, 0, NULL);
+            }
+            if (!r) {
+                LY_CHECK_RET(lyd_diff_change_op(child, cur_op));
+            } else if (r != LY_ENOTFOUND) {
+                return r;
+            }
+        }
+    } /* else key-less list, for which all the descendants act as keys */
 
     return LY_SUCCESS;
 }
