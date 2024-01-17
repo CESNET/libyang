@@ -592,11 +592,29 @@ char *lyd_path_set(const struct ly_set *dnodes, LYD_PATH_TYPE pathtype);
 LY_ERR ly_set_rm_index_ordered(struct ly_set *set, uint32_t index, void (*destructor)(void *obj));
 
 /**
+ * @brief Gets or creates the term data node extension record for given node
+ *
+ * @param[in] node The term data node.
+ * @param[out] record The term data node extension record
+ * @param[in] create Whether to create record if not exists
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+LY_ERR lyd_get_or_create_term_nodes_ext_record(const struct lyd_node_term *node, struct lyd_term_nodes_ext_rec **record, ly_bool create);
+
+/**
+ * @brief Frees data within term data node extension record
+ *
+ * @param[in] rec The term data node extension record
+ */
+void lyd_free_term_node_ext_rec(struct lyd_term_nodes_ext_rec *rec);
+
+/**
  * @brief Frees all leafref nodes and target node of given data node
  *
  * @param[in] node The data node, which leafref nodes and/or target node should be cleared.
  */
-void lyd_free_leafref_nodes(struct lyd_node_term *node);
+void lyd_free_leafref_nodes(const struct lyd_node_term *node);
 
 /**
  * @brief Adds leafref data node to the given node.
@@ -609,7 +627,7 @@ void lyd_free_leafref_nodes(struct lyd_node_term *node);
  * @return LY_SUCCESS on success.
  * @return LY_ERR value on error.
  */
-LY_ERR lyd_link_leafref_node(struct lyd_node_term *node, struct lyd_node_term *leafref_node);
+LY_ERR lyd_link_leafref_node(const struct lyd_node_term *node, const struct lyd_node_term *leafref_node);
 
 /**
  * @brief Removes leafref data node to the given node
@@ -622,6 +640,6 @@ LY_ERR lyd_link_leafref_node(struct lyd_node_term *node, struct lyd_node_term *l
  * @return LY_SUCCESS on success.
  * @return LY_ERR value on error.
  */
-LY_ERR lyd_unlink_leafref_node(struct lyd_node_term *node, struct lyd_node_term *leafref_node);
+LY_ERR lyd_unlink_leafref_node(const struct lyd_node_term *node, const struct lyd_node_term *leafref_node);
 
 #endif /* LY_TREE_DATA_INTERNAL_H_ */

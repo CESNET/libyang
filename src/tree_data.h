@@ -854,14 +854,6 @@ struct lyd_node_term {
     };                                      /**< common part corresponding to ::lyd_node */
 
     struct lyd_value value;          /**< node's value representation */
-    struct lyd_node_term **leafref_nodes;   /**< list of the leafref data nodes [sized array](@ref sizedarrays)).
-                                                 By default it is empty. It is filled automatically by validation
-                                                 function of leafref nodes. It can also be manipulated manually by
-                                                 using [link api](@ref lyd_link_leafref_node),
-                                                 [unlink](@ref lyd_unlink_leafref_node). Freeing of the resources is
-                                                 automatic. */
-    struct lyd_node_term *target_node;      /**< pointer to leafref target data node, by default is NULL. The logic
-                                                 is the same as for [leafref_nodes](@ref leafref_nodes). */
 };
 
 /**
@@ -1003,6 +995,20 @@ struct lyd_node_opaq {
 
     struct lyd_attr *attr;          /**< pointer to the list of generic attributes of this node */
     const struct ly_ctx *ctx;       /**< libyang context */
+};
+
+/**
+ * @brief Context term data node record.
+ */
+struct lyd_term_nodes_ext_rec {
+    const struct lyd_node_term *node;           /** pointer to the node itself */
+    const struct lyd_node_term **leafref_nodes; /** list of the leafref data nodes [sized array](@ref sizedarrays)).
+                                                    By default it is empty. It is filled automatically by validation
+                                                    function of leafref nodes. It can also be populated based on manual request
+                                                    using [link api](@ref lyd_link_leafref_node_tree). Freeing of the resources
+                                                    is automatic. */
+    const struct lyd_node_term *target_node;    /** pointer to leafref target data node, by default is NULL. The logic
+                                                    is the same as for [leafref_nodes](@ref leafref_nodes). */
 };
 
 /**
@@ -2711,7 +2717,19 @@ LIBYANG_API_DECL LY_ERR ly_time_str2ts(const char *value, struct timespec *ts);
 LIBYANG_API_DECL LY_ERR ly_time_ts2str(const struct timespec *ts, char **str);
 
 /**
- * @brief Traverse through data tree including root node siblings and adds leafref data node to the given nodes
+ * @brief Gets the term data node extension record for given node
+ *
+ * This API requires usage of LY_CTX_LEAFREF_LINKING context flag.
+ *
+ * @param[in] node The term data node.
+ * @param[out] record The term data node extension record
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+LIBYANG_API_DECL LY_ERR lyd_get_term_nodes_ext_record(const struct lyd_node_term *node, struct lyd_term_nodes_ext_rec **record);
+
+/**
+ * @brief Gets the term node extension record for given nodeTraverse through data tree including root node siblings and adds leafref data node to the given nodes
  *
  * This API requires usage of LY_CTX_LEAFREF_LINKING context flag.
  *
@@ -2719,7 +2737,7 @@ LIBYANG_API_DECL LY_ERR ly_time_ts2str(const struct timespec *ts, char **str);
  * @return LY_SUCCESS on success.
  * @return LY_ERR value on error.
  */
-LIBYANG_API_DECL LY_ERR lyd_link_leafref_node_tree(struct lyd_node *tree);
+LIBYANG_API_DECL LY_ERR lyd_link_leafref_node_tree(const struct lyd_node *tree);
 
 #ifdef __cplusplus
 }

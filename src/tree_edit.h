@@ -244,8 +244,8 @@ void *ly_realloc(void *ptr, size_t size);
         LY_ARRAY_FOR(ARRAY, index__) { \
             if (ARRAY[index__] == VALUE) { \
                 if (index__ != LY_ARRAY_COUNT(ARRAY) - 1) { \
-		    memmove(&(ARRAY[index__]), &(ARRAY[LY_ARRAY_COUNT(ARRAY) - 1]), sizeof *(ARRAY)); \
-		} \
+                    memmove(&(ARRAY[index__]), &(ARRAY[LY_ARRAY_COUNT(ARRAY) - 1]), sizeof *(ARRAY)); \
+                } \
                 remove__ = 1; \
             } \
         } \

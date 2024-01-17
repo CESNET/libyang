@@ -139,22 +139,50 @@ lyd_free_attr_siblings(const struct ly_ctx *ctx, struct lyd_attr *attr)
 }
 
 void
-lyd_free_leafref_nodes(struct lyd_node_term *node)
+lyd_free_term_node_ext_rec(struct lyd_term_nodes_ext_rec *rec)
 {
     LY_ARRAY_COUNT_TYPE u;
+    struct lyd_term_nodes_ext_rec *leafref_rec;
+
+    assert(rec);
+
+    /* remove stored leafref nodes */
+    LY_ARRAY_FOR(rec->leafref_nodes, u) {
+        if (lyd_get_term_nodes_ext_record(rec->leafref_nodes[u], &leafref_rec) == LY_SUCCESS) {
+            leafref_rec->target_node = NULL;
+            if ((LY_ARRAY_COUNT(leafref_rec->leafref_nodes) == 0) && (leafref_rec->target_node == NULL)) {
+                lyd_free_leafref_nodes(rec->leafref_nodes[u]);
+            }
+        }
+    }
+    LY_ARRAY_FREE(rec->leafref_nodes);
+    rec->leafref_nodes = NULL;
+    /* remove stored target node */
+    if (rec->target_node) {
+        lyd_unlink_leafref_node(rec->target_node, rec->node);
+    }
+}
+
+void
+lyd_free_leafref_nodes(const struct lyd_node_term *node)
+{
+    struct ly_ht *ht;
+    uint32_t hash;
+    struct lyd_term_nodes_ext_rec *rec;
 
     assert(node);
 
-    /* remove stored referenced by nodes */
-    LY_ARRAY_FOR(node->leafref_nodes, u) {
-        node->leafref_nodes[u]->target_node = NULL;
+    if (lyd_get_term_nodes_ext_record(node, &rec) != LY_SUCCESS) {
+        return;
     }
-    LY_ARRAY_FREE(node->leafref_nodes);
-    node->leafref_nodes = NULL;
-    /* remove stored target node */
-    if (node->target_node) {
-        lyd_unlink_leafref_node(node->target_node, node);
-    }
+
+    /* free entry content */
+    lyd_free_term_node_ext_rec(rec);
+
+    /* free entry itself from hash table */
+    ht = LYD_CTX(node)->term_nodes_ext_ht;
+    hash = lyht_hash((const char *)&node, sizeof & node);
+    lyht_remove(ht, rec, hash);
 }
 
 /**

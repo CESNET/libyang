@@ -373,6 +373,7 @@ struct ly_ctx {
     void *ext_clb_data;               /**< optional private data for ::ly_ctx.ext_clb */
     struct ly_ht *err_ht;             /**< hash table of thread-specific list of errors related to the context */
     pthread_mutex_t lyb_hash_lock;    /**< lock for storing LYB schema hashes in schema nodes */
+    struct ly_ht *term_nodes_ext_ht;  /**< hash table of term data nodes extension */
 };
 
 /**
