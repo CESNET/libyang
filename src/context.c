@@ -620,8 +620,6 @@ ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
     if (!(ctx->flags & LY_CTX_LEAFREF_LINKING) && (option & LY_CTX_LEAFREF_LINKING)) {
         ctx->term_nodes_ext_ht = lyht_new(1, sizeof(struct lyd_term_nodes_ext_rec), ly_ctx_ht_term_node_ext_equal_cb, NULL, 1);
         LY_CHECK_ERR_RET(!ctx->term_nodes_ext_ht, LOGARG(ctx, option), LY_EMEM);
-    } else if ((ctx->flags & LY_CTX_LEAFREF_LINKING) && !(option & LY_CTX_LEAFREF_LINKING)) {
-        lyht_free(ctx->term_nodes_ext_ht, ly_ctx_ht_term_node_ext_rec_free);
     }
 
     if (!(ctx->flags & LY_CTX_SET_PRIV_PARSED) && (option & LY_CTX_SET_PRIV_PARSED)) {
@@ -663,6 +661,11 @@ ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
 
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
     LY_CHECK_ERR_RET(option & LY_CTX_NO_YANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
+
+    if ((ctx->flags & LY_CTX_LEAFREF_LINKING) && (option & LY_CTX_LEAFREF_LINKING)) {
+        lyht_free(ctx->term_nodes_ext_ht, ly_ctx_ht_term_node_ext_rec_free);
+	ctx->term_nodes_ext_ht = NULL;
+    }
 
     if ((ctx->flags & LY_CTX_SET_PRIV_PARSED) && (option & LY_CTX_SET_PRIV_PARSED)) {
         struct lys_module *mod;
