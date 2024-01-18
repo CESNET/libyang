@@ -2718,16 +2718,16 @@ LIBYANG_API_DECL LY_ERR ly_time_str2ts(const char *value, struct timespec *ts);
 LIBYANG_API_DECL LY_ERR ly_time_ts2str(const struct timespec *ts, char **str);
 
 /**
- * @brief Gets the term data node extension record for given node
+ * @brief Gets the leafref links record for given node
  *
  * This API requires usage of LY_CTX_LEAFREF_LINKING context flag.
  *
  * @param[in] node The term data node.
- * @param[out] record The term data node extension record
+ * @param[out] record The leafref links record
  * @return LY_SUCCESS on success.
  * @return LY_ERR value on error.
  */
-LIBYANG_API_DECL LY_ERR lyd_get_term_nodes_ext_record(const struct lyd_node_term *node, struct lyd_leafref_links_rec **record);
+LIBYANG_API_DECL LY_ERR lyd_get_leafref_links(const struct lyd_node_term *node, struct lyd_leafref_links_rec **record);
 
 /**
  * @brief Traverse through data tree including root node siblings and adds leafrefs links to the given nodes

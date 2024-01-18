@@ -3316,7 +3316,7 @@ lyd_get_or_create_leafref_links_record(const struct lyd_node_term *node, struct 
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_get_term_nodes_ext_record(const struct lyd_node_term *node, struct lyd_leafref_links_rec **record)
+lyd_get_leafref_links(const struct lyd_node_term *node, struct lyd_leafref_links_rec **record)
 {
     return lyd_get_or_create_leafref_links_record(node, record, 0);
 }
@@ -3402,7 +3402,7 @@ lyd_unlink_leafref_node(const struct lyd_node_term *node, const struct lyd_node_
         return LY_EDENIED;
     }
 
-    ret = lyd_get_term_nodes_ext_record(node, &rec);
+    ret = lyd_get_leafref_links(node, &rec);
     if (ret == LY_SUCCESS) {
         LY_ARRAY_REMOVE_VALUE(rec->leafref_nodes, leafref_node);
         if ((LY_ARRAY_COUNT(rec->leafref_nodes) == 0) && (rec->target_node == NULL)) {
@@ -3412,7 +3412,7 @@ lyd_unlink_leafref_node(const struct lyd_node_term *node, const struct lyd_node_
         return ret;
     }
 
-    ret = lyd_get_term_nodes_ext_record(leafref_node, &rec);
+    ret = lyd_get_leafref_links(leafref_node, &rec);
     if (ret == LY_SUCCESS) {
         rec->target_node = NULL;
         if ((LY_ARRAY_COUNT(rec->leafref_nodes) == 0) && (rec->target_node == NULL)) {
