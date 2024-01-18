@@ -232,6 +232,26 @@ void *ly_realloc(void *ptr, size_t size);
         if (ARRAY){free((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1);}
 
 /**
+ * @brief Remove item from array based on value
+ *
+ * @param[in, out] ARRAY A ([sized array](@ref sizedarrays)) to be modified.
+ * @param[in] VALUE The item value to be removed. Only the first occurence will be removed.
+ */
+#define LY_ARRAY_REMOVE_VALUE(ARRAY, VALUE) \
+    { \
+        LY_ARRAY_COUNT_TYPE index__; \
+        LY_ARRAY_FOR(ARRAY, index__) { \
+            if (ARRAY[index__] == VALUE) { \
+                if (index__ != LY_ARRAY_COUNT(ARRAY) - 1) { \
+                    memmove(&(ARRAY[index__]), &(ARRAY[LY_ARRAY_COUNT(ARRAY) - 1]), sizeof *(ARRAY)); \
+                } \
+                LY_ARRAY_DECREMENT(ARRAY); \
+                break; \
+            } \
+        } \
+    }
+
+/**
  * @brief Insert item into linked list.
  *
  * @param[in,out] LIST Linked list to add to.

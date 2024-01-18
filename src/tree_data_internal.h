@@ -591,4 +591,55 @@ char *lyd_path_set(const struct ly_set *dnodes, LYD_PATH_TYPE pathtype);
  */
 LY_ERR ly_set_rm_index_ordered(struct ly_set *set, uint32_t index, void (*destructor)(void *obj));
 
+/**
+ * @brief Frees data within leafref links record
+ *
+ * @param[in] rec The leafref links record
+ */
+void lyd_free_leafref_links_rec(struct lyd_leafref_links_rec *rec);
+
+/**
+ * @brief Frees all leafref nodes and target node of given data node
+ *
+ * @param[in] node The data node, which leafref nodes and/or target node should be cleared.
+ */
+void lyd_free_leafref_nodes(const struct lyd_node_term *node);
+
+/**
+ * @brief Gets or creates the leafref links record.
+ *
+ * @param[in] node The term data node.
+ * @param[out] record The leafref links record.
+ * @param[in] create Whether to create record if not exists.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+LY_ERR lyd_get_or_create_leafref_links_record(const struct lyd_node_term *node, struct lyd_leafref_links_rec **record, ly_bool create);
+
+/**
+ * @brief Adds links between leafref adn data node.
+ *
+ * If the links were already added, it will not be added again.
+ * This API requires usage of LY_CTX_LEAFREF_LINKING context flag.
+ *
+ * @param[in] node Data node to which, the leafref is pointing to.
+ * @param[in] leafref_node The leafref, which points to given node.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+LY_ERR lyd_link_leafref_node(const struct lyd_node_term *node, const struct lyd_node_term *leafref_node);
+
+/**
+ * @brief Removes links between leafref adn data node.
+ *
+ * If the links were never added, it will be silently ignored.
+ * This API requires usage of LY_CTX_LEAFREF_LINKING context flag.
+ *
+ * @param[in] node Data node to which, the leafref is pointing to.
+ * @param[in] leafref_node The leafref, which points to given node.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+LY_ERR lyd_unlink_leafref_node(const struct lyd_node_term *node, const struct lyd_node_term *leafref_node);
+
 #endif /* LY_TREE_DATA_INTERNAL_H_ */

@@ -1315,6 +1315,11 @@ _lyd_change_term(struct lyd_node *term, const void *value, size_t value_len, LY_
         val_change = 0;
     }
 
+    /* clear links to leafref nodes */
+    if (ly_ctx_get_options(LYD_CTX(term)) & LY_CTX_LEAFREF_LINKING) {
+        lyd_free_leafref_nodes(t);
+    }
+
     /* always clear the default flag */
     if (term->flags & LYD_DEFAULT) {
         for (parent = term; parent; parent = lyd_parent(parent)) {

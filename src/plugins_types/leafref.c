@@ -25,6 +25,7 @@
 #include "common.h"
 #include "compat.h"
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
+#include "tree_data_internal.h" /* lyd_link_leafref_node */
 
 /**
  * @page howtoDataLYB LYB Binary Format
@@ -63,12 +64,13 @@ lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type,
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_validate_leafref(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *ctx_node,
+lyplg_type_validate_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *ctx_node,
         const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err)
 {
     LY_ERR ret;
     struct lysc_type_leafref *type_lr = (struct lysc_type_leafref *)type;
     char *errmsg = NULL, *path;
+    struct lyd_node *target = NULL;
 
     *err = NULL;
 
@@ -78,11 +80,15 @@ lyplg_type_validate_leafref(const struct ly_ctx *UNUSED(ctx), const struct lysc_
     }
 
     /* check leafref target existence */
-    if (lyplg_type_resolve_leafref(type_lr, ctx_node, storage, tree, NULL, &errmsg)) {
+    if (lyplg_type_resolve_leafref(type_lr, ctx_node, storage, tree, &target, &errmsg)) {
         path = lyd_path(ctx_node, LYD_PATH_STD, NULL, 0);
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, path, strdup("instance-required"), "%s", errmsg);
         free(errmsg);
         return ret;
+    }
+
+    if (ly_ctx_get_options(ctx) & LY_CTX_LEAFREF_LINKING) {
+        return lyd_link_leafref_node((struct lyd_node_term *)target, (struct lyd_node_term *)ctx_node);
     }
 
     return LY_SUCCESS;

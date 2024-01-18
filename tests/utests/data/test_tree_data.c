@@ -593,6 +593,97 @@ test_lyxp_vars(void **UNUSED(state))
     vars = NULL;
 }
 
+static void
+test_data_leafref_nodes(void **state)
+{
+    struct lyd_node *tree, *iter;
+    struct lyd_node_term *target_node, *leafref_node;
+    const struct lyd_leafref_links_rec *rec;
+    const char *schema, *data, *value;
+
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_LEAFREF_LINKING);
+
+    schema =
+            "module test-data-hash {"
+            "  yang-version 1.1;"
+            "  namespace \"urn:tests:tdh\";"
+            "  prefix t;"
+            "  leaf-list ll {"
+            "    type string;"
+            "  }"
+            "  container c1 {"
+            "    leaf ref1 {"
+            "      type leafref {"
+            "        path \"../../ll\";"
+            "      }"
+            "    }"
+            "  }"
+            "  leaf ref2 {"
+            "    type leafref {"
+            "      path \"../ll\";"
+            "    }"
+            "  }"
+            "}";
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    data =
+            "{"
+            "  \"test-data-hash:ll\": [\"qwe\", \"asd\"],"
+            "  \"test-data-hash:c1\": { \"ref1\": \"qwe\"},"
+            "  \"test-data-hash:ref2\": \"asd\""
+            "}";
+
+    /* The run must not crash due to the assert that checks the hash. */
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    LY_LIST_FOR(tree, iter) {
+        if (strcmp(iter->schema->name, "ll") == 0) {
+            value = lyd_get_value(iter);
+            if (strcmp(value, "asd") == 0) {
+                target_node = (struct lyd_node_term *)iter;
+            }
+        }
+        if (strcmp(iter->schema->name, "ref2") == 0) {
+            leafref_node = (struct lyd_node_term *)iter;
+        }
+    }
+
+    /* verify state after leafref plugin validation */
+    assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(target_node, &rec));
+    assert_int_equal(1, LY_ARRAY_COUNT(rec->leafref_nodes));
+    assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(leafref_node, &rec));
+    assert_ptr_equal(rec->target_node, target_node);
+    /* value modification of target */
+    assert_int_equal(LY_SUCCESS, lyd_change_term((struct lyd_node *)target_node, "ASD"));
+    assert_int_equal(LY_ENOTFOUND, lyd_leafref_get_links(target_node, &rec));
+    assert_int_equal(LY_ENOTFOUND, lyd_leafref_get_links(leafref_node, &rec));
+    /* change back to original value */
+    assert_int_equal(LY_SUCCESS, lyd_change_term((struct lyd_node *)target_node, "asd"));
+    assert_int_equal(LY_ENOTFOUND, lyd_leafref_get_links(target_node, &rec));
+    assert_int_equal(LY_ENOTFOUND, lyd_leafref_get_links(leafref_node, &rec));
+    /* linking the whole tree again */
+    assert_int_equal(LY_SUCCESS, lyd_leafref_link_node_tree(tree));
+    assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(target_node, &rec));
+    assert_int_equal(1, LY_ARRAY_COUNT(rec->leafref_nodes));
+    assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(leafref_node, &rec));
+    assert_ptr_equal(rec->target_node, target_node);
+    /* value modification of leafref */
+    assert_int_equal(LY_SUCCESS, lyd_change_term((struct lyd_node *)leafref_node, "qwe"));
+    assert_int_equal(LY_ENOTFOUND, lyd_leafref_get_links(target_node, &rec));
+    assert_int_equal(LY_ENOTFOUND, lyd_leafref_get_links(leafref_node, &rec));
+    assert_int_equal(LY_SUCCESS, lyd_change_term((struct lyd_node *)leafref_node, "asd"));
+    assert_int_equal(LY_ENOTFOUND, lyd_leafref_get_links(target_node, &rec));
+    assert_int_equal(LY_ENOTFOUND, lyd_leafref_get_links(leafref_node, &rec));
+    /* linking the whole tree again */
+    assert_int_equal(LY_SUCCESS, lyd_leafref_link_node_tree(tree));
+    assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(target_node, &rec));
+    assert_int_equal(1, LY_ARRAY_COUNT(rec->leafref_nodes));
+    assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(leafref_node, &rec));
+    assert_ptr_equal(rec->target_node, target_node);
+    /* freeing whole tree */
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -606,6 +697,7 @@ main(void)
         UTEST(test_find_path, setup),
         UTEST(test_data_hash, setup),
         UTEST(test_lyxp_vars),
+        UTEST(test_data_leafref_nodes),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

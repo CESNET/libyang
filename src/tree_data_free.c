@@ -138,6 +138,53 @@ lyd_free_attr_siblings(const struct ly_ctx *ctx, struct lyd_attr *attr)
     lyd_free_attr(ctx, attr, 1);
 }
 
+void
+lyd_free_leafref_links_rec(struct lyd_leafref_links_rec *rec)
+{
+    LY_ARRAY_COUNT_TYPE u;
+    struct lyd_leafref_links_rec *leafref_rec;
+
+    assert(rec);
+
+    /* remove stored leafref nodes */
+    LY_ARRAY_FOR(rec->leafref_nodes, u) {
+        if (lyd_get_or_create_leafref_links_record(rec->leafref_nodes[u], &leafref_rec, 0) == LY_SUCCESS) {
+            leafref_rec->target_node = NULL;
+            if ((LY_ARRAY_COUNT(leafref_rec->leafref_nodes) == 0) && (leafref_rec->target_node == NULL)) {
+                lyd_free_leafref_nodes(rec->leafref_nodes[u]);
+            }
+        }
+    }
+    LY_ARRAY_FREE(rec->leafref_nodes);
+    rec->leafref_nodes = NULL;
+    /* remove stored target node */
+    if (rec->target_node) {
+        lyd_unlink_leafref_node(rec->target_node, rec->node);
+    }
+}
+
+void
+lyd_free_leafref_nodes(const struct lyd_node_term *node)
+{
+    struct ly_ht *ht;
+    uint32_t hash;
+    struct lyd_leafref_links_rec *rec;
+
+    assert(node);
+
+    if (lyd_get_or_create_leafref_links_record(node, &rec, 0) != LY_SUCCESS) {
+        return;
+    }
+
+    /* free entry content */
+    lyd_free_leafref_links_rec(rec);
+
+    /* free entry itself from hash table */
+    ht = LYD_CTX(node)->leafref_links_ht;
+    hash = lyht_hash((const char *)&node, sizeof & node);
+    lyht_remove(ht, rec, hash);
+}
+
 /**
  * @brief Free Data (sub)tree.
  * @param[in] node Data node to be freed.
@@ -177,7 +224,10 @@ lyd_free_subtree(struct lyd_node *node, ly_bool top)
         /* only frees the value this way */
         lyd_any_copy_value(node, NULL, 0);
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
-        ((struct lysc_node_leaf *)node->schema)->type->plugin->free(LYD_CTX(node), &((struct lyd_node_term *)node)->value);
+        struct lyd_node_term *node_term = (struct lyd_node_term *)node;
+
+        ((struct lysc_node_leaf *)node->schema)->type->plugin->free(LYD_CTX(node), &node_term->value);
+        lyd_free_leafref_nodes(node_term);
     }
 
     if (!node->schema) {

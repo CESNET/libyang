@@ -220,6 +220,11 @@ test_options(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_PREFER_SEARCHDIRS));
     assert_int_equal(0, UTEST_LYCTX->flags & LY_CTX_PREFER_SEARCHDIRS);
 
+    /* LY_CTX_LEAFREF_LINKING */
+    assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_LEAFREF_LINKING);
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_LEAFREF_LINKING));
+    assert_int_equal(0, UTEST_LYCTX->flags & LY_CTX_LEAFREF_LINKING);
+
     assert_int_equal(UTEST_LYCTX->flags, ly_ctx_get_options(UTEST_LYCTX));
 
     /* set back */
@@ -242,6 +247,10 @@ test_options(void **state)
     /* LY_CTX_PREFER_SEARCHDIRS */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_PREFER_SEARCHDIRS));
     assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_PREFER_SEARCHDIRS);
+
+    /* LY_CTX_LEAFREF_LINKING */
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_LEAFREF_LINKING));
+    assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_LEAFREF_LINKING);
 
     assert_int_equal(UTEST_LYCTX->flags, ly_ctx_get_options(UTEST_LYCTX));
 }
