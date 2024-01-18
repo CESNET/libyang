@@ -2113,20 +2113,21 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, co
     struct lyd_node_opaq *opaq_trg, *opaq_src;
     struct lysc_type *type;
     struct ly_ht *child_dup_inst = NULL;
-    LY_ERR ret;
+    LY_ERR r;
     ly_bool first_inst = 0;
 
     sibling_src = *sibling_src_p;
     if (!sibling_src->schema) {
         /* try to find the same opaque node */
-        lyd_find_sibling_opaq_next(*first_trg, LYD_NAME(sibling_src), &match_trg);
+        r = lyd_find_sibling_opaq_next(*first_trg, LYD_NAME(sibling_src), &match_trg);
     } else if (sibling_src->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
         /* try to find the exact instance */
-        lyd_find_sibling_first(*first_trg, sibling_src, &match_trg);
+        r = lyd_find_sibling_first(*first_trg, sibling_src, &match_trg);
     } else {
         /* try to simply find the node, there cannot be more instances */
-        lyd_find_sibling_val(*first_trg, sibling_src->schema, NULL, 0, &match_trg);
+        r = lyd_find_sibling_val(*first_trg, sibling_src->schema, NULL, 0, &match_trg);
     }
+    LY_CHECK_RET(r && (r != LY_ENOTFOUND), r);
 
     if (match_trg) {
         /* update match as needed */
@@ -2183,16 +2184,16 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, co
         }
 
         /* check descendants, recursively */
-        ret = LY_SUCCESS;
+        r = LY_SUCCESS;
         LY_LIST_FOR_SAFE(lyd_child_no_keys(sibling_src), tmp, child_src) {
-            ret = lyd_merge_sibling_r(lyd_node_child_p(match_trg), match_trg, &child_src, merge_cb, cb_data, options,
+            r = lyd_merge_sibling_r(lyd_node_child_p(match_trg), match_trg, &child_src, merge_cb, cb_data, options,
                     &child_dup_inst);
-            if (ret) {
+            if (r) {
                 break;
             }
         }
         lyd_dup_inst_free(child_dup_inst);
-        LY_CHECK_RET(ret);
+        LY_CHECK_RET(r);
     } else {
         /* node not found, merge it */
         if (options & LYD_MERGE_DESTRUCT) {
