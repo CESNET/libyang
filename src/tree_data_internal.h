@@ -592,22 +592,11 @@ char *lyd_path_set(const struct ly_set *dnodes, LYD_PATH_TYPE pathtype);
 LY_ERR ly_set_rm_index_ordered(struct ly_set *set, uint32_t index, void (*destructor)(void *obj));
 
 /**
- * @brief Gets or creates the term data node extension record for given node
- *
- * @param[in] node The term data node.
- * @param[out] record The term data node extension record
- * @param[in] create Whether to create record if not exists
- * @return LY_SUCCESS on success.
- * @return LY_ERR value on error.
- */
-LY_ERR lyd_get_or_create_term_nodes_ext_record(const struct lyd_node_term *node, struct lyd_term_nodes_ext_rec **record, ly_bool create);
-
-/**
  * @brief Frees data within term data node extension record
  *
  * @param[in] rec The term data node extension record
  */
-void lyd_free_term_node_ext_rec(struct lyd_term_nodes_ext_rec *rec);
+void lyd_free_leafref_links_rec(struct lyd_leafref_links_rec *rec);
 
 /**
  * @brief Frees all leafref nodes and target node of given data node
@@ -617,26 +606,26 @@ void lyd_free_term_node_ext_rec(struct lyd_term_nodes_ext_rec *rec);
 void lyd_free_leafref_nodes(const struct lyd_node_term *node);
 
 /**
- * @brief Adds leafref data node to the given node.
+ * @brief Adds links between leafref adn data node.
  *
- * If the leafref data node was already added, it will not be added again.
+ * If the links were already added, it will not be added again.
  * This API requires usage of LY_CTX_LEAFREF_LINKING context flag.
  *
- * @param[in] node Data node to which the leafref data node will be added.
- * @param[in] leafref_node The leafref data node, which points to given node.
+ * @param[in] node Data node to which, the leafref is pointing to.
+ * @param[in] leafref_node The leafref, which points to given node.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value on error.
  */
 LY_ERR lyd_link_leafref_node(const struct lyd_node_term *node, const struct lyd_node_term *leafref_node);
 
 /**
- * @brief Removes leafref data node to the given node
+ * @brief Removes links between leafref adn data node.
  *
- * If the leafref data node was not added, it will be silently ignored.
+ * If the links were never added, it will be silently ignored.
  * This API requires usage of LY_CTX_LEAFREF_LINKING context flag.
  *
- * @param[in] node Data node from which the leafref data node will be removed.
- * @param[in] leafref_node The leafref data node, which points to given node.
+ * @param[in] node Data node to which, the leafref is pointing to.
+ * @param[in] leafref_node The leafref, which points to given node.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value on error.
  */

@@ -139,10 +139,10 @@ lyd_free_attr_siblings(const struct ly_ctx *ctx, struct lyd_attr *attr)
 }
 
 void
-lyd_free_term_node_ext_rec(struct lyd_term_nodes_ext_rec *rec)
+lyd_free_leafref_links_rec(struct lyd_leafref_links_rec *rec)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct lyd_term_nodes_ext_rec *leafref_rec;
+    struct lyd_leafref_links_rec *leafref_rec;
 
     assert(rec);
 
@@ -168,7 +168,7 @@ lyd_free_leafref_nodes(const struct lyd_node_term *node)
 {
     struct ly_ht *ht;
     uint32_t hash;
-    struct lyd_term_nodes_ext_rec *rec;
+    struct lyd_leafref_links_rec *rec;
 
     assert(node);
 
@@ -177,10 +177,10 @@ lyd_free_leafref_nodes(const struct lyd_node_term *node)
     }
 
     /* free entry content */
-    lyd_free_term_node_ext_rec(rec);
+    lyd_free_leafref_links_rec(rec);
 
     /* free entry itself from hash table */
-    ht = LYD_CTX(node)->term_nodes_ext_ht;
+    ht = LYD_CTX(node)->leafref_links_ht;
     hash = lyht_hash((const char *)&node, sizeof & node);
     lyht_remove(ht, rec, hash);
 }

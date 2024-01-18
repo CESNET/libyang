@@ -3274,20 +3274,20 @@ lyd_get_value(const struct lyd_node *node)
 }
 
 /**
- * @brief Gets the term data node extension record for given node
+ * @brief Gets or creates the leafref links record.
  *
  * @param[in] node The term data node.
- * @param[out] record The term data node extension record
- * @param[in] create Whether to create record if not exists
+ * @param[out] record The leafref links record.
+ * @param[in] create Whether to create record if not exists.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value on error.
  */
-LY_ERR
-lyd_get_or_create_term_nodes_ext_record(const struct lyd_node_term *node, struct lyd_term_nodes_ext_rec **record, ly_bool create)
+static LY_ERR
+lyd_get_or_create_leafref_links_record(const struct lyd_node_term *node, struct lyd_leafref_links_rec **record, ly_bool create)
 {
     struct ly_ht *ht;
     uint32_t hash;
-    struct lyd_term_nodes_ext_rec rec;
+    struct lyd_leafref_links_rec rec;
 
     assert(node);
     assert(record);
@@ -3301,7 +3301,7 @@ lyd_get_or_create_term_nodes_ext_record(const struct lyd_node_term *node, struct
     rec.leafref_nodes = NULL;
     rec.target_node = NULL;
 
-    ht = LYD_CTX(node)->term_nodes_ext_ht;
+    ht = LYD_CTX(node)->leafref_links_ht;
     hash = lyht_hash((const char *)&node, sizeof & node);
     if (lyht_find(ht, &rec, hash, (void **)record) == LY_ENOTFOUND) {
         if (create) {
@@ -3316,9 +3316,9 @@ lyd_get_or_create_term_nodes_ext_record(const struct lyd_node_term *node, struct
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_get_term_nodes_ext_record(const struct lyd_node_term *node, struct lyd_term_nodes_ext_rec **record)
+lyd_get_term_nodes_ext_record(const struct lyd_node_term *node, struct lyd_leafref_links_rec **record)
 {
-    return lyd_get_or_create_term_nodes_ext_record(node, record, 0);
+    return lyd_get_or_create_leafref_links_record(node, record, 0);
 }
 
 LY_ERR
@@ -3326,7 +3326,7 @@ lyd_link_leafref_node(const struct lyd_node_term *node, const struct lyd_node_te
 {
     LY_ARRAY_COUNT_TYPE u;
     const struct lyd_node_term **item = NULL;
-    struct lyd_term_nodes_ext_rec *rec;
+    struct lyd_leafref_links_rec *rec;
 
     assert(node);
     assert(leafref_node);
@@ -3335,7 +3335,7 @@ lyd_link_leafref_node(const struct lyd_node_term *node, const struct lyd_node_te
         return LY_EDENIED;
     }
 
-    LY_CHECK_RET(lyd_get_or_create_term_nodes_ext_record(node, &rec, 1));
+    LY_CHECK_RET(lyd_get_or_create_leafref_links_record(node, &rec, 1));
     LY_ARRAY_FOR(rec->leafref_nodes, u) {
         if (rec->leafref_nodes[u] == leafref_node) {
             return LY_SUCCESS;
@@ -3344,7 +3344,7 @@ lyd_link_leafref_node(const struct lyd_node_term *node, const struct lyd_node_te
 
     LY_ARRAY_NEW_RET(LYD_CTX(node), rec->leafref_nodes, item, LY_EMEM);
     *item = leafref_node;
-    LY_CHECK_RET(lyd_get_or_create_term_nodes_ext_record(leafref_node, &rec, 1));
+    LY_CHECK_RET(lyd_get_or_create_leafref_links_record(leafref_node, &rec, 1));
     rec->target_node = node;
     return LY_SUCCESS;
 }
@@ -3393,7 +3393,7 @@ LY_ERR
 lyd_unlink_leafref_node(const struct lyd_node_term *node, const struct lyd_node_term *leafref_node)
 {
     LY_ERR ret;
-    struct lyd_term_nodes_ext_rec *rec;
+    struct lyd_leafref_links_rec *rec;
 
     assert(node);
     assert(leafref_node);

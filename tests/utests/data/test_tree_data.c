@@ -598,7 +598,7 @@ test_data_leafref_nodes(void **state)
 {
     struct lyd_node *tree, *iter;
     struct lyd_node_term *target_node, *leafref_node;
-    struct lyd_term_nodes_ext_rec *rec;
+    struct lyd_leafref_links_rec *rec;
     const char *schema, *data, *value;
 
     ly_ctx_set_options(UTEST_LYCTX, LY_CTX_LEAFREF_LINKING);

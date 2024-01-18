@@ -243,9 +243,9 @@ ly_ctx_ht_err_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UN
  * @brief Hash table value-equal callback for comparing term data node extension hash table record.
  */
 static ly_bool
-ly_ctx_ht_term_node_ext_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
+ly_ctx_ht_leafref_links_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
 {
-    struct lyd_term_nodes_ext_rec *rec1 = val1_p, *rec2 = val2_p;
+    struct lyd_leafref_links_rec *rec1 = val1_p, *rec2 = val2_p;
 
     return rec1->node == rec2->node;
 }
@@ -256,11 +256,11 @@ ly_ctx_ht_term_node_ext_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod)
  * @param[in] val_p Pointer to a pointer to a term data node extension item to free with all the siblings.
  */
 static void
-ly_ctx_ht_term_node_ext_rec_free(void *val_p)
+ly_ctx_ht_leafref_links_rec_free(void *val_p)
 {
-    struct lyd_term_nodes_ext_rec *rec = val_p;
+    struct lyd_leafref_links_rec *rec = val_p;
 
-    lyd_free_term_node_ext_rec(rec);
+    lyd_free_leafref_links_rec(rec);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -287,8 +287,8 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     LY_CHECK_ERR_GOTO(lyplg_init(), LOGINT(NULL); rc = LY_EINT, cleanup);
 
     if (options & LY_CTX_LEAFREF_LINKING) {
-        ctx->term_nodes_ext_ht = lyht_new(1, sizeof(struct lyd_term_nodes_ext_rec), ly_ctx_ht_term_node_ext_equal_cb, NULL, 1);
-        LY_CHECK_ERR_GOTO(!ctx->term_nodes_ext_ht, rc = LY_EMEM, cleanup);
+        ctx->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec), ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
+        LY_CHECK_ERR_GOTO(!ctx->leafref_links_ht, rc = LY_EMEM, cleanup);
     }
 
     /* initialize thread-specific error hash table */
@@ -618,8 +618,8 @@ ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
             LOGARG(ctx, option), LY_EINVAL);
 
     if (!(ctx->flags & LY_CTX_LEAFREF_LINKING) && (option & LY_CTX_LEAFREF_LINKING)) {
-        ctx->term_nodes_ext_ht = lyht_new(1, sizeof(struct lyd_term_nodes_ext_rec), ly_ctx_ht_term_node_ext_equal_cb, NULL, 1);
-        LY_CHECK_ERR_RET(!ctx->term_nodes_ext_ht, LOGARG(ctx, option), LY_EMEM);
+        ctx->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec), ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
+        LY_CHECK_ERR_RET(!ctx->leafref_links_ht, LOGARG(ctx, option), LY_EMEM);
     }
 
     if (!(ctx->flags & LY_CTX_SET_PRIV_PARSED) && (option & LY_CTX_SET_PRIV_PARSED)) {
@@ -663,8 +663,8 @@ ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
     LY_CHECK_ERR_RET(option & LY_CTX_NO_YANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
 
     if ((ctx->flags & LY_CTX_LEAFREF_LINKING) && (option & LY_CTX_LEAFREF_LINKING)) {
-        lyht_free(ctx->term_nodes_ext_ht, ly_ctx_ht_term_node_ext_rec_free);
-        ctx->term_nodes_ext_ht = NULL;
+        lyht_free(ctx->leafref_links_ht, ly_ctx_ht_leafref_links_rec_free);
+        ctx->leafref_links_ht = NULL;
     }
 
     if ((ctx->flags & LY_CTX_SET_PRIV_PARSED) && (option & LY_CTX_SET_PRIV_PARSED)) {
@@ -1357,9 +1357,9 @@ ly_ctx_destroy(struct ly_ctx *ctx)
     /* leftover unres */
     lys_unres_glob_erase(&ctx->unres);
 
-    /* clean the term data node extension hash table */
-    if (ctx->term_nodes_ext_ht) {
-        lyht_free(ctx->term_nodes_ext_ht, ly_ctx_ht_term_node_ext_rec_free);
+    /* clean the leafref links hash table */
+    if (ctx->leafref_links_ht) {
+        lyht_free(ctx->leafref_links_ht, ly_ctx_ht_leafref_links_rec_free);
     }
 
     /* clean the error hash table */
