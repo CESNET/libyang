@@ -592,9 +592,9 @@ char *lyd_path_set(const struct ly_set *dnodes, LYD_PATH_TYPE pathtype);
 LY_ERR ly_set_rm_index_ordered(struct ly_set *set, uint32_t index, void (*destructor)(void *obj));
 
 /**
- * @brief Frees data within term data node extension record
+ * @brief Frees data within leafref links record
  *
- * @param[in] rec The term data node extension record
+ * @param[in] rec The leafref links record
  */
 void lyd_free_leafref_links_rec(struct lyd_leafref_links_rec *rec);
 

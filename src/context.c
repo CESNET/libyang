@@ -240,7 +240,7 @@ ly_ctx_ht_err_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UN
 }
 
 /**
- * @brief Hash table value-equal callback for comparing term data node extension hash table record.
+ * @brief Hash table value-equal callback for comparing leafref links hash table record.
  */
 static ly_bool
 ly_ctx_ht_leafref_links_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
@@ -251,9 +251,9 @@ ly_ctx_ht_leafref_links_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod)
 }
 
 /**
- * @brief Callback for freeing term data node extension hash table values.
+ * @brief Callback for freeing leafref links hash table values.
  *
- * @param[in] val_p Pointer to a pointer to a term data node extension item to free with all the siblings.
+ * @param[in] val_p Pointer to a pointer to a leafref links item to free with all the siblings.
  */
 static void
 ly_ctx_ht_leafref_links_rec_free(void *val_p)
