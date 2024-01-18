@@ -182,7 +182,7 @@ lyd_free_leafref_nodes(const struct lyd_node_term *node)
 
     /* free entry itself from hash table */
     ht = LYD_CTX(node)->leafref_links_ht;
-    hash = lyht_hash((const char *)&node, sizeof & node);
+    hash = lyht_hash((const char *)&node, sizeof node);
     lyht_remove(ht, rec, hash);
 }
 

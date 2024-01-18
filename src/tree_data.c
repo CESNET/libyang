@@ -3292,7 +3292,8 @@ lyd_get_or_create_leafref_links_record(const struct lyd_node_term *node, struct 
 
     rec.node = node;
     ht = LYD_CTX(node)->leafref_links_ht;
-    hash = lyht_hash((const char *)&node, sizeof & node);
+    hash = lyht_hash((const char *)&node, sizeof node);
+
     if (lyht_find(ht, &rec, hash, (void **)record) == LY_ENOTFOUND) {
         if (create) {
             LY_CHECK_RET(lyht_insert_no_check(ht, &rec, hash, (void **)record));
