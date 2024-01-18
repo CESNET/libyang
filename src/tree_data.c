@@ -3309,8 +3309,8 @@ lyd_get_or_create_leafref_links_record(const struct lyd_node_term *node, struct 
 LIBYANG_API_DEF LY_ERR
 lyd_leafref_get_links(const struct lyd_node_term *node, const struct lyd_leafref_links_rec **record)
 {
-    LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
-    LY_CHECK_ARG_RET(NULL, record, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, node, record, LY_EINVAL);
+
     return lyd_get_or_create_leafref_links_record(node, (struct lyd_leafref_links_rec **)record, 0);
 }
 
