@@ -251,9 +251,9 @@ ly_ctx_ht_leafref_links_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod)
 }
 
 /**
- * @brief Callback for freeing leafref links hash table values.
+ * @brief Callback for freeing leafref links recorcd internal resources.
  *
- * @param[in] val_p Pointer to a pointer to a leafref links item to free with all the siblings.
+ * @param[in] val_p Pointer to leafref links record
  */
 static void
 ly_ctx_ht_leafref_links_rec_free(void *val_p)

@@ -606,6 +606,17 @@ void lyd_free_leafref_links_rec(struct lyd_leafref_links_rec *rec);
 void lyd_free_leafref_nodes(const struct lyd_node_term *node);
 
 /**
+ * @brief Gets or creates the leafref links record.
+ *
+ * @param[in] node The term data node.
+ * @param[out] record The leafref links record.
+ * @param[in] create Whether to create record if not exists.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+LY_ERR lyd_get_or_create_leafref_links_record(const struct lyd_node_term *node, struct lyd_leafref_links_rec **record, ly_bool create);
+
+/**
  * @brief Adds links between leafref adn data node.
  *
  * If the links were already added, it will not be added again.

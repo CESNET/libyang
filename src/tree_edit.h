@@ -247,6 +247,7 @@ void *ly_realloc(void *ptr, size_t size);
                     memmove(&(ARRAY[index__]), &(ARRAY[LY_ARRAY_COUNT(ARRAY) - 1]), sizeof *(ARRAY)); \
                 } \
                 remove__ = 1; \
+                break; \
             } \
         } \
         if (remove__) { \

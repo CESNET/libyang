@@ -1003,10 +1003,11 @@ struct lyd_node_opaq {
 struct lyd_leafref_links_rec {
     const struct lyd_node_term *node;           /** pointer to the data node itself */
     const struct lyd_node_term **leafref_nodes; /** list of the leafref pointing to this data node [sized array](@ref sizedarrays)),
-                                                    By default it is empty. It is filled automatically by validation
-                                                    function of leafref nodes. It can also be populated based on manual request
-                                                    using [link api](@ref lyd_link_leafref_node_tree). Freeing of the resources
-                                                    is automatic. */
+                                                    By default it is empty. It is filled automatically by validation function of
+                                                    leafref nodes, which are valid and are not using 'require-instance false'.
+                                                    It can also be populated based on manual request using
+                                                    [link api](@ref lyd_leafref_link_node_tree). Freeing of the resources is
+                                                    automatic. */
     const struct lyd_node_term *target_node;    /** pointer to leafref target data node, by default is NULL. The logic
                                                     is the same as for [leafref_nodes](@ref leafref_nodes) and is filled only
                                                     for leafrefs */
@@ -2727,7 +2728,7 @@ LIBYANG_API_DECL LY_ERR ly_time_ts2str(const struct timespec *ts, char **str);
  * @return LY_SUCCESS on success.
  * @return LY_ERR value on error.
  */
-LIBYANG_API_DECL LY_ERR lyd_get_leafref_links(const struct lyd_node_term *node, struct lyd_leafref_links_rec **record);
+LIBYANG_API_DECL LY_ERR lyd_leafref_get_links(const struct lyd_node_term *node, const struct lyd_leafref_links_rec **record);
 
 /**
  * @brief Traverse through data tree including root node siblings and adds leafrefs links to the given nodes
@@ -2738,7 +2739,7 @@ LIBYANG_API_DECL LY_ERR lyd_get_leafref_links(const struct lyd_node_term *node, 
  * @return LY_SUCCESS on success.
  * @return LY_ERR value on error.
  */
-LIBYANG_API_DECL LY_ERR lyd_link_leafref_node_tree(const struct lyd_node *tree);
+LIBYANG_API_DECL LY_ERR lyd_leafref_link_node_tree(const struct lyd_node *tree);
 
 #ifdef __cplusplus
 }
