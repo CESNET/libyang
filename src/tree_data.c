@@ -3279,27 +3279,24 @@ lyd_get_or_create_leafref_links_record(const struct lyd_node_term *node, struct 
 {
     struct ly_ht *ht;
     uint32_t hash;
-    struct lyd_leafref_links_rec rec;
+    struct lyd_leafref_links_rec rec = {0};
 
     assert(node);
     assert(record);
 
+    *record = NULL;
+
     if (!(ly_ctx_get_options(LYD_CTX(node)) & LY_CTX_LEAFREF_LINKING)) {
-        *record = NULL;
         return LY_EDENIED;
     }
 
     rec.node = node;
-    rec.leafref_nodes = NULL;
-    rec.target_node = NULL;
-
     ht = LYD_CTX(node)->leafref_links_ht;
     hash = lyht_hash((const char *)&node, sizeof & node);
     if (lyht_find(ht, &rec, hash, (void **)record) == LY_ENOTFOUND) {
         if (create) {
             LY_CHECK_RET(lyht_insert_no_check(ht, &rec, hash, (void **)record));
         } else {
-            *record = NULL;
             return LY_ENOTFOUND;
         }
     }
@@ -3352,7 +3349,6 @@ lyd_leafref_link_node_tree(const struct lyd_node *tree)
     struct lyd_node_term *leafref_node;
     struct lysc_node_leaf *leaf_schema;
     struct lysc_type_leafref *lref;
-    LY_ERR ret;
 
     LY_CHECK_ARG_RET(NULL, tree, LY_EINVAL);
 
@@ -3365,21 +3361,22 @@ lyd_leafref_link_node_tree(const struct lyd_node *tree)
             if (elem->schema->nodetype & LYD_NODE_TERM) {
                 leafref_node = (struct lyd_node_term *)elem;
                 leaf_schema = (struct lysc_node_leaf *)elem->schema;
+
                 if (leaf_schema->type->basetype == LY_TYPE_LEAFREF) {
                     lref = (struct lysc_type_leafref *)leaf_schema->type;
                     if (lyplg_type_resolve_leafref(lref, elem, &leafref_node->value, tree, &target, &errmsg)) {
+                        /* leafref target not found */
                         free(errmsg);
-                    } else if (target->schema->nodetype & LYD_NODE_TERM) {
-                        ret = lyd_link_leafref_node((struct lyd_node_term *)target, leafref_node);
-                        if (ret != LY_SUCCESS) {
-                            return ret;
-                        }
+                    } else {
+                        /* leafref target found, link it */
+                        LY_CHECK_RET(lyd_link_leafref_node((struct lyd_node_term *)target, leafref_node));
                     }
                 }
             }
             LYD_TREE_DFS_END(sibling, elem);
         }
     }
+
     return LY_SUCCESS;
 }
 

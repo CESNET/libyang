@@ -150,13 +150,14 @@ lyd_free_leafref_links_rec(struct lyd_leafref_links_rec *rec)
     LY_ARRAY_FOR(rec->leafref_nodes, u) {
         if (lyd_get_or_create_leafref_links_record(rec->leafref_nodes[u], &leafref_rec, 0) == LY_SUCCESS) {
             leafref_rec->target_node = NULL;
-            if ((LY_ARRAY_COUNT(leafref_rec->leafref_nodes) == 0) && (leafref_rec->target_node == NULL)) {
+            if (!LY_ARRAY_COUNT(leafref_rec->leafref_nodes) && !leafref_rec->target_node) {
                 lyd_free_leafref_nodes(rec->leafref_nodes[u]);
             }
         }
     }
     LY_ARRAY_FREE(rec->leafref_nodes);
     rec->leafref_nodes = NULL;
+
     /* remove stored target node */
     if (rec->target_node) {
         lyd_unlink_leafref_node(rec->target_node, rec->node);
@@ -172,7 +173,7 @@ lyd_free_leafref_nodes(const struct lyd_node_term *node)
 
     assert(node);
 
-    if (lyd_get_or_create_leafref_links_record(node, &rec, 0) != LY_SUCCESS) {
+    if (lyd_get_or_create_leafref_links_record(node, &rec, 0)) {
         return;
     }
 
@@ -187,6 +188,7 @@ lyd_free_leafref_nodes(const struct lyd_node_term *node)
 
 /**
  * @brief Free Data (sub)tree.
+ *
  * @param[in] node Data node to be freed.
  * @param[in] top Recursion flag to unlink the root of the subtree being freed.
  */
