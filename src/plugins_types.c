@@ -1006,6 +1006,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
     if (target) {
         *target = NULL;
     }
+    *errmsg = NULL;
 
     /* get the canonical value */
     val_str = lyd_value_get_canonical(LYD_CTX(node), value);
