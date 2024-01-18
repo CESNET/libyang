@@ -1004,7 +1004,7 @@ struct lyd_leafref_links_rec {
     const struct lyd_node_term *node;           /** pointer to the data node itself */
     const struct lyd_node_term **leafref_nodes; /** list of the leafref pointing to this data node [sized array](@ref sizedarrays)),
                                                     By default it is empty. It is filled automatically by validation function of
-                                                    leafref nodes, which are valid and are not using 'require-instance false'.
+                                                    leafref nodes, which are valid and are not using 'require-instance false;'.
                                                     It can also be populated based on manual request using
                                                     [link api](@ref lyd_leafref_link_node_tree). Freeing of the resources is
                                                     automatic. */

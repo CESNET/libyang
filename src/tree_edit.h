@@ -235,23 +235,19 @@ void *ly_realloc(void *ptr, size_t size);
  * @brief Remove item from array based on value
  *
  * @param[in, out] ARRAY A ([sized array](@ref sizedarrays)) to be modified.
- * @param[in] INDEX The item position to be removed.
+ * @param[in] VALUE The item value to be removed. Only the first occurence will be removed.
  */
 #define LY_ARRAY_REMOVE_VALUE(ARRAY, VALUE) \
     { \
         LY_ARRAY_COUNT_TYPE index__; \
-        ly_bool remove__ = 0; \
         LY_ARRAY_FOR(ARRAY, index__) { \
             if (ARRAY[index__] == VALUE) { \
                 if (index__ != LY_ARRAY_COUNT(ARRAY) - 1) { \
                     memmove(&(ARRAY[index__]), &(ARRAY[LY_ARRAY_COUNT(ARRAY) - 1]), sizeof *(ARRAY)); \
                 } \
-                remove__ = 1; \
+                LY_ARRAY_DECREMENT(ARRAY); \
                 break; \
             } \
-        } \
-        if (remove__) { \
-            LY_ARRAY_DECREMENT(ARRAY); \
         } \
     }
 

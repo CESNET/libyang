@@ -3309,14 +3309,9 @@ lyd_get_or_create_leafref_links_record(const struct lyd_node_term *node, struct 
 LIBYANG_API_DEF LY_ERR
 lyd_leafref_get_links(const struct lyd_node_term *node, const struct lyd_leafref_links_rec **record)
 {
-    struct lyd_leafref_links_rec *record2 = NULL;
-    LY_ERR ret;
-
-    assert(record);
-
-    ret = lyd_get_or_create_leafref_links_record(node, &record2, 0);
-    *record = record2;
-    return ret;
+    LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, record, LY_EINVAL);
+    return lyd_get_or_create_leafref_links_record(node, (struct lyd_leafref_links_rec **)record, 0);
 }
 
 LY_ERR
@@ -3358,7 +3353,7 @@ lyd_leafref_link_node_tree(const struct lyd_node *tree)
     struct lysc_type_leafref *lref;
     LY_ERR ret;
 
-    assert(tree);
+    LY_CHECK_ARG_RET(NULL, tree, LY_EINVAL);
 
     if (!(ly_ctx_get_options(LYD_CTX(tree)) & LY_CTX_LEAFREF_LINKING)) {
         return LY_EDENIED;
