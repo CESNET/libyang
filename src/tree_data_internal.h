@@ -399,6 +399,15 @@ void lyd_insert_before_node(struct lyd_node *sibling, struct lyd_node *node);
 void lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, struct lyd_node *node, ly_bool last);
 
 /**
+ * @brief Insert a node into parent/siblings, either before the 'anchor' or as the last sibling.
+ *
+ * @param[in] parent Parent to insert into, NULL for top-level sibling.
+ * @param[in] first_sibling First sibling, NULL if no top-level sibling exist yet. Can be also NULL if @p parent is set.
+ * @param[in] node Individual node (without siblings) to insert.
+ */
+void lyd_insert_node_ordby_schema(struct lyd_node *parent, struct lyd_node *first_sibling, struct lyd_node *node);
+
+/**
  * @brief Unlink the specified data subtree.
  *
  * @param[in] node Data tree node to be unlinked (together with all the children).
