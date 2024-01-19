@@ -853,6 +853,100 @@ lyds_create_node(struct lyd_node *node, struct rb_node **rbn)
     return LY_SUCCESS;
 }
 
+void
+lyds_pool_add(struct lyd_node *leader, struct lyds_pool *pool)
+{
+    struct rb_node *rbt;
+    struct lyd_meta *root_meta, *tmp;
+
+    assert(pool && leader);
+
+    rbt = lyds_get_rb_tree(leader, &root_meta);
+    if (root_meta) {
+        lyd_unlink_meta_single(root_meta);
+        if (pool->meta) {
+            tmp = pool->meta;
+            pool->meta = root_meta;
+            root_meta->next = tmp;
+        } else {
+            pool->meta = root_meta;
+        }
+    }
+
+    if (!rbt) {
+        return;
+    }
+
+    if (pool->rbn) {
+        RBN_RESET(pool->rbn, NULL);
+    }
+
+    if (pool->iter_state) {
+        /* insert rbn back */
+        assert(pool->rbn);
+        if (RBN_LEFT(pool->iter_state)) {
+            assert(!RBN_RIGHT(pool->iter_state));
+            RBN_RIGHT(pool->iter_state) = pool->rbn;
+        } else {
+            assert(!RBN_LEFT(pool->iter_state));
+            RBN_LEFT(pool->iter_state) = pool->rbn;
+        }
+        RBN_PARENT(pool->rbn) = pool->iter_state;
+    }
+
+    if (pool->rbn) {
+        /* link rbt with rbn */
+        RBN_LEFT(pool->rbn) = rbt;
+        RBN_PARENT(rbt) = pool->rbn;
+        pool->rbn = rb_iter_begin(rbt, &pool->iter_state);
+    } else {
+        /* set new red black tree */
+        pool->rbn = rb_iter_begin(rbt, &pool->iter_state);
+    }
+}
+
+/**
+ * @brief Get metadata from the pool.
+ *
+ * @param[in,out] pool Pool containing metadata.
+ * @return Free metadata to reuse or NULL.
+ */
+static struct lyd_meta *
+lyds_pool_get_meta(struct lyds_pool *pool)
+{
+    struct lyd_meta *meta, *next;
+
+    if (!pool->meta) {
+        return NULL;
+    }
+
+    next = pool->meta->next;
+    meta = pool->meta;
+    meta->next = NULL;
+    pool->meta = next;
+
+    return meta;
+}
+
+void
+lyds_pool_clean(struct lyds_pool *pool)
+{
+    struct lyd_meta *meta, *next;
+    struct rb_node *iter;
+
+    for (iter = pool->rbn; iter; iter = rb_iter_next(&pool->iter_state)) {
+        rb_free_node(iter);
+    }
+    pool->rbn = NULL;
+
+    for (meta = pool->meta; meta; meta = next) {
+        next = meta->next ? meta->next : NULL;
+        RBT_SET(meta, NULL);
+        lyd_free_meta_single(meta);
+    }
+    pool->meta = NULL;
+}
+
 /**
  * @brief Remove red-black node from the Red-black tree using the data node.
  *
@@ -885,7 +979,7 @@ rb_remove_node(struct lyd_meta *root_meta, struct rb_node **rbt, struct lyd_node
 }
 
 ly_bool
-lyds_is_supported(struct lyd_node *node)
+lyds_is_supported(const struct lyd_node *node)
 {
     if (!node->schema || !(node->schema->flags & LYS_ORDBY_SYSTEM)) {
         return 0;
@@ -938,6 +1032,38 @@ lyds_link_data_node(struct lyd_node **leader, struct lyd_node *node, struct lyd_
 }
 
 /**
+ * @brief Additionally create the Red-black nodes.
+ *
+ * @param[in,out] leader First instance of the (leaf-)list.
+ * @param[in] root_meta From the @p leader, metadata in which is the root of the Red-black tree.
+ * @param[in] rbt From the @p root_meta, root of the Red-black tree.
+ * @param[in] node Start node from which rb nodes will be created.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyds_additionally_create_rb_nodes(struct lyd_node **leader, struct lyd_meta *root_meta,
+        struct rb_node **rbt, struct lyd_node *node)
+{
+    LY_ERR ret;
+    ly_bool max;
+    struct rb_node *rbn;
+    struct lyd_node *iter;
+
+    for (iter = node; iter && (iter->schema == (*leader)->schema); iter = iter->next) {
+        ret = lyds_create_node(iter, &rbn);
+        LY_CHECK_RET(ret);
+        rb_insert_node(rbt, rbn, &max);
+        if (!max) {
+            /* nodes were not sorted, they will be sorted now */
+            lyd_unlink_ignore_lyds(iter);
+            lyds_link_data_node(leader, iter, root_meta, rbn);
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Additionally create the Red-black tree for the sorted nodes.
  *
  * @param[in,out] leader First instance of the (leaf-)list.
@@ -949,9 +1075,7 @@ static LY_ERR
 lyds_additionally_create_rb_tree(struct lyd_node **leader, struct lyd_meta *root_meta, struct rb_node **rbt)
 {
     LY_ERR ret;
-    ly_bool max;
     struct rb_node *rbn;
-    struct lyd_node *iter;
 
     /* let's begin with the leader */
     ret = lyds_create_node(*leader, &rbn);
@@ -959,21 +1083,53 @@ lyds_additionally_create_rb_tree(struct lyd_node **leader, struct lyd_meta *root
     *rbt = rbn;
 
     /* continue with the rest of the nodes */
-    for (iter = (*leader)->next; iter && (iter->schema == (*leader)->schema); iter = iter->next) {
-        ret = lyds_create_node(iter, &rbn);
-        LY_CHECK_RET(ret);
-        rb_insert_node(rbt, rbn, &max);
-        if (!max) {
-            /* nodes were not sorted, they will be sorted now */
-            lyd_unlink_ignore_lyds(iter);
-            lyds_link_data_node(leader, iter, root_meta, rbn);
-        }
-    }
+    ret = lyds_additionally_create_rb_nodes(leader, root_meta, rbt, (*leader)->next);
 
     /* store pointer to the root */
     RBT_SET(root_meta, *rbt);
 
-    return LY_SUCCESS;
+    return ret;
+}
+
+/**
+ * @brief Additionally reuse the Red-black tree for the sorted nodes.
+ *
+ * @param[in,out] leader First instance of the (leaf-)list.
+ * @param[in] root_meta From the @p leader, metadata in which is the root of the Red-black tree.
+ * @param[in] rbt From the @p root_meta, root of the Red-black tree.
+ * @param[in,out] pool Pool from which the lyds data will be reused
+ * @param[out] next Data node for which no free red-black node was available,
+ * so not all nodes have been processed. Or is set to NULL, so all were sorted successfully.
+ */
+static void
+lyds_additionally_reuse_rb_tree(struct lyd_node **leader, struct lyd_meta *root_meta, struct rb_node **rbt,
+        struct lyds_pool *pool, struct lyd_node **next)
+{
+    ly_bool max;
+    struct lyd_node *iter;
+
+    /* let's begin with the leader */
+    RBN_RESET(pool->rbn, *leader);
+    *rbt = pool->rbn;
+    pool->rbn = rb_iter_next(&pool->iter_state);
+
+    /* continue with the rest of the nodes */
+    for (iter = (*leader)->next; iter && (iter->schema == (*leader)->schema); iter = iter->next) {
+        if (!pool->rbn) {
+            *next = iter;
+            return;
+        }
+        RBN_RESET(pool->rbn, iter);
+        rb_insert_node(rbt, pool->rbn, &max);
+        if (!max) {
+            /* nodes were not sorted, they will be sorted now */
+            lyd_unlink_ignore_lyds(iter);
+            lyds_link_data_node(leader, iter, root_meta, pool->rbn);
+        }
+        pool->rbn = rb_iter_next(&pool->iter_state);
+    }
+
+    *next = NULL;
 }
 
 LY_ERR
@@ -1077,6 +1233,82 @@ lyds_insert(struct lyd_node **leader, struct lyd_node *node)
 
     /* the root of the Red-black tree may changed due to insertion, so update the pointer to the root */
     RBT_SET(root_meta, rbt);
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lyds_insert2(struct lyd_node *parent, struct lyd_node **first_sibling, struct lyd_node **leader,
+        struct lyd_node *node, struct lyds_pool *pool)
+{
+    LY_ERR ret;
+    struct rb_node *rbt = NULL, *rbn;
+    struct lyd_node *ld, *next;
+    struct lyd_meta *root_meta;
+
+    assert(pool && pool->rbn && first_sibling && node);
+
+    if (!*leader || ((*leader)->schema != node->schema)) {
+        /* leader has not been visited yet */
+        ld = NULL;
+        lyd_find_sibling_schema(*first_sibling, node->schema, &ld);
+        if (!ld) {
+            /* the destination has no (leaf-)list instance yet. */
+            lyd_insert_node_ordby_schema(parent, *first_sibling, node);
+            *leader = node;
+            goto cleanup;
+        } else {
+            /* leader has been found */
+            *leader = ld;
+        }
+    }
+
+    /* get Red-black tree from leader */
+    rbt = lyds_get_rb_tree(*leader, &root_meta);
+    if (!root_meta) {
+        /* leader needs metadata */
+        root_meta = lyds_pool_get_meta(pool);
+        if (!root_meta) {
+            /* there is no free structure for metadata, a new one must be allocated */
+            ret = lyds_create_metadata(*leader, &root_meta);
+            LY_CHECK_RET(ret);
+        } else {
+            /* reuse metadata */
+            lyd_insert_meta(*leader, root_meta, 0);
+        }
+    }
+    if (!rbt) {
+        /* Red-black tree needed */
+        lyds_additionally_reuse_rb_tree(leader, root_meta, &rbt, pool, &next);
+        if (next) {
+            /* there is no free structure for red-black node, a new ones must be allocated */
+            ret = lyds_additionally_create_rb_nodes(leader, root_meta, &rbt, next);
+            LY_CHECK_RET(ret);
+        }
+    }
+
+    /* insert @p node */
+    if (pool->rbn) {
+        /* reuse free red-black node and insert */
+        rbn = pool->rbn;
+        RBN_RESET(rbn, node);
+        rb_insert_node(&rbt, rbn, NULL);
+        /* prepare for the next node */
+        pool->rbn = rb_iter_next(&pool->iter_state);
+    } else {
+        /* allocate new node and insert */
+        ret = rb_insert(node, &rbt, &rbn);
+        LY_CHECK_RET(ret);
+    }
+    /* connect @p node with siblings so that the order is maintained */
+    lyds_link_data_node(leader, node, root_meta, rbn);
+
+cleanup:
+    if (rbt) {
+        RBT_SET(root_meta, rbt);
+    }
+    lyd_insert_hash(node);
+    *first_sibling = node->prev->next ? *first_sibling : node;
 
     return LY_SUCCESS;
 }

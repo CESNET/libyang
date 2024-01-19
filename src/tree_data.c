@@ -712,14 +712,7 @@ lyd_insert_node_last(struct lyd_node *parent, struct lyd_node *first_sibling, st
     }
 }
 
-/**
- * @brief Insert a node into parent/siblings.
- *
- * @param[in] parent Parent to insert into, NULL for top-level sibling.
- * @param[in] first_sibling First sibling, NULL if no top-level sibling exist yet. Can be also NULL if @p parent is set.
- * @param[in] node Individual node (without siblings) to insert.
- */
-static void
+void
 lyd_insert_node_ordby_schema(struct lyd_node *parent, struct lyd_node *first_sibling, struct lyd_node *node)
 {
     struct lyd_node *anchor;
@@ -2413,17 +2406,21 @@ lyd_dup_meta_single(const struct lyd_meta *meta, struct lyd_node *node, struct l
  * @param[in] merge_cb Optional merge callback.
  * @param[in] cb_data Arbitrary callback data.
  * @param[in] options Merge options.
+ * @param[in] lyds Pool of lyds data which can be reused.
+ * @param[in,out] leader_p Cached first instance of target (leaf-)list.
  * @param[in,out] dup_inst Duplicate instance cache for all @p first_trg siblings.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, const struct lyd_node **sibling_src_p,
-        lyd_merge_cb merge_cb, void *cb_data, uint16_t options, struct ly_ht **dup_inst)
+lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg,
+        const struct lyd_node **sibling_src_p, lyd_merge_cb merge_cb, void *cb_data, uint16_t options,
+        struct lyds_pool *lyds, struct lyd_node **leader_p, struct ly_ht **dup_inst)
 {
     const struct lyd_node *child_src, *tmp, *sibling_src;
-    struct lyd_node *match_trg, *dup_src, *elem;
+    struct lyd_node *match_trg, *dup_src, *elem, *leader;
     struct lyd_node_opaq *opaq_trg, *opaq_src;
     struct lysc_type *type;
+    const struct lysc_node *schema;
     struct ly_ht *child_dup_inst = NULL;
     LY_ERR r;
     ly_bool first_inst = 0;
@@ -2497,20 +2494,29 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, co
 
         /* check descendants, recursively */
         r = LY_SUCCESS;
+        leader = NULL;
+        schema = NULL;
         LY_LIST_FOR_SAFE(lyd_child_no_keys(sibling_src), tmp, child_src) {
-            r = lyd_merge_sibling_r(lyd_node_child_p(match_trg), match_trg, &child_src, merge_cb, cb_data, options,
-                    &child_dup_inst);
+            if ((options & LYD_MERGE_DESTRUCT) && (schema != child_src->schema) && LYDS_NODE_IS_LEADER(child_src)) {
+                schema = child_src->schema;
+                /* unlink lyds data and add them to the pool */
+                lyds_pool_add((struct lyd_node *)child_src, lyds);
+            }
+
+            r = lyd_merge_sibling_r(lyd_node_child_p(match_trg), match_trg, &child_src,
+                    merge_cb, cb_data, options, lyds, &leader, &child_dup_inst);
             if (r) {
                 break;
             }
         }
+
         lyd_dup_inst_free(child_dup_inst);
         LY_CHECK_RET(r);
     } else {
         /* node not found, merge it */
         if (options & LYD_MERGE_DESTRUCT) {
             dup_src = (struct lyd_node *)sibling_src;
-            lyd_unlink(dup_src);
+            lyd_unlink_ignore_lyds(dup_src);
             /* spend it */
             *sibling_src_p = NULL;
         } else {
@@ -2525,8 +2531,13 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, co
             }
         }
 
-        /* insert */
-        lyd_insert_node(parent_trg, first_trg, dup_src, 0);
+        if (lyds->rbn) {
+            /* insert node and try to reuse free lyds data */
+            lyds_insert2(parent_trg, first_trg, leader_p, dup_src, lyds);
+        } else {
+            /* generic insert node */
+            lyd_insert_node(parent_trg, first_trg, dup_src, 0);
+        }
 
         if (first_inst) {
             /* remember not to find this instance next time */
@@ -2547,9 +2558,12 @@ lyd_merge(struct lyd_node **target, const struct lyd_node *source, const struct 
         lyd_merge_cb merge_cb, void *cb_data, uint16_t options, ly_bool nosiblings)
 {
     const struct lyd_node *sibling_src, *tmp;
+    const struct lysc_node *schema;
+    struct lyd_node *leader;
     struct ly_ht *dup_inst = NULL;
     ly_bool first;
     LY_ERR ret = LY_SUCCESS;
+    struct lyds_pool lyds = {0};
 
     LY_CHECK_ARG_RET(NULL, target, LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(*target ? LYD_CTX(*target) : NULL, source ? LYD_CTX(source) : NULL, mod ? mod->ctx : NULL,
@@ -2565,14 +2579,23 @@ lyd_merge(struct lyd_node **target, const struct lyd_node *source, const struct 
         return LY_EINVAL;
     }
 
+    leader = NULL;
+    schema = NULL;
     LY_LIST_FOR_SAFE(source, tmp, sibling_src) {
         if (mod && (lyd_owner_module(sibling_src) != mod)) {
             /* skip data nodes from different modules */
             continue;
         }
 
+        if ((options & LYD_MERGE_DESTRUCT) && (schema != sibling_src->schema) && LYDS_NODE_IS_LEADER(sibling_src)) {
+            schema = sibling_src->schema;
+            /* unlink lyds data and add them to the pool */
+            lyds_pool_add((struct lyd_node *)sibling_src, &lyds);
+        }
+
         first = (sibling_src == source) ? 1 : 0;
-        ret = lyd_merge_sibling_r(target, NULL, &sibling_src, merge_cb, cb_data, options, &dup_inst);
+        ret = lyd_merge_sibling_r(target, NULL, &sibling_src, merge_cb, cb_data, options,
+                &lyds, &leader, &dup_inst);
         if (ret) {
             break;
         }
@@ -2585,6 +2608,7 @@ lyd_merge(struct lyd_node **target, const struct lyd_node *source, const struct 
             break;
         }
     }
+    lyds_pool_clean(&lyds);
 
     if (options & LYD_MERGE_DESTRUCT) {
         /* free any leftover source data that were not merged */

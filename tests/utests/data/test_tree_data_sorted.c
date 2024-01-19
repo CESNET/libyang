@@ -918,25 +918,6 @@ test_merge_siblings(void **state)
     lyd_free_all(f1);
     lyd_free_all(f2);
 
-    /* both source and target trees have metadata and LYD_MERGE_DESTRUCT flag is set */
-    assert_int_equal(lyd_new_term(NULL, mod, "ll", "1", 0, &f1), LY_SUCCESS);
-    assert_int_equal(lyd_new_term(NULL, mod, "ll", "2", 0, &s1), LY_SUCCESS);
-    assert_int_equal(lyd_insert_sibling(f1, s1, NULL), LY_SUCCESS);
-    assert_non_null(f1->meta);
-    assert_int_equal(lyd_new_term(NULL, mod, "ll", "21", 0, &f2), LY_SUCCESS);
-    assert_int_equal(lyd_new_term(NULL, mod, "ll", "22", 0, &s2), LY_SUCCESS);
-    assert_int_equal(lyd_insert_sibling(f2, s2, NULL), LY_SUCCESS);
-    assert_non_null(f2->meta);
-    assert_int_equal(lyd_merge_siblings(&f2, f1, LYD_MERGE_DESTRUCT), LY_SUCCESS);
-    assert_true(f2->meta && f2->next && f2->next->next && f2->next->next->next);
-    assert_true(get_rbt(f2->meta) && !f2->next->meta && !f2->next->next->meta && !f2->next->next->next->meta);
-    assert_string_equal(f2->meta->name, META_NAME);
-    assert_string_equal(lyd_get_value(f2), "1");
-    assert_string_equal(lyd_get_value(f2->next), "2");
-    assert_string_equal(lyd_get_value(f2->next->next), "21");
-    assert_string_equal(lyd_get_value(f2->next->next->next), "22");
-    lyd_free_all(f2);
-
     /* only target tree have metadata */
     assert_int_equal(lyd_new_term(NULL, mod, "ll", "1", 0, &f1), LY_SUCCESS);
     assert_null(f1->meta);
@@ -981,6 +962,76 @@ test_merge_siblings(void **state)
     assert_string_equal(lyd_get_value(f2->next), "21");
     lyd_free_all(f1);
     lyd_free_all(f2);
+}
+
+static void
+test_merge_siblings_destruct(void **state)
+{
+    const char *schema, *data;
+    struct lys_module *mod;
+    struct lyd_node *dst, *src, *first;
+
+    schema = "module a {namespace urn:tests:a;prefix a;yang-version 1.1;revision 2014-05-08;"
+            "leaf-list ll {type uint32;}}";
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+
+    /* only source have metadata */
+    data = "{\"a:ll\":[1,2,3,4]}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, LYD_PARSE_ORDERED, LYD_VALIDATE_PRESENT, LY_SUCCESS, dst);
+    assert_true(dst && !dst->meta);
+    data = "{\"a:ll\":[21,22]}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, src);
+    assert_true(src && src->meta);
+    assert_int_equal(lyd_merge_siblings(&dst, src, LYD_MERGE_DESTRUCT), LY_SUCCESS);
+    assert_true(dst->meta && get_rbt(dst->meta));
+    assert_string_equal(dst->meta->name, META_NAME);
+    assert_string_equal(lyd_get_value(dst), "1");
+    assert_string_equal(lyd_get_value(dst->next), "2");
+    assert_string_equal(lyd_get_value(dst->next->next), "3");
+    assert_string_equal(lyd_get_value(dst->next->next->next), "4");
+    assert_string_equal(lyd_get_value(dst->next->next->next->next), "21");
+    assert_string_equal(lyd_get_value(dst->next->next->next->next->next), "22");
+    lyd_free_all(dst);
+
+    /* both source and target trees have metadata */
+    data = "{\"a:ll\":[1,2,3]}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, dst);
+    assert_true(dst && dst->meta);
+    data = "{\"a:ll\":[21,22,23]}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, src);
+    assert_true(src && src->meta);
+    assert_int_equal(lyd_merge_siblings(&dst, src, LYD_MERGE_DESTRUCT), LY_SUCCESS);
+    assert_true(dst->meta && get_rbt(dst->meta));
+    assert_string_equal(dst->meta->name, META_NAME);
+    assert_string_equal(lyd_get_value(dst), "1");
+    assert_string_equal(lyd_get_value(dst->next), "2");
+    assert_string_equal(lyd_get_value(dst->next->next), "3");
+    assert_string_equal(lyd_get_value(dst->next->next->next), "21");
+    assert_string_equal(lyd_get_value(dst->next->next->next->next), "22");
+    assert_string_equal(lyd_get_value(dst->next->next->next->next->next), "23");
+    lyd_free_all(dst);
+
+    schema = "module b {namespace urn:tests:b;prefix b;yang-version 1.1;revision 2014-05-08;"
+            "container cont {"
+            "  leaf-list ll {type uint32;}}"
+            "}";
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+
+    /* destination is empty, source have metadata */
+    data = "{\"b:cont\": {} }";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, LYD_PARSE_ORDERED, LYD_VALIDATE_PRESENT, LY_SUCCESS, dst);
+    assert_true(dst && !dst->meta);
+    data = "{\"b:cont\": {\"ll\":[1,2,3]} }";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, src);
+    assert_true(src && lyd_child(src)->meta);
+    assert_int_equal(lyd_merge_siblings(&dst, src, LYD_MERGE_DESTRUCT), LY_SUCCESS);
+    first = lyd_child(dst);
+    assert_true(first->meta && get_rbt(first->meta));
+    assert_string_equal(first->meta->name, META_NAME);
+    assert_string_equal(lyd_get_value(first), "1");
+    assert_string_equal(lyd_get_value(first->next), "2");
+    assert_string_equal(lyd_get_value(first->next->next), "3");
+    lyd_free_all(dst);
 }
 
 static void
@@ -1570,6 +1621,7 @@ main(void)
         UTEST(test_free_meta_single),
         UTEST(test_insert_multiple_keys),
         UTEST(test_merge_siblings),
+        UTEST(test_merge_siblings_destruct),
         UTEST(test_parse_data),
         UTEST(test_parse_ordered_data),
         UTEST(test_print_data),
