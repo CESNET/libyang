@@ -4040,7 +4040,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
         }
 
         LOGVAL(ctx->ctx, LYVE_REFERENCE, "Augment target node \"%s\" in grouping \"%s\" was not found.",
-                ((struct lysc_augment *)ctx->uses_augs.objs[i])->nodeid->expr, grp->name);
+                ((struct lysc_augment *)ctx->uses_augs.objs[i])->nodeid->str, grp->name);
         rc = LY_ENOTFOUND;
     }
     LY_CHECK_GOTO(rc, cleanup);
@@ -4053,7 +4053,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
         }
 
         LOGVAL(ctx->ctx, LYVE_REFERENCE, "Refine(s) target node \"%s\" in grouping \"%s\" was not found.",
-                ((struct lysc_refine *)ctx->uses_rfns.objs[i])->nodeid->expr, grp->name);
+                ((struct lysc_refine *)ctx->uses_rfns.objs[i])->nodeid->str, grp->name);
         rc = LY_ENOTFOUND;
     }
     LY_CHECK_GOTO(rc, cleanup);

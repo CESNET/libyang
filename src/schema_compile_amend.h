@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Header for schema compilation of augments, deviations, and refines.
  *
- * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -28,10 +28,21 @@ struct lys_glob_unres;
 struct lys_module;
 
 /**
+ * @brief Compiled parsed schema-node-id.
+ */
+struct lysc_nodeid {
+    const char *str;        /**< Original schema-node-id, just a pointer (do not free). */
+
+    const char **prefix;    /**< Array of node prefixes in the dictionary, NULL if none. */
+    const char **name;      /**< Array of node name in the dictionary. */
+    uint32_t count;         /**< Number of items in @p prefix and @p name arrays */
+};
+
+/**
  * @brief Compiled parsed augment structure. Just a temporary storage for applying the augment to data.
  */
 struct lysc_augment {
-    struct lyxp_expr *nodeid;                    /**< augment target */
+    struct lysc_nodeid *nodeid;                  /**< augment target */
     const struct lysp_module *aug_pmod;          /**< module where the augment is defined, for top-level augments
                                                       used to resolve prefixes, for uses augments used as the context pmod */
     const struct lysc_node *nodeid_ctx_node;     /**< nodeid context node for relative targets */
@@ -44,7 +55,7 @@ struct lysc_augment {
  * @brief Compiled parsed deviation structure. Just a temporary storage for applying the deviation to data.
  */
 struct lysc_deviation {
-    struct lyxp_expr *nodeid;                    /**< deviation target, taken from the first deviation in
+    struct lysc_nodeid *nodeid;                  /**< deviation target, taken from the first deviation in
                                                       ::lysc_deviation.dev_pmods array, this module is used for resolving
                                                       prefixes used in the nodeid. */
 
@@ -58,7 +69,7 @@ struct lysc_deviation {
  * @brief Compiled parsed refine structure. Just a temporary storage for applying the refine to data.
  */
 struct lysc_refine {
-    struct lyxp_expr *nodeid;                    /**< refine target */
+    struct lysc_nodeid *nodeid;                  /**< refine target */
     const struct lysp_module *nodeid_pmod;       /**< module where the nodeid is defined, used to resolve prefixes */
     const struct lysc_node *nodeid_ctx_node;     /**< nodeid context node */
     struct lysp_node_uses *uses_p;               /**< parsed uses node of the refine, for tracking recursive refines */

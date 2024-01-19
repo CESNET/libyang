@@ -1548,9 +1548,9 @@ lys_compile_unres_mod(struct lysc_ctx *ctx)
             lysc_update_path(ctx, NULL, aug->ext->name);
         }
         lysc_update_path(ctx, NULL, "{augment}");
-        lysc_update_path(ctx, NULL, aug->nodeid->expr);
+        lysc_update_path(ctx, NULL, aug->nodeid->str);
         LOGVAL(ctx->ctx, LYVE_REFERENCE, "Augment%s target node \"%s\" from module \"%s\" was not found.",
-                aug->ext ? " extension" : "", aug->nodeid->expr, LYSP_MODULE_NAME(aug->aug_pmod));
+                aug->ext ? " extension" : "", aug->nodeid->str, LYSP_MODULE_NAME(aug->aug_pmod));
         ctx->cur_mod = orig_mod;
         lysc_update_path(ctx, NULL, NULL);
         lysc_update_path(ctx, NULL, NULL);
@@ -1567,9 +1567,9 @@ lys_compile_unres_mod(struct lysc_ctx *ctx)
     for (i = 0; i < ctx->devs.count; ++i) {
         dev = ctx->devs.objs[i];
         lysc_update_path(ctx, NULL, "{deviation}");
-        lysc_update_path(ctx, NULL, dev->nodeid->expr);
+        lysc_update_path(ctx, NULL, dev->nodeid->str);
         LOGVAL(ctx->ctx, LYVE_REFERENCE, "Deviation(s) target node \"%s\" from module \"%s\" was not found.",
-                dev->nodeid->expr, LYSP_MODULE_NAME(dev->dev_pmods[0]));
+                dev->nodeid->str, LYSP_MODULE_NAME(dev->dev_pmods[0]));
         lysc_update_path(ctx, NULL, NULL);
         lysc_update_path(ctx, NULL, NULL);
     }
