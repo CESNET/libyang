@@ -579,6 +579,7 @@ get_argument(struct lysp_yang_ctx *ctx, enum yang_arg arg, uint16_t *flags, char
     LY_ERR ret;
     size_t buf_len = 0;
     uint8_t prefix = 0;
+    ly_bool str_end = 0;
 
     /* word buffer - dynamically allocated */
     *word_b = NULL;
@@ -587,7 +588,7 @@ get_argument(struct lysp_yang_ctx *ctx, enum yang_arg arg, uint16_t *flags, char
     *word_p = NULL;
 
     *word_len = 0;
-    while (ctx->in->current[0]) {
+    while (!str_end) {
         switch (ctx->in->current[0]) {
         case '\'':
         case '\"':
@@ -601,12 +602,14 @@ get_argument(struct lysp_yang_ctx *ctx, enum yang_arg arg, uint16_t *flags, char
             if (flags) {
                 (*flags) |= ctx->in->current[0] == '\'' ? LYS_SINGLEQUOTED : LYS_DOUBLEQUOTED;
             }
+
             LY_CHECK_GOTO(ret = read_qstring(ctx, arg, word_p, word_b, word_len, &buf_len), error);
             if (!*word_p) {
                 /* do not return NULL word */
                 *word_p = "";
             }
-            goto str_end;
+            str_end = 1;
+            break;
         case '/':
             if (ctx->in->current[1] == '/') {
                 /* one-line comment */
@@ -624,14 +627,16 @@ get_argument(struct lysp_yang_ctx *ctx, enum yang_arg arg, uint16_t *flags, char
         case ' ':
             if (*word_len) {
                 /* word is finished */
-                goto str_end;
+                str_end = 1;
+                break;
             }
             MOVE_INPUT(ctx, 1);
             break;
         case '\t':
             if (*word_len) {
                 /* word is finished */
-                goto str_end;
+                str_end = 1;
+                break;
             }
             /* tabs count for 8 spaces */
             ctx->indent += Y_TAB_SPACES;
@@ -649,7 +654,8 @@ get_argument(struct lysp_yang_ctx *ctx, enum yang_arg arg, uint16_t *flags, char
         case '\n':
             if (*word_len) {
                 /* word is finished */
-                goto str_end;
+                str_end = 1;
+                break;
             }
             LY_IN_NEW_LINE(ctx->in);
             MOVE_INPUT(ctx, 1);
@@ -661,7 +667,8 @@ get_argument(struct lysp_yang_ctx *ctx, enum yang_arg arg, uint16_t *flags, char
         case '{':
             if (*word_len || (arg == Y_MAYBE_STR_ARG)) {
                 /* word is finished */
-                goto str_end;
+                str_end = 1;
+                break;
             }
 
             LOGVAL_PARSER(ctx, LY_VCODE_INSTREXP, 1, ctx->in->current, "an argument");
@@ -673,18 +680,17 @@ get_argument(struct lysp_yang_ctx *ctx, enum yang_arg arg, uint16_t *flags, char
                     "unquoted string character, optsep, semicolon or opening brace");
             ret = LY_EVALID;
             goto error;
+        case '\0':
+            /* unexpected EOF */
+            LOGVAL_PARSER(ctx, LY_VCODE_EOF);
+            ret = LY_EVALID;
+            goto error;
         default:
             LY_CHECK_GOTO(ret = buf_store_char(ctx, arg, word_p, word_len, word_b, &buf_len, 0, &prefix), error);
             break;
         }
     }
 
-    /* unexpected end of loop */
-    LOGVAL_PARSER(ctx, LY_VCODE_EOF);
-    ret = LY_EVALID;
-    goto error;
-
-str_end:
     /* terminating NULL byte for buf */
     if (*word_b) {
         (*word_b) = ly_realloc(*word_b, (*word_len) + 1);
