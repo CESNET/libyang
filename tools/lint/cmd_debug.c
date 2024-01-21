@@ -132,3 +132,9 @@ cmd_debug_setlog(struct ly_ctx *ctx, struct yl_opt *yo)
 }
 
 #endif
+
+__attribute__((unused)) static void
+__cmd_debug_void(void)
+{
+    return ;
+}
