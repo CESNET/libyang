@@ -3051,7 +3051,7 @@ LIBYANG_API_DEF LY_ERR
 lyd_trim_xpath(struct lyd_node **tree, const char *xpath, const struct lyxp_var *vars)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct ly_ctx *ctx;
+    struct ly_ctx *ctx = NULL;
     struct lyxp_set xp_set = {0};
     struct lyxp_expr *exp = NULL;
     struct lyd_node *node, *parent;
