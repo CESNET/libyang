@@ -775,7 +775,7 @@ schema_mount_dup_parent_ref(const struct lysc_ext_instance *ext, const struct ly
 
         /* get the referenced nodes (subtrees) */
         LYD_VALUE_GET(&term->value, xp_val);
-        if ((ret = lyd_find_xpath4(ctx_node, ctx_node, lyxp_get_expr(xp_val->exp), xp_val->format, xp_val->prefix_data,
+        if ((ret = lyd_find_xpath3(ctx_node, ctx_node, lyxp_get_expr(xp_val->exp), xp_val->format, xp_val->prefix_data,
                 NULL, &par_set))) {
             lyplg_ext_compile_log(NULL, ext, LY_LLERR, ret, "Parent reference \"%s\" evaluation failed.",
                     lyxp_get_expr(xp_val->exp));

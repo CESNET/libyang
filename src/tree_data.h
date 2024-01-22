@@ -2533,28 +2533,12 @@ LIBYANG_API_DECL LY_ERR lyd_find_xpath2(const struct lyd_node *ctx_node, const c
 /**
  * @brief Search in the given data for instances of nodes matching the provided XPath.
  *
- * It is ::lyd_find_xpath2() with @p tree added so that @p ctx_node may be the root.
+ * It is ::lyd_find_xpath2() with @p tree added so that @p ctx_node may be the root and
+ * also @p format and @p prefix_data added for expressions in different formats than JSON.
  *
  * @param[in] ctx_node XPath context node, NULL for the root node.
  * @param[in] tree Data tree to evaluate on.
- * @param[in] xpath [XPath](@ref howtoXPath) to select in JSON format.
- * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
- * @param[out] set Set of found data nodes. In case the result is a number, a string, or a boolean,
- * the returned set is empty.
- * @return LY_SUCCESS on success, @p set is returned.
- * @return LY_ERR value if an error occurred.
- */
-LIBYANG_API_DECL LY_ERR lyd_find_xpath3(const struct lyd_node *ctx_node, const struct lyd_node *tree, const char *xpath,
-        const struct lyxp_var *vars, struct ly_set **set);
-
-/**
- * @brief Search in the given data for instances of nodes matching the provided XPath.
- *
- * It is ::lyd_find_xpath3() with @p format and @p prefix_data added for special use-cases.
- *
- * @param[in] ctx_node XPath context node, NULL for the root node.
- * @param[in] tree Data tree to evaluate on.
- * @param[in] xpath [XPath](@ref howtoXPath) to select with prefix in @p format.
+ * @param[in] xpath [XPath](@ref howtoXPath) to select with prefixes in @p format.
  * @param[in] format Format of any prefixes in @p xpath.
  * @param[in] prefix_data Format-specific prefix data.
  * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
@@ -2563,7 +2547,7 @@ LIBYANG_API_DECL LY_ERR lyd_find_xpath3(const struct lyd_node *ctx_node, const s
  * @return LY_SUCCESS on success, @p set is returned.
  * @return LY_ERR value if an error occurred.
  */
-LIBYANG_API_DECL LY_ERR lyd_find_xpath4(const struct lyd_node *ctx_node, const struct lyd_node *tree, const char *xpath,
+LIBYANG_API_DECL LY_ERR lyd_find_xpath3(const struct lyd_node *ctx_node, const struct lyd_node *tree, const char *xpath,
         LY_VALUE_FORMAT format, void *prefix_data, const struct lyxp_var *vars, struct ly_set **set);
 
 /**
@@ -2572,7 +2556,7 @@ LIBYANG_API_DECL LY_ERR lyd_find_xpath4(const struct lyd_node *ctx_node, const s
  * Optimizations similar as in ::lyd_find_xpath().
  *
  * @param[in] ctx_node XPath context node.
- * @param[in] xpath [XPath](@ref howtoXPath) to select.
+ * @param[in] xpath [XPath](@ref howtoXPath) to select in JSON format.
  * @param[out] result Expression result converted to boolean.
  * @return LY_SUCCESS on success, @p result is returned.
  * @return LY_ERR value if an error occurred.
@@ -2585,7 +2569,7 @@ LIBYANG_API_DECL LY_ERR lyd_eval_xpath(const struct lyd_node *ctx_node, const ch
  * It is ::lyd_eval_xpath() with @p vars added.
  *
  * @param[in] ctx_node XPath context node.
- * @param[in] xpath [XPath](@ref howtoXPath) to select.
+ * @param[in] xpath [XPath](@ref howtoXPath) to select in JSON format.
  * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
  * @param[out] result Expression result converted to boolean.
  * @return LY_SUCCESS on success, @p result is returned.
@@ -2601,7 +2585,7 @@ LIBYANG_API_DECL LY_ERR lyd_eval_xpath2(const struct lyd_node *ctx_node, const c
  *
  * @param[in] ctx_node XPath context node.
  * @param[in] cur_mod Current module of @p xpath, needed for some kinds of @p format.
- * @param[in] xpath [XPath](@ref howtoXPath) to select.
+ * @param[in] xpath [XPath](@ref howtoXPath) to select with prefixes in in @p format.
  * @param[in] format Format of any prefixes in @p xpath.
  * @param[in] prefix_data Format-specific prefix data.
  * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
