@@ -2886,7 +2886,7 @@ lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set
 {
     LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
 
-    return lyd_find_xpath4(ctx_node, ctx_node, xpath, LY_VALUE_JSON, NULL, NULL, set);
+    return lyd_find_xpath3(ctx_node, ctx_node, xpath, LY_VALUE_JSON, NULL, NULL, set);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -2894,20 +2894,11 @@ lyd_find_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct
 {
     LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
 
-    return lyd_find_xpath4(ctx_node, ctx_node, xpath, LY_VALUE_JSON, NULL, vars, set);
+    return lyd_find_xpath3(ctx_node, ctx_node, xpath, LY_VALUE_JSON, NULL, vars, set);
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_find_xpath3(const struct lyd_node *ctx_node, const struct lyd_node *tree, const char *xpath,
-        const struct lyxp_var *vars, struct ly_set **set)
-{
-    LY_CHECK_ARG_RET(NULL, tree, xpath, set, LY_EINVAL);
-
-    return lyd_find_xpath4(ctx_node, tree, xpath, LY_VALUE_JSON, NULL, vars, set);
-}
-
-LIBYANG_API_DEF LY_ERR
-lyd_find_xpath4(const struct lyd_node *ctx_node, const struct lyd_node *tree, const char *xpath, LY_VALUE_FORMAT format,
+lyd_find_xpath3(const struct lyd_node *ctx_node, const struct lyd_node *tree, const char *xpath, LY_VALUE_FORMAT format,
         void *prefix_data, const struct lyxp_var *vars, struct ly_set **set)
 {
     LY_CHECK_ARG_RET(NULL, tree, xpath, set, LY_EINVAL);
