@@ -1675,29 +1675,35 @@ error:
 /**
  * @brief Allocate a new specific type structure according to the basetype.
  *
+ * @param[in] ctx Context to use.
  * @param[in] basetype Base type of the new type.
- * @return Specific type structure.
+ * @param[in] tpdf_name Optional referenced typedef name, NULL for built-in types.
+ * @param[out] type Specific type structure.
+ * @return LY_ERR value.
  */
-static struct lysc_type *
-lys_new_type(LY_DATA_TYPE basetype)
+static LY_ERR
+lys_new_type(const struct ly_ctx *ctx, LY_DATA_TYPE basetype, const char *tpdf_name, struct lysc_type **type)
 {
-    struct lysc_type *type = NULL;
+    LY_ERR rc = LY_SUCCESS;
+    struct lysc_type *t = NULL;
+
+    *type = NULL;
 
     switch (basetype) {
     case LY_TYPE_BINARY:
-        type = calloc(1, sizeof(struct lysc_type_bin));
+        t = calloc(1, sizeof(struct lysc_type_bin));
         break;
     case LY_TYPE_BITS:
-        type = calloc(1, sizeof(struct lysc_type_bits));
+        t = calloc(1, sizeof(struct lysc_type_bits));
         break;
     case LY_TYPE_DEC64:
-        type = calloc(1, sizeof(struct lysc_type_dec));
+        t = calloc(1, sizeof(struct lysc_type_dec));
         break;
     case LY_TYPE_STRING:
-        type = calloc(1, sizeof(struct lysc_type_str));
+        t = calloc(1, sizeof(struct lysc_type_str));
         break;
     case LY_TYPE_ENUM:
-        type = calloc(1, sizeof(struct lysc_type_enum));
+        t = calloc(1, sizeof(struct lysc_type_enum));
         break;
     case LY_TYPE_INT8:
     case LY_TYPE_UINT8:
@@ -1707,29 +1713,41 @@ lys_new_type(LY_DATA_TYPE basetype)
     case LY_TYPE_UINT32:
     case LY_TYPE_INT64:
     case LY_TYPE_UINT64:
-        type = calloc(1, sizeof(struct lysc_type_num));
+        t = calloc(1, sizeof(struct lysc_type_num));
         break;
     case LY_TYPE_IDENT:
-        type = calloc(1, sizeof(struct lysc_type_identityref));
+        t = calloc(1, sizeof(struct lysc_type_identityref));
         break;
     case LY_TYPE_LEAFREF:
-        type = calloc(1, sizeof(struct lysc_type_leafref));
+        t = calloc(1, sizeof(struct lysc_type_leafref));
         break;
     case LY_TYPE_INST:
-        type = calloc(1, sizeof(struct lysc_type_instanceid));
+        t = calloc(1, sizeof(struct lysc_type_instanceid));
         break;
     case LY_TYPE_UNION:
-        type = calloc(1, sizeof(struct lysc_type_union));
+        t = calloc(1, sizeof(struct lysc_type_union));
         break;
     case LY_TYPE_BOOL:
     case LY_TYPE_EMPTY:
-        type = calloc(1, sizeof(struct lysc_type));
+        t = calloc(1, sizeof(struct lysc_type));
         break;
     case LY_TYPE_UNKNOWN:
         break;
     }
+    LY_CHECK_ERR_GOTO(!t, LOGMEM(ctx); rc = LY_EMEM, cleanup);
 
-    return type;
+    if (tpdf_name) {
+        rc = lydict_insert(ctx, tpdf_name, 0, &t->name);
+        LY_CHECK_GOTO(rc, cleanup);
+    }
+
+cleanup:
+    if (rc) {
+        free(t);
+    } else {
+        *type = t;
+    }
+    return rc;
 }
 
 /**
@@ -1737,7 +1755,8 @@ lys_new_type(LY_DATA_TYPE basetype)
  *
  * @param[in] ctx Compile context.
  * @param[in] context_pnode Schema node where the type/typedef is placed to correctly find the base types.
- * @param[in] context_flags Flags of the context node or the referencing typedef to correctly check status of referencing and referenced objects.
+ * @param[in] context_flags Flags of the context node or the referencing typedef to correctly check status of
+ * referencing and referenced objects.
  * @param[in] context_name Name of the context node or referencing typedef for logging.
  * @param[in] type_p Parsed type to compile.
  * @param[in] basetype Base YANG built-in type of the type to compile.
@@ -1769,8 +1788,8 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
     uint32_t i;
 
     /* alloc and init */
-    *type = lys_new_type(basetype);
-    LY_CHECK_ERR_GOTO(!(*type), LOGMEM(ctx->ctx), cleanup);
+    rc = lys_new_type(ctx->ctx, basetype, tpdfname, type);
+    LY_CHECK_GOTO(rc, cleanup);
 
     (*type)->basetype = basetype;
     (*type)->plugin = plugin;
