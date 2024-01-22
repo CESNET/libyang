@@ -115,7 +115,7 @@ struct lyxp_var;
  * - ::lyd_find_meta()
  *
  * - ::lyd_path()
- * - ::lyd_target()
+ * - ::lyd_find_target()
  *
  * - ::lyd_lyb_data_length()
  *

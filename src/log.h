@@ -104,7 +104,7 @@ typedef enum {
 LIBYANG_API_DECL LY_LOG_LEVEL ly_log_level(LY_LOG_LEVEL level);
 
 /**
- * @ingroup logger
+ * @ingroup log
  * @defgroup logopts Logging options
  *
  * Logging option bits of libyang.
@@ -268,7 +268,7 @@ typedef enum {
 } LY_ERR;
 
 /**
- * @ingroup logger
+ * @ingroup log
  * @typedef LY_VECODE
  * @brief libyang's codes of validation error. Whenever ly_errno is set to LY_EVALID, the ly_vecode is also set
  * to the appropriate LY_VECODE value.

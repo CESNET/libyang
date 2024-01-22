@@ -158,7 +158,7 @@ LIBYANG_API_DECL LY_ERR ly_set_rm_index(struct ly_set *set, uint32_t index, void
 /**
  * @brief Remove an object on the specific set index.
  *
- * Unlike ::ly_set_rm_indes(), this function moves all the items following the removed one.
+ * Unlike ::ly_set_rm_index(), this function moves all the items following the removed one.
  *
  * @param[in] set Set from which to remove.
  * @param[in] index Index of the object to remove in the @p set.
