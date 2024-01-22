@@ -1152,16 +1152,6 @@ finish:
     return LY_SUCCESS;
 }
 
-LIBYANG_API_DEF const struct lyd_node_term *
-lyd_target(const struct ly_path *path, const struct lyd_node *tree)
-{
-    struct lyd_node *target = NULL;
-
-    lyd_find_target(path, tree, &target);
-
-    return (struct lyd_node_term *)target;
-}
-
 /**
  * @brief Check the equality of the two schemas from different contexts.
  *

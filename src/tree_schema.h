@@ -1185,7 +1185,6 @@ struct lysc_ext {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyplg_ext *plugin;        /**< Plugin implementing the specific extension */
     struct lys_module *module;       /**< module structure */
-    uint32_t refcount;               /**< unused, always 1 */
     uint16_t flags;                  /**< LYS_STATUS_* value (@ref snodeflags) */
 };
 
@@ -1349,7 +1348,6 @@ struct lysc_type_leafref {
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lyxp_expr *path;          /**< parsed target path, compiled path cannot be stored because of type sharing */
     struct lysc_prefix *prefixes;    /**< resolved prefixes used in the path */
-    const struct lys_module *cur_mod;/**< unused, not needed */
     struct lysc_type *realtype;      /**< pointer to the real (first non-leafref in possible leafrefs chain) type. */
     uint8_t require_instance;        /**< require-instance flag */
 };
