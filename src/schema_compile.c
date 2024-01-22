@@ -127,7 +127,6 @@ lys_compile_extension(struct lysc_ctx *ctx, struct lysp_ext_instance *extp, stru
 
         /* compile the extension definition */
         *ext = ep->compiled = calloc(1, sizeof **ext);
-        (*ext)->refcount = 1;
         DUP_STRING_GOTO(ctx->ctx, ep->name, (*ext)->name, ret, cleanup);
         DUP_STRING_GOTO(ctx->ctx, ep->argname, (*ext)->argname, ret, cleanup);
         LY_CHECK_GOTO(ret = lysp_ext_find_definition(ctx->ctx, extp, (const struct lys_module **)&(*ext)->module, NULL),

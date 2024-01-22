@@ -2333,16 +2333,6 @@ LIBYANG_API_DECL LY_ERR lyd_diff_merge_all(struct lyd_node **diff, const struct 
 LIBYANG_API_DECL LY_ERR lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff);
 
 /**
- * @brief Deprecated, use ::lyd_find_target() instead.
- *
- * @param[in] path Compiled path structure.
- * @param[in] tree Data tree to be searched.
- * @return Found target node,
- * @return NULL if not found.
- */
-LIBYANG_API_DECL const struct lyd_node_term *lyd_target(const struct ly_path *path, const struct lyd_node *tree);
-
-/**
  * @brief Types of the different data paths.
  */
 typedef enum {

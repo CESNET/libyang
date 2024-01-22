@@ -401,7 +401,7 @@ test_target(void **state)
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_SIMPLE, &exp));
     assert_int_equal(LY_SUCCESS, ly_path_compile(UTEST_LYCTX, NULL, NULL, NULL, exp, LY_PATH_OPER_INPUT,
             LY_PATH_TARGET_SINGLE, 1, LY_VALUE_JSON, NULL, &path));
-    term = lyd_target(path, tree);
+    assert_int_equal(LY_SUCCESS, lyd_find_target(path, tree, (struct lyd_node **)&term));
 
     const int unsigned flag = LYS_CONFIG_R | LYS_SET_ENUM | LYS_ORDBY_USER;
 
