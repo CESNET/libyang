@@ -332,7 +332,6 @@ test_models(void **state)
     CHECK_LOG_CTX("Name collision between submodules of name \"y\".", "Line number 1.");
 
     /* selecting correct revision of the submodules */
-    ly_ctx_reset_latests(UTEST_LYCTX);
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule y {belongs-to a {prefix a;} revision 2018-10-31;}");
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module a {namespace urn:a;prefix a;include y; revision 2018-10-31;}", &in));
     assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod2));

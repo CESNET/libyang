@@ -122,7 +122,6 @@ struct lys_module;
  * - ::ly_ctx_get_submodule_latest()
  * - ::ly_ctx_get_submodule2()
  * - ::ly_ctx_get_submodule2_latest()
- * - ::ly_ctx_reset_latests()
  *
  * - ::ly_ctx_get_yanglib_data()
  *
@@ -587,25 +586,6 @@ LIBYANG_API_DECL const struct lysp_submodule *ly_ctx_get_submodule2(const struct
  */
 LIBYANG_API_DECL const struct lysp_submodule *ly_ctx_get_submodule2_latest(const struct lys_module *module,
         const char *submodule);
-
-/**
- * @brief Reset cached latest revision information of the schemas in the context.
- *
- * This function is deprecated and should not be used.
- *
- * When a (sub)module is imported/included without revision, the latest revision is
- * searched. libyang searches for the latest revision in searchdirs and/or via provided
- * import callback ::ly_module_imp_clb() just once. Then it is expected that the content
- * of searchdirs or data returned by the callback does not change. So when it changes,
- * it is necessary to force searching for the latest revision in case of loading another
- * module, which what this function does.
- *
- * The latest revision information is also reset when the searchdirs set changes via
- * ::ly_ctx_set_searchdir().
- *
- * @param[in] ctx libyang context where the latest revision information is going to be reset.
- */
-LIBYANG_API_DECL void ly_ctx_reset_latests(struct ly_ctx *ctx);
 
 /**
  * @brief Learn the number of internal modules of a context. Internal modules

@@ -115,8 +115,17 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
             return LY_EMEM;
         }
 
-        /* new searchdir - possibly more latest revision available */
-        ly_ctx_reset_latests(ctx);
+        /* new searchdir - reset latests flags (possibly new revisions available) */
+        for (uint32_t v = 0; v < ctx->list.count; ++v) {
+            struct lys_module *mod = ctx->list.objs[v];
+
+            mod->latest_revision &= ~LYS_MOD_LATEST_SEARCHDIRS;
+            if (mod->parsed && mod->parsed->includes) {
+                for (LY_ARRAY_COUNT_TYPE u = 0; u < LY_ARRAY_COUNT(mod->parsed->includes); ++u) {
+                    mod->parsed->includes[u].submodule->latest_revision &= ~LYS_MOD_LATEST_SEARCHDIRS;
+                }
+            }
+        }
 
         return LY_SUCCESS;
     } else {
@@ -759,6 +768,18 @@ ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_
 
     ctx->imp_clb = clb;
     ctx->imp_clb_data = user_data;
+
+    /* new import callback - reset latests flags (possibly new revisions available) */
+    for (uint32_t v = 0; v < ctx->list.count; ++v) {
+        struct lys_module *mod = ctx->list.objs[v];
+
+        mod->latest_revision &= ~LYS_MOD_LATEST_IMPCLB;
+        if (mod->parsed && mod->parsed->includes) {
+            for (LY_ARRAY_COUNT_TYPE u = 0; u < LY_ARRAY_COUNT(mod->parsed->includes); ++u) {
+                mod->parsed->includes[u].submodule->latest_revision &= ~LYS_MOD_LATEST_IMPCLB;
+            }
+        }
+    }
 }
 
 LIBYANG_API_DEF ly_ext_data_clb
@@ -1037,22 +1058,6 @@ LIBYANG_API_DEF const struct lysp_submodule *
 ly_ctx_get_submodule2_latest(const struct lys_module *module, const char *submodule)
 {
     return _ly_ctx_get_submodule2(module, submodule, NULL, 1);
-}
-
-LIBYANG_API_DEF void
-ly_ctx_reset_latests(struct ly_ctx *ctx)
-{
-    struct lys_module *mod;
-
-    for (uint32_t v = 0; v < ctx->list.count; ++v) {
-        mod = ctx->list.objs[v];
-        mod->latest_revision &= ~(LYS_MOD_LATEST_SEARCHDIRS | LYS_MOD_LATEST_IMPCLB);
-        if (mod->parsed && mod->parsed->includes) {
-            for (LY_ARRAY_COUNT_TYPE u = 0; u < LY_ARRAY_COUNT(mod->parsed->includes); ++u) {
-                mod->parsed->includes[u].submodule->latest_revision &= ~(LYS_MOD_LATEST_SEARCHDIRS | LYS_MOD_LATEST_IMPCLB);
-            }
-        }
-    }
 }
 
 LIBYANG_API_DEF uint32_t
