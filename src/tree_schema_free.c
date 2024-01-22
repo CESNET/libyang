@@ -932,6 +932,7 @@ lysc_type_free(struct lysf_ctx *ctx, struct lysc_type *type)
         break;
     }
 
+    lydict_remove(ctx->ctx, type->name);
     FREE_ARRAY(ctx, type->exts, lysc_ext_instance_free);
     free(type);
 }
