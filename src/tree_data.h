@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang representation of YANG data trees.
  *
- * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -1020,7 +1020,11 @@ struct lyd_leafref_links_rec {
  * @return Pointer to the parent node of the @p node.
  * @return NULL in case of the top-level node or if the @p node is NULL itself.
  */
-LIBYANG_API_DECL struct lyd_node *lyd_parent(const struct lyd_node *node);
+static inline struct lyd_node *
+lyd_parent(const struct lyd_node *node)
+{
+    return (node && node->parent) ? &node->parent->node : NULL;
+}
 
 /**
  * @brief Get the child pointer of a generic data node.
@@ -1032,7 +1036,24 @@ LIBYANG_API_DECL struct lyd_node *lyd_parent(const struct lyd_node *node);
  * @param[in] node Node to use.
  * @return Pointer to the first child node (if any) of the @p node.
  */
-LIBYANG_API_DECL struct lyd_node *lyd_child(const struct lyd_node *node);
+static inline struct lyd_node *
+lyd_child(const struct lyd_node *node)
+{
+    if (!node) {
+        return NULL;
+    }
+
+    if (!node->schema) {
+        /* opaq node */
+        return ((const struct lyd_node_opaq *)node)->child;
+    }
+
+    if (node->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
+        return ((const struct lyd_node_inner *)node)->child;
+    }
+
+    return NULL;
+}
 
 /**
  * @brief Get the child pointer of a generic data node but skip its keys in case it is ::LYS_LIST.
@@ -1127,7 +1148,23 @@ LIBYANG_API_DECL const char *lyd_value_get_canonical(const struct ly_ctx *ctx, c
  * @param[in] node Data node to use.
  * @return Canonical value.
  */
-LIBYANG_API_DECL const char *lyd_get_value(const struct lyd_node *node);
+static inline const char *
+lyd_get_value(const struct lyd_node *node)
+{
+    if (!node) {
+        return NULL;
+    }
+
+    if (!node->schema) {
+        return ((const struct lyd_node_opaq *)node)->value;
+    } else if (node->schema->nodetype & LYD_NODE_TERM) {
+        const struct lyd_value *value = &((const struct lyd_node_term *)node)->value;
+
+        return value->_canonical ? value->_canonical : lyd_value_get_canonical(LYD_CTX(node), value);
+    }
+
+    return NULL;
+}
 
 /**
  * @brief Get anydata string value.
