@@ -211,11 +211,11 @@ struct lysc_type_leafref;
  *
  * Helper function for various plugin functions to generate error information structure.
  *
- * @param[in, out] err Pointer to store a new error structure filled according to the input parameters. If the storage
+ * @param[in,out] err Pointer to store a new error structure filled according to the input parameters. If the storage
  * already contains error information, the new record is appended into the errors list.
  * @param[in] ecode Code of the error to fill. In case LY_SUCCESS value, nothing is done and LY_SUCCESS is returned.
  * @param[in] vecode Validity error code in case of LY_EVALID error code.
- * @param[in] path Path to the node causing the error.
+ * @param[in] data_path Path to the data node causing the error.
  * @param[in] apptag Error-app-tag value.
  * @param[in] err_format Format string (same like at printf) or string literal.
  * If you want to print just an unknown string, use "%s" for the @p err_format, otherwise undefined behavior may occur
@@ -225,7 +225,7 @@ struct lysc_type_leafref;
  * @return LY_EMEM If there is not enough memory for allocating error record, the @p err is not touched in that case.
  * @return LY_SUCCESS if @p ecode is LY_SUCCESS, the @p err is not touched in this case.
  */
-LIBYANG_API_DECL LY_ERR ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VECODE vecode, char *path, char *apptag,
+LIBYANG_API_DECL LY_ERR ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VECODE vecode, char *data_path, char *apptag,
         const char *err_format, ...) _FORMAT_PRINTF(6, 7);
 
 /**

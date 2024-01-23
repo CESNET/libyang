@@ -60,8 +60,7 @@ test_data_xml(void **state)
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
 
     TEST_ERROR_XML("defs", "-10");
-    CHECK_LOG_CTX("Value \"-10\" is out of type uint32 min/max bounds.",
-            "Schema location \"/defs:port\", line number 1.");
+    CHECK_LOG_CTX("Value \"-10\" is out of type uint32 min/max bounds.", "/defs:port", 1);
 }
 
 int

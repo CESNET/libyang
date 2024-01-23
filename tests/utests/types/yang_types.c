@@ -114,13 +114,13 @@ test_data_xml(void **state)
     TEST_ERROR_XML("a", "l", "2005-05-31T23:15:15.-08:00", LY_EVALID);
     CHECK_LOG_CTX("Unsatisfied pattern - \"2005-05-31T23:15:15.-08:00\" does not conform to "
             "\"\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[\\+\\-]\\d{2}:\\d{2})\".",
-            "Schema location \"/a:l\", line number 1.");
+            "/a:l", 1);
 
     TEST_ERROR_XML("a", "l", "2023-16-15T20:13:01+01:00", LY_EINVAL);
-    CHECK_LOG_CTX("Invalid date-and-time month \"15\".", "Schema location \"/a:l\", line number 1.");
+    CHECK_LOG_CTX("Invalid date-and-time month \"15\".", "/a:l", 1);
 
     TEST_ERROR_XML("a", "l", "2023-10-15T20:13:01+95:00", LY_EINVAL);
-    CHECK_LOG_CTX("Invalid date-and-time timezone hour \"95\".", "Schema location \"/a:l\", line number 1.");
+    CHECK_LOG_CTX("Invalid date-and-time timezone hour \"95\".", "/a:l", 1);
 
     /* hex-string */
     TEST_SUCCESS_XML("a", "l21", "DB:BA:12:54:fa", STRING, "db:ba:12:54:fa");
@@ -138,12 +138,11 @@ test_data_xml(void **state)
     TEST_SUCCESS_XML("a", "l3", "/l3[. = '4']", STRING, "/l3[.='4']");
 
     TEST_ERROR_XML("a", "l3", "/a:l3[. = '4']", LY_EVALID);
-    CHECK_LOG_CTX("Failed to resolve prefix \"a\".", "Schema location \"/a:l3\", line number 1.");
+    CHECK_LOG_CTX("Failed to resolve prefix \"a\".", "/a:l3", 1);
     TEST_ERROR_XML("a\" xmlns:yl=\"urn:ietf:params:xml:ns:yang:ietf-yang-library", "l3",
             "/yl:yang-library/yl:datastore/yl::name", LY_EVALID);
-    CHECK_LOG_CTX("Storing value failed.", "Schema location \"/a:l3\", line number 1.");
-    CHECK_LOG_CTX("Invalid character 'y'[31] of expression '/yl:yang-library/yl:datastore/yl::name'.",
-            "Schema location \"/a:l3\", line number 1.");
+    CHECK_LOG_CTX("Storing value failed.", "/a:l3", 1);
+    CHECK_LOG_CTX("Invalid character 'y'[31] of expression '/yl:yang-library/yl:datastore/yl::name'.", "/a:l3", 1);
 }
 
 static void

@@ -102,7 +102,7 @@ lyd_parser_notif_eventtime_validate(const struct lyd_node *node)
 cleanup:
     FREE_ARRAY(&cctx.free_ctx, patterns, lysc_pattern_free);
     if (rc && err) {
-        LOGVAL_ERRITEM(ctx, err);
+        ly_err_print(ctx, err);
         ly_err_free(err);
         LOGVAL(ctx, LYVE_DATA, "Invalid \"eventTime\" in the notification.");
     }
@@ -219,7 +219,7 @@ lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode)
 {
     LY_ERR rc = LY_SUCCESS;
 
-    LOG_LOCSET(snode, NULL, NULL, NULL);
+    LOG_LOCSET(snode, NULL);
 
     if (lydctx->int_opts & LYD_INTOPT_ANY) {
         /* nothing to check, everything is allowed */
@@ -274,7 +274,7 @@ error_node_inval:
     rc = LY_EVALID;
 
 cleanup:
-    LOG_LOCBACK(1, 0, 0, 0);
+    LOG_LOCBACK(1, 0);
     return rc;
 }
 
@@ -321,7 +321,7 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
         rc = LY_EMEM;
         goto cleanup;
     }
-    LOG_LOCSET(NULL, NULL, path, NULL);
+    ly_log_location(NULL, NULL, path, NULL);
 
     LY_CHECK_GOTO(rc = lyd_create_meta(parent, meta, mod, name, name_len, value, value_len, 1, dynamic, format,
             prefix_data, hints, ctx_node, 0, &incomplete), cleanup);
@@ -336,7 +336,7 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
     }
 
 cleanup:
-    LOG_LOCBACK(0, 0, 1, 0);
+    ly_log_location_revert(0, 0, 1, 0);
     free(dpath);
     free(path);
     return rc;

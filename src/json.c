@@ -133,7 +133,7 @@ lyjson_string(struct lyjson_ctx *jsonctx)
     size_t len;      /* length of the output string (write offset in output buffer) */
     size_t size = 0; /* size of the output buffer */
     size_t u;
-    uint64_t start_line;
+    uint64_t start_line, orig_line;
     uint32_t value;
     uint8_t i;
 
@@ -283,7 +283,10 @@ lyjson_string(struct lyjson_ctx *jsonctx)
 
     /* EOF reached before endchar */
     LOGVAL(jsonctx->ctx, LY_VCODE_EOF);
-    LOGVAL_LINE(jsonctx->ctx, start_line, LYVE_SYNTAX, "Missing quotation-mark at the end of a JSON string.");
+    orig_line = jsonctx->in->line;
+    jsonctx->in->line = start_line;
+    LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Missing quotation-mark at the end of a JSON string.");
+    jsonctx->in->line = orig_line;
 
 error:
     free(buf);
@@ -716,7 +719,8 @@ lyjson_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lyjson_ctx **j
     jsonctx->ctx = ctx;
     jsonctx->in = in;
 
-    LOG_LOCSET(NULL, NULL, NULL, in);
+    /* input line logging */
+    ly_log_location(NULL, NULL, NULL, in);
 
     /* WS are always expected to be skipped */
     lyjson_skip_ws(jsonctx);
@@ -1077,7 +1081,7 @@ lyjson_ctx_free(struct lyjson_ctx *jsonctx)
         return;
     }
 
-    LOG_LOCBACK(0, 0, 0, 1);
+    ly_log_location_revert(0, 0, 0, 1);
 
     if (jsonctx->dynamic) {
         free((char *)jsonctx->value);

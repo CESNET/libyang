@@ -75,7 +75,7 @@ test_schema(void **state)
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Extension \"yangmnt:mount-point\" instance not allowed in YANG version 1 module.",
-            "Path \"/sm:root/{extension='yangmnt:mount-point'}/root\".");
+            "/sm:root/{extension='yangmnt:mount-point'}/root", 0);
 
     schema =
             "module sm {\n"
@@ -92,7 +92,7 @@ test_schema(void **state)
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Extension \"yangmnt:mount-point\" instance allowed only in container or list statement.",
-            "Path \"/sm:{extension='yangmnt:mount-point'}/root\".");
+            "/sm:{extension='yangmnt:mount-point'}/root", 0);
 
     schema =
             "module sm {\n"
@@ -114,7 +114,7 @@ test_schema(void **state)
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Extension \"yangmnt:mount-point\" instance allowed only in container or list statement.",
-            "Path \"/sm:root/l/{extension='yangmnt:mount-point'}/root\".");
+            "/sm:root/l/{extension='yangmnt:mount-point'}/root", 0);
 
     schema =
             "module sm {\n"
@@ -138,7 +138,7 @@ test_schema(void **state)
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Multiple extension \"yangmnt:mount-point\" instances.",
-            "Path \"/sm:l/{extension='yangmnt:mount-point'}/root\".");
+            "/sm:l/{extension='yangmnt:mount-point'}/root", 0);
 
     /* valid */
     schema =
@@ -196,7 +196,7 @@ test_parse_invalid(void **state)
             "</root>";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EINVAL, data);
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": Failed to get extension data, no callback set.",
-            NULL);
+            NULL, 0);
 
     json =
             "{"
@@ -213,7 +213,7 @@ test_parse_invalid(void **state)
             "}";
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EINVAL, data);
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": Failed to get extension data, no callback set.",
-            NULL);
+            NULL, 0);
 
     /* unknown data */
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb, NULL);
@@ -225,8 +225,7 @@ test_parse_invalid(void **state)
     lyd_free_siblings(data);
 
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("No module with namespace \"unknown\" in the context.",
-            "Data location \"/sm:root\", line number 1.");
+    CHECK_LOG_CTX("No module with namespace \"unknown\" in the context.", "/sm:root", 1);
 
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     assert_string_equal(LYD_NAME(data), "root");
@@ -236,8 +235,7 @@ test_parse_invalid(void **state)
     lyd_free_siblings(data);
 
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("No module named \"unknown\" in the context.",
-            "Data location \"/sm:root\", line number 1.");
+    CHECK_LOG_CTX("No module named \"unknown\" in the context.", "/sm:root", 1);
 
     /* missing required callback data */
     xml =
@@ -249,8 +247,7 @@ test_parse_invalid(void **state)
             "  </interfaces>"
             "</root>";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.",
-            "Data location \"/sm:root\", line number 1.");
+    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.", "/sm:root", 1);
 
     json =
             "{"
@@ -265,8 +262,7 @@ test_parse_invalid(void **state)
             "  }"
             "}";
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.",
-            "Data location \"/sm:root\", line number 1.");
+    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.", "/sm:root", 1);
 
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
             "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
@@ -297,11 +293,9 @@ test_parse_invalid(void **state)
             "  <module-set-id>1</module-set-id>"
             "</modules-state>");
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.",
-            "Data location \"/sm:root\", line number 1.");
+    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.", "/sm:root", 1);
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.",
-            "Data location \"/sm:root\", line number 1.");
+    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.", "/sm:root", 1);
 
     /* missing module in yang-library data */
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
@@ -340,11 +334,9 @@ test_parse_invalid(void **state)
             "  </mount-point>"
             "</schema-mounts>");
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.",
-            "Data location \"/sm:root\", line number 1.");
+    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.", "/sm:root", 1);
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.",
-            "Data location \"/sm:root\", line number 1.");
+    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.", "/sm:root", 1);
 
     /* callback data correct, invalid YANG data */
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
@@ -408,27 +400,23 @@ test_parse_invalid(void **state)
             "  </mount-point>"
             "</schema-mounts>");
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
-            "Mandatory node \"type\" instance does not exist.",
-            "Data location \"/ietf-interfaces:interfaces/interface[name='bu']\".");
+    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": Mandatory node \"type\" instance does not exist.",
+            "/ietf-interfaces:interfaces/interface[name='bu']", 0);
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
-            "Mandatory node \"type\" instance does not exist.",
-            "Data location \"/ietf-interfaces:interfaces/interface[name='bu']\".");
+    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": Mandatory node \"type\" instance does not exist.",
+            "/ietf-interfaces:interfaces/interface[name='bu']", 0);
 
     /* same validation fail in separate validation */
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, LY_SUCCESS, data);
     assert_int_equal(LY_EVALID, lyd_validate_all(&data, NULL, LYD_VALIDATE_PRESENT, NULL));
-    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
-            "Mandatory node \"type\" instance does not exist.",
-            "Data location \"/ietf-interfaces:interfaces/interface[name='bu']\".");
+    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": Mandatory node \"type\" instance does not exist.",
+            "/ietf-interfaces:interfaces/interface[name='bu']", 0);
     lyd_free_siblings(data);
 
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, LY_SUCCESS, data);
     assert_int_equal(LY_EVALID, lyd_validate_all(&data, NULL, LYD_VALIDATE_PRESENT, NULL));
-    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
-            "Mandatory node \"type\" instance does not exist.",
-            "Data location \"/ietf-interfaces:interfaces/interface[name='bu']\".");
+    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": Mandatory node \"type\" instance does not exist.",
+            "/ietf-interfaces:interfaces/interface[name='bu']", 0);
     lyd_free_siblings(data);
 
     /* success */
@@ -878,7 +866,7 @@ test_parse_shared(void **state)
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Shared-schema yang-library content-id \"2\" differs from \"1\" used previously.",
-            "Path \"/ietf-yang-library:yang-library/content-id\".");
+            "/ietf-yang-library:yang-library/content-id", 0);
 
     /* data for 2 mount points */
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
@@ -1134,7 +1122,7 @@ test_parse_shared_parent_ref(void **state)
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Invalid leafref value \"target-value\" - no target instance \"/sm:target\" with the same value.",
-            "Data location \"/ietf-interfaces:interfaces/interface[name='bu']/sm:sm-name\".");
+            "/ietf-interfaces:interfaces/interface[name='bu']/sm:sm-name", 0);
 
     json =
             "{\n"
@@ -1159,7 +1147,7 @@ test_parse_shared_parent_ref(void **state)
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
             "Invalid leafref value \"target-value\" - no target instance \"/sm:target\" with the same value.",
-            "Data location \"/ietf-interfaces:interfaces/interface[name='bu']/sm:sm-name\".");
+            "/ietf-interfaces:interfaces/interface[name='bu']/sm:sm-name", 0);
 
     /* success */
     xml =

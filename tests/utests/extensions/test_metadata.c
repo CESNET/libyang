@@ -53,7 +53,7 @@ test_yang(void **state)
             "md:annotation aa;}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 metadata v1\": Missing mandatory keyword \"type\" as a child of \"md:annotation aa\".",
-            "Path \"/aa:{extension='md:annotation'}/aa\".");
+            "/aa:{extension='md:annotation'}/aa", 0);
 
     /* not allowed substatement */
     data = "module aa {yang-version 1.1; namespace urn:tests:extensions:metadata:aa; prefix aa;"
@@ -61,31 +61,28 @@ test_yang(void **state)
             "md:annotation aa {default x;}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Invalid keyword \"default\" as a child of \"md:annotation aa\" extension instance.",
-            "Path \"/aa:{extension='md:annotation'}/aa\".");
+            "/aa:{extension='md:annotation'}/aa", 0);
 
     /* invalid cardinality of units substatement */
     data = "module aa {yang-version 1.1; namespace urn:tests:extensions:metadata:aa; prefix aa;"
             "import ietf-yang-metadata {prefix md;}"
             "md:annotation aa {type string; units x; units y;}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate keyword \"units\".",
-            "Path \"/aa:{extension='md:annotation'}/aa\".");
+    CHECK_LOG_CTX("Duplicate keyword \"units\".", "/aa:{extension='md:annotation'}/aa", 0);
 
     /* invalid cardinality of status substatement */
     data = "module aa {yang-version 1.1; namespace urn:tests:extensions:metadata:aa; prefix aa;"
             "import ietf-yang-metadata {prefix md;}"
             "md:annotation aa {type string; status current; status obsolete;}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate keyword \"status\".",
-            "Path \"/aa:{extension='md:annotation'}/aa\".");
+    CHECK_LOG_CTX("Duplicate keyword \"status\".", "/aa:{extension='md:annotation'}/aa", 0);
 
     /* invalid cardinality of status substatement */
     data = "module aa {yang-version 1.1; namespace urn:tests:extensions:metadata:aa; prefix aa;"
             "import ietf-yang-metadata {prefix md;}"
             "md:annotation aa {type string; type uint8;}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate keyword \"type\".",
-            "Path \"/aa:{extension='md:annotation'}/aa\".");
+    CHECK_LOG_CTX("Duplicate keyword \"type\".", "/aa:{extension='md:annotation'}/aa", 0);
 
     /* duplication of the same annotation */
     data = "module aa {yang-version 1.1; namespace urn:tests:extensions:metadata:aa; prefix aa;"
@@ -93,7 +90,7 @@ test_yang(void **state)
             "md:annotation aa {type string;} md:annotation aa {type uint8;}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 metadata v1\": Extension md:annotation is instantiated multiple times.",
-            "Path \"/aa:{extension='md:annotation'}/aa\".");
+            "/aa:{extension='md:annotation'}/aa", 0);
 }
 
 static void
@@ -134,7 +131,7 @@ test_yin(void **state)
             "</module>";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YIN, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 metadata v1\": Missing mandatory keyword \"type\" as a child of \"md:annotation aa\".",
-            "Path \"/aa:{extension='md:annotation'}/aa\".");
+            "/aa:{extension='md:annotation'}/aa", 0);
 
     /* not allowed substatement */
     data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"aa\">\n"
@@ -145,7 +142,7 @@ test_yin(void **state)
             "</md:annotation></module>";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YIN, NULL));
     CHECK_LOG_CTX("Invalid keyword \"default\" as a child of \"md:annotation aa\" extension instance.",
-            "Path \"/aa:{extension='md:annotation'}/aa\".");
+            "/aa:{extension='md:annotation'}/aa", 0);
 
     /* invalid cardinality of units substatement */
     data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"aa\">\n"
@@ -157,8 +154,7 @@ test_yin(void **state)
             "  <units name=\"y\"/>\n"
             "</md:annotation></module>";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YIN, NULL));
-    CHECK_LOG_CTX("Duplicate keyword \"units\".",
-            "Path \"/aa:{extension='md:annotation'}/aa\".");
+    CHECK_LOG_CTX("Duplicate keyword \"units\".", "/aa:{extension='md:annotation'}/aa", 0);
 
     /* invalid cardinality of status substatement */
     data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"aa\">\n"
@@ -170,8 +166,7 @@ test_yin(void **state)
             "  <status value=\"obsolete\"/>\n"
             "</md:annotation></module>";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YIN, NULL));
-    CHECK_LOG_CTX("Duplicate keyword \"status\".",
-            "Path \"/aa:{extension='md:annotation'}/aa\".");
+    CHECK_LOG_CTX("Duplicate keyword \"status\".", "/aa:{extension='md:annotation'}/aa", 0);
 
     /* invalid cardinality of status substatement */
     data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"aa\">\n"
@@ -182,8 +177,7 @@ test_yin(void **state)
             "  <type name=\"uint8\"/>\n"
             "</md:annotation></module>";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YIN, NULL));
-    CHECK_LOG_CTX("Duplicate keyword \"type\".",
-            "Path \"/aa:{extension='md:annotation'}/aa\".");
+    CHECK_LOG_CTX("Duplicate keyword \"type\".", "/aa:{extension='md:annotation'}/aa", 0);
 
     /* duplication of the same annotation */
     data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"aa\">\n"
@@ -196,7 +190,7 @@ test_yin(void **state)
             "</md:annotation></module>";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YIN, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 metadata v1\": Extension md:annotation is instantiated multiple times.",
-            "Path \"/aa:{extension='md:annotation'}/aa\".");
+            "/aa:{extension='md:annotation'}/aa", 0);
 }
 
 int

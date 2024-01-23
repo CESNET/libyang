@@ -385,14 +385,11 @@ test_data_xml(void **state)
     TEST_SUCCESS_XML("TRANGE_0", "126", INT8, "126", 126);
     /* test print error */
     TEST_ERROR_XML("TRANGE_0", "-1");
-    CHECK_LOG_CTX("error message",
-            "Schema location \"/TRANGE_0:port\", line number 1.");
+    CHECK_LOG_CTX("error message", "/TRANGE_0:port", 1);
     TEST_ERROR_XML("TRANGE_0", "51");
-    CHECK_LOG_CTX("error message",
-            "Schema location \"/TRANGE_0:port\", line number 1.");
+    CHECK_LOG_CTX("error message", "/TRANGE_0:port", 1);
     TEST_ERROR_XML("TRANGE_0", "127");
-    CHECK_LOG_CTX("error message",
-            "Schema location \"/TRANGE_0:port\", line number 1.");
+    CHECK_LOG_CTX("error message", "/TRANGE_0:port", 1);
 
     /* xml test */
     schema = MODULE_CREATE_YANG("TRANGE_1", "leaf port {type uint8 {"
@@ -406,15 +403,11 @@ test_data_xml(void **state)
     TEST_SUCCESS_XML("TRANGE_1", "126", UINT8, "126", 126);
     /* test print error */
     TEST_ERROR_XML("TRANGE_1", "0");
-    CHECK_LOG_CTX("error message",
-            "Schema location \"/TRANGE_1:port\", line number 1.");
+    CHECK_LOG_CTX("error message", "/TRANGE_1:port", 1);
     TEST_ERROR_XML("TRANGE_1", "51");
-    CHECK_LOG_CTX("error message",
-            "Schema location \"/TRANGE_1:port\", line number 1.");
+    CHECK_LOG_CTX("error message", "/TRANGE_1:port", 1);
     TEST_ERROR_XML("TRANGE_1", "127");
-    CHECK_LOG_CTX("error message",
-            "Schema location \"/TRANGE_1:port\", line number 1.");
-
+    CHECK_LOG_CTX("error message", "/TRANGE_1:port", 1);
 }
 
 int

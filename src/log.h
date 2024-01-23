@@ -181,24 +181,23 @@ LIBYANG_API_DECL uint32_t ly_log_dbg_groups(uint32_t dbg_groups);
  *
  * @param[in] level Log level of the message.
  * @param[in] msg Message.
- * @param[in] path Optional path of the concerned node.
+ * @param[in] data_path Optional data path of the related node.
+ * @param[in] schema_path Optional schema path of the related node.
+ * @param[in] line Optional related input line.
  */
-typedef void (*ly_log_clb)(LY_LOG_LEVEL level, const char *msg, const char *path);
+typedef void (*ly_log_clb)(LY_LOG_LEVEL level, const char *msg, const char *data_path, const char *schema_path,
+        uint64_t line);
 
 /**
  * @brief Set logger callback.
  *
  * @param[in] clb Logging callback.
- * @param[in] path flag to resolve and provide path as the third parameter of the callback function. In case of
- *            validation and some other errors, it can be useful to get the path to the problematic element. Note,
- *            that according to the tree type and the specific situation, the path can slightly differs (keys
- *            presence) or it can be NULL, so consider it as an optional parameter. If the flag is 0, libyang will
- *            not bother with resolving the path.
  */
-LIBYANG_API_DECL void ly_set_log_clb(ly_log_clb clb, ly_bool path);
+LIBYANG_API_DECL void ly_set_log_clb(ly_log_clb clb);
 
 /**
  * @brief Get logger callback.
+ *
  * @return Logger callback (can be NULL).
  */
 LIBYANG_API_DECL ly_log_clb ly_get_log_clb(void);
@@ -293,22 +292,16 @@ typedef enum {
  */
 struct ly_err_item {
     LY_LOG_LEVEL level;         /**< error (message) log level */
-    LY_ERR no;                  /**< error code */
+    LY_ERR err;                 /**< error code number */
     LY_VECODE vecode;           /**< validation error code, if any */
     char *msg;                  /**< error message */
-    char *path;                 /**< error path that caused the error, if any */
+    char *data_path;            /**< error data path related to the error, if any */
+    char *schema_path;          /**< error schema path related to the error, if any */
+    uint64_t line;              /**< input line the error occured on, if available */
     char *apptag;               /**< error-app-tag, if any */
     struct ly_err_item *next;   /**< next error item */
     struct ly_err_item *prev;   /**< previous error item, points to the last item for the ifrst item */
 };
-
-/**
- * @brief Get the last (thread, context-specific) error code.
- *
- * @param[in] ctx Relative context.
- * @return LY_ERR value of the last error code.
- */
-LIBYANG_API_DECL LY_ERR ly_errcode(const struct ly_ctx *ctx);
 
 /**
  * @brief Get human-readable error message for an error code.
@@ -316,17 +309,7 @@ LIBYANG_API_DECL LY_ERR ly_errcode(const struct ly_ctx *ctx);
  * @param[in] err Error code.
  * @return String error message.
  */
-LIBYANG_API_DECL const char *ly_strerrcode(LY_ERR err);
-
-/**
- * @brief Get the last (thread, context-specific) validation error code.
- *
- * This value is set only if ly_errno is #LY_EVALID.
- *
- * @param[in] ctx Relative context.
- * @return Validation error code.
- */
-LIBYANG_API_DECL LY_VECODE ly_vecode(const struct ly_ctx *ctx);
+LIBYANG_API_DECL const char *ly_strerr(LY_ERR err);
 
 /**
  * @brief Get human-readable error message for a validation error code.
@@ -337,69 +320,30 @@ LIBYANG_API_DECL LY_VECODE ly_vecode(const struct ly_ctx *ctx);
 LIBYANG_API_DECL const char *ly_strvecode(LY_VECODE vecode);
 
 /**
- * @brief Get the last (thread, context-specific) error message. If the coresponding module defined
- * a specific error message, it will be used instead the default one.
+ * @brief Get the last (thread-specific) full logged error message.
  *
- * Sometimes, the error message is extended with path of the element where the problem is.
- * The path is available via ::ly_errpath().
- *
- * @param[in] ctx Relative context.
- * @return Text of the last error message, empty string if there is no error.
- */
-LIBYANG_API_DECL const char *ly_errmsg(const struct ly_ctx *ctx);
-
-/**
- * @brief Get the last (thread-specific) error message.
- *
- * ::ly_errmsg() should be used instead of this function but this one is useful for getting
- * errors from functions that do not have any context accessible. Or as a simple unified logging API.
+ * This function is useful for getting errors from functions that do not have any context accessible and includes
+ * any additional information such as the path or line where the error occurred.
  *
  * @return Last generated error message.
  */
-LIBYANG_API_DECL const char *ly_last_errmsg(void);
-
-/**
- * @brief Get the last (thread, context-specific) path of the element where was an error.
- *
- * The path always corresponds to the error message available via ::ly_errmsg(), so
- * whenever a subsequent error message is printed, the path is erased or rewritten.
- * The path reflects the type of the processed tree - data path for data tree functions
- * and schema path in case of schema tree functions. In case of processing YIN schema
- * or XML data, the path can be just XML path. In such a case, the corresponding
- * ly_vecode (value 1-3) is set.
- *
- * @param[in] ctx Relative context.
- * @return Path of the error element, empty string if error path does not apply to the last error.
- */
-LIBYANG_API_DECL const char *ly_errpath(const struct ly_ctx *ctx);
-
-/**
- * @brief Get the last (thread, context-specific) error-app-tag if there was a specific one defined
- * in the module for the last error.
- *
- * The app-tag always corresponds to the error message available via ::ly_errmsg(), so
- * whenever a subsequent error message is printed, the app-tag is erased or rewritten.
- *
- * @param[in] ctx Relative context.
- * @return Error-app-tag of the last error, empty string if the error-app-tag does not apply to the last error.
- */
-LIBYANG_API_DECL const char *ly_errapptag(const struct ly_ctx *ctx);
+LIBYANG_API_DECL const char *ly_last_logmsg(void);
 
 /**
  * @brief Get the first (thread, context-specific) generated error structure.
  *
  * @param[in] ctx Relative context.
- * @return The first error structure (can be NULL), do not modify!
+ * @return First error structure, NULL if none available.
  */
-LIBYANG_API_DECL struct ly_err_item *ly_err_first(const struct ly_ctx *ctx);
+LIBYANG_API_DECL const struct ly_err_item *ly_err_first(const struct ly_ctx *ctx);
 
 /**
  * @brief Get the latest (thread, context-specific) generated error structure.
  *
  * @param[in] ctx Relative context.
- * @return The last error structure (can be NULL), do not modify!
+ * @return Last error structure, NULL if none available.
  */
-LIBYANG_API_DECL struct ly_err_item *ly_err_last(const struct ly_ctx *ctx);
+LIBYANG_API_DECL const struct ly_err_item *ly_err_last(const struct ly_ctx *ctx);
 
 /**
  * @brief Print the error structure as if just generated.
@@ -407,12 +351,12 @@ LIBYANG_API_DECL struct ly_err_item *ly_err_last(const struct ly_ctx *ctx);
  * @param[in] ctx Optional context to store the message in.
  * @param[in] eitem Error item structure to print.
  */
-LIBYANG_API_DECL void ly_err_print(const struct ly_ctx *ctx, struct ly_err_item *eitem);
+LIBYANG_API_DECL void ly_err_print(const struct ly_ctx *ctx, const struct ly_err_item *eitem);
 
 /**
  * @brief Free error structures from a context.
  *
- * If \p eitem is not set, free all the error structures.
+ * If @p eitem is not set, free all the error structures.
  *
  * @param[in] ctx Relative context.
  * @param[in] eitem Oldest error structure to remove, optional.

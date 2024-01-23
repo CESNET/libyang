@@ -91,7 +91,7 @@ setup(void **state)
     /* initilize and use the global easily available and customizable input handler */
     in.line = 1;
     YCTX->in = &in;
-    LOG_LOCSET(NULL, NULL, NULL, &in);
+    ly_log_location(NULL, NULL, NULL, &in);
 
     fctx.ctx = PARSER_CTX(YCTX);
     fctx.mod = pmod->mod;
@@ -103,7 +103,7 @@ static int
 teardown(void **state)
 {
     lys_module_free(&fctx, PARSER_CUR_PMOD(YCTX)->mod, 0);
-    LOG_LOCBACK(0, 0, 0, 1);
+    ly_log_location_revert(0, 0, 0, 1);
 
     ly_set_free(YCTX->parsed_mods, NULL);
     ly_set_erase(&YCTX->ext_inst, NULL);
@@ -120,7 +120,7 @@ teardown(void **state)
 #define TEST_DUP_GENERIC(PREFIX, MEMBER, VALUE1, VALUE2, FUNC, RESULT, LINE, CLEANUP) \
     in.current = PREFIX MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, FUNC(YCTX, RESULT)); \
-    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", "Line number "LINE".");\
+    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, LINE);\
     CLEANUP
 static void
 test_helpers(void **state)
@@ -175,22 +175,22 @@ test_helpers(void **state)
 
     /* checking identifiers */
     assert_int_equal(LY_EVALID, lysp_check_identifierchar((struct lysp_ctx *)YCTX, ':', 0, NULL));
-    CHECK_LOG_CTX("Invalid identifier character ':' (0x003a).", "Line number 1.");
+    CHECK_LOG_CTX("Invalid identifier character ':' (0x003a).", NULL, 1);
     assert_int_equal(LY_EVALID, lysp_check_identifierchar((struct lysp_ctx *)YCTX, '#', 1, NULL));
-    CHECK_LOG_CTX("Invalid identifier first character '#' (0x0023).", "Line number 1.");
+    CHECK_LOG_CTX("Invalid identifier first character '#' (0x0023).", NULL, 1);
 
     assert_int_equal(LY_SUCCESS, lysp_check_identifierchar((struct lysp_ctx *)YCTX, 'a', 1, &prefix));
     assert_int_equal(0, prefix);
     assert_int_equal(LY_SUCCESS, lysp_check_identifierchar((struct lysp_ctx *)YCTX, ':', 0, &prefix));
     assert_int_equal(1, prefix);
     assert_int_equal(LY_EVALID, lysp_check_identifierchar((struct lysp_ctx *)YCTX, ':', 0, &prefix));
-    CHECK_LOG_CTX("Invalid identifier first character ':' (0x003a).", "Line number 1.");
+    CHECK_LOG_CTX("Invalid identifier first character ':' (0x003a).", NULL, 1);
     assert_int_equal(1, prefix);
     assert_int_equal(LY_SUCCESS, lysp_check_identifierchar((struct lysp_ctx *)YCTX, 'b', 0, &prefix));
     assert_int_equal(2, prefix);
     /* second colon is invalid */
     assert_int_equal(LY_EVALID, lysp_check_identifierchar((struct lysp_ctx *)YCTX, ':', 0, &prefix));
-    CHECK_LOG_CTX("Invalid identifier character ':' (0x003a).", "Line number 1.");
+    CHECK_LOG_CTX("Invalid identifier character ':' (0x003a).", NULL, 1);
 }
 
 #define TEST_GET_ARGUMENT_SUCCESS(INPUT_TEXT, CTX, ARG_TYPE, EXPECT_WORD, EXPECT_LEN, EXPECT_CURRENT, EXPECT_LINE)\
@@ -228,7 +228,7 @@ test_comments(void **state)
     in.line = 1;
     in.current = " this is a not terminated comment x";
     assert_int_equal(LY_EVALID, skip_comment(YCTX, 2));
-    CHECK_LOG_CTX("Unexpected end-of-input, non-terminated comment.", "Line number 1.");
+    CHECK_LOG_CTX("Unexpected end-of-input, non-terminated comment.", NULL, 1);
     assert_true(in.current[0] == '\0');
 }
 
@@ -245,35 +245,35 @@ test_arg(void **state)
 
     in.current = "{";
     assert_int_equal(LY_EVALID, get_argument(YCTX, Y_STR_ARG, NULL, &word, &buf, &len));
-    CHECK_LOG_CTX("Invalid character sequence \"{\", expected an argument.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid character sequence \"{\", expected an argument.", NULL, 1);
 
     /* invalid escape sequence */
     in.current = "\"\\s\"";
     assert_int_equal(LY_EVALID, get_argument(YCTX, Y_STR_ARG, NULL, &word, &buf, &len));
-    CHECK_LOG_CTX("Double-quoted string unknown special character \'\\s\'.", "Line number 1.");
+    CHECK_LOG_CTX("Double-quoted string unknown special character \'\\s\'.", NULL, 1);
 
     TEST_GET_ARGUMENT_SUCCESS("\'\\s\'", YCTX, Y_STR_ARG, "\\s\'", 2, "", 1);
 
     /* invalid character after the argument */
     in.current = "hello\"";
     assert_int_equal(LY_EVALID, get_argument(YCTX, Y_STR_ARG, NULL, &word, &buf, &len));
-    CHECK_LOG_CTX("Invalid character sequence \"\"\", expected unquoted string character, optsep, semicolon or opening brace.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid character sequence \"\"\", expected unquoted string character, optsep, semicolon or opening brace.", NULL, 1);
 
     in.current = "hello}";
     assert_int_equal(LY_EVALID, get_argument(YCTX, Y_STR_ARG, NULL, &word, &buf, &len));
-    CHECK_LOG_CTX("Invalid character sequence \"}\", expected unquoted string character, optsep, semicolon or opening brace.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid character sequence \"}\", expected unquoted string character, optsep, semicolon or opening brace.", NULL, 1);
     /* invalid identifier-ref-arg-str */
     in.current = "pre:pre:value";
     assert_int_equal(LY_EVALID, get_argument(YCTX, Y_PREF_IDENTIF_ARG, NULL, &word, &buf, &len));
-    CHECK_LOG_CTX("Invalid identifier character ':' (0x003a).", "Line number 1.");
+    CHECK_LOG_CTX("Invalid identifier character ':' (0x003a).", NULL, 1);
 
     in.current = "\"\";"; /* empty identifier is not allowed */
     assert_int_equal(LY_EVALID, get_argument(YCTX, Y_IDENTIF_ARG, NULL, &word, &buf, &len));
-    CHECK_LOG_CTX("Statement argument is required.", "Line number 1.");
+    CHECK_LOG_CTX("Statement argument is required.", NULL, 1);
 
     in.current = "\"\";"; /* empty reference identifier is not allowed */
     assert_int_equal(LY_EVALID, get_argument(YCTX, Y_PREF_IDENTIF_ARG, NULL, &word, &buf, &len));
-    CHECK_LOG_CTX("Statement argument is required.", "Line number 1.");
+    CHECK_LOG_CTX("Statement argument is required.", NULL, 1);
 
     /* slash is not an invalid character */
     TEST_GET_ARGUMENT_SUCCESS("hello/x\t", YCTX, Y_STR_ARG, "hello/x\t", 7, "\t", 1);
@@ -322,7 +322,7 @@ test_arg(void **state)
     in.line = 1;
     in.current = "\"hel\"  +\t\nlo"; /* unquoted the second part */
     assert_int_equal(LY_EVALID, get_argument(YCTX, Y_STR_ARG, NULL, &word, &buf, &len));
-    CHECK_LOG_CTX("Both string parts divided by '+' must be quoted.", "Line number 2.");
+    CHECK_LOG_CTX("Both string parts divided by '+' must be quoted.", NULL, 2);
 
     TEST_GET_ARGUMENT_SUCCESS("\'he\'\t\n+ \"llo\"", YCTX, Y_STR_ARG, "hello", 5, "", 2);
     free(buf);
@@ -334,7 +334,7 @@ test_arg(void **state)
     in.line = 1;
     in.current = ";";
     assert_int_equal(LY_EVALID, get_argument(YCTX, Y_STR_ARG, NULL, &word, &buf, &len));
-    CHECK_LOG_CTX("Invalid character sequence \";\", expected an argument.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid character sequence \";\", expected an argument.", NULL, 1);
 }
 
 #define TEST_STMS_SUCCESS(INPUT_TEXT, CTX, ACTION, EXPECT_WORD)\
@@ -373,15 +373,15 @@ test_stmts(void **state)
 
     in.current = "/input { "; /* invalid slash */
     assert_int_equal(LY_EVALID, get_keyword(YCTX, &kw, &word, &len));
-    CHECK_LOG_CTX("Invalid identifier first character '/'.", "Line number 4.");
+    CHECK_LOG_CTX("Invalid identifier first character '/'.", NULL, 4);
 
     in.current = "not-a-statement-nor-extension { "; /* invalid identifier */
     assert_int_equal(LY_EVALID, get_keyword(YCTX, &kw, &word, &len));
-    CHECK_LOG_CTX("Invalid character sequence \"not-a-statement-nor-extension\", expected a keyword.", "Line number 4.");
+    CHECK_LOG_CTX("Invalid character sequence \"not-a-statement-nor-extension\", expected a keyword.", NULL, 4);
 
     in.current = "path;"; /* missing sep after the keyword */
     assert_int_equal(LY_EVALID, get_keyword(YCTX, &kw, &word, &len));
-    CHECK_LOG_CTX("Invalid character sequence \"path;\", expected a keyword followed by a separator.", "Line number 4.");
+    CHECK_LOG_CTX("Invalid character sequence \"path;\", expected a keyword followed by a separator.", NULL, 4);
 
     TEST_STMS_SUCCESS("action ", YCTX, LY_STMT_ACTION, "action");
 
@@ -478,43 +478,43 @@ test_minmax(void **state)
 
     in.current = " 1invalid; ...";
     assert_int_equal(LY_EVALID, parse_minelements(YCTX, &value, &flags, &ext));
-    CHECK_LOG_CTX("Invalid value \"1invalid\" of \"min-elements\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"1invalid\" of \"min-elements\".", NULL, 1);
 
     flags = value = 0;
     in.current = " -1; ...";
     assert_int_equal(LY_EVALID, parse_minelements(YCTX, &value, &flags, &ext));
-    CHECK_LOG_CTX("Invalid value \"-1\" of \"min-elements\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"-1\" of \"min-elements\".", NULL, 1);
 
     /* implementation limit */
     flags = value = 0;
     in.current = " 4294967296; ...";
     assert_int_equal(LY_EVALID, parse_minelements(YCTX, &value, &flags, &ext));
-    CHECK_LOG_CTX("Value \"4294967296\" is out of \"min-elements\" bounds.", "Line number 1.");
+    CHECK_LOG_CTX("Value \"4294967296\" is out of \"min-elements\" bounds.", NULL, 1);
 
     flags = value = 0;
     in.current = " 1 {config true;} ...";
     assert_int_equal(LY_EVALID, parse_minelements(YCTX, &value, &flags, &ext));
-    CHECK_LOG_CTX("Invalid keyword \"config\" as a child of \"min-elements\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid keyword \"config\" as a child of \"min-elements\".", NULL, 1);
 
     in.current = " 1invalid; ...";
     assert_int_equal(LY_EVALID, parse_maxelements(YCTX, &value, &flags, &ext));
-    CHECK_LOG_CTX("Invalid value \"1invalid\" of \"max-elements\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"1invalid\" of \"max-elements\".", NULL, 1);
 
     flags = value = 0;
     in.current = " -1; ...";
     assert_int_equal(LY_EVALID, parse_maxelements(YCTX, &value, &flags, &ext));
-    CHECK_LOG_CTX("Invalid value \"-1\" of \"max-elements\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"-1\" of \"max-elements\".", NULL, 1);
 
     /* implementation limit */
     flags = value = 0;
     in.current = " 4294967296; ...";
     assert_int_equal(LY_EVALID, parse_maxelements(YCTX, &value, &flags, &ext));
-    CHECK_LOG_CTX("Value \"4294967296\" is out of \"max-elements\" bounds.", "Line number 1.");
+    CHECK_LOG_CTX("Value \"4294967296\" is out of \"max-elements\" bounds.", NULL, 1);
 
     flags = value = 0;
     in.current = " 1 {config true;} ...";
     assert_int_equal(LY_EVALID, parse_maxelements(YCTX, &value, &flags, &ext));
-    CHECK_LOG_CTX("Invalid keyword \"config\" as a child of \"max-elements\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid keyword \"config\" as a child of \"max-elements\".", NULL, 1);
 }
 
 static void
@@ -784,13 +784,13 @@ test_module(void **state)
     in.current = " name {}";
     assert_int_equal(LY_EVALID, parse_module(YCTX, mod));
     assert_string_equal("name", mod->mod->name);
-    CHECK_LOG_CTX("Missing mandatory keyword \"namespace\" as a child of \"module\".", "Line number 1.");
+    CHECK_LOG_CTX("Missing mandatory keyword \"namespace\" as a child of \"module\".", NULL, 1);
 
     mod = mod_renew(YCTX);
     in.current = " name {namespace urn:name;}";
     assert_int_equal(LY_EVALID, parse_module(YCTX, mod));
     assert_string_equal("urn:name", mod->mod->ns);
-    CHECK_LOG_CTX("Missing mandatory keyword \"prefix\" as a child of \"module\".", "Line number 1.");
+    CHECK_LOG_CTX("Missing mandatory keyword \"prefix\" as a child of \"module\".", NULL, 1);
     mod = mod_renew(YCTX);
 
     in.current = " name {namespace urn:name;prefix \"n\";}";
@@ -818,17 +818,17 @@ test_module(void **state)
                          parse_module, mod, LINE, mod = mod_renew(YCTX))
 
     /* duplicated namespace, prefix */
-    TEST_DUP("namespace", "y", "z", "1");
-    TEST_DUP("prefix", "y", "z", "1");
-    TEST_DUP("contact", "a", "b", "1");
-    TEST_DUP("description", "a", "b", "1");
-    TEST_DUP("organization", "a", "b", "1");
-    TEST_DUP("reference", "a", "b", "1");
+    TEST_DUP("namespace", "y", "z", 1);
+    TEST_DUP("prefix", "y", "z", 1);
+    TEST_DUP("contact", "a", "b", 1);
+    TEST_DUP("description", "a", "b", 1);
+    TEST_DUP("organization", "a", "b", 1);
+    TEST_DUP("reference", "a", "b", 1);
 
     /* not allowed in module (submodule-specific) */
     in.current = SCHEMA_BEGINNING "belongs-to master {prefix m;}}";
     assert_int_equal(LY_EVALID, parse_module(YCTX, mod));
-    CHECK_LOG_CTX("Invalid keyword \"belongs-to\" as a child of \"module\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid keyword \"belongs-to\" as a child of \"module\".", NULL, 1);
     mod = mod_renew(YCTX);
 
     /* anydata */
@@ -871,35 +871,35 @@ test_module(void **state)
     /* import - prefix collision */
     in.current = SCHEMA_BEGINNING "import zzz {prefix x;}}";
     assert_int_equal(LY_EVALID, parse_module(YCTX, mod));
-    CHECK_LOG_CTX("Prefix \"x\" already used as module prefix.", "Line number 1.");
+    CHECK_LOG_CTX("Prefix \"x\" already used as module prefix.", NULL, 1);
     mod = mod_renew(YCTX);
 
     in.current = SCHEMA_BEGINNING "import zzz {prefix y;}import zzz {prefix y;}}";
     assert_int_equal(LY_EVALID, parse_module(YCTX, mod));
-    CHECK_LOG_CTX("Prefix \"y\" already used to import \"zzz\" module.", "Line number 1.");
+    CHECK_LOG_CTX("Prefix \"y\" already used to import \"zzz\" module.", NULL, 1);
 
     mod = mod_renew(YCTX);
-    LOG_LOCBACK(0, 0, 0, 1);
+    ly_log_location_revert(0, 0, 0, 1);
 
     in.current = "module name10 {yang-version 1.1;namespace urn:name10;prefix \"n10\";import zzz {prefix y;}import zzz {prefix z;}}";
     assert_int_equal(lys_parse_mem(PARSER_CUR_PMOD(YCTX)->mod->ctx, in.current, LYS_IN_YANG, NULL), LY_SUCCESS);
-    CHECK_LOG_CTX("Single revision of the module \"zzz\" imported twice.", NULL);
+    CHECK_LOG_CTX("Single revision of the module \"zzz\" imported twice.", NULL, 0);
 
     /* include */
     ly_ctx_set_module_imp_clb(PARSER_CUR_PMOD(YCTX)->mod->ctx, test_imp_clb, "module xxx { namespace urn:xxx; prefix x;}");
     in.current = "module" SCHEMA_BEGINNING "include xxx;}";
     assert_int_equal(lys_parse_mem(PARSER_CUR_PMOD(YCTX)->mod->ctx, in.current, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"name\" failed.", NULL);
-    CHECK_LOG_CTX("Including \"xxx\" submodule into \"name\" failed.", NULL);
-    CHECK_LOG_CTX("Data model \"xxx\" not found in local searchdirs.", NULL);
-    CHECK_LOG_CTX("Parsing submodule failed.", NULL);
-    CHECK_LOG_CTX("Input data contains module in situation when a submodule is expected.", NULL);
+    CHECK_LOG_CTX("Parsing module \"name\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Including \"xxx\" submodule into \"name\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Data model \"xxx\" not found in local searchdirs.", NULL, 0);
+    CHECK_LOG_CTX("Parsing submodule failed.", NULL, 0);
+    CHECK_LOG_CTX("Input data contains module in situation when a submodule is expected.", NULL, 0);
 
     ly_ctx_set_module_imp_clb(PARSER_CUR_PMOD(YCTX)->mod->ctx, test_imp_clb, "submodule xxx {belongs-to wrong-name {prefix w;}}");
     in.current = "module" SCHEMA_BEGINNING "include xxx;}";
     assert_int_equal(lys_parse_mem(PARSER_CUR_PMOD(YCTX)->mod->ctx, in.current, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Parsing module \"name\" failed.", NULL);
-    CHECK_LOG_CTX("Including \"xxx\" submodule into \"name\" failed.", NULL);
+    CHECK_LOG_CTX("Parsing module \"name\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Including \"xxx\" submodule into \"name\" failed.", NULL, 0);
     UTEST_LOG_CTX_CLEAN;
 
     ly_ctx_set_module_imp_clb(PARSER_CUR_PMOD(YCTX)->mod->ctx, test_imp_clb, "submodule xxx {belongs-to name {prefix x;}}");
@@ -935,11 +935,11 @@ test_module(void **state)
     /* yang-version */
     in.current = SCHEMA_BEGINNING2 "\n\tyang-version 10;}";
     assert_int_equal(LY_EVALID, parse_module(YCTX, mod));
-    CHECK_LOG_CTX("Invalid value \"10\" of \"yang-version\".", NULL);
+    CHECK_LOG_CTX("Invalid value \"10\" of \"yang-version\".", NULL, 0);
     mod = mod_renew(YCTX);
     in.current = SCHEMA_BEGINNING2 "yang-version 1;yang-version 1.1;}";
     assert_int_equal(LY_EVALID, parse_module(YCTX, mod));
-    CHECK_LOG_CTX("Duplicate keyword \"yang-version\".", NULL);
+    CHECK_LOG_CTX("Duplicate keyword \"yang-version\".", NULL, 0);
     mod = mod_renew(YCTX);
     in.current = SCHEMA_BEGINNING2 "yang-version 1;}";
     assert_int_equal(LY_SUCCESS, parse_module(YCTX, mod));
@@ -954,7 +954,7 @@ test_module(void **state)
     m = calloc(1, sizeof *m);
     m->ctx = PARSER_CUR_PMOD(YCTX)->mod->ctx;
     assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
-    CHECK_LOG_CTX("Trailing garbage \"module q {names...\" after module, expected end-of-input.", "Line number 1.");
+    CHECK_LOG_CTX("Trailing garbage \"module q {names...\" after module, expected end-of-input.", NULL, 1);
     lysp_yang_ctx_free(ctx_p);
     lys_module_free(&fctx, m, 0);
 
@@ -962,7 +962,7 @@ test_module(void **state)
     m = calloc(1, sizeof *m);
     m->ctx = PARSER_CUR_PMOD(YCTX)->mod->ctx;
     assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
-    CHECK_LOG_CTX("Invalid keyword \"prefix\", expected \"module\" or \"submodule\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid keyword \"prefix\", expected \"module\" or \"submodule\".", NULL, 1);
     lysp_yang_ctx_free(ctx_p);
     lys_module_free(&fctx, m, 0);
 
@@ -970,7 +970,7 @@ test_module(void **state)
     m = calloc(1, sizeof *m);
     m->ctx = PARSER_CUR_PMOD(YCTX)->mod->ctx;
     assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
-    CHECK_LOG_CTX("Invalid keyword \"position\" as a child of \"enum\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid keyword \"position\" as a child of \"enum\".", NULL, 1);
     lysp_yang_ctx_free(ctx_p);
     lys_module_free(&fctx, m, 0);
 
@@ -983,7 +983,7 @@ test_module(void **state)
     /* invalid substatement */
     in.current = SCHEMA_BEGINNING "must false;}";
     assert_int_equal(LY_EVALID, parse_module(YCTX, mod));
-    CHECK_LOG_CTX("Invalid keyword \"must\" as a child of \"module\".", NULL);
+    CHECK_LOG_CTX("Invalid keyword \"must\" as a child of \"module\".", NULL, 0);
 
     /* submodule */
     submod = submod_renew(YCTX);
@@ -991,7 +991,7 @@ test_module(void **state)
     /* missing mandatory substatements */
     in.current = " subname {}";
     assert_int_equal(LY_EVALID, parse_submodule(YCTX, submod));
-    CHECK_LOG_CTX("Missing mandatory keyword \"belongs-to\" as a child of \"submodule\".", NULL);
+    CHECK_LOG_CTX("Missing mandatory keyword \"belongs-to\" as a child of \"submodule\".", NULL, 0);
     assert_string_equal("subname", submod->name);
 
     submod = submod_renew(YCTX);
@@ -1007,27 +1007,27 @@ test_module(void **state)
     /* duplicated namespace, prefix */
     in.current = " subname {belongs-to name {prefix x;}belongs-to module1;belongs-to module2;} ...";
     assert_int_equal(LY_EVALID, parse_submodule(YCTX, submod));
-    CHECK_LOG_CTX("Duplicate keyword \"belongs-to\".", NULL);
+    CHECK_LOG_CTX("Duplicate keyword \"belongs-to\".", NULL, 0);
     submod = submod_renew(YCTX);
 
     /* not allowed in submodule (module-specific) */
     in.current = SCHEMA_BEGINNING "namespace \"urn:z\";}";
     assert_int_equal(LY_EVALID, parse_submodule(YCTX, submod));
-    CHECK_LOG_CTX("Invalid keyword \"namespace\" as a child of \"submodule\".", NULL);
+    CHECK_LOG_CTX("Invalid keyword \"namespace\" as a child of \"submodule\".", NULL, 0);
     submod = submod_renew(YCTX);
     in.current = SCHEMA_BEGINNING "prefix m;}}";
     assert_int_equal(LY_EVALID, parse_submodule(YCTX, submod));
-    CHECK_LOG_CTX("Invalid keyword \"prefix\" as a child of \"submodule\".", NULL);
+    CHECK_LOG_CTX("Invalid keyword \"prefix\" as a child of \"submodule\".", NULL, 0);
     submod = submod_renew(YCTX);
 
     in.current = "submodule " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";
     assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx_p, PARSER_CUR_PMOD(YCTX)->mod->ctx, (struct lysp_ctx *)YCTX, YCTX->in, &submod));
-    CHECK_LOG_CTX("Trailing garbage \"module q {names...\" after submodule, expected end-of-input.", "Line number 1.");
+    CHECK_LOG_CTX("Trailing garbage \"module q {names...\" after submodule, expected end-of-input.", NULL, 1);
     lysp_yang_ctx_free(ctx_p);
 
     in.current = "prefix " SCHEMA_BEGINNING "}";
     assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx_p, PARSER_CUR_PMOD(YCTX)->mod->ctx, (struct lysp_ctx *)YCTX, YCTX->in, &submod));
-    CHECK_LOG_CTX("Invalid keyword \"prefix\", expected \"module\" or \"submodule\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid keyword \"prefix\", expected \"module\" or \"submodule\".", NULL, 1);
     lysp_yang_ctx_free(ctx_p);
     submod = submod_renew(YCTX);
 
@@ -1043,18 +1043,18 @@ test_deviation(void **state)
     struct lysp_deviation *d = NULL;
 
     /* invalid cardinality */
-    TEST_DUP_GENERIC(" test {deviate not-supported;", "description", "a", "b", parse_deviation, &d, "1", );
-    TEST_DUP_GENERIC(" test {deviate not-supported;", "reference", "a", "b", parse_deviation, &d, "1", );
+    TEST_DUP_GENERIC(" test {deviate not-supported;", "description", "a", "b", parse_deviation, &d, 1, );
+    TEST_DUP_GENERIC(" test {deviate not-supported;", "reference", "a", "b", parse_deviation, &d, 1, );
 
     /* missing mandatory substatement */
     in.current = " test {description text;}";
     assert_int_equal(LY_EVALID, parse_deviation(YCTX, &d));
-    CHECK_LOG_CTX("Missing mandatory keyword \"deviate\" as a child of \"deviation\".", "Line number 1.");
+    CHECK_LOG_CTX("Missing mandatory keyword \"deviate\" as a child of \"deviation\".", NULL, 1);
 
     /* invalid substatement */
     in.current = " test {deviate not-supported; status obsolete;}";
     assert_int_equal(LY_EVALID, parse_deviation(YCTX, &d));
-    CHECK_LOG_CTX("Invalid keyword \"status\" as a child of \"deviation\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid keyword \"status\" as a child of \"deviation\".", NULL, 1);
 }
 
 static void
@@ -1063,17 +1063,17 @@ test_deviate(void **state)
     struct lysp_deviate *d = NULL;
 
     /* invalid cardinality */
-    TEST_DUP_GENERIC("add {", "config", "true", "false", parse_deviate, &d, "1", );
-    TEST_DUP_GENERIC("add {", "mandatory", "true", "false", parse_deviate, &d, "1", );
-    TEST_DUP_GENERIC("add {", "max-elements", "1", "2", parse_deviate, &d, "1", );
-    TEST_DUP_GENERIC("add {", "min-elements", "1", "2", parse_deviate, &d, "1", );
-    TEST_DUP_GENERIC("add {", "units", "kilometers", "miles", parse_deviate, &d, "1", );
+    TEST_DUP_GENERIC("add {", "config", "true", "false", parse_deviate, &d, 1, );
+    TEST_DUP_GENERIC("add {", "mandatory", "true", "false", parse_deviate, &d, 1, );
+    TEST_DUP_GENERIC("add {", "max-elements", "1", "2", parse_deviate, &d, 1, );
+    TEST_DUP_GENERIC("add {", "min-elements", "1", "2", parse_deviate, &d, 1, );
+    TEST_DUP_GENERIC("add {", "units", "kilometers", "miles", parse_deviate, &d, 1, );
 
     /* invalid substatements */
 #define TEST_NOT_SUP(DEV, STMT, VALUE) \
     in.current = " "DEV" {"STMT" "VALUE";}..."; \
     assert_int_equal(LY_EVALID, parse_deviate(YCTX, &d)); \
-    CHECK_LOG_CTX("Deviate \""DEV"\" does not support keyword \""STMT"\".", "Line number 1.");
+    CHECK_LOG_CTX("Deviate \""DEV"\" does not support keyword \""STMT"\".", NULL, 1);
 
     TEST_NOT_SUP("not-supported", "units", "meters");
     TEST_NOT_SUP("not-supported", "must", "1");
@@ -1095,7 +1095,7 @@ test_deviate(void **state)
 
     in.current = " nonsence; ...";
     assert_int_equal(LY_EVALID, parse_deviate(YCTX, &d));
-    CHECK_LOG_CTX("Invalid value \"nonsence\" of \"deviate\".", "Line number 1.");\
+    CHECK_LOG_CTX("Invalid value \"nonsence\" of \"deviate\".", NULL, 1);\
     assert_null(d);
 #undef TEST_NOT_SUP
 }
@@ -1112,7 +1112,7 @@ test_container(void **state)
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
     in.current = "cont {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_container(YCTX, NULL, (struct lysp_node**)&c)); \
-    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", "Line number 1."); \
+    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
     lysp_node_free(&fctx, (struct lysp_node*)c); c = NULL;
 
     TEST_DUP("config", "true", "false");
@@ -1142,18 +1142,18 @@ test_container(void **state)
     /* invalid */
     in.current = " cont {augment /root;} ...";
     assert_int_equal(LY_EVALID, parse_container(YCTX, NULL, (struct lysp_node **)&c));
-    CHECK_LOG_CTX("Invalid keyword \"augment\" as a child of \"container\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid keyword \"augment\" as a child of \"container\".", NULL, 1);
     lysp_node_free(&fctx, (struct lysp_node *)c); c = NULL;
     in.current = " cont {nonsence true;} ...";
     assert_int_equal(LY_EVALID, parse_container(YCTX, NULL, (struct lysp_node **)&c));
-    CHECK_LOG_CTX("Invalid character sequence \"nonsence\", expected a keyword.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid character sequence \"nonsence\", expected a keyword.", NULL, 1);
     lysp_node_free(&fctx, (struct lysp_node *)c); c = NULL;
 
     PARSER_CUR_PMOD(YCTX)->version = 1; /* simulate YANG 1.0 */
     in.current = " cont {action x;} ...";
     assert_int_equal(LY_EVALID, parse_container(YCTX, NULL, (struct lysp_node **)&c));
     CHECK_LOG_CTX("Invalid keyword \"action\" as a child of \"container\" - "
-            "the statement is allowed only in YANG 1.1 modules.", "Line number 1.");
+            "the statement is allowed only in YANG 1.1 modules.", NULL, 1);
     lysp_node_free(&fctx, (struct lysp_node *)c); c = NULL;
 }
 
@@ -1166,7 +1166,7 @@ test_leaf(void **state)
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
     in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_leaf(YCTX, NULL, (struct lysp_node**)&l)); \
-    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", "Line number 1."); \
+    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
     lysp_node_free(&fctx, (struct lysp_node*)l); l = NULL;
 
     TEST_DUP("config", "true", "false");
@@ -1201,12 +1201,12 @@ test_leaf(void **state)
     /* invalid */
     in.current = " l {description \"missing type\";} ...";
     assert_int_equal(LY_EVALID, parse_leaf(YCTX, NULL, (struct lysp_node **)&l));
-    CHECK_LOG_CTX("Missing mandatory keyword \"type\" as a child of \"leaf\".", "Line number 1.");
+    CHECK_LOG_CTX("Missing mandatory keyword \"type\" as a child of \"leaf\".", NULL, 1);
     lysp_node_free(&fctx, (struct lysp_node *)l); l = NULL;
 
     in.current = "l { type iid { path qpud wrong {";
     assert_int_equal(LY_EVALID, parse_leaf(YCTX, NULL, (struct lysp_node **)&l));
-    CHECK_LOG_CTX("Invalid character sequence \"wrong\", expected a keyword.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid character sequence \"wrong\", expected a keyword.", NULL, 1);
     lysp_node_free(&fctx, (struct lysp_node *)l); l = NULL;
 }
 
@@ -1221,7 +1221,7 @@ test_leaflist(void **state)
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
     in.current = "ll {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_leaflist(YCTX, NULL, (struct lysp_node**)&ll)); \
-    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", "Line number 1."); \
+    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
     lysp_node_free(&fctx, (struct lysp_node*)ll); ll = NULL;
 
     TEST_DUP("config", "true", "false");
@@ -1267,13 +1267,13 @@ test_leaflist(void **state)
     /* invalid */
     in.current = " ll {description \"missing type\";} ...";
     assert_int_equal(LY_EVALID, parse_leaflist(YCTX, NULL, (struct lysp_node **)&ll));
-    CHECK_LOG_CTX("Missing mandatory keyword \"type\" as a child of \"leaf-list\".", "Line number 1.");
+    CHECK_LOG_CTX("Missing mandatory keyword \"type\" as a child of \"leaf-list\".", NULL, 1);
     lysp_node_free(&fctx, (struct lysp_node *)ll); ll = NULL;
 
     PARSER_CUR_PMOD(YCTX)->version = 1; /* simulate YANG 1.0 - default statement is not allowed */
     in.current = " ll {default xx; type string;} ...";
     assert_int_equal(LY_EVALID, parse_leaflist(YCTX, NULL, (struct lysp_node **)&ll));
-    CHECK_LOG_CTX("Invalid keyword \"default\" as a child of \"leaf-list\" - the statement is allowed only in YANG 1.1 modules.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid keyword \"default\" as a child of \"leaf-list\" - the statement is allowed only in YANG 1.1 modules.", NULL, 1);
     lysp_node_free(&fctx, (struct lysp_node *)ll); ll = NULL;
 }
 
@@ -1289,7 +1289,7 @@ test_list(void **state)
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
     in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_list(YCTX, NULL, (struct lysp_node**)&l)); \
-    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", "Line number 1."); \
+    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
     lysp_node_free(&fctx, (struct lysp_node*)l); l = NULL;
 
     TEST_DUP("config", "true", "false");
@@ -1326,7 +1326,7 @@ test_list(void **state)
     PARSER_CUR_PMOD(YCTX)->version = 1; /* simulate YANG 1.0 */
     in.current = "l {action x;} ...";
     assert_int_equal(LY_EVALID, parse_list(YCTX, NULL, (struct lysp_node **)&l));
-    CHECK_LOG_CTX("Invalid keyword \"action\" as a child of \"list\" - the statement is allowed only in YANG 1.1 modules.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid keyword \"action\" as a child of \"list\" - the statement is allowed only in YANG 1.1 modules.", NULL, 1);
     lysp_node_free(&fctx, (struct lysp_node *)l); l = NULL;
 }
 
@@ -1341,7 +1341,7 @@ test_choice(void **state)
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
     in.current = "ch {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_choice(YCTX, NULL, (struct lysp_node**)&ch)); \
-    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", "Line number 1."); \
+    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
     lysp_node_free(&fctx, (struct lysp_node*)ch); ch = NULL;
 
     TEST_DUP("config", "true", "false");
@@ -1379,7 +1379,7 @@ test_case(void **state)
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
     in.current = "cs {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_case(YCTX, NULL, (struct lysp_node**)&cs)); \
-    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", "Line number 1."); \
+    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
     lysp_node_free(&fctx, (struct lysp_node*)cs); cs = NULL;
 
     TEST_DUP("description", "text1", "text2");
@@ -1398,7 +1398,7 @@ test_case(void **state)
     /* invalid content */
     in.current = "cs {config true} ...";
     assert_int_equal(LY_EVALID, parse_case(YCTX, NULL, (struct lysp_node **)&cs));
-    CHECK_LOG_CTX("Invalid keyword \"config\" as a child of \"case\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid keyword \"config\" as a child of \"case\".", NULL, 1);
     lysp_node_free(&fctx, (struct lysp_node *)cs); cs = NULL;
 }
 
@@ -1417,7 +1417,7 @@ test_any(void **state, enum ly_stmt kw)
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
     in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_any(YCTX, kw, NULL, (struct lysp_node**)&any)); \
-    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", "Line number 1."); \
+    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
     lysp_node_free(&fctx, (struct lysp_node*)any); any = NULL;
 
     TEST_DUP("config", "true", "false");
@@ -1463,7 +1463,7 @@ test_grouping(void **state)
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
     in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_grouping(YCTX, NULL, &grp)); \
-    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", "Line number 1."); \
+    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
     lysp_node_free(&fctx, &grp->node); grp = NULL;
 
     TEST_DUP("description", "text1", "text2");
@@ -1491,13 +1491,13 @@ test_grouping(void **state)
     /* invalid content */
     in.current = "grp {config true} ...";
     assert_int_equal(LY_EVALID, parse_grouping(YCTX, NULL, &grp));
-    CHECK_LOG_CTX("Invalid keyword \"config\" as a child of \"grouping\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid keyword \"config\" as a child of \"grouping\".", NULL, 1);
     lysp_node_free(&fctx, &grp->node);
     grp = NULL;
 
     in.current = "grp {must 'expr'} ...";
     assert_int_equal(LY_EVALID, parse_grouping(YCTX, NULL, &grp));
-    CHECK_LOG_CTX("Invalid keyword \"must\" as a child of \"grouping\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid keyword \"must\" as a child of \"grouping\".", NULL, 1);
     lysp_node_free(&fctx, &grp->node);
     grp = NULL;
 }
@@ -1515,7 +1515,7 @@ test_action(void **state)
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
     in.current = "func {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_action(YCTX, NULL, &rpcs)); \
-    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", "Line number 1."); \
+    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
     lysp_node_free(&fctx, (struct lysp_node*)rpcs); rpcs = NULL;
 
     TEST_DUP("description", "text1", "text2");
@@ -1566,7 +1566,7 @@ test_action(void **state)
     /* invalid content */
     in.current = "func {config true} ...";
     assert_int_equal(LY_EVALID, parse_action(YCTX, NULL, &rpcs));
-    CHECK_LOG_CTX("Invalid keyword \"config\" as a child of \"rpc\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid keyword \"config\" as a child of \"rpc\".", NULL, 1);
     lysp_node_free(&fctx, (struct lysp_node *)rpcs); rpcs = NULL;
 
     lysp_node_free(&fctx, (struct lysp_node *)c);
@@ -1585,7 +1585,7 @@ test_notification(void **state)
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
     in.current = "func {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_notif(YCTX, NULL, &notifs)); \
-    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", "Line number 1."); \
+    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
     lysp_node_free(&fctx, (struct lysp_node*)notifs); notifs = NULL;
 
     TEST_DUP("description", "text1", "text2");
@@ -1619,7 +1619,7 @@ test_notification(void **state)
     /* invalid content */
     in.current = "ntf {config true} ...";
     assert_int_equal(LY_EVALID, parse_notif(YCTX, NULL, &notifs));
-    CHECK_LOG_CTX("Invalid keyword \"config\" as a child of \"notification\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid keyword \"config\" as a child of \"notification\".", NULL, 1);
     lysp_node_free(&fctx, (struct lysp_node *)notifs); notifs = NULL;
 
     lysp_node_free(&fctx, (struct lysp_node *)c);
@@ -1636,7 +1636,7 @@ test_uses(void **state)
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
     in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_uses(YCTX, NULL, (struct lysp_node**)&u)); \
-    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", "Line number 1."); \
+    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
     lysp_node_free(&fctx, (struct lysp_node*)u); u = NULL;
 
     TEST_DUP("description", "text1", "text2");
@@ -1665,7 +1665,7 @@ test_augment(void **state)
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
     in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_augment(YCTX, NULL, &a)); \
-    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", "Line number 1."); \
+    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
     lysp_node_free(&fctx, (struct lysp_node *)a); a = NULL;
 
     TEST_DUP("description", "text1", "text2");
@@ -1701,12 +1701,12 @@ test_when(void **state)
     in.current = "l { description text1;description text2;} ...";
     assert_int_equal(LY_EVALID, parse_when(YCTX, &w));
     assert_null(w);
-    CHECK_LOG_CTX("Duplicate keyword \"description\".", "Line number 1.");
+    CHECK_LOG_CTX("Duplicate keyword \"description\".", NULL, 1);
 
     in.current = "l { reference 1;reference 2;} ...";
     assert_int_equal(LY_EVALID, parse_when(YCTX, &w));
     assert_null(w);
-    CHECK_LOG_CTX("Duplicate keyword \"reference\".", "Line number 1.");
+    CHECK_LOG_CTX("Duplicate keyword \"reference\".", NULL, 1);
 }
 
 static void
@@ -1721,7 +1721,7 @@ test_value(void **state)
     in.current = "-0;";
     memset(&enm, 0, sizeof enm);
     assert_int_equal(parse_type_enum_value_pos(YCTX, LY_STMT_POSITION, &enm), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"-0\" of \"position\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"-0\" of \"position\".", NULL, 1);
 }
 
 int

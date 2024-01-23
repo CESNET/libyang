@@ -276,7 +276,7 @@ lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, st
     do {
         --i;
         node = node_when->dnodes[i];
-        LOG_LOCSET(node->schema, node, NULL, NULL);
+        LOG_LOCSET(node->schema, node);
 
         /* evaluate all when expressions that affect this node's existence */
         r = lyd_validate_node_when(*tree, node, node->schema, xpath_options, &disabled);
@@ -307,13 +307,13 @@ lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, st
             LY_VAL_ERR_GOTO(r, rc = r, val_opts, error);
         }
 
-        LOG_LOCBACK(1, 1, 0, 0);
+        LOG_LOCBACK(1, 1);
     } while (i);
 
     return rc;
 
 error:
-    LOG_LOCBACK(1, 1, 0, 0);
+    LOG_LOCBACK(1, 1);
     return rc;
 }
 
@@ -385,9 +385,9 @@ lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, enum ly
             struct lysc_type *type = ((struct lysc_node_leaf *)node->schema)->type;
 
             /* resolve the value of the node */
-            LOG_LOCSET(NULL, &node->node, NULL, NULL);
+            LOG_LOCSET(NULL, &node->node);
             r = lyd_value_validate_incomplete(LYD_CTX(node), type, &node->value, &node->node, *tree);
-            LOG_LOCBACK(0, 1, 0, 0);
+            LOG_LOCBACK(0, 1);
             LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
             /* remove this node from the set */
@@ -471,13 +471,13 @@ lyd_validate_duplicates(const struct lyd_node *first, const struct lyd_node *nod
     if (fail) {
         if ((node->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) && (val_opts & LYD_VALIDATE_OPERATIONAL)) {
             /* only a warning */
-            LOG_LOCSET(NULL, node, NULL, NULL);
+            LOG_LOCSET(NULL, node);
             LOGWRN(node->schema->module->ctx, "Duplicate instance of \"%s\".", node->schema->name);
-            LOG_LOCBACK(0, 1, 0, 0);
+            LOG_LOCBACK(0, 1);
         } else {
-            LOG_LOCSET(NULL, node, NULL, NULL);
+            LOG_LOCSET(NULL, node);
             LOGVAL(node->schema->module->ctx, LY_VCODE_DUP, node->schema->name);
-            LOG_LOCBACK(0, 1, 0, 0);
+            LOG_LOCBACK(0, 1);
             return LY_EVALID;
         }
     }
@@ -501,7 +501,7 @@ lyd_validate_cases(struct lyd_node **first, const struct lys_module *mod, const 
     struct lyd_node *match, *to_del;
     ly_bool found;
 
-    LOG_LOCSET(&choic->node, NULL, NULL, NULL);
+    LOG_LOCSET(&choic->node, NULL);
 
     LY_LIST_FOR((struct lysc_node *)choic->cases, scase) {
         found = 0;
@@ -525,7 +525,7 @@ lyd_validate_cases(struct lyd_node **first, const struct lys_module *mod, const 
             if (old_case) {
                 /* old data from 2 cases */
                 LOGVAL(choic->module->ctx, LY_VCODE_DUPCASE, old_case->name, scase->name);
-                LOG_LOCBACK(1, 0, 0, 0);
+                LOG_LOCBACK(1, 0);
                 return LY_EVALID;
             }
 
@@ -535,7 +535,7 @@ lyd_validate_cases(struct lyd_node **first, const struct lys_module *mod, const 
             if (new_case) {
                 /* new data from 2 cases */
                 LOGVAL(choic->module->ctx, LY_VCODE_DUPCASE, new_case->name, scase->name);
-                LOG_LOCBACK(1, 0, 0, 0);
+                LOG_LOCBACK(1, 0);
                 return LY_EVALID;
             }
 
@@ -544,7 +544,7 @@ lyd_validate_cases(struct lyd_node **first, const struct lys_module *mod, const 
         }
     }
 
-    LOG_LOCBACK(1, 0, 0, 0);
+    LOG_LOCBACK(1, 0);
 
     if (old_case && new_case) {
         /* auto-delete old case */
@@ -964,22 +964,22 @@ lyd_validate_mandatory(const struct lyd_node *first, const struct lyd_node *pare
     if (!disabled) {
         if (val_opts & LYD_VALIDATE_OPERATIONAL) {
             /* only a warning */
-            LOG_LOCSET(parent ? NULL : snode, parent, NULL, NULL);
+            LOG_LOCSET(parent ? NULL : snode, parent);
             if (snode->nodetype == LYS_CHOICE) {
                 LOGWRN(snode->module->ctx, "Mandatory choice \"%s\" data do not exist.", snode->name);
             } else {
                 LOGWRN(snode->module->ctx, "Mandatory node \"%s\" instance does not exist.", snode->name);
             }
-            LOG_LOCBACK(parent ? 0 : 1, parent ? 1 : 0, 0, 0);
+            LOG_LOCBACK(parent ? 0 : 1, parent ? 1 : 0);
         } else {
             /* node instance not found */
-            LOG_LOCSET(parent ? NULL : snode, parent, NULL, NULL);
+            LOG_LOCSET(parent ? NULL : snode, parent);
             if (snode->nodetype == LYS_CHOICE) {
                 LOGVAL_APPTAG(snode->module->ctx, "missing-choice", LY_VCODE_NOMAND_CHOIC, snode->name);
             } else {
                 LOGVAL(snode->module->ctx, LY_VCODE_NOMAND, snode->name);
             }
-            LOG_LOCBACK(parent ? 0 : 1, parent ? 1 : 0, 0, 0);
+            LOG_LOCBACK(parent ? 0 : 1, parent ? 1 : 0);
             return LY_EVALID;
         }
     }
@@ -1047,25 +1047,25 @@ lyd_validate_minmax(const struct lyd_node *first, const struct lyd_node *parent,
     if (min) {
         if (val_opts & LYD_VALIDATE_OPERATIONAL) {
             /* only a warning */
-            LOG_LOCSET(snode, NULL, NULL, NULL);
+            LOG_LOCSET(snode, NULL);
             LOGWRN(snode->module->ctx, "Too few \"%s\" instances.", snode->name);
-            LOG_LOCBACK(1, 0, 0, 0);
+            LOG_LOCBACK(1, 0);
         } else {
-            LOG_LOCSET(snode, NULL, NULL, NULL);
+            LOG_LOCSET(snode, NULL);
             LOGVAL_APPTAG(snode->module->ctx, "too-few-elements", LY_VCODE_NOMIN, snode->name);
-            LOG_LOCBACK(1, 0, 0, 0);
+            LOG_LOCBACK(1, 0);
             return LY_EVALID;
         }
     } else if (max) {
         if (val_opts & LYD_VALIDATE_OPERATIONAL) {
             /* only a warning */
-            LOG_LOCSET(NULL, iter, NULL, NULL);
+            LOG_LOCSET(NULL, iter);
             LOGWRN(snode->module->ctx, "Too many \"%s\" instances.", snode->name);
-            LOG_LOCBACK(0, 1, 0, 0);
+            LOG_LOCBACK(0, 1);
         } else {
-            LOG_LOCSET(NULL, iter, NULL, NULL);
+            LOG_LOCSET(NULL, iter);
             LOGVAL_APPTAG(snode->module->ctx, "too-many-elements", LY_VCODE_NOMAX, snode->name);
-            LOG_LOCBACK(0, 1, 0, 0);
+            LOG_LOCBACK(0, 1);
             return LY_EVALID;
         }
     }
@@ -1201,14 +1201,14 @@ uniquecheck:
 
                 ptr += strlen(ptr);
             }
-            LOG_LOCSET(NULL, second, NULL, NULL);
+            LOG_LOCSET(NULL, second);
             if (arg->val_opts & LYD_VALIDATE_OPERATIONAL) {
                 /* only a warning */
                 LOGWRN(ctx, "Unique data leaf(s) \"%s\" not satisfied in \"%s\" and \"%s\".", uniq_str, path1, path2);
             } else {
                 LOGVAL_APPTAG(ctx, "data-not-unique", LY_VCODE_NOUNIQ, uniq_str, path1, path2);
             }
-            LOG_LOCBACK(0, 1, 0, 0);
+            LOG_LOCBACK(0, 1);
 
             free(path1);
             free(path2);
@@ -1434,9 +1434,9 @@ lyd_validate_obsolete(const struct lyd_node *node)
     snode = node->schema;
     do {
         if (snode->flags & LYS_STATUS_OBSLT) {
-            LOG_LOCSET(NULL, node, NULL, NULL);
+            LOG_LOCSET(NULL, node);
             LOGWRN(snode->module->ctx, "Obsolete schema node \"%s\" instantiated in data.", snode->name);
-            LOG_LOCBACK(0, 1, 0, 0);
+            LOG_LOCBACK(0, 1);
             break;
         }
 
@@ -1506,24 +1506,24 @@ lyd_validate_must(const struct lyd_node *node, uint32_t val_opts, uint32_t int_o
             if (val_opts & LYD_VALIDATE_OPERATIONAL) {
                 /* only a warning */
                 emsg = musts[u].emsg;
-                LOG_LOCSET(NULL, node, NULL, NULL);
+                LOG_LOCSET(NULL, node);
                 if (emsg) {
                     LOGWRN(LYD_CTX(node), "%s", emsg);
                 } else {
                     LOGWRN(LYD_CTX(node), "Must condition \"%s\" not satisfied.", musts[u].cond->expr);
                 }
-                LOG_LOCBACK(0, 1, 0, 0);
+                LOG_LOCBACK(0, 1);
             } else {
                 /* use specific error information */
                 emsg = musts[u].emsg;
                 eapptag = musts[u].eapptag ? musts[u].eapptag : "must-violation";
-                LOG_LOCSET(NULL, node, NULL, NULL);
+                LOG_LOCSET(NULL, node);
                 if (emsg) {
                     LOGVAL_APPTAG(LYD_CTX(node), eapptag, LYVE_DATA, "%s", emsg);
                 } else {
                     LOGVAL_APPTAG(LYD_CTX(node), eapptag, LY_VCODE_NOMUST, musts[u].cond->expr);
                 }
-                LOG_LOCBACK(0, 1, 0, 0);
+                LOG_LOCBACK(0, 1);
                 r = LY_EVALID;
                 LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
             }
@@ -1588,9 +1588,9 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
             innode = "notification";
         }
         if (innode) {
-            LOG_LOCSET(NULL, node, NULL, NULL);
+            LOG_LOCSET(NULL, node);
             LOGVAL(LYD_CTX(node), LY_VCODE_UNEXPNODE, innode, node->schema->name);
-            LOG_LOCBACK(0, 1, 0, 0);
+            LOG_LOCBACK(0, 1);
             r = LY_EVALID;
             goto next_iter;
         }

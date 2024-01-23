@@ -79,12 +79,10 @@ test_data_xml(void **state)
 
     /* invalid value */
     TEST_ERROR_XML("defs", "l1", "unsure");
-    CHECK_LOG_CTX("Invalid boolean value \"unsure\".",
-            "Schema location \"/defs:l1\", line number 1.");
+    CHECK_LOG_CTX("Invalid boolean value \"unsure\".", "/defs:l1", 1);
 
     TEST_ERROR_XML("defs", "l1", " true");
-    CHECK_LOG_CTX("Invalid boolean value \" true\".",
-            "Schema location \"/defs:l1\", line number 1.");
+    CHECK_LOG_CTX("Invalid boolean value \" true\".", "/defs:l1", 1);
 }
 
 static void

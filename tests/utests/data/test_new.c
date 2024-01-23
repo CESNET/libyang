@@ -106,16 +106,16 @@ test_top_level(void **state)
     lyd_free_tree(node);
 
     assert_int_equal(lyd_new_list2(NULL, mod, "l1", "[]", 0, &node), LY_EVALID);
-    CHECK_LOG_CTX("Unexpected XPath token \"]\" (\"]\").", "Schema location \"/a:l1\".");
+    CHECK_LOG_CTX("Unexpected XPath token \"]\" (\"]\").", "/a:l1", 0);
 
     assert_int_equal(lyd_new_list2(NULL, mod, "l1", "[key1='a'][key2='b']", 0, &node), LY_ENOTFOUND);
-    CHECK_LOG_CTX("Not found node \"key1\" in path.", "Schema location \"/a:l1\".");
+    CHECK_LOG_CTX("Not found node \"key1\" in path.", "/a:l1", 0);
 
     assert_int_equal(lyd_new_list2(NULL, mod, "l1", "[a='a'][b='b'][c='c']", 0, &node), LY_EVALID);
-    CHECK_LOG_CTX("Key expected instead of leaf \"c\" in path.", "Schema location \"/a:l1\".");
+    CHECK_LOG_CTX("Key expected instead of leaf \"c\" in path.", "/a:l1", 0);
 
     assert_int_equal(lyd_new_list2(NULL, mod, "c", "[a='a'][b='b']", 0, &node), LY_ENOTFOUND);
-    CHECK_LOG_CTX("List node \"c\" not found.", NULL);
+    CHECK_LOG_CTX("List node \"c\" not found.", NULL, 0);
 
     assert_int_equal(lyd_new_list2(NULL, mod, "l1", "[a='a'][b='b']", 0, &node), LY_SUCCESS);
     lyd_free_tree(node);
@@ -141,10 +141,10 @@ test_top_level(void **state)
 
     /* leaf */
     assert_int_equal(lyd_new_term(NULL, mod, "foo", "[a='a'][b='b'][c='c']", 0, &node), LY_EVALID);
-    CHECK_LOG_CTX("Invalid type uint16 value \"[a='a'][b='b'][c='c']\".", "Schema location \"/a:foo\".");
+    CHECK_LOG_CTX("Invalid type uint16 value \"[a='a'][b='b'][c='c']\".", "/a:foo", 0);
 
     assert_int_equal(lyd_new_term(NULL, mod, "c", "value", 0, &node), LY_ENOTFOUND);
-    CHECK_LOG_CTX("Term node \"c\" not found.", NULL);
+    CHECK_LOG_CTX("Term node \"c\" not found.", NULL, 0);
 
     assert_int_equal(lyd_new_term(NULL, mod, "foo", "256", 0, &node), LY_SUCCESS);
     lyd_free_tree(node);
@@ -158,10 +158,10 @@ test_top_level(void **state)
     lyd_free_tree(node);
 
     assert_int_equal(lyd_new_inner(NULL, mod, "l1", 0, &node), LY_ENOTFOUND);
-    CHECK_LOG_CTX("Inner node (container, notif, RPC, or action) \"l1\" not found.", NULL);
+    CHECK_LOG_CTX("Inner node (container, notif, RPC, or action) \"l1\" not found.", NULL, 0);
 
     assert_int_equal(lyd_new_inner(NULL, mod, "l2", 0, &node), LY_ENOTFOUND);
-    CHECK_LOG_CTX("Inner node (container, notif, RPC, or action) \"l2\" not found.", NULL);
+    CHECK_LOG_CTX("Inner node (container, notif, RPC, or action) \"l2\" not found.", NULL, 0);
 
     /* anydata */
     assert_int_equal(lyd_new_any(NULL, mod, "any", "{\"node\":\"val\"}", 0, LYD_ANYDATA_STRING, 0, &node), LY_SUCCESS);
@@ -171,7 +171,7 @@ test_top_level(void **state)
 
     /* key-less list */
     assert_int_equal(lyd_new_list2(NULL, mod, "l2", "[a='a'][b='b']", 0, &node), LY_EVALID);
-    CHECK_LOG_CTX("List predicate defined for keyless list \"l2\" in path.", "Schema location \"/a:l2\".");
+    CHECK_LOG_CTX("List predicate defined for keyless list \"l2\" in path.", "/a:l2", 0);
 
     assert_int_equal(lyd_new_list2(NULL, mod, "l2", "", 0, &node), LY_SUCCESS);
     lyd_free_tree(node);
@@ -255,7 +255,7 @@ test_path(void **state)
     /* try LYD_NEWOPT_OPAQ */
     ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:l1", NULL, 0, 0, 0, NULL, NULL);
     assert_int_equal(ret, LY_EINVAL);
-    CHECK_LOG_CTX("Predicate missing for list \"l1\" in path \"/a:l1\".", "Schema location \"/a:l1\".");
+    CHECK_LOG_CTX("Predicate missing for list \"l1\" in path \"/a:l1\".", "/a:l1", 0);
 
     ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:l1", NULL, 0, 0, LYD_NEW_PATH_OPAQ, NULL, &root);
     assert_int_equal(ret, LY_SUCCESS);
@@ -266,7 +266,7 @@ test_path(void **state)
 
     ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:foo", NULL, 0, 0, 0, NULL, NULL);
     assert_int_equal(ret, LY_EVALID);
-    CHECK_LOG_CTX("Invalid type uint16 empty value.", "Schema location \"/a:foo\".");
+    CHECK_LOG_CTX("Invalid type uint16 empty value.", "/a:foo", 0);
 
     ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:foo", NULL, 0, 0, LYD_NEW_PATH_OPAQ, NULL, &root);
     assert_int_equal(ret, LY_SUCCESS);
@@ -301,7 +301,7 @@ test_path(void **state)
 
     ret = lyd_new_path2(root, NULL, "/a:c2/l3[1]", NULL, 0, 0, 0, NULL, &node);
     assert_int_equal(ret, LY_EEXIST);
-    CHECK_LOG_CTX("Path \"/a:c2/l3[1]\" already exists.", "Data location \"/a:c2/l3[1]\".");
+    CHECK_LOG_CTX("Path \"/a:c2/l3[1]\" already exists.", "/a:c2/l3[1]", 0);
 
     ret = lyd_new_path2(root, NULL, "/a:c2/l3[2]/x", "val2", 0, 0, 0, NULL, &node);
     assert_int_equal(ret, LY_SUCCESS);
@@ -360,7 +360,7 @@ test_path(void **state)
 
     ret = lyd_new_path2(root, NULL, "/a:ll2[1]", "", 0, 0, 0, NULL, &node);
     assert_int_equal(ret, LY_EEXIST);
-    CHECK_LOG_CTX("Path \"/a:ll2[1]\" already exists.", "Data location \"/a:ll2[1]\".");
+    CHECK_LOG_CTX("Path \"/a:ll2[1]\" already exists.", "/a:ll2[1]", 0);
 
     ret = lyd_new_path2(root, NULL, "/a:ll2[2]", "val2", 0, 0, 0, NULL, &node);
     assert_int_equal(ret, LY_SUCCESS);
@@ -375,7 +375,7 @@ test_path(void **state)
 
     ret = lyd_new_path2(root, NULL, "/a:ll2[3][.='val3']", NULL, 0, 0, 0, NULL, &node);
     assert_int_equal(ret, LY_EVALID);
-    CHECK_LOG_CTX("Unparsed characters \"[.='val3']\" left at the end of path.", NULL);
+    CHECK_LOG_CTX("Unparsed characters \"[.='val3']\" left at the end of path.", NULL, 0);
 
     lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     assert_string_equal(str,

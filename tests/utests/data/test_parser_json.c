@@ -61,9 +61,9 @@ setup(void **state)
 #define CHECK_PARSE_LYD(INPUT, PARSE_OPTION, VALIDATE_OPTION, TREE) \
     CHECK_PARSE_LYD_PARAM(INPUT, LYD_JSON, PARSE_OPTION, VALIDATE_OPTION, LY_SUCCESS, TREE)
 
-#define PARSER_CHECK_ERROR(INPUT, PARSE_OPTION, VALIDATE_OPTION, MODEL, RET_VAL, ERR_MESSAGE, ERR_PATH) \
+#define PARSER_CHECK_ERROR(INPUT, PARSE_OPTION, VALIDATE_OPTION, MODEL, RET_VAL, ERR_MESSAGE, ERR_PATH, ERR_LINE) \
     assert_int_equal(RET_VAL, lyd_parse_data_mem(UTEST_LYCTX, INPUT, LYD_JSON, PARSE_OPTION, VALIDATE_OPTION, &MODEL));\
-    CHECK_LOG_CTX(ERR_MESSAGE, ERR_PATH);\
+    CHECK_LOG_CTX(ERR_MESSAGE, ERR_PATH, ERR_LINE);\
     assert_null(MODEL)
 
 #define CHECK_LYD_STRING(IN_MODEL, PRINT_OPTION, TEXT) \
@@ -144,27 +144,25 @@ test_leaf(void **state)
     lyd_free_all(tree);
 
     PARSER_CHECK_ERROR(data, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Unknown (or not implemented) YANG module \"x\" of metadata \"x:xxx\".", "Data location \"/@a:foo\", line number 1.");
+            "Unknown (or not implemented) YANG module \"x\" of metadata \"x:xxx\".", "/@a:foo", 1);
 
     /* missing referenced metadata node */
     PARSER_CHECK_ERROR("{\"@a:foo\" : { \"a:hint\" : 1 }}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Missing JSON data instance to be coupled with @a:foo metadata.", "Data location \"/@a:foo\", line number 1.");
+            "Missing JSON data instance to be coupled with @a:foo metadata.", "/@a:foo", 1);
 
     /* missing namespace for meatadata*/
     PARSER_CHECK_ERROR("{\"a:foo\" : \"value\", \"@a:foo\" : { \"hint\" : 1 }}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Metadata in JSON must be namespace-qualified, missing prefix for \"hint\".",
-            "Schema location \"/a:foo\", line number 1.");
+            "Metadata in JSON must be namespace-qualified, missing prefix for \"hint\".", "/a:foo", 1);
 
     /* invalid JSON type */
     data = "{\"a:l1\" : [{ \"a\" : \"val-a\", \"b\" : \"val-b\", \"c\" : 1, \"cont\" : { \"e\" : \"0\" } }]}";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Invalid non-boolean-encoded boolean value \"0\".",
-            "Data location \"/a:l1[a='val-a'][b='val-b'][c='1']/cont/e\", line number 1.");
+            "Invalid non-boolean-encoded boolean value \"0\".", "/a:l1[a='val-a'][b='val-b'][c='1']/cont/e", 1);
 
     /* reverse solidus in JSON object member name */
     data = "{\"@a:foo\":{\"a:hi\\nt\":1},\"a:foo\":\"xxx\"}";
     assert_int_equal(LY_EINVAL, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
-    CHECK_LOG_CTX("Annotation definition for attribute \"a:hi\nt\" not found.", "Path \"/@a:foo/@a:hi\nt\", line number 1.");
+    CHECK_LOG_CTX("Annotation definition for attribute \"a:hi\nt\" not found.", "/@a:foo/@a:hi\nt", 1);
 }
 
 static void
@@ -253,14 +251,13 @@ test_leaflist(void **state)
 
     /* missing referenced metadata node */
     PARSER_CHECK_ERROR("{\"@a:ll1\":[{\"a:hint\":1}]}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Missing JSON data instance to be coupled with @a:ll1 metadata.", "Data location \"/@a:ll1\", line number 1.");
+            "Missing JSON data instance to be coupled with @a:ll1 metadata.", "/@a:ll1", 1);
 
     PARSER_CHECK_ERROR("{\"a:ll1\":[1],\"@a:ll1\":[{\"a:hint\":1},{\"a:hint\":2}]}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Missing JSON data instance #2 of a:ll1 to be coupled with metadata.", "Schema location \"/a:ll1\", line number 1.");
+            "Missing JSON data instance #2 of a:ll1 to be coupled with metadata.", "/a:ll1", 1);
 
     PARSER_CHECK_ERROR("{\"@a:ll1\":[{\"a:hint\":1},{\"a:hint\":2},{\"a:hint\":3}],\"a:ll1\" : [1, 2]}", 0, LYD_VALIDATE_PRESENT,
-            tree, LY_EVALID, "Missing JSON data instance #3 to be coupled with @a:ll1 metadata.",
-            "Data location \"/@a:ll1\", line number 1.");
+            tree, LY_EVALID, "Missing JSON data instance #3 to be coupled with @a:ll1 metadata.", "/@a:ll1", 1);
 }
 
 static void
@@ -404,19 +401,17 @@ test_list(void **state)
 
     /* missing keys */
     PARSER_CHECK_ERROR("{ \"a:l1\": [ {\"c\" : 1, \"b\" : \"b\"}]}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"a\".",
-            "Data location \"/a:l1[b='b'][c='1']\", line number 1.");
+            "List instance is missing its key \"a\".", "/a:l1[b='b'][c='1']", 1);
 
     PARSER_CHECK_ERROR("{ \"a:l1\": [ {\"a\" : \"a\"}]}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"b\".", "Data location \"/a:l1[a='a']\", line number 1.");
+            "List instance is missing its key \"b\".", "/a:l1[a='a']", 1);
 
     PARSER_CHECK_ERROR("{ \"a:l1\": [ {\"b\" : \"b\", \"a\" : \"a\"}]}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"c\".", "Data location \"/a:l1[a='a'][b='b']\", line number 1.");
+            "List instance is missing its key \"c\".", "/a:l1[a='a'][b='b']", 1);
 
     /* key duplicate */
     PARSER_CHECK_ERROR("{ \"a:l1\": [ {\"c\" : 1, \"b\" : \"b\", \"a\" : \"a\", \"c\" : 1}]}", 0, LYD_VALIDATE_PRESENT,
-            tree, LY_EVALID, "Duplicate instance of \"c\".",
-            "Data location \"/a:l1[a='a'][b='b'][c='1'][c='1']/c\", line number 1.");
+            tree, LY_EVALID, "Duplicate instance of \"c\".", "/a:l1[a='a'][b='b'][c='1'][c='1']/c", 1);
 
     /* keys order, in contrast to XML, JSON accepts keys in any order even in strict mode */
     CHECK_PARSE_LYD("{ \"a:l1\": [ {\"d\" : \"d\", \"a\" : \"a\", \"c\" : 1, \"b\" : \"b\"}]}", 0, LYD_VALIDATE_PRESENT, tree);
@@ -431,7 +426,7 @@ test_list(void **state)
     CHECK_LYSC_NODE(leaf->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "c", 1, LYS_LEAF, 1, 0, NULL, 0);
     assert_non_null(leaf = (struct lyd_node_term *)leaf->next);
     CHECK_LYSC_NODE(leaf->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "d", 1, LYS_LEAF, 1, 0, NULL, 0);
-    CHECK_LOG_CTX(NULL, NULL);
+    CHECK_LOG_CTX(NULL, NULL, 0);
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS,
             "{\"a:l1\":[{\"a\":\"a\",\"b\":\"b\",\"c\":1,\"d\":\"d\"}]}");
     lyd_free_all(tree);
@@ -449,7 +444,7 @@ test_list(void **state)
     assert_non_null(leaf = (struct lyd_node_term *)leaf->next);
     CHECK_LYSC_NODE(leaf->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "c",
             1, LYS_LEAF, 1, 0, NULL, 0);
-    CHECK_LOG_CTX(NULL, NULL);
+    CHECK_LOG_CTX(NULL, NULL, 0);
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS,
             "{\"a:l1\":[{\"a\":\"a\",\"b\":\"b\",\"c\":1}]}");
     lyd_free_all(tree);
@@ -515,7 +510,7 @@ test_opaq(void **state)
     /* invalid value, no flags */
     data = "{\"a:foo3\":[null]}";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Invalid non-number-encoded uint32 value \"\".", "Schema location \"/a:foo3\", line number 1.");
+            "Invalid non-number-encoded uint32 value \"\".", "/a:foo3", 1);
 
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
@@ -545,8 +540,7 @@ test_opaq(void **state)
     /* missing key, no flags */
     data = "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"d\":\"val_d\"}]}";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"c\".",
-            "Data location \"/a:l1[a='val_a'][b='val_b']\", line number 1.");
+            "List instance is missing its key \"c\".", "/a:l1[a='val_a'][b='val_b']", 1);
 
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
@@ -557,8 +551,7 @@ test_opaq(void **state)
     /* invalid key, no flags */
     data = "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"c\":\"val_c\"}]}";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Invalid non-number-encoded int16 value \"val_c\".",
-            "Data location \"/a:l1[a='val_a'][b='val_b']/c\", line number 1.");
+            "Invalid non-number-encoded int16 value \"val_c\".", "/a:l1[a='val_a'][b='val_b']/c", 1);
 
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
@@ -580,13 +573,12 @@ test_opaq(void **state)
 
     /* invalid metadata */
     data = "{\"@a:foo\":\"str\",\"@a:foo3\":1,\"a:foo3\":2}";
-    PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Unknown module of node \"@a:foo\".", "Path \"/\".");
-    CHECK_LOG_CTX("Missing JSON data instance to be coupled with @a:foo metadata.", "Data location \"/@a:foo\", line number 1.");
+    PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID, "Unknown module of node \"@a:foo\".", "/", 0);
+    CHECK_LOG_CTX("Missing JSON data instance to be coupled with @a:foo metadata.", "/@a:foo", 1);
 
     /* empty name */
     PARSER_CHECK_ERROR("{\"@a:foo\":{\"\":0}}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "JSON object member name cannot be a zero-length string.", "Data location \"/@a:foo\", line number 1.");
+            "JSON object member name cannot be a zero-length string.", "/@a:foo", 1);
 
     /* opaque data tree format print */
     data =
@@ -911,7 +903,7 @@ test_metadata(void **state)
     data = "{\"a:c\":{\"x\":\"xval\",\"@x\":{\"a:hint\":\"value\"}}}";
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(_UC->ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
-    CHECK_LOG_CTX("Invalid non-number-encoded int8 value \"value\".", "Path \"/a:c/x/@a:hint\", line number 1.");
+    CHECK_LOG_CTX("Invalid non-number-encoded int8 value \"value\".", "/a:c/x/@a:hint", 1);
 }
 
 int

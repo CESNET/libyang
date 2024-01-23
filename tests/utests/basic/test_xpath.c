@@ -267,11 +267,11 @@ test_invalid(void **state)
 
     assert_int_equal(LY_EVALID, lyd_find_xpath(tree, "/a:foo2[.=]", &set));
     assert_null(set);
-    CHECK_LOG_CTX("Unexpected XPath token \"]\" (\"]\").", NULL);
+    CHECK_LOG_CTX("Unexpected XPath token \"]\" (\"]\").", NULL, 0);
 
     assert_int_equal(LY_EVALID, lyd_find_xpath(tree, "/a:", &set));
     assert_null(set);
-    CHECK_LOG_CTX("Invalid character 'a'[2] of expression '/a:'.", NULL);
+    CHECK_LOG_CTX("Invalid character 'a'[2] of expression '/a:'.", NULL, 0);
 
     lyd_free_all(tree);
 }
@@ -938,7 +938,7 @@ test_variables(void **state)
     LOCAL_SETUP(data, tree);
     assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var1", "\"mstr\""));
     assert_int_equal(LY_ENOTFOUND, lyd_find_xpath2(tree, "/foo[text() = $var55]", vars, &set));
-    CHECK_LOG_CTX("Variable \"var55\" not defined.", NULL);
+    CHECK_LOG_CTX("Variable \"var55\" not defined.", NULL, 0);
     LOCAL_TEARDOWN(set, tree, vars);
 
     /* Syntax error in value. */
@@ -947,7 +947,7 @@ test_variables(void **state)
     LOCAL_SETUP(data, tree);
     assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var", "\""));
     assert_int_equal(LY_EVALID, lyd_find_xpath2(tree, "/foo[$var]", vars, &set));
-    CHECK_LOG_CTX("Unterminated string delimited with \" (\").", "Data location \"/a:foo\".");
+    CHECK_LOG_CTX("Unterminated string delimited with \" (\").", "/a:foo", 0);
     LOCAL_TEARDOWN(set, tree, vars);
 
     /* Prefix is not supported. */
@@ -956,7 +956,7 @@ test_variables(void **state)
     LOCAL_SETUP(data, tree);
     assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var", "\""));
     assert_int_equal(LY_EVALID, lyd_find_xpath2(tree, "/foo[$pref:var]", vars, &set));
-    CHECK_LOG_CTX("Variable with prefix is not supported.", NULL);
+    CHECK_LOG_CTX("Variable with prefix is not supported.", NULL, 0);
     LOCAL_TEARDOWN(set, tree, vars);
 
 #undef LOCAL_SETUP

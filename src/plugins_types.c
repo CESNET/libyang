@@ -826,7 +826,7 @@ lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_
     }
 
     /* remember the current last error */
-    e = ly_err_last(ctx);
+    e = (struct ly_err_item *)ly_err_last(ctx);
 
     /* parse the value */
     ret = ly_path_parse(ctx, ctx_node, value, value_len, 0, LY_PATH_BEGIN_ABSOLUTE, prefix_opt, LY_PATH_PRED_SIMPLE, &exp);
@@ -856,7 +856,7 @@ cleanup:
     lyxp_expr_free(ctx, exp);
     if (ret) {
         /* generate error, spend the context error, if any */
-        e = e ? e->next : ly_err_last(ctx);
+        e = e ? e->next : (struct ly_err_item *)ly_err_last(ctx);
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, err_fmt, (int)value_len, value, e ? ": " : ".", e ? e->msg : "");
         if (e) {
             ly_err_clean((struct ly_ctx *)ctx, e);
@@ -992,6 +992,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyxp_expr *target_path = NULL;
+    const struct ly_err_item *e;
     struct lyxp_set set = {0};
     const char *val_str, *xp_err_msg;
     uint32_t i;
@@ -1023,8 +1024,9 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
     rc = lyxp_eval(LYD_CTX(node), target_path ? target_path : lref->path, node->schema->module,
             LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, node, node, tree, NULL, &set, LYXP_IGNORE_WHEN);
     if (rc) {
-        if (ly_errcode(LYD_CTX(node)) == rc) {
-            xp_err_msg = ly_errmsg(LYD_CTX(node));
+        e = ly_err_last(LYD_CTX(node));
+        if (e && (e->err == rc)) {
+            xp_err_msg = e->msg;
         } else {
             xp_err_msg = NULL;
         }

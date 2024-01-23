@@ -103,6 +103,7 @@ lyd_parse(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct 
     struct lyd_ctx *lydctx = NULL;
     struct ly_set parsed = {0};
     uint32_t i, int_opts = 0;
+    const struct ly_err_item *eitem;
     ly_bool subtree_sibling = 0;
 
     assert(ctx && (parent || first_p));
@@ -141,8 +142,14 @@ lyd_parse(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct 
     }
     if (r) {
         rc = r;
-        if ((r != LY_EVALID) || !lydctx || !(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) ||
-                (ly_vecode(ctx) == LYVE_SYNTAX)) {
+        if ((r != LY_EVALID) || !lydctx || !(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR)) {
+            goto cleanup;
+        }
+
+        eitem = ly_err_last(ctx);
+        assert(eitem);
+        if (eitem->vecode == LYVE_SYNTAX) {
+            /* cannot get more errors on a syntax error */
             goto cleanup;
         }
     }

@@ -70,42 +70,31 @@ test_basics(void **UNUSED(state))
 }
 
 static void
-test_inval(void **state)
+test_inval(void **UNUSED(state))
 {
-    struct ly_set set;
-
-    memset(&set, 0, sizeof set);
-
-    ly_set_clean(NULL, NULL);
-    CHECK_LOG(NULL, NULL);
-
-    ly_set_erase(NULL, NULL);
-    CHECK_LOG(NULL, NULL);
-
-    ly_set_free(NULL, NULL);
-    CHECK_LOG(NULL, NULL);
+    struct ly_set set = {0};
 
     assert_int_equal(LY_EINVAL, ly_set_dup(NULL, NULL, NULL));
-    CHECK_LOG("Invalid argument set (ly_set_dup()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument set (ly_set_dup()).");
 
     assert_int_equal(LY_EINVAL, ly_set_add(NULL, NULL, 0, NULL));
-    CHECK_LOG("Invalid argument set (ly_set_add()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument set (ly_set_add()).");
 
     assert_int_equal(LY_EINVAL, ly_set_merge(NULL, NULL, 0, NULL));
-    CHECK_LOG("Invalid argument trg (ly_set_merge()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument trg (ly_set_merge()).");
     assert_int_equal(LY_SUCCESS, ly_set_merge(&set, NULL, 0, NULL));
 
     assert_int_equal(LY_EINVAL, ly_set_rm_index(NULL, 0, NULL));
-    CHECK_LOG("Invalid argument set (ly_set_rm_index()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument set (ly_set_rm_index()).");
     assert_int_equal(LY_EINVAL, ly_set_rm_index(&set, 1, NULL));
-    CHECK_LOG("Invalid argument index (ly_set_rm_index()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument index (ly_set_rm_index()).");
 
     assert_int_equal(LY_EINVAL, ly_set_rm(NULL, NULL, NULL));
-    CHECK_LOG("Invalid argument set (ly_set_rm()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument set (ly_set_rm()).");
     assert_int_equal(LY_EINVAL, ly_set_rm(&set, NULL, NULL));
-    CHECK_LOG("Invalid argument object (ly_set_rm()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument object (ly_set_rm()).");
     assert_int_equal(LY_EINVAL, ly_set_rm(&set, &set, NULL));
-    CHECK_LOG("Invalid argument object (ly_set_rm()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument object (ly_set_rm()).");
 }
 
 static void

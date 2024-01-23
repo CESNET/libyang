@@ -96,20 +96,17 @@ test_data_xml(void **state)
 
     /* invalid value */
     TEST_ERROR_XML("defs", "", "l1", "fast-ethernet");
-    CHECK_LOG_CTX("Invalid identityref \"fast-ethernet\" value - identity not found in module \"defs\".",
-            "Schema location \"/defs:l1\", line number 1.");
+    CHECK_LOG_CTX("Invalid identityref \"fast-ethernet\" value - identity not found in module \"defs\".", "/defs:l1", 1);
 
     TEST_ERROR_XML("defs", "xmlns:x=\"urn:tests:defs\"", "l1", "x:slow-ethernet");
-    CHECK_LOG_CTX("Invalid identityref \"x:slow-ethernet\" value - identity not found in module \"defs\".",
-            "Schema location \"/defs:l1\", line number 1.");
+    CHECK_LOG_CTX("Invalid identityref \"x:slow-ethernet\" value - identity not found in module \"defs\".", "/defs:l1", 1);
 
     TEST_ERROR_XML("defs", "xmlns:x=\"urn:tests:ident-base\"", "l1", "x:ident-base");
     CHECK_LOG_CTX("Invalid identityref \"x:ident-base\" value - identity not derived from the base \"ident-base:ident-base\".",
-            "Schema location \"/defs:l1\", line number 1.");
+            "/defs:l1", 1);
 
     TEST_ERROR_XML("defs", "xmlns:x=\"urn:tests:unknown\"", "l1", "x:ident-base");
-    CHECK_LOG_CTX("Invalid identityref \"x:ident-base\" value - unable to map prefix to YANG schema.",
-            "Schema location \"/defs:l1\", line number 1.");
+    CHECK_LOG_CTX("Invalid identityref \"x:ident-base\" value - unable to map prefix to YANG schema.", "/defs:l1", 1);
 }
 
 static void

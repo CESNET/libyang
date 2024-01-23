@@ -60,8 +60,7 @@ test_data_xml(void **state)
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
 
     TEST_ERROR_XML("defs", "100");
-    CHECK_LOG_CTX("Unsatisfied range - value \"100\" is out of the allowed range.",
-            "Schema location \"/defs:port\", line number 1.");
+    CHECK_LOG_CTX("Unsatisfied range - value \"100\" is out of the allowed range.", "/defs:port", 1);
 }
 
 int

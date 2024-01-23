@@ -318,7 +318,7 @@ test_invalid(void **state)
     struct lyd_node *diff = NULL;
 
     assert_int_equal(lyd_diff_siblings(model_1, lyd_child(model_1), 0, &diff), LY_EINVAL);
-    CHECK_LOG_CTX("Invalid arguments - cannot create diff for unrelated data (lyd_diff()).", NULL);
+    CHECK_LOG_CTX("Invalid arguments - cannot create diff for unrelated data (lyd_diff()).", NULL, 0);
 
     assert_int_equal(lyd_diff_siblings(NULL, NULL, 0, NULL), LY_EINVAL);
 

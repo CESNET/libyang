@@ -137,35 +137,34 @@ test_data_xml(void **state)
             "<list xmlns=\"urn:tests:defs\"><id>b</id><value>x</value></list>",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l1", "/xdf:list[2]/xdf:value", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/xdf:list[2]/xdf:value\" value - semantic error: "
-            "Positional predicate defined for configuration list \"list\" in path.",
-            "Schema location \"/defs:l1\", line number 1.");
+            "Positional predicate defined for configuration list \"list\" in path.", "/defs:l1", 1);
 
     TEST_ERROR_XML2("",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l1", "/t:cont/t:1l", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:1l\" value - syntax error: Invalid character 't'[9] of expression '/t:cont/t:1l'.",
-            "Schema location \"/defs:l1\", line number 1.");
+            "/defs:l1", 1);
 
     TEST_ERROR_XML2("",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l1", "/t:cont:t:1l", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont:t:1l\" value - syntax error: Invalid character ':'[8] of expression '/t:cont:t:1l'.",
-            "Schema location \"/defs:l1\", line number 1.");
+            "/defs:l1", 1);
 
     TEST_ERROR_XML2("",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l1", "/xdf:cont/xdf:invalid/xdf:path", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/xdf:cont/xdf:invalid/xdf:path\" value - semantic error: Not found node \"invalid\" in path.",
-            "Schema location \"/defs:l1\", line number 1.");
+            "/defs:l1", 1);
 
     /* non-existing instances, instance-identifier is here in JSON format because it is already in internal
      * representation without canonical prefixes */
     TEST_ERROR_XML2("<cont xmlns=\"urn:tests:mod\"/>",
             "defs", "xmlns:m=\"urn:tests:mod\"", "l1", "/m:cont/m:l2", LY_ENOTFOUND);
     CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/mod:cont/l2\" value - required instance not found.",
-            "Data location \"/defs:l1\".", "instance-required");
+            "/defs:l1", 0, "instance-required");
 
     TEST_ERROR_XML2("<llist xmlns=\"urn:tests:defs\">1</llist>",
             "defs", "xmlns:a=\"urn:tests:defs\"", "l1", "/a:llist[.='2']", LY_ENOTFOUND);
     CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/defs:llist[.='2']\" value - required instance not found.",
-            "Data location \"/defs:l1\".", "instance-required");
+            "/defs:l1", 0, "instance-required");
 
     TEST_ERROR_XML2("<list2 xmlns=\"urn:tests:defs\"><id>a</id><id2>a</id2></list2>"
             "<list2 xmlns=\"urn:tests:defs\"><id>c</id><id2>b</id2></list2>"
@@ -173,7 +172,7 @@ test_data_xml(void **state)
             "<llist xmlns=\"urn:tests:defs\">b</llist>",
             "defs", "xmlns:a=\"urn:tests:defs\"", "l1", "/a:list2[a:id='a'][a:id2='a']/a:id", LY_ENOTFOUND);
     CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/defs:list2[id='a'][id2='a']/id\" value - required instance not found.",
-            "Data location \"/defs:l1\".", "instance-required");
+            "/defs:l1", 0, "instance-required");
 
     TEST_ERROR_XML2("<list2 xmlns=\"urn:tests:defs\"><id>a</id><id2>a</id2></list2>"
             "<list2 xmlns=\"urn:tests:defs\"><id>c</id><id2>b</id2></list2>"
@@ -181,83 +180,83 @@ test_data_xml(void **state)
             "<llist xmlns=\"urn:tests:defs\">2</llist>",
             "defs", "xmlns:a=\"urn:tests:defs\"", "l1", "/a:llist[.='3']", LY_ENOTFOUND);
     CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/defs:llist[.='3']\" value - required instance not found.",
-            "Data location \"/defs:l1\".", "instance-required");
+            "/defs:l1", 0, "instance-required");
 
     TEST_ERROR_XML2("",
             "defs", "xmlns:a=\"urn:tests:defs\"", "l1", "/a:list-keyless[3]", LY_ENOTFOUND);
     CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/defs:list-keyless[3]\" value - required instance not found.",
-            "Data location \"/defs:l1\".", "instance-required");
+            "/defs:l1", 0, "instance-required");
 
     /* more errors */
     TEST_ERROR_XML2("<llist xmlns=\"urn:tests:defs\">x</llist>",
             "defs", "xmlns:t=\"urn:tests:defs\"", "t:l1", "/t:llist[1", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/t:llist[1\" value - syntax error: Unexpected XPath expression end.",
-            "Schema location \"/defs:l1\", line number 1.");
+            "/defs:l1", 1);
 
     TEST_ERROR_XML2("<cont xmlns=\"urn:tests:mod\"/>",
             "defs", "xmlns:m=\"urn:tests:mod\"", "l1", "/m:cont[1]", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/m:cont[1]\" value - semantic error: Positional predicate defined for container \"cont\" in path.",
-            "Schema location \"/defs:l1\", line number 1.");
+            "/defs:l1", 1);
 
     TEST_ERROR_XML2("<cont xmlns=\"urn:tests:mod\"/>",
             "defs", "xmlns:m=\"urn:tests:mod\"", "l1", "[1]", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"[1]\" value - syntax error: Unexpected XPath token \"[\" (\"[1]\"), expected \"Operator(Path)\".",
-            "Schema location \"/defs:l1\", line number 1.");
+            "/defs:l1", 1);
 
     TEST_ERROR_XML2("<cont xmlns=\"urn:tests:mod\"><l2/></cont>",
             "defs", "xmlns:m=\"urn:tests:mod\"", "l1", "/m:cont/m:l2[l2='1']", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/m:cont/m:l2[l2='1']\" value - syntax error: Prefix missing for \"l2\" in path.",
-            "Schema location \"/defs:l1\", line number 1.");
+            "/defs:l1", 1);
 
     TEST_ERROR_XML2("<cont xmlns=\"urn:tests:mod\"><l2/></cont>",
             "defs", "xmlns:m=\"urn:tests:mod\"", "l1", "/m:cont/m:l2[m:l2='1']", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/m:cont/m:l2[m:l2='1']\" value - semantic error: List predicate defined for leaf \"l2\" in path.",
-            "Schema location \"/defs:l1\", line number 1.");
+            "/defs:l1", 1);
 
     TEST_ERROR_XML2("<llist xmlns=\"urn:tests:defs\">1</llist><llist xmlns=\"urn:tests:defs\">2</llist>",
             "defs", "xmlns:t=\"urn:tests:defs\"", "t:l1", "/t:llist[4]", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/t:llist[4]\" value - semantic error: Positional predicate defined for configuration leaf-list \"llist\" in path.",
-            "Schema location \"/defs:l1\", line number 1.");
+            "/defs:l1", 1);
 
     TEST_ERROR_XML2("",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l2", "/t:llist[6]", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/t:llist[6]\" value - semantic error: No module connected with the prefix \"t\" found (prefix format XML prefixes).",
-            "Schema location \"/defs:l2\", line number 1.");
+            "/defs:l2", 1);
 
     TEST_ERROR_XML2("<list xmlns=\"urn:tests:defs\"><id>1</id><value>x</value></list>",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l2", "/xdf:list[xdf:value='x']", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/xdf:list[xdf:value='x']\" value - semantic error: Key expected instead of leaf \"value\" in path.",
-            "Schema location \"/defs:l2\", line number 1.");
+            "/defs:l2", 1);
 
     TEST_ERROR_XML2("",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l2", "/xdf:list[.='x']", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/xdf:list[.='x']\" value - semantic error: Leaf-list predicate defined for list \"list\" in path.",
-            "Schema location \"/defs:l2\", line number 1.");
+            "/defs:l2", 1);
 
     TEST_ERROR_XML2("<llist xmlns=\"urn:tests:defs\">1</llist>",
             "defs", "xmlns:t=\"urn:tests:defs\"", "t:l1", "/t:llist[.='x']", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/t:llist[.='x']\" value - semantic error: Invalid type uint32 value \"x\".",
-            "Schema location \"/defs:l1\", line number 1.");
+            "/defs:l1", 1);
 
     TEST_ERROR_XML2("",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l2", "/t:llist[1][2]", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/t:llist[1][2]\" value - syntax error: Unparsed characters \"[2]\" left at the end of path.",
-            "Schema location \"/defs:l2\", line number 1.");
+            "/defs:l2", 1);
 
     TEST_ERROR_XML2("",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l2", "/t:llist[.='a'][.='b']", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/t:llist[.='a'][.='b']\" value - syntax error: Unparsed characters \"[.='b']\" left at the end of path.",
-            "Schema location \"/defs:l2\", line number 1.");
+            "/defs:l2", 1);
 
     TEST_ERROR_XML2("<list xmlns=\"urn:tests:defs\"><id>1</id><value>x</value></list>",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l2", "/xdf:list[xdf:id='1'][xdf:id='2']/xdf:value", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/xdf:list[xdf:id='1'][xdf:id='2']/xdf:value\" value - syntax error: Duplicate predicate key \"id\" in path.",
-            "Schema location \"/defs:l2\", line number 1.");
+            "/defs:l2", 1);
 
     TEST_ERROR_XML2("",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l2", "/xdf:list2[xdf:id='1']/xdf:value", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/xdf:list2[xdf:id='1']/xdf:value\" value - semantic error: Predicate missing for a key of list \"list2\" in path.",
-            "Schema location \"/defs:l2\", line number 1.");
+            "/defs:l2", 1);
 }
 
 static void

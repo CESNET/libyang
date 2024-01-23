@@ -335,7 +335,7 @@ test_yin_parse_content(void **state)
 
     ret = yin_parse_content(YCTX, subelems2, 2, NULL, LY_STMT_STATUS, NULL, &exts);
     assert_int_equal(ret, LY_EVALID);
-    CHECK_LOG_CTX("Redefinition of \"text\" sub-element in \"status\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Redefinition of \"text\" sub-element in \"status\" element.", NULL, 1);
     lydict_remove(UTEST_LYCTX, prefix_value);
     lydict_remove(UTEST_LYCTX, value);
     RESET_STATE;
@@ -355,7 +355,7 @@ test_yin_parse_content(void **state)
 
     ret = yin_parse_content(YCTX, subelems3, 2, NULL, LY_STMT_STATUS, NULL, &exts);
     assert_int_equal(ret, LY_EVALID);
-    CHECK_LOG_CTX("Sub-element \"text\" of \"status\" element must be defined as it's first sub-element.", "Line number 1.");
+    CHECK_LOG_CTX("Sub-element \"text\" of \"status\" element must be defined as it's first sub-element.", NULL, 1);
     lydict_remove(UTEST_LYCTX, prefix_value);
     RESET_STATE;
 
@@ -369,7 +369,7 @@ test_yin_parse_content(void **state)
 
     ret = yin_parse_content(YCTX, subelems4, 1, NULL, LY_STMT_STATUS, NULL, &exts);
     assert_int_equal(ret, LY_EVALID);
-    CHECK_LOG_CTX("Missing mandatory sub-element \"prefix\" of \"status\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Missing mandatory sub-element \"prefix\" of \"status\" element.", NULL, 1);
 }
 
 static void
@@ -386,7 +386,7 @@ test_validate_value(void **state)
     YCTX->xmlctx->value = "#invalid";
     YCTX->xmlctx->value_len = 8;
     assert_int_equal(yin_validate_value(YCTX, Y_IDENTIF_ARG), LY_EVALID);
-    CHECK_LOG_CTX("Invalid identifier first character '#' (0x0023).", "Line number 1.");
+    CHECK_LOG_CTX("Invalid identifier first character '#' (0x0023).", NULL, 1);
 
     YCTX->xmlctx->value = "";
     YCTX->xmlctx->value_len = 0;
@@ -395,13 +395,13 @@ test_validate_value(void **state)
     YCTX->xmlctx->value = "pre:b";
     YCTX->xmlctx->value_len = 5;
     assert_int_equal(yin_validate_value(YCTX, Y_IDENTIF_ARG), LY_EVALID);
-    CHECK_LOG_CTX("Invalid identifier character ':' (0x003a).", "Line number 1.");
+    CHECK_LOG_CTX("Invalid identifier character ':' (0x003a).", NULL, 1);
     assert_int_equal(yin_validate_value(YCTX, Y_PREF_IDENTIF_ARG), LY_SUCCESS);
 
     YCTX->xmlctx->value = "pre:pre:b";
     YCTX->xmlctx->value_len = 9;
     assert_int_equal(yin_validate_value(YCTX, Y_PREF_IDENTIF_ARG), LY_EVALID);
-    CHECK_LOG_CTX("Invalid identifier character ':' (0x003a).", "Line number 1.");
+    CHECK_LOG_CTX("Invalid identifier character ':' (0x003a).", NULL, 1);
 }
 
 static void
@@ -1354,7 +1354,7 @@ test_status_elem(void **state)
     data = ELEMENT_WRAPPER_START "<status value=\"invalid\"></status>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &flags, NULL, NULL), LY_EVALID);
     CHECK_LOG_CTX("Invalid value \"invalid\" of \"value\" attribute in \"status\" element. "
-            "Valid values are \"current\", \"deprecated\" and \"obsolete\".", "Line number 1.");
+            "Valid values are \"current\", \"deprecated\" and \"obsolete\".", NULL, 1);
 }
 
 static void
@@ -1366,7 +1366,7 @@ test_yin_element_elem(void **state)
     data = ELEMENT_WRAPPER_START "<yin-element value=\"invalid\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &flags, NULL, NULL), LY_EVALID);
     CHECK_LOG_CTX("Invalid value \"invalid\" of \"value\" attribute in \"yin-element\" element. "
-            "Valid values are \"true\" and \"false\".", "Line number 1.");
+            "Valid values are \"true\" and \"false\".", NULL, 1);
 }
 
 static void
@@ -1379,7 +1379,7 @@ test_yangversion_elem(void **state)
     data = ELEMENT_WRAPPER_START "<yang-version value=\"version\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &version, NULL, NULL), LY_EVALID);
     CHECK_LOG_CTX("Invalid value \"version\" of \"value\" attribute in \"yang-version\" element. "
-            "Valid values are \"1\" and \"1.1\".", "Line number 1.");
+            "Valid values are \"1\" and \"1.1\".", NULL, 1);
 }
 
 static void
@@ -1411,7 +1411,7 @@ test_belongsto_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<belongs-to module=\"module-name\"></belongs-to>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &submod, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Missing mandatory sub-element \"prefix\" of \"belongs-to\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Missing mandatory sub-element \"prefix\" of \"belongs-to\" element.", NULL, 1);
 }
 
 static void
@@ -1428,7 +1428,7 @@ test_config_elem(void **state)
     data = ELEMENT_WRAPPER_START "<config value=\"invalid\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &flags, NULL, NULL), LY_EVALID);
     CHECK_LOG_CTX("Invalid value \"invalid\" of \"value\" attribute in \"config\" element. "
-            "Valid values are \"true\" and \"false\".", "Line number 1.");
+            "Valid values are \"true\" and \"false\".", NULL, 1);
 }
 
 static void
@@ -1439,7 +1439,7 @@ test_default_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<default/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Missing mandatory attribute value of default element.", "Line number 1.");
+    CHECK_LOG_CTX("Missing mandatory attribute value of default element.", NULL, 1);
 }
 
 static void
@@ -1450,7 +1450,7 @@ test_err_app_tag_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<error-app-tag/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Missing mandatory attribute value of error-app-tag element.", "Line number 1.");
+    CHECK_LOG_CTX("Missing mandatory attribute value of error-app-tag element.", NULL, 1);
 }
 
 static void
@@ -1461,11 +1461,11 @@ test_err_msg_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<error-message></error-message>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Missing mandatory sub-element \"value\" of \"error-message\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Missing mandatory sub-element \"value\" of \"error-message\" element.", NULL, 1);
 
     data = ELEMENT_WRAPPER_START "<error-message invalid=\"text\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Unexpected attribute \"invalid\" of \"error-message\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Unexpected attribute \"invalid\" of \"error-message\" element.", NULL, 1);
 }
 
 static void
@@ -1477,23 +1477,23 @@ test_fracdigits_elem(void **state)
     /* invalid values */
     data = ELEMENT_WRAPPER_START "<fraction-digits value=\"-1\"></fraction-digits>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"-1\" of \"value\" attribute in \"fraction-digits\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"-1\" of \"value\" attribute in \"fraction-digits\" element.", NULL, 1);
 
     data = ELEMENT_WRAPPER_START "<fraction-digits value=\"02\"></fraction-digits>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"02\" of \"value\" attribute in \"fraction-digits\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"02\" of \"value\" attribute in \"fraction-digits\" element.", NULL, 1);
 
     data = ELEMENT_WRAPPER_START "<fraction-digits value=\"1p\"></fraction-digits>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"1p\" of \"value\" attribute in \"fraction-digits\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"1p\" of \"value\" attribute in \"fraction-digits\" element.", NULL, 1);
 
     data = ELEMENT_WRAPPER_START "<fraction-digits value=\"19\"></fraction-digits>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"19\" of \"value\" attribute in \"fraction-digits\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"19\" of \"value\" attribute in \"fraction-digits\" element.", NULL, 1);
 
     data = ELEMENT_WRAPPER_START "<fraction-digits value=\"999999999999999999\"></fraction-digits>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"999999999999999999\" of \"value\" attribute in \"fraction-digits\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"999999999999999999\" of \"value\" attribute in \"fraction-digits\" element.", NULL, 1);
 }
 
 static void
@@ -1504,7 +1504,7 @@ test_iffeature_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<if-feature/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &iffeatures, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Missing mandatory attribute name of if-feature element.", "Line number 1.");
+    CHECK_LOG_CTX("Missing mandatory attribute name of if-feature element.", NULL, 1);
     LY_ARRAY_FREE(iffeatures);
     iffeatures = NULL;
 }
@@ -1547,7 +1547,7 @@ test_length_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<length></length>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Missing mandatory attribute value of length element.", "Line number 1.");
+    CHECK_LOG_CTX("Missing mandatory attribute value of length element.", NULL, 1);
     lysp_type_free(&fctx, &type);
     memset(&type, 0, sizeof(type));
 }
@@ -1562,7 +1562,7 @@ test_modifier_elem(void **state)
     data = ELEMENT_WRAPPER_START "<modifier value=\"invert\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &pat, NULL, NULL), LY_EVALID);
     CHECK_LOG_CTX("Invalid value \"invert\" of \"value\" attribute in \"modifier\" element. "
-            "Only valid value is \"invert-match\".", "Line number 1.");
+            "Only valid value is \"invert-match\".", NULL, 1);
     lydict_remove(UTEST_LYCTX, pat);
 }
 
@@ -1574,7 +1574,7 @@ test_namespace_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<namespace/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &ns, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Missing mandatory attribute uri of namespace element.", "Line number 1.");
+    CHECK_LOG_CTX("Missing mandatory attribute uri of namespace element.", NULL, 1);
 }
 
 static void
@@ -1641,32 +1641,32 @@ test_value_position_elem(void **state)
     /* invalid values */
     data = ELEMENT_WRAPPER_START "<value value=\"99999999999999999999999\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &en, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"99999999999999999999999\" of \"value\" attribute in \"value\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"99999999999999999999999\" of \"value\" attribute in \"value\" element.", NULL, 1);
 
     data = ELEMENT_WRAPPER_START "<value value=\"1k\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &en, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"1k\" of \"value\" attribute in \"value\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"1k\" of \"value\" attribute in \"value\" element.", NULL, 1);
 
     data = ELEMENT_WRAPPER_START "<value value=\"\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &en, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"\" of \"value\" attribute in \"value\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"\" of \"value\" attribute in \"value\" element.", NULL, 1);
 
     /*invalid positions */
     data = ELEMENT_WRAPPER_START "<position value=\"-5\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &en, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"-5\" of \"value\" attribute in \"position\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"-5\" of \"value\" attribute in \"position\" element.", NULL, 1);
 
     data = ELEMENT_WRAPPER_START "<position value=\"-0\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &en, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"-0\" of \"value\" attribute in \"position\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"-0\" of \"value\" attribute in \"position\" element.", NULL, 1);
 
     data = ELEMENT_WRAPPER_START "<position value=\"99999999999999999999\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &en, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"99999999999999999999\" of \"value\" attribute in \"position\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"99999999999999999999\" of \"value\" attribute in \"position\" element.", NULL, 1);
 
     data = ELEMENT_WRAPPER_START "<position value=\"\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &en, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"\" of \"value\" attribute in \"position\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"\" of \"value\" attribute in \"position\" element.", NULL, 1);
 }
 
 static void
@@ -1738,7 +1738,7 @@ test_reqinstance_elem(void **state)
     assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_EVALID);
     memset(&type, 0, sizeof(type));
     CHECK_LOG_CTX("Invalid value \"invalid\" of \"value\" attribute in \"require-instance\" element. "
-            "Valid values are \"true\" and \"false\".", "Line number 1.");
+            "Valid values are \"true\" and \"false\".", NULL, 1);
 }
 
 static void
@@ -1753,7 +1753,7 @@ test_revision_date_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<revision-date date=\"2000-50-05\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, rev, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"2000-50-05\" of \"revision-date\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"2000-50-05\" of \"revision-date\".", NULL, 1);
 }
 
 static void
@@ -1877,19 +1877,19 @@ test_max_elems_elem(void **state)
 
     data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"0\"/> </list>";
     assert_int_equal(test_element_helper(state, data, &list, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"0\" of \"value\" attribute in \"max-elements\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"0\" of \"value\" attribute in \"max-elements\" element.", NULL, 1);
 
     data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"-10\"/> </list>";
     assert_int_equal(test_element_helper(state, data, &list, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"-10\" of \"value\" attribute in \"max-elements\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"-10\" of \"value\" attribute in \"max-elements\" element.", NULL, 1);
 
     data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"k\"/> </list>";
     assert_int_equal(test_element_helper(state, data, &list, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"k\" of \"value\" attribute in \"max-elements\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"k\" of \"value\" attribute in \"max-elements\" element.", NULL, 1);
 
     data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"u12\"/> </list>";
     assert_int_equal(test_element_helper(state, data, &list, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"u12\" of \"value\" attribute in \"max-elements\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"u12\" of \"value\" attribute in \"max-elements\" element.", NULL, 1);
 }
 
 static void
@@ -1900,19 +1900,19 @@ test_min_elems_elem(void **state)
 
     data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"-5\"/> </leaf-list>";
     assert_int_equal(test_element_helper(state, data, &llist, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Value \"-5\" of \"value\" attribute in \"min-elements\" element is out of bounds.", "Line number 1.");
+    CHECK_LOG_CTX("Value \"-5\" of \"value\" attribute in \"min-elements\" element is out of bounds.", NULL, 1);
 
     data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"99999999999999999\"/> </leaf-list>";
     assert_int_equal(test_element_helper(state, data, &llist, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Value \"99999999999999999\" of \"value\" attribute in \"min-elements\" element is out of bounds.", "Line number 1.");
+    CHECK_LOG_CTX("Value \"99999999999999999\" of \"value\" attribute in \"min-elements\" element is out of bounds.", NULL, 1);
 
     data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"5k\"/> </leaf-list>";
     assert_int_equal(test_element_helper(state, data, &llist, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"5k\" of \"value\" attribute in \"min-elements\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"5k\" of \"value\" attribute in \"min-elements\" element.", NULL, 1);
 
     data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"05\"/> </leaf-list>";
     assert_int_equal(test_element_helper(state, data, &llist, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"05\" of \"value\" attribute in \"min-elements\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid value \"05\" of \"value\" attribute in \"min-elements\" element.", NULL, 1);
 }
 
 static void
@@ -1928,7 +1928,7 @@ test_ordby_elem(void **state)
     data = ELEMENT_WRAPPER_START "<ordered-by value=\"inv\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &flags, NULL, NULL), LY_EVALID);
     CHECK_LOG_CTX("Invalid value \"inv\" of \"value\" attribute in \"ordered-by\" element. "
-            "Valid values are \"system\" and \"user\".", "Line number 1.");
+            "Valid values are \"system\" and \"user\".", NULL, 1);
 }
 
 static void
@@ -2179,7 +2179,8 @@ test_leaf_list_elem(void **state)
             "</leaf-list>"
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid combination of min-elements and max-elements: min value 15 is bigger than the max value 5.", "Line number 4.");
+    CHECK_LOG_CTX("Invalid combination of min-elements and max-elements: min value 15 is bigger than the max value 5.",
+            NULL, 4);
     lysp_node_free(&fctx, siblings);
     siblings = NULL;
 
@@ -2191,7 +2192,7 @@ test_leaf_list_elem(void **state)
             "</leaf-list>"
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid combination of sub-elemnts \"min-elements\" and \"default\" in \"leaf-list\" element.", "Line number 5.");
+    CHECK_LOG_CTX("Invalid combination of sub-elemnts \"min-elements\" and \"default\" in \"leaf-list\" element.", NULL, 5);
     lysp_node_free(&fctx, siblings);
     siblings = NULL;
 
@@ -2200,7 +2201,7 @@ test_leaf_list_elem(void **state)
             "</leaf-list>"
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Missing mandatory sub-element \"type\" of \"leaf-list\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Missing mandatory sub-element \"type\" of \"leaf-list\" element.", NULL, 1);
     lysp_node_free(&fctx, siblings);
     siblings = NULL;
 }
@@ -2218,7 +2219,7 @@ test_presence_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<presence/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Missing mandatory attribute value of presence element.", "Line number 1.");
+    CHECK_LOG_CTX("Missing mandatory attribute value of presence element.", NULL, 1);
 }
 
 static void
@@ -2234,7 +2235,7 @@ test_key_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<key/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Missing mandatory attribute value of key element.", "Line number 1.");
+    CHECK_LOG_CTX("Missing mandatory attribute value of key element.", NULL, 1);
 }
 
 static void
@@ -2825,7 +2826,7 @@ test_inout_elem(void **state)
     data = ELEMENT_WRAPPER_START "<input name=\"test\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &inout_meta, NULL, NULL), LY_EVALID);
     lysp_node_free(&fctx, (struct lysp_node *)&inout);
-    CHECK_LOG_CTX("Unexpected attribute \"name\" of \"input\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Unexpected attribute \"name\" of \"input\" element.", NULL, 1);
     memset(&inout, 0, sizeof inout);
 }
 
@@ -2995,25 +2996,25 @@ test_deviate_elem(void **state)
     data = ELEMENT_WRAPPER_START "<deviate value=\"\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &deviates, NULL, NULL), LY_EVALID);
     CHECK_LOG_CTX("Invalid value \"\" of \"value\" attribute in \"deviate\" element. "
-            "Valid values are \"not-supported\", \"add\", \"replace\" and \"delete\".", "Line number 1.");
+            "Valid values are \"not-supported\", \"add\", \"replace\" and \"delete\".", NULL, 1);
     deviates = NULL;
 
     data = ELEMENT_WRAPPER_START "<deviate value=\"invalid\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &deviates, NULL, NULL), LY_EVALID);
     CHECK_LOG_CTX("Invalid value \"invalid\" of \"value\" attribute in \"deviate\" element. "
-            "Valid values are \"not-supported\", \"add\", \"replace\" and \"delete\".", "Line number 1.");
+            "Valid values are \"not-supported\", \"add\", \"replace\" and \"delete\".", NULL, 1);
     deviates = NULL;
 
     data = ELEMENT_WRAPPER_START "<deviate value=\"ad\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &deviates, NULL, NULL), LY_EVALID);
     CHECK_LOG_CTX("Invalid value \"ad\" of \"value\" attribute in \"deviate\" element. "
-            "Valid values are \"not-supported\", \"add\", \"replace\" and \"delete\".", "Line number 1.");
+            "Valid values are \"not-supported\", \"add\", \"replace\" and \"delete\".", NULL, 1);
     deviates = NULL;
 
     data = ELEMENT_WRAPPER_START "<deviate value=\"adds\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &deviates, NULL, NULL), LY_EVALID);
     CHECK_LOG_CTX("Invalid value \"adds\" of \"value\" attribute in \"deviate\" element. "
-            "Valid values are \"not-supported\", \"add\", \"replace\" and \"delete\".", "Line number 1.");
+            "Valid values are \"not-supported\", \"add\", \"replace\" and \"delete\".", NULL, 1);
     deviates = NULL;
 
     data = ELEMENT_WRAPPER_START
@@ -3022,7 +3023,7 @@ test_deviate_elem(void **state)
             "</deviate>"
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &deviates, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Deviate of this type doesn't allow \"must\" as it's sub-element.", "Line number 2.");
+    CHECK_LOG_CTX("Deviate of this type doesn't allow \"must\" as it's sub-element.", NULL, 2);
 }
 
 static void
@@ -3034,7 +3035,7 @@ test_deviation_elem(void **state)
     /* invalid */
     data = ELEMENT_WRAPPER_START "<deviation target-node=\"target\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &deviations, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Missing mandatory sub-element \"deviate\" of \"deviation\" element.", "Line number 1.");
+    CHECK_LOG_CTX("Missing mandatory sub-element \"deviate\" of \"deviation\" element.", NULL, 1);
 }
 
 static struct lysp_module *
@@ -3166,7 +3167,7 @@ test_module_elem(void **state)
     assert_int_equal(ly_in_new_memory(data, &UTEST_IN), LY_SUCCESS);
     assert_int_equal(lyxml_ctx_new(UTEST_LYCTX, UTEST_IN, &YCTX->xmlctx), LY_SUCCESS);
     assert_int_equal(yin_parse_mod(YCTX, lysp_mod), LY_EVALID);
-    CHECK_LOG_CTX("Invalid order of module\'s sub-elements \"namespace\" can\'t appear after \"feature\".", "Line number 3.");
+    CHECK_LOG_CTX("Invalid order of module\'s sub-elements \"namespace\" can\'t appear after \"feature\".", NULL, 3);
 }
 
 static struct lysp_submodule *
@@ -3233,7 +3234,7 @@ test_submodule_elem(void **state)
 
     assert_int_equal(yin_parse_submod(YCTX, lysp_submod), LY_SUCCESS);
     CHECK_LOG_CTX("YANG version 1.1 expects all includes in main module, includes in submodules (mod) are not necessary.",
-            NULL);
+            NULL, 0);
     assert_string_equal(lysp_submod->name, "mod");
     assert_string_equal(lysp_submod->revs[0].date, "2019-02-02");
     assert_string_equal(lysp_submod->prefix, "pref");
@@ -3300,7 +3301,7 @@ test_submodule_elem(void **state)
     assert_int_equal(ly_in_new_memory(data, &UTEST_IN), LY_SUCCESS);
     assert_int_equal(lyxml_ctx_new(UTEST_LYCTX, UTEST_IN, &YCTX->xmlctx), LY_SUCCESS);
     assert_int_equal(yin_parse_submod(YCTX, lysp_submod), LY_EVALID);
-    CHECK_LOG_CTX("Invalid order of submodule's sub-elements \"belongs-to\" can't appear after \"reference\".", "Line number 4.");
+    CHECK_LOG_CTX("Invalid order of submodule's sub-elements \"belongs-to\" can't appear after \"reference\".", NULL, 4);
 }
 
 static void
@@ -3403,7 +3404,7 @@ test_yin_parse_module(void **state)
             "</submodule>\n";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
     assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_EINVAL);
-    CHECK_LOG_CTX("Input data contains submodule which cannot be parsed directly without its main module.", NULL);
+    CHECK_LOG_CTX("Input data contains submodule which cannot be parsed directly without its main module.", NULL, 0);
     lys_module_free(&fctx, mod, 0);
     lysp_yin_ctx_free(yin_ctx);
     ly_in_free(in, 0);
@@ -3418,7 +3419,7 @@ test_yin_parse_module(void **state)
             "<module>";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
     assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_EVALID);
-    CHECK_LOG_CTX("Trailing garbage \"<module>\" after module, expected end-of-input.", "Line number 6.");
+    CHECK_LOG_CTX("Trailing garbage \"<module>\" after module, expected end-of-input.", NULL, 6);
     lys_module_free(&fctx, mod, 0);
     lysp_yin_ctx_free(yin_ctx);
     ly_in_free(in, 0);
@@ -3488,7 +3489,7 @@ test_yin_parse_submodule(void **state)
             "</module>";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
     assert_int_equal(yin_parse_submodule(&yin_ctx, UTEST_LYCTX, (struct lysp_ctx *)YCTX, in, &submod), LY_EINVAL);
-    CHECK_LOG_CTX("Input data contains module when a submodule is expected.", NULL);
+    CHECK_LOG_CTX("Input data contains module when a submodule is expected.", NULL, 0);
     lysp_module_free(&fctx, (struct lysp_module *)submod);
     lysp_yin_ctx_free(yin_ctx);
     ly_in_free(in, 0);
@@ -3510,7 +3511,7 @@ test_yin_parse_submodule(void **state)
             "</submodule>";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
     assert_int_equal(yin_parse_submodule(&yin_ctx, UTEST_LYCTX, (struct lysp_ctx *)YCTX, in, &submod), LY_EVALID);
-    CHECK_LOG_CTX("Trailing garbage \"<submodule name...\" after submodule, expected end-of-input.", "Line number 8.");
+    CHECK_LOG_CTX("Trailing garbage \"<submodule name...\" after submodule, expected end-of-input.", NULL, 8);
     lysp_module_free(&fctx, (struct lysp_module *)submod);
     lysp_yin_ctx_free(yin_ctx);
     ly_in_free(in, 0);

@@ -66,10 +66,10 @@ lyd_create_term(const struct lysc_node *schema, const char *value, size_t value_
     term->prev = &term->node;
     term->flags = LYD_NEW;
 
-    LOG_LOCSET(schema, NULL, NULL, NULL);
+    LOG_LOCSET(schema, NULL);
     ret = lyd_value_store(schema->module->ctx, &term->value, ((struct lysc_node_leaf *)term->schema)->type, value,
             value_len, is_utf8, dynamic, format, prefix_data, hints, schema, incomplete);
-    LOG_LOCBACK(1, 0, 0, 0);
+    LOG_LOCBACK(1, 0);
     LY_CHECK_ERR_RET(ret, free(term), ret);
     lyd_hash(&term->node);
 
@@ -149,7 +149,7 @@ lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *
     /* create list */
     LY_CHECK_GOTO(ret = lyd_create_inner(schema, &list), cleanup);
 
-    LOG_LOCSET(schema, NULL, NULL, NULL);
+    LOG_LOCSET(schema, NULL);
 
     /* create and insert all the keys */
     LY_ARRAY_FOR(predicates, u) {
@@ -160,10 +160,10 @@ lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *
             }
 
             /* store the value */
-            LOG_LOCSET(predicates[u].key, NULL, NULL, NULL);
+            LOG_LOCSET(predicates[u].key, NULL);
             ret = lyd_value_store(schema->module->ctx, &val, ((struct lysc_node_leaf *)predicates[u].key)->type,
                     var->value, strlen(var->value), 0, NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA, predicates[u].key, NULL);
-            LOG_LOCBACK(1, 0, 0, 0);
+            LOG_LOCBACK(1, 0);
             LY_CHECK_GOTO(ret, cleanup);
 
             value = &val;
@@ -189,7 +189,7 @@ lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *
     list = NULL;
 
 cleanup:
-    LOG_LOCBACK(1, 0, 0, 0);
+    LOG_LOCBACK(1, 0);
     lyd_free_tree(list);
     return ret;
 }
@@ -202,7 +202,7 @@ lyd_create_list2(const struct lysc_node *schema, const char *keys, size_t keys_l
     uint32_t exp_idx = 0;
     struct ly_path_predicate *predicates = NULL;
 
-    LOG_LOCSET(schema, NULL, NULL, NULL);
+    LOG_LOCSET(schema, NULL);
 
     /* parse keys */
     LY_CHECK_GOTO(ret = ly_path_parse_predicate(schema->module->ctx, NULL, keys, keys_len, LY_PATH_PREFIX_OPTIONAL,
@@ -216,7 +216,7 @@ lyd_create_list2(const struct lysc_node *schema, const char *keys, size_t keys_l
     LY_CHECK_GOTO(ret = lyd_create_list(schema, predicates, NULL, node), cleanup);
 
 cleanup:
-    LOG_LOCBACK(1, 0, 0, 0);
+    LOG_LOCBACK(1, 0);
     lyxp_expr_free(schema->module->ctx, expr);
     ly_path_predicates_free(schema->module->ctx, predicates);
     return ret;
@@ -1302,10 +1302,10 @@ _lyd_change_term(struct lyd_node *term, const void *value, size_t value_len, LY_
     type = ((struct lysc_node_leaf *)term->schema)->type;
 
     /* parse the new value */
-    LOG_LOCSET(term->schema, term, NULL, NULL);
+    LOG_LOCSET(term->schema, term);
     ret = lyd_value_store(LYD_CTX(term), &val, type, value, value_len, 0, NULL, format, NULL, LYD_HINT_DATA,
             term->schema, NULL);
-    LOG_LOCBACK(term->schema ? 1 : 0, 1, 0, 0);
+    LOG_LOCBACK(1, 1);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* compare original and new value */
@@ -1541,19 +1541,19 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
                 create = 1;
                 new_count = u;
             } else if (path[u].predicates[0].type != LY_PATH_PREDTYPE_POSITION) {
-                LOG_LOCSET(schema, NULL, NULL, NULL);
+                LOG_LOCSET(schema, NULL);
                 LOGVAL(schema->module->ctx, LYVE_XPATH, "Invalid predicate for state %s \"%s\" in path \"%s\".",
                         lys_nodetype2str(schema->nodetype), schema->name, str_path);
-                LOG_LOCBACK(1, 0, 0, 0);
+                LOG_LOCBACK(1, 0);
                 return LY_EINVAL;
             }
         } else if ((schema->nodetype == LYS_LIST) &&
                 (!path[u].predicates || (path[u].predicates[0].type != LY_PATH_PREDTYPE_LIST))) {
             if ((u < LY_ARRAY_COUNT(path) - 1) || !(options & LYD_NEW_PATH_OPAQ)) {
-                LOG_LOCSET(schema, NULL, NULL, NULL);
+                LOG_LOCSET(schema, NULL);
                 LOGVAL(schema->module->ctx, LYVE_XPATH, "Predicate missing for %s \"%s\" in path \"%s\".",
                         lys_nodetype2str(schema->nodetype), schema->name, str_path);
-                LOG_LOCBACK(1, 0, 0, 0);
+                LOG_LOCBACK(1, 0);
                 return LY_EINVAL;
             } /* else creating an opaque list */
         } else if ((schema->nodetype == LYS_LEAFLIST) &&
@@ -1665,9 +1665,9 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
             if (orig_count == LY_ARRAY_COUNT(p)) {
                 /* the node exists, are we supposed to update it or is it just a default? */
                 if (!(options & LYD_NEW_PATH_UPDATE) && !(node->flags & LYD_DEFAULT)) {
-                    LOG_LOCSET(NULL, node, NULL, NULL);
+                    LOG_LOCSET(NULL, node);
                     LOGVAL(ctx, LYVE_REFERENCE, "Path \"%s\" already exists.", path);
-                    LOG_LOCBACK(0, 1, 0, 0);
+                    LOG_LOCBACK(0, 1);
                     ret = LY_EEXIST;
                     goto cleanup;
                 } else if ((options & LYD_NEW_PATH_UPDATE) && lysc_is_key(node->schema)) {

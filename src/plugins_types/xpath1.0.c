@@ -387,6 +387,7 @@ lyplg_type_validate_xpath10(const struct ly_ctx *UNUSED(ctx), const struct lysc_
     struct ly_set *set = NULL;
     uint32_t i;
     const char *pref, *uri;
+    const struct ly_err_item *eitem;
 
     *err = NULL;
     LYD_VALUE_GET(storage, val);
@@ -430,7 +431,8 @@ cleanup:
     if (ret == LY_EMEM) {
         ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, LY_EMEM_MSG);
     } else if (ret) {
-        ly_err_new(err, ret, LYVE_DATA, NULL, NULL, "%s", ly_errmsg(LYD_CTX(ctx_node)));
+        eitem = ly_err_last(LYD_CTX(ctx_node));
+        ly_err_new(err, ret, LYVE_DATA, eitem->data_path, NULL, "%s", eitem->msg);
     }
     return ret;
 }
@@ -461,7 +463,7 @@ lyplg_type_print_xpath10(const struct ly_ctx *ctx, const struct lyd_value *value
     /* print in the specific format */
     if (lyplg_type_print_xpath10_value(val, format, prefix_data, &ret, &err)) {
         if (err) {
-            LOGVAL_ERRITEM(ctx, err);
+            ly_err_print(ctx, err);
             ly_err_free(err);
         }
         return NULL;

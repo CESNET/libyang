@@ -1172,7 +1172,7 @@ lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     LY_CHECK_GOTO(ret, cleanup);
 
     assert(node);
-    LOG_LOCSET(NULL, node, NULL, NULL);
+    LOG_LOCSET(NULL, node);
 
     /* process children */
     ret = lyb_parse_siblings(lybctx, node, NULL, NULL);
@@ -1181,11 +1181,11 @@ lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     /* register parsed opaq node */
     lyb_finish_opaq(lybctx, parent, flags, &attr, &node, first_p, parsed);
     assert(!attr && !node);
-    LOG_LOCBACK(0, 1, 0, 0);
+    LOG_LOCBACK(0, 1);
 
 cleanup:
     if (node) {
-        LOG_LOCBACK(0, 1, 0, 0);
+        LOG_LOCBACK(0, 1);
     }
     free(prefix);
     free(module_key);
@@ -1273,12 +1273,12 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
     }
 
     assert(node);
-    LOG_LOCSET(NULL, node, NULL, NULL);
+    LOG_LOCSET(NULL, node);
 
     /* register parsed anydata node */
     lyb_finish_node(lybctx, parent, flags, &meta, &node, first_p, parsed);
 
-    LOG_LOCBACK(0, 1, 0, 0);
+    LOG_LOCBACK(0, 1);
     return LY_SUCCESS;
 
 error:
@@ -1316,7 +1316,7 @@ lyb_parse_node_inner(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const 
     LY_CHECK_GOTO(ret, error);
 
     assert(node);
-    LOG_LOCSET(NULL, node, NULL, NULL);
+    LOG_LOCSET(NULL, node);
 
     /* process children */
     ret = lyb_parse_siblings(lybctx, node, NULL, NULL);
@@ -1334,12 +1334,12 @@ lyb_parse_node_inner(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const 
     /* register parsed node */
     lyb_finish_node(lybctx, parent, flags, &meta, &node, first_p, parsed);
 
-    LOG_LOCBACK(0, 1, 0, 0);
+    LOG_LOCBACK(0, 1);
     return LY_SUCCESS;
 
 error:
     if (node) {
-        LOG_LOCBACK(0, 1, 0, 0);
+        LOG_LOCBACK(0, 1);
     }
     lyd_free_meta_siblings(meta);
     lyd_free_tree(node);
@@ -1374,11 +1374,11 @@ lyb_parse_node_leaf(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
     LY_CHECK_GOTO(ret, error);
 
     assert(node);
-    LOG_LOCSET(NULL, node, NULL, NULL);
+    LOG_LOCSET(NULL, node);
 
     lyb_finish_node(lybctx, parent, flags, &meta, &node, first_p, parsed);
 
-    LOG_LOCBACK(0, 1, 0, 0);
+    LOG_LOCBACK(0, 1);
     return LY_SUCCESS;
 
 error:
@@ -1454,7 +1454,7 @@ lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
         LY_CHECK_GOTO(ret, error);
 
         assert(node);
-        LOG_LOCSET(NULL, node, NULL, NULL);
+        LOG_LOCSET(NULL, node);
         log_node = 1;
 
         /* process children */
@@ -1473,7 +1473,7 @@ lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
         /* register parsed list node */
         lyb_finish_node(lybctx, parent, flags, &meta, &node, first_p, parsed);
 
-        LOG_LOCBACK(0, 1, 0, 0);
+        LOG_LOCBACK(0, 1);
         log_node = 0;
     }
 
@@ -1485,7 +1485,7 @@ lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
 
 error:
     if (log_node) {
-        LOG_LOCBACK(0, 1, 0, 0);
+        LOG_LOCBACK(0, 1);
     }
     lyd_free_meta_siblings(meta);
     lyd_free_tree(node);

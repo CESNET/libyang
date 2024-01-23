@@ -580,7 +580,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
             continue;
         }
 
-        LOG_LOCSET(NULL, attr, NULL, NULL);
+        LOG_LOCSET(NULL, attr);
         log_location_items++;
 
         if (prev != meta_container->name.name) {
@@ -696,14 +696,14 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
             lyd_free_tree(attr);
         }
 
-        LOG_LOCBACK(0, log_location_items, 0, 0);
+        LOG_LOCBACK(0, log_location_items);
         log_location_items = 0;
     }
 
 cleanup:
     lydict_remove(lydctx->jsonctx->ctx, prev);
 
-    LOG_LOCBACK(0, log_location_items, 0, 0);
+    LOG_LOCBACK(0, log_location_items);
     return ret;
 }
 
@@ -738,7 +738,9 @@ lydjson_metadata(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, str
     assert(snode || node);
 
     nodetype = snode ? snode->nodetype : LYS_CONTAINER;
-    LOG_LOCSET(snode, NULL, NULL, NULL);
+    if (snode) {
+        LOG_LOCSET(snode, NULL);
+    }
 
     /* move to the second item in the name/X pair */
     LY_CHECK_GOTO(rc = lyjson_ctx_next(lydctx->jsonctx, &status), cleanup);
@@ -904,7 +906,7 @@ cleanup:
         }
     }
     free(dynamic_prefname);
-    LOG_LOCBACK(1, 0, 0, 0);
+    LOG_LOCBACK(snode ? 1 : 0, 0);
     return rc;
 }
 
@@ -1029,7 +1031,7 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
     LY_CHECK_GOTO(ret = lydjson_create_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status_inner_p, node_p), cleanup);
 
     assert(*node_p);
-    LOG_LOCSET(NULL, *node_p, NULL, NULL);
+    LOG_LOCSET(NULL, *node_p);
 
     if ((*status_p == LYJSON_ARRAY) && (*status_inner_p == LYJSON_NULL)) {
         /* special array null value */
@@ -1073,12 +1075,12 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
         assert(*node_p);
         lydjson_maintain_children(parent, first_p, node_p, lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0, NULL);
 
-        LOG_LOCBACK(0, 1, 0, 0);
+        LOG_LOCBACK(0, 1);
 
         LY_CHECK_GOTO(ret = lydjson_create_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status_inner_p, node_p), cleanup);
 
         assert(*node_p);
-        LOG_LOCSET(NULL, *node_p, NULL, NULL);
+        LOG_LOCSET(NULL, *node_p);
     }
 
     if (*status_p == LYJSON_OBJECT) {
@@ -1095,7 +1097,7 @@ finish:
 
 cleanup:
     if (*node_p) {
-        LOG_LOCBACK(0, 1, 0, 0);
+        LOG_LOCBACK(0, 1);
     }
     return ret;
 }
@@ -1288,7 +1290,7 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, st
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
         assert(*node);
-        LOG_LOCSET(NULL, *node, NULL, NULL);
+        LOG_LOCSET(NULL, *node);
         log_node = 1;
 
         /* parse any data tree with correct options, first backup the current options and then make the parser
@@ -1374,7 +1376,7 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, st
 
 cleanup:
     if (log_node) {
-        LOG_LOCBACK(0, 1, 0, 0);
+        LOG_LOCBACK(0, 1);
     }
     lydctx->parse_opts = prev_parse_opts;
     lydctx->int_opts = prev_int_opts;
@@ -1409,7 +1411,7 @@ lydjson_parse_instance_inner(struct lyd_json_ctx *lydctx, const struct lysc_node
     LY_CHECK_RET(lyd_create_inner(snode, node));
 
     /* use it for logging */
-    LOG_LOCSET(NULL, *node, NULL, NULL);
+    LOG_LOCSET(NULL, *node);
 
     if (ext) {
         /* only parse these extension data and validate afterwards */
@@ -1447,7 +1449,7 @@ lydjson_parse_instance_inner(struct lyd_json_ctx *lydctx, const struct lysc_node
 
 cleanup:
     lydctx->parse_opts = prev_parse_opts;
-    LOG_LOCBACK(0, 1, 0, 0);
+    LOG_LOCBACK(0, 1);
     if (!(*node)->hash) {
         /* list without keys is unusable */
         lyd_free_tree(*node);
@@ -1483,7 +1485,7 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, str
     LY_ERR r, rc = LY_SUCCESS;
     uint32_t type_hints = 0;
 
-    LOG_LOCSET(snode, NULL, NULL, NULL);
+    LOG_LOCSET(snode, NULL);
 
     r = lydjson_data_check_opaq(lydctx, snode, &type_hints);
     if (r == LY_SUCCESS) {
@@ -1548,7 +1550,7 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, str
     }
 
 cleanup:
-    LOG_LOCBACK(1, 0, 0, 0);
+    LOG_LOCBACK(1, 0);
     return rc;
 }
 

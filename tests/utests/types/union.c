@@ -110,7 +110,7 @@ test_data_xml(void **state)
             "    libyang 2 - identityref, version 1: Invalid identityref \"123456789012345678901\" value - identity not found in module \"defs\".\n"
             "    libyang 2 - instance-identifier, version 1: Invalid instance-identifier \"123456789012345678901\" value - syntax error.\n"
             "    libyang 2 - string, version 1: Unsatisfied length - string \"123456789012345678901\" length is not allowed.\n",
-            "Schema location \"/defs:un1\", line number 1.");
+            "/defs:un1", 1);
 }
 
 static void
