@@ -2031,14 +2031,85 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, struct
     return ret;
 }
 
+/**
+ * @brief Check file type of a file.
+ *
+ * @param[in] file Dirent file to check.
+ * @param[in] wd Working directory.
+ * @param[in,out] dirs Set with searched directories to add to.
+ * @param[in] implicit_cwd Whether implicit CWD is used.
+ * @param[out] skip Whether to skip this file.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_search_localfile_file_type(const struct dirent *file, const char *wd, struct ly_set *dirs, ly_bool implicit_cwd,
+        ly_bool *skip)
+{
+    LY_ERR rc = LY_SUCCESS;
+    char *str = NULL;
+    ly_bool is_dir = 0, is_reg = 0;
+    struct stat st;
+
+    *skip = 0;
+
+    if (file->d_type == DT_UNKNOWN) {
+        /* FS does not support this field, need to call stat */
+        if (asprintf(&str, "%s/%s", wd, file->d_name) == -1) {
+            LOGMEM(NULL);
+            rc = LY_EMEM;
+            goto cleanup;
+        }
+        if (stat(str, &st)) {
+            LOGWRN(NULL, "Unable to get information about \"%s\" file in \"%s\" when searching for (sub)modules (%s)",
+                    file->d_name, wd, strerror(errno));
+        } else if (S_ISDIR(st.st_mode)) {
+            /* stat - dir */
+            is_dir = 1;
+        } else if (S_ISREG(st.st_mode)) {
+            /* stat - file */
+            is_reg = 1;
+        }
+    } else if (file->d_type == DT_DIR) {
+        /* dirent - dir */
+        is_dir = 1;
+    } else if (file->d_type == DT_REG) {
+        /* dirent - file */
+        is_reg = 1;
+    }
+
+    if (is_dir && (dirs->count || !implicit_cwd)) {
+        /* we have another subdirectory in searchpath to explore,
+         * subdirectories are not taken into account in current working dir (dirs->set.g[0]) */
+        if (!str && (asprintf(&str, "%s/%s", wd, file->d_name) == -1)) {
+            LOGMEM(NULL);
+            rc = LY_EMEM;
+            goto cleanup;
+        }
+        if ((rc = ly_set_add(dirs, str, 0, NULL))) {
+            goto cleanup;
+        }
+        str = NULL;
+
+        /* continue with the next item in current directory */
+        *skip = 1;
+    } else if (!is_reg) {
+        /* not a regular file (note that we see the target of symlinks instead of symlinks */
+        *skip = 1;
+    }
+
+cleanup:
+    free(str);
+    return rc;
+}
+
 LIBYANG_API_DEF LY_ERR
 lys_search_localfile(const char * const *searchpaths, ly_bool cwd, const char *name, const char *revision,
         char **localfile, LYS_INFORMAT *format)
 {
     LY_ERR ret = LY_EMEM;
     size_t len, flen, match_len = 0, dir_len;
-    ly_bool implicit_cwd = 0;
-    char *wd, *wn;
+    ly_bool implicit_cwd = 0, skip;
+    char *wd;
     DIR *dir = NULL;
     struct dirent *file;
     char *match_name = NULL;
@@ -2110,23 +2181,9 @@ lys_search_localfile(const char * const *searchpaths, ly_bool cwd, const char *n
                 continue;
             }
 
-            if ((file->d_type == DT_DIR) && (dirs->count || !implicit_cwd)) {
-                /* we have another subdirectory in searchpath to explore,
-                 * subdirectories are not taken into account in current working dir (dirs->set.g[0]) */
-                if (asprintf(&wn, "%s/%s", wd, file->d_name) == -1) {
-                    LOGMEM(NULL);
-                    goto cleanup;
-                }
-                if ((ret = ly_set_add(dirs, wn, 0, NULL))) {
-                    free(wn);
-                    goto cleanup;
-                }
-
-                /* continue with the next item in current directory */
-                continue;
-            } else if (file->d_type != DT_REG) {
-                /* not a regular file (note that we see the target of symlinks instead of symlinks */
-                continue;
+            /* check whether file type is */
+            if ((ret = lys_search_localfile_file_type(file, wd, dirs, implicit_cwd, &skip))) {
+                goto cleanup;
             }
 
             /* here we know that the item is a file which can contain a module */
