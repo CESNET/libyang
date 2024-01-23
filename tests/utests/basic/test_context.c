@@ -20,7 +20,9 @@
 #include "schema_compile.h"
 #include "tests_config.h"
 #include "tree_schema_internal.h"
+
 #ifdef _WIN32
+
 static void
 slashes_to_backslashes(char *path)
 {
@@ -40,11 +42,11 @@ test_searchdirs(void **state)
     slashes_to_backslashes(path2);
 
     assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(NULL, NULL));
-    CHECK_LOG("Invalid argument ctx (ly_ctx_set_searchdir()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument ctx (ly_ctx_set_searchdir()).");
     assert_null(ly_ctx_get_searchdirs(NULL));
-    CHECK_LOG("Invalid argument ctx (ly_ctx_get_searchdirs()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument ctx (ly_ctx_get_searchdirs()).");
     assert_int_equal(LY_EINVAL, ly_ctx_unset_searchdir(NULL, NULL));
-    CHECK_LOG("Invalid argument ctx (ly_ctx_unset_searchdir()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument ctx (ly_ctx_unset_searchdir()).");
 
     /* correct path */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, path1));
@@ -71,7 +73,7 @@ test_searchdirs(void **state)
     /* removing searchpaths */
     /* nonexisting */
     assert_int_equal(LY_EINVAL, ly_ctx_unset_searchdir(UTEST_LYCTX, "/nonexistingfile"));
-    CHECK_LOG_CTX("Invalid argument value (ly_ctx_unset_searchdir()).", NULL);
+    CHECK_LOG_CTX("Invalid argument value (ly_ctx_unset_searchdir()).", NULL, 0);
 
     /* first */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(UTEST_LYCTX, path1));
@@ -95,18 +97,18 @@ test_searchdirs(void **state)
 
     /* invalid arguments */
     assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(NULL, NULL));
-    CHECK_LOG("Invalid argument ctx (ly_ctx_set_searchdir()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument ctx (ly_ctx_set_searchdir()).");
     assert_null(ly_ctx_get_searchdirs(NULL));
-    CHECK_LOG("Invalid argument ctx (ly_ctx_get_searchdirs()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument ctx (ly_ctx_get_searchdirs()).");
     assert_int_equal(LY_EINVAL, ly_ctx_unset_searchdir(NULL, NULL));
-    CHECK_LOG("Invalid argument ctx (ly_ctx_unset_searchdir()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument ctx (ly_ctx_unset_searchdir()).");
 
     /* readable and executable, but not a directory */
     assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_BIN "/utest_context"));
-    CHECK_LOG_CTX("Given search directory \""TESTS_BIN "/utest_context\" is not a directory.", NULL);
+    CHECK_LOG_CTX("Given search directory \""TESTS_BIN "/utest_context\" is not a directory.", NULL, 0);
     /* not existing */
     assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(UTEST_LYCTX, "/nonexistingfile"));
-    CHECK_LOG_CTX("Unable to use search directory \"/nonexistingfile\" (No such file or directory).", NULL);
+    CHECK_LOG_CTX("Unable to use search directory \"/nonexistingfile\" (No such file or directory).", NULL, 0);
 
     /* ly_set_add() fails */
     /* no change */
@@ -143,7 +145,7 @@ test_searchdirs(void **state)
     /* removing searchpaths */
     /* nonexisting */
     assert_int_equal(LY_EINVAL, ly_ctx_unset_searchdir(UTEST_LYCTX, "/nonexistingfile"));
-    CHECK_LOG_CTX("Invalid argument value (ly_ctx_unset_searchdir()).", NULL);
+    CHECK_LOG_CTX("Invalid argument value (ly_ctx_unset_searchdir()).", NULL, 0);
     /* first */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(UTEST_LYCTX, TESTS_BIN "/utests"));
     assert_string_not_equal(TESTS_BIN "/utests", list[0]);
@@ -166,7 +168,7 @@ test_searchdirs(void **state)
 
     /* test searchdir list in ly_ctx_new() */
     assert_int_equal(LY_EINVAL, ly_ctx_new("/nonexistingfile", 0, &UTEST_LYCTX));
-    CHECK_LOG("Unable to use search directory \"/nonexistingfile\" (No such file or directory).", NULL);
+    CHECK_LOG_LASTMSG("Unable to use search directory \"/nonexistingfile\" (No such file or directory).");
     assert_int_equal(LY_SUCCESS,
             ly_ctx_new(TESTS_SRC PATH_SEPARATOR TESTS_BIN PATH_SEPARATOR TESTS_BIN PATH_SEPARATOR TESTS_SRC,
             LY_CTX_DISABLE_SEARCHDIRS, &UTEST_LYCTX));
@@ -187,12 +189,12 @@ test_options(void **state)
 
     /* invalid arguments */
     assert_int_equal(0, ly_ctx_get_options(NULL));
-    CHECK_LOG("Invalid argument ctx (ly_ctx_get_options()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument ctx (ly_ctx_get_options()).");
 
     assert_int_equal(LY_EINVAL, ly_ctx_set_options(NULL, 0));
-    CHECK_LOG("Invalid argument ctx (ly_ctx_set_options()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument ctx (ly_ctx_set_options()).");
     assert_int_equal(LY_EINVAL, ly_ctx_unset_options(NULL, 0));
-    CHECK_LOG("Invalid argument ctx (ly_ctx_unset_options()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument ctx (ly_ctx_unset_options()).");
 
     /* unset */
     /* LY_CTX_ALL_IMPLEMENTED */
@@ -279,7 +281,7 @@ test_models(void **state)
 
     /* invalid arguments */
     assert_int_equal(0, ly_ctx_get_change_count(NULL));
-    CHECK_LOG("Invalid argument ctx (ly_ctx_get_change_count()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument ctx (ly_ctx_get_change_count()).");
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &UTEST_LYCTX));
     assert_int_equal(UTEST_LYCTX->change_count, ly_ctx_get_change_count(UTEST_LYCTX));
@@ -288,7 +290,7 @@ test_models(void **state)
     assert_int_equal(LY_EINVAL, lys_parse_in(UTEST_LYCTX, in, 4, NULL, NULL, &unres.creating, &mod1));
     lys_unres_glob_erase(&unres);
     ly_in_free(in, 0);
-    CHECK_LOG_CTX("Invalid schema input format.", NULL);
+    CHECK_LOG_CTX("Invalid schema input format.", NULL, 0);
 
     /* import callback */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, (void *)(str = "test"));
@@ -307,8 +309,8 @@ test_models(void **state)
     assert_int_equal(LY_EVALID, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod1));
     lys_unres_glob_erase(&unres);
     ly_in_free(in, 0);
-    CHECK_LOG_CTX("Parsing module \"y\" failed.", NULL);
-    CHECK_LOG_CTX("Name collision between module and submodule of name \"y\".", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"y\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Name collision between module and submodule of name \"y\".", NULL, 1);
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module a {namespace urn:a;prefix a;include y;revision 2018-10-30; }", &in));
     assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod1));
@@ -317,8 +319,8 @@ test_models(void **state)
     assert_int_equal(LY_EVALID, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod1));
     lys_unres_glob_erase(&unres);
     ly_in_free(in, 0);
-    CHECK_LOG_CTX("Parsing module \"y\" failed.", NULL);
-    CHECK_LOG_CTX("Name collision between module and submodule of name \"y\".", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"y\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Name collision between module and submodule of name \"y\".", NULL, 1);
 
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule y {belongs-to b {prefix b;}}");
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module b {namespace urn:b;prefix b;include y;}", &in));
@@ -326,10 +328,10 @@ test_models(void **state)
     lys_unres_glob_revert(UTEST_LYCTX, &unres);
     lys_unres_glob_erase(&unres);
     ly_in_free(in, 0);
-    CHECK_LOG_CTX("Parsing module \"b\" failed.", NULL);
-    CHECK_LOG_CTX("Including \"y\" submodule into \"b\" failed.", NULL);
-    CHECK_LOG_CTX("Parsing submodule failed.", NULL);
-    CHECK_LOG_CTX("Name collision between submodules of name \"y\".", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"b\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Including \"y\" submodule into \"b\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Parsing submodule failed.", NULL, 0);
+    CHECK_LOG_CTX("Name collision between submodules of name \"y\".", NULL, 1);
 
     /* selecting correct revision of the submodules */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule y {belongs-to a {prefix a;} revision 2018-10-31;}");
@@ -395,7 +397,7 @@ test_imports(void **state)
     ly_log_level(LY_LLVRB);
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module c {namespace urn:c;prefix c;import a {prefix a;}}",
             LYS_IN_YANG, &mod3));
-    CHECK_LOG("Implemented module \"a@2019-09-17\" is not used for import, revision \"2019-09-16\" is imported instead.", NULL);
+    CHECK_LOG_LASTMSG("Implemented module \"a@2019-09-17\" is not used for import, revision \"2019-09-16\" is imported instead.");
     ly_log_level(LY_LLWRN);
     assert_true(LYS_MOD_LATEST_SEARCHDIRS & mod1->latest_revision);
     assert_int_equal(1, mod1->implemented);
@@ -445,13 +447,13 @@ test_get_models(void **state)
 
     /* invalid arguments */
     assert_ptr_equal(NULL, ly_ctx_get_module(NULL, NULL, NULL));
-    CHECK_LOG("Invalid argument ctx (ly_ctx_get_module()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument ctx (ly_ctx_get_module()).");
     assert_ptr_equal(NULL, ly_ctx_get_module(UTEST_LYCTX, NULL, NULL));
-    CHECK_LOG_CTX("Invalid argument name (ly_ctx_get_module()).", NULL);
+    CHECK_LOG_CTX("Invalid argument name (ly_ctx_get_module()).", NULL, 0);
     assert_ptr_equal(NULL, ly_ctx_get_module_ns(NULL, NULL, NULL));
-    CHECK_LOG("Invalid argument ctx (ly_ctx_get_module_ns()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument ctx (ly_ctx_get_module_ns()).");
     assert_ptr_equal(NULL, ly_ctx_get_module_ns(UTEST_LYCTX, NULL, NULL));
-    CHECK_LOG_CTX("Invalid argument ns (ly_ctx_get_module_ns()).", NULL);
+    CHECK_LOG_CTX("Invalid argument ns (ly_ctx_get_module_ns()).", NULL, 0);
     assert_null(ly_ctx_get_module(UTEST_LYCTX, "nonsence", NULL));
 
     /* internal modules */
@@ -472,7 +474,7 @@ test_get_models(void **state)
     /* invalid attempts - implementing module of the same name and inserting the same module */
     assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in2, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod2));
     assert_int_equal(LY_EDENIED, lys_implement(mod2, NULL, &unres));
-    CHECK_LOG_CTX("Module \"a@2018-10-24\" is already implemented in revision \"2018-10-23\".", NULL);
+    CHECK_LOG_CTX("Module \"a@2018-10-24\" is already implemented in revision \"2018-10-23\".", NULL, 0);
     lys_unres_glob_erase(&unres);
     ly_in_reset(in1);
     /* it is already there, fine */
@@ -498,7 +500,7 @@ test_get_models(void **state)
     ly_in_free(in1, 0);
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str1, &in1));
     assert_int_equal(LY_EINVAL, lys_parse_in(UTEST_LYCTX, in1, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod));
-    CHECK_LOG_CTX("Input data contains submodule which cannot be parsed directly without its main module.", NULL);
+    CHECK_LOG_CTX("Input data contains submodule which cannot be parsed directly without its main module.", NULL, 0);
     lys_unres_glob_erase(&unres);
 
     while ((mod = (struct lys_module *)ly_ctx_get_module_iter(UTEST_LYCTX, &index))) {

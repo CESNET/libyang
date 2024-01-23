@@ -28,12 +28,12 @@ test_general(void **state)
     str = "";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
-    CHECK_LOG_CTX("Empty JSON file.", "Line number 1.");
+    CHECK_LOG_CTX("Empty JSON file.", NULL, 1);
 
     str = "  \n\t \n";
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
-    CHECK_LOG_CTX("Empty JSON file.", "Line number 3.");
+    CHECK_LOG_CTX("Empty JSON file.", NULL, 3);
 
     /* constant values */
     str = "true";
@@ -457,62 +457,62 @@ test_number(void **state)
     str = "-x";
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
-    CHECK_LOG_CTX("Invalid character in JSON Number value (\"x\").", "Line number 1.");
+    CHECK_LOG_CTX("Invalid character in JSON Number value (\"x\").", NULL, 1);
 
     str = "  -";
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
-    CHECK_LOG_CTX("Unexpected end-of-input.", "Line number 1.");
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
 
     str = "--1";
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
-    CHECK_LOG_CTX("Invalid character in JSON Number value (\"-\").", "Line number 1.");
+    CHECK_LOG_CTX("Invalid character in JSON Number value (\"-\").", NULL, 1);
 
     str = "+1";
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
-    CHECK_LOG_CTX("Invalid character sequence \"+1\", expected a JSON value.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid character sequence \"+1\", expected a JSON value.", NULL, 1);
 
     str = "  1.x ";
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
-    CHECK_LOG_CTX("Invalid character in JSON Number value (\"x\").", "Line number 1.");
+    CHECK_LOG_CTX("Invalid character in JSON Number value (\"x\").", NULL, 1);
 
     str = "1.";
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
-    CHECK_LOG_CTX("Unexpected end-of-input.", "Line number 1.");
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
 
     str = "  1eo ";
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
-    CHECK_LOG_CTX("Invalid character in JSON Number value (\"o\").", "Line number 1.");
+    CHECK_LOG_CTX("Invalid character in JSON Number value (\"o\").", NULL, 1);
 
     str = "1e";
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
-    CHECK_LOG_CTX("Unexpected end-of-input.", "Line number 1.");
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
 
     str = "1E1000";
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
-    CHECK_LOG_CTX("Number encoded as a string exceeded the LY_NUMBER_MAXLEN limit.", "Line number 1.");
+    CHECK_LOG_CTX("Number encoded as a string exceeded the LY_NUMBER_MAXLEN limit.", NULL, 1);
 
     str = "1e9999999999999999999";
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
-    CHECK_LOG_CTX("Exponent out-of-bounds in a JSON Number value (1e9999999999999999999).", "Line number 1.");
+    CHECK_LOG_CTX("Exponent out-of-bounds in a JSON Number value (1e9999999999999999999).", NULL, 1);
 
     str = "1.1e66000";
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
-    CHECK_LOG_CTX("Exponent out-of-bounds in a JSON Number value (1.1e66000).", "Line number 1.");
+    CHECK_LOG_CTX("Exponent out-of-bounds in a JSON Number value (1.1e66000).", NULL, 1);
 
     str = "1.1e-66000";
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
-    CHECK_LOG_CTX("Exponent out-of-bounds in a JSON Number value (1.1e-66000).", "Line number 1.");
+    CHECK_LOG_CTX("Exponent out-of-bounds in a JSON Number value (1.1e-66000).", NULL, 1);
 
     ly_in_free(in, 0);
 }
@@ -532,8 +532,8 @@ test_string(void **state)
     str = "\"unterminated string";
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
-    CHECK_LOG_CTX("Missing quotation-mark at the end of a JSON string.", "Line number 1.");
-    CHECK_LOG_CTX("Unexpected end-of-input.", "Line number 1.");
+    CHECK_LOG_CTX("Missing quotation-mark at the end of a JSON string.", NULL, 1);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
 
     ly_in_free(in, 0);
 }
@@ -662,7 +662,7 @@ test_object(void **state)
     assert_int_equal(LYJSON_OBJECT, lyjson_ctx_status(jsonctx));
 
     assert_int_equal(LY_EVALID, lyjson_ctx_next(jsonctx, NULL));
-    CHECK_LOG_CTX("Invalid character sequence \"unquoted : \"data\"}\", expected a JSON object name.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid character sequence \"unquoted : \"data\"}\", expected a JSON object name.", NULL, 1);
     lyjson_ctx_free(jsonctx);
 
     ly_in_free(in, 0);
@@ -752,7 +752,7 @@ test_array(void **state)
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_SUCCESS, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
     assert_int_equal(LY_EVALID, lyjson_ctx_next(jsonctx, NULL));
-    CHECK_LOG_CTX("Invalid character sequence \", null]\", expected a JSON value.", "Line number 1.");
+    CHECK_LOG_CTX("Invalid character sequence \", null]\", expected a JSON value.", NULL, 1);
     lyjson_ctx_free(jsonctx);
 
     ly_in_free(in, 0);

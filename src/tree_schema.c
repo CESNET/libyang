@@ -1380,12 +1380,12 @@ lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
             if ((r = lysp_resolve_ext_instance_log_path(pctx, ext, &path))) {
                 return r;
             }
-            LOG_LOCSET(NULL, NULL, path, NULL);
+            ly_log_location(NULL, NULL, path, NULL);
 
             /* parse */
             r = ext->record->plugin.parse(pctx, ext);
 
-            LOG_LOCBACK(0, 0, 1, 0);
+            ly_log_location_revert(0, 0, 1, 0);
             free(path);
 
             if (r == LY_ENOT) {
@@ -1886,9 +1886,9 @@ cleanup:
         if (mod && mod->name) {
             /* there are cases when path is not available for parsing error, so this additional
              * message tries to add information about the module where the error occurred */
-            struct ly_err_item *e = ly_err_last(ctx);
+            const struct ly_err_item *e = ly_err_last(ctx);
 
-            if (e && (!e->path || !strncmp(e->path, "Line ", ly_strlen_const("Line ")))) {
+            if (e && (!e->schema_path || e->line)) {
                 LOGERR(ctx, ret, "Parsing module \"%s\" failed.", mod->name);
             }
         }

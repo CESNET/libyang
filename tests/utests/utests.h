@@ -93,9 +93,6 @@
 struct utest_context {
     struct ly_ctx *ctx;  /**< libyang context */
 
-    char *err_msg;       /**< Directly logged error message */
-    char *err_path;      /**< Directly logged error path */
-
     struct ly_in *in;    /**< Input handler */
     struct ly_out *out;  /**< Outpu handler */
 
@@ -1216,8 +1213,8 @@ struct utest_context {
         LY_ERR __r = lys_parse(_UC->ctx, _UC->in, FORMAT, FEATURES, MOD); \
         if (__r != LY_SUCCESS) { \
             print_message("[  MSG     ] Module parsing failed:\n"); \
-            for (struct ly_err_item *e = ly_err_first(_UC->ctx); e; e = e->next) { \
-                print_message("[  MSG     ] \t%s Path %s\n", e->msg, e->path); \
+            for (const struct ly_err_item *e = ly_err_first(_UC->ctx); e; e = e->next) { \
+                print_message("[  MSG     ] \t%s Schema path %s\n", e->msg, e->schema_path); \
             } \
             fail(); \
         } \
@@ -1231,24 +1228,30 @@ struct utest_context {
  * @param[in] MSG Expected error message.
  */
 #define CHECK_LOG_LASTMSG(MSG) \
-    CHECK_STRING(ly_last_errmsg(), MSG)
+    CHECK_STRING(ly_last_logmsg(), MSG)
 
 /**
  * @brief Check expected last error in libyang context, which is then cleared. Can be called repeatedly to check
  * several errors. If NULL is provided as MSG, no error info record (NULL) is expected.
  *
  * @param[in] MSG Expected error message.
- * @param[in] PATH Expected error path.
+ * @param[in] PATH Expected error data/schema path.
+ * @param[in] LINE Expected error line.
  */
-#define CHECK_LOG_CTX(MSG, PATH) \
+#define CHECK_LOG_CTX(MSG, PATH, LINE) \
     { \
-        struct ly_err_item *_e = ly_err_last(_UC->ctx); \
+        struct ly_err_item *_e = (struct ly_err_item *)ly_err_last(_UC->ctx); \
         if (!MSG) { \
             assert_null(_e); \
         } else { \
             assert_non_null(_e); \
             CHECK_STRING(_e->msg, MSG); \
-            CHECK_STRING(_e->path, PATH); \
+            if (_e->data_path) { \
+                CHECK_STRING(_e->data_path, PATH); \
+            } else { \
+                CHECK_STRING(_e->schema_path, PATH); \
+            } \
+            assert_int_equal(_e->line, LINE); \
         } \
         ly_err_clean(_UC->ctx, _e); \
     }
@@ -1257,18 +1260,24 @@ struct utest_context {
  * @brief Check expected error in libyang context including error-app-tag.
  *
  * @param[in] MSG Expected error message.
- * @param[in] PATH Expected error path.
+ * @param[in] PATH Expected error data/schema path.
+ * @param[in] LINE Expected error line.
  * @param[in] APPTAG Expected error-app-tag.
  */
-#define CHECK_LOG_CTX_APPTAG(MSG, PATH, APPTAG) \
+#define CHECK_LOG_CTX_APPTAG(MSG, PATH, LINE, APPTAG) \
     { \
-        struct ly_err_item *_e = ly_err_last(_UC->ctx); \
+        struct ly_err_item *_e = (struct ly_err_item *)ly_err_last(_UC->ctx); \
         if (!MSG) { \
             assert_null(_e); \
         } else { \
             assert_non_null(_e); \
             CHECK_STRING(_e->msg, MSG); \
-            CHECK_STRING(_e->path, PATH); \
+            if (_e->data_path) { \
+                CHECK_STRING(_e->data_path, PATH); \
+            } else { \
+                CHECK_STRING(_e->schema_path, PATH); \
+            } \
+            assert_int_equal(_e->line, LINE); \
             CHECK_STRING(_e->apptag, APPTAG); \
         } \
         ly_err_clean(_UC->ctx, _e); \
@@ -1280,26 +1289,6 @@ struct utest_context {
 #define UTEST_LOG_CTX_CLEAN \
     ly_err_clean(_UC->ctx, NULL)
 
-/**
- * @brief Clean up the logging callback's storage.
- */
-#define UTEST_LOG_CLEAN \
-    free(_UC->err_msg); \
-    free(_UC->err_path); \
-    _UC->err_msg = NULL; \
-    _UC->err_path = NULL;
-
-/**
- * @brief Check expected error directly logged via logging callback.
- * Useful mainly for messages logged by functions without access to libyang context.
- * @param[in] MSG Expected error message.
- * @param[in] PATH Expected error path.
- */
-#define CHECK_LOG(MSG, PATH) \
-    CHECK_STRING(_UC->err_msg, MSG); \
-    CHECK_STRING(_UC->err_path, PATH); \
-    UTEST_LOG_CLEAN
-
 #ifdef _UTEST_MAIN_
 /*
  * Functions inlined into each C source file including this header with _UTEST_MAIN_ defined
@@ -1310,27 +1299,6 @@ struct utest_context {
  */
 struct utest_context *current_utest_context;
 
-/* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 1
-
-/**
- * @brief Logging callback for libyang.
- */
-static void
-_utest_logger(LY_LOG_LEVEL level, const char *msg, const char *path)
-{
-    (void) level; /* unused */
-
-    if (ENABLE_LOGGER_CHECKING == 0) {
-        printf("\tERROR:\n\t\tMESSAGE: %s\n\t\tPATH: %s\n\t\tLEVEL: %i\n", msg, path, level);
-    } else {
-        free(current_utest_context->err_msg);
-        current_utest_context->err_msg = msg ? strdup(msg) : NULL;
-        free(current_utest_context->err_path);
-        current_utest_context->err_path = path ? strdup(path) : NULL;
-    }
-}
-
 /**
  * @brief Generic utest's setup
  */
@@ -1340,8 +1308,7 @@ utest_setup(void **state)
     char *cur_tz;
 
     /* setup the logger */
-    ly_set_log_clb(_utest_logger, 1);
-    ly_log_options(LY_LOLOG | LY_LOSTORE);
+    ly_log_options(/*LY_LOLOG |*/ LY_LOSTORE);
 
     current_utest_context = calloc(1, sizeof *current_utest_context);
     assert_non_null(current_utest_context);
@@ -1349,9 +1316,6 @@ utest_setup(void **state)
 
     /* libyang context */
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &current_utest_context->ctx));
-
-    /* clean all errors from the setup - usually warnings regarding the plugins directories */
-    UTEST_LOG_CLEAN;
 
     /* backup timezone, if any */
     cur_tz = getenv("TZ");
@@ -1392,8 +1356,6 @@ utest_teardown(void **state)
 
     /* utest context */
     ly_in_free(current_utest_context->in, 0);
-    free(current_utest_context->err_msg);
-    free(current_utest_context->err_path);
     free(current_utest_context->orig_tz);
     free(current_utest_context);
     current_utest_context = NULL;

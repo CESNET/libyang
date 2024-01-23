@@ -140,6 +140,7 @@ lyplg_type_store_instanceid_keys(const struct ly_ctx *ctx, const struct lysc_typ
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
     struct lyd_value_instance_identifier_keys *val;
     uint32_t *prev_lo, temp_lo = LY_LOSTORE;
+    const struct ly_err_item *eitem;
     char *canon;
 
     /* init storage */
@@ -176,7 +177,8 @@ lyplg_type_store_instanceid_keys(const struct ly_ctx *ctx, const struct lysc_typ
             LY_PATH_PRED_KEYS, &val->keys);
     ly_temp_log_options(prev_lo);
     if (ret) {
-        ret = ly_err_new(err, ret, LYVE_DATA, NULL, NULL, "%s", ly_errmsg(ctx));
+        eitem = ly_err_last(ctx);
+        ret = ly_err_new(err, ret, LYVE_DATA, eitem->data_path, NULL, "%s", eitem->msg);
         ly_err_clean((struct ly_ctx *)ctx, NULL);
         goto cleanup;
     }

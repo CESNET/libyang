@@ -61,9 +61,9 @@ setup(void **state)
 #define CHECK_PARSE_LYD(INPUT, PARSE_OPTION, VALIDATE_OPTION, TREE) \
     CHECK_PARSE_LYD_PARAM(INPUT, LYD_XML, PARSE_OPTION, VALIDATE_OPTION, LY_SUCCESS, TREE)
 
-#define PARSER_CHECK_ERROR(INPUT, PARSE_OPTION, VALIDATE_OPTION, MODEL, RET_VAL, ERR_MESSAGE, ERR_PATH) \
+#define PARSER_CHECK_ERROR(INPUT, PARSE_OPTION, VALIDATE_OPTION, MODEL, RET_VAL, ERR_MESSAGE, ERR_PATH, ERR_LINE) \
     assert_int_equal(RET_VAL, lyd_parse_data_mem(UTEST_LYCTX, INPUT, LYD_XML, PARSE_OPTION, VALIDATE_OPTION, &MODEL));\
-    CHECK_LOG_CTX(ERR_MESSAGE, ERR_PATH);\
+    CHECK_LOG_CTX(ERR_MESSAGE, ERR_PATH, ERR_LINE);\
     assert_null(MODEL)
 
 #define CHECK_LYD_STRING(IN_MODEL, PRINT_OPTION, TEXT) \
@@ -118,8 +118,7 @@ test_leaf(void **state)
     /* invalid value */
     data = "<l1 xmlns=\"urn:tests:a\"><a>val-a</a><b>val-b</b><c>1</c><cont><e>0</e></cont></l1>";
     PARSER_CHECK_ERROR(data, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Invalid boolean value \"0\".",
-            "Data location \"/a:l1[a='val-a'][b='val-b'][c='1']/cont/e\", line number 1.");
+            "Invalid boolean value \"0\".", "/a:l1[a='val-a'][b='val-b'][c='1']/cont/e", 1);
 }
 
 static void
@@ -217,22 +216,21 @@ test_list(void **state)
 
     /* missing keys */
     PARSER_CHECK_ERROR("<l1 xmlns=\"urn:tests:a\"><c>1</c><b>b</b></l1>", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"a\".", "Data location \"/a:l1[b='b'][c='1']\", line number 1.");
-    CHECK_LOG_CTX("Invalid position of the key \"b\" in a list.", NULL);
+            "List instance is missing its key \"a\".", "/a:l1[b='b'][c='1']", 1);
+    CHECK_LOG_CTX("Invalid position of the key \"b\" in a list.", NULL, 0);
 
     PARSER_CHECK_ERROR("<l1 xmlns=\"urn:tests:a\"><a>a</a></l1>", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"b\".", "Data location \"/a:l1[a='a']\", line number 1.");
+            "List instance is missing its key \"b\".", "/a:l1[a='a']", 1);
 
     PARSER_CHECK_ERROR("<l1 xmlns=\"urn:tests:a\"><b>b</b><a>a</a></l1>", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"c\".", "Data location \"/a:l1[a='a'][b='b']\", line number 1.");
-    CHECK_LOG_CTX("Invalid position of the key \"a\" in a list.", NULL);
+            "List instance is missing its key \"c\".", "/a:l1[a='a'][b='b']", 1);
+    CHECK_LOG_CTX("Invalid position of the key \"a\" in a list.", NULL, 0);
 
     /* key duplicate */
     PARSER_CHECK_ERROR("<l1 xmlns=\"urn:tests:a\"><c>1</c><b>b</b><a>a</a><c>1</c></l1>", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Duplicate instance of \"c\".",
-            "Data location \"/a:l1[a='a'][b='b'][c='1'][c='1']/c\", line number 1.");
-    CHECK_LOG_CTX("Invalid position of the key \"a\" in a list.", NULL);
-    CHECK_LOG_CTX("Invalid position of the key \"b\" in a list.", NULL);
+            "Duplicate instance of \"c\".", "/a:l1[a='a'][b='b'][c='1'][c='1']/c", 1);
+    CHECK_LOG_CTX("Invalid position of the key \"a\" in a list.", NULL, 0);
+    CHECK_LOG_CTX("Invalid position of the key \"b\" in a list.", NULL, 0);
 
     /* keys order */
     CHECK_PARSE_LYD("<l1 xmlns=\"urn:tests:a\"><d>d</d><a>a</a><c>1</c><b>b</b></l1>", 0, LYD_VALIDATE_PRESENT, tree);
@@ -247,7 +245,7 @@ test_list(void **state)
     CHECK_LYSC_NODE(leaf->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "c", 1, LYS_LEAF, 1, 0, NULL, 0);
     assert_non_null(leaf = (struct lyd_node_term *)leaf->next);
     CHECK_LYSC_NODE(leaf->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "d", 1, LYS_LEAF, 1, 0, NULL, 0);
-    CHECK_LOG_CTX("Invalid position of the key \"b\" in a list.", NULL);
+    CHECK_LOG_CTX("Invalid position of the key \"b\" in a list.", NULL, 0);
     lyd_free_all(tree);
 
     data = "<l1 xmlns=\"urn:tests:a\"><c>1</c><b>b</b><a>a</a></l1>";
@@ -260,12 +258,12 @@ test_list(void **state)
     CHECK_LYSC_NODE(leaf->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "b", 1, LYS_LEAF, 1, 0, NULL, 0);
     assert_non_null(leaf = (struct lyd_node_term *)leaf->next);
     CHECK_LYSC_NODE(leaf->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "c", 1, LYS_LEAF, 1, 0, NULL, 0);
-    CHECK_LOG_CTX("Invalid position of the key \"a\" in a list.", NULL);
-    CHECK_LOG_CTX("Invalid position of the key \"b\" in a list.", NULL);
+    CHECK_LOG_CTX("Invalid position of the key \"a\" in a list.", NULL, 0);
+    CHECK_LOG_CTX("Invalid position of the key \"b\" in a list.", NULL, 0);
     lyd_free_all(tree);
 
     PARSER_CHECK_ERROR(data, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Invalid position of the key \"b\" in a list.", "Data location \"/a:l1[c='1']/b\", line number 1.");
+            "Invalid position of the key \"b\" in a list.", "/a:l1[c='1']/b", 1);
 }
 
 static void
@@ -299,7 +297,7 @@ test_opaq(void **state)
     /* invalid value, no flags */
     data = "<foo3 xmlns=\"urn:tests:a\"/>";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Invalid type uint32 empty value.", "Schema location \"/a:foo3\", line number 1.");
+            "Invalid type uint32 empty value.", "/a:foo3", 1);
 
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
@@ -321,8 +319,7 @@ test_opaq(void **state)
             "  <d>val_d</d>\n"
             "</l1>\n";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"c\".",
-            "Data location \"/a:l1[a='val_a'][b='val_b']\", line number 5.");
+            "List instance is missing its key \"c\".", "/a:l1[a='val_a'][b='val_b']", 5);
 
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
@@ -337,8 +334,7 @@ test_opaq(void **state)
             "  <c>val_c</c>\n"
             "</l1>\n";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Invalid type int16 value \"val_c\".",
-            "Data location \"/a:l1[a='val_a'][b='val_b']/c\", line number 4.");
+            "Invalid type int16 value \"val_c\".", "/a:l1[a='val_a'][b='val_b']/c", 4);
 
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
@@ -353,7 +349,7 @@ test_opaq(void **state)
             "  <c xmld:id=\"D\">1</c>\n"
             "</a>\n",
             LYD_XML, LYD_PARSE_OPAQ, LYD_VALIDATE_PRESENT, &tree));
-    CHECK_LOG_CTX("Unknown XML prefix \"xmld\".", "Data location \"/a\", line number 3.");
+    CHECK_LOG_CTX("Unknown XML prefix \"xmld\".", "/a", 3);
 }
 
 static void
@@ -658,7 +654,7 @@ test_netconf_rpc(void **state)
     assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_NETCONF, &tree, &op));
     ly_in_free(in, 0);
     CHECK_LOG_CTX("Invalid enumeration value \"merge2\".",
-            "Path \"/ietf-netconf:copy-config/source/config/a:l1[a='val_a'][b='val_b'][c='5']/cont/e/@ietf-netconf:operation\", line number 13.");
+            "/ietf-netconf:copy-config/source/config/a:l1[a='val_a'][b='val_b'][c='5']/cont/e/@ietf-netconf:operation", 13);
     lyd_free_all(tree);
     assert_null(op);
 }
@@ -974,7 +970,7 @@ test_metadata(void **state)
     data = "<c xmlns=\"urn:tests:a\" xmlns:a=\"urn:tests:a\"><x a:attr=\"value\">xval</x></c>";
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(_UC->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
-    CHECK_LOG_CTX("Invalid enumeration value \"value\".", "Path \"/a:c/x/@a:attr\", line number 1.");
+    CHECK_LOG_CTX("Invalid enumeration value \"value\".", "/a:c/x/@a:attr", 1);
 }
 
 static void
@@ -1004,7 +1000,7 @@ test_subtree(void **state)
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
     assert_int_equal(LY_EVALID, lyd_parse_data(UTEST_LYCTX, tree, in, LYD_XML, 0, LYD_VALIDATE_PRESENT, NULL));
     ly_in_free(in, 0);
-    CHECK_LOG_CTX("Duplicate instance of \"cont\".", "Data location \"/a:l1[a='val_a'][b='val_b'][c='1']/cont\".");
+    CHECK_LOG_CTX("Duplicate instance of \"cont\".", "/a:l1[a='val_a'][b='val_b'][c='1']/cont", 0);
 
     lyd_free_all(tree);
 }

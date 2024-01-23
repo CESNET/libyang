@@ -91,7 +91,7 @@ test_not_implemented(void **state)
     free(printed);
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
-    CHECK_LOG_CTX(NULL, NULL);
+    CHECK_LOG_CTX(NULL, NULL, 0);
 
     lyd_free_all(tree);
 }

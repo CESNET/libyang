@@ -370,8 +370,7 @@ test_dup(void **state)
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree1);
     assert_int_equal(LY_EINVAL, lyd_dup_single(((struct lyd_node_inner *)tree1)->child->prev,
             (struct lyd_node_inner *)tree1->next, LYD_DUP_WITH_PARENTS, NULL));
-    CHECK_LOG_CTX("None of the duplicated node \"c\" schema parents match the provided parent \"c\".",
-            NULL);
+    CHECK_LOG_CTX("None of the duplicated node \"c\" schema parents match the provided parent \"c\".", NULL, 0);
     lyd_free_all(tree1);
 }
 
@@ -499,7 +498,7 @@ test_find_path(void **state)
     assert_int_equal(LY_SUCCESS, lyd_find_path(root, "/c:cont/pref[.='fc00::/64']", 0, NULL));
 
     assert_int_equal(LY_EVALID, lyd_find_path(root, "/cont", 0, NULL));
-    CHECK_LOG_CTX("Prefix missing for \"cont\" in path.", "Schema location \"/c:cont\".");
+    CHECK_LOG_CTX("Prefix missing for \"cont\" in path.", "/c:cont", 0);
     assert_int_equal(LY_SUCCESS, lyd_find_path(root, "nexthop[gateway='2100::1']", 0, NULL));
 
     lyd_free_all(root);
@@ -539,7 +538,7 @@ test_data_hash(void **state)
 
     /* The run must not crash due to the assert that checks the hash. */
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Duplicate instance of \"ll\".", "Data location \"/test-data-hash:c/ll[.='']\", line number 1.");
+    CHECK_LOG_CTX("Duplicate instance of \"ll\".", "/test-data-hash:c/ll[.='']", 1);
     lyd_free_all(tree);
 }
 

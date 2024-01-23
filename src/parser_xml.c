@@ -75,7 +75,7 @@ lydxml_metadata(struct lyd_xml_ctx *lydctx, const struct lysc_node *sparent, str
 
     *meta = NULL;
 
-    LOG_LOCSET(sparent, NULL, NULL, NULL);
+    LOG_LOCSET(sparent, NULL);
 
     /* check for NETCONF filter unqualified attributes */
     if (!strcmp(sparent->module->name, "notifications")) {
@@ -165,7 +165,7 @@ create_meta:
     }
 
 cleanup:
-    LOG_LOCBACK(1, 0, 0, 0);
+    LOG_LOCBACK(1, 0);
     if (ret) {
         lyd_free_meta_siblings(*meta);
         *meta = NULL;
@@ -672,7 +672,7 @@ lydxml_subtree_opaq(struct lyd_xml_ctx *lydctx, const struct lyd_node *sibling, 
     LY_CHECK_GOTO(rc, cleanup);
 
     assert(*node);
-    LOG_LOCSET(NULL, *node, NULL, NULL);
+    LOG_LOCSET(NULL, *node);
 
     /* parser next */
     rc = lyxml_ctx_next(xmlctx);
@@ -709,7 +709,7 @@ lydxml_subtree_opaq(struct lyd_xml_ctx *lydctx, const struct lyd_node *sibling, 
 
 cleanup:
     if (*node) {
-        LOG_LOCBACK(0, 1, 0, 0);
+        LOG_LOCBACK(0, 1);
     }
     ly_free_prefix_data(format, val_prefix_data);
     if (dynamic) {
@@ -747,7 +747,7 @@ lydxml_subtree_term(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, const s
     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
     if (*node) {
-        LOG_LOCSET(NULL, *node, NULL, NULL);
+        LOG_LOCSET(NULL, *node);
     }
 
     if (*node && parent && (snode->flags & LYS_KEY)) {
@@ -778,7 +778,7 @@ lydxml_subtree_term(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, const s
 
 cleanup:
     if (*node) {
-        LOG_LOCBACK(0, 1, 0, 0);
+        LOG_LOCBACK(0, 1);
     }
     if (rc && (!(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
         lyd_free_tree(*node);
@@ -819,7 +819,7 @@ lydxml_subtree_inner(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, 
     LY_CHECK_GOTO(rc, cleanup);
 
     assert(*node);
-    LOG_LOCSET(NULL, *node, NULL, NULL);
+    LOG_LOCSET(NULL, *node);
 
     /* parser next */
     rc = lyxml_ctx_next(xmlctx);
@@ -863,7 +863,7 @@ lydxml_subtree_inner(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, 
 
 cleanup:
     if (*node) {
-        LOG_LOCBACK(0, 1, 0, 0);
+        LOG_LOCBACK(0, 1);
     }
     lydctx->parse_opts = prev_parse_opts;
     if (rc && ((*node && !(*node)->hash) || !(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
@@ -923,7 +923,7 @@ lydxml_subtree_any(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, co
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
         assert(*node);
-        LOG_LOCSET(NULL, *node, NULL, NULL);
+        LOG_LOCSET(NULL, *node);
         log_node = 1;
 
         /* parser next */
@@ -948,7 +948,7 @@ lydxml_subtree_any(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, co
 
 cleanup:
     if (log_node) {
-        LOG_LOCBACK(0, 1, 0, 0);
+        LOG_LOCBACK(0, 1);
     }
     lydctx->parse_opts = prev_parse_opts;
     lydctx->int_opts = prev_int_opts;

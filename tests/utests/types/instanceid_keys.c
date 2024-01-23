@@ -56,14 +56,13 @@ test_data_xml(void **state)
     TEST_SUCCESS_XML_NS1("defs", "l1", "px", "urn:tests:defs", "[px:key='val']", STRING, "[defs:key='val']");
 
     TEST_ERROR_XML("defs", "l1", "black");
-    CHECK_LOG_CTX("Invalid first character 'b', list key predicates expected.", "Schema location \"/defs:l1\", line number 1.");
+    CHECK_LOG_CTX("Invalid first character 'b', list key predicates expected.", "/defs:l1", 1);
 
     TEST_ERROR_XML("defs", "l1", "[this is not a valid xpath]");
-    CHECK_LOG_CTX("Invalid character 0x69 ('i'), perhaps \"this\" is supposed to be a function call.",
-            "Schema location \"/defs:l1\", line number 1.");
+    CHECK_LOG_CTX("Invalid character 0x69 ('i'), perhaps \"this\" is supposed to be a function call.", "/defs:l1", 1);
 
     TEST_ERROR_XML("defs", "l1", "[px:key='val']");
-    CHECK_LOG_CTX("Failed to resolve prefix \"px\".", "Schema location \"/defs:l1\", line number 1.");
+    CHECK_LOG_CTX("Failed to resolve prefix \"px\".", "/defs:l1", 1);
 }
 
 int

@@ -62,8 +62,7 @@ test_data_xml(void **state)
     TEST_SUCCESS_XML("defs", "\n 150 \t\n  ", UINT8, "150", 150);
 
     TEST_ERROR_XML("defs", "\n 15 \t\n  ");
-    CHECK_LOG_CTX("Unsatisfied range - value \"15\" is out of the allowed range.",
-            "Schema location \"/defs:port\", line number 3.");
+    CHECK_LOG_CTX("Unsatisfied range - value \"15\" is out of the allowed range.", "/defs:port", 3);
 }
 
 int

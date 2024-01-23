@@ -474,6 +474,35 @@ lyd_data_next_module(struct lyd_node **next, struct lyd_node **first)
     return mod;
 }
 
+/**
+ * @brief Log generated error item and use log location information if not in the error item.
+ *
+ * @param[in] ctx Context to use.
+ * @param[in] node Optional data node to log.
+ * @param[in] scnode Optional schema node to log.
+ * @param[in] eitem Error item to log.
+ */
+static void
+ly_err_print_build_path(const struct ly_ctx *ctx, const struct lyd_node *node, const struct lysc_node *scnode,
+        struct ly_err_item *eitem)
+{
+    if (eitem->data_path || eitem->schema_path || eitem->line) {
+        ly_err_print(ctx, eitem);
+    } else {
+        if (node) {
+            LOG_LOCSET(NULL, node);
+        } else if (scnode) {
+            LOG_LOCSET(scnode, NULL);
+        }
+        ly_vlog(ctx, eitem->apptag, eitem->err == LY_EVALID ? eitem->vecode : LYVE_DATA, "%s", eitem->msg);
+        if (node) {
+            LOG_LOCBACK(0, 1);
+        } else if (scnode) {
+            LOG_LOCBACK(1, 0);
+        }
+    }
+}
+
 LY_ERR
 lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct lysc_type *type, const void *value,
         size_t value_len, ly_bool is_utf8, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
@@ -508,7 +537,7 @@ lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct ly
         }
     } else if (ret) {
         if (err) {
-            LOGVAL_ERRITEM(ctx, err);
+            ly_err_print_build_path(ctx, NULL, ctx_node, err);
             ly_err_free(err);
         } else {
             LOGVAL(ctx, LYVE_OTHER, "Storing value failed.");
@@ -531,7 +560,7 @@ lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *
     ret = type->plugin->validate(ctx, type, ctx_node, tree, val, &err);
     if (ret) {
         if (err) {
-            LOGVAL_ERRITEM(ctx, err);
+            ly_err_print_build_path(ctx, ctx_node, NULL, err);
             ly_err_free(err);
         } else {
             LOGVAL(ctx, LYVE_OTHER, "Resolving value \"%s\" failed.",
@@ -569,17 +598,7 @@ ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const 
     } else if (rc && err) {
         if (ctx) {
             /* log only in case the ctx was provided as input parameter */
-            if (err->path) {
-                LOG_LOCSET(NULL, NULL, err->path, NULL);
-            } else {
-                LOG_LOCSET(node, NULL, NULL, NULL);
-            }
-            LOGVAL_ERRITEM(ctx, err);
-            if (err->path) {
-                LOG_LOCBACK(0, 0, 1, 0);
-            } else {
-                LOG_LOCBACK(1, 0, 1, 0);
-            }
+            ly_err_print_build_path(ctx, NULL, node, err);
         }
         ly_err_free(err);
     }
@@ -626,21 +645,7 @@ lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *schema, con
     if (rc && (rc != LY_EINCOMPLETE) && err) {
         if (log) {
             /* log error */
-            if (err->path) {
-                LOG_LOCSET(NULL, NULL, err->path, NULL);
-            } else if (ctx_node) {
-                LOG_LOCSET(NULL, ctx_node, NULL, NULL);
-            } else {
-                LOG_LOCSET(schema, NULL, NULL, NULL);
-            }
-            LOGVAL_ERRITEM(ctx, err);
-            if (err->path) {
-                LOG_LOCBACK(0, 0, 1, 0);
-            } else if (ctx_node) {
-                LOG_LOCBACK(0, 1, 0, 0);
-            } else {
-                LOG_LOCBACK(1, 0, 0, 0);
-            }
+            ly_err_print_build_path(ctx, ctx_node, schema, err);
         }
         ly_err_free(err);
     }
@@ -682,9 +687,9 @@ lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t va
     type = ((struct lysc_node_leaf *)node->schema)->type;
 
     /* store the value */
-    LOG_LOCSET(node->schema, &node->node, NULL, NULL);
+    LOG_LOCSET(NULL, &node->node);
     ret = lyd_value_store(ctx, &val, type, value, value_len, 0, NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA, node->schema, NULL);
-    LOG_LOCBACK(1, 1, 0, 0);
+    LOG_LOCBACK(0, 1);
     LY_CHECK_RET(ret);
 
     /* compare values */
@@ -850,7 +855,7 @@ lyd_parse_opaq_error(const struct lyd_node *node)
     const struct lyd_node *parent;
     const struct lys_module *mod;
     const struct lysc_node *sparent, *snode;
-    uint32_t loc_node = 0, loc_path = 0;
+    uint32_t loc_scnode = 0, loc_dnode = 0;
 
     LY_CHECK_ARG_RET(LYD_CTX(node), node, !node->schema, LY_EINVAL);
 
@@ -859,13 +864,9 @@ lyd_parse_opaq_error(const struct lyd_node *node)
     parent = lyd_parent(node);
     sparent = lyd_node_schema(parent);
 
-    if (parent) {
-        LOG_LOCSET(NULL, parent, NULL, NULL);
-        ++loc_node;
-    } else {
-        LOG_LOCSET(NULL, NULL, "/", NULL);
-        ++loc_path;
-    }
+    /* if parent is NULL, it is still added as root */
+    LOG_LOCSET(NULL, parent);
+    loc_dnode = 1;
 
     if (!opaq->name.module_ns) {
         LOGVAL(ctx, LYVE_REFERENCE, "Unknown module of node \"%s\".", opaq->name.name);
@@ -928,11 +929,10 @@ lyd_parse_opaq_error(const struct lyd_node *node)
     }
 
     /* schema node exists */
-    LOG_LOCBACK(0, loc_node, loc_path, 0);
-    loc_node = 0;
-    loc_path = 0;
-    LOG_LOCSET(NULL, node, NULL, NULL);
-    ++loc_node;
+    LOG_LOCBACK(0, 1);
+    loc_dnode = 0;
+    LOG_LOCSET(snode, NULL);
+    loc_scnode = 1;
 
     if (snode->nodetype & LYD_NODE_TERM) {
         /* leaf / leaf-list */
@@ -960,7 +960,7 @@ lyd_parse_opaq_error(const struct lyd_node *node)
     rc = LY_EINVAL;
 
 cleanup:
-    LOG_LOCBACK(0, loc_node, loc_path, 0);
+    LOG_LOCBACK(loc_scnode, loc_dnode);
     return rc;
 }
 

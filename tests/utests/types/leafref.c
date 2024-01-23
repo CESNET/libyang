@@ -131,7 +131,7 @@ test_data_xml(void **state)
     TEST_ERROR_XML2("<leaflisttarget xmlns=\"urn:tests:defs\">x</leaflisttarget>",
             "defs", "", "lref", "y", LY_EVALID);
     CHECK_LOG_CTX_APPTAG("Invalid leafref value \"y\" - no target instance \"/leaflisttarget\" with the same value.",
-            "Data location \"/defs:lref\".", "instance-required");
+            "/defs:lref", 0, "instance-required");
 
     TEST_ERROR_XML2("<list xmlns=\"urn:tests:defs\"><id>x</id><targets>a</targets><targets>b</targets></list>"
             "<list xmlns=\"urn:tests:defs\"><id>y</id><targets>x</targets><targets>y</targets></list>"
@@ -139,36 +139,36 @@ test_data_xml(void **state)
             "defs", "", "lref2", "b", LY_EVALID);
     CHECK_LOG_CTX_APPTAG("Invalid leafref value \"b\" - "
             "no target instance \"../list[id = current()/../str-norestr]/targets\" with the same value.",
-            "Data location \"/defs:lref2\".", "instance-required");
+            "/defs:lref2", 0, "instance-required");
 
     TEST_ERROR_XML2("<list xmlns=\"urn:tests:defs\"><id>x</id><targets>a</targets><targets>b</targets></list>"
             "<list xmlns=\"urn:tests:defs\"><id>y</id><targets>x</targets><targets>y</targets></list>",
             "defs", "", "lref2", "b", LY_EVALID);
     CHECK_LOG_CTX_APPTAG("Invalid leafref value \"b\" - "
             "no target instance \"../list[id = current()/../str-norestr]/targets\" with the same value.",
-            "Data location \"/defs:lref2\".", "instance-required");
+            "/defs:lref2", 0, "instance-required");
 
     TEST_ERROR_XML2("<str-norestr xmlns=\"urn:tests:defs\">y</str-norestr>",
             "defs", "", "lref2", "b", LY_EVALID);
     CHECK_LOG_CTX_APPTAG("Invalid leafref value \"b\" - "
             "no target instance \"../list[id = current()/../str-norestr]/targets\" with the same value.",
-            "Data location \"/defs:lref2\".", "instance-required");
+            "/defs:lref2", 0, "instance-required");
 
     TEST_ERROR_XML2("<str-norestr xmlns=\"urn:tests:defs\">y</str-norestr>",
             "leafrefs", "", "c", "<l><id>x</id><value>x</value><lr1>a</lr1></l>", LY_EVALID);
     CHECK_LOG_CTX_APPTAG("Invalid leafref value \"a\" - no target instance \"../../../t:str-norestr\" with the same value.",
-            "Data location \"/leafrefs:c/l[id='x'][value='x']/lr1\".", "instance-required");
+            "/leafrefs:c/l[id='x'][value='x']/lr1", 0, "instance-required");
 
     TEST_ERROR_XML2("<str-norestr xmlns=\"urn:tests:defs\">z</str-norestr>",
             "leafrefs", "", "c", "<l><id>y</id><value>y</value></l><l><id>x</id><value>x</value><lr2>z</lr2></l>", LY_EVALID);
     CHECK_LOG_CTX_APPTAG("Invalid leafref value \"z\" - no target instance \"../../l[id=current()/../../../t:str-norestr]"
             "[value=current()/../../../t:str-norestr]/value\" with the same value.",
-            "Data location \"/leafrefs:c/l[id='x'][value='x']/lr2\".", "instance-required");
+            "/leafrefs:c/l[id='x'][value='x']/lr2", 0, "instance-required");
 
     TEST_ERROR_XML2("",
             "defs", "", "lref", "%n", LY_EVALID);
     CHECK_LOG_CTX_APPTAG("Invalid leafref value \"%n\" - no target instance \"/leaflisttarget\" with the same value.",
-            "Data location \"/defs:lref\".", "instance-required");
+            "/defs:lref", 0, "instance-required");
 }
 
 static void
@@ -257,7 +257,7 @@ test_xpath_invalid_schema(void **state)
             "leaf r1 {type leafref {path \"deref(../l1)/../l2/t2\";}}");
 
     UTEST_INVALID_MODULE(schema1, LYS_IN_YANG, NULL, LY_EVALID)
-    CHECK_LOG_CTX("The deref function target node \"l1\" is not leaf nor leaflist", "Schema location \"/xp_test:r1\".");
+    CHECK_LOG_CTX("The deref function target node \"l1\" is not leaf nor leaflist", "/xp_test:r1", 0);
 
     schema2 = MODULE_CREATE_YANG("xp_test",
             "list l1 {key t1;"
@@ -270,7 +270,7 @@ test_xpath_invalid_schema(void **state)
             "leaf r2 {type leafref {path \"deref(../r1)/../l2/t2\";}}");
 
     UTEST_INVALID_MODULE(schema2, LYS_IN_YANG, NULL, LY_EVALID)
-    CHECK_LOG_CTX("The deref function target node \"r1\" is not leafref", "Schema location \"/xp_test:r2\".");
+    CHECK_LOG_CTX("The deref function target node \"r1\" is not leafref", "/xp_test:r2", 0);
 }
 
 int

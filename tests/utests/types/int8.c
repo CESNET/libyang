@@ -240,22 +240,22 @@ test_schema_yang(void **state)
     /* TEST ERROR -60 .. 0 | 0 .. 127 */
     schema = MODULE_CREATE_YANG("ERR0", "leaf port {type int8 {range \"-60 .. 0 | 0 .. 127\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EEXIST);
-    CHECK_LOG_CTX("Invalid range restriction - values are not in ascending order (0).", "Path \"/ERR0:port\".");
+    CHECK_LOG_CTX("Invalid range restriction - values are not in ascending order (0).", "/ERR0:port", 0);
 
     /* TEST ERROR 0 .. 128 */
     schema = MODULE_CREATE_YANG("ERR1", "leaf port {type int8 {range \"0 .. 128\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EDENIED);
-    CHECK_LOG_CTX("Invalid range restriction - value \"128\" does not fit the type limitations.", "Path \"/ERR1:port\".");
+    CHECK_LOG_CTX("Invalid range restriction - value \"128\" does not fit the type limitations.", "/ERR1:port", 0);
 
     /* TEST ERROR -129 .. 126 */
     schema = MODULE_CREATE_YANG("ERR2", "leaf port {type int8 {range \"-129 .. 0\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EDENIED);
-    CHECK_LOG_CTX("Invalid range restriction - value \"-129\" does not fit the type limitations.", "Path \"/ERR2:port\".");
+    CHECK_LOG_CTX("Invalid range restriction - value \"-129\" does not fit the type limitations.", "/ERR2:port", 0);
 
     /* TEST ERROR 0 */
     schema = MODULE_CREATE_YANG("ERR3", "leaf port {type int8 {range \"-129\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EDENIED);
-    CHECK_LOG_CTX("Invalid range restriction - value \"-129\" does not fit the type limitations.", "Path \"/ERR3:port\".");
+    CHECK_LOG_CTX("Invalid range restriction - value \"-129\" does not fit the type limitations.", "/ERR3:port", 0);
 
     /*
      * TEST MODULE SUBTYPE
@@ -374,7 +374,7 @@ test_schema_yang(void **state)
             "leaf my_leaf {type my_int_type {range \"min .. max\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid range restriction - the derived restriction (min .. max) is not equally or more limiting.",
-            "Path \"/TS_ERR0:my_leaf\".");
+            "/TS_ERR0:my_leaf", 0);
 
     /* TEST SUBTYPE ERROR -80 .. 80 */
     schema = MODULE_CREATE_YANG("TS_ERR1",
@@ -382,7 +382,7 @@ test_schema_yang(void **state)
             " leaf my_leaf {type my_int_type {range \"-80 .. 80\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid range restriction - the derived restriction (-80 .. 80) is not equally or more limiting.",
-            "Path \"/TS_ERR1:my_leaf\".");
+            "/TS_ERR1:my_leaf", 0);
 
     /* TEST SUBTYPE ERROR 0 .. max */
     schema = MODULE_CREATE_YANG("TS_ERR2",
@@ -390,7 +390,7 @@ test_schema_yang(void **state)
             "leaf my_leaf {type my_int_type {range \"0 .. max\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid range restriction - the derived restriction (0 .. max) is not equally or more limiting.",
-            "Path \"/TS_ERR2:my_leaf\".");
+            "/TS_ERR2:my_leaf", 0);
 
     /* TEST SUBTYPE ERROR -2 .. 2 */
     schema = MODULE_CREATE_YANG("TS_ERR3",
@@ -398,7 +398,7 @@ test_schema_yang(void **state)
             "leaf my_leaf {type my_int_type {range \"-2 .. 2\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid range restriction - the derived restriction (-2 .. 2) is not equally or more limiting.",
-            "Path \"/TS_ERR3:my_leaf\".");
+            "/TS_ERR3:my_leaf", 0);
 
     /* TEST SUBTYPE ERROR -2 .. 2 */
     schema = MODULE_CREATE_YANG("TS_ERR4",
@@ -406,7 +406,7 @@ test_schema_yang(void **state)
             "leaf my_leaf {type my_int_type {range \"-100 .. -90 | 100 .. 128\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EDENIED);
     CHECK_LOG_CTX("Invalid range restriction - value \"128\" does not fit the type limitations.",
-            "Path \"/TS_ERR4:my_leaf\".");
+            "/TS_ERR4:my_leaf", 0);
 
     /*
      * TEST DEFAULT VALUE
@@ -461,7 +461,7 @@ test_schema_yang(void **state)
             "}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid default - value does not fit the type (Value \"128\" is out of type int8 min/max bounds.).",
-            "Schema location \"/TD_ERR0:port\".");
+            "/TD_ERR0:port", 0);
 
     /* TEST DEFAULT VALUE ERROR */
     schema = MODULE_CREATE_YANG("TD_ERR1",
@@ -471,7 +471,7 @@ test_schema_yang(void **state)
             "}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid default - value does not fit the type (Unsatisfied range - value \"-1\" is out of the allowed range.).",
-            "Schema location \"/TD_ERR1:port\".");
+            "/TD_ERR1:port", 0);
 
     /* TEST DEFAULT VALUE ERROR */
     schema = MODULE_CREATE_YANG("TD_ERR2",
@@ -481,7 +481,7 @@ test_schema_yang(void **state)
             "}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid default - value does not fit the type (Unsatisfied range - value \"60\" is out of the allowed range.).",
-            "Schema location \"/TD_ERR2:port\".");
+            "/TD_ERR2:port", 0);
 
     /* TEST DEFAULT VALUE ERROR */
     schema = MODULE_CREATE_YANG("TD_ERR3",
@@ -489,7 +489,7 @@ test_schema_yang(void **state)
             "leaf my_leaf {type my_int_type {range \"70 .. 80\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid default - value does not fit the type (Unsatisfied range - value \"127\" is out of the allowed range.).",
-            "Schema location \"/TD_ERR3:my_leaf\".");
+            "/TD_ERR3:my_leaf", 0);
 
     /* TEST DEFAULT HEXADECIMAL */
     schema = MODULE_CREATE_YANG("DF_HEX0",
@@ -554,7 +554,7 @@ test_schema_yang(void **state)
             "}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid default - value does not fit the type (Value \"0xff\" is out of type int8 min/max bounds.).",
-            "Schema location \"/DF_HEX2:port\".");
+            "/DF_HEX2:port", 0);
 
     /* TEST DEFAULT HEXADECIMAL ERROR */
     schema = MODULE_CREATE_YANG("DF_HEX3",
@@ -564,7 +564,7 @@ test_schema_yang(void **state)
             "}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid default - value does not fit the type (Value \"-0x81\" is out of type int8 min/max bounds.).",
-            "Schema location \"/DF_HEX3:port\".");
+            "/DF_HEX3:port", 0);
 
     /* TEST DEFAULT HEXADECIMAL ERROR */
     schema = MODULE_CREATE_YANG("DF_HEX4",
@@ -574,7 +574,7 @@ test_schema_yang(void **state)
             "}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid default - value does not fit the type (Value \"0x80\" is out of type int8 min/max bounds.).",
-            "Schema location \"/DF_HEX4:port\".");
+            "/DF_HEX4:port", 0);
 
     /* TEST DEFAULT VALUE OCTAL */
     schema = MODULE_CREATE_YANG("DF_OCT0",
@@ -632,7 +632,7 @@ test_schema_yang(void **state)
             "}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid default - value does not fit the type (Value \"0377\" is out of type int8 min/max bounds.).",
-            "Schema location \"/DF_OCT2:port\".");
+            "/DF_OCT2:port", 0);
 
     /* TEST DEFAULT VALUE OCTAL ERROR*/
     schema = MODULE_CREATE_YANG("DF_OCT3",
@@ -642,7 +642,7 @@ test_schema_yang(void **state)
             "}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid default - value does not fit the type (Value \"-0201\" is out of type int8 min/max bounds.).",
-            "Schema location \"/DF_OCT3:port\".");
+            "/DF_OCT3:port", 0);
 
     /* TEST DEFAULT VALUE OCTAL ERROR*/
     schema = MODULE_CREATE_YANG("DF_OCT4",
@@ -652,7 +652,7 @@ test_schema_yang(void **state)
             "}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid default - value does not fit the type (Value \"0200\" is out of type int8 min/max bounds.).",
-            "Schema location \"/DF_OCT4:port\".");
+            "/DF_OCT4:port", 0);
 }
 
 static void
@@ -745,7 +745,7 @@ test_schema_yin(void **state)
             "   <type name=\"int8\"> <range value = \"min .. 0 | 0 .. 12\"/>  </type>"
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EEXIST);
-    CHECK_LOG_CTX("Invalid range restriction - values are not in ascending order (0).", "Path \"/TE0:port\".");
+    CHECK_LOG_CTX("Invalid range restriction - values are not in ascending order (0).", "/TE0:port", 0);
 
     /* TEST ERROR 0 .. 128 */
     schema = MODULE_CREATE_YIN("TE1",
@@ -753,7 +753,7 @@ test_schema_yin(void **state)
             "   <type name=\"int8\"> <range value = \"0 .. 128\"/>  </type>"
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EDENIED);
-    CHECK_LOG_CTX("Invalid range restriction - value \"128\" does not fit the type limitations.", "Path \"/TE1:port\".");
+    CHECK_LOG_CTX("Invalid range restriction - value \"128\" does not fit the type limitations.", "/TE1:port", 0);
 
     /* TEST ERROR -129 .. 126 */
     schema = MODULE_CREATE_YIN("TE2",
@@ -761,7 +761,7 @@ test_schema_yin(void **state)
             "   <type name=\"int8\"> <range value =\"-129 .. 126\"/>  </type>"
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EDENIED);
-    CHECK_LOG_CTX("Invalid range restriction - value \"-129\" does not fit the type limitations.", "Path \"/TE2:port\".");
+    CHECK_LOG_CTX("Invalid range restriction - value \"-129\" does not fit the type limitations.", "/TE2:port", 0);
 
     /* TEST YIN */
     schema = MODULE_CREATE_YIN("TS0",
@@ -817,7 +817,7 @@ test_schema_yin(void **state)
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid range restriction - the derived restriction (min .. max) is not equally or more limiting.",
-            "Path \"/TS_ERR1:port\".");
+            "/TS_ERR1:port", 0);
 
     /* TEST ERROR */
     schema = MODULE_CREATE_YIN("TS_ERR2",
@@ -829,7 +829,7 @@ test_schema_yin(void **state)
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid range restriction - the derived restriction (5 .. 11) is not equally or more limiting.",
-            "Path \"/TS_ERR2:port\".");
+            "/TS_ERR2:port", 0);
 
     /* TEST DEFAULT VALUE */
     schema = MODULE_CREATE_YIN("DF0",
@@ -862,7 +862,7 @@ test_schema_yin(void **state)
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid default - value does not fit the type (Value \"128\" is out of type int8 min/max bounds.).",
-            "Schema location \"/TD_ERR0:port\".");
+            "/TD_ERR0:port", 0);
 
     /* TEST ERROR TD1 */
     schema = MODULE_CREATE_YIN("TD_ERR1",
@@ -872,7 +872,7 @@ test_schema_yin(void **state)
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid default - value does not fit the type (Unsatisfied range - value \"13\" is out of the allowed range.).",
-            "Schema location \"/TD_ERR1:port\".");
+            "/TD_ERR1:port", 0);
 
     /* TEST ERROR TD1 */
     schema = MODULE_CREATE_YIN("TD_ERR3",
@@ -886,7 +886,7 @@ test_schema_yin(void **state)
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid default - value does not fit the type (Unsatisfied range - value \"10\" is out of the allowed range.).",
-            "Schema location \"/TD_ERR3:my_leaf\".");
+            "/TD_ERR3:my_leaf", 0);
 
     /* TEST DEFAULT VALUE HEXADECIMAL */
     schema = MODULE_CREATE_YIN("DF_HEX0",
@@ -928,7 +928,7 @@ test_schema_yin(void **state)
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid default - value does not fit the type (Value \"0xff\" is out of type int8 min/max bounds.).",
-            "Schema location \"/DF_HEX2:port\".");
+            "/DF_HEX2:port", 0);
 
     /* TEST DEFAULT VALUE HEXADECIMAL ERROR */
     schema = MODULE_CREATE_YIN("DF_HEX2",
@@ -938,7 +938,7 @@ test_schema_yin(void **state)
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid default - value does not fit the type (Value \"-0x81\" is out of type int8 min/max bounds.).",
-            "Schema location \"/DF_HEX2:port\".");
+            "/DF_HEX2:port", 0);
 
     /* TEST DEFAULT VALUE HEXADECIMAL ERROR */
     schema = MODULE_CREATE_YIN("DF_HEX4",
@@ -948,7 +948,7 @@ test_schema_yin(void **state)
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid default - value does not fit the type (Value \"0x80\" is out of type int8 min/max bounds.).",
-            "Schema location \"/DF_HEX4:port\".");
+            "/DF_HEX4:port", 0);
 
     /* TEST DEFAULT VALUE OCTAL */
     schema = MODULE_CREATE_YIN("DF_OCT0",
@@ -990,7 +990,7 @@ test_schema_yin(void **state)
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid default - value does not fit the type (Value \"-0201\" is out of type int8 min/max bounds.).",
-            "Schema location \"/DF_OCT2:port\".");
+            "/DF_OCT2:port", 0);
 
     /* TEST DEFAULT VALUE OCTAL ERROR */
     schema = MODULE_CREATE_YIN("DF_OCT3",
@@ -1000,7 +1000,7 @@ test_schema_yin(void **state)
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid default - value does not fit the type (Value \"0200\" is out of type int8 min/max bounds.).",
-            "Schema location \"/DF_OCT3:port\".");
+            "/DF_OCT3:port", 0);
 }
 
 static void
@@ -1117,20 +1117,15 @@ test_data_xml(void **state)
     TEST_SUCCESS_XML("defs", "0", INT8, "0", 0);
     TEST_SUCCESS_XML("defs", "-0", INT8, "0", 0);
     TEST_ERROR_XML("defs", "-1");
-    CHECK_LOG_CTX("Unsatisfied range - value \"-1\" is out of the allowed range.",
-            "Schema location \"/defs:port\", line number 1.");
+    CHECK_LOG_CTX("Unsatisfied range - value \"-1\" is out of the allowed range.", "/defs:port", 1);
     TEST_ERROR_XML("defs", "51");
-    CHECK_LOG_CTX("Unsatisfied range - value \"51\" is out of the allowed range.",
-            "Schema location \"/defs:port\", line number 1.");
+    CHECK_LOG_CTX("Unsatisfied range - value \"51\" is out of the allowed range.", "/defs:port", 1);
     TEST_ERROR_XML("defs", "106");
-    CHECK_LOG_CTX("Unsatisfied range - value \"106\" is out of the allowed range.",
-            "Schema location \"/defs:port\", line number 1.");
+    CHECK_LOG_CTX("Unsatisfied range - value \"106\" is out of the allowed range.", "/defs:port", 1);
     TEST_ERROR_XML("defs", "104");
-    CHECK_LOG_CTX("Unsatisfied range - value \"104\" is out of the allowed range.",
-            "Schema location \"/defs:port\", line number 1.");
+    CHECK_LOG_CTX("Unsatisfied range - value \"104\" is out of the allowed range.", "/defs:port", 1);
     TEST_ERROR_XML("defs", "60");
-    CHECK_LOG_CTX("Unsatisfied range - value \"60\" is out of the allowed range.",
-            "Schema location \"/defs:port\", line number 1.");
+    CHECK_LOG_CTX("Unsatisfied range - value \"60\" is out of the allowed range.", "/defs:port", 1);
 
     schema = MODULE_CREATE_YANG("T0", "leaf port {type int8; }");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
@@ -1144,17 +1139,13 @@ test_data_xml(void **state)
     TEST_SUCCESS_XML("T0", "-015", INT8, "-15", -15);
     TEST_SUCCESS_XML("T0", "015", INT8, "15", 15);
     TEST_ERROR_XML("T0", "-129");
-    CHECK_LOG_CTX("Value \"-129\" is out of type int8 min/max bounds.",
-            "Schema location \"/T0:port\", line number 1.");
+    CHECK_LOG_CTX("Value \"-129\" is out of type int8 min/max bounds.", "/T0:port", 1);
     TEST_ERROR_XML("T0", "128");
-    CHECK_LOG_CTX("Value \"128\" is out of type int8 min/max bounds.",
-            "Schema location \"/T0:port\", line number 1.");
+    CHECK_LOG_CTX("Value \"128\" is out of type int8 min/max bounds.", "/T0:port", 1);
     TEST_ERROR_XML("T0", "256");
-    CHECK_LOG_CTX("Value \"256\" is out of type int8 min/max bounds.",
-            "Schema location \"/T0:port\", line number 1.");
+    CHECK_LOG_CTX("Value \"256\" is out of type int8 min/max bounds.", "/T0:port", 1);
     TEST_ERROR_XML("T0", "1024");
-    CHECK_LOG_CTX("Value \"1024\" is out of type int8 min/max bounds.",
-            "Schema location \"/T0:port\", line number 1.");
+    CHECK_LOG_CTX("Value \"1024\" is out of type int8 min/max bounds.", "/T0:port", 1);
 
     /*
      * default value
@@ -1195,7 +1186,7 @@ test_data_xml(void **state)
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
 
     TEST_ERROR_XML("T2", "120");
-    CHECK_LOG_CTX_APPTAG("invalid range of value", "Schema location \"/T2:port\", line number 1.", "range-violation");
+    CHECK_LOG_CTX_APPTAG("invalid range of value", "/T2:port", 1, "range-violation");
 }
 
 static void
@@ -1218,20 +1209,15 @@ test_data_json(void **state)
     TEST_SUCCESS_JSON("defs", "0", INT8, "0", 0);
     TEST_SUCCESS_JSON("defs", "-0", INT8, "0", 0);
     TEST_ERROR_JSON("defs", "-1");
-    CHECK_LOG_CTX("Unsatisfied range - value \"-1\" is out of the allowed range.",
-            "Schema location \"/defs:port\", line number 1.");
+    CHECK_LOG_CTX("Unsatisfied range - value \"-1\" is out of the allowed range.", "/defs:port", 1);
     TEST_ERROR_JSON("defs", "51");
-    CHECK_LOG_CTX("Unsatisfied range - value \"51\" is out of the allowed range.",
-            "Schema location \"/defs:port\", line number 1.");
+    CHECK_LOG_CTX("Unsatisfied range - value \"51\" is out of the allowed range.", "/defs:port", 1);
     TEST_ERROR_JSON("defs", "106");
-    CHECK_LOG_CTX("Unsatisfied range - value \"106\" is out of the allowed range.",
-            "Schema location \"/defs:port\", line number 1.");
+    CHECK_LOG_CTX("Unsatisfied range - value \"106\" is out of the allowed range.", "/defs:port", 1);
     TEST_ERROR_JSON("defs", "104");
-    CHECK_LOG_CTX("Unsatisfied range - value \"104\" is out of the allowed range.",
-            "Schema location \"/defs:port\", line number 1.");
+    CHECK_LOG_CTX("Unsatisfied range - value \"104\" is out of the allowed range.", "/defs:port", 1);
     TEST_ERROR_JSON("defs", "60");
-    CHECK_LOG_CTX("Unsatisfied range - value \"60\" is out of the allowed range.",
-            "Schema location \"/defs:port\", line number 1.");
+    CHECK_LOG_CTX("Unsatisfied range - value \"60\" is out of the allowed range.", "/defs:port", 1);
 
     schema = MODULE_CREATE_YANG("T0", "leaf port {type int8; }");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
@@ -1243,26 +1229,19 @@ test_data_json(void **state)
     TEST_SUCCESS_JSON("T0", "127", INT8, "127", 127);
     /* leading zeros */
     TEST_ERROR_JSON("T0", "015");
-    CHECK_LOG_CTX("Invalid character sequence \"15}\", expected a JSON object-end or next item.",
-            "Line number 1.");
+    CHECK_LOG_CTX("Invalid character sequence \"15}\", expected a JSON object-end or next item.", NULL, 1);
     TEST_ERROR_JSON("T0", "-015");
-    CHECK_LOG_CTX("Invalid character sequence \"15}\", expected a JSON object-end or next item.",
-            "Line number 1.");
+    CHECK_LOG_CTX("Invalid character sequence \"15}\", expected a JSON object-end or next item.", NULL, 1);
     TEST_ERROR_JSON("defs", "+50");
-    CHECK_LOG_CTX("Invalid character sequence \"+50}\", expected a JSON value.",
-            "Line number 1.");
+    CHECK_LOG_CTX("Invalid character sequence \"+50}\", expected a JSON value.", NULL, 1);
     TEST_ERROR_JSON("T0", "-129");
-    CHECK_LOG_CTX("Value \"-129\" is out of type int8 min/max bounds.",
-            "Schema location \"/T0:port\", line number 1.");
+    CHECK_LOG_CTX("Value \"-129\" is out of type int8 min/max bounds.", "/T0:port", 1);
     TEST_ERROR_JSON("T0", "128");
-    CHECK_LOG_CTX("Value \"128\" is out of type int8 min/max bounds.",
-            "Schema location \"/T0:port\", line number 1.");
+    CHECK_LOG_CTX("Value \"128\" is out of type int8 min/max bounds.", "/T0:port", 1);
     TEST_ERROR_JSON("T0", "256");
-    CHECK_LOG_CTX("Value \"256\" is out of type int8 min/max bounds.",
-            "Schema location \"/T0:port\", line number 1.");
+    CHECK_LOG_CTX("Value \"256\" is out of type int8 min/max bounds.", "/T0:port", 1);
     TEST_ERROR_JSON("T0", "1024");
-    CHECK_LOG_CTX("Value \"1024\" is out of type int8 min/max bounds.",
-            "Schema location \"/T0:port\", line number 1.");
+    CHECK_LOG_CTX("Value \"1024\" is out of type int8 min/max bounds.", "/T0:port", 1);
 
     /*
      * default value
@@ -1360,8 +1339,7 @@ test_diff(void **state)
             "yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"5\">"
             "121</port>";
     CHECK_PARSE_LYD_PARAM(diff_expected, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, model_1);
-    CHECK_LOG_CTX("Unsatisfied range - value \"121\" is out of the allowed range.",
-            "Schema location \"/defs:port\", line number 1.");
+    CHECK_LOG_CTX("Unsatisfied range - value \"121\" is out of the allowed range.", "/defs:port", 1);
 
     /*
      * diff from default value

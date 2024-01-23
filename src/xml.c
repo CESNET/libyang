@@ -922,7 +922,7 @@ lyxml_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lyxml_ctx **xml
     xmlctx->ctx = ctx;
     xmlctx->in = in;
 
-    LOG_LOCSET(NULL, NULL, NULL, in);
+    ly_log_location(NULL, NULL, NULL, in);
 
     /* parse next element, if any */
     LY_CHECK_GOTO(ret = lyxml_next_element(xmlctx, &xmlctx->prefix, &xmlctx->prefix_len, &xmlctx->name,
@@ -1169,7 +1169,7 @@ lyxml_ctx_free(struct lyxml_ctx *xmlctx)
         return;
     }
 
-    LOG_LOCBACK(0, 0, 0, 1);
+    ly_log_location_revert(0, 0, 0, 1);
 
     if (((xmlctx->status == LYXML_ELEM_CONTENT) || (xmlctx->status == LYXML_ATTR_CONTENT)) && xmlctx->dynamic) {
         free((char *)xmlctx->value);

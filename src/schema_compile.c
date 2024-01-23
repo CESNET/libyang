@@ -88,9 +88,11 @@ remove_nodelevel:
         if (nextlevel != 2) {
             if ((parent_module && (parent_module == ctx->cur_mod)) || (!parent_module && (ctx->path_len > 1) && (name[0] == '{'))) {
                 /* module not changed, print the name unprefixed */
-                len = snprintf(&ctx->path[ctx->path_len], LYSC_CTX_BUFSIZE - ctx->path_len, "%s%s", nextlevel ? "/" : "", name);
+                len = snprintf(&ctx->path[ctx->path_len], LYSC_CTX_BUFSIZE - ctx->path_len, "%s%s",
+                        nextlevel ? "/" : "", name);
             } else {
-                len = snprintf(&ctx->path[ctx->path_len], LYSC_CTX_BUFSIZE - ctx->path_len, "%s%s:%s", nextlevel ? "/" : "", ctx->cur_mod->name, name);
+                len = snprintf(&ctx->path[ctx->path_len], LYSC_CTX_BUFSIZE - ctx->path_len, "%s%s:%s",
+                        nextlevel ? "/" : "", ctx->cur_mod->name, name);
             }
         } else {
             len = snprintf(&ctx->path[ctx->path_len], LYSC_CTX_BUFSIZE - ctx->path_len, "='%s'}", name);
@@ -103,8 +105,8 @@ remove_nodelevel:
         }
     }
 
-    LOG_LOCBACK(0, 0, 1, 0);
-    LOG_LOCSET(NULL, NULL, ctx->path, NULL);
+    ly_log_location_revert(0, 0, 1, 0);
+    ly_log_location(NULL, NULL, ctx->path, NULL);
 }
 
 /**
@@ -523,7 +525,7 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
         do {
             struct lysc_when **when_list, *when;
 
-            LOG_LOCSET(node, NULL, NULL, NULL);
+            LOG_LOCSET(node, NULL);
             when_list = lysc_node_when(node);
             LY_ARRAY_FOR(when_list, u) {
                 when = when_list[u];
@@ -531,7 +533,7 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
                         when->context, when->context, &tmp_set, LYXP_SCNODE_SCHEMA);
                 if (ret != LY_SUCCESS) {
                     LOGVAL(set->ctx, LYVE_SEMANTICS, "Invalid when condition \"%s\".", when->cond->expr);
-                    LOG_LOCBACK(1, 0, 0, 0);
+                    LOG_LOCBACK(1, 0);
                     goto cleanup;
                 }
 
@@ -548,7 +550,7 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
                         LOGVAL(set->ctx, LYVE_SEMANTICS, "When condition cyclic dependency on the node \"%s\".",
                                 tmp_set.val.scnodes[j].scnode->name);
                         ret = LY_EVALID;
-                        LOG_LOCBACK(1, 0, 0, 0);
+                        LOG_LOCBACK(1, 0);
                         goto cleanup;
                     }
 
@@ -565,14 +567,14 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
                     } else {
                         /* context node was traversed, so just add the dependent node */
                         ret = lyxp_set_scnode_insert_node(&tmp_set, node, LYXP_SET_SCNODE_START_USED, LYXP_AXIS_CHILD, NULL);
-                        LY_CHECK_ERR_GOTO(ret, LOG_LOCBACK(1, 0, 0, 0), cleanup);
+                        LY_CHECK_ERR_GOTO(ret, LOG_LOCBACK(1, 0), cleanup);
                     }
                 }
 
                 /* merge this set into the global when set */
                 lyxp_set_scnode_merge(set, &tmp_set);
             }
-            LOG_LOCBACK(1, 0, 0, 0);
+            LOG_LOCBACK(1, 0);
 
             /* check when of non-data parents as well */
             node = node->parent;
@@ -706,7 +708,7 @@ lys_compile_unres_must(struct lysc_ctx *ctx, const struct lysc_node *node, const
     LY_ERR ret = LY_SUCCESS;
     uint16_t flg;
 
-    LOG_LOCSET(node, NULL, NULL, NULL);
+    LOG_LOCSET(node, NULL);
 
     memset(&tmp_set, 0, sizeof tmp_set);
     opts = LYXP_SCNODE_SCHEMA | ((node->flags & LYS_IS_OUTPUT) ? LYXP_SCNODE_OUTPUT : 0);
@@ -750,7 +752,7 @@ lys_compile_unres_must(struct lysc_ctx *ctx, const struct lysc_node *node, const
 
 cleanup:
     lyxp_set_free_content(&tmp_set);
-    LOG_LOCBACK(1, 0, 0, 0);
+    LOG_LOCBACK(1, 0);
     return ret;
 }
 
@@ -946,14 +948,14 @@ lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc
     }
 
     if (ret) {
-        LOG_LOCSET(node, NULL, NULL, NULL);
+        LOG_LOCSET(node, NULL);
         if (err) {
             LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Invalid default - value does not fit the type (%s).", err->msg);
             ly_err_free(err);
         } else {
             LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Invalid default - value does not fit the type.");
         }
-        LOG_LOCBACK(1, 0, 0, 0);
+        LOG_LOCBACK(1, 0);
         return ret;
     }
 
@@ -1245,12 +1247,12 @@ resolve_all:
         l = ds_unres->disabled_leafrefs.objs[i];
         LYSC_CTX_INIT_PMOD(cctx, l->node->module->parsed, l->ext);
 
-        LOG_LOCSET(l->node, NULL, NULL, NULL);
+        LOG_LOCSET(l->node, NULL);
         v = 0;
         while ((ret == LY_SUCCESS) && (lref = lys_type_leafref_next(l->node, &v))) {
             ret = lys_compile_unres_leafref(&cctx, l->node, lref, l->local_mod);
         }
-        LOG_LOCBACK(1, 0, 0, 0);
+        LOG_LOCBACK(1, 0);
         LY_CHECK_GOTO(ret, cleanup);
 
         ly_set_rm_index(&ds_unres->disabled_leafrefs, i, free);
@@ -1264,12 +1266,12 @@ resolve_all:
         l = ds_unres->leafrefs.objs[i];
         LYSC_CTX_INIT_PMOD(cctx, l->node->module->parsed, l->ext);
 
-        LOG_LOCSET(l->node, NULL, NULL, NULL);
+        LOG_LOCSET(l->node, NULL);
         v = 0;
         while ((ret == LY_SUCCESS) && (lref = lys_type_leafref_next(l->node, &v))) {
             ret = lys_compile_unres_leafref(&cctx, l->node, lref, l->local_mod);
         }
-        LOG_LOCBACK(1, 0, 0, 0);
+        LOG_LOCBACK(1, 0);
         LY_CHECK_GOTO(ret, cleanup);
     }
     for (i = processed_leafrefs; i < ds_unres->leafrefs.count; ++i) {
@@ -1297,9 +1299,11 @@ resolve_all:
         w = ds_unres->whens.objs[i];
         LYSC_CTX_INIT_PMOD(cctx, w->node->module->parsed, NULL);
 
-        LOG_LOCSET(w->node, NULL, NULL, NULL);
+        if (w->node) {
+            LOG_LOCSET(w->node, NULL);
+        }
         ret = lys_compile_unres_when(&cctx, w->when, w->node);
-        LOG_LOCBACK(w->node ? 1 : 0, 0, 0, 0);
+        LOG_LOCBACK(w->node ? 1 : 0, 0);
         LY_CHECK_GOTO(ret, cleanup);
 
         free(w);
@@ -1312,9 +1316,9 @@ resolve_all:
         m = ds_unres->musts.objs[i];
         LYSC_CTX_INIT_PMOD(cctx, m->node->module->parsed, m->ext);
 
-        LOG_LOCSET(m->node, NULL, NULL, NULL);
+        LOG_LOCSET(m->node, NULL);
         ret = lys_compile_unres_must(&cctx, m->node, m->local_mods);
-        LOG_LOCBACK(1, 0, 0, 0);
+        LOG_LOCBACK(1, 0);
         LY_CHECK_GOTO(ret, cleanup);
 
         lysc_unres_must_free(m);
@@ -1327,9 +1331,9 @@ resolve_all:
         node = ds_unres->disabled_bitenums.objs[i];
         LYSC_CTX_INIT_PMOD(cctx, node->module->parsed, NULL);
 
-        LOG_LOCSET(node, NULL, NULL, NULL);
+        LOG_LOCSET(node, NULL);
         ret = lys_compile_unres_disabled_bitenum(&cctx, (struct lysc_node_leaf *)node);
-        LOG_LOCBACK(1, 0, 0, 0);
+        LOG_LOCBACK(1, 0);
         LY_CHECK_GOTO(ret, cleanup);
 
         ly_set_rm_index(&ds_unres->disabled_bitenums, i, NULL);
@@ -1341,13 +1345,13 @@ resolve_all:
         d = ds_unres->dflts.objs[i];
         LYSC_CTX_INIT_PMOD(cctx, d->leaf->module->parsed, NULL);
 
-        LOG_LOCSET(&d->leaf->node, NULL, NULL, NULL);
+        LOG_LOCSET(&d->leaf->node, NULL);
         if (d->leaf->nodetype == LYS_LEAF) {
             ret = lys_compile_unres_leaf_dlft(&cctx, d->leaf, d->dflt, unres);
         } else {
             ret = lys_compile_unres_llist_dflts(&cctx, d->llist, d->dflt, d->dflts, unres);
         }
-        LOG_LOCBACK(1, 0, 0, 0);
+        LOG_LOCBACK(1, 0);
         LY_CHECK_GOTO(ret, cleanup);
 
         lysc_unres_dflt_free(ctx, d);
@@ -1364,9 +1368,9 @@ resolve_all:
     for (i = 0; i < ds_unres->disabled.count; ++i) {
         node = ds_unres->disabled.snodes[i];
         if (node->flags & LYS_KEY) {
-            LOG_LOCSET(node, NULL, NULL, NULL);
+            LOG_LOCSET(node, NULL);
             LOGVAL(ctx, LYVE_REFERENCE, "Key \"%s\" is disabled.", node->name);
-            LOG_LOCBACK(1, 0, 0, 0);
+            LOG_LOCBACK(1, 0);
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -1389,10 +1393,10 @@ resolve_all:
 
             assert(ret != LY_ERECOMPILE);
             if (ret) {
-                LOG_LOCSET(l->node, NULL, NULL, NULL);
+                LOG_LOCSET(l->node, NULL);
                 LOGVAL(ctx, LYVE_REFERENCE, "Target of leafref \"%s\" cannot be referenced because it is disabled.",
                         l->node->name);
-                LOG_LOCBACK(1, 0, 0, 0);
+                LOG_LOCBACK(1, 0);
                 ret = LY_EVALID;
                 goto cleanup;
             }
@@ -1727,13 +1731,13 @@ lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
     }
     ctx.pmod = sp;
 
-    LOG_LOCBACK(0, 0, 1, 0);
+    ly_log_location_revert(0, 0, 1, 0);
 
     /* finish compilation for all unresolved module items in the context */
     LY_CHECK_GOTO(ret = lys_compile_unres_mod(&ctx), cleanup);
 
 cleanup:
-    LOG_LOCBACK(0, 0, 1, 0);
+    ly_log_location_revert(0, 0, 1, 0);
     lys_compile_unres_mod_erase(&ctx, ret);
     if (ret) {
         lysc_module_free(&ctx.free_ctx, mod_c);
@@ -1784,7 +1788,7 @@ lys_compile_identities(struct lys_module *mod)
 
 cleanup:
     /* always needed when using lysc_update_path() */
-    LOG_LOCBACK(0, 0, 1, 0);
+    ly_log_location_revert(0, 0, 1, 0);
     return rc;
 }
 

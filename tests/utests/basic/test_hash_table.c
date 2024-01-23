@@ -23,12 +23,12 @@ static void
 test_invalid_arguments(void **state)
 {
     assert_int_equal(LY_EINVAL, lydict_insert(NULL, NULL, 0, NULL));
-    CHECK_LOG("Invalid argument ctx (lydict_insert()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument ctx (lydict_insert()).");
 
     assert_int_equal(LY_EINVAL, lydict_insert_zc(NULL, NULL, NULL));
-    CHECK_LOG("Invalid argument ctx (lydict_insert_zc()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument ctx (lydict_insert_zc()).");
     assert_int_equal(LY_EINVAL, lydict_insert_zc(UTEST_LYCTX, NULL, NULL));
-    CHECK_LOG_CTX("Invalid argument str_p (lydict_insert_zc()).", NULL);
+    CHECK_LOG_CTX("Invalid argument str_p (lydict_insert_zc()).", NULL, 0);
 }
 
 static void
@@ -55,7 +55,7 @@ test_dict_hit(void **state)
     /* destroy dictionary - should raise warning about data presence */
     ly_ctx_destroy(UTEST_LYCTX);
     UTEST_LYCTX = NULL;
-    CHECK_LOG("String \"test1\" not freed from the dictionary, refcount 1.", NULL);
+    CHECK_LOG_LASTMSG("String \"test1\" not freed from the dictionary, refcount 1.");
 
 #ifndef NDEBUG
     /* cleanup */
@@ -78,7 +78,7 @@ ht_equal_clb(void *val1, void *val2, uint8_t mod, void *cb_data)
 }
 
 static void
-test_ht_basic(void **state)
+test_ht_basic(void **UNUSED(state))
 {
     uint32_t i;
     struct ly_ht *ht;
@@ -92,13 +92,13 @@ test_ht_basic(void **state)
     assert_int_equal(LY_SUCCESS, lyht_remove(ht, &i, i));
     assert_int_equal(LY_ENOTFOUND, lyht_find(ht, &i, i, NULL));
     assert_int_equal(LY_ENOTFOUND, lyht_remove(ht, &i, i));
-    CHECK_LOG("Invalid argument hash (lyht_remove_with_resize_cb()).", NULL);
+    CHECK_LOG_LASTMSG("Invalid argument hash (lyht_remove_with_resize_cb()).");
 
     lyht_free(ht, NULL);
 }
 
 static void
-test_ht_resize(void **state)
+test_ht_resize(void **UNUSED(state))
 {
     uint32_t i;
     struct ly_ht *ht;
@@ -128,9 +128,8 @@ test_ht_resize(void **state)
 
     /* removing not present data should fail */
     for (i = 0; i < 2; ++i) {
-        UTEST_LOG_CLEAN;
         assert_int_equal(LY_ENOTFOUND, lyht_remove(ht, &i, i));
-        CHECK_LOG("Invalid argument hash (lyht_remove_with_resize_cb()).", NULL);
+        CHECK_LOG_LASTMSG("Invalid argument hash (lyht_remove_with_resize_cb()).");
     }
     /* removing present data, resize should happened
      * when we are below 25% of the table filled, so with 3 records left */

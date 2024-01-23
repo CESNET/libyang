@@ -73,10 +73,9 @@ version(void)
 }
 
 void
-pattern_error(LY_LOG_LEVEL level, const char *msg, const char *path)
+pattern_error(LY_LOG_LEVEL level, const char *msg, const char *UNUSED(data_path), const char *UNUSED(schema_path),
+        uint64_t UNUSED(line))
 {
-    (void) path; /* unused */
-
     if (level == LY_LLERR) {
         fprintf(stderr, "yangre error: %s\n", msg);
     }
@@ -301,7 +300,7 @@ error:
 }
 
 static void
-print_verbose(struct ly_ctx *ctx, struct yr_pattern *patterns, int patterns_count, char *str, LY_ERR match)
+print_verbose(struct yr_pattern *patterns, int patterns_count, char *str, LY_ERR match)
 {
     int i;
 
@@ -315,7 +314,7 @@ print_verbose(struct ly_ctx *ctx, struct yr_pattern *patterns, int patterns_coun
     } else if (match == LY_EVALID) {
         fprintf(stdout, "result    : not matching\n");
     } else {
-        fprintf(stdout, "result    : error (%s)\n", ly_errmsg(ctx));
+        fprintf(stdout, "result    : error (%s)\n", ly_last_logmsg());
     }
 }
 
@@ -425,7 +424,7 @@ main(int argc, char *argv[])
         goto cleanup;
     }
 
-    ly_set_log_clb(pattern_error, 0);
+    ly_set_log_clb(pattern_error);
     if (lys_parse_mem(ctx, modstr, LYS_IN_YANG, &mod) || !mod->compiled || !mod->compiled->data) {
         goto cleanup;
     }
@@ -434,7 +433,7 @@ main(int argc, char *argv[])
     match = lyd_value_validate(ctx, mod->compiled->data, str, strlen(str), NULL, NULL, NULL);
 
     if (verbose) {
-        print_verbose(ctx, patterns, patterns_count, str, match);
+        print_verbose(patterns, patterns_count, str, match);
     }
     if (match == LY_SUCCESS) {
         ret = 0;

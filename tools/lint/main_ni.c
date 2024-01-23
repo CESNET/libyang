@@ -223,7 +223,7 @@ help(int shortout)
 }
 
 static void
-libyang_verbclb(LY_LOG_LEVEL level, const char *msg, const char *path)
+libyang_verbclb(LY_LOG_LEVEL level, const char *msg, const char *data_path, const char *schema_path, uint64_t line)
 {
     char *levstr;
 
@@ -241,8 +241,12 @@ libyang_verbclb(LY_LOG_LEVEL level, const char *msg, const char *path)
         levstr = "dbg :";
         break;
     }
-    if (path) {
-        fprintf(stderr, "libyang %s %s (%s)\n", levstr, msg, path);
+    if (data_path) {
+        fprintf(stderr, "libyang %s %s (%s)\n", levstr, msg, data_path);
+    } else if (schema_path) {
+        fprintf(stderr, "libyang %s %s (%s)\n", levstr, msg, schema_path);
+    } else if (line) {
+        fprintf(stderr, "libyang %s %s (line %" PRIu64 ")\n", levstr, msg, line);
     } else {
         fprintf(stderr, "libyang %s %s\n", levstr, msg);
     }
@@ -719,7 +723,7 @@ main_ni(int argc, char *argv[])
     uint32_t u;
 
     /* set callback for printing libyang messages */
-    ly_set_log_clb(libyang_verbclb, 1);
+    ly_set_log_clb(libyang_verbclb);
 
     r = fill_context(argc, argv, &yo, &ctx);
     if (r < 0) {

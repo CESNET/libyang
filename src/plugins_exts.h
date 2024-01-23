@@ -488,12 +488,12 @@ typedef LY_ERR (*lyplg_ext_parse_clb)(struct lysp_ctx *pctx, struct lysp_ext_ins
  * @param[in] pctx Parse context to use.
  * @param[in] ext Parsed extensiopn instance.
  * @param[in] level Log message level (error, warning, etc.)
- * @param[in] err_no Error type code.
+ * @param[in] err Error type code.
  * @param[in] format Format string to print.
  * @param[in] ... Format variable parameters.
  */
 LIBYANG_API_DECL void lyplg_ext_parse_log(const struct lysp_ctx *pctx, const struct lysp_ext_instance *ext,
-        LY_LOG_LEVEL level, LY_ERR err_no, const char *format, ...);
+        LY_LOG_LEVEL level, LY_ERR err, const char *format, ...);
 
 /**
  * @brief Get current parsed module from a parse context.
@@ -579,27 +579,27 @@ typedef LY_ERR (*lyplg_ext_compile_clb)(struct lysc_ctx *cctx, const struct lysp
  * @param[in] format Format string to print.
  */
 LIBYANG_API_DECL void lyplg_ext_compile_log(const struct lysc_ctx *cctx, const struct lysc_ext_instance *ext,
-        LY_LOG_LEVEL level, LY_ERR err_no, const char *format, ...);
+        LY_LOG_LEVEL level, LY_ERR err, const char *format, ...);
 
 /**
  * @brief Log a message from an extension plugin using the compiled extension instance with an explicit error path.
  *
- * @param[in] path Log error path to use.
+ * @param[in] path Log error schema path to use.
  * @param[in] ext Compiled extension instance.
  * @param[in] level Log message level (error, warning, etc.)
  * @param[in] err_no Error type code.
  * @param[in] format Format string to print.
  */
 LIBYANG_API_DECL void lyplg_ext_compile_log_path(const char *path, const struct lysc_ext_instance *ext,
-        LY_LOG_LEVEL level, LY_ERR err_no, const char *format, ...);
+        LY_LOG_LEVEL level, LY_ERR err, const char *format, ...);
 
 /**
  * @brief Log a message from an extension plugin using the compiled extension instance and a generated error item.
  *
- * @param[in] err Error item to log.
+ * @param[in] eitem Error item to log.
  * @param[in] ext Compiled extension instance.
  */
-LIBYANG_API_DEF void lyplg_ext_compile_log_err(const struct ly_err_item *err, const struct lysc_ext_instance *ext);
+LIBYANG_API_DEF void lyplg_ext_compile_log_err(const struct ly_err_item *eitem, const struct lysc_ext_instance *ext);
 
 /**
  * @brief YANG schema compilation context getter for libyang context.
