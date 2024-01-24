@@ -241,12 +241,29 @@ void *ly_realloc(void *ptr, size_t size);
     { \
         LY_ARRAY_COUNT_TYPE index__; \
         LY_ARRAY_FOR(ARRAY, index__) { \
-            if (ARRAY[index__] == VALUE) { \
+            if ((ARRAY)[index__] == VALUE) { \
                 if (index__ != LY_ARRAY_COUNT(ARRAY) - 1) { \
-                    memmove(&(ARRAY[index__]), &(ARRAY[LY_ARRAY_COUNT(ARRAY) - 1]), sizeof *(ARRAY)); \
+                    memmove(&((ARRAY)[index__]), &((ARRAY)[LY_ARRAY_COUNT(ARRAY) - 1]), sizeof *(ARRAY)); \
                 } \
                 LY_ARRAY_DECREMENT(ARRAY); \
                 break; \
+            } \
+        } \
+    }
+
+/**
+ * @brief Checks if the value exists in array. If yes returns RET code
+ *
+ * @param[in] ARRAY ([sized array](@ref sizedarrays)) to be checked.
+ * @param[in] VALUE The item value to be found in ARRAY.
+ * @param[in] RET The return code returned if VALUE exists inside ARRAYA
+ */
+#define LY_CHECK_ARRAY_VALUE_EXISTS_RET(ARRAY, VALUE, RET) \
+    { \
+        LY_ARRAY_COUNT_TYPE index__; \
+        LY_ARRAY_FOR(ARRAY, index__) { \
+            if ((ARRAY)[index__] == VALUE) { \
+                return RET; \
             } \
         } \
     }

@@ -3313,13 +3313,36 @@ lyd_leafref_get_links(const struct lyd_node_term *node, const struct lyd_leafref
     return lyd_get_or_create_leafref_links_record(node, (struct lyd_leafref_links_rec **)record, 0);
 }
 
+/**
+ * @brief Adds links between leafref and data node.
+ *
+ * @param[in] node Data node, which needs to be linked with node2
+ * @param[in] node2 Target data node or leafref data node
+ * @param[in] target Whether the node2 is target data node (1) or leafref data node (0)
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+static LY_ERR
+_lyd_link_leafref_node(const struct lyd_node_term *node, const struct lyd_node_term *node2, ly_bool target)
+{
+    const struct lyd_node_term **item = NULL;
+    struct lyd_leafref_links_rec *rec;
+    const struct lyd_node_term ***nodes;
+
+    assert(node);
+    assert(node2);
+
+    LY_CHECK_RET(lyd_get_or_create_leafref_links_record(node, &rec, 1));
+    nodes = target ? &rec->target_nodes : &rec->leafref_nodes;
+    LY_CHECK_ARRAY_VALUE_EXISTS_RET(*nodes, node2, LY_SUCCESS);
+    LY_ARRAY_NEW_RET(LYD_CTX(node), *nodes, item, LY_EMEM);
+    *item = node2;
+    return LY_SUCCESS;
+}
+
 LY_ERR
 lyd_link_leafref_node(const struct lyd_node_term *node, const struct lyd_node_term *leafref_node)
 {
-    LY_ARRAY_COUNT_TYPE u;
-    const struct lyd_node_term **item = NULL;
-    struct lyd_leafref_links_rec *rec;
-
     assert(node);
     assert(leafref_node);
 
@@ -3327,17 +3350,8 @@ lyd_link_leafref_node(const struct lyd_node_term *node, const struct lyd_node_te
         return LY_EDENIED;
     }
 
-    LY_CHECK_RET(lyd_get_or_create_leafref_links_record(node, &rec, 1));
-    LY_ARRAY_FOR(rec->leafref_nodes, u) {
-        if (rec->leafref_nodes[u] == leafref_node) {
-            return LY_SUCCESS;
-        }
-    }
-
-    LY_ARRAY_NEW_RET(LYD_CTX(node), rec->leafref_nodes, item, LY_EMEM);
-    *item = leafref_node;
-    LY_CHECK_RET(lyd_get_or_create_leafref_links_record(leafref_node, &rec, 1));
-    rec->target_node = node;
+    LY_CHECK_RET(_lyd_link_leafref_node(node, leafref_node, 0));
+    LY_CHECK_RET(_lyd_link_leafref_node(leafref_node, node, 1));
     return LY_SUCCESS;
 }
 
@@ -3345,11 +3359,12 @@ LIBYANG_API_DEF LY_ERR
 lyd_leafref_link_node_tree(const struct lyd_node *tree)
 {
     const struct lyd_node *sibling, *elem;
-    struct lyd_node *target;
+    struct lyd_node **targets = NULL;
     char *errmsg;
     struct lyd_node_term *leafref_node;
     struct lysc_node_leaf *leaf_schema;
     struct lysc_type_leafref *lref;
+    LY_ERR ret = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(NULL, tree, LY_EINVAL);
 
@@ -3365,17 +3380,58 @@ lyd_leafref_link_node_tree(const struct lyd_node *tree)
 
                 if (leaf_schema->type->basetype == LY_TYPE_LEAFREF) {
                     lref = (struct lysc_type_leafref *)leaf_schema->type;
-                    if (lyplg_type_resolve_leafref(lref, elem, &leafref_node->value, tree, &target, &errmsg)) {
+                    if (lyplg_type_resolve_leafref2(lref, elem, &leafref_node->value, tree, &targets, &errmsg)) {
                         /* leafref target not found */
                         free(errmsg);
                     } else {
                         /* leafref target found, link it */
-                        LY_CHECK_RET(lyd_link_leafref_node((struct lyd_node_term *)target, leafref_node));
+                        LY_ARRAY_COUNT_TYPE u;
+
+                        LY_ARRAY_FOR(targets, u) {
+                            if (targets[u]->schema->nodetype & LYD_NODE_TERM) {
+                                ret = lyd_link_leafref_node((struct lyd_node_term *)targets[u], leafref_node);
+                                LY_CHECK_GOTO(ret, cleanup);
+                            }
+                        }
                     }
                 }
             }
             LYD_TREE_DFS_END(sibling, elem);
         }
+    }
+
+cleanup:
+    LY_ARRAY_FREE(targets);
+    return ret;
+}
+
+/**
+ * @brief Removes links between node and node2.
+ *
+ * @param[in] node Data node to which, the leafref is pointing to.
+ * @param[in] node2 Data node to which, the leafref is pointing to.
+ * @param[in] Whether node2 is target data node (1), or leafref data node (0).
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+static LY_ERR
+_lyd_unlink_leafref_node(const struct lyd_node_term *node, const struct lyd_node_term *node2, ly_bool target)
+{
+    LY_ERR ret;
+    struct lyd_leafref_links_rec *rec;
+    const struct lyd_node_term ***nodes;
+
+    assert(node);
+
+    ret = lyd_get_or_create_leafref_links_record(node, &rec, 0);
+    if (ret == LY_SUCCESS) {
+        nodes = target ? &rec->target_nodes : &rec->leafref_nodes;
+        LY_ARRAY_REMOVE_VALUE(*nodes, node2);
+        if ((LY_ARRAY_COUNT(rec->leafref_nodes) == 0) && (LY_ARRAY_COUNT(rec->target_nodes) == 0)) {
+            lyd_free_leafref_nodes(node);
+        }
+    } else if (ret != LY_ENOTFOUND) {
+        return ret;
     }
 
     return LY_SUCCESS;
@@ -3384,9 +3440,6 @@ lyd_leafref_link_node_tree(const struct lyd_node *tree)
 LY_ERR
 lyd_unlink_leafref_node(const struct lyd_node_term *node, const struct lyd_node_term *leafref_node)
 {
-    LY_ERR ret;
-    struct lyd_leafref_links_rec *rec;
-
     assert(node);
     assert(leafref_node);
 
@@ -3394,25 +3447,7 @@ lyd_unlink_leafref_node(const struct lyd_node_term *node, const struct lyd_node_
         return LY_EDENIED;
     }
 
-    ret = lyd_get_or_create_leafref_links_record(node, &rec, 0);
-    if (ret == LY_SUCCESS) {
-        LY_ARRAY_REMOVE_VALUE(rec->leafref_nodes, leafref_node);
-        if ((LY_ARRAY_COUNT(rec->leafref_nodes) == 0) && (rec->target_node == NULL)) {
-            lyd_free_leafref_nodes(node);
-        }
-    } else if (ret != LY_ENOTFOUND) {
-        return ret;
-    }
-
-    ret = lyd_get_or_create_leafref_links_record(leafref_node, &rec, 0);
-    if (ret == LY_SUCCESS) {
-        rec->target_node = NULL;
-        if ((LY_ARRAY_COUNT(rec->leafref_nodes) == 0) && (rec->target_node == NULL)) {
-            lyd_free_leafref_nodes(leafref_node);
-        }
-    } else if (ret != LY_ENOTFOUND) {
-        return ret;
-    }
-
+    LY_CHECK_RET(_lyd_unlink_leafref_node(node, leafref_node, 0));
+    LY_CHECK_RET(_lyd_unlink_leafref_node(leafref_node, node, 1));
     return LY_SUCCESS;
 }

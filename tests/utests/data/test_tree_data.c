@@ -651,8 +651,10 @@ test_data_leafref_nodes(void **state)
     /* verify state after leafref plugin validation */
     assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(target_node, &rec));
     assert_int_equal(1, LY_ARRAY_COUNT(rec->leafref_nodes));
+    assert_ptr_equal(rec->leafref_nodes[0], leafref_node);
     assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(leafref_node, &rec));
-    assert_ptr_equal(rec->target_node, target_node);
+    assert_int_equal(1, LY_ARRAY_COUNT(rec->target_nodes));
+    assert_ptr_equal(rec->target_nodes[0], target_node);
     /* value modification of target */
     assert_int_equal(LY_SUCCESS, lyd_change_term((struct lyd_node *)target_node, "ASD"));
     assert_int_equal(LY_ENOTFOUND, lyd_leafref_get_links(target_node, &rec));
@@ -665,8 +667,10 @@ test_data_leafref_nodes(void **state)
     assert_int_equal(LY_SUCCESS, lyd_leafref_link_node_tree(tree));
     assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(target_node, &rec));
     assert_int_equal(1, LY_ARRAY_COUNT(rec->leafref_nodes));
+    assert_ptr_equal(rec->leafref_nodes[0], leafref_node);
     assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(leafref_node, &rec));
-    assert_ptr_equal(rec->target_node, target_node);
+    assert_int_equal(1, LY_ARRAY_COUNT(rec->target_nodes));
+    assert_ptr_equal(rec->target_nodes[0], target_node);
     /* value modification of leafref */
     assert_int_equal(LY_SUCCESS, lyd_change_term((struct lyd_node *)leafref_node, "qwe"));
     assert_int_equal(LY_ENOTFOUND, lyd_leafref_get_links(target_node, &rec));
@@ -678,8 +682,92 @@ test_data_leafref_nodes(void **state)
     assert_int_equal(LY_SUCCESS, lyd_leafref_link_node_tree(tree));
     assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(target_node, &rec));
     assert_int_equal(1, LY_ARRAY_COUNT(rec->leafref_nodes));
+    assert_ptr_equal(rec->leafref_nodes[0], leafref_node);
     assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(leafref_node, &rec));
-    assert_ptr_equal(rec->target_node, target_node);
+    assert_int_equal(1, LY_ARRAY_COUNT(rec->target_nodes));
+    assert_ptr_equal(rec->target_nodes[0], target_node);
+    /* freeing whole tree */
+    lyd_free_all(tree);
+}
+
+static void
+test_data_leafref_nodes2(void **state)
+{
+    struct lyd_node *tree, *iter;
+    const char *schema, *data;
+    struct lyd_node_term *leafref_node;
+    const struct lyd_node_term *target_node1, *target_node2;
+    const struct lyd_leafref_links_rec *rec;
+
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_LEAFREF_LINKING);
+
+    schema =
+            "module test-data-hash {"
+            "  yang-version 1.1;"
+            "  namespace \"urn:tests:tdh\";"
+            "  prefix t;"
+            "  list l1 {"
+            "    key \"l1 l2\";"
+            "    leaf l1 {"
+            "      type string;"
+            "    }"
+            "    leaf l2 {"
+            "      type string;"
+            "    }"
+            "  }"
+            "  leaf ref1 {"
+            "    type leafref {"
+            "      path \"../l1/l1\";"
+            "    }"
+            "  }"
+            "}";
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    data =
+            "{"
+            "  \"test-data-hash:l1\": ["
+            "    {\"l1\": \"A\", \"l2\": \"B\"},"
+            "    {\"l1\": \"A\", \"l2\": \"C\"}"
+            "  ],"
+            "  \"test-data-hash:ref1\": \"A\""
+            "}";
+
+    /* The run must not crash due to the assert that checks the hash. */
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    LY_LIST_FOR(tree, iter) {
+        if (strcmp(iter->schema->name, "ref1") == 0) {
+            leafref_node = (struct lyd_node_term *)iter;
+        }
+    }
+
+    /* verify state after leafref plugin validation */
+    assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(leafref_node, &rec));
+    assert_int_equal(2, LY_ARRAY_COUNT(rec->target_nodes));
+    target_node1 = rec->target_nodes[0];
+    target_node2 = rec->target_nodes[1];
+    assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(target_node1, &rec));
+    assert_int_equal(1, LY_ARRAY_COUNT(rec->leafref_nodes));
+    assert_ptr_equal(rec->leafref_nodes[0], leafref_node);
+    assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(target_node2, &rec));
+    assert_int_equal(1, LY_ARRAY_COUNT(rec->leafref_nodes));
+    assert_ptr_equal(rec->leafref_nodes[0], leafref_node);
+    /* value modification of leafref to remove all links*/
+    assert_int_equal(LY_SUCCESS, lyd_change_term((struct lyd_node *)leafref_node, "qwe"));
+    assert_int_equal(LY_ENOTFOUND, lyd_leafref_get_links(leafref_node, &rec));
+    assert_int_equal(LY_ENOTFOUND, lyd_leafref_get_links(target_node1, &rec));
+    assert_int_equal(LY_ENOTFOUND, lyd_leafref_get_links(target_node2, &rec));
+    /* linking the whole tree again */
+    assert_int_equal(LY_SUCCESS, lyd_change_term((struct lyd_node *)leafref_node, "A"));
+    assert_int_equal(LY_SUCCESS, lyd_leafref_link_node_tree(tree));
+    assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(leafref_node, &rec));
+    assert_int_equal(2, LY_ARRAY_COUNT(rec->target_nodes));
+    assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(target_node1, &rec));
+    assert_int_equal(1, LY_ARRAY_COUNT(rec->leafref_nodes));
+    assert_ptr_equal(rec->leafref_nodes[0], leafref_node);
+    assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(target_node2, &rec));
+    assert_int_equal(1, LY_ARRAY_COUNT(rec->leafref_nodes));
+    assert_ptr_equal(rec->leafref_nodes[0], leafref_node);
     /* freeing whole tree */
     lyd_free_all(tree);
 }
@@ -698,6 +786,7 @@ main(void)
         UTEST(test_data_hash, setup),
         UTEST(test_lyxp_vars),
         UTEST(test_data_leafref_nodes),
+        UTEST(test_data_leafref_nodes2),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

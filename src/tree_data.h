@@ -1008,9 +1008,9 @@ struct lyd_leafref_links_rec {
                                                     It can also be populated based on manual request using
                                                     [link api](@ref lyd_leafref_link_node_tree). Freeing of the resources is
                                                     automatic. */
-    const struct lyd_node_term *target_node;    /** pointer to leafref target data node, by default is NULL. The logic
-                                                    is the same as for [leafref_nodes](@ref leafref_nodes) and is filled only
-                                                    for leafrefs */
+    const struct lyd_node_term **target_nodes;  /** list of leafref target data nodes [sized array](@ref sizedarrays)). Byt default
+                                                    it is empty. The logic is the same as for [leafref_nodes](@ref leafref_nodes) and
+                                                    is filled only for leafrefs */
 };
 
 /**

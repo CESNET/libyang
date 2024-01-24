@@ -138,30 +138,42 @@ lyd_free_attr_siblings(const struct ly_ctx *ctx, struct lyd_attr *attr)
     lyd_free_attr(ctx, attr, 1);
 }
 
-void
-lyd_free_leafref_links_rec(struct lyd_leafref_links_rec *rec)
+/**
+ * @brief Frees data within leafref links record associated with one of nodes
+ *
+ * @param[in] rec The leafref links record
+ * @param[in] target Whether to free target_nodes (1) or leafref_nodes (0).
+ */
+static void
+_lyd_free_leafref_links_rec(struct lyd_leafref_links_rec *rec, ly_bool target)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct lyd_leafref_links_rec *leafref_rec;
+    struct lyd_leafref_links_rec *rec2;
+    const struct lyd_node_term ***nodes, ***nodes2;
 
     assert(rec);
 
-    /* remove stored leafref nodes */
-    LY_ARRAY_FOR(rec->leafref_nodes, u) {
-        if (lyd_get_or_create_leafref_links_record(rec->leafref_nodes[u], &leafref_rec, 0) == LY_SUCCESS) {
-            leafref_rec->target_node = NULL;
-            if (!LY_ARRAY_COUNT(leafref_rec->leafref_nodes) && !leafref_rec->target_node) {
-                lyd_free_leafref_nodes(rec->leafref_nodes[u]);
+    nodes = target ? &rec->target_nodes : &rec->leafref_nodes;
+    LY_ARRAY_FOR(*nodes, u) {
+        if (lyd_get_or_create_leafref_links_record((*nodes)[u], &rec2, 0) == LY_SUCCESS) {
+            nodes2 = target ? &rec2->leafref_nodes : &rec2->target_nodes;
+            LY_ARRAY_REMOVE_VALUE(*nodes2, rec->node);
+            if ((LY_ARRAY_COUNT(rec2->leafref_nodes) == 0) && (LY_ARRAY_COUNT(rec2->target_nodes) == 0)) {
+                lyd_free_leafref_nodes((*nodes)[u]);
             }
         }
     }
-    LY_ARRAY_FREE(rec->leafref_nodes);
-    rec->leafref_nodes = NULL;
+    LY_ARRAY_FREE(*nodes);
+    *nodes = NULL;
+}
 
-    /* remove stored target node */
-    if (rec->target_node) {
-        lyd_unlink_leafref_node(rec->target_node, rec->node);
-    }
+void
+lyd_free_leafref_links_rec(struct lyd_leafref_links_rec *rec)
+{
+    assert(rec);
+
+    _lyd_free_leafref_links_rec(rec, 0);
+    _lyd_free_leafref_links_rec(rec, 1);
 }
 
 void
