@@ -147,7 +147,6 @@ struct lysc_type_leafref;
  * - ::lyplg_type_parse_int()
  * - ::lyplg_type_parse_uint()
  * - ::lyplg_type_resolve_leafref()
- * - ::lyplg_type_resolve_leafref2()
  */
 
 /**
