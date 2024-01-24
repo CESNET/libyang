@@ -21,6 +21,7 @@
 #include "config.h"
 #include "log.h"
 #include "plugins.h"
+#include "set.h"
 #include "tree.h"
 
 #include "tree_edit.h"
@@ -1200,26 +1201,12 @@ LIBYANG_API_DECL LY_ERR lyplg_type_validate_patterns(struct lysc_pattern **patte
  * @param[in] node Context node.
  * @param[in] value Target value.
  * @param[in] tree Full data tree to search in.
- * @param[out] target Optional found target.
+ * @param[out] target Optional set of found targets.
  * @param[out] errmsg Error message in case of error.
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node,
-        struct lyd_value *value, const struct lyd_node *tree, struct lyd_node **target, char **errmsg);
-
-/**
- * @brief Find leafref target in data.
- *
- * @param[in] lref Leafref type.
- * @param[in] node Context node.
- * @param[in] value Target value.
- * @param[in] tree Full data tree to search in.
- * @param[out] targets Optional ([sized array](@ref sizedarrays)) of found targets. User is responsible to free given structure once no longer needed
- * @param[out] errmsg Error message in case of error.
- * @return LY_ERR value.
- */
-LIBYANG_API_DECL LY_ERR lyplg_type_resolve_leafref2(const struct lysc_type_leafref *lref, const struct lyd_node *node,
-        struct lyd_value *value, const struct lyd_node *tree, struct lyd_node ***targets, char **errmsg);
+        struct lyd_value *value, const struct lyd_node *tree, struct ly_set **targets, char **errmsg);
 
 /** @} pluginsTypes */
 

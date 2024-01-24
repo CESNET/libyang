@@ -720,6 +720,16 @@ test_data_leafref_nodes2(void **state)
             "      path \"../l1/l1\";"
             "    }"
             "  }"
+            "  leaf-list ll1 {"
+            "    type string;"
+            "    config false;"
+            "  }"
+            "  leaf ref2 {"
+            "    type leafref {"
+            "      path \"../ll1\";"
+            "    }"
+            "    config false;"
+            "  }"
             "}";
 
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
@@ -730,7 +740,9 @@ test_data_leafref_nodes2(void **state)
             "    {\"l1\": \"A\", \"l2\": \"B\"},"
             "    {\"l1\": \"A\", \"l2\": \"C\"}"
             "  ],"
-            "  \"test-data-hash:ref1\": \"A\""
+            "  \"test-data-hash:ref1\": \"A\","
+            "  \"test-data-hash:ll1\": [\"asd\", \"qwe\", \"asd\"],"
+            "  \"test-data-hash:ref2\": \"asd\""
             "}";
 
     /* The run must not crash due to the assert that checks the hash. */
@@ -762,6 +774,24 @@ test_data_leafref_nodes2(void **state)
     assert_int_equal(LY_SUCCESS, lyd_leafref_link_node_tree(tree));
     assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(leafref_node, &rec));
     assert_int_equal(2, LY_ARRAY_COUNT(rec->target_nodes));
+    assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(target_node1, &rec));
+    assert_int_equal(1, LY_ARRAY_COUNT(rec->leafref_nodes));
+    assert_ptr_equal(rec->leafref_nodes[0], leafref_node);
+    assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(target_node2, &rec));
+    assert_int_equal(1, LY_ARRAY_COUNT(rec->leafref_nodes));
+    assert_ptr_equal(rec->leafref_nodes[0], leafref_node);
+
+    /* verify duplicated value in leaf-list */
+    LY_LIST_FOR(tree, iter) {
+        if (strcmp(iter->schema->name, "ref2") == 0) {
+            leafref_node = (struct lyd_node_term *)iter;
+        }
+    }
+
+    assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(leafref_node, &rec));
+    assert_int_equal(2, LY_ARRAY_COUNT(rec->target_nodes));
+    target_node1 = rec->target_nodes[0];
+    target_node2 = rec->target_nodes[1];
     assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(target_node1, &rec));
     assert_int_equal(1, LY_ARRAY_COUNT(rec->leafref_nodes));
     assert_ptr_equal(rec->leafref_nodes[0], leafref_node);

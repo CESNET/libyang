@@ -986,21 +986,9 @@ cleanup:
     return rc;
 }
 
-/**
- * @brief Find leafref target in data.
- *
- * @param[in] lref Leafref type.
- * @param[in] node Context node.
- * @param[in] value Target value.
- * @param[in] tree Full data tree to search in.
- * @param[out] target Optional first found target.
- * @param[out] targets Optional array of found targets.
- * @param[out] errmsg Error message in case of error.
- * @return LY_ERR value.
- */
-static LY_ERR
-_lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node, struct lyd_value *value,
-        const struct lyd_node *tree, struct lyd_node **target, struct lyd_node ***targets, char **errmsg)
+LIBYANG_API_DEF LY_ERR
+lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node, struct lyd_value *value,
+        const struct lyd_node *tree, struct ly_set **targets, char **errmsg)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyxp_expr *target_path = NULL;
@@ -1008,18 +996,12 @@ _lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct l
     const char *val_str, *xp_err_msg;
     uint32_t i;
     int r;
-    struct lyd_node **item = NULL;
 
     LY_CHECK_ARG_RET(NULL, lref, node, value, errmsg, LY_EINVAL);
 
-    if (target) {
-        *target = NULL;
-    }
     *errmsg = NULL;
-
     if (targets) {
-        LY_ARRAY_FREE(*targets);
-        *targets = NULL;
+        ly_set_clean(*targets, NULL);
     }
 
     /* get the canonical value */
@@ -1088,9 +1070,6 @@ _lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct l
         }
         goto cleanup;
     }
-    if (target) {
-        *target = set.val.nodes[i].node;
-    }
     if (targets) {
         for (i = 0; i < set.used; ++i) {
             if (set.val.nodes[i].type != LYXP_NODE_ELEM) {
@@ -1101,8 +1080,7 @@ _lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct l
             }
 
             if (!lref->plugin->compare(&((struct lyd_node_term *)set.val.nodes[i].node)->value, value)) {
-                LY_ARRAY_NEW_GOTO(LYD_CTX(node), *targets, item, rc, cleanup);
-                *item = set.val.nodes[i].node;
+                ly_set_add(*targets, set.val.nodes[i].node, 0, NULL);
             }
         }
     }
@@ -1111,18 +1089,4 @@ cleanup:
     lyxp_expr_free(LYD_CTX(node), target_path);
     lyxp_set_free_content(&set);
     return rc;
-}
-
-LIBYANG_API_DEF LY_ERR
-lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node, struct lyd_value *value,
-        const struct lyd_node *tree, struct lyd_node **target, char **errmsg)
-{
-    return _lyplg_type_resolve_leafref(lref, node, value, tree, target, NULL, errmsg);
-}
-
-LIBYANG_API_DEF LY_ERR
-lyplg_type_resolve_leafref2(const struct lysc_type_leafref *lref, const struct lyd_node *node, struct lyd_value *value,
-        const struct lyd_node *tree, struct lyd_node ***targets, char **errmsg)
-{
-    return _lyplg_type_resolve_leafref(lref, node, value, tree, NULL, targets, errmsg);
 }

@@ -252,23 +252,6 @@ void *ly_realloc(void *ptr, size_t size);
     }
 
 /**
- * @brief Checks if the value exists in array. If yes returns RET code
- *
- * @param[in] ARRAY ([sized array](@ref sizedarrays)) to be checked.
- * @param[in] VALUE The item value to be found in ARRAY.
- * @param[in] RET The return code returned if VALUE exists inside ARRAYA
- */
-#define LY_CHECK_ARRAY_VALUE_EXISTS_RET(ARRAY, VALUE, RET) \
-    { \
-        LY_ARRAY_COUNT_TYPE index__; \
-        LY_ARRAY_FOR(ARRAY, index__) { \
-            if ((ARRAY)[index__] == VALUE) { \
-                return RET; \
-            } \
-        } \
-    }
-
-/**
  * @brief Insert item into linked list.
  *
  * @param[in,out] LIST Linked list to add to.
