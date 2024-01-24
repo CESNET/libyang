@@ -4016,7 +4016,8 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
     struct lyd_node *node;
     char *errmsg = NULL;
     uint8_t oper;
-    LY_ERR r;
+    LY_ERR ret = LY_SUCCESS;
+    struct ly_set *targets = NULL;
     uint32_t i;
 
     if (options & LYXP_SCNODE_ALL) {
@@ -4038,9 +4039,9 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
             oper = (sleaf->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
 
             /* it was already evaluated on schema, it must succeed */
-            r = ly_path_compile_leafref(set->ctx, &sleaf->node, NULL, lref->path, oper, LY_PATH_TARGET_MANY,
+            ret = ly_path_compile_leafref(set->ctx, &sleaf->node, NULL, lref->path, oper, LY_PATH_TARGET_MANY,
                     LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, &p);
-            if (!r) {
+            if (!ret) {
                 /* get the target node */
                 target = p[LY_ARRAY_COUNT(p) - 1].node;
                 ly_path_free(set->ctx, p);
@@ -4063,23 +4064,20 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
         sleaf = (struct lysc_node_leaf *)leaf->schema;
         if (sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
             if (sleaf->type->basetype == LY_TYPE_LEAFREF) {
-                struct ly_set *targets = NULL;
-
                 /* find leafref target */
-                if (lyplg_type_resolve_leafref((struct lysc_type_leafref *)sleaf->type, &leaf->node, &leaf->value, set->tree,
-                        &targets, &errmsg)) {
+                ret = lyplg_type_resolve_leafref((struct lysc_type_leafref *)sleaf->type, &leaf->node, &leaf->value, set->tree,
+                        &targets, &errmsg);
+                if (ret) {
                     LOGERR(set->ctx, LY_EVALID, "%s", errmsg);
                     free(errmsg);
-                    ly_set_free(targets, NULL);
-                    return LY_EVALID;
+                    ret = LY_EVALID;
+                    goto cleanup;
                 }
 
                 /* insert nodes into set */
                 for (i = 0; i < targets->count; ++i) {
                     set_insert_node(set, targets->dnodes[i], 0, LYXP_NODE_ELEM, 0);
                 }
-
-                ly_set_free(targets, NULL);
             } else {
                 assert(sleaf->type->basetype == LY_TYPE_INST);
                 if (ly_path_eval(leaf->value.target, set->tree, NULL, &node)) {
@@ -4094,7 +4092,9 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
         }
     }
 
-    return LY_SUCCESS;
+cleanup:
+    ly_set_free(targets, NULL);
+    return ret;
 }
 
 static LY_ERR
