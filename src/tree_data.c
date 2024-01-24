@@ -3356,7 +3356,7 @@ LIBYANG_API_DEF LY_ERR
 lyd_leafref_link_node_tree(const struct lyd_node *tree)
 {
     const struct lyd_node *sibling, *elem;
-    struct ly_set *targets;
+    struct ly_set *targets = NULL;
     char *errmsg;
     struct lyd_node_term *leafref_node;
     struct lysc_node_leaf *leaf_schema;
@@ -3369,8 +3369,6 @@ lyd_leafref_link_node_tree(const struct lyd_node *tree)
     if (!(ly_ctx_get_options(LYD_CTX(tree)) & LY_CTX_LEAFREF_LINKING)) {
         return LY_EDENIED;
     }
-
-    ly_set_new(&targets);
 
     LY_LIST_FOR(tree, sibling) {
         LYD_TREE_DFS_BEGIN(sibling, elem) {

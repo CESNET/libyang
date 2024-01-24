@@ -4065,22 +4065,21 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
             if (sleaf->type->basetype == LY_TYPE_LEAFREF) {
                 struct ly_set *targets = NULL;
 
-                ly_set_new(&targets);
                 /* find leafref target */
                 if (lyplg_type_resolve_leafref((struct lysc_type_leafref *)sleaf->type, &leaf->node, &leaf->value, set->tree,
                         &targets, &errmsg)) {
                     LOGERR(set->ctx, LY_EVALID, "%s", errmsg);
                     free(errmsg);
-                    r = LY_EVALID;
-                } else {
-                    /* insert nodes into set */
-                    for (i = 0; i < targets->count; ++i) {
-                        set_insert_node(set, targets->dnodes[i], 0, LYXP_NODE_ELEM, 0);
-                    }
-                    r = LY_SUCCESS;
+                    ly_set_free(targets, NULL);
+                    return LY_EVALID;
                 }
+
+                /* insert nodes into set */
+                for (i = 0; i < targets->count; ++i) {
+                    set_insert_node(set, targets->dnodes[i], 0, LYXP_NODE_ELEM, 0);
+                }
+
                 ly_set_free(targets, NULL);
-                LY_CHECK_RET(r);
             } else {
                 assert(sleaf->type->basetype == LY_TYPE_INST);
                 if (ly_path_eval(leaf->value.target, set->tree, NULL, &node)) {

@@ -80,11 +80,7 @@ lyplg_type_validate_leafref(const struct ly_ctx *ctx, const struct lysc_type *ty
         return LY_SUCCESS;
     }
 
-    if (ly_ctx_get_options(ctx) & LY_CTX_LEAFREF_LINKING) {
-        ly_set_new(&targets);
-    }
-
-    ret = lyplg_type_resolve_leafref(type_lr, ctx_node, storage, tree, targets ? &targets : NULL, &errmsg);
+    ret = lyplg_type_resolve_leafref(type_lr, ctx_node, storage, tree, (ly_ctx_get_options(ctx) & LY_CTX_LEAFREF_LINKING) ? &targets : NULL, &errmsg);
     if (ret != LY_SUCCESS) {
         path = lyd_path(ctx_node, LYD_PATH_STD, NULL, 0);
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, path, strdup("instance-required"), "%s", errmsg);
@@ -100,9 +96,7 @@ lyplg_type_validate_leafref(const struct ly_ctx *ctx, const struct lysc_type *ty
     }
 
 cleanup:
-    if (targets) {
-        ly_set_free(targets, NULL);
-    }
+    ly_set_free(targets, NULL);
     return ret;
 }
 

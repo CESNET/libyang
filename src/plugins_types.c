@@ -1001,7 +1001,9 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
 
     *errmsg = NULL;
     if (targets) {
-        ly_set_clean(*targets, NULL);
+        /* make sure that the previous set is freed */
+        ly_set_free(*targets, NULL);
+        *targets = NULL;
     }
 
     /* get the canonical value */
@@ -1071,6 +1073,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
         goto cleanup;
     }
     if (targets) {
+        ly_set_new(targets);
         for (i = 0; i < set.used; ++i) {
             if (set.val.nodes[i].type != LYXP_NODE_ELEM) {
                 continue;
@@ -1080,7 +1083,8 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
             }
 
             if (!lref->plugin->compare(&((struct lyd_node_term *)set.val.nodes[i].node)->value, value)) {
-                ly_set_add(*targets, set.val.nodes[i].node, 0, NULL);
+                rc = ly_set_add(*targets, set.val.nodes[i].node, 0, NULL);
+                LY_CHECK_GOTO(rc, cleanup);
             }
         }
     }
