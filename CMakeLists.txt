@@ -463,7 +463,7 @@ gen_doc("${doxy_files}" ${LIBYANG_VERSION} ${LIBYANG_DESCRIPTION} ${project_logo
 
 # generate API/ABI report
 if ("${BUILD_TYPE_UPPER}" STREQUAL "ABICHECK")
-    lib_abi_check(yang "${headers}" ${LIBYANG_SOVERSION_FULL} 8b787ba8edf21556c8845722587ac8036400150a)
+    lib_abi_check(yang "${headers}" ${LIBYANG_SOVERSION_FULL} 67388953aedda28e4b3440019d3e353c98733919)
 endif()
 
 # source code format target for Makefile
