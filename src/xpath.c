@@ -1697,7 +1697,7 @@ set_comp_canonize(struct lyxp_set *set, const struct lyxp_set_node *xp_node)
     const struct lysc_type *type = NULL;
     struct lyd_value val;
     struct ly_err_item *err = NULL;
-    LY_ERR rc;
+    LY_ERR r;
 
     /* is there anything to canonize even? */
     if (set->type == LYXP_SET_STRING) {
@@ -1728,10 +1728,10 @@ set_comp_canonize(struct lyxp_set *set, const struct lyxp_set_node *xp_node)
     }
 
     /* print canonized string, ignore errors, the value may not satisfy schema constraints */
-    rc = type->plugin->store(set->ctx, type, set->val.str, strlen(set->val.str), 0, set->format, set->prefix_data,
+    r = type->plugin->store(set->ctx, type, set->val.str, strlen(set->val.str), 0, set->format, set->prefix_data,
             LYD_HINT_DATA, xp_node->node->schema, &val, NULL, &err);
     ly_err_free(err);
-    if (rc) {
+    if (r && (r != LY_EINCOMPLETE)) {
         /* invalid value, function store automaticaly dealloc value when fail */
         return LY_SUCCESS;
     }
