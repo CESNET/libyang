@@ -4051,7 +4051,7 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
             } /* else the target was found before but is disabled so it was removed */
         }
 
-	ret = LY_SUCCESS;
+        ret = LY_SUCCESS;
         goto cleanup;
     }
 
