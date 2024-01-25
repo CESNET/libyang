@@ -477,8 +477,9 @@ json_print_attributes(struct jsonpr_ctx *pctx, const struct lyd_node *node, ly_b
 {
     const struct lys_module *wdmod = NULL;
 
-    if (node->schema && (node->schema->nodetype != LYS_CONTAINER) && (node->flags & LYD_DEFAULT) &&
-            (pctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) {
+    if (node->schema && (node->schema->nodetype != LYS_CONTAINER) && (((node->flags & LYD_DEFAULT) &&
+            (pctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) ||
+            ((pctx->options & LYD_PRINT_WD_ALL_TAG) && lyd_is_default(node)))) {
         /* we have implicit OR explicit default node */
         /* get with-defaults module */
         wdmod = ly_ctx_get_module_implemented(LYD_CTX(node), "ietf-netconf-with-defaults");
@@ -793,7 +794,8 @@ json_print_leaf_list(struct jsonpr_ctx *pctx, const struct lyd_node *node)
         LY_CHECK_RET(json_print_value(pctx, LYD_CTX(node), &((const struct lyd_node_term *)node)->value, node->schema->module));
 
         if (!pctx->first_leaflist) {
-            if ((node->flags & LYD_DEFAULT) && (pctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) {
+            if (((node->flags & LYD_DEFAULT) && (pctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) ||
+                    ((pctx->options & LYD_PRINT_WD_ALL_TAG) && lyd_is_default(node))) {
                 /* we have implicit OR explicit default node, get with-defaults module */
                 wdmod = ly_ctx_get_module_implemented(LYD_CTX(node), "ietf-netconf-with-defaults");
             }
@@ -822,7 +824,7 @@ static LY_ERR
 json_print_meta_attr_leaflist(struct jsonpr_ctx *pctx)
 {
     const struct lyd_node *prev, *node, *iter;
-    const struct lys_module *wdmod = NULL;
+    const struct lys_module *wdmod = NULL, *iter_wdmod;
     const struct lyd_node_opaq *opaq = NULL;
 
     assert(pctx->first_leaflist);
@@ -848,12 +850,17 @@ json_print_meta_attr_leaflist(struct jsonpr_ctx *pctx)
     LEVEL_INC;
     LY_LIST_FOR(node, iter) {
         PRINT_COMMA;
-        if ((iter->schema && (iter->meta || (iter->flags & LYD_DEFAULT))) || (opaq && opaq->attr)) {
+        if (iter->schema && ((iter->flags & LYD_DEFAULT) || ((pctx->options & LYD_PRINT_WD_ALL_TAG) && lyd_is_default(iter)))) {
+            iter_wdmod = wdmod;
+        } else {
+            iter_wdmod = NULL;
+        }
+        if ((iter->schema && (iter->meta || iter_wdmod)) || (opaq && opaq->attr)) {
             ly_print_(pctx->out, "%*s%s", INDENT, DO_FORMAT ? "{\n" : "{");
             LEVEL_INC;
 
             if (iter->schema) {
-                LY_CHECK_RET(json_print_metadata(pctx, iter, (iter->flags & LYD_DEFAULT) ? wdmod : NULL));
+                LY_CHECK_RET(json_print_metadata(pctx, iter, iter_wdmod));
             } else {
                 LY_CHECK_RET(json_print_attribute(pctx, (struct lyd_node_opaq *)iter));
             }
