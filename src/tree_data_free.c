@@ -142,15 +142,15 @@ void
 lyd_free_leafref_links_rec(struct lyd_leafref_links_rec *rec)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct lyd_leafref_links_rec *leafref_rec;
+    struct lyd_leafref_links_rec *rec2;
 
     assert(rec);
 
-    /* remove stored leafref nodes */
+    /* remove links of leafref nodes */
     LY_ARRAY_FOR(rec->leafref_nodes, u) {
-        if (lyd_get_or_create_leafref_links_record(rec->leafref_nodes[u], &leafref_rec, 0) == LY_SUCCESS) {
-            leafref_rec->target_node = NULL;
-            if (!LY_ARRAY_COUNT(leafref_rec->leafref_nodes) && !leafref_rec->target_node) {
+        if (lyd_get_or_create_leafref_links_record(rec->leafref_nodes[u], &rec2, 0) == LY_SUCCESS) {
+            LY_ARRAY_REMOVE_VALUE(rec2->target_nodes, rec->node);
+            if ((LY_ARRAY_COUNT(rec2->leafref_nodes) == 0) && (LY_ARRAY_COUNT(rec2->target_nodes) == 0)) {
                 lyd_free_leafref_nodes(rec->leafref_nodes[u]);
             }
         }
@@ -158,10 +158,17 @@ lyd_free_leafref_links_rec(struct lyd_leafref_links_rec *rec)
     LY_ARRAY_FREE(rec->leafref_nodes);
     rec->leafref_nodes = NULL;
 
-    /* remove stored target node */
-    if (rec->target_node) {
-        lyd_unlink_leafref_node(rec->target_node, rec->node);
+    /* remove links of target nodes */
+    LY_ARRAY_FOR(rec->target_nodes, u) {
+        if (lyd_get_or_create_leafref_links_record(rec->target_nodes[u], &rec2, 0) == LY_SUCCESS) {
+            LY_ARRAY_REMOVE_VALUE(rec2->leafref_nodes, rec->node);
+            if ((LY_ARRAY_COUNT(rec2->leafref_nodes) == 0) && (LY_ARRAY_COUNT(rec2->target_nodes) == 0)) {
+                lyd_free_leafref_nodes(rec->target_nodes[u]);
+            }
+        }
     }
+    LY_ARRAY_FREE(rec->target_nodes);
+    rec->target_nodes = NULL;
 }
 
 void

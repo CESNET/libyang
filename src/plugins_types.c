@@ -988,7 +988,7 @@ cleanup:
 
 LIBYANG_API_DEF LY_ERR
 lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node, struct lyd_value *value,
-        const struct lyd_node *tree, struct lyd_node **target, char **errmsg)
+        const struct lyd_node *tree, struct ly_set **targets, char **errmsg)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyxp_expr *target_path = NULL;
@@ -999,10 +999,10 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
 
     LY_CHECK_ARG_RET(NULL, lref, node, value, errmsg, LY_EINVAL);
 
-    if (target) {
-        *target = NULL;
-    }
     *errmsg = NULL;
+    if (targets) {
+        *targets = NULL;
+    }
 
     /* get the canonical value */
     val_str = lyd_value_get_canonical(LYD_CTX(node), value);
@@ -1070,8 +1070,21 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
         }
         goto cleanup;
     }
-    if (target) {
-        *target = set.val.nodes[i].node;
+    if (targets) {
+        LY_CHECK_GOTO(rc = ly_set_new(targets), cleanup);
+        for (i = 0; i < set.used; ++i) {
+            if (set.val.nodes[i].type != LYXP_NODE_ELEM) {
+                continue;
+            }
+            if (((struct lyd_node_term *)set.val.nodes[i].node)->value.realtype != value->realtype) {
+                continue;
+            }
+
+            if (!lref->plugin->compare(&((struct lyd_node_term *)set.val.nodes[i].node)->value, value)) {
+                rc = ly_set_add(*targets, set.val.nodes[i].node, 0, NULL);
+                LY_CHECK_GOTO(rc, cleanup);
+            }
+        }
     }
 
 cleanup:

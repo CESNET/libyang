@@ -4017,6 +4017,9 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
     char *errmsg = NULL;
     uint8_t oper;
     LY_ERR r;
+    LY_ERR ret = LY_SUCCESS;
+    struct ly_set *targets = NULL;
+    uint32_t i;
 
     if (options & LYXP_SCNODE_ALL) {
         if (args[0]->type != LYXP_SET_SCNODE_SET) {
@@ -4048,12 +4051,14 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
             } /* else the target was found before but is disabled so it was removed */
         }
 
-        return LY_SUCCESS;
+        ret = LY_SUCCESS;
+        goto cleanup;
     }
 
     if (args[0]->type != LYXP_SET_NODE_SET) {
         LOGVAL(set->ctx, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]), "deref(node-set)");
-        return LY_EVALID;
+        ret = LY_EVALID;
+        goto cleanup;
     }
 
     lyxp_set_free_content(set);
@@ -4063,27 +4068,37 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
         if (sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
             if (sleaf->type->basetype == LY_TYPE_LEAFREF) {
                 /* find leafref target */
-                if (lyplg_type_resolve_leafref((struct lysc_type_leafref *)sleaf->type, &leaf->node, &leaf->value, set->tree,
-                        &node, &errmsg)) {
+                r = lyplg_type_resolve_leafref((struct lysc_type_leafref *)sleaf->type, &leaf->node, &leaf->value, set->tree,
+                        &targets, &errmsg);
+                if (r) {
                     LOGERR(set->ctx, LY_EVALID, "%s", errmsg);
                     free(errmsg);
-                    return LY_EVALID;
+                    ret = LY_EVALID;
+                    goto cleanup;
+                }
+
+                /* insert nodes into set */
+                for (i = 0; i < targets->count; ++i) {
+                    set_insert_node(set, targets->dnodes[i], 0, LYXP_NODE_ELEM, 0);
                 }
             } else {
                 assert(sleaf->type->basetype == LY_TYPE_INST);
                 if (ly_path_eval(leaf->value.target, set->tree, NULL, &node)) {
                     LOGERR(set->ctx, LY_EVALID, "Invalid instance-identifier \"%s\" value - required instance not found.",
                             lyd_get_value(&leaf->node));
-                    return LY_EVALID;
+                    ret = LY_EVALID;
+                    goto cleanup;
                 }
-            }
 
-            /* insert it */
-            set_insert_node(set, node, 0, LYXP_NODE_ELEM, 0);
+                /* insert it */
+                set_insert_node(set, node, 0, LYXP_NODE_ELEM, 0);
+            }
         }
     }
 
-    return LY_SUCCESS;
+cleanup:
+    ly_set_free(targets, NULL);
+    return ret;
 }
 
 static LY_ERR

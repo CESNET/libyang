@@ -617,7 +617,7 @@ void lyd_free_leafref_nodes(const struct lyd_node_term *node);
 LY_ERR lyd_get_or_create_leafref_links_record(const struct lyd_node_term *node, struct lyd_leafref_links_rec **record, ly_bool create);
 
 /**
- * @brief Adds links between leafref adn data node.
+ * @brief Adds links between leafref and data node.
  *
  * If the links were already added, it will not be added again.
  * This API requires usage of LY_CTX_LEAFREF_LINKING context flag.
@@ -630,7 +630,7 @@ LY_ERR lyd_get_or_create_leafref_links_record(const struct lyd_node_term *node, 
 LY_ERR lyd_link_leafref_node(const struct lyd_node_term *node, const struct lyd_node_term *leafref_node);
 
 /**
- * @brief Removes links between leafref adn data node.
+ * @brief Removes links between leafref and data node.
  *
  * If the links were never added, it will be silently ignored.
  * This API requires usage of LY_CTX_LEAFREF_LINKING context flag.

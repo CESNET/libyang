@@ -3316,9 +3316,9 @@ lyd_leafref_get_links(const struct lyd_node_term *node, const struct lyd_leafref
 LY_ERR
 lyd_link_leafref_node(const struct lyd_node_term *node, const struct lyd_node_term *leafref_node)
 {
-    LY_ARRAY_COUNT_TYPE u;
     const struct lyd_node_term **item = NULL;
     struct lyd_leafref_links_rec *rec;
+    LY_ARRAY_COUNT_TYPE u;
 
     assert(node);
     assert(leafref_node);
@@ -3327,6 +3327,7 @@ lyd_link_leafref_node(const struct lyd_node_term *node, const struct lyd_node_te
         return LY_EDENIED;
     }
 
+    /* add leafref node into the list of target node */
     LY_CHECK_RET(lyd_get_or_create_leafref_links_record(node, &rec, 1));
     LY_ARRAY_FOR(rec->leafref_nodes, u) {
         if (rec->leafref_nodes[u] == leafref_node) {
@@ -3336,8 +3337,18 @@ lyd_link_leafref_node(const struct lyd_node_term *node, const struct lyd_node_te
 
     LY_ARRAY_NEW_RET(LYD_CTX(node), rec->leafref_nodes, item, LY_EMEM);
     *item = leafref_node;
+
+    /* add target node into the list of leafref node*/
     LY_CHECK_RET(lyd_get_or_create_leafref_links_record(leafref_node, &rec, 1));
-    rec->target_node = node;
+    LY_ARRAY_FOR(rec->target_nodes, u) {
+        if (rec->target_nodes[u] == node) {
+            return LY_SUCCESS;
+        }
+    }
+
+    LY_ARRAY_NEW_RET(LYD_CTX(node), rec->target_nodes, item, LY_EMEM);
+    *item = node;
+
     return LY_SUCCESS;
 }
 
@@ -3345,11 +3356,13 @@ LIBYANG_API_DEF LY_ERR
 lyd_leafref_link_node_tree(const struct lyd_node *tree)
 {
     const struct lyd_node *sibling, *elem;
-    struct lyd_node *target;
+    struct ly_set *targets = NULL;
     char *errmsg;
     struct lyd_node_term *leafref_node;
     struct lysc_node_leaf *leaf_schema;
     struct lysc_type_leafref *lref;
+    LY_ERR ret = LY_SUCCESS;
+    uint32_t i;
 
     LY_CHECK_ARG_RET(NULL, tree, LY_EINVAL);
 
@@ -3365,12 +3378,18 @@ lyd_leafref_link_node_tree(const struct lyd_node *tree)
 
                 if (leaf_schema->type->basetype == LY_TYPE_LEAFREF) {
                     lref = (struct lysc_type_leafref *)leaf_schema->type;
-                    if (lyplg_type_resolve_leafref(lref, elem, &leafref_node->value, tree, &target, &errmsg)) {
+                    ly_set_free(targets, NULL);
+                    if (lyplg_type_resolve_leafref(lref, elem, &leafref_node->value, tree, &targets, &errmsg)) {
                         /* leafref target not found */
                         free(errmsg);
                     } else {
                         /* leafref target found, link it */
-                        LY_CHECK_RET(lyd_link_leafref_node((struct lyd_node_term *)target, leafref_node));
+                        for (i = 0; i < targets->count; ++i) {
+                            if (targets->dnodes[i]->schema->nodetype & LYD_NODE_TERM) {
+                                ret = lyd_link_leafref_node((struct lyd_node_term *)targets->dnodes[i], leafref_node);
+                                LY_CHECK_GOTO(ret, cleanup);
+                            }
+                        }
                     }
                 }
             }
@@ -3378,7 +3397,9 @@ lyd_leafref_link_node_tree(const struct lyd_node *tree)
         }
     }
 
-    return LY_SUCCESS;
+cleanup:
+    ly_set_free(targets, NULL);
+    return ret;
 }
 
 LY_ERR
@@ -3394,20 +3415,22 @@ lyd_unlink_leafref_node(const struct lyd_node_term *node, const struct lyd_node_
         return LY_EDENIED;
     }
 
+    /* remove link from target node to leafref node */
     ret = lyd_get_or_create_leafref_links_record(node, &rec, 0);
     if (ret == LY_SUCCESS) {
         LY_ARRAY_REMOVE_VALUE(rec->leafref_nodes, leafref_node);
-        if ((LY_ARRAY_COUNT(rec->leafref_nodes) == 0) && (rec->target_node == NULL)) {
+        if ((LY_ARRAY_COUNT(rec->leafref_nodes) == 0) && (LY_ARRAY_COUNT(rec->target_nodes) == 0)) {
             lyd_free_leafref_nodes(node);
         }
     } else if (ret != LY_ENOTFOUND) {
         return ret;
     }
 
+    /* remove link from leafref node to target node */
     ret = lyd_get_or_create_leafref_links_record(leafref_node, &rec, 0);
     if (ret == LY_SUCCESS) {
-        rec->target_node = NULL;
-        if ((LY_ARRAY_COUNT(rec->leafref_nodes) == 0) && (rec->target_node == NULL)) {
+        LY_ARRAY_REMOVE_VALUE(rec->target_nodes, node);
+        if ((LY_ARRAY_COUNT(rec->leafref_nodes) == 0) && (LY_ARRAY_COUNT(rec->target_nodes) == 0)) {
             lyd_free_leafref_nodes(leafref_node);
         }
     } else if (ret != LY_ENOTFOUND) {
