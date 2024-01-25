@@ -4016,6 +4016,7 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
     struct lyd_node *node;
     char *errmsg = NULL;
     uint8_t oper;
+    LY_ERR r;
     LY_ERR ret = LY_SUCCESS;
     struct ly_set *targets = NULL;
     uint32_t i;
@@ -4039,9 +4040,9 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
             oper = (sleaf->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
 
             /* it was already evaluated on schema, it must succeed */
-            ret = ly_path_compile_leafref(set->ctx, &sleaf->node, NULL, lref->path, oper, LY_PATH_TARGET_MANY,
+            r = ly_path_compile_leafref(set->ctx, &sleaf->node, NULL, lref->path, oper, LY_PATH_TARGET_MANY,
                     LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, &p);
-            if (!ret) {
+            if (!r) {
                 /* get the target node */
                 target = p[LY_ARRAY_COUNT(p) - 1].node;
                 ly_path_free(set->ctx, p);
@@ -4050,7 +4051,7 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
             } /* else the target was found before but is disabled so it was removed */
         }
 
-        ret = LY_SUCCESS;
+	ret = LY_SUCCESS;
         goto cleanup;
     }
 
@@ -4067,9 +4068,9 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
         if (sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
             if (sleaf->type->basetype == LY_TYPE_LEAFREF) {
                 /* find leafref target */
-                ret = lyplg_type_resolve_leafref((struct lysc_type_leafref *)sleaf->type, &leaf->node, &leaf->value, set->tree,
+                r = lyplg_type_resolve_leafref((struct lysc_type_leafref *)sleaf->type, &leaf->node, &leaf->value, set->tree,
                         &targets, &errmsg);
-                if (ret) {
+                if (r) {
                     LOGERR(set->ctx, LY_EVALID, "%s", errmsg);
                     free(errmsg);
                     ret = LY_EVALID;

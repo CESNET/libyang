@@ -1071,7 +1071,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
         goto cleanup;
     }
     if (targets) {
-        LY_CHECK_GOTO(ly_set_new(targets), cleanup);
+        LY_CHECK_GOTO(rc = ly_set_new(targets), cleanup);
         for (i = 0; i < set.used; ++i) {
             if (set.val.nodes[i].type != LYXP_NODE_ELEM) {
                 continue;
