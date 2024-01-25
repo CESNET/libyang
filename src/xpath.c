@@ -4050,12 +4050,14 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
             } /* else the target was found before but is disabled so it was removed */
         }
 
-        return LY_SUCCESS;
+        ret = LY_SUCCESS;
+        goto cleanup;
     }
 
     if (args[0]->type != LYXP_SET_NODE_SET) {
         LOGVAL(set->ctx, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]), "deref(node-set)");
-        return LY_EVALID;
+        ret = LY_EVALID;
+        goto cleanup;
     }
 
     lyxp_set_free_content(set);
@@ -4083,7 +4085,8 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
                 if (ly_path_eval(leaf->value.target, set->tree, NULL, &node)) {
                     LOGERR(set->ctx, LY_EVALID, "Invalid instance-identifier \"%s\" value - required instance not found.",
                             lyd_get_value(&leaf->node));
-                    return LY_EVALID;
+                    ret = LY_EVALID;
+                    goto cleanup;
                 }
 
                 /* insert it */

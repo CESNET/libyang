@@ -3378,6 +3378,7 @@ lyd_leafref_link_node_tree(const struct lyd_node *tree)
 
                 if (leaf_schema->type->basetype == LY_TYPE_LEAFREF) {
                     lref = (struct lysc_type_leafref *)leaf_schema->type;
+                    ly_set_free(targets, NULL);
                     if (lyplg_type_resolve_leafref(lref, elem, &leafref_node->value, tree, &targets, &errmsg)) {
                         /* leafref target not found */
                         free(errmsg);

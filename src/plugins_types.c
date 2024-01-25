@@ -1001,8 +1001,6 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
 
     *errmsg = NULL;
     if (targets) {
-        /* make sure that the previous set is freed */
-        ly_set_free(*targets, NULL);
         *targets = NULL;
     }
 
@@ -1073,7 +1071,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
         goto cleanup;
     }
     if (targets) {
-        ly_set_new(targets);
+        LY_CHECK_GOTO(ly_set_new(targets), cleanup);
         for (i = 0; i < set.used; ++i) {
             if (set.val.nodes[i].type != LYXP_NODE_ELEM) {
                 continue;
