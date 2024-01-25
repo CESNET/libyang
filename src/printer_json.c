@@ -868,7 +868,7 @@ json_print_meta_attr_leaflist(struct jsonpr_ctx *pctx)
             LEVEL_DEC;
             ly_print_(pctx->out, "%s%*s}", DO_FORMAT ? "\n" : "", INDENT);
         } else {
-            ly_print_(pctx->out, "null");
+            ly_print_(pctx->out, "%*snull", INDENT);
         }
         LEVEL_PRINTED;
         if (!matching_node(iter, iter->next)) {
