@@ -790,7 +790,7 @@ lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const ch
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
  * @param[in] format Format of key values.
- * @param[in] key_values Ordered key values of the new list instance ended with NULL, all must be set.
+ * @param[in] key_values Ordered key values of the new list instance, all must be set.
  * @param[in] value_lengths Lengths of @p key_values, required for ::LY_VALUE_LYB, optional otherwise.
  * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
  * taken into consideration. Otherwise, the output's data node is going to be created.
@@ -808,12 +808,17 @@ _lyd_new_list3(struct lyd_node *parent, const struct lys_module *module, const c
     uint32_t key_len, i;
     LY_ERR rc = LY_SUCCESS;
 
-    LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, key_values, (format != LY_VALUE_LYB) || value_lengths,
-            LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, (format != LY_VALUE_LYB) || value_lengths, LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
 
     /* create the list node */
     LY_CHECK_RET(_lyd_new_list_node(ctx, parent, module, name, output, &ret));
+
+    if (!(ret->schema->flags & LYS_KEYLESS) && !key_values) {
+        LOGERR(ctx, LY_EINVAL, "Missing list \"%s\" keys.", LYD_NAME(ret));
+        rc = LY_EINVAL;
+        goto cleanup;
+    }
 
     /* create and insert all the keys */
     i = 0;
