@@ -409,10 +409,14 @@ ly_log_options(uint32_t opts)
     return prev;
 }
 
-LIBYANG_API_DEF void
+LIBYANG_API_DEF uint32_t *
 ly_temp_log_options(uint32_t *opts)
 {
+    uint32_t *prev_lo = temp_ly_log_opts;
+
     temp_ly_log_opts = opts;
+
+    return prev_lo;
 }
 
 LIBYANG_API_DEF uint32_t

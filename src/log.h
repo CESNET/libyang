@@ -138,8 +138,9 @@ LIBYANG_API_DECL uint32_t ly_log_options(uint32_t opts);
  * @brief Set temporary thread-safe logger options overwriting those set by ::ly_log_options().
  *
  * @param[in] opts Pointer to the temporary @ref logopts. If NULL, restores the effect of global logger options.
+ * @return Previous temporary options.
  */
-LIBYANG_API_DECL void ly_temp_log_options(uint32_t *opts);
+LIBYANG_API_DECL uint32_t *ly_temp_log_options(uint32_t *opts);
 
 /**
  * @ingroup log
