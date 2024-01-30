@@ -223,7 +223,7 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type **types, struct lyd_v
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;
     struct ly_err_item **errs = NULL, *e;
-    uint32_t temp_lo = 0;
+    uint32_t *prev_lo, temp_lo = 0;
     char *msg = NULL;
     int msg_len = 0;
 
@@ -238,7 +238,7 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type **types, struct lyd_v
     LY_CHECK_RET(!errs, LY_EMEM);
 
     /* turn logging temporarily off */
-    ly_temp_log_options(&temp_lo);
+    prev_lo = ly_temp_log_options(&temp_lo);
 
     /* use the first usable subtype to store the value */
     for (u = 0; u < LY_ARRAY_COUNT(types); ++u) {
@@ -279,7 +279,7 @@ cleanup:
     }
     free(errs);
     free(msg);
-    ly_temp_log_options(NULL);
+    ly_temp_log_options(prev_lo);
     return ret;
 }
 

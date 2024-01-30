@@ -1090,7 +1090,7 @@ cleanup:
 void
 lys_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres)
 {
-    uint32_t i, j, idx, temp_lo = 0;
+    uint32_t i, j, idx, *prev_lo, temp_lo = 0;
     struct lysf_ctx fctx = {.ctx = ctx};
     struct ly_set *dep_set;
     LY_ERR ret;
@@ -1134,9 +1134,9 @@ lys_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres)
     if (unres->implementing.count) {
         /* recompile previous context because some implemented modules are no longer implemented,
          * we can reuse the current to_compile flags */
-        ly_temp_log_options(&temp_lo);
+        prev_lo = ly_temp_log_options(&temp_lo);
         ret = lys_compile_depset_all(ctx, &ctx->unres);
-        ly_temp_log_options(NULL);
+        ly_temp_log_options(prev_lo);
         if (ret) {
             LOGINT(ctx);
         }

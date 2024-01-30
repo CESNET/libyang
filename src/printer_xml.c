@@ -410,7 +410,7 @@ xml_print_anydata(struct xmlpr_ctx *pctx, const struct lyd_node_any *node)
 {
     struct lyd_node_any *any = (struct lyd_node_any *)node;
     struct lyd_node *iter;
-    uint32_t prev_opts, temp_lo = 0;
+    uint32_t prev_opts, *prev_lo, temp_lo = 0;
     LY_ERR ret;
 
     if ((node->schema->nodetype == LYS_ANYDATA) && (node->value_type != LYD_ANYDATA_DATATREE)) {
@@ -427,7 +427,7 @@ no_content:
     } else {
         if (any->value_type == LYD_ANYDATA_LYB) {
             /* turn logging off */
-            ly_temp_log_options(&temp_lo);
+            prev_lo = ly_temp_log_options(&temp_lo);
 
             /* try to parse it into a data tree */
             if (lyd_parse_data_mem((struct ly_ctx *)LYD_CTX(node), any->value.mem, LYD_LYB,
@@ -439,7 +439,7 @@ no_content:
             }
 
             /* turn logging on again */
-            ly_temp_log_options(NULL);
+            ly_temp_log_options(prev_lo);
         }
 
         switch (any->value_type) {

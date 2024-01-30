@@ -903,7 +903,7 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
         enum lyd_type data_type, uint32_t val_opts, struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
-    uint32_t temp_lo = LY_LOSTORE_LAST, i;
+    uint32_t *prev_lo, temp_lo = LY_LOSTORE_LAST, i;
     struct ly_err_item *err;
     struct lyd_node *iter, *ext_data = NULL, *ref_first = NULL, *orig_parent = lyd_parent(sibling), *op_tree;
     struct lyd_node *ext_diff = NULL, *diff_parent = NULL;
@@ -951,7 +951,7 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
     }
 
     /* only store messages in the context, log as an extension */
-    ly_temp_log_options(&temp_lo);
+    prev_lo = ly_temp_log_options(&temp_lo);
 
     if (data_type == LYD_TYPE_DATA_YANG) {
         /* validate all the modules with data */
@@ -962,7 +962,7 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
     }
 
     /* restore logging */
-    ly_temp_log_options(NULL);
+    ly_temp_log_options(prev_lo);
 
     /* restore sibling tree */
     for (i = 0; i < ref_set->count; ++i) {

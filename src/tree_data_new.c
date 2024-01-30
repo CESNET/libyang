@@ -263,7 +263,7 @@ lyd_create_any_datatree(const struct ly_ctx *ctx, struct ly_in *value_in, LYD_AN
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_ctx *lydctx = NULL;
-    uint32_t parse_opts, int_opts, log_opts = 0;
+    uint32_t parse_opts, int_opts, *prev_lo, temp_lo = 0;
 
     *tree = NULL;
 
@@ -273,7 +273,7 @@ lyd_create_any_datatree(const struct ly_ctx *ctx, struct ly_in *value_in, LYD_AN
 
     if (!log) {
         /* no logging */
-        ly_temp_log_options(&log_opts);
+        prev_lo = ly_temp_log_options(&temp_lo);
     }
 
     switch (value_type) {
@@ -297,7 +297,7 @@ lyd_create_any_datatree(const struct ly_ctx *ctx, struct ly_in *value_in, LYD_AN
 
     if (!log) {
         /* restore logging */
-        ly_temp_log_options(NULL);
+        ly_temp_log_options(prev_lo);
     }
     if (rc && *tree) {
         lyd_free_siblings(*tree);
