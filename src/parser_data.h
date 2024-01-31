@@ -226,7 +226,7 @@ struct ly_in;
  * @param[in] format Format of the input data to be parsed. Can be 0 to try to detect format from the input handler.
  * @param[in] parse_options Options for parser, see @ref dataparseroptions.
  * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
- * @param[out] tree Full parsed data tree, note that NULL can be a valid tree. If @p parent is set, set to NULL.
+ * @param[out] tree Full parsed data tree, note that NULL can be a valid tree. If @p parent is set, the first parsed child.
  * @return LY_SUCCESS in case of successful parsing (and validation).
  * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
  *

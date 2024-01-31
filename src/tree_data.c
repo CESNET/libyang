@@ -87,7 +87,7 @@ lyd_parse_get_format(const struct ly_in *in, LYD_FORMAT format)
  * @param[in] ctx libyang context.
  * @param[in] ext Optional extenion instance to parse data following the schema tree specified in the extension instance
  * @param[in] parent Parent to connect the parsed nodes to, if any.
- * @param[in,out] first_p Pointer to the first top-level parsed node, used only if @p parent is NULL.
+ * @param[in,out] first_p Pointer to the first parsed node.
  * @param[in] in Input handle to read the input from.
  * @param[in] format Expected format of the data in @p in.
  * @param[in] parse_opts Options for parser.
@@ -149,7 +149,11 @@ lyd_parse(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct 
 
     if (parent && parsed.count) {
         /* use the first parsed node */
-        first_p = &parsed.dnodes[0];
+        if (first_p) {
+            *first_p = parsed.dnodes[0];
+        } else {
+            first_p = &parsed.dnodes[0];
+        }
     }
 
     if (!(parse_opts & LYD_PARSE_ONLY)) {
