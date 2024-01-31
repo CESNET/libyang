@@ -1,7 +1,7 @@
 if(WIN32)
     cmake_minimum_required(VERSION 3.22.0)
 else()
-    cmake_minimum_required(VERSION 2.8.12)
+    cmake_minimum_required(VERSION 2.8.12...3.28.1)
 endif()
 
 # force out-of-source build
