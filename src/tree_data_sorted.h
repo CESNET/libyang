@@ -90,12 +90,13 @@ LY_ERR lyds_create_node(struct lyd_node *node, struct rb_node **rbn);
  * The function automatically take care of lyds_create_metadata() and lyds_create_tree() calls.
  * Hash for data nodes is not added.
  *
+ * @param[in,out] first_sibling First sibling node, used for optimization.
  * @param[in,out] leader First instance of the (leaf-)list. After executing the function,
  * @p leader does not have to be be first if @p node was inserted before @p leader.
  * @param[in] node A single (without siblings) node or tree to be inserted. It must be unlinked.
  * @return LY_ERR value.
  */
-LY_ERR lyds_insert(struct lyd_node **leader, struct lyd_node *node);
+LY_ERR lyds_insert(struct lyd_node **first_sibling, struct lyd_node **leader, struct lyd_node *node);
 
 /**
  * @brief Insert the @p node into BST and into @p leader's siblings and use @p pool.
@@ -146,12 +147,14 @@ void lyds_pool_clean(struct lyds_pool *pool);
  * The second (leaf-)list is unlinked from the rest of the data nodes.
  * The hash for the data nodes is removed.
  *
+ * @param[in,out] first_sibling First sibling node, used for optimization.
  * @param[in] leader First instance of (leaf-)list.
  * @param[in] node Node in the (leaf-)list from which the second (leaf-)list will start.
  * @param[out] next Data node located after the second (leaf-)list.
  * The rest of the (leaf-)list nodes will belong under the second (leaf-)list.
  */
-void lyds_split(struct lyd_node *leader, struct lyd_node *node, struct lyd_node **next);
+void lyds_split(struct lyd_node **first_sibling, struct lyd_node *leader, struct lyd_node *node,
+        struct lyd_node **next);
 
 /**
  * @brief Merge source (leaf-)list nodes into destination (leaf-)list nodes.
@@ -159,14 +162,17 @@ void lyds_split(struct lyd_node *leader, struct lyd_node *node, struct lyd_node 
  * Pointers in sibling data nodes (lyd_node) are modified.
  * The hash for the data nodes will be adjusted.
  *
+ * @param[in,out] first_dst First sibling node, destination.
  * @param[in,out] leader_dst Destination (leaf-)list, first instance. It may not contain
  * the lyds_tree metadata or BST. After merge @p leader_dst can be reset to new leader.
+ * @param[in,out] first_src First sibling node, source.
  * @param[in] leader_src Source (leaf-)list, first instance. It may not contain the lyds_tree metadata or BST.
  * @param[out] next Data node located after source (leaf-)list.
  * On error, points to data node which failed to merge.
  * @return LY_ERR value.
  */
-LY_ERR lyds_merge(struct lyd_node **leader_dst, struct lyd_node *leader_src, struct lyd_node **next);
+LY_ERR lyds_merge(struct lyd_node **first_dst, struct lyd_node **leader_dst, struct lyd_node **first_src,
+        struct lyd_node *leader_src, struct lyd_node **next);
 
 /**
  * @brief Compare (sort) 2 data nodes.

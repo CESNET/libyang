@@ -543,27 +543,32 @@ lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct ly
 }
 
 void
-lyd_insert_after_node(struct lyd_node *sibling, struct lyd_node *node)
+lyd_insert_after_node(struct lyd_node **first_sibling_p, struct lyd_node *sibling, struct lyd_node *node)
 {
     struct lyd_node_inner *par;
+    struct lyd_node *first_sibling;
 
     assert(!node->next && (node->prev == node));
 
-    node->next = sibling->next;
-    node->prev = sibling;
-    sibling->next = node;
-    if (node->next) {
+    if (sibling->next) {
         /* sibling had a succeeding node */
-        node->next->prev = node;
+        sibling->next->prev = node;
+        node->next = sibling->next;
     } else {
         /* sibling was last, find first sibling and change its prev */
-        if (sibling->parent) {
-            sibling = sibling->parent->child;
+        if (first_sibling_p && *first_sibling_p) {
+            assert(!(*first_sibling_p)->prev->next);
+            (*first_sibling_p)->prev = node;
         } else {
-            for ( ; sibling->prev->next != node; sibling = sibling->prev) {}
+            first_sibling = lyd_first_sibling(sibling);
+            first_sibling->prev = node;
+            if (first_sibling_p) {
+                *first_sibling_p = first_sibling;
+            }
         }
-        sibling->prev = node;
     }
+    node->prev = sibling;
+    sibling->next = node;
     node->parent = sibling->parent;
 
     for (par = node->parent; par; par = par->parent) {
@@ -692,33 +697,42 @@ lyd_insert_node_find_anchor(struct lyd_node *first_sibling, struct lyd_node *nod
  * @brief Insert @p node as the last node.
  *
  * @param[in] parent Parent to insert into, NULL for top-level sibling.
- * @param[in] first_sibling First sibling, NULL if no top-level sibling exist yet. Can be also NULL if @p parent is set.
+ * @param[in,out] first_sibling First sibling, NULL if no top-level sibling exist yet.
+ * Can be also NULL if @p parent is set.
  * @param[in] node Individual node (without siblings) to insert.
  */
 static void
-lyd_insert_node_last(struct lyd_node *parent, struct lyd_node *first_sibling, struct lyd_node *node)
+lyd_insert_node_last(struct lyd_node *parent, struct lyd_node **first_sibling, struct lyd_node *node)
 {
-    if (first_sibling) {
+    assert(first_sibling && node);
+
+    if (*first_sibling) {
 #ifndef NDEBUG
-        if (lyds_is_supported(node) && (first_sibling->prev->schema == node->schema) &&
-                (lyds_compare_single(first_sibling->prev, node) > 0)) {
+        if (lyds_is_supported(node) && ((*first_sibling)->prev->schema == node->schema) &&
+                (lyds_compare_single((*first_sibling)->prev, node) > 0)) {
             LOGWRN(LYD_CTX(node), "Data in \"%s\" are not sorted, inserted node should not be added to the end.",
                     node->schema->name);
         }
 #endif
-        lyd_insert_after_node(first_sibling->prev, node);
+        lyd_insert_after_node(first_sibling, (*first_sibling)->prev, node);
     } else if (parent) {
         lyd_insert_only_child(parent, node);
+        *first_sibling = node;
+    } else {
+        *first_sibling = node;
     }
 }
 
 void
-lyd_insert_node_ordby_schema(struct lyd_node *parent, struct lyd_node *first_sibling, struct lyd_node *node)
+lyd_insert_node_ordby_schema(struct lyd_node *parent, struct lyd_node **first_sibling, struct lyd_node *node)
 {
     struct lyd_node *anchor;
 
-    if ((anchor = lyd_insert_node_find_anchor(first_sibling, node))) {
+    assert(first_sibling && node);
+
+    if ((anchor = lyd_insert_node_find_anchor(*first_sibling, node))) {
         lyd_insert_before_node(anchor, node);
+        *first_sibling = *first_sibling != anchor ? *first_sibling : node;
     } else {
         lyd_insert_node_last(parent, first_sibling, node);
     }
@@ -741,19 +755,19 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling_p, stru
     first_sibling = parent ? lyd_child(parent) : *first_sibling_p;
 
     if (last) {
-        lyd_insert_node_last(parent, first_sibling, node);
+        lyd_insert_node_last(parent, &first_sibling, node);
     } else if (lyds_is_supported(node) &&
             (lyd_find_sibling_schema(first_sibling, node->schema, &leader) == LY_SUCCESS)) {
-        ret = lyds_insert(&leader, node);
+        ret = lyds_insert(&first_sibling, &leader, node);
         if (ret) {
             /* The operation on the sorting tree unexpectedly failed due to some internal issue,
              * but insert the node anyway although the nodes will not be sorted.
              */
             LOGWRN(LYD_CTX(node), "Data in \"%s\" are not sorted.", node->schema->name);
-            lyd_insert_node_ordby_schema(parent, first_sibling, node);
+            lyd_insert_node_ordby_schema(parent, &first_sibling, node);
         }
     } else {
-        lyd_insert_node_ordby_schema(parent, first_sibling, node);
+        lyd_insert_node_ordby_schema(parent, &first_sibling, node);
     }
 
     /* insert into parent HT */
@@ -768,7 +782,7 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling_p, stru
     }
 
     if (first_sibling_p) {
-        *first_sibling_p = node->prev->next ? first_sibling : node;
+        *first_sibling_p = first_sibling;
     }
 }
 
@@ -799,25 +813,26 @@ lyd_unlink_check(struct lyd_node *node)
  *
  * The nodes will remain sorted according to the schema.
  *
- * @param[in] first_sibling First sibling, destination.
+ * @param[in] first_dst First sibling, destination.
  * @param[in] node Starting node, all following nodes with the same schema will be moved.
  * @param[out] next_p Next node that has a different schema or NULL.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_move_nodes_ordby_schema(struct lyd_node *first_sibling, struct lyd_node *node, struct lyd_node **next_p)
+lyd_move_nodes_ordby_schema(struct lyd_node **first_dst, struct lyd_node *node, struct lyd_node **next_p)
 {
-    struct lyd_node *second, *anchor, *iter, *next, *dst, *src;
+    struct lyd_node *second, *anchor, *iter, *next, *dst, *src, *first_src = NULL;
 
-    assert(first_sibling && !first_sibling->prev->next && node && next_p);
+    assert(first_dst && *first_dst && !(*first_dst)->prev->next && node && next_p);
 
-    if ((anchor = lyd_insert_node_find_anchor(first_sibling, node))) {
+    if ((anchor = lyd_insert_node_find_anchor(*first_dst, node))) {
         /* move the first node to the correct place according to the schema */
         LY_CHECK_RET(lyd_unlink_check(node));
         second = node->next;
-        lyd_unlink_ignore_lyds(node);
+        lyd_unlink_ignore_lyds(&first_src, node);
         lyd_insert_before_node(anchor, node);
         lyd_insert_hash(node);
+        *first_dst = *first_dst != anchor ? *first_dst : node;
         if (!second || (node->schema != second->schema)) {
             /* no more nodes to move */
             *next_p = second;
@@ -827,7 +842,7 @@ lyd_move_nodes_ordby_schema(struct lyd_node *first_sibling, struct lyd_node *nod
         src = second;
     } else {
         /* just move all instances to the end */
-        dst = first_sibling->prev;
+        dst = (*first_dst)->prev;
         src = node;
     }
 
@@ -837,8 +852,8 @@ lyd_move_nodes_ordby_schema(struct lyd_node *first_sibling, struct lyd_node *nod
         if (iter->schema != src->schema) {
             break;
         }
-        lyd_unlink_ignore_lyds(iter);
-        lyd_insert_after_node(dst, iter);
+        lyd_unlink_ignore_lyds(&first_src, iter);
+        lyd_insert_after_node(first_dst, dst, iter);
         lyd_insert_hash(iter);
         dst = iter;
     }
@@ -859,7 +874,7 @@ lyd_move_nodes_ordby_schema(struct lyd_node *first_sibling, struct lyd_node *nod
 static LY_ERR
 lyd_move_nodes_at_once(struct lyd_node *parent, struct lyd_node *first_src)
 {
-    struct lyd_node *start, *next, *iter;
+    struct lyd_node *start, *next, *iter, *first_dst;
 
     assert(!lyd_child(parent) && first_src && !first_src->prev->next && !first_src->parent);
 
@@ -867,19 +882,20 @@ lyd_move_nodes_at_once(struct lyd_node *parent, struct lyd_node *first_src)
 
     /* move the first node */
     start = first_src->next;
+    first_dst = first_src;
     if (parent) {
-        lyd_unlink_ignore_lyds(first_src);
-        lyd_insert_only_child(parent, first_src);
-        lyd_insert_hash(first_src);
+        lyd_unlink_ignore_lyds(&first_src, first_dst);
+        lyd_insert_only_child(parent, first_dst);
+        lyd_insert_hash(first_dst);
     } else {
-        lyd_unlink_ignore_lyds(first_src);
+        lyd_unlink_ignore_lyds(&first_src, first_dst);
     }
 
     /* move the rest of the nodes */
     LY_LIST_FOR_SAFE(start, next, iter) {
         LY_CHECK_RET(lyd_unlink_check(iter));
-        lyd_unlink_ignore_lyds(iter);
-        lyd_insert_after_node(first_src->prev, iter);
+        lyd_unlink_ignore_lyds(&first_src, iter);
+        lyd_insert_after_node(&first_dst, first_dst->prev, iter);
         lyd_insert_hash(iter);
     }
 
@@ -889,33 +905,33 @@ lyd_move_nodes_at_once(struct lyd_node *parent, struct lyd_node *first_src)
 /**
  * @brief Move the nodes in parts according to the schema.
  *
- * @param[in] first_sibling First sibling, destination.
+ * @param[in,out] first_dst First sibling, destination.
  * @param[in] first_src First sibling, all following nodes will be moved.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_move_nodes_by_schema(struct lyd_node *first_sibling, struct lyd_node *first_src)
+lyd_move_nodes_by_schema(struct lyd_node **first_dst, struct lyd_node *first_src)
 {
     LY_ERR ret;
     struct lyd_node *next, *iter, *leader;
 
-    assert(first_sibling && !first_sibling->prev->next && first_src && !first_src->prev->next && !first_src->parent);
+    assert(first_dst && *first_dst && !(*first_dst)->prev->next && first_src &&
+            !first_src->prev->next && !first_src->parent);
 
     for (iter = first_src; iter; iter = next) {
         if (lyds_is_supported(iter) &&
-                (lyd_find_sibling_schema(first_sibling, iter->schema, &leader) == LY_SUCCESS)) {
-            ret = lyds_merge(&leader, iter, &next);
+                (lyd_find_sibling_schema(*first_dst, iter->schema, &leader) == LY_SUCCESS)) {
+            ret = lyds_merge(first_dst, &leader, &first_src, iter, &next);
             if (ret) {
                 /* The operation on the sorting tree unexpectedly failed due to some internal issue,
                  * but insert the node anyway although the nodes will not be sorted.
                  */
                 LOGWRN(LYD_CTX(first_src), "Data in \"%s\" are not sorted.", leader->schema->name);
-                LY_CHECK_RET(lyd_move_nodes_ordby_schema(first_sibling, next, &next));
+                LY_CHECK_RET(lyd_move_nodes_ordby_schema(first_dst, next, &next));
             }
         } else {
-            LY_CHECK_RET(lyd_move_nodes_ordby_schema(first_sibling, iter, &next));
+            LY_CHECK_RET(lyd_move_nodes_ordby_schema(first_dst, iter, &next));
         }
-        first_sibling = iter->prev->next ? first_sibling : iter;
     }
 
     return LY_SUCCESS;
@@ -925,22 +941,34 @@ lyd_move_nodes_by_schema(struct lyd_node *first_sibling, struct lyd_node *first_
  * @brief Move a nodes into parent/siblings.
  *
  * @param[in] parent Parent to insert into, NULL for top-level sibling.
- * @param[in] first_sibling First sibling, NULL if no top-level sibling exist yet. Can be also NULL if @p parent is set.
+ * @param[in,out] first_dst_p First sibling, NULL if no top-level sibling exist yet.
+ * Can be also NULL if @p parent is set.
  * @param[in] first_src First sibling, all following nodes will be moved.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_move_nodes(struct lyd_node *parent, struct lyd_node *first_sibling, struct lyd_node *first_src)
+lyd_move_nodes(struct lyd_node *parent, struct lyd_node **first_dst_p, struct lyd_node *first_src)
 {
     LY_ERR ret;
+    struct lyd_node *first_dst;
 
-    assert(first_src && (!first_sibling || !first_sibling->prev->next) && !first_src->prev->next);
+    assert((parent || first_dst_p) && first_src && !first_src->prev->next);
 
-    first_sibling = first_sibling ? first_sibling : lyd_child(parent);
-    if (!first_sibling) {
-        ret = lyd_move_nodes_at_once(parent, first_src);
+    if (!first_dst_p || !*first_dst_p) {
+        first_dst = lyd_child(parent);
     } else {
-        ret = lyd_move_nodes_by_schema(first_sibling, first_src);
+        first_dst = *first_dst_p;
+    }
+
+    if (first_dst) {
+        ret = lyd_move_nodes_by_schema(&first_dst, first_src);
+    } else {
+        ret = lyd_move_nodes_at_once(parent, first_src);
+        first_dst = first_src;
+    }
+
+    if (first_dst_p) {
+        *first_dst_p = first_dst;
     }
 
     return ret;
@@ -1050,11 +1078,11 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struct lyd_n
         LY_CHECK_RET(lyd_unlink_tree(node));
         lyd_insert_node(NULL, &first_sibling, node, 0);
     } else {
-        LY_CHECK_RET(lyd_move_nodes(NULL, first_sibling, node));
+        LY_CHECK_RET(lyd_move_nodes(NULL, &first_sibling, node));
     }
 
     if (first) {
-        *first = node->prev->next ? first_sibling : node;
+        *first = first_sibling;
     }
 
     return LY_SUCCESS;
@@ -1102,16 +1130,16 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
     }
 
     lyd_unlink(node);
-    lyd_insert_after_node(sibling, node);
+    lyd_insert_after_node(NULL, sibling, node);
     lyd_insert_hash(node);
 
     return LY_SUCCESS;
 }
 
 void
-lyd_unlink_ignore_lyds(struct lyd_node *node)
+lyd_unlink_ignore_lyds(struct lyd_node **first_sibling_p, struct lyd_node *node)
 {
-    struct lyd_node *iter;
+    struct lyd_node *first_sibling;
 
     /* update hashes while still linked into the tree */
     lyd_unlink_hash(node);
@@ -1122,23 +1150,27 @@ lyd_unlink_ignore_lyds(struct lyd_node *node)
     }
 
     /* unlink from siblings */
-    if (node->prev->next) {
-        node->prev->next = node->next;
-    }
     if (node->next) {
         node->next->prev = node->prev;
+        if (node->prev->next) {
+            node->prev->next = node->next;
+        } else if (first_sibling_p) {
+            /* unlinking the first node */
+            *first_sibling_p = node->next;
+        }
     } else {
         /* unlinking the last node */
-        if (node->parent) {
-            iter = node->parent->child;
+        /* update the "last" pointer from the first node */
+        if (first_sibling_p && *first_sibling_p) {
+            (*first_sibling_p)->prev = node->prev;
         } else {
-            iter = node->prev;
-            while (iter->prev != node) {
-                iter = iter->prev;
+            first_sibling = lyd_first_sibling(node);
+            first_sibling->prev = node->prev;
+            if (first_sibling_p) {
+                *first_sibling_p = first_sibling;
             }
         }
-        /* update the "last" pointer from the first node */
-        iter->prev = node->prev;
+        node->prev->next = NULL;
     }
 
     /* unlink from parent */
@@ -1179,30 +1211,30 @@ lyd_unlink(struct lyd_node *node)
     }
 
     /* unlink data tree */
-    lyd_unlink_ignore_lyds(node);
+    lyd_unlink_ignore_lyds(NULL, node);
 }
 
 LIBYANG_API_DEF LY_ERR
 lyd_unlink_siblings(struct lyd_node *node)
 {
-    struct lyd_node *next, *iter, *leader, *start;
+    struct lyd_node *next, *iter, *leader, *start, *first_sibling = NULL;
 
     if (lyds_is_supported(node) && node->prev->next && (node->prev->schema == node->schema)) {
         /* unlink starts at the non-first item in the (leaf-)list */
         lyd_find_sibling_val(node, node->schema, NULL, 0, &leader);
-        lyds_split(leader, node, &start);
+        lyds_split(&first_sibling, leader, node, &start);
     } else {
         /* unlink @p node */
         LY_CHECK_RET(lyd_unlink_check(node));
         start = node->next;
-        lyd_unlink_ignore_lyds(node);
+        lyd_unlink_ignore_lyds(&first_sibling, node);
     }
 
     /* continue unlinking the rest */
     LY_LIST_FOR_SAFE(start, next, iter) {
         LY_CHECK_RET(lyd_unlink_check(iter));
-        lyd_unlink_ignore_lyds(iter);
-        lyd_insert_after_node(node->prev, iter);
+        lyd_unlink_ignore_lyds(&first_sibling, iter);
+        lyd_insert_after_node(&node, node->prev, iter);
         lyd_insert_hash(iter);
     }
 
@@ -2516,7 +2548,7 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg,
         /* node not found, merge it */
         if (options & LYD_MERGE_DESTRUCT) {
             dup_src = (struct lyd_node *)sibling_src;
-            lyd_unlink_ignore_lyds(dup_src);
+            lyd_unlink_ignore_lyds(NULL, dup_src);
             /* spend it */
             *sibling_src_p = NULL;
         } else {
