@@ -2090,7 +2090,7 @@ cleanup:
     /* restore operation tree */
     lyd_unlink(op_subtree);
     if (op_sibling_before) {
-        lyd_insert_after_node(op_sibling_before, op_subtree);
+        lyd_insert_after_node(NULL, op_sibling_before, op_subtree);
         lyd_insert_hash(op_subtree);
     } else if (op_sibling_after) {
         lyd_insert_before_node(op_sibling_after, op_subtree);

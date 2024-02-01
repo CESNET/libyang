@@ -372,10 +372,13 @@ struct lyd_node *lyd_insert_get_next_anchor(const struct lyd_node *first_sibling
  *
  * Handles inserting into NP containers and key-less lists.
  *
+ * @param[in,out] first_sibling Optional, useful for optimization. The function operates with the first sibling
+ * only if the node is inserted last. It is optimal when the first sibling is set. If it is set to NULL or
+ * if it points to a NULL pointer, then the function will find the first sibling itself.
  * @param[in] sibling Sibling to insert after.
  * @param[in] node Node to insert.
  */
-void lyd_insert_after_node(struct lyd_node *sibling, struct lyd_node *node);
+void lyd_insert_after_node(struct lyd_node **first_sibling, struct lyd_node *sibling, struct lyd_node *node);
 
 /**
  * @brief Insert node before a sibling.
@@ -402,10 +405,11 @@ void lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, s
  * @brief Insert a node into parent/siblings, either before the 'anchor' or as the last sibling.
  *
  * @param[in] parent Parent to insert into, NULL for top-level sibling.
- * @param[in] first_sibling First sibling, NULL if no top-level sibling exist yet. Can be also NULL if @p parent is set.
+ * @param[in,out] first_sibling First sibling, pointing to NULL pointer if no top-level sibling exist yet
+ * or if @p parent is set.
  * @param[in] node Individual node (without siblings) to insert.
  */
-void lyd_insert_node_ordby_schema(struct lyd_node *parent, struct lyd_node *first_sibling, struct lyd_node *node);
+void lyd_insert_node_ordby_schema(struct lyd_node *parent, struct lyd_node **first_sibling, struct lyd_node *node);
 
 /**
  * @brief Unlink the specified data subtree.
@@ -676,8 +680,9 @@ LY_ERR lyd_unlink_leafref_node(const struct lyd_node_term *node, const struct ly
  *
  * The lyds_unlink() is NOT called in this function.
  *
+ * @param[in,out] first_sibling Optional, performs an update if @p node is first or @p sibling is last.
  * @param[in] node Data tree node to be unlinked (together with all the children).
  */
-void lyd_unlink_ignore_lyds(struct lyd_node *node);
+void lyd_unlink_ignore_lyds(struct lyd_node **first_sibling, struct lyd_node *node);
 
 #endif /* LY_TREE_DATA_INTERNAL_H_ */

@@ -267,7 +267,7 @@ lyd_free_tree(struct lyd_node *node)
 static void
 lyd_free_(struct lyd_node *node)
 {
-    struct lyd_node *iter, *next;
+    struct lyd_node *iter, *next, *first_sibling = NULL;
 
     if (!node) {
         return;
@@ -282,7 +282,7 @@ lyd_free_(struct lyd_node *node)
         /* in case of the top-level nodes (node->parent is NULL), no unlinking needed */
         if (iter->parent) {
             lyds_free_metadata(iter);
-            lyd_unlink_ignore_lyds(iter);
+            lyd_unlink_ignore_lyds(&first_sibling, iter);
         }
         lyd_free_subtree(iter);
     }
