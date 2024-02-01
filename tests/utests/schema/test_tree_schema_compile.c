@@ -118,6 +118,23 @@ test_module(void **state)
 }
 
 static void
+test_submodule(void **state)
+{
+    char *str;
+
+    /* extension in a submodule */
+    str = "submodule a-submod {yang-version 1.1; belongs-to a-mod {prefix a;}"
+            "  extension ext2 {argument arg;}"
+            "  typedef INTERFACE_NAME {type string; a:ext2 \"interface\";}"
+            "}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, str);
+    str = "module a-mod {namespace urn:a-mod; prefix a; include a-submod;"
+            "identity baseid;"
+            "}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+}
+
+static void
 test_name_collisions(void **state)
 {
     const char *yang_data;
@@ -991,42 +1008,6 @@ test_type_pattern(void **state)
     assert_null(((struct lysc_type_str *)type)->patterns[1]->emsg);
     assert_string_equal("[0-9].*[0-9]", ((struct lysc_type_str *)type)->patterns[1]->expr);
     assert_int_equal(1, ((struct lysc_type_str *)type)->patterns[1]->inverted);
-
-    /* new string is tested in file ./tests/utests/types/string.c */
-#if 0
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module b {namespace urn:b;prefix b;typedef mytype {type string {pattern '[0-9]*';}}"
-            "typedef mytype2 {type mytype {length 10;}} leaf l {type mytype2 {pattern '[0-4]*';}}}", LYS_IN_YANG, &mod));
-    type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
-    assert_non_null(type);
-    assert_int_equal(LY_TYPE_STRING, type->basetype);
-    assert_int_equal(1, type->refcount);
-    assert_non_null(((struct lysc_type_str *)type)->patterns);
-    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_type_str *)type)->patterns));
-    assert_string_equal("[0-9]*", ((struct lysc_type_str *)type)->patterns[0]->expr);
-    assert_int_equal(3, ((struct lysc_type_str *)type)->patterns[0]->refcount);
-    assert_string_equal("[0-4]*", ((struct lysc_type_str *)type)->patterns[1]->expr);
-    assert_int_equal(1, ((struct lysc_type_str *)type)->patterns[1]->refcount);
-
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module c {namespace urn:c;prefix c;typedef mytype {type string {pattern '[0-9]*';}}"
-            "leaf l {type mytype {length 10;}}}", LYS_IN_YANG, &mod));
-    type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
-    assert_non_null(type);
-    assert_int_equal(LY_TYPE_STRING, type->basetype);
-    assert_int_equal(1, type->refcount);
-    assert_non_null(((struct lysc_type_str *)type)->patterns);
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_str *)type)->patterns));
-    assert_string_equal("[0-9]*", ((struct lysc_type_str *)type)->patterns[0]->expr);
-    assert_int_equal(2, ((struct lysc_type_str *)type)->patterns[0]->refcount);
-
-    /* test substitutions */
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module d {namespace urn:d;prefix d;leaf l {type string {"
-            "pattern '^\\p{IsLatinExtended-A}$';}}}", LYS_IN_YANG, &mod));
-    type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
-    assert_non_null(type);
-    assert_non_null(((struct lysc_type_str *)type)->patterns);
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_str *)type)->patterns));
-    assert_string_equal("^\\p{IsLatinExtended-A}$", ((struct lysc_type_str *)type)->patterns[0]->expr);
-#endif
 
     /* TODO check some data "^ř$" */
 }
@@ -4056,6 +4037,7 @@ main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_module, setup),
+        UTEST(test_submodule, setup),
         UTEST(test_name_collisions, setup),
         UTEST(test_type_length, setup),
         UTEST(test_type_range, setup),

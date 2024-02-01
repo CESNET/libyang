@@ -2078,10 +2078,6 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
     if (!mod) {
         LOGVAL(ctx, LYVE_REFERENCE, "Invalid prefix \"%.*s\" used for extension instance identifier.", (int)pref_len, prefix);
         return LY_EVALID;
-    } else if (!mod->parsed->extensions) {
-        LOGVAL(ctx, LYVE_REFERENCE, "Extension instance \"%s\" refers \"%s\" module that does not contain extension definitions.",
-                ext->name, mod->name);
-        return LY_EVALID;
     }
 
     if (!ext_def) {
