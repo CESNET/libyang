@@ -773,9 +773,13 @@ lyd_first_sibling(const struct lyd_node *node)
 
     /* get the first sibling */
     if (node->parent) {
-        start = node->parent->child;
-    } else {
-        for (start = (struct lyd_node *)node; start->prev->next; start = start->prev) {}
+        return node->parent->child;
+    } else if (!node->prev->next) {
+        return (struct lyd_node *)node;
+    }
+
+    for (start = (struct lyd_node *)node->prev; start->prev->next; start = start->prev) {
+        assert(start != node);
     }
 
     return start;
