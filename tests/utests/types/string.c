@@ -1184,6 +1184,15 @@ test_plugin_store(void **state)
     assert_int_equal(LY_EVALID, ly_ret);
     ly_err_free(err);
 
+    /* LYPLG_TYPE_STORE_ONLY test */
+    val_text = "10 \"| bcdei";
+    err = NULL;
+    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text),
+            LYPLG_TYPE_STORE_ONLY, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL,
+            &value, NULL, &err);
+    assert_int_equal(LY_SUCCESS, ly_ret);
+    type->free(UTEST_LYCTX, &value);
+    ly_err_free(err);
 }
 
 static void

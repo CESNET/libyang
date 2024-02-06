@@ -134,6 +134,7 @@ struct ly_in;
  * - when statements on existing nodes are evaluated, if not satisfied, a validation error is raised,
  * - invalid multiple data instances/data from several cases cause a validation error,
  * - implicit nodes (NP containers and default values) are added.
+ * - Validations based on leaf/leaf-list types restriction is being done regardless of setting LYD_PARSE_ONLY
  * @{
  */
 /* note: keep the lower 16bits free for use by LYD_VALIDATE_ flags. They are not supposed to be combined together,
@@ -171,6 +172,8 @@ struct ly_in;
 #define LYD_PARSE_NO_NEW 0x1000000          /**< Do not set ::LYD_NEW (non-validated node flag) for any nodes. Use
                                                  when parsing validated data to skip some validation tasks and modify
                                                  some validation behavior (auto-deletion of cases). */
+#define LYD_PARSE_STORE_ONLY 0x2000000      /**< Perform only storing operation, no validation based on leaf/leaf-list type
+                                                 restrictions will be performed. */
 
 #define LYD_PARSE_OPTS_MASK 0xFFFF0000      /**< Mask for all the LYD_PARSE_ options. */
 

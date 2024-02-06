@@ -284,8 +284,10 @@ lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, c
 {
     LY_ERR r;
     ly_bool incomplete;
+    ly_bool store_only = (lydctx->parse_opts & LYD_PARSE_STORE_ONLY) ? 1 : 0;
 
-    if ((r = lyd_create_term(schema, value, value_len, 1, dynamic, format, prefix_data, hints, &incomplete, node))) {
+    if ((r = lyd_create_term(schema, value, value_len, 1, store_only, dynamic, format, prefix_data,
+            hints, &incomplete, node))) {
         if (lydctx->data_ctx->ctx != schema->module->ctx) {
             /* move errors to the main context */
             ly_err_move(schema->module->ctx, (struct ly_ctx *)lydctx->data_ctx->ctx);
@@ -308,6 +310,7 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
     char *dpath = NULL, *path = NULL;
     ly_bool incomplete;
     struct lyd_meta *first = NULL;
+    ly_bool store_only = (lydctx->parse_opts & LYD_PARSE_STORE_ONLY) ? 1 : 0;
 
     if (meta && *meta) {
         /* remember the first metadata */
@@ -323,7 +326,7 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
     }
     ly_log_location(NULL, NULL, path, NULL);
 
-    LY_CHECK_GOTO(rc = lyd_create_meta(parent, meta, mod, name, name_len, value, value_len, 1, dynamic, format,
+    LY_CHECK_GOTO(rc = lyd_create_meta(parent, meta, mod, name, name_len, value, value_len, 1, store_only, dynamic, format,
             prefix_data, hints, ctx_node, 0, &incomplete), cleanup);
 
     if (incomplete && !(lydctx->parse_opts & LYD_PARSE_ONLY)) {

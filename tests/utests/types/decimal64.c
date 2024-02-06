@@ -60,6 +60,14 @@
         lyd_free_all(tree_2); \
     }
 
+#define TEST_SUCCESS_PARSE_STORE_ONLY_XML(MOD_NAME, NODE_NAME, DATA) \
+    {\
+        struct lyd_node *tree; \
+        const char *data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</" NODE_NAME ">"; \
+        CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STORE_ONLY, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree); \
+        lyd_free_all(tree); \
+    }
+
 static void
 test_data_xml(void **state)
 {
@@ -94,6 +102,9 @@ test_data_xml(void **state)
 
     TEST_ERROR_XML("defs", "l1", "8.55  xxx");
     CHECK_LOG_CTX("Value \"8.55\" of decimal64 type exceeds defined number (1) of fraction digits.", "/defs:l1", 1);
+
+    /* LYPLG_TYPE_STORE_ONLY test */
+    TEST_SUCCESS_PARSE_STORE_ONLY_XML("defs", "l1", "\n 15 \t\n  ");
 }
 
 static void

@@ -1344,8 +1344,9 @@ lyd_get_meta_annotation(const struct lys_module *mod, const char *name, size_t n
 
 LY_ERR
 lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
-        size_t name_len, const char *value, size_t value_len, ly_bool is_utf8, ly_bool *dynamic, LY_VALUE_FORMAT format,
-        void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node, ly_bool clear_dflt, ly_bool *incomplete)
+        size_t name_len, const char *value, size_t value_len, ly_bool is_utf8, ly_bool store_only, ly_bool *dynamic,
+        LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node, ly_bool clear_dflt,
+        ly_bool *incomplete)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_ext_instance *ant = NULL;
@@ -1368,7 +1369,7 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
     mt->parent = parent;
     mt->annotation = ant;
     lyplg_ext_get_storage(ant, LY_STMT_TYPE, sizeof ant_type, (const void **)&ant_type);
-    ret = lyd_value_store(mod->ctx, &mt->value, ant_type, value, value_len, is_utf8, dynamic, format, prefix_data, hints,
+    ret = lyd_value_store(mod->ctx, &mt->value, ant_type, value, value_len, is_utf8, store_only, dynamic, format, prefix_data, hints,
             ctx_node, incomplete);
     LY_CHECK_ERR_GOTO(ret, free(mt), cleanup);
     ret = lydict_insert(mod->ctx, name, name_len, &mt->name);
@@ -2138,7 +2139,7 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
             /* store canonical value in the target context */
             val_can = lyd_get_value(node);
             type = ((struct lysc_node_leaf *)term->schema)->type;
-            ret = lyd_value_store(trg_ctx, &term->value, type, val_can, strlen(val_can), 1, NULL, LY_VALUE_CANON, NULL,
+            ret = lyd_value_store(trg_ctx, &term->value, type, val_can, strlen(val_can), 1, 1, NULL, LY_VALUE_CANON, NULL,
                     LYD_HINT_DATA, term->schema, NULL);
             LY_CHECK_GOTO(ret, error);
         }
@@ -2467,7 +2468,7 @@ lyd_dup_meta_single_to_ctx(const struct ly_ctx *parent_ctx, const struct lyd_met
 
         /* duplicate callback expect only the same contexts, so use the store callback */
         val_can = lyd_value_get_canonical(meta->annotation->module->ctx, &meta->value);
-        ret = lyd_value_store(parent_ctx, &mt->value, ant_type, val_can, strlen(val_can), 1, NULL,
+        ret = lyd_value_store(parent_ctx, &mt->value, ant_type, val_can, strlen(val_can), 1, 1, NULL,
                 LY_VALUE_CANON, NULL, LYD_HINT_DATA, parent->schema, NULL);
     } else {
         /* annotation */
@@ -3201,11 +3202,11 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *sc
         /* create a data node and find the instance */
         if (schema->nodetype == LYS_LEAFLIST) {
             /* target used attributes: schema, hash, value */
-            rc = lyd_create_term(schema, key_or_value, val_len, 0, NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA, NULL, &target);
+            rc = lyd_create_term(schema, key_or_value, val_len, 0, 1, NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA, NULL, &target);
             LY_CHECK_RET(rc);
         } else {
             /* target used attributes: schema, hash, child (all keys) */
-            LY_CHECK_RET(lyd_create_list2(schema, key_or_value, val_len, &target));
+            LY_CHECK_RET(lyd_create_list2(schema, key_or_value, val_len, 1, &target));
         }
 
         /* find it */
