@@ -594,12 +594,12 @@ test_list(void **state)
             "</df>\n";
     const char *xml3 = "<df xmlns=\"urn:libyang:tests:defaults\">\n"
             "  <list>\n"
-            "    <name>a</name>\n"
-            "    <value>2</value>\n"
-            "  </list>\n"
-            "  <list>\n"
             "    <name>b</name>\n"
             "    <value>-2</value>\n"
+            "  </list>\n"
+            "  <list>\n"
+            "    <name>a</name>\n"
+            "    <value>2</value>\n"
             "  </list>\n"
             "</df>\n";
 
@@ -620,13 +620,13 @@ test_list(void **state)
             "</df>\n";
     const char *out_diff_2 =
             "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
-            "  <list yang:operation=\"create\">\n"
-            "    <name>a</name>\n"
-            "    <value>2</value>\n"
-            "  </list>\n"
             "  <list yang:operation=\"delete\">\n"
             "    <name>c</name>\n"
             "    <value>3</value>\n"
+            "  </list>\n"
+            "  <list yang:operation=\"create\">\n"
+            "    <name>a</name>\n"
+            "    <value>2</value>\n"
             "  </list>\n"
             "</df>\n";
     const char *out_merge =

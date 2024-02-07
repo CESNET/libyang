@@ -931,7 +931,8 @@ lyb_insert_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_
     if (parent && (LYD_CTX(parent) != LYD_CTX(node))) {
         lyplg_ext_insert(parent, node);
     } else {
-        lyd_insert_node(parent, first_p, node, lybctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0);
+        lyd_insert_node(parent, first_p, node,
+                lybctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT);
     }
     while (!parent && (*first_p)->prev->next) {
         *first_p = (*first_p)->prev;
