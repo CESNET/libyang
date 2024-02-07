@@ -2039,6 +2039,10 @@ LIBYANG_API_DECL LY_ERR lyd_compare_meta(const struct lyd_meta *meta1, const str
 #define LYD_DUP_NO_EXT       0x10  /**< Do not duplicate nodes with the ::LYD_EXT flag (nested extension instance data). */
 #define LYD_DUP_WITH_PRIV    0x20  /**< Also copy data node private pointer. Only the pointer is copied, it still points
                                         to the same data. */
+#define LYD_DUP_NO_LYDS      0x40  /**< The order of nodes is used the same as for copied nodes and a 'lyds_tree' is not
+                                        created, so the flag is suitable for optimization. If a new node is inserted into
+                                        such a (leaf-)list by default, the 'lyds_tree' will be created additionally and
+                                        the sorting will work. */
 
 /** @} dupoptions */
 

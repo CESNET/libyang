@@ -968,7 +968,11 @@ rb_remove_node(struct lyd_meta *root_meta, struct rb_node **rbt, struct lyd_node
 
     /* find @p node in the Red-black tree. */
     rbn = rb_find(*rbt, node);
-    assert(rbn && (RBN_DNODE(rbn) == node));
+    if (!rbn) {
+        /* node was not inserted to the lyds tree due to optimization */
+        return;
+    }
+    assert(RBN_DNODE(rbn) == node);
 
     /* remove node */
     rbn = rb_remove(rbt, rbn);
@@ -1725,7 +1729,9 @@ lyds_compare_single(struct lyd_node *node1, struct lyd_node *node2)
 {
     assert(node1 && node2 && (node1->schema == node2->schema) && lyds_is_supported(node1));
 
-    if (node1->schema->nodetype == LYS_LEAFLIST) {
+    if (node1 == node2) {
+        return 0;
+    } else if (node1->schema->nodetype == LYS_LEAFLIST) {
         return rb_compare_leaflists(node1, node2);
     } else {
         return rb_compare_lists(node1, node2);

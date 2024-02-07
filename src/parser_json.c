@@ -1073,7 +1073,8 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
         /* continue with the next instance */
         LY_CHECK_GOTO(ret = lyjson_ctx_next(lydctx->jsonctx, status_inner_p), cleanup);
         assert(*node_p);
-        lydjson_maintain_children(parent, first_p, node_p, lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0, NULL);
+        lydjson_maintain_children(parent, first_p, node_p,
+                lydctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT, NULL);
 
         LOG_LOCBACK(0, 1);
 
@@ -1742,7 +1743,8 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
                 }
                 LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
-                lydjson_maintain_children(parent, first_p, &node, lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0, ext);
+                lydjson_maintain_children(parent, first_p, &node,
+                        lydctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT, ext);
 
                 /* move after the item(s) */
                 r = lyjson_ctx_next(lydctx->jsonctx, &status);
@@ -1780,7 +1782,8 @@ node_parsed:
     }
 
     /* finally connect the parsed node, is zeroed */
-    lydjson_maintain_children(parent, first_p, &node, lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0, ext);
+    lydjson_maintain_children(parent, first_p, &node,
+            lydctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT, ext);
 
     if (!parse_subtree) {
         /* move after the item(s) */

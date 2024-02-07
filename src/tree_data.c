@@ -707,13 +707,6 @@ lyd_insert_node_last(struct lyd_node *parent, struct lyd_node **first_sibling, s
     assert(first_sibling && node);
 
     if (*first_sibling) {
-#ifndef NDEBUG
-        if (lyds_is_supported(node) && ((*first_sibling)->prev->schema == node->schema) &&
-                (lyds_compare_single((*first_sibling)->prev, node) > 0)) {
-            LOGWRN(LYD_CTX(node), "Data in \"%s\" are not sorted, inserted node should not be added to the end.",
-                    node->schema->name);
-        }
-#endif
         lyd_insert_after_node(first_sibling, (*first_sibling)->prev, node);
     } else if (parent) {
         lyd_insert_only_child(parent, node);
@@ -739,7 +732,7 @@ lyd_insert_node_ordby_schema(struct lyd_node *parent, struct lyd_node **first_si
 }
 
 void
-lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling_p, struct lyd_node *node, ly_bool last)
+lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling_p, struct lyd_node *node, uint32_t order)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *first_sibling, *leader;
@@ -754,8 +747,10 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling_p, stru
     }
     first_sibling = parent ? lyd_child(parent) : *first_sibling_p;
 
-    if (last) {
+    if (order == LYD_INSERT_NODE_LAST) {
         lyd_insert_node_last(parent, &first_sibling, node);
+    } else if (order == LYD_INSERT_NODE_LAST_BY_SCHEMA) {
+        lyd_insert_node_ordby_schema(parent, &first_sibling, node);
     } else if (lyds_is_supported(node) &&
             (lyd_find_sibling_schema(first_sibling, node->schema, &leader) == LY_SUCCESS)) {
         ret = lyds_insert(&first_sibling, &leader, node);
@@ -784,6 +779,14 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling_p, stru
     if (first_sibling_p) {
         *first_sibling_p = first_sibling;
     }
+
+#ifndef NDEBUG
+    if ((order == LYD_INSERT_NODE_LAST) && lyds_is_supported(node) &&
+            (node->prev->schema == node->schema) && (lyds_compare_single(node->prev, node) > 0)) {
+        LOGWRN(LYD_CTX(node), "Data in \"%s\" are not sorted, inserted node should not be added to the end.",
+                node->schema->name);
+    }
+#endif
 }
 
 /**
@@ -1032,7 +1035,7 @@ lyd_insert_child(struct lyd_node *parent, struct lyd_node *node)
 
     if (node->parent || node->prev->next || !node->next) {
         LY_CHECK_RET(lyd_unlink_tree(node));
-        lyd_insert_node(parent, NULL, node, 0);
+        lyd_insert_node(parent, NULL, node, LYD_INSERT_NODE_DEFAULT);
     } else {
         LY_CHECK_RET(lyd_move_nodes(parent, NULL, node));
     }
@@ -1056,7 +1059,7 @@ lyplg_ext_insert(struct lyd_node *parent, struct lyd_node *first)
     while (first) {
         iter = first->next;
         lyd_unlink(first);
-        lyd_insert_node(parent, NULL, first, 1);
+        lyd_insert_node(parent, NULL, first, LYD_INSERT_NODE_LAST);
         first = iter;
     }
     return LY_SUCCESS;
@@ -1076,7 +1079,7 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struct lyd_n
     first_sibling = lyd_first_sibling(sibling);
     if (node->parent || node->prev->next || !node->next) {
         LY_CHECK_RET(lyd_unlink_tree(node));
-        lyd_insert_node(NULL, &first_sibling, node, 0);
+        lyd_insert_node(NULL, &first_sibling, node, LYD_INSERT_NODE_DEFAULT);
     } else {
         LY_CHECK_RET(lyd_move_nodes(NULL, &first_sibling, node));
     }
@@ -2001,15 +2004,14 @@ lyd_find_schema_ctx(const struct lysc_node *schema, const struct ly_ctx *trg_ctx
  * @param[in] node Node to duplicate.
  * @param[in] trg_ctx Target context for duplicated nodes.
  * @param[in] parent Parent to insert into, NULL for top-level sibling.
- * @param[in] insert_last Whether the duplicated node can be inserted as the last child of @p parent. Set for
- * recursive duplication as an optimization.
+ * @param[in] insert_order Options for inserting (sorting) duplicated node, @ref insertorder.
  * @param[in,out] first First sibling, NULL if no top-level sibling exist yet. Can be also NULL if @p parent is set.
  * @param[in] options Bitmask of options flags, see @ref dupoptions.
  * @param[out] dup_p Pointer where the created duplicated node is placed (besides connecting it to @p parent / @p first).
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_node *parent, ly_bool insert_last,
+lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_node *parent, uint32_t insert_order,
         struct lyd_node **first, uint32_t options, struct lyd_node **dup_p)
 {
     LY_ERR ret;
@@ -2103,7 +2105,7 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
         if (options & LYD_DUP_RECURSIVE) {
             /* duplicate all the children */
             LY_LIST_FOR(orig->child, child) {
-                LY_CHECK_GOTO(ret = lyd_dup_r(child, trg_ctx, dup, 1, NULL, options, NULL), error);
+                LY_CHECK_GOTO(ret = lyd_dup_r(child, trg_ctx, dup, LYD_INSERT_NODE_LAST, NULL, options, NULL), error);
             }
         }
         LY_CHECK_GOTO(ret = lydict_insert(trg_ctx, orig->name.name, 0, &opaq->name.name), error);
@@ -2139,12 +2141,12 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
         if (options & LYD_DUP_RECURSIVE) {
             /* duplicate all the children */
             LY_LIST_FOR(orig->child, child) {
-                LY_CHECK_GOTO(ret = lyd_dup_r(child, trg_ctx, dup, 1, NULL, options, NULL), error);
+                LY_CHECK_GOTO(ret = lyd_dup_r(child, trg_ctx, dup, LYD_INSERT_NODE_LAST, NULL, options, NULL), error);
             }
         } else if ((dup->schema->nodetype == LYS_LIST) && !(dup->schema->flags & LYS_KEYLESS)) {
             /* always duplicate keys of a list */
             for (child = orig->child; child && lysc_is_key(child->schema); child = child->next) {
-                LY_CHECK_GOTO(ret = lyd_dup_r(child, trg_ctx, dup, 1, NULL, options, NULL), error);
+                LY_CHECK_GOTO(ret = lyd_dup_r(child, trg_ctx, dup, LYD_INSERT_NODE_LAST, NULL, options, NULL), error);
             }
         }
         lyd_hash(dup);
@@ -2155,7 +2157,7 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
     }
 
     /* insert */
-    lyd_insert_node(parent, first, dup, insert_last);
+    lyd_insert_node(parent, first, dup, insert_order);
 
     if (dup_p) {
         *dup_p = dup;
@@ -2208,11 +2210,11 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx *trg_c
             repeat = 0;
         } else {
             iter = NULL;
-            LY_CHECK_RET(lyd_dup_r(orig_parent, trg_ctx, NULL, 0, &iter, options, &iter));
+            LY_CHECK_RET(lyd_dup_r(orig_parent, trg_ctx, NULL, LYD_INSERT_NODE_DEFAULT, &iter, options, &iter));
 
             /* insert into the previous duplicated parent */
             if (*dup_parent) {
-                lyd_insert_node(iter, NULL, *dup_parent, 0);
+                lyd_insert_node(iter, NULL, *dup_parent, LYD_INSERT_NODE_DEFAULT);
             }
 
             /* update the last duplicated parent */
@@ -2238,7 +2240,7 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx *trg_c
 
     if (*dup_parent && parent) {
         /* last insert into a prevously-existing parent */
-        lyd_insert_node(parent, NULL, *dup_parent, 0);
+        lyd_insert_node(parent, NULL, *dup_parent, LYD_INSERT_NODE_DEFAULT);
     }
     return LY_SUCCESS;
 }
@@ -2271,12 +2273,14 @@ lyd_dup(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_no
             } else {
                 assert(!(options & LYD_DUP_WITH_PARENTS));
                 /* duplicating a single key, okay, I suppose... */
-                rc = lyd_dup_r(orig, trg_ctx, NULL, 0, &first, options, first ? NULL : &first);
+                rc = lyd_dup_r(orig, trg_ctx, NULL, LYD_INSERT_NODE_DEFAULT, &first, options, first ? NULL : &first);
                 LY_CHECK_GOTO(rc, error);
             }
         } else {
             /* if there is no local parent, it will be inserted into first */
-            rc = lyd_dup_r(orig, trg_ctx, local_parent, 0, &first, options, first ? NULL : &first);
+            rc = lyd_dup_r(orig, trg_ctx, local_parent,
+                    options & LYD_DUP_NO_LYDS ? LYD_INSERT_NODE_LAST_BY_SCHEMA : LYD_INSERT_NODE_DEFAULT,
+                    &first, options, first ? NULL : &first);
             LY_CHECK_GOTO(rc, error);
         }
         if (nosiblings) {
@@ -2568,7 +2572,7 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg,
             lyds_insert2(parent_trg, first_trg, leader_p, dup_src, lyds);
         } else {
             /* generic insert node */
-            lyd_insert_node(parent_trg, first_trg, dup_src, 0);
+            lyd_insert_node(parent_trg, first_trg, dup_src, LYD_INSERT_NODE_DEFAULT);
         }
 
         if (first_inst) {

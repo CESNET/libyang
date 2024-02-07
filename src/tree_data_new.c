@@ -179,7 +179,7 @@ lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *
             memset(&val, 0, sizeof val);
         }
         LY_CHECK_GOTO(ret, cleanup);
-        lyd_insert_node(list, NULL, key, 0);
+        lyd_insert_node(list, NULL, key, LYD_INSERT_NODE_DEFAULT);
     }
 
     /* hash having all the keys */
@@ -503,7 +503,7 @@ lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const ch
         ret->flags |= LYD_EXT;
     }
     if (parent) {
-        lyd_insert_node(parent, NULL, ret, 0);
+        lyd_insert_node(parent, NULL, ret, LYD_INSERT_NODE_DEFAULT);
     }
 
     if (node) {
@@ -626,11 +626,11 @@ _lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const ch
 
         rc = lyd_create_term(key_s, key_val, key_len, 0, NULL, format, NULL, LYD_HINT_DATA, NULL, &key);
         LY_CHECK_GOTO(rc, cleanup);
-        lyd_insert_node(ret, NULL, key, 1);
+        lyd_insert_node(ret, NULL, key, LYD_INSERT_NODE_LAST);
     }
 
     if (parent) {
-        lyd_insert_node(parent, NULL, ret, 0);
+        lyd_insert_node(parent, NULL, ret, LYD_INSERT_NODE_DEFAULT);
     }
 
 cleanup:
@@ -722,7 +722,7 @@ lyd_new_ext_list(const struct lysc_ext_instance *ext, const char *name, struct l
         rc = lyd_create_term(key_s, key_val, key_val ? strlen(key_val) : 0, 0, NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA,
                 NULL, &key);
         LY_CHECK_GOTO(rc, cleanup);
-        lyd_insert_node(ret, NULL, key, 1);
+        lyd_insert_node(ret, NULL, key, LYD_INSERT_NODE_LAST);
     }
 
 cleanup:
@@ -775,7 +775,7 @@ lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const ch
         ret->flags |= LYD_EXT;
     }
     if (parent) {
-        lyd_insert_node(parent, NULL, ret, 0);
+        lyd_insert_node(parent, NULL, ret, LYD_INSERT_NODE_DEFAULT);
     }
 
     if (node) {
@@ -829,11 +829,11 @@ _lyd_new_list3(struct lyd_node *parent, const struct lys_module *module, const c
 
         rc = lyd_create_term(key_s, key_val, key_len, 0, NULL, format, NULL, LYD_HINT_DATA, NULL, &key);
         LY_CHECK_GOTO(rc, cleanup);
-        lyd_insert_node(ret, NULL, key, 1);
+        lyd_insert_node(ret, NULL, key, LYD_INSERT_NODE_LAST);
     }
 
     if (parent) {
-        lyd_insert_node(parent, NULL, ret, 0);
+        lyd_insert_node(parent, NULL, ret, LYD_INSERT_NODE_DEFAULT);
     }
 
 cleanup:
@@ -911,7 +911,7 @@ _lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const ch
         ret->flags |= LYD_EXT;
     }
     if (parent) {
-        lyd_insert_node(parent, NULL, ret, 0);
+        lyd_insert_node(parent, NULL, ret, LYD_INSERT_NODE_DEFAULT);
     }
 
     if (node) {
@@ -1001,7 +1001,7 @@ lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char
         ret->flags |= LYD_EXT;
     }
     if (parent) {
-        lyd_insert_node(parent, NULL, ret, 0);
+        lyd_insert_node(parent, NULL, ret, LYD_INSERT_NODE_DEFAULT);
     }
 
     if (node) {
@@ -1140,7 +1140,7 @@ lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name
     LY_CHECK_RET(lyd_create_opaq(ctx, name, strlen(name), prefix, prefix ? strlen(prefix) : 0, module_name,
             strlen(module_name), value, strlen(value), NULL, LY_VALUE_JSON, NULL, 0, &ret));
     if (parent) {
-        lyd_insert_node(parent, NULL, ret, 1);
+        lyd_insert_node(parent, NULL, ret, LYD_INSERT_NODE_LAST);
     }
 
     if (node) {
@@ -1168,7 +1168,7 @@ lyd_new_opaq2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *nam
     LY_CHECK_RET(lyd_create_opaq(ctx, name, strlen(name), prefix, prefix ? strlen(prefix) : 0, module_ns,
             strlen(module_ns), value, strlen(value), NULL, LY_VALUE_XML, NULL, 0, &ret));
     if (parent) {
-        lyd_insert_node(parent, NULL, ret, 1);
+        lyd_insert_node(parent, NULL, ret, LYD_INSERT_NODE_LAST);
     }
 
     if (node) {
@@ -1309,7 +1309,7 @@ lyd_change_node_value(struct lyd_node_term *term, struct lyd_value *val)
         term->value.realtype->plugin->free(LYD_CTX(term), &term->value);
         term->value = *val;
         /* reinserting */
-        lyd_insert_node(NULL, &first, target, 0);
+        lyd_insert_node(NULL, &first, target, LYD_INSERT_NODE_DEFAULT);
     } else {
         /* unlink hash */
         lyd_unlink_hash(target);
@@ -1835,10 +1835,10 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
         }
         if (cur_parent) {
             /* connect to the parent */
-            lyd_insert_node(cur_parent, NULL, node, 0);
+            lyd_insert_node(cur_parent, NULL, node, LYD_INSERT_NODE_DEFAULT);
         } else if (parent) {
             /* connect to top-level siblings */
-            lyd_insert_node(NULL, &parent, node, 0);
+            lyd_insert_node(NULL, &parent, node, LYD_INSERT_NODE_DEFAULT);
         }
 
 next_iter:
@@ -1956,7 +1956,7 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
                 /* create default NP container */
                 LY_CHECK_RET(lyd_create_inner(iter, &node));
                 node->flags = LYD_DEFAULT | (lysc_has_when(iter) ? LYD_WHEN_TRUE : 0);
-                lyd_insert_node(parent, first, node, 0);
+                lyd_insert_node(parent, first, node, LYD_INSERT_NODE_DEFAULT);
 
                 if (lysc_has_when(iter) && node_when) {
                     /* remember to resolve when */
@@ -1990,7 +1990,7 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
                     return ret;
                 }
                 node->flags = LYD_DEFAULT | (lysc_has_when(iter) ? LYD_WHEN_TRUE : 0);
-                lyd_insert_node(parent, first, node, 0);
+                lyd_insert_node(parent, first, node, LYD_INSERT_NODE_DEFAULT);
 
                 if (lysc_has_when(iter) && node_when) {
                     /* remember to resolve when */
@@ -2022,7 +2022,7 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
                         return ret;
                     }
                     node->flags = LYD_DEFAULT | (lysc_has_when(iter) ? LYD_WHEN_TRUE : 0);
-                    lyd_insert_node(parent, first, node, 0);
+                    lyd_insert_node(parent, first, node, LYD_INSERT_NODE_DEFAULT);
 
                     if (lysc_has_when(iter) && node_when) {
                         /* remember to resolve when */

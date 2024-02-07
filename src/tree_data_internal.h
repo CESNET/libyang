@@ -391,15 +391,34 @@ void lyd_insert_after_node(struct lyd_node **first_sibling, struct lyd_node *sib
 void lyd_insert_before_node(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
+ * @defgroup insertorder Data insert order.
+ *
+ * Various options for optimal node insertion.
+ * Flags that cause the order of nodes not to be checked are adapted to fast insertion but can cause
+ * nodes for (leaf-)lists with LYS_ORDBY_SYSTEM flag set to be out of order, which is an undesirable state,
+ * so these flags must be set carefully. In such exceptional cases, (leaf-)list instances may remain unsorted,
+ * in which case inserting a new node causes sorting to be invoked.
+ * @{
+ */
+
+#define LYD_INSERT_NODE_DEFAULT         0x00 /**< Default behavior. Node is inserted to preserve order. */
+#define LYD_INSERT_NODE_LAST            0x01 /**< Node inserted as last sibling. Node ordering is checked only
+                                                  in Debug build, to detect misuse of the LYD_PARSE_ORDERED flag. */
+#define LYD_INSERT_NODE_LAST_BY_SCHEMA  0x02 /**< The node is inserted according to the schema as a last instance.
+                                                  Node order not checked. */
+
+/** @} insertorder */
+
+/**
  * @brief Insert a node into parent/siblings. Order and hashes are fully handled.
  *
  * @param[in] parent Parent to insert into, NULL for top-level sibling.
  * @param[in,out] first_sibling First sibling, NULL if no top-level sibling exist yet. Can be also NULL if @p parent is set.
  * @param[in] node Individual node (without siblings) to insert.
- * @param[in] last If set, do not search for the correct anchor but always insert at the end. Setting the flag can
- * break the ordering of nodes for (leaf-)lists that have the LYS_ORDBY_SYSTEM flag set.
+ * @param[in] order Options for inserting (sorting) the node (@ref insertorder).
  */
-void lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, struct lyd_node *node, ly_bool last);
+void lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, struct lyd_node *node,
+        uint32_t order);
 
 /**
  * @brief Insert a node into parent/siblings, either before the 'anchor' or as the last sibling.

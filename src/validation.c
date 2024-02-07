@@ -2047,7 +2047,7 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
     op_parent = lyd_parent(op_subtree);
 
     lyd_unlink(op_subtree);
-    lyd_insert_node(tree_parent, &tree_sibling, op_subtree, 0);
+    lyd_insert_node(tree_parent, &tree_sibling, op_subtree, LYD_INSERT_NODE_DEFAULT);
     if (!dep_tree) {
         dep_tree = tree_sibling;
     }
@@ -2096,7 +2096,7 @@ cleanup:
         lyd_insert_before_node(op_sibling_after, op_subtree);
         lyd_insert_hash(op_subtree);
     } else if (op_parent) {
-        lyd_insert_node(op_parent, NULL, op_subtree, 0);
+        lyd_insert_node(op_parent, NULL, op_subtree, LYD_INSERT_NODE_DEFAULT);
     }
 
     ly_set_erase(&node_when, NULL);
