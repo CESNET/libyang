@@ -1326,7 +1326,7 @@ yin_print_parsed_linkage(struct lys_ypr_ctx *pctx, const struct lysp_module *mod
             ypr_substmt(pctx, LY_STMT_DESCRIPTION, 0, modp->includes[u].dsc, modp->includes[u].exts);
             ypr_substmt(pctx, LY_STMT_REFERENCE, 0, modp->includes[u].ref, modp->includes[u].exts);
             LEVEL--;
-            ly_print_(pctx->out, "%*s}\n", INDENT);
+            ypr_close(pctx, "include", 1);
         } else {
             ypr_open(pctx, "include", "module", modp->includes[u].name, -1);
         }
