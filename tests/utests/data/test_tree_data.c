@@ -597,7 +597,7 @@ static void
 test_data_leafref_nodes(void **state)
 {
     struct lyd_node *tree, *iter;
-    struct lyd_node_term *target_node, *leafref_node;
+    struct lyd_node_term *target_node = NULL, *leafref_node;
     const struct lyd_leafref_links_rec *rec;
     const char *schema, *data, *value;
 
@@ -695,7 +695,7 @@ test_data_leafref_nodes2(void **state)
 {
     struct lyd_node *tree, *iter;
     const char *schema, *data;
-    struct lyd_node_term *leafref_node;
+    struct lyd_node_term *leafref_node = NULL;
     const struct lyd_node_term *target_node1, *target_node2;
     const struct lyd_leafref_links_rec *rec;
 

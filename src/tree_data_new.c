@@ -263,7 +263,7 @@ lyd_create_any_datatree(const struct ly_ctx *ctx, struct ly_in *value_in, LYD_AN
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_ctx *lydctx = NULL;
-    uint32_t parse_opts, int_opts, *prev_lo, temp_lo = 0;
+    uint32_t parse_opts, int_opts, *prev_lo = NULL, temp_lo = 0;
 
     *tree = NULL;
 
