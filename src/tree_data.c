@@ -3376,7 +3376,7 @@ lyd_leafref_link_node_tree(const struct lyd_node *tree)
 
     LY_LIST_FOR(tree, sibling) {
         LYD_TREE_DFS_BEGIN(sibling, elem) {
-            if (elem->schema->nodetype & LYD_NODE_TERM) {
+            if (elem->schema && (elem->schema->nodetype & LYD_NODE_TERM)) {
                 leafref_node = (struct lyd_node_term *)elem;
                 leaf_schema = (struct lysc_node_leaf *)elem->schema;
 

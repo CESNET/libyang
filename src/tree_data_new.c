@@ -2026,7 +2026,7 @@ lyd_new_implicit_tree(struct lyd_node *tree, uint32_t implicit_options, struct l
     }
 
     LYD_TREE_DFS_BEGIN(tree, node) {
-        if (node->schema->nodetype & LYD_NODE_INNER) {
+        if (node->schema && (node->schema->nodetype & LYD_NODE_INNER)) {
             LY_CHECK_GOTO(ret = lyd_new_implicit_r(node, lyd_node_child_p(node), NULL, NULL, &node_when, NULL,
                     NULL, implicit_options, diff), cleanup);
         }
