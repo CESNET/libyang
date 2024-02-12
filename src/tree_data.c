@@ -2178,6 +2178,58 @@ error:
 }
 
 /**
+ * @brief Duplicate a (leaf-)list and connect it into @p parent (if present) or last of @p first siblings.
+ *
+ * @param[in] orig Node to duplicate.
+ * @param[in] trg_ctx Target context for duplicated nodes.
+ * @param[in] parent Parent to insert into, NULL for top-level sibling.
+ * @param[in,out] first First sibling, NULL if no top-level sibling exist yet. Can be also NULL if @p parent is set.
+ * @param[in] options Bitmask of options flags, see @ref dupoptions.
+ * @param[out] dup_p Pointer where the created duplicated node is placed (besides connecting it to @p parent / @p first).
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_dup_list(const struct lyd_node **orig, const struct ly_ctx *trg_ctx, struct lyd_node *parent,
+        struct lyd_node **first, uint32_t options, struct lyd_node **dup_p)
+{
+    LY_ERR rc;
+    struct lyd_node *start, *leader, *dup;
+    const struct lysc_node *schema;
+    uint32_t insert_order;
+
+    /* duplicate leader */
+    start = (*orig)->next;
+    schema = (*orig)->schema;
+    rc = lyd_dup_r(*orig, trg_ctx, parent, LYD_INSERT_NODE_DEFAULT, first, options, &leader);
+    LY_CHECK_RET(rc);
+
+    if (!start || !start->schema || !LYD_NODE_IS_ALONE(leader)) {
+        /* no other instances */
+        if (dup_p) {
+            *dup_p = leader;
+        }
+        return LY_SUCCESS;
+    }
+
+    /* duplicate the rest of the nodes in the (leaf-)list */
+    insert_order = leader->next ? LYD_INSERT_NODE_LAST_BY_SCHEMA : LYD_INSERT_NODE_LAST;
+    LY_LIST_FOR(start, *orig) {
+        if (schema != (*orig)->schema) {
+            break;
+        }
+        rc = lyd_dup_r(*orig, trg_ctx, parent, insert_order, first, options, &dup);
+        LY_CHECK_GOTO(rc, cleanup);
+    }
+
+cleanup:
+    if (dup_p) {
+        *dup_p = leader;
+    }
+
+    return rc;
+}
+
+/**
  * @brief Get a parent node to connect duplicated subtree to.
  *
  * @param[in] node Node (subtree) to duplicate.
@@ -2255,13 +2307,15 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx *trg_c
 
 static LY_ERR
 lyd_dup(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_node *parent, uint32_t options,
-        ly_bool nosiblings, struct lyd_node **dup)
+        ly_bool nosiblings, struct lyd_node **dup_p)
 {
     LY_ERR rc;
     const struct lyd_node *orig;          /* original node to be duplicated */
-    struct lyd_node *first = NULL;        /* the first duplicated node, this is returned */
+    struct lyd_node *first_dup = NULL;    /* the first duplicated node, this is returned */
     struct lyd_node *top = NULL;          /* the most higher created node */
     struct lyd_node *local_parent = NULL; /* the direct parent node for the duplicated node(s) */
+    struct lyd_node *dup;                 /* duplicate node */
+    struct lyd_node *first_sibling = NULL; /* first sibling node */
 
     assert(node && trg_ctx);
 
@@ -2276,36 +2330,46 @@ lyd_dup(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_no
         if (lysc_is_key(orig->schema)) {
             if (local_parent) {
                 /* the key must already exist in the parent */
-                rc = lyd_find_sibling_schema(lyd_child(local_parent), orig->schema, first ? NULL : &first);
+                rc = lyd_find_sibling_schema(lyd_child(local_parent), orig->schema, &dup);
                 LY_CHECK_ERR_GOTO(rc, LOGINT(trg_ctx), error);
             } else {
                 assert(!(options & LYD_DUP_WITH_PARENTS));
                 /* duplicating a single key, okay, I suppose... */
-                rc = lyd_dup_r(orig, trg_ctx, NULL, LYD_INSERT_NODE_DEFAULT, &first, options, first ? NULL : &first);
+                rc = lyd_dup_r(orig, trg_ctx, NULL, LYD_INSERT_NODE_DEFAULT, &first_sibling, options, &dup);
                 LY_CHECK_GOTO(rc, error);
             }
+        } else if (!nosiblings && orig->schema && (orig->schema->nodetype & (LYS_LIST | LYS_LEAFLIST))) {
+            /* duplicate the whole (leaf-)list */
+            rc = lyd_dup_list(&orig, trg_ctx, local_parent, &first_sibling, options, &dup);
+            LY_CHECK_GOTO(rc, error);
+            if (!orig) {
+                break;
+            }
         } else {
-            /* if there is no local parent, it will be inserted into first */
             rc = lyd_dup_r(orig, trg_ctx, local_parent,
                     options & LYD_DUP_NO_LYDS ? LYD_INSERT_NODE_LAST_BY_SCHEMA : LYD_INSERT_NODE_DEFAULT,
-                    &first, options, first ? NULL : &first);
+                    &first_sibling, options, &dup);
             LY_CHECK_GOTO(rc, error);
         }
+        first_dup = first_dup ? first_dup : dup;
+
         if (nosiblings) {
             break;
         }
     }
 
-    if (dup) {
-        *dup = first;
+    if (dup_p) {
+        *dup_p = first_dup;
     }
     return LY_SUCCESS;
 
 error:
     if (top) {
         lyd_free_tree(top);
+    } else if (first_dup) {
+        lyd_free_siblings(first_dup);
     } else {
-        lyd_free_siblings(first);
+        lyd_free_siblings(dup);
     }
     return rc;
 }
