@@ -281,6 +281,24 @@ setup_data_no_same_trees(const struct lys_module *mod, uint32_t count, struct te
 }
 
 static LY_ERR
+setup_data_empty_and_full_trees(const struct lys_module *mod, uint32_t count, struct test_state *state)
+{
+    LY_ERR ret;
+
+    state->mod = mod;
+    state->count = count;
+
+    if ((ret = create_list_inst(mod, 0, 0, &state->data1))) {
+        return ret;
+    }
+    if ((ret = create_list_inst(mod, 0, count, &state->data2))) {
+        return ret;
+    }
+
+    return LY_SUCCESS;
+}
+
+static LY_ERR
 setup_data_offset_tree(const struct lys_module *mod, uint32_t count, struct test_state *state)
 {
     LY_ERR ret;
@@ -550,6 +568,22 @@ test_dup(struct test_state *state, struct timespec *ts_start, struct timespec *t
 }
 
 static LY_ERR
+test_dup_siblings_to_empty(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+{
+    LY_ERR r;
+
+    TEST_START(ts_start);
+
+    if ((r = lyd_dup_siblings(lyd_child(state->data2), (struct lyd_node_inner *)state->data1, 0, NULL))) {
+        return r;
+    }
+
+    TEST_END(ts_end);
+
+    return LY_SUCCESS;
+}
+
+static LY_ERR
 test_free(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
 {
     LY_ERR r;
@@ -749,6 +783,7 @@ struct test tests[] = {
     {"print json", setup_data_single_tree, test_print_json},
     {"print lyb", setup_data_single_tree, test_print_lyb},
     {"dup", setup_data_single_tree, test_dup},
+    {"dup_siblings_to_empty", setup_data_empty_and_full_trees, test_dup_siblings_to_empty},
     {"free", setup_basic, test_free},
     {"xpath find", setup_data_single_tree, test_xpath_find},
     {"xpath find hash", setup_data_single_tree, test_xpath_find_hash},
