@@ -726,6 +726,14 @@ lyd_insert_node_ordby_schema(struct lyd_node *parent, struct lyd_node **first_si
     if ((anchor = lyd_insert_node_find_anchor(*first_sibling, node))) {
         lyd_insert_before_node(anchor, node);
         *first_sibling = *first_sibling != anchor ? *first_sibling : node;
+    } else if (*first_sibling && node->schema && !(*first_sibling)->prev->schema) {
+        /* cannot insert data node after opaque nodes */
+        anchor = (*first_sibling)->prev;
+        while ((anchor != *first_sibling) && !anchor->prev->schema) {
+            anchor = anchor->prev;
+        }
+        lyd_insert_before_node(anchor, node);
+        *first_sibling = *first_sibling != anchor ? *first_sibling : node;
     } else {
         lyd_insert_node_last(parent, first_sibling, node);
     }
@@ -747,7 +755,7 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling_p, stru
     }
     first_sibling = parent ? lyd_child(parent) : *first_sibling_p;
 
-    if (order == LYD_INSERT_NODE_LAST) {
+    if ((order == LYD_INSERT_NODE_LAST) || !node->schema || (first_sibling && (first_sibling->flags & LYD_EXT))) {
         lyd_insert_node_last(parent, &first_sibling, node);
     } else if (order == LYD_INSERT_NODE_LAST_BY_SCHEMA) {
         lyd_insert_node_ordby_schema(parent, &first_sibling, node);
