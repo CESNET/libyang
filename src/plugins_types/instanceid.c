@@ -267,7 +267,7 @@ lyplg_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_val
         struct ly_path *s1 = &val1->target[u];
         struct ly_path *s2 = &val2->target[u];
 
-        if ((s1->node != s2->node) || (s1->predicates && (LY_ARRAY_COUNT(s1->predicates) != LY_ARRAY_COUNT(s2->predicates)))) {
+        if ((s1->node != s2->node) || (LY_ARRAY_COUNT(s1->predicates) != LY_ARRAY_COUNT(s2->predicates))) {
             return LY_ENOT;
         }
         LY_ARRAY_FOR(s1->predicates, v) {
