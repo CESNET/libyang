@@ -437,6 +437,7 @@ ly_vprint_(struct ly_out *out, const char *format, va_list ap)
             if (!*out->method.mem.buf) {
                 out->method.mem.len = 0;
                 out->method.mem.size = 0;
+                free(msg);
                 LOGMEM(NULL);
                 return LY_EMEM;
             }
