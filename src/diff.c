@@ -282,6 +282,27 @@ lyd_diff_del_meta(struct lyd_node *node, const char *name)
     }
 }
 
+/**
+ * @brief Insert a node into siblings.
+ *
+ * - if the node is part of some other tree, it is automatically unlinked.
+ * - difference with the lyd_insert_sibling() is that the subsequent nodes are never inserted.
+ * - insert ignores node ordering, which is fine since it's not desirable to sort diff nodes.
+ *
+ * @param[in] sibling Siblings to insert into, can even be NULL.
+ * @param[in] node Node to insert.
+ * @param[out] first Return the first sibling after insertion. Can be the address of @p sibling.
+ */
+static void
+lyd_diff_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struct lyd_node **first_sibling)
+{
+    assert(node && first_sibling);
+
+    lyd_unlink_ignore_lyds(NULL, node);
+    *first_sibling = lyd_first_sibling(sibling);
+    lyd_insert_node(NULL, first_sibling, node, LYD_INSERT_NODE_LAST_BY_SCHEMA);
+}
+
 LY_ERR
 lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_default, const char *orig_value,
         const char *key, const char *value, const char *position, const char *orig_key, const char *orig_position,
@@ -396,9 +417,9 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
         /* no parent existed, must be manually connected */
         if (!diff_parent) {
             /* there actually was no parent to duplicate */
-            lyd_insert_sibling(*diff, dup, diff);
+            lyd_diff_insert_sibling(*diff, dup, diff);
         } else if (!diff_parent->parent) {
-            lyd_insert_sibling(*diff, diff_parent, diff);
+            lyd_diff_insert_sibling(*diff, diff_parent, diff);
         }
 
         /* add parent operation, if any */
@@ -1997,15 +2018,15 @@ add_diff:
         /* add new diff node with all descendants */
         if ((src_diff->flags & LYD_EXT) && diff_parent) {
             LY_CHECK_RET(lyd_dup_single_to_ctx(src_diff, LYD_CTX(diff_parent), (struct lyd_node_inner *)diff_parent,
-                    LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS, &diff_node));
+                    LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS | LYD_DUP_NO_LYDS, &diff_node));
         } else {
             LY_CHECK_RET(lyd_dup_single(src_diff, (struct lyd_node_inner *)diff_parent,
-                    LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS, &diff_node));
+                    LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS | LYD_DUP_NO_LYDS, &diff_node));
         }
 
         /* insert node into diff if not already */
         if (!diff_parent) {
-            lyd_insert_sibling(*diff, diff_node, diff);
+            lyd_diff_insert_sibling(*diff, diff_node, diff);
         }
 
         /* update operation */
@@ -2220,7 +2241,7 @@ lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff)
     }
 
     /* duplicate diff */
-    LY_CHECK_RET(lyd_dup_siblings(src_diff, NULL, LYD_DUP_RECURSIVE, diff));
+    LY_CHECK_RET(lyd_dup_siblings(src_diff, NULL, LYD_DUP_RECURSIVE | LYD_DUP_NO_LYDS, diff));
 
     /* find module with metadata needed for later */
     mod = ly_ctx_get_module_latest(LYD_CTX(src_diff), "yang");
