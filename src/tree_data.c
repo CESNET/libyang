@@ -1030,7 +1030,7 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
     assert((parent || meta) && mod);
 
     LY_ARRAY_FOR(mod->compiled->exts, u) {
-        if (!strncmp(mod->compiled->exts[u].def->plugin->id, "ly2 metadata", 12) &&
+        if (mod->compiled->exts[u].def->plugin && !strncmp(mod->compiled->exts[u].def->plugin->id, "ly2 metadata", 12) &&
                 !ly_strncmp(mod->compiled->exts[u].argument, name, name_len)) {
             /* we have the annotation definition */
             ant = &mod->compiled->exts[u];
