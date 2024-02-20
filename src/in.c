@@ -27,10 +27,10 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "common.h"
 #include "compat.h"
 #include "dict.h"
 #include "log.h"
+#include "ly_common.h"
 #include "parser_data.h"
 #include "parser_internal.h"
 #include "set.h"

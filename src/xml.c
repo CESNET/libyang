@@ -23,9 +23,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.h"
 #include "compat.h"
 #include "in_internal.h"
+#include "ly_common.h"
 #include "out_internal.h"
 #include "tree.h"
 #include "tree_schema_internal.h"

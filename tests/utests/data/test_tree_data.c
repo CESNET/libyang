@@ -14,8 +14,8 @@
 #define _UTEST_MAIN_
 #include "utests.h"
 
-#include "common.h"
 #include "libyang.h"
+#include "ly_common.h"
 #include "path.h"
 #include "xpath.h"
 

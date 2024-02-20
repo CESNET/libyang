@@ -14,7 +14,7 @@
 #define _UTEST_MAIN_
 #include "utests.h"
 
-#include "common.h"
+#include "ly_common.h"
 
 static void
 test_utf8(void **UNUSED(state))

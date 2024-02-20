@@ -32,8 +32,8 @@
 
 #include "libyang.h"
 
-#include "common.h"
 #include "compat.h"
+#include "ly_common.h"
 
 /**
  * @page howtoDataLYB LYB Binary Format

@@ -24,10 +24,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.h"
 #include "compat.h"
 #include "context.h"
 #include "dict.h"
+#include "ly_common.h"
 #include "path.h"
 #include "schema_compile.h"
 #include "set.h"

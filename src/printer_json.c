@@ -18,9 +18,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "common.h"
 #include "context.h"
 #include "log.h"
+#include "ly_common.h"
 #include "out.h"
 #include "out_internal.h"
 #include "parser_data.h"

@@ -17,7 +17,7 @@
 
 #include <stdint.h>
 
-#include "common.h"
+#include "ly_common.h"
 #include "set.h"
 #include "tree_schema.h"
 

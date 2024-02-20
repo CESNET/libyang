@@ -30,8 +30,8 @@
 #include <stdint.h>
 #include <time.h>
 
-#include "config.h"
 #include "log.h"
+#include "ly_config.h"
 #include "tree.h"
 #include "tree_schema.h"
 

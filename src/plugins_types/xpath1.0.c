@@ -23,10 +23,8 @@
 
 #include "libyang.h"
 
-#include "common.h"
 #include "compat.h"
-
-/* internal headers */
+#include "ly_common.h"
 #include "xml.h"
 #include "xpath.h"
 

@@ -22,12 +22,12 @@
 #include <string.h>
 #include <time.h>
 
-#include "common.h"
 #include "compat.h"
 #include "context.h"
 #include "dict.h"
 #include "hash_table.h"
 #include "log.h"
+#include "ly_common.h"
 #include "lyb.h"
 #include "parser_data.h"
 #include "plugins_exts.h"

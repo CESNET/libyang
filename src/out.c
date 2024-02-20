@@ -26,9 +26,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "common.h"
 #include "compat.h"
 #include "log.h"
+#include "ly_common.h"
 #include "printer_data.h"
 #include "tree_data.h"
 #include "tree_schema.h"

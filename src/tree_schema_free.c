@@ -18,10 +18,10 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "common.h"
 #include "compat.h"
 #include "dict.h"
 #include "log.h"
+#include "ly_common.h"
 #include "plugins_exts.h"
 #include "plugins_types.h"
 #include "tree.h"

@@ -38,11 +38,11 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "common.h"
 #include "compat.h"
 #include "dict.h"
 #include "in_internal.h"
 #include "log.h"
+#include "ly_common.h"
 #include "parser_data.h"
 #include "path.h"
 #include "plugins_exts/metadata.h"

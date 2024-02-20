@@ -1,10 +1,10 @@
 /**
- * @file common.h
+ * @file ly_common.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief common internal definitions for libyang
  *
- * Copyright (c) 2015 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -22,10 +22,10 @@
 #include <string.h>
 
 #include "compat.h"
-#include "config.h"
 #include "context.h"
 #include "hash_table_internal.h"
 #include "log.h"
+#include "ly_config.h"
 #include "schema_compile.h"
 #include "set.h"
 #include "tree_data.h"
@@ -272,7 +272,7 @@ int LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_TRAILING_MOD   LYVE_SYNTAX, "Trailing garbage \"%.*s%s\" after module, expected end-of-input."
 #define LY_VCODE_TRAILING_SUBMOD LYVE_SYNTAX, "Trailing garbage \"%.*s%s\" after submodule, expected end-of-input."
 
-#define LY_VCODE_INVAL_MINMAX   LYVE_SEMANTICS, "Invalid combination of min-elements and max-elements: min value %u is bigger than the max value %u."
+#define LY_VCODE_INVAL_MINMAX   LYVE_SEMANTICS, "Invalid combination of min-elements and max-elements: min value %" PRIu32 " is bigger than the max value %" PRIu32 "."
 #define LY_VCODE_NAME_COL       LYVE_SEMANTICS, "Name collision between %s of name \"%s\"."
 #define LY_VCODE_NAME2_COL      LYVE_SEMANTICS, "Name collision between %s and %s of name \"%s\"."
 
@@ -305,12 +305,12 @@ int LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_SUBELEM_REDEF  LYVE_SYNTAX_YIN, "Redefinition of \"%s\" sub-element in \"%s\" element."
 
 #define LY_VCODE_XP_EOE         LYVE_XPATH, "Unterminated string delimited with %c (%.15s)."
-#define LY_VCODE_XP_INEXPR      LYVE_XPATH, "Invalid character '%c'[%u] of expression \'%s\'."
+#define LY_VCODE_XP_INEXPR      LYVE_XPATH, "Invalid character '%c'[%" PRIu32 "] of expression \'%s\'."
 #define LY_VCODE_XP_EOF         LYVE_XPATH, "Unexpected XPath expression end."
 #define LY_VCODE_XP_INTOK       LYVE_XPATH, "Unexpected XPath token \"%s\" (\"%.15s\")."
 #define LY_VCODE_XP_INTOK2      LYVE_XPATH, "Unexpected XPath token \"%s\" (\"%.15s\"), expected \"%s\"."
 #define LY_VCODE_XP_INFUNC      LYVE_XPATH, "Unknown XPath function \"%.*s\"."
-#define LY_VCODE_XP_INARGCOUNT  LYVE_XPATH, "Invalid number of arguments (%d) for the XPath function %.*s."
+#define LY_VCODE_XP_INARGCOUNT  LYVE_XPATH, "Invalid number of arguments (%" PRIu32 ") for the XPath function %.*s."
 #define LY_VCODE_XP_INARGTYPE   LYVE_XPATH, "Wrong type of argument #%d (%s) for the XPath function %s."
 #define LY_VCODE_XP_INCTX       LYVE_XPATH, "Invalid context type %s in %s."
 #define LY_VCODE_XP_INOP_1      LYVE_XPATH, "Cannot apply XPath operation %s on %s."

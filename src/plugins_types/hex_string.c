@@ -24,8 +24,9 @@
 #include "libyang.h"
 
 /* additional internal headers for some useful simple macros */
-#include "common.h"
 #include "compat.h"
+#include "ly_common.h"
+#include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 /**
  * @page howtoDataLYB LYB Binary Format

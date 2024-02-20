@@ -18,8 +18,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "config.h"
 #include "log.h"
+#include "ly_config.h"
 #include "plugins.h"
 #include "set.h"
 #include "tree.h"

@@ -27,13 +27,13 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "common.h"
 #include "compat.h"
 #include "context.h"
 #include "dict.h"
 #include "in.h"
 #include "in_internal.h"
 #include "log.h"
+#include "ly_common.h"
 #include "parser_internal.h"
 #include "parser_schema.h"
 #include "path.h"

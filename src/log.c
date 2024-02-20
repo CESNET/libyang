@@ -26,9 +26,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.h"
 #include "compat.h"
 #include "in_internal.h"
+#include "ly_common.h"
 #include "plugins_exts.h"
 #include "set.h"
 #include "tree_data.h"

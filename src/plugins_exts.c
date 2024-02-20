@@ -19,8 +19,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "common.h"
 #include "dict.h"
+#include "ly_common.h"
 #include "parser_internal.h"
 #include "printer_internal.h"
 #include "schema_compile.h"

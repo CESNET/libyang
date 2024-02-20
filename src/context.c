@@ -32,10 +32,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "common.h"
 #include "compat.h"
 #include "hash_table.h"
 #include "in.h"
+#include "ly_common.h"
 #include "parser_data.h"
 #include "plugins_internal.h"
 #include "plugins_types.h"

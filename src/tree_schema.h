@@ -23,8 +23,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "config.h"
 #include "log.h"
+#include "ly_config.h"
 #include "tree.h"
 
 #ifdef __cplusplus

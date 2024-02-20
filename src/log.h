@@ -18,7 +18,7 @@
 
 #include <stdint.h>
 
-#include "config.h"
+#include "ly_config.h"
 
 #ifdef __cplusplus
 extern "C" {

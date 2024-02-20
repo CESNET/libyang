@@ -20,8 +20,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.h"
 #include "compat.h"
+#include "ly_common.h"
 #include "tree_schema.h"
 
 /**

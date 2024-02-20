@@ -17,10 +17,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.h"
 #include "compat.h"
 #include "hash_table.h"
 #include "log.h"
+#include "ly_common.h"
 #include "plugins_types.h"
 #include "tree.h"
 #include "tree_data.h"

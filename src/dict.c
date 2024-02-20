@@ -21,9 +21,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.h"
 #include "compat.h"
 #include "log.h"
+#include "ly_common.h"
 
 /* starting size of the dictionary */
 #define LYDICT_MIN_SIZE 1024

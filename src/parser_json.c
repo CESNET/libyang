@@ -20,13 +20,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.h"
 #include "compat.h"
 #include "context.h"
 #include "dict.h"
 #include "in_internal.h"
 #include "json.h"
 #include "log.h"
+#include "ly_common.h"
 #include "parser_data.h"
 #include "parser_internal.h"
 #include "plugins_exts.h"

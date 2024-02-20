@@ -19,8 +19,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "common.h"
 #include "in.h"
+#include "ly_common.h"
 #include "parser_internal.h"
 #include "schema_compile.h"
 #include "tree.h"

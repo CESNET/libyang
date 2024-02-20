@@ -14,9 +14,9 @@
 #define _UTEST_MAIN_
 #include "utests.h"
 
-#include "common.h"
 #include "context.h"
 #include "in.h"
+#include "ly_common.h"
 #include "schema_compile.h"
 #include "tests_config.h"
 #include "tree_schema_internal.h"

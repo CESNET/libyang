@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "config.h"
+#include "ly_config.h"
 #include "plugins.h"
 #include "plugins_internal.h"
 

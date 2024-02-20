@@ -18,10 +18,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.h"
 #include "context.h"
 #include "dict.h"
 #include "log.h"
+#include "ly_common.h"
 #include "out.h"
 #include "out_internal.h"
 #include "parser_data.h"

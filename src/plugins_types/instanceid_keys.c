@@ -21,8 +21,8 @@
 #include "libyang.h"
 
 /* additional internal headers for some useful simple macros */
-#include "common.h"
 #include "compat.h"
+#include "ly_common.h"
 #include "path.h"
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 #include "xpath.h"

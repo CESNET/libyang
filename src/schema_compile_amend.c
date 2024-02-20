@@ -23,9 +23,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.h"
 #include "dict.h"
 #include "log.h"
+#include "ly_common.h"
 #include "schema_compile.h"
 #include "schema_compile_node.h"
 #include "schema_features.h"

@@ -21,11 +21,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.h"
 #include "context.h"
 #include "dict.h"
 #include "in_internal.h"
 #include "log.h"
+#include "ly_common.h"
 #include "parser_schema.h"
 #include "path.h"
 #include "set.h"

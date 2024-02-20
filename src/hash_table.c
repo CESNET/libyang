@@ -21,10 +21,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.h"
 #include "compat.h"
 #include "dict.h"
 #include "log.h"
+#include "ly_common.h"
 
 LIBYANG_API_DEF uint32_t
 lyht_hash_multi(uint32_t hash, const char *key_part, size_t len)

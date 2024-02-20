@@ -20,9 +20,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.h"
 #include "compat.h"
 #include "log.h"
+#include "ly_common.h"
 #include "plugins_types.h"
 #include "schema_compile.h"
 #include "set.h"

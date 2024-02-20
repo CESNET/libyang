@@ -29,8 +29,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.h"
-#include "config.h"
+#include "ly_common.h"
+#include "ly_config.h"
 #include "plugins_exts.h"
 #include "plugins_types.h"
 #include "set.h"

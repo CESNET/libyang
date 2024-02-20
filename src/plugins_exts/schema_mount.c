@@ -20,11 +20,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.h"
 #include "compat.h"
 #include "dict.h"
 #include "libyang.h"
 #include "log.h"
+#include "ly_common.h"
 #include "parser_data.h"
 #include "plugins_exts.h"
 #include "plugins_types.h"

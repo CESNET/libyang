@@ -1,9 +1,9 @@
 /**
- * @file common.c
+ * @file ly_common.c
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief common internal definitions for libyang
  *
- * Copyright (c) 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2018 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 #define _GNU_SOURCE
 
-#include "common.h"
+#include "ly_common.h"
 
 #include <assert.h>
 #include <ctype.h>
@@ -26,9 +26,11 @@
 #include <stdlib.h>
 #include <string.h>
 #ifndef _WIN32
-#include <sys/mman.h>
+# ifdef HAVE_MMAP
+#  include <sys/mman.h>
+# endif
 #else
-#include <io.h>
+# include <io.h>
 #endif
 #include <sys/stat.h>
 #include <unistd.h>

@@ -23,9 +23,9 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include "common.h"
 #include "compat.h"
 #include "log.h"
+#include "ly_common.h"
 #include "out.h"
 #include "out_internal.h"
 #include "plugins_exts.h"

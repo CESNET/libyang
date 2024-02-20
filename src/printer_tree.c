@@ -90,8 +90,8 @@
 #include <assert.h>
 #include <string.h>
 
-#include "common.h"
 #include "compat.h"
+#include "ly_common.h"
 #include "out_internal.h"
 #include "plugins_exts.h"
 #include "plugins_types.h"

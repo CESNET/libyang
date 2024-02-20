@@ -20,9 +20,9 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include "common.h"
 #include "in_internal.h"
 #include "json.h"
+#include "ly_common.h"
 #include "tree_schema_internal.h"
 
 const char *

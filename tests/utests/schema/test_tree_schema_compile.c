@@ -15,8 +15,8 @@
 #define _UTEST_MAIN_
 #include "utests.h"
 
-#include "common.h"
 #include "in.h"
+#include "ly_common.h"
 #include "parser_internal.h"
 #include "path.h"
 #include "plugins_types.h"

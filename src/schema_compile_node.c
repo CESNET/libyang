@@ -25,10 +25,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.h"
 #include "compat.h"
 #include "dict.h"
 #include "log.h"
+#include "ly_common.h"
 #include "plugins.h"
 #include "plugins_internal.h"
 #include "plugins_types.h"

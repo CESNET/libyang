@@ -16,8 +16,8 @@
 
 #include <stdlib.h>
 
-#include "common.h"
 #include "hash_table.h"
+#include "ly_common.h"
 
 static void
 test_invalid_arguments(void **state)

@@ -22,10 +22,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.h"
 #include "compat.h"
 #include "context.h"
 #include "log.h"
+#include "ly_common.h"
 #include "plugins_exts.h"
 #include "plugins_exts/metadata.h"
 #include "plugins_types.h"

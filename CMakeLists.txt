@@ -108,7 +108,7 @@ set(type_plugins
     src/plugins_types/node_instanceid.c)
 
 set(libsrc
-    src/common.c
+    src/ly_common.c
     src/log.c
     src/hash_table.c
     src/dict.c
@@ -182,7 +182,7 @@ set(headers
     src/tree_schema.h)
 
 set(internal_headers
-    src/common.h
+    src/ly_common.h
     src/diff.h
     src/hash_table_internal.h
     src/in_internal.h
@@ -205,7 +205,7 @@ set(internal_headers
 
 set(gen_headers
     src/version.h
-    src/config.h)
+    src/ly_config.h)
 
 # files to generate doxygen from
 set(doxy_files
@@ -321,7 +321,7 @@ if ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
 endif()
 
 # generate files
-configure_file(${PROJECT_SOURCE_DIR}/src/config.h.in ${PROJECT_BINARY_DIR}/src/config.h @ONLY)
+configure_file(${PROJECT_SOURCE_DIR}/src/ly_config.h.in ${PROJECT_BINARY_DIR}/src/ly_config.h @ONLY)
 configure_file(${PROJECT_SOURCE_DIR}/src/version.h.in ${PROJECT_BINARY_DIR}/src/version.h @ONLY)
 
 # DOC-only target with no extra dependencies

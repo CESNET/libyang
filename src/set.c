@@ -12,14 +12,14 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "common.h"
+#include "set.h"
 
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "log.h"
-#include "set.h"
+#include "ly_common.h"
 
 LIBYANG_API_DEF LY_ERR
 ly_set_new(struct ly_set **set_p)

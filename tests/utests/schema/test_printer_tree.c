@@ -14,8 +14,8 @@
 #define _UTEST_MAIN_
 #include "utests.h"
 
-#include "common.h"
 #include "context.h"
+#include "ly_common.h"
 #include "out.h"
 #include "printer_schema.h"
 #include "tree_schema.h"
