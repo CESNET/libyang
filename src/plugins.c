@@ -19,7 +19,9 @@
 
 #include <assert.h>
 #include <dirent.h>
-#include <dlfcn.h>
+#ifndef STATIC
+# include <dlfcn.h>
+#endif
 #include <errno.h>
 #include <limits.h>
 #include <pthread.h>
