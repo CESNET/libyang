@@ -431,7 +431,7 @@ lyb_write_string(const char *str, size_t str_len, uint8_t len_size, struct ly_ou
         error = str_len > UINT32_MAX;
         break;
     case sizeof(uint64_t):
-        error = str_len > UINT64_MAX;
+        error = 0;
         break;
     default:
         error = 1;

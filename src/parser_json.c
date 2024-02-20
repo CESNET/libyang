@@ -761,8 +761,8 @@ next_entry:
         LY_CHECK_GOTO((status != LYJSON_OBJECT) && (status != LYJSON_NULL), representation_error);
 
         if (!node || (node->schema != prev->schema)) {
-            LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "Missing JSON data instance #%u of %s:%s to be coupled with metadata.",
-                    instance, prev->schema->module->name, prev->schema->name);
+            LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "Missing JSON data instance #%" PRIu32
+                    " of %s:%s to be coupled with metadata.", instance, prev->schema->module->name, prev->schema->name);
             rc = LY_EVALID;
             goto cleanup;
         }

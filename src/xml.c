@@ -516,7 +516,7 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *
                 }
                 ++offset;
                 if (ly_pututf8(&buf[len], n, &u)) {
-                    LOGVAL(ctx, LYVE_SYNTAX, "Invalid character reference \"%.12s\" (0x%08x).", p, n);
+                    LOGVAL(ctx, LYVE_SYNTAX, "Invalid character reference \"%.12s\" (0x%08" PRIx32 ").", p, n);
                     goto error;
                 }
                 len += u;

@@ -63,14 +63,14 @@ lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_n
                 mem = realloc(str, str_len + strlen(prefix) + 1 + len + 1);
                 LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory."), cleanup);
                 str = mem;
-                str_len += sprintf(str + str_len, "%s:%.*s", prefix, len, str_begin);
+                str_len += sprintf(str + str_len, "%s:%.*s", prefix, (int)len, str_begin);
             } else {
                 /* just append the string, we may get the first expression node without a prefix but since this
                  * is not strictly forbidden, allow it */
                 mem = realloc(str, str_len + len + 1);
                 LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory."), cleanup);
                 str = mem;
-                str_len += sprintf(str + str_len, "%.*s", len, str_begin);
+                str_len += sprintf(str + str_len, "%.*s", (int)len, str_begin);
             }
         } else {
             /* remember there was a prefix found */
@@ -79,7 +79,8 @@ lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_n
             /* resolve the module in the original format */
             mod = lyplg_type_identity_module(resolve_ctx, NULL, str_begin, len, resolve_format, resolve_prefix_data);
             if (!mod && is_nametest) {
-                ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to resolve prefix \"%.*s\".", len, str_begin);
+                ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to resolve prefix \"%.*s\".",
+                        (int)len, str_begin);
                 goto cleanup;
             }
 

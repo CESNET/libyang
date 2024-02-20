@@ -82,7 +82,7 @@ lydict_clean(struct ly_dict *dict)
          * before calling lydict_clean()
          */
         dict_rec = (struct ly_dict_rec *)rec->val;
-        LOGWRN(NULL, "String \"%s\" not freed from the dictionary, refcount %d", dict_rec->value, dict_rec->refcount);
+        LOGWRN(NULL, "String \"%s\" not freed from the dictionary, refcount %" PRIu32 ".", dict_rec->value, dict_rec->refcount);
         /* if record wasn't removed before free string allocated for that record */
 #ifdef NDEBUG
         free(dict_rec->value);

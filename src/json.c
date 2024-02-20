@@ -237,7 +237,7 @@ lyjson_string(struct lyjson_ctx *jsonctx)
 
             offset += i;   /* add read escaped characters */
             LY_CHECK_ERR_GOTO(ly_pututf8(&buf[len], value, &u),
-                    LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Invalid character reference \"%.*s\" (0x%08x).",
+                    LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Invalid character reference \"%.*s\" (0x%08" PRIx32 ").",
                     (int)(&in[offset] - c), c, value),
                     error);
             len += u;      /* update number of bytes in buffer */
@@ -271,7 +271,7 @@ lyjson_string(struct lyjson_ctx *jsonctx)
                     LOGVAL(jsonctx->ctx, LY_VCODE_INCHAR, in[offset]), error);
 
             LY_CHECK_ERR_GOTO(!is_jsonstrchar(value),
-                    LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Invalid character in JSON string \"%.*s\" (0x%08x).",
+                    LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Invalid character in JSON string \"%.*s\" (0x%08" PRIx32 ").",
                     (int)(&in[offset] - start + u), start, value),
                     error);
 
@@ -354,7 +354,7 @@ lyjson_number_is_zero(const char *in, const char *end)
         }
     }
 
-    return lyjson_count_in_row(in, end, '0', 0) == end - in;
+    return lyjson_count_in_row(in, end, '0', 0) == (uint32_t)(end - in);
 }
 
 /**

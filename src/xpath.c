@@ -2393,7 +2393,7 @@ reparse_function_call(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint32_t 
         break;
     }
     if (min_arg_count == -1) {
-        LOGVAL(ctx, LY_VCODE_XP_INFUNC, exp->tok_len[*tok_idx], &exp->expr[exp->tok_pos[*tok_idx]]);
+        LOGVAL(ctx, LY_VCODE_XP_INFUNC, (int)exp->tok_len[*tok_idx], &exp->expr[exp->tok_pos[*tok_idx]]);
         return LY_EINVAL;
     }
     ++(*tok_idx);
@@ -2426,7 +2426,8 @@ reparse_function_call(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint32_t 
     ++(*tok_idx);
 
     if ((arg_count < (uint32_t)min_arg_count) || (arg_count > max_arg_count)) {
-        LOGVAL(ctx, LY_VCODE_XP_INARGCOUNT, arg_count, exp->tok_len[func_tok_idx], &exp->expr[exp->tok_pos[func_tok_idx]]);
+        LOGVAL(ctx, LY_VCODE_XP_INARGCOUNT, arg_count, (int)exp->tok_len[func_tok_idx],
+                &exp->expr[exp->tok_pos[func_tok_idx]]);
         return LY_EVALID;
     }
 
@@ -3119,8 +3120,10 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
                 tok_type = LYXP_TOKEN_OPER_MATH;
 
             } else if (prev_ntype_check || prev_func_check) {
-                LOGVAL(ctx, LYVE_XPATH, "Invalid character 0x%x ('%c'), perhaps \"%.*s\" is supposed to be a function call.",
-                        expr_str[parsed], expr_str[parsed], expr->tok_len[expr->used - 1], &expr->expr[expr->tok_pos[expr->used - 1]]);
+                LOGVAL(ctx, LYVE_XPATH,
+                        "Invalid character 0x%x ('%c'), perhaps \"%.*s\" is supposed to be a function call.",
+                        expr_str[parsed], expr_str[parsed], (int)expr->tok_len[expr->used - 1],
+                        &expr->expr[expr->tok_pos[expr->used - 1]]);
                 ret = LY_EVALID;
                 goto error;
             } else {
@@ -3836,10 +3839,11 @@ xpath_concat(struct lyxp_set **args, uint32_t arg_count, struct lyxp_set *set, u
         for (i = 0; i < arg_count; ++i) {
             if ((args[i]->type == LYXP_SET_SCNODE_SET) && (sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[i]))) {
                 if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-                    LOGWRN(set->ctx, "Argument #%u of %s is a %s node \"%s\".",
+                    LOGWRN(set->ctx, "Argument #%" PRIu32 " of %s is a %s node \"%s\".",
                             i + 1, __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
                 } else if (!warn_is_string_type(sleaf->type)) {
-                    LOGWRN(set->ctx, "Argument #%u of %s is node \"%s\", not of string-type.", i + 1, __func__, sleaf->name);
+                    LOGWRN(set->ctx, "Argument #%" PRIu32 " of %s is node \"%s\", not of string-type.", i + 1, __func__,
+                            sleaf->name);
                 }
             }
         }
@@ -5689,7 +5693,7 @@ moveto_resolve_model(const char **qname, uint32_t *qname_len, const struct lyxp_
             break;
         case LY_VALUE_XML:
             /* all nodes need to be prefixed */
-            LOGVAL(set->ctx, LYVE_DATA, "Non-prefixed node \"%.*s\" in XML xpath found.", *qname_len, *qname);
+            LOGVAL(set->ctx, LYVE_DATA, "Non-prefixed node \"%.*s\" in XML xpath found.", (int)*qname_len, *qname);
             return LY_EVALID;
         }
     }
@@ -8667,7 +8671,7 @@ eval_function_call(const struct lyxp_expr *exp, uint32_t *tok_idx, struct lyxp_s
         }
 
         if (!xpath_func) {
-            LOGVAL(set->ctx, LY_VCODE_XP_INFUNC, exp->tok_len[*tok_idx], &exp->expr[exp->tok_pos[*tok_idx]]);
+            LOGVAL(set->ctx, LY_VCODE_XP_INFUNC, (int)exp->tok_len[*tok_idx], &exp->expr[exp->tok_pos[*tok_idx]]);
             return LY_EVALID;
         }
     }
@@ -8779,12 +8783,12 @@ eval_number(struct ly_ctx *ctx, const struct lyxp_expr *exp, uint32_t *tok_idx, 
         if (errno) {
             LOGVAL(ctx, LY_VCODE_XP_INTOK, "Unknown", &exp->expr[exp->tok_pos[*tok_idx]]);
             LOGVAL(ctx, LYVE_XPATH, "Failed to convert \"%.*s\" into a long double (%s).",
-                    exp->tok_len[*tok_idx], &exp->expr[exp->tok_pos[*tok_idx]], strerror(errno));
+                    (int)exp->tok_len[*tok_idx], &exp->expr[exp->tok_pos[*tok_idx]], strerror(errno));
             return LY_EVALID;
-        } else if (endptr - &exp->expr[exp->tok_pos[*tok_idx]] != exp->tok_len[*tok_idx]) {
+        } else if ((uint32_t)(endptr - &exp->expr[exp->tok_pos[*tok_idx]]) != exp->tok_len[*tok_idx]) {
             LOGVAL(ctx, LY_VCODE_XP_INTOK, "Unknown", &exp->expr[exp->tok_pos[*tok_idx]]);
             LOGVAL(ctx, LYVE_XPATH, "Failed to convert \"%.*s\" into a long double.",
-                    exp->tok_len[*tok_idx], &exp->expr[exp->tok_pos[*tok_idx]]);
+                    (int)exp->tok_len[*tok_idx], &exp->expr[exp->tok_pos[*tok_idx]]);
             return LY_EVALID;
         }
 

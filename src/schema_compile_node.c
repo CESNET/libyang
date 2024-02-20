@@ -1494,7 +1494,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
                 LY_ARRAY_FOR(*bitenums, v) {
                     if (cur_val == (*bitenums)[v].value) {
                         LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
-                                "Invalid enumeration - value %d collide in items \"%s\" and \"%s\".",
+                                "Invalid enumeration - value %" PRId32 " collide in items \"%s\" and \"%s\".",
                                 cur_val, enums_p[u].name, (*bitenums)[v].name);
                         return LY_EVALID;
                     }
@@ -1528,7 +1528,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
                 LY_ARRAY_FOR(*bitenums, v) {
                     if (cur_pos == (*bitenums)[v].position) {
                         LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
-                                "Invalid bits - position %u collide in items \"%s\" and \"%s\".",
+                                "Invalid bits - position %" PRIu32 " collide in items \"%s\" and \"%s\".",
                                 cur_pos, enums_p[u].name, (*bitenums)[v].name);
                         return LY_EVALID;
                     }
@@ -1562,15 +1562,15 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
             if (basetype == LY_TYPE_ENUM) {
                 if (cur_val != base_enums[match].value) {
                     LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
-                            "Invalid enumeration - value of the item \"%s\" has changed from %d to %d in the derived type.",
-                            enums_p[u].name, base_enums[match].value, cur_val);
+                            "Invalid enumeration - value of the item \"%s\" has changed from %" PRId32 " to %" PRId32
+                            " in the derived type.", enums_p[u].name, base_enums[match].value, cur_val);
                     return LY_EVALID;
                 }
             } else {
                 if (cur_pos != base_enums[match].position) {
                     LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
-                            "Invalid bits - position of the item \"%s\" has changed from %u to %u in the derived type.",
-                            enums_p[u].name, base_enums[match].position, cur_pos);
+                            "Invalid bits - position of the item \"%s\" has changed from %" PRIu32 " to %" PRIu32
+                            " in the derived type.", enums_p[u].name, base_enums[match].position, cur_pos);
                     return LY_EVALID;
                 }
             }
@@ -3063,7 +3063,7 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *pnode, struct 
     }
 
     if (llist->min > llist->max) {
-        LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Leaf-list min-elements %u is bigger than max-elements %u.",
+        LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Leaf-list min-elements %" PRIu32 " is bigger than max-elements %" PRIu32 ".",
                 llist->min, llist->max);
         return LY_EVALID;
     }
@@ -3504,7 +3504,8 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
 
     /* checks */
     if (list->min > list->max) {
-        LOGVAL(ctx->ctx, LYVE_SEMANTICS, "List min-elements %u is bigger than max-elements %u.", list->min, list->max);
+        LOGVAL(ctx->ctx, LYVE_SEMANTICS, "List min-elements %" PRIu32 " is bigger than max-elements %" PRIu32 ".",
+                list->min, list->max);
         return LY_EVALID;
     }
 

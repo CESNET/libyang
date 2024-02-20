@@ -223,7 +223,7 @@ lys_nodeid_mod_check(struct lysc_ctx *ctx, const char *str, ly_bool abs, struct 
         /* descendant schema nodeid */
         if (e->tokens[0] != LYXP_TOKEN_NAMETEST) {
             LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid %s value \"%s\" - name test expected instead of \"%.*s\".",
-                    nodeid_type, str, e->tok_len[0], e->expr + e->tok_pos[0]);
+                    nodeid_type, str, (int)e->tok_len[0], e->expr + e->tok_pos[0]);
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -234,7 +234,7 @@ lys_nodeid_mod_check(struct lysc_ctx *ctx, const char *str, ly_bool abs, struct 
     for ( ; i < e->used; i += 2) {
         if (e->tokens[i] != LYXP_TOKEN_OPER_PATH) {
             LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid %s value \"%s\" - \"/\" expected instead of \"%.*s\".",
-                    nodeid_type, str, e->tok_len[i], e->expr + e->tok_pos[i]);
+                    nodeid_type, str, (int)e->tok_len[i], e->expr + e->tok_pos[i]);
             ret = LY_EVALID;
             goto cleanup;
         } else if (e->used == i + 1) {
@@ -244,7 +244,7 @@ lys_nodeid_mod_check(struct lysc_ctx *ctx, const char *str, ly_bool abs, struct 
             goto cleanup;
         } else if (e->tokens[i + 1] != LYXP_TOKEN_NAMETEST) {
             LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid %s value \"%s\" - name test expected instead of \"%.*s\".",
-                    nodeid_type, str, e->tok_len[i + 1], e->expr + e->tok_pos[i + 1]);
+                    nodeid_type, str, (int)e->tok_len[i + 1], e->expr + e->tok_pos[i + 1]);
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -1235,7 +1235,8 @@ lys_apply_deviate_add(struct lysc_ctx *ctx, struct lysp_deviate_add *d, struct l
 
         if (target->flags & LYS_SET_MIN) {
             LOGVAL(ctx->ctx, LYVE_REFERENCE,
-                    "Invalid deviation adding \"min-elements\" property which already exists (with value \"%u\").", *num);
+                    "Invalid deviation adding \"min-elements\" property which already exists (with value \"%" PRIu32 "\").",
+                    *num);
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -1259,7 +1260,7 @@ lys_apply_deviate_add(struct lysc_ctx *ctx, struct lysp_deviate_add *d, struct l
         if (target->flags & LYS_SET_MAX) {
             if (*num) {
                 LOGVAL(ctx->ctx, LYVE_REFERENCE,
-                        "Invalid deviation adding \"max-elements\" property which already exists (with value \"%u\").",
+                        "Invalid deviation adding \"max-elements\" property which already exists (with value \"%" PRIu32 "\").",
                         *num);
             } else {
                 LOGVAL(ctx->ctx, LYVE_REFERENCE,

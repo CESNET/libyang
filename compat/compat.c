@@ -103,7 +103,7 @@ getline(char **lineptr, size_t *n, FILE *stream)
     written = 0;
     while (fgets(chunk, sizeof(chunk), stream)) {
         len = strlen(chunk);
-        if (written + len > *n) {
+        if ((size_t)(written + len) > *n) {
             ptr = realloc(*lineptr, *n + sizeof(chunk));
             if (!ptr) {
                 return -1;

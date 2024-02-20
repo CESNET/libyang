@@ -457,7 +457,7 @@ lydxml_get_hints_opaq(const char *name, size_t name_len, const char *value, size
         if ((unsigned)(ptr - value) == value_len) {
             /* number value */
             *hints |= LYD_VALHINT_DECNUM;
-            if ((num < INT32_MIN) || (num > UINT32_MAX)) {
+            if ((num < INT32_MIN) || (num > (long)UINT32_MAX)) {
                 /* large number */
                 *hints |= LYD_VALHINT_NUM64;
             }
