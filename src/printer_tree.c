@@ -4198,12 +4198,15 @@ trm_lysp_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t ma
         .tpn = module->parsed ? module->parsed->data : NULL,
         .cn = NULL,
         .last_error = 0,
-        .plugin_ctx.ctx = NULL,
-        .plugin_ctx.schema = NULL,
-        .plugin_ctx.filtered = 0,
-        .plugin_ctx.node_overr = TRP_TREE_CTX_EMPTY_NODE_OVERR,
-        .plugin_ctx.last_schema = 1,
-        .plugin_ctx.last_error = 0
+        .plugin_ctx = {
+            .ctx = NULL,
+            .schema = NULL,
+            .filtered = 0,
+            .node_overr = TRP_TREE_CTX_EMPTY_NODE_OVERR,
+            .last_schema = 1,
+            .last_error = 0
+        }
+
     };
 
     pc->out = out;
@@ -4245,12 +4248,15 @@ trm_lysc_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t ma
         .pn = NULL,
         .cn = module->compiled->data,
         .last_error = 0,
-        .plugin_ctx.ctx = NULL,
-        .plugin_ctx.schema = NULL,
-        .plugin_ctx.filtered = 0,
-        .plugin_ctx.node_overr = TRP_TREE_CTX_EMPTY_NODE_OVERR,
-        .plugin_ctx.last_schema = 1,
-        .plugin_ctx.last_error = 0
+        .plugin_ctx = {
+            .ctx = NULL,
+            .schema = NULL,
+            .filtered = 0,
+            .node_overr = TRP_TREE_CTX_EMPTY_NODE_OVERR,
+            .last_schema = 1,
+            .last_error = 0
+        }
+
     };
 
     pc->out = out;
