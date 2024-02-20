@@ -24,11 +24,10 @@ endif()
 
 macro(USE_COMPAT)
     # compatibility checks
-    set(CMAKE_REQUIRED_DEFINITIONS -D_POSIX_C_SOURCE=200809L)
+    list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_POSIX_C_SOURCE=200809L)
     list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
     list(APPEND CMAKE_REQUIRED_DEFINITIONS -D__BSD_VISIBLE=1)
     list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_DEFAULT_SOURCE)
-    set(CMAKE_REQUIRED_LIBRARIES pthread)
 
     check_symbol_exists(vdprintf "stdio.h;stdarg.h" HAVE_VDPRINTF)
     check_symbol_exists(asprintf "stdio.h" HAVE_ASPRINTF)
@@ -42,9 +41,13 @@ macro(USE_COMPAT)
 
     check_symbol_exists(get_current_dir_name "unistd.h" HAVE_GET_CURRENT_DIR_NAME)
 
+    set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+    find_package(Threads)
+    list(APPEND CMAKE_REQUIRED_LIBRARIES ${CMAKE_THREAD_LIBS_INIT})
     check_function_exists(pthread_mutex_timedlock HAVE_PTHREAD_MUTEX_TIMEDLOCK)
+    list(REMOVE_ITEM CMAKE_REQUIRED_LIBRARIES ${CMAKE_THREAD_LIBS_INIT})
 
-    TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
+    test_big_endian(IS_BIG_ENDIAN)
 
     check_include_file("stdatomic.h" HAVE_STDATOMIC)
 
@@ -56,8 +59,10 @@ macro(USE_COMPAT)
     check_symbol_exists(mmap "sys/mman.h" HAVE_MMAP)
     check_symbol_exists(setenv "stdlib.h" HAVE_SETENV)
 
-    unset(CMAKE_REQUIRED_DEFINITIONS)
-    unset(CMAKE_REQUIRED_LIBRARIES)
+    list(REMOVE_ITEM CMAKE_REQUIRED_DEFINITIONS -D_POSIX_C_SOURCE=200809L)
+    list(REMOVE_ITEM CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
+    list(REMOVE_ITEM CMAKE_REQUIRED_DEFINITIONS -D__BSD_VISIBLE=1)
+    list(REMOVE_ITEM CMAKE_REQUIRED_DEFINITIONS -D_DEFAULT_SOURCE)
 
     # header and source file (adding the source directly allows for hiding its symbols)
     configure_file(${PROJECT_SOURCE_DIR}/compat/compat.h.in ${PROJECT_BINARY_DIR}/compat/compat.h @ONLY)
