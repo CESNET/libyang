@@ -191,8 +191,10 @@ struct tm *gmtime_r(const time_t *timep, struct tm *result);
 #endif
 
 #ifndef HAVE_TIMEGM
-# if defined (_WIN32)
+# ifdef _WIN32
 #  define timegm _mkgmtime
+#  define HAVE_TIMEGM
+
 # else
 time_t timegm(struct tm *tm);
 # endif
@@ -202,7 +204,7 @@ time_t timegm(struct tm *tm);
 char *strptime(const char *s, const char *format, struct tm *tm);
 #endif
 
-#if defined (_WIN32)
+#ifdef _WIN32
 # define strtok_r strtok_s
 #endif
 
