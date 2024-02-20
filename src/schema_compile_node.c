@@ -2705,10 +2705,10 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
                     (node->flags & LYS_IS_OUTPUT) ? "RPC/action output parameters" :
                     (ctx->compile_opts & LYS_IS_NOTIF) ? "notification content" : "state data", ctx->path);
         }
-        if (node->flags & (LYS_IS_OUTPUT | LYS_IS_NOTIF)) {
+        if (node->flags & (LYS_IS_OUTPUT | LYS_IS_NOTIF | LYS_CONFIG_R)) {
             /* it is probably better not to order them */
             node->flags |= LYS_ORDBY_USER;
-        } else if (!(node->flags & LYS_ORDBY_MASK) || (node->flags & LYS_CONFIG_R)) {
+        } else if (!(node->flags & LYS_ORDBY_MASK)) {
             /* default ordering is system */
             node->flags |= LYS_ORDBY_SYSTEM;
         }
