@@ -568,7 +568,7 @@ cast_string_recursive(const struct lyd_node *node, struct lyxp_set *set, uint32_
                     LY_CHECK_RET(ly_out_new_memory(&buf, 0, &out));
                     rc = lyd_print_all(out, any->value.tree, LYD_XML, 0);
                     ly_out_free(out, NULL, 0);
-                    LY_CHECK_RET(rc < 0, -rc);
+                    LY_CHECK_RET(rc);
                     break;
                 case LYD_ANYDATA_LYB:
                     LOGERR(set->ctx, LY_EINVAL, "Cannot convert LYB anydata into string.");
