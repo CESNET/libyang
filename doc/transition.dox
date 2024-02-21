@@ -37,7 +37,6 @@
  * libyang 1.x               | libyang 2.0                          | Notes
  * :-------------------------|:-------------------------------------|:-------------------------------------------------------
  * -                         | ::ly_err_last()                      | New API for handling errors.
- * -                         | ::ly_errcode()                       | ^
  * ly_verb_dbg()             | ::ly_log_dbg_groups()                | Rename to align with the names of the accepted values.
  * ly_verb()                 | ::ly_log_level()                     | ^
  *

@@ -202,13 +202,11 @@ struct ly_ctx;
                                         'require-instance false;'. It also enables usage of
                                         [lyd_leafref_get_links](@ref lyd_leafref_get_links) and
                                         [lyd_leafref_link_node_tree](@ref lyd_leafref_link_node_tree) APIs. */
-#define LY_CTX_BUILTIN_PLUGINS_ONLY 0x0800 /**< By default, context loads all available built-in plugins and extensions. This
-                                        options prohibits loading of built-in non-YANG plugin types and extensions (ipv4-address,
-                                        ipv6-address, etc.). Instead the value is processed by built-in YANG plugins (usually string)
-                                        with all its behavioral implications as hex-string comparison becoming case-sensitive.
-                                        Change of this flag during the lifetime of context is not fully supported. Once the non-YANG
-                                        plugins or extensions are loaded during context creation, they will be used regardless of this
-                                        flag. Therefore it is recommended to set this flag during the first context creation. */
+#define LY_CTX_BUILTIN_PLUGINS_ONLY 0x0800 /**< By default, context uses all available plugins for types and extensions,
+                                        both included and external. This options prevents all included plugins to be
+                                        loaded except for built-in YANG types so all derived types will use these and
+                                        for all purposes behave as the base type. The option can be used for cases when
+                                        invalid data needs to be stored in YANG node values. */
 
 /** @} contextoptions */
 
