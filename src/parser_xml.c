@@ -481,7 +481,7 @@ lydxml_get_hints_opaq(const char *name, size_t name_len, const char *value, size
         opaq = (struct lyd_node_opaq *)first;
         assert(opaq->format == LY_VALUE_XML);
         if (!ly_strncmp(opaq->name.name, name, name_len) &&
-                ((ns && !strcmp(opaq->name.module_ns, ns)) || (!ns && !opaq->name.module_ns))) {
+                ((ns && opaq->name.module_ns && !strcmp(opaq->name.module_ns, ns)) || (!ns && !opaq->name.module_ns))) {
             if (opaq->value && opaq->value[0]) {
                 /* leaf-list nodes */
                 opaq->hints |= LYD_NODEHINT_LEAFLIST;
