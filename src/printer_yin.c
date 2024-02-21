@@ -111,6 +111,8 @@ yprp_stmt(struct lys_ypr_ctx *pctx, struct lysp_stmt *stmt)
         } else {
             ypr_open(pctx, stmt->stmt, lys_stmt_arg(stmt->kw), stmt->arg, flag);
         }
+    } else if (stmt->kw == LY_STMT_EXTENSION_INSTANCE) {
+        ypr_open(pctx, stmt->stmt, (stmt->arg && stmt->arg[0]) ? lys_stmt_arg(LY_STMT_VALUE) : NULL, stmt->arg, flag);
     }
 
     if (stmt->child) {
