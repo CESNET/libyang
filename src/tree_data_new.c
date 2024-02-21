@@ -766,20 +766,8 @@ lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const ch
     return LY_SUCCESS;
 }
 
-/**
- * @brief Create a new list node in the data tree.
- *
- * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
- * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
- * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
- * @param[in] key_values Ordered key string values of the new list instance, all must be set.
- * @param[in] value_lengths Array of lengths of each @p key_values, may be NULL if @p key_values are 0-terminated strings.
- * @param[in] options Bitmask of options, see @ref newvalueoptions.
- * @param[out] node Optional created node.
- * @return LY_ERR value.
- */
-static LY_ERR
-_lyd_new_list3(struct lyd_node *parent, const struct lys_module *module, const char *name, const void **key_values,
+LIBYANG_API_DEF LY_ERR
+lyd_new_list3(struct lyd_node *parent, const struct lys_module *module, const char *name, const char **key_values,
         uint32_t *value_lengths, uint32_t options, struct lyd_node **node)
 {
     struct lyd_node *ret = NULL, *key;
@@ -828,25 +816,6 @@ cleanup:
         *node = ret;
     }
     return rc;
-}
-
-LIBYANG_API_DEF LY_ERR
-lyd_new_list3(struct lyd_node *parent, const struct lys_module *module, const char *name, const char **key_values,
-        uint32_t *value_lengths, uint32_t options, struct lyd_node **node)
-{
-    const struct ly_ctx *ctx = parent ? LYD_CTX(parent) : (module ? module->ctx : NULL);
-
-    LY_CHECK_ARG_RET(ctx, !(options & LYD_NEW_VAL_BIN_VALUE), LY_EINVAL);
-
-    return _lyd_new_list3(parent, module, name, (const void **)key_values, value_lengths, options, node);
-}
-
-LIBYANG_API_DECL LY_ERR
-lyd_new_list3_bin(struct lyd_node *parent, const struct lys_module *module, const char *name, const void **key_values,
-        uint32_t *value_lengths, uint32_t options, struct lyd_node **node)
-{
-    options |= LYD_NEW_VAL_BIN_VALUE;
-    return _lyd_new_list3(parent, module, name, key_values, value_lengths, options, node);
 }
 
 /**

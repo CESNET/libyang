@@ -285,7 +285,6 @@ struct rb_node;
  * - ::lyd_new_list()
  * - ::lyd_new_list2()
  * - ::lyd_new_list3()
- * - ::lyd_new_list3_bin()
  * - ::lyd_new_any()
  * - ::lyd_new_opaq()
  * - ::lyd_new_opaq2()
@@ -1341,34 +1340,17 @@ LIBYANG_API_DECL LY_ERR lyd_new_list2(struct lyd_node *parent, const struct lys_
 /**
  * @brief Create a new list node in the data tree.
  *
- * To create a term node based on binary value, use ::lyd_new_list3_bin().
- *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
  * @param[in] key_values Ordered key string values of the new list instance, all must be set.
  * @param[in] value_lengths Array of lengths of each @p key_values, may be NULL if @p key_values are 0-terminated strings.
- * @param[in] options Bitmask of options, see @ref newvalueoptions.
+ * @param[in] options Bitmask of options, see @ref newvaloptions.
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_list3(struct lyd_node *parent, const struct lys_module *module, const char *name,
         const char **key_values, uint32_t *value_lengths, uint32_t options, struct lyd_node **node);
-
-/**
- * @brief Create a new list node in the data tree based on binary value.
- *
- * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
- * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
- * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
- * @param[in] key_values Ordered key string values of the new list instance, all must be set.
- * @param[in] value_lengths Array of lengths of each @p key_values, may be NULL if @p key_values are 0-terminated strings.
- * @param[in] options Bitmask of options, see @ref newvalueoptions.
- * @param[out] node Optional created node.
- * @return LY_ERR value.
- */
-LIBYANG_API_DECL LY_ERR lyd_new_list3_bin(struct lyd_node *parent, const struct lys_module *module, const char *name,
-        const void **key_values, uint32_t *value_lengths, uint32_t options, struct lyd_node **node);
 
 /**
  * @brief Create a new term node in the data tree.
