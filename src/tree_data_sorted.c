@@ -1227,7 +1227,7 @@ lyds_insert(struct lyd_node **first_sibling, struct lyd_node **leader, struct ly
     /* get the Red-black tree from the @p leader */
     rbt = lyds_get_rb_tree(*leader, &root_meta);
     if (!root_meta) {
-        lyds_create_metadata(*leader, &root_meta);
+        LY_CHECK_RET(lyds_create_metadata(*leader, &root_meta));
     }
     if (!rbt) {
         /* Due to optimization, the Red-black tree has not been created so far, so it will be
