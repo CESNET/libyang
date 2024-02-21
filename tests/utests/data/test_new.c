@@ -143,19 +143,19 @@ test_top_level(void **state)
     assert_int_equal(lyd_new_list3_bin(NULL, mod, "l1", (const void **)key_vals, val_lens, LYD_NEW_VAL_STORE_ONLY, &node), LY_EINVAL);
     CHECK_LOG_CTX("Invalid argument !(store_only && (format == LY_VALUE_CANON || format == LY_VALUE_LYB)) (_lyd_new_list3()).", NULL, 0);
 
-    assert_int_equal(lyd_new_list3(NULL, mod, "l1", key_vals, val_lens, LYD_NEW_VAL_CANON_VALUE, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_list3(NULL, mod, "l1", key_vals, val_lens, LYD_NEW_VAL_CANON, &node), LY_SUCCESS);
     lyd_free_tree(node);
-    assert_int_equal(lyd_new_list3(NULL, mod, "l1", key_vals, val_lens, LYD_NEW_VAL_CANON_VALUE | LYD_NEW_VAL_STORE_ONLY, &node), LY_EINVAL);
+    assert_int_equal(lyd_new_list3(NULL, mod, "l1", key_vals, val_lens, LYD_NEW_VAL_CANON | LYD_NEW_VAL_STORE_ONLY, &node), LY_EINVAL);
     CHECK_LOG_CTX("Invalid argument !(store_only && (format == LY_VALUE_CANON || format == LY_VALUE_LYB)) (_lyd_new_list3()).", NULL, 0);
 
-    assert_int_equal(lyd_new_list(NULL, mod, "l1", LYD_NEW_VAL_BIN_VALUE, &node, "val_a", 5, "val_b", 5), LY_SUCCESS);
+    assert_int_equal(lyd_new_list(NULL, mod, "l1", LYD_NEW_VAL_BIN, &node, "val_a", 5, "val_b", 5), LY_SUCCESS);
     lyd_free_tree(node);
-    assert_int_equal(lyd_new_list(NULL, mod, "l1", LYD_NEW_VAL_BIN_VALUE | LYD_NEW_VAL_STORE_ONLY, &node, "val_a", 5, "val_b", 5), LY_EINVAL);
+    assert_int_equal(lyd_new_list(NULL, mod, "l1", LYD_NEW_VAL_BIN | LYD_NEW_VAL_STORE_ONLY, &node, "val_a", 5, "val_b", 5), LY_EINVAL);
     CHECK_LOG_CTX("Invalid argument !(store_only && (format == LY_VALUE_CANON || format == LY_VALUE_LYB)) (lyd_new_list()).", NULL, 0);
 
-    assert_int_equal(lyd_new_list(NULL, mod, "l1", LYD_NEW_VAL_CANON_VALUE, &node, "val_a", "val_b"), LY_SUCCESS);
+    assert_int_equal(lyd_new_list(NULL, mod, "l1", LYD_NEW_VAL_CANON, &node, "val_a", "val_b"), LY_SUCCESS);
     lyd_free_tree(node);
-    assert_int_equal(lyd_new_list(NULL, mod, "l1", LYD_NEW_VAL_CANON_VALUE | LYD_NEW_VAL_STORE_ONLY, &node, "val_a", "val_b"), LY_EINVAL);
+    assert_int_equal(lyd_new_list(NULL, mod, "l1", LYD_NEW_VAL_CANON | LYD_NEW_VAL_STORE_ONLY, &node, "val_a", "val_b"), LY_EINVAL);
     CHECK_LOG_CTX("Invalid argument !(store_only && (format == LY_VALUE_CANON || format == LY_VALUE_LYB)) (lyd_new_list()).", NULL, 0);
 
     /* leaf */
@@ -168,16 +168,16 @@ test_top_level(void **state)
     assert_int_equal(lyd_new_term(NULL, mod, "foo", "256", 0, &node), LY_SUCCESS);
     lyd_free_tree(node);
 
-    assert_int_equal(lyd_new_term(NULL, mod, "foo", "25", LYD_NEW_VAL_BIN_VALUE, &node), LY_EINVAL);
+    assert_int_equal(lyd_new_term(NULL, mod, "foo", "25", LYD_NEW_VAL_BIN, &node), LY_EINVAL);
     CHECK_LOG_CTX("Invalid argument !(options & 0x04) (lyd_new_term()).", NULL, 0);
-    assert_int_equal(lyd_new_term_bin(NULL, mod, "foo", "25", 2, LYD_NEW_VAL_BIN_VALUE, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_term_bin(NULL, mod, "foo", "25", 2, LYD_NEW_VAL_BIN, &node), LY_SUCCESS);
     lyd_free_tree(node);
     assert_int_equal(lyd_new_term_bin(NULL, mod, "foo", "25", 2, LYD_NEW_VAL_STORE_ONLY, &node), LY_EINVAL);
     CHECK_LOG_CTX("Invalid argument !(store_only && (format == LY_VALUE_CANON || format == LY_VALUE_LYB)) (_lyd_new_term()).", NULL, 0);
 
-    assert_int_equal(lyd_new_term(NULL, mod, "foo", "25", LYD_NEW_VAL_CANON_VALUE, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(NULL, mod, "foo", "25", LYD_NEW_VAL_CANON, &node), LY_SUCCESS);
     lyd_free_tree(node);
-    assert_int_equal(lyd_new_term(NULL, mod, "foo", "25", LYD_NEW_VAL_CANON_VALUE | LYD_NEW_VAL_STORE_ONLY, &node), LY_EINVAL);
+    assert_int_equal(lyd_new_term(NULL, mod, "foo", "25", LYD_NEW_VAL_CANON | LYD_NEW_VAL_STORE_ONLY, &node), LY_EINVAL);
     CHECK_LOG_CTX("Invalid argument !(store_only && (format == LY_VALUE_CANON || format == LY_VALUE_LYB)) (_lyd_new_term()).", NULL, 0);
 
     /* leaf-list */
@@ -195,9 +195,9 @@ test_top_level(void **state)
     CHECK_LOG_CTX("Inner node (container, notif, RPC, or action) \"l2\" not found.", NULL, 0);
 
     /* anydata */
-    assert_int_equal(lyd_new_any(NULL, mod, "any", "{\"node\":\"val\"}", 0, LYD_ANYDATA_STRING, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_any(NULL, mod, "any", "{\"node\":\"val\"}", LYD_ANYDATA_STRING, 0, &node), LY_SUCCESS);
     lyd_free_tree(node);
-    assert_int_equal(lyd_new_any(NULL, mod, "any", "<node>val</node>", 0, LYD_ANYDATA_STRING, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_any(NULL, mod, "any", "<node>val</node>", LYD_ANYDATA_STRING, 0, &node), LY_SUCCESS);
     lyd_free_tree(node);
 
     /* key-less list */

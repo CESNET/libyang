@@ -475,17 +475,17 @@ finish:
  * @brief Gets format from lyd_new_* options
  *
  * @param[in] options Bitmask of options, see @ref newvalueoptions.
- * @param[out] format The output format.
+ * @param[out] format Value format.
  * @return LY_ERR value.
  */
 static LY_ERR
-_lyd_new_val_format(const uint32_t options, LY_VALUE_FORMAT *format)
+lyd_new_val_get_format(uint32_t options, LY_VALUE_FORMAT *format)
 {
-    LY_CHECK_ARG_RET(NULL, format, !((options & LYD_NEW_VAL_BIN_VALUE) && (options & LYD_NEW_VAL_CANON_VALUE)), LY_EVALID);
+    LY_CHECK_ARG_RET(NULL, format, !((options & LYD_NEW_VAL_BIN) && (options & LYD_NEW_VAL_CANON)), LY_EVALID);
 
-    if (options & LYD_NEW_VAL_BIN_VALUE) {
+    if (options & LYD_NEW_VAL_BIN) {
         *format = LY_VALUE_LYB;
-    } else if (options & LYD_NEW_VAL_CANON_VALUE) {
+    } else if (options & LYD_NEW_VAL_CANON) {
         *format = LY_VALUE_CANON;
     } else {
         *format = LY_VALUE_JSON;
@@ -622,7 +622,7 @@ lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const cha
 
     LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
-    LY_CHECK_RET(_lyd_new_val_format(options, &format));
+    LY_CHECK_RET(lyd_new_val_get_format(options, &format));
     LY_CHECK_ARG_RET(ctx, !(store_only && (format == LY_VALUE_CANON || format == LY_VALUE_LYB)), LY_EINVAL);
 
     /* create the list node */
@@ -672,7 +672,7 @@ lyd_new_ext_list(const struct lysc_ext_instance *ext, const char *name, uint32_t
     LY_VALUE_FORMAT format;
 
     LY_CHECK_ARG_RET(ctx, ext, node, name, LY_EINVAL);
-    LY_CHECK_RET(_lyd_new_val_format(options, &format));
+    LY_CHECK_RET(lyd_new_val_get_format(options, &format));
     LY_CHECK_ARG_RET(ctx, !(store_only && (format == LY_VALUE_CANON || format == LY_VALUE_LYB)), LY_EINVAL);
 
     schema = lysc_ext_find_node(ext, NULL, name, 0, LYS_LIST, 0);
@@ -791,7 +791,7 @@ _lyd_new_list3(struct lyd_node *parent, const struct lys_module *module, const c
     ly_bool store_only = (options & LYD_NEW_VAL_STORE_ONLY) ? 1 : 0;
     LY_VALUE_FORMAT format;
 
-    LY_CHECK_RET(_lyd_new_val_format(options, &format));
+    LY_CHECK_RET(lyd_new_val_get_format(options, &format));
     LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, (format != LY_VALUE_LYB) || value_lengths, LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
     LY_CHECK_ARG_RET(ctx, !(store_only && (format == LY_VALUE_CANON || format == LY_VALUE_LYB)), LY_EINVAL);
@@ -876,7 +876,7 @@ _lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const ch
 
     LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
-    LY_CHECK_RET(_lyd_new_val_format(options, &format));
+    LY_CHECK_RET(lyd_new_val_get_format(options, &format));
     LY_CHECK_ARG_RET(ctx, !(store_only && (format == LY_VALUE_CANON || format == LY_VALUE_LYB)), LY_EINVAL);
 
     if (!module) {
@@ -911,7 +911,7 @@ lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const cha
 {
     const struct ly_ctx *ctx = parent ? LYD_CTX(parent) : (module ? module->ctx : NULL);
 
-    LY_CHECK_ARG_RET(ctx, !(options & LYD_NEW_VAL_BIN_VALUE), LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, !(options & LYD_NEW_VAL_BIN), LY_EINVAL);
     return _lyd_new_term(parent, module, name, value, value ? strlen(value) : 0, options, node);
 }
 
@@ -919,7 +919,8 @@ LIBYANG_API_DECL LY_ERR
 lyd_new_term_bin(struct lyd_node *parent, const struct lys_module *module, const char *name,
         const void *value, size_t value_len, uint32_t options, struct lyd_node **node)
 {
-    options |= LYD_NEW_VAL_BIN_VALUE;
+    options |= LYD_NEW_VAL_BIN;
+
     return _lyd_new_term(parent, module, name, value, value_len, options, node);
 }
 
@@ -935,7 +936,7 @@ lyd_new_ext_term(const struct lysc_ext_instance *ext, const char *name, const vo
     LY_VALUE_FORMAT format;
 
     LY_CHECK_ARG_RET(ctx, ext, node, name, LY_EINVAL);
-    LY_CHECK_RET(_lyd_new_val_format(options, &format));
+    LY_CHECK_RET(lyd_new_val_get_format(options, &format));
     LY_CHECK_ARG_RET(ctx, !(store_only && (format == LY_VALUE_CANON || format == LY_VALUE_LYB)), LY_EINVAL);
 
     schema = lysc_ext_find_node(ext, NULL, name, 0, LYD_NODE_TERM, 0);
@@ -958,7 +959,7 @@ lyd_new_ext_term(const struct lysc_ext_instance *ext, const char *name, const vo
 
 LIBYANG_API_DEF LY_ERR
 lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
-        uint32_t options, LYD_ANYDATA_VALUETYPE value_type, struct lyd_node **node)
+        LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **node)
 {
     LY_ERR r;
     struct lyd_node *ret = NULL;
@@ -999,8 +1000,8 @@ lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_new_ext_any(const struct lysc_ext_instance *ext, const char *name, const void *value, uint32_t options,
-        LYD_ANYDATA_VALUETYPE value_type, struct lyd_node **node)
+lyd_new_ext_any(const struct lysc_ext_instance *ext, const char *name, const void *value, LYD_ANYDATA_VALUETYPE value_type,
+        uint32_t options, struct lyd_node **node)
 {
     struct lyd_node *ret = NULL;
     const struct lysc_node *schema;
@@ -1658,7 +1659,6 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
 
     assert(parent || ctx);
     assert(path && ((path[0] == '/') || parent));
-    assert(!(options & LYD_NEW_VAL_BIN_VALUE) || !(options & LYD_NEW_VAL_CANON_VALUE));
 
     if (!ctx) {
         ctx = LYD_CTX(parent);
@@ -1666,13 +1666,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
     if (value && !value_len) {
         value_len = strlen(value);
     }
-    if (options & LYD_NEW_VAL_BIN_VALUE) {
-        format = LY_VALUE_LYB;
-    } else if (options & LYD_NEW_VAL_CANON_VALUE) {
-        format = LY_VALUE_CANON;
-    } else {
-        format = LY_VALUE_JSON;
-    }
+    lyd_new_val_get_format(options, &format);
 
     /* parse path */
     LY_CHECK_GOTO(ret = ly_path_parse(ctx, NULL, path, strlen(path), 0, LY_PATH_BEGIN_EITHER, LY_PATH_PREFIX_FIRST,
@@ -1867,7 +1861,7 @@ lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path
         struct lyd_node **node)
 {
     LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent,
-            !(options & LYD_NEW_VAL_BIN_VALUE) || !(options & LYD_NEW_VAL_CANON_VALUE), LY_EINVAL);
+            !(options & LYD_NEW_VAL_BIN) || !(options & LYD_NEW_VAL_CANON), LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, ctx, LY_EINVAL);
 
     return lyd_new_path_(parent, ctx, NULL, path, value, 0, LYD_ANYDATA_STRING, options, node, NULL);
@@ -1879,7 +1873,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
         struct lyd_node **new_node)
 {
     LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent,
-            !(options & LYD_NEW_VAL_BIN_VALUE) || !(options & LYD_NEW_VAL_CANON_VALUE), LY_EINVAL);
+            !(options & LYD_NEW_VAL_BIN) || !(options & LYD_NEW_VAL_CANON), LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, ctx, LY_EINVAL);
 
     return lyd_new_path_(parent, ctx, NULL, path, value, value_len, value_type, options, new_parent, new_node);
@@ -1892,7 +1886,7 @@ lyd_new_ext_path(struct lyd_node *parent, const struct lysc_ext_instance *ext, c
     const struct ly_ctx *ctx = ext ? ext->module->ctx : NULL;
 
     LY_CHECK_ARG_RET(ctx, ext, path, (path[0] == '/') || parent,
-            !(options & LYD_NEW_VAL_BIN_VALUE) || !(options & LYD_NEW_VAL_CANON_VALUE), LY_EINVAL);
+            !(options & LYD_NEW_VAL_BIN) || !(options & LYD_NEW_VAL_CANON), LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, ctx, LY_EINVAL);
 
     return lyd_new_path_(parent, ctx, ext, path, value, 0, LYD_ANYDATA_STRING, options, node, NULL);
