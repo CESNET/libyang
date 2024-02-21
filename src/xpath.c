@@ -6224,7 +6224,7 @@ moveto_node_hash_child(struct lyxp_set *set, const struct lysc_node *scnode, con
 
     /* create specific data instance if needed */
     if (scnode->nodetype == LYS_LIST) {
-        LY_CHECK_GOTO(ret = lyd_create_list(scnode, predicates, NULL, &inst), cleanup);
+        LY_CHECK_GOTO(ret = lyd_create_list(scnode, predicates, NULL, 1, &inst), cleanup);
     } else if (scnode->nodetype == LYS_LEAFLIST) {
         LY_CHECK_GOTO(ret = lyd_create_term2(scnode, &predicates[0].value, &inst), cleanup);
     }

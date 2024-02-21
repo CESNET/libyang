@@ -50,6 +50,31 @@
         lyd_free_all(tree); \
     }
 
+#define TEST_ERROR_XML(MOD_NAME, NODE_NAME, DATA) \
+    { \
+        struct lyd_node *tree; \
+        const char *data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</" NODE_NAME ">"; \
+        CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree); \
+        assert_null(tree); \
+    }
+
+#define TEST_SUCCESS_PARSE_STORE_ONLY_XML(MOD_NAME, NODE_NAME, DATA, TYPE, ...) \
+    { \
+        struct lyd_node *tree; \
+        const char *data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</" NODE_NAME ">"; \
+        CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STORE_ONLY, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree); \
+        CHECK_LYD_NODE_TERM((struct lyd_node_term *)tree, 4, 0, 0, 0, 1, TYPE, __VA_ARGS__); \
+        lyd_free_all(tree); \
+    }
+
+#define TEST_ERROR_PARSE_STORE_ONLY_XML(MOD_NAME, NODE_NAME, DATA) \
+    { \
+        struct lyd_node *tree; \
+        const char *data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</" NODE_NAME ">"; \
+        CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STORE_ONLY, LYD_VALIDATE_PRESENT, LY_EVALID, tree); \
+        assert_null(tree); \
+    }
+
 #define TEST_SUCCESS_LYB(MOD_NAME, NODE_NAME, DATA) \
     { \
         struct lyd_node *tree_1; \
@@ -111,6 +136,33 @@ test_data_xml(void **state)
     TEST_SUCCESS_XML("a", "l7", "::C:D:E:f:a/110", STRING, "::c:d:e:c:0/110");
     TEST_SUCCESS_XML("a", "l7", "::C:D:E:f:a/96", STRING, "::c:d:e:0:0/96");
     TEST_SUCCESS_XML("a", "l7", "::C:D:E:f:a/55", STRING, "::/55");
+}
+
+static void
+test_data_basic_plugins_only_xml(void **state)
+{
+    const char *schema;
+
+    schema = MODULE_CREATE_YANG("a", "leaf l {type inet:ipv4-address;}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    /* Stored via ipv4-address plugin */
+    TEST_SUCCESS_XML("a", "l", "192.168.0.1", STRING, "192.168.0.1");
+    TEST_ERROR_XML("a", "l", "192.168.0.333");
+    TEST_ERROR_PARSE_STORE_ONLY_XML("a", "l", "192.168.0.333");
+
+    /* Recreate context to get rid of all plugins */
+    ly_ctx_destroy(UTEST_LYCTX);
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_BUILTIN_PLUGINS_ONLY, &UTEST_LYCTX));
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    /* Stored via string plugin */
+    TEST_SUCCESS_XML("a", "l", "192.168.0.1", STRING, "192.168.0.1");
+    TEST_ERROR_XML("a", "l", "192.168.0.333");
+    CHECK_LOG_CTX("Unsatisfied pattern - \"192.168.0.333\" does not conform to \""
+            "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9]"
+            "[0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%[\\p{N}\\p{L}]+)?\".", "/a:l", 1);
+    TEST_SUCCESS_PARSE_STORE_ONLY_XML("a", "l", "192.168.0.333", STRING, "192.168.0.333");
 }
 
 static void
@@ -278,6 +330,7 @@ main(void)
         UTEST(test_data_xml),
         UTEST(test_data_lyb),
         UTEST(test_plugin_sort),
+        UTEST(test_data_basic_plugins_only_xml),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

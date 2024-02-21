@@ -156,6 +156,7 @@ lyb_parse_union(const void *lyb_data, size_t lyb_data_len, uint32_t *type_idx, c
  * @param[in] ctx libyang context.
  * @param[in] type Specific union type to use for storing.
  * @param[in] subvalue Union subvalue structure.
+ * @param[in] options The store options.
  * @param[in] resolve Whether the value needs to be resolved (validated by a callback).
  * @param[in] ctx_node Context node for prefix resolution.
  * @param[in] tree Data tree for resolving (validation).
@@ -164,13 +165,14 @@ lyb_parse_union(const void *lyb_data, size_t lyb_data_len, uint32_t *type_idx, c
  * @return LY_ERR value.
  */
 static LY_ERR
-union_store_type(const struct ly_ctx *ctx, struct lysc_type *type, struct lyd_value_union *subvalue,
+union_store_type(const struct ly_ctx *ctx, struct lysc_type *type, struct lyd_value_union *subvalue, uint32_t options,
         ly_bool resolve, const struct lyd_node *ctx_node, const struct lyd_node *tree, struct lys_glob_unres *unres,
         struct ly_err_item **err)
 {
     LY_ERR ret;
     const void *value = NULL;
     size_t value_len = 0;
+    uint32_t opts;
 
     *err = NULL;
 
@@ -181,7 +183,8 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type *type, struct lyd_va
         value_len = subvalue->orig_len;
     }
 
-    ret = type->plugin->store(ctx, type, value, value_len, 0, subvalue->format, subvalue->prefix_data, subvalue->hints,
+    opts = (options & LYPLG_TYPE_STORE_ONLY) ? LYPLG_TYPE_STORE_ONLY : 0;
+    ret = type->plugin->store(ctx, type, value, value_len, opts, subvalue->format, subvalue->prefix_data, subvalue->hints,
             subvalue->ctx_node, &subvalue->value, unres, err);
     if ((ret != LY_SUCCESS) && (ret != LY_EINCOMPLETE)) {
         /* clear any leftover/freed garbage */
@@ -207,6 +210,7 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type *type, struct lyd_va
  * @param[in] ctx libyang context.
  * @param[in] types Sized array of union types.
  * @param[in] subvalue Union subvalue structure.
+ * @param[in] options The store options.
  * @param[in] resolve Whether the value needs to be resolved (validated by a callback).
  * @param[in] ctx_node Context node for prefix resolution.
  * @param[in] tree Data tree for resolving (validation).
@@ -217,8 +221,8 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type *type, struct lyd_va
  */
 static LY_ERR
 union_find_type(const struct ly_ctx *ctx, struct lysc_type **types, struct lyd_value_union *subvalue,
-        ly_bool resolve, const struct lyd_node *ctx_node, const struct lyd_node *tree, uint32_t *type_idx,
-        struct lys_glob_unres *unres, struct ly_err_item **err)
+        uint32_t options, ly_bool resolve, const struct lyd_node *ctx_node, const struct lyd_node *tree,
+        uint32_t *type_idx, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;
@@ -242,7 +246,7 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type **types, struct lyd_v
 
     /* use the first usable subtype to store the value */
     for (u = 0; u < LY_ARRAY_COUNT(types); ++u) {
-        ret = union_store_type(ctx, types[u], subvalue, resolve, ctx_node, tree, unres, &e);
+        ret = union_store_type(ctx, types[u], subvalue, options, resolve, ctx_node, tree, unres, &e);
         if ((ret == LY_SUCCESS) || (ret == LY_EINCOMPLETE)) {
             break;
         }
@@ -330,7 +334,7 @@ lyb_fill_subvalue(const struct ly_ctx *ctx, struct lysc_type_union *type_u, cons
     }
 
     /* use the specific type to store the value */
-    ret = union_store_type(ctx, type_u->types[type_idx], subvalue, 0, NULL, NULL, unres, err);
+    ret = union_store_type(ctx, type_u->types[type_idx], subvalue, *options, 0, NULL, NULL, unres, err);
 
     return ret;
 }
@@ -368,7 +372,7 @@ lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, c
         LY_CHECK_GOTO(ret, cleanup);
 
         /* use the first usable subtype to store the value */
-        ret = union_find_type(ctx, type_u->types, subvalue, 0, NULL, NULL, NULL, unres, err);
+        ret = union_find_type(ctx, type_u->types, subvalue, options, 0, NULL, NULL, NULL, unres, err);
         LY_CHECK_GOTO((ret != LY_SUCCESS) && (ret != LY_EINCOMPLETE), cleanup);
     }
 
@@ -406,11 +410,11 @@ lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type
     if (subvalue->format == LY_VALUE_LYB) {
         /* use the specific type to store the value */
         lyb_parse_union(subvalue->original, 0, &type_idx, NULL, NULL);
-        ret = union_store_type(ctx, type_u->types[type_idx], subvalue, 1, ctx_node, tree, NULL, err);
+        ret = union_store_type(ctx, type_u->types[type_idx], subvalue, 0, 1, ctx_node, tree, NULL, err);
         LY_CHECK_RET(ret);
     } else {
         /* use the first usable subtype to store the value */
-        ret = union_find_type(ctx, type_u->types, subvalue, 1, ctx_node, tree, NULL, NULL, err);
+        ret = union_find_type(ctx, type_u->types, subvalue, 0, 1, ctx_node, tree, NULL, NULL, err);
         LY_CHECK_RET(ret);
     }
 
@@ -491,7 +495,7 @@ lyb_union_print(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
         ctx = subvalue->ctx_node->module->ctx;
     }
     subvalue->value.realtype->plugin->free(ctx, &subvalue->value);
-    r = union_find_type(ctx, type_u->types, subvalue, 0, NULL, NULL, &type_idx, NULL, &err);
+    r = union_find_type(ctx, type_u->types, subvalue, 0, 0, NULL, NULL, &type_idx, NULL, &err);
     ly_err_free(err);
     LY_CHECK_RET((r != LY_SUCCESS) && (r != LY_EINCOMPLETE), NULL);
 

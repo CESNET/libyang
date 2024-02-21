@@ -42,6 +42,8 @@
  */
 static const char b64_etable[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
+static LY_ERR lyplg_type_validate_binary(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node), const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err);
+
 /**
  * @brief Encode binary value into a base64 string value.
  *
@@ -165,12 +167,11 @@ binary_base64_decode(const char *value, size_t value_len, void **data, size_t *s
  *
  * @param[in] value Value to validate.
  * @param[in] value_len Length of @p value.
- * @param[in] type type of the value.
  * @param[out] err Error information.
  * @return LY_ERR value.
  */
 static LY_ERR
-binary_base64_validate(const char *value, size_t value_len, const struct lysc_type_bin *type, struct ly_err_item **err)
+binary_base64_validate(const char *value, size_t value_len, struct ly_err_item **err)
 {
     uint32_t idx, pad;
 
@@ -202,13 +203,6 @@ binary_base64_validate(const char *value, size_t value_len, const struct lysc_ty
     if (value_len & 3) {
         /* base64 length must be multiple of 4 chars */
         return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Base64 encoded value length must be divisible by 4.");
-    }
-
-    /* length restriction of the binary value */
-    if (type->length) {
-        const uint32_t octet_count = ((idx + pad) / 4) * 3 - pad;
-
-        LY_CHECK_RET(lyplg_type_validate_range(LY_TYPE_BINARY, type->length, octet_count, value, value_len, err));
     }
 
     return LY_SUCCESS;
@@ -266,7 +260,6 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
         struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lysc_type_bin *type_bin = (struct lysc_type_bin *)type;
     struct lyd_value_binary *val;
 
     /* init storage */
@@ -306,7 +299,7 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
         LY_CHECK_GOTO(ret, cleanup);
 
         /* validate */
-        ret = binary_base64_validate(value, value_len, type_bin, err);
+        ret = binary_base64_validate(value, value_len, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -324,6 +317,12 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
         LY_CHECK_GOTO(ret, cleanup);
     }
 
+    if (!(options & LYPLG_TYPE_STORE_ONLY)) {
+        /* validate value */
+        ret = lyplg_type_validate_binary(ctx, type, NULL, NULL, storage, err);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
+
 cleanup:
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         free((void *)value);
@@ -333,6 +332,33 @@ cleanup:
         lyplg_type_free_binary(ctx, storage);
     }
     return ret;
+}
+
+/**
+ * @brief Implementation of ::lyplg_type_validate_clb for the binary type.
+ */
+static LY_ERR
+lyplg_type_validate_binary(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
+        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
+{
+    struct lysc_type_bin *type_bin = (struct lysc_type_bin *)type;
+    struct lyd_value_binary *val;
+    const void *value;
+    size_t value_len;
+
+    LY_CHECK_ARG_RET(NULL, type, storage, err, LY_EINVAL);
+
+    val = LYPLG_TYPE_VAL_IS_DYN(val) ? (struct lyd_value_binary *)(storage->dyn_mem) : (struct lyd_value_binary *)(storage->fixed_mem);
+    value = storage->_canonical;
+    value_len = strlen(storage->_canonical);
+    *err = NULL;
+
+    /* length restriction of the binary value */
+    if (type_bin->length) {
+        LY_CHECK_RET(lyplg_type_validate_range(LY_TYPE_BINARY, type_bin->length, val->size, value, value_len, err));
+    }
+
+    return LY_SUCCESS;
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -470,7 +496,7 @@ const struct lyplg_type_record plugins_binary[] = {
 
         .plugin.id = "libyang 2 - binary, version 1",
         .plugin.store = lyplg_type_store_binary,
-        .plugin.validate = NULL,
+        .plugin.validate = lyplg_type_validate_binary,
         .plugin.compare = lyplg_type_compare_binary,
         .plugin.sort = lyplg_type_sort_binary,
         .plugin.print = lyplg_type_print_binary,

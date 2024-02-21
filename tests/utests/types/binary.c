@@ -232,6 +232,15 @@ test_plugin_store(void **state)
     assert_int_equal(LY_EVALID, ly_ret);
     assert_string_equal(err->msg, "Unsatisfied length - string \"MTIz\" length is not allowed.");
     ly_err_free(err);
+
+    /* LYPLG_TYPE_STORE_ONLY test */
+    val = "MTIz";
+    err = NULL;
+    ly_ret = type->store(UTEST_LYCTX, lysc_type2, val, strlen(val),
+            LYPLG_TYPE_STORE_ONLY, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err);
+    assert_int_equal(LY_SUCCESS, ly_ret);
+    type->free(UTEST_LYCTX, &value);
+    ly_err_free(err);
 }
 
 static void

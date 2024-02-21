@@ -154,7 +154,7 @@ lyd_diff_add_create_nested_userord(struct lyd_node *node)
     }
 
     /* create the metadata */
-    LY_CHECK_GOTO(rc = lyd_new_meta(NULL, node, NULL, meta_name, meta_val, 0, NULL), cleanup);
+    LY_CHECK_GOTO(rc = lyd_new_meta(NULL, node, NULL, meta_name, meta_val, LYD_NEW_VAL_STORE_ONLY, NULL), cleanup);
 
 cleanup:
     free(dyn);
@@ -382,7 +382,7 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
             }
 
             /* set the none operation */
-            LY_CHECK_RET(lyd_new_meta(NULL, elem, NULL, "yang:operation", "none", 0, NULL));
+            LY_CHECK_RET(lyd_new_meta(NULL, elem, NULL, "yang:operation", "none", LYD_NEW_VAL_STORE_ONLY, NULL));
         }
 
         dup = diff_parent;
@@ -424,12 +424,12 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
 
         /* add parent operation, if any */
         if (diff_parent && (diff_parent != dup)) {
-            LY_CHECK_RET(lyd_new_meta(NULL, diff_parent, NULL, "yang:operation", "none", 0, NULL));
+            LY_CHECK_RET(lyd_new_meta(NULL, diff_parent, NULL, "yang:operation", "none", LYD_NEW_VAL_STORE_ONLY, NULL));
         }
     }
 
     /* add subtree operation */
-    LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:operation", lyd_diff_op2str(op), 0, NULL));
+    LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:operation", lyd_diff_op2str(op), LYD_NEW_VAL_STORE_ONLY, NULL));
 
     if (op == LYD_DIFF_OP_CREATE) {
         /* all nested user-ordered (leaf-)lists need special metadata for create op */
@@ -443,37 +443,37 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
 
     /* orig-default */
     if (orig_default) {
-        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:orig-default", orig_default, 0, NULL));
+        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:orig-default", orig_default, LYD_NEW_VAL_STORE_ONLY, NULL));
     }
 
     /* orig-value */
     if (orig_value) {
-        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:orig-value", orig_value, 0, NULL));
+        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:orig-value", orig_value, LYD_NEW_VAL_STORE_ONLY, NULL));
     }
 
     /* key */
     if (key) {
-        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:key", key, 0, NULL));
+        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:key", key, LYD_NEW_VAL_STORE_ONLY, NULL));
     }
 
     /* value */
     if (value) {
-        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:value", value, 0, NULL));
+        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:value", value, LYD_NEW_VAL_STORE_ONLY, NULL));
     }
 
     /* position */
     if (position) {
-        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:position", position, 0, NULL));
+        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:position", position, LYD_NEW_VAL_STORE_ONLY, NULL));
     }
 
     /* orig-key */
     if (orig_key) {
-        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:orig-key", orig_key, 0, NULL));
+        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:orig-key", orig_key, LYD_NEW_VAL_STORE_ONLY, NULL));
     }
 
     /* orig-position */
     if (orig_position) {
-        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:orig-position", orig_position, 0, NULL));
+        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:orig-position", orig_position, LYD_NEW_VAL_STORE_ONLY, NULL));
     }
 
     return LY_SUCCESS;
@@ -1460,7 +1460,7 @@ lyd_diff_change_op(struct lyd_node *node, enum lyd_diff_op op)
     lyd_diff_del_meta(node, "operation");
 
     if (node->schema) {
-        return lyd_new_meta(LYD_CTX(node), node, NULL, "yang:operation", lyd_diff_op2str(op), 0, NULL);
+        return lyd_new_meta(LYD_CTX(node), node, NULL, "yang:operation", lyd_diff_op2str(op), LYD_NEW_VAL_STORE_ONLY, NULL);
     } else {
         return lyd_new_attr(node, "yang", "operation", lyd_diff_op2str(op), NULL);
     }
@@ -1685,7 +1685,7 @@ lyd_diff_merge_create(struct lyd_node **diff_match, struct lyd_node **diff, enum
 
                 /* current value is the previous one (meta) */
                 LY_CHECK_RET(lyd_new_meta(LYD_CTX(src_diff), *diff_match, NULL, "yang:orig-value",
-                        lyd_get_value(*diff_match), 0, NULL));
+                        lyd_get_value(*diff_match), LYD_NEW_VAL_STORE_ONLY, NULL));
 
                 /* update the value itself */
                 LY_CHECK_RET(lyd_change_term(*diff_match, lyd_get_value(src_diff)));
@@ -1699,10 +1699,10 @@ lyd_diff_merge_create(struct lyd_node **diff_match, struct lyd_node **diff, enum
                 to_free = *diff_match;
                 *diff_match = src_dup;
 
-                r = lyd_new_meta(ctx, src_dup, NULL, "yang:orig-value", lyd_get_value(to_free), 0, NULL);
+                r = lyd_new_meta(ctx, src_dup, NULL, "yang:orig-value", lyd_get_value(to_free), LYD_NEW_VAL_STORE_ONLY, NULL);
                 lyd_free_tree(to_free);
                 LY_CHECK_RET(r);
-                LY_CHECK_RET(lyd_new_meta(ctx, src_dup, NULL, "yang:operation", lyd_diff_op2str(LYD_DIFF_OP_REPLACE), 0, NULL));
+                LY_CHECK_RET(lyd_new_meta(ctx, src_dup, NULL, "yang:operation", lyd_diff_op2str(LYD_DIFF_OP_REPLACE), LYD_NEW_VAL_STORE_ONLY, NULL));
             }
         } else {
             /* deleted + created -> operation NONE */
@@ -1713,7 +1713,7 @@ lyd_diff_merge_create(struct lyd_node **diff_match, struct lyd_node **diff, enum
         if ((*diff_match)->schema->nodetype & LYD_NODE_TERM) {
             /* add orig-dflt metadata */
             LY_CHECK_RET(lyd_new_meta(LYD_CTX(src_diff), *diff_match, NULL, "yang:orig-default",
-                    trg_flags & LYD_DEFAULT ? "true" : "false", 0, NULL));
+                    trg_flags & LYD_DEFAULT ? "true" : "false", LYD_NEW_VAL_STORE_ONLY, NULL));
 
             /* update dflt flag itself */
             (*diff_match)->flags &= ~LYD_DEFAULT;
@@ -1763,7 +1763,7 @@ lyd_diff_merge_delete(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
         if (diff_match->schema->nodetype & LYD_NODE_TERM) {
             /* add orig-default meta because it is expected */
             LY_CHECK_RET(lyd_new_meta(LYD_CTX(src_diff), diff_match, NULL, "yang:orig-default",
-                    src_diff->flags & LYD_DEFAULT ? "true" : "false", 0, NULL));
+                    src_diff->flags & LYD_DEFAULT ? "true" : "false", LYD_NEW_VAL_STORE_ONLY, NULL));
         }
         break;
     case LYD_DIFF_OP_REPLACE:

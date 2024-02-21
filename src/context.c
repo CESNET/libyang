@@ -283,6 +283,7 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     struct ly_in *in = NULL;
     LY_ERR rc = LY_SUCCESS;
     struct lys_glob_unres unres = {0};
+    ly_bool builtin_plugins_only;
 
     LY_CHECK_ARG_RET(NULL, new_ctx, LY_EINVAL);
 
@@ -293,7 +294,8 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     lydict_init(&ctx->dict);
 
     /* plugins */
-    LY_CHECK_ERR_GOTO(lyplg_init(), LOGINT(NULL); rc = LY_EINT, cleanup);
+    builtin_plugins_only = (options & LY_CTX_BUILTIN_PLUGINS_ONLY) ? 1 : 0;
+    LY_CHECK_ERR_GOTO(lyplg_init(builtin_plugins_only), LOGINT(NULL); rc = LY_EINT, cleanup);
 
     if (options & LY_CTX_LEAFREF_LINKING) {
         ctx->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec), ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
@@ -1234,8 +1236,7 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p, cons
         LY_CHECK_GOTO(ret = ylib_deviation(cont, mod, 0), error);
 
         /* conformance-type */
-        LY_CHECK_GOTO(ret = lyd_new_term(cont, NULL, "conformance-type", mod->implemented ? "implement" : "import", 0,
-                NULL), error);
+        LY_CHECK_GOTO(ret = lyd_new_term(cont, NULL, "conformance-type", mod->implemented ? "implement" : "import", 0, NULL), error);
 
         /* submodule list */
         LY_CHECK_GOTO(ret = ylib_submodules(cont, mod->parsed, 0), error);

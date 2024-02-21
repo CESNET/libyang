@@ -50,6 +50,14 @@
         assert_null(tree); \
     }
 
+#define TEST_SUCCESS_PARSE_STORE_ONLY_XML(MOD_NAME, DATA) \
+    {\
+        struct lyd_node *tree; \
+        const char *data = "<port xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</port>"; \
+        CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STORE_ONLY, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree); \
+        lyd_free_all(tree); \
+    }
+
 static void
 test_data_xml(void **state)
 {
@@ -63,6 +71,9 @@ test_data_xml(void **state)
 
     TEST_ERROR_XML("defs", "\n 15 \t\n  ");
     CHECK_LOG_CTX("Unsatisfied range - value \"15\" is out of the allowed range.", "/defs:port", 3);
+
+    /* LYPLG_TYPE_STORE_ONLY test */
+    TEST_SUCCESS_PARSE_STORE_ONLY_XML("defs", "\n 15 \t\n  ");
 }
 
 int

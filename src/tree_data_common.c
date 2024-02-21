@@ -505,8 +505,8 @@ ly_err_print_build_path(const struct ly_ctx *ctx, const struct lyd_node *node, c
 
 LY_ERR
 lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct lysc_type *type, const void *value,
-        size_t value_len, ly_bool is_utf8, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
-        const struct lysc_node *ctx_node, ly_bool *incomplete)
+        size_t value_len, ly_bool is_utf8, ly_bool store_only, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data,
+        uint32_t hints, const struct lysc_node *ctx_node, ly_bool *incomplete)
 {
     LY_ERR ret;
     struct ly_err_item *err = NULL;
@@ -524,6 +524,9 @@ lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct ly
     }
     if (is_utf8) {
         options |= LYPLG_TYPE_STORE_IS_UTF8;
+    }
+    if (store_only) {
+        options |= LYPLG_TYPE_STORE_ONLY;
     }
 
     ret = type->plugin->store(ctx, type, value, value_len, options, format, prefix_data, hints, ctx_node, val, NULL, &err);
@@ -688,7 +691,7 @@ lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t va
 
     /* store the value */
     LOG_LOCSET(NULL, &node->node);
-    ret = lyd_value_store(ctx, &val, type, value, value_len, 0, NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA, node->schema, NULL);
+    ret = lyd_value_store(ctx, &val, type, value, value_len, 0, 0, NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA, node->schema, NULL);
     LOG_LOCBACK(0, 1);
     LY_CHECK_RET(ret);
 
