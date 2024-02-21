@@ -175,10 +175,6 @@ LIBYANG_API_DECL uint32_t ly_log_dbg_groups(uint32_t dbg_groups);
 /**
  * @brief Logger callback.
  *
- * !IMPORTANT! If an error has a specific error-app-tag defined in the model, it will NOT be set
- *             at the time of calling this callback. It will be set right after, so to retrieve it
- *             it must be checked afterwards with ::ly_errapptag().
- *
  * @param[in] level Log level of the message.
  * @param[in] msg Message.
  * @param[in] data_path Optional data path of the related node.
@@ -222,13 +218,6 @@ LIBYANG_API_DECL ly_log_clb ly_get_log_clb(void);
  * context.
  *
  * To print a specific error information via libyang logger, there is ::ly_err_print().
- *
- * To simplify access to the last error record in the context, there is a set of functions returning important error information.
- * - ::ly_errapptag()
- * - ::ly_errcode()
- * - ::ly_vecode()
- * - ::ly_errmsg()
- * - ::ly_errpath()
  *
  * \note API for this group of functions is described in the [error information module](@ref errors).
  */

@@ -134,21 +134,21 @@ struct ly_in;
  * - when statements on existing nodes are evaluated, if not satisfied, a validation error is raised,
  * - invalid multiple data instances/data from several cases cause a validation error,
  * - implicit nodes (NP containers and default values) are added.
- * - Validations based on leaf/leaf-list types restriction is being done regardless of setting LYD_PARSE_ONLY
  * @{
  */
 /* note: keep the lower 16bits free for use by LYD_VALIDATE_ flags. They are not supposed to be combined together,
  * but since they are used (as a separate parameter) together in some functions, we want to keep them in a separated
  * range to be able detect that the caller put wrong flags into the parser/validate options parameter. */
-#define LYD_PARSE_ONLY      0x010000        /**< Data will be only parsed and no validation will be performed. When statements
-                                                 are kept unevaluated, union types may not be fully resolved, and
-                                                 default values are not added (only the ones parsed are present). */
+#define LYD_PARSE_ONLY      0x010000        /**< Data will be only parsed and no data validation will be performed but
+                                                 type value restrictions will be checked (unlike ::LYD_PARSE_STORE_ONLY).
+                                                 When statements are kept unevaluated, union types may not be fully
+                                                 resolved, and default values are not added (only the ones parsed are
+                                                 present). */
 #define LYD_PARSE_STRICT    0x020000        /**< Instead of silently ignoring data without schema definition raise an error.
                                                  Do not combine with ::LYD_PARSE_OPAQ (except for ::LYD_LYB). */
 #define LYD_PARSE_OPAQ      0x040000        /**< Instead of silently ignoring data without definition, parse them into
                                                  an opaq node. Do not combine with ::LYD_PARSE_STRICT (except for ::LYD_LYB). */
 #define LYD_PARSE_NO_STATE  0x080000        /**< Forbid state data in the parsed data. Usually used with ::LYD_VALIDATE_NO_STATE. */
-
 #define LYD_PARSE_LYB_MOD_UPDATE  0x100000  /**< Only for LYB format, allow parsing data printed using a specific module
                                                  revision to be loaded even with a module with the same name but newer
                                                  revision. */
@@ -172,8 +172,10 @@ struct ly_in;
 #define LYD_PARSE_NO_NEW 0x1000000          /**< Do not set ::LYD_NEW (non-validated node flag) for any nodes. Use
                                                  when parsing validated data to skip some validation tasks and modify
                                                  some validation behavior (auto-deletion of cases). */
-#define LYD_PARSE_STORE_ONLY 0x2000000      /**< Perform only storing operation, no validation based on leaf/leaf-list type
-                                                 restrictions will be performed. */
+#define LYD_PARSE_STORE_ONLY 0x2000000      /**< Similar to ::LYD_PARSE_ONLY but even type value restrictions will not
+                                                 be checked (length, range, pattern, ...) and if a value can be stored,
+                                                 it is. Calling separate validation on these data always checks all the
+                                                 restrictions as well. */
 
 #define LYD_PARSE_OPTS_MASK 0xFFFF0000      /**< Mask for all the LYD_PARSE_ options. */
 

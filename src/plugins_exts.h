@@ -575,7 +575,7 @@ typedef LY_ERR (*lyplg_ext_compile_clb)(struct lysc_ctx *cctx, const struct lysp
  * @param[in] cctx Optional compile context to generate the path from.
  * @param[in] ext Compiled extension instance.
  * @param[in] level Log message level (error, warning, etc.)
- * @param[in] err_no Error type code.
+ * @param[in] err Error type code.
  * @param[in] format Format string to print.
  */
 LIBYANG_API_DECL void lyplg_ext_compile_log(const struct lysc_ctx *cctx, const struct lysc_ext_instance *ext,
@@ -587,7 +587,7 @@ LIBYANG_API_DECL void lyplg_ext_compile_log(const struct lysc_ctx *cctx, const s
  * @param[in] path Log error schema path to use.
  * @param[in] ext Compiled extension instance.
  * @param[in] level Log message level (error, warning, etc.)
- * @param[in] err_no Error type code.
+ * @param[in] err Error type code.
  * @param[in] format Format string to print.
  */
 LIBYANG_API_DECL void lyplg_ext_compile_log_path(const char *path, const struct lysc_ext_instance *ext,

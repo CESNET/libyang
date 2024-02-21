@@ -1292,7 +1292,7 @@ LIBYANG_API_DECL LY_ERR lyplg_type_validate_patterns(struct lysc_pattern **patte
  * @param[in] node Context node.
  * @param[in] value Target value.
  * @param[in] tree Full data tree to search in.
- * @param[out] target Pointer to set of target nodes, optional.
+ * @param[out] targets Pointer to set of target nodes, optional.
  * @param[out] errmsg Error message in case of error.
  * @return LY_ERR value.
  */
