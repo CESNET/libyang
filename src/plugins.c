@@ -444,7 +444,7 @@ plugins_insert_dir(enum LYPLG type)
 #endif
 
 LY_ERR
-lyplg_init(ly_bool builtin_plugins_only)
+lyplg_init(ly_bool builtin_type_plugins_only)
 {
     LY_ERR ret;
 
@@ -470,7 +470,7 @@ lyplg_init(ly_bool builtin_plugins_only)
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_string), error);
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_union), error);
 
-    if (!builtin_plugins_only) {
+    if (!builtin_type_plugins_only) {
         /* yang */
         LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_instanceid_keys), error);
 

@@ -1270,9 +1270,9 @@ LIBYANG_API_DECL LY_ERR lyd_new_ext_inner(const struct lysc_ext_instance *ext, c
 #define LYD_NEW_VAL_OUTPUT 0x01      /**< Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
                                           taken into consideration. Otherwise, the output's data node is going to be created. */
 #define LYD_NEW_VAL_STORE_ONLY 0x02  /**< Whether to perform only storing operation with no or minimum valitions */
-#define LYD_NEW_VAL_BIN_VALUE 0x04   /**< Interpret the provided leaf/leaf-list @p value as being in the binary
+#define LYD_NEW_VAL_BIN 0x04         /**< Interpret the provided leaf/leaf-list @p value as being in the binary
                                           ::LY_VALUE_LYB format, to learn what exactly is expected see @ref howtoDataLYB. */
-#define LYD_NEW_VAL_CANON_VALUE 0x08 /**< Interpret the provided leaf/leaf-list @p value as being in the canonical
+#define LYD_NEW_VAL_CANON 0x08       /**< Interpret the provided leaf/leaf-list @p value as being in the canonical
                                           (or JSON if no defined) ::LY_VALUE_CANON format. If it is not, it may lead
                                           to unexpected behavior. */
 #define LYD_NEW_META_CLEAR_DFLT 0x10 /**< Whether to clear the default flag starting from @p parent, recursively all NP containers. */
@@ -1428,13 +1428,13 @@ LIBYANG_API_DECL LY_ERR lyd_new_ext_term(const struct lysc_ext_instance *ext, co
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_ANYDATA or #LYS_ANYXML.
  * @param[in] value Value for the node. Expected type is determined by @p value_type.
- * @param[in] options Bitmask of options, see @ref newvalueoptions.
  * @param[in] value_type Type of the provided value in @p value.
+ * @param[in] options Bitmask of options, see @ref newvaloptions.
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name,
-        const void *value, uint32_t options, LYD_ANYDATA_VALUETYPE value_type, struct lyd_node **node);
+        const void *value, LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **node);
 
 /**
  * @brief Create a new top-level any node defined in the given extension instance.
@@ -1445,13 +1445,13 @@ LIBYANG_API_DECL LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_mo
  * @param[in] ext Extension instance where the any node being created is defined.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_ANYDATA or #LYS_ANYXML.
  * @param[in] value Value for the node. Expected type is determined by @p value_type.
- * @param[in] options Bitmask of options, see @ref newvalueoptions.
  * @param[in] value_type Type of the provided value in @p value.
+ * @param[in] options Bitmask of options, see @ref newvaloptions.
  * @param[out] node The created node.
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_ext_any(const struct lysc_ext_instance *ext, const char *name, const void *value,
-        uint32_t options, LYD_ANYDATA_VALUETYPE value_type, struct lyd_node **node);
+        LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **node);
 
 /**
  * @brief Create a new metadata.
