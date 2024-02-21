@@ -1170,7 +1170,7 @@ lyds_create_metadata(struct lyd_node *leader, struct lyd_meta **meta_p)
     LY_CHECK_ERR_RET(!modyang, LOGERR(LYD_CTX(leader), LY_EINT, "The yang module is not installed."), LY_EINT);
 
     /* create new metadata, its rbt is NULL */
-    ret = lyd_create_meta(leader, &meta, modyang, RB_NAME, RB_NAME_LEN, NULL, 0, 0, NULL,
+    ret = lyd_create_meta(leader, &meta, modyang, RB_NAME, RB_NAME_LEN, NULL, 0, 0, 1, NULL,
             LY_VALUE_CANON, NULL, LYD_HINT_DATA, NULL, 0, NULL);
     LY_CHECK_RET(ret);
 

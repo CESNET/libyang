@@ -442,7 +442,7 @@ plugins_insert_dir(enum LYPLG type)
 #endif
 
 LY_ERR
-lyplg_init(void)
+lyplg_init(ly_bool builtin_plugins_only)
 {
     LY_ERR ret;
 
@@ -468,34 +468,36 @@ lyplg_init(void)
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_string), error);
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_union), error);
 
-    /* yang */
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_instanceid_keys), error);
+    if (!builtin_plugins_only) {
+        /* yang */
+        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_instanceid_keys), error);
 
-    /* ietf-inet-types */
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv4_address), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv4_address_no_zone), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv6_address), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv6_address_no_zone), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv4_prefix), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv6_prefix), error);
+        /* ietf-inet-types */
+        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv4_address), error);
+        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv4_address_no_zone), error);
+        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv6_address), error);
+        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv6_address_no_zone), error);
+        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv4_prefix), error);
+        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv6_prefix), error);
 
-    /* ietf-yang-types */
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_date_and_time), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_hex_string), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_xpath10), error);
+        /* ietf-yang-types */
+        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_date_and_time), error);
+        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_hex_string), error);
+        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_xpath10), error);
 
-    /* ietf-netconf-acm */
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_node_instanceid), error);
+        /* ietf-netconf-acm */
+        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_node_instanceid), error);
 
-    /* lyds_tree */
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_lyds_tree), error);
+        /* lyds_tree */
+        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_lyds_tree), error);
 
-    /* internal extensions */
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_metadata), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_nacm), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_yangdata), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_schema_mount), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_structure), error);
+        /* internal extensions */
+        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_metadata), error);
+        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_nacm), error);
+        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_yangdata), error);
+        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_schema_mount), error);
+        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_structure), error);
+    }
 
 #ifndef STATIC
     /* external types */
