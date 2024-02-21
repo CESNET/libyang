@@ -628,6 +628,13 @@ ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
     LY_CHECK_ERR_RET((option & LY_CTX_NO_YANGLIBRARY) && !(ctx->flags & LY_CTX_NO_YANGLIBRARY),
             LOGARG(ctx, option), LY_EINVAL);
 
+    if (!(ctx->flags & LY_CTX_BUILTIN_PLUGINS_ONLY) && (option & LY_CTX_BUILTIN_PLUGINS_ONLY)) {
+        LOGERR(ctx, LY_EINVAL,
+                "Invalid argument %s (LY_CTX_BUILTIN_PLUGINS_ONLY can be set only when creating a new context) (%s()).",
+                "option", __func__);
+        return LY_EINVAL;
+    }
+
     if (!(ctx->flags & LY_CTX_LEAFREF_LINKING) && (option & LY_CTX_LEAFREF_LINKING)) {
         ctx->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec), ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
         LY_CHECK_ERR_RET(!ctx->leafref_links_ht, LOGARG(ctx, option), LY_EMEM);

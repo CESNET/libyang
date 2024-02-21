@@ -269,8 +269,8 @@ test_options(void **state)
     assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_LEAFREF_LINKING);
 
     /* LY_CTX_BUILTIN_PLUGINS_ONLY */
-    assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_BUILTIN_PLUGINS_ONLY));
-    assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_BUILTIN_PLUGINS_ONLY);
+    assert_int_equal(LY_EINVAL, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_BUILTIN_PLUGINS_ONLY));
+    CHECK_LOG_CTX("Invalid argument option (LY_CTX_BUILTIN_PLUGINS_ONLY can be set only when creating a new context) (ly_ctx_set_options()).", NULL, 0);
 
     assert_int_equal(UTEST_LYCTX->flags, ly_ctx_get_options(UTEST_LYCTX));
 }
