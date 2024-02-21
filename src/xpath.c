@@ -4187,7 +4187,7 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
             leaf = (struct lyd_node_term *)args[0]->val.nodes[i].node;
             sleaf = (struct lysc_node_leaf *)leaf->schema;
             val = &leaf->value;
-            if (!(sleaf->nodetype & LYD_NODE_TERM) || (leaf->value.realtype->basetype != LY_TYPE_IDENT)) {
+            if (!sleaf || !(sleaf->nodetype & LYD_NODE_TERM) || (leaf->value.realtype->basetype != LY_TYPE_IDENT)) {
                 /* uninteresting */
                 continue;
             }
