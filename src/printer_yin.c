@@ -100,10 +100,6 @@ yprp_stmt(struct lys_ypr_ctx *pctx, struct lysp_stmt *stmt)
     struct lysp_stmt *childstmt;
     int8_t flag = stmt->child ? 1 : -1;
 
-    /* TODO:
-             the extension instance substatements in extension instances (LY_STMT_EXTENSION_INSTANCE)
-             cannot find the compiled information, so it is needed to be done,
-             currently it is ignored */
     if (lys_stmt_str(stmt->kw)) {
         if (lys_stmt_flags(stmt->kw) & LY_STMT_FLAG_YIN) {
             ypr_open(pctx, stmt->stmt, NULL, NULL, flag);
