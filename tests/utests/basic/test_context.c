@@ -1066,6 +1066,47 @@ test_explicit_compile(void **state)
     assert_non_null(mod);
 }
 
+static void
+test_add_parsed_module(void **state)
+{
+    struct lys_module *mod;
+
+    mod = calloc(1, sizeof(*mod));
+    assert_non_null(mod);
+    assert_int_equal(LY_SUCCESS, lydict_insert(UTEST_LYCTX, "module1", 0, &mod->name));
+    assert_int_equal(LY_SUCCESS, lydict_insert(UTEST_LYCTX, "m1", 0, &mod->prefix));
+    assert_int_equal(LY_SUCCESS, lydict_insert(UTEST_LYCTX, "urn:tests:m1", 0, &mod->ns));
+    mod->parsed = calloc(1, sizeof(*mod->parsed));
+    assert_non_null(mod->parsed);
+    mod->parsed->mod = mod;
+    mod->parsed->version = LYS_VERSION_1_1;
+
+    struct lysp_node_list *list_node;
+
+    list_node = calloc(1, sizeof(*list_node));
+    assert_non_null(list_node);
+    list_node->nodetype = LYS_LIST;
+    list_node->flags = LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM;
+    assert_int_equal(LY_SUCCESS, lydict_insert(UTEST_LYCTX, "list1", 0, &list_node->name));
+    assert_int_equal(LY_SUCCESS, lydict_insert(UTEST_LYCTX, "leaf1", 0, &list_node->key));
+    mod->parsed->data = (struct lysp_node *)list_node;
+
+    struct lysp_node_leaf *leaf_node;
+
+    leaf_node = calloc(1, sizeof(*leaf_node));
+    assert_non_null(leaf_node);
+    leaf_node->parent = (struct lysp_node *)list_node;
+    leaf_node->nodetype = LYS_LEAF;
+    leaf_node->flags = LYS_CONFIG_W | LYS_STATUS_CURR | LYS_MAND_TRUE;
+    assert_int_equal(LY_SUCCESS, lydict_insert(UTEST_LYCTX, "leaf1", 0, &leaf_node->name));
+    assert_int_equal(LY_SUCCESS, lydict_insert(UTEST_LYCTX, "string", 0, &leaf_node->type.name));
+    leaf_node->type.pmod = mod->parsed;
+    list_node->child = (struct lysp_node *)leaf_node;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_add_parsed_module(UTEST_LYCTX, mod, NULL));
+    assert_non_null(ly_ctx_get_module_implemented(UTEST_LYCTX, "module1"));
+}
+
 int
 main(void)
 {
@@ -1078,6 +1119,7 @@ main(void)
         UTEST(test_ylmem),
         UTEST(test_set_priv_parsed),
         UTEST(test_explicit_compile),
+        UTEST(test_add_parsed_module),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

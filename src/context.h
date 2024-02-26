@@ -639,6 +639,23 @@ LIBYANG_API_DECL struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const
         const char **features);
 
 /**
+ * @brief Adds parsed module to the context
+ *
+ * The module will be automatically implemented and optionally compiled in the same way as it would be loaded via
+ * ::ly_ctx_load_module. Once module is successfully added into context, context is taking over ownership of data,
+ * including performing data cleanup if necessary
+ *
+ * @param[in] ctx Context to add to.
+ * @param[in] mod The parsed module.
+ * @param[in] features Optional array of features ended with NULL to be enabled if the module is being implemented.
+ * The feature string '*' enables all and array of length 1 with only the terminating NULL explicitly disables all
+ * the features. In case the parameter is NULL, the features are untouched - left disabled in newly loaded module or
+ * with the current features settings in case the module is already present in the context.
+ * @return LY_ERR value
+ */
+LIBYANG_API_DEF LY_ERR ly_ctx_add_parsed_module(struct ly_ctx *ctx, struct lys_module *mod, const char **features);
+
+/**
  * @brief Get data of the internal ietf-yang-library module with information about all the loaded modules.
  * ietf-yang-library module must be loaded.
  *

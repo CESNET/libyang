@@ -192,17 +192,23 @@ ly_ctx_unset_searchdir_last(struct ly_ctx *ctx, uint32_t count)
     return LY_SUCCESS;
 }
 
-LIBYANG_API_DEF struct lys_module *
-ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, const char **features)
+/**
+ * @brief Implements and compile the module
+ *
+ * @param[in] ctx The context holding the module
+ * @param[in] mod The module to implement and compile
+ * @param[in] features Optional array of features ended with NULL to be enabled if the module is being implemented.
+ * The feature string '*' enables all and array of length 1 with only the terminating NULL explicitly disables all
+ * the features. In case the parameter is NULL, the features are untouched - left disabled in newly loaded module or
+ * with the current features settings in case the module is already present in the context.
+ * @return Pointer to the data model structure, NULL if not found or some error occurred.
+ */
+static LY_ERR
+_ly_ctx_implement_and_compile_module(struct ly_ctx *ctx, struct lys_module *mod, const char **features)
 {
-    struct lys_module *mod = NULL;
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR ret;
 
-    LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
-
-    /* load and parse */
-    ret = lys_parse_load(ctx, name, revision, &ctx->unres.creating, &mod);
-    LY_CHECK_GOTO(ret, cleanup);
+    LY_CHECK_ARG_RET(ctx, mod, LY_EINVAL);
 
     /* implement */
     ret = _lys_set_implemented(mod, features, &ctx->unres);
@@ -223,9 +229,40 @@ cleanup:
     if (ret) {
         lys_unres_glob_revert(ctx, &ctx->unres);
         lys_unres_glob_erase(&ctx->unres);
-        mod = NULL;
     }
-    return mod;
+    return ret;
+}
+
+LIBYANG_API_DEF struct lys_module *
+ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, const char **features)
+{
+    struct lys_module *mod = NULL;
+    LY_ERR ret = LY_SUCCESS;
+
+    LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
+
+    /* load and parse */
+    ret = lys_parse_load(ctx, name, revision, &ctx->unres.creating, &mod);
+    if (ret) {
+        lys_unres_glob_revert(ctx, &ctx->unres);
+        lys_unres_glob_erase(&ctx->unres);
+        return NULL;
+    }
+
+    ret = _ly_ctx_implement_and_compile_module(ctx, mod, features);
+    return ret ? NULL : mod;
+}
+
+LIBYANG_API_DEF LY_ERR
+ly_ctx_add_parsed_module(struct ly_ctx *ctx, struct lys_module *mod, const char **features)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, mod, LY_EINVAL);
+
+    mod->ctx = ctx;
+
+    LY_CHECK_RET(ly_set_add(&ctx->list, mod, 1, NULL));
+    ctx->change_count++;
+    return _ly_ctx_implement_and_compile_module(ctx, mod, features);
 }
 
 /**
