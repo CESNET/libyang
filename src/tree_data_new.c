@@ -935,7 +935,7 @@ lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char
     const struct lysc_node *schema;
     struct lysc_ext_instance *ext = NULL;
     const struct ly_ctx *ctx = parent ? LYD_CTX(parent) : (module ? module->ctx : NULL);
-    uint32_t getnext_opts = (options & LYS_GETNEXT_OUTPUT) ? LYS_GETNEXT_OUTPUT : 0;
+    uint32_t getnext_opts = (options & LYD_NEW_VAL_OUTPUT) ? LYS_GETNEXT_OUTPUT : 0;
     ly_bool use_value = (options & LYD_NEW_ANY_USE_VALUE) ? 1 : 0;
 
     LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name,
