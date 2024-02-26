@@ -90,8 +90,8 @@ mkdir -m0755 -p %{buildroot}/%{_docdir}/libyang
 
 %files
 %license LICENSE
-%{_libdir}/libyang.so.2
-%{_libdir}/libyang.so.2.*
+%{_libdir}/libyang.so.3
+%{_libdir}/libyang.so.3.*
 %{_datadir}/yang/modules/libyang/*.yang
 %dir %{_datadir}/yang/
 %dir %{_datadir}/yang/modules/

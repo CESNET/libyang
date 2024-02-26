@@ -1,4 +1,4 @@
-Source: libyang2
+Source: libyang3
 Section: libs
 Homepage: https://github.com/CESNET/libyang/
 Maintainer: Ondřej Surý <ondrej@debian.org>
@@ -12,7 +12,7 @@ Build-Depends: cmake,
 Vcs-Browser: https://github.com/CESNET/libyang/tree/master
 Vcs-Git: https://github.com/CESNET/libyang.git
 
-Package: libyang2
+Package: libyang3
 Depends: ${misc:Depends},
          ${shlibs:Depends}
 Architecture: any
@@ -29,11 +29,11 @@ Description: parser toolkit for IETF YANG data modeling - runtime
  The library is implemented in C and provides an API for other software
  to use in processing configurations.
 
-Package: libyang2-dev
+Package: libyang-dev
 Depends: libpcre2-dev,
-         libyang2 (= ${binary:Version}),
+         libyang3 (= ${binary:Version}),
          ${misc:Depends}
-Conflicts: libyang-dev
+Conflicts: libyang2-dev
 Section: libdevel
 Architecture: any
 Multi-Arch: same
@@ -49,12 +49,12 @@ Description: parser toolkit for IETF YANG data modeling - development files
  This package contains the C headers, a pkgconfig file, and .so entry point
  for libyang.
 
-Package: libyang2-tools
-Depends: libyang2 (= ${binary:Version}),
+Package: libyang-tools
+Depends: libyang3 (= ${binary:Version}),
          ${misc:Depends},
          ${shlibs:Depends}
-Breaks: libyang-tools (<< ${source:Version})
-Replaces: libyang-tools (<< ${source:Version})
+Breaks: libyang2-tools (<< ${source:Version})
+Replaces: libyang2-tools (<< ${source:Version})
 Section: devel
 Architecture: any
 Multi-Arch: foreign
@@ -63,13 +63,3 @@ Description: parser toolkit for IETF YANG data modeling - executable tools
  during the creation of IETF YANG schemas.  The tools are not generally
  useful for normal operation where libyang primarily processes configuration
  data, not schemas.
-
-Package: libyang-tools
-Depends: libyang2-tools (>= ${source:Version}),
-         ${misc:Depends}
-Section: oldlibs
-Architecture: all
-Multi-Arch: foreign
-Description: parser toolkit for IETF YANG data modeling [dummy package]
- This is empty dependency package to pull the executable tools.  It's
- safe to remove.
