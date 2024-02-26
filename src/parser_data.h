@@ -172,7 +172,7 @@ struct ly_in;
 #define LYD_PARSE_NO_NEW 0x1000000          /**< Do not set ::LYD_NEW (non-validated node flag) for any nodes. Use
                                                  when parsing validated data to skip some validation tasks and modify
                                                  some validation behavior (auto-deletion of cases). */
-#define LYD_PARSE_STORE_ONLY 0x2000000      /**< Similar to ::LYD_PARSE_ONLY but even type value restrictions will not
+#define LYD_PARSE_STORE_ONLY 0x2010000      /**< Similar to ::LYD_PARSE_ONLY but even type value restrictions will not
                                                  be checked (length, range, pattern, ...) and if a value can be stored,
                                                  it is. Calling separate validation on these data always checks all the
                                                  restrictions as well. */

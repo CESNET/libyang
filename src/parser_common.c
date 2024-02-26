@@ -284,7 +284,7 @@ lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, c
 {
     LY_ERR r;
     ly_bool incomplete;
-    ly_bool store_only = (lydctx->parse_opts & LYD_PARSE_STORE_ONLY) ? 1 : 0;
+    ly_bool store_only = (lydctx->parse_opts & LYD_PARSE_STORE_ONLY) == LYD_PARSE_STORE_ONLY ? 1 : 0;
 
     if ((r = lyd_create_term(schema, value, value_len, 1, store_only, dynamic, format, prefix_data,
             hints, &incomplete, node))) {
@@ -310,7 +310,7 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
     char *dpath = NULL, *path = NULL;
     ly_bool incomplete;
     struct lyd_meta *first = NULL;
-    ly_bool store_only = (lydctx->parse_opts & LYD_PARSE_STORE_ONLY) ? 1 : 0;
+    ly_bool store_only = (lydctx->parse_opts & LYD_PARSE_STORE_ONLY) == LYD_PARSE_STORE_ONLY ? 1 : 0;
 
     if (meta && *meta) {
         /* remember the first metadata */
