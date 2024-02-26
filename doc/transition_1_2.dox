@@ -1,5 +1,5 @@
 /**
- * @page transition Transition Manual (1.x -> 2.0)
+ * @page transition1_2 Transition Manual (1.x -> 2.0)
  *
  * [TOC]
  *
@@ -18,12 +18,12 @@
  * from 1.x to 2.0, so if you are new to libyang, simply go to the @ref howto section, this Manual is not for you.
  *
  * The complete generated list of changes (without any additional notes) can be found in
- * <a href="../compat_report.html">the compatibility report</a>.
+ * <a href="../compat_report_1_2.html">the compatibility report</a>.
  *
- * @section transitionGeneral General Changes
+ * @section transition1_2General General Changes
  *
  *
- * @subsection transitionGeneralErros Errors Handling
+ * @subsection transition1_2GeneralErros Errors Handling
  *
  * The most visible change is probably the changed approach to handling errors. While libyang 1.x was using variable
  * *ly_errno* to provide error information in case the called function failed, there is no such variable in libyang 2.0.
@@ -42,7 +42,7 @@
  *
  * More information about error handling in libyang 2.0 can be found at @ref howtoErrors page.
  *
- * @subsection transitionGeneralInOut Input / Output Processing
+ * @subsection transition1_2GeneralInOut Input / Output Processing
  *
  * libyang 2.0 introduces input (::ly_in) and output (::ly_out) handlers covering the specific input sources for parsers and
  * output targets for printers. They are supposed mainly to simplify parser's and printer's API to avoid the need for
@@ -51,7 +51,7 @@
  * More information can be found at @ref howtoInput and @ref howtoOutput pages.
  *
  *
- * @subsection transitionGeneralOutputFormatting Output Formatting
+ * @subsection transition1_2GeneralOutputFormatting Output Formatting
  *
  * In libyang 1.x, there was an inconsistency in printing schemas and data. While the schemas were always printed formatted,
  * the data were printed by default without additional indentation. It is clearly visible in the YIN format of the schema,
@@ -63,7 +63,7 @@
  * indentations and blank lines): ::LYD_PRINT_SHRINK for the data printer and ::LYS_PRINT_SHRINK for the schema printer.
  *
  *
- * @subsection transitionGeneralXPath Addressing
+ * @subsection transition1_2GeneralXPath Addressing
  *
  * If you compare the @ref howtoXPath page from libyang 1.x and 2.0 documentation, you will be probably confused since they
  * seem very different. In fact, we have tried to simplify the API by removing the original Schema path format from the
@@ -94,7 +94,7 @@
  * ly_path_xml2json()        | -                                    | Removed since done internally, note that even the generic XML parser is not available now.
  * lys_node_xpath_atomize()  | -                                    | Removed as useless/redundant, use ::lys_find_xpath_atoms().
  *
- * @section transitionContext Context
+ * @section transition1_2Context Context
  *
  * Context, as a concept of a storage interconnecting YANG modules into a YANG schema and YANG schema with the instantiated
  * data, was preserved. However, it is now more supposed to be prepared just once before connecting it with any instantiated
@@ -136,7 +136,7 @@
  * ly_ctx_destroy()          | ::ly_ctx_destroy()                   | The destructor callback parameter was removed, see the notes above.
  *
  *
- * @section transitionSchemas YANG Modules (Schema)
+ * @section transition1_2Schemas YANG Modules (Schema)
  *
  * The most significant change between libyang 1.x and 2.0 can be found in schema structures. The schema tree now has two
  * different forms - parsed and compiled trees. While the parsed tree reflects the source of the YANG module, the compiled
@@ -151,7 +151,7 @@
  * parsed or the compiled tree. These functions are prefixed with `lysp_` and `lysp_` prefixes.
  *
  * Schema parser, as well as printer functions, are now extended to accept new
- * [input / output handlers](@ref transitionGeneralInOut). The previous API working directly with inputs and outputs is
+ * [input / output handlers](@ref transition1_2GeneralInOut). The previous API working directly with inputs and outputs is
  * preserved (or slightly changed), but the functions can be limited in the functionality of the new API. More information
  * can be found at @ref howtoSchemaParsers and @ref howtoSchemaPrinters pages.
  *
@@ -241,7 +241,7 @@
  * ly_register_types()          | ::lyplg_add()                   | ^
  *
  *
- * @section transitionData Data Instances
+ * @section transition1_2Data Data Instances
  *
  * Conceptually, the data tree did not change as much as the schema tree. There is still a generic ::lyd_node structure that
  * maps according to the schema node's nodetype to some of the other lyd_node_* structures. All the data nodes were extended
@@ -269,8 +269,8 @@
  *
  * Parser's API was simplified to avoid variadic parameters. The functions are newly split to parsed data, notifications,
  * RPCs and replies to the RPCs. Similarly to the schema parsers, also the new data parser API works with
- * [input handlers](@ref transitionGeneralInOut). The data printer's API was also extended to use new
- * [output handlers](@ref transitionGeneralInOut). However, part of the previous API working directly with inputs
+ * [input handlers](@ref transition1_2GeneralInOut). The data printer's API was also extended to use new
+ * [output handlers](@ref transition1_2GeneralInOut). However, part of the previous API working directly with inputs
  * and outputs was preserved. More information about the data parser and printer can be found at
  * @ref howtoDataParsers and @ref howtoDataPrinters pages.
  *

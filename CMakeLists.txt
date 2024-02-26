@@ -212,7 +212,8 @@ set(gen_headers
 # files to generate doxygen from
 set(doxy_files
     doc/build.dox
-    doc/transition.dox
+    doc/transition_1_2.dox
+    doc/transition_2_3.dox
     ${headers}
     ${PROJECT_BINARY_DIR}/src/version.h
     ${type_plugins})
