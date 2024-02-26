@@ -18,9 +18,9 @@
 #include <stddef.h> /* NULL */
 #include <string.h> /* memset */
 
-#include "common.h"
 #include "compat.h"
 #include "libyang.h"
+#include "ly_common.h"
 #include "tree_data_sorted.h"
 
 static void lyplg_type_free_lyds(const struct ly_ctx *ctx, struct lyd_value *value);

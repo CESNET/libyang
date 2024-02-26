@@ -14,8 +14,8 @@
 #define _UTEST_MAIN_
 #include "utests.h"
 
-#include "common.h"
 #include "libyang.h"
+#include "ly_common.h"
 #include "tree_data_internal.h"
 #include "tree_data_sorted.h"
 
