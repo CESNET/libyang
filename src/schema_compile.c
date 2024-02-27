@@ -1299,11 +1299,9 @@ resolve_all:
         w = ds_unres->whens.objs[i];
         LYSC_CTX_INIT_PMOD(cctx, w->node->module->parsed, NULL);
 
-        if (w->node) {
-            LOG_LOCSET(w->node, NULL);
-        }
+        LOG_LOCSET(w->node, NULL);
         ret = lys_compile_unres_when(&cctx, w->when, w->node);
-        LOG_LOCBACK(w->node ? 1 : 0, 0);
+        LOG_LOCBACK(1, 0);
         LY_CHECK_GOTO(ret, cleanup);
 
         free(w);

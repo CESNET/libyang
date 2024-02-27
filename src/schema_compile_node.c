@@ -548,8 +548,10 @@ lys_compile_when(struct lysc_ctx *ctx, const struct lysp_when *when_p, uint16_t 
         *new_when = *when_c;
     }
 
-    /* add when to unres */
-    LY_CHECK_GOTO(rc = lysc_unres_when_add(ctx, *new_when, node), cleanup);
+    if (node) {
+        /* add when to unres if there is a node for evaluation (not for extension instances) */
+        LY_CHECK_GOTO(rc = lysc_unres_when_add(ctx, *new_when, node), cleanup);
+    }
 
 cleanup:
     return rc;
