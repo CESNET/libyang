@@ -258,6 +258,24 @@ struct lyxp_expr;
 
 #define LYS_NODETYPE_MASK 0xffff  /**< Mask for nodetypes, the value is limited for 16 bits */
 /** @} schemanodetypes */
+    
+/* Number of bits the whole hash will take (including hash collision ID) */
+#define LYB_HASH_BITS LYD_HASH_SIZE
+
+#if LYB_HASH_BITS == 8
+	/* Masking 32b hash (collision ID 0) */
+	#define LYB_HASH_MASK 0x7f
+
+	/* Type for storing the whole hash (used only internally, publicly defined directly) */
+	#define LYB_HASH uint8_t
+
+	/* Need to move this first >> collision number (from 0) to get collision ID hash part */
+	#define LYB_HASH_COLLISION_ID 0x80
+#elif LYB_HASH_BITS == 16
+    #define LYB_HASH_MASK 0x7fff
+    #define LYB_HASH uint16_t
+    #define LYB_HASH_COLLISION_ID 0x8000
+#endif 
 
 /**
  * @brief YANG import-stmt
@@ -1398,7 +1416,7 @@ struct lysc_type_bin {
 struct lysc_node {
     uint16_t nodetype;               /**< [type of the node](@ref schemanodetypes) (mandatory) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
-    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
+    LYB_HASH hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
     struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
@@ -1420,7 +1438,7 @@ struct lysc_node_action_inout {
         struct {
             uint16_t nodetype;       /**< LYS_INPUT or LYS_OUTPUT */
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */
-            uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
+            LYB_HASH hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
             struct lys_module *module; /**< module structure */
             struct lysc_node *parent;/**< parent node (NULL in case of top level node) */
             struct lysc_node *next;  /**< next sibling node (output node for input, NULL for output) */
@@ -1444,7 +1462,7 @@ struct lysc_node_action {
         struct {
             uint16_t nodetype;       /**< LYS_RPC or LYS_ACTION */
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */
-            uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
+            LYB_HASH hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
             struct lys_module *module; /**< module structure */
             struct lysc_node *parent; /**< parent node (NULL in case of top level node - RPC) */
             struct lysc_node_action *next; /**< next sibling node (NULL if there is no one) */
@@ -1475,7 +1493,7 @@ struct lysc_node_notif {
         struct {
             uint16_t nodetype;       /**< LYS_NOTIF */
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */
-            uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
+            LYB_HASH hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
             struct lys_module *module; /**< module structure */
             struct lysc_node *parent; /**< parent node (NULL in case of top level node) */
             struct lysc_node_notif *next; /**< next sibling node (NULL if there is no one) */
@@ -1505,7 +1523,7 @@ struct lysc_node_container {
         struct {
             uint16_t nodetype;       /**< LYS_CONTAINER */
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */
-            uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
+            LYB_HASH hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
             struct lys_module *module; /**< module structure */
             struct lysc_node *parent; /**< parent node (NULL in case of top level node) */
             struct lysc_node *next;  /**< next sibling node (NULL if there is no one) */
@@ -1535,7 +1553,7 @@ struct lysc_node_case {
         struct {
             uint16_t nodetype;       /**< LYS_CASE */
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */
-            uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser, unused */
+            LYB_HASH hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser, unused */
             struct lys_module *module; /**< module structure */
             struct lysc_node *parent; /**< parent node (NULL in case of top level node) */
             struct lysc_node *next;  /**< next sibling node (NULL if there is no one) */
@@ -1563,7 +1581,7 @@ struct lysc_node_choice {
         struct {
             uint16_t nodetype;       /**< LYS_CHOICE */
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */
-            uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser, unused */
+            LYB_HASH hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser, unused */
             struct lys_module *module; /**< module structure */
             struct lysc_node *parent; /**< parent node (NULL in case of top level node) */
             struct lysc_node *next;  /**< next sibling node (NULL if there is no one) */
@@ -1591,7 +1609,7 @@ struct lysc_node_leaf {
         struct {
             uint16_t nodetype;       /**< LYS_LEAF */
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */
-            uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
+            LYB_HASH hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
             struct lys_module *module; /**< module structure */
             struct lysc_node *parent; /**< parent node (NULL in case of top level node) */
             struct lysc_node *next;  /**< next sibling node (NULL if there is no one) */
@@ -1622,7 +1640,7 @@ struct lysc_node_leaflist {
         struct {
             uint16_t nodetype;       /**< LYS_LEAFLIST */
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */
-            uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
+            LYB_HASH hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
             struct lys_module *module; /**< module structure */
             struct lysc_node *parent; /**< parent node (NULL in case of top level node) */
             struct lysc_node *next;  /**< next sibling node (NULL if there is no one) */
@@ -1658,7 +1676,7 @@ struct lysc_node_list {
         struct {
             uint16_t nodetype;       /**< LYS_LIST */
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */
-            uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
+            LYB_HASH hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
             struct lys_module *module; /**< module structure */
             struct lysc_node *parent; /**< parent node (NULL in case of top level node) */
             struct lysc_node *next;  /**< next sibling node (NULL if there is no one) */
@@ -1692,7 +1710,7 @@ struct lysc_node_anydata {
         struct {
             uint16_t nodetype;       /**< LYS_ANYXML or LYS_ANYDATA */
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */
-            uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
+            LYB_HASH hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
             struct lys_module *module; /**< module structure */
             struct lysc_node *parent; /**< parent node (NULL in case of top level node) */
             struct lysc_node *next;  /**< next sibling node (NULL if there is no one) */

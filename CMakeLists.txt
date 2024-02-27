@@ -251,6 +251,8 @@ else()
     set(INTERNAL_DOCS NO)
 endif()
 
+
+set(LYD_HASH_SIZE "8" CACHE STRING "only support 8bit or 16bit, default 8 bit")
 set(LYD_VALUE_SIZE "24" CACHE STRING "Maximum size in bytes of data node values that do not need to be allocated dynamically, minimum is 8")
 if(LYD_VALUE_SIZE LESS 8)
     message(FATAL_ERROR "Data node value size \"${LYD_VALUE_SIZE}\" is not valid.")
