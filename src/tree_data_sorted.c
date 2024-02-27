@@ -278,12 +278,13 @@ rb_compare_lists(const struct lyd_node *n1, const struct lyd_node *n2)
 /**
  * @brief Release unlinked red-black node.
  *
- * @param[in] rbn Node to free.
+ * @param[in,out] rbn Node to free, is set to NULL.
  */
 static void
-rb_free_node(struct rb_node *rbn)
+rb_free_node(struct rb_node **rbn)
 {
-    free(rbn);
+    free(*rbn);
+    *rbn = NULL;
 }
 
 /**
@@ -356,7 +357,7 @@ lyds_free_tree(struct rb_node *rbt)
 
     /* There is no rebalancing. */
     for (rbn = rb_iter_begin(rbt, &iter_state); rbn; rbn = rb_iter_next(&iter_state)) {
-        rb_free_node(rbn);
+        rb_free_node(&rbn);
     }
 }
 
@@ -935,7 +936,7 @@ lyds_pool_clean(struct lyds_pool *pool)
     struct rb_node *iter;
 
     for (iter = pool->rbn; iter; iter = rb_iter_next(&pool->iter_state)) {
-        rb_free_node(iter);
+        rb_free_node(&iter);
     }
     pool->rbn = NULL;
 
@@ -977,6 +978,10 @@ rb_remove_node(struct lyd_meta *root_meta, struct rb_node **rbt, struct lyd_node
     /* remove node */
     rbn = rb_remove(rbt, rbn);
     *removed = rbn;
+    if (rbn == *rbt) {
+        /* rbn was the last node, assurance that root will be set to NULL */
+        *rbt = NULL;
+    }
 
     /* the root of the Red-black tree may changed due to removal, so update the pointer to the root */
     RBT_SET(root_meta, *rbt);
@@ -1349,7 +1354,7 @@ lyds_unlink(struct lyd_node **leader, struct lyd_node *node)
     }
 
     rb_remove_node(root_meta, &rbt, node, &removed);
-    rb_free_node(removed);
+    rb_free_node(&removed);
 }
 
 void
@@ -1383,7 +1388,7 @@ lyds_split(struct lyd_node **first_sibling, struct lyd_node *leader, struct lyd_
     if (!start || (start->schema != node->schema)) {
         /* @p node is the last node, remove from Red-black tree and unlink */
         rb_remove_node(root_meta, &rbt, node, &rbn);
-        rb_free_node(rbn);
+        rb_free_node(&rbn);
         lyd_unlink_ignore_lyds(first_sibling, node);
         *next_p = start;
         goto cleanup;
@@ -1391,7 +1396,7 @@ lyds_split(struct lyd_node **first_sibling, struct lyd_node *leader, struct lyd_
 
     /* remove @p node from Red-black tree and unlink */
     rb_remove_node(root_meta, &rbt, node, &rbn);
-    rb_free_node(rbn);
+    rb_free_node(&rbn);
     lyd_unlink_ignore_lyds(first_sibling, node);
 
     /* remove the rest of nodes from Red-black tree and unlink */
@@ -1401,7 +1406,7 @@ lyds_split(struct lyd_node **first_sibling, struct lyd_node *leader, struct lyd_
             break;
         }
         rb_remove_node(root_meta, &rbt, iter, &rbn);
-        rb_free_node(rbn);
+        rb_free_node(&rbn);
         lyd_unlink_ignore_lyds(first_sibling, iter);
         /* insert them to the second (leaf-)list */
         lyd_insert_after_node(&node, dst, iter);
