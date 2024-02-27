@@ -707,12 +707,10 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
                 }
 
                 /* store the value */
-                if (key) {
-                    LOG_LOCSET(key, NULL);
-                }
+                LOG_LOCSET(key, NULL);
                 ret = lyd_value_store(ctx, &p->value, ((struct lysc_node_leaf *)key)->type, val, val_len, 0, 0,
                         NULL, format, prefix_data, LYD_HINT_DATA, key, NULL);
-                LOG_LOCBACK(key ? 1 : 0, 0);
+                LOG_LOCBACK(1, 0);
                 LY_CHECK_ERR_GOTO(ret, p->value.realtype = NULL, cleanup);
 
                 /* "allocate" the type to avoid problems when freeing the value after the type was freed */
