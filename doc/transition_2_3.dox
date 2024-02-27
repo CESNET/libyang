@@ -37,6 +37,9 @@
  * libyang 2.x               | libyang 3.0                          | Notes
  * :-------------------------|:-------------------------------------|:-------------------------------------------------------
  * lyd_find_xpath3()         | ::lyd_find_xpath3()                  | Optional prefix data parameter added.
+ * LYD_NEW_PATH_OUTPUT       | ::LYD_NEW_VAL_OUTPUT                 | Some LYD_NEW_PATH_* options now also used for other lyd_new_* functions.
+ * LYD_NEW_PATH_BIN_VALUE    | ::LYD_NEW_VAL_BIN                    | ^
+ * LYD_NEW_PATH_CANON_VALUE  | ::LYD_NEW_VAL_CANON                  | ^
  * lyd_new_path()            | ::lyd_new_path()                     | All options now in a single bitmap parameter of @ref newvaloptions.
  * lyd_new_any()             | ::lyd_new_any()                      | ^
  * lyd_new_list()            | ::lyd_new_list()                     | ^
