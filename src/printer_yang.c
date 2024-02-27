@@ -499,7 +499,7 @@ yprp_iffeatures(struct lys_ypr_ctx *pctx, struct lysp_qname *iffs, struct lysp_e
         ypr_open(pctx->out, flag);
         extflag = 0;
 
-        flags = LYS_YPR_TEXT_SINGLELINE | (iffs[u].flags & LYS_SINGLEQUOTED) ? LYS_YPR_TEXT_SINGLEQUOTED : 0;
+        flags = LYS_YPR_TEXT_SINGLELINE | ((iffs[u].flags & LYS_SINGLEQUOTED) ? LYS_YPR_TEXT_SINGLEQUOTED : 0);
         ypr_text(pctx, "if-feature", iffs[u].str, flags);
 
         /* extensions */
