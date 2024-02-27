@@ -135,17 +135,6 @@ void lyd_lyb_ctx_free(struct lyd_ctx *lydctx);
  * collisions with all the preceding sibling schema hashes must be checked (LYB printer).
  */
 
-/* Number of bits the whole hash will take (including hash collision ID) */
-#define LYB_HASH_BITS 8
-
-/* Masking 32b hash (collision ID 0) */
-#define LYB_HASH_MASK 0x7f
-
-/* Type for storing the whole hash (used only internally, publicly defined directly) */
-#define LYB_HASH uint8_t
-
-/* Need to move this first >> collision number (from 0) to get collision ID hash part */
-#define LYB_HASH_COLLISION_ID 0x80
 
 /* How many bytes are reserved for one data chunk SIZE (8B is maximum) */
 #define LYB_SIZE_BYTES 2
