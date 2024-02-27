@@ -338,6 +338,8 @@ struct lysp_qname {
     const char *str;                 /**< qualified name string */
     const struct lysp_module *mod;   /**< module to resolve any prefixes found in the string, it must be
                                           stored explicitly because of deviations/refines */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_SINGLEQUOTED and
+                                          LYS_DOUBLEQUOTED values allowed */
 };
 
 /**
@@ -705,8 +707,10 @@ struct lysp_deviation {
 #define LYS_SET_UNITS    0x0400      /**< flag to know if the leaf's/leaflist's units are their own (flag set) or it is taken from the type. */
 #define LYS_SET_CONFIG   0x0800      /**< flag to know if the config property was set explicitly (flag set) or it is inherited. */
 
-#define LYS_SINGLEQUOTED 0x0100      /**< flag for single-quoted argument of an extension instance's substatement, only when the source is YANG */
-#define LYS_DOUBLEQUOTED 0x0200      /**< flag for double-quoted argument of an extension instance's substatement, only when the source is YANG */
+#define LYS_SINGLEQUOTED 0x0100      /**< flag for single-quoted string (argument of an extension instance's substatement),
+                                          only when the source is YANG */
+#define LYS_DOUBLEQUOTED 0x0200      /**< flag for double-quoted string (argument of an extension instance's substatement),
+                                          only when the source is YANG */
 
 #define LYS_YIN_ATTR     0x0400      /**< flag to identify YIN attribute parsed as extension's substatement, only when the source is YIN */
 #define LYS_YIN_ARGUMENT 0x0800      /**< flag to identify statement representing extension's argument, only when the source is YIN */
