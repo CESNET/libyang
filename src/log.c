@@ -641,10 +641,10 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR err, LY_VECODE 
             e = ly_err_last(ctx);
             vecode = e->vecode;
         }
+        free_strs = 0;
         if (log_store(ctx, level, err, vecode, msg, data_path, schema_path, line, apptag ? strdup(apptag) : NULL)) {
             goto cleanup;
         }
-        free_strs = 0;
     }
 
     /* if we are only storing errors internally, never print the message (yet) */
