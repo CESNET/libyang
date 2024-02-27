@@ -2315,7 +2315,7 @@ lyd_dup(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_no
     struct lyd_node *first_dup = NULL;    /* the first duplicated node, this is returned */
     struct lyd_node *top = NULL;          /* the most higher created node */
     struct lyd_node *local_parent = NULL; /* the direct parent node for the duplicated node(s) */
-    struct lyd_node *dup;                 /* duplicate node */
+    struct lyd_node *dup = NULL;          /* duplicate node */
     struct lyd_node *first_sibling = NULL; /* first sibling node */
 
     assert(node && trg_ctx);
