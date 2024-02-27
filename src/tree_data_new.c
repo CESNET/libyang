@@ -1635,7 +1635,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
     if (value && !value_len) {
         value_len = strlen(value);
     }
-    lyd_new_val_get_format(options, &format);
+    LY_CHECK_GOTO(ret = lyd_new_val_get_format(options, &format), cleanup);
 
     /* parse path */
     LY_CHECK_GOTO(ret = ly_path_parse(ctx, NULL, path, strlen(path), 0, LY_PATH_BEGIN_EITHER, LY_PATH_PREFIX_FIRST,
