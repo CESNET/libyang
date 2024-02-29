@@ -245,6 +245,7 @@ option(ENABLE_PERF_TESTS "Build performance tests" OFF)
 option(ENABLE_COVERAGE "Build code coverage report from tests" OFF)
 option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL" OFF)
 option(ENABLE_INTERNAL_DOCS "Generate doxygen documentation also from internal headers" OFF)
+option(BUILD_SHARED_LIBS "By default, shared libs are enabled. Turn off for a static build." ON)
 set(YANG_MODULE_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/yang/modules/libyang" CACHE STRING "Directory where to copy the YANG modules to")
 
 if(ENABLE_INTERNAL_DOCS)
@@ -262,14 +263,10 @@ set(PLUGINS_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang" CACHE 
 set(PLUGINS_DIR_EXTENSIONS "${PLUGINS_DIR}/extensions" CACHE STRING "Directory with libyang user extensions plugins")
 set(PLUGINS_DIR_TYPES "${PLUGINS_DIR}/types" CACHE STRING "Directory with libyang user types plugins")
 
-# by default build shared library
-# static build requires static libpcre2 library
-option(ENABLE_STATIC "Build static (.a) library" OFF)
-
 #
 # checks
 #
-if(ENABLE_STATIC)
+if(NOT BUILD_SHARED_LIBS)
     message(STATUS "Disabling tests for static build")
     set(ENABLE_TESTS OFF)
     set(ENABLE_VALGRIND_TESTS OFF)
@@ -341,7 +338,7 @@ endif()
 use_compat()
 
 # create static libyang library
-if(ENABLE_STATIC)
+if(NOT BUILD_SHARED_LIBS)
     add_definitions(-DSTATIC)
 
     # allow binaries compilation linking both static and dynamic libraries never linking static glibc
