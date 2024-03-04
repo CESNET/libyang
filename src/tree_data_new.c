@@ -1727,8 +1727,8 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
                 }
                 if (r && (r != LY_EINCOMPLETE)) {
                     /* creating opaque leaf-list */
-                    LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), value, value_len,
-                            schema->module->name, strlen(schema->module->name), NULL, 0, NULL, format, NULL,
+                    LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), NULL, 0,
+                            schema->module->name, strlen(schema->module->name), value, value_len, NULL, format, NULL,
                             LYD_NODEHINT_LEAFLIST, &node), cleanup);
                     break;
                 }
@@ -1764,8 +1764,8 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
                 }
                 if (r && (r != LY_EINCOMPLETE)) {
                     /* creating opaque leaf */
-                    LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), value, value_len,
-                            schema->module->name, strlen(schema->module->name), NULL, 0, NULL, format, NULL, 0, &node),
+                    LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), NULL, 0,
+                            schema->module->name, strlen(schema->module->name), value, value_len, NULL, format, NULL, 0, &node),
                             cleanup);
                     break;
                 }
