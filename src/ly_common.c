@@ -263,7 +263,7 @@ error:
  * @return Result of the operation.
  */
 static int
-ly_utf8_and_equal(const char *input, uint8_t bytes, ...)
+ly_utf8_and_equal(const char *input, int bytes, ...)
 {
     va_list ap;
     int i, and, byte;
@@ -294,7 +294,7 @@ ly_utf8_and_equal(const char *input, uint8_t bytes, ...)
  * @return Result of the operation.
  */
 static int
-ly_utf8_less(const char *input, uint8_t bytes, ...)
+ly_utf8_less(const char *input, int bytes, ...)
 {
     va_list ap;
     int i, byte;
@@ -327,7 +327,7 @@ ly_utf8_less(const char *input, uint8_t bytes, ...)
  * @return Result of the operation.
  */
 static int
-ly_utf8_greater(const char *input, uint8_t bytes, ...)
+ly_utf8_greater(const char *input, int bytes, ...)
 {
     va_list ap;
     int i, byte;
