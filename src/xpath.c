@@ -7985,7 +7985,7 @@ continue_search:
             scnode = lys_find_child(NULL, moveto_mod, name, name_len, 0, 0);
         }
     } else if (!*found || (lysc_data_parent(*found) != node->schema)) {
-        if ((format == LY_VALUE_JSON) && !moveto_mod) {
+        if ((format == LY_VALUE_JSON) && !moveto_mod && (node->schema != NULL)) {
             /* we must adjust the module to inherit the one from the context node */
             moveto_mod = node->schema->module;
         }
