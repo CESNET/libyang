@@ -195,7 +195,7 @@ available separately.
 
 * [Python](https://github.com/CESNET/libyang-python/)
 * [C++](https://github.com/CESNET/libyang-cpp/)
-* [Rust](https://github.com/rwestphal/yang2-rs/)
+* [Rust](https://github.com/holo-routing/yang2-rs/)
 
 ## yanglint
 
