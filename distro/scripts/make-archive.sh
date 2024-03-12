@@ -1,10 +1,7 @@
 #!/bin/bash
 # create archive from current source using git
 
-VERSION=$(git describe --tags --always)
-# skip "v" from start of version number (if it exists) and replace - with .
-VERSION=${VERSION#v}
-VERSION=${VERSION//[-]/.}
+VERSION=$(git log --oneline -n1 --grep="^VERSION" | rev | cut -d' ' -f1 | rev)
 
 NAMEVER=libyang-$VERSION
 ARCHIVE=$NAMEVER.tar.gz
