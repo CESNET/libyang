@@ -144,6 +144,10 @@ jobs:
           echo "git msg"
           git log --oneline -n1 --grep="^VERSION"
           echo "git msg2"
+          git log --oneline -n1 --grep=^VERSION
+          echo "git msg3"
+          git log --oneline -n1 --grep=VERSION
+          echo "git msg4"
           apkg build
           apkg install
         if: ${{ matrix.config.name == 'DEB Package' }}
