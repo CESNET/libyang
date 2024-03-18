@@ -137,11 +137,10 @@ jobs:
 
       - name: Build-and-install-package
         shell: bash
-        working-directory: ${{ github.workspace }}
+        working-directory: ${{ github.repository }}
         run: |
           pip install apkg
           apkg system-setup
-          git log --oneline -n1 --grep="^VERSION"
           apkg build
           apkg install
         if: ${{ matrix.config.name == 'DEB Package' }}
