@@ -105,7 +105,7 @@ jobs:
             packager: "sudo apt-get",
             packages: "python3-pip",
             snaps: "",
-            build-cmd: "pip install apkg && apkg system-setup && apkg build && apkg install"
+            build-cmd: ""
           }
 
     steps:
@@ -135,6 +135,16 @@ jobs:
           sudo make install
         if: ${{ matrix.config.name == 'Debug, gcc' }}
 
+      - name: Build-and-install-package
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        run: |
+          pip install apkg
+          apkg system-setup
+          apkg build
+          apkg install
+        if: ${{ matrix.config.name == 'DEB Package' }}
+
       - name: Configure
         shell: bash
         working-directory: ${{ github.workspace }}
@@ -151,11 +161,13 @@ jobs:
           export LC_ALL=C.UTF-8
           export PATH=/snap/bin:${{ github.workspace }}/coverity-tools/bin:$PATH
           ${{ matrix.config.build-cmd }}
+        if: ${{ matrix.config.name != 'DEB Package' }}
 
       - name: Test
         shell: bash
         working-directory: ${{ github.workspace }}/build
         run: ctest --output-on-failure
+        if: ${{ matrix.config.name != 'DEB Package' }}
 
   build-windows:
     name: ${{ matrix.name }}
