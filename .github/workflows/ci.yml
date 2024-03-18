@@ -141,6 +141,7 @@ jobs:
         run: |
           pip install apkg
           apkg system-setup
+          git log --oneline -n1 --grep="^VERSION"
           apkg build
           apkg install
         if: ${{ matrix.config.name == 'DEB Package' }}
@@ -201,7 +202,7 @@ jobs:
         run: |
           git config --global core.eol ${{ matrix.eol }}
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@main
 
       - name: Get number of CPU cores
         id: cpu-cores
