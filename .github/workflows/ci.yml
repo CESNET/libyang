@@ -103,7 +103,7 @@ jobs:
             cc: "gcc",
             options: "",
             packager: "sudo apt-get",
-            packages: "python3-pip",
+            packages: "cmake debhelper libcmocka-dev python3-pip",
             snaps: "",
             build-cmd: ""
           }
