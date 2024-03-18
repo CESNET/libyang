@@ -142,7 +142,7 @@ jobs:
           pip install apkg
           apkg system-setup
           echo "git msg"
-          git log --oneline -n1
+          git log --oneline -n1 --grep="^VERSION"
           echo "git msg2"
           apkg build
           apkg install
