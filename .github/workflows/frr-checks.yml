@@ -14,7 +14,8 @@ jobs:
     strategy:
       matrix:
         compiler: [ gcc ]
-        frr-versions: [ master ]
+        frr-versions:
+          - master
         libyang-versions:
           - v2.1.128
           - ${{ github.ref_name }}
@@ -80,8 +81,10 @@ jobs:
         with:
           repository: 'FRRouting/frr.git'
           ref: ${{ matrix.frr-versions }}
-          fetch-tags: true
           submodules: false
+          fetch-depth: 0
+          filter: tree:0
+          fetch-tags: true
       - name: compile FRR with ${{ matrix.libyang-versions }} ${{ matrix.compiler }}
         if: ${{ always() }}
         run: >-
