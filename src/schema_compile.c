@@ -1209,6 +1209,49 @@ implement_all:
 }
 
 /**
+ * @brief Check that a disabled node (to be freed) can be freed and is not referenced.
+ *
+ * @param[in] node Disabled node to check.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_compile_unres_check_disabled(const struct lysc_node *node)
+{
+    const struct lysc_node *parent;
+    const struct lysc_node_list *slist;
+    LY_ARRAY_COUNT_TYPE u, v;
+
+    if (node->flags & LYS_KEY) {
+        LOG_LOCSET(node, NULL);
+        LOGVAL(node->module->ctx, LYVE_REFERENCE, "Key \"%s\" is disabled.", node->name);
+        LOG_LOCBACK(1, 0);
+        return LY_EVALID;
+    }
+
+    for (parent = node->parent; parent; parent = parent->parent) {
+        if (parent->nodetype != LYS_LIST) {
+            continue;
+        }
+
+        /* check list uniques */
+        slist = (struct lysc_node_list *)parent;
+        LY_ARRAY_FOR(slist->uniques, u) {
+            LY_ARRAY_FOR(slist->uniques[u], v) {
+                if (slist->uniques[u][v] == (struct lysc_node_leaf *)node) {
+                    LOG_LOCSET(node, NULL);
+                    LOGVAL(node->module->ctx, LYVE_REFERENCE, "Disabled node \"%s\" is referenced as unique in the list \"%s\".",
+                            node->name, slist->name);
+                    LOG_LOCBACK(1, 0);
+                    return LY_EVALID;
+                }
+            }
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Finish dependency set compilation by resolving all the unres sets.
  *
  * @param[in] ctx libyang context.
@@ -1365,13 +1408,9 @@ resolve_all:
     /* finally, remove all disabled nodes */
     for (i = 0; i < ds_unres->disabled.count; ++i) {
         node = ds_unres->disabled.snodes[i];
-        if (node->flags & LYS_KEY) {
-            LOG_LOCSET(node, NULL);
-            LOGVAL(ctx, LYVE_REFERENCE, "Key \"%s\" is disabled.", node->name);
-            LOG_LOCBACK(1, 0);
-            ret = LY_EVALID;
-            goto cleanup;
-        }
+        ret = lys_compile_unres_check_disabled(node);
+        LY_CHECK_GOTO(ret, cleanup);
+
         LYSC_CTX_INIT_PMOD(cctx, node->module->parsed, NULL);
 
         lysc_node_free(&cctx.free_ctx, node, 1);
