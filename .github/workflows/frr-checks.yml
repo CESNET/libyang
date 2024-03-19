@@ -17,7 +17,6 @@ jobs:
         frr-versions:
           - master
         libyang-versions:
-          - v2.1.128
           - ${{ github.ref_name }}
     steps:
       - name: add missing packages per building-frr-for-ubuntu2204
