@@ -83,6 +83,7 @@ jobs:
           fetch-tags: true
           submodules: false
       - name: compile FRR with ${{ matrix.libyang-versions }} ${{ matrix.compiler }}
+        if: ${{ always() }}
         run: >-
           ls -la &&
           export CC=${{ matrix.compiler }} &&
@@ -108,4 +109,3 @@ jobs:
             --with-pkg-extra-version=-MyOwnFRRVersion &&
             make -j $(nproc) &&
             sudo make install
-        continue-on-error: true
