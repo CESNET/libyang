@@ -41,7 +41,7 @@ jobs:
           }
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@main
 
       - name: Deps-packages
         shell: bash
