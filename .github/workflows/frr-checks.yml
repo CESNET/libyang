@@ -19,7 +19,9 @@ jobs:
       matrix:
         compiler: [ gcc ]
         frr-versions:
-          - master
+          - frr-9.1
+          - frr-9.0.2
+          - frr-8.5.4
         libyang-versions:
           - v2.1.128
     steps:
