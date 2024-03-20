@@ -1,0 +1,117 @@
+name: libyang+FRR HEAD CI
+run-name: libyang CI FRR ${{ github.actor }}  ⚗️
+on:
+  schedule:
+    # every night at 1.10
+    - cron: '10 1 * * *'
+# the following in pending for fixes per the comments of pr !2203
+# push:
+#   branches:
+#     - '**'
+# pull_request:
+#   branches:
+#     - '**'
+jobs:
+  build-frr:
+    name: Build FRR
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler: [ gcc ]
+        frr-versions:
+          - master
+        libyang-versions:
+          - v2.1.128
+    steps:
+      - name: add missing packages per building-frr-for-ubuntu2204
+        uses: ConorMacBride/install-package@v1
+        with:
+          apt:
+            git
+            autoconf
+            libtool
+            make
+            libreadline-dev
+            texinfo
+            pkg-config
+            libelf-dev
+            libpam0g-dev
+            libjson-c-dev
+            bison
+            flex
+            libc-ares-dev
+            python3-dev
+            python3-sphinx
+            install-info
+            build-essential
+            libsnmp-dev
+            perl
+            libcap-dev
+            libelf-dev
+            libunwind-dev
+            protobuf-c-compiler
+            libprotobuf-c-dev
+            libgrpc++-dev
+            protobuf-compiler-grpc
+            libsqlite3-dev
+            libzmq5
+            libzmq3-dev
+      - name: libyang ${{ matrix.libyang-versions }} ${{ matrix.compiler }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.libyang-versions }}
+          submodules: false
+          fetch-depth: 0
+          filter: tree:0
+          fetch-tags: true
+      - name: make libyang from upstream
+        run: >-
+          git branch &&
+          mkdir build &&
+          cd build &&
+          export CC=${{ matrix.compiler }} &&
+          cmake -DCMAKE_BUILD_TYPE:String="Release" .. &&
+          make -j $(nproc) &&
+          sudo make install
+      - name: Add FRR user and groups
+        run: >-
+          sudo groupadd -r -g 92 frr &&
+          sudo groupadd -r -g 85 frrvty &&
+          sudo adduser --system --ingroup frr --home /var/run/frr/ --gecos "FRR suite" --shell /sbin/nologin frr &&
+          sudo usermod -a -G frrvty frr
+      - name: FRR github checkout
+        uses: actions/checkout@v4
+        with:
+          repository: 'FRRouting/frr.git'
+          ref: ${{ matrix.frr-versions }}
+          submodules: false
+          fetch-depth: 0
+          filter: tree:0
+          fetch-tags: true
+      - name: compile FRR with ${{ matrix.libyang-versions }} ${{ matrix.compiler }}
+        if: ${{ always() }}
+        run: >-
+          ls -la &&
+          export CC=${{ matrix.compiler }} &&
+          ./bootstrap.sh &&
+          ./configure \
+            --prefix=/usr \
+            --includedir=\${prefix}/include \
+            --bindir=\${prefix}/bin \
+            --sbindir=\${prefix}/lib/frr \
+            --libdir=\${prefix}/lib/frr \
+            --libexecdir=\${prefix}/lib/frr \
+            --sysconfdir=/etc \
+            --localstatedir=/var \
+            --with-moduledir=\${prefix}/lib/frr/modules \
+            --enable-configfile-mask=0640 \
+            --enable-logfile-mask=0640 \
+            --enable-snmp=agentx \
+            --enable-multipath=64 \
+            --enable-user=frr \
+            --enable-group=frr \
+            --enable-vty-group=frrvty \
+            --with-pkg-git-version \
+            --with-pkg-extra-version=-MyOwnFRRVersion &&
+            make -j $(nproc) &&
+            sudo make install
