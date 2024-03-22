@@ -1,9 +1,30 @@
 name: libyang+FRR HEAD CI
 run-name: libyang CI FRR ${{ github.actor }}  ⚗️
 on:
-  schedule:
-    # every night at 1.10
-    - cron: '10 1 * * *'
+  workflow_dispatch:
+    inputs:
+      frr-versions:
+        description: 'FRRouting version'
+        required: true
+        default: 'master'
+        type: choice
+        options:
+          - master
+          - frr-9.1
+          - frr-9.0.2
+          - frr-8.5.4
+      libyang-versions:
+        description: 'libyang version'
+        required: true
+        default: 'devel'
+        type: choice
+        options:
+          - devel
+          - v2.1.148
+          - v2.1.128
+# schedule:
+#   # every night at 1.10
+#   - cron: '10 1 * * *'
 # the following in pending for fixes per the comments of pr !2203
 # push:
 #   branches:
@@ -18,12 +39,12 @@ jobs:
     strategy:
       matrix:
         compiler: [ gcc ]
-        frr-versions:
-          - frr-9.1
-          - frr-9.0.2
-          - frr-8.5.4
-        libyang-versions:
-          - v2.1.128
+#       frr-versions:
+#         - frr-9.1
+#         - frr-9.0.2
+#         - frr-8.5.4
+#       libyang-versions:
+#         - v2.1.128
     steps:
       - name: add missing packages per building-frr-for-ubuntu2204
         uses: ConorMacBride/install-package@v1
@@ -58,10 +79,10 @@ jobs:
             libsqlite3-dev
             libzmq5
             libzmq3-dev
-      - name: libyang ${{ matrix.libyang-versions }} ${{ matrix.compiler }}
+      - name: libyang ${{ inputs.libyang-versions }} ${{ matrix.compiler }}
         uses: actions/checkout@v4
         with:
-          ref: ${{ matrix.libyang-versions }}
+          ref: ${{ inputs.libyang-versions }}
           submodules: false
           fetch-depth: 0
           filter: tree:0
@@ -85,12 +106,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: 'FRRouting/frr.git'
-          ref: ${{ matrix.frr-versions }}
+          ref: ${{ inputs.frr-versions }}
           submodules: false
           fetch-depth: 0
           filter: tree:0
           fetch-tags: true
-      - name: compile FRR with ${{ matrix.libyang-versions }} ${{ matrix.compiler }}
+      - name: compile FRR with ${{ inputs.libyang-versions }} ${{ matrix.compiler }}
         if: ${{ always() }}
         run: >-
           ls -la &&
