@@ -802,6 +802,7 @@ lyd_new_list3(struct lyd_node *parent, const struct lys_module *module, const ch
         rc = lyd_create_term(key_s, key_val, key_len, 0, store_only, NULL, format, NULL, LYD_HINT_DATA, NULL, &key);
         LY_CHECK_GOTO(rc, cleanup);
         lyd_insert_node(ret, NULL, key, LYD_INSERT_NODE_LAST);
+        ++i;
     }
 
     if (parent) {
