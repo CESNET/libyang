@@ -10,6 +10,7 @@ on:
         type: choice
         options:
           - master
+          - pull/15608/head
           - frr-9.1
           - frr-9.0.2
           - frr-8.5.4
