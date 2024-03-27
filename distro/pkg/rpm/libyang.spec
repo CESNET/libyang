@@ -17,6 +17,9 @@ BuildRequires:  cmake(cmocka) >= 1.0.1
 BuildRequires:  make
 BuildRequires:  pkgconfig(libpcre2-8) >= 10.21
 
+%package modules
+Summary:    YANG modules for libyang
+
 %package devel
 Summary:    Development files for libyang
 Requires:   %{name}%{?_isa} = %{version}-%{release}
@@ -31,6 +34,9 @@ Summary:        YANG validator tools
 Requires:       %{name}%{?_isa} = %{version}-%{release}
 # This was not properly split out before
 Conflicts:      %{name} < 1.0.225-3
+
+%description modules
+YANG modules for libyang.
 
 %description devel
 Headers of libyang library.
@@ -92,6 +98,8 @@ mkdir -m0755 -p %{buildroot}/%{_docdir}/libyang
 %license LICENSE
 %{_libdir}/libyang.so.3
 %{_libdir}/libyang.so.3.*
+
+%files modules
 %{_datadir}/yang/modules/libyang/*.yang
 %dir %{_datadir}/yang/
 %dir %{_datadir}/yang/modules/

@@ -63,3 +63,11 @@ Description: parser toolkit for IETF YANG data modeling - executable tools
  during the creation of IETF YANG schemas.  The tools are not generally
  useful for normal operation where libyang primarily processes configuration
  data, not schemas.
+
+Package: libyang-modules
+Section: devel
+Architecture: all
+Description: parser toolkit for IETF YANG data modeling - YANG modules
+ This package provides the IETF YANG modules used by libyang. These modules
+ are embedded into libyang so this package is not necessary for libyang
+ operation.
