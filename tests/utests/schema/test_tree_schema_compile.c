@@ -114,7 +114,7 @@ test_module(void **state)
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
     assert_int_equal(LY_EEXIST, lys_parse(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &mod));
     ly_in_free(in, 0);
-    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "/aa:a", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/aa:a\" of data definition/RPC/action/notification statement.", "/aa:a", 0);
 }
 
 static void
@@ -146,7 +146,7 @@ test_name_collisions(void **state)
             "  leaf c {type empty;}"
             "}";
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, yang_data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"c\" of data definition/RPC/action/notification statement.", "/a:c", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/a:c\" of data definition/RPC/action/notification statement.", "/a:c", 0);
 
     yang_data = "module a {namespace urn:a;prefix a;"
             "  container c;"
@@ -154,7 +154,7 @@ test_name_collisions(void **state)
             "  notification c;"
             "}";
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, yang_data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"c\" of data definition/RPC/action/notification statement.", "/a:c", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/a:c\" of data definition/RPC/action/notification statement.", "/a:c", 0);
 
     yang_data = "module a {namespace urn:a;prefix a;"
             "  container c;"
@@ -162,7 +162,7 @@ test_name_collisions(void **state)
             "  rpc c;"
             "}";
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, yang_data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"c\" of data definition/RPC/action/notification statement.", "/a:c", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/a:c\" of data definition/RPC/action/notification statement.", "/a:c", 0);
 
     yang_data = "module a {namespace urn:a;prefix a;"
             "  container c;"
@@ -175,7 +175,7 @@ test_name_collisions(void **state)
             "  }"
             "}";
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, yang_data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"c\" of data definition/RPC/action/notification statement.", "/a:ch/c/c", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/a:c\" of data definition/RPC/action/notification statement.", "/a:ch/c/c", 0);
 
     /* nested */
     yang_data = "module a {namespace urn:a;prefix a;container c { list l {key \"k\"; leaf k {type string;}"
@@ -183,21 +183,21 @@ test_name_collisions(void **state)
             "container a;"
             "}}}";
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, yang_data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "/a:c/l/a", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/a:c/l/a\" of data definition/RPC/action/notification statement.", "/a:c/l/a", 0);
 
     yang_data = "module a {yang-version 1.1;namespace urn:a;prefix a;container c { list l {key \"k\"; leaf k {type string;}"
             "leaf-list a {type string;}"
             "notification a;"
             "}}}";
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, yang_data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "/a:c/l/a", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/a:c/l/a\" of data definition/RPC/action/notification statement.", "/a:c/l/a", 0);
 
     yang_data = "module a {yang-version 1.1;namespace urn:a;prefix a;container c { list l {key \"k\"; leaf k {type string;}"
             "leaf-list a {type string;}"
             "action a;"
             "}}}";
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, yang_data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "/a:c/l/a", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/a:c/l/a\" of data definition/RPC/action/notification statement.", "/a:c/l/a", 0);
 
     /* grouping */
 }
@@ -502,16 +502,16 @@ test_node_choice(void **state)
 
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;"
             "choice ch {case a {leaf x {type string;}}leaf x {type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"x\" of data definition/RPC/action/notification statement.", "/aa:ch/x/x", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/aa:ch/a/x\" of data definition/RPC/action/notification statement.", "/aa:ch/x/x", 0);
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module aa2 {namespace urn:aa2;prefix aa;"
             "choice ch {case a {leaf y {type string;}}case b {leaf y {type string;}}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"y\" of data definition/RPC/action/notification statement.", "/aa2:ch/b/y", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/aa2:ch/a/y\" of data definition/RPC/action/notification statement.", "/aa2:ch/b/y", 0);
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;"
             "choice ch {case a {leaf x {type string;}}leaf a {type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"a\" of case statement.", "/bb:ch/a", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/bb:ch/a\" of case statement.", "/bb:ch/a", 0);
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module bb2 {namespace urn:bb2;prefix bb;"
             "choice ch {case b {leaf x {type string;}}case b {leaf y {type string;}}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"b\" of case statement.", "/bb2:ch/b", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/bb2:ch/b\" of case statement.", "/bb2:ch/b", 0);
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ca {namespace urn:ca;prefix ca;"
             "choice ch {default c;case a {leaf x {type string;}}case b {leaf y {type string;}}}}", LYS_IN_YANG, NULL));
@@ -589,14 +589,14 @@ test_action(void **state)
 
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;leaf x{type string;} rpc x;}",
             LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"x\" of data definition/RPC/action/notification statement.", "/bb:x", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/bb:x\" of data definition/RPC/action/notification statement.", "/bb:x", 0);
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module cc {yang-version 1.1; namespace urn:cc;prefix cc;container c {leaf y {type string;} action y;}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"y\" of data definition/RPC/action/notification statement.", "/cc:c/y", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/cc:c/y\" of data definition/RPC/action/notification statement.", "/cc:c/y", 0);
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module dd {yang-version 1.1; namespace urn:dd;prefix dd;container c {action z; action z;}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"z\" of data definition/RPC/action/notification statement.", "/dd:c/z", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/dd:c/z\" of data definition/RPC/action/notification statement.", "/dd:c/z", 0);
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule eesub {belongs-to ee {prefix ee;} notification w;}");
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module ee {yang-version 1.1; namespace urn:ee;prefix ee;include eesub; rpc w;}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"w\" of data definition/RPC/action/notification statement.", "/ee:w", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/ee:w\" of data definition/RPC/action/notification statement.", "/ee:w", 0);
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff {yang-version 1.1; namespace urn:ff;prefix ff; rpc test {input {container a {leaf b {type string;}}}}"
             "augment /test/input/a {action invalid {input {leaf x {type string;}}}}}", LYS_IN_YANG, NULL));
@@ -660,14 +660,14 @@ test_notification(void **state)
             NULL, 1);
 
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;leaf x{type string;} notification x;}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"x\" of data definition/RPC/action/notification statement.", "/bb:x", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/bb:x\" of data definition/RPC/action/notification statement.", "/bb:x", 0);
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module cc {yang-version 1.1; namespace urn:cc;prefix cc;container c {leaf y {type string;} notification y;}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"y\" of data definition/RPC/action/notification statement.", "/cc:c/y", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/cc:c/y\" of data definition/RPC/action/notification statement.", "/cc:c/y", 0);
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module dd {yang-version 1.1; namespace urn:dd;prefix dd;container c {notification z; notification z;}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"z\" of data definition/RPC/action/notification statement.", "/dd:c/z", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/dd:c/z\" of data definition/RPC/action/notification statement.", "/dd:c/z", 0);
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule eesub {belongs-to ee {prefix ee;} rpc w;}");
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module ee {yang-version 1.1; namespace urn:ee;prefix ee;include eesub; notification w;}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Duplicate identifier \"w\" of data definition/RPC/action/notification statement.", "/ee:w", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/ee:w\" of data definition/RPC/action/notification statement.", "/ee:w", 0);
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff {yang-version 1.1; namespace urn:ff;prefix ff; rpc test {input {container a {leaf b {type string;}}}}"
             "augment /test/input/a {notification invalid {leaf x {type string;}}}}", LYS_IN_YANG, NULL));
@@ -2633,7 +2633,7 @@ test_uses(void **state)
 
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module dd {namespace urn:dd;prefix dd;grouping grp{leaf a{type string;}}"
             "leaf a {type string;}uses grp;}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.",
+    CHECK_LOG_CTX("Duplicate identifier \"/dd:a\" of data definition/RPC/action/notification statement.",
             "/dd:{uses='grp'}/dd:a", 0);
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;grouping grp {leaf l {type string; status deprecated;}}"
@@ -2643,11 +2643,11 @@ test_uses(void **state)
 
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module ff {namespace urn:ff;prefix ff;grouping grp {leaf l {type string;}}"
             "leaf l {type int8;}uses grp;}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Duplicate identifier \"l\" of data definition/RPC/action/notification statement.",
+    CHECK_LOG_CTX("Duplicate identifier \"/ff:l\" of data definition/RPC/action/notification statement.",
             "/ff:{uses='grp'}/ff:l", 0);
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module fg {namespace urn:fg;prefix fg;grouping grp {leaf m {type string;}}"
             "uses grp;leaf m {type int8;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Duplicate identifier \"m\" of data definition/RPC/action/notification statement.", "/fg:m", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/fg:m\" of data definition/RPC/action/notification statement.", "/fg:m", 0);
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module gg {namespace urn:gg;prefix gg; grouping grp {container g;}"
             "leaf g {type string;}"
@@ -2984,7 +2984,7 @@ test_augment(void **state)
 
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb; container c {leaf a {type string;}}"
             "augment /c {leaf a {type int8;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "/bb:{augment='/c'}/a", 0);
+    CHECK_LOG_CTX("Duplicate identifier \"/bb:c/a\" of data definition/RPC/action/notification statement.", "/bb:{augment='/c'}/a", 0);
 
     assert_int_equal(LY_ENOTFOUND, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc; container c {leaf a {type string;}}"
             "augment /c/a {leaf a {type int8;}}}", LYS_IN_YANG, &mod));

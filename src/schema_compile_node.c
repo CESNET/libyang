@@ -2342,11 +2342,13 @@ static LY_ERR
 lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, const char *name,
         const struct lysc_node *exclude)
 {
-    const struct lysc_node *iter, *iter2;
+    const struct lysc_node *iter, *iter2, *dup = NULL;
     const struct lysc_node_action *actions;
     const struct lysc_node_notif *notifs;
     uint32_t getnext_flags;
     struct ly_set parent_choices = {0};
+    const char *node_type_str = "data definition/RPC/action/notification";
+    char *spath;
 
 #define CHECK_NODE(iter, exclude, name) (iter != (void *)exclude && (iter)->module == exclude->module && !strcmp(name, (iter)->name))
 
@@ -2355,8 +2357,9 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
         assert(parent->nodetype == LYS_CHOICE);
         LY_LIST_FOR(lysc_node_child(parent), iter) {
             if (CHECK_NODE(iter, exclude, name)) {
-                LOGVAL(ctx->ctx, LY_VCODE_DUPIDENT, name, "case");
-                return LY_EEXIST;
+                node_type_str = "case";
+                dup = iter;
+                goto cleanup;
             }
         }
 
@@ -2394,7 +2397,8 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
     if (!parent && ctx->ext) {
         while ((iter = lys_getnext_ext(iter, parent, ctx->ext, getnext_flags))) {
             if (!ly_set_contains(&parent_choices, (void *)iter, NULL) && CHECK_NODE(iter, exclude, name)) {
-                goto error;
+                dup = iter;
+                goto cleanup;
             }
 
             /* we must compare with both the choice and all its nested data-definiition nodes (but not recursively) */
@@ -2402,7 +2406,8 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
                 iter2 = NULL;
                 while ((iter2 = lys_getnext_ext(iter2, iter, NULL, 0))) {
                     if (CHECK_NODE(iter2, exclude, name)) {
-                        goto error;
+                        dup = iter2;
+                        goto cleanup;
                     }
                 }
             }
@@ -2410,7 +2415,8 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
     } else {
         while ((iter = lys_getnext(iter, parent, ctx->cur_mod->compiled, getnext_flags))) {
             if (!ly_set_contains(&parent_choices, (void *)iter, NULL) && CHECK_NODE(iter, exclude, name)) {
-                goto error;
+                dup = iter;
+                goto cleanup;
             }
 
             /* we must compare with both the choice and all its nested data-definiition nodes (but not recursively) */
@@ -2418,7 +2424,8 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
                 iter2 = NULL;
                 while ((iter2 = lys_getnext(iter2, iter, NULL, 0))) {
                     if (CHECK_NODE(iter2, exclude, name)) {
-                        goto error;
+                        dup = iter2;
+                        goto cleanup;
                     }
                 }
             }
@@ -2427,24 +2434,29 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
         actions = parent ? lysc_node_actions(parent) : ctx->cur_mod->compiled->rpcs;
         LY_LIST_FOR((struct lysc_node *)actions, iter) {
             if (CHECK_NODE(iter, exclude, name)) {
-                goto error;
+                dup = iter;
+                goto cleanup;
             }
         }
 
         notifs = parent ? lysc_node_notifs(parent) : ctx->cur_mod->compiled->notifs;
         LY_LIST_FOR((struct lysc_node *)notifs, iter) {
             if (CHECK_NODE(iter, exclude, name)) {
-                goto error;
+                dup = iter;
+                goto cleanup;
             }
         }
     }
-    ly_set_erase(&parent_choices, NULL);
-    return LY_SUCCESS;
 
-error:
+cleanup:
     ly_set_erase(&parent_choices, NULL);
-    LOGVAL(ctx->ctx, LY_VCODE_DUPIDENT, name, "data definition/RPC/action/notification");
-    return LY_EEXIST;
+    if (dup) {
+        spath = lysc_path(dup, LYSC_PATH_LOG, NULL, 0);
+        LOGVAL(ctx->ctx, LY_VCODE_DUPIDENT, spath, node_type_str);
+        free(spath);
+        return LY_EEXIST;
+    }
+    return LY_SUCCESS;
 
 #undef CHECK_NODE
 }
