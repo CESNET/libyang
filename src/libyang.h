@@ -37,6 +37,16 @@ extern "C" {
 #include "tree_data.h"
 #include "tree_schema.h"
 
+/**
+ * @brief libyang v3 compatibility macros with v2.
+ */
+#define ly_strerrcode ly_strerr
+#define ly_last_errmsg ly_last_logmsg
+#define ly_errcode(ctx) (ly_err_last(ctx) ? ly_err_last(ctx)->err : 0)
+#define ly_errmsg(ctx) (ly_err_last(ctx) ? ly_err_last(ctx)->msg : NULL)
+#define ly_errpath(ctx) (ly_err_last(ctx) ? (ly_err_last(ctx)->data_path ? ly_err_last(ctx)->data_path : ly_err_last(ctx)->schema_path) : NULL)
+#define ly_vecode(ctx) (ly_err_last(ctx) ? ly_err_last(ctx)->vecode : 0)
+
 /*
  * The following headers are supposed to be included explicitly:
  * - hash_table.h
