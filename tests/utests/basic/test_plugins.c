@@ -54,12 +54,12 @@ test_add_simple(void **state)
     leaf = (struct lysc_node_leaf *)mod->compiled->data;
     assert_int_equal(LYS_LEAF, leaf->nodetype);
 
-    assert_non_null(plugin_t = lyplg_type_plugin_find("libyang-plugins-simple", NULL, "note"));
+    assert_non_null(plugin_t = lyplg_type_plugin_find(NULL, "libyang-plugins-simple", NULL, "note"));
     assert_string_equal("ly2 simple test v1", plugin_t->id);
     assert_ptr_equal(leaf->type->plugin, plugin_t);
 
     assert_int_equal(1, LY_ARRAY_COUNT(leaf->exts));
-    assert_non_null(record_e = lyplg_ext_record_find("libyang-plugins-simple", NULL, "hint"));
+    assert_non_null(record_e = lyplg_ext_record_find(NULL, "libyang-plugins-simple", NULL, "hint"));
     assert_string_equal("ly2 simple test v1", record_e->plugin.id);
     assert_ptr_equal(leaf->exts[0].def->plugin, &record_e->plugin);
 
@@ -96,6 +96,49 @@ test_not_implemented(void **state)
     lyd_free_all(tree);
 }
 
+static LY_ERR
+parse_clb(struct lysp_ctx *UNUSED(pctx), struct lysp_ext_instance *ext)
+{
+    struct lysp_node_leaf *leaf;
+
+    leaf = (struct lysp_node_leaf *)ext->parent;
+    leaf->flags |= LYS_STATUS_OBSLT;
+    return LY_SUCCESS;
+}
+
+struct lyplg_ext_record memory_recs[] = {
+    {
+        .module = "libyang-plugins-simple",
+        .revision = NULL,
+        .name = "hint",
+
+        .plugin.id = "memory-plugin-v1",
+        .plugin.parse = parse_clb,
+        .plugin.compile = NULL,
+        .plugin.printer_info = NULL,
+        .plugin.node = NULL,
+        .plugin.snode = NULL,
+        .plugin.validate = NULL,
+        .plugin.pfree = NULL,
+        .plugin.cfree = NULL
+    },
+    {0} /* terminating zeroed item */
+};
+
+static void
+test_simple_from_memory(void **state)
+{
+    struct lys_module *mod;
+    struct lysc_node_leaf *leaf;
+
+    lyplg_add_plugin(UTEST_LYCTX, LYPLG_EXT_API_VERSION, LYPLG_EXTENSION, memory_recs);
+    UTEST_ADD_MODULE(simple, LYS_IN_YANG, NULL, &mod);
+
+    leaf = (struct lysc_node_leaf *)mod->compiled->data;
+    assert_int_equal(LYS_LEAF, leaf->nodetype);
+    assert_true(leaf->flags & LYS_STATUS_OBSLT);
+}
+
 int
 main(void)
 {
@@ -103,6 +146,7 @@ main(void)
         UTEST(test_add_invalid),
         UTEST(test_add_simple),
         UTEST(test_not_implemented),
+        UTEST(test_simple_from_memory),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

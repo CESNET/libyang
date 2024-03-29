@@ -130,21 +130,22 @@ static struct ly_set plugins_extensions = {0};
 /**
  * @brief Iterate over list of loaded plugins of the given @p type.
  *
+ * @param[in] ctx The context for which the plugin is searched for
  * @param[in] type Type of the plugins to iterate.
  * @param[in,out] index The iterator - set to 0 for the first call.
  * @return The plugin records, NULL if no more record is available.
  */
 static struct lyplg_record *
-plugins_iter(enum LYPLG type, uint32_t *index)
+plugins_iter(const struct ly_ctx *ctx, enum LYPLG type, uint32_t *index)
 {
-    struct ly_set *plugins;
+    const struct ly_set *plugins;
 
     assert(index);
 
     if (type == LYPLG_EXTENSION) {
-        plugins = &plugins_extensions;
+        plugins = ctx ? &ctx->plugins_extensions : &plugins_extensions;
     } else {
-        plugins = &plugins_types;
+        plugins = ctx ? &ctx->plugins_types : &plugins_types;
     }
 
     if (*index == plugins->count) {
@@ -156,7 +157,7 @@ plugins_iter(enum LYPLG type, uint32_t *index)
 }
 
 static void *
-lyplg_record_find(enum LYPLG type, const char *module, const char *revision, const char *name)
+lyplg_record_find(const struct ly_ctx *ctx, enum LYPLG type, const char *module, const char *revision, const char *name)
 {
     uint32_t i = 0;
     struct lyplg_record *item;
@@ -164,7 +165,7 @@ lyplg_record_find(enum LYPLG type, const char *module, const char *revision, con
     assert(module);
     assert(name);
 
-    while ((item = plugins_iter(type, &i)) != NULL) {
+    while ((item = plugins_iter(ctx, type, &i)) != NULL) {
         if (!strcmp(item->module, module) && !strcmp(item->name, name)) {
             if (item->revision && revision && strcmp(item->revision, revision)) {
                 continue;
@@ -180,23 +181,47 @@ lyplg_record_find(enum LYPLG type, const char *module, const char *revision, con
 }
 
 struct lyplg_type *
-lyplg_type_plugin_find(const char *module, const char *revision, const char *name)
+lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name)
 {
-    struct lyplg_record *record;
+    struct lyplg_record *record = NULL;
 
-    record = lyplg_record_find(LYPLG_TYPE, module, revision, name);
+    if (ctx) {
+        /* try to find context specific plugin */
+        record = lyplg_record_find(ctx, LYPLG_TYPE, module, revision, name);
+    }
+
+    if (!record) {
+        /* try to find shared plugin */
+        record = lyplg_record_find(NULL, LYPLG_TYPE, module, revision, name);
+    }
+
     return record ? &((struct lyplg_type_record *)record)->plugin : NULL;
 }
 
 struct lyplg_ext_record *
-lyplg_ext_record_find(const char *module, const char *revision, const char *name)
+lyplg_ext_record_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name)
 {
-    return lyplg_record_find(LYPLG_EXTENSION, module, revision, name);
+    struct lyplg_ext_record *record = NULL;
+
+    if (ctx) {
+        /* try to find context specific plugin */
+        record = lyplg_record_find(ctx, LYPLG_EXTENSION, module, revision, name);
+    }
+
+    if (!record) {
+        /* try to find shared plugin */
+        record = lyplg_record_find(NULL, LYPLG_EXTENSION, module, revision, name);
+    }
+
+    return record;
 }
 
 /**
  * @brief Insert the provided extension plugin records into the internal set of extension plugins for use by libyang.
  *
+ * @param[in] ctx The context to which the plugin should be associated with. If NULL, the plugin is considered to be shared
+ * between all existing contexts.
+ * @param[in] type The type of plugins records
  * @param[in] recs An array of plugin records provided by the plugin implementation. The array must be terminated by a zeroed
  * record.
  * @return LY_SUCCESS in case of success
@@ -204,8 +229,10 @@ lyplg_ext_record_find(const char *module, const char *revision, const char *name
  * @return LY_EMEM in case of memory allocation failure.
  */
 static LY_ERR
-plugins_insert(enum LYPLG type, const void *recs)
+plugins_insert(struct ly_ctx *ctx, enum LYPLG type, const void *recs)
 {
+    struct ly_set *plugins;
+
     if (!recs) {
         return LY_SUCCESS;
     }
@@ -213,14 +240,18 @@ plugins_insert(enum LYPLG type, const void *recs)
     if (type == LYPLG_EXTENSION) {
         const struct lyplg_ext_record *rec = (const struct lyplg_ext_record *)recs;
 
+        plugins = ctx ? &ctx->plugins_extensions : &plugins_extensions;
+
         for (uint32_t i = 0; rec[i].name; i++) {
-            LY_CHECK_RET(ly_set_add(&plugins_extensions, (void *)&rec[i], 0, NULL));
+            LY_CHECK_RET(ly_set_add(plugins, (void *)&rec[i], 0, NULL));
         }
     } else { /* LYPLG_TYPE */
         const struct lyplg_type_record *rec = (const struct lyplg_type_record *)recs;
 
+        plugins = ctx ? &ctx->plugins_types : &plugins_types;
+
         for (uint32_t i = 0; rec[i].name; i++) {
-            LY_CHECK_RET(ly_set_add(&plugins_types, (void *)&rec[i], 0, NULL));
+            LY_CHECK_RET(ly_set_add(plugins, (void *)&rec[i], 0, NULL));
         }
     }
 
@@ -329,7 +360,7 @@ plugins_load(void *dlhandler, const char *pathname, enum LYPLG type)
         }
 
         /* ... and load all the types plugins */
-        LY_CHECK_RET(plugins_insert(type, plugins));
+        LY_CHECK_RET(plugins_insert(NULL, type, plugins));
     }
 
     return LY_SUCCESS;
@@ -457,48 +488,48 @@ lyplg_init(ly_bool builtin_type_plugins_only)
     }
 
     /* internal types */
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_binary), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_bits), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_boolean), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_decimal64), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_empty), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_enumeration), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_identityref), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_instanceid), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_integer), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_leafref), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_string), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_union), error);
+    LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_binary), error);
+    LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_bits), error);
+    LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_boolean), error);
+    LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_decimal64), error);
+    LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_empty), error);
+    LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_enumeration), error);
+    LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_identityref), error);
+    LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_instanceid), error);
+    LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_integer), error);
+    LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_leafref), error);
+    LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_string), error);
+    LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_union), error);
 
     if (!builtin_type_plugins_only) {
         /* yang */
-        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_instanceid_keys), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_instanceid_keys), error);
 
         /* ietf-inet-types */
-        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv4_address), error);
-        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv4_address_no_zone), error);
-        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv6_address), error);
-        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv6_address_no_zone), error);
-        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv4_prefix), error);
-        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv6_prefix), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_ipv4_address), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_ipv4_address_no_zone), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_ipv6_address), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_ipv6_address_no_zone), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_ipv4_prefix), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_ipv6_prefix), error);
 
         /* ietf-yang-types */
-        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_date_and_time), error);
-        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_hex_string), error);
-        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_xpath10), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_date_and_time), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_hex_string), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_xpath10), error);
 
         /* ietf-netconf-acm */
-        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_node_instanceid), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_node_instanceid), error);
 
         /* lyds_tree */
-        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_lyds_tree), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_lyds_tree), error);
 
         /* internal extensions */
-        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_metadata), error);
-        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_nacm), error);
-        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_yangdata), error);
-        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_schema_mount), error);
-        LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_structure), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_metadata), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_nacm), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_yangdata), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_schema_mount), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_structure), error);
     }
 
 #ifndef STATIC
@@ -561,4 +592,32 @@ lyplg_add(const char *pathname)
 
     return ret;
 #endif
+}
+
+LIBYANG_API_DEF LY_ERR
+lyplg_add_plugin(struct ly_ctx *ctx, uint32_t version, enum LYPLG type, const void *recs)
+{
+    LY_ERR ret = LY_SUCCESS;
+
+    LY_CHECK_ARG_RET(NULL, recs, LY_EINVAL);
+
+    if (version != plugins_load_info[type].apiver) {
+        LOGERR(ctx, LY_EINVAL, "Adding user %s plugin failed, wrong API version - %d expected, %d found.",
+                plugins_load_info[type].id, plugins_load_info[type].apiver, version);
+        return LY_EINVAL;
+    }
+
+    /* works only in case a context exists */
+    pthread_mutex_lock(&plugins_guard);
+    if (!context_refcount) {
+        /* no context */
+        pthread_mutex_unlock(&plugins_guard);
+        LOGERR(NULL, LY_EDENIED, "To add a plugin, at least one context must exists.");
+        return LY_EDENIED;
+    }
+
+    plugins_insert(ctx, type, recs);
+    pthread_mutex_unlock(&plugins_guard);
+
+    return ret;
 }

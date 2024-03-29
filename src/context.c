@@ -1384,7 +1384,11 @@ ly_ctx_destroy(struct ly_ctx *ctx)
     /* LYB hash lock */
     pthread_mutex_destroy(&ctx->lyb_hash_lock);
 
-    /* plugins - will be removed only if this is the last context */
+    /* context specific plugins */
+    ly_set_erase(&ctx->plugins_types, NULL);
+    ly_set_erase(&ctx->plugins_extensions, NULL);
+
+    /* shared plugins - will be removed only if this is the last context */
     lyplg_clean();
 
     free(ctx);

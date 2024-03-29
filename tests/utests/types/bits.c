@@ -800,7 +800,7 @@ test_plugin_store(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value value = {0};
-    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_BITS]);
+    struct lyplg_type *type = lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_BITS]);
     struct lysc_type *lysc_type;
     struct lysc_type lysc_type_test;
     LY_ERR ly_ret;
@@ -894,7 +894,7 @@ test_plugin_compare(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value values[10];
-    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_BITS]);
+    struct lyplg_type *type = lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_BITS]);
     struct lysc_type *lysc_type;
     LY_ERR ly_ret;
     const char *schema;
@@ -956,7 +956,7 @@ test_plugin_sort(void **state)
 {
     const char *schema;
     struct lys_module *mod;
-    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_BITS]);
+    struct lyplg_type *type = lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_BITS]);
     struct lysc_type *lysc_type;
     struct ly_err_item *err = NULL;
     struct lyd_value val1 = {0}, val2 = {0};
@@ -993,7 +993,7 @@ test_plugin_print(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value values[10];
-    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_BITS]);
+    struct lyplg_type *type = lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_BITS]);
     struct lysc_type *lysc_type;
     LY_ERR ly_ret;
     const char *schema;
@@ -1035,7 +1035,7 @@ test_plugin_dup(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value values[10];
-    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_BITS]);
+    struct lyplg_type *type = lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_BITS]);
     struct lysc_type *lysc_type;
     const char *schema;
     LY_ERR ly_ret;

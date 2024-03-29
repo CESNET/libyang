@@ -2263,7 +2263,7 @@ preparenext:
         }
 
         /* try to find loaded user type plugins */
-        plugin = lyplg_type_plugin_find(tctx->tpdf->type.pmod->mod->name, tctx->tpdf->type.pmod->mod->revision,
+        plugin = lyplg_type_plugin_find(ctx->ctx, tctx->tpdf->type.pmod->mod->name, tctx->tpdf->type.pmod->mod->revision,
                 tctx->tpdf->name);
         if (!plugin && base) {
             /* use the base type implementation if available */
@@ -2271,7 +2271,7 @@ preparenext:
         }
         if (!plugin) {
             /* use the internal built-in type implementation */
-            plugin = lyplg_type_plugin_find("", NULL, ly_data_type2str[basetype]);
+            plugin = lyplg_type_plugin_find(ctx->ctx, "", NULL, ly_data_type2str[basetype]);
         }
         assert(plugin);
 
@@ -2312,7 +2312,7 @@ preparenext:
     /* process the type definition in leaf */
     if (type_p->flags || type_p->exts || !base || (basetype == LY_TYPE_LEAFREF)) {
         /* leaf type has changes that need to be compiled into the type */
-        plugin = base ? base->plugin : lyplg_type_plugin_find("", NULL, ly_data_type2str[basetype]);
+        plugin = base ? base->plugin : lyplg_type_plugin_find(ctx->ctx, "", NULL, ly_data_type2str[basetype]);
         ret = lys_compile_type_(ctx, context_pnode, context_flags, context_name, (struct lysp_type *)type_p, basetype,
                 NULL, base, plugin, &tpdf_chain, 0, type);
         LY_CHECK_GOTO(ret, cleanup);

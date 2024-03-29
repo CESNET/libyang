@@ -85,6 +85,24 @@ enum LYPLG {
  */
 LIBYANG_API_DECL LY_ERR lyplg_add(const char *pathname);
 
+/**
+ * @brief Manually load a plugins from memory
+ *
+ * Note, that a plugin can be loaded only if there is at least one context. The loaded plugins are connected with the
+ * existence of a context. When all the contexts are destroyed, all the plugins are unloaded.
+ *
+ * @param[in] ctx The context to which the plugin should be associated with. If NULL, the plugin is considered to be shared
+ * between all existing contexts.
+ * @param[in] version The version of plugin records.
+ * @param[in] type The type of plugins records.
+ * @param[in] recs An array of plugin records provided by the plugin implementation. The array must be terminated by a zeroed
+ * record.
+ *
+ * @return LY_SUCCESS if the plugins with compatible version were successfully loaded.
+ * @return LY_EDENIED in case there is no context and the plugin cannot be loaded.
+ * @return LY_EINVAL when recs is NULL or the plugin contains invalid content for this libyang version.
+ */
+LIBYANG_API_DECL LY_ERR lyplg_add_plugin(struct ly_ctx *ctx, uint32_t version, enum LYPLG type, const void *recs);
 /** @} plugins */
 
 #ifdef __cplusplus

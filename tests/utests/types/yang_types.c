@@ -235,7 +235,7 @@ test_sort(void **state)
     const char *schema;
     struct lys_module *mod;
     struct lyd_value val1 = {0}, val2 = {0};
-    struct lyplg_type *type = lyplg_type_plugin_find("ietf-yang-types", "2013-07-15", "date-and-time");
+    struct lyplg_type *type = lyplg_type_plugin_find(NULL, "ietf-yang-types", "2013-07-15", "date-and-time");
     struct lysc_type *lysc_type;
     struct ly_err_item *err = NULL;
 

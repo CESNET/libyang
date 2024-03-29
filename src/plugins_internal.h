@@ -63,6 +63,7 @@ void lyplg_clean(void);
 /**
  * @brief Find a type plugin.
  *
+ * @param[in] ctx The optional context for which the plugin should be find. If NULL, only shared plugins will be searched
  * @param[in] module Name of the module where the type is defined. Must not be NULL, in case of plugins for
  * built-in types, the module is "".
  * @param[in] revision Revision of the module for which the plugin is implemented. NULL is not a wildcard, it matches
@@ -70,17 +71,18 @@ void lyplg_clean(void);
  * @param[in] name Name of the type which the plugin implements.
  * @return Found type plugin, NULL if none found.
  */
-struct lyplg_type *lyplg_type_plugin_find(const char *module, const char *revision, const char *name);
+struct lyplg_type *lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name);
 
 /**
  * @brief Find an extension plugin.
  *
+ * @param[in] ctx The optional context for which the plugin should be find. If NULL, only shared plugins will be searched
  * @param[in] module Name of the module where the extension is defined.
  * @param[in] revision Revision of the module for which the plugin is implemented. NULL is not a wildcard, it matches
  * only the plugins with NULL revision specified.
  * @param[in] name Name of the extension which the plugin implements.
  * @return Found extension record, NULL if none found.
  */
-struct lyplg_ext_record *lyplg_ext_record_find(const char *module, const char *revision, const char *name);
+struct lyplg_ext_record *lyplg_ext_record_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name);
 
 #endif /* LY_PLUGINS_INTERNAL_H_ */

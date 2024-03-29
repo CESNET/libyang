@@ -1362,7 +1362,7 @@ lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
             LY_CHECK_RET(lysp_ext_instance_resolve_argument(PARSER_CTX(pctx), ext));
 
             /* find the extension record, if any */
-            ext->record = lyplg_ext_record_find(mod->name, mod->revision, ext->def->name);
+            ext->record = lyplg_ext_record_find(mod->ctx, mod->name, mod->revision, ext->def->name);
         }
     }
 
