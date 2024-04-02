@@ -633,7 +633,7 @@ lyplg_add_plugin(struct ly_ctx *ctx, uint32_t version, enum LYPLG type, const vo
         return LY_EDENIED;
     }
 
-    plugins_insert(ctx, type, recs);
+    ret = plugins_insert(ctx, type, recs);
     pthread_mutex_unlock(&plugins_guard);
 
     return ret;
