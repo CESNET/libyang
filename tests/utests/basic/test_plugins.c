@@ -131,7 +131,7 @@ test_simple_from_memory(void **state)
     struct lys_module *mod;
     struct lysc_node_leaf *leaf;
 
-    lyplg_add_plugin(UTEST_LYCTX, LYPLG_EXT_API_VERSION, LYPLG_EXTENSION, memory_recs);
+    lyplg_add_extension_plugin(UTEST_LYCTX, LYPLG_EXT_API_VERSION, memory_recs);
     UTEST_ADD_MODULE(simple, LYS_IN_YANG, NULL, &mod);
 
     leaf = (struct lysc_node_leaf *)mod->compiled->data;

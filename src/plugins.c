@@ -594,7 +594,24 @@ lyplg_add(const char *pathname)
 #endif
 }
 
-LIBYANG_API_DEF LY_ERR
+/**
+ * @brief Manually load an extension plugins from memory
+ *
+ * Note, that a plugin can be loaded only if there is at least one context. The loaded plugins are connected with the
+ * existence of a context. When all the contexts are destroyed, all the plugins are unloaded.
+ *
+ * @param[in] ctx The context to which the plugin should be associated with. If NULL, the plugin is considered to be shared
+ * between all existing contexts.
+ * @param[in] version The version of plugin records.
+ * @param[in] type The type of plugins records.
+ * @param[in] recs An array of plugin records provided by the plugin implementation. The array must be terminated by a zeroed
+ * record.
+ *
+ * @return LY_SUCCESS if the plugins with compatible version were successfully loaded.
+ * @return LY_EDENIED in case there is no context and the plugin cannot be loaded.
+ * @return LY_EINVAL when recs is NULL or the plugin contains invalid content for this libyang version.
+ */
+static LY_ERR
 lyplg_add_plugin(struct ly_ctx *ctx, uint32_t version, enum LYPLG type, const void *recs)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -620,4 +637,16 @@ lyplg_add_plugin(struct ly_ctx *ctx, uint32_t version, enum LYPLG type, const vo
     pthread_mutex_unlock(&plugins_guard);
 
     return ret;
+}
+
+LIBYANG_API_DEF LY_ERR
+lyplg_add_extension_plugin(struct ly_ctx *ctx, uint32_t version, const struct lyplg_ext_record *recs)
+{
+    return lyplg_add_plugin(ctx, version, LYPLG_EXTENSION, recs);
+}
+
+LIBYANG_API_DEF LY_ERR
+lyplg_add_type_plugin(struct ly_ctx *ctx, uint32_t version, const struct lyplg_type_record *recs)
+{
+    return lyplg_add_plugin(ctx, version, LYPLG_TYPE, recs);
 }
