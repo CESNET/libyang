@@ -356,6 +356,8 @@ struct ly_ctx {
     struct ly_ht *err_ht;             /**< hash table of thread-specific list of errors related to the context */
     pthread_mutex_t lyb_hash_lock;    /**< lock for storing LYB schema hashes in schema nodes */
     struct ly_ht *leafref_links_ht;   /**< hash table of leafref links between term data nodes */
+    struct ly_set plugins_types;      /**< context specific set of type plugins */
+    struct ly_set plugins_extensions; /**< contets specific set of extension plugins */
 };
 
 /**
