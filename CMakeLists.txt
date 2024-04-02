@@ -245,6 +245,7 @@ option(ENABLE_COVERAGE "Build code coverage report from tests" OFF)
 option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL" OFF)
 option(ENABLE_INTERNAL_DOCS "Generate doxygen documentation also from internal headers" OFF)
 option(ENABLE_YANGLINT_INTERACTIVE "Enable interactive CLI yanglint" ON)
+option(ENABLE_TOOLS "Build binary tools 'yanglint' and 'yangre'" ON)
 option(BUILD_SHARED_LIBS "By default, shared libs are enabled. Turn off for a static build." ON)
 set(YANG_MODULE_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/yang/modules/libyang" CACHE STRING "Directory where to copy the YANG modules to")
 
@@ -456,7 +457,9 @@ endif()
 gen_coverage("utest_.*" "utest_.*_valgrind")
 
 # tools - yanglint, yangre
-add_subdirectory(tools)
+if(ENABLE_TOOLS)
+    add_subdirectory(tools)
+endif()
 
 # generate doxygen documentation for libyang API
 gen_doc("${doxy_files}" ${LIBYANG_VERSION} ${LIBYANG_DESCRIPTION} ${project_logo})
