@@ -618,9 +618,9 @@ lyplg_add_plugin(struct ly_ctx *ctx, uint32_t version, enum LYPLG type, const vo
 
     LY_CHECK_ARG_RET(NULL, recs, LY_EINVAL);
 
-    if (version != plugins_load_info[type].apiver) {
-        LOGERR(ctx, LY_EINVAL, "Adding user %s plugin failed, wrong API version - %d expected, %d found.",
-                plugins_load_info[type].id, plugins_load_info[type].apiver, version);
+    if (version != LYPLG_TYPE_API_VERSION) {
+        LOGERR(ctx, LY_EINVAL, "Adding user %s plugin failed, wrong API version - %d expected, %" PRIu32 " found.",
+                (type == LYPLG_TYPE) ? "type" : "extension", LYPLG_TYPE_API_VERSION, version);
         return LY_EINVAL;
     }
 
