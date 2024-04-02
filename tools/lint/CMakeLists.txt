@@ -1,11 +1,4 @@
 # yanglint
-
-if(WIN32)
-    set(YANGLINT_INTERACTIVE OFF)
-else()
-    set(YANGLINT_INTERACTIVE ON)
-endif()
-
 set(lintsrc
     main_ni.c
     cmd.c
@@ -25,7 +18,8 @@ set(lintsrc
     yl_schema_features.c
     common.c
 )
-if(YANGLINT_INTERACTIVE)
+
+if(ENABLE_YANGLINT_INTERACTIVE)
     set(lintsrc ${lintsrc}
         main.c
         completion.c
