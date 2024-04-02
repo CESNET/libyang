@@ -615,12 +615,13 @@ static LY_ERR
 lyplg_add_plugin(struct ly_ctx *ctx, uint32_t version, enum LYPLG type, const void *recs)
 {
     LY_ERR ret = LY_SUCCESS;
+    uint32_t cur_ver = (type == LYPLG_TYPE) ? LYPLG_TYPE_API_VERSION : LYPLG_EXT_API_VERSION;
 
     LY_CHECK_ARG_RET(NULL, recs, LY_EINVAL);
 
-    if (version != LYPLG_TYPE_API_VERSION) {
-        LOGERR(ctx, LY_EINVAL, "Adding user %s plugin failed, wrong API version - %d expected, %" PRIu32 " found.",
-                (type == LYPLG_TYPE) ? "type" : "extension", LYPLG_TYPE_API_VERSION, version);
+    if (version != cur_ver) {
+        LOGERR(ctx, LY_EINVAL, "Adding user %s plugin failed, wrong API version - %" PRIu32 " expected, %" PRIu32 " found.",
+                (type == LYPLG_TYPE) ? "type" : "extension", cur_ver, version);
         return LY_EINVAL;
     }
 
