@@ -3607,10 +3607,6 @@ test_deviation(void **state)
             "deviation /top {deviate replace {mandatory true;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid deviation of container node - it is not possible to replace \"mandatory\" property.",
             "/kk2:{deviation='/top'}", 0);
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module kk3 {namespace urn:kk3;prefix kk3; container top {leaf x {type string;}}"
-            "deviation /top/x {deviate replace {mandatory true;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation replacing \"mandatory\" property \"mandatory true\" which is not present.",
-            "/kk3:{deviation='/top/x'}", 0);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module kk4 {namespace urn:kk4;prefix kk4; leaf x {mandatory true; type string;}"
             "deviation /x {deviate add {mandatory false;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid deviation adding \"mandatory\" property which already exists (with value \"mandatory true\").",
@@ -3661,18 +3657,6 @@ test_deviation(void **state)
             "deviation /x {deviate add {max-elements 1;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid deviation adding \"max-elements\" property which already exists (with value \"5\").",
             "/mm8:{deviation='/x'}", 0);
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm9 {namespace urn:mm9;prefix mm9; leaf-list x {type string;}"
-            "deviation /x {deviate replace {min-elements 1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation replacing \"min-elements\" property which is not present.", "/mm9:{deviation='/x'}", 0);
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm10 {namespace urn:mm10;prefix mm10; list x {config false;}"
-            "deviation /x {deviate replace {min-elements 1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation replacing \"min-elements\" property which is not present.", "/mm10:{deviation='/x'}", 0);
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm11 {namespace urn:mm11;prefix mm11; leaf-list x {type string;}"
-            "deviation /x {deviate replace {max-elements 1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation replacing \"max-elements\" property which is not present.", "/mm11:{deviation='/x'}", 0);
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm12 {namespace urn:mm12;prefix mm12; list x {config false; }"
-            "deviation /x {deviate replace {max-elements 1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid deviation replacing \"max-elements\" property which is not present.", "/mm12:{deviation='/x'}", 0);
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module nn1 {namespace urn:nn1;prefix nn1; anyxml x;"
             "deviation /x {deviate replace {type string;}}}", LYS_IN_YANG, &mod));

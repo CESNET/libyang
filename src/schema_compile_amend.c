@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Schema compilation of augments, deviations, and refines.
  *
- * Copyright (c) 2015 - 2021 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -1499,13 +1499,6 @@ lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysp_deviate_rpl *d, stru
             AMEND_WRONG_NODETYPE("deviation", "replace", "mandatory");
         }
 
-        if (!(target->flags & LYS_MAND_MASK)) {
-            LOGVAL(ctx->ctx, LY_VCODE_DEV_NOT_PRESENT, "replacing", "mandatory",
-                    d->flags & LYS_MAND_TRUE ? "mandatory true" : "mandatory false");
-            ret = LY_EVALID;
-            goto cleanup;
-        }
-
         target->flags &= ~LYS_MAND_MASK;
         target->flags |= d->flags & LYS_MAND_MASK;
     }
@@ -1523,12 +1516,6 @@ lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysp_deviate_rpl *d, stru
             AMEND_WRONG_NODETYPE("deviation", "replace", "min-elements");
         }
 
-        if (!(target->flags & LYS_SET_MIN)) {
-            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid deviation replacing \"min-elements\" property which is not present.");
-            ret = LY_EVALID;
-            goto cleanup;
-        }
-
         *num = d->min;
     }
 
@@ -1543,12 +1530,6 @@ lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysp_deviate_rpl *d, stru
             break;
         default:
             AMEND_WRONG_NODETYPE("deviation", "replace", "max-elements");
-        }
-
-        if (!(target->flags & LYS_SET_MAX)) {
-            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid deviation replacing \"max-elements\" property which is not present.");
-            ret = LY_EVALID;
-            goto cleanup;
         }
 
         *num = d->max;
