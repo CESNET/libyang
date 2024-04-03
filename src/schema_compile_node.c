@@ -2134,10 +2134,12 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
         const struct lysp_type *type_p, struct lysc_type **type, const char **units, struct lysp_qname **dflt)
 {
     LY_ERR ret = LY_SUCCESS;
-    ly_bool dummyloops = 0;
+    ly_bool dummyloops = 0, has_leafref;
     struct lys_type_item *tctx, *tctx_prev = NULL, *tctx_iter;
     LY_DATA_TYPE basetype = LY_TYPE_UNKNOWN;
     struct lysc_type *base = NULL;
+    struct lysc_type_union *base_un;
+    LY_ARRAY_COUNT_TYPE u;
     struct ly_set tpdf_chain = {0};
     struct lyplg_type *plugin;
 
@@ -2307,8 +2309,25 @@ preparenext:
     /* remove the processed typedef contexts from the stack for circular check */
     ctx->tpdf_chain.count = ctx->tpdf_chain.count - tpdf_chain.count;
 
+    /* learn whether the type has a leafref, in which case it cannot be shared because it may resolve to a different
+     * real type for every instantiation */
+    has_leafref = 0;
+    if (basetype == LY_TYPE_LEAFREF) {
+        /* leafref type */
+        has_leafref = 1;
+    } else if ((basetype == LY_TYPE_UNION) && base) {
+        /* union with a leafref */
+        base_un = (struct lysc_type_union *)base;
+        LY_ARRAY_FOR(base_un->types, u) {
+            if (base_un->types[u]->basetype == LY_TYPE_LEAFREF) {
+                has_leafref = 1;
+                break;
+            }
+        }
+    }
+
     /* process the type definition in leaf */
-    if (type_p->flags || type_p->exts || !base || (basetype == LY_TYPE_LEAFREF)) {
+    if (type_p->flags || type_p->exts || !base || has_leafref) {
         /* leaf type has changes that need to be compiled into the type */
         plugin = base ? base->plugin : lyplg_type_plugin_find(ctx->ctx, "", NULL, ly_data_type2str[basetype]);
         ret = lys_compile_type_(ctx, context_pnode, context_flags, context_name, (struct lysp_type *)type_p, basetype,
