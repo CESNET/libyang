@@ -2203,8 +2203,8 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
             /* local part */
             tctx_iter = (struct lys_type_item *)tpdf_chain.objs[u];
             if (tctx_iter->tpdf == tctx->tpdf) {
-                LOGVAL(ctx->ctx, LYVE_REFERENCE,
-                        "Invalid \"%s\" type reference - circular chain of types detected.", tctx->tpdf->name);
+                LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid \"%s\" type reference - circular chain of types detected.",
+                        tctx->tpdf->name);
                 free(tctx);
                 ret = LY_EVALID;
                 goto cleanup;
@@ -2214,8 +2214,8 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
             /* global part for unions corner case */
             tctx_iter = (struct lys_type_item *)ctx->tpdf_chain.objs[u];
             if (tctx_iter->tpdf == tctx->tpdf) {
-                LOGVAL(ctx->ctx, LYVE_REFERENCE,
-                        "Invalid \"%s\" type reference - circular chain of types detected.", tctx->tpdf->name);
+                LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid \"%s\" type reference - circular chain of types detected.",
+                        tctx->tpdf->name);
                 free(tctx);
                 ret = LY_EVALID;
                 goto cleanup;
@@ -2236,14 +2236,13 @@ preparenext:
 
     /* basic checks */
     if (basetype == LY_TYPE_UNKNOWN) {
-        LOGVAL(ctx->ctx, LYVE_REFERENCE,
-                "Referenced type \"%s\" not found.", tctx_prev ? tctx_prev->tpdf->type.name : type_p->name);
+        LOGVAL(ctx->ctx, LYVE_REFERENCE, "Referenced type \"%s\" not found.",
+                tctx_prev ? tctx_prev->tpdf->type.name : type_p->name);
         ret = LY_EVALID;
         goto cleanup;
     }
     if (~type_substmt_map[basetype] & type_p->flags) {
-        LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Invalid type restrictions for %s type.",
-                ly_data_type2str[basetype]);
+        LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Invalid type restrictions for %s type.", ly_data_type2str[basetype]);
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -2289,8 +2288,7 @@ preparenext:
             ret = LY_EVALID;
             goto cleanup;
         } else if ((basetype == LY_TYPE_EMPTY) && tctx->tpdf->dflt.str) {
-            LOGVAL(ctx->ctx, LYVE_SEMANTICS,
-                    "Invalid type \"%s\" - \"empty\" type must not have a default value (%s).",
+            LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Invalid type \"%s\" - \"empty\" type must not have a default value (%s).",
                     tctx->tpdf->name, tctx->tpdf->dflt.str);
             ret = LY_EVALID;
             goto cleanup;
