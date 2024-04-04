@@ -211,6 +211,9 @@ help(int shortout)
     printf("  -X, --extended-leafref\n"
             "                Allow usage of deref() XPath function within leafref\n\n");
 
+    printf("  -J, --json-null\n"
+            "                Allow usage of JSON empty values ('null') within input data\n\n");
+
     printf("  -G GROUPS, --debug=GROUPS\n"
 #ifndef NDEBUG
             "                Enable printing of specific debugging message group\n"
@@ -463,6 +466,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
         {"yang-library",      no_argument,       NULL, 'y'},
         {"yang-library-file", required_argument, NULL, 'Y'},
         {"extended-leafref",  no_argument,       NULL, 'X'},
+        {"json-null",         no_argument,       NULL, 'J'},
         {"debug",             required_argument, NULL, 'G'},
         {NULL,               0,                 NULL, 0}
     };
@@ -474,7 +478,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
     yo->line_length = 0;
 
     opterr = 0;
-    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neE:t:d:lL:o:O:R:myY:Xx:G:", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neE:t:d:lL:o:O:R:myY:XJx:G:", options, &opt_index)) != -1) {
         switch (opt) {
         case 'h': /* --help */
             help(0);
@@ -652,6 +656,10 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
 
         case 'X': /* --extended-leafref */
             yo->ctx_options |= LY_CTX_LEAFREF_EXTENDED;
+            break;
+
+        case 'J': /* --json-null */
+            yo->data_parse_options |= LYD_PARSE_JSON_NULL;
             break;
 
         case 'G':   /* --debug */

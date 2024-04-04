@@ -163,6 +163,11 @@ test_leaf(void **state)
     data = "{\"@a:foo\":{\"a:hi\\nt\":1},\"a:foo\":\"xxx\"}";
     assert_int_equal(LY_EINVAL, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     CHECK_LOG_CTX("Annotation definition for attribute \"a:hi\nt\" not found.", "/@a:foo/@a:hi\nt", 1);
+
+    data = "{\"a:foo\": null}";
+    PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID, "Invalid non-string-encoded string value \"\".", "/a:foo", 1);
+    CHECK_PARSE_LYD(data, LYD_PARSE_JSON_NULL, LYD_VALIDATE_PRESENT, tree);
+    assert_null(tree);
 }
 
 static void
@@ -291,6 +296,11 @@ test_anydata(void **state)
             1, LYS_ANYDATA, 0, 0, NULL, 0);
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
+
+    data = "{\"a:any\": null}";
+    PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID, "Expecting JSON name/object but anydata \"any\" is represented in input data as name/null.", NULL, 1);
+    CHECK_PARSE_LYD(data, LYD_PARSE_JSON_NULL, LYD_VALIDATE_PRESENT, tree);
+    assert_null(tree);
 }
 
 static void

@@ -176,6 +176,8 @@ struct ly_in;
                                                  be checked (length, range, pattern, ...) and if a value can be stored,
                                                  it is. Calling separate validation on these data always checks all the
                                                  restrictions as well. */
+#define LYD_PARSE_JSON_NULL 0x4000000       /**< Allow using JSON empty value 'null' within JSON input. By default such value
+                                                 is not supported and according to RFC 7951 '[null]' shall be used instead. */
 
 #define LYD_PARSE_OPTS_MASK 0xFFFF0000      /**< Mask for all the LYD_PARSE_ options. */
 
