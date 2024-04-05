@@ -508,6 +508,11 @@ test_container(void **state)
     CHECK_PARSE_LYD("{\"a:unknown\":{\"a\":\"val\",\"b\":5}}", 0, LYD_VALIDATE_PRESENT, tree);
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, "{}");
     lyd_free_all(tree);
+
+    data = "{\"a:c\": null}";
+    PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID, "Expecting JSON name/object but container \"c\" is represented in input data as name/null.", NULL, 1);
+    CHECK_PARSE_LYD(data, LYD_PARSE_JSON_NULL, LYD_VALIDATE_PRESENT, tree);
+    assert_null(tree);
 }
 
 static void
