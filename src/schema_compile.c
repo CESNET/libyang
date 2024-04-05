@@ -1218,8 +1218,9 @@ static LY_ERR
 lys_compile_unres_check_disabled(const struct lysc_node *node)
 {
     const struct lysc_node *parent;
-    const struct lysc_node_list *slist;
+    struct lysc_node_list *slist;
     LY_ARRAY_COUNT_TYPE u, v;
+    int found;
 
     if (node->flags & LYS_KEY) {
         LOG_LOCSET(node, NULL);
@@ -1233,16 +1234,42 @@ lys_compile_unres_check_disabled(const struct lysc_node *node)
             continue;
         }
 
-        /* check list uniques */
+        /* check and fix list uniques */
         slist = (struct lysc_node_list *)parent;
+        found = 0;
         LY_ARRAY_FOR(slist->uniques, u) {
             LY_ARRAY_FOR(slist->uniques[u], v) {
                 if (slist->uniques[u][v] == (struct lysc_node_leaf *)node) {
-                    LOG_LOCSET(node, NULL);
-                    LOGVAL(node->module->ctx, LYVE_REFERENCE, "Disabled node \"%s\" is referenced as unique in the list \"%s\".",
-                            node->name, slist->name);
-                    LOG_LOCBACK(1, 0);
-                    return LY_EVALID;
+                    found = 1;
+                    break;
+                }
+            }
+
+            if (found) {
+                break;
+            }
+        }
+
+        if (found) {
+            if (LY_ARRAY_COUNT(slist->uniques[u]) > 1) {
+                /* remove the item */
+                if (v < LY_ARRAY_COUNT(slist->uniques[u]) - 1) {
+                    memmove(&slist->uniques[u][v], &slist->uniques[u][v + 1],
+                            (LY_ARRAY_COUNT(slist->uniques[u]) - v - 1) * sizeof slist->uniques[u][v]);
+                }
+                LY_ARRAY_DECREMENT(slist->uniques[u]);
+            } else {
+                /* remove the whole unique array */
+                LY_ARRAY_FREE(slist->uniques[u]);
+                if (LY_ARRAY_COUNT(slist->uniques) > 1) {
+                    if (u < LY_ARRAY_COUNT(slist->uniques) - 1) {
+                        memmove(&slist->uniques[u], &slist->uniques[u + 1],
+                                (LY_ARRAY_COUNT(slist->uniques) - u - 1) * sizeof slist->uniques[u]);
+                    }
+                    LY_ARRAY_DECREMENT(slist->uniques);
+                } else {
+                    LY_ARRAY_FREE(slist->uniques);
+                    slist->uniques = NULL;
                 }
             }
         }

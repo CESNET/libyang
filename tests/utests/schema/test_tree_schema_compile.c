@@ -4031,6 +4031,43 @@ test_must(void **state)
             "with context node \"/b:laa-config\".", NULL, 0);
 }
 
+static void
+test_unique_disabled(void **state)
+{
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX,
+            "module list-unique {"
+            "  namespace urn:lu;"
+            "  prefix lu;"
+            "  feature f;"
+            "  list l {"
+            "    key \"k\";"
+            "    unique \"v\";"
+            "    leaf k {"
+            "      type string;"
+            "    }"
+            "    leaf v {"
+            "      if-feature f;"
+            "      type string;"
+            "    }"
+            "  }"
+            "  list l2 {"
+            "    key \"k\";"
+            "    unique \"v1 v2\";"
+            "    leaf k {"
+            "      type string;"
+            "    }"
+            "    leaf v1 {"
+            "      if-feature f;"
+            "      type string;"
+            "    }"
+            "    leaf v2 {"
+            "      type string;"
+            "    }"
+            "  }"
+            "}",
+            LYS_IN_YANG, NULL));
+}
+
 int
 main(void)
 {
@@ -4066,6 +4103,7 @@ main(void)
         UTEST(test_deviation, setup),
         UTEST(test_when, setup),
         UTEST(test_must, setup),
+        UTEST(test_unique_disabled, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
