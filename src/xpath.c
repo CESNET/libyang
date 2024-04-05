@@ -4075,9 +4075,9 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
                 r = lyplg_type_resolve_leafref((struct lysc_type_leafref *)sleaf->type, &leaf->node, &leaf->value, set->tree,
                         &targets, &errmsg);
                 if (r) {
-                    LOGERR(set->ctx, LY_EVALID, "%s", errmsg);
+                    LOGERR(set->ctx, LY_EINVAL, "%s", errmsg);
                     free(errmsg);
-                    ret = LY_EVALID;
+                    ret = LY_EINVAL;
                     goto cleanup;
                 }
 
@@ -4088,9 +4088,9 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
             } else {
                 assert(sleaf->type->basetype == LY_TYPE_INST);
                 if (ly_path_eval(leaf->value.target, set->tree, NULL, &node)) {
-                    LOGERR(set->ctx, LY_EVALID, "Invalid instance-identifier \"%s\" value - required instance not found.",
+                    LOGERR(set->ctx, LY_EINVAL, "Invalid instance-identifier \"%s\" value - required instance not found.",
                             lyd_get_value(&leaf->node));
-                    ret = LY_EVALID;
+                    ret = LY_EINVAL;
                     goto cleanup;
                 }
 

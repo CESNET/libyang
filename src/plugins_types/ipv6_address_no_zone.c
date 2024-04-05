@@ -236,7 +236,7 @@ lyplg_type_print_ipv6_address_no_zone(const struct ly_ctx *ctx, const struct lyd
         /* get the address in string */
         if (!inet_ntop(AF_INET6, &val->addr, ret, INET6_ADDRSTRLEN)) {
             free(ret);
-            LOGERR(ctx, LY_EVALID, "Failed to get IPv6 address in string (%s).", strerror(errno));
+            LOGERR(ctx, LY_ESYS, "Failed to get IPv6 address in string (%s).", strerror(errno));
             return NULL;
         }
 

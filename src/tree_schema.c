@@ -1952,7 +1952,7 @@ cleanup:
             const struct ly_err_item *e = ly_err_last(ctx);
 
             if (e && (!e->schema_path || e->line)) {
-                LOGERR(ctx, ret, "Parsing module \"%s\" failed.", mod->name);
+                LOGERR(ctx, LY_EOTHER, "Parsing module \"%s\" failed.", mod->name);
             }
         }
     }

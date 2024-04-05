@@ -303,7 +303,7 @@ lyplg_type_print_ipv4_address(const struct ly_ctx *ctx, const struct lyd_value *
         /* get the address in string */
         if (!inet_ntop(AF_INET, &val->addr, ret, INET_ADDRSTRLEN)) {
             free(ret);
-            LOGERR(ctx, LY_EVALID, "Failed to get IPv4 address in string (%s).", strerror(errno));
+            LOGERR(ctx, LY_ESYS, "Failed to get IPv4 address in string (%s).", strerror(errno));
             return NULL;
         }
 

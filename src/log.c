@@ -594,7 +594,6 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR err, LY_VECODE 
 {
     char *msg = NULL;
     ly_bool free_strs = 1, lolog, lostore;
-    const struct ly_err_item *e;
 
     /* learn effective logger options */
     if (temp_ly_log_opts) {
@@ -636,11 +635,6 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR err, LY_VECODE 
     /* store the error/warning in the context (if we need to store errors internally, it does not matter what are
      * the user log options) */
     if ((level < LY_LLVRB) && ctx && lostore) {
-        if (((err & ~LY_EPLUGIN) == LY_EVALID) && (vecode == LYVE_SUCCESS)) {
-            /* assume we are inheriting the error, so inherit vecode as well */
-            e = ly_err_last(ctx);
-            vecode = e->vecode;
-        }
         free_strs = 0;
         if (log_store(ctx, level, err, vecode, msg, data_path, schema_path, line, apptag ? strdup(apptag) : NULL)) {
             goto cleanup;
