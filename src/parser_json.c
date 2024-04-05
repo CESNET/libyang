@@ -1491,11 +1491,11 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, str
     r = lydjson_data_check_opaq(lydctx, snode, &type_hints);
     if (r == LY_SUCCESS) {
         assert(snode->nodetype & (LYD_NODE_TERM | LYD_NODE_INNER | LYD_NODE_ANY));
-        if (snode->nodetype & LYD_NODE_TERM) {
-            if ((lydctx->parse_opts & LYD_PARSE_JSON_NULL) && (*status == LYJSON_NULL)) {
-                /* do not do anything if value is JSON 'null' */
-                goto cleanup;
-            } else if ((*status != LYJSON_ARRAY) && (*status != LYJSON_NUMBER) && (*status != LYJSON_STRING) &&
+        if ((lydctx->parse_opts & LYD_PARSE_JSON_NULL) && (*status == LYJSON_NULL)) {
+            /* do not do anything if value is JSON 'null' */
+            goto cleanup;
+        } else if (snode->nodetype & LYD_NODE_TERM) {
+            if ((*status != LYJSON_ARRAY) && (*status != LYJSON_NUMBER) && (*status != LYJSON_STRING) &&
                     (*status != LYJSON_FALSE) && (*status != LYJSON_TRUE) && (*status != LYJSON_NULL)) {
                 rc = LY_ENOT;
                 goto cleanup;
@@ -1522,10 +1522,6 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, str
             r = lydjson_parse_instance_inner(lydctx, snode, ext, status, node);
             LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
         } else {
-            if ((lydctx->parse_opts & LYD_PARSE_JSON_NULL) && (*status == LYJSON_NULL)) {
-                /* do not do anything if value is JSON 'null' */
-                goto cleanup;
-            }
             /* create any node */
             r = lydjson_parse_any(lydctx, snode, ext, status, node);
             LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
