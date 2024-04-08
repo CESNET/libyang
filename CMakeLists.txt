@@ -78,7 +78,7 @@ else()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic -std=c11")
 endif()
 
-include_directories(${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/src/plugins_exts)
+include_directories(${PROJECT_BINARY_DIR}/libyang ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/src/plugins_exts)
 
 # type plugins are separate because they have their documentation generated
 set(type_plugins
@@ -205,8 +205,8 @@ set(internal_headers
     src/xpath.h)
 
 set(gen_headers
-    src/version.h
-    src/ly_config.h)
+    version.h
+    ly_config.h)
 
 # files to generate doxygen from
 set(doxy_files
@@ -214,7 +214,7 @@ set(doxy_files
     doc/transition_1_2.dox
     doc/transition_2_3.dox
     ${headers}
-    ${PROJECT_BINARY_DIR}/src/version.h
+    ${PROJECT_BINARY_DIR}/libyang/version.h
     ${type_plugins})
 
 # project (doxygen) logo
@@ -322,8 +322,8 @@ if ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
 endif()
 
 # generate files
-configure_file(${PROJECT_SOURCE_DIR}/src/ly_config.h.in ${PROJECT_BINARY_DIR}/src/ly_config.h @ONLY)
-configure_file(${PROJECT_SOURCE_DIR}/src/version.h.in ${PROJECT_BINARY_DIR}/src/version.h @ONLY)
+configure_file(${PROJECT_SOURCE_DIR}/src/ly_config.h.in ${PROJECT_BINARY_DIR}/libyang/ly_config.h @ONLY)
+configure_file(${PROJECT_SOURCE_DIR}/src/version.h.in ${PROJECT_BINARY_DIR}/libyang/version.h @ONLY)
 
 # DOC-only target with no extra dependencies
 if("${BUILD_TYPE_UPPER}" STREQUAL "DOCONLY")
@@ -409,7 +409,7 @@ target_link_libraries(yang ${PCRE2_LIBRARIES})
 
 # generated header list
 foreach(h IN LISTS gen_headers)
-    list(APPEND g_headers ${PROJECT_BINARY_DIR}/${h})
+    list(APPEND g_headers ${PROJECT_BINARY_DIR}/libyang/${h})
 endforeach()
 
 # install the modules
