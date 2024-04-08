@@ -246,6 +246,7 @@ option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL"
 option(ENABLE_INTERNAL_DOCS "Generate doxygen documentation also from internal headers" OFF)
 option(ENABLE_YANGLINT_INTERACTIVE "Enable interactive CLI yanglint" ON)
 option(ENABLE_TOOLS "Build binary tools 'yanglint' and 'yangre'" ON)
+option(ENABLE_COMMON_TARGETS "Define common custom target names such as 'doc' or 'uninstall', may cause conflicts when using add_subdirectory() to build this project" ON)
 option(BUILD_SHARED_LIBS "By default, shared libs are enabled. Turn off for a static build." ON)
 set(YANG_MODULE_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/yang/modules/libyang" CACHE STRING "Directory where to copy the YANG modules to")
 
@@ -462,10 +463,12 @@ if(ENABLE_TOOLS)
 endif()
 
 # generate doxygen documentation for libyang API
-gen_doc("${doxy_files}" ${LIBYANG_VERSION} ${LIBYANG_DESCRIPTION} ${project_logo})
+if(ENABLE_COMMON_TARGETS)
+    gen_doc("${doxy_files}" ${LIBYANG_VERSION} ${LIBYANG_DESCRIPTION} ${project_logo})
+endif()
 
 # generate API/ABI report
-if ("${BUILD_TYPE_UPPER}" STREQUAL "ABICHECK")
+if("${BUILD_TYPE_UPPER}" STREQUAL "ABICHECK")
     lib_abi_check(yang "${headers}" ${LIBYANG_SOVERSION_FULL} dae82c1a652bdca0074544c62469a7f51d92c5e8)
 endif()
 
@@ -474,7 +477,9 @@ endif()
 source_format(${format_sources})
 
 # uninstall
-add_custom_target(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_MODULE_PATH}/uninstall.cmake")
+if(ENABLE_COMMON_TARGETS)
+    add_custom_target(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_MODULE_PATH}/uninstall.cmake")
+endif()
 
 # clean cmake cache
 add_custom_target(cclean
