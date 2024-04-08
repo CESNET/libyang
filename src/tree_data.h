@@ -56,11 +56,11 @@ struct rb_node;
  * it can be cast to several other structures.
  *
  * In case the ::lyd_node.schema pointer is NULL, the node is actually __opaq__ and can be safely cast to ::lyd_node_opaq.
- * The opaq node represent an unknown node which wasn't mapped to any [(compiled) schema](@ref howtoSchema) node in the
- * context. Such a node can appear in several places in the data tree.
+ * The opaq node represents an **unknown node** which wasn't mapped to any [(compiled) schema](@ref howtoSchema) node in the
+ * context. But it may represent a schema node data instance which is invalid. That may happen if the value (leaf/leaf-list)
+ * is invalid or there are invalid/missing keys of a list instance. Such a node can appear in several places in the data tree.
  * - As a part of the tree structure, but only in the case the ::LYD_PARSE_OPAQ option was used when input data were
- *   [parsed](@ref howtoDataParsers), because unknown data instances are ignored by default. The same way, the opaq nodes can
- *   appear as a node's attributes.
+ *   [parsed](@ref howtoDataParsers), because unknown data instances are ignored and invalid data produce errors by default.
  * - As a representation of YANG anydata/anyxml content.
  * - As envelopes of standard data tree instances (RPCs, actions or Notifications).
  *
@@ -1281,7 +1281,8 @@ LIBYANG_API_DECL LY_ERR lyd_new_ext_inner(const struct lysc_ext_instance *ext, c
                                           no error set. */
 #define LYD_NEW_PATH_OPAQ 0x40       /**< Enables the creation of opaque nodes with some specific rules. If the __last node__
                                           in the path is not uniquely defined ((leaf-)list without a predicate) or has an
-                                          invalid value (leaf/leaf-list), it is created as opaque. */
+                                          invalid value (leaf/leaf-list), it is created as opaque. Otherwise a regular node
+                                          is created. */
 #define LYD_NEW_PATH_WITH_OPAQ 0x80  /**< Consider opaque nodes normally when searching for existing nodes. */
 #define LYD_NEW_ANY_USE_VALUE 0x100  /**< Whether to use dynamic @p value or make a copy. */
 
