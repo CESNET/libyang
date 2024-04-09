@@ -327,8 +327,8 @@ test_plugin_sort(void **state)
     v2 = "YWhv"; /* aho */
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
-    assert_int_equal(1, type->sort(UTEST_LYCTX, &val1, &val2));
-    assert_int_equal(-1, type->sort(UTEST_LYCTX, &val2, &val1));
+    assert_true(0 < type->sort(UTEST_LYCTX, &val1, &val2));
+    assert_true(0 > type->sort(UTEST_LYCTX, &val2, &val1));
     type->free(UTEST_LYCTX, &val1);
     type->free(UTEST_LYCTX, &val2);
 }
