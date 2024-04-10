@@ -192,6 +192,7 @@ test_validation(void **state)
     const char *schema, *data;
     struct lyd_node *tree;
     char *out;
+    uint32_t uint_val;
 
     schema = MODULE_CREATE_YANG("val",
             "leaf l1 {\n"
@@ -229,6 +230,73 @@ test_validation(void **state)
     assert_string_equal(out, data);
 
     free(out);
+    lyd_free_all(tree);
+
+    schema = MODULE_CREATE_YANG("lref",
+            "container test {\n"
+            "    list a {\n"
+            "        key \"name\";\n"
+            "        leaf name {\n"
+            "            type enumeration {\n"
+            "                enum zero;\n"
+            "                enum one;\n"
+            "                enum two;\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "\n"
+            "    list b {\n"
+            "        key \"name\";\n"
+            "        leaf name {\n"
+            "            type uint32;\n"
+            "        }\n"
+            "    }\n"
+            "\n"
+            "    list community {\n"
+            "        key \"name\";\n"
+            "        leaf name {\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf view {\n"
+            "            type union {\n"
+            "                type leafref {\n"
+            "                    path \"../../a/name\";\n"
+            "                }\n"
+            "                type leafref {\n"
+            "                    path \"../../b/name\";\n"
+            "                }\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "}\n");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    /* parse from LYB #1 */
+    data = "<test xmlns=\"urn:tests:lref\"><b><name>2</name></b><community><name>test</name><view>2</view></community></test>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&out, tree, LYD_LYB, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS));
+    lyd_free_all(tree);
+    CHECK_PARSE_LYD_PARAM(out, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    free(out);
+    lyd_free_all(tree);
+
+    /* parse from LYB #2 */
+    data = "<test xmlns=\"urn:tests:lref\"><a><name>one</name></a><community><name>test</name><view>one</view></community></test>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&out, tree, LYD_LYB, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS));
+    lyd_free_all(tree);
+    CHECK_PARSE_LYD_PARAM(out, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    free(out);
+
+    /* remove the target and create another, which is represented the same way in LYB */
+    lyd_free_tree(lyd_child(tree));
+    uint_val = 1;
+    assert_int_equal(LY_SUCCESS, lyd_new_list(tree, NULL, "b", LYD_NEW_VAL_BIN, NULL, &uint_val, sizeof uint_val));
+    assert_int_equal(LY_EVALID, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT, NULL));
+    CHECK_LOG_CTX("Invalid LYB union value - no matching subtype found:\n"
+            "    libyang 2 - leafref, version 1: Invalid leafref value \"one\" - no target instance \"../../a/name\" with the same value.\n"
+            "    libyang 2 - leafref, version 1: Invalid type uint32 value \"one\".\n", "/lref:test/community[name='test']/view", 0);
+
     lyd_free_all(tree);
 }
 
