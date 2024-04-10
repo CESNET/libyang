@@ -41,9 +41,9 @@
  */
 
 /**
- * @brief Size in bytes of the index in the LYB Binary Format.
+ * @brief Size in bytes of the used type index in the LYB Binary Format.
  */
-#define IDX_SIZE 4
+#define TYPE_IDX_SIZE 4
 
 /**
  * @brief Assign a value to the union subvalue.
@@ -95,14 +95,14 @@ lyb_union_validate(const void *lyb_data, size_t lyb_data_len, const struct lysc_
     uint64_t type_idx = 0;
 
     /* Basic validation. */
-    if (lyb_data_len < IDX_SIZE) {
+    if (lyb_data_len < TYPE_IDX_SIZE) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB union value size %zu (expected at least 4).",
                 lyb_data_len);
         return ret;
     }
 
     /* Get index in correct byte order. */
-    memcpy(&type_idx, lyb_data, IDX_SIZE);
+    memcpy(&type_idx, lyb_data, TYPE_IDX_SIZE);
     type_idx = le64toh(type_idx);
     if (type_idx >= LY_ARRAY_COUNT(type_u->types)) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
@@ -132,7 +132,7 @@ lyb_parse_union(const void *lyb_data, size_t lyb_data_len, uint32_t *type_idx, c
     assert(lyb_data && !(lyb_value && !lyb_value_len));
 
     if (type_idx) {
-        memcpy(&num, lyb_data, IDX_SIZE);
+        memcpy(&num, lyb_data, TYPE_IDX_SIZE);
         num = le64toh(num);
 
         *type_idx = num;
@@ -140,12 +140,12 @@ lyb_parse_union(const void *lyb_data, size_t lyb_data_len, uint32_t *type_idx, c
 
     if (lyb_value && lyb_value_len && lyb_data_len) {
         /* Get lyb_value and its length. */
-        if (lyb_data_len == IDX_SIZE) {
+        if (lyb_data_len == TYPE_IDX_SIZE) {
             *lyb_value_len = 0;
             *lyb_value = "";
         } else {
-            *lyb_value_len = lyb_data_len - IDX_SIZE;
-            *lyb_value = (char *)lyb_data + IDX_SIZE;
+            *lyb_value_len = lyb_data_len - TYPE_IDX_SIZE;
+            *lyb_value = (char *)lyb_data + TYPE_IDX_SIZE;
         }
     }
 }
@@ -505,14 +505,14 @@ lyb_union_print(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
     LY_CHECK_RET(!pval, NULL);
 
     /* Create LYB data. */
-    *value_len = IDX_SIZE + pval_len;
+    *value_len = TYPE_IDX_SIZE + pval_len;
     ret = malloc(*value_len);
     LY_CHECK_RET(!ret, NULL);
 
     num = type_idx;
     num = htole64(num);
-    memcpy(ret, &num, IDX_SIZE);
-    memcpy((char *)ret + IDX_SIZE, pval, pval_len);
+    memcpy(ret, &num, TYPE_IDX_SIZE);
+    memcpy((char *)ret + TYPE_IDX_SIZE, pval, pval_len);
 
     if (dynamic) {
         free(pval);
