@@ -592,7 +592,8 @@ static void
 log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR err, LY_VECODE vecode, char *data_path,
         char *schema_path, uint64_t line, const char *apptag, const char *format, va_list args)
 {
-    char *msg = NULL;
+    char *dyn_msg = NULL;
+    const char *msg;
     ly_bool free_strs = 1, lolog, lostore;
 
     /* learn effective logger options */
@@ -610,33 +611,26 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR err, LY_VECODE 
     }
 
     if (err == LY_EMEM) {
-        /* just print it, anything else would most likely fail anyway */
-        if (lolog) {
-            if (log_clb) {
-                log_clb(level, LY_EMEM_MSG, data_path, schema_path, line);
-            } else {
-                fprintf(stderr, "libyang[%d]: ", level);
-                vfprintf(stderr, format, args);
-                log_stderr_path_line(data_path, schema_path, line);
-            }
+        /* no not use more dynamic memory */
+        vsnprintf(last_msg, LY_LAST_MSG_SIZE, format, args);
+        msg = last_msg;
+    } else {
+        /* print into a single message */
+        if (vasprintf(&dyn_msg, format, args) == -1) {
+            LOGMEM(ctx);
+            goto cleanup;
         }
-        goto cleanup;
-    }
+        msg = dyn_msg;
 
-    /* print into a single message */
-    if (vasprintf(&msg, format, args) == -1) {
-        LOGMEM(ctx);
-        goto cleanup;
+        /* store as the last message */
+        strncpy(last_msg, msg, LY_LAST_MSG_SIZE - 1);
     }
-
-    /* store as the last message */
-    strncpy(last_msg, msg, LY_LAST_MSG_SIZE - 1);
 
     /* store the error/warning in the context (if we need to store errors internally, it does not matter what are
-     * the user log options) */
-    if ((level < LY_LLVRB) && ctx && lostore) {
+     * the user log options), if the message is not dynamic, it would most likely fail to store (no memory) */
+    if ((level < LY_LLVRB) && ctx && lostore && dyn_msg) {
         free_strs = 0;
-        if (log_store(ctx, level, err, vecode, msg, data_path, schema_path, line, apptag ? strdup(apptag) : NULL)) {
+        if (log_store(ctx, level, err, vecode, dyn_msg, data_path, schema_path, line, apptag ? strdup(apptag) : NULL)) {
             goto cleanup;
         }
     }
@@ -656,7 +650,7 @@ cleanup:
     if (free_strs) {
         free(data_path);
         free(schema_path);
-        free(msg);
+        free(dyn_msg);
     }
 }
 
