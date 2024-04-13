@@ -11,6 +11,7 @@ on:
         options:
           - master
           - pull/15608/head
+          - frr-10.0
           - frr-9.1
           - frr-9.0.2
           - frr-8.5.4
@@ -80,6 +81,7 @@ jobs:
             libsqlite3-dev
             libzmq5
             libzmq3-dev
+            python3-pytest
       - name: libyang ${{ inputs.libyang-versions }} ${{ matrix.compiler }}
         uses: actions/checkout@v4
         with:
@@ -130,6 +132,10 @@ jobs:
             --with-moduledir=\${prefix}/lib/frr/modules \
             --enable-configfile-mask=0640 \
             --enable-logfile-mask=0640 \
+            --enable-vtysh \
+            --enable-pimd \
+            --enable-pim6d \
+            --enable-sharpd \
             --enable-snmp=agentx \
             --enable-multipath=64 \
             --enable-user=frr \
@@ -138,4 +144,6 @@ jobs:
             --with-pkg-git-version \
             --with-pkg-extra-version=-MyOwnFRRVersion &&
             make -j $(nproc) &&
-            sudo make install
+            sudo make install &&
+            cd tests/topotests &&
+            cd all_protocol_startup && pytest-3 -s -v
