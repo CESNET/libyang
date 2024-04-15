@@ -1071,6 +1071,7 @@ lyds_additionally_create_rb_nodes(struct lyd_node **first_sibling, struct lyd_no
             /* nodes were not sorted, they will be sorted now */
             lyd_unlink_ignore_lyds(first_sibling, iter);
             lyds_link_data_node(first_sibling, leader, iter, root_meta, rbn);
+            lyd_insert_hash(iter);
         }
     }
 
@@ -1142,6 +1143,7 @@ lyds_additionally_reuse_rb_tree(struct lyd_node **first_sibling, struct lyd_node
             /* nodes were not sorted, they will be sorted now */
             lyd_unlink_ignore_lyds(first_sibling, iter);
             lyds_link_data_node(first_sibling, leader, iter, root_meta, pool->rbn);
+            lyd_insert_hash(iter);
         }
         pool->rbn = rb_iter_next(&pool->iter_state);
     }
