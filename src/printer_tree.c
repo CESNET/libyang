@@ -3786,7 +3786,7 @@ trb_tree_ctx_set_child(struct trt_tree_ctx *tc)
  * @return Pointer to the first/next extension.
  */
 static void *
-trb_ext_iter_next(ly_bool lysc_tree, void *exts, uint64_t *i)
+trb_ext_iter_next(ly_bool lysc_tree, void *exts, LY_ARRAY_COUNT_TYPE *i)
 {
     void *ext = NULL;
     struct lysc_ext_instance *ce;
@@ -3828,7 +3828,7 @@ trb_ext_iter_next(ly_bool lysc_tree, void *exts, uint64_t *i)
  * @return First/next extension or NULL.
  */
 static void *
-trb_mod_ext_iter(const struct trt_tree_ctx *tc, uint64_t *i)
+trb_mod_ext_iter(const struct trt_tree_ctx *tc, LY_ARRAY_COUNT_TYPE *i)
 {
     if (tc->lysc_tree) {
         return trb_ext_iter_next(1, tc->cmod->exts, i);
@@ -3845,7 +3845,7 @@ trb_mod_ext_iter(const struct trt_tree_ctx *tc, uint64_t *i)
  * @return First/next extension or NULL.
  */
 static void *
-trb_ext_iter(const struct trt_tree_ctx *tc, uint64_t *i)
+trb_ext_iter(const struct trt_tree_ctx *tc, LY_ARRAY_COUNT_TYPE *i)
 {
     if (tc->lysc_tree) {
         return trb_ext_iter_next(1, tc->cn->exts, i);
