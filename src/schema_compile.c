@@ -1072,7 +1072,7 @@ lys_compile_unres_llist_dflts(struct lysc_ctx *ctx, struct lysc_node_leaflist *l
  * @return Pointer to the leafref or next leafref, otherwise NULL.
  */
 static struct lysc_type_leafref *
-lys_type_leafref_next(const struct lysc_node *node, uint64_t *index)
+lys_type_leafref_next(const struct lysc_node *node, LY_ARRAY_COUNT_TYPE *index)
 {
     struct lysc_type_leafref *ret = NULL;
     struct lysc_type_union *uni;
