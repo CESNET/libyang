@@ -2343,9 +2343,6 @@ lyd_dup(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_no
             /* duplicate the whole (leaf-)list */
             rc = lyd_dup_list(&orig, trg_ctx, local_parent, &first_sibling, options, &dup);
             LY_CHECK_GOTO(rc, error);
-            if (!orig) {
-                break;
-            }
         } else {
             rc = lyd_dup_r(orig, trg_ctx, local_parent,
                     options & LYD_DUP_NO_LYDS ? LYD_INSERT_NODE_LAST_BY_SCHEMA : LYD_INSERT_NODE_DEFAULT,
@@ -2354,7 +2351,7 @@ lyd_dup(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_no
         }
         first_dup = first_dup ? first_dup : dup;
 
-        if (nosiblings) {
+        if (nosiblings || !orig) {
             break;
         }
     }
