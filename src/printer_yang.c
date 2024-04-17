@@ -174,17 +174,46 @@ ypr_close(struct lys_ypr_ctx *pctx, ly_bool flag)
 }
 
 static void
+ypr_text_squote_line(struct lys_ypr_ctx *pctx, const char *text, int text_len)
+{
+    const char *end = text + text_len, *squote;
+    int squote_len;
+
+    while ((text != end) && (squote = ly_strnchr(text, '\'', end - text))) {
+        /* before squote */
+        ly_print_(pctx->out, "%.*s", (int)(squote - text), text);
+
+        /* specially-encoded squote(s) */
+        squote_len = 0;
+        do {
+            ++squote_len;
+        } while ((squote + squote_len != end) && (squote[squote_len] == '\''));
+        ly_print_(pctx->out, "' + \"%.*s\" +\n%*s'", squote_len, squote, INDENT);
+
+        /* next iter */
+        text = squote + squote_len;
+    }
+
+    ly_print_(pctx->out, "%.*s", (int)(end - text), text);
+}
+
+static void
 ypr_text(struct lys_ypr_ctx *pctx, const char *name, const char *text, enum lys_ypr_text_flags flags)
 {
-    const char *s, *t;
+    const char *nl, *t;
     char quot;
 
     if (flags & LYS_YPR_TEXT_SINGLEQUOTED) {
         quot = '\'';
+        if (strchr(text, '\'')) {
+            /* need to encode single quotes specially, split to several lines */
+            flags &= ~LYS_YPR_TEXT_SINGLELINE;
+        }
     } else {
         quot = '\"';
     }
 
+    /* statement name and quote */
     if (flags & LYS_YPR_TEXT_SINGLELINE) {
         ly_print_(pctx->out, "%*s%s %c", INDENT, name, quot);
     } else {
@@ -194,23 +223,25 @@ ypr_text(struct lys_ypr_ctx *pctx, const char *name, const char *text, enum lys_
         ly_print_(pctx->out, "%*s%c", INDENT, quot);
     }
 
+    /* text with newlines */
     t = text;
-    while ((s = strchr(t, '\n'))) {
+    while ((nl = strchr(t, '\n'))) {
         if (flags & LYS_YPR_TEXT_SINGLEQUOTED) {
-            ly_print_(pctx->out, "%.*s", (int)(s - t), t);
+            ypr_text_squote_line(pctx, t, nl - t);
         } else {
-            ypr_encode(pctx->out, t, s - t);
+            ypr_encode(pctx->out, t, nl - t);
         }
         ly_print_(pctx->out, "\n");
 
-        t = s + 1;
+        t = nl + 1;
         if (*t != '\n') {
             ly_print_(pctx->out, "%*s ", INDENT);
         }
     }
 
+    /* finish text and the last quote */
     if (flags & LYS_YPR_TEXT_SINGLEQUOTED) {
-        ly_print_(pctx->out, "%s", t);
+        ypr_text_squote_line(pctx, t, strlen(t));
     } else {
         ypr_encode(pctx->out, t, strlen(t));
     }
