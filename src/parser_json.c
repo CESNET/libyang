@@ -1085,6 +1085,7 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
     }
 
     if (*status_p == LYJSON_OBJECT) {
+        ((struct lyd_node_opaq *)*node_p)->hints |= LYD_NODEHINT_CONTAINER;
         /* process children */
         do {
             LY_CHECK_GOTO(ret = lydjson_subtree_r(lydctx, *node_p, lyd_node_child_p(*node_p), NULL), cleanup);
