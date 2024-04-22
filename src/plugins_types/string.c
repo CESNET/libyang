@@ -112,7 +112,7 @@ cleanup:
  * @brief Implementation of ::lyplg_type_validate_clb for the string type.
  */
 static LY_ERR
-lyplg_type_validate_string(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
+lyplg_type_validate_string(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
         const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
 {
     LY_ERR ret;
@@ -121,8 +121,8 @@ lyplg_type_validate_string(const struct ly_ctx *UNUSED(ctx), const struct lysc_t
     size_t value_len;
 
     LY_CHECK_ARG_RET(NULL, type, storage, err, LY_EINVAL);
-    value = storage->_canonical;
-    value_len = strlen(storage->_canonical);
+    value = lyd_value_get_canonical(ctx, storage);
+    value_len = strlen(value);
     *err = NULL;
 
     /* length restriction of the string */

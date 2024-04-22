@@ -244,7 +244,7 @@ lyplg_type_validate_instanceid(const struct ly_ctx *ctx, const struct lysc_type 
 
     /* find the target in data */
     if ((ret = ly_path_eval(storage->target, tree, NULL, NULL))) {
-        value = lyplg_type_print_instanceid(ctx, storage, LY_VALUE_CANON, NULL, NULL, NULL);
+        value = lyd_value_get_canonical(ctx, storage);
         path = lyd_path(ctx_node, LYD_PATH_STD, NULL, 0);
         return ly_err_new(err, ret, LYVE_DATA, path, strdup("instance-required"), LY_ERRMSG_NOINST, value);
     }

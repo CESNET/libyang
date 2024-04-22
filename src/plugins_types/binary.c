@@ -338,7 +338,7 @@ cleanup:
  * @brief Implementation of ::lyplg_type_validate_clb for the binary type.
  */
 static LY_ERR
-lyplg_type_validate_binary(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
+lyplg_type_validate_binary(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
         const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
 {
     struct lysc_type_bin *type_bin = (struct lysc_type_bin *)type;
@@ -349,8 +349,8 @@ lyplg_type_validate_binary(const struct ly_ctx *UNUSED(ctx), const struct lysc_t
     LY_CHECK_ARG_RET(NULL, type, storage, err, LY_EINVAL);
 
     val = LYPLG_TYPE_VAL_IS_DYN(val) ? (struct lyd_value_binary *)(storage->dyn_mem) : (struct lyd_value_binary *)(storage->fixed_mem);
-    value = storage->_canonical;
-    value_len = strlen(storage->_canonical);
+    value = lyd_value_get_canonical(ctx, storage);
+    value_len = strlen(value);
     *err = NULL;
 
     /* length restriction of the binary value */
