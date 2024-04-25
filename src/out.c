@@ -55,6 +55,20 @@ lyd_node_should_print(const struct lyd_node *node, uint32_t options)
                 /* explicit default node */
                 return 0;
             }
+        } else if (lysc_is_np_cont(node->schema)) {
+            if (options & LYD_PRINT_KEEPEMPTYCONT) {
+                /* explicit request to print, redundant to check */
+                return 1;
+            }
+
+            LY_LIST_FOR(lyd_child(node), elem) {
+                if (lyd_node_should_print(elem, options)) {
+                    return 1;
+                }
+            }
+
+            /* NP container without any printed children (such as other NP containers with only nodes set to their default values) */
+            return 0;
         }
     } else if ((node->flags & LYD_DEFAULT) && (node->schema->nodetype == LYS_CONTAINER)) {
         if (options & LYD_PRINT_KEEPEMPTYCONT) {
