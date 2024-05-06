@@ -143,7 +143,7 @@ struct utest_context {
     }
 
 /**
- * @brief Check if lyd_node and his subnodes have correct values. Print lyd_node and his sunodes int o string in json or xml format.
+ * @brief Check if lyd_node and his subnodes have correct values. Print lyd_node and his subnodes into a string in json or xml format.
  * @param[in] NODE pointer to lyd_node
  * @param[in] TEXT expected output string in json or xml format.
  * @param[in] FORMAT format of input text. LYD_JSON, LYD_XML
