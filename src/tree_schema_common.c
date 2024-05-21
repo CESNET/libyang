@@ -1211,7 +1211,8 @@ search_clb:
                     check_data.name = inc->name;
                     check_data.revision = inc->rev[0] ? inc->rev : NULL;
                     check_data.submoduleof = PARSER_CUR_PMOD(pctx)->mod->name;
-                    lys_parse_submodule(ctx, in, format, pctx, lysp_load_module_check, &check_data, new_mods, &submod);
+                    lys_parse_submodule(ctx, in, format, pctx->main_ctx, lysp_load_module_check, &check_data, new_mods,
+                            &submod);
 
                     /* update inc pointer - parsing another (YANG 1.0) submodule can cause injecting
                      * submodule's include into main module, where it is missing */
