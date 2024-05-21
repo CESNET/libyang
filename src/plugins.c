@@ -501,6 +501,9 @@ lyplg_init(ly_bool builtin_type_plugins_only)
     LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_string), error);
     LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_union), error);
 
+    /* lyds_tree */
+    LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_lyds_tree), error);
+
     if (!builtin_type_plugins_only) {
         /* yang */
         LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_instanceid_keys), error);
@@ -520,9 +523,6 @@ lyplg_init(ly_bool builtin_type_plugins_only)
 
         /* ietf-netconf-acm */
         LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_node_instanceid), error);
-
-        /* lyds_tree */
-        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_lyds_tree), error);
 
         /* internal extensions */
         LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_metadata), error);
