@@ -2115,8 +2115,8 @@ lys_search_localfile_file_type(const struct dirent *file, const char *wd, struct
 
     *skip = 0;
 
-    if (file->d_type == DT_UNKNOWN) {
-        /* FS does not support this field, need to call stat */
+    if ((file->d_type == DT_UNKNOWN) || (file->d_type == DT_LNK)) {
+        /* FS does not support this field or its a symbolic link, need to call stat */
         if (asprintf(&str, "%s/%s", wd, file->d_name) == -1) {
             LOGMEM(NULL);
             rc = LY_EMEM;
