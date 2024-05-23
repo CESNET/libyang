@@ -524,12 +524,15 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
             case ' ':
             case '\t':
                 /* skip */
+                MOVE_INPUT(ctx, 1);
                 break;
             case '\'':
                 string = STRING_SINGLE_QUOTED;
+                MOVE_INPUT(ctx, 1);
                 break;
             case '\"':
                 string = STRING_DOUBLE_QUOTED;
+                MOVE_INPUT(ctx, 1);
                 break;
             case '/':
                 if (ctx->in->current[1] == '/') {
@@ -550,7 +553,6 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
                 LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Both string parts divided by '+' must be quoted.");
                 return LY_EVALID;
             }
-            MOVE_INPUT(ctx, 1);
             break;
         default:
             return LY_EINT;
