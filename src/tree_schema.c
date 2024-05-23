@@ -716,6 +716,7 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
 
         if ((pathtype == LYSC_PATH_DATA_PATTERN) && (iter->nodetype == LYS_LIST)) {
             char *predicates = NULL;
+
             key = NULL;
             while ((key = lys_getnext(key, iter, NULL, 0)) && lysc_is_key(key)) {
                 s = predicates;
@@ -724,7 +725,7 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
                 asprintf(&predicates, "%s[%s='%%s']", s ? s : "", key->name);
                 if (s) {
                     free(s);
-                };
+                }
             }
             s = buffer ? strdup(buffer) : path;
             if (buffer) {
