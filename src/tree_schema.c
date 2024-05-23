@@ -715,22 +715,31 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
         }
 
         if ((pathtype == LYSC_PATH_DATA_PATTERN) && (iter->nodetype == LYS_LIST)) {
+            char *predicates = NULL;
             key = NULL;
             while ((key = lys_getnext(key, iter, NULL, 0)) && lysc_is_key(key)) {
-                s = buffer ? strdup(buffer) : path;
+                s = predicates;
 
                 /* print key predicate */
-                if (buffer) {
-                    len = snprintf(buffer, buflen, "[%s='%%s']%s", key->name, s ? s : "");
-                } else {
-                    len = asprintf(&path, "[%s='%%s']%s", key->name, s ? s : "");
-                }
-                free(s);
+                asprintf(&predicates, "%s[%s='%%s']", s ? s : "", key->name);
+                if (s) {
+                    free(s);
+                };
+            }
+            s = buffer ? strdup(buffer) : path;
+            if (buffer) {
+                len = snprintf(buffer, buflen, "%s%s", predicates ? predicates : "", s ? s : "");
+            } else {
+                len = asprintf(&path, "%s%s", predicates ? predicates : "", s ? s : "");
+            }
+            if (predicates) {
+                free(predicates);
+            }
+            free(s);
 
-                if (buffer && (buflen <= (size_t)len)) {
-                    /* not enough space in buffer */
-                    break;
-                }
+            if (buffer && (buflen <= (size_t)len)) {
+                /* not enough space in buffer */
+                break;
             }
         }
 
