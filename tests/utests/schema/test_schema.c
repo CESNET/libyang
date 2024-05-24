@@ -1215,7 +1215,7 @@ test_identity(void **state)
             "<status value=\"deprecated\"/>"
             "<description><text>desc</text></description>"
             "<reference><text>ref</text></reference>"
-            /* TODO yin-extension-prefix-compilation-bug "<myext:ext xmlns:myext=\"urn:libyang:test:identityone-yin\"/>" */
+            "<myext:ext xmlns:myext=\"urn:libyang:test:identityone-yin\"/>"
             "</identity><extension name=\"ext\"/><identity name=\"base-name\"/><feature name=\"iff\"/>", mod);
     assert_int_equal(2, LY_ARRAY_COUNT(mod->parsed->identities));
     assert_string_equal(mod->parsed->identities[0].name, "ident-name");
@@ -1224,11 +1224,7 @@ test_identity(void **state)
     assert_string_equal(mod->parsed->identities[0].dsc, "desc");
     assert_string_equal(mod->parsed->identities[0].ref, "ref");
     assert_true(mod->parsed->identities[0].flags & LYS_STATUS_DEPRC);
-    /*assert_string_equal(mod->parsed->identities[0].exts[0].name, "ext");
-    assert_non_null(mod->parsed->identities[0].exts[0].compiled);
-    assert_int_equal(mod->parsed->identities[0].exts[0].yin, 1);
-    assert_int_equal(mod->parsed->identities[0].exts[0].insubstmt_index, 0);
-    assert_int_equal(mod->parsed->identities[0].exts[0].insubstmt, LYEXT_SUBSTMT_SELF);*/
+    assert_string_equal(mod->parsed->identities[0].exts[0].name, "myext:ext");
 
     /* min subelems */
     TEST_SCHEMA_OK(1, 1, "identitytwo-yin", "<identity name=\"ident-name\" />", mod);
@@ -1331,7 +1327,7 @@ test_feature(void **state)
             "<status value=\"deprecated\"/>"
             "<description><text>desc</text></description>"
             "<reference><text>ref</text></reference>"
-            /* TODO yin-extension-prefix-compilation-bug "<myext:ext xmlns:myext=\"urn:libyang:test:featureone-yin\"/>" */
+            "<myext:ext xmlns:myext=\"urn:libyang:test:featureone-yin\"/>"
             "</feature><extension name=\"ext\"/><feature name=\"iff\"/>", mod);
     assert_int_equal(2, LY_ARRAY_COUNT(mod->parsed->features));
     assert_string_equal(mod->parsed->features[0].name, "feature-name");
@@ -1339,9 +1335,7 @@ test_feature(void **state)
     assert_true(mod->parsed->features[0].flags & LYS_STATUS_DEPRC);
     assert_string_equal(mod->parsed->features[0].iffeatures[0].str, "iff");
     assert_string_equal(mod->parsed->features[0].ref, "ref");
-    /*assert_string_equal(mod->parsed->features[0].exts[0].name, "ext");
-    assert_int_equal(mod->parsed->features[0].exts[0].insubstmt_index, 0);
-    assert_int_equal(mod->parsed->features[0].exts[0].insubstmt, LYEXT_SUBSTMT_SELF);*/
+    assert_string_equal(mod->parsed->features[0].exts[0].name, "myext:ext");
 
     /* min subelems */
     TEST_SCHEMA_OK(0, 1, "featuretwo-yin", "<feature name=\"feature-name\"/>", mod)
@@ -1866,6 +1860,28 @@ test_ext_recursive(void **state)
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, mod_base_yin, LYS_IN_YIN, NULL));
 }
 
+static void
+test_lysc_path(void **state)
+{
+    const struct lysc_node *node;
+    char *path;
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module b {yang-version 1.1; namespace urn:b;prefix b;"
+            "container a {"
+            "  list l {"
+            "    key \"k l m\";"
+            "    leaf k {type string;}"
+            "    leaf l {type string;}"
+            "    leaf m {type string;}"
+            "  }"
+            "}}", LYS_IN_YANG, NULL));
+
+    node = lys_find_path(UTEST_LYCTX, NULL, "/b:a/l", 0);
+    path = lysc_path(node, LYSC_PATH_DATA_PATTERN, NULL, 0);
+    assert_string_equal(path, "/b:a/l[k='%s'][l='%s'][m='%s']");
+    free(path);
+}
+
 int
 main(void)
 {
@@ -1887,6 +1903,7 @@ main(void)
         UTEST(test_extension_argument_element),
         UTEST(test_extension_compile),
         UTEST(test_ext_recursive),
+        UTEST(test_lysc_path),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
