@@ -721,9 +721,9 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
 
                 /* print key predicate */
                 if (buffer) {
-                    len = snprintf(buffer, buflen, "[%s='%%s']%s", key->name, s ? s : "");
+                    len = snprintf(buffer, buflen, "%s[%s='%%s']", s ? s : "", key->name);
                 } else {
-                    len = asprintf(&path, "[%s='%%s']%s", key->name, s ? s : "");
+                    len = asprintf(&path, "%s[%s='%%s']", s ? s : "", key->name);
                 }
                 free(s);
 

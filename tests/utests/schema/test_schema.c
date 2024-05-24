@@ -1860,6 +1860,28 @@ test_ext_recursive(void **state)
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, mod_base_yin, LYS_IN_YIN, NULL));
 }
 
+static void
+test_lysc_path(void **state)
+{
+    const struct lysc_node *node;
+    char *path;
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module b {yang-version 1.1; namespace urn:b;prefix b;"
+            "container a {"
+            "  list l {"
+            "    key \"k l m\";"
+            "    leaf k {type string;}"
+            "    leaf l {type string;}"
+            "    leaf m {type string;}"
+            "  }"
+            "}}", LYS_IN_YANG, NULL));
+
+    node = lys_find_path(UTEST_LYCTX, NULL, "/b:a/l", 0);
+    path = lysc_path(node, LYSC_PATH_DATA_PATTERN, NULL, 0);
+    assert_string_equal(path, "/b:a/l[k='%s'][l='%s'][m='%s']");
+    free(path);
+}
+
 int
 main(void)
 {
@@ -1881,6 +1903,7 @@ main(void)
         UTEST(test_extension_argument_element),
         UTEST(test_extension_compile),
         UTEST(test_ext_recursive),
+        UTEST(test_lysc_path),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
