@@ -1873,12 +1873,17 @@ test_lysc_path(void **state)
             "    leaf k {type string;}"
             "    leaf l {type string;}"
             "    leaf m {type string;}"
+            "    leaf n {type string;}"
             "  }"
             "}}", LYS_IN_YANG, NULL));
 
     node = lys_find_path(UTEST_LYCTX, NULL, "/b:a/l", 0);
     path = lysc_path(node, LYSC_PATH_DATA_PATTERN, NULL, 0);
     assert_string_equal(path, "/b:a/l[k='%s'][l='%s'][m='%s']");
+    free(path);
+    node = lys_find_path(UTEST_LYCTX, NULL, "/b:a/l/n", 0);
+    path = lysc_path(node, LYSC_PATH_DATA_PATTERN, NULL, 0);
+    assert_string_equal(path, "/b:a/l[k='%s'][l='%s'][m='%s']/n");
     free(path);
 }
 
