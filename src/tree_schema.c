@@ -722,10 +722,12 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
                 s = predicates;
 
                 /* print key predicate */
-                asprintf(&predicates, "%s[%s='%%s']", s ? s : "", key->name);
-                if (s) {
+                if (asprintf(&predicates, "%s[%s='%%s']", s ? s : "", key->name) == -1) {
                     free(s);
+                    free(path);
+                    return NULL;
                 }
+                free(s);
             }
             s = buffer ? strdup(buffer) : path;
             if (buffer) {
@@ -733,9 +735,7 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
             } else {
                 len = asprintf(&path, "%s%s", predicates ? predicates : "", s ? s : "");
             }
-            if (predicates) {
-                free(predicates);
-            }
+            free(predicates);
             free(s);
 
             if (buffer && (buflen <= (size_t)len)) {
