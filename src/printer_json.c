@@ -919,8 +919,16 @@ static LY_ERR
 json_print_opaq(struct jsonpr_ctx *pctx, const struct lyd_node_opaq *node)
 {
     ly_bool first = 1, last = 1;
+    uint32_t hints;
 
-    if (node->hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
+    if (node->hints == LYD_HINT_DATA) {
+        /* useless and confusing hints */
+        hints = 0;
+    } else {
+        hints = node->hints;
+    }
+
+    if (hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
         if (node->prev->next && matching_node(node->prev, &node->node)) {
             first = 0;
         }
@@ -932,22 +940,22 @@ json_print_opaq(struct jsonpr_ctx *pctx, const struct lyd_node_opaq *node)
     if (first) {
         LY_CHECK_RET(json_print_member2(pctx, pctx->parent, node->format, &node->name, 0));
 
-        if (node->hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
+        if (hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
             LY_CHECK_RET(json_print_array_open(pctx, &node->node));
         }
-        if (node->hints & LYD_NODEHINT_LEAFLIST) {
+        if (hints & LYD_NODEHINT_LEAFLIST) {
             ly_print_(pctx->out, "%*s", INDENT);
         }
-    } else if (node->hints & LYD_NODEHINT_LEAFLIST) {
+    } else if (hints & LYD_NODEHINT_LEAFLIST) {
         ly_print_(pctx->out, ",%s%*s", DO_FORMAT ? "\n" : "", INDENT);
     }
-    if (node->child || (node->hints & LYD_NODEHINT_LIST) || (node->hints & LYD_NODEHINT_CONTAINER)) {
+    if (node->child || (hints & LYD_NODEHINT_LIST) || (hints & LYD_NODEHINT_CONTAINER)) {
         LY_CHECK_RET(json_print_inner(pctx, &node->node));
         LEVEL_PRINTED;
     } else {
-        if (node->hints & LYD_VALHINT_EMPTY) {
+        if (hints & LYD_VALHINT_EMPTY) {
             ly_print_(pctx->out, "[null]");
-        } else if ((node->hints & (LYD_VALHINT_BOOLEAN | LYD_VALHINT_DECNUM)) && !(node->hints & LYD_VALHINT_NUM64)) {
+        } else if ((hints & (LYD_VALHINT_BOOLEAN | LYD_VALHINT_DECNUM)) && !(hints & LYD_VALHINT_NUM64)) {
             ly_print_(pctx->out, "%s", node->value);
         } else {
             /* string or a large number */
@@ -955,7 +963,7 @@ json_print_opaq(struct jsonpr_ctx *pctx, const struct lyd_node_opaq *node)
         }
         LEVEL_PRINTED;
 
-        if (!(node->hints & LYD_NODEHINT_LEAFLIST)) {
+        if (!(hints & LYD_NODEHINT_LEAFLIST)) {
             /* attributes */
             json_print_attributes(pctx, (const struct lyd_node *)node, 0);
         } else if (!pctx->first_leaflist && node->attr) {
@@ -964,7 +972,7 @@ json_print_opaq(struct jsonpr_ctx *pctx, const struct lyd_node_opaq *node)
         }
 
     }
-    if (last && (node->hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST))) {
+    if (last && (hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST))) {
         json_print_array_close(pctx);
         LEVEL_PRINTED;
     }
