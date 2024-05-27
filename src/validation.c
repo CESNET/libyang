@@ -1924,7 +1924,7 @@ lyd_validate_module_final(struct lyd_node *tree, const struct lys_module *module
     uint32_t i = 0;
 
     LY_CHECK_ARG_RET(NULL, module, !(val_opts & (LYD_VALIDATE_PRESENT | LYD_VALIDATE_NOT_FINAL)), LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(LYD_CTX(tree), module->ctx, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(tree ? LYD_CTX(tree) : NULL, module->ctx, LY_EINVAL);
 
     /* module is unchanged but we need to get the first module data node */
     mod = lyd_mod_next_module(tree, module, module->ctx, &i, &first);
