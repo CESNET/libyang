@@ -1193,7 +1193,7 @@ lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node,
     /* parse as an attribute to a (opaque) node */
     if (!attr_node) {
         /* try to find the instance */
-        LY_LIST_FOR(*first_p, attr_node) {
+        LY_LIST_FOR(parent ? lyd_child(parent) : *first_p, attr_node) {
             if (snode) {
                 if (attr_node->schema) {
                     if (attr_node->schema == snode) {
