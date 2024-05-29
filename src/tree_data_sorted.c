@@ -128,12 +128,6 @@ struct rb_node {
     RBN_DNODE(RBN) = DNODE;
 
 /**
- * @brief Metadata name of the Red-black tree.
- */
-#define RB_NAME "lyds_tree"
-#define RB_NAME_LEN strlen(RB_NAME)
-
-/**
  * @brief Get red-black root from metadata.
  *
  * @param[in] META Pointer to the struct lyd_meta.
@@ -176,7 +170,7 @@ lyds_get_rb_tree(const struct lyd_node *leader, struct lyd_meta **meta)
         *meta = NULL;
     }
     LY_LIST_FOR(leader->meta, iter) {
-        if (!strcmp(iter->name, RB_NAME)) {
+        if (!strcmp(iter->name, "lyds_tree")) {
             if (meta) {
                 *meta = iter;
             }
@@ -1177,7 +1171,7 @@ lyds_create_metadata(struct lyd_node *leader, struct lyd_meta **meta_p)
     LY_CHECK_ERR_RET(!modyang, LOGERR(LYD_CTX(leader), LY_EINT, "The yang module is not installed."), LY_EINT);
 
     /* create new metadata, its rbt is NULL */
-    ret = lyd_create_meta(leader, &meta, modyang, RB_NAME, RB_NAME_LEN, NULL, 0, 0, 1, NULL,
+    ret = lyd_create_meta(leader, &meta, modyang, "lyds_tree", 9, NULL, 0, 0, 1, NULL,
             LY_VALUE_CANON, NULL, LYD_HINT_DATA, NULL, 0, NULL);
     LY_CHECK_RET(ret);
 
