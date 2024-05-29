@@ -29,6 +29,7 @@
 #include "log.h"
 #include "ly_common.h"
 #include "lyb.h"
+#include "metadata.h"
 #include "parser_data.h"
 #include "plugins_exts.h"
 #include "printer_data.h"
@@ -1139,6 +1140,21 @@ lyd_node_schema(const struct lyd_node *node)
     } while (schema && (iter != node));
 
     return schema;
+}
+
+LIBYANG_API_DEF ly_bool
+lyd_meta_is_internal(const struct lyd_meta *meta)
+{
+    const char *arg;
+
+    assert(meta->annotation);
+
+    arg = meta->annotation->argument;
+    if (!strcmp(meta->annotation->module->name, "yang") && !strcmp(arg, "lyds_tree")) {
+        return 1;
+    }
+
+    return 0;
 }
 
 void

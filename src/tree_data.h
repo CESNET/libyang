@@ -1214,6 +1214,15 @@ LIBYANG_API_DECL LY_ERR lyd_any_copy_value(struct lyd_node *trg, const union lyd
 LIBYANG_API_DECL const struct lysc_node *lyd_node_schema(const struct lyd_node *node);
 
 /**
+ * @brief Check whether metadata are not an instance of internal metadata.
+ *
+ * @param[in] meta Metadata to check.
+ * @return 1 if @p meta are internal.
+ * @return 0 if @p meta are not internal.
+ */
+LIBYANG_API_DECL ly_bool lyd_meta_is_internal(const struct lyd_meta *meta);
+
+/**
  * @brief Create a new inner node in the data tree.
  *
  * To create list, use ::lyd_new_list() or ::lyd_new_list2().
