@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Context implementations
  *
- * Copyright (c) 2015 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -81,57 +81,75 @@ static struct internal_modules_s {
 LIBYANG_API_DEF LY_ERR
 ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
 {
+    int rc = LY_SUCCESS;
     struct stat st;
     char *new_dir = NULL;
+    uint32_t i;
+    LY_ARRAY_COUNT_TYPE u;
+    struct lys_module *mod;
 
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
 
-    if (search_dir) {
-        new_dir = realpath(search_dir, NULL);
-        LY_CHECK_ERR_RET(!new_dir,
-                LOGERR(ctx, LY_ESYS, "Unable to use search directory \"%s\" (%s).", search_dir, strerror(errno)),
-                LY_EINVAL);
-        if (strcmp(search_dir, new_dir)) {
-            LOGVRB("Search directory string \"%s\" canonized to \"%s\".", search_dir, new_dir);
-        }
-        LY_CHECK_ERR_RET(access(new_dir, R_OK | X_OK),
-                LOGERR(ctx, LY_ESYS, "Unable to fully access search directory \"%s\" (%s).", new_dir, strerror(errno)); free(new_dir),
-                LY_EINVAL);
-        LY_CHECK_ERR_RET(stat(new_dir, &st),
-                LOGERR(ctx, LY_ESYS, "stat() failed for \"%s\" (%s).", new_dir, strerror(errno)); free(new_dir),
-                LY_ESYS);
-        LY_CHECK_ERR_RET(!S_ISDIR(st.st_mode),
-                LOGERR(ctx, LY_ESYS, "Given search directory \"%s\" is not a directory.", new_dir); free(new_dir),
-                LY_EINVAL);
-        /* avoid path duplication */
-        for (uint32_t u = 0; u < ctx->search_paths.count; ++u) {
-            if (!strcmp(new_dir, ctx->search_paths.objs[u])) {
-                free(new_dir);
-                return LY_EEXIST;
-            }
-        }
-        if (ly_set_add(&ctx->search_paths, new_dir, 1, NULL)) {
-            free(new_dir);
-            return LY_EMEM;
-        }
-
-        /* new searchdir - reset latests flags (possibly new revisions available) */
-        for (uint32_t v = 0; v < ctx->list.count; ++v) {
-            struct lys_module *mod = ctx->list.objs[v];
-
-            mod->latest_revision &= ~LYS_MOD_LATEST_SEARCHDIRS;
-            if (mod->parsed && mod->parsed->includes) {
-                for (LY_ARRAY_COUNT_TYPE u = 0; u < LY_ARRAY_COUNT(mod->parsed->includes); ++u) {
-                    mod->parsed->includes[u].submodule->latest_revision &= ~LYS_MOD_LATEST_SEARCHDIRS;
-                }
-            }
-        }
-
-        return LY_SUCCESS;
-    } else {
-        /* consider that no change is not actually an error */
-        return LY_SUCCESS;
+    if (!search_dir) {
+        /* fine, ignore */
+        goto cleanup;
     }
+
+    new_dir = realpath(search_dir, NULL);
+    if (!new_dir) {
+        LOGERR(ctx, LY_ESYS, "Unable to use search directory \"%s\" (%s).", search_dir, strerror(errno)),
+        rc = LY_EINVAL;
+        goto cleanup;
+    }
+    if (strcmp(search_dir, new_dir)) {
+        LOGVRB("Search directory string \"%s\" canonized to \"%s\".", search_dir, new_dir);
+    }
+
+    if (access(new_dir, R_OK | X_OK)) {
+        LOGERR(ctx, LY_ESYS, "Unable to fully access search directory \"%s\" (%s).", new_dir, strerror(errno));
+        rc = LY_EINVAL;
+        goto cleanup;
+    }
+    if (stat(new_dir, &st)) {
+        LOGERR(ctx, LY_ESYS, "stat() failed for \"%s\" (%s).", new_dir, strerror(errno));
+        rc = LY_ESYS;
+        goto cleanup;
+    }
+    if (!S_ISDIR(st.st_mode)) {
+        LOGERR(ctx, LY_ESYS, "Given search directory \"%s\" is not a directory.", new_dir);
+        rc = LY_EINVAL;
+        goto cleanup;
+    }
+
+    /* avoid path duplication */
+    for (i = 0; i < ctx->search_paths.count; ++i) {
+        if (!strcmp(new_dir, ctx->search_paths.objs[i])) {
+            rc = LY_EEXIST;
+            goto cleanup;
+        }
+    }
+    if (ly_set_add(&ctx->search_paths, new_dir, 1, NULL)) {
+        rc = LY_EMEM;
+        goto cleanup;
+    }
+
+    /* new searchdir - reset latests flags (possibly new revisions available) */
+    for (i = 0; i < ctx->list.count; ++i) {
+        mod = ctx->list.objs[i];
+
+        mod->latest_revision &= ~LYS_MOD_LATEST_SEARCHDIRS;
+        if (mod->parsed && mod->parsed->includes) {
+            for (u = 0; u < LY_ARRAY_COUNT(mod->parsed->includes); ++u) {
+                mod->parsed->includes[u].submodule->latest_revision &= ~LYS_MOD_LATEST_SEARCHDIRS;
+            }
+        }
+    }
+
+cleanup:
+    if (rc) {
+        free(new_dir);
+    }
+    return rc;
 }
 
 LIBYANG_API_DEF const char * const *
