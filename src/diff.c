@@ -1651,14 +1651,18 @@ lyd_diff_merge_create(struct lyd_node **diff_match, struct lyd_node **diff, enum
             orig_meta = lyd_find_meta((*diff_match)->meta, NULL, orig_meta_name);
             LY_CHECK_ERR_RET(!orig_meta, LOGERR_META(ctx, orig_meta_name, *diff_match), LY_EINVAL);
 
-            /* the (incorrect) assumption made here is that there are no previous diff nodes that would affect
-             * the anchors stored in the metadata */
             if (strcmp(lyd_get_meta_value(meta), lyd_get_meta_value(orig_meta))) {
                 /* deleted + created at another position -> operation REPLACE */
                 LY_CHECK_RET(lyd_diff_change_op(*diff_match, LYD_DIFF_OP_REPLACE));
 
                 /* add anchor metadata */
                 LY_CHECK_RET(lyd_dup_meta_single(meta, *diff_match, NULL));
+
+                /* previous created nodes affect the metadata so move it at the end */
+                child = lyd_first_sibling(*diff_match);
+                if (child->next) {
+                    LY_CHECK_RET(lyd_insert_after(child->prev, *diff_match));
+                }
             } else {
                 /* deleted + created at the same position -> operation NONE */
                 LY_CHECK_RET(lyd_diff_change_op(*diff_match, LYD_DIFF_OP_NONE));

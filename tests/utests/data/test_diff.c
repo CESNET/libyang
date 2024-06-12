@@ -976,12 +976,12 @@ test_userord_list(void **state)
             "    <l1>a</l1>\n"
             "    <l2 yang:operation=\"delete\">1</l2>\n"
             "  </ul>\n"
-            "  <ul yang:orig-key=\"[l1='a']\" yang:operation=\"replace\" yang:key=\"[l1='c']\">\n"
-            "    <l1>b</l1>\n"
-            "  </ul>\n"
             "  <ul yang:operation=\"none\">\n"
             "    <l1>c</l1>\n"
             "    <l2 yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"3\">33</l2>\n"
+            "  </ul>\n"
+            "  <ul yang:orig-key=\"[l1='a']\" yang:operation=\"replace\" yang:key=\"[l1='c']\">\n"
+            "    <l1>b</l1>\n"
             "  </ul>\n"
             "</df>\n";
 
