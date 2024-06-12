@@ -65,8 +65,8 @@ lysc_unres_when_add(struct lysc_ctx *ctx, struct lysc_when *when, struct lysc_no
     LY_ERR rc = LY_SUCCESS;
     struct lysc_unres_when *w = NULL;
 
-    /* do not check must(s) in a grouping */
-    if (ctx->compile_opts & LYS_COMPILE_GROUPING) {
+    /* do not check when(s) in a grouping or in disabled data (high risk of false-positives) */
+    if (ctx->compile_opts & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED)) {
         goto cleanup;
     }
 
@@ -103,8 +103,8 @@ lysc_unres_must_add(struct lysc_ctx *ctx, struct lysc_node *node, struct lysp_no
     struct lysp_restr *pmusts;
     LY_ERR ret;
 
-    /* do not check must(s) in a grouping */
-    if (ctx->compile_opts & LYS_COMPILE_GROUPING) {
+    /* do not check must(s) in a grouping or in disabled data (high risk of false-positives) */
+    if (ctx->compile_opts & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED)) {
         return LY_SUCCESS;
     }
 
