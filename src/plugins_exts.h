@@ -393,7 +393,7 @@ struct lysp_stmt {
  */
 struct lysp_ext_substmt {
     enum ly_stmt stmt;  /**< parsed substatement */
-    void *storage;      /**< pointer to the parsed storage of the statement according to the specific
+    uint64_t storage;   /**< (pointer to) the parsed storage of the statement according to the specific
                              lys_ext_substmt::stmt */
 };
 
@@ -426,7 +426,7 @@ struct lysp_ext_instance {
  */
 struct lysc_ext_substmt {
     enum ly_stmt stmt;  /**< compiled substatement */
-    void *storage;      /**< pointer to the compiled storage of the statement according to the specific
+    uint64_t storage;   /**< (pointer to) the compiled storage of the statement according to the specific
                              lys_ext_substmt::stmt */
 };
 

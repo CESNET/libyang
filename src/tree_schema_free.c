@@ -1520,7 +1520,7 @@ lyplg_ext_pfree_instance_substatements(const struct ly_ctx *ctx, struct lysp_ext
 
         case LY_STMT_TYPE: {
             /* single type */
-            struct lysp_type **type_p = substmts[u].storage;
+            struct lysp_type **type_p = (void *)substmts[u].storage;
 
             lysp_type_free(&fctx, *type_p);
             free(*type_p);
@@ -1635,7 +1635,7 @@ lyplg_ext_cfree_instance_substatements(const struct ly_ctx *ctx, struct lysc_ext
         }
         case LY_STMT_WHEN:
             /* single item, expects a pointer */
-            lysc_when_free(&fctx, substmts[u].storage);
+            lysc_when_free(&fctx, (struct lysc_when **)substmts[u].storage);
             break;
 
         case LY_STMT_PATTERN: {

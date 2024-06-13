@@ -3587,7 +3587,7 @@ lys_parse_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *subs
         LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, (void **)&pnode, NULL), cleanup);
 
         /* usually is a linked-list of all the parsed schema nodes */
-        pnodes_p = substmt->storage;
+        pnodes_p = (struct lysp_node **)substmt->storage;
         while (*pnodes_p) {
             pnodes_p = &(*pnodes_p)->next;
         }
@@ -3615,7 +3615,7 @@ lys_parse_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *subs
     case LY_STMT_TYPEDEF:
     case LY_STMT_UNIQUE:
         /* parse, sized array */
-        LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, substmt->storage, NULL), cleanup);
+        LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, (void **)substmt->storage, NULL), cleanup);
         break;
 
     case LY_STMT_ARGUMENT:
@@ -3657,7 +3657,7 @@ lys_parse_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *subs
         }
 
         /* parse */
-        LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, substmt->storage, NULL), cleanup);
+        LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, (void **)substmt->storage, NULL), cleanup);
         break;
 
     case LY_STMT_CONFIG:
@@ -3669,7 +3669,7 @@ lys_parse_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *subs
         }
 
         /* parse */
-        LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, substmt->storage, NULL), cleanup);
+        LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, (void **)substmt->storage, NULL), cleanup);
         break;
 
     case LY_STMT_ORDERED_BY:
@@ -3681,7 +3681,7 @@ lys_parse_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *subs
         }
 
         /* parse */
-        LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, substmt->storage, NULL), cleanup);
+        LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, (void **)substmt->storage, NULL), cleanup);
         break;
 
     case LY_STMT_STATUS:
@@ -3693,7 +3693,7 @@ lys_parse_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *subs
         }
 
         /* parse */
-        LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, substmt->storage, NULL), cleanup);
+        LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, (void **)substmt->storage, NULL), cleanup);
         break;
 
     default:

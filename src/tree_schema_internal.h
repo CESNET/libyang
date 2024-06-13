@@ -730,7 +730,7 @@ uint8_t lys_stmt_flags(enum ly_stmt stmt);
  * @return LY_SUCCESS on success.
  * @return LY_ENOT if the substatement is not supported.
  */
-LY_ERR lyplg_ext_get_storage_p(const struct lysc_ext_instance *ext, int stmt, const void ***storage_p);
+LY_ERR lyplg_ext_get_storage_p(const struct lysc_ext_instance *ext, int stmt, uint64_t *storage_p);
 
 /**
  * @brief Warning if the filename does not match the expected module name and version

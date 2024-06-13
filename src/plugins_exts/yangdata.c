@@ -58,15 +58,15 @@ yangdata_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     LY_ARRAY_CREATE_GOTO(lyplg_ext_parse_get_cur_pmod(pctx)->mod->ctx, ext->substmts, 3, ret, emem);
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[0].stmt = LY_STMT_CONTAINER;
-    ext->substmts[0].storage = &ext->parsed;
+    ext->substmts[0].storage = (uint64_t)&ext->parsed;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[1].stmt = LY_STMT_CHOICE;
-    ext->substmts[1].storage = &ext->parsed;
+    ext->substmts[1].storage = (uint64_t)&ext->parsed;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[2].stmt = LY_STMT_USES;
-    ext->substmts[2].storage = &ext->parsed;
+    ext->substmts[2].storage = (uint64_t)&ext->parsed;
 
     if ((ret = lyplg_ext_parse_extension_instance(pctx, ext))) {
         return ret;
@@ -96,15 +96,15 @@ yangdata_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, st
     LY_ARRAY_CREATE_GOTO(cctx->ctx, ext->substmts, 3, ret, emem);
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[0].stmt = LY_STMT_CONTAINER;
-    ext->substmts[0].storage = &ext->compiled;
+    ext->substmts[0].storage = (uint64_t)&ext->compiled;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[1].stmt = LY_STMT_CHOICE;
-    ext->substmts[1].storage = &ext->compiled;
+    ext->substmts[1].storage = (uint64_t)&ext->compiled;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[2].stmt = LY_STMT_USES;
-    ext->substmts[2].storage = &ext->compiled;
+    ext->substmts[2].storage = (uint64_t)&ext->compiled;
 
     *lyplg_ext_compile_get_options(cctx) |= LYS_COMPILE_NO_CONFIG | LYS_COMPILE_NO_DISABLED;
     ret = lyplg_ext_compile_extension_instance(cctx, extp, ext);
