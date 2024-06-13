@@ -3455,37 +3455,37 @@ warn_is_specific_type(struct lysc_type *type, LY_DATA_TYPE base)
  *
  * @param[in] type Base type.
  * @param[in] prev_type Previously returned type.
+ * @param[in,out] found Whether @p prev_type has already been found or not.
  * @return Next type or NULL.
  */
 static struct lysc_type *
-warn_is_equal_type_next_type(struct lysc_type *type, struct lysc_type *prev_type)
+warn_is_equal_type_next_type(struct lysc_type *type, struct lysc_type *prev_type, ly_bool *found)
 {
+    struct lysc_type *next_type;
     struct lysc_type_union *uni;
-    ly_bool found = 0;
     LY_ARRAY_COUNT_TYPE u;
+
+    if (type->basetype == LY_TYPE_LEAFREF) {
+        type = ((struct lysc_type_leafref *)type)->realtype;
+    }
 
     if (type->basetype == LY_TYPE_UNION) {
         uni = (struct lysc_type_union *)type;
-        if (!prev_type) {
-            return uni->types[0];
-        }
         LY_ARRAY_FOR(uni->types, u) {
-            if (found) {
-                return uni->types[u];
-            }
-            if (prev_type == uni->types[u]) {
-                found = 1;
+            next_type = warn_is_equal_type_next_type(uni->types[u], prev_type, found);
+            if (next_type) {
+                return next_type;
             }
         }
-        return NULL;
     } else {
-        if (prev_type) {
-            assert(type == prev_type);
-            return NULL;
-        } else {
+        if (*found) {
             return type;
+        } else if (prev_type == type) {
+            *found = 1;
         }
     }
+
+    return NULL;
 }
 
 /**
@@ -3498,25 +3498,18 @@ warn_is_equal_type_next_type(struct lysc_type *type, struct lysc_type *prev_type
 static int
 warn_is_equal_type(struct lysc_type *type1, struct lysc_type *type2)
 {
-    struct lysc_type *t1, *rt1, *t2, *rt2;
+    struct lysc_type *t1, *t2;
+    ly_bool found1 = 1, found2 = 1;
 
     t1 = NULL;
-    while ((t1 = warn_is_equal_type_next_type(type1, t1))) {
-        if (t1->basetype == LY_TYPE_LEAFREF) {
-            rt1 = ((struct lysc_type_leafref *)t1)->realtype;
-        } else {
-            rt1 = t1;
-        }
+    while ((t1 = warn_is_equal_type_next_type(type1, t1, &found1))) {
+        found1 = 0;
 
         t2 = NULL;
-        while ((t2 = warn_is_equal_type_next_type(type2, t2))) {
-            if (t2->basetype == LY_TYPE_LEAFREF) {
-                rt2 = ((struct lysc_type_leafref *)t2)->realtype;
-            } else {
-                rt2 = t2;
-            }
+        while ((t2 = warn_is_equal_type_next_type(type2, t2, &found2))) {
+            found2 = 0;
 
-            if (rt2->basetype == rt1->basetype) {
+            if (t2->basetype == t1->basetype) {
                 /* match found */
                 return 1;
             }
