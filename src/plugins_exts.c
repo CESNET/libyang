@@ -101,7 +101,7 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, uint64_t parsed, struct lysc
         ly_bool enabled;
 
         /* evaluate */
-        LY_CHECK_GOTO(rc = lys_eval_iffeatures(ctx->ctx, (struct lysp_qname *)parsed, &enabled), cleanup);
+        LY_CHECK_GOTO(rc = lys_eval_iffeatures(ctx->ctx, VOIDPTR_C(parsed), &enabled), cleanup);
         if (!enabled) {
             /* it is disabled, remove the whole extension instance */
             rc = LY_ENOT;
@@ -133,7 +133,7 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, uint64_t parsed, struct lysc
         struct lysc_node *node;
 
         lyplg_ext_get_storage(ext, LY_STMT_STATUS, sizeof flags, (const void **)&flags);
-        pnodes = (struct lysp_node *)parsed;
+        pnodes = VOIDPTR_C(parsed);
 
         /* compile nodes */
         LY_LIST_FOR(pnodes, pnode) {
@@ -163,7 +163,7 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, uint64_t parsed, struct lysc
     case LY_STMT_REFERENCE:
     case LY_STMT_UNITS:
         /* just make a copy */
-        LY_CHECK_GOTO(rc = lydict_insert(ctx->ctx, (const char *)parsed, 0, (const char **)substmt->storage), cleanup);
+        LY_CHECK_GOTO(rc = lydict_insert(ctx->ctx, VOIDPTR_C(parsed), 0, VOIDPTR_C(substmt->storage)), cleanup);
         break;
 
     case LY_STMT_BIT:
@@ -175,8 +175,7 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, uint64_t parsed, struct lysc
         }
 
         /* compile */
-        rc = lys_compile_type_enums(ctx, (struct lysp_type_enum *)parsed, basetype, NULL,
-                (struct lysc_type_bitenum_item **)substmt->storage);
+        rc = lys_compile_type_enums(ctx, VOIDPTR_C(parsed), basetype, NULL, VOIDPTR_C(substmt->storage));
         LY_CHECK_GOTO(rc, cleanup);
         break;
 
@@ -195,56 +194,56 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, uint64_t parsed, struct lysc
                 /* default config */
                 flags = LYS_CONFIG_W;
             }
-            memcpy((void *)substmt->storage, &flags, 2);
+            memcpy(VOIDPTR_C(substmt->storage), &flags, 2);
         } /* else leave zero */
         break;
     }
     case LY_STMT_MUST: {
-        const struct lysp_restr *restrs = (struct lysp_restr *)parsed;
+        const struct lysp_restr *restrs = VOIDPTR_C(parsed);
 
         /* sized array */
-        COMPILE_ARRAY_GOTO(ctx, restrs, *(struct lysc_must **)substmt->storage, lys_compile_must, rc, cleanup);
+        COMPILE_ARRAY_GOTO(ctx, restrs, *(struct lysc_must **)VOIDPTR_C(substmt->storage), lys_compile_must, rc, cleanup);
         break;
     }
     case LY_STMT_WHEN: {
         const uint16_t flags;
-        const struct lysp_when *when = (struct lysp_when *)parsed;
+        const struct lysp_when *when = VOIDPTR_C(parsed);
 
         /* read compiled status */
         lyplg_ext_get_storage(ext, LY_STMT_STATUS, sizeof flags, (const void **)&flags);
 
         /* compile */
-        LY_CHECK_GOTO(rc = lys_compile_when(ctx, when, flags, NULL, NULL, NULL, (struct lysc_when **)substmt->storage), cleanup);
+        LY_CHECK_GOTO(rc = lys_compile_when(ctx, when, flags, NULL, NULL, NULL, VOIDPTR_C(substmt->storage)), cleanup);
         break;
     }
     case LY_STMT_FRACTION_DIGITS:
     case LY_STMT_REQUIRE_INSTANCE:
         /* just make a copy */
-        memcpy((void *)substmt->storage, &parsed, 1);
+        memcpy(VOIDPTR_C(substmt->storage), &parsed, 1);
         break;
 
     case LY_STMT_MANDATORY:
     case LY_STMT_ORDERED_BY:
     case LY_STMT_STATUS:
         /* just make a copy */
-        memcpy((void *)substmt->storage, &parsed, 2);
+        memcpy(VOIDPTR_C(substmt->storage), &parsed, 2);
         break;
 
     case LY_STMT_MAX_ELEMENTS:
     case LY_STMT_MIN_ELEMENTS:
         /* just make a copy */
-        memcpy((void *)substmt->storage, &parsed, 4);
+        memcpy(VOIDPTR_C(substmt->storage), &parsed, 4);
         break;
 
     case LY_STMT_POSITION:
     case LY_STMT_VALUE:
         /* just make a copy */
-        memcpy((void *)substmt->storage, &parsed, 8);
+        memcpy(VOIDPTR_C(substmt->storage), &parsed, 8);
         break;
 
     case LY_STMT_IDENTITY:
         /* compile */
-        rc = lys_identity_precompile(ctx, NULL, NULL, (struct lysp_ident *)parsed, (struct lysc_ident **)substmt->storage);
+        rc = lys_identity_precompile(ctx, NULL, NULL, VOIDPTR_C(parsed), VOIDPTR_C(substmt->storage));
         LY_CHECK_GOTO(rc, cleanup);
         break;
 
@@ -253,37 +252,36 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, uint64_t parsed, struct lysc
     /* fallthrough */
     case LY_STMT_RANGE:
         /* compile, use uint64 default range */
-        rc = lys_compile_type_range(ctx, (struct lysp_restr *)parsed, LY_TYPE_UINT64, length_restr, 0, NULL,
-                (struct lysc_range **)substmt->storage);
+        rc = lys_compile_type_range(ctx, VOIDPTR_C(parsed), LY_TYPE_UINT64, length_restr, 0, NULL, VOIDPTR_C(substmt->storage));
         LY_CHECK_GOTO(rc, cleanup);
         break;
 
     case LY_STMT_PATTERN:
         /* compile */
-        rc = lys_compile_type_patterns(ctx, (struct lysp_restr *)parsed, NULL, (struct lysc_pattern ***)substmt->storage);
+        rc = lys_compile_type_patterns(ctx, VOIDPTR_C(parsed), NULL, VOIDPTR_C(substmt->storage));
         LY_CHECK_GOTO(rc, cleanup);
         break;
 
     case LY_STMT_TYPE: {
         const uint16_t flags;
         const char *units;
-        const struct lysp_type *ptype = (struct lysp_type *)parsed;
+        const struct lysp_type *ptype = VOIDPTR_C(parsed);
 
         /* read compiled info */
         lyplg_ext_get_storage(ext, LY_STMT_STATUS, sizeof flags, (const void **)&flags);
         lyplg_ext_get_storage(ext, LY_STMT_UNITS, sizeof units, (const void **)&units);
 
         /* compile */
-        rc = lys_compile_type(ctx, NULL, flags, ext->def->name, ptype, (struct lysc_type **)substmt->storage, &units, NULL);
+        rc = lys_compile_type(ctx, NULL, flags, ext->def->name, ptype, VOIDPTR_C(substmt->storage), &units, NULL);
         LY_CHECK_GOTO(rc, cleanup);
-        LY_ATOMIC_INC_BARRIER((*(struct lysc_type **)substmt->storage)->refcount);
+        LY_ATOMIC_INC_BARRIER((*(struct lysc_type **)VOIDPTR_C(substmt->storage))->refcount);
         break;
     }
     case LY_STMT_EXTENSION_INSTANCE: {
-        struct lysp_ext_instance *extps = (struct lysp_ext_instance *)parsed;
+        struct lysp_ext_instance *extps = VOIDPTR_C(parsed);
 
         /* compile sized array */
-        COMPILE_EXTS_GOTO(ctx, extps, *(struct lysc_ext_instance **)substmt->storage, ext, rc, cleanup);
+        COMPILE_EXTS_GOTO(ctx, extps, *(struct lysc_ext_instance **)VOIDPTR_C(substmt->storage), ext, rc, cleanup);
         break;
     }
     case LY_STMT_AUGMENT:
@@ -342,9 +340,9 @@ lyplg_ext_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext
 
     LY_ARRAY_FOR(extp->substmts, u) {
         stmtp = extp->substmts[u].stmt;
-        storagep = *(uint64_t *)extp->substmts[u].storage;
+        storagep = *(uint64_t *)VOIDPTR_C(extp->substmts[u].storage);
 
-        if (!storagep || ly_set_contains(&storagep_compiled, (void *)storagep, NULL)) {
+        if (!storagep || ly_set_contains(&storagep_compiled, VOIDPTR_C(storagep), NULL)) {
             /* nothing parsed or already compiled (for example, if it is a linked list of parsed nodes) */
             continue;
         }
@@ -363,7 +361,7 @@ lyplg_ext_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext
         }
 
         /* compiled */
-        ly_set_add(&storagep_compiled, (void *)storagep, 1, NULL);
+        ly_set_add(&storagep_compiled, VOIDPTR_C(storagep), 1, NULL);
     }
 
 cleanup:
@@ -439,7 +437,7 @@ lyplg_ext_sprinter_ctree_add_ext_nodes(const struct lyspr_tree_ctx *ctx, struct 
         case LY_STMT_LEAF:
         case LY_STMT_LEAF_LIST:
         case LY_STMT_LIST:
-            schema = *((struct lysc_node **)ext->substmts[i].storage);
+            schema = *VOIDPTR2_C(ext->substmts[i].storage);
             if (schema) {
                 rc = lyplg_ext_sprinter_ctree_add_nodes(ctx, schema, clb);
                 return rc;
@@ -477,7 +475,7 @@ lyplg_ext_sprinter_ptree_add_ext_nodes(const struct lyspr_tree_ctx *ctx, struct 
         case LY_STMT_LEAF:
         case LY_STMT_LEAF_LIST:
         case LY_STMT_LIST:
-            schema = *((struct lysp_node **)ext->substmts[i].storage);
+            schema = *VOIDPTR2_C(ext->substmts[i].storage);
             if (schema) {
                 rc = lyplg_ext_sprinter_ptree_add_nodes(ctx, schema, clb);
                 return rc;
@@ -622,7 +620,7 @@ lyplg_ext_get_storage(const struct lysc_ext_instance *ext, int stmt, uint32_t st
 
     /* assign */
     if (s) {
-        memcpy(storage, (void *)s, storage_size);
+        memcpy(storage, VOIDPTR_C(s), storage_size);
     } else {
         memset(storage, 0, storage_size);
     }
@@ -664,7 +662,7 @@ lyplg_ext_parsed_get_storage(const struct lysc_ext_instance *ext, int stmt, uint
 
     /* assign */
     if (s) {
-        memcpy(storage, (void *)s, storage_size);
+        memcpy(storage, VOIDPTR_C(s), storage_size);
     } else {
         memset(storage, 0, storage_size);
     }

@@ -2218,7 +2218,7 @@ lys_precompile_own_augments_mod(struct lysc_ctx *ctx, const struct lysp_module *
         aug_p = NULL;
         LY_ARRAY_FOR(pmod->exts[u].substmts, v) {
             if (pmod->exts[u].substmts[v].stmt == LY_STMT_AUGMENT) {
-                aug_p = *(struct lysp_node_augment **)pmod->exts[u].substmts[v].storage;
+                aug_p = *VOIDPTR2_C(pmod->exts[u].substmts[v].storage);
                 break;
             }
         }
@@ -2488,7 +2488,7 @@ lys_precompile_mod_augments_deviations(struct lysp_module *pmod, struct ly_set *
         aug = NULL;
         LY_ARRAY_FOR(pmod->exts[u].substmts, v) {
             if (pmod->exts[u].substmts[v].stmt == LY_STMT_AUGMENT) {
-                aug = *(struct lysp_node_augment **)pmod->exts[u].substmts[v].storage;
+                aug = *VOIDPTR2_C(pmod->exts[u].substmts[v].storage);
                 break;
             }
         }

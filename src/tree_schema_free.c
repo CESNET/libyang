@@ -1383,75 +1383,75 @@ lyplg_ext_pfree_instance_substatements(const struct ly_ctx *ctx, struct lysp_ext
         case LY_STMT_USES: {
             struct lysp_node *child, *child_next;
 
-            LY_LIST_FOR_SAFE(*((struct lysp_node **)substmts[u].storage), child_next, child) {
+            LY_LIST_FOR_SAFE(*VOIDPTR2_C(substmts[u].storage), child_next, child) {
                 node_free = (child->nodetype & (LYS_INPUT | LYS_OUTPUT)) ? 1 : 0;
                 lysp_node_free(&fctx, child);
                 if (node_free) {
                     free(child);
                 }
             }
-            *((struct lysc_node **)substmts[u].storage) = NULL;
+            *VOIDPTR2_C(substmts[u].storage) = NULL;
             break;
         }
         case LY_STMT_BASE:
             /* multiple strings */
-            FREE_ARRAY(ctx, **(const char ***)substmts[u].storage, lydict_remove);
+            FREE_ARRAY(ctx, **(const char ***)VOIDPTR2_C(substmts[u].storage), lydict_remove);
             break;
 
         case LY_STMT_BIT:
         case LY_STMT_ENUM:
             /* single enum */
-            lysp_type_enum_free(&fctx, *(struct lysp_type_enum **)substmts[u].storage);
+            lysp_type_enum_free(&fctx, *VOIDPTR2_C(substmts[u].storage));
             break;
 
         case LY_STMT_DEVIATE:
             /* single deviate */
-            lysp_deviate_free(&fctx, *(struct lysp_deviate **)substmts[u].storage);
+            lysp_deviate_free(&fctx, *VOIDPTR2_C(substmts[u].storage));
             break;
 
         case LY_STMT_DEVIATION:
             /* single deviation */
-            lysp_deviation_free(&fctx, *(struct lysp_deviation **)substmts[u].storage);
+            lysp_deviation_free(&fctx, *VOIDPTR2_C(substmts[u].storage));
             break;
 
         case LY_STMT_EXTENSION:
             /* single extension */
-            lysp_ext_free(&fctx, *(struct lysp_ext **)substmts[u].storage);
+            lysp_ext_free(&fctx, *VOIDPTR2_C(substmts[u].storage));
             break;
 
         case LY_STMT_EXTENSION_INSTANCE:
             /* multiple extension instances */
-            FREE_ARRAY(&fctx, *(struct lysp_ext_instance **)substmts[u].storage, lysp_ext_instance_free);
+            FREE_ARRAY(&fctx, *(struct lysp_ext_instance **)VOIDPTR2_C(substmts[u].storage), lysp_ext_instance_free);
             break;
 
         case LY_STMT_FEATURE:
             /* multiple features */
-            FREE_ARRAY(&fctx, *(struct lysp_feature **)substmts[u].storage, lysp_feature_free);
+            FREE_ARRAY(&fctx, *(struct lysp_feature **)VOIDPTR2_C(substmts[u].storage), lysp_feature_free);
             break;
 
         case LY_STMT_IDENTITY:
             /* multiple identities */
-            FREE_ARRAY(&fctx, *(struct lysp_ident **)substmts[u].storage, lysp_ident_free);
+            FREE_ARRAY(&fctx, *(struct lysp_ident **)VOIDPTR2_C(substmts[u].storage), lysp_ident_free);
             break;
 
         case LY_STMT_IMPORT:
             /* multiple imports */
-            FREE_ARRAY(&fctx, *(struct lysp_import **)substmts[u].storage, lysp_import_free);
+            FREE_ARRAY(&fctx, *(struct lysp_import **)VOIDPTR2_C(substmts[u].storage), lysp_import_free);
             break;
 
         case LY_STMT_INCLUDE:
             /* multiple includes */
-            FREE_ARRAY(&fctx, *(struct lysp_include **)substmts[u].storage, lysp_include_free);
+            FREE_ARRAY(&fctx, *(struct lysp_include **)VOIDPTR2_C(substmts[u].storage), lysp_include_free);
             break;
 
         case LY_STMT_REFINE:
             /* multiple refines */
-            FREE_ARRAY(&fctx, *(struct lysp_refine **)substmts[u].storage, lysp_refine_free);
+            FREE_ARRAY(&fctx, *(struct lysp_refine **)VOIDPTR2_C(substmts[u].storage), lysp_refine_free);
             break;
 
         case LY_STMT_REVISION:
             /* multiple revisions */
-            FREE_ARRAY(&fctx, *(struct lysp_revision **)substmts[u].storage, lysp_revision_free);
+            FREE_ARRAY(&fctx, *(struct lysp_revision **)VOIDPTR2_C(substmts[u].storage), lysp_revision_free);
             break;
 
         case LY_STMT_CONFIG:
@@ -1485,7 +1485,7 @@ lyplg_ext_pfree_instance_substatements(const struct ly_ctx *ctx, struct lysp_ext
         case LY_STMT_REVISION_DATE:
         case LY_STMT_UNITS:
             /* single string */
-            lydict_remove(ctx, *(const char **)substmts[u].storage);
+            lydict_remove(ctx, *VOIDPTR2_C(substmts[u].storage));
             break;
 
         case LY_STMT_LENGTH:
@@ -1493,34 +1493,34 @@ lyplg_ext_pfree_instance_substatements(const struct ly_ctx *ctx, struct lysp_ext
         case LY_STMT_PATTERN:
         case LY_STMT_RANGE:
             /* multiple restrictions */
-            FREE_ARRAY(&fctx, *(struct lysp_restr **)substmts[u].storage, lysp_restr_free);
+            FREE_ARRAY(&fctx, *(struct lysp_restr **)VOIDPTR2_C(substmts[u].storage), lysp_restr_free);
             break;
 
         case LY_STMT_WHEN:
             /* multiple whens */
-            FREE_ARRAY(&fctx, *(struct lysp_when **)substmts[u].storage, lysp_when_free);
+            FREE_ARRAY(&fctx, *(struct lysp_when **)VOIDPTR2_C(substmts[u].storage), lysp_when_free);
             break;
 
         case LY_STMT_PATH:
             /* single expression */
-            lyxp_expr_free(ctx, *(struct lyxp_expr **)substmts[u].storage);
+            lyxp_expr_free(ctx, *VOIDPTR2_C(substmts[u].storage));
             break;
 
         case LY_STMT_DEFAULT:
         case LY_STMT_IF_FEATURE:
         case LY_STMT_UNIQUE:
             /* multiple qnames */
-            FREE_ARRAY(ctx, *(struct lysp_qname **)substmts[u].storage, lysp_qname_free);
+            FREE_ARRAY(ctx, *(struct lysp_qname **)VOIDPTR2_C(substmts[u].storage), lysp_qname_free);
             break;
 
         case LY_STMT_TYPEDEF:
             /* multiple typedefs */
-            FREE_ARRAY(&fctx, *(struct lysp_tpdf **)substmts[u].storage, lysp_tpdf_free);
+            FREE_ARRAY(&fctx, *(struct lysp_tpdf **)VOIDPTR2_C(substmts[u].storage), lysp_tpdf_free);
             break;
 
         case LY_STMT_TYPE: {
             /* single type */
-            struct lysp_type **type_p = (void *)substmts[u].storage;
+            struct lysp_type **type_p = VOIDPTR_C(substmts[u].storage);
 
             lysp_type_free(&fctx, *type_p);
             free(*type_p);
@@ -1529,7 +1529,7 @@ lyplg_ext_pfree_instance_substatements(const struct ly_ctx *ctx, struct lysp_ext
         case LY_STMT_MODULE:
         case LY_STMT_SUBMODULE:
             /* single (sub)module */
-            lysp_module_free(&fctx, *(struct lysp_module **)substmts[u].storage);
+            lysp_module_free(&fctx, *VOIDPTR2_C(substmts[u].storage));
             break;
 
         default:
@@ -1568,14 +1568,14 @@ lyplg_ext_cfree_instance_substatements(const struct ly_ctx *ctx, struct lysc_ext
         case LY_STMT_LIST: {
             struct lysc_node *child, *child_next;
 
-            LY_LIST_FOR_SAFE(*((struct lysc_node **)substmts[u].storage), child_next, child) {
+            LY_LIST_FOR_SAFE(*VOIDPTR2_C(substmts[u].storage), child_next, child) {
                 node_free = (child->nodetype & (LYS_INPUT | LYS_OUTPUT)) ? 1 : 0;
                 lysc_node_free_(&fctx, child);
                 if (node_free) {
                     free(child);
                 }
             }
-            *((struct lysc_node **)substmts[u].storage) = NULL;
+            *VOIDPTR2_C(substmts[u].storage) = NULL;
             break;
         }
         case LY_STMT_USES:
@@ -1605,7 +1605,7 @@ lyplg_ext_cfree_instance_substatements(const struct ly_ctx *ctx, struct lysc_ext
         case LY_STMT_REFERENCE:
         case LY_STMT_UNITS: {
             /* single item */
-            const char *str = *((const char **)substmts[u].storage);
+            const char *str = *VOIDPTR2_C(substmts[u].storage);
 
             lydict_remove(ctx, str);
             break;
@@ -1613,7 +1613,7 @@ lyplg_ext_cfree_instance_substatements(const struct ly_ctx *ctx, struct lysc_ext
         case LY_STMT_BIT:
         case LY_STMT_ENUM: {
             /* sized array */
-            struct lysc_type_bitenum_item *items = *((struct lysc_type_bitenum_item **)substmts[u].storage);
+            struct lysc_type_bitenum_item *items = *VOIDPTR2_C(substmts[u].storage);
 
             FREE_ARRAY(&fctx, items, lysc_enum_item_free);
             break;
@@ -1621,47 +1621,47 @@ lyplg_ext_cfree_instance_substatements(const struct ly_ctx *ctx, struct lysc_ext
         case LY_STMT_LENGTH:
         case LY_STMT_RANGE: {
             /* single item */
-            struct lysc_range *range = *((struct lysc_range **)substmts[u].storage);
+            struct lysc_range *range = *VOIDPTR2_C(substmts[u].storage);
 
             lysc_range_free(&fctx, range);
             break;
         }
         case LY_STMT_MUST: {
             /* sized array */
-            struct lysc_must *musts = *((struct lysc_must **)substmts[u].storage);
+            struct lysc_must *musts = *VOIDPTR2_C(substmts[u].storage);
 
             FREE_ARRAY(&fctx, musts, lysc_must_free);
             break;
         }
         case LY_STMT_WHEN:
             /* single item, expects a pointer */
-            lysc_when_free(&fctx, (struct lysc_when **)substmts[u].storage);
+            lysc_when_free(&fctx, VOIDPTR_C(substmts[u].storage));
             break;
 
         case LY_STMT_PATTERN: {
             /* sized array of pointers */
-            struct lysc_pattern **patterns = *((struct lysc_pattern ***)substmts[u].storage);
+            struct lysc_pattern **patterns = *VOIDPTR2_C(substmts[u].storage);
 
             FREE_ARRAY(&fctx, patterns, lysc_pattern_free);
             break;
         }
         case LY_STMT_TYPE: {
             /* single item */
-            struct lysc_type *type = *((struct lysc_type **)substmts[u].storage);
+            struct lysc_type *type = *VOIDPTR2_C(substmts[u].storage);
 
             lysc_type_free(&fctx, type);
             break;
         }
         case LY_STMT_IDENTITY: {
             /* sized array */
-            struct lysc_ident *idents = *((struct lysc_ident **)substmts[u].storage);
+            struct lysc_ident *idents = *VOIDPTR2_C(substmts[u].storage);
 
             FREE_ARRAY(&fctx, idents, lysc_ident_free);
             break;
         }
         case LY_STMT_EXTENSION_INSTANCE: {
             /* sized array */
-            struct lysc_ext_instance *exts = *((struct lysc_ext_instance **)substmts[u].storage);
+            struct lysc_ext_instance *exts = *VOIDPTR2_C(substmts[u].storage);
 
             FREE_ARRAY(&fctx, exts, lysc_ext_instance_free);
             break;

@@ -61,6 +61,9 @@ struct lysc_node;
 #define GETMACRO6(_1, _2, _3, _4, _5, _6, NAME, ...) NAME
 #define GETMACRO7(_1, _2, _3, _4, _5, _6, _7, NAME, ...) NAME
 
+#define VOIDPTR_C(var) ((void *)(uintptr_t)(var))
+#define VOIDPTR2_C(var) ((void **)(uintptr_t)(var))
+
 /******************************************************************************
  * Logger
  *****************************************************************************/

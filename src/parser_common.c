@@ -3587,7 +3587,7 @@ lys_parse_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *subs
         LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, (void **)&pnode, NULL), cleanup);
 
         /* usually is a linked-list of all the parsed schema nodes */
-        pnodes_p = (struct lysp_node **)substmt->storage;
+        pnodes_p = VOIDPTR_C(substmt->storage);
         while (*pnodes_p) {
             pnodes_p = &(*pnodes_p)->next;
         }
@@ -3615,7 +3615,7 @@ lys_parse_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *subs
     case LY_STMT_TYPEDEF:
     case LY_STMT_UNIQUE:
         /* parse, sized array */
-        LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, (void **)substmt->storage, NULL), cleanup);
+        LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, VOIDPTR_C(substmt->storage), NULL), cleanup);
         break;
 
     case LY_STMT_ARGUMENT:
@@ -3650,50 +3650,50 @@ lys_parse_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *subs
     case LY_STMT_YANG_VERSION:
     case LY_STMT_YIN_ELEMENT:
         /* single item */
-        if (*(void **)substmt->storage) {
+        if (*VOIDPTR2_C(substmt->storage)) {
             LOGVAL(PARSER_CTX(pctx), LY_VCODE_DUPSTMT, stmt->stmt);
             rc = LY_EVALID;
             goto cleanup;
         }
 
         /* parse */
-        LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, (void **)substmt->storage, NULL), cleanup);
+        LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, VOIDPTR_C(substmt->storage), NULL), cleanup);
         break;
 
     case LY_STMT_CONFIG:
         /* single item */
-        if ((*(uint16_t *)substmt->storage) & LYS_CONFIG_MASK) {
+        if ((*(uint16_t *)VOIDPTR2_C(substmt->storage)) & LYS_CONFIG_MASK) {
             LOGVAL(PARSER_CTX(pctx), LY_VCODE_DUPSTMT, stmt->stmt);
             rc = LY_EVALID;
             goto cleanup;
         }
 
         /* parse */
-        LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, (void **)substmt->storage, NULL), cleanup);
+        LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, VOIDPTR_C(substmt->storage), NULL), cleanup);
         break;
 
     case LY_STMT_ORDERED_BY:
         /* single item */
-        if ((*(uint16_t *)substmt->storage) & LYS_ORDBY_MASK) {
+        if ((*(uint16_t *)VOIDPTR2_C(substmt->storage)) & LYS_ORDBY_MASK) {
             LOGVAL(PARSER_CTX(pctx), LY_VCODE_DUPSTMT, stmt->stmt);
             rc = LY_EVALID;
             goto cleanup;
         }
 
         /* parse */
-        LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, (void **)substmt->storage, NULL), cleanup);
+        LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, VOIDPTR_C(substmt->storage), NULL), cleanup);
         break;
 
     case LY_STMT_STATUS:
         /* single item */
-        if ((*(uint16_t *)substmt->storage) & LYS_STATUS_MASK) {
+        if ((*(uint16_t *)VOIDPTR2_C(substmt->storage)) & LYS_STATUS_MASK) {
             LOGVAL(PARSER_CTX(pctx), LY_VCODE_DUPSTMT, stmt->stmt);
             rc = LY_EVALID;
             goto cleanup;
         }
 
         /* parse */
-        LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, (void **)substmt->storage, NULL), cleanup);
+        LY_CHECK_GOTO(rc = lysp_stmt_parse(pctx, stmt, VOIDPTR_C(substmt->storage), NULL), cleanup);
         break;
 
     default:
