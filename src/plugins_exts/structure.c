@@ -90,60 +90,60 @@ structure_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     /* parse substatements */
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[0].stmt = LY_STMT_MUST;
-    ext->substmts[0].storage = (uint64_t)&struct_pdata->musts;
+    ext->substmts[0].storage = (uint64_t)(uintptr_t)&struct_pdata->musts;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[1].stmt = LY_STMT_STATUS;
-    ext->substmts[1].storage = (uint64_t)&struct_pdata->flags;
+    ext->substmts[1].storage = (uint64_t)(uintptr_t)&struct_pdata->flags;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[2].stmt = LY_STMT_DESCRIPTION;
-    ext->substmts[2].storage = (uint64_t)&struct_pdata->dsc;
+    ext->substmts[2].storage = (uint64_t)(uintptr_t)&struct_pdata->dsc;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[3].stmt = LY_STMT_REFERENCE;
-    ext->substmts[3].storage = (uint64_t)&struct_pdata->ref;
+    ext->substmts[3].storage = (uint64_t)(uintptr_t)&struct_pdata->ref;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[4].stmt = LY_STMT_TYPEDEF;
-    ext->substmts[4].storage = (uint64_t)&struct_pdata->typedefs;
+    ext->substmts[4].storage = (uint64_t)(uintptr_t)&struct_pdata->typedefs;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[5].stmt = LY_STMT_GROUPING;
-    ext->substmts[5].storage = (uint64_t)&struct_pdata->groupings;
+    ext->substmts[5].storage = (uint64_t)(uintptr_t)&struct_pdata->groupings;
 
     /* data-def-stmt */
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[6].stmt = LY_STMT_CONTAINER;
-    ext->substmts[6].storage = (uint64_t)&struct_pdata->child;
+    ext->substmts[6].storage = (uint64_t)(uintptr_t)&struct_pdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[7].stmt = LY_STMT_LEAF;
-    ext->substmts[7].storage = (uint64_t)&struct_pdata->child;
+    ext->substmts[7].storage = (uint64_t)(uintptr_t)&struct_pdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[8].stmt = LY_STMT_LEAF_LIST;
-    ext->substmts[8].storage = (uint64_t)&struct_pdata->child;
+    ext->substmts[8].storage = (uint64_t)(uintptr_t)&struct_pdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[9].stmt = LY_STMT_LIST;
-    ext->substmts[9].storage = (uint64_t)&struct_pdata->child;
+    ext->substmts[9].storage = (uint64_t)(uintptr_t)&struct_pdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[10].stmt = LY_STMT_CHOICE;
-    ext->substmts[10].storage = (uint64_t)&struct_pdata->child;
+    ext->substmts[10].storage = (uint64_t)(uintptr_t)&struct_pdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[11].stmt = LY_STMT_ANYDATA;
-    ext->substmts[11].storage = (uint64_t)&struct_pdata->child;
+    ext->substmts[11].storage = (uint64_t)(uintptr_t)&struct_pdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[12].stmt = LY_STMT_ANYXML;
-    ext->substmts[12].storage = (uint64_t)&struct_pdata->child;
+    ext->substmts[12].storage = (uint64_t)(uintptr_t)&struct_pdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[13].stmt = LY_STMT_USES;
-    ext->substmts[13].storage = (uint64_t)&struct_pdata->child;
+    ext->substmts[13].storage = (uint64_t)(uintptr_t)&struct_pdata->child;
 
     rc = lyplg_ext_parse_extension_instance(pctx, ext);
     return rc;
@@ -190,19 +190,19 @@ structure_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, s
     LY_ARRAY_CREATE_GOTO(cctx->ctx, ext->substmts, 14, rc, emem);
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[0].stmt = LY_STMT_MUST;
-    ext->substmts[0].storage = (uint64_t)&struct_cdata->musts;
+    ext->substmts[0].storage = (uint64_t)(uintptr_t)&struct_cdata->musts;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[1].stmt = LY_STMT_STATUS;
-    ext->substmts[1].storage = (uint64_t)&struct_cdata->flags;
+    ext->substmts[1].storage = (uint64_t)(uintptr_t)&struct_cdata->flags;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[2].stmt = LY_STMT_DESCRIPTION;
-    ext->substmts[2].storage = (uint64_t)&struct_cdata->dsc;
+    ext->substmts[2].storage = (uint64_t)(uintptr_t)&struct_cdata->dsc;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[3].stmt = LY_STMT_REFERENCE;
-    ext->substmts[3].storage = (uint64_t)&struct_cdata->ref;
+    ext->substmts[3].storage = (uint64_t)(uintptr_t)&struct_cdata->ref;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[4].stmt = LY_STMT_TYPEDEF;
@@ -215,35 +215,35 @@ structure_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, s
     /* data-def-stmt */
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[6].stmt = LY_STMT_CONTAINER;
-    ext->substmts[6].storage = (uint64_t)&struct_cdata->child;
+    ext->substmts[6].storage = (uint64_t)(uintptr_t)&struct_cdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[7].stmt = LY_STMT_LEAF;
-    ext->substmts[7].storage = (uint64_t)&struct_cdata->child;
+    ext->substmts[7].storage = (uint64_t)(uintptr_t)&struct_cdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[8].stmt = LY_STMT_LEAF_LIST;
-    ext->substmts[8].storage = (uint64_t)&struct_cdata->child;
+    ext->substmts[8].storage = (uint64_t)(uintptr_t)&struct_cdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[9].stmt = LY_STMT_LIST;
-    ext->substmts[9].storage = (uint64_t)&struct_cdata->child;
+    ext->substmts[9].storage = (uint64_t)(uintptr_t)&struct_cdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[10].stmt = LY_STMT_CHOICE;
-    ext->substmts[10].storage = (uint64_t)&struct_cdata->child;
+    ext->substmts[10].storage = (uint64_t)(uintptr_t)&struct_cdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[11].stmt = LY_STMT_ANYDATA;
-    ext->substmts[11].storage = (uint64_t)&struct_cdata->child;
+    ext->substmts[11].storage = (uint64_t)(uintptr_t)&struct_cdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[12].stmt = LY_STMT_ANYXML;
-    ext->substmts[12].storage = (uint64_t)&struct_cdata->child;
+    ext->substmts[12].storage = (uint64_t)(uintptr_t)&struct_cdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[13].stmt = LY_STMT_USES;
-    ext->substmts[13].storage = (uint64_t)&struct_cdata->child;
+    ext->substmts[13].storage = (uint64_t)(uintptr_t)&struct_cdata->child;
 
     *lyplg_ext_compile_get_options(cctx) |= LYS_COMPILE_NO_CONFIG | LYS_COMPILE_NO_DISABLED;
     rc = lyplg_ext_compile_extension_instance(cctx, extp, ext);
@@ -339,53 +339,53 @@ structure_aug_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     /* parse substatements */
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[0].stmt = LY_STMT_STATUS;
-    ext->substmts[0].storage = (uint64_t)&aug_pdata->flags;
+    ext->substmts[0].storage = (uint64_t)(uintptr_t)&aug_pdata->flags;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[1].stmt = LY_STMT_DESCRIPTION;
-    ext->substmts[1].storage = (uint64_t)&aug_pdata->dsc;
+    ext->substmts[1].storage = (uint64_t)(uintptr_t)&aug_pdata->dsc;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[2].stmt = LY_STMT_REFERENCE;
-    ext->substmts[2].storage = (uint64_t)&aug_pdata->ref;
+    ext->substmts[2].storage = (uint64_t)(uintptr_t)&aug_pdata->ref;
 
     /* data-def-stmt */
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[3].stmt = LY_STMT_CONTAINER;
-    ext->substmts[3].storage = (uint64_t)&aug_pdata->child;
+    ext->substmts[3].storage = (uint64_t)(uintptr_t)&aug_pdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[4].stmt = LY_STMT_LEAF;
-    ext->substmts[4].storage = (uint64_t)&aug_pdata->child;
+    ext->substmts[4].storage = (uint64_t)(uintptr_t)&aug_pdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[5].stmt = LY_STMT_LEAF_LIST;
-    ext->substmts[5].storage = (uint64_t)&aug_pdata->child;
+    ext->substmts[5].storage = (uint64_t)(uintptr_t)&aug_pdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[6].stmt = LY_STMT_LIST;
-    ext->substmts[6].storage = (uint64_t)&aug_pdata->child;
+    ext->substmts[6].storage = (uint64_t)(uintptr_t)&aug_pdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[7].stmt = LY_STMT_CHOICE;
-    ext->substmts[7].storage = (uint64_t)&aug_pdata->child;
+    ext->substmts[7].storage = (uint64_t)(uintptr_t)&aug_pdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[8].stmt = LY_STMT_ANYDATA;
-    ext->substmts[8].storage = (uint64_t)&aug_pdata->child;
+    ext->substmts[8].storage = (uint64_t)(uintptr_t)&aug_pdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[9].stmt = LY_STMT_ANYXML;
-    ext->substmts[9].storage = (uint64_t)&aug_pdata->child;
+    ext->substmts[9].storage = (uint64_t)(uintptr_t)&aug_pdata->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[10].stmt = LY_STMT_USES;
-    ext->substmts[10].storage = (uint64_t)&aug_pdata->child;
+    ext->substmts[10].storage = (uint64_t)(uintptr_t)&aug_pdata->child;
 
     /* case */
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[11].stmt = LY_STMT_CASE;
-    ext->substmts[11].storage = (uint64_t)&aug_pdata->child;
+    ext->substmts[11].storage = (uint64_t)(uintptr_t)&aug_pdata->child;
 
     if ((rc = lyplg_ext_parse_extension_instance(pctx, ext))) {
         return rc;
@@ -394,7 +394,7 @@ structure_aug_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     /* add fake parsed augment node */
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[12].stmt = LY_STMT_AUGMENT;
-    ext->substmts[12].storage = (uint64_t)&aug_pdata->aug;
+    ext->substmts[12].storage = (uint64_t)(uintptr_t)&aug_pdata->aug;
 
     aug_pdata->aug = calloc(1, sizeof *aug_pdata->aug);
     if (!aug_pdata->aug) {
@@ -476,7 +476,7 @@ structure_aug_sprinter_ptree(struct lysp_ext_instance *ext, const struct lyspr_t
 
     assert(ctx);
 
-    aug = (struct lysp_node_augment **)ext->substmts[12].storage;
+    aug = (struct lysp_node_augment **)(uintptr_t)ext->substmts[12].storage;
     rc = lyplg_ext_sprinter_ptree_add_nodes(ctx, (*aug)->child, structure_sprinter_pnode);
 
     return rc;
