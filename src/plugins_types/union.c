@@ -434,9 +434,10 @@ LIBYANG_API_DEF LY_ERR
 lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *ctx_node,
         const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR rc = LY_SUCCESS;
     struct lysc_type_union *type_u = (struct lysc_type_union *)type;
     struct lyd_value_union *subvalue = storage->subvalue;
+    struct lyd_value orig = {0};
     uint32_t type_idx;
     ly_bool validated = 0;
 
@@ -444,14 +445,15 @@ lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type
 
     /* because of types that do not store their own type as realtype (leafref), we are not able to call their
      * validate callback (there is no way to get the type) but even if possible, the value may be invalid
-     * for the type, so we may have to perform union value storing again from scratch */
+     * for the type, so we may have to perform union value storing again from scratch, but keep a value backup */
+    LY_CHECK_RET(subvalue->value.realtype->plugin->duplicate(ctx, &subvalue->value, &orig));
     subvalue->value.realtype->plugin->free(ctx, &subvalue->value);
 
     if (subvalue->format == LY_VALUE_LYB) {
         /* use the specific type to store and validate the value */
         lyb_parse_union(subvalue->original, 0, &type_idx, NULL, NULL);
-        ret = union_store_type(ctx, type_u, type_idx, subvalue, 0, 1, ctx_node, tree, NULL, err);
-        if (ret) {
+
+        if (union_store_type(ctx, type_u, type_idx, subvalue, 0, 1, ctx_node, tree, NULL, err)) {
             /* validation failed, we need to try storing the value again */
             ly_err_free(*err);
             *err = NULL;
@@ -461,14 +463,21 @@ lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type
     }
 
     if (!validated) {
-        /* use the first usable subtype to store the value */
-        ret = union_find_type(ctx, type_u, subvalue, 0, 1, ctx_node, tree, NULL, NULL, err);
-        LY_CHECK_RET(ret);
+        /* use the first usable subtype to store and validate the value */
+        rc = union_find_type(ctx, type_u, subvalue, 0, 1, ctx_node, tree, NULL, NULL, err);
+        if (rc) {
+            /* validation failed, restore the previous value */
+            subvalue->value = orig;
+            return rc;
+        }
     }
 
-    /* success, update the canonical value, if any generated */
+    /* update the canonical value, if any generated */
     lydict_remove(ctx, storage->_canonical);
     LY_CHECK_RET(lydict_insert(ctx, subvalue->value._canonical, 0, &storage->_canonical));
+
+    /* free backup value */
+    orig.realtype->plugin->free(ctx, &orig);
     return LY_SUCCESS;
 }
 
