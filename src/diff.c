@@ -1660,7 +1660,8 @@ lyd_diff_merge_create(struct lyd_node **diff_match, struct lyd_node **diff, enum
 
                 /* previous created nodes affect the metadata so move it at the end */
                 child = lyd_first_sibling(*diff_match);
-                if (child->next) {
+                if (child->next && (child->prev != *diff_match) &&
+                        (child->prev->schema == (*diff_match)->schema)) {
                     LY_CHECK_RET(lyd_insert_after(child->prev, *diff_match));
                 }
             } else {
