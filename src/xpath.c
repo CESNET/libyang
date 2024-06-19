@@ -690,7 +690,7 @@ cast_string_to_number(const char *str)
 
     errno = 0;
     num = strtold(str, &ptr);
-    if (errno || *ptr) {
+    if (errno || *ptr || (ptr == str)) {
         num = NAN;
     }
     return num;
