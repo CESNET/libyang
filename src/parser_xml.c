@@ -116,8 +116,10 @@ lydxml_metadata(struct lyd_xml_ctx *lydctx, const struct lysc_node *sparent, str
             if (lydctx->parse_opts & LYD_PARSE_STRICT) {
                 LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Missing mandatory prefix for XML metadata \"%.*s\".",
                         (int)xmlctx->name_len, xmlctx->name);
-                ret = LY_EVALID;
-                goto cleanup;
+                /* If LYD_VALIDATE_MULTI_ERROR is set, then continue parsing, because otherwise the parser context
+                 * will remain in a bad state, which will cause termination on some assert or undefined behavior.
+                 */
+                LY_DPARSER_ERR_GOTO(LY_EVALID, ret = LY_EVALID, lydctx, cleanup);
             }
 
             /* skip attr */
@@ -1059,14 +1061,13 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     /* create metadata/attributes */
     if (xmlctx->status == LYXML_ATTRIBUTE) {
         if (snode) {
-            rc = lydxml_metadata(lydctx, snode, &meta);
-            LY_CHECK_GOTO(rc, cleanup);
+            r = lydxml_metadata(lydctx, snode, &meta);
         } else {
             assert(lydctx->parse_opts & LYD_PARSE_OPAQ);
-            rc = lydxml_attrs(xmlctx, &attr);
-            LY_CHECK_GOTO(rc, cleanup);
+            r = lydxml_attrs(xmlctx, &attr);
         }
     }
+    LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
     assert(xmlctx->status == LYXML_ELEM_CONTENT);
     if (!snode) {
