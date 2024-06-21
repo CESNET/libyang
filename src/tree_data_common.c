@@ -1764,11 +1764,12 @@ ly_time_time2str(time_t time, const char *fractions_s, char **str)
         return LY_ESYS;
     }
 
-    /* get timezone offset (do not use tm_gmtoff to avoid portability problems) */
+    /* get timezone offset (do not use tm_gmtoff to avoid portability problems),
+     * zonediff_h may be negative, zonediff_m MUST NOT */
     zonediff_s = ly_time_tz_offset_at(time);
     zonediff_h = zonediff_s / 60 / 60;
     zonediff_m = zonediff_s / 60 % 60;
-    sprintf(zoneshift, "%+03d:%02d", zonediff_h, zonediff_m);
+    sprintf(zoneshift, "%+03d:%02d", zonediff_h, zonediff_m < 0 ? -zonediff_m : zonediff_m);
 
     /* print */
     if (asprintf(str, "%04d-%02d-%02dT%02d:%02d:%02d%s%s%s",
