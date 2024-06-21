@@ -1658,10 +1658,13 @@ lyd_diff_merge_create(struct lyd_node **diff_match, struct lyd_node **diff, enum
                 /* add anchor metadata */
                 LY_CHECK_RET(lyd_dup_meta_single(meta, *diff_match, NULL));
 
-                /* previous created nodes affect the metadata so move it at the end */
-                child = lyd_first_sibling(*diff_match);
-                if (child->next) {
-                    LY_CHECK_RET(lyd_insert_after(child->prev, *diff_match));
+                /* previous created nodes affect the metadata so move it at the end (of the instances) */
+                child = *diff_match;
+                while (child->next && (child->next->schema == (*diff_match)->schema)) {
+                    child = child->next;
+                }
+                if (child != *diff_match) {
+                    LY_CHECK_RET(lyd_insert_after(child, *diff_match));
                 }
             } else {
                 /* deleted + created at the same position -> operation NONE */
