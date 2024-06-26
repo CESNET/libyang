@@ -159,6 +159,7 @@ set(libsrc
     src/xml.c
     src/xpath.c
     src/validation.c
+    src/version.c
     ${type_plugins})
 
 set(headers

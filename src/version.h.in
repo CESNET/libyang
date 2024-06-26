@@ -15,6 +15,14 @@
 #ifndef LY_VERSION_H_
 #define LY_VERSION_H_
 
+#include <stdint.h>
+
+#include "ly_config.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define LY_VERSION_MAJOR @LIBYANG_MAJOR_SOVERSION@ /**< libyang major version number */
 #define LY_VERSION_MINOR @LIBYANG_MINOR_SOVERSION@ /**< libyang minor version number */
 #define LY_VERSION_MICRO @LIBYANG_MICRO_SOVERSION@ /**< libyang micro version number */
@@ -24,5 +32,47 @@
 #define LY_PROJ_VERSION_MINOR @LIBYANG_MINOR_VERSION@ /**< project minor version number */
 #define LY_PROJ_VERSION_MICRO @LIBYANG_MICRO_VERSION@ /**< project micro version number */
 #define LY_PROJ_VERSION "@LIBYANG_VERSION@" /**< project version string */
+
+/**
+ * @brief Structure to hold libyang version information.
+ */
+struct ly_version {
+    uint32_t major; /**< Major version number */
+    uint32_t minor; /**< Minor version number */
+    uint32_t micro; /**< Micro version number */
+    const char *str; /**< Version string */
+};
+
+/**
+ * @brief Get libyang shared object library version information struct.
+ *
+ * @return Shared object library version information struct.
+ */
+LIBYANG_API_DECL struct ly_version ly_get_so_version(void);
+
+/**
+ * @brief Get libyang shared object library version string.
+ *
+ * @return Shared object library version string.
+ */
+LIBYANG_API_DECL const char *ly_get_so_version_str(void);
+
+/**
+ * @brief Get libyang project version information struct.
+ *
+ * @return Project version information struct.
+ */
+LIBYANG_API_DECL struct ly_version ly_get_project_version(void);
+
+/**
+ * @brief Get libyang project version string.
+ *
+ * @return Project version string.
+ */
+LIBYANG_API_DECL const char *ly_get_project_version_str(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LY_VERSION_H_ */
