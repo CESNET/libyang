@@ -74,7 +74,8 @@ ly_strncmp(const char *refstr, const char *str, size_t str_len)
 LY_ERR
 ly_strntou8(const char *nptr, size_t len, uint8_t *ret)
 {
-    uint8_t num = 0, dig, dec_pow;
+    uint8_t num = 0, dig;
+    uint16_t dec_pow;
 
     if (len > 3) {
         /* overflow for sure */
