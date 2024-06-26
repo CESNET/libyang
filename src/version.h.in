@@ -20,4 +20,9 @@
 #define LY_VERSION_MICRO @LIBYANG_MICRO_SOVERSION@ /**< libyang micro version number */
 #define LY_VERSION "@LIBYANG_SOVERSION_FULL@" /**< libyang version string */
 
+#define LY_PROJ_VERSION_MAJOR @LIBYANG_MAJOR_VERSION@ /**< project major version number */
+#define LY_PROJ_VERSION_MINOR @LIBYANG_MINOR_VERSION@ /**< project minor version number */
+#define LY_PROJ_VERSION_MICRO @LIBYANG_MICRO_VERSION@ /**< project micro version number */
+#define LY_PROJ_VERSION "@LIBYANG_VERSION@" /**< project version string */
+
 #endif /* LY_VERSION_H_ */
