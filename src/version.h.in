@@ -1,9 +1,10 @@
 /**
  * @file version.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang version definitions
  *
- * Copyright (c) 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,6 +16,10 @@
 #ifndef LY_VERSION_H_
 #define LY_VERSION_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define LY_VERSION_MAJOR @LIBYANG_MAJOR_SOVERSION@ /**< libyang major version number */
 #define LY_VERSION_MINOR @LIBYANG_MINOR_SOVERSION@ /**< libyang minor version number */
 #define LY_VERSION_MICRO @LIBYANG_MICRO_SOVERSION@ /**< libyang micro version number */
@@ -24,5 +29,26 @@
 #define LY_PROJ_VERSION_MINOR @LIBYANG_MINOR_VERSION@ /**< project minor version number */
 #define LY_PROJ_VERSION_MICRO @LIBYANG_MICRO_VERSION@ /**< project micro version number */
 #define LY_PROJ_VERSION "@LIBYANG_VERSION@" /**< project version string */
+
+struct ly_version {
+    uint32_t major; /**< Major version number */
+    uint32_t minor; /**< Minor version number */
+    uint32_t micro; /**< Micro version number */
+    const char *str; /**< Version string */
+};
+
+/**
+ * @brief libyang SO version.
+ */
+LIBYANG_API_DECL extern struct ly_version ly_version_so;
+
+/**
+ * @brief libyang project version.
+ */
+LIBYANG_API_DECL extern struct ly_version ly_version_proj;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LY_VERSION_H_ */

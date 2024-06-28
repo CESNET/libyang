@@ -37,7 +37,22 @@
 
 #include "compat.h"
 #include "tree_schema_internal.h"
+#include "version.h"
 #include "xml.h"
+
+LIBYANG_API_DEF struct ly_version ly_version_so = {
+    .major = LY_VERSION_MAJOR,
+    .minor = LY_VERSION_MINOR,
+    .micro = LY_VERSION_MICRO,
+    .str = LY_VERSION
+};
+
+LIBYANG_API_DEF struct ly_version ly_version_proj = {
+    .major = LY_PROJ_VERSION_MAJOR,
+    .minor = LY_PROJ_VERSION_MINOR,
+    .micro = LY_PROJ_VERSION_MICRO,
+    .str = LY_PROJ_VERSION
+};
 
 void *
 ly_realloc(void *ptr, size_t size)
