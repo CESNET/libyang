@@ -16,6 +16,8 @@
 #ifndef LY_VERSION_H_
 #define LY_VERSION_H_
 
+#include "ly_config.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
