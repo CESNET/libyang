@@ -330,7 +330,7 @@ print_set_debug(struct lyxp_set *set)
                         (lyd_child(item->node)->schema->nodetype == LYS_LEAF)) {
                     LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ELEM %s (1st child val: %s)", i + 1, item->pos,
                             item->node->schema->name, lyd_get_value(lyd_child(item->node)));
-                } else if ((!item->node->schema && !lyd_child(item->node)) || (item->node->schema->nodetype == LYS_LEAFLIST)) {
+                } else if (lyd_get_value(item->node)) {
                     LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ELEM %s (val: %s)", i + 1, item->pos,
                             LYD_NAME(item->node), lyd_get_value(item->node));
                 } else {
