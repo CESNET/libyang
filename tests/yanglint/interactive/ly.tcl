@@ -65,17 +65,3 @@ proc ly_exit {} {
     send "exit\r"
     expect eof
 }
-
-# Check if yanglint is configured as DEBUG.
-# Return 1 on success.
-proc yanglint_debug {} {
-    global TUT
-    # Call non-interactive yanglint with --help.
-    set output [exec -- $TUT "-h"]
-    # Find option --debug.
-    if { [regexp -- "--debug=GROUPS" $output] } {
-        return 1
-    } else {
-        return 0
-    }
-}
