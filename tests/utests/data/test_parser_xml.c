@@ -361,7 +361,7 @@ test_opaq(void **state)
             "  <c xmld:id=\"D\">1</c>\n"
             "</a>\n",
             LYD_XML, LYD_PARSE_OPAQ, LYD_VALIDATE_PRESENT, &tree));
-    CHECK_LOG_CTX("Unknown XML prefix \"xmld\".", "/a", 3);
+    CHECK_LOG_CTX("Unknown XML prefix \"xmld\" at attribute \"id\".", "/a", 3);
 }
 
 static void

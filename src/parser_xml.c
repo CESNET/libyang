@@ -40,13 +40,6 @@
 #include "validation.h"
 #include "xml.h"
 
-#define LYDXML_LOG_NAMESPACE_ERR(XMLCTX, PREFIX, PREFIX_LEN) \
-        if (PREFIX_LEN) { \
-            LOGVAL(XMLCTX->ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", (int)PREFIX_LEN, PREFIX); \
-        } else { \
-            LOGVAL(XMLCTX->ctx, LYVE_REFERENCE, "Missing XML namespace."); \
-        }
-
 static LY_ERR lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd_node **first_p,
         struct ly_set *parsed);
 
@@ -58,6 +51,30 @@ lyd_xml_ctx_free(struct lyd_ctx *lydctx)
     lyd_ctx_free(lydctx);
     lyxml_ctx_free(ctx->xmlctx);
     free(ctx);
+}
+
+/**
+ * @brief Log namespace error.
+ *
+ * @param[in] xmlctx XML context
+ * @param[in] prefix XML prefix.
+ * @param[in] prefix_len XML prefix length.
+ * @param[in] attr_name Current XML attribute name.
+ * @param[in] attr_len Current XML attribute name length.
+ */
+static void
+lydxml_log_namespace_err(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len,
+        const char *attr_name, size_t attr_len)
+{
+    if (prefix_len && attr_len) {
+        LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\" at attribute \"%.*s\".",
+                (int)prefix_len, prefix, (int)attr_len, attr_name);
+    } else if (prefix_len) {
+        LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".",
+                (int)prefix_len, prefix);
+    } else {
+        LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Missing XML namespace.");
+    }
 }
 
 /**
@@ -132,7 +149,7 @@ lydxml_metadata(struct lyd_xml_ctx *lydctx, const struct lysc_node *sparent, str
         /* get namespace of the attribute to find its annotation definition */
         ns = lyxml_ns_get(&xmlctx->ns, xmlctx->prefix, xmlctx->prefix_len);
         if (!ns) {
-            LYDXML_LOG_NAMESPACE_ERR(xmlctx, xmlctx->prefix, xmlctx->prefix_len);
+            lydxml_log_namespace_err(xmlctx, xmlctx->prefix, xmlctx->prefix_len, xmlctx->name, xmlctx->name_len);
             ret = LY_ENOTFOUND;
             goto cleanup;
         }
@@ -223,7 +240,7 @@ lydxml_attrs(struct lyxml_ctx *xmlctx, struct lyd_attr **attr)
         if (prefix_len) {
             ns = lyxml_ns_get(&xmlctx->ns, prefix, prefix_len);
             if (!ns) {
-                LYDXML_LOG_NAMESPACE_ERR(xmlctx, prefix, prefix_len);
+                lydxml_log_namespace_err(xmlctx, prefix, prefix_len, name, name_len);
                 ret = LY_EVALID;
                 goto cleanup;
             }
@@ -545,7 +562,7 @@ lydxml_subtree_get_snode(struct lyd_xml_ctx *lydctx, const struct lyd_node *pare
         if (lydctx->int_opts & LYD_INTOPT_ANY) {
             goto unknown_module;
         }
-        LYDXML_LOG_NAMESPACE_ERR(xmlctx, prefix, prefix_len);
+        lydxml_log_namespace_err(xmlctx, prefix, prefix_len, NULL, 0);
         return LY_EVALID;
     }
 
@@ -1179,7 +1196,7 @@ lydxml_envelope(struct lyxml_ctx *xmlctx, const char *name, const char *uri, ly_
     prefix_len = xmlctx->prefix_len;
     ns = lyxml_ns_get(&xmlctx->ns, prefix, prefix_len);
     if (!ns) {
-        LYDXML_LOG_NAMESPACE_ERR(xmlctx, prefix, prefix_len);
+        lydxml_log_namespace_err(xmlctx, prefix, prefix_len, NULL, 0);
         return LY_EVALID;
     } else if (strcmp(ns->uri, uri)) {
         /* different namespace */
@@ -1403,7 +1420,7 @@ lydxml_opaq_r(struct lyxml_ctx *xmlctx, struct lyd_node *parent)
     prefix_len = xmlctx->prefix_len;
     ns = lyxml_ns_get(&xmlctx->ns, prefix, prefix_len);
     if (!ns) {
-        LYDXML_LOG_NAMESPACE_ERR(xmlctx, prefix, prefix_len);
+        lydxml_log_namespace_err(xmlctx, prefix, prefix_len, NULL, 0);
         return LY_EVALID;
     }
 
