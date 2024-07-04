@@ -109,7 +109,7 @@ extern "C" {
 /**
  * @brief Extensions API version
  */
-#define LYPLG_EXT_API_VERSION 6
+#define LYPLG_EXT_API_VERSION 7
 
 /**
  * @brief Mask for an operation statement.
@@ -419,6 +419,7 @@ struct lysp_ext_instance {
                                                  parsed data ([sized array](@ref sizedarrays)) */
     void *parsed;                           /**< private plugin parsed data */
     struct lysp_stmt *child;                /**< list of generic (unknown) YANG statements */
+    struct lysp_ext_instance *exts;         /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 };
 
 /**

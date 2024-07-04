@@ -982,8 +982,16 @@ parse_ext(struct lysp_yang_ctx *ctx, const char *ext_name, size_t ext_name_len, 
     e->parent_stmt_index = parent_stmt_index;
 
     YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
-        LY_CHECK_GOTO(ret = parse_ext_substmt(ctx, kw, word, word_len, &e->child), cleanup)
-        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, NULL, ret, cleanup);
+        switch (kw) {
+        case LY_STMT_EXTENSION_INSTANCE:
+            LY_CHECK_GOTO(parse_ext(ctx, word, word_len, e, LY_STMT_EXTENSION_INSTANCE, 0, &e->exts), cleanup);
+            break;
+        default:
+            /* just store all the statements */
+            LY_CHECK_GOTO(ret = parse_ext_substmt(ctx, kw, word, word_len, &e->child), cleanup)
+            break;
+        }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, e->exts, ret, cleanup);
     }
 
 cleanup:

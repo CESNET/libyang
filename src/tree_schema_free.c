@@ -80,6 +80,8 @@ lysp_ext_instance_free(struct lysf_ctx *ctx, struct lysp_ext_instance *ext)
     LY_LIST_FOR_SAFE(ext->child, next, stmt) {
         lysp_stmt_free(ctx->ctx, stmt);
     }
+
+    FREE_ARRAY(ctx, ext->exts, lysp_ext_instance_free);
 }
 
 /**

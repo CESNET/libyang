@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Schema compilation.
  *
- * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -172,7 +172,10 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *extp, struct lys
     /* compile extension if not already */
     LY_CHECK_GOTO(ret = lys_compile_extension(ctx, extp, &ext->def), cleanup);
 
-    /* compile */
+    /* compile nested extensions */
+    COMPILE_EXTS_GOTO(ctx, extp->exts, ext->exts, ext, ret, cleanup);
+
+    /* compile this extension */
     if (ext->def->plugin && ext->def->plugin->compile) {
         if (ext->argument) {
             lysc_update_path(ctx, ext->module, ext->argument);

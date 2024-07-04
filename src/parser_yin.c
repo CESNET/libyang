@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief YIN parser.
  *
- * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -3409,6 +3409,14 @@ yin_parse_extension_instance(struct lysp_yin_ctx *ctx, const void *parent, enum 
     if (ctx->xmlctx->ws_only) {
         LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
         while (ctx->xmlctx->status == LYXML_ELEMENT) {
+            /* BUG nested extensions will not be parsed because we are not able to dinsguish between them
+             * and the argument of this extension, in case there is one and its 'yin-element' is 'true'
+            stmt = yin_match_keyword(ctx, ctx->xmlctx->name, ctx->xmlctx->name_len, ctx->xmlctx->prefix,
+                    ctx->xmlctx->prefix_len, LY_STMT_EXTENSION_INSTANCE);
+            if (stmt == LY_STMT_EXTENSION_INSTANCE) {
+                LY_CHECK_RET(yin_parse_extension_instance(ctx, e, LY_STMT_EXTENSION_INSTANCE, 0, &e->exts));
+            } else { */
+
             LY_CHECK_RET(yin_parse_element_generic(ctx, LY_STMT_EXTENSION_INSTANCE, &new_subelem));
             if (!e->child) {
                 e->child = new_subelem;
@@ -3420,6 +3428,9 @@ yin_parse_extension_instance(struct lysp_yin_ctx *ctx, const void *parent, enum 
             assert(ctx->xmlctx->status == LYXML_ELEM_CLOSE);
             LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
         }
+
+        /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
+        LY_CHECK_RET(yin_unres_exts_add(ctx, e->exts));
     } else if (ctx->xmlctx->value_len) {
         /* invalid text content */
         LOGVAL_PARSER(ctx, LYVE_SYNTAX, "Extension instance \"%s\" with unexpected text content \"%.*s\".", ext_name,
