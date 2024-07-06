@@ -193,6 +193,18 @@ test_anyxml(void **state)
     free(str);
     CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data_expected);
     lyd_free_all(tree);
+
+    data = "<anyx xmlns=\"urn:tests:a\"><x>1</x><x>0</x><x>-1</x><x>4294967295</x><x>4294967296</x><x>-2147483648</x><x>-2147483649</x></anyx>";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_non_null(tree);
+    tree = tree->next;
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&str, tree, LYD_XML, LYD_PRINT_SHRINK));
+    CHECK_STRING(str, data);
+    free(str);
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&str, tree, LYD_JSON, LYD_PRINT_SHRINK));
+    CHECK_STRING(str, "{\"a:anyx\":{\"x\":[1,0,-1,4294967295,\"4294967296\",-2147483648,\"-2147483649\"]}}");
+    free(str);
+    lyd_free_all(tree);
 }
 
 static void
