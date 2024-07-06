@@ -441,7 +441,9 @@ lydxml_get_hints_opaq(const char *name, size_t name_len, const char *value, size
 {
     struct lyd_node_opaq *opaq;
     char *ptr;
-    long num;
+    /* this needs to be at least 64bit, and it "should not" be an explicit int64_t
+     * because the code calls strtoll later on, which "might" return a bigger type */
+    long long num;
 
     *hints = 0;
     *anchor = NULL;
@@ -453,11 +455,11 @@ lydxml_get_hints_opaq(const char *name, size_t name_len, const char *value, size
         /* boolean value */
         *hints |= LYD_VALHINT_BOOLEAN;
     } else {
-        num = strtol(value, &ptr, 10);
+        num = strtoll(value, &ptr, 10);
         if ((unsigned)(ptr - value) == value_len) {
             /* number value */
             *hints |= LYD_VALHINT_DECNUM;
-            if ((num < INT32_MIN) || (num > (long)UINT32_MAX)) {
+            if ((num < INT32_MIN) || (num > UINT32_MAX)) {
                 /* large number */
                 *hints |= LYD_VALHINT_NUM64;
             }
