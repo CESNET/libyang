@@ -838,6 +838,8 @@ keyword_start:
         /* fall through */
         default:
             MOVE_INPUT(ctx, 1);
+        /* fall through */
+        case '\0':
             LOGVAL_PARSER(ctx, LY_VCODE_INSTREXP, (int)(ctx->in->current - word_start), word_start,
                     "a keyword followed by a separator");
             return LY_EVALID;
