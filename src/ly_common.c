@@ -40,19 +40,53 @@
 #include "version.h"
 #include "xml.h"
 
-LIBYANG_API_DEF struct ly_version ly_version_so = {
-    .major = LY_VERSION_MAJOR,
-    .minor = LY_VERSION_MINOR,
-    .micro = LY_VERSION_MICRO,
-    .str = LY_VERSION
-};
+LIBYANG_API_DEF uint32_t
+ly_version_so_major(void)
+{
+    return LY_VERSION_MAJOR;
+}
 
-LIBYANG_API_DEF struct ly_version ly_version_proj = {
-    .major = LY_PROJ_VERSION_MAJOR,
-    .minor = LY_PROJ_VERSION_MINOR,
-    .micro = LY_PROJ_VERSION_MICRO,
-    .str = LY_PROJ_VERSION
-};
+LIBYANG_API_DEF uint32_t
+ly_version_so_minor(void)
+{
+    return LY_VERSION_MINOR;
+}
+
+LIBYANG_API_DEF uint32_t
+ly_version_so_micro(void)
+{
+    return LY_VERSION_MICRO;
+}
+
+LIBYANG_API_DEF const char *
+ly_version_so_str(void)
+{
+    return LY_VERSION;
+}
+
+LIBYANG_API_DEF uint32_t
+ly_version_proj_major(void)
+{
+    return LY_PROJ_VERSION_MAJOR;
+}
+
+LIBYANG_API_DEF uint32_t
+ly_version_proj_minor(void)
+{
+    return LY_PROJ_VERSION_MINOR;
+}
+
+LIBYANG_API_DEF uint32_t
+ly_version_proj_micro(void)
+{
+    return LY_PROJ_VERSION_MICRO;
+}
+
+LIBYANG_API_DEF const char *
+ly_version_proj_str(void)
+{
+    return LY_PROJ_VERSION;
+}
 
 void *
 ly_realloc(void *ptr, size_t size)
