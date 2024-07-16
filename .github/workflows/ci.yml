@@ -64,8 +64,8 @@ jobs:
             build-cmd: "make"
           }
           - {
-            name: "Release, macOS 11, clang",
-            os: "macos-11",
+            name: "Release, macOS 14, clang",
+            os: "macos-14",
             build-type: "Release",
             cc: "clang",
             options: "-DENABLE_TESTS=ON -DPATH_EXPECT=",
