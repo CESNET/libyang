@@ -70,7 +70,7 @@ jobs:
             cc: "clang",
             options: "-DENABLE_TESTS=ON -DPATH_EXPECT=",
             packager: "brew",
-            packages: "cmocka shunit2",
+            packages: "cmocka shunit2 tcl-tk",
             snaps: "",
             build-cmd: "make"
           }
