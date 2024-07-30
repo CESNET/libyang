@@ -284,8 +284,6 @@ test_arg(void **state)
 
     TEST_GET_ARGUMENT_SUCCESS("hello ", YCTX, Y_STR_ARG, "hello ", 5, " ", 1);
 
-    TEST_GET_ARGUMENT_SUCCESS("hello/*comment*/\n", YCTX, Y_STR_ARG, "hello/*comment*/\n", 5, "\n", 1);
-
     TEST_GET_ARGUMENT_SUCCESS("\"hello\\n\\t\\\"\\\\\";", YCTX, Y_STR_ARG, "hello\n\t\"\\", 9, ";", 1);
     free(buf);
 

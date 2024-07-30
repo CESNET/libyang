@@ -596,6 +596,7 @@ get_argument(struct lysp_yang_ctx *ctx, enum yang_arg arg, uint16_t *flags, char
     size_t buf_len = 0;
     uint8_t prefix = 0;
     ly_bool str_end = 0;
+    int comment;
 
     /* word buffer - dynamically allocated */
     *word_b = NULL;
@@ -627,17 +628,29 @@ get_argument(struct lysp_yang_ctx *ctx, enum yang_arg arg, uint16_t *flags, char
             str_end = 1;
             break;
         case '/':
+            comment = 0;
             if (ctx->in->current[1] == '/') {
                 /* one-line comment */
-                MOVE_INPUT(ctx, 2);
-                LY_CHECK_GOTO(ret = skip_comment(ctx, 1), error);
+                comment = 1;
             } else if (ctx->in->current[1] == '*') {
                 /* block comment */
-                MOVE_INPUT(ctx, 2);
-                LY_CHECK_GOTO(ret = skip_comment(ctx, 2), error);
+                comment = 2;
             } else {
                 /* not a comment after all */
                 LY_CHECK_GOTO(ret = buf_store_char(ctx, arg, word_p, word_len, word_b, &buf_len, 0, &prefix), error);
+            }
+
+            if (comment) {
+                if (*word_len) {
+                    /* invalid comment sequence (RFC 7950 sec. 6.1.3.) */
+                    LOGVAL_PARSER(ctx, LYVE_SYNTAX, "Invalid comment sequence \"%.2s\" in an unquoted string.", ctx->in->current);
+                    ret = LY_EVALID;
+                    goto error;
+                }
+
+                /* skip the comment */
+                MOVE_INPUT(ctx, 2);
+                LY_CHECK_GOTO(ret = skip_comment(ctx, comment), error);
             }
             break;
         case ' ':
