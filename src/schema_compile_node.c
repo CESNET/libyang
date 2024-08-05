@@ -2794,7 +2794,6 @@ lys_compile_node_action_inout(struct lysc_ctx *ctx, struct lysp_node *pnode, str
     struct lysc_node_action_inout *inout = (struct lysc_node_action_inout *)node;
 
     COMPILE_ARRAY_GOTO(ctx, inout_p->musts, inout->musts, lys_compile_must, ret, done);
-    COMPILE_EXTS_GOTO(ctx, inout_p->exts, inout->exts, inout, ret, done);
     ctx->compile_opts |= (inout_p->nodetype == LYS_INPUT) ? LYS_COMPILE_RPC_INPUT : LYS_COMPILE_RPC_OUTPUT;
 
     LY_LIST_FOR(inout_p->child, child_p) {
