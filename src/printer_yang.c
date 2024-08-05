@@ -1162,7 +1162,7 @@ yprp_inout(struct lys_ypr_ctx *pctx, const struct lysp_node_action_inout *inout,
     ly_print_(pctx->out, "%*s%s {\n", INDENT, inout->name);
     LEVEL++;
 
-    yprp_extension_instances(pctx, LY_STMT_MUST, 0, inout->exts, NULL);
+    yprp_extension_instances(pctx, lyplg_ext_nodetype2stmt(inout->nodetype), 0, inout->exts, NULL);
     LY_ARRAY_FOR(inout->musts, u) {
         yprp_restr(pctx, &inout->musts[u], LY_STMT_MUST, NULL);
     }
