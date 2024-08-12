@@ -106,7 +106,8 @@ set(type_plugins
     src/plugins_types/date_and_time.c
     src/plugins_types/hex_string.c
     src/plugins_types/xpath1.0.c
-    src/plugins_types/node_instanceid.c)
+    src/plugins_types/node_instanceid.c
+    src/plugins_types/time_period.c)
 
 set(libsrc
     src/ly_common.c

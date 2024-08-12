@@ -81,6 +81,11 @@ extern const struct lyplg_type_record plugins_xpath10[];
 extern const struct lyplg_type_record plugins_node_instanceid[];
 
 /*
+ * libnetconf2-netconf-server
+ */
+extern const struct lyplg_type_record plugins_time_period[];
+
+/*
  * lyds_tree
  */
 extern const struct lyplg_type_record plugins_lyds_tree[];
@@ -521,6 +526,9 @@ lyplg_init(ly_bool builtin_type_plugins_only)
         LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_date_and_time), error);
         LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_hex_string), error);
         LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_xpath10), error);
+
+        /* libnetconf2-netconf-server */
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_time_period), error);
 
         /* ietf-netconf-acm */
         LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_node_instanceid), error);
