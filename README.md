@@ -58,8 +58,6 @@ the `distro` directory.
 * C compiler
 * cmake >= 2.8.12
 * libpcre2 >= 10.21 (including devel package)
-  * note, that PCRE is supposed to be compiled with unicode support (configure's options
-    `--enable-utf` and `--enable-unicode-properties`)
 
 #### Optional
 
