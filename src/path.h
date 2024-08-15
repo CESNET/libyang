@@ -257,9 +257,8 @@ void ly_path_predicates_free(const struct ly_ctx *ctx, struct ly_path_predicate 
 /**
  * @brief Free ly_path structure.
  *
- * @param[in] ctx libyang context.
  * @param[in] path The structure ([sized array](@ref sizedarrays)) to free.
  */
-void ly_path_free(const struct ly_ctx *ctx, struct ly_path *path);
+void ly_path_free(struct ly_path *path);
 
 #endif /* LY_PATH_H_ */

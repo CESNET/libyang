@@ -352,10 +352,16 @@ lyplg_type_print_simple(const struct ly_ctx *UNUSED(ctx), const struct lyd_value
 LIBYANG_API_DEF LY_ERR
 lyplg_type_dup_simple(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
-    memset(dup, 0, sizeof *dup);
-    LY_CHECK_RET(lydict_insert(ctx, original->_canonical, 0, &dup->_canonical));
+    LY_ERR r;
+
+    if ((r = lydict_dup(ctx, original->_canonical, &dup->_canonical))) {
+        /* in case of error NULL the values so that freeing does not fail */
+        memset(dup, 0, sizeof *dup);
+        return r;
+    }
     memcpy(dup->fixed_mem, original->fixed_mem, sizeof dup->fixed_mem);
     dup->realtype = original->realtype;
+
     return LY_SUCCESS;
 }
 
@@ -888,7 +894,7 @@ cleanup:
             ly_err_clean((struct ly_ctx *)ctx, e);
         }
 
-        ly_path_free(ctx, *path);
+        ly_path_free(*path);
         *path = NULL;
     }
 
@@ -896,9 +902,9 @@ cleanup:
 }
 
 LIBYANG_API_DEF void
-lyplg_type_lypath_free(const struct ly_ctx *ctx, struct ly_path *path)
+lyplg_type_lypath_free(const struct ly_ctx *UNUSED(ctx), struct ly_path *path)
 {
-    ly_path_free(ctx, path);
+    ly_path_free(path);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -1007,7 +1013,7 @@ lyplg_type_resolve_leafref_get_target_path(const struct lyxp_expr *path, const s
     LY_CHECK_GOTO(lyxp_expr_parse(ctx_node->module->ctx, str_path, 0, 1, target_path), cleanup);
 
 cleanup:
-    ly_path_free(ctx_node->module->ctx, p);
+    ly_path_free(p);
     free(str_path);
     return rc;
 }

@@ -319,7 +319,7 @@ lyplg_type_free_instanceid(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     lydict_remove(ctx, value->_canonical);
     value->_canonical = NULL;
-    ly_path_free(ctx, value->target);
+    ly_path_free(value->target);
 }
 
 /**

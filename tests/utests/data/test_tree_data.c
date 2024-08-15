@@ -409,7 +409,7 @@ test_target(void **state)
     assert_string_equal(lyd_get_value(term->prev), "b");
 
     lyd_free_all(tree);
-    ly_path_free(UTEST_LYCTX, path);
+    ly_path_free(path);
     lyxp_expr_free(UTEST_LYCTX, exp);
 }
 

@@ -104,9 +104,6 @@ lydict_resize_val_eq(void *val1_p, void *val2_p, ly_bool mod, void *UNUSED(cb_da
     str1 = ((struct ly_dict_rec *)val1_p)->value;
     str2 = ((struct ly_dict_rec *)val2_p)->value;
 
-    LY_CHECK_ERR_RET(!str1, LOGARG(NULL, val1_p), 0);
-    LY_CHECK_ERR_RET(!str2, LOGARG(NULL, val2_p), 0);
-
     if (mod) {
         /* used when inserting new values */
         if (strcmp(str1, str2) == 0) {
@@ -177,7 +174,7 @@ finish:
     return ret;
 }
 
-LY_ERR
+static LY_ERR
 dict_insert(const struct ly_ctx *ctx, char *value, size_t len, ly_bool zerocopy, const char **str_p)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -221,9 +218,7 @@ dict_insert(const struct ly_ctx *ctx, char *value, size_t len, ly_bool zerocopy,
         return ret;
     }
 
-    if (str_p) {
-        *str_p = match->value;
-    }
+    *str_p = match->value;
 
     return ret;
 }
@@ -265,6 +260,52 @@ lydict_insert_zc(const struct ly_ctx *ctx, char *value, const char **str_p)
 
     pthread_mutex_lock((pthread_mutex_t *)&ctx->dict.lock);
     result = dict_insert(ctx, value, strlen(value), 1, str_p);
+    pthread_mutex_unlock((pthread_mutex_t *)&ctx->dict.lock);
+
+    return result;
+}
+
+static LY_ERR
+dict_dup(const struct ly_ctx *ctx, char *value, const char **str_p)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct ly_dict_rec *match = NULL, rec;
+    uint32_t hash;
+
+    /* set new callback to only compare memory addresses */
+    lyht_value_equal_cb prev = lyht_set_cb(ctx->dict.hash_tab, lydict_resize_val_eq);
+
+    LOGDBG(LY_LDGDICT, "duplicating %s", value);
+    hash = lyht_hash(value, strlen(value));
+    rec.value = value;
+
+    ret = lyht_find(ctx->dict.hash_tab, (void *)&rec, hash, (void **)&match);
+    if (ret == LY_SUCCESS) {
+        /* record found, increase refcount */
+        match->refcount++;
+        *str_p = match->value;
+    }
+
+    /* restore callback */
+    lyht_set_cb(ctx->dict.hash_tab, prev);
+
+    return ret;
+}
+
+LIBYANG_API_DEF LY_ERR
+lydict_dup(const struct ly_ctx *ctx, const char *value, const char **str_p)
+{
+    LY_ERR result;
+
+    LY_CHECK_ARG_RET(ctx, ctx, str_p, LY_EINVAL);
+
+    if (!value) {
+        *str_p = NULL;
+        return LY_SUCCESS;
+    }
+
+    pthread_mutex_lock((pthread_mutex_t *)&ctx->dict.lock);
+    result = dict_dup(ctx, (char *)value, str_p);
     pthread_mutex_unlock((pthread_mutex_t *)&ctx->dict.lock);
 
     return result;
