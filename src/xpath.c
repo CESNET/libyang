@@ -4042,7 +4042,7 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
             if (!r) {
                 /* get the target node */
                 target = p[LY_ARRAY_COUNT(p) - 1].node;
-                ly_path_free(set->ctx, p);
+                ly_path_free(p);
 
                 LY_CHECK_RET(lyxp_set_scnode_insert_node(set, target, LYXP_NODE_ELEM, LYXP_AXIS_SELF, NULL));
             } /* else the target was found before but is disabled so it was removed */
@@ -8272,7 +8272,9 @@ cleanup:
         options &= ~LYXP_SKIP_EXPR;
     }
     lydict_remove(set->ctx, ncname_dict);
-    ly_path_predicates_free(set->ctx, predicates);
+    if (predicates) {
+        ly_path_predicates_free(scnode->module->ctx, predicates);
+    }
     return rc;
 }
 

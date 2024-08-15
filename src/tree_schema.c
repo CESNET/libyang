@@ -644,7 +644,7 @@ lys_find_path_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, 
     ret = lys_find_lypath_atoms(p, set);
 
 cleanup:
-    ly_path_free(ctx, p);
+    ly_path_free(p);
     lyxp_expr_free(ctx, expr);
     return ret;
 }
@@ -679,7 +679,7 @@ lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
     snode = p[LY_ARRAY_COUNT(p) - 1].node;
 
 cleanup:
-    ly_path_free(ctx, p);
+    ly_path_free(p);
     lyxp_expr_free(ctx, expr);
     return snode;
 }

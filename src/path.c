@@ -708,7 +708,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
                 /* store the value */
                 LOG_LOCSET(key, NULL);
-                ret = lyd_value_store(ctx, &p->value, ((struct lysc_node_leaf *)key)->type, val, val_len, 0, 0,
+                ret = lyd_value_store(ctx_node->module->ctx, &p->value, ((struct lysc_node_leaf *)key)->type, val, val_len, 0, 0,
                         NULL, format, prefix_data, LYD_HINT_DATA, key, NULL);
                 LOG_LOCBACK(1, 0);
                 LY_CHECK_ERR_GOTO(ret, p->value.realtype = NULL, cleanup);
@@ -736,7 +736,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
             /* names (keys) are unique - it was checked when parsing */
             LOGVAL(ctx, LYVE_XPATH, "Predicate missing for a key of %s \"%s\" in path.",
                     lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
-            ly_path_predicates_free(ctx, *predicates);
+            ly_path_predicates_free(ctx_node->module->ctx, *predicates);
             *predicates = NULL;
             ret = LY_EVALID;
             goto cleanup;
@@ -771,12 +771,10 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
         }
 
         /* store the value */
-        if (ctx_node) {
-            LOG_LOCSET(ctx_node, NULL);
-        }
-        ret = lyd_value_store(ctx, &p->value, ((struct lysc_node_leaflist *)ctx_node)->type, val, val_len, 0, 0,
+        LOG_LOCSET(ctx_node, NULL);
+        ret = lyd_value_store(ctx_node->module->ctx, &p->value, ((struct lysc_node_leaflist *)ctx_node)->type, val, val_len, 0, 0,
                 NULL, format, prefix_data, LYD_HINT_DATA, ctx_node, NULL);
-        LOG_LOCBACK(ctx_node ? 1 : 0, 0);
+        LOG_LOCBACK(1, 0);
         LY_CHECK_ERR_GOTO(ret, p->value.realtype = NULL, cleanup);
         ++(*tok_idx);
 
@@ -1093,7 +1091,7 @@ ly_path_compile_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node
     }
     lref = (const struct lysc_type_leafref *)deref_leaf_node->type;
     LY_CHECK_GOTO(ret = ly_path_append(ctx, path2, path), cleanup);
-    ly_path_free(ctx, path2);
+    ly_path_free(path2);
     path2 = NULL;
 
     /* compile dereferenced leafref expression and append it to the path */
@@ -1101,7 +1099,7 @@ ly_path_compile_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node
             &path2), cleanup);
     node2 = path2[LY_ARRAY_COUNT(path2) - 1].node;
     LY_CHECK_GOTO(ret = ly_path_append(ctx, path2, path), cleanup);
-    ly_path_free(ctx, path2);
+    ly_path_free(path2);
     path2 = NULL;
 
     /* properly parsed path must always continue with ')' and '/' */
@@ -1125,9 +1123,9 @@ ly_path_compile_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node
     LY_CHECK_GOTO(ret = ly_path_append(ctx, path2, path), cleanup);
 
 cleanup:
-    ly_path_free(ctx, path2);
+    ly_path_free(path2);
     if (ret) {
-        ly_path_free(ctx, *path);
+        ly_path_free(*path);
         *path = NULL;
     }
     return ret;
@@ -1283,7 +1281,7 @@ _ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, con
 
 cleanup:
     if (ret) {
-        ly_path_free(ctx, *path);
+        ly_path_free(*path);
         *path = NULL;
     }
     LOG_LOCBACK(cur_node ? 1 : 0, 0);
@@ -1488,7 +1486,7 @@ ly_path_predicates_free(const struct ly_ctx *ctx, struct ly_path_predicate *pred
 }
 
 void
-ly_path_free(const struct ly_ctx *ctx, struct ly_path *path)
+ly_path_free(struct ly_path *path)
 {
     LY_ARRAY_COUNT_TYPE u;
 
@@ -1497,7 +1495,7 @@ ly_path_free(const struct ly_ctx *ctx, struct ly_path *path)
     }
 
     LY_ARRAY_FOR(path, u) {
-        ly_path_predicates_free(ctx, path[u].predicates);
+        ly_path_predicates_free(path[u].node->module->ctx, path[u].predicates);
     }
     LY_ARRAY_FREE(path);
 }
