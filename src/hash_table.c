@@ -247,7 +247,6 @@ lyht_resize(struct ly_ht *ht, int operation, int check)
  * @param[in] hash Hash to find.
  * @param[in] mod Whether the operation modifies the hash table (insert or remove) or not (find).
  * @param[in] val_equal Callback for checking value equivalence.
- * @param[out] crec_p Optional found first record.
  * @param[out] col Optional collision number of @p rec_p, 0 for no collision.
  * @param[out] rec_p Found exact matching record, may be a collision of @p crec_p.
  * @return LY_ENOTFOUND if no record found,
@@ -255,15 +254,12 @@ lyht_resize(struct ly_ht *ht, int operation, int check)
  */
 static LY_ERR
 lyht_find_rec(const struct ly_ht *ht, void *val_p, uint32_t hash, ly_bool mod, lyht_value_equal_cb val_equal,
-        struct ly_ht_rec **crec_p, uint32_t *col, struct ly_ht_rec **rec_p)
+        uint32_t *col, struct ly_ht_rec **rec_p)
 {
     uint32_t hlist_idx = hash & (ht->size - 1);
     struct ly_ht_rec *rec;
     uint32_t rec_idx;
 
-    if (crec_p) {
-        *crec_p = NULL;
-    }
     if (col) {
         *col = 0;
     }
@@ -271,9 +267,6 @@ lyht_find_rec(const struct ly_ht *ht, void *val_p, uint32_t hash, ly_bool mod, l
 
     LYHT_ITER_HLIST_RECS(ht, hlist_idx, rec_idx, rec) {
         if ((rec->hash == hash) && val_equal(val_p, &rec->val, mod, ht->cb_data)) {
-            if (crec_p) {
-                *crec_p = rec;
-            }
             *rec_p = rec;
             return LY_SUCCESS;
         }
@@ -292,7 +285,7 @@ lyht_find(const struct ly_ht *ht, void *val_p, uint32_t hash, void **match_p)
 {
     struct ly_ht_rec *rec;
 
-    lyht_find_rec(ht, val_p, hash, 0, ht->val_equal, NULL, NULL, &rec);
+    lyht_find_rec(ht, val_p, hash, 0, ht->val_equal, NULL, &rec);
 
     if (rec && match_p) {
         *match_p = rec->val;
@@ -305,7 +298,7 @@ lyht_find_with_val_cb(const struct ly_ht *ht, void *val_p, uint32_t hash, lyht_v
 {
     struct ly_ht_rec *rec;
 
-    lyht_find_rec(ht, val_p, hash, 0, val_equal ? val_equal : ht->val_equal, NULL, NULL, &rec);
+    lyht_find_rec(ht, val_p, hash, 0, val_equal ? val_equal : ht->val_equal, NULL, &rec);
 
     if (rec && match_p) {
         *match_p = rec->val;
@@ -317,12 +310,12 @@ LIBYANG_API_DEF LY_ERR
 lyht_find_next_with_collision_cb(const struct ly_ht *ht, void *val_p, uint32_t hash,
         lyht_value_equal_cb collision_val_equal, void **match_p)
 {
-    struct ly_ht_rec *rec, *crec;
+    struct ly_ht_rec *rec;
     uint32_t rec_idx;
     uint32_t i;
 
     /* find the record of the previously found value */
-    if (lyht_find_rec(ht, val_p, hash, 1, ht->val_equal, &crec, &i, &rec)) {
+    if (lyht_find_rec(ht, val_p, hash, 1, ht->val_equal, &i, &rec)) {
         /* not found, cannot happen */
         LOGINT_RET(NULL);
     }
@@ -373,7 +366,7 @@ _lyht_insert_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_v
     uint32_t rec_idx;
 
     if (check) {
-        if (lyht_find_rec(ht, val_p, hash, 1, ht->val_equal, NULL, NULL, &rec) == LY_SUCCESS) {
+        if (lyht_find_rec(ht, val_p, hash, 1, ht->val_equal, NULL, &rec) == LY_SUCCESS) {
             if (rec && match_p) {
                 *match_p = rec->val;
             }
@@ -459,7 +452,7 @@ lyht_remove_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_va
     uint32_t prev_rec_idx;
     uint32_t rec_idx;
 
-    if (lyht_find_rec(ht, val_p, hash, 1, ht->val_equal, NULL, NULL, &found_rec)) {
+    if (lyht_find_rec(ht, val_p, hash, 1, ht->val_equal, NULL, &found_rec)) {
         LOGARG(NULL, hash);
         return LY_ENOTFOUND;
     }
