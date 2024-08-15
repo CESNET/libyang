@@ -2582,7 +2582,7 @@ lys_compile_node_connect(struct lysc_ctx *ctx, struct lysc_node *parent, struct 
         }
     } else {
         /* top-level element */
-        struct lysc_node **list;
+        struct lysc_node **list = NULL;
 
         if (ctx->ext) {
             lyplg_ext_get_storage_p(ctx->ext, LY_STMT_DATA_NODE_MASK, (uint64_t *)&list);

@@ -90,7 +90,7 @@ lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *typ
 {
     struct lysc_type_dec *type_dec = (struct lysc_type_dec *)type;
     LY_ERR ret = LY_SUCCESS;
-    int64_t num;
+    int64_t num = 0;
     char *canon;
 
     /* init storage */

@@ -768,7 +768,7 @@ lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, 
 {
     struct ly_in *in;
     char *filepath = NULL;
-    LYS_INFORMAT format;
+    LYS_INFORMAT format = 0;
     void *mod = NULL;
     LY_ERR ret = LY_SUCCESS;
     struct lysp_load_module_check_data check_data = {0};
