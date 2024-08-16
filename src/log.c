@@ -189,10 +189,15 @@ ly_err_get_rec(const struct ly_ctx *ctx)
     /* prepare record */
     rec.tid = pthread_self();
 
+    /* reuse lock */
+    /* LOCK */
+    pthread_mutex_lock((pthread_mutex_t *)&ctx->lyb_hash_lock);
+
     /* get the pointer to the matching record */
-    if (lyht_find(ctx->err_ht, &rec, lyht_hash((void *)&rec.tid, sizeof rec.tid), (void **)&match)) {
-        return NULL;
-    }
+    lyht_find(ctx->err_ht, &rec, lyht_hash((void *)&rec.tid, sizeof rec.tid), (void **)&match);
+
+    /* UNLOCK */
+    pthread_mutex_unlock((pthread_mutex_t *)&ctx->lyb_hash_lock);
 
     return match;
 }
