@@ -1233,7 +1233,8 @@ test_type_instanceid(void **state)
 {
     struct lys_module *mod;
     struct lysc_type *type;
-    //char *str;
+
+    // char *str;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {namespace urn:a;prefix a;typedef mytype {type instance-identifier {require-instance false;}}"
             "leaf l1 {type instance-identifier {require-instance true;}}"
