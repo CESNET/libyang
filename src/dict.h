@@ -113,18 +113,6 @@ LIBYANG_API_DECL LY_ERR lydict_insert_zc(const struct ly_ctx *ctx, char *value, 
  */
 LIBYANG_API_DECL LY_ERR lydict_remove(const struct ly_ctx *ctx, const char *value);
 
-/**
- * @brief Duplicate string in dictionary. Only a reference counter is incremented.
- *
- * @param[in] ctx libyang context handler
- * @param[in] value NULL-terminated string to be duplicated in the dictionary (reference counter is incremented).
- * @param[out] str_p Optional parameter to get pointer to the string corresponding to the @p value and stored in dictionary.
- * @return LY_SUCCESS in case the string already exists in the dictionary.
- * @return LY_ENOTFOUND in case the string was not found.
- * @return LY_ERR on other errors
- */
-LIBYANG_API_DECL LY_ERR lydict_dup(const struct ly_ctx *ctx, const char *value, const char **str_p);
-
 /** @} dict */
 
 #ifdef __cplusplus
