@@ -179,6 +179,7 @@ lyht_free(struct ly_ht *ht, void (*val_free)(void *val_p))
  *
  * @param[in] ht Hash table to resize.
  * @param[in] operation Operation to perform. 1 to enlarge, -1 to shrink, 0 to only rehash all records.
+ * @param[in] check Whether to check if the value has already been inserted or not.
  * @return LY_ERR value.
  */
 static LY_ERR
