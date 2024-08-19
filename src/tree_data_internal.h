@@ -16,6 +16,7 @@
 #ifndef LY_TREE_DATA_INTERNAL_H_
 #define LY_TREE_DATA_INTERNAL_H_
 
+#include "compat.h"
 #include "log.h"
 #include "plugins_types.h"
 #include "tree_data.h"
@@ -599,6 +600,13 @@ LY_ERR ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node,
  * @return LY_ERR value.
  */
 LY_ERR lyd_hash(struct lyd_node *node);
+
+/**
+ * @brief Compare callback for values in hash table.
+ *
+ * Implementation of ::lyht_value_equal_cb.
+ */
+ly_bool lyd_hash_table_val_equal(void *val1_p, void *val2_p, ly_bool mod, void *cb_data);
 
 /**
  * @brief Insert hash of the node into the hash table of its parent.
