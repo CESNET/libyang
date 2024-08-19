@@ -2148,6 +2148,11 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
         struct lyd_node *child;
 
         if (options & LYD_DUP_RECURSIVE) {
+            /* create a hash table with the size of the previous hash table (duplicate) */
+            if (orig->children_ht) {
+                ((struct lyd_node_inner *)dup)->children_ht = lyht_new(orig->children_ht->size, sizeof(struct lyd_node *), lyd_hash_table_val_equal, NULL, 1);
+            }
+
             /* duplicate all the children */
             LY_LIST_FOR(orig->child, child) {
                 LY_CHECK_GOTO(ret = lyd_dup_r(child, trg_ctx, dup, LYD_INSERT_NODE_LAST, NULL, options, NULL), error);

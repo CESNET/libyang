@@ -84,7 +84,7 @@ lyd_hash(struct lyd_node *node)
  *
  * Implementation of ::lyht_value_equal_cb.
  */
-static ly_bool
+ly_bool
 lyd_hash_table_val_equal(void *val1_p, void *val2_p, ly_bool mod, void *UNUSED(cb_data))
 {
     struct lyd_node *val1, *val2;
