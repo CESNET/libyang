@@ -1089,6 +1089,7 @@ lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name
         const char *prefix, const char *module_name, struct lyd_node **node)
 {
     struct lyd_node *ret = NULL;
+    uint32_t hints = 0;
 
     LY_CHECK_ARG_RET(ctx, parent || ctx, parent || node, name, module_name, !prefix || !strcmp(prefix, module_name), LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(ctx, parent ? LYD_CTX(parent) : NULL, LY_EINVAL);
@@ -1098,10 +1099,12 @@ lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name
     }
     if (!value) {
         value = "";
+    } else if (!strcmp(value, "[null]")) {
+        hints |= LYD_VALHINT_EMPTY;
     }
 
     LY_CHECK_RET(lyd_create_opaq(ctx, name, strlen(name), prefix, prefix ? strlen(prefix) : 0, module_name,
-            strlen(module_name), value, strlen(value), NULL, LY_VALUE_JSON, NULL, 0, &ret));
+            strlen(module_name), value, strlen(value), NULL, LY_VALUE_JSON, NULL, hints, &ret));
     if (parent) {
         lyd_insert_node(parent, NULL, ret, LYD_INSERT_NODE_LAST);
     }
@@ -1626,6 +1629,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
     ly_bool store_only = (options & LYD_NEW_VAL_STORE_ONLY) ? 1 : 0;
     LY_ARRAY_COUNT_TYPE path_idx = 0, orig_count = 0;
     LY_VALUE_FORMAT format;
+    uint32_t hints;
 
     assert(parent || ctx);
     assert(path && ((path[0] == '/') || parent));
@@ -1728,9 +1732,13 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
                 }
                 if (r && (r != LY_EINCOMPLETE)) {
                     /* creating opaque leaf-list */
+                    hints = LYD_NODEHINT_LEAFLIST;
+                    if ((format == LY_VALUE_JSON) && !ly_strncmp("[null]", value, value_len)) {
+                        hints |= LYD_VALHINT_EMPTY;
+                    }
                     LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), NULL, 0,
                             schema->module->name, strlen(schema->module->name), value, value_len, NULL, format, NULL,
-                            LYD_NODEHINT_LEAFLIST, &node), cleanup);
+                            hints, &node), cleanup);
                     break;
                 }
             }
@@ -1765,8 +1773,12 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
                 }
                 if (r && (r != LY_EINCOMPLETE)) {
                     /* creating opaque leaf */
+                    hints = 0;
+                    if (value && (format == LY_VALUE_JSON) && !ly_strncmp("[null]", value, value_len)) {
+                        hints |= LYD_VALHINT_EMPTY;
+                    }
                     LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), NULL, 0,
-                            schema->module->name, strlen(schema->module->name), value, value_len, NULL, format, NULL, 0, &node),
+                            schema->module->name, strlen(schema->module->name), value, value_len, NULL, format, NULL, hints, &node),
                             cleanup);
                     break;
                 }
