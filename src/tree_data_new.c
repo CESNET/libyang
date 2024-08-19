@@ -1733,7 +1733,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
                 if (r && (r != LY_EINCOMPLETE)) {
                     /* creating opaque leaf-list */
                     hints = LYD_NODEHINT_LEAFLIST;
-                    if ((format == LY_VALUE_JSON) && !ly_strncmp("[null]", value, value_len)) {
+                    if (value && (format == LY_VALUE_JSON) && !ly_strncmp("[null]", value, value_len)) {
                         hints |= LYD_VALHINT_EMPTY;
                     }
                     LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), NULL, 0,
