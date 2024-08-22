@@ -1656,10 +1656,11 @@ ly_time_str2time(const char *value, time_t *time, char **fractions_s)
     struct tm tm = {0};
     uint32_t i, frac_len;
     const char *frac;
+    char *ptr;
     int64_t shift, shift_m;
     time_t t;
 
-    LY_CHECK_ARG_RET(NULL, value, time, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, value, strlen(value) > 17, time, LY_EINVAL);
 
     tm.tm_year = atoi(&value[0]) - 1900;
     tm.tm_mon = atoi(&value[5]) - 1;
@@ -1698,6 +1699,10 @@ ly_time_str2time(const char *value, time_t *time, char **fractions_s)
         ++i;
         frac = &value[i];
         for (frac_len = 0; isdigit(frac[frac_len]); ++frac_len) {}
+        if (!frac_len) {
+            LOGERR(NULL, LY_EINVAL, "Missing date-and-time fractions after '.'.");
+            return LY_EINVAL;
+        }
 
         i += frac_len;
     } else {
@@ -1709,15 +1714,20 @@ ly_time_str2time(const char *value, time_t *time, char **fractions_s)
         /* zero shift */
         shift = 0;
     } else {
-        shift = strtol(&value[i], NULL, 10);
+        value += i;
+        shift = strtol(value, &ptr, 10);
         if (shift > 23) {
             LOGERR(NULL, LY_EINVAL, "Invalid date-and-time timezone hour \"%" PRIi64 "\".", shift);
+            return LY_EINVAL;
+        } else if (ptr[0] != ':') {
+            LOGERR(NULL, LY_EINVAL, "Invalid date-and-time timezone hour \"%s\".", value);
             return LY_EINVAL;
         }
         shift = shift * 60 * 60; /* convert from hours to seconds */
 
-        shift_m = strtol(&value[i + 4], NULL, 10);
-        if (shift_m > 59) {
+        value = ptr + 1;
+        shift_m = strtol(value, NULL, 10);
+        if ((shift_m < 0) || (shift_m > 59)) {
             LOGERR(NULL, LY_EINVAL, "Invalid date-and-time timezone minutes \"%" PRIi64 "\".", shift_m);
             return LY_EINVAL;
         }
