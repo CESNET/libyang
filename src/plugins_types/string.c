@@ -34,8 +34,6 @@
  * | string length | yes | `char *` | string itself |
  */
 
-static LY_ERR lyplg_type_validate_string(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node), const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err);
-
 /**
  * @brief Check string value for invalid characters.
  *
@@ -65,6 +63,7 @@ lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, 
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
 {
+    struct lysc_type_str *type_str = (struct lysc_type_str *)type;
     LY_ERR ret = LY_SUCCESS;
 
     /* init storage */
@@ -92,8 +91,15 @@ lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, 
     }
 
     if (!(options & LYPLG_TYPE_STORE_ONLY)) {
-        /* validate value */
-        ret = lyplg_type_validate_string(ctx, type, NULL, NULL, storage, err);
+        /* length restriction of the string */
+        if (type_str->length) {
+            /* value_len is in bytes, but we need number of characters here */
+            ret = lyplg_type_validate_range(LY_TYPE_STRING, type_str->length, ly_utf8len(value, value_len), value, value_len, err);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
+
+        /* pattern restrictions */
+        ret = lyplg_type_validate_patterns(type_str->patterns, value, value_len, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -106,37 +112,6 @@ cleanup:
         lyplg_type_free_simple(ctx, storage);
     }
     return ret;
-}
-
-/**
- * @brief Implementation of ::lyplg_type_validate_clb for the string type.
- */
-static LY_ERR
-lyplg_type_validate_string(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
-        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
-{
-    LY_ERR ret;
-    struct lysc_type_str *type_str = (struct lysc_type_str *)type;
-    const void *value;
-    size_t value_len;
-
-    LY_CHECK_ARG_RET(NULL, type, storage, err, LY_EINVAL);
-    value = lyd_value_get_canonical(ctx, storage);
-    value_len = strlen(value);
-    *err = NULL;
-
-    /* length restriction of the string */
-    if (type_str->length) {
-        /* value_len is in bytes, but we need number of characters here */
-        ret = lyplg_type_validate_range(LY_TYPE_STRING, type_str->length, ly_utf8len(value, value_len), value, value_len, err);
-        LY_CHECK_RET(ret);
-    }
-
-    /* pattern restrictions */
-    ret = lyplg_type_validate_patterns(type_str->patterns, value, value_len, err);
-    LY_CHECK_RET(ret);
-
-    return LY_SUCCESS;
 }
 
 /**
@@ -154,7 +129,7 @@ const struct lyplg_type_record plugins_string[] = {
 
         .plugin.id = "libyang 2 - string, version 1",
         .plugin.store = lyplg_type_store_string,
-        .plugin.validate = lyplg_type_validate_string,
+        .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
         .plugin.sort = lyplg_type_sort_simple,
         .plugin.print = lyplg_type_print_simple,

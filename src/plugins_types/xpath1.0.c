@@ -248,7 +248,6 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
         struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres), struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lysc_type_str *type_str = (struct lysc_type_str *)type;
     struct lyd_value_xpath10 *val;
     char *canon;
 
@@ -260,17 +259,6 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
 
     /* check hints */
     ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    /* length restriction of the string */
-    if (type_str->length) {
-        /* value_len is in bytes, but we need number of characters here */
-        ret = lyplg_type_validate_range(LY_TYPE_STRING, type_str->length, ly_utf8len(value, value_len), value, value_len, err);
-        LY_CHECK_GOTO(ret, cleanup);
-    }
-
-    /* pattern restrictions */
-    ret = lyplg_type_validate_patterns(type_str->patterns, value, value_len, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* parse */

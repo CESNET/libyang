@@ -57,7 +57,6 @@ lyplg_type_store_ipv4_address_no_zone(const struct ly_ctx *ctx, const struct lys
         struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lysc_type_str *type_str = (struct lysc_type_str *)type;
     struct lyd_value_ipv4_address_no_zone *val;
 
     /* init storage */
@@ -85,17 +84,6 @@ lyplg_type_store_ipv4_address_no_zone(const struct ly_ctx *ctx, const struct lys
     ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret, cleanup);
 
-    /* length restriction of the string */
-    if (type_str->length) {
-        /* value_len is in bytes, but we need number of characters here */
-        ret = lyplg_type_validate_range(LY_TYPE_STRING, type_str->length, ly_utf8len(value, value_len), value, value_len, err);
-        LY_CHECK_GOTO(ret, cleanup);
-    }
-
-    /* pattern restrictions */
-    ret = lyplg_type_validate_patterns(type_str->patterns, value, value_len, err);
-    LY_CHECK_GOTO(ret, cleanup);
-
     /* we always need a dynamic value */
     if (!(options & LYPLG_TYPE_STORE_DYNAMIC)) {
         value = strndup(value, value_len);
@@ -104,7 +92,7 @@ lyplg_type_store_ipv4_address_no_zone(const struct ly_ctx *ctx, const struct lys
         options |= LYPLG_TYPE_STORE_DYNAMIC;
     }
 
-    /* get the network-byte order address */
+    /* get the network-byte order address, validates the value */
     if (!inet_pton(AF_INET, value, &val->addr)) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to convert IPv4 address \"%s\".", (char *)value);
         goto cleanup;

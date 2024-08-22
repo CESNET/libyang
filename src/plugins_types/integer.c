@@ -36,9 +36,6 @@
  * | 1/2/4/8 | yes | pointer to the specific integer type | little-endian integer value |
  */
 
-static LY_ERR lyplg_type_validate_int(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node), const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err);
-static LY_ERR lyplg_type_validate_uint(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node), const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err);
-
 /**
  * @brief LYB value size of each integer type.
  */
@@ -53,6 +50,7 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
 {
+    struct lysc_type_num *type_num = (struct lysc_type_num *)type;
     LY_ERR ret = LY_SUCCESS;
     int64_t num = 0;
     int base = 1;
@@ -157,9 +155,12 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
     }
 
     if (!(options & LYPLG_TYPE_STORE_ONLY)) {
-        /* validate value */
-        ret = lyplg_type_validate_int(ctx, type, NULL, NULL, storage, err);
-        LY_CHECK_GOTO(ret, cleanup);
+        /* validate range of the number */
+        if (type_num->range) {
+            ret = lyplg_type_validate_range(type->basetype, type_num->range, num, storage->_canonical,
+                    strlen(storage->_canonical), err);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
     }
 
 cleanup:
@@ -171,48 +172,6 @@ cleanup:
         lyplg_type_free_simple(ctx, storage);
     }
     return ret;
-}
-
-/**
- * @brief Implementation of ::lyplg_type_validate_clb for the signed interger types.
- */
-static LY_ERR
-lyplg_type_validate_int(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
-        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
-{
-    LY_ERR ret;
-    struct lysc_type_num *type_num = (struct lysc_type_num *)type;
-    int64_t num;
-
-    LY_CHECK_ARG_RET(NULL, type, storage, err, LY_EINVAL);
-    *err = NULL;
-
-    /* set the value (matters for big-endian) and get the correct int64 number */
-    switch (type->basetype) {
-    case LY_TYPE_INT8:
-        num = storage->int8;
-        break;
-    case LY_TYPE_INT16:
-        num = storage->int16;
-        break;
-    case LY_TYPE_INT32:
-        num = storage->int32;
-        break;
-    case LY_TYPE_INT64:
-        num = storage->int64;
-        break;
-    default:
-        return LY_EINVAL;
-    }
-
-    /* validate range of the number */
-    if (type_num->range) {
-        ret = lyplg_type_validate_range(type->basetype, type_num->range, num, storage->_canonical,
-                strlen(storage->_canonical), err);
-        LY_CHECK_RET(ret);
-    }
-
-    return LY_SUCCESS;
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -357,6 +316,7 @@ lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, co
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
 {
+    struct lysc_type_num *type_num = (struct lysc_type_num *)type;
     LY_ERR ret = LY_SUCCESS;
     uint64_t num = 0;
     int base = 0;
@@ -441,9 +401,12 @@ lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, co
     }
 
     if (!(options & LYPLG_TYPE_STORE_ONLY)) {
-        /* validate value */
-        ret = lyplg_type_validate_uint(ctx, type, NULL, NULL, storage, err);
-        LY_CHECK_GOTO(ret, cleanup);
+        /* validate range of the number */
+        if (type_num->range) {
+            ret = lyplg_type_validate_range(type->basetype, type_num->range, num, storage->_canonical,
+                    strlen(storage->_canonical), err);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
     }
 
 cleanup:
@@ -455,48 +418,6 @@ cleanup:
         lyplg_type_free_simple(ctx, storage);
     }
     return ret;
-}
-
-/**
- * @brief Implementation of ::lyplg_type_validate_clb for the unsigned interger types.
- */
-static LY_ERR
-lyplg_type_validate_uint(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
-        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
-{
-    LY_ERR ret;
-    struct lysc_type_num *type_num = (struct lysc_type_num *)type;
-    uint64_t num;
-
-    LY_CHECK_ARG_RET(NULL, type, storage, err, LY_EINVAL);
-    *err = NULL;
-
-    /* set the value (matters for big-endian) and get the correct int64 number */
-    switch (type->basetype) {
-    case LY_TYPE_UINT8:
-        num = storage->uint8;
-        break;
-    case LY_TYPE_UINT16:
-        num = storage->uint16;
-        break;
-    case LY_TYPE_UINT32:
-        num = storage->uint32;
-        break;
-    case LY_TYPE_UINT64:
-        num = storage->uint64;
-        break;
-    default:
-        return LY_EINVAL;
-    }
-
-    /* validate range of the number */
-    if (type_num->range) {
-        ret = lyplg_type_validate_range(type->basetype, type_num->range, num, storage->_canonical,
-                strlen(storage->_canonical), err);
-        LY_CHECK_RET(ret);
-    }
-
-    return LY_SUCCESS;
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -646,7 +567,7 @@ const struct lyplg_type_record plugins_integer[] = {
 
         .plugin.id = "libyang 2 - integers, version 1",
         .plugin.store = lyplg_type_store_uint,
-        .plugin.validate = lyplg_type_validate_uint,
+        .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_uint,
         .plugin.sort = lyplg_type_sort_uint,
         .plugin.print = lyplg_type_print_uint,
@@ -660,7 +581,7 @@ const struct lyplg_type_record plugins_integer[] = {
 
         .plugin.id = "libyang 2 - integers, version 1",
         .plugin.store = lyplg_type_store_uint,
-        .plugin.validate = lyplg_type_validate_uint,
+        .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_uint,
         .plugin.sort = lyplg_type_sort_uint,
         .plugin.print = lyplg_type_print_uint,
@@ -674,7 +595,7 @@ const struct lyplg_type_record plugins_integer[] = {
 
         .plugin.id = "libyang 2 - integers, version 1",
         .plugin.store = lyplg_type_store_uint,
-        .plugin.validate = lyplg_type_validate_uint,
+        .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_uint,
         .plugin.sort = lyplg_type_sort_uint,
         .plugin.print = lyplg_type_print_uint,
@@ -688,7 +609,7 @@ const struct lyplg_type_record plugins_integer[] = {
 
         .plugin.id = "libyang 2 - integers, version 1",
         .plugin.store = lyplg_type_store_uint,
-        .plugin.validate = lyplg_type_validate_uint,
+        .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_uint,
         .plugin.sort = lyplg_type_sort_uint,
         .plugin.print = lyplg_type_print_uint,
@@ -702,7 +623,7 @@ const struct lyplg_type_record plugins_integer[] = {
 
         .plugin.id = "libyang 2 - integers, version 1",
         .plugin.store = lyplg_type_store_int,
-        .plugin.validate = lyplg_type_validate_int,
+        .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_int,
         .plugin.sort = lyplg_type_sort_int,
         .plugin.print = lyplg_type_print_int,
@@ -716,7 +637,7 @@ const struct lyplg_type_record plugins_integer[] = {
 
         .plugin.id = "libyang 2 - integers, version 1",
         .plugin.store = lyplg_type_store_int,
-        .plugin.validate = lyplg_type_validate_int,
+        .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_int,
         .plugin.sort = lyplg_type_sort_int,
         .plugin.print = lyplg_type_print_int,
@@ -730,7 +651,7 @@ const struct lyplg_type_record plugins_integer[] = {
 
         .plugin.id = "libyang 2 - integers, version 1",
         .plugin.store = lyplg_type_store_int,
-        .plugin.validate = lyplg_type_validate_int,
+        .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_int,
         .plugin.sort = lyplg_type_sort_int,
         .plugin.print = lyplg_type_print_int,
@@ -744,7 +665,7 @@ const struct lyplg_type_record plugins_integer[] = {
 
         .plugin.id = "libyang 2 - integers, version 1",
         .plugin.store = lyplg_type_store_int,
-        .plugin.validate = lyplg_type_validate_int,
+        .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_int,
         .plugin.sort = lyplg_type_sort_int,
         .plugin.print = lyplg_type_print_int,

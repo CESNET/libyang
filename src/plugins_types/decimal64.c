@@ -33,8 +33,6 @@
  * | 8        | yes | `int64_t *` | little-endian value represented without floating point |
  */
 
-static LY_ERR lyplg_type_validate_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node), const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err);
-
 /**
  * @brief Convert decimal64 number to canonical string.
  *
@@ -144,8 +142,12 @@ lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *typ
 
     if (!(options & LYPLG_TYPE_STORE_ONLY)) {
         /* validate value */
-        ret = lyplg_type_validate_decimal64(ctx, type, NULL, NULL, storage, err);
-        LY_CHECK_GOTO(ret, cleanup);
+        if (type_dec->range) {
+            /* check range of the number */
+            ret = lyplg_type_validate_range(type->basetype, type_dec->range, num, storage->_canonical,
+                    strlen(storage->_canonical), err);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
     }
 
 cleanup:
@@ -157,31 +159,6 @@ cleanup:
         lyplg_type_free_simple(ctx, storage);
     }
     return ret;
-}
-
-/**
- * @brief Implementation of ::lyplg_type_validate_clb for the built-in decimal64 type.
- */
-static LY_ERR
-lyplg_type_validate_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
-        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
-{
-    LY_ERR ret;
-    struct lysc_type_dec *type_dec = (struct lysc_type_dec *)type;
-    int64_t num;
-
-    LY_CHECK_ARG_RET(NULL, type, storage, err, LY_EINVAL);
-    *err = NULL;
-    num = storage->dec64;
-
-    if (type_dec->range) {
-        /* check range of the number */
-        ret = lyplg_type_validate_range(type->basetype, type_dec->range, num, storage->_canonical,
-                strlen(storage->_canonical), err);
-        LY_CHECK_RET(ret);
-    }
-
-    return LY_SUCCESS;
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -262,7 +239,7 @@ const struct lyplg_type_record plugins_decimal64[] = {
 
         .plugin.id = "libyang 2 - decimal64, version 1",
         .plugin.store = lyplg_type_store_decimal64,
-        .plugin.validate = lyplg_type_validate_decimal64,
+        .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_decimal64,
         .plugin.sort = lyplg_type_sort_decimal64,
         .plugin.print = lyplg_type_print_decimal64,

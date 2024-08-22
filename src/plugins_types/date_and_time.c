@@ -53,7 +53,6 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
         struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lysc_type_str *type_dat = (struct lysc_type_str *)type;
     struct lyd_value_date_and_time *val;
     uint32_t i;
     char c;
@@ -102,20 +101,9 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
     ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret, cleanup);
 
-    /* length restriction, there can be only ASCII chars */
-    if (type_dat->length) {
-        ret = lyplg_type_validate_range(LY_TYPE_STRING, type_dat->length, value_len, value, value_len, err);
-        LY_CHECK_GOTO(ret, cleanup);
-    }
-
-    /* date-and-time pattern */
-    ret = lyplg_type_validate_patterns(type_dat->patterns, value, value_len, err);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    /* convert to UNIX time and fractions of second */
-    ret = ly_time_str2time(value, &val->time, &val->fractions_s);
-    if (ret) {
-        ret = ly_err_new(err, ret, 0, NULL, NULL, "%s", ly_last_logmsg());
+    /* convert to UNIX time and fractions of second, function must check for all the possible errors */
+    if (ly_time_str2time(value, &val->time, &val->fractions_s)) {
+        ret = ly_err_new(err, LY_EVALID, 0, NULL, NULL, "%s", ly_last_logmsg());
         goto cleanup;
     }
 
