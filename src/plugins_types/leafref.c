@@ -41,19 +41,19 @@ lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR rc = LY_SUCCESS;
     struct lysc_type_leafref *type_lr = (struct lysc_type_leafref *)type;
 
     assert(type_lr->realtype);
 
     /* store the value as the real type of the leafref target */
-    ret = type_lr->realtype->plugin->store(ctx, type_lr->realtype, value, value_len, options, format, prefix_data,
+    rc = type_lr->realtype->plugin->store(ctx, type_lr->realtype, value, value_len, options, format, prefix_data,
             hints, ctx_node, storage, unres, err);
-    if (ret == LY_EINCOMPLETE) {
+    if (rc == LY_EINCOMPLETE) {
         /* it is irrelevant whether the target type needs some resolving */
-        ret = LY_SUCCESS;
+        rc = LY_SUCCESS;
     }
-    LY_CHECK_RET(ret);
+    LY_CHECK_RET(rc);
 
     if (type_lr->require_instance) {
         /* needs to be resolved */
@@ -67,7 +67,7 @@ LIBYANG_API_DEF LY_ERR
 lyplg_type_validate_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *ctx_node,
         const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err)
 {
-    LY_ERR ret;
+    LY_ERR rc = LY_SUCCESS;
     struct lysc_type_leafref *type_lr = (struct lysc_type_leafref *)type;
     char *errmsg = NULL, *path;
     struct ly_set *targets = NULL;
@@ -80,24 +80,25 @@ lyplg_type_validate_leafref(const struct ly_ctx *ctx, const struct lysc_type *ty
         return LY_SUCCESS;
     }
 
-    ret = lyplg_type_resolve_leafref(type_lr, ctx_node, storage, tree, (ly_ctx_get_options(ctx) & LY_CTX_LEAFREF_LINKING) ? &targets : NULL, &errmsg);
-    if (ret != LY_SUCCESS) {
+    rc = lyplg_type_resolve_leafref(type_lr, ctx_node, storage, tree,
+            (ly_ctx_get_options(ctx) & LY_CTX_LEAFREF_LINKING) ? &targets : NULL, &errmsg);
+    if (rc) {
         path = lyd_path(ctx_node, LYD_PATH_STD, NULL, 0);
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, path, strdup("instance-required"), "%s", errmsg);
+        rc = ly_err_new(err, LY_EVALID, LYVE_DATA, path, strdup("instance-required"), "%s", errmsg);
         free(errmsg);
         goto cleanup;
     }
 
     if (ly_ctx_get_options(ctx) & LY_CTX_LEAFREF_LINKING) {
         for (i = 0; i < targets->count; ++i) {
-            ret = lyd_link_leafref_node((struct lyd_node_term *)targets->dnodes[i], (struct lyd_node_term *)ctx_node);
-            LY_CHECK_GOTO(ret, cleanup);
+            rc = lyd_link_leafref_node((struct lyd_node_term *)targets->dnodes[i], (struct lyd_node_term *)ctx_node);
+            LY_CHECK_GOTO(rc, cleanup);
         }
     }
 
 cleanup:
     ly_set_free(targets, NULL);
-    return ret;
+    return rc;
 }
 
 LIBYANG_API_DEF LY_ERR

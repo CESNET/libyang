@@ -475,8 +475,10 @@ LIBYANG_API_DECL LY_ERR lyplg_type_print_xpath10_value(const struct lyd_value_xp
 #define LYPLG_TYPE_STORE_IMPLEMENT 0x02 /**< If a foreign module is needed to be implemented to successfully instantiate
                                              the value, make the module implemented. */
 #define LYPLG_TYPE_STORE_IS_UTF8   0x04 /**< The value is guaranteed to be a valid UTF-8 string, if applicable for the type. */
-#define LYPLG_TYPE_STORE_ONLY      0x08 /**< The value is stored only. The validation must be done using [validate](@ref lyplg_type_validate_clb) */
-/** @} plugintypestoreopts */
+#define LYPLG_TYPE_STORE_ONLY      0x08 /**< The value is stored only, type-specific validation is skipped (performed before) */
+/**
+ * @} plugintypestoreopts
+ */
 
 /**
  * @brief Callback to store the given @p value according to the given @p type.
@@ -490,7 +492,9 @@ LIBYANG_API_DECL LY_ERR lyplg_type_print_xpath10_value(const struct lyd_value_xp
  * @p value_len is always correct. All store functions have to free a dynamically allocated @p value in all
  * cases (even on error).
  *
- * @param[in] ctx libyang context
+ * No unnecessary validation tasks should be performed by this callback and left for ::lyplg_type_validate_clb instead.
+ *
+ * @param[in] ctx libyang context.
  * @param[in] type Type of the value being stored.
  * @param[in] value Value to be stored.
  * @param[in] value_len Length (number of bytes) of the given @p value.
@@ -513,15 +517,14 @@ LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_store_clb)(const struct ly_ctx *ctx
         const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
- * @brief Callback to validate the stored value in data.
+ * @brief Callback to validate the stored value in the accessible data tree.
  *
- * This callback is optional for types that can only be validated in a data tree. It must be called and succeed
- * in case the ::lyplg_type_store_clb callback returned ::LY_EINCOMPLETE for the value to be valid. However, this
- * callback can be called even in other cases (such as separate/repeated validation).
+ * This callback is optional and may not be defined for types that do not require the accessible data tree for
+ * validation (::lyplg_type_store_cb fully stores and validates the value).
  *
- * @param[in] ctx libyang context
+ * @param[in] ctx libyang context.
  * @param[in] type Original type of the value (not necessarily the stored one) being validated.
- * @param[in] ctx_node The value data context node for validation.
+ * @param[in] ctx_node Value data context node for validation.
  * @param[in] tree External data tree (e.g. when validating RPC/Notification) with possibly referenced data.
  * @param[in,out] storage Storage of the value successfully filled by ::lyplg_type_store_clb. May be modified.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic
@@ -619,7 +622,7 @@ struct lyplg_type {
     const char *id;                     /**< Plugin identification (mainly for distinguish incompatible versions when
                                              used by external tools) */
     lyplg_type_store_clb store;         /**< store and canonize the value in the type-specific way */
-    lyplg_type_validate_clb validate;   /**< optional, validate the value in the type-specific way in data */
+    lyplg_type_validate_clb validate;   /**< optional, validate the value in the accessible data tree */
     lyplg_type_compare_clb compare;     /**< comparison callback to compare 2 values of the same type */
     lyplg_type_sort_clb sort;           /**< comparison callback for sorting values */
     lyplg_type_print_clb print;         /**< printer callback to get string representing the value */
