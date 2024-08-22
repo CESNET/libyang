@@ -72,6 +72,9 @@ lyplg_type_store_hex_string(const struct ly_ctx *ctx, const struct lysc_type *ty
         ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
         options &= ~LYPLG_TYPE_STORE_DYNAMIC;
         LY_CHECK_GOTO(ret, cleanup);
+
+        /* value may have been freed */
+        value = storage->_canonical;
     } else {
         /* store directly */
         ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->_canonical);
