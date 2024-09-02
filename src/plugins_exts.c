@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief helper functions for extension plugins
  *
- * Copyright (c) 2019 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -87,7 +87,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, uint64_t parsed, struct lysc_ext_instance *ext,
+lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, void *parsed, struct lysc_ext_instance *ext,
         struct lysc_ext_substmt *substmt)
 {
     LY_ERR rc = LY_SUCCESS;
@@ -330,7 +330,7 @@ lyplg_ext_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext
     LY_ERR rc = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u, v;
     enum ly_stmt stmtp;
-    uint64_t storagep;
+    void *storagep;
     struct ly_set storagep_compiled = {0};
 
     LY_CHECK_ARG_RET(ctx ? ctx->ctx : NULL, ctx, extp, ext, LY_EINVAL);
@@ -340,7 +340,7 @@ lyplg_ext_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext
 
     LY_ARRAY_FOR(extp->substmts, u) {
         stmtp = extp->substmts[u].stmt;
-        storagep = *(uint64_t *)VOIDPTR_C(extp->substmts[u].storage);
+        storagep = *VOIDPTR2_C(extp->substmts[u].storage);
 
         if (!storagep || ly_set_contains(&storagep_compiled, VOIDPTR_C(storagep), NULL)) {
             /* nothing parsed or already compiled (for example, if it is a linked list of parsed nodes) */
