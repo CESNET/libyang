@@ -2585,7 +2585,7 @@ lys_compile_node_connect(struct lysc_ctx *ctx, struct lysc_node *parent, struct 
         struct lysc_node **list = NULL;
 
         if (ctx->ext) {
-            lyplg_ext_get_storage_p(ctx->ext, LY_STMT_DATA_NODE_MASK, (uint64_t *)&list);
+            lyplg_ext_get_storage_p(ctx->ext, LY_STMT_DATA_NODE_MASK, (void ***)&list);
         } else if (node->nodetype == LYS_RPC) {
             list = (struct lysc_node **)&ctx->cur_mod->compiled->rpcs;
         } else if (node->nodetype == LYS_NOTIF) {

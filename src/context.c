@@ -721,7 +721,7 @@ ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
                 ext = &mod->compiled->exts[u];
                 LY_ARRAY_FOR(ext->substmts, v) {
                     if (ext->substmts[v].stmt & LY_STMT_DATA_NODE_MASK) {
-                        LY_LIST_FOR(*VOIDPTR2_C(ext->substmts[v].storage), root) {
+                        LY_LIST_FOR(*ext->substmts[v].storage_p, root) {
                             lysc_tree_dfs_full(root, lysc_node_clear_priv_dfs_cb, NULL);
                         }
                     }

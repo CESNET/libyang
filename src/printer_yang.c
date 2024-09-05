@@ -2563,7 +2563,7 @@ lyplg_ext_print_info_extension_instance(struct lyspr_ctx *ctx, const struct lysc
                 break;
             }
 
-            LY_LIST_FOR(*VOIDPTR2_C(ext->substmts[u].storage), node) {
+            LY_LIST_FOR(*ext->substmts[u].storage_p, node) {
                 ypr_open(pctx->out, flag);
                 if (ext->substmts[u].stmt == LY_STMT_NOTIFICATION) {
                     yprc_notification(pctx, (struct lysc_node_notif *)node);
@@ -2592,32 +2592,32 @@ lyplg_ext_print_info_extension_instance(struct lyspr_ctx *ctx, const struct lysc
         case LY_STMT_PRESENCE:
         case LY_STMT_REFERENCE:
         case LY_STMT_UNITS:
-            if (*VOIDPTR2_C(ext->substmts[u].storage)) {
+            if (*ext->substmts[u].storage_p) {
                 ypr_open(pctx->out, flag);
-                ypr_substmt(pctx, ext->substmts[u].stmt, 0, *VOIDPTR2_C(ext->substmts[u].storage), 0, ext->exts);
+                ypr_substmt(pctx, ext->substmts[u].stmt, 0, *ext->substmts[u].storage_p, 0, ext->exts);
             }
             break;
         case LY_STMT_BIT:
         case LY_STMT_ENUM: {
-            const struct lysc_type_bitenum_item *items = *VOIDPTR2_C(ext->substmts[u].storage);
+            const struct lysc_type_bitenum_item *items = *ext->substmts[u].storage_p;
 
             yprc_bits_enum(pctx, items, ext->substmts[u].stmt == LY_STMT_BIT ? LY_TYPE_BITS : LY_TYPE_ENUM, flag);
             break;
         }
         case LY_STMT_CONFIG:
-            ypr_config(pctx, *(uint16_t *)VOIDPTR2_C(ext->substmts[u].storage), ext->exts, flag);
+            ypr_config(pctx, *(uint16_t *)ext->substmts[u].storage_p, ext->exts, flag);
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            yprc_extension_instances(pctx, LY_STMT_EXTENSION_INSTANCE, 0, *VOIDPTR2_C(ext->substmts[u].storage), flag);
+            yprc_extension_instances(pctx, LY_STMT_EXTENSION_INSTANCE, 0, *ext->substmts[u].storage_p, flag);
             break;
         case LY_STMT_FRACTION_DIGITS:
-            if (*VOIDPTR2_C(ext->substmts[u].storage)) {
+            if (*ext->substmts[u].storage_p) {
                 ypr_unsigned(pctx, LY_STMT_FRACTION_DIGITS, 0, ext->exts,
-                        (long unsigned int)*VOIDPTR2_C(ext->substmts[u].storage), flag);
+                        (long unsigned int)*ext->substmts[u].storage_p, flag);
             }
             break;
         case LY_STMT_IDENTITY: {
-            const struct lysc_ident *idents = *VOIDPTR2_C(ext->substmts[u].storage);
+            const struct lysc_ident *idents = *ext->substmts[u].storage_p;
 
             LY_ARRAY_FOR(idents, v) {
                 yprc_identity(pctx, &idents[v]);
@@ -2625,15 +2625,15 @@ lyplg_ext_print_info_extension_instance(struct lyspr_ctx *ctx, const struct lysc
             break;
         }
         case LY_STMT_LENGTH:
-            if (*VOIDPTR2_C(ext->substmts[u].storage)) {
-                yprc_range(pctx, *VOIDPTR2_C(ext->substmts[u].storage), LY_TYPE_STRING, flag);
+            if (*ext->substmts[u].storage_p) {
+                yprc_range(pctx, *ext->substmts[u].storage_p, LY_TYPE_STRING, flag);
             }
             break;
         case LY_STMT_MANDATORY:
-            ypr_mandatory(pctx, *(uint16_t *)VOIDPTR_C(ext->substmts[u].storage), ext->exts, flag);
+            ypr_mandatory(pctx, *(uint16_t *)ext->substmts[u].storage_p, ext->exts, flag);
             break;
         case LY_STMT_MAX_ELEMENTS: {
-            uint32_t max = *(uint32_t *)VOIDPTR_C(ext->substmts[u].storage);
+            uint32_t max = *(uint32_t *)ext->substmts[u].storage_p;
 
             if (max) {
                 ypr_unsigned(pctx, LY_STMT_MAX_ELEMENTS, 0, ext->exts, max, flag);
@@ -2644,15 +2644,15 @@ lyplg_ext_print_info_extension_instance(struct lyspr_ctx *ctx, const struct lysc
             break;
         }
         case LY_STMT_MIN_ELEMENTS:
-            ypr_unsigned(pctx, LY_STMT_MIN_ELEMENTS, 0, ext->exts, *(uint32_t *)VOIDPTR_C(ext->substmts[u].storage), flag);
+            ypr_unsigned(pctx, LY_STMT_MIN_ELEMENTS, 0, ext->exts, *(uint32_t *)ext->substmts[u].storage_p, flag);
             break;
         case LY_STMT_ORDERED_BY:
             ypr_open(pctx->out, flag);
             ypr_substmt(pctx, LY_STMT_ORDERED_BY, 0,
-                    ((*(uint16_t *)VOIDPTR_C(ext->substmts[u].storage)) & LYS_ORDBY_USER) ? "user" : "system", 0, ext->exts);
+                    ((*(uint16_t *)ext->substmts[u].storage_p) & LYS_ORDBY_USER) ? "user" : "system", 0, ext->exts);
             break;
         case LY_STMT_MUST: {
-            const struct lysc_must *musts = *VOIDPTR2_C(ext->substmts[u].storage);
+            const struct lysc_must *musts = *ext->substmts[u].storage_p;
 
             LY_ARRAY_FOR(musts, v) {
                 yprc_must(pctx, &musts[v], flag);
@@ -2660,7 +2660,7 @@ lyplg_ext_print_info_extension_instance(struct lyspr_ctx *ctx, const struct lysc
             break;
         }
         case LY_STMT_PATTERN: {
-            const struct lysc_pattern *patterns = *VOIDPTR2_C(ext->substmts[u].storage);
+            const struct lysc_pattern *patterns = *ext->substmts[u].storage_p;
 
             LY_ARRAY_FOR(patterns, v) {
                 yprc_pattern(pctx, &patterns[v], flag);
@@ -2668,36 +2668,36 @@ lyplg_ext_print_info_extension_instance(struct lyspr_ctx *ctx, const struct lysc
             break;
         }
         case LY_STMT_POSITION:
-            if (*VOIDPTR2_C(ext->substmts[u].storage)) {
-                ypr_unsigned(pctx, ext->substmts[u].stmt, 0, ext->exts, *(int64_t *)VOIDPTR_C(ext->substmts[u].storage), flag);
+            if (*ext->substmts[u].storage_p) {
+                ypr_unsigned(pctx, ext->substmts[u].stmt, 0, ext->exts, *(int64_t *)ext->substmts[u].storage_p, flag);
             }
             break;
         case LY_STMT_VALUE:
-            if (*VOIDPTR2_C(ext->substmts[u].storage)) {
-                ypr_signed(pctx, ext->substmts[u].stmt, 0, ext->exts, *(int64_t *)VOIDPTR_C(ext->substmts[u].storage), flag);
+            if (*ext->substmts[u].storage_p) {
+                ypr_signed(pctx, ext->substmts[u].stmt, 0, ext->exts, *(int64_t *)ext->substmts[u].storage_p, flag);
             }
             break;
         case LY_STMT_RANGE:
-            if (*VOIDPTR2_C(ext->substmts[u].storage)) {
-                yprc_range(pctx, *VOIDPTR2_C(ext->substmts[u].storage), LY_TYPE_UINT64, flag);
+            if (*ext->substmts[u].storage_p) {
+                yprc_range(pctx, *ext->substmts[u].storage_p, LY_TYPE_UINT64, flag);
             }
             break;
         case LY_STMT_REQUIRE_INSTANCE:
             ypr_open(pctx->out, flag);
-            ypr_substmt(pctx, LY_STMT_REQUIRE_INSTANCE, 0, *(uint8_t *)VOIDPTR_C(ext->substmts[u].storage) ? "true" : "false",
+            ypr_substmt(pctx, LY_STMT_REQUIRE_INSTANCE, 0, *(uint8_t *)ext->substmts[u].storage_p ? "true" : "false",
                     0, ext->exts);
             break;
         case LY_STMT_STATUS:
-            ypr_status(pctx, *(uint16_t *)VOIDPTR_C(ext->substmts[u].storage), ext->exts, flag);
+            ypr_status(pctx, *(uint16_t *)ext->substmts[u].storage_p, ext->exts, flag);
             break;
         case LY_STMT_TYPE:
-            if (*VOIDPTR2_C(ext->substmts[u].storage)) {
+            if (*ext->substmts[u].storage_p) {
                 ypr_open(pctx->out, flag);
-                yprc_type(pctx, *VOIDPTR2_C(ext->substmts[u].storage));
+                yprc_type(pctx, *ext->substmts[u].storage_p);
             }
             break;
         case LY_STMT_WHEN:
-            yprc_when(pctx, *VOIDPTR2_C(ext->substmts[u].storage), flag);
+            yprc_when(pctx, *ext->substmts[u].storage_p, flag);
             break;
         case LY_STMT_AUGMENT:
         case LY_STMT_BASE:

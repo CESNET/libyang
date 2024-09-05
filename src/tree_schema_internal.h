@@ -726,11 +726,11 @@ uint8_t lys_stmt_flags(enum ly_stmt stmt);
  * @param[in] ext Compiled ext instance.
  * @param[in] stmt Compiled statement. Can be a mask when the first match is returned, it is expected the storage is
  * the same for all the masked statements.
- * @param[out] storage_p Pointer to a compiled ext instance substatement storage, NULL if was not compiled.
+ * @param[out] storage_pp Pointer to a compiled ext instance substatement storage, NULL if was not compiled.
  * @return LY_SUCCESS on success.
  * @return LY_ENOT if the substatement is not supported.
  */
-LY_ERR lyplg_ext_get_storage_p(const struct lysc_ext_instance *ext, int stmt, uint64_t *storage_p);
+LY_ERR lyplg_ext_get_storage_p(const struct lysc_ext_instance *ext, int stmt, void ***storage_pp);
 
 /**
  * @brief Warning if the filename does not match the expected module name and version

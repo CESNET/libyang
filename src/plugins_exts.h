@@ -109,7 +109,7 @@ extern "C" {
 /**
  * @brief Extensions API version
  */
-#define LYPLG_EXT_API_VERSION 7
+#define LYPLG_EXT_API_VERSION 8
 
 /**
  * @brief Mask for an operation statement.
@@ -393,7 +393,7 @@ struct lysp_stmt {
  */
 struct lysp_ext_substmt {
     enum ly_stmt stmt;  /**< parsed substatement */
-    uint64_t storage;   /**< (pointer to) the parsed storage of the statement according to the specific
+    void **storage_p;   /**< pointer to the parsed storage of the statement according to the specific
                              lys_ext_substmt::stmt */
 };
 
@@ -427,7 +427,7 @@ struct lysp_ext_instance {
  */
 struct lysc_ext_substmt {
     enum ly_stmt stmt;  /**< compiled substatement */
-    uint64_t storage;   /**< (pointer to) the compiled storage of the statement according to the specific
+    void **storage_p;   /**< pointer to the compiled storage of the statement according to the specific
                              lys_ext_substmt::stmt */
 };
 

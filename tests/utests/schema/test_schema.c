@@ -1712,7 +1712,7 @@ test_extension_compile(void **state)
     LY_ARRAY_NEW_GOTO(UTEST_LYCTX, ext_p.substmts, substmtp, rc, cleanup);
 
     substmtp->stmt = LY_STMT_ERROR_MESSAGE;
-    substmtp->storage = (uintptr_t)(void *)&ext_p.parsed;
+    substmtp->storage_p = &ext_p.parsed;
     /* fake parse */
     lydict_insert(UTEST_LYCTX, "my error", 0, (const char **)&ext_p.parsed);
 
@@ -1721,7 +1721,7 @@ test_extension_compile(void **state)
     LY_ARRAY_NEW_GOTO(UTEST_LYCTX, ext_c.substmts, substmt, rc, cleanup);
 
     substmt->stmt = LY_STMT_ERROR_MESSAGE;
-    substmt->storage = (uintptr_t)(void *)&ext_c.compiled;
+    substmt->storage_p = &ext_c.compiled;
 
     /*
      * error-message

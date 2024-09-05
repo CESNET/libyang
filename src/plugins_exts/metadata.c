@@ -79,27 +79,27 @@ annotation_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[0].stmt = LY_STMT_IF_FEATURE;
-    ext->substmts[0].storage = (uint64_t)(uintptr_t)&ann_pdata->iffeatures;
+    ext->substmts[0].storage_p = (void **)&ann_pdata->iffeatures;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[1].stmt = LY_STMT_UNITS;
-    ext->substmts[1].storage = (uint64_t)(uintptr_t)&ann_pdata->units;
+    ext->substmts[1].storage_p = (void **)&ann_pdata->units;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[2].stmt = LY_STMT_STATUS;
-    ext->substmts[2].storage = (uint64_t)(uintptr_t)&ann_pdata->flags;
+    ext->substmts[2].storage_p = (void **)&ann_pdata->flags;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[3].stmt = LY_STMT_TYPE;
-    ext->substmts[3].storage = (uint64_t)(uintptr_t)&ann_pdata->type;
+    ext->substmts[3].storage_p = (void **)&ann_pdata->type;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[4].stmt = LY_STMT_DESCRIPTION;
-    ext->substmts[4].storage = (uint64_t)(uintptr_t)&ann_pdata->dsc;
+    ext->substmts[4].storage_p = (void **)&ann_pdata->dsc;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[5].stmt = LY_STMT_REFERENCE;
-    ext->substmts[5].storage = (uint64_t)(uintptr_t)&ann_pdata->ref;
+    ext->substmts[5].storage_p = (void **)&ann_pdata->ref;
 
     if ((r = lyplg_ext_parse_extension_instance(pctx, ext))) {
         return r;
@@ -139,27 +139,27 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, 
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[0].stmt = LY_STMT_IF_FEATURE;
-    ext->substmts[0].storage = 0;
+    ext->substmts[0].storage_p = NULL;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[1].stmt = LY_STMT_UNITS;
-    ext->substmts[1].storage = (uint64_t)(uintptr_t)&ann_cdata->units;
+    ext->substmts[1].storage_p = (void **)&ann_cdata->units;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[2].stmt = LY_STMT_STATUS;
-    ext->substmts[2].storage = (uint64_t)(uintptr_t)&ann_cdata->flags;
+    ext->substmts[2].storage_p = (void **)&ann_cdata->flags;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[3].stmt = LY_STMT_TYPE;
-    ext->substmts[3].storage = (uint64_t)(uintptr_t)&ann_cdata->type;
+    ext->substmts[3].storage_p = (void **)&ann_cdata->type;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[4].stmt = LY_STMT_DESCRIPTION;
-    ext->substmts[4].storage = (uint64_t)(uintptr_t)&ann_cdata->dsc;
+    ext->substmts[4].storage_p = (void **)&ann_cdata->dsc;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[5].stmt = LY_STMT_REFERENCE;
-    ext->substmts[5].storage = (uint64_t)(uintptr_t)&ann_cdata->ref;
+    ext->substmts[5].storage_p = (void **)&ann_cdata->ref;
 
     ret = lyplg_ext_compile_extension_instance(cctx, extp, ext);
     return ret;
