@@ -224,7 +224,7 @@ get_schema_completion(const char *hint, char ***matches, unsigned int *match_cou
     uint32_t idx;
     const char *start;
     char *end, *module_name = NULL, *path = NULL;
-    const struct lysc_node *parent, *last_node;
+    const struct lysc_node *parent, *last_node = NULL;
     int rc = 0;
     size_t len;
 
