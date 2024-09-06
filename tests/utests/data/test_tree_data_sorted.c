@@ -131,6 +131,57 @@ test_insert_cont_leaflist(void **state)
 }
 
 static void
+test_dup_sort(void **state)
+{
+    const char *schema;
+    struct lys_module *mod;
+    struct lyd_node *cont, *cont2;
+    char *str;
+
+    schema = "module a {namespace urn:tests:a;prefix a;yang-version 1.1;revision 2014-05-08;"
+            "container cn { list lst {key \"k\"; leaf k {type uint32;}}}}";
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+
+    assert_int_equal(lyd_new_inner(NULL, mod, "cn", 0, &cont), LY_SUCCESS);
+    assert_int_equal(lyd_new_list(cont, NULL, "lst", 0, NULL, "2"), LY_SUCCESS);
+    assert_int_equal(lyd_new_list(cont, NULL, "lst", 0, NULL, "5"), LY_SUCCESS);
+    assert_int_equal(lyd_new_list(cont, NULL, "lst", 0, NULL, "9"), LY_SUCCESS);
+
+    assert_int_equal(lyd_new_inner(NULL, mod, "cn", 0, &cont2), LY_SUCCESS);
+    assert_int_equal(lyd_new_list(cont2, NULL, "lst", 0, NULL, "1"), LY_SUCCESS);
+    assert_int_equal(lyd_new_list(cont2, NULL, "lst", 0, NULL, "3"), LY_SUCCESS);
+    assert_int_equal(lyd_new_list(cont2, NULL, "lst", 0, NULL, "8"), LY_SUCCESS);
+
+    assert_int_equal(lyd_dup_siblings(lyd_child(cont2), (struct lyd_node_inner *)cont, 0, NULL), LY_SUCCESS);
+    lyd_print_mem(&str, cont, LYD_XML, 0);
+    assert_string_equal(str,
+            "<cn xmlns=\"urn:tests:a\">\n"
+            "  <lst>\n"
+            "    <k>1</k>\n"
+            "  </lst>\n"
+            "  <lst>\n"
+            "    <k>2</k>\n"
+            "  </lst>\n"
+            "  <lst>\n"
+            "    <k>3</k>\n"
+            "  </lst>\n"
+            "  <lst>\n"
+            "    <k>5</k>\n"
+            "  </lst>\n"
+            "  <lst>\n"
+            "    <k>8</k>\n"
+            "  </lst>\n"
+            "  <lst>\n"
+            "    <k>9</k>\n"
+            "  </lst>\n"
+            "</cn>\n");
+    free(str);
+
+    lyd_free_all(cont);
+    lyd_free_all(cont2);
+}
+
+static void
 test_try_user_order_func(void **state)
 {
     const char *schema;
@@ -1599,6 +1650,7 @@ main(void)
         UTEST(test_insert_top_level_leaflist),
         UTEST(test_insert_cont_list),
         UTEST(test_insert_cont_leaflist),
+        UTEST(test_dup_sort),
         UTEST(test_try_user_order_func),
         UTEST(test_ordered_by_user),
         UTEST(test_remove),
