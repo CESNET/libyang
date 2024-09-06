@@ -580,6 +580,9 @@ test_dup_siblings_to_empty(struct test_state *state, struct timespec *ts_start, 
 
     TEST_END(ts_end);
 
+    /* need to remove the duplicated nodes if the test is repeated */
+    lyd_free_siblings(lyd_child(state->data1));
+
     return LY_SUCCESS;
 }
 
