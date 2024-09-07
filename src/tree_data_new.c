@@ -885,7 +885,7 @@ lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const cha
     return _lyd_new_term(parent, module, name, value, value ? strlen(value) : 0, options, node);
 }
 
-LIBYANG_API_DECL LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_term_bin(struct lyd_node *parent, const struct lys_module *module, const char *name,
         const void *value, size_t value_len, uint32_t options, struct lyd_node **node)
 {
