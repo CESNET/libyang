@@ -252,18 +252,6 @@ lyplg_type_validate_instanceid(const struct ly_ctx *ctx, const struct lysc_type 
     return LY_SUCCESS;
 }
 
-LIBYANG_API_DEF LY_ERR
-lyplg_type_compare_instanceid(const struct ly_ctx *ctx, const struct lyd_value *val1, const struct lyd_value *val2)
-{
-    return lyplg_type_compare_simple(ctx, val1, val2);
-}
-
-LIBYANG_API_DEF int
-lyplg_type_sort_instanceid(const struct ly_ctx *ctx, const struct lyd_value *val1, const struct lyd_value *val2)
-{
-    return lyplg_type_sort_simple(ctx, val1, val2);
-}
-
 LIBYANG_API_DEF const void *
 lyplg_type_print_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len)
@@ -338,8 +326,8 @@ const struct lyplg_type_record plugins_instanceid[] = {
         .plugin.id = "libyang 2 - instance-identifier, version 1",
         .plugin.store = lyplg_type_store_instanceid,
         .plugin.validate = lyplg_type_validate_instanceid,
-        .plugin.compare = lyplg_type_compare_instanceid,
-        .plugin.sort = lyplg_type_sort_instanceid,
+        .plugin.compare = lyplg_type_compare_simple,
+        .plugin.sort = lyplg_type_sort_simple,
         .plugin.print = lyplg_type_print_instanceid,
         .plugin.duplicate = lyplg_type_dup_instanceid,
         .plugin.free = lyplg_type_free_instanceid,
