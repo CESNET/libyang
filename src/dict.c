@@ -104,9 +104,6 @@ lydict_resize_val_eq(void *val1_p, void *val2_p, ly_bool mod, void *UNUSED(cb_da
     str1 = ((struct ly_dict_rec *)val1_p)->value;
     str2 = ((struct ly_dict_rec *)val2_p)->value;
 
-    LY_CHECK_ERR_RET(!str1, LOGARG(NULL, val1_p), 0);
-    LY_CHECK_ERR_RET(!str2, LOGARG(NULL, val2_p), 0);
-
     if (mod) {
         /* used when inserting new values */
         if (strcmp(str1, str2) == 0) {
@@ -177,7 +174,7 @@ finish:
     return ret;
 }
 
-LY_ERR
+static LY_ERR
 dict_insert(const struct ly_ctx *ctx, char *value, size_t len, ly_bool zerocopy, const char **str_p)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -221,9 +218,7 @@ dict_insert(const struct ly_ctx *ctx, char *value, size_t len, ly_bool zerocopy,
         return ret;
     }
 
-    if (str_p) {
-        *str_p = match->value;
-    }
+    *str_p = match->value;
 
     return ret;
 }
