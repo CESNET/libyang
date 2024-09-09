@@ -837,8 +837,9 @@ lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_
     uint32_t prefix_opt = 0;
     struct ly_err_item *e;
     const char *err_fmt = NULL;
+    uint16_t oper;
 
-    LY_CHECK_ARG_RET(ctx, ctx, value, ctx_node, path, err, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, ctx, value, path, err, LY_EINVAL);
 
     *path = NULL;
     *err = NULL;
@@ -877,8 +878,8 @@ lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_
     }
 
     /* resolve it on schema tree */
-    ret = ly_path_compile(ctx, NULL, ctx_node, NULL, exp, (ctx_node->flags & LYS_IS_OUTPUT) ?
-            LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, 1, format, prefix_data, path);
+    oper = (ctx_node && (ctx_node->flags & LYS_IS_OUTPUT)) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
+    ret = ly_path_compile(ctx, NULL, ctx_node, NULL, exp, oper, LY_PATH_TARGET_SINGLE, 1, format, prefix_data, path);
     if (ret) {
         err_fmt = "Invalid instance-identifier \"%.*s\" value - semantic error%s%s";
         goto cleanup;
