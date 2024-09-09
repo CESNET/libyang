@@ -708,7 +708,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
                 /* store the value */
                 LOG_LOCSET(key, NULL);
-                ret = lyd_value_store(ctx, &p->value, ((struct lysc_node_leaf *)key)->type, val, val_len, 0, 0,
+                ret = lyd_value_store(ctx_node->module->ctx, &p->value, ((struct lysc_node_leaf *)key)->type, val, val_len, 0, 0,
                         NULL, format, prefix_data, LYD_HINT_DATA, key, NULL);
                 LOG_LOCBACK(1, 0);
                 LY_CHECK_ERR_GOTO(ret, p->value.realtype = NULL, cleanup);
@@ -736,7 +736,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
             /* names (keys) are unique - it was checked when parsing */
             LOGVAL(ctx, LYVE_XPATH, "Predicate missing for a key of %s \"%s\" in path.",
                     lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
-            ly_path_predicates_free(ctx, *predicates);
+            ly_path_predicates_free(ctx_node->module->ctx, *predicates);
             *predicates = NULL;
             ret = LY_EVALID;
             goto cleanup;
@@ -771,12 +771,10 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
         }
 
         /* store the value */
-        if (ctx_node) {
-            LOG_LOCSET(ctx_node, NULL);
-        }
-        ret = lyd_value_store(ctx, &p->value, ((struct lysc_node_leaflist *)ctx_node)->type, val, val_len, 0, 0,
+        LOG_LOCSET(ctx_node, NULL);
+        ret = lyd_value_store(ctx_node->module->ctx, &p->value, ((struct lysc_node_leaflist *)ctx_node)->type, val, val_len, 0, 0,
                 NULL, format, prefix_data, LYD_HINT_DATA, ctx_node, NULL);
-        LOG_LOCBACK(ctx_node ? 1 : 0, 0);
+        LOG_LOCBACK(1, 0);
         LY_CHECK_ERR_GOTO(ret, p->value.realtype = NULL, cleanup);
         ++(*tok_idx);
 
