@@ -3595,7 +3595,7 @@ lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output,
 
 cleanup:
     lyxp_expr_free(LYD_CTX(ctx_node), expr);
-    ly_path_free(LYD_CTX(ctx_node), lypath);
+    ly_path_free(lypath);
     return ret;
 }
 

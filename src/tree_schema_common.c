@@ -1829,7 +1829,7 @@ lysc_node_lref_target(const struct lysc_node *node)
 
     /* get the target node */
     target = p[LY_ARRAY_COUNT(p) - 1].node;
-    ly_path_free(node->module->ctx, p);
+    ly_path_free(p);
 
     return target;
 }

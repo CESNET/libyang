@@ -866,7 +866,7 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
 
     /* get the target node */
     target = p[LY_ARRAY_COUNT(p) - 1].node;
-    ly_path_free(node->module->ctx, p);
+    ly_path_free(p);
 
     if (!(target->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
         LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid leafref path \"%s\" - target node is %s instead of leaf or leaf-list.",
@@ -1456,7 +1456,7 @@ resolve_all:
             ret = ly_path_compile_leafref(cctx.ctx, l->node, cctx.ext, lref->path,
                     (l->node->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY,
                     LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, &path);
-            ly_path_free(l->node->module->ctx, path);
+            ly_path_free(path);
 
             assert(ret != LY_ERECOMPILE);
             if (ret) {

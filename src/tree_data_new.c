@@ -1823,7 +1823,7 @@ cleanup:
             LY_ARRAY_INCREMENT(p);
         }
     }
-    ly_path_free(ctx, p);
+    ly_path_free(p);
     if (!ret) {
         /* set out params only on success */
         if (new_parent) {

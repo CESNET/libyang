@@ -895,7 +895,7 @@ cleanup:
             ly_err_clean((struct ly_ctx *)ctx, e);
         }
 
-        ly_path_free(ctx, *path);
+        ly_path_free(*path);
         *path = NULL;
     }
 
@@ -903,9 +903,9 @@ cleanup:
 }
 
 LIBYANG_API_DEF void
-lyplg_type_lypath_free(const struct ly_ctx *ctx, struct ly_path *path)
+lyplg_type_lypath_free(const struct ly_ctx *UNUSED(ctx), struct ly_path *path)
 {
-    ly_path_free(ctx, path);
+    ly_path_free(path);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -1014,7 +1014,7 @@ lyplg_type_resolve_leafref_get_target_path(const struct lyxp_expr *path, const s
     LY_CHECK_GOTO(lyxp_expr_parse(ctx_node->module->ctx, str_path, 0, 1, target_path), cleanup);
 
 cleanup:
-    ly_path_free(ctx_node->module->ctx, p);
+    ly_path_free(p);
     free(str_path);
     return rc;
 }
