@@ -472,7 +472,7 @@ endif()
 
 # generate API/ABI report
 if("${BUILD_TYPE_UPPER}" STREQUAL "ABICHECK")
-    lib_abi_check(yang "${headers}" ${LIBYANG_SOVERSION_FULL} a6bab1eb610325c316affb0f9a10737a36883a51)
+    lib_abi_check(yang "${headers}" ${LIBYANG_SOVERSION_FULL} 670385f9595014dc9307615fa6e929b46dba026b)
 endif()
 
 # source code format target for Makefile
