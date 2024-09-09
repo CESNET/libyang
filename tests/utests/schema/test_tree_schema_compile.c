@@ -1233,8 +1233,7 @@ test_type_instanceid(void **state)
 {
     struct lys_module *mod;
     struct lysc_type *type;
-
-    // char *str;
+    char *str;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {namespace urn:a;prefix a;typedef mytype {type instance-identifier {require-instance false;}}"
             "leaf l1 {type instance-identifier {require-instance true;}}"
@@ -1255,14 +1254,14 @@ test_type_instanceid(void **state)
     assert_int_equal(1, ((struct lysc_type_instanceid *)type)->require_instance);
 
     /* default value */
-    /* TODO needs a new SO for a proper fix; str = "module b1 {namespace urn:b1;prefix b1;"
+    str = "module b1 {namespace urn:b1;prefix b1;"
             "leaf l1 {type string;}}";
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, str);
     ly_ctx_set_options(UTEST_LYCTX, LY_CTX_REF_IMPLEMENTED);
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module b2 {namespace urn:b2;prefix b2;"
             "import b1 {prefix b1;}"
             "leaf l1 {type instance-identifier; default \"/b1:l1\";}}", LYS_IN_YANG, NULL));
-    ly_ctx_set_options(UTEST_LYCTX, 0);*/
+    ly_ctx_set_options(UTEST_LYCTX, 0);
 
     /* invalid cases */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type instance-identifier {require-instance yes;}}}", LYS_IN_YANG, NULL));

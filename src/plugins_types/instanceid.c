@@ -253,10 +253,13 @@ lyplg_type_validate_instanceid(const struct ly_ctx *ctx, const struct lysc_type 
 }
 
 LIBYANG_API_DEF const void *
-lyplg_type_print_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
+lyplg_type_print_instanceid(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len)
 {
-    char *ret;
+    char *ret = NULL;
+    struct ly_path *p = NULL;
+    const struct ly_path *target;
+    struct ly_err_item *err;
 
     if ((format == LY_VALUE_CANON) || (format == LY_VALUE_JSON) || (format == LY_VALUE_LYB)) {
         if (dynamic) {
@@ -268,14 +271,34 @@ lyplg_type_print_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lyd_v
         return value->_canonical;
     }
 
-    /* print the value in the specific format */
-    if (instanceid_path2str(value->target, format, prefix_data, &ret)) {
-        return NULL;
+    if (!value->target) {
+        /* schema default value, compile it first */
+        if (lyplg_type_lypath_new(ctx, value->_canonical, strlen(value->_canonical), 0, LY_VALUE_JSON, NULL, NULL,
+                NULL, &p, &err)) {
+            if (err) {
+                ly_err_print(ctx, err);
+                ly_err_free(err);
+            }
+            goto cleanup;
+        }
+
+        target = p;
+    } else {
+        target = value->target;
     }
+
+    /* print the value in the specific format */
+    if (instanceid_path2str(target, format, prefix_data, &ret)) {
+        goto cleanup;
+    }
+
     *dynamic = 1;
     if (value_len) {
         *value_len = strlen(ret);
     }
+
+cleanup:
+    ly_path_free(p);
     return ret;
 }
 
@@ -283,6 +306,7 @@ LIBYANG_API_DEF LY_ERR
 lyplg_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_ERR ret;
+    struct ly_err_item *err;
 
     memset(dup, 0, sizeof *dup);
 
@@ -290,9 +314,21 @@ lyplg_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *orig
     ret = lydict_insert(ctx, original->_canonical, 0, &dup->_canonical);
     LY_CHECK_GOTO(ret, error);
 
-    /* copy path */
-    ret = ly_path_dup(ctx, original->target, &dup->target);
-    LY_CHECK_GOTO(ret, error);
+    if (!original->target) {
+        /* schema default value, needs to be compiled */
+        if (lyplg_type_lypath_new(ctx, original->_canonical, strlen(original->_canonical), 0, LY_VALUE_JSON, NULL, NULL,
+                NULL, &dup->target, &err)) {
+            if (err) {
+                ly_err_print(ctx, err);
+                ly_err_free(err);
+            }
+            goto error;
+        }
+    } else {
+        /* copy path */
+        ret = ly_path_dup(ctx, original->target, &dup->target);
+        LY_CHECK_GOTO(ret, error);
+    }
 
     dup->realtype = original->realtype;
     return LY_SUCCESS;
