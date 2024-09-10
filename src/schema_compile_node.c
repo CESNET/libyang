@@ -1390,7 +1390,7 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, const struct lysp_restr *pattern
         if (patterns_p[u].arg.str[0] == LYSP_RESTR_PATTERN_NACK) {
             (*pattern)->inverted = 1;
         }
-        DUP_STRING_GOTO(ctx->ctx, &patterns_p[u].arg.str[1], (*pattern)->expr, ret, done);
+        LY_CHECK_GOTO(ret = lydict_insert(ctx->ctx, &patterns_p[u].arg.str[1], 0, &(*pattern)->expr), done);
         DUP_STRING_GOTO(ctx->ctx, patterns_p[u].eapptag, (*pattern)->eapptag, ret, done);
         DUP_STRING_GOTO(ctx->ctx, patterns_p[u].emsg, (*pattern)->emsg, ret, done);
         DUP_STRING_GOTO(ctx->ctx, patterns_p[u].dsc, (*pattern)->dsc, ret, done);

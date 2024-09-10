@@ -164,9 +164,9 @@ struct lysc_unres_dflt {
  * @param[out] DUP Where to store the result.
  * @param[out] RET Where to store the return code.
  */
-#define DUP_STRING(CTX, ORIG, DUP, RET) RET = lydict_insert(CTX, ORIG, 0, &(DUP))
-#define DUP_STRING_RET(CTX, ORIG, DUP) LY_CHECK_RET(lydict_insert(CTX, ORIG, 0, &(DUP)))
-#define DUP_STRING_GOTO(CTX, ORIG, DUP, RET, GOTO) LY_CHECK_GOTO(RET = lydict_insert(CTX, ORIG, 0, &(DUP)), GOTO)
+#define DUP_STRING(CTX, ORIG, DUP, RET) RET = lydict_dup(CTX, ORIG, &(DUP))
+#define DUP_STRING_RET(CTX, ORIG, DUP) LY_CHECK_RET(lydict_dup(CTX, ORIG, &(DUP)))
+#define DUP_STRING_GOTO(CTX, ORIG, DUP, RET, GOTO) LY_CHECK_GOTO(RET = lydict_dup(CTX, ORIG, &(DUP)), GOTO)
 
 #define DUP_ARRAY(CTX, ORIG_ARRAY, NEW_ARRAY, DUP_FUNC) \
     if (ORIG_ARRAY) { \
