@@ -80,7 +80,7 @@ module notifications {
       }
     }
 
-   /*container notification {
+   container notification {
       description "internal struct to start a notification";
       config false;
 
@@ -90,6 +90,6 @@ module notifications {
       }
 
       // eventType and any data content goes here
-   }*/
+   }
 }
 

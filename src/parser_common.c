@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang common parser functions.
  *
- * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -71,33 +71,47 @@ lyd_parser_notif_eventtime_validate(const struct lyd_node *node)
     LY_ERR rc = LY_SUCCESS;
     struct ly_ctx *ctx = (struct ly_ctx *)LYD_CTX(node);
     struct lysc_ctx cctx;
-    const struct lys_module *mod;
+    const struct lys_module *mod1, *mod2;
+    const struct lysc_node *schema;
     LY_ARRAY_COUNT_TYPE u;
     struct ly_err_item *err = NULL;
     struct lysp_type *type_p = NULL;
     struct lysc_pattern **patterns = NULL;
     const char *value;
 
-    LYSC_CTX_INIT_CTX(cctx, ctx);
+    /* find the used modules, we will either use a compiled leaf or compile the relevant type ourselves */
+    mod1 = ly_ctx_get_module_implemented(ctx, "notifications");
+    mod2 = ly_ctx_get_module_latest(ctx, "ietf-yang-types");
+    assert(mod2);
 
-    /* get date-and-time parsed type */
-    mod = ly_ctx_get_module_latest(ctx, "ietf-yang-types");
-    assert(mod);
-    LY_ARRAY_FOR(mod->parsed->typedefs, u) {
-        if (!strcmp(mod->parsed->typedefs[u].name, "date-and-time")) {
-            type_p = &mod->parsed->typedefs[u].type;
-            break;
+    if (mod1 || !mod2->parsed) {
+        /* get date-and-time leaf */
+        schema = lys_find_path(LYD_CTX(node), NULL, "/notifications:notification/eventTime", 0);
+        LY_CHECK_RET(!schema, LY_ENOTFOUND);
+
+        /* validate the value */
+        value = lyd_get_value(node);
+        LY_CHECK_RET(lyd_value_validate(LYD_CTX(node), schema, value, strlen(value), NULL, NULL, NULL));
+    } else {
+        LYSC_CTX_INIT_CTX(cctx, ctx);
+
+        /* get date-and-time parsed type */
+        LY_ARRAY_FOR(mod2->parsed->typedefs, u) {
+            if (!strcmp(mod2->parsed->typedefs[u].name, "date-and-time")) {
+                type_p = &mod2->parsed->typedefs[u].type;
+                break;
+            }
         }
+        assert(type_p);
+
+        /* compile patterns */
+        assert(type_p->patterns);
+        LY_CHECK_GOTO(rc = lys_compile_type_patterns(&cctx, type_p->patterns, NULL, &patterns), cleanup);
+
+        /* validate */
+        value = lyd_get_value(node);
+        rc = lyplg_type_validate_patterns(patterns, value, strlen(value), &err);
     }
-    assert(type_p);
-
-    /* compile patterns */
-    assert(type_p->patterns);
-    LY_CHECK_GOTO(rc = lys_compile_type_patterns(&cctx, type_p->patterns, NULL, &patterns), cleanup);
-
-    /* validate */
-    value = lyd_get_value(node);
-    rc = lyplg_type_validate_patterns(patterns, value, strlen(value), &err);
 
 cleanup:
     FREE_ARRAY(&cctx.free_ctx, patterns, lysc_pattern_free);
