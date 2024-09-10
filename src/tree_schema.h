@@ -1736,18 +1736,28 @@ struct lysc_node_anydata {
 };
 
 /**
+ * @brief Compiled YANG submodule with only some basic metadata required for generating `ietf-yang-library` data.
+ */
+struct lysc_submodule {
+    const char *name;       /**< submodule name */
+    const char *revision;   /**< submodule revision, if any */
+    const char *filepath;   /**< submodule file path, if any */
+};
+
+/**
  * @brief Compiled YANG schema tree structure representing YANG module.
  *
  * Semantically validated YANG schema tree for data tree parsing.
  * Contains only the necessary information for the data validation.
  */
 struct lysc_module {
-    struct lys_module *mod;          /**< covering module structure */
+    struct lys_module *mod;             /**< covering module structure */
 
-    struct lysc_node *data;          /**< list of module's top-level data nodes (linked list) */
-    struct lysc_node_action *rpcs;   /**< first of actions nodes (linked list) */
-    struct lysc_node_notif *notifs;  /**< first of notifications nodes (linked list) */
-    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    const char **features;              /**< array of all the enabled features ([sized array](@ref sizedarrays)) */
+    struct lysc_node *data;             /**< list of module's top-level data nodes (linked list) */
+    struct lysc_node_action *rpcs;      /**< first of actions nodes (linked list) */
+    struct lysc_node_notif *notifs;     /**< first of notifications nodes (linked list) */
+    struct lysc_ext_instance *exts;     /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 };
 
 /**
@@ -2135,36 +2145,38 @@ LIBYANG_API_DECL char *lysc_path(const struct lysc_node *node, LYSC_PATH_TYPE pa
  * @brief Available YANG schema tree structures representing YANG module.
  */
 struct lys_module {
-    struct ly_ctx *ctx;              /**< libyang context of the module (mandatory) */
-    const char *name;                /**< name of the module (mandatory) */
-    const char *revision;            /**< revision of the module (if present) */
-    const char *ns;                  /**< namespace of the module (module - mandatory) */
-    const char *prefix;              /**< module prefix or submodule belongsto prefix of main module (mandatory) */
-    const char *filepath;            /**< path, if the schema was read from a file, NULL in case of reading from memory */
-    const char *org;                 /**< party/company responsible for the module */
-    const char *contact;             /**< contact information for the module */
-    const char *dsc;                 /**< description of the module */
-    const char *ref;                 /**< cross-reference for the module */
+    struct ly_ctx *ctx;                 /**< libyang context of the module (mandatory) */
+    const char *name;                   /**< name of the module (mandatory) */
+    const char *revision;               /**< revision of the module (if present) */
+    const char *ns;                     /**< namespace of the module (module - mandatory) */
+    const char *prefix;                 /**< module prefix or submodule belongsto prefix of main module (mandatory) */
+    const char *filepath;               /**< path, if the schema was read from a file, NULL in case of reading from memory */
+    const char *org;                    /**< party/company responsible for the module */
+    const char *contact;                /**< contact information for the module */
+    const char *dsc;                    /**< description of the module */
+    const char *ref;                    /**< cross-reference for the module */
 
-    struct lysp_module *parsed;      /**< Simply parsed (unresolved) YANG schema tree */
-    struct lysc_module *compiled;    /**< Compiled and fully validated YANG schema tree for data parsing.
-                                          Available only for implemented modules. */
+    struct lysp_module *parsed;         /**< Simply parsed (unresolved) YANG schema tree */
+    struct lysc_module *compiled;       /**< Compiled and fully validated YANG schema tree for data parsing.
+                                             Available only for implemented modules. */
 
-    struct lysc_ident *identities;   /**< List of compiled identities of the module ([sized array](@ref sizedarrays))
-                                          also contains the disabled identities when their if-feature(s) are evaluated to \"false\",
-                                          and also the list is filled even if the module is not implemented.
-                                          The list is located here because it avoids problems when the module became implemented in
-                                          future (no matter if implicitly via augment/deviate or explicitly via
-                                          ::lys_set_implemented()). Note that if the module is not implemented (compiled), the
-                                          identities cannot be instantiated in data (in identityrefs). */
+    struct lysc_ident *identities;      /**< List of compiled identities of the module ([sized array](@ref sizedarrays))
+                                             also contains the disabled identities when their if-feature(s) are evaluated to \"false\",
+                                             and also the list is filled even if the module is not implemented.
+                                             The list is located here because it avoids problems when the module became implemented in
+                                             future (no matter if implicitly via augment/deviate or explicitly via
+                                             ::lys_set_implemented()). Note that if the module is not implemented (compiled), the
+                                             identities cannot be instantiated in data (in identityrefs). */
 
-    struct lys_module **augmented_by;/**< List of modules that augment this module ([sized array](@ref sizedarrays)) */
-    struct lys_module **deviated_by; /**< List of modules that deviate this module ([sized array](@ref sizedarrays)) */
+    struct lysc_submodule *submodules;  /**< List of all the submodules ([sized array](@ref sizedarrays)) */
+    struct lys_module **augmented_by;   /**< List of modules that augment this module ([sized array](@ref sizedarrays)) */
+    struct lys_module **deviated_by;    /**< List of modules that deviate this module ([sized array](@ref sizedarrays)) */
 
-    ly_bool implemented;             /**< flag if the module is implemented, not just imported */
-    ly_bool to_compile;              /**< flag marking a module that was changed but not (re)compiled, see
-                                          ::LY_CTX_EXPLICIT_COMPILE. */
-    uint8_t latest_revision;         /**< Flag to mark the latest available revision, see [latest_revision options](@ref latestrevflags). */
+    ly_bool implemented;                /**< flag if the module is implemented, not just imported */
+    ly_bool to_compile;                 /**< flag marking a module that was changed but not (re)compiled, see
+                                             ::LY_CTX_EXPLICIT_COMPILE. */
+    uint8_t latest_revision;            /**< Flag to mark the latest available revision,
+                                             see [latest_revision options](@ref latestrevflags). */
 };
 
 /**
