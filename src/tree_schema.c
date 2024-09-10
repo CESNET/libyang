@@ -1179,7 +1179,7 @@ lys_set_implemented(struct lys_module *mod, const char **features)
     LY_ERR ret = LY_SUCCESS;
     struct lys_glob_unres *unres = &mod->ctx->unres;
 
-    LY_CHECK_ARG_RET(NULL, mod, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, mod, mod->parsed, LY_EINVAL);
 
     /* implement */
     ret = _lys_set_implemented(mod, features, unres);

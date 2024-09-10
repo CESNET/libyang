@@ -420,7 +420,7 @@ lyplg_ext_sprinter_ctree_add_ext_nodes(const struct lyspr_tree_ctx *ctx, struct 
     uint32_t i;
     struct lysc_node *schema;
 
-    LY_CHECK_ARG_RET2(NULL, ctx, ext, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, ctx, ext, LY_EINVAL);
 
     LY_ARRAY_FOR(ext->substmts, i) {
         switch (ext->substmts[i].stmt) {
@@ -458,7 +458,7 @@ lyplg_ext_sprinter_ptree_add_ext_nodes(const struct lyspr_tree_ctx *ctx, struct 
     uint32_t i;
     struct lysp_node *schema;
 
-    LY_CHECK_ARG_RET2(NULL, ctx, ext, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, ctx, ext, LY_EINVAL);
 
     LY_ARRAY_FOR(ext->substmts, i) {
         switch (ext->substmts[i].stmt) {
@@ -494,7 +494,7 @@ lyplg_ext_sprinter_ctree_add_nodes(const struct lyspr_tree_ctx *ctx, struct lysc
 {
     struct lyspr_tree_schema *new;
 
-    LY_CHECK_ARG_RET1(NULL, ctx, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, ctx, LY_EINVAL);
 
     if (!nodes) {
         return LY_SUCCESS;
@@ -514,7 +514,7 @@ lyplg_ext_sprinter_ptree_add_nodes(const struct lyspr_tree_ctx *ctx, struct lysp
 {
     struct lyspr_tree_schema *new;
 
-    LY_CHECK_ARG_RET1(NULL, ctx, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, ctx, LY_EINVAL);
 
     if (!nodes) {
         return LY_SUCCESS;
@@ -531,7 +531,7 @@ lyplg_ext_sprinter_ptree_add_nodes(const struct lyspr_tree_ctx *ctx, struct lysp
 LIBYANG_API_DECL LY_ERR
 lyplg_ext_sprinter_tree_set_priv(const struct lyspr_tree_ctx *ctx, void *plugin_priv, void (*free_clb)(void *plugin_priv))
 {
-    LY_CHECK_ARG_RET1(NULL, ctx, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, ctx, LY_EINVAL);
 
     ((struct lyspr_tree_ctx *)ctx)->plugin_priv = plugin_priv;
     ((struct lyspr_tree_ctx *)ctx)->free_plugin_priv = free_clb;
@@ -635,6 +635,8 @@ lyplg_ext_parsed_get_storage(const struct lysc_ext_instance *ext, int stmt, uint
     const struct lysp_ext_instance *extp = NULL;
     enum ly_stmt match = 0;
     void **s_p = NULL;
+
+    LY_CHECK_ARG_RET(NULL, ext, ext->module->parsed, LY_EINVAL);
 
     /* find the parsed ext instance */
     LY_ARRAY_FOR(ext->module->parsed->exts, u) {

@@ -660,7 +660,7 @@ LIBYANG_API_DECL LY_ERR ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct
  * Note that the data stored by user into the ::lysc_node.priv pointer are kept
  * untouched and the caller is responsible for freeing this private data.
  *
- * @param[in] ctx libyang context to destroy
+ * @param[in] ctx Context to destroy.
  */
 LIBYANG_API_DECL void ly_ctx_destroy(struct ly_ctx *ctx);
 

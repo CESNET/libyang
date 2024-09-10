@@ -105,7 +105,7 @@ lys_identity_iffeature_value(const struct lysc_ident *ident)
     const struct lysp_ident *idents_p, *found_ident = NULL;
     struct lysp_include *includes;
 
-    assert(ident);
+    LY_CHECK_ARG_RET(NULL, ident, ident->module->parsed, LY_EINVAL);
 
     /* Search parsed identity in the module. */
     idents_p = ident->module->parsed->identities;
@@ -145,6 +145,8 @@ LIBYANG_API_DEF struct lysp_feature *
 lysp_feature_next(const struct lysp_feature *last, const struct lysp_module *pmod, uint32_t *idx)
 {
     struct lysp_feature *features;
+
+    LY_CHECK_ARG_RET(NULL, pmod, NULL);
 
     if (!*idx) {
         /* module features */
