@@ -1809,6 +1809,35 @@ lysp_add_internal_yang(struct lysp_ctx *pctx, struct lysp_module *mod)
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Compile (copy) all submodules of a parsed module.
+ *
+ * @param[in] mod Module with the parsed and compiled module.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_compile_submodules(struct lys_module *mod)
+{
+    LY_ERR rc = LY_SUCCESS;
+    LY_ARRAY_COUNT_TYPE u;
+    const struct lysp_submodule *submodp;
+    struct lysc_submodule *submod;
+
+    LY_ARRAY_FOR(mod->parsed->includes, u) {
+        submodp = mod->parsed->includes[u].submodule;
+
+        LY_ARRAY_NEW_GOTO(mod->ctx, mod->submodules, submod, rc, cleanup);
+        DUP_STRING_GOTO(mod->ctx, submodp->name, submod->name, rc, cleanup);
+        if (submodp->revs) {
+            LY_CHECK_GOTO(rc = lydict_insert(mod->ctx, submodp->revs[0].date, 0, &submod->revision), cleanup);
+        }
+        DUP_STRING_GOTO(mod->ctx, submodp->filepath, submod->filepath, rc, cleanup);
+    }
+
+cleanup:
+    return rc;
+}
+
 LY_ERR
 lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
         LY_ERR (*custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
@@ -1948,11 +1977,10 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     LY_CHECK_GOTO(ret = lysp_check_dup_features(pctx, mod->parsed), cleanup);
     LY_CHECK_GOTO(ret = lysp_check_dup_identities(pctx, mod->parsed), cleanup);
 
-    /* compile features */
+    /* compile features, identities, and submodules */
     LY_CHECK_GOTO(ret = lys_compile_feature_iffeatures(mod->parsed), cleanup);
-
-    /* compile identities */
     LY_CHECK_GOTO(ret = lys_compile_identities(mod), cleanup);
+    LY_CHECK_GOTO(ret = lys_compile_submodules(mod), cleanup);
 
 cleanup:
     if (ret && (ret != LY_EEXIST)) {

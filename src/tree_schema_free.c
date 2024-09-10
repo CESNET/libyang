@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Freeing functions for schema tree structures.
  *
- * Copyright (c) 2019 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -1287,6 +1287,7 @@ lysc_module_free(struct lysf_ctx *ctx, struct lysc_module *module)
         return;
     }
 
+    FREE_STRINGS(ctx->ctx, module->features);
     LY_LIST_FOR_SAFE(module->data, node_next, node) {
         lysc_node_free_(ctx, node);
     }
@@ -1299,6 +1300,14 @@ lysc_module_free(struct lysf_ctx *ctx, struct lysc_module *module)
     FREE_ARRAY(ctx, module->exts, lysc_ext_instance_free);
 
     free(module);
+}
+
+static void
+lysc_submodule_free(struct lysf_ctx *ctx, struct lysc_submodule *submodule)
+{
+    lydict_remove(ctx->ctx, submodule->name);
+    lydict_remove(ctx->ctx, submodule->revision);
+    lydict_remove(ctx->ctx, submodule->filepath);
 }
 
 void
@@ -1322,6 +1331,7 @@ lys_module_free(struct lysf_ctx *ctx, struct lys_module *module, ly_bool remove_
     FREE_ARRAY(ctx, module->identities, lysc_ident_free);
     lysp_module_free(ctx, module->parsed);
 
+    FREE_ARRAY(ctx, module->submodules, lysc_submodule_free);
     LY_ARRAY_FREE(module->augmented_by);
     LY_ARRAY_FREE(module->deviated_by);
 

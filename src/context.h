@@ -648,6 +648,14 @@ LIBYANG_API_DECL LY_ERR ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct
         const char *content_id_format, ...);
 
 /**
+ * @brief Free all the parsed modules in a context. Any data manipulation will be possible but some schema functionality
+ * will no longer work.
+ *
+ * @param[in] ctx Context with parsed modules to free.
+ */
+LIBYANG_API_DECL void ly_ctx_free_parsed(struct ly_ctx *ctx);
+
+/**
  * @brief Free all internal structures of the specified context.
  *
  * The function should be used before terminating the application to destroy
