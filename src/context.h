@@ -602,10 +602,10 @@ LIBYANG_API_DECL const struct lysp_submodule *ly_ctx_get_submodule2_latest(const
 LIBYANG_API_DECL uint32_t ly_ctx_internal_modules_count(const struct ly_ctx *ctx);
 
 /**
- * @brief Try to find the model in the searchpaths of \p ctx and load it into it. If custom missing
+ * @brief Try to find the model in the searchpaths of @p ctx and load it into it. If custom missing
  * module callback is set, it is used instead.
  *
- * The context itself is searched for the requested module first. If \p revision is not specified
+ * The context itself is searched for the requested module first. If @p revision is not specified
  * (the module of the latest revision is requested) and there is implemented revision of the requested
  * module in the context, this implemented revision is returned despite there might be a newer revision.
  * This behavior is cause by the fact that it is not possible to have multiple implemented revisions of
