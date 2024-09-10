@@ -410,9 +410,8 @@ lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, ly_bool with_f
     const struct lys_module *m = NULL;
     char *mod_name = NULL, mod_rev[LY_REV_SIZE];
     struct ly_set feat_set = {0};
-    struct lysp_feature *f = NULL;
-    uint32_t i, idx = 0;
-    ly_bool enabled;
+    LY_ARRAY_COUNT_TYPE u;
+    uint32_t i;
 
     /* read module info */
     if ((ret = lyb_read_model(lybctx, &mod_name, mod_rev, with_features ? &feat_set : NULL))) {
@@ -452,26 +451,26 @@ lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, ly_bool with_f
 
     if (with_features) {
         /* check features */
-        while ((f = lysp_feature_next(f, m->parsed, &idx))) {
-            enabled = 0;
+        LY_ARRAY_FOR(m->compiled->features, u) {
             for (i = 0; i < feat_set.count; ++i) {
-                if (!strcmp(feat_set.objs[i], f->name)) {
-                    enabled = 1;
+                if (!strcmp(feat_set.objs[i], m->compiled->features[u])) {
                     break;
                 }
             }
-
-            if (enabled && !(f->flags & LYS_FENABLED)) {
-                LOGERR(lybctx->ctx, LY_EINVAL, "Invalid context for LYB data parsing, module \"%s\" has \"%s\" feature disabled.",
-                        mod_name, f->name);
-                ret = LY_EINVAL;
-                goto cleanup;
-            } else if (!enabled && (f->flags & LYS_FENABLED)) {
+            if (i < feat_set.count) {
+                ly_set_rm_index(&feat_set, i, free);
+            } else {
                 LOGERR(lybctx->ctx, LY_EINVAL, "Invalid context for LYB data parsing, module \"%s\" has \"%s\" feature enabled.",
-                        mod_name, f->name);
+                        mod_name, m->compiled->features[u]);
                 ret = LY_EINVAL;
                 goto cleanup;
             }
+        }
+        if (feat_set.count) {
+            LOGERR(lybctx->ctx, LY_EINVAL, "Invalid context for LYB data parsing, module \"%s\" has \"%s\" feature disabled.",
+                    mod_name, (char *)feat_set.objs[0]);
+            ret = LY_EINVAL;
+            goto cleanup;
         }
     }
 

@@ -470,10 +470,8 @@ static LY_ERR
 lyb_print_model(struct ly_out *out, const struct lys_module *mod, ly_bool with_features, struct lylyb_ctx *lybctx)
 {
     LY_ERR rc = LY_SUCCESS;
-    uint16_t revision;
-    struct ly_set feat_set = {0};
-    struct lysp_feature *f = NULL;
-    uint32_t i = 0;
+    uint16_t revision, feat_count;
+    LY_ARRAY_COUNT_TYPE u;
     int r;
 
     /* model name length and model name */
@@ -501,18 +499,11 @@ lyb_print_model(struct ly_out *out, const struct lys_module *mod, ly_bool with_f
     LY_CHECK_GOTO(rc = lyb_write_number(revision, sizeof revision, out, lybctx), cleanup);
 
     if (with_features) {
-        /* collect enabled module features */
-        while ((f = lysp_feature_next(f, mod->parsed, &i))) {
-            if (f->flags & LYS_FENABLED) {
-                LY_CHECK_GOTO(rc = ly_set_add(&feat_set, f, 1, NULL), cleanup);
-            }
-        }
-
         /* print enabled feature count and their names */
-        LY_CHECK_GOTO(rc = lyb_write_number(feat_set.count, sizeof(uint16_t), out, lybctx), cleanup);
-        for (i = 0; i < feat_set.count; ++i) {
-            f = feat_set.objs[i];
-            LY_CHECK_GOTO(rc = lyb_write_string(f->name, 0, sizeof(uint16_t), out, lybctx), cleanup);
+        feat_count = LY_ARRAY_COUNT(mod->compiled->features);
+        LY_CHECK_GOTO(rc = lyb_write_number(feat_count, sizeof(uint16_t), out, lybctx), cleanup);
+        LY_ARRAY_FOR(mod->compiled->features, u) {
+            LY_CHECK_GOTO(rc = lyb_write_string(mod->compiled->features[u], 0, sizeof(uint16_t), out, lybctx), cleanup);
         }
     }
 
@@ -520,7 +511,6 @@ lyb_print_model(struct ly_out *out, const struct lys_module *mod, ly_bool with_f
     lyb_cache_module_hash(mod);
 
 cleanup:
-    ly_set_erase(&feat_set, NULL);
     return rc;
 }
 

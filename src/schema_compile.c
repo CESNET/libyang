@@ -1697,6 +1697,32 @@ lys_compile_unres_mod_erase(struct lysc_ctx *ctx, ly_bool error)
     }
 }
 
+/**
+ * @brief Compile (copy) all enabled features of a parsed module.
+ *
+ * @param[in] mod Module with the parsed and compiled module.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_compile_enabled_features(struct lys_module *mod)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lysp_feature *f = NULL;
+    uint32_t idx = 0;
+    const char **feat_p;
+
+    /* copy enabled features */
+    while ((f = lysp_feature_next(f, mod->parsed, &idx))) {
+        if (f->flags & LYS_FENABLED) {
+            LY_ARRAY_NEW_GOTO(mod->ctx, mod->compiled->features, feat_p, rc, cleanup);
+            LY_CHECK_GOTO(rc = lydict_dup(mod->ctx, f->name, feat_p), cleanup);
+        }
+    }
+
+cleanup:
+    return rc;
+}
+
 LY_ERR
 lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
 {
@@ -1721,6 +1747,9 @@ lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
     mod->compiled = mod_c = calloc(1, sizeof *mod_c);
     LY_CHECK_ERR_RET(!mod_c, LOGMEM(mod->ctx), LY_EMEM);
     mod_c->mod = mod;
+
+    /* copy the enabled features */
+    LY_CHECK_GOTO(ret = lys_compile_enabled_features(mod), cleanup);
 
     /* compile augments and deviations of our module from other modules so they can be applied during compilation */
     LY_CHECK_GOTO(ret = lys_precompile_own_augments(&ctx), cleanup);
