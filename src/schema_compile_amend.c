@@ -2443,7 +2443,7 @@ lys_precompile_mod_augments_deviations(struct lysp_module *pmod, struct ly_set *
 {
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u, v;
-    struct lysc_ctx ctx;
+    struct lysc_ctx ctx = {0};
     struct lys_module *m;
     struct lysp_node_augment *aug;
     struct ly_set set = {0};

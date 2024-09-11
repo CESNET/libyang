@@ -67,7 +67,6 @@ struct lysc_ctx {
  * @param[in] CTX libyang context.
  */
 #define LYSC_CTX_INIT_CTX(CCTX, CTX) \
-    memset(&(CCTX), 0, sizeof (CCTX)); \
     (CCTX).ctx = (CTX); \
     (CCTX).path_len = 1; \
     (CCTX).path[0] = '/'; \
@@ -81,7 +80,6 @@ struct lysc_ctx {
  * @param[in] EXT Ancestor extension instance.
  */
 #define LYSC_CTX_INIT_PMOD(CCTX, PMOD, EXT) \
-    memset(&(CCTX), 0, sizeof (CCTX)); \
     (CCTX).ctx = (PMOD)->mod->ctx; \
     (CCTX).cur_mod = (PMOD)->mod; \
     (CCTX).pmod = (PMOD); \

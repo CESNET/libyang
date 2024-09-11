@@ -221,7 +221,7 @@ lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp
         const struct lysp_ident *identities_p, struct lysc_ident **identities)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct lysc_ctx cctx;
+    struct lysc_ctx cctx = {0};
     struct lysc_ident *ident;
     LY_ERR ret = LY_SUCCESS;
 
@@ -1477,7 +1477,7 @@ resolve_all:
     }
 
 cleanup:
-    lysf_ctx_erase(&cctx.free_ctx);
+    assert(!cctx.free_ctx.ext_set.count);
     return ret;
 }
 
@@ -1557,8 +1557,8 @@ lys_compile_depset_r(struct ly_ctx *ctx, struct ly_set *dep_set, struct lys_glob
     }
 
 cleanup:
+    assert(!fctx.ext_set.count);
     lys_compile_unres_depset_erase(ctx, unres);
-    lysf_ctx_erase(&fctx);
     return ret;
 }
 
@@ -1702,7 +1702,7 @@ lys_compile_unres_mod_erase(struct lysc_ctx *ctx, ly_bool error)
 LY_ERR
 lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
 {
-    struct lysc_ctx ctx;
+    struct lysc_ctx ctx = {0};
     struct lysc_module *mod_c = NULL;
     struct lysp_module *sp;
     struct lysp_submodule *submod;
@@ -1823,7 +1823,7 @@ LY_ERR
 lys_compile_identities(struct lys_module *mod)
 {
     LY_ERR rc = LY_SUCCESS;
-    struct lysc_ctx ctx;
+    struct lysc_ctx ctx = {0};
     struct lysp_submodule *submod;
     LY_ARRAY_COUNT_TYPE u;
 

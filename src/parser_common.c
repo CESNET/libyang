@@ -70,7 +70,7 @@ lyd_parser_notif_eventtime_validate(const struct lyd_node *node)
 {
     LY_ERR rc = LY_SUCCESS;
     struct ly_ctx *ctx = (struct ly_ctx *)LYD_CTX(node);
-    struct lysc_ctx cctx;
+    struct lysc_ctx cctx = {0};
     const struct lys_module *mod1, *mod2;
     const struct lysc_node *schema;
     LY_ARRAY_COUNT_TYPE u;
