@@ -675,7 +675,8 @@ lyplg_ext_parsed_get_storage(const struct lysc_ext_instance *ext, int stmt, uint
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_ext_get_data(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, void **ext_data, ly_bool *ext_data_free)
+lyplg_ext_get_data(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, const struct lyd_node *parent,
+        void **ext_data, ly_bool *ext_data_free)
 {
     LY_ERR rc;
 
@@ -684,7 +685,7 @@ lyplg_ext_get_data(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext
         return LY_EINVAL;
     }
 
-    if ((rc = ctx->ext_clb(ext, ctx->ext_clb_data, ext_data, ext_data_free))) {
+    if ((rc = ctx->ext_clb(ext, parent, ctx->ext_clb_data, ext_data, ext_data_free))) {
         lyplg_ext_compile_log(NULL, ext, LY_LLERR, rc, "Callback for getting ext data failed.");
     }
     return rc;
