@@ -477,19 +477,18 @@ lysp_ext_dup(const struct ly_ctx *ctx, const struct lysp_module *pmod, void *par
     DUP_STRING_GOTO(ctx, orig_ext->argument, ext->argument, ret, cleanup);
     ext->format = orig_ext->format;
     LY_CHECK_GOTO(ret = ly_dup_prefix_data(ctx, orig_ext->format, orig_ext->prefix_data, &ext->prefix_data), cleanup);
-    ext->def = orig_ext->def;
+    ext->plugin = orig_ext->plugin;
 
     ext->parent = parent;
     ext->parent_stmt = parent_stmt;
     ext->parent_stmt_index = orig_ext->parent_stmt_index;
     ext->flags = orig_ext->flags;
-    ext->record = orig_ext->record;
 
     LY_CHECK_GOTO(ret = lysp_ext_children_dup(ctx, orig_ext->child, &ext->child), cleanup);
-    if (ext->record && ext->record->plugin.parse) {
+    if (ext->plugin && ext->plugin->parse) {
         /* parse again */
         LY_CHECK_GOTO(ret = ly_set_add(&pmods, pmod, 1, NULL), cleanup);
-        LY_CHECK_GOTO(ret = ext->record->plugin.parse(&pctx, ext), cleanup);
+        LY_CHECK_GOTO(ret = ext->plugin->parse(&pctx, ext), cleanup);
     }
 
 cleanup:
@@ -1355,7 +1354,7 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysp_deviate_del *d, struc
             AMEND_WRONG_NODETYPE("deviation", "delete", "must");
         }
 
-        DEV_DEL_ARRAY(musts, *musts, .arg.str, .arg.str, lysp_restr_free, &ctx->free_ctx, "must");
+        DEV_DEL_ARRAY(musts, *musts, .arg.str, .arg.str, lysp_restr_free, ctx->ctx, "must");
     }
 
     /* *unique-stmt */
@@ -1429,7 +1428,7 @@ lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysp_deviate_rpl *d, stru
             AMEND_WRONG_NODETYPE("deviation", "replace", "type");
         }
 
-        lysp_type_free(&ctx->free_ctx, &((struct lysp_node_leaf *)target)->type);
+        lysp_type_free(ctx->ctx, &((struct lysp_node_leaf *)target)->type);
         lysp_type_dup(ctx->ctx, ctx->pmod, d->type, &((struct lysp_node_leaf *)target)->type);
     }
 
@@ -1814,7 +1813,7 @@ lysp_dev_node_free(struct lysc_ctx *cctx, struct lysp_node *dev_pnode)
     case LYS_INPUT:
     case LYS_OUTPUT:
         ((struct lysp_node_action_inout *)dev_pnode)->child = NULL;
-        lysp_node_free(&cctx->free_ctx, dev_pnode);
+        lysp_node_free(cctx->ctx, dev_pnode);
         free(dev_pnode);
         return;
     default:
@@ -1822,7 +1821,7 @@ lysp_dev_node_free(struct lysc_ctx *cctx, struct lysp_node *dev_pnode)
         return;
     }
 
-    lysp_node_free(&cctx->free_ctx, dev_pnode);
+    lysp_node_free(cctx->ctx, dev_pnode);
 }
 
 LY_ERR

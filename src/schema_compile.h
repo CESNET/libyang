@@ -54,7 +54,6 @@ struct lysc_ctx {
     struct lys_depset_unres *unres; /**< dependency set unres sets */
     uint32_t path_len;          /**< number of path bytes used */
     uint32_t compile_opts;      /**< various @ref scflags. */
-    struct lysf_ctx free_ctx;   /**< freeing context for errors/recompilation */
 
 #define LYSC_CTX_BUFSIZE 4078
     char path[LYSC_CTX_BUFSIZE];/**< Path identifying the schema node currently being processed */
@@ -69,8 +68,7 @@ struct lysc_ctx {
 #define LYSC_CTX_INIT_CTX(CCTX, CTX) \
     (CCTX).ctx = (CTX); \
     (CCTX).path_len = 1; \
-    (CCTX).path[0] = '/'; \
-    (CCTX).free_ctx.ctx = (CTX)
+    (CCTX).path[0] = '/'
 
 /**
  * @brief Initalize local compilation context using a parsed module.
@@ -85,8 +83,7 @@ struct lysc_ctx {
     (CCTX).pmod = (PMOD); \
     (CCTX).ext = (EXT); \
     (CCTX).path_len = 1; \
-    (CCTX).path[0] = '/'; \
-    (CCTX).free_ctx.ctx = (PMOD)->mod->ctx
+    (CCTX).path[0] = '/'
 
 /**
  * @brief Structure for unresolved items that may depend on any implemented module data in the dependency set
@@ -300,12 +297,20 @@ LY_ERR lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module
         struct lysc_ident *ident, struct lysc_ident ***bases);
 
 /**
- * @brief Perform a complet compilation of identites in a module and all its submodules.
+ * @brief Perform a complete compilation of identites in a module and all its submodules.
  *
  * @param[in] mod Module to process.
  * @return LY_ERR value.
  */
 LY_ERR lys_compile_identities(struct lys_module *mod);
+
+/**
+ * @brief Compile parsed extension definitions.
+ *
+ * @param[in] mod Module to process.
+ * @return LY_ERR value.
+ */
+LY_ERR lys_compile_extensions(struct lys_module *mod);
 
 /**
  * @brief Compile schema into a validated schema linking all the references. Must have been implemented before.

@@ -405,7 +405,7 @@ struct lysp_ext_instance {
     const char *argument;                   /**< optional value of the extension's argument */
     LY_VALUE_FORMAT format;                 /**< prefix format of the extension name/argument (::LY_VALUE_XML is YIN format) */
     void *prefix_data;                      /**< format-specific data for prefix resolution (see ly_resolve_prefix()) */
-    struct lysp_ext *def;                   /**< pointer to the extension definition */
+    struct lyplg_ext *plugin;               /**< pointer to the extension plugin, if any */
 
     void *parent;                           /**< pointer to the parent statement holding the extension instance(s), use
                                                  ::lysp_ext_instance#parent_stmt to access the value/structure */
@@ -414,7 +414,6 @@ struct lysp_ext_instance {
                                                  statement directly and it is an array */
     uint16_t flags;                         /**< ::LYS_INTERNAL value (@ref snodeflags) */
 
-    const struct lyplg_ext_record *record;  /**< extension definition plugin record, if any */
     struct lysp_ext_substmt *substmts;      /**< list of supported known YANG statements with the pointer to their
                                                  parsed data ([sized array](@ref sizedarrays)) */
     void *parsed;                           /**< private plugin parsed data */

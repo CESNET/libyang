@@ -633,6 +633,7 @@ lyplg_ext_parsed_get_storage(const struct lysc_ext_instance *ext, int stmt, uint
 {
     LY_ARRAY_COUNT_TYPE u;
     const struct lysp_ext_instance *extp = NULL;
+    const char *extp_name;
     enum ly_stmt match = 0;
     void **s_p = NULL;
 
@@ -641,8 +642,9 @@ lyplg_ext_parsed_get_storage(const struct lysc_ext_instance *ext, int stmt, uint
     /* find the parsed ext instance */
     LY_ARRAY_FOR(ext->module->parsed->exts, u) {
         extp = &ext->module->parsed->exts[u];
+        extp_name = strchr(extp->name, ':') + 1;
 
-        if (ext->def == extp->def->compiled) {
+        if (!strcmp(ext->def->name, extp_name)) {
             break;
         }
         extp = NULL;

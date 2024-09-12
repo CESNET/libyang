@@ -294,7 +294,7 @@ yprp_extension_instance(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t 
 
     ypr_open(pctx->out, flag);
 
-    if (ext->def->argname) {
+    if (ext->argument) {
         ly_print_(pctx->out, "%*s%s \"", INDENT, ext->name);
         ypr_encode(pctx->out, ext->argument, -1);
         ly_print_(pctx->out, "\"");
