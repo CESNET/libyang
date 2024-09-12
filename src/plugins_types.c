@@ -885,7 +885,7 @@ cleanup:
 }
 
 LIBYANG_API_DEF void
-lyplg_type_lypath_free(const struct ly_ctx *UNUSED(ctx), struct ly_path *path)
+lyplg_type_lypath_free(struct ly_path *path)
 {
     ly_path_free(path);
 }
