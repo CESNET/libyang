@@ -118,7 +118,7 @@ lyd_parser_notif_eventtime_validate(const struct lyd_node *node)
     }
 
 cleanup:
-    FREE_ARRAY(&cctx.free_ctx, patterns, lysc_pattern_free);
+    FREE_ARRAY(cctx.ctx, patterns, lysc_pattern_free);
     if (rc && err) {
         ly_err_print(ctx, err);
         ly_err_free(err);

@@ -2270,10 +2270,13 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
     ly_parse_nodeid(&tmp, &prefix, &pref_len, &name, &name_len);
 
     /* get module where the extension definition should be placed */
-    *ext_mod = mod = ly_resolve_prefix(ctx, prefix, pref_len, ext->format, ext->prefix_data);
+    mod = ly_resolve_prefix(ctx, prefix, pref_len, ext->format, ext->prefix_data);
     if (!mod) {
         LOGVAL(ctx, LYVE_REFERENCE, "Invalid prefix \"%.*s\" used for extension instance identifier.", (int)pref_len, prefix);
         return LY_EVALID;
+    }
+    if (ext_mod) {
+        *ext_mod = mod;
     }
 
     if (!ext_def) {
@@ -2309,11 +2312,46 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
 }
 
 LY_ERR
-lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance *ext_p)
+lysc_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instance *ext, struct lysc_ext **ext_def)
 {
-    assert(ext_p->def);
+    const char *tmp, *name, *prefix;
+    size_t pref_len, name_len;
+    LY_ARRAY_COUNT_TYPE u;
+    const struct lys_module *mod = NULL;
 
-    if (!ext_p->def->argname || ext_p->argument) {
+    *ext_def = NULL;
+
+    /* parse the prefix, the nodeid was previously already parsed and checked */
+    tmp = ext->name;
+    ly_parse_nodeid(&tmp, &prefix, &pref_len, &name, &name_len);
+
+    /* get module where the extension definition should be placed */
+    mod = ly_resolve_prefix(ctx, prefix, pref_len, ext->format, ext->prefix_data);
+    if (!mod) {
+        LOGVAL(ctx, LYVE_REFERENCE, "Invalid prefix \"%.*s\" used for extension instance identifier.", (int)pref_len, prefix);
+        return LY_EVALID;
+    }
+
+    /* find the compiled extension definition there */
+    LY_ARRAY_FOR(mod->extensions, u) {
+        if (!strcmp(name, mod->extensions[u].name)) {
+            *ext_def = &mod->extensions[u];
+            break;
+        }
+    }
+
+    if (!*ext_def) {
+        LOGVAL(ctx, LYVE_REFERENCE, "Extension definition of extension instance \"%s\" not found.", ext->name);
+        return LY_EVALID;
+    }
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lysp_ext_instance_resolve_argument(const struct ly_ctx *ctx, const struct lysp_ext *ext_def, struct lysp_ext_instance *ext_p)
+{
+    if (!ext_def->argname || ext_p->argument) {
         /* nothing to do */
         return LY_SUCCESS;
     }
@@ -2322,7 +2360,7 @@ lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance 
         /* schema was parsed from YIN and an argument is expected, ... */
         struct lysp_stmt *stmt = NULL;
 
-        if (ext_p->def->flags & LYS_YINELEM_TRUE) {
+        if (ext_def->flags & LYS_YINELEM_TRUE) {
             /* ... argument was the first XML child element */
             for (stmt = ext_p->child; stmt && (stmt->flags & LYS_YIN_ATTR); stmt = stmt->next) {}
             if (stmt) {
@@ -2333,9 +2371,9 @@ lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance 
 
                 arg = stmt->stmt;
                 ly_parse_nodeid(&arg, &prefix_arg, &prefix_arg_len, &name_arg, &name_arg_len);
-                if (ly_strncmp(ext_p->def->argname, name_arg, name_arg_len)) {
+                if (ly_strncmp(ext_def->argname, name_arg, name_arg_len)) {
                     LOGVAL(ctx, LYVE_SEMANTICS, "Extension instance \"%s\" expects argument element \"%s\" as its first XML child, "
-                            "but \"%.*s\" element found.", ext_p->name, ext_p->def->argname, (int)name_arg_len, name_arg);
+                            "but \"%.*s\" element found.", ext_p->name, ext_def->argname, (int)name_arg_len, name_arg);
                     return LY_EVALID;
                 }
 
@@ -2347,14 +2385,14 @@ lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance 
                 if (ly_resolve_prefix(ctx, prefix_ext, prefix_ext_len, ext_p->format, ext_p->prefix_data) !=
                         ly_resolve_prefix(ctx, prefix_arg, prefix_arg_len, stmt->format, stmt->prefix_data)) {
                     LOGVAL(ctx, LYVE_SEMANTICS, "Extension instance \"%s\" element and its argument element \"%s\" are "
-                            "expected in the same namespace, but they differ.", ext_p->name, ext_p->def->argname);
+                            "expected in the same namespace, but they differ.", ext_p->name, ext_def->argname);
                     return LY_EVALID;
                 }
             }
         } else {
             /* ... argument was one of the XML attributes which are represented as child stmt with LYS_YIN_ATTR flag */
             for (stmt = ext_p->child; stmt && (stmt->flags & LYS_YIN_ATTR); stmt = stmt->next) {
-                if (!strcmp(stmt->stmt, ext_p->def->argname)) {
+                if (!strcmp(stmt->stmt, ext_def->argname)) {
                     /* this is the extension's argument */
                     break;
                 }
@@ -2370,7 +2408,7 @@ lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance 
     if (!ext_p->argument) {
         /* missing extension's argument */
         LOGVAL(ctx, LYVE_SEMANTICS, "Extension instance \"%s\" missing argument %s\"%s\".",
-                ext_p->name, (ext_p->def->flags & LYS_YINELEM_TRUE) ? "element " : "", ext_p->def->argname);
+                ext_p->name, (ext_def->flags & LYS_YINELEM_TRUE) ? "element " : "", ext_def->argname);
         return LY_EVALID;
     }
 

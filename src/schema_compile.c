@@ -109,51 +109,6 @@ remove_nodelevel:
     ly_log_location(NULL, NULL, ctx->path, NULL);
 }
 
-/**
- * @brief Fill in the prepared compiled extensions definition structure according to the parsed extension definition.
- *
- * @param[in] ctx Compile context.
- * @param[in] extp Parsed extension instance.
- * @param[out] ext Compiled extension definition.
- * @return LY_ERR value.
- */
-static LY_ERR
-lys_compile_extension(struct lysc_ctx *ctx, struct lysp_ext_instance *extp, struct lysc_ext **ext)
-{
-    LY_ERR ret = LY_SUCCESS;
-    struct lysp_ext *ep = extp->def;
-
-    if (!ep->compiled) {
-        lysc_update_path(ctx, NULL, "{extension}");
-        lysc_update_path(ctx, NULL, ep->name);
-
-        /* compile the extension definition */
-        *ext = ep->compiled = calloc(1, sizeof **ext);
-        DUP_STRING_GOTO(ctx->ctx, ep->name, (*ext)->name, ret, cleanup);
-        DUP_STRING_GOTO(ctx->ctx, ep->argname, (*ext)->argname, ret, cleanup);
-        LY_CHECK_GOTO(ret = lysp_ext_find_definition(ctx->ctx, extp, (const struct lys_module **)&(*ext)->module, NULL),
-                cleanup);
-
-        /* compile nested extensions */
-        COMPILE_EXTS_GOTO(ctx, ep->exts, (*ext)->exts, *ext, ret, cleanup);
-
-        lysc_update_path(ctx, NULL, NULL);
-        lysc_update_path(ctx, NULL, NULL);
-
-        /* find extension definition plugin */
-        (*ext)->plugin = extp->record ? (struct lyplg_ext *)&extp->record->plugin : NULL;
-    }
-
-    *ext = ep->compiled;
-
-cleanup:
-    if (ret) {
-        lysc_update_path(ctx, NULL, NULL);
-        lysc_update_path(ctx, NULL, NULL);
-    }
-    return ret;
-}
-
 LY_ERR
 lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *extp, struct lysc_ext_instance *ext, void *parent)
 {
@@ -169,8 +124,8 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *extp, struct lys
             "{extension}");
     lysc_update_path(ctx, NULL, extp->name);
 
-    /* compile extension if not already */
-    LY_CHECK_GOTO(ret = lys_compile_extension(ctx, extp, &ext->def), cleanup);
+    /* find the compiled extension definition */
+    LY_CHECK_GOTO(ret = lysc_ext_find_definition(ctx->ctx, extp, &ext->def), cleanup);
 
     /* compile nested extensions */
     COMPILE_EXTS_GOTO(ctx, extp->exts, ext->exts, ext, ret, cleanup);
@@ -182,7 +137,7 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *extp, struct lys
         }
         ret = ext->def->plugin->compile(ctx, extp, ext);
         if (ret == LY_ENOT) {
-            lysc_ext_instance_free(&ctx->free_ctx, ext);
+            lysc_ext_instance_free(ctx->ctx, ext);
         }
         if (ext->argument) {
             lysc_update_path(ctx, NULL, NULL);
@@ -766,7 +721,7 @@ cleanup:
  * @param[in] items Sized array of bits/enums.
  */
 static void
-lys_compile_unres_disabled_bitenum_remove(struct lysf_ctx *ctx, struct lysc_type_bitenum_item *items)
+lys_compile_unres_disabled_bitenum_remove(const struct ly_ctx *ctx, struct lysc_type_bitenum_item *items)
 {
     LY_ARRAY_COUNT_TYPE u = 0, last_u;
 
@@ -816,7 +771,7 @@ lys_compile_unres_disabled_bitenum(struct lysc_ctx *ctx, struct lysc_node_leaf *
         if ((t[u]->basetype == LY_TYPE_BITS) || (t[u]->basetype == LY_TYPE_ENUM)) {
             /* remove all disabled items */
             ent = (struct lysc_type_enum *)(t[u]);
-            lys_compile_unres_disabled_bitenum_remove(&ctx->free_ctx, ent->enums);
+            lys_compile_unres_disabled_bitenum_remove(ctx->ctx, ent->enums);
 
             if (LY_ARRAY_COUNT(ent->enums)) {
                 has_value = 1;
@@ -1367,7 +1322,7 @@ resolve_all:
                     typeiter->basetype == LY_TYPE_LEAFREF;
                     typeiter = ((struct lysc_type_leafref *)typeiter)->realtype) {}
 
-            lysc_type_free(&cctx.free_ctx, lref->realtype);
+            lysc_type_free(cctx.ctx, lref->realtype);
             lref->realtype = typeiter;
             ++lref->realtype->refcount;
         }
@@ -1453,7 +1408,7 @@ resolve_all:
 
         LYSC_CTX_INIT_PMOD(cctx, node->module->parsed, NULL);
 
-        lysc_node_free(&cctx.free_ctx, node, 1);
+        lysc_node_free(cctx.ctx, node, 1);
     }
 
     /* also check if the leafref target has not been disabled */
@@ -1481,7 +1436,6 @@ resolve_all:
     }
 
 cleanup:
-    assert(!cctx.free_ctx.ext_set.count);
     return ret;
 }
 
@@ -1523,7 +1477,6 @@ static LY_ERR
 lys_compile_depset_r(struct ly_ctx *ctx, struct ly_set *dep_set, struct lys_glob_unres *unres)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lysf_ctx fctx = {.ctx = ctx};
     struct lys_module *mod;
     uint32_t i;
 
@@ -1536,7 +1489,7 @@ lys_compile_depset_r(struct ly_ctx *ctx, struct ly_set *dep_set, struct lys_glob
         assert(mod->implemented);
 
         /* free the compiled module, if any */
-        lysc_module_free(&fctx, mod->compiled);
+        lysc_module_free(ctx, mod->compiled);
         mod->compiled = NULL;
 
         /* (re)compile the module */
@@ -1570,7 +1523,6 @@ resolve_unres:
     }
 
 cleanup:
-    assert(!fctx.ext_set.count);
     lys_compile_unres_depset_erase(ctx, unres);
     return ret;
 }
@@ -1856,10 +1808,65 @@ cleanup:
     ly_log_location_revert(0, 0, 1, 0);
     lys_compile_unres_mod_erase(&ctx, ret);
     if (ret) {
-        lysc_module_free(&ctx.free_ctx, mod_c);
+        lysc_module_free(ctx.ctx, mod_c);
         mod->compiled = NULL;
     }
     return ret;
+}
+
+LY_ERR
+lys_compile_extensions(struct lys_module *mod)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lysc_ctx ctx = {0};
+    LY_ARRAY_COUNT_TYPE u;
+    struct lysp_ext *ep;
+    struct lysc_ext *ec;
+
+    if (!mod->parsed->extensions) {
+        return LY_SUCCESS;
+    }
+
+    LYSC_CTX_INIT_PMOD(ctx, mod->parsed, NULL);
+
+    /* allocate the array */
+    LY_ARRAY_CREATE_RET(mod->ctx, mod->extensions, LY_ARRAY_COUNT(mod->parsed->extensions), LY_EMEM);
+
+    /* compile all extension definitions */
+    LY_ARRAY_FOR(mod->parsed->extensions, u) {
+        ep = &mod->parsed->extensions[u];
+        ec = &mod->extensions[u];
+
+        /* compile the extension definition */
+        DUP_STRING_GOTO(ctx.ctx, ep->name, ec->name, rc, cleanup);
+        DUP_STRING_GOTO(ctx.ctx, ep->argname, ec->argname, rc, cleanup);
+        ec->module = mod;
+        ec->plugin = ep->plugin;
+
+        LY_ARRAY_INCREMENT(mod->extensions);
+    }
+
+    /* compile all nested extension instances, which can reference the compiled definitions */
+    LY_ARRAY_FOR(mod->parsed->extensions, u) {
+        ep = &mod->parsed->extensions[u];
+        ec = &mod->extensions[u];
+
+        lysc_update_path(&ctx, NULL, "{extension}");
+        lysc_update_path(&ctx, NULL, ep->name);
+
+        /* compile nested extensions */
+        COMPILE_EXTS_GOTO(&ctx, ep->exts, ec->exts, ec, rc, cleanup);
+
+        lysc_update_path(&ctx, NULL, NULL);
+        lysc_update_path(&ctx, NULL, NULL);
+    }
+
+cleanup:
+    if (rc) {
+        lysc_update_path(&ctx, NULL, NULL);
+        lysc_update_path(&ctx, NULL, NULL);
+    }
+    return rc;
 }
 
 LY_ERR

@@ -44,7 +44,7 @@ test_add_simple(void **state)
 {
     struct lys_module *mod;
     struct lysc_node_leaf *leaf;
-    struct lyplg_ext_record *record_e;
+    struct lyplg_ext *plugin_e;
     struct lyplg_type *plugin_t;
 
     assert_int_equal(LY_SUCCESS, lyplg_add(TESTS_BIN "/plugins/plugin_simple" LYPLG_SUFFIX));
@@ -59,9 +59,9 @@ test_add_simple(void **state)
     assert_ptr_equal(leaf->type->plugin, plugin_t);
 
     assert_int_equal(1, LY_ARRAY_COUNT(leaf->exts));
-    assert_non_null(record_e = lyplg_ext_record_find(NULL, "libyang-plugins-simple", NULL, "hint"));
-    assert_string_equal("ly2 simple test v1", record_e->plugin.id);
-    assert_ptr_equal(leaf->exts[0].def->plugin, &record_e->plugin);
+    assert_non_null(plugin_e = lyplg_ext_plugin_find(NULL, "libyang-plugins-simple", NULL, "hint"));
+    assert_string_equal("ly2 simple test v1", plugin_e->id);
+    assert_ptr_equal(leaf->exts[0].def->plugin, plugin_e);
 
     /* the second loading of the same plugin - still success */
     assert_int_equal(LY_SUCCESS, lyplg_add(TESTS_BIN "/plugins/plugin_simple" LYPLG_SUFFIX));

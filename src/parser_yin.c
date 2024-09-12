@@ -2933,7 +2933,6 @@ yin_parse_deviation(struct lysp_yin_ctx *ctx, struct lysp_deviation **deviations
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysp_deviation *dev = NULL;
-    struct lysf_ctx fctx = {.ctx = PARSER_CTX(ctx)};
 
     /* create new deviation */
     LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *deviations, dev, LY_EMEM);
@@ -2957,7 +2956,7 @@ yin_parse_deviation(struct lysp_yin_ctx *ctx, struct lysp_deviation **deviations
 
 cleanup:
     if (ret) {
-        lysp_deviation_free(&fctx, dev);
+        lysp_deviation_free(PARSER_CTX(ctx), dev);
         LY_ARRAY_DECREMENT_FREE(*deviations);
     }
     return ret;
@@ -3893,7 +3892,6 @@ yin_parse_submodule(struct lysp_yin_ctx **yin_ctx, struct ly_ctx *ctx, struct ly
     enum ly_stmt kw = LY_STMT_NONE;
     LY_ERR ret = LY_SUCCESS;
     struct lysp_submodule *mod_p = NULL;
-    struct lysf_ctx fctx = {.ctx = ctx};
 
     assert(yin_ctx && ctx && main_ctx && in && submod);
 
@@ -3949,7 +3947,7 @@ yin_parse_submodule(struct lysp_yin_ctx **yin_ctx, struct ly_ctx *ctx, struct ly
 cleanup:
     ly_log_location_revert(0, 0, 0, 1);
     if (ret) {
-        lysp_module_free(&fctx, (struct lysp_module *)mod_p);
+        lysp_module_free(ctx, (struct lysp_module *)mod_p);
         lysp_yin_ctx_free(*yin_ctx);
         *yin_ctx = NULL;
     }
@@ -3962,7 +3960,6 @@ yin_parse_module(struct lysp_yin_ctx **yin_ctx, struct ly_in *in, struct lys_mod
     LY_ERR ret = LY_SUCCESS;
     enum ly_stmt kw = LY_STMT_NONE;
     struct lysp_module *mod_p = NULL;
-    struct lysf_ctx fctx = {.ctx = mod->ctx};
 
     /* create context */
     *yin_ctx = calloc(1, sizeof **yin_ctx);
@@ -4013,7 +4010,7 @@ yin_parse_module(struct lysp_yin_ctx **yin_ctx, struct ly_in *in, struct lys_mod
 cleanup:
     ly_log_location_revert(0, 0, 0, 1);
     if (ret) {
-        lysp_module_free(&fctx, mod_p);
+        lysp_module_free(mod->ctx, mod_p);
         lysp_yin_ctx_free(*yin_ctx);
         *yin_ctx = NULL;
     }
