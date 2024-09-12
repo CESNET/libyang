@@ -15,11 +15,13 @@
 #define _GNU_SOURCE
 #define _POSIX_C_SOURCE 200809L /* strdup */
 
+#include <dirent.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include "libyang.h"
 
@@ -27,6 +29,69 @@
 #include "common.h"
 #include "compat.h"
 #include "linenoise/linenoise.h"
+
+/* This function can be called in user completion callback to fill
+ * path completion for them. hint parameter is actually the whole path
+ * and buf is unused, but included to match the completion callback prototype. */
+static void
+path_completion(const char *buf,  const char *hint, linenoiseCompletions *lc)
+{
+    const char *ptr;
+    char *full_path, *hint_ptr, match[FILENAME_MAX + 2];
+    DIR *dir;
+    struct dirent *ent;
+    struct stat st;
+
+    (void)buf;
+
+    lc->path = 1;
+
+    ptr = strrchr(hint, '/');
+
+    /* new relative path */
+    if (ptr == NULL) {
+        full_path = malloc(2 + FILENAME_MAX + 1);
+        strcpy(full_path, "./");
+
+        ptr = hint;
+    } else {
+        full_path = malloc((int)(ptr - hint) + FILENAME_MAX + 1);
+        ++ptr;
+        sprintf(full_path, "%.*s", (int)(ptr - hint), hint);
+    }
+    hint_ptr = full_path + strlen(full_path);
+
+    dir = opendir(full_path);
+    if (dir == NULL) {
+        free(full_path);
+        return;
+    }
+
+    while ((ent = readdir(dir))) {
+        if (ent->d_name[0] == '.') {
+            continue;
+        }
+
+        if (!strncmp(ptr, ent->d_name, strlen(ptr))) {
+            /* is it a directory? */
+            strcpy(hint_ptr, ent->d_name);
+            if (stat(full_path, &st)) {
+                /* skip this item */
+                continue;
+            }
+
+            strcpy(match, ent->d_name);
+            if (S_ISDIR(st.st_mode)) {
+                strcat(match, "/");
+            }
+
+            linenoiseAddCompletion(lc, match);
+        }
+    }
+
+    free(full_path);
+    closedir(dir);
+}
 
 /* from the main.c */
 extern struct ly_ctx *ctx;
@@ -433,22 +498,22 @@ complete_cmd(const char *buf, const char *hint, linenoiseCompletions *lc)
         void (*ln_cb)(const char *, const char *, linenoiseCompletions *);  /**< linenoise callback to call */
         void (*yl_cb)(const char *, char ***, unsigned int *);              /**< yanglint callback to call */
     } ac[] = {
-        {CMD_ADD,         NULL,    linenoisePathCompletion, NULL},
+        {CMD_ADD,         NULL,    path_completion, NULL},
         {CMD_PRINT,       "-f",    NULL, get_print_format_arg},
         {CMD_PRINT,       "-P",    NULL, get_schema_completion},
-        {CMD_PRINT,       "-o",    linenoisePathCompletion, NULL},
+        {CMD_PRINT,       "-o",    path_completion, NULL},
         {CMD_PRINT,       NULL,    NULL, get_model_completion},
-        {CMD_SEARCHPATH,  NULL,    linenoisePathCompletion, NULL},
-        {CMD_EXTDATA,     NULL,    linenoisePathCompletion, NULL},
-        {CMD_CLEAR,       "-Y",    linenoisePathCompletion, NULL},
+        {CMD_SEARCHPATH,  NULL,    path_completion, NULL},
+        {CMD_EXTDATA,     NULL,    path_completion, NULL},
+        {CMD_CLEAR,       "-Y",    path_completion, NULL},
         {CMD_DATA,        "-t",    NULL, get_data_type_arg},
-        {CMD_DATA,        "-O",    linenoisePathCompletion, NULL},
-        {CMD_DATA,        "-R",    linenoisePathCompletion, NULL},
+        {CMD_DATA,        "-O",    path_completion, NULL},
+        {CMD_DATA,        "-R",    path_completion, NULL},
         {CMD_DATA,        "-f",    NULL, get_data_in_format_arg},
         {CMD_DATA,        "-F",    NULL, get_data_in_format_arg},
         {CMD_DATA,        "-d",    NULL, get_data_default_arg},
-        {CMD_DATA,        "-o",    linenoisePathCompletion, NULL},
-        {CMD_DATA,        NULL,    linenoisePathCompletion, NULL},
+        {CMD_DATA,        "-o",    path_completion, NULL},
+        {CMD_DATA,        NULL,    path_completion, NULL},
         {CMD_LIST,        NULL,    NULL, get_list_format_arg},
         {CMD_FEATURE,     NULL,    NULL, get_model_completion},
         {CMD_VERB,        NULL,    NULL, get_verb_arg},
