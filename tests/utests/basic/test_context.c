@@ -983,20 +983,17 @@ test_set_priv_parsed(void **state)
     assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "ietf-restconf", "2017-01-26", NULL));
     UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, feats, NULL);
 
-    print_message("[          ] create context\n");
     mod = ly_ctx_get_module(UTEST_LYCTX, "a", NULL);
     iter = check;
     assert_int_equal(LY_SUCCESS, lysc_module_dfs_full(mod, check_node_priv_parsed_is_set, &iter));
     check_ext_instance_priv_parsed_is_set(mod->compiled->exts);
 
-    print_message("[          ] unset option\n");
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED));
     mod = ly_ctx_get_module(UTEST_LYCTX, "a", NULL);
     iter = check;
     assert_int_equal(LY_SUCCESS, lysc_module_dfs_full(mod, check_node_priv_parsed_not_set, &iter));
     check_ext_instance_priv_parsed_not_set(mod->compiled->exts);
 
-    print_message("[          ] set option\n");
     assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED));
     mod = ly_ctx_get_module(UTEST_LYCTX, "a", NULL);
     iter = check;
@@ -1085,6 +1082,14 @@ test_explicit_compile(void **state)
     assert_non_null(mod);
 }
 
+static void
+test_free_parsed(void **state)
+{
+    ly_ctx_free_parsed(UTEST_LYCTX);
+    ly_ctx_destroy(UTEST_LYCTX);
+    UTEST_LYCTX = NULL;
+}
+
 int
 main(void)
 {
@@ -1097,6 +1102,7 @@ main(void)
         UTEST(test_ylmem),
         UTEST(test_set_priv_parsed),
         UTEST(test_explicit_compile),
+        UTEST(test_free_parsed),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

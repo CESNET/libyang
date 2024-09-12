@@ -57,8 +57,6 @@ LY_ERR parse_when(struct lysp_yang_ctx *ctx, struct lysp_when **when_p);
 LY_ERR parse_type_enum_value_pos(struct lysp_yang_ctx *ctx, enum ly_stmt val_kw, struct lysp_type_enum *enm);
 
 struct lysp_yang_ctx *YCTX;
-struct lysf_ctx fctx;
-
 struct ly_in in = {0};
 
 #define YCTX_INIT \
@@ -93,24 +91,19 @@ setup(void **state)
     YCTX->in = &in;
     ly_log_location(NULL, NULL, NULL, &in);
 
-    fctx.ctx = PARSER_CTX(YCTX);
-    fctx.mod = pmod->mod;
-
     return 0;
 }
 
 static int
 teardown(void **state)
 {
-    lys_module_free(&fctx, PARSER_CUR_PMOD(YCTX)->mod, 0);
+    lys_module_free(PARSER_CTX(YCTX), PARSER_CUR_PMOD(YCTX)->mod, 0);
     ly_log_location_revert(0, 0, 0, 1);
 
     ly_set_free(YCTX->parsed_mods, NULL);
     ly_set_erase(&YCTX->ext_inst, NULL);
     free(YCTX);
     YCTX = NULL;
-
-    lysf_ctx_erase(&fctx);
 
     UTEST_TEARDOWN;
 
@@ -725,7 +718,7 @@ mod_renew(struct lysp_yang_ctx *ctx)
     struct ly_ctx *ly_ctx = PARSER_CUR_PMOD(ctx)->mod->ctx;
     struct lysp_module *pmod;
 
-    lys_module_free(&fctx, PARSER_CUR_PMOD(ctx)->mod, 0);
+    lys_module_free(PARSER_CTX(YCTX), PARSER_CUR_PMOD(ctx)->mod, 0);
     pmod = calloc(1, sizeof *pmod);
     ctx->parsed_mods->objs[0] = pmod;
     pmod->mod = calloc(1, sizeof *pmod->mod);
@@ -733,7 +726,6 @@ mod_renew(struct lysp_yang_ctx *ctx)
     pmod->mod->ctx = ly_ctx;
 
     ctx->in->line = 1;
-    fctx.mod = pmod->mod;
 
     return pmod;
 }
@@ -744,15 +736,13 @@ submod_renew(struct lysp_yang_ctx *ctx)
     struct ly_ctx *ly_ctx = PARSER_CUR_PMOD(ctx)->mod->ctx;
     struct lysp_submodule *submod;
 
-    lys_module_free(&fctx, PARSER_CUR_PMOD(ctx)->mod, 0);
+    lys_module_free(PARSER_CTX(YCTX), PARSER_CUR_PMOD(ctx)->mod, 0);
     submod = calloc(1, sizeof *submod);
     ctx->parsed_mods->objs[0] = submod;
     submod->mod = calloc(1, sizeof *submod->mod);
     lydict_insert(ly_ctx, "name", 0, &submod->mod->name);
     submod->mod->parsed = (struct lysp_module *)submod;
     submod->mod->ctx = ly_ctx;
-
-    fctx.mod = submod->mod;
 
     return submod;
 }
@@ -954,7 +944,7 @@ test_module(void **state)
     assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
     CHECK_LOG_CTX("Trailing garbage \"module q {names...\" after module, expected end-of-input.", NULL, 1);
     lysp_yang_ctx_free(ctx_p);
-    lys_module_free(&fctx, m, 0);
+    lys_module_free(PARSER_CTX(YCTX), m, 0);
 
     in.current = "prefix " SCHEMA_BEGINNING "}";
     m = calloc(1, sizeof *m);
@@ -962,7 +952,7 @@ test_module(void **state)
     assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
     CHECK_LOG_CTX("Invalid keyword \"prefix\", expected \"module\" or \"submodule\".", NULL, 1);
     lysp_yang_ctx_free(ctx_p);
-    lys_module_free(&fctx, m, 0);
+    lys_module_free(PARSER_CTX(YCTX), m, 0);
 
     in.current = "module " SCHEMA_BEGINNING "leaf enum {type enumeration {enum seven { position 7;}}}}";
     m = calloc(1, sizeof *m);
@@ -970,7 +960,7 @@ test_module(void **state)
     assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
     CHECK_LOG_CTX("Invalid keyword \"position\" as a child of \"enum\".", NULL, 1);
     lysp_yang_ctx_free(ctx_p);
-    lys_module_free(&fctx, m, 0);
+    lys_module_free(PARSER_CTX(YCTX), m, 0);
 
     /* extensions */
     TEST_GENERIC("prefix:test;}", mod->exts,
@@ -1111,7 +1101,7 @@ test_container(void **state)
     in.current = "cont {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_container(YCTX, NULL, (struct lysp_node**)&c)); \
     CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
-    lysp_node_free(&fctx, (struct lysp_node*)c); c = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node*)c); c = NULL;
 
     TEST_DUP("config", "true", "false");
     TEST_DUP("description", "text1", "text2");
@@ -1135,24 +1125,24 @@ test_container(void **state)
     assert_non_null(c->typedefs);
     ly_set_erase(&YCTX->tpdfs_nodes, NULL);
     ly_set_erase(&YCTX->grps_nodes, NULL);
-    lysp_node_free(&fctx, (struct lysp_node *)c); c = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)c); c = NULL;
 
     /* invalid */
     in.current = " cont {augment /root;} ...";
     assert_int_equal(LY_EVALID, parse_container(YCTX, NULL, (struct lysp_node **)&c));
     CHECK_LOG_CTX("Invalid keyword \"augment\" as a child of \"container\".", NULL, 1);
-    lysp_node_free(&fctx, (struct lysp_node *)c); c = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)c); c = NULL;
     in.current = " cont {nonsence true;} ...";
     assert_int_equal(LY_EVALID, parse_container(YCTX, NULL, (struct lysp_node **)&c));
     CHECK_LOG_CTX("Invalid character sequence \"nonsence\", expected a keyword.", NULL, 1);
-    lysp_node_free(&fctx, (struct lysp_node *)c); c = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)c); c = NULL;
 
     PARSER_CUR_PMOD(YCTX)->version = 1; /* simulate YANG 1.0 */
     in.current = " cont {action x;} ...";
     assert_int_equal(LY_EVALID, parse_container(YCTX, NULL, (struct lysp_node **)&c));
     CHECK_LOG_CTX("Invalid keyword \"action\" as a child of \"container\" - "
             "the statement is allowed only in YANG 1.1 modules.", NULL, 1);
-    lysp_node_free(&fctx, (struct lysp_node *)c); c = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)c); c = NULL;
 }
 
 static void
@@ -1165,7 +1155,7 @@ test_leaf(void **state)
     in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_leaf(YCTX, NULL, (struct lysp_node**)&l)); \
     CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
-    lysp_node_free(&fctx, (struct lysp_node*)l); l = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node*)l); l = NULL;
 
     TEST_DUP("config", "true", "false");
     TEST_DUP("default", "x", "y");
@@ -1187,25 +1177,25 @@ test_leaf(void **state)
     assert_string_equal("yyy", l->units);
     assert_string_equal("string", l->type.name);
     assert_non_null(l->musts);
-    lysp_node_free(&fctx, (struct lysp_node *)l); l = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)l); l = NULL;
 
     /* full content - now with mandatory */
     in.current = "l {mandatory true; type string;} ...";
     assert_int_equal(LY_SUCCESS, parse_leaf(YCTX, NULL, (struct lysp_node **)&l));
     CHECK_LYSP_NODE(l, NULL, 0, LYS_MAND_TRUE, 0, "l", 0, LYS_LEAF, 0, NULL, 0);
     assert_string_equal("string", l->type.name);
-    lysp_node_free(&fctx, (struct lysp_node *)l); l = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)l); l = NULL;
 
     /* invalid */
     in.current = " l {description \"missing type\";} ...";
     assert_int_equal(LY_EVALID, parse_leaf(YCTX, NULL, (struct lysp_node **)&l));
     CHECK_LOG_CTX("Missing mandatory keyword \"type\" as a child of \"leaf\".", NULL, 1);
-    lysp_node_free(&fctx, (struct lysp_node *)l); l = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)l); l = NULL;
 
     in.current = "l { type iid { path qpud wrong {";
     assert_int_equal(LY_EVALID, parse_leaf(YCTX, NULL, (struct lysp_node **)&l));
     CHECK_LOG_CTX("Invalid character sequence \"wrong\", expected a keyword.", NULL, 1);
-    lysp_node_free(&fctx, (struct lysp_node *)l); l = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)l); l = NULL;
 }
 
 static void
@@ -1220,7 +1210,7 @@ test_leaflist(void **state)
     in.current = "ll {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_leaflist(YCTX, NULL, (struct lysp_node**)&ll)); \
     CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
-    lysp_node_free(&fctx, (struct lysp_node*)ll); ll = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node*)ll); ll = NULL;
 
     TEST_DUP("config", "true", "false");
     TEST_DUP("description", "text1", "text2");
@@ -1250,7 +1240,7 @@ test_leaflist(void **state)
     assert_string_equal("string", ll->type.name);
     assert_non_null(ll->musts);
     assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_USER | LYS_SET_MAX, ll->flags);
-    lysp_node_free(&fctx, (struct lysp_node *)ll); ll = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)ll); ll = NULL;
 
     /* full content - now with min-elements */
     in.current = "ll {min-elements 10; type string;} ...";
@@ -1260,19 +1250,19 @@ test_leaflist(void **state)
     assert_int_equal(0, ll->max);
     assert_int_equal(10, ll->min);
     assert_int_equal(LYS_SET_MIN, ll->flags);
-    lysp_node_free(&fctx, (struct lysp_node *)ll); ll = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)ll); ll = NULL;
 
     /* invalid */
     in.current = " ll {description \"missing type\";} ...";
     assert_int_equal(LY_EVALID, parse_leaflist(YCTX, NULL, (struct lysp_node **)&ll));
     CHECK_LOG_CTX("Missing mandatory keyword \"type\" as a child of \"leaf-list\".", NULL, 1);
-    lysp_node_free(&fctx, (struct lysp_node *)ll); ll = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)ll); ll = NULL;
 
     PARSER_CUR_PMOD(YCTX)->version = 1; /* simulate YANG 1.0 - default statement is not allowed */
     in.current = " ll {default xx; type string;} ...";
     assert_int_equal(LY_EVALID, parse_leaflist(YCTX, NULL, (struct lysp_node **)&ll));
     CHECK_LOG_CTX("Invalid keyword \"default\" as a child of \"leaf-list\" - the statement is allowed only in YANG 1.1 modules.", NULL, 1);
-    lysp_node_free(&fctx, (struct lysp_node *)ll); ll = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)ll); ll = NULL;
 }
 
 static void
@@ -1288,7 +1278,7 @@ test_list(void **state)
     in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_list(YCTX, NULL, (struct lysp_node**)&l)); \
     CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
-    lysp_node_free(&fctx, (struct lysp_node*)l); l = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node*)l); l = NULL;
 
     TEST_DUP("config", "true", "false");
     TEST_DUP("description", "text1", "text2");
@@ -1318,14 +1308,14 @@ test_list(void **state)
     assert_non_null(l->musts);
     ly_set_erase(&YCTX->tpdfs_nodes, NULL);
     ly_set_erase(&YCTX->grps_nodes, NULL);
-    lysp_node_free(&fctx, (struct lysp_node *)l); l = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)l); l = NULL;
 
     /* invalid content */
     PARSER_CUR_PMOD(YCTX)->version = 1; /* simulate YANG 1.0 */
     in.current = "l {action x;} ...";
     assert_int_equal(LY_EVALID, parse_list(YCTX, NULL, (struct lysp_node **)&l));
     CHECK_LOG_CTX("Invalid keyword \"action\" as a child of \"list\" - the statement is allowed only in YANG 1.1 modules.", NULL, 1);
-    lysp_node_free(&fctx, (struct lysp_node *)l); l = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)l); l = NULL;
 }
 
 static void
@@ -1340,7 +1330,7 @@ test_choice(void **state)
     in.current = "ch {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_choice(YCTX, NULL, (struct lysp_node**)&ch)); \
     CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
-    lysp_node_free(&fctx, (struct lysp_node*)ch); ch = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node*)ch); ch = NULL;
 
     TEST_DUP("config", "true", "false");
     TEST_DUP("default", "a", "b");
@@ -1356,14 +1346,14 @@ test_choice(void **state)
             "leaf-list ll {type string;} list li;mandatory true;reference test;status current;when true;m:ext;} ...";
     assert_int_equal(LY_SUCCESS, parse_choice(YCTX, NULL, (struct lysp_node **)&ch));
     CHECK_LYSP_NODE(ch, "test", 1, LYS_CONFIG_R | LYS_STATUS_CURR | LYS_MAND_TRUE, 1, "ch", 0, LYS_CHOICE, 0, "test", 1);
-    lysp_node_free(&fctx, (struct lysp_node *)ch); ch = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)ch); ch = NULL;
 
     /* full content - the default missing from the previous node */
     in.current = "ch {default c;case c;} ...";
     assert_int_equal(LY_SUCCESS, parse_choice(YCTX, NULL, (struct lysp_node **)&ch));
     CHECK_LYSP_NODE(ch, NULL, 0, 0, 0, "ch", 0, LYS_CHOICE, 0, NULL, 0);
     assert_string_equal("c", ch->dflt.str);
-    lysp_node_free(&fctx, (struct lysp_node *)ch); ch = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)ch); ch = NULL;
 }
 
 static void
@@ -1378,7 +1368,7 @@ test_case(void **state)
     in.current = "cs {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_case(YCTX, NULL, (struct lysp_node**)&cs)); \
     CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
-    lysp_node_free(&fctx, (struct lysp_node*)cs); cs = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node*)cs); cs = NULL;
 
     TEST_DUP("description", "text1", "text2");
     TEST_DUP("reference", "1", "2");
@@ -1391,13 +1381,13 @@ test_case(void **state)
             "leaf-list ll {type string;} list li;reference test;status current;uses grp;when true;m:ext;} ...";
     assert_int_equal(LY_SUCCESS, parse_case(YCTX, NULL, (struct lysp_node **)&cs));
     CHECK_LYSP_NODE(cs, "test", 1, LYS_STATUS_CURR, 1, "cs", 0, LYS_CASE, 0, "test", 1);
-    lysp_node_free(&fctx, (struct lysp_node *)cs); cs = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)cs); cs = NULL;
 
     /* invalid content */
     in.current = "cs {config true} ...";
     assert_int_equal(LY_EVALID, parse_case(YCTX, NULL, (struct lysp_node **)&cs));
     CHECK_LOG_CTX("Invalid keyword \"config\" as a child of \"case\".", NULL, 1);
-    lysp_node_free(&fctx, (struct lysp_node *)cs); cs = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)cs); cs = NULL;
 }
 
 static void
@@ -1416,7 +1406,7 @@ test_any(void **state, enum ly_stmt kw)
     in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_any(YCTX, kw, NULL, (struct lysp_node**)&any)); \
     CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
-    lysp_node_free(&fctx, (struct lysp_node*)any); any = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node*)any); any = NULL;
 
     TEST_DUP("config", "true", "false");
     TEST_DUP("description", "text1", "text2");
@@ -1434,7 +1424,7 @@ test_any(void **state, enum ly_stmt kw)
 
     CHECK_LYSP_NODE(any, "test", 1, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_MAND_TRUE, 1, "any", 0, node_type, 0, "test", 1);
     assert_non_null(any->musts);
-    lysp_node_free(&fctx, (struct lysp_node *)any); any = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)any); any = NULL;
 }
 
 static void
@@ -1462,7 +1452,7 @@ test_grouping(void **state)
     in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_grouping(YCTX, NULL, &grp)); \
     CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
-    lysp_node_free(&fctx, &grp->node); grp = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), &grp->node); grp = NULL;
 
     TEST_DUP("description", "text1", "text2");
     TEST_DUP("reference", "1", "2");
@@ -1483,20 +1473,20 @@ test_grouping(void **state)
     assert_int_equal(LYS_STATUS_CURR, grp->flags);
     ly_set_erase(&YCTX->tpdfs_nodes, NULL);
     ly_set_erase(&YCTX->grps_nodes, NULL);
-    lysp_node_free(&fctx, &grp->node);
+    lysp_node_free(PARSER_CTX(YCTX), &grp->node);
     grp = NULL;
 
     /* invalid content */
     in.current = "grp {config true} ...";
     assert_int_equal(LY_EVALID, parse_grouping(YCTX, NULL, &grp));
     CHECK_LOG_CTX("Invalid keyword \"config\" as a child of \"grouping\".", NULL, 1);
-    lysp_node_free(&fctx, &grp->node);
+    lysp_node_free(PARSER_CTX(YCTX), &grp->node);
     grp = NULL;
 
     in.current = "grp {must 'expr'} ...";
     assert_int_equal(LY_EVALID, parse_grouping(YCTX, NULL, &grp));
     CHECK_LOG_CTX("Invalid keyword \"must\" as a child of \"grouping\".", NULL, 1);
-    lysp_node_free(&fctx, &grp->node);
+    lysp_node_free(PARSER_CTX(YCTX), &grp->node);
     grp = NULL;
 }
 
@@ -1514,7 +1504,7 @@ test_action(void **state)
     in.current = "func {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_action(YCTX, NULL, &rpcs)); \
     CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
-    lysp_node_free(&fctx, (struct lysp_node*)rpcs); rpcs = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node*)rpcs); rpcs = NULL;
 
     TEST_DUP("description", "text1", "text2");
     TEST_DUP("input", "{leaf l1 {type empty;}} description a", "{leaf l2 {type empty;}} description a");
@@ -1559,15 +1549,15 @@ test_action(void **state)
 
     ly_set_erase(&YCTX->tpdfs_nodes, NULL);
     ly_set_erase(&YCTX->grps_nodes, NULL);
-    lysp_node_free(&fctx, (struct lysp_node *)rpcs); rpcs = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)rpcs); rpcs = NULL;
 
     /* invalid content */
     in.current = "func {config true} ...";
     assert_int_equal(LY_EVALID, parse_action(YCTX, NULL, &rpcs));
     CHECK_LOG_CTX("Invalid keyword \"config\" as a child of \"rpc\".", NULL, 1);
-    lysp_node_free(&fctx, (struct lysp_node *)rpcs); rpcs = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)rpcs); rpcs = NULL;
 
-    lysp_node_free(&fctx, (struct lysp_node *)c);
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)c);
 }
 
 static void
@@ -1584,7 +1574,7 @@ test_notification(void **state)
     in.current = "func {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_notif(YCTX, NULL, &notifs)); \
     CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
-    lysp_node_free(&fctx, (struct lysp_node*)notifs); notifs = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node*)notifs); notifs = NULL;
 
     TEST_DUP("description", "text1", "text2");
     TEST_DUP("reference", "1", "2");
@@ -1612,15 +1602,15 @@ test_notification(void **state)
 
     ly_set_erase(&YCTX->tpdfs_nodes, NULL);
     ly_set_erase(&YCTX->grps_nodes, NULL);
-    lysp_node_free(&fctx, (struct lysp_node *)notifs); notifs = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)notifs); notifs = NULL;
 
     /* invalid content */
     in.current = "ntf {config true} ...";
     assert_int_equal(LY_EVALID, parse_notif(YCTX, NULL, &notifs));
     CHECK_LOG_CTX("Invalid keyword \"config\" as a child of \"notification\".", NULL, 1);
-    lysp_node_free(&fctx, (struct lysp_node *)notifs); notifs = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)notifs); notifs = NULL;
 
-    lysp_node_free(&fctx, (struct lysp_node *)c);
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)c);
 }
 
 static void
@@ -1635,7 +1625,7 @@ test_uses(void **state)
     in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_uses(YCTX, NULL, (struct lysp_node**)&u)); \
     CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
-    lysp_node_free(&fctx, (struct lysp_node*)u); u = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node*)u); u = NULL;
 
     TEST_DUP("description", "text1", "text2");
     TEST_DUP("reference", "1", "2");
@@ -1649,7 +1639,7 @@ test_uses(void **state)
     CHECK_LYSP_NODE(u, "test", 1, LYS_STATUS_CURR, 1, "grpref", 0, LYS_USES, 0, "test", 1);
     assert_non_null(u->augments);
     assert_non_null(u->refines);
-    lysp_node_free(&fctx, (struct lysp_node *)u); u = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)u); u = NULL;
 }
 
 static void
@@ -1664,7 +1654,7 @@ test_augment(void **state)
     in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_augment(YCTX, NULL, &a)); \
     CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", NULL, 1); \
-    lysp_node_free(&fctx, (struct lysp_node *)a); a = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)a); a = NULL;
 
     TEST_DUP("description", "text1", "text2");
     TEST_DUP("reference", "1", "2");
@@ -1686,7 +1676,7 @@ test_augment(void **state)
     assert_non_null(a->when);
     assert_null(a->parent);
     assert_int_equal(LYS_STATUS_CURR, a->flags);
-    lysp_node_free(&fctx, (struct lysp_node *)a); a = NULL;
+    lysp_node_free(PARSER_CTX(YCTX), (struct lysp_node *)a); a = NULL;
 }
 
 static void

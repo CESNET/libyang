@@ -1461,7 +1461,6 @@ void
 ly_path_predicates_free(const struct ly_ctx *ctx, struct ly_path_predicate *predicates)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct lysf_ctx fctx = {.ctx = (struct ly_ctx *)ctx};
 
     if (!predicates) {
         return;
@@ -1476,7 +1475,7 @@ ly_path_predicates_free(const struct ly_ctx *ctx, struct ly_path_predicate *pred
         case LY_PATH_PREDTYPE_LEAFLIST:
             if (predicates[u].value.realtype) {
                 predicates[u].value.realtype->plugin->free(ctx, &predicates[u].value);
-                lysc_type_free(&fctx, (struct lysc_type *)predicates[u].value.realtype);
+                lysc_type_free(ctx, (struct lysc_type *)predicates[u].value.realtype);
             }
             break;
         case LY_PATH_PREDTYPE_LIST_VAR:

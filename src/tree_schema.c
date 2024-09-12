@@ -1101,45 +1101,42 @@ void
 lys_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres)
 {
     uint32_t i, j, idx, *prev_lo, temp_lo = 0;
-    struct lysf_ctx fctx = {.ctx = ctx};
+    struct lys_module *mod;
     struct ly_set *dep_set;
     LY_ERR ret;
 
     for (i = 0; i < unres->implementing.count; ++i) {
-        fctx.mod = unres->implementing.objs[i];
-        assert(fctx.mod->implemented);
+        mod = unres->implementing.objs[i];
+        assert(mod->implemented);
 
         /* make the module correctly non-implemented again */
-        fctx.mod->implemented = 0;
-        lys_precompile_augments_deviations_revert(ctx, fctx.mod);
-        lysc_module_free(&fctx, fctx.mod->compiled);
-        fctx.mod->compiled = NULL;
+        mod->implemented = 0;
+        lys_precompile_augments_deviations_revert(ctx, mod);
+        lysc_module_free(ctx, mod->compiled);
+        mod->compiled = NULL;
 
         /* should not be made implemented */
-        fctx.mod->to_compile = 0;
+        mod->to_compile = 0;
     }
 
     for (i = 0; i < unres->creating.count; ++i) {
-        fctx.mod = unres->creating.objs[i];
+        mod = unres->creating.objs[i];
 
         /* remove the module from the context */
-        ly_set_rm(&ctx->list, fctx.mod, NULL);
+        ly_set_rm(&ctx->list, mod, NULL);
 
         /* remove it also from dep sets */
         for (j = 0; j < unres->dep_sets.count; ++j) {
             dep_set = unres->dep_sets.objs[j];
-            if (ly_set_contains(dep_set, fctx.mod, &idx)) {
+            if (ly_set_contains(dep_set, mod, &idx)) {
                 ly_set_rm_index(dep_set, idx, NULL);
                 break;
             }
         }
 
         /* free the module */
-        lys_module_free(&fctx, fctx.mod, 1);
+        lys_module_free(ctx, mod, 1);
     }
-
-    /* remove the extensions as well */
-    lysf_ctx_erase(&fctx);
 
     if (unres->implementing.count) {
         /* recompile previous context because some implemented modules are no longer implemented,
@@ -1352,8 +1349,8 @@ static LY_ERR
 lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
 {
     LY_ERR r;
-    struct lysf_ctx fctx = {.ctx = PARSER_CTX(pctx)};
     struct lysp_ext_instance *exts, *ext;
+    struct lysp_ext *ext_def;
     const struct lys_module *mod;
     uint32_t i;
     LY_ARRAY_COUNT_TYPE u;
@@ -1365,14 +1362,12 @@ lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
         LY_ARRAY_FOR(exts, u) {
             ext = &exts[u];
 
-            /* find the extension definition */
-            LY_CHECK_RET(lysp_ext_find_definition(PARSER_CTX(pctx), ext, &mod, &ext->def));
+            /* find the extension definition, use its plugin */
+            LY_CHECK_RET(lysp_ext_find_definition(PARSER_CTX(pctx), ext, &mod, &ext_def));
+            ext->plugin = ext_def->plugin;
 
             /* resolve the argument, if needed */
-            LY_CHECK_RET(lysp_ext_instance_resolve_argument(PARSER_CTX(pctx), ext));
-
-            /* find the extension record, if any */
-            ext->record = lyplg_ext_record_find(mod->ctx, mod->name, mod->revision, ext->def->name);
+            LY_CHECK_RET(lysp_ext_instance_resolve_argument(PARSER_CTX(pctx), ext_def, ext));
         }
     }
 
@@ -1382,7 +1377,7 @@ lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
         u = 0;
         while (u < LY_ARRAY_COUNT(exts)) {
             ext = &exts[u];
-            if (!ext->record || !ext->record->plugin.parse) {
+            if (!ext->plugin || !ext->plugin->parse) {
                 goto next_iter;
             }
 
@@ -1393,14 +1388,14 @@ lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
             ly_log_location(NULL, NULL, path, NULL);
 
             /* parse */
-            r = ext->record->plugin.parse(pctx, ext);
+            r = ext->plugin->parse(pctx, ext);
 
             ly_log_location_revert(0, 0, 1, 0);
             free(path);
 
             if (r == LY_ENOT) {
                 /* instance should be ignored, remove it */
-                lysp_ext_instance_free(&fctx, ext);
+                lysp_ext_instance_free(PARSER_CTX(pctx), ext);
                 LY_ARRAY_DECREMENT(exts);
                 if (u < LY_ARRAY_COUNT(exts)) {
                     /* replace by the last item */
@@ -1430,7 +1425,6 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
     struct lysp_yang_ctx *yangctx = NULL;
     struct lysp_yin_ctx *yinctx = NULL;
     struct lysp_ctx *pctx;
-    struct lysf_ctx fctx = {.ctx = ctx};
 
     LY_CHECK_ARG_RET(ctx, ctx, in, LY_EINVAL);
 
@@ -1502,7 +1496,7 @@ error:
     } else {
         LOGERR(ctx, ret, "Parsing submodule \"%s\" failed.", submod->name);
     }
-    lysp_module_free(&fctx, (struct lysp_module *)submod);
+    lysp_module_free(ctx, (struct lysp_module *)submod);
     if (format == LYS_IN_YANG) {
         lysp_yang_ctx_free(yangctx);
     } else {
@@ -1848,7 +1842,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     struct lysp_yang_ctx *yangctx = NULL;
     struct lysp_yin_ctx *yinctx = NULL;
     struct lysp_ctx *pctx = NULL;
-    struct lysf_ctx fctx = {.ctx = ctx};
+    LY_ARRAY_COUNT_TYPE u;
     ly_bool module_created = 0;
 
     assert(ctx && in && new_mods);
@@ -1968,7 +1962,10 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     /* resolve includes and all imports */
     LY_CHECK_GOTO(ret = lysp_resolve_import_include(pctx, mod->parsed, new_mods), cleanup);
 
-    /* resolve extension instance plugin records */
+    /* resolve extension plugins and parse extension instances */
+    LY_ARRAY_FOR(mod->parsed->extensions, u) {
+        mod->parsed->extensions[u].plugin = lyplg_ext_plugin_find(mod->ctx, mod->name, mod->revision, mod->parsed->extensions[u].name);
+    }
     LY_CHECK_GOTO(ret = lysp_resolve_ext_instance_records(pctx), cleanup);
 
     /* check name collisions */
@@ -1977,8 +1974,9 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     LY_CHECK_GOTO(ret = lysp_check_dup_features(pctx, mod->parsed), cleanup);
     LY_CHECK_GOTO(ret = lysp_check_dup_identities(pctx, mod->parsed), cleanup);
 
-    /* compile features, identities, and submodules */
+    /* compile features, extensions, identities, and submodules */
     LY_CHECK_GOTO(ret = lys_compile_feature_iffeatures(mod->parsed), cleanup);
+    LY_CHECK_GOTO(ret = lys_compile_extensions(mod), cleanup);
     LY_CHECK_GOTO(ret = lys_compile_identities(mod), cleanup);
     LY_CHECK_GOTO(ret = lys_compile_submodules(mod), cleanup);
 
@@ -1995,10 +1993,7 @@ cleanup:
         }
     }
     if (!module_created) {
-        fctx.mod = mod;
-        lys_module_free(&fctx, mod, 0);
-        lysf_ctx_erase(&fctx);
-
+        lys_module_free(ctx, mod, 0);
         mod = mod_dup;
     }
 

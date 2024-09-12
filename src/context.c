@@ -1326,7 +1326,6 @@ error:
 LIBYANG_API_DEF void
 ly_ctx_free_parsed(struct ly_ctx *ctx)
 {
-    struct lysf_ctx fctx = {.ctx = ctx};
     uint32_t i;
     struct lys_module *mod;
 
@@ -1338,12 +1337,9 @@ ly_ctx_free_parsed(struct ly_ctx *ctx)
         mod = ctx->list.objs[i];
 
         /* free the parsed modules */
-        lysp_module_free(&fctx, mod->parsed);
+        lysp_module_free(ctx, mod->parsed);
         mod->parsed = NULL;
     }
-
-    /* free extensions */
-    lysf_ctx_erase(&fctx);
 }
 
 /**
@@ -1362,28 +1358,33 @@ ly_ctx_ht_err_rec_free(void *val_p)
 LIBYANG_API_DEF void
 ly_ctx_destroy(struct ly_ctx *ctx)
 {
-    struct lysf_ctx fctx = {.ctx = ctx};
+    uint32_t i;
+    struct lys_module *mod;
 
     if (!ctx) {
         return;
     }
 
-    /* models list */
-    for ( ; ctx->list.count; ctx->list.count--) {
-        fctx.mod = ctx->list.objs[ctx->list.count - 1];
+    /* free the parsed and compiled modules (both can reference ext instances, which need to be freed, so their
+     * definitions can be freed) */
+    for (i = 0; i < ctx->list.count; ++i) {
+        mod = ctx->list.objs[i];
 
-        /* remove the module */
-        if (fctx.mod->implemented) {
-            fctx.mod->implemented = 0;
-            lysc_module_free(&fctx, fctx.mod->compiled);
-            fctx.mod->compiled = NULL;
+        lysp_module_free(ctx, mod->parsed);
+        mod->parsed = NULL;
+        if (mod->implemented) {
+            mod->implemented = 0;
+            lysc_module_free(ctx, mod->compiled);
+            mod->compiled = NULL;
         }
-        lys_module_free(&fctx, fctx.mod, 0);
+    }
+
+    /* free the modules (with compiled extension definitions) */
+    for (i = 0; i < ctx->list.count; ++i) {
+        mod = ctx->list.objs[i];
+        lys_module_free(ctx, mod, 0);
     }
     free(ctx->list.objs);
-
-    /* free extensions */
-    lysf_ctx_erase(&fctx);
 
     /* search paths list */
     ly_set_erase(&ctx->search_paths, free);

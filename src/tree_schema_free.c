@@ -33,7 +33,7 @@
 #include "xml.h"
 #include "xpath.h"
 
-static void lysc_node_free_(struct lysf_ctx *ctx, struct lysc_node *node);
+static void lysc_node_free_(const struct ly_ctx *ctx, struct lysc_node *node);
 
 void
 lysp_qname_free(const struct ly_ctx *ctx, struct lysp_qname *qname)
@@ -46,11 +46,11 @@ lysp_qname_free(const struct ly_ctx *ctx, struct lysp_qname *qname)
 /**
  * @brief Free the parsed generic statement structure.
  *
- * @param[in] ctx libyang context.
+ * @param[in] ctx Context to use.
  * @param[in] grp Parsed schema statement structure to free. Note that the structure itself is not freed.
  */
 static void
-lysp_stmt_free(struct ly_ctx *ctx, struct lysp_stmt *stmt)
+lysp_stmt_free(const struct ly_ctx *ctx, struct lysp_stmt *stmt)
 {
     struct lysp_stmt *child, *next;
 
@@ -66,19 +66,19 @@ lysp_stmt_free(struct ly_ctx *ctx, struct lysp_stmt *stmt)
 }
 
 void
-lysp_ext_instance_free(struct lysf_ctx *ctx, struct lysp_ext_instance *ext)
+lysp_ext_instance_free(const struct ly_ctx *ctx, struct lysp_ext_instance *ext)
 {
     struct lysp_stmt *stmt, *next;
 
-    lydict_remove(ctx->ctx, ext->name);
-    lydict_remove(ctx->ctx, ext->argument);
+    lydict_remove(ctx, ext->name);
+    lydict_remove(ctx, ext->argument);
     ly_free_prefix_data(ext->format, ext->prefix_data);
-    if (ext->record && ext->record->plugin.pfree) {
-        ext->record->plugin.pfree(ctx->ctx, ext);
+    if (ext->plugin && ext->plugin->pfree) {
+        ext->plugin->pfree(ctx, ext);
     }
 
     LY_LIST_FOR_SAFE(ext->child, next, stmt) {
-        lysp_stmt_free(ctx->ctx, stmt);
+        lysp_stmt_free(ctx, stmt);
     }
 
     FREE_ARRAY(ctx, ext->exts, lysp_ext_instance_free);
@@ -87,17 +87,17 @@ lysp_ext_instance_free(struct lysf_ctx *ctx, struct lysp_ext_instance *ext)
 /**
  * @brief Free the parsed import structure.
  *
- * @param[in] ctx Free context.
+ * @param[in] ctx Context to use.
  * @param[in] import Parsed schema import structure to free. Note that the structure itself is not freed.
  */
 static void
-lysp_import_free(struct lysf_ctx *ctx, struct lysp_import *import)
+lysp_import_free(const struct ly_ctx *ctx, struct lysp_import *import)
 {
     /* imported module is freed directly from the context's list */
-    lydict_remove(ctx->ctx, import->name);
-    lydict_remove(ctx->ctx, import->prefix);
-    lydict_remove(ctx->ctx, import->dsc);
-    lydict_remove(ctx->ctx, import->ref);
+    lydict_remove(ctx, import->name);
+    lydict_remove(ctx, import->prefix);
+    lydict_remove(ctx, import->dsc);
+    lydict_remove(ctx, import->ref);
     FREE_ARRAY(ctx, import->exts, lysp_ext_instance_free);
 }
 
@@ -108,31 +108,31 @@ lysp_import_free(struct lysf_ctx *ctx, struct lysp_import *import)
  * the parsed submodule is shared with any include in a submodule. Therefore, the referenced submodules in the include
  * record are freed only from main module's records.
  *
- * @param[in] ctx libyang context
- * @param[in] include The include record to be erased, the record itself is not freed.
- * @param[in] main_module Flag to get know if the include record is placed in main module so also the referenced submodule
- * is supposed to be freed.
+ * @param[in] ctx Context to use.
+ * @param[in] include Record to be erased, the record itself is not freed.
+ * @param[in] main_module Flag to distinguish when the include record is placed in main module so also the referenced
+ * submodule is supposed to be freed.
  */
 static void
-lysp_include_free_(struct lysf_ctx *ctx, struct lysp_include *include, ly_bool main_module)
+lysp_include_free_(const struct ly_ctx *ctx, struct lysp_include *include, ly_bool main_module)
 {
     if (main_module && include->submodule) {
         lysp_module_free(ctx, (struct lysp_module *)include->submodule);
     }
-    lydict_remove(ctx->ctx, include->name);
-    lydict_remove(ctx->ctx, include->dsc);
-    lydict_remove(ctx->ctx, include->ref);
+    lydict_remove(ctx, include->name);
+    lydict_remove(ctx, include->dsc);
+    lydict_remove(ctx, include->ref);
     FREE_ARRAY(ctx, include->exts, lysp_ext_instance_free);
 }
 
 /**
  * @brief Free the parsed include structure of a submodule.
  *
- * @param[in] ctx Free context.
+ * @param[in] ctx Context to use.
  * @param[in] include Parsed schema include structure to free. Note that the structure itself is not freed.
  */
 static void
-lysp_include_free_submodule(struct lysf_ctx *ctx, struct lysp_include *include)
+lysp_include_free_submodule(const struct ly_ctx *ctx, struct lysp_include *include)
 {
     lysp_include_free_(ctx, include, 0);
 }
@@ -140,11 +140,11 @@ lysp_include_free_submodule(struct lysf_ctx *ctx, struct lysp_include *include)
 /**
  * @brief Free the parsed include structure of a module.
  *
- * @param[in] ctx Free context.
+ * @param[in] ctx Context to use.
  * @param[in] include Parsed schema include structure to free. Note that the structure itself is not freed.
  */
 static void
-lysp_include_free(struct lysf_ctx *ctx, struct lysp_include *include)
+lysp_include_free(const struct ly_ctx *ctx, struct lysp_include *include)
 {
     lysp_include_free_(ctx, include, 1);
 }
@@ -152,136 +152,110 @@ lysp_include_free(struct lysf_ctx *ctx, struct lysp_include *include)
 /**
  * @brief Free the parsed revision structure.
  *
- * @param[in] ctx Free context.
+ * @param[in] ctx Context to use.
  * @param[in] rev Parsed schema revision structure to free. Note that the structure itself is not freed.
  */
 static void
-lysp_revision_free(struct lysf_ctx *ctx, struct lysp_revision *rev)
+lysp_revision_free(const struct ly_ctx *ctx, struct lysp_revision *rev)
 {
-    lydict_remove(ctx->ctx, rev->dsc);
-    lydict_remove(ctx->ctx, rev->ref);
+    lydict_remove(ctx, rev->dsc);
+    lydict_remove(ctx, rev->ref);
     FREE_ARRAY(ctx, rev->exts, lysp_ext_instance_free);
-}
-
-/**
- * @brief Free the compiled extension definition and NULL the provided pointer.
- *
- * @param[in] ctx Free context.
- * @param[in,out] ext Compiled extension definition to be freed.
- */
-static void
-lysc_extension_free(struct lysf_ctx *ctx, struct lysc_ext **ext)
-{
-    if (ly_set_contains(&ctx->ext_set, *ext, NULL)) {
-        /* already freed and only referenced again in this module */
-        return;
-    }
-
-    /* remember this extension to be freed, nothing to do on error */
-    (void)ly_set_add(&ctx->ext_set, *ext, 0, NULL);
-
-    /* recursive exts free */
-    FREE_ARRAY(ctx, (*ext)->exts, lysc_ext_instance_free);
-
-    *ext = NULL;
 }
 
 /**
  * @brief Free the parsed ext structure.
  *
- * @param[in] ctx Free context.
+ * @param[in] ctx Context to use.
  * @param[in] ext Parsed schema ext structure to free. Note that the structure itself is not freed.
  */
 static void
-lysp_ext_free(struct lysf_ctx *ctx, struct lysp_ext *ext)
+lysp_ext_free(const struct ly_ctx *ctx, struct lysp_ext *ext)
 {
-    lydict_remove(ctx->ctx, ext->name);
-    lydict_remove(ctx->ctx, ext->argname);
-    lydict_remove(ctx->ctx, ext->dsc);
-    lydict_remove(ctx->ctx, ext->ref);
+    lydict_remove(ctx, ext->name);
+    lydict_remove(ctx, ext->argname);
+    lydict_remove(ctx, ext->dsc);
+    lydict_remove(ctx, ext->ref);
     FREE_ARRAY(ctx, ext->exts, lysp_ext_instance_free);
-    if (ext->compiled) {
-        lysc_extension_free(ctx, &ext->compiled);
-    }
 }
 
 /**
  * @brief Free the parsed feature structure.
  *
- * @param[in] ctx Free context.
+ * @param[in] ctx Context to use.
  * @param[in] feat Parsed schema feature structure to free. Note that the structure itself is not freed.
  */
 static void
-lysp_feature_free(struct lysf_ctx *ctx, struct lysp_feature *feat)
+lysp_feature_free(const struct ly_ctx *ctx, struct lysp_feature *feat)
 {
-    lydict_remove(ctx->ctx, feat->name);
-    FREE_ARRAY(ctx->ctx, feat->iffeatures, lysp_qname_free);
+    lydict_remove(ctx, feat->name);
+    FREE_ARRAY(ctx, feat->iffeatures, lysp_qname_free);
     FREE_ARRAY(ctx, feat->iffeatures_c, lysc_iffeature_free);
     LY_ARRAY_FREE(feat->depfeatures);
-    lydict_remove(ctx->ctx, feat->dsc);
-    lydict_remove(ctx->ctx, feat->ref);
+    lydict_remove(ctx, feat->dsc);
+    lydict_remove(ctx, feat->ref);
     FREE_ARRAY(ctx, feat->exts, lysp_ext_instance_free);
 }
 
 /**
  * @brief Free the parsed identity structure.
  *
- * @param[in] ctx Free context.
+ * @param[in] ctx Context to use.
  * @param[in] ident Parsed schema identity structure to free. Note that the structure itself is not freed.
  */
 static void
-lysp_ident_free(struct lysf_ctx *ctx, struct lysp_ident *ident)
+lysp_ident_free(const struct ly_ctx *ctx, struct lysp_ident *ident)
 {
-    lydict_remove(ctx->ctx, ident->name);
-    FREE_ARRAY(ctx->ctx, ident->iffeatures, lysp_qname_free);
-    FREE_STRINGS(ctx->ctx, ident->bases);
-    lydict_remove(ctx->ctx, ident->dsc);
-    lydict_remove(ctx->ctx, ident->ref);
+    lydict_remove(ctx, ident->name);
+    FREE_ARRAY(ctx, ident->iffeatures, lysp_qname_free);
+    FREE_STRINGS(ctx, ident->bases);
+    lydict_remove(ctx, ident->dsc);
+    lydict_remove(ctx, ident->ref);
     FREE_ARRAY(ctx, ident->exts, lysp_ext_instance_free);
 }
 
 void
-lysp_restr_free(struct lysf_ctx *ctx, struct lysp_restr *restr)
+lysp_restr_free(const struct ly_ctx *ctx, struct lysp_restr *restr)
 {
-    lydict_remove(ctx->ctx, restr->arg.str);
-    lydict_remove(ctx->ctx, restr->emsg);
-    lydict_remove(ctx->ctx, restr->eapptag);
-    lydict_remove(ctx->ctx, restr->dsc);
-    lydict_remove(ctx->ctx, restr->ref);
+    lydict_remove(ctx, restr->arg.str);
+    lydict_remove(ctx, restr->emsg);
+    lydict_remove(ctx, restr->eapptag);
+    lydict_remove(ctx, restr->dsc);
+    lydict_remove(ctx, restr->ref);
     FREE_ARRAY(ctx, restr->exts, lysp_ext_instance_free);
 }
 
 /**
  * @brief Free the parsed type enum item.
  *
- * @param[in] ctx Free context.
+ * @param[in] ctx Context to use.
  * @param[in] item Parsed schema type enum item to free. Note that the structure itself is not freed.
  */
 static void
-lysp_type_enum_free(struct lysf_ctx *ctx, struct lysp_type_enum *item)
+lysp_type_enum_free(const struct ly_ctx *ctx, struct lysp_type_enum *item)
 {
-    lydict_remove(ctx->ctx, item->name);
-    lydict_remove(ctx->ctx, item->dsc);
-    lydict_remove(ctx->ctx, item->ref);
-    FREE_ARRAY(ctx->ctx, item->iffeatures, lysp_qname_free);
+    lydict_remove(ctx, item->name);
+    lydict_remove(ctx, item->dsc);
+    lydict_remove(ctx, item->ref);
+    FREE_ARRAY(ctx, item->iffeatures, lysp_qname_free);
     FREE_ARRAY(ctx, item->exts, lysp_ext_instance_free);
 }
 
 void
-lysp_type_free(struct lysf_ctx *ctx, struct lysp_type *type)
+lysp_type_free(const struct ly_ctx *ctx, struct lysp_type *type)
 {
     if (!type) {
         return;
     }
 
-    lydict_remove(ctx->ctx, type->name);
+    lydict_remove(ctx, type->name);
     FREE_MEMBER(ctx, type->range, lysp_restr_free);
     FREE_MEMBER(ctx, type->length, lysp_restr_free);
     FREE_ARRAY(ctx, type->patterns, lysp_restr_free);
     FREE_ARRAY(ctx, type->enums, lysp_type_enum_free);
     FREE_ARRAY(ctx, type->bits, lysp_type_enum_free);
-    lyxp_expr_free(ctx->ctx, type->path);
-    FREE_STRINGS(ctx->ctx, type->bases);
+    lyxp_expr_free(ctx, type->path);
+    FREE_STRINGS(ctx, type->bases);
     FREE_ARRAY(ctx, type->types, lysp_type_free);
     FREE_ARRAY(ctx, type->exts, lysp_ext_instance_free);
     if (type->compiled) {
@@ -292,17 +266,17 @@ lysp_type_free(struct lysf_ctx *ctx, struct lysp_type *type)
 /**
  * @brief Free the parsed typedef structure.
  *
- * @param[in] ctx Free context.
+ * @param[in] ctx Context to use.
  * @param[in] tpdf Parsed schema typedef structure to free. Note that the structure itself is not freed.
  */
 static void
-lysp_tpdf_free(struct lysf_ctx *ctx, struct lysp_tpdf *tpdf)
+lysp_tpdf_free(const struct ly_ctx *ctx, struct lysp_tpdf *tpdf)
 {
-    lydict_remove(ctx->ctx, tpdf->name);
-    lydict_remove(ctx->ctx, tpdf->units);
-    lydict_remove(ctx->ctx, tpdf->dflt.str);
-    lydict_remove(ctx->ctx, tpdf->dsc);
-    lydict_remove(ctx->ctx, tpdf->ref);
+    lydict_remove(ctx, tpdf->name);
+    lydict_remove(ctx, tpdf->units);
+    lydict_remove(ctx, tpdf->dflt.str);
+    lydict_remove(ctx, tpdf->dsc);
+    lydict_remove(ctx, tpdf->ref);
     FREE_ARRAY(ctx, tpdf->exts, lysp_ext_instance_free);
 
     lysp_type_free(ctx, &tpdf->type);
@@ -312,11 +286,11 @@ lysp_tpdf_free(struct lysf_ctx *ctx, struct lysp_tpdf *tpdf)
 /**
  * @brief Free the parsed grouping structure.
  *
- * @param[in] ctx Free context.
+ * @param[in] ctx Context to use.
  * @param[in] grp Parsed schema grouping structure to free. Note that the structure itself is not freed.
  */
 static void
-lysp_grp_free(struct lysf_ctx *ctx, struct lysp_node_grp *grp)
+lysp_grp_free(const struct ly_ctx *ctx, struct lysp_node_grp *grp)
 {
     struct lysp_node *node, *next;
 
@@ -336,22 +310,22 @@ lysp_grp_free(struct lysf_ctx *ctx, struct lysp_node_grp *grp)
 }
 
 void
-lysp_when_free(struct lysf_ctx *ctx, struct lysp_when *when)
+lysp_when_free(const struct ly_ctx *ctx, struct lysp_when *when)
 {
-    lydict_remove(ctx->ctx, when->cond);
-    lydict_remove(ctx->ctx, when->dsc);
-    lydict_remove(ctx->ctx, when->ref);
+    lydict_remove(ctx, when->cond);
+    lydict_remove(ctx, when->dsc);
+    lydict_remove(ctx, when->ref);
     FREE_ARRAY(ctx, when->exts, lysp_ext_instance_free);
 }
 
 /**
  * @brief Free the parsed augment structure.
  *
- * @param[in] ctx Free context.
+ * @param[in] ctx Context to use.
  * @param[in] aug Parsed schema augment structure to free. Note that the structure itself is not freed.
  */
 static void
-lysp_augment_free(struct lysf_ctx *ctx, struct lysp_node_augment *aug)
+lysp_augment_free(const struct ly_ctx *ctx, struct lysp_node_augment *aug)
 {
     struct lysp_node *node, *next;
 
@@ -367,7 +341,7 @@ lysp_augment_free(struct lysf_ctx *ctx, struct lysp_node_augment *aug)
 }
 
 void
-lysp_deviate_free(struct lysf_ctx *ctx, struct lysp_deviate *d)
+lysp_deviate_free(const struct ly_ctx *ctx, struct lysp_deviate *d)
 {
     struct lysp_deviate_add *add = (struct lysp_deviate_add *)d;
     struct lysp_deviate_rpl *rpl = (struct lysp_deviate_rpl *)d;
@@ -383,30 +357,30 @@ lysp_deviate_free(struct lysf_ctx *ctx, struct lysp_deviate *d)
         break;
     case LYS_DEV_ADD:
     case LYS_DEV_DELETE: /* compatible for dynamically allocated data */
-        lydict_remove(ctx->ctx, add->units);
+        lydict_remove(ctx, add->units);
         FREE_ARRAY(ctx, add->musts, lysp_restr_free);
-        FREE_ARRAY(ctx->ctx, add->uniques, lysp_qname_free);
-        FREE_ARRAY(ctx->ctx, add->dflts, lysp_qname_free);
+        FREE_ARRAY(ctx, add->uniques, lysp_qname_free);
+        FREE_ARRAY(ctx, add->dflts, lysp_qname_free);
         break;
     case LYS_DEV_REPLACE:
         FREE_MEMBER(ctx, rpl->type, lysp_type_free);
-        lydict_remove(ctx->ctx, rpl->units);
-        lysp_qname_free(ctx->ctx, &rpl->dflt);
+        lydict_remove(ctx, rpl->units);
+        lysp_qname_free(ctx, &rpl->dflt);
         break;
     default:
-        LOGINT(ctx->ctx);
+        LOGINT(ctx);
         break;
     }
 }
 
 void
-lysp_deviation_free(struct lysf_ctx *ctx, struct lysp_deviation *dev)
+lysp_deviation_free(const struct ly_ctx *ctx, struct lysp_deviation *dev)
 {
     struct lysp_deviate *next, *iter;
 
-    lydict_remove(ctx->ctx, dev->nodeid);
-    lydict_remove(ctx->ctx, dev->dsc);
-    lydict_remove(ctx->ctx, dev->ref);
+    lydict_remove(ctx, dev->nodeid);
+    lydict_remove(ctx, dev->dsc);
+    lydict_remove(ctx, dev->ref);
     LY_LIST_FOR_SAFE(dev->deviates, next, iter) {
         lysp_deviate_free(ctx, iter);
         free(iter);
@@ -417,24 +391,24 @@ lysp_deviation_free(struct lysf_ctx *ctx, struct lysp_deviation *dev)
 /**
  * @brief Free the parsed refine structure.
  *
- * @param[in] ctx Free context.
+ * @param[in] ctx Context to use.
  * @param[in] ref Parsed schema refine structure to free. Note that the structure itself is not freed.
  */
 static void
-lysp_refine_free(struct lysf_ctx *ctx, struct lysp_refine *ref)
+lysp_refine_free(const struct ly_ctx *ctx, struct lysp_refine *ref)
 {
-    lydict_remove(ctx->ctx, ref->nodeid);
-    lydict_remove(ctx->ctx, ref->dsc);
-    lydict_remove(ctx->ctx, ref->ref);
-    FREE_ARRAY(ctx->ctx, ref->iffeatures, lysp_qname_free);
+    lydict_remove(ctx, ref->nodeid);
+    lydict_remove(ctx, ref->dsc);
+    lydict_remove(ctx, ref->ref);
+    FREE_ARRAY(ctx, ref->iffeatures, lysp_qname_free);
     FREE_ARRAY(ctx, ref->musts, lysp_restr_free);
-    lydict_remove(ctx->ctx, ref->presence);
-    FREE_ARRAY(ctx->ctx, ref->dflts, lysp_qname_free);
+    lydict_remove(ctx, ref->presence);
+    FREE_ARRAY(ctx, ref->dflts, lysp_qname_free);
     FREE_ARRAY(ctx, ref->exts, lysp_ext_instance_free);
 }
 
 void
-lysp_node_free(struct lysf_ctx *ctx, struct lysp_node *node)
+lysp_node_free(const struct ly_ctx *ctx, struct lysp_node *node)
 {
     struct lysp_node *child, *next;
     struct lysp_node_container *cont;
@@ -450,10 +424,10 @@ lysp_node_free(struct lysf_ctx *ctx, struct lysp_node *node)
     struct lysp_restr *musts = lysp_node_musts(node);
     struct lysp_when *when = lysp_node_when(node);
 
-    lydict_remove(ctx->ctx, node->name);
-    lydict_remove(ctx->ctx, node->dsc);
-    lydict_remove(ctx->ctx, node->ref);
-    FREE_ARRAY(ctx->ctx, node->iffeatures, lysp_qname_free);
+    lydict_remove(ctx, node->name);
+    lydict_remove(ctx, node->dsc);
+    lydict_remove(ctx, node->ref);
+    FREE_ARRAY(ctx, node->iffeatures, lysp_qname_free);
     FREE_ARRAY(ctx, node->exts, lysp_ext_instance_free);
 
     FREE_MEMBER(ctx, when, lysp_when_free);
@@ -463,7 +437,7 @@ lysp_node_free(struct lysf_ctx *ctx, struct lysp_node *node)
     case LYS_CONTAINER:
         cont = (struct lysp_node_container *)node;
 
-        lydict_remove(ctx->ctx, cont->presence);
+        lydict_remove(ctx, cont->presence);
         FREE_ARRAY(ctx, cont->typedefs, lysp_tpdf_free);
         if (cont->groupings) {
             LY_LIST_FOR_SAFE(&cont->groupings->node, next, child) {
@@ -488,20 +462,20 @@ lysp_node_free(struct lysf_ctx *ctx, struct lysp_node *node)
         leaf = (struct lysp_node_leaf *)node;
 
         lysp_type_free(ctx, &leaf->type);
-        lydict_remove(ctx->ctx, leaf->units);
-        lydict_remove(ctx->ctx, leaf->dflt.str);
+        lydict_remove(ctx, leaf->units);
+        lydict_remove(ctx, leaf->dflt.str);
         break;
     case LYS_LEAFLIST:
         llist = (struct lysp_node_leaflist *)node;
 
         lysp_type_free(ctx, &llist->type);
-        lydict_remove(ctx->ctx, llist->units);
-        FREE_ARRAY(ctx->ctx, llist->dflts, lysp_qname_free);
+        lydict_remove(ctx, llist->units);
+        FREE_ARRAY(ctx, llist->dflts, lysp_qname_free);
         break;
     case LYS_LIST:
         list = (struct lysp_node_list *)node;
 
-        lydict_remove(ctx->ctx, list->key);
+        lydict_remove(ctx, list->key);
         FREE_ARRAY(ctx, list->typedefs, lysp_tpdf_free);
         if (list->groupings) {
             LY_LIST_FOR_SAFE(&list->groupings->node, next, child) {
@@ -521,7 +495,7 @@ lysp_node_free(struct lysf_ctx *ctx, struct lysp_node *node)
                 lysp_node_free(ctx, child);
             }
         }
-        FREE_ARRAY(ctx->ctx, list->uniques, lysp_qname_free);
+        FREE_ARRAY(ctx, list->uniques, lysp_qname_free);
         break;
     case LYS_CHOICE:
         choice = (struct lysp_node_choice *)node;
@@ -529,7 +503,7 @@ lysp_node_free(struct lysf_ctx *ctx, struct lysp_node *node)
         LY_LIST_FOR_SAFE(choice->child, next, child) {
             lysp_node_free(ctx, child);
         }
-        lydict_remove(ctx->ctx, choice->dflt.str);
+        lydict_remove(ctx, choice->dflt.str);
         break;
     case LYS_CASE:
         cas = (struct lysp_node_case *)node;
@@ -604,14 +578,14 @@ lysp_node_free(struct lysf_ctx *ctx, struct lysp_node *node)
         lysp_augment_free(ctx, ((struct lysp_node_augment *)node));
         break;
     default:
-        LOGINT(ctx->ctx);
+        LOGINT(ctx);
     }
 
     free(node);
 }
 
 void
-lysp_module_free(struct lysf_ctx *ctx, struct lysp_module *module)
+lysp_module_free(const struct ly_ctx *ctx, struct lysp_module *module)
 {
     struct lysp_node *node, *next;
 
@@ -623,7 +597,6 @@ lysp_module_free(struct lysf_ctx *ctx, struct lysp_module *module)
     FREE_ARRAY(ctx, module->includes, module->is_submod ? lysp_include_free_submodule : lysp_include_free);
 
     FREE_ARRAY(ctx, module->revs, lysp_revision_free);
-    FREE_ARRAY(ctx, module->extensions, lysp_ext_free);
     FREE_ARRAY(ctx, module->features, lysp_feature_free);
     FREE_ARRAY(ctx, module->identities, lysp_ident_free);
     FREE_ARRAY(ctx, module->typedefs, lysp_tpdf_free);
@@ -645,33 +618,36 @@ lysp_module_free(struct lysf_ctx *ctx, struct lysp_module *module)
     FREE_ARRAY(ctx, module->deviations, lysp_deviation_free);
     FREE_ARRAY(ctx, module->exts, lysp_ext_instance_free);
 
+    /* free parsed extensions definitions after parsed extension instances were freed */
+    FREE_ARRAY(ctx, module->extensions, lysp_ext_free);
+
     if (module->is_submod) {
         struct lysp_submodule *submod = (struct lysp_submodule *)module;
 
-        lydict_remove(ctx->ctx, submod->name);
-        lydict_remove(ctx->ctx, submod->filepath);
-        lydict_remove(ctx->ctx, submod->prefix);
-        lydict_remove(ctx->ctx, submod->org);
-        lydict_remove(ctx->ctx, submod->contact);
-        lydict_remove(ctx->ctx, submod->dsc);
-        lydict_remove(ctx->ctx, submod->ref);
+        lydict_remove(ctx, submod->name);
+        lydict_remove(ctx, submod->filepath);
+        lydict_remove(ctx, submod->prefix);
+        lydict_remove(ctx, submod->org);
+        lydict_remove(ctx, submod->contact);
+        lydict_remove(ctx, submod->dsc);
+        lydict_remove(ctx, submod->ref);
     }
 
     free(module);
 }
 
 void
-lysc_ext_instance_free(struct lysf_ctx *ctx, struct lysc_ext_instance *ext)
+lysc_ext_instance_free(const struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 {
     if (ext->def && ext->def->plugin && ext->def->plugin->cfree) {
-        ext->def->plugin->cfree(ctx->ctx, ext);
+        ext->def->plugin->cfree(ctx, ext);
     }
-    lydict_remove(ctx->ctx, ext->argument);
+    lydict_remove(ctx, ext->argument);
     FREE_ARRAY(ctx, ext->exts, lysc_ext_instance_free);
 }
 
 void
-lysc_iffeature_free(struct lysf_ctx *UNUSED(ctx), struct lysc_iffeature *iff)
+lysc_iffeature_free(const struct ly_ctx *UNUSED(ctx), struct lysc_iffeature *iff)
 {
     LY_ARRAY_FREE(iff->features);
     free(iff->expr);
@@ -680,19 +656,20 @@ lysc_iffeature_free(struct lysf_ctx *UNUSED(ctx), struct lysc_iffeature *iff)
 /**
  * @brief Free the compiled when structure (decrease refcount) and NULL the provided pointer.
  *
- * @param[in] ctx Free context.
+ * @param[in] ctx Context to use.
  * @param[in] grp Parsed schema grouping structure to free. Note that the structure itself is not freed.
  */
 static void
-lysc_when_free(struct lysf_ctx *ctx, struct lysc_when **w)
+lysc_when_free(const struct ly_ctx *ctx, struct lysc_when **w)
 {
     if (--(*w)->refcount) {
         return;
     }
-    lyxp_expr_free(ctx->ctx, (*w)->cond);
+
+    lyxp_expr_free(ctx, (*w)->cond);
     ly_free_prefix_data(LY_VALUE_SCHEMA_RESOLVED, (*w)->prefixes);
-    lydict_remove(ctx->ctx, (*w)->dsc);
-    lydict_remove(ctx->ctx, (*w)->ref);
+    lydict_remove(ctx, (*w)->dsc);
+    lydict_remove(ctx, (*w)->ref);
     FREE_ARRAY(ctx, (*w)->exts, lysc_ext_instance_free);
     free(*w);
 }
@@ -700,23 +677,23 @@ lysc_when_free(struct lysf_ctx *ctx, struct lysc_when **w)
 /**
  * @brief Free the compiled must structure.
  *
- * @param[in] ctx Free context.
+ * @param[in] ctx Context to use.
  * @param[in,out] must Compiled must structure to be freed.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
  */
 static void
-lysc_must_free(struct lysf_ctx *ctx, struct lysc_must *must)
+lysc_must_free(const struct ly_ctx *ctx, struct lysc_must *must)
 {
     if (!must) {
         return;
     }
 
-    lyxp_expr_free(ctx->ctx, must->cond);
+    lyxp_expr_free(ctx, must->cond);
     ly_free_prefix_data(LY_VALUE_SCHEMA_RESOLVED, must->prefixes);
-    lydict_remove(ctx->ctx, must->emsg);
-    lydict_remove(ctx->ctx, must->eapptag);
-    lydict_remove(ctx->ctx, must->dsc);
-    lydict_remove(ctx->ctx, must->ref);
+    lydict_remove(ctx, must->emsg);
+    lydict_remove(ctx, must->eapptag);
+    lydict_remove(ctx, must->dsc);
+    lydict_remove(ctx, must->ref);
     FREE_ARRAY(ctx, must->exts, lysc_ext_instance_free);
 }
 
@@ -735,6 +712,8 @@ lysc_ident_derived_unlink(const struct lysc_ident *ident)
     const struct lys_module *mod, *iter;
     const char *base_name;
     uint32_t i;
+
+    assert(ident->module->parsed);
 
     /* find the parsed identity */
     LY_ARRAY_FOR(ident->module->parsed->identities, u) {
@@ -811,16 +790,16 @@ lysc_ident_derived_unlink(const struct lysc_ident *ident)
 /**
  * @brief Free the compiled identity structure.
  *
- * @param[in] ctx Free context.
+ * @param[in] ctx Context to use.
  * @param[in,out] ident Compiled identity structure to be freed.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
  */
 static void
-lysc_ident_free(struct lysf_ctx *ctx, struct lysc_ident *ident)
+lysc_ident_free(const struct ly_ctx *ctx, struct lysc_ident *ident)
 {
-    lydict_remove(ctx->ctx, ident->name);
-    lydict_remove(ctx->ctx, ident->dsc);
-    lydict_remove(ctx->ctx, ident->ref);
+    lydict_remove(ctx, ident->name);
+    lydict_remove(ctx, ident->dsc);
+    lydict_remove(ctx, ident->ref);
     LY_ARRAY_FREE(ident->derived);
     FREE_ARRAY(ctx, ident->exts, lysc_ext_instance_free);
 }
@@ -828,61 +807,61 @@ lysc_ident_free(struct lysf_ctx *ctx, struct lysc_ident *ident)
 /**
  * @brief Free the compiled range structure.
  *
- * @param[in] ctx Free context.
+ * @param[in] ctx Context to use.
  * @param[in,out] range Compiled range structure to be freed.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
  */
 static void
-lysc_range_free(struct lysf_ctx *ctx, struct lysc_range *range)
+lysc_range_free(const struct ly_ctx *ctx, struct lysc_range *range)
 {
     LY_ARRAY_FREE(range->parts);
-    lydict_remove(ctx->ctx, range->eapptag);
-    lydict_remove(ctx->ctx, range->emsg);
-    lydict_remove(ctx->ctx, range->dsc);
-    lydict_remove(ctx->ctx, range->ref);
+    lydict_remove(ctx, range->eapptag);
+    lydict_remove(ctx, range->emsg);
+    lydict_remove(ctx, range->dsc);
+    lydict_remove(ctx, range->ref);
     FREE_ARRAY(ctx, range->exts, lysc_ext_instance_free);
 }
 
 void
-lysc_pattern_free(struct lysf_ctx *ctx, struct lysc_pattern **pattern)
+lysc_pattern_free(const struct ly_ctx *ctx, struct lysc_pattern **pattern)
 {
     if (--(*pattern)->refcount) {
         return;
     }
     pcre2_code_free((*pattern)->code);
-    lydict_remove(ctx->ctx, (*pattern)->expr);
-    lydict_remove(ctx->ctx, (*pattern)->eapptag);
-    lydict_remove(ctx->ctx, (*pattern)->emsg);
-    lydict_remove(ctx->ctx, (*pattern)->dsc);
-    lydict_remove(ctx->ctx, (*pattern)->ref);
+    lydict_remove(ctx, (*pattern)->expr);
+    lydict_remove(ctx, (*pattern)->eapptag);
+    lydict_remove(ctx, (*pattern)->emsg);
+    lydict_remove(ctx, (*pattern)->dsc);
+    lydict_remove(ctx, (*pattern)->ref);
     FREE_ARRAY(ctx, (*pattern)->exts, lysc_ext_instance_free);
     free(*pattern);
 }
 
 void
-lysc_enum_item_free(struct lysf_ctx *ctx, struct lysc_type_bitenum_item *item)
+lysc_enum_item_free(const struct ly_ctx *ctx, struct lysc_type_bitenum_item *item)
 {
-    lydict_remove(ctx->ctx, item->name);
-    lydict_remove(ctx->ctx, item->dsc);
-    lydict_remove(ctx->ctx, item->ref);
+    lydict_remove(ctx, item->name);
+    lydict_remove(ctx, item->dsc);
+    lydict_remove(ctx, item->ref);
     FREE_ARRAY(ctx, item->exts, lysc_ext_instance_free);
 }
 
 /**
  * @brief Free the compiled type structure.
  *
- * @param[in] ctx Free context.
+ * @param[in] ctx Context to use.
  * @param[in,out] type Pointer to compiled type structure to be freed.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
  */
 static void
-lysc_type2_free(struct lysf_ctx *ctx, struct lysc_type **type)
+lysc_type2_free(const struct ly_ctx *ctx, struct lysc_type **type)
 {
     lysc_type_free(ctx, *type);
 }
 
 void
-lysc_type_free(struct lysf_ctx *ctx, struct lysc_type *type)
+lysc_type_free(const struct ly_ctx *ctx, struct lysc_type *type)
 {
     if (!type || (LY_ATOMIC_DEC_BARRIER(type->refcount) > 1)) {
         return;
@@ -922,7 +901,7 @@ lysc_type_free(struct lysf_ctx *ctx, struct lysc_type *type)
         FREE_ARRAY(ctx, ((struct lysc_type_union *)type)->types, lysc_type2_free);
         break;
     case LY_TYPE_LEAFREF:
-        lyxp_expr_free(ctx->ctx, ((struct lysc_type_leafref *)type)->path);
+        lyxp_expr_free(ctx, ((struct lysc_type_leafref *)type)->path);
         ly_free_prefix_data(LY_VALUE_SCHEMA_RESOLVED, ((struct lysc_type_leafref *)type)->prefixes);
         lysc_type_free(ctx, ((struct lysc_type_leafref *)type)->realtype);
         break;
@@ -934,7 +913,7 @@ lysc_type_free(struct lysf_ctx *ctx, struct lysc_type *type)
         break;
     }
 
-    lydict_remove(ctx->ctx, type->name);
+    lydict_remove(ctx, type->name);
     FREE_ARRAY(ctx, type->exts, lysc_ext_instance_free);
     free(type);
 }
@@ -942,12 +921,12 @@ lysc_type_free(struct lysf_ctx *ctx, struct lysc_type *type)
 /**
  * @brief Free the compiled input/output structure.
  *
- * @param[in] ctx Free context.
- * @param[in,out] inout Compiled inout structure to be freed.
+ * @param[in] ctx Context to use.
+ * @param[in] inout Compiled inout structure to be freed.
  * Since the structure is part of the RPC/action structure, it is not freed itself.
  */
 static void
-lysc_node_action_inout_free(struct lysf_ctx *ctx, struct lysc_node_action_inout *inout)
+lysc_node_action_inout_free(const struct ly_ctx *ctx, struct lysc_node_action_inout *inout)
 {
     struct lysc_node *child, *child_next;
 
@@ -960,12 +939,12 @@ lysc_node_action_inout_free(struct lysf_ctx *ctx, struct lysc_node_action_inout 
 /**
  * @brief Free the compiled RPC/action structure.
  *
- * @param[in] ctx Free context.
- * @param[in,out] action Compiled RPC/action structure to be freed.
+ * @param[in] ctx Context to use.
+ * @param[in] action Compiled RPC/action structure to be freed.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
  */
 static void
-lysc_node_action_free(struct lysf_ctx *ctx, struct lysc_node_action *action)
+lysc_node_action_free(const struct ly_ctx *ctx, struct lysc_node_action *action)
 {
     FREE_ARRAY(ctx, action->when, lysc_when_free);
     if (action->input.nodetype) {
@@ -979,12 +958,12 @@ lysc_node_action_free(struct lysf_ctx *ctx, struct lysc_node_action *action)
 /**
  * @brief Free the compiled notification structure.
  *
- * @param[in] ctx Free context.
- * @param[in,out] notif Compiled notification structure to be freed.
+ * @param[in] ctx Context to use.
+ * @param[in] notif Compiled notification structure to be freed.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
  */
 static void
-lysc_node_notif_free(struct lysf_ctx *ctx, struct lysc_node_notif *notif)
+lysc_node_notif_free(const struct ly_ctx *ctx, struct lysc_node_notif *notif)
 {
     struct lysc_node *child, *child_next;
 
@@ -996,7 +975,7 @@ lysc_node_notif_free(struct lysf_ctx *ctx, struct lysc_node_notif *notif)
 }
 
 void
-lysc_node_container_free(struct lysf_ctx *ctx, struct lysc_node_container *node)
+lysc_node_container_free(const struct ly_ctx *ctx, struct lysc_node_container *node)
 {
     struct lysc_node *child, *child_next;
 
@@ -1016,21 +995,21 @@ lysc_node_container_free(struct lysf_ctx *ctx, struct lysc_node_container *node)
 /**
  * @brief Free the compiled leaf structure.
  *
- * @param[in] ctx Free context.
- * @param[in,out] node Compiled leaf structure to be freed.
+ * @param[in] ctx Context to use.
+ * @param[in] node Compiled leaf structure to be freed.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
  */
 static void
-lysc_node_leaf_free(struct lysf_ctx *ctx, struct lysc_node_leaf *node)
+lysc_node_leaf_free(const struct ly_ctx *ctx, struct lysc_node_leaf *node)
 {
     FREE_ARRAY(ctx, node->when, lysc_when_free);
     FREE_ARRAY(ctx, node->musts, lysc_must_free);
     if (node->type) {
         lysc_type_free(ctx, node->type);
     }
-    lydict_remove(ctx->ctx, node->units);
+    lydict_remove(ctx, node->units);
     if (node->dflt) {
-        node->dflt->realtype->plugin->free(ctx->ctx, node->dflt);
+        node->dflt->realtype->plugin->free(ctx, node->dflt);
         lysc_type_free(ctx, (struct lysc_type *)node->dflt->realtype);
         free(node->dflt);
     }
@@ -1039,12 +1018,12 @@ lysc_node_leaf_free(struct lysf_ctx *ctx, struct lysc_node_leaf *node)
 /**
  * @brief Free the compiled leaflist structure.
  *
- * @param[in] ctx Free context.
- * @param[in,out] node Compiled leaflist structure to be freed.
+ * @param[in] ctx Context to use.
+ * @param[in] node Compiled leaflist structure to be freed.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
  */
 static void
-lysc_node_leaflist_free(struct lysf_ctx *ctx, struct lysc_node_leaflist *node)
+lysc_node_leaflist_free(const struct ly_ctx *ctx, struct lysc_node_leaflist *node)
 {
     LY_ARRAY_COUNT_TYPE u;
 
@@ -1053,9 +1032,9 @@ lysc_node_leaflist_free(struct lysf_ctx *ctx, struct lysc_node_leaflist *node)
     if (node->type) {
         lysc_type_free(ctx, node->type);
     }
-    lydict_remove(ctx->ctx, node->units);
+    lydict_remove(ctx, node->units);
     LY_ARRAY_FOR(node->dflts, u) {
-        node->dflts[u]->realtype->plugin->free(ctx->ctx, node->dflts[u]);
+        node->dflts[u]->realtype->plugin->free(ctx, node->dflts[u]);
         lysc_type_free(ctx, (struct lysc_type *)node->dflts[u]->realtype);
         free(node->dflts[u]);
     }
@@ -1065,12 +1044,12 @@ lysc_node_leaflist_free(struct lysf_ctx *ctx, struct lysc_node_leaflist *node)
 /**
  * @brief Free the compiled list structure.
  *
- * @param[in] ctx Free context.
- * @param[in,out] node Compiled list structure to be freed.
+ * @param[in] ctx Context to use.
+ * @param[in] node Compiled list structure to be freed.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
  */
 static void
-lysc_node_list_free(struct lysf_ctx *ctx, struct lysc_node_list *node)
+lysc_node_list_free(const struct ly_ctx *ctx, struct lysc_node_list *node)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_node *child, *child_next;
@@ -1097,12 +1076,12 @@ lysc_node_list_free(struct lysf_ctx *ctx, struct lysc_node_list *node)
 /**
  * @brief Free the compiled choice structure.
  *
- * @param[in] ctx Free context.
- * @param[in,out] node Compiled choice structure to be freed.
+ * @param[in] ctx Context to use.
+ * @param[in] node Compiled choice structure to be freed.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
  */
 static void
-lysc_node_choice_free(struct lysf_ctx *ctx, struct lysc_node_choice *node)
+lysc_node_choice_free(const struct ly_ctx *ctx, struct lysc_node_choice *node)
 {
     struct lysc_node *child, *child_next;
 
@@ -1115,12 +1094,12 @@ lysc_node_choice_free(struct lysf_ctx *ctx, struct lysc_node_choice *node)
 /**
  * @brief Free the compiled case structure.
  *
- * @param[in] ctx Free context.
- * @param[in,out] node Compiled case structure to be freed.
+ * @param[in] ctx Context to use.
+ * @param[in] node Compiled case structure to be freed.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
  */
 static void
-lysc_node_case_free(struct lysf_ctx *ctx, struct lysc_node_case *node)
+lysc_node_case_free(const struct ly_ctx *ctx, struct lysc_node_case *node)
 {
     struct lysc_node *child, *child_next;
 
@@ -1133,12 +1112,12 @@ lysc_node_case_free(struct lysf_ctx *ctx, struct lysc_node_case *node)
 /**
  * @brief Free the compiled anyxml/anydata structure.
  *
- * @param[in] ctx Free context.
- * @param[in,out] node Compiled anyxml/anydata structure to be freed.
+ * @param[in] ctx Context to use.
+ * @param[in] node Compiled anyxml/anydata structure to be freed.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
  */
 static void
-lysc_node_anydata_free(struct lysf_ctx *ctx, struct lysc_node_anydata *node)
+lysc_node_anydata_free(const struct ly_ctx *ctx, struct lysc_node_anydata *node)
 {
     FREE_ARRAY(ctx, node->when, lysc_when_free);
     FREE_ARRAY(ctx, node->musts, lysc_must_free);
@@ -1147,19 +1126,19 @@ lysc_node_anydata_free(struct lysf_ctx *ctx, struct lysc_node_anydata *node)
 /**
  * @brief Free the compiled node structure.
  *
- * @param[in] ctx Free context.
- * @param[in,out] node Compiled node structure to be freed.
+ * @param[in] ctx Context to use.
+ * @param[in] node Compiled node structure to be freed.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
  */
 static void
-lysc_node_free_(struct lysf_ctx *ctx, struct lysc_node *node)
+lysc_node_free_(const struct ly_ctx *ctx, struct lysc_node *node)
 {
     ly_bool inout = 0;
 
     /* common part */
-    lydict_remove(ctx->ctx, node->name);
-    lydict_remove(ctx->ctx, node->dsc);
-    lydict_remove(ctx->ctx, node->ref);
+    lydict_remove(ctx, node->name);
+    lydict_remove(ctx, node->dsc);
+    lydict_remove(ctx, node->ref);
 
     /* nodetype-specific part */
     switch (node->nodetype) {
@@ -1198,7 +1177,7 @@ lysc_node_free_(struct lysf_ctx *ctx, struct lysc_node *node)
         lysc_node_notif_free(ctx, (struct lysc_node_notif *)node);
         break;
     default:
-        LOGINT(ctx->ctx);
+        LOGINT(ctx);
     }
 
     FREE_ARRAY(ctx, node->exts, lysc_ext_instance_free);
@@ -1209,7 +1188,7 @@ lysc_node_free_(struct lysf_ctx *ctx, struct lysc_node *node)
 }
 
 void
-lysc_node_free(struct lysf_ctx *ctx, struct lysc_node *node, ly_bool unlink)
+lysc_node_free(const struct ly_ctx *ctx, struct lysc_node *node, ly_bool unlink)
 {
     struct lysc_node *next, *iter, **child_p;
 
@@ -1241,7 +1220,7 @@ lysc_node_free(struct lysf_ctx *ctx, struct lysc_node *node, ly_bool unlink)
                 } else {
                     iter = (struct lysc_node *)lysc_node_child(node->parent);
                 }
-                LY_CHECK_ERR_RET(!iter, LOGINT(ctx->ctx), );
+                LY_CHECK_ERR_RET(!iter, LOGINT(ctx), );
             } else if (node->nodetype == LYS_RPC) {
                 iter = (struct lysc_node *)node->module->compiled->rpcs;
             } else if (node->nodetype == LYS_NOTIF) {
@@ -1279,7 +1258,7 @@ lysc_node_free(struct lysf_ctx *ctx, struct lysc_node *node, ly_bool unlink)
 }
 
 void
-lysc_module_free(struct lysf_ctx *ctx, struct lysc_module *module)
+lysc_module_free(const struct ly_ctx *ctx, struct lysc_module *module)
 {
     struct lysc_node *node, *node_next;
 
@@ -1287,7 +1266,7 @@ lysc_module_free(struct lysf_ctx *ctx, struct lysc_module *module)
         return;
     }
 
-    FREE_STRINGS(ctx->ctx, module->features);
+    FREE_STRINGS(ctx, module->features);
     LY_LIST_FOR_SAFE(module->data, node_next, node) {
         lysc_node_free_(ctx, node);
     }
@@ -1302,16 +1281,37 @@ lysc_module_free(struct lysf_ctx *ctx, struct lysc_module *module)
     free(module);
 }
 
+/**
+ * @brief Free the compiled submodule metadata.
+ *
+ * @param[in] ctx Context to use.
+ * @param[in] submodule COmpiled submodule to be freed.
+ */
 static void
-lysc_submodule_free(struct lysf_ctx *ctx, struct lysc_submodule *submodule)
+lysc_submodule_free(const struct ly_ctx *ctx, struct lysc_submodule *submodule)
 {
-    lydict_remove(ctx->ctx, submodule->name);
-    lydict_remove(ctx->ctx, submodule->revision);
-    lydict_remove(ctx->ctx, submodule->filepath);
+    lydict_remove(ctx, submodule->name);
+    lydict_remove(ctx, submodule->revision);
+    lydict_remove(ctx, submodule->filepath);
+}
+
+/**
+ * @brief Free the compiled extension definition.
+ *
+ * @param[in] ctx Context to use.
+ * @param[in] ext Compiled extension definition to be freed.
+ */
+static void
+lysc_extension_free(const struct ly_ctx *ctx, struct lysc_ext *ext)
+{
+    lydict_remove(ctx, ext->name);
+    lydict_remove(ctx, ext->argname);
+
+    FREE_ARRAY(ctx, ext->exts, lysc_ext_instance_free);
 }
 
 void
-lys_module_free(struct lysf_ctx *ctx, struct lys_module *module, ly_bool remove_links)
+lys_module_free(const struct ly_ctx *ctx, struct lys_module *module, ly_bool remove_links)
 {
     LY_ARRAY_COUNT_TYPE u;
 
@@ -1322,6 +1322,7 @@ lys_module_free(struct lysf_ctx *ctx, struct lys_module *module, ly_bool remove_
     assert(!module->implemented);
     assert(!module->compiled);
 
+    /* free identities */
     if (remove_links) {
         /* remove derived identity links */
         LY_ARRAY_FOR(module->identities, u) {
@@ -1329,46 +1330,34 @@ lys_module_free(struct lysf_ctx *ctx, struct lys_module *module, ly_bool remove_
         }
     }
     FREE_ARRAY(ctx, module->identities, lysc_ident_free);
+
+    /* free parsed module, which can reference compiled extension definitions */
     lysp_module_free(ctx, module->parsed);
+
+    /* free compiled extension definitions */
+    FREE_ARRAY(ctx, module->extensions, lysc_extension_free);
 
     FREE_ARRAY(ctx, module->submodules, lysc_submodule_free);
     LY_ARRAY_FREE(module->augmented_by);
     LY_ARRAY_FREE(module->deviated_by);
 
-    lydict_remove(ctx->ctx, module->name);
-    lydict_remove(ctx->ctx, module->revision);
-    lydict_remove(ctx->ctx, module->ns);
-    lydict_remove(ctx->ctx, module->prefix);
-    lydict_remove(ctx->ctx, module->filepath);
-    lydict_remove(ctx->ctx, module->org);
-    lydict_remove(ctx->ctx, module->contact);
-    lydict_remove(ctx->ctx, module->dsc);
-    lydict_remove(ctx->ctx, module->ref);
+    lydict_remove(ctx, module->name);
+    lydict_remove(ctx, module->revision);
+    lydict_remove(ctx, module->ns);
+    lydict_remove(ctx, module->prefix);
+    lydict_remove(ctx, module->filepath);
+    lydict_remove(ctx, module->org);
+    lydict_remove(ctx, module->contact);
+    lydict_remove(ctx, module->dsc);
+    lydict_remove(ctx, module->ref);
 
     free(module);
-}
-
-void
-lysf_ctx_erase(struct lysf_ctx *ctx)
-{
-    struct lysc_ext *ext;
-    uint32_t i;
-
-    for (i = 0; i < ctx->ext_set.count; ++i) {
-        ext = ctx->ext_set.objs[i];
-
-        lydict_remove(ctx->ctx, ext->name);
-        lydict_remove(ctx->ctx, ext->argname);
-        free(ext);
-    }
-    ly_set_erase(&ctx->ext_set, NULL);
 }
 
 LIBYANG_API_DEF void
 lyplg_ext_pfree_instance_substatements(const struct ly_ctx *ctx, struct lysp_ext_substmt *substmts)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct lysf_ctx fctx = {.ctx = (struct ly_ctx *)ctx};
     ly_bool node_free;
 
     LY_ARRAY_FOR(substmts, u) {
@@ -1397,7 +1386,7 @@ lyplg_ext_pfree_instance_substatements(const struct ly_ctx *ctx, struct lysp_ext
 
             LY_LIST_FOR_SAFE(*substmts[u].storage_p, child_next, child) {
                 node_free = (child->nodetype & (LYS_INPUT | LYS_OUTPUT)) ? 1 : 0;
-                lysp_node_free(&fctx, child);
+                lysp_node_free(ctx, child);
                 if (node_free) {
                     free(child);
                 }
@@ -1413,57 +1402,57 @@ lyplg_ext_pfree_instance_substatements(const struct ly_ctx *ctx, struct lysp_ext
         case LY_STMT_BIT:
         case LY_STMT_ENUM:
             /* single enum */
-            lysp_type_enum_free(&fctx, *substmts[u].storage_p);
+            lysp_type_enum_free(ctx, *substmts[u].storage_p);
             break;
 
         case LY_STMT_DEVIATE:
             /* single deviate */
-            lysp_deviate_free(&fctx, *substmts[u].storage_p);
+            lysp_deviate_free(ctx, *substmts[u].storage_p);
             break;
 
         case LY_STMT_DEVIATION:
             /* single deviation */
-            lysp_deviation_free(&fctx, *substmts[u].storage_p);
+            lysp_deviation_free(ctx, *substmts[u].storage_p);
             break;
 
         case LY_STMT_EXTENSION:
             /* single extension */
-            lysp_ext_free(&fctx, *substmts[u].storage_p);
+            lysp_ext_free(ctx, *substmts[u].storage_p);
             break;
 
         case LY_STMT_EXTENSION_INSTANCE:
             /* multiple extension instances */
-            FREE_ARRAY(&fctx, *(struct lysp_ext_instance **)substmts[u].storage_p, lysp_ext_instance_free);
+            FREE_ARRAY(ctx, *(struct lysp_ext_instance **)substmts[u].storage_p, lysp_ext_instance_free);
             break;
 
         case LY_STMT_FEATURE:
             /* multiple features */
-            FREE_ARRAY(&fctx, *(struct lysp_feature **)substmts[u].storage_p, lysp_feature_free);
+            FREE_ARRAY(ctx, *(struct lysp_feature **)substmts[u].storage_p, lysp_feature_free);
             break;
 
         case LY_STMT_IDENTITY:
             /* multiple identities */
-            FREE_ARRAY(&fctx, *(struct lysp_ident **)substmts[u].storage_p, lysp_ident_free);
+            FREE_ARRAY(ctx, *(struct lysp_ident **)substmts[u].storage_p, lysp_ident_free);
             break;
 
         case LY_STMT_IMPORT:
             /* multiple imports */
-            FREE_ARRAY(&fctx, *(struct lysp_import **)substmts[u].storage_p, lysp_import_free);
+            FREE_ARRAY(ctx, *(struct lysp_import **)substmts[u].storage_p, lysp_import_free);
             break;
 
         case LY_STMT_INCLUDE:
             /* multiple includes */
-            FREE_ARRAY(&fctx, *(struct lysp_include **)substmts[u].storage_p, lysp_include_free);
+            FREE_ARRAY(ctx, *(struct lysp_include **)substmts[u].storage_p, lysp_include_free);
             break;
 
         case LY_STMT_REFINE:
             /* multiple refines */
-            FREE_ARRAY(&fctx, *(struct lysp_refine **)substmts[u].storage_p, lysp_refine_free);
+            FREE_ARRAY(ctx, *(struct lysp_refine **)substmts[u].storage_p, lysp_refine_free);
             break;
 
         case LY_STMT_REVISION:
             /* multiple revisions */
-            FREE_ARRAY(&fctx, *(struct lysp_revision **)substmts[u].storage_p, lysp_revision_free);
+            FREE_ARRAY(ctx, *(struct lysp_revision **)substmts[u].storage_p, lysp_revision_free);
             break;
 
         case LY_STMT_CONFIG:
@@ -1505,12 +1494,12 @@ lyplg_ext_pfree_instance_substatements(const struct ly_ctx *ctx, struct lysp_ext
         case LY_STMT_PATTERN:
         case LY_STMT_RANGE:
             /* multiple restrictions */
-            FREE_ARRAY(&fctx, *(struct lysp_restr **)substmts[u].storage_p, lysp_restr_free);
+            FREE_ARRAY(ctx, *(struct lysp_restr **)substmts[u].storage_p, lysp_restr_free);
             break;
 
         case LY_STMT_WHEN:
             /* multiple whens */
-            FREE_ARRAY(&fctx, *(struct lysp_when **)substmts[u].storage_p, lysp_when_free);
+            FREE_ARRAY(ctx, *(struct lysp_when **)substmts[u].storage_p, lysp_when_free);
             break;
 
         case LY_STMT_PATH:
@@ -1527,21 +1516,21 @@ lyplg_ext_pfree_instance_substatements(const struct ly_ctx *ctx, struct lysp_ext
 
         case LY_STMT_TYPEDEF:
             /* multiple typedefs */
-            FREE_ARRAY(&fctx, *(struct lysp_tpdf **)substmts[u].storage_p, lysp_tpdf_free);
+            FREE_ARRAY(ctx, *(struct lysp_tpdf **)substmts[u].storage_p, lysp_tpdf_free);
             break;
 
         case LY_STMT_TYPE: {
             /* single type */
             struct lysp_type **type_p = (struct lysp_type **)substmts[u].storage_p;
 
-            lysp_type_free(&fctx, *type_p);
+            lysp_type_free(ctx, *type_p);
             free(*type_p);
             break;
         }
         case LY_STMT_MODULE:
         case LY_STMT_SUBMODULE:
             /* single (sub)module */
-            lysp_module_free(&fctx, *substmts[u].storage_p);
+            lysp_module_free(ctx, *substmts[u].storage_p);
             break;
 
         default:
@@ -1556,7 +1545,6 @@ LIBYANG_API_DEF void
 lyplg_ext_cfree_instance_substatements(const struct ly_ctx *ctx, struct lysc_ext_substmt *substmts)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct lysf_ctx fctx = {.ctx = (struct ly_ctx *)ctx};
     ly_bool node_free;
 
     LY_ARRAY_FOR(substmts, u) {
@@ -1582,7 +1570,7 @@ lyplg_ext_cfree_instance_substatements(const struct ly_ctx *ctx, struct lysc_ext
 
             LY_LIST_FOR_SAFE(*substmts[u].storage_p, child_next, child) {
                 node_free = (child->nodetype & (LYS_INPUT | LYS_OUTPUT)) ? 1 : 0;
-                lysc_node_free_(&fctx, child);
+                lysc_node_free_(ctx, child);
                 if (node_free) {
                     free(child);
                 }
@@ -1627,7 +1615,7 @@ lyplg_ext_cfree_instance_substatements(const struct ly_ctx *ctx, struct lysc_ext
             /* sized array */
             struct lysc_type_bitenum_item *items = *substmts[u].storage_p;
 
-            FREE_ARRAY(&fctx, items, lysc_enum_item_free);
+            FREE_ARRAY(ctx, items, lysc_enum_item_free);
             break;
         }
         case LY_STMT_LENGTH:
@@ -1635,47 +1623,47 @@ lyplg_ext_cfree_instance_substatements(const struct ly_ctx *ctx, struct lysc_ext
             /* single item */
             struct lysc_range *range = *substmts[u].storage_p;
 
-            lysc_range_free(&fctx, range);
+            lysc_range_free(ctx, range);
             break;
         }
         case LY_STMT_MUST: {
             /* sized array */
             struct lysc_must *musts = *substmts[u].storage_p;
 
-            FREE_ARRAY(&fctx, musts, lysc_must_free);
+            FREE_ARRAY(ctx, musts, lysc_must_free);
             break;
         }
         case LY_STMT_WHEN:
             /* single item, expects a pointer */
-            lysc_when_free(&fctx, (struct lysc_when **)substmts[u].storage_p);
+            lysc_when_free(ctx, (struct lysc_when **)substmts[u].storage_p);
             break;
 
         case LY_STMT_PATTERN: {
             /* sized array of pointers */
             struct lysc_pattern **patterns = *substmts[u].storage_p;
 
-            FREE_ARRAY(&fctx, patterns, lysc_pattern_free);
+            FREE_ARRAY(ctx, patterns, lysc_pattern_free);
             break;
         }
         case LY_STMT_TYPE: {
             /* single item */
             struct lysc_type *type = *substmts[u].storage_p;
 
-            lysc_type_free(&fctx, type);
+            lysc_type_free(ctx, type);
             break;
         }
         case LY_STMT_IDENTITY: {
             /* sized array */
             struct lysc_ident *idents = *substmts[u].storage_p;
 
-            FREE_ARRAY(&fctx, idents, lysc_ident_free);
+            FREE_ARRAY(ctx, idents, lysc_ident_free);
             break;
         }
         case LY_STMT_EXTENSION_INSTANCE: {
             /* sized array */
             struct lysc_ext_instance *exts = *substmts[u].storage_p;
 
-            FREE_ARRAY(&fctx, exts, lysc_ext_instance_free);
+            FREE_ARRAY(ctx, exts, lysc_ext_instance_free);
             break;
         }
         case LY_STMT_AUGMENT:

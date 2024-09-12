@@ -911,7 +911,7 @@ lyplg_ext_parse_log(const struct lysp_ctx *pctx, const struct lysp_ext_instance 
     ly_vlog_build_path_line(PARSER_CTX(pctx), &data_path, &schema_path, &line);
 
     va_start(ap, format);
-    ly_ext_log(PARSER_CTX(pctx), ext->record->plugin.id, level, err, data_path, schema_path, line, format, ap);
+    ly_ext_log(PARSER_CTX(pctx), ext->plugin->id, level, err, data_path, schema_path, line, format, ap);
     va_end(ap);
 }
 
