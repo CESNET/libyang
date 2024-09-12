@@ -162,7 +162,8 @@ test_schema(void **state)
 }
 
 static LY_ERR
-test_ext_data_clb(const struct lysc_ext_instance *ext, void *user_data, void **ext_data, ly_bool *ext_data_free)
+test_ext_data_clb(const struct lysc_ext_instance *ext, const struct lyd_node *UNUSED(parent), void *user_data,
+        void **ext_data, ly_bool *ext_data_free)
 {
     void **state = glob_state;
     struct lyd_node *data = NULL;

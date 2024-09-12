@@ -262,7 +262,8 @@ cleanup:
 }
 
 LY_ERR
-ext_data_clb(const struct lysc_ext_instance *ext, void *user_data, void **ext_data, ly_bool *ext_data_free)
+ext_data_clb(const struct lysc_ext_instance *ext, const struct lyd_node *UNUSED(parent), void *user_data,
+        void **ext_data, ly_bool *ext_data_free)
 {
     struct ly_ctx *ctx;
     struct lyd_node *data = NULL;

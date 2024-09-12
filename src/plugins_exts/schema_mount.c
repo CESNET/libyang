@@ -1,9 +1,10 @@
 /**
  * @file schema_mount.c
  * @author Tadeas Vintrlik <xvintr04@stud.fit.vutbr.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang extension plugin - Schema Mount (RFC 8528)
  *
- * Copyright (c) 2021 CESNET, z.s.p.o.
+ * Copyright (c) 2021 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -628,11 +629,12 @@ cleanup:
  * @brief Get schema (context) for a mount point.
  *
  * @param[in] ext Compiled extension instance.
+ * @param[in] parent Data parent node instance of a schema node with @p ext instance.
  * @param[out] ext_ctx Schema to use for parsing the data.
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_mount_get_ctx(struct lysc_ext_instance *ext, const struct ly_ctx **ext_ctx)
+schema_mount_get_ctx(struct lysc_ext_instance *ext, const struct lyd_node *parent, const struct ly_ctx **ext_ctx)
 {
     LY_ERR ret = LY_SUCCESS, r;
     struct lyd_node *iter, *ext_data = NULL;
@@ -641,7 +643,7 @@ schema_mount_get_ctx(struct lysc_ext_instance *ext, const struct ly_ctx **ext_ct
     *ext_ctx = NULL;
 
     /* get operational data with ietf-yang-library and ietf-yang-schema-mount data */
-    if ((r = lyplg_ext_get_data(ext->module->ctx, ext, (void **)&ext_data, &ext_data_free))) {
+    if ((r = lyplg_ext_get_data(ext->module->ctx, ext, parent, (void **)&ext_data, &ext_data_free))) {
         ret = r;
         goto cleanup;
     }
@@ -693,7 +695,7 @@ schema_mount_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent,
     const struct ly_ctx *ext_ctx = NULL;
 
     /* get context based on ietf-yang-library data */
-    if ((r = schema_mount_get_ctx(ext, &ext_ctx))) {
+    if ((r = schema_mount_get_ctx(ext, parent, &ext_ctx))) {
         return r;
     }
 
@@ -840,8 +842,9 @@ cleanup:
     return ret;
 }
 
-LY_ERR
-lyplg_ext_schema_mount_get_parent_ref(const struct lysc_ext_instance *ext, struct ly_set **refs)
+LIBYANG_API_DEF LY_ERR
+lyplg_ext_schema_mount_get_parent_ref(const struct lysc_ext_instance *ext, const struct lyd_node *parent,
+        struct ly_set **refs)
 {
     LY_ERR rc;
     struct ly_set *pref_set = NULL;
@@ -851,7 +854,7 @@ lyplg_ext_schema_mount_get_parent_ref(const struct lysc_ext_instance *ext, struc
     ly_bool ext_data_free;
 
     /* get operational data with ietf-yang-library and ietf-yang-schema-mount data */
-    if ((rc = lyplg_ext_get_data(ext->module->ctx, ext, (void **)&ext_data, &ext_data_free))) {
+    if ((rc = lyplg_ext_get_data(ext->module->ctx, ext, parent, (void **)&ext_data, &ext_data_free))) {
         return rc;
     }
 
@@ -916,7 +919,7 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
     }
 
     /* get operational data with ietf-yang-library and ietf-yang-schema-mount data */
-    if ((ret = lyplg_ext_get_data(ext->module->ctx, ext, (void **)&ext_data, &ext_data_free))) {
+    if ((ret = lyplg_ext_get_data(ext->module->ctx, ext, lyd_parent(sibling), (void **)&ext_data, &ext_data_free))) {
         goto cleanup;
     }
 
@@ -1062,7 +1065,8 @@ schema_mount_cfree(const struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_ext_schema_mount_create_context(const struct lysc_ext_instance *ext, struct ly_ctx **ctx)
+lyplg_ext_schema_mount_create_context(const struct lysc_ext_instance *ext, const struct lyd_node *parent,
+        struct ly_ctx **ctx)
 {
     struct lyd_node *ext_data = NULL;
     ly_bool ext_data_free = 0, config;
@@ -1077,7 +1081,7 @@ lyplg_ext_schema_mount_create_context(const struct lysc_ext_instance *ext, struc
     }
 
     /* get operational data with ietf-yang-library and ietf-yang-schema-mount data */
-    if ((rc = lyplg_ext_get_data(ext->module->ctx, ext, (void **)&ext_data, &ext_data_free))) {
+    if ((rc = lyplg_ext_get_data(ext->module->ctx, ext, parent, (void **)&ext_data, &ext_data_free))) {
         return rc;
     }
 
@@ -1206,12 +1210,12 @@ schema_mount_sprinter_ctree(struct lysc_ext_instance *ext, const struct lyspr_tr
         return LY_SUCCESS;
     }
 
-    if (lyplg_ext_schema_mount_create_context(ext, &ext_ctx)) {
+    if (lyplg_ext_schema_mount_create_context(ext, NULL, &ext_ctx)) {
         /* Void mount point */
         return LY_SUCCESS;
     }
 
-    rc = lyplg_ext_schema_mount_get_parent_ref(ext, &refs);
+    rc = lyplg_ext_schema_mount_get_parent_ref(ext, NULL, &refs);
     LY_CHECK_GOTO(rc, cleanup);
 
     /* build new list of modules to print. This list will omit internal
