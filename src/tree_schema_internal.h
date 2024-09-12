@@ -447,6 +447,17 @@ LY_ERR lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_
         struct lysp_ext **ext_def);
 
 /**
+ * @brief Find compiled extension definition for the given extension instance.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] ext Extension instance for which the definition will be searched.
+ * @param[out] ext_def Found compiled extension definition.
+ * @return LY_SUCCESS when the definition was found.
+ * @return LY_EVALID when the extension instance is invalid and/or the definition not found.
+ */
+LY_ERR lysc_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instance *ext, struct lysc_ext **ext_def);
+
+/**
  * @brief Get schema node in extension instance according to the given parameters.
  *
  * Wraps ::lys_getnext_ext() and match according to the given arguments.
@@ -468,10 +479,12 @@ const struct lysc_node *lysc_ext_find_node(const struct lysc_ext_instance *ext, 
  * as substatements and resolving argument is postponed.
  *
  * @param[in] ctx libyang context
- * @param[in] ext_p Parsed extension to be updated.
+ * @param[in] ext_def Parsed extension definition.
+ * @param[in,out] ext_p Parsed extension to be updated.
  * @return LY_ERR value.
  */
-LY_ERR lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance *ext_p);
+LY_ERR lysp_ext_instance_resolve_argument(const struct ly_ctx *ctx, const struct lysp_ext *ext_def,
+        struct lysp_ext_instance *ext_p);
 
 /**
  * @brief Iterate over the specified type of the extension instances
