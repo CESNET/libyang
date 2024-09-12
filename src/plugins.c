@@ -188,7 +188,7 @@ lyplg_record_find(const struct ly_ctx *ctx, enum LYPLG type, const char *module,
 struct lyplg_type *
 lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name)
 {
-    struct lyplg_record *record = NULL;
+    struct lyplg_type_record *record = NULL;
 
     if (ctx) {
         /* try to find context specific plugin */
@@ -200,11 +200,11 @@ lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, const char 
         record = lyplg_record_find(NULL, LYPLG_TYPE, module, revision, name);
     }
 
-    return record ? &((struct lyplg_type_record *)record)->plugin : NULL;
+    return record ? &record->plugin : NULL;
 }
 
-struct lyplg_ext_record *
-lyplg_ext_record_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name)
+struct lyplg_ext *
+lyplg_ext_plugin_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name)
 {
     struct lyplg_ext_record *record = NULL;
 
@@ -218,7 +218,7 @@ lyplg_ext_record_find(const struct ly_ctx *ctx, const char *module, const char *
         record = lyplg_record_find(NULL, LYPLG_EXTENSION, module, revision, name);
     }
 
-    return record;
+    return record ? &record->plugin : NULL;
 }
 
 /**

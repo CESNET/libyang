@@ -299,12 +299,8 @@ struct lysp_ext {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    struct lyplg_ext *plugin;        /**< extension definition plugin, if any */
     uint16_t flags;                  /**< LYS_STATUS_* and LYS_YINELEM_* values (@ref snodeflags) */
-
-    struct lysc_ext *compiled;       /**< pointer to the compiled extension definition.
-                                          The extension definition is compiled only if there is compiled extension instance,
-                                          otherwise this pointer remains NULL. The compiled extension definition is shared
-                                          among all extension instances. */
 };
 
 /**
@@ -1187,7 +1183,7 @@ struct lysc_ext {
     const char *name;                /**< extension name */
     const char *argname;             /**< argument name, NULL if not specified */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lyplg_ext *plugin;        /**< Plugin implementing the specific extension */
+    struct lyplg_ext *plugin;        /**< plugin implementing the specific extension, if any */
     struct lys_module *module;       /**< module structure */
     uint16_t flags;                  /**< LYS_STATUS_* value (@ref snodeflags) */
 };
@@ -1757,7 +1753,7 @@ struct lysc_module {
     struct lysc_node *data;             /**< list of module's top-level data nodes (linked list) */
     struct lysc_node_action *rpcs;      /**< first of actions nodes (linked list) */
     struct lysc_node_notif *notifs;     /**< first of notifications nodes (linked list) */
-    struct lysc_ext_instance *exts;     /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    struct lysc_ext_instance *exts;     /**< list of extension instances ([sized array](@ref sizedarrays)) */
 };
 
 /**
@@ -2160,6 +2156,8 @@ struct lys_module {
     struct lysc_module *compiled;       /**< Compiled and fully validated YANG schema tree for data parsing.
                                              Available only for implemented modules. */
 
+    struct lysc_ext *extensions;        /**< List of compiled extension statements ([sized array](@ref sizedarrays)),
+                                             filled even if module not implemented. */
     struct lysc_ident *identities;      /**< List of compiled identities of the module ([sized array](@ref sizedarrays))
                                              also contains the disabled identities when their if-feature(s) are evaluated to \"false\",
                                              and also the list is filled even if the module is not implemented.
