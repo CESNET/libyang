@@ -443,10 +443,9 @@ LIBYANG_API_DECL LY_ERR lyplg_type_lypath_new(const struct ly_ctx *ctx, const ch
  *
  * The ly_path representation can be created by ::lyplg_type_lypath_new().
  *
- * @param[in] ctx libyang context.
- * @param[in] path The structure ([sized array](@ref sizedarrays)) to free.
+ * @param[in] path Path structure ([sized array](@ref sizedarrays)) to free.
  */
-LIBYANG_API_DECL void lyplg_type_lypath_free(const struct ly_ctx *ctx, struct ly_path *path);
+LIBYANG_API_DECL void lyplg_type_lypath_free(struct ly_path *path);
 
 /**
  * @brief Print xpath1.0 value in the specific format.
