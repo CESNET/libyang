@@ -449,13 +449,15 @@ LIBYANG_API_DECL void ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_im
  * @brief Callback for getting arbitrary run-time data required by an extension instance.
  *
  * @param[in] ext Compiled extension instance.
+ * @param[in] parent Data parent node instance of a schema node with @p ext instance. In special cases
+ * (when not working with data) it be NULL!
  * @param[in] user_data User-supplied callback data.
  * @param[out] ext_data Provided extension instance data.
  * @param[out] ext_data_free Whether the extension instance should free @p ext_data or not.
  * @return LY_ERR value.
  */
-typedef LY_ERR (*ly_ext_data_clb)(const struct lysc_ext_instance *ext, void *user_data, void **ext_data,
-        ly_bool *ext_data_free);
+typedef LY_ERR (*ly_ext_data_clb)(const struct lysc_ext_instance *ext, const struct lyd_node *parent, void *user_data,
+        void **ext_data, ly_bool *ext_data_free);
 
 /**
  * @brief Set callback providing run-time extension instance data. The expected data depend on the extension.

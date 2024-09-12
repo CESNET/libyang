@@ -1012,13 +1012,14 @@ LIBYANG_API_DECL LY_ERR lyplg_ext_parsed_get_storage(const struct lysc_ext_insta
  *
  * @param[in] ctx Context with the callback.
  * @param[in] ext Compiled extension instance.
+ * @param[in] parent Data parent node instance of a schema node with @p ext instance.
  * @param[out] ext_data Provided extension instance data.
  * @param[out] ext_data_free Whether the extension instance should free @p ext_data or not.
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
-LIBYANG_API_DECL LY_ERR lyplg_ext_get_data(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, void **ext_data,
-        ly_bool *ext_data_free);
+LIBYANG_API_DECL LY_ERR lyplg_ext_get_data(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext,
+        const struct lyd_node *parent, void **ext_data, ly_bool *ext_data_free);
 
 /**
  * @brief Insert extension instance data into a parent.
@@ -1034,20 +1035,24 @@ LIBYANG_API_DECL LY_ERR lyplg_ext_insert(struct lyd_node *parent, struct lyd_nod
  * @brief Expand parent-reference xpath expressions
  *
  * @param[in] ext Context allocated for extension.
+ * @param[in] parent Data parent node instance of a schema node with @p ext instance.
  * @param[out] refs Set of schema node matching parent-reference XPaths.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyplg_ext_schema_mount_get_parent_ref(const struct lysc_ext_instance *ext, struct ly_set **refs);
+LIBYANG_API_DECL LY_ERR lyplg_ext_schema_mount_get_parent_ref(const struct lysc_ext_instance *ext,
+        const struct lyd_node *parent, struct ly_set **refs);
 
 /**
  * @brief Allocate a new context for a particular instance of the yangmnt:mount-point extension.
  * Caller is responsible for **freeing** the created context.
  *
  * @param[in] ext Compiled extension instance.
+ * @param[in] parent Data parent node instance of a schema node with @p ext instance.
  * @param[out] ctx Context with modules loaded from the list found in the extension data.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyplg_ext_schema_mount_create_context(const struct lysc_ext_instance *ext, struct ly_ctx **ctx);
+LIBYANG_API_DECL LY_ERR lyplg_ext_schema_mount_create_context(const struct lysc_ext_instance *ext,
+        const struct lyd_node *parent, struct ly_ctx **ctx);
 
 /** @} pluginsExtensions */
 
