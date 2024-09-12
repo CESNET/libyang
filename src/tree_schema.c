@@ -259,7 +259,7 @@ repeat:
                 LY_ARRAY_FOR(parent->exts, u) {
                     if (!strcmp(parent->exts[u].def->name, "mount-point") &&
                             !strcmp(parent->exts[u].def->module->name, "ietf-yang-schema-mount")) {
-                        lyplg_ext_schema_mount_get_ctx(&parent->exts[u], &sm_ctx);
+                        lyplg_ext_schema_mount_create_context(&parent->exts[u], NULL, &sm_ctx);
                         if (sm_ctx) {
                             /* some usable context created */
                             break;
