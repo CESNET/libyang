@@ -985,6 +985,13 @@ lysc_node_container_free(const struct ly_ctx *ctx, struct lysc_node_container *n
     FREE_ARRAY(ctx, node->musts, lysc_must_free);
 }
 
+void
+lysc_value_free(const struct ly_ctx *ctx, struct lysc_value *val)
+{
+    lydict_remove(ctx, val->str);
+    ly_free_prefix_data(LY_VALUE_SCHEMA_RESOLVED, val->prefixes);
+}
+
 /**
  * @brief Free the compiled leaf structure.
  *
@@ -1001,11 +1008,7 @@ lysc_node_leaf_free(const struct ly_ctx *ctx, struct lysc_node_leaf *node)
         lysc_type_free(ctx, node->type);
     }
     lydict_remove(ctx, node->units);
-    if (node->dflt) {
-        node->dflt->realtype->plugin->free(ctx, node->dflt);
-        lysc_type_free(ctx, (struct lysc_type *)node->dflt->realtype);
-        free(node->dflt);
-    }
+    lysc_value_free(ctx, &node->dflt);
 }
 
 /**
@@ -1018,20 +1021,13 @@ lysc_node_leaf_free(const struct ly_ctx *ctx, struct lysc_node_leaf *node)
 static void
 lysc_node_leaflist_free(const struct ly_ctx *ctx, struct lysc_node_leaflist *node)
 {
-    LY_ARRAY_COUNT_TYPE u;
-
     FREE_ARRAY(ctx, node->when, lysc_when_free);
     FREE_ARRAY(ctx, node->musts, lysc_must_free);
     if (node->type) {
         lysc_type_free(ctx, node->type);
     }
     lydict_remove(ctx, node->units);
-    LY_ARRAY_FOR(node->dflts, u) {
-        node->dflts[u]->realtype->plugin->free(ctx, node->dflts[u]);
-        lysc_type_free(ctx, (struct lysc_type *)node->dflts[u]->realtype);
-        free(node->dflts[u]);
-    }
-    LY_ARRAY_FREE(node->dflts);
+    FREE_ARRAY(ctx, node->dflts, lysc_value_free);
 }
 
 /**

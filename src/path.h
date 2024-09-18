@@ -64,7 +64,7 @@ struct ly_path_predicate {
         struct {
             const struct lysc_node *key;    /**< key node of the predicate, NULL in case of a leaf-list predicate */
             union {
-                struct lyd_value value;     /**< stored value representation according to the key's type (realtype ref) */
+                const char *value;          /**< stored canonical value of the key's type */
                 char *variable;             /**< XPath variable used instead of the value */
             };
         };

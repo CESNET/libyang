@@ -1603,6 +1603,11 @@ struct lysc_node_choice {
     struct lysc_node_case *dflt;     /**< default case of the choice, only a pointer into the cases array. */
 };
 
+struct lysc_value {
+    const char *str;                 /**< string value */
+    struct lysc_prefix *prefixes;    /**< compiled used prefixes in the string value */
+};
+
 struct lysc_node_leaf {
     union {
         struct lysc_node node;               /**< implicit cast for the members compatible with ::lysc_node */
@@ -1631,7 +1636,7 @@ struct lysc_node_leaf {
     struct lysc_type *type;          /**< type of the leaf node (mandatory) */
 
     const char *units;               /**< units of the leaf's type */
-    struct lyd_value *dflt;          /**< default value, use ::lyd_value_get_canonical() to get the canonical string */
+    struct lysc_value dflt;          /**< default value */
 };
 
 struct lysc_node_leaflist {
@@ -1662,8 +1667,7 @@ struct lysc_node_leaflist {
     struct lysc_type *type;          /**< type of the leaf node (mandatory) */
 
     const char *units;               /**< units of the leaf's type */
-    struct lyd_value **dflts;        /**< list ([sized array](@ref sizedarrays)) of default values, use
-                                        ::lyd_value_get_canonical() to get the canonical strings */
+    struct lysc_value *dflts;        /**< list ([sized array](@ref sizedarrays)) of default values */
 
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint */
