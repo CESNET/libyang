@@ -52,7 +52,7 @@ node_instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, voi
     char *result = NULL, quot;
     const struct lys_module *mod = NULL, *local_mod = NULL;
     struct ly_set *mods;
-    ly_bool inherit_prefix = 0, d;
+    ly_bool inherit_prefix = 0;
     const char *strval;
 
     if (!path) {
@@ -104,8 +104,8 @@ node_instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, voi
                 break;
             case LY_PATH_PREDTYPE_LIST:
                 /* key-predicate */
-                strval = pred->value.realtype->plugin->print(path[u].node->module->ctx, &pred->value, format, prefix_data,
-                        &d, NULL);
+                ret = lyplg_type_print_val(pred->key, pred->value, format, prefix_data, &strval);
+                LY_CHECK_GOTO(ret, cleanup);
 
                 /* default quote */
                 quot = '\'';
@@ -119,14 +119,12 @@ node_instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, voi
                     ret = ly_strcat(&result, "[%s:%s=%c%s%c]", lyplg_type_get_prefix(pred->key->module, format, prefix_data),
                             pred->key->name, quot, strval, quot);
                 }
-                if (d) {
-                    free((char *)strval);
-                }
+                lydict_remove(pred->key->module->ctx, strval);
                 break;
             case LY_PATH_PREDTYPE_LEAFLIST:
                 /* leaf-list-predicate */
-                strval = pred->value.realtype->plugin->print(path[u].node->module->ctx, &pred->value, format, prefix_data,
-                        &d, NULL);
+                ret = lyplg_type_print_val(path[u].node, pred->value, format, prefix_data, &strval);
+                LY_CHECK_GOTO(ret, cleanup);
 
                 /* default quote */
                 quot = '\'';
@@ -134,9 +132,7 @@ node_instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, voi
                     quot = '"';
                 }
                 ret = ly_strcat(&result, "[.=%c%s%c]", quot, strval, quot);
-                if (d) {
-                    free((char *)strval);
-                }
+                lydict_remove(path[u].node->module->ctx, strval);
                 break;
             case LY_PATH_PREDTYPE_LIST_VAR:
                 /* key-predicate with a variable */

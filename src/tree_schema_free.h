@@ -18,6 +18,7 @@
 #include "set.h"
 #include "tree_schema.h"
 
+struct lysc_value;
 struct lysp_yang_ctx;
 struct lysp_yin_ctx;
 
@@ -152,6 +153,14 @@ void lysc_enum_item_free(const struct ly_ctx *ctx, struct lysc_type_bitenum_item
  * the value is decreased to 0.
  */
 void lysc_type_free(const struct ly_ctx *ctx, struct lysc_type *type);
+
+/**
+ * @brief Free a compiled value.
+ *
+ * @param[in] ctx Context to use.
+ * @param[in] val Compiled value to free.
+ */
+void lysc_value_free(const struct ly_ctx *ctx, struct lysc_value *val);
 
 /**
  * @brief Free the compiled container node structure.
