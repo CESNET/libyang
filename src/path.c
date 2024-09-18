@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "compat.h"
+#include "dict.h"
 #include "log.h"
 #include "ly_common.h"
 #include "plugins_types.h"
@@ -635,7 +636,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
         const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint32_t *tok_idx, LY_VALUE_FORMAT format,
         void *prefix_data, struct ly_path_predicate **predicates)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR ret = LY_SUCCESS, r;
     struct ly_path_predicate *p;
     const struct lysc_node *key;
     const char *val;
@@ -706,15 +707,11 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
                     val_len = expr->tok_len[*tok_idx];
                 }
 
-                /* store the value */
+                /* store the canonical value */
                 LOG_LOCSET(key, NULL);
-                ret = lyd_value_store(ctx_node->module->ctx, &p->value, ((struct lysc_node_leaf *)key)->type, val, val_len, 0, 0,
-                        NULL, format, prefix_data, LYD_HINT_DATA, key, NULL);
+                r = lyd_value_validate2(ctx_node->module->ctx, key, val, val_len, format, prefix_data, NULL, NULL, &p->value);
                 LOG_LOCBACK(1, 0);
-                LY_CHECK_ERR_GOTO(ret, p->value.realtype = NULL, cleanup);
-
-                /* "allocate" the type to avoid problems when freeing the value after the type was freed */
-                LY_ATOMIC_INC_BARRIER(((struct lysc_type *)p->value.realtype)->refcount);
+                LY_CHECK_ERR_GOTO(r && (r != LY_EINCOMPLETE), ret = r, cleanup);
 
                 p->type = LY_PATH_PREDTYPE_LIST;
                 ++(*tok_idx);
@@ -770,14 +767,11 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
         /* store the value */
         LOG_LOCSET(ctx_node, NULL);
-        ret = lyd_value_store(ctx_node->module->ctx, &p->value, ((struct lysc_node_leaflist *)ctx_node)->type, val, val_len, 0, 0,
-                NULL, format, prefix_data, LYD_HINT_DATA, ctx_node, NULL);
+        r = lyd_value_validate2(ctx_node->module->ctx, ctx_node, val, val_len, format, prefix_data, NULL, NULL, &p->value);
         LOG_LOCBACK(1, 0);
-        LY_CHECK_ERR_GOTO(ret, p->value.realtype = NULL, cleanup);
-        ++(*tok_idx);
+        LY_CHECK_ERR_GOTO(r && (r != LY_EINCOMPLETE), ret = r, cleanup);
 
-        /* "allocate" the type to avoid problems when freeing the value after the type was freed */
-        LY_ATOMIC_INC_BARRIER(((struct lysc_type *)p->value.realtype)->refcount);
+        ++(*tok_idx);
 
         /* ']' */
         assert(expr->tokens[*tok_idx] == LYXP_TOKEN_BRACK2);
@@ -973,8 +967,7 @@ ly_path_dup_predicates(const struct ly_ctx *ctx, const struct ly_path_predicate 
         case LY_PATH_PREDTYPE_LEAFLIST:
             /* key-predicate or leaf-list-predicate */
             (*dup)[u].key = pred[u].key;
-            pred[u].value.realtype->plugin->duplicate(ctx, &pred[u].value, &(*dup)[u].value);
-            LY_ATOMIC_INC_BARRIER(((struct lysc_type *)pred[u].value.realtype)->refcount);
+            lydict_dup(ctx, pred[u].value, &(*dup)[u].value);
             break;
         case LY_PATH_PREDTYPE_LIST_VAR:
             /* key-predicate with a variable */
@@ -1347,7 +1340,7 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, c
                 break;
             case LY_PATH_PREDTYPE_LEAFLIST:
                 /* we will use hashes to find one leaf-list instance */
-                LY_CHECK_RET(lyd_create_term2(path[u].node, &path[u].predicates[0].value, &target));
+                LY_CHECK_RET(lyd_create_term_canon(path[u].node, path[u].predicates[0].value, &target));
                 lyd_find_sibling_first(start, target, &node);
                 lyd_free_tree(target);
                 break;
@@ -1473,10 +1466,7 @@ ly_path_predicates_free(const struct ly_ctx *ctx, struct ly_path_predicate *pred
             break;
         case LY_PATH_PREDTYPE_LIST:
         case LY_PATH_PREDTYPE_LEAFLIST:
-            if (predicates[u].value.realtype) {
-                predicates[u].value.realtype->plugin->free(ctx, &predicates[u].value);
-                lysc_type_free(ctx, (struct lysc_type *)predicates[u].value.realtype);
-            }
+            lydict_remove(ctx, predicates[u].value);
             break;
         case LY_PATH_PREDTYPE_LIST_VAR:
             free(predicates[u].variable);

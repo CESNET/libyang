@@ -800,7 +800,7 @@ struct utest_context {
     CHECK_ARRAY((NODE)->musts, MUSTS); \
     assert_non_null((NODE)->type); \
     CHECK_STRING((NODE)->units, UNITS); \
-    CHECK_POINTER((NODE)->dflt, DFLT);
+    CHECK_POINTER((NODE)->dflt.str, DFLT);
 
 /**
  * @brief assert that lyd_meta structure members are correct

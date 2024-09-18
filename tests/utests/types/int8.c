@@ -421,7 +421,7 @@ test_schema_yang(void **state)
     lysc_leaf = (void *)mod->compiled->data;
     CHECK_LYSC_NODE_LEAF(lysc_leaf, NULL, 0, 0x205, 1, "port", 0, 0, 0, NULL, 0, 0, NULL, 1);
     CHECK_LYSC_TYPE_NUM((struct lysc_type_num *)lysc_leaf->type, LY_TYPE_INT8, 0, 1);
-    CHECK_LYD_VALUE(*(lysc_leaf->dflt), INT8, "20", 20);
+    assert_string_equal(lysc_leaf->dflt.str, "20");
     range = ((struct lysc_type_num *)lysc_leaf->type)->range;
     CHECK_LYSC_RANGE(range, NULL, NULL, NULL, 0, 2, NULL);
     assert_int_equal(range->parts[0].min_64, 0);
@@ -441,7 +441,7 @@ test_schema_yang(void **state)
     lysc_leaf = (void *)mod->compiled->data;
     CHECK_LYSC_NODE_LEAF(lysc_leaf, NULL, 0, 0x205, 1, "port", 0, 0, 0, NULL, 0, 0, NULL, 1);
     CHECK_LYSC_TYPE_NUM((struct lysc_type_num *)lysc_leaf->type, LY_TYPE_INT8, 0, 1);
-    CHECK_LYD_VALUE(*(lysc_leaf->dflt), INT8, "127", 127);
+    assert_string_equal(lysc_leaf->dflt.str, "127");
     range = ((struct lysc_type_num *)lysc_leaf->type)->range;
     CHECK_LYSC_RANGE(range, NULL, NULL, NULL, 0, 2, NULL);
     assert_int_equal(range->parts[0].min_64, 0);
@@ -502,7 +502,7 @@ test_schema_yang(void **state)
     lysc_leaf = (void *)mod->compiled->data;
     CHECK_LYSC_NODE_LEAF(lysc_leaf, NULL, 0, 0x205, 1, "port", 0, 0, 0, NULL, 0, 0, NULL, 1);
     CHECK_LYSC_TYPE_NUM((struct lysc_type_num *)lysc_leaf->type, LY_TYPE_INT8, 0, 0);
-    CHECK_LYD_VALUE(*(lysc_leaf->dflt), INT8, "15", 15);
+    assert_string_equal(lysc_leaf->dflt.str, "0xf");
     lysp_leaf = (void *)mod->parsed->data;
     CHECK_LYSP_NODE_LEAF(lysp_leaf, NULL, 0, 0x0, 0, "port", 0, 0, NULL, 0, 0, NULL, "0xf");
     CHECK_LYSP_TYPE(&(lysp_leaf->type), 0, 0, 0, 0, 0, 0x0, 0, 0, "int8", 0, 0, 1, 0, 0, 0);
@@ -518,7 +518,7 @@ test_schema_yang(void **state)
     lysc_leaf = (void *)mod->compiled->data;
     CHECK_LYSC_NODE_LEAF(lysc_leaf, NULL, 0, 0x205, 1, "port", 0, 0, 0, NULL, 0, 0, NULL, 1);
     CHECK_LYSC_TYPE_NUM((struct lysc_type_num *)lysc_leaf->type, LY_TYPE_INT8, 0, 0);
-    CHECK_LYD_VALUE(*(lysc_leaf->dflt), INT8, "-15", -15);
+    assert_string_equal(lysc_leaf->dflt.str, "-0xf");
     lysp_leaf = (void *)mod->parsed->data;
     CHECK_LYSP_NODE_LEAF(lysp_leaf, NULL, 0, 0x0, 0, "port", 0, 0, NULL, 0, 0, NULL, "-0xf");
     CHECK_LYSP_TYPE(&(lysp_leaf->type), 0, 0, 0, 0, 0, 0x0, 0, 0, "int8", 0, 0, 1, 0, 0, 0);
@@ -534,7 +534,7 @@ test_schema_yang(void **state)
     lysc_leaf = (void *)mod->compiled->data;
     CHECK_LYSC_NODE_LEAF(lysc_leaf, NULL, 0, 0x205, 1, "port", 0, 0, 0, NULL, 0, 0, NULL, 1);
     CHECK_LYSC_TYPE_NUM((struct lysc_type_num *)lysc_leaf->type, LY_TYPE_INT8, 0, 1);
-    CHECK_LYD_VALUE(*(lysc_leaf->dflt), INT8, "127", 127);
+    assert_string_equal(lysc_leaf->dflt.str, "+0x7F");
     range = ((struct lysc_type_num *)lysc_leaf->type)->range;
     CHECK_LYSC_RANGE(range, NULL, NULL, NULL, 0, 2, NULL);
     assert_int_equal(range->parts[0].min_64, 0);
@@ -587,7 +587,7 @@ test_schema_yang(void **state)
     lysc_leaf = (void *)mod->compiled->data;
     CHECK_LYSC_NODE_LEAF(lysc_leaf, NULL, 0, 0x205, 1, "port", 0, 0, 0, NULL, 0, 0, NULL, 1);
     CHECK_LYSC_TYPE_NUM((struct lysc_type_num *)lysc_leaf->type, LY_TYPE_INT8, 0, 0);
-    CHECK_LYD_VALUE(*(lysc_leaf->dflt), INT8, "15", 15);
+    assert_string_equal(lysc_leaf->dflt.str, "017");
     lysp_leaf = (void *)mod->parsed->data;
     CHECK_LYSP_NODE_LEAF(lysp_leaf, NULL, 0, 0x0, 0, "port", 0, 0, NULL, 0, 0, NULL, "017");
     CHECK_LYSP_TYPE(&(lysp_leaf->type), 0, 0, 0, 0, 0, 0x0, 0, 0, "int8", 0, 0, 1, 0, 0, 0);
@@ -603,7 +603,7 @@ test_schema_yang(void **state)
     lysc_leaf = (void *)mod->compiled->data;
     CHECK_LYSC_NODE_LEAF(lysc_leaf, NULL, 0, 0x205, 1, "port", 0, 0, 0, NULL, 0, 0, NULL, 1);
     CHECK_LYSC_TYPE_NUM((struct lysc_type_num *)lysc_leaf->type, LY_TYPE_INT8, 0, 0);
-    CHECK_LYD_VALUE(*(lysc_leaf->dflt), INT8, "-15", -15);
+    assert_string_equal(lysc_leaf->dflt.str, "-017");
     lysp_leaf = (void *)mod->parsed->data;
     CHECK_LYSP_NODE_LEAF(lysp_leaf, NULL, 0, 0x0, 0, "port", 0, 0, NULL, 0, 0, NULL, "-017");
     CHECK_LYSP_TYPE(&(lysp_leaf->type), 0, 0, 0, 0, 0, 0x0, 0, 0, "int8", 0, 0, 1, 0, 0, 0);
@@ -619,7 +619,7 @@ test_schema_yang(void **state)
     lysc_leaf = (void *)mod->compiled->data;
     CHECK_LYSC_NODE_LEAF(lysc_leaf, NULL, 0, 0x205, 1, "port", 0, 0, 0, NULL, 0, 0, NULL, 1);
     CHECK_LYSC_TYPE_NUM((struct lysc_type_num *)lysc_leaf->type, LY_TYPE_INT8, 0, 0);
-    CHECK_LYD_VALUE(*(lysc_leaf->dflt), INT8, "15", 15);
+    assert_string_equal(lysc_leaf->dflt.str, "+017");
     lysp_leaf = (void *)mod->parsed->data;
     CHECK_LYSP_NODE_LEAF(lysp_leaf, NULL, 0, 0x0, 0, "port", 0, 0, NULL, 0, 0, NULL, "+017");
     CHECK_LYSP_TYPE(&(lysp_leaf->type), 0, 0, 0, 0, 0, 0x0, 0, 0, "int8", 0, 0, 1, 0, 0, 0);
@@ -842,7 +842,7 @@ test_schema_yin(void **state)
     lysc_leaf = (void *)mod->compiled->data;
     CHECK_LYSC_NODE_LEAF(lysc_leaf, NULL, 0, 0x205, 1, "port", 0, 0, 0, NULL, 0, 0, NULL, 1);
     CHECK_LYSC_TYPE_NUM((struct lysc_type_num *)lysc_leaf->type, LY_TYPE_INT8, 0, 1);
-    CHECK_LYD_VALUE(*(lysc_leaf->dflt), INT8, "12", 12);
+    assert_string_equal(lysc_leaf->dflt.str, "12");
     range = ((struct lysc_type_num *)lysc_leaf->type)->range;
     CHECK_LYSC_RANGE(range, NULL, NULL, NULL, 0, 2, NULL);
     assert_int_equal(range->parts[0].min_64, -128);
@@ -899,7 +899,7 @@ test_schema_yin(void **state)
     lysc_leaf = (void *)mod->compiled->data;
     CHECK_LYSC_NODE_LEAF(lysc_leaf, NULL, 0, 0x205, 1, "port", 0, 0, 0, NULL, 0, 0, NULL, 1);
     CHECK_LYSC_TYPE_NUM((struct lysc_type_num *)lysc_leaf->type, LY_TYPE_INT8, 0, 0);
-    CHECK_LYD_VALUE(*(lysc_leaf->dflt), INT8, "15", 15);
+    assert_string_equal(lysc_leaf->dflt.str, "+0xf");
     lysp_leaf = (void *)mod->parsed->data;
     CHECK_LYSP_NODE_LEAF(lysp_leaf, NULL, 0, 0x0, 0, "port", 0, 0, NULL, 0, 0, NULL, "+0xf");
     CHECK_LYSP_TYPE(&(lysp_leaf->type), 0, 0, 0, 0, 0, 0x0, 0, 0, "int8", 0, 0, 1, 0, 0, 0);
@@ -915,7 +915,7 @@ test_schema_yin(void **state)
     lysc_leaf = (void *)mod->compiled->data;
     CHECK_LYSC_NODE_LEAF(lysc_leaf, NULL, 0, 0x205, 1, "port", 0, 0, 0, NULL, 0, 0, NULL, 1);
     CHECK_LYSC_TYPE_NUM((struct lysc_type_num *)lysc_leaf->type, LY_TYPE_INT8, 0, 0);
-    CHECK_LYD_VALUE(*(lysc_leaf->dflt), INT8, "-15", -15);
+    assert_string_equal(lysc_leaf->dflt.str, "-0xf");
     lysp_leaf = (void *)mod->parsed->data;
     CHECK_LYSP_NODE_LEAF(lysp_leaf, NULL, 0, 0x0, 0, "port", 0, 0, NULL, 0, 0, NULL, "-0xf");
     CHECK_LYSP_TYPE(&(lysp_leaf->type), 0, 0, 0, 0, 0, 0x0, 0, 0, "int8", 0, 0, 1, 0, 0, 0);
@@ -961,7 +961,7 @@ test_schema_yin(void **state)
     lysc_leaf = (void *)mod->compiled->data;
     CHECK_LYSC_NODE_LEAF(lysc_leaf, NULL, 0, 0x205, 1, "port", 0, 0, 0, NULL, 0, 0, NULL, 1);
     CHECK_LYSC_TYPE_NUM((struct lysc_type_num *)lysc_leaf->type, LY_TYPE_INT8, 0, 0);
-    CHECK_LYD_VALUE(*(lysc_leaf->dflt), INT8, "15", 15);
+    assert_string_equal(lysc_leaf->dflt.str, "+017");
     lysp_leaf = (void *)mod->parsed->data;
     CHECK_LYSP_NODE_LEAF(lysp_leaf, NULL, 0, 0x0, 0, "port", 0, 0, NULL, 0, 0, NULL, "+017");
     CHECK_LYSP_TYPE(&(lysp_leaf->type), 0, 0, 0, 0, 0, 0x0, 0, 0, "int8", 0, 0, 1, 0, 0, 0);
@@ -977,7 +977,7 @@ test_schema_yin(void **state)
     lysc_leaf = (void *)mod->compiled->data;
     CHECK_LYSC_NODE_LEAF(lysc_leaf, NULL, 0, 0x205, 1, "port", 0, 0, 0, NULL, 0, 0, NULL, 1);
     CHECK_LYSC_TYPE_NUM((struct lysc_type_num *)lysc_leaf->type, LY_TYPE_INT8, 0, 0);
-    CHECK_LYD_VALUE(*(lysc_leaf->dflt), INT8, "-15", -15);
+    assert_string_equal(lysc_leaf->dflt.str, "-017");
     lysp_leaf = (void *)mod->parsed->data;
     CHECK_LYSP_NODE_LEAF(lysp_leaf, NULL, 0, 0x0, 0, "port", 0, 0, NULL, 0, 0, NULL, "-017");
     CHECK_LYSP_TYPE(&(lysp_leaf->type), 0, 0, 0, 0, 0, 0x0, 0, 0, "int8", 0, 0, 1, 0, 0, 0);

@@ -3485,11 +3485,9 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
         LY_CHECK_RET(lysc_check_status(ctx, list->flags, list->module, list->name, key->flags, key->module, key->name));
 
         /* ignore default values of the key */
-        if (key->dflt) {
-            key->dflt->realtype->plugin->free(ctx->ctx, key->dflt);
-            lysc_type_free(ctx->ctx, (struct lysc_type *)key->dflt->realtype);
-            free(key->dflt);
-            key->dflt = NULL;
+        if (key->dflt.str) {
+            lysc_value_free(ctx->ctx, &key->dflt);
+            memset(&key->dflt, 0, sizeof key->dflt);
         }
         /* mark leaf as key */
         key->flags |= LYS_KEY;

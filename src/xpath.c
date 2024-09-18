@@ -1696,8 +1696,7 @@ static LY_ERR
 set_comp_canonize(struct lyxp_set *set, const struct lyxp_set_node *xp_node)
 {
     const struct lysc_type *type = NULL;
-    struct lyd_value val;
-    struct ly_err_item *err = NULL;
+    const char *canon;
     LY_ERR r;
 
     /* is there anything to canonize even? */
@@ -1729,18 +1728,16 @@ set_comp_canonize(struct lyxp_set *set, const struct lyxp_set_node *xp_node)
     }
 
     /* print canonized string, ignore errors, the value may not satisfy schema constraints */
-    r = type->plugin->store(set->ctx, type, set->val.str, strlen(set->val.str), 0, set->format, set->prefix_data,
-            LYD_HINT_DATA, xp_node->node->schema, &val, NULL, &err);
-    ly_err_free(err);
+    r = lyd_value_validate(set->ctx, xp_node->node->schema, set->val.str, strlen(set->val.str), NULL, NULL, &canon);
     if (r && (r != LY_EINCOMPLETE)) {
-        /* invalid value, function store automaticaly dealloc value when fail */
+        /* invalid value, fine */
         return LY_SUCCESS;
     }
 
     /* use the canonized string value */
     free(set->val.str);
-    set->val.str = strdup(lyd_value_get_canonical(set->ctx, &val));
-    type->plugin->free(set->ctx, &val);
+    set->val.str = strdup(canon);
+    lydict_remove(set->ctx, canon);
     LY_CHECK_ERR_RET(!set->val.str, LOGMEM(set->ctx), LY_EMEM);
 
     return LY_SUCCESS;
@@ -6240,7 +6237,7 @@ moveto_node_hash_child(struct lyxp_set *set, const struct lysc_node *scnode, con
     if (scnode->nodetype == LYS_LIST) {
         LY_CHECK_GOTO(ret = lyd_create_list(scnode, predicates, NULL, 1, &inst), cleanup);
     } else if (scnode->nodetype == LYS_LEAFLIST) {
-        LY_CHECK_GOTO(ret = lyd_create_term2(scnode, &predicates[0].value, &inst), cleanup);
+        LY_CHECK_GOTO(ret = lyd_create_term_canon(scnode, predicates[0].value, &inst), cleanup);
     }
 
     for (i = 0; i < set->used; ++i) {

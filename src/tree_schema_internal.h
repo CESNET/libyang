@@ -755,4 +755,16 @@ LY_ERR lyplg_ext_get_storage_p(const struct lysc_ext_instance *ext, int stmt, vo
  */
 void ly_check_module_filename(const struct ly_ctx *ctx, const char *name, const char *revision, const char *filename);
 
+/**
+ * @brief Compare compiled value with another canonical value.
+ *
+ * @param[in] schema Schema node with the type of @p val.
+ * @param[in] ctx_node Data context node, if any.
+ * @param[in] val Compiled value that needs to be canonized.
+ * @param[in] val2 Canonical value.
+ * @return strcmp return value.
+ */
+int lysc_value_cmp(const struct lysc_node *schema, const struct lyd_node *ctx_node, const struct lysc_value *val,
+        const char *val2);
+
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */

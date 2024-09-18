@@ -79,33 +79,9 @@ lyd_create_term(const struct lysc_node *schema, const char *value, size_t value_
 }
 
 LY_ERR
-lyd_create_term2(const struct lysc_node *schema, const struct lyd_value *val, struct lyd_node **node)
+lyd_create_term_canon(const struct lysc_node *schema, const char *value, struct lyd_node **node)
 {
-    LY_ERR ret;
-    struct lyd_node_term *term;
-    struct lysc_type *type;
-
-    assert(schema->nodetype & LYD_NODE_TERM);
-    assert(val && val->realtype);
-
-    term = calloc(1, sizeof *term);
-    LY_CHECK_ERR_RET(!term, LOGMEM(schema->module->ctx), LY_EMEM);
-
-    term->schema = schema;
-    term->prev = &term->node;
-    term->flags = LYD_NEW;
-
-    type = ((struct lysc_node_leaf *)schema)->type;
-    ret = type->plugin->duplicate(schema->module->ctx, val, &term->value);
-    if (ret) {
-        LOGERR(schema->module->ctx, ret, "Value duplication failed.");
-        free(term);
-        return ret;
-    }
-    lyd_hash(&term->node);
-
-    *node = &term->node;
-    return ret;
+    return lyd_create_term(schema, value, strlen(value), 1, 1, NULL, LY_VALUE_CANON, NULL, LYD_HINT_DATA, NULL, node);
 }
 
 LY_ERR
@@ -140,9 +116,8 @@ lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *list = NULL, *key;
-    const struct lyd_value *value;
-    struct lyd_value val = {0};
     struct lyxp_var *var;
+    const char *value;
     LY_ARRAY_COUNT_TYPE u;
 
     assert((schema->nodetype == LYS_LIST) && !(schema->flags & LYS_KEYLESS));
@@ -160,24 +135,14 @@ lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *
                 goto cleanup;
             }
 
-            /* store the value */
-            LOG_LOCSET(predicates[u].key, NULL);
-            ret = lyd_value_store(schema->module->ctx, &val, ((struct lysc_node_leaf *)predicates[u].key)->type,
-                    var->value, strlen(var->value), 0, store_only, NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA, predicates[u].key, NULL);
-            LOG_LOCBACK(1, 0);
-            LY_CHECK_GOTO(ret, cleanup);
-
-            value = &val;
+            value = var->value;
         } else {
             assert(predicates[u].type == LY_PATH_PREDTYPE_LIST);
-            value = &predicates[u].value;
+            value = predicates[u].value;
         }
 
-        ret = lyd_create_term2(predicates[u].key, value, &key);
-        if (val.realtype) {
-            val.realtype->plugin->free(schema->module->ctx, &val);
-            memset(&val, 0, sizeof val);
-        }
+        ret = lyd_create_term(predicates[u].key, value, strlen(value), 1, store_only, NULL, LY_VALUE_JSON, NULL,
+                LYD_HINT_DATA, NULL, &key);
         LY_CHECK_GOTO(ret, cleanup);
         lyd_insert_node(list, NULL, key, LYD_INSERT_NODE_DEFAULT);
     }
@@ -1559,9 +1524,9 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
 {
     LY_ERR r;
     struct ly_path_predicate *pred;
-    struct lyd_value val;
     const struct lysc_node *schema = NULL;
     LY_ARRAY_COUNT_TYPE u, new_count;
+    const char *canon;
     int create = 0;
 
     assert(path);
@@ -1599,15 +1564,14 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
                 r = lyd_value_validate(NULL, schema, value, value_len, NULL, NULL, NULL);
             }
             if (!r) {
-                /* try to store the value */
-                LY_CHECK_RET(lyd_value_store(schema->module->ctx, &val, ((struct lysc_node_leaflist *)schema)->type,
-                        value, value_len, 0, 0, NULL, format, NULL, LYD_HINT_DATA, schema, NULL));
-                ++((struct lysc_type *)val.realtype)->refcount;
+                /* validate the value and store the canonical value */
+                r = lyd_value_validate2(NULL, schema, value, value_len, format, NULL, NULL, NULL, &canon);
+                LY_CHECK_RET(r && r != LY_EINCOMPLETE, r);
 
                 /* store the new predicate so that it is used when searching for this instance */
                 LY_ARRAY_NEW_RET(schema->module->ctx, path[u].predicates, pred, LY_EMEM);
                 pred->type = LY_PATH_PREDTYPE_LEAFLIST;
-                pred->value = val;
+                pred->value = canon;
             } /* else we have opaq flag and the value is not valid, leave no predicate and then create an opaque node */
         }
     }
@@ -1660,7 +1624,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
     struct ly_path *p = NULL;
     struct lyd_node *nparent = NULL, *nnode = NULL, *node = NULL, *cur_parent;
     const struct lysc_node *schema;
-    const struct lyd_value *val = NULL;
+    const char *val = NULL;
     ly_bool store_only = (options & LYD_NEW_VAL_STORE_ONLY) ? 1 : 0;
     ly_bool any_use_value = (options & LYD_NEW_ANY_USE_VALUE) ? 1 : 0;
     LY_ARRAY_COUNT_TYPE path_idx = 0, orig_count = 0;
@@ -1781,14 +1745,16 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
 
             /* get value to set */
             if (p[path_idx].predicates && (p[path_idx].predicates[0].type == LY_PATH_PREDTYPE_LEAFLIST)) {
-                val = &p[path_idx].predicates[0].value;
+                val = p[path_idx].predicates[0].value;
             }
 
             /* create a leaf-list instance */
             if (val) {
-                LY_CHECK_GOTO(ret = lyd_create_term2(schema, val, &node), cleanup);
+                LY_CHECK_GOTO(ret = lyd_create_term(schema, val, strlen(val), 0, store_only, NULL, format, NULL,
+                        LYD_HINT_DATA, NULL, &node), cleanup);
             } else {
-                LY_CHECK_GOTO(ret = lyd_create_term(schema, value, value_len, 0, store_only, NULL, format, NULL, LYD_HINT_DATA, NULL, &node), cleanup);
+                LY_CHECK_GOTO(ret = lyd_create_term(schema, value, value_len, 0, store_only, NULL, format, NULL,
+                        LYD_HINT_DATA, NULL, &node), cleanup);
             }
             break;
         case LYS_LEAF:
@@ -1821,7 +1787,8 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
             }
 
             /* create a leaf instance */
-            LY_CHECK_GOTO(ret = lyd_create_term(schema, value, value_len, 0, store_only, NULL, format, NULL, LYD_HINT_DATA, NULL, &node), cleanup);
+            LY_CHECK_GOTO(ret = lyd_create_term(schema, value, value_len, 0, store_only, NULL, format, NULL,
+                    LYD_HINT_DATA, NULL, &node), cleanup);
             break;
         case LYS_ANYDATA:
         case LYS_ANYXML:
@@ -1915,12 +1882,12 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
         const struct lys_module *mod, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *ext_node,
         uint32_t impl_opts, struct ly_ht *getnext_ht, struct lyd_node **diff)
 {
-    LY_ERR ret;
-    const struct lysc_node *snode, **choices, **snodes;
+    const struct lysc_node *snode, **choices, **snodes, *iter = NULL;
     struct lyd_node *node = NULL;
-    struct lyd_value **dflts;
+    struct lysc_value *dflts;
     LY_ARRAY_COUNT_TYPE u;
     uint32_t i;
+    ly_bool incomplete;
 
     assert(first && (parent || sparent || mod));
 
@@ -1987,17 +1954,15 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
             }
             break;
         case LYS_LEAF:
-            if (!(impl_opts & LYD_IMPLICIT_NO_DEFAULTS) && ((struct lysc_node_leaf *)snode)->dflt &&
-                    lyd_find_sibling_val(*first, snode, NULL, 0, NULL)) {
+            if (!(impl_opts & LYD_IMPLICIT_NO_DEFAULTS) && ((struct lysc_node_leaf *)iter)->dflt.str &&
+                    lyd_find_sibling_val(*first, iter, NULL, 0, NULL)) {
                 /* create default leaf */
-                ret = lyd_create_term2(snode, ((struct lysc_node_leaf *)snode)->dflt, &node);
-                if (ret == LY_EINCOMPLETE) {
-                    if (node_types) {
-                        /* remember to resolve type */
-                        LY_CHECK_RET(ly_set_add(node_types, node, 1, NULL));
-                    }
-                } else if (ret) {
-                    return ret;
+                LY_CHECK_RET(lyd_create_term(iter, ((struct lysc_node_leaf *)iter)->dflt.str,
+                        strlen(((struct lysc_node_leaf *)iter)->dflt.str), 1, 1, NULL, LY_VALUE_SCHEMA_RESOLVED,
+                        ((struct lysc_node_leaf *)iter)->dflt.prefixes, LYD_HINT_DATA, &incomplete, &node));
+                if (incomplete && node_types) {
+                    /* remember to resolve type */
+                    LY_CHECK_RET(ly_set_add(node_types, node, 1, NULL));
                 }
                 node->flags = LYD_DEFAULT | (lysc_has_when(snode) ? LYD_WHEN_TRUE : 0);
                 lyd_insert_node(parent, first, node, LYD_INSERT_NODE_DEFAULT);
@@ -2022,14 +1987,11 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
                 /* create all default leaf-lists */
                 dflts = ((struct lysc_node_leaflist *)snode)->dflts;
                 LY_ARRAY_FOR(dflts, u) {
-                    ret = lyd_create_term2(snode, dflts[u], &node);
-                    if (ret == LY_EINCOMPLETE) {
-                        if (node_types) {
-                            /* remember to resolve type */
-                            LY_CHECK_RET(ly_set_add(node_types, node, 1, NULL));
-                        }
-                    } else if (ret) {
-                        return ret;
+                    LY_CHECK_RET(lyd_create_term(iter, dflts[u].str, strlen(dflts[u].str), 1, 1, NULL,
+                            LY_VALUE_SCHEMA_RESOLVED, dflts[u].prefixes, LYD_HINT_DATA, &incomplete, &node));
+                    if (incomplete && node_types) {
+                        /* remember to resolve type */
+                        LY_CHECK_RET(ly_set_add(node_types, node, 1, NULL));
                     }
                     node->flags = LYD_DEFAULT | (lysc_has_when(snode) ? LYD_WHEN_TRUE : 0);
                     lyd_insert_node(parent, first, node, LYD_INSERT_NODE_DEFAULT);
