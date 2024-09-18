@@ -894,6 +894,44 @@ lyplg_type_lypath_free(struct ly_path *path)
 }
 
 LIBYANG_API_DEF LY_ERR
+lyplg_type_print_val(const struct lysc_node *node, const char *canon, LY_VALUE_FORMAT format, void *prefix_data,
+        const char **value)
+{
+    LY_ERR r;
+    const struct lysc_type *type;
+    struct lyd_value storage = {0};
+    struct ly_err_item *err = NULL;
+    const char *v;
+    ly_bool dyn;
+
+    type = ((struct lysc_node_leaf *)node)->type;
+
+    /* store the value */
+    r = type->plugin->store(node->module->ctx, type, canon, strlen(canon), LYPLG_TYPE_STORE_ONLY, LY_VALUE_CANON,
+            NULL, LYD_HINT_DATA, node, &storage, NULL, &err);
+    if (r && (r != LY_EINCOMPLETE)) {
+        if (err) {
+            ly_err_print(node->module->ctx, err);
+            ly_err_free(err);
+        }
+        return r;
+    }
+
+    /* print it in the specific format */
+    v = type->plugin->print(node->module->ctx, &storage, format, prefix_data, &dyn, NULL);
+
+    /* store it in the dictionary, storage will be freed */
+    if (dyn) {
+        lydict_insert_zc(node->module->ctx, (char *)v, value);
+    } else {
+        lydict_dup(node->module->ctx, v, value);
+    }
+
+    type->plugin->free(node->module->ctx, &storage);
+    return LY_SUCCESS;
+}
+
+LIBYANG_API_DEF LY_ERR
 lyplg_type_make_implemented(struct lys_module *mod, const char **features, struct lys_glob_unres *unres)
 {
     if (mod->implemented) {

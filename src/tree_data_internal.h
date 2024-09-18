@@ -238,10 +238,9 @@ const char *ly_format2str(LY_VALUE_FORMAT format);
  * @param[in] format Input format of @p value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] hints [Value hints](@ref lydvalhints) from the parser regarding the value type.
- * @param[out] incomplete Whether the value needs to be resolved.
+ * @param[out] incomplete Whether the value needs to be resolved, optional.
  * @param[out] node Created node.
  * @return LY_SUCCESS on success.
- * @return LY_EINCOMPLETE in case data tree is needed to finish the validation.
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_term(const struct lysc_node *schema, const char *value, size_t value_len, ly_bool is_utf8,
@@ -249,17 +248,17 @@ LY_ERR lyd_create_term(const struct lysc_node *schema, const char *value, size_t
         ly_bool *incomplete, struct lyd_node **node);
 
 /**
- * @brief Create a term (leaf/leaf-list) node from a parsed value by duplicating it.
+ * @brief Create a term (leaf/leaf-list) node from a canonical string value.
  *
  * Hash is calculated and new node flag is set.
  *
  * @param[in] schema Schema node of the new data node.
- * @param[in] val Parsed value to use.
+ * @param[in] value Canonical string value to use.
  * @param[out] node Created node.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_create_term2(const struct lysc_node *schema, const struct lyd_value *val, struct lyd_node **node);
+LY_ERR lyd_create_term_canon(const struct lysc_node *schema, const char *value, struct lyd_node **node);
 
 /**
  * @brief Create an inner (container/list/RPC/action/notification) node.
@@ -630,6 +629,30 @@ LY_ERR lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc
  */
 LY_ERR ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
         LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints);
+
+/**
+ * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.
+ *
+ * The given node is not modified in any way - it is just checked if the @p value can be set to the node.
+ *
+ * @param[in] ctx libyang context for logging (function does not log errors when @p ctx is NULL)
+ * @param[in] schema Schema node of the @p value.
+ * @param[in] value String value to be checked, it is expected to be in JSON format.
+ * @param[in] value_len Length of the given @p value (mandatory).
+ * @param[in] format Value prefix format.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
+ * @param[in] ctx_node Optional data tree context node for the value (leafref target, instance-identifier).
+ * If not set and is required for the validation to complete, ::LY_EINCOMPLETE is be returned.
+ * @param[out] realtype Optional real type of @p value.
+ * @param[out] canonical Optional canonical value of @p value (in the dictionary).
+ * @return LY_SUCCESS on success
+ * @return LY_EINCOMPLETE in case the @p ctx_node is not provided and it was needed to finish the validation
+ * (e.g. due to require-instance).
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lyd_value_validate2(const struct ly_ctx *ctx, const struct lysc_node *schema, const char *value, size_t value_len,
+        LY_VALUE_FORMAT format, void *prefix_data, const struct lyd_node *ctx_node, const struct lysc_type **realtype,
+        const char **canonical);
 
 /**
  * @defgroup datahash Data nodes hash manipulation

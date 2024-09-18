@@ -52,7 +52,7 @@ instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, void *pr
     char *result = NULL, quot;
     const struct lys_module *mod = NULL, *local_mod = NULL;
     struct ly_set *mods = NULL;
-    ly_bool inherit_prefix = 0, d;
+    ly_bool inherit_prefix = 0;
     const char *strval;
 
     switch (format) {
@@ -98,8 +98,8 @@ instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, void *pr
                 break;
             case LY_PATH_PREDTYPE_LIST:
                 /* key-predicate */
-                strval = pred->value.realtype->plugin->print(path[u].node->module->ctx, &pred->value, format, prefix_data,
-                        &d, NULL);
+                ret = lyplg_type_print_val(pred->key, pred->value, format, prefix_data, &strval);
+                LY_CHECK_GOTO(ret, cleanup);
 
                 /* default quote */
                 quot = '\'';
@@ -113,14 +113,12 @@ instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, void *pr
                     ret = ly_strcat(&result, "[%s:%s=%c%s%c]", lyplg_type_get_prefix(pred->key->module, format, prefix_data),
                             pred->key->name, quot, strval, quot);
                 }
-                if (d) {
-                    free((char *)strval);
-                }
+                lydict_remove(pred->key->module->ctx, strval);
                 break;
             case LY_PATH_PREDTYPE_LEAFLIST:
                 /* leaf-list-predicate */
-                strval = pred->value.realtype->plugin->print(path[u].node->module->ctx, &pred->value, format, prefix_data,
-                        &d, NULL);
+                ret = lyplg_type_print_val(path[u].node, pred->value, format, prefix_data, &strval);
+                LY_CHECK_GOTO(ret, cleanup);
 
                 /* default quote */
                 quot = '\'';
@@ -128,9 +126,7 @@ instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, void *pr
                     quot = '"';
                 }
                 ret = ly_strcat(&result, "[.=%c%s%c]", quot, strval, quot);
-                if (d) {
-                    free((char *)strval);
-                }
+                lydict_remove(path[u].node->module->ctx, strval);
                 break;
             case LY_PATH_PREDTYPE_LIST_VAR:
                 LOGINT(path[u].node->module->ctx);
@@ -253,13 +249,10 @@ lyplg_type_validate_instanceid(const struct ly_ctx *ctx, const struct lysc_type 
 }
 
 LIBYANG_API_DEF const void *
-lyplg_type_print_instanceid(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+lyplg_type_print_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len)
 {
-    char *ret = NULL;
-    struct ly_path *p = NULL;
-    const struct ly_path *target;
-    struct ly_err_item *err;
+    char *ret;
 
     if ((format == LY_VALUE_CANON) || (format == LY_VALUE_JSON) || (format == LY_VALUE_LYB)) {
         if (dynamic) {
@@ -271,25 +264,9 @@ lyplg_type_print_instanceid(const struct ly_ctx *ctx, const struct lyd_value *va
         return value->_canonical;
     }
 
-    if (!value->target) {
-        /* schema default value, compile it first */
-        if (lyplg_type_lypath_new(ctx, value->_canonical, strlen(value->_canonical), 0, LY_VALUE_JSON, NULL, NULL,
-                NULL, &p, &err)) {
-            if (err) {
-                ly_err_print(ctx, err);
-                ly_err_free(err);
-            }
-            goto cleanup;
-        }
-
-        target = p;
-    } else {
-        target = value->target;
-    }
-
     /* print the value in the specific format */
-    if (instanceid_path2str(target, format, prefix_data, &ret)) {
-        goto cleanup;
+    if (instanceid_path2str(value->target, format, prefix_data, &ret)) {
+        return NULL;
     }
 
     *dynamic = 1;
@@ -297,8 +274,6 @@ lyplg_type_print_instanceid(const struct ly_ctx *ctx, const struct lyd_value *va
         *value_len = strlen(ret);
     }
 
-cleanup:
-    ly_path_free(p);
     return ret;
 }
 
@@ -306,7 +281,6 @@ LIBYANG_API_DEF LY_ERR
 lyplg_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_ERR ret;
-    struct ly_err_item *err;
 
     memset(dup, 0, sizeof *dup);
 
@@ -314,21 +288,9 @@ lyplg_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *orig
     ret = lydict_insert(ctx, original->_canonical, 0, &dup->_canonical);
     LY_CHECK_GOTO(ret, error);
 
-    if (!original->target) {
-        /* schema default value, needs to be compiled */
-        if (lyplg_type_lypath_new(ctx, original->_canonical, strlen(original->_canonical), 0, LY_VALUE_JSON, NULL, NULL,
-                NULL, &dup->target, &err)) {
-            if (err) {
-                ly_err_print(ctx, err);
-                ly_err_free(err);
-            }
-            goto error;
-        }
-    } else {
-        /* copy path */
-        ret = ly_path_dup(ctx, original->target, &dup->target);
-        LY_CHECK_GOTO(ret, error);
-    }
+    /* copy path */
+    ret = ly_path_dup(ctx, original->target, &dup->target);
+    LY_CHECK_GOTO(ret, error);
 
     dup->realtype = original->realtype;
     return LY_SUCCESS;

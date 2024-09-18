@@ -1,9 +1,10 @@
 /**
  * @file plugins_types.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief API for (user) types plugins
  *
- * Copyright (c) 2019 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -437,6 +438,19 @@ LIBYANG_API_DECL void lyplg_type_prefix_data_free(LY_VALUE_FORMAT format, void *
 LIBYANG_API_DECL LY_ERR lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *ctx_node,
         struct lys_glob_unres *unres, struct ly_path **path, struct ly_err_item **err);
+
+/**
+ * @brief Convert canonical value into a value in a specific format.
+ *
+ * @param[in] node Node with the type.
+ * @param[in] canon Canonical value.
+ * @param[in] format Value format.
+ * @param[in] prefix_data Format-specific data for resolving prefixes.
+ * @param[out] value Printed value in @p format.
+ * @return LY_ERR value on error.
+ */
+LIBYANG_API_DECL LY_ERR lyplg_type_print_val(const struct lysc_node *node, const char *canon, LY_VALUE_FORMAT format,
+        void *prefix_data, const char **value);
 
 /**
  * @brief Free ly_path structure used by instanceid value representation.

@@ -206,26 +206,29 @@ test_defaults(void **state)
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
     CHECK_LYD_STRING(tree, LYD_PRINT_WD_TRIM | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
 
-    data = "<a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a><c xmlns=\"urn:defaults\">aa</c>";
+    data = "<a xmlns=\"urn:defaults\">/d:b</a><c xmlns=\"urn:defaults\">aa</c>";
     CHECK_LYD_STRING(tree, LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
 
     data = "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
-            " ncwd:default=\"true\" xmlns:d=\"urn:defaults\">/d:b</a>"
+            " ncwd:default=\"true\">/d:b</a>"
             "<c xmlns=\"urn:defaults\">aa</c>";
     CHECK_LYD_STRING(tree, LYD_PRINT_WD_ALL_TAG | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
 
     data = "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
-            " ncwd:default=\"true\" xmlns:d=\"urn:defaults\">/d:b</a>"
+            " ncwd:default=\"true\">/d:b</a>"
             "<c xmlns=\"urn:defaults\">aa</c>";
     CHECK_LYD_STRING(tree, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
 
-    /* string value equal to the default but default is an unresolved instance-identifier, so they are not considered equal */
+    /* string value equal to the default, intepreted as a string because instance-identifier target does not exist */
     data = "<a xmlns=\"urn:defaults\">/d:b</a><c xmlns=\"urn:defaults\">aa</c>";
+    data_trim = "<c xmlns=\"urn:defaults\">aa</c>";
+    data_all_tag = "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
+            " ncwd:default=\"true\">/d:b</a><c xmlns=\"urn:defaults\">aa</c>";
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
-    CHECK_LYD_STRING(tree, LYD_PRINT_WD_TRIM | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_WD_TRIM | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data_trim);
     CHECK_LYD_STRING(tree, LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
-    CHECK_LYD_STRING(tree, LYD_PRINT_WD_ALL_TAG | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_WD_ALL_TAG | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data_all_tag);
     CHECK_LYD_STRING(tree, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
 

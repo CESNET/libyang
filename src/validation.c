@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "compat.h"
+#include "dict.h"
 #include "diff.h"
 #include "hash_table.h"
 #include "log.h"
@@ -717,7 +718,7 @@ lyd_val_has_default(const struct lysc_node *schema)
 {
     switch (schema->nodetype) {
     case LYS_LEAF:
-        if (((struct lysc_node_leaf *)schema)->dflt) {
+        if (((struct lysc_node_leaf *)schema)->dflt.str) {
             return 1;
         }
         break;
@@ -1295,10 +1296,10 @@ struct lyd_val_uniq_arg {
 static ly_bool
 lyd_val_uniq_list_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *cb_data)
 {
-    struct ly_ctx *ctx;
+    const struct ly_ctx *ctx;
     struct lysc_node_list *slist;
     struct lyd_node *diter, *first, *second;
-    struct lyd_value *val1, *val2;
+    const char *val1, *val2, *canon1, *canon2;
     char *path1, *path2, *uniq_str, *ptr;
     LY_ARRAY_COUNT_TYPE u, v;
     struct lyd_val_uniq_arg *arg = cb_data;
@@ -1312,7 +1313,7 @@ lyd_val_uniq_list_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *c
     assert(first && (first->schema->nodetype == LYS_LIST));
     assert(second && (second->schema == first->schema));
 
-    ctx = first->schema->module->ctx;
+    ctx = LYD_CTX(first);
 
     slist = (struct lysc_node_list *)first->schema;
 
@@ -1327,24 +1328,36 @@ lyd_val_uniq_list_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *c
 uniquecheck:
         LY_ARRAY_FOR(slist->uniques[u], v) {
             /* first */
+            canon1 = NULL;
+            val1 = NULL;
             diter = lyd_val_uniq_find_leaf(slist->uniques[u][v], first);
             if (diter) {
-                val1 = &((struct lyd_node_term *)diter)->value;
-            } else {
-                /* use default value */
-                val1 = slist->uniques[u][v]->dflt;
+                val1 = lyd_get_value(diter);
+            } else if (slist->uniques[u][v]->dflt.str) {
+                /* use canonical default value */
+                lyd_value_validate2(ctx, first->schema, slist->uniques[u][v]->dflt.str,
+                        strlen(slist->uniques[u][v]->dflt.str), LY_VALUE_SCHEMA_RESOLVED,
+                        slist->uniques[u][v]->dflt.prefixes, NULL, NULL, &canon2);
+                val1 = canon1;
             }
 
             /* second */
+            canon2 = NULL;
+            val2 = NULL;
             diter = lyd_val_uniq_find_leaf(slist->uniques[u][v], second);
             if (diter) {
-                val2 = &((struct lyd_node_term *)diter)->value;
-            } else {
-                /* use default value */
-                val2 = slist->uniques[u][v]->dflt;
+                val2 = lyd_get_value(diter);
+            } else if (slist->uniques[u][v]->dflt.str) {
+                /* use canonical default value */
+                lyd_value_validate2(ctx, first->schema, slist->uniques[u][v]->dflt.str,
+                        strlen(slist->uniques[u][v]->dflt.str), LY_VALUE_SCHEMA_RESOLVED,
+                        slist->uniques[u][v]->dflt.prefixes, NULL, NULL, &canon2);
+                val2 = canon2;
             }
 
-            if (!val1 || !val2 || val1->realtype->plugin->compare(ctx, val1, val2)) {
+            lydict_remove(ctx, canon1);
+            lydict_remove(ctx, canon2);
+            if (!val1 || !val2 || (val1 != val2)) {
                 /* values differ or either one is not set */
                 break;
             }
@@ -1417,12 +1430,9 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
     LY_ARRAY_COUNT_TYPE u, v, x = 0;
     LY_ERR ret = LY_SUCCESS;
     uint32_t hash, i;
-    size_t key_len;
-    ly_bool dyn;
-    const void *hash_key;
     struct lyd_val_uniq_arg arg, *args = NULL;
     struct ly_ht **uniqtables = NULL;
-    struct lyd_value *val;
+    const char *val;
     struct ly_ctx *ctx = snode->module->ctx;
 
     assert(uniques);
@@ -1466,10 +1476,12 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
                 for (v = hash = 0; v < LY_ARRAY_COUNT(uniques[u]); v++) {
                     diter = lyd_val_uniq_find_leaf(uniques[u][v], set->objs[i]);
                     if (diter) {
-                        val = &((struct lyd_node_term *)diter)->value;
-                    } else {
-                        /* use default value */
-                        val = uniques[u][v]->dflt;
+                        val = lyd_get_value(diter);
+                    } else if (uniques[u][v]->dflt.str) {
+                        /* use canonical default value */
+                        ret = lyd_value_validate2(ctx, snode, uniques[u][v]->dflt.str, strlen(uniques[u][v]->dflt.str),
+                                LY_VALUE_SCHEMA_RESOLVED, uniques[u][v]->dflt.prefixes, NULL, NULL, &val);
+                        LY_CHECK_GOTO(ret, cleanup);
                     }
                     if (!val) {
                         /* unique item not present nor has default value */
@@ -1477,11 +1489,7 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
                     }
 
                     /* get hash key */
-                    hash_key = val->realtype->plugin->print(NULL, val, LY_VALUE_LYB, NULL, &dyn, &key_len);
-                    hash = lyht_hash_multi(hash, hash_key, key_len);
-                    if (dyn) {
-                        free((void *)hash_key);
-                    }
+                    hash = lyht_hash_multi(hash, val, strlen(val));
                 }
                 if (!val) {
                     /* skip this list instance since its unique set is incomplete */
