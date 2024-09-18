@@ -37,6 +37,7 @@
 #include "schema_features.h"
 #include "set.h"
 #include "tree.h"
+#include "tree_data_internal.h"
 #include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
@@ -2850,4 +2851,23 @@ lys_stmt_flags(enum ly_stmt stmt)
     }
 
     return 0;
+}
+
+int
+lysc_value_cmp(const struct lysc_node *schema, const struct lyd_node *ctx_node, const struct lysc_value *val,
+        const char *val2)
+{
+    LY_ERR r;
+    int cmp;
+    const char *canon;
+
+    r = lyd_value_validate2(schema->module->ctx, schema, val->str, strlen(val->str), LY_VALUE_SCHEMA_RESOLVED,
+            val->prefixes, ctx_node, NULL, &canon);
+    if (r && (r != LY_EINCOMPLETE)) {
+        return -1;
+    }
+
+    cmp = strcmp(canon, val2);
+    lydict_remove(schema->module->ctx, canon);
+    return cmp;
 }
