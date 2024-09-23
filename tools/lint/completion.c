@@ -30,19 +30,20 @@
 #include "compat.h"
 #include "linenoise/linenoise.h"
 
-/* This function can be called in user completion callback to fill
- * path completion for them. hint parameter is actually the whole path
- * and buf is unused, but included to match the completion callback prototype. */
+/**
+ * @brief Fill path completion.
+ *
+ * @param[in] hint Path to directory.
+ * @param[in] lc For adding completions.
+ */
 static void
-path_completion(const char *buf,  const char *hint, linenoiseCompletions *lc)
+path_completion(const char *hint, linenoiseCompletions *lc)
 {
     const char *ptr;
     char *full_path, *hint_ptr, match[FILENAME_MAX + 2];
     DIR *dir;
     struct dirent *ent;
     struct stat st;
-
-    (void)buf;
 
     lc->path = 1;
 
@@ -495,29 +496,28 @@ complete_cmd(const char *buf, const char *hint, linenoiseCompletions *lc)
     struct autocomplete {
         enum COMMAND_INDEX ci;      /**< command index to global variable 'commands' */
         const char *opt;            /**< optional option */
-        void (*ln_cb)(const char *, const char *, linenoiseCompletions *);  /**< linenoise callback to call */
-        void (*yl_cb)(const char *, char ***, unsigned int *);              /**< yanglint callback to call */
+        void (*yl_cb)(const char *, char ***, unsigned int *);  /**< yanglint callback to call */
     } ac[] = {
-        {CMD_ADD,         NULL,    path_completion, NULL},
-        {CMD_PRINT,       "-f",    NULL, get_print_format_arg},
-        {CMD_PRINT,       "-P",    NULL, get_schema_completion},
-        {CMD_PRINT,       "-o",    path_completion, NULL},
-        {CMD_PRINT,       NULL,    NULL, get_model_completion},
-        {CMD_SEARCHPATH,  NULL,    path_completion, NULL},
-        {CMD_EXTDATA,     NULL,    path_completion, NULL},
-        {CMD_CLEAR,       "-Y",    path_completion, NULL},
-        {CMD_DATA,        "-t",    NULL, get_data_type_arg},
-        {CMD_DATA,        "-O",    path_completion, NULL},
-        {CMD_DATA,        "-R",    path_completion, NULL},
-        {CMD_DATA,        "-f",    NULL, get_data_in_format_arg},
-        {CMD_DATA,        "-F",    NULL, get_data_in_format_arg},
-        {CMD_DATA,        "-d",    NULL, get_data_default_arg},
-        {CMD_DATA,        "-o",    path_completion, NULL},
-        {CMD_DATA,        NULL,    path_completion, NULL},
-        {CMD_LIST,        NULL,    NULL, get_list_format_arg},
-        {CMD_FEATURE,     NULL,    NULL, get_model_completion},
-        {CMD_VERB,        NULL,    NULL, get_verb_arg},
-        {CMD_DEBUG,       NULL,    NULL, get_debug_arg},
+        {CMD_ADD,         NULL,    NULL},
+        {CMD_PRINT,       "-f",    get_print_format_arg},
+        {CMD_PRINT,       "-P",    get_schema_completion},
+        {CMD_PRINT,       "-o",    NULL},
+        {CMD_PRINT,       NULL,    get_model_completion},
+        {CMD_SEARCHPATH,  NULL,    NULL},
+        {CMD_EXTDATA,     NULL,    NULL},
+        {CMD_CLEAR,       "-Y",    NULL},
+        {CMD_DATA,        "-t",    get_data_type_arg},
+        {CMD_DATA,        "-O",    NULL},
+        {CMD_DATA,        "-R",    NULL},
+        {CMD_DATA,        "-f",    get_data_in_format_arg},
+        {CMD_DATA,        "-F",    get_data_in_format_arg},
+        {CMD_DATA,        "-d",    get_data_default_arg},
+        {CMD_DATA,        "-o",    NULL},
+        {CMD_DATA,        NULL,    NULL},
+        {CMD_LIST,        NULL,    get_list_format_arg},
+        {CMD_FEATURE,     NULL,    get_model_completion},
+        {CMD_VERB,        NULL,    get_verb_arg},
+        {CMD_DEBUG,       NULL,    get_debug_arg},
     };
     size_t name_len;
     const char *last, *name, *getoptstr;
@@ -555,10 +555,10 @@ complete_cmd(const char *buf, const char *hint, linenoiseCompletions *lc)
             }
 
             /* callback */
-            if (ac[i].ln_cb) {
-                ac[i].ln_cb(buf, hint, lc);
-            } else {
+            if (ac[i].yl_cb) {
                 ac[i].yl_cb(hint, &matches, &match_count);
+            } else {
+                path_completion(hint, lc);
             }
             break;
         }
