@@ -24,7 +24,8 @@ if(ENABLE_YANGLINT_INTERACTIVE)
         main.c
         completion.c
         configuration.c
-        linenoise/linenoise.c)
+        linenoise/linenoise.c
+        linenoise/utf8.c)
 else()
     set(lintsrc ${lintsrc}
         main_ni_only.c)

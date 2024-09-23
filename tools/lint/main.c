@@ -28,6 +28,7 @@
 #include "completion.h"
 #include "configuration.h"
 #include "linenoise/linenoise.h"
+#include "linenoise/utf8.h"
 #include "yl_opt.h"
 
 int done;
@@ -53,6 +54,7 @@ main(int argc, char *argv[])
 
     /* continue in interactive mode */
     linenoiseSetCompletionCallback(complete_cmd);
+    linenoiseSetEncodingFunctions(linenoiseUtf8PrevCharLen, linenoiseUtf8NextCharLen, linenoiseUtf8ReadCode);
     load_config();
 
     if (ly_ctx_new(NULL, YL_DEFAULT_CTX_OPTIONS, &ctx)) {
