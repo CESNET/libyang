@@ -49,10 +49,25 @@ setup(void **state)
             "rpc r1 {input {leaf l1 {type string;} leaf l2 {type string;}}}"
             "notification n2;"
             "}";
+            
+    const char *schema2 = "module b {\n"
+            "   namespace urn:tests:b;\n"
+            "   prefix b;\n"
+            "   yang-version 1.1;\n"
+            "   container c1 {\n"
+            "   	container c2 {\n"
+            "       	leaf d { type string; default \"it is what? it is\"; }\n"
+            "       }\n"
+            "   }\n"
+            "   container c3 {\n"
+            "   	leaf d2 { type string; default \"it is what? it is\"; }\n"
+            "   }\n"
+            "}";
 
     UTEST_SETUP;
 
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+    UTEST_ADD_MODULE(schema2, LYS_IN_YANG, NULL, NULL);
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_DIR_MODULES_YANG));
 
     return 0;
@@ -920,6 +935,26 @@ test_metadata(void **state)
     CHECK_LOG_CTX("Invalid non-number-encoded int8 value \"value\".", "/a:c/x/@a:hint", 1);
 }
 
+static void
+test_default(void **state)
+{
+    const char *data;
+    struct lyd_node *tree;
+	char *out = NULL;
+
+    /* prepare data (they are default) */
+    data = "{\"b:c1\":{}}";
+	CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&out, tree, LYD_JSON, LYD_PRINT_KEEPEMPTYCONT | LYD_PRINT_WD_ALL | LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK));
+
+	/* check data */
+	data = "{\"b:c1\":{\"c2\":{\"d\":\"it is what? it is\"}},\"b:c3\":{\"d2\":\"it is what? it is\"}}";
+	assert_string_equal(out, data);
+
+	free(out);
+	lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -939,6 +974,7 @@ main(void)
         UTEST(test_restconf_notification, setup),
         UTEST(test_restconf_reply, setup),
         UTEST(test_metadata, setup),
+        UTEST(test_default, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
