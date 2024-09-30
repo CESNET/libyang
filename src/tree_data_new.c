@@ -1627,6 +1627,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
     const struct lysc_node *schema;
     const struct lyd_value *val = NULL;
     ly_bool store_only = (options & LYD_NEW_VAL_STORE_ONLY) ? 1 : 0;
+    ly_bool any_use_value = (options & LYD_NEW_ANY_USE_VALUE) ? 1 : 0;
     LY_ARRAY_COUNT_TYPE path_idx = 0, orig_count = 0;
     LY_VALUE_FORMAT format;
     uint32_t hints;
@@ -1789,7 +1790,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
             break;
         case LYS_ANYDATA:
         case LYS_ANYXML:
-            LY_CHECK_GOTO(ret = lyd_create_any(schema, value, value_type, 0, &node), cleanup);
+            LY_CHECK_GOTO(ret = lyd_create_any(schema, value, value_type, any_use_value, &node), cleanup);
             break;
         default:
             LOGINT(ctx);
