@@ -736,8 +736,6 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
             /* names (keys) are unique - it was checked when parsing */
             LOGVAL(ctx, LYVE_XPATH, "Predicate missing for a key of %s \"%s\" in path.",
                     lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
-            ly_path_predicates_free(ctx_node->module->ctx, *predicates);
-            *predicates = NULL;
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -813,6 +811,10 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
 cleanup:
     LOG_LOCBACK(cur_node ? 1 : 0, 0);
+    if (ret) {
+        ly_path_predicates_free(ctx_node->module->ctx, *predicates);
+        *predicates = NULL;
+    }
     return ret;
 }
 
