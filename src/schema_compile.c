@@ -30,6 +30,7 @@
 #include "in.h"
 #include "log.h"
 #include "ly_common.h"
+#include "lyb.h"
 #include "parser_schema.h"
 #include "path.h"
 #include "plugins.h"
@@ -1791,6 +1792,11 @@ lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
 
     /* finish compilation for all unresolved module items in the context */
     LY_CHECK_GOTO(ret = lys_compile_unres_mod(&ctx), cleanup);
+
+    if (mod->ctx->flags & LY_CTX_LYB_HASHES) {
+        /* generate schema hashes for all the schema nodes */
+        lysc_module_dfs_full(mod, lyb_cache_node_hash_cb, NULL);
+    }
 
     ly_ctx_new_change(mod->ctx);
 
