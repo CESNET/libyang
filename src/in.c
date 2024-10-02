@@ -13,7 +13,6 @@
  */
 
 #define _GNU_SOURCE
-#define _POSIX_C_SOURCE 200809L /* strdup, strndup */
 
 #include "in.h"
 #include "in_internal.h"
