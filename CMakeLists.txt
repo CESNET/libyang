@@ -75,8 +75,8 @@ if(WIN32)
     set(C_STANDARD_REQUIRED ON)
     set(CMAKE_C_FLAGS "/Zc:preprocessor /W3 /wd4711 /w14013 /utf-8 ${CMAKE_C_FLAGS}")
 else()
-    # global C flags
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic -std=c11")
+    # global C flags (POSIX source because of pthread_rwlock_t)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic -std=c11 -D_POSIX_C_SOURCE=200809L")
 endif()
 
 include_directories(${PROJECT_BINARY_DIR}/libyang ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/src/plugins_exts)
