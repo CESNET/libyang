@@ -1262,8 +1262,8 @@ struct lysc_pattern {
     const char *emsg;                /**< error-message */
     const char *eapptag;             /**< error-app-tag value */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uint32_t inverted : 1;             /**< invert-match flag */
-    uint32_t refcount : 31;            /**< reference counter */
+    uint32_t inverted : 1;           /**< invert-match flag */
+    uint32_t refcount : 31;          /**< reference counter */
 };
 
 struct lysc_must {
@@ -1605,7 +1605,7 @@ struct lysc_node_choice {
 
 struct lysc_value {
     const char *str;                 /**< string value */
-    struct lysc_prefix *prefixes;    /**< compiled used prefixes in the string value */
+    struct lysc_prefix *prefixes;    /**< compiled used prefixes in the string value ([sized array](@ref sizedarrays)) */
 };
 
 struct lysc_node_leaf {
