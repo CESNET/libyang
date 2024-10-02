@@ -50,9 +50,25 @@ setup(void **state)
             "    md:annotation attr {type enumeration {enum val;}}"
             "}";
 
+    const char *schema2 =
+            "module b {\n"
+            "   namespace urn:tests:b;\n"
+            "   prefix b;\n"
+            "   yang-version 1.1;\n"
+            "   container c1 {\n"
+            "   	container c2 {\n"
+            "       	leaf d { type string; default \"it is what? it is\"; }\n"
+            "       }\n"
+            "   }\n"
+            "   container c3 {\n"
+            "   	leaf d2 { type string; default \"it is what? it is\"; }\n"
+            "   }\n"
+            "}";
+
     UTEST_SETUP;
 
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+    UTEST_ADD_MODULE(schema2, LYS_IN_YANG, NULL, NULL);
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_DIR_MODULES_YANG));
 
     return 0;
@@ -1017,6 +1033,33 @@ test_subtree(void **state)
     lyd_free_all(tree);
 }
 
+static void
+test_default(void **state)
+{
+    const char *data;
+    struct lyd_node *tree;
+	char *out = NULL;
+
+    /* prepare data (they are default) */
+    data = "<c1 xmlns=\"urn:tests:b\"/>\n";
+	CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&out, tree, LYD_XML, LYD_PRINT_KEEPEMPTYCONT | LYD_PRINT_WD_ALL | LYD_PRINT_WITHSIBLINGS));
+
+	/* check data */
+	data = "<c1 xmlns=\"urn:tests:b\">\n"
+  		   "  <c2>\n"
+    	   "    <d>it is what? it is</d>\n"
+  		   "  </c2>\n"
+		   "</c1>\n"
+		   "<c3 xmlns=\"urn:tests:b\">\n"
+  		   "  <d2>it is what? it is</d2>\n"
+		   "</c3>\n";
+	assert_string_equal(out, data);
+
+	free(out);
+	lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -1040,6 +1083,7 @@ main(void)
         UTEST(test_data_skip, setup),
         UTEST(test_metadata, setup),
         UTEST(test_subtree, setup),
+		UTEST(test_default, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
