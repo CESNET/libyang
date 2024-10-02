@@ -39,14 +39,9 @@ lydict_val_eq(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *cb_data)
     const char *str1, *str2;
     size_t *len1;
 
-    LY_CHECK_ARG_RET(NULL, val1_p, val2_p, cb_data, 0);
-
     str1 = ((struct ly_dict_rec *)val1_p)->value;
     str2 = ((struct ly_dict_rec *)val2_p)->value;
     len1 = cb_data;
-
-    LY_CHECK_ERR_RET(!str1, LOGARG(NULL, val1_p), 0);
-    LY_CHECK_ERR_RET(!str2, LOGARG(NULL, val2_p), 0);
 
     if (!strncmp(str1, str2, *len1) && !str2[*len1]) {
         return 1;
