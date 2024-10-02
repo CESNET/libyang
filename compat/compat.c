@@ -11,7 +11,9 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#define _POSIX_C_SOURCE 200809L /* fdopen, _POSIX_PATH_MAX, strdup */
+#ifndef _POSIX_C_SOURCE
+# define _POSIX_C_SOURCE 200809L /* fdopen, _POSIX_PATH_MAX, strdup */
+#endif
 #define _ISOC99_SOURCE /* vsnprintf */
 
 #include "compat.h"
