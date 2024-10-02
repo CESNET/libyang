@@ -78,10 +78,7 @@ lyb_get_hash(const struct lysc_node *node, uint8_t collision_id)
     return lyb_generate_hash(node, collision_id);
 }
 
-/**
- * @brief Module DFS callback filling all cached hashes of a schema node.
- */
-static LY_ERR
+LY_ERR
 lyb_cache_node_hash_cb(struct lysc_node *node, void *UNUSED(data), ly_bool *UNUSED(dfs_continue))
 {
     if (node->hash[0]) {
@@ -95,19 +92,6 @@ lyb_cache_node_hash_cb(struct lysc_node *node, void *UNUSED(data), ly_bool *UNUS
     }
 
     return LY_SUCCESS;
-}
-
-void
-lyb_cache_module_hash(const struct lys_module *mod)
-{
-    /* LOCK */
-    pthread_mutex_lock(&mod->ctx->lyb_hash_lock);
-
-    /* store all cached hashes for all the nodes */
-    lysc_module_dfs_full(mod, lyb_cache_node_hash_cb, NULL);
-
-    /* UNLOCK */
-    pthread_mutex_unlock(&mod->ctx->lyb_hash_lock);
 }
 
 ly_bool

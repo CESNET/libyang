@@ -181,11 +181,9 @@ void lyd_lyb_ctx_free(struct lyd_ctx *lydctx);
 LYB_HASH lyb_get_hash(const struct lysc_node *node, uint8_t collision_id);
 
 /**
- * @brief Fill the hash cache of all the schema nodes of a module.
- *
- * @param[in] mod Module to process.
+ * @brief Module DFS callback filling all cached hashes of a schema node.
  */
-void lyb_cache_module_hash(const struct lys_module *mod);
+LY_ERR lyb_cache_node_hash_cb(struct lysc_node *node, void *data, ly_bool *dfs_continue);
 
 /**
  * @brief Check whether a node's module is in a module array.

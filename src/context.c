@@ -36,6 +36,7 @@
 #include "hash_table.h"
 #include "in.h"
 #include "ly_common.h"
+#include "lyb.h"
 #include "parser_data.h"
 #include "plugins_internal.h"
 #include "plugins_types.h"
@@ -631,6 +632,18 @@ ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
         ctx_data = ly_ctx_data_get(ctx);
         ctx_data->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec), ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
         LY_CHECK_ERR_RET(!ctx_data->leafref_links_ht, LOGARG(ctx, option), LY_EMEM);
+    }
+
+    if (!(ctx->flags & LY_CTX_LYB_HASHES) && (option & LY_CTX_LYB_HASHES)) {
+        for (i = 0; i < ctx->list.count; ++i) {
+            mod = ctx->list.objs[i];
+            if (!mod->implemented) {
+                continue;
+            }
+
+            /* store all cached hashes for all the nodes */
+            lysc_module_dfs_full(mod, lyb_cache_node_hash_cb, NULL);
+        }
     }
 
     if (!(ctx->flags & LY_CTX_SET_PRIV_PARSED) && (option & LY_CTX_SET_PRIV_PARSED)) {
