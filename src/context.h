@@ -472,7 +472,7 @@ typedef LY_ERR (*ly_ext_data_clb)(const struct lysc_ext_instance *ext, const str
  * @param[in] clb Callback responsible for returning the extension instance data.
  * @param[in] user_data Arbitrary data that will always be passed to the callback @p clb.
  */
-LIBYANG_API_DECL ly_ext_data_clb ly_ctx_set_ext_data_clb(struct ly_ctx *ctx, ly_ext_data_clb clb, void *user_data);
+LIBYANG_API_DECL ly_ext_data_clb ly_ctx_set_ext_data_clb(const struct ly_ctx *ctx, ly_ext_data_clb clb, void *user_data);
 
 /**
  * @brief Get YANG module of the given name and revision.

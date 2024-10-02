@@ -175,112 +175,84 @@ ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VECODE vecode, char *data_
     return e->err;
 }
 
-/**
- * @brief Get error record from error hash table of a context for the current thread.
- *
- * @param[in] ctx Context to use.
- * @return Thread error record, if any.
- */
-static struct ly_ctx_err_rec *
-ly_err_get_rec(const struct ly_ctx *ctx)
+static struct ly_ctx_data_err *
+ly_err_data_get(const struct ly_ctx *ctx)
 {
-    struct ly_ctx_err_rec rec, *match;
+    struct ly_ctx_data *ctx_data;
+    pthread_t tid = pthread_self();
+    uint32_t i;
 
-    /* prepare record */
-    rec.tid = pthread_self();
+    /* get context data */
+    ctx_data = ly_ctx_data_get(ctx);
 
-    /* reuse lock */
-    /* LOCK */
-    pthread_mutex_lock((pthread_mutex_t *)&ctx->lyb_hash_lock);
+    pthread_rwlock_rdlock(&ctx_data->err_rwlock);
 
-    /* get the pointer to the matching record */
-    lyht_find(ctx->err_ht, &rec, lyht_hash((void *)&rec.tid, sizeof rec.tid), (void **)&match);
+    /* find the thread-specific err */
+    for (i = 0; i < ctx_data->err_count; ++i) {
+        if (!memcmp(&ctx_data->errs[i]->tid, &tid, sizeof tid)) {
+            return ctx_data->errs[i];
+        }
+    }
 
-    /* UNLOCK */
-    pthread_mutex_unlock((pthread_mutex_t *)&ctx->lyb_hash_lock);
+    pthread_rwlock_unlock(&ctx_data->err_rwlock);
 
-    return match;
-}
+    pthread_rwlock_wrlock(&ctx_data->err_rwlock);
 
-/**
- * @brief Insert new error record to error hash table of a context for the current thread.
- *
- * @param[in] ctx Context to use.
- * @return Thread error record.
- */
-static struct ly_ctx_err_rec *
-ly_err_new_rec(const struct ly_ctx *ctx)
-{
-    struct ly_ctx_err_rec new, *rec;
-    LY_ERR r;
+    /* no need to retry the search, this thread is executing this function */
 
-    /* insert a new record */
-    new.err = NULL;
-    new.tid = pthread_self();
+    /* not found, so create it */
+    ctx_data->errs = ly_realloc(ctx_data->errs, (ctx_data->err_count + 1) * sizeof *ctx_data->errs);
+    ctx_data->errs[ctx_data->err_count] = calloc(1, sizeof **ctx_data->errs);
+    memcpy(&ctx_data->errs[ctx_data->err_count]->tid, &tid, sizeof tid);
 
-    /* reuse lock */
-    /* LOCK */
-    pthread_mutex_lock((pthread_mutex_t *)&ctx->lyb_hash_lock);
+    ++ctx_data->err_count;
 
-    r = lyht_insert(ctx->err_ht, &new, lyht_hash((void *)&new.tid, sizeof new.tid), (void **)&rec);
-
-    /* UNLOCK */
-    pthread_mutex_unlock((pthread_mutex_t *)&ctx->lyb_hash_lock);
-
-    return r ? NULL : rec;
+    return ctx_data->errs[ctx_data->err_count - 1];
 }
 
 LIBYANG_API_DEF const struct ly_err_item *
 ly_err_first(const struct ly_ctx *ctx)
 {
-    struct ly_ctx_err_rec *rec;
+    struct ly_ctx_data_err *err_data;
 
     LY_CHECK_ARG_RET(NULL, ctx, NULL);
 
-    /* get the pointer to the matching record */
-    rec = ly_err_get_rec(ctx);
+    /* get context err data */
+    err_data = ly_err_data_get(ctx);
 
-    return rec ? rec->err : NULL;
+    return err_data ? err_data->err : NULL;
 }
 
 LIBYANG_API_DEF const struct ly_err_item *
 ly_err_last(const struct ly_ctx *ctx)
 {
-    struct ly_ctx_err_rec *rec;
+    struct ly_ctx_data_err *err_data;
 
-    LY_CHECK_ARG_RET(NULL, ctx, NULL);
+    /* get context err data */
+    err_data = ly_err_data_get(ctx);
 
-    /* get the pointer to the matching record */
-    if (!(rec = ly_err_get_rec(ctx))) {
+    if (!err_data) {
         return NULL;
     }
 
-    return rec->err ? rec->err->prev : NULL;
+    return err_data->err ? err_data->err->prev : NULL;
 }
 
 void
 ly_err_move(struct ly_ctx *src_ctx, struct ly_ctx *trg_ctx)
 {
-    struct ly_ctx_err_rec *rec;
+    struct ly_ctx_data_err *err_data;
     struct ly_err_item *err = NULL;
 
-    /* get and remove the errors from src */
-    rec = ly_err_get_rec(src_ctx);
-    if (rec) {
-        err = rec->err;
-        rec->err = NULL;
-    }
+    /* get src context err data */
+    err_data = ly_err_data_get(src_ctx);
+    err = err_data->err;
+    err_data->err = NULL;
 
     /* set them for trg */
-    if (!(rec = ly_err_get_rec(trg_ctx))) {
-        if (!(rec = ly_err_new_rec(trg_ctx))) {
-            LOGINT(NULL);
-            ly_err_free(err);
-            return;
-        }
-    }
-    ly_err_free(rec->err);
-    rec->err = err;
+    err_data = ly_err_data_get(trg_ctx);
+    ly_err_free(err_data->err);
+    err_data->err = err;
 }
 
 LIBYANG_API_DEF void
@@ -299,28 +271,27 @@ ly_err_free(void *ptr)
 }
 
 LIBYANG_API_DEF void
-ly_err_clean(struct ly_ctx *ctx, struct ly_err_item *eitem)
+ly_err_clean(const struct ly_ctx *ctx, struct ly_err_item *eitem)
 {
-    struct ly_ctx_err_rec *rec;
+    struct ly_ctx_data_err *err_data;
     struct ly_err_item *e;
 
-    if (!(rec = ly_err_get_rec(ctx))) {
-        return;
-    }
-    if (rec->err == eitem) {
+    err_data = ly_err_data_get(ctx);
+    if (err_data->err == eitem) {
         eitem = NULL;
     }
 
     if (!eitem) {
         /* free all err */
-        ly_err_free(rec->err);
-        rec->err = NULL;
+        ly_err_free(err_data->err);
+        err_data->err = NULL;
     } else {
         /* disconnect the error */
-        for (e = rec->err; e && (e->next != eitem); e = e->next) {}
+        for (e = err_data->err; e && (e->next != eitem); e = e->next) {}
         assert(e);
         e->next = NULL;
-        rec->err->prev = e;
+        err_data->err->prev = e;
+
         /* free this err and newer */
         ly_err_free(eitem);
     }
@@ -468,18 +439,15 @@ static LY_ERR
 log_store(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR err, LY_VECODE vecode, char *msg, char *data_path,
         char *schema_path, uint64_t line, char *apptag)
 {
-    struct ly_ctx_err_rec *rec;
+    struct ly_ctx_data_err *err_data;
     struct ly_err_item *e, *last;
 
     assert(ctx && (level < LY_LLVRB));
 
-    if (!(rec = ly_err_get_rec(ctx))) {
-        if (!(rec = ly_err_new_rec(ctx))) {
-            goto mem_fail;
-        }
-    }
+    /* get context err data */
+    err_data = ly_err_data_get(ctx);
 
-    e = rec->err;
+    e = err_data->err;
     if (!e) {
         /* if we are only to fill in path, there must have been an error stored */
         assert(msg);
@@ -488,7 +456,7 @@ log_store(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR err, LY_VECODE ve
         e->prev = e;
         e->next = NULL;
 
-        rec->err = e;
+        err_data->err = e;
     } else if (!msg) {
         /* only filling the path */
         assert(data_path || schema_path);
