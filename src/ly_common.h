@@ -331,10 +331,26 @@ int LY_VCODE_INSTREXP_len(const char *str);
 /**
  * @brief Context error hash table record.
  */
-struct ly_ctx_err_rec {
-    struct ly_err_item *err;          /** pointer to the error items, if any */
-    pthread_t tid;                    /** pthread thread ID */
+struct ly_ctx_data_err {
+    pthread_t tid;                  /** pthread thread ID */
+    struct ly_err_item *err;        /** pointer to the error items, if any */
 };
+
+struct ly_ctx_data {
+    const struct ly_ctx *ctx;
+    ly_ext_data_clb ext_clb;        /**< optional callback for providing extension-specific run-time data for extensions */
+    void *ext_clb_data;             /**< optional private data for ext_clb */
+
+    pthread_rwlock_t err_rwlock;    /**< lock protecting errs */
+    struct ly_ctx_data_err **errs;  /**< array of thread-specific errors related to the context */
+    uint32_t err_count;             /**< count of items in the errs array */
+
+    struct ly_ht *leafref_links_ht; /**< hash table of leafref links between term data nodes */
+};
+
+extern pthread_rwlock_t ly_ctx_data_rwlock; /**< lock for accessing ly_ctx_data */
+extern struct ly_ctx_data **ly_ctx_data;    /**< array of pointers to context-specific data */
+extern uint32_t ly_ctx_data_count;          /**< count of ly_ctx_data items */
 
 /**
  * @brief Context of the YANG schemas
@@ -351,14 +367,39 @@ struct ly_ctx {
                                            more times */
     uint16_t flags;                   /**< context settings, see @ref contextoptions */
 
-    ly_ext_data_clb ext_clb;          /**< optional callback for providing extension-specific run-time data for extensions */
-    void *ext_clb_data;               /**< optional private data for ::ly_ctx.ext_clb */
-    struct ly_ht *err_ht;             /**< hash table of thread-specific list of errors related to the context */
-    pthread_mutex_t lyb_hash_lock;    /**< lock for storing LYB schema hashes in schema nodes */
-    struct ly_ht *leafref_links_ht;   /**< hash table of leafref links between term data nodes */
     struct ly_set plugins_types;      /**< context specific set of type plugins */
     struct ly_set plugins_extensions; /**< contets specific set of extension plugins */
 };
+
+/**
+ * @brief Add a ctx data for a new context.
+ *
+ * @param[in] ctx Newly created context.
+ * @return Newly created data.
+ */
+struct ly_ctx_data *ly_ctx_data_add(const struct ly_ctx *ctx);
+
+/**
+ * @brief Remove a ctx data of a destroyed context.
+ *
+ * @param[in] ctx Destroyed context.
+ */
+void ly_ctx_data_del(const struct ly_ctx *ctx);
+
+/**
+ * @brief Get context-specific data of the process.
+ *
+ * @param[in] ctx Context whose data to get.
+ * @return Context data of @p ctx.
+ */
+struct ly_ctx_data *ly_ctx_data_get(const struct ly_ctx *ctx);
+
+/**
+ * @brief Callback for freeing leafref links recorcd internal resources.
+ *
+ * @param[in] val_p Pointer to leafref links record
+ */
+void ly_ctx_ht_leafref_links_rec_free(void *val_p);
 
 /**
  * @brief Get the (only) implemented YANG module specified by its name.

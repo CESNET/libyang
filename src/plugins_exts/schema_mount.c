@@ -1069,10 +1069,13 @@ lyplg_ext_schema_mount_create_context(const struct lysc_ext_instance *ext, const
         struct ly_ctx **ctx)
 {
     struct lyd_node *ext_data = NULL;
+    struct ly_ctx_data *ctx_data;
     ly_bool ext_data_free = 0, config;
     LY_ERR rc = LY_SUCCESS;
 
-    if (!ext->module->ctx->ext_clb) {
+
+    ctx_data = ly_ctx_data_get(ext->def->module->ctx);
+    if (!ctx_data->ext_clb) {
         return LY_EINVAL;
     }
 

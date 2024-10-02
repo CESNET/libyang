@@ -350,7 +350,7 @@ LIBYANG_API_DECL void ly_err_print(const struct ly_ctx *ctx, const struct ly_err
  * @param[in] ctx Relative context.
  * @param[in] eitem Oldest error structure to remove, optional.
  */
-LIBYANG_API_DECL void ly_err_clean(struct ly_ctx *ctx, struct ly_err_item *eitem);
+LIBYANG_API_DECL void ly_err_clean(const struct ly_ctx *ctx, struct ly_err_item *eitem);
 
 /** @} errors */
 
