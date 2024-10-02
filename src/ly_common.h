@@ -417,24 +417,6 @@ struct lys_module *ly_ctx_get_module_implemented2(const struct ly_ctx *ctx, cons
  *****************************************************************************/
 
 /**
- * @brief Insert string into dictionary.
- *
- * @param[in] CTX libyang context.
- * @param[in] STRING string to store.
- * @param[in] LEN length of the string in WORD to store.
- * @param[in,out] DYNAMIC Set to 1 if @p STRING is dynamically allocated, 0 otherwise.
- * If set to 1, zerocopy version of lydict_insert is used.
- * @param[out] TARGET pointer is set to @p STRING value stored in the dictionary.
- */
-#define INSERT_STRING_RET(CTX, STRING, LEN, DYNAMIC, TARGET) \
-    if (DYNAMIC) { \
-        LY_CHECK_RET(lydict_insert_zc(CTX, (char *)(STRING), &(TARGET))); \
-    } else { \
-        LY_CHECK_RET(lydict_insert(CTX, LEN ? (STRING) : "", LEN, &(TARGET))); \
-    } \
-    DYNAMIC = 0
-
-/**
  * @brief Wrapper for realloc() call. The only difference is that if it fails to
  * allocate the requested memory, the original memory is freed as well.
  *

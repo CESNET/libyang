@@ -89,9 +89,7 @@ lyht_new(uint32_t size, uint16_t val_size, lyht_value_equal_cb val_equal, void *
     struct ly_ht *ht;
 
     /* check that 2^x == size (power of 2) */
-    assert(size && !(size & (size - 1)));
-    assert(val_equal && val_size);
-    assert(resize == 0 || resize == 1);
+    LY_CHECK_ARG_RET(NULL, !(size & (size - 1)), val_size, val_equal, (resize == 0) || (resize == 1), NULL);
 
     if (size < LYHT_MIN_SIZE) {
         size = LYHT_MIN_SIZE;
