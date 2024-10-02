@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief internal context structures and functions
  *
- * Copyright (c) 2015 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -207,6 +207,8 @@ struct ly_ctx;
                                         loaded except for built-in YANG types so all derived types will use these and
                                         for all purposes behave as the base type. The option can be used for cases when
                                         invalid data needs to be stored in YANG node values. */
+#define LY_CTX_LYB_HASHES 0x1000 /**< Generate hashes for all the schema nodes. Required when using LYB data parse
+                                        or print. */
 
 /** @} contextoptions */
 

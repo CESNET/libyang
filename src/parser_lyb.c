@@ -474,9 +474,6 @@ lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, ly_bool with_f
         }
     }
 
-    /* fill cached hashes, if not already */
-    lyb_cache_module_hash(m);
-
 cleanup:
     *mod = m;
     free(mod_name);
@@ -885,8 +882,10 @@ lyb_parse_schema_nested_ext(struct lyd_lyb_ctx *lybctx, const struct lyd_node *p
         goto cleanup;
     }
 
-    /* fill cached hashes in the module, it may be from a different context */
-    lyb_cache_module_hash((*snode)->module);
+    if (!((*snode)->module->ctx->flags & LY_CTX_LYB_HASHES)) {
+        /* generate LYB hashes */
+        ly_ctx_set_options((*snode)->module->ctx, LY_CTX_LYB_HASHES);
+    }
 
 cleanup:
     free(name);
@@ -1680,6 +1679,11 @@ lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
     assert(!(val_opts & ~LYD_VALIDATE_OPTS_MASK));
 
     LY_CHECK_ARG_RET(ctx, !(parse_opts & LYD_PARSE_SUBTREE), LY_EINVAL);
+
+    if (!(ctx->flags & LY_CTX_LYB_HASHES)) {
+        /* generate LYB hashes */
+        ly_ctx_set_options((struct ly_ctx *)ctx, LY_CTX_LYB_HASHES);
+    }
 
     if (subtree_sibling) {
         *subtree_sibling = 0;

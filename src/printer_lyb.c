@@ -507,9 +507,6 @@ lyb_print_model(struct ly_out *out, const struct lys_module *mod, ly_bool with_f
         }
     }
 
-    /* fill cached hashes, if not already */
-    lyb_cache_module_hash(mod);
-
 cleanup:
     return rc;
 }
@@ -1225,6 +1222,11 @@ lyb_print_node(struct ly_out *out, const struct lyd_node **printed_node, struct 
     }
 
     if (node->flags & LYD_EXT) {
+        /* extension context which may not have hashes generated */
+        if (!(LYD_CTX(node)->flags & LY_CTX_LYB_HASHES)) {
+            ly_ctx_set_options((struct ly_ctx *)LYD_CTX(node), LY_CTX_LYB_HASHES);
+        }
+
         /* write schema node name */
         LY_CHECK_RET(lyb_write_string(node->schema->name, 0, sizeof(uint16_t), out, lybctx->lybctx));
     } else {
@@ -1308,6 +1310,11 @@ lyb_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options
             LOGERR(lybctx->lybctx->ctx, LY_EINVAL, "LYB printer supports only printing top-level nodes.");
             ret = LY_EINVAL;
             goto cleanup;
+        }
+
+        if (!(ctx->flags & LY_CTX_LYB_HASHES)) {
+            /* generate LYB hashes */
+            ly_ctx_set_options((struct ly_ctx *)ctx, LY_CTX_LYB_HASHES);
         }
     }
 
