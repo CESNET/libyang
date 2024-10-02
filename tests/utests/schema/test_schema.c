@@ -1887,6 +1887,51 @@ test_lysc_path(void **state)
     free(path);
 }
 
+static void
+test_compiled_print(void **state)
+{
+    struct ly_ctx *ctx_mem;
+    int size;
+    void *mem, *mem_end;
+
+    /* load another module */
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module c {yang-version 1.1; namespace urn:c;prefix c;"
+            "feature feat;"
+            "feature feat2;"
+            "leaf a {type instance-identifier;}"
+            "leaf b {type boolean; must \"/a\";}"
+            "leaf c {type binary; when \"/c:b = 'true'\";}"
+            "leaf d {type decimal64 {fraction-digits 2;}}"
+            "leaf-list e {type instance-identifier; default \"/c:a\"; default \"/c:b\"; default \"/c:c\";}"
+            "anydata f;"
+            "list g {"
+            "  key a;"
+            "  leaf a {type string;}"
+            "  unique \"b c\";"
+            "  unique \"d e\";"
+            "  leaf b {type string;}"
+            "  leaf c {type uint32;}"
+            "  leaf d {type empty;}"
+            "  leaf e {type int8;}"
+            "}"
+            "rpc h {"
+            "  input {leaf a {type string;}}"
+            "}"
+            "}", LYS_IN_YANG, NULL));
+
+    /* get the size */
+    size = ly_ctx_compiled_size(UTEST_LYCTX);
+    mem = malloc(size);
+    assert_non_null(mem);
+
+    /* print the context */
+    mem_end = mem;
+    assert_int_equal(LY_SUCCESS, ly_ctx_compiled_print(UTEST_LYCTX, &ctx_mem, &mem_end));
+    assert_int_equal((char *)mem_end - (char *)mem, size);
+
+    free(mem);
+}
+
 int
 main(void)
 {
@@ -1909,6 +1954,7 @@ main(void)
         UTEST(test_extension_compile),
         UTEST(test_ext_recursive),
         UTEST(test_lysc_path),
+        UTEST(test_compiled_print),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

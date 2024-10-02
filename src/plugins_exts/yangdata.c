@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang extension plugin - yang-data (RFC 8040)
  *
- * Copyright (c) 2021 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2021 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -248,6 +248,23 @@ yangdata_sprinter_ptree(struct lysp_ext_instance *ext, const struct lyspr_tree_c
     return rc;
 }
 
+static int
+yandgata_compiled_size(const struct lysc_ext_instance *ext, struct ly_ht *addr_ht)
+{
+    return lyplg_ext_compiled_stmts_storage_size(ext->substmts, addr_ht);
+}
+
+static LY_ERR
+yangdata_compiled_print(const struct lysc_ext_instance *orig_ext, struct lysc_ext_instance *ext, struct ly_ht *addr_ht,
+        struct ly_set *ptr_set, void **mem)
+{
+    ext->substmts[0].storage_p = (void **)&ext->compiled;
+    ext->substmts[1].storage_p = (void **)&ext->compiled;
+    ext->substmts[2].storage_p = (void **)&ext->compiled;
+
+    return lyplg_ext_compiled_stmts_storage_print(orig_ext->substmts, ext->substmts, addr_ht, ptr_set, mem);
+}
+
 /**
  * @brief Plugin descriptions for the yang-data extension
  *
@@ -261,7 +278,7 @@ const struct lyplg_ext_record plugins_yangdata[] = {
         .revision = "2017-01-26",
         .name = "yang-data",
 
-        .plugin.id = "ly2 yang-data v1",
+        .plugin.id = "ly2 yang-data",
         .plugin.parse = yangdata_parse,
         .plugin.compile = yangdata_compile,
         .plugin.printer_info = yangdata_printer_info,
@@ -271,7 +288,9 @@ const struct lyplg_ext_record plugins_yangdata[] = {
         .plugin.snode = NULL,
         .plugin.validate = NULL,
         .plugin.pfree = yangdata_pfree,
-        .plugin.cfree = yangdata_cfree
+        .plugin.cfree = yangdata_cfree,
+        .plugin.compiled_size = yandgata_compiled_size,
+        .plugin.compiled_print = yangdata_compiled_print
     },
     {0}     /* terminating zeroed record */
 };

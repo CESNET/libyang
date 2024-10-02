@@ -22,6 +22,7 @@
 #include <string.h>
 
 #include "compat.h"
+#include "context.h"
 #include "dict.h"
 #include "libyang.h"
 #include "log.h"
@@ -36,26 +37,26 @@
  * @brief Internal schema mount data structure for holding all the contexts of parsed data.
  */
 struct lyplg_ext_sm {
-    pthread_mutex_t lock;               /**< lock for accessing this shared structure */
+    pthread_mutex_t lock;       /**< lock for accessing this shared structure */
 
     struct lyplg_ext_sm_shared {
         struct {
-            struct ly_ctx *ctx;         /**< context shared between all data of this mount point */
-            const char *mount_point;    /**< mount point name */
-            const char *content_id;     /**< yang-library content-id (alternatively module-set-id),
-                                             stored in the dictionary of the ext instance context */
-        } *schemas;                     /**< array of shared schema schemas */
-        uint32_t schema_count;          /**< length of schemas array */
-        uint32_t ref_count;             /**< number of references to this structure (mount-points with the same name
-                                             in the module) */
-    } *shared;                          /**< shared schema mount points */
+            struct ly_ctx *ctx; /**< context shared between all data of this mount point */
+            char *mount_point;  /**< mount point name */
+            char *content_id;   /**< yang-library content-id (alternatively module-set-id),
+                                     stored in the dictionary of the ext instance context */
+        } *schemas;             /**< array of shared schema schemas */
+        uint32_t schema_count;  /**< length of schemas array */
+        uint32_t ref_count;     /**< number of references to this structure (mount-points with the same name
+                                     in the module) */
+    } *shared;                  /**< shared schema mount points */
 
     struct lyplg_ext_sm_inln {
         struct {
-            struct ly_ctx *ctx;         /**< context created for inline schema data, may be reused if possible */
-        } *schemas;                     /**< array of inline schemas */
-        uint32_t schema_count;          /**< length of schemas array */
-    } inln;                             /**< inline mount points */
+            struct ly_ctx *ctx; /**< context created for inline schema data, may be reused if possible */
+        } *schemas;             /**< array of inline schemas */
+        uint32_t schema_count;  /**< length of schemas array */
+    } inln;                     /**< inline mount points */
 };
 
 struct sprinter_tree_priv {
@@ -417,7 +418,7 @@ schema_mount_get_ctx_shared(struct lysc_ext_instance *ext, const struct lyd_node
 
     /* try to find this mount point */
     for (i = 0; i < sm_data->shared->schema_count; ++i) {
-        if (ext->argument == sm_data->shared->schemas[i].mount_point) {
+        if (!strcmp(ext->argument, sm_data->shared->schemas[i].mount_point)) {
             break;
         }
     }
@@ -449,8 +450,14 @@ schema_mount_get_ctx_shared(struct lysc_ext_instance *ext, const struct lyd_node
 
         /* fill entry */
         sm_data->shared->schemas[i].ctx = new_ctx;
-        sm_data->shared->schemas[i].mount_point = ext->argument;
-        lydict_insert(ext->module->ctx, content_id, 0, &sm_data->shared->schemas[i].content_id);
+        sm_data->shared->schemas[i].mount_point = strdup(ext->argument);
+        sm_data->shared->schemas[i].content_id = strdup(content_id);
+        if (!sm_data->shared->schemas[i].mount_point || !sm_data->shared->schemas[i].content_id) {
+            ly_ctx_destroy(new_ctx);
+            free(sm_data->shared->schemas[i].mount_point);
+            free(sm_data->shared->schemas[i].content_id);
+            EXT_LOGERR_MEM_GOTO(NULL, ext, rc, cleanup);
+        }
     }
 
     /* use the context */
@@ -1037,7 +1044,7 @@ cleanup:
  * Implementation of ::lyplg_ext_compile_free_clb callback set as ::lyext_plugin::cfree.
  */
 static void
-schema_mount_cfree(const struct ly_ctx *ctx, struct lysc_ext_instance *ext)
+schema_mount_cfree(const struct ly_ctx *UNUSED(ctx), struct lysc_ext_instance *ext)
 {
     struct lyplg_ext_sm *sm_data = ext->compiled;
     uint32_t i;
@@ -1049,7 +1056,8 @@ schema_mount_cfree(const struct ly_ctx *ctx, struct lysc_ext_instance *ext)
     if (!--sm_data->shared->ref_count) {
         for (i = 0; i < sm_data->shared->schema_count; ++i) {
             ly_ctx_destroy(sm_data->shared->schemas[i].ctx);
-            lydict_remove(ctx, sm_data->shared->schemas[i].content_id);
+            free(sm_data->shared->schemas[i].mount_point);
+            free(sm_data->shared->schemas[i].content_id);
         }
         free(sm_data->shared->schemas);
         free(sm_data->shared);
@@ -1072,7 +1080,6 @@ lyplg_ext_schema_mount_create_context(const struct lysc_ext_instance *ext, const
     struct ly_ctx_data *ctx_data;
     ly_bool ext_data_free = 0, config;
     LY_ERR rc = LY_SUCCESS;
-
 
     ctx_data = ly_ctx_data_get(ext->def->module->ctx);
     if (!ctx_data->ext_clb) {
@@ -1310,6 +1317,95 @@ cleanup:
     return rc;
 }
 
+static int
+schema_mount_compiled_size(const struct lysc_ext_instance *ext, struct ly_ht *addr_ht)
+{
+    struct lyplg_ext_sm *sm_data = ext->compiled;
+    uint32_t i, hash;
+    int size = 0;
+
+    if (!sm_data) {
+        return 0;
+    }
+
+    size += sizeof *sm_data;
+
+    /* ht addr check, make sure the shared context is stored only once */
+    hash = lyht_hash((const char *)&sm_data->shared, sizeof sm_data->shared);
+    if (lyht_insert(addr_ht, &sm_data->shared, hash, NULL) == LY_EEXIST) {
+        return size;
+    }
+
+    size += sizeof *sm_data->shared;
+    size += sm_data->shared->schema_count * sizeof *sm_data->shared->schemas;
+    for (i = 0; i < sm_data->shared->schema_count; ++i) {
+        size += ly_ctx_compiled_size(sm_data->shared->schemas[i].ctx);
+        size += strlen(sm_data->shared->schemas[i].mount_point) + 1;
+        size += strlen(sm_data->shared->schemas[i].content_id) + 1;
+    }
+
+    /* inlined contexts cannot be reused and will not be printed */
+
+    return size;
+}
+
+static LY_ERR
+schema_mount_compiled_print(const struct lysc_ext_instance *orig_ext, struct lysc_ext_instance *ext,
+        struct ly_ht *addr_ht, struct ly_set *UNUSED(ptr_set), void **mem)
+{
+    const struct lyplg_ext_sm *orig_sm_data = orig_ext->compiled;
+    struct lyplg_ext_sm *sm_data;
+    pthread_mutexattr_t attr;
+    uint32_t i;
+
+    /* sm_data */
+    ext->compiled = sm_data = *mem;
+    *mem = (char *)*mem + sizeof *sm_data;
+
+    pthread_mutexattr_init(&attr);
+    pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+    pthread_mutex_init(&sm_data->lock, &attr);
+    pthread_mutexattr_destroy(&attr);
+    memset(&sm_data->inln, 0, sizeof sm_data->inln);
+
+    /* use previously printed shared schema, if any */
+    sm_data->shared = lyplg_ext_compiled_print_get_addr(addr_ht, orig_sm_data->shared);
+    if (sm_data->shared) {
+        return LY_SUCCESS;
+    }
+
+    /* sm_data->shared */
+    sm_data->shared = *mem;
+    *mem = (char *)*mem + sizeof *sm_data->shared;
+
+    sm_data->shared->schema_count = orig_sm_data->shared->schema_count;
+    sm_data->shared->ref_count = orig_sm_data->shared->ref_count;
+
+    /* sm_data->shared->schemas */
+    sm_data->shared->schemas = *mem;
+    *mem = (char *)*mem + sm_data->shared->schema_count * sizeof *sm_data->shared->schemas;
+
+    for (i = 0; i < sm_data->shared->schema_count; ++i) {
+        /* ctx */
+        LY_CHECK_RET(ly_ctx_compiled_print(orig_sm_data->shared->schemas[i].ctx, &sm_data->shared->schemas[i].ctx, mem));
+
+        /* mount_point */
+        strcpy(*mem, orig_sm_data->shared->schemas[i].mount_point);
+        sm_data->shared->schemas[i].mount_point = *mem;
+        *mem = (char *)*mem + strlen(sm_data->shared->schemas[i].mount_point) + 1;
+
+        /* content_id */
+        strcpy(*mem, orig_sm_data->shared->schemas[i].content_id);
+        sm_data->shared->schemas[i].content_id = *mem;
+        *mem = (char *)*mem + strlen(sm_data->shared->schemas[i].content_id) + 1;
+    }
+
+    /* store the shared schema to be reused by other extension instances */
+    LY_CHECK_RET(lyplg_ext_compiled_print_add_addr(addr_ht, orig_sm_data->shared, sm_data->shared));
+
+    return LY_SUCCESS;
+}
+
 /**
  * @brief Plugin descriptions for the Yang Schema Mount extension.
  *
@@ -1323,7 +1419,7 @@ const struct lyplg_ext_record plugins_schema_mount[] = {
         .revision = "2019-01-14",
         .name = "mount-point",
 
-        .plugin.id = "ly2 schema mount v1",
+        .plugin.id = "ly2 schema mount",
         .plugin.parse = schema_mount_parse,
         .plugin.compile = schema_mount_compile,
         .plugin.printer_info = NULL,
@@ -1333,7 +1429,9 @@ const struct lyplg_ext_record plugins_schema_mount[] = {
         .plugin.snode = schema_mount_snode,
         .plugin.validate = schema_mount_validate,
         .plugin.pfree = NULL,
-        .plugin.cfree = schema_mount_cfree
+        .plugin.cfree = schema_mount_cfree,
+        .plugin.compiled_size = schema_mount_compiled_size,
+        .plugin.compiled_print = schema_mount_compiled_print,
     },
     {0} /* terminating zeroed item */
 };

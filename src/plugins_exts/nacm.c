@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang extension plugin - NACM (RFC 6536)
  *
- * Copyright (c) 2019 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -59,7 +59,8 @@ nacm_inherit_clb(struct lysc_node *node, void *data, ly_bool *dfs_continue)
                 return ret;
             }
         }
-        /* copy the pointer to the static variables */
+
+        /* copy the NACM value */
         inherited->compiled = arg->ext->compiled;
     }
 
@@ -128,14 +129,11 @@ nacm_compile(struct lysc_ctx *UNUSED(cctx), const struct lysp_ext_instance *UNUS
 {
     struct nacm_dfs_arg dfs_arg;
 
-    static const uint8_t nacm_deny_all = 1;
-    static const uint8_t nacm_deny_write = 2;
-
     /* store the NACM flag */
     if (!strcmp(ext->def->name, "default-deny-write")) {
-        ext->compiled = (void *)&nacm_deny_write;
+        ext->compiled = (void *)2;
     } else if (!strcmp(ext->def->name, "default-deny-all")) {
-        ext->compiled = (void *)&nacm_deny_all;
+        ext->compiled = (void *)1;
     } else {
         return LY_EINT;
     }
@@ -144,6 +142,22 @@ nacm_compile(struct lysc_ctx *UNUSED(cctx), const struct lysp_ext_instance *UNUS
     dfs_arg.ext = ext;
     dfs_arg.parent = ext->parent;
     return lysc_tree_dfs_full(ext->parent, nacm_inherit_clb, &dfs_arg);
+}
+
+static int
+nacm_compiled_size(const struct lysc_ext_instance *UNUSED(ext), struct ly_ht *UNUSED(addr_ht))
+{
+    return 0;
+}
+
+static LY_ERR
+nacm_compiled_print(const struct lysc_ext_instance *orig_ext, struct lysc_ext_instance *ext,
+        struct ly_ht *UNUSED(addr_ht), struct ly_set *UNUSED(ptr_set), void **UNUSED(mem))
+{
+    /* copy the NACM extension "value" */
+    ext->compiled = orig_ext->compiled;
+
+    return LY_SUCCESS;
 }
 
 /**
@@ -159,7 +173,7 @@ const struct lyplg_ext_record plugins_nacm[] = {
         .revision = "2012-02-22",
         .name = "default-deny-write",
 
-        .plugin.id = "ly2 NACM v1",
+        .plugin.id = "ly2 NACM",
         .plugin.parse = nacm_parse,
         .plugin.compile = nacm_compile,
         .plugin.printer_info = NULL,
@@ -169,13 +183,15 @@ const struct lyplg_ext_record plugins_nacm[] = {
         .plugin.snode = NULL,
         .plugin.validate = NULL,
         .plugin.pfree = NULL,
-        .plugin.cfree = NULL
+        .plugin.cfree = NULL,
+        .plugin.compiled_size = nacm_compiled_size,
+        .plugin.compiled_print = nacm_compiled_print
     }, {
         .module = "ietf-netconf-acm",
         .revision = "2018-02-14",
         .name = "default-deny-write",
 
-        .plugin.id = "ly2 NACM v1",
+        .plugin.id = "ly2 NACM",
         .plugin.parse = nacm_parse,
         .plugin.compile = nacm_compile,
         .plugin.printer_info = NULL,
@@ -185,13 +201,15 @@ const struct lyplg_ext_record plugins_nacm[] = {
         .plugin.snode = NULL,
         .plugin.validate = NULL,
         .plugin.pfree = NULL,
-        .plugin.cfree = NULL
+        .plugin.cfree = NULL,
+        .plugin.compiled_size = nacm_compiled_size,
+        .plugin.compiled_print = nacm_compiled_print
     }, {
         .module = "ietf-netconf-acm",
         .revision = "2012-02-22",
         .name = "default-deny-all",
 
-        .plugin.id = "ly2 NACM v1",
+        .plugin.id = "ly2 NACM",
         .plugin.parse = nacm_parse,
         .plugin.compile = nacm_compile,
         .plugin.printer_info = NULL,
@@ -201,13 +219,15 @@ const struct lyplg_ext_record plugins_nacm[] = {
         .plugin.snode = NULL,
         .plugin.validate = NULL,
         .plugin.pfree = NULL,
-        .plugin.cfree = NULL
+        .plugin.cfree = NULL,
+        .plugin.compiled_size = nacm_compiled_size,
+        .plugin.compiled_print = nacm_compiled_print
     }, {
         .module = "ietf-netconf-acm",
         .revision = "2018-02-14",
         .name = "default-deny-all",
 
-        .plugin.id = "ly2 NACM v1",
+        .plugin.id = "ly2 NACM",
         .plugin.parse = nacm_parse,
         .plugin.compile = nacm_compile,
         .plugin.printer_info = NULL,
@@ -217,7 +237,9 @@ const struct lyplg_ext_record plugins_nacm[] = {
         .plugin.snode = NULL,
         .plugin.validate = NULL,
         .plugin.pfree = NULL,
-        .plugin.cfree = NULL
+        .plugin.cfree = NULL,
+        .plugin.compiled_size = nacm_compiled_size,
+        .plugin.compiled_print = nacm_compiled_print
     },
     {0} /* terminating zeroed item */
 };

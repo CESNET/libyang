@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief internal functions for YANG schema trees.
  *
- * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -766,5 +766,51 @@ void ly_check_module_filename(const struct ly_ctx *ctx, const char *name, const 
  */
 int lysc_value_cmp(const struct lysc_node *schema, const struct lyd_node *ctx_node, const struct lysc_value *val,
         const char *val2);
+
+/**
+ * @brief Get the size of the compiled substatements storage of a compiled extension instance for serialization.
+ *
+ * @param[in] substmts Substatements to examine.
+ * @param[in,out] addr_ht Hash table with printed addresses of all the shared structures, can be added to.
+ * @return Total size of compiled substatements storage.
+ */
+int ly_ctx_compiled_ext_stmts_storage_size(const struct lysc_ext_substmt *substmts, struct ly_ht *addr_ht);
+
+/**
+ * @brief Print the compiled substatements storage of a compiled extension instance.
+ *
+ * @param[in] orig_substmts Extension instance substatements to print.
+ * @param[in,out] substmts Printed extension instance substatements with storage pointers to modify.
+ * @param[in,out] addr_ht Hash table with pairs of addresses of shared structures to be printed and their printed
+ * addresses, can be added to.
+ * @param[in,out] ptr_set Set with pointers to be set to printed addresses.
+ * @param[in,out] mem Memory chunk to print into, is moved after all the printed data.
+ * @return LY_SUCCESS on success;
+ * @return LY_ERR on error.
+ */
+LY_ERR ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_substmts,
+        struct lysc_ext_substmt *substmts, struct ly_ht *addr_ht, struct ly_set *ptr_set, void **mem);
+
+/**
+ * @brief Get the printed address of a shared structure.
+ *
+ * @param[in] addr_ht Hash table with printed addresses of all the shared structures.
+ * @param[in] addr Address of the shared structure to be printed.
+ * @param[in] ignore_not_found Whether it is expected an address may not be found.
+ * @return Printed address of the shared structure;
+ * @return NULL if not found.
+ */
+void *ly_ctx_compiled_addr_ht_get(const struct ly_ht *addr_ht, const void *addr, ly_bool ignore_not_found);
+
+/**
+ * @brief Add the printed address of a shared structure.
+ *
+ * @param[in,out] addr_ht Hash table with pairs of addresses of shared structures to be printed and their printed
+ * addresses, is added to.
+ * @param[in] orig_addr Address fo the shared structure to be printed.
+ * @param[in] addr Addres of the printed shared structure.
+ * @return LY_ERR value.
+ */
+LY_ERR ly_ctx_compiled_addr_ht_add(struct ly_ht *addr_ht, const void *orig_addr, const void *addr);
 
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */
