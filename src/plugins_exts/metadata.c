@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "compat.h"
 #include "libyang.h"
 #include "plugins_exts.h"
 
@@ -214,6 +215,35 @@ annotation_cfree(const struct ly_ctx *ctx, struct lysc_ext_instance *ext)
     free(ext->compiled);
 }
 
+static int
+annotation_compiled_size(const struct lysc_ext_instance *ext, struct ly_ht *addr_ht)
+{
+    int size = 0;
+
+    size += sizeof(struct lysc_ext_metadata);
+    size += lyplg_ext_compiled_stmts_storage_size(ext->substmts, addr_ht);
+
+    return size;
+}
+
+static LY_ERR
+annotation_compiled_print(const struct lysc_ext_instance *orig_ext, struct lysc_ext_instance *ext,
+        struct ly_ht *addr_ht, struct ly_set *ptr_set, void **mem)
+{
+    struct lysc_ext_metadata *ann_cdata;
+
+    ann_cdata = ext->compiled = *mem;
+    *mem = (char *)*mem + sizeof *ann_cdata;
+
+    ext->substmts[1].storage_p = (void **)&ann_cdata->units;
+    ext->substmts[2].storage_p = (void **)&ann_cdata->flags;
+    ext->substmts[3].storage_p = (void **)&ann_cdata->type;
+    ext->substmts[4].storage_p = (void **)&ann_cdata->dsc;
+    ext->substmts[5].storage_p = (void **)&ann_cdata->ref;
+
+    return lyplg_ext_compiled_stmts_storage_print(orig_ext->substmts, ext->substmts, addr_ht, ptr_set, mem);
+}
+
 /**
  * @brief Plugin descriptions for the Metadata's annotation extension
  *
@@ -227,7 +257,7 @@ const struct lyplg_ext_record plugins_metadata[] = {
         .revision = "2016-08-05",
         .name = "annotation",
 
-        .plugin.id = "ly2 metadata v1",
+        .plugin.id = "ly2 metadata",
         .plugin.parse = annotation_parse,
         .plugin.compile = annotation_compile,
         .plugin.printer_info = annotation_printer_info,
@@ -238,6 +268,8 @@ const struct lyplg_ext_record plugins_metadata[] = {
         .plugin.validate = NULL,
         .plugin.pfree = annotation_pfree,
         .plugin.cfree = annotation_cfree,
+        .plugin.compiled_size = annotation_compiled_size,
+        .plugin.compiled_print = annotation_compiled_print
     },
     {0}     /* terminating zeroed record */
 };

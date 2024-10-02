@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang support for YANG extensions implementation.
  *
- * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -922,6 +922,89 @@ typedef void (*lyplg_ext_compile_free_clb)(const struct ly_ctx *ctx, struct lysc
  */
 LIBYANG_API_DECL void lyplg_ext_cfree_instance_substatements(const struct ly_ctx *ctx, struct lysc_ext_substmt *substmts);
 
+/*
+ * compiled size
+ */
+
+/**
+ * @brief Callback to return the size of the custom compiled structure and substmts array. If there are none, do not
+ * define this callback.
+ *
+ * @param[in] ext Compiled extension structure.
+ * @param[in,out] addr_ht Hash table with addresses of shared structures that were already accounted for, can be added to.
+ * @return Total size of the custom compiled structures and the substmts array;
+ * @return -1 on error.
+ */
+typedef int (*lyplg_ext_compiled_size_clb)(const struct lysc_ext_instance *ext, struct ly_ht *addr_ht);
+
+/**
+ * @brief Get the size of the compiled substatements storage.
+ *
+ * @param[in] substmts Compiled extension instance substatements array.
+ * @param[in,out] addr_ht Hash table with addresses of shared structures that were already accounted for, can be added to.
+ * @return Total size of the subtmts storage;
+ * @return -1 on error.
+ */
+LIBYANG_API_DECL int lyplg_ext_compiled_stmts_storage_size(const struct lysc_ext_substmt *substmts, struct ly_ht *addr_ht);
+
+/*
+ * compiled print
+ */
+
+/**
+ * @brief Callback to print (serialize) the custom compiled structure and substmts array storage.
+ *
+ * @param[in] orig_ext Compiled extension structure to print.
+ * @param[in,out] ext Printed extension structure to modify.
+ * @param[in,out] mem Memory chunk of the size returned by ::lyplg_ext_compiled_size_clb() to print into, is moved
+ * after all the printed data.
+ * @param[in,out] ptr_set Set with pointers to set to printed addresses.
+ * @param[in,out] addr_ht Hash table with pairs of addresses of shared structures to be printed and their printed
+ * addresses, can be added to.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error.
+ */
+typedef LY_ERR (*lyplg_ext_compiled_print_clb)(const struct lysc_ext_instance *orig_ext, struct lysc_ext_instance *ext,
+        struct ly_ht *addr_ht, struct ly_set *ptr_set, void **mem);
+
+/**
+ * @brief Print the substatements array storage and assign it to the serialized extension instance substatements array.
+ *
+ * @param[in] orig_substmts Extension instance substatements to print.
+ * @param[in,out] substmts Serialized extension structure substatements whose storage to modify.
+ * @param[in,out] addr_ht Hash table with pairs of addresses of shared structures to be printed and their printed
+ * addresses, can be added to.
+ * @param[in,out] ptr_set Set with pointers to set to printed addresses.
+ * @param[in,out] mem Memory chunk to print into, is moved after all the printed data.
+ * @return LY_SUCCESS on success;
+ * @return LY_ERR on error.
+ */
+LIBYANG_API_DECL LY_ERR lyplg_ext_compiled_stmts_storage_print(const struct lysc_ext_substmt *orig_substmts,
+        struct lysc_ext_substmt *substmts, struct ly_ht *addr_ht, struct ly_set *ptr_set, void **mem);
+
+/**
+ * @brief Get the printed address of a shared structure, in case it has already been printed.
+ *
+ * @param[in] addr_ht Hash table with all the printed addresses of shared structures.
+ * @param[in] addr Address of the original shared structure to be printed.
+ * @return Address of the printed shared structure;
+ * @return NULL if the address was not found.
+ */
+LIBYANG_API_DECL void *lyplg_ext_compiled_print_get_addr(const struct ly_ht *addr_ht, const void *addr);
+
+/**
+ * @brief Add a printed address of a shared structure to be reused by later prints.
+ *
+ * @param[in,out] addr_ht Hash table with pairs of addresses of shared structures to be printed and their printed
+ * addresses, is added to.
+ * @param[in] orig_addr Address of the original shared structure that was printed.
+ * @param[in] addr Address of the printed structure to be reused.
+ * @return LY_SUCCESS on success;
+ * @return LY_ERR on error.
+ */
+LIBYANG_API_DECL LY_ERR lyplg_ext_compiled_print_add_addr(struct ly_ht *addr_ht, const void *orig_addr,
+        const void *addr);
+
 /**
  * @brief Extension plugin implementing various aspects of a YANG extension.
  *
@@ -947,6 +1030,9 @@ struct lyplg_ext {
 
     lyplg_ext_parse_free_clb pfree;         /**< free the extension-specific data created by its parsing */
     lyplg_ext_compile_free_clb cfree;       /**< free the extension-specific data created by its compilation */
+    lyplg_ext_compiled_size_clb compiled_size;  /**< callback to get size of the custom compiled structure and substmts */
+    lyplg_ext_compiled_print_clb compiled_print;    /**< callback to print the compiled structure into a pre-allocated
+                                                         memory chunk */
 };
 
 struct lyplg_ext_record {

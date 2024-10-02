@@ -52,7 +52,7 @@ test_yang(void **state)
             "import ietf-yang-metadata {prefix md;}"
             "md:annotation aa;}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Ext plugin \"ly2 metadata v1\": Missing mandatory keyword \"type\" as a child of \"md:annotation aa\".",
+    CHECK_LOG_CTX("Ext plugin \"ly2 metadata\": Missing mandatory keyword \"type\" as a child of \"md:annotation aa\".",
             "/aa:{extension='md:annotation'}/aa", 0);
 
     /* not allowed substatement */
@@ -89,7 +89,7 @@ test_yang(void **state)
             "import ietf-yang-metadata {prefix md;}"
             "md:annotation aa {type string;} md:annotation aa {type uint8;}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Ext plugin \"ly2 metadata v1\": Extension md:annotation is instantiated multiple times.",
+    CHECK_LOG_CTX("Ext plugin \"ly2 metadata\": Extension md:annotation is instantiated multiple times.",
             "/aa:{extension='md:annotation'}/aa", 0);
 }
 
@@ -130,7 +130,7 @@ test_yin(void **state)
             "<md:annotation name=\"aa\"/>\n"
             "</module>";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YIN, NULL));
-    CHECK_LOG_CTX("Ext plugin \"ly2 metadata v1\": Missing mandatory keyword \"type\" as a child of \"md:annotation aa\".",
+    CHECK_LOG_CTX("Ext plugin \"ly2 metadata\": Missing mandatory keyword \"type\" as a child of \"md:annotation aa\".",
             "/aa:{extension='md:annotation'}/aa", 0);
 
     /* not allowed substatement */
@@ -189,7 +189,7 @@ test_yin(void **state)
             "  <type name=\"uint8\"/>\n"
             "</md:annotation></module>";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YIN, NULL));
-    CHECK_LOG_CTX("Ext plugin \"ly2 metadata v1\": Extension md:annotation is instantiated multiple times.",
+    CHECK_LOG_CTX("Ext plugin \"ly2 metadata\": Extension md:annotation is instantiated multiple times.",
             "/aa:{extension='md:annotation'}/aa", 0);
 }
 

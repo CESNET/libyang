@@ -5,7 +5,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief  this file contains macros for simplification test writing
  *
- * Copyright (c) 2021 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2021 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
