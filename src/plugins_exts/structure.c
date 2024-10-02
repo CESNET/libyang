@@ -206,11 +206,11 @@ structure_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, s
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[4].stmt = LY_STMT_TYPEDEF;
-    ext->substmts[4].storage_p = 0;
+    ext->substmts[4].storage_p = NULL;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[5].stmt = LY_STMT_GROUPING;
-    ext->substmts[5].storage_p = 0;
+    ext->substmts[5].storage_p = NULL;
 
     /* data-def-stmt */
     LY_ARRAY_INCREMENT(ext->substmts);
