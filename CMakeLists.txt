@@ -149,6 +149,7 @@ set(libsrc
     src/printer_yang.c
     src/printer_yin.c
     src/printer_tree.c
+    src/printer_context.c
     src/plugins.c
     src/plugins_types.c
     src/plugins_exts.c

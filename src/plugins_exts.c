@@ -539,6 +539,39 @@ lyplg_ext_sprinter_tree_set_priv(const struct lyspr_tree_ctx *ctx, void *plugin_
     return LY_SUCCESS;
 }
 
+LIBYANG_API_DEF int
+lyplg_ext_compiled_stmts_storage_size(const struct lysc_ext_substmt *substmts, struct ly_ht *addr_ht)
+{
+    LY_CHECK_ARG_RET(NULL, substmts, addr_ht, -1);
+
+    return ly_ctx_compiled_ext_stmts_storage_size(substmts, addr_ht);
+}
+
+LIBYANG_API_DEF LY_ERR
+lyplg_ext_compiled_stmts_storage_print(const struct lysc_ext_substmt *orig_substmts, struct lysc_ext_substmt *substmts,
+        struct ly_ht *addr_ht, struct ly_set *ptr_set, void **mem)
+{
+    LY_CHECK_ARG_RET(NULL, orig_substmts, substmts, addr_ht, ptr_set, mem, LY_EINVAL);
+
+    return ly_ctx_compiled_ext_stmts_storage_print(orig_substmts, substmts, addr_ht, ptr_set, mem);
+}
+
+LIBYANG_API_DEF void *
+lyplg_ext_compiled_print_get_addr(const struct ly_ht *addr_ht, const void *addr)
+{
+    LY_CHECK_ARG_RET(NULL, addr_ht, addr, NULL);
+
+    return ly_ctx_compiled_addr_ht_get(addr_ht, addr, 1);
+}
+
+LIBYANG_API_DEF LY_ERR
+lyplg_ext_compiled_print_add_addr(struct ly_ht *addr_ht, const void *orig_addr, const void *addr)
+{
+    LY_CHECK_ARG_RET(NULL, addr_ht, orig_addr, addr, LY_EINVAL);
+
+    return ly_ctx_compiled_addr_ht_add(addr_ht, orig_addr, addr);
+}
+
 LIBYANG_API_DEF const char *
 lyplg_ext_stmt2str(enum ly_stmt stmt)
 {

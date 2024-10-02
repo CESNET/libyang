@@ -215,7 +215,9 @@ ly_err_first(const struct ly_ctx *ctx)
 {
     struct ly_ctx_data_err *err_data;
 
-    LY_CHECK_ARG_RET(NULL, ctx, NULL);
+    if (!ctx) {
+        return NULL;
+    }
 
     /* get context err data */
     err_data = ly_err_data_get(ctx);
@@ -227,6 +229,10 @@ LIBYANG_API_DEF const struct ly_err_item *
 ly_err_last(const struct ly_ctx *ctx)
 {
     struct ly_ctx_data_err *err_data;
+
+    if (!ctx) {
+        return NULL;
+    }
 
     /* get context err data */
     err_data = ly_err_data_get(ctx);
