@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,9 +37,14 @@
 #include <unistd.h>
 
 #include "compat.h"
+#include "tree_data_internal.h"
 #include "tree_schema_internal.h"
 #include "version.h"
 #include "xml.h"
+
+pthread_rwlock_t ly_ctx_data_rwlock = PTHREAD_RWLOCK_INITIALIZER;
+struct ly_ctx_data **ly_ctx_data;
+uint32_t ly_ctx_data_count;
 
 LIBYANG_API_DEF uint32_t
 ly_version_so_major(void)
@@ -86,6 +92,98 @@ LIBYANG_API_DEF const char *
 ly_version_proj_str(void)
 {
     return LY_PROJ_VERSION;
+}
+
+struct ly_ctx_data *
+ly_ctx_data_get(const struct ly_ctx *ctx)
+{
+    struct ly_ctx_data *ctx_data = NULL;
+    uint32_t i;
+
+    pthread_rwlock_rdlock(&ly_ctx_data_rwlock);
+
+    for (i = 0; i < ly_ctx_data_count; ++i) {
+        if (ly_ctx_data[i]->ctx == ctx) {
+            ctx_data = ly_ctx_data[i];
+            break;
+        }
+    }
+
+    pthread_rwlock_unlock(&ly_ctx_data_rwlock);
+
+    if (!ctx_data) {
+        LOGINT(ctx);
+    }
+
+    /* pointer to the structure, cannot be changed so lock is not required */
+    return ctx_data;
+}
+
+struct ly_ctx_data *
+ly_ctx_data_add(const struct ly_ctx *ctx)
+{
+    struct ly_ctx_data *ctx_data;
+
+    pthread_rwlock_wrlock(&ly_ctx_data_rwlock);
+
+    /* realloc */
+    ly_ctx_data = ly_realloc(ly_ctx_data, (ly_ctx_data_count + 1) * sizeof *ly_ctx_data);
+
+    /* alloc */
+    ctx_data = ly_ctx_data[ly_ctx_data_count] = calloc(1, sizeof **ly_ctx_data);
+
+    /* fill */
+    ly_ctx_data[ly_ctx_data_count]->ctx = ctx;
+
+    ++ly_ctx_data_count;
+
+    pthread_rwlock_unlock(&ly_ctx_data_rwlock);
+
+    return ctx_data;
+}
+
+void
+ly_ctx_data_del(const struct ly_ctx *ctx)
+{
+    uint32_t i;
+    struct ly_ctx_data *ctx_data = NULL;
+
+    pthread_rwlock_wrlock(&ly_ctx_data_rwlock);
+
+    /* find the ctx data */
+    for (i = 0; i < ly_ctx_data_count; ++i) {
+        if (ly_ctx_data[i]->ctx == ctx) {
+            ctx_data = ly_ctx_data[i];
+            break;
+        }
+    }
+    if (!ctx_data) {
+        pthread_rwlock_unlock(&ly_ctx_data_rwlock);
+        LOGINT(NULL);
+        return;
+    }
+
+    /* remove the ctx data, replace by the last */
+    --ly_ctx_data_count;
+    if (ly_ctx_data_count) {
+        if (i < ly_ctx_data_count) {
+            ly_ctx_data[i] = ly_ctx_data[ly_ctx_data_count];
+        }
+    } else {
+        free(ly_ctx_data);
+        ly_ctx_data = NULL;
+    }
+
+    pthread_rwlock_unlock(&ly_ctx_data_rwlock);
+
+    /* clear */
+    for (i = 0; i < ctx_data->err_count; ++i) {
+        ly_err_free(ctx_data->errs[i]->err);
+        free(ctx_data->errs[i]);
+    }
+    free(ctx_data->errs);
+    lyht_free(ctx_data->leafref_links_ht, ly_ctx_ht_leafref_links_rec_free);
+    free(ctx_data);
 }
 
 void *

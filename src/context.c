@@ -256,17 +256,6 @@ cleanup:
 }
 
 /**
- * @brief Hash table value-equal callback for comparing context error hash table record.
- */
-static ly_bool
-ly_ctx_ht_err_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
-{
-    struct ly_ctx_err_rec *err1 = val1_p, *err2 = val2_p;
-
-    return !memcmp(&err1->tid, &err2->tid, sizeof err1->tid);
-}
-
-/**
  * @brief Hash table value-equal callback for comparing leafref links hash table record.
  */
 static ly_bool
@@ -277,24 +266,12 @@ ly_ctx_ht_leafref_links_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod)
     return rec1->node == rec2->node;
 }
 
-/**
- * @brief Callback for freeing leafref links recorcd internal resources.
- *
- * @param[in] val_p Pointer to leafref links record
- */
-static void
-ly_ctx_ht_leafref_links_rec_free(void *val_p)
-{
-    struct lyd_leafref_links_rec *rec = val_p;
-
-    lyd_free_leafref_links_rec(rec);
-}
-
 LIBYANG_API_DEF LY_ERR
 ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
 {
     struct ly_ctx *ctx = NULL;
     struct lys_module *module;
+    struct ly_ctx_data *ctx_data;
     char *search_dir_list, *sep, *dir;
     const char **imp_f, *all_f[] = {"*", NULL};
     uint32_t i;
@@ -315,17 +292,13 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     builtin_plugins_only = (options & LY_CTX_BUILTIN_PLUGINS_ONLY) ? 1 : 0;
     LY_CHECK_ERR_GOTO(lyplg_init(builtin_plugins_only), LOGINT(NULL); rc = LY_EINT, cleanup);
 
+    /* ctx data */
+    ctx_data = ly_ctx_data_add(ctx);
+
     if (options & LY_CTX_LEAFREF_LINKING) {
-        ctx->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec), ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
-        LY_CHECK_ERR_GOTO(!ctx->leafref_links_ht, rc = LY_EMEM, cleanup);
+        ctx_data->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec), ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
+        LY_CHECK_ERR_GOTO(!ctx_data->leafref_links_ht, rc = LY_EMEM, cleanup);
     }
-
-    /* initialize thread-specific error hash table */
-    ctx->err_ht = lyht_new(1, sizeof(struct ly_ctx_err_rec), ly_ctx_ht_err_equal_cb, NULL, 1);
-    LY_CHECK_ERR_GOTO(!ctx->err_ht, rc = LY_EMEM, cleanup);
-
-    /* init LYB hash lock */
-    pthread_mutex_init(&ctx->lyb_hash_lock, NULL);
 
     /* models list */
     ctx->flags = options;
@@ -639,6 +612,7 @@ LIBYANG_API_DEF LY_ERR
 ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
 {
     LY_ERR lyrc = LY_SUCCESS;
+    struct ly_ctx_data *ctx_data;
     struct lys_module *mod;
     uint32_t i;
 
@@ -654,8 +628,9 @@ ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
     }
 
     if (!(ctx->flags & LY_CTX_LEAFREF_LINKING) && (option & LY_CTX_LEAFREF_LINKING)) {
-        ctx->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec), ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
-        LY_CHECK_ERR_RET(!ctx->leafref_links_ht, LOGARG(ctx, option), LY_EMEM);
+        ctx_data = ly_ctx_data_get(ctx);
+        ctx_data->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec), ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
+        LY_CHECK_ERR_RET(!ctx_data->leafref_links_ht, LOGARG(ctx, option), LY_EMEM);
     }
 
     if (!(ctx->flags & LY_CTX_SET_PRIV_PARSED) && (option & LY_CTX_SET_PRIV_PARSED)) {
@@ -688,19 +663,29 @@ lysc_node_clear_priv_dfs_cb(struct lysc_node *node, void *UNUSED(data), ly_bool 
     return LY_SUCCESS;
 }
 
+void
+ly_ctx_ht_leafref_links_rec_free(void *val_p)
+{
+    struct lyd_leafref_links_rec *rec = val_p;
+
+    lyd_free_leafref_links_rec(rec);
+}
+
 LIBYANG_API_DEF LY_ERR
 ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
 {
     LY_ARRAY_COUNT_TYPE u, v;
     const struct lysc_ext_instance *ext;
     struct lysc_node *root;
+    struct ly_ctx_data *ctx_data;
 
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
     LY_CHECK_ERR_RET(option & LY_CTX_NO_YANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
 
     if ((ctx->flags & LY_CTX_LEAFREF_LINKING) && (option & LY_CTX_LEAFREF_LINKING)) {
-        lyht_free(ctx->leafref_links_ht, ly_ctx_ht_leafref_links_rec_free);
-        ctx->leafref_links_ht = NULL;
+        ctx_data = ly_ctx_data_get(ctx);
+        lyht_free(ctx_data->leafref_links_ht, ly_ctx_ht_leafref_links_rec_free);
+        ctx_data->leafref_links_ht = NULL;
     }
 
     if ((ctx->flags & LY_CTX_SET_PRIV_PARSED) && (option & LY_CTX_SET_PRIV_PARSED)) {
@@ -810,15 +795,17 @@ ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_
 }
 
 LIBYANG_API_DEF ly_ext_data_clb
-ly_ctx_set_ext_data_clb(struct ly_ctx *ctx, ly_ext_data_clb clb, void *user_data)
+ly_ctx_set_ext_data_clb(const struct ly_ctx *ctx, ly_ext_data_clb clb, void *user_data)
 {
+    struct ly_ctx_data *ctx_data;
     ly_ext_data_clb prev;
 
     LY_CHECK_ARG_RET(ctx, ctx, NULL);
 
-    prev = ctx->ext_clb;
-    ctx->ext_clb = clb;
-    ctx->ext_clb_data = user_data;
+    ctx_data = ly_ctx_data_get(ctx);
+    prev = ctx_data->ext_clb;
+    ctx_data->ext_clb = clb;
+    ctx_data->ext_clb_data = user_data;
 
     return prev;
 }
@@ -1342,19 +1329,6 @@ ly_ctx_free_parsed(struct ly_ctx *ctx)
     }
 }
 
-/**
- * @brief Callback for freeing context error hash table values.
- *
- * @param[in] val_p Pointer to a pointer to an error item to free with all the siblings.
- */
-static void
-ly_ctx_ht_err_rec_free(void *val_p)
-{
-    struct ly_ctx_err_rec *err = val_p;
-
-    ly_err_free(err->err);
-}
-
 LIBYANG_API_DEF void
 ly_ctx_destroy(struct ly_ctx *ctx)
 {
@@ -1392,19 +1366,11 @@ ly_ctx_destroy(struct ly_ctx *ctx)
     /* leftover unres */
     lys_unres_glob_erase(&ctx->unres);
 
-    /* clean the leafref links hash table */
-    if (ctx->leafref_links_ht) {
-        lyht_free(ctx->leafref_links_ht, ly_ctx_ht_leafref_links_rec_free);
-    }
-
-    /* clean the error hash table */
-    lyht_free(ctx->err_ht, ly_ctx_ht_err_rec_free);
+    /* ctx data */
+    ly_ctx_data_del(ctx);
 
     /* dictionary */
     lydict_clean(&ctx->dict);
-
-    /* LYB hash lock */
-    pthread_mutex_destroy(&ctx->lyb_hash_lock);
 
     /* context specific plugins */
     ly_set_erase(&ctx->plugins_types, NULL);
