@@ -3739,7 +3739,7 @@ lyd_find_target(const struct ly_path *path, const struct lyd_node *tree, struct 
 LY_ERR
 lyd_get_or_create_leafref_links_record(const struct lyd_node_term *node, struct lyd_leafref_links_rec **record, ly_bool create)
 {
-    struct ly_ht *ht;
+    struct ly_ctx_data *ctx_data;
     LY_ERR ret = LY_SUCCESS;
     uint32_t hash;
     struct lyd_leafref_links_rec rec = {0};
@@ -3755,16 +3755,16 @@ lyd_get_or_create_leafref_links_record(const struct lyd_node_term *node, struct 
         return LY_EDENIED;
     }
 
+    ctx_data = ly_ctx_data_get(LYD_CTX(node));
     rec.node = node;
-    ht = LYD_CTX(node)->leafref_links_ht;
     hash = lyht_hash((const char *)&node, sizeof node);
 
-    if (lyht_find(ht, &rec_p, hash, (void **)&rec_p2) == LY_ENOTFOUND) {
+    if (lyht_find(ctx_data->leafref_links_ht, &rec_p, hash, (void **)&rec_p2) == LY_ENOTFOUND) {
         if (create) {
             rec_p = calloc(1, sizeof rec);
             rec_p->node = node;
             LY_CHECK_ERR_RET(!rec_p, LOGMEM(LYD_CTX(node)), LY_EMEM);
-            ret = lyht_insert_no_check(ht, &rec_p, hash, (void **)&rec_p2);
+            ret = lyht_insert_no_check(ctx_data->leafref_links_ht, &rec_p, hash, (void **)&rec_p2);
             LY_CHECK_ERR_GOTO(ret, free(rec_p), cleanup);
         } else {
             return LY_ENOTFOUND;
