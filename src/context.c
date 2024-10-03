@@ -135,8 +135,8 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
     }
 
     /* new searchdir - reset latests flags (possibly new revisions available) */
-    for (i = 0; i < ctx->list.count; ++i) {
-        mod = ctx->list.objs[i];
+    for (i = 0; i < ctx->modules.count; ++i) {
+        mod = ctx->modules.objs[i];
 
         mod->latest_revision &= ~LYS_MOD_LATEST_SEARCHDIRS;
         if (mod->parsed && mod->parsed->includes) {
@@ -236,7 +236,7 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, c
     ret = _lys_set_implemented(mod, features, &ctx->unres);
     LY_CHECK_GOTO(ret, cleanup);
 
-    if (!(ctx->flags & LY_CTX_EXPLICIT_COMPILE)) {
+    if (!(ctx->opts & LY_CTX_EXPLICIT_COMPILE)) {
         /* create dep set for the module and mark all the modules that will be (re)compiled */
         LY_CHECK_GOTO(ret = lys_unres_dep_sets_create(ctx, &ctx->unres.dep_sets, mod), cleanup);
 
@@ -310,7 +310,7 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     }
 
     /* modules list */
-    ctx->flags = options;
+    ctx->opts = options;
     if (search_dir) {
         search_dir_list = strdup(search_dir);
         LY_CHECK_ERR_GOTO(!search_dir_list, LOGMEM(NULL); rc = LY_EMEM, cleanup);
@@ -339,7 +339,7 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
 
     if (!(options & LY_CTX_EXPLICIT_COMPILE)) {
         /* use it for creating the initial context */
-        ctx->flags |= LY_CTX_EXPLICIT_COMPILE;
+        ctx->opts |= LY_CTX_EXPLICIT_COMPILE;
     }
 
     /* create dummy in */
@@ -350,8 +350,8 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     for (i = 0; i < ((options & LY_CTX_NO_YANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 2) : LY_INTERNAL_MODS_COUNT); i++) {
         ly_in_memory(in, internal_modules[i].data);
         LY_CHECK_GOTO(rc = lys_parse_in(ctx, in, internal_modules[i].format, NULL, &unres.creating, &module), cleanup);
-        if (internal_modules[i].implemented || (ctx->flags & LY_CTX_ALL_IMPLEMENTED)) {
-            imp_f = (ctx->flags & LY_CTX_ENABLE_IMP_FEATURES) ? all_f : NULL;
+        if (internal_modules[i].implemented || (ctx->opts & LY_CTX_ALL_IMPLEMENTED)) {
+            imp_f = (ctx->opts & LY_CTX_ENABLE_IMP_FEATURES) ? all_f : NULL;
             LY_CHECK_GOTO(rc = lys_implement(module, imp_f, &unres), cleanup);
         }
     }
@@ -359,7 +359,7 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     if (!(options & LY_CTX_EXPLICIT_COMPILE)) {
         /* compile now */
         LY_CHECK_GOTO(rc = ly_ctx_compile(ctx), cleanup);
-        ctx->flags &= ~LY_CTX_EXPLICIT_COMPILE;
+        ctx->opts &= ~LY_CTX_EXPLICIT_COMPILE;
     }
 
 cleanup:
@@ -516,7 +516,7 @@ ly_ctx_new_yldata(const char *search_dir, const struct lyd_node *tree, int optio
 
     /* redundant to compile modules one-by-one */
     if (!(options & LY_CTX_EXPLICIT_COMPILE)) {
-        ctx_new->flags |= LY_CTX_EXPLICIT_COMPILE;
+        ctx_new->opts |= LY_CTX_EXPLICIT_COMPILE;
         no_expl_compile = 1;
     }
 
@@ -571,7 +571,7 @@ ly_ctx_new_yldata(const char *search_dir, const struct lyd_node *tree, int optio
 
     if (no_expl_compile) {
         /* unset flag */
-        ctx_new->flags &= ~LY_CTX_EXPLICIT_COMPILE;
+        ctx_new->opts &= ~LY_CTX_EXPLICIT_COMPILE;
     }
 
 cleanup:
@@ -614,7 +614,7 @@ ly_ctx_get_options(const struct ly_ctx *ctx)
 {
     LY_CHECK_ARG_RET(ctx, ctx, 0);
 
-    return ctx->flags;
+    return ctx->opts;
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -626,25 +626,25 @@ ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
     uint32_t i;
 
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
-    LY_CHECK_ERR_RET((option & LY_CTX_NO_YANGLIBRARY) && !(ctx->flags & LY_CTX_NO_YANGLIBRARY),
+    LY_CHECK_ERR_RET((option & LY_CTX_NO_YANGLIBRARY) && !(ctx->opts & LY_CTX_NO_YANGLIBRARY),
             LOGARG(ctx, option), LY_EINVAL);
 
-    if (!(ctx->flags & LY_CTX_BUILTIN_PLUGINS_ONLY) && (option & LY_CTX_BUILTIN_PLUGINS_ONLY)) {
+    if (!(ctx->opts & LY_CTX_BUILTIN_PLUGINS_ONLY) && (option & LY_CTX_BUILTIN_PLUGINS_ONLY)) {
         LOGERR(ctx, LY_EINVAL,
                 "Invalid argument %s (LY_CTX_BUILTIN_PLUGINS_ONLY can be set only when creating a new context) (%s()).",
                 "option", __func__);
         return LY_EINVAL;
     }
 
-    if (!(ctx->flags & LY_CTX_LEAFREF_LINKING) && (option & LY_CTX_LEAFREF_LINKING)) {
+    if (!(ctx->opts & LY_CTX_LEAFREF_LINKING) && (option & LY_CTX_LEAFREF_LINKING)) {
         ctx_data = ly_ctx_data_get(ctx);
         ctx_data->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec *), ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
         LY_CHECK_ERR_RET(!ctx_data->leafref_links_ht, LOGARG(ctx, option), LY_EMEM);
     }
 
-    if (!(ctx->flags & LY_CTX_LYB_HASHES) && (option & LY_CTX_LYB_HASHES)) {
-        for (i = 0; i < ctx->list.count; ++i) {
-            mod = ctx->list.objs[i];
+    if (!(ctx->opts & LY_CTX_LYB_HASHES) && (option & LY_CTX_LYB_HASHES)) {
+        for (i = 0; i < ctx->modules.count; ++i) {
+            mod = ctx->modules.objs[i];
             if (!mod->implemented) {
                 continue;
             }
@@ -654,11 +654,11 @@ ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
         }
     }
 
-    if (!(ctx->flags & LY_CTX_SET_PRIV_PARSED) && (option & LY_CTX_SET_PRIV_PARSED)) {
-        ctx->flags |= LY_CTX_SET_PRIV_PARSED;
+    if (!(ctx->opts & LY_CTX_SET_PRIV_PARSED) && (option & LY_CTX_SET_PRIV_PARSED)) {
+        ctx->opts |= LY_CTX_SET_PRIV_PARSED;
         /* recompile the whole context to set the priv pointers */
-        for (i = 0; i < ctx->list.count; ++i) {
-            mod = ctx->list.objs[i];
+        for (i = 0; i < ctx->modules.count; ++i) {
+            mod = ctx->modules.objs[i];
             if (mod->implemented) {
                 mod->to_compile = 1;
             }
@@ -671,7 +671,7 @@ ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
 
     /* set the option(s) */
     if (!lyrc) {
-        ctx->flags |= option;
+        ctx->opts |= option;
     }
 
     return lyrc;
@@ -704,13 +704,13 @@ ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
     LY_CHECK_ERR_RET(option & LY_CTX_NO_YANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
 
-    if ((ctx->flags & LY_CTX_LEAFREF_LINKING) && (option & LY_CTX_LEAFREF_LINKING)) {
+    if ((ctx->opts & LY_CTX_LEAFREF_LINKING) && (option & LY_CTX_LEAFREF_LINKING)) {
         ctx_data = ly_ctx_data_get(ctx);
         lyht_free(ctx_data->leafref_links_ht, ly_ctx_ht_leafref_links_rec_free);
         ctx_data->leafref_links_ht = NULL;
     }
 
-    if ((ctx->flags & LY_CTX_SET_PRIV_PARSED) && (option & LY_CTX_SET_PRIV_PARSED)) {
+    if ((ctx->opts & LY_CTX_SET_PRIV_PARSED) && (option & LY_CTX_SET_PRIV_PARSED)) {
         struct lys_module *mod;
         uint32_t index;
 
@@ -738,7 +738,7 @@ ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
     }
 
     /* unset the option(s) */
-    ctx->flags &= ~option;
+    ctx->opts &= ~option;
 
     return LY_SUCCESS;
 }
@@ -813,8 +813,8 @@ ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_
     ctx->imp_clb_data = user_data;
 
     /* new import callback - reset latests flags (possibly new revisions available) */
-    for (uint32_t v = 0; v < ctx->list.count; ++v) {
-        struct lys_module *mod = ctx->list.objs[v];
+    for (uint32_t v = 0; v < ctx->modules.count; ++v) {
+        struct lys_module *mod = ctx->modules.objs[v];
 
         mod->latest_revision &= ~LYS_MOD_LATEST_IMPCLB;
         if (mod->parsed && mod->parsed->includes) {
@@ -846,8 +846,8 @@ ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *index)
 {
     LY_CHECK_ARG_RET(ctx, ctx, index, NULL);
 
-    if (*index < ctx->list.count) {
-        return ctx->list.objs[(*index)++];
+    if (*index < ctx->modules.count) {
+        return ctx->modules.objs[(*index)++];
     } else {
         return NULL;
     }
@@ -872,8 +872,8 @@ ly_ctx_get_module_by_iter(const struct ly_ctx *ctx, const char *key, size_t key_
     struct lys_module *mod;
     const char *value;
 
-    for ( ; *index < ctx->list.count; ++(*index)) {
-        mod = ctx->list.objs[*index];
+    for ( ; *index < ctx->modules.count; ++(*index)) {
+        mod = ctx->modules.objs[*index];
         value = *(const char **)(((int8_t *)(mod)) + key_offset);
         if ((!key_size && !strcmp(key, value)) || (key_size && !strncmp(key, value, key_size) && (value[key_size] == '\0'))) {
             /* increment index for the next run */
@@ -1066,8 +1066,8 @@ _ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *submodule, const cha
 
     LY_CHECK_ARG_RET(ctx, ctx, submodule, NULL);
 
-    for (v = 0; v < ctx->list.count; ++v) {
-        mod = ctx->list.objs[v];
+    for (v = 0; v < ctx->modules.count; ++v) {
+        mod = ctx->modules.objs[v];
         if (!mod->parsed) {
             continue;
         }
@@ -1112,7 +1112,7 @@ ly_ctx_internal_modules_count(const struct ly_ctx *ctx)
         return 0;
     }
 
-    if (ctx->flags & LY_CTX_NO_YANGLIBRARY) {
+    if (ctx->opts & LY_CTX_NO_YANGLIBRARY) {
         return LY_INTERNAL_MODS_COUNT - 2;
     } else {
         return LY_INTERNAL_MODS_COUNT;
@@ -1230,8 +1230,8 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p, cons
         LY_CHECK_GOTO(ret = lyd_new_list(root_bis, NULL, "module-set", 0, &set_bis, "complete"), error);
     }
 
-    for (i = 0; i < ctx->list.count; ++i) {
-        mod = ctx->list.objs[i];
+    for (i = 0; i < ctx->modules.count; ++i) {
+        mod = ctx->modules.objs[i];
 
         /*
          * deprecated legacy
@@ -1351,8 +1351,8 @@ ly_ctx_free_parsed(struct ly_ctx *ctx)
         return;
     }
 
-    for (i = 0; i < ctx->list.count; ++i) {
-        mod = ctx->list.objs[i];
+    for (i = 0; i < ctx->modules.count; ++i) {
+        mod = ctx->modules.objs[i];
 
         /* free the parsed modules */
         lysp_module_free(ctx, mod->parsed);
@@ -1372,8 +1372,8 @@ ly_ctx_destroy(struct ly_ctx *ctx)
 
     /* free the parsed and compiled modules (both can reference ext instances, which need to be freed, so their
      * definitions can be freed) */
-    for (i = 0; i < ctx->list.count; ++i) {
-        mod = ctx->list.objs[i];
+    for (i = 0; i < ctx->modules.count; ++i) {
+        mod = ctx->modules.objs[i];
 
         lysp_module_free(ctx, mod->parsed);
         mod->parsed = NULL;
@@ -1385,11 +1385,11 @@ ly_ctx_destroy(struct ly_ctx *ctx)
     }
 
     /* free the modules (with compiled extension definitions) */
-    for (i = 0; i < ctx->list.count; ++i) {
-        mod = ctx->list.objs[i];
+    for (i = 0; i < ctx->modules.count; ++i) {
+        mod = ctx->modules.objs[i];
         lys_module_free(ctx, mod, 0);
     }
-    free(ctx->list.objs);
+    free(ctx->modules.objs);
 
     /* search paths list */
     ly_set_erase(&ctx->search_paths, free);

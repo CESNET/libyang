@@ -2549,7 +2549,7 @@ lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres
 
         if (!m->implemented) {
             /* implement the target module */
-            imp_f = (mod->ctx->flags & LY_CTX_ENABLE_IMP_FEATURES) ? all_f : NULL;
+            imp_f = (mod->ctx->opts & LY_CTX_ENABLE_IMP_FEATURES) ? all_f : NULL;
             r = lys_implement(m, imp_f, unres);
             if (r == LY_ERECOMPILE) {
                 /* implement all the modules right away to save possible later recompilation */
@@ -2580,8 +2580,8 @@ lys_precompile_augments_deviations_revert(struct ly_ctx *ctx, const struct lys_m
     LY_ARRAY_COUNT_TYPE u, count;
     struct lys_module *m;
 
-    for (i = 0; i < ctx->list.count; ++i) {
-        m = ctx->list.objs[i];
+    for (i = 0; i < ctx->modules.count; ++i) {
+        m = ctx->modules.objs[i];
 
         if (m->augmented_by) {
             count = LY_ARRAY_COUNT(m->augmented_by);
