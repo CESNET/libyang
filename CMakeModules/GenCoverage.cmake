@@ -41,14 +41,12 @@ macro(GEN_COVERAGE_ENABLE ENABLE_TESTS)
         endif()
 
         execute_process(
-            COMMAND bash "-c" "${CMAKE_C_COMPILER} --version | head -n1 | sed \"s/.* (.*) \\([0-9]\\+.[0-9]\\+.[0-9]\\+ .*\\)/\\1/\""
+            COMMAND bash "-c" "${CMAKE_C_COMPILER} --version | head -n1 | cut -d' ' -f4"
             OUTPUT_VARIABLE GCC_VERSION_FULL
-            OUTPUT_STRIP_TRAILING_WHITESPACE
         )
         execute_process(
-            COMMAND bash "-c" "${PATH_GCOV} --version | head -n1 | sed \"s/.* (.*) \\([0-9]\\+.[0-9]\\+.[0-9]\\+ .*\\)/\\1/\""
+            COMMAND bash "-c" "${PATH_GCOV} --version | head -n1 | cut -d' ' -f4"
             OUTPUT_VARIABLE GCOV_VERSION_FULL
-            OUTPUT_STRIP_TRAILING_WHITESPACE
         )
         if(NOT GCC_VERSION_FULL STREQUAL GCOV_VERSION_FULL)
             message(WARNING "gcc and gcov versions do not match! Generating coverage may fail with errors.")
