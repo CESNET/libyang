@@ -571,9 +571,9 @@ ctxs_context(const struct ly_ctx *ctx, struct ly_ht *ht, int *size)
     ctxs_dict_ht(ctx->dict.hash_tab, size);
 
     /* module set */
-    *size += ctx->list.count * sizeof ctx->list.objs;
-    for (i = 0; i < ctx->list.count; ++i) {
-        mod = ctx->list.objs[i];
+    *size += ctx->modules.count * sizeof ctx->modules.objs;
+    for (i = 0; i < ctx->modules.count; ++i) {
+        mod = ctx->modules.objs[i];
 
         /* modules */
         ctxs_module(mod, ht, size);
@@ -1782,13 +1782,13 @@ ctxp_context(const struct ly_ctx *orig_ctx, struct ly_ctx *ctx, struct ly_ht *ad
     memset(&ctx->search_paths, 0, sizeof ctx->search_paths);
 
     /* modules, referenced */
-    ctxp_set(&orig_ctx->list, &ctx->list, mem);
-    for (i = 0; i < ctx->list.count; ++i) {
-        ctx->list.objs[i] = *mem;
+    ctxp_set(&orig_ctx->modules, &ctx->modules, mem);
+    for (i = 0; i < ctx->modules.count; ++i) {
+        ctx->modules.objs[i] = *mem;
         *mem = (char *)*mem + sizeof(struct lys_module);
 
-        ly_ctx_compiled_addr_ht_add(addr_ht, orig_ctx->list.objs[i], ctx->list.objs[i]);
-        ctxp_module(orig_ctx->list.objs[i], ctx->list.objs[i], addr_ht, ptr_set, mem);
+        ly_ctx_compiled_addr_ht_add(addr_ht, orig_ctx->modules.objs[i], ctx->modules.objs[i]);
+        ctxp_module(orig_ctx->modules.objs[i], ctx->modules.objs[i], addr_ht, ptr_set, mem);
     }
 
     /* no imp cb */
@@ -1800,7 +1800,7 @@ ctxp_context(const struct ly_ctx *orig_ctx, struct ly_ctx *ctx, struct ly_ht *ad
 
     /* change_count and options */
     ctx->change_count = orig_ctx->change_count;
-    ctx->flags = orig_ctx->flags;
+    ctx->opts = orig_ctx->opts;
 
     /* plugins */
     ctxp_set(&orig_ctx->plugins_types, &ctx->plugins_types, mem);
