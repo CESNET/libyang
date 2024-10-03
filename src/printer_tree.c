@@ -4622,7 +4622,7 @@ tree_print_module(struct ly_out *out, const struct lys_module *module, uint32_t 
     }
 
     line_length = line_length == 0 ? SIZE_MAX : line_length;
-    if ((module->ctx->flags & LY_CTX_SET_PRIV_PARSED) && module->compiled) {
+    if ((module->ctx->opts & LY_CTX_SET_PRIV_PARSED) && module->compiled) {
         trm_lysc_tree_ctx(module, new_out, line_length, &pc, &tc);
     } else {
         trm_lysp_tree_ctx(module, new_out, line_length, &pc, &tc);
@@ -4648,7 +4648,7 @@ tree_print_compiled_node(struct ly_out *out, const struct lysc_node *node, uint3
 
     assert(out && node);
 
-    if (!(node->module->ctx->flags & LY_CTX_SET_PRIV_PARSED)) {
+    if (!(node->module->ctx->opts & LY_CTX_SET_PRIV_PARSED)) {
         return LY_EINVAL;
     }
 

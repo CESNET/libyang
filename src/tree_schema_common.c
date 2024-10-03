@@ -774,7 +774,7 @@ lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, 
     LY_ERR ret = LY_SUCCESS;
     struct lysp_load_module_check_data check_data = {0};
 
-    LY_CHECK_RET(lys_search_localfile(ly_ctx_get_searchdirs(ctx), !(ctx->flags & LY_CTX_DISABLE_SEARCHDIR_CWD), name,
+    LY_CHECK_RET(lys_search_localfile(ly_ctx_get_searchdirs(ctx), !(ctx->opts & LY_CTX_DISABLE_SEARCHDIR_CWD), name,
             revision, &filepath, &format));
     if (!filepath) {
         if (required) {
@@ -838,12 +838,12 @@ lys_parse_load_from_clb_or_file(struct ly_ctx *ctx, const char *name, const char
     *mod = NULL;
 
     if (mod_latest && (!ctx->imp_clb || (mod_latest->latest_revision & LYS_MOD_LATEST_IMPCLB)) &&
-            ((ctx->flags & LY_CTX_DISABLE_SEARCHDIRS) || (mod_latest->latest_revision & LYS_MOD_LATEST_SEARCHDIRS))) {
+            ((ctx->opts & LY_CTX_DISABLE_SEARCHDIRS) || (mod_latest->latest_revision & LYS_MOD_LATEST_SEARCHDIRS))) {
         /* we are not able to find a newer revision */
         return LY_SUCCESS;
     }
 
-    if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+    if (!(ctx->opts & LY_CTX_PREFER_SEARCHDIRS)) {
 search_clb:
         /* check there is a callback and should be called */
         if (ctx->imp_clb && (!mod_latest || !(mod_latest->latest_revision & LYS_MOD_LATEST_IMPCLB))) {
@@ -861,20 +861,20 @@ search_clb:
         if (*mod && !revision) {
             /* we got the latest revision module from the callback */
             (*mod)->latest_revision |= LYS_MOD_LATEST_IMPCLB;
-        } else if (!*mod && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+        } else if (!*mod && !(ctx->opts & LY_CTX_PREFER_SEARCHDIRS)) {
             goto search_file;
         }
     } else {
 search_file:
         /* check we can use searchdirs and that we should */
-        if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS) &&
+        if (!(ctx->opts & LY_CTX_DISABLE_SEARCHDIRS) &&
                 (!mod_latest || !(mod_latest->latest_revision & LYS_MOD_LATEST_SEARCHDIRS))) {
             lys_parse_localfile(ctx, name, revision, NULL, NULL, mod_latest ? 0 : 1, new_mods, (void **)mod);
         }
         if (*mod && !revision) {
             /* we got the latest revision module in the searchdirs */
             (*mod)->latest_revision |= LYS_MOD_LATEST_IMPCLB;
-        } else if (!*mod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+        } else if (!*mod && (ctx->opts & LY_CTX_PREFER_SEARCHDIRS)) {
             goto search_clb;
         }
     }
@@ -1195,7 +1195,7 @@ lysp_load_submodules(struct lysp_ctx *pctx, struct lysp_module *pmod, struct ly_
         LY_CHECK_RET(r != LY_ENOT, r);
 
         /* submodule not present in the main module, get the input data and parse it */
-        if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+        if (!(ctx->opts & LY_CTX_PREFER_SEARCHDIRS)) {
 search_clb:
             if (ctx->imp_clb) {
                 const char *submodule_data = NULL;
@@ -1225,12 +1225,12 @@ search_clb:
                     }
                 }
             }
-            if (!submod && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+            if (!submod && !(ctx->opts & LY_CTX_PREFER_SEARCHDIRS)) {
                 goto search_file;
             }
         } else {
 search_file:
-            if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
+            if (!(ctx->opts & LY_CTX_DISABLE_SEARCHDIRS)) {
                 /* submodule was not received from the callback or there is no callback set */
                 lys_parse_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, pctx->main_ctx,
                         PARSER_CUR_PMOD(pctx->main_ctx)->mod->name, 1, new_mods, (void **)&submod);
@@ -1239,7 +1239,7 @@ search_file:
                  * submodule's include into main module, where it is missing */
                 inc = &pmod->includes[u];
             }
-            if (!submod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+            if (!submod && (ctx->opts & LY_CTX_PREFER_SEARCHDIRS)) {
                 goto search_clb;
             }
         }

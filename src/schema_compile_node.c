@@ -2701,7 +2701,7 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
     node->module = ctx->cur_mod;
     node->parent = parent;
     node->prev = node;
-    node->priv = ctx->ctx->flags & LY_CTX_SET_PRIV_PARSED ? pnode : NULL;
+    node->priv = ctx->ctx->opts & LY_CTX_SET_PRIV_PARSED ? pnode : NULL;
 
     /* compile any deviations for this node */
     LY_CHECK_GOTO(ret = lys_compile_node_deviations_refines(ctx, pnode, parent, &dev_pnode, &not_supported), error);
@@ -3663,7 +3663,7 @@ lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, s
                 assert(cs_c);
             }
 
-            if (ctx->ctx->flags & LY_CTX_SET_PRIV_PARSED) {
+            if (ctx->ctx->opts & LY_CTX_SET_PRIV_PARSED) {
                 /* compiled case node cannot point to his corresponding parsed node
                  * because it exists temporarily so it must be set to NULL
                  */

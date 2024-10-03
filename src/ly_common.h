@@ -358,14 +358,14 @@ extern uint32_t ly_ctx_data_count;          /**< count of ly_ctx_data items */
 struct ly_ctx {
     struct ly_dict dict;              /**< dictionary to effectively store strings used in the context related structures */
     struct ly_set search_paths;       /**< set of directories where to search for schema's imports/includes */
-    struct ly_set list;               /**< set of loaded YANG schemas */
+    struct ly_set modules;            /**< set of loaded YANG schemas */
     ly_module_imp_clb imp_clb;        /**< optional callback for retrieving missing included or imported models */
     void *imp_clb_data;               /**< optional private data for ::ly_ctx.imp_clb */
     struct lys_glob_unres unres;      /**< global unres, should be empty unless there are modules prepared for
                                            compilation if ::LY_CTX_EXPLICIT_COMPILE flag is set */
     uint16_t change_count;            /**< count of changes of the context, on some changes it could be incremented
                                            more times */
-    uint16_t flags;                   /**< context settings, see @ref contextoptions */
+    uint16_t opts;                    /**< context options, see @ref contextoptions */
 
     struct ly_set plugins_types;      /**< context specific set of type plugins */
     struct ly_set plugins_extensions; /**< contets specific set of extension plugins */
