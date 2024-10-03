@@ -210,6 +210,8 @@ struct ly_ctx;
 #define LY_CTX_LYB_HASHES 0x1000 /**< Generate hashes for all the schema nodes. Required when using LYB data parse
                                         or print. */
 
+/* 0x80000000 reserved for internal use */
+
 /** @} contextoptions */
 
 /**

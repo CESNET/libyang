@@ -1830,6 +1830,7 @@ ly_ctx_compiled_print(const struct ly_ctx *orig_ctx, struct ly_ctx **ctx, void *
     *mem = (char *)*mem + sizeof **ctx;
     ly_ctx_compiled_addr_ht_add(addr_ht, orig_ctx, *ctx);
     ctxp_context(orig_ctx, *ctx, addr_ht, &ptr_set, mem);
+    (*ctx)->opts |= LY_CTX_INT_IMMUTABLE;
 
     /* set all the pointers to the printed structures */
     for (i = 0; i < ptr_set.count; ++i) {
