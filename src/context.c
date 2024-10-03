@@ -89,7 +89,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
     LY_ARRAY_COUNT_TYPE u;
     struct lys_module *mod;
 
-    LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, ctx, !(ctx->opts & LY_CTX_INT_IMMUTABLE), LY_EINVAL);
 
     if (!search_dir) {
         /* fine, ignore */
@@ -178,7 +178,7 @@ ly_ctx_get_searchdirs(const struct ly_ctx *ctx)
 LIBYANG_API_DEF LY_ERR
 ly_ctx_unset_searchdir(struct ly_ctx *ctx, const char *value)
 {
-    LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, ctx, !(ctx->opts & LY_CTX_INT_IMMUTABLE), LY_EINVAL);
 
     if (!ctx->search_paths.count) {
         return LY_SUCCESS;
@@ -211,7 +211,7 @@ ly_ctx_unset_searchdir(struct ly_ctx *ctx, const char *value)
 LIBYANG_API_DEF LY_ERR
 ly_ctx_unset_searchdir_last(struct ly_ctx *ctx, uint32_t count)
 {
-    LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, ctx, !(ctx->opts & LY_CTX_INT_IMMUTABLE), LY_EINVAL);
 
     for ( ; count > 0 && ctx->search_paths.count; --count) {
         LY_CHECK_RET(ly_set_rm_index(&ctx->search_paths, ctx->search_paths.count - 1, free))
@@ -226,7 +226,7 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, c
     struct lys_module *mod = NULL;
     LY_ERR ret = LY_SUCCESS;
 
-    LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
+    LY_CHECK_ARG_RET(ctx, ctx, !(ctx->opts & LY_CTX_INT_IMMUTABLE), name, NULL);
 
     /* load and parse */
     ret = lys_parse_load(ctx, name, revision, &ctx->unres.creating, &mod);
@@ -584,7 +584,7 @@ ly_ctx_compile(struct ly_ctx *ctx)
 {
     LY_ERR ret = LY_SUCCESS;
 
-    LY_CHECK_ARG_RET(NULL, ctx, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, ctx, !(ctx->opts & LY_CTX_INT_IMMUTABLE), LY_EINVAL);
 
     /* create dep sets and mark all the modules that will be (re)compiled */
     LY_CHECK_GOTO(ret = lys_unres_dep_sets_create(ctx, &ctx->unres.dep_sets, NULL), cleanup);
@@ -617,7 +617,7 @@ ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
     struct lys_module *mod;
     uint32_t i;
 
-    LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, ctx, !(ctx->opts & LY_CTX_INT_IMMUTABLE), LY_EINVAL);
     LY_CHECK_ERR_RET((option & LY_CTX_NO_YANGLIBRARY) && !(ctx->opts & LY_CTX_NO_YANGLIBRARY),
             LOGARG(ctx, option), LY_EINVAL);
 
@@ -692,7 +692,7 @@ ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
     struct lysc_node *root;
     struct ly_ctx_data *ctx_data;
 
-    LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, ctx, !(ctx->opts & LY_CTX_INT_IMMUTABLE), LY_EINVAL);
     LY_CHECK_ERR_RET(option & LY_CTX_NO_YANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
 
     if ((ctx->opts & LY_CTX_LEAFREF_LINKING) && (option & LY_CTX_LEAFREF_LINKING)) {
@@ -789,7 +789,7 @@ ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data)
 LIBYANG_API_DEF void
 ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_data)
 {
-    LY_CHECK_ARG_RET(ctx, ctx, );
+    LY_CHECK_ARG_RET(ctx, ctx, !(ctx->opts & LY_CTX_INT_IMMUTABLE), );
 
     ctx->imp_clb = clb;
     ctx->imp_clb_data = user_data;
@@ -1329,9 +1329,7 @@ ly_ctx_free_parsed(struct ly_ctx *ctx)
     uint32_t i;
     struct lys_module *mod;
 
-    if (!ctx) {
-        return;
-    }
+    LY_CHECK_ARG_RET(ctx, ctx, !(ctx->opts & LY_CTX_INT_IMMUTABLE), );
 
     for (i = 0; i < ctx->modules.count; ++i) {
         mod = ctx->modules.objs[i];
@@ -1351,6 +1349,8 @@ ly_ctx_destroy(struct ly_ctx *ctx)
     if (!ctx) {
         return;
     }
+
+    LY_CHECK_ARG_RET(ctx, !(ctx->opts & LY_CTX_INT_IMMUTABLE), );
 
     /* free the parsed and compiled modules (both can reference ext instances, which need to be freed, so their
      * definitions can be freed) */

@@ -1176,7 +1176,7 @@ lys_set_implemented(struct lys_module *mod, const char **features)
     LY_ERR ret = LY_SUCCESS;
     struct lys_glob_unres *unres = &mod->ctx->unres;
 
-    LY_CHECK_ARG_RET(NULL, mod, mod->parsed, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, mod, mod->parsed, !(mod->ctx->opts & LY_CTX_INT_IMMUTABLE), LY_EINVAL);
 
     /* implement */
     ret = _lys_set_implemented(mod, features, unres);
@@ -2041,7 +2041,7 @@ lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char 
     if (module) {
         *module = NULL;
     }
-    LY_CHECK_ARG_RET(NULL, ctx, in, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, ctx, !(ctx->opts & LY_CTX_INT_IMMUTABLE), in, LY_EINVAL);
 
     format = lys_parse_get_format(in, format);
     LY_CHECK_ARG_RET(ctx, format, LY_EINVAL);
@@ -2084,7 +2084,7 @@ lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct 
     LY_ERR ret;
     struct ly_in *in = NULL;
 
-    LY_CHECK_ARG_RET(ctx, data, format != LYS_IN_UNKNOWN, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, ctx, !(ctx->opts & LY_CTX_INT_IMMUTABLE), data, format != LYS_IN_UNKNOWN, LY_EINVAL);
 
     LY_CHECK_ERR_RET(ret = ly_in_new_memory(data, &in), LOGERR(ctx, ret, "Unable to create input handler."), ret);
 
@@ -2100,7 +2100,7 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct lys_module 
     LY_ERR ret;
     struct ly_in *in = NULL;
 
-    LY_CHECK_ARG_RET(ctx, fd > -1, format != LYS_IN_UNKNOWN, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, ctx, !(ctx->opts & LY_CTX_INT_IMMUTABLE), fd > -1, format != LYS_IN_UNKNOWN, LY_EINVAL);
 
     LY_CHECK_ERR_RET(ret = ly_in_new_fd(fd, &in), LOGERR(ctx, ret, "Unable to create input handler."), ret);
 
@@ -2116,7 +2116,7 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, struct
     LY_ERR ret;
     struct ly_in *in = NULL;
 
-    LY_CHECK_ARG_RET(ctx, path, format != LYS_IN_UNKNOWN, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, ctx, !(ctx->opts & LY_CTX_INT_IMMUTABLE), path, format != LYS_IN_UNKNOWN, LY_EINVAL);
 
     LY_CHECK_ERR_RET(ret = ly_in_new_filepath(path, 0, &in),
             LOGERR(ctx, ret, "Unable to create input handler for filepath %s.", path), ret);
