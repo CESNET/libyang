@@ -830,7 +830,7 @@ _lys_set_implemented(struct lys_module *mod, const char **features, struct lys_g
     r = lys_implement(mod, features, unres);
     LY_CHECK_ERR_GOTO(r && (r != LY_ERECOMPILE), ret = r, cleanup);
 
-    if (mod->ctx->flags & LY_CTX_ALL_IMPLEMENTED) {
+    if (mod->ctx->opts & LY_CTX_ALL_IMPLEMENTED) {
         /* implement all the imports as well */
         for (i = 0; i < unres->creating.count; ++i) {
             mod = unres->creating.objs[i];
@@ -838,7 +838,7 @@ _lys_set_implemented(struct lys_module *mod, const char **features, struct lys_g
                 continue;
             }
 
-            imp_f = (mod->ctx->flags & LY_CTX_ENABLE_IMP_FEATURES) ? all_f : NULL;
+            imp_f = (mod->ctx->opts & LY_CTX_ENABLE_IMP_FEATURES) ? all_f : NULL;
             r = lys_implement(mod, imp_f, unres);
             LY_CHECK_ERR_GOTO(r && (r != LY_ERECOMPILE), ret = r, cleanup);
         }
@@ -937,8 +937,8 @@ lys_unres_dep_sets_create_mod_r(struct lys_module *mod, struct ly_set *ctx_set, 
     }
 
     /* process modules and submodules importing this module */
-    for (i = 0; i < mod->ctx->list.count; ++i) {
-        mod2 = mod->ctx->list.objs[i];
+    for (i = 0; i < mod->ctx->modules.count; ++i) {
+        mod2 = mod->ctx->modules.objs[i];
         found = 0;
 
         imports = mod2->parsed->imports;
@@ -1022,7 +1022,7 @@ lys_unres_dep_sets_create(struct ly_ctx *ctx, struct ly_set *main_set, struct ly
     assert(!main_set->count);
 
     /* start with a duplicate set of modules that we will remove from */
-    LY_CHECK_GOTO(ret = ly_set_dup(&ctx->list, NULL, &ctx_set), cleanup);
+    LY_CHECK_GOTO(ret = ly_set_dup(&ctx->modules, NULL, &ctx_set), cleanup);
 
     /* first create all dep sets with single modules */
     LY_CHECK_GOTO(ret = lys_unres_dep_sets_create_single(ctx_set, main_set), cleanup);
@@ -1123,7 +1123,7 @@ lys_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         mod = unres->creating.objs[i];
 
         /* remove the module from the context */
-        ly_set_rm(&ctx->list, mod, NULL);
+        ly_set_rm(&ctx->modules, mod, NULL);
 
         /* remove it also from dep sets */
         for (j = 0; j < unres->dep_sets.count; ++j) {
@@ -1182,7 +1182,7 @@ lys_set_implemented(struct lys_module *mod, const char **features)
     ret = _lys_set_implemented(mod, features, unres);
     LY_CHECK_GOTO(ret, cleanup);
 
-    if (!(mod->ctx->flags & LY_CTX_EXPLICIT_COMPILE)) {
+    if (!(mod->ctx->opts & LY_CTX_EXPLICIT_COMPILE)) {
         /* create dep set for the module and mark all the modules that will be (re)compiled */
         LY_CHECK_GOTO(ret = lys_unres_dep_sets_create(mod->ctx, &unres->dep_sets, mod), cleanup);
 
@@ -1955,7 +1955,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     module_created = 1;
 
     /* add into context */
-    ret = ly_set_add(&ctx->list, mod, 1, NULL);
+    ret = ly_set_add(&ctx->modules, mod, 1, NULL);
     LY_CHECK_GOTO(ret, cleanup);
     ctx->change_count++;
 
@@ -2057,7 +2057,7 @@ lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char 
     ret = _lys_set_implemented(mod, features, &ctx->unres);
     LY_CHECK_GOTO(ret, cleanup);
 
-    if (!(ctx->flags & LY_CTX_EXPLICIT_COMPILE)) {
+    if (!(ctx->opts & LY_CTX_EXPLICIT_COMPILE)) {
         /* create dep set for the module and mark all the modules that will be (re)compiled */
         LY_CHECK_GOTO(ret = lys_unres_dep_sets_create(ctx, &ctx->unres.dep_sets, mod), cleanup);
 

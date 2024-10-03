@@ -198,81 +198,81 @@ test_options(void **state)
 
     /* unset */
     /* LY_CTX_ALL_IMPLEMENTED */
-    assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_ALL_IMPLEMENTED);
+    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_ALL_IMPLEMENTED);
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_ALL_IMPLEMENTED));
-    assert_int_equal(0, UTEST_LYCTX->flags & LY_CTX_ALL_IMPLEMENTED);
+    assert_int_equal(0, UTEST_LYCTX->opts & LY_CTX_ALL_IMPLEMENTED);
 
     /* LY_CTX_REF_IMPLEMENTED */
-    assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_REF_IMPLEMENTED);
+    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_REF_IMPLEMENTED);
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_REF_IMPLEMENTED));
-    assert_int_equal(0, UTEST_LYCTX->flags & LY_CTX_REF_IMPLEMENTED);
+    assert_int_equal(0, UTEST_LYCTX->opts & LY_CTX_REF_IMPLEMENTED);
 
     /* LY_CTX_DISABLE_SEARCHDIRS */
-    assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_DISABLE_SEARCHDIRS);
+    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_DISABLE_SEARCHDIRS);
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_DISABLE_SEARCHDIRS));
-    assert_int_equal(0, UTEST_LYCTX->flags & LY_CTX_DISABLE_SEARCHDIRS);
+    assert_int_equal(0, UTEST_LYCTX->opts & LY_CTX_DISABLE_SEARCHDIRS);
 
     /* LY_CTX_DISABLE_SEARCHDIR_CWD */
-    assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_DISABLE_SEARCHDIR_CWD);
+    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_DISABLE_SEARCHDIR_CWD);
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_DISABLE_SEARCHDIR_CWD));
-    assert_int_equal(0, UTEST_LYCTX->flags & LY_CTX_DISABLE_SEARCHDIR_CWD);
+    assert_int_equal(0, UTEST_LYCTX->opts & LY_CTX_DISABLE_SEARCHDIR_CWD);
 
     /* LY_CTX_PREFER_SEARCHDIRS */
-    assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_PREFER_SEARCHDIRS);
+    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_PREFER_SEARCHDIRS);
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_PREFER_SEARCHDIRS));
-    assert_int_equal(0, UTEST_LYCTX->flags & LY_CTX_PREFER_SEARCHDIRS);
+    assert_int_equal(0, UTEST_LYCTX->opts & LY_CTX_PREFER_SEARCHDIRS);
 
     /* LY_CTX_LEAFREF_EXTENDED */
-    assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_LEAFREF_EXTENDED);
+    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_LEAFREF_EXTENDED);
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_LEAFREF_EXTENDED));
-    assert_int_equal(0, UTEST_LYCTX->flags & LY_CTX_LEAFREF_EXTENDED);
+    assert_int_equal(0, UTEST_LYCTX->opts & LY_CTX_LEAFREF_EXTENDED);
 
     /* LY_CTX_LEAFREF_LINKING */
-    assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_LEAFREF_LINKING);
+    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_LEAFREF_LINKING);
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_LEAFREF_LINKING));
-    assert_int_equal(0, UTEST_LYCTX->flags & LY_CTX_LEAFREF_LINKING);
+    assert_int_equal(0, UTEST_LYCTX->opts & LY_CTX_LEAFREF_LINKING);
 
     /* LY_CTX_BUILTIN_PLUGINS_ONLY */
-    assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_BUILTIN_PLUGINS_ONLY);
+    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_BUILTIN_PLUGINS_ONLY);
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_BUILTIN_PLUGINS_ONLY));
-    assert_int_equal(0, UTEST_LYCTX->flags & LY_CTX_BUILTIN_PLUGINS_ONLY);
+    assert_int_equal(0, UTEST_LYCTX->opts & LY_CTX_BUILTIN_PLUGINS_ONLY);
 
-    assert_int_equal(UTEST_LYCTX->flags, ly_ctx_get_options(UTEST_LYCTX));
+    assert_int_equal(UTEST_LYCTX->opts, ly_ctx_get_options(UTEST_LYCTX));
 
     /* set back */
     /* LY_CTX_ALL_IMPLEMENTED */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_ALL_IMPLEMENTED));
-    assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_ALL_IMPLEMENTED);
+    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_ALL_IMPLEMENTED);
 
     /* LY_CTX_REF_IMPLEMENTED */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_REF_IMPLEMENTED));
-    assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_REF_IMPLEMENTED);
+    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_REF_IMPLEMENTED);
 
     /* LY_CTX_DISABLE_SEARCHDIRS */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_DISABLE_SEARCHDIRS));
-    assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_DISABLE_SEARCHDIRS);
+    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_DISABLE_SEARCHDIRS);
 
     /* LY_CTX_DISABLE_SEARCHDIR_CWD */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_DISABLE_SEARCHDIR_CWD));
-    assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_DISABLE_SEARCHDIR_CWD);
+    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_DISABLE_SEARCHDIR_CWD);
 
     /* LY_CTX_PREFER_SEARCHDIRS */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_PREFER_SEARCHDIRS));
-    assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_PREFER_SEARCHDIRS);
+    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_PREFER_SEARCHDIRS);
 
     /* LY_CTX_LEAFREF_EXTENDED */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_LEAFREF_EXTENDED));
-    assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_LEAFREF_EXTENDED);
+    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_LEAFREF_EXTENDED);
 
     /* LY_CTX_LEAFREF_LINKING */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_LEAFREF_LINKING));
-    assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_LEAFREF_LINKING);
+    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_LEAFREF_LINKING);
 
     /* LY_CTX_BUILTIN_PLUGINS_ONLY */
     assert_int_equal(LY_EINVAL, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_BUILTIN_PLUGINS_ONLY));
     CHECK_LOG_CTX("Invalid argument option (LY_CTX_BUILTIN_PLUGINS_ONLY can be set only when creating a new context) (ly_ctx_set_options()).", NULL, 0);
 
-    assert_int_equal(UTEST_LYCTX->flags, ly_ctx_get_options(UTEST_LYCTX));
+    assert_int_equal(UTEST_LYCTX->opts, ly_ctx_get_options(UTEST_LYCTX));
 }
 
 static LY_ERR

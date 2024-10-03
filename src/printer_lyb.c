@@ -1223,7 +1223,7 @@ lyb_print_node(struct ly_out *out, const struct lyd_node **printed_node, struct 
 
     if (node->flags & LYD_EXT) {
         /* extension context which may not have hashes generated */
-        if (!(LYD_CTX(node)->flags & LY_CTX_LYB_HASHES)) {
+        if (!(LYD_CTX(node)->opts & LY_CTX_LYB_HASHES)) {
             ly_ctx_set_options((struct ly_ctx *)LYD_CTX(node), LY_CTX_LYB_HASHES);
         }
 
@@ -1312,7 +1312,7 @@ lyb_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options
             goto cleanup;
         }
 
-        if (!(ctx->flags & LY_CTX_LYB_HASHES)) {
+        if (!(ctx->opts & LY_CTX_LYB_HASHES)) {
             /* generate LYB hashes */
             ly_ctx_set_options((struct ly_ctx *)ctx, LY_CTX_LYB_HASHES);
         }

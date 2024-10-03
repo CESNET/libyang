@@ -1248,7 +1248,7 @@ schema_mount_sprinter_ctree(struct lysc_ext_instance *ext, const struct lyspr_tr
         }
 
         /* Add data nodes, rpcs and notifications. */
-        if ((ext_ctx->flags & LY_CTX_SET_PRIV_PARSED) && mod->compiled) {
+        if ((ext_ctx->opts & LY_CTX_SET_PRIV_PARSED) && mod->compiled) {
             /* For compiled module. */
             rc = lyplg_ext_sprinter_ctree_add_nodes(ctx, mod->compiled->data,
                     schema_mount_sprinter_tree_cnode_override_mounted);

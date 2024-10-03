@@ -882,7 +882,7 @@ lyb_parse_schema_nested_ext(struct lyd_lyb_ctx *lybctx, const struct lyd_node *p
         goto cleanup;
     }
 
-    if (!((*snode)->module->ctx->flags & LY_CTX_LYB_HASHES)) {
+    if (!((*snode)->module->ctx->opts & LY_CTX_LYB_HASHES)) {
         /* generate LYB hashes */
         ly_ctx_set_options((*snode)->module->ctx, LY_CTX_LYB_HASHES);
     }
@@ -1680,7 +1680,7 @@ lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
 
     LY_CHECK_ARG_RET(ctx, !(parse_opts & LYD_PARSE_SUBTREE), LY_EINVAL);
 
-    if (!(ctx->flags & LY_CTX_LYB_HASHES)) {
+    if (!(ctx->opts & LY_CTX_LYB_HASHES)) {
         /* generate LYB hashes */
         ly_ctx_set_options((struct ly_ctx *)ctx, LY_CTX_LYB_HASHES);
     }

@@ -427,7 +427,7 @@ lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *exp
 
         if (!mod->implemented) {
             /* implement if not implemented */
-            imp_f = (ctx->flags & LY_CTX_ENABLE_IMP_FEATURES) ? all_f : NULL;
+            imp_f = (ctx->opts & LY_CTX_ENABLE_IMP_FEATURES) ? all_f : NULL;
             LY_CHECK_RET(lys_implement((struct lys_module *)mod, imp_f, unres));
         }
         if (!mod->compiled) {
@@ -897,7 +897,7 @@ lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc
     struct ly_err_item *err = NULL;
     LY_VALUE_FORMAT format;
 
-    options = (ctx->ctx->flags & LY_CTX_REF_IMPLEMENTED) ? LYPLG_TYPE_STORE_IMPLEMENT : 0;
+    options = (ctx->ctx->opts & LY_CTX_REF_IMPLEMENTED) ? LYPLG_TYPE_STORE_IMPLEMENT : 0;
     rc = type->plugin->store(ctx->ctx, type, dflt, strlen(dflt), options, LY_VALUE_SCHEMA, (void *)dflt_pmod,
             LYD_HINT_SCHEMA, node, &storage, unres, &err);
     if (rc == LY_ERECOMPILE) {
@@ -1107,7 +1107,7 @@ implement_all:
         w = ds_unres->whens.objs[wi];
 
         LY_CHECK_RET(lys_compile_expr_implement(ctx, w->when->cond, LY_VALUE_SCHEMA_RESOLVED, w->when->prefixes,
-                ctx->flags & LY_CTX_REF_IMPLEMENTED, unres, &mod));
+                ctx->opts & LY_CTX_REF_IMPLEMENTED, unres, &mod));
         if (mod) {
             LOGWRN(ctx, "When condition \"%s\" check skipped because referenced module \"%s\" is not implemented.",
                     w->when->cond->expr, mod->name);
@@ -1128,7 +1128,7 @@ implement_all:
         musts = lysc_node_musts(m->node);
         LY_ARRAY_FOR(musts, u) {
             LY_CHECK_RET(lys_compile_expr_implement(ctx, musts[u].cond, LY_VALUE_SCHEMA_RESOLVED, musts[u].prefixes,
-                    ctx->flags & LY_CTX_REF_IMPLEMENTED, unres, &mod));
+                    ctx->opts & LY_CTX_REF_IMPLEMENTED, unres, &mod));
             if (mod) {
                 LOGWRN(ctx, "Must condition \"%s\" check skipped because referenced module \"%s\" is not implemented.",
                         musts[u].cond->expr, mod->name);
@@ -1774,7 +1774,7 @@ lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
     /* finish compilation for all unresolved module items in the context */
     LY_CHECK_GOTO(ret = lys_compile_unres_mod(&ctx), cleanup);
 
-    if (mod->ctx->flags & LY_CTX_LYB_HASHES) {
+    if (mod->ctx->opts & LY_CTX_LYB_HASHES) {
         /* generate schema hashes for all the schema nodes */
         lysc_module_dfs_full(mod, lyb_cache_node_hash_cb, NULL);
     }
