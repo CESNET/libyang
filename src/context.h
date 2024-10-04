@@ -673,12 +673,21 @@ LIBYANG_API_DECL int ly_ctx_compiled_size(const struct ly_ctx *ctx);
 /**
  * @brief Print (serialize) a compiled context (without any parsed modules) into a pre-allocated memory chunk.
  *
- * @param[in] orig_ctx Compiled context to print.
- * @param[out] ctx Printed context.
- * @param[in,out] mem Memory to print to, is moved after all the printed data.
+ * @param[in] ctx Compiled context to print.
+ * @param[in] mem Memory to print to, must be large enough.
+ * @param[out] mem_end Optional pointer after the printed context.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR ly_ctx_compiled_print(const struct ly_ctx *orig_ctx, struct ly_ctx **ctx, void **mem);
+LIBYANG_API_DECL LY_ERR ly_ctx_compiled_print(const struct ly_ctx *ctx, void *mem, void **mem_end);
+
+/**
+ * @brief Create a (immutable) context that was printed into a memory chunk.
+ *
+ * @param[in] mem Memory to use.
+ * @param[out] ctx Created immutable context.
+ * @return LY_ERR value.
+ */
+LIBYANG_API_DECL LY_ERR ly_ctx_new_printed(const void *mem, struct ly_ctx **ctx);
 
 /**
  * @brief Free all internal structures of the specified context.

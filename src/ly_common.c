@@ -112,7 +112,7 @@ ly_ctx_data_get(const struct ly_ctx *ctx)
     pthread_rwlock_unlock(&ly_ctx_data_rwlock);
 
     if (!ctx_data) {
-        LOGINT(ctx);
+        LOGINT(NULL);
     }
 
     /* pointer to the structure, cannot be changed so lock is not required */
@@ -183,6 +183,8 @@ ly_ctx_data_del(const struct ly_ctx *ctx)
     }
     free(ctx_data->errs);
     lyht_free(ctx_data->leafref_links_ht, ly_ctx_ht_leafref_links_rec_free);
+    lydict_clean(ctx_data->data_dict);
+    free(ctx_data->data_dict);
     free(ctx_data);
 }
 

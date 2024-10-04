@@ -346,6 +346,7 @@ struct ly_ctx_data {
     uint32_t err_count;             /**< count of items in the errs array */
 
     struct ly_ht *leafref_links_ht; /**< hash table of leafref links between term data nodes */
+    struct ly_dict *data_dict;      /**< dictionary for data trees, for immutable contexts */
 };
 
 extern pthread_rwlock_t ly_ctx_data_rwlock; /**< lock for accessing ly_ctx_data */

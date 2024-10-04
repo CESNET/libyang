@@ -15,7 +15,10 @@
 #define _UTEST_MAIN_
 #include "utests.h"
 
+#include <fcntl.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 
 #include "compat.h"
 #include "context.h"
@@ -1890,8 +1893,9 @@ test_lysc_path(void **state)
 static void
 test_compiled_print(void **state)
 {
-    struct ly_ctx *ctx_mem;
-    int size;
+    struct ly_ctx *pctx;
+    struct lyd_node *tree;
+    int size, fd;
     void *mem, *mem_end;
 
     /* load another module */
@@ -1921,15 +1925,34 @@ test_compiled_print(void **state)
 
     /* get the size */
     size = ly_ctx_compiled_size(UTEST_LYCTX);
-    mem = malloc(size);
-    assert_non_null(mem);
+
+    /* prepare the shared memory segment */
+    fd = shm_open("/ly_test_schema_ctx", O_RDWR | O_CREAT, 00600);
+    assert_int_not_equal(fd, -1);
+    ftruncate(fd, size);
+    mem = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    assert_ptr_not_equal(mem, MAP_FAILED);
 
     /* print the context */
-    mem_end = mem;
-    assert_int_equal(LY_SUCCESS, ly_ctx_compiled_print(UTEST_LYCTX, &ctx_mem, &mem_end));
+    assert_int_equal(LY_SUCCESS, ly_ctx_compiled_print(UTEST_LYCTX, mem, &mem_end));
     assert_int_equal((char *)mem_end - (char *)mem, size);
 
-    free(mem);
+    /* use the printed context */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new_printed(mem, &pctx));
+
+    /* use it to parse some data */
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(pctx,
+            "<a xmlns=\"urn:c\" xmlns:c=\"urn:c\">/c:b</a>"
+            "<b xmlns=\"urn:c\">true</b>"
+            "<c xmlns=\"urn:c\">ahoi</c>",
+            LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+
+    /* cleanup */
+    lyd_free_siblings(tree);
+    ly_ctx_destroy(pctx);
+    munmap(mem, size);
+    close(fd);
+    shm_unlink("/ly_test_schema_ctx");
 }
 
 int

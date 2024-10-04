@@ -768,6 +768,15 @@ int lysc_value_cmp(const struct lysc_node *schema, const struct lyd_node *ctx_no
         const char *val2);
 
 /**
+ * @brief Get the size of the printed context with all the nested structures.
+ *
+ * @param[in] ctx Context to print.
+ * @param[in,out] addr_ht Hash table with printed addresses of all the shared structures, can be added to.
+ * @param[in,out] size Resulting size of @p ctx, is added to.
+ */
+void ly_ctx_compiled_size_context(const struct ly_ctx *ctx, struct ly_ht *addr_ht, int *size);
+
+/**
  * @brief Get the size of the compiled substatements storage of a compiled extension instance for serialization.
  *
  * @param[in] substmts Substatements to examine.
@@ -775,6 +784,24 @@ int lysc_value_cmp(const struct lysc_node *schema, const struct lyd_node *ctx_no
  * @return Total size of compiled substatements storage.
  */
 int ly_ctx_compiled_ext_stmts_storage_size(const struct lysc_ext_substmt *substmts, struct ly_ht *addr_ht);
+
+struct ctxp_ht_addr {
+    const void *orig_addr;  /**< address of the shared structure to be printed */
+    const void *addr;       /**< address of the printed shared structure */
+};
+
+/**
+ * @brief Print context structure with all nested structures into a memory chunk.
+ *
+ * @param[in] orig_ctx Context to print.
+ * @param[in,out] ctx Printed context, to fill.
+ * @param[in,out] addr_ht Hash table with pairs of addresses of shared structures to be printed and their printed
+ * addresses, can be added to.
+ * @param[in,out] ptr_set Set with pointers to be set to printed addresses.
+ * @param[in,out] mem Memory chunk to print into, is moved after all the printed data.
+ */
+void ly_ctx_compiled_print_context(const struct ly_ctx *orig_ctx, struct ly_ctx *ctx, struct ly_ht *addr_ht,
+        struct ly_set *ptr_set, void **mem);
 
 /**
  * @brief Print the compiled substatements storage of a compiled extension instance.
