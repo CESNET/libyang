@@ -68,7 +68,9 @@ lydict_clean(struct ly_dict *dict)
     uint32_t hlist_idx;
     uint32_t rec_idx;
 
-    LY_CHECK_ARG_RET(NULL, dict, );
+    if (!dict) {
+        return;
+    }
 
     LYHT_ITER_ALL_RECS(dict->hash_tab, hlist_idx, rec_idx, rec) {
         /*
@@ -122,9 +124,18 @@ lydict_remove(const struct ly_ctx *ctx, const char *value)
     uint32_t hash;
     struct ly_dict_rec rec, *match = NULL;
     char *val_p;
+    struct ly_ctx_data *ctx_data;
+    struct ly_dict *dict;
 
     if (!ctx || !value) {
         return LY_SUCCESS;
+    }
+
+    if (ctx->opts & LY_CTX_INT_IMMUTABLE) {
+        ctx_data = ly_ctx_data_get(ctx);
+        dict = ctx_data->data_dict;
+    } else {
+        dict = (struct ly_dict *)&ctx->dict;
     }
 
     LOGDBG(LY_LDGDICT, "removing \"%s\"", value);
@@ -136,14 +147,14 @@ lydict_remove(const struct ly_ctx *ctx, const char *value)
     rec.value = (char *)value;
     rec.refcount = 0;
 
-    pthread_mutex_lock((pthread_mutex_t *)&ctx->dict.lock);
+    pthread_mutex_lock(&dict->lock);
     /* set len as data for compare callback */
-    lyht_set_cb_data(ctx->dict.hash_tab, (void *)&len);
+    lyht_set_cb_data(dict->hash_tab, (void *)&len);
     /* check if value is already inserted */
-    ret = lyht_find(ctx->dict.hash_tab, &rec, hash, (void **)&match);
+    ret = lyht_find(dict->hash_tab, &rec, hash, (void **)&match);
 
     if (ret == LY_SUCCESS) {
-        LY_CHECK_ERR_GOTO(!match, LOGINT(ctx), finish);
+        LY_CHECK_ERR_GOTO(!match, LOGINT(ctx), cleanup);
 
         /* if value is already in dictionary, decrement reference counter */
         match->refcount--;
@@ -154,9 +165,9 @@ lydict_remove(const struct ly_ctx *ctx, const char *value)
              * free it after it is removed from hash table
              */
             val_p = match->value;
-            ret = lyht_remove_with_resize_cb(ctx->dict.hash_tab, &rec, hash, lydict_resize_val_eq);
+            ret = lyht_remove_with_resize_cb(dict->hash_tab, &rec, hash, lydict_resize_val_eq);
             free(val_p);
-            LY_CHECK_ERR_GOTO(ret, LOGINT(ctx), finish);
+            LY_CHECK_ERR_GOTO(ret, LOGINT(ctx), cleanup);
         }
     } else if (ret == LY_ENOTFOUND) {
         LOGERR(ctx, LY_ENOTFOUND, "Value \"%s\" was not found in the dictionary.", value);
@@ -164,13 +175,13 @@ lydict_remove(const struct ly_ctx *ctx, const char *value)
         LOGINT(ctx);
     }
 
-finish:
-    pthread_mutex_unlock((pthread_mutex_t *)&ctx->dict.lock);
+cleanup:
+    pthread_mutex_unlock(&dict->lock);
     return ret;
 }
 
 static LY_ERR
-dict_insert(const struct ly_ctx *ctx, char *value, size_t len, ly_bool zerocopy, const char **str_p)
+dict_insert(struct ly_dict *dict, char *value, size_t len, ly_bool zerocopy, const char **str_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct ly_dict_rec *match = NULL, rec;
@@ -180,12 +191,12 @@ dict_insert(const struct ly_ctx *ctx, char *value, size_t len, ly_bool zerocopy,
 
     hash = lyht_hash(value, len);
     /* set len as data for compare callback */
-    lyht_set_cb_data(ctx->dict.hash_tab, (void *)&len);
+    lyht_set_cb_data(dict->hash_tab, (void *)&len);
     /* create record for lyht_insert */
     rec.value = value;
     rec.refcount = 1;
 
-    ret = lyht_insert_with_resize_cb(ctx->dict.hash_tab, (void *)&rec, hash, lydict_resize_val_eq, (void **)&match);
+    ret = lyht_insert_with_resize_cb(dict->hash_tab, (void *)&rec, hash, lydict_resize_val_eq, (void **)&match);
     if (ret == LY_EEXIST) {
         match->refcount++;
         if (zerocopy) {
@@ -199,7 +210,7 @@ dict_insert(const struct ly_ctx *ctx, char *value, size_t len, ly_bool zerocopy,
              * record is already inserted in hash table
              */
             match->value = malloc(sizeof *match->value * (len + 1));
-            LY_CHECK_ERR_RET(!match->value, LOGMEM(ctx), LY_EMEM);
+            LY_CHECK_ERR_RET(!match->value, LOGMEM(NULL), LY_EMEM);
             if (len) {
                 memcpy(match->value, value, len);
             }
@@ -221,7 +232,9 @@ dict_insert(const struct ly_ctx *ctx, char *value, size_t len, ly_bool zerocopy,
 LIBYANG_API_DEF LY_ERR
 lydict_insert(const struct ly_ctx *ctx, const char *value, size_t len, const char **str_p)
 {
-    LY_ERR result;
+    LY_ERR rc;
+    struct ly_ctx_data *ctx_data;
+    struct ly_dict *dict;
 
     LY_CHECK_ARG_RET(ctx, ctx, str_p, LY_EINVAL);
 
@@ -234,17 +247,26 @@ lydict_insert(const struct ly_ctx *ctx, const char *value, size_t len, const cha
         len = strlen(value);
     }
 
-    pthread_mutex_lock((pthread_mutex_t *)&ctx->dict.lock);
-    result = dict_insert(ctx, (char *)value, len, 0, str_p);
-    pthread_mutex_unlock((pthread_mutex_t *)&ctx->dict.lock);
+    if (ctx->opts & LY_CTX_INT_IMMUTABLE) {
+        ctx_data = ly_ctx_data_get(ctx);
+        dict = ctx_data->data_dict;
+    } else {
+        dict = (struct ly_dict *)&ctx->dict;
+    }
 
-    return result;
+    pthread_mutex_lock(&dict->lock);
+    rc = dict_insert(dict, (char *)value, len, 0, str_p);
+    pthread_mutex_unlock(&dict->lock);
+
+    return rc;
 }
 
 LIBYANG_API_DEF LY_ERR
 lydict_insert_zc(const struct ly_ctx *ctx, char *value, const char **str_p)
 {
-    LY_ERR result;
+    LY_ERR rc;
+    struct ly_ctx_data *ctx_data;
+    struct ly_dict *dict;
 
     LY_CHECK_ARG_RET(ctx, ctx, str_p, LY_EINVAL);
 
@@ -253,28 +275,35 @@ lydict_insert_zc(const struct ly_ctx *ctx, char *value, const char **str_p)
         return LY_SUCCESS;
     }
 
-    pthread_mutex_lock((pthread_mutex_t *)&ctx->dict.lock);
-    result = dict_insert(ctx, value, strlen(value), 1, str_p);
-    pthread_mutex_unlock((pthread_mutex_t *)&ctx->dict.lock);
+    if (ctx->opts & LY_CTX_INT_IMMUTABLE) {
+        ctx_data = ly_ctx_data_get(ctx);
+        dict = ctx_data->data_dict;
+    } else {
+        dict = (struct ly_dict *)&ctx->dict;
+    }
 
-    return result;
+    pthread_mutex_lock(&dict->lock);
+    rc = dict_insert(dict, value, strlen(value), 1, str_p);
+    pthread_mutex_unlock(&dict->lock);
+
+    return rc;
 }
 
 static LY_ERR
-dict_dup(const struct ly_ctx *ctx, char *value, const char **str_p)
+dict_dup(struct ly_dict *dict, char *value, const char **str_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct ly_dict_rec *match = NULL, rec;
     uint32_t hash;
 
     /* set new callback to only compare memory addresses */
-    lyht_value_equal_cb prev = lyht_set_cb(ctx->dict.hash_tab, lydict_resize_val_eq);
+    lyht_value_equal_cb prev = lyht_set_cb(dict->hash_tab, lydict_resize_val_eq);
 
     LOGDBG(LY_LDGDICT, "duplicating %s", value);
     hash = lyht_hash(value, strlen(value));
     rec.value = value;
 
-    ret = lyht_find(ctx->dict.hash_tab, (void *)&rec, hash, (void **)&match);
+    ret = lyht_find(dict->hash_tab, (void *)&rec, hash, (void **)&match);
     if (ret == LY_SUCCESS) {
         /* record found, increase refcount */
         match->refcount++;
@@ -282,7 +311,7 @@ dict_dup(const struct ly_ctx *ctx, char *value, const char **str_p)
     }
 
     /* restore callback */
-    lyht_set_cb(ctx->dict.hash_tab, prev);
+    lyht_set_cb(dict->hash_tab, prev);
 
     return ret;
 }
@@ -290,7 +319,9 @@ dict_dup(const struct ly_ctx *ctx, char *value, const char **str_p)
 LIBYANG_API_DEF LY_ERR
 lydict_dup(const struct ly_ctx *ctx, const char *value, const char **str_p)
 {
-    LY_ERR result;
+    LY_ERR rc;
+    struct ly_ctx_data *ctx_data;
+    struct ly_dict *dict;
 
     LY_CHECK_ARG_RET(ctx, ctx, str_p, LY_EINVAL);
 
@@ -299,9 +330,16 @@ lydict_dup(const struct ly_ctx *ctx, const char *value, const char **str_p)
         return LY_SUCCESS;
     }
 
-    pthread_mutex_lock((pthread_mutex_t *)&ctx->dict.lock);
-    result = dict_dup(ctx, (char *)value, str_p);
-    pthread_mutex_unlock((pthread_mutex_t *)&ctx->dict.lock);
+    if (ctx->opts & LY_CTX_INT_IMMUTABLE) {
+        ctx_data = ly_ctx_data_get(ctx);
+        dict = ctx_data->data_dict;
+    } else {
+        dict = (struct ly_dict *)&ctx->dict;
+    }
 
-    return result;
+    pthread_mutex_lock(&dict->lock);
+    rc = dict_dup(dict, (char *)value, str_p);
+    pthread_mutex_unlock(&dict->lock);
+
+    return rc;
 }
