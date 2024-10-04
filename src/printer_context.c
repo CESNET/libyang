@@ -558,8 +558,8 @@ ctxs_module(const struct lys_module *mod, struct ly_ht *ht, int *size)
     *size += CTXS_SIZED_ARRAY(mod->deviated_by);
 }
 
-static void
-ctxs_context(const struct ly_ctx *ctx, struct ly_ht *ht, int *size)
+void
+ly_ctx_compiled_size_context(const struct ly_ctx *ctx, struct ly_ht *addr_ht, int *size)
 {
     uint32_t i;
     const struct lys_module *mod;
@@ -576,42 +576,12 @@ ctxs_context(const struct ly_ctx *ctx, struct ly_ht *ht, int *size)
         mod = ctx->modules.objs[i];
 
         /* modules */
-        ctxs_module(mod, ht, size);
+        ctxs_module(mod, addr_ht, size);
     }
 
     /* plugins sets */
     *size += ctx->plugins_types.count * sizeof ctx->plugins_types.objs;
     *size += ctx->plugins_extensions.count * sizeof ctx->plugins_extensions.objs;
-}
-
-static ly_bool
-ctxs_ptr_val_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
-{
-    void *val1, *val2;
-
-    val1 = *(void **)val1_p;
-    val2 = *(void **)val2_p;
-
-    return val1 == val2;
-}
-
-LIBYANG_API_DEF int
-ly_ctx_compiled_size(const struct ly_ctx *ctx)
-{
-    int size = 0;
-    struct ly_ht *ht;
-
-    LY_CHECK_ARG_RET(NULL, ctx, -1);
-
-    /* create hash table for shared structures */
-    ht = lyht_new(0, sizeof(void *), ctxs_ptr_val_equal, NULL, 1);
-    LY_CHECK_RET(!ht, -1);
-
-    ctxs_context(ctx, ht, &size);
-
-    /* cleanup */
-    lyht_free(ht, NULL);
-    return size;
 }
 
 int
@@ -747,11 +717,6 @@ cleanup:
 static void ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_ht *addr_ht,
         struct ly_set *ptr_set, void **mem);
 
-struct ctxp_ht_addr {
-    const void *orig_addr;  /**< address of the shared structure to be printed */
-    const void *addr;       /**< address of the printed shared structure */
-};
-
 static void
 ctxp_mutex(pthread_mutex_t *mutex)
 {
@@ -770,17 +735,6 @@ ctxp_set(const struct ly_set *orig_set, struct ly_set *set, void **mem)
     set->count = orig_set->count;
     set->objs = *mem;
     *mem = (char *)*mem + (set->count * sizeof set->objs);
-}
-
-static ly_bool
-ctxp_ptr_val_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
-{
-    struct ctxp_ht_addr *val1, *val2;
-
-    val1 = val1_p;
-    val2 = val2_p;
-
-    return val1->orig_addr == val2->orig_addr;
 }
 
 static void
@@ -1487,6 +1441,10 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
         LY_ARRAY_FOR(orig_llist->dflts, u) {
             ctxp_dflt(&orig_llist->dflts[u], &llist->dflts[u], addr_ht, ptr_set, mem);
         }
+
+        /* min, max */
+        llist->min = orig_llist->min;
+        llist->max = orig_llist->max;
         break;
     case LYS_LIST:
         orig_list = (const struct lysc_node_list *)orig_node;
@@ -1521,6 +1479,10 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
                 list->uniques[u][v] = ly_ctx_compiled_addr_ht_get(addr_ht, orig_list->uniques[u][v], 0);
             }
         }
+
+        /* min, max */
+        list->min = orig_list->min;
+        list->max = orig_list->max;
         break;
     case LYS_ANYXML:
     case LYS_ANYDATA:
@@ -1765,9 +1727,9 @@ ctxp_module(const struct lys_module *orig_mod, struct lys_module *mod, struct ly
     mod->latest_revision = orig_mod->latest_revision;
 }
 
-static void
-ctxp_context(const struct ly_ctx *orig_ctx, struct ly_ctx *ctx, struct ly_ht *addr_ht, struct ly_set *ptr_set,
-        void **mem)
+void
+ly_ctx_compiled_print_context(const struct ly_ctx *orig_ctx, struct ly_ctx *ctx, struct ly_ht *addr_ht,
+        struct ly_set *ptr_set, void **mem)
 {
     uint32_t i;
 
@@ -1809,39 +1771,6 @@ ctxp_context(const struct ly_ctx *orig_ctx, struct ly_ctx *ctx, struct ly_ht *ad
     ctxp_set(&orig_ctx->plugins_extensions, &ctx->plugins_extensions, mem);
     memcpy(ctx->plugins_extensions.objs, orig_ctx->plugins_extensions.objs,
             orig_ctx->plugins_extensions.count * sizeof orig_ctx->plugins_extensions.objs);
-}
-
-LIBYANG_API_DEF LY_ERR
-ly_ctx_compiled_print(const struct ly_ctx *orig_ctx, struct ly_ctx **ctx, void **mem)
-{
-    struct ly_ht *addr_ht;
-    struct ly_set ptr_set = {0};
-    void **ptr_p;
-    uint32_t i;
-
-    LY_CHECK_ARG_RET(orig_ctx, orig_ctx, ctx, mem, LY_EINVAL);
-
-    /* create hash table for shared structures */
-    addr_ht = lyht_new(0, sizeof(struct ctxp_ht_addr), ctxp_ptr_val_equal, NULL, 1);
-    LY_CHECK_RET(!addr_ht, -1);
-
-    /* context, referenced */
-    *ctx = *mem;
-    *mem = (char *)*mem + sizeof **ctx;
-    ly_ctx_compiled_addr_ht_add(addr_ht, orig_ctx, *ctx);
-    ctxp_context(orig_ctx, *ctx, addr_ht, &ptr_set, mem);
-    (*ctx)->opts |= LY_CTX_INT_IMMUTABLE;
-
-    /* set all the pointers to the printed structures */
-    for (i = 0; i < ptr_set.count; ++i) {
-        ptr_p = ptr_set.objs[i];
-        *ptr_p = ly_ctx_compiled_addr_ht_get(addr_ht, *ptr_p, 0);
-    }
-
-    /* cleanup */
-    lyht_free(addr_ht, NULL);
-    ly_set_erase(&ptr_set, NULL);
-    return LY_SUCCESS;
 }
 
 LY_ERR

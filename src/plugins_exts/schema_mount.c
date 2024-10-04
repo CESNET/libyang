@@ -1357,6 +1357,7 @@ schema_mount_compiled_print(const struct lysc_ext_instance *orig_ext, struct lys
     struct lyplg_ext_sm *sm_data;
     pthread_mutexattr_t attr;
     uint32_t i;
+    void *ctx_mem;
 
     /* sm_data */
     ext->compiled = sm_data = *mem;
@@ -1387,7 +1388,9 @@ schema_mount_compiled_print(const struct lysc_ext_instance *orig_ext, struct lys
 
     for (i = 0; i < sm_data->shared->schema_count; ++i) {
         /* ctx */
-        LY_CHECK_RET(ly_ctx_compiled_print(orig_sm_data->shared->schemas[i].ctx, &sm_data->shared->schemas[i].ctx, mem));
+        ctx_mem = mem;
+        LY_CHECK_RET(ly_ctx_compiled_print(orig_sm_data->shared->schemas[i].ctx, ctx_mem, mem));
+        LY_CHECK_RET(ly_ctx_new_printed(ctx_mem, &sm_data->shared->schemas[i].ctx));
 
         /* mount_point */
         strcpy(*mem, orig_sm_data->shared->schemas[i].mount_point);

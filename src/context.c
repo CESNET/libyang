@@ -1340,6 +1340,118 @@ ly_ctx_free_parsed(struct ly_ctx *ctx)
     }
 }
 
+static ly_bool
+ctxs_ptr_val_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
+{
+    void *val1, *val2;
+
+    val1 = *(void **)val1_p;
+    val2 = *(void **)val2_p;
+
+    return val1 == val2;
+}
+
+LIBYANG_API_DEF int
+ly_ctx_compiled_size(const struct ly_ctx *ctx)
+{
+    int size = 0;
+    struct ly_ht *ht;
+
+    LY_CHECK_ARG_RET(NULL, ctx, -1);
+
+    /* create hash table for shared structures */
+    ht = lyht_new(0, sizeof(void *), ctxs_ptr_val_equal, NULL, 1);
+    LY_CHECK_RET(!ht, -1);
+
+    ly_ctx_compiled_size_context(ctx, ht, &size);
+
+    /* cleanup */
+    lyht_free(ht, NULL);
+    return size;
+}
+
+static ly_bool
+ctxp_ptr_val_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
+{
+    struct ctxp_ht_addr *val1, *val2;
+
+    val1 = val1_p;
+    val2 = val2_p;
+
+    return val1->orig_addr == val2->orig_addr;
+}
+
+LIBYANG_API_DEF LY_ERR
+ly_ctx_compiled_print(const struct ly_ctx *ctx, void *mem, void **mem_end)
+{
+    struct ly_ctx *pctx;
+    struct ly_ht *addr_ht = NULL;
+    struct ly_set ptr_set = {0};
+    void **ptr_p;
+    uint32_t i;
+
+    LY_CHECK_ARG_RET(ctx, ctx, mem, LY_EINVAL);
+
+    /* create hash table for shared structures */
+    addr_ht = lyht_new(0, sizeof(struct ctxp_ht_addr), ctxp_ptr_val_equal, NULL, 1);
+    LY_CHECK_RET(!addr_ht, -1);
+
+    /* context, referenced */
+    pctx = mem;
+    mem = (char *)mem + sizeof *pctx;
+    ly_ctx_compiled_addr_ht_add(addr_ht, ctx, pctx);
+    ly_ctx_compiled_print_context(ctx, pctx, addr_ht, &ptr_set, &mem);
+
+    /* immutable */
+    pctx->opts |= LY_CTX_INT_IMMUTABLE;
+
+    /* set all the pointers to the printed structures */
+    for (i = 0; i < ptr_set.count; ++i) {
+        ptr_p = ptr_set.objs[i];
+        *ptr_p = ly_ctx_compiled_addr_ht_get(addr_ht, *ptr_p, 0);
+    }
+
+    /* cleanup */
+    lyht_free(addr_ht, NULL);
+    ly_set_erase(&ptr_set, NULL);
+    if (mem_end) {
+        *mem_end = mem;
+    }
+    return LY_SUCCESS;
+}
+
+LIBYANG_API_DEF LY_ERR
+ly_ctx_new_printed(const void *mem, struct ly_ctx **ctx)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct ly_ctx_data *ctx_data = NULL;
+
+    LY_CHECK_ARG_RET(NULL, mem, ctx, LY_EINVAL);
+
+    *ctx = (void *)mem;
+
+    /* ctx data */
+    ctx_data = ly_ctx_data_add(*ctx);
+
+    /* data dictionary */
+    ctx_data->data_dict = malloc(sizeof *ctx_data->data_dict);
+    LY_CHECK_ERR_GOTO(!ctx_data->data_dict, rc = LY_EMEM, cleanup);
+    lydict_init(ctx_data->data_dict);
+
+    /* leafref set */
+    if ((*ctx)->opts & LY_CTX_LEAFREF_LINKING) {
+        ctx_data->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec), ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
+        LY_CHECK_ERR_GOTO(!ctx_data->leafref_links_ht, rc = LY_EMEM, cleanup);
+    }
+
+cleanup:
+    if (rc && ctx_data) {
+        ly_ctx_data_del(*ctx);
+        *ctx = NULL;
+    }
+    return rc;
+}
+
 LIBYANG_API_DEF void
 ly_ctx_destroy(struct ly_ctx *ctx)
 {
@@ -1350,7 +1462,11 @@ ly_ctx_destroy(struct ly_ctx *ctx)
         return;
     }
 
-    LY_CHECK_ARG_RET(ctx, !(ctx->opts & LY_CTX_INT_IMMUTABLE), );
+    if (ctx->opts & LY_CTX_INT_IMMUTABLE) {
+        /* ctx data */
+        ly_ctx_data_del(ctx);
+        return;
+    }
 
     /* free the parsed and compiled modules (both can reference ext instances, which need to be freed, so their
      * definitions can be freed) */
