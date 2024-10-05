@@ -96,6 +96,11 @@ struct ly_out;
                                                       are not explicitly present in the original data tree despite their
                                                       value is equal to their default value.  There is the same limitation regarding
                                                       the presence of ietf-netconf-with-defaults module in libyang context. */
+#define LYD_PRINT_FRAGMENT 0x100 /**< Print the data tree as a fragment. For
+                                      JSON this means that apparent
+                                      top-level nodes do not have their
+                                      namespace added. */
+#define LYD_PRINT_BARETOPLEAF 0x200 /**< Print top-level leaf node as a bare value (JSON-only). */
 /**
  * @}
  */
