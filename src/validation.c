@@ -1782,7 +1782,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_when, struct ly_
             if (val_opts & LYD_VALIDATE_NO_DEFAULTS) {
                 impl_opts |= LYD_IMPLICIT_NO_DEFAULTS;
             }
-            r = lyd_new_implicit_r(node, lyd_node_child_p(node), NULL, NULL, NULL, NULL, NULL, impl_opts, diff);
+            r = lyd_new_implicit(node, lyd_node_child_p(node), NULL, NULL, NULL, NULL, NULL, impl_opts, diff);
             LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
         }
 
@@ -1857,9 +1857,15 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
         if (val_opts & LYD_VALIDATE_NO_DEFAULTS) {
             impl_opts |= LYD_IMPLICIT_NO_DEFAULTS;
         }
-        r = lyd_new_implicit_r(lyd_parent(*first2), first2, NULL, mod, validate_subtree ? NULL : node_when_p,
-                validate_subtree ? NULL : node_types_p, validate_subtree ? NULL : ext_node_p, impl_opts, diff);
-        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+        if (validate_subtree) {
+            r = lyd_new_implicit(lyd_parent(*first2), first2, NULL, mod, NULL, NULL, NULL, impl_opts, diff);
+            LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+        } else {
+            /* descendants will not be validated, create them all */
+            r = lyd_new_implicit_r(lyd_parent(*first2), first2, NULL, mod, node_when_p, node_types_p, ext_node_p,
+                    impl_opts, diff);
+            LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+        }
 
         /* our first module node pointer may no longer be the first */
         first = *first2;
@@ -2069,17 +2075,22 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
     }
 
     if (int_opts & LYD_INTOPT_REPLY) {
-        /* add output children defaults */
-        rc = lyd_new_implicit_r(op_node, lyd_node_child_p(op_node), NULL, NULL, node_when_p, node_types_p,
-                ext_node_p, LYD_IMPLICIT_OUTPUT, diff);
-        LY_CHECK_GOTO(rc, cleanup);
-
         if (validate_subtree) {
+            /* add output children defaults */
+            rc = lyd_new_implicit(op_node, lyd_node_child_p(op_node), NULL, NULL, node_when_p, node_types_p,
+                    ext_node_p, LYD_IMPLICIT_OUTPUT, diff);
+            LY_CHECK_GOTO(rc, cleanup);
+
             /* skip validating the operation itself, go to children directly */
             LY_LIST_FOR(lyd_child(op_node), child) {
                 rc = lyd_validate_subtree(child, node_when_p, node_types_p, meta_types_p, ext_node_p, ext_val_p, 0, diff);
                 LY_CHECK_GOTO(rc, cleanup);
             }
+        } else {
+            /* add output children defaults and their descendants */
+            rc = lyd_new_implicit_r(op_node, lyd_node_child_p(op_node), NULL, NULL, node_when_p, node_types_p,
+                    ext_node_p, LYD_IMPLICIT_OUTPUT, diff);
+            LY_CHECK_GOTO(rc, cleanup);
         }
     } else {
         if (validate_subtree) {

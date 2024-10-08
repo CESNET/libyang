@@ -345,7 +345,25 @@ LY_ERR lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_l
         LY_VALUE_FORMAT format, void *val_prefix_data, uint32_t hints, struct lyd_node **node);
 
 /**
- * @brief Check the existence and create any non-existing implicit siblings, recursively for the created nodes.
+ * @brief Check the existence and create any non-existing implicit children.
+ *
+ * @param[in] parent Parent of the potential default values, NULL for top-level siblings.
+ * @param[in,out] first First sibling.
+ * @param[in] sparent Schema parent of the siblings, NULL if schema of @p parent can be used.
+ * @param[in] mod Module of the default values, NULL for nested siblings.
+ * @param[in] node_when Optional set to add nodes with "when" conditions into.
+ * @param[in] node_types Optional set to add nodes with unresolved types into.
+ * @param[in] ext_node Optional set to add nodes with extension instance node callbacks into.
+ * @param[in] impl_opts Implicit options (@ref implicitoptions).
+ * @param[in,out] diff Validation diff.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
+        const struct lys_module *mod, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *ext_node,
+        uint32_t impl_opts, struct lyd_node **diff);
+
+/**
+ * @brief Check the existence and create any non-existing implicit children, recursively for containers.
  *
  * @param[in] parent Parent of the potential default values, NULL for top-level siblings.
  * @param[in,out] first First sibling.
