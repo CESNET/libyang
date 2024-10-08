@@ -671,7 +671,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                 }
 
                 /* add/correct flags */
-                ret = lyd_parse_set_data_flags(node, &node->meta, (struct lyd_ctx *)lydctx, ext);
+                ret = lyd_parser_set_data_flags(node, &node->meta, (struct lyd_ctx *)lydctx, ext);
                 LY_CHECK_GOTO(ret, cleanup);
                 break;
             }
@@ -857,7 +857,7 @@ next_entry:
             LY_CHECK_GOTO(rc, cleanup);
 
             /* add/correct flags */
-            rc = lyd_parse_set_data_flags(node, &node->meta, (struct lyd_ctx *)lydctx, NULL);
+            rc = lyd_parser_set_data_flags(node, &node->meta, (struct lyd_ctx *)lydctx, NULL);
             LY_CHECK_GOTO(rc, cleanup);
         } else {
             /* create attribute */
@@ -1434,7 +1434,7 @@ lydjson_parse_instance_inner(struct lyd_json_ctx *lydctx, const struct lysc_node
 
     if (snode->nodetype == LYS_LIST) {
         /* check all keys exist */
-        r = lyd_parse_check_keys(*node);
+        r = lyd_parser_check_keys(*node);
         LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
     }
 
@@ -1530,7 +1530,7 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, str
         LY_CHECK_GOTO(!*node, cleanup);
 
         /* add/correct flags */
-        r = lyd_parse_set_data_flags(*node, &(*node)->meta, (struct lyd_ctx *)lydctx, ext);
+        r = lyd_parser_set_data_flags(*node, &(*node)->meta, (struct lyd_ctx *)lydctx, ext);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
         if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {

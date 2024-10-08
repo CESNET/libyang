@@ -863,7 +863,7 @@ lydxml_subtree_inner(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, 
 
     if (snode->nodetype == LYS_LIST) {
         /* check all keys exist */
-        r = lyd_parse_check_keys(*node);
+        r = lyd_parser_check_keys(*node);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
     }
 
@@ -1107,7 +1107,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
 node_parsed:
     if (node && snode) {
         /* add/correct flags */
-        r = lyd_parse_set_data_flags(node, &meta, (struct lyd_ctx *)lydctx, ext);
+        r = lyd_parser_set_data_flags(node, &meta, (struct lyd_ctx *)lydctx, ext);
         LY_CHECK_ERR_GOTO(r, rc = r; lyd_free_tree(node), cleanup);
 
         if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {

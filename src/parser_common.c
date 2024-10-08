@@ -360,7 +360,7 @@ cleanup:
 }
 
 LY_ERR
-lyd_parse_check_keys(struct lyd_node *node)
+lyd_parser_check_keys(struct lyd_node *node)
 {
     const struct lysc_node *skey = NULL;
     const struct lyd_node *key;
@@ -381,7 +381,7 @@ lyd_parse_check_keys(struct lyd_node *node)
 }
 
 LY_ERR
-lyd_parse_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct lyd_ctx *lydctx,
+lyd_parser_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct lyd_ctx *lydctx,
         struct lysc_ext_instance *ext)
 {
     struct lyd_meta *meta2, *prev_meta = NULL, *next_meta = NULL;
@@ -3569,7 +3569,7 @@ lysp_stmt_parse(struct lysp_ctx *pctx, const struct lysp_stmt *stmt, void **resu
 }
 
 LY_ERR
-lys_parse_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *substmt, struct lysp_stmt *stmt)
+lys_parser_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *substmt, struct lysp_stmt *stmt)
 {
     LY_ERR rc = LY_SUCCESS;
 

@@ -424,7 +424,7 @@ LY_ERR lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, s
  * @return LY_SUCCESS on success.
  * @return LY_ENOT on a missing key.
  */
-LY_ERR lyd_parse_check_keys(struct lyd_node *node);
+LY_ERR lyd_parser_check_keys(struct lyd_node *node);
 
 /**
  * @brief Set data flags for a newly parsed node.
@@ -435,7 +435,7 @@ LY_ERR lyd_parse_check_keys(struct lyd_node *node);
  * @param[in] ext Extension instance if @p node was parsed for one.
  * @return LY_ERR value.
  */
-LY_ERR lyd_parse_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct lyd_ctx *lydctx,
+LY_ERR lyd_parser_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct lyd_ctx *lydctx,
         struct lysc_ext_instance *ext);
 
 /**
@@ -446,6 +446,6 @@ LY_ERR lyd_parse_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, s
  * @param[in] stmt Parsed generic statement to process.
  * @return LY_ERR value.
  */
-LY_ERR lys_parse_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *substmt, struct lysp_stmt *stmt);
+LY_ERR lys_parser_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *substmt, struct lysp_stmt *stmt);
 
 #endif /* LY_PARSER_INTERNAL_H_ */

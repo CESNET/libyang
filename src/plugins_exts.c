@@ -67,7 +67,7 @@ lyplg_ext_parse_extension_instance(struct lysp_ctx *pctx, struct lysp_ext_instan
                 continue;
             }
 
-            if ((rc = lys_parse_ext_instance_stmt(pctx, &ext->substmts[u], stmt))) {
+            if ((rc = lys_parser_ext_instance_stmt(pctx, &ext->substmts[u], stmt))) {
                 goto cleanup;
             }
         }
