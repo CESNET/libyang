@@ -22,11 +22,15 @@ set(lintsrc
 if(ENABLE_YANGLINT_INTERACTIVE)
     set(lintsrc ${lintsrc}
         main.c
+        cmd_cli.c
         completion.c
         configuration.c
-        linenoise/linenoise.c)
+        interactive_cmd.c
+        linenoise/linenoise.c
+        linenoise/utf8.c)
 else()
     set(lintsrc ${lintsrc}
+        interactive_cmd_off.c
         main_ni_only.c)
 endif()
 
