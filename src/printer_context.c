@@ -578,10 +578,6 @@ ly_ctx_compiled_size_context(const struct ly_ctx *ctx, struct ly_ht *addr_ht, in
         /* modules */
         ctxs_module(mod, addr_ht, size);
     }
-
-    /* plugins sets */
-    *size += ctx->plugins_types.count * sizeof ctx->plugins_types.objs;
-    *size += ctx->plugins_extensions.count * sizeof ctx->plugins_extensions.objs;
 }
 
 int
@@ -1764,13 +1760,9 @@ ly_ctx_compiled_print_context(const struct ly_ctx *orig_ctx, struct ly_ctx *ctx,
     ctx->change_count = orig_ctx->change_count;
     ctx->opts = orig_ctx->opts;
 
-    /* plugins */
-    ctxp_set(&orig_ctx->plugins_types, &ctx->plugins_types, mem);
-    memcpy(ctx->plugins_types.objs, orig_ctx->plugins_types.objs,
-            orig_ctx->plugins_types.count * sizeof orig_ctx->plugins_types.objs);
-    ctxp_set(&orig_ctx->plugins_extensions, &ctx->plugins_extensions, mem);
-    memcpy(ctx->plugins_extensions.objs, orig_ctx->plugins_extensions.objs,
-            orig_ctx->plugins_extensions.count * sizeof orig_ctx->plugins_extensions.objs);
+    /* no dynamic plugin support */
+    memset(&ctx->plugins_types, 0, sizeof ctx->plugins_types);
+    memset(&ctx->plugins_extensions, 0, sizeof ctx->plugins_extensions);
 }
 
 LY_ERR
