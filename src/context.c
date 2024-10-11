@@ -1392,6 +1392,11 @@ ly_ctx_compiled_print(const struct ly_ctx *ctx, void *mem, void **mem_end)
 
     LY_CHECK_ARG_RET(ctx, ctx, mem, LY_EINVAL);
 
+    if (ctx->plugins_types.count || ctx->plugins_extensions.count) {
+        LOGERR(ctx, LY_EINVAL, "Printing context with dynamic type or extension plugins is not supported.");
+        return LY_EINVAL;
+    }
+
     /* create hash table for shared structures */
     addr_ht = lyht_new(0, sizeof(struct ctxp_ht_addr), ctxp_ptr_val_equal, NULL, 1);
     LY_CHECK_RET(!addr_ht, -1);
