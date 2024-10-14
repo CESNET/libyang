@@ -5652,46 +5652,26 @@ moveto_resolve_model(const char **qname, uint32_t *qname_len, const struct lyxp_
 
     assert((set->type == LYXP_SET_NODE_SET) || (set->type == LYXP_SET_SCNODE_SET));
 
-    if ((ptr = ly_strnchr(*qname, ':', *qname_len))) {
-        /* specific module */
-        pref_len = ptr - *qname;
-        mod = ly_resolve_prefix(set->ctx, *qname, pref_len, set->format, set->prefix_data);
+    *moveto_mod = NULL;
 
-        /* check for errors and non-implemented modules, as they are not valid */
-        if (!mod || !mod->implemented) {
-            LOGVAL(set->ctx, LY_VCODE_XP_INMOD, (int)pref_len, *qname);
-            return LY_EVALID;
-        }
-
-        *qname += pref_len + 1;
-        *qname_len -= pref_len + 1;
-    } else if (((*qname)[0] == '*') && (*qname_len == 1)) {
-        /* all modules - special case */
-        mod = NULL;
-    } else {
-        switch (set->format) {
-        case LY_VALUE_SCHEMA:
-        case LY_VALUE_SCHEMA_RESOLVED:
-            /* current module */
-            mod = set->cur_mod;
-            break;
-        case LY_VALUE_CANON:
-        case LY_VALUE_JSON:
-        case LY_VALUE_LYB:
-        case LY_VALUE_STR_NS:
-            /* inherit parent (context node) module */
-            if (ctx_scnode) {
-                mod = ctx_scnode->module;
-            } else {
-                mod = NULL;
-            }
-            break;
-        case LY_VALUE_XML:
-            /* all nodes need to be prefixed */
-            LOGVAL(set->ctx, LYVE_DATA, "Non-prefixed node \"%.*s\" in XML xpath found.", (int)*qname_len, *qname);
-            return LY_EVALID;
-        }
+    ptr = ly_strnchr(*qname, ':', *qname_len);
+    if (!ptr) {
+        /* no prefix */
+        return LY_SUCCESS;
     }
+
+    /* specific module */
+    pref_len = ptr - *qname;
+    mod = ly_resolve_prefix(set->ctx, *qname, pref_len, set->format, set->prefix_data);
+
+    /* check for errors and non-implemented modules, as they are not valid */
+    if (!mod || !mod->implemented) {
+        LOGVAL(set->ctx, LY_VCODE_XP_INMOD, (int)pref_len, *qname);
+        return LY_EVALID;
+    }
+
+    *qname += pref_len + 1;
+    *qname_len -= pref_len + 1;
 
     *moveto_mod = mod;
     return LY_SUCCESS;
@@ -7677,7 +7657,7 @@ eval_name_test_try_compile_predicate_key(const char *nametest, uint32_t len, con
 
     /* prefix (module) */
     LY_CHECK_RET(moveto_resolve_model(&nametest, &len, set, ctx_scnode, &mod));
-    if (mod != key->module) {
+    if (mod && (mod != key->module)) {
         return LY_ENOT;
     }
 
