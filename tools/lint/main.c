@@ -28,6 +28,7 @@
 #include "completion.h"
 #include "configuration.h"
 #include "linenoise/linenoise.h"
+#include "linenoise/utf8.h"
 #include "yl_opt.h"
 
 int done;
@@ -36,13 +37,62 @@ struct ly_ctx *ctx = NULL;
 /* main_ni.c */
 int main_ni(int argc, char *argv[]);
 
+/**
+ * @brief Find command and execute.
+ *
+ * @param[in] comm Array of commands.
+ * @param[in] cmdline Input from command line.
+ * @param[in] cmdlen Length of @p cmdline.
+ * @param[in,out] yo Context for yanglint.
+ * return 1 if command was found and execute.
+ */
+static ly_bool
+execute_command(COMMAND *comm, char *cmdline, size_t cmdlen, struct yl_opt *yo)
+{
+    int posc = 0, i, j;
+    char *empty = NULL;
+    char **posv = &empty;
+    ly_bool cmd_found = 0;
+
+    /* execute the command if any valid specified */
+    for (i = 0; comm[i].name; i++) {
+        if (strncmp(cmdline, comm[i].name, cmdlen) || (comm[i].name[cmdlen] != '\0')) {
+            continue;
+        }
+
+        cmd_found = 1;
+        if (comm[i].opt_func && comm[i].opt_func(yo, cmdline, &posv, &posc)) {
+            break;
+        }
+        if (comm[i].dep_func && comm[i].dep_func(yo, posc)) {
+            break;
+        }
+        if (posc) {
+            for (j = 0; j < posc; j++) {
+                yo->last_one = (j + 1) == posc;
+                if (comm[i].exec_func(&ctx, yo, posv[j])) {
+                    break;
+                }
+            }
+        } else {
+            comm[i].exec_func(&ctx, yo, NULL);
+        }
+        if (comm[i].fin_func) {
+            comm[i].fin_func(ctx, yo);
+        }
+
+        break;
+    }
+
+    return cmd_found;
+}
+
 int
 main(int argc, char *argv[])
 {
-    int cmdlen, posc, i, j;
+    int cmdlen;
     struct yl_opt yo = {0};
-    char *empty = NULL, *cmdline;
-    char **posv;
+    char *cmdline;
     uint8_t cmd_found;
 
     if (argc > 1) {
@@ -53,6 +103,8 @@ main(int argc, char *argv[])
 
     /* continue in interactive mode */
     linenoiseSetCompletionCallback(complete_cmd);
+    linenoiseSetEncodingFunctions(linenoiseUtf8PrevCharLen, linenoiseUtf8NextCharLen, linenoiseUtf8ReadCode);
+    linenoiseSetMultiLine(1);
     load_config();
 
     if (ly_ctx_new(NULL, YL_DEFAULT_CTX_OPTIONS, &ctx)) {
@@ -62,9 +114,6 @@ main(int argc, char *argv[])
 
     while (!done) {
         cmd_found = 0;
-
-        posv = &empty;
-        posc = 0;
 
         /* get the command from user */
         cmdline = linenoise(PROMPT);
@@ -84,34 +133,11 @@ main(int argc, char *argv[])
         /* isolate the command word. */
         for (cmdlen = 0; cmdline[cmdlen] && (cmdline[cmdlen] != ' '); cmdlen++) {}
 
-        /* execute the command if any valid specified */
-        for (i = 0; commands[i].name; i++) {
-            if (strncmp(cmdline, commands[i].name, (size_t)cmdlen) || (commands[i].name[cmdlen] != '\0')) {
-                continue;
-            }
-
-            cmd_found = 1;
-            if (commands[i].opt_func && commands[i].opt_func(&yo, cmdline, &posv, &posc)) {
-                break;
-            }
-            if (commands[i].dep_func && commands[i].dep_func(&yo, posc)) {
-                break;
-            }
-            if (posc) {
-                for (j = 0; j < posc; j++) {
-                    yo.last_one = (j + 1) == posc;
-                    if (commands[i].exec_func(&ctx, &yo, posv[j])) {
-                        break;
-                    }
-                }
-            } else {
-                commands[i].exec_func(&ctx, &yo, NULL);
-            }
-            if (commands[i].fin_func) {
-                commands[i].fin_func(ctx, &yo);
-            }
-
-            break;
+        /* execute interactive or non-interactive command */
+        cmd_found = execute_command(commands, cmdline, cmdlen, &yo);
+        if (!cmd_found) {
+            /* try if command is in 'interactive_cmd' that has extra commands only for interactive mode */
+            cmd_found = execute_command(interactive_cmd, cmdline, cmdlen, &yo);
         }
 
         if (!cmd_found) {

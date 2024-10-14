@@ -60,7 +60,7 @@ typedef struct {
 } COMMAND;
 
 /**
- * @brief The list of available commands.
+ * @brief The list of available commands for interactive and non-interactive mode.
  */
 extern COMMAND commands[];
 
@@ -80,6 +80,18 @@ enum COMMAND_INDEX {
     CMD_CLEAR,
     CMD_VERB,
     CMD_DEBUG
+};
+
+/**
+ * @brief The list of available commands only for interactive mode. Disjunct with ::commands.
+ */
+extern COMMAND interactive_cmd[];
+
+/**
+ * @brief Index for global variable ::interactive_cmd.
+ */
+enum COMMAND_I_INDEX {
+    CMD_CLI = 0
 };
 
 /**
@@ -390,5 +402,28 @@ int cmd_debug_store(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv);
  */
 int cmd_debug_setlog(struct ly_ctx *ctx, struct yl_opt *yo);
 void cmd_debug_help(void);
+
+/* cmd_cli.c */
+
+/**
+ * @brief Setup cli.
+ *
+ * @param[in,out] ctx context for libyang.
+ * @param[in,out] yo context for yanglint.
+ * @param[in] posv Name of the cli mode.
+ * @return 0 on success.
+ */
+int cmd_cli_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv);
+void cmd_cli_help(void);
+
+/**
+ * @copydoc cmd_add_opt
+ */
+int cmd_cli_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc);
+
+/**
+ * @copydoc cmd_add_dep
+ */
+int cmd_cli_dep(struct yl_opt *yo, int posc);
 
 #endif /* COMMANDS_H_ */

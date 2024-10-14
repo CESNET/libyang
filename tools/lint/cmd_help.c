@@ -70,6 +70,11 @@ print_generic_help(void)
             printf("  %-15s %s\n", commands[i].name, commands[i].helpstring);
         }
     }
+    for (uint16_t i = 0; interactive_cmd[i].name; i++) {
+        if (interactive_cmd[i].helpstring != NULL) {
+            printf("  %-15s %s\n", interactive_cmd[i].name, interactive_cmd[i].helpstring);
+        }
+    }
 }
 
 int
@@ -92,6 +97,18 @@ cmd_help_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
                     commands[i].help_func();
                 } else {
                     printf("%s: %s\n", posv, commands[i].helpstring);
+                }
+                break;
+            }
+        }
+        /* interactive-only command */
+        for (uint16_t i = 0; interactive_cmd[i].name; i++) {
+            if (strcmp(posv, interactive_cmd[i].name) == 0) {
+                match = 1;
+                if (interactive_cmd[i].help_func != NULL) {
+                    interactive_cmd[i].help_func();
+                } else {
+                    printf("%s: %s\n", posv, interactive_cmd[i].helpstring);
                 }
                 break;
             }

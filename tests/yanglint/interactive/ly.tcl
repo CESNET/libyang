@@ -19,6 +19,7 @@ stty columns 720
 # default setup for every unit test
 variable ly_setup {
     spawn $TUT
+    # turn off linenoise multiline.
     ly_skip_warnings
     # Searchpath is set, so modules can be loaded via the 'load' command.
     ly_cmd "searchpath $::env(YANG_MODULES_DIR)"
@@ -32,7 +33,9 @@ variable ly_cleanup {
 # Skip no dir and/or no history warnings and prompt.
 proc ly_skip_warnings {} {
     global prompt
-    expect -re "(YANGLINT.*)*$prompt" {}
+    expect -re "$prompt" {}
+    send -- "cli -s\r"
+    expect -re "\n$prompt" {}
 }
 
 # Send command 'cmd' to the process, expect error header and then check output string by 'pattern'.

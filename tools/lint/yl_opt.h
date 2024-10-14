@@ -78,6 +78,9 @@ struct yl_opt {
 
     uint32_t dbg_groups;
 
+    /* cli command settings */
+    uint8_t cli_flags;
+
     /*
      * schema
      */
