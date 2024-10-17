@@ -548,7 +548,7 @@ lyd_insert_after_node(struct lyd_node **first_sibling_p, struct lyd_node *siblin
     struct lyd_node_inner *par;
     struct lyd_node *first_sibling;
 
-    assert(!node->next && (node->prev == node));
+    assert(!node->next && (node->prev == node) && (sibling != node));
 
     if (sibling->next) {
         /* sibling had a succeeding node */
@@ -584,7 +584,7 @@ lyd_insert_before_node(struct lyd_node *sibling, struct lyd_node *node)
 {
     struct lyd_node_inner *par;
 
-    assert(!node->next && (node->prev == node));
+    assert(!node->next && (node->prev == node) && (sibling != node));
 
     node->next = sibling;
     /* covers situation of sibling being first */

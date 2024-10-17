@@ -935,7 +935,7 @@ lyds_pool_clean(struct lyds_pool *pool)
     pool->rbn = NULL;
 
     for (meta = pool->meta; meta; meta = next) {
-        next = meta->next ? meta->next : NULL;
+        next = meta->next;
         RBT_SET(meta, NULL);
         lyd_free_meta_single(meta);
     }
@@ -1055,9 +1055,10 @@ lyds_additionally_create_rb_nodes(struct lyd_node **first_sibling, struct lyd_no
     LY_ERR ret;
     ly_bool max;
     struct rb_node *rbn;
-    struct lyd_node *iter;
+    struct lyd_node *iter, *next;
 
-    for (iter = node; iter && (iter->schema == (*leader)->schema); iter = iter->next) {
+    for (iter = node; iter && (iter->schema == (*leader)->schema); iter = next) {
+        next = iter->next;
         ret = lyds_create_node(iter, &rbn);
         LY_CHECK_RET(ret);
         rb_insert_node(rbt, rbn, &max);
@@ -1118,7 +1119,7 @@ lyds_additionally_reuse_rb_tree(struct lyd_node **first_sibling, struct lyd_node
         struct rb_node **rbt, struct lyds_pool *pool, struct lyd_node **next)
 {
     ly_bool max;
-    struct lyd_node *iter;
+    struct lyd_node *iter, *next_node;
 
     /* let's begin with the leader */
     RBN_RESET(pool->rbn, *leader);
@@ -1126,7 +1127,8 @@ lyds_additionally_reuse_rb_tree(struct lyd_node **first_sibling, struct lyd_node
     pool->rbn = rb_iter_next(&pool->iter_state);
 
     /* continue with the rest of the nodes */
-    for (iter = (*leader)->next; iter && (iter->schema == (*leader)->schema); iter = iter->next) {
+    for (iter = (*leader)->next; iter && (iter->schema == (*leader)->schema); iter = next_node) {
+        next_node = iter->next;
         if (!pool->rbn) {
             *next = iter;
             return;
