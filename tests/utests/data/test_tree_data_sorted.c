@@ -1605,21 +1605,22 @@ test_order_violation(void **state)
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
 
     /* inserting a new node causes the nodes to be sorted */
-    data = "{\"a:ll\":[1,8,2]}";
+    data = "{\"a:ll\":[8,2,1]}";
     CHECK_PARSE_LYD_PARAM(data, LYD_JSON, LYD_PARSE_ORDERED, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
-    assert_true(tree && !tree->meta && tree->next && tree->next->next);
-    assert_string_equal(lyd_get_value(tree), "1");
-    assert_string_equal(lyd_get_value(tree->next), "8");
-    assert_string_equal(lyd_get_value(tree->next->next), "2");
 #ifndef NDEBUG
     CHECK_LOG_CTX("Data in \"ll\" are not sorted, inserted node should not be added to the end.", NULL, 0);
+    CHECK_LOG_CTX("Data in \"ll\" are not sorted, inserted node should not be added to the end.", NULL, 0);
 #endif
-    assert_int_equal(lyd_new_term(NULL, mod, "ll", "3", 0, &node), LY_SUCCESS);
-    lyd_insert_sibling(tree, node, NULL);
-    assert_string_equal(lyd_get_value(tree), "1");
+    assert_true(tree && !tree->meta && tree->next && tree->next->next);
+    assert_string_equal(lyd_get_value(tree), "8");
     assert_string_equal(lyd_get_value(tree->next), "2");
-    assert_string_equal(lyd_get_value(tree->next->next), "3");
-    assert_string_equal(lyd_get_value(tree->next->next->next), "8");
+    assert_string_equal(lyd_get_value(tree->next->next), "1");
+    assert_int_equal(lyd_new_term(NULL, mod, "ll", "3", 0, &node), LY_SUCCESS);
+    lyd_insert_sibling(tree, node, &first);
+    assert_string_equal(lyd_get_value(first), "1");
+    assert_string_equal(lyd_get_value(first->next), "2");
+    assert_string_equal(lyd_get_value(first->next->next), "3");
+    assert_string_equal(lyd_get_value(first->next->next->next), "8");
     lyd_free_all(tree);
 
     /* move unsorted nodes causes the nodes to be sorted */
