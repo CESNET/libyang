@@ -47,7 +47,7 @@ static LY_ERR reparse_or_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, u
 static LY_ERR eval_expr_select(const struct lyxp_expr *exp, uint32_t *tok_idx, enum lyxp_expr_type etype,
         struct lyxp_set *set, uint32_t options);
 static LY_ERR moveto_resolve_model(const char **qname, uint32_t *qname_len, const struct lyxp_set *set,
-        const struct lysc_node *ctx_scnode, const struct lys_module **moveto_mod);
+        const struct lys_module **moveto_mod);
 static LY_ERR moveto_axis_node_next(const struct lyd_node **iter, enum lyxp_node_type *iter_type,
         const struct lyd_node *node, enum lyxp_node_type node_type, enum lyxp_axis axis, struct lyxp_set *set);
 static LY_ERR moveto_node(struct lyxp_set *set, const struct lys_module *moveto_mod, const char *ncname,
@@ -4147,7 +4147,7 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
     /* parse the identity */
     id_name = args[1]->val.str;
     id_len = strlen(id_name);
-    rc = moveto_resolve_model(&id_name, &id_len, set, set->cur_node ? set->cur_node->schema : NULL, &mod);
+    rc = moveto_resolve_model(&id_name, &id_len, set, &mod);
     LY_CHECK_RET(rc);
     if (!mod) {
         LOGVAL(set->ctx, LYVE_XPATH, "Identity \"%.*s\" without a prefix.", (int)id_len, id_name);
@@ -5638,13 +5638,12 @@ xpath_pi_text(struct lyxp_set *set, enum lyxp_axis axis, uint32_t options)
  * @param[in,out] qname Qualified node name. If includes prefix, it is skipped.
  * @param[in,out] qname_len Length of @p qname, is updated accordingly.
  * @param[in] set Set with general XPath context.
- * @param[in] ctx_scnode Context node to inherit module for unprefixed node for ::LY_PREF_JSON.
  * @param[out] moveto_mod Expected module of a matching node.
  * @return LY_ERR
  */
 static LY_ERR
 moveto_resolve_model(const char **qname, uint32_t *qname_len, const struct lyxp_set *set,
-        const struct lysc_node *ctx_scnode, const struct lys_module **moveto_mod)
+        const struct lys_module **moveto_mod)
 {
     const struct lys_module *mod = NULL;
     const char *ptr;
@@ -7642,7 +7641,6 @@ eval_literal(const struct lyxp_expr *exp, uint32_t *tok_idx, struct lyxp_set *se
  *
  * @param[in] nametest Nametest to check.
  * @param[in] len Length of @p nametest.
- * @param[in] ctx_scnode Found schema node as the context for the predicate.
  * @param[in] set Context set.
  * @param[in] key Expected key node.
  * @return LY_SUCCESS on success,
@@ -7650,13 +7648,13 @@ eval_literal(const struct lyxp_expr *exp, uint32_t *tok_idx, struct lyxp_set *se
  * @return LY_ERR on any error.
  */
 static LY_ERR
-eval_name_test_try_compile_predicate_key(const char *nametest, uint32_t len, const struct lysc_node *ctx_scnode,
-        const struct lyxp_set *set, const struct lysc_node *key)
+eval_name_test_try_compile_predicate_key(const char *nametest, uint32_t len, const struct lyxp_set *set,
+        const struct lysc_node *key)
 {
     const struct lys_module *mod;
 
     /* prefix (module) */
-    LY_CHECK_RET(moveto_resolve_model(&nametest, &len, set, ctx_scnode, &mod));
+    LY_CHECK_RET(moveto_resolve_model(&nametest, &len, set, &mod));
     if (mod && (mod != key->module)) {
         return LY_ENOT;
     }
@@ -7815,7 +7813,7 @@ eval_name_test_try_compile_predicates(const struct lyxp_expr *exp, uint32_t *tok
 
             /* check key */
             LY_CHECK_GOTO(rc = eval_name_test_try_compile_predicate_key(exp->expr + exp->tok_pos[e_idx],
-                    exp->tok_len[e_idx], ctx_scnode, set, key), cleanup);
+                    exp->tok_len[e_idx], set, key), cleanup);
 
             ++e_idx;
 
@@ -8115,7 +8113,7 @@ eval_name_test_with_predicate(const struct lyxp_expr *exp, uint32_t *tok_idx, en
     }
 
     /* parse (and skip) module name */
-    rc = moveto_resolve_model(&ncname, &ncname_len, set, NULL, &moveto_mod);
+    rc = moveto_resolve_model(&ncname, &ncname_len, set, &moveto_mod);
     LY_CHECK_GOTO(rc, cleanup);
 
     if ((ncname[0] == '*') && (ncname_len == 1)) {
