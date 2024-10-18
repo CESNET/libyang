@@ -465,14 +465,14 @@ test_opaq(void **state)
     assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "ietf-netconf", NULL, nc_feats));
 
     ly_in_new_memory(data_xml, &in);
-    rc = lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, &tree_1, NULL);
+    rc = lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, LYD_PARSE_STRICT, &tree_1, NULL);
     ly_in_free(in, 0);
     assert_int_equal(rc, LY_SUCCESS);
 
     assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0);
 
     ly_in_new_memory(xml_out, &in);
-    rc = lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_LYB, LYD_TYPE_RPC_YANG, &tree_2, NULL);
+    rc = lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_LYB, LYD_TYPE_RPC_YANG, LYD_PARSE_STRICT, &tree_2, NULL);
     ly_in_free(in, 0);
     assert_int_equal(rc, LY_SUCCESS);
 

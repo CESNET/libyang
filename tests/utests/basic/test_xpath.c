@@ -414,7 +414,8 @@ test_rpc(void **state)
     struct ly_set *set;
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_REPLY_YANG, &tree, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_REPLY_YANG, LYD_PARSE_STRICT,
+            &tree, NULL));
     ly_in_free(in, 0);
     assert_non_null(tree);
 

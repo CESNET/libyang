@@ -422,13 +422,15 @@ enum lyd_type {
  * @param[in] in Input handle to read the input from.
  * @param[in] format Expected format of the data in @p in.
  * @param[in] data_type Expected operation to parse (@ref datatype).
+ * @param[in] parse_options Options for parser are set based on @p data_type but either of ::LYD_PARSE_STRICT and
+ * ::LYD_PARSE_OPAQ can be added, see @ref dataparseroptions.
  * @param[out] tree Optional full parsed data tree. If @p parent is set, set to NULL.
  * @param[out] op Optional pointer to the operation (action/RPC/notification) node.
  * @return LY_ERR value.
  * @return LY_ENOT if @p data_type is a NETCONF message and the root XML element is not the expected one.
  */
 LIBYANG_API_DECL LY_ERR lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in, LYD_FORMAT format,
-        enum lyd_type data_type, struct lyd_node **tree, struct lyd_node **op);
+        enum lyd_type data_type, uint32_t parse_options, struct lyd_node **tree, struct lyd_node **op);
 
 /**
  * @brief Parse extension data into an operation data tree following only the specification from the given extension instance.
@@ -465,13 +467,15 @@ LIBYANG_API_DECL LY_ERR lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *
  * @param[in] in Input handle to read the input from.
  * @param[in] format Expected format of the data in @p in.
  * @param[in] data_type Expected operation to parse (@ref datatype).
+ * @param[in] parse_options Options for parser are set based on @p data_type but either of ::LYD_PARSE_STRICT and
+ * ::LYD_PARSE_OPAQ can be added, see @ref dataparseroptions.
  * @param[out] tree Optional full parsed data tree. If @p parent is set, set to NULL.
  * @param[out] op Optional pointer to the operation (action/RPC) node.
  * @return LY_ERR value.
  * @return LY_ENOT if @p data_type is a NETCONF message and the root XML element is not the expected one.
  */
 LIBYANG_API_DECL LY_ERR lyd_parse_ext_op(const struct lysc_ext_instance *ext, struct lyd_node *parent, struct ly_in *in,
-        LYD_FORMAT format, enum lyd_type data_type, struct lyd_node **tree, struct lyd_node **op);
+        LYD_FORMAT format, enum lyd_type data_type, uint32_t parse_options, struct lyd_node **tree, struct lyd_node **op);
 
 /**
  * @brief Fully validate a data tree.

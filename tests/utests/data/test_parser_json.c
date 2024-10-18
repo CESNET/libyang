@@ -679,7 +679,8 @@ test_rpc(void **state)
             "\"a:l1\":[{\"@\":{\"ietf-netconf:operation\":\"replace\"},\"a\":\"val_a\",\"b\":\"val_b\",\"c\":\"val_c\"}]}"
             "}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_RPC_YANG, &tree, &op));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_RPC_YANG, LYD_PARSE_STRICT,
+            &tree, &op));
     ly_in_free(in, 0);
 
     assert_non_null(op);
@@ -712,7 +713,8 @@ test_rpc(void **state)
     /* append to parent */
     assert_int_equal(LY_SUCCESS, lyd_new_path(NULL, UTEST_LYCTX, "/a:r1", NULL, 0, &op));
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("{\"l1\": \"some str\", \"l2\": \"some other str\"}", &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, op, in, LYD_JSON, LYD_TYPE_RPC_YANG, &tree, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, op, in, LYD_JSON, LYD_TYPE_RPC_YANG, LYD_PARSE_STRICT, &tree,
+            NULL));
     ly_in_free(in, 0);
 
     assert_int_equal(LY_SUCCESS, lyd_print_mem(&str, op, LYD_JSON, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK));
@@ -730,7 +732,8 @@ test_action(void **state)
 
     data = "{\"a:c\":{\"act\":{\"al\":\"value\"}}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_RPC_YANG, &tree, &op));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_RPC_YANG, LYD_PARSE_STRICT,
+            &tree, &op));
     ly_in_free(in, 0);
 
     assert_non_null(op);
@@ -754,7 +757,8 @@ test_notification(void **state)
 
     data = "{\"a:c\":{\"n1\":{\"nl\":\"value\"}}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_NOTIF_YANG, &tree, &ntf));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_NOTIF_YANG, LYD_PARSE_STRICT,
+            &tree, &ntf));
     ly_in_free(in, 0);
 
     assert_non_null(ntf);
@@ -767,7 +771,8 @@ test_notification(void **state)
 
     data = "{\"a:n2\":{}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_NOTIF_YANG, &tree, &ntf));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_NOTIF_YANG, LYD_PARSE_STRICT,
+            &tree, &ntf));
     ly_in_free(in, 0);
 
     assert_non_null(ntf);
@@ -793,7 +798,8 @@ test_reply(void **state)
 
     data = "{\"a:c\":{\"act\":{\"al\":25}}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_REPLY_YANG, &tree, &op));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_REPLY_YANG, LYD_PARSE_STRICT,
+            &tree, &op));
     ly_in_free(in, 0);
 
     assert_non_null(op);
@@ -831,7 +837,8 @@ test_restconf_rpc(void **state)
             "\"a:l1\":[{\"@\":{\"ietf-netconf:operation\":\"replace\"},\"a\":\"val_a\",\"b\":\"val_b\",\"c\":\"val_c\"}]}"
             "}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, tree, in, LYD_JSON, LYD_TYPE_RPC_RESTCONF, &envp, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, tree, in, LYD_JSON, LYD_TYPE_RPC_RESTCONF, LYD_PARSE_STRICT,
+            &envp, NULL));
     ly_in_free(in, 0);
 
     /* the same just connected to the edit-data RPC */
@@ -854,7 +861,8 @@ test_restconf_notification(void **state)
 
     data = "{\"ietf-restconf:notification\":{\"eventTime\":\"2013-12-21T00:01:00Z\",\"a:c\":{\"n1\":{\"nl\":\"value\"}}}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_NOTIF_RESTCONF, &tree, &ntf));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_NOTIF_RESTCONF, LYD_PARSE_STRICT,
+            &tree, &ntf));
     ly_in_free(in, 0);
 
     /* envelopes separately */
@@ -871,7 +879,8 @@ test_restconf_notification(void **state)
     /* wrong order */
     data = "{\"ietf-restconf:notification\":{\"a:n2\":{},\"eventTime\":\"2013-12-21T00:01:00Z\"}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_NOTIF_RESTCONF, &tree, &ntf));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_NOTIF_RESTCONF, LYD_PARSE_STRICT,
+            &tree, &ntf));
     ly_in_free(in, 0);
 
     lyd_free_all(tree);
@@ -880,7 +889,8 @@ test_restconf_notification(void **state)
     /* unknown notification */
     data = "{\"ietf-restconf:notification\":{\"eventTime\":\"2013-12-21T00:01:00Z\",\"invalid:n2\":{}}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_NOTIF_RESTCONF, &tree, &ntf));
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_NOTIF_RESTCONF, LYD_PARSE_STRICT,
+            &tree, &ntf));
     UTEST_LOG_CTX_CLEAN;
     ly_in_free(in, 0);
     lyd_free_all(tree);
@@ -897,7 +907,8 @@ test_restconf_reply(void **state)
 
     data = "{\"a:output\":{\"al\":25}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, lyd_child(tree), in, LYD_JSON, LYD_TYPE_REPLY_RESTCONF, &envp, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, lyd_child(tree), in, LYD_JSON, LYD_TYPE_REPLY_RESTCONF,
+            LYD_PARSE_STRICT, &envp, NULL));
     ly_in_free(in, 0);
 
     /* connected to the RPC with the parent */

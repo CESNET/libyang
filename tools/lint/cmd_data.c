@@ -520,11 +520,11 @@ process_data(struct ly_ctx *ctx, enum lyd_type type, uint8_t merge, LYD_FORMAT o
         case LYD_TYPE_RPC_YANG:
         case LYD_TYPE_REPLY_YANG:
         case LYD_TYPE_NOTIF_YANG:
-            ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, type, &tree, &op);
+            ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, type, LYD_PARSE_STRICT, &tree, &op);
             break;
         case LYD_TYPE_RPC_NETCONF:
         case LYD_TYPE_NOTIF_NETCONF:
-            ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, type, &envp, &op);
+            ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, type, LYD_PARSE_STRICT, &envp, &op);
 
             /* adjust pointers */
             for (tree = op; lyd_parent(tree); tree = lyd_parent(tree)) {}
@@ -532,7 +532,8 @@ process_data(struct ly_ctx *ctx, enum lyd_type type, uint8_t merge, LYD_FORMAT o
         case LYD_TYPE_REPLY_NETCONF:
             /* parse source RPC operation */
             assert(reply_rpc && reply_rpc->in);
-            ret = lyd_parse_op(ctx, NULL, reply_rpc->in, reply_rpc->format, LYD_TYPE_RPC_NETCONF, &envp, &op);
+            ret = lyd_parse_op(ctx, NULL, reply_rpc->in, reply_rpc->format, LYD_TYPE_RPC_NETCONF, LYD_PARSE_STRICT,
+                    &envp, &op);
             if (ret) {
                 YLMSG_E("Failed to parse source NETCONF RPC operation file \"%s\".", reply_rpc->path);
                 goto cleanup;
@@ -548,7 +549,7 @@ process_data(struct ly_ctx *ctx, enum lyd_type type, uint8_t merge, LYD_FORMAT o
             lyd_free_all(envp);
             envp = NULL;
 
-            ret = lyd_parse_op(ctx, op, input_f->in, input_f->format, type, &envp, NULL);
+            ret = lyd_parse_op(ctx, op, input_f->in, input_f->format, type, LYD_PARSE_STRICT, &envp, NULL);
             break;
         default:
             YLMSG_E("Internal error (%s:%d).", __FILE__, __LINE__);

@@ -394,7 +394,8 @@ test_rpc(void **state)
             "  </config>\n"
             "</edit-config>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, &tree, &op));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, LYD_PARSE_STRICT,
+            &tree, &op));
     ly_in_free(in, 0);
 
     assert_non_null(op);
@@ -460,7 +461,8 @@ test_action(void **state)
             "  </act>\n"
             "</c>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, &tree, &op));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, LYD_PARSE_STRICT,
+            &tree, &op));
     ly_in_free(in, 0);
 
     assert_non_null(op);
@@ -494,7 +496,8 @@ test_notification(void **state)
             "  </n1>\n"
             "</c>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_NOTIF_YANG, &tree, &ntf));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_NOTIF_YANG, LYD_PARSE_STRICT,
+            &tree, &ntf));
     ly_in_free(in, 0);
 
     assert_non_null(ntf);
@@ -508,7 +511,8 @@ test_notification(void **state)
     /* top-level notif without envelope */
     data = "<n2 xmlns=\"urn:tests:a\"/>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_NOTIF_YANG, &tree, &ntf));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_NOTIF_YANG, LYD_PARSE_STRICT,
+            &tree, &ntf));
     ly_in_free(in, 0);
 
     assert_non_null(ntf);
@@ -538,7 +542,8 @@ test_reply(void **state)
             "  </act>\n"
             "</c>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_REPLY_YANG, &tree, &op));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_REPLY_YANG, LYD_PARSE_STRICT,
+            &tree, &op));
     ly_in_free(in, 0);
 
     assert_non_null(op);
@@ -591,7 +596,8 @@ test_netconf_rpc(void **state)
             "</edit-config>\n"
             "</rpc>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_NETCONF, &tree, &op));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_NETCONF, LYD_PARSE_STRICT,
+            &tree, &op));
     ly_in_free(in, 0);
 
     assert_non_null(op);
@@ -663,7 +669,8 @@ test_netconf_rpc(void **state)
             "  </copy-config>\n"
             "</rpc>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_NETCONF, &tree, &op));
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_NETCONF, LYD_PARSE_STRICT,
+            &tree, &op));
     ly_in_free(in, 0);
     CHECK_LOG_CTX("Invalid enumeration value \"merge2\".",
             "/ietf-netconf:copy-config/source/config/a:l1[a='val_a'][b='val_b'][c='5']/cont/e/@ietf-netconf:operation", 13);
@@ -688,7 +695,8 @@ test_netconf_action(void **state)
             "</action>\n"
             "</rpc>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_NETCONF, &tree, &op));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_NETCONF, LYD_PARSE_STRICT,
+            &tree, &op));
     ly_in_free(in, 0);
 
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 1, 1, LY_VALUE_XML, "rpc", 0, 0, 0, 0, "");
@@ -729,7 +737,8 @@ test_netconf_reply_or_notification(void **state)
             "  </act>\n"
             "</c>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, &action, &op));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, LYD_PARSE_STRICT,
+            &action, &op));
     ly_in_free(in, 0);
 
     /* parse notification first */
@@ -742,7 +751,8 @@ test_netconf_reply_or_notification(void **state)
             "</c>\n"
             "</notification>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_NOTIF_NETCONF, &tree, &op2));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_NOTIF_NETCONF, LYD_PARSE_STRICT,
+            &tree, &op2));
     ly_in_free(in, 0);
 
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 1, LY_VALUE_XML, "notification", 0, 0, 0, 0, "");
@@ -774,7 +784,8 @@ test_netconf_reply_or_notification(void **state)
             "<eventTime>2010-12-06T08:00:01Z</eventTime>\n"
             "</notification>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_NOTIF_NETCONF, &tree, &op2));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_NOTIF_NETCONF, LYD_PARSE_STRICT,
+            &tree, &op2));
     ly_in_free(in, 0);
 
     lyd_free_all(tree);
@@ -785,7 +796,8 @@ test_netconf_reply_or_notification(void **state)
             "  <al xmlns=\"urn:tests:a\">25</al>\n"
             "</rpc-reply>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, op, in, LYD_XML, LYD_TYPE_REPLY_NETCONF, &tree, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, op, in, LYD_XML, LYD_TYPE_REPLY_NETCONF, LYD_PARSE_STRICT,
+            &tree, NULL));
     ly_in_free(in, 0);
 
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 1, 0, LY_VALUE_XML, "rpc-reply", 0, 0, 0, 0, "");
@@ -801,7 +813,8 @@ test_netconf_reply_or_notification(void **state)
             "  <ok/>\n"
             "</rpc-reply>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, op, in, LYD_XML, LYD_TYPE_REPLY_NETCONF, &tree, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, op, in, LYD_XML, LYD_TYPE_REPLY_NETCONF, LYD_PARSE_STRICT,
+            &tree, NULL));
     ly_in_free(in, 0);
 
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 1, 1, LY_VALUE_XML, "rpc-reply", 0, 0, 0, 0, "");
@@ -824,7 +837,8 @@ test_netconf_reply_or_notification(void **state)
             "  </rpc-error>\n"
             "</rpc-reply>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, op, in, LYD_XML, LYD_TYPE_REPLY_NETCONF, &tree, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, op, in, LYD_XML, LYD_TYPE_REPLY_NETCONF, LYD_PARSE_STRICT,
+            &tree, NULL));
     ly_in_free(in, 0);
 
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 1, 1, LY_VALUE_XML, "rpc-reply", 0, 0, 0, 0, "");
@@ -860,7 +874,8 @@ test_restconf_rpc(void **state)
             "</l1>"
             "</config></input>";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, tree, in, LYD_XML, LYD_TYPE_RPC_RESTCONF, &envp, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, tree, in, LYD_XML, LYD_TYPE_RPC_RESTCONF, LYD_PARSE_STRICT,
+            &envp, NULL));
     ly_in_free(in, 0);
 
     /* the same just connected to the edit-data RPC */
@@ -888,7 +903,8 @@ test_restconf_reply(void **state)
 
     data = "<output xmlns=\"urn:tests:a\"><al>25</al></output>";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, lyd_child(tree), in, LYD_XML, LYD_TYPE_REPLY_RESTCONF, &envp, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, lyd_child(tree), in, LYD_XML, LYD_TYPE_REPLY_RESTCONF,
+            LYD_PARSE_STRICT, &envp, NULL));
     ly_in_free(in, 0);
 
     /* connected to the RPC with the parent */
@@ -916,7 +932,8 @@ test_filter_attributes(void **state)
             "  <filter type=\"xpath\" select=\"/*\"/>\n"
             "</get>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, &tree, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, LYD_PARSE_STRICT,
+            &tree, NULL));
     ly_in_free(in, 0);
     assert_non_null(tree);
 
@@ -938,7 +955,8 @@ test_filter_attributes(void **state)
             "  </filter>\n"
             "</create-subscription>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, &tree, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, LYD_PARSE_STRICT,
+            &tree, NULL));
     ly_in_free(in, 0);
     assert_non_null(tree);
 

@@ -285,13 +285,14 @@ lyd_parse_data_path(const struct ly_ctx *ctx, const char *path, LYD_FORMAT forma
  */
 static LY_ERR
 lyd_parse_op_(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
-        struct ly_in *in, LYD_FORMAT format, enum lyd_type data_type, struct lyd_node **tree, struct lyd_node **op)
+        struct ly_in *in, LYD_FORMAT format, uint32_t parse_opts, enum lyd_type data_type, struct lyd_node **tree,
+        struct lyd_node **op)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_ctx *lydctx = NULL;
     struct ly_set parsed = {0};
     struct lyd_node *first = NULL, *envp = NULL;
-    uint32_t i, parse_opts, val_opts, int_opts = 0;
+    uint32_t i, val_opts, int_opts = 0;
     ly_bool proto_msg = 0;
 
     if (!ctx) {
@@ -309,8 +310,7 @@ lyd_parse_op_(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
     /* remember input position */
     in->func_start = in->current;
 
-    /* set parse and validation opts */
-    parse_opts = LYD_PARSE_ONLY | LYD_PARSE_STRICT;
+    /* set validation opts */
     val_opts = 0;
 
     switch (data_type) {
@@ -432,22 +432,28 @@ cleanup:
 
 LIBYANG_API_DEF LY_ERR
 lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in, LYD_FORMAT format,
-        enum lyd_type data_type, struct lyd_node **tree, struct lyd_node **op)
+        enum lyd_type data_type, uint32_t parse_options, struct lyd_node **tree, struct lyd_node **op)
 {
-    LY_CHECK_ARG_RET(ctx, ctx || parent, in, data_type, parent || tree || op, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, ctx || parent, in, !(parse_options & ~(LYD_PARSE_STRICT | LYD_PARSE_OPAQ)), data_type,
+            parent || tree || op, LY_EINVAL);
 
-    return lyd_parse_op_(ctx, NULL, parent, in, format, data_type, tree, op);
+    parse_options |= LYD_PARSE_ONLY;
+
+    return lyd_parse_op_(ctx, NULL, parent, in, format, parse_options, data_type, tree, op);
 }
 
 LIBYANG_API_DEF LY_ERR
 lyd_parse_ext_op(const struct lysc_ext_instance *ext, struct lyd_node *parent, struct ly_in *in, LYD_FORMAT format,
-        enum lyd_type data_type, struct lyd_node **tree, struct lyd_node **op)
+        enum lyd_type data_type, uint32_t parse_options, struct lyd_node **tree, struct lyd_node **op)
 {
     const struct ly_ctx *ctx = ext ? ext->module->ctx : NULL;
 
-    LY_CHECK_ARG_RET(ctx, ext, in, data_type, parent || tree || op, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, ext, in, !(parse_options & ~(LYD_PARSE_STRICT | LYD_PARSE_OPAQ)), data_type,
+            parent || tree || op, LY_EINVAL);
 
-    return lyd_parse_op_(ctx, ext, parent, in, format, data_type, tree, op);
+    parse_options |= LYD_PARSE_ONLY;
+
+    return lyd_parse_op_(ctx, ext, parent, in, format, parse_options, data_type, tree, op);
 }
 
 struct lyd_node *

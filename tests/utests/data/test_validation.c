@@ -1335,7 +1335,8 @@ test_action(void **state)
             "    </act>\n"
             "  </l1>\n"
             "</cont>\n", &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, &op_tree, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, LYD_PARSE_STRICT,
+            &op_tree, NULL));
     assert_non_null(op_tree);
 
     /* missing leafref */
@@ -1403,7 +1404,8 @@ test_rpc(void **state)
             "   <new-password>123</new-password>\n"
             "</modify-user-password>";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, &tree, NULL));
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, LYD_PARSE_STRICT,
+            &tree, NULL));
     CHECK_LOG_CTX("Unsatisfied length - string \"123\" length is not allowed.",
             "/val-str:modify-user-password/new-password", 3);
     ly_in_free(in, 0);
@@ -1427,7 +1429,8 @@ test_reply(void **state)
             "    </act>\n"
             "  </l1>\n"
             "</cont>\n", &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_REPLY_YANG, &op_tree, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_REPLY_YANG, LYD_PARSE_STRICT,
+            &op_tree, NULL));
     assert_non_null(op_tree);
     ly_in_free(in, 0);
 
