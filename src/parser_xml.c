@@ -394,8 +394,9 @@ lydxml_data_skip(struct lyxml_ctx *xmlctx)
 static LY_ERR
 lydxml_data_check_opaq(struct lyd_xml_ctx *lydctx, const struct lysc_node **snode)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR ret = LY_SUCCESS, r;
     struct lyxml_ctx *xmlctx = lydctx->xmlctx, pxmlctx;
+    uint32_t *prev_lo, temp_lo = 0;
 
     if (!(lydctx->parse_opts & LYD_PARSE_OPAQ)) {
         /* only checks specific to opaque nodes */
@@ -420,7 +421,10 @@ lydxml_data_check_opaq(struct lyd_xml_ctx *lydctx, const struct lysc_node **snod
 
     if ((*snode)->nodetype & LYD_NODE_TERM) {
         /* value may not be valid in which case we parse it as an opaque node */
-        if (ly_value_validate(NULL, *snode, xmlctx->value, xmlctx->value_len, LY_VALUE_XML, &xmlctx->ns, LYD_HINT_DATA)) {
+        prev_lo = ly_temp_log_options(&temp_lo);
+        r = ly_value_validate(NULL, *snode, xmlctx->value, xmlctx->value_len, LY_VALUE_XML, &xmlctx->ns, LYD_HINT_DATA);
+        ly_temp_log_options(prev_lo);
+        if (r) {
             LOGVRB("Parsing opaque term node \"%s\" with invalid value \"%.*s\".", (*snode)->name, (int)xmlctx->value_len,
                     xmlctx->value);
             *snode = NULL;

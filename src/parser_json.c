@@ -501,6 +501,7 @@ lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *sno
     LY_ERR ret = LY_SUCCESS;
     struct lyjson_ctx *jsonctx = lydctx->jsonctx;
     enum LYJSON_PARSER_STATUS status;
+    uint32_t *prev_lo, temp_lo = 0;
 
     assert(snode);
 
@@ -523,9 +524,12 @@ lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *sno
             if ((ret = lydjson_value_type_hint(jsonctx, &status, type_hint_p))) {
                 break;
             }
+
+            prev_lo = ly_temp_log_options(&temp_lo);
             if (ly_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, LY_VALUE_JSON, NULL, *type_hint_p)) {
                 ret = LY_ENOT;
             }
+            ly_temp_log_options(prev_lo);
             break;
         case LYS_LIST:
             /* lists may not have all its keys */
