@@ -164,6 +164,37 @@ test_type_incomplete_when(void **state)
 }
 
 static void
+test_unprefixed_ident(void **state)
+{
+    struct lyd_node *tree;
+    const char *schema =
+            "module a {\n"
+            "    namespace urn:tests:a;\n"
+            "    prefix a;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    identity d3 {base d2;}\n"
+            "    identity d2 {base d1;}\n"
+            "    identity d1;\n"
+            "\n"
+            "    leaf a {type identityref {base d1;}}\n"
+            "    leaf b {type string; must \"derived-from-or-self(/a, 'd2')\";}\n"
+            "    leaf c {type string; when \"derived-from(/a, 'd2')\";}\n"
+            "}";
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    CHECK_PARSE_LYD_PARAM("<b xmlns=\"urn:tests:a\">hey</b>", LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG_CTX("Must condition \"derived-from-or-self(/a, 'd2')\" not satisfied.", "/a:b", 0);
+
+    CHECK_PARSE_LYD_PARAM("<c xmlns=\"urn:tests:a\">hey</c>", LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG_CTX("When condition \"derived-from(/a, 'd2')\" not satisfied.", "/a:c", 0);
+
+    LYD_TREE_CREATE("<a xmlns=\"urn:tests:a\">d3</a><b xmlns=\"urn:tests:a\">b-val</b><c xmlns=\"urn:tests:a\">c-val</c>", tree);
+    lyd_free_all(tree);
+}
+
+static void
 test_mandatory(void **state)
 {
     struct lyd_node *tree;
@@ -1523,6 +1554,7 @@ main(void)
         UTEST(test_mandatory),
         UTEST(test_mandatory_when),
         UTEST(test_type_incomplete_when),
+        UTEST(test_unprefixed_ident),
         UTEST(test_minmax),
         UTEST(test_unique),
         UTEST(test_unique_nested),

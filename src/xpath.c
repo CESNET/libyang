@@ -4098,6 +4098,51 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Get the module of an identity used in derived-from(-or-self)() functions.
+ *
+ * @param[in,out] qname Qualified node name. If includes prefix, it is skipped.
+ * @param[in,out] qname_len Length of @p qname, is updated accordingly.
+ * @param[in] set Set with general XPath context.
+ * @param[out] mod Module of the identity.
+ * @return LY_ERR
+ */
+static LY_ERR
+xpath_derived_ident_module(const char **qname, uint32_t *qname_len, const struct lyxp_set *set,
+        const struct lys_module **mod)
+{
+    LY_CHECK_RET(moveto_resolve_model(qname, qname_len, set, mod));
+    if (*mod) {
+        /* prefixed identity */
+        return LY_SUCCESS;
+    }
+
+    switch (set->format) {
+    case LY_VALUE_SCHEMA:
+    case LY_VALUE_SCHEMA_RESOLVED:
+        /* current module */
+        *mod = set->cur_mod;
+        break;
+    case LY_VALUE_CANON:
+    case LY_VALUE_JSON:
+    case LY_VALUE_LYB:
+    case LY_VALUE_STR_NS:
+        /* inherit parent (context node) module */
+        if (set->cur_scnode) {
+            *mod = set->cur_scnode->module;
+        } else {
+            *mod = set->cur_mod;
+        }
+        break;
+    case LY_VALUE_XML:
+        /* all identifiers need to be prefixed */
+        LOGVAL(set->ctx, LYVE_DATA, "Non-prefixed identity \"%.*s\" in XML xpath found.", (int)*qname_len, *qname);
+        return LY_EVALID;
+    }
+
+    return LY_SUCCESS;
+}
+
 static LY_ERR
 xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, ly_bool self_match, const char *func)
 {
@@ -4147,12 +4192,8 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
     /* parse the identity */
     id_name = args[1]->val.str;
     id_len = strlen(id_name);
-    rc = moveto_resolve_model(&id_name, &id_len, set, &mod);
+    rc = xpath_derived_ident_module(&id_name, &id_len, set, &mod);
     LY_CHECK_RET(rc);
-    if (!mod) {
-        LOGVAL(set->ctx, LYVE_XPATH, "Identity \"%.*s\" without a prefix.", (int)id_len, id_name);
-        return LY_EVALID;
-    }
 
     /* find the identity */
     found = 0;
