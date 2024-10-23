@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Parsing and validation common functions for data trees
  *
- * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -1157,35 +1157,6 @@ lyd_meta_is_internal(const struct lyd_meta *meta)
     return 0;
 }
 
-void
-lyd_cont_set_dflt(struct lyd_node *node)
-{
-    const struct lyd_node *child;
-
-    while (node) {
-        if (!node->schema || (node->flags & LYD_DEFAULT) || !lysc_is_np_cont(node->schema)) {
-            /* not a non-dflt NP container */
-            break;
-        }
-
-        LY_LIST_FOR(lyd_child(node), child) {
-            if (!(child->flags & LYD_DEFAULT)) {
-                break;
-            }
-        }
-        if (child) {
-            /* explicit child, no dflt change */
-            break;
-        }
-
-        /* set the dflt flag */
-        node->flags |= LYD_DEFAULT;
-
-        /* check all parent containers */
-        node = lyd_parent(node);
-    }
-}
-
 /**
  * @brief Comparison callback to match schema node with a schema of a data node.
  *
@@ -1298,6 +1269,44 @@ lyd_del_move_root(struct lyd_node **root, const struct lyd_node *to_del, const s
         *root = lyd_first_sibling(*root);
     } else {
         *root = (*root)->next;
+    }
+}
+
+void
+lyd_np_cont_dflt_set(struct lyd_node *parent)
+{
+    const struct lyd_node *child;
+
+    while (parent) {
+        if (!parent->schema || (parent->flags & LYD_DEFAULT) || !lysc_is_np_cont(parent->schema)) {
+            /* not a non-dflt NP container */
+            break;
+        }
+
+        LY_LIST_FOR(lyd_child(parent), child) {
+            if (!(child->flags & LYD_DEFAULT)) {
+                break;
+            }
+        }
+        if (child) {
+            /* explicit child, no dflt change */
+            break;
+        }
+
+        /* set the dflt flag */
+        parent->flags |= LYD_DEFAULT;
+
+        /* check all parent containers */
+        parent = lyd_parent(parent);
+    }
+}
+
+void
+lyd_np_cont_dflt_del(struct lyd_node *parent)
+{
+    while (parent && (parent->flags & LYD_DEFAULT)) {
+        parent->flags &= ~LYD_DEFAULT;
+        parent = lyd_parent(parent);
     }
 }
 

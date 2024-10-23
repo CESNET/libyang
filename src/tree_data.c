@@ -545,7 +545,6 @@ lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct ly
 void
 lyd_insert_after_node(struct lyd_node **first_sibling_p, struct lyd_node *sibling, struct lyd_node *node)
 {
-    struct lyd_node_inner *par;
     struct lyd_node *first_sibling;
 
     assert(!node->next && (node->prev == node) && (sibling != node));
@@ -571,19 +570,15 @@ lyd_insert_after_node(struct lyd_node **first_sibling_p, struct lyd_node *siblin
     sibling->next = node;
     node->parent = sibling->parent;
 
-    for (par = node->parent; par; par = par->parent) {
-        if ((par->flags & LYD_DEFAULT) && !(node->flags & LYD_DEFAULT)) {
-            /* remove default flags from NP containers */
-            par->flags &= ~LYD_DEFAULT;
-        }
+    if (!(node->flags & LYD_DEFAULT)) {
+        /* remove default flags from NP containers */
+        lyd_np_cont_dflt_del(lyd_parent(node));
     }
 }
 
 void
 lyd_insert_before_node(struct lyd_node *sibling, struct lyd_node *node)
 {
-    struct lyd_node_inner *par;
-
     assert(!node->next && (node->prev == node) && (sibling != node));
 
     node->next = sibling;
@@ -599,11 +594,9 @@ lyd_insert_before_node(struct lyd_node *sibling, struct lyd_node *node)
     }
     node->parent = sibling->parent;
 
-    for (par = node->parent; par; par = par->parent) {
-        if ((par->flags & LYD_DEFAULT) && !(node->flags & LYD_DEFAULT)) {
-            /* remove default flags from NP containers */
-            par->flags &= ~LYD_DEFAULT;
-        }
+    if (!(node->flags & LYD_DEFAULT)) {
+        /* remove default flags from NP containers */
+        lyd_np_cont_dflt_del(lyd_parent(node));
     }
 }
 
@@ -628,11 +621,9 @@ lyd_insert_only_child(struct lyd_node *parent, struct lyd_node *node)
     par->child = node;
     node->parent = par;
 
-    for ( ; par; par = par->parent) {
-        if ((par->flags & LYD_DEFAULT) && !(node->flags & LYD_DEFAULT)) {
-            /* remove default flags from NP containers */
-            par->flags &= ~LYD_DEFAULT;
-        }
+    if (!(node->flags & LYD_DEFAULT)) {
+        /* remove default flags from NP containers */
+        lyd_np_cont_dflt_del(parent);
     }
 }
 
@@ -1192,7 +1183,7 @@ lyd_unlink_ignore_lyds(struct lyd_node **first_sibling_p, struct lyd_node *node)
         }
 
         /* check for NP container whether its last non-default node is not being unlinked */
-        lyd_cont_set_dflt(lyd_parent(node));
+        lyd_np_cont_dflt_set(lyd_parent(node));
 
         node->parent = NULL;
     }
@@ -1285,9 +1276,8 @@ lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta, ly_bool clear_df
     }
 
     /* remove default flags from NP containers */
-    while (clear_dflt && parent && (parent->schema->nodetype == LYS_CONTAINER) && (parent->flags & LYD_DEFAULT)) {
-        parent->flags &= ~LYD_DEFAULT;
-        parent = lyd_parent(parent);
+    if (clear_dflt) {
+        lyd_np_cont_dflt_del(parent);
     }
 }
 
@@ -2496,7 +2486,6 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg,
     const struct lyd_node *child_src, *tmp, *sibling_src;
     struct lyd_node *match_trg, *dup_src, *elem, *leader;
     struct lyd_node_opaq *opaq_trg, *opaq_src;
-    struct lysc_type *type;
     const struct lysc_node *schema;
     struct ly_ht *child_dup_inst = NULL;
     LY_ERR r;
@@ -2546,19 +2535,15 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg,
                         &opaq_trg->val_prefix_data);
             }
         } else if ((match_trg->schema->nodetype == LYS_LEAF) &&
-                lyd_compare_single(sibling_src, match_trg, LYD_COMPARE_DEFAULTS)) {
-            /* since they are different, they cannot both be default */
-            assert(!(sibling_src->flags & LYD_DEFAULT) || !(match_trg->flags & LYD_DEFAULT));
+                ((options & LYD_MERGE_DEFAULTS) || !(sibling_src->flags & LYD_DEFAULT))) {
+            /* update value */
+            r = lyd_change_term_val(match_trg, &((struct lyd_node_term *)sibling_src)->value, 0,
+                    sibling_src->flags & LYD_DEFAULT);
+            LY_CHECK_RET(r && (r != LY_EEXIST) && (r != LY_ENOT), r);
 
-            /* update value (or only LYD_DEFAULT flag) only if flag set or the source node is not default */
-            if ((options & LYD_MERGE_DEFAULTS) || !(sibling_src->flags & LYD_DEFAULT)) {
-                type = ((struct lysc_node_leaf *)match_trg->schema)->type;
-                type->plugin->free(LYD_CTX(match_trg), &((struct lyd_node_term *)match_trg)->value);
-                LY_CHECK_RET(type->plugin->duplicate(LYD_CTX(match_trg), &((struct lyd_node_term *)sibling_src)->value,
-                        &((struct lyd_node_term *)match_trg)->value));
-
-                /* copy flags and add LYD_NEW */
-                match_trg->flags = sibling_src->flags | ((options & LYD_MERGE_WITH_FLAGS) ? 0 : LYD_NEW);
+            if (options & LYD_MERGE_WITH_FLAGS) {
+                /* keep the exact same flags */
+                match_trg->flags = sibling_src->flags;
             }
         } else if ((match_trg->schema->nodetype & LYS_ANYDATA) && lyd_compare_single(sibling_src, match_trg, 0)) {
             /* update value */

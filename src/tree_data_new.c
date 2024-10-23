@@ -1243,14 +1243,15 @@ lyd_new_attr2(struct lyd_node *parent, const char *module_ns, const char *name, 
  *
  * Reinserting ensures that the node is in the correct position and the data instances remain properly ordered.
  *
- * @param[in] term Term node to change. If it is a key, the parental list is inserted again.
+ * @param[in] term Term node to change. If it is a key, the parent list is reinserted.
  * @param[in] val New value for @p term.
- * @return LY_SUCCESS on success.
+ * @param[in] use_val Whether @p val can be used and spent or should only be duplicated.
+ * @return LY_ERR value.
  */
 static LY_ERR
-lyd_change_node_value(struct lyd_node_term *term, struct lyd_value *val)
+lyd_change_node_value(struct lyd_node_term *term, struct lyd_value *val, ly_bool use_val)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR rc = LY_SUCCESS;
     struct lyd_node *target, *first;
 
     if (term->schema->nodetype == LYS_LEAFLIST) {
@@ -1260,33 +1261,115 @@ lyd_change_node_value(struct lyd_node_term *term, struct lyd_value *val)
     } else {
         /* just change the value */
         term->value.realtype->plugin->free(LYD_CTX(term), &term->value);
-        term->value = *val;
+        if (use_val) {
+            term->value = *val;
+        } else {
+            rc = ((struct lysc_node_leaf *)term->schema)->type->plugin->duplicate(LYD_CTX(term), val, &term->value);
+        }
+
         /* leaf that is not a key, its value is not used for its hash so it does not change */
-        return LY_SUCCESS;
+        return rc;
     }
 
     if (!LYD_NODE_IS_ALONE(target) && lyds_is_supported(target)) {
         /* changing the value may cause a change in the order */
         first = lyd_first_sibling(target);
         first = first == target ? first->next : first;
+
         /* unlink hash and unlink the target node in the lyds tree */
         lyd_unlink_tree(target);
+
         /* change value */
         term->value.realtype->plugin->free(LYD_CTX(term), &term->value);
-        term->value = *val;
+        if (use_val) {
+            term->value = *val;
+        } else {
+            rc = ((struct lysc_node_leaf *)term->schema)->type->plugin->duplicate(LYD_CTX(term), val, &term->value);
+        }
+
         /* reinserting */
         lyd_insert_node(NULL, &first, target, LYD_INSERT_NODE_DEFAULT);
     } else {
         /* unlink hash */
         lyd_unlink_hash(target);
+
         /* change value */
         term->value.realtype->plugin->free(LYD_CTX(term), &term->value);
-        term->value = *val;
+        if (use_val) {
+            term->value = *val;
+        } else {
+            rc = ((struct lysc_node_leaf *)term->schema)->type->plugin->duplicate(LYD_CTX(term), val, &term->value);
+        }
     }
-    lyd_hash(target);
-    ret = lyd_insert_hash(target);
 
-    return ret;
+    lyd_hash(target);
+    rc = lyd_insert_hash(target);
+
+    return rc;
+}
+
+LY_ERR
+lyd_change_term_val(struct lyd_node *term, struct lyd_value *val, ly_bool use_val, ly_bool is_dflt)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lysc_type *type;
+    struct lyd_node_term *t;
+    ly_bool dflt_change, val_change;
+
+    t = (struct lyd_node_term *)term;
+    type = ((struct lysc_node_leaf *)term->schema)->type;
+
+    /* compare original and new value */
+    if (type->plugin->compare(LYD_CTX(term), &t->value, val)) {
+        /* since they are different, they cannot both be default */
+        assert(!(term->flags & LYD_DEFAULT) || !is_dflt);
+
+        /* values differ, switch them */
+        LY_CHECK_RET(lyd_change_node_value(t, val, use_val));
+        val_change = 1;
+    } else {
+        /* same values, free the new stored one */
+        if (use_val) {
+            type->plugin->free(LYD_CTX(term), val);
+        }
+        val_change = 0;
+    }
+
+    /* clear links to leafref nodes */
+    if (val_change && (ly_ctx_get_options(LYD_CTX(term)) & LY_CTX_LEAFREF_LINKING)) {
+        lyd_free_leafref_nodes(t);
+    }
+
+    /* update flags */
+    if (val_change) {
+        term->flags |= LYD_NEW;
+    }
+    if ((term->flags & LYD_DEFAULT) && !is_dflt) {
+        /* remove dflt flag */
+        term->flags &= ~LYD_DEFAULT;
+
+        /* remove parent dflt flag */
+        lyd_np_cont_dflt_del(lyd_parent(term));
+
+        dflt_change = 1;
+    } else if (!(term->flags & LYD_DEFAULT) && is_dflt) {
+        /* add dflt flag */
+        term->flags |= LYD_DEFAULT;
+
+        /* add parent dflt flag */
+        lyd_np_cont_dflt_set(lyd_parent(term));
+
+        dflt_change = 1;
+    } else {
+        dflt_change = 0;
+    }
+
+    if (!val_change) {
+        /* only default flag change or no change */
+        rc = dflt_change ? LY_EEXIST : LY_ENOT;
+    } /* else value changed, LY_SUCCESS */
+
+    return rc;
 }
 
 /**
@@ -1307,68 +1390,20 @@ lyd_change_node_value(struct lyd_node_term *term, struct lyd_value *val)
 static LY_ERR
 _lyd_change_term(struct lyd_node *term, const void *value, size_t value_len, LY_VALUE_FORMAT format)
 {
-    LY_ERR ret = LY_SUCCESS;
-    struct lysc_type *type;
-    struct lyd_node_term *t;
-    struct lyd_node *parent;
+    LY_ERR r;
     struct lyd_value val;
-    ly_bool dflt_change, val_change;
 
     assert(term && term->schema && (term->schema->nodetype & LYD_NODE_TERM));
 
-    t = (struct lyd_node_term *)term;
-    type = ((struct lysc_node_leaf *)term->schema)->type;
-
     /* parse the new value */
     LOG_LOCSET(term->schema, term);
-    ret = lyd_value_store(LYD_CTX(term), &val, type, value, value_len, 0, 0, NULL, format, NULL, LYD_HINT_DATA,
-            term->schema, NULL);
+    r = lyd_value_store(LYD_CTX(term), &val, ((struct lysc_node_leaf *)term->schema)->type, value, value_len, 0, 0,
+            NULL, format, NULL, LYD_HINT_DATA, term->schema, NULL);
     LOG_LOCBACK(1, 1);
-    LY_CHECK_GOTO(ret, cleanup);
+    LY_CHECK_RET(r);
 
-    /* compare original and new value */
-    if (type->plugin->compare(LYD_CTX(term), &t->value, &val)) {
-        /* values differ, switch them */
-        lyd_change_node_value(t, &val);
-        /* make the node non-validated */
-        term->flags &= LYD_NEW;
-        val_change = 1;
-    } else {
-        /* same values, free the new stored one */
-        type->plugin->free(LYD_CTX(term), &val);
-        val_change = 0;
-    }
-
-    /* clear links to leafref nodes */
-    if (ly_ctx_get_options(LYD_CTX(term)) & LY_CTX_LEAFREF_LINKING) {
-        lyd_free_leafref_nodes(t);
-    }
-
-    /* always clear the default flag */
-    if (term->flags & LYD_DEFAULT) {
-        for (parent = term; parent; parent = lyd_parent(parent)) {
-            parent->flags &= ~LYD_DEFAULT;
-        }
-        /* make the node non-validated */
-        term->flags &= LYD_NEW;
-        dflt_change = 1;
-    } else {
-        dflt_change = 0;
-    }
-
-    /* return value */
-    if (!val_change) {
-        if (dflt_change) {
-            /* only default flag change */
-            ret = LY_EEXIST;
-        } else {
-            /* no change */
-            ret = LY_ENOT;
-        }
-    } /* else value changed, LY_SUCCESS */
-
-cleanup:
-    return ret;
+    /* change it */
+    return lyd_change_term_val(term, &val, 1, 0);
 }
 
 LIBYANG_API_DEF LY_ERR

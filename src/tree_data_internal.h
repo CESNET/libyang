@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief internal functions for YANG schema trees.
  *
- * Copyright (c) 2015 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -118,13 +118,6 @@ const struct lys_module *lyd_mod_next_module(struct lyd_node *tree, const struct
 const struct lys_module *lyd_data_next_module(struct lyd_node **next, struct lyd_node **first);
 
 /**
- * @brief Set dflt flag for a NP container if applicable, recursively for parents.
- *
- * @param[in] node Node whose criteria for the dflt flag has changed.
- */
-void lyd_cont_set_dflt(struct lyd_node *node);
-
-/**
  * @brief Search in the given siblings (NOT recursively) for the first schema node data instance.
  * Uses hashes - should be used whenever possible for best performance.
  *
@@ -146,6 +139,20 @@ LY_ERR lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lys
  * the first top-level sibling.
  */
 void lyd_del_move_root(struct lyd_node **root, const struct lyd_node *to_del, const struct lys_module *mod);
+
+/**
+ * @brief After adding a default child, check the node and all of its parent NP containers and set their dflt flag.
+ *
+ * @param[in] parent Changed first parent to check.
+ */
+void lyd_np_cont_dflt_set(struct lyd_node *parent);
+
+/**
+ * @brief After adding a non-default child, remove the dflt flag from parent and other parent NP containers.
+ *
+ * @param[in] parent Changed first parent to update.
+ */
+void lyd_np_cont_dflt_del(struct lyd_node *parent);
 
 /**
  * @brief Try to get schema node for data with a parent based on an extension instance.
@@ -343,6 +350,23 @@ LY_ERR lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANY
 LY_ERR lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_len, const char *prefix, size_t pref_len,
         const char *module_key, size_t module_key_len, const char *value, size_t value_len, ly_bool *dynamic,
         LY_VALUE_FORMAT format, void *val_prefix_data, uint32_t hints, struct lyd_node **node);
+
+/**
+ * @brief Change the value of a term (leaf or leaf-list) node.
+ *
+ * Node changed this way is always considered explicitly set, meaning its default flag
+ * is always cleared.
+ *
+ * @param[in] term Term node to change.
+ * @param[in] val New value to use.
+ * @param[in] use_val Whether @p val can be used and spent or should only be duplicated.
+ * @param[in] is_dflt Whether @p val is a default value or not.
+ * @return LY_SUCCESS if value was changed,
+ * @return LY_EEXIST if value was the same and only the default flag was cleared,
+ * @return LY_ENOT if the values were equal and no change occured,
+ * @return LY_ERR value on other errors.
+ */
+LY_ERR lyd_change_term_val(struct lyd_node *term, struct lyd_value *val, ly_bool use_val, ly_bool is_dflt);
 
 /**
  * @brief Check the existence and create any non-existing implicit children.

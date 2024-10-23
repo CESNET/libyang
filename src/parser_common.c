@@ -420,7 +420,7 @@ lyd_parser_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct 
             }
 
             /* update dflt flag for all parent NP containers */
-            lyd_cont_set_dflt(lyd_parent(node));
+            lyd_np_cont_dflt_set(lyd_parent(node));
             break;
         }
 

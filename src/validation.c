@@ -1640,7 +1640,7 @@ next_iter:
         LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
         /* set default for containers */
-        lyd_cont_set_dflt(node);
+        lyd_np_cont_dflt_set(node);
     }
 
 cleanup:
