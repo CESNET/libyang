@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Built-in types plugins and interface for user types plugins.
  *
- * Copyright (c) 2019 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2024 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -526,37 +526,18 @@ decimal:
 LIBYANG_API_DEF LY_ERR
 lyplg_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_t str_len, struct ly_err_item **err)
 {
-    int rc, match_opts;
+    LY_ERR r;
     LY_ARRAY_COUNT_TYPE u;
-    pcre2_match_data *match_data = NULL;
 
     LY_CHECK_ARG_RET(NULL, str, err, LY_EINVAL);
 
     *err = NULL;
 
     LY_ARRAY_FOR(patterns, u) {
-        /* match_data needs to be allocated each time because of possible multi-threaded evaluation */
-        match_data = pcre2_match_data_create_from_pattern(patterns[u]->code, NULL);
-        if (!match_data) {
-            return ly_err_new(err, LY_EMEM, 0, NULL, NULL, LY_EMEM_MSG);
-        }
+        r = ly_pattern_code_match(patterns[u]->code, str, str_len, err);
+        LY_CHECK_RET(r && (r != LY_ENOT), r);
 
-        match_opts = PCRE2_ANCHORED;
-#ifdef PCRE2_ENDANCHORED
-        /* PCRE2_ENDANCHORED was added in PCRE2 version 10.30 */
-        match_opts |= PCRE2_ENDANCHORED;
-#endif
-        rc = pcre2_match(patterns[u]->code, (PCRE2_SPTR)str, str_len, 0, match_opts, match_data, NULL);
-        pcre2_match_data_free(match_data);
-
-        if ((rc != PCRE2_ERROR_NOMATCH) && (rc < 0)) {
-            PCRE2_UCHAR pcre2_errmsg[LY_PCRE2_MSG_LIMIT] = {0};
-
-            pcre2_get_error_message(rc, pcre2_errmsg, LY_PCRE2_MSG_LIMIT);
-
-            return ly_err_new(err, LY_ESYS, 0, NULL, NULL, "%s", (const char *)pcre2_errmsg);
-        } else if (((rc == PCRE2_ERROR_NOMATCH) && !patterns[u]->inverted) ||
-                ((rc != PCRE2_ERROR_NOMATCH) && patterns[u]->inverted)) {
+        if (((r == LY_ENOT) && !patterns[u]->inverted) || ((r == LY_SUCCESS) && patterns[u]->inverted)) {
             char *eapptag = patterns[u]->eapptag ? strdup(patterns[u]->eapptag) : NULL;
 
             if (patterns[u]->emsg) {
@@ -569,6 +550,7 @@ lyplg_type_validate_patterns(struct lysc_pattern **patterns, const char *str, si
             }
         }
     }
+
     return LY_SUCCESS;
 }
 

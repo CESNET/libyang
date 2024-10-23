@@ -26,6 +26,10 @@
 #    include <sys/socket.h>
 #  endif
 #endif
+
+#define PCRE2_CODE_UNIT_WIDTH 8
+
+#include <pcre2.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <time.h>
@@ -2714,6 +2718,22 @@ LIBYANG_API_DECL LY_ERR lyd_leafref_get_links(const struct lyd_node_term *node, 
  * @return LY_ERR value on error.
  */
 LIBYANG_API_DECL LY_ERR lyd_leafref_link_node_tree(const struct lyd_node *tree);
+
+/**
+ * @brief Check a string matches an XML Schema regex used in YANG.
+ *
+ * @param[in] ctx Optional context for logging.
+ * @param[in] pattern Regular expression pattern to use.
+ * @param[in] string String to match.
+ * @param[in] str_len Length of @p string, may be 0 if string is 0-terminated.
+ * @param[in,out] pcode Optional pointer to PCRE2 code. If set and NULL, it is returned. If set and non-NULL, it is
+ * used directly for matching instead of compiling @p pattern. Free it using pcre2_code_free().
+ * @return LY_SUCCESS on a match;
+ * @return LY_ENOT if the string does not match;
+ * @return LY_ERR on error.
+ */
+LIBYANG_API_DECL LY_ERR ly_pattern_match(const struct ly_ctx *ctx, const char *pattern, const char *string,
+        uint32_t str_len, pcre2_code **pcode);
 
 #ifdef __cplusplus
 }

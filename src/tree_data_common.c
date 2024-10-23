@@ -33,6 +33,7 @@
 #include "parser_data.h"
 #include "plugins_exts.h"
 #include "printer_data.h"
+#include "schema_compile_node.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
@@ -1842,4 +1843,72 @@ ly_time_ts2str(const struct timespec *ts, char **str)
     }
 
     return ly_time_time2str(ts->tv_sec, ts->tv_nsec ? frac_buf : NULL, str);
+}
+
+LY_ERR
+ly_pattern_code_match(pcre2_code *pcode, const char *str, size_t str_len, struct ly_err_item **err)
+{
+    int r, match_opts;
+    pcre2_match_data *match_data = NULL;
+
+    /* match_data needs to be allocated each time because of possible multi-threaded evaluation */
+    match_data = pcre2_match_data_create_from_pattern(pcode, NULL);
+    if (!match_data) {
+        return ly_err_new(err, LY_EMEM, 0, NULL, NULL, LY_EMEM_MSG);
+    }
+
+    match_opts = PCRE2_ANCHORED;
+#ifdef PCRE2_ENDANCHORED
+    /* PCRE2_ENDANCHORED was added in PCRE2 version 10.30 */
+    match_opts |= PCRE2_ENDANCHORED;
+#endif
+    r = pcre2_match(pcode, (PCRE2_SPTR)str, str_len, 0, match_opts, match_data, NULL);
+    pcre2_match_data_free(match_data);
+
+    if ((r != PCRE2_ERROR_NOMATCH) && (r < 0)) {
+        PCRE2_UCHAR pcre2_errmsg[LY_PCRE2_MSG_LIMIT] = {0};
+
+        pcre2_get_error_message(r, pcre2_errmsg, LY_PCRE2_MSG_LIMIT);
+        return ly_err_new(err, LY_ESYS, 0, NULL, NULL, "%s", (const char *)pcre2_errmsg);
+    }
+
+    return (r == PCRE2_ERROR_NOMATCH) ? LY_ENOT : LY_SUCCESS;
+}
+
+LIBYANG_API_DEF LY_ERR
+ly_pattern_match(const struct ly_ctx *ctx, const char *pattern, const char *string, uint32_t str_len, pcre2_code **pcode)
+{
+    LY_ERR r;
+    pcre2_code *code;
+    struct ly_err_item *err = NULL;
+
+    LY_CHECK_ARG_RET(ctx, pattern || (pcode && *pcode), string, LY_EINVAL);
+
+    if (pcode && *pcode) {
+        /* use precompiled pattern */
+        code = *pcode;
+    } else {
+        /* compile the pattern */
+        LY_CHECK_RET(lys_compile_type_pattern_check(ctx, pattern, &code));
+    }
+
+    /* match */
+    if (!str_len) {
+        str_len = strlen(string);
+    }
+    r = ly_pattern_code_match(code, string, str_len, &err);
+    if (r && (r != LY_ENOT)) {
+        if (ctx) {
+            ly_err_print(ctx, err);
+        }
+        ly_err_free(err);
+        return r;
+    }
+
+    if (pcode && !*pcode) {
+        *pcode = code;
+    } else if (!pcode || !*pcode) {
+        pcre2_code_free(code);
+    }
+    return r;
 }

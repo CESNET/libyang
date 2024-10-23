@@ -761,4 +761,17 @@ LY_ERR lyd_unlink_leafref_node(const struct lyd_node_term *node, const struct ly
  */
 void lyd_unlink_ignore_lyds(struct lyd_node **first_sibling, struct lyd_node *node);
 
+/**
+ * @brief Check a string matches a compiled pattern.
+ *
+ * @param[in] pcode Compiled pattern.
+ * @param[in] str String to match.
+ * @param[in] str_len Length of @p str.
+ * @param[out] err Error, if generated.
+ * @return LY_SUCCESS on a match;
+ * @return LY_ENOT if the string does not match;
+ * @return LY_ERR on error.
+ */
+LY_ERR ly_pattern_code_match(pcre2_code *pcode, const char *str, size_t str_len, struct ly_err_item **err);
+
 #endif /* LY_TREE_DATA_INTERNAL_H_ */

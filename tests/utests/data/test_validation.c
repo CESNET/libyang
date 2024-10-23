@@ -1546,6 +1546,20 @@ test_case(void **state)
     CHECK_LOG_CTX("Data for both cases \"v0\" and \"v2\" exist.", "/k:ch", 6);
 }
 
+static void
+test_pattern(void **UNUSED(state))
+{
+    pcre2_code *pcode = NULL;
+
+    assert_int_equal(ly_pattern_match(NULL, "a.b.c", "abc", 0, NULL), LY_ENOT);
+    assert_int_equal(ly_pattern_match(NULL, "a.b.c", "a0b1c", 0, NULL), LY_SUCCESS);
+
+    assert_int_equal(ly_pattern_match(NULL, "a.b.c", "abc", 0, &pcode), LY_ENOT);
+    assert_int_equal(ly_pattern_match(NULL, NULL, "a0b1c", 0, &pcode), LY_SUCCESS);
+
+    pcre2_code_free(pcode);
+}
+
 int
 main(void)
 {
@@ -1567,6 +1581,7 @@ main(void)
         UTEST(test_rpc),
         UTEST(test_reply),
         UTEST(test_case),
+        UTEST(test_pattern),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
