@@ -1244,7 +1244,7 @@ lys_compile_pattern_chblocks_xmlschema2perl(const struct ly_ctx *ctx, const char
 }
 
 LY_ERR
-lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, pcre2_code **code)
+lys_compile_type_pattern_check(const struct ly_ctx *ctx, const char *pattern, pcre2_code **code)
 {
     size_t idx, size, brack;
     char *perl_regex;
@@ -1357,7 +1357,7 @@ lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, pcre2_co
     if (code) {
         *code = code_local;
     } else {
-        free(code_local);
+        pcre2_code_free(code_local);
     }
 
     return LY_SUCCESS;
