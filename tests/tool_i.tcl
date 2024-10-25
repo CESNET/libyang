@@ -135,8 +135,7 @@ proc ly_completion {input output} {
     global prompt
 
     send -- "${input}\t"
-    # expecting echoing input, output and 10 terminal control characters
-    expect -re "^${input}\r${prompt}${output}.*\r.*$"
+    expect -re "${input}${output}"
 }
 
 # Send a completion request and check if the anchored regex hint options match.
@@ -146,11 +145,13 @@ proc ly_hint {input prev_input hints} {
     set output {}
     foreach i $hints {
         # each element might have some number of spaces and CRLF around it
-        append output "${i} *(?:\\r\\n)?"
+        append output "${i} *(\\r\\n)?"
     }
+    set termcode1 "\r\\u001b\\\[0K"
+    set termcode2 ".*"
 
     send -- "${input}\t"
     # expecting the hints, previous input from which the hints were generated
     # and some number of terminal control characters
-    expect -re "${output}\r${prompt}${prev_input}.*\r.*$"
+    expect -re "${output}${termcode1}${prompt}${prev_input}${termcode2}"
 }

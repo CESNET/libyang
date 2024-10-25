@@ -12,14 +12,15 @@ test completion_hints_ietf_ip {Completion and hints for ietf-ip.yang} {
     ly_cmd "add $mdir/ietf-ip.yang"
 
     # completion and hint
-    ly_completion "print -f info -P " "print -f info -P /ietf-"
+    ly_completion "print -f info -P " "/ietf-"
 
     set hints {"/ietf-yang-schema-mount:schema-mounts" "/ietf-interfaces:interfaces" "/ietf-interfaces:interfaces-state"}
     ly_hint "" "print -f info -P /ietf-" $hints
 
     # double completion
-    ly_completion "i" "print -f info -P /ietf-interfaces:interfaces"
-    ly_completion "/" "print -f info -P /ietf-interfaces:interfaces/interface"
+    ly_completion "i" "nterfaces:interfaces"
+    ly_completion "/" "interface"
+    # current cli: print -f info -P /ietf-interfaces:interfaces/interface
 
     # a lot of hints
     set hints {"/ietf-interfaces:interfaces/interface"
@@ -31,16 +32,20 @@ test completion_hints_ietf_ip {Completion and hints for ietf-ip.yang} {
     ly_hint "" "print -f info -P /ietf-interfaces:interfaces/interface" $hints
 
     # double tab
-    ly_completion "/i" "print -f info -P /ietf-interfaces:interfaces/interface/ietf-ip:ipv"
-    ly_completion "4" "print -f info -P /ietf-interfaces:interfaces/interface/ietf-ip:ipv4"
+    ly_completion "/i" "etf-ip:ipv"
+    # current cli: print -f info -P /ietf-interfaces:interfaces/interface/ietf-ip:ipv
+    ly_completion "4" ""
+    # current cli: print -f info -P /ietf-interfaces:interfaces/interface/ietf-ip:ipv4
+
     set hints { "/ietf-interfaces:interfaces/interface/ietf-ip:ipv4" "/ietf-interfaces:interfaces/interface/ietf-ip:ipv4/enabled"
         "/ietf-interfaces:interfaces/interface/ietf-ip:ipv4/forwarding" "/ietf-interfaces:interfaces/interface/ietf-ip:ipv4/mtu"
         "/ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address" "/ietf-interfaces:interfaces/interface/ietf-ip:ipv4/neighbor"
     }
-    ly_hint "\t" "print -f info -P /ietf-interfaces:interfaces/interface/ietf-ip:ipv" $hints
+    ly_hint "\t" "print -f info -P /ietf-interfaces:interfaces/interface" $hints
 
     # no more completion
-    ly_completion "/e" "print -f info -P /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/enabled "
+    ly_completion "/e" "nabled "
+    # current cli: print -f info -P /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/enabled
 }}
 
 # Note that somehow a command is automatically sent again (\t\t replaced by \r) after the hints.

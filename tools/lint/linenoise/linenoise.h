@@ -62,10 +62,12 @@ struct linenoiseState {
     size_t plen;        /* Prompt length. */
     size_t pos;         /* Current cursor position. */
     size_t oldcolpos;   /* Previous refresh cursor column position. */
+    size_t oldcollen;   /* Previous length of buffer. */
     size_t len;         /* Current edited line length. */
     size_t cols;        /* Number of columns in terminal. */
     size_t oldrows;     /* Rows used by last refrehsed line (multiline mode) */
     int history_index;  /* The history index we are currently editing. */
+    int prev_history_index; /* Previous history index. */
 };
 
 typedef struct linenoiseCompletions {

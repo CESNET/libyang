@@ -55,6 +55,7 @@ main(int argc, char *argv[])
     /* continue in interactive mode */
     linenoiseSetCompletionCallback(complete_cmd);
     linenoiseSetEncodingFunctions(linenoiseUtf8PrevCharLen, linenoiseUtf8NextCharLen, linenoiseUtf8ReadCode);
+    linenoiseSetMultiLine(1);
     load_config();
 
     if (ly_ctx_new(NULL, YL_DEFAULT_CTX_OPTIONS, &ctx)) {
