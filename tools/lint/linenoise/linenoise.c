@@ -245,11 +245,12 @@ static size_t columnPos(const char *buf, size_t buf_len, size_t pos) {
 static size_t columnPosForMultiLine(const char *buf, size_t buf_len, size_t pos, size_t cols, size_t ini_pos) {
     size_t ret = 0;
     size_t colwid = ini_pos;
+    size_t len;
 
     size_t off = 0;
     while (off < buf_len) {
         size_t col_len;
-        size_t len = nextCharLen(buf,buf_len,off,&col_len);
+        len = nextCharLen(buf,buf_len,off,&col_len);
 
         int dif = (int)(colwid + col_len) - (int)cols;
         if (dif > 0) {
@@ -799,7 +800,7 @@ static void refreshSingleLine(struct linenoiseState *l, int flags) {
 static void refreshMultiLine(struct linenoiseState *l, int flags) {
     char seq[64];
     size_t pcollen = promptTextColumnLen(l->prompt,strlen(l->prompt));
-    int colpos = columnPosForMultiLine(l->buf, l->len, l->len, l->cols, pcollen);
+    size_t colpos = columnPosForMultiLine(l->buf, l->len, l->len, l->cols, pcollen);
     int colpos2; /* cursor column position. */
     int rows = (pcollen+colpos+l->cols-1)/l->cols; /* rows used by current buf. */
     int rpos = (pcollen+l->oldcolpos+l->cols)/l->cols; /* cursor relative row. */
@@ -814,6 +815,23 @@ static void refreshMultiLine(struct linenoiseState *l, int flags) {
     /* First step: clear all the lines used before. To do so start by
      * going to the last row. */
     abInit(&ab);
+
+    if ((l->oldcollen < l->len) && // some character was added
+            (l->pos == l->len) && // at the end of the line
+            (l->pos <= l->cols) && // no multiline break
+            (l->prev_history_index == l->history_index) // no buffer change based on history
+            ) {
+        /* Ignore flags and just add one character.
+         * This code was added because redundant ANSI escape codes make tcl-tests incapable.
+         */
+        abAppend(&ab,l->buf + l->oldcollen,strlen(l->buf) - l->oldcollen);
+        l->oldcolpos = colpos;
+        l->oldcollen = l->len;
+        if (write(fd,ab.b,ab.len) == -1) {} /* Can't recover from write error. */
+        abFree(&ab);
+        l->prev_history_index = l->history_index;
+        return;
+    }
 
     if (flags & REFRESH_CLEAN) {
         if (old_rows-rpos > 0) {
@@ -890,6 +908,8 @@ static void refreshMultiLine(struct linenoiseState *l, int flags) {
 
     lndebug("\n");
     l->oldcolpos = colpos2;
+    l->oldcollen = l->len;
+    l->prev_history_index = l->history_index;
 
     if (write(fd,ab.b,ab.len) == -1) {} /* Can't recover from write error. */
     abFree(&ab);
@@ -1096,6 +1116,7 @@ int linenoiseEditStart(struct linenoiseState *l, int stdin_fd, int stdout_fd, ch
     l->prompt = prompt;
     l->plen = strlen(prompt);
     l->oldcolpos = l->pos = 0;
+    l->oldcollen = 0;
     l->len = 0;
 
     /* Enter raw mode. */
@@ -1104,6 +1125,7 @@ int linenoiseEditStart(struct linenoiseState *l, int stdin_fd, int stdout_fd, ch
     l->cols = getColumns(stdin_fd, stdout_fd);
     l->oldrows = 0;
     l->history_index = 0;
+    l->prev_history_index = 0;
 
     /* Buffer starts empty. */
     l->buf[0] = '\0';
