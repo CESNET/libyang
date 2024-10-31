@@ -409,13 +409,21 @@ enum lyd_type {
  *   - @p op - must be NULL, @p parent points to the operation;
  *   Note that error reply should be parsed as 'yang-data' extension data.
  *
+ * - ::LYD_TYPE_RPC_YANG:
+ * - ::LYD_TYPE_NOTIF_YANG:
+ * - ::LYD_TYPE_REPLY_YANG:
+ *   - all the parameters have their default meaning.
+ *
+ * - :: LYD_TYPE_DATA_YANG:
+ *   - not accepted by the function.
+ *
  * @param[in] ctx libyang context.
  * @param[in] parent Optional parent to connect the parsed nodes to.
  * @param[in] in Input handle to read the input from.
  * @param[in] format Expected format of the data in @p in.
  * @param[in] data_type Expected operation to parse (@ref datatype).
  * @param[out] tree Optional full parsed data tree. If @p parent is set, set to NULL.
- * @param[out] op Optional pointer to the operation (action/RPC) node.
+ * @param[out] op Optional pointer to the operation (action/RPC/notification) node.
  * @return LY_ERR value.
  * @return LY_ENOT if @p data_type is a NETCONF message and the root XML element is not the expected one.
  */
