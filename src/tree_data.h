@@ -2735,6 +2735,17 @@ LIBYANG_API_DECL LY_ERR lyd_leafref_link_node_tree(const struct lyd_node *tree);
 LIBYANG_API_DECL LY_ERR ly_pattern_match(const struct ly_ctx *ctx, const char *pattern, const char *string,
         uint32_t str_len, pcre2_code **pcode);
 
+/**
+ * @brief Compile an XML Schema regex pattern prior to matching.
+ *
+ * @param[in] ctx Optional context for storing errors.
+ * @param[in] pattern Regular expression pattern to use.
+ * @param[out] pcode Compiled @p pattern to be used by ::ly_pattern_match(). Free it using pcre2_code_free().
+ * @return LY_SUCCESS on success;
+ * @return LY_ERR on error.
+ */
+LIBYANG_API_DECL LY_ERR ly_pattern_compile(const struct ly_ctx *ctx, const char *pattern, pcre2_code **pcode);
+
 #ifdef __cplusplus
 }
 #endif

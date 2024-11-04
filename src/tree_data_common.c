@@ -1910,3 +1910,14 @@ ly_pattern_match(const struct ly_ctx *ctx, const char *pattern, const char *stri
     }
     return r;
 }
+
+LIBYANG_API_DEF LY_ERR
+ly_pattern_compile(const struct ly_ctx *ctx, const char *pattern, pcre2_code **pcode)
+{
+    LY_CHECK_ARG_RET(ctx, pattern, pcode, LY_EINVAL);
+
+    *pcode = NULL;
+
+    /* compile the pattern */
+    return lys_compile_type_pattern_check(ctx, pattern, pcode);
+}
