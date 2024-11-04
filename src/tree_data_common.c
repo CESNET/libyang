@@ -1898,9 +1898,7 @@ ly_pattern_match(const struct ly_ctx *ctx, const char *pattern, const char *stri
     }
     r = ly_pattern_code_match(code, string, str_len, &err);
     if (r && (r != LY_ENOT)) {
-        if (ctx) {
-            ly_err_print(ctx, err);
-        }
+        ly_err_print(ctx, err);
         ly_err_free(err);
         return r;
     }

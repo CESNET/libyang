@@ -2722,7 +2722,7 @@ LIBYANG_API_DECL LY_ERR lyd_leafref_link_node_tree(const struct lyd_node *tree);
 /**
  * @brief Check a string matches an XML Schema regex used in YANG.
  *
- * @param[in] ctx Optional context for logging.
+ * @param[in] ctx Optional context for storing errors.
  * @param[in] pattern Regular expression pattern to use.
  * @param[in] string String to match.
  * @param[in] str_len Length of @p string, may be 0 if string is 0-terminated.
