@@ -12,6 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 #define _GNU_SOURCE /* asprintf, strdup */
+#define _DEFAULT_SOURCE /* fmodl */
 
 #include "xpath.h"
 
@@ -7475,7 +7476,7 @@ moveto_op_math(struct lyxp_set *set1, struct lyxp_set *set2, const char *op)
 
     /* 'mod' */
     case 'm':
-        set1->val.num = ((long long)set1->val.num) % ((long long)set2->val.num);
+        set1->val.num = fmodl(set1->val.num, set2->val.num);
         break;
 
     default:
