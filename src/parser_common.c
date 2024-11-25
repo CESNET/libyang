@@ -321,7 +321,7 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
         void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node)
 {
     LY_ERR rc = LY_SUCCESS;
-    char *dpath = NULL, *path = NULL;
+    char *path = NULL;
     ly_bool incomplete;
     struct lyd_meta *first = NULL;
     ly_bool store_only = (lydctx->parse_opts & LYD_PARSE_STORE_ONLY) == LYD_PARSE_STORE_ONLY ? 1 : 0;
@@ -332,8 +332,7 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
     }
 
     /* generate path to the metadata */
-    LY_CHECK_RET(ly_vlog_build_data_path(lydctx->data_ctx->ctx, &dpath));
-    if (asprintf(&path, "%s/@%s:%.*s", dpath, mod->name, (int)name_len, name) == -1) {
+    if (asprintf(&path, "/@%s:%.*s", mod->name, (int)name_len, name) == -1) {
         LOGMEM(lydctx->data_ctx->ctx);
         rc = LY_EMEM;
         goto cleanup;
@@ -354,7 +353,6 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
 
 cleanup:
     ly_log_location_revert(0, 0, 1, 0);
-    free(dpath);
     free(path);
     return rc;
 }

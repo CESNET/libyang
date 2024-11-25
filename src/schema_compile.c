@@ -1056,11 +1056,9 @@ lys_compile_unres_llist_dflts(struct lysc_ctx *ctx, struct lysc_node_leaflist *l
         for (u = orig_count; u < LY_ARRAY_COUNT(llist->dflts); ++u) {
             for (v = 0; v < u; ++v) {
                 if (!llist->dflts[u]->realtype->plugin->compare(ctx->ctx, llist->dflts[u], llist->dflts[v])) {
-                    lysc_update_path(ctx, llist->parent ? llist->parent->module : NULL, llist->name);
                     LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Configuration leaf-list has multiple defaults of the same value \"%s\".",
                             (char *)llist->dflts[u]->realtype->plugin->print(ctx->ctx, llist->dflts[u], LY_VALUE_CANON,
                             NULL, NULL, NULL));
-                    lysc_update_path(ctx, NULL, NULL);
                     return LY_EVALID;
                 }
             }

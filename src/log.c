@@ -381,19 +381,19 @@ ly_get_log_clb(void)
 }
 
 void
-ly_log_location(const struct lysc_node *scnode, const struct lyd_node *dnode, const char *spath, const struct ly_in *in)
+ly_log_location(const struct lysc_node *scnode, const struct lyd_node *dnode, const char *path, const struct ly_in *in)
 {
     if (scnode) {
         ly_set_add(&log_location.scnodes, (void *)scnode, 1, NULL);
     }
-    if (dnode || (!scnode && !spath && !in)) {
+    if (dnode || (!scnode && !path && !in)) {
         ly_set_add(&log_location.dnodes, (void *)dnode, 1, NULL);
     }
-    if (spath) {
-        char *s = strdup(spath);
+    if (path) {
+        char *s = strdup(path);
 
         LY_CHECK_ERR_RET(!s, LOGMEM(NULL), );
-        ly_set_add(&log_location.spaths, s, 1, NULL);
+        ly_set_add(&log_location.paths, s, 1, NULL);
     }
     if (in) {
         ly_set_add(&log_location.inputs, (void *)in, 1, NULL);
@@ -401,7 +401,7 @@ ly_log_location(const struct lysc_node *scnode, const struct lyd_node *dnode, co
 }
 
 void
-ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_t spath_steps, uint32_t in_steps)
+ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_t path_steps, uint32_t in_steps)
 {
     for (uint32_t i = scnode_steps; i && log_location.scnodes.count; i--) {
         log_location.scnodes.count--;
@@ -411,8 +411,8 @@ ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_t spa
         log_location.dnodes.count--;
     }
 
-    for (uint32_t i = spath_steps; i && log_location.spaths.count; i--) {
-        ly_set_rm_index(&log_location.spaths, log_location.spaths.count - 1, free);
+    for (uint32_t i = path_steps; i && log_location.paths.count; i--) {
+        ly_set_rm_index(&log_location.paths, log_location.paths.count - 1, free);
     }
 
     for (uint32_t i = in_steps; i && log_location.inputs.count; i--) {
@@ -426,8 +426,8 @@ ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_t spa
     if (dnode_steps && !log_location.dnodes.count) {
         ly_set_erase(&log_location.dnodes, NULL);
     }
-    if (spath_steps && !log_location.spaths.count) {
-        ly_set_erase(&log_location.spaths, free);
+    if (path_steps && !log_location.paths.count) {
+        ly_set_erase(&log_location.paths, free);
     }
     if (in_steps && !log_location.inputs.count) {
         ly_set_erase(&log_location.inputs, NULL);
@@ -808,21 +808,38 @@ cleanup:
 static LY_ERR
 ly_vlog_build_path_line(const struct ly_ctx *ctx, char **data_path, char **schema_path, uint64_t *line)
 {
+    int r;
+    char *path;
+
     *data_path = NULL;
     *schema_path = NULL;
     *line = 0;
 
-    if (log_location.spaths.count && ((const char *)(log_location.spaths.objs[log_location.spaths.count - 1]))[0]) {
-        /* simply get what is in the provided path string */
-        *schema_path = strdup(log_location.spaths.objs[log_location.spaths.count - 1]);
+    /* data/schema node */
+    if (log_location.dnodes.count) {
+        LY_CHECK_RET(ly_vlog_build_data_path(ctx, data_path));
+    } else if (log_location.scnodes.count) {
+        *schema_path = lysc_path(log_location.scnodes.objs[log_location.scnodes.count - 1], LYSC_PATH_LOG, NULL, 0);
         LY_CHECK_ERR_RET(!*schema_path, LOGMEM(ctx), LY_EMEM);
-    } else {
-        /* data/schema node */
-        if (log_location.dnodes.count) {
-            LY_CHECK_RET(ly_vlog_build_data_path(ctx, data_path));
-        } else if (log_location.scnodes.count) {
-            *schema_path = lysc_path(log_location.scnodes.objs[log_location.scnodes.count - 1], LYSC_PATH_LOG, NULL, 0);
-            LY_CHECK_ERR_RET(!*schema_path, LOGMEM(ctx), LY_EMEM);
+    }
+
+    if (log_location.paths.count && ((const char *)(log_location.paths.objs[log_location.paths.count - 1]))[0]) {
+        /* append the provided path string to data/schema path, if any */
+        if (*data_path) {
+            r = asprintf(&path, "%s%s", *data_path, (char *)log_location.paths.objs[log_location.paths.count - 1]);
+        } else if (*schema_path) {
+            r = asprintf(&path, "%s%s", *schema_path, (char *)log_location.paths.objs[log_location.paths.count - 1]);
+        } else {
+            r = asprintf(&path, "%s", (char *)log_location.paths.objs[log_location.paths.count - 1]);
+        }
+        LY_CHECK_ERR_RET(r == -1, LOGMEM(ctx), LY_EMEM);
+
+        if (*data_path) {
+            free(*data_path);
+            *data_path = path;
+        } else {
+            free(*schema_path);
+            *schema_path = path;
         }
     }
 

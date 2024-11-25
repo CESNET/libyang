@@ -75,7 +75,7 @@ struct ly_log_location_s {
     struct ly_set inputs;            /**< Set of const struct ly_in *in pointers providing the input handler with the line information (LIFO) */
     struct ly_set scnodes;           /**< Set of const struct lysc_node *scnode pointers providing the compiled schema node to generate path (LIFO) */
     struct ly_set dnodes;            /**< Set of const struct lyd_node *dnode pointers providing the data node to generate path (LIFO) */
-    struct ly_set spaths;            /**< Set of schema path strings (LIFO) */
+    struct ly_set paths;             /**< Set of path strings (LIFO) */
 };
 
 /**
@@ -122,21 +122,21 @@ void ly_err_move(struct ly_ctx *src_ctx, struct ly_ctx *trg_ctx);
  *
  * @param[in] scnode Compiled schema node.
  * @param[in] dnode Data node.
- * @param[in] spath Direct schema path string to print.
+ * @param[in] path Direct path string to append and print.
  * @param[in] in Input handler (providing line number).
  */
 void ly_log_location(const struct lysc_node *scnode, const struct lyd_node *dnode,
-        const char *spath, const struct ly_in *in);
+        const char *path, const struct ly_in *in);
 
 /**
  * @brief Revert the specific logger location data by number of changes made by ::ly_log_location().
  *
  * @param[in] scnode_steps Number of items in ::ly_log_location_s.scnodes to forget.
  * @param[in] dnode_steps Number of items in ::ly_log_location_s.dnodes to forget.
- * @param[in] spath_steps Number of path strings in ::ly_log_location_s.spaths to forget.
+ * @param[in] path_steps Number of path strings in ::ly_log_location_s.paths to forget.
  * @param[in] in_steps Number of input handlers ::ly_log_location_s.inputs to forget.
  */
-void ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_t spath_steps, uint32_t in_steps);
+void ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_t path_steps, uint32_t in_steps);
 
 /**
  * @brief Get the stored data node for logging at the index.
