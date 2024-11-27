@@ -534,6 +534,18 @@ cleanup:
 }
 
 /**
+ * @brief Compare callback for finding duplicates in hash table.
+ *
+ * Implementation of ::lyht_value_equal_cb.
+ */
+static ly_bool
+lyd_val_dup_val_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *cb_data)
+{
+    /* always find the same instance, not the exact same pointer (set mod = 0) */
+    return lyd_hash_table_val_equal(val1_p, val2_p, 0, cb_data);
+}
+
+/**
  * @brief Validate instance duplication.
  *
  * @param[in] first First sibling to search in.
@@ -544,7 +556,6 @@ cleanup:
 static LY_ERR
 lyd_validate_duplicates(const struct lyd_node *first, const struct lyd_node *node, uint32_t val_opts)
 {
-    struct lyd_node **match_p, *match;
     ly_bool fail = 0;
 
     assert(node->flags & LYD_NEW);
@@ -557,12 +568,9 @@ lyd_validate_duplicates(const struct lyd_node *first, const struct lyd_node *nod
 
     /* find exactly the same next instance using hashes if possible */
     if (node->parent && node->parent->children_ht) {
-        lyd_find_sibling_first(first, node, &match);
-        assert(match);
-
-        if (match != node) {
-            fail = 1;
-        } else if (!lyht_find_next(node->parent->children_ht, &node, node->hash, (void **)&match_p)) {
+        /* because of the callback used, an instance must always be found (pointer may or may not be equal to node),
+         * so if we find another instance, there is a duplicate */
+        if (!lyht_find_next_with_collision_cb(node->parent->children_ht, &node, node->hash, lyd_val_dup_val_equal, NULL)) {
             fail = 1;
         }
     } else {

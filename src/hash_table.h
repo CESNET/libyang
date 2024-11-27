@@ -163,13 +163,14 @@ LIBYANG_API_DECL LY_ERR lyht_find_next(const struct ly_ht *ht, void *val_p, uint
  * @param[in] ht Hash table to search in.
  * @param[in] val_p Pointer to the previously found value in @p ht.
  * @param[in] hash Hash of the previously found value.
- * @param[in] collision_val_equal Val equal callback to use for checking collisions.
+ * @param[in] val_equal Callback for checking value equivalence. Called with @p mod 1 when searching for the first value
+ * and then uses @p mod 0 to check all the following collisions.
  * @param[out] match_p Pointer to the matching value, optional.
  * @return LY_SUCCESS if value was found,
  * @return LY_ENOTFOUND if not found.
  */
 LIBYANG_API_DECL LY_ERR lyht_find_next_with_collision_cb(const struct ly_ht *ht, void *val_p, uint32_t hash,
-        lyht_value_equal_cb collision_val_equal, void **match_p);
+        lyht_value_equal_cb val_equal, void **match_p);
 
 /**
  * @brief Insert a value into a hash table.

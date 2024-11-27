@@ -71,6 +71,18 @@ lyb_ptr_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(c
 }
 
 /**
+ * @brief Hash table equal callback for checking collisions.
+ *
+ * Implementation of ::lyht_value_equal_cb.
+ */
+static ly_bool
+lyb_col_equal_cb(void *val1_p, void *val2_p, ly_bool mod, void *cb_data)
+{
+    /* for first value check use lyb_ptr_equal_cb, for collisions lyb_hash_equal_cb */
+    return mod ? lyb_ptr_equal_cb(val1_p, val2_p, mod, cb_data) : lyb_hash_equal_cb(val1_p, val2_p, mod, cb_data);
+}
+
+/**
  * @brief Check that sibling collision hash is safe to insert into hash table.
  *
  * @param[in] ht Hash table.
@@ -91,7 +103,6 @@ lyb_hash_sequence_check(struct ly_ht *ht, struct lysc_node *sibling, LYB_HASH ht
         return LY_SUCCESS;
     }
 
-    lyht_set_cb(ht, lyb_ptr_equal_cb);
     do {
         int64_t j;
 
@@ -103,15 +114,13 @@ lyb_hash_sequence_check(struct ly_ht *ht, struct lysc_node *sibling, LYB_HASH ht
         }
         if (j == -1) {
             /* all whole hash sequences of nodes inserted with last hash col ID compare_col_id collide */
-            lyht_set_cb(ht, lyb_hash_equal_cb);
             return LY_EEXIST;
         }
 
         /* get next node inserted with last hash col ID ht_col_id */
-    } while (!lyht_find_next_with_collision_cb(ht, col_node, lyb_get_hash(*col_node, ht_col_id), lyb_hash_equal_cb,
+    } while (!lyht_find_next_with_collision_cb(ht, col_node, lyb_get_hash(*col_node, ht_col_id), lyb_col_equal_cb,
             (void **)&col_node));
 
-    lyht_set_cb(ht, lyb_hash_equal_cb);
     return LY_SUCCESS;
 }
 

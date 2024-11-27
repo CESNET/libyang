@@ -309,14 +309,14 @@ lyht_find_with_val_cb(const struct ly_ht *ht, void *val_p, uint32_t hash, lyht_v
 
 LIBYANG_API_DEF LY_ERR
 lyht_find_next_with_collision_cb(const struct ly_ht *ht, void *val_p, uint32_t hash,
-        lyht_value_equal_cb collision_val_equal, void **match_p)
+        lyht_value_equal_cb val_equal, void **match_p)
 {
     struct ly_ht_rec *rec;
     uint32_t rec_idx;
     uint32_t i;
 
     /* find the record of the previously found value */
-    if (lyht_find_rec(ht, val_p, hash, 1, ht->val_equal, &i, &rec)) {
+    if (lyht_find_rec(ht, val_p, hash, 1, val_equal ? val_equal : ht->val_equal, &i, &rec)) {
         /* not found, cannot happen */
         LOGINT_RET(NULL);
     }
@@ -329,8 +329,8 @@ lyht_find_next_with_collision_cb(const struct ly_ht *ht, void *val_p, uint32_t h
             continue;
         }
 
-        if (collision_val_equal) {
-            if (collision_val_equal(val_p, &rec->val, 0, ht->cb_data)) {
+        if (val_equal) {
+            if (val_equal(val_p, &rec->val, 0, ht->cb_data)) {
                 /* even the value matches */
                 if (match_p) {
                     *match_p = rec->val;
