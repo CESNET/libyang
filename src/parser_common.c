@@ -54,6 +54,7 @@
 #include "tree_data_internal.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "validation.h"
 
 void
 lyd_ctx_free(struct lyd_ctx *lydctx)
@@ -63,6 +64,7 @@ lyd_ctx_free(struct lyd_ctx *lydctx)
     ly_set_erase(&lydctx->node_when, NULL);
     ly_set_erase(&lydctx->ext_node, free);
     ly_set_erase(&lydctx->ext_val, free);
+    lyd_val_getnext_ht_free(lydctx->val_getnext_ht);
 }
 
 LY_ERR
@@ -440,6 +442,37 @@ lyd_parser_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct 
     }
 
     return LY_SUCCESS;
+}
+
+LY_ERR
+lyd_parser_validate_new_implicit(struct lyd_ctx *lydctx, struct lyd_node *node)
+{
+    LY_ERR r, rc = LY_SUCCESS;
+
+    if (lyd_owner_module(node) != lydctx->val_getnext_ht_mod) {
+        /* free any previous getnext HT */
+        lyd_val_getnext_ht_free(lydctx->val_getnext_ht);
+
+        /* create the getnext HT for this module */
+        r = lyd_val_getnext_ht_new(&lydctx->val_getnext_ht);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+
+        lydctx->val_getnext_ht_mod = lyd_owner_module(node);
+    }
+
+    /* new node validation, autodelete CANNOT occur (it can if multi-error), all nodes are new */
+    r = lyd_validate_new(lyd_node_child_p(node), node->schema, NULL, lydctx->val_opts, lydctx->int_opts,
+            lydctx->val_getnext_ht, NULL);
+    LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+
+    /* add any missing default children */
+    r = lyd_new_implicit_r(node, lyd_node_child_p(node), NULL, NULL, &lydctx->node_when, &lydctx->node_types,
+            &lydctx->ext_node, (lydctx->val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0,
+            lydctx->val_getnext_ht, NULL);
+    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+
+cleanup:
+    return rc;
 }
 
 void

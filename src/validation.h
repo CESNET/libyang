@@ -28,6 +28,43 @@ struct lys_module;
 struct lysc_node;
 
 /**
+ * @brief Cached getnext schema nodes stored in a validation HT.
+ */
+struct lyd_val_getnext {
+    const struct lysc_node *sparent;    /**< schema parent, NULL for top-level nodes */
+    const struct lysc_node **snodes;    /**< array of schema node children excluding choices terminated by NULL */
+    const struct lysc_node **choices;   /**< array of choice schema node children terminated by NULL */
+};
+
+/**
+ * @brief Create a getnext cached schema node validation HT.
+ *
+ * @param[out] getnext_ht_p Created getnext HT.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_val_getnext_ht_new(struct ly_ht **getnext_ht_p);
+
+/**
+ * @brief Free a getnext cached schema node validation HT.
+ *
+ * @param[in] getnext_ht Getnext HT to free.
+ */
+void lyd_val_getnext_ht_free(struct ly_ht *getnext_ht);
+
+/**
+ * @brief Get the schema children of a schema parent.
+ *
+ * @param[in] sparent Schema parent to use.
+ * @param[in] mod Module to use.
+ * @param[in] output Whether to traverse operation output instead of input nodes.
+ * @param[in,out] getnext_ht Getnext HT to use, new @p sparent is added to it.
+ * @param[out] getnext_p Filled getnext structure.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_val_getnext_get(const struct lysc_node *sparent, const struct lys_module *mod, ly_bool output,
+        struct ly_ht *getnext_ht, const struct lyd_val_getnext **getnext_p);
+
+/**
  * @brief Add new changes into a diff. They are always merged.
  *
  * @param[in] node Node/subtree to add.
@@ -70,11 +107,13 @@ LY_ERR lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, 
  * @param[in] sparent Schema parent of the siblings, NULL for top-level siblings.
  * @param[in] mod Module of the siblings, NULL for nested siblings.
  * @param[in] val_opts Validation options.
+ * @param[in] int_opts Internal parser options.
+ * @param[in,out] getnext_ht Getnext HT to use, new @p sparent is added to it.
  * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const struct lys_module *mod,
-        uint32_t val_opts, struct lyd_node **diff);
+        uint32_t val_opts, uint32_t int_opts, struct ly_ht *getnext_ht, struct lyd_node **diff);
 
 /**
  * @brief Validate data node with an extension instance, if any, by storing it in its unres set.

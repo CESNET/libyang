@@ -1079,29 +1079,21 @@ lyb_create_term(struct lyd_lyb_ctx *lybctx, const struct lysc_node *snode, struc
  * @brief Validate inner node, autodelete default values nad create implicit nodes.
  *
  * @param[in,out] lybctx LYB context.
- * @param[in] snode Schema of the inner node.
  * @param[in] node Parsed inner node.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_validate_node_inner(struct lyd_lyb_ctx *lybctx, const struct lysc_node *snode, struct lyd_node *node)
+lyb_validate_node_inner(struct lyd_lyb_ctx *lybctx, struct lyd_node *node)
 {
-    LY_ERR ret = LY_SUCCESS;
-    uint32_t impl_opts;
+    LY_ERR rc = LY_SUCCESS;
 
     if (!(lybctx->parse_opts & LYD_PARSE_ONLY)) {
-        /* new node validation, autodelete CANNOT occur, all nodes are new */
-        ret = lyd_validate_new(lyd_node_child_p(node), snode, NULL, 0, NULL);
-        LY_CHECK_RET(ret);
-
-        /* add any missing default children */
-        impl_opts = (lybctx->val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0;
-        ret = lyd_new_implicit_r(node, lyd_node_child_p(node), NULL, NULL, &lybctx->node_when, &lybctx->node_types,
-                &lybctx->ext_node, impl_opts, NULL);
-        LY_CHECK_RET(ret);
+        /* new node validation */
+        rc = lyd_parser_validate_new_implicit((struct lyd_ctx *)lybctx, node);
+        LY_CHECK_RET(rc);
     }
 
-    return ret;
+    return rc;
 }
 
 /**
@@ -1324,7 +1316,7 @@ lyb_parse_node_inner(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const 
     LY_CHECK_GOTO(ret, error);
 
     /* additional procedure for inner node */
-    ret = lyb_validate_node_inner(lybctx, snode, node);
+    ret = lyb_validate_node_inner(lybctx, node);
     LY_CHECK_GOTO(ret, error);
 
     if (snode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
@@ -1463,7 +1455,7 @@ lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
         LY_CHECK_GOTO(ret, error);
 
         /* additional procedure for inner node */
-        ret = lyb_validate_node_inner(lybctx, snode, node);
+        ret = lyb_validate_node_inner(lybctx, node);
         LY_CHECK_GOTO(ret, error);
 
         if (snode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) {

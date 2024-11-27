@@ -84,6 +84,8 @@ struct lyd_ctx {
     struct ly_set ext_node;        /**< set of nodes with extension instances to validate */
     struct ly_set ext_val;         /**< set of nested subtrees parsed by extensions to validate */
     struct lyd_node *op_node;      /**< if an RPC/action/notification is being parsed, store the pointer to it */
+    const struct lys_module *val_getnext_ht_mod;    /**< module of the cached schema nodes in getnext HT */
+    struct ly_ht *val_getnext_ht;  /**< cached getnext schema nodes in a HT for validation */
 
     /* callbacks */
     lyd_ctx_free_clb free;         /**< destructor */
@@ -111,6 +113,8 @@ struct lyd_xml_ctx {
     struct ly_set ext_node;
     struct ly_set ext_val;
     struct lyd_node *op_node;
+    const struct lys_module *val_getnext_ht_mod;
+    struct ly_ht *val_getnext_ht;
 
     /* callbacks */
     lyd_ctx_free_clb free;
@@ -134,6 +138,8 @@ struct lyd_json_ctx {
     struct ly_set ext_node;
     struct ly_set ext_val;
     struct lyd_node *op_node;
+    const struct lys_module *val_getnext_ht_mod;
+    struct ly_ht *val_getnext_ht;
 
     /* callbacks */
     lyd_ctx_free_clb free;
@@ -164,6 +170,8 @@ struct lyd_lyb_ctx {
     struct ly_set ext_node;
     struct ly_set ext_val;
     struct lyd_node *op_node;
+    const struct lys_module *val_getnext_ht_mod;
+    struct ly_ht *val_getnext_ht;
 
     /* callbacks */
     lyd_ctx_free_clb free;
@@ -437,6 +445,15 @@ LY_ERR lyd_parser_check_keys(struct lyd_node *node);
  */
 LY_ERR lyd_parser_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct lyd_ctx *lydctx,
         struct lysc_ext_instance *ext);
+
+/**
+ * @brief Validate a new parsed data node and add its implicit children.
+ *
+ * @param[in] lydctx Data parser context.
+ * @param[in] node Parsed node to validate.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parser_validate_new_implicit(struct lyd_ctx *lydctx, struct lyd_node *node);
 
 /**
  * @brief Parse an instance extension statement.

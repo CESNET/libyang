@@ -1443,14 +1443,9 @@ lydjson_parse_instance_inner(struct lyd_json_ctx *lydctx, const struct lysc_node
     }
 
     if (!(lydctx->parse_opts & LYD_PARSE_ONLY) && !rc) {
-        /* new node validation, autodelete CANNOT occur (it can if multi-error), all nodes are new */
-        r = lyd_validate_new(lyd_node_child_p(*node), snode, NULL, lydctx->val_opts, NULL);
+        /* new node validation */
+        r = lyd_parser_validate_new_implicit((struct lyd_ctx *)lydctx, *node);
         LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
-
-        /* add any missing default children */
-        r = lyd_new_implicit_r(*node, lyd_node_child_p(*node), NULL, NULL, &lydctx->node_when, &lydctx->node_types,
-                &lydctx->ext_node, (lydctx->val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, NULL);
-        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
     }
 
 cleanup:
