@@ -264,7 +264,6 @@ lyht_find_rec(const struct ly_ht *ht, void *val_p, uint32_t hash, ly_bool mod, l
     if (col) {
         *col = 0;
     }
-    *rec_p = NULL;
 
     LYHT_ITER_HLIST_RECS(ht, hlist_idx, rec_idx, rec) {
         if ((rec->hash == hash) && val_equal(val_p, &rec->val, mod, ht->cb_data)) {
@@ -278,6 +277,7 @@ lyht_find_rec(const struct ly_ht *ht, void *val_p, uint32_t hash, ly_bool mod, l
     }
 
     /* not found even in collisions */
+    *rec_p = NULL;
     return LY_ENOTFOUND;
 }
 
@@ -286,14 +286,10 @@ lyht_find(const struct ly_ht *ht, void *val_p, uint32_t hash, void **match_p)
 {
     struct ly_ht_rec *rec;
 
-    if (match_p) {
-        *match_p = NULL;
-    }
-
     lyht_find_rec(ht, val_p, hash, 0, ht->val_equal, NULL, &rec);
 
-    if (rec && match_p) {
-        *match_p = rec->val;
+    if (match_p) {
+        *match_p = rec ? rec->val : NULL;
     }
     return rec ? LY_SUCCESS : LY_ENOTFOUND;
 }
