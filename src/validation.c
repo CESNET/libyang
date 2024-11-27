@@ -1533,7 +1533,7 @@ lyd_validate_siblings_schema_r(const struct lyd_node *first, const struct lyd_no
         /* check min-elements and max-elements */
         if (snode->nodetype == LYS_LIST) {
             slist = (struct lysc_node_list *)snode;
-            if (slist->min || slist->max) {
+            if (slist->min || (slist->max < UINT32_MAX)) {
                 r = lyd_validate_minmax(first, parent, snode, slist->min, slist->max, val_opts);
                 LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
             }
@@ -1545,7 +1545,7 @@ lyd_validate_siblings_schema_r(const struct lyd_node *first, const struct lyd_no
             }
         } else if (snode->nodetype == LYS_LEAFLIST) {
             sllist = (struct lysc_node_leaflist *)snode;
-            if (sllist->min || sllist->max) {
+            if (sllist->min || (sllist->max < UINT32_MAX)) {
                 r = lyd_validate_minmax(first, parent, snode, sllist->min, sllist->max, val_opts);
                 LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
             }

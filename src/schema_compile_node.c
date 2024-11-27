@@ -3397,7 +3397,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
     if (list->min) {
         list->flags |= LYS_MAND_TRUE;
     }
-    list->max = list_p->max ? list_p->max : (uint32_t)-1;
+    list->max = list_p->max ? list_p->max : UINT32_MAX;
 
     LY_LIST_FOR(list_p->child, child_p) {
         LY_CHECK_RET(lys_compile_node(ctx, child_p, node, 0, NULL));
