@@ -2216,10 +2216,6 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
         ext_val_p = &ext_val;
     }
 
-    /* create the getnext hash table for this module */
-    rc = lyd_val_getnext_ht_new(&getnext_ht);
-    LY_CHECK_GOTO(rc, cleanup);
-
     /* merge op_tree into dep_tree */
     lyd_val_op_merge_find(op_tree, op_node, dep_tree, &op_subtree, &tree_sibling, &tree_parent);
     op_sibling_before = op_subtree->prev->next ? op_subtree->prev : NULL;
@@ -2231,6 +2227,10 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
     if (!dep_tree) {
         dep_tree = tree_sibling;
     }
+
+    /* create the getnext hash table for this module */
+    rc = lyd_val_getnext_ht_new(&getnext_ht);
+    LY_CHECK_GOTO(rc, cleanup);
 
     if (int_opts & LYD_INTOPT_REPLY) {
         if (validate_subtree) {
