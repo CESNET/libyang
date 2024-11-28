@@ -190,6 +190,7 @@ lyplg_type_store_node_instanceid(const struct ly_ctx *ctx, const struct lysc_typ
 
     if ((((char *)value)[0] == '/') && (value_len == 1)) {
         /* special path */
+        format = LY_VALUE_CANON;
         goto store;
     }
 
@@ -297,6 +298,34 @@ lyplg_type_print_node_instanceid(const struct ly_ctx *UNUSED(ctx), const struct 
 }
 
 /**
+ * @brief Implementation of ::lyplg_type_dup_clb for the node-instance-identifier ietf-netconf-acm type.
+ */
+static LY_ERR
+lyplg_type_dup_node_instanceid(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+{
+    LY_ERR ret;
+
+    memset(dup, 0, sizeof *dup);
+
+    /* canonical value */
+    ret = lydict_insert(ctx, original->_canonical, 0, &dup->_canonical);
+    LY_CHECK_GOTO(ret, error);
+
+    if (original->target) {
+        /* copy path */
+        ret = ly_path_dup(ctx, original->target, &dup->target);
+        LY_CHECK_GOTO(ret, error);
+    } /* else is the special path "/" that has no target stored */
+
+    dup->realtype = original->realtype;
+    return LY_SUCCESS;
+
+error:
+    lyplg_type_free_instanceid(ctx, dup);
+    return ret;
+}
+
+/**
  * @brief Plugin information for instance-identifier type implementation.
  *
  * Note that external plugins are supposed to use:
@@ -315,7 +344,7 @@ const struct lyplg_type_record plugins_node_instanceid[] = {
         .plugin.compare = lyplg_type_compare_simple,
         .plugin.sort = lyplg_type_sort_simple,
         .plugin.print = lyplg_type_print_node_instanceid,
-        .plugin.duplicate = lyplg_type_dup_instanceid,
+        .plugin.duplicate = lyplg_type_dup_node_instanceid,
         .plugin.free = lyplg_type_free_instanceid,
         .plugin.lyb_data_len = -1,
     },
@@ -330,7 +359,7 @@ const struct lyplg_type_record plugins_node_instanceid[] = {
         .plugin.compare = lyplg_type_compare_simple,
         .plugin.sort = lyplg_type_sort_simple,
         .plugin.print = lyplg_type_print_node_instanceid,
-        .plugin.duplicate = lyplg_type_dup_instanceid,
+        .plugin.duplicate = lyplg_type_dup_node_instanceid,
         .plugin.free = lyplg_type_free_instanceid,
         .plugin.lyb_data_len = -1,
     },
