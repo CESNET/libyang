@@ -103,17 +103,17 @@ lyd_val_getnext_ht_free(struct ly_ht *getnext_ht)
 
 LY_ERR
 lyd_val_getnext_get(const struct lysc_node *sparent, const struct lys_module *mod, ly_bool output,
-        struct ly_ht *getnext_ht, const struct lyd_val_getnext **getnext_p)
+        struct ly_ht *getnext_ht, const struct lysc_node ***choices, const struct lysc_node ***snodes)
 {
     LY_ERR rc = LY_SUCCESS;
-    struct lyd_val_getnext val = {0};
+    struct lyd_val_getnext val = {0}, *getnext = NULL;
     const struct lysc_node *snode = NULL;
     uint32_t getnext_opts, snode_count = 0, choice_count = 0;
 
     /* try to find the entry for this schema parent */
     val.sparent = sparent;
-    if (!lyht_find(getnext_ht, &val, (uintptr_t)sparent, (void **)getnext_p)) {
-        return LY_SUCCESS;
+    if (!lyht_find(getnext_ht, &val, (uintptr_t)sparent, (void **)&getnext)) {
+        goto cleanup;
     }
 
     /* traverse all the children using getnext and store them */
@@ -143,7 +143,7 @@ lyd_val_getnext_get(const struct lysc_node *sparent, const struct lys_module *mo
     }
 
     /* add into the hash table */
-    if ((rc = lyht_insert(getnext_ht, &val, (uintptr_t)sparent, (void **)getnext_p))) {
+    if ((rc = lyht_insert(getnext_ht, &val, (uintptr_t)sparent, (void **)&getnext))) {
         goto cleanup;
     }
 
@@ -151,6 +151,9 @@ cleanup:
     if (rc) {
         free(val.snodes);
         free(val.choices);
+    } else {
+        *choices = getnext->choices;
+        *snodes = getnext->snodes;
     }
     return rc;
 }
@@ -901,23 +904,23 @@ lyd_validate_choice_r(struct lyd_node **first, const struct lysc_node *sparent, 
         uint32_t val_opts, uint32_t int_opts, struct ly_ht *getnext_ht, struct lyd_node **diff)
 {
     LY_ERR r, rc = LY_SUCCESS;
-    const struct lyd_val_getnext *getnext;
+    const struct lysc_node **choices, **snodes;
     uint32_t i;
 
     /* get cached getnext schema nodes */
-    rc = lyd_val_getnext_get(sparent, mod, int_opts & LYD_INTOPT_REPLY, getnext_ht, &getnext);
+    rc = lyd_val_getnext_get(sparent, mod, int_opts & LYD_INTOPT_REPLY, getnext_ht, &choices, &snodes);
     LY_CHECK_GOTO(rc, cleanup);
-    if (!getnext->choices) {
+    if (!choices) {
         goto cleanup;
     }
 
-    for (i = 0; *first && getnext->choices[i]; ++i) {
+    for (i = 0; *first && choices[i]; ++i) {
         /* check case duplicites */
-        r = lyd_validate_cases(first, mod, (struct lysc_node_choice *)getnext->choices[i], diff);
+        r = lyd_validate_cases(first, mod, (struct lysc_node_choice *)choices[i], diff);
         LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
         /* check for nested choice */
-        r = lyd_validate_choice_r(first, getnext->choices[i], mod, val_opts, int_opts, getnext_ht, diff);
+        r = lyd_validate_choice_r(first, choices[i], mod, val_opts, int_opts, getnext_ht, diff);
         LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
     }
 
@@ -1495,18 +1498,17 @@ lyd_validate_siblings_schema_r(const struct lyd_node *first, const struct lyd_no
         struct ly_ht *getnext_ht)
 {
     LY_ERR r, rc = LY_SUCCESS;
-    const struct lyd_val_getnext *getnext;
-    const struct lysc_node *snode, *scase;
+    const struct lysc_node *snode, *scase, **choices, **snodes;
     struct lysc_node_list *slist;
     struct lysc_node_leaflist *sllist;
     uint32_t i;
 
     /* get cached getnext schema nodes */
-    rc = lyd_val_getnext_get(sparent, mod, int_opts & LYD_INTOPT_REPLY, getnext_ht, &getnext);
+    rc = lyd_val_getnext_get(sparent, mod, int_opts & LYD_INTOPT_REPLY, getnext_ht, &choices, &snodes);
     LY_CHECK_GOTO(rc, cleanup);
 
-    for (i = 0; getnext->choices && getnext->choices[i]; ++i) {
-        snode = getnext->choices[i];
+    for (i = 0; choices && choices[i]; ++i) {
+        snode = choices[i];
 
         if ((val_opts & LYD_VALIDATE_NO_STATE) && (snode->flags & LYS_CONFIG_R)) {
             /* skip state nodes */
@@ -1530,8 +1532,8 @@ lyd_validate_siblings_schema_r(const struct lyd_node *first, const struct lyd_no
         }
     }
 
-    for (i = 0; getnext->snodes && getnext->snodes[i]; ++i) {
-        snode = getnext->snodes[i];
+    for (i = 0; snodes && snodes[i]; ++i) {
+        snode = snodes[i];
 
         if ((val_opts & LYD_VALIDATE_NO_STATE) && (snode->flags & LYS_CONFIG_R)) {
             /* skip state nodes */

@@ -1916,11 +1916,10 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
         uint32_t impl_opts, struct ly_ht *getnext_ht, struct lyd_node **diff)
 {
     LY_ERR ret;
-    const struct lysc_node *snode;
+    const struct lysc_node *snode, **choices, **snodes;
     struct lyd_node *node = NULL;
     struct lyd_value **dflts;
     LY_ARRAY_COUNT_TYPE u;
-    const struct lyd_val_getnext *getnext;
     uint32_t i;
 
     assert(first && (parent || sparent || mod));
@@ -1930,11 +1929,11 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
     }
 
     /* get cached getnext schema nodes */
-    LY_CHECK_RET(lyd_val_getnext_get(sparent, mod, impl_opts & LYD_IMPLICIT_OUTPUT, getnext_ht, &getnext));
+    LY_CHECK_RET(lyd_val_getnext_get(sparent, mod, impl_opts & LYD_IMPLICIT_OUTPUT, getnext_ht, &choices, &snodes));
 
     /* choice nodes */
-    for (i = 0; getnext->choices && getnext->choices[i]; ++i) {
-        snode = getnext->choices[i];
+    for (i = 0; choices && choices[i]; ++i) {
+        snode = choices[i];
 
         if ((impl_opts & LYD_IMPLICIT_NO_STATE) && (snode->flags & LYS_CONFIG_R)) {
             continue;
@@ -1956,8 +1955,8 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
     }
 
     /* container, leaf, leaf-list nodes */
-    for (i = 0; getnext->snodes && getnext->snodes[i]; ++i) {
-        snode = getnext->snodes[i];
+    for (i = 0; snodes && snodes[i]; ++i) {
+        snode = snodes[i];
 
         if ((impl_opts & LYD_IMPLICIT_NO_STATE) && (snode->flags & LYS_CONFIG_R)) {
             continue;

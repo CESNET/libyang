@@ -54,15 +54,18 @@ void lyd_val_getnext_ht_free(struct ly_ht *getnext_ht);
 /**
  * @brief Get the schema children of a schema parent.
  *
+ * Getnext structure cannot be returned because the pointer may become invalid on HT resize.
+ *
  * @param[in] sparent Schema parent to use.
  * @param[in] mod Module to use.
  * @param[in] output Whether to traverse operation output instead of input nodes.
  * @param[in,out] getnext_ht Getnext HT to use, new @p sparent is added to it.
- * @param[out] getnext_p Filled getnext structure.
+ * @param[out] choices Array of getnext choices of @p sparent.
+ * @param[out] snodes Array of getnext schema nodes except for choices of @p sparent.
  * @return LY_ERR value.
  */
 LY_ERR lyd_val_getnext_get(const struct lysc_node *sparent, const struct lys_module *mod, ly_bool output,
-        struct ly_ht *getnext_ht, const struct lyd_val_getnext **getnext_p);
+        struct ly_ht *getnext_ht, const struct lysc_node ***choices, const struct lysc_node ***snodes);
 
 /**
  * @brief Add new changes into a diff. They are always merged.
