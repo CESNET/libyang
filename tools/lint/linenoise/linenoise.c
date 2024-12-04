@@ -1106,11 +1106,14 @@ void linenoiseEditDeletePrevWord(struct linenoiseState *l) {
  * STDIN_FILENO and STDOUT_FILENO.
  */
 int linenoiseEditStart(struct linenoiseState *l, int stdin_fd, int stdout_fd, char *buf, size_t buflen, const char *prompt) {
+    if (stdin_fd == -1) stdin_fd = STDIN_FILENO;
+    if (stdout_fd == -1) stdout_fd = STDOUT_FILENO;
+
     /* Populate the linenoise state that we pass to functions implementing
      * specific editing functionalities. */
     l->in_completion = 0;
-    l->ifd = stdin_fd != -1 ? stdin_fd : STDIN_FILENO;
-    l->ofd = stdout_fd != -1 ? stdout_fd : STDOUT_FILENO;
+    l->ifd = stdin_fd;
+    l->ofd = stdout_fd;
     l->buf = buf;
     l->buflen = buflen;
     l->prompt = prompt;
