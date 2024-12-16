@@ -41,6 +41,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define _GNU_SOURCE /* required for compat.h before including any other headers */
+
 #include <unistd.h>
 #include <stdio.h>
 
