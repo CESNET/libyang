@@ -401,6 +401,9 @@ lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, c
         ret = lyb_fill_subvalue(ctx, type_u, value, value_len, prefix_data, subvalue, &options, unres, err);
         LY_CHECK_GOTO((ret != LY_SUCCESS) && (ret != LY_EINCOMPLETE), cleanup);
     } else {
+        /* to correctly resolve the union type, we need to always validate the value */
+        options &= ~LYPLG_TYPE_STORE_ONLY;
+
         /* store value to subvalue */
         ret = union_subvalue_assignment(value, value_len, &subvalue->original, &subvalue->orig_len, &options);
         LY_CHECK_GOTO(ret, cleanup);
