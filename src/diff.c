@@ -128,12 +128,16 @@ lyd_diff_add_create_nested_userord(struct lyd_node *node)
         meta_name = "yang:position";
 
         pos = lyd_list_pos(node);
-        if (asprintf(&dyn, "%" PRIu32, pos) == -1) {
-            LOGMEM(LYD_CTX(node));
-            rc = LY_EMEM;
-            goto cleanup;
+        if (pos > 1) {
+            if (asprintf(&dyn, "%" PRIu32, pos - 1) == -1) {
+                LOGMEM(LYD_CTX(node));
+                rc = LY_EMEM;
+                goto cleanup;
+            }
+            meta_val = dyn;
+        } else {
+            meta_val = "";
         }
-        meta_val = dyn;
     } else if (node->schema->nodetype == LYS_LIST) {
         meta_name = "yang:key";
 
