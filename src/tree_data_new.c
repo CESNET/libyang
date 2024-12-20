@@ -1882,7 +1882,7 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
         const struct lys_module *mod, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *ext_node,
         uint32_t impl_opts, struct ly_ht *getnext_ht, struct lyd_node **diff)
 {
-    const struct lysc_node *snode, **choices, **snodes, *iter = NULL;
+    const struct lysc_node *snode, **choices, **snodes;
     struct lyd_node *node = NULL;
     struct lysc_value *dflts;
     LY_ARRAY_COUNT_TYPE u;
@@ -1954,12 +1954,12 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
             }
             break;
         case LYS_LEAF:
-            if (!(impl_opts & LYD_IMPLICIT_NO_DEFAULTS) && ((struct lysc_node_leaf *)iter)->dflt.str &&
-                    lyd_find_sibling_val(*first, iter, NULL, 0, NULL)) {
+            if (!(impl_opts & LYD_IMPLICIT_NO_DEFAULTS) && ((struct lysc_node_leaf *)snode)->dflt.str &&
+                    lyd_find_sibling_val(*first, snode, NULL, 0, NULL)) {
                 /* create default leaf */
-                LY_CHECK_RET(lyd_create_term(iter, ((struct lysc_node_leaf *)iter)->dflt.str,
-                        strlen(((struct lysc_node_leaf *)iter)->dflt.str), 1, 1, NULL, LY_VALUE_SCHEMA_RESOLVED,
-                        ((struct lysc_node_leaf *)iter)->dflt.prefixes, LYD_HINT_DATA, &incomplete, &node));
+                LY_CHECK_RET(lyd_create_term(snode, ((struct lysc_node_leaf *)snode)->dflt.str,
+                        strlen(((struct lysc_node_leaf *)snode)->dflt.str), 1, 1, NULL, LY_VALUE_SCHEMA_RESOLVED,
+                        ((struct lysc_node_leaf *)snode)->dflt.prefixes, LYD_HINT_DATA, &incomplete, &node));
                 if (incomplete && node_types) {
                     /* remember to resolve type */
                     LY_CHECK_RET(ly_set_add(node_types, node, 1, NULL));
@@ -1987,7 +1987,7 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
                 /* create all default leaf-lists */
                 dflts = ((struct lysc_node_leaflist *)snode)->dflts;
                 LY_ARRAY_FOR(dflts, u) {
-                    LY_CHECK_RET(lyd_create_term(iter, dflts[u].str, strlen(dflts[u].str), 1, 1, NULL,
+                    LY_CHECK_RET(lyd_create_term(snode, dflts[u].str, strlen(dflts[u].str), 1, 1, NULL,
                             LY_VALUE_SCHEMA_RESOLVED, dflts[u].prefixes, LYD_HINT_DATA, &incomplete, &node));
                     if (incomplete && node_types) {
                         /* remember to resolve type */
