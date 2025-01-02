@@ -5757,6 +5757,7 @@ moveto_node_check(const struct lyd_node *node, enum lyxp_node_type node_type, co
         const char *node_name, const struct lys_module *moveto_mod, uint32_t options)
 {
     const struct lysc_node *schema;
+    ly_bool same_dict = 0;
 
     if ((node_type == LYXP_NODE_ROOT_CONFIG) || (node_type == LYXP_NODE_ROOT)) {
         assert(node_type == set->root_type);
@@ -5796,9 +5797,13 @@ moveto_node_check(const struct lyd_node *node, enum lyxp_node_type node_type, co
 
     /* name check */
     if (node_name) {
-        if ((set->ctx == LYD_CTX(node)) && (schema->name != node_name)) {
+        if ((set->ctx == LYD_CTX(node)) && !(set->ctx->opts & LY_CTX_INT_IMMUTABLE)) {
+            same_dict = 1;
+        }
+
+        if (same_dict && (schema->name != node_name)) {
             return LY_ENOT;
-        } else if ((set->ctx != LYD_CTX(node)) && strcmp(schema->name, node_name)) {
+        } else if (!same_dict && strcmp(schema->name, node_name)) {
             return LY_ENOT;
         }
     }
