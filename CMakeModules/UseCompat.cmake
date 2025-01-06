@@ -45,7 +45,7 @@ macro(USE_COMPAT)
     find_package(Threads)
     list(APPEND CMAKE_REQUIRED_LIBRARIES ${CMAKE_THREAD_LIBS_INIT})
     check_function_exists(pthread_mutex_timedlock HAVE_PTHREAD_MUTEX_TIMEDLOCK)
-    list(REMOVE_ITEM CMAKE_REQUIRED_LIBRARIES ${CMAKE_THREAD_LIBS_INIT})
+    list(REMOVE_ITEM CMAKE_REQUIRED_LIBRARIES ${CMAKE_THREAD_LIBS_INIT} "") # cmake <= 3.19 needs at least one item
 
     test_big_endian(IS_BIG_ENDIAN)
 
