@@ -165,10 +165,17 @@ lyd_parse(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct 
     }
 
     if (!(parse_opts & LYD_PARSE_ONLY)) {
-        /* validate data */
-        r = lyd_validate(first_p, NULL, ctx, val_opts, 0, &lydctx->node_when, &lydctx->node_types, &lydctx->meta_types,
-                &lydctx->ext_node, &lydctx->ext_val, NULL);
-        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+        if (ext) {
+            /* special ext instance data validation */
+            r = lyd_validate_ext(first_p, ext, val_opts, 0, &lydctx->node_when, &lydctx->node_types, &lydctx->meta_types,
+                    &lydctx->ext_node, &lydctx->ext_val, NULL);
+            LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+        } else {
+            /* validate data */
+            r = lyd_validate(first_p, NULL, ctx, val_opts, 0, &lydctx->node_when, &lydctx->node_types, &lydctx->meta_types,
+                    &lydctx->ext_node, &lydctx->ext_val, NULL);
+            LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+        }
     }
 
     /* set the operation node */

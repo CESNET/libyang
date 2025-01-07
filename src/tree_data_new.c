@@ -1929,7 +1929,7 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
     }
 
     /* get cached getnext schema nodes */
-    LY_CHECK_RET(lyd_val_getnext_get(sparent, mod, impl_opts & LYD_IMPLICIT_OUTPUT, getnext_ht, &choices, &snodes));
+    LY_CHECK_RET(lyd_val_getnext_get(sparent, mod, NULL, impl_opts & LYD_IMPLICIT_OUTPUT, getnext_ht, &choices, &snodes));
 
     /* choice nodes */
     for (i = 0; choices && choices[i]; ++i) {

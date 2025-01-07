@@ -461,7 +461,7 @@ lyd_parser_validate_new_implicit(struct lyd_ctx *lydctx, struct lyd_node *node)
     }
 
     /* new node validation, autodelete CANNOT occur (it can if multi-error), all nodes are new */
-    r = lyd_validate_new(lyd_node_child_p(node), node->schema, NULL, lydctx->val_opts, lydctx->int_opts,
+    r = lyd_validate_new(lyd_node_child_p(node), node->schema, NULL, NULL, lydctx->val_opts, lydctx->int_opts,
             lydctx->val_getnext_ht, NULL);
     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
