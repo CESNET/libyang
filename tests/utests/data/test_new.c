@@ -353,6 +353,14 @@ test_path(void **state)
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(node);
 
+    /* too high index */
+    ret = lyd_new_path2(root, NULL, "/a:c2/l3[8]", NULL, 0, 0, 0, NULL, &node);
+    assert_int_equal(ret, LY_EINVAL);
+    CHECK_LOG_CTX("Cannot create \"l3\" on position 8, only 6 instances exist.", NULL, 0);
+    ret = lyd_new_path2(root, NULL, "/a:l2[2]", NULL, 0, 0, 0, NULL, &node);
+    assert_int_equal(ret, LY_EINVAL);
+    CHECK_LOG_CTX("Cannot create \"l2\" on position 2, no instances exist.", NULL, 0);
+
     lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     assert_string_equal(str,
             "<c2 xmlns=\"urn:tests:a\">\n"

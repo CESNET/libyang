@@ -1658,14 +1658,14 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
     LY_ERR ret = LY_SUCCESS, r;
     struct lyxp_expr *exp = NULL;
     struct ly_path *p = NULL;
-    struct lyd_node *nparent = NULL, *nnode = NULL, *node = NULL, *cur_parent;
+    struct lyd_node *nparent = NULL, *nnode = NULL, *node = NULL, *cur_parent, *iter;
     const struct lysc_node *schema;
     const struct lyd_value *val = NULL;
     ly_bool store_only = (options & LYD_NEW_VAL_STORE_ONLY) ? 1 : 0;
     ly_bool any_use_value = (options & LYD_NEW_ANY_USE_VALUE) ? 1 : 0;
     LY_ARRAY_COUNT_TYPE path_idx = 0, orig_count = 0;
     LY_VALUE_FORMAT format;
-    uint32_t hints;
+    uint32_t hints, count;
 
     assert(parent || ctx);
     assert(path && ((path[0] == '/') || parent));
@@ -1712,7 +1712,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
                 goto cleanup;
             } /* else we were not searching for the whole path */
         } else if (r == LY_EINCOMPLETE) {
-            /* some nodes were found, adjust the iterator to the next segment */
+            /* some nodes were found, adjust the iterator to the next segment to be created */
             ++path_idx;
         } else if (r == LY_ENOTFOUND) {
             /* we will create the nodes from top-level, default behavior (absolute path), or from the parent (relative path) */
@@ -1729,6 +1729,29 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
     /* restore the full path for creating new nodes */
     while (orig_count > LY_ARRAY_COUNT(p)) {
         LY_ARRAY_INCREMENT(p);
+    }
+
+    if ((path_idx < LY_ARRAY_COUNT(p)) && lysc_is_dup_inst_list(p[path_idx].node) && p[path_idx].predicates &&
+            (p[path_idx].predicates[0].type == LY_PATH_PREDTYPE_POSITION)) {
+        /* check the used position of a key-less list or state leaf-list */
+        count = 0;
+        LYD_LIST_FOR_INST(node ? lyd_child(node) : parent, p[path_idx].node, iter) {
+            ++count;
+        }
+
+        if (count + 1 < p[path_idx].predicates[0].position) {
+            if (count) {
+                LOGVAL(ctx, LYVE_REFERENCE,
+                        "Cannot create \"%s\" on position %" PRIu64 ", only %" PRIu32 " instance%s exist%s.",
+                        p[path_idx].node->name, p[path_idx].predicates[0].position, count, (count > 1) ? "s" : "",
+                        (count > 1) ? "" : "s");
+            } else {
+                LOGVAL(ctx, LYVE_REFERENCE, "Cannot create \"%s\" on position %" PRIu64 ", no instances exist.",
+                        p[path_idx].node->name, p[path_idx].predicates[0].position);
+            }
+            ret = LY_EINVAL;
+            goto cleanup;
+        }
     }
 
     /* create all the non-existing nodes in a loop */
