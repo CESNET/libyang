@@ -98,7 +98,7 @@ lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, uint3
 
     LY_CHECK_RET(ly_out_new_memory(strp, 0, &out));
     ret = lyd_print_(out, root, format, options);
-    ly_out_free(out, NULL, 0);
+    ly_out_free(out, NULL, 1);
     return ret;
 }
 
