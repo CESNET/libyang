@@ -1591,7 +1591,7 @@ LIBYANG_API_DECL LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ct
  * @param[in] value_type Anyxml/anydata node @p value type.
  * @param[in] options Bitmask of options, see @ref newvaloptions.
  * @param[out] new_parent Optional first parent node created. If only one node was created, equals to @p new_node.
- * @param[out] new_node Optional last node created (in case of a list, it is the list instance, not any of the key nodes).
+ * @param[out] new_node Optional target node of @p path (the last created node, the list instance in case of a list).
  * @return LY_SUCCESS on success.
  * @return LY_EEXIST if the final node to create exists (unless ::LYD_NEW_PATH_UPDATE is used).
  * @return LY_EINVAL on invalid arguments including invalid @p path.
