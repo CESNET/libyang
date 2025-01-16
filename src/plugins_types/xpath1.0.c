@@ -524,7 +524,7 @@ const struct lyplg_type_record plugins_xpath10[] = {
         .revision = "2013-07-15",
         .name = "xpath1.0",
 
-        .plugin.id = "libyang 2 - xpath1.0, version 1",
+        .plugin.id = "ly2 - xpath1.0",
         .plugin.store = lyplg_type_store_xpath10,
         .plugin.validate = lyplg_type_validate_xpath10,
         .plugin.compare = lyplg_type_compare_simple,

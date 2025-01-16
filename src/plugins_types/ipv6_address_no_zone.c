@@ -300,7 +300,7 @@ const struct lyplg_type_record plugins_ipv6_address_no_zone[] = {
         .revision = "2013-07-15",
         .name = "ipv6-address-no-zone",
 
-        .plugin.id = "libyang 2 - ipv6-address-no-zone, version 1",
+        .plugin.id = "ly2 - ipv6-address-no-zone",
         .plugin.store = lyplg_type_store_ipv6_address_no_zone,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_ipv6_address_no_zone,
