@@ -4972,6 +4972,7 @@ xpath_re_match(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_s
         LOG_LOCBACK(0, 1);
     }
     if (rc != LY_SUCCESS) {
+        free(*pattern);
         LY_ARRAY_FREE(patterns);
         return rc;
     }
