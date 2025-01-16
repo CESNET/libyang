@@ -155,7 +155,7 @@ const struct lyplg_type_record plugins_string[] = {
         .revision = NULL,
         .name = LY_TYPE_STRING_STR,
 
-        .plugin.id = "libyang 2 - string, version 1",
+        .plugin.id = "ly2 - string",
         .plugin.store = lyplg_type_store_string,
         .plugin.validate = lyplg_type_validate_string,
         .plugin.compare = lyplg_type_compare_simple,
