@@ -354,7 +354,7 @@ json_print_value(struct jsonpr_ctx *pctx, const struct ly_ctx *ctx, const struct
     LY_DATA_TYPE basetype;
     const char *value;
 
-    value = val->realtype->plugin->print(ctx, val, LY_VALUE_JSON, (void *)local_mod, &dynamic, NULL);
+    value = lysc_get_type_plugin(val->realtype->plugin)->print(ctx, val, LY_VALUE_JSON, (void *)local_mod, &dynamic, NULL);
     LY_CHECK_RET(!value, LY_EINVAL);
     basetype = val->realtype->basetype;
 
