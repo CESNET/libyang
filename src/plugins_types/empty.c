@@ -89,7 +89,7 @@ const struct lyplg_type_record plugins_empty[] = {
         .revision = NULL,
         .name = LY_TYPE_EMPTY_STR,
 
-        .plugin.id = "libyang 2 - empty, version 1",
+        .plugin.id = "ly2 - empty",
         .plugin.store = lyplg_type_store_empty,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,

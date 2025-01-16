@@ -105,11 +105,11 @@ test_data_xml(void **state)
     TEST_ERROR_XML2("",
             "defs", "", "un1", "123456789012345678901", LY_EVALID);
     CHECK_LOG_CTX("Invalid union value \"123456789012345678901\" - no matching subtype found:\n"
-            "    libyang 2 - leafref, version 1: Invalid type int8 value \"123456789012345678901\".\n"
-            "    libyang 2 - leafref, version 1: Invalid type int64 value \"123456789012345678901\".\n"
-            "    libyang 2 - identityref, version 1: Invalid identityref \"123456789012345678901\" value - identity not found in module \"defs\".\n"
-            "    libyang 2 - instance-identifier, version 1: Invalid instance-identifier \"123456789012345678901\" value - syntax error.\n"
-            "    libyang 2 - string, version 1: Unsatisfied length - string \"123456789012345678901\" length is not allowed.\n",
+            "    ly2 - leafref: Invalid type int8 value \"123456789012345678901\".\n"
+            "    ly2 - leafref: Invalid type int64 value \"123456789012345678901\".\n"
+            "    ly2 - identityref: Invalid identityref \"123456789012345678901\" value - identity not found in module \"defs\".\n"
+            "    ly2 - instance-identifier: Invalid instance-identifier \"123456789012345678901\" value - syntax error.\n"
+            "    ly2 - string: Unsatisfied length - string \"123456789012345678901\" length is not allowed.\n",
             "/defs:un1", 1);
 }
 
@@ -294,8 +294,8 @@ test_validation(void **state)
     assert_int_equal(LY_SUCCESS, lyd_new_list(tree, NULL, "b", LYD_NEW_VAL_BIN, NULL, &uint_val, sizeof uint_val));
     assert_int_equal(LY_EVALID, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT, NULL));
     CHECK_LOG_CTX("Invalid LYB union value - no matching subtype found:\n"
-            "    libyang 2 - leafref, version 1: Invalid leafref value \"one\" - no target instance \"../../a/name\" with the same value.\n"
-            "    libyang 2 - leafref, version 1: Invalid type uint32 value \"one\".\n", "/lref:test/community[name='test']/view", 0);
+            "    ly2 - leafref: Invalid leafref value \"one\" - no target instance \"../../a/name\" with the same value.\n"
+            "    ly2 - leafref: Invalid type uint32 value \"one\".\n", "/lref:test/community[name='test']/view", 0);
 
     lyd_free_all(tree);
 }
