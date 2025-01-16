@@ -8237,14 +8237,16 @@ moveto:
             }
             LY_CHECK_GOTO(rc, cleanup);
 
-            i = set->used;
-            do {
-                --i;
-                if (set->val.scnodes[i].in_ctx > LYXP_SET_SCNODE_ATOM_NODE) {
-                    found = 1;
-                    break;
-                }
-            } while (i);
+            if (set->used) {
+                i = set->used;
+                do {
+                    --i;
+                    if (set->val.scnodes[i].in_ctx > LYXP_SET_SCNODE_ATOM_NODE) {
+                        found = 1;
+                        break;
+                    }
+                } while (i);
+            }
             if (!found) {
                 /* generate message */
                 eval_name_test_scnode_no_match_msg(set, scparent, ncname, ncname_len, exp->expr, options);
