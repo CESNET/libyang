@@ -365,12 +365,12 @@ lysc_range_dup(struct lysc_ctx *ctx, const struct lysc_range *orig, struct ly_se
     dup = calloc(1, sizeof *dup);
     LY_CHECK_ERR_RET(!dup, LOGMEM(ctx->ctx), NULL);
     if (orig->parts) {
-        LY_ARRAY_CREATE_GOTO(ctx->ctx, dup->parts, LY_ARRAY_COUNT(orig->parts), ret, cleanup);
+        LY_ARRAY_CREATE_GOTO(ctx->ctx, dup->parts, LY_ARRAY_COUNT(orig->parts), ret, error);
         (*((LY_ARRAY_COUNT_TYPE *)(dup->parts) - 1)) = LY_ARRAY_COUNT(orig->parts);
         memcpy(dup->parts, orig->parts, LY_ARRAY_COUNT(dup->parts) * sizeof *dup->parts);
     }
-    DUP_STRING_GOTO(ctx->ctx, orig->eapptag, dup->eapptag, ret, cleanup);
-    DUP_STRING_GOTO(ctx->ctx, orig->emsg, dup->emsg, ret, cleanup);
+    DUP_STRING_GOTO(ctx->ctx, orig->eapptag, dup->eapptag, ret, error);
+    DUP_STRING_GOTO(ctx->ctx, orig->emsg, dup->emsg, ret, error);
 
     /* collect all range extensions */
     if (tpdf_chain->count > tpdf_chain_last) {
@@ -381,15 +381,17 @@ lysc_range_dup(struct lysc_ctx *ctx, const struct lysc_range *orig, struct ly_se
             if (!tpdf_item->tpdf->type.range) {
                 continue;
             }
-            COMPILE_EXTS_GOTO(ctx, tpdf_item->tpdf->type.range->exts, dup->exts, dup, ret, cleanup);
+            COMPILE_EXTS_GOTO(ctx, tpdf_item->tpdf->type.range->exts, dup->exts, dup, ret, error);
         } while (i > tpdf_chain_last);
     }
 
     return dup;
 
-cleanup:
-    free(dup);
-    (void) ret; /* set but not used due to the return type */
+error:
+    if (dup) {
+        lysc_range_free(&ctx->free_ctx, dup);
+        free(dup);
+    }
     return NULL;
 }
 
