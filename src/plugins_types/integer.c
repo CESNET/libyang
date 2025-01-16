@@ -565,7 +565,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .revision = NULL,
         .name = LY_TYPE_UINT8_STR,
 
-        .plugin.id = "libyang 2 - integers, version 1",
+        .plugin.id = "ly2 - integers",
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_uint,
@@ -579,7 +579,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .revision = NULL,
         .name = LY_TYPE_UINT16_STR,
 
-        .plugin.id = "libyang 2 - integers, version 1",
+        .plugin.id = "ly2 - integers",
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_uint,
@@ -593,7 +593,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .revision = NULL,
         .name = LY_TYPE_UINT32_STR,
 
-        .plugin.id = "libyang 2 - integers, version 1",
+        .plugin.id = "ly2 - integers",
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_uint,
@@ -607,7 +607,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .revision = NULL,
         .name = LY_TYPE_UINT64_STR,
 
-        .plugin.id = "libyang 2 - integers, version 1",
+        .plugin.id = "ly2 - integers",
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_uint,
@@ -621,7 +621,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .revision = NULL,
         .name = LY_TYPE_INT8_STR,
 
-        .plugin.id = "libyang 2 - integers, version 1",
+        .plugin.id = "ly2 - integers",
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_int,
@@ -635,7 +635,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .revision = NULL,
         .name = LY_TYPE_INT16_STR,
 
-        .plugin.id = "libyang 2 - integers, version 1",
+        .plugin.id = "ly2 - integers",
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_int,
@@ -649,7 +649,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .revision = NULL,
         .name = LY_TYPE_INT32_STR,
 
-        .plugin.id = "libyang 2 - integers, version 1",
+        .plugin.id = "ly2 - integers",
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_int,
@@ -663,7 +663,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .revision = NULL,
         .name = LY_TYPE_INT64_STR,
 
-        .plugin.id = "libyang 2 - integers, version 1",
+        .plugin.id = "ly2 - integers",
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_int,

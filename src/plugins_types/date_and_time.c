@@ -386,7 +386,7 @@ const struct lyplg_type_record plugins_date_and_time[] = {
         .revision = "2013-07-15",
         .name = "date-and-time",
 
-        .plugin.id = "libyang 2 - date-and-time, version 1",
+        .plugin.id = "ly2 - date-and-time",
         .plugin.store = lyplg_type_store_date_and_time,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_date_and_time,

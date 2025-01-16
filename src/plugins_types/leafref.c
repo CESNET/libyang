@@ -145,7 +145,7 @@ const struct lyplg_type_record plugins_leafref[] = {
         .revision = NULL,
         .name = LY_TYPE_LEAFREF_STR,
 
-        .plugin.id = "libyang 2 - leafref, version 1",
+        .plugin.id = "ly2 - leafref",
         .plugin.store = lyplg_type_store_leafref,
         .plugin.validate = lyplg_type_validate_leafref,
         .plugin.compare = lyplg_type_compare_leafref,

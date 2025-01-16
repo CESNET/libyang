@@ -237,7 +237,7 @@ const struct lyplg_type_record plugins_decimal64[] = {
         .revision = NULL,
         .name = LY_TYPE_DEC64_STR,
 
-        .plugin.id = "libyang 2 - decimal64, version 1",
+        .plugin.id = "ly2 - decimal64",
         .plugin.store = lyplg_type_store_decimal64,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_decimal64,

@@ -691,7 +691,7 @@ const struct lyplg_type_record plugins_union[] = {
         .revision = NULL,
         .name = LY_TYPE_UNION_STR,
 
-        .plugin.id = "libyang 2 - union,version 1",
+        .plugin.id = "ly2 - union",
         .plugin.store = lyplg_type_store_union,
         .plugin.validate = lyplg_type_validate_union,
         .plugin.compare = lyplg_type_compare_union,

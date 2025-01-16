@@ -507,7 +507,7 @@ const struct lyplg_type_record plugins_bits[] = {
         .revision = NULL,
         .name = LY_TYPE_BITS_STR,
 
-        .plugin.id = "libyang 2 - bits, version 1",
+        .plugin.id = "ly2 - bits",
         .plugin.store = lyplg_type_store_bits,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_bits,

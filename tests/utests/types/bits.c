@@ -814,7 +814,7 @@ test_plugin_store(void **state)
     lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
 
     /* check proper type */
-    assert_string_equal("libyang 2 - bits, version 1", type->id);
+    assert_string_equal("ly2 - bits", type->id);
 
     /* check store
      */
