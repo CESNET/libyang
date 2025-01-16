@@ -1279,7 +1279,7 @@ struct lysc_must {
 struct lysc_type {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lyplg_type *plugin;       /**< type's manipulation callbacks plugin */
+    uintptr_t plugin;       /**< type's manipulation callbacks plugin  use lysc_get_type_plugin*/
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing, it may be accessed concurrently when
                                           creating/freeing data node values that reference it (instance-identifier) */
@@ -1288,7 +1288,7 @@ struct lysc_type {
 struct lysc_type_num {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lyplg_type *plugin;       /**< type's manipulation callbacks plugin */
+    uintptr_t plugin;       /**< type's manipulation callbacks plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 
@@ -1298,7 +1298,7 @@ struct lysc_type_num {
 struct lysc_type_dec {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lyplg_type *plugin;       /**< type's manipulation callbacks plugin */
+    uintptr_t plugin;       /**< type's manipulation callbacks plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 
@@ -1309,7 +1309,7 @@ struct lysc_type_dec {
 struct lysc_type_str {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lyplg_type *plugin;       /**< type's manipulation callbacks plugin */
+    uintptr_t plugin;       /**< type's manipulation callbacks plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 
@@ -1334,7 +1334,7 @@ struct lysc_type_bitenum_item {
 struct lysc_type_enum {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lyplg_type *plugin;       /**< type's manipulation callbacks plugin */
+    uintptr_t plugin;       /**< type's manipulation callbacks plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 
@@ -1344,7 +1344,7 @@ struct lysc_type_enum {
 struct lysc_type_bits {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lyplg_type *plugin;       /**< type's manipulation callbacks plugin */
+    uintptr_t plugin;       /**< type's manipulation callbacks plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 
@@ -1355,7 +1355,7 @@ struct lysc_type_bits {
 struct lysc_type_leafref {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lyplg_type *plugin;       /**< type's manipulation callbacks plugin */
+    uintptr_t plugin;       /**< type's manipulation callbacks plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 
@@ -1368,7 +1368,7 @@ struct lysc_type_leafref {
 struct lysc_type_identityref {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lyplg_type *plugin;       /**< type's manipulation callbacks plugin */
+    uintptr_t plugin;       /**< type's manipulation callbacks plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 
@@ -1379,7 +1379,7 @@ struct lysc_type_identityref {
 struct lysc_type_instanceid {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lyplg_type *plugin;       /**< type's manipulation callbacks plugin */
+    uintptr_t plugin;       /**< type's manipulation callbacks plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 
@@ -1389,7 +1389,7 @@ struct lysc_type_instanceid {
 struct lysc_type_union {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lyplg_type *plugin;       /**< type's manipulation callbacks plugin */
+    uintptr_t plugin;       /**< type's manipulation callbacks plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 
@@ -1399,7 +1399,7 @@ struct lysc_type_union {
 struct lysc_type_bin {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lyplg_type *plugin;       /**< type's manipulation callbacks plugin */
+    uintptr_t plugin;       /**< type's manipulation callbacks plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 
@@ -1796,6 +1796,15 @@ struct lysc_module {
 #define lysc_is_dup_inst_list(lysc_node) \
     ((lysc_node && (((lysc_node->nodetype == LYS_LIST) && (lysc_node->flags & LYS_KEYLESS)) || \
             ((lysc_node->nodetype == LYS_LEAFLIST) && !(lysc_node->flags & LYS_CONFIG_W)))) ? 1 : 0)
+
+/**
+ * @brief
+ *
+ * @param[in] plugin_id The plugin identifier
+ *
+ * @return { description_of_the_return_value }
+ */
+LIBYANG_API_DECL struct lyplg_type *lysc_get_type_plugin(uintptr_t plugin_id);
 
 /**
  * @brief Get nearest @p schema parent (including the node itself) that can be instantiated in data.

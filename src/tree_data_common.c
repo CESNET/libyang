@@ -531,7 +531,7 @@ lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct ly
         options |= LYPLG_TYPE_STORE_ONLY;
     }
 
-    r = type->plugin->store(ctx, type, value, value_len, options, format, prefix_data, hints, ctx_node, val, NULL, &err);
+    r = lysc_get_type_plugin(type->plugin)->store(ctx, type, value, value_len, options, format, prefix_data, hints, ctx_node, val, NULL, &err);
     if (dynamic) {
         *dynamic = 0;
     }
@@ -560,16 +560,16 @@ lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *
     LY_ERR ret;
     struct ly_err_item *err = NULL;
 
-    assert(type->plugin->validate);
+    assert(lysc_get_type_plugin(type->plugin)->validate);
 
-    ret = type->plugin->validate(ctx, type, ctx_node, tree, val, &err);
+    ret = lysc_get_type_plugin(type->plugin)->validate(ctx, type, ctx_node, tree, val, &err);
     if (ret) {
         if (err) {
             ly_err_print_build_path(ctx, ctx_node, NULL, err);
             ly_err_free(err);
         } else {
             LOGVAL(ctx, LYVE_OTHER, "Resolving value \"%s\" failed.",
-                    (char *)type->plugin->print(ctx, val, LY_VALUE_CANON, NULL, NULL, NULL));
+                    (char *)lysc_get_type_plugin(type->plugin)->print(ctx, val, LY_VALUE_CANON, NULL, NULL, NULL));
         }
         return ret;
     }
@@ -594,7 +594,7 @@ ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const 
     }
 
     type = ((struct lysc_node_leaf *)node)->type;
-    rc = type->plugin->store(ctx ? ctx : node->module->ctx, type, value, value_len, 0, format, prefix_data, hints, node,
+    rc = lysc_get_type_plugin(type->plugin)->store(ctx ? ctx : node->module->ctx, type, value, value_len, 0, format, prefix_data, hints, node,
             &storage, NULL, &err);
     if (rc == LY_EINCOMPLETE) {
         /* actually success */
@@ -608,7 +608,7 @@ ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const 
     }
 
     if (!rc) {
-        type->plugin->free(ctx ? ctx : node->module->ctx, &storage);
+        lysc_get_type_plugin(type->plugin)->free(ctx ? ctx : node->module->ctx, &storage);
     }
     return rc;
 }
@@ -643,14 +643,14 @@ lyd_value_validate2(const struct ly_ctx *ctx, const struct lysc_node *schema, co
     type = ((struct lysc_node_leaf *)schema)->type;
 
     /* store */
-    rc = type->plugin->store(ctx, type, value, value_len, 0, format, prefix_data, LYD_HINT_DATA, schema, &val, NULL, &err);
+    rc = lysc_get_type_plugin(type->plugin)->store(ctx, type, value, value_len, 0, format, prefix_data, LYD_HINT_DATA, schema, &val, NULL, &err);
     if (!rc || (rc == LY_EINCOMPLETE)) {
         stored = 1;
     }
 
     if (ctx_node && (rc == LY_EINCOMPLETE)) {
         /* resolve */
-        rc = type->plugin->validate(ctx, type, ctx_node, ctx_node, &val, &err);
+        rc = lysc_get_type_plugin(type->plugin)->validate(ctx, type, ctx_node, ctx_node, &val, &err);
     }
 
     if (rc && (rc != LY_EINCOMPLETE) && err) {
@@ -673,13 +673,13 @@ lyd_value_validate2(const struct ly_ctx *ctx, const struct lysc_node *schema, co
 
         if (canonical) {
             /* return canonical value */
-            lydict_dup(ctx, val.realtype->plugin->print(ctx, &val, LY_VALUE_CANON, NULL, NULL, NULL), canonical);
+            lydict_dup(ctx, lysc_get_type_plugin(val.realtype->plugin)->print(ctx, &val, LY_VALUE_CANON, NULL, NULL, NULL), canonical);
         }
     }
 
     if (stored) {
         /* free value */
-        type->plugin->free(ctx, &val);
+        lysc_get_type_plugin(type->plugin)->free(ctx, &val);
     }
     return rc;
 }
@@ -704,9 +704,9 @@ lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t va
     LY_CHECK_RET(ret);
 
     /* compare values */
-    ret = type->plugin->compare(ctx, &node->value, &val);
+    ret = lysc_get_type_plugin(type->plugin)->compare(ctx, &node->value, &val);
 
-    type->plugin->free(ctx, &val);
+    lysc_get_type_plugin(type->plugin)->free(ctx, &val);
     return ret;
 }
 
@@ -982,7 +982,7 @@ lyd_value_get_canonical(const struct ly_ctx *ctx, const struct lyd_value *value)
     LY_CHECK_ARG_RET(ctx, ctx, value, NULL);
 
     return value->_canonical ? value->_canonical :
-           (const char *)value->realtype->plugin->print(ctx, value, LY_VALUE_CANON, NULL, NULL, NULL);
+           (const char *)lysc_get_type_plugin(value->realtype->plugin)->print(ctx, value, LY_VALUE_CANON, NULL, NULL, NULL);
 }
 
 LIBYANG_API_DEF LY_ERR

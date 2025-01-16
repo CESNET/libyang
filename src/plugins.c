@@ -132,6 +132,16 @@ static struct ly_set plugins_handlers = {0};
 static struct ly_set plugins_types = {0};
 static struct ly_set plugins_extensions = {0};
 
+LIBYANG_API_DEF struct lyplg_type *
+lysc_get_type_plugin(uintptr_t plugin_id)
+{
+    if (plugin_id < plugins_types.count) {
+        return &((struct lyplg_type_record *)plugins_types.objs[plugin_id])->plugin;
+    } else {
+        return (struct lyplg_type *)plugin_id;
+    }
+}
+
 /**
  * @brief Iterate over list of loaded plugins of the given @p type.
  *
@@ -162,7 +172,7 @@ plugins_iter(const struct ly_ctx *ctx, enum LYPLG type, uint32_t *index)
 }
 
 static void *
-lyplg_record_find(const struct ly_ctx *ctx, enum LYPLG type, const char *module, const char *revision, const char *name)
+lyplg_record_find(const struct ly_ctx *ctx, enum LYPLG type, const char *module, const char *revision, const char *name, uint32_t *record_idx)
 {
     uint32_t i = 0;
     struct lyplg_record *item;
@@ -178,11 +188,47 @@ lyplg_record_find(const struct ly_ctx *ctx, enum LYPLG type, const char *module,
                 continue;
             }
 
+            if (record_idx) {
+                /* return the record idx, -1 because the iterator is already increased */
+                *record_idx = i - 1;
+            }
+
             return item;
         }
     }
 
     return NULL;
+}
+
+LY_ERR
+_lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name, uintptr_t *out)
+{
+    struct lyplg_type_record *record = NULL;
+    uint32_t record_idx;
+
+    if (ctx) {
+        /* try to find context specific plugin */
+        record = lyplg_record_find(ctx, LYPLG_TYPE, module, revision, name, &record_idx);
+    }
+
+    if (!record) {
+        /* try to find shared plugin */
+        record = lyplg_record_find(NULL, LYPLG_TYPE, module, revision, name, &record_idx);
+    }
+
+    if (!record) {
+        return LY_ENOTFOUND;
+    }
+
+    if (!strncmp(record->plugin.id, "ly2 - ", 6)) {
+        /* internal plugin, return an index */
+        *out = record_idx;
+    } else {
+        /* external plugin, return the pointer */
+        *out = (uintptr_t)&record->plugin;
+    }
+
+    return LY_SUCCESS;
 }
 
 struct lyplg_type *
@@ -192,12 +238,12 @@ lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, const char 
 
     if (ctx) {
         /* try to find context specific plugin */
-        record = lyplg_record_find(ctx, LYPLG_TYPE, module, revision, name);
+        record = lyplg_record_find(ctx, LYPLG_TYPE, module, revision, name, NULL);
     }
 
     if (!record) {
         /* try to find shared plugin */
-        record = lyplg_record_find(NULL, LYPLG_TYPE, module, revision, name);
+        record = lyplg_record_find(NULL, LYPLG_TYPE, module, revision, name, NULL);
     }
 
     return record ? &record->plugin : NULL;
@@ -210,12 +256,12 @@ lyplg_ext_plugin_find(const struct ly_ctx *ctx, const char *module, const char *
 
     if (ctx) {
         /* try to find context specific plugin */
-        record = lyplg_record_find(ctx, LYPLG_EXTENSION, module, revision, name);
+        record = lyplg_record_find(ctx, LYPLG_EXTENSION, module, revision, name, NULL);
     }
 
     if (!record) {
         /* try to find shared plugin */
-        record = lyplg_record_find(NULL, LYPLG_EXTENSION, module, revision, name);
+        record = lyplg_record_find(NULL, LYPLG_EXTENSION, module, revision, name, NULL);
     }
 
     return record ? &record->plugin : NULL;

@@ -1872,7 +1872,7 @@ lyd_compare_meta(const struct lyd_meta *meta1, const struct lyd_meta *meta2)
         return LY_ENOT;
     }
 
-    return meta1->value.realtype->plugin->compare(ctx, &meta1->value, &meta2->value);
+    return lysc_get_type_plugin(meta1->value.realtype->plugin)->compare(ctx, &meta1->value, &meta2->value);
 }
 
 /**
@@ -2129,7 +2129,7 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
 
         term->hash = orig->hash;
         if (trg_ctx == LYD_CTX(node)) {
-            ret = orig->value.realtype->plugin->duplicate(trg_ctx, &orig->value, &term->value);
+            ret = lysc_get_type_plugin(orig->value.realtype->plugin)->duplicate(trg_ctx, &orig->value, &term->value);
             LY_CHECK_ERR_GOTO(ret, LOGERR(trg_ctx, ret, "Value duplication failed."), error);
         } else {
             /* store canonical value in the target context */
@@ -2438,7 +2438,7 @@ lyd_dup_meta_single_to_ctx(const struct ly_ctx *parent_ctx, const struct lyd_met
         /* annotation */
         mt->annotation = meta->annotation;
         /* duplication of value */
-        ret = meta->value.realtype->plugin->duplicate(parent_ctx, &meta->value, &mt->value);
+        ret = lysc_get_type_plugin(meta->value.realtype->plugin)->duplicate(parent_ctx, &meta->value, &mt->value);
     }
     LY_CHECK_ERR_GOTO(ret, LOGERR(LYD_CTX(parent), LY_EINT, "Value duplication failed."), finish);
     LY_CHECK_GOTO(ret = lydict_insert(parent_ctx, meta->name, 0, &mt->name), finish);
