@@ -63,7 +63,7 @@ test_plugin_store(void **state)
     lysc_type2 = ((struct lysc_node_leaf *)mod->compiled->data->next)->type;
 
     /* check proper type */
-    assert_string_equal("libyang 2 - binary, version 1", type->id);
+    assert_string_equal("ly2 - binary", type->id);
 
     /* check store XML double pad */
     val = "YWhveQ==";
