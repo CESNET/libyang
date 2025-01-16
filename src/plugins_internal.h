@@ -60,6 +60,8 @@ LY_ERR lyplg_init(ly_bool builtin_type_plugins_only);
  */
 void lyplg_clean(void);
 
+LY_ERR _lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name, uintptr_t *out);
+
 /**
  * @brief Find a type plugin.
  *
