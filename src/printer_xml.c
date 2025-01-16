@@ -217,7 +217,7 @@ xml_print_meta(struct xmlpr_ctx *pctx, const struct lyd_node *node)
         ly_set_add(&ns_list, NULL, 0, NULL);
 
         /* print the value */
-        value = meta->value.realtype->plugin->print(LYD_CTX(node), &meta->value, LY_VALUE_XML, &ns_list, &dynamic, NULL);
+        value = lysc_get_type_plugin(meta->value.realtype->plugin)->print(LYD_CTX(node), &meta->value, LY_VALUE_XML, &ns_list, &dynamic, NULL);
 
         /* print namespaces connected with the value's prefixes */
         for (i = 1; i < ns_list.count; ++i) {
@@ -339,7 +339,7 @@ xml_print_term(struct xmlpr_ctx *pctx, const struct lyd_node_term *node)
     }
 
     /* print the value */
-    value = ((struct lysc_node_leaf *)node->schema)->type->plugin->print(LYD_CTX(node), &node->value, LY_VALUE_XML,
+    value = lysc_get_type_plugin(((struct lysc_node_leaf *)node->schema)->type->plugin)->print(LYD_CTX(node), &node->value, LY_VALUE_XML,
             &ns_list, &dynamic, NULL);
     LY_CHECK_ERR_GOTO(!value, rc = LY_EINVAL, cleanup);
 

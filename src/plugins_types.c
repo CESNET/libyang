@@ -904,7 +904,7 @@ lyplg_type_print_val(const struct lysc_node *node, const char *canon, LY_VALUE_F
     type = ((struct lysc_node_leaf *)node)->type;
 
     /* store the value */
-    r = type->plugin->store(node->module->ctx, type, canon, strlen(canon), LYPLG_TYPE_STORE_ONLY, LY_VALUE_CANON,
+    r = lysc_get_type_plugin(type->plugin)->store(node->module->ctx, type, canon, strlen(canon), LYPLG_TYPE_STORE_ONLY, LY_VALUE_CANON,
             NULL, LYD_HINT_DATA, node, &storage, NULL, &err);
     if (r && (r != LY_EINCOMPLETE)) {
         if (err) {
@@ -915,7 +915,7 @@ lyplg_type_print_val(const struct lysc_node *node, const char *canon, LY_VALUE_F
     }
 
     /* print it in the specific format */
-    v = type->plugin->print(node->module->ctx, &storage, format, prefix_data, &dyn, NULL);
+    v = lysc_get_type_plugin(type->plugin)->print(node->module->ctx, &storage, format, prefix_data, &dyn, NULL);
 
     /* store it in the dictionary, storage will be freed */
     if (dyn) {
@@ -924,7 +924,7 @@ lyplg_type_print_val(const struct lysc_node *node, const char *canon, LY_VALUE_F
         lydict_dup(node->module->ctx, v, value);
     }
 
-    type->plugin->free(node->module->ctx, &storage);
+    lysc_get_type_plugin(type->plugin)->free(node->module->ctx, &storage);
     return LY_SUCCESS;
 }
 
@@ -1110,7 +1110,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
                 continue;
             }
 
-            if (!lref->plugin->compare(LYD_CTX(node), &((struct lyd_node_term *)set.val.nodes[i].node)->value, value)) {
+            if (!lysc_get_type_plugin(lref->plugin)->compare(LYD_CTX(node), &((struct lyd_node_term *)set.val.nodes[i].node)->value, value)) {
                 break;
             }
         }
@@ -1135,7 +1135,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
                 continue;
             }
 
-            if (!lref->plugin->compare(LYD_CTX(node), &((struct lyd_node_term *)set.val.nodes[i].node)->value, value)) {
+            if (!lysc_get_type_plugin(lref->plugin)->compare(LYD_CTX(node), &((struct lyd_node_term *)set.val.nodes[i].node)->value, value)) {
                 rc = ly_set_add(*targets, set.val.nodes[i].node, 0, NULL);
                 LY_CHECK_GOTO(rc, cleanup);
             }

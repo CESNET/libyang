@@ -1714,15 +1714,15 @@ set_comp_canonize(struct lyxp_set *set, const struct lyxp_set_node *xp_node)
     }
 
     /* check for built-in types without required canonization */
-    if ((type->basetype == LY_TYPE_STRING) && (type->plugin->store == lyplg_type_store_string)) {
+    if ((type->basetype == LY_TYPE_STRING) && (lysc_get_type_plugin(type->plugin)->store == lyplg_type_store_string)) {
         /* string */
         return LY_SUCCESS;
     }
-    if ((type->basetype == LY_TYPE_BOOL) && (type->plugin->store == lyplg_type_store_boolean)) {
+    if ((type->basetype == LY_TYPE_BOOL) && (lysc_get_type_plugin(type->plugin)->store == lyplg_type_store_boolean)) {
         /* boolean */
         return LY_SUCCESS;
     }
-    if ((type->basetype == LY_TYPE_ENUM) && (type->plugin->store == lyplg_type_store_enum)) {
+    if ((type->basetype == LY_TYPE_ENUM) && (lysc_get_type_plugin(type->plugin)->store == lyplg_type_store_enum)) {
         /* enumeration */
         return LY_SUCCESS;
     }
@@ -3643,7 +3643,7 @@ warn_equality_value(const struct lyxp_expr *exp, struct lyxp_set *set, uint32_t 
 
         type = ((struct lysc_node_leaf *)scnode)->type;
         if (type->basetype != LY_TYPE_IDENT) {
-            rc = type->plugin->store(set->ctx, type, value, strlen(value), 0, set->format, set->prefix_data,
+            rc = lysc_get_type_plugin(type->plugin)->store(set->ctx, type, value, strlen(value), 0, set->format, set->prefix_data,
                     LYD_HINT_DATA, scnode, &storage, NULL, &err);
             if (rc == LY_EINCOMPLETE) {
                 rc = LY_SUCCESS;
@@ -3660,7 +3660,7 @@ warn_equality_value(const struct lyxp_expr *exp, struct lyxp_set *set, uint32_t 
                         (exp->tok_pos[last_equal_exp] - exp->tok_pos[equal_exp]) + exp->tok_len[last_equal_exp],
                         set->cur_scnode);
             } else {
-                type->plugin->free(set->ctx, &storage);
+                lysc_get_type_plugin(type->plugin)->free(set->ctx, &storage);
             }
         }
         free(value);

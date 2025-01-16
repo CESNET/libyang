@@ -1904,14 +1904,14 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_when, struct ly_
 
         LY_LIST_FOR(node->meta, meta) {
             lyplg_ext_get_storage(meta->annotation, LY_STMT_TYPE, sizeof type, (const void **)&type);
-            if (type->plugin->validate) {
+            if (lysc_get_type_plugin(type->plugin)->validate) {
                 /* metadata type resolution */
                 r = ly_set_add(meta_types, (void *)meta, 1, NULL);
                 LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
             }
         }
 
-        if ((node->schema->nodetype & LYD_NODE_TERM) && ((struct lysc_node_leaf *)node->schema)->type->plugin->validate) {
+        if ((node->schema->nodetype & LYD_NODE_TERM) && lysc_get_type_plugin(((struct lysc_node_leaf *)node->schema)->type->plugin)->validate) {
             /* node type resolution */
             r = ly_set_add(node_types, (void *)node, 1, NULL);
             LY_CHECK_ERR_GOTO(r, rc = r, cleanup);

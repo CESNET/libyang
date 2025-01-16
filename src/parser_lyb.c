@@ -267,9 +267,9 @@ lyb_read_term_value(const struct lysc_node_leaf *term, uint8_t **term_value, uin
     if (term->type->basetype == LY_TYPE_LEAFREF) {
         /* Leafref itself is ignored, the target is loaded directly. */
         type_lf = (struct lysc_type_leafref *)term->type;
-        lyb_data_len = type_lf->realtype->plugin->lyb_data_len;
+        lyb_data_len = lysc_get_type_plugin(type_lf->realtype->plugin)->lyb_data_len;
     } else {
-        lyb_data_len = term->type->plugin->lyb_data_len;
+        lyb_data_len = lysc_get_type_plugin(term->type->plugin)->lyb_data_len;
     }
 
     if (lyb_data_len < 0) {
