@@ -279,7 +279,7 @@ ly_ctx_new(const char *search_dir, uint32_t options, struct ly_ctx **new_ctx)
     struct ly_in *in = NULL;
     LY_ERR rc = LY_SUCCESS;
     struct lys_glob_unres unres = {0};
-    ly_bool builtin_plugins_only;
+    ly_bool builtin_plugins_only, static_plugins_only;
 
     LY_CHECK_ARG_RET(NULL, new_ctx, LY_EINVAL);
 
@@ -291,7 +291,8 @@ ly_ctx_new(const char *search_dir, uint32_t options, struct ly_ctx **new_ctx)
 
     /* plugins */
     builtin_plugins_only = (options & LY_CTX_BUILTIN_PLUGINS_ONLY) ? 1 : 0;
-    LY_CHECK_ERR_GOTO(lyplg_init(builtin_plugins_only), LOGINT(NULL); rc = LY_EINT, cleanup);
+    static_plugins_only = (options & LY_CTX_STATIC_PLUGINS_ONLY) ? 1 : 0;
+    LY_CHECK_ERR_GOTO(lyplg_init(builtin_plugins_only, static_plugins_only), LOGINT(NULL); rc = LY_EINT, cleanup);
 
     /* ctx data */
     ctx_data = ly_ctx_data_add(ctx);
@@ -624,6 +625,13 @@ ly_ctx_set_options(struct ly_ctx *ctx, uint32_t option)
     if (!(ctx->opts & LY_CTX_BUILTIN_PLUGINS_ONLY) && (option & LY_CTX_BUILTIN_PLUGINS_ONLY)) {
         LOGERR(ctx, LY_EINVAL,
                 "Invalid argument %s (LY_CTX_BUILTIN_PLUGINS_ONLY can be set only when creating a new context) (%s()).",
+                "option", __func__);
+        return LY_EINVAL;
+    }
+
+    if (!(ctx->opts & LY_CTX_STATIC_PLUGINS_ONLY) && (option & LY_CTX_STATIC_PLUGINS_ONLY)) {
+        LOGERR(ctx, LY_EINVAL,
+                "Invalid argument %s (LY_CTX_STATIC_PLUGINS_ONLY can be set only when creating a new context) (%s()).",
                 "option", __func__);
         return LY_EINVAL;
     }
@@ -1392,7 +1400,7 @@ ly_ctx_compiled_print(const struct ly_ctx *ctx, void *mem, void **mem_end)
 
     LY_CHECK_ARG_RET(ctx, ctx, mem, LY_EINVAL);
 
-    if (ctx->plugins_types.count || ctx->plugins_extensions.count) {
+    if (ctx->plugins_types.count || ctx->plugins_extensions.count || !(ctx->opts & LY_CTX_STATIC_PLUGINS_ONLY)) {
         LOGERR(ctx, LY_EINVAL, "Printing context with dynamic type or extension plugins is not supported.");
         return LY_EINVAL;
     }
@@ -1430,6 +1438,7 @@ ly_ctx_new_printed(const void *mem, struct ly_ctx **ctx)
 {
     LY_ERR rc = LY_SUCCESS;
     struct ly_ctx_data *ctx_data = NULL;
+    ly_bool builtin_plugins_only, static_plugins_only;
 
     LY_CHECK_ARG_RET(NULL, mem, ctx, LY_EINVAL);
 
@@ -1437,6 +1446,11 @@ ly_ctx_new_printed(const void *mem, struct ly_ctx **ctx)
 
     /* ctx data */
     ctx_data = ly_ctx_data_add(*ctx);
+
+    /* plugins */
+    builtin_plugins_only = ((*ctx)->opts & LY_CTX_BUILTIN_PLUGINS_ONLY) ? 1 : 0;
+    static_plugins_only = 1;
+    LY_CHECK_ERR_GOTO(lyplg_init(builtin_plugins_only, static_plugins_only), LOGINT(NULL); rc = LY_EINT, cleanup);
 
     /* data dictionary */
     ctx_data->data_dict = malloc(sizeof *ctx_data->data_dict);

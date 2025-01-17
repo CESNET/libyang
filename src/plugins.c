@@ -526,7 +526,7 @@ plugins_insert_dir(enum LYPLG type)
 #endif
 
 LY_ERR
-lyplg_init(ly_bool builtin_type_plugins_only)
+lyplg_init(ly_bool builtin_type_plugins_only, ly_bool static_plugins_only)
 {
     LY_ERR ret;
 
@@ -587,11 +587,13 @@ lyplg_init(ly_bool builtin_type_plugins_only)
     }
 
 #ifndef STATIC
-    /* external types */
-    LY_CHECK_GOTO(ret = plugins_insert_dir(LYPLG_TYPE), error);
+    if (!static_plugins_only) {
+        /* external types */
+        LY_CHECK_GOTO(ret = plugins_insert_dir(LYPLG_TYPE), error);
 
-    /* external extensions */
-    LY_CHECK_GOTO(ret = plugins_insert_dir(LYPLG_EXTENSION), error);
+        /* external extensions */
+        LY_CHECK_GOTO(ret = plugins_insert_dir(LYPLG_EXTENSION), error);
+    }
 #endif
 
     /* initiation done, wake-up possibly waiting threads creating another contexts */
