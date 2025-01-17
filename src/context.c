@@ -268,7 +268,7 @@ ly_ctx_ht_leafref_links_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod)
 }
 
 LIBYANG_API_DEF LY_ERR
-ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
+ly_ctx_new(const char *search_dir, uint32_t options, struct ly_ctx **new_ctx)
 {
     struct ly_ctx *ctx = NULL;
     struct lys_module *module;
@@ -601,7 +601,7 @@ cleanup:
     return ret;
 }
 
-LIBYANG_API_DEF uint16_t
+LIBYANG_API_DEF uint32_t
 ly_ctx_get_options(const struct ly_ctx *ctx)
 {
     LY_CHECK_ARG_RET(ctx, ctx, 0);
@@ -610,7 +610,7 @@ ly_ctx_get_options(const struct ly_ctx *ctx)
 }
 
 LIBYANG_API_DEF LY_ERR
-ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
+ly_ctx_set_options(struct ly_ctx *ctx, uint32_t option)
 {
     LY_ERR lyrc = LY_SUCCESS;
     struct ly_ctx_data *ctx_data;
@@ -685,7 +685,7 @@ ly_ctx_ht_leafref_links_rec_free(void *val_p)
 }
 
 LIBYANG_API_DEF LY_ERR
-ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
+ly_ctx_unset_options(struct ly_ctx *ctx, uint32_t option)
 {
     LY_ARRAY_COUNT_TYPE u, v;
     const struct lysc_ext_instance *ext;
