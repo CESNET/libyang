@@ -49,11 +49,12 @@
  * Covers both the types and extensions plugins.
  *
  * @param[in] builtin_type_plugins_only Whether to load only built-in YANG type plugins and no included extension plugins.
+ * @param[in] static_plugins_only Whether to load only static plugins, meaning no external directories with plugins.
  * @return LY_SUCCESS in case of success
  * @return LY_EINT in case of internal error
  * @return LY_EMEM in case of memory allocation failure.
  */
-LY_ERR lyplg_init(ly_bool builtin_type_plugins_only);
+LY_ERR lyplg_init(ly_bool builtin_type_plugins_only, ly_bool static_plugins_only);
 
 /**
  * @brief Remove (unload) all the plugins currently available.
