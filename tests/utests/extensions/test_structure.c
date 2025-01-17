@@ -154,7 +154,7 @@ test_schema_invalid(void **state)
             "import ietf-yang-structure-ext {prefix sx;}"
             "container b { sx:structure struct { container x { leaf x {type string;}}}}}";
     UTEST_INVALID_MODULE(data, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Ext plugin \"ly2 structure\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 - structure\": "
             "Extension sx:structure must not be used as a non top-level statement in \"container\" statement.",
             "/a:b/{extension='sx:structure'}/struct", 0);
 
@@ -170,7 +170,7 @@ test_schema_invalid(void **state)
             "sx:structure struct { container x { leaf x {type string;}}}"
             "sx:structure struct { container y { leaf y {type string;}}}}";
     UTEST_INVALID_MODULE(data, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Ext plugin \"ly2 structure\": Extension sx:structure is instantiated multiple times.",
+    CHECK_LOG_CTX("Ext plugin \"ly2 - structure\": Extension sx:structure is instantiated multiple times.",
             "/a:{extension='sx:structure'}/struct", 0);
 
     data = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix self;"
@@ -178,7 +178,7 @@ test_schema_invalid(void **state)
             "sx:structure struct { container x { leaf x {type string;}}}"
             "choice struct { container y { leaf y {type string;}}}}";
     UTEST_INVALID_MODULE(data, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Ext plugin \"ly2 structure\": Extension sx:structure collides with a choice with the same identifier.",
+    CHECK_LOG_CTX("Ext plugin \"ly2 - structure\": Extension sx:structure collides with a choice with the same identifier.",
             "/a:{extension='sx:structure'}/struct", 0);
 
     /* augment-structure */
