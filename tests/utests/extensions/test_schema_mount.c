@@ -73,7 +73,7 @@ test_schema(void **state)
             "  }\n"
             "}\n";
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 - schema mount\": "
             "Extension \"yangmnt:mount-point\" instance not allowed in YANG version 1 module.",
             "/sm:root/{extension='yangmnt:mount-point'}/root", 0);
 
@@ -90,7 +90,7 @@ test_schema(void **state)
             "  yangmnt:mount-point \"root\";\n"
             "}\n";
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 - schema mount\": "
             "Extension \"yangmnt:mount-point\" instance allowed only in container or list statement.",
             "/sm:{extension='yangmnt:mount-point'}/root", 0);
 
@@ -112,7 +112,7 @@ test_schema(void **state)
             "  }\n"
             "}\n";
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 - schema mount\": "
             "Extension \"yangmnt:mount-point\" instance allowed only in container or list statement.",
             "/sm:root/l/{extension='yangmnt:mount-point'}/root", 0);
 
@@ -136,7 +136,7 @@ test_schema(void **state)
             "  }\n"
             "}\n";
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 - schema mount\": "
             "Multiple extension \"yangmnt:mount-point\" instances.",
             "/sm:l/{extension='yangmnt:mount-point'}/root", 0);
 
@@ -196,7 +196,7 @@ test_parse_invalid(void **state)
             "  </unknown>"
             "</root>";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EINVAL, data);
-    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount\": Failed to get extension data, no callback set.",
+    CHECK_LOG_CTX("Ext plugin \"ly2 - schema mount\": Failed to get extension data, no callback set.",
             NULL, 0);
 
     json =
@@ -213,7 +213,7 @@ test_parse_invalid(void **state)
             "  }"
             "}";
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EINVAL, data);
-    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount\": Failed to get extension data, no callback set.",
+    CHECK_LOG_CTX("Ext plugin \"ly2 - schema mount\": Failed to get extension data, no callback set.",
             NULL, 0);
 
     /* unknown data */
@@ -401,22 +401,22 @@ test_parse_invalid(void **state)
             "  </mount-point>"
             "</schema-mounts>");
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount\": Mandatory node \"type\" instance does not exist.",
+    CHECK_LOG_CTX("Ext plugin \"ly2 - schema mount\": Mandatory node \"type\" instance does not exist.",
             "/ietf-interfaces:interfaces/interface[name='bu']", 0);
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount\": Mandatory node \"type\" instance does not exist.",
+    CHECK_LOG_CTX("Ext plugin \"ly2 - schema mount\": Mandatory node \"type\" instance does not exist.",
             "/ietf-interfaces:interfaces/interface[name='bu']", 0);
 
     /* same validation fail in separate validation */
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, LY_SUCCESS, data);
     assert_int_equal(LY_EVALID, lyd_validate_all(&data, NULL, LYD_VALIDATE_PRESENT, NULL));
-    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount\": Mandatory node \"type\" instance does not exist.",
+    CHECK_LOG_CTX("Ext plugin \"ly2 - schema mount\": Mandatory node \"type\" instance does not exist.",
             "/ietf-interfaces:interfaces/interface[name='bu']", 0);
     lyd_free_siblings(data);
 
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, LY_SUCCESS, data);
     assert_int_equal(LY_EVALID, lyd_validate_all(&data, NULL, LYD_VALIDATE_PRESENT, NULL));
-    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount\": Mandatory node \"type\" instance does not exist.",
+    CHECK_LOG_CTX("Ext plugin \"ly2 - schema mount\": Mandatory node \"type\" instance does not exist.",
             "/ietf-interfaces:interfaces/interface[name='bu']", 0);
     lyd_free_siblings(data);
 
@@ -865,7 +865,7 @@ test_parse_shared(void **state)
             "  </interfaces-state>\n"
             "</root2>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 - schema mount\": "
             "Shared-schema yang-library content-id \"2\" differs from \"1\" used previously.",
             "/ietf-yang-library:yang-library/content-id", 0);
 
@@ -1121,7 +1121,7 @@ test_parse_shared_parent_ref(void **state)
             "</root3>\n"
             "<target xmlns=\"urn:sm\">wrong-target-value</target>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 - schema mount\": "
             "Invalid leafref value \"target-value\" - no target instance \"/sm:target\" with the same value.",
             "/ietf-interfaces:interfaces/interface[name='bu']/sm:sm-name", 0);
 
@@ -1146,7 +1146,7 @@ test_parse_shared_parent_ref(void **state)
             "  \"sm:target\": \"wrong-target-value\"\n"
             "}\n";
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 - schema mount\": "
             "Invalid leafref value \"target-value\" - no target instance \"/sm:target\" with the same value.",
             "/ietf-interfaces:interfaces/interface[name='bu']/sm:sm-name", 0);
 

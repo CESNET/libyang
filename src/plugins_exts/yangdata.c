@@ -278,7 +278,7 @@ const struct lyplg_ext_record plugins_yangdata[] = {
         .revision = "2017-01-26",
         .name = "yang-data",
 
-        .plugin.id = "ly2 yang-data",
+        .plugin.id = "ly2 - yang-data",
         .plugin.parse = yangdata_parse,
         .plugin.compile = yangdata_compile,
         .plugin.printer_info = yangdata_printer_info,
