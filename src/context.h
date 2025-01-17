@@ -209,6 +209,10 @@ struct ly_ctx;
                                         invalid data needs to be stored in YANG node values. */
 #define LY_CTX_LYB_HASHES 0x1000 /**< Generate hashes for all the schema nodes. Required when using LYB data parse
                                         or print. */
+#define LY_CTX_STATIC_PLUGINS_ONLY 0x2000 /**< By default, external plugins from directories the path to which is obtained
+                                        from the `LIBYANG_TYPES_PLUGINS_DIR` and `LIBYANG_EXTENSIONS_PLUGINS_DIR` environmental variables
+                                        are loaded. This option prevents loading of all external plugins and only
+                                        the static (built-in) plugins are loaded.
 
 /* 0x80000000 reserved for internal use */
 
