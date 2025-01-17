@@ -236,7 +236,7 @@ struct ly_ctx;
  * @param[out] new_ctx Pointer to the created libyang context if LY_SUCCESS returned.
  * @return LY_ERR return value.
  */
-LIBYANG_API_DECL LY_ERR ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx);
+LIBYANG_API_DECL LY_ERR ly_ctx_new(const char *search_dir, uint32_t options, struct ly_ctx **new_ctx);
 
 /**
  * @brief Create libyang context according to the provided yang-library data in a file.
@@ -356,7 +356,7 @@ LIBYANG_API_DECL const char * const *ly_ctx_get_searchdirs(const struct ly_ctx *
  * @param[in] ctx Context to query.
  * @return Combination of all the currently set context's options, see @ref contextoptions.
  */
-LIBYANG_API_DECL uint16_t ly_ctx_get_options(const struct ly_ctx *ctx);
+LIBYANG_API_DECL uint32_t ly_ctx_get_options(const struct ly_ctx *ctx);
 
 /**
  * @brief Set some of the context's options, see @ref contextoptions.
@@ -366,7 +366,7 @@ LIBYANG_API_DECL uint16_t ly_ctx_get_options(const struct ly_ctx *ctx);
  * and all ::lysc_node.priv in the modules will be overwritten, see ::LY_CTX_SET_PRIV_PARSED.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option);
+LIBYANG_API_DECL LY_ERR ly_ctx_set_options(struct ly_ctx *ctx, uint32_t option);
 
 /**
  * @brief Unset some of the context's options, see @ref contextoptions.
@@ -374,7 +374,7 @@ LIBYANG_API_DECL LY_ERR ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option);
  * @param[in] option Combination of the context's options to be unset, see @ref contextoptions.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option);
+LIBYANG_API_DECL LY_ERR ly_ctx_unset_options(struct ly_ctx *ctx, uint32_t option);
 
 /**
  * @brief Get the change count of the context (module set) during its life-time.
