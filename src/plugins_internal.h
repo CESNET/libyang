@@ -83,8 +83,9 @@ uintptr_t lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, c
  * @param[in] revision Revision of the module for which the plugin is implemented. NULL is not a wildcard, it matches
  * only the plugins with NULL revision specified.
  * @param[in] name Name of the extension which the plugin implements.
- * @return Found extension plugin, NULL if none found.
+ * @return ID of the found extension plugin, 0 if none found. The extension plugin can be obtained
+ * by passing the returned ID to ::lysc_get_ext_plugin().
  */
-struct lyplg_ext *lyplg_ext_plugin_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name);
+uintptr_t lyplg_ext_plugin_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name);
 
 #endif /* LY_PLUGINS_INTERNAL_H_ */

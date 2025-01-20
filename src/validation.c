@@ -453,7 +453,8 @@ lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, enum ly
             struct lyd_ctx_ext_val *ext_v = ext_val->objs[i];
 
             /* validate extension data */
-            r = ext_v->ext->def->plugin->validate(ext_v->ext, ext_v->sibling, *tree, data_type, val_opts, diff);
+            r = lysc_get_ext_plugin(ext_v->ext->def->plugin)->validate(ext_v->ext, ext_v->sibling, *tree,
+                    data_type, val_opts, diff);
             LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
             /* remove this item from the set */
@@ -470,7 +471,7 @@ lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, enum ly
             struct lyd_ctx_ext_node *ext_n = ext_node->objs[i];
 
             /* validate the node */
-            r = ext_n->ext->def->plugin->node(ext_n->ext, ext_n->node, val_opts);
+            r = lysc_get_ext_plugin(ext_n->ext->def->plugin)->node(ext_n->ext, ext_n->node, val_opts);
             LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
             /* remove this item from the set */
@@ -1819,7 +1820,7 @@ lyd_validate_nested_ext(struct lyd_node *sibling, struct ly_set *ext_val)
     /* try to find the extension instance */
     nested_exts = sibling->parent->schema->exts;
     LY_ARRAY_FOR(nested_exts, u) {
-        if (nested_exts[u].def->plugin->validate) {
+        if (lysc_get_ext_plugin(nested_exts[u].def->plugin)->validate) {
             if (ext) {
                 /* more extension instances with validate callback */
                 LOGINT_RET(LYD_CTX(sibling));
@@ -1852,7 +1853,7 @@ lyd_validate_node_ext(struct lyd_node *node, struct ly_set *ext_node)
     /* try to find a relevant extension instance with node callback */
     exts = node->schema->exts;
     LY_ARRAY_FOR(exts, u) {
-        if (exts[u].def->plugin && exts[u].def->plugin->node) {
+        if (exts[u].def->plugin && lysc_get_ext_plugin(exts[u].def->plugin)->node) {
             /* store for validation */
             ext_n = malloc(sizeof *ext_n);
             LY_CHECK_ERR_RET(!ext_n, LOGMEM(LYD_CTX(node)), LY_EMEM);

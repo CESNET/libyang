@@ -1377,7 +1377,7 @@ lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
         u = 0;
         while (u < LY_ARRAY_COUNT(exts)) {
             ext = &exts[u];
-            if (!ext->plugin || !ext->plugin->parse) {
+            if (!ext->plugin || !lysc_get_ext_plugin(ext->plugin)->parse) {
                 goto next_iter;
             }
 
@@ -1388,7 +1388,7 @@ lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
             ly_log_location(NULL, NULL, path, NULL);
 
             /* parse */
-            r = ext->plugin->parse(pctx, ext);
+            r = lysc_get_ext_plugin(ext->plugin)->parse(pctx, ext);
 
             ly_log_location_revert(0, 0, 1, 0);
             free(path);
@@ -1964,7 +1964,8 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
 
     /* resolve extension plugins and parse extension instances */
     LY_ARRAY_FOR(mod->parsed->extensions, u) {
-        mod->parsed->extensions[u].plugin = lyplg_ext_plugin_find(mod->ctx, mod->name, mod->revision, mod->parsed->extensions[u].name);
+        mod->parsed->extensions[u].plugin = lyplg_ext_plugin_find(mod->ctx, mod->name,
+                mod->revision, mod->parsed->extensions[u].name);
     }
     LY_CHECK_GOTO(ret = lysp_resolve_ext_instance_records(pctx), cleanup);
 

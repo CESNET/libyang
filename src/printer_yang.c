@@ -356,6 +356,7 @@ yprc_extension_instances(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t
 {
     LY_ARRAY_COUNT_TYPE u;
     ly_bool inner_flag;
+    struct lyplg_ext *ext;
 
     LY_ARRAY_FOR(exts, u) {
         if ((exts[u].parent_stmt != substmt) || (exts[u].parent_stmt_index != substmt_index)) {
@@ -375,8 +376,9 @@ yprc_extension_instances(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t
         inner_flag = 0;
         yprc_extension_instances(pctx, LY_STMT_EXTENSION_INSTANCE, 0, exts[u].exts, &inner_flag);
 
-        if (exts[u].def->plugin && exts[u].def->plugin->printer_info) {
-            exts[u].def->plugin->printer_info(&pctx->printer_ctx, &exts[u], &inner_flag);
+        ext = lysc_get_ext_plugin(exts[u].def->plugin);
+        if (ext && ext->printer_info) {
+            ext->printer_info(&pctx->printer_ctx, &exts[u], &inner_flag);
         }
 
         LEVEL--;

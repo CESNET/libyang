@@ -132,11 +132,11 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *extp, struct lys
     COMPILE_EXTS_GOTO(ctx, extp->exts, ext->exts, ext, ret, cleanup);
 
     /* compile this extension */
-    if (ext->def->plugin && ext->def->plugin->compile) {
+    if (ext->def->plugin && lysc_get_ext_plugin(ext->def->plugin)->compile) {
         if (ext->argument) {
             lysc_update_path(ctx, ext->module, ext->argument);
         }
-        ret = ext->def->plugin->compile(ctx, extp, ext);
+        ret = lysc_get_ext_plugin(ext->def->plugin)->compile(ctx, extp, ext);
         if (ret == LY_ENOT) {
             lysc_ext_instance_free(ctx->ctx, ext);
         }

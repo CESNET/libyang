@@ -405,7 +405,7 @@ struct lysp_ext_instance {
     const char *argument;                   /**< optional value of the extension's argument */
     LY_VALUE_FORMAT format;                 /**< prefix format of the extension name/argument (::LY_VALUE_XML is YIN format) */
     void *prefix_data;                      /**< format-specific data for prefix resolution (see ly_resolve_prefix()) */
-    struct lyplg_ext *plugin;               /**< pointer to the extension plugin, if any */
+    uintptr_t plugin;                       /**< extension plugin, use ::lysc_get_ext_plugin() */
 
     void *parent;                           /**< pointer to the parent statement holding the extension instance(s), use
                                                  ::lysp_ext_instance#parent_stmt to access the value/structure */

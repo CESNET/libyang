@@ -1328,7 +1328,7 @@ lyd_get_meta_annotation(const struct lys_module *mod, const char *name, size_t n
     }
 
     LY_ARRAY_FOR(mod->compiled->exts, u) {
-        plugin = mod->compiled->exts[u].def->plugin;
+        plugin = lysc_get_ext_plugin(mod->compiled->exts[u].def->plugin);
         if (plugin && !strncmp(plugin->id, "ly2 - metadata", 12) &&
                 !ly_strncmp(mod->compiled->exts[u].argument, name, name_len)) {
             return &mod->compiled->exts[u];

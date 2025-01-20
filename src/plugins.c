@@ -167,6 +167,12 @@ lysc_get_type_plugin(uintptr_t plugin_id)
     return lysc_get_plugin(plugin_id, LYPLG_TYPE, &plugins_types);
 }
 
+LIBYANG_API_DEF struct lyplg_ext *
+lysc_get_ext_plugin(uintptr_t plugin_id)
+{
+    return lysc_get_plugin(plugin_id, LYPLG_EXTENSION, &plugins_extensions);
+}
+
 /**
  * @brief Iterate over list of loaded plugins of the given @p type.
  *
@@ -255,40 +261,34 @@ lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, const char 
     }
 }
 
-struct lyplg_type *
-lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name)
-{
-    struct lyplg_type_record *record = NULL;
-
-    if (ctx) {
-        /* try to find context specific plugin */
-        record = lyplg_record_find(ctx, LYPLG_TYPE, module, revision, name, NULL);
-    }
-
-    if (!record) {
-        /* try to find shared plugin */
-        record = lyplg_record_find(NULL, LYPLG_TYPE, module, revision, name, NULL);
-    }
-
-    return record ? &record->plugin : NULL;
-}
-
-struct lyplg_ext *
+uintptr_t
 lyplg_ext_plugin_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name)
 {
     struct lyplg_ext_record *record = NULL;
+    uint32_t record_idx = 0;
 
     if (ctx) {
         /* try to find context specific plugin */
-        record = lyplg_record_find(ctx, LYPLG_EXTENSION, module, revision, name, NULL);
+        record = lyplg_record_find(ctx, LYPLG_EXTENSION, module, revision, name, &record_idx);
     }
 
     if (!record) {
         /* try to find shared plugin */
-        record = lyplg_record_find(NULL, LYPLG_EXTENSION, module, revision, name, NULL);
+        record = lyplg_record_find(NULL, LYPLG_EXTENSION, module, revision, name, &record_idx);
     }
 
-    return record ? &record->plugin : NULL;
+    if (!record) {
+        /* not found */
+        return 0;
+    }
+
+    if (!strncmp(record->plugin.id, "ly2 - ", 6)) {
+        /* internal plugin, return an index with an offset of +1 in order to keep 0 as an invalid index (a NULL ptr) */
+        return record_idx + 1;
+    } else {
+        /* external plugin, return the pointer */
+        return (uintptr_t)&record->plugin;
+    }
 }
 
 /**
