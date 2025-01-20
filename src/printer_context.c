@@ -112,6 +112,7 @@ static void
 ctxs_exts(const struct lysc_ext_instance *exts, struct ly_ht *ht, int *size)
 {
     LY_ARRAY_COUNT_TYPE u;
+    struct lyplg_ext *ext;
 
     /* sized array */
     *size += CTXS_SIZED_ARRAY(exts);
@@ -123,8 +124,9 @@ ctxs_exts(const struct lysc_ext_instance *exts, struct ly_ht *ht, int *size)
         *size += sizeof(LY_ARRAY_COUNT_TYPE) + LY_ARRAY_COUNT(exts[u].substmts) * sizeof *exts[u].substmts;
 
         /* compiled, substmts storage */
-        if (exts[u].def->plugin && exts[u].def->plugin->compiled_size) {
-            *size += exts[u].def->plugin->compiled_size(&exts[u], ht);
+        ext = lysc_get_ext_plugin(exts[u].def->plugin);
+        if (ext && ext->compiled_size) {
+            *size += ext->compiled_size(&exts[u], ht);
         }
     }
 }
@@ -814,8 +816,8 @@ ctxp_ext(const struct lysc_ext_instance *orig_ext, struct lysc_ext_instance *ext
     }
 
     /* compiled, substmts storage, use the plugin */
-    if (ext->def->plugin && ext->def->plugin->compiled_print) {
-        ext->def->plugin->compiled_print(orig_ext, ext, addr_ht, ptr_set, mem);
+    if (ext->def->plugin && lysc_get_ext_plugin(ext->def->plugin)->compiled_print) {
+        lysc_get_ext_plugin(ext->def->plugin)->compiled_print(orig_ext, ext, addr_ht, ptr_set, mem);
     } else {
         ext->compiled = NULL;
     }
