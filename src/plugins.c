@@ -176,7 +176,7 @@ lysc_get_ext_plugin(uintptr_t plugin_id)
 /**
  * @brief Iterate over list of loaded plugins of the given @p type.
  *
- * @param[in] ctx The context for which the plugin is searched for
+ * @param[in] ctx The context for which the plugin is searched for.
  * @param[in] type Type of the plugins to iterate.
  * @param[in,out] index The iterator - set to 0 for the first call.
  * @return The plugin records, NULL if no more record is available.
@@ -202,6 +202,17 @@ plugins_iter(const struct ly_ctx *ctx, enum LYPLG type, uint32_t *index)
     return plugins->objs[*index - 1];
 }
 
+/**
+ * @brief Find the give @p type plugin record.
+ *
+ * @param[in] ctx The context for which the plugin record is searched for, NULL for built-in plugins.
+ * @param[in] type Type of the plugin record to find.
+ * @param[in] module Module name of the plugin record.
+ * @param[in] revision Revision of the @p module.
+ * @param[in] name Name of the plugin record.
+ * @param[out] record_idx Optional output parameter to get the index of the found plugin record.
+ * @return Found plugin record or NULL if not found.
+ */
 static void *
 lyplg_record_find(const struct ly_ctx *ctx, enum LYPLG type, const char *module, const char *revision, const char *name, uint32_t *record_idx)
 {
