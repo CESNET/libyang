@@ -205,7 +205,7 @@ plugins_iter(const struct ly_ctx *ctx, enum LYPLG type, uint32_t *index)
 /**
  * @brief Find the give @p type plugin record.
  *
- * @param[in] ctx The context for which the plugin record is searched for, NULL for built-in plugins.
+ * @param[in] ctx Context for which the plugin record is searched for, NULL for built-in plugins.
  * @param[in] type Type of the plugin record to find.
  * @param[in] module Module name of the plugin record.
  * @param[in] revision Revision of the @p module.
@@ -242,20 +242,31 @@ lyplg_record_find(const struct ly_ctx *ctx, enum LYPLG type, const char *module,
     return NULL;
 }
 
-uintptr_t
-lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name)
+/**
+ * @brief Find the plugin of the given @p type.
+ *
+ * @param[in] ctx Context for which the plugin record is searched for, NULL for built-in plugins.
+ * @param[in] type Type of the plugin record to find.
+ * @param[in] module Module name of the plugin.
+ * @param[in] revision Revision of the @p module.
+ * @param[in] name Name of the plugin.
+ * @return Accessor to the callbacks plugin structure, use ::lysc_get_type_plugin()
+ * or ::lysc_get_ext_plugin() on the returned value to get the actual plugin. 0 if not found.
+ */
+static uintptr_t
+lyplg_plugin_find(const struct ly_ctx *ctx, enum LYPLG type, const char *module, const char *revision, const char *name)
 {
     struct lyplg_type_record *record = NULL;
     uint32_t record_idx = 0;
 
     if (ctx) {
         /* try to find context specific plugin */
-        record = lyplg_record_find(ctx, LYPLG_TYPE, module, revision, name, &record_idx);
+        record = lyplg_record_find(ctx, type, module, revision, name, &record_idx);
     }
 
     if (!record) {
         /* try to find shared plugin */
-        record = lyplg_record_find(NULL, LYPLG_TYPE, module, revision, name, &record_idx);
+        record = lyplg_record_find(NULL, type, module, revision, name, &record_idx);
     }
 
     if (!record) {
@@ -273,33 +284,15 @@ lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, const char 
 }
 
 uintptr_t
+lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name)
+{
+    return lyplg_plugin_find(ctx, LYPLG_TYPE, module, revision, name);
+}
+
+uintptr_t
 lyplg_ext_plugin_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name)
 {
-    struct lyplg_ext_record *record = NULL;
-    uint32_t record_idx = 0;
-
-    if (ctx) {
-        /* try to find context specific plugin */
-        record = lyplg_record_find(ctx, LYPLG_EXTENSION, module, revision, name, &record_idx);
-    }
-
-    if (!record) {
-        /* try to find shared plugin */
-        record = lyplg_record_find(NULL, LYPLG_EXTENSION, module, revision, name, &record_idx);
-    }
-
-    if (!record) {
-        /* not found */
-        return 0;
-    }
-
-    if (!strncmp(record->plugin.id, "ly2 - ", 6)) {
-        /* internal plugin, return an index with an offset of +1 in order to keep 0 as an invalid index (a NULL ptr) */
-        return record_idx + 1;
-    } else {
-        /* external plugin, return the pointer */
-        return (uintptr_t)&record->plugin;
-    }
+    return lyplg_plugin_find(ctx, LYPLG_EXTENSION, module, revision, name);
 }
 
 /**
