@@ -3619,6 +3619,7 @@ warn_equality_value(const struct lyxp_expr *exp, struct lyxp_set *set, uint32_t 
     struct lyd_value storage;
     LY_ERR rc;
     struct ly_err_item *err = NULL;
+    struct lyplg_type *type_plugin;
 
     if ((scnode = warn_get_scnode_in_ctx(set)) && (scnode->nodetype & (LYS_LEAF | LYS_LEAFLIST)) &&
             ((exp->tokens[val_exp] == LYXP_TOKEN_LITERAL) || (exp->tokens[val_exp] == LYXP_TOKEN_NUMBER))) {
@@ -3643,7 +3644,8 @@ warn_equality_value(const struct lyxp_expr *exp, struct lyxp_set *set, uint32_t 
 
         type = ((struct lysc_node_leaf *)scnode)->type;
         if (type->basetype != LY_TYPE_IDENT) {
-            rc = lysc_get_type_plugin(type->plugin)->store(set->ctx, type, value, strlen(value), 0, set->format, set->prefix_data,
+            type_plugin = lysc_get_type_plugin(type->plugin);
+            rc = type_plugin->store(set->ctx, type, value, strlen(value), 0, set->format, set->prefix_data,
                     LYD_HINT_DATA, scnode, &storage, NULL, &err);
             if (rc == LY_EINCOMPLETE) {
                 rc = LY_SUCCESS;
@@ -3660,7 +3662,7 @@ warn_equality_value(const struct lyxp_expr *exp, struct lyxp_set *set, uint32_t 
                         (exp->tok_pos[last_equal_exp] - exp->tok_pos[equal_exp]) + exp->tok_len[last_equal_exp],
                         set->cur_scnode);
             } else {
-                lysc_get_type_plugin(type->plugin)->free(set->ctx, &storage);
+                type_plugin->free(set->ctx, &storage);
             }
         }
         free(value);

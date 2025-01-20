@@ -531,7 +531,8 @@ lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct ly
         options |= LYPLG_TYPE_STORE_ONLY;
     }
 
-    r = lysc_get_type_plugin(type->plugin)->store(ctx, type, value, value_len, options, format, prefix_data, hints, ctx_node, val, NULL, &err);
+    r = lysc_get_type_plugin(type->plugin)->store(ctx, type, value, value_len, options,
+            format, prefix_data, hints, ctx_node, val, NULL, &err);
     if (dynamic) {
         *dynamic = 0;
     }
@@ -559,17 +560,19 @@ lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *
 {
     LY_ERR ret;
     struct ly_err_item *err = NULL;
+    struct lyplg_type *type_plugin;
 
-    assert(lysc_get_type_plugin(type->plugin)->validate);
+    type_plugin = lysc_get_type_plugin(type->plugin);
+    assert(type_plugin && type_plugin->validate);
 
-    ret = lysc_get_type_plugin(type->plugin)->validate(ctx, type, ctx_node, tree, val, &err);
+    ret = type_plugin->validate(ctx, type, ctx_node, tree, val, &err);
     if (ret) {
         if (err) {
             ly_err_print_build_path(ctx, ctx_node, NULL, err);
             ly_err_free(err);
         } else {
             LOGVAL(ctx, LYVE_OTHER, "Resolving value \"%s\" failed.",
-                    (char *)lysc_get_type_plugin(type->plugin)->print(ctx, val, LY_VALUE_CANON, NULL, NULL, NULL));
+                    (char *)type_plugin->print(ctx, val, LY_VALUE_CANON, NULL, NULL, NULL));
         }
         return ret;
     }
@@ -594,8 +597,8 @@ ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const 
     }
 
     type = ((struct lysc_node_leaf *)node)->type;
-    rc = lysc_get_type_plugin(type->plugin)->store(ctx ? ctx : node->module->ctx, type, value, value_len, 0, format, prefix_data, hints, node,
-            &storage, NULL, &err);
+    rc = lysc_get_type_plugin(type->plugin)->store(ctx ? ctx : node->module->ctx, type, value,
+            value_len, 0, format, prefix_data, hints, node, &storage, NULL, &err);
     if (rc == LY_EINCOMPLETE) {
         /* actually success */
         rc = LY_SUCCESS;
@@ -632,6 +635,7 @@ lyd_value_validate2(const struct ly_ctx *ctx, const struct lysc_node *schema, co
     struct lysc_type *type;
     struct lyd_value val = {0};
     ly_bool stored = 0, log = 1;
+    struct lyplg_type *type_plugin, *realtype_plugin;
 
     if (!ctx) {
         ctx = schema->module->ctx;
@@ -642,15 +646,18 @@ lyd_value_validate2(const struct ly_ctx *ctx, const struct lysc_node *schema, co
     }
     type = ((struct lysc_node_leaf *)schema)->type;
 
+    type_plugin = lysc_get_type_plugin(type->plugin);
+
     /* store */
-    rc = lysc_get_type_plugin(type->plugin)->store(ctx, type, value, value_len, 0, format, prefix_data, LYD_HINT_DATA, schema, &val, NULL, &err);
+    rc = type_plugin->store(ctx, type, value, value_len, 0, format,
+            prefix_data, LYD_HINT_DATA, schema, &val, NULL, &err);
     if (!rc || (rc == LY_EINCOMPLETE)) {
         stored = 1;
     }
 
     if (ctx_node && (rc == LY_EINCOMPLETE)) {
         /* resolve */
-        rc = lysc_get_type_plugin(type->plugin)->validate(ctx, type, ctx_node, ctx_node, &val, &err);
+        rc = type_plugin->validate(ctx, type, ctx_node, ctx_node, &val, &err);
     }
 
     if (rc && (rc != LY_EINCOMPLETE) && err) {
@@ -673,13 +680,14 @@ lyd_value_validate2(const struct ly_ctx *ctx, const struct lysc_node *schema, co
 
         if (canonical) {
             /* return canonical value */
-            lydict_dup(ctx, lysc_get_type_plugin(val.realtype->plugin)->print(ctx, &val, LY_VALUE_CANON, NULL, NULL, NULL), canonical);
+            realtype_plugin = lysc_get_type_plugin(val.realtype->plugin);
+            lydict_dup(ctx, realtype_plugin->print(ctx, &val, LY_VALUE_CANON, NULL, NULL, NULL), canonical);
         }
     }
 
     if (stored) {
         /* free value */
-        lysc_get_type_plugin(type->plugin)->free(ctx, &val);
+        type_plugin->free(ctx, &val);
     }
     return rc;
 }

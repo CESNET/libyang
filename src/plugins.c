@@ -132,14 +132,39 @@ static struct ly_set plugins_handlers = {0};
 static struct ly_set plugins_types = {0};
 static struct ly_set plugins_extensions = {0};
 
+/**
+ * @brief Get the plugin of the given @p type.
+ *
+ * @param[in] plugin_id Either an index of the built-in plugin (offset by +1) or a pointer to the external plugin.
+ * @param[in] type Type of the plugin to get.
+ * @param[in] plugins Array of the built-in plugins used in case @p plugin_id is an index of a built-in plugin.
+ * @return Plugin of the given @p type or NULL if not found.
+ */
+static void *
+lysc_get_plugin(uintptr_t plugin_id, enum LYPLG type, const struct ly_set *plugins)
+{
+    /* plugin_id is offset by +1, so 0 is invalid (NULL ptr equivalent) */
+    if (!plugin_id) {
+        return NULL;
+    }
+
+    if (plugin_id <= plugins->count) {
+        /* plugin is built-in, fetch it from the global list */
+        if (type == LYPLG_EXTENSION) {
+            return &((struct lyplg_ext_record *)plugins->objs[plugin_id - 1])->plugin;
+        } else {
+            return &((struct lyplg_type_record *)plugins->objs[plugin_id - 1])->plugin;
+        }
+    } else {
+        /* plugin is external, return the pointer */
+        return (void *)plugin_id;
+    }
+}
+
 LIBYANG_API_DEF struct lyplg_type *
 lysc_get_type_plugin(uintptr_t plugin_id)
 {
-    if (plugin_id < plugins_types.count) {
-        return &((struct lyplg_type_record *)plugins_types.objs[plugin_id])->plugin;
-    } else {
-        return (struct lyplg_type *)plugin_id;
-    }
+    return lysc_get_plugin(plugin_id, LYPLG_TYPE, &plugins_types);
 }
 
 /**
@@ -200,11 +225,11 @@ lyplg_record_find(const struct ly_ctx *ctx, enum LYPLG type, const char *module,
     return NULL;
 }
 
-LY_ERR
-_lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name, uintptr_t *out)
+uintptr_t
+lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name)
 {
     struct lyplg_type_record *record = NULL;
-    uint32_t record_idx;
+    uint32_t record_idx = 0;
 
     if (ctx) {
         /* try to find context specific plugin */
@@ -217,18 +242,17 @@ _lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, const char
     }
 
     if (!record) {
-        return LY_ENOTFOUND;
+        /* not found */
+        return 0;
     }
 
     if (!strncmp(record->plugin.id, "ly2 - ", 6)) {
-        /* internal plugin, return an index */
-        *out = record_idx;
+        /* internal plugin, return an index with an offset of +1 in order to keep 0 as an invalid index (a NULL ptr) */
+        return record_idx + 1;
     } else {
         /* external plugin, return the pointer */
-        *out = (uintptr_t)&record->plugin;
+        return (uintptr_t)&record->plugin;
     }
-
-    return LY_SUCCESS;
 }
 
 struct lyplg_type *

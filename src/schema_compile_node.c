@@ -2133,7 +2133,7 @@ LY_ERR
 lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t context_flags, const char *context_name,
         const struct lysp_type *type_p, struct lysc_type **type, const char **units, struct lysp_qname **dflt)
 {
-    LY_ERR ret = LY_SUCCESS, r;
+    LY_ERR ret = LY_SUCCESS;
     ly_bool dummyloops = 0, has_leafref;
     struct lys_type_item *tctx, *tctx_prev = NULL, *tctx_iter;
     LY_DATA_TYPE basetype = LY_TYPE_UNKNOWN;
@@ -2141,8 +2141,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
     struct lysc_type_union *base_un;
     LY_ARRAY_COUNT_TYPE u;
     struct ly_set tpdf_chain = {0};
-    uintptr_t plugin_id = -1;
-    ly_bool plugin_found = 0;
+    uintptr_t plugin_id = 0;
 
     *type = NULL;
     if (dflt) {
@@ -2265,23 +2264,16 @@ preparenext:
         }
 
         /* try to find loaded user type plugins */
-        r = _lyplg_type_plugin_find(ctx->ctx, tctx->tpdf->type.pmod->mod->name, tctx->tpdf->type.pmod->mod->revision,
-                tctx->tpdf->name, &plugin_id);
-        if (r == LY_SUCCESS) {
-            plugin_found = 1;
-        } else if ((r == LY_ENOTFOUND) && base) {
-            /* use the base type implementation if available */
+        plugin_id = lyplg_type_plugin_find(ctx->ctx, tctx->tpdf->type.pmod->mod->name, tctx->tpdf->type.pmod->mod->revision,
+                tctx->tpdf->name);
+        if (!plugin_id && base) {
             plugin_id = base->plugin;
-            plugin_found = 1;
         }
-        if (!plugin_found) {
+        if (!plugin_id) {
             /* use the internal built-in type implementation */
-            r = _lyplg_type_plugin_find(ctx->ctx, "", NULL, ly_data_type2str[basetype], &plugin_id);
-            if (r == LY_SUCCESS) {
-                plugin_found = 1;
-            }
+            plugin_id = lyplg_type_plugin_find(ctx->ctx, "", NULL, ly_data_type2str[basetype]);
         }
-        assert(plugin_found);
+        assert(plugin_id);
 
         if ((basetype != LY_TYPE_LEAFREF) && (u != tpdf_chain.count - 1) && !tctx->tpdf->type.flags &&
                 !tctx->tpdf->type.exts && (plugin_id == base->plugin)) {
@@ -2339,7 +2331,7 @@ preparenext:
         if (base) {
             plugin_id = base->plugin;
         } else {
-            _lyplg_type_plugin_find(ctx->ctx, "", NULL, ly_data_type2str[basetype], &plugin_id);
+            plugin_id = lyplg_type_plugin_find(ctx->ctx, "", NULL, ly_data_type2str[basetype]);
         }
         ret = lys_compile_type_(ctx, context_pnode, context_flags, context_name, (struct lysp_type *)type_p, basetype,
                 NULL, base, plugin_id, &tpdf_chain, 0, type);

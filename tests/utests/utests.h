@@ -229,11 +229,7 @@ struct utest_context {
     assert_non_null(NODE); \
     assert_int_equal((NODE)->basetype, TYPE); \
     CHECK_ARRAY((NODE)->exts, EXTS); \
-    do { \
-        uintptr_t plugin_id; \
-        _lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[TYPE], &plugin_id); \
-        assert_ptr_equal((NODE)->plugin, plugin_id); \
-    } while (0)
+    assert_ptr_equal((NODE)->plugin, lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[TYPE]))
 
 /**
  * @brief check compileted numeric type
