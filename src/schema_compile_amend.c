@@ -485,10 +485,10 @@ lysp_ext_dup(const struct ly_ctx *ctx, const struct lysp_module *pmod, void *par
     ext->flags = orig_ext->flags;
 
     LY_CHECK_GOTO(ret = lysp_ext_children_dup(ctx, orig_ext->child, &ext->child), cleanup);
-    if (ext->plugin && ext->plugin->parse) {
+    if (ext->plugin && lysc_get_ext_plugin(ext->plugin)->parse) {
         /* parse again */
         LY_CHECK_GOTO(ret = ly_set_add(&pmods, pmod, 1, NULL), cleanup);
-        LY_CHECK_GOTO(ret = ext->plugin->parse(&pctx, ext), cleanup);
+        LY_CHECK_GOTO(ret = lysc_get_ext_plugin(ext->plugin)->parse(&pctx, ext), cleanup);
     }
 
 cleanup:

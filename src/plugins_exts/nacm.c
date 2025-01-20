@@ -81,6 +81,7 @@ nacm_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 {
     struct lysp_node *parent = NULL;
     LY_ARRAY_COUNT_TYPE u;
+    struct lyplg_ext *ext_plugin, *parent_ext_plugin;
 
     /* check that the extension is instantiated at an allowed place - data node */
     if (!(ext->parent_stmt & LY_STMT_NODE_MASK)) {
@@ -100,9 +101,12 @@ nacm_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
         return LY_ENOT;
     }
 
+    ext_plugin = lysc_get_ext_plugin(ext->plugin);
+
     /* check for duplication */
     LY_ARRAY_FOR(parent->exts, u) {
-        if ((&parent->exts[u] != ext) && parent->exts[u].plugin && !strcmp(parent->exts[u].plugin->id, ext->plugin->id)) {
+        parent_ext_plugin = lysc_get_ext_plugin(parent->exts[u].plugin);
+        if ((&parent->exts[u] != ext) && parent_ext_plugin && !strcmp(parent_ext_plugin->id, ext_plugin->id)) {
             /* duplication of a NACM extension on a single node
              * We check for all NACM plugins since we want to catch even the situation that there is default-deny-all
              * AND default-deny-write */
