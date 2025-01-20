@@ -1911,7 +1911,8 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_when, struct ly_
             }
         }
 
-        if ((node->schema->nodetype & LYD_NODE_TERM) && lysc_get_type_plugin(((struct lysc_node_leaf *)node->schema)->type->plugin)->validate) {
+        if ((node->schema->nodetype & LYD_NODE_TERM) &&
+                lysc_get_type_plugin(((struct lysc_node_leaf *)node->schema)->type->plugin)->validate) {
             /* node type resolution */
             r = ly_set_add(node_types, (void *)node, 1, NULL);
             LY_CHECK_ERR_GOTO(r, rc = r, cleanup);

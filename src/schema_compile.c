@@ -896,9 +896,11 @@ lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc
     struct lyd_value storage = {0};
     struct ly_err_item *err = NULL;
     LY_VALUE_FORMAT format;
+    struct lyplg_type *type_plugin;
 
     options = (ctx->ctx->opts & LY_CTX_REF_IMPLEMENTED) ? LYPLG_TYPE_STORE_IMPLEMENT : 0;
-    rc = lysc_get_type_plugin(type->plugin)->store(ctx->ctx, type, dflt, strlen(dflt), options, LY_VALUE_SCHEMA, (void *)dflt_pmod,
+    type_plugin = lysc_get_type_plugin(type->plugin);
+    rc = type_plugin->store(ctx->ctx, type, dflt, strlen(dflt), options, LY_VALUE_SCHEMA, (void *)dflt_pmod,
             LYD_HINT_SCHEMA, node, &storage, unres, &err);
     if (rc == LY_ERECOMPILE) {
         /* fine, but we need to recompile */
@@ -925,7 +927,7 @@ lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc
     }
 
 cleanup:
-    lysc_get_type_plugin(type->plugin)->free(ctx->ctx, &storage);
+    type_plugin->free(ctx->ctx, &storage);
     return rc;
 }
 

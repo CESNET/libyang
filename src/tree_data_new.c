@@ -1218,6 +1218,10 @@ lyd_change_node_value(struct lyd_node_term *term, struct lyd_value *val, ly_bool
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_node *target, *first;
+    struct lyplg_type *real_type, *schema_type;
+
+    real_type = lysc_get_type_plugin(term->value.realtype->plugin);
+    schema_type = lysc_get_type_plugin(((struct lysc_node_leaf *)term->schema)->type->plugin);
 
     if (term->schema->nodetype == LYS_LEAFLIST) {
         target = (struct lyd_node *)term;
@@ -1225,11 +1229,11 @@ lyd_change_node_value(struct lyd_node_term *term, struct lyd_value *val, ly_bool
         target = (struct lyd_node *)term->parent;
     } else {
         /* just change the value */
-        lysc_get_type_plugin(term->value.realtype->plugin)->free(LYD_CTX(term), &term->value);
+        real_type->free(LYD_CTX(term), &term->value);
         if (use_val) {
             term->value = *val;
         } else {
-            rc = lysc_get_type_plugin(((struct lysc_node_leaf *)term->schema)->type->plugin)->duplicate(LYD_CTX(term), val, &term->value);
+            rc = schema_type->duplicate(LYD_CTX(term), val, &term->value);
         }
 
         /* leaf that is not a key, its value is not used for its hash so it does not change */
@@ -1245,11 +1249,11 @@ lyd_change_node_value(struct lyd_node_term *term, struct lyd_value *val, ly_bool
         lyd_unlink_tree(target);
 
         /* change value */
-        lysc_get_type_plugin(term->value.realtype->plugin)->free(LYD_CTX(term), &term->value);
+        real_type->free(LYD_CTX(term), &term->value);
         if (use_val) {
             term->value = *val;
         } else {
-            rc = lysc_get_type_plugin(((struct lysc_node_leaf *)term->schema)->type->plugin)->duplicate(LYD_CTX(term), val, &term->value);
+            rc = schema_type->duplicate(LYD_CTX(term), val, &term->value);
         }
 
         /* reinserting */
@@ -1259,11 +1263,11 @@ lyd_change_node_value(struct lyd_node_term *term, struct lyd_value *val, ly_bool
         lyd_unlink_hash(target);
 
         /* change value */
-        lysc_get_type_plugin(term->value.realtype->plugin)->free(LYD_CTX(term), &term->value);
+        real_type->free(LYD_CTX(term), &term->value);
         if (use_val) {
             term->value = *val;
         } else {
-            rc = lysc_get_type_plugin(((struct lysc_node_leaf *)term->schema)->type->plugin)->duplicate(LYD_CTX(term), val, &term->value);
+            rc = schema_type->duplicate(LYD_CTX(term), val, &term->value);
         }
     }
 

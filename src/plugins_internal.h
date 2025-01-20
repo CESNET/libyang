@@ -61,8 +61,6 @@ LY_ERR lyplg_init(ly_bool builtin_type_plugins_only, ly_bool static_plugins_only
  */
 void lyplg_clean(void);
 
-LY_ERR _lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name, uintptr_t *out);
-
 /**
  * @brief Find a type plugin.
  *
@@ -72,9 +70,10 @@ LY_ERR _lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, con
  * @param[in] revision Revision of the module for which the plugin is implemented. NULL is not a wildcard, it matches
  * only the plugins with NULL revision specified.
  * @param[in] name Name of the type which the plugin implements.
- * @return Found type plugin, NULL if none found.
+ * @return ID of the found type plugin, 0 if none found. The type plugin can be obtained
+ * by passing the returned ID to ::lysc_get_type_plugin().
  */
-struct lyplg_type *lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name);
+uintptr_t lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name);
 
 /**
  * @brief Find an extension plugin.
