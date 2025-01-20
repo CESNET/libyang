@@ -1484,6 +1484,7 @@ ly_ctx_destroy(struct ly_ctx *ctx)
     if (ctx->opts & LY_CTX_INT_IMMUTABLE) {
         /* ctx data */
         ly_ctx_data_del(ctx);
+        lyplg_clean();
         return;
     }
 
