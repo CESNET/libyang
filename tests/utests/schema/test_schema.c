@@ -1893,10 +1893,14 @@ test_lysc_path(void **state)
 static void
 test_compiled_print(void **state)
 {
-    struct ly_ctx *pctx;
-    struct lyd_node *tree;
     int size, fd;
-    void *mem, *mem_end;
+    void *mem, *mem_end, *printed_ctx_mem;
+    struct lyd_node *tree = NULL;
+    struct ly_ctx *printed_ctx = NULL;
+
+    /* recreate the context, get rid of all the plugins and use builtin/static only */
+    ly_ctx_destroy(UTEST_LYCTX);
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_BUILTIN_PLUGINS_ONLY | LY_CTX_STATIC_PLUGINS_ONLY, &UTEST_LYCTX));
 
     /* load another module */
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module c {yang-version 1.1; namespace urn:c;prefix c;"
@@ -1937,20 +1941,27 @@ test_compiled_print(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_compiled_print(UTEST_LYCTX, mem, &mem_end));
     assert_int_equal((char *)mem_end - (char *)mem, size);
 
-    /* use the printed context */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new_printed(mem, &pctx));
+    /* remap the region and parse the context from mem */
+    munmap(mem, size);
 
-    /* use it to parse some data */
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(pctx,
+    /* mmap the same address again */
+    printed_ctx_mem = mmap(mem, size, PROT_READ, MAP_PRIVATE | MAP_FIXED_NOREPLACE, fd, 0);
+    assert_ptr_not_equal(printed_ctx_mem, MAP_FAILED);
+
+    /* create a new printed ctx from this address */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new_printed(printed_ctx_mem, &printed_ctx));
+
+    /* try to parse data with it */
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(printed_ctx,
             "<a xmlns=\"urn:c\" xmlns:c=\"urn:c\">/c:b</a>"
             "<b xmlns=\"urn:c\">true</b>"
             "<c xmlns=\"urn:c\">ahoi</c>",
             LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
 
     /* cleanup */
-    lyd_free_siblings(tree);
-    ly_ctx_destroy(pctx);
-    munmap(mem, size);
+    lyd_free_all(tree);
+    ly_ctx_destroy(printed_ctx);
+    munmap(printed_ctx_mem, size);
     close(fd);
     shm_unlink("/ly_test_schema_ctx");
 }
