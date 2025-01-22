@@ -1894,23 +1894,30 @@ static void
 test_compiled_print(void **state)
 {
     int size, fd;
-    void *mem, *mem_end, *printed_ctx_mem;
+    void *mem, *mem_end;
     struct lyd_node *tree = NULL;
     struct ly_ctx *printed_ctx = NULL;
+    struct lys_module *mod = NULL;
+    const char *yang, *xml;
+    struct lysc_ext_instance *ext;
+    const char *features[] = {"feat", NULL};
 
-    /* recreate the context, get rid of all the plugins and use builtin/static only */
+    /* recreate the context, using builtin/static plugins only */
     ly_ctx_destroy(UTEST_LYCTX);
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_BUILTIN_PLUGINS_ONLY | LY_CTX_STATIC_PLUGINS_ONLY, &UTEST_LYCTX));
 
-    /* load another module */
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module c {yang-version 1.1; namespace urn:c;prefix c;"
+    /* load the base module */
+    yang = "module m1 {yang-version 1.1; namespace urn:m1;prefix m1;"
+            "import ietf-yang-metadata {prefix md;}"
+            "identity baseid;"
+            "identity id1 {base baseid;}"
             "feature feat;"
-            "feature feat2;"
+            "container root {"
             "leaf a {type instance-identifier;}"
-            "leaf b {type boolean; must \"/a\";}"
-            "leaf c {type binary; when \"/c:b = 'true'\";}"
+            "leaf b {type boolean; must \"/m1:root/a\";}"
+            "leaf c {type binary; when \"/m1:root/b = 'true'\";}"
             "leaf d {type decimal64 {fraction-digits 2;}}"
-            "leaf-list e {type instance-identifier; default \"/c:a\"; default \"/c:b\"; default \"/c:c\";}"
+            "leaf-list e {type instance-identifier; default \"/m1:root/m1:a\"; default \"/m1:root/m1:b\"; default \"/m1:root/m1:c\";}"
             "anydata f;"
             "list g {"
             "  key a;"
@@ -1922,12 +1929,48 @@ test_compiled_print(void **state)
             "  leaf d {type empty;}"
             "  leaf e {type int8;}"
             "}"
+            "}"
             "rpc h {"
             "  input {leaf a {type string;}}"
             "}"
-            "}", LYS_IN_YANG, NULL));
+            "md:annotation i {"
+            "  description \"test\";"
+            "  if-feature feat;"
+            "  reference \"test\";"
+            "  status \"current\";"
+            "  type uint8;"
+            "  units meters;"
+            "}"
+            "}";
+    UTEST_ADD_MODULE(yang, LYS_IN_YANG, features, NULL);
 
-    /* get the size */
+    /* load an augment of the base module */
+    yang = "module m2 {namespace urn:m2;prefix m2;"
+            "import m1 {prefix m1;}"
+            "identity id2 {base m1:baseid;}"
+            "grouping leaf_group {leaf a {type identityref {base m1:baseid;}}}"
+            "augment /m1:root {uses leaf_group;}}";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yang, LYS_IN_YANG, NULL));
+
+    /* load a structure extension module */
+    yang = "module m3 {yang-version 1.1; namespace urn:m3; prefix m3;"
+            "import ietf-yang-structure-ext {prefix sx;}"
+            "sx:structure struct { container a { leaf b { type string;}}}}";
+    UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, &mod);
+
+    /* load a structure augment extension module */
+    yang = "module m4 {yang-version 1.1; namespace urn:m4; prefix m4;"
+            "import ietf-yang-structure-ext {prefix sx;}"
+            "import m3 {prefix m3;}"
+            "sx:augment-structure \"/m3:struct/m3:a\" {"
+            "  leaf c {type uint32;}"
+            "}}";
+    UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, NULL);
+
+    /* get the structure extension */
+    assert_non_null(ext = &mod->compiled->exts[0]);
+
+    /* get the size of the compiled ctx */
     size = ly_ctx_compiled_size(UTEST_LYCTX);
 
     /* prepare the shared memory segment */
@@ -1937,31 +1980,57 @@ test_compiled_print(void **state)
     mem = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     assert_ptr_not_equal(mem, MAP_FAILED);
 
-    /* print the context */
+    /* print the context into the shared memory */
     assert_int_equal(LY_SUCCESS, ly_ctx_compiled_print(UTEST_LYCTX, mem, &mem_end));
     assert_int_equal((char *)mem_end - (char *)mem, size);
 
-    /* remap the region and parse the context from mem */
-    munmap(mem, size);
-
-    /* mmap the same address again */
-    printed_ctx_mem = mmap(mem, size, PROT_READ, MAP_PRIVATE | MAP_FIXED_NOREPLACE, fd, 0);
-    assert_ptr_not_equal(printed_ctx_mem, MAP_FAILED);
-
     /* create a new printed ctx from this address */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new_printed(printed_ctx_mem, &printed_ctx));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new_printed(mem, &printed_ctx));
 
-    /* try to parse data with it */
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(printed_ctx,
-            "<a xmlns=\"urn:c\" xmlns:c=\"urn:c\">/c:b</a>"
-            "<b xmlns=\"urn:c\">true</b>"
-            "<c xmlns=\"urn:c\">ahoi</c>",
-            LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    /* try to parse data with the printed ctx */
+    xml = "<root xmlns=\"urn:m1\">\n"
+            "  <a xmlns:m1=\"urn:m1\">/m1:root/m1:b</a>\n"
+            "  <b>true</b>\n"
+            "  <c>Zm9vYmFy</c>\n"
+            "  <d xmlns:m1=\"urn:m1\" m1:i=\"4\">123.45</d>\n"
+            "  <e xmlns:m1=\"urn:m1\">/m1:root/m1:a</e>\n"
+            "  <e xmlns:m1=\"urn:m1\">/m1:root/m1:b</e>\n"
+            "  <e xmlns:m1=\"urn:m1\">/m1:root/m1:c</e>\n"
+            "  <f>\n"
+            "    <custom-data>\n"
+            "      <item>abc</item>\n"
+            "    </custom-data>\n"
+            "  </f>\n"
+            "  <g>\n"
+            "    <a>key</a>\n"
+            "    <b>unique</b>\n"
+            "    <c>123</c>\n"
+            "    <d/>\n"
+            "    <e>-10</e>\n"
+            "  </g>\n"
+            "  <a xmlns=\"urn:m2\" xmlns:m1=\"urn:m1\">m1:id1</a>\n"
+            "</root>\n";
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(printed_ctx, xml,
+            LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+
+    CHECK_LYD_STRING_PARAM(tree, xml, LYD_XML, 0);
+    lyd_free_all(tree);
+
+    /* parse structure extension data with the printed ctx */
+    xml = "<a xmlns=\"urn:m3\">\n"
+            "  <b>abc</b>\n"
+            "  <c xmlns=\"urn:m4\">24</c>\n"
+            "</a>\n";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(xml, &UTEST_IN));
+    assert_int_equal(LY_SUCCESS, lyd_parse_ext_data(ext, NULL, UTEST_IN, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+
+    CHECK_LYD_STRING_PARAM(tree, xml, LYD_XML, 0);
+
+    lyd_free_all(tree);
 
     /* cleanup */
-    lyd_free_all(tree);
     ly_ctx_destroy(printed_ctx);
-    munmap(printed_ctx_mem, size);
+    munmap(mem, size);
     close(fd);
     shm_unlink("/ly_test_schema_ctx");
 }
