@@ -212,7 +212,7 @@ struct ly_ctx;
 #define LY_CTX_STATIC_PLUGINS_ONLY 0x2000 /**< By default, external plugins from directories the path to which is obtained
                                         from the `LIBYANG_TYPES_PLUGINS_DIR` and `LIBYANG_EXTENSIONS_PLUGINS_DIR` environmental variables
                                         are loaded. This option prevents loading of all external plugins and only
-                                        the static (built-in) plugins are loaded. */
+                                        the static (libyang built-in) plugins are loaded. */
 
 /* 0x80000000 reserved for internal use */
 
