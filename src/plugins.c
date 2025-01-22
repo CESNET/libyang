@@ -135,42 +135,43 @@ static struct ly_set plugins_extensions = {0};
 /**
  * @brief Get the plugin of the given @p type.
  *
- * @param[in] plugin_id Either an index of the built-in plugin (offset by +1) or a pointer to the external plugin.
+ * @param[in] plugin_ref Reference to a plugin. Either an index of a built-in plugin (offset by +1)
+ * or a pointer to an external plugin.
  * @param[in] type Type of the plugin to get.
- * @param[in] plugins Array of the built-in plugins used in case @p plugin_id is an index of a built-in plugin.
+ * @param[in] plugins Array of the built-in plugins used in case @p plugin_ref is an index of a built-in plugin.
  * @return Plugin of the given @p type or NULL if not found.
  */
 static void *
-lysc_get_plugin(uintptr_t plugin_id, enum LYPLG type, const struct ly_set *plugins)
+lysc_get_plugin(uintptr_t plugin_ref, enum LYPLG type, const struct ly_set *plugins)
 {
-    /* plugin_id is offset by +1, so 0 is invalid (NULL ptr equivalent) */
-    if (!plugin_id) {
+    /* plugin_ref is offset by +1, so 0 is invalid (NULL ptr equivalent) */
+    if (!plugin_ref) {
         return NULL;
     }
 
-    if (plugin_id <= plugins->count) {
+    if (plugin_ref <= plugins->count) {
         /* plugin is built-in, fetch it from the global list */
         if (type == LYPLG_EXTENSION) {
-            return &((struct lyplg_ext_record *)plugins->objs[plugin_id - 1])->plugin;
+            return &((struct lyplg_ext_record *)plugins->objs[plugin_ref - 1])->plugin;
         } else {
-            return &((struct lyplg_type_record *)plugins->objs[plugin_id - 1])->plugin;
+            return &((struct lyplg_type_record *)plugins->objs[plugin_ref - 1])->plugin;
         }
     } else {
         /* plugin is external, return the pointer */
-        return (void *)plugin_id;
+        return (void *)plugin_ref;
     }
 }
 
 LIBYANG_API_DEF struct lyplg_type *
-lysc_get_type_plugin(uintptr_t plugin_id)
+lysc_get_type_plugin(uintptr_t plugin_ref)
 {
-    return lysc_get_plugin(plugin_id, LYPLG_TYPE, &plugins_types);
+    return lysc_get_plugin(plugin_ref, LYPLG_TYPE, &plugins_types);
 }
 
 LIBYANG_API_DEF struct lyplg_ext *
-lysc_get_ext_plugin(uintptr_t plugin_id)
+lysc_get_ext_plugin(uintptr_t plugin_ref)
 {
-    return lysc_get_plugin(plugin_id, LYPLG_EXTENSION, &plugins_extensions);
+    return lysc_get_plugin(plugin_ref, LYPLG_EXTENSION, &plugins_extensions);
 }
 
 /**
