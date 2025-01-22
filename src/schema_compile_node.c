@@ -1764,7 +1764,7 @@ cleanup:
  * @param[in] basetype Base YANG built-in type of the type to compile.
  * @param[in] tpdfname Name of the type's typedef, serves as a flag - if it is leaf/leaf-list's type, it is NULL.
  * @param[in] base Latest base (compiled) type from which the current type is being derived.
- * @param[in] plugin Type plugin to use.
+ * @param[in] plugin_ref Reference to the type plugin to use.
  * @param[in] tpdf_chain Chain of the used typedefs, traversed backwards.
  * @param[in] tpdf_chain_last Index of the last (backwards) typedef in @p tpdf_chain to use.
  * @param[out] type Compiled type.
@@ -1773,7 +1773,7 @@ cleanup:
 static LY_ERR
 lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t context_flags, const char *context_name,
         const struct lysp_type *type_p, LY_DATA_TYPE basetype, const char *tpdfname, const struct lysc_type *base,
-        uintptr_t plugin, struct ly_set *tpdf_chain, uint32_t tpdf_chain_last, struct lysc_type **type)
+        uintptr_t plugin_ref, struct ly_set *tpdf_chain, uint32_t tpdf_chain_last, struct lysc_type **type)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lysc_type_bin *bin;
@@ -1794,7 +1794,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
     LY_CHECK_GOTO(rc, cleanup);
 
     (*type)->basetype = basetype;
-    (*type)->plugin = plugin;
+    (*type)->plugin = plugin_ref;
 
     switch (basetype) {
     case LY_TYPE_BINARY:
@@ -2141,7 +2141,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
     struct lysc_type_union *base_un;
     LY_ARRAY_COUNT_TYPE u;
     struct ly_set tpdf_chain = {0};
-    uintptr_t plugin_id = 0;
+    uintptr_t plugin_ref = 0;
 
     *type = NULL;
     if (dflt) {
@@ -2264,19 +2264,19 @@ preparenext:
         }
 
         /* try to find loaded user type plugins */
-        plugin_id = lyplg_type_plugin_find(ctx->ctx, tctx->tpdf->type.pmod->mod->name, tctx->tpdf->type.pmod->mod->revision,
+        plugin_ref = lyplg_type_plugin_find(ctx->ctx, tctx->tpdf->type.pmod->mod->name, tctx->tpdf->type.pmod->mod->revision,
                 tctx->tpdf->name);
-        if (!plugin_id && base) {
-            plugin_id = base->plugin;
+        if (!plugin_ref && base) {
+            plugin_ref = base->plugin;
         }
-        if (!plugin_id) {
+        if (!plugin_ref) {
             /* use the internal built-in type implementation */
-            plugin_id = lyplg_type_plugin_find(ctx->ctx, "", NULL, ly_data_type2str[basetype]);
+            plugin_ref = lyplg_type_plugin_find(ctx->ctx, "", NULL, ly_data_type2str[basetype]);
         }
-        assert(plugin_id);
+        assert(plugin_ref);
 
         if ((basetype != LY_TYPE_LEAFREF) && (u != tpdf_chain.count - 1) && !tctx->tpdf->type.flags &&
-                !tctx->tpdf->type.exts && (plugin_id == base->plugin)) {
+                !tctx->tpdf->type.exts && (plugin_ref == base->plugin)) {
             /* no change, reuse the compiled base */
             ((struct lysp_tpdf *)tctx->tpdf)->type.compiled = base;
             LY_ATOMIC_INC_BARRIER(base->refcount);
@@ -2297,7 +2297,7 @@ preparenext:
 
         /* compile the typedef type */
         ret = lys_compile_type_(ctx, tctx->node, tctx->tpdf->flags, tctx->tpdf->name, &tctx->tpdf->type, basetype,
-                tctx->tpdf->name, base, plugin_id, &tpdf_chain, u + 1, &base);
+                tctx->tpdf->name, base, plugin_ref, &tpdf_chain, u + 1, &base);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* store separately compiled typedef type to be reused */
@@ -2329,12 +2329,12 @@ preparenext:
     if (type_p->flags || type_p->exts || !base || has_leafref) {
         /* leaf type has changes that need to be compiled into the type */
         if (base) {
-            plugin_id = base->plugin;
+            plugin_ref = base->plugin;
         } else {
-            plugin_id = lyplg_type_plugin_find(ctx->ctx, "", NULL, ly_data_type2str[basetype]);
+            plugin_ref = lyplg_type_plugin_find(ctx->ctx, "", NULL, ly_data_type2str[basetype]);
         }
         ret = lys_compile_type_(ctx, context_pnode, context_flags, context_name, (struct lysp_type *)type_p, basetype,
-                NULL, base, plugin_id, &tpdf_chain, 0, type);
+                NULL, base, plugin_ref, &tpdf_chain, 0, type);
         LY_CHECK_GOTO(ret, cleanup);
     } else {
         /* no changes of the type in the leaf, just use the base compiled type */
