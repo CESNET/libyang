@@ -606,13 +606,13 @@ lyplg_init(ly_bool builtin_type_plugins_only, ly_bool static_plugins_only)
 
         /* ietf-netconf-acm */
         LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_node_instanceid), error);
-
-        /* internal extensions */
-        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_nacm), error);
-        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_yangdata), error);
-        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_schema_mount), error);
-        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_structure), error);
     }
+
+    /* internal extensions */
+    LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_nacm), error);
+    LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_yangdata), error);
+    LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_schema_mount), error);
+    LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_structure), error);
 
 #ifndef STATIC
     if (!static_plugins_only) {
