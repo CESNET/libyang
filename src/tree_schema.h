@@ -1800,20 +1800,20 @@ struct lysc_module {
 /**
  * @brief Get a type plugin.
  *
- * @param[in] plugin_id Either an index in the type plugins array (e.g. 1 -> binary type)
- * or a pointer to the user defined plugin. Indexes start at 1.
+ * @param[in] plugin_ref Reference to a type plugin. Either an index in the type plugins
+ * array (e.g. 1 -> binary type) or a pointer to the user defined plugin. Indexes start at 1.
  * @return Type plugin or NULL.
  */
-LIBYANG_API_DECL struct lyplg_type *lysc_get_type_plugin(uintptr_t plugin_id);
+LIBYANG_API_DECL struct lyplg_type *lysc_get_type_plugin(uintptr_t plugin_ref);
 
 /**
  * @brief Get an extension plugin.
  *
- * @param[in] plugin_id Either an index in the extension plugins array (e.g. 1 -> metadata extension)
- * or a pointer to the user defined plugin. Indexes start at 1.
+ * @param[in] plugin_ref Reference to an extension plugin. Either an index in the extension plugins
+ * array (e.g. 1 -> metadata extension) or a pointer to the user defined plugin. Indexes start at 1.
  * @return Extension plugin or NULL.
  */
-LIBYANG_API_DECL struct lyplg_ext *lysc_get_ext_plugin(uintptr_t plugin_id);
+LIBYANG_API_DECL struct lyplg_ext *lysc_get_ext_plugin(uintptr_t plugin_ref);
 
 /**
  * @brief Get nearest @p schema parent (including the node itself) that can be instantiated in data.
