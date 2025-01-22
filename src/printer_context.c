@@ -1741,13 +1741,15 @@ ly_ctx_compiled_print_context(const struct ly_ctx *orig_ctx, struct ly_ctx *ctx,
     /* no search paths */
     memset(&ctx->search_paths, 0, sizeof ctx->search_paths);
 
-    /* modules, referenced */
+    /* modules, referenced, 2 loops because of augments (forward reference), build the ht first */
     ctxp_set(&orig_ctx->modules, &ctx->modules, mem);
     for (i = 0; i < ctx->modules.count; ++i) {
         ctx->modules.objs[i] = *mem;
         *mem = (char *)*mem + sizeof(struct lys_module);
 
         ly_ctx_compiled_addr_ht_add(addr_ht, orig_ctx->modules.objs[i], ctx->modules.objs[i]);
+    }
+    for (i = 0; i < ctx->modules.count; ++i) {
         ctxp_module(orig_ctx->modules.objs[i], ctx->modules.objs[i], addr_ht, ptr_set, mem);
     }
 
