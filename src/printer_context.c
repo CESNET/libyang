@@ -121,7 +121,7 @@ ctxs_exts(const struct lysc_ext_instance *exts, struct ly_ht *ht, int *size)
         ctxs_exts(exts[u].exts, ht, size);
 
         /* substmts */
-        *size += sizeof(LY_ARRAY_COUNT_TYPE) + LY_ARRAY_COUNT(exts[u].substmts) * sizeof *exts[u].substmts;
+        *size += CTXS_SIZED_ARRAY(exts[u].substmts);
 
         /* compiled, substmts storage */
         ext = lysc_get_ext_plugin(exts[u].def->plugin);
@@ -591,6 +591,11 @@ ly_ctx_compiled_ext_stmts_storage_size(const struct lysc_ext_substmt *substmts, 
     const struct lysc_node *node;
 
     LY_ARRAY_FOR(substmts, u) {
+        if (!substmts[u].storage_p) {
+            /* nothing is compiled */
+            continue;
+        }
+
         switch (substmts[u].stmt) {
         case LY_STMT_NOTIFICATION:
         case LY_STMT_INPUT:
@@ -1775,9 +1780,16 @@ ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_subs
 {
     LY_ERR rc = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u, v;
+    uint32_t hash;
+    const struct lysc_node *node;
 
     LY_ARRAY_FOR(orig_substmts, u) {
         assert(orig_substmts[u].stmt == substmts[u].stmt);
+
+        if (!orig_substmts[u].storage_p) {
+            /* nothing is compiled */
+            continue;
+        }
 
         switch (orig_substmts[u].stmt) {
         case LY_STMT_NOTIFICATION:
@@ -1794,7 +1806,15 @@ ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_subs
         case LY_STMT_LEAF_LIST:
         case LY_STMT_LIST:
         case LY_STMT_USES:
-            ctxp_children(*orig_substmts[u].storage_p, (struct lysc_node **)substmts[u].storage_p, addr_ht, ptr_set, mem);
+            node = *(const struct lysc_node **)orig_substmts[u].storage_p;
+
+            /* ht check, make sure the node list is stored only once */
+            hash = lyht_hash((const char *)&node, sizeof node);
+            if (lyht_insert(addr_ht, &node, hash, NULL) == LY_EEXIST) {
+                break;
+            }
+
+            ctxp_children(node, (struct lysc_node **)substmts[u].storage_p, addr_ht, ptr_set, mem);
             break;
         case LY_STMT_ARGUMENT:
         case LY_STMT_CONTACT:
