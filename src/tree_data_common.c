@@ -32,6 +32,7 @@
 #include "metadata.h"
 #include "parser_data.h"
 #include "plugins_exts.h"
+#include "plugins_internal.h"
 #include "printer_data.h"
 #include "schema_compile_node.h"
 #include "set.h"
@@ -531,7 +532,7 @@ lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct ly
         options |= LYPLG_TYPE_STORE_ONLY;
     }
 
-    r = lysc_get_type_plugin(type->plugin)->store(ctx, type, value, value_len, options,
+    r = LYSC_GET_TYPE_PLG(type->plugin_ref)->store(ctx, type, value, value_len, options,
             format, prefix_data, hints, ctx_node, val, NULL, &err);
     if (dynamic) {
         *dynamic = 0;
@@ -562,7 +563,7 @@ lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *
     struct ly_err_item *err = NULL;
     struct lyplg_type *type_plugin;
 
-    type_plugin = lysc_get_type_plugin(type->plugin);
+    type_plugin = LYSC_GET_TYPE_PLG(type->plugin_ref);
     assert(type_plugin && type_plugin->validate);
 
     ret = type_plugin->validate(ctx, type, ctx_node, tree, val, &err);
@@ -597,7 +598,7 @@ ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const 
     }
 
     type = ((struct lysc_node_leaf *)node)->type;
-    rc = lysc_get_type_plugin(type->plugin)->store(ctx ? ctx : node->module->ctx, type, value,
+    rc = LYSC_GET_TYPE_PLG(type->plugin_ref)->store(ctx ? ctx : node->module->ctx, type, value,
             value_len, 0, format, prefix_data, hints, node, &storage, NULL, &err);
     if (rc == LY_EINCOMPLETE) {
         /* actually success */
@@ -611,7 +612,7 @@ ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const 
     }
 
     if (!rc) {
-        lysc_get_type_plugin(type->plugin)->free(ctx ? ctx : node->module->ctx, &storage);
+        LYSC_GET_TYPE_PLG(type->plugin_ref)->free(ctx ? ctx : node->module->ctx, &storage);
     }
     return rc;
 }
@@ -646,7 +647,7 @@ lyd_value_validate2(const struct ly_ctx *ctx, const struct lysc_node *schema, co
     }
     type = ((struct lysc_node_leaf *)schema)->type;
 
-    type_plugin = lysc_get_type_plugin(type->plugin);
+    type_plugin = LYSC_GET_TYPE_PLG(type->plugin_ref);
 
     /* store */
     rc = type_plugin->store(ctx, type, value, value_len, 0, format,
@@ -680,7 +681,7 @@ lyd_value_validate2(const struct ly_ctx *ctx, const struct lysc_node *schema, co
 
         if (canonical) {
             /* return canonical value */
-            realtype_plugin = lysc_get_type_plugin(val.realtype->plugin);
+            realtype_plugin = LYSC_GET_TYPE_PLG(val.realtype->plugin_ref);
             lydict_dup(ctx, realtype_plugin->print(ctx, &val, LY_VALUE_CANON, NULL, NULL, NULL), canonical);
         }
     }
@@ -712,9 +713,9 @@ lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t va
     LY_CHECK_RET(ret);
 
     /* compare values */
-    ret = lysc_get_type_plugin(type->plugin)->compare(ctx, &node->value, &val);
+    ret = LYSC_GET_TYPE_PLG(type->plugin_ref)->compare(ctx, &node->value, &val);
 
-    lysc_get_type_plugin(type->plugin)->free(ctx, &val);
+    LYSC_GET_TYPE_PLG(type->plugin_ref)->free(ctx, &val);
     return ret;
 }
 
@@ -990,7 +991,7 @@ lyd_value_get_canonical(const struct ly_ctx *ctx, const struct lyd_value *value)
     LY_CHECK_ARG_RET(ctx, ctx, value, NULL);
 
     return value->_canonical ? value->_canonical :
-           (const char *)lysc_get_type_plugin(value->realtype->plugin)->print(ctx, value, LY_VALUE_CANON, NULL, NULL, NULL);
+           (const char *)LYSC_GET_TYPE_PLG(value->realtype->plugin_ref)->print(ctx, value, LY_VALUE_CANON, NULL, NULL, NULL);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -1339,12 +1340,12 @@ ly_nested_ext_schema(const struct lyd_node *parent, const struct lysc_node *spar
         nested_exts = sparent->exts;
     }
     LY_ARRAY_FOR(nested_exts, u) {
-        if (!nested_exts[u].def->plugin) {
+        if (!nested_exts[u].def->plugin_ref) {
             /* no plugin */
             continue;
         }
 
-        ext_snode_cb = lysc_get_ext_plugin(nested_exts[u].def->plugin)->snode;
+        ext_snode_cb = LYSC_GET_EXT_PLG(nested_exts[u].def->plugin_ref)->snode;
         if (!ext_snode_cb) {
             /* not an extension with nested data */
             continue;

@@ -132,11 +132,11 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *extp, struct lys
     COMPILE_EXTS_GOTO(ctx, extp->exts, ext->exts, ext, ret, cleanup);
 
     /* compile this extension */
-    if (ext->def->plugin && lysc_get_ext_plugin(ext->def->plugin)->compile) {
+    if (ext->def->plugin_ref && LYSC_GET_EXT_PLG(ext->def->plugin_ref)->compile) {
         if (ext->argument) {
             lysc_update_path(ctx, ext->module, ext->argument);
         }
-        ret = lysc_get_ext_plugin(ext->def->plugin)->compile(ctx, extp, ext);
+        ret = LYSC_GET_EXT_PLG(ext->def->plugin_ref)->compile(ctx, extp, ext);
         if (ret == LY_ENOT) {
             lysc_ext_instance_free(ctx->ctx, ext);
         }
@@ -899,7 +899,7 @@ lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc
     struct lyplg_type *type_plugin;
 
     options = (ctx->ctx->opts & LY_CTX_REF_IMPLEMENTED) ? LYPLG_TYPE_STORE_IMPLEMENT : 0;
-    type_plugin = lysc_get_type_plugin(type->plugin);
+    type_plugin = LYSC_GET_TYPE_PLG(type->plugin_ref);
     rc = type_plugin->store(ctx->ctx, type, dflt, strlen(dflt), options, LY_VALUE_SCHEMA, (void *)dflt_pmod,
             LYD_HINT_SCHEMA, node, &storage, unres, &err);
     if (rc == LY_ERECOMPILE) {
@@ -1816,7 +1816,7 @@ lys_compile_extensions(struct lys_module *mod)
         DUP_STRING_GOTO(ctx.ctx, ep->name, ec->name, rc, cleanup);
         DUP_STRING_GOTO(ctx.ctx, ep->argname, ec->argname, rc, cleanup);
         ec->module = mod;
-        ec->plugin = ep->plugin;
+        ec->plugin_ref = ep->plugin_ref;
 
         LY_ARRAY_INCREMENT(mod->extensions);
     }

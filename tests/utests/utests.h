@@ -229,7 +229,7 @@ struct utest_context {
     assert_non_null(NODE); \
     assert_int_equal((NODE)->basetype, TYPE); \
     CHECK_ARRAY((NODE)->exts, EXTS); \
-    assert_ptr_equal((NODE)->plugin, lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[TYPE]))
+    assert_ptr_equal((NODE)->plugin_ref, lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[TYPE]))
 
 /**
  * @brief check compileted numeric type
@@ -933,7 +933,7 @@ struct utest_context {
  * @param[in] CANNONICAL_VAL expected cannonical value
  */
 #define CHECK_LYD_VALUE_EMPTY(NODE, CANNONICAL_VAL) \
-    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
+    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin_ref)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
     assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
     assert_non_null((NODE).realtype); \
     assert_int_equal((NODE).realtype->basetype, LY_TYPE_EMPTY);
@@ -951,7 +951,7 @@ struct utest_context {
  *                     CHECK_LYD_VALUE_ ## TYPE_VAL.
  */
 #define CHECK_LYD_VALUE_UNION(NODE, CANNONICAL_VAL, TYPE_VAL, ...) \
-    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
+    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin_ref)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
     assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_UNION, (NODE).realtype->basetype); \
@@ -973,7 +973,7 @@ struct utest_context {
  * @param[in] VALUE          expected array of bits names
  */
 #define CHECK_LYD_VALUE_BITS(NODE, ...) \
-    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
+    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin_ref)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
     assert_string_equal((NODE)._canonical, _GETARG1(__VA_ARGS__, DUMMY)); \
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_BITS, (NODE).realtype->basetype); \
@@ -997,7 +997,7 @@ struct utest_context {
  * @brief Example enum arr[] = {0x0, 0x1}; CHECK_LYD_VALUE(node->value, INST, "test/d", arr);
  */
 #define CHECK_LYD_VALUE_INST(NODE, CANNONICAL_VAL, VALUE) \
-    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
+    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin_ref)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
     assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_INST, (NODE).realtype->basetype); \
@@ -1020,7 +1020,7 @@ struct utest_context {
  * @param[in] VALUE          expected enum item name
  */
 #define CHECK_LYD_VALUE_ENUM(NODE, CANNONICAL_VAL, VALUE) \
-    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
+    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin_ref)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
     assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_ENUM, (NODE).realtype->basetype); \
@@ -1035,7 +1035,7 @@ struct utest_context {
  * @param[in] VALUE          expected inteager value (-128 to 127).
  */
 #define CHECK_LYD_VALUE_INT8(NODE, CANNONICAL_VAL, VALUE) \
-    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
+    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin_ref)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
     assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_INT8, (NODE).realtype->basetype); \
@@ -1050,7 +1050,7 @@ struct utest_context {
  * @param[in] VALUE          expected inteager value.
  */
 #define CHECK_LYD_VALUE_INT16(NODE, CANNONICAL_VAL, VALUE) \
-    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
+    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin_ref)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
     assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_INT16, (NODE).realtype->basetype); \
@@ -1065,7 +1065,7 @@ struct utest_context {
  * @param[in] VALUE          expected inteager (0 to 255).
  */
 #define CHECK_LYD_VALUE_UINT8(NODE, CANNONICAL_VAL, VALUE) \
-    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
+    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin_ref)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
     assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_UINT8, (NODE).realtype->basetype); \
@@ -1080,7 +1080,7 @@ struct utest_context {
  * @param[in] VALUE          expected inteager (0 to MAX_UINT32).
  */
 #define CHECK_LYD_VALUE_UINT32(NODE, CANNONICAL_VAL, VALUE) \
-    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
+    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin_ref)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
     assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_UINT32, (NODE).realtype->basetype); \
@@ -1094,7 +1094,7 @@ struct utest_context {
  * @param[in] CANNONICAL_VAL expected cannonical value
  */
 #define CHECK_LYD_VALUE_STRING(NODE, CANNONICAL_VAL) \
-    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
+    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin_ref)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
     assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_STRING, (NODE).realtype->basetype);
@@ -1107,7 +1107,7 @@ struct utest_context {
  * @param[in] CANNONICAL_VAL expected cannonical value
  */
 #define CHECK_LYD_VALUE_LEAFREF(NODE, CANNONICAL_VAL) \
-    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
+    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin_ref)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
     assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_LEAFREF, (NODE).realtype->basetype); \
@@ -1122,7 +1122,7 @@ struct utest_context {
  * @param[in] VALUE          expected value 64bit inteager
 */
 #define CHECK_LYD_VALUE_DEC64(NODE, CANNONICAL_VAL, VALUE) \
-    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
+    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin_ref)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
     assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_DEC64, (NODE).realtype->basetype); \
@@ -1143,7 +1143,7 @@ struct utest_context {
         LYD_VALUE_GET(&(NODE), _val); \
         assert_int_equal(_val->size, SIZE); \
         assert_int_equal(0, memcmp(_val->data, VALUE, SIZE)); \
-        assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
+        assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin_ref)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
         assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
         assert_non_null((NODE).realtype); \
         assert_int_equal(LY_TYPE_BINARY, (NODE).realtype->basetype); \
@@ -1158,7 +1158,7 @@ struct utest_context {
  * @param[in] VALUE          expected boolean value 0,1
 */
 #define CHECK_LYD_VALUE_BOOL(NODE, CANNONICAL_VAL, VALUE) \
-    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
+    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin_ref)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
     assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_BOOL, (NODE).realtype->basetype); \
@@ -1173,7 +1173,7 @@ struct utest_context {
  * @param[in] VALUE          expected ident name
 */
 #define CHECK_LYD_VALUE_IDENT(NODE, CANNONICAL_VAL, VALUE) \
-    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
+    assert_non_null(lysc_get_type_plugin((NODE).realtype->plugin_ref)->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
     assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_IDENT, (NODE).realtype->basetype); \

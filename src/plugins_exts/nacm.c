@@ -20,6 +20,7 @@
 #include "compat.h"
 #include "libyang.h"
 #include "plugins_exts.h"
+#include "plugins_internal.h"
 
 struct nacm_dfs_arg {
     struct lysc_ext_instance *ext;
@@ -101,11 +102,11 @@ nacm_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
         return LY_ENOT;
     }
 
-    ext_plugin = lysc_get_ext_plugin(ext->plugin);
+    ext_plugin = LYSC_GET_EXT_PLG(ext->plugin_ref);
 
     /* check for duplication */
     LY_ARRAY_FOR(parent->exts, u) {
-        parent_ext_plugin = lysc_get_ext_plugin(parent->exts[u].plugin);
+        parent_ext_plugin = LYSC_GET_EXT_PLG(parent->exts[u].plugin_ref);
         if ((&parent->exts[u] != ext) && parent_ext_plugin && !strcmp(parent_ext_plugin->id, ext_plugin->id)) {
             /* duplication of a NACM extension on a single node
              * We check for all NACM plugins since we want to catch even the situation that there is default-deny-all

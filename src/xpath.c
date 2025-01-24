@@ -34,6 +34,7 @@
 #include "parser_data.h"
 #include "path.h"
 #include "plugins_exts/metadata.h"
+#include "plugins_internal.h"
 #include "plugins_types.h"
 #include "printer_data.h"
 #include "schema_compile_node.h"
@@ -1714,15 +1715,15 @@ set_comp_canonize(struct lyxp_set *set, const struct lyxp_set_node *xp_node)
     }
 
     /* check for built-in types without required canonization */
-    if ((type->basetype == LY_TYPE_STRING) && (lysc_get_type_plugin(type->plugin)->store == lyplg_type_store_string)) {
+    if ((type->basetype == LY_TYPE_STRING) && (LYSC_GET_TYPE_PLG(type->plugin_ref)->store == lyplg_type_store_string)) {
         /* string */
         return LY_SUCCESS;
     }
-    if ((type->basetype == LY_TYPE_BOOL) && (lysc_get_type_plugin(type->plugin)->store == lyplg_type_store_boolean)) {
+    if ((type->basetype == LY_TYPE_BOOL) && (LYSC_GET_TYPE_PLG(type->plugin_ref)->store == lyplg_type_store_boolean)) {
         /* boolean */
         return LY_SUCCESS;
     }
-    if ((type->basetype == LY_TYPE_ENUM) && (lysc_get_type_plugin(type->plugin)->store == lyplg_type_store_enum)) {
+    if ((type->basetype == LY_TYPE_ENUM) && (LYSC_GET_TYPE_PLG(type->plugin_ref)->store == lyplg_type_store_enum)) {
         /* enumeration */
         return LY_SUCCESS;
     }
@@ -3644,7 +3645,7 @@ warn_equality_value(const struct lyxp_expr *exp, struct lyxp_set *set, uint32_t 
 
         type = ((struct lysc_node_leaf *)scnode)->type;
         if (type->basetype != LY_TYPE_IDENT) {
-            type_plugin = lysc_get_type_plugin(type->plugin);
+            type_plugin = LYSC_GET_TYPE_PLG(type->plugin_ref);
             rc = type_plugin->store(set->ctx, type, value, strlen(value), 0, set->format, set->prefix_data,
                     LYD_HINT_DATA, scnode, &storage, NULL, &err);
             if (rc == LY_EINCOMPLETE) {

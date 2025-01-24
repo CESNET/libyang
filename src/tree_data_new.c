@@ -1220,8 +1220,8 @@ lyd_change_node_value(struct lyd_node_term *term, struct lyd_value *val, ly_bool
     struct lyd_node *target, *first;
     struct lyplg_type *real_type, *schema_type;
 
-    real_type = lysc_get_type_plugin(term->value.realtype->plugin);
-    schema_type = lysc_get_type_plugin(((struct lysc_node_leaf *)term->schema)->type->plugin);
+    real_type = LYSC_GET_TYPE_PLG(term->value.realtype->plugin_ref);
+    schema_type = LYSC_GET_TYPE_PLG(((struct lysc_node_leaf *)term->schema)->type->plugin_ref);
 
     if (term->schema->nodetype == LYS_LEAFLIST) {
         target = (struct lyd_node *)term;
@@ -1289,7 +1289,7 @@ lyd_change_term_val(struct lyd_node *term, struct lyd_value *val, ly_bool use_va
     type = ((struct lysc_node_leaf *)term->schema)->type;
 
     /* compare original and new value */
-    if (lysc_get_type_plugin(type->plugin)->compare(LYD_CTX(term), &t->value, val)) {
+    if (LYSC_GET_TYPE_PLG(type->plugin_ref)->compare(LYD_CTX(term), &t->value, val)) {
         /* since they are different, they cannot both be default */
         assert(!(term->flags & LYD_DEFAULT) || !is_dflt);
 
@@ -1299,7 +1299,7 @@ lyd_change_term_val(struct lyd_node *term, struct lyd_value *val, ly_bool use_va
     } else {
         /* same values, free the new stored one */
         if (use_val) {
-            lysc_get_type_plugin(type->plugin)->free(LYD_CTX(term), val);
+            LYSC_GET_TYPE_PLG(type->plugin_ref)->free(LYD_CTX(term), val);
         }
         val_change = 0;
     }

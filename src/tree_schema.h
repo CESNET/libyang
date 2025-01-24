@@ -299,7 +299,7 @@ struct lysp_ext {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uintptr_t plugin;                /**< extension definition plugin, use ::lysc_get_ext_plugin() */
+    uintptr_t plugin_ref;            /**< reference to extension plugin, use ::lysc_get_ext_plugin() to get the plugin */
     uint16_t flags;                  /**< LYS_STATUS_* and LYS_YINELEM_* values (@ref snodeflags) */
 };
 
@@ -1183,7 +1183,7 @@ struct lysc_ext {
     const char *name;                /**< extension name */
     const char *argname;             /**< argument name, NULL if not specified */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uintptr_t plugin;                /**< plugin implementing the specific extension, use ::lysc_get_ext_plugin() */
+    uintptr_t plugin_ref;            /**< reference to extension plugin, use ::lysc_get_ext_plugin() to get the plugin */
     struct lys_module *module;       /**< module structure */
     uint16_t flags;                  /**< LYS_STATUS_* value (@ref snodeflags) */
 };
@@ -1279,7 +1279,7 @@ struct lysc_must {
 struct lysc_type {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uintptr_t plugin;                /**< type's manipulation callbacks plugin, use ::lysc_get_type_plugin() */
+    uintptr_t plugin_ref;            /**< reference to type plugin, use ::lysc_get_ext_plugin() to get the plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing, it may be accessed concurrently when
                                           creating/freeing data node values that reference it (instance-identifier) */
@@ -1288,7 +1288,7 @@ struct lysc_type {
 struct lysc_type_num {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uintptr_t plugin;                /**< type's manipulation callbacks plugin, use ::lysc_get_type_plugin() */
+    uintptr_t plugin_ref;            /**< reference to type plugin, use ::lysc_get_ext_plugin() to get the plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 
@@ -1298,7 +1298,7 @@ struct lysc_type_num {
 struct lysc_type_dec {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uintptr_t plugin;                /**< type's manipulation callbacks plugin, use ::lysc_get_type_plugin() */
+    uintptr_t plugin_ref;            /**< reference to type plugin, use ::lysc_get_ext_plugin() to get the plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 
@@ -1309,7 +1309,7 @@ struct lysc_type_dec {
 struct lysc_type_str {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uintptr_t plugin;                /**< type's manipulation callbacks plugin, use ::lysc_get_type_plugin() */
+    uintptr_t plugin_ref;            /**< reference to type plugin, use ::lysc_get_ext_plugin() to get the plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 
@@ -1334,7 +1334,7 @@ struct lysc_type_bitenum_item {
 struct lysc_type_enum {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uintptr_t plugin;                /**< type's manipulation callbacks plugin, use ::lysc_get_type_plugin() */
+    uintptr_t plugin_ref;            /**< reference to type plugin, use ::lysc_get_ext_plugin() to get the plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 
@@ -1344,7 +1344,7 @@ struct lysc_type_enum {
 struct lysc_type_bits {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uintptr_t plugin;                /**< type's manipulation callbacks plugin, use ::lysc_get_type_plugin() */
+    uintptr_t plugin_ref;            /**< reference to type plugin, use ::lysc_get_ext_plugin() to get the plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 
@@ -1355,7 +1355,7 @@ struct lysc_type_bits {
 struct lysc_type_leafref {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uintptr_t plugin;                /**< type's manipulation callbacks plugin, use ::lysc_get_type_plugin() */
+    uintptr_t plugin_ref;            /**< reference to type plugin, use ::lysc_get_ext_plugin() to get the plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 
@@ -1368,7 +1368,7 @@ struct lysc_type_leafref {
 struct lysc_type_identityref {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uintptr_t plugin;                /**< type's manipulation callbacks plugin, use ::lysc_get_type_plugin() */
+    uintptr_t plugin_ref;            /**< reference to type plugin, use ::lysc_get_ext_plugin() to get the plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 
@@ -1379,7 +1379,7 @@ struct lysc_type_identityref {
 struct lysc_type_instanceid {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uintptr_t plugin;                /**< type's manipulation callbacks plugin, use ::lysc_get_type_plugin() */
+    uintptr_t plugin_ref;            /**< reference to type plugin, use ::lysc_get_ext_plugin() to get the plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 
@@ -1389,7 +1389,7 @@ struct lysc_type_instanceid {
 struct lysc_type_union {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uintptr_t plugin;                /**< type's manipulation callbacks plugin, use ::lysc_get_type_plugin() */
+    uintptr_t plugin_ref;            /**< reference to type plugin, use ::lysc_get_ext_plugin() to get the plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 
@@ -1399,7 +1399,7 @@ struct lysc_type_union {
 struct lysc_type_bin {
     const char *name;                /**< referenced typedef name (without prefix, if any), NULL for built-in types */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uintptr_t plugin;                /**< type's manipulation callbacks plugin, use ::lysc_get_type_plugin() */
+    uintptr_t plugin_ref;            /**< reference to type plugin, use ::lysc_get_ext_plugin() to get the plugin */
     LY_DATA_TYPE basetype;           /**< base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 

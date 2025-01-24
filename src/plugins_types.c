@@ -903,7 +903,7 @@ lyplg_type_print_val(const struct lysc_node *node, const char *canon, LY_VALUE_F
     struct lyplg_type *type_plugin;
 
     type = ((struct lysc_node_leaf *)node)->type;
-    type_plugin = lysc_get_type_plugin(type->plugin);
+    type_plugin = LYSC_GET_TYPE_PLG(type->plugin_ref);
 
     /* store the value */
     r = type_plugin->store(node->module->ctx, type, canon, strlen(canon), LYPLG_TYPE_STORE_ONLY, LY_VALUE_CANON,
@@ -1099,7 +1099,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
         goto cleanup;
     }
 
-    type = lysc_get_type_plugin(lref->plugin);
+    type = LYSC_GET_TYPE_PLG(lref->plugin_ref);
 
     /* check the result */
     if (target_path) {

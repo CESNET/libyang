@@ -196,7 +196,7 @@ static int
 rb_sort_clb(const struct ly_ctx *ctx, const struct lyd_value *val1, const struct lyd_value *val2)
 {
     assert(val1->realtype == val2->realtype);
-    return lysc_get_type_plugin(val1->realtype->plugin)->sort(ctx, val1, val2);
+    return LYSC_GET_TYPE_PLG(val1->realtype->plugin_ref)->sort(ctx, val1, val2);
 }
 
 /**

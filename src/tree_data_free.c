@@ -20,6 +20,7 @@
 #include "log.h"
 #include "ly_common.h"
 #include "plugins_exts/metadata.h"
+#include "plugins_internal.h"
 #include "plugins_types.h"
 #include "tree.h"
 #include "tree_data.h"
@@ -64,7 +65,7 @@ lyd_free_meta(struct lyd_meta *meta, ly_bool siblings)
         iter = iter->next;
 
         lydict_remove(meta->annotation->module->ctx, meta->name);
-        lysc_get_type_plugin(meta->value.realtype->plugin)->free(meta->annotation->module->ctx, &meta->value);
+        LYSC_GET_TYPE_PLG(meta->value.realtype->plugin_ref)->free(meta->annotation->module->ctx, &meta->value);
         free(meta);
     }
 }
@@ -234,7 +235,7 @@ lyd_free_subtree(struct lyd_node *node)
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
         struct lyd_node_term *node_term = (struct lyd_node_term *)node;
 
-        lysc_get_type_plugin(((struct lysc_node_leaf *)node->schema)->type->plugin)->free(LYD_CTX(node), &node_term->value);
+        LYSC_GET_TYPE_PLG(((struct lysc_node_leaf *)node->schema)->type->plugin_ref)->free(LYD_CTX(node), &node_term->value);
         lyd_free_leafref_nodes(node_term);
     }
 
