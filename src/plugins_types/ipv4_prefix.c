@@ -339,7 +339,7 @@ const struct lyplg_type_record plugins_ipv4_prefix[] = {
         .revision = "2013-07-15",
         .name = "ipv4-prefix",
 
-        .plugin.id = "ly2 - ipv4-prefix",
+        .plugin.id = "ly2 ipv4-prefix",
         .plugin.store = lyplg_type_store_ipv4_prefix,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_ipv4_prefix,

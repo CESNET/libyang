@@ -177,7 +177,7 @@ const struct lyplg_ext_record plugins_nacm[] = {
         .revision = "2012-02-22",
         .name = "default-deny-write",
 
-        .plugin.id = "ly2 - NACM",
+        .plugin.id = "ly2 NACM",
         .plugin.parse = nacm_parse,
         .plugin.compile = nacm_compile,
         .plugin.printer_info = NULL,
@@ -195,7 +195,7 @@ const struct lyplg_ext_record plugins_nacm[] = {
         .revision = "2018-02-14",
         .name = "default-deny-write",
 
-        .plugin.id = "ly2 - NACM",
+        .plugin.id = "ly2 NACM",
         .plugin.parse = nacm_parse,
         .plugin.compile = nacm_compile,
         .plugin.printer_info = NULL,
@@ -213,7 +213,7 @@ const struct lyplg_ext_record plugins_nacm[] = {
         .revision = "2012-02-22",
         .name = "default-deny-all",
 
-        .plugin.id = "ly2 - NACM",
+        .plugin.id = "ly2 NACM",
         .plugin.parse = nacm_parse,
         .plugin.compile = nacm_compile,
         .plugin.printer_info = NULL,
@@ -231,7 +231,7 @@ const struct lyplg_ext_record plugins_nacm[] = {
         .revision = "2018-02-14",
         .name = "default-deny-all",
 
-        .plugin.id = "ly2 - NACM",
+        .plugin.id = "ly2 NACM",
         .plugin.parse = nacm_parse,
         .plugin.compile = nacm_compile,
         .plugin.printer_info = NULL,

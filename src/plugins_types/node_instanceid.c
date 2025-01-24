@@ -334,7 +334,7 @@ const struct lyplg_type_record plugins_node_instanceid[] = {
         .revision = "2012-02-22",
         .name = "node-instance-identifier",
 
-        .plugin.id = "ly2 - node-instance-identifier",
+        .plugin.id = "ly2 node-instance-identifier",
         .plugin.store = lyplg_type_store_node_instanceid,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
@@ -349,7 +349,7 @@ const struct lyplg_type_record plugins_node_instanceid[] = {
         .revision = "2018-02-14",
         .name = "node-instance-identifier",
 
-        .plugin.id = "ly2 - node-instance-identifier",
+        .plugin.id = "ly2 node-instance-identifier",
         .plugin.store = lyplg_type_store_node_instanceid,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,

@@ -257,7 +257,7 @@ const struct lyplg_ext_record plugins_metadata[] = {
         .revision = "2016-08-05",
         .name = "annotation",
 
-        .plugin.id = "ly2 - metadata",
+        .plugin.id = "ly2 metadata",
         .plugin.parse = annotation_parse,
         .plugin.compile = annotation_compile,
         .plugin.printer_info = annotation_printer_info,
