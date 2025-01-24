@@ -220,7 +220,7 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, uint3
     LY_VALUE_FORMAT format;
     void *prefix_data;
     uint32_t opts = 0, ti;
-    struct lyplg_type *type_plugin;
+    struct lyplg_type *type_plg;
 
     *err = NULL;
 
@@ -228,7 +228,8 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, uint3
         lyb_parse_union(subvalue->original, subvalue->orig_len, &ti, &value, &value_len);
         if (ti != type_idx) {
             /* value of another type, first store the value properly and then use its JSON value for parsing */
-            rc = LYSC_GET_TYPE_PLG(type_u->types[ti]->plugin_ref)->store(ctx, type_u->types[ti], value, value_len,
+            type_plg = LYSC_GET_TYPE_PLG(type_u->types[ti]->plugin_ref);
+            rc = type_plg->store(ctx, type_u->types[ti], value, value_len,
                     LYPLG_TYPE_STORE_ONLY, subvalue->format, subvalue->prefix_data, subvalue->hints,
                     subvalue->ctx_node, &subvalue->value, unres, err);
             if ((rc != LY_SUCCESS) && (rc != LY_EINCOMPLETE)) {
@@ -249,7 +250,7 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, uint3
                 value = strndup(value, value_len);
                 dynamic = 1;
             }
-            LYSC_GET_TYPE_PLG(type_u->types[ti]->plugin_ref)->free(ctx, &subvalue->value);
+            type_plg->free(ctx, &subvalue->value);
 
             format = LY_VALUE_JSON;
             prefix_data = NULL;
@@ -268,9 +269,9 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, uint3
         opts |= LYPLG_TYPE_STORE_ONLY;
     }
 
-    type_plugin = LYSC_GET_TYPE_PLG(type->plugin_ref);
+    type_plg = LYSC_GET_TYPE_PLG(type->plugin_ref);
 
-    rc = type_plugin->store(ctx, type, value, value_len, opts, format, prefix_data,
+    rc = type_plg->store(ctx, type, value, value_len, opts, format, prefix_data,
             subvalue->hints, subvalue->ctx_node, &subvalue->value, unres, err);
     if ((rc != LY_SUCCESS) && (rc != LY_EINCOMPLETE)) {
         /* clear any leftover/freed garbage */
@@ -283,10 +284,10 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, uint3
 
     if (validate && (rc == LY_EINCOMPLETE)) {
         /* we need the value validated */
-        rc = type_plugin->validate(ctx, type, ctx_node, tree, &subvalue->value, err);
+        rc = type_plg->validate(ctx, type, ctx_node, tree, &subvalue->value, err);
         if (rc) {
             /* validate failed, we need to free the stored value */
-            type_plugin->free(ctx, &subvalue->value);
+            type_plg->free(ctx, &subvalue->value);
             goto cleanup;
         }
     }
@@ -325,7 +326,7 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
     char *msg = NULL, *err_app_tag = NULL;
     int msg_len = 0;
     ly_bool use_err_app_tag = 0;
-    struct lyplg_type *type;
+    struct lyplg_type *type_plg;
 
     *err = NULL;
 
@@ -376,11 +377,11 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
                 }
             }
 
-            type = LYSC_GET_TYPE_PLG(type_u->types[u]->plugin_ref);
+            type_plg = LYSC_GET_TYPE_PLG(type_u->types[u]->plugin_ref);
 
-            msg = ly_realloc(msg, msg_len + 4 + strlen(type->id) + 2 + strlen(errs[u]->msg) + 2);
+            msg = ly_realloc(msg, msg_len + 4 + strlen(type_plg->id) + 2 + strlen(errs[u]->msg) + 2);
             LY_CHECK_ERR_GOTO(!msg, ret = LY_EMEM, cleanup);
-            msg_len += sprintf(msg + msg_len, "    %s: %s\n", type->id, errs[u]->msg);
+            msg_len += sprintf(msg + msg_len, "    %s: %s\n", type_plg->id, errs[u]->msg);
         }
 
         if (!use_err_app_tag) {
@@ -519,16 +520,16 @@ lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type
     struct lyd_value orig = {0};
     uint32_t type_idx;
     ly_bool validated = 0;
-    struct lyplg_type *subvalue_type;
+    struct lyplg_type *subvalue_type_plg;
 
     *err = NULL;
 
     /* because of types that do not store their own type as realtype (leafref), we are not able to call their
      * validate callback (there is no way to get the type) but even if possible, the value may be invalid
      * for the type, so we may have to perform union value storing again from scratch, but keep a value backup */
-    subvalue_type = LYSC_GET_TYPE_PLG(subvalue->value.realtype->plugin_ref);
-    LY_CHECK_RET(subvalue_type->duplicate(ctx, &subvalue->value, &orig));
-    subvalue_type->free(ctx, &subvalue->value);
+    subvalue_type_plg = LYSC_GET_TYPE_PLG(subvalue->value.realtype->plugin_ref);
+    LY_CHECK_RET(subvalue_type_plg->duplicate(ctx, &subvalue->value, &orig));
+    subvalue_type_plg->free(ctx, &subvalue->value);
 
     if (subvalue->format == LY_VALUE_LYB) {
         /* use the specific type to store and validate the value */
@@ -675,7 +676,6 @@ lyplg_type_print_union(const struct ly_ctx *ctx, const struct lyd_value *value, 
     struct lyd_value_union *subvalue = value->subvalue;
     struct lysc_type_union *type_u = (struct lysc_type_union *)value->realtype;
     size_t lyb_data_len = 0;
-    struct lyplg_type *type;
 
     if ((format == LY_VALUE_LYB) && (subvalue->format == LY_VALUE_LYB)) {
         /* The return value is already ready. */
@@ -695,8 +695,8 @@ lyplg_type_print_union(const struct ly_ctx *ctx, const struct lyd_value *value, 
     }
 
     assert(format != LY_VALUE_LYB);
-    type = LYSC_GET_TYPE_PLG(subvalue->value.realtype->plugin_ref);
-    ret = (void *)type->print(ctx, &subvalue->value, format, prefix_data, dynamic, value_len);
+    ret = (void *)LYSC_GET_TYPE_PLG(subvalue->value.realtype->plugin_ref)->print(ctx, &subvalue->value,
+            format, prefix_data, dynamic, value_len);
     if (!value->_canonical && (format == LY_VALUE_CANON)) {
         /* the canonical value is supposed to be stored now */
         lydict_insert(ctx, subvalue->value._canonical, 0, (const char **)&value->_canonical);
