@@ -562,7 +562,7 @@ const struct lyplg_ext_record plugins_structure[] = {
         .revision = "2020-06-17",
         .name = "structure",
 
-        .plugin.id = "ly2 - structure",
+        .plugin.id = "ly2 structure",
         .plugin.parse = structure_parse,
         .plugin.compile = structure_compile,
         .plugin.printer_info = structure_printer_info,
@@ -581,7 +581,7 @@ const struct lyplg_ext_record plugins_structure[] = {
         .revision = "2020-06-17",
         .name = "augment-structure",
 
-        .plugin.id = "ly2 - structure",
+        .plugin.id = "ly2 structure",
         .plugin.parse = structure_aug_parse,
         .plugin.compile = NULL,
         .plugin.printer_info = NULL,

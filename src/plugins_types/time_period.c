@@ -86,7 +86,7 @@ const struct lyplg_type_record plugins_time_period[] = {
         .revision = "2024-07-09",
         .name = "time-period",
 
-        .plugin.id = "ly2 - time-period",
+        .plugin.id = "ly2 time-period",
         .plugin.store = lyplg_type_store_string,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,

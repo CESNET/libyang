@@ -209,7 +209,7 @@ const struct lyplg_type_record plugins_ipv4_address_no_zone[] = {
         .revision = "2013-07-15",
         .name = "ipv4-address-no-zone",
 
-        .plugin.id = "ly2 - ipv4-address-no-zone",
+        .plugin.id = "ly2 ipv4-address-no-zone",
         .plugin.store = lyplg_type_store_ipv4_address_no_zone,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_ipv4_address_no_zone,

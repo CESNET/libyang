@@ -56,7 +56,7 @@ test_deny_all(void **state)
             "import ietf-netconf-acm {revision-date 2018-02-14; prefix nacm;}"
             "nacm:default-deny-all;}";
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Ext plugin \"ly2 - NACM\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 NACM\": "
             "Extension nacm:default-deny-all is allowed only in a data nodes, but it is placed in \"module\" statement.",
             "/b:{extension='nacm:default-deny-all'}", 0);
 
@@ -65,7 +65,7 @@ test_deny_all(void **state)
             "import ietf-netconf-acm {revision-date 2018-02-14; prefix nacm;}"
             "leaf l { type string; nacm:default-deny-all; nacm:default-deny-write;}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Ext plugin \"ly2 - NACM\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 NACM\": "
             "Extension nacm:default-deny-write is mixed with nacm:default-deny-all.",
             "/aa:l/{extension='nacm:default-deny-all'}", 0);
 }
@@ -98,7 +98,7 @@ test_deny_write(void **state)
             "import ietf-netconf-acm {revision-date 2018-02-14; prefix nacm;}"
             "notification notif {nacm:default-deny-write;}}";
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Ext plugin \"ly2 - NACM\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 NACM\": "
             "Extension nacm:default-deny-write is not allowed in notification statement.",
             "/b:notif/{extension='nacm:default-deny-write'}", 0);
 
@@ -107,7 +107,7 @@ test_deny_write(void **state)
             "import ietf-netconf-acm {revision-date 2018-02-14; prefix nacm;}"
             "leaf l { type string; nacm:default-deny-write; nacm:default-deny-write;}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Ext plugin \"ly2 - NACM\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 NACM\": "
             "Extension nacm:default-deny-write is instantiated multiple times.",
             "/aa:l/{extension='nacm:default-deny-write'}", 0);
 }

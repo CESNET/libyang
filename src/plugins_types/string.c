@@ -130,7 +130,7 @@ const struct lyplg_type_record plugins_string[] = {
         .revision = NULL,
         .name = LY_TYPE_STRING_STR,
 
-        .plugin.id = "ly2 - string",
+        .plugin.id = "ly2 string",
         .plugin.store = lyplg_type_store_string,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,

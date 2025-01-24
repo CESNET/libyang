@@ -1422,7 +1422,7 @@ const struct lyplg_ext_record plugins_schema_mount[] = {
         .revision = "2019-01-14",
         .name = "mount-point",
 
-        .plugin.id = "ly2 - schema mount",
+        .plugin.id = "ly2 schema mount",
         .plugin.parse = schema_mount_parse,
         .plugin.compile = schema_mount_compile,
         .plugin.printer_info = NULL,

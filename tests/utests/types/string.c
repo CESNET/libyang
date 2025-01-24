@@ -1073,7 +1073,7 @@ test_plugin_store(void **state)
     lysc_type = ((struct lysc_node_leaf *) mod->compiled->data)->type;
 
     /* check proper type */
-    assert_string_equal("ly2 - string", type->id);
+    assert_string_equal("ly2 string", type->id);
 
     /* check store */
     val_text = "20";

@@ -239,7 +239,7 @@ const struct lyplg_type_record plugins_instanceid_keys[] = {
         .revision = NULL,
         .name = "instance-identifier-keys",
 
-        .plugin.id = "ly2 - instance-identifier-keys",
+        .plugin.id = "ly2 instance-identifier-keys",
         .plugin.store = lyplg_type_store_instanceid_keys,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
