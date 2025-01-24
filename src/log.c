@@ -30,6 +30,7 @@
 #include "in_internal.h"
 #include "ly_common.h"
 #include "plugins_exts.h"
+#include "plugins_internal.h"
 #include "set.h"
 #include "tree_data.h"
 #include "tree_data_internal.h"
@@ -913,7 +914,7 @@ lyplg_ext_parse_log(const struct lysp_ctx *pctx, const struct lysp_ext_instance 
     ly_vlog_build_path_line(PARSER_CTX(pctx), &data_path, &schema_path, &line);
 
     va_start(ap, format);
-    ly_ext_log(PARSER_CTX(pctx), lysc_get_ext_plugin(ext->plugin)->id, level, err, data_path, schema_path, line, format, ap);
+    ly_ext_log(PARSER_CTX(pctx), LYSC_GET_EXT_PLG(ext->plugin_ref)->id, level, err, data_path, schema_path, line, format, ap);
     va_end(ap);
 }
 
@@ -930,7 +931,7 @@ lyplg_ext_compile_log(const struct lysc_ctx *cctx, const struct lysc_ext_instanc
     }
 
     va_start(ap, format);
-    ly_ext_log(ext->module->ctx, lysc_get_ext_plugin(ext->def->plugin)->id, level, err, NULL, schema_path, 0, format, ap);
+    ly_ext_log(ext->module->ctx, LYSC_GET_EXT_PLG(ext->def->plugin_ref)->id, level, err, NULL, schema_path, 0, format, ap);
     va_end(ap);
 }
 
@@ -947,7 +948,7 @@ lyplg_ext_compile_log_path(const char *path, const struct lysc_ext_instance *ext
     }
 
     va_start(ap, format);
-    ly_ext_log(ext->module->ctx, lysc_get_ext_plugin(ext->def->plugin)->id, level, err, NULL, schema_path, 0, format, ap);
+    ly_ext_log(ext->module->ctx, LYSC_GET_EXT_PLG(ext->def->plugin_ref)->id, level, err, NULL, schema_path, 0, format, ap);
     va_end(ap);
 }
 
@@ -968,7 +969,7 @@ _lyplg_ext_compile_log_err(const struct ly_err_item *eitem, const struct lysc_ex
     }
 
     va_start(ap, ext);
-    ly_ext_log(ext->module->ctx, lysc_get_ext_plugin(ext->def->plugin)->id, eitem->level, eitem->err,
+    ly_ext_log(ext->module->ctx, LYSC_GET_EXT_PLG(ext->def->plugin_ref)->id, eitem->level, eitem->err,
             data_path, schema_path, eitem->line, "%s", ap);
     va_end(ap);
 }
