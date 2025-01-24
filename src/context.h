@@ -202,17 +202,20 @@ struct ly_ctx;
                                         'require-instance false;'. It also enables usage of
                                         [lyd_leafref_get_links](@ref lyd_leafref_get_links) and
                                         [lyd_leafref_link_node_tree](@ref lyd_leafref_link_node_tree) APIs. */
-#define LY_CTX_BUILTIN_PLUGINS_ONLY 0x0800 /**< By default, context uses all available plugins for types and extensions,
-                                        both included and external. This options prevents all included plugins to be
-                                        loaded except for built-in YANG types so all derived types will use these and
-                                        for all purposes behave as the base type. The option can be used for cases when
-                                        invalid data needs to be stored in YANG node values. */
+#define LY_CTX_BUILTIN_PLUGINS_ONLY 0x0800 /**< Limits the context to use only built-in YANG type plugins,
+                                        treating all derived types as their base type.
+                                        Useful for storing invalid data in YANG node values.
+                                        This option has a global effect: the global plugin array is initialized only when no contexts exist.
+                                        If any context was created without this flag and is still alive,
+                                        creating a new context with this flag will not have the intended effect. */
+
 #define LY_CTX_LYB_HASHES 0x1000 /**< Generate hashes for all the schema nodes. Required when using LYB data parse
                                         or print. */
-#define LY_CTX_STATIC_PLUGINS_ONLY 0x2000 /**< By default, external plugins from directories the path to which is obtained
-                                        from the `LIBYANG_TYPES_PLUGINS_DIR` and `LIBYANG_EXTENSIONS_PLUGINS_DIR` environmental variables
-                                        are loaded. This option prevents loading of all external plugins and only
-                                        the static (libyang built-in) plugins are loaded. */
+#define LY_CTX_STATIC_PLUGINS_ONLY 0x2000 /**< Restricts the context to load only static (built-in) plugins,
+                                        ignoring external plugins from directories specified by `LIBYANG_TYPES_PLUGINS_DIR` and
+                                        `LIBYANG_EXTENSIONS_PLUGINS_DIR`. This option has a global effect: the global plugin array
+                                        is initialized only when no contexts exist. If any context was created without this flag
+                                        and is still alive, creating a new context with this flag will not have the intended effect. */
 
 /* 0x80000000 reserved for internal use */
 
