@@ -23,6 +23,7 @@
 #include "log.h"
 #include "ly_common.h"
 #include "plugins_exts.h"
+#include "plugins_internal.h"
 #include "plugins_types.h"
 #include "tree.h"
 #include "tree_data.h"
@@ -73,8 +74,8 @@ lysp_ext_instance_free(const struct ly_ctx *ctx, struct lysp_ext_instance *ext)
     lydict_remove(ctx, ext->name);
     lydict_remove(ctx, ext->argument);
     ly_free_prefix_data(ext->format, ext->prefix_data);
-    if (ext->plugin && lysc_get_ext_plugin(ext->plugin)->pfree) {
-        lysc_get_ext_plugin(ext->plugin)->pfree(ctx, ext);
+    if (ext->plugin_ref && LYSC_GET_EXT_PLG(ext->plugin_ref)->pfree) {
+        LYSC_GET_EXT_PLG(ext->plugin_ref)->pfree(ctx, ext);
     }
 
     LY_LIST_FOR_SAFE(ext->child, next, stmt) {
@@ -639,8 +640,8 @@ lysp_module_free(const struct ly_ctx *ctx, struct lysp_module *module)
 void
 lysc_ext_instance_free(const struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 {
-    if (ext->def && ext->def->plugin && lysc_get_ext_plugin(ext->def->plugin)->cfree) {
-        lysc_get_ext_plugin(ext->def->plugin)->cfree(ctx, ext);
+    if (ext->def && ext->def->plugin_ref && LYSC_GET_EXT_PLG(ext->def->plugin_ref)->cfree) {
+        LYSC_GET_EXT_PLG(ext->def->plugin_ref)->cfree(ctx, ext);
     }
     lydict_remove(ctx, ext->argument);
     FREE_ARRAY(ctx, ext->exts, lysc_ext_instance_free);

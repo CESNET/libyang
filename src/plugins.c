@@ -108,7 +108,7 @@ static pthread_mutex_t plugins_guard = PTHREAD_MUTEX_INITIALIZER;
  * unloaded with the destroy of the last context. Therefore, to reload the list of plugins, all the contexts must be
  * destroyed and with the creation of a first new context after that, the plugins will be reloaded.
  */
-static uint32_t context_refcount = 0;
+static uint32_t context_refcount;
 
 /**
  * @brief Record describing an implemented extension.
@@ -127,51 +127,45 @@ struct lyplg_record {
 };
 
 #ifndef STATIC
-static struct ly_set plugins_handlers = {0};
+static struct ly_set plugins_handlers;
 #endif
-static struct ly_set plugins_types = {0};
-static struct ly_set plugins_extensions = {0};
+struct ly_set ly_plugins_types;
+struct ly_set ly_plugins_extensions;
 
-/**
- * @brief Get the plugin of the given @p type.
- *
- * @param[in] plugin_ref Reference to a plugin. Either an index of a built-in plugin (offset by +1)
- * or a pointer to an external plugin.
- * @param[in] type Type of the plugin to get.
- * @param[in] plugins Array of the built-in plugins used in case @p plugin_ref is an index of a built-in plugin.
- * @return Plugin of the given @p type or NULL if not found.
- */
-static void *
-lysc_get_plugin(uintptr_t plugin_ref, enum LYPLG type, const struct ly_set *plugins)
-{
-    /* plugin_ref is offset by +1, so 0 is invalid (NULL ptr equivalent) */
-    if (!plugin_ref) {
-        return NULL;
-    }
-
-    if (plugin_ref <= plugins->count) {
-        /* plugin is built-in, fetch it from the global list */
-        if (type == LYPLG_EXTENSION) {
-            return &((struct lyplg_ext_record *)plugins->objs[plugin_ref - 1])->plugin;
-        } else {
-            return &((struct lyplg_type_record *)plugins->objs[plugin_ref - 1])->plugin;
-        }
-    } else {
-        /* plugin is external, return the pointer */
-        return (void *)plugin_ref;
-    }
-}
+/* global counters for the number of static plugins */
+uint32_t ly_static_type_plugins_count;
+uint32_t ly_static_ext_plugins_count;
 
 LIBYANG_API_DEF struct lyplg_type *
 lysc_get_type_plugin(uintptr_t plugin_ref)
 {
-    return lysc_get_plugin(plugin_ref, LYPLG_TYPE, &plugins_types);
+    if (!plugin_ref) {
+        return NULL;
+    }
+
+    if (plugin_ref <= ly_plugins_types.count) {
+        /* plugin is static, fetch it from the global list */
+        return &((struct lyplg_type_record *)ly_plugins_types.objs[plugin_ref - 1])->plugin;
+    } else {
+        /* plugin is dynamic, return the pointer */
+        return (struct lyplg_type *)plugin_ref;
+    }
 }
 
 LIBYANG_API_DEF struct lyplg_ext *
 lysc_get_ext_plugin(uintptr_t plugin_ref)
 {
-    return lysc_get_plugin(plugin_ref, LYPLG_EXTENSION, &plugins_extensions);
+    if (!plugin_ref) {
+        return NULL;
+    }
+
+    if (plugin_ref <= ly_plugins_extensions.count) {
+        /* plugin is static, fetch it from the global list */
+        return &((struct lyplg_ext_record *)ly_plugins_extensions.objs[plugin_ref - 1])->plugin;
+    } else {
+        /* plugin is dynamic, return the pointer */
+        return (struct lyplg_ext *)plugin_ref;
+    }
 }
 
 /**
@@ -190,9 +184,9 @@ plugins_iter(const struct ly_ctx *ctx, enum LYPLG type, uint32_t *index)
     assert(index);
 
     if (type == LYPLG_EXTENSION) {
-        plugins = ctx ? &ctx->plugins_extensions : &plugins_extensions;
+        plugins = ctx ? &ctx->plugins_extensions : &ly_plugins_extensions;
     } else {
-        plugins = ctx ? &ctx->plugins_types : &plugins_types;
+        plugins = ctx ? &ctx->plugins_types : &ly_plugins_types;
     }
 
     if (*index == plugins->count) {
@@ -255,35 +249,37 @@ lyplg_record_find(const struct ly_ctx *ctx, enum LYPLG type, const char *module,
  * @param[in] module Module name of the plugin.
  * @param[in] revision Revision of the @p module.
  * @param[in] name Name of the plugin.
- * @return Accessor to the callbacks plugin structure, use ::lysc_get_type_plugin()
- * or ::lysc_get_ext_plugin() on the returned value to get the actual plugin. 0 if not found.
+ * @return Reference to the callbacks plugin structure. Use ::LYSC_GET_TYPE_PLG()
+ * or ::LYSC_GET_EXT_PLG() on the returned value to get the actual plugin. 0 if not found.
  */
 static uintptr_t
 lyplg_plugin_find(const struct ly_ctx *ctx, enum LYPLG type, const char *module, const char *revision, const char *name)
 {
     struct lyplg_type_record *record = NULL;
-    uint32_t record_idx = 0;
+    uint32_t record_idx = 0, static_plugin_count;
 
     if (ctx) {
         /* try to find context specific plugin */
         record = lyplg_record_find(ctx, type, module, revision, name, &record_idx);
+        if (record) {
+            /* plugin found in the context, hence it is dynamic so return the ptr to it */
+            return (uintptr_t)&record->plugin;
+        }
     }
 
-    if (!record) {
-        /* try to find shared plugin */
-        record = lyplg_record_find(NULL, type, module, revision, name, &record_idx);
-    }
-
+    /* try to find shared plugin */
+    record = lyplg_record_find(NULL, type, module, revision, name, &record_idx);
     if (!record) {
         /* not found */
         return 0;
     }
 
-    if (!strncmp(record->plugin.id, "ly2 - ", 6)) {
-        /* internal plugin, return an index with an offset of +1 in order to keep 0 as an invalid index (a NULL ptr) */
+    static_plugin_count = (type == LYPLG_TYPE) ? ly_static_type_plugins_count : ly_static_ext_plugins_count;
+    if (record_idx < static_plugin_count) {
+        /* static plugin, return an index with an offset of +1 in order to keep 0 as an invalid index (a NULL ptr) */
         return record_idx + 1;
     } else {
-        /* external plugin, return the pointer */
+        /* dynamic plugin, return the pointer to it */
         return (uintptr_t)&record->plugin;
     }
 }
@@ -324,7 +320,7 @@ plugins_insert(struct ly_ctx *ctx, enum LYPLG type, const void *recs)
     if (type == LYPLG_EXTENSION) {
         const struct lyplg_ext_record *rec = (const struct lyplg_ext_record *)recs;
 
-        plugins = ctx ? &ctx->plugins_extensions : &plugins_extensions;
+        plugins = ctx ? &ctx->plugins_extensions : &ly_plugins_extensions;
 
         for (uint32_t i = 0; rec[i].name; i++) {
             LY_CHECK_RET(ly_set_add(plugins, (void *)&rec[i], 0, NULL));
@@ -332,7 +328,7 @@ plugins_insert(struct ly_ctx *ctx, enum LYPLG type, const void *recs)
     } else { /* LYPLG_TYPE */
         const struct lyplg_type_record *rec = (const struct lyplg_type_record *)recs;
 
-        plugins = ctx ? &ctx->plugins_types : &plugins_types;
+        plugins = ctx ? &ctx->plugins_types : &ly_plugins_types;
 
         for (uint32_t i = 0; rec[i].name; i++) {
             LY_CHECK_RET(ly_set_add(plugins, (void *)&rec[i], 0, NULL));
@@ -358,9 +354,10 @@ lyplg_clean_(void)
         return;
     }
 
-    ly_set_erase(&plugins_types, NULL);
-    ly_set_erase(&plugins_extensions, NULL);
+    ly_set_erase(&ly_plugins_types, NULL);
+    ly_set_erase(&ly_plugins_extensions, NULL);
     ly_set_erase(&plugins_handlers, lyplg_close_cb);
+    ly_static_type_plugins_count = ly_static_ext_plugins_count = 0;
 }
 
 #endif
@@ -475,8 +472,8 @@ plugins_load_module(const char *pathname)
     }
 
     /* remember the current plugins lists for recovery */
-    types_count = plugins_types.count;
-    extensions_count = plugins_extensions.count;
+    types_count = ly_plugins_types.count;
+    extensions_count = ly_plugins_extensions.count;
 
     /* type plugin */
     ret = plugins_load(dlhandler, pathname, LYPLG_TYPE);
@@ -496,11 +493,11 @@ error:
     dlclose(dlhandler);
 
     /* revert changes in the lists */
-    while (plugins_types.count > types_count) {
-        ly_set_rm_index(&plugins_types, plugins_types.count - 1, NULL);
+    while (ly_plugins_types.count > types_count) {
+        ly_set_rm_index(&ly_plugins_types, ly_plugins_types.count - 1, NULL);
     }
-    while (plugins_extensions.count > extensions_count) {
-        ly_set_rm_index(&plugins_extensions, plugins_extensions.count - 1, NULL);
+    while (ly_plugins_extensions.count > extensions_count) {
+        ly_set_rm_index(&ly_plugins_extensions, ly_plugins_extensions.count - 1, NULL);
     }
 
     return ret;
@@ -618,6 +615,11 @@ lyplg_init(ly_bool builtin_type_plugins_only, ly_bool static_plugins_only)
     LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_yangdata), error);
     LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_schema_mount), error);
     LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_structure), error);
+
+    /* the global plugin sets contain only static plugins at this point, so assign to the counters here.
+     * the counters are used to determine whether a plugin is static or not */
+    ly_static_type_plugins_count = ly_plugins_types.count;
+    ly_static_ext_plugins_count = ly_plugins_extensions.count;
 
 #ifndef STATIC
     if (!static_plugins_only) {

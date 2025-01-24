@@ -1588,7 +1588,7 @@ test_plugin_compare(void **state)
      */
     diff_type_text = "20";
     diff_type = ((struct lysc_node_leaf *)mod->compiled->data->next)->type;
-    ly_ret = lysc_get_type_plugin(diff_type->plugin)->store(UTEST_LYCTX, diff_type, diff_type_text, strlen(diff_type_text),
+    ly_ret = lysc_get_type_plugin(diff_type->plugin_ref)->store(UTEST_LYCTX, diff_type, diff_type_text, strlen(diff_type_text),
             0, LY_VALUE_XML, NULL, LYD_VALHINT_DECNUM, NULL, &diff_type_val, NULL, &err);
     assert_int_equal(LY_SUCCESS, ly_ret);
     assert_int_equal(LY_SUCCESS, type->compare(UTEST_LYCTX, &diff_type_val, &(values[0])));
@@ -1600,7 +1600,7 @@ test_plugin_compare(void **state)
      */
     diff_type_text = "20";
     diff_type = ((struct lysc_node_leaf *)mod->compiled->data->next->next)->type;
-    ly_ret = lysc_get_type_plugin(diff_type->plugin)->store(UTEST_LYCTX, diff_type, diff_type_text, strlen(diff_type_text),
+    ly_ret = lysc_get_type_plugin(diff_type->plugin_ref)->store(UTEST_LYCTX, diff_type, diff_type_text, strlen(diff_type_text),
             0, LY_VALUE_XML, NULL, LYD_VALHINT_DECNUM, NULL, &diff_type_val, NULL, &err);
     assert_int_equal(LY_SUCCESS, ly_ret);
     assert_int_equal(LY_ENOT, type->compare(UTEST_LYCTX, &diff_type_val, &(values[0])));
@@ -1612,7 +1612,7 @@ test_plugin_compare(void **state)
      */
     diff_type_text = "20";
     diff_type = ((struct lysc_node_leaf *)mod->compiled->data->next->next->next)->type;
-    ly_ret = lysc_get_type_plugin(diff_type->plugin)->store(UTEST_LYCTX, diff_type, diff_type_text, strlen(diff_type_text),
+    ly_ret = lysc_get_type_plugin(diff_type->plugin_ref)->store(UTEST_LYCTX, diff_type, diff_type_text, strlen(diff_type_text),
             0, LY_VALUE_XML, NULL, LYD_VALHINT_DECNUM, NULL, &diff_type_val, NULL, &err);
     assert_int_equal(LY_SUCCESS, ly_ret);
     assert_int_equal(LY_ENOT, type->compare(UTEST_LYCTX, &diff_type_val, &(values[0])));

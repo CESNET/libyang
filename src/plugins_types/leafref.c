@@ -47,7 +47,7 @@ lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type,
     assert(type_lr->realtype);
 
     /* store the value as the real type of the leafref target */
-    rc = lysc_get_type_plugin(type_lr->realtype->plugin)->store(ctx, type_lr->realtype, value, value_len, options,
+    rc = LYSC_GET_TYPE_PLG(type_lr->realtype->plugin_ref)->store(ctx, type_lr->realtype, value, value_len, options,
             format, prefix_data, hints, ctx_node, storage, unres, err);
     if (rc == LY_EINCOMPLETE) {
         /* it is irrelevant whether the target type needs some resolving */
@@ -104,32 +104,32 @@ cleanup:
 LIBYANG_API_DEF LY_ERR
 lyplg_type_compare_leafref(const struct ly_ctx *ctx, const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    return lysc_get_type_plugin(val1->realtype->plugin)->compare(ctx, val1, val2);
+    return LYSC_GET_TYPE_PLG(val1->realtype->plugin_ref)->compare(ctx, val1, val2);
 }
 
 LIBYANG_API_DEF int
 lyplg_type_sort_leafref(const struct ly_ctx *ctx, const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    return lysc_get_type_plugin(val1->realtype->plugin)->sort(ctx, val1, val2);
+    return LYSC_GET_TYPE_PLG(val1->realtype->plugin_ref)->sort(ctx, val1, val2);
 }
 
 LIBYANG_API_DEF const void *
 lyplg_type_print_leafref(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len)
 {
-    return lysc_get_type_plugin(value->realtype->plugin)->print(ctx, value, format, prefix_data, dynamic, value_len);
+    return LYSC_GET_TYPE_PLG(value->realtype->plugin_ref)->print(ctx, value, format, prefix_data, dynamic, value_len);
 }
 
 LIBYANG_API_DEF LY_ERR
 lyplg_type_dup_leafref(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
-    return lysc_get_type_plugin(original->realtype->plugin)->duplicate(ctx, original, dup);
+    return LYSC_GET_TYPE_PLG(original->realtype->plugin_ref)->duplicate(ctx, original, dup);
 }
 
 LIBYANG_API_DEF void
 lyplg_type_free_leafref(const struct ly_ctx *ctx, struct lyd_value *value)
 {
-    lysc_get_type_plugin(value->realtype->plugin)->free(ctx, value);
+    LYSC_GET_TYPE_PLG(value->realtype->plugin_ref)->free(ctx, value);
 }
 
 /**

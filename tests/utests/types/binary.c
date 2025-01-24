@@ -262,7 +262,7 @@ test_plugin_print(void **state)
     val = "";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val),
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
-    assert_string_equal("", lysc_get_type_plugin(value.realtype->plugin)->print(UTEST_LYCTX, &(value), LY_VALUE_CANON, NULL, NULL, NULL));
+    assert_string_equal("", lysc_get_type_plugin(value.realtype->plugin_ref)->print(UTEST_LYCTX, &(value), LY_VALUE_CANON, NULL, NULL, NULL));
     type->free(UTEST_LYCTX, &value);
 }
 
