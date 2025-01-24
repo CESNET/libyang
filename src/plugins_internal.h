@@ -66,7 +66,7 @@ extern uint32_t ly_static_ext_plugins_count;
 /**
  * @brief Get a type plugin.
  *
- * @param[in] PLUGIN_REF Reference to a plugin. Either an index of a static plugin (offset by +1)
+ * @param[in] PLUGIN_REF Reference to a type plugin. Either an index of a static plugin (offset by +1)
  * or a pointer to an external plugin.
  * @return Type plugin.
  */
@@ -78,7 +78,7 @@ extern uint32_t ly_static_ext_plugins_count;
 /**
  * @brief Get an extension plugin.
  *
- * @param[in] PLUGIN_REF Reference to a plugin. Either an index of a static plugin (offset by +1)
+ * @param[in] PLUGIN_REF Reference to an extension plugin. Either an index of a static plugin (offset by +1)
  * or a pointer to an external plugin.
  * @return Extension plugin.
  */
@@ -115,7 +115,7 @@ void lyplg_clean(void);
  * only the plugins with NULL revision specified.
  * @param[in] name Name of the type which the plugin implements.
  * @return ID of the found type plugin, 0 if none found. The type plugin can be obtained
- * by passing the returned ID to ::lysc_get_type_plugin().
+ * by passing the returned ID to ::lysc_get_type_plugin() or ::LYSC_GET_TYPE_PLG.
  */
 uintptr_t lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name);
 
@@ -128,7 +128,7 @@ uintptr_t lyplg_type_plugin_find(const struct ly_ctx *ctx, const char *module, c
  * only the plugins with NULL revision specified.
  * @param[in] name Name of the extension which the plugin implements.
  * @return ID of the found extension plugin, 0 if none found. The extension plugin can be obtained
- * by passing the returned ID to ::lysc_get_ext_plugin().
+ * by passing the returned ID to ::lysc_get_ext_plugin() or ::LYSC_GET_EXT_PLG.
  */
 uintptr_t lyplg_ext_plugin_find(const struct ly_ctx *ctx, const char *module, const char *revision, const char *name);
 

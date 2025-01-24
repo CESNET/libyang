@@ -70,12 +70,13 @@ void
 lysp_ext_instance_free(const struct ly_ctx *ctx, struct lysp_ext_instance *ext)
 {
     struct lysp_stmt *stmt, *next;
+    struct lyplg_ext *ext_plg;
 
     lydict_remove(ctx, ext->name);
     lydict_remove(ctx, ext->argument);
     ly_free_prefix_data(ext->format, ext->prefix_data);
-    if (ext->plugin_ref && LYSC_GET_EXT_PLG(ext->plugin_ref)->pfree) {
-        LYSC_GET_EXT_PLG(ext->plugin_ref)->pfree(ctx, ext);
+    if (ext->plugin_ref && (ext_plg = LYSC_GET_EXT_PLG(ext->plugin_ref))->pfree) {
+        ext_plg->pfree(ctx, ext);
     }
 
     LY_LIST_FOR_SAFE(ext->child, next, stmt) {
@@ -640,8 +641,10 @@ lysp_module_free(const struct ly_ctx *ctx, struct lysp_module *module)
 void
 lysc_ext_instance_free(const struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 {
-    if (ext->def && ext->def->plugin_ref && LYSC_GET_EXT_PLG(ext->def->plugin_ref)->cfree) {
-        LYSC_GET_EXT_PLG(ext->def->plugin_ref)->cfree(ctx, ext);
+    struct lyplg_ext *ext_plg;
+
+    if (ext->def && ext->def->plugin_ref && (ext_plg = LYSC_GET_EXT_PLG(ext->def->plugin_ref))->cfree) {
+        ext_plg->cfree(ctx, ext);
     }
     lydict_remove(ctx, ext->argument);
     FREE_ARRAY(ctx, ext->exts, lysc_ext_instance_free);

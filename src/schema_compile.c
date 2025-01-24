@@ -114,6 +114,7 @@ LY_ERR
 lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *extp, struct lysc_ext_instance *ext, void *parent)
 {
     LY_ERR ret = LY_SUCCESS;
+    struct lyplg_ext *ext_plg;
 
     DUP_STRING_GOTO(ctx->ctx, extp->argument, ext->argument, ret, cleanup);
     ext->module = ctx->cur_mod;
@@ -132,11 +133,11 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *extp, struct lys
     COMPILE_EXTS_GOTO(ctx, extp->exts, ext->exts, ext, ret, cleanup);
 
     /* compile this extension */
-    if (ext->def->plugin_ref && LYSC_GET_EXT_PLG(ext->def->plugin_ref)->compile) {
+    if (ext->def->plugin_ref && (ext_plg = LYSC_GET_EXT_PLG(ext->def->plugin_ref))->compile) {
         if (ext->argument) {
             lysc_update_path(ctx, ext->module, ext->argument);
         }
-        ret = LYSC_GET_EXT_PLG(ext->def->plugin_ref)->compile(ctx, extp, ext);
+        ret = ext_plg->compile(ctx, extp, ext);
         if (ret == LY_ENOT) {
             lysc_ext_instance_free(ctx->ctx, ext);
         }
@@ -896,11 +897,11 @@ lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc
     struct lyd_value storage = {0};
     struct ly_err_item *err = NULL;
     LY_VALUE_FORMAT format;
-    struct lyplg_type *type_plugin;
+    struct lyplg_type *type_plg;
 
     options = (ctx->ctx->opts & LY_CTX_REF_IMPLEMENTED) ? LYPLG_TYPE_STORE_IMPLEMENT : 0;
-    type_plugin = LYSC_GET_TYPE_PLG(type->plugin_ref);
-    rc = type_plugin->store(ctx->ctx, type, dflt, strlen(dflt), options, LY_VALUE_SCHEMA, (void *)dflt_pmod,
+    type_plg = LYSC_GET_TYPE_PLG(type->plugin_ref);
+    rc = type_plg->store(ctx->ctx, type, dflt, strlen(dflt), options, LY_VALUE_SCHEMA, (void *)dflt_pmod,
             LYD_HINT_SCHEMA, node, &storage, unres, &err);
     if (rc == LY_ERECOMPILE) {
         /* fine, but we need to recompile */
@@ -927,7 +928,7 @@ lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc
     }
 
 cleanup:
-    type_plugin->free(ctx->ctx, &storage);
+    type_plg->free(ctx->ctx, &storage);
     return rc;
 }
 

@@ -1699,6 +1699,7 @@ set_comp_canonize(struct lyxp_set *set, const struct lyxp_set_node *xp_node)
     const struct lysc_type *type = NULL;
     const char *canon;
     LY_ERR r;
+    struct lyplg_type *type_plg;
 
     /* is there anything to canonize even? */
     if (set->type == LYXP_SET_STRING) {
@@ -1714,16 +1715,18 @@ set_comp_canonize(struct lyxp_set *set, const struct lyxp_set_node *xp_node)
         return LY_SUCCESS;
     }
 
+    type_plg = LYSC_GET_TYPE_PLG(type->plugin_ref);
+
     /* check for built-in types without required canonization */
-    if ((type->basetype == LY_TYPE_STRING) && (LYSC_GET_TYPE_PLG(type->plugin_ref)->store == lyplg_type_store_string)) {
+    if ((type->basetype == LY_TYPE_STRING) && (type_plg->store == lyplg_type_store_string)) {
         /* string */
         return LY_SUCCESS;
     }
-    if ((type->basetype == LY_TYPE_BOOL) && (LYSC_GET_TYPE_PLG(type->plugin_ref)->store == lyplg_type_store_boolean)) {
+    if ((type->basetype == LY_TYPE_BOOL) && (type_plg->store == lyplg_type_store_boolean)) {
         /* boolean */
         return LY_SUCCESS;
     }
-    if ((type->basetype == LY_TYPE_ENUM) && (LYSC_GET_TYPE_PLG(type->plugin_ref)->store == lyplg_type_store_enum)) {
+    if ((type->basetype == LY_TYPE_ENUM) && (type_plg->store == lyplg_type_store_enum)) {
         /* enumeration */
         return LY_SUCCESS;
     }
@@ -3620,7 +3623,7 @@ warn_equality_value(const struct lyxp_expr *exp, struct lyxp_set *set, uint32_t 
     struct lyd_value storage;
     LY_ERR rc;
     struct ly_err_item *err = NULL;
-    struct lyplg_type *type_plugin;
+    struct lyplg_type *type_plg;
 
     if ((scnode = warn_get_scnode_in_ctx(set)) && (scnode->nodetype & (LYS_LEAF | LYS_LEAFLIST)) &&
             ((exp->tokens[val_exp] == LYXP_TOKEN_LITERAL) || (exp->tokens[val_exp] == LYXP_TOKEN_NUMBER))) {
@@ -3645,8 +3648,8 @@ warn_equality_value(const struct lyxp_expr *exp, struct lyxp_set *set, uint32_t 
 
         type = ((struct lysc_node_leaf *)scnode)->type;
         if (type->basetype != LY_TYPE_IDENT) {
-            type_plugin = LYSC_GET_TYPE_PLG(type->plugin_ref);
-            rc = type_plugin->store(set->ctx, type, value, strlen(value), 0, set->format, set->prefix_data,
+            type_plg = LYSC_GET_TYPE_PLG(type->plugin_ref);
+            rc = type_plg->store(set->ctx, type, value, strlen(value), 0, set->format, set->prefix_data,
                     LYD_HINT_DATA, scnode, &storage, NULL, &err);
             if (rc == LY_EINCOMPLETE) {
                 rc = LY_SUCCESS;
@@ -3663,7 +3666,7 @@ warn_equality_value(const struct lyxp_expr *exp, struct lyxp_set *set, uint32_t 
                         (exp->tok_pos[last_equal_exp] - exp->tok_pos[equal_exp]) + exp->tok_len[last_equal_exp],
                         set->cur_scnode);
             } else {
-                type_plugin->free(set->ctx, &storage);
+                type_plg->free(set->ctx, &storage);
             }
         }
         free(value);
