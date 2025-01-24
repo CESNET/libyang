@@ -354,7 +354,7 @@ const struct lyplg_type_record plugins_identityref[] = {
         .revision = NULL,
         .name = LY_TYPE_IDENT_STR,
 
-        .plugin.id = "ly2 - identityref",
+        .plugin.id = "ly2 identityref",
         .plugin.store = lyplg_type_store_identityref,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_identityref,
