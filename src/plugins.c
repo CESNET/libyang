@@ -143,7 +143,7 @@ lysc_get_type_plugin(uintptr_t plugin_ref)
         return NULL;
     }
 
-    if (plugin_ref <= ly_plugins_types.count) {
+    if (plugin_ref <= ly_static_type_plugins_count) {
         /* plugin is static, fetch it from the global list */
         return &((struct lyplg_type_record *)ly_plugins_types.objs[plugin_ref - 1])->plugin;
     } else {
@@ -159,7 +159,7 @@ lysc_get_ext_plugin(uintptr_t plugin_ref)
         return NULL;
     }
 
-    if (plugin_ref <= ly_plugins_extensions.count) {
+    if (plugin_ref <= ly_static_ext_plugins_count) {
         /* plugin is static, fetch it from the global list */
         return &((struct lyplg_ext_record *)ly_plugins_extensions.objs[plugin_ref - 1])->plugin;
     } else {
