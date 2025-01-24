@@ -679,16 +679,18 @@ lyb_print_term_value(struct lyd_node_term *term, struct ly_out *out, struct lyly
     size_t value_len = 0;
     int32_t lyb_data_len;
     lyplg_type_print_clb print;
-    struct lyplg_type *type;
+    struct lyplg_type *type_plg;
 
-    assert(term->value.realtype && (type = LYSC_GET_TYPE_PLG(term->value.realtype->plugin_ref)) &&
-            type->print && term->schema);
+    assert(term->value.realtype && term->value.realtype->plugin_ref &&
+            LYSC_GET_TYPE_PLG(term->value.realtype->plugin_ref)->print && term->schema);
+
+    type_plg = LYSC_GET_TYPE_PLG(term->value.realtype->plugin_ref);
 
     /* Get length of LYB data to print. */
-    lyb_data_len = type->lyb_data_len;
+    lyb_data_len = type_plg->lyb_data_len;
 
     /* Get value and also print its length only if size is not fixed. */
-    print = type->print;
+    print = type_plg->print;
     if (lyb_data_len < 0) {
         /* Variable-length data. */
 
