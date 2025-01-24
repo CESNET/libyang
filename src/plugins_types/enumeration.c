@@ -201,7 +201,7 @@ const struct lyplg_type_record plugins_enumeration[] = {
         .revision = NULL,
         .name = LY_TYPE_ENUM_STR,
 
-        .plugin.id = "ly2 - enumeration",
+        .plugin.id = "ly2 enumeration",
         .plugin.store = lyplg_type_store_enum,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,

@@ -132,7 +132,7 @@ const struct lyplg_type_record plugins_lyds_tree[] = {
         .revision = NULL,
         .name = "lyds_tree",
 
-        .plugin.id = "ly2 - lyds_tree",
+        .plugin.id = "ly2 lyds_tree",
         .plugin.store = lyplg_type_store_lyds,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_lyds,
