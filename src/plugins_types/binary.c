@@ -497,7 +497,7 @@ const struct lyplg_type_record plugins_binary[] = {
         .revision = NULL,
         .name = LY_TYPE_BINARY_STR,
 
-        .plugin.id = "ly2 - binary",
+        .plugin.id = "ly2 binary",
         .plugin.store = lyplg_type_store_binary,
         .plugin.validate = lyplg_type_validate_binary,
         .plugin.compare = lyplg_type_compare_binary,

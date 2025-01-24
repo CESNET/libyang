@@ -260,7 +260,7 @@ const struct lyplg_type_record plugins_decimal64[] = {
         .revision = NULL,
         .name = LY_TYPE_DEC64_STR,
 
-        .plugin.id = "ly2 - decimal64",
+        .plugin.id = "ly2 decimal64",
         .plugin.store = lyplg_type_store_decimal64,
         .plugin.validate = lyplg_type_validate_decimal64,
         .plugin.compare = lyplg_type_compare_decimal64,
