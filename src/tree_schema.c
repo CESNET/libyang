@@ -1355,6 +1355,7 @@ lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
     uint32_t i;
     LY_ARRAY_COUNT_TYPE u;
     char *path = NULL;
+    struct lyplg_ext *ext_plg;
 
     /* first finish parsing all extension instances ... */
     for (i = 0; i < pctx->ext_inst.count; ++i) {
@@ -1377,7 +1378,7 @@ lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
         u = 0;
         while (u < LY_ARRAY_COUNT(exts)) {
             ext = &exts[u];
-            if (!ext->plugin_ref || !LYSC_GET_EXT_PLG(ext->plugin_ref)->parse) {
+            if (!ext->plugin_ref || !(ext_plg = LYSC_GET_EXT_PLG(ext->plugin_ref))->parse) {
                 goto next_iter;
             }
 
@@ -1388,7 +1389,7 @@ lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
             ly_log_location(NULL, NULL, path, NULL);
 
             /* parse */
-            r = LYSC_GET_EXT_PLG(ext->plugin_ref)->parse(pctx, ext);
+            r = ext_plg->parse(pctx, ext);
 
             ly_log_location_revert(0, 0, 1, 0);
             free(path);

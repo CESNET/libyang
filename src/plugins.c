@@ -198,9 +198,9 @@ plugins_iter(const struct ly_ctx *ctx, enum LYPLG type, uint32_t *index)
 }
 
 /**
- * @brief Find the give @p type plugin record.
+ * @brief Find the given @p type plugin record.
  *
- * @param[in] ctx Context for which the plugin record is searched for, NULL for built-in plugins.
+ * @param[in] ctx Context for which the plugin record is searched for, NULL for static plugins.
  * @param[in] type Type of the plugin record to find.
  * @param[in] module Module name of the plugin record.
  * @param[in] revision Revision of the @p module.
@@ -244,13 +244,13 @@ lyplg_record_find(const struct ly_ctx *ctx, enum LYPLG type, const char *module,
 /**
  * @brief Find the plugin of the given @p type.
  *
- * @param[in] ctx Context for which the plugin record is searched for, NULL for built-in plugins.
+ * @param[in] ctx Context for which the plugin record is searched for, NULL for static plugins.
  * @param[in] type Type of the plugin record to find.
  * @param[in] module Module name of the plugin.
  * @param[in] revision Revision of the @p module.
  * @param[in] name Name of the plugin.
- * @return Reference to the callbacks plugin structure. Use ::LYSC_GET_TYPE_PLG()
- * or ::LYSC_GET_EXT_PLG() on the returned value to get the actual plugin. 0 if not found.
+ * @return Reference to the callbacks plugin structure. Use ::LYSC_GET_TYPE_PLG
+ * or ::LYSC_GET_EXT_PLG on the returned value to get the actual plugin. 0 if not found.
  */
 static uintptr_t
 lyplg_plugin_find(const struct ly_ctx *ctx, enum LYPLG type, const char *module, const char *revision, const char *name)

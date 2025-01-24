@@ -34,7 +34,6 @@ lyd_hash(struct lyd_node *node)
     const void *hash_key;
     ly_bool dyn;
     size_t key_len;
-    struct lyplg_type *type;
 
     if (!node->schema) {
         return LY_SUCCESS;
@@ -57,8 +56,8 @@ lyd_hash(struct lyd_node *node)
             for (iter = list->child; iter && iter->schema && (iter->schema->flags & LYS_KEY); iter = iter->next) {
                 struct lyd_node_term *key = (struct lyd_node_term *)iter;
 
-                type = LYSC_GET_TYPE_PLG(key->value.realtype->plugin_ref);
-                hash_key = type->print(NULL, &key->value, LY_VALUE_LYB, NULL, &dyn, &key_len);
+                hash_key = LYSC_GET_TYPE_PLG(key->value.realtype->plugin_ref)->print(NULL, &key->value,
+                        LY_VALUE_LYB, NULL, &dyn, &key_len);
                 node->hash = lyht_hash_multi(node->hash, hash_key, key_len);
                 if (dyn) {
                     free((void *)hash_key);
@@ -69,8 +68,8 @@ lyd_hash(struct lyd_node *node)
         /* leaf-list adds its hash key */
         struct lyd_node_term *llist = (struct lyd_node_term *)node;
 
-        type = LYSC_GET_TYPE_PLG(llist->value.realtype->plugin_ref);
-        hash_key = type->print(NULL, &llist->value, LY_VALUE_LYB, NULL, &dyn, &key_len);
+        hash_key = LYSC_GET_TYPE_PLG(llist->value.realtype->plugin_ref)->print(NULL, &llist->value,
+                LY_VALUE_LYB, NULL, &dyn, &key_len);
         node->hash = lyht_hash_multi(node->hash, hash_key, key_len);
         if (dyn) {
             free((void *)hash_key);

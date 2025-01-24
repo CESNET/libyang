@@ -900,13 +900,13 @@ lyplg_type_print_val(const struct lysc_node *node, const char *canon, LY_VALUE_F
     struct ly_err_item *err = NULL;
     const char *v;
     ly_bool dyn;
-    struct lyplg_type *type_plugin;
+    struct lyplg_type *type_plg;
 
     type = ((struct lysc_node_leaf *)node)->type;
-    type_plugin = LYSC_GET_TYPE_PLG(type->plugin_ref);
+    type_plg = LYSC_GET_TYPE_PLG(type->plugin_ref);
 
     /* store the value */
-    r = type_plugin->store(node->module->ctx, type, canon, strlen(canon), LYPLG_TYPE_STORE_ONLY, LY_VALUE_CANON,
+    r = type_plg->store(node->module->ctx, type, canon, strlen(canon), LYPLG_TYPE_STORE_ONLY, LY_VALUE_CANON,
             NULL, LYD_HINT_DATA, node, &storage, NULL, &err);
     if (r && (r != LY_EINCOMPLETE)) {
         if (err) {
@@ -917,7 +917,7 @@ lyplg_type_print_val(const struct lysc_node *node, const char *canon, LY_VALUE_F
     }
 
     /* print it in the specific format */
-    v = type_plugin->print(node->module->ctx, &storage, format, prefix_data, &dyn, NULL);
+    v = type_plg->print(node->module->ctx, &storage, format, prefix_data, &dyn, NULL);
 
     /* store it in the dictionary, storage will be freed */
     if (dyn) {
@@ -926,7 +926,7 @@ lyplg_type_print_val(const struct lysc_node *node, const char *canon, LY_VALUE_F
         lydict_dup(node->module->ctx, v, value);
     }
 
-    type_plugin->free(node->module->ctx, &storage);
+    type_plg->free(node->module->ctx, &storage);
     return LY_SUCCESS;
 }
 
@@ -1052,7 +1052,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
     const char *val_str, *xp_err_msg;
     uint32_t i;
     int r;
-    struct lyplg_type *type;
+    struct lyplg_type *type_plg;
 
     LY_CHECK_ARG_RET(NULL, lref, node, value, errmsg, LY_EINVAL);
 
@@ -1099,7 +1099,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
         goto cleanup;
     }
 
-    type = LYSC_GET_TYPE_PLG(lref->plugin_ref);
+    type_plg = LYSC_GET_TYPE_PLG(lref->plugin_ref);
 
     /* check the result */
     if (target_path) {
@@ -1115,7 +1115,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
                 continue;
             }
 
-            if (!type->compare(LYD_CTX(node), &((struct lyd_node_term *)set.val.nodes[i].node)->value, value)) {
+            if (!type_plg->compare(LYD_CTX(node), &((struct lyd_node_term *)set.val.nodes[i].node)->value, value)) {
                 break;
             }
         }
@@ -1140,7 +1140,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
                 continue;
             }
 
-            if (!type->compare(LYD_CTX(node), &((struct lyd_node_term *)set.val.nodes[i].node)->value, value)) {
+            if (!type_plg->compare(LYD_CTX(node), &((struct lyd_node_term *)set.val.nodes[i].node)->value, value)) {
                 rc = ly_set_add(*targets, set.val.nodes[i].node, 0, NULL);
                 LY_CHECK_GOTO(rc, cleanup);
             }

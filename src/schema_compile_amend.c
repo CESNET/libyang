@@ -473,6 +473,7 @@ lysp_ext_dup(const struct ly_ctx *ctx, const struct lysp_module *pmod, void *par
     LY_ERR ret = LY_SUCCESS;
     struct ly_set pmods = {0};
     struct lysp_ctx pctx = {.parsed_mods = &pmods};
+    struct lyplg_ext *ext_plg;
 
     DUP_STRING_GOTO(ctx, orig_ext->name, ext->name, ret, cleanup);
     DUP_STRING_GOTO(ctx, orig_ext->argument, ext->argument, ret, cleanup);
@@ -486,10 +487,10 @@ lysp_ext_dup(const struct ly_ctx *ctx, const struct lysp_module *pmod, void *par
     ext->flags = orig_ext->flags;
 
     LY_CHECK_GOTO(ret = lysp_ext_children_dup(ctx, orig_ext->child, &ext->child), cleanup);
-    if (ext->plugin_ref && LYSC_GET_EXT_PLG(ext->plugin_ref)->parse) {
+    if (ext->plugin_ref && (ext_plg = LYSC_GET_EXT_PLG(ext->plugin_ref))->parse) {
         /* parse again */
         LY_CHECK_GOTO(ret = ly_set_add(&pmods, pmod, 1, NULL), cleanup);
-        LY_CHECK_GOTO(ret = LYSC_GET_EXT_PLG(ext->plugin_ref)->parse(&pctx, ext), cleanup);
+        LY_CHECK_GOTO(ret = ext_plg->parse(&pctx, ext), cleanup);
     }
 
 cleanup:
