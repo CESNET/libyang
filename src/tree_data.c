@@ -1328,8 +1328,8 @@ lyd_get_meta_annotation(const struct lys_module *mod, const char *name, size_t n
     }
 
     LY_ARRAY_FOR(mod->compiled->exts, u) {
-        plugin = lysc_get_ext_plugin(mod->compiled->exts[u].def->plugin);
-        if (plugin && !strncmp(plugin->id, "ly2 - metadata", 12) &&
+        plugin = LYSC_GET_EXT_PLG(mod->compiled->exts[u].def->plugin_ref);
+        if (plugin && !strcmp(plugin->id, "ly2 metadata") &&
                 !ly_strncmp(mod->compiled->exts[u].argument, name, name_len)) {
             return &mod->compiled->exts[u];
         }
@@ -1872,7 +1872,7 @@ lyd_compare_meta(const struct lyd_meta *meta1, const struct lyd_meta *meta2)
         return LY_ENOT;
     }
 
-    return lysc_get_type_plugin(meta1->value.realtype->plugin)->compare(ctx, &meta1->value, &meta2->value);
+    return LYSC_GET_TYPE_PLG(meta1->value.realtype->plugin_ref)->compare(ctx, &meta1->value, &meta2->value);
 }
 
 /**
@@ -2129,7 +2129,7 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
 
         term->hash = orig->hash;
         if (trg_ctx == LYD_CTX(node)) {
-            ret = lysc_get_type_plugin(orig->value.realtype->plugin)->duplicate(trg_ctx, &orig->value, &term->value);
+            ret = LYSC_GET_TYPE_PLG(orig->value.realtype->plugin_ref)->duplicate(trg_ctx, &orig->value, &term->value);
             LY_CHECK_ERR_GOTO(ret, LOGERR(trg_ctx, ret, "Value duplication failed."), error);
         } else {
             /* store canonical value in the target context */
@@ -2438,7 +2438,7 @@ lyd_dup_meta_single_to_ctx(const struct ly_ctx *parent_ctx, const struct lyd_met
         /* annotation */
         mt->annotation = meta->annotation;
         /* duplication of value */
-        ret = lysc_get_type_plugin(meta->value.realtype->plugin)->duplicate(parent_ctx, &meta->value, &mt->value);
+        ret = LYSC_GET_TYPE_PLG(meta->value.realtype->plugin_ref)->duplicate(parent_ctx, &meta->value, &mt->value);
     }
     LY_CHECK_ERR_GOTO(ret, LOGERR(LYD_CTX(parent), LY_EINT, "Value duplication failed."), finish);
     LY_CHECK_GOTO(ret = lydict_insert(parent_ctx, meta->name, 0, &mt->name), finish);

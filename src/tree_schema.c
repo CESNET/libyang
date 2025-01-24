@@ -1364,7 +1364,7 @@ lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
 
             /* find the extension definition, use its plugin */
             LY_CHECK_RET(lysp_ext_find_definition(PARSER_CTX(pctx), ext, &mod, &ext_def));
-            ext->plugin = ext_def->plugin;
+            ext->plugin_ref = ext_def->plugin_ref;
 
             /* resolve the argument, if needed */
             LY_CHECK_RET(lysp_ext_instance_resolve_argument(PARSER_CTX(pctx), ext_def, ext));
@@ -1377,7 +1377,7 @@ lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
         u = 0;
         while (u < LY_ARRAY_COUNT(exts)) {
             ext = &exts[u];
-            if (!ext->plugin || !lysc_get_ext_plugin(ext->plugin)->parse) {
+            if (!ext->plugin_ref || !LYSC_GET_EXT_PLG(ext->plugin_ref)->parse) {
                 goto next_iter;
             }
 
@@ -1388,7 +1388,7 @@ lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
             ly_log_location(NULL, NULL, path, NULL);
 
             /* parse */
-            r = lysc_get_ext_plugin(ext->plugin)->parse(pctx, ext);
+            r = LYSC_GET_EXT_PLG(ext->plugin_ref)->parse(pctx, ext);
 
             ly_log_location_revert(0, 0, 1, 0);
             free(path);
@@ -1964,7 +1964,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
 
     /* resolve extension plugins and parse extension instances */
     LY_ARRAY_FOR(mod->parsed->extensions, u) {
-        mod->parsed->extensions[u].plugin = lyplg_ext_plugin_find(mod->ctx, mod->name,
+        mod->parsed->extensions[u].plugin_ref = lyplg_ext_plugin_find(mod->ctx, mod->name,
                 mod->revision, mod->parsed->extensions[u].name);
     }
     LY_CHECK_GOTO(ret = lysp_resolve_ext_instance_records(pctx), cleanup);

@@ -94,6 +94,7 @@
 #include "ly_common.h"
 #include "out_internal.h"
 #include "plugins_exts.h"
+#include "plugins_internal.h"
 #include "plugins_types.h"
 #include "printer_internal.h"
 #include "printer_schema.h"
@@ -1861,7 +1862,7 @@ trp_ext_is_present(ly_bool lysc_tree, const void *node)
     if (lysc_tree) {
         cn = (const struct lysc_node *)node;
         LY_ARRAY_FOR(cn->exts, i) {
-            if (!cn->exts[i].def->plugin || !lysc_get_ext_plugin(cn->exts[i].def->plugin)->printer_ctree) {
+            if (!cn->exts[i].def->plugin_ref || !LYSC_GET_EXT_PLG(cn->exts[i].def->plugin_ref)->printer_ctree) {
                 continue;
             }
             if (!trp_ext_parent_is_valid(1, &cn->exts[i])) {
@@ -1873,7 +1874,7 @@ trp_ext_is_present(ly_bool lysc_tree, const void *node)
     } else {
         pn = (const struct lysp_node *)node;
         LY_ARRAY_FOR(pn->exts, i) {
-            if (!pn->exts[i].plugin || !lysc_get_ext_plugin(pn->exts[i].plugin)->printer_ptree) {
+            if (!pn->exts[i].plugin_ref || !LYSC_GET_EXT_PLG(pn->exts[i].plugin_ref)->printer_ptree) {
                 continue;
             }
             if (!trp_ext_parent_is_valid(0, &pn->exts[i])) {
@@ -2162,9 +2163,9 @@ tro_set_node_overr(ly_bool lysc_tree, const void *node, ly_bool erase_node_overr
     }
     no = &plc->node_overr;
     if (!plc->ctx && lysc_tree && (ce = trp_ext_is_present(lysc_tree, node))) {
-        rc = lysc_get_ext_plugin(ce->def->plugin)->printer_ctree(ce, NULL, &no->flags, &no->add_opts);
+        rc = LYSC_GET_EXT_PLG(ce->def->plugin_ref)->printer_ctree(ce, NULL, &no->flags, &no->add_opts);
     } else if (!plc->ctx && (pe = trp_ext_is_present(lysc_tree, node))) {
-        rc = lysc_get_ext_plugin(pe->plugin)->printer_ptree(pe, NULL, &no->flags, &no->add_opts);
+        rc = LYSC_GET_EXT_PLG(pe->plugin_ref)->printer_ptree(pe, NULL, &no->flags, &no->add_opts);
     } else if (plc->ctx) {
         if (plc->schema && plc->schema->compiled && plc->schema->cn_overr) {
             rc = plc->schema->cn_overr(node, plc->ctx->plugin_priv, &plc->filtered, &no->flags, &no->add_opts);
@@ -3799,7 +3800,7 @@ trb_ext_iter_next(ly_bool lysc_tree, void *exts, LY_ARRAY_COUNT_TYPE *i)
     if (lysc_tree) {
         ce = exts;
         while (*i < LY_ARRAY_COUNT(ce)) {
-            if (ce->def->plugin && trp_ext_parent_is_valid(1, &ce[*i])) {
+            if (ce->def->plugin_ref && trp_ext_parent_is_valid(1, &ce[*i])) {
                 ext = &ce[*i];
                 break;
             }
@@ -3873,7 +3874,7 @@ tro_ext_printer_tree(ly_bool compiled, void *ext, const struct lyspr_tree_ctx *p
 
     if (compiled) {
         ext_comp = ext;
-        plugin = lysc_get_ext_plugin(ext_comp->def->plugin);
+        plugin = LYSC_GET_EXT_PLG(ext_comp->def->plugin_ref);
         if (!plugin->printer_ctree) {
             *ignore = 1;
             return LY_SUCCESS;
@@ -3881,7 +3882,7 @@ tro_ext_printer_tree(ly_bool compiled, void *ext, const struct lyspr_tree_ctx *p
         return plugin->printer_ctree(ext, plug_ctx, &flags, &add_opts);
     } else {
         ext_pars = ext;
-        plugin = lysc_get_ext_plugin(ext_pars->plugin);
+        plugin = LYSC_GET_EXT_PLG(ext_pars->plugin_ref);
         if (!plugin->printer_ptree) {
             *ignore = 1;
             return LY_SUCCESS;

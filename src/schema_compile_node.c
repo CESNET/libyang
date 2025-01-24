@@ -1794,7 +1794,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
     LY_CHECK_GOTO(rc, cleanup);
 
     (*type)->basetype = basetype;
-    (*type)->plugin = plugin_ref;
+    (*type)->plugin_ref = plugin_ref;
 
     switch (basetype) {
     case LY_TYPE_BINARY:
@@ -2267,7 +2267,7 @@ preparenext:
         plugin_ref = lyplg_type_plugin_find(ctx->ctx, tctx->tpdf->type.pmod->mod->name, tctx->tpdf->type.pmod->mod->revision,
                 tctx->tpdf->name);
         if (!plugin_ref && base) {
-            plugin_ref = base->plugin;
+            plugin_ref = base->plugin_ref;
         }
         if (!plugin_ref) {
             /* use the internal built-in type implementation */
@@ -2276,7 +2276,7 @@ preparenext:
         assert(plugin_ref);
 
         if ((basetype != LY_TYPE_LEAFREF) && (u != tpdf_chain.count - 1) && !tctx->tpdf->type.flags &&
-                !tctx->tpdf->type.exts && (plugin_ref == base->plugin)) {
+                !tctx->tpdf->type.exts && (plugin_ref == base->plugin_ref)) {
             /* no change, reuse the compiled base */
             ((struct lysp_tpdf *)tctx->tpdf)->type.compiled = base;
             LY_ATOMIC_INC_BARRIER(base->refcount);
@@ -2329,7 +2329,7 @@ preparenext:
     if (type_p->flags || type_p->exts || !base || has_leafref) {
         /* leaf type has changes that need to be compiled into the type */
         if (base) {
-            plugin_ref = base->plugin;
+            plugin_ref = base->plugin_ref;
         } else {
             plugin_ref = lyplg_type_plugin_find(ctx->ctx, "", NULL, ly_data_type2str[basetype]);
         }

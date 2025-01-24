@@ -26,6 +26,7 @@
 #include "dict.h"
 #include "log.h"
 #include "ly_common.h"
+#include "plugins_internal.h"
 #include "schema_compile.h"
 #include "schema_compile_node.h"
 #include "schema_features.h"
@@ -477,7 +478,7 @@ lysp_ext_dup(const struct ly_ctx *ctx, const struct lysp_module *pmod, void *par
     DUP_STRING_GOTO(ctx, orig_ext->argument, ext->argument, ret, cleanup);
     ext->format = orig_ext->format;
     LY_CHECK_GOTO(ret = ly_dup_prefix_data(ctx, orig_ext->format, orig_ext->prefix_data, &ext->prefix_data), cleanup);
-    ext->plugin = orig_ext->plugin;
+    ext->plugin_ref = orig_ext->plugin_ref;
 
     ext->parent = parent;
     ext->parent_stmt = parent_stmt;
@@ -485,10 +486,10 @@ lysp_ext_dup(const struct ly_ctx *ctx, const struct lysp_module *pmod, void *par
     ext->flags = orig_ext->flags;
 
     LY_CHECK_GOTO(ret = lysp_ext_children_dup(ctx, orig_ext->child, &ext->child), cleanup);
-    if (ext->plugin && lysc_get_ext_plugin(ext->plugin)->parse) {
+    if (ext->plugin_ref && LYSC_GET_EXT_PLG(ext->plugin_ref)->parse) {
         /* parse again */
         LY_CHECK_GOTO(ret = ly_set_add(&pmods, pmod, 1, NULL), cleanup);
-        LY_CHECK_GOTO(ret = lysc_get_ext_plugin(ext->plugin)->parse(&pctx, ext), cleanup);
+        LY_CHECK_GOTO(ret = LYSC_GET_EXT_PLG(ext->plugin_ref)->parse(&pctx, ext), cleanup);
     }
 
 cleanup:

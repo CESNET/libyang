@@ -44,6 +44,50 @@
 #define LY_TYPE_INT64_STR "64bit integer"           /**< text representation of ::LY_TYPE_INT64 */
 
 /**
+ * @brief Shared (= not context specific) type plugins set.
+ */
+extern struct ly_set ly_plugins_types;
+
+/**
+ * @brief Shared (= not context specific) extension plugins set.
+ */
+extern struct ly_set ly_plugins_extensions;
+
+/**
+ * @brief Count of static type plugins.
+ */
+extern uint32_t ly_static_type_plugins_count;
+
+/**
+ * @brief Count of static extension plugins.
+ */
+extern uint32_t ly_static_ext_plugins_count;
+
+/**
+ * @brief Get a type plugin.
+ *
+ * @param[in] PLUGIN_REF Reference to a plugin. Either an index of a static plugin (offset by +1)
+ * or a pointer to an external plugin.
+ * @return Type plugin.
+ */
+#define LYSC_GET_TYPE_PLG(PLUGIN_REF) \
+    (((uintptr_t)(PLUGIN_REF) <= (uintptr_t)ly_static_type_plugins_count) ? \
+    (struct lyplg_type *)&((struct lyplg_type_record *)ly_plugins_types.objs[(PLUGIN_REF) - 1])->plugin : \
+    (struct lyplg_type *)(PLUGIN_REF))
+
+/**
+ * @brief Get an extension plugin.
+ *
+ * @param[in] PLUGIN_REF Reference to a plugin. Either an index of a static plugin (offset by +1)
+ * or a pointer to an external plugin.
+ * @return Extension plugin.
+ */
+#define LYSC_GET_EXT_PLG(PLUGIN_REF) \
+    (((uintptr_t)(PLUGIN_REF) <= (uintptr_t)ly_static_ext_plugins_count) ? \
+    (struct lyplg_ext *)&((struct lyplg_ext_record *)ly_plugins_extensions.objs[(PLUGIN_REF) - 1])->plugin : \
+    (struct lyplg_ext *)(PLUGIN_REF))
+
+/**
  * @brief Initiate libyang plugins.
  *
  * Covers both the types and extensions plugins.

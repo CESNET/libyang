@@ -21,6 +21,7 @@
 #include "hash_table.h"
 #include "log.h"
 #include "ly_common.h"
+#include "plugins_internal.h"
 #include "plugins_types.h"
 #include "tree.h"
 #include "tree_data.h"
@@ -56,7 +57,7 @@ lyd_hash(struct lyd_node *node)
             for (iter = list->child; iter && iter->schema && (iter->schema->flags & LYS_KEY); iter = iter->next) {
                 struct lyd_node_term *key = (struct lyd_node_term *)iter;
 
-                type = lysc_get_type_plugin(key->value.realtype->plugin);
+                type = LYSC_GET_TYPE_PLG(key->value.realtype->plugin_ref);
                 hash_key = type->print(NULL, &key->value, LY_VALUE_LYB, NULL, &dyn, &key_len);
                 node->hash = lyht_hash_multi(node->hash, hash_key, key_len);
                 if (dyn) {
@@ -68,7 +69,7 @@ lyd_hash(struct lyd_node *node)
         /* leaf-list adds its hash key */
         struct lyd_node_term *llist = (struct lyd_node_term *)node;
 
-        type = lysc_get_type_plugin(llist->value.realtype->plugin);
+        type = LYSC_GET_TYPE_PLG(llist->value.realtype->plugin_ref);
         hash_key = type->print(NULL, &llist->value, LY_VALUE_LYB, NULL, &dyn, &key_len);
         node->hash = lyht_hash_multi(node->hash, hash_key, key_len);
         if (dyn) {

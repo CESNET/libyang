@@ -29,6 +29,7 @@
 #include "out.h"
 #include "out_internal.h"
 #include "plugins_exts.h"
+#include "plugins_internal.h"
 #include "plugins_types.h"
 #include "printer_internal.h"
 #include "printer_schema.h"
@@ -356,7 +357,7 @@ yprc_extension_instances(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t
 {
     LY_ARRAY_COUNT_TYPE u;
     ly_bool inner_flag;
-    struct lyplg_ext *ext;
+    struct lyplg_ext *ext_plg;
 
     LY_ARRAY_FOR(exts, u) {
         if ((exts[u].parent_stmt != substmt) || (exts[u].parent_stmt_index != substmt_index)) {
@@ -376,9 +377,8 @@ yprc_extension_instances(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t
         inner_flag = 0;
         yprc_extension_instances(pctx, LY_STMT_EXTENSION_INSTANCE, 0, exts[u].exts, &inner_flag);
 
-        ext = lysc_get_ext_plugin(exts[u].def->plugin);
-        if (ext && ext->printer_info) {
-            ext->printer_info(&pctx->printer_ctx, &exts[u], &inner_flag);
+        if (exts[u].def->plugin_ref && (ext_plg = LYSC_GET_EXT_PLG(exts[u].def->plugin_ref))->printer_info) {
+            ext_plg->printer_info(&pctx->printer_ctx, &exts[u], &inner_flag);
         }
 
         LEVEL--;

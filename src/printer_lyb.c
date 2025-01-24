@@ -28,6 +28,7 @@
 #include "out.h"
 #include "out_internal.h"
 #include "plugins_exts/metadata.h"
+#include "plugins_internal.h"
 #include "printer_data.h"
 #include "printer_internal.h"
 #include "set.h"
@@ -680,7 +681,7 @@ lyb_print_term_value(struct lyd_node_term *term, struct ly_out *out, struct lyly
     lyplg_type_print_clb print;
     struct lyplg_type *type;
 
-    assert(term->value.realtype && (type = lysc_get_type_plugin(term->value.realtype->plugin)) &&
+    assert(term->value.realtype && (type = LYSC_GET_TYPE_PLG(term->value.realtype->plugin_ref)) &&
             type->print && term->schema);
 
     /* Get length of LYB data to print. */

@@ -32,6 +32,7 @@
 #include "parser_internal.h"
 #include "plugins_exts.h"
 #include "plugins_exts/metadata.h"
+#include "plugins_internal.h"
 #include "plugins_types.h"
 #include "set.h"
 #include "tree.h"
@@ -453,7 +454,7 @@ lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, enum ly
             struct lyd_ctx_ext_val *ext_v = ext_val->objs[i];
 
             /* validate extension data */
-            r = lysc_get_ext_plugin(ext_v->ext->def->plugin)->validate(ext_v->ext, ext_v->sibling, *tree,
+            r = LYSC_GET_EXT_PLG(ext_v->ext->def->plugin_ref)->validate(ext_v->ext, ext_v->sibling, *tree,
                     data_type, val_opts, diff);
             LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
@@ -471,7 +472,7 @@ lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, enum ly
             struct lyd_ctx_ext_node *ext_n = ext_node->objs[i];
 
             /* validate the node */
-            r = lysc_get_ext_plugin(ext_n->ext->def->plugin)->node(ext_n->ext, ext_n->node, val_opts);
+            r = LYSC_GET_EXT_PLG(ext_n->ext->def->plugin_ref)->node(ext_n->ext, ext_n->node, val_opts);
             LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
             /* remove this item from the set */
@@ -1820,7 +1821,7 @@ lyd_validate_nested_ext(struct lyd_node *sibling, struct ly_set *ext_val)
     /* try to find the extension instance */
     nested_exts = sibling->parent->schema->exts;
     LY_ARRAY_FOR(nested_exts, u) {
-        if (lysc_get_ext_plugin(nested_exts[u].def->plugin)->validate) {
+        if (LYSC_GET_EXT_PLG(nested_exts[u].def->plugin_ref)->validate) {
             if (ext) {
                 /* more extension instances with validate callback */
                 LOGINT_RET(LYD_CTX(sibling));
@@ -1853,7 +1854,7 @@ lyd_validate_node_ext(struct lyd_node *node, struct ly_set *ext_node)
     /* try to find a relevant extension instance with node callback */
     exts = node->schema->exts;
     LY_ARRAY_FOR(exts, u) {
-        if (exts[u].def->plugin && lysc_get_ext_plugin(exts[u].def->plugin)->node) {
+        if (exts[u].def->plugin_ref && LYSC_GET_EXT_PLG(exts[u].def->plugin_ref)->node) {
             /* store for validation */
             ext_n = malloc(sizeof *ext_n);
             LY_CHECK_ERR_RET(!ext_n, LOGMEM(LYD_CTX(node)), LY_EMEM);
@@ -1905,7 +1906,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_when, struct ly_
 
         LY_LIST_FOR(node->meta, meta) {
             lyplg_ext_get_storage(meta->annotation, LY_STMT_TYPE, sizeof type, (const void **)&type);
-            if (lysc_get_type_plugin(type->plugin)->validate) {
+            if (LYSC_GET_TYPE_PLG(type->plugin_ref)->validate) {
                 /* metadata type resolution */
                 r = ly_set_add(meta_types, (void *)meta, 1, NULL);
                 LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
@@ -1913,7 +1914,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_when, struct ly_
         }
 
         if ((node->schema->nodetype & LYD_NODE_TERM) &&
-                lysc_get_type_plugin(((struct lysc_node_leaf *)node->schema)->type->plugin)->validate) {
+                LYSC_GET_TYPE_PLG(((struct lysc_node_leaf *)node->schema)->type->plugin_ref)->validate) {
             /* node type resolution */
             r = ly_set_add(node_types, (void *)node, 1, NULL);
             LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
