@@ -182,21 +182,26 @@ ly_err_data_get(const struct ly_ctx *ctx)
     struct ly_ctx_data *ctx_data;
     pthread_t tid = pthread_self();
     uint32_t i;
+    struct ly_ctx_data_err *data_err = NULL;
 
     /* get context data */
     ctx_data = ly_ctx_data_get(ctx);
 
+    /* ERR READ LOCK */
     pthread_rwlock_rdlock(&ctx_data->err_rwlock);
 
     /* find the thread-specific err */
     for (i = 0; i < ctx_data->err_count; ++i) {
         if (!memcmp(&ctx_data->errs[i]->tid, &tid, sizeof tid)) {
-            return ctx_data->errs[i];
+            data_err = ctx_data->errs[i];
+            goto cleanup;
         }
     }
 
+    /* ERR UNLOCK */
     pthread_rwlock_unlock(&ctx_data->err_rwlock);
 
+    /* ERR WRITE LOCK */
     pthread_rwlock_wrlock(&ctx_data->err_rwlock);
 
     /* no need to retry the search, this thread is executing this function */
@@ -208,7 +213,12 @@ ly_err_data_get(const struct ly_ctx *ctx)
 
     ++ctx_data->err_count;
 
-    return ctx_data->errs[ctx_data->err_count - 1];
+    data_err = ctx_data->errs[ctx_data->err_count - 1];
+
+cleanup:
+    /* ERR UNLOCK */
+    pthread_rwlock_unlock(&ctx_data->err_rwlock);
+    return data_err;
 }
 
 LIBYANG_API_DEF const struct ly_err_item *
