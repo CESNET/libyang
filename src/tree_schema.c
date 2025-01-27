@@ -544,7 +544,7 @@ lys_find_xpath(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const
     LY_CHECK_ARG_RET(NULL, ctx || ctx_node, xpath, set, LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(ctx, ctx_node ? ctx_node->module->ctx : NULL, LY_EINVAL);
     if (!(options & LYXP_SCNODE_ALL)) {
-        options = LYXP_SCNODE;
+        options |= LYXP_SCNODE;
     }
     if (!ctx) {
         ctx = ctx_node->module->ctx;
