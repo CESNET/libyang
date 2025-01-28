@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Path structure and manipulation routines.
  *
- * Copyright (c) 2020 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -28,6 +28,25 @@ struct lysc_ext_instance;
 struct lysc_node;
 struct lyxp_expr;
 
+/**
+ * @brief Similar to LOGVAL, but also logs path of CUR_SCNODE and if not set, CTX_SCNODE, in this order.
+ *
+ * @param[in] CTX Context to use.
+ * @param[in] CUR_SCNODE Current (original context) node.
+ * @param[in] CTX_SCNODE Context node.
+ */
+#define LOGVAL_PATH(CTX, CUR_SCNODE, CTX_SCNODE, ...) \
+        if ((CUR_SCNODE) || (CTX_SCNODE)) { \
+            LOG_LOCSET((CUR_SCNODE) ? (CUR_SCNODE) : (CTX_SCNODE), NULL); \
+        } \
+        ly_vlog(CTX, NULL, __VA_ARGS__); \
+        if ((CUR_SCNODE) || (CTX_SCNODE)) { \
+            LOG_LOCBACK(1, 0); \
+        }
+
+/**
+ * @brief Common types of predicates.
+ */
 enum ly_path_pred_type {
     LY_PATH_PREDTYPE_POSITION,  /**< position predicate - [2] */
     LY_PATH_PREDTYPE_LIST,      /**< keys predicate - [key1='val1'][key2='val2']... */

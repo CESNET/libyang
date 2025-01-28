@@ -294,7 +294,7 @@ test_xpath_invalid_schema(void **state)
             "leaf r1 {type leafref {path \"deref(../l1)/../l2/t2\";}}");
 
     UTEST_INVALID_MODULE(schema1, LYS_IN_YANG, NULL, LY_EVALID)
-    CHECK_LOG_CTX("The deref function target node \"l1\" is not leaf nor leaflist", "/xp_test:r1", 0);
+    CHECK_LOG_CTX("Deref function target node \"l1\" is not leaf nor leaflist.", "/xp_test:r1", 0);
 
     schema2 = MODULE_CREATE_YANG("xp_test",
             "list l1 {key t1;"
@@ -307,7 +307,7 @@ test_xpath_invalid_schema(void **state)
             "leaf r2 {type leafref {path \"deref(../r1)/../l2/t2\";}}");
 
     UTEST_INVALID_MODULE(schema2, LYS_IN_YANG, NULL, LY_EVALID)
-    CHECK_LOG_CTX("The deref function target node \"r1\" is not leafref", "/xp_test:r2", 0);
+    CHECK_LOG_CTX("Deref function target node \"r1\" is not leafref.", "/xp_test:r2", 0);
 }
 
 int
