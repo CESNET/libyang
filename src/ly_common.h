@@ -154,7 +154,7 @@ const struct lyd_node *ly_log_location_dnode(uint32_t idx);
 uint32_t ly_log_location_dnode_count(void);
 
 /**
- * @brief Update location schema/data nodes for logger, not provided arguments (NULLs) are kept (does not override).
+ * @brief Update location schema/data nodes for logger. If both NULL, root data node is added.
  *
  * @param[in] SCNODE Compiled schema node.
  * @param[in] DNODE Data node.

@@ -499,7 +499,7 @@ error:
  * @brief Parse NameTest and get the corresponding schema node.
  *
  * @param[in] ctx libyang context.
- * @param[in] cur_node Optional current (original context) node.
+ * @param[in] cur_node Current (original context) node.
  * @param[in] cur_mod Current module of the path (where the path is "instantiated"). Needed for ::LY_VALUE_SCHEMA
  * and ::LY_VALUE_SCHEMA_RESOLVED.
  * @param[in] prev_ctx_node Previous context node.
@@ -1304,6 +1304,8 @@ ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node *ctx_no
         const struct lyxp_expr *expr, uint16_t oper, uint16_t target, LY_VALUE_FORMAT format, void *prefix_data,
         struct ly_path **path)
 {
+    assert(ctx_node);
+
     return _ly_path_compile(ctx, ctx_node->module, ctx_node, top_ext, expr, 1, oper, target, 1, format, prefix_data, path);
 }
 
