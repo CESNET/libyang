@@ -125,8 +125,7 @@ ctxs_exts(const struct lysc_ext_instance *exts, struct ly_ht *ht, int *size)
         *size += CTXS_SIZED_ARRAY(exts[u].substmts);
 
         /* compiled, substmts storage */
-        ext_plg = LYSC_GET_EXT_PLG(exts[u].def->plugin_ref);
-        if (ext_plg && ext_plg->compiled_size) {
+        if (exts[u].def->plugin_ref && (ext_plg = LYSC_GET_EXT_PLG(exts[u].def->plugin_ref)) && ext_plg->compiled_size) {
             *size += ext_plg->compiled_size(&exts[u], ht);
         }
     }
