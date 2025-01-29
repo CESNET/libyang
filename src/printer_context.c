@@ -161,7 +161,7 @@ ctxs_expr(const struct lyxp_expr *exp, int *size)
             continue;
         }
 
-        for (j = 0; exp->repeat[j]; ++j) {}
+        for (j = 0; exp->repeat[i][j]; ++j) {}
         *size += (j + 1) * sizeof **exp->repeat;
     }
 }
