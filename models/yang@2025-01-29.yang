@@ -21,6 +21,11 @@ module yang {
      of various metadata defined in RFC 6020 and RFC 7950. There are
      additional metadata used in libyang diff data format.";
 
+  revision 2025-01-29 {
+    description
+      "Added metadata for diff of metadata.";
+  }
+
   revision 2022-06-16 {
     description
       "Added typedef for key metadata type.";
@@ -57,6 +62,13 @@ module yang {
     reference "RFC7950 section 7.8.6.";
     description
       "The key predicates of the full instance-identifier built-in type.";
+  }
+
+  typedef metadata-change {
+    type string;
+    description
+      "Represents a metadata instance value change and consists of module name,
+       annotation name, and the value in the form '<module-name>:<annotation-name>=<value>'.";
   }
 
   md:annotation insert {
@@ -191,5 +203,29 @@ module yang {
     description
       "Its meaning is the same as the \"position\" attribute but identifies
        the original list instance rather than the new one.";
+  }
+
+  md:annotation meta-create {
+    type metadata-change;
+    description
+      "Created metadata instance with its new value.";
+  }
+
+  md:annotation meta-delete {
+    type metadata-change;
+    description
+      "Deleted metadata instance with its old value.";
+  }
+
+  md:annotation meta-replace {
+    type metadata-change;
+    description
+      "Changed metadata instance with its new value. The old value is stored in 'meta-orig' metadata.";
+  }
+
+  md:annotation meta-orig {
+    type metadata-change;
+    description
+      "Changed metadata instance with its old value. The new value is stored in 'meta-replace' metadata.";
   }
 }

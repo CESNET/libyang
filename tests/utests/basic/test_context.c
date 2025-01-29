@@ -540,7 +540,7 @@ test_ylmem(void **state)
     "    <name>complete</name>\n"\
     "    <module>\n"\
     "      <name>yang</name>\n"\
-    "      <revision>2022-06-16</revision>\n"\
+    "      <revision>2025-01-29</revision>\n"\
     "      <namespace>urn:ietf:params:xml:ns:yang:1</namespace>\n"\
     "    </module>\n"\
     "    <module>\n"\
@@ -587,7 +587,7 @@ test_ylmem(void **state)
     "  </module>\n"\
     "  <module>\n"\
     "    <name>yang</name>\n"\
-    "    <revision>2022-06-16</revision>\n"\
+    "    <revision>2025-01-29</revision>\n"\
     "    <namespace>urn:ietf:params:xml:ns:yang:1</namespace>\n"\
     "    <conformance-type>implement</conformance-type>\n"\
     "  </module>\n"\
@@ -740,7 +740,7 @@ test_ylmem(void **state)
             "    <name>complete</name>\n"
             "    <module>\n"
             "      <name>yang</name>\n"
-            "      <revision>2022-06-16</revision>\n"
+            "      <revision>2025-01-29</revision>\n"
             "      <namespace>urn:ietf:params:xml:ns:yang:1</namespace>\n"
             "    </module>\n"
             DATA_YANG_BASE_IMPORTS
