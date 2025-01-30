@@ -463,6 +463,7 @@ no_content:
             pctx->options = prev_opts;
             break;
         case LYD_ANYDATA_STRING:
+        case LYD_ANYDATA_JSON:
             /* escape XML-sensitive characters */
             if (!any->value.str[0]) {
                 goto no_content;
@@ -478,9 +479,8 @@ no_content:
             }
             ly_print_(pctx->out, ">%s", any->value.str);
             break;
-        case LYD_ANYDATA_JSON:
         case LYD_ANYDATA_LYB:
-            /* JSON and LYB format is not supported */
+            /* LYB format is not supported */
             LOGWRN(pctx->ctx, "Unable to print anydata content (type %d) as XML.", any->value_type);
             goto no_content;
         }
