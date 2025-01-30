@@ -424,7 +424,6 @@ test_path(void **state)
     ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:any", "<elem>val</elem>", 0, LYD_ANYDATA_XML, 0, &root, NULL);
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(root);
-
     lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     assert_string_equal(str,
             "<any xmlns=\"urn:tests:a\">\n"
@@ -445,7 +444,6 @@ test_path(void **state)
     ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:anyx", "<a/><b/><c/>", 0, LYD_ANYDATA_XML, 0, &root, NULL);
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(root);
-
     lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     assert_string_equal(str,
             "<anyx xmlns=\"urn:tests:a\">\n"
@@ -466,10 +464,44 @@ test_path(void **state)
     free(str);
     lyd_free_siblings(root);
 
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:anyx", "<a/><b/><c/>", 0, LYD_ANYDATA_XML, 0, &root, NULL);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    ret = lyd_new_path2(root, NULL, "/a:anyx", "[10,11,12]", 0, LYD_ANYDATA_JSON, LYD_NEW_PATH_UPDATE, NULL, NULL);
+    assert_int_equal(ret, LY_SUCCESS);
+    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    assert_string_equal(str,
+            "<anyx xmlns=\"urn:tests:a\">[10,11,12]</anyx>\n");
+    free(str);
+    lyd_print_mem(&str, root, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    assert_string_equal(str,
+            "{\n"
+            "  \"a:anyx\": [10,11,12]\n"
+            "}\n");
+    free(str);
+    lyd_free_siblings(root);
+
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:anyx", "<a/><b/><c/>", 0, LYD_ANYDATA_XML, 0, &root, NULL);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    ret = lyd_new_path2(root, NULL, "/a:anyx", strdup("[10,11,12]"), 0, LYD_ANYDATA_JSON,
+            LYD_NEW_PATH_UPDATE | LYD_NEW_ANY_USE_VALUE, NULL, NULL);
+    assert_int_equal(ret, LY_SUCCESS);
+    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    assert_string_equal(str,
+            "<anyx xmlns=\"urn:tests:a\">[10,11,12]</anyx>\n");
+    free(str);
+    lyd_print_mem(&str, root, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    assert_string_equal(str,
+            "{\n"
+            "  \"a:anyx\": [10,11,12]\n"
+            "}\n");
+    free(str);
+    lyd_free_siblings(root);
+
     ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:anyx", "{\"a\":[null],\"b\":[null],\"c\":[null]}", 0, LYD_ANYDATA_JSON, 0, &root, NULL);
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(root);
-
     lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     assert_string_equal(str,
             "<anyx xmlns=\"urn:tests:a\">\n"

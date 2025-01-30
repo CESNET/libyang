@@ -1479,13 +1479,14 @@ cleanup:
  * @param[in] value_len Length of @p value.
  * @param[in] value_type Type of @p value for anydata/anyxml node.
  * @param[in] format Format of @p value.
+ * @param[in] any_use_value Whether to spend @p value when updating an anydata/anyxml node or not.
  * @param[out] new_parent Set to @p node if the value was updated, otherwise set to NULL.
  * @param[out] new_node Set to @p node if the value was updated, otherwise set to NULL.
  * @return LY_ERR value.
  */
 static LY_ERR
 lyd_new_path_update(struct lyd_node *node, const void *value, size_t value_len, LYD_ANYDATA_VALUETYPE value_type,
-        LY_VALUE_FORMAT format, struct lyd_node **new_parent, struct lyd_node **new_node)
+        LY_VALUE_FORMAT format, ly_bool any_use_value, struct lyd_node **new_parent, struct lyd_node **new_node)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *new_any;
@@ -1525,12 +1526,14 @@ lyd_new_path_update(struct lyd_node *node, const void *value, size_t value_len, 
     case LYS_ANYDATA:
     case LYS_ANYXML:
         /* create a new any node */
-        LY_CHECK_RET(lyd_create_any(node->schema, value, value_type, 0, &new_any));
+        LY_CHECK_RET(lyd_create_any(node->schema, value, value_type, any_use_value, &new_any));
 
         /* compare with the existing one */
         if (lyd_compare_single(node, new_any, 0)) {
             /* not equal, switch values (so that we can use generic node free) */
-            ((struct lyd_node_any *)new_any)->value = ((struct lyd_node_any *)node)->value;
+            value = ((struct lyd_node_any *)new_any)->value.str;
+            value_type = ((struct lyd_node_any *)new_any)->value_type;
+            ((struct lyd_node_any *)new_any)->value.str = ((struct lyd_node_any *)node)->value.str;
             ((struct lyd_node_any *)new_any)->value_type = ((struct lyd_node_any *)node)->value_type;
             ((struct lyd_node_any *)node)->value.str = value;
             ((struct lyd_node_any *)node)->value_type = value_type;
@@ -1708,7 +1711,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
                 }
 
                 /* update the existing node */
-                ret = lyd_new_path_update(node, value, value_len, value_type, format, &nparent, &nnode);
+                ret = lyd_new_path_update(node, value, value_len, value_type, format, any_use_value, &nparent, &nnode);
                 goto cleanup;
             } /* else we were not searching for the whole path */
         } else if (r == LY_EINCOMPLETE) {
