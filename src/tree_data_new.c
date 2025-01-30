@@ -1814,7 +1814,8 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
             if (val) {
                 LY_CHECK_GOTO(ret = lyd_create_term2(schema, val, &node), cleanup);
             } else {
-                LY_CHECK_GOTO(ret = lyd_create_term(schema, value, value_len, 0, store_only, NULL, format, NULL, LYD_HINT_DATA, NULL, &node), cleanup);
+                LY_CHECK_GOTO(ret = lyd_create_term(schema, value, value_len, 0, store_only, NULL, format, NULL,
+                        LYD_HINT_DATA, NULL, &node), cleanup);
             }
             break;
         case LYS_LEAF:
@@ -1839,15 +1840,16 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
                     if (value && (format == LY_VALUE_JSON) && !ly_strncmp("[null]", value, value_len)) {
                         hints |= LYD_VALHINT_EMPTY;
                     }
-                    LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), NULL, 0,
-                            schema->module->name, strlen(schema->module->name), value, value_len, NULL, format, NULL, hints, &node),
-                            cleanup);
+                    ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), NULL, 0, schema->module->name,
+                            strlen(schema->module->name), value, value_len, NULL, format, NULL, hints, &node);
+                    LY_CHECK_GOTO(ret, cleanup);
                     break;
                 }
             }
 
             /* create a leaf instance */
-            LY_CHECK_GOTO(ret = lyd_create_term(schema, value, value_len, 0, store_only, NULL, format, NULL, LYD_HINT_DATA, NULL, &node), cleanup);
+            LY_CHECK_GOTO(ret = lyd_create_term(schema, value, value_len, 0, store_only, NULL, format, NULL,
+                    LYD_HINT_DATA, NULL, &node), cleanup);
             break;
         case LYS_ANYDATA:
         case LYS_ANYXML:
