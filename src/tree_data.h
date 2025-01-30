@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang representation of YANG data trees.
  *
- * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -556,15 +556,16 @@ typedef enum {
  * @brief List of possible value types stored in ::lyd_node_any.
  */
 typedef enum {
-    LYD_ANYDATA_DATATREE,            /**< Value is a pointer to ::lyd_node structure (first sibling). When provided as input parameter, the pointer
-                                          is directly connected into the anydata node without duplication, caller is supposed to not manipulate
-                                          with the data after a successful call (including calling ::lyd_free_all() on the provided data) */
-    LYD_ANYDATA_STRING,              /**< Value is a generic string without any knowledge about its format (e.g. anyxml value in JSON encoded
-                                          as string). XML sensitive characters (such as & or \>) are automatically escaped when the anydata
-                                          is printed in XML format. */
-    LYD_ANYDATA_XML,                 /**< Value is a string containing the serialized XML data. */
-    LYD_ANYDATA_JSON,                /**< Value is a string containing the data modeled by YANG and encoded as I-JSON. */
-    LYD_ANYDATA_LYB                  /**< Value is a memory chunk with the serialized data tree in LYB format. */
+    LYD_ANYDATA_DATATREE,   /**< Value is a pointer to ::lyd_node structure (first sibling). When provided as input
+                                 parameter, the pointer is directly connected into the anydata node without duplication,
+                                 caller is supposed to not manipulate with the data after a successful call (including
+                                 calling ::lyd_free_all() on the provided data) */
+    LYD_ANYDATA_STRING,     /**< Value is a generic string without any knowledge about its format (e.g. anyxml value in
+                                 JSON encoded as string). XML sensitive characters (such as & or \>) are automatically
+                                 escaped when the anydata is printed in XML format. */
+    LYD_ANYDATA_XML,        /**< Value is a string containing the serialized XML data. */
+    LYD_ANYDATA_JSON,       /**< Value is a string containing the data modeled by YANG and encoded as I-JSON. */
+    LYD_ANYDATA_LYB         /**< Value is a memory chunk with the serialized data tree in LYB format. */
 } LYD_ANYDATA_VALUETYPE;
 
 /** @} */
