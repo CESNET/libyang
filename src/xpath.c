@@ -6802,7 +6802,8 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const c
             }
         }
 
-        if (moveto_mod && ncname && ((axis == LYXP_AXIS_DESCENDANT) || (axis == LYXP_AXIS_CHILD)) &&
+        /* only consider extension nodes after no local ones were found */
+        if ((orig_used == set->used) && moveto_mod && ncname && ((axis == LYXP_AXIS_DESCENDANT) || (axis == LYXP_AXIS_CHILD)) &&
                 (set->val.scnodes[i].type == LYXP_NODE_ELEM) && !ly_nested_ext_schema(NULL, set->val.scnodes[i].scnode,
                 moveto_mod->name, strlen(moveto_mod->name), LY_VALUE_JSON, NULL, ncname, strlen(ncname), &iter, NULL)) {
             /* there is a matching node from an extension, use it */
