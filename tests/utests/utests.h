@@ -161,7 +161,8 @@ struct utest_context {
     }
 
 /**
- * @brief Compare two lyd_node structure. Macro print lyd_node structure into string and then compare string. Print function use these two parameters. LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK;
+ * @brief Compare two lyd_node structure. Macro print lyd_node structure into string and then compare string.
+ *
  * @param[in] NODE_1 pointer to lyd_node
  * @param[in] NODE_2 pointer to lyd_node
  */
@@ -169,8 +170,8 @@ struct utest_context {
     { \
         char *str1; \
         char *str2; \
-        assert_int_equal(LY_SUCCESS, lyd_print_mem(&str1, NODE_1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK)); \
-        assert_int_equal(LY_SUCCESS, lyd_print_mem(&str2, NODE_2, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK)); \
+        assert_int_equal(LY_SUCCESS, lyd_print_mem(&str1, NODE_1, LYD_XML, LYD_PRINT_WITHSIBLINGS)); \
+        assert_int_equal(LY_SUCCESS, lyd_print_mem(&str2, NODE_2, LYD_XML, LYD_PRINT_WITHSIBLINGS)); \
         assert_non_null(str1); \
         assert_non_null(str2); \
         assert_string_equal(str1, str2); \

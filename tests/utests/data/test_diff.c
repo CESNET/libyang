@@ -23,11 +23,11 @@
 #define CHECK_LYD_STRING(INPUT, TEXT) \
         CHECK_LYD_STRING_PARAM(INPUT, TEXT, LYD_XML, LYD_PRINT_WITHSIBLINGS)
 
-#define CHECK_PARSE_LYD_DIFF(INPUT_1, INPUT_2, OUT_DIFF) \
-        assert_int_equal(LY_SUCCESS, lyd_diff_siblings(INPUT_1, INPUT_2, 0, &OUT_DIFF));\
+#define CHECK_PARSE_LYD_DIFF(INPUT_1, INPUT_2, OPTS, OUT_DIFF) \
+        assert_int_equal(LY_SUCCESS, lyd_diff_siblings(INPUT_1, INPUT_2, OPTS, &OUT_DIFF));\
         assert_non_null(OUT_DIFF)
 
-#define TEST_DIFF_3(XML1, XML2, XML3, DIFF1, DIFF2, MERGE) \
+#define TEST_DIFF_3(XML1, XML2, XML3, OPTS, DIFF1, DIFF2, MERGE) \
         { \
             struct lyd_node *data1;\
             struct lyd_node *data2;\
@@ -38,13 +38,13 @@
             CHECK_PARSE_LYD(XML3, data3);\
         /* diff1 */ \
             struct lyd_node *diff1;\
-            CHECK_PARSE_LYD_DIFF(data1, data2, diff1); \
+            CHECK_PARSE_LYD_DIFF(data1, data2, OPTS, diff1); \
             CHECK_LYD_STRING(diff1, DIFF1); \
             assert_int_equal(lyd_diff_apply_all(&data1, diff1), LY_SUCCESS); \
             CHECK_LYD(data1, data2); \
         /* diff2 */ \
             struct lyd_node *diff2;\
-            CHECK_PARSE_LYD_DIFF(data2, data3, diff2); \
+            CHECK_PARSE_LYD_DIFF(data2, data3, OPTS, diff2); \
             CHECK_LYD_STRING(diff2, DIFF2); \
             assert_int_equal(lyd_diff_apply_all(&data2, diff2), LY_SUCCESS);\
             CHECK_LYD(data2, data3);\
@@ -65,7 +65,12 @@ const char *schema =
         "namespace \"urn:libyang:tests:defaults\";"
         "prefix df;"
         ""
+        "import ietf-yang-metadata {prefix md;}"
+        ""
         "feature unhide;"
+        ""
+        "md:annotation my-meta {type string;}"
+        "md:annotation my-meta2 {type string;}"
         ""
         "typedef defint32 {type int32; default \"42\";}"
         ""
@@ -235,7 +240,7 @@ test_empty1(void **state)
 
     struct lyd_node *diff;
 
-    CHECK_PARSE_LYD_DIFF(model_1, model_2, diff);
+    CHECK_PARSE_LYD_DIFF(model_1, model_2, 0, diff);
     CHECK_LYD_STRING(diff,
             "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">\n"
             "  <foo>42</foo>\n"
@@ -271,7 +276,7 @@ test_empty2(void **state)
 
     struct lyd_node *diff;
 
-    CHECK_PARSE_LYD_DIFF(model_1, NULL, diff);
+    CHECK_PARSE_LYD_DIFF(model_1, NULL, 0, diff);
     CHECK_LYD_STRING(diff,
             "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">\n"
             "  <foo>42</foo>\n"
@@ -306,7 +311,7 @@ test_empty_nested(void **state)
 
     struct lyd_node *diff1;
 
-    CHECK_PARSE_LYD_DIFF(NULL, lyd_child(model_1), diff1);
+    CHECK_PARSE_LYD_DIFF(NULL, lyd_child(model_1), 0, diff1);
     CHECK_LYD_STRING(diff1,
             "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
             "  <foo yang:operation=\"create\">42</foo>\n"
@@ -314,7 +319,7 @@ test_empty_nested(void **state)
 
     struct lyd_node *diff2;
 
-    CHECK_PARSE_LYD_DIFF(lyd_child(model_1), NULL, diff2);
+    CHECK_PARSE_LYD_DIFF(lyd_child(model_1), NULL, 0, diff2);
     CHECK_LYD_STRING(diff2,
             "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
             "  <foo yang:operation=\"delete\">42</foo>\n"
@@ -416,7 +421,7 @@ test_leaf(void **state)
             "  <baz yang:operation=\"delete\">42</baz>\n"
             "</hidden>\n";
 
-    TEST_DIFF_3(xml1, xml2, xml3, out_diff_1, out_diff_2, out_merge);
+    TEST_DIFF_3(xml1, xml2, xml3, 0, out_diff_1, out_diff_2, out_merge);
 }
 
 static void
@@ -492,7 +497,7 @@ test_list(void **state)
             "  </list>\n"
             "</df>\n";
 
-    TEST_DIFF_3(xml1, xml2, xml3, out_diff_1, out_diff_2, out_merge);
+    TEST_DIFF_3(xml1, xml2, xml3, 0, out_diff_1, out_diff_2, out_merge);
 }
 
 static void
@@ -564,7 +569,7 @@ test_nested_list(void **state)
 
     CHECK_PARSE_LYD(xml1, data1);
     CHECK_PARSE_LYD(xml2, data2);
-    CHECK_PARSE_LYD_DIFF(data1, data2, diff);
+    CHECK_PARSE_LYD_DIFF(data1, data2, 0, diff);
 
     CHECK_LYD_STRING(diff,
             "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
@@ -661,7 +666,7 @@ test_userord_llist(void **state)
             "  <llist yang:orig-default=\"false\" yang:orig-value=\"2\" yang:value=\"\" yang:operation=\"replace\">5</llist>\n"
             "</df>\n";
 
-    TEST_DIFF_3(xml1, xml2, xml3, out_diff_1, out_diff_2, out_merge);
+    TEST_DIFF_3(xml1, xml2, xml3, 0, out_diff_1, out_diff_2, out_merge);
 }
 
 static void
@@ -707,7 +712,7 @@ test_userord_llist2(void **state)
             "  <llist yang:orig-value=\"1\" yang:operation=\"delete\">2</llist>\n"
             "</df>\n";
 
-    TEST_DIFF_3(xml1, xml2, xml3, out_diff_1, out_diff_2, out_merge);
+    TEST_DIFF_3(xml1, xml2, xml3, 0, out_diff_1, out_diff_2, out_merge);
 }
 
 static void
@@ -750,7 +755,7 @@ test_userord_mix(void **state)
             "  <llist yang:value=\"1\" yang:operation=\"create\">4</llist>\n"
             "</df>\n";
 
-    TEST_DIFF_3(xml1, xml2, xml3, out_diff_1, out_diff_2, out_merge);
+    TEST_DIFF_3(xml1, xml2, xml3, 0, out_diff_1, out_diff_2, out_merge);
 }
 
 static void
@@ -836,7 +841,7 @@ test_userord_list(void **state)
             "  </ul>\n"
             "</df>\n";
 
-    TEST_DIFF_3(xml1, xml2, xml3, out_diff_1, out_diff_2, out_merge);
+    TEST_DIFF_3(xml1, xml2, xml3, 0, out_diff_1, out_diff_2, out_merge);
 }
 
 static void
@@ -915,7 +920,7 @@ test_userord_list2(void **state)
             "  </ul>\n"
             "</df>\n";
 
-    TEST_DIFF_3(xml1, xml2, xml3, out_diff_1, out_diff_2, out_merge);
+    TEST_DIFF_3(xml1, xml2, xml3, 0, out_diff_1, out_diff_2, out_merge);
 }
 
 static void
@@ -1027,7 +1032,7 @@ test_userord_list3(void **state)
             "  </ul>\n"
             "</df>\n";
 
-    TEST_DIFF_3(xml1, xml2, xml3, out_diff_1, out_diff_2, out_merge);
+    TEST_DIFF_3(xml1, xml2, xml3, 0, out_diff_1, out_diff_2, out_merge);
 }
 
 static void
@@ -1153,7 +1158,7 @@ test_keyless_list(void **state)
             "  </kl>\n"
             "</df>\n";
 
-    TEST_DIFF_3(xml1, xml2, xml3, out_diff_1, out_diff_2, out_merge);
+    TEST_DIFF_3(xml1, xml2, xml3, 0, out_diff_1, out_diff_2, out_merge);
 }
 
 static void
@@ -1200,7 +1205,7 @@ test_state_llist(void **state)
             "  <kll yang:position=\"1\" yang:operation=\"create\">d</kll>\n"
             "</df>\n";
 
-    TEST_DIFF_3(xml1, xml2, xml3, out_diff_1, out_diff_2, out_merge);
+    TEST_DIFF_3(xml1, xml2, xml3, 0, out_diff_1, out_diff_2, out_merge);
 }
 
 static void
@@ -1286,6 +1291,83 @@ test_wd(void **state)
     lyd_free_all(diff2);
 }
 
+static void
+test_metadata(void **state)
+{
+    (void) state;
+    const char *xml1 = "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:df=\"urn:libyang:tests:defaults\">\n"
+            "  <list df:my-meta=\"val1\">\n"
+            "    <name>a</name>\n"
+            "    <value df:my-meta2=\"val2\">1</value>\n"
+            "  </list>\n"
+            "  <list>\n"
+            "    <name df:my-meta=\"val10\">b</name>\n"
+            "    <value df:my-meta=\"repeated\" df:my-meta=\"repeated\">2</value>\n"
+            "  </list>\n"
+            "</df>\n";
+    const char *xml2 = "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:df=\"urn:libyang:tests:defaults\">\n"
+            "  <list>\n"
+            "    <name>b</name>\n"
+            "    <value df:my-meta=\"repeated\">2</value>\n"
+            "  </list>\n"
+            "  <list>\n"
+            "    <name df:my-meta2=\"val22\">c</name>\n"
+            "    <value df:my-meta2=\"val23\">3</value>\n"
+            "  </list>\n"
+            "</df>\n";
+    const char *xml3 = "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:df=\"urn:libyang:tests:defaults\" df:my-meta=\"top\">\n"
+            "  <list>\n"
+            "    <name>b</name>\n"
+            "    <value df:my-meta=\"repeated\" df:my-meta=\"new\">2</value>\n"
+            "  </list>\n"
+            "  <list>\n"
+            "    <name df:my-meta=\"val22\">c</name>\n"
+            "    <value df:my-meta2=\"val23\">3</value>\n"
+            "  </list>\n"
+            "</df>\n";
+
+    const char *out_diff_1 =
+            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
+            "  <list yang:operation=\"delete\" yang:meta-delete=\"defaults:my-meta=val1\">\n"
+            "    <name>a</name>\n"
+            "    <value yang:meta-delete=\"defaults:my-meta2=val2\">1</value>\n"
+            "  </list>\n"
+            "  <list>\n"
+            "    <name yang:meta-delete=\"defaults:my-meta=val10\">b</name>\n"
+            "    <value yang:orig-default=\"false\" yang:meta-delete=\"defaults:my-meta=repeated\">2</value>\n"
+            "  </list>\n"
+            "  <list yang:operation=\"create\">\n"
+            "    <name yang:meta-create=\"defaults:my-meta2=val22\">c</name>\n"
+            "    <value yang:meta-create=\"defaults:my-meta2=val23\">3</value>\n"
+            "  </list>\n"
+            "</df>\n";
+    const char *out_diff_2 =
+            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\" "
+            "yang:meta-create=\"defaults:my-meta=top\">\n"
+            "  <list>\n"
+            "    <name>b</name>\n"
+            "    <value yang:orig-default=\"false\" yang:meta-create=\"defaults:my-meta=new\">2</value>\n"
+            "  </list>\n"
+            "  <list>\n"
+            "    <name yang:meta-delete=\"defaults:my-meta2=val22\" yang:meta-create=\"defaults:my-meta=val22\">c</name>\n"
+            "    <value yang:operation=\"none\">3</value>\n"
+            "  </list>\n"
+            "</df>\n";
+    const char *out_merge =
+            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
+            "  <list yang:operation=\"none\">\n"
+            "    <name>a</name>\n"
+            "    <value yang:operation=\"replace\" yang:orig-value=\"1\" yang:orig-default=\"false\">2</value>\n"
+            "  </list>\n"
+            "  <list yang:operation=\"none\">\n"
+            "    <name>b</name>\n"
+            "    <value yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"2\">-2</value>\n"
+            "  </list>\n"
+            "</df>\n";
+
+    TEST_DIFF_3(xml1, xml2, xml3, LYD_DIFF_META, out_diff_1, out_diff_2, out_merge);
+}
+
 int
 main(void)
 {
@@ -1308,6 +1390,7 @@ main(void)
         UTEST(test_keyless_list, setup),
         UTEST(test_state_llist, setup),
         UTEST(test_wd, setup),
+        UTEST(test_metadata, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
