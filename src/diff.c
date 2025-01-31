@@ -2574,6 +2574,13 @@ lyd_diff_merge_all(struct lyd_node **diff, const struct lyd_node *src_diff, uint
     return lyd_diff_merge_module(diff, src_diff, NULL, NULL, NULL, options);
 }
 
+/**
+ * @brief Reverse diff value meta by switching it for the node value.
+ *
+ * @param[in] node Parent meta node.
+ * @param[in] mod Meta module.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lyd_diff_reverse_value(struct lyd_node *node, const struct lys_module *mod)
 {
@@ -2615,6 +2622,13 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Reverse diff default meta by switching it for the node dflt flag.
+ *
+ * @param[in] node Parent meta node.
+ * @param[in] mod Meta module.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lyd_diff_reverse_default(struct lyd_node *node, const struct lys_module *mod)
 {
@@ -2647,6 +2661,15 @@ lyd_diff_reverse_default(struct lyd_node *node, const struct lys_module *mod)
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Reverse diff meta by switching their values.
+ *
+ * @param[in] node Parent meta node.
+ * @param[in] mod Meta module.
+ * @param[in] name1 First meta name.
+ * @param[in] name2 Second meta name.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lyd_diff_reverse_meta(struct lyd_node *node, const struct lys_module *mod, const char *name1, const char *name2)
 {
