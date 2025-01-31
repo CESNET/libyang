@@ -1510,6 +1510,178 @@ lyd_diff_insert(struct lyd_node **first_node, struct lyd_node *parent_node, stru
 }
 
 /**
+ * @brief Parse a diff metadata value into the changed metadata instance name (with module name) and value.
+ *
+ * @param[in] meta Diff metadata instance.
+ * @param[in] with_equals Whether to parse @p name with '='.
+ * @param[out] name Optional changed metadata name.
+ * @param[out] value Changed metadata value.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_diff_apply_metadata_parse(const struct lyd_meta *meta, ly_bool with_equals, char **name, const char **value)
+{
+    LY_ERR rc = LY_SUCCESS;
+    const char *v, *ptr;
+
+    v = lyd_get_meta_value(meta);
+    ptr = strchr(v, '=');
+    LY_CHECK_ERR_GOTO(!ptr, LOGINT(meta->annotation->module->ctx); rc = LY_EINT, cleanup);
+
+    if (name) {
+        *name = strndup(v, (with_equals ? ptr + 1 : ptr) - v);
+        LY_CHECK_ERR_GOTO(!*name, LOGMEM(meta->annotation->module->ctx); rc = LY_EMEM, cleanup);
+    }
+
+    *value = ptr + 1;
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Find a metadata instance, an error if it cannot be found.
+ *
+ * @param[in] meta First metadata to consider.
+ * @param[in] name Metadata name with module name.
+ * @param[in] value Metadata value.
+ * @param[out] match Found metadata.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_diff_apply_metadata_find(const struct lyd_meta *meta, const char *name, const char *value, struct lyd_meta **match)
+{
+    const struct lyd_meta *m;
+
+    for (m = meta; (m = lyd_find_meta(m, NULL, name)); m = m->next) {
+        if (!strcmp(lyd_get_meta_value(m), value)) {
+            *match = (struct lyd_meta *)m;
+            return LY_SUCCESS;
+        }
+    }
+
+    *match = NULL;
+    LOGINT(meta->annotation->module->ctx);
+    return LY_EINT;
+}
+
+/**
+ * @brief Apply any metadata changes in the diff.
+ *
+ * @param[in,out] node Node to change.
+ * @param[in] diff_node Diff node to read the metadata changes from.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_diff_apply_metadata(struct lyd_node *node, const struct lyd_node *diff_node)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_meta *m, *m2, **meta_replace = NULL, **meta_orig = NULL;
+    uint32_t i, j, m_replace_count = 0, m_orig_count = 0;
+    const struct lys_module *ly_mod;
+    const char *meta_value, *old_meta_value;
+    char *meta_name = NULL;
+    const struct lyd_node *diff_ch;
+    struct lyd_node *node_ch;
+
+    ly_mod = ly_ctx_get_module_implemented(LYD_CTX(node), "yang");
+    assert(ly_mod);
+
+    /* go through all the metadata */
+    LY_LIST_FOR(diff_node->meta, m) {
+        if (m->annotation->module != ly_mod) {
+            continue;
+        }
+
+        if (!strcmp(m->name, "meta-create")) {
+            /* parse the value */
+            LY_CHECK_GOTO(rc = lyd_diff_apply_metadata_parse(m, 0, &meta_name, &meta_value), cleanup);
+
+            /* create the metadata instance */
+            LY_CHECK_GOTO(rc = lyd_new_meta(NULL, node, NULL, meta_name, meta_value, 0, NULL), cleanup);
+
+            free(meta_name);
+            meta_name = NULL;
+        } else if (!strcmp(m->name, "meta-delete")) {
+            /* parse the value */
+            LY_CHECK_GOTO(rc = lyd_diff_apply_metadata_parse(m, 0, &meta_name, &meta_value), cleanup);
+
+            /* find the metadata instance and free it */
+            LY_CHECK_GOTO(rc = lyd_diff_apply_metadata_find(node->meta, meta_name, meta_value, &m2), cleanup);
+            lyd_free_meta_single(m2);
+
+            free(meta_name);
+            meta_name = NULL;
+        } else if (!strcmp(m->name, "meta-replace")) {
+            /* just store it, to be able to correctly match to 'meta-orig' */
+            meta_replace = ly_realloc(meta_replace, (m_replace_count + 1) * sizeof *meta_replace);
+            LY_CHECK_ERR_GOTO(!meta_replace, LOGMEM(LYD_CTX(node)); rc = LY_EMEM, cleanup);
+            meta_replace[m_replace_count] = m;
+            ++m_replace_count;
+        } else if (!strcmp(m->name, "meta-orig")) {
+            /* just store it */
+            meta_orig = ly_realloc(meta_orig, (m_orig_count + 1) * sizeof *meta_orig);
+            LY_CHECK_ERR_GOTO(!meta_orig, LOGMEM(LYD_CTX(node)); rc = LY_EMEM, cleanup);
+            meta_orig[m_orig_count] = m;
+            ++m_orig_count;
+        }
+    }
+
+    /* process replaced metadata */
+    LY_CHECK_ERR_GOTO(m_replace_count != m_orig_count, LOGINT(LYD_CTX(node)); rc = LY_EINT, cleanup);
+    for (i = 0; i < m_replace_count; ++i) {
+        /* get the changed meta name with '=' */
+        LY_CHECK_GOTO(rc = lyd_diff_apply_metadata_parse(meta_replace[i], 1, &meta_name, &meta_value), cleanup);
+
+        /* find a matching 'meta-orig' */
+        for (j = 0; j < m_orig_count; ++j) {
+            if (meta_orig[j] && !strncmp(lyd_get_meta_value(meta_orig[j]), meta_name, strlen(meta_name))) {
+                break;
+            }
+        }
+        LY_CHECK_ERR_GOTO(j == m_orig_count, LOGINT(LYD_CTX(node)); rc = LY_EINT, cleanup);
+
+        /* parse the orig value */
+        LY_CHECK_GOTO(rc = lyd_diff_apply_metadata_parse(m, 0, NULL, &old_meta_value), cleanup);
+
+        /* find the metadata instance */
+        meta_name[strlen(meta_name) - 1] = '\0';
+        LY_CHECK_GOTO(rc = lyd_diff_apply_metadata_find(node->meta, meta_name, old_meta_value, &m2), cleanup);
+        LY_CHECK_ERR_GOTO(!m2, LOGINT(LYD_CTX(node)); rc = LY_EINT, cleanup);
+
+        /* change its value */
+        LY_CHECK_GOTO(rc = lyd_change_meta(m2, meta_value), cleanup);
+
+        /* meta-orig spent */
+        meta_orig[j] = NULL;
+
+        free(meta_name);
+        meta_name = NULL;
+    }
+
+    /* for lists, we also need to process their keys */
+    if (diff_node->schema->nodetype == LYS_LIST) {
+        diff_ch = lyd_child(diff_node);
+        node_ch = lyd_child(node);
+        while (diff_ch && lysc_is_key(diff_ch->schema)) {
+            /* process every key */
+            assert(node_ch && (diff_ch->schema == node_ch->schema));
+            rc = lyd_diff_apply_metadata(node_ch, diff_ch);
+            LY_CHECK_GOTO(rc, cleanup);
+
+            diff_ch = diff_ch->next;
+            node_ch = node_ch->next;
+        }
+    }
+
+cleanup:
+    free(meta_name);
+    free(meta_replace);
+    free(meta_orig);
+    return rc;
+}
+
+/**
  * @brief Apply diff subtree on data tree nodes, recursively.
  *
  * @param[in,out] first_node First sibling of the data tree.
@@ -1524,7 +1696,7 @@ static LY_ERR
 lyd_diff_apply_r(struct lyd_node **first_node, struct lyd_node *parent_node, const struct lyd_node *diff_node,
         lyd_diff_cb diff_cb, void *cb_data, struct ly_ht **dup_inst)
 {
-    LY_ERR ret;
+    LY_ERR rc = LY_SUCCESS, r;
     struct lyd_node *match, *diff_child;
     const char *str_val, *meta_str;
     enum lyd_diff_op op;
@@ -1560,124 +1732,115 @@ lyd_diff_apply_r(struct lyd_node **first_node, struct lyd_node *parent_node, con
 
         /* insert/move the node */
         if (str_val[0]) {
-            ret = lyd_diff_insert(first_node, parent_node, match, str_val);
+            r = lyd_diff_insert(first_node, parent_node, match, str_val);
         } else {
-            ret = lyd_diff_insert(first_node, parent_node, match, NULL);
+            r = lyd_diff_insert(first_node, parent_node, match, NULL);
         }
-        if (ret) {
+        if (r) {
             if (op == LYD_DIFF_OP_CREATE) {
                 lyd_free_tree(match);
             }
-            return ret;
+            return r;
         }
+    } else {
+        /* apply operation */
+        switch (op) {
+        case LYD_DIFF_OP_NONE:
+            /* find the node */
+            LY_CHECK_RET(lyd_diff_find_match(*first_node, diff_node, 1, dup_inst, &match));
+            LY_CHECK_ERR_RET(!match, LOGERR_NOINST(ctx, diff_node), LY_EINVAL);
 
-        goto next_iter_r;
-    }
-
-    /* apply operation */
-    switch (op) {
-    case LYD_DIFF_OP_NONE:
-        /* find the node */
-        LY_CHECK_RET(lyd_diff_find_match(*first_node, diff_node, 1, dup_inst, &match));
-        LY_CHECK_ERR_RET(!match, LOGERR_NOINST(ctx, diff_node), LY_EINVAL);
-
-        if (match->schema->nodetype & LYD_NODE_TERM) {
-            /* special case of only dflt flag change */
-            if (diff_node->flags & LYD_DEFAULT) {
-                match->flags |= LYD_DEFAULT;
-            } else {
-                match->flags &= ~LYD_DEFAULT;
+            if (match->schema->nodetype & LYD_NODE_TERM) {
+                /* special case of only dflt flag change */
+                if (diff_node->flags & LYD_DEFAULT) {
+                    match->flags |= LYD_DEFAULT;
+                } else {
+                    match->flags &= ~LYD_DEFAULT;
+                }
             }
-        } else {
-            /* none operation on nodes without children is redundant and hence forbidden */
-            if (!lyd_child_no_keys(diff_node)) {
-                LOGERR(ctx, LY_EINVAL, "Operation \"none\" is invalid for node \"%s\" without children.",
-                        LYD_NAME(diff_node));
+            break;
+        case LYD_DIFF_OP_CREATE:
+            /* duplicate the node */
+            LY_CHECK_RET(lyd_dup_single(diff_node, NULL, LYD_DUP_NO_META, &match));
+
+            /* insert it at the end */
+            if (parent_node) {
+                if (match->flags & LYD_EXT) {
+                    r = lyplg_ext_insert(parent_node, match);
+                } else {
+                    r = lyd_insert_child(parent_node, match);
+                }
+            } else {
+                r = lyd_insert_sibling(*first_node, match, first_node);
+            }
+            if (r) {
+                lyd_free_tree(match);
+                return r;
+            }
+
+            break;
+        case LYD_DIFF_OP_DELETE:
+            /* find the node */
+            LY_CHECK_RET(lyd_diff_find_match(*first_node, diff_node, 1, dup_inst, &match));
+            LY_CHECK_ERR_RET(!match, LOGERR_NOINST(ctx, diff_node), LY_EINVAL);
+
+            /* remove it */
+            if ((match == *first_node) && !match->parent) {
+                assert(!parent_node);
+                /* we have removed the top-level node */
+                *first_node = (*first_node)->next;
+            }
+            lyd_free_tree(match);
+
+            /* we are not going recursively in this case, the whole subtree was already deleted */
+            return LY_SUCCESS;
+        case LYD_DIFF_OP_REPLACE:
+            if (!(diff_node->schema->nodetype & (LYS_LEAF | LYS_ANYDATA))) {
+                LOGERR(ctx, LY_EINVAL, "Operation \"replace\" is invalid for %s node \"%s\".",
+                        lys_nodetype2str(diff_node->schema->nodetype), LYD_NAME(diff_node));
                 return LY_EINVAL;
             }
-        }
-        break;
-    case LYD_DIFF_OP_CREATE:
-        /* duplicate the node */
-        LY_CHECK_RET(lyd_dup_single(diff_node, NULL, LYD_DUP_NO_META, &match));
 
-        /* insert it at the end */
-        ret = 0;
-        if (parent_node) {
-            if (match->flags & LYD_EXT) {
-                ret = lyplg_ext_insert(parent_node, match);
+            /* find the node */
+            LY_CHECK_RET(lyd_diff_find_match(*first_node, diff_node, 1, dup_inst, &match));
+            LY_CHECK_ERR_RET(!match, LOGERR_NOINST(ctx, diff_node), LY_EINVAL);
+
+            /* update the value */
+            if (diff_node->schema->nodetype == LYS_LEAF) {
+                r = lyd_change_term(match, lyd_get_value(diff_node));
+                LY_CHECK_ERR_RET(r && (r != LY_EEXIST), LOGERR_UNEXPVAL(ctx, match, "data"), LY_EINVAL);
             } else {
-                ret = lyd_insert_child(parent_node, match);
+                struct lyd_node_any *any = (struct lyd_node_any *)diff_node;
+
+                LY_CHECK_RET(lyd_any_copy_value(match, &any->value, any->value_type));
             }
-        } else {
-            ret = lyd_insert_sibling(*first_node, match, first_node);
+
+            /* with flags */
+            match->flags = diff_node->flags;
+            break;
+        default:
+            LOGINT_RET(ctx);
         }
-        if (ret) {
-            lyd_free_tree(match);
-            return ret;
-        }
-
-        break;
-    case LYD_DIFF_OP_DELETE:
-        /* find the node */
-        LY_CHECK_RET(lyd_diff_find_match(*first_node, diff_node, 1, dup_inst, &match));
-        LY_CHECK_ERR_RET(!match, LOGERR_NOINST(ctx, diff_node), LY_EINVAL);
-
-        /* remove it */
-        if ((match == *first_node) && !match->parent) {
-            assert(!parent_node);
-            /* we have removed the top-level node */
-            *first_node = (*first_node)->next;
-        }
-        lyd_free_tree(match);
-
-        /* we are not going recursively in this case, the whole subtree was already deleted */
-        return LY_SUCCESS;
-    case LYD_DIFF_OP_REPLACE:
-        if (!(diff_node->schema->nodetype & (LYS_LEAF | LYS_ANYDATA))) {
-            LOGERR(ctx, LY_EINVAL, "Operation \"replace\" is invalid for %s node \"%s\".",
-                    lys_nodetype2str(diff_node->schema->nodetype), LYD_NAME(diff_node));
-            return LY_EINVAL;
-        }
-
-        /* find the node */
-        LY_CHECK_RET(lyd_diff_find_match(*first_node, diff_node, 1, dup_inst, &match));
-        LY_CHECK_ERR_RET(!match, LOGERR_NOINST(ctx, diff_node), LY_EINVAL);
-
-        /* update the value */
-        if (diff_node->schema->nodetype == LYS_LEAF) {
-            ret = lyd_change_term(match, lyd_get_value(diff_node));
-            LY_CHECK_ERR_RET(ret && (ret != LY_EEXIST), LOGERR_UNEXPVAL(ctx, match, "data"), LY_EINVAL);
-        } else {
-            struct lyd_node_any *any = (struct lyd_node_any *)diff_node;
-
-            LY_CHECK_RET(lyd_any_copy_value(match, &any->value, any->value_type));
-        }
-
-        /* with flags */
-        match->flags = diff_node->flags;
-        break;
-    default:
-        LOGINT_RET(ctx);
     }
 
-next_iter_r:
+    /* apply any metadata changes */
+    LY_CHECK_RET(lyd_diff_apply_metadata(match, diff_node));
+
     if (diff_cb) {
         /* call callback */
         LY_CHECK_RET(diff_cb(diff_node, match, cb_data));
     }
 
     /* apply diff recursively */
-    ret = LY_SUCCESS;
     LY_LIST_FOR(lyd_child_no_keys(diff_node), diff_child) {
-        ret = lyd_diff_apply_r(lyd_node_child_p(match), match, diff_child, diff_cb, cb_data, &child_dup_inst);
-        if (ret) {
+        rc = lyd_diff_apply_r(lyd_node_child_p(match), match, diff_child, diff_cb, cb_data, &child_dup_inst);
+        if (rc) {
             break;
         }
     }
 
     lyd_dup_inst_free(child_dup_inst);
-    return ret;
+    return rc;
 }
 
 LIBYANG_API_DEF LY_ERR
