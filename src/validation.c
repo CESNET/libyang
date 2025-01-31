@@ -216,7 +216,7 @@ lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct lyd_no
     }
 
     /* create new diff tree */
-    LY_CHECK_GOTO(ret = lyd_diff_add(node, op, NULL, NULL, key, value, position, NULL, NULL, &new_diff), cleanup);
+    LY_CHECK_GOTO(ret = lyd_diff_add(node, op, NULL, NULL, key, value, position, NULL, NULL, &new_diff, NULL), cleanup);
 
     /* merge into existing diff */
     ret = lyd_diff_merge_all(diff, new_diff, 0);

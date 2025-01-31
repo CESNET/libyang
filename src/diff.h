@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief internal diff header
  *
- * Copyright (c) 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -53,10 +53,11 @@ enum lyd_diff_op {
  * @param[in] orig_key Original key metadata to set.
  * @param[in] orig_position Original position metadata to set.
  * @param[in,out] diff Diff to append to.
+ * @param[out] diff_node Optional created diff node.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_default, const char *orig_value,
-        const char *key, const char *value, const char *position, const char *orig_key, const char *orig_position,
-        struct lyd_node **diff);
+LIBYANG_API_DECL LY_ERR lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_default,
+        const char *orig_value, const char *key, const char *value, const char *position, const char *orig_key,
+        const char *orig_position, struct lyd_node **diff, struct lyd_node **diff_node);
 
 #endif /* LY_DIFF_H_ */

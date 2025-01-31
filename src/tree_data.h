@@ -2159,12 +2159,18 @@ LIBYANG_API_DECL LY_ERR lyd_merge_module(struct lyd_node **target, const struct 
  *
  * Default behavior:
  * - any default nodes are treated as non-existent and ignored.
+ * - nodes with 'none' operation can appear only in case a leaf node has not changed its value and only its
+ *   default flag.
+ * - metadata differences are not included in the diff.
  * @{
  */
 
 #define LYD_DIFF_DEFAULTS   0x01 /**< Default nodes in the trees are not ignored but treated similarly to explicit
                                       nodes. Also, leaves and leaf-lists are added into diff even in case only their
                                       default flag (state) was changed. */
+#define LYD_DIFF_META       0x02 /**< All metadata are compared and the full difference reported in the diff always in
+                                      the form of 'yang:meta-<operation>' metadata. Also, equal nodes with only changes
+                                      in their metadata will be present in the diff with the 'none' operation. */
 
 /** @} diffoptions */
 

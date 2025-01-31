@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief diff functions
  *
- * Copyright (c) 2020 - 2021 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -310,7 +310,7 @@ lyd_diff_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struct 
 LY_ERR
 lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_default, const char *orig_value,
         const char *key, const char *value, const char *position, const char *orig_key, const char *orig_position,
-        struct lyd_node **diff)
+        struct lyd_node **diff, struct lyd_node **diff_node)
 {
     struct lyd_node *dup, *siblings, *match = NULL, *diff_parent = NULL, *elem;
     const struct lyd_node *parent = NULL;
@@ -335,6 +335,10 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
     assert((node->schema->nodetype != LYS_LEAFLIST) || !(node->schema->flags & LYS_ORDBY_USER) ||
             (op != LYD_DIFF_OP_REPLACE) || (lysc_is_dup_inst_list(node->schema) && position && orig_position) ||
             (value && orig_value));
+
+    if (diff_node) {
+        *diff_node = NULL;
+    }
 
     /* find the first existing parent */
     siblings = *diff;
@@ -480,6 +484,9 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
         LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:orig-position", orig_position, LYD_NEW_VAL_STORE_ONLY, NULL));
     }
 
+    if (diff_node) {
+        *diff_node = dup;
+    }
     return LY_SUCCESS;
 }
 
@@ -521,6 +528,104 @@ lyd_diff_userord_get(const struct lyd_node *first, const struct lysc_node *schem
     }
 
     return item;
+}
+
+/**
+ * @brief Check whether a metadata instance is relevant for diff.
+ *
+ * @param[in] meta Metadata to check.
+ * @return 1 if the metadata should be skipped;
+ * @return 0 otherwise.
+ */
+static ly_bool
+lyd_diff_node_metadata_skip(const struct lyd_meta *meta)
+{
+    if (!strcmp(meta->annotation->module->name, "yang")) {
+        return 1;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Check whether there are any metadata differences on 2 nodes.
+ *
+ * @param[in] first First node.
+ * @param[in] second Second node.
+ * @return 1 if there are some differences;
+ * @return 0 otherwise.
+ */
+static ly_bool
+lyd_diff_node_metadata_check(const struct lyd_node *first, const struct lyd_node *second)
+{
+    ly_bool rc = 0;
+    const struct lyd_meta *m, **meta_second = NULL;
+    uint32_t i, m_second_count = 0;
+    const struct lyd_node *first_ch, *second_ch;
+
+    assert(first && second);
+
+    /* collect second node metadata that we can delete from */
+    LY_LIST_FOR(second->meta, m) {
+        if (lyd_diff_node_metadata_skip(m)) {
+            continue;
+        }
+
+        meta_second = ly_realloc(meta_second, (m_second_count + 1) * sizeof *meta_second);
+        LY_CHECK_ERR_GOTO(!meta_second, LOGMEM(LYD_CTX(first)), cleanup);
+        meta_second[m_second_count] = m;
+        ++m_second_count;
+    }
+
+    /* go through first metadata and search for a match in second */
+    LY_LIST_FOR(first->meta, m) {
+        if (lyd_diff_node_metadata_skip(m)) {
+            continue;
+        }
+
+        for (i = 0; i < m_second_count; ++i) {
+            if (!lyd_compare_meta(m, meta_second[i])) {
+                break;
+            }
+        }
+
+        if (i == m_second_count) {
+            /* not found */
+            rc = 1;
+            goto cleanup;
+        }
+
+        /* found, remove from the second metadata to consider */
+        --m_second_count;
+        if (i < m_second_count) {
+            memcpy(&meta_second[i], &meta_second[i + 1], (m_second_count - i) * sizeof *meta_second);
+        }
+    }
+
+    if (m_second_count) {
+        /* not found */
+        rc = 1;
+        goto cleanup;
+    }
+
+    /* for lists, we also need to check their keys */
+    if (first->schema->nodetype == LYS_LIST) {
+        first_ch = lyd_child(first);
+        second_ch = lyd_child(second);
+        while (first_ch && lysc_is_key(first_ch->schema)) {
+            /* check every key */
+            assert(second_ch && (first_ch->schema == second_ch->schema));
+            rc = lyd_diff_node_metadata_check(first_ch, second_ch);
+            LY_CHECK_GOTO(rc, cleanup);
+
+            first_ch = first_ch->next;
+            second_ch = second_ch->next;
+        }
+    }
+
+cleanup:
+    free(meta_second);
+    return rc;
 }
 
 /**
@@ -593,6 +698,9 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
             *op = LYD_DIFF_OP_REPLACE;
         } else if ((options & LYD_DIFF_DEFAULTS) && ((first->flags & LYD_DEFAULT) != (second->flags & LYD_DEFAULT))) {
             /* default flag change */
+            *op = LYD_DIFF_OP_NONE;
+        } else if ((options & LYD_DIFF_META) && lyd_diff_node_metadata_check(first, second)) {
+            /* metadata changes */
             *op = LYD_DIFF_OP_NONE;
         } else {
             /* no changes */
@@ -775,12 +883,21 @@ lyd_diff_attrs(const struct lyd_node *first, const struct lyd_node *second, uint
         case LYS_RPC:
         case LYS_ACTION:
         case LYS_NOTIF:
-            /* no changes */
-            return LY_ENOT;
+            if ((options & LYD_DIFF_META) && lyd_diff_node_metadata_check(first, second)) {
+                /* metadata changes */
+                *op = LYD_DIFF_OP_NONE;
+            } else {
+                /* no changes */
+                return LY_ENOT;
+            }
+            break;
         case LYS_LIST:
         case LYS_LEAFLIST:
             if ((options & LYD_DIFF_DEFAULTS) && ((first->flags & LYD_DEFAULT) != (second->flags & LYD_DEFAULT))) {
                 /* default flag change */
+                *op = LYD_DIFF_OP_NONE;
+            } else if ((options & LYD_DIFF_META) && lyd_diff_node_metadata_check(first, second)) {
+                /* metadata changes */
                 *op = LYD_DIFF_OP_NONE;
             } else {
                 /* no changes */
@@ -795,6 +912,9 @@ lyd_diff_attrs(const struct lyd_node *first, const struct lyd_node *second, uint
                 *op = LYD_DIFF_OP_REPLACE;
             } else if ((options & LYD_DIFF_DEFAULTS) && ((first->flags & LYD_DEFAULT) != (second->flags & LYD_DEFAULT))) {
                 /* default flag change */
+                *op = LYD_DIFF_OP_NONE;
+            } else if ((options & LYD_DIFF_META) && lyd_diff_node_metadata_check(first, second)) {
+                /* metadata changes */
                 *op = LYD_DIFF_OP_NONE;
             } else {
                 /* no changes */
@@ -874,6 +994,164 @@ lyd_diff_find_match(const struct lyd_node *siblings, const struct lyd_node *targ
 }
 
 /**
+ * @brief Create a diff metadata instance.
+ *
+ * @param[in,out] parent Parent node of the diff metadata.
+ * @param[in] diff_meta_name Diff metadata name with a mdoule name.
+ * @param[in] meta_module Changed metadata module name.
+ * @param[in] meta_name Changed metadata name.
+ * @param[in] meta_value Changed metadata value.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_diff_node_metadata_add(struct lyd_node *parent, const char *diff_meta_name, const char *meta_module,
+        const char *meta_name, const char *meta_value)
+{
+    LY_ERR rc = LY_SUCCESS;
+    char *val = NULL;
+
+    /* prepare the value */
+    if (asprintf(&val, "%s:%s=%s", meta_module, meta_name, meta_value) == -1) {
+        LOGMEM(LYD_CTX(parent));
+        rc = LY_EMEM;
+        goto cleanup;
+    }
+
+    /* create the metadata */
+    LY_CHECK_GOTO(rc = lyd_new_meta(NULL, parent, NULL, diff_meta_name, val, 0, NULL), cleanup)
+
+cleanup:
+    free(val);
+    return rc;
+}
+
+/**
+ * @brief Add metadata differences of 2 nodes into a diff node.
+ *
+ * @param[in] first First node.
+ * @param[in] second Second node.
+ * @param[in,out] diff_node Diff node to add to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_diff_node_metadata(const struct lyd_node *first, const struct lyd_node *second, struct lyd_node *diff_node)
+{
+    LY_ERR rc = LY_SUCCESS;
+    const struct lyd_meta *m, **meta_second = NULL;
+    uint32_t i, m_second_count = 0, match_ann_idx;
+
+    /* collect second node metadata that we can delete from */
+    if (second) {
+        LY_LIST_FOR(second->meta, m) {
+            if (lyd_diff_node_metadata_skip(m)) {
+                continue;
+            }
+
+            meta_second = ly_realloc(meta_second, (m_second_count + 1) * sizeof *meta_second);
+            LY_CHECK_ERR_GOTO(!meta_second, LOGMEM(LYD_CTX(diff_node)); rc = LY_EMEM, cleanup);
+            meta_second[m_second_count] = m;
+            ++m_second_count;
+        }
+    }
+
+    /* go through first metadata and search for match in second */
+    if (first) {
+        LY_LIST_FOR(first->meta, m) {
+            if (lyd_diff_node_metadata_skip(m)) {
+                continue;
+            }
+
+            match_ann_idx = m_second_count;
+            for (i = 0; i < m_second_count; ++i) {
+                /* annotation match */
+                if (m->annotation != meta_second[i]->annotation) {
+                    continue;
+                }
+                if (match_ann_idx == m_second_count) {
+                    match_ann_idx = i;
+                }
+
+                /* value match */
+                if (m->value.realtype->plugin->compare(LYD_CTX(diff_node), &m->value, &meta_second[i]->value)) {
+                    continue;
+                }
+                break;
+            }
+
+            if (i < m_second_count) {
+                /* found, no change */
+                --m_second_count;
+                if (i < m_second_count) {
+                    memcpy(&meta_second[i], &meta_second[i + 1], (m_second_count - i) * sizeof *meta_second);
+                }
+            } else if (match_ann_idx < m_second_count) {
+                /* found with a different value, replace */
+                i = match_ann_idx;
+                rc = lyd_diff_node_metadata_add(diff_node, "yang:meta-replace", meta_second[i]->annotation->module->name,
+                        meta_second[i]->name, lyd_get_meta_value(meta_second[i]));
+                LY_CHECK_GOTO(rc, cleanup);
+                rc = lyd_diff_node_metadata_add(diff_node, "yang:meta-orig", m->annotation->module->name, m->name,
+                        lyd_get_meta_value(m));
+                LY_CHECK_GOTO(rc, cleanup);
+
+                --m_second_count;
+                if (i < m_second_count) {
+                    memcpy(&meta_second[i], &meta_second[i + 1], (m_second_count - i) * sizeof *meta_second);
+                }
+            } else {
+                /* not found, delete */
+                rc = lyd_diff_node_metadata_add(diff_node, "yang:meta-delete", m->annotation->module->name, m->name,
+                        lyd_get_meta_value(m));
+                LY_CHECK_GOTO(rc, cleanup);
+            }
+        }
+    }
+
+    for (i = 0; i < m_second_count; ++i) {
+        /* not processed, create */
+        rc = lyd_diff_node_metadata_add(diff_node, "yang:meta-create", meta_second[i]->annotation->module->name,
+                meta_second[i]->name, lyd_get_meta_value(meta_second[i]));
+        LY_CHECK_GOTO(rc, cleanup);
+    }
+
+cleanup:
+    free(meta_second);
+    return rc;
+}
+
+/**
+ * @brief Add metadata differences of 2 subtrees into a diff subtree.
+ *
+ * @param[in] first_subtree First subtree.
+ * @param[in] second_subtree Second subtree.
+ * @param[in] keys_only Whether to check all the subtrees recursively or only the direct key children.
+ * @param[in,out] diff_subtree Diff subtree to add to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_diff_node_metadata_r(const struct lyd_node *first_subtree, const struct lyd_node *second_subtree, ly_bool keys_only,
+        struct lyd_node *diff_subtree)
+{
+    struct lyd_node *diff_node, *first, *second;
+
+    /* metadata diff on the node itself */
+    LY_CHECK_RET(lyd_diff_node_metadata(first_subtree, second_subtree, diff_subtree));
+
+    /* metadata diff on all the children, recursively */
+    LY_LIST_FOR(lyd_child(diff_subtree), diff_node) {
+        if (keys_only && !lysc_is_key(diff_node->schema)) {
+            break;
+        }
+
+        lyd_find_sibling_first(lyd_child(first_subtree), diff_node, &first);
+        lyd_find_sibling_first(lyd_child(second_subtree), diff_node, &second);
+        LY_CHECK_RET(lyd_diff_node_metadata_r(first, second, keys_only, diff_node));
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Perform diff for all siblings at certain depth, recursively.
  *
  * For user-ordered lists/leaf-lists a specific structure is used for storing
@@ -918,9 +1196,9 @@ static LY_ERR
 lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, ly_bool nosiblings,
         struct lyd_node **diff)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR rc = LY_SUCCESS, r;
     const struct lyd_node *iter_first, *iter_second;
-    struct lyd_node *match_second, *match_first;
+    struct lyd_node *match_second, *match_first, *diff_node;
     struct lyd_diff_userord *userord = NULL, *userord_item;
     struct ly_ht *dup_inst_first = NULL, *dup_inst_second = NULL;
     LY_ARRAY_COUNT_TYPE u;
@@ -940,60 +1218,69 @@ lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second,
             continue;
         }
 
+        diff_node = NULL;
+
         /* find a match in the second tree */
-        LY_CHECK_GOTO(ret = lyd_diff_find_match(second, iter_first, options & LYD_DIFF_DEFAULTS, &dup_inst_second,
+        LY_CHECK_GOTO(rc = lyd_diff_find_match(second, iter_first, options & LYD_DIFF_DEFAULTS, &dup_inst_second,
                 &match_second), cleanup);
 
         if (lysc_is_userordered(iter_first->schema)) {
             /* get (create) userord entry */
             userord_item = lyd_diff_userord_get(iter_first, iter_first->schema, &userord);
-            LY_CHECK_ERR_GOTO(!userord_item, LOGMEM(LYD_CTX(iter_first)); ret = LY_EMEM, cleanup);
+            LY_CHECK_ERR_GOTO(!userord_item, LOGMEM(LYD_CTX(iter_first)); rc = LY_EMEM, cleanup);
 
             /* we are handling only user-ordered node delete now */
             if (!match_second) {
                 /* get all the attributes */
-                LY_CHECK_GOTO(ret = lyd_diff_userord_attrs(iter_first, match_second, options, userord_item, &op,
+                LY_CHECK_GOTO(rc = lyd_diff_userord_attrs(iter_first, match_second, options, userord_item, &op,
                         &orig_default, &value, &orig_value, &key, &orig_key, &position, &orig_position), cleanup);
 
                 /* there must be changes, it is deleted */
                 assert(op == LYD_DIFF_OP_DELETE);
-                ret = lyd_diff_add(iter_first, op, orig_default, orig_value, key, value, position, orig_key,
-                        orig_position, diff);
-
+                rc = lyd_diff_add(iter_first, op, orig_default, orig_value, key, value, position, orig_key,
+                        orig_position, diff, &diff_node);
                 free(orig_value);
                 free(key);
                 free(value);
                 free(position);
                 free(orig_key);
                 free(orig_position);
-                LY_CHECK_GOTO(ret, cleanup);
+                LY_CHECK_GOTO(rc, cleanup);
             }
         } else {
             /* get all the attributes */
-            ret = lyd_diff_attrs(iter_first, match_second, options, &op, &orig_default, &orig_value);
+            r = lyd_diff_attrs(iter_first, match_second, options, &op, &orig_default, &orig_value);
+            if (r && (r != LY_ENOT)) {
+                goto cleanup;
+            }
 
             /* add into diff if there are any changes */
-            if (!ret) {
+            if (!r) {
                 if (op == LYD_DIFF_OP_DELETE) {
-                    ret = lyd_diff_add(iter_first, op, orig_default, orig_value, NULL, NULL, NULL, NULL, NULL, diff);
+                    rc = lyd_diff_add(iter_first, op, orig_default, orig_value, NULL, NULL, NULL, NULL, NULL, diff, &diff_node);
                 } else {
                     assert(match_second);
-                    ret = lyd_diff_add(match_second, op, orig_default, orig_value, NULL, NULL, NULL, NULL, NULL, diff);
+                    rc = lyd_diff_add(match_second, op, orig_default, orig_value, NULL, NULL, NULL, NULL, NULL, diff, &diff_node);
                 }
-
                 free(orig_value);
-                LY_CHECK_GOTO(ret, cleanup);
-            } else if (ret == LY_ENOT) {
-                ret = LY_SUCCESS;
-            } else {
-                goto cleanup;
+                LY_CHECK_GOTO(rc, cleanup);
             }
         }
 
-        /* check descendants, if any, recursively */
         if (match_second) {
-            LY_CHECK_GOTO(ret = lyd_diff_siblings_r(lyd_child_no_keys(iter_first), lyd_child_no_keys(match_second),
+            if ((options & LYD_DIFF_META) && diff_node) {
+                /* create metadata diff for the node (and list keys, if relevant) */
+                LY_CHECK_GOTO(rc = lyd_diff_node_metadata_r(iter_first, match_second, 1, diff_node), cleanup);
+            }
+
+            /* check descendants, if any, recursively */
+            LY_CHECK_GOTO(rc = lyd_diff_siblings_r(lyd_child_no_keys(iter_first), lyd_child_no_keys(match_second),
                     options, 0, diff), cleanup);
+        } else {
+            if ((options & LYD_DIFF_META) && diff_node) {
+                /* create metadata diff for the node and all its descendants */
+                LY_CHECK_GOTO(rc = lyd_diff_node_metadata_r(iter_first, NULL, 0, diff_node), cleanup);
+            }
         }
 
         if (nosiblings) {
@@ -1018,47 +1305,51 @@ lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second,
             continue;
         }
 
+        diff_node = NULL;
+
         /* find a match in the first tree */
-        LY_CHECK_GOTO(ret = lyd_diff_find_match(first, iter_second, options & LYD_DIFF_DEFAULTS, &dup_inst_first,
+        LY_CHECK_GOTO(rc = lyd_diff_find_match(first, iter_second, options & LYD_DIFF_DEFAULTS, &dup_inst_first,
                 &match_first), cleanup);
 
         if (lysc_is_userordered(iter_second->schema)) {
             /* get userord entry */
             userord_item = lyd_diff_userord_get(match_first, iter_second->schema, &userord);
-            LY_CHECK_ERR_GOTO(!userord_item, LOGMEM(LYD_CTX(iter_second)); ret = LY_EMEM, cleanup);
+            LY_CHECK_ERR_GOTO(!userord_item, LOGMEM(LYD_CTX(iter_second)); rc = LY_EMEM, cleanup);
 
             /* get all the attributes */
-            ret = lyd_diff_userord_attrs(match_first, iter_second, options, userord_item, &op, &orig_default,
+            r = lyd_diff_userord_attrs(match_first, iter_second, options, userord_item, &op, &orig_default,
                     &value, &orig_value, &key, &orig_key, &position, &orig_position);
+            if (r && (r != LY_ENOT)) {
+                goto cleanup;
+            }
 
             /* add into diff if there are any changes */
-            if (!ret) {
-                ret = lyd_diff_add(iter_second, op, orig_default, orig_value, key, value, position, orig_key,
-                        orig_position, diff);
-
+            if (!r) {
+                rc = lyd_diff_add(iter_second, op, orig_default, orig_value, key, value, position, orig_key,
+                        orig_position, diff, &diff_node);
                 free(orig_value);
                 free(key);
                 free(value);
                 free(position);
                 free(orig_key);
                 free(orig_position);
-                LY_CHECK_GOTO(ret, cleanup);
-            } else if (ret == LY_ENOT) {
-                ret = LY_SUCCESS;
-            } else {
-                goto cleanup;
+                LY_CHECK_GOTO(rc, cleanup);
             }
         } else if (!match_first) {
             /* get all the attributes */
-            LY_CHECK_GOTO(ret = lyd_diff_attrs(match_first, iter_second, options, &op, &orig_default, &orig_value), cleanup);
+            LY_CHECK_GOTO(rc = lyd_diff_attrs(match_first, iter_second, options, &op, &orig_default, &orig_value), cleanup);
 
             /* there must be changes, it is created */
             assert(op == LYD_DIFF_OP_CREATE);
-            ret = lyd_diff_add(iter_second, op, orig_default, orig_value, NULL, NULL, NULL, NULL, NULL, diff);
-
+            rc = lyd_diff_add(iter_second, op, orig_default, orig_value, NULL, NULL, NULL, NULL, NULL, diff, &diff_node);
             free(orig_value);
-            LY_CHECK_GOTO(ret, cleanup);
+            LY_CHECK_GOTO(rc, cleanup);
         } /* else was handled */
+
+        if ((options & LYD_DIFF_META) && diff_node) {
+            /* create metadata diff for the node and all its descendants */
+            LY_CHECK_GOTO(rc = lyd_diff_node_metadata_r(match_first, iter_second, 0, diff_node), cleanup);
+        }
 
         if (nosiblings) {
             break;
@@ -1072,7 +1363,7 @@ cleanup:
         LY_ARRAY_FREE(userord[u].inst);
     }
     LY_ARRAY_FREE(userord);
-    return ret;
+    return rc;
 }
 
 static LY_ERR
