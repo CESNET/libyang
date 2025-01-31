@@ -232,10 +232,11 @@ lyd_diff_find_meta(const struct lyd_node *node, const char *name, struct lyd_met
  *
  * @param[in] diff_node Diff node.
  * @param[out] op Operation.
+ * @param[out] found Whether any @p op was found. If not set, no found operation is an error.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_diff_get_op(const struct lyd_node *diff_node, enum lyd_diff_op *op)
+lyd_diff_get_op(const struct lyd_node *diff_node, enum lyd_diff_op *op, ly_bool *found)
 {
     struct lyd_meta *meta = NULL;
     struct lyd_attr *attr = NULL;
@@ -255,14 +256,22 @@ lyd_diff_get_op(const struct lyd_node *diff_node, enum lyd_diff_op *op)
             continue;
         }
         *op = lyd_diff_str2op(str);
+        if (found) {
+            *found = 1;
+        }
         return LY_SUCCESS;
     }
 
     /* operation not found */
-    path = lyd_path(diff_node, LYD_PATH_STD, NULL, 0);
-    LOGERR(LYD_CTX(diff_node), LY_EINVAL, "Node \"%s\" without an operation.", path);
-    free(path);
-    return LY_EINT;
+    if (found) {
+        *found = 0;
+        return LY_SUCCESS;
+    } else {
+        path = lyd_path(diff_node, LYD_PATH_STD, NULL, 0);
+        LOGERR(LYD_CTX(diff_node), LY_EINVAL, "Node \"%s\" without an operation.", path);
+        free(path);
+        return LY_EINT;
+    }
 }
 
 /**
@@ -317,6 +326,7 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
     enum lyd_diff_op cur_op;
     struct lyd_meta *meta;
     uint32_t diff_opts;
+    ly_bool found;
 
     assert(diff);
 
@@ -369,8 +379,7 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
 
     if (match && (parent == node)) {
         /* special case when there is already an operation on our descendant */
-        assert(!lyd_diff_get_op(diff_parent, &cur_op) && (cur_op == LYD_DIFF_OP_NONE));
-        (void)cur_op;
+        assert(!lyd_diff_get_op(diff_parent, &cur_op, NULL) && (cur_op == LYD_DIFF_OP_NONE));
 
         /* move it to the end where it is expected (matters for user-ordered lists) */
         if (lysc_is_userordered(diff_parent->schema)) {
@@ -436,8 +445,11 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
         }
     }
 
-    /* add subtree operation */
-    LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:operation", lyd_diff_op2str(op), LYD_NEW_VAL_STORE_ONLY, NULL));
+    /* add subtree operation if needed */
+    LY_CHECK_RET(lyd_diff_get_op(dup, &cur_op, &found));
+    if (!found || (cur_op != op)) {
+        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:operation", lyd_diff_op2str(op), LYD_NEW_VAL_STORE_ONLY, NULL));
+    }
 
     if (op == LYD_DIFF_OP_CREATE) {
         /* all nested user-ordered (leaf-)lists need special metadata for create op */
@@ -1705,7 +1717,7 @@ lyd_diff_apply_r(struct lyd_node **first_node, struct lyd_node *parent_node, con
     const struct ly_ctx *ctx = LYD_CTX(diff_node);
 
     /* read all the valid attributes */
-    LY_CHECK_RET(lyd_diff_get_op(diff_node, &op));
+    LY_CHECK_RET(lyd_diff_get_op(diff_node, &op, NULL));
 
     /* handle specific user-ordered (leaf-)lists operations separately */
     if (lysc_is_userordered(diff_node->schema) && ((op == LYD_DIFF_OP_CREATE) || (op == LYD_DIFF_OP_REPLACE))) {
@@ -2331,7 +2343,7 @@ lyd_diff_is_redundant(struct lyd_node *diff)
     assert(mod);
 
     /* get node operation */
-    LY_CHECK_RET(lyd_diff_get_op(diff, &op), 0);
+    LY_CHECK_RET(lyd_diff_get_op(diff, &op, NULL), 0);
 
     if ((op == LYD_DIFF_OP_REPLACE) && lysc_is_userordered(diff->schema)) {
         /* get metadata names */
@@ -2419,14 +2431,14 @@ lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, 
     struct ly_ht *child_dup_inst = NULL;
 
     /* get source node operation */
-    LY_CHECK_RET(lyd_diff_get_op(src_diff, &src_op));
+    LY_CHECK_RET(lyd_diff_get_op(src_diff, &src_op, NULL));
 
     /* find an equal node in the current diff */
     LY_CHECK_RET(lyd_diff_find_match(diff_parent ? lyd_child_no_keys(diff_parent) : *diff, src_diff, 1, dup_inst, &diff_node));
 
     if (diff_node) {
         /* get target (current) operation */
-        LY_CHECK_RET(lyd_diff_get_op(diff_node, &cur_op));
+        LY_CHECK_RET(lyd_diff_get_op(diff_node, &cur_op, NULL));
 
         /* merge operations */
         switch (src_op) {
@@ -2717,7 +2729,7 @@ lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff)
             /* skip all keys */
             if (!lysc_is_key(elem->schema)) {
                 /* find operation attribute, if any */
-                LY_CHECK_GOTO(ret = lyd_diff_get_op(elem, &op), cleanup);
+                LY_CHECK_GOTO(ret = lyd_diff_get_op(elem, &op, NULL), cleanup);
 
                 switch (op) {
                 case LYD_DIFF_OP_CREATE:
