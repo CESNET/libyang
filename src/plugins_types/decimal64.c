@@ -108,7 +108,7 @@ lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *typ
         num = le64toh(num);
     } else {
         /* check hints */
-        ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+        ret = lyplg_type_check_hints(ctx, hints, value, value_len, type->basetype, NULL, err);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* parse decimal64 value */

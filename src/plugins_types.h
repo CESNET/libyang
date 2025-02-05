@@ -243,6 +243,7 @@ LIBYANG_API_DECL void ly_err_free(void *ptr);
  *
  * Use only in implementations of ::lyplg_type_store_clb which provide all the necessary parameters for this function.
  *
+ * @param[in] ctx libyang context.
  * @param[in] hints Bitmap of [value hints](@ref lydvalhints) of all the allowed value types provided by parsers
  *            to ::lyplg_type_store_clb.
  * @param[in] value Lexical representation of the value to be stored.
@@ -253,8 +254,8 @@ LIBYANG_API_DECL void ly_err_free(void *ptr);
  * @param[out] err Pointer to store error information in case of failure.
  * @return LY_ERR value
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TYPE type,
-        int *base, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_check_hints(const struct ly_ctx *ctx, uint32_t hints, const char *value,
+        size_t value_len, LY_DATA_TYPE type, int *base, struct ly_err_item **err);
 
 /**
  * @brief Check that the value of a type is allowed based on its status.
