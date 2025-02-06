@@ -73,7 +73,7 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
         num = le64toh(num);
     } else {
         /* check hints */
-        ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, &base, err);
+        ret = lyplg_type_check_hints(ctx, hints, value, value_len, type->basetype, &base, err);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* parse the integer */
@@ -339,7 +339,7 @@ lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, co
         num = le64toh(num);
     } else {
         /* check hints */
-        ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, &base, err);
+        ret = lyplg_type_check_hints(ctx, hints, value, value_len, type->basetype, &base, err);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* parse the integer */

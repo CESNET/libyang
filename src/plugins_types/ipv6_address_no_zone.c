@@ -132,7 +132,7 @@ lyplg_type_store_ipv6_address_no_zone(const struct ly_ctx *ctx, const struct lys
     LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
 
     /* check hints */
-    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = lyplg_type_check_hints(ctx, hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* get the network-byte order address, validates the value */

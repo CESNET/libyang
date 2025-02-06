@@ -207,6 +207,10 @@ struct ly_ctx;
                                         loaded except for built-in YANG types so all derived types will use these and
                                         for all purposes behave as the base type. The option can be used for cases when
                                         invalid data needs to be stored in YANG node values. */
+#define LY_CTX_LOOSE_JSON_DATATYPES 0x1000 /**< By default, JSON data values are validated to be in the proper format.  For
+                                        instance numbers are expected to not be enclosed in quotes, nor are boolean
+                                        values.  Setting this context option will disable this validation.  Prior to
+                                        v1.0.212 this was the default behavior. */
 
 /** @} contextoptions */
 
