@@ -1670,7 +1670,7 @@ ly_time_str2time(const char *value, time_t *time, char **fractions_s)
     int64_t shift, shift_m;
     time_t t;
 
-    LY_CHECK_ARG_RET(NULL, value, strlen(value) > 17, time, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, value, strnlen(value, 18) > 17, time, LY_EINVAL);
 
     tm.tm_year = atoi(&value[0]) - 1900;
     tm.tm_mon = atoi(&value[5]) - 1;
