@@ -544,23 +544,6 @@ lyd_diff_userord_get(const struct lyd_node *first, const struct lysc_node *schem
 }
 
 /**
- * @brief Check whether a metadata instance is relevant for diff.
- *
- * @param[in] meta Metadata to check.
- * @return 1 if the metadata should be skipped;
- * @return 0 otherwise.
- */
-static ly_bool
-lyd_diff_node_metadata_skip(const struct lyd_meta *meta)
-{
-    if (!strcmp(meta->annotation->module->name, "yang")) {
-        return 1;
-    }
-
-    return 0;
-}
-
-/**
  * @brief Check whether there are any metadata differences on 2 nodes.
  *
  * @param[in] first First node.
@@ -572,15 +555,19 @@ static ly_bool
 lyd_diff_node_metadata_check(const struct lyd_node *first, const struct lyd_node *second)
 {
     ly_bool rc = 0;
+    const struct lys_module *mod;
     const struct lyd_meta *m, **meta_second = NULL;
     uint32_t i, m_second_count = 0;
     const struct lyd_node *first_ch, *second_ch;
 
     assert(first && second);
 
+    mod = ly_ctx_get_module_implemented(LYD_CTX(first), "yang");
+    assert(mod);
+
     /* collect second node metadata that we can delete from */
     LY_LIST_FOR(second->meta, m) {
-        if (lyd_diff_node_metadata_skip(m)) {
+        if (m->annotation->module == mod) {
             continue;
         }
 
@@ -592,7 +579,7 @@ lyd_diff_node_metadata_check(const struct lyd_node *first, const struct lyd_node
 
     /* go through first metadata and search for a match in second */
     LY_LIST_FOR(first->meta, m) {
-        if (lyd_diff_node_metadata_skip(m)) {
+        if (m->annotation->module == mod) {
             continue;
         }
 
@@ -1031,7 +1018,7 @@ lyd_diff_node_metadata_add(struct lyd_node *parent, const char *diff_meta_name, 
     }
 
     /* create the metadata */
-    LY_CHECK_GOTO(rc = lyd_new_meta(NULL, parent, NULL, diff_meta_name, val, 0, NULL), cleanup)
+    LY_CHECK_GOTO(rc = lyd_new_meta(NULL, parent, NULL, diff_meta_name, val, 0, NULL), cleanup);
 
 cleanup:
     free(val);
@@ -1050,13 +1037,17 @@ static LY_ERR
 lyd_diff_node_metadata(const struct lyd_node *first, const struct lyd_node *second, struct lyd_node *diff_node)
 {
     LY_ERR rc = LY_SUCCESS;
+    const struct lys_module *mod;
     const struct lyd_meta *m, **meta_second = NULL;
     uint32_t i, m_second_count = 0, match_ann_idx;
+
+    mod = ly_ctx_get_module_implemented(LYD_CTX(diff_node), "yang");
+    assert(mod);
 
     /* collect second node metadata that we can delete from */
     if (second) {
         LY_LIST_FOR(second->meta, m) {
-            if (lyd_diff_node_metadata_skip(m)) {
+            if (m->annotation->module == mod) {
                 continue;
             }
 
@@ -1070,7 +1061,7 @@ lyd_diff_node_metadata(const struct lyd_node *first, const struct lyd_node *seco
     /* go through first metadata and search for match in second */
     if (first) {
         LY_LIST_FOR(first->meta, m) {
-            if (lyd_diff_node_metadata_skip(m)) {
+            if (m->annotation->module == mod) {
                 continue;
             }
 
@@ -1526,13 +1517,12 @@ lyd_diff_insert(struct lyd_node **first_node, struct lyd_node *parent_node, stru
  * @brief Parse a diff metadata value into the changed metadata instance name (with module name) and value.
  *
  * @param[in] meta Diff metadata instance.
- * @param[in] with_equals Whether to parse @p name with '='.
  * @param[out] name Optional changed metadata name.
- * @param[out] value Changed metadata value.
+ * @param[out] value Optional changed metadata value.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_diff_apply_metadata_parse(const struct lyd_meta *meta, ly_bool with_equals, char **name, const char **value)
+lyd_diff_apply_metadata_parse(const struct lyd_meta *meta, char **name, const char **value)
 {
     LY_ERR rc = LY_SUCCESS;
     const char *v, *ptr;
@@ -1542,27 +1532,31 @@ lyd_diff_apply_metadata_parse(const struct lyd_meta *meta, ly_bool with_equals, 
     LY_CHECK_ERR_GOTO(!ptr, LOGINT(meta->annotation->module->ctx); rc = LY_EINT, cleanup);
 
     if (name) {
-        *name = strndup(v, (with_equals ? ptr + 1 : ptr) - v);
+        *name = strndup(v, ptr - v);
         LY_CHECK_ERR_GOTO(!*name, LOGMEM(meta->annotation->module->ctx); rc = LY_EMEM, cleanup);
     }
 
-    *value = ptr + 1;
+    if (value) {
+        *value = ptr + 1;
+    }
 
 cleanup:
     return rc;
 }
 
 /**
- * @brief Find a metadata instance, an error if it cannot be found.
+ * @brief Find a metadata instance with a specific value.
  *
  * @param[in] meta First metadata to consider.
  * @param[in] name Metadata name with module name.
  * @param[in] value Metadata value.
+ * @param[in] log Whether to log an error if not found.
  * @param[out] match Found metadata.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_diff_apply_metadata_find(const struct lyd_meta *meta, const char *name, const char *value, struct lyd_meta **match)
+lyd_diff_metadata_find(const struct lyd_meta *meta, const char *name, const char *value, ly_bool log,
+        struct lyd_meta **match)
 {
     const struct lyd_meta *m;
 
@@ -1574,8 +1568,12 @@ lyd_diff_apply_metadata_find(const struct lyd_meta *meta, const char *name, cons
     }
 
     *match = NULL;
-    LOGINT(meta->annotation->module->ctx);
-    return LY_EINT;
+    if (log) {
+        LOGINT(meta->annotation->module->ctx);
+        return LY_EINT;
+    } else {
+        return LY_SUCCESS;
+    }
 }
 
 /**
@@ -1598,6 +1596,62 @@ lyd_diff_meta_store(struct lyd_meta *meta, struct lyd_meta ***meta_a, uint32_t *
 }
 
 /**
+ * @brief Align all meta-replace metadata with its matching meta-orig metadata.
+ *
+ * @param[in] meta_replace Meta-replace metadata.
+ * @param[in] mr_count Count of @p meta_replace.
+ * @param[in,out] meta_orig Meta-orig metadata to align and reorder.
+ * @param[in] mo_count Count of @p meta_orig.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_diff_metadata_replace_orig_align(struct lyd_meta **meta_replace, uint32_t mr_count, struct lyd_meta **meta_orig,
+        uint32_t mo_count)
+{
+    const struct ly_ctx *ctx;
+    struct lyd_meta *m;
+    const char *val1, *val2, *ptr;
+    uint32_t i, j;
+
+    if (!mr_count) {
+        return LY_SUCCESS;
+    }
+
+    ctx = meta_replace[0]->annotation->module->ctx;
+
+    LY_CHECK_ERR_RET(mr_count != mo_count, LOGINT(ctx), LY_EINT);
+
+    for (i = 0; i < mr_count; ++i) {
+        /* meta-replace value */
+        val1 = lyd_get_meta_value(meta_replace[i]);
+        ptr = strchr(val1, '=');
+        LY_CHECK_ERR_RET(!ptr, LOGINT(ctx), LY_EINT);
+        ++ptr;
+
+        /* find matching meta-orig value */
+        j = i;
+        while (j < mo_count) {
+            val2 = lyd_get_meta_value(meta_orig[j]);
+            if (!strncmp(val1, val2, ptr - val1)) {
+                break;
+            }
+
+            ++j;
+        }
+        LY_CHECK_ERR_RET(j == mo_count, LOGINT(ctx), LY_EINT);
+
+        if (j != i) {
+            /* non-matching index, move it */
+            m = meta_orig[i];
+            meta_orig[i] = meta_orig[j];
+            meta_orig[j] = m;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Apply any metadata changes in the diff.
  *
  * @param[in,out] node Node to change.
@@ -1609,25 +1663,25 @@ lyd_diff_apply_metadata(struct lyd_node *node, const struct lyd_node *diff_node)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_meta *m, *m2, **meta_replace = NULL, **meta_orig = NULL;
-    uint32_t i, j, m_replace_count = 0, m_orig_count = 0;
-    const struct lys_module *ly_mod;
+    uint32_t i, mr_count = 0, mo_count = 0;
+    const struct lys_module *mod;
     const char *meta_value, *old_meta_value;
     char *meta_name = NULL;
     const struct lyd_node *diff_ch;
     struct lyd_node *node_ch;
 
-    ly_mod = ly_ctx_get_module_implemented(LYD_CTX(node), "yang");
-    assert(ly_mod);
+    mod = ly_ctx_get_module_implemented(LYD_CTX(node), "yang");
+    assert(mod);
 
     /* go through all the metadata */
     LY_LIST_FOR(diff_node->meta, m) {
-        if (m->annotation->module != ly_mod) {
+        if (m->annotation->module != mod) {
             continue;
         }
 
         if (!strcmp(m->name, "meta-create")) {
             /* parse the value */
-            LY_CHECK_GOTO(rc = lyd_diff_apply_metadata_parse(m, 0, &meta_name, &meta_value), cleanup);
+            LY_CHECK_GOTO(rc = lyd_diff_apply_metadata_parse(m, &meta_name, &meta_value), cleanup);
 
             /* create the metadata instance */
             LY_CHECK_GOTO(rc = lyd_new_meta(NULL, node, NULL, meta_name, meta_value, 0, NULL), cleanup);
@@ -1636,50 +1690,44 @@ lyd_diff_apply_metadata(struct lyd_node *node, const struct lyd_node *diff_node)
             meta_name = NULL;
         } else if (!strcmp(m->name, "meta-delete")) {
             /* parse the value */
-            LY_CHECK_GOTO(rc = lyd_diff_apply_metadata_parse(m, 0, &meta_name, &meta_value), cleanup);
+            LY_CHECK_GOTO(rc = lyd_diff_apply_metadata_parse(m, &meta_name, &meta_value), cleanup);
 
             /* find the metadata instance and free it */
-            LY_CHECK_GOTO(rc = lyd_diff_apply_metadata_find(node->meta, meta_name, meta_value, &m2), cleanup);
+            LY_CHECK_GOTO(rc = lyd_diff_metadata_find(node->meta, meta_name, meta_value, 1, &m2), cleanup);
             lyd_free_meta_single(m2);
 
             free(meta_name);
             meta_name = NULL;
         } else if (!strcmp(m->name, "meta-replace")) {
             /* just store it, to be able to correctly match to 'meta-orig' */
-            LY_CHECK_GOTO(rc = lyd_diff_meta_store(m, &meta_replace, &m_replace_count), cleanup);
+            LY_CHECK_GOTO(rc = lyd_diff_meta_store(m, &meta_replace, &mr_count), cleanup);
         } else if (!strcmp(m->name, "meta-orig")) {
             /* just store it */
-            LY_CHECK_GOTO(rc = lyd_diff_meta_store(m, &meta_orig, &m_orig_count), cleanup);
+            LY_CHECK_GOTO(rc = lyd_diff_meta_store(m, &meta_orig, &mo_count), cleanup);
         }
     }
 
-    /* process replaced metadata */
-    LY_CHECK_ERR_GOTO(m_replace_count != m_orig_count, LOGINT(LYD_CTX(node)); rc = LY_EINT, cleanup);
-    for (i = 0; i < m_replace_count; ++i) {
-        /* get the changed meta name with '=' */
-        LY_CHECK_GOTO(rc = lyd_diff_apply_metadata_parse(meta_replace[i], 1, &meta_name, &meta_value), cleanup);
+    /* make sure meta_replace and meta_orig arrays are aligned */
+    LY_CHECK_GOTO(rc = lyd_diff_metadata_replace_orig_align(meta_replace, mr_count, meta_orig, mo_count), cleanup);
 
-        /* find a matching 'meta-orig' */
-        for (j = 0; j < m_orig_count; ++j) {
-            if (meta_orig[j] && !strncmp(lyd_get_meta_value(meta_orig[j]), meta_name, strlen(meta_name))) {
-                break;
-            }
-        }
-        LY_CHECK_ERR_GOTO(j == m_orig_count, LOGINT(LYD_CTX(node)); rc = LY_EINT, cleanup);
+    /* process replaced metadata */
+    LY_CHECK_ERR_GOTO(mr_count != mo_count, LOGINT(LYD_CTX(node)); rc = LY_EINT, cleanup);
+    for (i = 0; i < mr_count; ++i) {
+        /* get the changed meta name with '=' */
+        LY_CHECK_GOTO(rc = lyd_diff_apply_metadata_parse(meta_replace[i], &meta_name, &meta_value), cleanup);
 
         /* parse the orig value */
-        LY_CHECK_GOTO(rc = lyd_diff_apply_metadata_parse(m, 0, NULL, &old_meta_value), cleanup);
+        LY_CHECK_GOTO(rc = lyd_diff_apply_metadata_parse(meta_orig[i], NULL, &old_meta_value), cleanup);
 
         /* find the metadata instance */
-        meta_name[strlen(meta_name) - 1] = '\0';
-        LY_CHECK_GOTO(rc = lyd_diff_apply_metadata_find(node->meta, meta_name, old_meta_value, &m2), cleanup);
+        LY_CHECK_GOTO(rc = lyd_diff_metadata_find(node->meta, meta_name, old_meta_value, 0, &m2), cleanup);
         LY_CHECK_ERR_GOTO(!m2, LOGINT(LYD_CTX(node)); rc = LY_EINT, cleanup);
 
         /* change its value */
         LY_CHECK_GOTO(rc = lyd_change_meta(m2, meta_value), cleanup);
 
         /* meta-orig spent */
-        meta_orig[j] = NULL;
+        meta_orig[i] = NULL;
 
         free(meta_name);
         meta_name = NULL;
@@ -2331,12 +2379,48 @@ lyd_diff_merge_delete(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
 }
 
 /**
+ * @brief Check a node is redundant based on having any diff metadata.
+ *
+ * @param[in] diff Diff node to check.
+ * @return 1 if the node is redundant;
+ * @return 0 otherwise.
+ */
+static ly_bool
+lyd_diff_is_redundant_meta(const struct lyd_node *diff)
+{
+    const struct lyd_meta *m;
+    const struct lyd_node *child;
+
+    /* diff metadata on the node */
+    LY_LIST_FOR(diff->meta, m) {
+        if (!strncmp(m->name, "meta-", 5)) {
+            return 0;
+        }
+    }
+
+    /* diff metadata on keys */
+    LY_LIST_FOR(lyd_child(diff), child) {
+        if (!lysc_is_key(child->schema)) {
+            break;
+        }
+
+        LY_LIST_FOR(child->meta, m) {
+            if (!strncmp(m->name, "meta-", 5)) {
+                return 0;
+            }
+        }
+    }
+
+    return 1;
+}
+
+/**
  * @brief Check whether this diff node is redundant (does not change data).
  *
  * @param[in] diff Diff node.
  * @return 0 if not, non-zero if it is.
  */
-static int
+static ly_bool
 lyd_diff_is_redundant(struct lyd_node *diff)
 {
     enum lyd_diff_op op;
@@ -2353,7 +2437,7 @@ lyd_diff_is_redundant(struct lyd_node *diff)
     } else {
         child = lyd_child_no_keys(diff);
     }
-    mod = ly_ctx_get_module_latest(LYD_CTX(diff), "yang");
+    mod = ly_ctx_get_module_implemented(LYD_CTX(diff), "yang");
     assert(mod);
 
     /* get node operation */
@@ -2402,6 +2486,11 @@ lyd_diff_is_redundant(struct lyd_node *diff)
             return 1;
         }
 
+        /* check for diff metadata */
+        if (!lyd_diff_is_redundant_meta(diff)) {
+            return 0;
+        }
+
         if (diff->schema->nodetype & LYD_NODE_TERM) {
             /* check whether at least the default flags are different */
             meta = lyd_find_meta(diff->meta, mod, "orig-default");
@@ -2421,6 +2510,175 @@ lyd_diff_is_redundant(struct lyd_node *diff)
     }
 
     return 0;
+}
+
+/**
+ * @brief Merge all diff metadata found on a source diff node.
+ *
+ * @param[in] src_diff Source node.
+ * @param[in,out] trg_diff Target node to update.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_diff_merge_metadata(const struct lyd_node *src_diff, struct lyd_node *trg_diff)
+{
+    LY_ERR rc = LY_SUCCESS;
+    const struct lys_module *mod;
+    struct lyd_meta *m, **src_meta_replace = NULL, **src_meta_orig = NULL;
+    struct lyd_meta **trg_meta_replace = NULL, **trg_meta_orig = NULL, *m1, *m2;
+    uint32_t i, j, src_mr_count = 0, src_mo_count = 0, trg_mr_count = 0, trg_mo_count = 0;
+
+    assert(src_diff->schema == trg_diff->schema);
+
+    mod = ly_ctx_get_module_implemented(LYD_CTX(src_diff), "yang");
+    assert(mod);
+
+    /* collect all the metadata so we can safely modify them */
+    LY_LIST_FOR(trg_diff->meta, m) {
+        if (m->annotation->module != mod) {
+            continue;
+        }
+
+        if (!strcmp(m->name, "meta-replace")) {
+            LY_CHECK_GOTO(rc = lyd_diff_meta_store(m, &trg_meta_replace, &trg_mr_count), cleanup);
+        } else if (!strcmp(m->name, "meta-orig")) {
+            LY_CHECK_GOTO(rc = lyd_diff_meta_store(m, &trg_meta_orig, &trg_mo_count), cleanup);
+        }
+    }
+
+    /* make sure meta_replace and meta_orig arrays are aligned */
+    rc = lyd_diff_metadata_replace_orig_align(trg_meta_replace, trg_mr_count, trg_meta_orig, trg_mo_count);
+    LY_CHECK_GOTO(rc, cleanup);
+
+    LY_LIST_FOR(src_diff->meta, m) {
+        if (m->annotation->module != mod) {
+            continue;
+        }
+
+        if (!strcmp(m->name, "meta-create")) {
+            /* find relevant metadata in the target */
+            rc = lyd_diff_metadata_find(trg_diff->meta, "yang:meta-delete", lyd_get_meta_value(m), 0, &m1);
+            LY_CHECK_GOTO(rc, cleanup);
+            m2 = NULL;
+            for (i = 0; i < trg_mo_count; ++i) {
+                if (lyd_get_meta_value(m) == lyd_get_meta_value(trg_meta_orig[i])) {
+                    m2 = trg_meta_orig[i];
+                    break;
+                }
+            }
+
+            if (m1) {
+                /* create + delete -> no change */
+                lyd_free_meta_single(m1);
+            } else if (m2) {
+                /* create + replace -> create with updated value */
+                rc = lyd_new_meta(NULL, trg_diff, mod, "meta-create", lyd_get_meta_value(trg_meta_replace[i]), 0, NULL);
+                LY_CHECK_GOTO(rc, cleanup);
+
+                /* remove meta-replace and meta-orig */
+                lyd_free_meta_single(trg_meta_replace[i]);
+                --trg_mr_count;
+                if (i < trg_mr_count) {
+                    memmove(&trg_meta_replace[i], &trg_meta_replace[i + 1], (trg_mr_count - i) * sizeof *trg_meta_replace);
+                }
+
+                lyd_free_meta_single(trg_meta_orig[i]);
+                --trg_mo_count;
+                if (i < trg_mo_count) {
+                    memmove(&trg_meta_orig[i], &trg_meta_orig[i + 1], (trg_mo_count - i) * sizeof *trg_meta_orig);
+                }
+            } else {
+                /* copy to the target */
+                LY_CHECK_GOTO(rc = lyd_dup_meta_single(m, trg_diff, NULL), cleanup);
+            }
+        } else if (!strcmp(m->name, "meta-delete")) {
+            /* find relevant metadata in the target */
+            rc = lyd_diff_metadata_find(trg_diff->meta, "yang:meta-create", lyd_get_meta_value(m), 0, &m1);
+            LY_CHECK_GOTO(rc, cleanup);
+
+            if (m1) {
+                /* delete + create -> no change */
+                lyd_free_meta_single(m1);
+            } else {
+                /* copy to the target */
+                LY_CHECK_GOTO(rc = lyd_dup_meta_single(m, trg_diff, NULL), cleanup);
+            }
+        } else if (!strcmp(m->name, "meta-replace")) {
+            /* collect all meta-replace metadata */
+            LY_CHECK_GOTO(rc = lyd_diff_meta_store(m, &src_meta_replace, &src_mr_count), cleanup);
+        } else if (!strcmp(m->name, "meta-orig")) {
+            /* collect all meta-orig metadata */
+            LY_CHECK_GOTO(rc = lyd_diff_meta_store(m, &src_meta_orig, &src_mo_count), cleanup);
+        }
+    }
+
+    /* make sure meta_replace and meta_orig arrays are aligned */
+    rc = lyd_diff_metadata_replace_orig_align(src_meta_replace, src_mr_count, src_meta_orig, src_mo_count);
+    LY_CHECK_GOTO(rc, cleanup);
+
+    for (i = 0; i < src_mr_count; ++i) {
+        /* find relevant metadata in the target */
+        rc = lyd_diff_metadata_find(trg_diff->meta, "yang:meta-delete", lyd_get_meta_value(src_meta_replace[i]), 0, &m1);
+        LY_CHECK_GOTO(rc, cleanup);
+        m2 = NULL;
+        for (j = 0; j < trg_mo_count; ++j) {
+            if (lyd_get_meta_value(trg_meta_orig[j]) == lyd_get_meta_value(src_meta_replace[i])) {
+                m2 = trg_meta_orig[j];
+                break;
+            }
+        }
+
+        if (m1) {
+            /* replace + delete -> delete with updated value */
+            LY_CHECK_GOTO(rc = lyd_change_meta(m1, lyd_get_meta_value(src_meta_orig[i])), cleanup);
+        } else if (m2) {
+            /* replace + replace -> replace (orig) with updated value */
+            LY_CHECK_GOTO(rc = lyd_change_meta(m2, lyd_get_meta_value(src_meta_orig[i])), cleanup);
+        } else {
+            /* copy to the target */
+            LY_CHECK_GOTO(rc = lyd_dup_meta_single(src_meta_replace[i], trg_diff, NULL), cleanup);
+            LY_CHECK_GOTO(rc = lyd_dup_meta_single(src_meta_orig[i], trg_diff, NULL), cleanup);
+        }
+    }
+
+cleanup:
+    free(src_meta_replace);
+    free(src_meta_orig);
+    free(trg_meta_replace);
+    free(trg_meta_orig);
+    return rc;
+}
+
+/**
+ * @brief Merge all diff metadata found on a source diff subtree, recursively.
+ *
+ * @param[in] src_diff Source subtree.
+ * @param[in,out] trg_diff Target subtree to update.
+ * @param[in] keys_only Whether to process the node with keys only or with all the descendants.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_diff_merge_metadata_r(const struct lyd_node *src_diff, struct lyd_node *trg_diff, ly_bool keys_only)
+{
+    const struct lyd_node *src_child;
+    struct lyd_node *trg_child;
+
+    /* merge metadata on the node itself */
+    LY_CHECK_RET(lyd_diff_merge_metadata(src_diff, trg_diff));
+
+    /* merge descendants recursively */
+    trg_child = lyd_child(trg_diff);
+    LY_LIST_FOR(lyd_child(src_diff), src_child) {
+        if (keys_only && !lysc_is_key(src_child->schema)) {
+            break;
+        }
+
+        LY_CHECK_RET(lyd_diff_merge_metadata(src_child, trg_child));
+
+        trg_child = trg_child->next;
+    }
+
+    return LY_SUCCESS;
 }
 
 /**
@@ -2482,6 +2740,9 @@ lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, 
             LOGERR(LYD_CTX(src_diff), LY_EOTHER, "Merging operation \"%s\" failed.", lyd_diff_op2str(src_op));
             return ret;
         }
+
+        /* merge any metadata */
+        LY_CHECK_RET(lyd_diff_merge_metadata_r(src_diff, diff_node, lysc_is_dup_inst_list(src_diff->schema) ? 0 : 1));
 
         if (diff_cb) {
             /* call callback */
@@ -2750,16 +3011,16 @@ lyd_diff_reverse_metadata_diff(struct lyd_node *node)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_meta *m, **meta_create = NULL, **meta_delete = NULL, **meta_replace = NULL, **meta_orig = NULL;
-    uint32_t i, j, mc_count = 0, md_count = 0, mr_count = 0, mo_count = 0;
-    const struct lys_module *ly_mod;
-    const char *ptr, *val1, *val2;
+    uint32_t i, mc_count = 0, md_count = 0, mr_count = 0, mo_count = 0;
+    const struct lys_module *mod;
+    const char *val1;
 
-    ly_mod = ly_ctx_get_module_implemented(LYD_CTX(node), "yang");
-    assert(ly_mod);
+    mod = ly_ctx_get_module_implemented(LYD_CTX(node), "yang");
+    assert(mod);
 
     /* collect all the metadata so we can safely modify them */
     LY_LIST_FOR(node->meta, m) {
-        if (m->annotation->module != ly_mod) {
+        if (m->annotation->module != mod) {
             continue;
         }
 
@@ -2774,38 +3035,12 @@ lyd_diff_reverse_metadata_diff(struct lyd_node *node)
         }
     }
 
-    /* check meta_replace and meta_orig arrays are aligned */
-    LY_CHECK_ERR_GOTO(mr_count != mo_count, LOGINT(LYD_CTX(node)); rc = LY_EINT, cleanup);
-    for (i = 0; i < mr_count; ++i) {
-        /* meta-replace value */
-        val1 = lyd_get_meta_value(meta_replace[i]);
-        ptr = strchr(val1, '=');
-        LY_CHECK_ERR_GOTO(!ptr, LOGINT(LYD_CTX(node)); rc = LY_EINT, cleanup);
-        ++ptr;
-
-        /* find matching meta-orig value */
-        j = i;
-        while (j < mo_count) {
-            val2 = lyd_get_meta_value(meta_orig[j]);
-            if (!strncmp(val1, val2, ptr - val1)) {
-                break;
-            }
-
-            ++j;
-        }
-        LY_CHECK_ERR_GOTO(j == mo_count, LOGINT(LYD_CTX(node)); rc = LY_EINT, cleanup);
-
-        if (j != i) {
-            /* non-matching index, move it */
-            m = meta_orig[i];
-            meta_orig[i] = meta_orig[j];
-            meta_orig[j] = m;
-        }
-    }
+    /* make sure meta_replace and meta_orig arrays are aligned */
+    LY_CHECK_GOTO(rc = lyd_diff_metadata_replace_orig_align(meta_replace, mr_count, meta_orig, mo_count), cleanup);
 
     /* reverse all the meta-create metadata */
     for (i = 0; i < mc_count; ++i) {
-        rc = lyd_new_meta(NULL, node, ly_mod, "meta-delete", lyd_get_meta_value(meta_create[i]), 0, NULL);
+        rc = lyd_new_meta(NULL, node, mod, "meta-delete", lyd_get_meta_value(meta_create[i]), 0, NULL);
         LY_CHECK_GOTO(rc, cleanup);
         lyd_free_meta_single(meta_create[i]);
     }
@@ -2827,7 +3062,7 @@ lyd_diff_reverse_metadata_diff(struct lyd_node *node)
 
     /* reverse all the meta-delete metadata */
     for (i = 0; i < md_count; ++i) {
-        rc = lyd_new_meta(NULL, node, ly_mod, "meta-create", lyd_get_meta_value(meta_delete[i]), 0, NULL);
+        rc = lyd_new_meta(NULL, node, mod, "meta-create", lyd_get_meta_value(meta_delete[i]), 0, NULL);
         LY_CHECK_GOTO(rc, cleanup);
         lyd_free_meta_single(meta_delete[i]);
     }

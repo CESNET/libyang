@@ -1354,14 +1354,20 @@ test_metadata(void **state)
             "  </list>\n"
             "</df>\n";
     const char *out_merge =
-            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
-            "  <list yang:operation=\"none\">\n"
+            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\" "
+            "yang:meta-create=\"defaults:my-meta=top\">\n"
+            "  <list yang:operation=\"delete\" yang:meta-delete=\"defaults:my-meta=val1\">\n"
             "    <name>a</name>\n"
-            "    <value yang:operation=\"replace\" yang:orig-value=\"1\" yang:orig-default=\"false\">2</value>\n"
+            "    <value yang:meta-delete=\"defaults:my-meta2=val2\">1</value>\n"
             "  </list>\n"
-            "  <list yang:operation=\"none\">\n"
-            "    <name>b</name>\n"
-            "    <value yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"2\">-2</value>\n"
+            "  <list>\n"
+            "    <name yang:meta-delete=\"defaults:my-meta=val10\">b</name>\n"
+            "    <value yang:orig-default=\"false\" yang:meta-delete=\"defaults:my-meta=repeated\" "
+            "yang:meta-create=\"defaults:my-meta=new\">2</value>\n"
+            "  </list>\n"
+            "  <list yang:operation=\"create\">\n"
+            "    <name yang:meta-create=\"defaults:my-meta=val22\">c</name>\n"
+            "    <value yang:meta-create=\"defaults:my-meta2=val23\">3</value>\n"
             "  </list>\n"
             "</df>\n";
 
