@@ -168,6 +168,21 @@ test_leaf(void **state)
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID, "Invalid non-string-encoded string value \"\".", "/a:foo", 1);
     CHECK_PARSE_LYD(data, LYD_PARSE_JSON_NULL, LYD_VALIDATE_PRESENT, tree);
     assert_null(tree);
+
+    /* validate integer in quotes errors out by default */
+    data = "{\"a:foo3\":\"1234\"}";
+    PARSER_CHECK_ERROR(data, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
+            "Invalid non-number-encoded uint32 value \"1234\".", "/a:foo3", 1);
+
+    /* validate integers are parsed correctly */
+    data = "{\"a:foo3\":1234}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    lyd_free_all(tree);
+
+    /* validate LYD_PARSE_JSON_STRING_DATATYPES parser flag allows integers in quotes */
+    data = "{\"a:foo3\":\"1234\"}";
+    CHECK_PARSE_LYD(data, LYD_PARSE_JSON_STRING_DATATYPES, LYD_VALIDATE_PRESENT, tree);
+    lyd_free_all(tree);
 }
 
 static void

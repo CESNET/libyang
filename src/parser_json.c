@@ -340,7 +340,7 @@ cleanup:
 /**
  * @brief Get the hint for the data type parsers according to the current JSON parser context.
  *
- * @param[in] jsonctx JSON parser context. The context is supposed to be on a value.
+ * @param[in] lydctx JSON data parser context.
  * @param[in,out] status Pointer to the current context status,
  * in some circumstances the function manipulates with the context so the status is updated.
  * @param[out] type_hint_p Pointer to the variable to store the result.
@@ -348,8 +348,9 @@ cleanup:
  * @return LY_EINVAL in case of invalid context status not referring to a value.
  */
 static LY_ERR
-lydjson_value_type_hint(struct lyjson_ctx *jsonctx, enum LYJSON_PARSER_STATUS *status_p, uint32_t *type_hint_p)
+lydjson_value_type_hint(struct lyd_json_ctx *lydctx, enum LYJSON_PARSER_STATUS *status_p, uint32_t *type_hint_p)
 {
+    struct lyjson_ctx *jsonctx = lydctx->jsonctx;
     *type_hint_p = 0;
 
     if (*status_p == LYJSON_ARRAY) {
@@ -383,6 +384,10 @@ lydjson_value_type_hint(struct lyjson_ctx *jsonctx, enum LYJSON_PARSER_STATUS *s
         return LY_EINVAL;
     }
 
+    if (lydctx->parse_opts & LYD_PARSE_JSON_STRING_DATATYPES) {
+        *type_hint_p |= LYD_VALHINT_STRING_DATATYPES;
+    }
+
     return LY_SUCCESS;
 }
 
@@ -391,15 +396,16 @@ lydjson_value_type_hint(struct lyjson_ctx *jsonctx, enum LYJSON_PARSER_STATUS *s
  *
  * Checks for all the list's keys. Function does not revert the context state.
  *
- * @param[in] jsonctx JSON parser context.
+ * @param[in] lydctx JSON data parser context.
  * @param[in] list List schema node corresponding to the input data object.
  * @return LY_SUCCESS in case the data are ok for the @p list
  * @return LY_ENOT in case the input data are not sufficient to fully parse the list instance.
  */
 static LY_ERR
-lydjson_check_list(struct lyjson_ctx *jsonctx, const struct lysc_node *list)
+lydjson_check_list(struct lyd_json_ctx *lydctx, const struct lysc_node *list)
 {
     LY_ERR rc = LY_SUCCESS;
+    struct lyjson_ctx *jsonctx = lydctx->jsonctx;
     enum LYJSON_PARSER_STATUS status = lyjson_ctx_status(jsonctx);
     struct ly_set key_set = {0};
     const struct lysc_node *snode;
@@ -451,7 +457,7 @@ lydjson_check_list(struct lyjson_ctx *jsonctx, const struct lysc_node *list)
                         goto cleanup;
                     }
 
-                    rc = lydjson_value_type_hint(jsonctx, &status, &hints);
+                    rc = lydjson_value_type_hint(lydctx, &status, &hints);
                     LY_CHECK_GOTO(rc, cleanup);
                     rc = ly_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, LY_VALUE_JSON, NULL, hints);
                     LY_CHECK_GOTO(rc, cleanup);
@@ -521,7 +527,7 @@ lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *sno
         case LYS_LEAFLIST:
         case LYS_LEAF:
             /* value may not be valid in which case we parse it as an opaque node */
-            if ((ret = lydjson_value_type_hint(jsonctx, &status, type_hint_p))) {
+            if ((ret = lydjson_value_type_hint(lydctx, &status, type_hint_p))) {
                 break;
             }
 
@@ -533,14 +539,14 @@ lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *sno
             break;
         case LYS_LIST:
             /* lists may not have all its keys */
-            if (lydjson_check_list(jsonctx, snode)) {
+            if (lydjson_check_list(lydctx, snode)) {
                 /* invalid list, parse as opaque if it misses/has invalid some keys */
                 ret = LY_ENOT;
             }
             break;
         }
     } else if (snode->nodetype & LYD_NODE_TERM) {
-        ret = lydjson_value_type_hint(jsonctx, &status, type_hint_p);
+        ret = lydjson_value_type_hint(lydctx, &status, type_hint_p);
     }
 
     /* restore parser */
@@ -852,7 +858,7 @@ next_entry:
         LY_CHECK_GOTO(rc = lyjson_ctx_next(lydctx->jsonctx, &status), cleanup);
 
         /* get value hints */
-        LY_CHECK_GOTO(rc = lydjson_value_type_hint(lydctx->jsonctx, &status, &val_hints), cleanup);
+        LY_CHECK_GOTO(rc = lydjson_value_type_hint(lydctx, &status, &val_hints), cleanup);
 
         if (node->schema) {
             /* create metadata */
@@ -981,7 +987,7 @@ lydjson_create_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_l
         dynamic = lydctx->jsonctx->dynamic;
         lydctx->jsonctx->dynamic = 0;
 
-        LY_CHECK_RET(lydjson_value_type_hint(lydctx->jsonctx, status_inner_p, &type_hint));
+        LY_CHECK_RET(lydjson_value_type_hint(lydctx, status_inner_p, &type_hint));
     }
 
     /* get the module name */

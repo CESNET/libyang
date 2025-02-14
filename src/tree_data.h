@@ -944,6 +944,7 @@ struct lyd_node_any {
 #define LYD_VALHINT_NUM64      0x0010 /**< value is allowed to be an int64 or uint64 */
 #define LYD_VALHINT_BOOLEAN    0x0020 /**< value is allowed to be a boolean */
 #define LYD_VALHINT_EMPTY      0x0040 /**< value is allowed to be empty */
+#define LYD_VALHINT_STRING_DATATYPES 0x0080 /**< boolean and numeric fields are allowed to be quoted */
 /**
  * @} lydvalhints
  */

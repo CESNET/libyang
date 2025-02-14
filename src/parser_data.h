@@ -179,7 +179,10 @@ struct ly_in;
 #define LYD_PARSE_JSON_NULL 0x4000000       /**< Allow using JSON empty value 'null' within JSON input, such nodes are
                                                  silently skipped and treated as non-existent. By default, such values
                                                  are invalid. */
-
+#define LYD_PARSE_JSON_STRING_DATATYPES 0x8000000 /*!**< By default, JSON data values are validated to be in the proper format.
+                                                        For instance numbers are expected to not be enclosed in quotes, nor
+                                                        are boolean values.  Setting this option will disable this
+                                                        validation.  Prior to v1.0.212 this was the default behavior. */
 #define LYD_PARSE_OPTS_MASK 0xFFFF0000      /**< Mask for all the LYD_PARSE_ options. */
 
 /** @} dataparseroptions */
