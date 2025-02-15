@@ -684,6 +684,110 @@ cleanup:
     return snode;
 }
 
+
+typedef struct {
+    const struct lysc_node *match_node;
+    ly_bool match_ancestors;
+    struct ly_set *set;
+} lys_find_backlinks_t;
+
+static LY_ERR
+lys_find_backlinks_clb(struct lysc_node *node, void *data, ly_bool *dfs_continue)
+{
+    lys_find_backlinks_t *bldata = data;
+    LY_ERR ret = LY_SUCCESS;
+    struct ly_set *set = NULL;
+    size_t i;
+
+    (void)dfs_continue;
+
+    /* Not a node type we are interested in */
+    if (node->nodetype != LYS_LEAF && node->nodetype != LYS_LEAFLIST) {
+        return LY_SUCCESS;
+    }
+
+    /* Fetch leafrefs targets for comparison against our match node.  Even if we
+     * are going to throw them away, we still need a count to know if this has
+     * valid leafref targets*/
+    ret = lysc_node_find_lref_targets(node, &set);
+    if (ret == LY_ENOTFOUND) {
+        return LY_SUCCESS;
+    } else if (ret != LY_SUCCESS) {
+        goto cleanup;
+    }
+
+    /* If set contains no entries, don't add node */
+    if (set == NULL || set->count == 0) {
+        goto cleanup;
+    }
+
+    /* If we're not requiring a match of a target node, just add this node to
+     * the returned set */
+    if (bldata->match_node == NULL) {
+        ly_set_add(bldata->set, node, 1, NULL);
+        goto cleanup;
+    }
+
+    /* We are doing target matching, scan to see if this node should be added */
+    for (i=0; i<set->count; i++) {
+        if (bldata->match_ancestors) {
+            if (!lysc_node_has_ancestor(set->snodes[i], bldata->match_node)) {
+                continue;
+            }
+        } else {
+            if (set->snodes[i] != bldata->match_node) {
+                continue;
+            }
+        }
+
+        /* Found a match, add self */
+        ly_set_add(bldata->set, node, 1, NULL);
+        goto cleanup;
+    }
+
+
+cleanup:
+    ly_set_free(set, NULL);
+    return ret;
+}
+
+LIBYANG_API_DEF LY_ERR
+lys_find_backlinks(const struct ly_ctx *ctx, const struct lysc_node *match_node, ly_bool match_ancestors, struct ly_set **set)
+{
+    LY_ERR ret;
+    uint32_t                 module_idx = 0;
+    const struct lys_module *module;
+
+    LY_CHECK_ARG_RET(NULL, ctx, set, LY_EINVAL);
+
+    /* allocate return set */
+    ret = ly_set_new(set);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* Iterate across all loaded modules */
+    for (module_idx = 0; (module = ly_ctx_get_module_iter(ctx, &module_idx)) != NULL; ) {
+        lys_find_backlinks_t data = { match_node, match_ancestors, *set };
+        if (!module->compiled) {
+            continue;
+        }
+        ret = lysc_module_dfs_full(module, lys_find_backlinks_clb, &data);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
+
+cleanup:
+    if (ret != LY_SUCCESS || (*set)->count == 0) {
+        if (ret != LY_SUCCESS) {
+            ret = LY_ENOTFOUND;
+        }
+        ly_set_free(*set, NULL);
+        *set = NULL;
+        return ret;
+    }
+
+    return ret;
+}
+
+
 char *
 lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LYSC_PATH_TYPE pathtype, char *buffer,
         size_t buflen)

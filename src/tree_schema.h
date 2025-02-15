@@ -1916,6 +1916,67 @@ LIBYANG_API_DECL struct lysc_when **lysc_node_when(const struct lysc_node *node)
 LIBYANG_API_DECL const struct lysc_node *lysc_node_lref_target(const struct lysc_node *node);
 
 /**
+ * @brief Get the target node of a leafref type
+ *
+ * This is similar to lysc_node_lref_target() except it operates on a struct lysc_type
+ * object, which may be a member of another structure such as a union.  The node
+ * owning the lysc_type must also be specified since the type object does not
+ * reference its parent.
+ *
+ * @param[in] node  Node ownining the type object
+ * @param[in] type  Type node which has a basetype of LY_TYPE_LEAFREF
+ * @return target schema node if found, otherwise NULL
+ */
+LIBYANG_API_DECL const struct lysc_node *lysc_type_lref_target(const struct lysc_node *node, const struct lysc_type *type);
+
+/**
+ * @brief Determine if the node provided has an ancestor of the specified node.
+ *
+ * This will scan backwards in the tree using the parent node of each subsequent
+ * node to see if the ancestor matches. This will also match on self.
+ *
+ * @param[in] node Node to examine
+ * @param[in] ancestor node to match
+ * @return true if ancestor is found in tree, otherwise false
+ */
+LIBYANG_API_DECL ly_bool lysc_node_has_ancestor(const struct lysc_node *node, const struct lysc_node *ancestor);
+
+/**
+ * @brief Fetch all leafref targets of the specified node
+ *
+ * This is an enhanced version of lysc_node_lref_target() which will return a
+ * set of leafref target nodes retrieved from the specified node.  While
+ * lysc_node_lref_target() will only work on nodetype of LYS_LEAF and LYS_LEAFLIST
+ * this function will also evaluate other datatypes that may contain leafrefs
+ * such as LYS_UNION.  This does not, however, search for children with leafref
+ * targets.
+ *
+ * @param[in] node node containing a leafref
+ * @param[out] set Set of found leafref targets (schema nodes).
+ * @return LY_ENOTFOUND if node specified does not contain lref targets, otherwise LY_SUCCESS
+ *
+ */
+LIBYANG_API_DECL LY_ERR lysc_node_find_lref_targets(const struct lysc_node *node, struct ly_set **set);
+
+/**
+ * @brief Search entire schema for nodes that contain leafrefs and return as a set of schema nodes
+ *
+ * Perform a complete scan of the schema tree looking for nodes that contain leafref entries.
+ * When a node contains a leafref entry, and match_node is specified, determine if reference
+ * points to match_node, if so add the node to returned set.  If no match_node is specified, the node
+ * containing the leafref is always added to the returned set.  When match_ancestors is true,
+ * will evaluate if match_node is self or an ansestor of self.
+ *
+ * This does not return the leafref targets, but the actual node that contains a leafref.
+ *
+ * @param[in] ly_ctx
+ * @param[in] match_node  Leafref target node to use for matching.
+ * @param[in] match_ancestors Whether match_node may be an anscestor instead of an exact node.
+ * @param[out] set Set of found nodes containing leafrefs
+ */
+LIBYANG_API_DECL LY_ERR lys_find_backlinks(const struct ly_ctx *ctx, const struct lysc_node *match_node, ly_bool match_ancestors, struct ly_set **set);
+
+/**
  * @brief Callback to be called for every schema node in a DFS traversal.
  *
  * @param[in] node Current node.

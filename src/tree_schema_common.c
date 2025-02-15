@@ -1834,6 +1834,120 @@ lysc_node_lref_target(const struct lysc_node *node)
     return target;
 }
 
+LIBYANG_API_DEF const struct lysc_node *
+lysc_type_lref_target(const struct lysc_node *node, const struct lysc_type *type)
+{
+    struct ly_set *set = NULL;
+    LY_ERR err;
+    const struct lysc_node *ret = NULL;
+    const struct lysc_type_leafref *lref;
+
+    if (node == NULL || type == NULL || type->basetype != LY_TYPE_LEAFREF) {
+        return NULL;
+    }
+
+    lref = (const struct lysc_type_leafref *)type;
+
+    err = lys_find_expr_atoms(node, node->module, lref->path, lref->prefixes, 0, &set);
+    if (err != LY_SUCCESS) {
+        return NULL;
+    }
+
+    if (set->count != 0) {
+        ret = set->snodes[set->count - 1];
+    }
+    ly_set_free(set, NULL);
+    return ret;
+}
+
+LIBYANG_API_DEF LY_ERR
+lysc_node_find_lref_targets(const struct lysc_node *node, struct ly_set **set)
+{
+    LY_ERR ret = LY_SUCCESS;
+    const struct lysc_type *type;
+
+    LY_CHECK_ARG_RET(NULL, node, set, LY_EINVAL);
+
+    /* Not a node type we are interested in */
+    if (node->nodetype != LYS_LEAF && node->nodetype != LYS_LEAFLIST) {
+        return LY_ENOTFOUND;
+    }
+
+    /* allocate return set */
+    ret = ly_set_new(set);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    if (node->nodetype == LYS_LEAF) {
+        type = ((const struct lysc_node_leaf *)node)->type;
+    } else {
+        type = ((const struct lysc_node_leaflist *)node)->type;
+    }
+
+    if (type->basetype == LY_TYPE_UNION) {
+        /* Unions are a bit of a pain as they aren't represented by nodes,
+         * so we need to iterate across them to see if they contain any
+         * leafrefs */
+        const struct lysc_type_union *un = (const struct lysc_type_union *)type;
+        size_t                        i;
+        for (i=0; i<LY_ARRAY_COUNT(un->types); i++) {
+            const struct lysc_type *utype = un->types[i];
+            const struct lysc_node *target;
+
+            if (utype->basetype != LY_TYPE_LEAFREF) {
+                continue;
+            }
+
+            target = lysc_type_lref_target(node, utype);
+            if (target == NULL) {
+                continue;
+            }
+
+            ret = ly_set_add(*set, target, 1, NULL);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
+    } else if (type->basetype == LY_TYPE_LEAFREF) {
+        const struct lysc_node *target = lysc_node_lref_target(node);
+        if (target == NULL) {
+            ret = LY_ENOTFOUND;
+            goto cleanup;
+        }
+        ret = ly_set_add(*set, target, 1, NULL);
+        LY_CHECK_GOTO(ret, cleanup);
+    } else {
+        /* Not a node type we're interested in */
+        ret = LY_ENOTFOUND;
+        goto cleanup;
+    }
+
+cleanup:
+    if ((*set)->count == 0) {
+        ly_set_free(*set, NULL);
+        *set = NULL;
+        if (ret == LY_SUCCESS) {
+            ret = LY_ENOTFOUND;
+        }
+    }
+    return ret;
+}
+
+
+LIBYANG_API_DEF ly_bool
+lysc_node_has_ancestor(const struct lysc_node *node, const struct lysc_node *ancestor)
+{
+    const struct lysc_node *n;
+
+    if (node == NULL || ancestor == NULL) {
+        return 0;
+    }
+
+    for (n = node; n != NULL ; n = n->parent) {
+        if (n == ancestor) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 enum ly_stmt
 lysp_match_kw(struct ly_in *in, uint64_t *indent)
 {
