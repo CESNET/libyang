@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang representation of YANG schema trees.
  *
- * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -1926,6 +1926,20 @@ LIBYANG_API_DECL const struct lysc_node *lysc_node_lref_target(const struct lysc
  * @return LY_ERR value on error.
  */
 LIBYANG_API_DECL LY_ERR lysc_node_lref_targets(const struct lysc_node *node, struct ly_set **set);
+
+/**
+ * @brief Get all the leafref (or union with leafrefs) nodes that target a specific node.
+ *
+ * @param[in] ctx Context to use, may not be set if @p node is.
+ * @param[in] node Leafref target node to use for matching. If not set, all the leafref nodes are just collected.
+ * @param[in] match_ancestors If set, @p node is considered a match not only when a leafref targets it directly but
+ * even when an ancestor (parent) node of @p node is a target of the leafref.
+ * @param[out] set Set of matching leafref nodes.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+LIBYANG_API_DECL LY_ERR lysc_node_lref_backlinks(const struct ly_ctx *ctx, const struct lysc_node *node,
+        ly_bool match_ancestors, struct ly_set **set);
 
 /**
  * @brief Callback to be called for every schema node in a DFS traversal.

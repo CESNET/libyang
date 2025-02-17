@@ -1892,6 +1892,109 @@ cleanup:
     return rc;
 }
 
+struct lysc_node_lref_backlings_arg {
+    const struct lysc_node *node;
+    ly_bool match_ancestors;
+    struct ly_set *set;
+};
+
+static LY_ERR
+lysc_node_lref_backlinks_clb(struct lysc_node *node, void *data, ly_bool *dfs_continue)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lysc_node_lref_backlings_arg *arg = data;
+    struct ly_set *set = NULL;
+    const struct lysc_node *par;
+    uint32_t i;
+
+    (void)dfs_continue;
+
+    if (!(node->nodetype & LYD_NODE_TERM)) {
+        /* skip */
+        goto cleanup;
+    }
+
+    /* get all the leafref targets */
+    LY_CHECK_GOTO(rc = lysc_node_lref_targets(node, &set), cleanup);
+
+    /* ignore node if has no leafref targets */
+    if (!set->count) {
+        goto cleanup;
+    }
+
+    /* if just collecting leafrefs, we are done */
+    if (!arg->node) {
+        rc = ly_set_add(arg->set, node, 1, NULL);
+        goto cleanup;
+    }
+
+    /* check that the node (or the ancestor of) is the target of this leafref */
+    for (i = 0; i < set->count; ++i) {
+        for (par = set->snodes[i]; par; par = par->parent) {
+            if (par == arg->node) {
+                /* match */
+                break;
+            }
+
+            if (!arg->match_ancestors) {
+                /* not a match */
+                par = NULL;
+                break;
+            }
+        }
+
+        if (par) {
+            /* add into the set, matches */
+            LY_CHECK_GOTO(rc = ly_set_add(arg->set, node, 1, NULL), cleanup);
+            break;
+        }
+    }
+
+cleanup:
+    ly_set_free(set, NULL);
+    return rc;
+}
+
+LIBYANG_API_DEF LY_ERR
+lysc_node_lref_backlinks(const struct ly_ctx *ctx, const struct lysc_node *node, ly_bool match_ancestors,
+        struct ly_set **set)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lysc_node_lref_backlings_arg arg = {0};
+    uint32_t idx = 0;
+    const struct lys_module *mod;
+
+    LY_CHECK_ARG_RET(NULL, ctx || node, set, LY_EINVAL);
+
+    if (!ctx) {
+        ctx = node->module->ctx;
+    }
+
+    /* allocate return set */
+    LY_CHECK_RET(ly_set_new(set));
+
+    /* prepare the arg */
+    arg.node = node;
+    arg.match_ancestors = match_ancestors;
+    arg.set = *set;
+
+    /* iterate across all loaded modules */
+    while ((mod = ly_ctx_get_module_iter(ctx, &idx))) {
+        if (!mod->compiled) {
+            continue;
+        }
+
+        LY_CHECK_GOTO(rc = lysc_module_dfs_full(mod, lysc_node_lref_backlinks_clb, &arg), cleanup);
+    }
+
+cleanup:
+    if (rc) {
+        ly_set_free(*set, NULL);
+        *set = NULL;
+    }
+    return rc;
+}
+
 enum ly_stmt
 lysp_match_kw(struct ly_in *in, uint64_t *indent)
 {
