@@ -684,7 +684,6 @@ cleanup:
     return snode;
 }
 
-
 typedef struct {
     const struct lysc_node *match_node;
     ly_bool match_ancestors;
@@ -702,7 +701,7 @@ lys_find_backlinks_clb(struct lysc_node *node, void *data, ly_bool *dfs_continue
     (void)dfs_continue;
 
     /* Not a node type we are interested in */
-    if (node->nodetype != LYS_LEAF && node->nodetype != LYS_LEAFLIST) {
+    if ((node->nodetype != LYS_LEAF) && (node->nodetype != LYS_LEAFLIST)) {
         return LY_SUCCESS;
     }
 
@@ -717,7 +716,7 @@ lys_find_backlinks_clb(struct lysc_node *node, void *data, ly_bool *dfs_continue
     }
 
     /* If set contains no entries, don't add node */
-    if (set == NULL || set->count == 0) {
+    if ((set == NULL) || (set->count == 0)) {
         goto cleanup;
     }
 
@@ -729,7 +728,7 @@ lys_find_backlinks_clb(struct lysc_node *node, void *data, ly_bool *dfs_continue
     }
 
     /* We are doing target matching, scan to see if this node should be added */
-    for (i=0; i<set->count; i++) {
+    for (i = 0; i < set->count; i++) {
         if (bldata->match_ancestors) {
             if (!lysc_node_has_ancestor(set->snodes[i], bldata->match_node)) {
                 continue;
@@ -744,7 +743,6 @@ lys_find_backlinks_clb(struct lysc_node *node, void *data, ly_bool *dfs_continue
         ly_set_add(bldata->set, node, 1, NULL);
         goto cleanup;
     }
-
 
 cleanup:
     ly_set_free(set, NULL);
@@ -766,7 +764,8 @@ lys_find_backlinks(const struct ly_ctx *ctx, const struct lysc_node *match_node,
 
     /* Iterate across all loaded modules */
     for (module_idx = 0; (module = ly_ctx_get_module_iter(ctx, &module_idx)) != NULL; ) {
-        lys_find_backlinks_t data = { match_node, match_ancestors, *set };
+        lys_find_backlinks_t data = {match_node, match_ancestors, *set};
+
         if (!module->compiled) {
             continue;
         }
@@ -775,7 +774,7 @@ lys_find_backlinks(const struct ly_ctx *ctx, const struct lysc_node *match_node,
     }
 
 cleanup:
-    if (ret != LY_SUCCESS || (*set)->count == 0) {
+    if ((ret != LY_SUCCESS) || ((*set)->count == 0)) {
         if (ret != LY_SUCCESS) {
             ret = LY_ENOTFOUND;
         }
@@ -786,7 +785,6 @@ cleanup:
 
     return ret;
 }
-
 
 char *
 lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LYSC_PATH_TYPE pathtype, char *buffer,

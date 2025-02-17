@@ -1842,7 +1842,7 @@ lysc_type_lref_target(const struct lysc_node *node, const struct lysc_type *type
     const struct lysc_node *ret = NULL;
     const struct lysc_type_leafref *lref;
 
-    if (node == NULL || type == NULL || type->basetype != LY_TYPE_LEAFREF) {
+    if ((node == NULL) || (type == NULL) || (type->basetype != LY_TYPE_LEAFREF)) {
         return NULL;
     }
 
@@ -1869,7 +1869,7 @@ lysc_node_find_lref_targets(const struct lysc_node *node, struct ly_set **set)
     LY_CHECK_ARG_RET(NULL, node, set, LY_EINVAL);
 
     /* Not a node type we are interested in */
-    if (node->nodetype != LYS_LEAF && node->nodetype != LYS_LEAFLIST) {
+    if ((node->nodetype != LYS_LEAF) && (node->nodetype != LYS_LEAFLIST)) {
         return LY_ENOTFOUND;
     }
 
@@ -1889,7 +1889,8 @@ lysc_node_find_lref_targets(const struct lysc_node *node, struct ly_set **set)
          * leafrefs */
         const struct lysc_type_union *un = (const struct lysc_type_union *)type;
         size_t                        i;
-        for (i=0; i<LY_ARRAY_COUNT(un->types); i++) {
+
+        for (i = 0; i < LY_ARRAY_COUNT(un->types); i++) {
             const struct lysc_type *utype = un->types[i];
             const struct lysc_node *target;
 
@@ -1907,6 +1908,7 @@ lysc_node_find_lref_targets(const struct lysc_node *node, struct ly_set **set)
         }
     } else if (type->basetype == LY_TYPE_LEAFREF) {
         const struct lysc_node *target = lysc_node_lref_target(node);
+
         if (target == NULL) {
             ret = LY_ENOTFOUND;
             goto cleanup;
@@ -1930,17 +1932,16 @@ cleanup:
     return ret;
 }
 
-
 LIBYANG_API_DEF ly_bool
 lysc_node_has_ancestor(const struct lysc_node *node, const struct lysc_node *ancestor)
 {
     const struct lysc_node *n;
 
-    if (node == NULL || ancestor == NULL) {
+    if ((node == NULL) || (ancestor == NULL)) {
         return 0;
     }
 
-    for (n = node; n != NULL ; n = n->parent) {
+    for (n = node; n != NULL; n = n->parent) {
         if (n == ancestor) {
             return 1;
         }
