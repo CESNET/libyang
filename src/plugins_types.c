@@ -685,7 +685,8 @@ lyplg_type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_D
     case LY_TYPE_INT32:
         LY_CHECK_ARG_RET(NULL, base, LY_EINVAL);
 
-        if (!(hints & (LYD_VALHINT_DECNUM | LYD_VALHINT_OCTNUM | LYD_VALHINT_HEXNUM))) {
+        if (!(hints & (LYD_VALHINT_DECNUM | LYD_VALHINT_OCTNUM | LYD_VALHINT_HEXNUM)) &&
+                !(hints & LYD_VALHINT_STRING_DATATYPES)) {
             return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid non-number-encoded %s value \"%.*s\".",
                     lys_datatype2str(type), (int)value_len, value);
         }
@@ -695,7 +696,8 @@ lyplg_type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_D
     case LY_TYPE_INT64:
         LY_CHECK_ARG_RET(NULL, base, LY_EINVAL);
 
-        if (!(hints & LYD_VALHINT_NUM64)) {
+        if (!(hints & LYD_VALHINT_NUM64) &&
+                !(hints & LYD_VALHINT_STRING_DATATYPES)) {
             return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid non-num64-encoded %s value \"%.*s\".",
                     lys_datatype2str(type), (int)value_len, value);
         }
@@ -714,7 +716,8 @@ lyplg_type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_D
         }
         break;
     case LY_TYPE_BOOL:
-        if (!(hints & LYD_VALHINT_BOOLEAN)) {
+        if (!(hints & LYD_VALHINT_BOOLEAN) &&
+                !(hints & LYD_VALHINT_STRING_DATATYPES)) {
             return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid non-boolean-encoded %s value \"%.*s\".",
                     lys_datatype2str(type), (int)value_len, value);
         }
