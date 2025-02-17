@@ -351,6 +351,7 @@ static LY_ERR
 lydjson_value_type_hint(struct lyd_json_ctx *lydctx, enum LYJSON_PARSER_STATUS *status_p, uint32_t *type_hint_p)
 {
     struct lyjson_ctx *jsonctx = lydctx->jsonctx;
+
     *type_hint_p = 0;
 
     if (*status_p == LYJSON_ARRAY) {
