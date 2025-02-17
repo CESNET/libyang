@@ -1887,6 +1887,225 @@ test_lysc_path(void **state)
     free(path);
 }
 
+/* TEST */
+static ly_bool
+compare_str_nodeset(struct ly_set *expected, struct ly_set *received)
+{
+    ly_bool is_error = 0;
+    size_t r;
+    size_t e;
+
+    for (e = 0; expected && e < expected->count; e++) {
+        const char *epath = expected->objs[e];
+        ly_bool found = 0;
+
+        for (r = 0; received && (r < received->count); r++) {
+            const char *rpath = received->objs[r];
+
+            if (!strcmp(epath, rpath)) {
+                found = 1;
+                break;
+            }
+        }
+
+        if (!found) {
+            fprintf(stderr, "< %s\n", epath);
+            is_error = 1;
+        }
+    }
+
+    /* If the count was equal and there was no error, no need to scan again */
+    if (expected && received && (expected->count == received->count) && !is_error) {
+        return 1;
+    }
+
+    for (r = 0; received && (r < received->count); r++) {
+        ly_bool found = 0;
+        const char *rpath = received->objs[r];
+
+        for (e = 0; expected && (e < expected->count) && !found; e++) {
+            char *epath = expected->objs[e];
+
+            if (!strcmp(epath, rpath)) {
+                found = 1;
+                break;
+            }
+        }
+        if (!found) {
+            fprintf(stderr, "> %s\n", rpath);
+        }
+    }
+
+    return 0;
+}
+
+static struct ly_set *
+strlist_to_pathset(const char **pathlist)
+{
+    struct ly_set *set = NULL;
+    uint32_t i;
+
+    if (!pathlist || !pathlist[0]) {
+        return NULL;
+    }
+
+    ly_set_new(&set);
+
+    for (i = 0; pathlist[i]; i++) {
+        ly_set_add(set, pathlist[i], 0, NULL);
+    }
+
+    return set;
+}
+
+static struct ly_set *
+lysc_nodeset_to_pathset(struct ly_set *nodeset)
+{
+    struct ly_set *set = NULL;
+    uint32_t i;
+
+    if (!nodeset || !nodeset->count) {
+        return NULL;
+    }
+
+    ly_set_new(&set);
+
+    for (i = 0; i < nodeset->count; i++) {
+        char *path = lysc_path(nodeset->snodes[i], LYSC_PATH_DATA, NULL, 0);
+
+        ly_set_add(set, path, 0, NULL);
+    }
+
+    return set;
+}
+
+static void
+test_lysc_backlinks(void **state)
+{
+    const char *expect1[] = {
+        /* Built-ins, not sure how to exclude those when not limiting by
+         * path */
+        "/ietf-yang-library:yang-library/module-set/module/deviation",
+        "/ietf-yang-library:yang-library/schema/module-set",
+        "/ietf-yang-library:yang-library/datastore/schema",
+        "/ietf-yang-library:yang-library-update/content-id",
+        "/ietf-yang-library:yang-library-change/module-set-id",
+        /* Normal expected */
+        "/b:my_extref_list/my_extref",
+        "/a:refstr",
+        "/a:refnum",
+        "/b:my_extref_union",
+        NULL
+    };
+
+    const char *expect2[] = {
+        "/b:my_extref_list/my_extref",
+        "/a:refstr",
+        "/b:my_extref_union",
+        NULL
+    };
+
+    const char *expect3[] = {
+        "/b:my_extref_list/my_extref",
+        "/a:refstr",
+        "/a:refnum",
+        "/b:my_extref_union",
+        NULL
+    };
+
+    struct {
+        const char *match_path;
+        ly_bool match_ancestors;
+        const char **expected_paths;
+    } tests[] = {
+        {NULL, 0, expect1},
+        {"/a:my_list/my_leaf_string", 0, expect2},
+        {"/a:my_list", 1, expect3}
+    };
+    const char *str;
+    uint32_t i;
+
+    str = "module a {\n"
+            "    namespace urn:a;\n"
+            "    prefix a;\n"
+            "    list my_list {\n"
+            "        key my_leaf_string;\n"
+            "        leaf my_leaf_string {\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf my_leaf_number {\n"
+            "            type uint32;\n"
+            "        }\n"
+            "    }\n"
+            "    leaf refstr {\n"
+            "        type leafref {\n"
+            "            path \"../my_list/my_leaf_string\";\n"
+            "        }\n"
+            "    }\n"
+            "    leaf refnum {\n"
+            "        type leafref {\n"
+            "            path \"../my_list/my_leaf_number\";\n"
+            "        }\n"
+            "    }\n"
+            "}\n";
+
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_SUCCESS);
+    CHECK_LOG_CTX(NULL, NULL, 0);
+
+    str = "module b {\n"
+            "    namespace urn:b;\n"
+            "    prefix b;\n"
+            "    import a {\n"
+            "        prefix a;\n"
+            "    }\n"
+            "    list my_extref_list {\n"
+            "        key my_leaf_string;\n"
+            "        leaf my_leaf_string {\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf my_extref {\n"
+            "            type leafref {\n"
+            "                path \"/a:my_list/a:my_leaf_string\";\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "    leaf my_extref_union {\n"
+            "        type union {\n"
+            "            type leafref {\n"
+            "                path \"/a:my_list/a:my_leaf_string\";\n"
+            "            }\n"
+            "            type leafref {\n"
+            "                path \"/a:my_list/a:my_leaf_number\";\n"
+            "            }\n"
+            "            type uint32;\n"
+            "         }\n"
+            "    }\n"
+            "}\n";
+
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_SUCCESS);
+    CHECK_LOG_CTX(NULL, NULL, 0);
+
+    for (i = 0; i < sizeof tests / sizeof *tests; i++) {
+        const struct lysc_node *node = NULL;
+        struct ly_set *set = NULL, *expected = NULL, *received = NULL;
+
+        if (tests[i].match_path) {
+            node = lys_find_path(UTEST_LYCTX, NULL, tests[i].match_path, 0);
+            assert_non_null(node);
+        }
+
+        assert_int_equal(LY_SUCCESS, lysc_node_lref_backlinks(UTEST_LYCTX, node, tests[i].match_ancestors, &set));
+
+        expected = strlist_to_pathset(tests[i].expected_paths);
+        received = lysc_nodeset_to_pathset(set);
+        assert_int_equal(1, compare_str_nodeset(expected, received));
+
+        ly_set_free(expected, NULL);
+        ly_set_free(received, free);
+        ly_set_free(set, NULL);
+    }
+}
+
 int
 main(void)
 {
@@ -1909,6 +2128,7 @@ main(void)
         UTEST(test_extension_compile),
         UTEST(test_ext_recursive),
         UTEST(test_lysc_path),
+        UTEST(test_lysc_backlinks),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
