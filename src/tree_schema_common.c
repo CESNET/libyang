@@ -1804,21 +1804,24 @@ lysc_node_when(const struct lysc_node *node)
     }
 }
 
-LIBYANG_API_DEF const struct lysc_node *
-lysc_node_lref_target(const struct lysc_node *node)
+/**
+ * @brief Get the target node of a leafref.
+ *
+ * @param[in] node Context node for the leafref.
+ * @param[in] type Leafref type to resolve.
+ * @return Target schema node;
+ * @return NULL if the tearget is not found.
+ */
+static const struct lysc_node *
+lysc_type_lref_target(const struct lysc_node *node, const struct lysc_type *type)
 {
     struct lysc_type_leafref *lref;
     struct ly_path *p;
     const struct lysc_node *target;
 
-    if (!node || !(node->nodetype & LYD_NODE_TERM)) {
-        return NULL;
-    }
+    assert(type->basetype == LY_TYPE_LEAFREF);
 
-    lref = (struct lysc_type_leafref *)((struct lysc_node_leaf *)node)->type;
-    if (lref->basetype != LY_TYPE_LEAFREF) {
-        return NULL;
-    }
+    lref = (struct lysc_type_leafref *)type;
 
     /* compile the path */
     if (ly_path_compile_leafref(node->module->ctx, node, NULL, lref->path,
@@ -1832,6 +1835,61 @@ lysc_node_lref_target(const struct lysc_node *node)
     ly_path_free(p);
 
     return target;
+}
+
+LIBYANG_API_DEF const struct lysc_node *
+lysc_node_lref_target(const struct lysc_node *node)
+{
+    if (!node || !(node->nodetype & LYD_NODE_TERM) || (((struct lysc_node_leaf *)node)->type->basetype != LY_TYPE_LEAFREF)) {
+        return NULL;
+    }
+
+    return lysc_type_lref_target(node, ((struct lysc_node_leaf *)node)->type);
+}
+
+LIBYANG_API_DEF LY_ERR
+lysc_node_lref_targets(const struct lysc_node *node, struct ly_set **set)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lysc_type *type;
+    struct lysc_type_union *type_un;
+    const struct lysc_node *target;
+    LY_ARRAY_COUNT_TYPE u;
+
+    LY_CHECK_ARG_RET(NULL, node, (node->nodetype & LYD_NODE_TERM), LY_EINVAL);
+
+    /* allocate return set */
+    LY_CHECK_RET(ly_set_new(set));
+
+    type = ((struct lysc_node_leaf *)node)->type;
+    if (type->basetype == LY_TYPE_UNION) {
+        /* union with possible leafrefs */
+        type_un = (struct lysc_type_union *)type;
+
+        LY_ARRAY_FOR(type_un->types, u) {
+            if (type_un->types[u]->basetype != LY_TYPE_LEAFREF) {
+                continue;
+            }
+
+            target = lysc_type_lref_target(node, type_un->types[u]);
+            if (target) {
+                LY_CHECK_GOTO(rc = ly_set_add(*set, target, 1, NULL), cleanup);
+            }
+        }
+    } else if (type->basetype == LY_TYPE_LEAFREF) {
+        /* leafref */
+        target = lysc_type_lref_target(node, type);
+        if (target) {
+            LY_CHECK_GOTO(rc = ly_set_add(*set, target, 1, NULL), cleanup);
+        }
+    }
+
+cleanup:
+    if (rc) {
+        ly_set_free(*set, NULL);
+        *set = NULL;
+    }
+    return rc;
 }
 
 enum ly_stmt

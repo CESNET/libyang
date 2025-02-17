@@ -1908,12 +1908,24 @@ LIBYANG_API_DECL struct lysc_must *lysc_node_musts(const struct lysc_node *node)
 LIBYANG_API_DECL struct lysc_when **lysc_node_when(const struct lysc_node *node);
 
 /**
- * @brief Get the target node of a leafref node.
+ * @brief Get the target node of a leafref node. Function ::lysc_node_lref_targets() should be used instead
+ * to get all the leafref targets even for a union node.
  *
  * @param[in] node Leafref node.
  * @return Leafref target, NULL on any error.
  */
 LIBYANG_API_DECL const struct lysc_node *lysc_node_lref_target(const struct lysc_node *node);
+
+/**
+ * @brief Get the target node(s) of a leafref node or union node with leafrefs.
+ *
+ * @param[in] node Term node to use.
+ * @param[out] set Set with all the leafref targets, may be empty if the node is a different type or the targets
+ * are not found.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+LIBYANG_API_DECL LY_ERR lysc_node_lref_targets(const struct lysc_node *node, struct ly_set **set);
 
 /**
  * @brief Callback to be called for every schema node in a DFS traversal.
