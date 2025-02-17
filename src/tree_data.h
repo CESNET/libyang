@@ -2668,7 +2668,7 @@ LIBYANG_API_DECL int ly_time_tz_offset_at(time_t time);
 /**
  * @brief Convert date-and-time from string to UNIX timestamp and fractions of a second.
  *
- * @param[in] value Valid string date-and-time value.
+ * @param[in] value Valid string date-and-time value, the string may continue after the value (be longer).
  * @param[out] time UNIX timestamp.
  * @param[out] fractions_s Optional fractions of a second, set to NULL if none.
  * @return LY_ERR value.
@@ -2688,7 +2688,7 @@ LIBYANG_API_DECL LY_ERR ly_time_time2str(time_t time, const char *fractions_s, c
 /**
  * @brief Convert date-and-time from string to timespec.
  *
- * @param[in] value Valid string date-and-time value.
+ * @param[in] value Valid string date-and-time value, the string may continue after the value (be longer).
  * @param[out] ts Timespec.
  * @return LY_ERR value.
  */
