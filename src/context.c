@@ -259,10 +259,7 @@ cleanup:
     return mod;
 }
 
-/**
- * @brief Hash table value-equal callback for comparing leafref links hash table record.
- */
-static ly_bool
+ly_bool
 ly_ctx_ht_leafref_links_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
 {
     struct lyd_leafref_links_rec **rec1 = val1_p, **rec2 = val2_p;
@@ -275,7 +272,6 @@ ly_ctx_new(const char *search_dir, uint32_t options, struct ly_ctx **new_ctx)
 {
     struct ly_ctx *ctx = NULL;
     struct lys_module *module;
-    struct ly_ctx_data *ctx_data;
     char *search_dir_list, *sep, *dir;
     const char **imp_f, *all_f[] = {"*", NULL};
     uint32_t i;
@@ -297,21 +293,14 @@ ly_ctx_new(const char *search_dir, uint32_t options, struct ly_ctx **new_ctx)
     static_plugins_only = (options & LY_CTX_STATIC_PLUGINS_ONLY) ? 1 : 0;
     LY_CHECK_ERR_GOTO(lyplg_init(builtin_plugins_only, static_plugins_only), LOGINT(NULL); rc = LY_EINT, cleanup);
 
-    /* ctx data */
-    ctx_data = ly_ctx_data_add(ctx);
+    /* options */
+    ctx->opts = options;
 
-    if (options & LY_CTX_LEAFREF_LINKING) {
-        /**
-         * storing the pointer instead of record itself is needed to avoid invalid memory reads. Hash table can reallocate
-         * its memory completely during various manipulation function (e.g. remove, insert). In case of using pointers, the
-         * pointer can be reallocated safely, while record itself remains untouched and can be accessed/modified freely
-         * */
-        ctx_data->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec *), ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
-        LY_CHECK_ERR_GOTO(!ctx_data->leafref_links_ht, rc = LY_EMEM, cleanup);
-    }
+    /* ctx data */
+    rc = ly_ctx_data_add(ctx);
+    LY_CHECK_GOTO(rc, cleanup);
 
     /* modules list */
-    ctx->opts = options;
     if (search_dir) {
         search_dir_list = strdup(search_dir);
         LY_CHECK_ERR_GOTO(!search_dir_list, LOGMEM(NULL); rc = LY_EMEM, cleanup);
@@ -1455,7 +1444,6 @@ LIBYANG_API_DEF LY_ERR
 ly_ctx_new_printed(const void *mem, struct ly_ctx **ctx)
 {
     LY_ERR rc = LY_SUCCESS;
-    struct ly_ctx_data *ctx_data = NULL;
     ly_bool builtin_plugins_only, static_plugins_only;
 
     LY_CHECK_ARG_RET(NULL, mem, ctx, LY_EINVAL);
@@ -1463,26 +1451,21 @@ ly_ctx_new_printed(const void *mem, struct ly_ctx **ctx)
     *ctx = (void *)mem;
 
     /* ctx data */
-    ctx_data = ly_ctx_data_add(*ctx);
+    rc = ly_ctx_data_add(*ctx);
+    if (rc) {
+        if (rc == LY_EEXIST) {
+            LOGERR(NULL, LY_EEXIST, "Printed context was already created on the provided address.");
+        }
+        goto cleanup;
+    }
 
     /* plugins */
     builtin_plugins_only = ((*ctx)->opts & LY_CTX_BUILTIN_PLUGINS_ONLY) ? 1 : 0;
     static_plugins_only = 1;
     LY_CHECK_ERR_GOTO(lyplg_init(builtin_plugins_only, static_plugins_only), LOGINT(NULL); rc = LY_EINT, cleanup);
 
-    /* data dictionary */
-    ctx_data->data_dict = malloc(sizeof *ctx_data->data_dict);
-    LY_CHECK_ERR_GOTO(!ctx_data->data_dict, rc = LY_EMEM, cleanup);
-    lydict_init(ctx_data->data_dict);
-
-    /* leafref set */
-    if ((*ctx)->opts & LY_CTX_LEAFREF_LINKING) {
-        ctx_data->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec), ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
-        LY_CHECK_ERR_GOTO(!ctx_data->leafref_links_ht, rc = LY_EMEM, cleanup);
-    }
-
 cleanup:
-    if (rc && ctx_data) {
+    if (rc) {
         ly_ctx_data_del(*ctx);
         *ctx = NULL;
     }

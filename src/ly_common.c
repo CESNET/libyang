@@ -100,6 +100,7 @@ ly_ctx_data_get(const struct ly_ctx *ctx)
     struct ly_ctx_data *ctx_data = NULL;
     uint32_t i;
 
+    /* RD LOCK */
     pthread_rwlock_rdlock(&ly_ctx_data_rwlock);
 
     for (i = 0; i < ly_ctx_data_count; ++i) {
@@ -109,6 +110,7 @@ ly_ctx_data_get(const struct ly_ctx *ctx)
         }
     }
 
+    /* RD UNLOCK */
     pthread_rwlock_unlock(&ly_ctx_data_rwlock);
 
     if (!ctx_data) {
@@ -119,27 +121,73 @@ ly_ctx_data_get(const struct ly_ctx *ctx)
     return ctx_data;
 }
 
-struct ly_ctx_data *
-ly_ctx_data_add(const struct ly_ctx *ctx)
+struct ly_dict *
+ly_ctx_data_dict_get(const struct ly_ctx *ctx)
 {
     struct ly_ctx_data *ctx_data;
 
+    ctx_data = ly_ctx_data_get(ctx);
+    if (!ctx_data) {
+        return NULL;
+    }
+
+    return ctx_data->data_dict;
+}
+
+LY_ERR
+ly_ctx_data_add(const struct ly_ctx *ctx)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct ly_ctx_data *ctx_data = NULL;
+    uint32_t i;
+
+    /* WR LOCK */
     pthread_rwlock_wrlock(&ly_ctx_data_rwlock);
+
+    /* check for duplicates */
+    for (i = 0; i < ly_ctx_data_count; i++) {
+        if (ly_ctx_data[i]->ctx == ctx) {
+            rc = LY_EEXIST;
+            goto cleanup;
+        }
+    }
 
     /* realloc */
     ly_ctx_data = ly_realloc(ly_ctx_data, (ly_ctx_data_count + 1) * sizeof *ly_ctx_data);
+    LY_CHECK_ERR_GOTO(!ly_ctx_data, rc = LY_EMEM, cleanup);
 
     /* alloc */
     ctx_data = ly_ctx_data[ly_ctx_data_count] = calloc(1, sizeof **ly_ctx_data);
+    LY_CHECK_ERR_GOTO(!ctx_data, rc = LY_EMEM, cleanup);
 
     /* fill */
-    ly_ctx_data[ly_ctx_data_count]->ctx = ctx;
+    ctx_data->ctx = ctx;
+
+    /* leafref set */
+    if (ctx->opts & LY_CTX_LEAFREF_LINKING) {
+        /**
+         * storing the pointer instead of record itself is needed to avoid invalid memory reads. Hash table can reallocate
+         * its memory completely during various manipulation function (e.g. remove, insert). In case of using pointers, the
+         * pointer can be reallocated safely, while record itself remains untouched and can be accessed/modified freely
+         * */
+        ctx_data->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec *), ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
+        LY_CHECK_ERR_GOTO(!ctx_data->leafref_links_ht, rc = LY_EMEM, cleanup);
+    }
+
+    /* data dictionary */
+    ctx_data->data_dict = malloc(sizeof *ctx_data->data_dict);
+    LY_CHECK_ERR_GOTO(!ctx_data->data_dict, rc = LY_EMEM, cleanup);
+    lydict_init(ctx_data->data_dict);
 
     ++ly_ctx_data_count;
 
+cleanup:
+    /* WR UNLOCK */
     pthread_rwlock_unlock(&ly_ctx_data_rwlock);
-
-    return ctx_data;
+    if (rc && ctx_data) {
+        ly_ctx_data_del(ctx);
+    }
+    return rc;
 }
 
 void
@@ -148,6 +196,7 @@ ly_ctx_data_del(const struct ly_ctx *ctx)
     uint32_t i;
     struct ly_ctx_data *ctx_data = NULL;
 
+    /* WR LOCK */
     pthread_rwlock_wrlock(&ly_ctx_data_rwlock);
 
     /* find the ctx data */
@@ -158,8 +207,8 @@ ly_ctx_data_del(const struct ly_ctx *ctx)
         }
     }
     if (!ctx_data) {
+        /* WR UNLOCK */
         pthread_rwlock_unlock(&ly_ctx_data_rwlock);
-        LOGINT(NULL);
         return;
     }
 
@@ -174,6 +223,7 @@ ly_ctx_data_del(const struct ly_ctx *ctx)
         ly_ctx_data = NULL;
     }
 
+    /* WR UNLOCK */
     pthread_rwlock_unlock(&ly_ctx_data_rwlock);
 
     /* clear */

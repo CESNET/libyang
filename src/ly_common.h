@@ -352,7 +352,7 @@ struct ly_ctx_data {
     uint32_t err_count;             /**< count of items in the errs array */
 
     struct ly_ht *leafref_links_ht; /**< hash table of leafref links between term data nodes */
-    struct ly_dict *data_dict;      /**< dictionary for data trees, for immutable contexts */
+    struct ly_dict *data_dict;      /**< dictionary for data trees */
 };
 
 extern pthread_rwlock_t ly_ctx_data_rwlock; /**< lock for accessing ly_ctx_data */
@@ -394,9 +394,9 @@ void ly_ctx_new_change(struct ly_ctx *ctx);
  * @brief Add a ctx data for a new context.
  *
  * @param[in] ctx Newly created context.
- * @return Newly created data.
+ * @return LY_SUCCESS on success, LY_EEXIST if the context data already exists or LY_EMEM on memory allocation failure.
  */
-struct ly_ctx_data *ly_ctx_data_add(const struct ly_ctx *ctx);
+LY_ERR ly_ctx_data_add(const struct ly_ctx *ctx);
 
 /**
  * @brief Remove a ctx data of a destroyed context.
@@ -412,6 +412,19 @@ void ly_ctx_data_del(const struct ly_ctx *ctx);
  * @return Context data of @p ctx.
  */
 struct ly_ctx_data *ly_ctx_data_get(const struct ly_ctx *ctx);
+
+/**
+ * @brief Get context's data dictionary.
+ *
+ * @param[in] ctx Context whose data dictionary to get.
+ * @return Context's data dictionary.
+ */
+struct ly_dict *ly_ctx_data_dict_get(const struct ly_ctx *ctx);
+
+/**
+ * @brief Hash table value-equal callback for comparing leafref links hash table record.
+ */
+ly_bool ly_ctx_ht_leafref_links_equal_cb(void *val1_p, void *val2_p, ly_bool mod, void *cb_data);
 
 /**
  * @brief Callback for freeing leafref links recorcd internal resources.
