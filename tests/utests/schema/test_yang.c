@@ -740,7 +740,7 @@ submod_renew(struct lysp_yang_ctx *ctx)
     submod = calloc(1, sizeof *submod);
     ctx->parsed_mods->objs[0] = submod;
     submod->mod = calloc(1, sizeof *submod->mod);
-    lydict_insert(ly_ctx, "name", 0, &submod->mod->name);
+    lysdict_insert(ly_ctx, "name", 0, &submod->mod->name);
     submod->mod->parsed = (struct lysp_module *)submod;
     submod->mod->ctx = ly_ctx;
 

@@ -1719,7 +1719,7 @@ test_extension_compile(void **state)
     cctx.path[0] = '/';
 
     /* parsed ext instance */
-    lydict_insert(UTEST_LYCTX, "pref:my-ext", 0, &ext_p.name);
+    lysdict_insert(UTEST_LYCTX, "pref:my-ext", 0, &ext_p.name);
     ext_p.format = LY_VALUE_JSON;
     ext_p.parent_stmt = LY_STMT_MODULE;
 
@@ -1728,7 +1728,7 @@ test_extension_compile(void **state)
     substmtp->stmt = LY_STMT_ERROR_MESSAGE;
     substmtp->storage_p = &ext_p.parsed;
     /* fake parse */
-    lydict_insert(UTEST_LYCTX, "my error", 0, (const char **)&ext_p.parsed);
+    lysdict_insert(UTEST_LYCTX, "my error", 0, (const char **)&ext_p.parsed);
 
     /* compiled ext instance */
     ext_c.parent_stmt = ext_p.parent_stmt;
@@ -1741,8 +1741,8 @@ test_extension_compile(void **state)
      * error-message
      */
     ext_p.child = &child;
-    lydict_insert(UTEST_LYCTX, "error-message", 0, &child.stmt);
-    lydict_insert(UTEST_LYCTX, "my error", 0, &child.arg);
+    lysdict_insert(UTEST_LYCTX, "error-message", 0, &child.stmt);
+    lysdict_insert(UTEST_LYCTX, "my error", 0, &child.arg);
     child.format = LY_VALUE_JSON;
     child.kw = LY_STMT_ERROR_MESSAGE;
 
@@ -1753,13 +1753,13 @@ test_extension_compile(void **state)
     assert_string_equal(ext_c.compiled, "my error");
 
 cleanup:
-    lydict_remove(UTEST_LYCTX, ext_p.name);
-    lydict_remove(UTEST_LYCTX, child.stmt);
-    lydict_remove(UTEST_LYCTX, child.arg);
+    lysdict_remove(UTEST_LYCTX, ext_p.name);
+    lysdict_remove(UTEST_LYCTX, child.stmt);
+    lysdict_remove(UTEST_LYCTX, child.arg);
     LY_ARRAY_FREE(ext_p.substmts);
-    lydict_remove(UTEST_LYCTX, ext_p.parsed);
+    lysdict_remove(UTEST_LYCTX, ext_p.parsed);
     LY_ARRAY_FREE(ext_c.substmts);
-    lydict_remove(UTEST_LYCTX, ext_c.compiled);
+    lysdict_remove(UTEST_LYCTX, ext_c.compiled);
     if (rc) {
         fail();
     }
@@ -2126,7 +2126,7 @@ test_compiled_print(void **state)
     int size, fd;
     void *mem, *mem_end;
     struct lyd_node *tree = NULL;
-    struct ly_ctx *printed_ctx = NULL;
+    struct ly_ctx *printed_ctx = NULL, *printed_ctx2;
     struct lys_module *mod = NULL;
     const char *yang, *xml;
     struct lysc_ext_instance *ext;
@@ -2197,8 +2197,8 @@ test_compiled_print(void **state)
             "}}";
     UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, NULL);
 
-    /* get the structure extension */
-    assert_non_null(ext = &mod->compiled->exts[0]);
+    /* free parsed modules, not needed in a printed context */
+    ly_ctx_free_parsed(UTEST_LYCTX);
 
     /* get the size of the compiled ctx */
     size = ly_ctx_compiled_size(UTEST_LYCTX);
@@ -2216,6 +2216,14 @@ test_compiled_print(void **state)
 
     /* create a new printed ctx from this address */
     assert_int_equal(LY_SUCCESS, ly_ctx_new_printed(mem, &printed_ctx));
+
+    /* try to create a new printed ctx from the same address, which is not allowed */
+    assert_int_equal(LY_EEXIST, ly_ctx_new_printed(mem, &printed_ctx2));
+    CHECK_LOG_LASTMSG("Printed context was already created on the provided address.");
+
+    /* get the structure extension from the printed context */
+    mod = ly_ctx_get_module_implemented(printed_ctx, "m3");
+    assert_non_null(ext = &mod->compiled->exts[0]);
 
     /* try to parse data with the printed ctx */
     xml = "<root xmlns=\"urn:m1\">\n"

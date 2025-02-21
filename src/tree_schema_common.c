@@ -2388,7 +2388,7 @@ lysp_ext_instance_resolve_argument(const struct ly_ctx *ctx, const struct lysp_e
         }
 
         if (stmt) {
-            LY_CHECK_RET(lydict_insert(ctx, stmt->arg, 0, &ext_p->argument));
+            LY_CHECK_RET(lysdict_insert(ctx, stmt->arg, 0, &ext_p->argument));
             stmt->flags |= LYS_YIN_ARGUMENT;
         }
     }
