@@ -1063,20 +1063,20 @@ baseerror:
 
     /* we rewrite the following values as the types chain is being processed */
     if (range_p->eapptag) {
-        lydict_remove(ctx->ctx, (*range)->eapptag);
-        LY_CHECK_GOTO(ret = lydict_insert(ctx->ctx, range_p->eapptag, 0, &(*range)->eapptag), cleanup);
+        lysdict_remove(ctx->ctx, (*range)->eapptag);
+        LY_CHECK_GOTO(ret = lysdict_insert(ctx->ctx, range_p->eapptag, 0, &(*range)->eapptag), cleanup);
     }
     if (range_p->emsg) {
-        lydict_remove(ctx->ctx, (*range)->emsg);
-        LY_CHECK_GOTO(ret = lydict_insert(ctx->ctx, range_p->emsg, 0, &(*range)->emsg), cleanup);
+        lysdict_remove(ctx->ctx, (*range)->emsg);
+        LY_CHECK_GOTO(ret = lysdict_insert(ctx->ctx, range_p->emsg, 0, &(*range)->emsg), cleanup);
     }
     if (range_p->dsc) {
-        lydict_remove(ctx->ctx, (*range)->dsc);
-        LY_CHECK_GOTO(ret = lydict_insert(ctx->ctx, range_p->dsc, 0, &(*range)->dsc), cleanup);
+        lysdict_remove(ctx->ctx, (*range)->dsc);
+        LY_CHECK_GOTO(ret = lysdict_insert(ctx->ctx, range_p->dsc, 0, &(*range)->dsc), cleanup);
     }
     if (range_p->ref) {
-        lydict_remove(ctx->ctx, (*range)->ref);
-        LY_CHECK_GOTO(ret = lydict_insert(ctx->ctx, range_p->ref, 0, &(*range)->ref), cleanup);
+        lysdict_remove(ctx->ctx, (*range)->ref);
+        LY_CHECK_GOTO(ret = lysdict_insert(ctx->ctx, range_p->ref, 0, &(*range)->ref), cleanup);
     }
     /* extensions are taken only from the last range by the caller */
 
@@ -1393,7 +1393,7 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, const struct lysp_restr *pattern
         if (patterns_p[u].arg.str[0] == LYSP_RESTR_PATTERN_NACK) {
             (*pattern)->inverted = 1;
         }
-        LY_CHECK_GOTO(ret = lydict_insert(ctx->ctx, &patterns_p[u].arg.str[1], 0, &(*pattern)->expr), done);
+        LY_CHECK_GOTO(ret = lysdict_insert(ctx->ctx, &patterns_p[u].arg.str[1], 0, &(*pattern)->expr), done);
         DUP_STRING_GOTO(ctx->ctx, patterns_p[u].eapptag, (*pattern)->eapptag, ret, done);
         DUP_STRING_GOTO(ctx->ctx, patterns_p[u].emsg, (*pattern)->emsg, ret, done);
         DUP_STRING_GOTO(ctx->ctx, patterns_p[u].dsc, (*pattern)->dsc, ret, done);
@@ -1752,7 +1752,7 @@ lys_new_type(const struct ly_ctx *ctx, LY_DATA_TYPE basetype, const char *tpdf_n
     LY_CHECK_ERR_GOTO(!t, LOGMEM(ctx); rc = LY_EMEM, cleanup);
 
     if (tpdf_name) {
-        rc = lydict_insert(ctx, tpdf_name, 0, &t->name);
+        rc = lysdict_insert(ctx, tpdf_name, 0, &t->name);
         LY_CHECK_GOTO(rc, cleanup);
     }
 
@@ -3047,7 +3047,7 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
     LY_CHECK_GOTO(ret, done);
 
     if (leaf_p->units) {
-        LY_CHECK_GOTO(ret = lydict_insert(ctx->ctx, leaf_p->units, 0, &leaf->units), done);
+        LY_CHECK_GOTO(ret = lysdict_insert(ctx->ctx, leaf_p->units, 0, &leaf->units), done);
         leaf->flags |= LYS_SET_UNITS;
     }
 
@@ -3093,7 +3093,7 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *pnode, struct 
     LY_CHECK_GOTO(ret, done);
 
     if (llist_p->units) {
-        LY_CHECK_GOTO(ret = lydict_insert(ctx->ctx, llist_p->units, 0, &llist->units), done);
+        LY_CHECK_GOTO(ret = lysdict_insert(ctx->ctx, llist_p->units, 0, &llist->units), done);
         llist->flags |= LYS_SET_UNITS;
     }
 

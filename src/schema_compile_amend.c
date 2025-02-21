@@ -54,8 +54,8 @@ lysc_nodeid_free(const struct ly_ctx *ctx, struct lysc_nodeid *nodeid)
     }
 
     for (i = 0; i < nodeid->count; ++i) {
-        lydict_remove(ctx, nodeid->prefix[i]);
-        lydict_remove(ctx, nodeid->name[i]);
+        lysdict_remove(ctx, nodeid->prefix[i]);
+        lysdict_remove(ctx, nodeid->name[i]);
     }
     free(nodeid->prefix);
     free(nodeid->name);
@@ -125,7 +125,7 @@ relative_path:
         ptr = ly_strnchr(name, ':', len);
         if (ptr) {
             /* store prefix */
-            rc = lydict_insert(ctx, name, ptr - name, &(*nodeid)->prefix[(*nodeid)->count - 1]);
+            rc = lysdict_insert(ctx, name, ptr - name, &(*nodeid)->prefix[(*nodeid)->count - 1]);
             LY_CHECK_GOTO(rc, cleanup);
 
             /* move name */
@@ -134,7 +134,7 @@ relative_path:
         }
 
         /* store name */
-        rc = lydict_insert(ctx, name, len, &(*nodeid)->name[(*nodeid)->count - 1]);
+        rc = lysdict_insert(ctx, name, len, &(*nodeid)->name[(*nodeid)->count - 1]);
         LY_CHECK_GOTO(rc, cleanup);
 
         ++i;
@@ -916,7 +916,7 @@ lys_apply_refine(struct lysc_ctx *ctx, struct lysp_refine *rfn, const struct lys
         case LYS_LEAF:
             AMEND_CHECK_CARDINALITY(rfn->dflts, 1, "refine", "default");
 
-            lydict_remove(ctx->ctx, ((struct lysp_node_leaf *)target)->dflt.str);
+            lysdict_remove(ctx->ctx, ((struct lysp_node_leaf *)target)->dflt.str);
             LY_CHECK_GOTO(ret = lysp_qname_dup(ctx->ctx, &rfn->dflts[0], &((struct lysp_node_leaf *)target)->dflt), cleanup);
             break;
         case LYS_LEAFLIST:
@@ -937,7 +937,7 @@ lys_apply_refine(struct lysc_ctx *ctx, struct lysp_refine *rfn, const struct lys
         case LYS_CHOICE:
             AMEND_CHECK_CARDINALITY(rfn->dflts, 1, "refine", "default");
 
-            lydict_remove(ctx->ctx, ((struct lysp_node_choice *)target)->dflt.str);
+            lysdict_remove(ctx->ctx, ((struct lysp_node_choice *)target)->dflt.str);
             LY_CHECK_GOTO(ret = lysp_qname_dup(ctx->ctx, &rfn->dflts[0], &((struct lysp_node_choice *)target)->dflt), cleanup);
             break;
         default:
@@ -947,13 +947,13 @@ lys_apply_refine(struct lysc_ctx *ctx, struct lysp_refine *rfn, const struct lys
 
     /* description */
     if (rfn->dsc) {
-        lydict_remove(ctx->ctx, target->dsc);
+        lysdict_remove(ctx->ctx, target->dsc);
         DUP_STRING_GOTO(ctx->ctx, rfn->dsc, target->dsc, ret, cleanup);
     }
 
     /* reference */
     if (rfn->ref) {
-        lydict_remove(ctx->ctx, target->ref);
+        lysdict_remove(ctx->ctx, target->ref);
         DUP_STRING_GOTO(ctx->ctx, rfn->ref, target->ref, ret, cleanup);
     }
 
@@ -991,7 +991,7 @@ lys_apply_refine(struct lysc_ctx *ctx, struct lysp_refine *rfn, const struct lys
             AMEND_WRONG_NODETYPE("refine", "replace", "presence");
         }
 
-        lydict_remove(ctx->ctx, ((struct lysp_node_container *)target)->presence);
+        lysdict_remove(ctx->ctx, ((struct lysp_node_container *)target)->presence);
         DUP_STRING_GOTO(ctx->ctx, rfn->presence, ((struct lysp_node_container *)target)->presence, ret, cleanup);
     }
 
@@ -1345,7 +1345,7 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysp_deviate_del *d, struc
         }
 
         DEV_CHECK_PRESENCE_VALUE(struct lysp_node_leaf *, units, "deleting", "units", d->units);
-        lydict_remove(ctx->ctx, ((struct lysp_node_leaf *)target)->units);
+        lysdict_remove(ctx->ctx, ((struct lysp_node_leaf *)target)->units);
         ((struct lysp_node_leaf *)target)->units = NULL;
     }
 
@@ -1376,7 +1376,7 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysp_deviate_del *d, struc
             AMEND_CHECK_CARDINALITY(d->dflts, 1, "deviation", "default");
             DEV_CHECK_PRESENCE_VALUE(struct lysp_node_leaf *, dflt.str, "deleting", "default", d->dflts[0].str);
 
-            lydict_remove(ctx->ctx, ((struct lysp_node_leaf *)target)->dflt.str);
+            lysdict_remove(ctx->ctx, ((struct lysp_node_leaf *)target)->dflt.str);
             ((struct lysp_node_leaf *)target)->dflt.str = NULL;
             break;
         case LYS_LEAFLIST:
@@ -1387,7 +1387,7 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysp_deviate_del *d, struc
             AMEND_CHECK_CARDINALITY(d->dflts, 1, "deviation", "default");
             DEV_CHECK_PRESENCE_VALUE(struct lysp_node_choice *, dflt.str, "deleting", "default", d->dflts[0].str);
 
-            lydict_remove(ctx->ctx, ((struct lysp_node_choice *)target)->dflt.str);
+            lysdict_remove(ctx->ctx, ((struct lysp_node_choice *)target)->dflt.str);
             ((struct lysp_node_choice *)target)->dflt.str = NULL;
             break;
         default:
@@ -1445,7 +1445,7 @@ lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysp_deviate_rpl *d, stru
         }
 
         DEV_CHECK_PRESENCE(struct lysp_node_leaf *, units, "replacing", "units", d->units);
-        lydict_remove(ctx->ctx, ((struct lysp_node_leaf *)target)->units);
+        lysdict_remove(ctx->ctx, ((struct lysp_node_leaf *)target)->units);
         DUP_STRING_GOTO(ctx->ctx, d->units, ((struct lysp_node_leaf *)target)->units, ret, cleanup);
     }
 
@@ -1455,13 +1455,13 @@ lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysp_deviate_rpl *d, stru
         case LYS_LEAF:
             DEV_CHECK_PRESENCE(struct lysp_node_leaf *, dflt.str, "replacing", "default", d->dflt.str);
 
-            lydict_remove(ctx->ctx, ((struct lysp_node_leaf *)target)->dflt.str);
+            lysdict_remove(ctx->ctx, ((struct lysp_node_leaf *)target)->dflt.str);
             LY_CHECK_GOTO(ret = lysp_qname_dup(ctx->ctx, &d->dflt, &((struct lysp_node_leaf *)target)->dflt), cleanup);
             break;
         case LYS_CHOICE:
             DEV_CHECK_PRESENCE(struct lysp_node_choice *, dflt.str, "replacing", "default", d->dflt.str);
 
-            lydict_remove(ctx->ctx, ((struct lysp_node_choice *)target)->dflt.str);
+            lysdict_remove(ctx->ctx, ((struct lysp_node_choice *)target)->dflt.str);
             LY_CHECK_GOTO(ret = lysp_qname_dup(ctx->ctx, &d->dflt, &((struct lysp_node_choice *)target)->dflt), cleanup);
             break;
         default:

@@ -19,6 +19,7 @@
 
 #include "compat.h"
 #include "libyang.h"
+#include "ly_common.h"
 #include "plugins_exts.h"
 
 struct lysp_ext_instance_structure {
@@ -440,7 +441,7 @@ structure_aug_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     }
     aug_pdata->aug->nodetype = LYS_AUGMENT;
     aug_pdata->aug->flags = aug_pdata->flags;
-    if (lydict_insert(ctx, ext->argument, 0, &aug_pdata->aug->nodeid)) {
+    if (lysdict_insert(ctx, ext->argument, 0, &aug_pdata->aug->nodeid)) {
         goto emem;
     }
     aug_pdata->aug->child = aug_pdata->child;

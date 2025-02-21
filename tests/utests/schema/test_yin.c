@@ -330,8 +330,8 @@ test_yin_parse_content(void **state)
     ret = yin_parse_content(YCTX, subelems2, 2, NULL, LY_STMT_STATUS, NULL, &exts);
     assert_int_equal(ret, LY_EVALID);
     CHECK_LOG_CTX("Redefinition of \"text\" sub-element in \"status\" element.", NULL, 1);
-    lydict_remove(UTEST_LYCTX, prefix_value);
-    lydict_remove(UTEST_LYCTX, value);
+    lysdict_remove(UTEST_LYCTX, prefix_value);
+    lysdict_remove(UTEST_LYCTX, value);
     RESET_STATE;
 
     /* test first subelem */
@@ -350,7 +350,7 @@ test_yin_parse_content(void **state)
     ret = yin_parse_content(YCTX, subelems3, 2, NULL, LY_STMT_STATUS, NULL, &exts);
     assert_int_equal(ret, LY_EVALID);
     CHECK_LOG_CTX("Sub-element \"text\" of \"status\" element must be defined as it's first sub-element.", NULL, 1);
-    lydict_remove(UTEST_LYCTX, prefix_value);
+    lysdict_remove(UTEST_LYCTX, prefix_value);
     RESET_STATE;
 
     /* test mandatory subelem */
@@ -1392,7 +1392,7 @@ test_argument_elem(void **state)
     assert_int_equal(test_element_helper(state, data, &arg_meta, NULL, NULL), LY_SUCCESS);
     assert_string_equal(arg, "arg");
     assert_true(flags == 0);
-    lydict_remove(UTEST_LYCTX, arg);
+    lysdict_remove(UTEST_LYCTX, arg);
 }
 
 static void
@@ -1401,7 +1401,7 @@ test_belongsto_elem(void **state)
     const char *data;
     struct lysp_submodule submod;
 
-    lydict_insert(UTEST_LYCTX, "module-name", 0, &PARSER_CUR_PMOD(YCTX)->mod->name);
+    lysdict_insert(UTEST_LYCTX, "module-name", 0, &PARSER_CUR_PMOD(YCTX)->mod->name);
 
     data = ELEMENT_WRAPPER_START "<belongs-to module=\"module-name\"></belongs-to>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &submod, NULL, NULL), LY_EVALID);
@@ -1552,12 +1552,12 @@ test_modifier_elem(void **state)
     const char *data;
     const char *pat;
 
-    assert_int_equal(LY_SUCCESS, lydict_insert(UTEST_LYCTX, "\006pattern", 8, &pat));
+    assert_int_equal(LY_SUCCESS, lysdict_insert(UTEST_LYCTX, "\006pattern", 8, &pat));
     data = ELEMENT_WRAPPER_START "<modifier value=\"invert\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &pat, NULL, NULL), LY_EVALID);
     CHECK_LOG_CTX("Invalid value \"invert\" of \"value\" attribute in \"modifier\" element. "
             "Only valid value is \"invert-match\".", NULL, 1);
-    lydict_remove(UTEST_LYCTX, pat);
+    lysdict_remove(UTEST_LYCTX, pat);
 }
 
 static void
@@ -1672,7 +1672,7 @@ test_prefix_elem(void **state)
     data = ELEMENT_WRAPPER_START "<prefix value=\"pref\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &value, NULL, NULL), LY_SUCCESS);
     assert_string_equal(value, "pref");
-    lydict_remove(UTEST_LYCTX, value);
+    lysdict_remove(UTEST_LYCTX, value);
 }
 
 static void
@@ -1759,7 +1759,7 @@ test_unique_elem(void **state)
     data = ELEMENT_WRAPPER_START "<unique tag=\"tag\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &values, NULL, NULL), LY_SUCCESS);
     assert_string_equal(*values, "tag");
-    lydict_remove(UTEST_LYCTX, *values);
+    lysdict_remove(UTEST_LYCTX, *values);
     LY_ARRAY_FREE(values);
     values = NULL;
 }
@@ -1773,7 +1773,7 @@ test_units_elem(void **state)
     data = ELEMENT_WRAPPER_START "<units name=\"name\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &values, NULL, NULL), LY_SUCCESS);
     assert_string_equal(values, "name");
-    lydict_remove(UTEST_LYCTX, values);
+    lysdict_remove(UTEST_LYCTX, values);
     values = NULL;
 }
 
@@ -1786,17 +1786,17 @@ test_yin_text_value_elem(void **state)
     data = ELEMENT_WRAPPER_START "<text>text</text>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_SUCCESS);
     assert_string_equal(val, "text");
-    lydict_remove(UTEST_LYCTX, val);
+    lysdict_remove(UTEST_LYCTX, val);
 
     data = "<error-message xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <value>text</value> </error-message>";
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_SUCCESS);
     assert_string_equal(val, "text");
-    lydict_remove(UTEST_LYCTX, val);
+    lysdict_remove(UTEST_LYCTX, val);
 
     data = ELEMENT_WRAPPER_START "<text></text>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_SUCCESS);
     assert_string_equal("", val);
-    lydict_remove(UTEST_LYCTX, val);
+    lysdict_remove(UTEST_LYCTX, val);
 }
 
 static void
@@ -2209,7 +2209,7 @@ test_presence_elem(void **state)
     data = ELEMENT_WRAPPER_START "<presence value=\"presence-val\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_SUCCESS);
     assert_string_equal(val, "presence-val");
-    lydict_remove(UTEST_LYCTX, val);
+    lysdict_remove(UTEST_LYCTX, val);
 
     data = ELEMENT_WRAPPER_START "<presence/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_EVALID);
@@ -2225,7 +2225,7 @@ test_key_elem(void **state)
     data = ELEMENT_WRAPPER_START "<key value=\"key-value\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_SUCCESS);
     assert_string_equal(val, "key-value");
-    lydict_remove(UTEST_LYCTX, val);
+    lysdict_remove(UTEST_LYCTX, val);
 
     data = ELEMENT_WRAPPER_START "<key/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_EVALID);
@@ -3172,7 +3172,7 @@ submod_renew(struct lysp_yin_ctx *ctx, const char *belongs_to)
     submod = calloc(1, sizeof *submod);
     ctx->parsed_mods->objs[0] = submod;
     submod->mod = calloc(1, sizeof *submod->mod);
-    lydict_insert(ly_ctx, belongs_to, 0, &submod->mod->name);
+    lysdict_insert(ly_ctx, belongs_to, 0, &submod->mod->name);
     submod->mod->parsed = (struct lysp_module *)submod;
     submod->mod->ctx = ly_ctx;
 
@@ -3425,7 +3425,7 @@ test_yin_parse_submodule(void **state)
     struct lysp_submodule *submod = NULL;
     struct ly_in *in;
 
-    lydict_insert(UTEST_LYCTX, "a", 0, &PARSER_CUR_PMOD(YCTX)->mod->name);
+    lysdict_insert(UTEST_LYCTX, "a", 0, &PARSER_CUR_PMOD(YCTX)->mod->name);
 
     data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
             "<submodule name=\"asub\""

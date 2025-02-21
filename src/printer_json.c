@@ -328,8 +328,8 @@ json_print_member2(struct jsonpr_ctx *pctx, const struct lyd_node *parent, LY_VA
         name_str = "";
     }
 
-    /* print the member */
-    if (module_name && (!parent || (node_prefix(parent) != module_name))) {
+    /* print the member, strcmp because node prefix is in the schema dict, module_name in data dict */
+    if (module_name && (!parent || strcmp(node_prefix(parent), module_name))) {
         ly_print_(pctx->out, "%*s\"%s%s:%s\":%s", INDENT, is_attr ? "@" : "", module_name, name_str, DO_FORMAT ? " " : "");
     } else {
         ly_print_(pctx->out, "%*s\"%s%s\":%s", INDENT, is_attr ? "@" : "", name_str, DO_FORMAT ? " " : "");

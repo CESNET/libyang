@@ -163,7 +163,7 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, void **parsed_p, struct lysc
     case LY_STMT_REFERENCE:
     case LY_STMT_UNITS:
         /* just make a copy */
-        LY_CHECK_GOTO(rc = lydict_insert(ctx->ctx, *parsed_p, 0, (const char **)substmt->storage_p), cleanup);
+        LY_CHECK_GOTO(rc = lysdict_insert(ctx->ctx, *parsed_p, 0, (const char **)substmt->storage_p), cleanup);
         break;
 
     case LY_STMT_BIT:

@@ -445,6 +445,68 @@ void ly_ctx_ht_leafref_links_rec_free(void *val_p);
 struct lys_module *ly_ctx_get_module_implemented2(const struct ly_ctx *ctx, const char *name, size_t name_len);
 
 /******************************************************************************
+ * Dictionary
+ *****************************************************************************/
+
+/*
+ * The following lysdict_*() functions operate on the internal schema dictionary of the given context.
+ * They do NOT lock a mutex as opposed to their lydict_*() counterparts, because they do not operate on data.
+ * This is because there should be no concurrency when parsing modules into the given context.
+ */
+
+/**
+ * @brief Insert string into the internal schema dictionary of @p ctx. Use ::lydict_insert() to
+ * insert into the data dictionary.
+ *
+ * @param[in] ctx Context whose schema dictionary to store the string in.
+ * @param[in] value String to be stored in the dictionary.
+ * @param[in] len Number of bytes to store.
+ * @param[out] str_p Optional parameter to get pointer to the string corresponding to the @p value and stored in dictionary.
+ * @return LY_SUCCESS in case of successful insertion into dictionary, note that the function does not return LY_EEXIST.
+ * @return LY_EMEM in case of memory allocation failure.
+ */
+LY_ERR lysdict_insert(const struct ly_ctx *ctx, const char *value, size_t len, const char **str_p);
+
+/**
+ * @brief Insert string into the internal schema dictionary of @p ctx - zerocopy version.
+ * Use ::lydict_insert_zc() to insert into the data dictionary.
+ *
+ * @param[in] ctx Context whose schema dictionary to store the string in.
+ * @param[in] value String to be stored in the dictionary.
+ * @param[in] len Number of bytes to store.
+ * @param[out] str_p Optional parameter to get pointer to the string corresponding to the @p value and stored in dictionary.
+ * @return LY_SUCCESS in case of successful insertion into dictionary, note that the function does not return LY_EEXIST.
+ * @return LY_EMEM in case of memory allocation failure.
+ */
+LY_ERR lysdict_insert_zc(const struct ly_ctx *ctx, char *value, const char **str_p);
+
+/**
+ * @brief Remove specified string from the internal schema dictionary of @p ctx. It decrements reference
+ * counter for the string and if it is zero, the string itself is freed.
+ *
+ * @param[in] ctx libyang context handler
+ * @param[in] value String to be freed. Note, that not only the string itself
+ * must match the stored value, but also the address is being compared and the
+ * counter is decremented only if it matches. If NULL, function does nothing.
+ * @return LY_SUCCESS if the value was found and removed (or refcount decreased).
+ * @return LY_ENOTFOUND if the value was not found.
+ * @return LY_ERR on other errors.
+ */
+LY_ERR lysdict_remove(const struct ly_ctx *ctx, const char *value);
+
+/**
+ * @brief Duplicate a string in the internal schema dictionary of @p ctx. Only a reference counter is incremented.
+ *
+ * @param[in] ctx Context whose schema dictionary to duplicate the string in.
+ * @param[in] value NULL-terminated string to be duplicated in the dictionary (reference counter is incremented).
+ * @param[out] str_p Optional parameter to get pointer to the string corresponding to the @p value and stored in dictionary.
+ * @return LY_SUCCESS in case the string already exists in the dictionary.
+ * @return LY_ENOTFOUND in case the string was not found.
+ * @return LY_ERR on other errors
+ */
+LY_ERR lysdict_dup(const struct ly_ctx *ctx, const char *value, const char **str_p);
+
+/******************************************************************************
  * Generic useful functions.
  *****************************************************************************/
 

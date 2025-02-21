@@ -913,7 +913,7 @@ lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc
 
     if (!rc) {
         /* store the original value with the resolved prefixes */
-        LY_CHECK_GOTO(rc = lydict_insert(ctx->ctx, dflt, 0, &value->str), cleanup);
+        LY_CHECK_GOTO(rc = lysdict_insert(ctx->ctx, dflt, 0, &value->str), cleanup);
         LY_CHECK_GOTO(rc = lyplg_type_prefix_data_new(ctx->ctx, dflt, strlen(dflt), LY_VALUE_SCHEMA, dflt_pmod, &format,
                 (void **)&value->prefixes), cleanup);
     } else {
@@ -1674,7 +1674,7 @@ lys_compile_enabled_features(struct lys_module *mod)
     while ((f = lysp_feature_next(f, mod->parsed, &idx))) {
         if (f->flags & LYS_FENABLED) {
             LY_ARRAY_NEW_GOTO(mod->ctx, mod->compiled->features, feat_p, rc, cleanup);
-            LY_CHECK_GOTO(rc = lydict_dup(mod->ctx, f->name, feat_p), cleanup);
+            LY_CHECK_GOTO(rc = lysdict_dup(mod->ctx, f->name, feat_p), cleanup);
         }
     }
 

@@ -19,6 +19,7 @@
 
 #include "compat.h"
 #include "libyang.h"
+#include "ly_common.h"
 #include "plugins_exts.h"
 #include "plugins_internal.h"
 
@@ -56,7 +57,7 @@ nacm_inherit_clb(struct lysc_node *node, void *data, ly_bool *dfs_continue)
         inherited->parent = node;
         inherited->parent_stmt = lyplg_ext_nodetype2stmt(node->nodetype);
         if (arg->ext->argument) {
-            if ((ret = lydict_insert(node->module->ctx, arg->ext->argument, 0, &inherited->argument))) {
+            if ((ret = lysdict_insert(node->module->ctx, arg->ext->argument, 0, &inherited->argument))) {
                 return ret;
             }
         }
