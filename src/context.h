@@ -697,6 +697,14 @@ LIBYANG_API_DECL LY_ERR ly_ctx_compiled_print(const struct ly_ctx *ctx, void *me
 LIBYANG_API_DECL LY_ERR ly_ctx_new_printed(const void *mem, struct ly_ctx **ctx);
 
 /**
+ * @brief Check if the context was created from a printed (immutable) context.
+ *
+ * @param[in] ctx Context to check.
+ * @return 1 if the context was created from a printed context, 0 otherwise.
+ */
+LIBYANG_API_DECL ly_bool ly_ctx_is_printed(const struct ly_ctx *ctx);
+
+/**
  * @brief Free all internal structures of the specified context.
  *
  * The function should be used before terminating the application to destroy
