@@ -751,7 +751,7 @@ ctxp_dict_ht(const struct ly_ht *orig_ht, struct ly_ht *ht, struct ly_ht *addr_h
 
     /* hash table, must not be modified in the context */
     *ht = *orig_ht;
-    ht->val_equal = NULL;
+    ht->val_equal = orig_ht->val_equal;
     ht->cb_data = NULL;
 
     /* hlists */
