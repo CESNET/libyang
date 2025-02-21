@@ -1782,7 +1782,6 @@ ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_subs
 {
     LY_ERR rc = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u, v;
-    uint32_t hash;
     const struct lysc_node *node;
 
     LY_ARRAY_FOR(orig_substmts, u) {
@@ -1811,8 +1810,7 @@ ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_subs
             node = *(const struct lysc_node **)orig_substmts[u].storage_p;
 
             /* ht check, make sure the node list is stored only once */
-            hash = lyht_hash((const char *)&node, sizeof node);
-            if (lyht_insert(addr_ht, &node, hash, NULL) == LY_EEXIST) {
+            if (ly_ctx_compiled_addr_ht_get(addr_ht, node, 1)) {
                 break;
             }
 
