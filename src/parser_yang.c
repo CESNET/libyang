@@ -47,8 +47,8 @@ struct lys_glob_unres;
  * @param[in] LEN length of the string in WORD to store.
  */
 #define INSERT_WORD_GOTO(CTX, BUF, TARGET, WORD, LEN, RET, LABEL) \
-    if (BUF) {LY_CHECK_GOTO(RET = lydict_insert_zc(PARSER_CTX(CTX), WORD, &(TARGET)), LABEL);}\
-    else {LY_CHECK_GOTO(RET = lydict_insert(PARSER_CTX(CTX), LEN ? WORD : "", LEN, &(TARGET)), LABEL);}
+    if (BUF) {LY_CHECK_GOTO(RET = lysdict_insert_zc(PARSER_CTX(CTX), WORD, &(TARGET)), LABEL);}\
+    else {LY_CHECK_GOTO(RET = lysdict_insert(PARSER_CTX(CTX), LEN ? WORD : "", LEN, &(TARGET)), LABEL);}
 
 /**
  * @brief Read from the IN structure COUNT items. Also updates the indent value in yang parser context
@@ -937,7 +937,7 @@ parse_ext_substmt(struct lysp_yang_ctx *ctx, enum ly_stmt kw, char *word, size_t
     }
 
     /* statement */
-    LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), word, word_len, &stmt->stmt));
+    LY_CHECK_RET(lysdict_insert(PARSER_CTX(ctx), word, word_len, &stmt->stmt));
 
     /* get optional argument */
     LY_CHECK_RET(get_argument(ctx, Y_MAYBE_STR_ARG, &stmt->flags, &word, &buf, &word_len));
@@ -989,7 +989,7 @@ parse_ext(struct lysp_yang_ctx *ctx, const char *ext_name, size_t ext_name_len, 
     }
 
     /* store name */
-    LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), ext_name, ext_name_len, &e->name));
+    LY_CHECK_RET(lysdict_insert(PARSER_CTX(ctx), ext_name, ext_name_len, &e->name));
 
     /* get optional argument */
     LY_CHECK_RET(get_argument(ctx, Y_MAYBE_STR_ARG, NULL, &word, &buf, &word_len));
@@ -2136,11 +2136,11 @@ parse_type_pattern_modifier(struct lysp_yang_ctx *ctx, struct lysp_restr *restr)
     buf = malloc(strlen(restr->arg.str) + 1);
     LY_CHECK_ERR_GOTO(!buf, LOGMEM(PARSER_CTX(ctx)); ret = LY_EMEM, cleanup);
     strcpy(buf, restr->arg.str);
-    lydict_remove(PARSER_CTX(ctx), restr->arg.str);
+    lysdict_remove(PARSER_CTX(ctx), restr->arg.str);
 
     assert(buf[0] == LYSP_RESTR_PATTERN_ACK);
     buf[0] = LYSP_RESTR_PATTERN_NACK;
-    ret = lydict_insert_zc(PARSER_CTX(ctx), buf, &restr->arg.str);
+    ret = lysdict_insert_zc(PARSER_CTX(ctx), buf, &restr->arg.str);
     buf = NULL;
     LY_CHECK_GOTO(ret, cleanup);
 
@@ -2196,7 +2196,7 @@ parse_type_pattern(struct lysp_yang_ctx *ctx, struct lysp_restr **patterns)
     }
     buf[0] = LYSP_RESTR_PATTERN_ACK; /* pattern's default regular-match flag */
     buf[word_len + 1] = '\0'; /* terminating NULL byte */
-    LY_CHECK_RET(lydict_insert_zc(PARSER_CTX(ctx), buf, &restr->arg.str));
+    LY_CHECK_RET(lysdict_insert_zc(PARSER_CTX(ctx), buf, &restr->arg.str));
     restr->arg.mod = PARSER_CUR_PMOD(ctx);
 
     YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
@@ -2301,11 +2301,11 @@ parse_type(struct lysp_yang_ctx *ctx, struct lysp_type *type)
              * to rely on lysp_module_free because the result of the parsing is stored in a local variable.
              */
             LY_CHECK_ERR_RET(ret = parse_text_field(ctx, type, LY_STMT_PATH, 0, &str_path, Y_STR_ARG, NULL, &type->exts),
-                    lydict_remove(PARSER_CTX(ctx), str_path), ret);
+                    lysdict_remove(PARSER_CTX(ctx), str_path), ret);
             ret = ly_path_parse(PARSER_CTX(ctx), NULL, str_path, 0, 1, LY_PATH_BEGIN_EITHER,
                     LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &type->path);
             /* Moreover, even if successful, the string is removed from the dictionary. */
-            lydict_remove(PARSER_CTX(ctx), str_path);
+            lysdict_remove(PARSER_CTX(ctx), str_path);
             LY_CHECK_RET(ret);
             type->flags |= LYS_SET_PATH;
             break;
@@ -2872,7 +2872,7 @@ parse_inout(struct lysp_yang_ctx *ctx, enum ly_stmt inout_kw, struct lysp_node *
     }
 
     /* initiate structure */
-    LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), input ? "input" : "output", 0, &inout_p->name));
+    LY_CHECK_RET(lysdict_insert(PARSER_CTX(ctx), input ? "input" : "output", 0, &inout_p->name));
     inout_p->nodetype = input ? LYS_INPUT : LYS_OUTPUT;
     inout_p->parent = parent;
 
@@ -2993,12 +2993,12 @@ parse_action(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_no
     if (!act->input.nodetype) {
         act->input.nodetype = LYS_INPUT;
         act->input.parent = (struct lysp_node *)act;
-        LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), "input", 0, &act->input.name));
+        LY_CHECK_RET(lysdict_insert(PARSER_CTX(ctx), "input", 0, &act->input.name));
     }
     if (!act->output.nodetype) {
         act->output.nodetype = LYS_OUTPUT;
         act->output.parent = (struct lysp_node *)act;
-        LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), "output", 0, &act->output.name));
+        LY_CHECK_RET(lysdict_insert(PARSER_CTX(ctx), "output", 0, &act->output.name));
     }
 
 cleanup:

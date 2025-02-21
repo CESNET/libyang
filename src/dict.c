@@ -116,27 +116,22 @@ lydict_resize_val_eq(void *val1_p, void *val2_p, ly_bool mod, void *UNUSED(cb_da
     return 0;
 }
 
-LIBYANG_API_DEF LY_ERR
-lydict_remove(const struct ly_ctx *ctx, const char *value)
+/**
+ * @brief Remove a string from the dictionary.
+ *
+ * @param[in] ctx Context to use.
+ * @param[in] dict Dictionary to remove from.
+ * @param[in] value Value to remove.
+ * @return LY_SUCCESS on success, LY_ERR value on error.
+ */
+static LY_ERR
+_lydict_remove(const struct ly_ctx *ctx, struct ly_dict *dict, const char *value)
 {
     LY_ERR ret = LY_SUCCESS;
     size_t len;
     uint32_t hash;
     struct ly_dict_rec rec, *match = NULL;
     char *val_p;
-    struct ly_ctx_data *ctx_data;
-    struct ly_dict *dict;
-
-    if (!ctx || !value) {
-        return LY_SUCCESS;
-    }
-
-    if (ctx->opts & LY_CTX_INT_IMMUTABLE) {
-        ctx_data = ly_ctx_data_get(ctx);
-        dict = ctx_data->data_dict;
-    } else {
-        dict = (struct ly_dict *)&ctx->dict;
-    }
 
     LOGDBG(LY_LDGDICT, "removing \"%s\"", value);
 
@@ -147,7 +142,6 @@ lydict_remove(const struct ly_ctx *ctx, const char *value)
     rec.value = (char *)value;
     rec.refcount = 0;
 
-    pthread_mutex_lock(&dict->lock);
     /* set len as data for compare callback */
     lyht_set_cb_data(dict->hash_tab, (void *)&len);
     /* check if value is already inserted */
@@ -176,10 +170,48 @@ lydict_remove(const struct ly_ctx *ctx, const char *value)
     }
 
 cleanup:
-    pthread_mutex_unlock(&dict->lock);
     return ret;
 }
 
+LY_ERR
+lysdict_remove(const struct ly_ctx *ctx, const char *value)
+{
+    if (!ctx || !value) {
+        return LY_SUCCESS;
+    }
+
+    return _lydict_remove(ctx, (struct ly_dict *)&ctx->dict, value);
+}
+
+LIBYANG_API_DEF LY_ERR
+lydict_remove(const struct ly_ctx *ctx, const char *value)
+{
+    LY_ERR ret;
+    struct ly_dict *dict;
+
+    if (!ctx || !value) {
+        return LY_SUCCESS;
+    }
+
+    dict = ly_ctx_data_dict_get(ctx);
+
+    pthread_mutex_lock(&dict->lock);
+    ret = _lydict_remove(ctx, dict, value);
+    pthread_mutex_unlock(&dict->lock);
+
+    return ret;
+}
+
+/**
+ * @brief Insert a new string into the dictionary.
+ *
+ * @param[in] dict Dictionary to insert into.
+ * @param[in] value Value to insert.
+ * @param[in] len Length of @p value.
+ * @param[in] zerocopy Whether to use the value directly or make a copy.
+ * @param[out] str_p Optional pointer to the inserted string.
+ * @return LY_SUCCESS on success, LY_ERR value on error.
+ */
 static LY_ERR
 dict_insert(struct ly_dict *dict, char *value, size_t len, ly_bool zerocopy, const char **str_p)
 {
@@ -229,11 +261,27 @@ dict_insert(struct ly_dict *dict, char *value, size_t len, ly_bool zerocopy, con
     return ret;
 }
 
+LY_ERR
+lysdict_insert(const struct ly_ctx *ctx, const char *value, size_t len, const char **str_p)
+{
+    if (!value) {
+        *str_p = NULL;
+        return LY_SUCCESS;
+    }
+
+    if (!len) {
+        len = strlen(value);
+    }
+
+    /* no need to lock dict lock, because we are inserting into a schema dict,
+     * which is thread safe unlike data parsing */
+    return dict_insert((struct ly_dict *)&ctx->dict, (char *)value, len, 0, str_p);
+}
+
 LIBYANG_API_DEF LY_ERR
 lydict_insert(const struct ly_ctx *ctx, const char *value, size_t len, const char **str_p)
 {
     LY_ERR rc;
-    struct ly_ctx_data *ctx_data;
     struct ly_dict *dict;
 
     LY_CHECK_ARG_RET(ctx, ctx, str_p, LY_EINVAL);
@@ -247,12 +295,7 @@ lydict_insert(const struct ly_ctx *ctx, const char *value, size_t len, const cha
         len = strlen(value);
     }
 
-    if (ctx->opts & LY_CTX_INT_IMMUTABLE) {
-        ctx_data = ly_ctx_data_get(ctx);
-        dict = ctx_data->data_dict;
-    } else {
-        dict = (struct ly_dict *)&ctx->dict;
-    }
+    dict = ly_ctx_data_dict_get(ctx);
 
     pthread_mutex_lock(&dict->lock);
     rc = dict_insert(dict, (char *)value, len, 0, str_p);
@@ -261,11 +304,21 @@ lydict_insert(const struct ly_ctx *ctx, const char *value, size_t len, const cha
     return rc;
 }
 
+LY_ERR
+lysdict_insert_zc(const struct ly_ctx *ctx, char *value, const char **str_p)
+{
+    if (!value) {
+        *str_p = NULL;
+        return LY_SUCCESS;
+    }
+
+    return dict_insert((struct ly_dict *)&ctx->dict, value, strlen(value), 1, str_p);
+}
+
 LIBYANG_API_DEF LY_ERR
 lydict_insert_zc(const struct ly_ctx *ctx, char *value, const char **str_p)
 {
     LY_ERR rc;
-    struct ly_ctx_data *ctx_data;
     struct ly_dict *dict;
 
     LY_CHECK_ARG_RET(ctx, ctx, str_p, LY_EINVAL);
@@ -275,12 +328,7 @@ lydict_insert_zc(const struct ly_ctx *ctx, char *value, const char **str_p)
         return LY_SUCCESS;
     }
 
-    if (ctx->opts & LY_CTX_INT_IMMUTABLE) {
-        ctx_data = ly_ctx_data_get(ctx);
-        dict = ctx_data->data_dict;
-    } else {
-        dict = (struct ly_dict *)&ctx->dict;
-    }
+    dict = ly_ctx_data_dict_get(ctx);
 
     pthread_mutex_lock(&dict->lock);
     rc = dict_insert(dict, value, strlen(value), 1, str_p);
@@ -316,11 +364,21 @@ dict_dup(struct ly_dict *dict, char *value, const char **str_p)
     return ret;
 }
 
+LY_ERR
+lysdict_dup(const struct ly_ctx *ctx, const char *value, const char **str_p)
+{
+    if (!value) {
+        *str_p = NULL;
+        return LY_SUCCESS;
+    }
+
+    return dict_dup((struct ly_dict *)&ctx->dict, (char *)value, str_p);
+}
+
 LIBYANG_API_DEF LY_ERR
 lydict_dup(const struct ly_ctx *ctx, const char *value, const char **str_p)
 {
     LY_ERR rc;
-    struct ly_ctx_data *ctx_data;
     struct ly_dict *dict;
 
     LY_CHECK_ARG_RET(ctx, ctx, str_p, LY_EINVAL);
@@ -330,12 +388,7 @@ lydict_dup(const struct ly_ctx *ctx, const char *value, const char **str_p)
         return LY_SUCCESS;
     }
 
-    if (ctx->opts & LY_CTX_INT_IMMUTABLE) {
-        ctx_data = ly_ctx_data_get(ctx);
-        dict = ctx_data->data_dict;
-    } else {
-        dict = (struct ly_dict *)&ctx->dict;
-    }
+    dict = ly_ctx_data_dict_get(ctx);
 
     pthread_mutex_lock(&dict->lock);
     rc = dict_dup(dict, (char *)value, str_p);

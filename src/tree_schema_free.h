@@ -37,7 +37,7 @@ struct lysp_yin_ctx;
  * @brief Macro to free [sized array](@ref sizedarrays) of strings stored in the context's dictionary. The ARRAY itself is also freed,
  * but the memory is not sanitized.
  */
-#define FREE_STRINGS(CTX, ARRAY) {LY_ARRAY_COUNT_TYPE c__; LY_ARRAY_FOR(ARRAY, c__){lydict_remove(CTX, ARRAY[c__]);}LY_ARRAY_FREE(ARRAY);}
+#define FREE_STRINGS(CTX, ARRAY) {LY_ARRAY_COUNT_TYPE c__; LY_ARRAY_FOR(ARRAY, c__){lysdict_remove(CTX, ARRAY[c__]);}LY_ARRAY_FREE(ARRAY);}
 
 /**
  * @brief Free a parsed qualified name.
