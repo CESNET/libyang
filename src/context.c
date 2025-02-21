@@ -1489,6 +1489,12 @@ cleanup:
     return rc;
 }
 
+LIBYANG_API_DEF ly_bool
+ly_ctx_is_printed(const struct ly_ctx *ctx)
+{
+    return (ctx->opts & LY_CTX_INT_IMMUTABLE) ? 1 : 0;
+}
+
 LIBYANG_API_DEF void
 ly_ctx_destroy(struct ly_ctx *ctx)
 {
