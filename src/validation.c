@@ -1143,6 +1143,7 @@ lyd_validate_minmax(const struct lyd_node *first, const struct lyd_node *parent,
     uint32_t count = 0;
     struct lyd_node *iter;
     const struct lysc_when *disabled;
+    LY_ERR rv = LY_SUCCESS;
 
     assert(min || max);
 
@@ -1182,32 +1183,35 @@ lyd_validate_minmax(const struct lyd_node *first, const struct lyd_node *parent,
         max = 0;
     }
 
-    if (min) {
-        if (val_opts & LYD_VALIDATE_OPERATIONAL) {
-            /* only a warning */
-            LOG_LOCSET(snode, NULL);
-            LOGWRN(snode->module->ctx, "Too few \"%s\" instances.", snode->name);
-            LOG_LOCBACK(1, 0);
+    if (min || max) {
+        if (min) {
+            char suffix_path[256] = "";
+
+            if (parent != NULL) {
+                snprintf(suffix_path, sizeof(suffix_path), "/%s", snode->name);
+            }
+
+            ly_log_location((!parent) ? snode : NULL, parent, parent ? suffix_path : NULL, NULL);
+            if (val_opts & LYD_VALIDATE_OPERATIONAL) {
+                LOGWRN(snode->module->ctx, "Too few \"%s\" instances.", snode->name);
+            } else {
+                LOGVAL_APPTAG(snode->module->ctx, "too-few-elements", LY_VCODE_NOMIN, snode->name);
+            }
+            ly_log_location_revert((!parent) ? 1 : 0, parent ? 1 : 0, parent ? 1 : 0, 0);
         } else {
-            LOG_LOCSET(snode, NULL);
-            LOGVAL_APPTAG(snode->module->ctx, "too-few-elements", LY_VCODE_NOMIN, snode->name);
-            LOG_LOCBACK(1, 0);
-            return LY_EVALID;
+            ly_log_location(NULL, iter, NULL, NULL);
+            if (val_opts & LYD_VALIDATE_OPERATIONAL) {
+                LOGWRN(snode->module->ctx, "Too many \"%s\" instances.", snode->name);
+            } else {
+                LOGVAL_APPTAG(snode->module->ctx, "too-many-elements", LY_VCODE_NOMAX, snode->name);
+            }
+            ly_log_location_revert(0, 1, 0, 0);
         }
-    } else if (max) {
-        if (val_opts & LYD_VALIDATE_OPERATIONAL) {
-            /* only a warning */
-            LOG_LOCSET(NULL, iter);
-            LOGWRN(snode->module->ctx, "Too many \"%s\" instances.", snode->name);
-            LOG_LOCBACK(0, 1);
-        } else {
-            LOG_LOCSET(NULL, iter);
-            LOGVAL_APPTAG(snode->module->ctx, "too-many-elements", LY_VCODE_NOMAX, snode->name);
-            LOG_LOCBACK(0, 1);
-            return LY_EVALID;
+        if (!(val_opts & LYD_VALIDATE_OPERATIONAL)) {
+            rv = LY_EVALID;
         }
     }
-    return LY_SUCCESS;
+    return rv;
 }
 
 /**
