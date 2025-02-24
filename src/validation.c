@@ -490,8 +490,14 @@ lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, enum ly
             /* there must have been some when conditions resolved */
         } while (prev_count > node_when->count);
 
-        /* there could have been no cyclic when dependencies, checked during compilation */
-        assert(!node_when->count || ((rc == LY_EVALID) && (val_opts & LYD_VALIDATE_MULTI_ERROR)));
+        if (node_when->count) {
+            /* there could have been no cyclic when dependencies, checked during compilation */
+            assert((rc == LY_EVALID) && (val_opts & LYD_VALIDATE_MULTI_ERROR));
+
+            /* when condition was validated and it is not satisfied, error printed, if kept in the set the following
+             * unres (for the next module) can fail this assert */
+            ly_set_erase(node_when, NULL);
+        }
     }
 
     if (node_types && node_types->count) {
