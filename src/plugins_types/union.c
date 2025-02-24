@@ -290,6 +290,9 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
     }
 
     if (u == LY_ARRAY_COUNT(type_u->types)) {
+        const char *apptag = NULL;
+        ly_bool     use_apptag = 0;
+
         /* create the full error */
         if (subvalue->format == LY_VALUE_LYB) {
             msg_len = asprintf(&msg, "Invalid LYB union value - no matching subtype found:\n");
@@ -306,12 +309,21 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
                 continue;
             }
 
+            /* Capture an apptag if one exists.  We will propagate it if all set
+             * apptags match, ignoring any NULL apptags. */
+            if (apptag == NULL) {
+                use_apptag = 1;
+                apptag = errs[u]->apptag;
+            } else if (use_apptag && apptag && errs[u]->apptag && (strcmp(errs[u]->apptag, apptag) != 0)) {
+                use_apptag = 0;
+            }
+
             msg = ly_realloc(msg, msg_len + 4 + strlen(type_u->types[u]->plugin->id) + 2 + strlen(errs[u]->msg) + 2);
             LY_CHECK_ERR_GOTO(!msg, ret = LY_EMEM, cleanup);
             msg_len += sprintf(msg + msg_len, "    %s: %s\n", type_u->types[u]->plugin->id, errs[u]->msg);
         }
 
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "%s", msg);
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, (use_apptag && apptag) ? strdup(apptag) : NULL, "%s", msg);
     } else if (type_idx) {
         *type_idx = u;
     }
