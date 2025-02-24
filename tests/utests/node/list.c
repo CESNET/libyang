@@ -1051,7 +1051,7 @@ test_xml(void **state)
             "</user>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     assert_null(tree);
-    CHECK_LOG_CTX("Too few \"user\" instances.", "/T2:user", 0);
+    CHECK_LOG_CTX("Too few \"user\" instances.", "/T2:user[uid='1']", 0);
 
     data =
             "<user xmlns=\"urn:tests:T2\">"
@@ -1347,7 +1347,7 @@ test_json(void **state)
             "]}";
     CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     assert_null(tree);
-    CHECK_LOG_CTX("Too few \"user\" instances.", "/T2:user", 0);
+    CHECK_LOG_CTX("Too few \"user\" instances.", "/T2:user[uid='4']", 0);
 
     data =
             "{\"T2:user\": ["

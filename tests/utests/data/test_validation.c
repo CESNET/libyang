@@ -277,12 +277,12 @@ test_minmax(void **state)
     CHECK_PARSE_LYD_PARAM("<l xmlns=\"urn:tests:c\">mate</l>"
             "<d xmlns=\"urn:tests:c\"/>",
             LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX_APPTAG("Too few \"l\" instances.", "/c:choic/b/l", 0, "too-few-elements");
+    CHECK_LOG_CTX_APPTAG("Too few \"l\" instances.", "/c:l[.='mate']", 0, "too-few-elements");
 
     CHECK_PARSE_LYD_PARAM("<l xmlns=\"urn:tests:c\">val1</l>"
             "<l xmlns=\"urn:tests:c\">val2</l>",
             LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX_APPTAG("Too few \"l\" instances.", "/c:choic/b/l", 0, "too-few-elements");
+    CHECK_LOG_CTX_APPTAG("Too few \"l\" instances.", "/c:l[.='val2']", 0, "too-few-elements");
 
     LYD_TREE_CREATE("<l xmlns=\"urn:tests:c\">val1</l>"
             "<l xmlns=\"urn:tests:c\">val2</l>"
@@ -1259,7 +1259,7 @@ test_multi_error(void **state)
     CHECK_PARSE_LYD_PARAM(data, LYD_JSON, LYD_PARSE_ONLY, 0, LY_SUCCESS, tree);
     assert_int_equal(LY_EVALID, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT | LYD_VALIDATE_MULTI_ERROR, NULL));
     lyd_free_tree(tree);
-    CHECK_LOG_CTX_APPTAG("Too few \"ll\" instances.", "/ii:cont/ll", 0, "too-few-elements");
+    CHECK_LOG_CTX_APPTAG("Too few \"ll\" instances.", "/ii:cont/ll[.='25']", 0, "too-few-elements");
     CHECK_LOG_CTX_APPTAG("l leaf is not left", "/ii:cont/l3", 0, "not-left");
     CHECK_LOG_CTX_APPTAG("Must condition \"../l = 'right'\" not satisfied.", "/ii:cont/l2", 0, "must-violation");
     CHECK_LOG_CTX_APPTAG("Duplicate instance of \"l\".", "/ii:cont/l", 0, NULL);

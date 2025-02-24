@@ -1140,13 +1140,17 @@ static LY_ERR
 lyd_validate_minmax(const struct lyd_node *first, const struct lyd_node *parent, const struct lysc_node *snode,
         uint32_t min, uint32_t max, uint32_t val_opts)
 {
+    LY_ERR rc = LY_SUCCESS;
     uint32_t count = 0;
-    struct lyd_node *iter;
+    struct lyd_node *iter, *last_iter = NULL;
     const struct lysc_when *disabled;
+    char *log_path;
+    int r;
 
     assert(min || max);
 
     LYD_LIST_FOR_INST(first, snode, iter) {
+        last_iter = iter;
         ++count;
 
         if (min && (count == min)) {
@@ -1182,32 +1186,52 @@ lyd_validate_minmax(const struct lyd_node *first, const struct lyd_node *parent,
         max = 0;
     }
 
-    if (min) {
-        if (val_opts & LYD_VALIDATE_OPERATIONAL) {
-            /* only a warning */
-            LOG_LOCSET(snode, NULL);
-            LOGWRN(snode->module->ctx, "Too few \"%s\" instances.", snode->name);
-            LOG_LOCBACK(1, 0);
+    if (min || max) {
+        /* set log path */
+        if (last_iter) {
+            /* standard data path */
+            LOG_LOCSET(NULL, last_iter);
         } else {
-            LOG_LOCSET(snode, NULL);
-            LOGVAL_APPTAG(snode->module->ctx, "too-few-elements", LY_VCODE_NOMIN, snode->name);
-            LOG_LOCBACK(1, 0);
-            return LY_EVALID;
+            /* data path with last schema node name or only the schema node if !parent */
+            if (lyd_node_module(parent) != snode->module) {
+                r = asprintf(&log_path, "/%s:%s", snode->module->name, snode->name);
+            } else {
+                r = asprintf(&log_path, "/%s", snode->name);
+            }
+            if (r == -1) {
+                LOGMEM_RET(snode->module->ctx);
+            }
+            ly_log_location(NULL, parent, log_path, NULL);
+            free(log_path);
         }
-    } else if (max) {
-        if (val_opts & LYD_VALIDATE_OPERATIONAL) {
-            /* only a warning */
-            LOG_LOCSET(NULL, iter);
-            LOGWRN(snode->module->ctx, "Too many \"%s\" instances.", snode->name);
+
+        if (min) {
+            if (val_opts & LYD_VALIDATE_OPERATIONAL) {
+                /* only a warning */
+                LOGWRN(snode->module->ctx, "Too few \"%s\" instances.", snode->name);
+            } else {
+                LOGVAL_APPTAG(snode->module->ctx, "too-few-elements", LY_VCODE_NOMIN, snode->name);
+                rc = LY_EVALID;
+            }
+        } else if (max) {
+            if (val_opts & LYD_VALIDATE_OPERATIONAL) {
+                /* only a warning */
+                LOGWRN(snode->module->ctx, "Too many \"%s\" instances.", snode->name);
+            } else {
+                LOGVAL_APPTAG(snode->module->ctx, "too-many-elements", LY_VCODE_NOMAX, snode->name);
+                rc = LY_EVALID;
+            }
+        }
+
+        /* revert log path */
+        if (last_iter) {
             LOG_LOCBACK(0, 1);
         } else {
-            LOG_LOCSET(NULL, iter);
-            LOGVAL_APPTAG(snode->module->ctx, "too-many-elements", LY_VCODE_NOMAX, snode->name);
-            LOG_LOCBACK(0, 1);
-            return LY_EVALID;
+            ly_log_location_revert(0, parent ? 1 : 0, 1, 0);
         }
     }
-    return LY_SUCCESS;
+
+    return rc;
 }
 
 /**
