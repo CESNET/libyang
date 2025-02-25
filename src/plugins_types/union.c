@@ -267,8 +267,9 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
     LY_ARRAY_COUNT_TYPE u;
     struct ly_err_item **errs = NULL, *e;
     uint32_t *prev_lo, temp_lo = 0;
-    char *msg = NULL;
+    char *msg = NULL, *err_app_tag = NULL;
     int msg_len = 0;
+    ly_bool use_err_app_tag = 0;
 
     *err = NULL;
 
@@ -306,12 +307,27 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
                 continue;
             }
 
+            /* use an app-tag if all the types set it or set none */
+            if (errs[u]->apptag) {
+                if (!err_app_tag) {
+                    err_app_tag = strdup(errs[u]->apptag);
+                    LY_CHECK_ERR_GOTO(!err_app_tag, ret = LY_EMEM, cleanup);
+                    use_err_app_tag = 1;
+                } else if (strcmp(errs[u]->apptag, err_app_tag)) {
+                    use_err_app_tag = 0;
+                }
+            }
+
             msg = ly_realloc(msg, msg_len + 4 + strlen(type_u->types[u]->plugin->id) + 2 + strlen(errs[u]->msg) + 2);
             LY_CHECK_ERR_GOTO(!msg, ret = LY_EMEM, cleanup);
             msg_len += sprintf(msg + msg_len, "    %s: %s\n", type_u->types[u]->plugin->id, errs[u]->msg);
         }
 
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "%s", msg);
+        if (!use_err_app_tag) {
+            free(err_app_tag);
+            err_app_tag = NULL;
+        }
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, err_app_tag, "%s", msg);
     } else if (type_idx) {
         *type_idx = u;
     }
