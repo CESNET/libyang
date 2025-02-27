@@ -1928,6 +1928,18 @@ LIBYANG_API_DECL const struct lysc_node *lysc_node_lref_target(const struct lysc
 LIBYANG_API_DECL LY_ERR lysc_node_lref_targets(const struct lysc_node *node, struct ly_set **set);
 
 /**
+ * @brief Get the target xpath(s) of a leafref node or union node with leafrefs.
+ *
+ * @param[in] node Term node to use.
+ * @param[out] set Set with all the leafref target xpaths, may be empty if the node is a different type or the targets
+ * are not found.  The set is filled with NULL-terminated "const char *" strings which can be retrieved via the
+ * objs member.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+LIBYANG_API_DECL LY_ERR lysc_node_lref_xpath_targets(const struct lysc_node *node, struct ly_set **set);
+
+/**
  * @brief Get all the leafref (or union with leafrefs) nodes that target a specific node.
  *
  * @param[in] ctx Context to use, may not be set if @p node is.

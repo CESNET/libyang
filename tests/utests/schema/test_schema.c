@@ -2106,6 +2106,104 @@ test_lysc_backlinks(void **state)
     }
 }
 
+static void
+test_lysc_lref_xpath_targets(void **state)
+{
+    const char *expect1[] = {
+        "/sbg:sonic-bgp-global/sbg:BGP_GLOBALS/sbg:BGP_GLOBALS_LIST[sbg:vrf_name=current()/../vrf_name]/sbg:local_asn",
+        "/sbg:sonic-bgp-global/sbg:BGP_GLOBALS/sbg:any_asn",
+        NULL
+    };
+
+    struct {
+        const char *xpath;
+        const char **expected_paths;
+    } tests[] = {
+        {"/sonic-device-metadata:sonic-device-metadata/DEVICE_METADATA/DEVICE_METADATA_LIST/bgp_asn", expect1},
+    };
+    const char *str;
+    uint32_t i;
+
+    str = "module sonic-bgp-global {"
+            "    namespace \"http://github.com/Azure/sonic-bgp-global\";\n"
+            "    prefix sbgpg;\n"
+            "    container sonic-bgp-global {\n"
+            "        container BGP_GLOBALS {\n"
+            "            list BGP_GLOBALS_LIST {\n"
+            "                key \"vrf_name\";\n"
+            "                leaf vrf_name {\n"
+            "                    type string;\n"
+            "                }\n"
+            "                leaf local_asn {\n"
+            "                    type uint32;\n"
+            "                }\n"
+            "            }\n"
+            "            leaf any_asn {\n"
+            "                type uint32;\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "}\n";
+
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_SUCCESS);
+    CHECK_LOG_CTX(NULL, NULL, 0);
+
+    str = "module sonic-device-metadata {\n"
+            "    namespace \"http://github.com/Azure/sonic-device-metadata\";\n"
+            "    prefix sdm;\n"
+            "    import sonic-bgp-global {\n"
+            "        prefix sbg;\n"
+            "    }\n"
+            "    container sonic-device-metadata {\n"
+            "        container DEVICE_METADATA {\n"
+            "            list DEVICE_METADATA_LIST {\n"
+            "                key \"name\";\n"
+            "                max-elements 1;\n"
+            "                leaf name {\n"
+            "                    type string;\n"
+            "                }\n"
+            "                leaf vrf_name {\n"
+            "                    type string;\n"
+            "                    default default;\n"
+            "                }\n"
+            "                leaf bgp_asn {\n"
+            "                    type union {\n"
+            "                        type leafref {\n"
+            "                            path \"/sbg:sonic-bgp-global/sbg:BGP_GLOBALS/sbg:BGP_GLOBALS_LIST[sbg:vrf_name=current()/../vrf_name]/sbg:local_asn\";\n"
+            "                        }\n"
+            "                        type leafref {\n"
+            "                            path \"/sbg:sonic-bgp-global/sbg:BGP_GLOBALS/sbg:any_asn\";\n"
+            "                        }\n"
+            "                        type string {\n"
+            "                            pattern \"none\";\n"
+            "                        }\n"
+            "                    }\n"
+            "                }\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "}\n";
+
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_SUCCESS);
+    CHECK_LOG_CTX(NULL, NULL, 0);
+
+    for (i = 0; i < sizeof tests / sizeof *tests; i++) {
+        const struct lysc_node *node = NULL;
+        struct ly_set *expected = NULL, *received = NULL;
+
+        node = lys_find_path(UTEST_LYCTX, NULL, tests[i].xpath, 0);
+        assert_non_null(node);
+
+        assert_int_equal(LY_SUCCESS, lysc_node_lref_xpath_targets(node, &received));
+
+        expected = strlist_to_pathset(tests[i].expected_paths);
+        assert_int_equal(1, compare_str_nodeset(expected, received));
+
+        ly_set_free(expected, NULL);
+        ly_set_free(received, NULL);
+    }
+}
+
 int
 main(void)
 {
@@ -2129,6 +2227,7 @@ main(void)
         UTEST(test_ext_recursive),
         UTEST(test_lysc_path),
         UTEST(test_lysc_backlinks),
+        UTEST(test_lysc_lref_xpath_targets)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

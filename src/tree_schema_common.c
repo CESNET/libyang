@@ -40,6 +40,7 @@
 #include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "xpath.h"
 
 LY_ERR
 lysp_check_prefix(struct lysp_ctx *ctx, struct lysp_import *imports, const char *module_prefix, const char **value)
@@ -1847,8 +1848,8 @@ lysc_node_lref_target(const struct lysc_node *node)
     return lysc_type_lref_target(node, ((struct lysc_node_leaf *)node)->type);
 }
 
-LIBYANG_API_DEF LY_ERR
-lysc_node_lref_targets(const struct lysc_node *node, struct ly_set **set)
+static LY_ERR
+lysc_node_lref_targets_fetch(const struct lysc_node *node, struct ly_set **set, ly_bool return_xpaths)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lysc_type *type;
@@ -1871,16 +1872,32 @@ lysc_node_lref_targets(const struct lysc_node *node, struct ly_set **set)
                 continue;
             }
 
-            target = lysc_type_lref_target(node, type_un->types[u]);
-            if (target) {
-                LY_CHECK_GOTO(rc = ly_set_add(*set, target, 1, NULL), cleanup);
+            if (return_xpaths) {
+                struct lysc_type_leafref *lref_type = (struct lysc_type_leafref *)type_un->types[u];
+
+                if (lref_type->path && lref_type->path->expr) {
+                    LY_CHECK_GOTO(rc = ly_set_add(*set, lref_type->path->expr, 1, NULL), cleanup);
+                }
+            } else {
+                target = lysc_type_lref_target(node, type_un->types[u]);
+                if (target) {
+                    LY_CHECK_GOTO(rc = ly_set_add(*set, target, 1, NULL), cleanup);
+                }
             }
         }
     } else if (type->basetype == LY_TYPE_LEAFREF) {
         /* leafref */
-        target = lysc_type_lref_target(node, type);
-        if (target) {
-            LY_CHECK_GOTO(rc = ly_set_add(*set, target, 1, NULL), cleanup);
+        if (return_xpaths) {
+            struct lysc_type_leafref *lref_type = (struct lysc_type_leafref *)type;
+
+            if (lref_type->path && lref_type->path->expr) {
+                LY_CHECK_GOTO(rc = ly_set_add(*set, lref_type->path->expr, 1, NULL), cleanup);
+            }
+        } else {
+            target = lysc_type_lref_target(node, type);
+            if (target) {
+                LY_CHECK_GOTO(rc = ly_set_add(*set, target, 1, NULL), cleanup);
+            }
         }
     }
 
@@ -1890,6 +1907,18 @@ cleanup:
         *set = NULL;
     }
     return rc;
+}
+
+LIBYANG_API_DEF LY_ERR
+lysc_node_lref_targets(const struct lysc_node *node, struct ly_set **set)
+{
+    return lysc_node_lref_targets_fetch(node, set, 0);
+}
+
+LIBYANG_API_DEF LY_ERR
+lysc_node_lref_xpath_targets(const struct lysc_node *node, struct ly_set **set)
+{
+    return lysc_node_lref_targets_fetch(node, set, 1);
 }
 
 struct lysc_node_lref_backlings_arg {
