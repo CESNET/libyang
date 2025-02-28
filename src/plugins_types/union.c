@@ -150,6 +150,31 @@ lyb_parse_union(const void *lyb_data, size_t lyb_data_len, uint32_t *type_idx, c
     }
 }
 
+static void
+union_lref_error_rewrite(const struct lyd_node *ctx_node, struct ly_err_item *err, struct lysc_type *type, const void *value, size_t value_len)
+{
+    struct lysc_type_leafref *lref;
+    char *valstr = NULL;
+
+    if ((err == NULL) || (type->basetype != LY_TYPE_LEAFREF)) {
+        return;
+    }
+
+    lref = (struct lysc_type_leafref *)type;
+    free(err->apptag);
+    err->apptag = strdup("instance-required");
+
+    free(err->msg);
+
+    if (lyd_get_value(ctx_node) != NULL) {
+        valstr = strdup(lyd_get_value(ctx_node));
+    } else {
+        valstr = strndup((const char *)value, value_len);
+    }
+    asprintf(&err->msg, LY_ERRMSG_NOLREF_VAL, valstr, lyxp_get_expr(lref->path));
+    free(valstr);
+}
+
 /**
  * @brief Store (and validate) subvalue as a specific type.
  *
@@ -190,6 +215,9 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, uint3
             if ((rc != LY_SUCCESS) && (rc != LY_EINCOMPLETE)) {
                 /* clear any leftover/freed garbage */
                 memset(&subvalue->value, 0, sizeof subvalue->value);
+
+                /* if this is a leafref, lets make sure we propagate the appropriate error, and not a type validation failure */
+                union_lref_error_rewrite(ctx_node, *err, type_u->types[ti], value, value_len);
                 return rc;
             }
 
@@ -228,6 +256,11 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, uint3
     if ((rc != LY_SUCCESS) && (rc != LY_EINCOMPLETE)) {
         /* clear any leftover/freed garbage */
         memset(&subvalue->value, 0, sizeof subvalue->value);
+
+        /* if this is a leafref, lets make sure we propagate the appropriate error, and not a type validation failure */
+        if (type->basetype == LY_TYPE_LEAFREF) {
+            union_lref_error_rewrite(ctx_node, *err, type, value, value_len);
+        }
         return rc;
     }
 
