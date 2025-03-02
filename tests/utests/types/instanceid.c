@@ -200,7 +200,7 @@ test_data_xml(void **state)
 
     TEST_ERROR_XML2("<cont xmlns=\"urn:tests:mod\"/>",
             "defs", "xmlns:m=\"urn:tests:mod\"", "l1", "[1]", LY_EVALID);
-    CHECK_LOG_CTX("Invalid instance-identifier \"[1]\" value - syntax error: Unexpected XPath token \"[\" (\"[1]\"), expected \"Operator(Path)\".",
+    CHECK_LOG_CTX("Invalid instance-identifier \"[1]\" value - syntax error: XPath \"[1]\" was expected to be absolute.",
             "/defs:l1", 1);
 
     TEST_ERROR_XML2("<cont xmlns=\"urn:tests:mod\"><l2/></cont>",

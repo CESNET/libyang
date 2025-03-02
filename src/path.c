@@ -343,6 +343,13 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
         path_len = strlen(str_path);
     }
 
+    /* check if path begins with '/' if expected to and fail early if not */
+    if ((begin == LY_PATH_BEGIN_ABSOLUTE) && (str_path[0] != '/')) {
+        LOGVAL(ctx, LYVE_XPATH, "XPath \"%.*s\" was expected to be absolute.", (int)path_len, str_path);
+        ret = LY_EVALID;
+        goto error;
+    }
+
     /* parse as a generic XPath expression, reparse is performed manually */
     LY_CHECK_GOTO(ret = lyxp_expr_parse(ctx, str_path, path_len, 0, &exp), error);
     tok_idx = 0;
