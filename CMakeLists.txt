@@ -411,6 +411,11 @@ find_package(PCRE2 10.21 REQUIRED)
 include_directories(${PCRE2_INCLUDE_DIRS})
 target_link_libraries(yang ${PCRE2_LIBRARIES})
 
+# XXHash include and library
+find_package(XXHash REQUIRED)
+include_directories(${XXHASH_INCLUDE_DIR})
+target_link_libraries(yang ${XXHASH_LIBRARY})
+
 # generated header list
 foreach(h IN LISTS gen_headers)
     list(APPEND g_headers ${PROJECT_BINARY_DIR}/libyang/${h})

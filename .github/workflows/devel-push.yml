@@ -34,7 +34,7 @@ jobs:
             cc: "gcc",
             options: "-DENABLE_COVERAGE=ON",
             packager: "sudo apt-get",
-            packages: "libcmocka-dev lcov",
+            packages: "libcmocka-dev libxxhash-dev lcov",
             snaps: "",
             make-prepend: "",
             make-target: ""

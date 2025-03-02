@@ -30,6 +30,7 @@ function(ly_add_utest)
         endif()
     endif()
 
+    target_link_libraries(${TEST_NAME} ${XXHASH_LIBRARY})
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
     set_property(TEST ${TEST_NAME} APPEND PROPERTY ENVIRONMENT "MALLOC_CHECK_=3")
 

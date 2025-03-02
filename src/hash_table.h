@@ -49,10 +49,7 @@ LIBYANG_API_DECL uint32_t lyht_hash_multi(uint32_t hash, const char *key_part, s
 /**
  * @brief Compute hash from a string.
  *
- * Bob Jenkin's one-at-a-time hash
- * http://www.burtleburtle.net/bob/hash/doobs.html
- *
- * Spooky hash is faster, but it works only for little endian architectures.
+ * Uses XXH3_64bits internally See: https://xxhash.com
  *
  * @param[in] key Key to hash.
  * @param[in] len Length of @p key.

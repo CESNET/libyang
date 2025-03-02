@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <xxhash.h>
 
 #include "compat.h"
 #include "dict.h"
@@ -29,30 +30,17 @@
 LIBYANG_API_DEF uint32_t
 lyht_hash_multi(uint32_t hash, const char *key_part, size_t len)
 {
-    uint32_t i;
-
     if (key_part && len) {
-        for (i = 0; i < len; ++i) {
-            hash += key_part[i];
-            hash += (hash << 10);
-            hash ^= (hash >> 6);
-        }
-    } else {
-        hash += (hash << 3);
-        hash ^= (hash >> 11);
-        hash += (hash << 15);
+        return XXH3_64bits_withSeed(key_part, len, hash);
     }
 
-    return hash;
+    return XXH3_64bits_withSeed(NULL, 0, hash);
 }
 
 LIBYANG_API_DEF uint32_t
 lyht_hash(const char *key, size_t len)
 {
-    uint32_t hash;
-
-    hash = lyht_hash_multi(0, key, len);
-    return lyht_hash_multi(hash, NULL, len);
+    return XXH3_64bits(key, len);
 }
 
 static LY_ERR
