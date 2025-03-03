@@ -159,25 +159,39 @@ lyb_parse_union(const void *lyb_data, size_t lyb_data_len, uint32_t *type_idx, c
  * @param[in] type leafref type used to extract target path
  * @param[in] value value attempting to be stored
  * @param[in] value_len Length of value that was attempted to be stored.
+ * @return LY_ERR value. Only possible errors are LY_SUCCESS and LY_EMEM.
  */
-static void
+static LY_ERR
 union_update_lref_err(struct ly_err_item *err, const struct lysc_type *type, const void *value, size_t value_len)
 {
     const struct lysc_type_leafref *lref;
     char *valstr = NULL;
+    int msg_len;
 
     if ((err == NULL) || (type->basetype != LY_TYPE_LEAFREF)) {
-        return;
+        return LY_SUCCESS;
     }
 
     lref = (const struct lysc_type_leafref *)type;
     free(err->apptag);
     err->apptag = strdup("instance-required");
+    if (err->apptag == NULL) {
+        return LY_EMEM;
+    }
 
     free(err->msg);
+    err->msg = NULL;
     valstr = strndup((const char *)value, value_len);
-    asprintf(&err->msg, LY_ERRMSG_NOLREF_VAL, valstr, lyxp_get_expr(lref->path));
+    if (valstr == NULL) {
+        return LY_EMEM;
+    }
+
+    msg_len = asprintf(&err->msg, LY_ERRMSG_NOLREF_VAL, valstr, lyxp_get_expr(lref->path));
     free(valstr);
+    if (msg_len == -1) {
+        return LY_EMEM;
+    }
+    return LY_SUCCESS;
 }
 
 /**
@@ -200,7 +214,7 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, uint3
         uint32_t options, ly_bool validate, const struct lyd_node *ctx_node, const struct lyd_node *tree,
         struct lys_glob_unres *unres, struct ly_err_item **err)
 {
-    LY_ERR rc = LY_SUCCESS;
+    LY_ERR urc, rc = LY_SUCCESS;
     struct lysc_type *type = type_u->types[type_idx];
     const void *value = NULL;
     size_t value_len = 0;
@@ -222,7 +236,10 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, uint3
                 memset(&subvalue->value, 0, sizeof subvalue->value);
 
                 /* if this is a leafref, lets make sure we propagate the appropriate error, and not a type validation failure */
-                union_update_lref_err(*err, type_u->types[ti], value, value_len);
+                urc = union_update_lref_err(*err, type_u->types[ti], value, value_len);
+                if (urc != LY_SUCCESS) {
+                    rc = urc;
+                }
                 goto cleanup;
             }
 
@@ -260,7 +277,10 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, uint3
         memset(&subvalue->value, 0, sizeof subvalue->value);
 
         /* if this is a leafref, lets make sure we propagate the appropriate error, and not a type validation failure */
-        union_update_lref_err(*err, type, value, value_len);
+        urc = union_update_lref_err(*err, type, value, value_len);
+        if (urc != LY_SUCCESS) {
+            rc = urc;
+        }
         goto cleanup;
     }
 
