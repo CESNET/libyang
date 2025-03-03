@@ -153,14 +153,13 @@ lyb_parse_union(const void *lyb_data, size_t lyb_data_len, uint32_t *type_idx, c
 /**
  * @brief For leafref failures, ensure the appropriate error is propagated, not a type validation failure.
  *
- * @param[in] ctx_node Context node for prefix resolution.
  * @param[in,out] err Error record to be updated
  * @param[in] type leafref type used to extract target path
  * @param[in] value value attempting to be stored
  * @param[in] value_len Length of value that was attempted to be stored.
  */
 static void
-union_update_lref_err(const struct lyd_node *ctx_node, struct ly_err_item *err, const struct lysc_type *type, const void *value, size_t value_len)
+union_update_lref_err(struct ly_err_item *err, const struct lysc_type *type, const void *value, size_t value_len)
 {
     const struct lysc_type_leafref *lref;
     char *valstr = NULL;
@@ -174,12 +173,7 @@ union_update_lref_err(const struct lyd_node *ctx_node, struct ly_err_item *err, 
     err->apptag = strdup("instance-required");
 
     free(err->msg);
-
-    if (lyd_get_value(ctx_node) != NULL) {
-        valstr = strdup(lyd_get_value(ctx_node));
-    } else {
-        valstr = strndup((const char *)value, value_len);
-    }
+    valstr = strndup((const char *)value, value_len);
     asprintf(&err->msg, LY_ERRMSG_NOLREF_VAL, valstr, lyxp_get_expr(lref->path));
     free(valstr);
 }
@@ -226,8 +220,8 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, uint3
                 memset(&subvalue->value, 0, sizeof subvalue->value);
 
                 /* if this is a leafref, lets make sure we propagate the appropriate error, and not a type validation failure */
-                union_update_lref_err(ctx_node, *err, type_u->types[ti], value, value_len);
-                return rc;
+                union_update_lref_err(*err, type_u->types[ti], value, value_len);
+                goto cleanup;
             }
 
             assert(subvalue->value.realtype);
@@ -256,9 +250,6 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, uint3
     if (options & LYPLG_TYPE_STORE_ONLY) {
         opts |= LYPLG_TYPE_STORE_ONLY;
     }
-    if (dynamic) {
-        opts |= LYPLG_TYPE_STORE_DYNAMIC;
-    }
 
     rc = type->plugin->store(ctx, type, value, value_len, opts, format, prefix_data, subvalue->hints,
             subvalue->ctx_node, &subvalue->value, unres, err);
@@ -267,8 +258,8 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, uint3
         memset(&subvalue->value, 0, sizeof subvalue->value);
 
         /* if this is a leafref, lets make sure we propagate the appropriate error, and not a type validation failure */
-        union_update_lref_err(ctx_node, *err, type, value, value_len);
-        return rc;
+        union_update_lref_err(*err, type, value, value_len);
+        goto cleanup;
     }
 
     if (validate && (rc == LY_EINCOMPLETE)) {
@@ -280,6 +271,10 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, uint3
         }
     }
 
+cleanup:
+    if (dynamic) {
+        free((void *)value);
+    }
     return rc;
 }
 
