@@ -153,6 +153,8 @@ lyb_parse_union(const void *lyb_data, size_t lyb_data_len, uint32_t *type_idx, c
 /**
  * @brief For leafref failures, ensure the appropriate error is propagated, not a type validation failure.
  *
+ * RFC7950 Section 15.5 defines the appropriate error app tag of "require-instance".
+ *
  * @param[in,out] err Error record to be updated
  * @param[in] type leafref type used to extract target path
  * @param[in] value value attempting to be stored
