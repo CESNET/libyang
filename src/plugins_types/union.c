@@ -512,16 +512,16 @@ lyplg_type_compare_union(const struct ly_ctx *ctx, const struct lyd_value *val1,
 LIBYANG_API_DEF int
 lyplg_type_sort_union(const struct ly_ctx *ctx, const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    int rc = LY_SUCCESS;
+    int rc;
     LY_ARRAY_COUNT_TYPE u;
-    struct lysc_type **types;
-    struct lysc_type *type;
+    struct lysc_type **types, *type;
 
     if (val1->subvalue->value.realtype == val2->subvalue->value.realtype) {
         return val1->subvalue->value.realtype->plugin->sort(ctx, &val1->subvalue->value, &val2->subvalue->value);
     }
 
     /* compare according to the order of types */
+    rc = 0;
     types = ((struct lysc_type_union *)val1->realtype)->types;
     LY_ARRAY_FOR(types, u) {
         if (types[u]->basetype == LY_TYPE_LEAFREF) {
@@ -538,7 +538,7 @@ lyplg_type_sort_union(const struct ly_ctx *ctx, const struct lyd_value *val1, co
             break;
         }
     }
-    assert(rc != 0);
+    assert(rc);
 
     return rc;
 }
