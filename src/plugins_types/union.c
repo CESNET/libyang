@@ -515,6 +515,7 @@ lyplg_type_sort_union(const struct ly_ctx *ctx, const struct lyd_value *val1, co
     int rc = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_type **types;
+    struct lysc_type *type;
 
     if (val1->subvalue->value.realtype == val2->subvalue->value.realtype) {
         return val1->subvalue->value.realtype->plugin->sort(ctx, &val1->subvalue->value, &val2->subvalue->value);
@@ -523,10 +524,16 @@ lyplg_type_sort_union(const struct ly_ctx *ctx, const struct lyd_value *val1, co
     /* compare according to the order of types */
     types = ((struct lysc_type_union *)val1->realtype)->types;
     LY_ARRAY_FOR(types, u) {
-        if (types[u] == val1->subvalue->value.realtype) {
+        if (types[u]->basetype == LY_TYPE_LEAFREF) {
+            type = ((struct lysc_type_leafref *)types[u])->realtype;
+        } else {
+            type = types[u];
+        }
+
+        if (type == val1->subvalue->value.realtype) {
             rc = 1;
             break;
-        } else if (types[u] == val2->subvalue->value.realtype) {
+        } else if (type == val2->subvalue->value.realtype) {
             rc = -1;
             break;
         }
