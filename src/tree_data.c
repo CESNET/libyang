@@ -3262,6 +3262,11 @@ lyd_find_sibling_opaq_next(const struct lyd_node *first, const char *name, struc
     LY_CHECK_ARG_RET(NULL, name, LY_EINVAL);
 
     if (first && first->schema) {
+        /* find the actual first node */
+        while (first->prev->next) {
+            first = first->prev;
+        }
+
         first = first->prev;
         if (first->schema) {
             /* no opaque nodes */
