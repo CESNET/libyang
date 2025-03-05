@@ -54,6 +54,8 @@ LIBYANG_API_DECL uint32_t lyht_hash_multi(uint32_t hash, const char *key_part, s
  *
  * Spooky hash is faster, but it works only for little endian architectures.
  *
+ * Uses XXH3_64bits internally if xxhash is available. See https://xxhash.com
+ *
  * @param[in] key Key to hash.
  * @param[in] len Length of @p key.
  * @return Hash of the key.
