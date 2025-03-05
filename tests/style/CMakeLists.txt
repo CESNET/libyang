@@ -8,5 +8,9 @@ endif()
 # just compile
 add_executable(cpp_compat cpp_compat.c $<TARGET_OBJECTS:yangobj>)
 target_include_directories(cpp_compat BEFORE PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(cpp_compat ${CMAKE_THREAD_LIBS_INIT} ${PCRE2_LIBRARIES} ${CMAKE_DL_LIBS} m ${XXHASH_LIBRARY})
+target_link_libraries(cpp_compat ${CMAKE_THREAD_LIBS_INIT} ${PCRE2_LIBRARIES} ${CMAKE_DL_LIBS} m)
+if (USE_XXHASH)
+    target_link_libraries(cpp_compat ${XXHASH_LIBRARY})
+endif()
+
 target_compile_options(cpp_compat PUBLIC "-Werror=c++-compat")

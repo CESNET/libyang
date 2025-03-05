@@ -20,12 +20,14 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <xxhash.h>
 
 #include "compat.h"
 #include "dict.h"
 #include "log.h"
 #include "ly_common.h"
+
+#ifdef USE_XXHASH
+#include <xxhash.h>
 
 LIBYANG_API_DEF uint32_t
 lyht_hash_multi(uint32_t hash, const char *key_part, size_t len)
@@ -42,6 +44,39 @@ lyht_hash(const char *key, size_t len)
 {
     return XXH3_64bits(key, len);
 }
+
+#else
+
+LIBYANG_API_DEF uint32_t
+lyht_hash_multi(uint32_t hash, const char *key_part, size_t len)
+{
+    uint32_t i;
+
+    if (key_part && len) {
+        for (i = 0; i < len; ++i) {
+            hash += key_part[i];
+            hash += (hash << 10);
+            hash ^= (hash >> 6);
+        }
+    } else {
+        hash += (hash << 3);
+        hash ^= (hash >> 11);
+        hash += (hash << 15);
+    }
+
+    return hash;
+}
+
+LIBYANG_API_DEF uint32_t
+lyht_hash(const char *key, size_t len)
+{
+    uint32_t hash;
+
+    hash = lyht_hash_multi(0, key, len);
+    return lyht_hash_multi(hash, NULL, len);
+}
+
+#endif
 
 static LY_ERR
 lyht_init_hlists_and_records(struct ly_ht *ht)
