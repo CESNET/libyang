@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang generic hash table implementation
  *
- * Copyright (c) 2015 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -26,30 +26,20 @@
 #include "log.h"
 #include "ly_common.h"
 
-#ifdef USE_XXHASH
-#include <xxhash.h>
+#ifdef LY_XXHASH_SUPPORT
+# include <xxhash.h>
+#endif
 
 LIBYANG_API_DEF uint32_t
 lyht_hash_multi(uint32_t hash, const char *key_part, size_t len)
 {
+#ifdef LY_XXHASH_SUPPORT
     if (key_part && len) {
         return XXH3_64bits_withSeed(key_part, len, hash);
     }
 
     return XXH3_64bits_withSeed(NULL, 0, hash);
-}
-
-LIBYANG_API_DEF uint32_t
-lyht_hash(const char *key, size_t len)
-{
-    return XXH3_64bits(key, len);
-}
-
 #else
-
-LIBYANG_API_DEF uint32_t
-lyht_hash_multi(uint32_t hash, const char *key_part, size_t len)
-{
     uint32_t i;
 
     if (key_part && len) {
@@ -65,18 +55,21 @@ lyht_hash_multi(uint32_t hash, const char *key_part, size_t len)
     }
 
     return hash;
+#endif
 }
 
 LIBYANG_API_DEF uint32_t
 lyht_hash(const char *key, size_t len)
 {
+#ifdef LY_XXHASH_SUPPORT
+    return XXH3_64bits(key, len);
+#else
     uint32_t hash;
 
     hash = lyht_hash_multi(0, key, len);
     return lyht_hash_multi(hash, NULL, len);
-}
-
 #endif
+}
 
 static LY_ERR
 lyht_init_hlists_and_records(struct ly_ht *ht)

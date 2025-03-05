@@ -61,6 +61,7 @@ the `distro` directory.
 
 #### Optional
 
+* xxhash (for faster hashing)
 * doxygen (for generating documentation)
 * cmocka >= 1.0.1 (for [tests](#Tests))
 * valgrind (for enhanced testing)

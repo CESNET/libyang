@@ -30,7 +30,7 @@ function(ly_add_utest)
         endif()
     endif()
 
-    if (USE_XXHASH)
+    if (XXHASH_FOUND)
         target_link_libraries(${TEST_NAME} ${XXHASH_LIBRARY})
     endif()
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
