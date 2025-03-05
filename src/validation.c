@@ -336,7 +336,8 @@ lyd_validate_autodel_node_del(struct lyd_node **first, struct lyd_node *del, con
         /* remove nested from node_when set */
         LYD_TREE_DFS_BEGIN(del, iter) {
             if ((del != iter) && ly_set_contains(node_when, iter, &idx)) {
-                ly_set_rm_index(node_when, idx, NULL);
+                assert(0 && "Please contact libyang support with the use-case that triggered this assert.");
+                // ly_set_rm_index(node_when, idx, NULL);
             }
             LYD_TREE_DFS_END(del, iter);
         }
