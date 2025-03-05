@@ -2325,6 +2325,12 @@ lyd_dup(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_no
     }
 
     if (dup_p) {
+        /* get the first sibling explicitly, first_dup may not be first */
+        if (!nosiblings) {
+            while (first_dup->prev->next) {
+                first_dup = first_dup->prev;
+            }
+        }
         *dup_p = first_dup;
     }
     return LY_SUCCESS;
