@@ -1466,7 +1466,10 @@ ly_ctx_new_printed(const void *mem, struct ly_ctx **ctx)
 
 cleanup:
     if (rc) {
-        ly_ctx_data_del(*ctx);
+        if (rc != LY_EEXIST) {
+            /* do not delete ctx data of an existing context */
+            ly_ctx_data_del(*ctx);
+        }
         *ctx = NULL;
     }
     return rc;
