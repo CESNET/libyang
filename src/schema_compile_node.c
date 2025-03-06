@@ -388,10 +388,9 @@ lysc_range_dup(struct lysc_ctx *ctx, const struct lysc_range *orig, struct ly_se
     return dup;
 
 error:
-    if (dup) {
-        lysc_range_free(&ctx->free_ctx, dup);
-        free(dup);
-    }
+    free(dup);
+    /* set but not used due to the return type */
+    (void) ret;
     return NULL;
 }
 
