@@ -29,6 +29,7 @@
 #include "ly_common.h"
 #include "plugins_exts.h"
 #include "plugins_exts/metadata.h"
+#include "plugins_internal.h"
 #include "plugins_types.h"
 #include "set.h"
 #include "tree.h"
@@ -1071,7 +1072,8 @@ lyd_diff_node_metadata(const struct lyd_node *first, const struct lyd_node *seco
                 }
 
                 /* value match */
-                if (m->value.realtype->plugin->compare(LYD_CTX(diff_node), &m->value, &meta_second[i]->value)) {
+                if (LYSC_GET_TYPE_PLG(m->value.realtype->plugin_ref)->compare(LYD_CTX(diff_node),
+                        &m->value, &meta_second[i]->value)) {
                     continue;
                 }
                 break;
