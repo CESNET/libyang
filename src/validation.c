@@ -349,7 +349,7 @@ lyd_validate_autodel_node_del(struct lyd_node **first, struct lyd_node *del, con
         /* remove from node_types set */
         LYD_TREE_DFS_BEGIN(del, iter) {
             if ((iter->schema->nodetype & LYD_NODE_TERM) &&
-                    ((struct lysc_node_leaf *)iter->schema)->type->plugin->validate &&
+                    LYSC_GET_TYPE_PLG(((struct lysc_node_leaf *)iter->schema)->type->plugin_ref)->validate &&
                     ly_set_contains(node_types, iter, &idx)) {
                 ly_set_rm_index(node_types, idx, NULL);
             }
