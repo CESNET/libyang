@@ -130,15 +130,6 @@ void lysc_ext_instance_free(const struct ly_ctx *ctx, struct lysc_ext_instance *
 void lysc_iffeature_free(const struct ly_ctx *ctx, struct lysc_iffeature *iff);
 
 /**
- * @brief Free the compiled range structure.
- *
- * @param[in] ctx Free context.
- * @param[in,out] range Compiled range structure to be freed.
- * Since the structure is typically part of the sized array, the structure itself is not freed.
- */
-void lysc_range_free(struct lysf_ctx *ctx, struct lysc_range *range);
-
-/**
  * @brief Free a compiled pattern.
  *
  * @param[in] ctx Context to use.
