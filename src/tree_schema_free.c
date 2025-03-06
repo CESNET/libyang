@@ -808,6 +808,13 @@ lysc_ident_free(const struct ly_ctx *ctx, struct lysc_ident *ident)
     FREE_ARRAY(ctx, ident->exts, lysc_ext_instance_free);
 }
 
+/**
+ * @brief Free the compiled range structure.
+ *
+ * @param[in] ctx Context to use.
+ * @param[in,out] range Compiled range structure to be freed.
+ * Since the structure is typically part of the sized array, the structure itself is not freed.
+ */
 static void
 lysc_range_free(const struct ly_ctx *ctx, struct lysc_range *range)
 {
