@@ -3690,6 +3690,7 @@ xpath_bit_is_set(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp
     struct lyd_node_term *leaf;
     struct lysc_node_leaf *sleaf;
     struct lyd_value_bits *bits;
+    struct lyd_value *val;
     LY_ERR rc = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;
 
@@ -3725,10 +3726,14 @@ xpath_bit_is_set(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp
     LY_CHECK_RET(rc);
 
     set_fill_boolean(set, 0);
-    if (args[0]->used) {
+    if (args[0]->used && (args[0]->val.nodes[0].node->schema->nodetype & LYD_NODE_TERM)) {
         leaf = (struct lyd_node_term *)args[0]->val.nodes[0].node;
-        if ((leaf->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && (leaf->value.realtype->basetype == LY_TYPE_BITS)) {
-            LYD_VALUE_GET(&leaf->value, bits);
+        val = &leaf->value;
+        if (val->realtype->basetype == LY_TYPE_UNION) {
+            val = &val->subvalue->value;
+        }
+        if (val->realtype->basetype == LY_TYPE_BITS) {
+            LYD_VALUE_GET(val, bits);
             LY_ARRAY_FOR(bits->items, u) {
                 if (!strcmp(bits->items[u]->name, args[1]->val.str)) {
                     set_fill_boolean(set, 1);
@@ -4200,17 +4205,21 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
             leaf = (struct lyd_node_term *)args[0]->val.nodes[i].node;
             sleaf = (struct lysc_node_leaf *)leaf->schema;
             val = &leaf->value;
-            if (!sleaf || !(sleaf->nodetype & LYD_NODE_TERM) || (leaf->value.realtype->basetype != LY_TYPE_IDENT)) {
+            if (!sleaf || !(sleaf->nodetype & LYD_NODE_TERM)) {
                 /* uninteresting */
                 continue;
             }
         } else {
             meta = args[0]->val.meta[i].meta;
             val = &meta->value;
-            if (val->realtype->basetype != LY_TYPE_IDENT) {
-                /* uninteresting */
-                continue;
-            }
+        }
+
+        if (val->realtype->basetype == LY_TYPE_UNION) {
+            val = &val->subvalue->value;
+        }
+        if (val->realtype->basetype != LY_TYPE_IDENT) {
+            /* uninteresting */
+            continue;
         }
 
         /* check the identity itself */
