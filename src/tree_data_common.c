@@ -1620,29 +1620,11 @@ ly_time_tz_offset(void)
     return ly_time_tz_offset_at(time(NULL));
 }
 
-/**
- * @brief Call tzset() if not already called by this process.
- */
-static void
-ly_tzset_once(void)
-{
-    static int ly_tzset_called = 0;
-
-    if (ly_tzset_called) {
-        return;
-    }
-    tzset();
-    ly_tzset_called = 1;
-}
-
 LIBYANG_API_DEF int
 ly_time_tz_offset_at(time_t time)
 {
     struct tm tm_local, tm_utc;
     int result = 0;
-
-    /* init timezone */
-    ly_tzset_once();
 
     /* get local and UTC time */
     localtime_r(&time, &tm_local);
@@ -1790,9 +1772,6 @@ ly_time_time2str(time_t time, const char *fractions_s, char **str)
     int zonediff_s, zonediff_h, zonediff_m;
 
     LY_CHECK_ARG_RET(NULL, str, LY_EINVAL);
-
-    /* init timezone */
-    ly_tzset_once();
 
     /* convert */
     if (!localtime_r(&time, &tm)) {
