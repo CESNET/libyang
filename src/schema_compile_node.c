@@ -1585,7 +1585,17 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
         DUP_STRING_GOTO(ctx->ctx, enums_p[u].name, e->name, ret, done);
         DUP_STRING_GOTO(ctx->ctx, enums_p[u].dsc, e->dsc, ret, done);
         DUP_STRING_GOTO(ctx->ctx, enums_p[u].ref, e->ref, ret, done);
-        e->flags = (enums_p[u].flags & LYS_FLAGS_COMPILED_MASK) | (basetype == LY_TYPE_ENUM ? LYS_IS_ENUM : 0);
+
+        /* copy flags except for status */
+        e->flags = (enums_p[u].flags & LYS_FLAGS_COMPILED_MASK) & ~LYS_STATUS_MASK;
+
+        /* compile status */
+        LY_CHECK_RET(lys_compile_status(ctx, enums_p[u].flags, 0, 0, NULL, (basetype == LY_TYPE_ENUM) ? "enum" : "bit",
+                &e->flags));
+
+        /* enum/bit flag */
+        e->flags |= (basetype == LY_TYPE_ENUM) ? LYS_IS_ENUM : 0;
+
         if (basetype == LY_TYPE_ENUM) {
             e->value = cur_val;
         } else {
