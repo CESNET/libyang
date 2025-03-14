@@ -1520,7 +1520,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
                 }
             }
 
-            /* save highest value for auto assing */
+            /* save highest value for auto assign */
             if (highest_value < cur_val) {
                 highest_value = cur_val;
             }
@@ -1555,7 +1555,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
                 }
             }
 
-            /* save highest position for auto assing */
+            /* save highest position for auto assign */
             if (highest_position < cur_pos) {
                 highest_position = cur_pos;
             }
