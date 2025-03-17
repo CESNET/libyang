@@ -1326,6 +1326,8 @@ utest_setup(void **state)
 
     /* set CET */
     setenv("TZ", "CET+02:00", 1);
+    /* call tzset explicitly, to update the tzname, timezone and daylight global variables */
+    tzset();
 
     return 0;
 }
