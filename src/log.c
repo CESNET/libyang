@@ -580,6 +580,38 @@ log_stderr_path_line(const char *data_path, const char *schema_path, uint64_t li
 }
 
 /**
+ * @brief Learn whether a log is a no-operation or must be produced, based on current ly_log_opts.
+ *
+ * @param[in] level Message log level to compare to enabled logging level.
+ * @param[out] will_log Optionally learn whether the log will be printed.
+ * @param[out] will_store Optionally learn whether the log will be stored.
+ * @return 1 if the log is a no-operation, 0 otherwise.
+ */
+static ly_bool
+log_is_noop(LY_LOG_LEVEL level, ly_bool *will_log, ly_bool *will_store)
+{
+    ly_bool lolog, lostore;
+
+    /* learn effective logger options */
+    if (temp_ly_log_opts) {
+        lolog = *temp_ly_log_opts & LY_LOLOG;
+        lostore = *temp_ly_log_opts & LY_LOSTORE;
+    } else {
+        lolog = ATOMIC_LOAD_RELAXED(ly_log_opts) & LY_LOLOG;
+        lostore = ATOMIC_LOAD_RELAXED(ly_log_opts) & LY_LOSTORE;
+    }
+
+    if (will_log) {
+        *will_log = lolog;
+    }
+    if (will_store) {
+        *will_store = lostore;
+    }
+
+    return (level > ATOMIC_LOAD_RELAXED(ly_ll)) || (!lolog && !lostore);
+}
+
+/**
  * @brief Log a message.
  *
  * @param[in] ctx Context to use.
@@ -601,16 +633,7 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR err, LY_VECODE 
     const char *msg;
     ly_bool free_strs = 1, lolog, lostore;
 
-    /* learn effective logger options */
-    if (temp_ly_log_opts) {
-        lolog = *temp_ly_log_opts & LY_LOLOG;
-        lostore = *temp_ly_log_opts & LY_LOSTORE;
-    } else {
-        lolog = ATOMIC_LOAD_RELAXED(ly_log_opts) & LY_LOLOG;
-        lostore = ATOMIC_LOAD_RELAXED(ly_log_opts) & LY_LOSTORE;
-    }
-
-    if (level > ATOMIC_LOAD_RELAXED(ly_ll)) {
+    if (log_is_noop(level, &lolog, &lostore)) {
         /* do not print or store the message */
         goto cleanup;
     }
@@ -858,6 +881,10 @@ ly_vlog(const struct ly_ctx *ctx, const char *apptag, LY_VECODE code, const char
     char *data_path = NULL, *schema_path = NULL;
     uint64_t line = 0;
 
+    if (log_is_noop(LY_LLERR, NULL, NULL)) {
+        return;
+    }
+
     if (ctx) {
         ly_vlog_build_path_line(ctx, &data_path, &schema_path, &line);
     }
@@ -887,9 +914,10 @@ ly_ext_log(const struct ly_ctx *ctx, const char *plugin_name, LY_LOG_LEVEL level
 {
     char *plugin_msg;
 
-    if (ATOMIC_LOAD_RELAXED(ly_ll) < level) {
+    if (log_is_noop(level, NULL, NULL)) {
         return;
     }
+
     if (asprintf(&plugin_msg, "Ext plugin \"%s\": %s", plugin_name, format) == -1) {
         LOGMEM(ctx);
         return;
@@ -986,6 +1014,10 @@ _ly_err_print(const struct ly_ctx *ctx, const struct ly_err_item *eitem, const c
     char *data_path = NULL, *schema_path = NULL;
 
     LY_CHECK_ARG_RET(ctx, eitem, );
+
+    if (log_is_noop(eitem->level, NULL, NULL)) {
+        return;
+    }
 
     if (eitem->data_path) {
         data_path = strdup(eitem->data_path);
