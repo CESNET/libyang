@@ -118,7 +118,7 @@ struct ly_path {
  * @param[in] ctx libyang context.
  * @param[in] ctx_node Optional context node, used for logging.
  * @param[in] str_path Path to parse.
- * @param[in] path_len Length of @p str_path.
+ * @param[in] path_len Length of @p str_path, may be 0 if @p str_path is 0-terminated.
  * @param[in] lref Whether leafref is being parsed or not.
  * @param[in] begin Begin option (@ref path_begin_options).
  * @param[in] prefix Prefix option (@ref path_prefix_options).
@@ -135,7 +135,7 @@ LY_ERR ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
  * @param[in] ctx libyang context.
  * @param[in] cur_node Optional current (original context) node, used for logging.
  * @param[in] str_path Path to parse.
- * @param[in] path_len Length of @p str_path.
+ * @param[in] path_len Length of @p str_path, may be 0 if @p str_path is 0-terminated.
  * @param[in] prefix Prefix option (@ref path_prefix_options).
  * @param[in] pred Predicate option (@ref path_pred_options).
  * @param[out] expr Parsed path.

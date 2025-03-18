@@ -1,9 +1,10 @@
 /**
  * @file tree_schema.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Schema tree implementation
  *
- * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -631,7 +632,7 @@ lys_find_path_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, 
     }
 
     /* parse */
-    ret = ly_path_parse(ctx, ctx_node, path, strlen(path), 0, LY_PATH_BEGIN_EITHER, LY_PATH_PREFIX_FIRST,
+    ret = ly_path_parse(ctx, ctx_node, path, 0, 0, LY_PATH_BEGIN_EITHER, LY_PATH_PREFIX_FIRST,
             LY_PATH_PRED_SIMPLE, &expr);
     LY_CHECK_GOTO(ret, cleanup);
 
@@ -658,7 +659,7 @@ lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
     LY_ERR ret;
     uint8_t oper;
 
-    LY_CHECK_ARG_RET(ctx, ctx || ctx_node, NULL);
+    LY_CHECK_ARG_RET(ctx, ctx || ctx_node, path, NULL);
     LY_CHECK_CTX_EQUAL_RET(ctx, ctx_node ? ctx_node->module->ctx : NULL, NULL);
 
     if (!ctx) {
@@ -666,7 +667,7 @@ lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
     }
 
     /* parse */
-    ret = ly_path_parse(ctx, ctx_node, path, strlen(path), 0, LY_PATH_BEGIN_EITHER, LY_PATH_PREFIX_FIRST,
+    ret = ly_path_parse(ctx, ctx_node, path, 0, 0, LY_PATH_BEGIN_EITHER, LY_PATH_PREFIX_FIRST,
             LY_PATH_PRED_SIMPLE, &expr);
     LY_CHECK_GOTO(ret, cleanup);
 

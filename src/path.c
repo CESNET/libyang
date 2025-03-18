@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Path functions
  *
- * Copyright (c) 2020 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -337,6 +337,10 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
 
     if (ctx_node) {
         LOG_LOCSET(ctx_node, NULL);
+    }
+
+    if (!path_len) {
+        path_len = strlen(str_path);
     }
 
     /* parse as a generic XPath expression, reparse is performed manually */
