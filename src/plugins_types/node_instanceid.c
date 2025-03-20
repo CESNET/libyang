@@ -252,7 +252,7 @@ store:
     }
 
 cleanup:
-    lyxp_expr_free(ctx, exp);
+    lyxp_expr_free(exp);
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         free((void *)value);
     }

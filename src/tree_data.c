@@ -3555,7 +3555,7 @@ lyd_eval_xpath4(const struct lyd_node *ctx_node, const struct lyd_node *tree, co
 
 cleanup:
     lyxp_set_free_content(&xp_set);
-    lyxp_expr_free((struct ly_ctx *)LYD_CTX(tree), exp);
+    lyxp_expr_free(exp);
     return ret;
 }
 
@@ -3686,7 +3686,7 @@ next_iter:
 
 cleanup:
     lyxp_set_free_content(&xp_set);
-    lyxp_expr_free(ctx, exp);
+    lyxp_expr_free(exp);
     lyht_free(parent_ht, NULL);
     ly_set_erase(&free_set, NULL);
     return ret;
@@ -3715,7 +3715,7 @@ lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output,
     ret = ly_path_eval_partial(lypath, ctx_node, NULL, 0, NULL, match);
 
 cleanup:
-    lyxp_expr_free(LYD_CTX(ctx_node), expr);
+    lyxp_expr_free(expr);
     ly_path_free(lypath);
     return ret;
 }
