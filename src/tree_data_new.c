@@ -183,7 +183,7 @@ lyd_create_list2(const struct lysc_node *schema, const char *keys, size_t keys_l
 
 cleanup:
     LOG_LOCBACK(1, 0);
-    lyxp_expr_free(schema->module->ctx, expr);
+    lyxp_expr_free(expr);
     ly_path_predicates_free(schema->module->ctx, predicates);
     return ret;
 }
@@ -1858,7 +1858,7 @@ next_iter:
     }
 
 cleanup:
-    lyxp_expr_free(ctx, exp);
+    lyxp_expr_free(exp);
     if (p) {
         while (orig_count > LY_ARRAY_COUNT(p)) {
             LY_ARRAY_INCREMENT(p);

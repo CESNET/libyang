@@ -1727,7 +1727,7 @@ test_type_leafref(void **state)
     assert_int_equal(LYXP_TOKEN_NAMETEST, expr->tokens[1]);
     assert_int_equal(LYXP_TOKEN_OPER_PATH, expr->tokens[2]);
     assert_int_equal(LYXP_TOKEN_NAMETEST, expr->tokens[3]);
-    lyxp_expr_free(UTEST_LYCTX, expr);
+    lyxp_expr_free(expr);
 
     /* complete leafref paths */
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {yang-version 1.1;namespace urn:a;prefix a;"

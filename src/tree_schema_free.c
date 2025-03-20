@@ -256,7 +256,7 @@ lysp_type_free(const struct ly_ctx *ctx, struct lysp_type *type)
     FREE_ARRAY(ctx, type->patterns, lysp_restr_free);
     FREE_ARRAY(ctx, type->enums, lysp_type_enum_free);
     FREE_ARRAY(ctx, type->bits, lysp_type_enum_free);
-    lyxp_expr_free(ctx, type->path);
+    lyxp_expr_free(type->path);
     FREE_STRINGS(ctx, type->bases);
     FREE_ARRAY(ctx, type->types, lysp_type_free);
     FREE_ARRAY(ctx, type->exts, lysp_ext_instance_free);
@@ -670,7 +670,7 @@ lysc_when_free(const struct ly_ctx *ctx, struct lysc_when **w)
         return;
     }
 
-    lyxp_expr_free(ctx, (*w)->cond);
+    lyxp_expr_free((*w)->cond);
     ly_free_prefix_data(LY_VALUE_SCHEMA_RESOLVED, (*w)->prefixes);
     lysdict_remove(ctx, (*w)->dsc);
     lysdict_remove(ctx, (*w)->ref);
@@ -692,7 +692,7 @@ lysc_must_free(const struct ly_ctx *ctx, struct lysc_must *must)
         return;
     }
 
-    lyxp_expr_free(ctx, must->cond);
+    lyxp_expr_free(must->cond);
     ly_free_prefix_data(LY_VALUE_SCHEMA_RESOLVED, must->prefixes);
     lysdict_remove(ctx, must->emsg);
     lysdict_remove(ctx, must->eapptag);
@@ -905,7 +905,7 @@ lysc_type_free(const struct ly_ctx *ctx, struct lysc_type *type)
         FREE_ARRAY(ctx, ((struct lysc_type_union *)type)->types, lysc_type2_free);
         break;
     case LY_TYPE_LEAFREF:
-        lyxp_expr_free(ctx, ((struct lysc_type_leafref *)type)->path);
+        lyxp_expr_free(((struct lysc_type_leafref *)type)->path);
         ly_free_prefix_data(LY_VALUE_SCHEMA_RESOLVED, ((struct lysc_type_leafref *)type)->prefixes);
         lysc_type_free(ctx, ((struct lysc_type_leafref *)type)->realtype);
         break;
@@ -1504,7 +1504,7 @@ lyplg_ext_pfree_instance_substatements(const struct ly_ctx *ctx, struct lysp_ext
 
         case LY_STMT_PATH:
             /* single expression */
-            lyxp_expr_free(ctx, *substmts[u].storage_p);
+            lyxp_expr_free(*substmts[u].storage_p);
             break;
 
         case LY_STMT_DEFAULT:

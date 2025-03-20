@@ -2794,7 +2794,7 @@ exp_add_token(const struct ly_ctx *ctx, struct lyxp_expr *exp, enum lyxp_token t
 }
 
 void
-lyxp_expr_free(const struct ly_ctx *ctx, struct lyxp_expr *expr)
+lyxp_expr_free(struct lyxp_expr *expr)
 {
     uint32_t i;
 
@@ -3228,7 +3228,7 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
     return LY_SUCCESS;
 
 error:
-    lyxp_expr_free(ctx, expr);
+    lyxp_expr_free(expr);
     return ret;
 }
 
@@ -3307,7 +3307,7 @@ lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint32_t st
 
 cleanup:
     if (ret) {
-        lyxp_expr_free(ctx, dup);
+        lyxp_expr_free(dup);
     } else {
         *dup_p = dup;
     }
@@ -7822,7 +7822,7 @@ eval_name_test_try_compile_predicate_append(const struct lyxp_expr *exp, uint32_
     *pred_len += sprintf(*pred + *pred_len, "[%s=%c%s%c]", pred_node->name, quot, set2.val.str, quot);
 
 cleanup:
-    lyxp_expr_free(set->ctx, val_exp);
+    lyxp_expr_free(val_exp);
     lyxp_set_free_content(&set2);
     return rc;
 }
@@ -7988,7 +7988,7 @@ eval_name_test_try_compile_predicates(const struct lyxp_expr *exp, uint32_t *tok
 
 cleanup:
     ly_temp_log_options(prev_lo);
-    lyxp_expr_free(set->ctx, exp2);
+    lyxp_expr_free(exp2);
     free(pred);
     return rc;
 }
@@ -8915,7 +8915,7 @@ eval_variable_reference(const struct lyxp_expr *exp, uint32_t *tok_idx, struct l
     LY_CHECK_GOTO(ret, cleanup);
 
 cleanup:
-    lyxp_expr_free(set->ctx, tokens);
+    lyxp_expr_free(tokens);
 
     return ret;
 }
