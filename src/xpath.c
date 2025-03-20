@@ -2802,7 +2802,7 @@ lyxp_expr_free(const struct ly_ctx *ctx, struct lyxp_expr *expr)
         return;
     }
 
-    lysdict_remove(ctx, expr->expr);
+    free(expr->expr);
     free(expr->tokens);
     free(expr->tok_pos);
     free(expr->tok_len);
@@ -2915,7 +2915,8 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
     /* init lyxp_expr structure */
     expr = calloc(1, sizeof *expr);
     LY_CHECK_ERR_GOTO(!expr, LOGMEM(ctx); ret = LY_EMEM, error);
-    LY_CHECK_GOTO(ret = lysdict_insert(ctx, expr_str, expr_len, &expr->expr), error);
+    expr->expr = strndup(expr_str, expr_len);
+    LY_CHECK_ERR_GOTO(!expr->expr, LOGMEM(ctx); ret = LY_EMEM, error);
     expr->used = 0;
     expr->size = LYXP_EXPR_SIZE_START;
     expr->tokens = malloc(expr->size * sizeof *expr->tokens);
@@ -3301,7 +3302,8 @@ lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint32_t st
     dup->size = used;
 
     /* copy only subexpression */
-    LY_CHECK_GOTO(ret = lysdict_insert(ctx, expr_start, expr_len, &dup->expr), cleanup);
+    dup->expr = strndup(expr_start, expr_len);
+    LY_CHECK_ERR_GOTO(!dup->expr, LOGMEM(ctx); ret = LY_EMEM, cleanup);
 
 cleanup:
     if (ret) {
