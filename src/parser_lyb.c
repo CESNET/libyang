@@ -822,7 +822,7 @@ lyb_parse_schema_nested_ext(struct lyd_lyb_ctx *lybctx, const struct lyd_node *p
 
     if (!((*snode)->module->ctx->opts & LY_CTX_LYB_HASHES)) {
         /* generate LYB hashes */
-        ly_ctx_set_options((*snode)->module->ctx, LY_CTX_LYB_HASHES);
+        LY_CHECK_GOTO(rc = ly_ctx_set_options((*snode)->module->ctx, LY_CTX_LYB_HASHES), cleanup);
     }
 
 cleanup:
@@ -1612,7 +1612,7 @@ lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
 
     if (!(ctx->opts & LY_CTX_LYB_HASHES)) {
         /* generate LYB hashes */
-        ly_ctx_set_options((struct ly_ctx *)ctx, LY_CTX_LYB_HASHES);
+        LY_CHECK_GOTO(rc = ly_ctx_set_options((struct ly_ctx *)ctx, LY_CTX_LYB_HASHES), cleanup);
     }
 
     if (subtree_sibling) {
