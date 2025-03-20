@@ -152,6 +152,7 @@ ctxs_expr(const struct lyxp_expr *exp, int *size)
 
     *size += sizeof *exp;
 
+    *size += strlen(exp->expr) + 1;
     *size += exp->used * sizeof *exp->tokens;
     *size += exp->used * sizeof *exp->tok_pos;
     *size += exp->used * sizeof *exp->tok_len;
@@ -830,9 +831,13 @@ ctxp_ext(const struct lysc_ext_instance *orig_ext, struct lysc_ext_instance *ext
 }
 
 static void
-ctxp_expr(const struct lyxp_expr *orig_exp, struct lyxp_expr *exp, struct ly_ht *addr_ht, void **mem)
+ctxp_expr(const struct lyxp_expr *orig_exp, struct lyxp_expr *exp, void **mem)
 {
     uint32_t i, len;
+
+    exp->expr = *mem;
+    *mem = (char *)*mem + strlen(orig_exp->expr) + 1;
+    memcpy(exp->expr, orig_exp->expr, strlen(orig_exp->expr) + 1);
 
     exp->tokens = *mem;
     *mem = (char *)*mem + orig_exp->used * sizeof *exp->tokens;
@@ -863,7 +868,6 @@ ctxp_expr(const struct lyxp_expr *orig_exp, struct lyxp_expr *exp, struct ly_ht 
 
     exp->used = orig_exp->used;
     exp->size = orig_exp->used;
-    exp->expr = ly_ctx_compiled_addr_ht_get(addr_ht, orig_exp->expr, 0);
 }
 
 static void
@@ -899,7 +903,7 @@ ctxp_must(const struct lysc_must *orig_must, struct lysc_must *must, struct ly_h
 
     must->cond = *mem;
     *mem = (char *)*mem + sizeof *must->cond;
-    ctxp_expr(orig_must->cond, must->cond, addr_ht, mem);
+    ctxp_expr(orig_must->cond, must->cond, mem);
 
     CTXP_SIZED_ARRAY(orig_must->prefixes, must->prefixes, mem);
     LY_ARRAY_FOR(orig_must->prefixes, u) {
@@ -941,7 +945,7 @@ ctxp_when(const struct lysc_when *orig_when, struct lysc_when **when, struct ly_
 
     w->cond = *mem;
     *mem = (char *)*mem + sizeof *w->cond;
-    ctxp_expr(orig_when->cond, w->cond, addr_ht, mem);
+    ctxp_expr(orig_when->cond, w->cond, mem);
 
     w->context = ly_ctx_compiled_addr_ht_get(addr_ht, orig_when->context, 0);
     CTXP_SIZED_ARRAY(orig_when->prefixes, w->prefixes, mem);
@@ -1247,7 +1251,7 @@ ctxp_type(const struct lysc_type *orig_type, struct lysc_type **type, struct ly_
 
         t_lref->path = *mem;
         *mem = (char *)*mem + sizeof *t_lref->path;
-        ctxp_expr(orig_type_lref->path, t_lref->path, addr_ht, mem);
+        ctxp_expr(orig_type_lref->path, t_lref->path, mem);
 
         CTXP_SIZED_ARRAY(orig_type_lref->prefixes, t_lref->prefixes, mem);
         LY_ARRAY_FOR(orig_type_lref->prefixes, u) {
