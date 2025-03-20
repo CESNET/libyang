@@ -147,7 +147,7 @@ ly_ctx_data_add(const struct ly_ctx *ctx)
     /* check for duplicates */
     for (i = 0; i < ly_ctx_data_count; i++) {
         if (ly_ctx_data[i]->ctx == ctx) {
-            rc = LY_EEXIST;
+            ++ly_ctx_data[i]->refcount;
             goto cleanup;
         }
     }
@@ -179,6 +179,9 @@ ly_ctx_data_add(const struct ly_ctx *ctx)
     LY_CHECK_ERR_GOTO(!ctx_data->data_dict, rc = LY_EMEM, cleanup);
     lydict_init(ctx_data->data_dict);
 
+    /* refcount */
+    ctx_data->refcount = 1;
+
     ++ly_ctx_data_count;
 
 cleanup:
@@ -207,6 +210,14 @@ ly_ctx_data_del(const struct ly_ctx *ctx)
         }
     }
     if (!ctx_data) {
+        /* WR UNLOCK */
+        pthread_rwlock_unlock(&ly_ctx_data_rwlock);
+        return;
+    }
+
+    /* decrease refcount */
+    --ctx_data->refcount;
+    if (ctx_data->refcount) {
         /* WR UNLOCK */
         pthread_rwlock_unlock(&ly_ctx_data_rwlock);
         return;
