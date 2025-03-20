@@ -1398,6 +1398,10 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
         LY_ARRAY_FOR(orig_choic->when, u) {
             ctxp_when(orig_choic->when[u], &choic->when[u], addr_ht, ptr_set, mem);
         }
+
+        /* dflt */
+        choic->dflt = orig_choic->dflt;
+        ly_set_add(ptr_set, &choic->dflt, 1, NULL);
         break;
     case LYS_LEAF:
         orig_leaf = (const struct lysc_node_leaf *)orig_node;
