@@ -141,7 +141,7 @@ relative_path:
     }
 
 cleanup:
-    lyxp_expr_free(ctx, exp);
+    lyxp_expr_free(exp);
     if (rc) {
         lysc_nodeid_free(ctx, *nodeid);
         *nodeid = NULL;
@@ -280,7 +280,7 @@ lys_nodeid_mod_check(struct lysc_ctx *ctx, const char *str, ly_bool abs, struct 
     }
 
 cleanup:
-    lyxp_expr_free(ctx->ctx, e);
+    lyxp_expr_free(e);
     lysc_nodeid_free(ctx->ctx, ni);
     return ret;
 }

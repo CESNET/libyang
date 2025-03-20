@@ -530,9 +530,8 @@ LY_ERR lyxp_vars_find(const struct ly_ctx *ctx, const struct lyxp_var *vars, con
 /**
  * @brief Frees a parsed XPath expression. @p expr should not be used afterwards.
  *
- * @param[in] ctx libyang context of the expression.
  * @param[in] expr Expression to free.
  */
-void lyxp_expr_free(const struct ly_ctx *ctx, struct lyxp_expr *expr);
+void lyxp_expr_free(struct lyxp_expr *expr);
 
 #endif /* LY_XPATH_H */

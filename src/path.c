@@ -316,7 +316,7 @@ ly_path_parse_deref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, 
     arg_len = exp->tok_pos[end_token] - exp->tok_pos[begin_token];
     LY_CHECK_RET(ly_path_parse(ctx, ctx_node, &exp->expr[exp->tok_pos[begin_token]], arg_len, 1,
             LY_PATH_BEGIN_EITHER, LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &arg_expr), LY_EVALID);
-    lyxp_expr_free(ctx, arg_expr);
+    lyxp_expr_free(arg_expr);
 
     return LY_SUCCESS;
 }
@@ -458,7 +458,7 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
     return LY_SUCCESS;
 
 error:
-    lyxp_expr_free(ctx, exp);
+    lyxp_expr_free(exp);
     LOG_LOCBACK(ctx_node ? 1 : 0, 0);
     return ret;
 }
@@ -502,7 +502,7 @@ ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
     return LY_SUCCESS;
 
 error:
-    lyxp_expr_free(ctx, exp);
+    lyxp_expr_free(exp);
     LOG_LOCBACK(cur_node ? 1 : 0, 0);
     return ret;
 }

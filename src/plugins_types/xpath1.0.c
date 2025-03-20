@@ -516,7 +516,7 @@ lyplg_type_free_xpath10(const struct ly_ctx *ctx, struct lyd_value *value)
     value->_canonical = NULL;
     LYD_VALUE_GET(value, val);
     if (val) {
-        lyxp_expr_free(ctx, val->exp);
+        lyxp_expr_free(val->exp);
         lyplg_type_prefix_data_free(val->format, val->prefix_data);
 
         LYPLG_TYPE_VAL_INLINE_DESTROY(val);

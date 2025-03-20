@@ -478,7 +478,7 @@ lys_find_xpath_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
 
 cleanup:
     lyxp_set_free_content(&xp_set);
-    lyxp_expr_free(ctx, exp);
+    lyxp_expr_free(exp);
     return ret;
 }
 
@@ -573,7 +573,7 @@ lys_find_xpath(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const
 
 cleanup:
     lyxp_set_free_content(&xp_set);
-    lyxp_expr_free(ctx, exp);
+    lyxp_expr_free(exp);
     if (ret) {
         ly_set_free(*set, NULL);
         *set = NULL;
@@ -642,7 +642,7 @@ lys_find_path_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, 
 
 cleanup:
     ly_path_free(p);
-    lyxp_expr_free(ctx, expr);
+    lyxp_expr_free(expr);
     return ret;
 }
 
@@ -677,7 +677,7 @@ lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
 
 cleanup:
     ly_path_free(p);
-    lyxp_expr_free(ctx, expr);
+    lyxp_expr_free(expr);
     return snode;
 }
 

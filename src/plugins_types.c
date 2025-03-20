@@ -871,7 +871,7 @@ lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_
     }
 
 cleanup:
-    lyxp_expr_free(ctx, exp);
+    lyxp_expr_free(exp);
     if (ret) {
         /* generate error, spend the context error, if any */
         e = e ? e->next : (struct ly_err_item *)ly_err_last(ctx);
@@ -1151,7 +1151,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
     }
 
 cleanup:
-    lyxp_expr_free(LYD_CTX(node), target_path);
+    lyxp_expr_free(target_path);
     lyxp_set_free_content(&set);
     return rc;
 }

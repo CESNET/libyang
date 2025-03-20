@@ -410,7 +410,7 @@ test_target(void **state)
 
     lyd_free_all(tree);
     ly_path_free(path);
-    lyxp_expr_free(UTEST_LYCTX, exp);
+    lyxp_expr_free(exp);
 }
 
 static void
