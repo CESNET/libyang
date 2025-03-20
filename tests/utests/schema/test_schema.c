@@ -2217,9 +2217,8 @@ test_compiled_print(void **state)
     /* create a new printed ctx from this address */
     assert_int_equal(LY_SUCCESS, ly_ctx_new_printed(mem, &printed_ctx));
 
-    /* try to create a new printed ctx from the same address, which is not allowed */
-    assert_int_equal(LY_EEXIST, ly_ctx_new_printed(mem, &printed_ctx2));
-    CHECK_LOG_LASTMSG("Printed context was already created on the provided address.");
+    /* create a new printed ctx from the same address */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new_printed(mem, &printed_ctx2));
 
     /* get the structure extension from the printed context */
     mod = ly_ctx_get_module_implemented(printed_ctx, "m3");
@@ -2254,6 +2253,12 @@ test_compiled_print(void **state)
     CHECK_LYD_STRING_PARAM(tree, xml, LYD_XML, 0);
     lyd_free_all(tree);
 
+    /* now try it with the second printed context from the same address */
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(printed_ctx2, xml,
+            LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LYD_STRING_PARAM(tree, xml, LYD_XML, 0);
+    lyd_free_all(tree);
+
     /* parse structure extension data with the printed ctx */
     xml = "<a xmlns=\"urn:m3\">\n"
             "  <b>abc</b>\n"
@@ -2268,6 +2273,7 @@ test_compiled_print(void **state)
 
     /* cleanup */
     ly_ctx_destroy(printed_ctx);
+    ly_ctx_destroy(printed_ctx2);
     munmap(mem, size);
     close(fd);
     shm_unlink("/ly_test_schema_ctx");

@@ -353,6 +353,8 @@ struct ly_ctx_data {
 
     struct ly_ht *leafref_links_ht; /**< hash table of leafref links between term data nodes */
     struct ly_dict *data_dict;      /**< dictionary for data trees */
+
+    int refcount;                   /**< reference count for the given context */
 };
 
 extern pthread_rwlock_t ly_ctx_data_rwlock; /**< lock for accessing ly_ctx_data */
@@ -394,7 +396,7 @@ void ly_ctx_new_change(struct ly_ctx *ctx);
  * @brief Add a ctx data for a new context.
  *
  * @param[in] ctx Newly created context.
- * @return LY_SUCCESS on success, LY_EEXIST if the context data already exists or LY_EMEM on memory allocation failure.
+ * @return LY_SUCCESS on success or LY_EMEM on memory allocation failure.
  */
 LY_ERR ly_ctx_data_add(const struct ly_ctx *ctx);
 
