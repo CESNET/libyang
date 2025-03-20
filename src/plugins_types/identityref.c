@@ -219,7 +219,7 @@ identityref_check_ident(const struct lysc_ident *ident, const char *value,
                     "Invalid identityref \"%.*s\" value - identity found in non-implemented module \"%s\".",
                     (int)value_len, (char *)value, ident->module->name);
         }
-    } else if (lys_identity_iffeature_value(ident) == LY_ENOT) {
+    } else if (ident->module->parsed && (lys_identity_iffeature_value(ident) == LY_ENOT)) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
                 "Invalid identityref \"%.*s\" value - identity is disabled by if-feature.",
                 (int)value_len, value);
