@@ -1168,7 +1168,7 @@ lyb_print_node(struct ly_out *out, const struct lyd_node **printed_node, struct 
     if (node->flags & LYD_EXT) {
         /* extension context which may not have hashes generated */
         if (!(LYD_CTX(node)->opts & LY_CTX_LYB_HASHES)) {
-            ly_ctx_set_options((struct ly_ctx *)LYD_CTX(node), LY_CTX_LYB_HASHES);
+            LY_CHECK_RET(ly_ctx_set_options((struct ly_ctx *)LYD_CTX(node), LY_CTX_LYB_HASHES));
         }
 
         /* write schema node name */
@@ -1259,7 +1259,7 @@ lyb_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options
 
         if (!(ctx->opts & LY_CTX_LYB_HASHES)) {
             /* generate LYB hashes */
-            ly_ctx_set_options((struct ly_ctx *)ctx, LY_CTX_LYB_HASHES);
+            LY_CHECK_GOTO(ret = ly_ctx_set_options((struct ly_ctx *)ctx, LY_CTX_LYB_HASHES), cleanup);
         }
     }
 
