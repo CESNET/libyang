@@ -1453,9 +1453,6 @@ ly_ctx_new_printed(const void *mem, struct ly_ctx **ctx)
     /* ctx data */
     rc = ly_ctx_data_add(*ctx);
     if (rc) {
-        if (rc == LY_EEXIST) {
-            LOGERR(NULL, LY_EEXIST, "Printed context was already created on the provided address.");
-        }
         goto cleanup;
     }
 
@@ -1466,10 +1463,7 @@ ly_ctx_new_printed(const void *mem, struct ly_ctx **ctx)
 
 cleanup:
     if (rc) {
-        if (rc != LY_EEXIST) {
-            /* do not delete ctx data of an existing context */
-            ly_ctx_data_del(*ctx);
-        }
+        ly_ctx_data_del(*ctx);
         *ctx = NULL;
     }
     return rc;
