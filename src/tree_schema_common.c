@@ -1380,6 +1380,10 @@ lys_datatype2str(LY_DATA_TYPE basetype)
 LIBYANG_API_DEF const struct lysp_tpdf *
 lysp_node_typedefs(const struct lysp_node *node)
 {
+    if (!node) {
+        return NULL;
+    }
+
     switch (node->nodetype) {
     case LYS_CONTAINER:
         return ((struct lysp_node_container *)node)->typedefs;
@@ -1403,6 +1407,10 @@ lysp_node_typedefs(const struct lysp_node *node)
 LIBYANG_API_DEF const struct lysp_node_grp *
 lysp_node_groupings(const struct lysp_node *node)
 {
+    if (!node) {
+        return NULL;
+    }
+
     switch (node->nodetype) {
     case LYS_CONTAINER:
         return ((struct lysp_node_container *)node)->groupings;
@@ -1447,6 +1455,10 @@ lysp_node_actions(const struct lysp_node *node)
 {
     struct lysp_node_action **actions;
 
+    if (!node) {
+        return NULL;
+    }
+
     actions = lysp_node_actions_p((struct lysp_node *)node);
     if (actions) {
         return *actions;
@@ -1477,6 +1489,10 @@ LIBYANG_API_DEF const struct lysp_node_notif *
 lysp_node_notifs(const struct lysp_node *node)
 {
     struct lysp_node_notif **notifs;
+
+    if (!node) {
+        return NULL;
+    }
 
     notifs = lysp_node_notifs_p((struct lysp_node *)node);
     if (notifs) {
@@ -1621,6 +1637,7 @@ struct lysc_node_action **
 lysc_node_actions_p(struct lysc_node *node)
 {
     assert(node);
+
     switch (node->nodetype) {
     case LYS_CONTAINER:
         return &((struct lysc_node_container *)node)->actions;
@@ -1636,6 +1653,10 @@ lysc_node_actions(const struct lysc_node *node)
 {
     struct lysc_node_action **actions;
 
+    if (!node) {
+        return NULL;
+    }
+
     actions = lysc_node_actions_p((struct lysc_node *)node);
     if (actions) {
         return *actions;
@@ -1648,6 +1669,7 @@ struct lysc_node_notif **
 lysc_node_notifs_p(struct lysc_node *node)
 {
     assert(node);
+
     switch (node->nodetype) {
     case LYS_CONTAINER:
         return &((struct lysc_node_container *)node)->notifs;
@@ -1662,6 +1684,10 @@ LIBYANG_API_DEF const struct lysc_node_notif *
 lysc_node_notifs(const struct lysc_node *node)
 {
     struct lysc_node_notif **notifs;
+
+    if (!node) {
+        return NULL;
+    }
 
     notifs = lysc_node_notifs_p((struct lysc_node *)node);
     if (notifs) {
@@ -1750,6 +1776,10 @@ lysc_node_musts(const struct lysc_node *node)
 {
     struct lysc_must **must_p;
 
+    if (!node) {
+        return NULL;
+    }
+
     must_p = lysc_node_musts_p(node);
     if (must_p) {
         return *must_p;
@@ -1795,6 +1825,10 @@ LIBYANG_API_DEF struct lysc_when **
 lysc_node_when(const struct lysc_node *node)
 {
     struct lysc_when ***when_p;
+
+    if (!node) {
+        return NULL;
+    }
 
     when_p = lysc_node_when_p(node);
     if (when_p) {
