@@ -1159,6 +1159,26 @@ ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, ly_boo
 }
 
 static LY_ERR
+ylib_augmentedby(struct lyd_node *parent, const struct lys_module *cur_mod)
+{
+    struct lys_module *mod, *ylab_mod;
+    LY_ARRAY_COUNT_TYPE i;
+
+    ylab_mod = ly_ctx_get_module_implemented(LYD_CTX(parent), "ietf-yang-library-augmentedby");
+
+    if (!cur_mod->implemented || !ylab_mod) {
+        return LY_SUCCESS;
+    }
+
+    LY_ARRAY_FOR(cur_mod->augmented_by, i) {
+        mod = cur_mod->augmented_by[i];
+        LY_CHECK_RET(lyd_new_term(parent, ylab_mod, "augmented-by", mod->name, 0, NULL));
+    }
+
+    return LY_SUCCESS;
+}
+
+static LY_ERR
 ylib_submodules(struct lyd_node *parent, const struct lysp_module *pmod, ly_bool bis)
 {
     LY_ERR ret;
@@ -1303,6 +1323,9 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p, cons
 
             /* deviation */
             LY_CHECK_GOTO(ret = ylib_deviation(cont, mod, 1), error);
+
+            /* augmentation list */
+            LY_CHECK_GOTO(ret = ylib_augmentedby(cont, mod), error);
         }
     }
 
