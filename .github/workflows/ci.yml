@@ -209,6 +209,11 @@ jobs:
         id: cpu-cores
         uses: SimenB/github-actions-cpu-cores@v1
 
+      - name: pin CMake to the latest 3.x series
+        uses: jwlawson/actions-setup-cmake@09fd9b0fb3b239b4b68d9256cd65adf8d6b91da0
+        with:
+          cmake-version: '3.31.6'
+
       - name: Install Windows dependencies
         run: vcpkg install --triplet=${{ matrix.triplet }} pcre2 pthreads dirent dlfcn-win32 cmocka getopt xxhash
 
