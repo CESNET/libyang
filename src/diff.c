@@ -380,7 +380,7 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
 
     if (match && (parent == node)) {
         /* special case when there is already an operation on our descendant */
-        assert(!lyd_diff_get_op(diff_parent, &cur_op, NULL) && (cur_op == LYD_DIFF_OP_NONE));
+        assert(!lyd_diff_get_op(diff_parent, &cur_op, NULL));
 
         /* move it to the end where it is expected (matters for user-ordered lists) */
         if (lysc_is_userordered(diff_parent->schema)) {
