@@ -132,7 +132,7 @@ jobs:
           cd uncrustify
           mkdir build
           cd build
-          CC=${{ matrix.config.cc }} cmake ..
+          CC=${{ matrix.config.cc }} cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ..
           make
           sudo make install
         if: ${{ matrix.config.name == 'Debug, gcc' }}
