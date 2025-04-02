@@ -1543,11 +1543,13 @@ lys_compile_depset_r(struct ly_ctx *ctx, struct ly_set *dep_set, struct lys_glob
         LY_CHECK_GOTO(ret = lys_compile(mod, &unres->ds_unres), cleanup);
     }
 
+resolve_unres:
     /* resolve dep set unres */
     ret = lys_compile_unres_depset(ctx, unres);
+    lys_compile_unres_depset_erase(ctx, unres);
+
     if (ret == LY_ERECOMPILE) {
-        /* new module is implemented, discard current dep set unres and recompile the whole dep set */
-        lys_compile_unres_depset_erase(ctx, unres);
+        /* new module is implemented referencing previously compiled modules, recompile the whole dep set */
         return lys_compile_depset_r(ctx, dep_set, unres);
     } else if (ret) {
         /* error */
@@ -1557,6 +1559,13 @@ lys_compile_depset_r(struct ly_ctx *ctx, struct ly_set *dep_set, struct lys_glob
     /* success, unset the flags of all the modules in the dep set */
     for (i = 0; i < dep_set->count; ++i) {
         mod = dep_set->objs[i];
+
+        if (mod->to_compile && !mod->compiled) {
+            /* new module is implemented but does not require recompilation of the whole dep set */
+            LY_CHECK_GOTO(ret = lys_compile(mod, &unres->ds_unres), cleanup);
+            goto resolve_unres;
+        }
+
         mod->to_compile = 0;
     }
 
