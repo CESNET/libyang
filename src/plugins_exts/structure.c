@@ -318,7 +318,8 @@ structure_aug_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 
     /* augment-structure must define some data-def-stmt */
     LY_LIST_FOR(ext->child, stmt) {
-        if (stmt->kw & LY_STMT_DATA_NODE_MASK) {
+        if (stmt->kw & (LY_STMT_CONTAINER | LY_STMT_LEAF | LY_STMT_LEAF_LIST | LY_STMT_LIST | LY_STMT_CHOICE |
+                LY_STMT_ANYDATA | LY_STMT_ANYXML | LY_STMT_USES)) {
             break;
         }
     }
