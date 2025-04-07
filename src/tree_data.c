@@ -222,9 +222,13 @@ LIBYANG_API_DEF LY_ERR
 lyd_parse_data(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in, LYD_FORMAT format,
         uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree)
 {
-    LY_CHECK_ARG_RET(ctx, ctx, in, parent || tree, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, ctx || parent, in, parent || tree, LY_EINVAL);
     LY_CHECK_ARG_RET(ctx, !(parse_options & ~LYD_PARSE_OPTS_MASK), LY_EINVAL);
     LY_CHECK_ARG_RET(ctx, !(validate_options & ~LYD_VALIDATE_OPTS_MASK), LY_EINVAL);
+
+    if (!ctx) {
+        ctx = LYD_CTX(parent);
+    }
 
     return lyd_parse(ctx, NULL, parent, tree, in, format, parse_options, validate_options, NULL);
 }

@@ -935,6 +935,25 @@ test_metadata(void **state)
     CHECK_LOG_CTX("Invalid non-number-encoded int8 value \"value\".", "/a:c/x/@a:hint", 1);
 }
 
+static void
+test_parent(void **state)
+{
+    const char *data;
+    struct lyd_node *tree;
+    struct ly_in *in;
+
+    /* create the parent */
+    assert_int_equal(LY_SUCCESS, lyd_new_path(NULL, UTEST_LYCTX, "/a:l1[a='vala'][b='valb'][c='25']", NULL, 0, &tree));
+
+    /* parse nested data */
+    data = "{\"cont\":{\"e\":false}}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data(NULL, tree, in, LYD_JSON, 0, LYD_VALIDATE_PRESENT, NULL));
+
+    ly_in_free(in, 0);
+    lyd_free_tree(tree);
+}
+
 int
 main(void)
 {
@@ -954,6 +973,7 @@ main(void)
         UTEST(test_restconf_notification, setup),
         UTEST(test_restconf_reply, setup),
         UTEST(test_metadata, setup),
+        UTEST(test_parent, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
