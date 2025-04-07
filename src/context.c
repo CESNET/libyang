@@ -367,7 +367,7 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     /* load internal modules */
     for (i = 0; i < ((options & LY_CTX_NO_YANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 2) : LY_INTERNAL_MODS_COUNT); i++) {
         ly_in_memory(in, internal_modules[i].data);
-        LY_CHECK_GOTO(rc = lys_parse_in(ctx, in, internal_modules[i].format, NULL, NULL, &unres.creating, &module), cleanup);
+        LY_CHECK_GOTO(rc = lys_parse_in(ctx, in, internal_modules[i].format, NULL, &unres.creating, &module), cleanup);
         if (internal_modules[i].implemented || (ctx->flags & LY_CTX_ALL_IMPLEMENTED)) {
             imp_f = (ctx->flags & LY_CTX_ENABLE_IMP_FEATURES) ? all_f : NULL;
             LY_CHECK_GOTO(rc = lys_implement(module, imp_f, &unres), cleanup);

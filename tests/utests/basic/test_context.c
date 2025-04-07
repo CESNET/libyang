@@ -276,10 +276,32 @@ test_options(void **state)
 }
 
 static LY_ERR
-test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
-        const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
-        const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
+test_imp_clb(const char *mod_name, const char *UNUSED(mod_rev), const char *submod_name, const char *UNUSED(sub_rev),
+        void *user_data, LYS_INFORMAT *format, const char **module_data, void (**free_module_data)(void *model_data,
+        void *user_data))
 {
+    const char *name;
+
+    if (submod_name) {
+        if (strncmp(user_data, "submodule", 9)) {
+            return LY_ENOTFOUND;
+        }
+
+        name = ((char *)user_data) + 10;
+        if (strncmp(name, submod_name, strlen(submod_name)) || (name[strlen(submod_name)] != ' ')) {
+            return LY_ENOTFOUND;
+        }
+    } else {
+        if (strncmp(user_data, "module", 6)) {
+            return LY_ENOTFOUND;
+        }
+
+        name = ((char *)user_data) + 7;
+        if (strncmp(name, mod_name, strlen(mod_name)) || (name[strlen(mod_name)] != ' ')) {
+            return LY_ENOTFOUND;
+        }
+    }
+
     *module_data = user_data;
     *format = LYS_IN_YANG;
     *free_module_data = NULL;
@@ -305,7 +327,7 @@ test_models(void **state)
     assert_int_equal(UTEST_LYCTX->change_count, ly_ctx_get_change_count(UTEST_LYCTX));
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module x {namespace urn:x;prefix x;}", &in));
-    assert_int_equal(LY_EINVAL, lys_parse_in(UTEST_LYCTX, in, 4, NULL, NULL, &unres.creating, &mod1));
+    assert_int_equal(LY_EINVAL, lys_parse_in(UTEST_LYCTX, in, 4, NULL, &unres.creating, &mod1));
     lys_unres_glob_erase(&unres);
     ly_in_free(in, 0);
     CHECK_LOG_CTX("Invalid schema input format.", NULL, 0);
@@ -324,17 +346,17 @@ test_models(void **state)
     /* name collision of module and submodule */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule y {belongs-to a {prefix a;} revision 2018-10-30;}");
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module y {namespace urn:y;prefix y;include y;}", &in));
-    assert_int_equal(LY_EVALID, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod1));
+    assert_int_equal(LY_EVALID, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &unres.creating, &mod1));
     lys_unres_glob_erase(&unres);
     ly_in_free(in, 0);
     CHECK_LOG_CTX("Parsing module \"y\" failed.", NULL, 0);
     CHECK_LOG_CTX("Name collision between module and submodule of name \"y\".", NULL, 1);
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module a {namespace urn:a;prefix a;include y;revision 2018-10-30; }", &in));
-    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod1));
+    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &unres.creating, &mod1));
     ly_in_free(in, 0);
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module y {namespace urn:y;prefix y;}", &in));
-    assert_int_equal(LY_EVALID, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod1));
+    assert_int_equal(LY_EVALID, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &unres.creating, &mod1));
     lys_unres_glob_erase(&unres);
     ly_in_free(in, 0);
     CHECK_LOG_CTX("Parsing module \"y\" failed.", NULL, 0);
@@ -342,19 +364,18 @@ test_models(void **state)
 
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule y {belongs-to b {prefix b;}}");
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module b {namespace urn:b;prefix b;include y;}", &in));
-    assert_int_equal(LY_EVALID, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod1));
+    assert_int_equal(LY_EVALID, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &unres.creating, &mod1));
     lys_unres_glob_revert(UTEST_LYCTX, &unres);
     lys_unres_glob_erase(&unres);
     ly_in_free(in, 0);
     CHECK_LOG_CTX("Parsing module \"b\" failed.", NULL, 0);
-    CHECK_LOG_CTX("Including \"y\" submodule into \"b\" failed.", NULL, 0);
-    CHECK_LOG_CTX("Parsing submodule failed.", NULL, 0);
+    CHECK_LOG_CTX("Parsing submodule \"y\" failed.", NULL, 0);
     CHECK_LOG_CTX("Name collision between submodules of name \"y\".", NULL, 1);
 
     /* selecting correct revision of the submodules */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule y {belongs-to a {prefix a;} revision 2018-10-31;}");
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module a {namespace urn:a;prefix a;include y; revision 2018-10-31;}", &in));
-    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod2));
+    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &unres.creating, &mod2));
     lys_unres_glob_erase(&unres);
     ly_in_free(in, 0);
     assert_string_equal("2018-10-31", mod2->parsed->includes[0].submodule->revs[0].date);
@@ -490,17 +511,17 @@ test_get_models(void **state)
     /* select module by revision */
     assert_int_equal(LY_SUCCESS, lys_parse(UTEST_LYCTX, in1, LYS_IN_YANG, NULL, &mod));
     /* invalid attempts - implementing module of the same name and inserting the same module */
-    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in2, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod2));
+    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in2, LYS_IN_YANG, NULL, &unres.creating, &mod2));
     assert_int_equal(LY_EDENIED, lys_implement(mod2, NULL, &unres));
     CHECK_LOG_CTX("Module \"a@2018-10-24\" is already implemented in revision \"2018-10-23\".", NULL, 0);
     lys_unres_glob_erase(&unres);
     ly_in_reset(in1);
     /* it is already there, fine */
-    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in1, LYS_IN_YANG, NULL, NULL, &unres.creating, NULL));
+    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in1, LYS_IN_YANG, NULL, &unres.creating, NULL));
     /* insert the second module only as imported, not implemented */
     lys_unres_glob_erase(&unres);
     ly_in_reset(in2);
-    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in2, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod2));
+    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in2, LYS_IN_YANG, NULL, &unres.creating, &mod2));
     lys_unres_glob_erase(&unres);
     assert_non_null(mod2);
     assert_ptr_not_equal(mod, mod2);
@@ -509,7 +530,7 @@ test_get_models(void **state)
     mod2 = ly_ctx_get_module_latest_ns(UTEST_LYCTX, mod->ns);
     assert_ptr_equal(mod, mod2);
     /* work with module with no revision */
-    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in0, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod));
+    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in0, LYS_IN_YANG, NULL, &unres.creating, &mod));
     lys_unres_glob_erase(&unres);
     assert_ptr_equal(mod, ly_ctx_get_module(UTEST_LYCTX, "a", NULL));
     assert_ptr_not_equal(mod, ly_ctx_get_module_latest(UTEST_LYCTX, "a"));
@@ -517,7 +538,7 @@ test_get_models(void **state)
     str1 = "submodule b {belongs-to a {prefix a;}}";
     ly_in_free(in1, 0);
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str1, &in1));
-    assert_int_equal(LY_EINVAL, lys_parse_in(UTEST_LYCTX, in1, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod));
+    assert_int_equal(LY_EINVAL, lys_parse_in(UTEST_LYCTX, in1, LYS_IN_YANG, NULL, &unres.creating, &mod));
     CHECK_LOG_CTX("Input data contains submodule which cannot be parsed directly without its main module.", NULL, 0);
     lys_unres_glob_erase(&unres);
 

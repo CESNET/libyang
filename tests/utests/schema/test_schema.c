@@ -1045,11 +1045,7 @@ test_includes(void **state)
         ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
         mod = ly_ctx_load_module(UTEST_LYCTX, "main_b", NULL, NULL);
         assert_null(mod);
-        CHECK_LOG_CTX("Loading \"main_b\" module failed.", NULL, 0);
-        CHECK_LOG_CTX("Data model \"main_b\" not found in local searchdirs.", NULL, 0);
         CHECK_LOG_CTX("Parsing module \"main_b\" failed.", NULL, 0);
-        CHECK_LOG_CTX("Including \"sub_b_one\" submodule into \"main_b\" failed.", NULL, 0);
-        CHECK_LOG_CTX("Data model \"sub_b_one\" not found in local searchdirs.", NULL, 0);
         CHECK_LOG_CTX("Parsing submodule \"sub_b_one\" failed.", NULL, 0);
         CHECK_LOG_CTX("YANG 1.1 requires all submodules to be included from main module. But submodule \"sub_b_one\" includes "
                 "submodule \"sub_b_two\" which is not included by main module \"main_b\".", NULL, 0);

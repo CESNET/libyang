@@ -686,64 +686,6 @@ cleanup:
     return ret;
 }
 
-struct lysp_load_module_check_data {
-    const char *name;
-    const char *revision;
-    const char *path;
-    const char *submoduleof;
-};
-
-static LY_ERR
-lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data)
-{
-    struct lysp_load_module_check_data *info = data;
-    const char *name;
-    uint8_t latest_revision;
-    struct lysp_revision *revs;
-
-    name = mod ? mod->mod->name : submod->name;
-    revs = mod ? mod->revs : submod->revs;
-    latest_revision = mod ? mod->mod->latest_revision : submod->latest_revision;
-
-    if (info->name) {
-        /* check name of the parsed model */
-        if (strcmp(info->name, name)) {
-            LOGERR(ctx, LY_EINVAL, "Unexpected module \"%s\" parsed instead of \"%s\".", name, info->name);
-            return LY_EINVAL;
-        }
-    }
-    if (info->revision) {
-        /* check revision of the parsed model */
-        if (!revs || strcmp(info->revision, revs[0].date)) {
-            LOGERR(ctx, LY_EINVAL, "Module \"%s\" parsed with the wrong revision (\"%s\" instead \"%s\").", name,
-                    revs ? revs[0].date : "none", info->revision);
-            return LY_EINVAL;
-        }
-    } else if (!latest_revision) {
-        /* do not log, we just need to drop the schema and use the latest revision from the context */
-        return LY_EEXIST;
-    }
-    if (submod) {
-        assert(info->submoduleof);
-
-        /* check that the submodule belongs-to our module */
-        if (strcmp(info->submoduleof, submod->mod->name)) {
-            LOGVAL(ctx, LYVE_REFERENCE, "Included \"%s\" submodule from \"%s\" belongs-to a different module \"%s\".",
-                    submod->name, info->submoduleof, submod->mod->name);
-            return LY_EVALID;
-        }
-        /* check circular dependency */
-        if (submod->parsing) {
-            LOGVAL(ctx, LYVE_REFERENCE, "A circular dependency (include) for module \"%s\".", submod->name);
-            return LY_EVALID;
-        }
-    }
-    if (info->path) {
-        ly_check_module_filename(ctx, name, revs ? revs[0].date : NULL, info->path);
-    }
-    return LY_SUCCESS;
-}
-
 /**
  * @brief Parse a (sub)module from a local file and add into the context.
  *
@@ -771,7 +713,7 @@ lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, 
     LYS_INFORMAT format = 0;
     void *mod = NULL;
     LY_ERR ret = LY_SUCCESS;
-    struct lysp_load_module_check_data check_data = {0};
+    struct lysp_load_module_data mod_data = {0};
 
     LY_CHECK_RET(lys_search_localfile(ly_ctx_get_searchdirs(ctx), !(ctx->flags & LY_CTX_DISABLE_SEARCHDIR_CWD), name,
             revision, &filepath, &format));
@@ -779,8 +721,9 @@ lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, 
         if (required) {
             LOGERR(ctx, LY_ENOTFOUND, "Data model \"%s%s%s\" not found in local searchdirs.", name, revision ? "@" : "",
                     revision ? revision : "");
+            ret = LY_ENOTFOUND;
         }
-        return LY_ENOTFOUND;
+        goto cleanup;
     }
 
     LOGVRB("Loading schema from \"%s\" file.", filepath);
@@ -788,23 +731,20 @@ lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, 
     /* get the (sub)module */
     LY_CHECK_ERR_GOTO(ret = ly_in_new_filepath(filepath, 0, &in),
             LOGERR(ctx, ret, "Unable to create input handler for filepath %s.", filepath), cleanup);
-    check_data.name = name;
-    check_data.revision = revision;
-    check_data.path = filepath;
-    check_data.submoduleof = main_name;
+    mod_data.name = name;
+    mod_data.revision = revision;
+    mod_data.path = filepath;
+    mod_data.submoduleof = main_name;
     if (main_ctx) {
-        ret = lys_parse_submodule(ctx, in, format, main_ctx, lysp_load_module_check, &check_data, new_mods,
-                (struct lysp_submodule **)&mod);
+        ret = lys_parse_submodule(ctx, in, format, main_ctx, &mod_data, new_mods, (struct lysp_submodule **)&mod);
     } else {
-        ret = lys_parse_in(ctx, in, format, lysp_load_module_check, &check_data, new_mods, (struct lys_module **)&mod);
+        ret = lys_parse_in(ctx, in, format, &mod_data, new_mods, (struct lys_module **)&mod);
 
     }
     ly_in_free(in, 1);
     LY_CHECK_GOTO(ret, cleanup);
 
     *result = mod;
-
-    /* success */
 
 cleanup:
     free(filepath);
@@ -827,11 +767,12 @@ static LY_ERR
 lys_parse_load_from_clb_or_file(struct ly_ctx *ctx, const char *name, const char *revision,
         struct lys_module *mod_latest, struct ly_set *new_mods, struct lys_module **mod)
 {
+    LY_ERR r;
     const char *module_data = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
 
     void (*module_data_free)(void *module_data, void *user_data) = NULL;
-    struct lysp_load_module_check_data check_data = {0};
+    struct lysp_load_module_data mod_data = {0};
     struct ly_in *in;
 
     *mod = NULL;
@@ -848,13 +789,14 @@ search_clb:
         if (ctx->imp_clb && (!mod_latest || !(mod_latest->latest_revision & LYS_MOD_LATEST_IMPCLB))) {
             if (!ctx->imp_clb(name, revision, NULL, NULL, ctx->imp_clb_data, &format, &module_data, &module_data_free)) {
                 LY_CHECK_RET(ly_in_new_memory(module_data, &in));
-                check_data.name = name;
-                check_data.revision = revision;
-                lys_parse_in(ctx, in, format, lysp_load_module_check, &check_data, new_mods, mod);
+                mod_data.name = name;
+                mod_data.revision = revision;
+                r = lys_parse_in(ctx, in, format, &mod_data, new_mods, mod);
                 ly_in_free(in, 0);
                 if (module_data_free) {
                     module_data_free((void *)module_data, ctx->imp_clb_data);
                 }
+                LY_CHECK_RET(r);
             }
         }
         if (*mod && !revision) {
@@ -868,7 +810,7 @@ search_file:
         /* check we can use searchdirs and that we should */
         if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS) &&
                 (!mod_latest || !(mod_latest->latest_revision & LYS_MOD_LATEST_SEARCHDIRS))) {
-            lys_parse_localfile(ctx, name, revision, NULL, NULL, mod_latest ? 0 : 1, new_mods, (void **)mod);
+            LY_CHECK_RET(lys_parse_localfile(ctx, name, revision, NULL, NULL, mod_latest ? 0 : 1, new_mods, (void **)mod));
         }
         if (*mod && !revision) {
             /* we got the latest revision module in the searchdirs */
@@ -876,6 +818,11 @@ search_file:
         } else if (!*mod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
             goto search_clb;
         }
+    }
+
+    if (!*mod && !mod_latest) {
+        LOGVAL(ctx, LYVE_REFERENCE, "Loading \"%s\" module failed, not found.", name);
+        return LY_ENOTFOUND;
     }
 
     return LY_SUCCESS;
@@ -972,10 +919,6 @@ lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struc
     if (!*mod) {
         /* No suitable module in the context, try to load it. */
         LY_CHECK_RET(lys_parse_load_from_clb_or_file(ctx, name, revision, mod_latest, new_mods, mod));
-        if (!*mod && !mod_latest) {
-            LOGVAL(ctx, LYVE_REFERENCE, "Loading \"%s\" module failed.", name);
-            return LY_EVALID;
-        }
 
         /* Update the latest_revision flag - here we have selected the latest available schema,
          * consider that even the callback provides correct latest revision.
@@ -1171,22 +1114,28 @@ lysp_inject_submodule(struct lysp_ctx *pctx, struct lysp_include *inc)
 LY_ERR
 lysp_load_submodules(struct lysp_ctx *pctx, struct lysp_module *pmod, struct ly_set *new_mods)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LY_ERR r;
     struct ly_ctx *ctx = PARSER_CTX(pctx);
+    struct lysp_submodule *submod = NULL;
+    struct lysp_include *inc;
+    LY_ARRAY_COUNT_TYPE u;
+    ly_bool submod_included;
 
     LY_ARRAY_FOR(pmod->includes, u) {
-        LY_ERR ret = LY_SUCCESS, r;
-        struct lysp_submodule *submod = NULL;
-        struct lysp_include *inc = &pmod->includes[u];
-
+        inc = &pmod->includes[u];
         if (inc->submodule) {
             continue;
         }
 
+        submod_included = 1;
         if (pmod->is_submod) {
             /* try to find the submodule in the main module or its submodules */
-            ret = lysp_main_pmod_get_submodule(pctx, inc);
-            LY_CHECK_RET(ret != LY_ENOT, ret);
+            r = lysp_main_pmod_get_submodule(pctx, inc);
+            if (r == LY_ENOT) {
+                submod_included = 0;
+            } else if (r) {
+                return r;
+            }
         }
 
         /* try to use currently parsed submodule */
@@ -1201,27 +1150,25 @@ search_clb:
                 LYS_INFORMAT format = LYS_IN_UNKNOWN;
 
                 void (*submodule_data_free)(void *module_data, void *user_data) = NULL;
-                struct lysp_load_module_check_data check_data = {0};
+                struct lysp_load_module_data mod_data = {0};
                 struct ly_in *in;
 
-                if (ctx->imp_clb(PARSER_CUR_PMOD(pctx)->mod->name, NULL, inc->name,
-                        inc->rev[0] ? inc->rev : NULL, ctx->imp_clb_data,
-                        &format, &submodule_data, &submodule_data_free) == LY_SUCCESS) {
+                if (ctx->imp_clb(PARSER_CUR_PMOD(pctx)->mod->name, NULL, inc->name, inc->rev[0] ? inc->rev : NULL,
+                        ctx->imp_clb_data, &format, &submodule_data, &submodule_data_free) == LY_SUCCESS) {
                     LY_CHECK_RET(ly_in_new_memory(submodule_data, &in));
-                    check_data.name = inc->name;
-                    check_data.revision = inc->rev[0] ? inc->rev : NULL;
-                    check_data.submoduleof = PARSER_CUR_PMOD(pctx)->mod->name;
-                    lys_parse_submodule(ctx, in, format, pctx->main_ctx, lysp_load_module_check, &check_data, new_mods,
-                            &submod);
-
-                    /* update inc pointer - parsing another (YANG 1.0) submodule can cause injecting
-                     * submodule's include into main module, where it is missing */
-                    inc = &pmod->includes[u];
-
+                    mod_data.name = inc->name;
+                    mod_data.revision = inc->rev[0] ? inc->rev : NULL;
+                    mod_data.submoduleof = PARSER_CUR_PMOD(pctx)->mod->name;
+                    r = lys_parse_submodule(ctx, in, format, pctx->main_ctx, &mod_data, new_mods, &submod);
                     ly_in_free(in, 0);
                     if (submodule_data_free) {
                         submodule_data_free((void *)submodule_data, ctx->imp_clb_data);
                     }
+                    LY_CHECK_RET(r);
+
+                    /* update inc pointer - parsing another (YANG 1.0) submodule can cause injecting
+                     * submodule's include into main module, where it is missing */
+                    inc = &pmod->includes[u];
                 }
             }
             if (!submod && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
@@ -1250,7 +1197,7 @@ search_file:
             }
 
             inc->submodule = submod;
-            if (ret == LY_ENOT) {
+            if (!submod_included) {
                 /* the submodule include is not present in YANG 1.0 main module - add it there */
                 LY_CHECK_RET(lysp_inject_submodule(pctx, &pmod->includes[u]));
             }
@@ -2813,42 +2760,4 @@ lys_stmt_flags(enum ly_stmt stmt)
     }
 
     return 0;
-}
-
-void
-ly_check_module_filename(const struct ly_ctx *ctx, const char *name, const char *revision, const char *filename)
-{
-    const char *basename, *rev, *dot;
-    size_t len;
-
-    /* check that name and revision match filename */
-    basename = strrchr(filename, '/');
-#ifdef _WIN32
-    const char *backslash = strrchr(filename, '\\');
-
-    if (!basename || (basename && backslash && (backslash > basename))) {
-        basename = backslash;
-    }
-#endif
-    if (!basename) {
-        basename = filename;
-    } else {
-        basename++; /* leading slash */
-    }
-    rev = strchr(basename, '@');
-    dot = strrchr(basename, '.');
-
-    /* name */
-    len = strlen(name);
-    if (strncmp(basename, name, len) ||
-            ((rev && (rev != &basename[len])) || (!rev && (dot != &basename[len])))) {
-        LOGWRN(ctx, "File name \"%s\" does not match module name \"%s\".", basename, name);
-    }
-    if (rev) {
-        len = dot - ++rev;
-        if (!revision || (len != LY_REV_SIZE - 1) || strncmp(revision, rev, len)) {
-            LOGWRN(ctx, "File name \"%s\" does not match module revision \"%s\".", basename,
-                    revision ? revision : "none");
-        }
-    }
 }

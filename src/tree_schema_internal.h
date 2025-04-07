@@ -528,8 +528,12 @@ void lys_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres);
  */
 void lys_unres_glob_erase(struct lys_glob_unres *unres);
 
-typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod,
-        void *check_data);
+struct lysp_load_module_data {
+    const char *name;           /**< expected module name */
+    const char *revision;       /**< expected module revision */
+    const char *path;           /**< module file name to check */
+    const char *submoduleof;    /**< expected submodule main module */
+};
 
 /**
  * @brief Parse a module and add it into the context.
@@ -537,15 +541,14 @@ typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module 
  * @param[in] ctx libyang context where to process the data model.
  * @param[in] in Input structure.
  * @param[in] format Format of the input data (YANG or YIN).
- * @param[in] custom_check Callback to check the parsed schema before it is accepted.
- * @param[in] check_data Caller's data to pass to the custom_check callback.
+ * @param[in] mod_data Optional expected module data to check.
  * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
  * @param[out] module Created module.
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error, @p new_mods may be modified.
  */
-LY_ERR lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, lys_custom_check custom_check,
-        void *check_data, struct ly_set *new_mods, struct lys_module **module);
+LY_ERR lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
+        const struct lysp_load_module_data *mod_data, struct ly_set *new_mods, struct lys_module **module);
 
 /**
  * @brief Parse submodule.
@@ -556,14 +559,13 @@ LY_ERR lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, l
  * @param[in] in Input structure.
  * @param[in] format Format of the input data (YANG or YIN).
  * @param[in] main_ctx Parser context of the main module.
- * @param[in] custom_check Callback to check the parsed schema before it is accepted.
- * @param[in] check_data Caller's data to pass to the custom_check callback.
+ * @param[in] mod_data Optional expected module data to check.
  * @param[in] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
  * @param[out] submodule Parsed submodule.
  * @return LY_ERR value.
  */
 LY_ERR lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, struct lysp_ctx *main_ctx,
-        lys_custom_check custom_check, void *check_data, struct ly_set *new_mods, struct lysp_submodule **submodule);
+        const struct lysp_load_module_data *mod_data, struct ly_set *new_mods, struct lysp_submodule **submodule);
 
 /**
  * @brief Fill filepath value if available in input handler @p in
@@ -731,15 +733,5 @@ uint8_t lys_stmt_flags(enum ly_stmt stmt);
  * @return LY_ENOT if the substatement is not supported.
  */
 LY_ERR lyplg_ext_get_storage_p(const struct lysc_ext_instance *ext, int stmt, void ***storage_pp);
-
-/**
- * @brief Warning if the filename does not match the expected module name and version
- *
- * @param[in] ctx Context for logging
- * @param[in] name Expected module name
- * @param[in] revision Expected module revision, or NULL if not to be checked
- * @param[in] filename File path to be checked
- */
-void ly_check_module_filename(const struct ly_ctx *ctx, const char *name, const char *revision, const char *filename);
 
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */
