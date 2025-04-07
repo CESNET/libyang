@@ -708,7 +708,7 @@ lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct
     if (info->name) {
         /* check name of the parsed model */
         if (strcmp(info->name, name)) {
-            LOGERR(ctx, LY_EINVAL, "Unexpected module \"%s\" parsed instead of \"%s\").", name, info->name);
+            LOGERR(ctx, LY_EINVAL, "Unexpected module \"%s\" parsed instead of \"%s\".", name, info->name);
             return LY_EINVAL;
         }
     }
