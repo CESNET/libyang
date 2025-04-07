@@ -1316,7 +1316,7 @@ utest_setup(void **state)
     *state = current_utest_context;
 
     /* libyang context */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &current_utest_context->ctx));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &current_utest_context->ctx));
 
     /* backup timezone, if any */
     cur_tz = getenv("TZ");

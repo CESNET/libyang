@@ -999,7 +999,7 @@ test_set_priv_parsed(void **state)
     ly_ctx_destroy(UTEST_LYCTX);
     const char *feats[] = {"f1", NULL};
 
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_SET_PRIV_PARSED, &UTEST_LYCTX));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD | LY_CTX_SET_PRIV_PARSED, &UTEST_LYCTX));
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_DIR_MODULES_YANG));
     assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "ietf-restconf", "2017-01-26", NULL));
     UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, feats, NULL);
@@ -1075,7 +1075,7 @@ test_explicit_compile(void **state)
     ly_ctx_destroy(UTEST_LYCTX);
     const char *feats[] = {"f1", NULL};
 
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_EXPLICIT_COMPILE, &UTEST_LYCTX));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD | LY_CTX_EXPLICIT_COMPILE, &UTEST_LYCTX));
     UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, NULL, &mod);
     UTEST_ADD_MODULE(schema_b, LYS_IN_YANG, NULL, NULL);
     UTEST_ADD_MODULE(schema_c, LYS_IN_YANG, NULL, NULL);

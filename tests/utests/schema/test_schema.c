@@ -1475,7 +1475,7 @@ test_extension_argument(void **state)
 
     /* context reset */
     ly_ctx_destroy(UTEST_LYCTX);
-    ly_ctx_new(NULL, 0, &UTEST_LYCTX);
+    ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &UTEST_LYCTX);
 
     /* from YIN */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, (void *)mod_def_yin);
@@ -1577,7 +1577,7 @@ test_extension_argument_element(void **state)
 
     /* context reset */
     ly_ctx_destroy(UTEST_LYCTX);
-    ly_ctx_new(NULL, 0, &UTEST_LYCTX);
+    ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &UTEST_LYCTX);
 
     /* from YIN */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, (void *)mod_def_yin);
@@ -1849,7 +1849,7 @@ test_ext_recursive(void **state)
 
     /* context reset */
     ly_ctx_destroy(UTEST_LYCTX);
-    ly_ctx_new(NULL, 0, &UTEST_LYCTX);
+    ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &UTEST_LYCTX);
 
     /* from YIN */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, (void *)mod_imp_yin);
