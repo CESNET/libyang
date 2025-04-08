@@ -417,13 +417,11 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
                 break;
             case '\r':
                 /* newline may be escaped */
-                if ((ctx->in->current[1] != '\n') && strncmp(&ctx->in->current[1], "\\n", 2)) {
-                    LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, ctx->in->current[0]);
-                    return LY_EVALID;
-                }
+                if ((ctx->in->current[1] == '\n') || !strncmp(&ctx->in->current[1], "\\n", 2)) {
+                    /* skip this character, do not store it */
+                    ++ctx->in->current;
+                } /* else just store '\n' instead */
 
-                /* skip this character, do not store it */
-                ++ctx->in->current;
             /* fallthrough */
             case '\n':
                 if (block_indent) {
@@ -437,8 +435,19 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
                     current_indent = 0;
                 }
 
+                c = NULL;
+                if (ctx->in->current[0] != '\n') {
+                    /* storing '\r' as '\n' */
+                    c = ctx->in->current;
+                    ctx->in->current = "\n";
+                }
+
                 /* check and store character */
                 LY_CHECK_RET(buf_store_char(ctx, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
+
+                if (c) {
+                    ctx->in->current = c + 1;
+                }
 
                 /* reset context indentation counter for possible string after this one */
                 ctx->indent = 0;
