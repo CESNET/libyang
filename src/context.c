@@ -272,9 +272,9 @@ ly_ctx_ht_err_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UN
 static ly_bool
 ly_ctx_ht_leafref_links_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
 {
-    struct lyd_leafref_links_rec *rec1 = val1_p, *rec2 = val2_p;
+    struct lyd_leafref_links_rec **rec1 = val1_p, **rec2 = val2_p;
 
-    return rec1->node == rec2->node;
+    return (*rec1)->node == (*rec2)->node;
 }
 
 /**
@@ -285,9 +285,10 @@ ly_ctx_ht_leafref_links_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod)
 static void
 ly_ctx_ht_leafref_links_rec_free(void *val_p)
 {
-    struct lyd_leafref_links_rec *rec = val_p;
+    struct lyd_leafref_links_rec **rec = val_p;
 
-    lyd_free_leafref_links_rec(rec);
+    lyd_free_leafref_links_rec(*rec);
+    free(*rec);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -316,7 +317,12 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     LY_CHECK_ERR_GOTO(lyplg_init(builtin_plugins_only), LOGINT(NULL); rc = LY_EINT, cleanup);
 
     if (options & LY_CTX_LEAFREF_LINKING) {
-        ctx->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec), ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
+        /**
+         * storing the pointer instead of record itself is needed to avoid invalid memory reads. Hash table can reallocate
+         * its memory completely during various manipulation function (e.g. remove, insert). In case of using pointers, the
+         * pointer can be reallocated safely, while record itself remains untouched and can be accessed/modified freely
+         * */
+        ctx->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec *), ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
         LY_CHECK_ERR_GOTO(!ctx->leafref_links_ht, rc = LY_EMEM, cleanup);
     }
 
@@ -654,7 +660,7 @@ ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
     }
 
     if (!(ctx->flags & LY_CTX_LEAFREF_LINKING) && (option & LY_CTX_LEAFREF_LINKING)) {
-        ctx->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec), ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
+        ctx->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec *), ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
         LY_CHECK_ERR_RET(!ctx->leafref_links_ht, LOGARG(ctx, option), LY_EMEM);
     }
 

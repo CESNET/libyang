@@ -3626,8 +3626,11 @@ LY_ERR
 lyd_get_or_create_leafref_links_record(const struct lyd_node_term *node, struct lyd_leafref_links_rec **record, ly_bool create)
 {
     struct ly_ht *ht;
+    LY_ERR ret = LY_SUCCESS;
     uint32_t hash;
     struct lyd_leafref_links_rec rec = {0};
+    struct lyd_leafref_links_rec *rec_p = &rec;
+    struct lyd_leafref_links_rec **rec_p2;
 
     assert(node);
     assert(record);
@@ -3642,15 +3645,23 @@ lyd_get_or_create_leafref_links_record(const struct lyd_node_term *node, struct 
     ht = LYD_CTX(node)->leafref_links_ht;
     hash = lyht_hash((const char *)&node, sizeof node);
 
-    if (lyht_find(ht, &rec, hash, (void **)record) == LY_ENOTFOUND) {
+    if (lyht_find(ht, &rec_p, hash, (void **)&rec_p2) == LY_ENOTFOUND) {
         if (create) {
-            LY_CHECK_RET(lyht_insert_no_check(ht, &rec, hash, (void **)record));
+            rec_p = calloc(1, sizeof rec);
+            rec_p->node = node;
+            LY_CHECK_ERR_RET(!rec_p, LOGMEM(LYD_CTX(node)), LY_EMEM);
+            ret = lyht_insert_no_check(ht, &rec_p, hash, (void **)&rec_p2);
+            LY_CHECK_ERR_GOTO(ret, free(rec_p), cleanup);
         } else {
             return LY_ENOTFOUND;
         }
     }
 
-    return LY_SUCCESS;
+cleanup:
+    if (!ret) {
+        *record = *rec_p2;
+    }
+    return ret;
 }
 
 LIBYANG_API_DEF LY_ERR
