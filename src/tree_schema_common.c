@@ -1116,7 +1116,7 @@ lysp_load_submodules(struct lysp_ctx *pctx, struct lysp_module *pmod, struct ly_
 {
     LY_ERR r;
     struct ly_ctx *ctx = PARSER_CTX(pctx);
-    struct lysp_submodule *submod = NULL;
+    struct lysp_submodule *submod;
     struct lysp_include *inc;
     LY_ARRAY_COUNT_TYPE u;
     ly_bool submod_included;
@@ -1127,6 +1127,7 @@ lysp_load_submodules(struct lysp_ctx *pctx, struct lysp_module *pmod, struct ly_
             continue;
         }
 
+        submod = NULL;
         submod_included = 1;
         if (pmod->is_submod) {
             /* try to find the submodule in the main module or its submodules */
