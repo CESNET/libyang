@@ -3079,7 +3079,7 @@ LIBYANG_API_DEF LY_ERR
 lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff)
 {
     LY_ERR rc = LY_SUCCESS;
-    const struct lys_module *mod;
+    const struct lys_module *mod = NULL;
     struct lyd_node *root, *elem, *iter;
     enum lyd_diff_op op;
 
@@ -3093,14 +3093,16 @@ lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff)
     /* duplicate diff */
     LY_CHECK_RET(lyd_dup_siblings(src_diff, NULL, LYD_DUP_RECURSIVE | LYD_DUP_NO_LYDS, diff));
 
-    /* find module with metadata needed for later */
-    mod = ly_ctx_get_module_latest(LYD_CTX(src_diff), "yang");
-    LY_CHECK_ERR_GOTO(!mod, LOGINT(LYD_CTX(src_diff)); rc = LY_EINT, cleanup);
-
     LY_LIST_FOR(*diff, root) {
         LYD_TREE_DFS_BEGIN(root, elem) {
             /* skip all keys */
             if (!lysc_is_key(elem->schema)) {
+                /* find module with metadata needed for later in the current node context */
+                if (!mod || (mod->ctx != LYD_CTX(elem))) {
+                    mod = ly_ctx_get_module_latest(LYD_CTX(elem), "yang");
+                    LY_CHECK_ERR_GOTO(!mod, LOGINT(LYD_CTX(src_diff)); rc = LY_EINT, cleanup);
+                }
+
                 /* find operation attribute, if any */
                 LY_CHECK_GOTO(rc = lyd_diff_get_op(elem, &op, NULL), cleanup);
 
