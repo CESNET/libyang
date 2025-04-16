@@ -2007,6 +2007,121 @@ lyd_find_schema_ctx(const struct lysc_node *schema, const struct ly_ctx *trg_ctx
 }
 
 /**
+ * @brief Return the top-level context of a subtree of node. Handles extension data nodes.
+ *
+ * @param[in] node Node to use.
+ * @return
+ */
+static const struct ly_ctx *
+lyd_dup_get_top_ctx(const struct lyd_node *node)
+{
+    const struct lyd_node *par;
+
+    par = node;
+    while (par && !(par->flags & LYD_EXT)) {
+        par = lyd_parent(par);
+    }
+
+    if (par && lyd_parent(par)) {
+        /* context of the first non-extension parent */
+        return LYD_CTX(lyd_parent(par));
+    }
+
+    /* context of the node, all the parents have it */
+    return LYD_CTX(node);
+}
+
+/**
+ * @brief Find (update) the target context for the next node, if needed.
+ *
+ * @param[in] orig_node First extension data node being processed from the original tree.
+ * @param[in] dup_parent Duplicated parent of @p orig_node, set if @p dup_sparent is NULL.
+ * @param[in] dup_sparent Schema node of the duplicated parent of @p orig_node, set if @p dup_parent is NULL.
+ * @param[in,out] trg_ctx Target context, may be updated.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_find_ext_ctx(const struct lyd_node *orig_node, const struct lyd_node *dup_parent,
+        const struct lysc_node *dup_sparent, const struct ly_ctx **trg_ctx)
+{
+    LY_ERR r;
+    const struct lysc_node *snode;
+    char *path;
+
+    assert(orig_node && (orig_node->flags & LYD_EXT) && *trg_ctx);
+
+    if (!lyd_parent(orig_node)) {
+        /* treat as a non-extension node */
+        return LY_SUCCESS;
+    }
+    assert(dup_parent || dup_sparent);
+
+    if (LYD_CTX(lyd_parent(orig_node)) == *trg_ctx) {
+        /* same contexts, just extension data */
+        *trg_ctx = LYD_CTX(orig_node);
+        return LY_SUCCESS;
+    }
+
+    /* find the extension context to use from the target context */
+    r = ly_nested_ext_schema(dup_parent, dup_sparent, orig_node->schema->module->name, strlen(orig_node->schema->module->name),
+            LY_VALUE_JSON, NULL, LYD_NAME(orig_node), strlen(LYD_NAME(orig_node)), &snode, NULL);
+    if (r == LY_ENOT) {
+        path = lyd_path(orig_node, LYD_PATH_STD, NULL, 0);
+        LOGERR(*trg_ctx, LY_ENOTFOUND, "Schema node of an extension node \"%s\" not found in the target context.", path);
+        free(path);
+        return LY_ENOTFOUND;
+    } else if (r) {
+        return r;
+    }
+
+    /* update the context */
+    *trg_ctx = snode->module->ctx;
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Find (update) the target context for the specific nested node, if needed.
+ *
+ * @param[in] orig_node Nested data node being processed from the original tree.
+ * @param[in,out] trg_ctx Target context, may be updated.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_find_ext_ctx_nested(const struct lyd_node *orig_node, const struct ly_ctx **trg_ctx)
+{
+    const struct lyd_node *parent;
+    const struct lysc_node *sparent;
+    char *path;
+
+    if (lyd_dup_get_top_ctx(orig_node) == *trg_ctx) {
+        /* it is the same context, use the same one for extension data nodes as well (if node is nested in such data) */
+        *trg_ctx = LYD_CTX(orig_node);
+    } else {
+        /* not the same context, need to find the right one */
+        parent = orig_node;
+        while (parent && !(parent->flags & LYD_EXT)) {
+            parent = lyd_parent(parent);
+        }
+
+        if (parent && lyd_parent(parent)) {
+            /* find the parent schema node in the target context */
+            path = lysc_path(lyd_parent(parent)->schema, LYSC_PATH_DATA, NULL, 0);
+            sparent = lys_find_path(*trg_ctx, NULL, path, 0);
+            if (!sparent) {
+                LOGERR(*trg_ctx, LY_ENOTFOUND, "Node \"%s\" was not found in the target context.", path);
+                free(path);
+                return LY_ENOTFOUND;
+            }
+            free(path);
+
+            LY_CHECK_RET(lyd_find_ext_ctx(parent, NULL, sparent, trg_ctx));
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Duplicate a single node and connect it into @p parent (if present) or last of @p first siblings.
  *
  * Ignores ::LYD_DUP_WITH_PARENTS which is supposed to be handled by lyd_dup().
@@ -2024,7 +2139,7 @@ static LY_ERR
 lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_node *parent, uint32_t insert_order,
         struct lyd_node **first, uint32_t options, struct lyd_node **dup_p)
 {
-    LY_ERR ret;
+    LY_ERR rc = LY_SUCCESS;
     struct lyd_node *dup = NULL;
     struct lyd_meta *meta;
     struct lyd_attr *attr;
@@ -2040,8 +2155,10 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
             return LY_SUCCESS;
         }
 
-        /* we need to use the same context */
-        trg_ctx = LYD_CTX(node);
+        if (parent) {
+            /* update the context */
+            LY_CHECK_GOTO(rc = lyd_find_ext_ctx(node, parent, NULL, &trg_ctx), cleanup);
+        } /* else called from lyd_dup_get_local_parent() and the context is correct */
     }
 
     if (!node->schema) {
@@ -2066,11 +2183,11 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
             break;
         default:
             LOGINT(trg_ctx);
-            ret = LY_EINT;
-            goto error;
+            rc = LY_EINT;
+            goto cleanup;
         }
     }
-    LY_CHECK_ERR_GOTO(!dup, LOGMEM(trg_ctx); ret = LY_EMEM, error);
+    LY_CHECK_ERR_GOTO(!dup, LOGMEM(trg_ctx); rc = LY_EMEM, cleanup);
 
     if (options & LYD_DUP_WITH_FLAGS) {
         dup->flags = node->flags;
@@ -2080,15 +2197,17 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
     if (options & LYD_DUP_WITH_PRIV) {
         dup->priv = node->priv;
     }
+
+    /* find schema node */
     if (trg_ctx == LYD_CTX(node)) {
         dup->schema = node->schema;
     } else {
-        ret = lyd_find_schema_ctx(node->schema, trg_ctx, parent, 1, &dup->schema);
-        if (ret) {
+        rc = lyd_find_schema_ctx(node->schema, trg_ctx, parent, 1, &dup->schema);
+        if (rc) {
             /* has no schema but is not an opaque node */
             free(dup);
             dup = NULL;
-            goto error;
+            goto cleanup;
         }
     }
     dup->prev = dup;
@@ -2097,11 +2216,11 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
     if (!(options & LYD_DUP_NO_META)) {
         if (!node->schema) {
             LY_LIST_FOR(((struct lyd_node_opaq *)node)->attr, attr) {
-                LY_CHECK_GOTO(ret = lyd_dup_attr_single(attr, dup, NULL), error);
+                LY_CHECK_GOTO(rc = lyd_dup_attr_single(attr, dup, NULL), cleanup);
             }
         } else {
             LY_LIST_FOR(node->meta, meta) {
-                LY_CHECK_GOTO(ret = lyd_dup_meta_single_to_ctx(trg_ctx, meta, dup, NULL), error);
+                LY_CHECK_GOTO(rc = lyd_dup_meta_single_to_ctx(trg_ctx, meta, dup, NULL), cleanup);
             }
         }
     }
@@ -2115,18 +2234,18 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
         if (options & LYD_DUP_RECURSIVE) {
             /* duplicate all the children */
             LY_LIST_FOR(orig->child, child) {
-                LY_CHECK_GOTO(ret = lyd_dup_r(child, trg_ctx, dup, LYD_INSERT_NODE_LAST, NULL, options, NULL), error);
+                LY_CHECK_GOTO(rc = lyd_dup_r(child, trg_ctx, dup, LYD_INSERT_NODE_LAST, NULL, options, NULL), cleanup);
             }
         }
-        LY_CHECK_GOTO(ret = lydict_insert(trg_ctx, orig->name.name, 0, &opaq->name.name), error);
-        LY_CHECK_GOTO(ret = lydict_insert(trg_ctx, orig->name.prefix, 0, &opaq->name.prefix), error);
-        LY_CHECK_GOTO(ret = lydict_insert(trg_ctx, orig->name.module_ns, 0, &opaq->name.module_ns), error);
-        LY_CHECK_GOTO(ret = lydict_insert(trg_ctx, orig->value, 0, &opaq->value), error);
+        LY_CHECK_GOTO(rc = lydict_insert(trg_ctx, orig->name.name, 0, &opaq->name.name), cleanup);
+        LY_CHECK_GOTO(rc = lydict_insert(trg_ctx, orig->name.prefix, 0, &opaq->name.prefix), cleanup);
+        LY_CHECK_GOTO(rc = lydict_insert(trg_ctx, orig->name.module_ns, 0, &opaq->name.module_ns), cleanup);
+        LY_CHECK_GOTO(rc = lydict_insert(trg_ctx, orig->value, 0, &opaq->value), cleanup);
         opaq->hints = orig->hints;
         opaq->format = orig->format;
         if (orig->val_prefix_data) {
-            ret = ly_dup_prefix_data(trg_ctx, opaq->format, orig->val_prefix_data, &opaq->val_prefix_data);
-            LY_CHECK_GOTO(ret, error);
+            rc = ly_dup_prefix_data(trg_ctx, opaq->format, orig->val_prefix_data, &opaq->val_prefix_data);
+            LY_CHECK_GOTO(rc, cleanup);
         }
     } else if (dup->schema->nodetype & LYD_NODE_TERM) {
         struct lyd_node_term *term = (struct lyd_node_term *)dup;
@@ -2134,15 +2253,15 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
 
         term->hash = orig->hash;
         if (trg_ctx == LYD_CTX(node)) {
-            ret = orig->value.realtype->plugin->duplicate(trg_ctx, &orig->value, &term->value);
-            LY_CHECK_ERR_GOTO(ret, LOGERR(trg_ctx, ret, "Value duplication failed."), error);
+            rc = orig->value.realtype->plugin->duplicate(trg_ctx, &orig->value, &term->value);
+            LY_CHECK_ERR_GOTO(rc, LOGERR(trg_ctx, rc, "Value duplication failed."), cleanup);
         } else {
             /* store canonical value in the target context */
             val_can = lyd_get_value(node);
             type = ((struct lysc_node_leaf *)term->schema)->type;
-            ret = lyd_value_store(trg_ctx, &term->value, type, val_can, strlen(val_can), 1, 1, NULL, LY_VALUE_CANON, NULL,
+            rc = lyd_value_store(trg_ctx, &term->value, type, val_can, strlen(val_can), 1, 1, NULL, LY_VALUE_CANON, NULL,
                     LYD_HINT_DATA, term->schema, NULL);
-            LY_CHECK_GOTO(ret, error);
+            LY_CHECK_GOTO(rc, cleanup);
         }
     } else if (dup->schema->nodetype & LYD_NODE_INNER) {
         struct lyd_node_inner *orig = (struct lyd_node_inner *)node;
@@ -2151,44 +2270,44 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
         if (options & LYD_DUP_RECURSIVE) {
             /* create a hash table with the size of the previous hash table (duplicate) */
             if (orig->children_ht) {
-                ((struct lyd_node_inner *)dup)->children_ht = lyht_new(orig->children_ht->size, sizeof(struct lyd_node *), lyd_hash_table_val_equal, NULL, 1);
+                ((struct lyd_node_inner *)dup)->children_ht = lyht_new(orig->children_ht->size,
+                        sizeof(struct lyd_node *), lyd_hash_table_val_equal, NULL, 1);
             }
 
             /* duplicate all the children */
             LY_LIST_FOR(orig->child, child) {
-                LY_CHECK_GOTO(ret = lyd_dup_r(child, trg_ctx, dup, LYD_INSERT_NODE_LAST, NULL, options, NULL), error);
+                LY_CHECK_GOTO(rc = lyd_dup_r(child, trg_ctx, dup, LYD_INSERT_NODE_LAST, NULL, options, NULL), cleanup);
             }
         } else if ((dup->schema->nodetype == LYS_LIST) && !(dup->schema->flags & LYS_KEYLESS)) {
             /* always duplicate keys of a list */
             for (child = orig->child; child && lysc_is_key(child->schema); child = child->next) {
-                LY_CHECK_GOTO(ret = lyd_dup_r(child, trg_ctx, dup, LYD_INSERT_NODE_LAST, NULL, options, NULL), error);
+                LY_CHECK_GOTO(rc = lyd_dup_r(child, trg_ctx, dup, LYD_INSERT_NODE_LAST, NULL, options, NULL), cleanup);
             }
         }
         lyd_hash(dup);
     } else if (dup->schema->nodetype & LYD_NODE_ANY) {
         dup->hash = node->hash;
         any = (struct lyd_node_any *)node;
-        LY_CHECK_GOTO(ret = lyd_any_copy_value(dup, &any->value, any->value_type), error);
+        LY_CHECK_GOTO(rc = lyd_any_copy_value(dup, &any->value, any->value_type), cleanup);
     }
 
     /* insert */
     lyd_insert_node(parent, first, dup, insert_order);
 
-    if (dup_p) {
+cleanup:
+    if (rc) {
+        lyd_free_tree(dup);
+    } else if (dup_p) {
         *dup_p = dup;
     }
-    return LY_SUCCESS;
-
-error:
-    lyd_free_tree(dup);
-    return ret;
+    return rc;
 }
 
 /**
  * @brief Get a parent node to connect duplicated subtree to.
  *
  * @param[in] node Node (subtree) to duplicate.
- * @param[in] trg_ctx Target context for duplicated nodes.
+ * @param[in,out] trg_ctx Target context for duplicated nodes, may be updated for @p node.
  * @param[in] parent Initial parent to connect to.
  * @param[in] options Bitmask of options flags, see @ref dupoptions.
  * @param[out] dup_parent First duplicated parent node, if any.
@@ -2196,24 +2315,30 @@ error:
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_node *parent,
+lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx **trg_ctx, struct lyd_node *parent,
         uint32_t options, struct lyd_node **dup_parent, struct lyd_node **local_parent)
 {
     const struct lyd_node *orig_parent;
+    const struct ly_ctx *ctx, *top_ctx;
     struct lyd_node *iter = NULL;
-    ly_bool repeat = 1, ext_parent = 0;
+    ly_bool repeat = 1;
+
+    assert(node && *trg_ctx);
 
     *dup_parent = NULL;
     *local_parent = NULL;
 
-    if (node->flags & LYD_EXT) {
-        ext_parent = 1;
+    if (!lyd_parent(node)) {
+        /* no parents */
+        return LY_SUCCESS;
     }
+
+    /* adjust the context for node parent correctly */
+    top_ctx = *trg_ctx;
+    LY_CHECK_RET(lyd_find_ext_ctx_nested(lyd_parent(node), trg_ctx));
+    ctx = *trg_ctx;
+
     for (orig_parent = lyd_parent(node); repeat && orig_parent; orig_parent = lyd_parent(orig_parent)) {
-        if (ext_parent) {
-            /* use the standard context */
-            trg_ctx = LYD_CTX(orig_parent);
-        }
         if (parent && (LYD_CTX(parent) == LYD_CTX(orig_parent)) && (parent->schema == orig_parent->schema)) {
             /* stop creating parents, connect what we have into the provided parent */
             iter = parent;
@@ -2225,7 +2350,7 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx *trg_c
             repeat = 0;
         } else {
             iter = NULL;
-            LY_CHECK_RET(lyd_dup_r(orig_parent, trg_ctx, NULL, LYD_INSERT_NODE_DEFAULT, &iter, options, &iter));
+            LY_CHECK_RET(lyd_dup_r(orig_parent, ctx, NULL, LYD_INSERT_NODE_DEFAULT, &iter, options, &iter));
 
             /* insert into the previous duplicated parent */
             if (*dup_parent) {
@@ -2242,13 +2367,14 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx *trg_c
         }
 
         if (orig_parent->flags & LYD_EXT) {
-            ext_parent = 1;
+            /* parents of the nested extension data, use the original context */
+            ctx = top_ctx;
         }
     }
 
     if (repeat && parent) {
         /* given parent and created parents chain actually do not interconnect */
-        LOGERR(trg_ctx, LY_EINVAL, "None of the duplicated node \"%s\" schema parents match the provided parent \"%s\".",
+        LOGERR(*trg_ctx, LY_EINVAL, "None of the duplicated node \"%s\" schema parents match the provided parent \"%s\".",
                 LYD_NAME(node), LYD_NAME(parent));
         return LY_EINVAL;
     }
@@ -2276,11 +2402,13 @@ lyd_dup(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_no
 
     assert(node && trg_ctx);
 
+    /* create/find parents, adjusts the context as well */
     if (options & LYD_DUP_WITH_PARENTS) {
-        LY_CHECK_GOTO(rc = lyd_dup_get_local_parent(node, trg_ctx, parent, options & (LYD_DUP_WITH_FLAGS | LYD_DUP_NO_META),
+        LY_CHECK_GOTO(rc = lyd_dup_get_local_parent(node, &trg_ctx, parent, options & (LYD_DUP_WITH_FLAGS | LYD_DUP_NO_META),
                 &top, &local_parent), error);
     } else {
         local_parent = parent;
+        LY_CHECK_GOTO(rc = lyd_find_ext_ctx_nested(node, &trg_ctx), error);
     }
 
     LY_LIST_FOR(node, orig) {
@@ -2344,42 +2472,16 @@ error:
     return rc;
 }
 
-/**
- * @brief Check the context of node and parent when duplicating nodes.
- *
- * @param[in] node Node to duplicate.
- * @param[in] parent Parent of the duplicated node(s).
- * @return LY_ERR value.
- */
-static LY_ERR
-lyd_dup_ctx_check(const struct lyd_node *node, const struct lyd_node_inner *parent)
-{
-    const struct lyd_node *iter;
-
-    if (!node || !parent) {
-        return LY_SUCCESS;
-    }
-
-    if ((LYD_CTX(node) != LYD_CTX(parent))) {
-        /* try to find top-level ext data parent */
-        for (iter = node; iter && !(iter->flags & LYD_EXT); iter = lyd_parent(iter)) {}
-
-        if (!iter || !lyd_parent(iter) || (LYD_CTX(lyd_parent(iter)) != LYD_CTX(parent))) {
-            LOGERR(LYD_CTX(node), LY_EINVAL, "Different contexts used in node duplication.");
-            return LY_EINVAL;
-        }
-    }
-
-    return LY_SUCCESS;
-}
-
 LIBYANG_API_DEF LY_ERR
 lyd_dup_single(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options, struct lyd_node **dup)
 {
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
-    LY_CHECK_RET(lyd_dup_ctx_check(node, parent));
+    if (parent && (lyd_dup_get_top_ctx(node) != lyd_dup_get_top_ctx(&parent->node))) {
+        LOGERR(LYD_CTX(node), LY_EINVAL, "Different \"node\" and \"parent\" contexts used in node duplication.");
+        return LY_EINVAL;
+    }
 
-    return lyd_dup(node, LYD_CTX(node), (struct lyd_node *)parent, options, 1, dup);
+    return lyd_dup(node, lyd_dup_get_top_ctx(node), (struct lyd_node *)parent, options, 1, dup);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -2387,6 +2489,10 @@ lyd_dup_single_to_ctx(const struct lyd_node *node, const struct ly_ctx *trg_ctx,
         uint32_t options, struct lyd_node **dup)
 {
     LY_CHECK_ARG_RET(trg_ctx, node, trg_ctx, LY_EINVAL);
+    if (parent && (trg_ctx != lyd_dup_get_top_ctx(&parent->node))) {
+        LOGERR(LYD_CTX(node), LY_EINVAL, "Different \"trg_ctx\" and \"parent\" contexts used in node duplication.");
+        return LY_EINVAL;
+    }
 
     return lyd_dup(node, trg_ctx, (struct lyd_node *)parent, options, 1, dup);
 }
@@ -2395,9 +2501,12 @@ LIBYANG_API_DEF LY_ERR
 lyd_dup_siblings(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options, struct lyd_node **dup)
 {
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
-    LY_CHECK_RET(lyd_dup_ctx_check(node, parent));
+    if (parent && (lyd_dup_get_top_ctx(node) != lyd_dup_get_top_ctx(&parent->node))) {
+        LOGERR(LYD_CTX(node), LY_EINVAL, "Different \"node\" and \"parent\" contexts used in node duplication.");
+        return LY_EINVAL;
+    }
 
-    return lyd_dup(node, LYD_CTX(node), (struct lyd_node *)parent, options, 0, dup);
+    return lyd_dup(node, lyd_dup_get_top_ctx(node), (struct lyd_node *)parent, options, 0, dup);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -2405,6 +2514,10 @@ lyd_dup_siblings_to_ctx(const struct lyd_node *node, const struct ly_ctx *trg_ct
         uint32_t options, struct lyd_node **dup)
 {
     LY_CHECK_ARG_RET(trg_ctx, node, trg_ctx, LY_EINVAL);
+    if (parent && (trg_ctx != lyd_dup_get_top_ctx(&parent->node))) {
+        LOGERR(LYD_CTX(node), LY_EINVAL, "Different \"trg_ctx\" and \"parent\" contexts used in node duplication.");
+        return LY_EINVAL;
+    }
 
     return lyd_dup(node, trg_ctx, (struct lyd_node *)parent, options, 0, dup);
 }

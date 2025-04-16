@@ -20,32 +20,32 @@
 
 void **glob_state;
 
+const char *glob_schema =
+        "module sm {yang-version 1.1;namespace \"urn:sm\";prefix \"sm\";"
+        "import ietf-yang-schema-mount {prefix yangmnt;}"
+        "import ietf-interfaces {prefix if;}"
+        "container root {yangmnt:mount-point \"root\";}"
+        "container root2 {yangmnt:mount-point \"root\";}"
+        "container root3 {"
+        "  list ls { key name; leaf name {type string;}"
+        "    yangmnt:mount-point \"mnt-root\";"
+        "  }"
+        "}"
+        "container root4 {config false; yangmnt:mount-point \"root\";}"
+        "leaf target{type string;}"
+        "augment /if:interfaces/if:interface {"
+        "  leaf sm-name {type leafref {path \"/sm:target\";}}"
+        "}"
+        "}";
+
 static int
 setup(void **state)
 {
-    const char *schema =
-            "module sm {yang-version 1.1;namespace \"urn:sm\";prefix \"sm\";"
-            "import ietf-yang-schema-mount {prefix yangmnt;}"
-            "import ietf-interfaces {prefix if;}"
-            "container root {yangmnt:mount-point \"root\";}"
-            "container root2 {yangmnt:mount-point \"root\";}"
-            "container root3 {"
-            "  list ls { key name; leaf name {type string;}"
-            "    yangmnt:mount-point \"mnt-root\";"
-            "  }"
-            "}"
-            "container root4 {config false; yangmnt:mount-point \"root\";}"
-            "leaf target{type string;}"
-            "augment /if:interfaces/if:interface {"
-            "  leaf sm-name {type leafref {path \"/sm:target\";}}"
-            "}"
-            "}";
-
     UTEST_SETUP;
     glob_state = state;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_DIR_MODULES_YANG));
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, glob_schema, LYS_IN_YANG, NULL));
     assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "iana-if-type", NULL, NULL));
 
     return 0;
@@ -1194,6 +1194,156 @@ test_parse_shared_parent_ref(void **state)
 }
 
 static void
+test_dup_shared(void **state)
+{
+    struct ly_ctx *ctx2;
+    const char *ext_data, *xml;
+    struct ly_set *set;
+    struct lyd_node *data, *node, *dup;
+    uint32_t diff_opts;
+
+    ext_data = "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
+            "    xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">"
+            "  <module-set>"
+            "    <name>test-set</name>"
+            "    <module>"
+            "      <name>ietf-datastores</name>"
+            "      <revision>2018-02-14</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-datastores</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>ietf-yang-library</name>"
+            "      <revision>2019-01-04</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>ietf-yang-schema-mount</name>"
+            "      <revision>2019-01-14</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>ietf-interfaces</name>"
+            "      <revision>2014-05-08</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-interfaces</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>iana-if-type</name>"
+            "      <revision>2014-05-08</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:iana-if-type</namespace>"
+            "    </module>"
+            "    <import-only-module>"
+            "      <name>ietf-yang-types</name>"
+            "      <revision>2013-07-15</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace>"
+            "    </import-only-module>"
+            "  </module-set>"
+            "  <schema>"
+            "    <name>test-schema</name>"
+            "    <module-set>test-set</module-set>"
+            "  </schema>"
+            "  <datastore>"
+            "    <name>ds:running</name>"
+            "    <schema>test-schema</schema>"
+            "  </datastore>"
+            "  <datastore>"
+            "    <name>ds:operational</name>"
+            "    <schema>test-schema</schema>"
+            "  </datastore>"
+            "  <content-id>1</content-id>"
+            "</yang-library>"
+            "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
+            "  <module-set-id>1</module-set-id>"
+            "</modules-state>"
+            "<schema-mounts xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount\">"
+            "  <mount-point>"
+            "    <module>sm</module>"
+            "    <label>mnt-root</label>"
+            "    <shared-schema/>"
+            "  </mount-point>"
+            "</schema-mounts>";
+    xml =
+            "<root3 xmlns=\"urn:sm\">\n"
+            "  <ls>\n"
+            "    <name>ls1</name>\n"
+            "    <interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">\n"
+            "      <interface>\n"
+            "        <name>if1</name>\n"
+            "        <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:ethernetCsmacd</type>\n"
+            "      </interface>\n"
+            "    </interfaces>\n"
+            "  </ls>\n"
+            "  <ls>\n"
+            "    <name>ls2</name>\n"
+            "    <interfaces-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">\n"
+            "      <interface>\n"
+            "        <name>if2</name>\n"
+            "        <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:ethernetCsmacd</type>\n"
+            "        <oper-status>not-present</oper-status>\n"
+            "        <statistics>\n"
+            "          <discontinuity-time>2022-01-01T10:00:00-00:00</discontinuity-time>\n"
+            "        </statistics>\n"
+            "      </interface>\n"
+            "    </interfaces-state>\n"
+            "  </ls>\n"
+            "</root3>\n";
+
+    ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb, (void *)ext_data);
+    CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, LY_SUCCESS, data);
+
+    diff_opts = LYD_DUP_NO_META | LYD_DUP_WITH_PARENTS | LYD_DUP_RECURSIVE | LYD_DUP_NO_LYDS;
+
+    /* dup to the same context */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(data,
+            "/sm:root3/ls[name='ls1']/ietf-interfaces:interfaces/interface[name='if1']", &set));
+    assert_int_equal(1, set->count);
+    node = set->dnodes[0];
+    ly_set_free(set, NULL);
+    assert_int_equal(LY_SUCCESS, lyd_dup_single(node, NULL, diff_opts, &dup));
+
+    while (dup->parent) {
+        dup = lyd_parent(dup);
+    }
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(data,
+            "/sm:root3/ls[name='ls2']/ietf-interfaces:interfaces-state/interface[name='if2']", &set));
+    assert_int_equal(1, set->count);
+    node = set->dnodes[0];
+    ly_set_free(set, NULL);
+    assert_int_equal(LY_SUCCESS, lyd_dup_single_to_ctx(node, LYD_CTX(data), (struct lyd_node_inner *)dup, diff_opts, NULL));
+
+    lyd_free_siblings(dup);
+
+    /* dup to another context */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx2));
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx2, TESTS_DIR_MODULES_YANG));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx2, glob_schema, LYS_IN_YANG, NULL));
+    assert_non_null(ly_ctx_load_module(ctx2, "iana-if-type", NULL, NULL));
+    ly_ctx_set_ext_data_clb(ctx2, test_ext_data_clb, (void *)ext_data);
+
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(data,
+            "/sm:root3/ls[name='ls1']/ietf-interfaces:interfaces/interface[name='if1']", &set));
+    assert_int_equal(1, set->count);
+    node = set->dnodes[0];
+    ly_set_free(set, NULL);
+    assert_int_equal(LY_SUCCESS, lyd_dup_single_to_ctx(node, ctx2, NULL, diff_opts, &dup));
+
+    while (dup->parent) {
+        dup = lyd_parent(dup);
+    }
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(data,
+            "/sm:root3/ls[name='ls2']/ietf-interfaces:interfaces-state/interface[name='if2']", &set));
+    assert_int_equal(1, set->count);
+    node = set->dnodes[0];
+    ly_set_free(set, NULL);
+    assert_int_equal(LY_SUCCESS, lyd_dup_single_to_ctx(node, ctx2, (struct lyd_node_inner *)dup, diff_opts, NULL));
+
+    lyd_free_siblings(dup);
+
+    /* cleanup */
+    ly_ctx_destroy(ctx2);
+    lyd_free_siblings(data);
+}
+
+static void
 test_parse_config(void **state)
 {
     const char *xml;
@@ -1648,6 +1798,7 @@ main(void)
         UTEST(test_parse_inline, setup),
         UTEST(test_parse_shared, setup),
         UTEST(test_parse_shared_parent_ref, setup),
+        UTEST(test_dup_shared, setup),
         UTEST(test_parse_config, setup),
         UTEST(test_new, setup),
         UTEST(test_lys_getnext, setup),

@@ -2007,7 +2007,8 @@ LIBYANG_API_DECL LY_ERR lyd_dup_single(const struct lyd_node *node, struct lyd_n
  * @brief Create a copy of the specified data tree @p node. Schema references are assigned from @p trg_ctx.
  *
  * @param[in] node Data tree node to be duplicated.
- * @param[in] trg_ctx Target context for duplicated nodes.
+ * @param[in] trg_ctx Target context for duplicated nodes. In case of mixed contexts in @p node subtree or parents
+ * (schema mount data), this is the context of top-level nodes.
  * @param[in] parent Optional parent node where to connect the duplicated node(s). If set in combination with
  * ::LYD_DUP_WITH_PARENTS, the missing parents' chain is duplicated and connected with @p parent.
  * @param[in] options Bitmask of options flags, see @ref dupoptions.
@@ -2037,7 +2038,8 @@ LIBYANG_API_DECL LY_ERR lyd_dup_siblings(const struct lyd_node *node, struct lyd
  * from @p trg_ctx.
  *
  * @param[in] node Data tree node to be duplicated.
- * @param[in] trg_ctx Target context for duplicated nodes.
+ * @param[in] trg_ctx Target context for duplicated nodes. In case of mixed contexts in @p node subtree or parents
+ * (schema mount data), this is the context of top-level nodes.
  * @param[in] parent Optional parent node where to connect the duplicated node(s). If set in combination with
  * ::LYD_DUP_WITH_PARENTS, the missing parents' chain is duplicated and connected with @p parent.
  * @param[in] options Bitmask of options flags, see @ref dupoptions.
