@@ -1295,10 +1295,10 @@ LIBYANG_API_DECL LY_ERR lyd_new_ext_inner(const struct lysc_ext_instance *ext, c
                                           default flag is changed, it is returned. If the target node exists and is not
                                           a leaf or generally no change occurs in the @p parent tree, NULL is returned and
                                           no error set. */
-#define LYD_NEW_PATH_OPAQ 0x40       /**< Enables the creation of opaque nodes with some specific rules. If a node in
-                                          the path is not uniquely defined ((leaf-)list without a predicate) or has an
-                                          invalid value (leaf/leaf-list), it is created as opaque. Otherwise a regular
-                                          node is created. */
+#define LYD_NEW_PATH_OPAQ 0x40       /**< Enables the creation of opaque nodes with some specific rules. If the __last node__
+                                          in the path is not uniquely defined ((leaf-)list without a predicate) or has an
+                                          invalid value (leaf/leaf-list), it is created as opaque. Otherwise a regular node
+                                          is created. */
 #define LYD_NEW_PATH_WITH_OPAQ 0x80  /**< Consider opaque nodes normally when searching for existing nodes. */
 #define LYD_NEW_ANY_USE_VALUE 0x100  /**< Whether to use dynamic @p value or make a copy. */
 

@@ -1588,7 +1588,7 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
             }
         } else if ((schema->nodetype == LYS_LIST) &&
                 (!path[u].predicates || (path[u].predicates[0].type != LY_PATH_PREDTYPE_LIST))) {
-            if (!(options & LYD_NEW_PATH_OPAQ)) {
+            if ((u < LY_ARRAY_COUNT(path) - 1) || !(options & LYD_NEW_PATH_OPAQ)) {
                 LOG_LOCSET(schema, NULL);
                 LOGVAL(schema->module->ctx, LYVE_XPATH, "Predicate missing for %s \"%s\" in path \"%s\".",
                         lys_nodetype2str(schema->nodetype), schema->name, str_path);
