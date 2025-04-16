@@ -2160,7 +2160,7 @@ LIBYANG_API_DEF LY_ERR
 lyd_validate_all(struct lyd_node **tree, const struct ly_ctx *ctx, uint32_t val_opts, struct lyd_node **diff)
 {
     LY_CHECK_ARG_RET(NULL, tree, *tree || ctx, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(*tree ? LYD_CTX(*tree) : NULL, ctx, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, *tree ? LYD_CTX(*tree) : NULL, ctx, LY_EINVAL);
     if (!ctx) {
         ctx = LYD_CTX(*tree);
     }
@@ -2175,7 +2175,7 @@ LIBYANG_API_DEF LY_ERR
 lyd_validate_module(struct lyd_node **tree, const struct lys_module *module, uint32_t val_opts, struct lyd_node **diff)
 {
     LY_CHECK_ARG_RET(NULL, tree, module, !(val_opts & LYD_VALIDATE_PRESENT), LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(*tree ? LYD_CTX(*tree) : NULL, module->ctx, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, *tree ? LYD_CTX(*tree) : NULL, module->ctx, LY_EINVAL);
     if (diff) {
         *diff = NULL;
     }
@@ -2193,7 +2193,7 @@ lyd_validate_module_final(struct lyd_node *tree, const struct lys_module *module
     struct ly_ht *getnext_ht = NULL;
 
     LY_CHECK_ARG_RET(NULL, module, !(val_opts & (LYD_VALIDATE_PRESENT | LYD_VALIDATE_NOT_FINAL)), LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(tree ? LYD_CTX(tree) : NULL, module->ctx, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, tree ? LYD_CTX(tree) : NULL, module->ctx, LY_EINVAL);
 
     /* module is unchanged but we need to get the first module data node */
     mod = lyd_mod_next_module(tree, module, module->ctx, &i, &first);

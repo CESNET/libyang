@@ -1039,7 +1039,7 @@ LIBYANG_API_DEF LY_ERR
 lyd_insert_child(struct lyd_node *parent, struct lyd_node *node)
 {
     LY_CHECK_ARG_RET(NULL, parent, node, !parent->schema || (parent->schema->nodetype & LYD_NODE_INNER), LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(LYD_CTX(parent), LYD_CTX(node), LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, LYD_CTX(parent), LYD_CTX(node), LY_EINVAL);
 
     LY_CHECK_RET(lyd_insert_check_schema(parent->schema, NULL, node->schema));
 
@@ -1105,7 +1105,7 @@ LIBYANG_API_DEF LY_ERR
 lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
 {
     LY_CHECK_ARG_RET(NULL, sibling, node, sibling != node, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(LYD_CTX(sibling), LYD_CTX(node), LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, LYD_CTX(sibling), LYD_CTX(node), LY_EINVAL);
 
     LY_CHECK_RET(lyd_insert_check_schema(NULL, sibling->schema, node->schema));
 
@@ -1129,7 +1129,7 @@ LIBYANG_API_DEF LY_ERR
 lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
 {
     LY_CHECK_ARG_RET(NULL, sibling, node, sibling != node, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(LYD_CTX(sibling), LYD_CTX(node), LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, LYD_CTX(sibling), LYD_CTX(node), LY_EINVAL);
 
     LY_CHECK_RET(lyd_insert_check_schema(NULL, sibling->schema, node->schema));
 
@@ -2752,8 +2752,8 @@ lyd_merge(struct lyd_node **target, const struct lyd_node *source, const struct 
     struct lyds_pool lyds = {0};
 
     LY_CHECK_ARG_RET(NULL, target, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(*target ? LYD_CTX(*target) : NULL, source ? LYD_CTX(source) : NULL, mod ? mod->ctx : NULL,
-            LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, *target ? LYD_CTX(*target) : NULL, source ? LYD_CTX(source) : NULL,
+            mod ? mod->ctx : NULL, LY_EINVAL);
 
     if (!source) {
         /* nothing to merge */
@@ -3110,7 +3110,7 @@ lyd_find_meta(const struct lyd_meta *first, const struct lys_module *module, con
     size_t pref_len, name_len;
 
     LY_CHECK_ARG_RET(NULL, module || strchr(name, ':'), name, NULL);
-    LY_CHECK_CTX_EQUAL_RET(first ? first->annotation->module->ctx : NULL, module ? module->ctx : NULL, NULL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, first ? first->annotation->module->ctx : NULL, module ? module->ctx : NULL, NULL);
 
     if (!first) {
         return NULL;
@@ -3305,7 +3305,7 @@ lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const struct lyd_
     uint32_t comp_opts;
 
     LY_CHECK_ARG_RET(NULL, target, set, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(siblings ? LYD_CTX(siblings) : NULL, LYD_CTX(target), LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, siblings ? LYD_CTX(siblings) : NULL, LYD_CTX(target), LY_EINVAL);
 
     LY_CHECK_RET(ly_set_new(set));
 

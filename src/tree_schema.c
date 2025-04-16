@@ -411,7 +411,7 @@ lys_find_child(const struct lysc_node *parent, const struct lys_module *module, 
     const struct lysc_node *node = NULL;
 
     LY_CHECK_ARG_RET(NULL, module, name, NULL);
-    LY_CHECK_CTX_EQUAL_RET(parent ? parent->module->ctx : NULL, module->ctx, NULL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, parent ? parent->module->ctx : NULL, module->ctx, NULL);
     if (!nodetype) {
         nodetype = LYS_NODETYPE_MASK;
     }
@@ -448,7 +448,7 @@ lys_find_xpath_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
     uint32_t i;
 
     LY_CHECK_ARG_RET(NULL, ctx || ctx_node, xpath, set, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(ctx, ctx_node ? ctx_node->module->ctx : NULL, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, ctx, ctx_node ? ctx_node->module->ctx : NULL, LY_EINVAL);
     if (!(options & LYXP_SCNODE_ALL)) {
         options |= LYXP_SCNODE;
     }
@@ -495,7 +495,7 @@ lys_find_expr_atoms(const struct lysc_node *ctx_node, const struct lys_module *c
     uint32_t i;
 
     LY_CHECK_ARG_RET(NULL, cur_mod, expr, prefixes, set, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(ctx_node ? ctx_node->module->ctx : NULL, cur_mod->ctx, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, ctx_node ? ctx_node->module->ctx : NULL, cur_mod->ctx, LY_EINVAL);
     if (!(options & LYXP_SCNODE_ALL)) {
         options = LYXP_SCNODE;
     }
@@ -543,7 +543,7 @@ lys_find_xpath(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const
     uint32_t i;
 
     LY_CHECK_ARG_RET(NULL, ctx || ctx_node, xpath, set, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(ctx, ctx_node ? ctx_node->module->ctx : NULL, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, ctx, ctx_node ? ctx_node->module->ctx : NULL, LY_EINVAL);
     if (!(options & LYXP_SCNODE_ALL)) {
         options |= LYXP_SCNODE;
     }
@@ -625,7 +625,7 @@ lys_find_path_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, 
     struct ly_path *p = NULL;
 
     LY_CHECK_ARG_RET(ctx, ctx || ctx_node, path, set, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(ctx, ctx_node ? ctx_node->module->ctx : NULL, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, ctx, ctx_node ? ctx_node->module->ctx : NULL, LY_EINVAL);
 
     if (!ctx) {
         ctx = ctx_node->module->ctx;
@@ -660,7 +660,7 @@ lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
     uint8_t oper;
 
     LY_CHECK_ARG_RET(ctx, ctx || ctx_node, path, NULL);
-    LY_CHECK_CTX_EQUAL_RET(ctx, ctx_node ? ctx_node->module->ctx : NULL, NULL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, ctx, ctx_node ? ctx_node->module->ctx : NULL, NULL);
 
     if (!ctx) {
         ctx = ctx_node->module->ctx;

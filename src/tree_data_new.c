@@ -505,7 +505,7 @@ lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const ch
     const struct ly_ctx *ctx = parent ? LYD_CTX(parent) : (module ? module->ctx : NULL);
 
     LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
 
     if (!module) {
         module = parent->schema->module;
@@ -621,7 +621,7 @@ lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const cha
     va_list ap;
 
     LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
     LY_CHECK_RET(lyd_new_val_get_format(options, &format));
     LY_CHECK_ARG_RET(ctx, !(store_only && (format == LY_VALUE_CANON || format == LY_VALUE_LYB)), LY_EINVAL);
 
@@ -726,7 +726,7 @@ lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const ch
     uint32_t getnext_opts = (options & LYD_NEW_VAL_OUTPUT) ? LYS_GETNEXT_OUTPUT : 0;
 
     LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
 
     if (!module) {
         module = parent->schema->module;
@@ -781,7 +781,7 @@ lyd_new_list3(struct lyd_node *parent, const struct lys_module *module, const ch
 
     LY_CHECK_RET(lyd_new_val_get_format(options, &format));
     LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, (format != LY_VALUE_LYB) || value_lengths, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
     LY_CHECK_ARG_RET(ctx, !(store_only && (format == LY_VALUE_CANON || format == LY_VALUE_LYB)), LY_EINVAL);
 
     /* create the list node */
@@ -845,7 +845,7 @@ _lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const ch
     LY_VALUE_FORMAT format;
 
     LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
     LY_CHECK_RET(lyd_new_val_get_format(options, &format));
     LY_CHECK_ARG_RET(ctx, !(store_only && (format == LY_VALUE_CANON || format == LY_VALUE_LYB)), LY_EINVAL);
 
@@ -941,7 +941,7 @@ lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char
 
     LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name,
             (value_type == LYD_ANYDATA_DATATREE) || (value_type == LYD_ANYDATA_STRING) || value, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
 
     if (!module) {
         module = parent->schema->module;
@@ -1007,7 +1007,7 @@ lyd_new_meta(const struct ly_ctx *ctx, struct lyd_node *parent, const struct lys
     ly_bool store_only = options & LYD_NEW_VAL_STORE_ONLY;
 
     LY_CHECK_ARG_RET(ctx, ctx || parent, name, module || strchr(name, ':'), parent || meta, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(ctx, parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, ctx, parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
     if (!ctx) {
         ctx = module ? module->ctx : LYD_CTX(parent);
     }
@@ -1050,7 +1050,7 @@ lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, uint32_t option
     ly_bool store_only = options & LYD_NEW_VAL_STORE_ONLY;
 
     LY_CHECK_ARG_RET(NULL, ctx, attr, parent || meta, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(ctx, parent ? LYD_CTX(parent) : NULL, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, ctx, parent ? LYD_CTX(parent) : NULL, LY_EINVAL);
 
     if (parent && !parent->schema) {
         LOGERR(ctx, LY_EINVAL, "Cannot add metadata to an opaque node \"%s\".",
@@ -1092,7 +1092,7 @@ lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name
     uint32_t hints = 0;
 
     LY_CHECK_ARG_RET(ctx, parent || ctx, parent || node, name, module_name, !prefix || !strcmp(prefix, module_name), LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(ctx, parent ? LYD_CTX(parent) : NULL, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, ctx, parent ? LYD_CTX(parent) : NULL, LY_EINVAL);
 
     if (!ctx) {
         ctx = LYD_CTX(parent);
@@ -1122,7 +1122,7 @@ lyd_new_opaq2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *nam
     struct lyd_node *ret = NULL;
 
     LY_CHECK_ARG_RET(ctx, parent || ctx, parent || node, name, module_ns, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(ctx, parent ? LYD_CTX(parent) : NULL, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, ctx, parent ? LYD_CTX(parent) : NULL, LY_EINVAL);
 
     if (!ctx) {
         ctx = LYD_CTX(parent);
@@ -1908,7 +1908,7 @@ lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path
 {
     LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent,
             !(options & LYD_NEW_VAL_BIN) || !(options & LYD_NEW_VAL_CANON), LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, ctx, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, parent ? LYD_CTX(parent) : NULL, ctx, LY_EINVAL);
 
     return lyd_new_path_(parent, ctx, NULL, path, value, 0, LYD_ANYDATA_STRING, options, node, NULL);
 }
@@ -1920,7 +1920,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
 {
     LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent,
             !(options & LYD_NEW_VAL_BIN) || !(options & LYD_NEW_VAL_CANON), LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, ctx, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, parent ? LYD_CTX(parent) : NULL, ctx, LY_EINVAL);
 
     return lyd_new_path_(parent, ctx, NULL, path, value, value_len, value_type, options, new_parent, new_node);
 }
@@ -1933,7 +1933,7 @@ lyd_new_ext_path(struct lyd_node *parent, const struct lysc_ext_instance *ext, c
 
     LY_CHECK_ARG_RET(ctx, ext, path, (path[0] == '/') || parent,
             !(options & LYD_NEW_VAL_BIN) || !(options & LYD_NEW_VAL_CANON), LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, ctx, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, parent ? LYD_CTX(parent) : NULL, ctx, LY_EINVAL);
 
     return lyd_new_path_(parent, ctx, ext, path, value, 0, LYD_ANYDATA_STRING, options, node, NULL);
 }
@@ -2155,7 +2155,7 @@ lyd_new_implicit_all(struct lyd_node **tree, const struct ly_ctx *ctx, uint32_t 
     LY_ERR rc = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(ctx, tree, *tree || ctx, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(*tree ? LYD_CTX(*tree) : NULL, ctx, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, *tree ? LYD_CTX(*tree) : NULL, ctx, LY_EINVAL);
     if (diff) {
         *diff = NULL;
     }
@@ -2196,7 +2196,7 @@ lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module,
     struct ly_ht *getnext_ht = NULL;
 
     LY_CHECK_ARG_RET(NULL, tree, module, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(*tree ? LYD_CTX(*tree) : NULL, module ? module->ctx : NULL, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(__func__, *tree ? LYD_CTX(*tree) : NULL, module ? module->ctx : NULL, LY_EINVAL);
     if (diff) {
         *diff = NULL;
     }
