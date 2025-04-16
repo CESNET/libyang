@@ -279,7 +279,7 @@ test_path(void **state)
 
     lyd_free_tree(root);
 
-    /* try LYD_NEWOPT_OPAQ */
+    /* try LYD_NEW_PATH_OPAQ */
     ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:l1", NULL, 0, 0, 0, NULL, NULL);
     assert_int_equal(ret, LY_EINVAL);
     CHECK_LOG_CTX("Predicate missing for list \"l1\" in path \"/a:l1\".", "/a:l1", 0);
@@ -316,6 +316,13 @@ test_path(void **state)
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(lyd_child(root)->next);
     assert_null(lyd_child(root)->next->schema);
+
+    lyd_free_tree(root);
+
+    ret = lyd_new_path(NULL, UTEST_LYCTX, "/a:l1/c", NULL, LYD_NEW_PATH_OPAQ, &root);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_null(root->schema);
+    assert_null(lyd_child(root)->schema);
 
     lyd_free_tree(root);
 
