@@ -516,6 +516,7 @@ lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct ly
 
     if (!value) {
         value = "";
+        value_len = 0;
     }
     if (incomplete) {
         *incomplete = 0;

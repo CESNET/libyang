@@ -148,7 +148,7 @@ void *ly_realloc(void *ptr, size_t size);
         } \
         p__ = (char *)((LY_ARRAY_COUNT_TYPE*)(p__) + 1); \
         memcpy(&(ARRAY), &p__, sizeof p__); \
-        if (ARRAY) { \
+        if ((ARRAY) && (SIZE > 0)) { \
             memset(&(ARRAY)[*((LY_ARRAY_COUNT_TYPE*)(p__) - 1)], 0, (SIZE) * sizeof *(ARRAY)); \
         } \
     }

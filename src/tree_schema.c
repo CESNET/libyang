@@ -788,6 +788,7 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
         if (buffer) {
             strcpy(buffer, "/");
         } else {
+            free(path);
             path = strdup("/");
         }
     }
