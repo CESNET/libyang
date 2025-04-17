@@ -722,6 +722,8 @@ test_netconf_reply_or_notification(void **state)
     struct ly_in *in;
     struct lyd_node *action, *tree, *op, *op2;
 
+    assert_non_null((ly_ctx_load_module(UTEST_LYCTX, "ietf-netconf", "2011-06-01", NULL)));
+
     /* parse the action */
     data = "<c xmlns=\"urn:tests:a\">\n"
             "  <act>\n"
@@ -817,6 +819,7 @@ test_netconf_reply_or_notification(void **state)
             "    <error-type>rpc</error-type>\n"
             "    <error-tag>missing-attribute</error-tag>\n"
             "    <error-severity>error</error-severity>\n"
+            "    <error-path xmlns:a=\"urn:tests:a\">/a:c/a:x</error-path>\n"
             "    <error-info>\n"
             "      <bad-attribute>message-id</bad-attribute>\n"
             "      <bad-element>rpc</bad-element>\n"
@@ -828,8 +831,6 @@ test_netconf_reply_or_notification(void **state)
     ly_in_free(in, 0);
 
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 1, 1, LY_VALUE_XML, "rpc-reply", 0, 0, 0, 0, "");
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)lyd_child(tree), 0, 1, LY_VALUE_XML, "rpc-error", 0, 0, 0, 0, "");
-
     CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
 
     lyd_free_all(tree);
