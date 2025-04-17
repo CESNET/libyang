@@ -590,7 +590,7 @@ struct trt_fp_read {
         .module_name = tro_read_module_name, \
         .node = troc_read_node, \
         .if_sibling_exists = troc_read_if_sibling_exists, \
-        .if_parent_exists = tro_read_if_sibling_exists \
+        .if_parent_exists = tro_read_if_parent_exists \
     }
 
 /**
@@ -601,7 +601,7 @@ struct trt_fp_read {
         .module_name = tro_read_module_name, \
         .node = trop_read_node, \
         .if_sibling_exists = trop_read_if_sibling_exists, \
-        .if_parent_exists = tro_read_if_sibling_exists \
+        .if_parent_exists = tro_read_if_parent_exists \
     }
 
 /**********************************************************************
@@ -781,6 +781,7 @@ typedef const char *(*trt_get_charptr_func)(const struct lysp_node *pn);
  */
 struct tro_getters {
     uint16_t (*nodetype)(const void *);         /**< Get nodetype. */
+    uint16_t (*lysp_flags)(const void *);       /**< Get flags from lysp_node. */
     const void *(*next)(const void *);          /**< Get sibling. */
     const void *(*parent)(const void *);        /**< Get parent. */
     const void *(*child)(const void *);         /**< Get child. */
@@ -1948,6 +1949,16 @@ trop_nodetype(const void *node)
 }
 
 /**
+ * @brief Get lysp_node flags.
+ * @param[in] node is any lysp_node.
+ */
+static uint16_t
+trop_flags(const void *node)
+{
+    return ((const struct lysp_node *)node)->flags;
+}
+
+/**
  * @brief Get sibling.
  * @param[in] node is any lysp_node.
  */
@@ -2026,6 +2037,7 @@ trop_init_getters(void)
 {
     return (struct tro_getters) {
                .nodetype = trop_nodetype,
+               .lysp_flags = trop_flags,
                .next = trop_next,
                .parent = trop_parent,
                .child = trop_child,
@@ -2044,6 +2056,23 @@ static uint16_t
 troc_nodetype(const void *node)
 {
     return ((const struct lysc_node *)node)->nodetype;
+}
+
+/**
+ * @brief Get lysp_node flags.
+ * @param[in] node is any lysc_node.
+ */
+static uint16_t
+troc_lysp_flags(const void *node)
+{
+    const struct lysc_node *cn;
+
+    cn = (const struct lysc_node *)node;
+    if (TRP_TREE_CTX_LYSP_NODE_PRESENT(cn)) {
+        return TRP_TREE_CTX_GET_LYSP_NODE(cn)->flags;
+    } else {
+        return 0;
+    }
 }
 
 /**
@@ -2125,6 +2154,7 @@ troc_init_getters(void)
 {
     return (struct tro_getters) {
                .nodetype = troc_nodetype,
+               .lysp_flags = troc_lysp_flags,
                .next = troc_next,
                .parent = troc_parent,
                .child = troc_child,
@@ -2272,6 +2302,8 @@ tro_next_sibling(const void *node, const struct trt_tree_ctx *tc)
     plugin_ctx = tc->plugin_ctx;
     if (sibl && tro_set_node_overr(tc->lysc_tree, sibl, 1, &plugin_ctx) && plugin_ctx.filtered) {
         return tro_next_sibling(sibl, tc);
+    } else if (sibl && (get.lysp_flags(node) & LYS_INTERNAL)) {
+        return tro_next_sibling(sibl, tc);
     }
 
     return sibl;
@@ -2327,6 +2359,8 @@ tro_next_child(const void *node, const struct trt_tree_ctx *tc)
 
     plugin_ctx = tc->plugin_ctx;
     if (child && tro_set_node_overr(tc->lysc_tree, child, 1, &plugin_ctx) && plugin_ctx.filtered) {
+        return tro_next_sibling(child, tc);
+    } else if (child && (get.lysp_flags(node) & LYS_INTERNAL)) {
         return tro_next_sibling(child, tc);
     }
 
@@ -2605,7 +2639,7 @@ tro_read_module_name(const struct trt_tree_ctx *tc)
 }
 
 static ly_bool
-tro_read_if_sibling_exists(const struct trt_tree_ctx *tc)
+tro_read_if_parent_exists(const struct trt_tree_ctx *tc)
 {
     const void *parent;
 
@@ -3118,7 +3152,11 @@ trop_modi_first_sibling(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
         default:
             assert(0);
         }
-        node = trop_read_node(ca, tc);
+        if (tc->pn && (trop_flags(tc->pn) & LYS_INTERNAL)) {
+            node = trop_modi_next_sibling(ca, tc);
+        } else {
+            node = trop_read_node(ca, tc);
+        }
     }
 
     if (tc->plugin_ctx.filtered) {
@@ -3440,7 +3478,11 @@ troc_modi_first_sibling(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
         default:
             assert(0);
         }
-        node = troc_read_node(ca, tc);
+        if (tc->cn && (troc_lysp_flags(tc->cn) & LYS_INTERNAL)) {
+            node = troc_modi_next_sibling(ca, tc);
+        } else {
+            node = troc_read_node(ca, tc);
+        }
     }
 
     if (tc->plugin_ctx.filtered) {

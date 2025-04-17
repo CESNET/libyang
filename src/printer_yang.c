@@ -2269,6 +2269,10 @@ yang_print_parsed_body(struct lys_ypr_ctx *pctx, const struct lysp_module *modp)
     YPR_EXTRA_LINE(modp->groupings, pctx);
 
     LY_LIST_FOR(modp->data, data) {
+        if (data->flags & LYS_INTERNAL) {
+            continue;
+        }
+
         YPR_EXTRA_LINE_PRINT(pctx);
         yprp_node(pctx, data);
     }

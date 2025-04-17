@@ -1367,6 +1367,10 @@ yin_print_parsed_body(struct lys_ypr_ctx *pctx, const struct lysp_module *modp)
     }
 
     LY_LIST_FOR(modp->data, data) {
+        if (data->flags & LYS_INTERNAL) {
+            continue;
+        }
+
         yprp_node(pctx, data);
     }
 
