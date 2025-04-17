@@ -4139,49 +4139,82 @@ cleanup:
     return rc;
 }
 
+/**
+ * @brief Generate path of a grouping for logging.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] node Grouping node.
+ * @param[out] path Generated path.
+ * @return Length of the generated @p path;
+ * @return -1 on error.
+ */
 static int
 lys_compile_grouping_pathlog(struct lysc_ctx *ctx, struct lysp_node *node, char **path)
 {
     struct lysp_node *iter;
-    int len = 0;
+    int len = 0, r;
+    char *s, *id;
 
     *path = NULL;
-    for (iter = node; iter && len >= 0; iter = iter->parent) {
-        char *s = *path;
-        char *id;
 
+    for (iter = node; iter && (len >= 0); iter = iter->parent) {
+        s = *path;
+
+        /* next node segment */
         switch (iter->nodetype) {
         case LYS_USES:
-            LY_CHECK_RET(asprintf(&id, "{uses='%s'}", iter->name) == -1, -1);
+            r = asprintf(&id, "{uses='%s'}", iter->name);
             break;
         case LYS_GROUPING:
-            LY_CHECK_RET(asprintf(&id, "{grouping='%s'}", iter->name) == -1, -1);
+            r = asprintf(&id, "{grouping='%s'}", iter->name);
             break;
         case LYS_AUGMENT:
-            LY_CHECK_RET(asprintf(&id, "{augment='%s'}", iter->name) == -1, -1);
+            r = asprintf(&id, "{augment='%s'}", iter->name);
             break;
         default:
             id = strdup(iter->name);
+            r = id ? 1 : -1;
             break;
         }
+        if (r == -1) {
+            len = -1;
+            goto cleanup;
+        }
 
+        /* append the segment to the path */
         if (!iter->parent) {
             /* print prefix */
-            len = asprintf(path, "/%s:%s%s", ctx->cur_mod->name, id, s ? s : "");
+            r = asprintf(path, "/%s:%s%s", ctx->cur_mod->name, id, s ? s : "");
         } else {
             /* prefix is the same as in parent */
-            len = asprintf(path, "/%s%s", id, s ? s : "");
+            r = asprintf(path, "/%s%s", id, s ? s : "");
         }
         free(s);
         free(id);
+        if (r == -1) {
+            len = -1;
+            goto cleanup;
+        }
+
+        /* remember the length of the full path */
+        len = r;
     }
 
+    if (!len) {
+        /* root node path */
+        *path = strdup("/");
+        if (!*path) {
+            len = -1;
+            goto cleanup;
+        }
+
+        len = 1;
+    }
+
+cleanup:
     if (len < 0) {
         free(*path);
         *path = NULL;
-    } else if (len == 0) {
-        *path = strdup("/");
-        len = 1;
     }
     return len;
 }
