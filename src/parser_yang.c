@@ -100,7 +100,7 @@ struct lys_glob_unres;
         goto ERR_LABEL; \
     } \
     if (KW == LY_STMT_SYNTAX_RIGHT_BRACE) { \
-        if (EXTS && (RET = ly_set_add(&(CTX)->main_ctx->ext_inst, (EXTS), 1, NULL))) { \
+        if (EXTS && (RET = ly_set_add(&(CTX)->ext_inst, (EXTS), 1, NULL))) { \
             goto ERR_LABEL; \
         } \
         __loop_end = 1; \
@@ -2842,8 +2842,7 @@ parse_typedef(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_t
 
     /* store data for collision check */
     if (parent) {
-        assert(ctx->main_ctx);
-        LY_CHECK_RET(ly_set_add(&ctx->main_ctx->tpdfs_nodes, parent, 0, NULL));
+        LY_CHECK_RET(ly_set_add(&ctx->tpdfs_nodes, parent, 0, NULL));
     }
 
 cleanup:
@@ -3184,8 +3183,7 @@ parse_grouping(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_
 
     /* store data for collision check */
     if (parent) {
-        assert(ctx->main_ctx);
-        LY_CHECK_RET(ly_set_add(&ctx->main_ctx->grps_nodes, parent, 0, NULL));
+        LY_CHECK_RET(ly_set_add(&ctx->grps_nodes, parent, 0, NULL));
     }
 
 cleanup:

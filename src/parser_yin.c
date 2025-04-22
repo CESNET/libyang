@@ -646,7 +646,7 @@ yin_unres_exts_add(struct lysp_yin_ctx *ctx, struct lysp_ext_instance *exts)
         return LY_SUCCESS;
     }
 
-    return ly_set_add(&ctx->main_ctx->ext_inst, exts, 1, NULL);
+    return ly_set_add(&ctx->ext_inst, exts, 1, NULL);
 }
 
 /**
@@ -1713,8 +1713,7 @@ yin_parse_typedef(struct lysp_yin_ctx *ctx, struct tree_node_meta *typedef_meta)
 
     /* store data for collision check */
     if (typedef_meta->parent) {
-        assert(ctx->main_ctx);
-        LY_CHECK_RET(ly_set_add(&ctx->main_ctx->tpdfs_nodes, typedef_meta->parent, 0, NULL));
+        LY_CHECK_RET(ly_set_add(&ctx->tpdfs_nodes, typedef_meta->parent, 0, NULL));
     }
 
     return LY_SUCCESS;
@@ -2472,8 +2471,7 @@ yin_parse_grouping(struct lysp_yin_ctx *ctx, struct tree_node_meta *gr_meta)
 
     /* store data for collision check */
     if (!ret && grp->parent) {
-        assert(ctx->main_ctx);
-        LY_CHECK_RET(ly_set_add(&ctx->main_ctx->grps_nodes, grp->parent, 0, NULL));
+        LY_CHECK_RET(ly_set_add(&ctx->grps_nodes, grp->parent, 0, NULL));
     }
 
     return ret;

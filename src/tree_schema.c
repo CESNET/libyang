@@ -1542,7 +1542,7 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
     struct lysp_submodule *submod = NULL, *latest_sp;
     struct lysp_yang_ctx *yangctx = NULL;
     struct lysp_yin_ctx *yinctx = NULL;
-    struct lysp_ctx *pctx;
+    struct lysp_ctx *pctx = NULL;
     struct lysf_ctx fctx = {.ctx = ctx};
     const char *submod_name;
 
@@ -1594,6 +1594,9 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
         r = lysp_load_module_data_check(ctx, NULL, submod, mod_data);
         if (r == LY_EEXIST) {
             /* not an error, the submodule already exists so free this one */
+            ly_set_erase(&pctx->tpdfs_nodes, NULL);
+            ly_set_erase(&pctx->grps_nodes, NULL);
+            ly_set_erase(&pctx->ext_inst, NULL);
             lysp_module_free(&fctx, (struct lysp_module *)submod);
             submod = NULL;
             goto cleanup;
@@ -1627,9 +1630,22 @@ cleanup:
             LOGERR(ctx, rc, "Parsing submodule failed.");
         }
 
+        if (pctx) {
+            ly_set_erase(&pctx->tpdfs_nodes, NULL);
+            ly_set_erase(&pctx->grps_nodes, NULL);
+            ly_set_erase(&pctx->ext_inst, NULL);
+        }
         lysp_module_free(&fctx, (struct lysp_module *)submod);
-    } else {
+    } else if (submod) {
         *submodule = submod;
+
+        /* merge submod unres into main_ctx unres */
+        ly_set_merge(&pctx->main_ctx->tpdfs_nodes, &pctx->tpdfs_nodes, 1, NULL);
+        ly_set_erase(&pctx->tpdfs_nodes, NULL);
+        ly_set_merge(&pctx->main_ctx->grps_nodes, &pctx->grps_nodes, 1, NULL);
+        ly_set_erase(&pctx->grps_nodes, NULL);
+        ly_set_merge(&pctx->main_ctx->ext_inst, &pctx->ext_inst, 1, NULL);
+        ly_set_erase(&pctx->ext_inst, NULL);
     }
 
     if (format == LYS_IN_YANG) {

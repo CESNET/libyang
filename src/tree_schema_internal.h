@@ -130,11 +130,12 @@ enum yang_arg {
 
 struct lysp_ctx {
     LYS_INFORMAT format;             /**< parser format */
-    struct ly_set tpdfs_nodes;       /**< Set of nodes that contain typedef(s). Invalid in case of
-                                          submodule, use ::lysp_ctx.main_ctx instead. */
-    struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
-                                          submodule, use ::lysp_ctx.main_ctx instead. */
-    struct ly_set ext_inst;          /**< parsed extension instances to finish parsing */
+    struct ly_set tpdfs_nodes;       /**< Set of nodes that contain typedef(s). Used only temporarily in case of
+                                          submodule, ::lysp_ctx.main_ctx used instead. */
+    struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Used only temporarily in case of
+                                          submodule, ::lysp_ctx.main_ctx used instead. */
+    struct ly_set ext_inst;          /**< Set of parsed extension instances to finish parsing. Used only temporarily
+                                          in case of submodule, ::lysp_ctx.main_ctx used instead. */
 
     struct ly_set *parsed_mods;      /**< (sub)modules being parsed, the last one is the current */
     struct lysp_ctx *main_ctx;       /**< This pointer must not be NULL. If this context deals with the submodule,
