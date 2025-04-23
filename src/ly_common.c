@@ -325,6 +325,7 @@ ly_utf8_and_equal(const char *input, int bytes, ...)
 
         /* compare each byte */
         if (((uint8_t)input[i] & and) != (uint8_t)byte) {
+            va_end(ap);
             return 0;
         }
     }
@@ -355,8 +356,10 @@ ly_utf8_less(const char *input, int bytes, ...)
 
         /* compare until bytes differ */
         if ((uint8_t)input[i] > (uint8_t)byte) {
+            va_end(ap);
             return 0;
         } else if ((uint8_t)input[i] < (uint8_t)byte) {
+            va_end(ap);
             return 1;
         }
     }
@@ -388,8 +391,10 @@ ly_utf8_greater(const char *input, int bytes, ...)
 
         /* compare until bytes differ */
         if ((uint8_t)input[i] > (uint8_t)byte) {
+            va_end(ap);
             return 1;
         } else if ((uint8_t)input[i] < (uint8_t)byte) {
+            va_end(ap);
             return 0;
         }
     }
