@@ -396,6 +396,7 @@ subelems_allocator(struct lysp_yin_ctx *ctx, size_t count, struct lysp_node *par
     return LY_SUCCESS;
 
 mem_err:
+    va_end(ap);
     subelems_deallocator(count, *result);
     LOGMEM(ctx->xmlctx->ctx);
     return LY_EMEM;
