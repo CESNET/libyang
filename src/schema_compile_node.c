@@ -1229,7 +1229,9 @@ lys_compile_pattern_chblocks_xmlschema2perl(const struct ly_ctx *ctx, const char
                 ++idx;
             }
             if ((perl_regex[idx2] == ']') && (!idx2 || (perl_regex[idx2 - 1] != '\\'))) {
-                --idx;
+                if (idx > 0) {
+                    --idx;
+                }
             }
         }
         if (idx) {
