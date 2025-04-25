@@ -228,7 +228,8 @@ help(int shortout)
 static void
 libyang_verbclb(LY_LOG_LEVEL level, const char *msg, const char *data_path, const char *schema_path, uint64_t line)
 {
-    char *levstr;
+    const char *levstr;
+    char *full_msg, *aux;
 
     switch (level) {
     case LY_LLERR:
@@ -244,15 +245,23 @@ libyang_verbclb(LY_LOG_LEVEL level, const char *msg, const char *data_path, cons
         levstr = "dbg :";
         break;
     }
-    if (data_path) {
-        fprintf(stderr, "libyang %s %s (%s)\n", levstr, msg, data_path);
-    } else if (schema_path) {
-        fprintf(stderr, "libyang %s %s (%s)\n", levstr, msg, schema_path);
-    } else if (line) {
-        fprintf(stderr, "libyang %s %s (line %" PRIu64 ")\n", levstr, msg, line);
-    } else {
-        fprintf(stderr, "libyang %s %s\n", levstr, msg);
+
+    asprintf(&full_msg, "libyang %s %s", levstr, msg);
+
+    if (data_path || schema_path) {
+        asprintf(&aux, "%s (%s)", full_msg, data_path ? data_path : schema_path);
+        free(full_msg);
+        full_msg = aux;
     }
+
+    if (line) {
+        asprintf(&aux, "%s (line %" PRIu64 ")", full_msg, line);
+        free(full_msg);
+        full_msg = aux;
+    }
+
+    fprintf(stderr, "%s\n", full_msg);
+    free(full_msg);
 }
 
 static struct yl_schema_features *
