@@ -29,6 +29,7 @@
 
 #include "cmd.h"
 #include "common.h"
+#include "compat.h"
 #include "out.h"
 #include "tools/config.h"
 #include "yl_opt.h"
