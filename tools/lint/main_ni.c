@@ -230,7 +230,7 @@ static void
 libyang_verbclb(LY_LOG_LEVEL level, const char *msg, const char *data_path, const char *schema_path, uint64_t line)
 {
     const char *levstr;
-    char *full_msg, *aux;
+    char *full_msg = NULL, *aux;
 
     switch (level) {
     case LY_LLERR:
@@ -247,22 +247,33 @@ libyang_verbclb(LY_LOG_LEVEL level, const char *msg, const char *data_path, cons
         break;
     }
 
-    asprintf(&full_msg, "libyang %s %s", levstr, msg);
+    if (asprintf(&full_msg, "libyang %s %s", levstr, msg) == -1) {
+        goto error;
+    }
 
     if (data_path || schema_path) {
-        asprintf(&aux, "%s (%s)", full_msg, data_path ? data_path : schema_path);
+        if (asprintf(&aux, "%s (%s)", full_msg, data_path ? data_path : schema_path) == -1) {
+            goto error;
+        }
         free(full_msg);
         full_msg = aux;
     }
 
     if (line) {
-        asprintf(&aux, "%s (line %" PRIu64 ")", full_msg, line);
+        if (asprintf(&aux, "%s (line %" PRIu64 ")", full_msg, line) == -1) {
+            goto error;
+        }
         free(full_msg);
         full_msg = aux;
     }
 
     fprintf(stderr, "%s\n", full_msg);
     free(full_msg);
+    return;
+
+error:
+    free(full_msg);
+    fprintf(stderr, "libyang %s Memory allocation failed.\n", levstr);
 }
 
 static struct yl_schema_features *
