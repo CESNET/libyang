@@ -1229,7 +1229,9 @@ lys_compile_pattern_chblocks_xmlschema2perl(const struct ly_ctx *ctx, const char
                 ++idx;
             }
             if ((perl_regex[idx2] == ']') && (!idx2 || (perl_regex[idx2 - 1] != '\\'))) {
-                --idx;
+                if (idx > 0) {
+                    --idx;
+                }
             }
         }
         if (idx) {
@@ -1699,7 +1701,8 @@ static LY_ERR
 lys_new_type(const struct ly_ctx *ctx, LY_DATA_TYPE basetype, const char *tpdf_name, struct lysc_type **type)
 {
     LY_ERR rc = LY_SUCCESS;
-    struct lysc_type *t = NULL;
+    void *t = NULL;
+    struct lysc_type *t2 = NULL;
 
     *type = NULL;
 
@@ -1749,9 +1752,11 @@ lys_new_type(const struct ly_ctx *ctx, LY_DATA_TYPE basetype, const char *tpdf_n
         break;
     }
     LY_CHECK_ERR_GOTO(!t, LOGMEM(ctx); rc = LY_EMEM, cleanup);
+    /* memory is available then set to used pointer */
+    t2 = (struct lysc_type *)t;
 
     if (tpdf_name) {
-        rc = lydict_insert(ctx, tpdf_name, 0, &t->name);
+        rc = lydict_insert(ctx, tpdf_name, 0, &t2->name);
         LY_CHECK_GOTO(rc, cleanup);
     }
 
@@ -1759,7 +1764,7 @@ cleanup:
     if (rc) {
         free(t);
     } else {
-        *type = t;
+        *type = t2;
     }
     return rc;
 }

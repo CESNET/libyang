@@ -8250,7 +8250,9 @@ moveto:
             if (set->used) {
                 i = set->used;
                 do {
-                    --i;
+                    if (i > 0) {
+                        --i;
+                    }
                     if (set->val.scnodes[i].in_ctx > LYXP_SET_SCNODE_ATOM_NODE) {
                         found = 1;
                         break;
