@@ -97,8 +97,8 @@ typedef enum {
 /**
  * @brief Load a schema into the specified context.
  *
- * @param[in] ctx libyang context where to process the data model.
- * @param[in] in The input handle to provide the dumped data model in the specified format.
+ * @param[in] ctx libyang context to use.
+ * @param[in] in Input handle to provide the dumped module in the specified format.
  * @param[in] format Format of the schema to parse. Can be 0 to try to detect format from the input handler.
  * @param[in] features Array of features to enable ended with NULL. If NULL, no features are enabled.
  * @param[out] module Optional parsed module.
@@ -113,8 +113,8 @@ LIBYANG_API_DECL LY_ERR lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFO
  * This function is considered for a simple use, if you have a complex use-case,
  * consider use of ::lys_parse() with a standalone input handler.
  *
- * @param[in] ctx libyang context where to process the data model.
- * @param[in] data The string containing the dumped data model in the specified format.
+ * @param[in] ctx libyang context to use.
+ * @param[in] data String containing the dumped module in the specified format.
  * @param[in] format Format of the schema to parse.
  * @param[out] module Optional parsed module.
  * @return LY_ERR value.
@@ -124,12 +124,12 @@ LIBYANG_API_DECL LY_ERR lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_
 /**
  * @brief Read a schema from file descriptor into the specified context.
  *
- * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
+ * @note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
  *
  * This function is considered for a simple use, if you have a complex use-case,
  * consider use of ::lys_parse() with a standalone input handler.
  *
- * @param[in] ctx libyang context where to process the data model.
+ * @param[in] ctx libyang context to use.
  * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the schema
  *            in the specified format.
  * @param[in] format Format of the schema to parse.
@@ -144,8 +144,8 @@ LIBYANG_API_DECL LY_ERR lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT fo
  * This function is considered for a simple use, if you have a complex use-case,
  * consider use of ::lys_parse() with a standalone input handler.
  *
- * @param[in] ctx libyang context where to process the data model.
- * @param[in] path Path to the file with the model in the specified format.
+ * @param[in] ctx libyang context to use.
+ * @param[in] path Path to the file with the module in the specified format.
  * @param[in] format Format of the schema to parse.
  * @param[out] module Optional parsed module.
  * @return LY_ERR value.

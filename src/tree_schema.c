@@ -1495,7 +1495,7 @@ lysp_load_module_data_check(const struct ly_ctx *ctx, struct lysp_module *mod, s
     latest_revision = mod ? mod->mod->latest_revision : submod->latest_revision;
 
     if (mod_data->name) {
-        /* check name of the parsed model */
+        /* check name of the parsed module */
         if (strcmp(mod_data->name, name)) {
             LOGERR(ctx, LY_EINVAL, "Unexpected module \"%s\" parsed instead of \"%s\".", name, mod_data->name);
             return LY_EINVAL;
@@ -1503,7 +1503,7 @@ lysp_load_module_data_check(const struct ly_ctx *ctx, struct lysp_module *mod, s
     }
 
     if (mod_data->revision) {
-        /* check revision of the parsed model */
+        /* check revision of the parsed module */
         if (!revs || strcmp(mod_data->revision, revs[0].date)) {
             LOGERR(ctx, LY_EINVAL, "Module \"%s\" parsed with the wrong revision (\"%s\" instead \"%s\").", name,
                     revs ? revs[0].date : "none", mod_data->revision);

@@ -225,7 +225,7 @@ LY_ERR yang_parse_module(struct lysp_yang_ctx **context, struct ly_in *in, struc
 /**
  * @brief Parse module from YIN data.
  *
- * @param[in,out] yin_ctx Context created during parsing, is used to finalize lysp_model after it's completly parsed.
+ * @param[in,out] yin_ctx Context created during parsing, is used to finalize lysp_module after it's completly parsed.
  * @param[in] in Input structure.
  * @param[in,out] mod Prepared module structure where the parsed information, including the parsed
  * module structure, will be filled in.
@@ -236,7 +236,7 @@ LY_ERR yin_parse_module(struct lysp_yin_ctx **yin_ctx, struct ly_in *in, struct 
 /**
  * @brief Parse submodule from YIN data.
  *
- * @param[in,out] yin_ctx Context created during parsing, is used to finalize lysp_model after it's completly parsed.
+ * @param[in,out] yin_ctx Context created during parsing, is used to finalize lysp_module after it's completly parsed.
  * @param[in] ctx Libyang context.
  * @param[in] main_ctx Parser context of main module.
  * @param[in] in Input structure.

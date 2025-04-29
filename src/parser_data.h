@@ -230,7 +230,7 @@ struct ly_in;
  *
  * @param[in] ctx Context to connect with the tree being built here.
  * @param[in] parent Optional parent to connect the parsed nodes to. If provided, the data are expected to describe
- * a subtree of the YANG model instead of starting at the schema root.
+ * a subtree of the YANG module instead of starting at the schema root.
  * @param[in] in The input handle to provide the dumped data in the specified @p format to parse (and validate).
  * @param[in] format Format of the input data to be parsed. Can be 0 to try to detect format from the input handler.
  * @param[in] parse_options Options for parser, see @ref dataparseroptions.

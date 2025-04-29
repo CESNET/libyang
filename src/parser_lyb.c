@@ -444,7 +444,7 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, 
 
     /* read attributes */
     for (i = 0; i < count; ++i) {
-        /* find model */
+        /* find module */
         ret = lyb_parse_module(lybctx->lybctx, &mod);
         LY_CHECK_GOTO(ret, cleanup);
 

@@ -336,7 +336,7 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     /* init LYB hash lock */
     pthread_mutex_init(&ctx->lyb_hash_lock, NULL);
 
-    /* models list */
+    /* modules list */
     ctx->flags = options;
     if (search_dir) {
         search_dir_list = strdup(search_dir);
@@ -1383,7 +1383,7 @@ ly_ctx_destroy(struct ly_ctx *ctx)
         return;
     }
 
-    /* models list */
+    /* modules list */
     for ( ; ctx->list.count; ctx->list.count--) {
         fctx.mod = ctx->list.objs[ctx->list.count - 1];
 

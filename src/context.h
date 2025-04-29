@@ -240,8 +240,8 @@ LIBYANG_API_DECL LY_ERR ly_ctx_new(const char *search_dir, uint16_t options, str
  * This function loads the yang-library data from the given path. If you need to pass the data as
  * string, use ::::ly_ctx_new_ylmem(). Both functions extend functionality of ::ly_ctx_new() by loading
  * modules specified in the ietf-yang-library form into the context being created.
- * The preferred tree model revision is 2019-01-04. However, only the first module-set is processed and loaded
- * into the context. If there are no matching nodes from this tree, the legacy tree (originally from model revision 2016-04-09)
+ * The preferred tree module revision is 2019-01-04. However, only the first module-set is processed and loaded
+ * into the context. If there are no matching nodes from this tree, the legacy tree (originally from module revision 2016-04-09)
  * is processed. Note, that the modules are loaded the same way as in case of ::ly_ctx_load_module(), so the schema paths in the
  * yang-library data are ignored and the modules are loaded from the context's search locations. On the other hand, YANG features
  * of the modules are set as specified in the yang-library data.
@@ -401,7 +401,7 @@ LIBYANG_API_DECL uint32_t ly_ctx_get_modules_hash(const struct ly_ctx *ctx);
 typedef void (*ly_module_imp_data_free_clb)(void *module_data, void *user_data);
 
 /**
- * @brief Callback for retrieving missing included or imported models in a custom way.
+ * @brief Callback for retrieving missing included or imported modules in a custom way.
  *
  * When @p submod_name is provided, the submodule is requested instead of the module (in this case only
  * the module name without its revision is provided).
@@ -435,12 +435,12 @@ typedef LY_ERR (*ly_module_imp_clb)(const char *mod_name, const char *mod_rev, c
 LIBYANG_API_DECL ly_module_imp_clb ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data);
 
 /**
- * @brief Set missing include or import module callback. It is meant to be used when the models
+ * @brief Set missing include or import module callback. It is meant to be used when the modules
  * are not locally available (such as when downloading modules from a NETCONF server), it should
  * not be required in other cases.
  *
  * @param[in] ctx Context that will use this callback.
- * @param[in] clb Callback responsible for returning the missing model.
+ * @param[in] clb Callback responsible for returning the missing module.
  * @param[in] user_data Arbitrary data that will always be passed to the callback @p clb.
  */
 LIBYANG_API_DECL void ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_data);
@@ -602,7 +602,7 @@ LIBYANG_API_DECL const struct lysp_submodule *ly_ctx_get_submodule2_latest(const
 LIBYANG_API_DECL uint32_t ly_ctx_internal_modules_count(const struct ly_ctx *ctx);
 
 /**
- * @brief Try to find the model in the searchpaths of @p ctx and load it into it. If custom missing
+ * @brief Try to find the module in the searchpaths of @p ctx and load it into it. If custom missing
  * module callback is set, it is used instead.
  *
  * The context itself is searched for the requested module first. If @p revision is not specified
@@ -618,7 +618,7 @@ LIBYANG_API_DECL uint32_t ly_ctx_internal_modules_count(const struct ly_ctx *ctx
  * The feature string '*' enables all and array of length 1 with only the terminating NULL explicitly disables all
  * the features. In case the parameter is NULL, the features are untouched - left disabled in newly loaded module or
  * with the current features settings in case the module is already present in the context.
- * @return Pointer to the data model structure, NULL if not found or some error occurred.
+ * @return Found module, NULL if not found or some error occurred.
  */
 LIBYANG_API_DECL struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision,
         const char **features);
@@ -655,7 +655,7 @@ LIBYANG_API_DECL LY_ERR ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct
  * multiple contexts, the function should be called for each used context.
  *
  * All instance data are supposed to be freed before destroying the context using ::lyd_free_all(), for example.
- * Data models (schemas) are destroyed automatically as part of ::ly_ctx_destroy() call.
+ * Modules (schemas) are destroyed automatically as part of ::ly_ctx_destroy() call.
  *
  * Note that the data stored by user into the ::lysc_node.priv pointer are kept
  * untouched and the caller is responsible for freeing this private data.

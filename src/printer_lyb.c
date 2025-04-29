@@ -726,7 +726,7 @@ lyb_print_metadata(struct ly_out *out, const struct lyd_node *node, struct lyd_l
             continue;
         }
 
-        /* model */
+        /* module */
         LY_CHECK_RET(lyb_print_module(out, iter->annotation->module, lybctx->lybctx));
 
         /* annotation name with length */
@@ -1155,7 +1155,7 @@ lyb_print_node(struct ly_out *out, const struct lyd_node **printed_node, struct 
     /* write node type */
     LY_CHECK_RET(lyb_print_lyb_type(out, node, lybctx));
 
-    /* write model info first */
+    /* write module info first */
     if (node->schema && ((node->flags & LYD_EXT) || !lysc_data_parent(node->schema))) {
         LY_CHECK_RET(lyb_print_module(out, node->schema->module, lybctx->lybctx));
     }

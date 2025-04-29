@@ -41,9 +41,9 @@ struct lyxp_expr;
 /**
  * @page howtoSchema YANG Modules
  *
- * To be able to work with YANG data instances, libyang has to represent YANG data models. All the processed modules are stored
+ * To be able to work with YANG data instances, libyang has to represent YANG data modules. All the processed modules are stored
  * in libyang [context](@ref howtoContext) and loaded using [parser functions](@ref howtoSchemaParsers). It means, that there is
- * no way to create/change YANG module programmatically. However, all the YANG model definitions are available and can be examined
+ * no way to create/change YANG module programmatically. However, all the YANG module definitions are available and can be examined
  * through the C structures. All the context's modules together form YANG Schema for the data being instantiated.
  *
  * Any YANG module is represented as ::lys_module. In fact, the module is represented in two different formats. As ::lys_module.parsed,
@@ -70,7 +70,7 @@ struct lyxp_expr;
  * the implemented module cannot be changed back to just imported module. Note also that only one revision of a specific module
  * can be implemented in a single context. The imported modules are used only as a
  * source of definitions for types and groupings for uses statements. The data in such modules are ignored - caller
- * is not allowed to create the data (including instantiating identities) defined in the model via data parsers,
+ * is not allowed to create the data (including instantiating identities) defined in the module via data parsers,
  * the default nodes are not added into any data tree and mandatory nodes are not checked in the data trees.
  *
  * The compiled schema tree nodes are able to hold private objects (::lysc_node.priv as a pointer to a structure,

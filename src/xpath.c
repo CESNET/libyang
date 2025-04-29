@@ -47,7 +47,7 @@
 static LY_ERR reparse_or_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t depth);
 static LY_ERR eval_expr_select(const struct lyxp_expr *exp, uint32_t *tok_idx, enum lyxp_expr_type etype,
         struct lyxp_set *set, uint32_t options);
-static LY_ERR moveto_resolve_model(const char **qname, uint32_t *qname_len, const struct lyxp_set *set,
+static LY_ERR moveto_resolve_module(const char **qname, uint32_t *qname_len, const struct lyxp_set *set,
         const struct lysc_node *ctx_scnode, const struct lys_module **moveto_mod);
 static LY_ERR moveto_axis_node_next(const struct lyd_node **iter, enum lyxp_node_type *iter_type,
         const struct lyd_node *node, enum lyxp_node_type node_type, enum lyxp_axis axis, struct lyxp_set *set);
@@ -4117,7 +4117,7 @@ static LY_ERR
 xpath_derived_ident_module(const char **qname, uint32_t *qname_len, const struct lyxp_set *set,
         const struct lys_module **mod)
 {
-    LY_CHECK_RET(moveto_resolve_model(qname, qname_len, set, set->cur_node ? set->cur_node->schema : NULL, mod));
+    LY_CHECK_RET(moveto_resolve_module(qname, qname_len, set, set->cur_node ? set->cur_node->schema : NULL, mod));
     if (!*mod) {
         /* unprefixed JSON identity */
         assert(set->format == LY_VALUE_JSON);
@@ -5661,7 +5661,7 @@ xpath_pi_text(struct lyxp_set *set, enum lyxp_axis axis, uint32_t options)
 }
 
 /**
- * @brief Skip prefix and return corresponding model. Logs directly.
+ * @brief Skip prefix and return corresponding module. Logs directly.
  *
  * XPath @p set is expected to be a (sc)node set!
  *
@@ -5673,7 +5673,7 @@ xpath_pi_text(struct lyxp_set *set, enum lyxp_axis axis, uint32_t options)
  * @return LY_ERR
  */
 static LY_ERR
-moveto_resolve_model(const char **qname, uint32_t *qname_len, const struct lyxp_set *set,
+moveto_resolve_module(const char **qname, uint32_t *qname_len, const struct lyxp_set *set,
         const struct lysc_node *ctx_scnode, const struct lys_module **moveto_mod)
 {
     const struct lys_module *mod = NULL;
@@ -7708,7 +7708,7 @@ eval_name_test_try_compile_predicate_key(const char *nametest, uint32_t len, con
     const struct lys_module *mod;
 
     /* prefix (module) */
-    LY_CHECK_RET(moveto_resolve_model(&nametest, &len, set, ctx_scnode, &mod));
+    LY_CHECK_RET(moveto_resolve_module(&nametest, &len, set, ctx_scnode, &mod));
     if (mod && (mod != key->module)) {
         return LY_ENOT;
     }
@@ -8069,7 +8069,7 @@ continue_search:
     }
 
     if (idx) {
-        /* continue searching all the following models */
+        /* continue searching all the following modules */
         goto continue_search;
     }
 
@@ -8167,7 +8167,7 @@ eval_name_test_with_predicate(const struct lyxp_expr *exp, uint32_t *tok_idx, en
     }
 
     /* parse (and skip) module name */
-    rc = moveto_resolve_model(&ncname, &ncname_len, set, NULL, &moveto_mod);
+    rc = moveto_resolve_module(&ncname, &ncname_len, set, NULL, &moveto_mod);
     LY_CHECK_GOTO(rc, cleanup);
 
     if ((ncname[0] == '*') && (ncname_len == 1)) {

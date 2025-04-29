@@ -193,7 +193,7 @@ identityref_check_base(const struct lysc_ident *ident, struct lysc_type_identity
 /**
  * @brief Check if @p ident is not disabled.
  *
- * Identity is disabled if it is located in an unimplemented model or
+ * Identity is disabled if it is located in an unimplemented module or
  * it can be disabled by if-feature. Calling this function may invoke
  * the implementation of another module.
  *

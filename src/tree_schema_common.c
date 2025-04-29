@@ -719,7 +719,7 @@ lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, 
             revision, &filepath, &format));
     if (!filepath) {
         if (required) {
-            LOGERR(ctx, LY_ENOTFOUND, "Data model \"%s%s%s\" not found in local searchdirs.", name, revision ? "@" : "",
+            LOGERR(ctx, LY_ENOTFOUND, "Module \"%s%s%s\" not found in local searchdirs.", name, revision ? "@" : "",
                     revision ? revision : "");
             ret = LY_ENOTFOUND;
         }

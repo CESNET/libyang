@@ -343,7 +343,7 @@ struct ly_ctx {
     struct ly_dict dict;              /**< dictionary to effectively store strings used in the context related structures */
     struct ly_set search_paths;       /**< set of directories where to search for schema's imports/includes */
     struct ly_set list;               /**< set of loaded YANG schemas */
-    ly_module_imp_clb imp_clb;        /**< optional callback for retrieving missing included or imported models */
+    ly_module_imp_clb imp_clb;        /**< optional callback for retrieving missing included or imported modules */
     void *imp_clb_data;               /**< optional private data for ::ly_ctx.imp_clb */
     struct lys_glob_unres unres;      /**< global unres, should be empty unless there are modules prepared for
                                            compilation if ::LY_CTX_EXPLICIT_COMPILE flag is set */

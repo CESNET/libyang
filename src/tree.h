@@ -26,7 +26,7 @@ extern "C" {
  *
  * Internally, XPath evaluation is performed on __when__ and __must__ conditions in the schema. For that almost
  * a full [XPath 1.0](http://www.w3.org/TR/1999/REC-xpath-19991116/) evaluator was implemented.
- * In YANG models you can also find paths identifying __augment__ targets, __leafref__ targets, and trivial paths in
+ * In YANG modules you can also find paths identifying __augment__ targets, __leafref__ targets, and trivial paths in
  * __choice default__ and __unique__ statements argument. The exact format of all those paths can be found in the
  * relevant RFCs. Further will only be discussed paths that are used directly in libyang API functions.
  *

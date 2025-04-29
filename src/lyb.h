@@ -51,8 +51,8 @@ struct lysc_node;
  sb          = siblings_start
  se          = siblings_end
  siblings    = zero-LYB_SIZE_BYTES | (sb instance+ se)
- instance    = node_type model hash node
- model       = 16bit_zero | (model_name_length model_name revision)
+ instance    = node_type module hash node
+ module      = 16bit_zero | (module_name_length module_name revision)
  node        = opaq | leaflist | list | any | inner | leaf
  opaq        = opaq_data siblings
  leaflist    = sb leaf+ se
@@ -171,8 +171,8 @@ void lyd_lyb_ctx_free(struct lyd_ctx *lydctx);
 /* Just a helper macro */
 #define LYB_META_BYTES (LYB_INCHUNK_BYTES + LYB_SIZE_BYTES)
 
-/* model revision as XXXX XXXX XXXX XXXX (2B) (year is offset from 2000)
- *                   YYYY YYYM MMMD DDDD */
+/* module revision as XXXX XXXX XXXX XXXX (2B) (year is offset from 2000)
+ *                    YYYY YYYM MMMD DDDD */
 #define LYB_REV_YEAR_OFFSET 2000
 #define LYB_REV_YEAR_MASK   0xfe00U
 #define LYB_REV_YEAR_SHIFT  9

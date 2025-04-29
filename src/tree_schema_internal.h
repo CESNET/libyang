@@ -539,7 +539,7 @@ struct lysp_load_module_data {
 /**
  * @brief Parse a module and add it into the context.
  *
- * @param[in] ctx libyang context where to process the data model.
+ * @param[in] ctx libyang context to use.
  * @param[in] in Input structure.
  * @param[in] format Format of the input data (YANG or YIN).
  * @param[in] mod_data Optional expected module data to check.
@@ -556,7 +556,7 @@ LY_ERR lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
  *
  * The latest_revision flag of submodule is updated.
  *
- * @param[in] ctx libyang context where to process the data model.
+ * @param[in] ctx libyang context to use.
  * @param[in] in Input structure.
  * @param[in] format Format of the input data (YANG or YIN).
  * @param[in] main_ctx Parser context of the main module.

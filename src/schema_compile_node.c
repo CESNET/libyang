@@ -1492,7 +1492,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
 
         if (basetype == LY_TYPE_ENUM) {
             if (enums_p[u].flags & LYS_SET_VALUE) {
-                /* value assigned by model */
+                /* value assigned by module */
                 cur_val = (int32_t)enums_p[u].value;
                 /* check collision with other values */
                 LY_ARRAY_FOR(*bitenums, v) {
@@ -1526,7 +1526,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
             }
         } else { /* LY_TYPE_BITS */
             if (enums_p[u].flags & LYS_SET_VALUE) {
-                /* value assigned by model */
+                /* value assigned by module */
                 cur_pos = (uint32_t)enums_p[u].value;
                 /* check collision with other values */
                 LY_ARRAY_FOR(*bitenums, v) {
