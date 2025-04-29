@@ -145,13 +145,11 @@ struct ly_in;
                                                  resolved, and default values are not added (only the ones parsed are
                                                  present). */
 #define LYD_PARSE_STRICT    0x020000        /**< Instead of silently ignoring data without schema definition raise an error.
-                                                 Do not combine with ::LYD_PARSE_OPAQ (except for ::LYD_LYB). */
+                                                 Do not combine with ::LYD_PARSE_OPAQ. Always set for ::LYD_LYB. */
 #define LYD_PARSE_OPAQ      0x040000        /**< Instead of silently ignoring data without definition, parse them into
                                                  an opaq node. Do not combine with ::LYD_PARSE_STRICT (except for ::LYD_LYB). */
 #define LYD_PARSE_NO_STATE  0x080000        /**< Forbid state data in the parsed data. Usually used with ::LYD_VALIDATE_NO_STATE. */
-#define LYD_PARSE_LYB_MOD_UPDATE  0x100000  /**< Only for LYB format, allow parsing data printed using a specific module
-                                                 revision to be loaded even with a module with the same name but newer
-                                                 revision. */
+#define LYD_PARSE_LYB_MOD_UPDATE  0x100000  /**< Deprecated, ignored. */
 #define LYD_PARSE_ORDERED 0x200000          /**< Do not search for the correct place of each node but instead expect
                                                  that the nodes are being parsed in the correct schema-based order,
                                                  which is always true if the data were printed by libyang and not

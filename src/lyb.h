@@ -83,8 +83,6 @@ struct lylyb_ctx {
     uint64_t line;             /* current line */
     struct ly_in *in;          /* input structure */
 
-    const struct lys_module **models;
-
     struct lyd_lyb_sibling {
         size_t written;
         size_t position;
@@ -97,6 +95,7 @@ struct lylyb_ctx {
         struct lysc_node *first_sibling;
         struct ly_ht *ht;
     } *sib_hts;
+    ly_bool empty_hash;
 };
 
 /**
@@ -111,7 +110,7 @@ void lyd_lyb_ctx_free(struct lyd_ctx *lydctx);
 #define LYB_SIBLING_STEP 4
 
 /* current LYB format version */
-#define LYB_HEADER_VERSION_NUM 0x06
+#define LYB_HEADER_VERSION_NUM 0x07
 
 /* LYB format version mask of the header byte */
 #define LYB_HEADER_VERSION_MASK 0x0F
@@ -196,14 +195,5 @@ LYB_HASH lyb_get_hash(const struct lysc_node *node, uint8_t collision_id);
  * @param[in] mod Module to process.
  */
 void lyb_cache_module_hash(const struct lys_module *mod);
-
-/**
- * @brief Check whether a node's module is in a module array.
- *
- * @param[in] node Node to check.
- * @param[in] models Modules in a sized array.
- * @return Boolean value whether @p node's module was found in the given @p models array.
- */
-ly_bool lyb_has_schema_model(const struct lysc_node *node, const struct lys_module **models);
 
 #endif /* LY_LYB_H_ */

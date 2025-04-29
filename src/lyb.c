@@ -109,17 +109,3 @@ lyb_cache_module_hash(const struct lys_module *mod)
     /* UNLOCK */
     pthread_mutex_unlock(&mod->ctx->lyb_hash_lock);
 }
-
-ly_bool
-lyb_has_schema_model(const struct lysc_node *node, const struct lys_module **models)
-{
-    LY_ARRAY_COUNT_TYPE u;
-
-    LY_ARRAY_FOR(models, u) {
-        if (node->module == models[u]) {
-            return 1;
-        }
-    }
-
-    return 0;
-}
