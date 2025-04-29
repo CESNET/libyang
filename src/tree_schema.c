@@ -846,7 +846,7 @@ _lys_set_implemented(struct lys_module *mod, const char **features, struct lys_g
         }
     }
 
-    /* Try to find module with LYS_MOD_IMPORTED_REV flag. */
+    /* try to find module with LYS_MOD_IMPORTED_REV flag */
     i = 0;
     while ((mod_iter = ly_ctx_get_module_iter(mod->ctx, &i))) {
         if (!strcmp(mod_iter->name, mod->name) && (mod_iter != mod) && (mod_iter->latest_revision & LYS_MOD_IMPORTED_REV)) {
@@ -1197,6 +1197,9 @@ lys_set_implemented(struct lys_module *mod, const char **features)
         /* unres resolved */
         lys_unres_glob_erase(unres);
     }
+
+    /* new context state */
+    ly_ctx_new_change(mod->ctx);
 
 cleanup:
     if (ret) {
@@ -2190,7 +2193,6 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const st
     /* add into context */
     rc = ly_set_add(&ctx->list, mod, 1, NULL);
     LY_CHECK_GOTO(rc, cleanup);
-    ctx->change_count++;
 
     /* resolve includes and all imports */
     LY_CHECK_GOTO(rc = lysp_resolve_import_include(pctx, mod->parsed, new_mods), cleanup);
@@ -2298,6 +2300,9 @@ lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char 
         /* unres resolved */
         lys_unres_glob_erase(&ctx->unres);
     }
+
+    /* new context state */
+    ly_ctx_new_change(ctx);
 
 cleanup:
     if (ret) {

@@ -246,6 +246,9 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, c
         lys_unres_glob_erase(&ctx->unres);
     }
 
+    /* new context state */
+    ly_ctx_new_change(ctx);
+
 cleanup:
     if (ret) {
         lys_unres_glob_revert(ctx, &ctx->unres);
@@ -753,12 +756,22 @@ ly_ctx_get_change_count(const struct ly_ctx *ctx)
 LIBYANG_API_DEF uint32_t
 ly_ctx_get_modules_hash(const struct ly_ctx *ctx)
 {
+    LY_CHECK_ARG_RET(ctx, ctx, 0);
+
+    return ctx->mod_hash;
+}
+
+void
+ly_ctx_new_change(struct ly_ctx *ctx)
+{
     const struct lys_module *mod;
     uint32_t i = ly_ctx_internal_modules_count(ctx), hash = 0, fi = 0;
     struct lysp_feature *f = NULL;
 
-    LY_CHECK_ARG_RET(ctx, ctx, 0);
+    /* change counter */
+    ctx->change_count++;
 
+    /* module hash */
     while ((mod = ly_ctx_get_module_iter(ctx, &i))) {
         /* name */
         hash = lyht_hash_multi(hash, mod->name, strlen(mod->name));
@@ -779,8 +792,7 @@ ly_ctx_get_modules_hash(const struct ly_ctx *ctx)
         hash = lyht_hash_multi(hash, (char *)&mod->implemented, sizeof mod->implemented);
     }
 
-    hash = lyht_hash_multi(hash, NULL, 0);
-    return hash;
+    ctx->mod_hash = lyht_hash_multi(hash, NULL, 0);
 }
 
 LIBYANG_API_DEF ly_module_imp_clb

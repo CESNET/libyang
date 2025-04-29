@@ -1732,7 +1732,6 @@ lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
     LYSC_CTX_INIT_PMOD(ctx, sp, NULL);
     ctx.unres = unres;
 
-    ++mod->ctx->change_count;
     mod->compiled = mod_c = calloc(1, sizeof *mod_c);
     LY_CHECK_ERR_RET(!mod_c, LOGMEM(mod->ctx), LY_EMEM);
     mod_c->mod = mod;
@@ -1821,6 +1820,8 @@ lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
 
     /* finish compilation for all unresolved module items in the context */
     LY_CHECK_GOTO(ret = lys_compile_unres_mod(&ctx), cleanup);
+
+    ly_ctx_new_change(mod->ctx);
 
 cleanup:
     ly_log_location_revert(0, 0, 1, 0);

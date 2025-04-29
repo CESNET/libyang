@@ -349,6 +349,8 @@ struct ly_ctx {
                                            compilation if ::LY_CTX_EXPLICIT_COMPILE flag is set */
     uint16_t change_count;            /**< count of changes of the context, on some changes it could be incremented
                                            more times */
+    uint32_t mod_hash;                /**< hash of the current context, includes name/revision/enabled features/implement state
+                                           of every loaded module */
     uint16_t flags;                   /**< context settings, see @ref contextoptions */
 
     ly_ext_data_clb ext_clb;          /**< optional callback for providing extension-specific run-time data for extensions */
@@ -359,6 +361,13 @@ struct ly_ctx {
     struct ly_set plugins_types;      /**< context specific set of type plugins */
     struct ly_set plugins_extensions; /**< contets specific set of extension plugins */
 };
+
+/**
+ * @brief Record a change of the context, its modules.
+ *
+ * @param[in] ctx Changed context.
+ */
+void ly_ctx_new_change(struct ly_ctx *ctx);
 
 /**
  * @brief Get the (only) implemented YANG module specified by its name.
