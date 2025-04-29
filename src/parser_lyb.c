@@ -1459,7 +1459,7 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
         /* ext, read module name */
         LY_CHECK_GOTO(ret = lyb_read_module(lybctx->lybctx, &mod_name, mod_rev), cleanup);
 
-        /* read schema node name, find the nexted ext schema node */
+        /* read schema node name, find the nested ext schema node */
         LY_CHECK_GOTO(ret = lyb_parse_schema_nested_ext(lybctx, parent, mod_name, &snode), cleanup);
         break;
     }
