@@ -611,8 +611,9 @@ lyb_print_header(struct ly_out *out)
 {
     uint8_t byte = 0;
 
-    /* version, future flags */
-    byte |= LYB_VERSION_NUM;
+    /* version, hash algorithm (flags) */
+    byte |= LYB_HEADER_VERSION_NUM;
+    byte |= LYB_HEADER_HASH_ALG;
 
     LY_CHECK_RET(ly_write_(out, (char *)&byte, 1));
 

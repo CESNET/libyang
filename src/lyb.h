@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Header for LYB format printer & parser
  *
- * Copyright (c) 2020 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -111,10 +111,20 @@ void lyd_lyb_ctx_free(struct lyd_ctx *lydctx);
 #define LYB_SIBLING_STEP 4
 
 /* current LYB format version */
-#define LYB_VERSION_NUM 0x05
+#define LYB_HEADER_VERSION_NUM 0x06
 
 /* LYB format version mask of the header byte */
-#define LYB_VERSION_MASK 0x0F
+#define LYB_HEADER_VERSION_MASK 0x0F
+
+/* current LYB hash function */
+#ifdef LY_XXHASH_SUPPORT
+# define LYB_HEADER_HASH_ALG 0x20  /**< xxhash */
+#else
+# define LYB_HEADER_HASH_ALG 0x10  /**< one-at-a-time hash */
+#endif
+
+/* LYB hash algorithm mask of the header byte */
+#define LYB_HEADER_HASH_MASK 0x30
 
 /**
  * LYB schema hash constants

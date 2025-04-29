@@ -1657,12 +1657,18 @@ lyb_parse_header(struct lylyb_ctx *lybctx)
 {
     uint8_t byte = 0;
 
-    /* version, future flags */
+    /* version, hash algorithm (flags) */
     lyb_read((uint8_t *)&byte, sizeof byte, lybctx);
 
-    if ((byte & LYB_VERSION_MASK) != LYB_VERSION_NUM) {
+    if ((byte & LYB_HEADER_VERSION_MASK) != LYB_HEADER_VERSION_NUM) {
         LOGERR(lybctx->ctx, LY_EINVAL, "Invalid LYB format version \"0x%02x\", expected \"0x%02x\".",
-                byte & LYB_VERSION_MASK, LYB_VERSION_NUM);
+                byte & LYB_HEADER_VERSION_MASK, LYB_HEADER_VERSION_NUM);
+        return LY_EINVAL;
+    }
+
+    if ((byte & LYB_HEADER_HASH_MASK) != LYB_HEADER_HASH_ALG) {
+        LOGERR(lybctx->ctx, LY_EINVAL, "Different LYB format hash algorithm \"0x%02x\" used, expected \"0x%02x\".",
+                byte & LYB_HEADER_HASH_MASK, LYB_HEADER_HASH_ALG);
         return LY_EINVAL;
     }
 
