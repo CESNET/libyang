@@ -696,8 +696,6 @@ cleanup:
  * @param[in] revision Optional revision of the (sub)module to load, if NULL the newest revision is being loaded.
  * @param[in] main_ctx Parser context of the main module in case of loading submodule.
  * @param[in] main_name Main module name in case of loading submodule.
- * @param[in] required Module is required so error (even if the input file not found) are important. If 0, there is some
- * backup and it is actually ok if the input data are not found. However, parser reports errors even in this case.
  * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
  * @param[out] result Parsed YANG schema tree of the requested module (struct lys_module*) or submodule (struct lysp_submodule*).
  * If it is a module, it is already in the context!
@@ -706,7 +704,7 @@ cleanup:
  */
 static LY_ERR
 lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, struct lysp_ctx *main_ctx,
-        const char *main_name, ly_bool required, struct ly_set *new_mods, void **result)
+        const char *main_name, struct ly_set *new_mods, void **result)
 {
     struct ly_in *in;
     char *filepath = NULL;
@@ -718,11 +716,7 @@ lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, 
     LY_CHECK_RET(lys_search_localfile(ly_ctx_get_searchdirs(ctx), !(ctx->flags & LY_CTX_DISABLE_SEARCHDIR_CWD), name,
             revision, &filepath, &format));
     if (!filepath) {
-        if (required) {
-            LOGERR(ctx, LY_ENOTFOUND, "Module \"%s%s%s\" not found in local searchdirs.", name, revision ? "@" : "",
-                    revision ? revision : "");
-            ret = LY_ENOTFOUND;
-        }
+        LOGVRB("Module \"%s%s%s\" not found in local searchdirs.", name, revision ? "@" : "", revision ? revision : "");
         goto cleanup;
     }
 
@@ -810,7 +804,7 @@ search_file:
         /* check we can use searchdirs and that we should */
         if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS) &&
                 (!mod_latest || !(mod_latest->latest_revision & LYS_MOD_LATEST_SEARCHDIRS))) {
-            LY_CHECK_RET(lys_parse_localfile(ctx, name, revision, NULL, NULL, mod_latest ? 0 : 1, new_mods, (void **)mod));
+            LY_CHECK_RET(lys_parse_localfile(ctx, name, revision, NULL, NULL, new_mods, (void **)mod));
         }
         if (*mod && !revision) {
             /* we got the latest revision module in the searchdirs */
@@ -1179,8 +1173,8 @@ search_clb:
 search_file:
             if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
                 /* submodule was not received from the callback or there is no callback set */
-                lys_parse_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, pctx->main_ctx,
-                        PARSER_CUR_PMOD(pctx->main_ctx)->mod->name, 1, new_mods, (void **)&submod);
+                LY_CHECK_RET(lys_parse_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, pctx->main_ctx,
+                        PARSER_CUR_PMOD(pctx->main_ctx)->mod->name, new_mods, (void **)&submod));
 
                 /* update inc pointer - parsing another (YANG 1.0) submodule can cause injecting
                  * submodule's include into main module, where it is missing */
