@@ -242,7 +242,6 @@ else()
     option(ENABLE_TESTS "Build tests" OFF)
     option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" OFF)
 endif()
-option(ENABLE_PERF_TESTS "Build performance tests" OFF)
 option(ENABLE_COVERAGE "Build code coverage report from tests" OFF)
 option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL" OFF)
 option(ENABLE_INTERNAL_DOCS "Generate doxygen documentation also from internal headers" OFF)
@@ -297,22 +296,20 @@ if(ENABLE_TESTS)
     endif()
 endif()
 
-if(ENABLE_PERF_TESTS)
-    find_path(VALGRIND_INCLUDE_DIR
-        NAMES
-        valgrind/callgrind.h
-        PATHS
-        /usr/include
-        /usr/local/include
-        /opt/local/include
-        /sw/include
-        ${CMAKE_INCLUDE_PATH}
-        ${CMAKE_INSTALL_PREFIX}/include)
-    if(VALGRIND_INCLUDE_DIR)
-        set(HAVE_CALLGRIND 1)
-    else()
-        message(STATUS "Disabling callgrind macros in performance tests because of missing valgrind headers")
-    endif()
+find_path(VALGRIND_INCLUDE_DIR
+    NAMES
+    valgrind/callgrind.h
+    PATHS
+    /usr/include
+    /usr/local/include
+    /opt/local/include
+    /sw/include
+    ${CMAKE_INCLUDE_PATH}
+    ${CMAKE_INSTALL_PREFIX}/include)
+if(VALGRIND_INCLUDE_DIR)
+    set(HAVE_CALLGRIND 1)
+else()
+    message(STATUS "Disabling callgrind macros in performance tests because of missing valgrind headers")
 endif()
 
 if(ENABLE_COVERAGE)
@@ -453,7 +450,7 @@ if(PKG_CONFIG_FOUND)
 endif()
 
 # tests
-if(ENABLE_TESTS OR ENABLE_PERF_TESTS)
+if(ENABLE_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()

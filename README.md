@@ -241,16 +241,7 @@ $ make test
 
 There is a performance measurement tool included that prints information about
 the time required to execute common use-cases of working with YANG instance data.
-
-To enable this test, use an option and to get representative results, enable Release build type:
-```
-$ cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_PERF_TESTS=ON ..
-```
-and to run the test with seeing its output run:
-```
-$ make
-$ ctest -V -R ly_perf
-```
+It is always compiled if the tests are but needs to be run manually.
 
 ### Code Coverage
 

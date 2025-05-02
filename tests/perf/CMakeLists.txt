@@ -13,6 +13,3 @@ endif()
 if(NOT WIN32)
     target_link_libraries(ly_perf m)
 endif()
-
-add_test(NAME ly_perf_1000 COMMAND ly_perf 1000 10)
-add_test(NAME ly_perf_100000 COMMAND ly_perf 100000 3)
