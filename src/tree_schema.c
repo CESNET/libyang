@@ -1539,7 +1539,8 @@ lysp_load_module_data_check(const struct ly_ctx *ctx, struct lysp_module *mod, s
 
 LY_ERR
 lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, struct lysp_ctx *main_ctx,
-        const struct lysp_load_module_data *mod_data, struct ly_set *new_mods, struct lysp_submodule **submodule)
+        const struct lysp_load_module_data *mod_data, ly_bool in_searchdirs, struct ly_set *new_mods,
+        struct lysp_submodule **submodule)
 {
     LY_ERR rc = LY_SUCCESS, r;
     struct lysp_submodule *submod = NULL, *latest_sp;
@@ -1590,7 +1591,9 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
             latest_sp = NULL;
         }
     } else {
-        submod->latest_revision = 1;
+        /* if found in searchdirs and looking for the latest revision, it is the latest revision available,
+         * otherwise the only such submodule in the context */
+        submod->latest_revision = (in_searchdirs && !mod_data->revision) ? 2 : 1;
     }
 
     /* check the parsed submodule is as expected */

@@ -732,7 +732,7 @@ lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, 
     mod_data.path = filepath;
     mod_data.submoduleof = main_name;
     if (main_ctx) {
-        ret = lys_parse_submodule(ctx, in, format, main_ctx, &mod_data, new_mods, (struct lysp_submodule **)&mod);
+        ret = lys_parse_submodule(ctx, in, format, main_ctx, &mod_data, 1, new_mods, (struct lysp_submodule **)&mod);
     } else {
         ret = lys_parse_in(ctx, in, format, &mod_data, new_mods, (struct lys_module **)&mod);
 
@@ -1166,7 +1166,7 @@ lysp_load_submod_from_clb_or_file(struct lysp_ctx *pctx, const char *name, const
                 mod_data.name = name;
                 mod_data.revision = revision;
                 mod_data.submoduleof = PARSER_CUR_PMOD(pctx)->mod->name;
-                r = lys_parse_submodule(ctx, in, format, pctx->main_ctx, &mod_data, new_mods, submod);
+                r = lys_parse_submodule(ctx, in, format, pctx->main_ctx, &mod_data, 0, new_mods, submod);
                 ly_in_free(in, 0);
                 if (submodule_data_free) {
                     submodule_data_free((void *)submodule_data, ctx->imp_clb_data);
@@ -1186,12 +1186,6 @@ lysp_load_submod_from_clb_or_file(struct lysp_ctx *pctx, const char *name, const
                 PARSER_CUR_PMOD(pctx)->is_submod ? ((struct lysp_submodule *)PARSER_CUR_PMOD(pctx))->name :
                 PARSER_CUR_PMOD(pctx)->mod->name);
         return LY_ENOTFOUND;
-    }
-
-    if (!revision && ((*submod)->latest_revision == 1)) {
-        /* update the latest_revision flag - here we have selected the latest available schema,
-         * consider that even the callback provides correct latest revision */
-        (*submod)->latest_revision = 2;
     }
 
     return LY_SUCCESS;
@@ -1220,12 +1214,21 @@ lysp_load_submodules(struct lysp_ctx *pctx, struct lysp_module *pmod, struct ly_
                 submod_included = 0;
             } else if (r) {
                 return r;
+            } else if (inc->submodule->latest_revision == 2) {
+                /* submodule found and is the latest existing revision */
+                continue;
             }
         }
 
         /* try to use currently parsed submodule */
         r = lysp_parsed_mods_get_submodule(pctx, inc);
-        LY_CHECK_RET(r != LY_ENOT, r);
+        if (r && (r != LY_ENOT)) {
+            return r;
+        } else if (!r && ((inc->submodule->latest_revision == 2) || inc->submodule->parsing)) {
+            /* use the module if we already have its latest revision or if it is being parsed, we have to stop looking
+             * recursively for latest revisions at some point to prevent infinite recursion */
+            continue;
+        }
 
         /* try to load the submodule */
         LY_CHECK_RET(lysp_load_submod_from_clb_or_file(pctx, inc->name, inc->rev[0] ? inc->rev : NULL, new_mods, &submod));
