@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief common internal definitions for libyang
  *
- * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -679,5 +679,14 @@ LY_ERR ly_munmap(void *addr, size_t length);
  * @return LY_SUCCESS or LY_EMEM.
  */
 LY_ERR ly_strcat(char **dest, const char *format, ...) _FORMAT_PRINTF(2, 3);
+
+/**
+ * @brief Get schema (context) for a mount point.
+ *
+ * @param[in] ext Compiled extension instance where the context is also stored.
+ * @param[out] ext_ctx Schema to use for parsing the data.
+ * @return LY_ERR value.
+ */
+LY_ERR lyplg_ext_schema_mount_get_ctx(struct lysc_ext_instance *ext, const struct ly_ctx **ext_ctx);
 
 #endif /* LY_COMMON_H_ */

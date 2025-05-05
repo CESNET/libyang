@@ -624,15 +624,8 @@ cleanup:
     return rc;
 }
 
-/**
- * @brief Get schema (context) for a mount point.
- *
- * @param[in] ext Compiled extension instance.
- * @param[out] ext_ctx Schema to use for parsing the data.
- * @return LY_ERR value.
- */
-static LY_ERR
-schema_mount_get_ctx(struct lysc_ext_instance *ext, const struct ly_ctx **ext_ctx)
+LY_ERR
+lyplg_ext_schema_mount_get_ctx(struct lysc_ext_instance *ext, const struct ly_ctx **ext_ctx)
 {
     LY_ERR ret = LY_SUCCESS, r;
     struct lyd_node *iter, *ext_data = NULL;
@@ -693,7 +686,7 @@ schema_mount_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent,
     const struct ly_ctx *ext_ctx = NULL;
 
     /* get context based on ietf-yang-library data */
-    if ((r = schema_mount_get_ctx(ext, &ext_ctx))) {
+    if ((r = lyplg_ext_schema_mount_get_ctx(ext, &ext_ctx))) {
         return r;
     }
 

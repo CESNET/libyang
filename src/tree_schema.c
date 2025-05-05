@@ -168,7 +168,7 @@ lys_getnext_(const struct lysc_node *last, const struct lysc_node *parent, const
     const struct lysc_node *next = NULL;
     ly_bool action_flag = 0, notif_flag = 0, sm_flag = options & LYS_GETNEXT_WITHSCHEMAMOUNT ? 0 : 1;
     LY_ARRAY_COUNT_TYPE u;
-    struct ly_ctx *sm_ctx = NULL;
+    const struct ly_ctx *sm_ctx = NULL;
     const struct lys_module *mod;
     uint32_t idx;
 
@@ -259,7 +259,7 @@ repeat:
                 LY_ARRAY_FOR(parent->exts, u) {
                     if (!strcmp(parent->exts[u].def->name, "mount-point") &&
                             !strcmp(parent->exts[u].def->module->name, "ietf-yang-schema-mount")) {
-                        lyplg_ext_schema_mount_create_context(&parent->exts[u], &sm_ctx);
+                        lyplg_ext_schema_mount_get_ctx(&parent->exts[u], &sm_ctx);
                         if (sm_ctx) {
                             /* some usable context created */
                             break;
@@ -275,10 +275,6 @@ repeat:
                         }
 
                         next = lys_getnext(NULL, NULL, mod->compiled, options & ~LYS_GETNEXT_WITHSCHEMAMOUNT);
-                    }
-                    if (!next) {
-                        /* no nodes found */
-                        ly_ctx_destroy(sm_ctx);
                     }
                 }
             }
