@@ -697,14 +697,15 @@ cleanup:
  * @param[in] main_ctx Parser context of the main module in case of loading submodule.
  * @param[in] main_name Main module name in case of loading submodule.
  * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
- * @param[out] result Parsed YANG schema tree of the requested module (struct lys_module*) or submodule (struct lysp_submodule*).
- * If it is a module, it is already in the context!
+ * @param[out] found Whether any (sub)module was found.
+ * @param[out] result Parsed YANG schema tree of the requested module (struct lys_module *) or submodule
+ * (struct lysp_submodule *). If a module, it has already been inserted into the context.
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
 static LY_ERR
 lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, struct lysp_ctx *main_ctx,
-        const char *main_name, struct ly_set *new_mods, void **result)
+        const char *main_name, struct ly_set *new_mods, ly_bool *found, void **result)
 {
     struct ly_in *in;
     char *filepath = NULL;
@@ -713,6 +714,7 @@ lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, 
     LY_ERR ret = LY_SUCCESS;
     struct lysp_load_module_data mod_data = {0};
 
+    *found = 0;
     *result = NULL;
 
     LY_CHECK_RET(lys_search_localfile(ly_ctx_get_searchdirs(ctx), !(ctx->flags & LY_CTX_DISABLE_SEARCHDIR_CWD), name,
@@ -740,6 +742,7 @@ lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, 
     ly_in_free(in, 1);
     LY_CHECK_GOTO(ret, cleanup);
 
+    *found = 1;
     *result = mod;
 
 cleanup:
@@ -766,7 +769,7 @@ lys_load_mod_from_clb_or_file(struct ly_ctx *ctx, const char *name, const char *
     LY_ERR r;
     const char *module_data = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
-    ly_bool clb_used, searchdirs_used;
+    ly_bool clb_used, searchdirs_used, found = 0;
 
     void (*module_data_free)(void *module_data, void *user_data) = NULL;
     struct lysp_load_module_data mod_data = {0};
@@ -794,7 +797,7 @@ lys_load_mod_from_clb_or_file(struct ly_ctx *ctx, const char *name, const char *
         searchdirs_used = 0;
     }
 
-    while (!*mod && (!clb_used || !searchdirs_used)) {
+    while (!found && (!clb_used || !searchdirs_used)) {
         if ((!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS) || searchdirs_used) && !clb_used) {
             if (!ctx->imp_clb(name, revision, NULL, NULL, ctx->imp_clb_data, &format, &module_data, &module_data_free)) {
                 /* parse the module returned by the callback */
@@ -807,6 +810,8 @@ lys_load_mod_from_clb_or_file(struct ly_ctx *ctx, const char *name, const char *
                     module_data_free((void *)module_data, ctx->imp_clb_data);
                 }
                 LY_CHECK_RET(r);
+
+                found = 1;
             }
             clb_used = 1;
 
@@ -815,7 +820,7 @@ lys_load_mod_from_clb_or_file(struct ly_ctx *ctx, const char *name, const char *
                 (*mod)->latest_revision |= LYS_MOD_LATEST_IMPCLB;
             }
         } else if (!searchdirs_used) {
-            LY_CHECK_RET(lys_parse_localfile(ctx, name, revision, NULL, NULL, new_mods, (void **)mod));
+            LY_CHECK_RET(lys_parse_localfile(ctx, name, revision, NULL, NULL, new_mods, &found, (void **)mod));
             searchdirs_used = 1;
 
             if (*mod && !revision) {
@@ -1119,27 +1124,33 @@ lysp_inject_submodule(struct lysp_ctx *pctx, struct lysp_include *inc)
 /**
  * @brief Load submodule from searchdirs or from callback.
  *
+ * Parsing another (YANG 1.0) submodule can cause inserting submodule's include into the main module moving
+ * existing includes (changing any pointers to includes).
+ *
  * @param[in] pctx Parser context to use.
  * @param[in] name Name of submodule to load.
  * @param[in] revision Revision of submodule to load.
+ * @param[in] submod_latest Submodule with the latest revision found in context, otherwise set to NULL.
  * @param[in,out] new_mods Set of all the new mods added to the context. Includes this submodule and all of its imports.
- * @param[out] submod Loaded submodule.
+ * @param[out] submod Parsed submodule, may be NULL if an adequate submodule has already been found before.
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
 static LY_ERR
 lysp_load_submod_from_clb_or_file(struct lysp_ctx *pctx, const char *name, const char *revision,
-        struct ly_set *new_mods, struct lysp_submodule **submod)
+        struct lysp_submodule *submod_latest, struct ly_set *new_mods, struct lysp_submodule **submod)
 {
     LY_ERR r;
     struct ly_ctx *ctx = PARSER_CTX(pctx);
-    ly_bool clb_used, searchdirs_used;
+    ly_bool clb_used, searchdirs_used, found = 0;
     const char *submodule_data = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
 
     void (*submodule_data_free)(void *module_data, void *user_data) = NULL;
     struct lysp_load_module_data mod_data = {0};
     struct ly_in *in;
+
+    assert(!submod_latest || (submod_latest->latest_revision != 2));
 
     *submod = NULL;
 
@@ -1157,7 +1168,7 @@ lysp_load_submod_from_clb_or_file(struct lysp_ctx *pctx, const char *name, const
         searchdirs_used = 0;
     }
 
-    while (!*submod && (!clb_used || !searchdirs_used)) {
+    while (!found && (!clb_used || !searchdirs_used)) {
         if ((!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS) || searchdirs_used) && !clb_used) {
             if (!ctx->imp_clb(PARSER_CUR_PMOD(pctx)->mod->name, NULL, name, revision, ctx->imp_clb_data, &format,
                     &submodule_data, &submodule_data_free)) {
@@ -1172,16 +1183,18 @@ lysp_load_submod_from_clb_or_file(struct lysp_ctx *pctx, const char *name, const
                     submodule_data_free((void *)submodule_data, ctx->imp_clb_data);
                 }
                 LY_CHECK_RET(r);
+
+                found = 1;
             }
             clb_used = 1;
         } else if (!searchdirs_used) {
             LY_CHECK_RET(lys_parse_localfile(ctx, name, revision, pctx->main_ctx,
-                    PARSER_CUR_PMOD(pctx->main_ctx)->mod->name, new_mods, (void **)submod));
+                    PARSER_CUR_PMOD(pctx->main_ctx)->mod->name, new_mods, &found, (void **)submod));
             searchdirs_used = 1;
         }
     }
 
-    if (!*submod) {
+    if (!*submod && !submod_latest) {
         LOGVAL(ctx, LYVE_REFERENCE, "Including \"%s\" submodule into \"%s\" failed, not found.", name,
                 PARSER_CUR_PMOD(pctx)->is_submod ? ((struct lysp_submodule *)PARSER_CUR_PMOD(pctx))->name :
                 PARSER_CUR_PMOD(pctx)->mod->name);
@@ -1231,16 +1244,21 @@ lysp_load_submodules(struct lysp_ctx *pctx, struct lysp_module *pmod, struct ly_
         }
 
         /* try to load the submodule */
-        LY_CHECK_RET(lysp_load_submod_from_clb_or_file(pctx, inc->name, inc->rev[0] ? inc->rev : NULL, new_mods, &submod));
+        LY_CHECK_RET(lysp_load_submod_from_clb_or_file(pctx, inc->name, inc->rev[0] ? inc->rev : NULL, inc->submodule,
+                new_mods, &submod));
 
-        /* update inc pointer - parsing another (YANG 1.0) submodule can cause injecting
-         * submodule's include into main module, where it is missing */
-        inc = &pmod->includes[u];
-        inc->submodule = submod;
+        if (submod) {
+            /* update inc pointer - parsing another (YANG 1.0) submodule can cause injecting
+             * submodule's include into main module, where it is missing */
+            inc = &pmod->includes[u];
 
-        if (!submod_included) {
-            /* the submodule include is not present in YANG 1.0 main module - add it there */
-            LY_CHECK_RET(lysp_inject_submodule(pctx, &pmod->includes[u]));
+            assert(!inc->submodule);
+            inc->submodule = submod;
+
+            if (!submod_included) {
+                /* the submodule include is not present in YANG 1.0 main module - add it there */
+                LY_CHECK_RET(lysp_inject_submodule(pctx, inc));
+            }
         }
     }
 

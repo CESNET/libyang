@@ -1034,6 +1034,21 @@ test_includes(void **state)
     }
 
     {
+        /* YANG 1.0 - including one submodule in 2 includes */
+        struct module_clb_list list[] = {
+            {"main_d", "module main_d { namespace urn:test:main_d; prefix md; include sub_d_one; include sub_d_two;}"},
+            {"sub_d_one", "submodule sub_d_one { belongs-to main_d { prefix md; } }"},
+            {"sub_d_two", "submodule sub_d_two { belongs-to main_d { prefix md; } include sub_d_one;}"},
+            {NULL, NULL}
+        };
+
+        ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
+        mod = ly_ctx_load_module(UTEST_LYCTX, "main_d", NULL, NULL);
+        assert_non_null(mod);
+        assert_int_equal(2, LY_ARRAY_COUNT(mod->parsed->includes));
+    }
+
+    {
         /* YANG 1.1 - the missing include sub_b_two in main_b is error */
         struct module_clb_list list[] = {
             {"main_b", "module main_b { yang-version 1.1; namespace urn:test:main_b; prefix mb; include sub_b_one;}"},
