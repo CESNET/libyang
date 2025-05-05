@@ -713,6 +713,8 @@ lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, 
     LY_ERR ret = LY_SUCCESS;
     struct lysp_load_module_data mod_data = {0};
 
+    *result = NULL;
+
     LY_CHECK_RET(lys_search_localfile(ly_ctx_get_searchdirs(ctx), !(ctx->flags & LY_CTX_DISABLE_SEARCHDIR_CWD), name,
             revision, &filepath, &format));
     if (!filepath) {
@@ -1210,7 +1212,6 @@ lysp_load_submodules(struct lysp_ctx *pctx, struct lysp_module *pmod, struct ly_
             continue;
         }
 
-        submod = NULL;
         submod_included = 1;
         if (pmod->is_submod) {
             /* try to find the submodule in the main module or its submodules */

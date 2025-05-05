@@ -1550,6 +1550,8 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
 
     LY_CHECK_ARG_RET(ctx, ctx, in, LY_EINVAL);
 
+    *submodule = NULL;
+
     switch (format) {
     case LYS_IN_YIN:
         rc = yin_parse_submodule(&yinctx, ctx, main_ctx, in, &submod);
