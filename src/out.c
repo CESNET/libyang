@@ -681,6 +681,12 @@ ly_out_printed(const struct ly_out *out)
     return out->func_printed;
 }
 
+LIBYANG_API_DEF size_t
+ly_out_printed_total(const struct ly_out *out)
+{
+    return out->printed;
+}
+
 LY_ERR
 ly_write_skip(struct ly_out *out, size_t count, size_t *position)
 {

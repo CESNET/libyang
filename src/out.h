@@ -63,6 +63,7 @@ extern "C" {
  *
  * - ::ly_out_type()
  * - ::ly_out_printed()
+ * - ::ly_out_printed_total()
  *
  * - ::ly_out_reset()
  * - ::ly_out_free()
@@ -290,6 +291,14 @@ LIBYANG_API_DECL LY_ERR ly_write(struct ly_out *out, const char *buf, size_t len
  * @return Number of printed bytes.
  */
 LIBYANG_API_DECL size_t ly_out_printed(const struct ly_out *out);
+
+/**
+ * @brief Get the total number of printed bytes of this out structure.
+ *
+ * @param[in] out Out structure used.
+ * @return Number of printed bytes.
+ */
+LIBYANG_API_DECL size_t ly_out_printed_total(const struct ly_out *out);
 
 /**
  * @brief Free the printer handler.
