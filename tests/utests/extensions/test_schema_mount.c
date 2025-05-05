@@ -1691,7 +1691,6 @@ static void
 test_lys_getnext(void **state)
 {
     const struct lysc_node *parent, *node;
-    struct ly_ctx *sm_ctx;
 
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
             "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
@@ -1765,7 +1764,6 @@ test_lys_getnext(void **state)
     node = lys_getnext(NULL, parent, NULL, LYS_GETNEXT_WITHSCHEMAMOUNT);
     assert_non_null(node);
     assert_string_equal(node->name, "schema-mounts");
-    sm_ctx = node->module->ctx;
 
     node = lys_getnext(node, parent, NULL, LYS_GETNEXT_WITHSCHEMAMOUNT);
     assert_non_null(node);
@@ -1785,8 +1783,6 @@ test_lys_getnext(void **state)
 
     node = lys_getnext(node, parent, NULL, LYS_GETNEXT_WITHSCHEMAMOUNT);
     assert_null(node);
-
-    ly_ctx_destroy(sm_ctx);
 }
 
 int
