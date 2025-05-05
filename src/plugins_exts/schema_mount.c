@@ -840,7 +840,7 @@ cleanup:
     return ret;
 }
 
-LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyplg_ext_schema_mount_get_parent_ref(const struct lysc_ext_instance *ext, struct ly_set **refs)
 {
     LY_ERR rc;
