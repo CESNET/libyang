@@ -1547,7 +1547,6 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
     struct lysp_yin_ctx *yinctx = NULL;
     struct lysp_ctx *pctx = NULL;
     struct lysf_ctx fctx = {.ctx = ctx};
-    const char *submod_name;
 
     LY_CHECK_ARG_RET(ctx, ctx, in, LY_EINVAL);
 
@@ -1592,21 +1591,19 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
         submod->latest_revision = 1;
     }
 
-    if (mod_data) {
-        /* check the parsed submodule it is as expected */
-        r = lysp_load_module_data_check(ctx, NULL, submod, mod_data);
-        if (r == LY_EEXIST) {
-            /* not an error, the submodule already exists so free this one */
-            ly_set_erase(&pctx->tpdfs_nodes, NULL);
-            ly_set_erase(&pctx->grps_nodes, NULL);
-            ly_set_erase(&pctx->ext_inst, NULL);
-            lysp_module_free(&fctx, (struct lysp_module *)submod);
-            submod = NULL;
-            goto cleanup;
-        } else if (r) {
-            rc = r;
-            goto cleanup;
-        }
+    /* check the parsed submodule is as expected */
+    r = lysp_load_module_data_check(ctx, NULL, submod, mod_data);
+    if (r == LY_EEXIST) {
+        /* not an error, the submodule already exists so free this one */
+        ly_set_erase(&pctx->tpdfs_nodes, NULL);
+        ly_set_erase(&pctx->grps_nodes, NULL);
+        ly_set_erase(&pctx->ext_inst, NULL);
+        lysp_module_free(&fctx, (struct lysp_module *)submod);
+        submod = NULL;
+        goto cleanup;
+    } else if (r) {
+        rc = r;
+        goto cleanup;
     }
 
     if (latest_sp) {
@@ -1620,19 +1617,7 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
 
 cleanup:
     if (rc) {
-        if (submod && submod->name) {
-            submod_name = submod->name;
-        } else if (mod_data) {
-            submod_name = mod_data->name;
-        } else {
-            submod_name = NULL;
-        }
-        if (submod_name) {
-            LOGERR(ctx, rc, "Parsing submodule \"%s\" failed.", submod_name);
-        } else {
-            LOGERR(ctx, rc, "Parsing submodule failed.");
-        }
-
+        LOGERR(ctx, rc, "Parsing submodule \"%s\" failed.", mod_data->name);
         if (pctx) {
             ly_set_erase(&pctx->tpdfs_nodes, NULL);
             ly_set_erase(&pctx->grps_nodes, NULL);
