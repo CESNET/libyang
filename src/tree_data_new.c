@@ -1287,7 +1287,10 @@ lyd_change_node_value(struct lyd_node_term *term, struct lyd_value *val, ly_bool
             rc = ((struct lysc_node_leaf *)term->schema)->type->plugin->duplicate(LYD_CTX(term), val, &term->value);
         }
 
-        /* reinserting */
+        /* update hash */
+        lyd_hash(target);
+
+        /* reinsert */
         lyd_insert_node(NULL, &first, target, LYD_INSERT_NODE_DEFAULT);
     } else {
         /* unlink hash */
@@ -1298,12 +1301,15 @@ lyd_change_node_value(struct lyd_node_term *term, struct lyd_value *val, ly_bool
         if (use_val) {
             term->value = *val;
         } else {
-            rc = ((struct lysc_node_leaf *)term->schema)->type->plugin->duplicate(LYD_CTX(term), val, &term->value);
+            LY_CHECK_RET(((struct lysc_node_leaf *)term->schema)->type->plugin->duplicate(LYD_CTX(term), val, &term->value));
         }
-    }
 
-    lyd_hash(target);
-    rc = lyd_insert_hash(target);
+        /* update hash */
+        lyd_hash(target);
+
+        /* reinsert hash */
+        LY_CHECK_RET(lyd_insert_hash(target));
+    }
 
     return rc;
 }
