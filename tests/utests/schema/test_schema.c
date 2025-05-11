@@ -1896,6 +1896,14 @@ test_lysc_path(void **state)
     path = lysc_path(node, LYSC_PATH_DATA_PATTERN, NULL, 0);
     assert_string_equal(path, "/b:a/l[k='%s'][l='%s'][m='%s']/n");
     free(path);
+    /* node is the same as in previous test */
+    path = lysc_path(node, LYSC_PATH_KEY_PATTERN, NULL, 0);
+    assert_string_equal(path, "/b:a/l[k='%s'][l='%s'][m='%s']/n");
+    free(path);
+    node = lys_find_path(UTEST_LYCTS, NULL, "/b:a/l/l", 0);
+    path = lysc_path(node, LYSC_PATH_KEY_PATTERN, NULL, 0);
+    assert_string_equal(path, "/b:a/l[k='%s']/l");
+    free(path);
 }
 
 /* TEST */
