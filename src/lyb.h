@@ -41,9 +41,8 @@ struct lysc_node;
  * after the "sibling" is printed, they are filled with actual valid metadata. As a consequence,
  * LYB data cannot be directly printed into streams!
  *
- * - data are preceded with information about all the used modules. It is needed because of
- * possible augments and deviations which must be known beforehand, otherwise schema hashes
- * could be matched to the wrong nodes.
+ * - data are preceded with information about the used context. The exact same context must be used for
+ * parsing the data to guarantee that all the schema nodes get the same hash.
  *
  * This is a short summary of the format:
  * @verbatim
