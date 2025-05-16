@@ -8145,7 +8145,7 @@ eval_name_test_with_predicate(const struct lyxp_expr *exp, uint32_t *tok_idx, en
     LY_ERR rc = LY_SUCCESS, r;
     const char *ncname, *ncname_dict = NULL;
     uint32_t i, ncname_len;
-    const struct lys_module *moveto_mod = NULL;
+    const struct lys_module *moveto_mod = NULL, *moveto_m;
     const struct lysc_node *scnode = NULL;
     struct ly_path_predicate *predicates = NULL;
     int scnode_skip_pred = 0;
@@ -8179,8 +8179,15 @@ eval_name_test_with_predicate(const struct lyxp_expr *exp, uint32_t *tok_idx, en
             (set->type == LYXP_SET_NODE_SET)) {
         /* find the matching schema node in some parent in the context */
         for (i = 0; i < set->used; ++i) {
+            if (moveto_mod && (set->val.nodes[i].type == LYXP_NODE_ELEM) &&
+                    (moveto_mod->ctx != LYD_CTX(set->val.nodes[i].node))) {
+                /* extension data, use the correct module */
+                moveto_m = ly_ctx_get_module_implemented(LYD_CTX(set->val.nodes[i].node), moveto_mod->name);
+            } else {
+                moveto_m = moveto_mod;
+            }
             if (eval_name_test_with_predicate_get_scnode(set->ctx, set->val.nodes[i].node, ncname, ncname_len,
-                    moveto_mod, set->root_type, set->format, &scnode)) {
+                    moveto_m, set->root_type, set->format, &scnode)) {
                 /* check failed */
                 scnode = NULL;
                 break;
