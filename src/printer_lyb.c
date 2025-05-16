@@ -538,8 +538,12 @@ lyb_print_header(struct ly_out *out, const struct ly_ctx *ctx)
 
     LY_CHECK_RET(ly_write_(out, (char *)&byte, sizeof byte));
 
-    /* context hash */
-    hash = ly_ctx_get_modules_hash(ctx);
+    /* context hash, if not printing empty data */
+    if (ctx) {
+        hash = ly_ctx_get_modules_hash(ctx);
+    } else {
+        hash = 0;
+    }
     LY_CHECK_RET(ly_write_(out, (char *)&hash, sizeof hash));
 
     return LY_SUCCESS;
