@@ -13,8 +13,6 @@ set timeout 5
 set prompt "> "
 # turn off dialog between expect and yanglint
 log_user 0
-# setting some large terminal width
-stty columns 720
 
 # default setup for every unit test
 variable ly_setup {
