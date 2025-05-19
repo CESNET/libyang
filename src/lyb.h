@@ -68,10 +68,11 @@ struct lysc_node;
  * @brief LYB data node type
  */
 enum lylyb_node_type {
-    LYB_NODE_TOP,   /**< top-level node */
-    LYB_NODE_CHILD, /**< child node with a parent */
-    LYB_NODE_OPAQ,  /**< opaque node */
-    LYB_NODE_EXT    /**< nested extension data node */
+    LYB_NODE_END = 0,   /**< no more nodes, marks the end of a list of nodes */
+    LYB_NODE_TOP,       /**< top-level node */
+    LYB_NODE_CHILD,     /**< child node with a parent */
+    LYB_NODE_OPAQ,      /**< opaque node */
+    LYB_NODE_EXT        /**< nested extension node */
 };
 
 /**
@@ -81,13 +82,6 @@ struct lylyb_ctx {
     const struct ly_ctx *ctx;
     uint64_t line;             /* current line */
     struct ly_in *in;          /* input structure */
-
-    struct lyd_lyb_sibling {
-        size_t written;
-        size_t position;
-        uint16_t inner_chunks;
-    } *siblings;
-    LY_ARRAY_COUNT_TYPE sibling_size;
 
     /* LYB printer only */
     struct lyd_lyb_sib_ht {
@@ -123,6 +117,9 @@ void lyd_lyb_ctx_free(struct lyd_ctx *lydctx);
 
 /* LYB hash algorithm mask of the header byte */
 #define LYB_HEADER_HASH_MASK 0x30
+
+/* reserved number of metadata instances used for the last instance */
+#define LYB_METADATA_END UINT8_MAX
 
 /**
  * LYB schema hash constants

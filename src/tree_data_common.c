@@ -1003,7 +1003,6 @@ lyd_any_value_str(const struct lyd_node *any, char **value_str)
     const struct lyd_node_any *a;
     struct lyd_node *tree = NULL;
     const char *str = NULL;
-    ly_bool dynamic = 0;
     LY_ERR ret = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(NULL, any, value_str, LY_EINVAL);
@@ -1018,12 +1017,6 @@ lyd_any_value_str(const struct lyd_node *any, char **value_str)
     }
 
     switch (a->value_type) {
-    case LYD_ANYDATA_LYB:
-        /* parse into a data tree */
-        ret = lyd_parse_data_mem(LYD_CTX(any), a->value.mem, LYD_LYB, LYD_PARSE_ONLY, 0, &tree);
-        LY_CHECK_GOTO(ret, cleanup);
-        dynamic = 1;
-        break;
     case LYD_ANYDATA_DATATREE:
         tree = a->value.tree;
         break;
@@ -1045,12 +1038,7 @@ lyd_any_value_str(const struct lyd_node *any, char **value_str)
         LY_CHECK_ERR_GOTO(!*value_str, LOGMEM(LYD_CTX(any)), cleanup);
     }
 
-    /* success */
-
 cleanup:
-    if (dynamic) {
-        lyd_free_all(tree);
-    }
     return ret;
 }
 
@@ -1074,9 +1062,6 @@ lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_A
     case LYD_ANYDATA_JSON:
         lydict_remove(LYD_CTX(trg), t->value.str);
         break;
-    case LYD_ANYDATA_LYB:
-        free(t->value.mem);
-        break;
     }
     t->value.str = NULL;
 
@@ -1098,16 +1083,6 @@ lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_A
     case LYD_ANYDATA_JSON:
         if (value->str) {
             LY_CHECK_RET(lydict_insert(LYD_CTX(trg), value->str, 0, &t->value.str));
-        }
-        break;
-    case LYD_ANYDATA_LYB:
-        if (value->mem) {
-            int len = lyd_lyb_data_length(value->mem);
-
-            LY_CHECK_RET(len == -1, LY_EINVAL);
-            t->value.mem = malloc(len);
-            LY_CHECK_ERR_RET(!t->value.mem, LOGMEM(LYD_CTX(trg)), LY_EMEM);
-            memcpy(t->value.mem, value->mem, len);
         }
         break;
     }

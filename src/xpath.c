@@ -464,7 +464,6 @@ cast_string_recursive(const struct lyd_node *node, struct lyxp_set *set, uint32_
     uint16_t nodetype;
     const struct lyd_node *child;
     enum lyxp_node_type child_type;
-    struct lyd_node *tree;
     struct lyd_node_any *any;
     LY_ERR rc;
 
@@ -547,18 +546,6 @@ cast_string_recursive(const struct lyd_node *node, struct lyxp_set *set, uint32_
             } else {
                 struct ly_out *out;
 
-                if (any->value_type == LYD_ANYDATA_LYB) {
-                    /* try to parse it into a data tree */
-                    if (lyd_parse_data_mem((struct ly_ctx *)set->ctx, any->value.mem, LYD_LYB,
-                            LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree) == LY_SUCCESS) {
-                        /* successfully parsed */
-                        free(any->value.mem);
-                        any->value.tree = tree;
-                        any->value_type = LYD_ANYDATA_DATATREE;
-                    }
-                    /* error is covered by the following switch where LYD_ANYDATA_LYB causes failure */
-                }
-
                 switch (any->value_type) {
                 case LYD_ANYDATA_STRING:
                 case LYD_ANYDATA_XML:
@@ -572,9 +559,6 @@ cast_string_recursive(const struct lyd_node *node, struct lyxp_set *set, uint32_
                     ly_out_free(out, NULL, 0);
                     LY_CHECK_RET(rc);
                     break;
-                case LYD_ANYDATA_LYB:
-                    LOGERR(set->ctx, LY_EINVAL, "Cannot convert LYB anydata into string.");
-                    return LY_EINVAL;
                 }
             }
 

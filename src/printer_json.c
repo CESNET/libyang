@@ -576,29 +576,12 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *iter;
     const struct lyd_node *prev_parent;
-    uint32_t prev_opts, *prev_lo, temp_lo = 0;
+    uint32_t prev_opts;
 
     assert(any->schema->nodetype & LYD_NODE_ANY);
 
     if ((any->schema->nodetype == LYS_ANYDATA) && (any->value_type != LYD_ANYDATA_DATATREE)) {
         LOGINT_RET(pctx->ctx);
-    }
-    if (any->value_type == LYD_ANYDATA_LYB) {
-        uint32_t parser_options = LYD_PARSE_ONLY | LYD_PARSE_OPAQ | LYD_PARSE_STRICT;
-
-        /* turn logging off */
-        prev_lo = ly_temp_log_options(&temp_lo);
-
-        /* try to parse it into a data tree */
-        if (lyd_parse_data_mem(pctx->ctx, any->value.mem, LYD_LYB, parser_options, 0, &iter) == LY_SUCCESS) {
-            /* successfully parsed */
-            free(any->value.mem);
-            any->value.tree = iter;
-            any->value_type = LYD_ANYDATA_DATATREE;
-        }
-
-        /* turn logging on again */
-        ly_temp_log_options(prev_lo);
     }
 
     switch (any->value_type) {
@@ -653,10 +636,6 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
             /* print as a string */
             json_print_string(pctx->out, any->value.str);
         }
-        break;
-    case LYD_ANYDATA_LYB:
-        /* LYB format is not supported */
-        LOGWRN(pctx->ctx, "Unable to print anydata content (type %d) as JSON.", any->value_type);
         break;
     }
 

@@ -1777,13 +1777,6 @@ lyd_compare_single_data(const struct lyd_node *node1, const struct lyd_node *nod
                     return LY_ENOT;
                 }
                 return LY_SUCCESS;
-            case LYD_ANYDATA_LYB:
-                len1 = lyd_lyb_data_length(any1->value.mem);
-                len2 = lyd_lyb_data_length(any2->value.mem);
-                if ((len1 == -1) || (len2 == -1) || (len1 != len2) || memcmp(any1->value.mem, any2->value.mem, len1)) {
-                    return LY_ENOT;
-                }
-                return LY_SUCCESS;
             }
         }
     }
