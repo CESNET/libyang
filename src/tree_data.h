@@ -113,9 +113,6 @@ struct rb_node;
  * - ::lyd_path()
  * - ::lyd_find_target()
  *
- * - ::lyd_lyb_data_length()
- *
- *
  * @section howtoDataMetadata Metadata Support
  *
  * YANG Metadata annotations are defined in [RFC 7952](https://tools.ietf.org/html/rfc7952) as YANG extension (and libyang
@@ -555,8 +552,7 @@ typedef enum {
                                  JSON encoded as string). XML sensitive characters (such as & or \>) are automatically
                                  escaped when the anydata is printed in XML format. */
     LYD_ANYDATA_XML,        /**< Value is a string containing the serialized XML data. */
-    LYD_ANYDATA_JSON,       /**< Value is a string containing the data modeled by YANG and encoded as I-JSON. */
-    LYD_ANYDATA_LYB         /**< Value is a memory chunk with the serialized data tree in LYB format. */
+    LYD_ANYDATA_JSON        /**< Value is a string containing the data modeled by YANG and encoded as I-JSON. */
 } LYD_ANYDATA_VALUETYPE;
 
 /** @} */
@@ -878,7 +874,6 @@ union lyd_any_value {
     const char *str;       /**< Generic string data */
     const char *xml;       /**< Serialized XML data */
     const char *json;      /**< I-JSON encoded string */
-    char *mem;             /**< LYD_ANYDATA_LYB memory chunk */
 };
 
 /**
@@ -1126,15 +1121,6 @@ LIBYANG_API_DECL uint32_t lyd_list_pos(const struct lyd_node *instance);
  * @return The first sibling of the given node or the node itself if it is the first child of the parent.
  */
 LIBYANG_API_DECL struct lyd_node *lyd_first_sibling(const struct lyd_node *node);
-
-/**
- * @brief Learn the length of LYB data.
- *
- * @param[in] data LYB data to examine.
- * @return Length of the LYB data chunk,
- * @return -1 on error.
- */
-LIBYANG_API_DECL int lyd_lyb_data_length(const char *data);
 
 /**
  * @brief Check node parsed into an opaque node for the reason (error) why it could not be parsed as data node.

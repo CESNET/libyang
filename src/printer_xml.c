@@ -435,7 +435,7 @@ xml_print_anydata(struct xmlpr_ctx *pctx, const struct lyd_node_any *node)
 {
     struct lyd_node_any *any = (struct lyd_node_any *)node;
     struct lyd_node *iter;
-    uint32_t prev_opts, *prev_lo, temp_lo = 0;
+    uint32_t prev_opts;
     LY_ERR ret;
 
     if ((node->schema->nodetype == LYS_ANYDATA) && (node->value_type != LYD_ANYDATA_DATATREE)) {
@@ -450,23 +450,6 @@ no_content:
         ly_print_(pctx->out, "/>%s", DO_FORMAT ? "\n" : "");
         return LY_SUCCESS;
     } else {
-        if (any->value_type == LYD_ANYDATA_LYB) {
-            /* turn logging off */
-            prev_lo = ly_temp_log_options(&temp_lo);
-
-            /* try to parse it into a data tree */
-            if (lyd_parse_data_mem((struct ly_ctx *)LYD_CTX(node), any->value.mem, LYD_LYB,
-                    LYD_PARSE_ONLY | LYD_PARSE_OPAQ | LYD_PARSE_STRICT, 0, &iter) == LY_SUCCESS) {
-                /* successfully parsed */
-                free(any->value.mem);
-                any->value.tree = iter;
-                any->value_type = LYD_ANYDATA_DATATREE;
-            }
-
-            /* turn logging on again */
-            ly_temp_log_options(prev_lo);
-        }
-
         switch (any->value_type) {
         case LYD_ANYDATA_DATATREE:
             /* close opening tag and print data */
@@ -500,10 +483,6 @@ no_content:
             }
             ly_print_(pctx->out, ">%s", any->value.str);
             break;
-        case LYD_ANYDATA_LYB:
-            /* LYB format is not supported */
-            LOGWRN(pctx->ctx, "Unable to print anydata content (type %d) as XML.", any->value_type);
-            goto no_content;
         }
 
         /* closing tag */

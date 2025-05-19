@@ -205,8 +205,6 @@ lyd_create_any_string_valtype(const void *value, LYD_ANYDATA_VALUETYPE *value_ty
         *value_type = LYD_ANYDATA_XML;
     } else if (((char *)value)[0] == '{') {
         *value_type = LYD_ANYDATA_JSON;
-    } else if (!strncmp(value, "lyb", 3)) {
-        *value_type = LYD_ANYDATA_LYB;
     } else {
         /* really just some string */
         *value_type = LYD_ANYDATA_STRING;
@@ -252,9 +250,6 @@ lyd_create_any_datatree(const struct ly_ctx *ctx, struct ly_in *value_in, LYD_AN
         break;
     case LYD_ANYDATA_JSON:
         rc = lyd_parse_json(ctx, NULL, NULL, tree, value_in, parse_opts, 0, int_opts, NULL, NULL, &lydctx);
-        break;
-    case LYD_ANYDATA_LYB:
-        rc = lyd_parse_lyb(ctx, NULL, NULL, tree, value_in, parse_opts | LYD_PARSE_STRICT, 0, int_opts, NULL, NULL, &lydctx);
         break;
     }
     if (lydctx) {
@@ -333,7 +328,6 @@ lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VA
         /* fallthrough */
         case LYD_ANYDATA_XML:
         case LYD_ANYDATA_JSON:
-        case LYD_ANYDATA_LYB:
             if (!value) {
                 /* nothing to parse */
                 break;
@@ -366,9 +360,6 @@ lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VA
         case LYD_ANYDATA_XML:
         case LYD_ANYDATA_JSON:
             LY_CHECK_GOTO(rc = lydict_insert_zc(schema->module->ctx, (void *)value, &any->value.str), cleanup);
-            break;
-        case LYD_ANYDATA_LYB:
-            any->value.mem = (void *)value;
             break;
         }
         any->value_type = value_type;
