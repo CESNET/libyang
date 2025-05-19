@@ -16,6 +16,7 @@
 #ifndef LY_PARSER_INTERNAL_H_
 #define LY_PARSER_INTERNAL_H_
 
+#include "lyb.h"
 #include "parser_data.h"
 #include "set.h"
 
@@ -176,7 +177,10 @@ struct lyd_lyb_ctx {
     /* callbacks */
     lyd_ctx_free_clb free;
 
-    struct lylyb_ctx *lybctx;      /* LYB context */
+    union {
+        struct lylyb_print_ctx print_ctx;
+        struct lylyb_parse_ctx parse_ctx;
+    };
 };
 
 /**

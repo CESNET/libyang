@@ -18,7 +18,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "parser_internal.h"
+#include "ly_common.h"
 
 struct ly_ctx;
 struct lysc_node;
@@ -76,25 +76,28 @@ enum lylyb_node_type {
 };
 
 /**
- * @brief LYB format parser context
+ * @brief LYB format printer context
  */
-struct lylyb_ctx {
+struct lylyb_print_ctx {
     const struct ly_ctx *ctx;
-    uint64_t line;             /* current line */
-    struct ly_in *in;          /* input structure */
 
-    /* LYB printer only */
     struct lyd_lyb_sib_ht {
         struct lysc_node *first_sibling;
         struct ly_ht *ht;
-    } *sib_hts;
-    ly_bool empty_hash;
+    } *sib_hts;                 /**< sibling hash tables */
+    ly_bool empty_hash;         /**< mark empty context hash */
 };
 
 /**
- * @brief Destructor for the lylyb_ctx structure
+ * @brief LYB format parser context
  */
-void lyd_lyb_ctx_free(struct lyd_ctx *lydctx);
+struct lylyb_parse_ctx {
+    const struct ly_ctx *ctx;
+
+    uint64_t line;              /**< current line */
+    struct ly_in *in;           /**< input structure */
+    ly_bool empty_hash;         /**< mark empty context hash */
+};
 
 /* just a shortcut */
 #define LYB_LAST_SIBLING(lybctx) lybctx->siblings[LY_ARRAY_COUNT(lybctx->siblings) - 1]
