@@ -86,6 +86,8 @@ struct lylyb_print_ctx {
         struct ly_ht *ht;
     } *sib_hts;                 /**< sibling hash tables */
     ly_bool empty_hash;         /**< mark empty context hash */
+
+    struct ly_out *out;         /**< output structure */
 };
 
 /**
