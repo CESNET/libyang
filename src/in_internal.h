@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Internal structures and functions for libyang parsers
  *
- * Copyright (c) 2020 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@
 
 #include "in.h"
 
+#include <stdint.h>
+
 /**
  * @brief Parser input structure specifying where the data are read.
  */
@@ -27,6 +29,9 @@ struct ly_in {
     const char *func_start; /**< Input data position when the last parser function was executed */
     const char *start;      /**< Input data start */
     size_t length;          /**< mmap() length (if used) */
+
+    ly_bool peeked;         /**< whether a byte was peeked */
+    uint8_t peek;           /**< peeked byte, if any */
 
     union {
         int fd;             /**< file descriptor for LY_IN_FD type */

@@ -306,10 +306,41 @@ ly_in_read(struct ly_in *in, void *buf, size_t count)
         return LY_EDENIED;
     }
 
+    if (count && in->peeked) {
+        /* read the peeked byte */
+        memcpy(buf, &in->peek, 1);
+        buf = (char *)buf + 1;
+        --count;
+
+        /* clear the peek */
+        in->peeked = 0;
+    }
+
     if (count) {
         memcpy(buf, in->current, count);
     }
     in->current += count;
+    return LY_SUCCESS;
+}
+
+LIBYANG_API_DEF LY_ERR
+ly_in_peek(struct ly_in *in, uint8_t *peek)
+{
+    LY_CHECK_ARG_RET(NULL, in, peek, LY_EINVAL);
+
+    if (in->length && (in->length - (in->current - in->start) < 1)) {
+        /* EOF */
+        return LY_EDENIED;
+    } else if (in->peeked) {
+        /* unsupported */
+        return LY_ENOT;
+    }
+
+    memcpy(&in->peek, in->current, 1);
+    in->current += 1;
+    in->peeked = 1;
+
+    *peek = in->peek;
     return LY_SUCCESS;
 }
 
@@ -321,6 +352,12 @@ ly_in_skip(struct ly_in *in, size_t count)
     if (in->length && (in->length - (in->current - in->start) < count)) {
         /* EOF */
         return LY_EDENIED;
+    }
+
+    if (count && in->peeked) {
+        /* skip the peeked byte */
+        --count;
+        in->peeked = 0;
     }
 
     in->current += count;
