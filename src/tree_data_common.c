@@ -1724,7 +1724,7 @@ ly_time_str2time(const char *value, time_t *time, char **fractions_s)
     } else {
         value += i;
         shift = strtol(value, &ptr, 10);
-        if (shift > 23) {
+        if ((shift > 23) || (shift < -23)) {
             LOGERR(NULL, LY_EINVAL, "Invalid date-and-time timezone hour \"%" PRIi64 "\".", shift);
             return LY_EINVAL;
         } else if (ptr[0] != ':') {
