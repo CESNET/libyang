@@ -15,6 +15,8 @@
 
 #define _GNU_SOURCE
 
+#include "schema_mount.h"
+
 #include <assert.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -490,6 +492,118 @@ cleanup:
     }
 
     return rc;
+}
+
+LIBYANG_API_DEF LY_ERR
+lyplg_ext_schema_mount_create_shared_context(struct lysc_ext_instance *ext, const struct lyd_node *ext_data)
+{
+    LY_ERR ret = LY_SUCCESS;
+    ly_bool config = 1, shared = 0;
+
+    LY_CHECK_ARG_RET(NULL, ext, ext_data, LY_EINVAL);
+
+    /* get the mount point */
+    ret = schema_mount_get_smount(ext, ext_data, &config, &shared);
+    if (ret) {
+        goto cleanup;
+    }
+
+    if (!shared) {
+        /* we dont care about inline mount points */
+        goto cleanup;
+    }
+
+    /* create the context if it is not created yet */
+    ret = schema_mount_get_ctx_shared(ext, ext_data, config, NULL);
+    if (ret) {
+        goto cleanup;
+    }
+
+cleanup:
+    return ret;
+}
+
+LIBYANG_API_DEF void
+lyplg_ext_schema_mount_destroy_shared_contexts(struct lysc_ext_instance *ext)
+{
+    int r;
+    uint32_t i;
+    struct lyplg_ext_sm *sm_data;
+    ly_bool ctx_is_printed;
+
+    LY_CHECK_ARG_RET(NULL, ext,);
+
+    sm_data = ext->compiled;
+    ctx_is_printed = ly_ctx_is_printed(ext->module->ctx);
+
+    /* LOCK (dont lock if pctx since its memory is not writable) */
+    if (!ctx_is_printed) {
+        if ((r = pthread_mutex_lock(&sm_data->lock))) {
+            lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_ESYS, "Mutex lock failed (%s).", strerror(r));
+            return;
+        }
+    }
+
+    /* free all the shared schemas of this ext */
+    for (i = 0; i < sm_data->shared->schema_count; ++i) {
+        /* ctx can be destroyed whether printed or not */
+        ly_ctx_destroy(sm_data->shared->schemas[i].ctx);
+
+        if (!ctx_is_printed) {
+            /* these members can be freed only if the context is not printed */
+            free(sm_data->shared->schemas[i].mount_point);
+            sm_data->shared->schemas[i].mount_point = NULL;
+            free(sm_data->shared->schemas[i].content_id);
+            sm_data->shared->schemas[i].content_id = NULL;
+        }
+    }
+
+    if (!ctx_is_printed) {
+        free(sm_data->shared->schemas);
+        sm_data->shared->schemas = NULL;
+        sm_data->shared->schema_count = 0;
+
+        /* UNLOCK */
+        pthread_mutex_unlock(&sm_data->lock);
+    }
+}
+
+LIBYANG_API_DEF void
+lyplg_ext_schema_mount_destroy_inline_contexts(struct lysc_ext_instance *ext)
+{
+    int r;
+    struct lyplg_ext_sm *sm_data;
+    uint32_t i;
+
+    LY_CHECK_ARG_RET(NULL, ext,);
+
+    sm_data = ext->compiled;
+
+    if (ly_ctx_is_printed(ext->module->ctx)) {
+        /* inline mount points not supported in printed context */
+        assert(sm_data->inln.schema_count == 0);
+        LOGVRB("Inline mount points not supported in printed context, "
+                "skipping cleanup of inline mount points.");
+        return;
+    }
+
+    /* LOCK */
+    if ((r = pthread_mutex_lock(&sm_data->lock))) {
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_ESYS, "Mutex lock failed (%s).", strerror(r));
+        return;
+    }
+
+    /* free all inline schemas */
+    for (i = 0; i < sm_data->inln.schema_count; ++i) {
+        ly_ctx_destroy(sm_data->inln.schemas[i].ctx);
+        sm_data->inln.schemas[i].ctx = NULL;
+    }
+    free(sm_data->inln.schemas);
+    sm_data->inln.schemas = NULL;
+    sm_data->inln.schema_count = 0;
+
+    /* UNLOCK */
+    pthread_mutex_unlock(&sm_data->lock);
 }
 
 /**
