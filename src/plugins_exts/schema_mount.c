@@ -30,6 +30,7 @@
 #include "parser_data.h"
 #include "plugins_exts.h"
 #include "plugins_types.h"
+#include "tree.h"
 #include "tree_data.h"
 #include "tree_schema.h"
 
@@ -405,15 +406,21 @@ schema_mount_get_ctx_shared(struct lysc_ext_instance *ext, const struct lyd_node
 
     assert(sm_data && sm_data->shared);
 
+    if (ext_ctx) {
+        *ext_ctx = NULL;
+    }
+
     /* get yang-library content-id or module-set-id */
     if ((r = schema_mount_get_content_id(ext, ext_data, &content_id))) {
         return r;
     }
 
-    /* LOCK */
-    if ((r = pthread_mutex_lock(&sm_data->lock))) {
-        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_ESYS, "Mutex lock failed (%s).", strerror(r));
-        return LY_ESYS;
+    /* LOCK (dont lock if pctx since its memory is not writable) */
+    if (!ly_ctx_is_printed(ext->module->ctx)) {
+        if ((r = pthread_mutex_lock(&sm_data->lock))) {
+            lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_ESYS, "Mutex lock failed (%s).", strerror(r));
+            return LY_ESYS;
+        }
     }
 
     /* try to find this mount point */
@@ -433,6 +440,16 @@ schema_mount_get_ctx_shared(struct lysc_ext_instance *ext, const struct lyd_node
             goto cleanup;
         }
     } else {
+        if (ly_ctx_is_printed(ext->module->ctx)) {
+            /* printed context, a shared mount point ctx should have already been created
+             * and it is not possible to create a new one once the context is printed */
+            lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EVALID,
+                    "Shared-schema mount point \"%s\" not found and cannot be created in printed context.",
+                    ext->argument);
+            rc = LY_EVALID;
+            goto cleanup;
+        }
+
         /* no schema found, create it */
         if ((r = schema_mount_create_ctx(ext, ext_data, config, &new_ctx))) {
             rc = r;
@@ -461,11 +478,15 @@ schema_mount_get_ctx_shared(struct lysc_ext_instance *ext, const struct lyd_node
     }
 
     /* use the context */
-    *ext_ctx = sm_data->shared->schemas[i].ctx;
+    if (ext_ctx) {
+        *ext_ctx = sm_data->shared->schemas[i].ctx;
+    }
 
 cleanup:
     /* UNLOCK */
-    pthread_mutex_unlock(&sm_data->lock);
+    if (!ly_ctx_is_printed(ext->module->ctx)) {
+        pthread_mutex_unlock(&sm_data->lock);
+    }
 
     return rc;
 }
