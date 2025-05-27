@@ -1537,8 +1537,13 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
             ctxp_when(orig_act->when[u], &act->when[u], addr_ht, ptr_set, mem);
         }
 
-        /* input children, input is the parent */
+        /* input */
         ly_ctx_compiled_addr_ht_add(addr_ht, &orig_act->input, &act->input);
+
+        /* the input itself, just to fill the common members */
+        ctxp_node(&orig_act->input.node, &act->input.node, addr_ht, ptr_set, mem);
+
+        /* input children */
         ctxp_children(orig_act->input.child, &act->input.child, addr_ht, ptr_set, mem);
 
         /* input musts */
@@ -1547,8 +1552,13 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
             ctxp_must(&orig_act->input.musts[u], &act->input.musts[u], addr_ht, ptr_set, mem);
         }
 
-        /* output children, output is the parent */
+        /* output */
         ly_ctx_compiled_addr_ht_add(addr_ht, &orig_act->output, &act->output);
+
+        /* the output itself, just to fill the common members */
+        ctxp_node(&orig_act->output.node, &act->output.node, addr_ht, ptr_set, mem);
+
+        /* output children */
         ctxp_children(orig_act->output.child, &act->output.child, addr_ht, ptr_set, mem);
 
         /* output musts */
@@ -1575,6 +1585,10 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
         LY_ARRAY_FOR(orig_notif->when, u) {
             ctxp_when(orig_notif->when[u], &notif->when[u], addr_ht, ptr_set, mem);
         }
+        break;
+    case LYS_INPUT:
+    case LYS_OUTPUT:
+        /* nothing to do, only the common members were filled */
         break;
     default:
         LOGINT(NULL);
