@@ -1383,24 +1383,27 @@ schema_mount_compiled_print(const struct lysc_ext_instance *orig_ext, struct lys
     sm_data->shared->ref_count = orig_sm_data->shared->ref_count;
 
     /* sm_data->shared->schemas */
-    sm_data->shared->schemas = *mem;
-    *mem = (char *)*mem + sm_data->shared->schema_count * sizeof *sm_data->shared->schemas;
+    if (orig_sm_data->shared->schemas) {
+        sm_data->shared->schemas = *mem;
+        *mem = (char *)*mem + sm_data->shared->schema_count * sizeof *sm_data->shared->schemas;
 
-    for (i = 0; i < sm_data->shared->schema_count; ++i) {
-        /* ctx */
-        ctx_mem = mem;
-        LY_CHECK_RET(ly_ctx_compiled_print(orig_sm_data->shared->schemas[i].ctx, ctx_mem, mem));
-        LY_CHECK_RET(ly_ctx_new_printed(ctx_mem, &sm_data->shared->schemas[i].ctx));
+        for (i = 0; i < sm_data->shared->schema_count; ++i) {
+            /* ctx */
+            ctx_mem = *mem;
+            LY_CHECK_RET(ly_ctx_compiled_print(orig_sm_data->shared->schemas[i].ctx, ctx_mem, mem));
+            LY_CHECK_RET(ly_ctx_new_printed(ctx_mem, &sm_data->shared->schemas[i].ctx));
+            sm_data->shared->schemas[i].ctx = ctx_mem;
 
-        /* mount_point */
-        strcpy(*mem, orig_sm_data->shared->schemas[i].mount_point);
-        sm_data->shared->schemas[i].mount_point = *mem;
-        *mem = (char *)*mem + strlen(sm_data->shared->schemas[i].mount_point) + 1;
+            /* mount_point */
+            strcpy(*mem, orig_sm_data->shared->schemas[i].mount_point);
+            sm_data->shared->schemas[i].mount_point = *mem;
+            *mem = (char *)*mem + strlen(sm_data->shared->schemas[i].mount_point) + 1;
 
-        /* content_id */
-        strcpy(*mem, orig_sm_data->shared->schemas[i].content_id);
-        sm_data->shared->schemas[i].content_id = *mem;
-        *mem = (char *)*mem + strlen(sm_data->shared->schemas[i].content_id) + 1;
+            /* content_id */
+            strcpy(*mem, orig_sm_data->shared->schemas[i].content_id);
+            sm_data->shared->schemas[i].content_id = *mem;
+            *mem = (char *)*mem + strlen(sm_data->shared->schemas[i].content_id) + 1;
+        }
     }
 
     /* store the shared schema to be reused by other extension instances */
