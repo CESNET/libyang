@@ -93,3 +93,119 @@ lyb_cache_node_hash_cb(struct lysc_node *node, void *UNUSED(data), ly_bool *UNUS
 
     return LY_SUCCESS;
 }
+
+void
+lyb_cache_module_hash(const struct lys_module *mod)
+{
+    /* LOCK */
+    pthread_mutex_lock(&mod->ctx->lyb_hash_lock);
+
+    /* store all cached hashes for all the nodes */
+    lysc_module_dfs_full(mod, lyb_cache_node_hash_cb, NULL);
+
+    /* UNLOCK */
+    pthread_mutex_unlock(&mod->ctx->lyb_hash_lock);
+}
+
+uint8_t
+lyb_right_bit_mask(uint8_t bit_count)
+{
+    uint8_t mask = 0;
+
+    switch (bit_count) {
+    case 1:
+        mask = 0x01;
+        break;
+    case 2:
+        mask = 0x03;
+        break;
+    case 3:
+        mask = 0x07;
+        break;
+    case 4:
+        mask = 0x0F;
+        break;
+    case 5:
+        mask = 0x1F;
+        break;
+    case 6:
+        mask = 0x3F;
+        break;
+    case 7:
+        mask = 0x7F;
+        break;
+    case 8:
+        mask = 0xFF;
+        break;
+    default:
+        LOGINT(NULL);
+        break;
+    }
+
+    return mask;
+}
+
+uint8_t
+lyb_left_bit_mask(uint8_t bit_count)
+{
+    uint8_t mask = 0;
+
+    switch (bit_count) {
+    case 1:
+        mask = 0x80;
+        break;
+    case 2:
+        mask = 0xC0;
+        break;
+    case 3:
+        mask = 0xE0;
+        break;
+    case 4:
+        mask = 0xF0;
+        break;
+    case 5:
+        mask = 0xF8;
+        break;
+    case 6:
+        mask = 0xFC;
+        break;
+    case 7:
+        mask = 0xFE;
+        break;
+    case 8:
+        mask = 0xFF;
+        break;
+    default:
+        LOGINT(NULL);
+        break;
+    }
+
+    return mask;
+}
+
+void
+lyb_prepend_bits(void *buf, uint64_t count_bytes, uint8_t byte, uint8_t byte_bits)
+{
+    uint8_t bits;
+
+    if (!byte_bits) {
+        return;
+    }
+
+    while (count_bytes) {
+        /* shift the byte */
+        ((uint8_t *)buf)[count_bytes - 1] <<= byte_bits;
+
+        if (count_bytes - 1) {
+            /* copy the bits from the previous byte */
+            bits = ((uint8_t *)buf)[count_bytes - 2] & lyb_left_bit_mask(byte_bits);
+            bits >>= 8 - byte_bits;
+            ((uint8_t *)buf)[count_bytes - 1] |= bits;
+        }
+
+        --count_bytes;
+    }
+
+    /* prepend the bits from the byte */
+    ((uint8_t *)buf)[0] |= byte & lyb_right_bit_mask(byte_bits);
+}
