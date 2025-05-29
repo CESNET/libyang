@@ -52,7 +52,7 @@ setup(void **state)
 }
 
 static void
-tests_leaflist(void **state)
+test_leaflist(void **state)
 {
     const char *mod;
     const char *data_xml;
@@ -88,7 +88,7 @@ tests_leaflist(void **state)
 }
 
 static void
-tests_list(void **state)
+test_list(void **state)
 {
     const char *mod;
     const char *data_xml;
@@ -126,7 +126,7 @@ tests_list(void **state)
 }
 
 static void
-tests_any(void **state)
+test_any(void **state)
 {
     const char *mod;
     const char *data_xml;
@@ -2814,27 +2814,14 @@ int
 main(void)
 {
     const struct CMUnitTest tests[] = {
-        UTEST(tests_leaflist),
-        UTEST(tests_list),
-        UTEST(tests_any),
+        UTEST(test_leaflist),
+        UTEST(test_list),
+        UTEST(test_any),
         UTEST(test_ietf_interfaces, setup),
         UTEST(test_origin, setup),
         UTEST(test_statements, setup),
         UTEST(test_opaq, setup),
         UTEST(test_collisions, setup),
-#if 0
-        cmocka_unit_test_setup_teardown(test_types, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_annotations, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_similar_annot_names, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_many_child_annot, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_union, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_union2, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_collisions, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_anydata, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_submodule_feature, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_coliding_augments, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_leafrefs, setup_f, teardown_f),
-#endif
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

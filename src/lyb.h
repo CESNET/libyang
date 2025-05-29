@@ -75,6 +75,12 @@ enum lylyb_node_type {
     LYB_NODE_EXT        /**< nested extension node */
 };
 
+/**< number of bits required for all node types */
+#define LYB_NODE_TYPE_BITS 3
+
+/**< number of data node flag bits, fixed LYB size */
+#define LYB_DATA_NODE_FLAG_BITS 4
+
 /**
  * @brief LYB format printer context
  */
@@ -88,6 +94,8 @@ struct lylyb_print_ctx {
     ly_bool empty_hash;         /**< mark empty context hash */
 
     struct ly_out *out;         /**< output structure */
+    uint8_t buf;                /**< not yet written rightmost bits, unused bits are zeroed */
+    uint8_t buf_bits;           /**< cached buf bit count */
 };
 
 /**
@@ -97,34 +105,37 @@ struct lylyb_parse_ctx {
     const struct ly_ctx *ctx;
 
     uint64_t line;              /**< current line */
-    struct ly_in *in;           /**< input structure */
     ly_bool empty_hash;         /**< mark empty context hash */
+
+    struct ly_in *in;           /**< input structure */
+    uint8_t buf;                /**< read leftover rightmost bits from in */
+    uint8_t buf_bits;           /**< cached buf bit count */
 };
 
-/* just a shortcut */
-#define LYB_LAST_SIBLING(lybctx) lybctx->siblings[LY_ARRAY_COUNT(lybctx->siblings) - 1]
-
-/* struct lyd_lyb_sibling allocation step */
-#define LYB_SIBLING_STEP 4
-
-/* current LYB format version */
+/**< current LYB format version */
 #define LYB_HEADER_VERSION_NUM 0x07
 
-/* LYB format version mask of the header byte */
+/**< LYB format version mask of the header byte */
 #define LYB_HEADER_VERSION_MASK 0x0F
 
-/* current LYB hash function */
+/**< current LYB hash function */
 #ifdef LY_XXHASH_SUPPORT
 # define LYB_HEADER_HASH_ALG 0x20  /**< xxhash */
 #else
 # define LYB_HEADER_HASH_ALG 0x10  /**< one-at-a-time hash */
 #endif
 
-/* LYB hash algorithm mask of the header byte */
+/**< LYB hash algorithm mask of the header byte */
 #define LYB_HEADER_HASH_MASK 0x30
 
-/* reserved number of metadata instances used for the last instance */
-#define LYB_METADATA_END UINT8_MAX
+/**< reserved number of metadata instances used for the last instance of (leaf-)list */
+#define LYB_METADATA_END_NUM 15
+
+/**< reserved encoded number of metadata instances */
+#define LYB_METADATA_END 0x3D
+
+/**< size in bits of reserved metadata instance count */
+#define LYB_METADATA_END_SIZE_B 6
 
 /**
  * LYB schema hash constants
@@ -145,35 +156,20 @@ struct lylyb_parse_ctx {
  * collisions with all the preceding sibling schema hashes must be checked (LYB printer).
  */
 
-/* Number of bits the whole hash will take (including hash collision ID) */
+/**< number of bits the whole hash will take (including hash collision ID) */
 #define LYB_HASH_BITS 8
 
-/* Masking 32b hash (collision ID 0) */
+/**< masking 32b hash (collision ID 0) */
 #define LYB_HASH_MASK 0x7f
 
-/* Type for storing the whole hash (used only internally, publicly defined directly) */
+/**< type for storing the whole hash (used only internally, publicly defined directly) */
 #define LYB_HASH uint8_t
 
-/* Need to move this first >> collision number (from 0) to get collision ID hash part */
+/**< need to move this first >> collision number (from 0) to get collision ID hash part */
 #define LYB_HASH_COLLISION_ID 0x80
 
-/* How many bytes are reserved for one data chunk SIZE (8B is maximum) */
-#define LYB_SIZE_BYTES 2
-
-/* Maximum size that will be written into LYB_SIZE_BYTES (must be large enough) */
-#define LYB_SIZE_MAX UINT16_MAX
-
-/* How many bytes are reserved for one data chunk inner chunk count */
-#define LYB_INCHUNK_BYTES 2
-
-/* Maximum size that will be written into LYB_INCHUNK_BYTES (must be large enough) */
-#define LYB_INCHUNK_MAX UINT16_MAX
-
-/* Just a helper macro */
-#define LYB_META_BYTES (LYB_INCHUNK_BYTES + LYB_SIZE_BYTES)
-
-/* module revision as XXXX XXXX XXXX XXXX (2B) (year is offset from 2000)
- *                    YYYY YYYM MMMD DDDD */
+/**< module revision as XXXX XXXX XXXX XXXX (2B) (year is offset from 2000)
+ *                      YYYY YYYM MMMD DDDD */
 #define LYB_REV_YEAR_OFFSET 2000
 #define LYB_REV_YEAR_MASK   0xfe00U
 #define LYB_REV_YEAR_SHIFT  9
@@ -194,5 +190,33 @@ LYB_HASH lyb_get_hash(const struct lysc_node *node, uint8_t collision_id);
  * @brief Module DFS callback filling all cached hashes of a schema node.
  */
 LY_ERR lyb_cache_node_hash_cb(struct lysc_node *node, void *data, ly_bool *dfs_continue);
+
+/**
+ * @brief Get a mask with specific number of rightmost bits set.
+ *
+ * @param[in] bit_count Number of bits to set in the mask.
+ * @return Bit mask.
+ */
+uint8_t lyb_right_bit_mask(uint8_t bit_count);
+
+/**
+ * @brief Get a mask with specific number of leftmost bits set.
+ *
+ * @param[in] bit_count Number of bits to set in the mask.
+ * @return Bit mask.
+ */
+uint8_t lyb_left_bit_mask(uint8_t bit_count);
+
+/**
+ * @brief Prepend bits to an array of bytes.
+ *
+ * @p byte_bits number of bits are lost in the last byte.
+ *
+ * @param[in] buf Buffer with bytes to prepend to.
+ * @param[in] count_bytes Count of bytes in buf.
+ * @param[in] byte Byte with the bits to prepend.
+ * @param[in] byte_bits Number of @p byte bits to prepend.
+ */
+void lyb_prepend_bits(void *buf, uint64_t count_bytes, uint8_t byte, uint8_t byte_bits);
 
 #endif /* LY_LYB_H_ */
