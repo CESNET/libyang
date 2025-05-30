@@ -971,6 +971,8 @@ lyb_print_node_inner(const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
 static LY_ERR
 lyb_print_node_opaq(const struct lyd_node_opaq *opaq, struct lyd_lyb_ctx *lybctx)
 {
+    uint8_t format;
+
     /* write attributes */
     LY_CHECK_RET(lyb_print_attributes(opaq, lybctx->print_ctx));
 
@@ -990,7 +992,16 @@ lyb_print_node_opaq(const struct lyd_node_opaq *opaq, struct lyd_lyb_ctx *lybctx
     LY_CHECK_RET(lyb_write_string(opaq->value, 0, lybctx->print_ctx));
 
     /* format */
-    LY_CHECK_RET(lyb_write_number(opaq->format, lybctx->print_ctx));
+    if (opaq->format == LY_VALUE_XML) {
+        format = LYB_OPAQ_FORMAT_XML;
+        LY_CHECK_RET(lyb_write(&format, LYB_OPAQ_FORMAT_BITS, lybctx->print_ctx));
+    } else if (opaq->format == LY_VALUE_JSON) {
+        format = LYB_OPAQ_FORMAT_JSON;
+        LY_CHECK_RET(lyb_write(&format, LYB_OPAQ_FORMAT_BITS, lybctx->print_ctx));
+    } else {
+        LOGERR(lybctx->parse_ctx->ctx, LY_EINT, "Unexpected opaque node format.");
+        return LY_EINT;
+    }
 
     /* value prefixes */
     LY_CHECK_RET(lyb_print_prefix_data(opaq->format, opaq->val_prefix_data, lybctx->print_ctx));
@@ -1168,7 +1179,7 @@ lyb_print_node(const struct lyd_node **printed_node, struct ly_ht **sibling_ht, 
 
     if (!node->schema) {
         LY_CHECK_RET(lyb_print_node_opaq((struct lyd_node_opaq *)node, lybctx));
-    } else if (node->schema->nodetype & LYS_LEAFLIST) {
+    } else if (node->schema->nodetype == LYS_LEAFLIST) {
         LY_CHECK_RET(lyb_print_node_leaflist(node, lybctx, &node));
     } else if (node->schema->nodetype == LYS_LIST) {
         LY_CHECK_RET(lyb_print_node_list(node, lybctx, &node));
