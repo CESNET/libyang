@@ -63,6 +63,7 @@ lyb_parse_ctx_free(struct lyd_ctx *lydctx)
 
     /* nothing parser-specific to free */
 
+    free(ctx->parse_ctx);
     free(ctx);
 }
 
@@ -420,29 +421,29 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, 
     const struct lys_module *mod;
 
     /* read number of attributes stored */
-    lyb_read_number(&count, &lybctx->parse_ctx);
+    lyb_read_number(&count, lybctx->parse_ctx);
 
     /* read attributes */
     for (i = 0; i < count; ++i) {
         /* find module */
-        ret = lyb_parse_module(&lybctx->parse_ctx, &mod);
+        ret = lyb_parse_module(lybctx->parse_ctx, &mod);
         LY_CHECK_GOTO(ret, cleanup);
 
         if (!mod) {
             /* skip meta name */
-            lyb_skip_string(&lybctx->parse_ctx);
+            lyb_skip_string(lybctx->parse_ctx);
 
             /* skip meta value */
-            lyb_skip_string(&lybctx->parse_ctx);
+            lyb_skip_string(lybctx->parse_ctx);
             continue;
         }
 
         /* meta name */
-        ret = lyb_read_string(&meta_name, &lybctx->parse_ctx);
+        ret = lyb_read_string(&meta_name, lybctx->parse_ctx);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* meta value */
-        ret = lyb_read_string(&meta_value, &lybctx->parse_ctx);
+        ret = lyb_read_string(&meta_value, lybctx->parse_ctx);
         LY_CHECK_GOTO(ret, cleanup);
         dynamic = 1;
 
@@ -718,7 +719,7 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
 
     *snode = NULL;
 
-    LY_CHECK_RET(lyb_read_hashes(&lybctx->parse_ctx, hash, &hash_count));
+    LY_CHECK_RET(lyb_read_hashes(lybctx->parse_ctx, hash, &hash_count));
 
     if (!hash[0]) {
         /* opaque node */
@@ -747,14 +748,14 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
 
     if (!sibling) {
         if (lybctx->ext) {
-            LOGERR(lybctx->parse_ctx.ctx, LY_EINT, "Failed to find matching hash for a node from \"%s\" extension instance node.",
+            LOGERR(lybctx->parse_ctx->ctx, LY_EINT, "Failed to find matching hash for a node from \"%s\" extension instance node.",
                     lybctx->ext->def->name);
         } else if (mod) {
-            LOGERR(lybctx->parse_ctx.ctx, LY_EINT, "Failed to find matching hash for a top-level node from \"%s\".",
+            LOGERR(lybctx->parse_ctx->ctx, LY_EINT, "Failed to find matching hash for a top-level node from \"%s\".",
                     mod->name);
         } else {
             assert(sparent);
-            LOGERR(lybctx->parse_ctx.ctx, LY_EINT, "Failed to find matching hash for a child node of \"%s\".",
+            LOGERR(lybctx->parse_ctx->ctx, LY_EINT, "Failed to find matching hash for a child node of \"%s\".",
                     sparent->name);
         }
         return LY_EINT;
@@ -786,14 +787,14 @@ lyb_parse_schema_nested_ext(struct lyd_lyb_ctx *lybctx, const struct lyd_node *p
     assert(parent);
 
     /* read schema node name */
-    LY_CHECK_GOTO(rc = lyb_read_string(&name, &lybctx->parse_ctx), cleanup);
+    LY_CHECK_GOTO(rc = lyb_read_string(&name, lybctx->parse_ctx), cleanup);
 
     /* check for extension data */
     r = ly_nested_ext_schema(parent, NULL, mod_name, mod_name ? strlen(mod_name) : 0, LY_VALUE_JSON, NULL, name,
             strlen(name), snode, &ext);
     if (r == LY_ENOT) {
         /* failed to parse */
-        LOGERR(lybctx->parse_ctx.ctx, LY_EINVAL, "Failed to parse node \"%s\" as nested extension instance data.", name);
+        LOGERR(lybctx->parse_ctx->ctx, LY_EINVAL, "Failed to parse node \"%s\" as nested extension instance data.", name);
         rc = LY_EINVAL;
         goto cleanup;
     } else if (r) {
@@ -933,7 +934,7 @@ lyb_parse_node_header(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
     LY_CHECK_RET(lyb_parse_metadata(lybctx, sparent, meta));
 
     /* read flags, fixed bits */
-    lyb_read(flags, LYB_DATA_NODE_FLAG_BITS, &lybctx->parse_ctx);
+    lyb_read(flags, LYB_DATA_NODE_FLAG_BITS, lybctx->parse_ctx);
 
     return LY_SUCCESS;
 }
@@ -954,7 +955,7 @@ lyb_create_term(struct lyd_lyb_ctx *lybctx, const struct lysc_node *snode, struc
     uint8_t *term_value;
     uint64_t term_value_len = 0;
 
-    LY_CHECK_RET(lyb_read_term_value((struct lysc_node_leaf *)snode, &term_value, &term_value_len, &lybctx->parse_ctx));
+    LY_CHECK_RET(lyb_read_term_value((struct lysc_node_leaf *)snode, &term_value, &term_value_len, lybctx->parse_ctx));
     dynamic = 1;
 
     /* create node */
@@ -1010,38 +1011,38 @@ lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     ly_bool dynamic = 0;
     LY_VALUE_FORMAT format = 0;
     void *val_prefix_data = NULL;
-    const struct ly_ctx *ctx = lybctx->parse_ctx.ctx;
+    const struct ly_ctx *ctx = lybctx->parse_ctx->ctx;
     uint32_t flags = 0;
 
     /* parse opaq node attributes */
-    ret = lyb_parse_attributes(&lybctx->parse_ctx, &attr);
+    ret = lyb_parse_attributes(lybctx->parse_ctx, &attr);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* read flags */
-    lyb_read_number((uint64_t *)&flags, &lybctx->parse_ctx);
+    lyb_read_number((uint64_t *)&flags, lybctx->parse_ctx);
 
     /* parse prefix */
-    ret = lyb_read_string(&prefix, &lybctx->parse_ctx);
+    ret = lyb_read_string(&prefix, lybctx->parse_ctx);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* parse module key */
-    ret = lyb_read_string(&module_key, &lybctx->parse_ctx);
+    ret = lyb_read_string(&module_key, lybctx->parse_ctx);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* parse name */
-    ret = lyb_read_string(&name, &lybctx->parse_ctx);
+    ret = lyb_read_string(&name, lybctx->parse_ctx);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* parse value */
-    ret = lyb_read_string(&value, &lybctx->parse_ctx);
+    ret = lyb_read_string(&value, lybctx->parse_ctx);
     LY_CHECK_GOTO(ret, cleanup);
     dynamic = 1;
 
     /* parse format */
-    lyb_read_number((uint64_t *)&format, &lybctx->parse_ctx);
+    lyb_read_number((uint64_t *)&format, lybctx->parse_ctx);
 
     /* parse value prefixes */
-    ret = lyb_parse_prefix_data(&lybctx->parse_ctx, format, &val_prefix_data);
+    ret = lyb_parse_prefix_data(lybctx->parse_ctx, format, &val_prefix_data);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* create node */
@@ -1099,14 +1100,14 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
     LYD_ANYDATA_VALUETYPE value_type = 0;
     char *value = NULL;
     uint32_t flags = 0, prev_parse_opts, prev_int_opts;
-    const struct ly_ctx *ctx = lybctx->parse_ctx.ctx;
+    const struct ly_ctx *ctx = lybctx->parse_ctx->ctx;
 
     /* read necessary basic data */
     rc = lyb_parse_node_header(lybctx, snode, &flags, &meta);
     LY_CHECK_GOTO(rc, error);
 
     /* parse value type */
-    lyb_read_number((uint64_t *)&value_type, &lybctx->parse_ctx);
+    lyb_read_number((uint64_t *)&value_type, lybctx->parse_ctx);
 
     /* create the node */
     switch (value_type) {
@@ -1132,7 +1133,7 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
     case LYD_ANYDATA_XML:
     case LYD_ANYDATA_JSON:
         /* string value */
-        rc = lyb_read_string(&value, &lybctx->parse_ctx);
+        rc = lyb_read_string(&value, lybctx->parse_ctx);
         LY_CHECK_GOTO(rc, error);
 
         /* use the string value */
@@ -1280,10 +1281,10 @@ lyb_parse_node_leaflist(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, con
 
     while (1) {
         /* peek for the end instance flag (special metadata count) */
-        lyb_peek(&peek, LYB_METADATA_END_SIZE_B, &lybctx->parse_ctx);
+        lyb_peek(&peek, LYB_METADATA_END_SIZE_B, lybctx->parse_ctx);
         if (peek == LYB_METADATA_END) {
             /* all the instances parsed, read the end flag */
-            lyb_read(&peek, LYB_METADATA_END_SIZE_B, &lybctx->parse_ctx);
+            lyb_read(&peek, LYB_METADATA_END_SIZE_B, lybctx->parse_ctx);
             break;
         }
 
@@ -1317,10 +1318,10 @@ lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
 
     while (1) {
         /* peek for the end instance flag (special metadata count) */
-        lyb_peek(&peek, LYB_METADATA_END_SIZE_B, &lybctx->parse_ctx);
+        lyb_peek(&peek, LYB_METADATA_END_SIZE_B, lybctx->parse_ctx);
         if (peek == LYB_METADATA_END) {
             /* all the instances parsed, read the end flag */
-            lyb_read(&peek, LYB_METADATA_END_SIZE_B, &lybctx->parse_ctx);
+            lyb_read(&peek, LYB_METADATA_END_SIZE_B, lybctx->parse_ctx);
             break;
         }
 
@@ -1388,7 +1389,7 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
     char *mod_name = NULL, mod_rev[LY_REV_SIZE];
 
     /* read node type */
-    lyb_read((uint64_t *)&lyb_type, LYB_NODE_TYPE_BITS, &lybctx->parse_ctx);
+    lyb_read((uint64_t *)&lyb_type, LYB_NODE_TYPE_BITS, lybctx->parse_ctx);
 
     switch (lyb_type) {
     case LYB_NODE_END:
@@ -1397,7 +1398,7 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
         goto cleanup;
     case LYB_NODE_TOP:
         /* top-level, read module name */
-        LY_CHECK_GOTO(rc = lyb_parse_module(&lybctx->parse_ctx, &mod), cleanup);
+        LY_CHECK_GOTO(rc = lyb_parse_module(lybctx->parse_ctx, &mod), cleanup);
 
         /* read hash, find the schema node starting from mod */
         LY_CHECK_GOTO(rc = lyb_parse_schema_hash(lybctx, NULL, mod, &snode), cleanup);
@@ -1409,7 +1410,7 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
         break;
     case LYB_NODE_EXT:
         /* ext, read module name */
-        LY_CHECK_GOTO(rc = lyb_read_module(&lybctx->parse_ctx, &mod_name, mod_rev), cleanup);
+        LY_CHECK_GOTO(rc = lyb_read_module(lybctx->parse_ctx, &mod_name, mod_rev), cleanup);
 
         /* read schema node name, find the nested ext schema node */
         LY_CHECK_GOTO(rc = lyb_parse_schema_nested_ext(lybctx, parent, mod_name, &snode), cleanup);
@@ -1454,7 +1455,7 @@ lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, ly_bool 
 
     while (!(r = lyb_parse_node(lybctx, parent, first_p, parsed))) {
         /* parsing some data, hash must be set */
-        assert(!lybctx->parse_ctx.empty_hash);
+        assert(!lybctx->parse_ctx->empty_hash);
 
         if (is_root && !(lybctx->int_opts & LYD_INTOPT_WITH_SIBLINGS)) {
             break;
@@ -1552,9 +1553,11 @@ lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
 
     lybctx = calloc(1, sizeof *lybctx);
     LY_CHECK_ERR_RET(!lybctx, LOGMEM(ctx), LY_EMEM);
+    lybctx->parse_ctx = calloc(1, sizeof *lybctx->parse_ctx);
+    LY_CHECK_ERR_RET(!lybctx->parse_ctx, LOGMEM(ctx), LY_EMEM);
 
-    lybctx->parse_ctx.in = in;
-    lybctx->parse_ctx.ctx = ctx;
+    lybctx->parse_ctx->in = in;
+    lybctx->parse_ctx->ctx = ctx;
     lybctx->parse_opts = parse_opts;
     lybctx->val_opts = val_opts;
     lybctx->int_opts = int_opts;
@@ -1565,18 +1568,18 @@ lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
     LY_CHECK_GOTO(rc = lyd_parser_find_operation(parent, int_opts, &lybctx->op_node), cleanup);
 
     /* read magic number */
-    rc = lyb_parse_magic_number(&lybctx->parse_ctx);
+    rc = lyb_parse_magic_number(lybctx->parse_ctx);
     LY_CHECK_GOTO(rc, cleanup);
 
     /* read header */
-    rc = lyb_parse_header(&lybctx->parse_ctx);
+    rc = lyb_parse_header(lybctx->parse_ctx);
     LY_CHECK_GOTO(rc, cleanup);
 
     /* read sibling(s) */
     rc = lyb_parse_siblings(lybctx, parent, 1, first_p, parsed);
     LY_CHECK_GOTO(rc, cleanup);
 
-    if ((int_opts & LYD_INTOPT_NO_SIBLINGS) && lybctx->parse_ctx.in->current[0]) {
+    if ((int_opts & LYD_INTOPT_NO_SIBLINGS) && lybctx->parse_ctx->in->current[0]) {
         LOGVAL(ctx, LYVE_SYNTAX, "Unexpected sibling node.");
         rc = LY_EVALID;
         goto cleanup;

@@ -178,8 +178,8 @@ struct lyd_lyb_ctx {
     lyd_ctx_free_clb free;
 
     union {
-        struct lylyb_print_ctx print_ctx;
-        struct lylyb_parse_ctx parse_ctx;
+        struct lylyb_print_ctx *print_ctx;
+        struct lylyb_parse_ctx *parse_ctx;
     };
 };
 
