@@ -1579,11 +1579,6 @@ lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
     rc = lyb_parse_siblings(lybctx, parent, 1, first_p, parsed);
     LY_CHECK_GOTO(rc, cleanup);
 
-    if ((int_opts & LYD_INTOPT_NO_SIBLINGS) && lybctx->parse_ctx->in->current[0]) {
-        LOGVAL(ctx, LYVE_SYNTAX, "Unexpected sibling node.");
-        rc = LY_EVALID;
-        goto cleanup;
-    }
     if ((int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NOTIF | LYD_INTOPT_REPLY)) && !lybctx->op_node) {
         LOGVAL(ctx, LYVE_DATA, "Missing the operation node.");
         rc = LY_EVALID;
