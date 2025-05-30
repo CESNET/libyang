@@ -851,7 +851,6 @@ lyb_insert_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_
  *
  * @param[in] lybctx LYB context.
  * @param[in] parent Data parent of the sibling, must be set if @p first_p is not.
- * @param[in] flags Node flags to set.
  * @param[in,out] attr Attributes to be attached. Finally set to NULL.
  * @param[in,out] node Parsed opaq node to finish.
  * @param[in,out] first_p First top-level sibling, must be set if @p parent is not.
@@ -859,13 +858,10 @@ lyb_insert_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_
  * @return LY_ERR value.
  */
 static void
-lyb_finish_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, uint32_t flags, struct lyd_attr **attr,
-        struct lyd_node **node, struct lyd_node **first_p, struct ly_set *parsed)
+lyb_finish_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_attr **attr, struct lyd_node **node,
+        struct lyd_node **first_p, struct ly_set *parsed)
 {
     struct lyd_attr *iter;
-
-    /* set flags */
-    (*node)->flags = flags;
 
     /* add attributes */
     assert(!(*node)->schema);
@@ -1013,14 +1009,10 @@ lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     LY_VALUE_FORMAT format;
     void *val_prefix_data = NULL;
     const struct ly_ctx *ctx = lybctx->parse_ctx->ctx;
-    uint32_t flags = 0;
 
     /* parse opaq node attributes */
     ret = lyb_parse_attributes(lybctx->parse_ctx, &attr);
     LY_CHECK_GOTO(ret, cleanup);
-
-    /* read flags */
-    lyb_read_number((uint64_t *)&flags, lybctx->parse_ctx);
 
     /* parse prefix */
     ret = lyb_read_string(&prefix, lybctx->parse_ctx);
@@ -1066,7 +1058,7 @@ lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
 
     if (lybctx->parse_opts & LYD_PARSE_OPAQ) {
         /* register parsed opaq node */
-        lyb_finish_opaq(lybctx, parent, flags, &attr, &node, first_p, parsed);
+        lyb_finish_opaq(lybctx, parent, &attr, &node, first_p, parsed);
         assert(!attr && !node);
         LOG_LOCBACK(0, 1);
     } /* else is freed */
