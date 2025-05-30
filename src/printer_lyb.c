@@ -924,8 +924,8 @@ lyb_print_lyb_type(const struct lyd_node *node, struct lylyb_print_ctx *lybctx)
         /* nodes end */
         lyb_type = LYB_NODE_END;
     } else if (!node->schema) {
-        /* opaque node */
-        lyb_type = LYB_NODE_OPAQ;
+        /* opaque node laways printed as a child */
+        lyb_type = LYB_NODE_CHILD;
     } else if (node->flags & LYD_EXT) {
         /* nested extension node */
         lyb_type = LYB_NODE_EXT;

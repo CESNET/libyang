@@ -1404,7 +1404,6 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
         LY_CHECK_GOTO(rc = lyb_parse_schema_hash(lybctx, NULL, mod, &snode), cleanup);
         break;
     case LYB_NODE_CHILD:
-    case LYB_NODE_OPAQ:
         /* read hash, find the schema node starting from parent schema, if any */
         LY_CHECK_GOTO(rc = lyb_parse_schema_hash(lybctx, lyd_parser_node_schema(parent), NULL, &snode), cleanup);
         break;

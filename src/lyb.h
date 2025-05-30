@@ -70,15 +70,14 @@ struct lysc_node;
 enum lylyb_node_type {
     LYB_NODE_END = 0,   /**< no more nodes, marks the end of a list of nodes */
     LYB_NODE_TOP,       /**< top-level node */
-    LYB_NODE_CHILD,     /**< child node with a parent */
-    LYB_NODE_OPAQ,      /**< opaque node */
+    LYB_NODE_CHILD,     /**< child (or opaque) node with a parent */
     LYB_NODE_EXT        /**< nested extension node */
 };
 
-/**< number of bits required for all node types */
-#define LYB_NODE_TYPE_BITS 3
+/**< number of required bits required for all node types */
+#define LYB_NODE_TYPE_BITS 2
 
-/**< number of data node flag bits, fixed LYB size */
+/**< number of required data node flag bits, fixed LYB size */
 #define LYB_DATA_NODE_FLAG_BITS 4
 
 /**
@@ -134,8 +133,8 @@ struct lylyb_parse_ctx {
 /**< reserved encoded number of metadata instances */
 #define LYB_METADATA_END 0x3D
 
-/**< size in bits of reserved metadata instance count */
-#define LYB_METADATA_END_SIZE_B 6
+/**< number of required bits for reserved metadata instance count */
+#define LYB_METADATA_END_BITS 6
 
 /**
  * LYB schema hash constants
