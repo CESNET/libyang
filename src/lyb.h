@@ -136,6 +136,15 @@ struct lylyb_parse_ctx {
 /**< number of required bits for reserved metadata instance count */
 #define LYB_METADATA_END_BITS 6
 
+/**< opaque node format LY_VALUE_XML */
+#define LYB_OPAQ_FORMAT_XML 0x0
+
+/**< opaque node format LY_VALUE_JSON */
+#define LYB_OPAQ_FORMAT_JSON 0x1
+
+/**< number of required bits for all LYB opaque formats */
+#define LYB_OPAQ_FORMAT_BITS 1
+
 /**
  * LYB schema hash constants
  *

@@ -1009,7 +1009,8 @@ lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     struct lyd_attr *attr = NULL;
     char *value = NULL, *name = NULL, *prefix = NULL, *module_key = NULL;
     ly_bool dynamic = 0;
-    LY_VALUE_FORMAT format = 0;
+    uint8_t byte = 0;
+    LY_VALUE_FORMAT format;
     void *val_prefix_data = NULL;
     const struct ly_ctx *ctx = lybctx->parse_ctx->ctx;
     uint32_t flags = 0;
@@ -1039,7 +1040,13 @@ lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     dynamic = 1;
 
     /* parse format */
-    lyb_read_number((uint64_t *)&format, lybctx->parse_ctx);
+    lyb_read(&byte, LYB_OPAQ_FORMAT_BITS, lybctx->parse_ctx);
+    if (byte == LYB_OPAQ_FORMAT_XML) {
+        format = LY_VALUE_XML;
+    } else {
+        assert(byte == LYB_OPAQ_FORMAT_JSON);
+        format = LY_VALUE_JSON;
+    }
 
     /* parse value prefixes */
     ret = lyb_parse_prefix_data(lybctx->parse_ctx, format, &val_prefix_data);
@@ -1281,10 +1288,10 @@ lyb_parse_node_leaflist(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, con
 
     while (1) {
         /* peek for the end instance flag (special metadata count) */
-        lyb_peek(&peek, LYB_METADATA_END_SIZE_B, lybctx->parse_ctx);
+        lyb_peek(&peek, LYB_METADATA_END_BITS, lybctx->parse_ctx);
         if (peek == LYB_METADATA_END) {
             /* all the instances parsed, read the end flag */
-            lyb_read(&peek, LYB_METADATA_END_SIZE_B, lybctx->parse_ctx);
+            lyb_read(&peek, LYB_METADATA_END_BITS, lybctx->parse_ctx);
             break;
         }
 
@@ -1318,10 +1325,10 @@ lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
 
     while (1) {
         /* peek for the end instance flag (special metadata count) */
-        lyb_peek(&peek, LYB_METADATA_END_SIZE_B, lybctx->parse_ctx);
+        lyb_peek(&peek, LYB_METADATA_END_BITS, lybctx->parse_ctx);
         if (peek == LYB_METADATA_END) {
             /* all the instances parsed, read the end flag */
-            lyb_read(&peek, LYB_METADATA_END_SIZE_B, lybctx->parse_ctx);
+            lyb_read(&peek, LYB_METADATA_END_BITS, lybctx->parse_ctx);
             break;
         }
 
