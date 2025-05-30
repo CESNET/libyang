@@ -976,9 +976,6 @@ lyb_print_node_opaq(const struct lyd_node_opaq *opaq, struct lyd_lyb_ctx *lybctx
     /* write attributes */
     LY_CHECK_RET(lyb_print_attributes(opaq, lybctx->print_ctx));
 
-    /* write node flags */
-    LY_CHECK_RET(lyb_write_number(opaq->flags, lybctx->print_ctx));
-
     /* prefix */
     LY_CHECK_RET(lyb_write_string(opaq->name.prefix, 0, lybctx->print_ctx));
 
