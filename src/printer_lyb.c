@@ -460,12 +460,12 @@ lyb_write_number(uint64_t num, struct lylyb_print_ctx *lybctx)
  * @brief Write a string.
  *
  * @param[in] str String to write.
- * @param[in] str_len Length of @p str.
+ * @param[in] str_len Length of @p str in bytes.
  * @param[in] lybctx Printer LYB context.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_write_string(const char *str, uint64_t str_len, struct lylyb_print_ctx *lybctx)
+lyb_write_string(const char *str, uint32_t str_len, struct lylyb_print_ctx *lybctx)
 {
     if (!str) {
         str = "";
@@ -476,8 +476,11 @@ lyb_write_string(const char *str, uint64_t str_len, struct lylyb_print_ctx *lybc
         str_len = strlen(str);
     }
 
-    LY_CHECK_RET(lyb_write_number(str_len, lybctx));
+    /* print the string length in bits */
+    LY_CHECK_RET(lyb_write_number(str_len * 8, lybctx));
+
     if (str_len) {
+        /* print the string */
         LY_CHECK_RET(lyb_write(str, str_len * 8, lybctx));
     }
 
