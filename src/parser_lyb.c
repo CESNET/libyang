@@ -239,20 +239,25 @@ lyb_read_number(uint64_t *num, struct lylyb_parse_ctx *lybctx)
 static LY_ERR
 lyb_read_string(char **str, struct lylyb_parse_ctx *lybctx)
 {
-    uint64_t len = 0;
+    uint64_t str_len = 0;
 
     *str = NULL;
 
-    lyb_read_number(&len, lybctx);
+    /* read length in bits, convert to bytes */
+    lyb_read_number(&str_len, lybctx);
+    LY_CHECK_ERR_RET(str_len % 8, LOGERR(lybctx->ctx, LY_EINT, "Invalid bit length %" PRIu64 " of a string.", str_len), LY_EINT);
+    str_len /= 8;
 
-    *str = malloc((len + 1) * sizeof **str);
+    /* allocate mem */
+    *str = malloc((str_len + 1) * sizeof **str);
     LY_CHECK_ERR_RET(!*str, LOGMEM(lybctx->ctx), LY_EMEM);
 
-    if (len) {
-        lyb_read(*str, len * 8, lybctx);
+    if (str_len) {
+        /* read the string */
+        lyb_read(*str, str_len * 8, lybctx);
     }
 
-    (*str)[len] = '\0';
+    (*str)[str_len] = '\0';
     return LY_SUCCESS;
 }
 
