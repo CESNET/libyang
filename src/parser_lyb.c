@@ -281,10 +281,8 @@ lyb_skip_string(struct lylyb_parse_ctx *lybctx)
  * @brief Read value of term node.
  *
  * @param[in] term Compiled term node.
- * @param[out] term_value Set to term node value in dynamically
- * allocated memory. The caller must release it.
- * @param[out] term_value_len Value length in bytes. The zero byte is
- * always included and is not counted.
+ * @param[out] term_value Set to term node value in dynamically allocated memory. The caller must release it.
+ * @param[out] term_value_len Value length in bytes. The zero byte is always included and is not counted.
  * @param[in,out] lybctx LYB context.
  * @return LY_ERR value.
  */
