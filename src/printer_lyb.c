@@ -780,6 +780,7 @@ lyb_print_attributes(const struct lyd_node_opaq *node, struct lylyb_print_ctx *l
 {
     uint64_t count = 0;
     struct lyd_attr *iter;
+    uint8_t format;
 
     for (iter = node->attr; iter; iter = iter->next) {
         if (count == UINT64_MAX) {
@@ -804,7 +805,16 @@ lyb_print_attributes(const struct lyd_node_opaq *node, struct lylyb_print_ctx *l
         LY_CHECK_RET(lyb_write_string(iter->name.name, 0, lybctx));
 
         /* format */
-        LY_CHECK_RET(lyb_write_number(iter->format, lybctx));
+        if (iter->format == LY_VALUE_XML) {
+            format = LYB_OPAQ_FORMAT_XML;
+            LY_CHECK_RET(lyb_write(&format, LYB_OPAQ_FORMAT_BITS, lybctx));
+        } else if (iter->format == LY_VALUE_JSON) {
+            format = LYB_OPAQ_FORMAT_JSON;
+            LY_CHECK_RET(lyb_write(&format, LYB_OPAQ_FORMAT_BITS, lybctx));
+        } else {
+            LOGERR(lybctx->ctx, LY_EINT, "Unexpected opaque attribute format.");
+            return LY_EINT;
+        }
 
         /* value prefixes */
         LY_CHECK_RET(lyb_print_prefix_data(iter->format, iter->val_prefix_data, lybctx));

@@ -556,6 +556,7 @@ lyb_parse_attributes(struct lylyb_parse_ctx *lybctx, struct lyd_attr **attr)
     ly_bool dynamic = 0;
     LY_VALUE_FORMAT format = 0;
     void *val_prefix_data = NULL;
+    uint8_t byte = 0;
 
     /* read count */
     lyb_read_number(&count, lybctx);
@@ -583,7 +584,13 @@ lyb_parse_attributes(struct lylyb_parse_ctx *lybctx, struct lyd_attr **attr)
         LY_CHECK_GOTO(ret, cleanup);
 
         /* format */
-        lyb_read_number((uint64_t *)&format, lybctx);
+        lyb_read(&byte, LYB_OPAQ_FORMAT_BITS, lybctx);
+        if (byte == LYB_OPAQ_FORMAT_XML) {
+            format = LY_VALUE_XML;
+        } else {
+            assert(byte == LYB_OPAQ_FORMAT_JSON);
+            format = LY_VALUE_JSON;
+        }
 
         /* value prefixes */
         ret = lyb_parse_prefix_data(lybctx, format, &val_prefix_data);
