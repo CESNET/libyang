@@ -176,7 +176,6 @@ set(headers
     src/plugins.h
     src/plugins_exts.h
     src/plugins_exts/metadata.h
-    src/plugins_exts/schema_mount.h
     src/plugins_types.h
     src/printer_data.h
     src/printer_schema.h
