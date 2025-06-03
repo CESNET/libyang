@@ -416,6 +416,14 @@ void ly_ctx_data_del(const struct ly_ctx *ctx);
 struct ly_ctx_data *ly_ctx_data_get(const struct ly_ctx *ctx);
 
 /**
+ * @brief Get context's data reference count.
+ *
+ * @param[in] ctx Context whose data reference count to get.
+ * @return Reference count of the context's data, -1 if the context data was not found.
+ */
+int ly_ctx_data_refcount_get(const struct ly_ctx *ctx);
+
+/**
  * @brief Get context's data dictionary.
  *
  * @param[in] ctx Context whose data dictionary to get.
