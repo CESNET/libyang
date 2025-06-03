@@ -502,12 +502,22 @@ void lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta, ly_bool cle
 void lyd_unlink_meta_single(struct lyd_meta *meta);
 
 /**
+ * @brief Get the annotation definition in the module.
+ *
+ * @param[in] mod Metadata module (with the annotation definition).
+ * @param[in] name Metadata name.
+ * @param[in] name_len Length of @p name, must be set correctly.
+ * @return YANG extension annotation instance.
+ */
+struct lysc_ext_instance *lyd_get_meta_annotation(const struct lys_module *mod, const char *name, size_t name_len);
+
+/**
  * @brief Create and insert a metadata (last) into a parent.
  *
  * @param[in] parent Parent of the metadata, can be NULL.
  * @param[in,out] meta Metadata list to add at its end if @p parent is NULL, returned created attribute.
  * @param[in] mod Metadata module (with the annotation definition).
- * @param[in] name Attribute name.
+ * @param[in] name Metadata name.
  * @param[in] name_len Length of @p name, must be set correctly.
  * @param[in] value String value to be parsed.
  * @param[in] value_len Length of @p value, must be set correctly.

@@ -696,30 +696,29 @@ lyb_print_prefix_data(LY_VALUE_FORMAT format, const void *prefix_data, struct ly
 }
 
 /**
- * @brief Print term node.
+ * @brief Print a value.
  *
- * @param[in] term Node to print.
+ * @param[in] ctx Context to use for printing @p value.
+ * @param[in] value Value to print.
  * @param[in] lybctx Printer LYB context.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_print_term_value(struct lyd_node_term *term, struct lylyb_print_ctx *lybctx)
+lyb_print_value(const struct ly_ctx *ctx, const struct lyd_value *value, struct lylyb_print_ctx *lybctx)
 {
     LY_ERR ret = LY_SUCCESS;
     ly_bool dynamic = 0;
-    void *value;
-    size_t value_len = 0;
+    void *val;
+    size_t val_len = 0;
     int32_t lyb_data_len;
     lyplg_type_print_clb print;
     struct lyplg_type *type_plg;
 
-    assert(term->value.realtype && term->value.realtype->plugin_ref &&
-            LYSC_GET_TYPE_PLG(term->value.realtype->plugin_ref)->print && term->schema);
-
-    type_plg = LYSC_GET_TYPE_PLG(term->value.realtype->plugin_ref);
+    assert(value->realtype && value->realtype->plugin_ref);
+    type_plg = LYSC_GET_TYPE_PLG(value->realtype->plugin_ref);
 
     /* get length of LYB data to print */
-    lyb_data_len = term->value.realtype->plugin->lyb_data_len;
+    lyb_data_len = type_plg->lyb_data_len;
 
     /* get value and also print its length only if size is not fixed */
     print = type_plg->print;
@@ -727,38 +726,38 @@ lyb_print_term_value(struct lyd_node_term *term, struct lylyb_print_ctx *lybctx)
         /* variable-length data */
 
         /* get value and its length from plugin */
-        value = (void *)print(term->schema->module->ctx, &term->value, LY_VALUE_LYB, NULL, &dynamic, &value_len);
-        LY_CHECK_ERR_GOTO(!value, ret = LY_EINT, cleanup);
+        val = (void *)print(ctx, value, LY_VALUE_LYB, NULL, &dynamic, &val_len);
+        LY_CHECK_ERR_GOTO(!val, ret = LY_EINT, cleanup);
 
-        if (value_len > UINT32_MAX) {
+        if (val_len > UINT32_MAX) {
             LOGERR(lybctx->ctx, LY_EINT, "Maximum length of a LYB data value must not exceed %" PRIu32 ".", UINT32_MAX);
             ret = LY_EINT;
             goto cleanup;
         }
 
         /* print the length of the data in bits */
-        ret = lyb_write_size(value_len * 8, lybctx);
+        ret = lyb_write_size(val_len * 8, lybctx);
         LY_CHECK_GOTO(ret, cleanup);
     } else {
         /* fixed-length data */
 
         /* get value from plugin */
-        value = (void *)print(term->schema->module->ctx, &term->value, LY_VALUE_LYB, NULL, &dynamic, NULL);
+        val = (void *)print(ctx, value, LY_VALUE_LYB, NULL, &dynamic, NULL);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* copy the length from the compiled node */
-        value_len = lyb_data_len;
+        val_len = lyb_data_len;
     }
 
     /* print value */
-    if (value_len > 0) {
-        ret = lyb_write(value, value_len * 8, lybctx);
+    if (val_len > 0) {
+        ret = lyb_write(val, val_len * 8, lybctx);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
 cleanup:
     if (dynamic) {
-        free(value);
+        free(val);
     }
 
     return ret;
@@ -826,7 +825,7 @@ lyb_print_metadata(const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
         LY_CHECK_RET(lyb_write_string(iter->name, 0, lybctx->print_ctx));
 
         /* metadata value */
-        LY_CHECK_RET(lyb_write_string(lyd_get_meta_value(iter), 0, lybctx->print_ctx));
+        LY_CHECK_RET(lyb_print_value(LYD_CTX(node), &iter->value, lybctx->print_ctx));
     }
 
     return LY_SUCCESS;
@@ -1143,7 +1142,7 @@ lyb_print_node_leaf(const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
     LY_CHECK_RET(lyb_print_node_header(node, lybctx));
 
     /* write term value */
-    LY_CHECK_RET(lyb_print_term_value((struct lyd_node_term *)node, lybctx->print_ctx));
+    LY_CHECK_RET(lyb_print_value(LYD_CTX(node), &((struct lyd_node_term *)node)->value, lybctx->print_ctx));
 
     return LY_SUCCESS;
 }
@@ -1330,7 +1329,7 @@ lyb_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options
 
         if (!(ctx->opts & LY_CTX_LYB_HASHES)) {
             /* generate LYB hashes */
-            LY_CHECK_GOTO(ret = ly_ctx_set_options((struct ly_ctx *)ctx, LY_CTX_LYB_HASHES), cleanup);
+            LY_CHECK_GOTO(rc = ly_ctx_set_options((struct ly_ctx *)ctx, LY_CTX_LYB_HASHES), cleanup);
         }
     }
     lybctx->print_ctx->out = out;
