@@ -48,7 +48,7 @@
  * @return LY_ERR value.
  */
 static LY_ERR
-identityref_ident2str(const struct lysc_ident *ident, LY_VALUE_FORMAT format, void *prefix_data, char **str, size_t *str_len)
+identityref_ident2str(const struct lysc_ident *ident, LY_VALUE_FORMAT format, void *prefix_data, char **str, uint32_t *str_len)
 {
     int len;
     const char *prefix;
@@ -66,7 +66,7 @@ identityref_ident2str(const struct lysc_ident *ident, LY_VALUE_FORMAT format, vo
     }
 
     if (str_len) {
-        *str_len = (size_t)len;
+        *str_len = (uint32_t)len;
     }
     return LY_SUCCESS;
 }
@@ -85,11 +85,11 @@ identityref_ident2str(const struct lysc_ident *ident, LY_VALUE_FORMAT format, vo
  * @return LY_ERR value.
  */
 static LY_ERR
-identityref_str2ident(const char *value, size_t value_len, LY_VALUE_FORMAT format, void *prefix_data,
+identityref_str2ident(const char *value, uint32_t value_len, LY_VALUE_FORMAT format, void *prefix_data,
         const struct ly_ctx *ctx, const struct lysc_node *ctx_node, struct lysc_ident **ident, struct ly_err_item **err)
 {
     const char *id_name, *prefix = value;
-    size_t id_len, prefix_len;
+    uint32_t id_len, prefix_len;
     const struct lys_module *mod;
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_ident *id, *identities;
@@ -146,10 +146,10 @@ identityref_str2ident(const char *value, size_t value_len, LY_VALUE_FORMAT forma
  */
 static LY_ERR
 identityref_check_base(const struct lysc_ident *ident, struct lysc_type_identityref *type, const char *value,
-        size_t value_len, struct ly_err_item **err)
+        uint32_t value_len, struct ly_err_item **err)
 {
     LY_ERR ret;
-    size_t str_len;
+    uint32_t str_len;
     char *str;
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_ident *base;
@@ -207,7 +207,7 @@ identityref_check_base(const struct lysc_ident *ident, struct lysc_type_identity
  */
 static LY_ERR
 identityref_check_ident(const struct lysc_ident *ident, const char *value,
-        size_t value_len, uint32_t options, struct lys_glob_unres *unres, struct ly_err_item **err)
+        uint32_t value_len, uint32_t options, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
 
@@ -229,7 +229,7 @@ identityref_check_ident(const struct lysc_ident *ident, const char *value,
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
+lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
@@ -319,7 +319,7 @@ lyplg_type_sort_identityref(const struct ly_ctx *UNUSED(ctx), const struct lyd_v
 
 LIBYANG_API_DEF const void *
 lyplg_type_print_identityref(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, size_t *value_len)
+        void *prefix_data, ly_bool *dynamic, uint32_t *value_len)
 {
     char *ret;
 

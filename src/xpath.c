@@ -2719,8 +2719,7 @@ reparse_equality_expr:
 static ssize_t
 parse_ncname(const char *ncname)
 {
-    uint32_t uc;
-    size_t size;
+    uint32_t uc, size;
     ssize_t len = 0;
 
     LY_CHECK_RET(ly_getutf8(&ncname, &uc, &size), 0);

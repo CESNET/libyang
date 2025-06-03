@@ -44,7 +44,7 @@
  * @brief Find import prefix in imports.
  */
 static const struct lys_module *
-ly_schema_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len, const void *prefix_data)
+ly_schema_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, uint32_t prefix_len, const void *prefix_data)
 {
     const struct lysp_module *prefix_mod = prefix_data;
     LY_ARRAY_COUNT_TYPE u;
@@ -70,7 +70,7 @@ ly_schema_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, s
  * @brief Find resolved module for a prefix in prefix - module pairs.
  */
 static const struct lys_module *
-ly_schema_resolved_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len,
+ly_schema_resolved_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, uint32_t prefix_len,
         const void *prefix_data)
 {
     const struct lysc_prefix *prefixes = prefix_data;
@@ -89,7 +89,7 @@ ly_schema_resolved_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *
  * @brief Find XML namespace prefix in XML namespaces, which are then mapped to modules.
  */
 static const struct lys_module *
-ly_xml_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, const void *prefix_data)
+ly_xml_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, uint32_t prefix_len, const void *prefix_data)
 {
     const struct lys_module *mod;
     const struct lyxml_ns *ns;
@@ -112,13 +112,13 @@ ly_xml_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefi
  * @brief Find module name.
  */
 static const struct lys_module *
-ly_json_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, const void *UNUSED(prefix_data))
+ly_json_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, uint32_t prefix_len, const void *UNUSED(prefix_data))
 {
     return ly_ctx_get_module_implemented2(ctx, prefix, prefix_len);
 }
 
 const struct lys_module *
-ly_resolve_prefix(const struct ly_ctx *ctx, const void *prefix, size_t prefix_len, LY_VALUE_FORMAT format,
+ly_resolve_prefix(const struct ly_ctx *ctx, const void *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format,
         const void *prefix_data)
 {
     const struct lys_module *mod = NULL;
@@ -148,7 +148,7 @@ ly_resolve_prefix(const struct ly_ctx *ctx, const void *prefix, size_t prefix_le
 
 LIBYANG_API_DEF const struct lys_module *
 lyplg_type_identity_module(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *prefix,
-        size_t prefix_len, LY_VALUE_FORMAT format, const void *prefix_data)
+        uint32_t prefix_len, LY_VALUE_FORMAT format, const void *prefix_data)
 {
     if (prefix_len) {
         return ly_resolve_prefix(ctx, prefix, prefix_len, format, prefix_data);
@@ -338,7 +338,7 @@ lyplg_type_sort_simple(const struct ly_ctx *ctx, const struct lyd_value *val1, c
 
 LIBYANG_API_DEF const void *
 lyplg_type_print_simple(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT UNUSED(format),
-        void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
+        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_len)
 {
     if (dynamic) {
         *dynamic = 0;
@@ -373,7 +373,7 @@ lyplg_type_free_simple(const struct ly_ctx *ctx, struct lyd_value *value)
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len,
+lyplg_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, uint32_t value_len,
         int64_t *ret, struct ly_err_item **err)
 {
     LY_CHECK_ARG_RET(NULL, err, datatype, LY_EINVAL);
@@ -400,7 +400,7 @@ lyplg_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, c
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_parse_uint(const char *datatype, int base, uint64_t max, const char *value, size_t value_len, uint64_t *ret,
+lyplg_type_parse_uint(const char *datatype, int base, uint64_t max, const char *value, uint32_t value_len, uint64_t *ret,
         struct ly_err_item **err)
 {
     LY_CHECK_ARG_RET(NULL, err, datatype, LY_EINVAL);
@@ -428,11 +428,11 @@ lyplg_type_parse_uint(const char *datatype, int base, uint64_t max, const char *
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err)
+lyplg_type_parse_dec64(uint8_t fraction_digits, const char *value, uint32_t value_len, int64_t *ret, struct ly_err_item **err)
 {
     LY_ERR ret_val;
     char *valcopy = NULL;
-    size_t fraction = 0, size, len = 0, trailing_zeros;
+    uint32_t fraction = 0, size, len = 0, trailing_zeros;
     int64_t d;
 
     *err = NULL;
@@ -444,7 +444,7 @@ lyplg_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_
     if (!value_len) {
         return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid empty decimal64 value.");
     } else if (!isdigit(value[len]) && (value[len] != '-') && (value[len] != '+')) {
-        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid %zu. character of decimal64 value \"%.*s\".",
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid %" PRIu32 ". character of decimal64 value \"%.*s\".",
                 len + 1, (int)value_len, value);
     }
 
@@ -524,7 +524,8 @@ decimal:
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_validate_patterns(const struct ly_ctx *ctx, struct lysc_pattern **patterns, const char *str, size_t str_len, struct ly_err_item **err)
+lyplg_type_validate_patterns(const struct ly_ctx *ctx, struct lysc_pattern **patterns, const char *str, uint32_t str_len,
+        struct ly_err_item **err)
 {
     LY_ERR r;
     LY_ARRAY_COUNT_TYPE u;
@@ -562,7 +563,7 @@ lyplg_type_validate_patterns(const struct ly_ctx *ctx, struct lysc_pattern **pat
 
 LIBYANG_API_DEF LY_ERR
 lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *strval,
-        size_t strval_len, struct ly_err_item **err)
+        uint32_t strval_len, struct ly_err_item **err)
 {
     LY_ARRAY_COUNT_TYPE u;
     ly_bool is_length; /* length or range */
@@ -626,7 +627,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_prefix_data_new(const struct ly_ctx *ctx, const void *value, size_t value_len, LY_VALUE_FORMAT format,
+lyplg_type_prefix_data_new(const struct ly_ctx *ctx, const void *value, uint32_t value_len, LY_VALUE_FORMAT format,
         const void *prefix_data, LY_VALUE_FORMAT *format_p, void **prefix_data_p)
 {
     LY_CHECK_ARG_RET(ctx, value, format_p, prefix_data_p, LY_EINVAL);
@@ -672,7 +673,7 @@ type_get_hints_base(uint32_t hints)
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TYPE type, int *base,
+lyplg_type_check_hints(uint32_t hints, const char *value, uint32_t value_len, LY_DATA_TYPE type, int *base,
         struct ly_err_item **err)
 {
     LY_CHECK_ARG_RET(NULL, value || !value_len, err, LY_EINVAL);
@@ -819,7 +820,7 @@ lyplg_type_lypath_check_status(const struct lysc_node *ctx_node, const struct ly
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_len, uint32_t options,
+lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, uint32_t value_len, uint32_t options,
         LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *ctx_node, struct lys_glob_unres *unres,
         struct ly_path **path, struct ly_err_item **err)
 {

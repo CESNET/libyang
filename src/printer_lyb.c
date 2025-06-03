@@ -709,7 +709,7 @@ lyb_print_value(const struct ly_ctx *ctx, const struct lyd_value *value, struct 
     LY_ERR ret = LY_SUCCESS;
     ly_bool dynamic = 0;
     void *val;
-    size_t val_len = 0;
+    uint32_t val_len = 0;
     int32_t lyb_data_len;
     lyplg_type_print_clb print;
     struct lyplg_type *type_plg;
@@ -728,12 +728,6 @@ lyb_print_value(const struct ly_ctx *ctx, const struct lyd_value *value, struct 
         /* get value and its length from plugin */
         val = (void *)print(ctx, value, LY_VALUE_LYB, NULL, &dynamic, &val_len);
         LY_CHECK_ERR_GOTO(!val, ret = LY_EINT, cleanup);
-
-        if (val_len > UINT32_MAX) {
-            LOGERR(lybctx->ctx, LY_EINT, "Maximum length of a LYB data value must not exceed %" PRIu32 ".", UINT32_MAX);
-            ret = LY_EINT;
-            goto cleanup;
-        }
 
         /* print the length of the data in bits */
         ret = lyb_write_size(val_len * 8, lybctx);

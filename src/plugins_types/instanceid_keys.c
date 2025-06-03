@@ -132,7 +132,7 @@ cleanup:
  * @brief Implementation of ::lyplg_type_store_clb for the instance-identifier-keys yang type.
  */
 static LY_ERR
-lyplg_type_store_instanceid_keys(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
+lyplg_type_store_instanceid_keys(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *UNUSED(ctx_node),
         struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres), struct ly_err_item **err)
 {

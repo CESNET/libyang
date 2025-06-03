@@ -561,8 +561,7 @@ lysp_stmt_validate_value(struct lysp_ctx *ctx, enum yang_arg val_type, const cha
 {
     uint8_t prefix = 0;
     ly_bool first = 1;
-    uint32_t c;
-    size_t utf8_char_len;
+    uint32_t c, utf8_char_len;
 
     if (!val) {
         if (val_type == Y_MAYBE_STR_ARG) {

@@ -2257,7 +2257,7 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
         struct lysp_ext **ext_def)
 {
     const char *tmp, *name, *prefix;
-    size_t pref_len, name_len;
+    uint32_t pref_len, name_len;
     LY_ARRAY_COUNT_TYPE u, v;
     const struct lys_module *mod = NULL;
     const struct lysp_submodule *submod;
@@ -2316,7 +2316,7 @@ LY_ERR
 lysc_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instance *ext, struct lysc_ext **ext_def)
 {
     const char *tmp, *name, *prefix;
-    size_t pref_len, name_len;
+    uint32_t pref_len, name_len;
     LY_ARRAY_COUNT_TYPE u;
     const struct lys_module *mod = NULL;
 
@@ -2352,6 +2352,9 @@ lysc_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
 LY_ERR
 lysp_ext_instance_resolve_argument(const struct ly_ctx *ctx, const struct lysp_ext *ext_def, struct lysp_ext_instance *ext_p)
 {
+    const char *ext, *arg, *prefix_arg, *name_arg, *prefix_ext, *name_ext;
+    uint32_t prefix_arg_len, name_arg_len, prefix_ext_len, name_ext_len;
+
     if (!ext_def->argname || ext_p->argument) {
         /* nothing to do */
         return LY_SUCCESS;
@@ -2365,9 +2368,6 @@ lysp_ext_instance_resolve_argument(const struct ly_ctx *ctx, const struct lysp_e
             /* ... argument was the first XML child element */
             for (stmt = ext_p->child; stmt && (stmt->flags & LYS_YIN_ATTR); stmt = stmt->next) {}
             if (stmt) {
-                const char *arg, *ext, *name_arg, *name_ext, *prefix_arg, *prefix_ext;
-                size_t name_arg_len, name_ext_len, prefix_arg_len, prefix_ext_len;
-
                 stmt = ext_p->child;
 
                 arg = stmt->stmt;

@@ -3098,7 +3098,7 @@ lyd_find_meta(const struct lyd_meta *first, const struct lys_module *module, con
     const struct ly_ctx *ctx;
     const char *prefix, *tmp;
     char *str;
-    size_t pref_len, name_len;
+    uint32_t pref_len, name_len;
 
     LY_CHECK_ARG_RET(NULL, module || strchr(name, ':'), name, NULL);
     LY_CHECK_CTX_EQUAL_RET(__func__, first ? first->annotation->module->ctx : NULL, module ? module->ctx : NULL, NULL);

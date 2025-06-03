@@ -62,7 +62,7 @@ static void lyplg_type_free_ipv4_prefix(const struct ly_ctx *ctx, struct lyd_val
  * @return LY_ERR value.
  */
 static LY_ERR
-ipv4prefix_str2ip(const char *value, size_t value_len, struct in_addr *addr, uint8_t *prefix, struct ly_err_item **err)
+ipv4prefix_str2ip(const char *value, uint32_t value_len, struct in_addr *addr, uint8_t *prefix, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *pref_str;
@@ -114,7 +114,7 @@ ipv4prefix_zero_host(struct in_addr *addr, uint8_t prefix)
  * @brief Implementation of ::lyplg_type_store_clb for the ipv4-prefix ietf-inet-types type.
  */
 static LY_ERR
-lyplg_type_store_ipv4_prefix(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
+lyplg_type_store_ipv4_prefix(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
@@ -132,8 +132,8 @@ lyplg_type_store_ipv4_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
     if (format == LY_VALUE_LYB) {
         /* validation */
         if (value_len != LYB_VALUE_LEN) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv4-prefix value size %zu (expected %d).",
-                    value_len, LYB_VALUE_LEN);
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv4-prefix value size %" PRIu32
+                    " (expected %d).", value_len, LYB_VALUE_LEN);
             goto cleanup;
         }
         if (((uint8_t *)value)[4] > 32) {
@@ -241,7 +241,7 @@ lyplg_type_sort_ipv4_prefix(const struct ly_ctx *UNUSED(ctx), const struct lyd_v
  */
 static const void *
 lyplg_type_print_ipv4_prefix(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
+        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_len)
 {
     struct lyd_value_ipv4_prefix *val;
     char *ret;

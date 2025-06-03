@@ -64,13 +64,13 @@ static void lyplg_type_free_ipv6_address(const struct ly_ctx *ctx, struct lyd_va
  * @return LY_ERR value.
  */
 static LY_ERR
-ipv6address_str2ip(const char *value, size_t value_len, uint32_t options, const struct ly_ctx *ctx,
+ipv6address_str2ip(const char *value, uint32_t value_len, uint32_t options, const struct ly_ctx *ctx,
         struct in6_addr *addr, const char **zone, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *addr_no_zone;
     char *zone_ptr = NULL, *addr_dyn = NULL;
-    size_t zone_len;
+    uint32_t zone_len;
 
     /* store zone and get the string IPv6 address without it */
     if ((zone_ptr = ly_strnchr(value, '%', value_len))) {
@@ -121,7 +121,7 @@ cleanup:
  * @brief Implementation of ::lyplg_type_store_clb for the ipv6-address ietf-inet-types type.
  */
 static LY_ERR
-lyplg_type_store_ipv6_address(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
+lyplg_type_store_ipv6_address(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
@@ -130,7 +130,7 @@ lyplg_type_store_ipv6_address(const struct ly_ctx *ctx, const struct lysc_type *
     const char *value_str = value;
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
     struct lyd_value_ipv6_address *val;
-    size_t i;
+    uint32_t i;
 
     /* init storage */
     memset(storage, 0, sizeof *storage);
@@ -141,8 +141,8 @@ lyplg_type_store_ipv6_address(const struct ly_ctx *ctx, const struct lysc_type *
     if (format == LY_VALUE_LYB) {
         /* validation */
         if (value_len < 16) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv6-address value size %zu "
-                    "(expected at least 16).", value_len);
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv6-address value size %" PRIu32
+                    " (expected at least 16).", value_len);
             goto cleanup;
         }
         for (i = 16; i < value_len; ++i) {
@@ -269,10 +269,10 @@ lyplg_type_sort_ipv6_address(const struct ly_ctx *UNUSED(ctx), const struct lyd_
  */
 static const void *
 lyplg_type_print_ipv6_address(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
+        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_len)
 {
     struct lyd_value_ipv6_address *val;
-    size_t zone_len;
+    uint32_t zone_len;
     char *ret;
 
     LYD_VALUE_GET(value, val);

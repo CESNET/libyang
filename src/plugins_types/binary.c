@@ -57,7 +57,7 @@ static LY_ERR lyplg_type_validate_binary(const struct ly_ctx *UNUSED(ctx), const
  * @return LY_ERR value.
  */
 static LY_ERR
-binary_base64_encode(const struct ly_ctx *ctx, const char *data, size_t size, char **str, size_t *str_len)
+binary_base64_encode(const struct ly_ctx *ctx, const char *data, uint32_t size, char **str, uint32_t *str_len)
 {
     uint32_t i;
     char *ptr;
@@ -118,7 +118,7 @@ static const int b64_dtable[256] = {
  * @return LY_ERR value.
  */
 static LY_ERR
-binary_base64_decode(const char *value, size_t value_len, void **data, size_t *size)
+binary_base64_decode(const char *value, uint32_t value_len, void **data, uint32_t *size)
 {
     unsigned char *ptr = (unsigned char *)value;
     uint32_t pad_chars, octet_count;
@@ -171,7 +171,7 @@ binary_base64_decode(const char *value, size_t value_len, void **data, size_t *s
  * @return LY_ERR value.
  */
 static LY_ERR
-binary_base64_validate(const char *value, size_t value_len, struct ly_err_item **err)
+binary_base64_validate(const char *value, uint32_t value_len, struct ly_err_item **err)
 {
     uint32_t idx, pad;
 
@@ -218,10 +218,10 @@ binary_base64_validate(const char *value, size_t value_len, struct ly_err_item *
  * @return LY_ERR value.
  */
 static LY_ERR
-binary_base64_newlines(char **value, size_t *value_len, uint32_t *options, struct ly_err_item **err)
+binary_base64_newlines(char **value, uint32_t *value_len, uint32_t *options, struct ly_err_item **err)
 {
     char *val;
-    size_t len;
+    uint32_t len;
 
     if ((*value_len < 65) || ((*value)[64] != '\n')) {
         /* no newlines */
@@ -254,7 +254,7 @@ binary_base64_newlines(char **value, size_t *value_len, uint32_t *options, struc
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
+lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
@@ -400,11 +400,11 @@ lyplg_type_sort_binary(const struct ly_ctx *UNUSED(ctx), const struct lyd_value 
 
 LIBYANG_API_DEF const void *
 lyplg_type_print_binary(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
+        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_len)
 {
     struct lyd_value_binary *val;
     char *ret;
-    size_t ret_len = 0;
+    uint32_t ret_len = 0;
 
     LYD_VALUE_GET(value, val);
 

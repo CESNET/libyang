@@ -83,7 +83,7 @@ decimal64_num2str(int64_t num, struct lysc_type_dec *type, char **str)
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
+lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
@@ -100,7 +100,7 @@ lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *typ
     if (format == LY_VALUE_LYB) {
         /* validation */
         if (value_len != 8) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB decimal64 value size %zu (expected 8).",
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB decimal64 value size %" PRIu32 " (expected 8).",
                     value_len);
             goto cleanup;
         }
@@ -209,7 +209,7 @@ lyplg_type_sort_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lyd_val
 
 LIBYANG_API_DEF const void *
 lyplg_type_print_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
+        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_len)
 {
     int64_t num = 0;
     void *buf;

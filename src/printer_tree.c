@@ -4357,7 +4357,7 @@ static ly_bool
 trm_nodeid_target_is_local(const struct lysp_node_augment *pn, const struct lysp_module *pmod)
 {
     const char *id, *prefix, *name;
-    size_t prefix_len, name_len;
+    uint32_t prefix_len, name_len;
     const struct lys_module *mod;
     ly_bool ret = 0;
 

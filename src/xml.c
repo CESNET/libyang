@@ -109,7 +109,7 @@ lyxml_parse_identifier(struct lyxml_ctx *xmlctx, const char **start, const char 
 {
     const char *s, *in;
     uint32_t c;
-    size_t parsed;
+    uint32_t parsed;
     LY_ERR rc;
 
     in = s = xmlctx->in->current;
@@ -440,8 +440,7 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *
     size_t offset;   /* read offset in input buffer */
     size_t len;      /* length of the output string (write offset in output buffer) */
     size_t size = 0; /* size of the output buffer */
-    uint32_t n;
-    size_t u;
+    uint32_t n, u;
     ly_bool ws = 1;
 
     assert(xmlctx);
@@ -690,9 +689,9 @@ lyxml_open_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_l
     const char *prev_input;
     uint64_t prev_line;
     char *value;
-    size_t parsed, value_len;
+    size_t value_len;
     ly_bool ws_only, dynamic, is_ns;
-    uint32_t c;
+    uint32_t c, parsed;
 
     /* store element opening tag information */
     e = malloc(sizeof *e);
@@ -829,8 +828,8 @@ lyxml_next_attribute(struct lyxml_ctx *xmlctx, const char **prefix, size_t *pref
 {
     const char *in;
     char *value;
-    uint32_t c;
-    size_t parsed, value_len;
+    uint32_t c, parsed;
+    size_t value_len;
     ly_bool ws_only, dynamic;
 
     /* skip WS */

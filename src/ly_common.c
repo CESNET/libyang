@@ -635,8 +635,7 @@ LY_ERR
 ly_value_prefix_next(const char *str_begin, const char *str_end, uint32_t *len, ly_bool *is_prefix, const char **str_next)
 {
     const char *stop, *prefix;
-    size_t bytes_read;
-    uint32_t c;
+    uint32_t bytes_read, c;
     ly_bool prefix_found;
     LY_ERR ret = LY_SUCCESS;
 
@@ -699,10 +698,9 @@ ly_value_prefix_next(const char *str_begin, const char *str_end, uint32_t *len, 
 }
 
 LY_ERR
-ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read)
+ly_getutf8(const char **input, uint32_t *utf8_char, uint32_t *bytes_read)
 {
-    uint32_t c, aux;
-    size_t len;
+    uint32_t c, aux, len;
 
     c = (*input)[0];
 
@@ -881,9 +879,9 @@ ly_utf8_greater(const char *input, int bytes, ...)
 }
 
 LY_ERR
-ly_checkutf8(const char *input, size_t in_len, size_t *utf8_len)
+ly_checkutf8(const char *input, uint32_t in_len, uint32_t *utf8_len)
 {
-    size_t len;
+    uint32_t len;
 
     if (!(input[0] & 0x80)) {
         /* one byte character */
@@ -935,7 +933,7 @@ ly_checkutf8(const char *input, size_t in_len, size_t *utf8_len)
 }
 
 LY_ERR
-ly_pututf8(char *dst, uint32_t value, size_t *bytes_written)
+ly_pututf8(char *dst, uint32_t value, uint32_t *bytes_written)
 {
     if (value < 0x80) {
         /* one byte character */
@@ -1010,13 +1008,13 @@ static const unsigned char utf8_char_length_table[] = {
     4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 1, 1
 };
 
-size_t
-ly_utf8len(const char *str, size_t bytes)
+uint32_t
+ly_utf8len(const char *str, uint32_t bytes)
 {
-    size_t len = 0;
+    uint32_t len = 0;
     const char *ptr = str;
 
-    while (((size_t)(ptr - str) < bytes) && *ptr) {
+    while (((uint32_t)(ptr - str) < bytes) && *ptr) {
         ++len;
         ptr += utf8_char_length_table[((unsigned char)(*ptr))];
     }
@@ -1197,7 +1195,7 @@ ly_strcat(char **dest, const char *format, ...)
 }
 
 LY_ERR
-ly_parse_int(const char *val_str, size_t val_len, int64_t min, int64_t max, int base, int64_t *ret)
+ly_parse_int(const char *val_str, uint32_t val_len, int64_t min, int64_t max, int base, int64_t *ret)
 {
     LY_ERR rc = LY_SUCCESS;
     char *ptr, *str;
@@ -1237,7 +1235,7 @@ ly_parse_int(const char *val_str, size_t val_len, int64_t min, int64_t max, int 
 }
 
 LY_ERR
-ly_parse_uint(const char *val_str, size_t val_len, uint64_t max, int base, uint64_t *ret)
+ly_parse_uint(const char *val_str, uint32_t val_len, uint64_t max, int base, uint64_t *ret)
 {
     LY_ERR rc = LY_SUCCESS;
     char *ptr, *str;
@@ -1303,7 +1301,7 @@ lys_parse_id(const char **id)
 }
 
 LY_ERR
-ly_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len)
+ly_parse_nodeid(const char **id, const char **prefix, uint32_t *prefix_len, const char **name, uint32_t *name_len)
 {
     assert(id && *id);
     assert(prefix && prefix_len);
@@ -1334,13 +1332,12 @@ ly_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const 
 }
 
 LY_ERR
-ly_parse_instance_predicate(const char **pred, size_t limit, LYD_FORMAT format,
-        const char **prefix, size_t *prefix_len, const char **id, size_t *id_len, const char **value, size_t *value_len,
-        const char **errmsg)
+ly_parse_instance_predicate(const char **pred, uint32_t limit, LYD_FORMAT format, const char **prefix, uint32_t *prefix_len,
+        const char **id, uint32_t *id_len, const char **value, uint32_t *value_len, const char **errmsg)
 {
     LY_ERR ret = LY_EVALID;
     const char *in = *pred;
-    size_t offset = 1;
+    uint32_t offset = 1;
     uint8_t expr = 0; /* 0 - position predicate; 1 - leaf-list-predicate; 2 - key-predicate */
     char quot;
 

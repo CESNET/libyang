@@ -45,9 +45,9 @@ static LY_ERR lyplg_type_validate_string(const struct ly_ctx *UNUSED(ctx), const
  * @return LY_ERR value.
  */
 static LY_ERR
-string_check_chars(const char *value, size_t value_len, struct ly_err_item **err)
+string_check_chars(const char *value, uint32_t value_len, struct ly_err_item **err)
 {
-    size_t len, parsed = 0;
+    uint32_t len, parsed = 0;
 
     while (value_len - parsed) {
         if (ly_checkutf8(value + parsed, value_len - parsed, &len)) {
@@ -60,7 +60,7 @@ string_check_chars(const char *value, size_t value_len, struct ly_err_item **err
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
+lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
         uint32_t options, LY_VALUE_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
