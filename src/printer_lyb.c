@@ -399,59 +399,123 @@ lyb_write_flush(struct lylyb_print_ctx *lybctx)
 }
 
 /**
- * @brief Write a number.
+ * @brief Write a count.
  *
- * @param[in] num Number to write.
+ * @param[in] count Count to write.
  * @param[in] lybctx Printer LYB context.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_write_number(uint64_t num, struct lylyb_print_ctx *lybctx)
+lyb_write_count(uint32_t count, struct lylyb_print_ctx *lybctx)
 {
     uint8_t prefix_b, num_b;
-    uint64_t buf;
+    uint32_t buf;
 
     /* prepare prefix in buf (in reverse, read bit-by-bit), set prefix length and number length in bits */
-    if (num == 0) {
+    if (count == 0) {
         /* 0 */
         buf = 0;
         prefix_b = 0;
         num_b = 1;
-    } else if (num < 16) {
+    } else if (count < 16) {
         /* 10 */
         buf = 0x1;
         prefix_b = 2;
         num_b = 4;
-    } else if (num < 32) {
+    } else if (count < 32) {
         /* 110 */
         buf = 0x3;
         prefix_b = 3;
         num_b = 5;
-    } else if (num < 128) {
+    } else if (count < 128) {
         /* 1110 */
         buf = 0x7;
         prefix_b = 4;
         num_b = 7;
-    } else if (num < 2048) {
+    } else if (count < 2048) {
         /* 11110 */
         buf = 0xF;
         prefix_b = 5;
         num_b = 11;
-    } else if (num < 67108864) {
+    } else if (count < 67108864) {
         /* 111110 */
         buf = 0x1F;
         prefix_b = 6;
         num_b = 26;
     } else {
-        LOGERR(lybctx->ctx, LY_EINT, "Cannot print number %" PRIu64 ", largest supported number is 67 108 863.", num);
+        LOGERR(lybctx->ctx, LY_EINT, "Cannot print count %" PRIu32 ", largest supported number is 67 108 863.", count);
         return LY_EINT;
     }
 
     /* correct byte order */
-    num = htole64(num);
+    count = htole32(count);
 
-    /* copy num to buf */
-    buf |= num << prefix_b;
+    /* copy count to buf */
+    buf |= count << prefix_b;
+
+    return lyb_write(&buf, prefix_b + num_b, lybctx);
+}
+
+/**
+ * @brief Write a size in bits. Supports numbers only up to 15, then they must be full bytes.
+ *
+ * @param[in] size Size to write.
+ * @param[in] lybctx Printer LYB context.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_write_size(uint32_t size, struct lylyb_print_ctx *lybctx)
+{
+    uint8_t prefix_b, num_b;
+    uint32_t buf;
+
+    /* prepare prefix in buf (in reverse, read bit-by-bit), set prefix length and number length in bits */
+    if (size == 0) {
+        /* 0 */
+        buf = 0;
+        prefix_b = 0;
+        num_b = 1;
+    } else if (size < 16) {
+        /* 10 */
+        buf = 0x1;
+        prefix_b = 2;
+        num_b = 4;
+    } else if (size < 256) {
+        /* 110 */
+        buf = 0x3;
+        prefix_b = 3;
+        num_b = 5;
+    } else if (size < 1024) {
+        /* 1110 */
+        buf = 0x7;
+        prefix_b = 4;
+        num_b = 7;
+    } else if (size < 16384) {
+        /* 11110 */
+        buf = 0xF;
+        prefix_b = 5;
+        num_b = 11;
+    } else if (size < 536870912) {
+        /* 111110 */
+        buf = 0x1F;
+        prefix_b = 6;
+        num_b = 26;
+    } else {
+        LOGERR(lybctx->ctx, LY_EINT, "Cannot print size %" PRIu32 ", largest supported number is 536 870 904.", size);
+        return LY_EINT;
+    }
+
+    if (size > 15) {
+        /* numbers higher than 15 must be full bytes and those are written instead */
+        assert(!(size % 8));
+        size /= 8;
+    }
+
+    /* correct byte order */
+    size = htole32(size);
+
+    /* copy size to buf */
+    buf |= size << prefix_b;
 
     return lyb_write(&buf, prefix_b + num_b, lybctx);
 }
@@ -477,7 +541,7 @@ lyb_write_string(const char *str, uint32_t str_len, struct lylyb_print_ctx *lybc
     }
 
     /* print the string length in bits */
-    LY_CHECK_RET(lyb_write_number(str_len * 8, lybctx));
+    LY_CHECK_RET(lyb_write_count(str_len, lybctx));
 
     if (str_len) {
         /* print the string */
@@ -598,7 +662,7 @@ lyb_print_prefix_data(LY_VALUE_FORMAT format, const void *prefix_data, struct ly
         if (!set) {
             /* no prefix data */
             i = 0;
-            LY_CHECK_RET(lyb_write_number(i, lybctx));
+            LY_CHECK_RET(lyb_write_count(i, lybctx));
             break;
         }
         if (set->count > UINT8_MAX) {
@@ -607,7 +671,7 @@ lyb_print_prefix_data(LY_VALUE_FORMAT format, const void *prefix_data, struct ly
         }
 
         /* write number of prefixes */
-        LY_CHECK_RET(lyb_write_number(set->count, lybctx));
+        LY_CHECK_RET(lyb_write_count(set->count, lybctx));
 
         /* write all the prefixes */
         for (i = 0; i < set->count; ++i) {
@@ -672,8 +736,8 @@ lyb_print_term_value(struct lyd_node_term *term, struct lylyb_print_ctx *lybctx)
             goto cleanup;
         }
 
-        /* print the length of the data */
-        ret = lyb_write_number(value_len, lybctx);
+        /* print the length of the data in bits */
+        ret = lyb_write_size(value_len * 8, lybctx);
         LY_CHECK_GOTO(ret, cleanup);
     } else {
         /* fixed-length data */
@@ -710,7 +774,7 @@ cleanup:
 static LY_ERR
 lyb_print_metadata(const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
 {
-    uint64_t count = 0;
+    uint32_t count = 0;
     const struct lys_module *wd_mod = NULL;
     struct lyd_meta *iter;
 
@@ -740,7 +804,7 @@ lyb_print_metadata(const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
     }
 
     /* write the number of metadata */
-    LY_CHECK_RET(lyb_write_number(count, lybctx->print_ctx));
+    LY_CHECK_RET(lyb_write_count(count, lybctx->print_ctx));
 
     if (wd_mod) {
         /* write the "default" metadata */
@@ -778,20 +842,20 @@ lyb_print_metadata(const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
 static LY_ERR
 lyb_print_attributes(const struct lyd_node_opaq *node, struct lylyb_print_ctx *lybctx)
 {
-    uint64_t count = 0;
+    uint32_t count = 0;
     struct lyd_attr *iter;
     uint8_t format;
 
     for (iter = node->attr; iter; iter = iter->next) {
-        if (count == UINT64_MAX) {
-            LOGERR(lybctx->ctx, LY_EINT, "Maximum supported number of data node attributes is %" PRIu64 ".", UINT64_MAX);
+        if (count == UINT32_MAX) {
+            LOGERR(lybctx->ctx, LY_EINT, "Maximum supported number of data node attributes is %" PRIu32 ".", UINT32_MAX);
             return LY_EINT;
         }
         ++count;
     }
 
     /* write number of attributes */
-    LY_CHECK_RET(lyb_write_number(count, lybctx));
+    LY_CHECK_RET(lyb_write_count(count, lybctx));
 
     /* write all the attributes */
     LY_LIST_FOR(node->attr, iter) {
@@ -1041,8 +1105,8 @@ lyb_print_node_any(struct lyd_node_any *anydata, struct lyd_lyb_ctx *lybctx)
     /* write necessary basic data */
     LY_CHECK_RET(lyb_print_node_header((struct lyd_node *)anydata, lybctx));
 
-    /* first byte is type */
-    LY_CHECK_GOTO(rc = lyb_write_number(anydata->value_type, lybctx->print_ctx), cleanup);
+    /* write anydata value type */
+    LY_CHECK_GOTO(rc = lyb_write_count(anydata->value_type, lybctx->print_ctx), cleanup);
 
     switch (anydata->value_type) {
     case LYD_ANYDATA_DATATREE:
@@ -1112,7 +1176,7 @@ lyb_print_node_leaflist(const struct lyd_node *node, struct lyd_lyb_ctx *lybctx,
     }
 
     /* no more instances */
-    LY_CHECK_RET(lyb_write_number(LYB_METADATA_END_NUM, lybctx->print_ctx));
+    LY_CHECK_RET(lyb_write_count(LYB_METADATA_END_NUM, lybctx->print_ctx));
 
     return LY_SUCCESS;
 }
@@ -1148,7 +1212,7 @@ lyb_print_node_list(const struct lyd_node *node, struct lyd_lyb_ctx *lybctx, con
     }
 
     /* no more instances */
-    LY_CHECK_RET(lyb_write_number(LYB_METADATA_END_NUM, lybctx->print_ctx));
+    LY_CHECK_RET(lyb_write_count(LYB_METADATA_END_NUM, lybctx->print_ctx));
 
     return LY_SUCCESS;
 }
