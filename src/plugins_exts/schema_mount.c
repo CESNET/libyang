@@ -31,6 +31,7 @@
 #include "ly_common.h"
 #include "parser_data.h"
 #include "plugins_exts.h"
+#include "plugins_internal.h"
 #include "plugins_types.h"
 #include "tree.h"
 #include "tree_data.h"
@@ -530,7 +531,7 @@ lyplg_ext_schema_mount_destroy_shared_contexts(struct lysc_ext_instance *ext)
     struct lyplg_ext_sm *sm_data;
     ly_bool ctx_is_printed;
 
-    LY_CHECK_ARG_RET(NULL, ext,);
+    LY_CHECK_ARG_RET(NULL, ext, );
 
     sm_data = ext->compiled;
     ctx_is_printed = ly_ctx_is_printed(ext->module->ctx);
@@ -574,7 +575,7 @@ lyplg_ext_schema_mount_destroy_inline_contexts(struct lysc_ext_instance *ext)
     struct lyplg_ext_sm *sm_data;
     uint32_t i;
 
-    LY_CHECK_ARG_RET(NULL, ext,);
+    LY_CHECK_ARG_RET(NULL, ext, );
 
     sm_data = ext->compiled;
 
@@ -1213,8 +1214,14 @@ lyplg_ext_schema_mount_create_context(const struct lysc_ext_instance *ext, const
 {
     struct lyd_node *ext_data = NULL;
     struct ly_ctx_data *ctx_data;
-    ly_bool ext_data_free = 0, config;
+    struct lyplg_ext_sm *sm_data;
+    ly_bool ext_data_free = 0, config, shared, builtin_plugins_only, static_plugins_only;
     LY_ERR rc = LY_SUCCESS;
+    uint32_t i;
+
+    LY_CHECK_ARG_RET(NULL, ext, ctx, LY_EINVAL);
+
+    sm_data = ext->compiled;
 
     ctx_data = ly_ctx_data_get(ext->def->module->ctx);
     if (!ctx_data->ext_clb) {
@@ -1231,7 +1238,35 @@ lyplg_ext_schema_mount_create_context(const struct lysc_ext_instance *ext, const
     }
 
     /* learn about this mount point */
-    if ((rc = schema_mount_get_smount(ext, ext_data, &config, NULL))) {
+    if ((rc = schema_mount_get_smount(ext, ext_data, &config, &shared))) {
+        goto cleanup;
+    }
+
+    /* check if it already exists */
+    if (shared) {
+        for (i = 0; i < sm_data->shared->schema_count; ++i) {
+            if (!strcmp(sm_data->shared->schemas[i].mount_point, ext->argument)) {
+                /* found, mock the context creation so it can later be safely destroyed */
+                builtin_plugins_only = (ext->module->ctx->opts & LY_CTX_BUILTIN_PLUGINS_ONLY) ? 1 : 0;
+                static_plugins_only = (ext->module->ctx->opts & LY_CTX_STATIC_PLUGINS_ONLY) ? 1 : 0;
+                LY_CHECK_ERR_GOTO(lyplg_init(builtin_plugins_only, static_plugins_only),
+                        LOGINT(NULL); rc = LY_EINT, cleanup);
+
+                if ((rc = ly_ctx_data_add(sm_data->shared->schemas[i].ctx))) {
+                    goto cleanup;
+                }
+
+                /* context can be reused */
+                *ctx = sm_data->shared->schemas[i].ctx;
+                goto cleanup;
+            }
+        }
+    }
+
+    /* context not found, check if the ext ctx is printed - mount points cannot be created in printed contexts */
+    if (ly_ctx_is_printed(ext->module->ctx)) {
+        LOGERR(ext->module->ctx, LY_EINVAL, "Mount points cannot be created in printed contexts.");
+        rc = LY_EINVAL;
         goto cleanup;
     }
 
