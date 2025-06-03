@@ -42,13 +42,13 @@ static LY_ERR lyplg_type_validate_uint(const struct ly_ctx *UNUSED(ctx), const s
 /**
  * @brief LYB value size of each integer type.
  */
-static size_t integer_lyb_size[] = {
+static uint32_t integer_lyb_size[] = {
     [LY_TYPE_INT8] = 1, [LY_TYPE_INT16] = 2, [LY_TYPE_INT32] = 4, [LY_TYPE_INT64] = 8,
     [LY_TYPE_UINT8] = 1, [LY_TYPE_UINT16] = 2, [LY_TYPE_UINT32] = 4, [LY_TYPE_UINT64] = 8
 };
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
+lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
@@ -65,8 +65,8 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
     if (format == LY_VALUE_LYB) {
         /* validation */
         if (value_len != integer_lyb_size[type->basetype]) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB signed integer value size %zu (expected %zu).",
-                    value_len, integer_lyb_size[type->basetype]);
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB signed integer value size %" PRIu32
+                    " (expected %" PRIu32 ").", value_len, integer_lyb_size[type->basetype]);
             goto cleanup;
         }
 
@@ -297,7 +297,7 @@ lyplg_type_sort_int(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *va
 
 LIBYANG_API_DEF const void *
 lyplg_type_print_int(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
+        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_len)
 {
     int64_t prev_num = 0, num = 0;
     void *buf;
@@ -352,7 +352,7 @@ lyplg_type_print_int(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *v
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
+lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
@@ -369,8 +369,8 @@ lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, co
     if (format == LY_VALUE_LYB) {
         /* validation */
         if (value_len != integer_lyb_size[type->basetype]) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB unsigned integer value size %zu (expected %zu).",
-                    value_len, integer_lyb_size[type->basetype]);
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB unsigned integer value size %" PRIu32
+                    " (expected %" PRIu32 ").", value_len, integer_lyb_size[type->basetype]);
             goto cleanup;
         }
 
@@ -577,7 +577,7 @@ lyplg_type_sort_uint(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *v
 
 LIBYANG_API_DEF const void *
 lyplg_type_print_uint(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
+        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_len)
 {
     uint64_t num = 0;
     void *buf;

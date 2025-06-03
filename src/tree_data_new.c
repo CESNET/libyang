@@ -958,7 +958,7 @@ lyd_new_meta(const struct ly_ctx *ctx, struct lyd_node *parent, const struct lys
         const char *val_str, uint32_t options, struct lyd_meta **meta)
 {
     const char *prefix, *tmp;
-    size_t pref_len, name_len;
+    uint32_t pref_len, name_len;
     ly_bool clear_dflt = options & LYD_NEW_META_CLEAR_DFLT;
     ly_bool store_only = options & LYD_NEW_VAL_STORE_ONLY;
 
@@ -999,7 +999,8 @@ lyd_new_meta(const struct ly_ctx *ctx, struct lyd_node *parent, const struct lys
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, uint32_t options, const struct lyd_attr *attr, struct lyd_meta **meta)
+lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, uint32_t options, const struct lyd_attr *attr,
+        struct lyd_meta **meta)
 {
     const struct lys_module *mod;
     ly_bool clear_dflt = options & LYD_NEW_META_CLEAR_DFLT;
@@ -1106,7 +1107,7 @@ lyd_new_attr(struct lyd_node *parent, const char *module_name, const char *name,
     struct lyd_attr *ret = NULL;
     const struct ly_ctx *ctx;
     const char *prefix, *tmp;
-    size_t pref_len, name_len, mod_len;
+    uint32_t pref_len, name_len, mod_len;
 
     LY_CHECK_ARG_RET(NULL, parent, !parent->schema, name, LY_EINVAL);
 
@@ -1156,7 +1157,7 @@ lyd_new_attr2(struct lyd_node *parent, const char *module_ns, const char *name, 
     struct lyd_attr *ret = NULL;
     const struct ly_ctx *ctx;
     const char *prefix, *tmp;
-    size_t pref_len, name_len;
+    uint32_t pref_len, name_len;
 
     LY_CHECK_ARG_RET(NULL, parent, !parent->schema, name, LY_EINVAL);
 

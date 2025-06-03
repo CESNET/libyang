@@ -619,7 +619,7 @@ struct lyd_value_union {
     struct lyd_value value;      /**< representation of the value according to the selected union's subtype
                                       (stored as ::lyd_value.realtype here) */
     void *original;              /**< Original value. */
-    size_t orig_len;             /**< Original value length. */
+    uint32_t orig_len;             /**< Original value length. */
     uint32_t hints;              /**< [Value hints](@ref lydvalhints) from the parser */
     LY_VALUE_FORMAT format;      /**< Prefix format of the value. However, this information is also used to decide
                                       whether a value is valid for the specific format or not on later validations
@@ -644,7 +644,7 @@ struct lyd_value_bits {
  */
 struct lyd_value_binary {
     void *data;     /**< pointer to the binary value */
-    size_t size;    /**< size of @p data value in bytes */
+    uint32_t size;    /**< size of @p data value in bytes */
 };
 
 /**

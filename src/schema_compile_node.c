@@ -3165,10 +3165,9 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
 {
     LY_ERR ret = LY_EVALID;
     const char *name, *prefix, *id;
-    size_t name_len, prefix_len;
+    uint32_t name_len, prefix_len, getnext_extra_flag = 0;
     const struct lys_module *mod = NULL;
     const char *nodeid_type;
-    uint32_t getnext_extra_flag = 0;
     uint16_t current_nodetype = 0;
 
     assert(nodeid);
@@ -3871,7 +3870,7 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
     const struct lysp_node_grp *ext_grp;
     LY_ARRAY_COUNT_TYPE u;
     const char *id, *name, *prefix, *local_pref;
-    size_t prefix_len, name_len;
+    uint32_t prefix_len, name_len;
     struct lysp_module *pmod, *found = NULL;
     const struct lys_module *mod;
 

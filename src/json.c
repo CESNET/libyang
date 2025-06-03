@@ -132,9 +132,8 @@ lyjson_string(struct lyjson_ctx *jsonctx)
     size_t offset;   /* read offset in input buffer */
     size_t len;      /* length of the output string (write offset in output buffer) */
     size_t size = 0; /* size of the output buffer */
-    size_t u;
     uint64_t start_line, orig_line;
-    uint32_t value;
+    uint32_t u, value;
     uint8_t i;
 
     assert(jsonctx);

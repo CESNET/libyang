@@ -128,6 +128,8 @@ yprp_extension_instance(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t 
     struct lysp_stmt *stmt;
     int8_t inner_flag;
     struct lysp_ext *ext_def;
+    const char *prefix, *name, *id;
+    uint32_t prefix_len, name_len;
 
     if ((ext->flags & LYS_INTERNAL) || (ext->parent_stmt != substmt) || (ext->parent_stmt_index != substmt_index)) {
         return;
@@ -143,10 +145,8 @@ yprp_extension_instance(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t 
 
     ypr_open(pctx, ext->name, (ext_def->flags & LYS_YINELEM_TRUE) ? NULL : ext_def->argname, ext->argument, inner_flag);
     LEVEL++;
-    if (ext_def->flags & LYS_YINELEM_TRUE) {
-        const char *prefix, *name, *id;
-        size_t prefix_len, name_len;
 
+    if (ext_def->flags & LYS_YINELEM_TRUE) {
         ypr_close_parent(pctx, &inner_flag);
 
         /* we need to use the same namespace as for the extension instance element */

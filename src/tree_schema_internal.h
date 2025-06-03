@@ -668,7 +668,7 @@ const char *ly_get_prefix(const struct lys_module *mod, LY_VALUE_FORMAT format, 
  * @return Resolved prefix module,
  * @return NULL otherwise.
  */
-const struct lys_module *ly_resolve_prefix(const struct ly_ctx *ctx, const void *prefix, size_t prefix_len,
+const struct lys_module *ly_resolve_prefix(const struct ly_ctx *ctx, const void *prefix, uint32_t prefix_len,
         LY_VALUE_FORMAT format, const void *prefix_data);
 
 /**

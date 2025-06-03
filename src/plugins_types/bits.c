@@ -51,10 +51,10 @@
 # define BITS_BITMAP_BYTE(bitmap, size, idx) (bitmap + idx)
 #endif
 
-LIBYANG_API_DEF size_t
+LIBYANG_API_DEF uint32_t
 lyplg_type_bits_bitmap_size(const struct lysc_type_bits *type)
 {
-    size_t needed_bytes, size;
+    uint32_t needed_bytes, size;
 
     LY_CHECK_ARG_RET(NULL, type, type->basetype == LY_TYPE_BITS, 0);
 
@@ -80,7 +80,7 @@ lyplg_type_bits_bitmap_size(const struct lysc_type_bits *type)
 }
 
 LIBYANG_API_DEF ly_bool
-lyplg_type_bits_is_bit_set(const char *bitmap, size_t size, uint32_t bit_position)
+lyplg_type_bits_is_bit_set(const char *bitmap, uint32_t size, uint32_t bit_position)
 {
     char bitmask;
 
@@ -108,7 +108,7 @@ lyplg_type_bits_is_bit_set(const char *bitmap, size_t size, uint32_t bit_positio
  * @param[in] bit_position Bit position to set.
  */
 static void
-bits_bit_set(char *bitmap, size_t size, uint32_t bit_position)
+bits_bit_set(char *bitmap, uint32_t size, uint32_t bit_position)
 {
     char bitmask;
 
@@ -136,9 +136,9 @@ bits_bit_set(char *bitmap, size_t size, uint32_t bit_position)
  * @return LY_ERR value.
  */
 static LY_ERR
-bits_str2bitmap(const char *value, size_t value_len, struct lysc_type_bits *type, char *bitmap, struct ly_err_item **err)
+bits_str2bitmap(const char *value, uint32_t value_len, struct lysc_type_bits *type, char *bitmap, struct ly_err_item **err)
 {
-    size_t idx_start, idx_end;
+    uint32_t idx_start, idx_end;
     LY_ARRAY_COUNT_TYPE u;
     ly_bool found;
 
@@ -219,8 +219,7 @@ bits_add_item(uint32_t position, struct lysc_type_bits *type, struct lysc_type_b
 static void
 bits_bitmap2items(const char *bitmap, struct lysc_type_bits *type, struct lysc_type_bitenum_item **items)
 {
-    size_t i, bitmap_size = lyplg_type_bits_bitmap_size(type);
-    uint32_t bit_pos;
+    uint32_t bit_pos, i, bitmap_size = lyplg_type_bits_bitmap_size(type);
     uint8_t bitmask;
     const uint8_t *byte;
 
@@ -255,7 +254,7 @@ static LY_ERR
 bits_items2canon(struct lysc_type_bitenum_item **items, char **canonical)
 {
     char *ret;
-    size_t ret_len;
+    uint32_t ret_len;
     LY_ARRAY_COUNT_TYPE u;
 
     *canonical = NULL;
@@ -286,7 +285,7 @@ bits_items2canon(struct lysc_type_bitenum_item **items, char **canonical)
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
+lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
@@ -304,8 +303,8 @@ lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, co
     if (format == LY_VALUE_LYB) {
         /* validation */
         if (value_len != lyplg_type_bits_bitmap_size(type_bits)) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB bits value size %zu (expected %zu).",
-                    value_len, lyplg_type_bits_bitmap_size(type_bits));
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB bits value size %" PRIu32
+                    " (expected %" PRIu32 ").", value_len, lyplg_type_bits_bitmap_size(type_bits));
             goto cleanup;
         }
 
@@ -399,7 +398,7 @@ lyplg_type_sort_bits(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *v
 
 LIBYANG_API_DEF const void *
 lyplg_type_print_bits(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
+        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_len)
 {
     struct lysc_type_bits *type_bits = (struct lysc_type_bits *)value->realtype;
     struct lyd_value_bits *val;

@@ -432,8 +432,7 @@ LY_ERR
 yin_validate_value(struct lysp_yin_ctx *ctx, enum yang_arg val_type)
 {
     uint8_t prefix = 0;
-    uint32_t c;
-    size_t utf8_char_len, already_read = 0;
+    uint32_t c, utf8_char_len, already_read = 0;
     const char *val;
 
     assert((ctx->xmlctx->status == LYXML_ELEM_CONTENT) || (ctx->xmlctx->status == LYXML_ATTR_CONTENT));

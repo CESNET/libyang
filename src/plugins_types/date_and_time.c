@@ -47,7 +47,7 @@ static void lyplg_type_free_date_and_time(const struct ly_ctx *ctx, struct lyd_v
  * @brief Implementation of ::lyplg_type_store_clb for ietf-yang-types date-and-time type.
  */
 static LY_ERR
-lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
+lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
@@ -67,8 +67,8 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
     if (format == LY_VALUE_LYB) {
         /* validation */
         if (value_len < 8) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB date-and-time value size %zu "
-                    "(expected at least 8).", value_len);
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB date-and-time value size %" PRIu32
+                    " (expected at least 8).", value_len);
             goto cleanup;
         }
         for (i = 9; i < value_len; ++i) {
@@ -262,7 +262,7 @@ lyplg_type_sort_date_and_time(const struct ly_ctx *UNUSED(ctx), const struct lyd
  */
 static const void *
 lyplg_type_print_date_and_time(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
+        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_len)
 {
     struct lyd_value_date_and_time *val;
     struct tm tm;

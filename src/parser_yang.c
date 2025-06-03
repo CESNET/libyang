@@ -167,8 +167,7 @@ LY_ERR
 buf_store_char(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, size_t *word_len,
         char **word_b, size_t *buf_len, ly_bool need_buf, uint8_t *prefix)
 {
-    uint32_t c;
-    size_t len;
+    uint32_t c, len;
 
     /* check  valid combination of input paremeters - if need_buf specified, word_b must be provided */
     assert(!need_buf || (need_buf && word_b));
@@ -759,7 +758,7 @@ get_keyword(struct lysp_yang_ctx *ctx, enum ly_stmt *kw, char **word_p, size_t *
 {
     uint8_t prefix;
     const char *word_start;
-    size_t len;
+    uint32_t len;
 
     if (word_p) {
         *word_p = NULL;

@@ -688,7 +688,7 @@ LY_ERR ly_value_prefix_next(const char *str_begin, const char *str_end, uint32_t
  * @param[out] bytes_read Number of bytes used to encode the read utf8_char.
  * @return LY_ERR value
  */
-LY_ERR ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read);
+LY_ERR ly_getutf8(const char **input, uint32_t *utf8_char, uint32_t *bytes_read);
 
 /**
  * @brief Check an UTF-8 character is valid.
@@ -699,7 +699,7 @@ LY_ERR ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read);
  * @return LY_SUCCESS on success
  * @return LY_EINVAL in case of invalid UTF-8 character.
  */
-LY_ERR ly_checkutf8(const char *input, size_t in_len, size_t *utf8_len);
+LY_ERR ly_checkutf8(const char *input, uint32_t in_len, uint32_t *utf8_len);
 
 /**
  * @brief Store UTF-8 character specified as 4byte integer into the dst buffer.
@@ -718,7 +718,7 @@ LY_ERR ly_checkutf8(const char *input, size_t in_len, size_t *utf8_len);
  * @return LY_SUCCESS on success
  * @return LY_EINVAL in case of invalid UTF-8 @p value to store.
  */
-LY_ERR ly_pututf8(char *dst, uint32_t value, size_t *bytes_written);
+LY_ERR ly_pututf8(char *dst, uint32_t value, uint32_t *bytes_written);
 
 /**
  * @brief Get number of characters in the @p str, taking multibyte characters into account.
@@ -729,7 +729,7 @@ LY_ERR ly_pututf8(char *dst, uint32_t value, size_t *bytes_written);
  * string, strlen() can be used.
  * @return Number of characters in (possibly) multibyte characters string.
  */
-size_t ly_utf8len(const char *str, size_t bytes);
+uint32_t ly_utf8len(const char *str, uint32_t bytes);
 
 /**
  * @brief Parse signed integer with possible limitation.
@@ -748,7 +748,7 @@ size_t ly_utf8len(const char *str, size_t bytes);
  * LY_EVALID - string contains invalid value,
  * LY_SUCCESS - successful parsing.
  */
-LY_ERR ly_parse_int(const char *val_str, size_t val_len, int64_t min, int64_t max, int base, int64_t *ret);
+LY_ERR ly_parse_int(const char *val_str, uint32_t val_len, int64_t min, int64_t max, int base, int64_t *ret);
 
 /**
  * @brief Parse unsigned integer with possible limitation.
@@ -766,7 +766,7 @@ LY_ERR ly_parse_int(const char *val_str, size_t val_len, int64_t min, int64_t ma
  * LY_EVALID - string contains invalid value,
  * LY_SUCCESS - successful parsing.
  */
-LY_ERR ly_parse_uint(const char *val_str, size_t val_len, uint64_t max, int base, uint64_t *ret);
+LY_ERR ly_parse_uint(const char *val_str, uint32_t val_len, uint64_t max, int base, uint64_t *ret);
 
 /**
  * @brief Parse a node-identifier.
@@ -780,7 +780,7 @@ LY_ERR ly_parse_uint(const char *val_str, size_t val_len, uint64_t max, int base
  * @param[out] name_len Length of the node's name.
  * @return LY_ERR value: LY_SUCCESS or LY_EINVAL in case of invalid character in the id.
  */
-LY_ERR ly_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len);
+LY_ERR ly_parse_nodeid(const char **id, const char **prefix, uint32_t *prefix_len, const char **name, uint32_t *name_len);
 
 /**
  * @brief parse instance-identifier's predicate, supports key-predicate, leaf-list-predicate and pos rules from YANG ABNF Grammar.
@@ -801,9 +801,9 @@ LY_ERR ly_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len,
  * @return LY_EVALID in case of invalid predicate form.
  * @return LY_EINVAL in case of reaching @p limit when parsing @p pred.
  */
-LY_ERR ly_parse_instance_predicate(const char **pred, size_t limit, LYD_FORMAT format,
-        const char **prefix, size_t *prefix_len, const char **id, size_t *id_len,
-        const char **value, size_t *value_len, const char **errmsg);
+LY_ERR ly_parse_instance_predicate(const char **pred, uint32_t limit, LYD_FORMAT format,
+        const char **prefix, uint32_t *prefix_len, const char **id, uint32_t *id_len,
+        const char **value, uint32_t *value_len, const char **errmsg);
 
 /**
  * @brief mmap(2) wrapper to map input files into memory to unify parsing.

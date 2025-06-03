@@ -22,7 +22,7 @@ test_utf8(void **UNUSED(state))
     char buf[5] = {0};
     const char *str = buf;
     unsigned int c;
-    size_t len;
+    uint32_t len;
 
     /* test invalid UTF-8 characters in lyxml_getutf8
      * - https://en.wikipedia.org/wiki/UTF-8 */
@@ -138,7 +138,7 @@ test_parse_nodeid(void **UNUSED(state))
 {
     const char *str;
     const char *prefix, *name;
-    size_t prefix_len, name_len;
+    uint32_t prefix_len, name_len;
 
     str = "123";
     assert_int_equal(LY_EINVAL, ly_parse_nodeid(&str, &prefix, &prefix_len, &name, &name_len));
@@ -168,7 +168,7 @@ test_parse_instance_predicate(void **UNUSED(state))
 {
     const char *str, *errmsg;
     const char *prefix, *id, *value;
-    size_t prefix_len, id_len, value_len;
+    uint32_t prefix_len, id_len, value_len;
 
     str = "[ex:name='fred']";
     assert_int_equal(LY_SUCCESS, ly_parse_instance_predicate(&str, strlen(str), LYD_XML, &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
