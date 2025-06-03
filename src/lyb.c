@@ -94,19 +94,6 @@ lyb_cache_node_hash_cb(struct lysc_node *node, void *UNUSED(data), ly_bool *UNUS
     return LY_SUCCESS;
 }
 
-void
-lyb_cache_module_hash(const struct lys_module *mod)
-{
-    /* LOCK */
-    pthread_mutex_lock(&mod->ctx->lyb_hash_lock);
-
-    /* store all cached hashes for all the nodes */
-    lysc_module_dfs_full(mod, lyb_cache_node_hash_cb, NULL);
-
-    /* UNLOCK */
-    pthread_mutex_unlock(&mod->ctx->lyb_hash_lock);
-}
-
 uint8_t
 lyb_right_bit_mask(uint8_t bit_count)
 {

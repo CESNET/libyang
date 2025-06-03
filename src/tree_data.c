@@ -1320,15 +1320,7 @@ lyd_unlink_meta_single(struct lyd_meta *meta)
     meta->parent = NULL;
 }
 
-/**
- * @brief Get the annotation definition in the module.
- *
- * @param[in] mod Metadata module (with the annotation definition).
- * @param[in] name Attribute name.
- * @param[in] name_len Length of @p name, must be set correctly.
- * @return compiled YANG extension instance on success.
- */
-static struct lysc_ext_instance *
+struct lysc_ext_instance *
 lyd_get_meta_annotation(const struct lys_module *mod, const char *name, size_t name_len)
 {
     LY_ARRAY_COUNT_TYPE u;

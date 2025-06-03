@@ -318,70 +318,56 @@ lyb_read_string(char **str, struct lylyb_parse_ctx *lybctx)
 }
 
 /**
- * @brief Skip string.
+ * @brief Read a value.
  *
- * @param[in] len_size Number of bytes on which the length of the string is written.
- * @param[in] lybctx LYB context.
- */
-static void
-lyb_skip_string(struct lylyb_parse_ctx *lybctx)
-{
-    uint32_t str_len = 0;
-
-    lyb_read_count(&str_len, lybctx);
-
-    lyb_read(NULL, str_len * 8, lybctx);
-}
-
-/**
- * @brief Read value of term node.
- *
- * @param[in] term Compiled term node.
- * @param[out] term_value Set to term node value in dynamically allocated memory. The caller must release it.
- * @param[out] term_value_len Value length in bytes. The zero byte is always included and is not counted.
+ * @param[in] type Type of the value.
+ * @param[out] val Value buffer to read into, always terminated by 0.
+ * @param[out] val_len Read @p val size in bytes.
  * @param[in,out] lybctx LYB context.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_read_term_value(const struct lysc_node_leaf *term, uint8_t **term_value, uint32_t *term_value_len,
-        struct lylyb_parse_ctx *lybctx)
+lyb_read_value(const struct lysc_type *type, uint8_t **val, uint32_t *val_len, struct lylyb_parse_ctx *lybctx)
 {
     uint32_t allocated_size;
     int32_t lyb_data_len;
     struct lysc_type_leafref *type_lf;
 
-    assert(term && term_value && term_value_len && lybctx);
+    assert(type && val && val_len && lybctx);
+
+    *val = NULL;
+    *val_len = 0;
 
     /* learn the size from @ref howtoDataLYB */
-    if (term->type->basetype == LY_TYPE_LEAFREF) {
+    if (type->basetype == LY_TYPE_LEAFREF) {
         /* leafref itself is ignored, the target is loaded directly */
-        type_lf = (struct lysc_type_leafref *)term->type;
+        type_lf = (struct lysc_type_leafref *)type;
         lyb_data_len = LYSC_GET_TYPE_PLG(type_lf->realtype->plugin_ref)->lyb_data_len;
     } else {
-        lyb_data_len = LYSC_GET_TYPE_PLG(term->type->plugin_ref)->lyb_data_len;
+        lyb_data_len = LYSC_GET_TYPE_PLG(type->plugin_ref)->lyb_data_len;
     }
 
     if (lyb_data_len < 0) {
         /* parse value size in bits */
-        lyb_read_size(term_value_len, lybctx);
-        *term_value_len /= 8;
+        lyb_read_size(val_len, lybctx);
+        *val_len /= 8;
     } else {
         /* data size is fixed */
-        *term_value_len = lyb_data_len;
+        *val_len = lyb_data_len;
     }
 
     /* allocate memory */
-    allocated_size = *term_value_len + 1;
-    *term_value = malloc(allocated_size * sizeof **term_value);
-    LY_CHECK_ERR_RET(!*term_value, LOGMEM(lybctx->ctx), LY_EMEM);
+    allocated_size = *val_len + 1;
+    *val = malloc(allocated_size * sizeof **val);
+    LY_CHECK_ERR_RET(!*val, LOGMEM(lybctx->ctx), LY_EMEM);
 
-    if (*term_value_len > 0) {
+    if (*val_len > 0) {
         /* parse value */
-        lyb_read(*term_value, *term_value_len * 8, lybctx);
+        lyb_read(*val, *val_len * 8, lybctx);
     }
 
     /* add extra zero byte regardless of whether it is string or not */
-    (*term_value)[allocated_size - 1] = 0;
+    (*val)[allocated_size - 1] = 0;
 
     return LY_SUCCESS;
 }
@@ -474,42 +460,45 @@ cleanup:
 static LY_ERR
 lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, struct lyd_meta **meta)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR rc = LY_SUCCESS;
     ly_bool dynamic;
-    uint32_t i, count = 0;
-    char *meta_name = NULL, *meta_value;
+    uint32_t i, count = 0, meta_value_len;
+    char *meta_name = NULL;
+    uint8_t *meta_value;
     const struct lys_module *mod;
+    struct lysc_ext_instance *ant;
+    const struct lysc_type *ant_type;
 
-    /* read number of attributes stored */
+    /* read number of metadata stored */
     lyb_read_count(&count, lybctx->parse_ctx);
 
-    /* read attributes */
     for (i = 0; i < count; ++i) {
         /* find module */
-        ret = lyb_parse_module(lybctx->parse_ctx, &mod);
-        LY_CHECK_GOTO(ret, cleanup);
-
-        if (!mod) {
-            /* skip meta name */
-            lyb_skip_string(lybctx->parse_ctx);
-
-            /* skip meta value */
-            lyb_skip_string(lybctx->parse_ctx);
-            continue;
-        }
+        rc = lyb_parse_module(lybctx->parse_ctx, &mod);
+        LY_CHECK_GOTO(rc, cleanup);
 
         /* meta name */
-        ret = lyb_read_string(&meta_name, lybctx->parse_ctx);
-        LY_CHECK_GOTO(ret, cleanup);
+        rc = lyb_read_string(&meta_name, lybctx->parse_ctx);
+        LY_CHECK_GOTO(rc, cleanup);
+
+        /* get metadata type */
+        ant = lyd_get_meta_annotation(mod, meta_name, strlen(meta_name));
+        if (!ant) {
+            LOGVAL(lybctx->parse_ctx->ctx, LYVE_REFERENCE, "Annotation definition for metadata \"%s:%s\" not found.",
+                    mod->name, meta_name);
+            rc = LY_EINT;
+            goto cleanup;
+        }
+        lyplg_ext_get_storage(ant, LY_STMT_TYPE, sizeof ant_type, (const void **)&ant_type);
 
         /* meta value */
-        ret = lyb_read_string(&meta_value, lybctx->parse_ctx);
-        LY_CHECK_GOTO(ret, cleanup);
+        rc = lyb_read_value(ant_type, &meta_value, &meta_value_len, lybctx->parse_ctx);
+        LY_CHECK_GOTO(rc, cleanup);
         dynamic = 1;
 
         /* create metadata */
-        ret = lyd_parser_create_meta((struct lyd_ctx *)lybctx, NULL, meta, mod, meta_name, strlen(meta_name), meta_value,
-                ly_strlen(meta_value), &dynamic, LY_VALUE_JSON, NULL, LYD_HINT_DATA, sparent);
+        rc = lyd_parser_create_meta((struct lyd_ctx *)lybctx, NULL, meta, mod, meta_name, strlen(meta_name), meta_value,
+                meta_value_len, &dynamic, LY_VALUE_JSON, NULL, LYD_HINT_DATA, sparent);
 
         /* free strings */
         free(meta_name);
@@ -519,16 +508,16 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, 
             dynamic = 0;
         }
 
-        LY_CHECK_GOTO(ret, cleanup);
+        LY_CHECK_GOTO(rc, cleanup);
     }
 
 cleanup:
     free(meta_name);
-    if (ret) {
+    if (rc) {
         lyd_free_meta_siblings(*meta);
         *meta = NULL;
     }
-    return ret;
+    return rc;
 }
 
 /**
@@ -1016,9 +1005,10 @@ lyb_create_term(struct lyd_lyb_ctx *lybctx, const struct lysc_node *snode, struc
     LY_ERR rc;
     ly_bool dynamic;
     uint8_t *term_value;
-    uint32_t term_value_len = 0;
+    uint32_t term_value_len;
 
-    LY_CHECK_RET(lyb_read_term_value((struct lysc_node_leaf *)snode, &term_value, &term_value_len, lybctx->parse_ctx));
+    /* parse the value */
+    LY_CHECK_RET(lyb_read_value(((struct lysc_node_leaf *)snode)->type, &term_value, &term_value_len, lybctx->parse_ctx));
     dynamic = 1;
 
     /* create node */
