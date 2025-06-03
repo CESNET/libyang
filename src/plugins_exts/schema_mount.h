@@ -18,7 +18,7 @@
  #include "context.h"
 
  #ifdef __cplusplus
- extern "C" {
+extern "C" {
  #endif
 
 /**
@@ -62,7 +62,7 @@ LIBYANG_API_DECL void lyplg_ext_schema_mount_destroy_shared_contexts(struct lysc
 LIBYANG_API_DECL void lyplg_ext_schema_mount_destroy_inline_contexts(struct lysc_ext_instance *ext);
 
  #ifdef __cplusplus
- }
+}
  #endif
 
  #endif /* LY_PLUGINS_EXTS_SCHEMA_MOUNT_H_ */
