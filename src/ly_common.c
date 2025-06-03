@@ -141,6 +141,8 @@ ly_ctx_data_dict_get(const struct ly_ctx *ctx)
 
     ctx_data = ly_ctx_data_get(ctx);
     if (!ctx_data) {
+        LOGERR(NULL, LY_EINT, "Context data not found.");
+        assert(0);
         return NULL;
     }
 
