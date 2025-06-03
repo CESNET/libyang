@@ -16,6 +16,7 @@
 #ifndef LY_COMMON_H_
 #define LY_COMMON_H_
 
+#include <limits.h>
 #include <pthread.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -60,6 +61,11 @@ struct lysc_node;
 #define GETMACRO5(_1, _2, _3, _4, _5, NAME, ...) NAME
 #define GETMACRO6(_1, _2, _3, _4, _5, _6, NAME, ...) NAME
 #define GETMACRO7(_1, _2, _3, _4, _5, _6, _7, NAME, ...) NAME
+
+/** optional in POSIX */
+#ifndef PATH_MAX
+# define PATH_MAX 4096
+#endif
 
 /******************************************************************************
  * Logger
