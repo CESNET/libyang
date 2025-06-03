@@ -121,6 +121,19 @@ ly_ctx_data_get(const struct ly_ctx *ctx)
     return ctx_data;
 }
 
+int
+ly_ctx_data_refcount_get(const struct ly_ctx *ctx)
+{
+    struct ly_ctx_data *ctx_data;
+
+    ctx_data = ly_ctx_data_get(ctx);
+    if (!ctx_data) {
+        return -1;
+    }
+
+    return ctx_data->refcount;
+}
+
 struct ly_dict *
 ly_ctx_data_dict_get(const struct ly_ctx *ctx)
 {

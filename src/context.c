@@ -1492,6 +1492,15 @@ ly_ctx_destroy(struct ly_ctx *ctx)
         return;
     }
 
+    /* check if this is the last instance of the context */
+    if (ly_ctx_data_refcount_get(ctx) > 1) {
+        /* not the last instance, just decrease the ctx and plg reference counts,
+         * since other instances might still be using parsed, compiled, and other data */
+        ly_ctx_data_del(ctx);
+        lyplg_clean();
+        return;
+    }
+
     /* free the parsed and compiled modules (both can reference ext instances, which need to be freed, so their
      * definitions can be freed) */
     for (i = 0; i < ctx->modules.count; ++i) {
