@@ -1111,6 +1111,59 @@ test_free_parsed(void **state)
     UTEST_LYCTX = NULL;
 }
 
+static void
+test_refcount(void **state)
+{
+    ly_bool builtin_plugins_only, static_plugins_only;
+    uint32_t options;
+    struct lyd_node *tree = NULL;
+    const char *data = "<c xmlns=\"urn:a\"><l>test</l></c>";
+    struct ly_ctx_data *ctx_data;
+
+    (void)state;
+
+    /* load a simple module */
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX,
+            "module a {namespace urn:a;prefix a;container c { leaf l {type string;}}}", LYS_IN_YANG, NULL));
+
+    /* try parsing the module's data */
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_all(tree);
+
+    /* get the ctx data */
+    ctx_data = ly_ctx_data_get(UTEST_LYCTX);
+    assert_non_null(ctx_data);
+
+    /* check that the refcount is 1 */
+    assert_int_equal(ctx_data->refcount, 1);
+
+    /* mock the creation of the same context */
+    assert_int_equal(LY_SUCCESS, ly_ctx_data_add(UTEST_LYCTX));
+
+    /* increase the plugin refcount */
+    options = ly_ctx_get_options(UTEST_LYCTX);
+    builtin_plugins_only = options & LY_CTX_BUILTIN_PLUGINS_ONLY;
+    static_plugins_only = options & LY_CTX_STATIC_PLUGINS_ONLY;
+    assert_int_equal(LY_SUCCESS, lyplg_init(builtin_plugins_only, static_plugins_only));
+
+    /* check that the refcount increased */
+    assert_int_equal(ctx_data->refcount, 2);
+
+    /* try parsing the module's data again */
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_all(tree);
+
+    /* free the context */
+    ly_ctx_destroy(UTEST_LYCTX);
+
+    /* check that the refcount decreased */
+    assert_int_equal(ctx_data->refcount, 1);
+
+    /* try parsing the module's data again */
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -1124,6 +1177,7 @@ main(void)
         UTEST(test_set_priv_parsed),
         UTEST(test_explicit_compile),
         UTEST(test_free_parsed),
+        UTEST(test_refcount),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
