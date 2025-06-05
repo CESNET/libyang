@@ -1,9 +1,10 @@
 /**
  * @file enumeration.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Built-in enumeration type plugin.
  *
- * Copyright (c) 2019-2021 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -33,11 +34,29 @@
  *
  * | Size (B) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
- * | 4        | yes | `int32 *` | assigned little-endian value of the enum |
+ * | fixed for a specific type | yes | `int32 *` | assigned little-endian value of the enum |
  */
 
+static int32_t
+lyplg_type_lyb_size_enum(const struct lysc_type *type)
+{
+    const struct lysc_type_enum *type_enum = (struct lysc_type_enum *)type;
+    uint32_t max_value;
+
+    if (type_enum->enums[0].value < 0) {
+        /* we need the full 4 bytes */
+        return 32;
+    }
+
+    /* value of the last enum, sorted */
+    max_value = type_enum->enums[LY_ARRAY_COUNT(type_enum->enums) - 1].value;
+
+    /* learn the position of the highest set bit, the least amount of bits that can hold the number */
+    return lyplg_type_get_highest_set_bit_pos(max_value);
+}
+
 LIBYANG_API_DEF LY_ERR
-lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
+lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
@@ -46,6 +65,7 @@ lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, co
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;
     ly_bool found = 0;
+    uint32_t value_size;
     int64_t num = 0;
     int32_t num_val;
 
@@ -53,16 +73,13 @@ lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, co
     memset(storage, 0, sizeof *storage);
     storage->realtype = type;
 
-    if (format == LY_VALUE_LYB) {
-        /* validation */
-        if (value_len != 4) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB enumeration value size %" PRIu32
-                    " (expected 4).", value_len);
-            goto cleanup;
-        }
+    /* check value length */
+    ret = lyplg_type_check_value_size("enumeration", format, value_size_bits, lyplg_type_lyb_size_enum(type), &value_size, err);
+    LY_CHECK_GOTO(ret, cleanup);
 
+    if (format == LY_VALUE_LYB) {
         /* convert the value to host byte order */
-        memcpy(&num, value, value_len);
+        memcpy(&num, value, value_size);
         num = le64toh(num);
         num_val = num;
 
@@ -92,12 +109,12 @@ lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, co
     }
 
     /* check hints */
-    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = lyplg_type_check_hints(hints, value, value_size, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* find the matching enumeration value item */
     LY_ARRAY_FOR(type_enum->enums, u) {
-        if (!ly_strncmp(type_enum->enums[u].name, value, value_len)) {
+        if (!ly_strncmp(type_enum->enums[u].name, value, value_size)) {
             found = 1;
             break;
         }
@@ -105,7 +122,7 @@ lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, co
 
     if (!found) {
         /* enum not found */
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid enumeration value \"%.*s\".", (int)value_len,
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid enumeration value \"%.*s\".", (int)value_size,
                 (char *)value);
         goto cleanup;
     }
@@ -119,7 +136,7 @@ lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, co
         options &= ~LYPLG_TYPE_STORE_DYNAMIC;
         LY_CHECK_GOTO(ret, cleanup);
     } else {
-        ret = lydict_insert(ctx, value, value_len, &storage->_canonical);
+        ret = lydict_insert(ctx, value, value_size, &storage->_canonical);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -149,7 +166,7 @@ lyplg_type_sort_enum(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *v
 
 LIBYANG_API_DEF const void *
 lyplg_type_print_enum(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_len)
+        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_size_bits)
 {
     int64_t prev_num = 0, num = 0;
     void *buf;
@@ -160,8 +177,8 @@ lyplg_type_print_enum(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *
         if (num == prev_num) {
             /* values are equal, little-endian */
             *dynamic = 0;
-            if (value_len) {
-                *value_len = 4;
+            if (value_size_bits) {
+                *value_size_bits = lyplg_type_lyb_size_enum(value->realtype);
             }
             return &value->enum_item->value;
         } else {
@@ -170,8 +187,8 @@ lyplg_type_print_enum(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *
             LY_CHECK_RET(!buf, NULL);
 
             *dynamic = 1;
-            if (value_len) {
-                *value_len = 4;
+            if (value_size_bits) {
+                *value_size_bits = lyplg_type_lyb_size_enum(value->realtype);
             }
             memcpy(buf, &num, 4);
             return buf;
@@ -182,8 +199,8 @@ lyplg_type_print_enum(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *
     if (dynamic) {
         *dynamic = 0;
     }
-    if (value_len) {
-        *value_len = strlen(value->_canonical);
+    if (value_size_bits) {
+        *value_size_bits = strlen(value->_canonical) * 8;
     }
     return value->_canonical;
 }
@@ -202,6 +219,7 @@ const struct lyplg_type_record plugins_enumeration[] = {
         .name = LY_TYPE_ENUM_STR,
 
         .plugin.id = "ly2 enumeration",
+        .plugin.lyb_size = lyplg_type_lyb_size_enum,
         .plugin.store = lyplg_type_store_enum,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
@@ -209,7 +227,6 @@ const struct lyplg_type_record plugins_enumeration[] = {
         .plugin.print = lyplg_type_print_enum,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
-        .plugin.lyb_data_len = 4,
     },
     {0}
 };

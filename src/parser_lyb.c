@@ -322,52 +322,46 @@ lyb_read_string(char **str, struct lylyb_parse_ctx *lybctx)
  *
  * @param[in] type Type of the value.
  * @param[out] val Value buffer to read into, always terminated by 0.
- * @param[out] val_len Read @p val size in bytes.
+ * @param[out] val_size_bits Read @p val size in bits.
  * @param[in,out] lybctx LYB context.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_read_value(const struct lysc_type *type, uint8_t **val, uint32_t *val_len, struct lylyb_parse_ctx *lybctx)
+lyb_read_value(const struct lysc_type *type, uint8_t **val, uint32_t *val_size_bits, struct lylyb_parse_ctx *lybctx)
 {
-    uint32_t allocated_size;
-    int32_t lyb_data_len;
+    int32_t lyb_size_bits;
     struct lysc_type_leafref *type_lf;
 
-    assert(type && val && val_len && lybctx);
+    assert(type && val && val_size_bits && lybctx);
 
     *val = NULL;
-    *val_len = 0;
+    *val_size_bits = 0;
 
     /* learn the size from @ref howtoDataLYB */
     if (type->basetype == LY_TYPE_LEAFREF) {
         /* leafref itself is ignored, the target is loaded directly */
         type_lf = (struct lysc_type_leafref *)type;
-        lyb_data_len = LYSC_GET_TYPE_PLG(type_lf->realtype->plugin_ref)->lyb_data_len;
+        lyb_size_bits = LYSC_GET_TYPE_PLG(type_lf->realtype->plugin_ref)->lyb_size(type_lf->realtype);
     } else {
-        lyb_data_len = LYSC_GET_TYPE_PLG(type->plugin_ref)->lyb_data_len;
+        lyb_size_bits = LYSC_GET_TYPE_PLG(type->plugin_ref)->lyb_size(type);
     }
 
-    if (lyb_data_len < 0) {
+    if (lyb_size_bits < 0) {
         /* parse value size in bits */
-        lyb_read_size(val_len, lybctx);
-        *val_len /= 8;
+        lyb_read_size(val_size_bits, lybctx);
     } else {
         /* data size is fixed */
-        *val_len = lyb_data_len;
+        *val_size_bits = lyb_size_bits;
     }
 
-    /* allocate memory */
-    allocated_size = *val_len + 1;
-    *val = malloc(allocated_size * sizeof **val);
+    /* allocate zeroed memory with an addition zero byte */
+    *val = calloc(LYPLG_BITS2BYTES(*val_size_bits) + 1, sizeof **val);
     LY_CHECK_ERR_RET(!*val, LOGMEM(lybctx->ctx), LY_EMEM);
 
-    if (*val_len > 0) {
+    if (*val_size_bits > 0) {
         /* parse value */
-        lyb_read(*val, *val_len * 8, lybctx);
+        lyb_read(*val, *val_size_bits, lybctx);
     }
-
-    /* add extra zero byte regardless of whether it is string or not */
-    (*val)[allocated_size - 1] = 0;
 
     return LY_SUCCESS;
 }
@@ -462,9 +456,9 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, 
 {
     LY_ERR rc = LY_SUCCESS;
     ly_bool dynamic;
-    uint32_t i, count = 0, meta_value_len;
+    uint32_t i, count = 0, value_size_bits;
     char *meta_name = NULL;
-    uint8_t *meta_value;
+    uint8_t *value;
     const struct lys_module *mod;
     struct lysc_ext_instance *ant;
     const struct lysc_type *ant_type;
@@ -492,19 +486,19 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, 
         lyplg_ext_get_storage(ant, LY_STMT_TYPE, sizeof ant_type, (const void **)&ant_type);
 
         /* meta value */
-        rc = lyb_read_value(ant_type, &meta_value, &meta_value_len, lybctx->parse_ctx);
+        rc = lyb_read_value(ant_type, &value, &value_size_bits, lybctx->parse_ctx);
         LY_CHECK_GOTO(rc, cleanup);
         dynamic = 1;
 
         /* create metadata */
-        rc = lyd_parser_create_meta((struct lyd_ctx *)lybctx, NULL, meta, mod, meta_name, strlen(meta_name), meta_value,
-                meta_value_len, &dynamic, LY_VALUE_JSON, NULL, LYD_HINT_DATA, sparent);
+        rc = lyd_parser_create_meta((struct lyd_ctx *)lybctx, NULL, meta, mod, meta_name, strlen(meta_name), value,
+                value_size_bits, &dynamic, LY_VALUE_JSON, NULL, LYD_HINT_DATA, sparent);
 
         /* free strings */
         free(meta_name);
         meta_name = NULL;
         if (dynamic) {
-            free(meta_value);
+            free(value);
             dynamic = 0;
         }
 
@@ -1004,18 +998,18 @@ lyb_create_term(struct lyd_lyb_ctx *lybctx, const struct lysc_node *snode, struc
 {
     LY_ERR rc;
     ly_bool dynamic;
-    uint8_t *term_value;
-    uint32_t term_value_len;
+    uint8_t *value;
+    uint32_t value_size_bits;
 
     /* parse the value */
-    LY_CHECK_RET(lyb_read_value(((struct lysc_node_leaf *)snode)->type, &term_value, &term_value_len, lybctx->parse_ctx));
+    LY_CHECK_RET(lyb_read_value(((struct lysc_node_leaf *)snode)->type, &value, &value_size_bits, lybctx->parse_ctx));
     dynamic = 1;
 
     /* create node */
-    rc = lyd_parser_create_term((struct lyd_ctx *)lybctx, snode, term_value, term_value_len, &dynamic, LY_VALUE_LYB,
+    rc = lyd_parser_create_term((struct lyd_ctx *)lybctx, snode, value, value_size_bits, &dynamic, LY_VALUE_LYB,
             NULL, LYD_HINT_DATA, node);
     if (dynamic) {
-        free(term_value);
+        free(value);
     }
 
     if (rc) {

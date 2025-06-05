@@ -68,13 +68,13 @@ test_plugin_store(void **state)
     /* check store XML double pad */
     val = "YWhveQ==";
     dec_val = "ahoy";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
     CHECK_LYD_VALUE(value, BINARY, val, dec_val, strlen(dec_val));
     assert_ptr_equal(value.realtype, lysc_type);
     type->free(UTEST_LYCTX, &value);
 
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, dec_val, strlen(dec_val),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, dec_val, strlen(dec_val) * 8,
             0, LY_VALUE_LYB, NULL, 0, NULL, &value, NULL, &err));
     CHECK_LYD_VALUE(value, BINARY, val, dec_val, strlen(dec_val));
     assert_ptr_equal(value.realtype, lysc_type);
@@ -83,13 +83,13 @@ test_plugin_store(void **state)
     /* single pad */
     val = "YWhveWo=";
     dec_val = "ahoyj";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
     CHECK_LYD_VALUE(value, BINARY, val, dec_val, strlen(dec_val));
     assert_ptr_equal(value.realtype, lysc_type);
     type->free(UTEST_LYCTX, &value);
 
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, dec_val, strlen(dec_val),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, dec_val, strlen(dec_val) * 8,
             0, LY_VALUE_LYB, NULL, 0, NULL, &value, NULL, &err));
     CHECK_LYD_VALUE(value, BINARY, val, dec_val, strlen(dec_val));
     assert_ptr_equal(value.realtype, lysc_type);
@@ -98,13 +98,13 @@ test_plugin_store(void **state)
     /* no pad */
     val = "YWhveWoy";
     dec_val = "ahoyj2";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
     CHECK_LYD_VALUE(value, BINARY, val, dec_val, strlen(dec_val));
     assert_ptr_equal(value.realtype, lysc_type);
     type->free(UTEST_LYCTX, &value);
 
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, dec_val, strlen(dec_val),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, dec_val, strlen(dec_val) * 8,
             0, LY_VALUE_LYB, NULL, 0, NULL, &value, NULL, &err));
     CHECK_LYD_VALUE(value, BINARY, val, dec_val, strlen(dec_val));
     assert_ptr_equal(value.realtype, lysc_type);
@@ -114,13 +114,13 @@ test_plugin_store(void **state)
     val = "q80=";
     bin_val[0] = 0xab;
     bin_val[1] = 0xcd;
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
     CHECK_LYD_VALUE(value, BINARY, val, bin_val, 2);
     assert_ptr_equal(value.realtype, lysc_type);
     type->free(UTEST_LYCTX, &value);
 
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, bin_val, 2,
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, bin_val, 2 * 8,
             0, LY_VALUE_LYB, NULL, 0, NULL, &value, NULL, &err));
     CHECK_LYD_VALUE(value, BINARY, val, bin_val, 2);
     assert_ptr_equal(value.realtype, lysc_type);
@@ -149,14 +149,14 @@ test_plugin_store(void **state)
             "bcn1QX8dlLc91M2OifWStqLzXPicG+jjuoPUceC0flMQDb2qx03sxvJKfYfS5ArA\n"
             "CqvdWyXLoP7DI9THJrMI/vBHJKpl4Wtmsh2OLn9VHauFMzPSGke5GwjXCpbXGepj\n"
             "9qWN8Gd/FWgSDH2OBvZ6aHdB1pPjN9k=";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
     assert_ptr_equal(value.realtype, lysc_type);
     type->free(UTEST_LYCTX, &value);
 
     /* empty value */
     val = "";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
     CHECK_LYD_VALUE(value, BINARY, "", "", 0);
     assert_ptr_equal(value.realtype, lysc_type);
@@ -165,13 +165,13 @@ test_plugin_store(void **state)
     /* short value */
     val = "YQ==";
     dec_val = "a";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
     CHECK_LYD_VALUE(value, BINARY, val, dec_val, strlen(dec_val));
     assert_ptr_equal(value.realtype, lysc_type);
     type->free(UTEST_LYCTX, &value);
 
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, dec_val, strlen(dec_val),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, dec_val, strlen(dec_val) * 8,
             0, LY_VALUE_LYB, NULL, 0, NULL, &value, NULL, &err));
     CHECK_LYD_VALUE(value, BINARY, val, dec_val, strlen(dec_val));
     assert_ptr_equal(value.realtype, lysc_type);
@@ -180,13 +180,13 @@ test_plugin_store(void **state)
     /* length check */
     val = "Zm91cg==";
     dec_val = "four";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type2, val, strlen(val),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type2, val, strlen(val) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
     CHECK_LYD_VALUE(value, BINARY, val, dec_val, strlen(dec_val));
     assert_ptr_equal(value.realtype, lysc_type2);
     type->free(UTEST_LYCTX, &value);
 
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type2, dec_val, strlen(dec_val),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type2, dec_val, strlen(dec_val) * 8,
             0, LY_VALUE_LYB, NULL, 0, NULL, &value, NULL, &err));
     CHECK_LYD_VALUE(value, BINARY, val, dec_val, strlen(dec_val));
     assert_ptr_equal(value.realtype, lysc_type2);
@@ -194,13 +194,13 @@ test_plugin_store(void **state)
 
     val = "ZWlnaHQwMTI=";
     dec_val = "eight012";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type2, val, strlen(val),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type2, val, strlen(val) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
     CHECK_LYD_VALUE(value, BINARY, val, dec_val, strlen(dec_val));
     assert_ptr_equal(value.realtype, lysc_type2);
     type->free(UTEST_LYCTX, &value);
 
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type2, dec_val, strlen(dec_val),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type2, dec_val, strlen(dec_val) * 8,
             0, LY_VALUE_LYB, NULL, 0, NULL, &value, NULL, &err));
     CHECK_LYD_VALUE(value, BINARY, val, dec_val, strlen(dec_val));
     assert_ptr_equal(value.realtype, lysc_type2);
@@ -211,7 +211,7 @@ test_plugin_store(void **state)
      */
     val = "q80.";
     err = NULL;
-    ly_ret = type->store(UTEST_LYCTX, lysc_type, val, strlen(val),
+    ly_ret = type->store(UTEST_LYCTX, lysc_type, val, strlen(val) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err);
     assert_int_equal(LY_EVALID, ly_ret);
     assert_string_equal(err->msg, "Invalid Base64 character '.'.");
@@ -219,7 +219,7 @@ test_plugin_store(void **state)
 
     val = "q80";
     err = NULL;
-    ly_ret = type->store(UTEST_LYCTX, lysc_type, val, strlen(val),
+    ly_ret = type->store(UTEST_LYCTX, lysc_type, val, strlen(val) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err);
     assert_int_equal(LY_EVALID, ly_ret);
     assert_string_equal(err->msg, "Base64 encoded value length must be divisible by 4.");
@@ -227,7 +227,7 @@ test_plugin_store(void **state)
 
     val = "MTIz";
     err = NULL;
-    ly_ret = type->store(UTEST_LYCTX, lysc_type2, val, strlen(val),
+    ly_ret = type->store(UTEST_LYCTX, lysc_type2, val, strlen(val) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err);
     assert_int_equal(LY_EVALID, ly_ret);
     assert_string_equal(err->msg, "Unsatisfied length - string \"MTIz\" length is not allowed.");
@@ -236,7 +236,7 @@ test_plugin_store(void **state)
     /* LYPLG_TYPE_STORE_ONLY test */
     val = "MTIz";
     err = NULL;
-    ly_ret = type->store(UTEST_LYCTX, lysc_type2, val, strlen(val),
+    ly_ret = type->store(UTEST_LYCTX, lysc_type2, val, strlen(val) * 8,
             LYPLG_TYPE_STORE_ONLY, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err);
     assert_int_equal(LY_SUCCESS, ly_ret);
     type->free(UTEST_LYCTX, &value);
@@ -260,7 +260,7 @@ test_plugin_print(void **state)
 
     /* Testing empty value. */
     val = "";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
     assert_string_equal("", lysc_get_type_plugin(value.realtype->plugin_ref)->print(UTEST_LYCTX, &(value), LY_VALUE_CANON, NULL, NULL, NULL));
     type->free(UTEST_LYCTX, &value);
@@ -283,7 +283,7 @@ test_plugin_duplicate(void **state)
 
     /* Testing empty value. */
     val = "";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
     assert_int_equal(LY_SUCCESS, type->duplicate(UTEST_LYCTX, &value, &dup));
     CHECK_LYD_VALUE(dup, BINARY, "", "", 0);
@@ -309,10 +309,10 @@ test_plugin_sort(void **state)
 
     /* v1 < v2, v2 > v1, v1 == v1 */
     v1 = "YWhveQ=="; /* ahoy */
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
     v2 = "YWhveg=="; /* ahoz */
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
     assert_true(0 > type->sort(UTEST_LYCTX, &val1, &val2));
     assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));
@@ -322,10 +322,10 @@ test_plugin_sort(void **state)
 
     /* v2 is shorter */
     v1 = "YWhveQ=="; /* ahoj */
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
     v2 = "YWhv"; /* aho */
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
     assert_true(0 < type->sort(UTEST_LYCTX, &val1, &val2));
     assert_true(0 > type->sort(UTEST_LYCTX, &val2, &val1));

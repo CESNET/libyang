@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief ietf-netconf-acm node-instance-identifier type plugin.
  *
- * Copyright (c) 2019-2021 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -30,9 +30,9 @@
  * @page howtoDataLYB LYB Binary Format
  * @subsection howtoDataLYBTypesNodeInstanceIdentifier node-instance-identifier (ietf-netconf-acm)
  *
- * | Size (B) | Mandatory | Type | Meaning |
+ * | Size (b) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
- * | string length | yes | `char *` | string JSON format of the instance-identifier |
+ * | variable, full bytes | yes | `char *` | string JSON format of the instance-identifier |
  */
 
 /**
@@ -166,13 +166,13 @@ cleanup:
  * @brief Implementation of ::lyplg_type_store_clb for the node-instance-identifier ietf-netconf-acm type.
  */
 static LY_ERR
-lyplg_type_store_node_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
+lyplg_type_store_node_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr *exp = NULL;
-    uint32_t prefix_opt = 0;
+    uint32_t value_size, prefix_opt = 0;
     struct ly_path *path = NULL;
     char *canon;
 
@@ -180,11 +180,15 @@ lyplg_type_store_node_instanceid(const struct ly_ctx *ctx, const struct lysc_typ
     memset(storage, 0, sizeof *storage);
     storage->realtype = type;
 
-    /* check hints */
-    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    /* check value length */
+    ret = lyplg_type_check_value_size("node-instance-identifier", format, value_size_bits, -1, &value_size, err);
     LY_CHECK_GOTO(ret, cleanup);
 
-    if ((((char *)value)[0] == '/') && (value_len == 1)) {
+    /* check hints */
+    ret = lyplg_type_check_hints(hints, value, value_size, type->basetype, NULL, err);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    if ((((char *)value)[0] == '/') && (value_size == 1)) {
         /* special path */
         format = LY_VALUE_CANON;
         goto store;
@@ -205,10 +209,10 @@ lyplg_type_store_node_instanceid(const struct ly_ctx *ctx, const struct lysc_typ
     }
 
     /* parse the value */
-    ret = ly_path_parse(ctx, ctx_node, value, value_len, 0, LY_PATH_BEGIN_ABSOLUTE, prefix_opt, LY_PATH_PRED_SIMPLE, &exp);
+    ret = ly_path_parse(ctx, ctx_node, value, value_size, 0, LY_PATH_BEGIN_ABSOLUTE, prefix_opt, LY_PATH_PRED_SIMPLE, &exp);
     if (ret) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
-                "Invalid node-instance-identifier \"%.*s\" value - syntax error.", (int)value_len, (char *)value);
+                "Invalid node-instance-identifier \"%.*s\" value - syntax error.", (int)value_size, (char *)value);
         goto cleanup;
     }
 
@@ -224,7 +228,7 @@ lyplg_type_store_node_instanceid(const struct ly_ctx *ctx, const struct lysc_typ
             LY_VALUE_JSON : format, prefix_data, &path);
     if (ret) {
         ret = ly_err_new(err, ret, LYVE_DATA, NULL, NULL,
-                "Invalid node-instance-identifier \"%.*s\" value - semantic error.", (int)value_len, (char *)value);
+                "Invalid node-instance-identifier \"%.*s\" value - semantic error.", (int)value_size, (char *)value);
         goto cleanup;
     }
 
@@ -239,7 +243,7 @@ store:
             options &= ~LYPLG_TYPE_STORE_DYNAMIC;
             LY_CHECK_GOTO(ret, cleanup);
         } else {
-            ret = lydict_insert(ctx, value, value_len, &storage->_canonical);
+            ret = lydict_insert(ctx, value, value_size, &storage->_canonical);
             LY_CHECK_GOTO(ret, cleanup);
         }
     } else {
@@ -268,7 +272,7 @@ cleanup:
  */
 static const void *
 lyplg_type_print_node_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, uint32_t *value_len)
+        void *prefix_data, ly_bool *dynamic, uint32_t *value_size_bits)
 {
     char *ret;
 
@@ -276,8 +280,8 @@ lyplg_type_print_node_instanceid(const struct ly_ctx *UNUSED(ctx), const struct 
         if (dynamic) {
             *dynamic = 0;
         }
-        if (value_len) {
-            *value_len = strlen(value->_canonical);
+        if (value_size_bits) {
+            *value_size_bits = strlen(value->_canonical) * 8;
         }
         return value->_canonical;
     }
@@ -287,8 +291,8 @@ lyplg_type_print_node_instanceid(const struct ly_ctx *UNUSED(ctx), const struct 
         return NULL;
     }
     *dynamic = 1;
-    if (value_len) {
-        *value_len = strlen(ret);
+    if (value_size_bits) {
+        *value_size_bits = strlen(ret) * 8;
     }
     return ret;
 }
@@ -335,6 +339,7 @@ const struct lyplg_type_record plugins_node_instanceid[] = {
         .name = "node-instance-identifier",
 
         .plugin.id = "ly2 node-instance-identifier",
+        .plugin.lyb_size = lyplg_type_lyb_size_variable,
         .plugin.store = lyplg_type_store_node_instanceid,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
@@ -342,7 +347,6 @@ const struct lyplg_type_record plugins_node_instanceid[] = {
         .plugin.print = lyplg_type_print_node_instanceid,
         .plugin.duplicate = lyplg_type_dup_node_instanceid,
         .plugin.free = lyplg_type_free_instanceid,
-        .plugin.lyb_data_len = -1,
     },
     {
         .module = "ietf-netconf-acm",
@@ -350,6 +354,7 @@ const struct lyplg_type_record plugins_node_instanceid[] = {
         .name = "node-instance-identifier",
 
         .plugin.id = "ly2 node-instance-identifier",
+        .plugin.lyb_size = lyplg_type_lyb_size_variable,
         .plugin.store = lyplg_type_store_node_instanceid,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
@@ -357,7 +362,6 @@ const struct lyplg_type_record plugins_node_instanceid[] = {
         .plugin.print = lyplg_type_print_node_instanceid,
         .plugin.duplicate = lyplg_type_dup_node_instanceid,
         .plugin.free = lyplg_type_free_instanceid,
-        .plugin.lyb_data_len = -1,
     },
     {0}
 };

@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Built-in types plugins and interface for user types plugins.
  *
- * Copyright (c) 2019 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -338,13 +338,13 @@ lyplg_type_sort_simple(const struct ly_ctx *ctx, const struct lyd_value *val1, c
 
 LIBYANG_API_DEF const void *
 lyplg_type_print_simple(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT UNUSED(format),
-        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_len)
+        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_size_bits)
 {
     if (dynamic) {
         *dynamic = 0;
     }
-    if (value_len) {
-        *value_len = ly_strlen(value->_canonical);
+    if (value_size_bits) {
+        *value_size_bits = ly_strlen(value->_canonical) * 8;
     }
     return value->_canonical;
 }
@@ -370,6 +370,12 @@ lyplg_type_free_simple(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     lydict_remove(ctx, value->_canonical);
     value->_canonical = NULL;
+}
+
+LIBYANG_API_DEF int32_t
+lyplg_type_lyb_size_variable(const struct lysc_type *UNUSED(type))
+{
+    return -1;
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -627,13 +633,13 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_prefix_data_new(const struct ly_ctx *ctx, const void *value, uint32_t value_len, LY_VALUE_FORMAT format,
+lyplg_type_prefix_data_new(const struct ly_ctx *ctx, const void *value, uint32_t value_size, LY_VALUE_FORMAT format,
         const void *prefix_data, LY_VALUE_FORMAT *format_p, void **prefix_data_p)
 {
     LY_CHECK_ARG_RET(ctx, value, format_p, prefix_data_p, LY_EINVAL);
 
     *prefix_data_p = NULL;
-    return ly_store_prefix_data(ctx, value, value_len, format, prefix_data, format_p, (void **)prefix_data_p);
+    return ly_store_prefix_data(ctx, value, value_size, format, prefix_data, format_p, (void **)prefix_data_p);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -673,10 +679,30 @@ type_get_hints_base(uint32_t hints)
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_check_hints(uint32_t hints, const char *value, uint32_t value_len, LY_DATA_TYPE type, int *base,
+lyplg_type_check_value_size(const char *type_name, LY_VALUE_FORMAT format, uint32_t value_size_bits,
+        int32_t exp_lyb_value_size_bits, uint32_t *value_size, struct ly_err_item **err)
+{
+    if ((format == LY_VALUE_LYB) && (exp_lyb_value_size_bits != -1) && (value_size_bits != (uint32_t)exp_lyb_value_size_bits)) {
+        /* LYB size not as expected */
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid %s value size %" PRIu32 " b (expected %" PRIu32 " b).",
+                type_name, value_size_bits, exp_lyb_value_size_bits);
+    } else if ((format != LY_VALUE_LYB) && (value_size_bits % 8)) {
+        /* value size in bits not rounded bytes */
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid %s value size %" PRIu32 " b (expected full bytes).",
+                type_name, value_size_bits);
+    }
+
+    /* get value length in bytes */
+    *value_size = LYPLG_BITS2BYTES(value_size_bits);
+
+    return LY_SUCCESS;
+}
+
+LIBYANG_API_DEF LY_ERR
+lyplg_type_check_hints(uint32_t hints, const char *value, uint32_t value_size, LY_DATA_TYPE type, int *base,
         struct ly_err_item **err)
 {
-    LY_CHECK_ARG_RET(NULL, value || !value_len, err, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, value || !value_size, err, LY_EINVAL);
 
     *err = NULL;
     if (!value) {
@@ -695,7 +721,7 @@ lyplg_type_check_hints(uint32_t hints, const char *value, uint32_t value_len, LY
         if (!(hints & (LYD_VALHINT_DECNUM | LYD_VALHINT_OCTNUM | LYD_VALHINT_HEXNUM)) &&
                 !(hints & LYD_VALHINT_STRING_DATATYPES)) {
             return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid non-number-encoded %s value \"%.*s\".",
-                    lys_datatype2str(type), (int)value_len, value);
+                    lys_datatype2str(type), (int)value_size, value);
         }
         *base = type_get_hints_base(hints);
         break;
@@ -706,7 +732,7 @@ lyplg_type_check_hints(uint32_t hints, const char *value, uint32_t value_len, LY
         if (!(hints & LYD_VALHINT_NUM64) &&
                 !(hints & LYD_VALHINT_STRING_DATATYPES)) {
             return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid non-num64-encoded %s value \"%.*s\".",
-                    lys_datatype2str(type), (int)value_len, value);
+                    lys_datatype2str(type), (int)value_size, value);
         }
         *base = type_get_hints_base(hints);
         break;
@@ -719,20 +745,20 @@ lyplg_type_check_hints(uint32_t hints, const char *value, uint32_t value_len, LY
     case LY_TYPE_INST:
         if (!(hints & LYD_VALHINT_STRING)) {
             return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid non-string-encoded %s value \"%.*s\".",
-                    lys_datatype2str(type), (int)value_len, value);
+                    lys_datatype2str(type), (int)value_size, value);
         }
         break;
     case LY_TYPE_BOOL:
         if (!(hints & LYD_VALHINT_BOOLEAN) &&
                 !(hints & LYD_VALHINT_STRING_DATATYPES)) {
             return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid non-boolean-encoded %s value \"%.*s\".",
-                    lys_datatype2str(type), (int)value_len, value);
+                    lys_datatype2str(type), (int)value_size, value);
         }
         break;
     case LY_TYPE_EMPTY:
         if (!(hints & LYD_VALHINT_EMPTY)) {
             return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid non-empty-encoded %s value \"%.*s\".",
-                    lys_datatype2str(type), (int)value_len, value);
+                    lys_datatype2str(type), (int)value_size, value);
         }
         break;
     case LY_TYPE_UNKNOWN:
@@ -916,7 +942,7 @@ lyplg_type_print_val(const struct lysc_node *node, const char *canon, LY_VALUE_F
     type_plg = LYSC_GET_TYPE_PLG(type->plugin_ref);
 
     /* store the value */
-    r = type_plg->store(node->module->ctx, type, canon, strlen(canon), LYPLG_TYPE_STORE_ONLY, LY_VALUE_CANON,
+    r = type_plg->store(node->module->ctx, type, canon, strlen(canon) * 8, LYPLG_TYPE_STORE_ONLY, LY_VALUE_CANON,
             NULL, LYD_HINT_DATA, node, &storage, NULL, &err);
     if (r && (r != LY_EINCOMPLETE)) {
         if (err) {
@@ -1161,4 +1187,17 @@ cleanup:
     lyxp_expr_free(target_path);
     lyxp_set_free_content(&set);
     return rc;
+}
+
+LIBYANG_API_DEF uint32_t
+lyplg_type_get_highest_set_bit_pos(uint32_t num)
+{
+    uint32_t pos = 0;
+
+    while (num) {
+        num >>= 1;
+        ++pos;
+    }
+
+    return pos;
 }

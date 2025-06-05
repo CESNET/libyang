@@ -182,7 +182,7 @@ create_meta:
 
         /* create metadata */
         ret = lyd_parser_create_meta((struct lyd_ctx *)lydctx, NULL, meta, mod, name, name_len, xmlctx->value,
-                xmlctx->value_len, &xmlctx->dynamic, LY_VALUE_XML, &xmlctx->ns, LYD_HINT_DATA, sparent);
+                xmlctx->value_len * 8, &xmlctx->dynamic, LY_VALUE_XML, &xmlctx->ns, LYD_HINT_DATA, sparent);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* next attribute */
@@ -314,7 +314,7 @@ lydxml_check_list(struct lyxml_ctx *xmlctx, const struct lysc_node *list)
         assert(xmlctx->status == LYXML_ELEM_CONTENT);
         if (i < key_set.count) {
             /* validate the value */
-            r = ly_value_validate(NULL, snode, xmlctx->value, xmlctx->value_len, LY_VALUE_XML, &xmlctx->ns, LYD_HINT_DATA);
+            r = ly_value_validate(NULL, snode, xmlctx->value, xmlctx->value_len * 8, LY_VALUE_XML, &xmlctx->ns, LYD_HINT_DATA);
             if (!r) {
                 /* key with a valid value, remove from the set */
                 ly_set_rm_index(&key_set, i, NULL);
@@ -422,7 +422,7 @@ lydxml_data_check_opaq(struct lyd_xml_ctx *lydctx, const struct lysc_node **snod
     if ((*snode)->nodetype & LYD_NODE_TERM) {
         /* value may not be valid in which case we parse it as an opaque node */
         prev_lo = ly_temp_log_options(&temp_lo);
-        r = ly_value_validate(NULL, *snode, xmlctx->value, xmlctx->value_len, LY_VALUE_XML, &xmlctx->ns, LYD_HINT_DATA);
+        r = ly_value_validate(NULL, *snode, xmlctx->value, xmlctx->value_len * 8, LY_VALUE_XML, &xmlctx->ns, LYD_HINT_DATA);
         ly_temp_log_options(prev_lo);
         if (r) {
             LOGVRB("Parsing opaque term node \"%s\" with invalid value \"%.*s\".", (*snode)->name, (int)xmlctx->value_len,
@@ -768,7 +768,7 @@ lydxml_subtree_term(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, const s
     *node = NULL;
 
     /* create node */
-    r = lyd_parser_create_term((struct lyd_ctx *)lydctx, snode, xmlctx->value, xmlctx->value_len, &xmlctx->dynamic,
+    r = lyd_parser_create_term((struct lyd_ctx *)lydctx, snode, xmlctx->value, xmlctx->value_len * 8, &xmlctx->dynamic,
             LY_VALUE_XML, &xmlctx->ns, LYD_HINT_DATA, node);
     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 

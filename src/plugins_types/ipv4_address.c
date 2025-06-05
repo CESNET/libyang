@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief ietf-inet-types ipv4-address type plugin.
  *
- * Copyright (c) 2019-2021 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -42,10 +42,10 @@
  * @page howtoDataLYB LYB Binary Format
  * @subsection howtoDataLYBTypesIPv4Address ipv4-address (ietf-inet-types)
  *
- * | Size (B) | Mandatory | Type | Meaning |
+ * | Size (b) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
- * | 4       | yes       | `struct in_addr *` | IPv4 address in network-byte order |
- * | string length | no        | `char *` | IPv4 address zone string |
+ * | 32       | yes       | `struct in_addr *` | IPv4 address in network-byte order |
+ * | variable, full bytes | no        | `char *` | IPv4 address zone string |
  */
 
 static void lyplg_type_free_ipv4_address(const struct ly_ctx *ctx, struct lyd_value *value);
@@ -120,16 +120,16 @@ cleanup:
  * @brief Implementation of ::lyplg_type_store_clb for the ipv4-address ietf-inet-types type.
  */
 static LY_ERR
-lyplg_type_store_ipv4_address(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
+lyplg_type_store_ipv4_address(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    const char *value_str = value;
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
     struct lyd_value_ipv4_address *val;
-    uint32_t i;
+    const char *value_str = value;
+    uint32_t value_size, i;
 
     /* init storage */
     memset(storage, 0, sizeof *storage);
@@ -137,14 +137,16 @@ lyplg_type_store_ipv4_address(const struct ly_ctx *ctx, const struct lysc_type *
     LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
     storage->realtype = type;
 
+    value_size = LYPLG_BITS2BYTES(value_size_bits);
+
     if (format == LY_VALUE_LYB) {
         /* validation */
-        if (value_len < 4) {
+        if (value_size_bits < 32) {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv4-address value size %" PRIu32
-                    " (expected at least 4).", value_len);
+                    " b (expected at least 32 b).", value_size_bits);
             goto cleanup;
         }
-        for (i = 4; i < value_len; ++i) {
+        for (i = 4; i < value_size; ++i) {
             if (!isalnum(value_str[i])) {
                 ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv4-address zone character 0x%x.",
                         value_str[i]);
@@ -156,8 +158,8 @@ lyplg_type_store_ipv4_address(const struct ly_ctx *ctx, const struct lysc_type *
         memcpy(&val->addr, value, sizeof val->addr);
 
         /* store zone, if any */
-        if (value_len > 4) {
-            ret = lydict_insert(ctx, value_str + 4, value_len - 4, &val->zone);
+        if (value_size > 4) {
+            ret = lydict_insert(ctx, value_str + 4, value_size - 4, &val->zone);
             LY_CHECK_GOTO(ret, cleanup);
         } else {
             val->zone = NULL;
@@ -168,19 +170,20 @@ lyplg_type_store_ipv4_address(const struct ly_ctx *ctx, const struct lysc_type *
     }
 
     /* check hints */
-    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = lyplg_type_check_hints(hints, value, value_size, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (!(options & LYPLG_TYPE_STORE_ONLY)) {
         /* length restriction of the string */
         if (type_str->length) {
-            /* value_len is in bytes, but we need number of characters here */
-            ret = lyplg_type_validate_range(LY_TYPE_STRING, type_str->length, ly_utf8len(value, value_len), value, value_len, err);
+            /* value_size is in bytes, but we need number of characters here */
+            ret = lyplg_type_validate_range(LY_TYPE_STRING, type_str->length, ly_utf8len(value, value_size), value,
+                    value_size, err);
             LY_CHECK_GOTO(ret, cleanup);
         }
 
         /* pattern restrictions */
-        ret = lyplg_type_validate_patterns(ctx, type_str->patterns, value, value_len, err);
+        ret = lyplg_type_validate_patterns(ctx, type_str->patterns, value, value_size, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -189,7 +192,7 @@ lyplg_type_store_ipv4_address(const struct ly_ctx *ctx, const struct lysc_type *
     LY_CHECK_GOTO(ret, cleanup);
 
     /* get the network-byte order address */
-    ret = ipv4address_str2ip(value, value_len, options, ctx, &val->addr, &val->zone, err);
+    ret = ipv4address_str2ip(value, value_size, options, ctx, &val->addr, &val->zone, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* store canonical value */
@@ -198,7 +201,7 @@ lyplg_type_store_ipv4_address(const struct ly_ctx *ctx, const struct lysc_type *
         options &= ~LYPLG_TYPE_STORE_DYNAMIC;
         LY_CHECK_GOTO(ret, cleanup);
     } else {
-        ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->_canonical);
+        ret = lydict_insert(ctx, value_size ? value : "", value_size, &storage->_canonical);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -266,7 +269,7 @@ lyplg_type_sort_ipv4_address(const struct ly_ctx *UNUSED(ctx), const struct lyd_
  */
 static const void *
 lyplg_type_print_ipv4_address(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_len)
+        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_size_bits)
 {
     struct lyd_value_ipv4_address *val;
     uint32_t zone_len;
@@ -278,8 +281,8 @@ lyplg_type_print_ipv4_address(const struct ly_ctx *ctx, const struct lyd_value *
         if (!val->zone) {
             /* address-only, const */
             *dynamic = 0;
-            if (value_len) {
-                *value_len = sizeof val->addr;
+            if (value_size_bits) {
+                *value_size_bits = sizeof val->addr * 8;
             }
             return &val->addr;
         }
@@ -293,8 +296,8 @@ lyplg_type_print_ipv4_address(const struct ly_ctx *ctx, const struct lyd_value *
         memcpy(ret + sizeof val->addr, val->zone, zone_len);
 
         *dynamic = 1;
-        if (value_len) {
-            *value_len = sizeof val->addr + zone_len;
+        if (value_size_bits) {
+            *value_size_bits = sizeof val->addr * 8 + zone_len * 8;
         }
         return ret;
     }
@@ -329,8 +332,8 @@ lyplg_type_print_ipv4_address(const struct ly_ctx *ctx, const struct lyd_value *
     if (dynamic) {
         *dynamic = 0;
     }
-    if (value_len) {
-        *value_len = strlen(value->_canonical);
+    if (value_size_bits) {
+        *value_size_bits = strlen(value->_canonical) * 8;
     }
     return value->_canonical;
 }
@@ -397,6 +400,7 @@ const struct lyplg_type_record plugins_ipv4_address[] = {
         .name = "ipv4-address",
 
         .plugin.id = "ly2 ipv4-address",
+        .plugin.lyb_size = lyplg_type_lyb_size_variable,
         .plugin.store = lyplg_type_store_ipv4_address,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_ipv4_address,
@@ -404,7 +408,6 @@ const struct lyplg_type_record plugins_ipv4_address[] = {
         .plugin.print = lyplg_type_print_ipv4_address,
         .plugin.duplicate = lyplg_type_dup_ipv4_address,
         .plugin.free = lyplg_type_free_ipv4_address,
-        .plugin.lyb_data_len = -1,
     },
     {0}
 };

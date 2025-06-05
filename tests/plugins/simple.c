@@ -79,6 +79,7 @@ LYPLG_TYPES = {
         .name = "note",
 
         .plugin.id = "ly2 simple test v1",
+        .plugin.lyb_size = lyplg_type_lyb_size_variable,
         .plugin.store = lyplg_type_store_string,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
@@ -86,7 +87,6 @@ LYPLG_TYPES = {
         .plugin.print = lyplg_type_print_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
-        .plugin.lyb_data_len = 0
     },
     {0}
 };

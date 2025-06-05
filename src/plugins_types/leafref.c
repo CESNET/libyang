@@ -1,9 +1,10 @@
 /**
  * @file leafref.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Built-in leafref type plugin.
  *
- * Copyright (c) 2019-2021 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -31,13 +32,21 @@
  * @page howtoDataLYB LYB Binary Format
  * @subsection howtoDataLYBTypesLeafref leafref (built-in)
  *
- * | Size (B) | Mandatory | Type | Meaning |
+ * | Size (b) | Mandatory | Type | Meaning |
  * | :------: | :-------: | :--: | :-----: |
  * | exact same format as the leafref target ||||
  */
 
+static int32_t
+lyplg_type_lyb_size_leafref(const struct lysc_type *type)
+{
+    const struct lysc_type_leafref *type_lr = (struct lysc_type_leafref *)type;
+
+    return LYSC_GET_TYPE_PLG(type_lr->realtype->plugin_ref)->lyb_size(type_lr->realtype);
+}
+
 LIBYANG_API_DEF LY_ERR
-lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
+lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
@@ -47,7 +56,7 @@ lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type,
     assert(type_lr->realtype);
 
     /* store the value as the real type of the leafref target */
-    rc = LYSC_GET_TYPE_PLG(type_lr->realtype->plugin_ref)->store(ctx, type_lr->realtype, value, value_len, options,
+    rc = LYSC_GET_TYPE_PLG(type_lr->realtype->plugin_ref)->store(ctx, type_lr->realtype, value, value_size_bits, options,
             format, prefix_data, hints, ctx_node, storage, unres, err);
     if (rc == LY_EINCOMPLETE) {
         /* it is irrelevant whether the target type needs some resolving */
@@ -115,9 +124,9 @@ lyplg_type_sort_leafref(const struct ly_ctx *ctx, const struct lyd_value *val1, 
 
 LIBYANG_API_DEF const void *
 lyplg_type_print_leafref(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, uint32_t *value_len)
+        void *prefix_data, ly_bool *dynamic, uint32_t *value_size_bits)
 {
-    return LYSC_GET_TYPE_PLG(value->realtype->plugin_ref)->print(ctx, value, format, prefix_data, dynamic, value_len);
+    return LYSC_GET_TYPE_PLG(value->realtype->plugin_ref)->print(ctx, value, format, prefix_data, dynamic, value_size_bits);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -146,6 +155,7 @@ const struct lyplg_type_record plugins_leafref[] = {
         .name = LY_TYPE_LEAFREF_STR,
 
         .plugin.id = "ly2 leafref",
+        .plugin.lyb_size = lyplg_type_lyb_size_leafref,
         .plugin.store = lyplg_type_store_leafref,
         .plugin.validate = lyplg_type_validate_leafref,
         .plugin.compare = lyplg_type_compare_leafref,
@@ -153,7 +163,6 @@ const struct lyplg_type_record plugins_leafref[] = {
         .plugin.print = lyplg_type_print_leafref,
         .plugin.duplicate = lyplg_type_dup_leafref,
         .plugin.free = lyplg_type_free_leafref,
-        .plugin.lyb_data_len = -1,
     },
     {0}
 };

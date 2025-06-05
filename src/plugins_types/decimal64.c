@@ -1,9 +1,10 @@
 /**
  * @file decimal64.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Built-in decimal64 type plugin.
  *
- * Copyright (c) 2019-2021 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -28,9 +29,9 @@
  * @page howtoDataLYB LYB Binary Format
  * @subsection howtoDataLYBTypesDecimal64 decimal64 (built-in)
  *
- * | Size (B) | Mandatory | Type | Meaning |
+ * | Size (b) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
- * | 8        | yes | `int64_t *` | little-endian value represented without floating point |
+ * | 64        | yes | `int64_t *` | little-endian value represented without floating point |
  */
 
 static LY_ERR lyplg_type_validate_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node), const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err);
@@ -82,14 +83,21 @@ decimal64_num2str(int64_t num, struct lysc_type_dec *type, char **str)
     return LY_SUCCESS;
 }
 
+static int32_t
+lyplg_type_lyb_size_decimal64(const struct lysc_type *UNUSED(type))
+{
+    return 64;
+}
+
 LIBYANG_API_DEF LY_ERR
-lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
+lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
 {
     struct lysc_type_dec *type_dec = (struct lysc_type_dec *)type;
     LY_ERR ret = LY_SUCCESS;
+    uint32_t value_size;
     int64_t num = 0;
     char *canon;
 
@@ -97,24 +105,21 @@ lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *typ
     memset(storage, 0, sizeof *storage);
     storage->realtype = type;
 
-    if (format == LY_VALUE_LYB) {
-        /* validation */
-        if (value_len != 8) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB decimal64 value size %" PRIu32 " (expected 8).",
-                    value_len);
-            goto cleanup;
-        }
+    /* check value length */
+    ret = lyplg_type_check_value_size("decimal64", format, value_size_bits, 64, &value_size, err);
+    LY_CHECK_GOTO(ret, cleanup);
 
+    if (format == LY_VALUE_LYB) {
         /* we have the decimal64 number, in host byte order */
-        memcpy(&num, value, value_len);
+        memcpy(&num, value, value_size);
         num = le64toh(num);
     } else {
         /* check hints */
-        ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+        ret = lyplg_type_check_hints(hints, value, value_size, type->basetype, NULL, err);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* parse decimal64 value */
-        ret = lyplg_type_parse_dec64(type_dec->fraction_digits, value, value_len, &num, err);
+        ret = lyplg_type_parse_dec64(type_dec->fraction_digits, value, value_size, &num, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -129,7 +134,7 @@ lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *typ
             options &= ~LYPLG_TYPE_STORE_DYNAMIC;
             LY_CHECK_GOTO(ret, cleanup);
         } else {
-            ret = lydict_insert(ctx, value, value_len, &storage->_canonical);
+            ret = lydict_insert(ctx, value, value_size, &storage->_canonical);
             LY_CHECK_GOTO(ret, cleanup);
         }
     } else {
@@ -209,7 +214,7 @@ lyplg_type_sort_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lyd_val
 
 LIBYANG_API_DEF const void *
 lyplg_type_print_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_len)
+        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_size_bits)
 {
     int64_t num = 0;
     void *buf;
@@ -219,8 +224,8 @@ lyplg_type_print_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lyd_va
         if (num == value->dec64) {
             /* values are equal, little-endian */
             *dynamic = 0;
-            if (value_len) {
-                *value_len = sizeof value->dec64;
+            if (value_size_bits) {
+                *value_size_bits = sizeof value->dec64 * 8;
             }
             return &value->dec64;
         } else {
@@ -229,8 +234,8 @@ lyplg_type_print_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lyd_va
             LY_CHECK_RET(!buf, NULL);
 
             *dynamic = 1;
-            if (value_len) {
-                *value_len = sizeof value->dec64;
+            if (value_size_bits) {
+                *value_size_bits = sizeof value->dec64 * 8;
             }
             memcpy(buf, &num, sizeof value->dec64);
             return buf;
@@ -241,8 +246,8 @@ lyplg_type_print_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lyd_va
     if (dynamic) {
         *dynamic = 0;
     }
-    if (value_len) {
-        *value_len = strlen(value->_canonical);
+    if (value_size_bits) {
+        *value_size_bits = strlen(value->_canonical) * 8;
     }
     return value->_canonical;
 }
@@ -261,6 +266,7 @@ const struct lyplg_type_record plugins_decimal64[] = {
         .name = LY_TYPE_DEC64_STR,
 
         .plugin.id = "ly2 decimal64",
+        .plugin.lyb_size = lyplg_type_lyb_size_decimal64,
         .plugin.store = lyplg_type_store_decimal64,
         .plugin.validate = lyplg_type_validate_decimal64,
         .plugin.compare = lyplg_type_compare_decimal64,
@@ -268,7 +274,6 @@ const struct lyplg_type_record plugins_decimal64[] = {
         .plugin.print = lyplg_type_print_decimal64,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
-        .plugin.lyb_data_len = 8,
     },
     {0}
 };

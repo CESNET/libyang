@@ -1419,21 +1419,21 @@ test_plugin_store(void **state)
      * hint    = LYD_VALHINT_DECNUM, LYD_VALHINT_HEXNUM, LYD_VALHINT_OCTNUM
      */
     val_text = "20";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_DECNUM, NULL, &value, NULL, &err));
     CHECK_LYD_VALUE(value, INT8, "20", 20);
     assert_ptr_equal(value.realtype, lysc_type);
     type->free(UTEST_LYCTX, &value);
 
     val_text = "-20";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_DECNUM, NULL, &value, NULL, &err));
     CHECK_LYD_VALUE(value, INT8, "-20", -20);
     assert_ptr_equal(value.realtype, lysc_type);
     type->free(UTEST_LYCTX, &value);
 
     val_text = "0xf";
-    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text),
+    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_HEXNUM, NULL, &value, NULL, &err);
     assert_int_equal(LY_SUCCESS, ly_ret);
     CHECK_LYD_VALUE(value, INT8, "15", 15);
@@ -1441,7 +1441,7 @@ test_plugin_store(void **state)
     type->free(UTEST_LYCTX, &value);
 
     val_text = "1B";
-    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text),
+    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_HEXNUM, NULL, &value, NULL, &err);
     assert_int_equal(LY_SUCCESS, ly_ret);
     CHECK_LYD_VALUE(value, INT8, "27", 27);
@@ -1449,7 +1449,7 @@ test_plugin_store(void **state)
     type->free(UTEST_LYCTX, &value);
 
     val_text = "-0xf";
-    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text),
+    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_HEXNUM, NULL, &value, NULL, &err);
     assert_int_equal(LY_SUCCESS, ly_ret);
     CHECK_LYD_VALUE(value, INT8, "-15", -15);
@@ -1457,7 +1457,7 @@ test_plugin_store(void **state)
     type->free(UTEST_LYCTX, &value);
 
     val_text = "027";
-    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text),
+    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_OCTNUM, NULL, &value, NULL, &err);
     assert_int_equal(LY_SUCCESS, ly_ret);
     CHECK_LYD_VALUE(value, INT8, "23", 23);
@@ -1465,7 +1465,7 @@ test_plugin_store(void **state)
     type->free(UTEST_LYCTX, &value);
 
     val_text = "-027";
-    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text),
+    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_OCTNUM, NULL, &value, NULL, &err);
     assert_int_equal(LY_SUCCESS, ly_ret);
     CHECK_LYD_VALUE(value, INT8, "-23", -23);
@@ -1480,7 +1480,7 @@ test_plugin_store(void **state)
     alloc = (char *)malloc(strlen(val_text) + 1);
 
     memcpy(alloc, val_text, strlen(val_text) + 1);
-    ly_ret = type->store(UTEST_LYCTX, lysc_type, alloc, strlen(val_text),
+    ly_ret = type->store(UTEST_LYCTX, lysc_type, alloc, strlen(val_text) * 8,
             LYPLG_TYPE_STORE_DYNAMIC, LY_VALUE_XML, NULL, LYD_VALHINT_HEXNUM, NULL, &value, NULL, &err);
     alloc = NULL;
     assert_int_equal(LY_SUCCESS, ly_ret);
@@ -1491,7 +1491,7 @@ test_plugin_store(void **state)
     lysc_type_test = *lysc_type;
     lysc_type_test.basetype = LY_TYPE_UINT8;
     val_text = "20";
-    ly_ret = type->store(UTEST_LYCTX, &lysc_type_test, val_text, strlen(val_text),
+    ly_ret = type->store(UTEST_LYCTX, &lysc_type_test, val_text, strlen(val_text) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_HEXNUM, NULL, &value, NULL, &err);
     assert_int_equal(LY_EINT, ly_ret);
     UTEST_LOG_CTX_CLEAN;
@@ -1501,28 +1501,28 @@ test_plugin_store(void **state)
      */
     val_text = "";
     err = NULL;
-    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text),
+    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_HEXNUM, NULL, &value, NULL, &err);
     assert_int_equal(LY_EVALID, ly_ret);
     ly_err_free(err);
 
     val_text = "";
     err = NULL;
-    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, 1,
+    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, 1 * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_HEXNUM, NULL, &value, NULL, &err);
     assert_int_equal(LY_EVALID, ly_ret);
     ly_err_free(err);
 
     val_text = "10 b";
     err = NULL;
-    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text),
+    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_HEXNUM, NULL, &value, NULL, &err);
     assert_int_equal(LY_EVALID, ly_ret);
     ly_err_free(err);
 
     val_text = "a";
     err = NULL;
-    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text),
+    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_DECNUM, NULL, &value, NULL, &err);
     assert_int_equal(LY_EVALID, ly_ret);
     ly_err_free(err);
@@ -1530,7 +1530,7 @@ test_plugin_store(void **state)
     /* LYPLG_TYPE_STORE_ONLY test */
     val_text = "-60";
     err = NULL;
-    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text),
+    ly_ret = type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text) * 8,
             LYPLG_TYPE_STORE_ONLY, LY_VALUE_XML, NULL, LYD_VALHINT_DECNUM, NULL,
             &value, NULL, &err);
     assert_int_equal(LY_SUCCESS, ly_ret);
@@ -1568,7 +1568,7 @@ test_plugin_compare(void **state)
 
     /* CREATE VALUES */
     for (unsigned int it = 0; it < sizeof(val_init) / sizeof(val_init[0]); it++) {
-        ly_ret = type->store(UTEST_LYCTX, lysc_type, val_init[it], strlen(val_init[it]),
+        ly_ret = type->store(UTEST_LYCTX, lysc_type, val_init[it], strlen(val_init[it]) * 8,
                 0, LY_VALUE_XML, NULL, LYD_VALHINT_DECNUM, NULL, &(values[it]), NULL, &err);
         assert_int_equal(LY_SUCCESS, ly_ret);
     }
@@ -1588,7 +1588,7 @@ test_plugin_compare(void **state)
      */
     diff_type_text = "20";
     diff_type = ((struct lysc_node_leaf *)mod->compiled->data->next)->type;
-    ly_ret = lysc_get_type_plugin(diff_type->plugin_ref)->store(UTEST_LYCTX, diff_type, diff_type_text, strlen(diff_type_text),
+    ly_ret = lysc_get_type_plugin(diff_type->plugin_ref)->store(UTEST_LYCTX, diff_type, diff_type_text, strlen(diff_type_text) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_DECNUM, NULL, &diff_type_val, NULL, &err);
     assert_int_equal(LY_SUCCESS, ly_ret);
     assert_int_equal(LY_SUCCESS, type->compare(UTEST_LYCTX, &diff_type_val, &(values[0])));
@@ -1600,7 +1600,7 @@ test_plugin_compare(void **state)
      */
     diff_type_text = "20";
     diff_type = ((struct lysc_node_leaf *)mod->compiled->data->next->next)->type;
-    ly_ret = lysc_get_type_plugin(diff_type->plugin_ref)->store(UTEST_LYCTX, diff_type, diff_type_text, strlen(diff_type_text),
+    ly_ret = lysc_get_type_plugin(diff_type->plugin_ref)->store(UTEST_LYCTX, diff_type, diff_type_text, strlen(diff_type_text) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_DECNUM, NULL, &diff_type_val, NULL, &err);
     assert_int_equal(LY_SUCCESS, ly_ret);
     assert_int_equal(LY_ENOT, type->compare(UTEST_LYCTX, &diff_type_val, &(values[0])));
@@ -1612,7 +1612,7 @@ test_plugin_compare(void **state)
      */
     diff_type_text = "20";
     diff_type = ((struct lysc_node_leaf *)mod->compiled->data->next->next->next)->type;
-    ly_ret = lysc_get_type_plugin(diff_type->plugin_ref)->store(UTEST_LYCTX, diff_type, diff_type_text, strlen(diff_type_text),
+    ly_ret = lysc_get_type_plugin(diff_type->plugin_ref)->store(UTEST_LYCTX, diff_type, diff_type_text, strlen(diff_type_text) * 8,
             0, LY_VALUE_XML, NULL, LYD_VALHINT_DECNUM, NULL, &diff_type_val, NULL, &err);
     assert_int_equal(LY_SUCCESS, ly_ret);
     assert_int_equal(LY_ENOT, type->compare(UTEST_LYCTX, &diff_type_val, &(values[0])));
@@ -1645,7 +1645,7 @@ test_plugin_print(void **state)
 
     /* CREATE VALUES */
     for (unsigned int it = 0; it < sizeof(val_init) / sizeof(val_init[0]); it++) {
-        ly_ret = type->store(UTEST_LYCTX, lysc_type, val_init[it], strlen(val_init[it]),
+        ly_ret = type->store(UTEST_LYCTX, lysc_type, val_init[it], strlen(val_init[it]) * 8,
                 0, LY_VALUE_XML, NULL, LYD_VALHINT_HEXNUM, NULL, &(values[it]), NULL, &err);
         assert_int_equal(LY_SUCCESS, ly_ret);
     }
@@ -1693,7 +1693,7 @@ test_plugin_dup(void **state)
 
     /* CREATE VALUES */
     for (unsigned int it = 0; it < sizeof(val_init) / sizeof(val_init[0]); it++) {
-        ly_ret = type->store(UTEST_LYCTX, lysc_type[it % 2], val_init[it], strlen(val_init[it]),
+        ly_ret = type->store(UTEST_LYCTX, lysc_type[it % 2], val_init[it], strlen(val_init[it]) * 8,
                 0, LY_VALUE_XML, NULL, LYD_VALHINT_HEXNUM, NULL, &(values[it]), NULL, &err);
         assert_int_equal(LY_SUCCESS, ly_ret);
     }

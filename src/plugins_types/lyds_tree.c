@@ -1,9 +1,10 @@
 /**
  * @file lyds_tree.c
  * @author Adam Piecek <piecek@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Internal type plugin for sorting data nodes.
  *
- * Copyright (c) 2019-2023 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -25,15 +26,21 @@
 
 static void lyplg_type_free_lyds(const struct ly_ctx *ctx, struct lyd_value *value);
 
+static int32_t
+lyplg_type_lyb_size_lyds(const struct lysc_type *UNUSED(type))
+{
+    return 0;
+}
+
 static LY_ERR
 lyplg_type_store_lyds(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
-        uint32_t UNUSED(value_len), uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data),
+        uint32_t UNUSED(value_size_bits), uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data),
         uint32_t UNUSED(hints), const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage,
         struct lys_glob_unres *UNUSED(unres), struct ly_err_item **UNUSED(err))
 {
-    int ret;
+    LY_ERR ret = LY_SUCCESS;
     struct rb_node *rbt = NULL;
-    struct lyd_value_lyds_tree *val = NULL;
+    struct lyd_value_lyds_tree *val;
 
     /* Prepare value memory. */
     LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
@@ -107,13 +114,13 @@ lyplg_type_sort_lyds(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *U
 
 static const void *
 lyplg_type_print_lyds(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *UNUSED(value),
-        LY_VALUE_FORMAT UNUSED(format), void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_len)
+        LY_VALUE_FORMAT UNUSED(format), void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_size_bits)
 {
     if (dynamic) {
         *dynamic = 0;
     }
-    if (value_len) {
-        *value_len = 0;
+    if (value_size_bits) {
+        *value_size_bits = 0;
     }
 
     return "";
@@ -133,6 +140,7 @@ const struct lyplg_type_record plugins_lyds_tree[] = {
         .name = "lyds_tree",
 
         .plugin.id = "ly2 lyds_tree",
+        .plugin.lyb_size = lyplg_type_lyb_size_lyds,
         .plugin.store = lyplg_type_store_lyds,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_lyds,
@@ -140,7 +148,6 @@ const struct lyplg_type_record plugins_lyds_tree[] = {
         .plugin.print = lyplg_type_print_lyds,
         .plugin.duplicate = lyplg_type_dupl_lyds,
         .plugin.free = lyplg_type_free_lyds,
-        .plugin.lyb_data_len = 0
     },
     {0}
 };

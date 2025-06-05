@@ -206,14 +206,14 @@ LY_ERR ly_dup_prefix_data(const struct ly_ctx *ctx, LY_VALUE_FORMAT format, cons
  *
  * @param[in] ctx libyang context.
  * @param[in] value Value to be parsed.
- * @param[in] value_len Length of the @p value.
+ * @param[in] value_size Size of the @p value in bytes.
  * @param[in] format Format of the prefixes in the value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in,out] format_p Resulting format of the prefixes.
  * @param[in,out] prefix_data_p Resulting prefix data for the value in format @p format_p.
  * @return LY_ERR value.
  */
-LY_ERR ly_store_prefix_data(const struct ly_ctx *ctx, const void *value, size_t value_len, LY_VALUE_FORMAT format,
+LY_ERR ly_store_prefix_data(const struct ly_ctx *ctx, const void *value, uint32_t value_size, LY_VALUE_FORMAT format,
         const void *prefix_data, LY_VALUE_FORMAT *format_p, void **prefix_data_p);
 
 /**
@@ -230,8 +230,8 @@ const char *ly_format2str(LY_VALUE_FORMAT format);
  * Hash is calculated and new node flag is set.
  *
  * @param[in] schema Schema node of the new data node.
- * @param[in] value String value to be parsed.
- * @param[in] value_len Length of @p value, must be set correctly.
+ * @param[in] value Value to be parsed.
+ * @param[in] value_size_bits Size of @p value in bits, must be set correctly.
  * @param[in] is_utf8 Whether @p value is a valid UTF-8 string, if applicable.
  * @param[in] store_only Whether to perform storing operation only.
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
@@ -243,7 +243,7 @@ const char *ly_format2str(LY_VALUE_FORMAT format);
  * @return LY_SUCCESS on success.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_create_term(const struct lysc_node *schema, const char *value, size_t value_len, ly_bool is_utf8,
+LY_ERR lyd_create_term(const struct lysc_node *schema, const void *value, uint32_t value_size_bits, ly_bool is_utf8,
         ly_bool store_only, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
         ly_bool *incomplete, struct lyd_node **node);
 
@@ -346,8 +346,8 @@ LY_ERR lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANY
  * @return LY_SUCCESS on success.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_len, const char *prefix, size_t pref_len,
-        const char *module_key, size_t module_key_len, const char *value, size_t value_len, ly_bool *dynamic,
+LY_ERR lyd_create_opaq(const struct ly_ctx *ctx, const char *name, uint32_t name_len, const char *prefix, uint32_t pref_len,
+        const char *module_key, uint32_t module_key_len, const char *value, uint32_t value_len, ly_bool *dynamic,
         LY_VALUE_FORMAT format, void *val_prefix_data, uint32_t hints, struct lyd_node **node);
 
 /**
@@ -519,8 +519,8 @@ struct lysc_ext_instance *lyd_get_meta_annotation(const struct lys_module *mod, 
  * @param[in] mod Metadata module (with the annotation definition).
  * @param[in] name Metadata name.
  * @param[in] name_len Length of @p name, must be set correctly.
- * @param[in] value String value to be parsed.
- * @param[in] value_len Length of @p value, must be set correctly.
+ * @param[in] value Value to be parsed.
+ * @param[in] value_size_bits Size of @p value in bits, must be set correctly.
  * @param[in] is_utf8 Whether @p value is a valid UTF-8 string, if applicable.
  * @param[in] store_only Whether to perform storing operation only.
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
@@ -535,7 +535,7 @@ struct lysc_ext_instance *lyd_get_meta_annotation(const struct lys_module *mod, 
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
-        size_t name_len, const char *value, size_t value_len, ly_bool is_utf8, ly_bool store_only, ly_bool *dynamic,
+        uint32_t name_len, const void *value, uint32_t value_size_bits, ly_bool is_utf8, ly_bool store_only, ly_bool *dynamic,
         LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node, ly_bool clear_dflt,
         ly_bool *incomplete);
 
@@ -581,8 +581,8 @@ void lyd_insert_attr(struct lyd_node *parent, struct lyd_attr *attr);
  * @return LY_ERR value on error.
  */
 LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly_ctx *ctx, const char *name,
-        size_t name_len, const char *prefix, size_t prefix_len, const char *module_key, size_t module_key_len,
-        const char *value, size_t value_len, ly_bool *dynamic, LY_VALUE_FORMAT format, void *val_prefix_data, uint32_t hints);
+        uint32_t name_len, const char *prefix, uint32_t prefix_len, const char *module_key, uint32_t module_key_len,
+        const char *value, uint32_t value_len, ly_bool *dynamic, LY_VALUE_FORMAT format, void *val_prefix_data, uint32_t hints);
 
 /**
  * @brief Store and canonize the given @p value into @p val according to the schema node type rules.
@@ -591,7 +591,7 @@ LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const st
  * @param[in,out] val Storage for the value.
  * @param[in] type Type of the value.
  * @param[in] value Value to be parsed, must not be NULL.
- * @param[in] value_len Length of the give @p value, must be set correctly.
+ * @param[in] value_size_bits Size of @p value in bits, must be set correctly.
  * @param[in] is_utf8 Whether @p value is a valid UTF-8 string, if applicable.
  * @param[in] store_only Whether to perform storing operation only.
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
@@ -604,8 +604,8 @@ LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const st
  * @return LY_ERR value on error.
  */
 LY_ERR lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct lysc_type *type, const void *value,
-        size_t value_len, ly_bool is_utf8, ly_bool store_only, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data,
-        uint32_t hints, const struct lysc_node *ctx_node, ly_bool *incomplete);
+        uint32_t value_size_bits, ly_bool is_utf8, ly_bool store_only, ly_bool *dynamic, LY_VALUE_FORMAT format,
+        void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node, ly_bool *incomplete);
 
 /**
  * @brief Validate previously incompletely stored value.
@@ -629,16 +629,16 @@ LY_ERR lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc
  *
  * @param[in] ctx libyang context for logging (function does not log errors when @p ctx is NULL)
  * @param[in] node Schema node for the @p value.
- * @param[in] value String value to be checked, expected to be in JSON format.
- * @param[in] value_len Length of the given @p value (mandatory).
+ * @param[in] value Value to be checked in @p format.
+ * @param[in] value_size_bits Size of the given @p value in bits.
  * @param[in] format Value prefix format.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] hints Value encoding hints.
  * @return LY_SUCCESS on success
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
-        LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints);
+LY_ERR ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const void *value,
+        uint32_t value_size_bits, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints);
 
 /**
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.

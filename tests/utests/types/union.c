@@ -163,10 +163,10 @@ test_plugin_sort(void **state)
     lysc_type = ((struct lysc_node_leaflist *)mod->compiled->data)->type;
 
     v1 = "1";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
             0, LY_VALUE_JSON, NULL, LYD_VALHINT_DECNUM, NULL, &val1, NULL, &err));
     v2 = "-1";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2) * 8,
             0, LY_VALUE_JSON, NULL, LYD_VALHINT_DECNUM, NULL, &val2, NULL, &err));
     assert_true(0 < type->sort(UTEST_LYCTX, &val1, &val2));
     assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));
@@ -175,10 +175,10 @@ test_plugin_sort(void **state)
     type->free(UTEST_LYCTX, &val2);
 
     v1 = "-1";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
             0, LY_VALUE_JSON, NULL, LYD_VALHINT_DECNUM, NULL, &val1, NULL, &err));
     v2 = "-2";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2) * 8,
             0, LY_VALUE_JSON, NULL, LYD_VALHINT_DECNUM, NULL, &val2, NULL, &err));
     assert_true(0 < type->sort(UTEST_LYCTX, &val1, &val2));
     assert_true(0 > type->sort(UTEST_LYCTX, &val2, &val1));
@@ -291,7 +291,7 @@ test_validation(void **state)
     /* remove the target and create another, which is represented the same way in LYB */
     lyd_free_tree(lyd_child(tree));
     uint_val = 1;
-    assert_int_equal(LY_SUCCESS, lyd_new_list(tree, NULL, "b", LYD_NEW_VAL_BIN, NULL, &uint_val, sizeof uint_val));
+    assert_int_equal(LY_SUCCESS, lyd_new_list(tree, NULL, "b", LYD_NEW_VAL_BIN, NULL, &uint_val, sizeof uint_val * 8));
     assert_int_equal(LY_EVALID, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT, NULL));
     CHECK_LOG_CTX("Invalid LYB union value - no matching subtype found:\n"
             "    ly2 leafref: Invalid leafref value \"one\" - no target instance \"../../a/name\" with the same value.\n"

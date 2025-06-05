@@ -131,17 +131,17 @@ test_top_level(void **state)
 
     const char *key_vals[] = {"a", "b"};
 
-    assert_int_equal(lyd_new_list3(NULL, mod, "l1", key_vals, NULL, 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_list3(NULL, mod, "l1", (const void **)key_vals, NULL, 0, &node), LY_SUCCESS);
     lyd_free_tree(node);
 
-    uint32_t val_lens[] = {1, 1};
+    uint32_t val_lens[] = {8, 8};
 
-    assert_int_equal(lyd_new_list3(NULL, mod, "l1", key_vals, val_lens, LYD_NEW_VAL_BIN, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_list3(NULL, mod, "l1", (const void **)key_vals, val_lens, LYD_NEW_VAL_BIN, &node), LY_SUCCESS);
     lyd_free_tree(node);
 
-    assert_int_equal(lyd_new_list3(NULL, mod, "l1", key_vals, val_lens, LYD_NEW_VAL_CANON, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_list3(NULL, mod, "l1", (const void **)key_vals, val_lens, LYD_NEW_VAL_CANON, &node), LY_SUCCESS);
     lyd_free_tree(node);
-    assert_int_equal(lyd_new_list3(NULL, mod, "l1", key_vals, val_lens, LYD_NEW_VAL_CANON | LYD_NEW_VAL_STORE_ONLY, &node), LY_EINVAL);
+    assert_int_equal(lyd_new_list3(NULL, mod, "l1", (const void **)key_vals, val_lens, LYD_NEW_VAL_CANON | LYD_NEW_VAL_STORE_ONLY, &node), LY_EINVAL);
     CHECK_LOG_CTX("Invalid argument !(store_only && (format == LY_VALUE_CANON || format == LY_VALUE_LYB)) (lyd_new_list3()).", NULL, 0);
 
     assert_int_equal(lyd_new_list(NULL, mod, "l1", LYD_NEW_VAL_BIN, &node, "val_a", 5, "val_b", 5), LY_SUCCESS);
@@ -166,9 +166,9 @@ test_top_level(void **state)
 
     assert_int_equal(lyd_new_term(NULL, mod, "foo", "25", LYD_NEW_VAL_BIN, &node), LY_EINVAL);
     CHECK_LOG_CTX("Invalid argument !(options & 0x04) (lyd_new_term()).", NULL, 0);
-    assert_int_equal(lyd_new_term_bin(NULL, mod, "foo", "25", 2, LYD_NEW_VAL_BIN, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_term_bin(NULL, mod, "foo", "25", 16, LYD_NEW_VAL_BIN, &node), LY_SUCCESS);
     lyd_free_tree(node);
-    assert_int_equal(lyd_new_term_bin(NULL, mod, "foo", "25", 2, LYD_NEW_VAL_STORE_ONLY, &node), LY_EINVAL);
+    assert_int_equal(lyd_new_term_bin(NULL, mod, "foo", "25", 16, LYD_NEW_VAL_STORE_ONLY, &node), LY_EINVAL);
     CHECK_LOG_CTX("Invalid argument !(store_only && (format == LY_VALUE_CANON || format == LY_VALUE_LYB)) (_lyd_new_term()).", NULL, 0);
 
     assert_int_equal(lyd_new_term(NULL, mod, "foo", "25", LYD_NEW_VAL_CANON, &node), LY_SUCCESS);

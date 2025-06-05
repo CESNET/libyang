@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief ietf-inet-types ipv6-prefix type plugin.
  *
- * Copyright (c) 2019-2021 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -41,13 +41,13 @@
  * @page howtoDataLYB LYB Binary Format
  * @subsection howtoDataLYBTypesIPv6Prefix ipv6-prefix (ietf-inet-types)
  *
- * | Size (B) | Mandatory | Type | Meaning |
+ * | Size (b) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
- * | 16 | yes | `struct in6_addr *` | IPv6 address in network-byte order |
- * | 1 | yes | `uint8_t *` | prefix length up to 128 |
+ * | 128 | yes | `struct in6_addr *` | IPv6 address in network-byte order |
+ * | 8 | yes | `uint8_t *` | prefix length up to 128 |
  */
 
-#define LYB_VALUE_LEN 17
+#define LYPLG_IPV6PREF_LYB_VALUE_SIZE 136
 
 static void lyplg_type_free_ipv6_prefix(const struct ly_ctx *ctx, struct lyd_value *value);
 
@@ -112,11 +112,17 @@ ipv6prefix_zero_host(struct in6_addr *addr, uint8_t prefix)
     }
 }
 
+static int32_t
+lyplg_type_lyb_size_ipv6_prefix(const struct lysc_type *UNUSED(type))
+{
+    return LYPLG_IPV6PREF_LYB_VALUE_SIZE;
+}
+
 /**
  * @brief Implementation of ::lyplg_type_store_clb for the ipv6-prefix ietf-inet-types type.
  */
 static LY_ERR
-lyplg_type_store_ipv6_prefix(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
+lyplg_type_store_ipv6_prefix(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
@@ -124,18 +130,18 @@ lyplg_type_store_ipv6_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
     struct lyd_value_ipv6_prefix *val;
+    uint32_t value_size;
 
     /* init storage */
     memset(storage, 0, sizeof *storage);
     storage->realtype = type;
 
+    /* check value length */
+    ret = lyplg_type_check_value_size("ipv6-prefix", format, value_size_bits, LYPLG_IPV6PREF_LYB_VALUE_SIZE, &value_size, err);
+    LY_CHECK_GOTO(ret, cleanup);
+
     if (format == LY_VALUE_LYB) {
         /* validation */
-        if (value_len != LYB_VALUE_LEN) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv6-prefix value size %" PRIu32
-                    " (expected %d).", value_len, LYB_VALUE_LEN);
-            goto cleanup;
-        }
         if (((uint8_t *)value)[16] > 128) {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv6-prefix prefix length %" PRIu8 ".",
                     ((uint8_t *)value)[16]);
@@ -152,7 +158,7 @@ lyplg_type_store_ipv6_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
             LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
             LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
 
-            memcpy(val, value, value_len);
+            memcpy(val, value, value_size);
         }
 
         /* zero host */
@@ -167,19 +173,20 @@ lyplg_type_store_ipv6_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
     LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
 
     /* check hints */
-    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = lyplg_type_check_hints(hints, value, value_size, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (!(options & LYPLG_TYPE_STORE_ONLY)) {
         /* length restriction of the string */
         if (type_str->length) {
-            /* value_len is in bytes, but we need number of characters here */
-            ret = lyplg_type_validate_range(LY_TYPE_STRING, type_str->length, ly_utf8len(value, value_len), value, value_len, err);
+            /* value_size is in bytes, but we need number of characters here */
+            ret = lyplg_type_validate_range(LY_TYPE_STRING, type_str->length, ly_utf8len(value, value_size), value,
+                    value_size, err);
             LY_CHECK_GOTO(ret, cleanup);
         }
 
         /* pattern restrictions */
-        ret = lyplg_type_validate_patterns(ctx, type_str->patterns, value, value_len, err);
+        ret = lyplg_type_validate_patterns(ctx, type_str->patterns, value, value_size, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -188,7 +195,7 @@ lyplg_type_store_ipv6_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
     LY_CHECK_GOTO(ret, cleanup);
 
     /* get the mask in network-byte order */
-    ret = ipv6prefix_str2ip(value, value_len, &val->addr, &val->prefix, err);
+    ret = ipv6prefix_str2ip(value, value_size, &val->addr, &val->prefix, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* zero host */
@@ -201,7 +208,7 @@ lyplg_type_store_ipv6_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
             options &= ~LYPLG_TYPE_STORE_DYNAMIC;
             LY_CHECK_GOTO(ret, cleanup);
         } else {
-            ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->_canonical);
+            ret = lydict_insert(ctx, value_size ? value : "", value_size, &storage->_canonical);
             LY_CHECK_GOTO(ret, cleanup);
         }
     }
@@ -255,7 +262,7 @@ lyplg_type_sort_ipv6_prefix(const struct ly_ctx *UNUSED(ctx), const struct lyd_v
  */
 static const void *
 lyplg_type_print_ipv6_prefix(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_len)
+        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_size_bits)
 {
     struct lyd_value_ipv6_prefix *val;
     char *ret;
@@ -264,8 +271,8 @@ lyplg_type_print_ipv6_prefix(const struct ly_ctx *ctx, const struct lyd_value *v
 
     if (format == LY_VALUE_LYB) {
         *dynamic = 0;
-        if (value_len) {
-            *value_len = LYB_VALUE_LEN;
+        if (value_size_bits) {
+            *value_size_bits = LYPLG_IPV6PREF_LYB_VALUE_SIZE;
         }
         return val;
     }
@@ -296,8 +303,8 @@ lyplg_type_print_ipv6_prefix(const struct ly_ctx *ctx, const struct lyd_value *v
     if (dynamic) {
         *dynamic = 0;
     }
-    if (value_len) {
-        *value_len = strlen(value->_canonical);
+    if (value_size_bits) {
+        *value_size_bits = strlen(value->_canonical) * 8;
     }
     return value->_canonical;
 }
@@ -358,6 +365,7 @@ const struct lyplg_type_record plugins_ipv6_prefix[] = {
         .name = "ipv6-prefix",
 
         .plugin.id = "ly2 ipv6-prefix",
+        .plugin.lyb_size = lyplg_type_lyb_size_ipv6_prefix,
         .plugin.store = lyplg_type_store_ipv6_prefix,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_ipv6_prefix,
@@ -365,7 +373,6 @@ const struct lyplg_type_record plugins_ipv6_prefix[] = {
         .plugin.print = lyplg_type_print_ipv6_prefix,
         .plugin.duplicate = lyplg_type_dup_ipv6_prefix,
         .plugin.free = lyplg_type_free_ipv6_prefix,
-        .plugin.lyb_data_len = LYB_VALUE_LEN,
     },
     {0}
 };

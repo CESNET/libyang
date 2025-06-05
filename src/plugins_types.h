@@ -163,7 +163,7 @@ struct lysc_type_leafref;
 /**
  * @brief Type API version
  */
-#define LYPLG_TYPE_API_VERSION 2
+#define LYPLG_TYPE_API_VERSION 3
 
 /**
  * @brief Macro to define plugin information in external plugins
@@ -238,6 +238,30 @@ LIBYANG_API_DECL LY_ERR ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VE
  * function) to free. With the record, also all the records (if any) connected after this one are freed.
  */
 LIBYANG_API_DECL void ly_err_free(void *ptr);
+
+/**
+ * @brief Convert bits to bytes.
+ *
+ * @param[in] bits Number of bits.
+ * @return Minimum number of bytes that can hold all the bits.
+ */
+#define LYPLG_BITS2BYTES(bits) ((bits) / 8 + ((bits) % 8 ? 1 : 0))
+
+/**
+ * @brief Check a value type in bits is correct and as expected.
+ *
+ * @param[in] type_name Type name for logging.
+ * @param[in] format Value format.
+ * @param[in] value_size_bits Value size in bits.
+ * @param[in] exp_lyb_value_size_bits Expected value size in bits for LYB format. If -1, check for full bytes. For
+ * other @p format than LYB, full bytes are always expected.
+ * @param[out] value_size Value size in bytes.
+ * @param[out] err Generated error.
+ * @return LY_SUCCESS on success;
+ * @return LY_ERR value on error, @p err generated.
+ */
+LIBYANG_API_DECL LY_ERR lyplg_type_check_value_size(const char *type_name, LY_VALUE_FORMAT format,
+        uint32_t value_size_bits, int32_t exp_lyb_value_size_bits, uint32_t *value_size, struct ly_err_item **err);
 
 /**
  * @brief Check that the type is suitable for the parser's hints (if any) in the specified format
@@ -319,25 +343,14 @@ LIBYANG_API_DECL LY_ERR lyplg_type_make_implemented(struct lys_module *mod, cons
         struct lys_glob_unres *unres);
 
 /**
- * @brief Get the bitmap size of a bits value bitmap.
- *
- * Bitmap size is rounded up to the smallest integer size (1, 2, 4, or 8 bytes).
- * If more than 8 bytes are needed to hold all the bit positions, no rounding is performed.
- *
- * @param[in] type Bits type.
- * @return Bitmap size in bytes.
- */
-LIBYANG_API_DECL uint32_t lyplg_type_bits_bitmap_size(const struct lysc_type_bits *type);
-
-/**
  * @brief Check whether a particular bit of a bitmap is set.
  *
  * @param[in] bitmap Bitmap to read from.
- * @param[in] size Size of @p bitmap.
+ * @param[in] size_bits Size of @p bitmap in bits.
  * @param[in] bit_position Bit position to check.
  * @return Whether the bit is set or not.
  */
-LIBYANG_API_DECL ly_bool lyplg_type_bits_is_bit_set(const char *bitmap, uint32_t size, uint32_t bit_position);
+LIBYANG_API_DECL ly_bool lyplg_type_bits_is_bit_set(const char *bitmap, uint32_t size_bits, uint32_t bit_position);
 
 /**
  * @brief Print xpath1.0 token in the specific format.
@@ -383,14 +396,14 @@ LIBYANG_API_DECL const char *lyplg_type_get_prefix(const struct lys_module *mod,
  *
  * @param[in] ctx libyang context.
  * @param[in] value Value to be parsed.
- * @param[in] value_len Length of @p value.
+ * @param[in] value_size Size of @p value in bytes.
  * @param[in] format Format of the prefixes in the value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ly_resolve_prefix()).
  * @param[in,out] format_p Resulting format of the prefixes.
  * @param[in,out] prefix_data_p Resulting prefix data for the value in format @p format_p.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_prefix_data_new(const struct ly_ctx *ctx, const void *value, uint32_t value_len,
+LIBYANG_API_DECL LY_ERR lyplg_type_prefix_data_new(const struct ly_ctx *ctx, const void *value, uint32_t value_size,
         LY_VALUE_FORMAT format, const void *prefix_data, LY_VALUE_FORMAT *format_p, void **prefix_data_p);
 /**
  * @brief Duplicate prefix data.
@@ -475,6 +488,14 @@ LIBYANG_API_DECL LY_ERR lyplg_type_print_xpath10_value(const struct lyd_value_xp
         void *prefix_data, char **str_value, struct ly_err_item **err);
 
 /**
+ * @brief Callback for learning the size of a LYB value in bits. If of a variable size, -1 is returned.
+ *
+ * @param[in] type Type of the value.
+ * @return Fixed size of the LYB value in bits, -1 if variable.
+ */
+LIBYANG_API_DECL typedef int32_t (*lyplg_type_lyb_size_clb)(const struct lysc_type *type);
+
+/**
  * @defgroup plugintypestoreopts Plugins: Type store callback options.
  *
  * Options applicable to ::lyplg_type_store_clb().
@@ -502,7 +523,7 @@ LIBYANG_API_DECL LY_ERR lyplg_type_print_xpath10_value(const struct lyd_value_xp
  * value), the canonical value should be stored so that it does not have to be generated later.
  *
  * Note that the @p value is not necessarily used whole (may not be zero-terminated if a string). The provided
- * @p value_len is always correct. All store functions have to free a dynamically allocated @p value in all
+ * @p value_size_bits is always correct. All store functions have to free a dynamically allocated @p value in all
  * cases (even on error).
  *
  * No unnecessary validation tasks should be performed by this callback and left for ::lyplg_type_validate_clb instead.
@@ -510,7 +531,7 @@ LIBYANG_API_DECL LY_ERR lyplg_type_print_xpath10_value(const struct lyd_value_xp
  * @param[in] ctx libyang context.
  * @param[in] type Type of the value being stored.
  * @param[in] value Value to be stored.
- * @param[in] value_len Length (number of bytes) of the given @p value.
+ * @param[in] value_size_bits Size in bits of the given @p value.
  * @param[in] options [Type plugin store options](@ref plugintypestoreopts).
  * @param[in] format Input format of the value, see the description for details.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ly_resolve_prefix()).
@@ -526,7 +547,7 @@ LIBYANG_API_DECL LY_ERR lyplg_type_print_xpath10_value(const struct lyd_value_xp
  * @return LY_ERR value on error, @p storage must not have any pointers to dynamic memory.
  */
 LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_store_clb)(const struct ly_ctx *ctx, const struct lysc_type *type,
-        const void *value, uint32_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const void *value, uint32_t value_size_bits, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
         const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
@@ -560,7 +581,7 @@ LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_validate_clb)(const struct ly_ctx *
  * @return LY_SUCCESS if values are considered equal.
  * @return LY_ENOT if values differ.
  */
-typedef LY_ERR (*lyplg_type_compare_clb)(const struct ly_ctx *ctx, const struct lyd_value *val1,
+LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_compare_clb)(const struct ly_ctx *ctx, const struct lyd_value *val1,
         const struct lyd_value *val2);
 
 /**
@@ -576,7 +597,7 @@ typedef LY_ERR (*lyplg_type_compare_clb)(const struct ly_ctx *ctx, const struct 
  * @return Zero if val1 == val2,
  * @return Positive number if val1 > val2.
  */
-typedef int (*lyplg_type_sort_clb)(const struct ly_ctx *ctx, const struct lyd_value *val1,
+LIBYANG_API_DECL typedef int (*lyplg_type_sort_clb)(const struct ly_ctx *ctx, const struct lyd_value *val1,
         const struct lyd_value *val2);
 
 /**
@@ -594,13 +615,13 @@ typedef int (*lyplg_type_sort_clb)(const struct ly_ctx *ctx, const struct lyd_va
  * in the value on your own, there is ::lyplg_type_get_prefix() function to help.
  * @param[out] dynamic Flag if the returned value is dynamically allocated. In such a case the caller is responsible
  * for freeing it. Will not be set and should be ignored for @p format ::LY_VALUE_CANON.
- * @param[out] value_len Optional returned value length in bytes. For strings it EXCLUDES the terminating zero.
+ * @param[out] value_size_bits Optional returned value size in bits. For strings it EXCLUDES the terminating zero.
  * @return Pointer to @p value in the specified @p format. According to the returned @p dynamic flag, caller
  * can be responsible for freeing allocated memory.
  * @return NULL in case of error.
  */
-typedef const void *(*lyplg_type_print_clb)(const struct ly_ctx *ctx, const struct lyd_value *value,
-        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, uint32_t *value_len);
+LIBYANG_API_DECL typedef const void *(*lyplg_type_print_clb)(const struct ly_ctx *ctx, const struct lyd_value *value,
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, uint32_t *value_size_bits);
 
 /**
  * @brief Callback to duplicate data in the data structure.
@@ -611,7 +632,8 @@ typedef const void *(*lyplg_type_print_clb)(const struct ly_ctx *ctx, const stru
  * @return LY_SUCCESS after successful duplication.
  * @return LY_ERR value on error.
  */
-typedef LY_ERR (*lyplg_type_dup_clb)(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
+LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_dup_clb)(const struct ly_ctx *ctx, const struct lyd_value *original,
+        struct lyd_value *dup);
 
 /**
  * @brief Callback for freeing the user type values stored by ::lyplg_type_store_clb.
@@ -621,7 +643,7 @@ typedef LY_ERR (*lyplg_type_dup_clb)(const struct ly_ctx *ctx, const struct lyd_
  * @param[in] ctx libyang ctx to enable correct manipulation with values that are in the dictionary.
  * @param[in,out] value Value structure to free the data stored there by the plugin's ::lyplg_type_store_clb callback
  */
-typedef void (*lyplg_type_free_clb)(const struct ly_ctx *ctx, struct lyd_value *value);
+LIBYANG_API_DECL typedef void (*lyplg_type_free_clb)(const struct ly_ctx *ctx, struct lyd_value *value);
 
 /**
  * @brief Hold type-specific functions for various operations with the data values.
@@ -632,17 +654,15 @@ typedef void (*lyplg_type_free_clb)(const struct ly_ctx *ctx, struct lyd_value *
  * functionality.
  */
 struct lyplg_type {
-    const char *id;                     /**< Plugin identification (mainly for distinguish incompatible versions when
-                                             used by external tools) */
-    lyplg_type_store_clb store;         /**< store and canonize the value in the type-specific way */
-    lyplg_type_validate_clb validate;   /**< optional, validate the value in the accessible data tree */
-    lyplg_type_compare_clb compare;     /**< comparison callback to compare 2 values of the same type */
-    lyplg_type_sort_clb sort;           /**< comparison callback for sorting values */
-    lyplg_type_print_clb print;         /**< printer callback to get string representing the value */
-    lyplg_type_dup_clb duplicate;       /**< data duplication callback */
-    lyplg_type_free_clb free;           /**< optional function to free the type-spceific way stored value */
-    int32_t lyb_data_len;               /**< Length of the data in [LYB format](@ref howtoDataLYB).
-                                             For variable-length is set to -1. */
+    const char *id;                     /**< Plugin name id, can be used for distinguishing incompatible versions. */
+    lyplg_type_lyb_size_clb lyb_size;   /**< Size of the value in [LYB format](@ref howtoDataLYB) in bits. */
+    lyplg_type_store_clb store;         /**< Storing and canonization callback for the value. */
+    lyplg_type_validate_clb validate;   /**< Optional validation callback that can use the accessible data tree. */
+    lyplg_type_compare_clb compare;     /**< Comparison callback for comparing 2 values of the same type. */
+    lyplg_type_sort_clb sort;           /**< Comparison callback for sorting values. */
+    lyplg_type_print_clb print;         /**< Printer callback for getting value representation in any format. */
+    lyplg_type_dup_clb duplicate;       /**< Value duplication callback. */
+    lyplg_type_free_clb free;           /**< Optional callback for freeing the stored value. */
 };
 
 struct lyplg_type_record {
@@ -684,7 +704,7 @@ LIBYANG_API_DEF int lyplg_type_sort_simple(const struct ly_ctx *ctx, const struc
  * @brief Implementation of ::lyplg_type_print_clb for a generic simple type.
  */
 LIBYANG_API_DECL const void *lyplg_type_print_simple(const struct ly_ctx *ctx, const struct lyd_value *value,
-        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, uint32_t *value_len);
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, uint32_t *value_size_bits);
 
 /**
  * @brief Implementation of ::lyplg_type_dup_clb for a generic simple type.
@@ -696,6 +716,11 @@ LIBYANG_API_DECL LY_ERR lyplg_type_dup_simple(const struct ly_ctx *ctx, const st
  * @brief Implementation of ::lyplg_type_free_clb for a generic simple type.
  */
 LIBYANG_API_DECL void lyplg_type_free_simple(const struct ly_ctx *ctx, struct lyd_value *value);
+
+/**
+ * @brief Implementation of ::lyplg_type_lyb_size_clb for a type with variable length.
+ */
+LIBYANG_API_DECL int32_t lyplg_type_lyb_size_variable(const struct lysc_type *type);
 
 /** @} pluginsTypesSimple */
 
@@ -1303,6 +1328,15 @@ LIBYANG_API_DECL LY_ERR lyplg_type_validate_patterns(const struct ly_ctx *ctx, s
  */
 LIBYANG_API_DECL LY_ERR lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node,
         struct lyd_value *value, const struct lyd_node *tree, struct ly_set **targets, char **errmsg);
+
+/**
+ * @brief Learn the position of the highest set bit in a number. Represents also the least amount of bits
+ * required to hold this number.
+ *
+ * @param[in] num Number to use.
+ * @return Position of the highest set bit.
+ */
+LIBYANG_API_DECL uint32_t lyplg_type_get_highest_set_bit_pos(uint32_t num);
 
 /** @} pluginsTypes */
 

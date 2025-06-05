@@ -460,7 +460,7 @@ lydjson_check_list(struct lyd_json_ctx *lydctx, const struct lysc_node *list)
 
                     rc = lydjson_value_type_hint(lydctx, &status, &hints);
                     LY_CHECK_GOTO(rc, cleanup);
-                    rc = ly_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, LY_VALUE_JSON, NULL, hints);
+                    rc = ly_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len * 8, LY_VALUE_JSON, NULL, hints);
                     LY_CHECK_GOTO(rc, cleanup);
 
                     /* key with a valid value, remove from the set */
@@ -533,7 +533,7 @@ lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *sno
             }
 
             prev_lo = ly_temp_log_options(&temp_lo);
-            if (ly_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, LY_VALUE_JSON, NULL, *type_hint_p)) {
+            if (ly_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len * 8, LY_VALUE_JSON, NULL, *type_hint_p)) {
                 ret = LY_ENOT;
             }
             ly_temp_log_options(prev_lo);
@@ -662,9 +662,9 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
 
                     mod = ly_ctx_get_module_implemented(lydctx->jsonctx->ctx, meta->name.prefix);
                     if (mod) {
-                        ret = lyd_parser_create_meta((struct lyd_ctx *)lydctx, node, NULL, mod,
-                                meta->name.name, strlen(meta->name.name), meta->value, ly_strlen(meta->value),
-                                NULL, LY_VALUE_JSON, NULL, meta->hints, node->schema);
+                        ret = lyd_parser_create_meta((struct lyd_ctx *)lydctx, node, NULL, mod, meta->name.name,
+                                strlen(meta->name.name), meta->value, ly_strlen(meta->value) * 8, NULL, LY_VALUE_JSON,
+                                NULL, meta->hints, node->schema);
                         LY_CHECK_GOTO(ret, cleanup);
                     } else if (lydctx->parse_opts & LYD_PARSE_STRICT) {
                         if (meta->name.prefix) {
@@ -864,7 +864,7 @@ next_entry:
         if (node->schema) {
             /* create metadata */
             rc = lyd_parser_create_meta((struct lyd_ctx *)lydctx, node, NULL, mod, name, name_len, lydctx->jsonctx->value,
-                    lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic, LY_VALUE_JSON, NULL, val_hints, node->schema);
+                    lydctx->jsonctx->value_len * 8, &lydctx->jsonctx->dynamic, LY_VALUE_JSON, NULL, val_hints, node->schema);
             LY_CHECK_GOTO(rc, cleanup);
 
             /* add/correct flags */
@@ -1510,7 +1510,7 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, str
 
             /* create terminal node */
             r = lyd_parser_create_term((struct lyd_ctx *)lydctx, snode, lydctx->jsonctx->value,
-                    lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic, LY_VALUE_JSON, NULL, type_hints, node);
+                    lydctx->jsonctx->value_len * 8, &lydctx->jsonctx->dynamic, LY_VALUE_JSON, NULL, type_hints, node);
             LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
             /* move JSON parser */
