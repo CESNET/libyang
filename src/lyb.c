@@ -171,7 +171,30 @@ lyb_left_bit_mask(uint8_t bit_count)
 }
 
 void
-lyb_prepend_bits(void *buf, uint64_t count_bytes, uint8_t byte, uint8_t byte_bits)
+lyb_right_shift(void *buf, uint32_t count_bytes, uint8_t shift)
+{
+    uint32_t i;
+    uint8_t bits;
+
+    if (!shift) {
+        return;
+    }
+
+    for (i = 0; i < count_bytes; ++i) {
+        /* shift the byte */
+        ((uint8_t *)buf)[i] >>= shift;
+
+        if (i < count_bytes - 1) {
+            /* copy the bits from the next byte */
+            bits = ((uint8_t *)buf)[i + 1] & lyb_right_bit_mask(shift);
+            bits <<= 8 - shift;
+            ((uint8_t *)buf)[i] |= bits;
+        }
+    }
+}
+
+void
+lyb_prepend_bits(void *buf, uint32_t count_bytes, uint8_t byte, uint8_t byte_bits)
 {
     uint8_t bits;
 

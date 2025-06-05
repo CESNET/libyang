@@ -1,9 +1,10 @@
 /**
  * @file time_period.c
  * @author Roman Janota <janota@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libnetconf2-netconf-server time-period type plugin.
  *
- * Copyright (c) 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2024 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -27,9 +28,9 @@
  * @page howtoDataLYB LYB Binary Format
  * @subsection howtoDataLYBTypesTimePeriod time-period (libnetconf2-netconf-server)
  *
- * | Size (B) | Mandatory | Type | Meaning |
+ * | Size (b) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
- * | string length | yes | `char *` | time in either months, weeks, days, or hours |
+ * | variable, full bytes | yes | `char *` | time in either months, weeks, days, or hours |
  */
 
 /**
@@ -87,6 +88,7 @@ const struct lyplg_type_record plugins_time_period[] = {
         .name = "time-period",
 
         .plugin.id = "ly2 time-period",
+        .plugin.lyb_size = lyplg_type_lyb_size_variable,
         .plugin.store = lyplg_type_store_string,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
@@ -94,7 +96,6 @@ const struct lyplg_type_record plugins_time_period[] = {
         .plugin.print = lyplg_type_print_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
-        .plugin.lyb_data_len = -1,
     },
     {0}
 };

@@ -619,7 +619,7 @@ struct lyd_value_union {
     struct lyd_value value;      /**< representation of the value according to the selected union's subtype
                                       (stored as ::lyd_value.realtype here) */
     void *original;              /**< Original value. */
-    uint32_t orig_len;             /**< Original value length. */
+    uint32_t orig_size_bits;     /**< Original value size in bits. */
     uint32_t hints;              /**< [Value hints](@ref lydvalhints) from the parser */
     LY_VALUE_FORMAT format;      /**< Prefix format of the value. However, this information is also used to decide
                                       whether a value is valid for the specific format or not on later validations
@@ -644,7 +644,7 @@ struct lyd_value_bits {
  */
 struct lyd_value_binary {
     void *data;     /**< pointer to the binary value */
-    uint32_t size;    /**< size of @p data value in bytes */
+    uint32_t size;  /**< size of @p data value in bytes */
 };
 
 /**
@@ -1291,7 +1291,7 @@ LIBYANG_API_DECL LY_ERR lyd_new_ext_inner(const struct lysc_ext_instance *ext, c
  * @param[out] node Optional created node.
  * @param[in] ... Ordered key values of the new list instance, all must be set. In case of an instance-identifier
  * or identityref value, the JSON format is expected (module names instead of prefixes). No keys are expected for key-less lists.
- * In case options include ::LYD_NEW_VAL_BIN, every key value must be followed by its length.
+ * In case options include ::LYD_NEW_VAL_BIN, every key value must be followed by its size in bits (uint32_t).
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name,
@@ -1309,7 +1309,7 @@ LIBYANG_API_DECL LY_ERR lyd_new_list(struct lyd_node *parent, const struct lys_m
  * @param[out] node The created node.
  * @param[in] ... Ordered key values of the new list instance, all must be set. In case of an instance-identifier
  * or identityref value, the JSON format is expected (module names instead of prefixes). No keys are expected for key-less lists.
- * In case options include ::LYD_NEW_VAL_BIN, every key value must be followed by its length.
+ * In case options include ::LYD_NEW_VAL_BIN, every key value must be followed by its size in bits (uint32_t).
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_ext_list(const struct lysc_ext_instance *ext, const char *name, uint32_t options,
@@ -1337,15 +1337,15 @@ LIBYANG_API_DECL LY_ERR lyd_new_list2(struct lyd_node *parent, const struct lys_
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
- * @param[in] key_values Ordered key string values of the new list instance, all must be set.
+ * @param[in] key_values Ordered key values of the new list instance, all must be set.
  * Use NULL in case of key-less list.
- * @param[in] value_lengths Array of lengths of each @p key_values, may be NULL if @p key_values are 0-terminated strings.
+ * @param[in] value_sizes_bits Array of size of each @p key_values in bits, may be NULL if @p key_values are 0-terminated strings.
  * @param[in] options Bitmask of options, see @ref newvaloptions.
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_list3(struct lyd_node *parent, const struct lys_module *module, const char *name,
-        const char **key_values, uint32_t *value_lengths, uint32_t options, struct lyd_node **node);
+        const void **key_values, uint32_t *value_sizes_bits, uint32_t options, struct lyd_node **node);
 
 /**
  * @brief Create a new term node in the data tree.
@@ -1371,13 +1371,13 @@ LIBYANG_API_DECL LY_ERR lyd_new_term(struct lyd_node *parent, const struct lys_m
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_LEAF or #LYS_LEAFLIST.
  * @param[in] value Binary value of the node. To learn what exactly is expected see @ref howtoDataLYB.
- * @param[in] value_len Length of @p value.
+ * @param[in] value_size_bits Size of @p value in bits.
  * @param[in] options Bitmask of options, see @ref newvaloptions.
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_term_bin(struct lyd_node *parent, const struct lys_module *module, const char *name,
-        const void *value, size_t value_len, uint32_t options, struct lyd_node **node);
+        const void *value, uint32_t value_size_bits, uint32_t options, struct lyd_node **node);
 
 /**
  * @brief Create a new top-level term node defined in the given extension instance.
@@ -1388,13 +1388,13 @@ LIBYANG_API_DECL LY_ERR lyd_new_term_bin(struct lyd_node *parent, const struct l
  * @param[in] ext Extension instance where the term node being created is defined.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_LEAF or #LYS_LEAFLIST.
  * @param[in] value Value of the node in JSON format unless changed by @p options.
- * @param[in] value_len Length of @p value.
+ * @param[in] value_size_bits Size of @p value in bits.
  * @param[in] options Bitmask of options, see @ref newvaloptions.
  * @param[out] node The created node.
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_ext_term(const struct lysc_ext_instance *ext, const char *name, const void *value,
-        size_t value_len, uint32_t options, struct lyd_node **node);
+        uint32_t value_size_bits, uint32_t options, struct lyd_node **node);
 
 /**
  * @brief Create a new any node in the data tree.
@@ -1564,10 +1564,10 @@ LIBYANG_API_DECL LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ct
  * before @p parent. Use ::lyd_first_sibling() to adjust @p parent in these cases.
  * @param[in] ctx libyang context, must be set if @p parent is NULL.
  * @param[in] path [Path](@ref howtoXPath) to create.
- * @param[in] value Value of the new leaf/leaf-list (const char *) in ::LY_VALUE_JSON format. If creating an
- * anyxml/anydata node, the expected type depends on @p value_type. For other node types, it should be NULL.
- * @param[in] value_len Length of @p value in bytes. May be 0 if @p value is a zero-terminated string. Ignored when
- * creating anyxml/anydata nodes.
+ * @param[in] value Value of the new leaf/leaf-list. If creating an anyxml/anydata node, the expected type depends on
+ * @p value_type. For other node types, it should be NULL.
+ * @param[in] value_size_bits Size of @p value in bits. Does not have to be set if a 0-terminated string and XML or
+ * JSON value format. Ignored when creating anyxml/anydata nodes.
  * @param[in] value_type Anyxml/anydata node @p value type.
  * @param[in] options Bitmask of options, see @ref newvaloptions.
  * @param[out] new_parent Optional first parent node created. If only one node was created, equals to @p new_node.
@@ -1579,7 +1579,7 @@ LIBYANG_API_DECL LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ct
  * @return LY_ERR on other errors.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
-        size_t value_len, LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **new_parent,
+        uint32_t value_size_bits, LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **new_parent,
         struct lyd_node **new_node);
 
 /**
@@ -1605,7 +1605,7 @@ LIBYANG_API_DECL LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_c
  * @return LY_ERR on other errors.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_ext_path(struct lyd_node *parent, const struct lysc_ext_instance *ext, const char *path,
-        const void *value, uint32_t options, struct lyd_node **node);
+        const char *value, uint32_t options, struct lyd_node **node);
 
 /**
  * @ingroup datatree
@@ -1689,13 +1689,13 @@ LIBYANG_API_DECL LY_ERR lyd_change_term(struct lyd_node *term, const char *val_s
  *
  * @param[in] term Term node to change.
  * @param[in] value New value to set in binary format (usually a pointer), see @ref howtoDataLYB.
- * @param[in] value_len Length of @p value.
+ * @param[in] value_size_bits Size of @p value in bits.
  * @return LY_SUCCESS if value was changed,
  * @return LY_EEXIST if value was the same and only the default flag was cleared,
  * @return LY_ENOT if the values were equal and no change occurred,
  * @return LY_ERR value on other errors.
  */
-LIBYANG_API_DECL LY_ERR lyd_change_term_bin(struct lyd_node *term, const void *value, size_t value_len);
+LIBYANG_API_DECL LY_ERR lyd_change_term_bin(struct lyd_node *term, const void *value, uint32_t value_size_bits);
 
 /**
  * @brief Change the value of a term (leaf or leaf-list) node to a canonical string value.
@@ -1865,7 +1865,7 @@ LIBYANG_API_DECL void lyd_free_attr_siblings(const struct ly_ctx *ctx, struct ly
  * @return LY_ERR value if an error occurred.
  */
 LIBYANG_API_DECL LY_ERR lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *schema, const char *value,
-        size_t value_len, const struct lyd_node *ctx_node, const struct lysc_type **realtype, const char **canonical);
+        uint32_t value_len, const struct lyd_node *ctx_node, const struct lysc_type **realtype, const char **canonical);
 
 /**
  * @brief Compare the node's value with the given string value. The string value is first validated according to
@@ -1879,7 +1879,7 @@ LIBYANG_API_DECL LY_ERR lyd_value_validate(const struct ly_ctx *ctx, const struc
  * @return LY_ENOT if the values do not match,
  * @return LY_ERR value if an error occurred.
  */
-LIBYANG_API_DECL LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t value_len);
+LIBYANG_API_DECL LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, uint32_t value_len);
 
 /**
  * @ingroup datatree
@@ -2402,7 +2402,7 @@ LIBYANG_API_DECL LY_ERR lyd_find_sibling_first(const struct lyd_node *siblings, 
  * @return LY_ERR value if another error occurred.
  */
 LIBYANG_API_DECL LY_ERR lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *schema,
-        const char *key_or_value, size_t val_len, struct lyd_node **match);
+        const char *key_or_value, uint32_t val_len, struct lyd_node **match);
 
 /**
  * @brief Search the given siblings for all the exact same instances of a specific node instance.

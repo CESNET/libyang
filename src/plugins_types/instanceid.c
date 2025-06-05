@@ -1,9 +1,10 @@
 /**
  * @file instanceid.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Built-in instance-identifier type plugin.
  *
- * Copyright (c) 2019-2021 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -30,9 +31,9 @@
  * @page howtoDataLYB LYB Binary Format
  * @subsection howtoDataLYBTypesInstanceIdentifier instance-identifier (built-in)
  *
- * | Size (B) | Mandatory | Type | Meaning |
+ * | Size (b) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
- * | string length | yes | `char *` | string JSON format of the instance-identifier |
+ * | variable, full bytes | yes | `char *` | string JSON format of the instance-identifier |
  */
 
 /**
@@ -151,12 +152,13 @@ cleanup:
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
+lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_instanceid *type_inst = (struct lysc_type_instanceid *)type;
+    uint32_t value_size;
     struct ly_path *path;
     char *canon;
 
@@ -164,17 +166,21 @@ lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *ty
     memset(storage, 0, sizeof *storage);
     storage->realtype = type;
 
+    /* check value length */
+    ret = lyplg_type_check_value_size("instance-identifier", format, value_size_bits, -1, &value_size, err);
+    LY_CHECK_GOTO(ret, cleanup);
+
     /* check hints */
-    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = lyplg_type_check_hints(hints, value, value_size, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* compile instance-identifier into path */
     if (format == LY_VALUE_LYB) {
         /* value in LYB format is the same as in JSON format. */
-        ret = lyplg_type_lypath_new(ctx, value, value_len, options, LY_VALUE_JSON, prefix_data, ctx_node,
+        ret = lyplg_type_lypath_new(ctx, value, value_size, options, LY_VALUE_JSON, prefix_data, ctx_node,
                 unres, &path, err);
     } else {
-        ret = lyplg_type_lypath_new(ctx, value, value_len, options, format, prefix_data, ctx_node,
+        ret = lyplg_type_lypath_new(ctx, value, value_size, options, format, prefix_data, ctx_node,
                 unres, &path, err);
     }
     LY_CHECK_GOTO(ret, cleanup);
@@ -193,7 +199,7 @@ lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *ty
             options &= ~LYPLG_TYPE_STORE_DYNAMIC;
             LY_CHECK_GOTO(ret, cleanup);
         } else {
-            ret = lydict_insert(ctx, value, value_len, &storage->_canonical);
+            ret = lydict_insert(ctx, value, value_size, &storage->_canonical);
             LY_CHECK_GOTO(ret, cleanup);
         }
     } else {
@@ -250,7 +256,7 @@ lyplg_type_validate_instanceid(const struct ly_ctx *ctx, const struct lysc_type 
 
 LIBYANG_API_DEF const void *
 lyplg_type_print_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, uint32_t *value_len)
+        void *prefix_data, ly_bool *dynamic, uint32_t *value_size_bits)
 {
     char *ret;
 
@@ -258,8 +264,8 @@ lyplg_type_print_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lyd_v
         if (dynamic) {
             *dynamic = 0;
         }
-        if (value_len) {
-            *value_len = strlen(value->_canonical);
+        if (value_size_bits) {
+            *value_size_bits = strlen(value->_canonical) * 8;
         }
         return value->_canonical;
     }
@@ -270,8 +276,8 @@ lyplg_type_print_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lyd_v
     }
 
     *dynamic = 1;
-    if (value_len) {
-        *value_len = strlen(ret);
+    if (value_size_bits) {
+        *value_size_bits = strlen(ret) * 8;
     }
 
     return ret;
@@ -322,6 +328,7 @@ const struct lyplg_type_record plugins_instanceid[] = {
         .name = LY_TYPE_INST_STR,
 
         .plugin.id = "ly2 instance-identifier",
+        .plugin.lyb_size = lyplg_type_lyb_size_variable,
         .plugin.store = lyplg_type_store_instanceid,
         .plugin.validate = lyplg_type_validate_instanceid,
         .plugin.compare = lyplg_type_compare_simple,
@@ -329,7 +336,6 @@ const struct lyplg_type_record plugins_instanceid[] = {
         .plugin.print = lyplg_type_print_instanceid,
         .plugin.duplicate = lyplg_type_dup_instanceid,
         .plugin.free = lyplg_type_free_instanceid,
-        .plugin.lyb_data_len = -1,
     },
     {0}
 };

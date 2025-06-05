@@ -216,15 +216,24 @@ uint8_t lyb_right_bit_mask(uint8_t bit_count);
 uint8_t lyb_left_bit_mask(uint8_t bit_count);
 
 /**
- * @brief Prepend bits to an array of bytes.
+ * @brief Shift all bytes in an array to the right.
+ *
+ * @param[in] buf Buffer with bytes to shift.
+ * @param[in] count_bytes Count of bytes in @p buf.
+ * @param[in] shift Number of bits to shift.
+ */
+void lyb_right_shift(void *buf, uint32_t count_bytes, uint8_t shift);
+
+/**
+ * @brief Prepend bits to an array of bytes, starting at the first byte from right (left shift).
  *
  * @p byte_bits number of bits are lost in the last byte.
  *
  * @param[in] buf Buffer with bytes to prepend to.
- * @param[in] count_bytes Count of bytes in buf.
+ * @param[in] count_bytes Count of bytes in @p buf.
  * @param[in] byte Byte with the bits to prepend.
  * @param[in] byte_bits Number of @p byte bits to prepend.
  */
-void lyb_prepend_bits(void *buf, uint64_t count_bytes, uint8_t byte, uint8_t byte_bits);
+void lyb_prepend_bits(void *buf, uint32_t count_bytes, uint8_t byte, uint8_t byte_bits);
 
 #endif /* LY_LYB_H_ */

@@ -1,9 +1,9 @@
 /**
  * @file instanceid_keys.c
- * @author Michal Basko <mvasko@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief ietf-netconf edit-config key metadata instance-identifier keys predicate type plugin.
  *
- * Copyright (c) 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2022 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -31,9 +31,9 @@
  * @page howtoDataLYB LYB Binary Format
  * @subsection howtoDataLYBTypesInstanceIdentifierKeys instance-identifier-keys (yang)
  *
- * | Size (B) | Mandatory | Type | Meaning |
+ * | Size (b) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
- * | string length | yes | `char *` | string JSON format of the instance-identifier keys predicate |
+ * | variable, full bytes | yes | `char *` | string JSON format of the instance-identifier keys predicate |
  */
 
 /**
@@ -132,14 +132,14 @@ cleanup:
  * @brief Implementation of ::lyplg_type_store_clb for the instance-identifier-keys yang type.
  */
 static LY_ERR
-lyplg_type_store_instanceid_keys(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
+lyplg_type_store_instanceid_keys(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *UNUSED(ctx_node),
         struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres), struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
     struct lyd_value_instance_identifier_keys *val;
-    uint32_t *prev_lo, temp_lo = LY_LOSTORE;
+    uint32_t value_size, *prev_lo, temp_lo = LY_LOSTORE;
     const struct ly_err_item *eitem;
     char *canon;
 
@@ -149,23 +149,27 @@ lyplg_type_store_instanceid_keys(const struct ly_ctx *ctx, const struct lysc_typ
     LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
     storage->realtype = type;
 
+    /* check value length */
+    ret = lyplg_type_check_value_size("instance-identifier-keys", format, value_size_bits, -1, &value_size, err);
+    LY_CHECK_GOTO(ret, cleanup);
+
     /* check hints */
-    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = lyplg_type_check_hints(hints, value, value_size, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* length restriction of the string */
     if (type_str->length) {
-        /* value_len is in bytes, but we need number of characters here */
-        ret = lyplg_type_validate_range(LY_TYPE_STRING, type_str->length, ly_utf8len(value, value_len), value, value_len, err);
+        /* value_size is in bytes, but we need number of characters here */
+        ret = lyplg_type_validate_range(LY_TYPE_STRING, type_str->length, ly_utf8len(value, value_size), value, value_size, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
     /* pattern restrictions */
-    ret = lyplg_type_validate_patterns(ctx, type_str->patterns, value, value_len, err);
+    ret = lyplg_type_validate_patterns(ctx, type_str->patterns, value, value_size, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* parse instance-identifier keys, with optional prefix even though it should be mandatory */
-    if (value_len && (((char *)value)[0] != '[')) {
+    if (value_size && (((char *)value)[0] != '[')) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid first character '%c', list key predicates expected.",
                 ((char *)value)[0]);
         goto cleanup;
@@ -173,7 +177,7 @@ lyplg_type_store_instanceid_keys(const struct ly_ctx *ctx, const struct lysc_typ
 
     /* do not log */
     prev_lo = ly_temp_log_options(&temp_lo);
-    ret = ly_path_parse_predicate(ctx, NULL, value_len ? value : "", value_len, LY_PATH_PREFIX_OPTIONAL,
+    ret = ly_path_parse_predicate(ctx, NULL, value_size ? value : "", value_size, LY_PATH_PREFIX_OPTIONAL,
             LY_PATH_PRED_KEYS, &val->keys);
     ly_temp_log_options(prev_lo);
     if (ret) {
@@ -185,7 +189,7 @@ lyplg_type_store_instanceid_keys(const struct ly_ctx *ctx, const struct lysc_typ
     val->ctx = ctx;
 
     /* store format-specific data and context for later prefix resolution */
-    ret = lyplg_type_prefix_data_new(ctx, value, value_len, format, prefix_data, &val->format, &val->prefix_data);
+    ret = lyplg_type_prefix_data_new(ctx, value, value_size, format, prefix_data, &val->format, &val->prefix_data);
     LY_CHECK_GOTO(ret, cleanup);
 
     switch (format) {
@@ -199,7 +203,7 @@ lyplg_type_store_instanceid_keys(const struct ly_ctx *ctx, const struct lysc_typ
             options &= ~LYPLG_TYPE_STORE_DYNAMIC;
             LY_CHECK_GOTO(ret, cleanup);
         } else {
-            ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->_canonical);
+            ret = lydict_insert(ctx, value_size ? value : "", value_size, &storage->_canonical);
             LY_CHECK_GOTO(ret, cleanup);
         }
         break;
@@ -240,6 +244,7 @@ const struct lyplg_type_record plugins_instanceid_keys[] = {
         .name = "instance-identifier-keys",
 
         .plugin.id = "ly2 instance-identifier-keys",
+        .plugin.lyb_size = lyplg_type_lyb_size_variable,
         .plugin.store = lyplg_type_store_instanceid_keys,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
@@ -247,7 +252,6 @@ const struct lyplg_type_record plugins_instanceid_keys[] = {
         .plugin.print = lyplg_type_print_xpath10,
         .plugin.duplicate = lyplg_type_dup_xpath10,
         .plugin.free = lyplg_type_free_xpath10,
-        .plugin.lyb_data_len = -1,
     },
     {0}
 };

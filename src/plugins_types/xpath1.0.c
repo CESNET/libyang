@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief ietf-yang-types xpath1.0 type plugin.
  *
- * Copyright (c) 2021 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2021 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -32,9 +32,9 @@
  * @page howtoDataLYB LYB Binary Format
  * @subsection howtoDataLYBTypesXpath10 xpath1.0 (ietf-yang-types)
  *
- * | Size (B) | Mandatory | Type | Meaning |
+ * | Size (b) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
- * | string length | yes | `char *` | string JSON format of the XPath expression |
+ * | variable, full bytes | yes | `char *` | string JSON format of the XPath expression |
  */
 
 LIBYANG_API_DEF LY_ERR
@@ -243,12 +243,12 @@ lyplg_type_print_xpath10_value(const struct lyd_value_xpath10 *xp_val, LY_VALUE_
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
+lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres), struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lysc_type_str *type_str = (struct lysc_type_str *)type;
+    uint32_t value_size;
     struct lyd_value_xpath10 *val;
     char *canon;
 
@@ -258,8 +258,12 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
     LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
     storage->realtype = type;
 
+    /* check value length */
+    ret = lyplg_type_check_value_size("xpath1.0", format, value_size_bits, -1, &value_size, err);
+    LY_CHECK_GOTO(ret, cleanup);
+
     /* check hints */
-    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = lyplg_type_check_hints(hints, value, value_size, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* length restriction of the string */
@@ -274,7 +278,7 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
     LY_CHECK_GOTO(ret, cleanup);
 
     /* parse */
-    ret = lyxp_expr_parse(ctx, value_len ? value : "", value_len, 1, &val->exp);
+    ret = lyxp_expr_parse(ctx, value_size ? value : "", value_size, 1, &val->exp);
     LY_CHECK_GOTO(ret, cleanup);
     val->ctx = ctx;
 
@@ -285,7 +289,7 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
         LY_CHECK_GOTO(ret, cleanup);
     } else {
         /* store format-specific data and context for later prefix resolution */
-        ret = lyplg_type_prefix_data_new(ctx, value, value_len, format, prefix_data, &val->format, &val->prefix_data);
+        ret = lyplg_type_prefix_data_new(ctx, value, value_size, format, prefix_data, &val->format, &val->prefix_data);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -300,7 +304,7 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
             options &= ~LYPLG_TYPE_STORE_DYNAMIC;
             LY_CHECK_GOTO(ret, cleanup);
         } else {
-            ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->_canonical);
+            ret = lydict_insert(ctx, value_size ? value : "", value_size, &storage->_canonical);
             LY_CHECK_GOTO(ret, cleanup);
         }
         break;
@@ -438,7 +442,7 @@ cleanup:
 
 LIBYANG_API_DEF const void *
 lyplg_type_print_xpath10(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, uint32_t *value_len)
+        void *prefix_data, ly_bool *dynamic, uint32_t *value_size_bits)
 {
     struct lyd_value_xpath10 *val;
     char *ret;
@@ -453,8 +457,8 @@ lyplg_type_print_xpath10(const struct ly_ctx *ctx, const struct lyd_value *value
         if (dynamic) {
             *dynamic = 0;
         }
-        if (value_len) {
-            *value_len = strlen(value->_canonical);
+        if (value_size_bits) {
+            *value_size_bits = strlen(value->_canonical) * 8;
         }
         return value->_canonical;
     }
@@ -469,8 +473,8 @@ lyplg_type_print_xpath10(const struct ly_ctx *ctx, const struct lyd_value *value
     }
 
     *dynamic = 1;
-    if (value_len) {
-        *value_len = strlen(ret);
+    if (value_size_bits) {
+        *value_size_bits = strlen(ret) * 8;
     }
     return ret;
 }
@@ -537,6 +541,7 @@ const struct lyplg_type_record plugins_xpath10[] = {
         .name = "xpath1.0",
 
         .plugin.id = "ly2 xpath1.0",
+        .plugin.lyb_size = lyplg_type_lyb_size_variable,
         .plugin.store = lyplg_type_store_xpath10,
         .plugin.validate = lyplg_type_validate_xpath10,
         .plugin.compare = lyplg_type_compare_simple,
@@ -544,7 +549,6 @@ const struct lyplg_type_record plugins_xpath10[] = {
         .plugin.print = lyplg_type_print_xpath10,
         .plugin.duplicate = lyplg_type_dup_xpath10,
         .plugin.free = lyplg_type_free_xpath10,
-        .plugin.lyb_data_len = -1,
     },
     {0}
 };

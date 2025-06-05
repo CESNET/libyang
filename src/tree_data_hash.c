@@ -33,7 +33,7 @@ lyd_hash(struct lyd_node *node)
     struct lyd_node *iter;
     const void *hash_key;
     ly_bool dyn;
-    uint32_t key_len;
+    uint32_t key_size_bits;
 
     if (!node->schema) {
         return LY_SUCCESS;
@@ -57,8 +57,8 @@ lyd_hash(struct lyd_node *node)
                 struct lyd_node_term *key = (struct lyd_node_term *)iter;
 
                 hash_key = LYSC_GET_TYPE_PLG(key->value.realtype->plugin_ref)->print(NULL, &key->value,
-                        LY_VALUE_LYB, NULL, &dyn, &key_len);
-                node->hash = lyht_hash_multi(node->hash, hash_key, key_len);
+                        LY_VALUE_LYB, NULL, &dyn, &key_size_bits);
+                node->hash = lyht_hash_multi(node->hash, hash_key, LYPLG_BITS2BYTES(key_size_bits));
                 if (dyn) {
                     free((void *)hash_key);
                 }
@@ -69,8 +69,8 @@ lyd_hash(struct lyd_node *node)
         struct lyd_node_term *llist = (struct lyd_node_term *)node;
 
         hash_key = LYSC_GET_TYPE_PLG(llist->value.realtype->plugin_ref)->print(NULL, &llist->value,
-                LY_VALUE_LYB, NULL, &dyn, &key_len);
-        node->hash = lyht_hash_multi(node->hash, hash_key, key_len);
+                LY_VALUE_LYB, NULL, &dyn, &key_size_bits);
+        node->hash = lyht_hash_multi(node->hash, hash_key, LYPLG_BITS2BYTES(key_size_bits));
         if (dyn) {
             free((void *)hash_key);
         }

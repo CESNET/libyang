@@ -394,7 +394,7 @@ LY_ERR lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *s
  * @param[in] lydctx Data parser context.
  * @param[in] schema Schema node of the new data node.
  * @param[in] value String value to be parsed.
- * @param[in] value_len Length of @p value, must be set correctly.
+ * @param[in] value_size_bits Size of @p value in bits, must be set correctly.
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
  * @param[in] format Input format of @p value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
@@ -404,8 +404,9 @@ LY_ERR lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *s
  * @return LY_EINCOMPLETE in case data tree is needed to finish the validation.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, const void *value, size_t value_len,
-        ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, struct lyd_node **node);
+LY_ERR lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, const void *value,
+        uint32_t value_size_bits, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        struct lyd_node **node);
 
 /**
  * @brief Wrapper around ::lyd_create_meta() for data parsers.
@@ -417,7 +418,7 @@ LY_ERR lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *sc
  * @param[in] name Metadata name.
  * @param[in] name_len Length of @p name.
  * @param[in] value Metadata value.
- * @param[in] value_len Length of @p value.
+ * @param[in] value_size_bits Size of @p value in bits.
  * @param[in,out] dynamic Whether the @p value is dynamically allocated, is adjusted once the value is assigned.
  * @param[in] format Prefix format.
  * @param[in] prefix_data Prefix format data (see ::ly_resolve_prefix()).
@@ -426,7 +427,7 @@ LY_ERR lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *sc
  * @return LY_ERR value.
  */
 LY_ERR lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct lyd_meta **meta,
-        const struct lys_module *mod, const char *name, size_t name_len, const void *value, size_t value_len,
+        const struct lys_module *mod, const char *name, uint32_t name_len, const void *value, uint32_t value_size_bits,
         ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node);
 
 /**

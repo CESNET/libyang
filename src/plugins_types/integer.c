@@ -1,9 +1,10 @@
 /**
  * @file integer.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Built-in integer types plugin.
  *
- * Copyright (c) 2019-2021 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -16,6 +17,7 @@
 
 #include "plugins_types.h"
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,34 +28,50 @@
 #include "compat.h"
 #include "ly_common.h"
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
+#include "tree_schema_internal.h"
 
 /**
  * @page howtoDataLYB LYB Binary Format
  * @subsection howtoDataLYBTypesInteger (u)int(8/16/32/64) (built-in)
  *
- * | Size (B) | Mandatory | Type | Meaning |
+ * | Size (b) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
- * | 1/2/4/8 | yes | pointer to the specific integer type | little-endian integer value |
+ * | 8/16/32/64 | yes | pointer to the specific integer type | little-endian integer value |
  */
 
-static LY_ERR lyplg_type_validate_int(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node), const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err);
-static LY_ERR lyplg_type_validate_uint(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node), const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err);
+static int32_t
+lyplg_type_lyb_size_integer(const struct lysc_type *type)
+{
+    switch (type->basetype) {
+    case LY_TYPE_INT8:
+    case LY_TYPE_UINT8:
+        return 8;
+    case LY_TYPE_INT16:
+    case LY_TYPE_UINT16:
+        return 16;
+    case LY_TYPE_INT32:
+    case LY_TYPE_UINT32:
+        return 32;
+    case LY_TYPE_INT64:
+    case LY_TYPE_UINT64:
+        return 64;
+    default:
+        break;
+    }
 
-/**
- * @brief LYB value size of each integer type.
- */
-static uint32_t integer_lyb_size[] = {
-    [LY_TYPE_INT8] = 1, [LY_TYPE_INT16] = 2, [LY_TYPE_INT32] = 4, [LY_TYPE_INT64] = 8,
-    [LY_TYPE_UINT8] = 1, [LY_TYPE_UINT16] = 2, [LY_TYPE_UINT32] = 4, [LY_TYPE_UINT64] = 8
-};
+    assert(0);
+    return 0;
+}
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
+lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
+    struct lysc_type_num *type_num = (struct lysc_type_num *)type;
+    uint32_t value_size;
     int64_t num = 0;
     int base = 1;
     char *canon = NULL;
@@ -62,36 +80,34 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
     memset(storage, 0, sizeof *storage);
     storage->realtype = type;
 
-    if (format == LY_VALUE_LYB) {
-        /* validation */
-        if (value_len != integer_lyb_size[type->basetype]) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB signed integer value size %" PRIu32
-                    " (expected %" PRIu32 ").", value_len, integer_lyb_size[type->basetype]);
-            goto cleanup;
-        }
+    /* check value length */
+    ret = lyplg_type_check_value_size(lys_datatype2str(type->basetype), format, value_size_bits,
+            lyplg_type_lyb_size_integer(type), &value_size, err);
+    LY_CHECK_GOTO(ret, cleanup);
 
+    if (format == LY_VALUE_LYB) {
         /* copy the integer and correct the byte order */
-        memcpy(&num, value, value_len);
+        memcpy(&num, value, value_size);
         num = le64toh(num);
     } else {
         /* check hints */
-        ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, &base, err);
+        ret = lyplg_type_check_hints(hints, value, value_size, type->basetype, &base, err);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* parse the integer */
         switch (type->basetype) {
         case LY_TYPE_INT8:
-            ret = lyplg_type_parse_int("int8", base, INT64_C(-128), INT64_C(127), value, value_len, &num, err);
+            ret = lyplg_type_parse_int("int8", base, INT64_C(-128), INT64_C(127), value, value_size, &num, err);
             break;
         case LY_TYPE_INT16:
-            ret = lyplg_type_parse_int("int16", base, INT64_C(-32768), INT64_C(32767), value, value_len, &num, err);
+            ret = lyplg_type_parse_int("int16", base, INT64_C(-32768), INT64_C(32767), value, value_size, &num, err);
             break;
         case LY_TYPE_INT32:
-            ret = lyplg_type_parse_int("int32", base, INT64_C(-2147483648), INT64_C(2147483647), value, value_len, &num, err);
+            ret = lyplg_type_parse_int("int32", base, INT64_C(-2147483648), INT64_C(2147483647), value, value_size, &num, err);
             break;
         case LY_TYPE_INT64:
             ret = lyplg_type_parse_int("int64", base, INT64_C(-9223372036854775807) - INT64_C(1),
-                    INT64_C(9223372036854775807), value, value_len, &num, err);
+                    INT64_C(9223372036854775807), value, value_size, &num, err);
             break;
         default:
             LOGINT(ctx);
@@ -129,7 +145,7 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
             options &= ~LYPLG_TYPE_STORE_DYNAMIC;
             LY_CHECK_GOTO(ret, cleanup);
         } else {
-            ret = lydict_insert(ctx, value, value_len, &storage->_canonical);
+            ret = lydict_insert(ctx, value, value_size, &storage->_canonical);
             LY_CHECK_GOTO(ret, cleanup);
         }
     } else {
@@ -297,7 +313,7 @@ lyplg_type_sort_int(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *va
 
 LIBYANG_API_DEF const void *
 lyplg_type_print_int(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_len)
+        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_size_bits)
 {
     int64_t prev_num = 0, num = 0;
     void *buf;
@@ -323,20 +339,20 @@ lyplg_type_print_int(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *v
         if (num == prev_num) {
             /* values are equal, little-endian or int8 */
             *dynamic = 0;
-            if (value_len) {
-                *value_len = integer_lyb_size[value->realtype->basetype];
+            if (value_size_bits) {
+                *value_size_bits = lyplg_type_lyb_size_integer(value->realtype);
             }
             return &value->int64;
         } else {
             /* values differ, big-endian */
-            buf = calloc(1, integer_lyb_size[value->realtype->basetype]);
+            buf = calloc(1, lyplg_type_lyb_size_integer(value->realtype));
             LY_CHECK_RET(!buf, NULL);
 
             *dynamic = 1;
-            if (value_len) {
-                *value_len = integer_lyb_size[value->realtype->basetype];
+            if (value_size_bits) {
+                *value_size_bits = lyplg_type_lyb_size_integer(value->realtype);
             }
-            memcpy(buf, &num, integer_lyb_size[value->realtype->basetype]);
+            memcpy(buf, &num, lyplg_type_lyb_size_integer(value->realtype));
             return buf;
         }
     }
@@ -345,19 +361,21 @@ lyplg_type_print_int(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *v
     if (dynamic) {
         *dynamic = 0;
     }
-    if (value_len) {
-        *value_len = strlen(value->_canonical);
+    if (value_size_bits) {
+        *value_size_bits = strlen(value->_canonical) * 8;
     }
     return value->_canonical;
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
+lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
+    struct lysc_type_num *type_num = (struct lysc_type_num *)type;
+    uint32_t value_size;
     uint64_t num = 0;
     int base = 0;
     char *canon;
@@ -366,35 +384,33 @@ lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, co
     memset(storage, 0, sizeof *storage);
     storage->realtype = type;
 
-    if (format == LY_VALUE_LYB) {
-        /* validation */
-        if (value_len != integer_lyb_size[type->basetype]) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB unsigned integer value size %" PRIu32
-                    " (expected %" PRIu32 ").", value_len, integer_lyb_size[type->basetype]);
-            goto cleanup;
-        }
+    /* check value length */
+    ret = lyplg_type_check_value_size(lys_datatype2str(type->basetype), format, value_size_bits,
+            lyplg_type_lyb_size_integer(type), &value_size, err);
+    LY_CHECK_GOTO(ret, cleanup);
 
+    if (format == LY_VALUE_LYB) {
         /* copy the integer and correct the byte order */
-        memcpy(&num, value, value_len);
+        memcpy(&num, value, value_size);
         num = le64toh(num);
     } else {
         /* check hints */
-        ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, &base, err);
+        ret = lyplg_type_check_hints(hints, value, value_size, type->basetype, &base, err);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* parse the integer */
         switch (type->basetype) {
         case LY_TYPE_UINT8:
-            ret = lyplg_type_parse_uint("uint8", base, UINT64_C(255), value, value_len, &num, err);
+            ret = lyplg_type_parse_uint("uint8", base, UINT64_C(255), value, value_size, &num, err);
             break;
         case LY_TYPE_UINT16:
-            ret = lyplg_type_parse_uint("uint16", base, UINT64_C(65535), value, value_len, &num, err);
+            ret = lyplg_type_parse_uint("uint16", base, UINT64_C(65535), value, value_size, &num, err);
             break;
         case LY_TYPE_UINT32:
-            ret = lyplg_type_parse_uint("uint32", base, UINT64_C(4294967295), value, value_len, &num, err);
+            ret = lyplg_type_parse_uint("uint32", base, UINT64_C(4294967295), value, value_size, &num, err);
             break;
         case LY_TYPE_UINT64:
-            ret = lyplg_type_parse_uint("uint64", base, UINT64_C(18446744073709551615), value, value_len, &num, err);
+            ret = lyplg_type_parse_uint("uint64", base, UINT64_C(18446744073709551615), value, value_size, &num, err);
             break;
         default:
             LOGINT(ctx);
@@ -428,7 +444,7 @@ lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, co
             options &= ~LYPLG_TYPE_STORE_DYNAMIC;
             LY_CHECK_GOTO(ret, cleanup);
         } else {
-            ret = lydict_insert(ctx, value, value_len, &storage->_canonical);
+            ret = lydict_insert(ctx, value, value_size, &storage->_canonical);
             LY_CHECK_GOTO(ret, cleanup);
         }
     } else {
@@ -577,7 +593,7 @@ lyplg_type_sort_uint(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *v
 
 LIBYANG_API_DEF const void *
 lyplg_type_print_uint(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_len)
+        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_size_bits)
 {
     uint64_t num = 0;
     void *buf;
@@ -603,20 +619,20 @@ lyplg_type_print_uint(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *
         if (num == value->uint64) {
             /* values are equal, little-endian or uint8 */
             *dynamic = 0;
-            if (value_len) {
-                *value_len = integer_lyb_size[value->realtype->basetype];
+            if (value_size_bits) {
+                *value_size_bits = lyplg_type_lyb_size_integer(value->realtype);
             }
             return &value->uint64;
         } else {
             /* values differ, big-endian */
-            buf = calloc(1, integer_lyb_size[value->realtype->basetype]);
+            buf = calloc(1, lyplg_type_lyb_size_integer(value->realtype));
             LY_CHECK_RET(!buf, NULL);
 
             *dynamic = 1;
-            if (value_len) {
-                *value_len = integer_lyb_size[value->realtype->basetype];
+            if (value_size_bits) {
+                *value_size_bits = lyplg_type_lyb_size_integer(value->realtype);
             }
-            memcpy(buf, &num, integer_lyb_size[value->realtype->basetype]);
+            memcpy(buf, &num, lyplg_type_lyb_size_integer(value->realtype));
             return buf;
         }
     }
@@ -625,8 +641,8 @@ lyplg_type_print_uint(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *
     if (dynamic) {
         *dynamic = 0;
     }
-    if (value_len) {
-        *value_len = strlen(value->_canonical);
+    if (value_size_bits) {
+        *value_size_bits = strlen(value->_canonical) * 8;
     }
     return value->_canonical;
 }
@@ -645,6 +661,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .name = LY_TYPE_UINT8_STR,
 
         .plugin.id = "ly2 integers",
+        .plugin.lyb_size = lyplg_type_lyb_size_integer,
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = lyplg_type_validate_uint,
         .plugin.compare = lyplg_type_compare_uint,
@@ -652,13 +669,13 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.print = lyplg_type_print_uint,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
-        .plugin.lyb_data_len = 1,
     }, {
         .module = "",
         .revision = NULL,
         .name = LY_TYPE_UINT16_STR,
 
         .plugin.id = "ly2 integers",
+        .plugin.lyb_size = lyplg_type_lyb_size_integer,
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = lyplg_type_validate_uint,
         .plugin.compare = lyplg_type_compare_uint,
@@ -666,13 +683,13 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.print = lyplg_type_print_uint,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
-        .plugin.lyb_data_len = 2,
     }, {
         .module = "",
         .revision = NULL,
         .name = LY_TYPE_UINT32_STR,
 
         .plugin.id = "ly2 integers",
+        .plugin.lyb_size = lyplg_type_lyb_size_integer,
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = lyplg_type_validate_uint,
         .plugin.compare = lyplg_type_compare_uint,
@@ -680,13 +697,13 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.print = lyplg_type_print_uint,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
-        .plugin.lyb_data_len = 4,
     }, {
         .module = "",
         .revision = NULL,
         .name = LY_TYPE_UINT64_STR,
 
         .plugin.id = "ly2 integers",
+        .plugin.lyb_size = lyplg_type_lyb_size_integer,
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = lyplg_type_validate_uint,
         .plugin.compare = lyplg_type_compare_uint,
@@ -694,13 +711,13 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.print = lyplg_type_print_uint,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
-        .plugin.lyb_data_len = 8,
     }, {
         .module = "",
         .revision = NULL,
         .name = LY_TYPE_INT8_STR,
 
         .plugin.id = "ly2 integers",
+        .plugin.lyb_size = lyplg_type_lyb_size_integer,
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = lyplg_type_validate_int,
         .plugin.compare = lyplg_type_compare_int,
@@ -708,13 +725,13 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.print = lyplg_type_print_int,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
-        .plugin.lyb_data_len = 1,
     }, {
         .module = "",
         .revision = NULL,
         .name = LY_TYPE_INT16_STR,
 
         .plugin.id = "ly2 integers",
+        .plugin.lyb_size = lyplg_type_lyb_size_integer,
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = lyplg_type_validate_int,
         .plugin.compare = lyplg_type_compare_int,
@@ -722,13 +739,13 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.print = lyplg_type_print_int,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
-        .plugin.lyb_data_len = 2,
     }, {
         .module = "",
         .revision = NULL,
         .name = LY_TYPE_INT32_STR,
 
         .plugin.id = "ly2 integers",
+        .plugin.lyb_size = lyplg_type_lyb_size_integer,
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = lyplg_type_validate_int,
         .plugin.compare = lyplg_type_compare_int,
@@ -736,13 +753,13 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.print = lyplg_type_print_int,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
-        .plugin.lyb_data_len = 4,
     }, {
         .module = "",
         .revision = NULL,
         .name = LY_TYPE_INT64_STR,
 
         .plugin.id = "ly2 integers",
+        .plugin.lyb_size = lyplg_type_lyb_size_integer,
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = lyplg_type_validate_int,
         .plugin.compare = lyplg_type_compare_int,
@@ -750,7 +767,6 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.print = lyplg_type_print_int,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
-        .plugin.lyb_data_len = 8,
     },
     {0}
 };

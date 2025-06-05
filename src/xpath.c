@@ -3635,7 +3635,7 @@ warn_equality_value(const struct lyxp_expr *exp, struct lyxp_set *set, uint32_t 
         type = ((struct lysc_node_leaf *)scnode)->type;
         if (type->basetype != LY_TYPE_IDENT) {
             type_plg = LYSC_GET_TYPE_PLG(type->plugin_ref);
-            rc = type_plg->store(set->ctx, type, value, strlen(value), 0, set->format, set->prefix_data,
+            rc = type_plg->store(set->ctx, type, value, strlen(value) * 8, 0, set->format, set->prefix_data,
                     LYD_HINT_DATA, scnode, &storage, NULL, &err);
             if (rc == LY_EINCOMPLETE) {
                 rc = LY_SUCCESS;

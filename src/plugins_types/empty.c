@@ -1,9 +1,10 @@
 /**
  * @file empty.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Built-in empty type plugin.
  *
- * Copyright (c) 2019-2021 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -28,32 +29,40 @@
  * @page howtoDataLYB LYB Binary Format
  * @subsection howtoDataLYBTypesEmpty empty (built-in)
  *
- * | Size (B) | Mandatory | Type | Meaning |
+ * | Size (b) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
  * | 0        | yes | `void` | none |
  */
 
+static int32_t
+lyplg_type_lyb_size_empty(const struct lysc_type *UNUSED(type))
+{
+    return 0;
+}
+
 LIBYANG_API_DEF LY_ERR
-lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
+lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
+    uint32_t value_size;
 
     /* init storage */
     memset(storage, 0, sizeof *storage);
     storage->realtype = type;
 
-    /* check hints */
-    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
-    LY_CHECK_GOTO(ret, cleanup);
-
     /* validation */
-    if (value_len) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid empty value length %" PRIu32 ".", value_len);
+    if (value_size_bits) {
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid empty value size %" PRIu32 " b.", value_size_bits);
         goto cleanup;
     }
+    value_size = 0;
+
+    /* check hints */
+    ret = lyplg_type_check_hints(hints, value, value_size, type->basetype, NULL, err);
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* store canonical value, it always is */
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {
@@ -61,7 +70,7 @@ lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, c
         options &= ~LYPLG_TYPE_STORE_DYNAMIC;
         LY_CHECK_GOTO(ret, cleanup);
     } else {
-        ret = lydict_insert(ctx, "", value_len, &storage->_canonical);
+        ret = lydict_insert(ctx, "", value_size, &storage->_canonical);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -90,6 +99,7 @@ const struct lyplg_type_record plugins_empty[] = {
         .name = LY_TYPE_EMPTY_STR,
 
         .plugin.id = "ly2 empty",
+        .plugin.lyb_size = lyplg_type_lyb_size_empty,
         .plugin.store = lyplg_type_store_empty,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
@@ -97,7 +107,6 @@ const struct lyplg_type_record plugins_empty[] = {
         .plugin.print = lyplg_type_print_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
-        .plugin.lyb_data_len = 0,
     },
     {0}
 };

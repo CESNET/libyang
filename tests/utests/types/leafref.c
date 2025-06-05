@@ -234,10 +234,10 @@ test_plugin_sort(void **state)
     lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
 
     v1 = "str1";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
             0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
     v2 = "str2";
-    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2),
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2) * 8,
             0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
     assert_true(0 > type->sort(UTEST_LYCTX, &val1, &val2));
     assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));

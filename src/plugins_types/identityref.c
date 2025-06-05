@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Built-in identityref type plugin.
  *
- * Copyright (c) 2019-2023 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -32,9 +32,9 @@
  * @page howtoDataLYB LYB Binary Format
  * @subsection howtoDataLYBTypesIdentityref identityref (built-in)
  *
- * | Size (B) | Mandatory | Type | Meaning |
+ * | Size (b) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
- * | string length | yes | `char *` | string JSON format of the identityref |
+ * | variable, full bytes | yes | `char *` | string JSON format of the identityref |
  */
 
 /**
@@ -75,7 +75,7 @@ identityref_ident2str(const struct lysc_ident *ident, LY_VALUE_FORMAT format, vo
  * @brief Convert a string identityref value to matching identity.
  *
  * @param[in] value Identityref value.
- * @param[in] value_len Length of @p value.
+ * @param[in] value_size Size of @p value.
  * @param[in] format Value format.
  * @param[in] prefix_data Format-specific data for resolving prefixes.
  * @param[in] ctx libyang context.
@@ -85,7 +85,7 @@ identityref_ident2str(const struct lysc_ident *ident, LY_VALUE_FORMAT format, vo
  * @return LY_ERR value.
  */
 static LY_ERR
-identityref_str2ident(const char *value, uint32_t value_len, LY_VALUE_FORMAT format, void *prefix_data,
+identityref_str2ident(const char *value, uint32_t value_size, LY_VALUE_FORMAT format, void *prefix_data,
         const struct ly_ctx *ctx, const struct lysc_node *ctx_node, struct lysc_ident **ident, struct ly_err_item **err)
 {
     const char *id_name, *prefix = value;
@@ -95,14 +95,14 @@ identityref_str2ident(const char *value, uint32_t value_len, LY_VALUE_FORMAT for
     struct lysc_ident *id, *identities;
 
     /* locate prefix if any */
-    for (prefix_len = 0; (prefix_len < value_len) && (value[prefix_len] != ':'); ++prefix_len) {}
-    if (prefix_len < value_len) {
+    for (prefix_len = 0; (prefix_len < value_size) && (value[prefix_len] != ':'); ++prefix_len) {}
+    if (prefix_len < value_size) {
         id_name = &value[prefix_len + 1];
-        id_len = value_len - (prefix_len + 1);
+        id_len = value_size - (prefix_len + 1);
     } else {
         prefix_len = 0;
         id_name = value;
-        id_len = value_len;
+        id_len = value_size;
     }
 
     if (!id_len) {
@@ -112,7 +112,7 @@ identityref_str2ident(const char *value, uint32_t value_len, LY_VALUE_FORMAT for
     mod = lyplg_type_identity_module(ctx, ctx_node, prefix, prefix_len, format, prefix_data);
     if (!mod) {
         return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
-                "Invalid identityref \"%.*s\" value - unable to map prefix to YANG schema.", (int)value_len, value);
+                "Invalid identityref \"%.*s\" value - unable to map prefix to YANG schema.", (int)value_size, value);
     }
 
     id = NULL;
@@ -128,7 +128,7 @@ identityref_str2ident(const char *value, uint32_t value_len, LY_VALUE_FORMAT for
         /* no match */
         return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
                 "Invalid identityref \"%.*s\" value - identity not found in module \"%s\".",
-                (int)value_len, value, mod->name);
+                (int)value_size, value, mod->name);
     }
 
     *ident = id;
@@ -141,12 +141,12 @@ identityref_str2ident(const char *value, uint32_t value_len, LY_VALUE_FORMAT for
  * @param[in] ident Derived identity to which identityref points.
  * @param[in] type Identityref type.
  * @param[in] value String value for logging.
- * @param[in] value_len Length of @p value.
+ * @param[in] value_size Size of @p value.
  * @param[out] err Error information on error.
  */
 static LY_ERR
 identityref_check_base(const struct lysc_ident *ident, struct lysc_type_identityref *type, const char *value,
-        uint32_t value_len, struct ly_err_item **err)
+        uint32_t value_size, struct ly_err_item **err)
 {
     LY_ERR ret;
     uint32_t str_len;
@@ -177,11 +177,11 @@ identityref_check_base(const struct lysc_ident *ident, struct lysc_type_identity
         if (u == 1) {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
                     "Invalid identityref \"%.*s\" value - identity not derived from the base %s.",
-                    (int)value_len, value, str);
+                    (int)value_size, value, str);
         } else {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
                     "Invalid identityref \"%.*s\" value - identity not derived from all the bases %s.",
-                    (int)value_len, value, str);
+                    (int)value_size, value, str);
         }
         free(str);
         return ret;
@@ -199,7 +199,7 @@ identityref_check_base(const struct lysc_ident *ident, struct lysc_type_identity
  *
  * @param[in] ident Derived identity to which identityref points.
  * @param[in] value Value of identityref.
- * @param[in] value_len Length (number of bytes) of the given @p value.
+ * @param[in] value_size Size (number of bytes) of the given @p value.
  * @param[in] options [Type plugin store options](@ref plugintypestoreopts).
  * @param[in,out] unres Global unres structure for newly implemented modules.
  * @param[out] err Error information on error.
@@ -207,7 +207,7 @@ identityref_check_base(const struct lysc_ident *ident, struct lysc_type_identity
  */
 static LY_ERR
 identityref_check_ident(const struct lysc_ident *ident, const char *value,
-        uint32_t value_len, uint32_t options, struct lys_glob_unres *unres, struct ly_err_item **err)
+        uint32_t value_size, uint32_t options, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
 
@@ -217,24 +217,25 @@ identityref_check_ident(const struct lysc_ident *ident, const char *value,
         } else {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
                     "Invalid identityref \"%.*s\" value - identity found in non-implemented module \"%s\".",
-                    (int)value_len, (char *)value, ident->module->name);
+                    (int)value_size, (char *)value, ident->module->name);
         }
     } else if (ident->module->parsed && (lys_identity_iffeature_value(ident) == LY_ENOT)) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
                 "Invalid identityref \"%.*s\" value - identity is disabled by if-feature.",
-                (int)value_len, value);
+                (int)value_size, value);
     }
 
     return ret;
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_len,
+lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_identityref *type_ident = (struct lysc_type_identityref *)type;
+    uint32_t value_size;
     char *canon;
     struct lysc_ident *ident = NULL;
 
@@ -242,20 +243,24 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
     memset(storage, 0, sizeof *storage);
     storage->realtype = type;
 
+    /* check value length */
+    ret = lyplg_type_check_value_size("identityref", format, value_size_bits, -1, &value_size, err);
+    LY_CHECK_GOTO(ret, cleanup);
+
     /* check hints */
-    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = lyplg_type_check_hints(hints, value, value_size, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* find a matching identity */
-    ret = identityref_str2ident(value, value_len, format, prefix_data, ctx, ctx_node, &ident, err);
+    ret = identityref_str2ident(value, value_size, format, prefix_data, ctx, ctx_node, &ident, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* check if the identity is enabled */
-    ret = identityref_check_ident(ident, value, value_len, options, unres, err);
+    ret = identityref_check_ident(ident, value, value_size, options, unres, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* check that the identity is derived form all the bases */
-    ret = identityref_check_base(ident, type_ident, value, value_len, err);
+    ret = identityref_check_base(ident, type_ident, value, value_size, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (ctx_node) {
@@ -274,7 +279,7 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
             options &= ~LYPLG_TYPE_STORE_DYNAMIC;
             LY_CHECK_GOTO(ret, cleanup);
         } else {
-            ret = lydict_insert(ctx, value, value_len, &storage->_canonical);
+            ret = lydict_insert(ctx, value, value_size, &storage->_canonical);
             LY_CHECK_GOTO(ret, cleanup);
         }
     } else {
@@ -319,25 +324,30 @@ lyplg_type_sort_identityref(const struct ly_ctx *UNUSED(ctx), const struct lyd_v
 
 LIBYANG_API_DEF const void *
 lyplg_type_print_identityref(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, uint32_t *value_len)
+        void *prefix_data, ly_bool *dynamic, uint32_t *value_size_bits)
 {
     char *ret;
+    uint32_t value_size;
 
     if (format == LY_VALUE_CANON) {
         if (dynamic) {
             *dynamic = 0;
         }
-        if (value_len) {
-            *value_len = strlen(value->_canonical);
+        if (value_size_bits) {
+            *value_size_bits = strlen(value->_canonical) * 8;
         }
         return value->_canonical;
     }
 
     /* print the value in the specific format */
-    if (identityref_ident2str(value->ident, format, prefix_data, &ret, value_len)) {
+    if (identityref_ident2str(value->ident, format, prefix_data, &ret, &value_size)) {
         return NULL;
     }
     *dynamic = 1;
+    if (value_size_bits) {
+        *value_size_bits = value_size * 8;
+    }
+
     return ret;
 }
 
@@ -355,6 +365,7 @@ const struct lyplg_type_record plugins_identityref[] = {
         .name = LY_TYPE_IDENT_STR,
 
         .plugin.id = "ly2 identityref",
+        .plugin.lyb_size = lyplg_type_lyb_size_variable,
         .plugin.store = lyplg_type_store_identityref,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_identityref,
@@ -362,7 +373,6 @@ const struct lyplg_type_record plugins_identityref[] = {
         .plugin.print = lyplg_type_print_identityref,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple,
-        .plugin.lyb_data_len = -1,
     },
     {0}
 };
