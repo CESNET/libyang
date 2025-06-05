@@ -121,7 +121,7 @@ lyb_read(void *buf, uint64_t count_bits, struct lylyb_parse_ctx *lybctx)
     if (count_buf_bits) {
         if (buf) {
             /* prepend the buffered bits */
-            lyb_prepend_bits(buf, count_bytes, lybctx->buf, count_buf_bits);
+            lyb_prepend_bits(buf, LYPLG_BITS2BYTES(count_buf_bits + count_bits), lybctx->buf, count_buf_bits);
         }
 
         /* remove buffered bits */
