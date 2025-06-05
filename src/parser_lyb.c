@@ -492,7 +492,7 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, 
 
         /* create metadata */
         rc = lyd_parser_create_meta((struct lyd_ctx *)lybctx, NULL, meta, mod, meta_name, strlen(meta_name), value,
-                value_size_bits, &dynamic, LY_VALUE_JSON, NULL, LYD_HINT_DATA, sparent);
+                value_size_bits, &dynamic, LY_VALUE_LYB, NULL, LYD_HINT_DATA, sparent);
 
         /* free strings */
         free(meta_name);
