@@ -102,7 +102,7 @@ parse_clb(struct lysp_ctx *UNUSED(pctx), struct lysp_ext_instance *ext)
     struct lysp_node_leaf *leaf;
 
     leaf = (struct lysp_node_leaf *)ext->parent;
-    leaf->flags |= LYS_STATUS_OBSLT;
+    leaf->flags |= LYS_STATUS_DEPRC;
     return LY_SUCCESS;
 }
 
@@ -136,7 +136,7 @@ test_simple_from_memory(void **state)
 
     leaf = (struct lysc_node_leaf *)mod->compiled->data;
     assert_int_equal(LYS_LEAF, leaf->nodetype);
-    assert_true(leaf->flags & LYS_STATUS_OBSLT);
+    assert_true(leaf->flags & LYS_STATUS_DEPRC);
 }
 
 int

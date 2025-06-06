@@ -183,11 +183,12 @@ node_status(void **state)
 
     ly_out_reset(UTEST_OUT);
     /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_COMPILE_OBSOLETE);
     ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
-    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED | LY_CTX_COMPILE_OBSOLETE);
 
     TEST_LOCAL_TEARDOWN;
 }
@@ -499,11 +500,12 @@ node_case(void **state)
 
     ly_out_reset(UTEST_OUT);
     /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_COMPILE_OBSOLETE);
     ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
-    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED | LY_CTX_COMPILE_OBSOLETE);
 
     TEST_LOCAL_TEARDOWN;
 }
@@ -1387,11 +1389,12 @@ inheritance_of_status_flag(void **state)
 
     ly_out_reset(UTEST_OUT);
     /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_COMPILE_OBSOLETE);
     ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
-    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED | LY_CTX_COMPILE_OBSOLETE);
 
     TEST_LOCAL_TEARDOWN;
 }

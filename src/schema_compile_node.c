@@ -2745,6 +2745,12 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
 
     /* config, status and other flags */
     LY_CHECK_GOTO(ret = lys_compile_node_flags(ctx, pnode->flags, inherited_flags, node), error);
+    if ((node->flags & LYS_STATUS_OBSLT) && !(ctx->ctx->opts & LY_CTX_COMPILE_OBSOLETE) &&
+            !(ctx->compile_opts & (LYS_COMPILE_NO_DISABLED | LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
+        /* obsolete, will not be in the compiled tree, treat as disabled */
+        ly_set_add(&ctx->unres->disabled, node, 1, NULL);
+        ctx->compile_opts |= LYS_COMPILE_DISABLED;
+    }
 
     /* list ordering */
     if (node->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
