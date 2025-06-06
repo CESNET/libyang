@@ -1973,6 +1973,8 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
             continue;
         } else if ((impl_opts & LYD_IMPLICIT_NO_CONFIG) && (snode->flags & LYS_CONFIG_W)) {
             continue;
+        } else if (snode->flags & LYS_STATUS_OBSLT) {
+            continue;
         }
 
         node = lys_getnext_data(NULL, *first, NULL, snode, NULL);
@@ -1995,6 +1997,8 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
         if ((impl_opts & LYD_IMPLICIT_NO_STATE) && (snode->flags & LYS_CONFIG_R)) {
             continue;
         } else if ((impl_opts & LYD_IMPLICIT_NO_CONFIG) && (snode->flags & LYS_CONFIG_W)) {
+            continue;
+        } else if (snode->flags & LYS_STATUS_OBSLT) {
             continue;
         }
 
