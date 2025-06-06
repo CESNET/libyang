@@ -250,6 +250,7 @@ lyb_read_size(uint32_t *size, struct lylyb_parse_ctx *lybctx)
     switch (pref_len) {
     case 1:
         /* 0 */
+        lyb_read(size, 5, lybctx);
         break;
     case 2:
         /* 10 */
@@ -257,19 +258,15 @@ lyb_read_size(uint32_t *size, struct lylyb_parse_ctx *lybctx)
         break;
     case 3:
         /* 110 */
-        lyb_read(size, 5, lybctx);
+        lyb_read(size, 7, lybctx);
         break;
     case 4:
         /* 1110 */
-        lyb_read(size, 7, lybctx);
+        lyb_read(size, 12, lybctx);
         break;
     case 5:
         /* 11110 */
-        lyb_read(size, 11, lybctx);
-        break;
-    case 6:
-        /* 111110 */
-        lyb_read(size, 26, lybctx);
+        lyb_read(size, 27, lybctx);
         break;
     default:
         /* invalid */
@@ -280,7 +277,7 @@ lyb_read_size(uint32_t *size, struct lylyb_parse_ctx *lybctx)
     /* correct byte order */
     *size = le32toh(*size);
 
-    if (pref_len > 2) {
+    if (pref_len != LYB_SIZE_BITS_PREF_LEN) {
         /* bytes were sent in this case so convert back to bits */
         *size *= 8;
     }

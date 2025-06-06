@@ -80,6 +80,12 @@ enum lylyb_node_type {
 /**< number of required data node flag bits, fixed LYB size */
 #define LYB_DATA_NODE_FLAG_BITS 4
 
+/**< maximum number of size in bits, larger sizes must be full bytes */
+#define LYB_SIZE_MAX_BITS 15
+
+/**< prefix length of bit size that supports non-byte rounding */
+#define LYB_SIZE_BITS_PREF_LEN 2
+
 /**
  * @brief LYB format printer context
  */
@@ -127,8 +133,8 @@ struct lylyb_parse_ctx {
 /**< LYB hash algorithm mask of the header byte */
 #define LYB_HEADER_HASH_MASK 0x30
 
-/**< reserved number of metadata instances used for the last instance of (leaf-)list */
-#define LYB_METADATA_END_NUM 15
+/**< reserved count of metadata instances used for the last instance of (leaf-)list */
+#define LYB_METADATA_END_COUNT 15
 
 /**< reserved encoded number of metadata instances */
 #define LYB_METADATA_END 0x3D
