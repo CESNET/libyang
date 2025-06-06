@@ -27,6 +27,7 @@
 /* additional internal headers for some useful simple macros */
 #include "compat.h"
 #include "ly_common.h"
+#include "lyb.h"
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 /**
@@ -649,7 +650,7 @@ lyb_union_print(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
 
     /* create LYB data, round the size if needed */
     *value_size_bits = LYPLG_UNION_TYPE_IDX_SIZE * 8 + pval_size_bits;
-    if ((*value_size_bits > 16) && (*value_size_bits % 8)) {
+    if ((*value_size_bits > LYB_SIZE_MAX_BITS) && (*value_size_bits % 8)) {
         *value_size_bits += 8 - *value_size_bits % 8;
     }
     ret = malloc(LYPLG_BITS2BYTES(*value_size_bits));

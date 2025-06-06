@@ -470,42 +470,37 @@ lyb_write_size(uint32_t size, struct lylyb_print_ctx *lybctx)
     uint32_t buf;
 
     /* prepare prefix in buf (in reverse, read bit-by-bit), set prefix length and number length in bits */
-    if (size == 0) {
-        /* 0 */
-        buf = 0;
-        prefix_b = 0;
-        num_b = 1;
-    } else if (size < 16) {
-        /* 10 */
+    if ((size > LYB_SIZE_MAX_BITS) && (size < 256)) {
+        /* prefix 0, encoded on 6 b */
+        buf = 0x0;
+        prefix_b = 1;
+        num_b = 5;
+    } else if (size < LYB_SIZE_MAX_BITS + 1) {
+        /* prefix 10, encoded on 6 b */
         buf = 0x1;
         prefix_b = 2;
         num_b = 4;
-    } else if (size < 256) {
-        /* 110 */
+    } else if (size < 1024) {
+        /* prefix 110, encoded on 10 b */
         buf = 0x3;
         prefix_b = 3;
-        num_b = 5;
-    } else if (size < 1024) {
-        /* 1110 */
+        num_b = 7;
+    } else if (size < 32768) {
+        /* prefix 1110, encoded on 16 b */
         buf = 0x7;
         prefix_b = 4;
-        num_b = 7;
-    } else if (size < 16384) {
-        /* 11110 */
+        num_b = 12;
+    } else if (size < 1073741824) {
+        /* prefix 11110, encoded on 32 b */
         buf = 0xF;
         prefix_b = 5;
-        num_b = 11;
-    } else if (size < 536870912) {
-        /* 111110 */
-        buf = 0x1F;
-        prefix_b = 6;
-        num_b = 26;
+        num_b = 27;
     } else {
-        LOGERR(lybctx->ctx, LY_EINT, "Cannot print size %" PRIu32 ", largest supported number is 536 870 904.", size);
+        LOGERR(lybctx->ctx, LY_EINT, "Cannot print size %" PRIu32 ", largest supported number is 1 073 741 823.", size);
         return LY_EINT;
     }
 
-    if (size > 15) {
+    if (size > LYB_SIZE_MAX_BITS) {
         /* numbers higher than 15 must be full bytes and those are written instead */
         assert(!(size % 8));
         size /= 8;
@@ -1169,7 +1164,7 @@ lyb_print_node_leaflist(const struct lyd_node *node, struct lyd_lyb_ctx *lybctx,
     }
 
     /* no more instances */
-    LY_CHECK_RET(lyb_write_count(LYB_METADATA_END_NUM, lybctx->print_ctx));
+    LY_CHECK_RET(lyb_write_count(LYB_METADATA_END_COUNT, lybctx->print_ctx));
 
     return LY_SUCCESS;
 }
@@ -1205,7 +1200,7 @@ lyb_print_node_list(const struct lyd_node *node, struct lyd_lyb_ctx *lybctx, con
     }
 
     /* no more instances */
-    LY_CHECK_RET(lyb_write_count(LYB_METADATA_END_NUM, lybctx->print_ctx));
+    LY_CHECK_RET(lyb_write_count(LYB_METADATA_END_COUNT, lybctx->print_ctx));
 
     return LY_SUCCESS;
 }
