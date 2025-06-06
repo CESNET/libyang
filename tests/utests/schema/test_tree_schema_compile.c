@@ -2521,14 +2521,13 @@ test_uses(void **state)
     assert_null(leaf->when[0]->context);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module c {namespace urn:c;prefix c;"
-            "grouping grp {leaf l {type string;}leaf k {type string; status obsolete;}}"
+            "grouping grp {leaf l {type string;}leaf k {type string;}}"
             "uses grp {status deprecated;}}", LYS_IN_YANG, &mod));
     assert_int_equal(LYS_LEAF, mod->compiled->data->nodetype);
     assert_string_equal("l", mod->compiled->data->name);
     assert_true(LYS_STATUS_DEPRC & mod->compiled->data->flags);
     assert_int_equal(LYS_LEAF, mod->compiled->data->next->nodetype);
     assert_string_equal("k", mod->compiled->data->next->name);
-    assert_true(LYS_STATUS_OBSLT & mod->compiled->data->next->flags);
     CHECK_LOG_CTX(NULL, NULL, 0);     /* no warning about inheriting deprecated flag from uses */
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module d {namespace urn:d;prefix d; grouping grp {container g;}"

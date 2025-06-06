@@ -2267,6 +2267,64 @@ test_compiled_print(void **state)
     free(mem);
 }
 
+static void
+test_obsolete(void **state)
+{
+    const char *str;
+    struct lys_module *mod;
+    const struct lysc_node *snode;
+    struct ly_ctx *ctx;
+
+    str = "module a {\n"
+            "    namespace urn:a;\n"
+            "    prefix a;\n"
+            "    list my_list {\n"
+            "        key my_leaf_string;\n"
+            "        leaf my_leaf_string {\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf my_leaf_number {\n"
+            "            type uint32;\n"
+            "        }\n"
+            "    }\n"
+            "    leaf refstr {\n"
+            "        type leafref {\n"
+            "            path \"../my_list/my_leaf_string\";\n"
+            "        }\n"
+            "        status obsolete;\n"
+            "    }\n"
+            "    leaf refnum {\n"
+            "        type leafref {\n"
+            "            path \"../my_list/my_leaf_number\";\n"
+            "        }\n"
+            "        status obsolete;\n"
+            "    }\n"
+            "}\n";
+
+    /* compile without obsolete nodes */
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, &mod), LY_SUCCESS);
+    CHECK_LOG_CTX(NULL, NULL, 0);
+
+    snode = mod->compiled->data;
+    assert_string_equal(snode->name, "my_list");
+    assert_null(snode->next);
+
+    /* compile with obsolete nodes */
+    assert_int_equal(ly_ctx_new(NULL, LY_CTX_COMPILE_OBSOLETE, &ctx), LY_SUCCESS);
+    assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, &mod), LY_SUCCESS);
+    CHECK_LOG_CTX(NULL, NULL, 0);
+
+    snode = mod->compiled->data;
+    assert_string_equal(snode->name, "my_list");
+    snode = snode->next;
+    assert_string_equal(snode->name, "refstr");
+    snode = snode->next;
+    assert_string_equal(snode->name, "refnum");
+    assert_null(snode->next);
+
+    ly_ctx_destroy(ctx);
+}
+
 int
 main(void)
 {
@@ -2291,6 +2349,7 @@ main(void)
         UTEST(test_lysc_path),
         UTEST(test_lysc_backlinks),
         UTEST(test_compiled_print),
+        UTEST(test_obsolete),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
