@@ -232,7 +232,7 @@ ctxs_patterns(const struct lysc_pattern **patterns, struct ly_ht *ht, int *size)
     *size += CTXS_SIZED_ARRAY(patterns);
     LY_ARRAY_FOR(patterns, u) {
         /* ht check, make sure the structure is stored only once */
-        hash = lyht_hash((const char *)patterns[u], sizeof *patterns);
+        hash = lyht_hash((const char *)&patterns[u], sizeof patterns[u]);
         if (lyht_insert(ht, (void *)patterns[u], hash, NULL) == LY_EEXIST) {
             continue;
         }
