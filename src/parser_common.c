@@ -405,7 +405,7 @@ lyd_parser_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct 
     }
 
     LY_LIST_FOR(*meta, meta2) {
-        if (!strcmp(meta2->name, "default") && !strcmp(meta2->annotation->module->name, "ietf-netconf-with-defaults") &&
+        if (!strcmp(meta2->name, "default") && !strcmp(meta2->annotation->module->name, "default") &&
                 meta2->value.boolean) {
             /* node is default according to the metadata */
             node->flags |= LYD_DEFAULT;

@@ -109,7 +109,7 @@ test_leaf(void **state)
     lyd_free_all(tree);
 
     /* parse foo2 but make it implicit */
-    data = "{\"a:foo2\":\"default-val\",\"@a:foo2\":{\"ietf-netconf-with-defaults:default\":true}}";
+    data = "{\"a:foo2\":\"default-val\",\"@a:foo2\":{\"default:default\":true}}";
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
     assert_non_null(tree);
     tree = tree->next;

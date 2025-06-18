@@ -103,7 +103,7 @@ test_leaf(void **state)
     lyd_free_all(tree);
 
     /* parse foo2 but make it implicit, skip metadata xxx from missing schema */
-    data = "<foo2 xmlns=\"urn:tests:a\" xmlns:wd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" "
+    data = "<foo2 xmlns=\"urn:tests:a\" xmlns:wd=\"urn:ietf:params:xml:ns:netconf:default:1.0\" "
             "wd:default=\"true\" xmlns:x=\"urn:x\" x:xxx=\"false\">default-val</foo2>";
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
     assert_non_null(tree);

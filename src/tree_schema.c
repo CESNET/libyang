@@ -1925,63 +1925,6 @@ lysp_add_internal_ietf_netconf(struct lysp_ctx *pctx, struct lysp_module *mod)
 }
 
 /**
- * @brief Add ietf-netconf-with-defaults "default" metadata to the parsed module.
- *
- * @param[in] pctx Parse context.
- * @param[in] mod Parsed module to add to.
- * @return LY_SUCCESS on success.
- * @return LY_ERR on error.
- */
-static LY_ERR
-lysp_add_internal_ietf_netconf_with_defaults(struct lysp_ctx *pctx, struct lysp_module *mod)
-{
-    struct lysp_ext_instance *extp, *prev_exts = mod->exts;
-    struct lysp_stmt *stmt;
-    struct lysp_import *imp;
-    uint32_t idx;
-
-    /* add new extension instance */
-    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, extp, LY_EMEM);
-
-    /* fill in the extension instance fields */
-    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "md_:annotation", 0, &extp->name));
-    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "default", 0, &extp->argument));
-    extp->format = LY_VALUE_SCHEMA;
-    extp->prefix_data = mod;
-    extp->parent = mod;
-    extp->parent_stmt = LY_STMT_MODULE;
-    extp->flags = LYS_INTERNAL;
-
-    extp->child = stmt = calloc(1, sizeof *extp->child);
-    LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
-    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "type", 0, &stmt->stmt));
-    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "boolean", 0, &stmt->arg));
-    stmt->format = LY_VALUE_SCHEMA;
-    stmt->prefix_data = mod;
-    stmt->kw = LY_STMT_TYPE;
-
-    if (!prev_exts) {
-        /* first extension instances */
-        assert(pctx->main_ctx == pctx);
-        LY_CHECK_RET(ly_set_add(&pctx->ext_inst, mod->exts, 1, NULL));
-    } else {
-        /* replace previously stored extension instances */
-        if (!ly_set_contains(&pctx->ext_inst, prev_exts, &idx)) {
-            LOGINT_RET(mod->mod->ctx);
-        }
-        pctx->ext_inst.objs[idx] = mod->exts;
-    }
-
-    /* create new import for the used prefix */
-    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->imports, imp, LY_EMEM);
-    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "ietf-yang-metadata", 0, &imp->name));
-    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "md_", 0, &imp->prefix));
-    imp->flags = LYS_INTERNAL;
-
-    return LY_SUCCESS;
-}
-
-/**
  * @brief Define a new internal 'lyds_tree' value for metadata.
  *
  * The 'lyds_tree' is a data type containing a reference to a binary search tree
@@ -2190,8 +2133,6 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const st
     /* add internal data in case specific modules were parsed */
     if (!strcmp(mod->name, "ietf-netconf")) {
         LY_CHECK_GOTO(rc = lysp_add_internal_ietf_netconf(pctx, mod->parsed), cleanup);
-    } else if (!strcmp(mod->name, "ietf-netconf-with-defaults")) {
-        LY_CHECK_GOTO(rc = lysp_add_internal_ietf_netconf_with_defaults(pctx, mod->parsed), cleanup);
     } else if (!strcmp(mod->name, "yang")) {
         LY_CHECK_GOTO(rc = lysp_add_internal_yang(pctx, mod->parsed), cleanup);
     }

@@ -1,0 +1,38 @@
+module default {
+  namespace "urn:ietf:params:xml:ns:netconf:default:1.0";
+  prefix dflt;
+  yang-version 1.1;
+
+  import ietf-yang-metadata {
+    prefix md;
+    revision-date 2016-08-05;
+  }
+
+  organization
+    "libyang";
+
+  contact
+    "Web:    <https://github.com/CESNET/libyang/>
+     Author: Michal Vasko <mvasko@cesnet.cz>";
+
+  description
+    "This is a dummy module with no data formally supplying the definition
+     of metadata defined in RFC 6243.";
+
+  revision 2025-06-18 {
+    description
+      "Initial revision.";
+  }
+
+  md:annotation default {
+    type boolean;
+    reference
+      "RFC 6243 section 6";
+    description
+      "This attribute indicates whether the data node represented
+       by the XML element containing this attribute is considered
+       by the server to be default data.  If set to 'true' or '1', then
+       the data node is default data.  If 'false' or '0', then the
+       data node is not default data.";
+  }
+}
