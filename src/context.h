@@ -139,7 +139,7 @@ struct lys_module;
  *
  * Structures and functions to manipulate with the libyang context containers.
  *
- * The \em context concept allows callers to work in environments with different sets of YANG schemas.
+ * The @em context concept allows callers to work in environments with different sets of YANG schemas.
  * More detailed information can be found at @ref howtoContext page.
  */
 

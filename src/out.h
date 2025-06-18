@@ -1,9 +1,10 @@
 /**
  * @file out.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang output structures and functions
  *
- * Copyright (c) 2015-2020 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -79,8 +80,17 @@ extern "C" {
  */
 
 /**
+ * @defgroup output Output handler
+ * @{
+ *
+ * Structures and functions for output handling.
+ *
+ * The @em output abstraction allows users for transparent use of various output kinds.
+ */
+
+/**
  * @struct ly_out
- * @brief Printer output structure specifying where the data are printed.
+ * @brief Printer output structure specifying the type of data output.
  */
 struct ly_out;
 
@@ -308,6 +318,8 @@ LIBYANG_API_DECL size_t ly_out_printed_total(const struct ly_out *out);
  * close stream/file descriptor (for LY_OUT_FD, LY_OUT_FDSTREAM and LY_OUT_FILE)
  */
 LIBYANG_API_DECL void ly_out_free(struct ly_out *out, void (*clb_arg_destructor)(void *arg), ly_bool destroy);
+
+/** @} output */
 
 #ifdef __cplusplus
 }

@@ -1,9 +1,10 @@
 /**
  * @file in.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang input structures and functions
  *
- * Copyright (c) 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -71,8 +72,17 @@ extern "C" {
  */
 
 /**
+ * @defgroup input Input handler
+ * @{
+ *
+ * Structures and functions for input handling.
+ *
+ * The @em input abstraction allows users for transparent use of various input kinds.
+ */
+
+/**
  * @struct ly_in
- * @brief Parser input structure specifying where the data are read.
+ * @brief Parser input structure specifying the type of data input.
  */
 struct ly_in;
 
@@ -244,6 +254,8 @@ LIBYANG_API_DECL LY_ERR ly_in_read(struct ly_in *in, void *buf, size_t count);
  * @return LY_EDENIED on EOF.
  */
 LIBYANG_API_DECL LY_ERR ly_in_skip(struct ly_in *in, size_t count);
+
+/** @} input */
 
 #ifdef __cplusplus
 }

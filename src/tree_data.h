@@ -2172,7 +2172,7 @@ LIBYANG_API_DECL LY_ERR lyd_merge_module(struct lyd_node **target, const struct 
                                       nodes. Also, leaves and leaf-lists are added into diff even in case only their
                                       default flag (state) was changed. */
 #define LYD_DIFF_META       0x02 /**< All metadata are compared and the full difference reported in the diff always in
-                                      the form of 'yang:meta-<operation>' metadata. Also, equal nodes with only changes
+                                      the form of 'yang:meta-\<operation\>' metadata. Also, equal nodes with only changes
                                       in their metadata will be present in the diff with the 'none' operation. */
 
 /** @} diffoptions */
