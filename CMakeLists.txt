@@ -426,7 +426,7 @@ foreach(h IN LISTS gen_headers)
 endforeach()
 
 # install the modules
-install(DIRECTORY "${PROJECT_SOURCE_DIR}/models/" DESTINATION ${YANG_MODULE_DIR} FILES_MATCHING PATTERN "*.yang")
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/modules/" DESTINATION ${YANG_MODULE_DIR} FILES_MATCHING PATTERN "*.yang")
 
 # install all library files
 install(TARGETS yang DESTINATION ${CMAKE_INSTALL_LIBDIR})
