@@ -364,7 +364,7 @@ lyb_read_value(const struct lysc_type *type, uint8_t **val, uint32_t *val_size_b
 }
 
 /**
- * @brief Read YANG module info.
+ * @brief Parse YANG module info stored separately as module name and its revision.
  *
  * @param[in] lybctx LYB context.
  * @param[out] mod_name Module name, if any.
@@ -372,7 +372,7 @@ lyb_read_value(const struct lysc_type *type, uint8_t **val, uint32_t *val_size_b
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_read_module(struct lylyb_parse_ctx *lybctx, char **mod_name, char mod_rev[])
+lyb_parse_module(struct lylyb_parse_ctx *lybctx, char **mod_name, char mod_rev[])
 {
     uint16_t rev;
 
@@ -396,47 +396,34 @@ lyb_read_module(struct lylyb_parse_ctx *lybctx, char **mod_name, char mod_rev[])
 }
 
 /**
- * @brief Parse YANG module info.
+ * @brief Parse YANG module info as only the index of the module in the context.
  *
  * @param[in] lybctx LYB context.
  * @param[out] mod Parsed module.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_parse_module(struct lylyb_parse_ctx *lybctx, const struct lys_module **mod)
+lyb_parse_module_idx(struct lylyb_parse_ctx *lybctx, const struct lys_module **mod)
 {
     LY_ERR rc = LY_SUCCESS;
     const struct lys_module *m = NULL;
-    char *mod_name = NULL, mod_rev[LY_REV_SIZE];
+    uint32_t idx = 0;
 
-    /* read module info */
-    if ((rc = lyb_read_module(lybctx, &mod_name, mod_rev))) {
-        goto cleanup;
-    }
+    /* read module index */
+    lyb_read_count(&idx, lybctx);
 
     /* get the module */
-    if (mod_rev[0]) {
-        m = ly_ctx_get_module(lybctx->ctx, mod_name, mod_rev);
-    } else {
-        m = ly_ctx_get_module_latest(lybctx->ctx, mod_name);
-    }
-
-    /* module must exist in the context, we have checked the hash */
-    if (!m) {
-        LOGERR(lybctx->ctx, LY_EINT, "Invalid context for LYB data parsing, missing module \"%s%s%s\".",
-                mod_name, mod_rev[0] ? "@" : "", mod_rev[0] ? mod_rev : "");
-        rc = LY_EINT;
-        goto cleanup;
-    } else if (!m->implemented) {
+    assert(idx < lybctx->ctx->list.count);
+    m = lybctx->ctx->list.objs[idx];
+    if (!m->implemented) {
         LOGERR(lybctx->ctx, LY_EINT, "Invalid context for LYB data parsing, module \"%s%s%s\" not implemented.",
-                mod_name, mod_rev[0] ? "@" : "", mod_rev[0] ? mod_rev : "");
+                m->name, m->revision ? "@" : "", m->revision ? m->revision : "");
         rc = LY_EINT;
         goto cleanup;
     }
 
 cleanup:
     *mod = m;
-    free(mod_name);
     return rc;
 }
 
@@ -465,7 +452,7 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, 
 
     for (i = 0; i < count; ++i) {
         /* find module */
-        rc = lyb_parse_module(lybctx->parse_ctx, &mod);
+        rc = lyb_parse_module_idx(lybctx->parse_ctx, &mod);
         LY_CHECK_GOTO(rc, cleanup);
 
         /* meta name */
@@ -1445,7 +1432,7 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
         goto cleanup;
     case LYB_NODE_TOP:
         /* top-level, read module name */
-        LY_CHECK_GOTO(rc = lyb_parse_module(lybctx->parse_ctx, &mod), cleanup);
+        LY_CHECK_GOTO(rc = lyb_parse_module_idx(lybctx->parse_ctx, &mod), cleanup);
 
         /* read hash, find the schema node starting from mod */
         LY_CHECK_GOTO(rc = lyb_parse_schema_hash(lybctx, NULL, mod, &snode), cleanup);
@@ -1456,7 +1443,7 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
         break;
     case LYB_NODE_EXT:
         /* ext, read module name */
-        LY_CHECK_GOTO(rc = lyb_read_module(lybctx->parse_ctx, &mod_name, mod_rev), cleanup);
+        LY_CHECK_GOTO(rc = lyb_parse_module(lybctx->parse_ctx, &mod_name, mod_rev), cleanup);
 
         /* read schema node name, find the nested ext schema node */
         LY_CHECK_GOTO(rc = lyb_parse_schema_nested_ext(lybctx, parent, mod_name, &snode), cleanup);

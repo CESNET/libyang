@@ -547,7 +547,42 @@ lyb_write_string(const char *str, uint32_t str_len, struct lylyb_print_ctx *lybc
 }
 
 /**
- * @brief Print YANG module info.
+ * @brief Print YANG module info as seperate module name and its revision.
+ *
+ * @param[in] mod Module to print.
+ * @param[in] lybctx Printer LYB context.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_print_module_idx(const struct lys_module *mod, struct lylyb_print_ctx *lybctx)
+{
+    LY_ERR rc = LY_SUCCESS;
+    const struct lys_module *m;
+    uint32_t idx = 0;
+
+    /* learn the index of the module */
+    while ((m = ly_ctx_get_module_iter(mod->ctx, &idx))) {
+        if (m == mod) {
+            break;
+        }
+    }
+    assert(m);
+
+    /* adjust the index */
+    --idx;
+
+    /* write module index */
+    LY_CHECK_GOTO(rc = lyb_write_count(idx, lybctx), cleanup);
+
+    /* fill cached hashes, if not already */
+    lyb_cache_module_hash(mod);
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Print YANG module info as only the module index in the context.
  *
  * @param[in] mod Module to print.
  * @param[in] lybctx Printer LYB context.
@@ -783,7 +818,7 @@ lyb_print_metadata(const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
 
     if (df_mod) {
         /* write the "default" metadata */
-        LY_CHECK_RET(lyb_print_module(df_mod, lybctx->print_ctx));
+        LY_CHECK_RET(lyb_print_module_idx(df_mod, lybctx->print_ctx));
         LY_CHECK_RET(lyb_write_string("default", 0, lybctx->print_ctx));
         LY_CHECK_RET(lyb_write_string("true", 0, lybctx->print_ctx));
     }
@@ -795,7 +830,7 @@ lyb_print_metadata(const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
         }
 
         /* module */
-        LY_CHECK_RET(lyb_print_module(iter->annotation->module, lybctx->print_ctx));
+        LY_CHECK_RET(lyb_print_module_idx(iter->annotation->module, lybctx->print_ctx));
 
         /* annotation name with length */
         LY_CHECK_RET(lyb_write_string(iter->name, 0, lybctx->print_ctx));
@@ -1209,8 +1244,10 @@ lyb_print_node(const struct lyd_node **printed_node, struct ly_ht **sibling_ht, 
     LY_CHECK_RET(lyb_print_lyb_type(node, lybctx->print_ctx));
 
     /* write module info first */
-    if (node->schema && ((node->flags & LYD_EXT) || !lysc_data_parent(node->schema))) {
+    if (node->flags & LYD_EXT) {
         LY_CHECK_RET(lyb_print_module(node->schema->module, lybctx->print_ctx));
+    } else if (node->schema && !lysc_data_parent(node->schema)) {
+        LY_CHECK_RET(lyb_print_module_idx(node->schema->module, lybctx->print_ctx));
     }
 
     if (node->flags & LYD_EXT) {
