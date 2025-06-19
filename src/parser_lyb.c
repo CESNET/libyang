@@ -1522,33 +1522,44 @@ static LY_ERR
 lyb_parse_header(struct lylyb_parse_ctx *lybctx)
 {
     uint8_t byte;
-    uint32_t hash;
+    uint32_t data_hash, cur_hash;
 
-    /* version, hash algorithm (flags) */
-    lyb_read((uint8_t *)&byte, sizeof byte * 8, lybctx);
-
-    if ((byte & LYB_HEADER_VERSION_MASK) != LYB_HEADER_VERSION_NUM) {
-        LOGERR(lybctx->ctx, LY_EINVAL, "Invalid LYB format version \"0x%02x\", expected \"0x%02x\".",
-                byte & LYB_HEADER_VERSION_MASK, LYB_HEADER_VERSION_NUM);
+    /* version */
+    byte = 0;
+    lyb_read(&byte, LYB_HEADER_VERSION_BITS, lybctx);
+    if (byte != LYB_HEADER_VERSION_NUM) {
+        LOGERR(lybctx->ctx, LY_EINVAL, "Invalid LYB format version \"0x%x\", expected \"0x%x\".",
+                byte, LYB_HEADER_VERSION_NUM);
         return LY_EINVAL;
     }
 
-    if ((byte & LYB_HEADER_HASH_MASK) != LYB_HEADER_HASH_ALG) {
-        LOGERR(lybctx->ctx, LY_EINVAL, "Different LYB format hash algorithm \"0x%02x\" used, expected \"0x%02x\".",
-                byte & LYB_HEADER_HASH_MASK, LYB_HEADER_HASH_ALG);
+    /* hash algorithm */
+    byte = 0;
+    lyb_read(&byte, LYB_HEADER_HASH_ALG_BITS, lybctx);
+    if (byte != LYB_HEADER_HASH_ALG_NUM) {
+        LOGERR(lybctx->ctx, LY_EINVAL, "Different LYB format hash algorithm \"0x%x\" used, expected \"0x%x\".",
+                byte, LYB_HEADER_HASH_ALG_NUM);
         return LY_EINVAL;
     }
 
     /* context hash */
-    lyb_read((uint8_t *)&hash, sizeof hash * 8, lybctx);
+    data_hash = 0;
+    lyb_read((uint8_t *)&data_hash, LYB_HEADER_CTX_HASH_BITS, lybctx);
 
-    if (!hash) {
+    if (!data_hash) {
         /* fine for no data */
         lybctx->empty_hash = 1;
-    } else if (hash != ly_ctx_get_modules_hash(lybctx->ctx)) {
-        LOGERR(lybctx->ctx, LY_EINVAL, "Different current LYB context modules hash compared to the one stored in the "
-                "LYB file (0x%08x != 0x%08x).", hash, ly_ctx_get_modules_hash(lybctx->ctx));
-        return LY_EINVAL;
+    } else {
+        /* truncate context hash to the same bit size */
+        cur_hash = ly_ctx_get_modules_hash(lybctx->ctx);
+        cur_hash <<= (sizeof cur_hash * 8) - LYB_HEADER_CTX_HASH_BITS;
+        cur_hash >>= (sizeof cur_hash * 8) - LYB_HEADER_CTX_HASH_BITS;
+
+        if (data_hash != cur_hash) {
+            LOGERR(lybctx->ctx, LY_EINVAL, "Different current LYB context modules hash compared to the one stored in the "
+                    "LYB data (0x%x != 0x%x).", data_hash, cur_hash);
+            return LY_EINVAL;
+        }
     }
 
     return LY_SUCCESS;

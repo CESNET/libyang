@@ -129,20 +129,23 @@ struct lylyb_parse_ctx {
 };
 
 /**< current LYB format version */
-#define LYB_HEADER_VERSION_NUM 0x07
+#define LYB_HEADER_VERSION_NUM 0x0
 
-/**< LYB format version mask of the header byte */
-#define LYB_HEADER_VERSION_MASK 0x0F
+/**< LYB format version reserved bit size */
+#define LYB_HEADER_VERSION_BITS 3
 
 /**< current LYB hash function */
 #ifdef LY_XXHASH_SUPPORT
-# define LYB_HEADER_HASH_ALG 0x20  /**< xxhash */
+# define LYB_HEADER_HASH_ALG_NUM 0x1    /**< xxhash */
 #else
-# define LYB_HEADER_HASH_ALG 0x10  /**< one-at-a-time hash */
+# define LYB_HEADER_HASH_ALG_NUM 0x0    /**< one-at-a-time hash */
 #endif
 
-/**< LYB hash algorithm mask of the header byte */
-#define LYB_HEADER_HASH_MASK 0x30
+/**< LYB hash algorithm reserved bit size */
+#define LYB_HEADER_HASH_ALG_BITS 1
+
+/**< context hash reserved bit size (full hash is 32 b) */
+#define LYB_HEADER_CTX_HASH_BITS 8
 
 /**< reserved count of metadata instances used for the last instance of (leaf-)list */
 #define LYB_METADATA_END_COUNT 15

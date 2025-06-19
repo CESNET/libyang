@@ -602,19 +602,21 @@ lyb_print_header(struct lylyb_print_ctx *lybctx)
     uint8_t byte = 0;
     uint32_t hash;
 
-    /* version, hash algorithm (flags) */
-    byte |= LYB_HEADER_VERSION_NUM;
-    byte |= LYB_HEADER_HASH_ALG;
+    /* version */
+    byte = LYB_HEADER_VERSION_NUM;
+    LY_CHECK_RET(lyb_write(&byte, LYB_HEADER_VERSION_BITS, lybctx));
 
-    LY_CHECK_RET(lyb_write(&byte, sizeof byte * 8, lybctx));
+    /* hash algorithm */
+    byte = LYB_HEADER_HASH_ALG_NUM;
+    LY_CHECK_RET(lyb_write(&byte, LYB_HEADER_HASH_ALG_BITS, lybctx));
 
-    /* context hash, if not printing empty data */
+    /* context hash (is truncated), if not printing empty data */
     if (lybctx->ctx) {
         hash = ly_ctx_get_modules_hash(lybctx->ctx);
     } else {
         hash = 0;
     }
-    LY_CHECK_RET(lyb_write(&hash, sizeof hash * 8, lybctx));
+    LY_CHECK_RET(lyb_write(&hash, LYB_HEADER_CTX_HASH_BITS, lybctx));
 
     return LY_SUCCESS;
 }
