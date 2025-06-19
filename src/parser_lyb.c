@@ -1513,27 +1513,6 @@ lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, ly_bool 
 }
 
 /**
- * @brief Parse LYB magic number.
- *
- * @param[in] lybctx LYB context.
- * @return LY_ERR value.
- */
-static LY_ERR
-lyb_parse_magic_number(struct lylyb_parse_ctx *lybctx)
-{
-    uint8_t magic_num[3] = {0};
-
-    lyb_read(magic_num, 3 * 8, lybctx);
-    if (strncmp((char *)magic_num, "lyb", 3)) {
-        LOGERR(lybctx->ctx, LY_EINVAL, "Invalid magic number \"0x%02x\" \"0x%02x\" \"0x%02x\".", magic_num[0],
-                magic_num[1], magic_num[2]);
-        return LY_EINVAL;
-    }
-
-    return LY_SUCCESS;
-}
-
-/**
  * @brief Parse LYB header.
  *
  * @param[in] lybctx LYB context.
@@ -1612,10 +1591,6 @@ lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
 
     /* find the operation node if it exists already */
     LY_CHECK_GOTO(rc = lyd_parser_find_operation(parent, int_opts, &lybctx->op_node), cleanup);
-
-    /* read magic number */
-    rc = lyb_parse_magic_number(lybctx->parse_ctx);
-    LY_CHECK_GOTO(rc, cleanup);
 
     /* read header */
     rc = lyb_parse_header(lybctx->parse_ctx);
