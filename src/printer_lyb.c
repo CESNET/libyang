@@ -591,23 +591,6 @@ cleanup:
 }
 
 /**
- * @brief Print LYB magic number.
- *
- * @param[in] lybctx Printer LYB context.
- * @return LY_ERR value.
- */
-static LY_ERR
-lyb_print_magic_number(struct lylyb_print_ctx *lybctx)
-{
-    /* 'l', 'y', 'b' - 0x6c7962 */
-    const uint8_t magic_number[] = {'l', 'y', 'b'};
-
-    LY_CHECK_RET(lyb_write(magic_number, 3 * 8, lybctx));
-
-    return LY_SUCCESS;
-}
-
-/**
  * @brief Print LYB header.
  *
  * @param[in] lybctx Printer LYB context.
@@ -1324,9 +1307,6 @@ lyb_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options
         }
     }
     lybctx->print_ctx->out = out;
-
-    /* LYB magic number */
-    LY_CHECK_GOTO(rc = lyb_print_magic_number(lybctx->print_ctx), cleanup);
 
     /* LYB header */
     LY_CHECK_GOTO(rc = lyb_print_header(lybctx->print_ctx), cleanup);
