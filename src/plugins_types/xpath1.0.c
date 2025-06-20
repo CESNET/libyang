@@ -242,7 +242,7 @@ lyplg_type_print_xpath10_value(const struct lyd_value_xpath10 *xp_val, LY_VALUE_
     return ret;
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres), struct ly_err_item **err)

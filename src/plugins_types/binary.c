@@ -43,7 +43,7 @@
  */
 static const char b64_etable[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-static LY_ERR lyplg_type_validate_binary(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node), const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err);
+static void lyplg_type_free_binary(const struct ly_ctx *ctx, struct lyd_value *value);
 
 /**
  * @brief Encode binary value into a base64 string value.
@@ -254,7 +254,7 @@ binary_base64_newlines(char **value, uint32_t *value_size, uint32_t *options, st
     return LY_SUCCESS;
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
@@ -345,34 +345,7 @@ cleanup:
     return ret;
 }
 
-/**
- * @brief Implementation of ::lyplg_type_validate_clb for the binary type.
- */
 static LY_ERR
-lyplg_type_validate_binary(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
-        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
-{
-    struct lysc_type_bin *type_bin = (struct lysc_type_bin *)type;
-    struct lyd_value_binary *val;
-    const void *value;
-    size_t value_len;
-
-    LY_CHECK_ARG_RET(NULL, type, storage, err, LY_EINVAL);
-
-    val = LYPLG_TYPE_VAL_IS_DYN(val) ? (struct lyd_value_binary *)(storage->dyn_mem) : (struct lyd_value_binary *)(storage->fixed_mem);
-    value = lyd_value_get_canonical(ctx, storage);
-    value_len = strlen(value);
-    *err = NULL;
-
-    /* length restriction of the binary value */
-    if (type_bin->length) {
-        LY_CHECK_RET(lyplg_type_validate_range(LY_TYPE_BINARY, type_bin->length, val->size, value, value_len, err));
-    }
-
-    return LY_SUCCESS;
-}
-
-LIBYANG_API_DEF LY_ERR
 lyplg_type_compare_binary(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
 {
     struct lyd_value_binary *v1, *v2;
@@ -386,7 +359,7 @@ lyplg_type_compare_binary(const struct ly_ctx *UNUSED(ctx), const struct lyd_val
     return LY_SUCCESS;
 }
 
-LIBYANG_API_DEF int
+static int
 lyplg_type_sort_binary(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
 {
     struct lyd_value_binary *v1, *v2;
@@ -406,7 +379,7 @@ lyplg_type_sort_binary(const struct ly_ctx *UNUSED(ctx), const struct lyd_value 
     return cmp;
 }
 
-LIBYANG_API_DEF const void *
+static const void *
 lyplg_type_print_binary(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_size_bits)
 {
@@ -448,7 +421,7 @@ lyplg_type_print_binary(const struct ly_ctx *ctx, const struct lyd_value *value,
     return value->_canonical;
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_dup_binary(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_ERR ret;
@@ -478,7 +451,7 @@ error:
     return ret;
 }
 
-LIBYANG_API_DEF void
+static void
 lyplg_type_free_binary(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     struct lyd_value_binary *val;

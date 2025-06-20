@@ -45,7 +45,7 @@ lyplg_type_lyb_size_leafref(const struct lysc_type *type)
     return LYSC_GET_TYPE_PLG(type_lr->realtype->plugin_ref)->lyb_size(type_lr->realtype);
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
@@ -72,7 +72,7 @@ lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type,
     }
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_validate_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *ctx_node,
         const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err)
 {
@@ -110,32 +110,32 @@ cleanup:
     return rc;
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_compare_leafref(const struct ly_ctx *ctx, const struct lyd_value *val1, const struct lyd_value *val2)
 {
     return LYSC_GET_TYPE_PLG(val1->realtype->plugin_ref)->compare(ctx, val1, val2);
 }
 
-LIBYANG_API_DEF int
+static int
 lyplg_type_sort_leafref(const struct ly_ctx *ctx, const struct lyd_value *val1, const struct lyd_value *val2)
 {
     return LYSC_GET_TYPE_PLG(val1->realtype->plugin_ref)->sort(ctx, val1, val2);
 }
 
-LIBYANG_API_DEF const void *
+static const void *
 lyplg_type_print_leafref(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, uint32_t *value_size_bits)
 {
     return LYSC_GET_TYPE_PLG(value->realtype->plugin_ref)->print(ctx, value, format, prefix_data, dynamic, value_size_bits);
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_dup_leafref(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     return LYSC_GET_TYPE_PLG(original->realtype->plugin_ref)->duplicate(ctx, original, dup);
 }
 
-LIBYANG_API_DEF void
+static void
 lyplg_type_free_leafref(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     LYSC_GET_TYPE_PLG(value->realtype->plugin_ref)->free(ctx, value);

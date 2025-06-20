@@ -63,7 +63,7 @@ lyplg_type_lyb_size_integer(const struct lysc_type *type)
     return 0;
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
@@ -189,49 +189,7 @@ cleanup:
     return ret;
 }
 
-/**
- * @brief Implementation of ::lyplg_type_validate_clb for the signed interger types.
- */
 static LY_ERR
-lyplg_type_validate_int(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
-        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
-{
-    LY_ERR ret;
-    struct lysc_type_num *type_num = (struct lysc_type_num *)type;
-    int64_t num;
-
-    LY_CHECK_ARG_RET(NULL, type, storage, err, LY_EINVAL);
-    *err = NULL;
-
-    /* set the value (matters for big-endian) and get the correct int64 number */
-    switch (type->basetype) {
-    case LY_TYPE_INT8:
-        num = storage->int8;
-        break;
-    case LY_TYPE_INT16:
-        num = storage->int16;
-        break;
-    case LY_TYPE_INT32:
-        num = storage->int32;
-        break;
-    case LY_TYPE_INT64:
-        num = storage->int64;
-        break;
-    default:
-        return LY_EINVAL;
-    }
-
-    /* validate range of the number */
-    if (type_num->range) {
-        ret = lyplg_type_validate_range(type->basetype, type_num->range, num, storage->_canonical,
-                strlen(storage->_canonical), err);
-        LY_CHECK_RET(ret);
-    }
-
-    return LY_SUCCESS;
-}
-
-LIBYANG_API_DEF LY_ERR
 lyplg_type_compare_int(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
 {
     if (val1->realtype != val2->realtype) {
@@ -265,7 +223,7 @@ lyplg_type_compare_int(const struct ly_ctx *UNUSED(ctx), const struct lyd_value 
     return LY_SUCCESS;
 }
 
-LIBYANG_API_DEF int
+static int
 lyplg_type_sort_int(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
 {
     switch (val1->realtype->basetype) {
@@ -311,7 +269,7 @@ lyplg_type_sort_int(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *va
     return 0;
 }
 
-LIBYANG_API_DEF const void *
+static const void *
 lyplg_type_print_int(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_size_bits)
 {
@@ -367,7 +325,7 @@ lyplg_type_print_int(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *v
     return value->_canonical;
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
@@ -473,49 +431,7 @@ cleanup:
     return ret;
 }
 
-/**
- * @brief Implementation of ::lyplg_type_validate_clb for the unsigned interger types.
- */
 static LY_ERR
-lyplg_type_validate_uint(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
-        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
-{
-    LY_ERR ret;
-    struct lysc_type_num *type_num = (struct lysc_type_num *)type;
-    uint64_t num;
-
-    LY_CHECK_ARG_RET(NULL, type, storage, err, LY_EINVAL);
-    *err = NULL;
-
-    /* set the value (matters for big-endian) and get the correct int64 number */
-    switch (type->basetype) {
-    case LY_TYPE_UINT8:
-        num = storage->uint8;
-        break;
-    case LY_TYPE_UINT16:
-        num = storage->uint16;
-        break;
-    case LY_TYPE_UINT32:
-        num = storage->uint32;
-        break;
-    case LY_TYPE_UINT64:
-        num = storage->uint64;
-        break;
-    default:
-        return LY_EINVAL;
-    }
-
-    /* validate range of the number */
-    if (type_num->range) {
-        ret = lyplg_type_validate_range(type->basetype, type_num->range, num, storage->_canonical,
-                strlen(storage->_canonical), err);
-        LY_CHECK_RET(ret);
-    }
-
-    return LY_SUCCESS;
-}
-
-LIBYANG_API_DEF LY_ERR
 lyplg_type_compare_uint(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
 {
     switch (val1->realtype->basetype) {
@@ -545,7 +461,7 @@ lyplg_type_compare_uint(const struct ly_ctx *UNUSED(ctx), const struct lyd_value
     return LY_SUCCESS;
 }
 
-LIBYANG_API_DEF int
+static int
 lyplg_type_sort_uint(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
 {
     switch (val1->realtype->basetype) {
@@ -591,7 +507,7 @@ lyplg_type_sort_uint(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *v
     return 0;
 }
 
-LIBYANG_API_DEF const void *
+static const void *
 lyplg_type_print_uint(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_size_bits)
 {

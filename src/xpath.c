@@ -1699,19 +1699,11 @@ set_comp_canonize(struct lyxp_set *set, const struct lyxp_set_node *xp_node)
         return LY_SUCCESS;
     }
 
-    type_plg = LYSC_GET_TYPE_PLG(type->plugin_ref);
-
     /* check for built-in types without required canonization */
-    if ((type->basetype == LY_TYPE_STRING) && (type_plg->store == lyplg_type_store_string)) {
-        /* string */
-        return LY_SUCCESS;
-    }
-    if ((type->basetype == LY_TYPE_BOOL) && (type_plg->store == lyplg_type_store_boolean)) {
-        /* boolean */
-        return LY_SUCCESS;
-    }
-    if ((type->basetype == LY_TYPE_ENUM) && (type_plg->store == lyplg_type_store_enum)) {
-        /* enumeration */
+    type_plg = LYSC_GET_TYPE_PLG(type->plugin_ref);
+    if (!strncmp(type_plg->id, "ly2", 3) && ((type->basetype == LY_TYPE_STRING) || (type->basetype == LY_TYPE_BOOL) ||
+            (type->basetype == LY_TYPE_ENUM))) {
+        /* string, boolean, enumeration */
         return LY_SUCCESS;
     }
 

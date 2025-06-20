@@ -413,8 +413,8 @@ lyb_parse_module_idx(struct lylyb_parse_ctx *lybctx, const struct lys_module **m
     lyb_read_count(&idx, lybctx);
 
     /* get the module */
-    assert(idx < lybctx->ctx->list.count);
-    m = lybctx->ctx->list.objs[idx];
+    assert(idx < lybctx->ctx->modules.count);
+    m = lybctx->ctx->modules.objs[idx];
     if (!m->implemented) {
         LOGERR(lybctx->ctx, LY_EINT, "Invalid context for LYB data parsing, module \"%s%s%s\" not implemented.",
                 m->name, m->revision ? "@" : "", m->revision ? m->revision : "");

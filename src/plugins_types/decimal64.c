@@ -89,7 +89,7 @@ lyplg_type_lyb_size_decimal64(const struct lysc_type *UNUSED(type))
     return 64;
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
@@ -164,32 +164,7 @@ cleanup:
     return ret;
 }
 
-/**
- * @brief Implementation of ::lyplg_type_validate_clb for the built-in decimal64 type.
- */
 static LY_ERR
-lyplg_type_validate_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
-        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
-{
-    LY_ERR ret;
-    struct lysc_type_dec *type_dec = (struct lysc_type_dec *)type;
-    int64_t num;
-
-    LY_CHECK_ARG_RET(NULL, type, storage, err, LY_EINVAL);
-    *err = NULL;
-    num = storage->dec64;
-
-    if (type_dec->range) {
-        /* check range of the number */
-        ret = lyplg_type_validate_range(type->basetype, type_dec->range, num, storage->_canonical,
-                strlen(storage->_canonical), err);
-        LY_CHECK_RET(ret);
-    }
-
-    return LY_SUCCESS;
-}
-
-LIBYANG_API_DEF LY_ERR
 lyplg_type_compare_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1,
         const struct lyd_value *val2)
 {
@@ -200,7 +175,7 @@ lyplg_type_compare_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lyd_
     return LY_SUCCESS;
 }
 
-LIBYANG_API_DEF int
+static int
 lyplg_type_sort_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
 {
     if (val1->dec64 > val2->dec64) {
@@ -212,7 +187,7 @@ lyplg_type_sort_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lyd_val
     }
 }
 
-LIBYANG_API_DEF const void *
+static const void *
 lyplg_type_print_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_size_bits)
 {
