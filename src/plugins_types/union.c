@@ -42,6 +42,8 @@
  * Note that loading union value in this format prevents it from changing its real (resolved) type.
  */
 
+static void lyplg_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value);
+
 /**
  * @brief Size in bytes of the used type index in the LYB Binary Format.
  */
@@ -457,7 +459,7 @@ lyb_fill_subvalue(const struct ly_ctx *ctx, struct lysc_type_union *type_u, cons
     return ret;
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
@@ -512,7 +514,7 @@ cleanup:
     return ret;
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *ctx_node,
         const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err)
 {
@@ -565,7 +567,7 @@ lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type
     return LY_SUCCESS;
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_compare_union(const struct ly_ctx *ctx, const struct lyd_value *val1, const struct lyd_value *val2)
 {
     if (val1->subvalue->value.realtype != val2->subvalue->value.realtype) {
@@ -575,7 +577,7 @@ lyplg_type_compare_union(const struct ly_ctx *ctx, const struct lyd_value *val1,
             &val1->subvalue->value, &val2->subvalue->value);
 }
 
-LIBYANG_API_DEF int
+static int
 lyplg_type_sort_union(const struct ly_ctx *ctx, const struct lyd_value *val1, const struct lyd_value *val2)
 {
     int rc;
@@ -667,7 +669,7 @@ lyb_union_print(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
     return ret;
 }
 
-LIBYANG_API_DEF const void *
+static const void *
 lyplg_type_print_union(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, uint32_t *value_size_bits)
 {
@@ -704,7 +706,7 @@ lyplg_type_print_union(const struct ly_ctx *ctx, const struct lyd_value *value, 
     return ret;
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -747,7 +749,7 @@ cleanup:
     return ret;
 }
 
-LIBYANG_API_DEF void
+static void
 lyplg_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     struct lyd_value_union *val;

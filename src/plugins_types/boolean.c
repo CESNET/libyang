@@ -40,7 +40,7 @@ lyplg_type_lyb_size_boolean(const struct lysc_type *UNUSED(type))
     return 1;
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
@@ -108,7 +108,7 @@ cleanup:
     return ret;
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_compare_boolean(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
 {
     if (val1->boolean != val2->boolean) {
@@ -117,7 +117,7 @@ lyplg_type_compare_boolean(const struct ly_ctx *UNUSED(ctx), const struct lyd_va
     return LY_SUCCESS;
 }
 
-LIBYANG_API_DEF int
+static int
 lyplg_type_sort_boolean(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
 {
     if (val1->boolean > val2->boolean) {
@@ -129,7 +129,7 @@ lyplg_type_sort_boolean(const struct ly_ctx *UNUSED(ctx), const struct lyd_value
     }
 }
 
-LIBYANG_API_DEF const void *
+static const void *
 lyplg_type_print_boolean(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_size_bits)
 {

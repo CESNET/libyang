@@ -151,7 +151,7 @@ cleanup:
     return ret;
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
@@ -227,7 +227,7 @@ cleanup:
     }
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_validate_instanceid(const struct ly_ctx *ctx, const struct lysc_type *UNUSED(type),
         const struct lyd_node *ctx_node, const struct lyd_node *tree, struct lyd_value *storage,
         struct ly_err_item **err)
@@ -254,7 +254,7 @@ lyplg_type_validate_instanceid(const struct ly_ctx *ctx, const struct lysc_type 
     return LY_SUCCESS;
 }
 
-LIBYANG_API_DEF const void *
+static const void *
 lyplg_type_print_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, uint32_t *value_size_bits)
 {
@@ -283,7 +283,7 @@ lyplg_type_print_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lyd_v
     return ret;
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_ERR ret;

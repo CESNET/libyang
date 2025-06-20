@@ -574,9 +574,6 @@ lyb_print_module_idx(const struct lys_module *mod, struct lylyb_print_ctx *lybct
     /* write module index */
     LY_CHECK_GOTO(rc = lyb_write_count(idx, lybctx), cleanup);
 
-    /* fill cached hashes, if not already */
-    lyb_cache_module_hash(mod);
-
 cleanup:
     return rc;
 }
@@ -754,7 +751,7 @@ lyb_print_value(const struct ly_ctx *ctx, const struct lyd_value *value, struct 
         val = (void *)print(ctx, value, LY_VALUE_LYB, NULL, &dynamic, NULL);
         LY_CHECK_GOTO(ret, cleanup);
 
-        /* copy the length from the compiled node */
+        /* use the returned length */
         val_size_bits = lyb_size_bits;
     }
 

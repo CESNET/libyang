@@ -38,6 +38,8 @@
  * | fixed for a specific type | yes | pointer to integer type of the specific size, if size more than 8 use `char *` | bitmap of the set bits |
  */
 
+static void lyplg_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value);
+
 /**
  * @brief Get the position of the last bit.
  */
@@ -277,7 +279,7 @@ bits_items2canon(struct lysc_type_bitenum_item **items, char **canonical)
     return LY_SUCCESS;
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
@@ -356,7 +358,7 @@ cleanup:
     return ret;
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_compare_bits(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
 {
     struct lyd_value_bits *v1, *v2;
@@ -373,7 +375,7 @@ lyplg_type_compare_bits(const struct ly_ctx *UNUSED(ctx), const struct lyd_value
     return LY_SUCCESS;
 }
 
-LIBYANG_API_DEF int
+static int
 lyplg_type_sort_bits(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
 {
     struct lyd_value_binary *v1, *v2;
@@ -387,7 +389,7 @@ lyplg_type_sort_bits(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *v
     return memcmp(v1->data, v2->data, bitmap_size);
 }
 
-LIBYANG_API_DEF const void *
+static const void *
 lyplg_type_print_bits(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_len_bits)
 {
@@ -428,7 +430,7 @@ lyplg_type_print_bits(const struct ly_ctx *ctx, const struct lyd_value *value, L
     return value->_canonical;
 }
 
-LIBYANG_API_DEF LY_ERR
+static LY_ERR
 lyplg_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_ERR ret;
@@ -470,7 +472,7 @@ error:
     return ret;
 }
 
-LIBYANG_API_DEF void
+static void
 lyplg_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     struct lyd_value_bits *val;
