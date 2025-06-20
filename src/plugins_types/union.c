@@ -60,7 +60,8 @@ static void lyplg_type_free_union(const struct ly_ctx *ctx, struct lyd_value *va
  * @return LY_ERR value.
  */
 static LY_ERR
-union_subvalue_assignment(const void *value, uint32_t value_size_bits, void **original, uint32_t *orig_size_bits, uint32_t *options)
+union_subvalue_assignment(const void *value, uint32_t value_size_bits, void **original, uint32_t *orig_size_bits,
+        uint32_t *options)
 {
     LY_ERR ret = LY_SUCCESS;
 
@@ -650,11 +651,8 @@ lyb_union_print(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
             prefix_data, &dynamic, &pval_size_bits);
     LY_CHECK_RET(!pval, NULL);
 
-    /* create LYB data, round the size if needed */
+    /* create LYB data */
     *value_size_bits = LYPLG_UNION_TYPE_IDX_SIZE * 8 + pval_size_bits;
-    if ((*value_size_bits > LYB_SIZE_MAX_BITS) && (*value_size_bits % 8)) {
-        *value_size_bits += 8 - *value_size_bits % 8;
-    }
     ret = malloc(LYPLG_BITS2BYTES(*value_size_bits));
     LY_CHECK_RET(!ret, NULL);
 
@@ -782,7 +780,7 @@ const struct lyplg_type_record plugins_union[] = {
         .name = LY_TYPE_UNION_STR,
 
         .plugin.id = "ly2 union",
-        .plugin.lyb_size = lyplg_type_lyb_size_variable,
+        .plugin.lyb_size = lyplg_type_lyb_size_variable_bits,
         .plugin.store = lyplg_type_store_union,
         .plugin.validate = lyplg_type_validate_union,
         .plugin.compare = lyplg_type_compare_union,

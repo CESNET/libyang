@@ -74,7 +74,7 @@ lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, 
     storage->realtype = type;
 
     /* check value length */
-    ret = lyplg_type_check_value_size("string", format, value_size_bits, -1, &value_size, err);
+    ret = lyplg_type_check_value_size("string", format, value_size_bits, LYPLG_LYB_SIZE_VARIABLE_BYTES, 0, &value_size, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (!(options & LYPLG_TYPE_STORE_IS_UTF8)) {
@@ -170,7 +170,7 @@ const struct lyplg_type_record plugins_string[] = {
         .name = LY_TYPE_STRING_STR,
 
         .plugin.id = "ly2 string",
-        .plugin.lyb_size = lyplg_type_lyb_size_variable,
+        .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
         .plugin.store = lyplg_type_store_string,
         .plugin.validate = lyplg_type_validate_string,
         .plugin.compare = lyplg_type_compare_simple,

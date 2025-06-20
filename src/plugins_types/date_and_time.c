@@ -100,7 +100,8 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
     }
 
     /* get value byte length */
-    ret = lyplg_type_check_value_size("date-and-time", format, value_size_bits, -1, &value_size, err);
+    ret = lyplg_type_check_value_size("date-and-time", format, value_size_bits, LYPLG_LYB_SIZE_VARIABLE_BYTES, 0,
+            &value_size, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* check hints */
@@ -404,7 +405,7 @@ const struct lyplg_type_record plugins_date_and_time[] = {
         .name = "date-and-time",
 
         .plugin.id = "ly2 date-and-time",
-        .plugin.lyb_size = lyplg_type_lyb_size_variable,
+        .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
         .plugin.store = lyplg_type_store_date_and_time,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_date_and_time,

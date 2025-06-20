@@ -47,10 +47,12 @@
  * | 32       | yes       | `struct in_addr *` | IPv4 address in network-byte order |
  */
 
-static int32_t
-lyplg_type_lyb_size_ipv4_address_no_zone(const struct lysc_type *UNUSED(type))
+static void
+lyplg_type_lyb_size_ipv4_address_no_zone(const struct lysc_type *UNUSED(type), enum lyplg_lyb_size_type *size_type,
+        uint32_t *fixed_size_bits)
 {
-    return 32;
+    *size_type = LYPLG_LYB_SIZE_FIXED_BITS;
+    *fixed_size_bits = 32;
 }
 
 /**
@@ -74,7 +76,8 @@ lyplg_type_store_ipv4_address_no_zone(const struct ly_ctx *ctx, const struct lys
     storage->realtype = type;
 
     /* check value length */
-    ret = lyplg_type_check_value_size("ipv4-address-no-zone", format, value_size_bits, 32, &value_size, err);
+    ret = lyplg_type_check_value_size("ipv4-address-no-zone", format, value_size_bits, LYPLG_LYB_SIZE_FIXED_BITS, 32,
+            &value_size, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (format == LY_VALUE_LYB) {

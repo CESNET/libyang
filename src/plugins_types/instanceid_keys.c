@@ -150,7 +150,8 @@ lyplg_type_store_instanceid_keys(const struct ly_ctx *ctx, const struct lysc_typ
     storage->realtype = type;
 
     /* check value length */
-    ret = lyplg_type_check_value_size("instance-identifier-keys", format, value_size_bits, -1, &value_size, err);
+    ret = lyplg_type_check_value_size("instance-identifier-keys", format, value_size_bits,
+            LYPLG_LYB_SIZE_VARIABLE_BYTES, 0, &value_size, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* check hints */
@@ -244,7 +245,7 @@ const struct lyplg_type_record plugins_instanceid_keys[] = {
         .name = "instance-identifier-keys",
 
         .plugin.id = "ly2 instance-identifier-keys",
-        .plugin.lyb_size = lyplg_type_lyb_size_variable,
+        .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
         .plugin.store = lyplg_type_store_instanceid_keys,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,

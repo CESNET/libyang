@@ -372,10 +372,18 @@ lyplg_type_free_simple(const struct ly_ctx *ctx, struct lyd_value *value)
     value->_canonical = NULL;
 }
 
-LIBYANG_API_DEF int32_t
-lyplg_type_lyb_size_variable(const struct lysc_type *UNUSED(type))
+LIBYANG_API_DEF void
+lyplg_type_lyb_size_variable_bits(const struct lysc_type *UNUSED(type), enum lyplg_lyb_size_type *size_type,
+        uint32_t *UNUSED(fixed_size_bits))
 {
-    return -1;
+    *size_type = LYPLG_LYB_SIZE_VARIABLE_BITS;
+}
+
+LIBYANG_API_DEF void
+lyplg_type_lyb_size_variable_bytes(const struct lysc_type *UNUSED(type), enum lyplg_lyb_size_type *size_type,
+        uint32_t *UNUSED(fixed_size_bits))
+{
+    *size_type = LYPLG_LYB_SIZE_VARIABLE_BYTES;
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -680,13 +688,15 @@ type_get_hints_base(uint32_t hints)
 
 LIBYANG_API_DEF LY_ERR
 lyplg_type_check_value_size(const char *type_name, LY_VALUE_FORMAT format, uint32_t value_size_bits,
-        int32_t exp_lyb_value_size_bits, uint32_t *value_size, struct ly_err_item **err)
+        enum lyplg_lyb_size_type lyb_size_type, uint32_t lyb_fixed_size_bits, uint32_t *value_size,
+        struct ly_err_item **err)
 {
-    if ((format == LY_VALUE_LYB) && (exp_lyb_value_size_bits != -1) && (value_size_bits != (uint32_t)exp_lyb_value_size_bits)) {
+    if ((format == LY_VALUE_LYB) && (lyb_size_type == LYPLG_LYB_SIZE_FIXED_BITS) &&
+            (value_size_bits != lyb_fixed_size_bits)) {
         /* LYB size not as expected */
         return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid %s value size %" PRIu32 " b (expected %" PRIu32 " b).",
-                type_name, value_size_bits, exp_lyb_value_size_bits);
-    } else if ((format != LY_VALUE_LYB) && (value_size_bits % 8)) {
+                type_name, value_size_bits, lyb_fixed_size_bits);
+    } else if (((format != LY_VALUE_LYB) || (lyb_size_type == LYPLG_LYB_SIZE_VARIABLE_BYTES)) && (value_size_bits % 8)) {
         /* value size in bits not rounded bytes */
         return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid %s value size %" PRIu32 " b (expected full bytes).",
                 type_name, value_size_bits);

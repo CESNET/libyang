@@ -26,10 +26,12 @@
 
 static void lyplg_type_free_lyds(const struct ly_ctx *ctx, struct lyd_value *value);
 
-static int32_t
-lyplg_type_lyb_size_lyds(const struct lysc_type *UNUSED(type))
+static void
+lyplg_type_lyb_size_lyds(const struct lysc_type *UNUSED(type), enum lyplg_lyb_size_type *size_type,
+        uint32_t *fixed_size_bits)
 {
-    return 0;
+    *size_type = LYPLG_LYB_SIZE_FIXED_BITS;
+    *fixed_size_bits = 0;
 }
 
 static LY_ERR

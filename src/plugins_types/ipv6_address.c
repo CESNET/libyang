@@ -402,7 +402,7 @@ const struct lyplg_type_record plugins_ipv6_address[] = {
         .name = "ipv6-address",
 
         .plugin.id = "ly2 ipv6-address",
-        .plugin.lyb_size = lyplg_type_lyb_size_variable,
+        .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
         .plugin.store = lyplg_type_store_ipv6_address,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_ipv6_address,
