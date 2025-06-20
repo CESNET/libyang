@@ -457,7 +457,7 @@ lyb_write_count(uint32_t count, struct lylyb_print_ctx *lybctx)
 }
 
 /**
- * @brief Write a size in bits. Supports numbers only up to 15, then they must be full bytes.
+ * @brief Write a size in bits or bytes.
  *
  * @param[in] size Size to write.
  * @param[in] lybctx Printer LYB context.
@@ -470,40 +470,26 @@ lyb_write_size(uint32_t size, struct lylyb_print_ctx *lybctx)
     uint32_t buf;
 
     /* prepare prefix in buf (in reverse, read bit-by-bit), set prefix length and number length in bits */
-    if ((size > LYB_SIZE_MAX_BITS) && (size < 256)) {
-        /* prefix 0, encoded on 6 b */
+    if (size < 16) {
+        /* prefix 0, encoded on 5 b */
         buf = 0x0;
         prefix_b = 1;
-        num_b = 5;
-    } else if (size < LYB_SIZE_MAX_BITS + 1) {
-        /* prefix 10, encoded on 6 b */
+        num_b = 4;
+    } else if (size < 64) {
+        /* prefix 10, encoded on 8 b */
         buf = 0x1;
         prefix_b = 2;
-        num_b = 4;
-    } else if (size < 1024) {
-        /* prefix 110, encoded on 10 b */
+        num_b = 6;
+    } else if (size < 4096) {
+        /* prefix 110, encoded on 15 b */
         buf = 0x3;
         prefix_b = 3;
-        num_b = 7;
-    } else if (size < 32768) {
-        /* prefix 1110, encoded on 16 b */
+        num_b = 12;
+    } else {
+        /* prefix 1110, encoded on 36 b */
         buf = 0x7;
         prefix_b = 4;
-        num_b = 12;
-    } else if (size < 1073741824) {
-        /* prefix 11110, encoded on 32 b */
-        buf = 0xF;
-        prefix_b = 5;
-        num_b = 27;
-    } else {
-        LOGERR(lybctx->ctx, LY_EINT, "Cannot print size %" PRIu32 ", largest supported number is 1 073 741 823.", size);
-        return LY_EINT;
-    }
-
-    if (size > LYB_SIZE_MAX_BITS) {
-        /* numbers higher than 15 must be full bytes and those are written instead */
-        assert(!(size % 8));
-        size /= 8;
+        num_b = 32;
     }
 
     /* correct byte order */
@@ -535,8 +521,8 @@ lyb_write_string(const char *str, uint32_t str_len, struct lylyb_print_ctx *lybc
         str_len = strlen(str);
     }
 
-    /* print the string length in bits */
-    LY_CHECK_RET(lyb_write_count(str_len, lybctx));
+    /* print the string length in bytes */
+    LY_CHECK_RET(lyb_write_size(str_len, lybctx));
 
     if (str_len) {
         /* print the string */
@@ -722,7 +708,8 @@ lyb_print_value(const struct ly_ctx *ctx, const struct lyd_value *value, struct 
     ly_bool dynamic = 0;
     void *val;
     uint32_t val_size_bits = 0;
-    int32_t lyb_size_bits;
+    enum lyplg_lyb_size_type size_type;
+    uint32_t fixed_size_bits;
     lyplg_type_print_clb print;
     struct lyplg_type *type_plg;
 
@@ -730,21 +717,11 @@ lyb_print_value(const struct ly_ctx *ctx, const struct lyd_value *value, struct 
     type_plg = LYSC_GET_TYPE_PLG(value->realtype->plugin_ref);
 
     /* get size of LYB data to print */
-    lyb_size_bits = type_plg->lyb_size(value->realtype);
+    type_plg->lyb_size(value->realtype, &size_type, &fixed_size_bits);
 
     /* get value and also print its length only if size is not fixed */
     print = type_plg->print;
-    if (lyb_size_bits < 0) {
-        /* variable-length data */
-
-        /* get value and its length from plugin */
-        val = (void *)print(ctx, value, LY_VALUE_LYB, NULL, &dynamic, &val_size_bits);
-        LY_CHECK_ERR_GOTO(!val, ret = LY_EINT, cleanup);
-
-        /* print the length of the data in bits */
-        ret = lyb_write_size(val_size_bits, lybctx);
-        LY_CHECK_GOTO(ret, cleanup);
-    } else {
+    if (size_type == LYPLG_LYB_SIZE_FIXED_BITS) {
         /* fixed-length data */
 
         /* get value from plugin */
@@ -752,7 +729,22 @@ lyb_print_value(const struct ly_ctx *ctx, const struct lyd_value *value, struct 
         LY_CHECK_GOTO(ret, cleanup);
 
         /* use the returned length */
-        val_size_bits = lyb_size_bits;
+        val_size_bits = fixed_size_bits;
+    } else {
+        /* variable-length data */
+
+        /* get value and its length from plugin */
+        val = (void *)print(ctx, value, LY_VALUE_LYB, NULL, &dynamic, &val_size_bits);
+        LY_CHECK_ERR_GOTO(!val, ret = LY_EINT, cleanup);
+
+        /* print the length of the data in bytes or bits */
+        if (size_type == LYPLG_LYB_SIZE_VARIABLE_BYTES) {
+            assert(!(val_size_bits % 8));
+            ret = lyb_write_size(val_size_bits / 8, lybctx);
+        } else {
+            ret = lyb_write_size(val_size_bits, lybctx);
+        }
+        LY_CHECK_GOTO(ret, cleanup);
     }
 
     /* print value */

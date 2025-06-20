@@ -166,6 +166,16 @@ struct lysc_type_leafref;
 #define LYPLG_TYPE_API_VERSION 3
 
 /**
+ * @brief Type of the LYB size of a value of a particular type.
+ */
+enum lyplg_lyb_size_type {
+    LYPLG_LYB_SIZE_FIXED_BITS,      /**< fixed (not changing for a particular type) size in bits */
+    LYPLG_LYB_SIZE_VARIABLE_BITS,   /**< variable size that will be stored in bits */
+    LYPLG_LYB_SIZE_VARIABLE_BYTES   /**< variable size that is always rounded to bytes and also stored in bytes
+                                         (more efficient than using bits) */
+};
+
+/**
  * @brief Macro to define plugin information in external plugins
  *
  * Use as follows:
@@ -253,15 +263,17 @@ LIBYANG_API_DECL void ly_err_free(void *ptr);
  * @param[in] type_name Type name for logging.
  * @param[in] format Value format.
  * @param[in] value_size_bits Value size in bits.
- * @param[in] exp_lyb_value_size_bits Expected value size in bits for LYB format. If -1, check for full bytes. For
- * other @p format than LYB, full bytes are always expected.
+ * @param[in] lyb_size_type Type of the LYB value size, relevant only for @p format ::LY_VALUE_LYB. For other formats,
+ * full bytes are always expected.
+ * @param[in] lyb_fixed_size_bits Fixed lyb value size, if relevant.
  * @param[out] value_size Value size in bytes.
  * @param[out] err Generated error.
  * @return LY_SUCCESS on success;
  * @return LY_ERR value on error, @p err generated.
  */
 LIBYANG_API_DECL LY_ERR lyplg_type_check_value_size(const char *type_name, LY_VALUE_FORMAT format,
-        uint32_t value_size_bits, int32_t exp_lyb_value_size_bits, uint32_t *value_size, struct ly_err_item **err);
+        uint32_t value_size_bits, enum lyplg_lyb_size_type lyb_size_type, uint32_t lyb_fixed_size_bits,
+        uint32_t *value_size, struct ly_err_item **err);
 
 /**
  * @brief Check that the type is suitable for the parser's hints (if any) in the specified format
@@ -369,8 +381,7 @@ LIBYANG_API_DECL ly_bool lyplg_type_bits_is_bit_set(const char *bitmap, uint32_t
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_nametest,
-        const struct lys_module **context_mod, const struct ly_ctx *resolve_ctx, LY_VALUE_FORMAT resolve_format,
-        const void *resolve_prefix_data, LY_VALUE_FORMAT get_format, void *get_prefix_data, char **token_p,
+        const struct lys_module **context_mod, const struct ly_ctx *resolve_ctx, LY_VALUE_FORMAT resolve_format,        const void *resolve_prefix_data, LY_VALUE_FORMAT get_format, void *get_prefix_data, char **token_p,
         struct ly_err_item **err);
 
 /**
@@ -491,9 +502,12 @@ LIBYANG_API_DECL LY_ERR lyplg_type_print_xpath10_value(const struct lyd_value_xp
  * @brief Callback for learning the size of a LYB value in bits. If of a variable size, -1 is returned.
  *
  * @param[in] type Type of the value.
- * @return Fixed size of the LYB value in bits, -1 if variable.
+ * @param[out] size_type Type of LYB size.
+ * @param[out] fixed_size_bits Fixed size size in bits of all the values of this type, only for @p size_type
+ * ::LYPLG_LYB_SIZE_FIXED_BITS.
  */
-LIBYANG_API_DECL typedef int32_t (*lyplg_type_lyb_size_clb)(const struct lysc_type *type);
+LIBYANG_API_DECL typedef void (*lyplg_type_lyb_size_clb)(const struct lysc_type *type,
+        enum lyplg_lyb_size_type *size_type, uint32_t *fixed_size_bits);
 
 /**
  * @defgroup plugintypestoreopts Plugins: Type store callback options.
@@ -718,9 +732,16 @@ LIBYANG_API_DECL LY_ERR lyplg_type_dup_simple(const struct ly_ctx *ctx, const st
 LIBYANG_API_DECL void lyplg_type_free_simple(const struct ly_ctx *ctx, struct lyd_value *value);
 
 /**
- * @brief Implementation of ::lyplg_type_lyb_size_clb for a type with variable length.
+ * @brief Implementation of ::lyplg_type_lyb_size_clb for a type with variable length in bits.
  */
-LIBYANG_API_DECL int32_t lyplg_type_lyb_size_variable(const struct lysc_type *type);
+LIBYANG_API_DECL void lyplg_type_lyb_size_variable_bits(const struct lysc_type *type,
+        enum lyplg_lyb_size_type *size_type, uint32_t *fixed_size_bits);
+
+/**
+ * @brief Implementation of ::lyplg_type_lyb_size_clb for a type with variable length rounded to bytes.
+ */
+LIBYANG_API_DECL void lyplg_type_lyb_size_variable_bytes(const struct lysc_type *type,
+        enum lyplg_lyb_size_type *size_type, uint32_t *fixed_size_bits);
 
 /** @} pluginsTypesSimple */
 

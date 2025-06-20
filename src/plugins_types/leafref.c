@@ -37,12 +37,12 @@
  * | exact same format as the leafref target ||||
  */
 
-static int32_t
-lyplg_type_lyb_size_leafref(const struct lysc_type *type)
+static void
+lyplg_type_lyb_size_leafref(const struct lysc_type *type, enum lyplg_lyb_size_type *size_type, uint32_t *fixed_size_bits)
 {
     const struct lysc_type_leafref *type_lr = (struct lysc_type_leafref *)type;
 
-    return LYSC_GET_TYPE_PLG(type_lr->realtype->plugin_ref)->lyb_size(type_lr->realtype);
+    LYSC_GET_TYPE_PLG(type_lr->realtype->plugin_ref)->lyb_size(type_lr->realtype, size_type, fixed_size_bits);
 }
 
 static LY_ERR

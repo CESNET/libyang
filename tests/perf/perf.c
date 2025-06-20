@@ -352,7 +352,7 @@ test_create_new_bin(struct test_state *state, struct timespec *ts_start, struct 
         k2_len = sprintf(k2_val, "str%" PRIu32, i);
         l_len = sprintf(l_val, "l%" PRIu32, i);
 
-        if ((r = lyd_new_list(data, NULL, "lst", LYD_NEW_VAL_BIN, &list, &i, sizeof i * 8, k2_val, k2_len))) {
+        if ((r = lyd_new_list(data, NULL, "lst", LYD_NEW_VAL_BIN, &list, &i, sizeof i * 8, k2_val, k2_len * 8))) {
             return r;
         }
         if ((r = lyd_new_term_bin(list, NULL, "l", l_val, l_len * 8, 0, NULL))) {

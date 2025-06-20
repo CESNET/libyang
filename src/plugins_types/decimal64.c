@@ -83,10 +83,12 @@ decimal64_num2str(int64_t num, struct lysc_type_dec *type, char **str)
     return LY_SUCCESS;
 }
 
-static int32_t
-lyplg_type_lyb_size_decimal64(const struct lysc_type *UNUSED(type))
+static void
+lyplg_type_lyb_size_decimal64(const struct lysc_type *UNUSED(type), enum lyplg_lyb_size_type *size_type,
+        uint32_t *fixed_size_bits)
 {
-    return 64;
+    *size_type = LYPLG_LYB_SIZE_FIXED_BITS;
+    *fixed_size_bits = 64;
 }
 
 static LY_ERR
@@ -106,7 +108,7 @@ lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *typ
     storage->realtype = type;
 
     /* check value length */
-    ret = lyplg_type_check_value_size("decimal64", format, value_size_bits, 64, &value_size, err);
+    ret = lyplg_type_check_value_size("decimal64", format, value_size_bits, LYPLG_LYB_SIZE_FIXED_BITS, 64, &value_size, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (format == LY_VALUE_LYB) {

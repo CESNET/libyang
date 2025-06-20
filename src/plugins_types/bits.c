@@ -43,7 +43,7 @@ static void lyplg_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *val
 /**
  * @brief Get the position of the last bit.
  */
-#define BITS_LAST_BIT_POSITION(type_bits) (type_bits->bits[LY_ARRAY_COUNT(type_bits->bits) - 1].position)
+#define BITS_LAST_BIT_POSITION(type_bits) ((type_bits)->bits[LY_ARRAY_COUNT((type_bits)->bits) - 1].position)
 
 /**
  * @brief Get a specific byte in a bitmap.
@@ -108,13 +108,14 @@ bits_bit_set(char *bitmap, uint32_t size_bits, uint32_t bit_position)
     *bitmap |= bitmask;
 }
 
-static int32_t
-lyplg_type_lyb_size_bits(const struct lysc_type *type)
+static void
+lyplg_type_lyb_size_bits(const struct lysc_type *type, enum lyplg_lyb_size_type *size_type, uint32_t *fixed_size_bits)
 {
     const struct lysc_type_bits *type_bits = (struct lysc_type_bits *)type;
 
     /* position of the last bit, positions start at 0, add 1 */
-    return BITS_LAST_BIT_POSITION(type_bits) + 1;
+    *size_type = LYPLG_LYB_SIZE_FIXED_BITS;
+    *fixed_size_bits = BITS_LAST_BIT_POSITION(type_bits) + 1;
 }
 
 /**
@@ -130,7 +131,6 @@ lyplg_type_lyb_size_bits(const struct lysc_type *type)
 static LY_ERR
 bits_str2bitmap(const char *value, uint32_t value_len, struct lysc_type_bits *type, char *bitmap, struct ly_err_item **err)
 {
-    const struct lysc_type *t = (struct lysc_type *)type;
     uint32_t idx_start, idx_end;
     LY_ARRAY_COUNT_TYPE u;
     ly_bool found;
@@ -167,12 +167,12 @@ bits_str2bitmap(const char *value, uint32_t value_len, struct lysc_type_bits *ty
         }
 
         /* check for duplication */
-        if (lyplg_type_bits_is_bit_set(bitmap, lyplg_type_lyb_size_bits(t), type->bits[u].position)) {
+        if (lyplg_type_bits_is_bit_set(bitmap, BITS_LAST_BIT_POSITION(type) + 1, type->bits[u].position)) {
             return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Duplicate bit \"%s\".", type->bits[u].name);
         }
 
         /* set the bit */
-        bits_bit_set(bitmap, lyplg_type_lyb_size_bits(t), type->bits[u].position);
+        bits_bit_set(bitmap, BITS_LAST_BIT_POSITION(type) + 1, type->bits[u].position);
     }
 
     return LY_SUCCESS;
@@ -216,7 +216,7 @@ bits_bitmap2items(const char *bitmap, struct lysc_type_bits *type, struct lysc_t
     uint8_t bitmask;
     const uint8_t *byte;
 
-    bitmap_size = LYPLG_BITS2BYTES(lyplg_type_lyb_size_bits((struct lysc_type *)type));
+    bitmap_size = LYPLG_BITS2BYTES(BITS_LAST_BIT_POSITION(type) + 1);
 
     bit_pos = 0;
     for (i = 0; i < bitmap_size; ++i) {
@@ -297,7 +297,8 @@ lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, co
     storage->realtype = type;
 
     /* check value length */
-    ret = lyplg_type_check_value_size("bits", format, value_size_bits, lyplg_type_lyb_size_bits(type), &value_size, err);
+    ret = lyplg_type_check_value_size("bits", format, value_size_bits, LYPLG_LYB_SIZE_FIXED_BITS,
+            BITS_LAST_BIT_POSITION(type_bits) + 1, &value_size, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (format == LY_VALUE_LYB) {
@@ -324,7 +325,7 @@ lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, co
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate the bitmap */
-    val->bitmap = calloc(1, LYPLG_BITS2BYTES(lyplg_type_lyb_size_bits(type)));
+    val->bitmap = calloc(1, LYPLG_BITS2BYTES(BITS_LAST_BIT_POSITION(type_bits) + 1));
     LY_CHECK_ERR_GOTO(!val->bitmap, ret = LY_EMEM, cleanup);
 
     /* fill the bitmap */
@@ -367,7 +368,7 @@ lyplg_type_compare_bits(const struct ly_ctx *UNUSED(ctx), const struct lyd_value
     LYD_VALUE_GET(val1, v1);
     LYD_VALUE_GET(val2, v2);
 
-    bitmap_size = LYPLG_BITS2BYTES(lyplg_type_lyb_size_bits(val1->realtype));
+    bitmap_size = LYPLG_BITS2BYTES(BITS_LAST_BIT_POSITION((struct lysc_type_bits *)val1->realtype) + 1);
 
     if (memcmp(v1->bitmap, v2->bitmap, bitmap_size)) {
         return LY_ENOT;
@@ -384,7 +385,7 @@ lyplg_type_sort_bits(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *v
     LYD_VALUE_GET(val1, v1);
     LYD_VALUE_GET(val2, v2);
 
-    bitmap_size = LYPLG_BITS2BYTES(lyplg_type_lyb_size_bits(val1->realtype));
+    bitmap_size = LYPLG_BITS2BYTES(BITS_LAST_BIT_POSITION((struct lysc_type_bits *)val1->realtype) + 1);
 
     return memcmp(v1->data, v2->data, bitmap_size);
 }
@@ -401,7 +402,7 @@ lyplg_type_print_bits(const struct ly_ctx *ctx, const struct lyd_value *value, L
     if (format == LY_VALUE_LYB) {
         *dynamic = 0;
         if (value_len_bits) {
-            *value_len_bits = lyplg_type_lyb_size_bits(value->realtype);
+            *value_len_bits = BITS_LAST_BIT_POSITION((struct lysc_type_bits *)value->realtype) + 1;
         }
         return val->bitmap;
     }
@@ -440,7 +441,7 @@ lyplg_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original, 
 
     memset(dup, 0, sizeof *dup);
 
-    bitmap_size = LYPLG_BITS2BYTES(lyplg_type_lyb_size_bits(original->realtype));
+    bitmap_size = LYPLG_BITS2BYTES(BITS_LAST_BIT_POSITION((struct lysc_type_bits *)original->realtype) + 1);
 
     /* optional canonical value */
     ret = lydict_insert(ctx, original->_canonical, 0, &dup->_canonical);

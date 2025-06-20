@@ -244,7 +244,8 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
     storage->realtype = type;
 
     /* check value length */
-    ret = lyplg_type_check_value_size("identityref", format, value_size_bits, -1, &value_size, err);
+    ret = lyplg_type_check_value_size("identityref", format, value_size_bits, LYPLG_LYB_SIZE_VARIABLE_BYTES, 0,
+            &value_size, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* check hints */
@@ -365,7 +366,7 @@ const struct lyplg_type_record plugins_identityref[] = {
         .name = LY_TYPE_IDENT_STR,
 
         .plugin.id = "ly2 identityref",
-        .plugin.lyb_size = lyplg_type_lyb_size_variable,
+        .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
         .plugin.store = lyplg_type_store_identityref,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_identityref,

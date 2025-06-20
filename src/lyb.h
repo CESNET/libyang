@@ -91,12 +91,6 @@ enum lylyb_node_type {
 /**< number of required data node flag bits, fixed LYB size */
 #define LYB_DATA_NODE_FLAG_BITS 4
 
-/**< maximum number of size in bits, larger sizes must be full bytes */
-#define LYB_SIZE_MAX_BITS 15
-
-/**< prefix length of bit size that supports non-byte rounding */
-#define LYB_SIZE_BITS_PREF_LEN 2
-
 /**
  * @brief LYB format printer context
  */

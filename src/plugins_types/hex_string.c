@@ -52,7 +52,8 @@ lyplg_type_store_hex_string(const struct ly_ctx *ctx, const struct lysc_type *ty
     storage->realtype = type;
 
     /* check value length */
-    ret = lyplg_type_check_value_size("hex-string", format, value_size_bits, -1, &value_size, err);
+    ret = lyplg_type_check_value_size("hex-string", format, value_size_bits, LYPLG_LYB_SIZE_VARIABLE_BYTES, 0,
+            &value_size, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* check hints */
@@ -135,7 +136,7 @@ const struct lyplg_type_record plugins_hex_string[] = {
         .name = "phys-address",
 
         .plugin.id = "ly2 hex-string",
-        .plugin.lyb_size = lyplg_type_lyb_size_variable,
+        .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
         .plugin.store = lyplg_type_store_hex_string,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
@@ -150,7 +151,7 @@ const struct lyplg_type_record plugins_hex_string[] = {
         .name = "mac-address",
 
         .plugin.id = "ly2 hex-string",
-        .plugin.lyb_size = lyplg_type_lyb_size_variable,
+        .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
         .plugin.store = lyplg_type_store_hex_string,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
@@ -165,7 +166,7 @@ const struct lyplg_type_record plugins_hex_string[] = {
         .name = "hex-string",
 
         .plugin.id = "ly2 hex-string",
-        .plugin.lyb_size = lyplg_type_lyb_size_variable,
+        .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
         .plugin.store = lyplg_type_store_hex_string,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
@@ -180,7 +181,7 @@ const struct lyplg_type_record plugins_hex_string[] = {
         .name = "uuid",
 
         .plugin.id = "ly2 hex-string",
-        .plugin.lyb_size = lyplg_type_lyb_size_variable,
+        .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
         .plugin.store = lyplg_type_store_hex_string,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,

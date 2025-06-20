@@ -229,7 +229,7 @@ lyb_read_count(uint32_t *count, struct lylyb_parse_ctx *lybctx)
 }
 
 /**
- * @brief Read a size. Supports numbers only up to 15, then they must be full bytes.
+ * @brief Read a size, may be bits or bytes.
  *
  * @param[in,out] size Destination size buffer, must be zeroed because only relevant bits will be used.
  * @param[in] lybctx LYB context.
@@ -250,23 +250,19 @@ lyb_read_size(uint32_t *size, struct lylyb_parse_ctx *lybctx)
     switch (pref_len) {
     case 1:
         /* 0 */
-        lyb_read(size, 5, lybctx);
+        lyb_read(size, 4, lybctx);
         break;
     case 2:
         /* 10 */
-        lyb_read(size, 4, lybctx);
+        lyb_read(size, 6, lybctx);
         break;
     case 3:
         /* 110 */
-        lyb_read(size, 7, lybctx);
+        lyb_read(size, 12, lybctx);
         break;
     case 4:
         /* 1110 */
-        lyb_read(size, 12, lybctx);
-        break;
-    case 5:
-        /* 11110 */
-        lyb_read(size, 27, lybctx);
+        lyb_read(size, 32, lybctx);
         break;
     default:
         /* invalid */
@@ -276,11 +272,6 @@ lyb_read_size(uint32_t *size, struct lylyb_parse_ctx *lybctx)
 
     /* correct byte order */
     *size = le32toh(*size);
-
-    if (pref_len != LYB_SIZE_BITS_PREF_LEN) {
-        /* bytes were sent in this case so convert back to bits */
-        *size *= 8;
-    }
 }
 
 /**
@@ -299,7 +290,7 @@ lyb_read_string(char **str, struct lylyb_parse_ctx *lybctx)
     *str = NULL;
 
     /* read length in bytes */
-    lyb_read_count(&str_len, lybctx);
+    lyb_read_size(&str_len, lybctx);
 
     /* allocate mem */
     *str = malloc((str_len + 1) * sizeof **str);
@@ -326,7 +317,8 @@ lyb_read_string(char **str, struct lylyb_parse_ctx *lybctx)
 static LY_ERR
 lyb_read_value(const struct lysc_type *type, uint8_t **val, uint32_t *val_size_bits, struct lylyb_parse_ctx *lybctx)
 {
-    int32_t lyb_size_bits;
+    enum lyplg_lyb_size_type size_type;
+    uint32_t fixed_size_bits;
     struct lysc_type_leafref *type_lf;
 
     assert(type && val && val_size_bits && lybctx);
@@ -338,17 +330,20 @@ lyb_read_value(const struct lysc_type *type, uint8_t **val, uint32_t *val_size_b
     if (type->basetype == LY_TYPE_LEAFREF) {
         /* leafref itself is ignored, the target is loaded directly */
         type_lf = (struct lysc_type_leafref *)type;
-        lyb_size_bits = LYSC_GET_TYPE_PLG(type_lf->realtype->plugin_ref)->lyb_size(type_lf->realtype);
+        LYSC_GET_TYPE_PLG(type_lf->realtype->plugin_ref)->lyb_size(type_lf->realtype, &size_type, &fixed_size_bits);
     } else {
-        lyb_size_bits = LYSC_GET_TYPE_PLG(type->plugin_ref)->lyb_size(type);
+        LYSC_GET_TYPE_PLG(type->plugin_ref)->lyb_size(type, &size_type, &fixed_size_bits);
     }
 
-    if (lyb_size_bits < 0) {
-        /* parse value size in bits */
-        lyb_read_size(val_size_bits, lybctx);
-    } else {
+    if (size_type == LYPLG_LYB_SIZE_FIXED_BITS) {
         /* data size is fixed */
-        *val_size_bits = lyb_size_bits;
+        *val_size_bits = fixed_size_bits;
+    } else {
+        /* parse value size in bits or bytes */
+        lyb_read_size(val_size_bits, lybctx);
+        if (size_type == LYPLG_LYB_SIZE_VARIABLE_BYTES) {
+            *val_size_bits *= 8;
+        }
     }
 
     /* allocate zeroed memory with an addition zero byte */

@@ -167,7 +167,8 @@ lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *ty
     storage->realtype = type;
 
     /* check value length */
-    ret = lyplg_type_check_value_size("instance-identifier", format, value_size_bits, -1, &value_size, err);
+    ret = lyplg_type_check_value_size("instance-identifier", format, value_size_bits, LYPLG_LYB_SIZE_VARIABLE_BYTES, 0,
+            &value_size, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* check hints */
@@ -328,7 +329,7 @@ const struct lyplg_type_record plugins_instanceid[] = {
         .name = LY_TYPE_INST_STR,
 
         .plugin.id = "ly2 instance-identifier",
-        .plugin.lyb_size = lyplg_type_lyb_size_variable,
+        .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
         .plugin.store = lyplg_type_store_instanceid,
         .plugin.validate = lyplg_type_validate_instanceid,
         .plugin.compare = lyplg_type_compare_simple,
