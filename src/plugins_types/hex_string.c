@@ -92,6 +92,19 @@ lyplg_type_store_hex_string(const struct ly_ctx *ctx, const struct lysc_type *ty
         LY_CHECK_GOTO(ret, cleanup);
     }
 
+    if (!(options & LYPLG_TYPE_STORE_ONLY)) {
+        /* validate length restriction of the string */
+        if (type_str->length) {
+            /* value_len is in bytes, but we need number of characters here */
+            ret = lyplg_type_validate_range(LY_TYPE_STRING, type_str->length, ly_utf8len(value, value_len), value, value_len, err);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
+
+        /* validate pattern restrictions */
+        ret = lyplg_type_validate_patterns(ctx, type_str->patterns, value, value_len, err);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
+
 cleanup:
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         free((void *)value);

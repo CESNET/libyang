@@ -1277,6 +1277,7 @@ LIBYANG_API_DECL LY_ERR lyplg_type_validate_range(LY_DATA_TYPE basetype, struct 
 /**
  * @brief Data type validator for pattern-restricted string values.
  *
+ * @param[in] ctx libyang context.
  * @param[in] patterns ([Sized array](@ref sizedarrays)) of the compiled list of pointers to the pattern restrictions.
  * The array can be found in the ::lysc_type_str.patterns structure.
  * @param[in] str String to validate.
@@ -1286,7 +1287,7 @@ LIBYANG_API_DECL LY_ERR lyplg_type_validate_range(LY_DATA_TYPE basetype, struct 
  * @return LY_EVALID when @p does not match any of the patterns.
  * @return LY_ESYS in case of PCRE2 error.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_t str_len,
+LIBYANG_API_DECL LY_ERR lyplg_type_validate_patterns(const struct ly_ctx *ctx, struct lysc_pattern **patterns, const char *str, size_t str_len,
         struct ly_err_item **err);
 
 /**

@@ -1256,7 +1256,6 @@ struct lysc_range {
 
 struct lysc_pattern {
     const char *expr;                /**< original, not compiled, regular expression */
-    pcre2_code *code;                /**< compiled regular expression */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     const char *emsg;                /**< error-message */

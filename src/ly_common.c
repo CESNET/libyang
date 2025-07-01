@@ -37,6 +37,7 @@
 #include <unistd.h>
 
 #include "compat.h"
+#include "schema_compile_node.h"
 #include "tree_data_internal.h"
 #include "tree_schema_internal.h"
 #include "version.h"
@@ -149,6 +150,34 @@ ly_ctx_data_dict_get(const struct ly_ctx *ctx)
     return ctx_data->data_dict;
 }
 
+/**
+ * @brief Callback for comparing two pattern records.
+ */
+static ly_bool
+ly_ctx_ht_pattern_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
+{
+    struct ly_pattern_ht_rec *val1 = val1_p;
+    struct ly_pattern_ht_rec *val2 = val2_p;
+
+    /* compare the pattern strings, if they match we can use the stored
+     * serialized value to create the pcre2 code for the pattern */
+    return !strcmp(val1->pattern, val2->pattern);
+}
+
+/**
+ * @brief Callback for freeing a pattern record.
+ */
+static void
+ly_ctx_ht_pattern_free_cb(void *val_p)
+{
+    struct ly_pattern_ht_rec *val = val_p;
+
+    if (val->serialized_pattern) {
+        /* free the pcode */
+        pcre2_serialize_free(val->serialized_pattern);
+    }
+}
+
 LY_ERR
 ly_ctx_data_add(const struct ly_ctx *ctx)
 {
@@ -193,6 +222,11 @@ ly_ctx_data_add(const struct ly_ctx *ctx)
     ctx_data->data_dict = malloc(sizeof *ctx_data->data_dict);
     LY_CHECK_ERR_GOTO(!ctx_data->data_dict, rc = LY_EMEM, cleanup);
     lydict_init(ctx_data->data_dict);
+
+    /* pattern hash table */
+    ctx_data->pattern_ht = lyht_new(LYHT_MIN_SIZE, sizeof(struct ly_pattern_ht_rec),
+            ly_ctx_ht_pattern_equal_cb, NULL, 1);
+    LY_CHECK_ERR_GOTO(!ctx_data->pattern_ht, rc = LY_EMEM, cleanup);
 
     /* refcount */
     ctx_data->refcount = 1;
@@ -261,7 +295,121 @@ ly_ctx_data_del(const struct ly_ctx *ctx)
     lyht_free(ctx_data->leafref_links_ht, ly_ctx_ht_leafref_links_rec_free);
     lydict_clean(ctx_data->data_dict);
     free(ctx_data->data_dict);
+    lyht_free(ctx_data->pattern_ht, ly_ctx_ht_pattern_free_cb);
     free(ctx_data);
+}
+
+/**
+ * @brief Serialize a PCRE2 compiled code.
+ *
+ * @param[in] pcode PCRE2 compiled code to serialize.
+ * @param[out] serialized_code Pointer to the serialized code, must be freed by the caller.
+ * @return LY_SUCCESS on success, LY_EINT on serialization error.
+ */
+static LY_ERR
+ly_pcode_serialize(const pcre2_code *pcode, uint8_t **serialized_code)
+{
+    int r;
+    uint8_t *ser_code = NULL;
+    PCRE2_SIZE ser_code_size = 0;
+
+    *serialized_code = NULL;
+
+    r = pcre2_serialize_encode(&pcode, 1, &ser_code, &ser_code_size, NULL);
+    if (r < 0) {
+        PCRE2_UCHAR err_msg[LY_PCRE2_MSG_LIMIT] = {0};
+
+        pcre2_get_error_message(r, err_msg, LY_PCRE2_MSG_LIMIT);
+        LOGERR(NULL, LY_EINT, "PCRE2 compiled code serialization failed (%s).", err_msg);
+        return LY_EINT;
+    }
+
+    *serialized_code = ser_code;
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Deserialize a PCRE2 compiled code from its serialized form.
+ *
+ * This code does not have to be recompiled, it can be used directly.
+ *
+ * @param[in] serialized_code Serialized PCRE2 compiled code.
+ * @param[out] pcode Pointer to the deserialized PCRE2 code, must be freed by the caller.
+ * @return LY_SUCCESS on success, LY_EINT on deserialization error.
+ */
+static LY_ERR
+ly_pcode_deserialize(const uint8_t *serialized_code, pcre2_code **pcode)
+{
+    int r;
+    pcre2_code *pcode_tmp = NULL;
+
+    *pcode = NULL;
+
+    /* deserialize the pcode */
+    r = pcre2_serialize_decode(&pcode_tmp, 1, serialized_code, NULL);
+    if (r < 0) {
+        PCRE2_UCHAR err_msg[LY_PCRE2_MSG_LIMIT] = {0};
+
+        pcre2_get_error_message(r, err_msg, LY_PCRE2_MSG_LIMIT);
+        LOGERR(NULL, LY_EINT, "PCRE2 compiled code deserialization failed (%s).", err_msg);
+        return LY_EINT;
+    }
+
+    *pcode = pcode_tmp;
+    return LY_SUCCESS;
+}
+
+LY_ERR
+ly_ctx_get_or_create_pattern_code(const struct ly_ctx *ctx, const char *pattern, pcre2_code **pcode)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct ly_ctx_data *ctx_data;
+    uint32_t hash;
+    struct ly_pattern_ht_rec rec = {0}, *found_rec = NULL;
+    pcre2_code *pcode_tmp = NULL;
+    uint8_t *serialized_pcode = NULL;
+
+    assert(ctx && pattern);
+
+    ctx_data = ly_ctx_data_get(ctx);
+    LY_CHECK_RET(!ctx_data, LY_EINT);
+
+    /* try to find the record */
+    rec.pattern = pattern;
+    rec.serialized_pattern = NULL;
+    hash = lyht_hash(pattern, strlen(pattern));
+
+    if (!lyht_find(ctx_data->pattern_ht, &rec, hash, (void **)&found_rec)) {
+        /* found it, deserialize the pcode */
+        LY_CHECK_GOTO(ret = ly_pcode_deserialize(found_rec->serialized_pattern, &pcode_tmp), cleanup);
+        if (pcode) {
+            *pcode = pcode_tmp;
+            pcode_tmp = NULL;
+        }
+        goto cleanup;
+    }
+
+    /* record not found, we need to compile the pattern and insert it */
+    LY_CHECK_GOTO(ret = lys_compile_type_pattern_check(ctx, pattern, &pcode_tmp), cleanup);
+
+    /* serialize the pcode */
+    LY_CHECK_GOTO(ret = ly_pcode_serialize(pcode_tmp, &serialized_pcode), cleanup);
+    rec.serialized_pattern = serialized_pcode;
+
+    /* insert the record */
+    LY_CHECK_GOTO(ret = lyht_insert_no_check(ctx_data->pattern_ht, &rec, hash, (void **)&found_rec), cleanup);
+
+    if (pcode) {
+        /* transfer pcode ownership to the caller */
+        *pcode = pcode_tmp;
+        pcode_tmp = NULL;
+    }
+    serialized_pcode = NULL;
+
+cleanup:
+    pcre2_code_free(pcode_tmp);
+    pcre2_serialize_free(serialized_pcode);
+    return ret;
 }
 
 void *
