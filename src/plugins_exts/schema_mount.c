@@ -15,8 +15,6 @@
 
 #define _GNU_SOURCE
 
-#include "schema_mount.h"
-
 #include <assert.h>
 #include <pthread.h>
 #include <stdint.h>
