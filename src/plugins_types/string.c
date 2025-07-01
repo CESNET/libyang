@@ -95,8 +95,15 @@ lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, 
     }
 
     if (!(options & LYPLG_TYPE_STORE_ONLY)) {
-        /* validate value */
-        ret = lyplg_type_validate_string(ctx, type, NULL, NULL, storage, err);
+        /* length restriction of the string */
+        if (type_str->length) {
+            /* value_len is in bytes, but we need number of characters here */
+            ret = lyplg_type_validate_range(LY_TYPE_STRING, type_str->length, ly_utf8len(value, value_len), value, value_len, err);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
+
+        /* pattern restrictions */
+        ret = lyplg_type_validate_patterns(ctx, type_str->patterns, value, value_len, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
 

@@ -226,7 +226,6 @@ static void
 ctxs_patterns(const struct lysc_pattern **patterns, struct ly_ht *ht, int *size)
 {
     uint32_t hash;
-    size_t code_size;
     LY_ARRAY_COUNT_TYPE u;
 
     *size += CTXS_SIZED_ARRAY(patterns);
@@ -238,9 +237,6 @@ ctxs_patterns(const struct lysc_pattern **patterns, struct ly_ht *ht, int *size)
         }
 
         *size += sizeof *patterns[u];
-
-        pcre2_pattern_info(patterns[u]->code, PCRE2_INFO_SIZE, &code_size);
-        *size += CTXP_MEM_SIZE(code_size);
         ctxs_exts(patterns[u]->exts, ht, size);
     }
 }
@@ -1060,7 +1056,6 @@ ctxp_pattern(const struct lysc_pattern *orig_pattern, struct lysc_pattern **patt
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_pattern *p;
-    size_t code_size;
 
     /* may have already been printed */
     p = ly_ctx_compiled_addr_ht_get(addr_ht, orig_pattern, 1);
@@ -1078,12 +1073,6 @@ ctxp_pattern(const struct lysc_pattern *orig_pattern, struct lysc_pattern **patt
     }
 
     p->expr = ly_ctx_compiled_addr_ht_get(addr_ht, orig_pattern->expr, 0);
-
-    /* TODO code->tables - seems to be static, probably in the PCRE2 lib */
-    pcre2_pattern_info(orig_pattern->code, PCRE2_INFO_SIZE, &code_size);
-    p->code = *mem;
-    *mem = (char *)*mem + CTXP_MEM_SIZE(code_size);
-    memcpy(p->code, orig_pattern->code, code_size);
 
     p->dsc = ly_ctx_compiled_addr_ht_get(addr_ht, orig_pattern->dsc, 0);
     p->ref = ly_ctx_compiled_addr_ht_get(addr_ht, orig_pattern->ref, 0);

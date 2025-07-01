@@ -4982,18 +4982,11 @@ xpath_re_match(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_s
     if (set->cur_node) {
         LOG_LOCSET(NULL, set->cur_node);
     }
-    rc = lys_compile_type_pattern_check(set->ctx, args[1]->val.str, &(*pattern)->code);
-    if (set->cur_node) {
-        LOG_LOCBACK(0, 1);
-    }
-    if (rc != LY_SUCCESS) {
-        free(*pattern);
-        LY_ARRAY_FREE(patterns);
-        return rc;
-    }
 
-    rc = lyplg_type_validate_patterns(patterns, args[0]->val.str, strlen(args[0]->val.str), &err);
-    pcre2_code_free((*pattern)->code);
+    /* validate the pattern */
+    (*pattern)->expr = args[1]->val.str;
+    rc = lyplg_type_validate_patterns(set->ctx, patterns, args[0]->val.str, strlen(args[0]->val.str), &err);
+
     free(*pattern);
     LY_ARRAY_FREE(patterns);
     if (rc && (rc != LY_EVALID)) {

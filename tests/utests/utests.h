@@ -313,7 +313,6 @@ struct utest_context {
  */
 #define CHECK_LYSC_PATTERN(NODE, DSC, EAPPTAG, EMSG, EXPR, EXTS, INVERTED, REF) \
     assert_non_null(NODE); \
-    assert_non_null((NODE)->code); \
     CHECK_STRING((NODE)->dsc, DSC); \
     CHECK_STRING((NODE)->eapptag, EAPPTAG); \
     CHECK_STRING((NODE)->emsg, EMSG); \

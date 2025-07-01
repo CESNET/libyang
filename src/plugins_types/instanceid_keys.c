@@ -161,7 +161,7 @@ lyplg_type_store_instanceid_keys(const struct ly_ctx *ctx, const struct lysc_typ
     }
 
     /* pattern restrictions */
-    ret = lyplg_type_validate_patterns(type_str->patterns, value, value_len, err);
+    ret = lyplg_type_validate_patterns(ctx, type_str->patterns, value, value_len, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* parse instance-identifier keys, with optional prefix even though it should be mandatory */
