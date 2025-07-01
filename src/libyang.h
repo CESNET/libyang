@@ -34,7 +34,6 @@ extern "C" {
 #include "parser_schema.h"
 #include "printer_data.h"
 #include "printer_schema.h"
-#include "schema_mount.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
