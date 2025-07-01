@@ -354,6 +354,10 @@ struct ly_ctx_data {
     struct ly_ht *leafref_links_ht; /**< hash table of leafref links between term data nodes */
     struct ly_dict *data_dict;      /**< dictionary for data trees */
 
+    struct ly_ht *pattern_ht;       /**< ht for storing patterns and their serialized pattern codes,
+                                      * these codes can be deserialized into pcre2_code that can then be used directly.
+                                      * A pattern is used both as a key and a value to search for. */
+
     int refcount;                   /**< reference count for the given context */
 };
 
@@ -454,13 +458,24 @@ void ly_ctx_ht_leafref_links_rec_free(void *val_p);
  */
 struct lys_module *ly_ctx_get_module_implemented2(const struct ly_ctx *ctx, const char *name, size_t name_len);
 
+/**
+ * @brief Gets or creates a PCRE2 pattern code in the context's pattern hash table.
+ *
+ * If the pattern is not found, it is compiled, serialized and cached in @p ctx .
+ *
+ * @param[in] ctx Context to get or create the pattern code in.
+ * @param[in] pattern Pattern string to search for or to compile and store.
+ * @param[out] pcode Optional pointer to the pattern code, if not NULL, it will be set to the compiled pattern code.
+ */
+LY_ERR ly_ctx_get_or_create_pattern_code(const struct ly_ctx *ctx, const char *pattern, pcre2_code **pcode);
+
 /******************************************************************************
  * Dictionary
  *****************************************************************************/
 
 /*
  * The following lysdict_*() functions operate on the internal schema dictionary of the given context.
- * They do NOT lock a mutex as opposed to their lydict_*() counterparts, because they do not operate on data.
+ * They do NOT lock a mutex as opposed to the lydict_*() function family, because they do not operate on data.
  * This is because there should be no concurrency when parsing modules into the given context.
  */
 

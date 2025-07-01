@@ -524,17 +524,23 @@ decimal:
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_t str_len, struct ly_err_item **err)
+lyplg_type_validate_patterns(const struct ly_ctx *ctx, struct lysc_pattern **patterns, const char *str, size_t str_len, struct ly_err_item **err)
 {
     LY_ERR r;
     LY_ARRAY_COUNT_TYPE u;
+    pcre2_code *pcode;
 
     LY_CHECK_ARG_RET(NULL, str, err, LY_EINVAL);
 
     *err = NULL;
 
     LY_ARRAY_FOR(patterns, u) {
-        r = ly_pattern_code_match(patterns[u]->code, str, str_len, err);
+        /* get the compiled pattern */
+        LY_CHECK_RET(ly_ctx_get_or_create_pattern_code(ctx, patterns[u]->expr, &pcode));
+
+        /* match the pattern */
+        r = ly_pattern_code_match(pcode, str, str_len, err);
+        pcre2_code_free(pcode);
         LY_CHECK_RET(r && (r != LY_ENOT), r);
 
         if (((r == LY_ENOT) && !patterns[u]->inverted) || ((r == LY_SUCCESS) && patterns[u]->inverted)) {

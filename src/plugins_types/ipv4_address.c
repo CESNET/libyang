@@ -180,7 +180,7 @@ lyplg_type_store_ipv4_address(const struct ly_ctx *ctx, const struct lysc_type *
         }
 
         /* pattern restrictions */
-        ret = lyplg_type_validate_patterns(type_str->patterns, value, value_len, err);
+        ret = lyplg_type_validate_patterns(ctx, type_str->patterns, value, value_len, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
 

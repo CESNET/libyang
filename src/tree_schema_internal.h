@@ -182,6 +182,15 @@ struct lysp_yin_ctx {
 };
 
 /**
+ * @brief Internal pattern hash table record.
+ */
+struct ly_pattern_ht_rec {
+    const char *pattern;            /**< Pattern string, used both as key and for comparison. */
+    uint8_t *serialized_pattern;    /**< Serialized pattern code for this pattern,
+                                         can be deserialized to pcre2_code that can be used directly. */
+};
+
+/**
  * @brief Check that @p c is valid UTF8 code point for YANG string.
  *
  * @param[in] ctx parser context for logging.

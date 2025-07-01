@@ -1386,8 +1386,8 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, const struct lysp_restr *pattern
         *pattern = calloc(1, sizeof **pattern);
         ++(*pattern)->refcount;
 
-        ret = lys_compile_type_pattern_check(ctx->ctx, &patterns_p[u].arg.str[1], &(*pattern)->code);
-        LY_CHECK_RET(ret);
+        /* compile and insert the pattern into the context hash table, if it wasnt already compiled */
+        LY_CHECK_GOTO(ret = ly_ctx_get_or_create_pattern_code(ctx->ctx, &patterns_p[u].arg.str[1], NULL), done);
 
         if (patterns_p[u].arg.str[0] == LYSP_RESTR_PATTERN_NACK) {
             (*pattern)->inverted = 1;
@@ -1399,6 +1399,7 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, const struct lysp_restr *pattern
         DUP_STRING_GOTO(ctx->ctx, patterns_p[u].ref, (*pattern)->ref, ret, done);
         COMPILE_EXTS_GOTO(ctx, patterns_p[u].exts, (*pattern)->exts, (*pattern), ret, done);
     }
+
 done:
     return ret;
 }
