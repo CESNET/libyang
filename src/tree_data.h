@@ -1361,6 +1361,7 @@ LIBYANG_API_DECL LY_ERR lyd_new_list2(struct lyd_node *parent, const struct lys_
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
  * @param[in] key_values Ordered key string values of the new list instance, all must be set.
+ * Use NULL in case of key-less list.
  * @param[in] value_lengths Array of lengths of each @p key_values, may be NULL if @p key_values are 0-terminated strings.
  * @param[in] options Bitmask of options, see @ref newvaloptions.
  * @param[out] node Optional created node.
