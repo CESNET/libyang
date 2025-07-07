@@ -245,10 +245,10 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, c
 
         /* unres resolved */
         lys_unres_glob_erase(&ctx->unres);
-    }
 
-    /* new context state */
-    ly_ctx_new_change(ctx);
+        /* new context state */
+        ly_ctx_new_change(ctx);
+    }
 
 cleanup:
     if (ret) {
@@ -589,6 +589,9 @@ ly_ctx_compile(struct ly_ctx *ctx)
 
     /* (re)compile all the dep sets */
     LY_CHECK_GOTO(ret = lys_compile_depset_all(ctx, &ctx->unres), cleanup);
+
+    /* new context state */
+    ly_ctx_new_change(ctx);
 
 cleanup:
     if (ret) {

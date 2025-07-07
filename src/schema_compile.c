@@ -1799,8 +1799,6 @@ lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
         lysc_module_dfs_full(mod, lyb_cache_node_hash_cb, NULL);
     }
 
-    ly_ctx_new_change(mod->ctx);
-
 cleanup:
     ly_log_location_revert(0, 0, 1, 0);
     lys_compile_unres_mod_erase(&ctx, ret);
