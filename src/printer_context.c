@@ -1782,6 +1782,9 @@ ly_ctx_compiled_print_context(const struct ly_ctx *orig_ctx, struct ly_ctx *ctx,
     ctx->change_count = orig_ctx->change_count;
     ctx->opts = orig_ctx->opts;
 
+    /* ctx hash */
+    ctx->mod_hash = orig_ctx->mod_hash;
+
     /* no dynamic plugin support */
     memset(&ctx->plugins_types, 0, sizeof ctx->plugins_types);
     memset(&ctx->plugins_extensions, 0, sizeof ctx->plugins_extensions);
