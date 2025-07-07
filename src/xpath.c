@@ -8256,6 +8256,7 @@ moveto:
 
             if (set->used) {
                 i = set->used;
+                assert(i);
                 do {
                     --i;
                     if (set->val.scnodes[i].in_ctx > LYXP_SET_SCNODE_ATOM_NODE) {
