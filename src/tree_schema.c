@@ -1594,7 +1594,7 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
         ly_set_erase(&pctx->tpdfs_nodes, NULL);
         ly_set_erase(&pctx->grps_nodes, NULL);
         ly_set_erase(&pctx->ext_inst, NULL);
-        lysp_module_free(&fctx, (struct lysp_module *)submod);
+        lysp_module_free(ctx, (struct lysp_module *)submod);
         submod = NULL;
         goto cleanup;
     } else if (r) {
@@ -1619,7 +1619,7 @@ cleanup:
             ly_set_erase(&pctx->grps_nodes, NULL);
             ly_set_erase(&pctx->ext_inst, NULL);
         }
-        lysp_module_free(&fctx, (struct lysp_module *)submod);
+        lysp_module_free(ctx, (struct lysp_module *)submod);
     } else if (submod) {
         *submodule = submod;
 
@@ -1814,98 +1814,98 @@ lysp_add_internal_ietf_netconf(struct lysp_ctx *pctx, struct lysp_module *mod)
      */
     LY_LIST_NEW_RET(mod->mod->ctx, &mod->data, cont, next, LY_EMEM);
     cont->nodetype = LYS_CONTAINER;
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "rpc-error", 0, &cont->name));
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "presence", 0, &cont->presence));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "rpc-error", 0, &cont->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "presence", 0, &cont->presence));
     cont->flags = LYS_INTERNAL;
 
     LY_LIST_NEW_RET(mod->mod->ctx, &cont->child, leaf, next, LY_EMEM);
     leaf->nodetype = LYS_LEAF;
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "error-type", 0, &leaf->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "error-type", 0, &leaf->name));
     leaf->flags = LYS_INTERNAL;
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enumeration", 0, &leaf->type.name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "enumeration", 0, &leaf->type.name));
     leaf->type.pmod = mod;
     leaf->type.flags = LYS_SET_ENUM;
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "transport", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "transport", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "rpc", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "rpc", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "protocol", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "protocol", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "application", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "application", 0, &enm->name));
 
     LY_LIST_NEW_RET(mod->mod->ctx, &cont->child, leaf, next, LY_EMEM);
     leaf->nodetype = LYS_LEAF;
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "error-tag", 0, &leaf->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "error-tag", 0, &leaf->name));
     leaf->flags = LYS_INTERNAL;
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enumeration", 0, &leaf->type.name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "enumeration", 0, &leaf->type.name));
     leaf->type.pmod = mod;
     leaf->type.flags = LYS_SET_ENUM;
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "in-use", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "in-use", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "invalid-value", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "invalid-value", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "too-big", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "too-big", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "missing-attribute", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "missing-attribute", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "bad-attribute", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "bad-attribute", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "unknown-attribute", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "unknown-attribute", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "missing-element", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "missing-element", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "bad-element", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "bad-element", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "unknown-element", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "unknown-element", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "unknown-namespace", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "unknown-namespace", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "access-denied", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "access-denied", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "lock-denied", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "lock-denied", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "resource-denied", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "resource-denied", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "rollback-failed", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "rollback-failed", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "data-exists", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "data-exists", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "data-missing", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "data-missing", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "operation-not-supported", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "operation-not-supported", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "operation-failed", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "operation-failed", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "partial-operation", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "partial-operation", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "malformed-message", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "malformed-message", 0, &enm->name));
 
     LY_LIST_NEW_RET(mod->mod->ctx, &cont->child, leaf, next, LY_EMEM);
     leaf->nodetype = LYS_LEAF;
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "error-severity", 0, &leaf->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "error-severity", 0, &leaf->name));
     leaf->flags = LYS_INTERNAL;
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enumeration", 0, &leaf->type.name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "enumeration", 0, &leaf->type.name));
     leaf->type.pmod = mod;
     leaf->type.flags = LYS_SET_ENUM;
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "error", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "error", 0, &enm->name));
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "warning", 0, &enm->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "warning", 0, &enm->name));
 
     LY_LIST_NEW_RET(mod->mod->ctx, &cont->child, leaf, next, LY_EMEM);
     leaf->nodetype = LYS_LEAF;
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "error-app-tag", 0, &leaf->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "error-app-tag", 0, &leaf->name));
     leaf->flags = LYS_INTERNAL;
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "string", 0, &leaf->type.name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "string", 0, &leaf->type.name));
     leaf->type.pmod = mod;
 
     LY_LIST_NEW_RET(mod->mod->ctx, &cont->child, leaf, next, LY_EMEM);
     leaf->nodetype = LYS_LEAF;
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "error-path", 0, &leaf->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "error-path", 0, &leaf->name));
     leaf->flags = LYS_INTERNAL;
-    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "yang_:xpath1.0", 0, &leaf->type.name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "yang_:xpath1.0", 0, &leaf->type.name));
     leaf->type.pmod = mod;
 
     /* the rest are opaque nodes, error-message (because of 'xml:lang' attribute) and error-info (because can be any nodes) */
@@ -2221,10 +2221,10 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const st
     LY_CHECK_GOTO(rc = lysp_check_dup_identities(pctx, mod->parsed), cleanup);
 
     /* compile features, extensions, identities, and submodules */
-    LY_CHECK_GOTO(ret = lys_compile_feature_iffeatures(mod->parsed), cleanup);
-    LY_CHECK_GOTO(ret = lys_compile_extensions(mod), cleanup);
-    LY_CHECK_GOTO(ret = lys_compile_identities(mod), cleanup);
-    LY_CHECK_GOTO(ret = lys_compile_submodules(mod), cleanup);
+    LY_CHECK_GOTO(rc = lys_compile_feature_iffeatures(mod->parsed), cleanup);
+    LY_CHECK_GOTO(rc = lys_compile_extensions(mod), cleanup);
+    LY_CHECK_GOTO(rc = lys_compile_identities(mod), cleanup);
+    LY_CHECK_GOTO(rc = lys_compile_submodules(mod), cleanup);
 
 cleanup:
     if (rc && mod && mod->name) {

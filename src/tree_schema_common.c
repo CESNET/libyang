@@ -1151,28 +1151,41 @@ lysp_load_submod_from_clb_or_file(struct lysp_ctx *pctx, const char *name, const
     struct lysp_load_module_data mod_data = {0};
     struct ly_in *in;
 
-                if (ctx->imp_clb(PARSER_CUR_PMOD(pctx)->mod->name, NULL, inc->name,
-                        inc->rev[0] ? inc->rev : NULL, ctx->imp_clb_data,
-                        &format, &submodule_data, &submodule_data_free) == LY_SUCCESS) {
-                    LY_CHECK_RET(ly_in_new_memory(submodule_data, &in));
-                    check_data.name = inc->name;
-                    check_data.revision = inc->rev[0] ? inc->rev : NULL;
-                    check_data.submoduleof = PARSER_CUR_PMOD(pctx)->mod->name;
-                    lys_parse_submodule(ctx, in, format, pctx->main_ctx, lysp_load_module_check, &check_data, new_mods,
-                            &submod);
+    assert(!submod_latest || (submod_latest->latest_revision != 2));
 
-                    /* update inc pointer - parsing another (YANG 1.0) submodule can cause injecting
-                     * submodule's include into main module, where it is missing */
-                    inc = &pmod->includes[u];
+    *submod = NULL;
 
-                    ly_in_free(in, 0);
-                    if (submodule_data_free) {
-                        submodule_data_free((void *)submodule_data, ctx->imp_clb_data);
-                    }
+    if (!ctx->imp_clb) {
+        /* no callback to call */
+        clb_used = 1;
+    } else {
+        clb_used = 0;
+    }
+
+    if (ctx->opts & LY_CTX_DISABLE_SEARCHDIRS) {
+        /* searchdirs disabled */
+        searchdirs_used = 1;
+    } else {
+        searchdirs_used = 0;
+    }
+
+    while (!found && (!clb_used || !searchdirs_used)) {
+        if ((!(ctx->opts & LY_CTX_PREFER_SEARCHDIRS) || searchdirs_used) && !clb_used) {
+            if (!ctx->imp_clb(PARSER_CUR_PMOD(pctx)->mod->name, NULL, name, revision, ctx->imp_clb_data, &format,
+                    &submodule_data, &submodule_data_free)) {
+                /* parse the submodule returned by the callback */
+                LY_CHECK_RET(ly_in_new_memory(submodule_data, &in));
+                mod_data.name = name;
+                mod_data.revision = revision;
+                mod_data.submoduleof = PARSER_CUR_PMOD(pctx)->mod->name;
+                r = lys_parse_submodule(ctx, in, format, pctx->main_ctx, &mod_data, 0, new_mods, submod);
+                ly_in_free(in, 0);
+                if (submodule_data_free) {
+                    submodule_data_free((void *)submodule_data, ctx->imp_clb_data);
                 }
-            }
-            if (!submod && !(ctx->opts & LY_CTX_PREFER_SEARCHDIRS)) {
-                goto search_file;
+                LY_CHECK_RET(r);
+
+                found = 1;
             }
             clb_used = 1;
         } else if (!searchdirs_used) {
