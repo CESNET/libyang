@@ -773,6 +773,7 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
             LOGERR(lybctx->lybctx->ctx, LY_EINT, "Failed to find matching hash for a top-level node from \"%s\".",
                     mod->name);
         } else {
+            assert(sparent);
             LOGERR(lybctx->lybctx->ctx, LY_EINT, "Failed to find matching hash for a child node of \"%s\".",
                     sparent->name);
         }
