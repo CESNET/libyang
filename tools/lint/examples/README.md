@@ -548,7 +548,7 @@ Preparation:
 > clear
 > add ietf-restconf@2017-01-26.yang
 > add example-jukebox.yang
-> data -i -k rc:yang-data:yang-errors ext-data.xml
+> data -t ext -k ietf-restconf:yang-data:yang-errors ext-data.xml
 ```
 
 Output:

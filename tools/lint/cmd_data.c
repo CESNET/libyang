@@ -3,6 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @author Adam Piecek <piecek@cesnet.cz>
+ * @author Juraj Budai <budai@cesnet.cz>
  * @brief 'data' command of the libyang's yanglint tool.
  *
  * Copyright (c) 2015-2023 CESNET, z.s.p.o.
@@ -68,7 +69,9 @@ cmd_data_help_type(void)
             "                        element without <eventTime>).\n"
             "        nc-notif      - Similar to 'notif' but expect and check also the NETCONF\n"
             "                        envelope <notification> with element <eventTime> and its\n"
-            "                        sibling as the actual notification.\n");
+            "                        sibling as the actual notification.\n"
+            "        ext           - Validates extension data based on loaded YANG modules.\n"
+            "                        Need to be used with -k parameter.\n");
 }
 
 static void
@@ -139,7 +142,12 @@ cmd_data_help(void)
             "                existence is also checked in these operational data.\n"
             "  -R FILE, --reply-rpc=FILE\n"
             "                Provide source RPC for parsing of the 'nc-reply' TYPE. The FILE\n"
-            "                is supposed to contain the source 'nc-rpc' operation of the reply.\n");
+            "                is supposed to contain the source 'nc-rpc' operation of the reply.\n"
+            "  -k, --ext-inst <name>\n"
+            "                  Name of extension instance in format:\n"
+            "                  <module-name>:<extension-name>:<argument>\n"
+            "  -i --ext\n"
+            "                  Validates extension data based on loaded YANG modules\n");
     cmd_data_help_format();
     cmd_data_help_in_format();
     printf("  -o OUTFILE, --output=OUTFILE\n"
@@ -166,6 +174,7 @@ cmd_data_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
         {"not-strict",  no_argument,       NULL, 'n'},
         {"type",        required_argument, NULL, 't'},
         {"xpath",       required_argument, NULL, 'x'},
+        {"ext-inst",    required_argument, NULL, 'k'},
         {NULL, 0, NULL, 0}
     };
 
@@ -252,6 +261,12 @@ cmd_data_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
         case 'x': /* --xpath */
             if (ly_set_add(&yo->data_xpath, optarg, 0, NULL)) {
                 YLMSG_E("Storing XPath \"%s\" failed.", optarg);
+                return 1;
+            }
+            break;
+        case 'k': /* --ext-id */
+            if (parse_ext_string(optarg, yo)) {
+                YLMSG_E("Invalid name of extension instance.");
                 return 1;
             }
             break;
@@ -346,6 +361,23 @@ cmd_data_dep(struct yl_opt *yo, int posc)
         }
     }
 
+    if (yo->data_ext && !yo->mod_name) {
+        if (yo->interactive) {
+            YLMSG_E("When using '-i' the '-k' parameter need to be also set.");
+        } else {
+            YLMSG_E("When using '-t ext' the '-k' parameter need to be also set.");
+        }
+        return 1;
+    }
+    if (!yo->data_ext && yo->mod_name) {
+        if (yo->interactive) {
+            YLMSG_E("When using '-k' parameter the '-i' need to be also set.");
+        } else {
+            YLMSG_E("When using '-k' parameter the '-t ext' need to be also set.");
+        }
+        return 1;
+    }
+
     return 0;
 }
 
@@ -414,6 +446,35 @@ evaluate_xpath(const struct lyd_node *tree, const char *xpath)
     }
 
     ly_set_free(set, NULL);
+    return 0;
+}
+
+int
+parse_ext_string(const char *extension_instance, struct yl_opt *yo)
+{
+    const char *start = extension_instance;
+    char *end;
+
+    end = strchr(start, ':');
+    if (!end) {
+        return -1;
+    }
+    yo->mod_name = strndup(start, end - start);
+    start = end + 1;
+
+    end = strchr(start, ':');
+    if (!end) {
+        return -1;
+    }
+    yo->name = strndup(start, end - start);
+    start = end + 1;
+
+    if (*start == '\0') {
+        return -1;
+    }
+
+    yo->argument = strdup(start);
+
     return 0;
 }
 
@@ -672,14 +733,72 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Iterate trough modules to find extension instance
+ *
+ * @param[in] ctx libyang context with schema.
+ * @param[in] yo context for yanglint.
+ *
+ * @return 0 on success.
+ */
+static int
+find_extension(struct ly_ctx *ctx, struct yl_opt *yo)
+{
+    struct lys_module *module;
+    uint32_t idx = 0;
+    LY_ARRAY_COUNT_TYPE i;
+
+    while ((module = ly_ctx_get_module_iter(ctx, &idx))) {
+        if (!strcmp(module->name, yo->mod_name)) {
+            break;
+        }
+    }
+
+    if (!module) {
+        YLMSG_E("Cannot find the \"%s\" name in yang modules.", yo->name);
+        return 1;
+    }
+
+    /* get the extension from module that user is looking for */
+    LY_ARRAY_FOR(module->compiled->exts, i) {
+        if (!strcmp(module->compiled->exts[i].def->name, yo->name) &&
+                !strcmp(module->compiled->exts[i].argument, yo->argument)) {
+            yo->ext = &module->compiled->exts[i];
+            return 0;
+        }
+    }
+    return 1;
+}
+
 int
 cmd_data_process(struct ly_ctx *ctx, struct yl_opt *yo)
 {
-    /* parse, validate and print data */
-    if (process_data(ctx, yo->data_type, yo->data_merge, yo->data_out_format, yo->out, yo->data_parse_options,
-            yo->data_validate_options, yo->data_print_options, &yo->data_operational, &yo->reply_rpc,
-            &yo->data_inputs, &yo->data_xpath)) {
-        return 1;
+    if (yo->data_ext) {
+        struct lyd_node *tree;
+        struct cmdline_file *input_f;
+
+        if (find_extension(ctx, yo)) {
+            YLMSG_E("Extension '%s:%s:%s' not found in module.", yo->mod_name, yo->name, yo->argument);
+            return 1;
+        }
+
+        input_f = (struct cmdline_file *)yo->data_inputs.objs[0];
+
+        if (lyd_parse_ext_data(yo->ext, NULL, input_f->in, input_f->format, 0, 0, &tree)) {
+            YLMSG_E("Parsing of extension data failed.")
+            return 1;
+        }
+
+        lyd_free_all(tree);
+        yo->data_ext = 0;
+
+    } else {
+        /* parse, validate and print data */
+        if (process_data(ctx, yo->data_type, yo->data_merge, yo->data_out_format, yo->out, yo->data_parse_options,
+                yo->data_validate_options, yo->data_print_options, &yo->data_operational, &yo->reply_rpc,
+                &yo->data_inputs, &yo->data_xpath)) {
+            return 1;
+        }
     }
 
     return 0;
