@@ -48,9 +48,10 @@ div.contents {
     background-color: #0068a2;
 }
 
-.navpath li.footer {
-    color: white;
+.footer a {
+    color: #fff;
 }
+
 img.footer {
     height: 20px;
 }
