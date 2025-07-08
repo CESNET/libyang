@@ -18,6 +18,7 @@ Available commands:
   load            Load a new schema from the searchdirs
   print           Print a module
   data            Load, validate and optionally print instance data
+  ext             Validate extension data
   list            List all the loaded modules
   feature         Print all features of module(s) with their state
   searchpath      Print/set the search path(s) for schemas
@@ -534,3 +535,28 @@ $ yanglint -f json -t config -p . -Y sm-context-main.xml -x sm-context-extension
   }
 }
 ```
+
+## Validating extension data
+
+The input data should be parsed and validated strictly according to the schema tree defined by the extension instance.
+
+The tool parses and validates the input file (ext-data.xml) as a standalone extension data tree, not as part of a complete configuration. It does not allow mixing extension data with normal module data.
+
+Preparation:
+
+```
+> clear
+> add ietf-restconf@2017-01-26.yang
+> add example-jukebox.yang
+> data -i -k rc:yang-data:yang-errors ext-data.xml
+```
+
+Output:
+
+```
+libyang[0]: Invalid instance-identifier "/example-jukebox:jukebox/library" value - required instance not found. (data path: /ietf-restconf:errors/error[1]/error-path)
+YANGLINT[E]: Parsing of extension data failed.
+
+```
+This error indicates that the input file refers to data (/example-jukebox:jukebox/library) that do not exist in the extension's schema tree — which violates the rules.
+
