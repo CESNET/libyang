@@ -628,6 +628,10 @@ lyb_print_header(struct lylyb_print_ctx *lybctx)
     byte = LYB_HEADER_HASH_ALG_NUM;
     LY_CHECK_RET(lyb_write(&byte, LYB_HEADER_HASH_ALG_BITS, lybctx));
 
+    /* shrink */
+    byte = (lybctx->shrink ? 1 : 0);
+    LY_CHECK_RET(lyb_write(&byte, LYB_HEADER_SHRINK_FLAG_BITS, lybctx));
+
     /* context hash (is truncated), if not printing empty data */
     if (lybctx->ctx) {
         hash = ly_ctx_get_modules_hash(lybctx->ctx);
@@ -978,8 +982,10 @@ lyb_print_node_header(const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
     /* write any metadata */
     LY_CHECK_RET(lyb_print_metadata(node, lybctx));
 
-    /* write node flags, fixed bits */
-    LY_CHECK_RET(lyb_write(&node->flags, LYB_DATA_NODE_FLAG_BITS, lybctx->print_ctx));
+    if (!lybctx->print_ctx->shrink) {
+        /* write node flags, fixed bits */
+        LY_CHECK_RET(lyb_write(&node->flags, LYB_DATA_NODE_FLAG_BITS, lybctx->print_ctx));
+    }
 
     return LY_SUCCESS;
 }
@@ -1229,6 +1235,11 @@ lyb_print_node(const struct lyd_node **printed_node, struct ly_ht **sibling_ht, 
 {
     const struct lyd_node *node = *printed_node;
 
+    if (lybctx->print_ctx->shrink && !lyd_node_should_print(node, LYD_PRINT_WD_TRIM)) {
+        /* not printing default nodes */
+        return LY_SUCCESS;
+    }
+
     /* write node type */
     LY_CHECK_RET(lyb_print_lyb_type(node, lybctx->print_ctx));
 
@@ -1319,6 +1330,10 @@ lyb_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options
     LY_CHECK_ERR_GOTO(!lybctx->print_ctx, LOGMEM(ctx); rc = LY_EMEM, cleanup);
 
     lybctx->print_options = options;
+    if (options & LYD_PRINT_SHRINK) {
+        lybctx->print_ctx->shrink = 1;
+    }
+
     if (root) {
         lybctx->print_ctx->ctx = ctx;
         assert(ctx->mod_hash);

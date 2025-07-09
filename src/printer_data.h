@@ -45,7 +45,16 @@ struct ly_out;
  *   The alternative data format available in RESTCONF protocol. Specification of JSON encoding of data modeled by YANG
  *   can be found in [RFC 7951](https://tools.ietf.org/html/rfc7951).
  *
- * By default, both formats are printed with indentation (formatting), which can be avoided by ::LYD_PRINT_SHRINK
+ * - LYB
+ *
+ *   Proprietary binary format that is focused on efficiency. Should always be used for best performance except for
+ *   cases when the YANG context used for printing may differ from the one used for parsing, such a scenario will fail.
+ *   Also, this format ignores most printing flags except for ::LYD_PRINT_WITH_SIBLINGS and ::LYD_PRINT_SHRINK
+ *   (functionality differs from the text formats). In addition to storing the data, this format also stores all the
+ *   default values and data node flags meaning the loaded data can be used directly without any validation (unless
+ *   ::LYD_PRINT_SHRINK is used).
+ *
+ * By default, both text formats are printed with indentation (formatting), which can be avoided by ::LYD_PRINT_SHRINK
  * [printer option](@ref dataprinterflags)). Other options adjust e.g. [with-defaults mode](@ref howtoDataWD).
  *
  * Besides the legacy functions from libyang 1.x (::lyd_print_clb(), ::lyd_print_fd(), ::lyd_print_file(), ::lyd_print_mem()
@@ -77,7 +86,10 @@ struct ly_out;
  */
 #define LYD_PRINT_WITHSIBLINGS  0x01             /**< Flag for printing also the (following) sibling nodes of the data node.
                                                       The flag is not allowed for ::lyd_print_all() and ::lyd_print_tree(). */
-#define LYD_PRINT_SHRINK        LY_PRINT_SHRINK  /**< Flag for output without indentation and formatting new lines. */
+#define LYD_PRINT_SHRINK        LY_PRINT_SHRINK  /**< Flag for output without indentation and formatting new lines for
+                                                      text formats. For the LYB format, this causes the printed data to
+                                                      be shrinked to include only the necessary data making them smaller
+                                                      but requiring validation. */
 #define LYD_PRINT_KEEPEMPTYCONT 0x04             /**< Preserve empty non-presence containers */
 #define LYD_PRINT_WD_MASK       0xF0             /**< Mask for with-defaults modes */
 #define LYD_PRINT_WD_EXPLICIT   0x00             /**< Explicit with-defaults mode. Only the data explicitly being present in

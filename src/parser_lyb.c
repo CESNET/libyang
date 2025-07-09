@@ -958,8 +958,12 @@ lyb_parse_node_header(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
     /* create and read metadata */
     LY_CHECK_RET(lyb_parse_metadata(lybctx, sparent, meta));
 
-    /* read flags, fixed bits */
-    lyb_read(flags, LYB_DATA_NODE_FLAG_BITS, lybctx->parse_ctx);
+    if (!lybctx->parse_ctx->shrink) {
+        /* read flags, fixed bits */
+        lyb_read(flags, LYB_DATA_NODE_FLAG_BITS, lybctx->parse_ctx);
+    } else {
+        *flags = LYD_NEW;
+    }
 
     return LY_SUCCESS;
 }
@@ -1522,6 +1526,13 @@ lyb_parse_header(struct lylyb_parse_ctx *lybctx)
         LOGERR(lybctx->ctx, LY_EINVAL, "Different LYB format hash algorithm \"0x%x\" used, expected \"0x%x\".",
                 byte, LYB_HEADER_HASH_ALG_NUM);
         return LY_EINVAL;
+    }
+
+    /* shrink */
+    byte = 0;
+    lyb_read(&byte, LYB_HEADER_SHRINK_FLAG_BITS, lybctx);
+    if (byte) {
+        lybctx->shrink = 1;
     }
 
     /* context hash */
