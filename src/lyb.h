@@ -96,6 +96,7 @@ enum lylyb_node_type {
  */
 struct lylyb_print_ctx {
     const struct ly_ctx *ctx;
+    ly_bool shrink;
 
     struct lyd_lyb_sib_ht {
         struct lysc_node *first_sibling;
@@ -113,6 +114,7 @@ struct lylyb_print_ctx {
  */
 struct lylyb_parse_ctx {
     const struct ly_ctx *ctx;
+    ly_bool shrink;
 
     uint64_t line;              /**< current line */
     ly_bool empty_hash;         /**< mark empty context hash */
@@ -137,6 +139,9 @@ struct lylyb_parse_ctx {
 
 /**< LYB hash algorithm reserved bit size */
 #define LYB_HEADER_HASH_ALG_BITS 1
+
+/**< LYB shrinked flag reserved bit size */
+#define LYB_HEADER_SHRINK_FLAG_BITS 1
 
 /**< context hash reserved bit size (full hash is 32 b) */
 #define LYB_HEADER_CTX_HASH_BITS 8
