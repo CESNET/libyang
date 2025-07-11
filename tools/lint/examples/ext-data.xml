@@ -2,9 +2,7 @@
   <error>
     <error-type>protocol</error-type>
     <error-tag>data-exists</error-tag>
-    <error-path
-      xmlns:rc="urn:ietf:params:xml:ns:yang:ietf-restconf"
-      xmlns:jbox="http://example.com/ns/example-jukebox">/jbox:jukebox/jbox:library</error-path>
+    <error-path xmlns:jbox="http://example.com/ns/example-jukebox">/jbox:jukebox/jbox:library</error-path>
     <error-message>Data already exists; cannot create new resource</error-message>
   </error>
 </errors>

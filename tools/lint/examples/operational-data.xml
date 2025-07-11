@@ -1,0 +1,18 @@
+<jbox:jukebox xmlns:jbox="http://example.com/ns/example-jukebox">
+  <jbox:library>
+    <jbox:artist>
+      <jbox:name>The Beatles</jbox:name>
+      <jbox:album>
+        <jbox:name>Abbey Road</jbox:name>
+        <jbox:genre>jbox:rock</jbox:genre>
+        <jbox:year>1969</jbox:year>
+        <jbox:song>
+          <jbox:name>Come Together</jbox:name>
+          <jbox:location>/music/beatles/cometogether.mp3</jbox:location>
+          <jbox:format>mp3</jbox:format>
+          <jbox:length>259</jbox:length>
+        </jbox:song>
+      </jbox:album>
+    </jbox:artist>
+  </jbox:library>
+</jbox:jukebox>
