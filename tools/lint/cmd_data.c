@@ -322,7 +322,7 @@ cmd_data_dep(struct yl_opt *yo, int posc)
     }
 
     if (yo->data_operational.path && (!yo->data_type && !yo->data_ext)) {
-        YLMSG_W("Operational datastore takes effect only with RPCs/Actions/Replies/Notification/extensions input data types.");
+        YLMSG_W("Operational datastore takes effect only with RPCs/Actions/Replies/Notification/Extensions input data types.");
         yo->data_operational.path = NULL;
     }
 
@@ -536,7 +536,6 @@ cleanup:
  *
  * @param[in] ctx libyang context with schema.
  * @param[in] yo context for yanglint.
- *
  * @return 0 on success.
  */
 static int
@@ -568,13 +567,26 @@ find_extension(struct ly_ctx *ctx, struct yl_opt *yo)
     return 1;
 }
 
+/**
+ * @brief Parses input data based on its type and returns the corresponding data tree.
+ * @param[in] ctx libyang context with schema.
+ * @param[in] type The type of data in the input files.
+ * @param[in] input_f Data input file.
+ * @param[in] parse_options Parser options.
+ * @param[in] validate_options Validation options.
+ * @param[out] tree Pointer to the top-level data tree parsed from the input.
+ * @param[out] op Pointer to the specific operation node.
+ * @param[in] reply_rpc Source RPC operation file information for parsing NETCONF rpc-reply.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 parse_input_by_type(struct ly_ctx *ctx, enum lyd_type type, struct cmdline_file *input_f,
-        uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree, struct lyd_node **op,
-        struct lyd_node **envp, struct cmdline_file *reply_rpc)
+        uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree,
+        struct lyd_node **op, struct cmdline_file *reply_rpc)
 {
 
     LY_ERR ret = LY_SUCCESS;
+    struct lyd_node *envp = NULL;
 
     switch (type) {
     case LYD_TYPE_DATA_YANG:
@@ -587,7 +599,7 @@ parse_input_by_type(struct ly_ctx *ctx, enum lyd_type type, struct cmdline_file 
         break;
     case LYD_TYPE_RPC_NETCONF:
     case LYD_TYPE_NOTIF_NETCONF:
-        ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, type, envp, op);
+        ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, type, &envp, op);
 
         /* adjust pointers */
         for (*tree = *op; lyd_parent(*tree); *tree = lyd_parent(*tree)) {}
@@ -595,10 +607,10 @@ parse_input_by_type(struct ly_ctx *ctx, enum lyd_type type, struct cmdline_file 
     case LYD_TYPE_REPLY_NETCONF:
         /* parse source RPC operation */
         assert(reply_rpc && reply_rpc->in);
-        ret = lyd_parse_op(ctx, NULL, reply_rpc->in, reply_rpc->format, LYD_TYPE_RPC_NETCONF, envp, op);
+        ret = lyd_parse_op(ctx, NULL, reply_rpc->in, reply_rpc->format, LYD_TYPE_RPC_NETCONF, &envp, op);
         if (ret) {
             YLMSG_E("Failed to parse source NETCONF RPC operation file \"%s\".", reply_rpc->path);
-            return ret;
+            goto cleanup;
         }
 
         /* adjust pointers */
@@ -608,38 +620,59 @@ parse_input_by_type(struct ly_ctx *ctx, enum lyd_type type, struct cmdline_file 
         lyd_free_siblings(lyd_child(*op));
 
         /* we do not care */
-        lyd_free_all(*envp);
-        *envp = NULL;
+        lyd_free_all(envp);
+        envp = NULL;
 
-        ret = lyd_parse_op(ctx, *op, input_f->in, input_f->format, type, envp, NULL);
+        ret = lyd_parse_op(ctx, *op, input_f->in, input_f->format, type, &envp, NULL);
         break;
     default:
         YLMSG_E("Internal error (%s:%d).", __FILE__, __LINE__);
-        return ret;
+        goto cleanup;
     }
 
+    cleanup:
+    lyd_free_all(envp);
+    envp = NULL;
     return ret;
 }
 
+/**
+ * @brief Parses and validates data for a specific YANG extension instance.
+ *
+ * @param[in] ctx libyang context with schema.
+ * @param[in] yo context for yanglint.
+ * @param[in] input_f Data input file.
+ * @param[in] oper_tree operational data tree.
+ * @return LY_ERR value.
+ */
 static LY_ERR
-parse_extension_instance(struct ly_ctx *ctx, struct yl_opt *yo, struct cmdline_file *input_f, struct lyd_node **tree, struct lyd_node **oper_tree)
+parse_extension_instance(struct ly_ctx *ctx, struct yl_opt *yo, struct cmdline_file *input_f, struct lyd_node *oper_tree)
 {
 
     LY_ERR ret = LY_SUCCESS;
+    struct lyd_node *tree;
 
     if (find_extension(ctx, yo)) {
         YLMSG_E("Extension '%s:%s:%s' not found in module.", yo->mod_name, yo->name, yo->argument);
-        return 1;
+        return LY_ENOTFOUND;
     }
 
-    // lyd_insert_sibling
-    if (lyd_parse_ext_data(yo->ext, NULL, input_f->in, input_f->format, LYD_PARSE_ONLY, 0, tree)) {
+    if ((ret = lyd_parse_ext_data(yo->ext, NULL, input_f->in, input_f->format, LYD_PARSE_ONLY, 0, &tree))) {
         YLMSG_E("Parsing of extension data failed.")
-        return 1;
+        return ret;
     }
+    if (oper_tree) {
+        lyd_insert_sibling(tree, oper_tree, &tree);
+    }
+
+    ret = lyd_validate_all(&tree, ctx, yo->data_validate_options, NULL);
 
     if (yo->data_out_format) {
-        lyd_print_all(yo->out, *tree, yo->data_out_format, yo->data_print_options);
+        lyd_print_all(yo->out, tree, yo->data_out_format, yo->data_print_options);
+    }
+
+    if (!yo->data_operational.in) {
+        lyd_free_all(tree);
     }
 
     yo->data_ext = 0;
@@ -650,7 +683,7 @@ int
 cmd_data_process(struct ly_ctx *ctx, struct yl_opt *yo)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lyd_node *tree = NULL, *op = NULL, *envp = NULL, *merged_tree = NULL, *oper_tree = NULL;
+    struct lyd_node *tree = NULL, *op = NULL, *merged_tree = NULL, *oper_tree = NULL;
     const char *xpath;
     struct ly_set *set = NULL;
 
@@ -666,10 +699,10 @@ cmd_data_process(struct ly_ctx *ctx, struct yl_opt *yo)
     for (uint32_t u = 0; u < yo->data_inputs.count; ++u) {
         struct cmdline_file *input_f = (struct cmdline_file *)yo->data_inputs.objs[u];
 
-        if (yo->data_ext && strcmp(input_f->path, yo->data_operational.path)) {
-            ret = parse_extension_instance(ctx, yo, input_f, &tree, &oper_tree);
+        if (yo->data_ext) {
+            ret = parse_extension_instance(ctx, yo, input_f, oper_tree);
         } else {
-            ret = parse_input_by_type(ctx, yo->data_type, input_f, yo->data_parse_options, yo->data_validate_options, &tree, &op, &envp, &yo->reply_rpc);
+            ret = parse_input_by_type(ctx, yo->data_type, input_f, yo->data_parse_options, yo->data_validate_options, &tree, &op, &yo->reply_rpc);
         }
 
         if (ret) {
@@ -748,8 +781,6 @@ cmd_data_process(struct ly_ctx *ctx, struct yl_opt *yo)
         /* next iter */
         lyd_free_all(tree);
         tree = NULL;
-        lyd_free_all(envp);
-        envp = NULL;
     }
 
     if (yo->data_merge) {
@@ -782,7 +813,6 @@ cmd_data_process(struct ly_ctx *ctx, struct yl_opt *yo)
 
 cleanup:
     lyd_free_all(tree);
-    lyd_free_all(envp);
     lyd_free_all(merged_tree);
     lyd_free_all(oper_tree);
     ly_set_free(set, NULL);
