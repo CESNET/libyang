@@ -263,7 +263,7 @@ cmd_data_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
                 return 1;
             }
             break;
-        case 'k': /* --ext-id */
+        case 'k': /* --ext-inst */
             if (parse_ext_string(optarg, yo)) {
                 YLMSG_E("Invalid name of extension instance.");
                 return 1;
@@ -642,37 +642,37 @@ parse_input_by_type(struct ly_ctx *ctx, enum lyd_type type, struct cmdline_file 
  * @param[in] ctx libyang context with schema.
  * @param[in] yo context for yanglint.
  * @param[in] input_f Data input file.
+ * @param[out] tree Extension data tree.
  * @param[in] oper_tree operational data tree.
  * @return LY_ERR value.
  */
 static LY_ERR
-parse_extension_instance(struct ly_ctx *ctx, struct yl_opt *yo, struct cmdline_file *input_f, struct lyd_node *oper_tree)
+parse_extension_instance(struct ly_ctx *ctx, struct yl_opt *yo, struct cmdline_file *input_f, struct lyd_node **tree, struct lyd_node *oper_tree)
 {
 
     LY_ERR ret = LY_SUCCESS;
-    struct lyd_node *tree;
+    struct lyd_node *tree_copy;
 
     if (find_extension(ctx, yo)) {
         YLMSG_E("Extension '%s:%s:%s' not found in module.", yo->mod_name, yo->name, yo->argument);
         return LY_ENOTFOUND;
     }
 
-    if ((ret = lyd_parse_ext_data(yo->ext, NULL, input_f->in, input_f->format, LYD_PARSE_ONLY, 0, &tree))) {
+    if ((ret = lyd_parse_ext_data(yo->ext, NULL, input_f->in, input_f->format, LYD_PARSE_ONLY, 0, tree))) {
         YLMSG_E("Parsing of extension data failed.")
         return ret;
     }
+
+    lyd_dup_siblings(*tree, NULL, LYD_DUP_RECURSIVE, &tree_copy);
+
     if (oper_tree) {
-        lyd_insert_sibling(tree, oper_tree, &tree);
+        lyd_insert_sibling(tree_copy, oper_tree, &tree_copy);
     }
 
-    ret = lyd_validate_all(&tree, ctx, yo->data_validate_options, NULL);
-
-    if (yo->data_out_format) {
-        lyd_print_all(yo->out, tree, yo->data_out_format, yo->data_print_options);
-    }
+    ret = lyd_validate_all(&tree_copy, ctx, yo->data_validate_options, NULL);
 
     if (!yo->data_operational.in) {
-        lyd_free_all(tree);
+        lyd_free_all(tree_copy);
     }
 
     yo->data_ext = 0;
@@ -700,7 +700,7 @@ cmd_data_process(struct ly_ctx *ctx, struct yl_opt *yo)
         struct cmdline_file *input_f = (struct cmdline_file *)yo->data_inputs.objs[u];
 
         if (yo->data_ext) {
-            ret = parse_extension_instance(ctx, yo, input_f, oper_tree);
+            ret = parse_extension_instance(ctx, yo, input_f, &tree, oper_tree);
         } else {
             ret = parse_input_by_type(ctx, yo->data_type, input_f, yo->data_parse_options, yo->data_validate_options, &tree, &op, &yo->reply_rpc);
         }

@@ -694,7 +694,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
                 return -1;
             }
             break;
-        case 'k':   /* --ext-id */
+        case 'k':   /* --ext-inst */
             if (parse_ext_string(optarg, yo)) {
                 YLMSG_E("Invalid name of extension instance.");
                 return -1;
