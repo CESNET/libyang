@@ -382,6 +382,15 @@ int cmd_debug_dep(struct yl_opt *yo, int posc);
 int cmd_debug_store(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv);
 
 /**
+ * @brief Store the values: mod_name, name, argument of extension.
+ *
+ * @param[in] extension_id String in format "<module-name>:<extension-name>:<argument>".
+ * @param[in,out] yo Options for yanglint.
+ * @return 0 on success.
+ */
+int parse_ext_string(const char *extension_id, struct yl_opt *yo);
+
+/**
  * @brief Set debug logging.
  *
  * @param[in,out] ctx context for libyang.

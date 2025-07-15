@@ -112,9 +112,16 @@ struct yl_opt {
      */
     /* various options based on --type option */
     enum lyd_type data_type;
+    ly_bool data_ext;
     uint32_t data_parse_options;
     uint32_t data_validate_options;
     uint32_t data_print_options;
+
+    /* unique identifier of extension instance*/
+    char *mod_name;
+    char *name;
+    char *argument;
+    struct lysc_ext_instance *ext;
 
     /* flag for --merge option */
     uint8_t data_merge;

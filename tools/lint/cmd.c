@@ -70,7 +70,7 @@ COMMAND commands[] = {
     },
     {
         "data", cmd_data_opt, cmd_data_dep, cmd_data_store, cmd_data_process, cmd_data_help, NULL,
-        "Load, validate and optionally print instance data", "d:ef:F:hmo:O:R:r:nt:x:"
+        "Load, validate and optionally print instance data", "d:ef:F:hmo:O:R:r:nt:x:k:"
     },
     {
         "list", cmd_list_opt, cmd_list_dep, cmd_list_exec, NULL, cmd_list_help, NULL,

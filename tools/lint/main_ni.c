@@ -154,7 +154,9 @@ help(int shortout)
             "        notif         - Notification instance of a YANG notification.\n"
             "        nc-notif      - Similar to 'notif' but expect and check also the NETCONF\n"
             "                        envelope <notification> with element <eventTime> and its\n"
-            "                        sibling as the actual notification.\n\n");
+            "                        sibling as the actual notification.\n"
+            "        ext           - Validates extension data based on loaded YANG modules.\n"
+            "                        Need to be used with -k parameter.\n\n");
 
     printf("  -d MODE, --default=MODE\n"
             "                Print data with default values, according to the MODE\n"
@@ -214,6 +216,10 @@ help(int shortout)
 
     printf("  -J, --json-null\n"
             "                Allow usage of JSON empty values ('null') within input data\n\n");
+
+    printf("  -k, --ext-inst\n"
+            "                Name of extension instance in format: <module-name>:<extension-name>:<argument>.\n"
+            "                Need to be used with -t ext parameter.\n\n");
 
     printf("  -G GROUPS, --debug=GROUPS\n"
 #ifndef NDEBUG
@@ -499,7 +505,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
     yo->line_length = 0;
 
     opterr = 0;
-    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neE:t:d:lL:o:O:R:myY:XJx:G:", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neE:t:d:lL:o:O:R:myY:XJx:G:k:", options, &opt_index)) != -1) {
         switch (opt) {
         case 'h': /* --help */
             help(0);
@@ -688,7 +694,12 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
                 return -1;
             }
             break;
-
+        case 'k':   /* --ext-inst */
+            if (parse_ext_string(optarg, yo)) {
+                YLMSG_E("Invalid name of extension instance.");
+                return -1;
+            }
+            break;
         default:
             YLMSG_E("Invalid option or missing argument: -%c.", optopt);
             return -1;

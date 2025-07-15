@@ -3,6 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @author Adam Piecek <piecek@cesnet.cz>
+ * @author Juraj Budai <budai@cesnet.cz>
  * @brief 'data' command of the libyang's yanglint tool.
  *
  * Copyright (c) 2015-2023 CESNET, z.s.p.o.
@@ -29,6 +30,7 @@
 #include "libyang.h"
 
 #include "common.h"
+#include "compat.h"
 #include "yl_opt.h"
 
 static void
@@ -68,7 +70,9 @@ cmd_data_help_type(void)
             "                        element without <eventTime>).\n"
             "        nc-notif      - Similar to 'notif' but expect and check also the NETCONF\n"
             "                        envelope <notification> with element <eventTime> and its\n"
-            "                        sibling as the actual notification.\n");
+            "                        sibling as the actual notification.\n"
+            "        ext           - Validates extension data based on loaded YANG modules.\n"
+            "                        Need to be used with -k parameter.\n");
 }
 
 static void
@@ -139,7 +143,10 @@ cmd_data_help(void)
             "                existence is also checked in these operational data.\n"
             "  -R FILE, --reply-rpc=FILE\n"
             "                Provide source RPC for parsing of the 'nc-reply' TYPE. The FILE\n"
-            "                is supposed to contain the source 'nc-rpc' operation of the reply.\n");
+            "                is supposed to contain the source 'nc-rpc' operation of the reply.\n"
+            "  -k, --ext-inst <name>\n"
+            "                Name of extension instance in format:\n"
+            "                <module-name>:<extension-name>:<argument>\n");
     cmd_data_help_format();
     cmd_data_help_in_format();
     printf("  -o OUTFILE, --output=OUTFILE\n"
@@ -166,6 +173,7 @@ cmd_data_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
         {"not-strict",  no_argument,       NULL, 'n'},
         {"type",        required_argument, NULL, 't'},
         {"xpath",       required_argument, NULL, 'x'},
+        {"ext-inst",    required_argument, NULL, 'k'},
         {NULL, 0, NULL, 0}
     };
 
@@ -255,6 +263,12 @@ cmd_data_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
                 return 1;
             }
             break;
+        case 'k': /* --ext-inst */
+            if (parse_ext_string(optarg, yo)) {
+                YLMSG_E("Invalid name of extension instance.");
+                return 1;
+            }
+            break;
 
         case 'h': /* --help */
             cmd_data_help();
@@ -307,8 +321,8 @@ cmd_data_dep(struct yl_opt *yo, int posc)
         return 1;
     }
 
-    if (yo->data_operational.path && !yo->data_type) {
-        YLMSG_W("Operational datastore takes effect only with RPCs/Actions/Replies/Notification input data types.");
+    if (yo->data_operational.path && (!yo->data_type && !yo->data_ext)) {
+        YLMSG_W("Operational datastore takes effect only with RPCs/Actions/Replies/Notification/Extensions input data types.");
         yo->data_operational.path = NULL;
     }
 
@@ -344,6 +358,23 @@ cmd_data_dep(struct yl_opt *yo, int posc)
         if (get_input(yo->reply_rpc.path, NULL, &yo->reply_rpc.format, &yo->reply_rpc.in)) {
             return -1;
         }
+    }
+
+    if (yo->data_ext && !yo->mod_name) {
+        if (yo->interactive) {
+            YLMSG_E("When using '-i' the '-k' parameter need to be also set.");
+        } else {
+            YLMSG_E("When using '-t ext' the '-k' parameter need to be also set.");
+        }
+        return 1;
+    }
+    if (!yo->data_ext && yo->mod_name) {
+        if (yo->interactive) {
+            YLMSG_E("When using '-k' parameter the '-i' need to be also set.");
+        } else {
+            YLMSG_E("When using '-k' parameter the '-t ext' need to be also set.");
+        }
+        return 1;
     }
 
     return 0;
@@ -417,6 +448,35 @@ evaluate_xpath(const struct lyd_node *tree, const char *xpath)
     return 0;
 }
 
+int
+parse_ext_string(const char *extension_instance, struct yl_opt *yo)
+{
+    const char *start = extension_instance;
+    char *end;
+
+    end = strchr(start, ':');
+    if (!end) {
+        return -1;
+    }
+    yo->mod_name = strndup(start, end - start);
+    start = end + 1;
+
+    end = strchr(start, ':');
+    if (!end) {
+        return -1;
+    }
+    yo->name = strndup(start, end - start);
+    start = end + 1;
+
+    if (*start == '\0') {
+        return -1;
+    }
+
+    yo->argument = strdup(start);
+
+    return 0;
+}
+
 /**
  * @brief Checking that a parent data node exists in the datastore for the nested-notification and action.
  *
@@ -472,87 +532,183 @@ cleanup:
 }
 
 /**
- * @brief Process the input data files - parse, validate and print according to provided options.
+ * @brief Iterate trough modules to find extension instance
  *
  * @param[in] ctx libyang context with schema.
+ * @param[in] yo context for yanglint.
+ * @return 0 on success.
+ */
+static int
+find_extension(struct ly_ctx *ctx, struct yl_opt *yo)
+{
+    struct lys_module *module;
+    uint32_t idx = 0;
+    LY_ARRAY_COUNT_TYPE i;
+
+    while ((module = ly_ctx_get_module_iter(ctx, &idx))) {
+        if (!strcmp(module->name, yo->mod_name)) {
+            break;
+        }
+    }
+
+    if (!module) {
+        YLMSG_E("Cannot find the \"%s\" name in yang modules.", yo->name);
+        return 1;
+    }
+
+    /* get the extension from module that user is looking for */
+    LY_ARRAY_FOR(module->compiled->exts, i) {
+        if (!strcmp(module->compiled->exts[i].def->name, yo->name) &&
+                !strcmp(module->compiled->exts[i].argument, yo->argument)) {
+            yo->ext = &module->compiled->exts[i];
+            return 0;
+        }
+    }
+    return 1;
+}
+
+/**
+ * @brief Parses input data based on its type and returns the corresponding data tree.
+ * @param[in] ctx libyang context with schema.
  * @param[in] type The type of data in the input files.
- * @param[in] merge Flag if the data should be merged before validation.
- * @param[in] out_format Data format for printing.
- * @param[in] out The output handler for printing.
+ * @param[in] input_f Data input file.
  * @param[in] parse_options Parser options.
  * @param[in] validate_options Validation options.
- * @param[in] print_options Printer options.
- * @param[in] operational Optional operational datastore file information for the case of an extended validation of
- * operation(s).
+ * @param[out] tree Pointer to the top-level data tree parsed from the input.
+ * @param[out] op Pointer to the specific operation node.
  * @param[in] reply_rpc Source RPC operation file information for parsing NETCONF rpc-reply.
- * @param[in] inputs Set of file informations of input data files.
- * @param[in] xpaths The set of XPaths to be evaluated on the processed data tree, basic information about the resulting set
- * is printed. Alternative to data printing.
  * @return LY_ERR value.
  */
 static LY_ERR
-process_data(struct ly_ctx *ctx, enum lyd_type type, uint8_t merge, LYD_FORMAT out_format,
-        struct ly_out *out, uint32_t parse_options, uint32_t validate_options, uint32_t print_options,
-        struct cmdline_file *operational, struct cmdline_file *reply_rpc, struct ly_set *inputs,
-        struct ly_set *xpaths)
+parse_input_by_type(struct ly_ctx *ctx, enum lyd_type type, struct cmdline_file *input_f,
+        uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree,
+        struct lyd_node **op, struct cmdline_file *reply_rpc)
+{
+
+    LY_ERR ret = LY_SUCCESS;
+    struct lyd_node *envp = NULL;
+
+    switch (type) {
+    case LYD_TYPE_DATA_YANG:
+        ret = lyd_parse_data(ctx, NULL, input_f->in, input_f->format, parse_options, validate_options, tree);
+        break;
+    case LYD_TYPE_RPC_YANG:
+    case LYD_TYPE_REPLY_YANG:
+    case LYD_TYPE_NOTIF_YANG:
+        ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, type, tree, op);
+        break;
+    case LYD_TYPE_RPC_NETCONF:
+    case LYD_TYPE_NOTIF_NETCONF:
+        ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, type, &envp, op);
+
+        /* adjust pointers */
+        for (*tree = *op; lyd_parent(*tree); *tree = lyd_parent(*tree)) {}
+        break;
+    case LYD_TYPE_REPLY_NETCONF:
+        /* parse source RPC operation */
+        assert(reply_rpc && reply_rpc->in);
+        ret = lyd_parse_op(ctx, NULL, reply_rpc->in, reply_rpc->format, LYD_TYPE_RPC_NETCONF, &envp, op);
+        if (ret) {
+            YLMSG_E("Failed to parse source NETCONF RPC operation file \"%s\".", reply_rpc->path);
+            goto cleanup;
+        }
+
+        /* adjust pointers */
+        for (*tree = *op; lyd_parent(*tree); *tree = lyd_parent(*tree)) {}
+
+        /* free input */
+        lyd_free_siblings(lyd_child(*op));
+
+        /* we do not care */
+        lyd_free_all(envp);
+        envp = NULL;
+
+        ret = lyd_parse_op(ctx, *op, input_f->in, input_f->format, type, &envp, NULL);
+        break;
+    default:
+        YLMSG_E("Internal error (%s:%d).", __FILE__, __LINE__);
+        goto cleanup;
+    }
+
+    cleanup:
+    lyd_free_all(envp);
+    envp = NULL;
+    return ret;
+}
+
+/**
+ * @brief Parses and validates data for a specific YANG extension instance.
+ *
+ * @param[in] ctx libyang context with schema.
+ * @param[in] yo context for yanglint.
+ * @param[in] input_f Data input file.
+ * @param[out] tree Extension data tree.
+ * @param[in] oper_tree operational data tree.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+parse_extension_instance(struct ly_ctx *ctx, struct yl_opt *yo, struct cmdline_file *input_f, struct lyd_node **tree, struct lyd_node *oper_tree)
+{
+
+    LY_ERR ret = LY_SUCCESS;
+
+    if (find_extension(ctx, yo)) {
+        YLMSG_E("Extension '%s:%s:%s' not found in module.", yo->mod_name, yo->name, yo->argument);
+        return LY_ENOTFOUND;
+    }
+
+    if ((ret = lyd_parse_ext_data(yo->ext, NULL, input_f->in, input_f->format, LYD_PARSE_ONLY, 0, tree))) {
+        YLMSG_E("Parsing of extension data failed.")
+        return ret;
+    }
+
+    if (!(*tree)) {
+        YLMSG_E("Nothing to validate in the extension input data.");
+        return LY_EDENIED;
+    }
+
+    if ((*tree)->next) {
+        YLMSG_E("Yanglint does not support more than one top-level node in extension data.");
+        return LY_EDENIED;
+    }
+
+    /* Operational data is present */
+    if (oper_tree) {
+        lyd_insert_sibling(*tree, oper_tree, &oper_tree);
+        ret = lyd_validate_all(tree, ctx, yo->data_validate_options, NULL);
+        lyd_unlink_tree(*tree);
+    } else {
+        ret = lyd_validate_all(tree, ctx, yo->data_validate_options, NULL);
+    }
+
+    yo->data_ext = 0;
+    return ret;
+}
+
+int
+cmd_data_process(struct ly_ctx *ctx, struct yl_opt *yo)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lyd_node *tree = NULL, *op = NULL, *envp = NULL, *merged_tree = NULL, *oper_tree = NULL;
+    struct lyd_node *tree = NULL, *op = NULL, *merged_tree = NULL, *oper_tree = NULL;
     const char *xpath;
     struct ly_set *set = NULL;
 
     /* additional operational datastore */
-    if (operational && operational->in) {
-        ret = lyd_parse_data(ctx, NULL, operational->in, operational->format, LYD_PARSE_ONLY, 0, &oper_tree);
+    if (yo->data_operational.in) {
+        ret = lyd_parse_data(ctx, NULL, yo->data_operational.in, yo->data_operational.format, LYD_PARSE_ONLY, 0, &oper_tree);
         if (ret) {
-            YLMSG_E("Failed to parse operational datastore file \"%s\".", operational->path);
+            YLMSG_E("Failed to parse operational datastore file \"%s\".", yo->data_operational.path);
             goto cleanup;
         }
     }
 
-    for (uint32_t u = 0; u < inputs->count; ++u) {
-        struct cmdline_file *input_f = (struct cmdline_file *)inputs->objs[u];
+    for (uint32_t u = 0; u < yo->data_inputs.count; ++u) {
+        struct cmdline_file *input_f = (struct cmdline_file *)yo->data_inputs.objs[u];
 
-        switch (type) {
-        case LYD_TYPE_DATA_YANG:
-            ret = lyd_parse_data(ctx, NULL, input_f->in, input_f->format, parse_options, validate_options, &tree);
-            break;
-        case LYD_TYPE_RPC_YANG:
-        case LYD_TYPE_REPLY_YANG:
-        case LYD_TYPE_NOTIF_YANG:
-            ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, type, &tree, &op);
-            break;
-        case LYD_TYPE_RPC_NETCONF:
-        case LYD_TYPE_NOTIF_NETCONF:
-            ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, type, &envp, &op);
-
-            /* adjust pointers */
-            for (tree = op; lyd_parent(tree); tree = lyd_parent(tree)) {}
-            break;
-        case LYD_TYPE_REPLY_NETCONF:
-            /* parse source RPC operation */
-            assert(reply_rpc && reply_rpc->in);
-            ret = lyd_parse_op(ctx, NULL, reply_rpc->in, reply_rpc->format, LYD_TYPE_RPC_NETCONF, &envp, &op);
-            if (ret) {
-                YLMSG_E("Failed to parse source NETCONF RPC operation file \"%s\".", reply_rpc->path);
-                goto cleanup;
-            }
-
-            /* adjust pointers */
-            for (tree = op; lyd_parent(tree); tree = lyd_parent(tree)) {}
-
-            /* free input */
-            lyd_free_siblings(lyd_child(op));
-
-            /* we do not care */
-            lyd_free_all(envp);
-            envp = NULL;
-
-            ret = lyd_parse_op(ctx, op, input_f->in, input_f->format, type, &envp, NULL);
-            break;
-        default:
-            YLMSG_E("Internal error (%s:%d).", __FILE__, __LINE__);
-            goto cleanup;
+        if (yo->data_ext) {
+            ret = parse_extension_instance(ctx, yo, input_f, &tree, oper_tree);
+        } else {
+            ret = parse_input_by_type(ctx, yo->data_type, input_f, yo->data_parse_options, yo->data_validate_options, &tree, &op, &yo->reply_rpc);
         }
 
         if (ret) {
@@ -560,7 +716,7 @@ process_data(struct ly_ctx *ctx, enum lyd_type type, uint8_t merge, LYD_FORMAT o
             goto cleanup;
         }
 
-        if (merge) {
+        if (yo->data_merge) {
             /* merge the data so far parsed for later validation and print */
             if (!merged_tree) {
                 merged_tree = tree;
@@ -572,29 +728,29 @@ process_data(struct ly_ctx *ctx, enum lyd_type type, uint8_t merge, LYD_FORMAT o
                 }
             }
             tree = NULL;
-        } else if (out_format) {
+        } else if (yo->data_out_format) {
             /* print */
-            switch (type) {
+            switch (yo->data_type) {
             case LYD_TYPE_DATA_YANG:
-                lyd_print_all(out, tree, out_format, print_options);
+                lyd_print_all(yo->out, tree, yo->data_out_format, yo->data_print_options);
                 break;
             case LYD_TYPE_RPC_YANG:
             case LYD_TYPE_REPLY_YANG:
             case LYD_TYPE_NOTIF_YANG:
             case LYD_TYPE_RPC_NETCONF:
             case LYD_TYPE_NOTIF_NETCONF:
-                lyd_print_tree(out, tree, out_format, print_options);
+                lyd_print_tree(yo->out, tree, yo->data_out_format, yo->data_print_options);
                 break;
             case LYD_TYPE_REPLY_NETCONF:
                 /* just the output */
-                lyd_print_tree(out, lyd_child(tree), out_format, print_options);
+                lyd_print_tree(yo->out, lyd_child(tree), yo->data_out_format, yo->data_print_options);
                 break;
             default:
                 assert(0);
             }
         } else {
             /* validation of the RPC/Action/reply/Notification with the operational datastore, if any */
-            switch (type) {
+            switch (yo->data_type) {
             case LYD_TYPE_DATA_YANG:
                 /* already validated */
                 break;
@@ -614,16 +770,16 @@ process_data(struct ly_ctx *ctx, enum lyd_type type, uint8_t merge, LYD_FORMAT o
                 assert(0);
             }
             if (ret) {
-                if (operational->path) {
+                if (yo->data_operational.path) {
                     YLMSG_E("Failed to validate input data file \"%s\" with operational datastore \"%s\".",
-                            input_f->path, operational->path);
+                            input_f->path, yo->data_operational.path);
                 } else {
                     YLMSG_E("Failed to validate input data file \"%s\".", input_f->path);
                 }
                 goto cleanup;
             }
 
-            if ((ret = check_operation_parent(op, oper_tree, operational))) {
+            if ((ret = check_operation_parent(op, oper_tree, &yo->data_operational))) {
                 goto cleanup;
             }
         }
@@ -631,25 +787,23 @@ process_data(struct ly_ctx *ctx, enum lyd_type type, uint8_t merge, LYD_FORMAT o
         /* next iter */
         lyd_free_all(tree);
         tree = NULL;
-        lyd_free_all(envp);
-        envp = NULL;
     }
 
-    if (merge) {
+    if (yo->data_merge) {
         /* validate the merged result */
-        ret = lyd_validate_all(&merged_tree, ctx, validate_options, NULL);
+        ret = lyd_validate_all(&merged_tree, ctx, yo->data_validate_options, NULL);
         if (ret) {
             YLMSG_E("Merged data are not valid.");
             goto cleanup;
         }
 
-        if (out_format) {
+        if (yo->data_out_format) {
             /* and print it */
-            lyd_print_all(out, merged_tree, out_format, print_options);
+            lyd_print_all(yo->out, merged_tree, yo->data_out_format, yo->data_print_options);
         }
 
-        for (uint32_t u = 0; xpaths && (u < xpaths->count); ++u) {
-            xpath = (const char *)xpaths->objs[u];
+        for (uint32_t u = 0; u < yo->data_xpath.count; ++u) {
+            xpath = (const char *)yo->data_xpath.objs[u];
             ly_set_free(set, NULL);
             ret = lys_find_xpath(ctx, NULL, xpath, LYS_FIND_NO_MATCH_ERROR, &set);
             if (ret || !set->count) {
@@ -665,22 +819,12 @@ process_data(struct ly_ctx *ctx, enum lyd_type type, uint8_t merge, LYD_FORMAT o
 
 cleanup:
     lyd_free_all(tree);
-    lyd_free_all(envp);
     lyd_free_all(merged_tree);
     lyd_free_all(oper_tree);
     ly_set_free(set, NULL);
-    return ret;
-}
-
-int
-cmd_data_process(struct ly_ctx *ctx, struct yl_opt *yo)
-{
-    /* parse, validate and print data */
-    if (process_data(ctx, yo->data_type, yo->data_merge, yo->data_out_format, yo->out, yo->data_parse_options,
-            yo->data_validate_options, yo->data_print_options, &yo->data_operational, &yo->reply_rpc,
-            &yo->data_inputs, &yo->data_xpath)) {
+    if (ret) {
         return 1;
+    } else {
+        return 0;
     }
-
-    return 0;
 }

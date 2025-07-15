@@ -18,6 +18,7 @@ Available commands:
   load            Load a new schema from the searchdirs
   print           Print a module
   data            Load, validate and optionally print instance data
+  ext             Validate extension data
   list            List all the loaded modules
   feature         Print all features of module(s) with their state
   searchpath      Print/set the search path(s) for schemas
@@ -534,3 +535,22 @@ $ yanglint -f json -t config -p . -Y sm-context-main.xml -x sm-context-extension
   }
 }
 ```
+
+## Validating extension data
+
+This command sequence uses `yanglint` to load YANG modules and validate a file (`ext-data.xml`) that contains YANG extension, an instance of a `yang-errors` structure defined by `ietf-restconf`. However, because this extension data references operational data, the validation process also requires that corresponding operational data.
+
+Preparation:
+
+```
+> clear
+> add ietf-restconf@2017-01-26.yang
+> add example-jukebox.yang
+> data -t ext --ext-inst ietf-restconf:yang-data:yang-errors -O operational-data.xml ext-data.xml
+```
+
+Output:
+
+No output is printed, it means that the data is valid.
+
+

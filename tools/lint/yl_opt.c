@@ -86,6 +86,11 @@ yl_opt_erase(struct yl_opt *yo)
     /* context */
     free(yo->searchpaths);
 
+    /*extension instance string*/
+    free(yo->mod_name);
+    free(yo->name);
+    free(yo->argument);
+
     /* --reply-rpc */
     ly_in_free(yo->reply_rpc.in, 1);
 
@@ -193,6 +198,8 @@ yl_opt_update_data_type(const char *arg, struct yl_opt *yo)
         yo->data_type = LYD_TYPE_NOTIF_NETCONF;
     } else if (!strcasecmp(arg, "data")) {
         /* default option */
+    } else if (!strcasecmp(arg, "ext")) {
+        yo->data_ext = 1;
     } else {
         return 1;
     }
