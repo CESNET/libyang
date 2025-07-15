@@ -651,7 +651,6 @@ parse_extension_instance(struct ly_ctx *ctx, struct yl_opt *yo, struct cmdline_f
 {
 
     LY_ERR ret = LY_SUCCESS;
-    struct lyd_node *tree_copy;
 
     if (find_extension(ctx, yo)) {
         YLMSG_E("Extension '%s:%s:%s' not found in module.", yo->mod_name, yo->name, yo->argument);
@@ -663,16 +662,23 @@ parse_extension_instance(struct ly_ctx *ctx, struct yl_opt *yo, struct cmdline_f
         return ret;
     }
 
-    lyd_dup_siblings(*tree, NULL, LYD_DUP_RECURSIVE, &tree_copy);
-
-    if (oper_tree) {
-        lyd_insert_sibling(tree_copy, oper_tree, &tree_copy);
+    if (!(*tree)) {
+        YLMSG_E("Nothing to validate in the extension input data.");
+        return LY_EDENIED;
     }
 
-    ret = lyd_validate_all(&tree_copy, ctx, yo->data_validate_options, NULL);
+    if ((*tree)->next) {
+        YLMSG_E("Yanglint does not support more than one top-level node in extension data.");
+        return LY_EDENIED;
+    }
 
-    if (!yo->data_operational.in) {
-        lyd_free_all(tree_copy);
+    /* Operational data is present */
+    if (oper_tree) {
+        lyd_insert_sibling(*tree, oper_tree, &oper_tree);
+        ret = lyd_validate_all(tree, ctx, yo->data_validate_options, NULL);
+        lyd_unlink_tree(*tree);
+    } else {
+        ret = lyd_validate_all(tree, ctx, yo->data_validate_options, NULL);
     }
 
     yo->data_ext = 0;
