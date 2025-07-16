@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief compatibility functions header
  *
- * Copyright (c) 2021 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2021 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -19,6 +19,11 @@
 /* headers are broken on Windows, which means that some of them simply *have* to come first */
 # include <winsock2.h>
 # include <ws2tcpip.h>
+#endif
+
+#cmakedefine HAVE_ALLOCA_H
+#ifdef HAVE_ALLOCA_H
+# include <alloca.h>
 #endif
 
 #include <limits.h>

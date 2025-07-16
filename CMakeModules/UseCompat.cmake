@@ -59,6 +59,8 @@ macro(USE_COMPAT)
     check_symbol_exists(mmap "sys/mman.h" HAVE_MMAP)
     check_symbol_exists(setenv "stdlib.h" HAVE_SETENV)
 
+    check_include_file("alloca.h" HAVE_ALLOCA_H)
+
     list(REMOVE_ITEM CMAKE_REQUIRED_DEFINITIONS -D_POSIX_C_SOURCE=200809L)
     list(REMOVE_ITEM CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
     list(REMOVE_ITEM CMAKE_REQUIRED_DEFINITIONS -D__BSD_VISIBLE=1)
