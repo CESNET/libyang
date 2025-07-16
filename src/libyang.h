@@ -22,6 +22,8 @@
 extern "C" {
 #endif
 
+#include "ly_config.h"
+
 #include "context.h"
 #include "dict.h"
 #include "in.h"

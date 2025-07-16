@@ -16,7 +16,7 @@
 #ifndef LY_TREE_DATA_H_
 #define LY_TREE_DATA_H_
 
-/* socket/ip includes in libyang.h */
+/* socket/ip includes in ly_config.h */
 
 #define PCRE2_CODE_UNIT_WIDTH 8
 
