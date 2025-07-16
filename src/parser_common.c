@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang common parser functions.
  *
- * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -13,7 +13,9 @@
  */
 
 #define _GNU_SOURCE
-#define _POSIX_C_SOURCE 200809L /* strdup, strndup */
+#if defined (__FreeBSD__) /* hides asprintf */
+# define _POSIX_C_SOURCE 200809L /* strdup, strndup */
+#endif
 
 #ifdef __APPLE__
 #define _DARWIN_C_SOURCE /* F_GETPATH */
