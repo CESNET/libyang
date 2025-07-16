@@ -1362,6 +1362,10 @@ cleanup:
         LY_ARRAY_FREE(userord[u].inst);
     }
     LY_ARRAY_FREE(userord);
+    if (rc) {
+        lyd_free_siblings(*diff);
+        *diff = NULL;
+    }
     return rc;
 }
 
