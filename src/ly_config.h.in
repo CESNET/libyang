@@ -4,7 +4,7 @@
  * @uathor Michal Vasko <mvasko@cesnet.cz>
  * @brief Various variables provided by cmake and compile time options.
  *
- * Copyright (c) 2021 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2021 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -20,6 +20,12 @@
 /* headers are broken on Windows, which means that some of them simply *have* to come first */
 # include <winsock2.h>
 # include <ws2tcpip.h>
+#else
+#  include <arpa/inet.h>
+#  if defined (__FreeBSD__) || defined (__NetBSD__) || defined (__OpenBSD__)
+#    include <netinet/in.h>
+#    include <sys/socket.h>
+#  endif
 #endif
 
 /** size of fixed_mem in lyd_value, minimum is 8 (B) */
