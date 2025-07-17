@@ -580,9 +580,8 @@ find_extension(struct ly_ctx *ctx, struct yl_opt *yo)
  * @return LY_ERR value.
  */
 static LY_ERR
-parse_input_by_type(struct ly_ctx *ctx, enum lyd_type type, struct cmdline_file *input_f,
-        uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree,
-        struct lyd_node **op, struct cmdline_file *reply_rpc)
+parse_input_by_type(struct ly_ctx *ctx, enum lyd_type type, struct cmdline_file *input_f, uint32_t parse_options,
+        uint32_t validate_options, struct lyd_node **tree, struct lyd_node **op, struct cmdline_file *reply_rpc)
 {
 
     LY_ERR ret = LY_SUCCESS;
@@ -647,9 +646,9 @@ parse_input_by_type(struct ly_ctx *ctx, enum lyd_type type, struct cmdline_file 
  * @return LY_ERR value.
  */
 static LY_ERR
-parse_extension_instance(struct ly_ctx *ctx, struct yl_opt *yo, struct cmdline_file *input_f, struct lyd_node **tree, struct lyd_node *oper_tree)
+parse_extension_instance(struct ly_ctx *ctx, struct yl_opt *yo, struct cmdline_file *input_f, struct lyd_node **tree,
+        struct lyd_node *oper_tree)
 {
-
     LY_ERR ret = LY_SUCCESS;
 
     if (find_extension(ctx, yo)) {
@@ -672,7 +671,7 @@ parse_extension_instance(struct ly_ctx *ctx, struct yl_opt *yo, struct cmdline_f
         return LY_EDENIED;
     }
 
-    /* Operational data is present */
+    /* operational data are present */
     if (oper_tree) {
         lyd_insert_sibling(*tree, oper_tree, &oper_tree);
         ret = lyd_validate_all(tree, ctx, yo->data_validate_options, NULL);
@@ -692,6 +691,7 @@ cmd_data_process(struct ly_ctx *ctx, struct yl_opt *yo)
     struct lyd_node *tree = NULL, *op = NULL, *merged_tree = NULL, *oper_tree = NULL;
     const char *xpath;
     struct ly_set *set = NULL;
+    uint32_t u;
 
     /* additional operational datastore */
     if (yo->data_operational.in) {
@@ -702,13 +702,14 @@ cmd_data_process(struct ly_ctx *ctx, struct yl_opt *yo)
         }
     }
 
-    for (uint32_t u = 0; u < yo->data_inputs.count; ++u) {
+    for (u = 0; u < yo->data_inputs.count; ++u) {
         struct cmdline_file *input_f = (struct cmdline_file *)yo->data_inputs.objs[u];
 
         if (yo->data_ext) {
             ret = parse_extension_instance(ctx, yo, input_f, &tree, oper_tree);
         } else {
-            ret = parse_input_by_type(ctx, yo->data_type, input_f, yo->data_parse_options, yo->data_validate_options, &tree, &op, &yo->reply_rpc);
+            ret = parse_input_by_type(ctx, yo->data_type, input_f, yo->data_parse_options, yo->data_validate_options,
+                    &tree, &op, &yo->reply_rpc);
         }
 
         if (ret) {
@@ -802,15 +803,17 @@ cmd_data_process(struct ly_ctx *ctx, struct yl_opt *yo)
             lyd_print_all(yo->out, merged_tree, yo->data_out_format, yo->data_print_options);
         }
 
-        for (uint32_t u = 0; u < yo->data_xpath.count; ++u) {
+        for (u = 0; u < yo->data_xpath.count; ++u) {
             xpath = (const char *)yo->data_xpath.objs[u];
+
             ly_set_free(set, NULL);
             ret = lys_find_xpath(ctx, NULL, xpath, LYS_FIND_NO_MATCH_ERROR, &set);
             if (ret || !set->count) {
                 ret = (ret == LY_SUCCESS) ? LY_EINVAL : ret;
-                YLMSG_E("The requested xpath failed.");
+                YLMSG_E("XPath check failed.");
                 goto cleanup;
             }
+
             if (evaluate_xpath(merged_tree, xpath)) {
                 goto cleanup;
             }
@@ -822,9 +825,5 @@ cleanup:
     lyd_free_all(merged_tree);
     lyd_free_all(oper_tree);
     ly_set_free(set, NULL);
-    if (ret) {
-        return 1;
-    } else {
-        return 0;
-    }
+    return ret ? 1 : 0;
 }

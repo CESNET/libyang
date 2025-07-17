@@ -282,20 +282,6 @@ error:
     fprintf(stderr, "libyang %s Memory allocation failed.\n", levstr);
 }
 
-static struct yl_schema_features *
-get_features_not_applied(const struct ly_set *fset)
-{
-    for (uint32_t u = 0; u < fset->count; ++u) {
-        struct yl_schema_features *sf = fset->objs[u];
-
-        if (!sf->applied) {
-            return sf;
-        }
-    }
-
-    return NULL;
-}
-
 /**
  * @brief Create the libyang context.
  *
@@ -331,6 +317,22 @@ create_ly_context(const char *yang_lib_file, const char *searchpaths, struct ly_
     return 0;
 }
 
+static struct yl_schema_features *
+get_features_not_applied(const struct ly_set *fset)
+{
+    struct yl_schema_features *sf;
+    uint32_t u;
+
+    for (u = 0; u < fset->count; ++u) {
+        sf = fset->objs[u];
+        if (!sf->applied) {
+            return sf;
+        }
+    }
+
+    return NULL;
+}
+
 /**
  * @brief Implement module if some feature has not been applied.
  *
@@ -339,7 +341,7 @@ create_ly_context(const char *yang_lib_file, const char *searchpaths, struct ly_
  * @return 0 on success.
  */
 static int
-apply_features(struct ly_set *schema_features, struct ly_ctx *ctx)
+apply_features(const struct ly_set *schema_features, struct ly_ctx *ctx)
 {
     struct yl_schema_features *sf;
     struct lys_module *mod;
@@ -374,19 +376,19 @@ apply_features(struct ly_set *schema_features, struct ly_ctx *ctx)
  * @param[in] argv Strings from command line.
  * @param[in] optind Index to the first input file in @p argv.
  * @param[in] data_in_format Specified input data format.
- * @param[in,out] ctx Context for libyang.
+ * @param[in,out] ctx Context for libyang, is updated.
  * @param[in,out] yo Options for yanglint.
  * @return 0 on success.
  */
 static int
-fill_context_inputs(int argc, char *argv[], int optind, LYD_FORMAT data_in_format, struct ly_ctx *ctx,
-        struct yl_opt *yo)
+process_files(int argc, char *argv[], int optind, LYD_FORMAT data_in_format, struct ly_ctx *ctx, struct yl_opt *yo)
 {
     char *filepath = NULL;
     LYS_INFORMAT format_schema;
     LYD_FORMAT format_data;
+    int i;
 
-    for (int i = 0; i < argc - optind; i++) {
+    for (i = 0; i < argc - optind; i++) {
         format_schema = LYS_IN_UNKNOWN;
         format_data = data_in_format;
 
@@ -410,7 +412,7 @@ fill_context_inputs(int argc, char *argv[], int optind, LYD_FORMAT data_in_forma
         }
     }
 
-    /* Check that all specified features were applied, apply now if possible. */
+    /* check that all specified features were applied, apply now if possible */
     if (apply_features(&yo->schema_features, ctx)) {
         return -1;
     }
@@ -456,12 +458,16 @@ set_debug_groups(char *groups, struct yl_opt *yo)
 /**
  * @brief Process command line options and store the settings into the context.
  *
- * return -1 in case of error;
- * return 0 in case of success and ready to process
- * return 1 in case of success, but expect to exit.
+ * @param[in] argc Argument count.
+ * @param[in] argv Argument array.
+ * @param[out] yo Yanglint options to fill.
+ * @param[out] ctx Created context.
+ * @return -1 in case of error;
+ * @return 0 in case of success and ready to process
+ * @return 1 in case of success, but expect to exit.
  */
 static int
-fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
+process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
 {
     int opt, opt_index;
     struct option options[] = {
@@ -495,7 +501,7 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
         {"extended-leafref",  no_argument,       NULL, 'X'},
         {"json-null",         no_argument,       NULL, 'J'},
         {"debug",             required_argument, NULL, 'G'},
-        {NULL,               0,                 NULL, 0}
+        {NULL,                0,                 NULL, 0}
     };
     uint8_t data_type_set = 0;
 
@@ -720,18 +726,18 @@ fill_context(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
         return -1;
     }
 
-    /* Create the libyang context. */
+    /* create the libyang context */
     if (create_ly_context(yo->yang_lib_file, yo->searchpaths, &yo->schema_features, &yo->ctx_options, ctx)) {
         return -1;
     }
 
-    /* Set callback providing run-time extension instance data. */
+    /* set callback providing run-time extension instance data */
     if (yo->schema_context_filename) {
         ly_ctx_set_ext_data_clb(*ctx, ext_data_clb, yo->schema_context_filename);
     }
 
-    /* Schema modules and data files are just checked and prepared into internal structures for further processing. */
-    if (fill_context_inputs(argc, argv, optind, yo->data_in_format, *ctx, yo)) {
+    /* schema modules are parsed, data files are just checked and prepared into internal structures for further processing */
+    if (process_files(argc, argv, optind, yo->data_in_format, *ctx, yo)) {
         return -1;
     }
 
@@ -758,22 +764,18 @@ main_ni(int argc, char *argv[])
     int ret = EXIT_SUCCESS, r;
     struct yl_opt yo = {0};
     struct ly_ctx *ctx = NULL;
-    char *features_output = NULL;
-    struct ly_set set = {0};
     uint32_t u;
 
     /* set callback for printing libyang messages */
     ly_set_log_clb(libyang_verbclb);
 
-    r = fill_context(argc, argv, &yo, &ctx);
+    r = process_args(argc, argv, &yo, &ctx);
     if (r < 0) {
         ret = EXIT_FAILURE;
     }
     if (r) {
         goto cleanup;
     }
-
-    /* do the required job - parse, validate, print */
 
     if (yo.list) {
         /* print the list of schemas */
@@ -812,11 +814,7 @@ main_ni(int argc, char *argv[])
     }
 
 cleanup:
-    /* cleanup */
     yl_opt_erase(&yo);
     ly_ctx_destroy(ctx);
-    free(features_output);
-    ly_set_erase(&set, NULL);
-
     return ret;
 }

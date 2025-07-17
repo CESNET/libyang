@@ -97,22 +97,6 @@ int parse_schema_path(const char *path, char **dir, char **module);
 int get_input(const char *filepath, LYS_INFORMAT *format_schema, LYD_FORMAT *format_data, struct ly_in **in);
 
 /**
- * @brief Get schema format of the @p filename's content according to the @p filename's suffix.
- *
- * @param[in] filename Name of the file to examine.
- * @return Detected schema input format.
- */
-LYS_INFORMAT get_schema_format(const char *filename);
-
-/**
- * @brief Get data format of the @p filename's content according to the @p filename's suffix.
- *
- * @param[in] filename Name of the file to examine.
- * @return Detected data input format.
- */
-LYD_FORMAT get_data_format(const char *filename);
-
-/**
  * @brief Get format of the @p filename's content according to the @p filename's suffix.
  *
  * Either the @p schema or @p data parameter is set.

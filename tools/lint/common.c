@@ -102,7 +102,13 @@ get_input(const char *filepath, LYS_INFORMAT *format_schema, LYD_FORMAT *format_
     return 0;
 }
 
-LYS_INFORMAT
+/**
+ * @brief Get schema format of the @p filename's content according to the @p filename's suffix.
+ *
+ * @param[in] filename Name of the file to examine.
+ * @return Detected schema input format.
+ */
+static LYS_INFORMAT
 get_schema_format(const char *filename)
 {
     char *ptr;
@@ -121,7 +127,13 @@ get_schema_format(const char *filename)
     }
 }
 
-LYD_FORMAT
+/**
+ * @brief Get data format of the @p filename's content according to the @p filename's suffix.
+ *
+ * @param[in] filename Name of the file to examine.
+ * @return Detected data input format.
+ */
+static LYD_FORMAT
 get_data_format(const char *filename)
 {
     char *ptr;
