@@ -39,7 +39,7 @@ test data_xpath_container {--xpath to container} {
 test data_xpath_wrong_path {--xpath to a non-existent node} {
 -setup $ly_setup -cleanup $ly_cleanup -body {
     ly_cmd "load moddatanodes"
-    ly_cmd_err "data -x /moddatanodes:dnc/wrng $data" "xpath failed"
+    ly_cmd_err "data -x /moddatanodes:dnc/wrng $data" "XPath check failed"
 }}
 
 test data_xpath_err_format {--xpath cannot be combined with --format} {
