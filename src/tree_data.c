@@ -3309,7 +3309,8 @@ lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const struct lyd_
 
     LY_CHECK_RET(ly_set_new(set));
 
-    if (!siblings || (siblings->schema && (lysc_data_parent(siblings->schema) != lysc_data_parent(target->schema)))) {
+    if (!siblings || (siblings->schema && target->schema &&
+            (lysc_data_parent(siblings->schema) != lysc_data_parent(target->schema)))) {
         /* no data or schema mismatch */
         return LY_ENOTFOUND;
     }
