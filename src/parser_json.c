@@ -719,7 +719,7 @@ cleanup:
 }
 
 /**
- * @brief Parse a metadata member.
+ * @brief Parse a metadata member/attribute.
  *
  * @param[in] lydctx JSON data parser context.
  * @param[in] snode Schema node of the metadata parent.
@@ -730,7 +730,7 @@ cleanup:
  * @return Various LY_ERR values in case of failure.
  */
 static LY_ERR
-lydjson_metadata(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, struct lyd_node *node)
+lydjson_meta_attr(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, struct lyd_node *node)
 {
     LY_ERR rc = LY_SUCCESS, r;
     enum LYJSON_PARSER_STATUS status;
@@ -1188,21 +1188,20 @@ lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node,
         enum LYJSON_PARSER_STATUS *status_p, struct lyd_node **first_p, struct lyd_node **node_p)
 {
     LY_ERR r;
-    const char *opaq_name, *mod_name;
-    size_t opaq_name_len;
+    const char *opaq_name, *mod_name, *attr_mod;
+    size_t opaq_name_len, attr_mod_len;
 
-    if (!snode && !prefix) {
-        /* set the prefix */
-        if (parent) {
-            lydjson_get_node_prefix(parent, NULL, 0, &prefix, &prefix_len);
-        } else {
-            prefix = "";
-            prefix_len = 0;
-        }
-    }
-
-    /* parse as an attribute to a (opaque) node */
     if (!attr_node) {
+        /* learn the attribute module name */
+        if (!snode) {
+            if (!prefix) {
+                lydjson_get_node_prefix(parent, NULL, 0, &attr_mod, &attr_mod_len);
+            } else {
+                attr_mod = prefix;
+                attr_mod_len = prefix_len;
+            }
+        }
+
         /* try to find the instance */
         LY_LIST_FOR(parent ? lyd_child(parent) : *first_p, attr_node) {
             if (snode) {
@@ -1217,21 +1216,22 @@ lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node,
                     }
                 }
             } else {
+                /* get the node module name */
                 if (attr_node->schema) {
-                    if (!ly_strncmp(LYD_NAME(attr_node), name, name_len) &&
-                            !ly_strncmp(attr_node->schema->module->name, prefix, prefix_len)) {
-                        break;
-                    }
+                    mod_name = attr_node->schema->module->name;
                 } else {
                     mod_name = ((struct lyd_node_opaq *)attr_node)->name.module_name;
-                    if (!ly_strncmp(LYD_NAME(attr_node), name, name_len) && mod_name &&
-                            !ly_strncmp(mod_name, prefix, prefix_len)) {
-                        break;
-                    }
+                }
+
+                /* check the attribute belongs to this node */
+                if (!ly_strncmp(LYD_NAME(attr_node), name, name_len) && mod_name && attr_mod &&
+                        !ly_strncmp(mod_name, attr_mod, attr_mod_len)) {
+                    break;
                 }
             }
         }
     }
+
     if (!attr_node) {
         /* parse just as an opaq node with the name beginning with @,
          * later we have to check that it belongs to a standard node
@@ -1251,7 +1251,7 @@ lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node,
         lydctx->parse_opts = prev_opts;
         LY_CHECK_RET(r);
     } else {
-        LY_CHECK_RET(lydjson_metadata(lydctx, snode, attr_node));
+        LY_CHECK_RET(lydjson_meta_attr(lydctx, snode, attr_node));
     }
 
     return LY_SUCCESS;
@@ -1650,11 +1650,6 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
             /* error */
             rc = r;
             goto cleanup;
-        }
-
-        if (!snode) {
-            /* we will not be parsing it as metadata */
-            is_meta = 0;
         }
     }
 
