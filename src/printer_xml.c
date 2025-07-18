@@ -50,13 +50,15 @@ struct xmlpr_ctx {
 #define LYXML_PREFIX_REQUIRED 0x01  /**< The prefix is not just a suggestion but a requirement. */
 #define LYXML_PREFIX_DEFAULT  0x02  /**< The namespace is required to be a default (without prefix) */
 
+static LY_ERR xml_print_node(struct xmlpr_ctx *pctx, const struct lyd_node *node);
+
 /**
  * @brief Print a namespace if not already printed.
  *
- * @param[in] ctx XML printer context.
+ * @param[in] pctx XML printer context.
  * @param[in] ns Namespace to print, expected to be in dictionary.
  * @param[in] new_prefix Suggested new prefix, NULL for a default namespace without prefix. Stored in the dictionary.
- * @param[in] prefix_opts Prefix options changing the meaning of parameters.
+ * @param[in] prefix_opts Prefix options.
  * @return Printed prefix of the namespace to use.
  */
 static const char *
@@ -105,9 +107,21 @@ xml_print_ns(struct xmlpr_ctx *pctx, const char *ns, const char *new_prefix, uin
     return pctx->prefix.objs[i];
 }
 
+/**
+ * @brief Print an opaque name (opaque node or an attribute) namespace.
+ *
+ * @param[in] pctx XML printer context.
+ * @param[in] format Opaque name format.
+ * @param[in] name Opaque name to print.
+ * @param[in] prefix_opts Prefix options.
+ * @return Printed prefix of the namespace to use.
+ */
 static const char *
 xml_print_ns_opaq(struct xmlpr_ctx *pctx, LY_VALUE_FORMAT format, const struct ly_opaq_name *name, uint32_t prefix_opts)
 {
+    const struct lys_module *mod;
+    const char *ns_prefix;
+
     switch (format) {
     case LY_VALUE_XML:
         if (name->module_ns) {
@@ -116,10 +130,12 @@ xml_print_ns_opaq(struct xmlpr_ctx *pctx, LY_VALUE_FORMAT format, const struct l
         break;
     case LY_VALUE_JSON:
         if (name->module_name) {
-            const struct lys_module *mod = ly_ctx_get_module_latest(pctx->ctx, name->module_name);
-
+            mod = ly_ctx_get_module_latest(pctx->ctx, name->module_name);
             if (mod) {
-                return xml_print_ns(pctx, mod->ns, (prefix_opts & LYXML_PREFIX_DEFAULT) ? NULL : name->prefix, prefix_opts);
+                /* do not use the JSON prefix (module name) but YANG module prefix instead, if any */
+                ns_prefix = (name->prefix && !(prefix_opts & LYXML_PREFIX_DEFAULT)) ? mod->prefix : NULL;
+
+                return xml_print_ns(pctx, mod->ns, ns_prefix, prefix_opts);
             }
         }
         break;
@@ -268,13 +284,19 @@ xml_print_node_open(struct xmlpr_ctx *pctx, const struct lyd_node *node)
     xml_print_meta(pctx, node);
 }
 
+/**
+ * @brief Print attributes of an opaque node.
+ *
+ * @param[in] pctx XML printer context.
+ * @param[in] attr First attribute in a list to print.
+ * @return LY_ERR value.
+ */
 static LY_ERR
-xml_print_attr(struct xmlpr_ctx *pctx, const struct lyd_node_opaq *node)
+xml_print_attr(struct xmlpr_ctx *pctx, const struct lyd_attr *attr)
 {
-    const struct lyd_attr *attr;
     const char *pref;
 
-    LY_LIST_FOR(node->attr, attr) {
+    LY_LIST_FOR(attr, attr) {
         pref = NULL;
         if (attr->name.prefix) {
             /* print attribute namespace */
@@ -290,7 +312,6 @@ xml_print_attr(struct xmlpr_ctx *pctx, const struct lyd_node_opaq *node)
         ly_print_(pctx->out, " %s%s%s=\"", pref ? pref : "", pref ? ":" : "", attr->name.name);
         lyxml_dump_text(pctx->out, attr->value, 1);
         ly_print_(pctx->out, "\""); /* print attribute value terminator */
-
     }
 
     return LY_SUCCESS;
@@ -308,12 +329,10 @@ xml_print_opaq_open(struct xmlpr_ctx *pctx, const struct lyd_node_opaq *node)
     }
 
     /* print attributes */
-    LY_CHECK_RET(xml_print_attr(pctx, node));
+    LY_CHECK_RET(xml_print_attr(pctx, node->attr));
 
     return LY_SUCCESS;
 }
-
-static LY_ERR xml_print_node(struct xmlpr_ctx *pctx, const struct lyd_node *node);
 
 /**
  * @brief Print XML element representing lyd_node_term.
