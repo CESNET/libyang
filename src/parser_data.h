@@ -265,6 +265,23 @@ LIBYANG_API_DECL LY_ERR lyd_parse_data_mem(const struct ly_ctx *ctx, const char 
         uint32_t validate_options, struct lyd_node **tree);
 
 /**
+ * @brief Parse data from a memory buffer with a specified length.
+ *
+ * This function parses the provided data buffer of a given length and returns the resulting data tree.
+ *
+ * @param[in] ctx libyang context for parsing.
+ * @param[in] data Pointer to the memory buffer containing the data to parse.
+ * @param[in] data_len Length of the memory buffer.
+ * @param[in] format Data format (e.g., XML, JSON, LYD_LYB).
+ * @param[in] options Parsing options, see @ref dataparseroptions.
+ * @param[in] ctx_node Optional context node for parsing (can be NULL).
+ * @param[out] tree Pointer to the resulting data tree (set on success).
+ * @return LY_ERR value indicating success or error reason.
+ */  
+LIBYANG_API_DECL LY_ERR lyd_parse_data_mem_len(const struct ly_ctx *ctx, const char *data, size_t data_len, LYD_FORMAT format,
+        uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree);
+
+        /**
  * @brief Parse (and validate) input data as a YANG data tree.
  *
  * Wrapper around ::lyd_parse_data() hiding work with the input handler and some obscure options.
