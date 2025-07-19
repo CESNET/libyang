@@ -78,6 +78,9 @@ lyd_parse_get_format(const struct ly_in *in, LYD_FORMAT format)
         } else if ((len >= LY_LYB_SUFFIX_LEN + 1) &&
                 !strncmp(&path[len - LY_LYB_SUFFIX_LEN], LY_LYB_SUFFIX, LY_LYB_SUFFIX_LEN)) {
             format = LYD_LYB;
+        } else if ((len >= LY_CBOR_SUFFIX_LEN + 1) && 
+                !strncmp(&path[len - LY_CBOR_SUFFIX_LEN], LY_CBOR_SUFFIX, LY_CBOR_SUFFIX_LEN)) {
+            format = LYD_CBOR;
         } /* else still unknown */
     }
 
@@ -131,6 +134,16 @@ lyd_parse(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **f
     case LYD_LYB:
         r = lyd_parse_lyb(ctx, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed, &lydctx);
         break;
+#ifdef ENABLE_CBOR_SUPPORT
+    case LYD_CBOR:
+        r = lyd_parse_cbor(ctx, NULL, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed, NULL, &lydctx);
+        break;
+#else
+    case LYD_CBOR:
+        LOGARG(ctx, format);
+        r = LY_EINVAL;
+        break;
+#endif /* ENABLE_CBOR_SUPPORT */
     case LYD_UNKNOWN:
         LOGARG(ctx, format);
         r = LY_EINVAL;
@@ -204,6 +217,22 @@ lyd_parse_data(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *
     }
 
     return lyd_parse(ctx, parent, tree, in, format, parse_options, validate_options, NULL);
+}
+
+LIBYANG_API_DEF LY_ERR
+lyd_parse_data_mem_len(const struct ly_ctx *ctx, const char *data, size_t data_len, LYD_FORMAT format,
+        uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree)
+{
+    LY_ERR ret;
+    struct ly_in *in;
+
+    LY_CHECK_RET(ly_in_new_memory(data, &in));
+    in->length = data_len;  // Set the length for the input
+
+    ret = lyd_parse_data(ctx, NULL, in, format, parse_options, validate_options, tree);
+
+    ly_in_free(in, 0);
+    return ret;
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -460,6 +489,16 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
     case LYD_LYB:
         rc = lyd_parse_lyb(ctx, parent, &first, in, parse_options, val_opts, int_opts, &parsed, &lydctx);
         break;
+#ifdef ENABLE_CBOR_SUPPORT
+    case LYD_CBOR:
+        rc = lyd_parse_cbor(ctx, NULL, parent, &first, in, parse_options, val_opts, int_opts, &parsed, NULL, &lydctx);
+        break;
+#else
+    case LYD_CBOR:
+        LOGARG(ctx, format);
+        rc = LY_EINVAL;
+        break;
+#endif /* ENABLE_CBOR_SUPPORT */
     case LYD_UNKNOWN:
         LOGARG(ctx, format);
         rc = LY_EINVAL;

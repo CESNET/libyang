@@ -238,6 +238,7 @@ set(format_sources
     src/*.h
     src/plugins_exts/*
     src/plugins_types/*)
+
 #
 # options
 #
@@ -321,6 +322,15 @@ endif()
 
 if(ENABLE_COVERAGE)
     gen_coverage_enable(${ENABLE_TESTS})
+endif()
+
+find_package(CBOR)
+if(CBOR_FOUND)
+    list(APPEND libsrc src/parser_cbor.c src/lcbor.c src/printer_cbor.c)
+    list(APPEND headers src/lcbor.h)
+    list(APPEND format_sources src/parser_cbor.c src/lcbor.h src/lcbor.c src/printer_cbor.c)
+else()
+    message(STATUS "libcbor not found, CBOR support disabled")
 endif()
 
 if ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
@@ -426,6 +436,17 @@ unset(PCRE2_LIBRARY CACHE)
 find_package(PCRE2 10.21 REQUIRED)
 include_directories(${PCRE2_INCLUDE_DIRS})
 target_link_libraries(yang ${PCRE2_LIBRARIES})
+
+# link libcbor if found
+if(CBOR_FOUND)
+    if(TARGET yangobj)
+        target_compile_definitions(yangobj PRIVATE ENABLE_CBOR_SUPPORT)
+        target_include_directories(yangobj PRIVATE ${CBOR_INCLUDE_DIR})
+    endif()
+    target_compile_definitions(yang PRIVATE ENABLE_CBOR_SUPPORT)
+    target_include_directories(yang PRIVATE ${CBOR_INCLUDE_DIR})
+    target_link_libraries(yang ${CBOR_LIBRARY})
+endif()
 
 # XXHash include and library
 find_package(XXHash)
