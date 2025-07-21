@@ -607,7 +607,7 @@ parse_input_by_type(struct ly_ctx *ctx, enum lyd_type type, struct cmdline_file 
         /* parse source RPC operation */
         assert(reply_rpc && reply_rpc->in);
         ret = lyd_parse_op(ctx, NULL, reply_rpc->in, reply_rpc->format, LYD_TYPE_RPC_NETCONF, LYD_PARSE_STRICT,
-                    &envp, op);
+                &envp, op);
         if (ret) {
             YLMSG_E("Failed to parse source NETCONF RPC operation file \"%s\".", reply_rpc->path);
             goto cleanup;
