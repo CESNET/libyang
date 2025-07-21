@@ -712,9 +712,9 @@ lyplg_ext_get_data(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext
         void **ext_data, ly_bool *ext_data_free)
 {
     LY_ERR rc;
-    struct ly_ctx_data *ctx_data;
+    struct ly_ctx_private_data *ctx_data;
 
-    ctx_data = ly_ctx_data_get(ctx);
+    ctx_data = ly_ctx_private_data_get(ctx);
 
     if (!ctx_data->ext_clb) {
         lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EINVAL, "Failed to get extension data, no callback set.");
