@@ -693,6 +693,9 @@ LIBYANG_API_DECL LY_ERR ly_ctx_compiled_print(const struct ly_ctx *ctx, void *me
 /**
  * @brief Create a (immutable) context that was printed into a memory chunk.
  *
+ * This function allows a given thread to create only one printed context at a particular memory address at any time.
+ * Another thread, however, may create a separate context at the same address.
+ *
  * @param[in] mem Memory to use.
  * @param[out] ctx Created immutable context.
  * @return LY_ERR value.

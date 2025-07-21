@@ -3745,7 +3745,7 @@ lyd_find_target(const struct ly_path *path, const struct lyd_node *tree, struct 
 LY_ERR
 lyd_get_or_create_leafref_links_record(const struct lyd_node_term *node, struct lyd_leafref_links_rec **record, ly_bool create)
 {
-    struct ly_ctx_data *ctx_data;
+    struct ly_ctx_private_data *ctx_data;
     LY_ERR ret = LY_SUCCESS;
     uint32_t hash;
     struct lyd_leafref_links_rec rec = {0};
@@ -3761,7 +3761,7 @@ lyd_get_or_create_leafref_links_record(const struct lyd_node_term *node, struct 
         return LY_EDENIED;
     }
 
-    ctx_data = ly_ctx_data_get(LYD_CTX(node));
+    ctx_data = ly_ctx_private_data_get(LYD_CTX(node));
     rec.node = node;
     hash = lyht_hash((const char *)&node, sizeof node);
 

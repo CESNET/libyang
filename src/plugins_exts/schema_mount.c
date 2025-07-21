@@ -1216,7 +1216,7 @@ lyplg_ext_schema_mount_create_context(const struct lysc_ext_instance *ext, const
         struct ly_ctx **ctx)
 {
     struct lyd_node *ext_data = NULL;
-    struct ly_ctx_data *ctx_data;
+    struct ly_ctx_private_data *ctx_data;
     struct lyplg_ext_sm *sm_data;
     ly_bool ext_data_free = 0, config, shared, builtin_plugins_only, static_plugins_only;
     LY_ERR rc = LY_SUCCESS;
@@ -1226,7 +1226,7 @@ lyplg_ext_schema_mount_create_context(const struct lysc_ext_instance *ext, const
 
     sm_data = ext->compiled;
 
-    ctx_data = ly_ctx_data_get(ext->def->module->ctx);
+    ctx_data = ly_ctx_private_data_get(ext->def->module->ctx);
     if (!ctx_data->ext_clb) {
         return LY_EINVAL;
     }
