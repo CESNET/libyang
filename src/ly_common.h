@@ -335,35 +335,46 @@ int LY_VCODE_INSTREXP_len(const char *str);
  *****************************************************************************/
 
 /**
- * @brief Context error hash table record.
- */
-struct ly_ctx_data_err {
-    pthread_t tid;                  /** pthread thread ID */
-    struct ly_err_item *err;        /** pointer to the error items, if any */
-};
+  * @brief Private context data.
+  *
+  * Run-time data for a context, used by the library internally.
+  */
+struct ly_ctx_private_data {
+    const struct ly_ctx *ctx;       /**< context to which this data belongs */
+    pthread_t tid;                  /**< thread ID of the thread that created this context data */
 
-struct ly_ctx_data {
-    const struct ly_ctx *ctx;
     ly_ext_data_clb ext_clb;        /**< optional callback for providing extension-specific run-time data for extensions */
     void *ext_clb_data;             /**< optional private data for ext_clb */
 
-    pthread_rwlock_t err_rwlock;    /**< lock protecting errs */
-    struct ly_ctx_data_err **errs;  /**< array of thread-specific errors related to the context */
-    uint32_t err_count;             /**< count of items in the errs array */
+    struct ly_err_item *errs;       /**< thread-specific errors related to the context */
 
     struct ly_ht *leafref_links_ht; /**< hash table of leafref links between term data nodes */
     struct ly_dict *data_dict;      /**< dictionary for data trees */
+};
+
+/**
+ * @brief Shared context data.
+ *
+ * The data is shared only when using printed contexts that are created from the same memory address.
+ */
+struct ly_ctx_shared_data {
+    const struct ly_ctx *ctx;       /**< context to which this data belongs */
+    ATOMIC_T refcount;              /**< always 1 when using normal (not-printed) contexts (=> refcount does not have
+                                      * to be the same as the number of threads using the same context). Refcount gets
+                                      * incremented only when a new (next) printed context
+                                      * is created from the same memory address. */
 
     struct ly_ht *pattern_ht;       /**< ht for storing patterns and their serialized pattern codes,
                                       * these codes can be deserialized into pcre2_code that can then be used directly.
                                       * A pattern is used both as a key and a value to search for. */
-
-    int refcount;                   /**< reference count for the given context */
 };
 
-extern pthread_rwlock_t ly_ctx_data_rwlock; /**< lock for accessing ly_ctx_data */
-extern struct ly_ctx_data **ly_ctx_data;    /**< array of pointers to context-specific data */
-extern uint32_t ly_ctx_data_count;          /**< count of ly_ctx_data items */
+extern pthread_rwlock_t ly_ctx_data_rwlock;             /**< lock for creating and destroying both private & shared context data */
+extern struct ly_ctx_private_data *ly_private_ctx_data; /**< sized array ([sized array](@ref sizedarrays)) of private context data.
+                                                          * The context is identified by the thread ID of the thread that created it
+                                                          * and its address. */
+extern struct ly_ctx_shared_data *ly_shared_ctx_data;   /**< sized array ([sized array](@ref sizedarrays)) of shared context data.
+                                                          * The context is identified by the memory address of the context. */
 
 #define LY_CTX_INT_IMMUTABLE 0x80000000 /**< marks a context that was printed into a fixed-size memory block and
                                              can even be shared between processes so it cannot be changed */
@@ -399,8 +410,13 @@ void ly_ctx_new_change(struct ly_ctx *ctx);
 /**
  * @brief Add a ctx data for a new context.
  *
+ * Each context has its own thread-specific private data, see ::ly_ctx_private_data.
+ * Each context also has shared data, see ::ly_ctx_shared_data.
+ * Shared data can only be shared between printed contexts created from the same memory address.
+ *
  * @param[in] ctx Newly created context.
- * @return LY_SUCCESS on success or LY_EMEM on memory allocation failure.
+ * @return LY_SUCCESS on success, LY_EEXIST if a printed context created by the same thread and on the same memory address
+ * already exists, LY_EMEM on memory allocation failure.
  */
 LY_ERR ly_ctx_data_add(const struct ly_ctx *ctx);
 
@@ -412,26 +428,29 @@ LY_ERR ly_ctx_data_add(const struct ly_ctx *ctx);
 void ly_ctx_data_del(const struct ly_ctx *ctx);
 
 /**
- * @brief Get context-specific data of the process.
+ * @brief Get private (thread-specific) context data.
  *
  * @param[in] ctx Context whose data to get.
- * @return Context data of @p ctx.
+ * @return Context data of @p ctx, NULL if not found.
  */
-struct ly_ctx_data *ly_ctx_data_get(const struct ly_ctx *ctx);
+struct ly_ctx_private_data *ly_ctx_private_data_get(const struct ly_ctx *ctx);
 
 /**
- * @brief Get context's data reference count.
+ * @brief Get shared (between the same contexts) context data.
  *
- * @param[in] ctx Context whose data reference count to get.
- * @return Reference count of the context's data, -1 if the context data was not found.
+ * The contexts can be the same only if they are printed contexts created from the same memory address,
+ * although each of these contexts must be created by a different thread.
+ *
+ * @param[in] ctx Context whose shared data to get.
+ * @return Context shared data of @p ctx, NULL if not found.
  */
-int ly_ctx_data_refcount_get(const struct ly_ctx *ctx);
+struct ly_ctx_shared_data *ly_ctx_shared_data_get(const struct ly_ctx *ctx);
 
 /**
  * @brief Get context's data dictionary.
  *
  * @param[in] ctx Context whose data dictionary to get.
- * @return Context's data dictionary.
+ * @return Context's data dictionary, NULL if not found.
  */
 struct ly_dict *ly_ctx_data_dict_get(const struct ly_ctx *ctx);
 

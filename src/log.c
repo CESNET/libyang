@@ -176,100 +176,46 @@ ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VECODE vecode, char *data_
     return e->err;
 }
 
-static struct ly_ctx_data_err *
-ly_err_data_get(const struct ly_ctx *ctx)
-{
-    struct ly_ctx_data *ctx_data;
-    pthread_t tid = pthread_self();
-    uint32_t i;
-    struct ly_ctx_data_err *data_err = NULL;
-
-    /* get context data */
-    ctx_data = ly_ctx_data_get(ctx);
-
-    /* ERR READ LOCK */
-    pthread_rwlock_rdlock(&ctx_data->err_rwlock);
-
-    /* find the thread-specific err */
-    for (i = 0; i < ctx_data->err_count; ++i) {
-        if (!memcmp(&ctx_data->errs[i]->tid, &tid, sizeof tid)) {
-            data_err = ctx_data->errs[i];
-            goto cleanup;
-        }
-    }
-
-    /* ERR UNLOCK */
-    pthread_rwlock_unlock(&ctx_data->err_rwlock);
-
-    /* ERR WRITE LOCK */
-    pthread_rwlock_wrlock(&ctx_data->err_rwlock);
-
-    /* no need to retry the search, this thread is executing this function */
-
-    /* not found, so create it */
-    ctx_data->errs = ly_realloc(ctx_data->errs, (ctx_data->err_count + 1) * sizeof *ctx_data->errs);
-    ctx_data->errs[ctx_data->err_count] = calloc(1, sizeof **ctx_data->errs);
-    memcpy(&ctx_data->errs[ctx_data->err_count]->tid, &tid, sizeof tid);
-
-    ++ctx_data->err_count;
-
-    data_err = ctx_data->errs[ctx_data->err_count - 1];
-
-cleanup:
-    /* ERR UNLOCK */
-    pthread_rwlock_unlock(&ctx_data->err_rwlock);
-    return data_err;
-}
-
 LIBYANG_API_DEF const struct ly_err_item *
 ly_err_first(const struct ly_ctx *ctx)
 {
-    struct ly_ctx_data_err *err_data;
+    struct ly_ctx_private_data *ctx_data;
 
-    if (!ctx) {
-        return NULL;
-    }
+    LY_CHECK_ARG_RET(NULL, ctx, NULL);
 
-    /* get context err data */
-    err_data = ly_err_data_get(ctx);
-
-    return err_data ? err_data->err : NULL;
+    ctx_data = ly_ctx_private_data_get(ctx);
+    return ctx_data->errs;
 }
 
 LIBYANG_API_DEF const struct ly_err_item *
 ly_err_last(const struct ly_ctx *ctx)
 {
-    struct ly_ctx_data_err *err_data;
+    struct ly_ctx_private_data *ctx_data;
 
-    if (!ctx) {
-        return NULL;
-    }
+    LY_CHECK_ARG_RET(NULL, ctx, NULL);
 
-    /* get context err data */
-    err_data = ly_err_data_get(ctx);
-
-    if (!err_data) {
-        return NULL;
-    }
-
-    return err_data->err ? err_data->err->prev : NULL;
+    ctx_data = ly_ctx_private_data_get(ctx);
+    return ctx_data->errs ? ctx_data->errs->prev : NULL;
 }
 
 void
 ly_err_move(struct ly_ctx *src_ctx, struct ly_ctx *trg_ctx)
 {
-    struct ly_ctx_data_err *err_data;
-    struct ly_err_item *err = NULL;
+    struct ly_ctx_private_data *src_data, *trg_data;
+    struct ly_err_item *errs = NULL;
 
-    /* get src context err data */
-    err_data = ly_err_data_get(src_ctx);
-    err = err_data->err;
-    err_data->err = NULL;
+    /* get src context errs */
+    src_data = ly_ctx_private_data_get(src_ctx);
+    errs = src_data->errs;
+    src_data->errs = NULL;
+
+    /* get and free the trg context errs */
+    trg_data = ly_ctx_private_data_get(trg_ctx);
+    ly_err_free(trg_data->errs);
 
     /* set them for trg */
-    err_data = ly_err_data_get(trg_ctx);
-    ly_err_free(err_data->err);
-    err_data->err = err;
+    ly_err_free(trg_data->errs);
+    trg_data->errs = errs;
 }
 
 LIBYANG_API_DEF void
@@ -290,24 +236,28 @@ ly_err_free(void *ptr)
 LIBYANG_API_DEF void
 ly_err_clean(const struct ly_ctx *ctx, struct ly_err_item *eitem)
 {
-    struct ly_ctx_data_err *err_data;
+    struct ly_ctx_private_data *ctx_data;
     struct ly_err_item *e;
 
-    err_data = ly_err_data_get(ctx);
-    if (err_data->err == eitem) {
+    if (!ctx) {
+        return;
+    }
+
+    ctx_data = ly_ctx_private_data_get(ctx);
+    if (ctx_data->errs == eitem) {
         eitem = NULL;
     }
 
     if (!eitem) {
         /* free all err */
-        ly_err_free(err_data->err);
-        err_data->err = NULL;
+        ly_err_free(ctx_data->errs);
+        ctx_data->errs = NULL;
     } else {
         /* disconnect the error */
-        for (e = err_data->err; e && (e->next != eitem); e = e->next) {}
+        for (e = ctx_data->errs; e && (e->next != eitem); e = e->next) {}
         assert(e);
         e->next = NULL;
-        err_data->err->prev = e;
+        ctx_data->errs->prev = e;
 
         /* free this err and newer */
         ly_err_free(eitem);
@@ -456,15 +406,15 @@ static LY_ERR
 log_store(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR err, LY_VECODE vecode, char *msg, char *data_path,
         char *schema_path, uint64_t line, char *apptag)
 {
-    struct ly_ctx_data_err *err_data;
+    struct ly_ctx_private_data *ctx_data;
     struct ly_err_item *e, *last;
 
     assert(ctx && (level < LY_LLVRB));
 
-    /* get context err data */
-    err_data = ly_err_data_get(ctx);
+    /* get context private data */
+    ctx_data = ly_ctx_private_data_get(ctx);
 
-    e = err_data->err;
+    e = ctx_data->errs;
     if (!e) {
         /* if we are only to fill in path, there must have been an error stored */
         assert(msg);
@@ -473,7 +423,7 @@ log_store(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR err, LY_VECODE ve
         e->prev = e;
         e->next = NULL;
 
-        err_data->err = e;
+        ctx_data->errs = e;
     } else if (!msg) {
         /* only filling the path */
         assert(data_path || schema_path);

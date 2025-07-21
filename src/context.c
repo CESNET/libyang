@@ -614,7 +614,7 @@ LIBYANG_API_DEF LY_ERR
 ly_ctx_set_options(struct ly_ctx *ctx, uint32_t option)
 {
     LY_ERR lyrc = LY_SUCCESS;
-    struct ly_ctx_data *ctx_data;
+    struct ly_ctx_private_data *ctx_data;
     struct lys_module *mod;
     uint32_t i;
 
@@ -637,7 +637,7 @@ ly_ctx_set_options(struct ly_ctx *ctx, uint32_t option)
     }
 
     if (!(ctx->opts & LY_CTX_LEAFREF_LINKING) && (option & LY_CTX_LEAFREF_LINKING)) {
-        ctx_data = ly_ctx_data_get(ctx);
+        ctx_data = ly_ctx_private_data_get(ctx);
         ctx_data->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec *), ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
         LY_CHECK_ERR_RET(!ctx_data->leafref_links_ht, LOGARG(ctx, option), LY_EMEM);
     }
@@ -699,13 +699,13 @@ ly_ctx_unset_options(struct ly_ctx *ctx, uint32_t option)
     LY_ARRAY_COUNT_TYPE u, v;
     const struct lysc_ext_instance *ext;
     struct lysc_node *root;
-    struct ly_ctx_data *ctx_data;
+    struct ly_ctx_private_data *ctx_data;
 
     LY_CHECK_ARG_RET(ctx, ctx, !(ctx->opts & LY_CTX_INT_IMMUTABLE), LY_EINVAL);
     LY_CHECK_ERR_RET(option & LY_CTX_NO_YANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
 
     if ((ctx->opts & LY_CTX_LEAFREF_LINKING) && (option & LY_CTX_LEAFREF_LINKING)) {
-        ctx_data = ly_ctx_data_get(ctx);
+        ctx_data = ly_ctx_private_data_get(ctx);
         lyht_free(ctx_data->leafref_links_ht, ly_ctx_ht_leafref_links_rec_free);
         ctx_data->leafref_links_ht = NULL;
     }
@@ -828,12 +828,12 @@ ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_
 LIBYANG_API_DEF ly_ext_data_clb
 ly_ctx_set_ext_data_clb(const struct ly_ctx *ctx, ly_ext_data_clb clb, void *user_data)
 {
-    struct ly_ctx_data *ctx_data;
+    struct ly_ctx_private_data *ctx_data;
     ly_ext_data_clb prev;
 
     LY_CHECK_ARG_RET(ctx, ctx, NULL);
 
-    ctx_data = ly_ctx_data_get(ctx);
+    ctx_data = ly_ctx_private_data_get(ctx);
     prev = ctx_data->ext_clb;
     ctx_data->ext_clb = clb;
     ctx_data->ext_clb_data = user_data;
@@ -1466,7 +1466,10 @@ ly_ctx_new_printed(const void *mem, struct ly_ctx **ctx)
 
 cleanup:
     if (rc) {
-        ly_ctx_data_del(*ctx);
+        if (rc != LY_EEXIST) {
+            /* do not free another context's data */
+            ly_ctx_data_del(*ctx);
+        }
         *ctx = NULL;
     }
     return rc;
@@ -1490,15 +1493,6 @@ ly_ctx_destroy(struct ly_ctx *ctx)
 
     if (ctx->opts & LY_CTX_INT_IMMUTABLE) {
         /* ctx data */
-        ly_ctx_data_del(ctx);
-        lyplg_clean();
-        return;
-    }
-
-    /* check if this is the last instance of the context */
-    if (ly_ctx_data_refcount_get(ctx) > 1) {
-        /* not the last instance, just decrease the ctx and plg reference counts,
-         * since other instances might still be using parsed, compiled, and other data */
         ly_ctx_data_del(ctx);
         lyplg_clean();
         return;
