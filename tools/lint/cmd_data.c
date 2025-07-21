@@ -639,17 +639,20 @@ parse_input_by_type(struct ly_ctx *ctx, enum lyd_type type, struct cmdline_file 
  * @brief Parses and validates data for a specific YANG extension instance.
  *
  * @param[in] ctx libyang context with schema.
- * @param[in] yo context for yanglint.
+ * @param[in] yo Context for yanglint.
  * @param[in] input_f Data input file.
- * @param[out] tree Extension data tree.
- * @param[in] oper_tree operational data tree.
+ * @param[in] oper_tree Operational data tree.
+ * @param[out] tree Extension instance data tree.
  * @return LY_ERR value.
  */
 static LY_ERR
-parse_extension_instance(struct ly_ctx *ctx, struct yl_opt *yo, struct cmdline_file *input_f, struct lyd_node **tree,
-        struct lyd_node *oper_tree)
+parse_ext_inst_data(struct ly_ctx *ctx, struct yl_opt *yo, struct cmdline_file *input_f,
+        struct lyd_node *oper_tree, struct lyd_node **tree)
 {
     LY_ERR ret = LY_SUCCESS;
+    struct ly_set tree_nodes = {0};
+    struct lyd_node *iter;
+    uint32_t i;
 
     if (find_extension(ctx, yo)) {
         YLMSG_E("Extension '%s:%s:%s' not found in module.", yo->mod_name, yo->name, yo->argument);
@@ -666,21 +669,31 @@ parse_extension_instance(struct ly_ctx *ctx, struct yl_opt *yo, struct cmdline_f
         return LY_EDENIED;
     }
 
-    if ((*tree)->next) {
-        YLMSG_E("Yanglint does not support more than one top-level node in extension data.");
-        return LY_EDENIED;
-    }
-
-    /* operational data are present */
     if (oper_tree) {
-        lyd_insert_sibling(*tree, oper_tree, &oper_tree);
+        /* remember data top-level nodes */
+        LY_LIST_FOR(*tree, iter) {
+            ly_set_add(&tree_nodes, iter, 1, NULL);
+        }
+
+        /* connect data with operational data for validation */
+        lyd_insert_sibling(*tree, oper_tree, tree);
         ret = lyd_validate_all(tree, ctx, yo->data_validate_options, NULL);
-        lyd_unlink_tree(*tree);
+
+        /* disconnect data and operational data */
+        *tree = NULL;
+        for (i = 0; i < tree_nodes.count; ++i) {
+            iter = tree_nodes.dnodes[i];
+            lyd_unlink_tree(iter);
+            lyd_insert_sibling(*tree, iter, tree);
+        }
     } else {
+        /* validate extension instance data */
         ret = lyd_validate_all(tree, ctx, yo->data_validate_options, NULL);
     }
 
     yo->data_ext = 0;
+
+    ly_set_erase(&tree_nodes, NULL);
     return ret;
 }
 
@@ -706,7 +719,7 @@ cmd_data_process(struct ly_ctx *ctx, struct yl_opt *yo)
         struct cmdline_file *input_f = (struct cmdline_file *)yo->data_inputs.objs[u];
 
         if (yo->data_ext) {
-            ret = parse_extension_instance(ctx, yo, input_f, &tree, oper_tree);
+            ret = parse_ext_inst_data(ctx, yo, input_f, oper_tree, &tree);
         } else {
             ret = parse_input_by_type(ctx, yo->data_type, input_f, yo->data_parse_options, yo->data_validate_options,
                     &tree, &op, &yo->reply_rpc);
