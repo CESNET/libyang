@@ -179,6 +179,34 @@ struct lyd_lyb_ctx {
     struct lylyb_ctx *lybctx;      /* LYB context */
 };
 
+#ifdef ENABLE_CBOR_SUPPORT
+/**
+ * @brief Internal context for CBOR data parser.
+ */
+struct lyd_cbor_ctx
+{  
+    const struct lysc_ext_instance *ext; /**< extension instance possibly changing document root context, NULL if none */
+    uint32_t parse_opts;                 /**< various @ref dataparseroptions. */
+    uint32_t val_opts;                   /**< various @ref datavalidationoptions. */
+    uint32_t int_opts;                   /**< internal parser options */
+    uint32_t path_len;                   /**< used bytes in the path buffer */
+    char path[LYD_PARSER_BUFSIZE];       /**< buffer for the generated path */
+    struct ly_set node_when;             /**< set of nodes with "when" conditions */
+    struct ly_set node_types;            /**< set of nodes with unresolved types */
+    struct ly_set meta_types;            /**< set of metadata with unresolved types */
+    struct ly_set ext_node;              /**< set of nodes with extension instances to validate */
+    struct ly_set ext_val;               /**< set of nested extension data to validate */
+    struct lyd_node *op_node;            /**< if an operation is being parsed, its node */
+    const struct lys_module *val_getnext_ht_mod;
+    struct ly_ht *val_getnext_ht;
+    
+    /* callbacks */
+    lyd_ctx_free_clb free; /**< destructor */
+
+    struct lycbor_ctx *cborctx; /**< CBOR context for low-level operations */    
+};
+#endif /* ENABLE_CBOR_SUPPORT */
+
 /**
  * @brief Parsed extension instance data to validate.
  */
@@ -347,6 +375,32 @@ LY_ERR lyd_parse_json_restconf(const struct ly_ctx *ctx, const struct lysc_ext_i
 LY_ERR lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
         struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts,
         struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p);
+
+#ifdef ENABLE_CBOR_SUPPORT
+/**
+ * @brief Parse CBOR data into libyang data tree.
+ *
+ * This function mirrors the signature and behavior of lyd_parse_json() but handles
+ * CBOR input instead. It supports both named identifier and SID formats.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] ext Optional extension instance to parse data following the schema tree specified in the extension instance
+ * @param[in] parent Parent to connect the parsed nodes to, if any.
+ * @param[in,out] first_p Pointer to the first top-level parsed node, used only if @p parent is NULL.
+ * @param[in] in Input structure to read from.
+ * @param[in] parse_opts Options for parser, see @ref dataparseroptions.
+ * @param[in] val_opts Options for the validation phase, see @ref datavalidationoptions.
+ * @param[in] int_opts Internal data parser options.
+ * @param[out] parsed Set to add all the parsed siblings into.
+ * @param[out] subtree_sibling Set if ::LYD_PARSE_SUBTREE is used and another subtree is following in @p in.
+ * @param[out] lydctx_p Data parser context to finish validation.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_cbor(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
+                      struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts,
+                      struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p);
+
+#endif /* ENABLE_CBOR_SUPPORT */
 
 /**
  * @brief Validate eventTime date-and-time value.
