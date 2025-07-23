@@ -176,7 +176,7 @@ lyd_free_leafref_links_rec(struct lyd_leafref_links_rec *rec)
 void
 lyd_free_leafref_nodes(const struct lyd_node_term *node)
 {
-    struct ly_ctx_private_data *ctx_data;
+    struct ly_ctx_shared_data *ctx_data;
     uint32_t hash;
     struct lyd_leafref_links_rec *rec;
 
@@ -190,9 +190,17 @@ lyd_free_leafref_nodes(const struct lyd_node_term *node)
     lyd_free_leafref_links_rec(rec);
 
     /* free entry itself from hash table */
-    ctx_data = ly_ctx_private_data_get(LYD_CTX(node));
+    ctx_data = ly_ctx_shared_data_get(LYD_CTX(node));
     hash = lyht_hash((const char *)&node, sizeof node);
+
+    /* LL LOCK */
+    pthread_mutex_lock(&ctx_data->leafref_links_lock);
+
     lyht_remove(ctx_data->leafref_links_ht, &rec, hash);
+
+    /* LL UNLOCK */
+    pthread_mutex_unlock(&ctx_data->leafref_links_lock);
+
     free(rec);
 }
 

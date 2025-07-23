@@ -712,17 +712,28 @@ lyplg_ext_get_data(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext
         void **ext_data, ly_bool *ext_data_free)
 {
     LY_ERR rc;
-    struct ly_ctx_private_data *ctx_data;
+    struct ly_ctx_shared_data *ctx_data;
 
-    ctx_data = ly_ctx_private_data_get(ctx);
+    LY_CHECK_ARG_RET(ctx, ctx, ext, ext_data, LY_EINVAL);
+
+    ctx_data = ly_ctx_shared_data_get(ctx);
+
+    /* EXT CLB LOCK */
+    pthread_mutex_lock(&ctx_data->ext_clb_lock);
 
     if (!ctx_data->ext_clb) {
         lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EINVAL, "Failed to get extension data, no callback set.");
-        return LY_EINVAL;
+        rc = LY_EINVAL;
+        goto cleanup;
     }
 
     if ((rc = ctx_data->ext_clb(ext, parent, ctx_data->ext_clb_data, ext_data, ext_data_free))) {
         lyplg_ext_compile_log(NULL, ext, LY_LLERR, rc, "Callback for getting ext data failed.");
+        goto cleanup;
     }
+
+cleanup:
+    /* EXT CLB UNLOCK */
+    pthread_mutex_unlock(&ctx_data->ext_clb_lock);
     return rc;
 }
