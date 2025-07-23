@@ -101,6 +101,34 @@ ly_version_proj_str(void)
 }
 
 /**
+ * @brief Callback for comparing two pattern records.
+ */
+static ly_bool
+ly_ctx_ht_pattern_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
+{
+    struct ly_pattern_ht_rec *val1 = val1_p;
+    struct ly_pattern_ht_rec *val2 = val2_p;
+
+    /* compare the pattern strings, if they match we can use the stored
+     * serialized value to create the pcre2 code for the pattern */
+    return !strcmp(val1->pattern, val2->pattern);
+}
+
+/**
+ * @brief Callback for freeing a pattern record.
+ */
+static void
+ly_ctx_ht_pattern_free_cb(void *val_p)
+{
+    struct ly_pattern_ht_rec *val = val_p;
+
+    if (val->serialized_pattern) {
+        /* free the pcode */
+        pcre2_serialize_free(val->serialized_pattern);
+    }
+}
+
+/**
  * @brief Remove private context data from the sized array and free its contents.
  *
  * @param[in] private_data Private context data to free.
@@ -369,34 +397,6 @@ ly_ctx_data_dict_get(const struct ly_ctx *ctx)
     return shared_data ? shared_data->data_dict : NULL;
 }
 
-/**
- * @brief Callback for comparing two pattern records.
- */
-static ly_bool
-ly_ctx_ht_pattern_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
-{
-    struct ly_pattern_ht_rec *val1 = val1_p;
-    struct ly_pattern_ht_rec *val2 = val2_p;
-
-    /* compare the pattern strings, if they match we can use the stored
-     * serialized value to create the pcre2 code for the pattern */
-    return !strcmp(val1->pattern, val2->pattern);
-}
-
-/**
- * @brief Callback for freeing a pattern record.
- */
-static void
-ly_ctx_ht_pattern_free_cb(void *val_p)
-{
-    struct ly_pattern_ht_rec *val = val_p;
-
-    if (val->serialized_pattern) {
-        /* free the pcode */
-        pcre2_serialize_free(val->serialized_pattern);
-    }
-}
-
 LY_ERR
 ly_ctx_data_add(const struct ly_ctx *ctx)
 {
@@ -454,7 +454,6 @@ ly_ctx_data_del(const struct ly_ctx *ctx)
 {
     struct ly_ctx_private_data *private_data;
     struct ly_ctx_shared_data *shared_data;
-    LY_ARRAY_COUNT_TYPE idx;
 
     /* WR LOCK */
     pthread_rwlock_wrlock(&ly_ctx_data_rwlock);
@@ -547,57 +546,101 @@ ly_pcode_deserialize(const uint8_t *serialized_code, pcre2_code **pcode)
     return LY_SUCCESS;
 }
 
-LY_ERR
-ly_ctx_get_or_create_pattern_code(const struct ly_ctx *ctx, const char *pattern, pcre2_code **pcode)
+/**
+ * @brief Get a compiled PCRE2 pattern code from the context's pattern hash table.
+ *
+ * @param[in] ctx Context to get the pattern code from.
+ * @param[in] pattern Pattern string to search for.
+ * @param[in] pattern_ht Pattern hash table to search in.
+ * @param[out] pcode Optional compiled pattern code, must be freed by the caller.
+ * If NULL, the function only checks if the pattern exists in the hash table.
+ * @return LY_SUCCESS on success, LY_ENOTFOUND if the pattern was not found,
+ * other LY_ERR values on error.
+ */
+static LY_ERR
+_ly_ctx_get_pattern_code(const struct ly_ctx *ctx, const char *pattern,
+        struct ly_ht *pattern_ht, pcre2_code **pcode)
 {
-    LY_ERR ret = LY_SUCCESS;
-    struct ly_ctx_shared_data *ctx_data;
+    LY_ERR rc = LY_SUCCESS;
     uint32_t hash;
     struct ly_pattern_ht_rec rec = {0}, *found_rec = NULL;
-    pcre2_code *pcode_tmp = NULL;
-    uint8_t *serialized_pcode = NULL;
 
-    assert(ctx && pattern);
+    assert(ctx && pattern && pattern_ht);
 
-    ctx_data = ly_ctx_shared_data_get(ctx);
-    LY_CHECK_RET(!ctx_data, LY_EINT);
-
-    /* try to find the record */
+    /* use the pattern as a key */
     rec.pattern = pattern;
     rec.serialized_pattern = NULL;
     hash = lyht_hash(pattern, strlen(pattern));
 
-    if (!lyht_find(ctx_data->pattern_ht, &rec, hash, (void **)&found_rec)) {
+    /* try to find the record */
+    LY_CHECK_GOTO(rc = lyht_find(pattern_ht, &rec, hash, (void **)&found_rec), cleanup);
+
+    if (pcode) {
         /* found it, deserialize the pcode */
-        LY_CHECK_GOTO(ret = ly_pcode_deserialize(found_rec->serialized_pattern, &pcode_tmp), cleanup);
-        if (pcode) {
-            *pcode = pcode_tmp;
-            pcode_tmp = NULL;
-        }
+        LY_CHECK_GOTO(rc = ly_pcode_deserialize(found_rec->serialized_pattern, pcode), cleanup);
+    }
+
+cleanup:
+    return rc;
+}
+
+LY_ERR
+ly_ctx_get_pattern_code(const struct ly_ctx *ctx, const char *pattern, pcre2_code **pcode)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct ly_ctx_shared_data *ctx_data;
+
+    ctx_data = ly_ctx_shared_data_get(ctx);
+    LY_CHECK_RET(!ctx_data, LY_EINT);
+
+    rc = _ly_ctx_get_pattern_code(ctx, pattern, ctx_data->pattern_ht, pcode);
+    if (rc) {
+        LOGERR(ctx, rc, "Failed to get pattern code for \"%s\".", pattern);
+    }
+
+    return rc;
+}
+
+LY_ERR
+ly_ctx_compile_and_cache_pattern_code(const struct ly_ctx *ctx, const char *pattern)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct ly_ctx_shared_data *ctx_data;
+    uint8_t *serialized_pcode = NULL;
+    pcre2_code *pcode_tmp = NULL;
+    struct ly_pattern_ht_rec rec = {0};
+    uint32_t hash;
+
+    ctx_data = ly_ctx_shared_data_get(ctx);
+    LY_CHECK_RET(!ctx_data, LY_EINT);
+
+    /* check for existing pattern code */
+    rc = _ly_ctx_get_pattern_code(ctx, pattern, ctx_data->pattern_ht, NULL);
+    LY_CHECK_GOTO(rc && (rc != LY_ENOTFOUND), cleanup);
+    if (!rc) {
+        /* pattern is already compiled and stored, nothing to do */
         goto cleanup;
     }
 
     /* record not found, we need to compile the pattern and insert it */
-    LY_CHECK_GOTO(ret = lys_compile_type_pattern_check(ctx, pattern, &pcode_tmp), cleanup);
+    LY_CHECK_GOTO(rc = lys_compile_type_pattern_check(ctx, pattern, &pcode_tmp), cleanup);
 
     /* serialize the pcode */
-    LY_CHECK_GOTO(ret = ly_pcode_serialize(pcode_tmp, &serialized_pcode), cleanup);
-    rec.serialized_pattern = serialized_pcode;
+    LY_CHECK_GOTO(rc = ly_pcode_serialize(pcode_tmp, &serialized_pcode), cleanup);
 
     /* insert the record */
-    LY_CHECK_GOTO(ret = lyht_insert_no_check(ctx_data->pattern_ht, &rec, hash, (void **)&found_rec), cleanup);
+    hash = lyht_hash(pattern, strlen(pattern));
+    rec.pattern = pattern;
+    rec.serialized_pattern = serialized_pcode;
+    LY_CHECK_GOTO(rc = lyht_insert_no_check(ctx_data->pattern_ht, &rec, hash, NULL), cleanup);
 
-    if (pcode) {
-        /* transfer pcode ownership to the caller */
-        *pcode = pcode_tmp;
-        pcode_tmp = NULL;
-    }
+    /* dont free the serialized pcode, it is now owned by the record in the hash table */
     serialized_pcode = NULL;
 
 cleanup:
     pcre2_code_free(pcode_tmp);
     pcre2_serialize_free(serialized_pcode);
-    return ret;
+    return rc;
 }
 
 void *

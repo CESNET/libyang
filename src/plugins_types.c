@@ -536,7 +536,7 @@ lyplg_type_validate_patterns(const struct ly_ctx *ctx, struct lysc_pattern **pat
 
     LY_ARRAY_FOR(patterns, u) {
         /* get the compiled pattern */
-        LY_CHECK_RET(ly_ctx_get_or_create_pattern_code(ctx, patterns[u]->expr, &pcode));
+        LY_CHECK_RET(ly_ctx_get_pattern_code(ctx, patterns[u]->expr, &pcode));
 
         /* match the pattern */
         r = ly_pattern_code_match(pcode, str, str_len, err);
