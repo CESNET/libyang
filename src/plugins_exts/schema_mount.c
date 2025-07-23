@@ -1211,18 +1211,28 @@ lyplg_ext_schema_mount_create_context(const struct lysc_ext_instance *ext, const
         struct ly_ctx **ctx)
 {
     struct lyd_node *ext_data = NULL;
-    struct ly_ctx_private_data *ctx_data;
+    struct ly_ctx_shared_data *ctx_data;
     struct lyplg_ext_sm *sm_data;
     ly_bool ext_data_free = 0, config, shared, builtin_plugins_only, static_plugins_only;
     LY_ERR rc = LY_SUCCESS;
     uint32_t i;
+    ly_ext_data_clb ext_data_clb;
 
     LY_CHECK_ARG_RET(NULL, ext, ctx, LY_EINVAL);
 
     sm_data = ext->compiled;
 
-    ctx_data = ly_ctx_private_data_get(ext->def->module->ctx);
-    if (!ctx_data->ext_clb) {
+    ctx_data = ly_ctx_shared_data_get(ext->def->module->ctx);
+
+    /* EXT CLB LOCK */
+    pthread_mutex_lock(&ctx_data->ext_clb_lock);
+
+    ext_data_clb = ctx_data->ext_clb;
+
+    /* EXT CLB UNLOCK */
+    pthread_mutex_unlock(&ctx_data->ext_clb_lock);
+
+    if (!ext_data_clb) {
         return LY_EINVAL;
     }
 
