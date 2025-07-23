@@ -483,15 +483,25 @@ void ly_ctx_ht_leafref_links_rec_free(void *val_p);
 struct lys_module *ly_ctx_get_module_implemented2(const struct ly_ctx *ctx, const char *name, size_t name_len);
 
 /**
- * @brief Gets or creates a PCRE2 pattern code in the context's pattern hash table.
+ * @brief Get a compiled PCRE2 pattern code from the context's pattern hash table.
  *
- * If the pattern is not found, it is compiled, serialized and cached in @p ctx .
+ * @param[in] ctx Context to get the pattern code from.
+ * @param[in] pattern Pattern string to search for.
+ * @param[out] pcode Compiled pattern code.
+ * @return LY_ERR value.
+ */
+LY_ERR ly_ctx_get_pattern_code(const struct ly_ctx *ctx, const char *pattern, pcre2_code **pcode);
+
+/**
+ * @brief Compile a pattern string into a PCRE2 code and store it in the context's pattern hash table.
+ *
+ * If the pattern is already compiled and stored, it is not recompiled.
  *
  * @param[in] ctx Context to get or create the pattern code in.
  * @param[in] pattern Pattern string to search for or to compile and store.
- * @param[out] pcode Optional pointer to the pattern code, if not NULL, it will be set to the compiled pattern code.
+ * @return LY_ERR value.
  */
-LY_ERR ly_ctx_get_or_create_pattern_code(const struct ly_ctx *ctx, const char *pattern, pcre2_code **pcode);
+LY_ERR ly_ctx_compile_and_cache_pattern_code(const struct ly_ctx *ctx, const char *pattern);
 
 /******************************************************************************
  * Dictionary
