@@ -343,13 +343,7 @@ struct ly_ctx_private_data {
     const struct ly_ctx *ctx;       /**< context to which this data belongs */
     pthread_t tid;                  /**< thread ID of the thread that created this context data */
 
-    ly_ext_data_clb ext_clb;        /**< optional callback for providing extension-specific run-time data for extensions */
-    void *ext_clb_data;             /**< optional private data for ext_clb */
-
     struct ly_err_item *errs;       /**< thread-specific errors related to the context */
-
-    struct ly_ht *leafref_links_ht; /**< hash table of leafref links between term data nodes */
-    struct ly_dict *data_dict;      /**< dictionary for data trees */
 };
 
 /**
@@ -366,7 +360,18 @@ struct ly_ctx_shared_data {
 
     struct ly_ht *pattern_ht;       /**< ht for storing patterns and their serialized pattern codes,
                                       * these codes can be deserialized into pcre2_code that can then be used directly.
-                                      * A pattern is used both as a key and a value to search for. */
+                                      * A pattern is used both as a key and a value to search for.
+                                      * This ht is only written to when the context is being compiled,
+                                      * afterwards, it is read-only. */
+
+    pthread_mutex_t ext_clb_lock;   /**< lock for accessing the extension callback */
+    ly_ext_data_clb ext_clb;        /**< optional callback for providing extension-specific run-time data for extensions */
+    void *ext_clb_data;             /**< optional private data for ext_clb */
+
+    struct ly_dict *data_dict;      /**< dictionary for data trees */
+
+    pthread_mutex_t leafref_links_lock; /**< lock for accessing the leafref links hash table */
+    struct ly_ht *leafref_links_ht;     /**< hash table of leafref links between term data nodes */
 };
 
 extern pthread_rwlock_t ly_ctx_data_rwlock;             /**< lock for creating and destroying both private & shared context data */
@@ -428,12 +433,12 @@ LY_ERR ly_ctx_data_add(const struct ly_ctx *ctx);
 void ly_ctx_data_del(const struct ly_ctx *ctx);
 
 /**
- * @brief Get private (thread-specific) context data.
+ * @brief Get private (thread-specific) context data or create it if it does not exist.
  *
  * @param[in] ctx Context whose data to get.
  * @return Context data of @p ctx, NULL if not found.
  */
-struct ly_ctx_private_data *ly_ctx_private_data_get(const struct ly_ctx *ctx);
+struct ly_ctx_private_data *ly_ctx_private_data_get_or_create(const struct ly_ctx *ctx);
 
 /**
  * @brief Get shared (between the same contexts) context data.

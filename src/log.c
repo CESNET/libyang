@@ -183,7 +183,8 @@ ly_err_first(const struct ly_ctx *ctx)
 
     LY_CHECK_ARG_RET(NULL, ctx, NULL);
 
-    ctx_data = ly_ctx_private_data_get(ctx);
+    ctx_data = ly_ctx_private_data_get_or_create(ctx);
+    LY_CHECK_RET(!ctx_data, NULL);
     return ctx_data->errs;
 }
 
@@ -194,7 +195,8 @@ ly_err_last(const struct ly_ctx *ctx)
 
     LY_CHECK_ARG_RET(NULL, ctx, NULL);
 
-    ctx_data = ly_ctx_private_data_get(ctx);
+    ctx_data = ly_ctx_private_data_get_or_create(ctx);
+    LY_CHECK_RET(!ctx_data, NULL);
     return ctx_data->errs ? ctx_data->errs->prev : NULL;
 }
 
@@ -205,12 +207,12 @@ ly_err_move(struct ly_ctx *src_ctx, struct ly_ctx *trg_ctx)
     struct ly_err_item *errs = NULL;
 
     /* get src context errs */
-    src_data = ly_ctx_private_data_get(src_ctx);
+    src_data = ly_ctx_private_data_get_or_create(src_ctx);
     errs = src_data->errs;
     src_data->errs = NULL;
 
     /* get and free the trg context errs */
-    trg_data = ly_ctx_private_data_get(trg_ctx);
+    trg_data = ly_ctx_private_data_get_or_create(trg_ctx);
     ly_err_free(trg_data->errs);
 
     /* set them for trg */
@@ -243,7 +245,7 @@ ly_err_clean(const struct ly_ctx *ctx, struct ly_err_item *eitem)
         return;
     }
 
-    ctx_data = ly_ctx_private_data_get(ctx);
+    ctx_data = ly_ctx_private_data_get_or_create(ctx);
     if (ctx_data->errs == eitem) {
         eitem = NULL;
     }
@@ -412,7 +414,8 @@ log_store(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR err, LY_VECODE ve
     assert(ctx && (level < LY_LLVRB));
 
     /* get context private data */
-    ctx_data = ly_ctx_private_data_get(ctx);
+    ctx_data = ly_ctx_private_data_get_or_create(ctx);
+    LY_CHECK_GOTO(!ctx_data, mem_fail);
 
     e = ctx_data->errs;
     if (!e) {
