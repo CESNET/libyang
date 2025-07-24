@@ -185,9 +185,10 @@ struct lysp_yin_ctx {
  * @brief Internal pattern hash table record.
  */
 struct ly_pattern_ht_rec {
-    const char *pattern;            /**< Pattern string, used both as key and for comparison. */
-    uint8_t *serialized_pattern;    /**< Serialized pattern code for this pattern,
-                                         can be deserialized to pcre2_code that can be used directly. */
+    const char *pattern;            /**< Pattern string, used both as key to hash and value to search for. */
+    uint8_t *serialized_pattern;    /**< Serialized pattern code for this pattern.
+                                         Can be deserialized to a compiled pcre2_code that can be used directly,
+                                         see ::ly_pcode_deserialize(). */
 };
 
 /**

@@ -461,7 +461,7 @@ LIBYANG_API_DECL void ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_im
  *
  * @param[in] ext Compiled extension instance.
  * @param[in] parent Data parent node instance of a schema node with @p ext instance. In special cases
- * (when not working with data) it be NULL!
+ * (when not working with data) it can be NULL!
  * @param[in] user_data User-supplied callback data.
  * @param[out] ext_data Provided extension instance data.
  * @param[out] ext_data_free Whether the extension instance should free @p ext_data or not.
