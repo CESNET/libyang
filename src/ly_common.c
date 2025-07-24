@@ -43,14 +43,16 @@
 #include "version.h"
 #include "xml.h"
 
-/* lock for creating/destroying ctx data */
-pthread_rwlock_t ly_ctx_data_rwlock = PTHREAD_RWLOCK_INITIALIZER;
+/**< lock for creating and destroying both private & shared context data */
+static pthread_rwlock_t ly_ctx_data_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
-/* sized array of thread-specific context data */
-struct ly_ctx_private_data *ly_private_ctx_data;
+/**< sized array ([sized array](@ref sizedarrays)) of private context data.
+ * The context is identified by the thread ID of the thread that created it and its address. */
+static struct ly_ctx_private_data *ly_private_ctx_data;
 
-/* sized array of shared context data */
-struct ly_ctx_shared_data *ly_shared_ctx_data;
+/**< sized array ([sized array](@ref sizedarrays)) of shared context data.
+ * The context is identified by the memory address of the context. */
+static struct ly_ctx_shared_data *ly_shared_ctx_data;
 
 LIBYANG_API_DEF uint32_t
 ly_version_so_major(void)
