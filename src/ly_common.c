@@ -124,9 +124,9 @@ ly_ctx_ht_pattern_free_cb(void *val_p)
 {
     struct ly_pattern_ht_rec *val = val_p;
 
-    if (val->serialized_pattern) {
+    if (val->pcode) {
         /* free the pcode */
-        pcre2_serialize_free(val->serialized_pattern);
+        pcre2_code_free(val->pcode);
     }
 }
 
@@ -488,160 +488,54 @@ cleanup:
     pthread_rwlock_unlock(&ly_ctx_data_rwlock);
 }
 
-/**
- * @brief Serialize a PCRE2 compiled code.
- *
- * @param[in] pcode PCRE2 compiled code to serialize.
- * @param[out] serialized_code Pointer to the serialized code, must be freed by the caller.
- * @return LY_SUCCESS on success, LY_EINT on serialization error.
- */
-static LY_ERR
-ly_pcode_serialize(const pcre2_code *pcode, uint8_t **serialized_code)
-{
-    int r;
-    uint8_t *ser_code = NULL;
-    PCRE2_SIZE ser_code_size = 0;
-
-    *serialized_code = NULL;
-
-    r = pcre2_serialize_encode(&pcode, 1, &ser_code, &ser_code_size, NULL);
-    if (r < 0) {
-        PCRE2_UCHAR err_msg[LY_PCRE2_MSG_LIMIT] = {0};
-
-        pcre2_get_error_message(r, err_msg, LY_PCRE2_MSG_LIMIT);
-        LOGERR(NULL, LY_EINT, "PCRE2 compiled code serialization failed (%s).", err_msg);
-        return LY_EINT;
-    }
-
-    *serialized_code = ser_code;
-    return LY_SUCCESS;
-}
-
-/**
- * @brief Deserialize a PCRE2 compiled code from its serialized form.
- *
- * This code does not have to be recompiled, it can be used directly.
- *
- * @param[in] serialized_code Serialized PCRE2 compiled code.
- * @param[out] pcode Pointer to the deserialized PCRE2 code, must be freed by the caller.
- * @return LY_SUCCESS on success, LY_EINT on deserialization error.
- */
-static LY_ERR
-ly_pcode_deserialize(const uint8_t *serialized_code, pcre2_code **pcode)
-{
-    int r;
-    pcre2_code *pcode_tmp = NULL;
-
-    *pcode = NULL;
-
-    /* deserialize the pcode */
-    r = pcre2_serialize_decode(&pcode_tmp, 1, serialized_code, NULL);
-    if (r < 0) {
-        PCRE2_UCHAR err_msg[LY_PCRE2_MSG_LIMIT] = {0};
-
-        pcre2_get_error_message(r, err_msg, LY_PCRE2_MSG_LIMIT);
-        LOGERR(NULL, LY_EINT, "PCRE2 compiled code deserialization failed (%s).", err_msg);
-        return LY_EINT;
-    }
-
-    *pcode = pcode_tmp;
-    return LY_SUCCESS;
-}
-
-/**
- * @brief Get a compiled PCRE2 pattern code from the context's pattern hash table.
- *
- * @param[in] ctx Context to get the pattern code from.
- * @param[in] pattern Pattern string to search for.
- * @param[in] pattern_ht Pattern hash table to search in.
- * @param[out] pcode Optional compiled pattern code, must be freed by the caller.
- * If NULL, the function only checks if the pattern exists in the hash table.
- * @return LY_SUCCESS on success, LY_ENOTFOUND if the pattern was not found,
- * other LY_ERR values on error.
- */
-static LY_ERR
-_ly_ctx_get_pattern_code(const struct ly_ctx *ctx, const char *pattern,
-        struct ly_ht *pattern_ht, pcre2_code **pcode)
+LY_ERR
+ly_ctx_get_or_compile_pattern_code(const struct ly_ctx *ctx, const char *pattern, const pcre2_code **pcode)
 {
     LY_ERR rc = LY_SUCCESS;
-    uint32_t hash;
+    struct ly_ctx_shared_data *ctx_data;
     struct ly_pattern_ht_rec rec = {0}, *found_rec = NULL;
+    uint32_t hash;
+    pcre2_code *pcode_tmp = NULL;
 
-    assert(ctx && pattern && pattern_ht);
-
-    /* use the pattern as a key */
-    rec.pattern = pattern;
-    rec.serialized_pattern = NULL;
-    hash = lyht_hash(pattern, strlen(pattern));
-
-    /* try to find the record */
-    LY_CHECK_GOTO(rc = lyht_find(pattern_ht, &rec, hash, (void **)&found_rec), cleanup);
+    assert(ctx && pattern);
 
     if (pcode) {
-        /* found it, deserialize the pcode */
-        LY_CHECK_GOTO(rc = ly_pcode_deserialize(found_rec->serialized_pattern, pcode), cleanup);
+        *pcode = NULL;
     }
-
-cleanup:
-    return rc;
-}
-
-LY_ERR
-ly_ctx_get_pattern_code(const struct ly_ctx *ctx, const char *pattern, pcre2_code **pcode)
-{
-    LY_ERR rc = LY_SUCCESS;
-    struct ly_ctx_shared_data *ctx_data;
 
     ctx_data = ly_ctx_shared_data_get(ctx);
     LY_CHECK_RET(!ctx_data, LY_EINT);
 
-    rc = _ly_ctx_get_pattern_code(ctx, pattern, ctx_data->pattern_ht, pcode);
-    if (rc) {
-        LOGERR(ctx, rc, "Failed to get pattern code for \"%s\".", pattern);
-    }
-
-    return rc;
-}
-
-LY_ERR
-ly_ctx_compile_and_cache_pattern_code(const struct ly_ctx *ctx, const char *pattern)
-{
-    LY_ERR rc = LY_SUCCESS;
-    struct ly_ctx_shared_data *ctx_data;
-    uint8_t *serialized_pcode = NULL;
-    pcre2_code *pcode_tmp = NULL;
-    struct ly_pattern_ht_rec rec = {0};
-    uint32_t hash;
-
-    ctx_data = ly_ctx_shared_data_get(ctx);
-    LY_CHECK_RET(!ctx_data, LY_EINT);
-
-    /* check for existing pattern code */
-    rc = _ly_ctx_get_pattern_code(ctx, pattern, ctx_data->pattern_ht, NULL);
-    LY_CHECK_GOTO(rc && (rc != LY_ENOTFOUND), cleanup);
-    if (!rc) {
-        /* pattern is already compiled and stored, nothing to do */
+    /* try to find the pattern code in the pattern ht */
+    hash = lyht_hash(pattern, strlen(pattern));
+    rec.pattern = pattern;
+    if (!lyht_find(ctx_data->pattern_ht, &rec, hash, (void **)&found_rec)) {
+        /* found it, return it */
+        if (pcode) {
+            *pcode = found_rec->pcode;
+        }
         goto cleanup;
     }
 
-    /* record not found, we need to compile the pattern and insert it */
+    /* didnt find it, need to compile it */
     LY_CHECK_GOTO(rc = lys_compile_type_pattern_check(ctx, pattern, &pcode_tmp), cleanup);
 
-    /* serialize the pcode */
-    LY_CHECK_GOTO(rc = ly_pcode_serialize(pcode_tmp, &serialized_pcode), cleanup);
-
-    /* insert the record */
+    /* store the compiled pattern code in the hash table */
     hash = lyht_hash(pattern, strlen(pattern));
     rec.pattern = pattern;
-    rec.serialized_pattern = serialized_pcode;
+    rec.pcode = pcode_tmp;
     LY_CHECK_GOTO(rc = lyht_insert_no_check(ctx_data->pattern_ht, &rec, hash, NULL), cleanup);
 
-    /* dont free the serialized pcode, it is now owned by the record in the hash table */
-    serialized_pcode = NULL;
+    if (pcode) {
+        *pcode = pcode_tmp;
+        pcode_tmp = NULL;
+    }
 
 cleanup:
-    pcre2_code_free(pcode_tmp);
-    pcre2_serialize_free(serialized_pcode);
+    if (rc) {
+        /* only free the pcode if we failed, because it belongs to the hash table */
+        pcre2_code_free(pcode_tmp);
+    }
     return rc;
 }
 

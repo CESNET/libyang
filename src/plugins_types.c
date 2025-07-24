@@ -528,19 +528,19 @@ lyplg_type_validate_patterns(const struct ly_ctx *ctx, struct lysc_pattern **pat
 {
     LY_ERR r;
     LY_ARRAY_COUNT_TYPE u;
-    pcre2_code *pcode;
+    const pcre2_code *pcode;
 
     LY_CHECK_ARG_RET(NULL, str, err, LY_EINVAL);
 
     *err = NULL;
 
     LY_ARRAY_FOR(patterns, u) {
-        /* get the compiled pattern */
-        LY_CHECK_RET(ly_ctx_get_pattern_code(ctx, patterns[u]->expr, &pcode));
+        /* get (or compile) the compiled pattern. The pattern might not be found, because
+         * if ctx is printed, it did not inherit compiled patterns from the original context. */
+        LY_CHECK_RET(ly_ctx_get_or_compile_pattern_code(ctx, patterns[u]->expr, &pcode));
 
         /* match the pattern */
         r = ly_pattern_code_match(pcode, str, str_len, err);
-        pcre2_code_free(pcode);
         LY_CHECK_RET(r && (r != LY_ENOT), r);
 
         if (((r == LY_ENOT) && !patterns[u]->inverted) || ((r == LY_SUCCESS) && patterns[u]->inverted)) {
