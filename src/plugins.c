@@ -129,6 +129,8 @@ struct lyplg_record {
 #ifndef STATIC
 static struct ly_set plugins_handlers;
 #endif
+
+/* global sets of loaded plugins */
 struct ly_set ly_plugins_types;
 struct ly_set ly_plugins_extensions;
 
