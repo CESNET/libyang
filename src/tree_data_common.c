@@ -1855,7 +1855,7 @@ ly_time_ts2str(const struct timespec *ts, char **str)
 }
 
 LY_ERR
-ly_pattern_code_match(pcre2_code *pcode, const char *str, size_t str_len, struct ly_err_item **err)
+ly_pattern_code_match(const pcre2_code *pcode, const char *str, size_t str_len, struct ly_err_item **err)
 {
     int r, match_opts;
     pcre2_match_data *match_data = NULL;

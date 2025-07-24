@@ -797,6 +797,6 @@ void lyd_unlink_ignore_lyds(struct lyd_node **first_sibling, struct lyd_node *no
  * @return LY_ENOT if the string does not match;
  * @return LY_ERR on error.
  */
-LY_ERR ly_pattern_code_match(pcre2_code *pcode, const char *str, size_t str_len, struct ly_err_item **err);
+LY_ERR ly_pattern_code_match(const pcre2_code *pcode, const char *str, size_t str_len, struct ly_err_item **err);
 
 #endif /* LY_TREE_DATA_INTERNAL_H_ */

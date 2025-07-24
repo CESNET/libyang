@@ -186,9 +186,7 @@ struct lysp_yin_ctx {
  */
 struct ly_pattern_ht_rec {
     const char *pattern;            /**< Pattern string, used both as key to hash and value to search for. */
-    uint8_t *serialized_pattern;    /**< Serialized pattern code for this pattern.
-                                         Can be deserialized to a compiled pcre2_code that can be used directly,
-                                         see ::ly_pcode_deserialize(). */
+    pcre2_code *pcode;              /**< Compiled PCRE2 pattern code. */
 };
 
 /**
