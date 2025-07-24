@@ -2123,7 +2123,7 @@ test_lysc_backlinks(void **state)
 static void
 test_compiled_print(void **state)
 {
-    int size, fd;
+    int size;
     void *mem, *mem_end;
     struct lyd_node *tree = NULL;
     struct ly_ctx *printed_ctx = NULL, *printed_ctx2 = NULL;
@@ -2203,12 +2203,9 @@ test_compiled_print(void **state)
     /* get the size of the compiled ctx */
     size = ly_ctx_compiled_size(UTEST_LYCTX);
 
-    /* prepare the shared memory segment */
-    fd = shm_open("/ly_test_schema_ctx", O_RDWR | O_CREAT, 00600);
-    assert_int_not_equal(fd, -1);
-    ftruncate(fd, size);
-    mem = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    assert_ptr_not_equal(mem, MAP_FAILED);
+    /* prepare memory chunk for the printed context */
+    mem = malloc(size);
+    assert_non_null(mem);
 
     /* print the context into the shared memory */
     assert_int_equal(LY_SUCCESS, ly_ctx_compiled_print(UTEST_LYCTX, mem, &mem_end));
@@ -2267,9 +2264,7 @@ test_compiled_print(void **state)
 
     /* cleanup */
     ly_ctx_destroy(printed_ctx);
-    munmap(mem, size);
-    close(fd);
-    shm_unlink("/ly_test_schema_ctx");
+    free(mem);
 }
 
 int
