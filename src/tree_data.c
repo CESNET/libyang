@@ -3769,14 +3769,13 @@ lyd_get_or_create_leafref_links_record(const struct lyd_node_term *node, struct 
     pthread_mutex_lock(&ctx_data->leafref_links_lock);
 
     ret = lyht_find(ctx_data->leafref_links_ht, &rec_p, hash, (void **)&rec_p2);
-    if (ret == LY_ENOTFOUND) {
-        if (create) {
-            rec_p = calloc(1, sizeof rec);
-            rec_p->node = node;
-            LY_CHECK_ERR_RET(!rec_p, LOGMEM(LYD_CTX(node)), LY_EMEM);
-            ret = lyht_insert_no_check(ctx_data->leafref_links_ht, &rec_p, hash, (void **)&rec_p2);
-            LY_CHECK_ERR_GOTO(ret, free(rec_p), cleanup);
-        }
+    if ((ret == LY_ENOTFOUND) && create) {
+        /* create a new record */
+        rec_p = calloc(1, sizeof rec);
+        rec_p->node = node;
+        LY_CHECK_ERR_GOTO(!rec_p, LOGMEM(LYD_CTX(node)), cleanup);
+        ret = lyht_insert_no_check(ctx_data->leafref_links_ht, &rec_p, hash, (void **)&rec_p2);
+        LY_CHECK_ERR_GOTO(ret, free(rec_p), cleanup);
     }
 
 cleanup:
