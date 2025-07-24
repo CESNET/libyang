@@ -374,13 +374,6 @@ struct ly_ctx_shared_data {
     struct ly_ht *leafref_links_ht;     /**< hash table of leafref links between term data nodes */
 };
 
-extern pthread_rwlock_t ly_ctx_data_rwlock;             /**< lock for creating and destroying both private & shared context data */
-extern struct ly_ctx_private_data *ly_private_ctx_data; /**< sized array ([sized array](@ref sizedarrays)) of private context data.
-                                                          * The context is identified by the thread ID of the thread that created it
-                                                          * and its address. */
-extern struct ly_ctx_shared_data *ly_shared_ctx_data;   /**< sized array ([sized array](@ref sizedarrays)) of shared context data.
-                                                          * The context is identified by the memory address of the context. */
-
 #define LY_CTX_INT_IMMUTABLE 0x80000000 /**< marks a context that was printed into a fixed-size memory block and
                                              can even be shared between processes so it cannot be changed */
 
