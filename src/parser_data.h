@@ -40,6 +40,11 @@ struct ly_in;
  *   can be found in [RFC 7951](http://tools.ietf.org/html/rfc7951). The specification does not cover RPCs, actions and
  *   Notifications, so the representation of these data trees is proprietary and corresponds to the representation of these
  *   trees in XML.
+ * 
+ * - CBOR
+ *
+ *   The reference documentation would be `Encoding of Data Modeled with YANG in the Concise Binary Object 
+ *   Representation (CBOR)` : [RFC 9254](https://datatracker.ietf.org/doc/html/rfc9254)
  *
  * While the parsers themselves process the input data only syntactically, all the parser functions actually incorporate
  * the [common validator](@ref howtoDataValidation) checking the input data semantically. Therefore, the parser functions
