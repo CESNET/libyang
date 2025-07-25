@@ -41,7 +41,6 @@
 
 #include <stdio.h>
 #include <string.h>
-
 void print_json(cbor_item_t *item);
 
 void print_json_string(const cbor_item_t *item)
@@ -49,6 +48,22 @@ void print_json_string(const cbor_item_t *item)
     size_t length = cbor_string_length(item);
     char *str = (char *)cbor_string_handle(item);
     printf("\"%.*s\"", (int)length, str);
+}
+
+void print_json_array(const cbor_item_t *item)
+{
+    printf("[");
+    size_t size = cbor_array_size(item);
+    cbor_item_t **handle = cbor_array_handle(item);
+
+    for (size_t i = 0; i < size; ++i)
+    {
+        print_json(handle[i]);
+        if (i < size - 1)
+            printf(", ");
+    }
+
+    printf("]");
 }
 
 void print_json_map(const cbor_item_t *item)
@@ -69,20 +84,75 @@ void print_json_map(const cbor_item_t *item)
     printf("}");
 }
 
+void print_json_number(const cbor_item_t *item)
+{
+    if (cbor_isa_uint(item)) {
+        printf("%lu", cbor_get_uint64(item));
+    } else if (cbor_isa_negint(item)) {
+        printf("-%lu", cbor_get_uint64(item) + 1);
+    } else if (cbor_isa_float_ctrl(item)) {
+        if (cbor_float_get_width(item) == CBOR_FLOAT_64) {
+            printf("%f", cbor_float_get_float8(item));
+        } else if (cbor_float_get_width(item) == CBOR_FLOAT_32) {
+            printf("%f", cbor_float_get_float4(item));
+        } else if (cbor_float_get_width(item) == CBOR_FLOAT_16) {
+            printf("%f", cbor_float_get_float2(item));
+        }
+    }
+}
+
 void print_json_bool(const cbor_item_t *item)
 {
     printf(cbor_is_bool(item) && cbor_ctrl_value(item) ? "true" : "false");
 }
 
+void print_json_null(const cbor_item_t *item)
+{
+    printf("null");
+}
+
 void print_json(cbor_item_t *item)
 {
+    if (!item) {
+        printf("null");
+        return;
+    }
+
     if (cbor_isa_map(item))
     {
         print_json_map(item);
     }
+    else if (cbor_isa_array(item))
+    {
+        print_json_array(item);
+    }
     else if (cbor_isa_string(item))
     {
         print_json_string(item);
+    }
+    else if (cbor_isa_uint(item) || cbor_isa_negint(item))
+    {
+        print_json_number(item);
+    }
+    else if (cbor_isa_float_ctrl(item))
+    {
+        // Check if it's a control value (null, undefined, true, false)
+        if (cbor_float_get_width(item) == CBOR_FLOAT_0) {
+            uint8_t ctrl = cbor_ctrl_value(item);
+            if (ctrl == 20) {
+                printf("false");
+            } else if (ctrl == 21) {
+                printf("true");
+            } else if (ctrl == 22) {
+                printf("null");
+            } else if (ctrl == 23) {
+                printf("undefined");
+            } else {
+                printf("null"); // unknown control value
+            }
+        } else {
+            print_json_number(item);
+        }
     }
     else if (cbor_is_bool(item))
     {
@@ -90,15 +160,16 @@ void print_json(cbor_item_t *item)
     }
     else
     {
-        printf("null"); // fallback for unsupported types
+        printf("null"); // fallback for truly unsupported types
     }
 }
 
-static LY_ERR lydcbor_parse_subtree(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent,
+static LY_ERR lydcbor_subtree_r(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent,
                                    struct lyd_node **first_p, struct ly_set *parsed, const cbor_item_t *cbor_obj);
 
 /**
- * @brief Free the CBOR parser context
+ * @brief Free the CBOR data parser context
+ * CBOR implementation of lyd_ctx_free_clb().
  *
  * @param[in] lydctx Data parser context to free.
  */
@@ -372,6 +443,7 @@ lydcbor_parse_terminal(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snod
         return LY_EVALID;
     }
 
+    lyd_hash(node);
     /* Insert into tree */
     ret = lyd_insert_sibling(*first_p, node, first_p);
     if (ret)
@@ -400,6 +472,7 @@ lydcbor_parse_container(struct lyd_cbor_ctx *lydctx, const struct lysc_node *sno
         return LY_EVALID;
     }
 
+    lyd_hash(node);
     /* Insert into tree first */
     ret = lyd_insert_sibling(*first_p, node, first_p);
     if (ret)
@@ -416,7 +489,7 @@ lydcbor_parse_container(struct lyd_cbor_ctx *lydctx, const struct lysc_node *sno
     if (cbor_isa_map(cbor_value) && cbor_map_size(cbor_value) > 0)
     {
         struct lyd_node *child_first = NULL;
-        ret = lydcbor_parse_subtree(lydctx, node, &child_first, parsed, cbor_value);
+        ret = lydcbor_subtree_r(lydctx, node, &child_first, parsed, cbor_value);
         if (ret)
         {
             return ret;
@@ -430,6 +503,27 @@ lydcbor_parse_container(struct lyd_cbor_ctx *lydctx, const struct lysc_node *sno
     }
 
     return LY_SUCCESS;
+}
+
+/* Helper function to check if CBOR item is null/undefined */
+static ly_bool
+lydcbor_is_null(const cbor_item_t *item)
+{
+    if (!item) {
+        return 1;
+    }
+    
+    /* Check for CBOR null primitive */
+    if (cbor_isa_float_ctrl(item)) {
+        if (cbor_float_get_width(item) == CBOR_FLOAT_0) {
+            uint8_t ctrl = cbor_ctrl_value(item);
+            if (ctrl == 22 || ctrl == 23) { /* null or undefined */
+                return 1;
+            }
+        }
+    }
+    
+    return 0;
 }
 
 static LY_ERR
@@ -491,7 +585,7 @@ lydcbor_parse_list_array(struct lyd_cbor_ctx *lydctx, const struct lysc_node *sn
             ret = LY_EVALID;
             goto cleanup;
         }
-
+        lyd_hash(node);
         /* Insert the list node */
         ret = lyd_insert_sibling(*first_p, node, first_p);
         LY_CHECK_GOTO(ret, cleanup);
@@ -501,7 +595,7 @@ lydcbor_parse_list_array(struct lyd_cbor_ctx *lydctx, const struct lysc_node *sn
 
         /* Parse list entry content */
         struct lyd_node *child_first = NULL;
-        ret = lydcbor_parse_subtree(lydctx, node, &child_first, parsed, item);
+        ret = lydcbor_subtree_r(lydctx, node, &child_first, parsed, item);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* Link children to list entry */
@@ -529,7 +623,6 @@ lydcbor_parse_list(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snode,
 
     if (cbor_isa_array(cbor_value))
     {
-        /* Array of list entries */
         ret = lydcbor_parse_list_array(lydctx, snode, cbor_value, first_p, parsed);
     }
     else if (cbor_isa_map(cbor_value))
@@ -540,6 +633,7 @@ lydcbor_parse_list(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snode,
         ret = lyd_create_inner(snode, &node);
         LY_CHECK_RET(ret);
 
+        lyd_hash(node);
         /* Insert into tree */
         ret = lyd_insert_sibling(*first_p, node, first_p);
         if (ret)
@@ -554,7 +648,7 @@ lydcbor_parse_list(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snode,
 
         /* Parse list entry content */
         struct lyd_node *child_first = NULL;
-        ret = lydcbor_parse_subtree(lydctx, node, &child_first, parsed, cbor_value);
+        ret = lydcbor_subtree_r(lydctx, node, &child_first, parsed, cbor_value);
         if (ret)
         {
             return ret;
@@ -591,6 +685,7 @@ lydcbor_parse_any(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snode,
         return LY_EVALID;
     }
 
+    lyd_hash(node);
     /* Insert into tree */
     ret = lyd_insert_sibling(*first_p, node, first_p);
     if (ret)
@@ -927,7 +1022,8 @@ lydcbor_parse_leaflist_array(struct lyd_cbor_ctx *lydctx, const struct lysc_node
             ret = LY_EVALID;
             goto cleanup;
         }
-
+        
+        lyd_hash(node);
         /* Insert the node */
         ret = lyd_insert_sibling(*first_p, node, first_p);
         LY_CHECK_GOTO(ret, cleanup);
@@ -946,12 +1042,12 @@ cleanup:
 }
 
 static LY_ERR
-lydcbor_parse_subtree(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent,
+lydcbor_subtree_r(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent,
                       struct lyd_node **first_p, struct ly_set *parsed, const cbor_item_t *cbor_obj)
 {
     LY_ERR ret = LY_SUCCESS;
 
-    printf("Entering lydcbor_parse_subtree\n");
+    printf("Entering lydcbor_subtree_r\n");
     printf("CBOR object:\n");
     print_json(cbor_obj);
     printf("\n");
@@ -990,6 +1086,11 @@ lydcbor_parse_subtree(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent,
             LOGVAL(lydctx->cborctx->ctx, LYVE_SYNTAX, "Null key or value at map index %zu", i);
             ret = LY_EVALID;
             goto cleanup;
+        }
+
+        if (lydcbor_is_null(value_item)) {
+        // Skip null values - don't create any nodes
+        continue;  // or return LY_SUCCESS depending on your loop structure
         }
 
         /* Get key string */
@@ -1099,6 +1200,10 @@ lyd_parse_cbor(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, st
     lydctx->int_opts = int_opts;
     lydctx->ext = ext;
 
+    /* find the operation node if it exists already */
+    LY_CHECK_GOTO(ret = lyd_parser_find_operation(parent, int_opts, &lydctx->op_node), cleanup);
+
+
     /*
      * Loads CBOR data from the current input buffer.
      *
@@ -1131,7 +1236,7 @@ lyd_parse_cbor(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, st
     then write functions to parse them accordingly. If not then continue below */
 
     /* Parse the CBOR structure */
-    ret = lydcbor_parse_subtree(lydctx, parent, first_p, parsed, cbor_data);
+    ret = lydcbor_subtree_r(lydctx, parent, first_p, parsed, cbor_data);
 
 cleanup:
     if (cbor_data)

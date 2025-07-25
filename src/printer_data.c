@@ -39,7 +39,7 @@ lyd_print_(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, u
         ret = lyb_print_data(out, root, options);
         break;
     case LYD_CBOR:
-        // ret = cbor_print_data(out, root, options);
+        ret = cbor_print_data(out, root, options);
         break;
     case LYD_UNKNOWN:
         LOGINT(root ? LYD_CTX(root) : NULL);
