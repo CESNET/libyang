@@ -335,9 +335,12 @@ int LY_VCODE_INSTREXP_len(const char *str);
  *****************************************************************************/
 
 /**
-  * @brief Private context data.
+  * @brief Private run-time context data.
   *
-  * Run-time data for a context, used by the library internally.
+  * The data is thread and context address specific. It is used to store
+  * thread-specific data related to the context.
+  *
+  * No synchronization is needed for this data, it is only accessed by the thread that created it.
   */
 struct ly_ctx_private_data {
     const struct ly_ctx *ctx;       /**< context to which this data belongs */
@@ -347,9 +350,12 @@ struct ly_ctx_private_data {
 };
 
 /**
- * @brief Shared context data.
+ * @brief Shared run-time context data.
  *
- * The data is shared only when using printed contexts that are created from the same memory address.
+ * It is used to store data that can be shared between multiple threads
+ * using the same context address, e.g. printed contexts created from the same memory address.
+ *
+ * Members need to be protected by locks.
  */
 struct ly_ctx_shared_data {
     const struct ly_ctx *ctx;       /**< context to which this data belongs */
@@ -429,7 +435,7 @@ void ly_ctx_data_del(const struct ly_ctx *ctx);
  * @brief Get private (thread-specific) context data or create it if it does not exist.
  *
  * @param[in] ctx Context whose data to get.
- * @return Context data of @p ctx, NULL if not found.
+ * @return Context data of @p ctx, NULL on memory allocation failure.
  */
 struct ly_ctx_private_data *ly_ctx_private_data_get_or_create(const struct ly_ctx *ctx);
 
