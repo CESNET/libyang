@@ -105,6 +105,29 @@ ly_version_proj_str(void)
 }
 
 /**
+ * @brief Callback for comparing two leafref links records.
+ */
+ly_bool
+ly_ctx_ht_leafref_links_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
+{
+    struct lyd_leafref_links_rec **rec1 = val1_p, **rec2 = val2_p;
+
+    return (*rec1)->node == (*rec2)->node;
+}
+
+/**
+ * @brief Callback for freeing two leafref links records.
+ */
+void
+ly_ctx_ht_leafref_links_rec_free(void *val_p)
+{
+    struct lyd_leafref_links_rec **rec = val_p;
+
+    lyd_free_leafref_links_rec(*rec);
+    free(*rec);
+}
+
+/**
  * @brief Callback for comparing two pattern records.
  */
 static ly_bool
