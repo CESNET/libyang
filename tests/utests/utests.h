@@ -17,6 +17,8 @@
 #ifndef _UTESTS_H_
 #define _UTESTS_H_
 
+#define _GNU_SOURCE /* strdup, setenv, tzset */
+
 #include <setjmp.h>
 #include <stdarg.h>
 #include <stddef.h>
