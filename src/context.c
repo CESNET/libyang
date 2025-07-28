@@ -259,14 +259,6 @@ cleanup:
     return mod;
 }
 
-ly_bool
-ly_ctx_ht_leafref_links_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
-{
-    struct lyd_leafref_links_rec **rec1 = val1_p, **rec2 = val2_p;
-
-    return (*rec1)->node == (*rec2)->node;
-}
-
 LIBYANG_API_DEF LY_ERR
 ly_ctx_new(const char *search_dir, uint32_t options, struct ly_ctx **new_ctx)
 {
@@ -683,15 +675,6 @@ lysc_node_clear_priv_dfs_cb(struct lysc_node *node, void *UNUSED(data), ly_bool 
 {
     node->priv = NULL;
     return LY_SUCCESS;
-}
-
-void
-ly_ctx_ht_leafref_links_rec_free(void *val_p)
-{
-    struct lyd_leafref_links_rec **rec = val_p;
-
-    lyd_free_leafref_links_rec(*rec);
-    free(*rec);
 }
 
 LIBYANG_API_DEF LY_ERR
