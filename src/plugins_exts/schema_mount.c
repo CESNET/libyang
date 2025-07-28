@@ -718,6 +718,15 @@ schema_mount_get_ctx_inline(struct lysc_ext_instance *ext, const struct lyd_node
 
     assert(sm_data && sm_data->shared);
 
+    if (ly_ctx_is_printed(ext->module->ctx)) {
+        /* compiled print (::schema_mount_compiled_print()) doesnt print any inline contexts,
+         * so they cannot be found nor created at this point
+         * (in the future they could be printed and possibly found here and used) */
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EVALID,
+                "Inline-schema mount point \"%s\" not allowed in printed context.", ext->argument);
+        return LY_EVALID;
+    }
+
     /* LOCK */
     if ((r = pthread_mutex_lock(&sm_data->lock))) {
         lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_ESYS, "Mutex lock failed (%s).", strerror(r));
