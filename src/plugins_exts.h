@@ -1172,8 +1172,10 @@ LIBYANG_API_DECL void lyplg_ext_schema_mount_destroy_shared_contexts(struct lysc
  * @brief Destroy all the inline contexts for a given libyang context.
  *
  * For standard contexts this is done automatically when the context is destroyed.
+ * Useful when using a long-lived libyang context for cleaning up memory after completing
+ * operations with schema mount extension data that require inline contexts.
  *
- * Inline contexts are not supported in printed contexts.
+ * Inline contexts are currently not supported in printed contexts.
  *
  * @param[in] ext Compiled extension instance of a schema mount point. All the inline schema mount
  * contexts that belong to the same libyang context as @p ext will be destroyed.
