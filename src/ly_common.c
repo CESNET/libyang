@@ -43,6 +43,8 @@
 #include "version.h"
 #include "xml.h"
 
+# define _POSIX_C_SOURCE 200809L /* pthread_rwlock_t */
+
 /**< lock for creating and destroying both private & shared context data */
 static pthread_rwlock_t ly_ctx_data_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
