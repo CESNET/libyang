@@ -1199,10 +1199,10 @@ cleanup:
     return rc;
 }
 
-LIBYANG_API_DEF uint32_t
-lyplg_type_get_highest_set_bit_pos(uint32_t num)
+LIBYANG_API_DEF uint64_t
+lyplg_type_get_highest_set_bit_pos(uint64_t num)
 {
-    uint32_t pos = 0;
+    uint64_t pos = 0;
 
     while (num) {
         num >>= 1;
