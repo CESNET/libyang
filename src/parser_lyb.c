@@ -70,7 +70,7 @@ lyb_parse_ctx_free(struct lyd_ctx *lydctx)
 /**
  * @brief Read data from the input.
  *
- * @param[in] buf Destination buffer.
+ * @param[in,out] buf Destination buffer, @p count_bits rightmost bits are written to, rest are shifted left.
  * @param[in] count_bits Number of bits to read.
  * @param[in] lybctx LYB context.
  */
@@ -141,7 +141,7 @@ lyb_read(void *buf, uint64_t count_bits, struct lylyb_parse_ctx *lybctx)
 /**
  * @brief Peek data from the input.
  *
- * @param[in] buf Destination buffer.
+ * @param[in,out] buf Destination buffer, @p count_bits rightmost bits are written to, rest are shifted left.
  * @param[in] count_bits Number of bits to peek.
  * @param[in] lybctx LYB context.
  */
@@ -159,7 +159,9 @@ lyb_peek(void *buf, uint64_t count_bits, struct lylyb_parse_ctx *lybctx)
     if (lybctx->buf_bits) {
         /* peek the buffered bits */
         count_buf_bits = (lybctx->buf_bits > count_bits) ? count_bits : lybctx->buf_bits;
-        ((uint8_t *)buf)[0] = lybctx->buf & lyb_right_bit_mask(count_buf_bits);
+
+        /* keep the original leftmost bits and write new peeked rightmost bits */
+        ((uint8_t *)buf)[0] = (((uint8_t *)buf)[0] << count_bits) | (lybctx->buf & lyb_right_bit_mask(count_buf_bits));
         count_bits -= count_buf_bits;
     }
 
@@ -170,9 +172,8 @@ lyb_peek(void *buf, uint64_t count_bits, struct lylyb_parse_ctx *lybctx)
     /* need to peek input */
     ly_in_peek(lybctx->in, &peek);
 
-    /* use the remaining number of bits */
-    ((uint8_t *)buf)[0] |= peek << count_buf_bits;
-    ((uint8_t *)buf)[0] &= lyb_right_bit_mask(count_buf_bits + count_bits);
+    /* prepend the newly peeked bits in front of the previously peeked bits */
+    ((uint8_t *)buf)[0] |= (peek & lyb_right_bit_mask(count_bits)) << count_buf_bits;
 }
 
 /**
@@ -1310,10 +1311,11 @@ static LY_ERR
 lyb_parse_node_leaflist(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const struct lysc_node *snode,
         struct lyd_node **first_p, struct ly_set *parsed)
 {
-    uint8_t peek = 0;
+    uint8_t peek;
 
     while (1) {
         /* peek for the end instance flag (special metadata count) */
+        peek = 0;
         lyb_peek(&peek, LYB_METADATA_END_BITS, lybctx->parse_ctx);
         if (peek == LYB_METADATA_END) {
             /* all the instances parsed, read the end flag */
@@ -1343,7 +1345,7 @@ lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
         struct lyd_node **first_p, struct ly_set *parsed)
 {
     LY_ERR rc;
-    uint8_t peek = 0;
+    uint8_t peek;
     struct lyd_node *node = NULL;
     struct lyd_meta *meta = NULL;
     uint32_t flags = 0;
@@ -1351,6 +1353,7 @@ lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
 
     while (1) {
         /* peek for the end instance flag (special metadata count) */
+        peek = 0;
         lyb_peek(&peek, LYB_METADATA_END_BITS, lybctx->parse_ctx);
         if (peek == LYB_METADATA_END) {
             /* all the instances parsed, read the end flag */
@@ -1430,7 +1433,7 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
         rc = LY_ENOT;
         goto cleanup;
     case LYB_NODE_TOP:
-        /* top-level, read module name */
+        /* top-level, read module */
         LY_CHECK_GOTO(rc = lyb_parse_module_idx(lybctx->parse_ctx, &mod), cleanup);
 
         /* read hash, find the schema node starting from mod */
