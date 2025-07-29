@@ -884,7 +884,7 @@ LIBYANG_API_DECL LY_ERR lyplg_type_resolve_leafref(const struct lysc_type_leafre
  * @param[in] num Number to use.
  * @return Position of the highest set bit.
  */
-LIBYANG_API_DECL uint32_t lyplg_type_get_highest_set_bit_pos(uint32_t num);
+LIBYANG_API_DECL uint64_t lyplg_type_get_highest_set_bit_pos(uint64_t num);
 
 /** @} pluginsTypes */
 
