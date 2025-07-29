@@ -67,7 +67,7 @@ static struct internal_modules_s {
     ly_bool implemented;
     LYS_INFORMAT format;
 } internal_modules[] = {
-    {"ietf-yang-metadata", "2016-08-05", (const char *)ietf_yang_metadata_2016_08_05_yang, 0, LYS_IN_YANG},
+    {"ietf-yang-metadata", "2016-08-05", (const char *)ietf_yang_metadata_2016_08_05_yang, 1, LYS_IN_YANG},
     {"yang", "2025-01-29", (const char *)yang_2025_01_29_yang, 1, LYS_IN_YANG},
     {"default", "2025-06-18", (const char *)default_2025_06_18_yang, 1, LYS_IN_YANG},
     {"ietf-inet-types", "2013-07-15", (const char *)ietf_inet_types_2013_07_15_yang, 0, LYS_IN_YANG},
