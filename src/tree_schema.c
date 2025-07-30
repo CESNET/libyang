@@ -1545,7 +1545,7 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
     struct lysp_submodule *submod = NULL, *latest_sp;
     struct lysp_yang_ctx *yangctx = NULL;
     struct lysp_yin_ctx *yinctx = NULL;
-    struct lysp_ctx *pctx;
+    struct lysp_ctx *pctx = NULL;
 
     LY_CHECK_ARG_RET(ctx, ctx, in, LY_EINVAL);
 

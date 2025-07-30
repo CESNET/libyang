@@ -1571,7 +1571,7 @@ lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
 
     if (!(ctx->opts & LY_CTX_LYB_HASHES)) {
         /* generate LYB hashes */
-        LY_CHECK_GOTO(rc = ly_ctx_set_options((struct ly_ctx *)ctx, LY_CTX_LYB_HASHES), cleanup);
+        LY_CHECK_RET(ly_ctx_set_options((struct ly_ctx *)ctx, LY_CTX_LYB_HASHES));
     }
 
     if (subtree_sibling) {

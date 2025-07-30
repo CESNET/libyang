@@ -2151,7 +2151,7 @@ LIBYANG_API_DEF LY_ERR
 lyd_validate_ext(struct lyd_node **ext_tree, const struct lysc_ext_instance *ext, uint32_t val_opts,
         const struct lyd_node *dep_tree, struct lyd_node **diff)
 {
-    LY_ERR rc;
+    LY_ERR rc = LY_SUCCESS;
     struct lyd_node *next, *iter;
     struct ly_set dep_set = {0};
 
