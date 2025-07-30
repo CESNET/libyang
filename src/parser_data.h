@@ -482,7 +482,7 @@ LIBYANG_API_DECL LY_ERR lyd_parse_ext_op(const struct lysc_ext_instance *ext, st
  * @brief Validate a data subtree of an extension instance, which is assumed to be a separate data tree independent of
  * normal YANG data.
  *
- * @param[in,out] subtree Data subtree to validate. May be changed by validation, might become NULL.
+ * @param[in,out] ext_tree Ext data tree to validate. May be changed by validation, might become NULL.
  * @param[in] ext Extension instance whose data to validate.
  * @param[in] val_opts Validation options (@ref datavalidationoptions).
  * @param[in] dep_tree Tree to be used for validating references from the operation subtree.

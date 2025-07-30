@@ -216,6 +216,7 @@ set(doxy_files
     doc/build.dox
     doc/transition_1_2.dox
     doc/transition_2_3.dox
+    doc/transition_3_4.dox
     ${headers}
     ${PROJECT_BINARY_DIR}/libyang/version.h
     ${type_plugins})

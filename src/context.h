@@ -56,7 +56,7 @@ struct lys_module;
  * by a custom  module searching callback (::ly_module_imp_clb) set via ::ly_ctx_set_module_imp_clb(). The algorithm of
  * searching in search dirs is also available via API as ::lys_search_localfile() function.
  *
- * YANG modules are added into the context using [parser functions](@ref howtoSchemaParsers) - \b lys_parse*().
+ * YANG modules are added into the context using [parser functions](@ref howtoSchemaParsers) - @b lys_parse*().
  * Alternatively, also ::ly_ctx_load_module() can be used - in that case the ::ly_module_imp_clb or automatic
  * search in search directories and in the current working directory is used, as described above. YANG submodules cannot be loaded
  * or even validated directly, they are loaded always only as includes of YANG modules. Explicitly parsed/loaded modules are
@@ -76,16 +76,36 @@ struct lys_module;
  *
  * Context holds all the schema modules internally. To get a specific module, use ::ly_ctx_get_module() (or some of its
  * variants). If you need to do something with all the modules in the context, it is advised to iterate over them using
- * ::ly_ctx_get_module_iter(). Alternatively, the ::ly_ctx_get_yanglib_data() function can be used to get complex information about the schemas in the context
- * in the form of data tree defined by <a href="https://tools.ietf.org/html/rfc7895">ietf-yang-library</a> module.
+ * ::ly_ctx_get_module_iter(). Alternatively, the ::ly_ctx_get_yanglib_data() function can be used to get complex
+ * information about the schemas in the context in the form of data tree defined by
+ * <a href="https://tools.ietf.org/html/rfc7895">ietf-yang-library</a> module.
  *
- * YANG data can be parsed by \b lyd_parse_*() functions. Note, that functions for schema have \b lys_
- * prefix (or \b lysp_ for the parsed and \b lysc_ for the compiled schema - for details see @ref howtoSchema page) while
+ * YANG data can be parsed by @b lyd_parse_*() functions. Note, that functions for schema have @b lys_
+ * prefix (or @b lysp_ for the parsed and @b lysc_ for the compiled schema - for details see @ref howtoSchema page) while
  * functions for instance data have \b lyd_ prefix. Details about data formats or handling data without the appropriate
  * YANG module in context can be found on @ref howtoData page.
  *
  * Besides the YANG modules, context holds also [error information](@ref howtoErrors) and
  * [database of strings](@ref howtoContextDict), both connected with the processed YANG modules and data.
+ *
+ * @section howtoPrintedContext Printed Context
+ *
+ * Having a context, it is possible to print (serialize) it into a continuous memory chunk presumably obtained from
+ * `mmap(2)` call. Note that only the **compiled** context is printed so no parsed modules are stored and, once written,
+ * it cannot be changed and is **immutable** and read-only. Calling ::ly_ctx_compiled_size() returns the final size
+ * of the context and ::ly_ctx_compiled_print() will actually print it. Then, the memory can be passed to
+ * ::ly_ctx_new_printed() that will return the standard context structure directly using the printed structures and
+ * creating only the required writable run-time data. Note that for the context printed by one process to be used
+ * by another process (or even the same after it restarts), the absolute address returned by `mmap(2)` **must be** the
+ * **exact same** as the one used for printing for the context to be valid and usable.
+ *
+ * As mentioned, the printed context includes only the compiled modules and hence certain functions may return an error
+ * if such a context is passed as their parameter. Most notably, they are functions related to modifying the context
+ * (changing search directories, adding new modules, ...) and accessing YANG features. It is also possible to free the
+ * parsed modules of a standard context to free up some memory using ::ly_ctx_free_parsed().
+ *
+ * Other than that, the printed context is not restricted in its use or functionality compared to a standard context.
+ * It can be shared between several processes and threads safely, each having their own error queue.
  *
  * - @subpage howtoErrors
  * - @subpage howtoContextDict
