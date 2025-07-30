@@ -1,4 +1,4 @@
-Source: libyang3
+Source: libyang4
 Section: libs
 Homepage: https://github.com/CESNET/libyang/
 Maintainer: Ondřej Surý <ondrej@debian.org>
@@ -12,7 +12,7 @@ Build-Depends: cmake,
 Vcs-Browser: https://github.com/CESNET/libyang/tree/master
 Vcs-Git: https://github.com/CESNET/libyang.git
 
-Package: libyang3
+Package: libyang4
 Depends: ${misc:Depends},
          ${shlibs:Depends}
 Architecture: any
@@ -31,7 +31,7 @@ Description: parser toolkit for IETF YANG data modeling - runtime
 
 Package: libyang-dev
 Depends: libpcre2-dev,
-         libyang3 (= ${binary:Version}),
+         libyang4 (= ${binary:Version}),
          ${misc:Depends}
 Conflicts: libyang2-dev
 Section: libdevel
@@ -50,7 +50,7 @@ Description: parser toolkit for IETF YANG data modeling - development files
  for libyang.
 
 Package: libyang-tools
-Depends: libyang3 (= ${binary:Version}),
+Depends: libyang4 (= ${binary:Version}),
          ${misc:Depends},
          ${shlibs:Depends}
 Breaks: libyang2-tools (<< ${source:Version})
