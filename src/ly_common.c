@@ -316,7 +316,7 @@ static LY_ERR
 ly_ctx_shared_data_create(const struct ly_ctx *ctx, struct ly_ctx_shared_data **shared_data)
 {
     LY_ERR rc = LY_SUCCESS;
-    struct ly_ctx_shared_data *shrd_data;
+    struct ly_ctx_shared_data *shrd_data = NULL;
 
     if (shared_data) {
         *shared_data = NULL;
