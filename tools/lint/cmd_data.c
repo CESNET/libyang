@@ -651,9 +651,6 @@ parse_ext_inst_data(struct ly_ctx *ctx, struct yl_opt *yo, struct cmdline_file *
         struct lyd_node *oper_tree, struct lyd_node **tree)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct ly_set tree_nodes = {0};
-    struct lyd_node *iter;
-    uint32_t i;
 
     if (find_extension(ctx, yo)) {
         YLMSG_E("Extension '%s:%s:%s' not found in module.", yo->mod_name, yo->name, yo->argument);
@@ -670,31 +667,10 @@ parse_ext_inst_data(struct ly_ctx *ctx, struct yl_opt *yo, struct cmdline_file *
         return LY_EDENIED;
     }
 
-    if (oper_tree) {
-        /* remember data top-level nodes */
-        LY_LIST_FOR(*tree, iter) {
-            ly_set_add(&tree_nodes, iter, 1, NULL);
-        }
-
-        /* connect data with operational data for validation */
-        lyd_insert_sibling(*tree, oper_tree, tree);
-        ret = lyd_validate_all(tree, ctx, yo->data_validate_options, NULL);
-
-        /* disconnect data and operational data */
-        *tree = NULL;
-        for (i = 0; i < tree_nodes.count; ++i) {
-            iter = tree_nodes.dnodes[i];
-            lyd_unlink_tree(iter);
-            lyd_insert_sibling(*tree, iter, tree);
-        }
-    } else {
-        /* validate extension instance data */
-        ret = lyd_validate_all(tree, ctx, yo->data_validate_options, NULL);
-    }
+    /* validate extension instance data */
+    ret = lyd_validate_ext(tree, yo->ext, yo->data_validate_options, oper_tree, NULL);
 
     yo->data_ext = 0;
-
-    ly_set_erase(&tree_nodes, NULL);
     return ret;
 }
 

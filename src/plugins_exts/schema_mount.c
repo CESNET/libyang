@@ -838,12 +838,15 @@ cleanup:
  */
 static LY_ERR
 schema_mount_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent, const struct lysc_node *sparent,
-        const char *prefix, size_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name, size_t name_len,
-        const struct lysc_node **snode)
+        const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name,
+        uint32_t name_len, ly_bool UNUSED(in_xpath), const struct lysc_node **snode)
 {
     LY_ERR r;
     const struct lys_module *mod;
     const struct ly_ctx *ext_ctx = NULL;
+
+    /* ext cannot be instantiated in top-level */
+    assert((parent || sparent) && name && name_len);
 
     /* get context based on ietf-yang-library data */
     if ((r = lyplg_ext_schema_mount_get_ctx(ext, parent, &ext_ctx))) {
@@ -1623,7 +1626,7 @@ const struct lyplg_ext_record plugins_schema_mount[] = {
         .plugin.printer_info = NULL,
         .plugin.printer_ctree = schema_mount_sprinter_ctree,
         .plugin.printer_ptree = schema_mount_sprinter_ptree,
-        .plugin.node = NULL,
+        .plugin.node_xpath = NULL,
         .plugin.snode = schema_mount_snode,
         .plugin.validate = schema_mount_validate,
         .plugin.pfree = NULL,

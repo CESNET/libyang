@@ -164,10 +164,10 @@ test_plugin_sort(void **state)
 
     v1 = "1";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
-            0, LY_VALUE_JSON, NULL, LYD_VALHINT_DECNUM, NULL, &val1, NULL, &err));
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_DECNUM, NULL, NULL, &val1, NULL, &err));
     v2 = "-1";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2) * 8,
-            0, LY_VALUE_JSON, NULL, LYD_VALHINT_DECNUM, NULL, &val2, NULL, &err));
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_DECNUM, NULL, NULL, &val2, NULL, &err));
     assert_true(0 < type->sort(UTEST_LYCTX, &val1, &val2));
     assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));
     assert_true(0 > type->sort(UTEST_LYCTX, &val2, &val1));
@@ -176,10 +176,10 @@ test_plugin_sort(void **state)
 
     v1 = "-1";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
-            0, LY_VALUE_JSON, NULL, LYD_VALHINT_DECNUM, NULL, &val1, NULL, &err));
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_DECNUM, NULL, NULL, &val1, NULL, &err));
     v2 = "-2";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2) * 8,
-            0, LY_VALUE_JSON, NULL, LYD_VALHINT_DECNUM, NULL, &val2, NULL, &err));
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_DECNUM, NULL, NULL, &val2, NULL, &err));
     assert_true(0 < type->sort(UTEST_LYCTX, &val1, &val2));
     assert_true(0 > type->sort(UTEST_LYCTX, &val2, &val1));
     type->free(UTEST_LYCTX, &val1);

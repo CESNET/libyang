@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief internal functions for YANG schema trees.
  *
- * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -238,6 +238,7 @@ const char *ly_format2str(LY_VALUE_FORMAT format);
  * @param[in] format Input format of @p value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] hints [Value hints](@ref lydvalhints) from the parser regarding the value type.
+ * @param[in] top_ext Extension instance containing the definition of the data being created.
  * @param[out] incomplete Whether the value needs to be resolved, optional.
  * @param[out] node Created node.
  * @return LY_SUCCESS on success.
@@ -245,20 +246,7 @@ const char *ly_format2str(LY_VALUE_FORMAT format);
  */
 LY_ERR lyd_create_term(const struct lysc_node *schema, const void *value, uint32_t value_size_bits, ly_bool is_utf8,
         ly_bool store_only, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
-        ly_bool *incomplete, struct lyd_node **node);
-
-/**
- * @brief Create a term (leaf/leaf-list) node from a canonical string value.
- *
- * Hash is calculated and new node flag is set.
- *
- * @param[in] schema Schema node of the new data node.
- * @param[in] value Canonical string value to use.
- * @param[out] node Created node.
- * @return LY_SUCCESS on success.
- * @return LY_ERR value if an error occurred.
- */
-LY_ERR lyd_create_term_canon(const struct lysc_node *schema, const char *value, struct lyd_node **node);
+        const struct lysc_ext_instance *top_ext, ly_bool *incomplete, struct lyd_node **node);
 
 /**
  * @brief Create an inner (container/list/RPC/action/notification) node.
@@ -283,12 +271,13 @@ LY_ERR lyd_create_inner(const struct lysc_node *schema, struct lyd_node **node);
  * @param[in] predicates Compiled key list predicates.
  * @param[in] vars Array of defined variables to use in predicates, may be NULL.
  * @param[in] store_only Whether to perform storing operation only.
+ * @param[in] top_ext Extension instance containing the definition of the data being created.
  * @param[out] node Created node.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *predicates,
-        const struct lyxp_var *vars, ly_bool store_only, struct lyd_node **node);
+        const struct lyxp_var *vars, ly_bool store_only, const struct lysc_ext_instance *top_ext, struct lyd_node **node);
 
 /**
  * @brief Create a list with all its keys (cannot be used for key-less list).
@@ -299,12 +288,13 @@ LY_ERR lyd_create_list(const struct lysc_node *schema, const struct ly_path_pred
  * @param[in] keys Key list predicates.
  * @param[in] keys_len Length of @p keys.
  * @param[in] store_only Whether to perform storing operation only.
+ * @param[in] top_ext Extension instance containing the definition of the data being created.
  * @param[out] node Created node.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_list2(const struct lysc_node *schema, const char *keys, size_t keys_len, ly_bool store_only,
-        struct lyd_node **node);
+        const struct lysc_ext_instance *top_ext, struct lyd_node **node);
 
 /**
  * @brief Create an anyxml/anydata node.
@@ -374,17 +364,17 @@ LY_ERR lyd_change_term_val(struct lyd_node *term, struct lyd_value *val, ly_bool
  * @param[in,out] first First sibling.
  * @param[in] sparent Schema parent of the siblings, NULL if schema of @p parent can be used.
  * @param[in] mod Module of the default values, NULL for nested siblings.
+ * @param[in] top_ext Extension instance containing the definition of the data being created.
  * @param[in] node_when Optional set to add nodes with "when" conditions into.
  * @param[in] node_types Optional set to add nodes with unresolved types into.
- * @param[in] ext_node Optional set to add nodes with extension instance node callbacks into.
  * @param[in] impl_opts Implicit options (@ref implicitoptions).
  * @param[in,out] getnext_ht Getnext HT to use, new @p sparent is added to it.
  * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
-        const struct lys_module *mod, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *ext_node,
-        uint32_t impl_opts, struct ly_ht *getnext_ht, struct lyd_node **diff);
+        const struct lys_module *mod, const struct lysc_ext_instance *top_ext, struct ly_set *node_when,
+        struct ly_set *node_types, uint32_t impl_opts, struct ly_ht *getnext_ht, struct lyd_node **diff);
 
 /**
  * @brief Check the existence and create any non-existing implicit children, recursively for containers.
@@ -393,17 +383,17 @@ LY_ERR lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const 
  * @param[in,out] first First sibling.
  * @param[in] sparent Schema parent of the siblings, NULL if schema of @p parent can be used.
  * @param[in] mod Module of the default values, NULL for nested siblings.
+ * @param[in] top_ext Extension instance containing the definition of the data being created.
  * @param[in] node_when Optional set to add nodes with "when" conditions into.
  * @param[in] node_types Optional set to add nodes with unresolved types into.
- * @param[in] ext_node Optional set to add nodes with extension instance node callbacks into.
  * @param[in] impl_opts Implicit options (@ref implicitoptions).
  * @param[in,out] getnext_ht Getnext HT to use, new @p sparent is added to it.
  * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
-        const struct lys_module *mod, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *ext_node,
-        uint32_t impl_opts, struct ly_ht *getnext_ht, struct lyd_node **diff);
+        const struct lys_module *mod, const struct lysc_ext_instance *top_ext, struct ly_set *node_when,
+        struct ly_set *node_types, uint32_t impl_opts, struct ly_ht *getnext_ht, struct lyd_node **diff);
 
 /**
  * @brief Find the next node, before which to insert the new node.
@@ -528,6 +518,7 @@ struct lysc_ext_instance *lyd_get_meta_annotation(const struct lys_module *mod, 
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] hints [Value hints](@ref lydvalhints) from the parser regarding the value type.
  * @param[in] ctx_node Value context node, may be NULL for metadata.
+ * @param[in] top_ext Extension instance containing the definition of the data being created.
  * @param[in] clear_dflt Whether to clear dflt flag starting from @p parent, recursively all NP containers.
  * @param[out] incomplete Whether the value needs to be resolved.
  * @return LY_SUCCESS on success.
@@ -536,8 +527,8 @@ struct lysc_ext_instance *lyd_get_meta_annotation(const struct lys_module *mod, 
  */
 LY_ERR lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
         uint32_t name_len, const void *value, uint32_t value_size_bits, ly_bool is_utf8, ly_bool store_only, ly_bool *dynamic,
-        LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node, ly_bool clear_dflt,
-        ly_bool *incomplete);
+        LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        const struct lysc_ext_instance *top_ext, ly_bool clear_dflt, ly_bool *incomplete);
 
 /**
  * @brief Create a copy of the metadata.
@@ -599,13 +590,15 @@ LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const st
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] hints [Value hints](@ref lydvalhints) from the parser.
  * @param[in] ctx_node Context schema node.
+ * @param[in] top_ext Extension instance containing the definition of the data being stored.
  * @param[out] incomplete Optional, set if the value also needs to be resolved.
  * @return LY_SUCCESS on success,
  * @return LY_ERR value on error.
  */
 LY_ERR lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct lysc_type *type, const void *value,
         uint32_t value_size_bits, ly_bool is_utf8, ly_bool store_only, ly_bool *dynamic, LY_VALUE_FORMAT format,
-        void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node, ly_bool *incomplete);
+        void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node, const struct lysc_ext_instance *top_ext,
+        ly_bool *incomplete);
 
 /**
  * @brief Validate previously incompletely stored value.
@@ -615,11 +608,12 @@ LY_ERR lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const st
  * @param[in,out] val Stored value to resolve.
  * @param[in] ctx_node Context node for the resolution.
  * @param[in] tree Data tree for the resolution.
+ * @param[in] top_ext Extension instance containing the definition of the data being validated.
  * @return LY_SUCCESS on success,
  * @return LY_ERR value on error.
  */
 LY_ERR lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *type, struct lyd_value *val,
-        const struct lyd_node *ctx_node, const struct lyd_node *tree);
+        const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lysc_ext_instance *top_ext);
 
 /**
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.
@@ -634,11 +628,13 @@ LY_ERR lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc
  * @param[in] format Value prefix format.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] hints Value encoding hints.
+ * @param[in] top_ext Extension instance containing the definition of the data being validated.
  * @return LY_SUCCESS on success
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const void *value,
-        uint32_t value_size_bits, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints);
+        uint32_t value_size_bits, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_ext_instance *top_ext);
 
 /**
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.
@@ -653,6 +649,7 @@ LY_ERR ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node,
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] ctx_node Optional data tree context node for the value (leafref target, instance-identifier).
  * If not set and is required for the validation to complete, ::LY_EINCOMPLETE is be returned.
+ * @param[in] top_ext Extension instance containing the definition of the data being validated.
  * @param[out] realtype Optional real type of @p value.
  * @param[out] canonical Optional canonical value of @p value (in the dictionary).
  * @return LY_SUCCESS on success
@@ -661,8 +658,8 @@ LY_ERR ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node,
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_value_validate2(const struct ly_ctx *ctx, const struct lysc_node *schema, const char *value, size_t value_len,
-        LY_VALUE_FORMAT format, void *prefix_data, const struct lyd_node *ctx_node, const struct lysc_type **realtype,
-        const char **canonical);
+        LY_VALUE_FORMAT format, void *prefix_data, const struct lyd_node *ctx_node,
+        const struct lysc_ext_instance *top_ext, const struct lysc_type **realtype, const char **canonical);
 
 /**
  * @defgroup datahash Data nodes hash manipulation

@@ -248,10 +248,10 @@ test_sort(void **state)
     /* v1 > v2, v2 < v1, v1 == v1 */
     v1 = "2005-05-25T23:15:15Z";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
-            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, NULL, &val1, NULL, &err));
     v2 = "2005-05-25T23:15:14Z";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2) * 8,
-            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, NULL, &val2, NULL, &err));
     assert_true(0 < type->sort(UTEST_LYCTX, &val1, &val2));
     assert_true(0 > type->sort(UTEST_LYCTX, &val2, &val1));
     assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));
@@ -261,10 +261,10 @@ test_sort(void **state)
     /* unknown timezone */
     v1 = "2005-05-25T23:15:15Z";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
-            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, NULL, &val1, NULL, &err));
     v2 = "2005-05-25T23:15:15-00:00";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2) * 8,
-            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, NULL, &val2, NULL, &err));
     assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val2));
     type->free(UTEST_LYCTX, &val1);
     type->free(UTEST_LYCTX, &val2);
@@ -272,10 +272,10 @@ test_sort(void **state)
     /* fractions of a second */
     v1 = "2005-05-25T23:15:15.88888Z";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
-            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, NULL, &val1, NULL, &err));
     v2 = "2005-05-25T23:15:15.88889Z";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2) * 8,
-            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, NULL, &val2, NULL, &err));
     assert_true(0 > type->sort(UTEST_LYCTX, &val1, &val2));
     assert_true(0 < type->sort(UTEST_LYCTX, &val2, &val1));
     assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));
@@ -285,10 +285,10 @@ test_sort(void **state)
     /* zero fractions of a second */
     v1 = "2005-05-25T23:15:15.00Z";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
-            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, NULL, &val1, NULL, &err));
     v2 = "2005-05-25T23:15:15Z";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2) * 8,
-            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, NULL, &val2, NULL, &err));
     assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val2));
     assert_int_equal(0, type->sort(UTEST_LYCTX, &val2, &val1));
     type->free(UTEST_LYCTX, &val1);
@@ -297,10 +297,10 @@ test_sort(void **state)
     /* zero fractions of a second and non-zero */
     v1 = "2005-05-25T23:15:15.00Z";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
-            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, NULL, &val1, NULL, &err));
     v2 = "2005-05-25T23:15:15.0001Z";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2) * 8,
-            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, NULL, &val2, NULL, &err));
     assert_true(0 > type->sort(UTEST_LYCTX, &val1, &val2));
     assert_true(0 < type->sort(UTEST_LYCTX, &val2, &val1));
     assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));

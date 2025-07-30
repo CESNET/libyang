@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang extension plugin - NACM (RFC 6536)
  *
- * Copyright (c) 2019 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -185,7 +185,7 @@ const struct lyplg_ext_record plugins_nacm[] = {
         .plugin.printer_info = NULL,
         .plugin.printer_ctree = NULL,
         .plugin.printer_ptree = NULL,
-        .plugin.node = NULL,
+        .plugin.node_xpath = NULL,
         .plugin.snode = NULL,
         .plugin.validate = NULL,
         .plugin.pfree = NULL,
@@ -203,7 +203,7 @@ const struct lyplg_ext_record plugins_nacm[] = {
         .plugin.printer_info = NULL,
         .plugin.printer_ctree = NULL,
         .plugin.printer_ptree = NULL,
-        .plugin.node = NULL,
+        .plugin.node_xpath = NULL,
         .plugin.snode = NULL,
         .plugin.validate = NULL,
         .plugin.pfree = NULL,
@@ -221,7 +221,7 @@ const struct lyplg_ext_record plugins_nacm[] = {
         .plugin.printer_info = NULL,
         .plugin.printer_ctree = NULL,
         .plugin.printer_ptree = NULL,
-        .plugin.node = NULL,
+        .plugin.node_xpath = NULL,
         .plugin.snode = NULL,
         .plugin.validate = NULL,
         .plugin.pfree = NULL,
@@ -239,7 +239,7 @@ const struct lyplg_ext_record plugins_nacm[] = {
         .plugin.printer_info = NULL,
         .plugin.printer_ctree = NULL,
         .plugin.printer_ptree = NULL,
-        .plugin.node = NULL,
+        .plugin.node_xpath = NULL,
         .plugin.snode = NULL,
         .plugin.validate = NULL,
         .plugin.pfree = NULL,

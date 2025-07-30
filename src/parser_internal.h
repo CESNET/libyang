@@ -62,8 +62,9 @@ typedef void (*lyd_ctx_free_clb)(struct lyd_ctx *ctx);
 #define LYD_INTOPT_NOTIF            0x08    /**< Notification is being parsed. */
 #define LYD_INTOPT_ANY              0x10    /**< Anydata/anyxml content is being parsed, there can be anything. */
 #define LYD_INTOPT_WITH_SIBLINGS    0x20    /**< Parse the whole input with any siblings. */
-#define LYD_INTOPT_NO_SIBLINGS      0x40    /**< If there are any siblings, return an error. */
-#define LYD_INTOPT_EVENTTIME        0x80    /**< Parse notification eventTime node. */
+#define LYD_INTOPT_SKIP_SIBLINGS    0x40    /**< Perform the validation task only for the specfic subtree, skip other siblings. */
+#define LYD_INTOPT_NO_SIBLINGS      0x80    /**< If there are any siblings, return an error. */
+#define LYD_INTOPT_EVENTTIME        0x0100  /**< Parse notification eventTime node. */
 
 /**
  * @brief Internal (common) context for YANG data parsers.
@@ -82,7 +83,6 @@ struct lyd_ctx {
     struct ly_set node_when;       /**< set of nodes with "when" conditions */
     struct ly_set node_types;      /**< set of nodes validated with LY_EINCOMPLETE result */
     struct ly_set meta_types;      /**< set of metadata validated with LY_EINCOMPLETE result */
-    struct ly_set ext_node;        /**< set of nodes with extension instances to validate */
     struct ly_set ext_val;         /**< set of nested subtrees parsed by extensions to validate */
     struct lyd_node *op_node;      /**< if an RPC/action/notification is being parsed, store the pointer to it */
     const struct lys_module *val_getnext_ht_mod;    /**< module of the cached schema nodes in getnext HT */
@@ -111,7 +111,6 @@ struct lyd_xml_ctx {
     struct ly_set node_when;
     struct ly_set node_types;
     struct ly_set meta_types;
-    struct ly_set ext_node;
     struct ly_set ext_val;
     struct lyd_node *op_node;
     const struct lys_module *val_getnext_ht_mod;
@@ -136,7 +135,6 @@ struct lyd_json_ctx {
     struct ly_set node_when;
     struct ly_set node_types;
     struct ly_set meta_types;
-    struct ly_set ext_node;
     struct ly_set ext_val;
     struct lyd_node *op_node;
     const struct lys_module *val_getnext_ht_mod;
@@ -168,7 +166,6 @@ struct lyd_lyb_ctx {
     struct ly_set node_when;
     struct ly_set node_types;
     struct ly_set meta_types;
-    struct ly_set ext_node;
     struct ly_set ext_val;
     struct lyd_node *op_node;
     const struct lys_module *val_getnext_ht_mod;
@@ -189,14 +186,6 @@ struct lyd_lyb_ctx {
 struct lyd_ctx_ext_val {
     struct lysc_ext_instance *ext;
     struct lyd_node *sibling;
-};
-
-/**
- * @brief Parsed data node with extension instance to validate.
- */
-struct lyd_ctx_ext_node {
-    struct lysc_ext_instance *ext;
-    struct lyd_node *node;
 };
 
 /**

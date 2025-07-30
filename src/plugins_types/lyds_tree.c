@@ -37,8 +37,8 @@ lyplg_type_lyb_size_lyds(const struct lysc_type *UNUSED(type), enum lyplg_lyb_si
 static LY_ERR
 lyplg_type_store_lyds(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
         uint32_t UNUSED(value_size_bits), uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data),
-        uint32_t UNUSED(hints), const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage,
-        struct lys_glob_unres *UNUSED(unres), struct ly_err_item **UNUSED(err))
+        uint32_t UNUSED(hints), const struct lysc_node *UNUSED(ctx_node), const struct lysc_ext_instance *UNUSED(top_ext),
+        struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres), struct ly_err_item **UNUSED(err))
 {
     LY_ERR ret = LY_SUCCESS;
     struct rb_node *rbt = NULL;

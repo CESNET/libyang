@@ -157,7 +157,7 @@ lys_getnext_into_case(const struct lysc_node_case *first_case, const struct lysc
  * @param[in] module In case of iterating on top level elements, the @p parent is NULL and
  * module must be specified.
  * @param[in] ext The extension instance to provide a separate schema tree. To consider the top level elements in the tree,
- * the @p parent must be NULL. Anyway, at least one of @p parent, @p module and @p ext parameters must be specified.
+ * the @p parent must be NULL. Aat least one of @p parent, @p module and @p ext parameters must be specified.
  * @param[in] options [ORed options](@ref sgetnextflags).
  * @return Next schema tree node that can be instantiated in a data tree, NULL in case there is no such element.
  */
@@ -170,6 +170,7 @@ lys_getnext_(const struct lysc_node *last, const struct lysc_node *parent, const
     LY_ARRAY_COUNT_TYPE u;
     const struct ly_ctx *sm_ctx = NULL;
     const struct lys_module *mod;
+    struct lyplg_ext *ext_plg;
     uint32_t idx;
 
     LY_CHECK_ARG_RET(NULL, parent || module || ext, NULL);
@@ -185,7 +186,13 @@ next:
         } else {
             /* top level data */
             if (ext) {
-                lyplg_ext_get_storage(ext, LY_STMT_DATA_NODE_MASK, sizeof last, (const void **)&last);
+                if (ext->def->plugin_ref && (ext_plg = LYSC_GET_EXT_PLG(ext->def->plugin_ref))->snode) {
+                    /* use the extension callback */
+                    ext_plg->snode((struct lysc_ext_instance *)ext, NULL, NULL, NULL, 0, 0, NULL, NULL, 0,
+                            options & LYS_GETNEXT_EXT_XPATH, &last);
+                } else {
+                    last = NULL;
+                }
                 next = last;
             } else {
                 next = last = module->data;
@@ -461,7 +468,7 @@ lys_find_xpath_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
     LY_CHECK_GOTO(ret, cleanup);
 
     /* atomize expression */
-    ret = lyxp_atomize(ctx, exp, NULL, LY_VALUE_JSON, NULL, ctx_node, ctx_node, &xp_set, options);
+    ret = lyxp_atomize(ctx, exp, NULL, LY_VALUE_JSON, NULL, ctx_node, ctx_node, NULL, &xp_set, options);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* transform into ly_set */
@@ -502,7 +509,7 @@ lys_find_expr_atoms(const struct lysc_node *ctx_node, const struct lys_module *c
 
     /* atomize expression */
     ret = lyxp_atomize(cur_mod->ctx, expr, cur_mod, LY_VALUE_SCHEMA_RESOLVED, (void *)prefixes, ctx_node, ctx_node,
-            &xp_set, options);
+            NULL, &xp_set, options);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* transform into ly_set */
@@ -556,7 +563,7 @@ lys_find_xpath(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const
     LY_CHECK_GOTO(ret, cleanup);
 
     /* atomize expression */
-    ret = lyxp_atomize(ctx, exp, NULL, LY_VALUE_JSON, NULL, ctx_node, ctx_node, &xp_set, options);
+    ret = lyxp_atomize(ctx, exp, NULL, LY_VALUE_JSON, NULL, ctx_node, ctx_node, NULL, &xp_set, options);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* transform into ly_set */

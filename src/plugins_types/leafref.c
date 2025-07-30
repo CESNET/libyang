@@ -48,7 +48,8 @@ lyplg_type_lyb_size_leafref(const struct lysc_type *type, enum lyplg_lyb_size_ty
 static LY_ERR
 lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
+        const struct lysc_ext_instance *top_ext, struct lyd_value *storage, struct lys_glob_unres *unres,
+        struct ly_err_item **err)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lysc_type_leafref *type_lr = (struct lysc_type_leafref *)type;
@@ -57,7 +58,7 @@ lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type,
 
     /* store the value as the real type of the leafref target */
     rc = LYSC_GET_TYPE_PLG(type_lr->realtype->plugin_ref)->store(ctx, type_lr->realtype, value, value_size_bits, options,
-            format, prefix_data, hints, ctx_node, storage, unres, err);
+            format, prefix_data, hints, ctx_node, top_ext, storage, unres, err);
     if (rc == LY_EINCOMPLETE) {
         /* it is irrelevant whether the target type needs some resolving */
         rc = LY_SUCCESS;
@@ -74,7 +75,8 @@ lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type,
 
 static LY_ERR
 lyplg_type_validate_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *ctx_node,
-        const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err)
+        const struct lyd_node *tree, const struct lysc_ext_instance *top_ext, struct lyd_value *storage,
+        struct ly_err_item **err)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lysc_type_leafref *type_lr = (struct lysc_type_leafref *)type;
@@ -89,7 +91,7 @@ lyplg_type_validate_leafref(const struct ly_ctx *ctx, const struct lysc_type *ty
         return LY_SUCCESS;
     }
 
-    rc = lyplg_type_resolve_leafref(type_lr, ctx_node, storage, tree,
+    rc = lyplg_type_resolve_leafref(type_lr, ctx_node, storage, tree, top_ext,
             (ly_ctx_get_options(ctx) & LY_CTX_LEAFREF_LINKING) ? &targets : NULL, &errmsg);
     if (rc) {
         path = lyd_path(ctx_node, LYD_PATH_STD, NULL, 0);

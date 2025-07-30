@@ -64,7 +64,6 @@ lyd_ctx_free(struct lyd_ctx *lydctx)
     ly_set_erase(&lydctx->node_types, NULL);
     ly_set_erase(&lydctx->meta_types, NULL);
     ly_set_erase(&lydctx->node_when, NULL);
-    ly_set_erase(&lydctx->ext_node, free);
     ly_set_erase(&lydctx->ext_val, free);
     lyd_val_getnext_ht_free(lydctx->val_getnext_ht);
 }
@@ -304,8 +303,8 @@ lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, c
     ly_bool incomplete;
     ly_bool store_only = (lydctx->parse_opts & LYD_PARSE_STORE_ONLY) == LYD_PARSE_STORE_ONLY ? 1 : 0;
 
-    if ((r = lyd_create_term(schema, value, value_bits_len, 1, store_only, dynamic, format, prefix_data,
-            hints, &incomplete, node))) {
+    if ((r = lyd_create_term(schema, value, value_bits_len, 1, store_only, dynamic, format, prefix_data, hints,
+            lydctx->ext, &incomplete, node))) {
         if (lydctx->data_ctx->ctx != schema->module->ctx) {
             /* move errors to the main context */
             ly_err_move(schema->module->ctx, (struct ly_ctx *)lydctx->data_ctx->ctx);
@@ -344,7 +343,7 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
     ly_log_location(NULL, NULL, path, NULL);
 
     LY_CHECK_GOTO(rc = lyd_create_meta(parent, meta, mod, name, name_len, value, value_size_bits, 1, store_only,
-            dynamic, format, prefix_data, hints, ctx_node, 0, &incomplete), cleanup);
+            dynamic, format, prefix_data, hints, ctx_node, lydctx->ext, 0, &incomplete), cleanup);
 
     if (incomplete && !(lydctx->parse_opts & LYD_PARSE_ONLY)) {
         LY_CHECK_GOTO(rc = ly_set_add(&lydctx->meta_types, *meta, 1, NULL), cleanup);
@@ -468,9 +467,8 @@ lyd_parser_validate_new_implicit(struct lyd_ctx *lydctx, struct lyd_node *node)
     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
     /* add any missing default children */
-    r = lyd_new_implicit_r(node, lyd_node_child_p(node), NULL, NULL, &lydctx->node_when, &lydctx->node_types,
-            &lydctx->ext_node, (lydctx->val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0,
-            lydctx->val_getnext_ht, NULL);
+    r = lyd_new_implicit_r(node, lyd_node_child_p(node), NULL, NULL, lydctx->ext, &lydctx->node_when, &lydctx->node_types,
+            (lydctx->val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, lydctx->val_getnext_ht, NULL);
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
 cleanup:

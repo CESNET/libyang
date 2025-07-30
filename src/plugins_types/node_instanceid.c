@@ -168,7 +168,8 @@ cleanup:
 static LY_ERR
 lyplg_type_store_node_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
+        const struct lysc_ext_instance *top_ext, struct lyd_value *storage, struct lys_glob_unres *unres,
+        struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr *exp = NULL;
@@ -224,7 +225,7 @@ lyplg_type_store_node_instanceid(const struct ly_ctx *ctx, const struct lysc_typ
 
     /* resolve it on schema tree, use JSON format instead of LYB because for this type they are equal but for some
      * nested types (such as numbers in predicates in the path) LYB would be invalid */
-    ret = ly_path_compile(ctx, NULL, ctx_node, NULL, exp, (ctx_node && (ctx_node->flags & LYS_IS_OUTPUT)) ?
+    ret = ly_path_compile(ctx, NULL, ctx_node, top_ext, exp, (ctx_node && (ctx_node->flags & LYS_IS_OUTPUT)) ?
             LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY, 1, (format == LY_VALUE_LYB) ?
             LY_VALUE_JSON : format, prefix_data, &path);
     if (ret) {

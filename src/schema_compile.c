@@ -490,7 +490,7 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
             LY_ARRAY_FOR(when_list, u) {
                 when = when_list[u];
                 ret = lyxp_atomize(set->ctx, when->cond, node->module, LY_VALUE_SCHEMA_RESOLVED, when->prefixes,
-                        when->context, when->context, &tmp_set, LYXP_SCNODE_SCHEMA);
+                        when->context, when->context, set->ext, &tmp_set, LYXP_SCNODE_SCHEMA);
                 if (ret != LY_SUCCESS) {
                     LOGVAL(set->ctx, LYVE_SEMANTICS, "Invalid when condition \"%s\".", when->cond->expr);
                     LOG_LOCBACK(1, 0);
@@ -590,7 +590,7 @@ lys_compile_unres_when(struct lysc_ctx *ctx, const struct lysc_when *when, const
 
     /* check "when" */
     ret = lyxp_atomize(ctx->ctx, when->cond, node->module, LY_VALUE_SCHEMA_RESOLVED, when->prefixes, when->context,
-            when->context, &tmp_set, opts);
+            when->context, ctx->ext, &tmp_set, opts);
     if (ret) {
         LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Invalid when condition \"%s\".", when->cond->expr);
         goto cleanup;
@@ -677,7 +677,7 @@ lys_compile_unres_must(struct lysc_ctx *ctx, const struct lysc_node *node, const
     LY_ARRAY_FOR(musts, u) {
         /* check "must" */
         ret = lyxp_atomize(ctx->ctx, musts[u].cond, node->module, LY_VALUE_SCHEMA_RESOLVED, musts[u].prefixes, node,
-                node, &tmp_set, opts);
+                node, ctx->ext, &tmp_set, opts);
         if (ret) {
             LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Invalid must condition \"%s\".", musts[u].cond->expr);
             goto cleanup;
@@ -902,7 +902,7 @@ lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc
     options = (ctx->ctx->opts & LY_CTX_REF_IMPLEMENTED) ? LYPLG_TYPE_STORE_IMPLEMENT : 0;
     type_plg = LYSC_GET_TYPE_PLG(type->plugin_ref);
     rc = type_plg->store(ctx->ctx, type, dflt, strlen(dflt) * 8, options, LY_VALUE_SCHEMA, (void *)dflt_pmod,
-            LYD_HINT_SCHEMA, node, &storage, unres, &err);
+            LYD_HINT_SCHEMA, node, ctx->ext, &storage, unres, &err);
     if (rc == LY_ERECOMPILE) {
         /* fine, but we need to recompile */
         return rc;

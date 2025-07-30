@@ -209,15 +209,20 @@ test_parse(void **state)
     struct lysc_ext_instance *e;
     struct lyd_node *tree = NULL;
     const char *yang;
-    const char *xml = "<x xmlns=\"urn:tests:extensions:structure:a\">"
-            "<x>test</x>"
+    const char *xml = "<struct xmlns=\"urn:tests:extensions:structure:a\">"
+            "<x>"
+            "<x>val</x>"
+            "<y>val</y>"
+            "<z xmlns:a=\"urn:tests:extensions:structure:a\">/a:x/a:x</z>"
             "<x2 xmlns=\"urn:tests:extensions:structure:b\">25</x2>"
-            "</x>";
-    const char *json = "{\"a:x\":{\"x\":\"test\",\"b:x2\":25}}";
+            "</x>"
+            "</struct>";
+    const char *json = "{\"a:struct\":{\"x\":{\"x\":\"val\",\"y\":\"val\",\"z\":\"/a:x/x\",\"b:x2\":25}}}";
 
     yang = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix a;"
             "import ietf-yang-structure-ext {prefix sx;}"
-            "sx:structure struct { container x { leaf x { type string;}}}}";
+            "sx:structure struct { container x { leaf x { type leafref {path \"/x/y\"; }}"
+            "leaf y { type string; must \"/x/y = 'val'\";} leaf z { type instance-identifier;}}}}";
     UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, &mod);
 
     yang = "module b {yang-version 1.1; namespace urn:tests:extensions:structure:b; prefix b;"
