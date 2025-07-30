@@ -2376,7 +2376,7 @@ static LY_ERR
 lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, const char *name,
         const struct lysc_node *exclude)
 {
-    const struct lysc_node *iter, *iter2, *dup = NULL;
+    const struct lysc_node *iter, *iter2, *dup = NULL, **node_list_p;
     const struct lysc_node_action *actions;
     const struct lysc_node_notif *notifs;
     uint32_t getnext_flags;
@@ -2429,7 +2429,9 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
 
     iter = NULL;
     if (!parent && ctx->ext) {
-        while ((iter = lys_getnext_ext(iter, parent, ctx->ext, getnext_flags))) {
+        lyplg_ext_get_storage_p(ctx->ext, LY_STMT_DATA_NODE_MASK, (void ***)&node_list_p);
+        iter = node_list_p ? *node_list_p : NULL;
+        while (iter) {
             if (!ly_set_contains(&parent_choices, (void *)iter, NULL) && CHECK_NODE(iter, exclude, name)) {
                 dup = iter;
                 goto cleanup;
@@ -2445,6 +2447,9 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
                     }
                 }
             }
+
+            /* next iter */
+            iter = lys_getnext_ext(iter, parent, ctx->ext, getnext_flags);
         }
     } else {
         while ((iter = lys_getnext(iter, parent, ctx->cur_mod->compiled, getnext_flags))) {

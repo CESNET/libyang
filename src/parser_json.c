@@ -460,7 +460,8 @@ lydjson_check_list(struct lyd_json_ctx *lydctx, const struct lysc_node *list)
 
                     rc = lydjson_value_type_hint(lydctx, &status, &hints);
                     LY_CHECK_GOTO(rc, cleanup);
-                    rc = ly_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len * 8, LY_VALUE_JSON, NULL, hints);
+                    rc = ly_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len * 8, LY_VALUE_JSON, NULL,
+                            hints, lydctx->ext);
                     LY_CHECK_GOTO(rc, cleanup);
 
                     /* key with a valid value, remove from the set */
@@ -533,7 +534,8 @@ lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *sno
             }
 
             prev_lo = ly_temp_log_options(&temp_lo);
-            if (ly_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len * 8, LY_VALUE_JSON, NULL, *type_hint_p)) {
+            if (ly_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len * 8, LY_VALUE_JSON, NULL,
+                    *type_hint_p, lydctx->ext)) {
                 ret = LY_ENOT;
             }
             ly_temp_log_options(prev_lo);
@@ -1538,12 +1540,6 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, str
         /* add/correct flags */
         r = lyd_parser_set_data_flags(*node, &(*node)->meta, (struct lyd_ctx *)lydctx, ext);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-
-        if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {
-            /* store for ext instance node validation, if needed */
-            r = lyd_validate_node_ext(*node, &lydctx->ext_node);
-            LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-        }
     } else if (r == LY_ENOT) {
         /* parse it again as an opaq node */
         r = lydjson_parse_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status, status, first_p, node);

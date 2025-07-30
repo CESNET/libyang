@@ -857,8 +857,8 @@ lyplg_type_lypath_check_status(const struct lysc_node *ctx_node, const struct ly
 
 LIBYANG_API_DEF LY_ERR
 lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, uint32_t value_len, uint32_t options,
-        LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *ctx_node, struct lys_glob_unres *unres,
-        struct ly_path **path, struct ly_err_item **err)
+        LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *ctx_node, const struct lysc_ext_instance *top_ext,
+        struct lys_glob_unres *unres, struct ly_path **path, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr *exp = NULL;
@@ -907,7 +907,7 @@ lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, uint32_t valu
 
     /* resolve it on schema tree */
     oper = (ctx_node && (ctx_node->flags & LYS_IS_OUTPUT)) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
-    ret = ly_path_compile(ctx, NULL, ctx_node, NULL, exp, oper, LY_PATH_TARGET_SINGLE, 1, format, prefix_data, path);
+    ret = ly_path_compile(ctx, NULL, ctx_node, top_ext, exp, oper, LY_PATH_TARGET_SINGLE, 1, format, prefix_data, path);
     if (ret) {
         err_fmt = "Invalid instance-identifier \"%.*s\" value - semantic error%s%s";
         goto cleanup;
@@ -953,7 +953,7 @@ lyplg_type_print_val(const struct lysc_node *node, const char *canon, LY_VALUE_F
 
     /* store the value */
     r = type_plg->store(node->module->ctx, type, canon, strlen(canon) * 8, LYPLG_TYPE_STORE_ONLY, LY_VALUE_CANON,
-            NULL, LYD_HINT_DATA, node, &storage, NULL, &err);
+            NULL, LYD_HINT_DATA, node, NULL, &storage, NULL, &err);
     if (r && (r != LY_EINCOMPLETE)) {
         if (err) {
             ly_err_print(node->module->ctx, err);
@@ -1012,6 +1012,7 @@ lyplg_type_identity_isderived(const struct lysc_ident *base, const struct lysc_i
  *
  * @param[in] path Leafref path.
  * @param[in] ctx_node Leafref context node.
+ * @param[in] top_ext Extension instance whose XPath context we are evaluating in.
  * @param[in] format Format of @p path.
  * @param[in] prefix_data Prefix data of @p path.
  * @param[in] target_val Leafref target value.
@@ -1022,7 +1023,8 @@ lyplg_type_identity_isderived(const struct lysc_ident *base, const struct lysc_i
  */
 static LY_ERR
 lyplg_type_resolve_leafref_get_target_path(const struct lyxp_expr *path, const struct lysc_node *ctx_node,
-        LY_VALUE_FORMAT format, void *prefix_data, const char *target_val, struct lyxp_expr **target_path)
+        const struct lysc_ext_instance *top_ext, LY_VALUE_FORMAT format, void *prefix_data, const char *target_val,
+        struct lyxp_expr **target_path)
 {
     LY_ERR rc = LY_SUCCESS;
     uint8_t oper;
@@ -1035,7 +1037,7 @@ lyplg_type_resolve_leafref_get_target_path(const struct lyxp_expr *path, const s
 
     /* compile, has already been so it must succeed */
     oper = (ctx_node->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
-    if (ly_path_compile_leafref(ctx_node->module->ctx, ctx_node, NULL, path, oper, LY_PATH_TARGET_MANY, format,
+    if (ly_path_compile_leafref(ctx_node->module->ctx, ctx_node, top_ext, path, oper, LY_PATH_TARGET_MANY, format,
             prefix_data, &p)) {
         /* the target was found before but is disabled so it was removed */
         return LY_ENOT;
@@ -1089,7 +1091,7 @@ cleanup:
 
 LIBYANG_API_DEF LY_ERR
 lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node, struct lyd_value *value,
-        const struct lyd_node *tree, struct ly_set **targets, char **errmsg)
+        const struct lyd_node *tree, const struct lysc_ext_instance *top_ext, struct ly_set **targets, char **errmsg)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyxp_expr *target_path = NULL;
@@ -1112,8 +1114,8 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
 
     if (!strchr(val_str, '\"') || !strchr(val_str, '\'')) {
         /* get the path with the value */
-        r = lyplg_type_resolve_leafref_get_target_path(lref->path, node->schema, LY_VALUE_SCHEMA_RESOLVED, lref->prefixes,
-                val_str, &target_path);
+        r = lyplg_type_resolve_leafref_get_target_path(lref->path, node->schema, top_ext, LY_VALUE_SCHEMA_RESOLVED,
+                lref->prefixes, val_str, &target_path);
         if (r == LY_ENOT) {
             goto cleanup;
         } else if (r) {
@@ -1124,7 +1126,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
 
     /* find the target data instance(s) */
     rc = lyxp_eval(LYD_CTX(node), target_path ? target_path : lref->path, node->schema->module,
-            LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, node, node, tree, NULL, &set, LYXP_IGNORE_WHEN);
+            LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, node, node, tree, NULL, top_ext, &set, LYXP_IGNORE_WHEN);
     if (rc) {
         e = ly_err_last(LYD_CTX(node));
         if (e && (e->err == rc)) {

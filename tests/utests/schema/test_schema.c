@@ -2251,10 +2251,12 @@ test_compiled_print(void **state)
     lyd_free_all(tree);
 
     /* parse structure extension data with the printed ctx */
-    xml = "<a xmlns=\"urn:m3\">\n"
-            "  <b>abc</b>\n"
-            "  <c xmlns=\"urn:m4\">24</c>\n"
-            "</a>\n";
+    xml = "<struct xmlns=\"urn:m3\">\n"
+            "  <a>\n"
+            "    <b>abc</b>\n"
+            "    <c xmlns=\"urn:m4\">24</c>\n"
+            "  </a>\n"
+            "</struct>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(xml, &UTEST_IN));
     assert_int_equal(LY_SUCCESS, lyd_parse_ext_data(ext, NULL, UTEST_IN, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
 

@@ -479,6 +479,21 @@ LIBYANG_API_DECL LY_ERR lyd_parse_ext_op(const struct lysc_ext_instance *ext, st
         LYD_FORMAT format, enum lyd_type data_type, uint32_t parse_options, struct lyd_node **tree, struct lyd_node **op);
 
 /**
+ * @brief Validate a data subtree of an extension instance, which is assumed to be a separate data tree independent of
+ * normal YANG data.
+ *
+ * @param[in,out] subtree Data subtree to validate. May be changed by validation, might become NULL.
+ * @param[in] ext Extension instance whose data to validate.
+ * @param[in] val_opts Validation options (@ref datavalidationoptions).
+ * @param[in] dep_tree Tree to be used for validating references from the operation subtree.
+ * @param[out] diff Optional diff with any changes made by the validation.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR error on error.
+ */
+LIBYANG_API_DECL LY_ERR lyd_validate_ext(struct lyd_node **ext_tree, const struct lysc_ext_instance *ext,
+        uint32_t val_opts, const struct lyd_node *dep_tree, struct lyd_node **diff);
+
+/**
  * @brief Fully validate a data tree.
  *
  * The data tree is modified in-place. As a result of the validation, some data might be removed

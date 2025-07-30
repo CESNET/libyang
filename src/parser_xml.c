@@ -274,9 +274,10 @@ cleanup:
 }
 
 static LY_ERR
-lydxml_check_list(struct lyxml_ctx *xmlctx, const struct lysc_node *list)
+lydxml_check_list(struct lyd_xml_ctx *lydctx, const struct lysc_node *list)
 {
     LY_ERR ret = LY_SUCCESS, r;
+    struct lyxml_ctx *xmlctx = lydctx->xmlctx;
     enum LYXML_PARSER_STATUS next;
     struct ly_set key_set = {0};
     const struct lysc_node *snode;
@@ -314,7 +315,8 @@ lydxml_check_list(struct lyxml_ctx *xmlctx, const struct lysc_node *list)
         assert(xmlctx->status == LYXML_ELEM_CONTENT);
         if (i < key_set.count) {
             /* validate the value */
-            r = ly_value_validate(NULL, snode, xmlctx->value, xmlctx->value_len * 8, LY_VALUE_XML, &xmlctx->ns, LYD_HINT_DATA);
+            r = ly_value_validate(NULL, snode, xmlctx->value, xmlctx->value_len * 8, LY_VALUE_XML, &xmlctx->ns,
+                    LYD_HINT_DATA, lydctx->ext);
             if (!r) {
                 /* key with a valid value, remove from the set */
                 ly_set_rm_index(&key_set, i, NULL);
@@ -422,7 +424,8 @@ lydxml_data_check_opaq(struct lyd_xml_ctx *lydctx, const struct lysc_node **snod
     if ((*snode)->nodetype & LYD_NODE_TERM) {
         /* value may not be valid in which case we parse it as an opaque node */
         prev_lo = ly_temp_log_options(&temp_lo);
-        r = ly_value_validate(NULL, *snode, xmlctx->value, xmlctx->value_len * 8, LY_VALUE_XML, &xmlctx->ns, LYD_HINT_DATA);
+        r = ly_value_validate(NULL, *snode, xmlctx->value, xmlctx->value_len * 8, LY_VALUE_XML, &xmlctx->ns,
+                LYD_HINT_DATA, lydctx->ext);
         ly_temp_log_options(prev_lo);
         if (r) {
             LOGVRB("Parsing opaque term node \"%s\" with invalid value \"%.*s\".", (*snode)->name, (int)xmlctx->value_len,
@@ -433,7 +436,7 @@ lydxml_data_check_opaq(struct lyd_xml_ctx *lydctx, const struct lysc_node **snod
         /* skip content */
         LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), restore);
 
-        if (lydxml_check_list(xmlctx, *snode)) {
+        if (lydxml_check_list(lydctx, *snode)) {
             /* invalid list, parse as opaque if it missing/has invalid some keys */
             LOGVRB("Parsing opaque list node \"%s\" with missing/invalid keys.", (*snode)->name);
             *snode = NULL;
@@ -1108,12 +1111,6 @@ node_parsed:
         /* add/correct flags */
         r = lyd_parser_set_data_flags(node, &meta, (struct lyd_ctx *)lydctx, ext);
         LY_CHECK_ERR_GOTO(r, rc = r; lyd_free_tree(node), cleanup);
-
-        if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {
-            /* store for ext instance node validation, if needed */
-            r = lyd_validate_node_ext(node, &lydctx->ext_node);
-            LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
-        }
     }
 
     /* parser next */

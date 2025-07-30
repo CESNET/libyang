@@ -213,6 +213,7 @@ LY_ERR ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node 
  * @param[in] cur_mod Current module of the path (where it was "instantiated"). Used for nodes without a prefix
  * for ::LY_VALUE_SCHEMA and ::LY_VALUE_SCHEMA_RESOLVED format.
  * @param[in] ctx_node Context node, node for which the predicate is defined.
+ * @param[in] top_ext Extension instance containing the definition of the data being created.
  * @param[in] expr Parsed path.
  * @param[in,out] tok_idx Index in @p expr, is adjusted for parsed tokens.
  * @param[in] format Format of the path.
@@ -221,8 +222,8 @@ LY_ERR ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node 
  * @return LY_ERR value.
  */
 LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lys_module *cur_mod,
-        const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint32_t *tok_idx, LY_VALUE_FORMAT format,
-        void *prefix_data, struct ly_path_predicate **predicates);
+        const struct lysc_node *ctx_node, const struct lysc_ext_instance *top_ext, const struct lyxp_expr *expr,
+        uint32_t *tok_idx, LY_VALUE_FORMAT format, void *prefix_data, struct ly_path_predicate **predicates);
 
 /**
  * @brief Resolve at least partially the target defined by ly_path structure. Not supported for leafref!
@@ -230,6 +231,7 @@ LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_nod
  * @param[in] path Path structure specifying the target.
  * @param[in] start Starting node for relative paths, can be any for absolute paths.
  * @param[in] vars Array of defined variables to use in predicates, may be NULL.
+ * @param[in] top_ext Extension instance containing the definition of the data being created.
  * @param[in] with_opaq Whether to consider opaque nodes or not.
  * @param[out] path_idx Last found path segment index, can be NULL, set to 0 if not found.
  * @param[out] match Last found matching node, can be NULL, set to NULL if not found.
@@ -239,7 +241,7 @@ LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_nod
  * @return LY_ERR on another error.
  */
 LY_ERR ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, const struct lyxp_var *vars,
-        ly_bool with_opaq, LY_ARRAY_COUNT_TYPE *path_idx, struct lyd_node **match);
+        const struct lysc_ext_instance *top_ext, ly_bool with_opaq, LY_ARRAY_COUNT_TYPE *path_idx, struct lyd_node **match);
 
 /**
  * @brief Resolve the target defined by ly_path structure. Not supported for leafref!
@@ -247,13 +249,14 @@ LY_ERR ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *s
  * @param[in] path Path structure specifying the target.
  * @param[in] start Starting node for relative paths, can be any for absolute paths.
  * @param[in] vars Array of defined variables to use in predicates, may be NULL.
+ * @param[in] top_ext Extension instance containing the definition of the data being created.
  * @param[out] match Found matching node, can be NULL, set to NULL if not found.
  * @return LY_ENOTFOUND if no nodes were found,
  * @return LY_SUCCESS when the last node in the path was found,
  * @return LY_ERR on another error.
  */
 LY_ERR ly_path_eval(const struct ly_path *path, const struct lyd_node *start, const struct lyxp_var *vars,
-        struct lyd_node **match);
+        const struct lysc_ext_instance *top_ext, struct lyd_node **match);
 
 /**
  * @brief Duplicate ly_path structure.

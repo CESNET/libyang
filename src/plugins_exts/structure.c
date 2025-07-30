@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang extension plugin - structure (RFC 8791)
  *
- * Copyright (c) 2022 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2022 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@
 #include "libyang.h"
 #include "ly_common.h"
 #include "plugins_exts.h"
+#include "tree_data_internal.h"
+#include "xpath.h"
 
 struct lysp_ext_instance_structure {
     struct lysp_restr *musts;
@@ -38,6 +40,7 @@ struct lysc_ext_instance_structure {
     const char *dsc;
     const char *ref;
     struct lysc_node *child;
+    struct lysc_node_container *top_cont;
 };
 
 struct lysp_ext_instance_augment_structure {
@@ -47,6 +50,8 @@ struct lysp_ext_instance_augment_structure {
     struct lysp_node *child;
     struct lysp_node_augment *aug;
 };
+
+static void structure_cfree(const struct ly_ctx *ctx, struct lysc_ext_instance *ext);
 
 /**
  * @brief Parse structure extension instances.
@@ -164,7 +169,8 @@ structure_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, s
 {
     LY_ERR rc;
     struct lysc_module *mod_c;
-    const struct lysc_node *child;
+    struct lysc_node *child;
+    struct lysc_node_container *top_cont = NULL;
     struct lysc_ext_instance_structure *struct_cdata;
     uint32_t prev_options = *lyplg_ext_compile_get_options(cctx);
 
@@ -253,9 +259,32 @@ structure_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, s
         return rc;
     }
 
+    /* add the top-level container with the extension instance name, connect all the other substatements into it */
+    struct_cdata->top_cont = calloc(1, sizeof *struct_cdata->top_cont);
+    if (!struct_cdata->top_cont) {
+        goto emem;
+    }
+
+    struct_cdata->top_cont->name = ext->argument;
+    struct_cdata->top_cont->nodetype = LYS_CONTAINER;
+    struct_cdata->top_cont->flags = struct_cdata->flags;
+    struct_cdata->top_cont->module = (struct lys_module *)lyplg_ext_compile_get_cur_mod(cctx);
+    struct_cdata->top_cont->prev = &struct_cdata->top_cont->node;
+    struct_cdata->top_cont->child = struct_cdata->child;
+    LY_LIST_FOR(struct_cdata->child, child) {
+        child->parent = (struct lysc_node *)struct_cdata->top_cont;
+    }
+    struct_cdata->top_cont->musts = struct_cdata->musts;
+
     return LY_SUCCESS;
 
 emem:
+    structure_cfree(lyplg_ext_compile_get_ctx(cctx), ext);
+    if (top_cont) {
+        lydict_remove(lyplg_ext_compile_get_ctx(cctx), top_cont->name);
+        free(top_cont);
+    }
+
     lyplg_ext_compile_log(cctx, ext, LY_LLERR, LY_EMEM, "Memory allocation failed (%s()).", __func__);
     return LY_EMEM;
 }
@@ -292,17 +321,26 @@ structure_pfree(const struct ly_ctx *ctx, struct lysp_ext_instance *ext)
 static void
 structure_cfree(const struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 {
+    struct lysc_ext_instance_structure *struct_cdata = ext->compiled;
+
     lyplg_ext_cfree_instance_substatements(ctx, ext->substmts);
-    free(ext->compiled);
+    if (struct_cdata) {
+        free(struct_cdata->top_cont);
+        free(struct_cdata);
+    }
 }
 
 static int
 structure_compiled_size(const struct lysc_ext_instance *ext, struct ly_ht *addr_ht)
 {
+    struct lysc_ext_instance_structure *struct_cdata;
     int size = 0;
 
-    size += sizeof(struct lysc_ext_instance_structure);
+    struct_cdata = ext->compiled;
+
+    size += sizeof *struct_cdata;
     size += lyplg_ext_compiled_stmts_storage_size(ext->substmts, addr_ht);
+    size += sizeof *struct_cdata->top_cont;
 
     return size;
 }
@@ -311,11 +349,23 @@ static LY_ERR
 structure_compiled_print(const struct lysc_ext_instance *orig_ext, struct lysc_ext_instance *ext, struct ly_ht *addr_ht,
         struct ly_set *ptr_set, void **mem)
 {
-    struct lysc_ext_instance_structure *struct_cdata;
+    LY_ERR r;
+    struct lysc_ext_instance_structure *struct_cdata, *orig_cdata;
 
+    orig_cdata = orig_ext->compiled;
+
+    /* ext structure */
     struct_cdata = ext->compiled = *mem;
     *mem = (char *)*mem + sizeof *struct_cdata;
+    memset(struct_cdata, 0, sizeof *struct_cdata);
 
+    /* top_cont */
+    struct_cdata->top_cont = *mem;
+    *mem = (char *)*mem + sizeof *struct_cdata->top_cont;
+    lyplg_ext_compiled_print_add_addr(addr_ht, orig_cdata->top_cont, struct_cdata->top_cont);
+    memset(struct_cdata->top_cont, 0, sizeof *struct_cdata->top_cont);
+
+    /* substatements */
     ext->substmts[0].storage_p = (void **)&struct_cdata->musts;
     ext->substmts[1].storage_p = (void **)&struct_cdata->flags;
     ext->substmts[2].storage_p = (void **)&struct_cdata->dsc;
@@ -330,7 +380,25 @@ structure_compiled_print(const struct lysc_ext_instance *orig_ext, struct lysc_e
     ext->substmts[12].storage_p = (void **)&struct_cdata->child;
     ext->substmts[13].storage_p = (void **)&struct_cdata->child;
 
-    return lyplg_ext_compiled_stmts_storage_print(orig_ext->substmts, ext->substmts, addr_ht, ptr_set, mem);
+    r = lyplg_ext_compiled_stmts_storage_print(orig_ext->substmts, ext->substmts, addr_ht, ptr_set, mem);
+    if (r) {
+        return r;
+    }
+
+    /* top_cont substatements that are now in addr_ht (except for musts which are not shared normally) */
+    struct_cdata->top_cont->name = lyplg_ext_compiled_print_get_addr(addr_ht, orig_cdata->top_cont->name);
+    assert(struct_cdata->top_cont->name);
+    struct_cdata->top_cont->nodetype = orig_cdata->top_cont->nodetype;
+    struct_cdata->top_cont->flags = orig_cdata->top_cont->flags;
+    struct_cdata->top_cont->module = lyplg_ext_compiled_print_get_addr(addr_ht, orig_cdata->top_cont->module);
+    assert(struct_cdata->top_cont->module);
+    struct_cdata->top_cont->prev = lyplg_ext_compiled_print_get_addr(addr_ht, orig_cdata->top_cont->prev);
+    assert(struct_cdata->top_cont->prev);
+    struct_cdata->top_cont->child = lyplg_ext_compiled_print_get_addr(addr_ht, orig_cdata->top_cont->child);
+    assert(struct_cdata->top_cont->child);
+    struct_cdata->top_cont->musts = struct_cdata->musts;
+
+    return LY_SUCCESS;
 }
 
 /**
@@ -502,6 +570,54 @@ structure_sprinter_ptree(struct lysp_ext_instance *ext, const struct lyspr_tree_
 }
 
 /**
+ * @brief Node xpath callback for structure.
+ */
+static void
+structure_node_xpath(struct lysc_ext_instance *ext, const struct lyd_node *tree, const struct lyd_node **node)
+{
+    *node = NULL;
+
+    if (!tree) {
+        return;
+    }
+
+    /* virtual top-level container expected */
+    assert(!strcmp(ext->argument, LYD_NAME(tree)));
+    (void)ext;
+
+    /* return the child */
+    *node = lyd_child(tree);
+    return;
+}
+
+/**
+ * @brief Snode callback for structure.
+ */
+static LY_ERR
+structure_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent, const struct lysc_node *sparent,
+        const char *prefix, uint32_t UNUSED(prefix_len), LY_VALUE_FORMAT UNUSED(format), void *UNUSED(prefix_data),
+        const char *name, uint32_t UNUSED(name_len), ly_bool in_xpath, const struct lysc_node **snode)
+{
+    struct lysc_ext_instance_structure *struct_cdata = ext->compiled;
+
+    assert(!parent && !sparent && !prefix && !name);
+    (void)parent;
+    (void)sparent;
+    (void)prefix;
+    (void)name;
+
+    if (in_xpath) {
+        /* XPath starts at the substatements */
+        *snode = struct_cdata->child;
+    } else {
+        /* data tree start at the top-level virtual container */
+        *snode = &struct_cdata->top_cont->node;
+    }
+
+    return *snode ? LY_SUCCESS : LY_ENOT;
+}
+
+/**
  * @brief Augment structure schema parsed tree printer.
  *
  * Implementation of ::lyplg_ext_sprinter_ptree_clb callback set as lyext_plugin::printer_ptree.
@@ -570,8 +686,8 @@ const struct lyplg_ext_record plugins_structure[] = {
         .plugin.printer_info = structure_printer_info,
         .plugin.printer_ctree = structure_sprinter_ctree,
         .plugin.printer_ptree = structure_sprinter_ptree,
-        .plugin.node = NULL,
-        .plugin.snode = NULL,
+        .plugin.node_xpath = structure_node_xpath,
+        .plugin.snode = structure_snode,
         .plugin.validate = NULL,
         .plugin.pfree = structure_pfree,
         .plugin.cfree = structure_cfree,
@@ -589,7 +705,7 @@ const struct lyplg_ext_record plugins_structure[] = {
         .plugin.printer_info = NULL,
         .plugin.printer_ctree = structure_aug_sprinter_ctree,
         .plugin.printer_ptree = structure_aug_sprinter_ptree,
-        .plugin.node = NULL,
+        .plugin.node_xpath = NULL,
         .plugin.snode = NULL,
         .plugin.validate = NULL,
         .plugin.pfree = structure_pfree,

@@ -315,6 +315,7 @@ struct lyxp_set {
     void *prefix_data;                      /**< Format-specific prefix data (see ::ly_resolve_prefix). */
     const struct lyxp_var *vars;            /**< XPath variables. [Sized array](@ref sizedarrays).
                                                  Set of variable bindings. */
+    const struct lysc_ext_instance *ext;    /**< Extension instance with a callback for getting document root children, if any. */
 };
 
 /**
@@ -343,6 +344,7 @@ const char *lyxp_token2str(enum lyxp_token tok);
  * @param[in] tree Data tree on which to perform the evaluation, it must include all the available data (including
  * the tree of @p ctx_node). Can be any node of the tree, it is adjusted.
  * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
+ * @param[in] top_ext Extension instance whose XPath context we are evaluating in.
  * @param[out] set Result set.
  * @param[in] options Whether to apply some evaluation restrictions.
  * @return LY_EVALID for invalid argument types/count,
@@ -351,7 +353,8 @@ const char *lyxp_token2str(enum lyxp_token tok);
  */
 LY_ERR lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct lys_module *cur_mod,
         LY_VALUE_FORMAT format, void *prefix_data, const struct lyd_node *cur_node, const struct lyd_node *ctx_node,
-        const struct lyd_node *tree, const struct lyxp_var *vars, struct lyxp_set *set, uint32_t options);
+        const struct lyd_node *tree, const struct lyxp_var *vars, const struct lysc_ext_instance *top_ext,
+        struct lyxp_set *set, uint32_t options);
 
 /**
  * @brief Get all the partial XPath nodes (atoms) that are required for @p exp to be evaluated.
@@ -365,13 +368,14 @@ LY_ERR lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const st
  * subexpression is being atomized.
  * @param[in] ctx_scnode Starting context schema node, NULL in case of the root node. Equal to @p cur_scnode unless a
  * subexpression is being atomized.
+ * @param[in] top_ext Extension instance whose XPath context we are evaluating in.
  * @param[out] set Result set.
  * @param[in] options Whether to apply some evaluation restrictions, one flag must always be used.
  * @return LY_ERR (same as ::lyxp_eval()).
  */
 LY_ERR lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct lys_module *cur_mod,
         LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *cur_scnode,
-        const struct lysc_node *ctx_scnode, struct lyxp_set *set, uint32_t options);
+        const struct lysc_node *ctx_scnode, const struct lysc_ext_instance *top_ext, struct lyxp_set *set, uint32_t options);
 
 /** used only internally, maps with @ref findxpathoptions */
 #define LYXP_IGNORE_WHEN     0x01   /**< Ignore unevaluated when in data nodes and do not return ::LY_EINCOMPLETE. */

@@ -88,20 +88,20 @@ LY_ERR lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct
  * @param[in] mod Module of the @p tree to take into consideration when deleting @p tree and moving it.
  * If set, it is expected @p tree should point to the first node of @p mod. Otherwise it will simply be
  * the first top-level sibling.
+ * @param[in] top_ext Extension instance whose XPath context we are evaluating in.
  * @param[in] data_type Validate data type.
  * @param[in] node_when Set with nodes with "when" conditions, can be NULL.
  * @param[in] when_xp_opts Additional XPath options to use for evaluating "when".
  * @param[in] node_types Set with nodes with unresolved types, can be NULL
  * @param[in] meta_types Set with metadata with unresolved types, can be NULL.
- * @param[in] ext_node Set with nodes with extensions to validate, can be NULL.
  * @param[in] ext_val Set with extension data to validate, can be NULL.
  * @param[in] val_opts Validation options, see @ref datavalidationoptions.
  * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */
-LY_ERR lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, enum lyd_type data_type,
-        struct ly_set *node_when, uint32_t when_xp_opts, struct ly_set *node_types, struct ly_set *meta_types,
-        struct ly_set *ext_node, struct ly_set *ext_val, uint32_t val_opts, struct lyd_node **diff);
+LY_ERR lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, const struct lysc_ext_instance *top_ext,
+        enum lyd_type data_type, struct ly_set *node_when, uint32_t when_xp_opts, struct ly_set *node_types,
+        struct ly_set *meta_types, struct ly_set *ext_val, uint32_t val_opts, struct lyd_node **diff);
 
 /**
  * @brief Validate new siblings. Specifically, check duplicated instances, autodelete default values and cases.
@@ -123,15 +123,6 @@ LY_ERR lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent
         struct lyd_node **diff);
 
 /**
- * @brief Validate data node with an extension instance, if any, by storing it in its unres set.
- *
- * @param[in] node Node to check for an extension instance with a node callback.
- * @param[in,out] ext_node Set with data nodes to validate.
- * @return LY_ERR value.
- */
-LY_ERR lyd_validate_node_ext(struct lyd_node *node, struct ly_set *ext_node);
-
-/**
  * @brief Validate a data tree.
  *
  * @param[in,out] tree Data tree to validate, nodes may be autodeleted.
@@ -142,33 +133,31 @@ LY_ERR lyd_validate_node_ext(struct lyd_node *node, struct ly_set *ext_node);
  * @param[in] node_when_p Set of nodes with when conditions, if NULL a local set is used.
  * @param[in] node_types_p Set of unres node types, if NULL a local set is used.
  * @param[in] meta_types_p Set of unres metadata types, if NULL a local set is used.
- * @param[in] ext_node_p Set of unres nodes with extensions to validate, if NULL a local set is used.
  * @param[in] ext_val_p Set of unres extension data to validate, if NULL a local set is used.
  * @param[out] diff Generated validation diff, not generated if NULL.
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate(struct lyd_node **tree, const struct lys_module *module, const struct ly_ctx *ctx, uint32_t val_opts,
         ly_bool validate_subtree, struct ly_set *node_when_p, struct ly_set *node_types_p, struct ly_set *meta_types_p,
-        struct ly_set *ext_node_p, struct ly_set *ext_val_p, struct lyd_node **diff);
+        struct ly_set *ext_val_p, struct lyd_node **diff);
 
 /**
- * @brief Validate a data tree of an extension instance, which is assumed to be a separate data tree independent of
+ * @brief Validate a data subtree of an extension instance, which is assumed to be a separate data tree independent of
  * normal YANG data.
  *
- * @param[in,out] tree Data tree to validate, nodes may be autodeleted.
+ * @param[in,out] subtree Data subtree to validate, nodes may be autodeleted.
  * @param[in] ext Extension instance whose data to validate.
  * @param[in] val_opts Validation options, see @ref datavalidationoptions.
  * @param[in] validate_subtree Whether subtree was already validated (as part of data parsing) or not (separate validation).
  * @param[in] node_when_p Set of nodes with when conditions, if NULL a local set is used.
  * @param[in] node_types_p Set of unres node types, if NULL a local set is used.
  * @param[in] meta_types_p Set of unres metadata types, if NULL a local set is used.
- * @param[in] ext_node_p Set of unres nodes with extensions to validate, if NULL a local set is used.
  * @param[in] ext_val_p Set of unres extension data to validate, if NULL a local set is used.
  * @param[out] diff Generated validation diff, not generated if NULL.
  * @return LY_ERR value.
  */
-LY_ERR lyd_validate_ext(struct lyd_node **tree, const struct lysc_ext_instance *ext, uint32_t val_opts,
+LY_ERR lyd_validate_ext_tree(struct lyd_node **subtree, const struct lysc_ext_instance *ext, uint32_t val_opts,
         ly_bool validate_subtree, struct ly_set *node_when_p, struct ly_set *node_types_p, struct ly_set *meta_types_p,
-        struct ly_set *ext_node_p, struct ly_set *ext_val_p, struct lyd_node **diff);
+        struct ly_set *ext_val_p, struct lyd_node **diff);
 
 #endif /* LY_VALIDATION_H_ */

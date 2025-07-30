@@ -2280,6 +2280,8 @@ LIBYANG_API_DECL const struct lysc_node *lys_getnext_ext(const struct lysc_node 
 #define LYS_GETNEXT_WITHSCHEMAMOUNT 0x20    /**< ::lys_getnext() option to also traverse top-level nodes of all the mounted modules
                                                  on the parent mount point but note that if any such nodes are returned,
                                                  the caller **must free** their context */
+#define LYS_GETNEXT_EXT_XPATH    0x40 /**< ::lys_getnext_ext() option to differentiate between standard schema traversal
++                                           and XPath accessible tree. */
 /** @} sgetnextflags */
 
 /**

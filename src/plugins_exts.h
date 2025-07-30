@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang support for YANG extensions implementation.
  *
- * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -109,7 +109,7 @@ extern "C" {
 /**
  * @brief Extensions API version
  */
-#define LYPLG_EXT_API_VERSION 8
+#define LYPLG_EXT_API_VERSION 9
 
 /**
  * @brief Mask for an operation statement.
@@ -821,47 +821,57 @@ LIBYANG_API_DECL LY_ERR lyplg_ext_sprinter_ptree_add_nodes(const struct lyspr_tr
  */
 
 /**
- * @brief Callback called for all data nodes connected to the extension instance.
- *
- * Can be used for additional data node validation. Is called only after the whole data tree is created and standard
- * validation succeeds. Not called when parsing data and ::LYD_PARSE_ONLY is used.
+ * @brief Callback for getting the first child data node of an XPath document root of the extension instance.
  *
  * @param[in] ext Compiled extension instance.
- * @param[in] node Data node to process.
- * @param[in] validate_options Options used for the validation phase, see @ref datavalidationoptions.
- * @return LY_SUCCESS on success.
- * @return LY_ERR on error.
+ * @param[in] tree Whole data tree.
+ * @param[out] node First XPath document root child node, if any.
  */
-typedef LY_ERR (*lyplg_ext_data_node_clb)(struct lysc_ext_instance *ext, struct lyd_node *node, uint32_t validate_options);
+typedef void (*lyplg_ext_data_node_xpath_clb)(struct lysc_ext_instance *ext, const struct lyd_node *tree,
+        const struct lyd_node **node);
 
 /*
- * snode
+ * data snode
  */
 
 /**
- * @brief Callback for getting a schema node for a new YANG instance data described by an extension instance.
- * Needed only if the extension instance supports some nested standard YANG data.
+ * @brief Callback for getting a schema node for new YANG instance data described by an extension instance.
+ * Needed only if the extension instance defines some instantiable YANG data nodes.
+ *
+ * 1) Schema nodes are compiled and connected to each other:
+ *    - this callback is NOT called;
+ *    - storage of a data-def-stmt is retrieved from the ext-inst and the nodes connected to it.
+ *
+ * 2) YANG instance data is being parsed:
+ *    - this callback is called with @p in_xpath 0;
+ *    - schema node that can be instantiated in data should be returned (matching any set parameters).
+ *
+ * 3) XPath expression is being evaluated during schema compilation (must, when, leafref path, unique):
+ *    - this callback is called with @p in_xpath 1;
+ *    - first child of the document root of this extension should be returned.
  *
  * @param[in] ext Compiled extension instance.
- * @param[in] parent Parsed parent data node. Set if @p sparent is NULL.
- * @param[in] sparent Schema parent node. Set if @p parent is NULL.
+ * @param[in] parent Parsed parent data node.
+ * @param[in] sparent Schema parent node.
  * @param[in] prefix Element prefix, if any.
  * @param[in] prefix_len Length of @p prefix.
  * @param[in] format Format of @p prefix.
  * @param[in] prefix_data Format-specific prefix data.
- * @param[in] name Element name.
+ * @param[in] name Element name. If NULL, the first node should be returned (top-level, @p parent and @p sparent will
+ * not be set).
  * @param[in] name_len Length of @p name.
+ * @param[in] in_xpath Whether we are in an XPath accessible tree context or standard YANG data handling (parsing).
  * @param[out] snode Schema node to use for parsing the node.
  * @return LY_SUCCESS on success.
  * @return LY_ENOT if the data are not described by @p ext.
  * @return LY_ERR on error.
  */
 typedef LY_ERR (*lyplg_ext_data_snode_clb)(struct lysc_ext_instance *ext, const struct lyd_node *parent,
-        const struct lysc_node *sparent, const char *prefix, size_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data,
-        const char *name, size_t name_len, const struct lysc_node **snode);
+        const struct lysc_node *sparent, const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data,
+        const char *name, uint32_t name_len, ly_bool in_xpath, const struct lysc_node **snode);
 
 /*
- * validate
+ * data validate
  */
 
 /**
@@ -1016,17 +1026,12 @@ struct lyplg_ext {
                                                  of the plugins for external tools) */
     lyplg_ext_parse_clb parse;              /**< callback to parse the extension instance substatements */
     lyplg_ext_compile_clb compile;          /**< callback to compile extension instance from the parsed data */
-    lyplg_ext_sprinter_info_clb printer_info;   /**< callback to print the compiled content (info format) of the extension
-                                                     instance */
-    lyplg_ext_sprinter_ctree_clb printer_ctree; /**< callback to print tree format of compiled node containing the
-                                                     compiled content of the extension instance */
-    lyplg_ext_sprinter_ptree_clb printer_ptree; /**< callback to print tree format of parsed node containing the
-                                                     parsed content of the extension instance */
-    lyplg_ext_data_node_clb node;           /**< callback to validate most relevant data instance for the extension
-                                                 instance */
-    lyplg_ext_data_snode_clb snode;         /**< callback to get schema node for nested YANG data */
-    lyplg_ext_data_validate_clb validate;   /**< callback to validate parsed data instances according to the extension
-                                                 definition */
+    lyplg_ext_sprinter_info_clb printer_info;   /**< callback to print the compiled content (info format) */
+    lyplg_ext_sprinter_ctree_clb printer_ctree; /**< callback to print tree format of a compiled node */
+    lyplg_ext_sprinter_ptree_clb printer_ptree; /**< callback to print tree format of a parsed node */
+    lyplg_ext_data_node_xpath_clb node_xpath;   /**< callback to get first XPath document root child node */
+    lyplg_ext_data_snode_clb snode;         /**< callback to get schema node in various use-cases */
+    lyplg_ext_data_validate_clb validate;   /**< callback to validate parsed data instances */
 
     lyplg_ext_parse_free_clb pfree;         /**< free the extension-specific data created by its parsing */
     lyplg_ext_compile_free_clb cfree;       /**< free the extension-specific data created by its compilation */

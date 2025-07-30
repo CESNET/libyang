@@ -625,7 +625,8 @@ struct lyd_value_union {
                                       whether a value is valid for the specific format or not on later validations
                                       (instance-identifier in XML looks different than in JSON). */
     void *prefix_data;           /**< Format-specific data for prefix resolution (see ly_resolve_prefix()) */
-    const struct lysc_node *ctx_node;   /**< Context schema node. */
+    const struct lysc_node *ctx_node;           /**< Context schema node. */
+    const struct lysc_ext_instance *top_ext;    /**< Extension instance whose XPath context we are evaluating in. */
 };
 
 /**

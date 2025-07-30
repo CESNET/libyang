@@ -100,8 +100,8 @@ lyplg_type_lyb_size_ipv6_address_no_zone(const struct lysc_type *UNUSED(type), e
 static LY_ERR
 lyplg_type_store_ipv6_address_no_zone(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
         uint32_t value_size_bits, uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
-        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
-        struct ly_err_item **err)
+        const struct lysc_node *UNUSED(ctx_node), const struct lysc_ext_instance *UNUSED(top_ext),
+        struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres), struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;

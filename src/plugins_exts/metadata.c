@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang extension plugin - Metadata (RFC 7952)
  *
- * Copyright (c) 2019 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -234,6 +234,7 @@ annotation_compiled_print(const struct lysc_ext_instance *orig_ext, struct lysc_
 
     ann_cdata = ext->compiled = *mem;
     *mem = (char *)*mem + sizeof *ann_cdata;
+    memset(ann_cdata, 0, sizeof *ann_cdata);
 
     ext->substmts[1].storage_p = (void **)&ann_cdata->units;
     ext->substmts[2].storage_p = (void **)&ann_cdata->flags;
@@ -263,7 +264,7 @@ const struct lyplg_ext_record plugins_metadata[] = {
         .plugin.printer_info = annotation_printer_info,
         .plugin.printer_ctree = NULL,
         .plugin.printer_ptree = NULL,
-        .plugin.node = NULL,
+        .plugin.node_xpath = NULL,
         .plugin.snode = NULL,
         .plugin.validate = NULL,
         .plugin.pfree = annotation_pfree,
