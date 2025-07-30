@@ -104,26 +104,7 @@ struct lysc_type_leafref;
  * specific plugin responsible to storing data value. In case the user can recognize the id string, it can access the
  * plugin specific data with the appropriate knowledge of its structure.
  *
- * Besides the mentioned `_simple` functions, libyang provides, as part of the type plugins API, all the callbacks
- * implementing the built-in types in the internal plugins:
- *
  *  - [simple callbacks](@ref pluginsTypesSimple) handling only the canonical strings in the value,
- *  - [binary built-in type](@ref pluginsTypesBinary)
- *  - [bits built-in type](@ref pluginsTypesBits)
- *  - [boolean built-in type](@ref pluginsTypesBoolean)
- *  - [decimal64 built-in type](@ref pluginsTypesDecimal64)
- *  - [empty built-in type](@ref pluginsTypesEmpty)
- *  - [enumeration built-in type](@ref pluginsTypesEnumeration)
- *  - [identityref built-in type](@ref pluginsTypesIdentityref)
- *  - [instance-identifier built-in type](@ref pluginsTypesInstanceid)
- *  - [integer built-in types](@ref pluginsTypesInteger)
- *  - [leafref built-in type](@ref pluginsTypesLeafref)
- *  - [string built-in type](@ref pluginsTypesString)
- *  - [union built-in type](@ref pluginsTypesUnion)
- *
- * And one derived type:
- *
- *  - [xpath1.0 `ietf-yang-types` type](@ref pluginsTypesXpath10)
  *
  * In addition to these callbacks, the API also provides several functions which can help to implement your own plugin for the
  * derived YANG types:
@@ -782,8 +763,6 @@ LIBYANG_API_DECL LY_ERR lyplg_type_dup_xpath10(const struct ly_ctx *ctx, const s
  * @brief Implementation of ::lyplg_type_free_clb for the ietf-yang-types xpath1.0 type.
  */
 LIBYANG_API_DECL void lyplg_type_free_xpath10(const struct ly_ctx *ctx, struct lyd_value *value);
-
-/** @} pluginsTypesXpath10 */
 
 /**
  * @brief Unsigned integer value parser and validator.

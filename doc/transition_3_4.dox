@@ -1,0 +1,27 @@
+/**
+ * @page transition3_4 Transition Manual (3.x -> 4.0)
+ *
+ * There are not that major non-backwards-compatible changes between libyang version 3 and 4 and the version was
+ * increased in part due to new functionality. The main new feature, which most of the changes are related to, is the
+ * ability to serialize (print) compiled YANG context. What is more, such a printed context does not have to be
+ * deserialized to be used by applications and they can directly read the printed context in run-time. This saves time
+ * when reusing contexts since they do not always have to be created in every process but also potentially a lot of
+ * memory since all the processes on the system may share a single printed context. Naturally, such a concept has
+ * some limitations that are mentioned in detail in the documentation (@ref howtoPrintedContext).
+ *
+ * Related to this feature there were lots of minor changes to make sure all the intended functionality works. Most
+ * importantly, there are now 2 dictionaries for a context. One, read-only for the strings in the compiled context
+ * and the other for YANG data that can be written to normally. The main consequence of this is that comparing
+ * directly (the addresses) of strings from these 2 dictionaries will not work. Next, all plugin references were
+ * replaced by an `uintptr_t` value but there are functions ::lysc_get_type_plugin() and ::lysc_get_ext_plugin() for
+ * getting the actual plugin structures. Finally, some new callbacks were required for extension-instance plugins
+ * so that they can be printed with the context as well.
+ *
+ * Other notable changes include major LYB binary data format optimizations and extension plugin API improvements to
+ * account for custom XPath root definitions. The compiled should report all the NBC changes and they should be
+ * explained in the documentation of the corresponding changed functions.
+ *
+ * The complete generated list of changes (without any additional notes) can be found in
+ * <a href="../compat_report_3_4.html">the compatibility report</a>.
+ *
+ */
