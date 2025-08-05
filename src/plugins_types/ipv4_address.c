@@ -173,24 +173,6 @@ lyplg_type_store_ipv4_address(const struct ly_ctx *ctx, const struct lysc_type *
     ret = lyplg_type_check_hints(hints, value, value_size, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret, cleanup);
 
-    if (!(options & LYPLG_TYPE_STORE_ONLY)) {
-        /* length restriction of the string */
-        if (type_str->length) {
-            /* value_size is in bytes, but we need number of characters here */
-            ret = lyplg_type_validate_range(LY_TYPE_STRING, type_str->length, ly_utf8len(value, value_size), value,
-                    value_size, err);
-            LY_CHECK_GOTO(ret, cleanup);
-        }
-
-        /* pattern restrictions */
-        ret = lyplg_type_validate_patterns(ctx, type_str->patterns, value, value_size, err);
-        LY_CHECK_GOTO(ret, cleanup);
-    }
-
-    /* pattern restrictions */
-    ret = lyplg_type_validate_patterns(type_str->patterns, value, value_len, err);
-    LY_CHECK_GOTO(ret, cleanup);
-
     /* get the network-byte order address */
     ret = ipv4address_str2ip(value, value_size, options, ctx, &val->addr, &val->zone, err);
     LY_CHECK_GOTO(ret, cleanup);
