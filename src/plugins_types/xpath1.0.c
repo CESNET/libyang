@@ -250,6 +250,7 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
 {
     LY_ERR ret = LY_SUCCESS;
     uint32_t value_size;
+    struct lysc_type_str *type_str = (struct lysc_type_str *)type;
     struct lyd_value_xpath10 *val;
     char *canon;
 
