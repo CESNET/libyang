@@ -320,7 +320,8 @@ schema_mount_create_ctx(const struct lysc_ext_instance *ext, const struct lyd_no
 
     /* create the context based on the data */
     if ((rc = ly_ctx_new_yldata(sdirs, ext_data, ly_ctx_get_options(ext->module->ctx), ext_ctx))) {
-        lyplg_ext_compile_log(NULL, ext, LY_LLERR, rc, "Failed to create context for the schema-mount data.");
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, rc, "Failed to create context for the schema-mount data (%s).",
+                ly_last_logmsg());
         goto cleanup;
     }
 
@@ -975,7 +976,11 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
         if (!err) {
             lyplg_ext_compile_log(NULL, ext, LY_LLERR, ret, "Unknown validation error (err code %d).", ret);
         } else {
-            lyplg_ext_compile_log_err(err, ext);
+            while (err) {
+                lyplg_ext_compile_log_err(err, ext);
+                err = err->next;
+            }
+            ly_err_clean((struct ly_ctx *)LYD_CTX(sibling), NULL);
         }
         goto cleanup;
     }
