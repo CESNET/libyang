@@ -1,0 +1,15 @@
+module mount {
+    yang-version 1.1;
+    namespace "urn:mount";
+    prefix "m";
+
+    container root {
+        leaf l1 {
+            type string;
+            must "/m:root/l1 = 'valid'";
+        }
+        leaf l2 {
+            type instance-identifier;
+        }
+    }
+}
