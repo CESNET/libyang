@@ -38,6 +38,14 @@ const char *glob_schema =
         "}"
         "}";
 
+const char *mount_schema =
+        "module mount {yang-version 1.1;namespace \"urn:mount\";prefix \"m\";"
+        "container root {"
+        "  leaf l1 { type string; must \"/m:root/l1 = 'valid'\"; }"
+        "  leaf l2 { type instance-identifier; }"
+        "}"
+        "}";
+
 static int
 setup(void **state)
 {
@@ -46,6 +54,7 @@ setup(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_DIR_MODULES_YANG));
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, glob_schema, LYS_IN_YANG, NULL));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, mount_schema, LYS_IN_YANG, NULL));
     assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "iana-if-type", NULL, NULL));
 
     return 0;
@@ -1785,6 +1794,98 @@ test_lys_getnext(void **state)
     assert_null(node);
 }
 
+static void
+test_xpath(void **state)
+{
+    const char *xml;
+    struct lyd_node *data;
+
+    ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
+            "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
+            "    xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">"
+            "  <module-set>"
+            "    <name>test-set</name>"
+            "    <module>"
+            "      <name>ietf-datastores</name>"
+            "      <revision>2018-02-14</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-datastores</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>ietf-yang-library</name>"
+            "      <revision>2019-01-04</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>ietf-yang-schema-mount</name>"
+            "      <revision>2019-01-14</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>mount</name>"
+            "      <namespace>urn:mount</namespace>"
+            "    </module>"
+            "  </module-set>"
+            "  <schema>"
+            "    <name>test-schema</name>"
+            "    <module-set>test-set</module-set>"
+            "  </schema>"
+            "  <datastore>"
+            "    <name>ds:running</name>"
+            "    <schema>test-schema</schema>"
+            "  </datastore>"
+            "  <datastore>"
+            "    <name>ds:operational</name>"
+            "    <schema>test-schema</schema>"
+            "  </datastore>"
+            "  <content-id>1</content-id>"
+            "</yang-library>"
+            "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
+            "  <module-set-id>1</module-set-id>"
+            "</modules-state>"
+            "<schema-mounts xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount\">"
+            "  <mount-point>"
+            "    <module>sm</module>"
+            "    <label>root</label>"
+            "    <shared-schema/>"
+            "  </mount-point>"
+            "</schema-mounts>");
+
+    /* false must */
+    xml =
+            "<root xmlns=\"urn:sm\">\n"
+            "  <root xmlns=\"urn:mount\">\n"
+            "    <l1>invalid</l1>\n"
+            "  </root>\n"
+            "</root>\n";
+    CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
+    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
+            "Must condition \"/m:root/l1 = 'valid'\" not satisfied.",
+            "/mount:root/l1", 0);
+
+    /* non-existing instance-identifier */
+    xml =
+            "<root xmlns=\"urn:sm\">\n"
+            "  <root xmlns=\"urn:mount\">\n"
+            "    <l1>valid</l1>\n"
+            "    <l2 xmlns:m=\"urn:mount\">/m:root/m:l3</l2>\n"
+            "  </root>\n"
+            "</root>\n";
+    CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
+    CHECK_LOG_CTX("Invalid instance-identifier \"/m:root/m:l3\" value - semantic error: Not found node \"l3\" in path.",
+            "/mount:root/l2", 4);
+
+    /* valid */
+    xml =
+            "<root xmlns=\"urn:sm\">\n"
+            "  <root xmlns=\"urn:mount\">\n"
+            "    <l1>valid</l1>\n"
+            "    <l2 xmlns:m=\"urn:mount\">/m:root/m:l1</l2>\n"
+            "  </root>\n"
+            "</root>\n";
+    CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+    lyd_free_siblings(data);
+}
+
 int
 main(void)
 {
@@ -1798,6 +1899,7 @@ main(void)
         UTEST(test_parse_config, setup),
         UTEST(test_new, setup),
         UTEST(test_lys_getnext, setup),
+        UTEST(test_xpath, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
