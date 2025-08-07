@@ -695,7 +695,7 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
         buffer[0] = '\0';
     }
 
-    if ((pathtype == LYSC_PATH_DATA) || (pathtype == LYSC_PATH_DATA_PATTERN)) {
+    if ((pathtype == LYSC_PATH_DATA) || (pathtype == LYSC_PATH_DATA_PATTERN) || (pathtype == LYSC_PATH_KEY_PATTERN)) {
         /* skip schema-only nodes */
         skip_schema = 1;
     } else {
@@ -711,11 +711,11 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
             continue;
         }
 
-        if ((pathtype == LYSC_PATH_DATA_PATTERN) && (iter->nodetype == LYS_LIST)) {
+        if (((pathtype == LYSC_PATH_DATA_PATTERN) || (pathtype == LYSC_PATH_KEY_PATTERN)) && (iter->nodetype == LYS_LIST)) {
             char *predicates = NULL;
 
             key = NULL;
-            while ((key = lys_getnext(key, iter, NULL, 0)) && lysc_is_key(key)) {
+            while ((key = lys_getnext(key, iter, NULL, 0)) && lysc_is_key(key) && ((pathtype != LYSC_PATH_KEY_PATTERN) || (key != node))) {
                 s = predicates;
 
                 /* print key predicate */
