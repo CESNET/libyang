@@ -46,10 +46,10 @@
         if (ORIG_ARRAY) { \
             LY_ARRAY_COUNT_TYPE count = LY_ARRAY_COUNT(ORIG_ARRAY); \
             memcpy(*MEM, &count, sizeof count); \
-            *MEM = (char *)*MEM + sizeof count; \
+            *MEM = (char *)*MEM + CTXP_MEM_SIZE(sizeof count); \
             \
             ARRAY = *MEM; \
-            *MEM = (char *)*MEM + count * sizeof *ORIG_ARRAY; \
+            *MEM = (char *)*MEM + CTXP_MEM_SIZE(count * sizeof *ORIG_ARRAY); \
         } else { \
             ARRAY = NULL; \
         }
@@ -67,7 +67,7 @@
 #define CTXP_OPTIONAL_STRUCT(FUNC, ORIG_PTR, PTR, ADDR_HT, PTR_SET, MEM) \
         if (ORIG_PTR) { \
             PTR = *MEM; \
-            *MEM = (char *)*MEM + sizeof *PTR; \
+            *MEM = (char *)*MEM + CTXP_MEM_SIZE(sizeof *PTR); \
             FUNC(ORIG_PTR, PTR, ADDR_HT, PTR_SET, MEM); \
         } else { \
             PTR = NULL; \
@@ -93,13 +93,13 @@ ctxs_dict_ht(const struct ly_ht *ht, int *size)
     struct ly_dict_rec *dict_rec;
 
     /* hash table */
-    *size += sizeof *ht;
+    *size += CTXP_MEM_SIZE(sizeof *ht);
 
     /* hlists */
-    *size += ht->size * sizeof *ht->hlists;
+    *size += CTXP_MEM_SIZE(ht->size * sizeof *ht->hlists);
 
     /* records (with string pointers) */
-    *size += ht->size * ht->rec_size;
+    *size += CTXP_MEM_SIZE(ht->size * ht->rec_size);
 
     LYHT_ITER_ALL_RECS(ht, i, j, rec) {
         dict_rec = (struct ly_dict_rec *)&rec->val;
@@ -126,7 +126,7 @@ ctxs_exts(const struct lysc_ext_instance *exts, struct ly_ht *ht, int *size)
 
         /* compiled, substmts storage */
         if (exts[u].def->plugin_ref && (ext_plg = LYSC_GET_EXT_PLG(exts[u].def->plugin_ref)) && ext_plg->compiled_size) {
-            *size += ext_plg->compiled_size(&exts[u], ht);
+            *size += CTXP_MEM_SIZE(ext_plg->compiled_size(&exts[u], ht));
         }
     }
 }
@@ -150,20 +150,20 @@ ctxs_expr(const struct lyxp_expr *exp, int *size)
 {
     uint32_t i, j;
 
-    *size += sizeof *exp;
+    *size += CTXP_MEM_SIZE(sizeof *exp);
 
-    *size += strlen(exp->expr) + 1;
-    *size += exp->used * sizeof *exp->tokens;
-    *size += exp->used * sizeof *exp->tok_pos;
-    *size += exp->used * sizeof *exp->tok_len;
-    *size += exp->used * sizeof *exp->repeat;
+    *size += CTXP_MEM_SIZE(strlen(exp->expr) + 1);
+    *size += CTXP_MEM_SIZE(exp->used * sizeof *exp->tokens);
+    *size += CTXP_MEM_SIZE(exp->used * sizeof *exp->tok_pos);
+    *size += CTXP_MEM_SIZE(exp->used * sizeof *exp->tok_len);
+    *size += CTXP_MEM_SIZE(exp->used * sizeof *exp->repeat);
     for (i = 0; i < exp->used; ++i) {
         if (!exp->repeat[i]) {
             continue;
         }
 
         for (j = 0; exp->repeat[i][j]; ++j) {}
-        *size += (j + 1) * sizeof **exp->repeat;
+        *size += CTXP_MEM_SIZE((j + 1) * sizeof **exp->repeat);
     }
 }
 
@@ -191,7 +191,7 @@ ctxs_when(const struct lysc_when *when, struct ly_ht *ht, int *size)
         return;
     }
 
-    *size += sizeof *when;
+    *size += CTXP_MEM_SIZE(sizeof *when);
 
     ctxs_expr(when->cond, size);
     ctxs_prefixes(when->prefixes, size);
@@ -216,7 +216,7 @@ ctxs_range(const struct lysc_range *range, struct ly_ht *ht, int *size)
         return;
     }
 
-    *size += sizeof *range;
+    *size += CTXP_MEM_SIZE(sizeof *range);
 
     *size += CTXS_SIZED_ARRAY(range->parts);
     ctxs_exts(range->exts, ht, size);
@@ -236,7 +236,7 @@ ctxs_patterns(const struct lysc_pattern **patterns, struct ly_ht *ht, int *size)
             continue;
         }
 
-        *size += sizeof *patterns[u];
+        *size += CTXP_MEM_SIZE(sizeof *patterns[u]);
         ctxs_exts(patterns[u]->exts, ht, size);
     }
 }
@@ -279,7 +279,7 @@ ctxs_type(const struct lysc_type *type, struct ly_ht *ht, int *size)
     switch (type->basetype) {
     case LY_TYPE_BINARY:
         type_bin = (const struct lysc_type_bin *)type;
-        *size += sizeof *type_bin;
+        *size += CTXP_MEM_SIZE(sizeof *type_bin);
 
         ctxs_range(type_bin->length, ht, size);
         break;
@@ -292,13 +292,13 @@ ctxs_type(const struct lysc_type *type, struct ly_ht *ht, int *size)
     case LY_TYPE_INT32:
     case LY_TYPE_INT64:
         type_num = (const struct lysc_type_num *)type;
-        *size += sizeof *type_num;
+        *size += CTXP_MEM_SIZE(sizeof *type_num);
 
         ctxs_range(type_num->range, ht, size);
         break;
     case LY_TYPE_STRING:
         type_str = (const struct lysc_type_str *)type;
-        *size += sizeof *type_str;
+        *size += CTXP_MEM_SIZE(sizeof *type_str);
 
         ctxs_range(type_str->length, ht, size);
         ctxs_patterns((const struct lysc_pattern **)type_str->patterns, ht, size);
@@ -306,33 +306,33 @@ ctxs_type(const struct lysc_type *type, struct ly_ht *ht, int *size)
     case LY_TYPE_BITS:
     case LY_TYPE_ENUM:
         type_enum_bits = (const struct lysc_type_enum *)type;
-        *size += sizeof *type_enum_bits;
+        *size += CTXP_MEM_SIZE(sizeof *type_enum_bits);
 
         ctxs_enums(type_enum_bits->enums, ht, size);
         break;
     case LY_TYPE_BOOL:
     case LY_TYPE_EMPTY:
-        *size += sizeof *type;
+        *size += CTXP_MEM_SIZE(sizeof *type);
         break;
     case LY_TYPE_DEC64:
         type_dec = (const struct lysc_type_dec *)type;
-        *size += sizeof *type_dec;
+        *size += CTXP_MEM_SIZE(sizeof *type_dec);
 
         ctxs_range(type_dec->range, ht, size);
         break;
     case LY_TYPE_IDENT:
         type_identref = (const struct lysc_type_identityref *)type;
-        *size += sizeof *type_identref;
+        *size += CTXP_MEM_SIZE(sizeof *type_identref);
 
         *size += CTXS_SIZED_ARRAY(type_identref->bases);
         break;
     case LY_TYPE_INST:
         type_instid = (const struct lysc_type_instanceid *)type;
-        *size += sizeof *type_instid;
+        *size += CTXP_MEM_SIZE(sizeof *type_instid);
         break;
     case LY_TYPE_LEAFREF:
         type_lref = (const struct lysc_type_leafref *)type;
-        *size += sizeof *type_lref;
+        *size += CTXP_MEM_SIZE(sizeof *type_lref);
 
         ctxs_expr(type_lref->path, size);
         ctxs_prefixes(type_lref->prefixes, size);
@@ -340,7 +340,7 @@ ctxs_type(const struct lysc_type *type, struct ly_ht *ht, int *size)
         break;
     case LY_TYPE_UNION:
         type_union = (const struct lysc_type_union *)type;
-        *size += sizeof *type_union;
+        *size += CTXP_MEM_SIZE(sizeof *type_union);
 
         *size += CTXS_SIZED_ARRAY(type_union->types);
         LY_ARRAY_FOR(type_union->types, u) {
@@ -374,7 +374,7 @@ ctxs_node(const struct lysc_node *node, struct ly_ht *ht, int *size)
     switch (node->nodetype) {
     case LYS_CONTAINER:
         cont = (const struct lysc_node_container *)node;
-        *size += sizeof *cont;
+        *size += CTXP_MEM_SIZE(sizeof *cont);
 
         LY_LIST_FOR(cont->child, child) {
             ctxs_node(child, ht, size);
@@ -390,7 +390,7 @@ ctxs_node(const struct lysc_node *node, struct ly_ht *ht, int *size)
         break;
     case LYS_CHOICE:
         choic = (const struct lysc_node_choice *)node;
-        *size += sizeof *choic;
+        *size += CTXP_MEM_SIZE(sizeof *choic);
 
         LY_LIST_FOR((const struct lysc_node *)choic->cases, child) {
             ctxs_node(child, ht, size);
@@ -399,7 +399,7 @@ ctxs_node(const struct lysc_node *node, struct ly_ht *ht, int *size)
         break;
     case LYS_LEAF:
         leaf = (const struct lysc_node_leaf *)node;
-        *size += sizeof *leaf;
+        *size += CTXP_MEM_SIZE(sizeof *leaf);
 
         ctxs_musts(leaf->musts, ht, size);
         ctxs_whens((const struct lysc_when **)leaf->when, ht, size);
@@ -408,7 +408,7 @@ ctxs_node(const struct lysc_node *node, struct ly_ht *ht, int *size)
         break;
     case LYS_LEAFLIST:
         llist = (const struct lysc_node_leaflist *)node;
-        *size += sizeof *llist;
+        *size += CTXP_MEM_SIZE(sizeof *llist);
 
         ctxs_musts(llist->musts, ht, size);
         ctxs_whens((const struct lysc_when **)llist->when, ht, size);
@@ -420,7 +420,7 @@ ctxs_node(const struct lysc_node *node, struct ly_ht *ht, int *size)
         break;
     case LYS_LIST:
         list = (const struct lysc_node_list *)node;
-        *size += sizeof *list;
+        *size += CTXP_MEM_SIZE(sizeof *list);
 
         LY_LIST_FOR(list->child, child) {
             ctxs_node(child, ht, size);
@@ -435,20 +435,21 @@ ctxs_node(const struct lysc_node *node, struct ly_ht *ht, int *size)
         }
         *size += CTXS_SIZED_ARRAY(list->uniques);
         LY_ARRAY_FOR(list->uniques, u) {
-            *size += sizeof(LY_ARRAY_COUNT_TYPE) + LY_ARRAY_COUNT(list->uniques[u]) * sizeof **list->uniques;
+            *size += CTXP_MEM_SIZE(sizeof(LY_ARRAY_COUNT_TYPE)) +
+                    CTXP_MEM_SIZE(LY_ARRAY_COUNT(list->uniques[u]) * sizeof **list->uniques);
         }
         break;
     case LYS_ANYXML:
     case LYS_ANYDATA:
         any = (const struct lysc_node_anydata *)node;
-        *size += sizeof *any;
+        *size += CTXP_MEM_SIZE(sizeof *any);
 
         ctxs_musts(any->musts, ht, size);
         ctxs_whens((const struct lysc_when **)any->when, ht, size);
         break;
     case LYS_CASE:
         cas = (const struct lysc_node_case *)node;
-        *size += sizeof *cas;
+        *size += CTXP_MEM_SIZE(sizeof *cas);
 
         LY_LIST_FOR(cas->child, child) {
             ctxs_node(child, ht, size);
@@ -458,7 +459,7 @@ ctxs_node(const struct lysc_node *node, struct ly_ht *ht, int *size)
     case LYS_RPC:
     case LYS_ACTION:
         act = (const struct lysc_node_action *)node;
-        *size += sizeof *act;
+        *size += CTXP_MEM_SIZE(sizeof *act);
 
         ctxs_whens((const struct lysc_when **)act->when, ht, size);
         LY_LIST_FOR(act->input.child, child) {
@@ -472,7 +473,7 @@ ctxs_node(const struct lysc_node *node, struct ly_ht *ht, int *size)
         break;
     case LYS_NOTIF:
         notif = (const struct lysc_node_notif *)node;
-        *size += sizeof *notif;
+        *size += CTXP_MEM_SIZE(sizeof *notif);
 
         LY_LIST_FOR(notif->child, child) {
             ctxs_node(child, ht, size);
@@ -496,7 +497,7 @@ ctxs_compiled(const struct lysc_module *compiled, struct ly_ht *ht, int *size)
     }
 
     /* compiled module */
-    *size += sizeof *compiled;
+    *size += CTXP_MEM_SIZE(sizeof *compiled);
 
     *size += CTXS_SIZED_ARRAY(compiled->features);
     LY_LIST_FOR(compiled->data, node) {
@@ -542,7 +543,7 @@ static void
 ctxs_module(const struct lys_module *mod, struct ly_ht *ht, int *size)
 {
     /* module */
-    *size += sizeof *mod;
+    *size += CTXP_MEM_SIZE(sizeof *mod);
 
     /* compiled module */
     ctxs_compiled(mod->compiled, ht, size);
@@ -564,13 +565,13 @@ ly_ctx_compiled_size_context(const struct ly_ctx *ctx, struct ly_ht *addr_ht, in
     const struct lys_module *mod;
 
     /* context */
-    *size += sizeof *ctx;
+    *size += CTXP_MEM_SIZE(sizeof *ctx);
 
     /* dictionary ht (with all the strings) */
     ctxs_dict_ht(ctx->dict.hash_tab, size);
 
     /* module set */
-    *size += ctx->modules.count * sizeof ctx->modules.objs;
+    *size += CTXP_MEM_SIZE(ctx->modules.count * sizeof ctx->modules.objs);
     for (i = 0; i < ctx->modules.count; ++i) {
         mod = ctx->modules.objs[i];
 
@@ -734,7 +735,7 @@ ctxp_set(const struct ly_set *orig_set, struct ly_set *set, void **mem)
     set->size = orig_set->count;
     set->count = orig_set->count;
     set->objs = *mem;
-    *mem = (char *)*mem + (set->count * sizeof set->objs);
+    *mem = (char *)*mem + CTXP_MEM_SIZE(set->count * sizeof set->objs);
 }
 
 static void
@@ -753,13 +754,13 @@ ctxp_dict_ht(const struct ly_ht *orig_ht, struct ly_ht *ht, struct ly_ht *addr_h
 
     /* hlists */
     ht->hlists = *mem;
-    *mem = (char *)*mem + ht->size * sizeof *ht->hlists;
+    *mem = (char *)*mem + CTXP_MEM_SIZE(ht->size * sizeof *ht->hlists);
 
     memcpy(ht->hlists, orig_ht->hlists, ht->size * sizeof *ht->hlists);
 
     /* records */
     ht->recs = *mem;
-    *mem = (char *)*mem + ht->size * ht->rec_size;
+    *mem = (char *)*mem + CTXP_MEM_SIZE(ht->size * ht->rec_size);
 
     memcpy(ht->recs, orig_ht->recs, ht->size * ht->rec_size);
 
@@ -832,30 +833,30 @@ ctxp_expr(const struct lyxp_expr *orig_exp, struct lyxp_expr *exp, void **mem)
     uint32_t i, len;
 
     exp->expr = *mem;
-    *mem = (char *)*mem + strlen(orig_exp->expr) + 1;
+    *mem = (char *)*mem + CTXP_MEM_SIZE(strlen(orig_exp->expr) + 1);
     memcpy(exp->expr, orig_exp->expr, strlen(orig_exp->expr) + 1);
 
     exp->tokens = *mem;
-    *mem = (char *)*mem + orig_exp->used * sizeof *exp->tokens;
+    *mem = (char *)*mem + CTXP_MEM_SIZE(orig_exp->used * sizeof *exp->tokens);
     memcpy(exp->tokens, orig_exp->tokens, orig_exp->used * sizeof *exp->tokens);
 
     exp->tok_pos = *mem;
-    *mem = (char *)*mem + orig_exp->used * sizeof *exp->tok_pos;
+    *mem = (char *)*mem + CTXP_MEM_SIZE(orig_exp->used * sizeof *exp->tok_pos);
     memcpy(exp->tok_pos, orig_exp->tok_pos, orig_exp->used * sizeof *exp->tok_pos);
 
     exp->tok_len = *mem;
-    *mem = (char *)*mem + orig_exp->used * sizeof *exp->tok_len;
+    *mem = (char *)*mem + CTXP_MEM_SIZE(orig_exp->used * sizeof *exp->tok_len);
     memcpy(exp->tok_len, orig_exp->tok_len, orig_exp->used * sizeof *exp->tok_len);
 
     exp->repeat = *mem;
-    *mem = (char *)*mem + orig_exp->used * sizeof *exp->repeat;
+    *mem = (char *)*mem + CTXP_MEM_SIZE(orig_exp->used * sizeof *exp->repeat);
     for (i = 0; i < orig_exp->used; ++i) {
         if (orig_exp->repeat[i]) {
             for (len = 0; orig_exp->repeat[i][len]; ++len) {}
             ++len;
 
             exp->repeat[i] = *mem;
-            *mem = (char *)*mem + len * sizeof **exp->repeat;
+            *mem = (char *)*mem + CTXP_MEM_SIZE(len * sizeof **exp->repeat);
             memcpy(exp->repeat[i], orig_exp->repeat[i], len * sizeof **exp->repeat);
         } else {
             exp->repeat[i] = NULL;
@@ -898,7 +899,7 @@ ctxp_must(const struct lysc_must *orig_must, struct lysc_must *must, struct ly_h
     }
 
     must->cond = *mem;
-    *mem = (char *)*mem + sizeof *must->cond;
+    *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof *must->cond);
     ctxp_expr(orig_must->cond, must->cond, mem);
 
     CTXP_SIZED_ARRAY(orig_must->prefixes, must->prefixes, mem);
@@ -932,7 +933,7 @@ ctxp_when(const struct lysc_when *orig_when, struct lysc_when **when, struct ly_
     }
 
     w = *mem;
-    *mem = (char *)*mem + sizeof *w;
+    *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof *w);
 
     if (orig_when->exts) {
         /* may be referenced in the parent */
@@ -940,7 +941,7 @@ ctxp_when(const struct lysc_when *orig_when, struct lysc_when **when, struct ly_
     }
 
     w->cond = *mem;
-    *mem = (char *)*mem + sizeof *w->cond;
+    *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof *w->cond);
     ctxp_expr(orig_when->cond, w->cond, mem);
 
     w->context = ly_ctx_compiled_addr_ht_get(addr_ht, orig_when->context, 0);
@@ -1011,7 +1012,7 @@ ctxp_children(const struct lysc_node *orig_child, struct lysc_node **child, stru
         }
 
         ch = *mem;
-        *mem = (char *)*mem + node_size;
+        *mem = (char *)*mem + CTXP_MEM_SIZE(node_size);
 
         ly_ctx_compiled_addr_ht_add(addr_ht, orig_child, ch);
         ctxp_node(orig_child, ch, addr_ht, ptr_set, mem);
@@ -1065,7 +1066,7 @@ ctxp_pattern(const struct lysc_pattern *orig_pattern, struct lysc_pattern **patt
     }
 
     p = *mem;
-    *mem = (char *)*mem + sizeof *p;
+    *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof *p);
 
     if (orig_pattern->exts) {
         /* may be referenced in the parent */
@@ -1152,7 +1153,7 @@ ctxp_type(const struct lysc_type *orig_type, struct lysc_type **type, struct ly_
     case LY_TYPE_BINARY:
         orig_type_bin = (const struct lysc_type_bin *)orig_type;
         t = *mem;
-        *mem = (char *)*mem + sizeof *orig_type_bin;
+        *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof *orig_type_bin);
         t_bin = (struct lysc_type_bin *)t;
 
         CTXP_OPTIONAL_STRUCT(ctxp_range, orig_type_bin->length, t_bin->length, addr_ht, ptr_set, mem);
@@ -1167,7 +1168,7 @@ ctxp_type(const struct lysc_type *orig_type, struct lysc_type **type, struct ly_
     case LY_TYPE_INT64:
         orig_type_num = (const struct lysc_type_num *)orig_type;
         t = *mem;
-        *mem = (char *)*mem + sizeof *orig_type_num;
+        *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof *orig_type_num);
         t_num = (struct lysc_type_num *)t;
 
         CTXP_OPTIONAL_STRUCT(ctxp_range, orig_type_num->range, t_num->range, addr_ht, ptr_set, mem);
@@ -1175,7 +1176,7 @@ ctxp_type(const struct lysc_type *orig_type, struct lysc_type **type, struct ly_
     case LY_TYPE_STRING:
         orig_type_str = (const struct lysc_type_str *)orig_type;
         t = *mem;
-        *mem = (char *)*mem + sizeof *orig_type_str;
+        *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof *orig_type_str);
         t_str = (struct lysc_type_str *)t;
 
         CTXP_OPTIONAL_STRUCT(ctxp_range, orig_type_str->length, t_str->length, addr_ht, ptr_set, mem);
@@ -1188,7 +1189,7 @@ ctxp_type(const struct lysc_type *orig_type, struct lysc_type **type, struct ly_
     case LY_TYPE_ENUM:
         orig_type_enum_bits = (const struct lysc_type_enum *)orig_type;
         t = *mem;
-        *mem = (char *)*mem + sizeof *orig_type_enum_bits;
+        *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof *orig_type_enum_bits);
         t_enum_bits = (struct lysc_type_enum *)t;
 
         CTXP_SIZED_ARRAY(orig_type_enum_bits->enums, t_enum_bits->enums, mem);
@@ -1200,12 +1201,12 @@ ctxp_type(const struct lysc_type *orig_type, struct lysc_type **type, struct ly_
     case LY_TYPE_EMPTY:
         /* no additional members */
         t = *mem;
-        *mem = (char *)*mem + sizeof *orig_type;
+        *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof *orig_type);
         break;
     case LY_TYPE_DEC64:
         orig_type_dec = (const struct lysc_type_dec *)orig_type;
         t = *mem;
-        *mem = (char *)*mem + sizeof *orig_type_dec;
+        *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof *orig_type_dec);
         t_dec = (struct lysc_type_dec *)t;
 
         t_dec->fraction_digits = orig_type_dec->fraction_digits;
@@ -1214,7 +1215,7 @@ ctxp_type(const struct lysc_type *orig_type, struct lysc_type **type, struct ly_
     case LY_TYPE_IDENT:
         orig_type_identref = (const struct lysc_type_identityref *)orig_type;
         t = *mem;
-        *mem = (char *)*mem + sizeof *orig_type_identref;
+        *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof *orig_type_identref);
         t_identref = (struct lysc_type_identityref *)t;
 
         CTXP_SIZED_ARRAY(orig_type_identref->bases, t_identref->bases, mem);
@@ -1227,7 +1228,7 @@ ctxp_type(const struct lysc_type *orig_type, struct lysc_type **type, struct ly_
     case LY_TYPE_INST:
         orig_type_instid = (const struct lysc_type_instanceid *)orig_type;
         t = *mem;
-        *mem = (char *)*mem + sizeof *orig_type_instid;
+        *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof *orig_type_instid);
         t_instid = (struct lysc_type_instanceid *)t;
 
         t_instid->require_instance = orig_type_instid->require_instance;
@@ -1235,11 +1236,11 @@ ctxp_type(const struct lysc_type *orig_type, struct lysc_type **type, struct ly_
     case LY_TYPE_LEAFREF:
         orig_type_lref = (const struct lysc_type_leafref *)orig_type;
         t = *mem;
-        *mem = (char *)*mem + sizeof *orig_type_lref;
+        *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof *orig_type_lref);
         t_lref = (struct lysc_type_leafref *)t;
 
         t_lref->path = *mem;
-        *mem = (char *)*mem + sizeof *t_lref->path;
+        *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof *t_lref->path);
         ctxp_expr(orig_type_lref->path, t_lref->path, mem);
 
         CTXP_SIZED_ARRAY(orig_type_lref->prefixes, t_lref->prefixes, mem);
@@ -1253,7 +1254,7 @@ ctxp_type(const struct lysc_type *orig_type, struct lysc_type **type, struct ly_
     case LY_TYPE_UNION:
         orig_type_union = (const struct lysc_type_union *)orig_type;
         t = *mem;
-        *mem = (char *)*mem + sizeof *orig_type_union;
+        *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof *orig_type_union);
         t_union = (struct lysc_type_union *)t;
 
         CTXP_SIZED_ARRAY(orig_type_union->types, t_union->types, mem);
@@ -1750,7 +1751,7 @@ ly_ctx_compiled_print_context(const struct ly_ctx *orig_ctx, struct ly_ctx *ctx,
 
     /* dictionary */
     ctx->dict.hash_tab = *mem;
-    *mem = (char *)*mem + sizeof *ctx->dict.hash_tab;
+    *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof *ctx->dict.hash_tab);
 
     ctxp_dict_ht(orig_ctx->dict.hash_tab, ctx->dict.hash_tab, addr_ht, mem);
     ctxp_mutex(&ctx->dict.lock);
@@ -1763,7 +1764,7 @@ ly_ctx_compiled_print_context(const struct ly_ctx *orig_ctx, struct ly_ctx *ctx,
     for (i = 0; i < ctx->modules.count; ++i) {
         /* allocate the shared module and store its new address in HT so it can be referenced */
         ctx->modules.objs[i] = *mem;
-        *mem = (char *)*mem + sizeof(struct lys_module);
+        *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof(struct lys_module));
         ly_ctx_compiled_addr_ht_add(addr_ht, orig_ctx->modules.objs[i], ctx->modules.objs[i]);
     }
     for (i = 0; i < ctx->modules.count; ++i) {
@@ -1889,7 +1890,7 @@ ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_subs
         case LY_STMT_LENGTH:
         case LY_STMT_RANGE:
             *substmts[u].storage_p = *mem;
-            *mem = (char *)*mem + sizeof(struct lysc_range);
+            *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof(struct lysc_range));
             ctxp_range(*orig_substmts[u].storage_p, *substmts[u].storage_p, addr_ht, ptr_set, mem);
             break;
         case LY_STMT_MAX_ELEMENTS:
