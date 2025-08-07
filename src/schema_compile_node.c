@@ -1666,6 +1666,7 @@ lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct ly
                 LY_ARRAY_INCREMENT(utypes);
             }
             /* compensate u increment in main loop */
+            assert(additional);
             --additional;
 
             /* free the replaced union subtype */
