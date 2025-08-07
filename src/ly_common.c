@@ -48,13 +48,13 @@
 /**< lock for creating and destroying both private & shared context data */
 static pthread_rwlock_t ly_ctx_data_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
-/**< sized array ([sized array](@ref sizedarrays)) of private context data.
+/**< sized array ([sized array](@ref sizedarrays)) of pointers to private context data (safe realloc).
  * The context is identified by the thread ID of the thread that created it and its address. */
-static struct ly_ctx_private_data *ly_private_ctx_data;
+static struct ly_ctx_private_data **ly_private_ctx_data;
 
-/**< sized array ([sized array](@ref sizedarrays)) of shared context data.
+/**< sized array ([sized array](@ref sizedarrays)) of pointers to shared context data (safe realloc).
  * The context is identified by the memory address of the context. */
-static struct ly_ctx_shared_data *ly_shared_ctx_data;
+static struct ly_ctx_shared_data **ly_shared_ctx_data;
 
 LIBYANG_API_DEF uint32_t
 ly_version_so_major(void)
@@ -163,18 +163,28 @@ ly_ctx_ht_pattern_free_cb(void *val_p)
 static void
 ly_ctx_private_data_remove_and_free(struct ly_ctx_private_data *private_data)
 {
-    LY_ARRAY_COUNT_TYPE idx;
+    LY_ARRAY_COUNT_TYPE u;
 
     if (!private_data) {
         return;
     }
 
+    /* free members */
     ly_err_free(private_data->errs);
+    free(private_data);
 
-    idx = private_data - ly_private_ctx_data;
-    if (idx < LY_ARRAY_COUNT(ly_private_ctx_data) - 1) {
+    /* find */
+    LY_ARRAY_FOR(ly_private_ctx_data, u) {
+        if (ly_private_ctx_data[u] == private_data) {
+            break;
+        }
+    }
+    assert(u < LY_ARRAY_COUNT(ly_private_ctx_data));
+
+    /* remove */
+    if (u < LY_ARRAY_COUNT(ly_private_ctx_data) - 1) {
         /* replace the private data with the last one if it even was added */
-        ly_private_ctx_data[idx] = ly_private_ctx_data[LY_ARRAY_COUNT(ly_private_ctx_data) - 1];
+        ly_private_ctx_data[u] = ly_private_ctx_data[LY_ARRAY_COUNT(ly_private_ctx_data) - 1];
     }
     LY_ARRAY_DECREMENT_FREE(ly_private_ctx_data);
 }
@@ -190,24 +200,26 @@ static LY_ERR
 ly_ctx_private_data_create(const struct ly_ctx *ctx, struct ly_ctx_private_data **private_data)
 {
     pthread_t tid = pthread_self();
-    struct ly_ctx_private_data *priv_data = NULL;
+    struct ly_ctx_private_data **priv_data;
     LY_ERR rc = LY_SUCCESS;
 
     *private_data = NULL;
 
     /* create the private context data */
     LY_ARRAY_NEW_GOTO(ctx, ly_private_ctx_data, priv_data, rc, cleanup);
+    *priv_data = calloc(1, sizeof **priv_data);
+    LY_CHECK_ERR_GOTO(!*priv_data, LOGMEM(ctx); rc = LY_EMEM, cleanup);
 
     /* fill */
-    priv_data->tid = tid;
-    priv_data->ctx = ctx;
-    priv_data->errs = NULL;
+    (*priv_data)->tid = tid;
+    (*priv_data)->ctx = ctx;
+    (*priv_data)->errs = NULL;
 
-    *private_data = priv_data;
+    *private_data = *priv_data;
 
 cleanup:
     if (rc) {
-        ly_ctx_private_data_remove_and_free(priv_data);
+        ly_ctx_private_data_remove_and_free(*priv_data);
     }
     return rc;
 }
@@ -216,37 +228,25 @@ cleanup:
  * @brief Get the private context data for a specific context.
  *
  * @param[in] ctx Context whose private data to get.
- * @param[in] lock Whether to lock the data access.
  * @param[in] own_data_only Whether to return only the private data of the current thread.
  * @return Private context data of @p ctx, NULL if not found.
  */
 static struct ly_ctx_private_data *
-_ly_ctx_private_data_get(const struct ly_ctx *ctx, ly_bool lock, ly_bool own_data_only)
+_ly_ctx_private_data_get(const struct ly_ctx *ctx, ly_bool own_data_only)
 {
-    struct ly_ctx_private_data *iter;
+    struct ly_ctx_private_data **iter;
     ly_bool found = 0;
     pthread_t tid = pthread_self();
 
-    if (lock) {
-        /* RD LOCK */
-        pthread_rwlock_rdlock(&ly_ctx_data_rwlock);
-    }
-
-    LY_ARRAY_FOR(ly_private_ctx_data, struct ly_ctx_private_data, iter) {
+    LY_ARRAY_FOR(ly_private_ctx_data, struct ly_ctx_private_data *, iter) {
         /* either own - ctx and tid match, or "context's" - thread does not matter */
-        if ((iter->ctx == ctx) && (!own_data_only || (iter->tid == tid))) {
+        if (((*iter)->ctx == ctx) && (!own_data_only || ((*iter)->tid == tid))) {
             found = 1;
             break;
         }
     }
 
-    if (lock) {
-        /* RD UNLOCK */
-        pthread_rwlock_unlock(&ly_ctx_data_rwlock);
-    }
-
-    /* pointer to the structure, cannot be changed so lock is not required */
-    return found ? iter : NULL;
+    return found ? *iter : NULL;
 }
 
 struct ly_ctx_private_data *
@@ -255,8 +255,15 @@ ly_ctx_private_data_get_or_create(const struct ly_ctx *ctx)
     struct ly_ctx_private_data *private_data;
     LY_ERR r;
 
+    /* RD LOCK */
+    pthread_rwlock_rdlock(&ly_ctx_data_rwlock);
+
     /* try to find existing data */
-    private_data = _ly_ctx_private_data_get(ctx, 1, 1);
+    private_data = _ly_ctx_private_data_get(ctx, 1);
+
+    /* RD UNLOCK */
+    pthread_rwlock_unlock(&ly_ctx_data_rwlock);
+
     if (private_data) {
         return private_data;
     }
@@ -286,21 +293,31 @@ ly_ctx_private_data_get_or_create(const struct ly_ctx *ctx)
 static void
 ly_ctx_shared_data_remove_and_free(struct ly_ctx_shared_data *shared_data)
 {
-    LY_ARRAY_COUNT_TYPE idx;
+    LY_ARRAY_COUNT_TYPE u;
 
     if (!shared_data) {
         return;
     }
 
+    /* free members */
     lyht_free(shared_data->pattern_ht, ly_ctx_ht_pattern_free_cb);
     lydict_clean(shared_data->data_dict);
     free(shared_data->data_dict);
     lyht_free(shared_data->leafref_links_ht, ly_ctx_ht_leafref_links_rec_free);
+    free(shared_data);
 
-    idx = shared_data - ly_shared_ctx_data;
-    if (idx < LY_ARRAY_COUNT(ly_shared_ctx_data) - 1) {
+    /* find */
+    LY_ARRAY_FOR(ly_shared_ctx_data, u) {
+        if (ly_shared_ctx_data[u] == shared_data) {
+            break;
+        }
+    }
+    assert(u < LY_ARRAY_COUNT(ly_shared_ctx_data));
+
+    /* remove */
+    if (u < LY_ARRAY_COUNT(ly_shared_ctx_data) - 1) {
         /* replace the shared data with the last one */
-        ly_shared_ctx_data[idx] = ly_shared_ctx_data[LY_ARRAY_COUNT(ly_shared_ctx_data) - 1];
+        ly_shared_ctx_data[u] = ly_shared_ctx_data[LY_ARRAY_COUNT(ly_shared_ctx_data) - 1];
     }
     LY_ARRAY_DECREMENT_FREE(ly_shared_ctx_data);
 }
@@ -316,7 +333,7 @@ static LY_ERR
 ly_ctx_shared_data_create(const struct ly_ctx *ctx, struct ly_ctx_shared_data **shared_data)
 {
     LY_ERR rc = LY_SUCCESS;
-    struct ly_ctx_shared_data *shrd_data = NULL;
+    struct ly_ctx_shared_data **shrd_data = NULL;
 
     if (shared_data) {
         *shared_data = NULL;
@@ -324,19 +341,21 @@ ly_ctx_shared_data_create(const struct ly_ctx *ctx, struct ly_ctx_shared_data **
 
     /* create the shared context data */
     LY_ARRAY_NEW_GOTO(ctx, ly_shared_ctx_data, shrd_data, rc, cleanup);
+    *shrd_data = calloc(1, sizeof **shrd_data);
+    LY_CHECK_ERR_GOTO(!*shrd_data, LOGMEM(ctx); rc = LY_EMEM, cleanup);
 
     /* fill */
-    shrd_data->ctx = ctx;
+    (*shrd_data)->ctx = ctx;
 
     /* pattern hash table */
-    shrd_data->pattern_ht = lyht_new(LYHT_MIN_SIZE, sizeof(struct ly_pattern_ht_rec),
+    (*shrd_data)->pattern_ht = lyht_new(LYHT_MIN_SIZE, sizeof(struct ly_pattern_ht_rec),
             ly_ctx_ht_pattern_equal_cb, NULL, 1);
-    LY_CHECK_ERR_GOTO(!shrd_data->pattern_ht, rc = LY_EMEM, cleanup);
+    LY_CHECK_ERR_GOTO(!(*shrd_data)->pattern_ht, rc = LY_EMEM, cleanup);
 
     /* data dictionary */
-    shrd_data->data_dict = malloc(sizeof *shrd_data->data_dict);
-    LY_CHECK_ERR_GOTO(!shrd_data->data_dict, rc = LY_EMEM, cleanup);
-    lydict_init(shrd_data->data_dict);
+    (*shrd_data)->data_dict = malloc(sizeof *(*shrd_data)->data_dict);
+    LY_CHECK_ERR_GOTO(!(*shrd_data)->data_dict, rc = LY_EMEM, cleanup);
+    lydict_init((*shrd_data)->data_dict);
 
     /* leafref set */
     if (ctx->opts & LY_CTX_LEAFREF_LINKING) {
@@ -345,24 +364,25 @@ ly_ctx_shared_data_create(const struct ly_ctx *ctx, struct ly_ctx_shared_data **
          * its memory completely during various manipulation function (e.g. remove, insert). In case of using pointers, the
          * pointer can be reallocated safely, while record itself remains untouched and can be accessed/modified freely
          * */
-        shrd_data->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec *), ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
-        LY_CHECK_ERR_GOTO(!shrd_data->leafref_links_ht, rc = LY_EMEM, cleanup);
+        (*shrd_data)->leafref_links_ht = lyht_new(1, sizeof(struct lyd_leafref_links_rec *),
+                ly_ctx_ht_leafref_links_equal_cb, NULL, 1);
+        LY_CHECK_ERR_GOTO(!(*shrd_data)->leafref_links_ht, rc = LY_EMEM, cleanup);
     }
 
     /* ext clb and leafref links locks */
-    pthread_mutex_init(&shrd_data->ext_clb_lock, NULL);
-    pthread_mutex_init(&shrd_data->leafref_links_lock, NULL);
+    pthread_mutex_init(&(*shrd_data)->ext_clb_lock, NULL);
+    pthread_mutex_init(&(*shrd_data)->leafref_links_lock, NULL);
 
     /* refcount */
-    ATOMIC_STORE_RELAXED(shrd_data->refcount, 1);
+    ATOMIC_STORE_RELAXED((*shrd_data)->refcount, 1);
 
     if (shared_data) {
-        *shared_data = shrd_data;
+        *shared_data = *shrd_data;
     }
 
 cleanup:
     if (rc) {
-        ly_ctx_shared_data_remove_and_free(shrd_data);
+        ly_ctx_shared_data_remove_and_free(*shrd_data);
     }
     return rc;
 }
@@ -371,34 +391,22 @@ cleanup:
  * @brief Get the shared context data for a specific context.
  *
  * @param[in] ctx Context whose shared data to get.
- * @param[in] lock Whether to lock the data access.
- * @param[out] idx Optional index of the shared data in the array.
+ * @return Found shared ctx data, NULL if not found.
  */
 static struct ly_ctx_shared_data *
-_ly_ctx_shared_data_get(const struct ly_ctx *ctx, ly_bool lock)
+_ly_ctx_shared_data_get(const struct ly_ctx *ctx)
 {
-    struct ly_ctx_shared_data *iter;
+    struct ly_ctx_shared_data **iter;
     ly_bool found = 0;
 
-    if (lock) {
-        /* RD LOCK */
-        pthread_rwlock_rdlock(&ly_ctx_data_rwlock);
-    }
-
-    LY_ARRAY_FOR(ly_shared_ctx_data, struct ly_ctx_shared_data, iter) {
-        if (iter->ctx == ctx) {
+    LY_ARRAY_FOR(ly_shared_ctx_data, struct ly_ctx_shared_data *, iter) {
+        if ((*iter)->ctx == ctx) {
             found = 1;
             break;
         }
     }
 
-    if (lock) {
-        /* RD UNLOCK */
-        pthread_rwlock_unlock(&ly_ctx_data_rwlock);
-    }
-
-    /* pointer to the structure, cannot be changed so lock is not required */
-    return found ? iter : NULL;
+    return found ? *iter : NULL;
 }
 
 struct ly_ctx_shared_data *
@@ -406,7 +414,14 @@ ly_ctx_shared_data_get(const struct ly_ctx *ctx)
 {
     struct ly_ctx_shared_data *shared_data;
 
-    shared_data = _ly_ctx_shared_data_get(ctx, 1);
+    /* RD LOCK */
+    pthread_rwlock_rdlock(&ly_ctx_data_rwlock);
+
+    shared_data = _ly_ctx_shared_data_get(ctx);
+
+    /* RD UNLOCK */
+    pthread_rwlock_unlock(&ly_ctx_data_rwlock);
+
     if (!shared_data) {
         /* NULL to avoid infinite loop in LOGERR */
         LOGERR(NULL, LY_EINT, "Context shared data not found.");
@@ -435,7 +450,7 @@ ly_ctx_data_add(const struct ly_ctx *ctx)
     pthread_rwlock_wrlock(&ly_ctx_data_rwlock);
 
     /* check for duplicates in private context data, not allowed */
-    private_data = _ly_ctx_private_data_get(ctx, 0, 1);
+    private_data = _ly_ctx_private_data_get(ctx, 1);
     if (private_data) {
         /* ctx pointers can match only if the context is printed (they have the same memory address) */
         assert(private_data->ctx->opts & LY_CTX_INT_IMMUTABLE);
@@ -455,7 +470,7 @@ ly_ctx_data_add(const struct ly_ctx *ctx)
     }
 
     /* check for duplicates in shared context data */
-    shared_data = _ly_ctx_shared_data_get(ctx, 0);
+    shared_data = _ly_ctx_shared_data_get(ctx);
     if (shared_data) {
         /* found, we can end */
         ATOMIC_INC_RELAXED(shared_data->refcount);
@@ -486,13 +501,13 @@ ly_ctx_data_del(const struct ly_ctx *ctx)
     pthread_rwlock_wrlock(&ly_ctx_data_rwlock);
 
     /* free private data of all the threads for this context */
-    while ((private_data = _ly_ctx_private_data_get(ctx, 0, 0))) {
+    while ((private_data = _ly_ctx_private_data_get(ctx, 0))) {
         /* free the private data */
         ly_ctx_private_data_remove_and_free(private_data);
     }
 
     /* get the shared context data */
-    shared_data = _ly_ctx_shared_data_get(ctx, 0);
+    shared_data = _ly_ctx_shared_data_get(ctx);
     if (!shared_data) {
         /* not found, nothing to do */
         goto cleanup;
