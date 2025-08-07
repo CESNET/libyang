@@ -126,7 +126,6 @@ lyplg_type_store_ipv4_address(const struct ly_ctx *ctx, const struct lysc_type *
         struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres), struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lysc_type_str *type_str = (struct lysc_type_str *)type;
     struct lyd_value_ipv4_address *val;
     const char *value_str = value;
     uint32_t value_size, i;

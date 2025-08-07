@@ -1859,7 +1859,7 @@ test_xpath(void **state)
             "  </root>\n"
             "</root>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
-    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount v1\": "
+    CHECK_LOG_CTX("Ext plugin \"ly2 schema mount\": "
             "Must condition \"/m:root/l1 = 'valid'\" not satisfied.",
             "/mount:root/l1", 0);
 

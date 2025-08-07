@@ -34,7 +34,7 @@
  * | 64        | yes | `int64_t *` | little-endian value represented without floating point |
  */
 
-static LY_ERR lyplg_type_validate_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node), const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err);
+static LY_ERR lyplg_type_validate_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lysc_ext_instance *top_ext, struct lyd_value *storage, struct ly_err_item **err);
 
 /**
  * @brief Convert decimal64 number to canonical string.
@@ -151,7 +151,7 @@ lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *typ
 
     if (!(options & LYPLG_TYPE_STORE_ONLY)) {
         /* validate value */
-        ret = lyplg_type_validate_decimal64(ctx, type, NULL, NULL, storage, err);
+        ret = lyplg_type_validate_decimal64(ctx, type, NULL, NULL, NULL, storage, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -166,13 +166,13 @@ cleanup:
     return ret;
 }
 
-static LY_ERR
 /**
  * @brief Implementation of ::lyplg_type_validate_clb for the built-in decimal64 type.
  */
 static LY_ERR
-lyplg_type_validate_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
-        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
+lyplg_type_validate_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type,
+        const struct lyd_node *UNUSED(ctx_node), const struct lyd_node *UNUSED(tree),
+        const struct lysc_ext_instance *UNUSED(top_ext), struct lyd_value *storage, struct ly_err_item **err)
 {
     LY_ERR ret;
     struct lysc_type_dec *type_dec = (struct lysc_type_dec *)type;
