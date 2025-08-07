@@ -34,7 +34,9 @@
  * | variable, full bytes | yes | `char *` | string itself |
  */
 
-static LY_ERR lyplg_type_validate_string(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node), const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err);
+static LY_ERR lyplg_type_validate_string(const struct ly_ctx *ctx, const struct lysc_type *type,
+        const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lysc_ext_instance *top_ext,
+        struct lyd_value *storage, struct ly_err_item **err);
 
 /**
  * @brief Check string value for invalid characters.
@@ -66,7 +68,6 @@ lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, 
         struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres), struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lysc_type_str *type_str = (struct lysc_type_str *)type;
     uint32_t value_size;
 
     /* init storage */
@@ -102,7 +103,7 @@ lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, 
 
     if (!(options & LYPLG_TYPE_STORE_ONLY)) {
         /* validate value */
-        ret = lyplg_type_validate_string(ctx, type, NULL, NULL, storage, err);
+        ret = lyplg_type_validate_string(ctx, type, NULL, NULL, NULL, storage, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -122,7 +123,8 @@ cleanup:
  */
 static LY_ERR
 lyplg_type_validate_string(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
-        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
+        const struct lyd_node *UNUSED(tree), const struct lysc_ext_instance *UNUSED(top_ext), struct lyd_value *storage,
+        struct ly_err_item **err)
 {
     LY_ERR ret;
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
@@ -142,7 +144,7 @@ lyplg_type_validate_string(const struct ly_ctx *ctx, const struct lysc_type *typ
     }
 
     /* pattern restrictions */
-    ret = lyplg_type_validate_patterns(type_str->patterns, value, value_len, err);
+    ret = lyplg_type_validate_patterns(ctx, type_str->patterns, value, value_len, err);
     LY_CHECK_RET(ret);
 
     return LY_SUCCESS;

@@ -128,7 +128,6 @@ lyplg_type_store_ipv4_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
         struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres), struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lysc_type_str *type_str = (struct lysc_type_str *)type;
     struct lyd_value_ipv4_prefix *val;
     uint32_t value_size;
 
@@ -163,14 +162,6 @@ lyplg_type_store_ipv4_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
 
     /* check hints */
     ret = lyplg_type_check_hints(hints, value, value_size, type->basetype, NULL, err);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    /* pattern restrictions */
-    ret = lyplg_type_validate_patterns(type_str->patterns, value, value_len, err);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    /* pattern restrictions */
-    ret = lyplg_type_validate_patterns(type_str->patterns, value, value_len, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* get the mask in network-byte order */

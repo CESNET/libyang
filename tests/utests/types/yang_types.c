@@ -111,9 +111,8 @@ test_data_xml(void **state)
     TEST_SUCCESS_XML("a", "l", "2017-02-01T00:00:00-00:00", STRING, "2017-02-01T00:00:00-00:00");
     TEST_SUCCESS_XML("a", "l", "2021-02-29T00:00:00-00:00", STRING, "2021-03-01T00:00:00-00:00");
 
-    TEST_ERROR_XML("a", "l", "2005-05-31T23:15:15.-08:00", LY_EVALID);
-    CHECK_LOG_CTX("Unsatisfied pattern - \"2005-05-31T23:15:15.-08:00\" does not conform to "
-            "\"\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[\\+\\-]\\d{2}:\\d{2})\".",
+    TEST_ERROR_XML("a", "l", "2005-05-31T23:15:15.-08:00", LY_EINVAL);
+    CHECK_LOG_CTX("Missing date-and-time fractions after '.'.",
             "/a:l", 1);
 
     TEST_ERROR_XML("a", "l", "2023-16-15T20:13:01+01:00", LY_EINVAL);

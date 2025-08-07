@@ -53,7 +53,6 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
         struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres), struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lysc_type_str *type_dat = (struct lysc_type_str *)type;
     struct lyd_value_date_and_time *val;
     uint32_t i, value_size;
     char c;
@@ -106,16 +105,6 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
 
     /* check hints */
     ret = lyplg_type_check_hints(hints, value, value_size, type->basetype, NULL, err);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    /* length restriction, there can be only ASCII chars */
-    if (type_dat->length) {
-        ret = lyplg_type_validate_range(LY_TYPE_STRING, type_dat->length, value_len, value, value_len, err);
-        LY_CHECK_GOTO(ret, cleanup);
-    }
-
-    /* date-and-time pattern */
-    ret = lyplg_type_validate_patterns(type_dat->patterns, value, value_len, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* convert to UNIX time and fractions of second */

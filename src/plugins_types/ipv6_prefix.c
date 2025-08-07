@@ -130,7 +130,6 @@ lyplg_type_store_ipv6_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
         struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres), struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lysc_type_str *type_str = (struct lysc_type_str *)type;
     struct lyd_value_ipv6_prefix *val;
     uint32_t value_size;
 

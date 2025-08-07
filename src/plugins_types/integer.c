@@ -40,9 +40,11 @@
  */
 
 static LY_ERR lyplg_type_validate_int(const struct ly_ctx *ctx, const struct lysc_type *type,
-        const struct lyd_node *ctx_node, const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err);
+        const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lysc_ext_instance *top_ext,
+        struct lyd_value *storage, struct ly_err_item **err);
 static LY_ERR lyplg_type_validate_uint(const struct ly_ctx *ctx, const struct lysc_type *type,
-        const struct lyd_node *ctx_node, const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err);
+        const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lysc_ext_instance *top_ext,
+        struct lyd_value *storage, struct ly_err_item **err);
 
 static LY_ERR
 lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
@@ -51,7 +53,6 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
         struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres), struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lysc_type_num *type_num = (struct lysc_type_num *)type;
     uint32_t value_size;
     int64_t num = 0;
     int base = 1;
@@ -155,7 +156,7 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
 
     if (!(options & LYPLG_TYPE_STORE_ONLY)) {
         /* validate value */
-        ret = lyplg_type_validate_int(ctx, type, NULL, NULL, storage, err);
+        ret = lyplg_type_validate_int(ctx, type, NULL, NULL, NULL, storage, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -175,7 +176,8 @@ cleanup:
  */
 static LY_ERR
 lyplg_type_validate_int(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
-        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
+        const struct lyd_node *UNUSED(tree), const struct lysc_ext_instance *UNUSED(top_ext), struct lyd_value *storage,
+        struct ly_err_item **err)
 {
     LY_ERR ret;
     struct lysc_type_num *type_num = (struct lysc_type_num *)type;
@@ -357,7 +359,6 @@ lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, co
         struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres), struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lysc_type_num *type_num = (struct lysc_type_num *)type;
     uint32_t value_size;
     uint64_t num = 0;
     int base = 0;
@@ -441,7 +442,7 @@ lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, co
 
     if (!(options & LYPLG_TYPE_STORE_ONLY)) {
         /* validate value */
-        ret = lyplg_type_validate_uint(ctx, type, NULL, NULL, storage, err);
+        ret = lyplg_type_validate_uint(ctx, type, NULL, NULL, NULL, storage, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -461,7 +462,8 @@ cleanup:
  */
 static LY_ERR
 lyplg_type_validate_uint(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
-        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
+        const struct lyd_node *UNUSED(tree), const struct lysc_ext_instance *UNUSED(top_ext), struct lyd_value *storage,
+        struct ly_err_item **err)
 {
     LY_ERR ret;
     struct lysc_type_num *type_num = (struct lysc_type_num *)type;
