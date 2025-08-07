@@ -364,8 +364,7 @@ struct ly_ctx_shared_data {
                                       * incremented only when a new (next) printed context
                                       * is created from the same memory address. */
 
-    struct ly_ht *pattern_ht;       /**< ht for storing patterns and their serialized pattern codes,
-                                      * these codes can be deserialized into pcre2_code that can then be used directly.
+    struct ly_ht *pattern_ht;       /**< ht for storing patterns and their pcre2_codes.
                                       * A pattern is used both as a key and a value to search for.
                                       * This ht is only written to when the context is being compiled,
                                       * afterwards, it is read-only. */
