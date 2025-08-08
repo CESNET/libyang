@@ -2066,6 +2066,17 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const st
         LY_CHECK_GOTO(rc = lysdict_insert(ctx, mod->parsed->revs[0].date, 0, &mod->revision), cleanup);
     }
 
+    /* set YANG version */
+    switch (mod->parsed->version) {
+    case LYS_VERSION_UNDEF:
+    case LYS_VERSION_1_0:
+        mod->version = LYS_VERSION_1_0;
+        break;
+    case LYS_VERSION_1_1:
+        mod->version = LYS_VERSION_1_1;
+        break;
+    }
+
     /* decide the latest revision */
     latest = ly_ctx_get_module_latest(ctx, mod->name);
     if (latest) {

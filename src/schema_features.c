@@ -217,20 +217,31 @@ LIBYANG_API_DEF LY_ERR
 lys_feature_value(const struct lys_module *module, const char *feature)
 {
     const struct lysp_feature *f;
+    LY_ARRAY_COUNT_TYPE u;
 
-    LY_CHECK_ARG_RET(NULL, module, module->parsed, feature, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, module, module->parsed || module->compiled, feature, !strchr(feature, ':'), LY_EINVAL);
 
-    /* search for the specified feature */
-    f = lysp_feature_find(module->parsed, feature, strlen(feature), 0);
-    LY_CHECK_RET(!f, LY_ENOTFOUND);
+    if (module->parsed) {
+        /* search for the specified feature */
+        f = lysp_feature_find(module->parsed, feature, strlen(feature), 0);
+        LY_CHECK_RET(!f, LY_ENOTFOUND);
 
-    /* feature disabled */
-    if (!(f->flags & LYS_FENABLED)) {
-        return LY_ENOT;
+        /* feature enabled */
+        if (f->flags & LYS_FENABLED) {
+            return LY_SUCCESS;
+        }
+    } else {
+        /* find the feature in the compiled enabled features */
+        LY_ARRAY_FOR(module->compiled->features, u) {
+            if (!strcmp(module->compiled->features[u], feature)) {
+                /* feature enabled */
+                return LY_SUCCESS;
+            }
+        }
     }
 
-    /* feature enabled */
-    return LY_SUCCESS;
+    /* feature disabled */
+    return LY_ENOT;
 }
 
 /**

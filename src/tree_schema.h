@@ -2194,7 +2194,8 @@ struct lys_module {
     ly_bool implemented;                /**< flag if the module is implemented, not just imported */
     ly_bool to_compile;                 /**< flag marking a module that was changed but not (re)compiled, see
                                              ::LY_CTX_EXPLICIT_COMPILE. */
-    uint8_t latest_revision;            /**< Flag to mark the latest available revision,
+    uint8_t version : 2;                /**< yang-version (LYS_VERSION values) */
+    uint8_t latest_revision : 4;        /**< Flag to mark the latest available revision,
                                              see [latest_revision options](@ref latestrevflags). */
 };
 

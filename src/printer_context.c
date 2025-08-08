@@ -1740,6 +1740,7 @@ ctxp_module(const struct lys_module *orig_mod, struct lys_module *mod, struct ly
     /* flags */
     mod->implemented = orig_mod->implemented;
     mod->to_compile = orig_mod->to_compile;
+    mod->version = orig_mod->version;
     mod->latest_revision = orig_mod->latest_revision;
 }
 
