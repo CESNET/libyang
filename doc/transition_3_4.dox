@@ -17,9 +17,13 @@
  * getting the actual plugin structures. Finally, some new callbacks were required for extension-instance plugins
  * so that they can be printed with the context as well.
  *
- * Other notable changes include major LYB binary data format optimizations and extension plugin API improvements to
- * account for custom XPath root definitions. The compiled should report all the NBC changes and they should be
- * explained in the documentation of the corresponding changed functions.
+ * Other notable changes include major LYB binary data format optimizations. The effect in API is that wherever a size
+ * of a value is required, it is now expected in bits instead of bytes. Next, there are extension plugin API
+ * improvements to account for custom XPath root definitions. Then, obsolete nodes are not compiled and cannot be
+ * instantiated in data by default but can be if requested by a context flag. Finally, the "default" metadata instance
+ * connected to the `ietf-netconf-with-defaults` YANG module is now in the proper namespace, which is not the namespace
+ * of this module. Other minor NBC changes should be reported by the compilator and they should be explained in the
+ * documentation of the corresponding changed functions.
  *
  * The complete generated list of changes (without any additional notes) can be found in
  * <a href="../compat_report_3_4.html">the compatibility report</a>.
