@@ -797,8 +797,7 @@ ctxp_ext(const struct lysc_ext_instance *orig_ext, struct lysc_ext_instance *ext
     ext->def = orig_ext->def;
     ly_set_add(ptr_set, &ext->def, 1, NULL);
     ext->argument = ly_ctx_compiled_addr_ht_get(addr_ht, orig_ext->argument, 0);
-    ext->module = orig_ext->module;
-    ly_set_add(ptr_set, &ext->module, 1, NULL);
+    ext->module = ly_ctx_compiled_addr_ht_get(addr_ht, orig_ext->module, 0);
 
     /* exts */
     CTXP_SIZED_ARRAY(orig_ext->exts, ext->exts, mem);
