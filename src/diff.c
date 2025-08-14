@@ -413,7 +413,12 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
         }
 
         /* duplicate the subtree (and connect to the diff if possible) */
-        LY_CHECK_RET(lyd_dup_single(node, (struct lyd_node_inner *)diff_parent, diff_opts, &dup));
+        if (diff_parent && (LYD_CTX(diff_parent) != LYD_CTX(node))) {
+            LY_CHECK_RET(lyd_dup_single_to_ctx(node, LYD_CTX(diff_parent), (struct lyd_node_inner *)diff_parent,
+                    diff_opts, &dup));
+        } else {
+            LY_CHECK_RET(lyd_dup_single(node, (struct lyd_node_inner *)diff_parent, diff_opts, &dup));
+        }
 
         /* find the first duplicated parent */
         if (!diff_parent) {
