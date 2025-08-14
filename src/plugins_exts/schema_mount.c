@@ -79,6 +79,8 @@ struct sprinter_tree_priv {
         lyplg_ext_compile_log(cctx, ext, LY_LLERR, LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__); \
         return LY_EINT
 
+#define CTXP_MEM_SIZE(SIZE) ((SIZE) + ((~(SIZE) + 1) & (8 - 1)))
+
 /**
  * @brief Check if given mount point is unique among its siblings
  *
@@ -1508,7 +1510,7 @@ schema_mount_compiled_size(const struct lysc_ext_instance *ext, struct ly_ht *ad
         return 0;
     }
 
-    size += sizeof *sm_data;
+    size += CTXP_MEM_SIZE(sizeof *sm_data);
 
     /* ht addr check, make sure the shared context is stored only once */
     hash = lyht_hash((const char *)&sm_data->shared, sizeof sm_data->shared);
@@ -1516,12 +1518,12 @@ schema_mount_compiled_size(const struct lysc_ext_instance *ext, struct ly_ht *ad
         return size;
     }
 
-    size += sizeof *sm_data->shared;
-    size += sm_data->shared->schema_count * sizeof *sm_data->shared->schemas;
+    size += CTXP_MEM_SIZE(sizeof *sm_data->shared);
+    size += CTXP_MEM_SIZE(sm_data->shared->schema_count * sizeof *sm_data->shared->schemas);
     for (i = 0; i < sm_data->shared->schema_count; ++i) {
-        size += ly_ctx_compiled_size(sm_data->shared->schemas[i].ctx);
-        size += strlen(sm_data->shared->schemas[i].mount_point) + 1;
-        size += strlen(sm_data->shared->schemas[i].content_id) + 1;
+        size += CTXP_MEM_SIZE(ly_ctx_compiled_size(sm_data->shared->schemas[i].ctx));
+        size += CTXP_MEM_SIZE(strlen(sm_data->shared->schemas[i].mount_point) + 1);
+        size += CTXP_MEM_SIZE(strlen(sm_data->shared->schemas[i].content_id) + 1);
     }
 
     /* inlined contexts cannot be reused and will not be printed */
@@ -1541,7 +1543,7 @@ schema_mount_compiled_print(const struct lysc_ext_instance *orig_ext, struct lys
 
     /* sm_data */
     ext->compiled = sm_data = *mem;
-    *mem = (char *)*mem + sizeof *sm_data;
+    *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof *sm_data);
 
     pthread_mutexattr_init(&attr);
     pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
@@ -1557,7 +1559,7 @@ schema_mount_compiled_print(const struct lysc_ext_instance *orig_ext, struct lys
 
     /* sm_data->shared */
     sm_data->shared = *mem;
-    *mem = (char *)*mem + sizeof *sm_data->shared;
+    *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof *sm_data->shared);
 
     sm_data->shared->schema_count = orig_sm_data->shared->schema_count;
     sm_data->shared->ref_count = orig_sm_data->shared->ref_count;
@@ -1565,7 +1567,7 @@ schema_mount_compiled_print(const struct lysc_ext_instance *orig_ext, struct lys
     /* sm_data->shared->schemas */
     if (orig_sm_data->shared->schemas) {
         sm_data->shared->schemas = *mem;
-        *mem = (char *)*mem + sm_data->shared->schema_count * sizeof *sm_data->shared->schemas;
+        *mem = (char *)*mem + CTXP_MEM_SIZE(sm_data->shared->schema_count * sizeof *sm_data->shared->schemas);
 
         for (i = 0; i < sm_data->shared->schema_count; ++i) {
             /* ctx */
@@ -1578,12 +1580,12 @@ schema_mount_compiled_print(const struct lysc_ext_instance *orig_ext, struct lys
             /* mount_point */
             strcpy(*mem, orig_sm_data->shared->schemas[i].mount_point);
             sm_data->shared->schemas[i].mount_point = *mem;
-            *mem = (char *)*mem + strlen(sm_data->shared->schemas[i].mount_point) + 1;
+            *mem = (char *)*mem + CTXP_MEM_SIZE(strlen(sm_data->shared->schemas[i].mount_point) + 1);
 
             /* content_id */
             strcpy(*mem, orig_sm_data->shared->schemas[i].content_id);
             sm_data->shared->schemas[i].content_id = *mem;
-            *mem = (char *)*mem + strlen(sm_data->shared->schemas[i].content_id) + 1;
+            *mem = (char *)*mem + CTXP_MEM_SIZE(strlen(sm_data->shared->schemas[i].content_id) + 1);
         }
     }
 
