@@ -200,26 +200,6 @@ ly_err_last(const struct ly_ctx *ctx)
     return ctx_data->errs ? ctx_data->errs->prev : NULL;
 }
 
-void
-ly_err_move(struct ly_ctx *src_ctx, struct ly_ctx *trg_ctx)
-{
-    struct ly_ctx_private_data *src_data, *trg_data;
-    struct ly_err_item *errs = NULL;
-
-    /* get src context errs */
-    src_data = ly_ctx_private_data_get_or_create(src_ctx);
-    errs = src_data->errs;
-    src_data->errs = NULL;
-
-    /* get and free the trg context errs */
-    trg_data = ly_ctx_private_data_get_or_create(trg_ctx);
-    ly_err_free(trg_data->errs);
-
-    /* set them for trg */
-    ly_err_free(trg_data->errs);
-    trg_data->errs = errs;
-}
-
 LIBYANG_API_DEF void
 ly_err_free(void *ptr)
 {

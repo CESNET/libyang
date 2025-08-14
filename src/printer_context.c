@@ -1790,6 +1790,9 @@ ly_ctx_compiled_print_context(const struct ly_ctx *orig_ctx, struct ly_ctx *ctx,
     /* no dynamic plugin support */
     memset(&ctx->plugins_types, 0, sizeof ctx->plugins_types);
     memset(&ctx->plugins_extensions, 0, sizeof ctx->plugins_extensions);
+
+    /* parent context, needs to be set manually */
+    ctx->parent_ctx = NULL;
 }
 
 LY_ERR

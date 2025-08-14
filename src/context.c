@@ -1486,8 +1486,10 @@ ly_ctx_destroy(struct ly_ctx *ctx)
     }
 
     if (ctx->opts & LY_CTX_INT_IMMUTABLE) {
-        /* ctx data */
-        ly_ctx_data_del(ctx);
+        if (!ctx->parent_ctx) {
+            /* ctx data */
+            ly_ctx_data_del(ctx);
+        }
         lyplg_clean();
         return;
     }
@@ -1519,8 +1521,10 @@ ly_ctx_destroy(struct ly_ctx *ctx)
     /* leftover unres */
     lys_unres_glob_erase(&ctx->unres);
 
-    /* ctx data */
-    ly_ctx_data_del(ctx);
+    if (!ctx->parent_ctx) {
+        /* ctx data */
+        ly_ctx_data_del(ctx);
+    }
 
     /* dictionary */
     lydict_clean(&ctx->dict);

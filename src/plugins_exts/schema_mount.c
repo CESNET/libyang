@@ -347,6 +347,9 @@ schema_mount_create_ctx(const struct lysc_ext_instance *ext, const struct lyd_no
         }
     }
 
+    /* set the parent context */
+    lyplg_ext_set_parent_ctx(*ext_ctx, ext->module->ctx);
+
 cleanup:
     free(sdirs);
     return rc;
@@ -1060,8 +1063,7 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
         enum lyd_type data_type, uint32_t val_opts, struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
-    uint32_t *prev_lo, temp_lo = LY_LOSTORE_LAST, i;
-    const struct ly_err_item *err;
+    uint32_t i;
     struct lyd_node *iter, *ext_data = NULL, *ref_first = NULL, *orig_parent = lyd_parent(sibling), *op_tree;
     struct lyd_node *ext_diff = NULL, *diff_parent = NULL;
     ly_bool ext_data_free = 0;
@@ -1107,9 +1109,6 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
         }
     }
 
-    /* only store messages in the context, log as an extension */
-    prev_lo = ly_temp_log_options(&temp_lo);
-
     if (data_type == LYD_TYPE_DATA_YANG) {
         /* validate all the modules with data */
         ret = lyd_validate_all(&sibling, NULL, val_opts | LYD_VALIDATE_PRESENT, diff ? &ext_diff : NULL);
@@ -1117,9 +1116,6 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
         /* validate the operation */
         ret = lyd_validate_op(op_tree, dep_tree, data_type, diff ? &ext_diff : NULL);
     }
-
-    /* restore logging */
-    ly_temp_log_options(prev_lo);
 
     /* restore sibling tree */
     for (i = 0; i < ref_set->count; ++i) {
@@ -1134,17 +1130,6 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
     lyplg_ext_insert(orig_parent, sibling);
 
     if (ret) {
-        /* log the error in the original context */
-        err = ly_err_first(LYD_CTX(sibling));
-        if (!err) {
-            lyplg_ext_compile_log(NULL, ext, LY_LLERR, ret, "Unknown validation error (err code %d).", ret);
-        } else {
-            while (err) {
-                lyplg_ext_compile_log_err(err, ext);
-                err = err->next;
-            }
-            ly_err_clean((struct ly_ctx *)LYD_CTX(sibling), NULL);
-        }
         goto cleanup;
     }
 
@@ -1587,6 +1572,7 @@ schema_mount_compiled_print(const struct lysc_ext_instance *orig_ext, struct lys
             ctx_mem = *mem;
             LY_CHECK_RET(ly_ctx_compiled_print(orig_sm_data->shared->schemas[i].ctx, ctx_mem, mem));
             LY_CHECK_RET(ly_ctx_new_printed(ctx_mem, &sm_data->shared->schemas[i].ctx));
+            LY_CHECK_RET(lyplg_ext_set_parent_ctx(ctx_mem, ext->module->ctx));
             sm_data->shared->schemas[i].ctx = ctx_mem;
 
             /* mount_point */

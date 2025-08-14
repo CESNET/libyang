@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief helper functions for extension plugins
  *
- * Copyright (c) 2019 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -736,4 +736,38 @@ cleanup:
     /* EXT CLB UNLOCK */
     pthread_mutex_unlock(&ctx_data->ext_clb_lock);
     return rc;
+}
+
+LIBYANG_API_DEF LY_ERR
+lyplg_ext_set_parent_ctx(struct ly_ctx *ctx, const struct ly_ctx *parent_ctx)
+{
+    const struct ly_ctx *c;
+
+    LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
+
+    if (ctx->parent_ctx == parent_ctx) {
+        return LY_SUCCESS;
+    }
+
+    /* prevent circular reference chain */
+    c = parent_ctx;
+    do {
+        if (c->parent_ctx == ctx) {
+            LOGERR(ctx, LY_EDENIED, "Circular references of parent contexts.");
+            return LY_EDENIED;
+        }
+
+        c = c->parent_ctx;
+    } while (c);
+
+    if (!ctx->parent_ctx) {
+        /* remove its shared and private data */
+        ly_ctx_data_del(ctx);
+    } else if (!parent_ctx) {
+        /* create its shared and private data */
+        LY_CHECK_RET(ly_ctx_data_add(ctx));
+    }
+
+    ctx->parent_ctx = (struct ly_ctx *)parent_ctx;
+    return LY_SUCCESS;
 }

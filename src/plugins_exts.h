@@ -1113,6 +1113,16 @@ LIBYANG_API_DECL LY_ERR lyplg_ext_get_data(const struct ly_ctx *ctx, const struc
         const struct lyd_node *parent, void **ext_data, ly_bool *ext_data_free);
 
 /**
+ * @brief Set parent context of a context. Errors and callbacks of the parent context will then always be used.
+ *
+ * @param[in] ctx Context to change.
+ * @param[in] parent_ctx Parent context to set.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error.
+ */
+LIBYANG_API_DECL LY_ERR lyplg_ext_set_parent_ctx(struct ly_ctx *ctx, const struct ly_ctx *parent_ctx);
+
+/**
  * @brief Insert extension instance data into a parent.
  *
  * @param[in] parent Parent node to insert into.

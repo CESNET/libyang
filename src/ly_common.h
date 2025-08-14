@@ -114,14 +114,6 @@ LY_ERR ly_vlog_build_data_path(const struct ly_ctx *ctx, char **path);
 void ly_vlog(const struct ly_ctx *ctx, const char *apptag, LY_VECODE code, const char *format, ...) _FORMAT_PRINTF(4, 5);
 
 /**
- * @brief Move error items from source to target context replacing any previous ones.
- *
- * @param[in] src_ctx Source context to read errors from.
- * @param[in] trg_ctx Target context to set the errors for.
- */
-void ly_err_move(struct ly_ctx *src_ctx, struct ly_ctx *trg_ctx);
-
-/**
  * @brief Logger location data setter.
  *
  * If all the parameter are NULL, a root @p dnode is added (NULL).
@@ -401,6 +393,7 @@ struct ly_ctx {
 
     struct ly_set plugins_types;      /**< context specific set of type plugins */
     struct ly_set plugins_extensions; /**< contets specific set of extension plugins */
+    struct ly_ctx *parent_ctx;        /**< pointer to the parent context whose shared and private data to use, if set */
 };
 
 /**

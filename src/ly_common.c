@@ -255,6 +255,11 @@ ly_ctx_private_data_get_or_create(const struct ly_ctx *ctx)
     struct ly_ctx_private_data *private_data;
     LY_ERR r;
 
+    while (ctx->parent_ctx) {
+        /* find the right context */
+        ctx = ctx->parent_ctx;
+    }
+
     /* RD LOCK */
     pthread_rwlock_rdlock(&ly_ctx_data_rwlock);
 
@@ -413,6 +418,11 @@ struct ly_ctx_shared_data *
 ly_ctx_shared_data_get(const struct ly_ctx *ctx)
 {
     struct ly_ctx_shared_data *shared_data;
+
+    while (ctx->parent_ctx) {
+        /* find the right context */
+        ctx = ctx->parent_ctx;
+    }
 
     /* RD LOCK */
     pthread_rwlock_rdlock(&ly_ctx_data_rwlock);
