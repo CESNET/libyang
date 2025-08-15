@@ -586,8 +586,7 @@ lyplg_ext_schema_mount_destroy_inline_contexts(struct lysc_ext_instance *ext)
     if (ly_ctx_is_printed(ext->module->ctx)) {
         /* inline mount points not supported in printed context */
         assert(sm_data->inln.schema_count == 0);
-        LOGVRB("Inline mount points not supported in printed context, "
-                "skipping cleanup of inline mount points.");
+        LOGVRB("Inline mount points not supported in printed context, skipping cleanup of inline mount points.");
         return;
     }
 

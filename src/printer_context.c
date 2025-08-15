@@ -1749,6 +1749,9 @@ ly_ctx_compiled_print_context(const struct ly_ctx *orig_ctx, struct ly_ctx *ctx,
 {
     uint32_t i;
 
+    /* set options so they can be read by other functions */
+    ctx->opts = orig_ctx->opts | LY_CTX_INT_IMMUTABLE;
+
     /* dictionary */
     ctx->dict.hash_tab = *mem;
     *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof *ctx->dict.hash_tab);
@@ -1779,9 +1782,8 @@ ly_ctx_compiled_print_context(const struct ly_ctx *orig_ctx, struct ly_ctx *ctx,
     /* no unres */
     memset(&ctx->unres, 0, sizeof ctx->unres);
 
-    /* change_count and options */
+    /* change_count, options already set */
     ctx->change_count = orig_ctx->change_count;
-    ctx->opts = orig_ctx->opts;
 
     /* ctx hash */
     ctx->mod_hash = orig_ctx->mod_hash;

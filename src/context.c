@@ -1417,10 +1417,9 @@ ly_ctx_compiled_print(const struct ly_ctx *ctx, void *mem, void **mem_end)
     pctx = mem;
     mem = (char *)mem + sizeof *pctx;
     ly_ctx_compiled_addr_ht_add(addr_ht, ctx, pctx);
-    ly_ctx_compiled_print_context(ctx, pctx, addr_ht, &ptr_set, &mem);
 
-    /* immutable */
-    pctx->opts |= LY_CTX_INT_IMMUTABLE;
+    /* members */
+    ly_ctx_compiled_print_context(ctx, pctx, addr_ht, &ptr_set, &mem);
 
     /* set all the pointers to the printed structures */
     for (i = 0; i < ptr_set.count; ++i) {
