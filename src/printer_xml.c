@@ -193,7 +193,7 @@ static void
 xml_print_meta(struct xmlpr_ctx *pctx, const struct lyd_node *node)
 {
     struct lyd_meta *meta;
-    const struct lys_module *mod;
+    const struct lys_module *df_mod = NULL, *mod;
     struct ly_set ns_list = {0};
     LY_ARRAY_COUNT_TYPE u;
     ly_bool dynamic, filter_attrs = 0;
@@ -205,9 +205,11 @@ xml_print_meta(struct xmlpr_ctx *pctx, const struct lyd_node *node)
         if (((node->flags & LYD_DEFAULT) && (pctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) ||
                 ((pctx->options & LYD_PRINT_WD_ALL_TAG) && lyd_is_default(node))) {
             /* we have implicit OR explicit default node, print attribute only if context include with-defaults schema */
-            mod = ly_ctx_get_module_latest(LYD_CTX(node), "ietf-netconf-with-defaults");
-            if (mod) {
-                ly_print_(pctx->out, " %s:default=\"true\"", xml_print_ns(pctx, mod->ns, mod->prefix, 0));
+            if (ly_ctx_get_module_latest(LYD_CTX(node), "ietf-netconf-with-defaults")) {
+                df_mod = ly_ctx_get_module_latest(LYD_CTX(node), "default");
+            }
+            if (df_mod) {
+                ly_print_(pctx->out, " %s:default=\"true\"", xml_print_ns(pctx, df_mod->ns, df_mod->prefix, 0));
             }
         }
     }
