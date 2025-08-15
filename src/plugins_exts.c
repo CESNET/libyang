@@ -761,8 +761,14 @@ lyplg_ext_set_parent_ctx(struct ly_ctx *ctx, const struct ly_ctx *parent_ctx)
     } while (c);
 
     if (!ctx->parent_ctx) {
-        /* remove its shared and private data */
-        ly_ctx_data_del(ctx);
+        if (ly_ctx_is_printed(ctx) && ly_ctx_is_printed(parent_ctx)) {
+            /* completely destroy the printed context, assume it will not be destroyed (in case of schema-mount
+             * contexts, there is no ext callback for freeing the compiled extension data with the contexts) */
+            ly_ctx_destroy(ctx);
+        } else {
+            /* remove its shared and private data */
+            ly_ctx_data_del(ctx);
+        }
     } else if (!parent_ctx) {
         /* create its shared and private data */
         LY_CHECK_RET(ly_ctx_data_add(ctx));

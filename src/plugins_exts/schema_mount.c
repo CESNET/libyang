@@ -533,43 +533,37 @@ lyplg_ext_schema_mount_destroy_shared_contexts(struct lysc_ext_instance *ext)
     int r;
     uint32_t i;
     struct lyplg_ext_sm *sm_data;
-    ly_bool ctx_is_printed;
 
     LY_CHECK_ARG_RET(NULL, ext, );
 
-    sm_data = ext->compiled;
-    ctx_is_printed = ly_ctx_is_printed(ext->module->ctx);
+    if (ly_ctx_is_printed(ext->module->ctx)) {
+        /* shared contexts were destroyed during ext compilation */
+        return;
+    }
 
-    /* LOCK (dont lock if pctx since its memory is not writable) */
-    if (!ctx_is_printed) {
-        if ((r = pthread_mutex_lock(&sm_data->lock))) {
-            lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_ESYS, "Mutex lock failed (%s).", strerror(r));
-            return;
-        }
+    sm_data = ext->compiled;
+
+    /* LOCK */
+    if ((r = pthread_mutex_lock(&sm_data->lock))) {
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_ESYS, "Mutex lock failed (%s).", strerror(r));
+        return;
     }
 
     /* free all the shared schemas of this ext */
     for (i = 0; i < sm_data->shared->schema_count; ++i) {
-        /* ctx can be destroyed whether printed or not */
         ly_ctx_destroy(sm_data->shared->schemas[i].ctx);
-
-        if (!ctx_is_printed) {
-            /* these members can be freed only if the context is not printed */
-            free(sm_data->shared->schemas[i].mount_point);
-            sm_data->shared->schemas[i].mount_point = NULL;
-            free(sm_data->shared->schemas[i].content_id);
-            sm_data->shared->schemas[i].content_id = NULL;
-        }
+        free(sm_data->shared->schemas[i].mount_point);
+        sm_data->shared->schemas[i].mount_point = NULL;
+        free(sm_data->shared->schemas[i].content_id);
+        sm_data->shared->schemas[i].content_id = NULL;
     }
 
-    if (!ctx_is_printed) {
-        free(sm_data->shared->schemas);
-        sm_data->shared->schemas = NULL;
-        sm_data->shared->schema_count = 0;
+    free(sm_data->shared->schemas);
+    sm_data->shared->schemas = NULL;
+    sm_data->shared->schema_count = 0;
 
-        /* UNLOCK */
-        pthread_mutex_unlock(&sm_data->lock);
-    }
+    /* UNLOCK */
+    pthread_mutex_unlock(&sm_data->lock);
 }
 
 LIBYANG_API_DEF void
