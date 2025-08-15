@@ -3157,7 +3157,7 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
 
     if (LYD_CTX(siblings) != LYD_CTX(target)) {
         /* create a duplicate in this context */
-        LY_CHECK_RET(lyd_dup_single_to_ctx(target, LYD_CTX(siblings), NULL, 0, &dup));
+        LY_CHECK_RET(lyd_dup_single_to_ctx(target, lyd_dup_get_top_ctx(siblings), NULL, 0, &dup));
         target = dup;
     }
 
