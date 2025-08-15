@@ -211,7 +211,8 @@ plugins_iter(const struct ly_ctx *ctx, enum LYPLG type, uint32_t *index)
  * @return Found plugin record or NULL if not found.
  */
 static void *
-lyplg_record_find(const struct ly_ctx *ctx, enum LYPLG type, const char *module, const char *revision, const char *name, uint32_t *record_idx)
+lyplg_record_find(const struct ly_ctx *ctx, enum LYPLG type, const char *module, const char *revision, const char *name,
+        uint32_t *record_idx)
 {
     uint32_t i = 0;
     struct lyplg_record *item;
@@ -562,8 +563,9 @@ lyplg_init(ly_bool builtin_type_plugins_only, ly_bool static_plugins_only)
 {
     LY_ERR ret;
 
-    pthread_mutex_lock(&plugins_guard);
     /* let only the first context to initiate plugins, but let others wait for finishing the initiation */
+    pthread_mutex_lock(&plugins_guard);
+
     if (context_refcount++) {
         /* already initiated */
         pthread_mutex_unlock(&plugins_guard);
