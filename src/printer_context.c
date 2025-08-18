@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Compiled context printer
  *
- * Copyright (c) 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2024 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -86,20 +86,11 @@
 #define CTXP_MEM_SIZE(SIZE) ((SIZE) + ((~(SIZE) + 1) & (CTXP_MEM_ALIGN - 1)))
 
 static void
-ctxs_dict_ht(const struct ly_ht *ht, int *size)
+ctxs_dict_strings(const struct ly_ht *ht, int *size)
 {
     uint32_t i, j;
     struct ly_ht_rec *rec;
     struct ly_dict_rec *dict_rec;
-
-    /* hash table */
-    *size += CTXP_MEM_SIZE(sizeof *ht);
-
-    /* hlists */
-    *size += CTXP_MEM_SIZE(ht->size * sizeof *ht->hlists);
-
-    /* records (with string pointers) */
-    *size += CTXP_MEM_SIZE(ht->size * ht->rec_size);
 
     LYHT_ITER_ALL_RECS(ht, i, j, rec) {
         dict_rec = (struct ly_dict_rec *)&rec->val;
@@ -567,8 +558,8 @@ ly_ctx_compiled_size_context(const struct ly_ctx *ctx, struct ly_ht *addr_ht, in
     /* context */
     *size += CTXP_MEM_SIZE(sizeof *ctx);
 
-    /* dictionary ht (with all the strings) */
-    ctxs_dict_ht(ctx->dict.hash_tab, size);
+    /* all the strings in the dictionary */
+    ctxs_dict_strings(ctx->dict.hash_tab, size);
 
     /* module set */
     *size += CTXP_MEM_SIZE(ctx->modules.count * sizeof ctx->modules.objs);
@@ -719,17 +710,6 @@ static void ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node,
         struct ly_set *ptr_set, void **mem);
 
 static void
-ctxp_mutex(pthread_mutex_t *mutex)
-{
-    pthread_mutexattr_t attr;
-
-    pthread_mutexattr_init(&attr);
-    pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
-    pthread_mutex_init(mutex, &attr);
-    pthread_mutexattr_destroy(&attr);
-}
-
-static void
 ctxp_set(const struct ly_set *orig_set, struct ly_set *set, void **mem)
 {
     set->size = orig_set->count;
@@ -739,45 +719,29 @@ ctxp_set(const struct ly_set *orig_set, struct ly_set *set, void **mem)
 }
 
 static void
-ctxp_dict_ht(const struct ly_ht *orig_ht, struct ly_ht *ht, struct ly_ht *addr_ht, void **mem)
+ctxp_dict_strings(const struct ly_ht *orig_dict, struct ly_ht *addr_ht, void **mem)
 {
     uint32_t i, j;
     struct ly_ht_rec *rec;
     struct ly_dict_rec *dict_rec;
     int len;
-    void *orig_addr;
+    void *orig_str;
+    char *str;
 
-    /* hash table, must not be modified in the context */
-    *ht = *orig_ht;
-    ht->val_equal = orig_ht->val_equal;
-    ht->cb_data = NULL;
-
-    /* hlists */
-    ht->hlists = *mem;
-    *mem = (char *)*mem + CTXP_MEM_SIZE(ht->size * sizeof *ht->hlists);
-
-    memcpy(ht->hlists, orig_ht->hlists, ht->size * sizeof *ht->hlists);
-
-    /* records */
-    ht->recs = *mem;
-    *mem = (char *)*mem + CTXP_MEM_SIZE(ht->size * ht->rec_size);
-
-    memcpy(ht->recs, orig_ht->recs, ht->size * ht->rec_size);
-
-    LYHT_ITER_ALL_RECS(ht, i, j, rec) {
+    LYHT_ITER_ALL_RECS(orig_dict, i, j, rec) {
         dict_rec = (struct ly_dict_rec *)&rec->val;
 
         /* strings */
         len = strlen(dict_rec->value) + 1;
-        orig_addr = dict_rec->value;
+        orig_str = dict_rec->value;
 
-        dict_rec->value = *mem;
+        str = *mem;
         *mem = (char *)*mem + CTXP_MEM_SIZE(len);
 
-        memcpy(dict_rec->value, orig_addr, len);
+        memcpy(str, orig_str, len);
 
         /* shared */
-        ly_ctx_compiled_addr_ht_add(addr_ht, orig_addr, dict_rec->value);
+        ly_ctx_compiled_addr_ht_add(addr_ht, orig_str, str);
     }
 }
 
@@ -1752,12 +1716,11 @@ ly_ctx_compiled_print_context(const struct ly_ctx *orig_ctx, struct ly_ctx *ctx,
     /* set options so they can be read by other functions */
     ctx->opts = orig_ctx->opts | LY_CTX_INT_IMMUTABLE;
 
-    /* dictionary */
-    ctx->dict.hash_tab = *mem;
-    *mem = (char *)*mem + CTXP_MEM_SIZE(sizeof *ctx->dict.hash_tab);
+    /* strings from the dictionary */
+    ctxp_dict_strings(orig_ctx->dict.hash_tab, addr_ht, mem);
 
-    ctxp_dict_ht(orig_ctx->dict.hash_tab, ctx->dict.hash_tab, addr_ht, mem);
-    ctxp_mutex(&ctx->dict.lock);
+    /* dictionary, unused */
+    memset(&ctx->dict, 0, sizeof ctx->dict);
 
     /* no search paths */
     memset(&ctx->search_paths, 0, sizeof ctx->search_paths);

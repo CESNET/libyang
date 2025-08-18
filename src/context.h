@@ -702,9 +702,6 @@ LIBYANG_API_DECL int ly_ctx_compiled_size(const struct ly_ctx *ctx);
 /**
  * @brief Print (serialize) a compiled context (without any parsed modules) into a pre-allocated memory chunk.
  *
- * Context's dictionary contains strings from parsed modules. You should call ::ly_ctx_free_parsed() to free the parsed modules
- * before printing the context, otherwise the printed context may contain many strings that will never be used.
- *
  * @param[in] ctx Compiled context to print.
  * @param[in] mem Memory to print to, must be large enough.
  * @param[out] mem_end Optional pointer after the printed context.
