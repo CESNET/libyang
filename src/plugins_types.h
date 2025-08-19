@@ -543,7 +543,8 @@ LIBYANG_API_DECL typedef void (*lyplg_type_lyb_size_clb)(const struct lysc_type 
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic
  * error message is prepared instead. The error structure can be created by ::ly_err_new().
  * @return LY_SUCCESS on success,
- * @return LY_EINCOMPLETE in case the ::lyplg_type_validate_clb should be called to finish value validation in data,
+ * @return LY_EINCOMPLETE in case the ::lyplg_type_validate_tree_clb is defined and should be called to finish value
+ * validation in data,
  * @return LY_ERR value on error, @p storage must not have any pointers to dynamic memory.
  */
 LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_store_clb)(const struct ly_ctx *ctx, const struct lysc_type *type,
@@ -552,10 +553,28 @@ LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_store_clb)(const struct ly_ctx *ctx
         struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
+ * @brief Callback to validate the stored value local semantic constraints of the type.
+ *
+ * This callback should perform any required validation of the value after it is stored. If the stored value is always
+ * valid disregarding the accessible data tree, this callback should not be defined (but ::lyplg_type_validate_tree()
+ * may be).
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] type Original type of the value (not necessarily the stored one) being validated.
+ * @param[in,out] storage Storage of the value successfully filled by ::lyplg_type_store_clb. May be modified.
+ * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic
+ * error message is prepared instead. The error structure can be created by ::ly_err_new().
+ * @return LY_SUCCESS on success,
+ * @return LY_ERR value on error.
+ */
+LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_validate_value_clb)(const struct ly_ctx *ctx, const struct lysc_type *type,
+        struct lyd_value *storage, struct ly_err_item **err);
+
+/**
  * @brief Callback to validate the stored value in the accessible data tree.
  *
- * This callback is optional and may not be defined for types that do not require the accessible data tree for
- * validation (::lyplg_type_store_clb fully stores and validates the value).
+ * This callback should perform any final validation that depends on the other data nodes in the accessible tree. If
+ * the other nodes do not affect the validity of this value, this callback should not be defined.
  *
  * @param[in] ctx libyang context.
  * @param[in] type Original type of the value (not necessarily the stored one) being validated.
@@ -568,7 +587,7 @@ LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_store_clb)(const struct ly_ctx *ctx
  * @return LY_SUCCESS on success,
  * @return LY_ERR value on error.
  */
-LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_validate_clb)(const struct ly_ctx *ctx, const struct lysc_type *type,
+LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_validate_tree_clb)(const struct ly_ctx *ctx, const struct lysc_type *type,
         const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lysc_ext_instance *top_ext,
         struct lyd_value *storage, struct ly_err_item **err);
 
@@ -660,7 +679,8 @@ struct lyplg_type {
     const char *id;                     /**< Plugin name id, can be used for distinguishing incompatible versions. */
     lyplg_type_lyb_size_clb lyb_size;   /**< Size of the value in [LYB format](@ref howtoDataLYB) in bits. */
     lyplg_type_store_clb store;         /**< Storing and canonization callback for the value. */
-    lyplg_type_validate_clb validate;   /**< Optional validation callback that can use the accessible data tree. */
+    lyplg_type_validate_value_clb validate_value;   /**< Optional value validation callback. */
+    lyplg_type_validate_tree_clb validate_tree;     /**< Optional data tree value validation callback. */
     lyplg_type_compare_clb compare;     /**< Comparison callback for comparing 2 values of the same type. */
     lyplg_type_sort_clb sort;           /**< Comparison callback for sorting values. */
     lyplg_type_print_clb print;         /**< Printer callback for getting value representation in any format. */
@@ -746,6 +766,12 @@ LIBYANG_API_DECL LY_ERR lyplg_type_store_string(const struct ly_ctx *ctx, const 
         uint32_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
         const struct lysc_node *ctx_node, const struct lysc_ext_instance *top_ext, struct lyd_value *storage,
         struct lys_glob_unres *unres, struct ly_err_item **err);
+
+/**
+ * @brief Implementation of ::lyplg_type_validate_value_clb for the string type.
+ */
+LIBYANG_API_DECL LY_ERR lyplg_type_validate_value_string(const struct ly_ctx *ctx, const struct lysc_type *type,
+        struct lyd_value *storage, struct ly_err_item **err);
 
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the ietf-yang-types xpath1.0 type.

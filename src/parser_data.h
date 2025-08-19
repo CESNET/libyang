@@ -218,8 +218,9 @@ struct ly_in;
                                                  (such as NP containers) are still added. Validation will fail if a
                                                  default node is required for it to pass. */
 #define LYD_VALIDATE_NOT_FINAL 0x0020       /**< Skip final validation tasks that require for all the data nodes to
-                                                 either exist or not, based on the YANG constraints. Once the data
-                                                 satisfy this requirement, the final validation should be performed. */
+                                                 either exist or not, based on the YANG constraints (including skipping
+                                                 type plugin validate_tree callbacks). Once the data satisfy this
+                                                 requirement, the final validation should be performed. */
 
 #define LYD_VALIDATE_OPTS_MASK  0x0000FFFF  /**< Mask for all the LYD_VALIDATE_* options. */
 

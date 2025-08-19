@@ -44,7 +44,6 @@ lyplg_type_store_hex_string(const struct ly_ctx *ctx, const struct lysc_type *ty
         struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres), struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lysc_type_str *type_str = (struct lysc_type_str *)type;
     uint32_t value_size, i;
 
     /* init storage */
@@ -87,16 +86,8 @@ lyplg_type_store_hex_string(const struct ly_ctx *ctx, const struct lysc_type *ty
     }
 
     if (!(options & LYPLG_TYPE_STORE_ONLY)) {
-        /* validate length restriction of the string */
-        if (type_str->length) {
-            /* value_size is in bytes, but we need number of characters here */
-            ret = lyplg_type_validate_range(LY_TYPE_STRING, type_str->length, ly_utf8len(value, value_size), value,
-                    value_size, err);
-            LY_CHECK_GOTO(ret, cleanup);
-        }
-
-        /* validate pattern restrictions */
-        ret = lyplg_type_validate_patterns(ctx, type_str->patterns, value, value_size, err);
+        /* validate value */
+        ret = lyplg_type_validate_value_string(ctx, type, storage, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -127,7 +118,8 @@ const struct lyplg_type_record plugins_hex_string[] = {
         .plugin.id = "ly2 hex-string",
         .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
         .plugin.store = lyplg_type_store_hex_string,
-        .plugin.validate = NULL,
+        .plugin.validate_value = lyplg_type_validate_value_string,
+        .plugin.validate_tree = NULL,
         .plugin.compare = lyplg_type_compare_simple,
         .plugin.sort = lyplg_type_sort_simple,
         .plugin.print = lyplg_type_print_simple,
@@ -142,7 +134,8 @@ const struct lyplg_type_record plugins_hex_string[] = {
         .plugin.id = "ly2 hex-string",
         .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
         .plugin.store = lyplg_type_store_hex_string,
-        .plugin.validate = NULL,
+        .plugin.validate_value = lyplg_type_validate_value_string,
+        .plugin.validate_tree = NULL,
         .plugin.compare = lyplg_type_compare_simple,
         .plugin.sort = lyplg_type_sort_simple,
         .plugin.print = lyplg_type_print_simple,
@@ -157,7 +150,8 @@ const struct lyplg_type_record plugins_hex_string[] = {
         .plugin.id = "ly2 hex-string",
         .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
         .plugin.store = lyplg_type_store_hex_string,
-        .plugin.validate = NULL,
+        .plugin.validate_value = lyplg_type_validate_value_string,
+        .plugin.validate_tree = NULL,
         .plugin.compare = lyplg_type_compare_simple,
         .plugin.sort = lyplg_type_sort_simple,
         .plugin.print = lyplg_type_print_simple,
@@ -172,7 +166,8 @@ const struct lyplg_type_record plugins_hex_string[] = {
         .plugin.id = "ly2 hex-string",
         .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
         .plugin.store = lyplg_type_store_hex_string,
-        .plugin.validate = NULL,
+        .plugin.validate_value = lyplg_type_validate_value_string,
+        .plugin.validate_tree = NULL,
         .plugin.compare = lyplg_type_compare_simple,
         .plugin.sort = lyplg_type_sort_simple,
         .plugin.print = lyplg_type_print_simple,

@@ -97,27 +97,24 @@ static LY_ERR
 lyb_union_validate(const void *lyb_data, uint32_t lyb_data_size_bits, const struct lysc_type_union *type_u,
         struct ly_err_item **err)
 {
-    LY_ERR ret = LY_SUCCESS;
     uint32_t type_idx = 0;
 
-    /* Basic validation. */
+    /* basic validation */
     if (lyb_data_size_bits < LYPLG_UNION_TYPE_IDX_SIZE * 8) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB union value size %" PRIu32
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB union value size %" PRIu32
                 " b (expected at least %" PRIu8 " b).", lyb_data_size_bits, LYPLG_UNION_TYPE_IDX_SIZE * 8);
-        return ret;
     }
 
-    /* Get index in correct byte order. */
+    /* get index in correct byte order */
     memcpy(&type_idx, lyb_data, LYPLG_UNION_TYPE_IDX_SIZE);
     type_idx = le32toh(type_idx);
     if (type_idx >= LY_ARRAY_COUNT(type_u->types)) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
                 "Invalid LYB union type index %" PRIu32 " (type count %" LY_PRI_ARRAY_COUNT_TYPE ").",
                 type_idx, LY_ARRAY_COUNT(type_u->types));
-        return ret;
     }
 
-    return ret;
+    return LY_SUCCESS;
 }
 
 /**
@@ -207,7 +204,7 @@ union_update_lref_err(struct ly_err_item *err, const struct lysc_type *type, con
  * @param[in] type_idx Union type index to use for storing (and validating).
  * @param[in,out] subvalue Union subvalue structure, its value needs to be filled.
  * @param[in] options The store options.
- * @param[in] validate Whether the value needs to be validated.
+ * @param[in] validate_tree Whether the value should to be validated in the data tree.
  * @param[in] ctx_node Context node for prefix resolution.
  * @param[in] tree Data tree for resolving (validation).
  * @param[in] top_ext Extension instance whose XPath context we are evaluating in.
@@ -217,7 +214,7 @@ union_update_lref_err(struct ly_err_item *err, const struct lysc_type *type, con
  */
 static LY_ERR
 union_store_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, uint32_t type_idx, struct lyd_value_union *subvalue,
-        uint32_t options, ly_bool validate, const struct lyd_node *ctx_node, const struct lyd_node *tree,
+        uint32_t options, ly_bool validate_tree, const struct lyd_node *ctx_node, const struct lyd_node *tree,
         const struct lysc_ext_instance *top_ext, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
     LY_ERR rc = LY_SUCCESS;
@@ -236,9 +233,9 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, uint3
         if (ti != type_idx) {
             /* value of another type, first store the value properly and then use its JSON value for parsing */
             type_plg = LYSC_GET_TYPE_PLG(type_u->types[ti]->plugin_ref);
-            rc = type_plg->store(ctx, type_u->types[ti], value, value_size_bits,
-                    LYPLG_TYPE_STORE_ONLY, subvalue->format, subvalue->prefix_data, subvalue->hints,
-                    subvalue->ctx_node, subvalue->top_ext, &subvalue->value, unres, err);
+            rc = type_plg->store(ctx, type_u->types[ti], value, value_size_bits, LYPLG_TYPE_STORE_ONLY,
+                    subvalue->format, subvalue->prefix_data, subvalue->hints, subvalue->ctx_node, subvalue->top_ext,
+                    &subvalue->value, unres, err);
             if ((rc != LY_SUCCESS) && (rc != LY_EINCOMPLETE)) {
                 /* clear any leftover/freed garbage */
                 memset(&subvalue->value, 0, sizeof subvalue->value);
@@ -290,9 +287,9 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, uint3
         goto cleanup;
     }
 
-    if (validate && (rc == LY_EINCOMPLETE)) {
-        /* we need the value validated */
-        rc = type_plg->validate(ctx, type, ctx_node, tree, top_ext, &subvalue->value, err);
+    if (validate_tree && type_plg->validate_tree) {
+        /* we need the value validated in the data tree */
+        rc = type_plg->validate_tree(ctx, type, ctx_node, tree, top_ext, &subvalue->value, err);
         if (rc) {
             /* validate failed, we need to free the stored value */
             type_plg->free(ctx, &subvalue->value);
@@ -314,7 +311,7 @@ cleanup:
  * @param[in] type_u Union type.
  * @param[in] subvalue Union subvalue structure.
  * @param[in] options The store options.
- * @param[in] resolve Whether the value needs to be resolved (validated by a callback).
+ * @param[in] validate_tree Whether the value needs to be validated in the data tree.
  * @param[in] ctx_node Context node for prefix resolution.
  * @param[in] tree Data tree for resolving (validation).
  * @param[in] top_ext Extension instance whose XPath context we are evaluating in.
@@ -325,7 +322,7 @@ cleanup:
  */
 static LY_ERR
 union_find_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct lyd_value_union *subvalue,
-        uint32_t options, ly_bool resolve, const struct lyd_node *ctx_node, const struct lyd_node *tree,
+        uint32_t options, ly_bool validate_tree, const struct lyd_node *ctx_node, const struct lyd_node *tree,
         const struct lysc_ext_instance *top_ext, uint32_t *type_idx, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -348,7 +345,7 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
 
     /* use the first usable subtype to store the value */
     for (u = 0; u < LY_ARRAY_COUNT(type_u->types); ++u) {
-        ret = union_store_type(ctx, type_u, u, subvalue, options, resolve, ctx_node, tree, top_ext, unres, &e);
+        ret = union_store_type(ctx, type_u, u, subvalue, options, validate_tree, ctx_node, tree, top_ext, unres, &e);
         if ((ret == LY_SUCCESS) || (ret == LY_EINCOMPLETE)) {
             break;
         }
@@ -520,7 +517,7 @@ cleanup:
 }
 
 static LY_ERR
-lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *ctx_node,
+lyplg_type_validate_tree_union(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *ctx_node,
         const struct lyd_node *tree, const struct lysc_ext_instance *top_ext, struct lyd_value *storage,
         struct ly_err_item **err)
 {
@@ -787,7 +784,8 @@ const struct lyplg_type_record plugins_union[] = {
         .plugin.id = "ly2 union",
         .plugin.lyb_size = lyplg_type_lyb_size_variable_bits,
         .plugin.store = lyplg_type_store_union,
-        .plugin.validate = lyplg_type_validate_union,
+        .plugin.validate_value = NULL,
+        .plugin.validate_tree = lyplg_type_validate_tree_union,
         .plugin.compare = lyplg_type_compare_union,
         .plugin.sort = lyplg_type_sort_union,
         .plugin.print = lyplg_type_print_union,

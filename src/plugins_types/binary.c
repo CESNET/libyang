@@ -44,8 +44,7 @@
 static const char b64_etable[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 static void lyplg_type_free_binary(const struct ly_ctx *ctx, struct lyd_value *value);
-static LY_ERR lyplg_type_validate_binary(const struct ly_ctx *ctx, const struct lysc_type *type,
-        const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lysc_ext_instance *top_ext,
+static LY_ERR lyplg_type_validate_value_binary(const struct ly_ctx *ctx, const struct lysc_type *type,
         struct lyd_value *storage, struct ly_err_item **err);
 
 /**
@@ -332,7 +331,7 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
 
     if (!(options & LYPLG_TYPE_STORE_ONLY)) {
         /* validate value */
-        ret = lyplg_type_validate_binary(ctx, type, NULL, NULL, NULL, storage, err);
+        ret = lyplg_type_validate_value_binary(ctx, type, storage, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -348,11 +347,10 @@ cleanup:
 }
 
 /**
- * @brief Implementation of ::lyplg_type_validate_clb for the binary type.
+ * @brief Implementation of ::lyplg_type_validate_value_clb for the binary type.
  */
 static LY_ERR
-lyplg_type_validate_binary(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
-        const struct lyd_node *UNUSED(tree), const struct lysc_ext_instance *UNUSED(top_ext), struct lyd_value *storage,
+lyplg_type_validate_value_binary(const struct ly_ctx *ctx, const struct lysc_type *type, struct lyd_value *storage,
         struct ly_err_item **err)
 {
     struct lysc_type_bin *type_bin = (struct lysc_type_bin *)type;
@@ -511,7 +509,8 @@ const struct lyplg_type_record plugins_binary[] = {
         .plugin.id = "ly2 binary",
         .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
         .plugin.store = lyplg_type_store_binary,
-        .plugin.validate = lyplg_type_validate_binary,
+        .plugin.validate_value = lyplg_type_validate_value_binary,
+        .plugin.validate_tree = NULL,
         .plugin.compare = lyplg_type_compare_binary,
         .plugin.sort = lyplg_type_sort_binary,
         .plugin.print = lyplg_type_print_binary,

@@ -230,7 +230,7 @@ cleanup:
 }
 
 static LY_ERR
-lyplg_type_validate_instanceid(const struct ly_ctx *ctx, const struct lysc_type *UNUSED(type),
+lyplg_type_validate_tree_instanceid(const struct ly_ctx *ctx, const struct lysc_type *UNUSED(type),
         const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lysc_ext_instance *top_ext,
         struct lyd_value *storage, struct ly_err_item **err)
 {
@@ -332,7 +332,8 @@ const struct lyplg_type_record plugins_instanceid[] = {
         .plugin.id = "ly2 instance-identifier",
         .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
         .plugin.store = lyplg_type_store_instanceid,
-        .plugin.validate = lyplg_type_validate_instanceid,
+        .plugin.validate_value = NULL,
+        .plugin.validate_tree = lyplg_type_validate_tree_instanceid,
         .plugin.compare = lyplg_type_compare_simple,
         .plugin.sort = lyplg_type_sort_simple,
         .plugin.print = lyplg_type_print_instanceid,

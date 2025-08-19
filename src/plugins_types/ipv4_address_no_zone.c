@@ -101,7 +101,7 @@ lyplg_type_store_ipv4_address_no_zone(const struct ly_ctx *ctx, const struct lys
 
     /* get the network-byte order address */
     if (!inet_pton(AF_INET, value, &val->addr)) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to convert IPv4 address \"%s\".", (char *)value);
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to store IPv4 address \"%s\".", (char *)value);
         goto cleanup;
     }
 
@@ -219,7 +219,8 @@ const struct lyplg_type_record plugins_ipv4_address_no_zone[] = {
         .plugin.id = "ly2 ipv4-address-no-zone",
         .plugin.lyb_size = lyplg_type_lyb_size_ipv4_address_no_zone,
         .plugin.store = lyplg_type_store_ipv4_address_no_zone,
-        .plugin.validate = NULL,
+        .plugin.validate_value = NULL,
+        .plugin.validate_tree = NULL,
         .plugin.compare = lyplg_type_compare_ipv4_address_no_zone,
         .plugin.sort = lyplg_type_sort_ipv4_address_no_zone,
         .plugin.print = lyplg_type_print_ipv4_address_no_zone,

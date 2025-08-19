@@ -1563,6 +1563,38 @@ test_pattern(void **UNUSED(state))
     pcre2_code_free(pcode);
 }
 
+const char *schema_k =
+        "module k {\n"
+        "    namespace urn:tests:k;\n"
+        "    prefix k;\n"
+        "    yang-version 1.1;\n"
+        "\n"
+        "    leaf l {\n"
+        "        type string {\n"
+        "            pattern '.*a.*';\n"
+        "        }\n"
+        "    }\n"
+        "}";
+
+static void
+test_store_only(void **state)
+{
+    struct lyd_node *tree;
+
+    UTEST_ADD_MODULE(schema_k, LYS_IN_YANG, NULL, NULL);
+    UTEST_LOG_CTX_CLEAN;
+
+    /* parse without validation */
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, "<l xmlns=\"urn:tests:k\">no-lowercAse-A</l>",
+            LYD_XML, LYD_PARSE_STRICT | LYD_PARSE_STORE_ONLY, 0, &tree));
+
+    /* validate separately */
+    assert_int_equal(LY_EVALID, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT, NULL));
+    CHECK_LOG_CTX("Unsatisfied pattern - \"no-lowercAse-A\" does not conform to \".*a.*\".", NULL, 0);
+
+    lyd_free_siblings(tree);
+}
+
 int
 main(void)
 {
@@ -1585,6 +1617,7 @@ main(void)
         UTEST(test_reply),
         UTEST(test_case),
         UTEST(test_pattern),
+        UTEST(test_store_only),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

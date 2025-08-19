@@ -74,7 +74,7 @@ lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type,
 }
 
 static LY_ERR
-lyplg_type_validate_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *ctx_node,
+lyplg_type_validate_tree_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *ctx_node,
         const struct lyd_node *tree, const struct lysc_ext_instance *top_ext, struct lyd_value *storage,
         struct ly_err_item **err)
 {
@@ -159,7 +159,8 @@ const struct lyplg_type_record plugins_leafref[] = {
         .plugin.id = "ly2 leafref",
         .plugin.lyb_size = lyplg_type_lyb_size_leafref,
         .plugin.store = lyplg_type_store_leafref,
-        .plugin.validate = lyplg_type_validate_leafref,
+        .plugin.validate_value = NULL,
+        .plugin.validate_tree = lyplg_type_validate_tree_leafref,
         .plugin.compare = lyplg_type_compare_leafref,
         .plugin.sort = lyplg_type_sort_leafref,
         .plugin.print = lyplg_type_print_leafref,

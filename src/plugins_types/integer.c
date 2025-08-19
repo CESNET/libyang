@@ -39,11 +39,9 @@
  * | variable | yes | pointer to the specific integer type | little-endian integer value |
  */
 
-static LY_ERR lyplg_type_validate_int(const struct ly_ctx *ctx, const struct lysc_type *type,
-        const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lysc_ext_instance *top_ext,
+static LY_ERR lyplg_type_validate_value_int(const struct ly_ctx *ctx, const struct lysc_type *type,
         struct lyd_value *storage, struct ly_err_item **err);
-static LY_ERR lyplg_type_validate_uint(const struct ly_ctx *ctx, const struct lysc_type *type,
-        const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lysc_ext_instance *top_ext,
+static LY_ERR lyplg_type_validate_value_uint(const struct ly_ctx *ctx, const struct lysc_type *type,
         struct lyd_value *storage, struct ly_err_item **err);
 
 static LY_ERR
@@ -156,7 +154,7 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
 
     if (!(options & LYPLG_TYPE_STORE_ONLY)) {
         /* validate value */
-        ret = lyplg_type_validate_int(ctx, type, NULL, NULL, NULL, storage, err);
+        ret = lyplg_type_validate_value_int(ctx, type, storage, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -172,11 +170,10 @@ cleanup:
 }
 
 /**
- * @brief Implementation of ::lyplg_type_validate_clb for the signed interger types.
+ * @brief Implementation of ::lyplg_type_validate_value_clb for the signed interger types.
  */
 static LY_ERR
-lyplg_type_validate_int(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
-        const struct lyd_node *UNUSED(tree), const struct lysc_ext_instance *UNUSED(top_ext), struct lyd_value *storage,
+lyplg_type_validate_value_int(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, struct lyd_value *storage,
         struct ly_err_item **err)
 {
     LY_ERR ret;
@@ -442,7 +439,7 @@ lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, co
 
     if (!(options & LYPLG_TYPE_STORE_ONLY)) {
         /* validate value */
-        ret = lyplg_type_validate_uint(ctx, type, NULL, NULL, NULL, storage, err);
+        ret = lyplg_type_validate_value_uint(ctx, type, storage, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -458,11 +455,10 @@ cleanup:
 }
 
 /**
- * @brief Implementation of ::lyplg_type_validate_clb for the unsigned interger types.
+ * @brief Implementation of ::lyplg_type_validate_value_clb for the unsigned interger types.
  */
 static LY_ERR
-lyplg_type_validate_uint(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
-        const struct lyd_node *UNUSED(tree), const struct lysc_ext_instance *UNUSED(top_ext), struct lyd_value *storage,
+lyplg_type_validate_value_uint(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, struct lyd_value *storage,
         struct ly_err_item **err)
 {
     LY_ERR ret;
@@ -649,7 +645,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.id = "ly2 integers",
         .plugin.lyb_size = lyplg_type_lyb_size_variable_bits,
         .plugin.store = lyplg_type_store_uint,
-        .plugin.validate = lyplg_type_validate_uint,
+        .plugin.validate_value = lyplg_type_validate_value_uint,
+        .plugin.validate_tree = NULL,
         .plugin.compare = lyplg_type_compare_uint,
         .plugin.sort = lyplg_type_sort_uint,
         .plugin.print = lyplg_type_print_uint,
@@ -663,7 +660,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.id = "ly2 integers",
         .plugin.lyb_size = lyplg_type_lyb_size_variable_bits,
         .plugin.store = lyplg_type_store_uint,
-        .plugin.validate = lyplg_type_validate_uint,
+        .plugin.validate_value = lyplg_type_validate_value_uint,
+        .plugin.validate_tree = NULL,
         .plugin.compare = lyplg_type_compare_uint,
         .plugin.sort = lyplg_type_sort_uint,
         .plugin.print = lyplg_type_print_uint,
@@ -677,7 +675,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.id = "ly2 integers",
         .plugin.lyb_size = lyplg_type_lyb_size_variable_bits,
         .plugin.store = lyplg_type_store_uint,
-        .plugin.validate = lyplg_type_validate_uint,
+        .plugin.validate_value = lyplg_type_validate_value_uint,
+        .plugin.validate_tree = NULL,
         .plugin.compare = lyplg_type_compare_uint,
         .plugin.sort = lyplg_type_sort_uint,
         .plugin.print = lyplg_type_print_uint,
@@ -691,7 +690,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.id = "ly2 integers",
         .plugin.lyb_size = lyplg_type_lyb_size_variable_bits,
         .plugin.store = lyplg_type_store_uint,
-        .plugin.validate = lyplg_type_validate_uint,
+        .plugin.validate_value = lyplg_type_validate_value_uint,
+        .plugin.validate_tree = NULL,
         .plugin.compare = lyplg_type_compare_uint,
         .plugin.sort = lyplg_type_sort_uint,
         .plugin.print = lyplg_type_print_uint,
@@ -705,7 +705,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.id = "ly2 integers",
         .plugin.lyb_size = lyplg_type_lyb_size_variable_bits,
         .plugin.store = lyplg_type_store_int,
-        .plugin.validate = lyplg_type_validate_int,
+        .plugin.validate_value = lyplg_type_validate_value_int,
+        .plugin.validate_tree = NULL,
         .plugin.compare = lyplg_type_compare_int,
         .plugin.sort = lyplg_type_sort_int,
         .plugin.print = lyplg_type_print_int,
@@ -719,7 +720,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.id = "ly2 integers",
         .plugin.lyb_size = lyplg_type_lyb_size_variable_bits,
         .plugin.store = lyplg_type_store_int,
-        .plugin.validate = lyplg_type_validate_int,
+        .plugin.validate_value = lyplg_type_validate_value_int,
+        .plugin.validate_tree = NULL,
         .plugin.compare = lyplg_type_compare_int,
         .plugin.sort = lyplg_type_sort_int,
         .plugin.print = lyplg_type_print_int,
@@ -733,7 +735,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.id = "ly2 integers",
         .plugin.lyb_size = lyplg_type_lyb_size_variable_bits,
         .plugin.store = lyplg_type_store_int,
-        .plugin.validate = lyplg_type_validate_int,
+        .plugin.validate_value = lyplg_type_validate_value_int,
+        .plugin.validate_tree = NULL,
         .plugin.compare = lyplg_type_compare_int,
         .plugin.sort = lyplg_type_sort_int,
         .plugin.print = lyplg_type_print_int,
@@ -747,7 +750,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.id = "ly2 integers",
         .plugin.lyb_size = lyplg_type_lyb_size_variable_bits,
         .plugin.store = lyplg_type_store_int,
-        .plugin.validate = lyplg_type_validate_int,
+        .plugin.validate_value = lyplg_type_validate_value_int,
+        .plugin.validate_tree = NULL,
         .plugin.compare = lyplg_type_compare_int,
         .plugin.sort = lyplg_type_sort_int,
         .plugin.print = lyplg_type_print_int,

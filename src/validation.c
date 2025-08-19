@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Validation
  *
- * Copyright (c) 2019 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -350,7 +350,7 @@ lyd_validate_autodel_node_del(struct lyd_node **first, struct lyd_node *del, con
         /* remove from node_types set */
         LYD_TREE_DFS_BEGIN(del, iter) {
             if ((iter->schema->nodetype & LYD_NODE_TERM) &&
-                    LYSC_GET_TYPE_PLG(((struct lysc_node_leaf *)iter->schema)->type->plugin_ref)->validate &&
+                    LYSC_GET_TYPE_PLG(((struct lysc_node_leaf *)iter->schema)->type->plugin_ref)->validate_tree &&
                     ly_set_contains(node_types, iter, &idx)) {
                 ly_set_rm_index(node_types, idx, NULL);
             }
@@ -1907,6 +1907,8 @@ lyd_validate_tree(struct lyd_node *root, const struct lysc_ext_instance *ext, st
     LY_ERR r, rc = LY_SUCCESS;
     const struct lyd_meta *meta;
     const struct lysc_type *type;
+    struct ly_err_item *err = NULL;
+    struct lyplg_type *type_plg;
     struct lyd_node *node;
     uint32_t impl_opts;
 
@@ -1923,18 +1925,31 @@ lyd_validate_tree(struct lyd_node *root, const struct lysc_ext_instance *ext, st
 
         LY_LIST_FOR(node->meta, meta) {
             lyplg_ext_get_storage(meta->annotation, LY_STMT_TYPE, sizeof type, (const void **)&type);
-            if (LYSC_GET_TYPE_PLG(type->plugin_ref)->validate) {
+            if (LYSC_GET_TYPE_PLG(type->plugin_ref)->validate_tree) {
                 /* metadata type resolution */
                 r = ly_set_add(meta_types, (void *)meta, 1, NULL);
                 LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
             }
         }
 
-        if ((node->schema->nodetype & LYD_NODE_TERM) &&
-                LYSC_GET_TYPE_PLG(((struct lysc_node_leaf *)node->schema)->type->plugin_ref)->validate) {
-            /* node type resolution */
-            r = ly_set_add(node_types, (void *)node, 1, NULL);
-            LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+        if (node->schema->nodetype & LYD_NODE_TERM) {
+            type_plg = LYSC_GET_TYPE_PLG(((struct lysc_node_leaf *)node->schema)->type->plugin_ref);
+            if (type_plg->validate_value) {
+                /* value validation */
+                r = type_plg->validate_value(LYD_CTX(node), ((struct lysc_node_leaf *)node->schema)->type,
+                        &((struct lyd_node_term *)node)->value, &err);
+                if (err) {
+                    ly_err_print(LYD_CTX(node), err);
+                    ly_err_free(err);
+                }
+                LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
+            }
+
+            if (type_plg->validate_tree) {
+                /* node type resolution (tree validation) */
+                r = ly_set_add(node_types, (void *)node, 1, NULL);
+                LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+            }
         } else if (node->schema->nodetype & LYD_NODE_INNER) {
             /* new node validation, autodelete */
             r = lyd_validate_new(lyd_node_child_p(node), node->schema, NULL, NULL, val_opts, int_opts, getnext_ht, diff);

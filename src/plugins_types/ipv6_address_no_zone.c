@@ -77,7 +77,7 @@ ipv6addressnozone_str2ip(const char *value, uint32_t value_len, uint32_t options
 
     /* store the IPv6 address in network-byte order */
     if (!inet_pton(AF_INET6, addr_str, addr)) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to convert IPv6 address \"%s\".", addr_str);
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to store IPv6 address \"%s\".", addr_str);
         goto cleanup;
     }
 
@@ -310,7 +310,8 @@ const struct lyplg_type_record plugins_ipv6_address_no_zone[] = {
         .plugin.id = "ly2 ipv6-address-no-zone",
         .plugin.lyb_size = lyplg_type_lyb_size_ipv6_address_no_zone,
         .plugin.store = lyplg_type_store_ipv6_address_no_zone,
-        .plugin.validate = NULL,
+        .plugin.validate_value = NULL,
+        .plugin.validate_tree = NULL,
         .plugin.compare = lyplg_type_compare_ipv6_address_no_zone,
         .plugin.sort = lyplg_type_sort_ipv6_address_no_zone,
         .plugin.print = lyplg_type_print_ipv6_address_no_zone,

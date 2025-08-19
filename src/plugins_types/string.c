@@ -34,10 +34,6 @@
  * | variable, full bytes | yes | `char *` | string itself |
  */
 
-static LY_ERR lyplg_type_validate_string(const struct ly_ctx *ctx, const struct lysc_type *type,
-        const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lysc_ext_instance *top_ext,
-        struct lyd_value *storage, struct ly_err_item **err);
-
 /**
  * @brief Check string value for invalid characters.
  *
@@ -103,7 +99,7 @@ lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, 
 
     if (!(options & LYPLG_TYPE_STORE_ONLY)) {
         /* validate value */
-        ret = lyplg_type_validate_string(ctx, type, NULL, NULL, NULL, storage, err);
+        ret = lyplg_type_validate_value_string(ctx, type, storage, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -118,12 +114,8 @@ cleanup:
     return ret;
 }
 
-/**
- * @brief Implementation of ::lyplg_type_validate_clb for the string type.
- */
-static LY_ERR
-lyplg_type_validate_string(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *UNUSED(ctx_node),
-        const struct lyd_node *UNUSED(tree), const struct lysc_ext_instance *UNUSED(top_ext), struct lyd_value *storage,
+LIBYANG_API_DEF LY_ERR
+lyplg_type_validate_value_string(const struct ly_ctx *ctx, const struct lysc_type *type, struct lyd_value *storage,
         struct ly_err_item **err)
 {
     LY_ERR ret;
@@ -166,7 +158,8 @@ const struct lyplg_type_record plugins_string[] = {
         .plugin.id = "ly2 string",
         .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
         .plugin.store = lyplg_type_store_string,
-        .plugin.validate = lyplg_type_validate_string,
+        .plugin.validate_value = lyplg_type_validate_value_string,
+        .plugin.validate_tree = NULL,
         .plugin.compare = lyplg_type_compare_simple,
         .plugin.sort = lyplg_type_sort_simple,
         .plugin.print = lyplg_type_print_simple,

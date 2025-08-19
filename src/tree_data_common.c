@@ -566,9 +566,9 @@ lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *
     struct lyplg_type *type_plg;
 
     type_plg = LYSC_GET_TYPE_PLG(type->plugin_ref);
-    assert(type_plg && type_plg->validate);
+    assert(type_plg && type_plg->validate_tree);
 
-    ret = type_plg->validate(ctx, type, ctx_node, tree, top_ext, val, &err);
+    ret = type_plg->validate_tree(ctx, type, ctx_node, tree, top_ext, val, &err);
     if (ret) {
         if (err) {
             ly_err_print_build_path(ctx, ctx_node, NULL, err);
@@ -660,7 +660,7 @@ lyd_value_validate2(const struct ly_ctx *ctx, const struct lysc_node *schema, co
 
     if (ctx_node && (rc == LY_EINCOMPLETE)) {
         /* resolve */
-        rc = type_plg->validate(ctx, type, ctx_node, ctx_node, top_ext, &val, &err);
+        rc = type_plg->validate_tree(ctx, type, ctx_node, ctx_node, top_ext, &val, &err);
     }
 
     if (rc && (rc != LY_EINCOMPLETE) && err) {

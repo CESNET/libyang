@@ -369,10 +369,10 @@ cleanup:
 }
 
 /**
- * @brief Implementation of ::lyplg_type_validate_clb for the xpath1.0 ietf-yang-types type.
+ * @brief Implementation of ::lyplg_type_validate_tree_clb for the xpath1.0 ietf-yang-types type.
  */
 static LY_ERR
-lyplg_type_validate_xpath10(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *UNUSED(type),
+lyplg_type_validate_tree_xpath10(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *UNUSED(type),
         const struct lyd_node *ctx_node, const struct lyd_node *UNUSED(tree), const struct lysc_ext_instance *UNUSED(top_ext),
         struct lyd_value *storage, struct ly_err_item **err)
 {
@@ -534,7 +534,8 @@ const struct lyplg_type_record plugins_xpath10[] = {
         .plugin.id = "ly2 xpath1.0",
         .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
         .plugin.store = lyplg_type_store_xpath10,
-        .plugin.validate = lyplg_type_validate_xpath10,
+        .plugin.validate_value = NULL,
+        .plugin.validate_tree = lyplg_type_validate_tree_xpath10,
         .plugin.compare = lyplg_type_compare_simple,
         .plugin.sort = lyplg_type_sort_simple,
         .plugin.print = lyplg_type_print_xpath10,
