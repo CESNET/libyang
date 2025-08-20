@@ -98,9 +98,7 @@ yl_opt_erase(struct yl_opt *yo)
 
     free_cmdline(yo->argv);
 
-    *yo = (const struct yl_opt) {
-        0
-    };
+    memset(yo, 0, sizeof *yo);
     yo->interactive = interactive;
 }
 
@@ -177,6 +175,10 @@ yl_opt_update_out_format(const char *arg, struct yl_opt *yo)
 int
 yl_opt_update_data_type(const char *arg, struct yl_opt *yo)
 {
+    /* reset to default */
+    yo->data_parse_options = YL_DEFAULT_DATA_PARSE_OPTIONS;
+    yo->data_validate_options = YL_DEFAULT_DATA_VALIDATE_OPTIONS;
+
     if (!strcasecmp(arg, "config")) {
         yo->data_parse_options |= LYD_PARSE_NO_STATE;
         yo->data_validate_options |= LYD_VALIDATE_NO_STATE;
@@ -197,7 +199,8 @@ yl_opt_update_data_type(const char *arg, struct yl_opt *yo)
     } else if (!strcasecmp(arg, "nc-notif")) {
         yo->data_type = LYD_TYPE_NOTIF_NETCONF;
     } else if (!strcasecmp(arg, "data")) {
-        /* default option */
+        /* default option but uses a specific validation flag */
+        yo->data_validate_options |= LYD_VALIDATE_OPERATIONAL;
     } else if (!strcasecmp(arg, "ext")) {
         yo->data_ext = 1;
     } else {

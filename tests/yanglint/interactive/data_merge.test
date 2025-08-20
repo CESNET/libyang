@@ -11,10 +11,10 @@ test data_merge_basic {Data is merged and the node is added} {
 test data_merge_validation_failed {Data is merged but validation failed.} {
 -setup $ly_setup -cleanup $ly_cleanup -body {
     ly_cmd "load modmerge"
-    ly_cmd "data $ddir/modmerge.xml"
-    ly_cmd "data $ddir/modmerge2.xml"
-    ly_cmd "data -m $ddir/modmerge2.xml $ddir/modmerge.xml"
-    ly_cmd_err "data -m $ddir/modmerge.xml $ddir/modmerge2.xml" "Merged data are not valid"
+    ly_cmd "data -t config $ddir/modmerge.xml"
+    ly_cmd "data -t config $ddir/modmerge2.xml"
+    ly_cmd "data -m -t config $ddir/modmerge2.xml $ddir/modmerge.xml"
+    ly_cmd_err "data -m -t config $ddir/modmerge.xml $ddir/modmerge2.xml" "Merged data are not valid"
 }}
 
 test data_merge_dataconfig {The merge option has effect only for 'data' and 'config' TYPEs} {

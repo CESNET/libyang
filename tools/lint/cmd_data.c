@@ -49,7 +49,7 @@ cmd_data_help_type(void)
 {
     printf("  -t TYPE, --type=TYPE\n"
             "                Specify data tree type in the input data file(s):\n"
-            "        data          - Complete datastore with status data (default type).\n"
+            "        data          - Complete (operational) datastore with state data (default).\n"
             "        config        - Configuration datastore (without status data).\n"
             "        get           - Result of the NETCONF <get> operation.\n"
             "        getconfig     - Result of the NETCONF <get-config> operation.\n"
@@ -180,7 +180,7 @@ cmd_data_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
     uint8_t data_type_set = 0;
 
     yo->data_parse_options = YL_DEFAULT_DATA_PARSE_OPTIONS;
-    yo->data_validate_options = YL_DEFAULT_DATA_VALIDATE_OPTIONS;
+    yo->data_validate_options = YL_DEFAULT_DATA_VALIDATE_OPTIONS | LYD_VALIDATE_OPERATIONAL;
 
     if ((rc = parse_cmdline(cmdline, &argc, &yo->argv))) {
         return rc;
@@ -219,14 +219,14 @@ cmd_data_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
                 }
             }
             break;
-        case 'O':   /* --operational */
+        case 'O': /* --operational */
             if (yo->data_operational.path) {
                 YLMSG_E("The operational datastore (-O) cannot be set multiple times.");
                 return 1;
             }
             yo->data_operational.path = optarg;
             break;
-        case 'R':   /* --reply-rpc */
+        case 'R': /* --reply-rpc */
             if (yo->reply_rpc.path) {
                 YLMSG_E("The PRC of the reply (-R) cannot be set multiple times.");
                 return 1;

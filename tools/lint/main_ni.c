@@ -136,8 +136,8 @@ help(int shortout)
 
     printf("  -t TYPE, --type=TYPE\n"
             "                Specify data tree type in the input data file(s):\n"
-            "        data          - Complete datastore with status data (default type).\n"
-            "        config        - Configuration datastore (without status data).\n"
+            "        data          - Complete (operational) datastore with state data (default).\n"
+            "        config        - Configuration datastore (without state data).\n"
             "        get           - Data returned by the NETCONF <get> operation.\n"
             "        getconfig     - Data returned by the NETCONF <get-config> operation.\n"
             "        edit          - Config content of the NETCONF <edit-config> operation.\n"
