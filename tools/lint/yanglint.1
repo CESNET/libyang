@@ -3,7 +3,7 @@
 .\" groff -man -Tascii yanglint.1
 .\"
 
-.TH YANGLINT 1 "2016-10-27" "libyang"
+.TH YANGLINT 1 "2025-8-19" "libyang"
 .SH NAME
 yanglint \- YANG lint tool
 .
@@ -32,74 +32,138 @@ complex way.
 .SH OPTIONS
 .TP
 .BR "\-h\fR,\fP \-\^\-help"
-Outputs usage help and exits.
+Show this help message and exit.
 .TP
 .BR "\-v\fR,\fP \-\^\-version"
-Outputs the version number and exits.
+Show version number and exit.
 .TP
 .BR "\-V\fR,\fP \-\^\-verbose"
-Increases the verbosity level. If not specified, only errors are printed, with
-each appearance it adds: warnings, verbose messages, debug messages (if compiled
-with debug information).
+Increase libyang verbosity and show verbose messages. If specified a second time, show even debug messages.
 .TP
-.BR "\-p \fIPATH\fP\fR,\fP \-\^\-path=\fIPATH\fP"
-Specifies search path for getting imported modules or included submodules. The option
-can be used multiple times. The current working directory and path of the module
-being added is used implicitly.
-.TP
-.BR "\-s\fR,\fP \-\^\-strict"
-Changes handling of unknown data nodes - instead of silently ignoring unknown data,
-error is printed and data parsing fails. This option applies only on data parsing.
+.BR "\-Q\fR,\fP \-\^\-quiet"
+Decrease libyang verbosity and hide warnings. If specified a second time, hide errors so no libyang messages are printed.
 .TP
 .BR "\-f \fIFORMAT\fP\fR,\fP \-\^\-format=\fIFORMAT\fP"
-Converts the content of the input \fIFILE\fPs into the specified \fIFORMAT\fP. If no
-\fIOUTFILE\fP is specified, the data are printed on the standard output. Only the
-compatible formats for the input \fIFILE\fPs are allowed, see the section \fBFORMATS\fP.
+Convert input into FORMAT. Supported formats: yang, yin, tree, info and feature-param for schemas, xml, json, and lyb for data.
 .TP
-.BR "\-o \fIOUTFILE\fP\fR,\fP \-\^\-output=\fIOUTFILE\fP"
-Writes the output data into the specified \fIOUTFILE\fP. The option can be used
-only in combination with \fB--format\fR option. In case of converting schema, only
-a single input schema \fIFILE\fP is allowed. In case of data input \fIFILE\fPs,
-input is merged and printed into a single \fIOUTFILE\fP.
+.BR "\-I \fIFORMAT\fP\fR,\fP \-\^\-in\-format=\fIFORMAT\fP"
+Load the data in one of the following formats: xml, json, lyb. If input format not specified, it is detected from the
+file extension.
+.TP
+.BR "\-p \fIPATH\fP\fR,\fP \-\^\-path=\fIPATH\fP"
+Search path for schema (YANG/YIN) modules. The option can be used multiple times. The current working directory and the
+path of the module being added is used implicitly. Subdirectories are also searched.
+.TP
+.BR "\-D\fR,\fP \-\^\-siable\-searchdir"
+Do not implicitly search in current working directory for schema modules. If specified a second time, do not even
+search in the module directory (all modules must be explicitly specified).
 .TP
 .BR "\-F \fIFEATURES\fP\fR,\fP \-\^\-features=\fIFEATURES\fP"
-Specifies the list of enabled features in the format
-\fIMODULE\fP:[\fIFEATURE\fP,...]. In case of processing multiple modules, the
-option can be used repeatedly. To disable all the features, use an empty list
-specified for the particular module.
+Specific module features to support in the form <module-name>:(<feature>,)*
+Use <feature> '*' to enable all features of a module. This option can be specified multiple times, to enable features
+in multiple modules. If this option is not specified, all the features in all the implemented modules are enabled.
 .TP
-.BR "\-d \fIMODE\fP\fR,\fP \-\^\-default=\fIMODE\fP"
-Print data with default values, according to the \fIMODE\fP (to print attributes,
-the ietf-netconf-with-defaults model must be loaded). The \fIMODE\fP is one of the following:
- \[bu] \fBall\fP             - add missing default nodes
- \[bu] \fBall-tagged\fP      - add missing default nodes and mark all the default nodes with the attribute
- \[bu] \fBtrim\fP            - remove all nodes with a default value
- \[bu] \fBimplicit-tagged\fP - add missing nodes and mark them with the attribute
+.BR "\-i\fR,\fP \-\^\-make\-implemented"
+Make the imported modules referenced from any loaded module also implemented. If specified a second time, all the
+modules are set implemented.
+.TP
+.BR "\-P \fIPATH\fP\fR,\fP \-\^\-schema\-node=\fIPATH\fP"
+Print only the specified subtree of the schema. The PATH is the XPath subset mentioned in documentation as the Path
+format. The option can be combined with \-\^\-single-node option to print information only about the specified node.
+.TP
+.BR "\-q\fR,\fP \-\^\-single\-node"
+Supplement to the \-\^\-schema-node option to print information only about a single node specified as PATH argument.
+.TP
+.BR "\-s \fISUBMODULE\fP\fR,\fP \-\^\-submodule=\fISUBMODULE\fP"
+Print the specific submodule instead of the main module.
+.TP
+.BR "\-x \fIFILE\fP\fR,\fP \-\^\-ext\-data=\fIFILE\fP"
+File containing the specific data required by an extension. Required by the schema-mount extension, for example, when
+the operational data are expected in the file. File format is guessed.
+.TP
+.BR "\-n\fR,\fP \-\^\-not\-strict"
+Do not require strict data parsing (silently skip unknown data), has no effect for schemas.
+.TP
+.BR "\-e\fR,\fP \-\^\-present"
+Validate only with the schema modules whose data actually exist in the provided input data files. Takes effect only
+with the 'data' or 'config' TYPEs. Used to avoid requiring mandatory nodes from modules which data are not present in
+the provided input data files.
 .TP
 .BR "\-t \fITYPE\fP\fR,\fP \-\^\-type=\fITYPE\fP"
 Specify data tree type in the input data \fIFILE\fPs. The \fITYPE\fP is one of the following:
- \[bu] \fBauto\fP            - Resolve data type (one of the following) automatically (as pyang does). Applicable only on XML input data.
- \[bu] \fBdata\fP            - Complete datastore with status data (default type).
- \[bu] \fBconfig\fP          - Configuration datastore (without status data).
- \[bu] \fBget\fP             - Result of the NETCONF <get> operation.
- \[bu] \fBgetconfig\fP       - Result of the NETCONF <get-config> operation.
- \[bu] \fBedit\fP            - Content of the NETCONF <edit-config> operation.
- \[bu] \fBrpc\fP             - Content of the NETCONF <rpc> message, defined as YANG's rpc input statement.
- \[bu] \fBrpcreply\fP        - Reply to the RPC. This is just a virtual \fITYPE\fP, for parsing replies, '\fBauto\fP' must be used since the data \fIFILE\fPs are expected in pairs.
-.br
-                     The first input data \fIFILE\fP is expected as '\fBrpc\fP' \fITYPE\fP, the second \fIFILE\fP is expected as reply to the previous RPC.
- \[bu] \fBnotif\fP           - Notification instance (content of the <notification> element without <eventTime>.
+ \[bu] \fBdata\fP      - Complete (operational) datastore with state data (default).
+ \[bu] \fBconfig\fP    - Configuration datastore (without state data).
+ \[bu] \fBget\fP       - Result of the NETCONF <get> operation.
+ \[bu] \fBgetconfig\fP - Result of the NETCONF <get-config> operation.
+ \[bu] \fBedit\fP      - Content of the NETCONF <edit-config> operation.
+ \[bu] \fBrpc\fP     - Content of the NETCONF <rpc> message, defined as YANG's rpc input statement.
+ \[bu] \fBnc-rpc\fP    - Similar to 'rpc' but expect and check also the NETCONF envelopes <rpc> or <action>.
+ \[bu] \fBreply\fP     - Reply to the RPC/Action. Note that the reply data are expected inside a container
+                         representing the original RPC/Action. This is necessary to identify appropriate
+                         data definitions in the schema module.
+ \[bu] \fBnc-reply\fP  - Similar to 'reply' but expect and check also the NETCONF envelope <rpc-reply> with
+                         output data nodes as direct descendants. The original RPC/action invocation is expected"
+                         in a separate parameter '-R' and is parsed as 'nc-rpc'.
+ \[bu] \fBnotif\fP   - Notification instance (content of the <notification> element without <eventTime>).
+ \[bu] \fBnc-notif\fP  - Similar to 'notif' but expect and check also the NETCONF envelope <notification> with
+                         element <eventTime> and its sibling as the actual notification.
+ \[bu] \fBext\fP       - Validates extension data based on loaded YANG modules. Need to be used with -k parameter.
 .TP
-.BR "\-O \fIFILE\fP\fR,\fP \-\^\-operational=\fIFILE\fP]
-Optional parameter for '\fBrpc\fP' and '\fBnotif\fP' \fITYPE\fPs, the \fIFILE\fP contains running configuration datastore and
-state data referenced from the RPC/Notification. The same data apply to all input data \fIFILE\fPs. Note that the file
-is validated as '\fBdata\fP' \fITYPE\fP. Special value '\fB!\fP' can be used as \fIFILE\fP argument to ignore the external references.
+.BR "\-d \fIMODE\fP\fR,\fP \-\^\-default=\fIMODE\fP"
+Print data with default values, according to the MODE (to print attributes, ietf-netconf-with-defaults model
+must be loaded):
+ \[bu] \fBall\fP             - Add missing default nodes.
+ \[bu] \fBall-tagged\fP      - Add missing default nodes and mark all the default nodes with the attribute.
+ \[bu] \fBtrim\fP            - Remove all nodes with a default value.
+ \[bu] \fBimplicit-tagged\fP - Add missing nodes and mark them with an attribute.
 .TP
-.BR "\-y \fIYANGLIB_PATH\fP"
-Specify path to a yang-library data file (XML or JSON) describing the initial context.
-If provided, yanglint loads the modules according to the content of the yang-library data tree.
-Otherwise, an empty content with only the internal libyang modules is used. This does
-not limit user to load another modules explicitly specified as command line parameters.
+.BR "\-E \fIXPATH\fP\fR,\fP \-\^\-data\-xpath=\fIXPATH\fP"
+Evaluate XPATH expression over the data and print the nodes satisfying the expression. The output format is specific
+and the option cannot be combined with the -f and -d options. Also all the data inputs are merged into a single data
+tree where the expression is evaluated, so the -m option is always set implicitly.
+.TP
+.BR "\-l\fR,\fP \-\^\-list"
+Print info about the loaded schemas. (i - imported module, I - implemented module)
+In case the '-f' option with data encoding is specified, the list is printed as 'ietf-yang-library' data.
+.TP
+.BR "\-L \fILINE_LENGTH\fP\fR,\fP \-\^\-tree\-line\-length=\fITREE_LENGTH\fP"
+The limit of the maximum line length on which the 'tree' format will try to be printed.
+.TP
+.BR "\-o \fIOUTFILE\fP\fR,\fP \-\^\-output=\fIOUTFILE\fP"
+Write the output to OUTFILE instead of stdout.
+.TP
+.BR "\-O \fIFILE\fP\fR,\fP \-\^\-operational=\fIFILE\fP"
+Provide optional data to extend validation of the '(nc-)rpc', '(nc-)reply' or '(nc-)notif' TYPEs. The FILE is supposed
+to contain the operational datastore referenced from the operation. In case of a nested notification or action, its
+parent existence is also checked in these operational data.
+.TP
+.BR "\-R \fIFILE\fP\fR,\fP \-\^\-reply\-rpc=\fIFILE\fP"
+Provide source RPC for parsing of the 'nc-reply' TYPE. The FILE is supposed to contain the source 'nc-rpc' operation of
+the reply.
+.TP
+.BR "\-m\fR,\fP \-\^\-merge"
+Merge input data files into a single tree and validate at once. The option has effect only for 'data' and 'config' TYPEs.
+.TP
+.BR "\-y\fR,\fP \-\^\-yang\-library"
+Load and implement internal 'ietf-yang-library' YANG module. Note that this module includes definitions of mandatory
+state data that can result in unexpected data validation errors.
+.TP
+.BR "\-Y \fIFILE\fP\fR,\fP \-\^\-yang\-library\-file=\fIFILE\fP"
+Parse FILE with 'ietf-yang-library' data and use them to create an exact YANG schema context. If specified, the '-F'
+parameter (enabled features) is ignored.
+.TP
+.BR "\-X\fR,\fP \-\^\-extended\-leafref"
+Allow usage of deref() XPath function within leafref
+.TP
+.BR "\-J\fR,\fP \-\^\-json\-null"
+Allow usage of JSON empty values ('null') within input data
+.TP
+.BR "\-k\fR,\fP \-\^\-ext\-inst"
+Name of extension instance in format: <module-name>:<extension-name>:<argument>. Need to be used with -t ext parameter.
+.TP
+.BR "\-G \fIGROUPS\fP\fR,\fP \-\^\-debug=\fIGROUPS\fP"
+Enable printing of specific debugging message group (nothing will be printed unless verbosity is set to debug):
+<group>[,<group>]* (dict, xpath, dep-sets)
 .
 .SH FORMATS
 There are two types of formats to use.
@@ -109,7 +173,7 @@ In case of schemas, the content can be converted into the '\fByang\fP', '\fByin\
 and '\fBtree\fP' formats. As input, only YANG and YIN files are
 accepted. Note, that the corresponding file extension is required.
 .TP
-.I Data\ \ \
+.I Data
 In case of YANG modeled data, the content can be converted between '\fBxml\fP'
 and '\fBjson\fP' formats. Remember that the corresponding file extension of the
 input file is required.
@@ -133,4 +197,4 @@ https://github.com/CESNET/libyang (libyang homepage and Git repository)
 Radek Krejci <rkrejci@cesnet.cz>, Michal Vasko <mvasko@cesnet.cz>
 .
 .SH COPYRIGHT
-Copyright \(co 2015-2017 CESNET, a.l.e.
+Copyright \(co 2015 - 2025 CESNET, a.l.e.
