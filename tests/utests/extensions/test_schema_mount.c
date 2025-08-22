@@ -176,11 +176,16 @@ test_ext_data_clb(const struct lysc_ext_instance *ext, const struct lyd_node *UN
 {
     void **state = glob_state;
     struct lyd_node *data = NULL;
+    const struct lys_module *sm_mod;
 
     (void)ext;
 
     if (user_data) {
-        CHECK_PARSE_LYD_PARAM(user_data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+        ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb, NULL);
+        CHECK_PARSE_LYD_PARAM(user_data, LYD_XML, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, LY_SUCCESS, data);
+        sm_mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "ietf-yang-schema-mount");
+        assert_int_equal(LY_SUCCESS, lyd_validate_module(&data, sm_mod, 0, NULL));
+        ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb, user_data);
     }
 
     *ext_data = data;
@@ -274,6 +279,7 @@ test_parse_invalid(void **state)
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.", "/sm:root", 1);
 
+    /* missing schema-mounts data */
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
             "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
             "    xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">"
@@ -677,6 +683,7 @@ test_parse_shared(void **state)
     struct lyd_node *data;
 
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
+            "<root xmlns=\"urn:sm\">"
             "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
             "    xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">"
             "  <module-set>"
@@ -729,6 +736,7 @@ test_parse_shared(void **state)
             "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
             "  <module-set-id>1</module-set-id>"
             "</modules-state>"
+            "</root>"
             "<schema-mounts xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount\">"
             "  <mount-point>"
             "    <module>sm</module>"
@@ -790,6 +798,7 @@ test_parse_shared(void **state)
 
     /* different yang-lib data */
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
+            "<root2 xmlns=\"urn:sm\">"
             "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
             "    xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">"
             "  <module-set>"
@@ -847,6 +856,7 @@ test_parse_shared(void **state)
             "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
             "  <module-set-id>1</module-set-id>"
             "</modules-state>"
+            "</root2>"
             "<schema-mounts xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount\">"
             "  <mount-point>"
             "    <module>sm</module>"
@@ -875,11 +885,11 @@ test_parse_shared(void **state)
             "</root2>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount\": "
-            "Shared-schema yang-library content-id \"2\" differs from \"1\" used previously.",
-            "/ietf-yang-library:yang-library/content-id", 0);
+            "Shared-schema yang-library content-id \"2\" differs from \"1\" used previously.", NULL, 0);
 
     /* data for 2 mount points */
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
+            "<root xmlns=\"urn:sm\">"
             "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
             "    xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">"
             "  <module-set>"
@@ -929,9 +939,58 @@ test_parse_shared(void **state)
             "  </datastore>"
             "  <content-id>1</content-id>"
             "</yang-library>"
-            "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-            "  <module-set-id>1</module-set-id>"
-            "</modules-state>"
+            "</root>"
+            "<root2 xmlns=\"urn:sm\">"
+            "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
+            "    xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">"
+            "  <module-set>"
+            "    <name>test-set</name>"
+            "    <module>"
+            "      <name>ietf-datastores</name>"
+            "      <revision>2018-02-14</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-datastores</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>ietf-yang-library</name>"
+            "      <revision>2019-01-04</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>ietf-yang-schema-mount</name>"
+            "      <revision>2019-01-14</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>ietf-interfaces</name>"
+            "      <revision>2014-05-08</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-interfaces</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>iana-if-type</name>"
+            "      <revision>2014-05-08</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:iana-if-type</namespace>"
+            "    </module>"
+            "    <import-only-module>"
+            "      <name>ietf-yang-types</name>"
+            "      <revision>2013-07-15</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace>"
+            "    </import-only-module>"
+            "  </module-set>"
+            "  <schema>"
+            "    <name>test-schema</name>"
+            "    <module-set>test-set</module-set>"
+            "  </schema>"
+            "  <datastore>"
+            "    <name>ds:running</name>"
+            "    <schema>test-schema</schema>"
+            "  </datastore>"
+            "  <datastore>"
+            "    <name>ds:operational</name>"
+            "    <schema>test-schema</schema>"
+            "  </datastore>"
+            "  <content-id>1</content-id>"
+            "</yang-library>"
+            "</root2>"
             "<schema-mounts xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount\">"
             "  <mount-point>"
             "    <module>sm</module>"
@@ -1046,6 +1105,9 @@ test_parse_shared_parent_ref(void **state)
 
     /* wrong leafref value */
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
+            "<root3 xmlns=\"urn:sm\">"
+            "  <ls>"
+            "    <name>target-value</name>"
             "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
             "    xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">"
             "  <module-set>"
@@ -1099,9 +1161,8 @@ test_parse_shared_parent_ref(void **state)
             "  </datastore>"
             "  <content-id>1</content-id>"
             "</yang-library>"
-            "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-            "  <module-set-id>1</module-set-id>"
-            "</modules-state>"
+            "  </ls>"
+            "</root3>"
             "<schema-mounts xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount\">"
             "  <namespace>"
             "    <prefix>smp</prefix>"
@@ -1210,7 +1271,11 @@ test_dup_shared(void **state)
     struct lyd_node *data, *node, *dup;
     uint32_t diff_opts;
 
-    ext_data = "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
+    ext_data =
+            "<root3 xmlns=\"urn:sm\">"
+            "  <ls>"
+            "    <name>ls1</name>"
+            "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
             "    xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">"
             "  <module-set>"
             "    <name>test-set</name>"
@@ -1259,9 +1324,8 @@ test_dup_shared(void **state)
             "  </datastore>"
             "  <content-id>1</content-id>"
             "</yang-library>"
-            "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-            "  <module-set-id>1</module-set-id>"
-            "</modules-state>"
+            "  </ls>"
+            "</root3>"
             "<schema-mounts xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount\">"
             "  <mount-point>"
             "    <module>sm</module>"
@@ -1564,6 +1628,7 @@ test_new(void **state)
     struct lyd_node *data, *node;
 
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
+            "<root xmlns=\"urn:sm\">"
             "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
             "    xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">"
             "  <module-set>"
@@ -1618,9 +1683,7 @@ test_new(void **state)
             "  </datastore>"
             "  <content-id>1</content-id>"
             "</yang-library>"
-            "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-            "  <module-set-id>1</module-set-id>"
-            "</modules-state>"
+            "</root>"
             "<schema-mounts xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount\">"
             "  <mount-point>"
             "    <module>sm</module>"
@@ -1701,6 +1764,7 @@ test_lys_getnext(void **state)
     const struct lysc_node *parent, *node;
 
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
+            "<root xmlns=\"urn:sm\">"
             "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
             "    xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">"
             "  <module-set>"
@@ -1755,9 +1819,7 @@ test_lys_getnext(void **state)
             "  </datastore>"
             "  <content-id>1</content-id>"
             "</yang-library>"
-            "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-            "  <module-set-id>1</module-set-id>"
-            "</modules-state>"
+            "</root>"
             "<schema-mounts xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount\">"
             "  <mount-point>"
             "    <module>sm</module>"
@@ -1800,6 +1862,7 @@ test_xpath(void **state)
     struct lyd_node *data;
 
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
+            "<root xmlns=\"urn:sm\">"
             "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
             "    xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">"
             "  <module-set>"
@@ -1838,9 +1901,7 @@ test_xpath(void **state)
             "  </datastore>"
             "  <content-id>1</content-id>"
             "</yang-library>"
-            "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-            "  <module-set-id>1</module-set-id>"
-            "</modules-state>"
+            "</root>"
             "<schema-mounts xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount\">"
             "  <mount-point>"
             "    <module>sm</module>"

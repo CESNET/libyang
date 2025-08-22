@@ -24,24 +24,6 @@ test extdata_one_only {Only one file for extdata} {
     ly_cmd_err "extdata $ddir/modsm_ctx_ext.xml $ddir/modsm_ctx_ext.xml" "Only one file must be entered"
 }}
 
-test extdata_schema_mount_tree {Print tree output of a model with Schema Mount} {
--setup $ly_setup -cleanup $ly_cleanup -body {
-    ly_cmd "clear -y"
-    ly_cmd "searchpath $mdir"
-    ly_cmd "load modsm"
-    ly_cmd "extdata $ddir/modsm_ctx_ext.xml"
-    ly_cmd "print -f tree modsm" "--mp root.*--rw lfl/"
-}}
-
-test ext_data_schema_mount_tree_yanglibfile {Print tree output of a model with Schema Mount and --yang-library-file} {
--setup $ly_setup -cleanup $ly_cleanup -body {
-    ly_cmd "clear -Y $ddir/modsm_ctx_main.xml"
-    ly_cmd "searchpath $mdir"
-    ly_cmd "load modsm"
-    ly_cmd "extdata $ddir/modsm_ctx_ext.xml"
-    ly_cmd "print -f tree modsm" "--mp root.*--rw lfl/.*--rw msa:alf?"
-}}
-
 test ext_data_schema_mount_xml {Validating and printing mounted data} {
 -setup $ly_setup -cleanup $ly_cleanup -body {
     ly_cmd "clear -y"

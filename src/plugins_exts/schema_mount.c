@@ -296,13 +296,13 @@ schema_mount_get_smount(const struct lysc_ext_instance *ext, const struct lyd_no
  * @brief Create schema (context) based on retrieved extension data.
  *
  * @param[in] ext Compiled extension instance.
- * @param[in] ext_data Extension data retrieved by the callback.
+ * @param[in] ext_yl_data Extension data 'yang-library' subtree.
  * @param[in] config Whether the whole schema should keep its config or be set to false.
  * @param[out] ext_ctx Schema to use for parsing the data.
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_mount_create_ctx(const struct lysc_ext_instance *ext, const struct lyd_node *ext_data, ly_bool config,
+schema_mount_create_ctx(const struct lysc_ext_instance *ext, const struct lyd_node *ext_yl_data, ly_bool config,
         struct ly_ctx **ext_ctx)
 {
     LY_ERR rc = LY_SUCCESS;
@@ -325,7 +325,7 @@ schema_mount_create_ctx(const struct lysc_ext_instance *ext, const struct lyd_no
     }
 
     /* create the context based on the data */
-    if ((rc = ly_ctx_new_yldata(sdirs, ext_data, ly_ctx_get_options(ext->module->ctx), ext_ctx))) {
+    if ((rc = ly_ctx_new_yldata(sdirs, ext_yl_data, ly_ctx_get_options(ext->module->ctx), ext_ctx))) {
         lyplg_ext_compile_log(NULL, ext, LY_LLERR, rc, "Failed to create context for the schema-mount data (%s).",
                 ly_last_logmsg());
         goto cleanup;
@@ -358,34 +358,101 @@ cleanup:
 }
 
 /**
- * @brief Get ietf-yang-library context-id from its data.
+ * @brief Get ietf-yang-library from ext data specific for this extension.
  *
- * @param[in] ext Compiled extension instance for logging.
+ * @param[in] ext Compiled extension instance.
  * @param[in] ext_data Extension data retrieved by the callback with the yang-library data.
- * @param[out] content_id Content ID in @p ext_data.
+ * @param[in] parent Optional data parent to use.
+ * @param[in] shared Whether the 'mount-point' is shared or inline.
+ * @param[out] ext_yl_data Data tree 'yang-library' of @p ext.
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_mount_get_content_id(struct lysc_ext_instance *ext, const struct lyd_node *ext_data, const char **content_id)
+schema_mount_get_yanglib(const struct lysc_ext_instance *ext, const struct lyd_node *ext_data,
+        const struct lyd_node *parent, ly_bool shared, const struct lyd_node **ext_yl_data)
 {
-    struct lyd_node *node = NULL;
+    LY_ERR rc = LY_SUCCESS;
+    char *parent_path = NULL;
+    struct lyd_node *iter;
+    struct ly_set *set = NULL;
+    uint32_t i;
 
-    *content_id = NULL;
+    *ext_yl_data = NULL;
 
-    /* get yang-library content-id or module-set-id */
-    if (ext_data) {
-        lyd_find_path(ext_data, "/ietf-yang-library:yang-library/content-id", 0, &node);
-        if (!node) {
-            lyd_find_path(ext_data, "/ietf-yang-library:modules-state/module-set-id", 0, &node);
+    if (!shared) {
+        /* inline context is built from the parent context 'yang-library' data */
+        lyd_find_path(ext_data, "/ietf-yang-library:yang-library", 0, (struct lyd_node **)ext_yl_data);
+    } else {
+        if (parent) {
+            /* path of the data parent in data */
+            parent_path = lyd_path(parent, LYD_PATH_STD, NULL, 0);
+        } else {
+            /* path of the ext schema node parent */
+            parent_path = lysc_path(ext->parent, LYSC_PATH_DATA, NULL, 0);
         }
-        if (node) {
-            *content_id = lyd_get_value(node);
+
+        /* get the parent(s) of 'yang-library' */
+        if ((rc = lyd_find_xpath(ext_data, parent_path, &set))) {
+            goto cleanup;
+        }
+
+        /* find manually, may be from a different context */
+        for (i = 0; i < set->count; ++i) {
+            LY_LIST_FOR(lyd_child(set->dnodes[i]), iter) {
+                if (!strcmp(LYD_NAME(iter), "yang-library") && !strcmp(lyd_node_module(iter)->name, "ietf-yang-library")) {
+                    /* first match should be fine */
+                    *ext_yl_data = iter;
+                    break;
+                }
+            }
+            if (iter) {
+                break;
+            }
         }
     }
 
+    if (!*ext_yl_data) {
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EVALID, "Could not find 'yang-library' data in \"%s\".",
+                parent_path ? parent_path : "<top-level>");
+        rc = LY_EVALID;
+        goto cleanup;
+    }
+
+cleanup:
+    free(parent_path);
+    ly_set_free(set, NULL);
+    return rc;
+}
+
+/**
+ * @brief Get ietf-yang-library context-id from its data.
+ *
+ * @param[in] ext Compiled extension instance for logging.
+ * @param[in] ext_yl_data Extension data subtree 'yang-library'.
+ * @param[out] content_id Content ID of @p ext_yl_data.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_mount_get_content_id(struct lysc_ext_instance *ext, const struct lyd_node *ext_yl_data, const char **content_id)
+{
+    struct lyd_node *node = NULL;
+    const struct lysc_node *snode;
+
+    assert(ext_yl_data && !strcmp(LYD_NAME(ext_yl_data), "yang-library"));
+
+    *content_id = NULL;
+
+    /* find the content-id node */
+    snode = lys_find_child(ext_yl_data->schema, ext_yl_data->schema->module, "content-id", 0, 0, 0);
+    assert(snode);
+
+    /* get yang-library content-id */
+    if (!lyd_find_sibling_val(lyd_child(ext_yl_data), snode, NULL, 0, &node)) {
+        *content_id = lyd_get_value(node);
+    }
+
     if (!*content_id) {
-        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EVALID,
-                "Missing \"content-id\" or \"module-set-id\" in ietf-yang-library data.");
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EVALID, "Missing \"content-id\" in ietf-yang-library data.");
         return LY_EVALID;
     }
     return LY_SUCCESS;
@@ -406,6 +473,7 @@ schema_mount_get_ctx_shared(struct lysc_ext_instance *ext, const struct lyd_node
 {
     struct lyplg_ext_sm *sm_data = ext->compiled;
     LY_ERR rc = LY_SUCCESS, r;
+    const struct lyd_node *ext_yl_data;
     struct ly_ctx *new_ctx = NULL;
     uint32_t i;
     const char *content_id;
@@ -417,8 +485,13 @@ schema_mount_get_ctx_shared(struct lysc_ext_instance *ext, const struct lyd_node
         *ext_ctx = NULL;
     }
 
+    /* get yang-library data */
+    if ((r = schema_mount_get_yanglib(ext, ext_data, NULL, 1, &ext_yl_data))) {
+        return r;
+    }
+
     /* get yang-library content-id or module-set-id */
-    if ((r = schema_mount_get_content_id(ext, ext_data, &content_id))) {
+    if ((r = schema_mount_get_content_id(ext, ext_yl_data, &content_id))) {
         return r;
     }
 
@@ -440,7 +513,7 @@ schema_mount_get_ctx_shared(struct lysc_ext_instance *ext, const struct lyd_node
     if (i < sm_data->shared->schema_count) {
         /* schema exists already */
         if (strcmp(content_id, sm_data->shared->schemas[i].content_id)) {
-            lyplg_ext_compile_log_path("/ietf-yang-library:yang-library/content-id", ext, LY_LLERR, LY_EVALID,
+            lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EVALID,
                     "Shared-schema yang-library content-id \"%s\" differs from \"%s\" used previously.",
                     content_id, sm_data->shared->schemas[i].content_id);
             rc = LY_EVALID;
@@ -458,7 +531,7 @@ schema_mount_get_ctx_shared(struct lysc_ext_instance *ext, const struct lyd_node
         }
 
         /* no schema found, create it */
-        if ((r = schema_mount_create_ctx(ext, ext_data, config, &new_ctx))) {
+        if ((r = schema_mount_create_ctx(ext, ext_yl_data, config, &new_ctx))) {
             rc = r;
             goto cleanup;
         }
@@ -711,6 +784,7 @@ schema_mount_get_ctx_inline(struct lysc_ext_instance *ext, const struct lyd_node
 {
     struct lyplg_ext_sm *sm_data = ext->compiled;
     struct ly_ctx *new_ctx = NULL;
+    const struct lyd_node *ext_yl_data;
     uint32_t i;
     void *mem;
     LY_ERR rc = LY_SUCCESS, r;
@@ -746,8 +820,14 @@ schema_mount_get_ctx_inline(struct lysc_ext_instance *ext, const struct lyd_node
         }
     }
 
+    /* find the 'yang-library' data */
+    if ((r = schema_mount_get_yanglib(ext, ext_data, NULL, 0, &ext_yl_data))) {
+        rc = r;
+        goto cleanup;
+    }
+
     /* new schema required, create context */
-    if ((r = schema_mount_create_ctx(ext, ext_data, config, &new_ctx))) {
+    if ((r = schema_mount_create_ctx(ext, ext_yl_data, config, &new_ctx))) {
         rc = r;
         goto cleanup;
     }
@@ -786,7 +866,7 @@ LY_ERR
 lyplg_ext_schema_mount_get_ctx(struct lysc_ext_instance *ext, const struct lyd_node *parent, const struct ly_ctx **ext_ctx)
 {
     LY_ERR ret = LY_SUCCESS, r;
-    struct lyd_node *iter, *ext_data = NULL;
+    struct lyd_node *ext_data = NULL, *sm_root = NULL;
     ly_bool ext_data_free = 0, config, shared;
 
     *ext_ctx = NULL;
@@ -797,13 +877,27 @@ lyplg_ext_schema_mount_get_ctx(struct lysc_ext_instance *ext, const struct lyd_n
         goto cleanup;
     }
 
-    LY_LIST_FOR(ext_data, iter) {
-        if (iter->flags & LYD_NEW) {
-            /* must be validated for the parent-reference prefix data to be stored */
-            lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EINVAL, "Provided ext data have not been validated.");
-            ret = LY_EINVAL;
-            goto cleanup;
-        }
+    if (!ext_data) {
+        *ext_ctx = ext->module->ctx;
+        goto cleanup;
+    }
+
+    if ((r = lyd_find_path(ext_data, "/ietf-yang-schema-mount:schema-mounts", 0, &sm_root))) {
+        ret = r;
+        goto cleanup;
+    }
+    if (!sm_root) {
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_ENOT,
+                "Missing \"ietf-yang-schema-mount:schema-mounts\" in provided extension data.");
+        ret = LY_ENOT;
+        goto cleanup;
+    }
+
+    /* must be validated for the parent-reference prefix data to be stored, only sm data root check is sufficient */
+    if (sm_root->flags & LYD_NEW) {
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EINVAL, "Provided ext data have not been validated.");
+        ret = LY_EINVAL;
+        goto cleanup;
     }
 
     /* learn about this mount point */
@@ -854,6 +948,12 @@ schema_mount_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent,
     /* get the module */
     mod = lyplg_type_identity_module(ext_ctx, parent ? parent->schema : sparent, prefix, prefix_len, format, prefix_data);
     if (!mod) {
+        return LY_ENOT;
+    }
+
+    if ((ext->module->ctx == ext_ctx) && strcmp(mod->name, "ietf-yang-library")) {
+        /* without explicit 'ietf-yang-schema-mount' and 'ietf-yang-library' data we can parse only mounted
+         * 'ietf-yang-library' data */
         return LY_ENOT;
     }
 
@@ -1060,7 +1160,7 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
     LY_ERR ret = LY_SUCCESS;
     uint32_t i;
     struct lyd_node *iter, *ext_data = NULL, *ref_first = NULL, *orig_parent = lyd_parent(sibling), *op_tree;
-    struct lyd_node *ext_diff = NULL, *diff_parent = NULL;
+    struct lyd_node *ext_diff = NULL, *diff_parent = NULL, *sm_root = NULL;
     ly_bool ext_data_free = 0;
     struct ly_set *ref_set = NULL;
 
@@ -1073,14 +1173,28 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
     if ((ret = lyplg_ext_get_data(ext->module->ctx, ext, lyd_parent(sibling), (void **)&ext_data, &ext_data_free))) {
         goto cleanup;
     }
+    if (!ext_data) {
+        /* ext data must have been provided */
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EINVAL, "No ext data provided for schema mount validation.");
+        ret = LY_EINVAL;
+        goto cleanup;
+    }
 
-    LY_LIST_FOR(ext_data, iter) {
-        if (iter->flags & LYD_NEW) {
-            /* must be validated for the parent-reference prefix data to be stored */
-            lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EINVAL, "Provided ext data have not been validated.");
-            ret = LY_EINVAL;
-            goto cleanup;
-        }
+    if ((ret = lyd_find_path(ext_data, "/ietf-yang-schema-mount:schema-mounts", 0, &sm_root))) {
+        goto cleanup;
+    }
+    if (!sm_root) {
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_ENOT,
+                "Missing \"ietf-yang-schema-mount:schema-mounts\" in provided extension data.");
+        ret = LY_ENOT;
+        goto cleanup;
+    }
+
+    /* must be validated for the parent-reference prefix data to be stored, only sm data root check is sufficient */
+    if (sm_root->flags & LYD_NEW) {
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EINVAL, "Provided ext data have not been validated.");
+        ret = LY_EINVAL;
+        goto cleanup;
     }
 
     /* duplicate the referenced parent nodes into ext context */
@@ -1214,6 +1328,7 @@ lyplg_ext_schema_mount_create_context(const struct lysc_ext_instance *ext, const
     LY_ERR rc = LY_SUCCESS;
     uint32_t i;
     ly_ext_data_clb ext_data_clb;
+    const struct lyd_node *ext_yl_data;
 
     LY_CHECK_ARG_RET(NULL, ext, ctx, LY_EINVAL);
 
@@ -1275,8 +1390,15 @@ lyplg_ext_schema_mount_create_context(const struct lysc_ext_instance *ext, const
         goto cleanup;
     }
 
+    /* find 'yang-library' data */
+    if ((rc = schema_mount_get_yanglib(ext, ext_data, parent, shared, &ext_yl_data))) {
+        goto cleanup;
+    }
+
     /* create the context */
-    rc = schema_mount_create_ctx(ext, ext_data, config, ctx);
+    if ((rc = schema_mount_create_ctx(ext, ext_yl_data, config, ctx))) {
+        goto cleanup;
+    }
 
 cleanup:
     if (ext_data_free) {
