@@ -370,7 +370,12 @@ ly_ctx_new_yl_legacy(struct ly_ctx *ctx, const struct lyd_node *yltree)
     LY_ERR ret = LY_SUCCESS;
     uint32_t i, j;
 
-    LY_CHECK_RET(ret = lyd_find_xpath(yltree, "/ietf-yang-library:yang-library/modules-state/module", &set));
+    LY_CHECK_RET(ret = lyd_find_xpath(yltree, "modules-state/module", &set));
+
+    if (!set->count) {
+        ret = LY_ENOTFOUND;
+        goto cleanup;
+    }
 
     /* process the data tree */
     for (i = 0; i < set->count; ++i) {
@@ -489,7 +494,7 @@ ly_ctx_new_yldata(const char *search_dir, const struct lyd_node *tree, int optio
     ly_bool no_expl_compile = 0;
     uint32_t i, j;
 
-    LY_CHECK_ARG_RET(NULL, tree, ctx, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, tree, !strcmp(LYD_NAME(tree), "yang-library"), ctx, LY_EINVAL);
 
     /* create a new context */
     if (*ctx == NULL) {
@@ -504,7 +509,7 @@ ly_ctx_new_yldata(const char *search_dir, const struct lyd_node *tree, int optio
         no_expl_compile = 1;
     }
 
-    LY_CHECK_GOTO(ret = lyd_find_xpath(tree, "/ietf-yang-library:yang-library/module-set[1]/module", &set), cleanup);
+    LY_CHECK_GOTO(ret = lyd_find_xpath(tree, "module-set[1]/module", &set), cleanup);
     if (set->count == 0) {
         /* perhaps a legacy data tree? */
         LY_CHECK_GOTO(ret = ly_ctx_new_yl_legacy(ctx_new, tree), cleanup);

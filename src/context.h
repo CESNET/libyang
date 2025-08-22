@@ -316,7 +316,7 @@ LIBYANG_API_DECL LY_ERR ly_ctx_new_ylmem(const char *search_dir, const char *dat
  *
  * @param[in] search_dir Directory where libyang will search for the imported or included modules and submodules.
  * If no such directory is available, NULL is accepted.
- * @param[in] tree Data tree containing yang-library data.
+ * @param[in] tree Data tree pointing to the 'yang-library' data.
  * @param[in] options Context options, see @ref contextoptions.
  * @param[in,out] ctx If *ctx is not NULL, the existing libyang context is modified.  Otherwise, a pointer to a
  * newly created context is returned here if LY_SUCCESS.
