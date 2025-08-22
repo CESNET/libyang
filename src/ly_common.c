@@ -339,6 +339,7 @@ ly_ctx_shared_data_create(const struct ly_ctx *ctx, struct ly_ctx_shared_data **
 {
     LY_ERR rc = LY_SUCCESS;
     struct ly_ctx_shared_data **shrd_data = NULL;
+    pthread_mutexattr_t attr;
 
     if (shared_data) {
         *shared_data = NULL;
@@ -375,7 +376,10 @@ ly_ctx_shared_data_create(const struct ly_ctx *ctx, struct ly_ctx_shared_data **
     }
 
     /* ext clb and leafref links locks */
-    pthread_mutex_init(&(*shrd_data)->ext_clb_lock, NULL);
+    pthread_mutexattr_init(&attr);
+    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+    pthread_mutex_init(&(*shrd_data)->ext_clb_lock, &attr);
+    pthread_mutexattr_destroy(&attr);
     pthread_mutex_init(&(*shrd_data)->leafref_links_lock, NULL);
 
     /* refcount */
