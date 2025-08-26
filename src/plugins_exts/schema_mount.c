@@ -865,15 +865,14 @@ cleanup:
 LY_ERR
 lyplg_ext_schema_mount_get_ctx(struct lysc_ext_instance *ext, const struct lyd_node *parent, const struct ly_ctx **ext_ctx)
 {
-    LY_ERR ret = LY_SUCCESS, r;
+    LY_ERR ret = LY_SUCCESS;
     struct lyd_node *ext_data = NULL, *sm_root = NULL;
     ly_bool ext_data_free = 0, config, shared;
 
     *ext_ctx = NULL;
 
     /* get operational data with ietf-yang-library and ietf-yang-schema-mount data */
-    if ((r = lyplg_ext_get_data(ext->module->ctx, ext, parent, (void **)&ext_data, &ext_data_free))) {
-        ret = r;
+    if ((ret = lyplg_ext_get_data(ext->module->ctx, ext, parent, (void **)&ext_data, &ext_data_free))) {
         goto cleanup;
     }
 
@@ -882,14 +881,11 @@ lyplg_ext_schema_mount_get_ctx(struct lysc_ext_instance *ext, const struct lyd_n
         goto cleanup;
     }
 
-    if ((r = lyd_find_path(ext_data, "/ietf-yang-schema-mount:schema-mounts", 0, &sm_root))) {
-        ret = r;
-        goto cleanup;
-    }
-    if (!sm_root) {
-        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_ENOT,
-                "Missing \"ietf-yang-schema-mount:schema-mounts\" in provided extension data.");
-        ret = LY_ENOT;
+    if ((ret = lyd_find_path(ext_data, "/ietf-yang-schema-mount:schema-mounts", 0, &sm_root))) {
+        if (ret == LY_ENOTFOUND) {
+            lyplg_ext_compile_log(NULL, ext, LY_LLERR, ret,
+                    "Missing \"ietf-yang-schema-mount:schema-mounts\" in provided extension data.");
+        }
         goto cleanup;
     }
 
@@ -901,19 +897,17 @@ lyplg_ext_schema_mount_get_ctx(struct lysc_ext_instance *ext, const struct lyd_n
     }
 
     /* learn about this mount point */
-    if ((r = schema_mount_get_smount(ext, ext_data, &config, &shared))) {
-        ret = r;
+    if ((ret = schema_mount_get_smount(ext, ext_data, &config, &shared))) {
         goto cleanup;
     }
 
     /* create/get the context for parsing the data */
     if (shared) {
-        r = schema_mount_get_ctx_shared(ext, ext_data, config, ext_ctx);
+        ret = schema_mount_get_ctx_shared(ext, ext_data, config, ext_ctx);
     } else {
-        r = schema_mount_get_ctx_inline(ext, ext_data, config, ext_ctx);
+        ret = schema_mount_get_ctx_inline(ext, ext_data, config, ext_ctx);
     }
-    if (r) {
-        ret = r;
+    if (ret) {
         goto cleanup;
     }
 
@@ -1099,11 +1093,14 @@ lyplg_ext_schema_mount_get_parent_ref(const struct lysc_ext_instance *ext, const
         struct ly_set **refs)
 {
     LY_ERR rc;
-    struct ly_set *pref_set = NULL;
-    struct ly_set *snode_set = NULL;
-    struct ly_set *results_set = NULL;
+    struct ly_set *pref_set = NULL, *snode_set = NULL, *results_set = NULL;
     struct lyd_node *ext_data;
     ly_bool ext_data_free;
+    struct lyd_node_term *term;
+    struct lyd_value_xpath10 *xp_val;
+    char *value;
+    struct ly_err_item *err;
+    uint32_t i, j;
 
     /* get operational data with ietf-yang-library and ietf-yang-schema-mount data */
     if ((rc = lyplg_ext_get_data(ext->module->ctx, ext, parent, (void **)&ext_data, &ext_data_free))) {
@@ -1117,19 +1114,21 @@ lyplg_ext_schema_mount_get_parent_ref(const struct lysc_ext_instance *ext, const
 
     LY_CHECK_GOTO(rc = ly_set_new(&results_set), cleanup);
 
-    for (uint32_t i = 0; i < pref_set->count; ++i) {
-        struct lyd_node_term *term;
-        struct lyd_value_xpath10 *xp_val;
-        char *value;
-        struct ly_err_item *err;
-
+    for (i = 0; i < pref_set->count; ++i) {
         term = (struct lyd_node_term *)pref_set->dnodes[i];
+
         LYD_VALUE_GET(&term->value, xp_val);
-        LY_CHECK_GOTO(rc = lyplg_type_print_xpath10_value(xp_val, LY_VALUE_JSON, NULL, &value, &err), cleanup);
+        rc = lyplg_type_print_xpath10_value(xp_val, LY_VALUE_JSON, NULL, &value, &err);
+        if (rc) {
+            ly_err_print(ext->module->ctx, err);
+            ly_err_free(err);
+            goto cleanup;
+        }
         LY_CHECK_ERR_GOTO(rc = lys_find_xpath(ext->module->ctx, NULL, value, 0, &snode_set), free(value), cleanup);
         free(value);
-        for (uint32_t sn = 0; sn < snode_set->count; sn++) {
-            LY_CHECK_GOTO(rc = ly_set_add(results_set, snode_set->snodes[sn], 0, NULL), cleanup);
+
+        for (j = 0; j < snode_set->count; j++) {
+            LY_CHECK_GOTO(rc = ly_set_add(results_set, snode_set->snodes[j], 0, NULL), cleanup);
         }
         ly_set_free(snode_set, NULL);
         snode_set = NULL;
