@@ -364,7 +364,7 @@ cleanup:
  * @param[in] ext_data Extension data retrieved by the callback with the yang-library data.
  * @param[in] parent Optional data parent to use.
  * @param[in] shared Whether the 'mount-point' is shared or inline.
- * @param[out] ext_yl_data Data tree 'yang-library' of @p ext.
+ * @param[out] ext_yl_data Data tree 'yang-library' of @p ext, NULL if none found.
  * @return LY_ERR value.
  */
 static LY_ERR
@@ -409,13 +409,6 @@ schema_mount_get_yanglib(const struct lysc_ext_instance *ext, const struct lyd_n
                 break;
             }
         }
-    }
-
-    if (!*ext_yl_data) {
-        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EVALID, "Could not find 'yang-library' data in \"%s\".",
-                parent_path ? parent_path : "<top-level>");
-        rc = LY_EVALID;
-        goto cleanup;
     }
 
 cleanup:
@@ -464,7 +457,7 @@ schema_mount_get_content_id(struct lysc_ext_instance *ext, const struct lyd_node
  * @param[in] ext Compiled extension instance.
  * @param[in] ext_data Extension data retrieved by the callback.
  * @param[in] config Whether the whole schema should keep its config or be set to false.
- * @param[out] ext_ctx Schema to use for parsing the data.
+ * @param[out] ext_ctx Created/found context. If not set, no yang-library data are not considered an error.
  * @return LY_ERR value.
  */
 static LY_ERR
@@ -478,6 +471,7 @@ schema_mount_get_ctx_shared(struct lysc_ext_instance *ext, const struct lyd_node
     uint32_t i;
     const char *content_id;
     void *mem;
+    char *path;
 
     assert(sm_data && sm_data->shared);
 
@@ -488,6 +482,15 @@ schema_mount_get_ctx_shared(struct lysc_ext_instance *ext, const struct lyd_node
     /* get yang-library data */
     if ((r = schema_mount_get_yanglib(ext, ext_data, NULL, 1, &ext_yl_data))) {
         return r;
+    }
+    if (!ext_yl_data) {
+        if (ext_ctx) {
+            path = lysc_path(ext->parent, LYSC_PATH_DATA, NULL, 0);
+            lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EVALID, "Could not find 'yang-library' data in \"%s\".", path);
+            free(path);
+            rc = LY_EVALID;
+        }
+        goto cleanup;
     }
 
     /* get yang-library content-id or module-set-id */
@@ -823,6 +826,10 @@ schema_mount_get_ctx_inline(struct lysc_ext_instance *ext, const struct lyd_node
     /* find the 'yang-library' data */
     if ((r = schema_mount_get_yanglib(ext, ext_data, NULL, 0, &ext_yl_data))) {
         rc = r;
+        goto cleanup;
+    } else if (!ext_yl_data) {
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EVALID, "Could not find 'yang-library' data in \"<top-level>\".");
+        rc = LY_EVALID;
         goto cleanup;
     }
 
@@ -1328,6 +1335,7 @@ lyplg_ext_schema_mount_create_context(const struct lysc_ext_instance *ext, const
     uint32_t i;
     ly_ext_data_clb ext_data_clb;
     const struct lyd_node *ext_yl_data;
+    char *path;
 
     LY_CHECK_ARG_RET(NULL, ext, ctx, LY_EINVAL);
 
@@ -1391,6 +1399,12 @@ lyplg_ext_schema_mount_create_context(const struct lysc_ext_instance *ext, const
 
     /* find 'yang-library' data */
     if ((rc = schema_mount_get_yanglib(ext, ext_data, parent, shared, &ext_yl_data))) {
+        goto cleanup;
+    } else if (!ext_yl_data) {
+        path = lyd_path(parent, LYD_PATH_STD, NULL, 0);
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EVALID, "Could not find 'yang-library' data in \"%s\".", path);
+        free(path);
+        rc = LY_EVALID;
         goto cleanup;
     }
 
