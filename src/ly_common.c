@@ -240,7 +240,7 @@ _ly_ctx_private_data_get(const struct ly_ctx *ctx, ly_bool own_data_only)
 
     LY_ARRAY_FOR(ly_private_ctx_data, struct ly_ctx_private_data *, iter) {
         /* either own - ctx and tid match, or "context's" - thread does not matter */
-        if (((*iter)->ctx == ctx) && (!own_data_only || ((*iter)->tid == tid))) {
+        if (((*iter)->ctx == ctx) && (!own_data_only || pthread_equal((*iter)->tid, tid))) {
             found = 1;
             break;
         }
