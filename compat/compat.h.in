@@ -26,7 +26,13 @@
 # include <alloca.h>
 #endif
 
-#include <byteswap.h>
+#if defined(__APPLE__) || defined(_WIN32)
+# define bswap_32 __builtin_bswap32
+# define bswap64 __builtin_bswap64
+#else
+# include <byteswap.h>
+#endif
+
 #include <limits.h>
 #include <pthread.h>
 #include <stdarg.h>
