@@ -1562,7 +1562,7 @@ lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
         struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p)
 {
     LY_ERR rc = LY_SUCCESS;
-    struct lyd_lyb_ctx *lybctx;
+    struct lyd_lyb_ctx *lybctx = NULL;
 
     assert(!(parse_opts & ~LYD_PARSE_OPTS_MASK));
     assert(!(val_opts & ~LYD_VALIDATE_OPTS_MASK));
@@ -1571,7 +1571,7 @@ lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
 
     if (!(ctx->opts & LY_CTX_LYB_HASHES)) {
         /* generate LYB hashes */
-        LY_CHECK_RET(ly_ctx_set_options((struct ly_ctx *)ctx, LY_CTX_LYB_HASHES));
+        LY_CHECK_GOTO(rc = ly_ctx_set_options((struct ly_ctx *)ctx, LY_CTX_LYB_HASHES), cleanup);
     }
 
     if (subtree_sibling) {
@@ -1579,9 +1579,9 @@ lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
     }
 
     lybctx = calloc(1, sizeof *lybctx);
-    LY_CHECK_ERR_RET(!lybctx, LOGMEM(ctx), LY_EMEM);
+    LY_CHECK_ERR_GOTO(!lybctx, LOGMEM(ctx); rc = LY_EMEM, cleanup);
     lybctx->parse_ctx = calloc(1, sizeof *lybctx->parse_ctx);
-    LY_CHECK_ERR_RET(!lybctx->parse_ctx, LOGMEM(ctx), LY_EMEM);
+    LY_CHECK_ERR_GOTO(!lybctx->parse_ctx, LOGMEM(ctx); rc = LY_EMEM, cleanup);
 
     lybctx->parse_ctx->in = in;
     lybctx->parse_ctx->ctx = ctx;
