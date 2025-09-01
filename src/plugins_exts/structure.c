@@ -170,7 +170,6 @@ structure_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, s
     LY_ERR rc;
     struct lysc_module *mod_c;
     struct lysc_node *child;
-    struct lysc_node_container *top_cont = NULL;
     struct lysc_ext_instance_structure *struct_cdata;
     uint32_t prev_options = *lyplg_ext_compile_get_options(cctx);
 
@@ -280,11 +279,6 @@ structure_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, s
 
 emem:
     structure_cfree(lyplg_ext_compile_get_ctx(cctx), ext);
-    if (top_cont) {
-        lydict_remove(lyplg_ext_compile_get_ctx(cctx), top_cont->name);
-        free(top_cont);
-    }
-
     lyplg_ext_compile_log(cctx, ext, LY_LLERR, LY_EMEM, "Memory allocation failed (%s()).", __func__);
     return LY_EMEM;
 }
