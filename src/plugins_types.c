@@ -967,13 +967,13 @@ lyplg_type_print_val(const struct lysc_node *node, const char *canon, LY_VALUE_F
 
     /* store it in the dictionary, storage will be freed */
     if (dyn) {
-        lydict_insert_zc(node->module->ctx, (char *)v, value);
+        r = lydict_insert_zc(node->module->ctx, (char *)v, value);
     } else {
-        lydict_dup(node->module->ctx, v, value);
+        r = lydict_dup(node->module->ctx, v, value);
     }
 
     type_plg->free(node->module->ctx, &storage);
-    return LY_SUCCESS;
+    return r;
 }
 
 LIBYANG_API_DEF LY_ERR
