@@ -395,6 +395,7 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
             err_app_tag = NULL;
         }
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, err_app_tag, "%s", msg);
+        err_app_tag = NULL;
     } else if (type_idx) {
         *type_idx = u;
     }
@@ -405,6 +406,7 @@ cleanup:
     }
     free(errs);
     free(msg);
+    free(err_app_tag);
     ly_temp_log_options(prev_lo);
     return ret;
 }
