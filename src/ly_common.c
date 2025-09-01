@@ -200,7 +200,7 @@ static LY_ERR
 ly_ctx_private_data_create(const struct ly_ctx *ctx, struct ly_ctx_private_data **private_data)
 {
     pthread_t tid = pthread_self();
-    struct ly_ctx_private_data **priv_data;
+    struct ly_ctx_private_data **priv_data = NULL;
     LY_ERR rc = LY_SUCCESS;
 
     *private_data = NULL;
@@ -218,7 +218,7 @@ ly_ctx_private_data_create(const struct ly_ctx *ctx, struct ly_ctx_private_data 
     *private_data = *priv_data;
 
 cleanup:
-    if (rc) {
+    if (rc && priv_data) {
         ly_ctx_private_data_remove_and_free(*priv_data);
     }
     return rc;
@@ -390,7 +390,7 @@ ly_ctx_shared_data_create(const struct ly_ctx *ctx, struct ly_ctx_shared_data **
     }
 
 cleanup:
-    if (rc) {
+    if (rc && shrd_data) {
         ly_ctx_shared_data_remove_and_free(*shrd_data);
     }
     return rc;
