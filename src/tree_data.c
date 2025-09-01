@@ -688,7 +688,7 @@ lyd_insert_node_find_anchor(struct lyd_node *first_sibling, struct lyd_node *nod
 {
     struct lyd_node *anchor;
 
-    if (first_sibling && (first_sibling->flags & LYD_EXT)) {
+    if ((node->flags & LYD_EXT) && (!first_sibling || !(first_sibling->prev->flags & LYD_EXT))) {
         return NULL;
     }
 
@@ -767,7 +767,7 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling_p, stru
     }
     first_sibling = parent ? lyd_child(parent) : *first_sibling_p;
 
-    if ((order == LYD_INSERT_NODE_LAST) || !node->schema || (first_sibling && (first_sibling->flags & LYD_EXT))) {
+    if ((order == LYD_INSERT_NODE_LAST) || !node->schema) {
         lyd_insert_node_last(parent, &first_sibling, node);
     } else if (order == LYD_INSERT_NODE_LAST_BY_SCHEMA) {
         lyd_insert_node_ordby_schema(parent, &first_sibling, node);
