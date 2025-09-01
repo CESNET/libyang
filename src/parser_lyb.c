@@ -376,7 +376,7 @@ lyb_parse_module(struct lylyb_parse_ctx *lybctx, char **mod_name, char mod_rev[]
     mod_rev[0] = '\0';
 
     /* module name */
-    lyb_read_string(mod_name, lybctx);
+    LY_CHECK_RET(lyb_read_string(mod_name, lybctx));
     if (!(*mod_name)[0]) {
         return LY_SUCCESS;
     }
