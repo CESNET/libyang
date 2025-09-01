@@ -751,14 +751,14 @@ lyplg_ext_set_parent_ctx(struct ly_ctx *ctx, const struct ly_ctx *parent_ctx)
 
     /* prevent circular reference chain */
     c = parent_ctx;
-    do {
+    while (c) {
         if (c->parent_ctx == ctx) {
             LOGERR(ctx, LY_EDENIED, "Circular references of parent contexts.");
             return LY_EDENIED;
         }
 
         c = c->parent_ctx;
-    } while (c);
+    }
 
     if (!ctx->parent_ctx) {
         if (ly_ctx_is_printed(ctx) && ly_ctx_is_printed(parent_ctx)) {
