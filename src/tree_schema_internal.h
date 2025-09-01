@@ -597,8 +597,9 @@ LY_ERR lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT fo
  * @param[in] ctx Context with dictionary where the filepath value will be stored.
  * @param[in] in Input handler to examine (filepath is not available for all the input types).
  * @param[out] filepath Address of the variable where the filepath is stored.
+ * @return LY_ERR value.
  */
-void lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char **filepath);
+LY_ERR lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char **filepath);
 
 /**
  * @brief Get the @ref ifftokens from the given position in the 2bits array

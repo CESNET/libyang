@@ -1613,7 +1613,7 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
         latest_sp->latest_revision = 0;
     }
 
-    lys_parser_fill_filepath(ctx, in, &submod->filepath);
+    LY_CHECK_GOTO(rc = lys_parser_fill_filepath(ctx, in, &submod->filepath), cleanup);
 
     /* resolve imports and includes */
     LY_CHECK_GOTO(rc = lysp_resolve_import_include(pctx, (struct lysp_module *)submod, new_mods), cleanup);
@@ -2142,7 +2142,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const st
         rc = LY_EINT;
         goto cleanup;
     }
-    lys_parser_fill_filepath(ctx, in, &mod->filepath);
+    LY_CHECK_GOTO(rc = lys_parser_fill_filepath(ctx, in, &mod->filepath), cleanup);
 
     if (latest) {
         latest->latest_revision &= ~(LYS_MOD_LATEST_REV | LYS_MOD_LATEST_SEARCHDIRS);

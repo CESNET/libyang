@@ -468,7 +468,7 @@ cleanup:
     return rc;
 }
 
-void
+LY_ERR
 lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char **filepath)
 {
     char path[PATH_MAX];
@@ -478,25 +478,25 @@ lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char **file
     int len;
 #endif
 
-    LY_CHECK_ARG_RET(NULL, ctx, in, filepath, );
+    LY_CHECK_ARG_RET(NULL, ctx, in, filepath, LY_EINVAL);
     if (*filepath) {
         /* filepath already set */
-        return;
+        return LY_SUCCESS;
     }
 
     switch (in->type) {
     case LY_IN_FILEPATH:
         if (realpath(in->method.fpath.filepath, path) != NULL) {
-            lysdict_insert(ctx, path, 0, filepath);
+            LY_CHECK_RET(lysdict_insert(ctx, path, 0, filepath));
         } else {
-            lysdict_insert(ctx, in->method.fpath.filepath, 0, filepath);
+            LY_CHECK_RET(lysdict_insert(ctx, in->method.fpath.filepath, 0, filepath));
         }
 
         break;
     case LY_IN_FD:
 #ifdef __APPLE__
         if (fcntl(in->method.fd, F_GETPATH, path) != -1) {
-            lysdict_insert(ctx, path, 0, filepath);
+            LY_CHECK_RET(lysdict_insert(ctx, path, 0, filepath));
         }
 #elif defined _WIN32
         HANDLE h = _get_osfhandle(in->method.fd);
@@ -506,13 +506,13 @@ lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char **file
             char *buf = calloc(info.FileNameLength + 1 /* trailing NULL */, MB_CUR_MAX);
 
             len = wcstombs(buf, info.FileName, info.FileNameLength * MB_CUR_MAX);
-            lysdict_insert(ctx, buf, len, filepath);
+            LY_CHECK_RET(lysdict_insert(ctx, buf, len, filepath));
         }
 #else
         /* get URI if there is /proc */
         sprintf(proc_path, "/proc/self/fd/%d", in->method.fd);
         if ((len = readlink(proc_path, path, PATH_MAX - 1)) > 0) {
-            lysdict_insert(ctx, path, len, filepath);
+            LY_CHECK_RET(lysdict_insert(ctx, path, len, filepath));
         }
 #endif
         break;
@@ -521,9 +521,11 @@ lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char **file
         /* nothing to do */
         break;
     default:
-        LOGINT(ctx);
+        LOGINT_RET(ctx);
         break;
     }
+
+    return LY_SUCCESS;
 }
 
 static LY_ERR lysp_stmt_container(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
