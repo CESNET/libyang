@@ -1476,6 +1476,10 @@ cleanup:
 LIBYANG_API_DEF ly_bool
 ly_ctx_is_printed(const struct ly_ctx *ctx)
 {
+    if (!ctx) {
+        return 0;
+    }
+
     return (ctx->opts & LY_CTX_INT_IMMUTABLE) ? 1 : 0;
 }
 
