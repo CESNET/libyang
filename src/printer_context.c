@@ -1227,7 +1227,7 @@ ctxp_type(const struct lysc_type *orig_type, struct lysc_type **type, struct ly_
         break;
     case LY_TYPE_UNKNOWN:
         LOGINT(NULL);
-        break;
+        return;
     }
 
     /* common members */
