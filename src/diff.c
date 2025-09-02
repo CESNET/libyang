@@ -3289,6 +3289,9 @@ lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff)
     /* reverse it */
     LY_CHECK_GOTO(rc = lyd_diff_reverse_siblings_r(*diff, mod), cleanup);
 
+    /* changing the order of user-ordered nodes may have changed the first node */
+    *diff = lyd_first_sibling(*diff);
+
 cleanup:
     if (rc) {
         lyd_free_siblings(*diff);
