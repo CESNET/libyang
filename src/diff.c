@@ -3075,13 +3075,202 @@ cleanup:
     return rc;
 }
 
+/**
+ * @brief Process a user-ordered node for a reverse diff.
+ *
+ * @param[in] node Reversed diff user-ordered node. NULL if only collected nodes should be reversed.
+ * @param[in,out] schema_p Current siblings user-ordered schema node.
+ * @param[in,out] nodes_p Collected diff nodes of @p schema_p whose order is to be reversed.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_diff_reverse_userord(struct lyd_node *node, const struct lysc_node **schema_p, struct lyd_node ***nodes_p)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node **ptr, *anchor;
+    LY_ARRAY_COUNT_TYPE u;
+
+    assert(node || *schema_p);
+
+    /* all the schema node instances were collected, reverse their order */
+    if (!node || (*schema_p && (node->schema != *schema_p))) {
+        /* unlink all the nodes except for the last */
+        for (u = 0; u < LY_ARRAY_COUNT(*nodes_p) - 1; ++u) {
+            lyd_unlink_tree((*nodes_p)[u]);
+        }
+
+        /* use the last as the anchor, becomes the first node */
+        anchor = (*nodes_p)[u];
+
+        /* link them in reverse order back */
+        if (u) {
+            do {
+                --u;
+                LY_CHECK_GOTO(rc = lyd_insert_after(anchor, (*nodes_p)[u]), cleanup);
+            } while (u);
+        }
+
+        /* clear the collected nodes */
+        *schema_p = NULL;
+        LY_ARRAY_FREE(*nodes_p);
+        *nodes_p = NULL;
+    }
+
+    if (!node) {
+        /* nothing more to do */
+        goto cleanup;
+    }
+
+    /* first node */
+    if (!*schema_p) {
+        *schema_p = node->schema;
+    }
+    assert(*schema_p == node->schema);
+
+    /* collect it */
+    LY_ARRAY_NEW_GOTO(LYD_CTX(node), *nodes_p, ptr, rc, cleanup);
+    *ptr = node;
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Reverse all sibling diff nodes, recursively.
+ *
+ * @param[in,out] sibling First sibling to reverse.
+ * @param[in] yang_mod YANG module 'yang' to use for metadata.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_diff_reverse_siblings_r(struct lyd_node *sibling, const struct lys_module *yang_mod)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *iter, *iter2, **userord = NULL;
+    const struct lysc_node *userord_schema = NULL;
+    enum lyd_diff_op op;
+    ly_bool recursive;
+
+    LY_LIST_FOR(sibling, iter) {
+        /* skip all keys */
+        if (lysc_is_key(iter->schema)) {
+            continue;
+        }
+
+        /* update module if needed */
+        if (LYD_CTX(iter) != yang_mod->ctx) {
+            yang_mod = ly_ctx_get_module_implemented(LYD_CTX(iter), "yang");
+            assert(yang_mod);
+        }
+
+        /* find operation attribute, if any */
+        LY_CHECK_GOTO(rc = lyd_diff_get_op(iter, &op, NULL), cleanup);
+
+        recursive = 1;
+        switch (op) {
+        case LYD_DIFF_OP_CREATE:
+            /* reverse create to delete */
+            LY_CHECK_GOTO(rc = lyd_diff_change_op(iter, LYD_DIFF_OP_DELETE), cleanup);
+
+            /* check all the children for the same operation, nothing else is expected */
+            LY_LIST_FOR(lyd_child(iter), iter2) {
+                lyd_diff_reverse_remove_op_r(iter2, LYD_DIFF_OP_CREATE);
+            }
+
+            recursive = 0;
+            break;
+
+        case LYD_DIFF_OP_DELETE:
+            /* reverse delete to create */
+            LY_CHECK_GOTO(rc = lyd_diff_change_op(iter, LYD_DIFF_OP_CREATE), cleanup);
+
+            /* check all the children for the same operation, nothing else is expected */
+            LY_LIST_FOR(lyd_child(iter), iter2) {
+                lyd_diff_reverse_remove_op_r(iter2, LYD_DIFF_OP_DELETE);
+            }
+
+            recursive = 0;
+            break;
+
+        case LYD_DIFF_OP_REPLACE:
+            switch (iter->schema->nodetype) {
+            case LYS_LEAF:
+                /* leaf value change */
+                LY_CHECK_GOTO(rc = lyd_diff_reverse_value(iter, yang_mod), cleanup);
+                LY_CHECK_GOTO(rc = lyd_diff_reverse_default(iter, yang_mod), cleanup);
+                break;
+            case LYS_ANYXML:
+            case LYS_ANYDATA:
+                /* any value change */
+                LY_CHECK_GOTO(rc = lyd_diff_reverse_value(iter, yang_mod), cleanup);
+                break;
+            case LYS_LEAFLIST:
+                /* leaf-list move */
+                LY_CHECK_GOTO(rc = lyd_diff_reverse_default(iter, yang_mod), cleanup);
+                if (lysc_is_dup_inst_list(iter->schema)) {
+                    LY_CHECK_GOTO(rc = lyd_diff_reverse_meta(iter, yang_mod, "orig-position", "position"), cleanup);
+                } else {
+                    LY_CHECK_GOTO(rc = lyd_diff_reverse_meta(iter, yang_mod, "orig-value", "value"), cleanup);
+                }
+                break;
+            case LYS_LIST:
+                /* list move */
+                if (lysc_is_dup_inst_list(iter->schema)) {
+                    LY_CHECK_GOTO(rc = lyd_diff_reverse_meta(iter, yang_mod, "orig-position", "position"), cleanup);
+                } else {
+                    LY_CHECK_GOTO(rc = lyd_diff_reverse_meta(iter, yang_mod, "orig-key", "key"), cleanup);
+                }
+                break;
+            default:
+                LOGINT(LYD_CTX(iter));
+                rc = LY_EINT;
+                goto cleanup;
+            }
+            break;
+
+        case LYD_DIFF_OP_NONE:
+            switch (iter->schema->nodetype) {
+            case LYS_LEAF:
+            case LYS_LEAFLIST:
+                /* default flag change */
+                LY_CHECK_GOTO(rc = lyd_diff_reverse_default(iter, yang_mod), cleanup);
+                break;
+            default:
+                /* nothing to do */
+                break;
+            }
+            break;
+        }
+
+        /* reverse any metadata diff */
+        LY_CHECK_GOTO(rc = lyd_diff_reverse_metadata_diff(iter), cleanup);
+
+        /* revursively reverse all descendants */
+        if (recursive) {
+            LY_CHECK_GOTO(rc = lyd_diff_reverse_siblings_r(lyd_child(iter), yang_mod), cleanup);
+        }
+
+        if (lysc_is_userordered(iter->schema)) {
+            /* special user-ordered nodes processing */
+            LY_CHECK_GOTO(rc = lyd_diff_reverse_userord(iter, &userord_schema, &userord), cleanup);
+        }
+    }
+
+    if (userord_schema) {
+        /* finish user-ordered nodes processing */
+        LY_CHECK_GOTO(rc = lyd_diff_reverse_userord(NULL, &userord_schema, &userord), cleanup);
+    }
+
+cleanup:
+    LY_ARRAY_FREE(userord);
+    return rc;
+}
+
 LIBYANG_API_DEF LY_ERR
 lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff)
 {
     LY_ERR rc = LY_SUCCESS;
     const struct lys_module *mod = NULL;
-    struct lyd_node *root, *elem, *iter;
-    enum lyd_diff_op op;
 
     LY_CHECK_ARG_RET(NULL, diff, LY_EINVAL);
 
@@ -3091,100 +3280,14 @@ lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff)
     }
 
     /* duplicate diff */
-    LY_CHECK_RET(lyd_dup_siblings(src_diff, NULL, LYD_DUP_RECURSIVE | LYD_DUP_NO_LYDS, diff));
+    LY_CHECK_GOTO(rc = lyd_dup_siblings(src_diff, NULL, LYD_DUP_RECURSIVE | LYD_DUP_NO_LYDS, diff), cleanup);
 
-    LY_LIST_FOR(*diff, root) {
-        LYD_TREE_DFS_BEGIN(root, elem) {
-            /* skip all keys */
-            if (!lysc_is_key(elem->schema)) {
-                /* find module with metadata needed for later in the current node context */
-                if (!mod || (mod->ctx != LYD_CTX(elem))) {
-                    mod = ly_ctx_get_module_latest(LYD_CTX(elem), "yang");
-                    LY_CHECK_ERR_GOTO(!mod, LOGINT(LYD_CTX(src_diff)); rc = LY_EINT, cleanup);
-                }
+    /* find 'yang' module */
+    mod = ly_ctx_get_module_implemented(LYD_CTX(src_diff), "yang");
+    assert(mod);
 
-                /* find operation attribute, if any */
-                LY_CHECK_GOTO(rc = lyd_diff_get_op(elem, &op, NULL), cleanup);
-
-                switch (op) {
-                case LYD_DIFF_OP_CREATE:
-                    /* reverse create to delete */
-                    LY_CHECK_GOTO(rc = lyd_diff_change_op(elem, LYD_DIFF_OP_DELETE), cleanup);
-
-                    /* check all the children for the same operation, nothing else is expected */
-                    LY_LIST_FOR(lyd_child(elem), iter) {
-                        lyd_diff_reverse_remove_op_r(iter, LYD_DIFF_OP_CREATE);
-                    }
-
-                    LYD_TREE_DFS_continue = 1;
-                    break;
-                case LYD_DIFF_OP_DELETE:
-                    /* reverse delete to create */
-                    LY_CHECK_GOTO(rc = lyd_diff_change_op(elem, LYD_DIFF_OP_CREATE), cleanup);
-
-                    /* check all the children for the same operation, nothing else is expected */
-                    LY_LIST_FOR(lyd_child(elem), iter) {
-                        lyd_diff_reverse_remove_op_r(iter, LYD_DIFF_OP_DELETE);
-                    }
-
-                    LYD_TREE_DFS_continue = 1;
-                    break;
-                case LYD_DIFF_OP_REPLACE:
-                    switch (elem->schema->nodetype) {
-                    case LYS_LEAF:
-                        /* leaf value change */
-                        LY_CHECK_GOTO(rc = lyd_diff_reverse_value(elem, mod), cleanup);
-                        LY_CHECK_GOTO(rc = lyd_diff_reverse_default(elem, mod), cleanup);
-                        break;
-                    case LYS_ANYXML:
-                    case LYS_ANYDATA:
-                        /* any value change */
-                        LY_CHECK_GOTO(rc = lyd_diff_reverse_value(elem, mod), cleanup);
-                        break;
-                    case LYS_LEAFLIST:
-                        /* leaf-list move */
-                        LY_CHECK_GOTO(rc = lyd_diff_reverse_default(elem, mod), cleanup);
-                        if (lysc_is_dup_inst_list(elem->schema)) {
-                            LY_CHECK_GOTO(rc = lyd_diff_reverse_meta(elem, mod, "orig-position", "position"), cleanup);
-                        } else {
-                            LY_CHECK_GOTO(rc = lyd_diff_reverse_meta(elem, mod, "orig-value", "value"), cleanup);
-                        }
-                        break;
-                    case LYS_LIST:
-                        /* list move */
-                        if (lysc_is_dup_inst_list(elem->schema)) {
-                            LY_CHECK_GOTO(rc = lyd_diff_reverse_meta(elem, mod, "orig-position", "position"), cleanup);
-                        } else {
-                            LY_CHECK_GOTO(rc = lyd_diff_reverse_meta(elem, mod, "orig-key", "key"), cleanup);
-                        }
-                        break;
-                    default:
-                        LOGINT(LYD_CTX(src_diff));
-                        rc = LY_EINT;
-                        goto cleanup;
-                    }
-                    break;
-                case LYD_DIFF_OP_NONE:
-                    switch (elem->schema->nodetype) {
-                    case LYS_LEAF:
-                    case LYS_LEAFLIST:
-                        /* default flag change */
-                        LY_CHECK_GOTO(rc = lyd_diff_reverse_default(elem, mod), cleanup);
-                        break;
-                    default:
-                        /* nothing to do */
-                        break;
-                    }
-                    break;
-                }
-            }
-
-            /* reverse any metadata diff */
-            LY_CHECK_GOTO(rc = lyd_diff_reverse_metadata_diff(elem), cleanup);
-
-            LYD_TREE_DFS_END(root, elem);
-        }
-    }
+    /* reverse it */
+    LY_CHECK_GOTO(rc = lyd_diff_reverse_siblings_r(*diff, mod), cleanup);
 
 cleanup:
     if (rc) {

@@ -1036,6 +1036,50 @@ test_userord_list3(void **state)
 }
 
 static void
+test_userord_llist_reverse(void **state)
+{
+    struct lyd_node *data1, *data2, *diff, *rdiff;
+    const char *xml1 =
+            "<df xmlns=\"urn:libyang:tests:defaults\">\n"
+            "  <llist>1</llist>\n"
+            "  <llist>2</llist>\n"
+            "  <llist>3</llist>\n"
+            "  <llist>4</llist>\n"
+            "  <llist>5</llist>\n"
+            "</df>\n";
+    const char *xml2 =
+            "<df xmlns=\"urn:libyang:tests:defaults\">\n"
+            "  <llist>1</llist>\n"
+            "  <llist>4</llist>\n"
+            "  <llist>3</llist>\n"
+            "  <llist>2</llist>\n"
+            "  <llist>5</llist>\n"
+            "</df>\n";
+
+    (void) state;
+
+    /* create */
+    CHECK_PARSE_LYD(xml1, data1);
+    CHECK_PARSE_LYD(xml2, data2);
+
+    /* diff 1 -> 2 */
+    CHECK_PARSE_LYD_DIFF(data1, data2, 0, diff);
+
+    /* reverse */
+    assert_int_equal(LY_SUCCESS, lyd_diff_reverse_all(diff, &rdiff));
+
+    /* apply and compare */
+    assert_int_equal(LY_SUCCESS, lyd_diff_apply_all(&data2, rdiff));
+    CHECK_LYD(data1, data2);
+
+    /* cleanup */
+    lyd_free_all(data1);
+    lyd_free_all(data2);
+    lyd_free_all(diff);
+    lyd_free_all(rdiff);
+}
+
+static void
 test_keyless_list(void **state)
 {
     (void) state;
@@ -1393,6 +1437,7 @@ main(void)
         UTEST(test_userord_list, setup),
         UTEST(test_userord_list2, setup),
         UTEST(test_userord_list3, setup),
+        UTEST(test_userord_llist_reverse, setup),
         UTEST(test_keyless_list, setup),
         UTEST(test_state_llist, setup),
         UTEST(test_wd, setup),
