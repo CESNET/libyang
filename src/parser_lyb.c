@@ -1610,7 +1610,7 @@ lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
 
 cleanup:
     /* there should be no unres stored if validation should be skipped */
-    assert(!(parse_opts & LYD_PARSE_ONLY) || (!lybctx->node_types.count && !lybctx->meta_types.count &&
+    assert(!lybctx || !(parse_opts & LYD_PARSE_ONLY) || (!lybctx->node_types.count && !lybctx->meta_types.count &&
             !lybctx->node_when.count));
 
     if (rc) {
