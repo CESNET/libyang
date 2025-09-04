@@ -39,8 +39,8 @@ lyd_print_(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, u
         ret = lyb_print_data(out, root, options);
         break;
     case LYD_UNKNOWN:
-        LOGINT(root ? LYD_CTX(root) : NULL);
-        ret = LY_EINT;
+        LOGERR(root ? LYD_CTX(root) : NULL, LY_EINVAL, "Unknown data output format.");
+        ret = LY_EINVAL;
         break;
     }
 
