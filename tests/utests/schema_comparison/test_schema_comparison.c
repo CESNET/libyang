@@ -58,10 +58,10 @@ setup(void **state)
     }
 
     /* load ietf-schema-comparison into both contexts, the module is imported */
-    if (lys_parse_path(st->ctx1, TESTS_SRC "/../modules/ietf-schema-comparison@2025-09-03.yang", LYS_IN_YANG, NULL)) {
+    if (lys_parse_path(st->ctx1, TESTS_SRC "/../modules/ietf-schema-comparison@2025-09-19.yang", LYS_IN_YANG, NULL)) {
         return 1;
     }
-    if (lys_parse_path(st->ctx2, TESTS_SRC "/../modules/ietf-schema-comparison@2025-09-03.yang", LYS_IN_YANG, NULL)) {
+    if (lys_parse_path(st->ctx2, TESTS_SRC "/../modules/ietf-schema-comparison@2025-09-19.yang", LYS_IN_YANG, NULL)) {
         return 1;
     }
 
