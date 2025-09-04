@@ -1,0 +1,89 @@
+{
+  "ietf-schema-comparison:schema-comparison": {
+    "compiled-diff": [
+      {
+        "source": {
+          "module": "union",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "union",
+          "revision": "2000-01-02"
+        },
+        "conformance": "non-backwards-compatible",
+        "node-diff": [
+          {
+            "node": "/union:l1",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "type",
+                "parent-stmt": "type",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              },
+              {
+                "stmt": "type",
+                "parent-stmt": "type",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "union",
+                "union-type": [
+                  {
+                    "base-type": "enumeration",
+                    "enum": [
+                      {
+                        "name": "none",
+                        "value": 0,
+                        "status": "current"
+                      }
+                    ]
+                  },
+                  {
+                    "base-type": "uint32"
+                  },
+                  {
+                    "base-type": "string"
+                  }
+                ]
+              }
+            },
+            "new": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "union",
+                "union-type": [
+                  {
+                    "base-type": "uint32"
+                  },
+                  {
+                    "base-type": "enumeration",
+                    "enum": [
+                      {
+                        "name": "none",
+                        "value": 0,
+                        "status": "current"
+                      }
+                    ]
+                  },
+                  {
+                    "base-type": "string"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+module case {
+    namespace "urn:test:case";
+    prefix cas;
+    yang-version 1.1;
+
+    revision 2000-01-02;
+
+    choice ch {
+        case c1 {
+            leaf l1 {
+                type string;
+            }
+        }
+        case c2 {
+            container cont;
+        }
+        case c3 {
+            leaf l2 {
+                type string;
+            }
+        }
+    }
+}
