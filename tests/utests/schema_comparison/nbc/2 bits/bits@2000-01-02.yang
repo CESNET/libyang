@@ -1,0 +1,29 @@
+module bits {
+    namespace "urn:test:bits";
+    prefix bts;
+    yang-version 1.1;
+
+    revision 2000-01-02;
+
+    leaf l1 {
+        type bits {
+            bit one;
+            bit two;
+            bit two-and-a-half;
+            bit three;
+            bit four;
+        }
+    }
+
+    leaf l2 {
+        type bits {
+            bit a {
+                position 1;
+            }
+            bit b {
+                position 5;
+            }
+            bit c;
+        }
+    }
+}

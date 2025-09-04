@@ -1,0 +1,12 @@
+submodule submod11 {
+    belongs-to submod1 {
+        prefix sm1;
+    }
+    yang-version 1.1;
+
+    revision 2000-01-01;
+
+    leaf l2 {
+        type int8;
+    }
+}
