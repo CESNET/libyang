@@ -400,4 +400,8 @@ int parse_ext_string(const char *extension_id, struct yl_opt *yo);
 int cmd_debug_setlog(struct ly_ctx *ctx, struct yl_opt *yo);
 void cmd_debug_help(void);
 
+/* cmd_cmp.c */
+
+int cmd_cmp_exec(struct ly_ctx **ctx, struct yl_opt *yo);
+
 #endif /* COMMANDS_H_ */
