@@ -42,6 +42,7 @@
 #include "plugins_internal.h"
 #include "schema_compile.h"
 #include "schema_compile_amend.h"
+#include "schema_diff.h"
 #include "schema_features.h"
 #include "set.h"
 #include "tree.h"
@@ -1207,6 +1208,58 @@ cleanup:
         lys_unres_glob_erase(unres);
     }
     return ret;
+}
+
+LIBYANG_API_DEF LY_ERR
+lysc_compare(const struct ly_ctx *ctx, const struct lys_module *src_mod, const struct lys_module *trg_mod,
+        struct lyd_node **schema_diff)
+{
+    LY_ERR rc = LY_SUCCESS;
+    const struct lys_module *cmp_mod;
+    struct lysc_diff_s diff = {0};
+
+    LY_CHECK_ARG_RET(NULL, ctx, src_mod, trg_mod, schema_diff, LY_EINVAL);
+
+    *schema_diff = NULL;
+
+    /* check arguments */
+    cmp_mod = ly_ctx_get_module_implemented(ctx, "ietf-schema-comparison");
+    if (!cmp_mod) {
+        LOGERR(ctx, LY_ENOTFOUND, "Module \"ietf-schema-comparison\" not found.");
+        rc = LY_ENOTFOUND;
+        goto cleanup;
+    } else if (!cmp_mod->revision || strcmp(cmp_mod->revision, "2025-09-03")) {
+        LOGERR(ctx, LY_ENOTFOUND, "Module \"ietf-schema-comparison\" not in the expected revision \"2025-09-03\".");
+        rc = LY_ENOTFOUND;
+        goto cleanup;
+    }
+
+    if (strcmp(src_mod->name, trg_mod->name)) {
+        LOGERR(ctx, LY_EINVAL, "Source module \"%s\" and target module \"%s\" have different names.", src_mod->name,
+                trg_mod->name);
+        rc = LY_EINVAL;
+        goto cleanup;
+    } else if (!src_mod->implemented) {
+        LOGERR(ctx, LY_EINVAL, "Source module \"%s@%s\" not implemented.", src_mod->name,
+                src_mod->revision ? src_mod->revision : "<none>");
+        rc = LY_EINVAL;
+        goto cleanup;
+    } else if (!trg_mod->implemented) {
+        LOGERR(ctx, LY_EINVAL, "Target module \"%s@%s\" not implemented.", trg_mod->name,
+                trg_mod->revision ? trg_mod->revision : "<none>");
+        rc = LY_EINVAL;
+        goto cleanup;
+    }
+
+    /* generate the diff */
+    LY_CHECK_GOTO(rc = lysc_diff_changes(src_mod, trg_mod, &diff), cleanup);
+
+    /* create schema-comparison data from the diff */
+    LY_CHECK_GOTO(rc = lysc_diff_tree(src_mod, trg_mod, &diff, cmp_mod, schema_diff), cleanup);
+
+cleanup:
+    lysc_diff_erase(&diff);
+    return rc;
 }
 
 /**

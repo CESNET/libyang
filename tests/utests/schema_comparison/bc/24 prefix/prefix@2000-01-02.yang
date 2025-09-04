@@ -1,0 +1,29 @@
+module prefix {
+    namespace "urn:test:prefix";
+    prefix pfx2;
+    yang-version 1.1;
+
+    revision 2000-01-02;
+
+    identity ident1;
+
+    grouping grp {
+        container cont2 {
+            leaf l1 {
+                type string;
+            }
+        }
+    }
+
+    container cont {
+        uses pfx2:grp {
+            augment "pfx2:cont2" {
+                leaf l2 {
+                    type identityref {
+                        base pfx2:ident1;
+                    }
+                }
+            }
+        }
+    }
+}

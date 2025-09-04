@@ -1,0 +1,76 @@
+{
+  "ietf-schema-comparison:schema-comparison": {
+    "compiled-diff": [
+      {
+        "source": {
+          "module": "reference",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "reference",
+          "revision": "2000-01-02"
+        },
+        "conformance": "backwards-compatible",
+        "node-diff": [
+          {
+            "node": "/reference:l1",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "reference",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "uint16"
+              }
+            },
+            "new": {
+              "config": true,
+              "mandatory": false,
+              "reference": "some RFC",
+              "status": "current",
+              "type": {
+                "base-type": "uint16"
+              }
+            }
+          },
+          {
+            "node": "/reference:l2",
+            "node-type": "leaf-list",
+            "changed": [
+              {
+                "stmt": "reference",
+                "change": "modified",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "config": true,
+              "reference": "old RFC",
+              "status": "current",
+              "type": {
+                "base-type": "string"
+              },
+              "ordered-by": "system"
+            },
+            "new": {
+              "config": true,
+              "reference": "new RFC",
+              "status": "current",
+              "type": {
+                "base-type": "string"
+              },
+              "ordered-by": "system"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

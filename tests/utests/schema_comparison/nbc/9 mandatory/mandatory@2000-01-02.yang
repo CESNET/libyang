@@ -1,0 +1,17 @@
+module mandatory {
+    namespace "urn:test:mandatory";
+    prefix mnd;
+    yang-version 1.1;
+
+    revision 2000-01-02;
+
+    leaf l1 {
+        type uint16;
+        mandatory true;
+    }
+
+    leaf l2 {
+        type string;
+        mandatory true;
+    }
+}
