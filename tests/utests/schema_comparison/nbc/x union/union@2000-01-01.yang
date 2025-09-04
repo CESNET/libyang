@@ -1,0 +1,17 @@
+module union {
+    namespace "urn:test:union";
+    prefix uni;
+    yang-version 1.1;
+
+    revision 2000-01-01;
+
+    leaf l1 {
+        type union {
+            type enumeration {
+                enum none;
+            }
+            type uint32;
+            type string;
+        }
+    }
+}

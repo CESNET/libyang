@@ -1,0 +1,23 @@
+module data-def-order {
+    namespace "urn:test:data-def-order";
+    prefix ddo;
+    yang-version 1.1;
+
+    revision 2000-01-01;
+
+    container cont {
+        leaf l1 {
+            type string;
+        }
+
+        leaf l2 {
+            type uint8;
+        }
+
+        container cont2 {
+            leaf-list ll {
+                type instance-identifier;
+            }
+        }
+    }
+}

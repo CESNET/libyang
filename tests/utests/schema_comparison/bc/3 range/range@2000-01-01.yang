@@ -1,0 +1,25 @@
+module range {
+    namespace "urn:test:range";
+    prefix rng;
+    yang-version 1.1;
+
+    revision 2000-01-01;
+
+    leaf l1 {
+        type uint16 {
+            range min..10|20..50|100;
+        }
+    }
+
+    leaf l2 {
+        type int32 {
+            range -10..0|100..200;
+        }
+    }
+
+    leaf l3 {
+        type int8 {
+            range -10..10;
+        }
+    }
+}

@@ -1,0 +1,24 @@
+module type {
+    namespace "urn:test:type";
+    prefix typ;
+    yang-version 1.1;
+
+    revision 2000-01-01;
+
+    typedef my-un-type {
+        type uint8;
+    }
+
+    leaf l1 {
+        type string {
+            length 1..20;
+        }
+    }
+
+    leaf l2 {
+        type union {
+            type my-un-type;
+            type string;
+        }
+    }
+}

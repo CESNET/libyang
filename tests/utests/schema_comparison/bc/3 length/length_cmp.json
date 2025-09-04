@@ -1,0 +1,164 @@
+{
+  "ietf-schema-comparison:schema-comparison": {
+    "compiled-diff": [
+      {
+        "source": {
+          "module": "length",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "length",
+          "revision": "2000-01-02"
+        },
+        "conformance": "backwards-compatible",
+        "node-diff": [
+          {
+            "node": "/length:l1",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "length",
+                "change": "modified",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "string",
+                "length": {
+                  "interval": [
+                    {
+                      "min": "0",
+                      "max": "10"
+                    },
+                    {
+                      "min": "20",
+                      "max": "50"
+                    },
+                    {
+                      "min": "100",
+                      "max": "100"
+                    }
+                  ]
+                }
+              }
+            },
+            "new": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "string",
+                "length": {
+                  "interval": [
+                    {
+                      "min": "0",
+                      "max": "50"
+                    },
+                    {
+                      "min": "100",
+                      "max": "100"
+                    },
+                    {
+                      "min": "232",
+                      "max": "232"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "node": "/length:l2",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "length",
+                "change": "modified",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "string",
+                "length": {
+                  "interval": [
+                    {
+                      "min": "0",
+                      "max": "0"
+                    },
+                    {
+                      "min": "100",
+                      "max": "200"
+                    }
+                  ]
+                }
+              }
+            },
+            "new": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "string",
+                "length": {
+                  "interval": [
+                    {
+                      "min": "0",
+                      "max": "50"
+                    },
+                    {
+                      "min": "55",
+                      "max": "200"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "node": "/length:l3",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "length",
+                "change": "removed",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "string",
+                "length": {
+                  "interval": [
+                    {
+                      "min": "10",
+                      "max": "20"
+                    }
+                  ]
+                }
+              }
+            },
+            "new": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "string"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

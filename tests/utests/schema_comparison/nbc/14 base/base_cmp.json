@@ -1,0 +1,91 @@
+{
+  "ietf-schema-comparison:schema-comparison": {
+    "compiled-diff": [
+      {
+        "source": {
+          "module": "base",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "base",
+          "revision": "2000-01-02"
+        },
+        "conformance": "non-backwards-compatible",
+        "node-diff": [
+          {
+            "node": "/base:l1",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "base",
+                "change": "added",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "identityref",
+                "base": [
+                  "base-b"
+                ]
+              }
+            },
+            "new": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "identityref",
+                "base": [
+                  "base-a",
+                  "base-b"
+                ]
+              }
+            }
+          },
+          {
+            "node": "/base:l2",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "base",
+                "change": "removed",
+                "conformance": "backwards-compatible"
+              },
+              {
+                "stmt": "base",
+                "change": "added",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "identityref",
+                "base": [
+                  "base-a"
+                ]
+              }
+            },
+            "new": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "identityref",
+                "base": [
+                  "base-b"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

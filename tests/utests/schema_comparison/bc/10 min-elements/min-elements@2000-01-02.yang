@@ -1,0 +1,19 @@
+module min-elements {
+    namespace "urn:test:min-elements";
+    prefix mne;
+    yang-version 1.1;
+
+    revision 2000-01-02;
+
+    leaf-list l1 {
+        type uint16;
+        min-elements 5;
+    }
+
+    list l2 {
+        key "k";
+        leaf k {
+            type string;
+        }
+    }
+}

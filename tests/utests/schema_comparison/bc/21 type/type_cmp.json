@@ -1,0 +1,17 @@
+{
+  "ietf-schema-comparison:schema-comparison": {
+    "compiled-diff": [
+      {
+        "source": {
+          "module": "type",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "type",
+          "revision": "2000-01-02"
+        },
+        "conformance": "backwards-compatible"
+      }
+    ]
+  }
+}

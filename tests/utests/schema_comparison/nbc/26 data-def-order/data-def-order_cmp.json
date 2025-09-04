@@ -1,0 +1,56 @@
+{
+  "ietf-schema-comparison:schema-comparison": {
+    "compiled-diff": [
+      {
+        "source": {
+          "module": "data-def-order",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "data-def-order",
+          "revision": "2000-01-02"
+        },
+        "conformance": "non-backwards-compatible",
+        "node-diff": [
+          {
+            "node": "/data-def-order:cont/cont2",
+            "node-type": "container",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "moved",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "config": true,
+              "presence": false,
+              "status": "current"
+            },
+            "new": {
+              "config": true,
+              "presence": false,
+              "status": "current"
+            }
+          },
+          {
+            "node": "/data-def-order:cont/cont2",
+            "node-type": "container",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "config": true,
+              "presence": false,
+              "status": "current"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

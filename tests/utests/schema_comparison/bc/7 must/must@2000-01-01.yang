@@ -1,0 +1,17 @@
+module must {
+    namespace "urn:test:must";
+    prefix mst;
+    yang-version 1.1;
+
+    revision 2000-01-01;
+
+    leaf l1 {
+        type uint16;
+        must ". = 5";
+    }
+
+    leaf l2 {
+        type uint32;
+        must ". > 50";
+    }
+}

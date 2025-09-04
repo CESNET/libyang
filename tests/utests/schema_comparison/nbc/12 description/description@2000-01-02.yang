@@ -1,0 +1,11 @@
+module description {
+    namespace "urn:test:description";
+    prefix dsc;
+    yang-version 1.1;
+
+    revision 2000-01-02;
+
+    leaf l1 {
+        type uint16;
+    }
+}
