@@ -16,6 +16,7 @@ set(lintsrc
     cmd_debug.c
     cmd_sample.c
     cmd_sid.c
+    cmd_cmp.c
     ietf.c
     yl_opt.c
     yl_schema_features.c
