@@ -86,7 +86,7 @@ yl_opt_erase(struct yl_opt *yo)
     /* context */
     free(yo->searchpaths);
 
-    /*extension instance string*/
+    /* extension instance string */
     free(yo->mod_name);
     free(yo->name);
     free(yo->argument);

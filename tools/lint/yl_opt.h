@@ -107,6 +107,10 @@ struct yl_opt {
     ly_bool feature_param_format;
     ly_bool feature_print_all;
 
+    /* values of --cmp-mod1 and --cmp-mod2 */
+    const char *cmp_mod_path1;
+    const char *cmp_mod_path2;
+
     /*
      * data
      */
