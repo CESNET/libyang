@@ -254,6 +254,10 @@ help(int shortout)
             "                Generate/update the .sid file with the 'published' status\n"
             "                (otherwise 'unpublished').\n\n");
 
+    printf("  -1/2 FILE, --cmp-mod1/2=FILE\n"
+            "                Path to the first/second YANG module to compare. Generates 'ietf-schema-comparison' data\n"
+            "                and requires this module to be in the context. Use an output format to print the data.\n\n");
+
     printf("  -G GROUPS, --debug=GROUPS\n"
 #ifndef NDEBUG
             "                Enable printing of specific debugging message group\n"
@@ -550,6 +554,9 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
         {"yang-library-file", required_argument, NULL, 'Y'},
         {"extended-leafref",  no_argument,       NULL, 'X'},
         {"json-null",         no_argument,       NULL, 'J'},
+        {"ext-inst",          required_argument, NULL, 'k'},
+        {"cmp-mod1",          required_argument, NULL, '1'},
+        {"cmp-mod2",          required_argument, NULL, '2'},
         {"debug",             required_argument, NULL, 'G'},
         {"sample-skeleton",   required_argument, NULL, 'S'},
         {"ietf",              no_argument,       NULL, 'T'},
@@ -568,7 +575,7 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
     yo->line_length = 0;
 
     opterr = 0;
-    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neE:At:d:lL:o:O:R:myY:XJx:G:S:Tg:u:r:U", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neE:At:d:lL:o:O:R:myY:XJx:1:2:G:S:Tg:u:r:U", options, &opt_index)) != -1) {
         switch (opt) {
         case 'h': /* --help */
             help(0);
@@ -756,7 +763,15 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
             yo->data_parse_options |= LYD_PARSE_JSON_NULL;
             break;
 
-        case 'G':   /* --debug */
+        case '1': /* --cmp-mod1 */
+            yo->cmp_mod_path1 = optarg;
+            break;
+
+        case '2': /* --cmp-mod2 */
+            yo->cmp_mod_path2 = optarg;
+            break;
+
+        case 'G': /* --debug */
             if (set_debug_groups(optarg, yo)) {
                 return -1;
             }
@@ -824,6 +839,7 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
     if (cmd_print_dep(yo, 0)) {
         return -1;
     }
+
     if (yo->sid_publish && !yo->sid_range && !yo->sid_prev_path) {
         YLMSG_E("The --sid-publish option requires --sid-generate or --sid-update.");
         return -1;
@@ -834,6 +850,10 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
     }
     if (yo->sid_prev_path && yo->sid_range && !yo->sid_range_add) {
         YLMSG_E("The --sid-generate option cannot be combined with --sid-update, use --sid-range-add to add a range.");
+        return -1;
+    }
+    if ((yo->cmp_mod_path1 && !yo->cmp_mod_path2) || (!yo->cmp_mod_path1 && yo->cmp_mod_path2)) {
+        YLMSG_E("Two same modules in different revisions need to be specified for schema comparison.");
         return -1;
     }
 
@@ -942,6 +962,10 @@ main_ni(int argc, char *argv[])
          * given on the command line; all the other schema modules are loaded and
          * validated, but they do not contribute to the .sid file processing */
         if ((ret = cmd_sid_exec(&ctx, &yo, ((struct lys_module *)yo.schema_modules.objs[yo.schema_modules.count - 1])->name))) {
+            goto cleanup;
+        }
+    } else if (yo.cmp_mod_path1 && yo.cmp_mod_path2) {
+        if ((ret = cmd_cmp_exec(&ctx, &yo))) {
             goto cleanup;
         }
     }
