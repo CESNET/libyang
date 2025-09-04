@@ -125,26 +125,11 @@ cmd_add_dep(struct yl_opt *yo, int posc)
     return 0;
 }
 
-static int
-store_parsed_module(const char *filepath, struct lys_module *mod, struct yl_opt *yo)
-{
-    assert(!yo->interactive);
-
-    if (yo->schema_out_format || yo->feature_param_format) {
-        if (ly_set_add(&yo->schema_modules, (void *)mod, 1, NULL)) {
-            YLMSG_E("Storing parsed schema module (%s) for print failed.", filepath);
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
 int
 cmd_add_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
 {
     const char *all_features[] = {"*", NULL};
-    LY_ERR ret;
+    LY_ERR ret = 0;
     uint8_t path_unset = 1; /* flag to unset the path from the searchpaths list (if not already present) */
     char *dir, *modname = NULL;
     const char **features = NULL;
@@ -164,7 +149,7 @@ cmd_add_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
     if (!yo->interactive) {
         /* The module should already be parsed if yang_lib_file was set. */
         if (yo->yang_lib_file && (mod = ly_ctx_get_module_implemented(*ctx, modname))) {
-            ret = store_parsed_module(posv, mod, yo);
+            ly_set_add(&yo->schema_modules, (void *)mod, 1, NULL);
             goto cleanup;
         }
         /* parse module */
@@ -197,9 +182,7 @@ cmd_add_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
     }
 
     if (!yo->interactive) {
-        if ((ret = store_parsed_module(posv, mod, yo))) {
-            goto cleanup;
-        }
+        ly_set_add(&yo->schema_modules, (void *)mod, 1, NULL);
     }
 
 cleanup:

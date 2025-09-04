@@ -391,4 +391,8 @@ int cmd_debug_store(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv);
 int cmd_debug_setlog(struct ly_ctx *ctx, struct yl_opt *yo);
 void cmd_debug_help(void);
 
+/* cmd_cmp.c */
+
+int cmd_cmp_exec(struct ly_ctx **ctx, struct yl_opt *yo);
+
 #endif /* COMMANDS_H_ */
