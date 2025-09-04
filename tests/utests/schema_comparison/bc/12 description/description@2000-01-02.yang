@@ -1,0 +1,23 @@
+module description {
+    namespace "urn:test:description";
+    prefix dsc;
+    yang-version 1.1;
+
+    import ietf-schema-comparison {
+        prefix schema-cmp;
+    }
+
+    revision 2000-01-02;
+
+    leaf l1 {
+        type uint16;
+        description "is a nice leaf";
+    }
+
+    leaf l2 {
+        type uint32;
+        description "desc2" {
+            schema-cmp:backwards-compatible;
+        }
+    }
+}

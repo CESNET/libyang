@@ -1,0 +1,134 @@
+/**
+ * @file schema_diff.h
+ * @author Michal Vasko <mvasko@cesnet.cz>
+ * @brief Schema comparison header.
+ *
+ * Copyright (c) 2025 CESNET, z.s.p.o.
+ *
+ * This source code is licensed under BSD 3-Clause License (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/BSD-3-Clause
+ */
+
+#ifndef LY_SCHEMA_DIFF_H_
+#define LY_SCHEMA_DIFF_H_
+
+#include <stdint.h>
+
+#include "log.h"
+#include "ly_common.h"
+
+/**
+ * @brief Type of a schema change.
+ */
+enum lysc_diff_change_e {
+    LYSC_CHANGE_MODIFIED,   /**< statement was modified in any way, used when none other apply */
+    LYSC_CHANGE_ADDED,      /**< statement was added */
+    LYSC_CHANGE_REMOVED,    /**< statement was removed */
+    LYSC_CHANGE_MOVED       /**< statement was moved, if the order has meaning */
+};
+
+/**
+ * @brief Changed statement of a schema change.
+ */
+enum lysc_diff_changed_e {
+    LYSC_CHANGED_NONE = 0,
+    LYSC_CHANGED_BASE,
+    LYSC_CHANGED_BIT,
+    LYSC_CHANGED_CONFIG,
+    LYSC_CHANGED_CONTACT,
+    LYSC_CHANGED_DEFAULT,
+    LYSC_CHANGED_DESCRIPTION,
+    LYSC_CHANGED_ENUM,
+    LYSC_CHANGED_ERR_APP_TAG,
+    LYSC_CHANGED_ERR_MSG,
+    LYSC_CHANGED_EXT_INST,
+    LYSC_CHANGED_FRAC_DIG,
+    LYSC_CHANGED_IDENT,
+    LYSC_CHANGED_LENGTH,
+    LYSC_CHANGED_MANDATORY,
+    LYSC_CHANGED_MAX_ELEM,
+    LYSC_CHANGED_MIN_ELEM,
+    LYSC_CHANGED_MUST,
+    LYSC_CHANGED_NODE,
+    LYSC_CHANGED_ORDERED_BY,
+    LYSC_CHANGED_ORGANIZATION,
+    LYSC_CHANGED_PATH,
+    LYSC_CHANGED_PATTERN,
+    LYSC_CHANGED_PRESENCE,
+    LYSC_CHANGED_RANGE,
+    LYSC_CHANGED_REFERENCE,
+    LYSC_CHANGED_REQ_INSTANCE,
+    LYSC_CHANGED_STATUS,
+    LYSC_CHANGED_TYPE,
+    LYSC_CHANGED_UNITS,
+    LYSC_CHANGED_UNIQUE,
+    LYSC_CHANGED_WHEN
+};
+
+/**
+ * @brief Structure for a schema change.
+ */
+struct lysc_diff_change_s {
+    enum lysc_diff_change_e change;             /**< type of change of the node */
+    enum lysc_diff_changed_e parent_changed;    /**< type of the parent statement */
+    enum lysc_diff_changed_e changed;           /**< type of the changed statement */
+    ly_bool is_nbc;                             /**< flag to mark a non-backward-compatible change */
+};
+
+/**
+ * @brief Structure for a node schema change.
+ *
+ * snode_old NULL; snode_new non-NULL - snode was added
+ * snode_old non-NULL; snode_new NULL - snode was removed
+ * snode_old NULL; snode_new NULL - module changes, not node changes
+ */
+struct lysc_diff_node_change_s {
+    const struct lysc_node *snode_old;  /**< schema node from the old revision of the YANG module */
+    const struct lysc_node *snode_new;  /**< schema node from the new revision of the YANG module */
+    struct lysc_diff_change_s *changes; /**< array of changes in the old and new schema node, may be empty */
+    uint32_t change_count;              /**< count of changes */
+};
+
+/**
+ * @brief Structure for a full schema comparison.
+ */
+struct lysc_diff_s {
+    struct lysc_diff_node_change_s *node_changes;   /**< array of all the nodes and their changes */
+    uint32_t node_change_count;                     /**< count of node changes */
+    ly_bool is_nbc;                                 /**< flag to mark a non-backwards-compatible change */
+};
+
+/**
+ * @brief Collect a diff of 2 modules.
+ *
+ * @param[in] mod1 Source module.
+ * @param[in] mod2 Target module.
+ * @param[in,out] diff Collected diff.
+ * @return LY_ERR value.
+ */
+LY_ERR lysc_diff_changes(const struct lys_module *mod1, const struct lys_module *mod2, struct lysc_diff_s *diff);
+
+/**
+ * @brief Erase a diff structure.
+ *
+ * @param[in] diff Diff structure to erase.
+ */
+void lysc_diff_erase(struct lysc_diff_s *diff);
+
+/**
+ * @brief Create a schema-comparison data tree based on a collected diff.
+ *
+ * @param[in] mod1 Source module.
+ * @param[in] mod2 Target module.
+ * @param[in] diff Collected diff of @p mod1 and @p mod2.
+ * @param[in] cmp_mod YANG module 'ietf-schema-comparison' to use.
+ * @param[out] schema_diff Created data tree.
+ * @return LY_ERR value.
+ */
+LY_ERR lysc_diff_tree(const struct lys_module *mod1, const struct lys_module *mod2, const struct lysc_diff_s *diff,
+        const struct lys_module *cmp_mod, struct lyd_node **schema_diff);
+
+#endif /* LY_SCHEMA_DIFF_H_ */

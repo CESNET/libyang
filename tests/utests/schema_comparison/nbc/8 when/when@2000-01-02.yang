@@ -1,0 +1,12 @@
+module when {
+    namespace "urn:test:when";
+    prefix whn;
+    yang-version 1.1;
+
+    revision 2000-01-02;
+
+    leaf l1 {
+        type uint16;
+        when "10 = 5";
+    }
+}

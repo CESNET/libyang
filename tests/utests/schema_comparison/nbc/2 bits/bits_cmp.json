@@ -1,0 +1,161 @@
+{
+  "ietf-schema-comparison:schema-comparison": {
+    "compiled-diff": [
+      {
+        "source": {
+          "module": "bits",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "bits",
+          "revision": "2000-01-02"
+        },
+        "conformance": "non-backwards-compatible",
+        "node-diff": [
+          {
+            "node": "/bits:l1",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "bit",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              },
+              {
+                "stmt": "bit",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              },
+              {
+                "stmt": "bit",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "bits",
+                "bit": [
+                  {
+                    "name": "one",
+                    "position": 0,
+                    "status": "current"
+                  },
+                  {
+                    "name": "two",
+                    "position": 1,
+                    "status": "current"
+                  },
+                  {
+                    "name": "three",
+                    "position": 2,
+                    "status": "current"
+                  }
+                ]
+              }
+            },
+            "new": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "bits",
+                "bit": [
+                  {
+                    "name": "one",
+                    "position": 0,
+                    "status": "current"
+                  },
+                  {
+                    "name": "two",
+                    "position": 1,
+                    "status": "current"
+                  },
+                  {
+                    "name": "two-and-a-half",
+                    "position": 2,
+                    "status": "current"
+                  },
+                  {
+                    "name": "three",
+                    "position": 3,
+                    "status": "current"
+                  },
+                  {
+                    "name": "four",
+                    "position": 4,
+                    "status": "current"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "node": "/bits:l2",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "bit",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "bits",
+                "bit": [
+                  {
+                    "name": "a",
+                    "position": 1,
+                    "status": "current"
+                  },
+                  {
+                    "name": "b",
+                    "position": 5,
+                    "status": "current"
+                  },
+                  {
+                    "name": "c",
+                    "position": 10,
+                    "status": "current"
+                  }
+                ]
+              }
+            },
+            "new": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "bits",
+                "bit": [
+                  {
+                    "name": "a",
+                    "position": 1,
+                    "status": "current"
+                  },
+                  {
+                    "name": "b",
+                    "position": 5,
+                    "status": "current"
+                  },
+                  {
+                    "name": "c",
+                    "position": 6,
+                    "status": "current"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

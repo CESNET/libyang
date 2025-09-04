@@ -1,0 +1,128 @@
+{
+  "ietf-schema-comparison:schema-comparison": {
+    "compiled-diff": [
+      {
+        "source": {
+          "module": "pattern",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "pattern",
+          "revision": "2000-01-02"
+        },
+        "target-import": [
+          {
+            "module": "ietf-schema-comparison",
+            "revision": "2025-09-03"
+          },
+          {
+            "module": "ietf-yang-types",
+            "revision": "2013-07-15"
+          },
+          {
+            "module": "ietf-yang-library",
+            "revision": "2019-01-04"
+          },
+          {
+            "module": "ietf-yang-types",
+            "revision": "2013-07-15"
+          },
+          {
+            "module": "ietf-inet-types",
+            "revision": "2013-07-15"
+          },
+          {
+            "module": "ietf-datastores",
+            "revision": "2018-02-14"
+          }
+        ],
+        "conformance": "backwards-compatible",
+        "node-diff": [
+          {
+            "node": "/pattern:l1",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "pattern",
+                "change": "removed",
+                "conformance": "backwards-compatible"
+              },
+              {
+                "stmt": "pattern",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "string",
+                "pattern": [
+                  {
+                    "expression": "aa|bb|cc",
+                    "inverted": false
+                  }
+                ]
+              }
+            },
+            "new": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "string",
+                "pattern": [
+                  {
+                    "expression": "aa|bb|cc|dd|ee",
+                    "inverted": false,
+                    "ext-instance": [
+                      {
+                        "module": "ietf-schema-comparison",
+                        "name": "backwards-compatible"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "node": "/pattern:l2",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "pattern",
+                "change": "removed",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "string",
+                "pattern": [
+                  {
+                    "expression": "a|b|c",
+                    "inverted": false
+                  }
+                ]
+              }
+            },
+            "new": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "string"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

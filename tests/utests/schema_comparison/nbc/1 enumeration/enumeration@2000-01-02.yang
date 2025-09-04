@@ -1,0 +1,28 @@
+module enumeration {
+    namespace "urn:test:enumeration";
+    prefix enm;
+    yang-version 1.1;
+
+    revision 2000-01-02;
+
+    leaf l1 {
+        type enumeration {
+            enum one;
+            enum two-and-a-half;
+            enum three;
+            enum four;
+        }
+    }
+
+    leaf l2 {
+        type enumeration {
+            enum a {
+                value 1;
+            }
+            enum b {
+                value 5;
+            }
+            enum c;
+        }
+    }
+}

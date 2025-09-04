@@ -1,0 +1,82 @@
+{
+  "ietf-schema-comparison:schema-comparison": {
+    "compiled-diff": [
+      {
+        "source": {
+          "module": "dflt",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "dflt",
+          "revision": "2000-01-02"
+        },
+        "conformance": "non-backwards-compatible",
+        "node-diff": [
+          {
+            "node": "/dflt:l1",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "default",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "uint16"
+              },
+              "default": [
+                "10"
+              ]
+            },
+            "new": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "uint16"
+              },
+              "default": [
+                "100"
+              ]
+            }
+          },
+          {
+            "node": "/dflt:l2",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "default",
+                "change": "removed",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "string"
+              },
+              "default": [
+                "val"
+              ]
+            },
+            "new": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "string"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+module reference {
+    namespace "urn:test:reference";
+    prefix unt;
+    yang-version 1.1;
+
+    revision 2000-01-01;
+
+    leaf l1 {
+        type uint16;
+        reference "some RFC";
+    }
+}

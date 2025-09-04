@@ -1,0 +1,35 @@
+{
+  "ietf-schema-comparison:schema-comparison": {
+    "compiled-diff": [
+      {
+        "source": {
+          "module": "case",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "case",
+          "revision": "2000-01-02"
+        },
+        "conformance": "backwards-compatible",
+        "node-diff": [
+          {
+            "node": "/case:cont",
+            "node-type": "container",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "config": true,
+              "presence": false,
+              "status": "current"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
