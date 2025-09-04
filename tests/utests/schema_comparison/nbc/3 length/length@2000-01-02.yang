@@ -1,0 +1,25 @@
+module length {
+    namespace "urn:test:length";
+    prefix lng;
+    yang-version 1.1;
+
+    revision 2000-01-02;
+
+    leaf l1 {
+        type string {
+            length min..50|1000;
+        }
+    }
+
+    leaf l2 {
+        type string {
+            length 0..99|101..200;
+        }
+    }
+
+    leaf l3 {
+        type string {
+            length 10;
+        }
+    }
+}

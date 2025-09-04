@@ -11,6 +11,7 @@ set(format_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/types/*.c
     ${CMAKE_CURRENT_SOURCE_DIR}/restriction/*.c
     ${CMAKE_CURRENT_SOURCE_DIR}/node/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/schema_comparison/*.c
     PARENT_SCOPE)
 
 ly_add_utest(NAME uint8  SOURCES types/uint8.c)
@@ -80,3 +81,5 @@ ly_add_utest(NAME structure SOURCES extensions/test_structure.c)
 if(LY_HAVE_REGEX_H)
     ly_add_utest(NAME openconfig SOURCES extensions/test_openconfig.c)
 endif()
+
+ly_add_utest(NAME schema_comparison SOURCES schema_comparison/test_schema_comparison.c)
