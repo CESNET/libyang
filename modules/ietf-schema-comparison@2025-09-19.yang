@@ -10,7 +10,7 @@ module ietf-schema-comparison {
     prefix yanglib;
   }
 
-  revision 2025-09-03 {
+  revision 2025-09-19 {
     description
       "Initial revision.";
   }
@@ -589,6 +589,11 @@ module ietf-schema-comparison {
       mandatory true;
       description
         "Compared module revision.";
+    }
+    leaf-list enabled-feature {
+      type yang:yang-identifier;
+      description
+        "All the enabled features of the module.";
     }
   }
 

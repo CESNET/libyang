@@ -13,7 +13,7 @@
         "target-import": [
           {
             "module": "ietf-schema-comparison",
-            "revision": "2025-09-03"
+            "revision": "2025-09-19"
           },
           {
             "module": "ietf-yang-types",
