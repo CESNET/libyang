@@ -1,0 +1,15 @@
+module units {
+    namespace "urn:test:units";
+    prefix unt;
+    yang-version 1.1;
+
+    revision 2000-01-01;
+
+    leaf l1 {
+        type uint16;
+    }
+
+    leaf-list l2 {
+        type string;
+    }
+}

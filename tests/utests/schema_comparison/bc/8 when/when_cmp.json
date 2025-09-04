@@ -1,0 +1,128 @@
+{
+  "ietf-schema-comparison:schema-comparison": {
+    "compiled-diff": [
+      {
+        "source": {
+          "module": "when",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "when",
+          "revision": "2000-01-02"
+        },
+        "target-import": [
+          {
+            "module": "ietf-schema-comparison",
+            "revision": "2025-09-03"
+          },
+          {
+            "module": "ietf-yang-types",
+            "revision": "2013-07-15"
+          },
+          {
+            "module": "ietf-yang-library",
+            "revision": "2019-01-04"
+          },
+          {
+            "module": "ietf-yang-types",
+            "revision": "2013-07-15"
+          },
+          {
+            "module": "ietf-inet-types",
+            "revision": "2013-07-15"
+          },
+          {
+            "module": "ietf-datastores",
+            "revision": "2018-02-14"
+          }
+        ],
+        "conformance": "backwards-compatible",
+        "node-diff": [
+          {
+            "node": "/when:l1",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "when",
+                "change": "removed",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "when": [
+                {
+                  "condition": "10 = 5",
+                  "status": "current"
+                }
+              ],
+              "type": {
+                "base-type": "uint16"
+              }
+            },
+            "new": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "uint16"
+              }
+            }
+          },
+          {
+            "node": "/when:l2",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "when",
+                "change": "removed",
+                "conformance": "backwards-compatible"
+              },
+              {
+                "stmt": "when",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "when": [
+                {
+                  "condition": "/l1 > 10",
+                  "status": "current"
+                }
+              ],
+              "type": {
+                "base-type": "string"
+              }
+            },
+            "new": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "when": [
+                {
+                  "condition": "/l1 > 5",
+                  "status": "current",
+                  "ext-instance": [
+                    {
+                      "module": "ietf-schema-comparison",
+                      "name": "backwards-compatible"
+                    }
+                  ]
+                }
+              ],
+              "type": {
+                "base-type": "string"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

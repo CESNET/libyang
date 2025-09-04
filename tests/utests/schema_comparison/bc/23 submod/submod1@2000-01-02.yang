@@ -1,0 +1,21 @@
+module submod1 {
+    namespace "urn:test:submod1";
+    prefix sm1;
+    yang-version 1.1;
+
+    include submod11 {
+        revision-date 2000-01-02;
+    }
+    include submod12 {
+        revision-date 2000-01-02;
+    }
+    include submod13 {
+        revision-date 2000-01-02;
+    }
+
+    revision 2000-01-02;
+
+    leaf l1 {
+        type string;
+    }
+}

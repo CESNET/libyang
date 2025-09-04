@@ -1,0 +1,43 @@
+module new-stmt {
+    namespace "urn:test:new-stmt";
+    prefix nst;
+    yang-version 1.1;
+
+    revision 2000-01-02;
+
+    extension my-ext;
+
+    feature feat1;
+
+    identity base-a;
+    identity base-b;
+
+    grouping top-grp {
+        leaf gleaf {
+            type uint32;
+        }
+    }
+
+    grouping top-grp2 {
+        container cont;
+    }
+
+    typedef type1 {
+        type int8;
+    }
+
+    leaf l1 {
+        type string;
+    }
+
+    rpc r1;
+    rpc r2 {
+        input {
+            leaf l {
+                type string;
+            }
+        }
+    }
+
+    notification n1;
+}

@@ -1,0 +1,54 @@
+{
+  "ietf-schema-comparison:schema-comparison": {
+    "compiled-diff": [
+      {
+        "source": {
+          "module": "new-data-def",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "new-data-def",
+          "revision": "2000-01-02"
+        },
+        "conformance": "backwards-compatible",
+        "node-diff": [
+          {
+            "node": "/new-data-def:cont/l1",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "string"
+              }
+            }
+          },
+          {
+            "node": "/new-data-def:cont",
+            "node-type": "container",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "config": true,
+              "presence": false,
+              "status": "current"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

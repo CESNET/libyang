@@ -1,0 +1,22 @@
+module base {
+    namespace "urn:test:base";
+    prefix bas;
+    yang-version 1.1;
+
+    revision 2000-01-01;
+
+    identity base-a;
+    identity base-b;
+
+    leaf l1 {
+        type identityref {
+            base base-b;
+        }
+    }
+
+    leaf l2 {
+        type identityref {
+            base base-a;
+        }
+    }
+}

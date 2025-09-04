@@ -11,6 +11,7 @@ set(format_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/types/*.c
     ${CMAKE_CURRENT_SOURCE_DIR}/restriction/*.c
     ${CMAKE_CURRENT_SOURCE_DIR}/node/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/schema_comparison/*.c
     PARENT_SCOPE)
 
 ly_add_utest(NAME uint8  SOURCES types/uint8.c)
@@ -77,3 +78,5 @@ ly_add_utest(NAME nacm SOURCES extensions/test_nacm.c)
 ly_add_utest(NAME yangdata SOURCES extensions/test_yangdata.c)
 ly_add_utest(NAME schema_mount SOURCES extensions/test_schema_mount.c)
 ly_add_utest(NAME structure SOURCES extensions/test_structure.c)
+
+ly_add_utest(NAME schema_comparison SOURCES schema_comparison/test_schema_comparison.c)

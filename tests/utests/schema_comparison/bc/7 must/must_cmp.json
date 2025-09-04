@@ -1,0 +1,125 @@
+{
+  "ietf-schema-comparison:schema-comparison": {
+    "compiled-diff": [
+      {
+        "source": {
+          "module": "must",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "must",
+          "revision": "2000-01-02"
+        },
+        "target-import": [
+          {
+            "module": "ietf-schema-comparison",
+            "revision": "2025-09-03"
+          },
+          {
+            "module": "ietf-yang-types",
+            "revision": "2013-07-15"
+          },
+          {
+            "module": "ietf-yang-library",
+            "revision": "2019-01-04"
+          },
+          {
+            "module": "ietf-yang-types",
+            "revision": "2013-07-15"
+          },
+          {
+            "module": "ietf-inet-types",
+            "revision": "2013-07-15"
+          },
+          {
+            "module": "ietf-datastores",
+            "revision": "2018-02-14"
+          }
+        ],
+        "conformance": "backwards-compatible",
+        "node-diff": [
+          {
+            "node": "/must:l1",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "must",
+                "change": "removed",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "config": true,
+              "mandatory": false,
+              "must": [
+                {
+                  "condition": ". = 5"
+                }
+              ],
+              "status": "current",
+              "type": {
+                "base-type": "uint16"
+              }
+            },
+            "new": {
+              "config": true,
+              "mandatory": false,
+              "status": "current",
+              "type": {
+                "base-type": "uint16"
+              }
+            }
+          },
+          {
+            "node": "/must:l2",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "must",
+                "change": "removed",
+                "conformance": "backwards-compatible"
+              },
+              {
+                "stmt": "must",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "config": true,
+              "mandatory": false,
+              "must": [
+                {
+                  "condition": ". > 50"
+                }
+              ],
+              "status": "current",
+              "type": {
+                "base-type": "uint32"
+              }
+            },
+            "new": {
+              "config": true,
+              "mandatory": false,
+              "must": [
+                {
+                  "condition": ". > 30",
+                  "ext-instance": [
+                    {
+                      "module": "ietf-schema-comparison",
+                      "name": "backwards-compatible"
+                    }
+                  ]
+                }
+              ],
+              "status": "current",
+              "type": {
+                "base-type": "uint32"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

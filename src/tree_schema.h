@@ -34,6 +34,7 @@ extern "C" {
 struct ly_ctx;
 struct ly_path;
 struct ly_set;
+struct lyd_node;
 struct lys_module;
 struct lysc_node;
 struct lyxp_expr;
@@ -2316,6 +2317,20 @@ LIBYANG_API_DECL const struct lysc_node *lys_find_child(const struct lysc_node *
  * @return LY_ERR on other errors during module compilation.
  */
 LIBYANG_API_DECL LY_ERR lys_set_implemented(struct lys_module *mod, const char **features);
+
+/**
+ * @brief Compare 2 revisions of a compiled module and generate their schema diff. Requires 'ietf-schema-comparison'
+ * YANG module to be loaded.
+ *
+ * @param[in] ctx Context to use for creating the schema diff data tree.
+ * @param[in] src_mod Source implemented module to compare.
+ * @param[in] trg_mod Target implemented module to compare.
+ * @param[out] schema_diff Generated schema diff tree.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+LIBYANG_API_DECL LY_ERR lysc_compare(const struct ly_ctx *ctx, const struct lys_module *src_mod,
+        const struct lys_module *trg_mod, struct lyd_node **schema_diff);
 
 /**
  * @brief Stringify schema nodetype.

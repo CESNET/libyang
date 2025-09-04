@@ -136,6 +136,8 @@ set(libsrc
     src/schema_compile_node.c
     src/schema_compile_amend.c
     src/schema_features.c
+    src/schema_diff_change.c
+    src/schema_diff_tree.c
     src/tree_data_sorted.c
     src/tree_schema.c
     src/tree_schema_free.c
@@ -201,6 +203,7 @@ set(internal_headers
     src/schema_compile_amend.h
     src/schema_compile_node.h
     src/schema_features.h
+    src/schema_diff.h
     src/tree_data_internal.h
     src/tree_schema_internal.h
     src/validation.h
