@@ -52,7 +52,7 @@ bc_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 const struct lyplg_ext_record plugins_schema_cmp[] = {
     {
         .module = "ietf-schema-comparison",
-        .revision = "2025-09-03",
+        .revision = "2025-09-19",
         .name = "backwards-compatible",
 
         .plugin.id = "ly2 schema-comparison",
