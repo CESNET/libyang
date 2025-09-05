@@ -223,7 +223,7 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, uint3
     ly_bool dynamic = 0;
     LY_VALUE_FORMAT format;
     void *prefix_data;
-    uint32_t value_size_bits, opts = 0, ti;
+    uint32_t value_size_bits = 0, opts = 0, ti;
     struct lyplg_type *type_plg;
 
     *err = NULL;
