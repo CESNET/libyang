@@ -1190,7 +1190,7 @@ lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node,
         enum LYJSON_PARSER_STATUS *status_p, struct lyd_node **first_p, struct lyd_node **node_p)
 {
     LY_ERR r;
-    const char *opaq_name, *mod_name, *attr_mod;
+    const char *opaq_name, *mod_name, *attr_mod = NULL;
     size_t opaq_name_len, attr_mod_len;
 
     if (!attr_node) {
