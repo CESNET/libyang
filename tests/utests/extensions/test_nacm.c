@@ -112,10 +112,42 @@ test_deny_write(void **state)
             "/aa:l/{extension='nacm:default-deny-write'}", 0);
 }
 
+static void
+test_extension(void **state)
+{
+    const char *str;
+    struct lys_module *mod;
+    const struct lysc_node *snode;
+
+    str = "module with-extensions {"
+"  yang-version 1.1;"
+"  prefix \"we\";"
+"  namespace \"we\";"
+"  import ietf-netconf-acm {"
+"    prefix \"nacm\";"
+"  }"
+"  extension annotation {"
+"      argument name;"
+"      description \"This is inspired by md:annotation\";"
+"  }"
+"  container c {"
+"    nacm:default-deny-write;"
+"    we:annotation last-modified {"
+"      type yang:date-and-time;"
+"    }"
+"  }"
+"}";
+
+    /* compile without obsolete nodes */
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, &mod), LY_SUCCESS);
+    CHECK_LOG_CTX(NULL, NULL, 0);
+}
+
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
+        UTEST(test_extension, setup),
         UTEST(test_deny_all, setup),
         UTEST(test_deny_write, setup),
     };
