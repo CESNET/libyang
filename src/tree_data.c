@@ -3825,17 +3825,65 @@ lyd_link_leafref_node(const struct lyd_node_term *node, const struct lyd_node_te
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Traverse through data tree node suitable types and adds leafrefs links to the given nodes
+ *
+ * This API requires usage of ::LY_CTX_LEAFREF_LINKING context flag.
+ *
+ * @param[in] tree The data tree root node.
+ * @param[in] cur_node The current data node.
+ * @param[in] value The current node value.
+ * @param[in] type The leaf/leaf-list type of given data node.
+ *
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+static LY_ERR
+lyd_leafref_link_node_tree_type(const struct lyd_node *tree, const struct lyd_node *cur_node, struct lyd_value *value, const struct lysc_type *type)
+{
+    char *errmsg;
+    struct ly_set *targets = NULL;
+    LY_ERR ret = LY_SUCCESS;
+    struct lysc_type_leafref *lref;
+    struct lysc_type_union *un;
+    LY_ARRAY_COUNT_TYPE u;
+    uint32_t i;
+    struct lyd_node_term *leafref_node = (struct lyd_node_term *)cur_node;
+
+    if (type->basetype == LY_TYPE_LEAFREF) {
+        lref = (struct lysc_type_leafref *)type;
+        ly_set_free(targets, NULL);
+        if (lyplg_type_resolve_leafref(lref, cur_node, value, tree, NULL, &targets, &errmsg)) {
+            /* leafref target not found */
+            free(errmsg);
+        } else {
+            /* leafref target found, link it */
+            for (i = 0; i < targets->count; ++i) {
+                if (targets->dnodes[i]->schema->nodetype & LYD_NODE_TERM) {
+                    ret = lyd_link_leafref_node((struct lyd_node_term *)targets->dnodes[i], leafref_node);
+                    LY_CHECK_GOTO(ret, cleanup);
+                }
+            }
+        }
+    } else if (type->basetype == LY_TYPE_UNION) {
+        un = (struct lysc_type_union *)type;
+        LY_ARRAY_FOR(un->types, u) {
+            ret = lyd_leafref_link_node_tree_type(tree, cur_node, &leafref_node->value.subvalue->value, un->types[u]);
+            LY_CHECK_GOTO(ret, cleanup)
+        }
+    }
+
+cleanup:
+    ly_set_free(targets, NULL);
+    return ret;
+}
+
 LIBYANG_API_DEF LY_ERR
 lyd_leafref_link_node_tree(const struct lyd_node *tree)
 {
     const struct lyd_node *sibling, *elem;
-    struct ly_set *targets = NULL;
-    char *errmsg;
-    struct lyd_node_term *leafref_node;
+    struct lyd_node_term *cur_node;
     struct lysc_node_leaf *leaf_schema;
-    struct lysc_type_leafref *lref;
-    LY_ERR ret = LY_SUCCESS;
-    uint32_t i;
 
     LY_CHECK_ARG_RET(NULL, tree, LY_EINVAL);
 
@@ -3846,33 +3894,15 @@ lyd_leafref_link_node_tree(const struct lyd_node *tree)
     LY_LIST_FOR(tree, sibling) {
         LYD_TREE_DFS_BEGIN(sibling, elem) {
             if (elem->schema && (elem->schema->nodetype & LYD_NODE_TERM)) {
-                leafref_node = (struct lyd_node_term *)elem;
                 leaf_schema = (struct lysc_node_leaf *)elem->schema;
-
-                if (leaf_schema->type->basetype == LY_TYPE_LEAFREF) {
-                    lref = (struct lysc_type_leafref *)leaf_schema->type;
-                    ly_set_free(targets, NULL);
-                    if (lyplg_type_resolve_leafref(lref, elem, &leafref_node->value, tree, NULL, &targets, &errmsg)) {
-                        /* leafref target not found */
-                        free(errmsg);
-                    } else {
-                        /* leafref target found, link it */
-                        for (i = 0; i < targets->count; ++i) {
-                            if (targets->dnodes[i]->schema->nodetype & LYD_NODE_TERM) {
-                                ret = lyd_link_leafref_node((struct lyd_node_term *)targets->dnodes[i], leafref_node);
-                                LY_CHECK_GOTO(ret, cleanup);
-                            }
-                        }
-                    }
-                }
+                cur_node = (struct lyd_node_term *)elem;
+                LY_CHECK_RET(lyd_leafref_link_node_tree_type(tree, elem, &cur_node->value, leaf_schema->type));
             }
             LYD_TREE_DFS_END(sibling, elem);
         }
     }
 
-cleanup:
-    ly_set_free(targets, NULL);
-    return ret;
+    return LY_SUCCESS;
 }
 
 LY_ERR
