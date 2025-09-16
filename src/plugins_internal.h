@@ -71,9 +71,10 @@ extern uint32_t ly_static_ext_plugins_count;
  * @return Type plugin.
  */
 #define LYSC_GET_TYPE_PLG(PLUGIN_REF) \
+    ((PLUGIN_REF) ? \
     (((uintptr_t)(PLUGIN_REF) <= (uintptr_t)ly_static_type_plugins_count) ? \
     (struct lyplg_type *)&((struct lyplg_type_record *)ly_plugins_types.objs[(PLUGIN_REF) - 1])->plugin : \
-    (struct lyplg_type *)(PLUGIN_REF))
+    (struct lyplg_type *)(PLUGIN_REF)) : NULL)
 
 /**
  * @brief Get an extension plugin.
@@ -83,9 +84,10 @@ extern uint32_t ly_static_ext_plugins_count;
  * @return Extension plugin.
  */
 #define LYSC_GET_EXT_PLG(PLUGIN_REF) \
+    ((PLUGIN_REF) ? \
     (((uintptr_t)(PLUGIN_REF) <= (uintptr_t)ly_static_ext_plugins_count) ? \
     (struct lyplg_ext *)&((struct lyplg_ext_record *)ly_plugins_extensions.objs[(PLUGIN_REF) - 1])->plugin : \
-    (struct lyplg_ext *)(PLUGIN_REF))
+    (struct lyplg_ext *)(PLUGIN_REF)) : NULL)
 
 /**
  * @brief Initiate libyang plugins.
