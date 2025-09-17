@@ -1,7 +1,7 @@
 #!/bin/bash
 # create archive from current source using git
 
-VERSION=$(git log --oneline -n1 --grep="^VERSION" | rev | cut -d' ' -f1 | rev)
+VERSION=$(grep \(LIBYANG_M.*_VERSION CMakeLists.txt | tr -d '[:alpha:] _()' | sed 'N; N; s/\n/./g')
 
 NAMEVER=libyang-$VERSION
 ARCHIVE=$NAMEVER.tar.gz
