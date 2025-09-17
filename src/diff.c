@@ -2975,27 +2975,28 @@ cleanup:
 }
 
 /**
- * @brief Remove specific operation from all the nodes in a subtree.
+ * @brief Rename diff meta by deleting the old meta and creating a new one.
  *
- * @param[in] diff Diff subtree to process.
- * @param[in] op Only expected operation.
+ * @param[in] node Parent meta node.
+ * @param[in] mod Meta module.
+ * @param[in] src_name Current meta name.
+ * @param[in] trg_name New meta name.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_diff_reverse_remove_op_r(struct lyd_node *diff, enum lyd_diff_op op)
+lyd_diff_rename_meta(struct lyd_node *node, const struct lys_module *mod, const char *src_name, const char *trg_name)
 {
-    struct lyd_node *elem;
     struct lyd_meta *meta;
 
-    LYD_TREE_DFS_BEGIN(diff, elem) {
-        meta = lyd_find_meta(elem->meta, NULL, "yang:operation");
-        if (meta) {
-            LY_CHECK_ERR_RET(lyd_diff_str2op(lyd_get_meta_value(meta)) != op, LOGINT(LYD_CTX(diff)), LY_EINT);
-            lyd_free_meta_single(meta);
-        }
+    /* find the old meta */
+    meta = lyd_find_meta(node->meta, mod, src_name);
+    LY_CHECK_ERR_RET(!meta, LOGERR_META(LYD_CTX(node), src_name, node), LY_EINVAL);
 
-        LYD_TREE_DFS_END(diff, elem);
-    }
+    /* create the new meta */
+    LY_CHECK_RET(lyd_new_meta(LYD_CTX(node), node, mod, trg_name, lyd_get_meta_value(meta), LYD_NEW_VAL_STORE_ONLY, NULL));
+
+    /* delete the old meta */
+    lyd_free_meta_single(meta);
 
     return LY_SUCCESS;
 }
@@ -3149,7 +3150,6 @@ lyd_diff_reverse_siblings_r(struct lyd_node *sibling, const struct lys_module *y
     struct lyd_node *iter, *iter2, **userord = NULL;
     const struct lysc_node *userord_schema = NULL;
     enum lyd_diff_op op;
-    ly_bool recursive;
 
     LY_LIST_FOR(sibling, iter) {
         /* skip all keys */
@@ -3166,30 +3166,81 @@ lyd_diff_reverse_siblings_r(struct lyd_node *sibling, const struct lys_module *y
         /* find operation attribute, if any */
         LY_CHECK_GOTO(rc = lyd_diff_get_op(iter, &op, NULL), cleanup);
 
-        recursive = 1;
         switch (op) {
         case LYD_DIFF_OP_CREATE:
             /* reverse create to delete */
             LY_CHECK_GOTO(rc = lyd_diff_change_op(iter, LYD_DIFF_OP_DELETE), cleanup);
 
-            /* check all the children for the same operation, nothing else is expected */
-            LY_LIST_FOR(lyd_child(iter), iter2) {
-                lyd_diff_reverse_remove_op_r(iter2, LYD_DIFF_OP_CREATE);
+            switch (iter->schema->nodetype) {
+            case LYS_LEAF:
+            case LYS_ANYXML:
+            case LYS_ANYDATA:
+                /* nothing to do */
+                break;
+            case LYS_LEAFLIST:
+                /* leaf-list create -> delete */
+                if (lysc_is_dup_inst_list(iter->schema)) {
+                    LY_CHECK_GOTO(rc = lyd_diff_rename_meta(iter, yang_mod, "position", "orig-position"), cleanup);
+                } else {
+                    LY_CHECK_GOTO(rc = lyd_diff_rename_meta(iter, yang_mod, "value", "orig-value"), cleanup);
+                }
+                break;
+            case LYS_LIST:
+                /* list create -> delete */
+                if (lysc_is_dup_inst_list(iter->schema)) {
+                    LY_CHECK_GOTO(rc = lyd_diff_rename_meta(iter, yang_mod, "position", "orig-position"), cleanup);
+                } else {
+                    LY_CHECK_GOTO(rc = lyd_diff_rename_meta(iter, yang_mod, "key", "orig-key"), cleanup);
+                }
+                break;
+            default:
+                LOGINT(LYD_CTX(iter));
+                rc = LY_EINT;
+                goto cleanup;
             }
 
-            recursive = 0;
+            /* keep the operation for all the children, handled recursively */
+            LY_LIST_FOR(lyd_child_no_keys(iter), iter2) {
+                LY_CHECK_GOTO(rc = lyd_diff_change_op(iter2, LYD_DIFF_OP_CREATE), cleanup);
+            }
             break;
 
         case LYD_DIFF_OP_DELETE:
             /* reverse delete to create */
             LY_CHECK_GOTO(rc = lyd_diff_change_op(iter, LYD_DIFF_OP_CREATE), cleanup);
 
-            /* check all the children for the same operation, nothing else is expected */
-            LY_LIST_FOR(lyd_child(iter), iter2) {
-                lyd_diff_reverse_remove_op_r(iter2, LYD_DIFF_OP_DELETE);
+            switch (iter->schema->nodetype) {
+            case LYS_LEAF:
+            case LYS_ANYXML:
+            case LYS_ANYDATA:
+                /* nothing to do */
+                break;
+            case LYS_LEAFLIST:
+                /* leaf-list delete -> create */
+                if (lysc_is_dup_inst_list(iter->schema)) {
+                    LY_CHECK_GOTO(rc = lyd_diff_rename_meta(iter, yang_mod, "orig-position", "position"), cleanup);
+                } else {
+                    LY_CHECK_GOTO(rc = lyd_diff_rename_meta(iter, yang_mod, "orig-value", "value"), cleanup);
+                }
+                break;
+            case LYS_LIST:
+                /* list dlete -> create */
+                if (lysc_is_dup_inst_list(iter->schema)) {
+                    LY_CHECK_GOTO(rc = lyd_diff_rename_meta(iter, yang_mod, "orig-position", "position"), cleanup);
+                } else {
+                    LY_CHECK_GOTO(rc = lyd_diff_rename_meta(iter, yang_mod, "orig-key", "key"), cleanup);
+                }
+                break;
+            default:
+                LOGINT(LYD_CTX(iter));
+                rc = LY_EINT;
+                goto cleanup;
             }
 
-            recursive = 0;
+            /* keep the operation for all the children, handled recursively */
+            LY_LIST_FOR(lyd_child_no_keys(iter), iter2) {
+                LY_CHECK_GOTO(rc = lyd_diff_change_op(iter2, LYD_DIFF_OP_DELETE), cleanup);
+            }
             break;
 
         case LYD_DIFF_OP_REPLACE:
@@ -3246,9 +3297,7 @@ lyd_diff_reverse_siblings_r(struct lyd_node *sibling, const struct lys_module *y
         LY_CHECK_GOTO(rc = lyd_diff_reverse_metadata_diff(iter), cleanup);
 
         /* revursively reverse all descendants */
-        if (recursive) {
-            LY_CHECK_GOTO(rc = lyd_diff_reverse_siblings_r(lyd_child(iter), yang_mod), cleanup);
-        }
+        LY_CHECK_GOTO(rc = lyd_diff_reverse_siblings_r(lyd_child(iter), yang_mod), cleanup);
 
         if (lysc_is_userordered(iter->schema)) {
             /* special user-ordered nodes processing */
