@@ -3171,32 +3171,16 @@ lyd_diff_reverse_siblings_r(struct lyd_node *sibling, const struct lys_module *y
             /* reverse create to delete */
             LY_CHECK_GOTO(rc = lyd_diff_change_op(iter, LYD_DIFF_OP_DELETE), cleanup);
 
-            switch (iter->schema->nodetype) {
-            case LYS_LEAF:
-            case LYS_ANYXML:
-            case LYS_ANYDATA:
-                /* nothing to do */
-                break;
-            case LYS_LEAFLIST:
-                /* leaf-list create -> delete */
+            /* reverse user-ordered metadata */
+            if (lysc_is_userordered(iter->schema)) {
                 if (lysc_is_dup_inst_list(iter->schema)) {
                     LY_CHECK_GOTO(rc = lyd_diff_rename_meta(iter, yang_mod, "position", "orig-position"), cleanup);
-                } else {
+                } else if (iter->schema->nodetype == LYS_LEAFLIST) {
                     LY_CHECK_GOTO(rc = lyd_diff_rename_meta(iter, yang_mod, "value", "orig-value"), cleanup);
-                }
-                break;
-            case LYS_LIST:
-                /* list create -> delete */
-                if (lysc_is_dup_inst_list(iter->schema)) {
-                    LY_CHECK_GOTO(rc = lyd_diff_rename_meta(iter, yang_mod, "position", "orig-position"), cleanup);
                 } else {
+                    assert(iter->schema->nodetype == LYS_LIST);
                     LY_CHECK_GOTO(rc = lyd_diff_rename_meta(iter, yang_mod, "key", "orig-key"), cleanup);
                 }
-                break;
-            default:
-                LOGINT(LYD_CTX(iter));
-                rc = LY_EINT;
-                goto cleanup;
             }
 
             /* keep the operation for all the children, handled recursively */
@@ -3209,32 +3193,16 @@ lyd_diff_reverse_siblings_r(struct lyd_node *sibling, const struct lys_module *y
             /* reverse delete to create */
             LY_CHECK_GOTO(rc = lyd_diff_change_op(iter, LYD_DIFF_OP_CREATE), cleanup);
 
-            switch (iter->schema->nodetype) {
-            case LYS_LEAF:
-            case LYS_ANYXML:
-            case LYS_ANYDATA:
-                /* nothing to do */
-                break;
-            case LYS_LEAFLIST:
-                /* leaf-list delete -> create */
+            /* reverse user-ordered metadata */
+            if (lysc_is_userordered(iter->schema)) {
                 if (lysc_is_dup_inst_list(iter->schema)) {
                     LY_CHECK_GOTO(rc = lyd_diff_rename_meta(iter, yang_mod, "orig-position", "position"), cleanup);
-                } else {
+                } else if (iter->schema->nodetype == LYS_LEAFLIST) {
                     LY_CHECK_GOTO(rc = lyd_diff_rename_meta(iter, yang_mod, "orig-value", "value"), cleanup);
-                }
-                break;
-            case LYS_LIST:
-                /* list dlete -> create */
-                if (lysc_is_dup_inst_list(iter->schema)) {
-                    LY_CHECK_GOTO(rc = lyd_diff_rename_meta(iter, yang_mod, "orig-position", "position"), cleanup);
                 } else {
+                    assert(iter->schema->nodetype == LYS_LIST);
                     LY_CHECK_GOTO(rc = lyd_diff_rename_meta(iter, yang_mod, "orig-key", "key"), cleanup);
                 }
-                break;
-            default:
-                LOGINT(LYD_CTX(iter));
-                rc = LY_EINT;
-                goto cleanup;
             }
 
             /* keep the operation for all the children, handled recursively */
