@@ -301,6 +301,61 @@ test_validation(void **state)
     lyd_free_all(tree);
 }
 
+static void
+test_validation_store_only(void **state)
+{
+    const char *val_text = NULL;
+    struct ly_err_item *err = NULL;
+    struct lys_module *mod;
+    struct lyd_value value = {0};
+    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_UNION]));
+    struct lysc_type *lysc_type;
+    const char *schema;
+
+    schema = MODULE_CREATE_YANG("base",
+            "leaf l1 {\n"
+            "  type union {\n"
+            "    type string {\n"
+            "      pattern \"[A-Z]\";\n"
+            "    }\n"
+            "    type int8 {\n"
+            "      range 1..5;\n"
+            "    }\n"
+            "  }\n"
+            "}\n");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+    lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+
+    /* check proper type */
+    assert_string_equal("ly2 union", type->id);
+
+    /* with LYPLG_TYPE_STORE_ONLY and correct validation */
+    err = NULL;
+    val_text = "1";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text) * 8,
+            LYPLG_TYPE_STORE_ONLY, LY_VALUE_CANON, NULL, LYD_VALHINT_STRING | LYD_VALHINT_DECNUM, NULL, NULL, &value, NULL, &err));
+    assert_int_equal(value.subvalue->value.realtype->basetype, LY_TYPE_INT8);
+    type->free(UTEST_LYCTX, &value);
+    ly_err_free(err);
+
+    /* with LYPLG_TYPE_STORE_ONLY and incorrect validation */
+    err = NULL;
+    val_text = "6";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text) * 8,
+            LYPLG_TYPE_STORE_ONLY, LY_VALUE_CANON, NULL, LYD_VALHINT_STRING | LYD_VALHINT_DECNUM, NULL, NULL, &value, NULL, &err));
+    assert_int_equal(value.subvalue->value.realtype->basetype, LY_TYPE_STRING);
+    type->free(UTEST_LYCTX, &value);
+    ly_err_free(err);
+
+    /* without LYPLG_TYPE_STORE_ONLY and incorrect validation */
+    err = NULL;
+    val_text = "10";
+    assert_int_equal(LY_EVALID, type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text) * 8,
+            0, LY_VALUE_CANON, NULL, LYD_VALHINT_STRING | LYD_VALHINT_DECNUM, NULL, NULL, &value, NULL, &err));
+    ly_err_free(err);
+    UTEST_LOG_CTX_CLEAN;
+}
+
 int
 main(void)
 {
@@ -310,6 +365,7 @@ main(void)
         UTEST(test_plugin_lyb),
         UTEST(test_plugin_sort),
         UTEST(test_validation),
+        UTEST(test_validation_store_only),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
