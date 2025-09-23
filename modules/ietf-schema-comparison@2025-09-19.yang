@@ -89,6 +89,15 @@ module ietf-schema-comparison {
       "Type of the statement that a change affects.";
   }
 
+  typedef revision-or-empty {
+    type union {
+      type empty;
+      type yanglib:revision-identifier;
+    }
+    description
+      "Module or submodule revision. If it has none, an empty value is used.";
+  }
+
   grouping ext-instance-changes {
     description
       "Describes an extension-instance statement change.";
@@ -582,13 +591,27 @@ module ietf-schema-comparison {
         "Compared module name.";
     }
     leaf revision {
-      type union {
-        type empty;
-        type yanglib:revision-identifier;
-      }
+      type revision-or-empty;
       mandatory true;
       description
         "Compared module revision.";
+    }
+    list submodule {
+      key "name revision";
+      leaf name {
+        type yang:yang-identifier;
+        mandatory true;
+        description
+          "Submodule name.";
+      }
+      leaf revision {
+        type revision-or-empty;
+        mandatory true;
+        description
+          "Submodule revision.";
+      }
+      description
+        "Submodule of the main module.";
     }
     leaf-list enabled-feature {
       type yang:yang-identifier;
@@ -679,12 +702,12 @@ module ietf-schema-comparison {
         uses change-info;
         container old {
           description
-            "Changed statements in the older revision of the YANG module.";
+            "All the node substatements in the older revision of the YANG module.";
           uses node-changes;
         }
         container new {
           description
-            "Changed statements in the newer revision of the YANG module.";
+            "All the node substatements in the newer revision of the YANG module.";
           uses node-changes;
         }
       }
