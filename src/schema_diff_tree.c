@@ -1231,6 +1231,33 @@ schema_diff_enabled_features(const struct lys_module *mod, struct lyd_node *pare
 }
 
 /**
+ * @brief Create list of submodules of the module as part of cmp YANG data.
+ *
+ * @param[in] mod Module to use.
+ * @param[in,out] parent Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_submodules(const struct lys_module *mod, struct lyd_node *parent)
+{
+    LY_ERR rc = LY_SUCCESS;
+    LY_ARRAY_COUNT_TYPE u;
+    const struct lysp_submodule *submod;
+    const char *revision;
+
+    LY_ARRAY_FOR(mod->parsed->includes, u) {
+        submod = mod->parsed->includes[u].submodule;
+
+        /* add the includes */
+        revision = submod->revs ? submod->revs[0].date : NULL;
+        LY_CHECK_GOTO(rc = lyd_new_list(parent, NULL, "submodule", 0, NULL, submod->name, revision), cleanup);
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
  * @brief Create cmp YANG data from module imports.
  *
  * @param[in] mod Module to use.
@@ -1264,6 +1291,8 @@ schema_diff_imports(const struct lys_module *mod, const struct lysc_node *schema
         /* add the imports, recursively */
         LY_CHECK_GOTO(rc = lyd_new_list(diff_list, NULL, schema->name, 0, &mod_list, imp->name, imp->revision), cleanup);
         LY_CHECK_GOTO(rc = schema_diff_enabled_features(imp, mod_list), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_submodules(imp, mod_list), cleanup);
+
         LY_CHECK_GOTO(rc = schema_diff_imports(imp, schema, diff_list), cleanup);
     }
 
@@ -2049,6 +2078,7 @@ lysc_diff_tree(const struct lys_module *mod1, const struct lys_module *mod2, con
     LY_CHECK_GOTO(rc = lyd_new_term(mod_cont, NULL, "module", mod1->name, 0, NULL), cleanup);
     LY_CHECK_GOTO(rc = lyd_new_term(mod_cont, NULL, "revision", mod1->revision, 0, NULL), cleanup);
     LY_CHECK_GOTO(rc = schema_diff_enabled_features(mod1, mod_cont), cleanup);
+    LY_CHECK_GOTO(rc = schema_diff_submodules(mod1, mod_cont), cleanup);
 
     imp_schema = lys_find_path(NULL, diff_list->schema, "source-import", 0);
     LY_CHECK_GOTO(rc = schema_diff_imports(mod1, imp_schema, diff_list), cleanup);
@@ -2058,6 +2088,7 @@ lysc_diff_tree(const struct lys_module *mod1, const struct lys_module *mod2, con
     LY_CHECK_GOTO(rc = lyd_new_term(mod_cont, NULL, "module", mod2->name, 0, NULL), cleanup);
     LY_CHECK_GOTO(rc = lyd_new_term(mod_cont, NULL, "revision", mod2->revision, 0, NULL), cleanup);
     LY_CHECK_GOTO(rc = schema_diff_enabled_features(mod2, mod_cont), cleanup);
+    LY_CHECK_GOTO(rc = schema_diff_submodules(mod2, mod_cont), cleanup);
 
     imp_schema = lys_find_path(NULL, diff_list->schema, "target-import", 0);
     LY_CHECK_GOTO(rc = schema_diff_imports(mod2, imp_schema, diff_list), cleanup);
