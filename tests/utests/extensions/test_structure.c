@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for structure extensions support
  *
- * Copyright (c) 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2022 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -51,11 +51,14 @@ test_schema(void **state)
             "  status obsolete;"
             "  reference none;"
             "  leaf aug-leaf {type string;}"
+            "}"
+            "sx:augment-structure \"/a:struct\" {"
+            "  leaf l {type uint32;}"
             "}}";
 
     UTEST_ADD_MODULE(data, LYS_IN_YANG, NULL, &mod);
     assert_non_null(e = mod->compiled->exts);
-    assert_int_equal(LY_ARRAY_COUNT(mod->compiled->exts), 1);
+    assert_int_equal(LY_ARRAY_COUNT(mod->compiled->exts), 2);
 
     /* yang compiled print */
     info = "module a {\n"
@@ -98,6 +101,11 @@ test_schema(void **state)
             "      type string;\n"
             "      status deprecated;\n"
             "    }\n"
+            "    leaf l {\n"
+            "      type uint32;\n"
+            "      config true;\n"
+            "      status deprecated;\n"
+            "    }\n"
             "  }\n"
             "}\n";
 
@@ -111,6 +119,7 @@ test_schema(void **state)
             "  prefix b;\n"
             "\n"
             "  ietf-yang-structure-ext:augment-structure \"/a:struct/a:n1\";\n"
+            "  ietf-yang-structure-ext:augment-structure \"/a:struct\";\n"
             "}\n";
 
     assert_non_null(mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "b"));

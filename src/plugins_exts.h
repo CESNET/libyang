@@ -109,7 +109,7 @@ extern "C" {
 /**
  * @brief Extensions API version
  */
-#define LYPLG_EXT_API_VERSION 9
+#define LYPLG_EXT_API_VERSION 10
 
 /**
  * @brief Mask for an operation statement.
@@ -644,12 +644,27 @@ LIBYANG_API_DECL struct lysp_module *lyplg_ext_compile_get_pmod(const struct lys
  * @param[in] extp Parsed representation of the extension instance being processed.
  * @param[in,out] ext Compiled extension instance with the prepared ::lysc_ext_instance.substmts array, which will be updated
  * by storing the compiled data.
+ * @param[in] parent Optional parent of all the compiled schema nodes.
  * @return LY_SUCCESS on success.
  * @return LY_EVALID if compilation of the substatements fails.
  * @return LY_ENOT if the extension is disabled (by if-feature) and should be ignored.
  */
 LIBYANG_API_DECL LY_ERR lyplg_ext_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *extp,
-        struct lysc_ext_instance *ext);
+        struct lysc_ext_instance *ext, struct lysc_node *parent);
+
+/**
+ * @brief Compile augments for a specific node in an extension instance.
+ *
+ * May be useful for cases when there are virtual nodes that cannot be compiled using
+ * ::lyplg_ext_compile_extension_instance().
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] ext Compiled extension instance.
+ * @param[in,out] node Compiled schema node to apply any matching augments for.
+ * @return LY_ERR value.
+ */
+LIBYANG_API_DECL LY_ERR lyplg_ext_compiled_node_augments(struct lysc_ctx *ctx, struct lysc_ext_instance *ext,
+        struct lysc_node *node);
 
 /** @} pluginsExtensionsCompile */
 

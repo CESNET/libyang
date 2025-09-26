@@ -1627,33 +1627,6 @@ lysp_schema_nodeid_match_node(const struct lysc_node **node, const struct lys_mo
 }
 
 /**
- * @brief Check whether a compiled ext instance matches a single schema nodeid name test.
- *
- * @param[in,out] ext Compiled ext instance to consider. On a match it is zeroed to not match again.
- * @param[in] mod Expected module.
- * @param[in] name Expected name, in the dictionary.
- * @return Whether it is a match or not.
- */
-static ly_bool
-lysp_schema_nodeid_match_ext(const struct lysc_ext_instance **ext, const struct lys_module *mod, const char *name_dict)
-{
-    /* compare with the module */
-    if ((*ext)->module != mod) {
-        return 0;
-    }
-
-    /* compare names (argument) */
-    if ((*ext)->argument != name_dict) {
-        return 0;
-    }
-
-    /* zero */
-    *ext = NULL;
-
-    return 1;
-}
-
-/**
  * @brief Check whether a node matches specific schema nodeid.
  *
  * @param[in] nodeid Compiled nodeid to match.
@@ -1705,7 +1678,7 @@ lysp_schema_nodeid_match(const struct lysc_nodeid *nodeid, const struct lysp_mod
     while (i) {
         --i;
 
-        if (!parent && !pnode_ext) {
+        if (!parent) {
             /* no more parents but path continues */
             return 0;
         }
@@ -1714,24 +1687,17 @@ lysp_schema_nodeid_match(const struct lysc_nodeid *nodeid, const struct lysp_mod
         mod = lys_schema_node_get_module(nodeid_pmod->mod->ctx, nodeid->prefix[i], nodeid_pmod);
         assert(mod);
 
-        if (parent) {
-            /* compare with the parent */
-            if (!lysp_schema_nodeid_match_node(&parent, mod, nodeid->name[i])) {
-                return 0;
-            }
-        } else {
-            /* compare with the ext instance */
-            if (!lysp_schema_nodeid_match_ext(&pnode_ext, mod, nodeid->name[i])) {
-                return 0;
-            }
+        /* compare with the parent */
+        if (!lysp_schema_nodeid_match_node(&parent, mod, nodeid->name[i])) {
+            return 0;
         }
     }
 
     if (ctx_node && (ctx_node != parent)) {
         /* descendant path has not finished in the context node */
         return 0;
-    } else if (!ctx_node && (parent || pnode_ext)) {
-        /* some parent/extension was not matched */
+    } else if (!ctx_node && parent) {
+        /* some parent was not matched */
         return 0;
     }
 

@@ -162,7 +162,7 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, 
     ext->substmts[5].stmt = LY_STMT_REFERENCE;
     ext->substmts[5].storage_p = (void **)&ann_cdata->ref;
 
-    ret = lyplg_ext_compile_extension_instance(cctx, extp, ext);
+    ret = lyplg_ext_compile_extension_instance(cctx, extp, ext, NULL);
     return ret;
 
 emem:

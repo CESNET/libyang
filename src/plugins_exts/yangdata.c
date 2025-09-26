@@ -107,7 +107,7 @@ yangdata_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, st
     ext->substmts[2].storage_p = (void **)&ext->compiled;
 
     *lyplg_ext_compile_get_options(cctx) |= LYS_COMPILE_NO_CONFIG | LYS_COMPILE_NO_DISABLED;
-    ret = lyplg_ext_compile_extension_instance(cctx, extp, ext);
+    ret = lyplg_ext_compile_extension_instance(cctx, extp, ext, NULL);
     *lyplg_ext_compile_get_options(cctx) = prev_options;
     if (ret) {
         return ret;

@@ -1746,7 +1746,7 @@ test_extension_compile(void **state)
     child.kw = LY_STMT_ERROR_MESSAGE;
 
     /* compile */
-    assert_int_equal(LY_SUCCESS, lyplg_ext_compile_extension_instance(&cctx, &ext_p, &ext_c));
+    assert_int_equal(LY_SUCCESS, lyplg_ext_compile_extension_instance(&cctx, &ext_p, &ext_c, NULL));
 
     /* check */
     assert_string_equal(ext_c.compiled, "my error");

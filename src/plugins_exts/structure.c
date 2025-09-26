@@ -35,11 +35,6 @@ struct lysp_ext_instance_structure {
 };
 
 struct lysc_ext_instance_structure {
-    struct lysc_must *musts;
-    uint16_t flags;
-    const char *dsc;
-    const char *ref;
-    struct lysc_node *child;
     struct lysc_node_container *top_cont;
 };
 
@@ -192,23 +187,34 @@ structure_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, s
     }
     ext->compiled = struct_cdata;
 
+    /* add the top-level container with the extension instance name, connect all the other substatements into it */
+    struct_cdata->top_cont = calloc(1, sizeof *struct_cdata->top_cont);
+    if (!struct_cdata->top_cont) {
+        goto emem;
+    }
+
+    struct_cdata->top_cont->name = ext->argument;
+    struct_cdata->top_cont->nodetype = LYS_CONTAINER;
+    struct_cdata->top_cont->module = (struct lys_module *)lyplg_ext_compile_get_cur_mod(cctx);
+    struct_cdata->top_cont->prev = &struct_cdata->top_cont->node;
+
     /* compile substatements */
     LY_ARRAY_CREATE_GOTO(cctx->ctx, ext->substmts, 14, rc, emem);
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[0].stmt = LY_STMT_MUST;
-    ext->substmts[0].storage_p = (void **)&struct_cdata->musts;
+    ext->substmts[0].storage_p = (void **)&struct_cdata->top_cont->musts;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[1].stmt = LY_STMT_STATUS;
-    ext->substmts[1].storage_p = (void **)&struct_cdata->flags;
+    ext->substmts[1].storage_p = (void **)&struct_cdata->top_cont->flags;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[2].stmt = LY_STMT_DESCRIPTION;
-    ext->substmts[2].storage_p = (void **)&struct_cdata->dsc;
+    ext->substmts[2].storage_p = (void **)&struct_cdata->top_cont->dsc;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[3].stmt = LY_STMT_REFERENCE;
-    ext->substmts[3].storage_p = (void **)&struct_cdata->ref;
+    ext->substmts[3].storage_p = (void **)&struct_cdata->top_cont->ref;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[4].stmt = LY_STMT_TYPEDEF;
@@ -221,59 +227,50 @@ structure_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, s
     /* data-def-stmt */
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[6].stmt = LY_STMT_CONTAINER;
-    ext->substmts[6].storage_p = (void **)&struct_cdata->child;
+    ext->substmts[6].storage_p = (void **)&struct_cdata->top_cont->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[7].stmt = LY_STMT_LEAF;
-    ext->substmts[7].storage_p = (void **)&struct_cdata->child;
+    ext->substmts[7].storage_p = (void **)&struct_cdata->top_cont->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[8].stmt = LY_STMT_LEAF_LIST;
-    ext->substmts[8].storage_p = (void **)&struct_cdata->child;
+    ext->substmts[8].storage_p = (void **)&struct_cdata->top_cont->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[9].stmt = LY_STMT_LIST;
-    ext->substmts[9].storage_p = (void **)&struct_cdata->child;
+    ext->substmts[9].storage_p = (void **)&struct_cdata->top_cont->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[10].stmt = LY_STMT_CHOICE;
-    ext->substmts[10].storage_p = (void **)&struct_cdata->child;
+    ext->substmts[10].storage_p = (void **)&struct_cdata->top_cont->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[11].stmt = LY_STMT_ANYDATA;
-    ext->substmts[11].storage_p = (void **)&struct_cdata->child;
+    ext->substmts[11].storage_p = (void **)&struct_cdata->top_cont->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[12].stmt = LY_STMT_ANYXML;
-    ext->substmts[12].storage_p = (void **)&struct_cdata->child;
+    ext->substmts[12].storage_p = (void **)&struct_cdata->top_cont->child;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[13].stmt = LY_STMT_USES;
-    ext->substmts[13].storage_p = (void **)&struct_cdata->child;
+    ext->substmts[13].storage_p = (void **)&struct_cdata->top_cont->child;
 
     *lyplg_ext_compile_get_options(cctx) |= LYS_COMPILE_NO_CONFIG | LYS_COMPILE_NO_DISABLED;
-    rc = lyplg_ext_compile_extension_instance(cctx, extp, ext);
+    rc = lyplg_ext_compile_extension_instance(cctx, extp, ext, (struct lysc_node *)struct_cdata->top_cont);
     *lyplg_ext_compile_get_options(cctx) = prev_options;
     if (rc) {
         return rc;
     }
 
-    /* add the top-level container with the extension instance name, connect all the other substatements into it */
-    struct_cdata->top_cont = calloc(1, sizeof *struct_cdata->top_cont);
-    if (!struct_cdata->top_cont) {
-        goto emem;
+    /* compile config properly even though it is ignored */
+    if (!(struct_cdata->top_cont->flags & LYS_CONFIG_MASK)) {
+        struct_cdata->top_cont->flags |= LYS_CONFIG_W;
     }
 
-    struct_cdata->top_cont->name = ext->argument;
-    struct_cdata->top_cont->nodetype = LYS_CONTAINER;
-    struct_cdata->top_cont->flags = struct_cdata->flags;
-    struct_cdata->top_cont->module = (struct lys_module *)lyplg_ext_compile_get_cur_mod(cctx);
-    struct_cdata->top_cont->prev = &struct_cdata->top_cont->node;
-    struct_cdata->top_cont->child = struct_cdata->child;
-    LY_LIST_FOR(struct_cdata->child, child) {
-        child->parent = (struct lysc_node *)struct_cdata->top_cont;
-    }
-    struct_cdata->top_cont->musts = struct_cdata->musts;
+    /* connect any augments */
+    LY_CHECK_RET(lyplg_ext_compiled_node_augments(cctx, ext, (struct lysc_node *)struct_cdata->top_cont));
 
     return LY_SUCCESS;
 
@@ -360,37 +357,33 @@ structure_compiled_print(const struct lysc_ext_instance *orig_ext, struct lysc_e
     memset(struct_cdata->top_cont, 0, sizeof *struct_cdata->top_cont);
 
     /* substatements */
-    ext->substmts[0].storage_p = (void **)&struct_cdata->musts;
-    ext->substmts[1].storage_p = (void **)&struct_cdata->flags;
-    ext->substmts[2].storage_p = (void **)&struct_cdata->dsc;
-    ext->substmts[3].storage_p = (void **)&struct_cdata->ref;
+    ext->substmts[0].storage_p = (void **)&struct_cdata->top_cont->musts;
+    ext->substmts[1].storage_p = (void **)&struct_cdata->top_cont->flags;
+    ext->substmts[2].storage_p = (void **)&struct_cdata->top_cont->dsc;
+    ext->substmts[3].storage_p = (void **)&struct_cdata->top_cont->ref;
 
-    ext->substmts[6].storage_p = (void **)&struct_cdata->child;
-    ext->substmts[7].storage_p = (void **)&struct_cdata->child;
-    ext->substmts[8].storage_p = (void **)&struct_cdata->child;
-    ext->substmts[9].storage_p = (void **)&struct_cdata->child;
-    ext->substmts[10].storage_p = (void **)&struct_cdata->child;
-    ext->substmts[11].storage_p = (void **)&struct_cdata->child;
-    ext->substmts[12].storage_p = (void **)&struct_cdata->child;
-    ext->substmts[13].storage_p = (void **)&struct_cdata->child;
+    ext->substmts[6].storage_p = (void **)&struct_cdata->top_cont->child;
+    ext->substmts[7].storage_p = (void **)&struct_cdata->top_cont->child;
+    ext->substmts[8].storage_p = (void **)&struct_cdata->top_cont->child;
+    ext->substmts[9].storage_p = (void **)&struct_cdata->top_cont->child;
+    ext->substmts[10].storage_p = (void **)&struct_cdata->top_cont->child;
+    ext->substmts[11].storage_p = (void **)&struct_cdata->top_cont->child;
+    ext->substmts[12].storage_p = (void **)&struct_cdata->top_cont->child;
+    ext->substmts[13].storage_p = (void **)&struct_cdata->top_cont->child;
 
     r = lyplg_ext_compiled_stmts_storage_print(orig_ext->substmts, ext->substmts, addr_ht, ptr_set, mem);
     if (r) {
         return r;
     }
 
-    /* top_cont substatements that are now in addr_ht (except for musts which are not shared normally) */
+    /* top_cont substatements that are now in addr_ht */
     struct_cdata->top_cont->name = lyplg_ext_compiled_print_get_addr(addr_ht, orig_cdata->top_cont->name);
     assert(struct_cdata->top_cont->name);
     struct_cdata->top_cont->nodetype = orig_cdata->top_cont->nodetype;
-    struct_cdata->top_cont->flags = orig_cdata->top_cont->flags;
     struct_cdata->top_cont->module = lyplg_ext_compiled_print_get_addr(addr_ht, orig_cdata->top_cont->module);
     assert(struct_cdata->top_cont->module);
     struct_cdata->top_cont->prev = lyplg_ext_compiled_print_get_addr(addr_ht, orig_cdata->top_cont->prev);
     assert(struct_cdata->top_cont->prev);
-    struct_cdata->top_cont->child = lyplg_ext_compiled_print_get_addr(addr_ht, orig_cdata->top_cont->child);
-    assert(struct_cdata->top_cont->child);
-    struct_cdata->top_cont->musts = struct_cdata->musts;
 
     return LY_SUCCESS;
 }
@@ -602,7 +595,7 @@ structure_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent, co
 
     if (in_xpath) {
         /* XPath starts at the substatements */
-        *snode = struct_cdata->child;
+        *snode = struct_cdata->top_cont->child;
     } else {
         /* data tree start at the top-level virtual container */
         *snode = &struct_cdata->top_cont->node;
