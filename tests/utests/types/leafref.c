@@ -279,9 +279,44 @@ test_data_xpath_json(void **state)
 }
 
 static void
+test_data_xpath_deref_union(void **state)
+{
+    const char *schema, *data;
+    struct lyd_node *tree;
+
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_LEAFREF_EXTENDED);
+
+    /* json xpath test */
+    schema = MODULE_CREATE_YANG("xp_test",
+            "list l1 {key k; leaf k {type string;} leaf v {type string;}}"
+            "list l2 {key k; leaf k {type uint8;} leaf v {type string;}}"
+            "leaf ref1 {type union {type leafref {path \"../l1/k\";} type leafref {path \"../l2/k\";}}}"
+            "leaf ref2 {type leafref {path \"deref(../ref1)/../v\";}}"
+            "leaf ref3 {type union {type leafref {path \"../l1/k\";} type leafref {path \"../l2/k\";}}}"
+            "leaf ref4 {type leafref {path \"deref(../ref3)/../v\";}}"
+            "leaf ref5 {type union {type leafref {path \"../l1/k\";} type string;}}"
+            "leaf ref6 {type leafref {path \"deref(../ref5)/../v\";}}");
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    data = "{"
+            "  \"xp_test:l1\": [{\"k\": \"key1\", \"v\": \"value1\"}, {\"k\": \"key2\", \"v\": \"value2\"}],"
+            "  \"xp_test:l2\": [{\"k\": 1, \"v\": \"value3\" }, {\"k\": 2, \"v\": \"value4\"}],"
+            "  \"xp_test:ref1\": \"key2\","
+            "  \"xp_test:ref2\": \"value2\","
+            "  \"xp_test:ref3\": 2,"
+            "  \"xp_test:ref4\": \"value4\","
+            "  \"xp_test:ref5\": \"key2\","
+            "  \"xp_test:ref6\": \"value2\""
+            "}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_all(tree);
+}
+
+static void
 test_xpath_invalid_schema(void **state)
 {
-    const char *schema1, *schema2;
+    const char *schema1, *schema2, *schema3;
 
     ly_ctx_set_options(UTEST_LYCTX, LY_CTX_LEAFREF_EXTENDED);
     schema1 = MODULE_CREATE_YANG("xp_test",
@@ -308,6 +343,12 @@ test_xpath_invalid_schema(void **state)
 
     UTEST_INVALID_MODULE(schema2, LYS_IN_YANG, NULL, LY_EVALID)
     CHECK_LOG_CTX("Deref function target node \"r1\" is not leafref.", "/xp_test:r2", 0);
+
+    schema3 = MODULE_CREATE_YANG("xp_test",
+            "leaf v1 {type string;}"
+            "leaf r1 {type leafref {path \"deref(../r1)/../v1\";}}");
+    UTEST_INVALID_MODULE(schema3, LYS_IN_YANG, NULL, LY_EVALID)
+    CHECK_LOG_CTX("Deref function target node \"r1\" is node itself.", "/xp_test:r1", 0);
 }
 
 int
@@ -319,6 +360,7 @@ main(void)
         UTEST(test_plugin_lyb),
         UTEST(test_plugin_sort),
         UTEST(test_data_xpath_json),
+        UTEST(test_data_xpath_deref_union),
         UTEST(test_xpath_invalid_schema)
     };
 

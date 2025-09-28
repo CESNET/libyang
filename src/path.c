@@ -1025,6 +1025,95 @@ cleanup:
  *
  * @param[in] ctx libyang context.
  * @param[in] cur_node Current (original context) node.
+ * @param[in] target_node The deref target schema node.
+ * @param[in] cur_type The currently evaluated type of deref target node.
+ * @param[in] top_ext Extension instance containing the definition of the data being created. It is used to find
+ * the top-level node inside the extension instance instead of a module. Note that this is the case not only if
+ * the @p ctx_node is NULL, but also if the relative path starting in @p ctx_node reaches the document root
+ * via double dots.
+ * @param[in] expr Parsed path.
+ * @param[in] oper Oper option (@ref path_oper_options).
+ * @param[in] target Target option (@ref path_target_options).
+ * @param[in] format Format of the path.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
+ * @param[in] log Whether to generate log message or not
+ * @param[in,out] tok_idx Index in @p exp, is adjusted.
+ * @param[out] path Compiled path.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+ly_path_compile_deref_type(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lysc_node *target_node,
+        const struct lysc_type *cur_type, const struct lysc_ext_instance *top_ext, const struct lyxp_expr *expr, uint16_t oper, uint16_t target,
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool log,  uint32_t *tok_idx, struct ly_path **path)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyxp_expr expr2;
+    struct ly_path *path2 = NULL;
+    const struct lysc_type_union *union_type;
+    const struct lysc_type_leafref *lref;
+    uint32_t cur_tok_idx = *tok_idx;
+    LY_ARRAY_COUNT_TYPE u;
+
+    if (cur_type->basetype == LY_TYPE_UNION) {
+        union_type = (const struct lysc_type_union *)cur_type;
+        ret = LY_EVALID;
+        LY_ARRAY_FOR(union_type->types, u) {
+            *tok_idx = cur_tok_idx;
+            if (ly_path_compile_deref_type(ctx, cur_node, target_node, union_type->types[u], top_ext, expr, oper, target, format, prefix_data, 0, tok_idx, path) == LY_SUCCESS) {
+                ret = LY_SUCCESS;
+            }
+        }
+        if (log && ret) {
+            LOGVAL_PATH(ctx, cur_node, target_node, LYVE_XPATH, "Deref function target node \"%s\" is union type with no leafrefs.", target_node->name);
+        }
+        goto cleanup;
+    } else if (cur_type->basetype != LY_TYPE_LEAFREF) {
+        if (log) {
+            LOGVAL_PATH(ctx, cur_node, target_node, LYVE_XPATH, "Deref function target node \"%s\" is not leafref.", target_node->name);
+        }
+        ret = LY_EVALID;
+        goto cleanup;
+    }
+    lref = (const struct lysc_type_leafref *)cur_type;
+
+    /* compile dereferenced leafref expression and append it to the path */
+    LY_CHECK_GOTO(ret = ly_path_compile_leafref(ctx, target_node, top_ext, lref->path, oper, target, format, prefix_data,
+            &path2), cleanup);
+    target_node = path2[LY_ARRAY_COUNT(path2) - 1].node;
+    LY_CHECK_GOTO(ret = ly_path_append(ctx, path2, path), cleanup);
+    ly_path_free(path2);
+    path2 = NULL;
+
+    /* properly parsed path must always continue with ')' and '/' */
+    assert(!lyxp_check_token(NULL, expr, *tok_idx, LYXP_TOKEN_PAR2));
+    (*tok_idx)++;
+    assert(!lyxp_check_token(NULL, expr, *tok_idx, LYXP_TOKEN_OPER_PATH));
+    (*tok_idx)++;
+
+    /* prepare expr representing rest of the path after deref */
+    expr2.tokens = &expr->tokens[*tok_idx];
+    expr2.tok_pos = &expr->tok_pos[*tok_idx];
+    expr2.tok_len = &expr->tok_len[*tok_idx];
+    expr2.repeat = &expr->repeat[*tok_idx];
+    expr2.used = expr->used - *tok_idx;
+    expr2.size = expr->size - *tok_idx;
+    expr2.expr = expr->expr;
+
+    /* compile rest of the path and append it to the path */
+    LY_CHECK_GOTO(ret = ly_path_compile_leafref(ctx, target_node, top_ext, &expr2, oper, target, format, prefix_data, &path2),
+            cleanup);
+    LY_CHECK_GOTO(ret = ly_path_append(ctx, path2, path), cleanup);
+
+cleanup:
+    ly_path_free(path2);
+    return ret;
+}
+
+/**
+ * @brief Compile deref XPath function into ly_path structure.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] cur_node Current (original context) node.
  * @param[in] ctx_node Optional context node, mandatory of @p lref.
  * @param[in] top_ext Extension instance containing the definition of the data being created. It is used to find
  * the top-level node inside the extension instance instead of a module. Note that this is the case not only if
@@ -1049,7 +1138,6 @@ ly_path_compile_deref(const struct ly_ctx *ctx, const struct lysc_node *cur_node
     struct ly_path *path2 = NULL;
     const struct lysc_node *node2;
     const struct lysc_node_leaf *deref_leaf_node;
-    const struct lysc_type_leafref *lref;
     uint32_t begin_token;
 
     *path = NULL;
@@ -1083,50 +1171,22 @@ ly_path_compile_deref(const struct ly_ctx *ctx, const struct lysc_node *cur_node
     LY_CHECK_GOTO(ret = ly_path_compile_leafref(ctx, ctx_node, top_ext, &expr2, oper, target, format, prefix_data,
             &path2), cleanup);
     node2 = path2[LY_ARRAY_COUNT(path2) - 1].node;
+    if (node2 == ctx_node) {
+        LOGVAL_PATH(ctx, cur_node, node2, LYVE_XPATH, "Deref function target node \"%s\" is node itself.",
+                node2->name);
+        ret = LY_EVALID;
+        goto cleanup;
+    }
     if ((node2->nodetype != LYS_LEAF) && (node2->nodetype != LYS_LEAFLIST)) {
         LOGVAL_PATH(ctx, cur_node, node2, LYVE_XPATH, "Deref function target node \"%s\" is not leaf nor leaflist.",
                 node2->name);
         ret = LY_EVALID;
         goto cleanup;
     }
+
+    LY_CHECK_GOTO(ret = ly_path_append(ctx, path2, path), cleanup);
     deref_leaf_node = (const struct lysc_node_leaf *)node2;
-    if (deref_leaf_node->type->basetype != LY_TYPE_LEAFREF) {
-        LOGVAL_PATH(ctx, cur_node, node2, LYVE_XPATH, "Deref function target node \"%s\" is not leafref.", node2->name);
-        ret = LY_EVALID;
-        goto cleanup;
-    }
-    lref = (const struct lysc_type_leafref *)deref_leaf_node->type;
-    LY_CHECK_GOTO(ret = ly_path_append(ctx, path2, path), cleanup);
-    ly_path_free(path2);
-    path2 = NULL;
-
-    /* compile dereferenced leafref expression and append it to the path */
-    LY_CHECK_GOTO(ret = ly_path_compile_leafref(ctx, node2, top_ext, lref->path, oper, target, format, prefix_data,
-            &path2), cleanup);
-    node2 = path2[LY_ARRAY_COUNT(path2) - 1].node;
-    LY_CHECK_GOTO(ret = ly_path_append(ctx, path2, path), cleanup);
-    ly_path_free(path2);
-    path2 = NULL;
-
-    /* properly parsed path must always continue with ')' and '/' */
-    assert(!lyxp_check_token(NULL, expr, *tok_idx, LYXP_TOKEN_PAR2));
-    (*tok_idx)++;
-    assert(!lyxp_check_token(NULL, expr, *tok_idx, LYXP_TOKEN_OPER_PATH));
-    (*tok_idx)++;
-
-    /* prepare expr representing rest of the path after deref */
-    expr2.tokens = &expr->tokens[*tok_idx];
-    expr2.tok_pos = &expr->tok_pos[*tok_idx];
-    expr2.tok_len = &expr->tok_len[*tok_idx];
-    expr2.repeat = &expr->repeat[*tok_idx];
-    expr2.used = expr->used - *tok_idx;
-    expr2.size = expr->size - *tok_idx;
-    expr2.expr = expr->expr;
-
-    /* compile rest of the path and append it to the path */
-    LY_CHECK_GOTO(ret = ly_path_compile_leafref(ctx, node2, top_ext, &expr2, oper, target, format, prefix_data, &path2),
-            cleanup);
-    LY_CHECK_GOTO(ret = ly_path_append(ctx, path2, path), cleanup);
+    ret = ly_path_compile_deref_type(ctx, cur_node, node2, deref_leaf_node->type, top_ext, expr, oper, target, format, prefix_data, 1, tok_idx, path);
 
 cleanup:
     ly_path_free(path2);
