@@ -26,9 +26,30 @@ const char *simple = "module libyang-plugins-simple {"
         "  prefix s;"
         "  typedef note { type string; }"
         "  extension hint { argument value; }"
+        "  extension rt;"
         "  leaf test {"
         "    type s:note {length 255;}"
         "    s:hint \"some hint here\";"
+        "  }"
+        "  grouping grp1 {"
+        "    list l1 {key v; leaf v {type string;} leaf k {type string;}}"
+        "    list l2 {key v; leaf v {type string;} leaf k {type string;}}"
+        "    typedef t1 {"
+        "      type string;"
+        "      s:rt;"
+        "    }"
+        "    typedef t2 {"
+        "      type string;"
+        "      s:rt;"
+        "    }"
+        "  }"
+        "  uses grp1 {"
+        "    refine l1 {"
+        "      s:rt;"
+        "    }"
+        "    refine l2 {"
+        "      s:rt;"
+        "    }"
         "  }"
         "}";
 
@@ -106,6 +127,29 @@ parse_clb(struct lysp_ctx *UNUSED(pctx), struct lysp_ext_instance *ext)
     return LY_SUCCESS;
 }
 
+static LY_ERR
+parse_clb2(struct lysp_ctx *UNUSED(pctx), struct lysp_ext_instance *ext)
+{
+    struct lysp_refine *refine;
+    struct lysp_tpdf *tpdf;
+    LY_ARRAY_COUNT_TYPE count = 0;
+
+    if (ext->parent_stmt == LY_STMT_REFINE) {
+        refine = (struct lysp_refine *)ext->parent;
+        count = LY_ARRAY_COUNT(refine->exts);
+    } else if (ext->parent_stmt == LY_STMT_TYPEDEF) {
+        tpdf = (struct lysp_tpdf *)ext->parent;
+        count = LY_ARRAY_COUNT(tpdf->exts);
+    } else {
+        return LY_SUCCESS;
+    }
+
+    if (count != 1) {
+        return LY_EINVAL;
+    }
+    return LY_SUCCESS;
+}
+
 struct lyplg_ext_record memory_recs[] = {
     {
         .module = "libyang-plugins-simple",
@@ -114,6 +158,23 @@ struct lyplg_ext_record memory_recs[] = {
 
         .plugin.id = "memory-plugin-v1",
         .plugin.parse = parse_clb,
+        .plugin.compile = NULL,
+        .plugin.printer_info = NULL,
+        .plugin.printer_ctree = NULL,
+        .plugin.printer_ptree = NULL,
+        .plugin.node_xpath = NULL,
+        .plugin.snode = NULL,
+        .plugin.validate = NULL,
+        .plugin.pfree = NULL,
+        .plugin.cfree = NULL
+    },
+    {
+        .module = "libyang-plugins-simple",
+        .revision = NULL,
+        .name = "rt",
+
+        .plugin.id = "memory-plugin-v1",
+        .plugin.parse = parse_clb2,
         .plugin.compile = NULL,
         .plugin.printer_info = NULL,
         .plugin.printer_ctree = NULL,
