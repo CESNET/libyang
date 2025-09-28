@@ -3981,6 +3981,83 @@ xpath_current(struct lyxp_set **args, uint32_t arg_count, struct lyxp_set *set, 
 }
 
 /**
+ * @brief Executes deref function on specific type and value. It performs evaluation in recursive manner,
+ *        which supports usage of union types as deref targets. Returns LYXP_SET_NODE_SET with either
+ *        leafref or instance-identifier target node(s).
+ *
+ * @param[in] leaf The target deref data node
+ * @param[in] sleaf The target deref schema node
+ * @param[in] value The currently evaluated value of target deref node depending on current type
+ * @param[in] cur_type The currently evaluated type of target deref node
+ * @param[in] log Whether to generate log message or not
+ * @param[in,out] set Context and result set at the same time.
+ * @param[in] options XPath options.
+ * @return LY_ERR
+ */
+static LY_ERR
+xpath_deref_type(struct lyd_node_term *leaf, struct lysc_node_leaf *sleaf, struct lyd_value *value, struct lysc_type *cur_type, ly_bool log, struct lyxp_set *set)
+{
+    LY_ERR r;
+    LY_ERR ret = LY_SUCCESS;
+    char *errmsg = NULL;
+    struct lyd_node *node;
+    struct ly_set *targets = NULL;
+    uint32_t i;
+    const struct lysc_type_union *union_type;
+    LY_ARRAY_COUNT_TYPE u;
+
+    if (sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+        if (cur_type->basetype == LY_TYPE_LEAFREF) {
+            /* find leafref target */
+            r = lyplg_type_resolve_leafref((struct lysc_type_leafref *)cur_type, &leaf->node, value, set->tree,
+                    set->ext, &targets, &errmsg);
+            if (r) {
+                if (log) {
+                    LOGERR(set->ctx, LY_EINVAL, "%s", errmsg);
+                }
+                free(errmsg);
+                ret = LY_EINVAL;
+                goto cleanup;
+            }
+
+            /* insert nodes into set */
+            for (i = 0; i < targets->count; ++i) {
+                set_insert_node(set, targets->dnodes[i], 0, LYXP_NODE_ELEM, 0);
+            }
+        } else if (cur_type->basetype == LY_TYPE_INST) {
+            if (ly_path_eval(value->target, set->tree, NULL, set->ext, &node)) {
+                if (log) {
+                    LOGERR(set->ctx, LY_EINVAL, "Invalid instance-identifier \"%s\" value - required instance not found.",
+                            lyd_get_value(&leaf->node));
+                }
+                ret = LY_EINVAL;
+                goto cleanup;
+            }
+
+            /* insert it */
+            set_insert_node(set, node, 0, LYXP_NODE_ELEM, 0);
+        } else if (cur_type->basetype == LY_TYPE_UNION) {
+            union_type = (const struct lysc_type_union *)cur_type;
+            ret = LY_EINVAL;
+            LY_ARRAY_FOR(union_type->types, u) {
+                if (!xpath_deref_type(leaf, sleaf, &value->subvalue->value, union_type->types[u], 0, set)) {
+                    ret = LY_SUCCESS;
+                    goto cleanup;
+                }
+            }
+            if (log) {
+                LOGERR(set->ctx, LY_EINVAL, "Invalid leafref or instance-identifier \"%s\" value - required instance not found.",
+                        lyd_get_value(&leaf->node));
+            }
+        }
+    }
+
+cleanup:
+    ly_set_free(targets, NULL);
+    return ret;
+}
+
+/**
  * @brief Execute the YANG 1.1 deref(node-set) function. Returns LYXP_SET_NODE_SET with either
  *        leafref or instance-identifier target node(s).
  *
@@ -3998,13 +4075,9 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
     struct lysc_type_leafref *lref;
     const struct lysc_node *target;
     struct ly_path *p;
-    struct lyd_node *node;
-    char *errmsg = NULL;
     uint8_t oper;
     LY_ERR r;
     LY_ERR ret = LY_SUCCESS;
-    struct ly_set *targets = NULL;
-    uint32_t i;
 
     if (options & LYXP_SCNODE_ALL) {
         if (args[0]->type != LYXP_SET_SCNODE_SET) {
@@ -4050,39 +4123,10 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
     if (args[0]->used) {
         leaf = (struct lyd_node_term *)args[0]->val.nodes[0].node;
         sleaf = (struct lysc_node_leaf *)leaf->schema;
-        if (sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-            if (sleaf->type->basetype == LY_TYPE_LEAFREF) {
-                /* find leafref target */
-                r = lyplg_type_resolve_leafref((struct lysc_type_leafref *)sleaf->type, &leaf->node, &leaf->value, set->tree,
-                        set->ext, &targets, &errmsg);
-                if (r) {
-                    LOGERR(set->ctx, LY_EINVAL, "%s", errmsg);
-                    free(errmsg);
-                    ret = LY_EINVAL;
-                    goto cleanup;
-                }
-
-                /* insert nodes into set */
-                for (i = 0; i < targets->count; ++i) {
-                    set_insert_node(set, targets->dnodes[i], 0, LYXP_NODE_ELEM, 0);
-                }
-            } else {
-                assert(sleaf->type->basetype == LY_TYPE_INST);
-                if (ly_path_eval(leaf->value.target, set->tree, NULL, set->ext, &node)) {
-                    LOGERR(set->ctx, LY_EINVAL, "Invalid instance-identifier \"%s\" value - required instance not found.",
-                            lyd_get_value(&leaf->node));
-                    ret = LY_EINVAL;
-                    goto cleanup;
-                }
-
-                /* insert it */
-                set_insert_node(set, node, 0, LYXP_NODE_ELEM, 0);
-            }
-        }
+        ret = xpath_deref_type(leaf, sleaf, &leaf->value, sleaf->type, 1, set);
     }
 
 cleanup:
-    ly_set_free(targets, NULL);
     return ret;
 }
 
