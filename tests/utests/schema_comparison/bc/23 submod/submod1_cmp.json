@@ -4,11 +4,35 @@
       {
         "source": {
           "module": "submod1",
-          "revision": "2000-01-01"
+          "revision": "2000-01-01",
+          "submodule": [
+            {
+              "name": "submod11",
+              "revision": "2000-01-01"
+            },
+            {
+              "name": "submod12",
+              "revision": "2000-01-01"
+            }
+          ]
         },
         "target": {
           "module": "submod1",
-          "revision": "2000-01-02"
+          "revision": "2000-01-02",
+          "submodule": [
+            {
+              "name": "submod11",
+              "revision": "2000-01-02"
+            },
+            {
+              "name": "submod12",
+              "revision": "2000-01-02"
+            },
+            {
+              "name": "submod13",
+              "revision": "2000-01-02"
+            }
+          ]
         },
         "conformance": "backwards-compatible"
       }
