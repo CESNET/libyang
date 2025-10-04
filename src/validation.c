@@ -1969,7 +1969,7 @@ lyd_validate_tree(struct lyd_node *root, const struct lysc_ext_instance *ext, st
 
         if (lysc_has_when(node->schema)) {
             /* when evaluation */
-            r = ly_set_add(node_when, (void *)node, 1, NULL);
+            r = ly_set_add(node_when, (void *)node, 0, NULL);
             LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
         }
 

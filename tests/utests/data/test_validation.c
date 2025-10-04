@@ -73,6 +73,43 @@ test_when(void **state)
 }
 
 static void
+test_when_rpc_reply(void **state)
+{
+    struct ly_in *in;
+    struct lyd_node *tree;
+    const char *schema =
+            "module a {\n"
+            "    namespace urn:tests:a;\n"
+            "    prefix a;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    rpc rpc1 {\n"
+            "        output {\n"
+            "            container c1 {\n"
+            "                when \"../c = 'val_c'\";\n"
+            "                leaf a {\n"
+            "                    type string;\n"
+            "                }\n"
+            "            }\n"
+            "            leaf c {\n"
+            "                type string;\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "}";
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    const char *data = "{\"a:rpc1\": {\"c\":\"wrong\"}}";
+
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_REPLY_YANG, 0, NULL, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_validate_op(tree, NULL, LYD_TYPE_REPLY_YANG, NULL));
+    ly_in_free(in, 0);
+    lyd_free_all(tree);
+}
+
+static void
 test_mandatory_when(void **state)
 {
     struct lyd_node *tree;
@@ -1600,6 +1637,7 @@ main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_when),
+        UTEST(test_when_rpc_reply),
         UTEST(test_mandatory),
         UTEST(test_mandatory_when),
         UTEST(test_type_incomplete_when),
