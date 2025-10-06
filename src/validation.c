@@ -1969,7 +1969,7 @@ lyd_validate_tree(struct lyd_node *root, const struct lysc_ext_instance *ext, st
 
         if (lysc_has_when(node->schema)) {
             /* when evaluation */
-            r = ly_set_add(node_when, (void *)node, 0, NULL);
+            r = ly_set_add(node_when, (void *)node, 1, NULL);
             LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
         }
 
@@ -2391,8 +2391,8 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
     if (int_opts & LYD_INTOPT_REPLY) {
         if (validate_subtree) {
             /* add output children defaults */
-            rc = lyd_new_implicit(op_node, lyd_node_child_p(op_node), NULL, NULL, NULL, node_when_p, node_types_p,
-                    LYD_IMPLICIT_OUTPUT, getnext_ht, diff);
+            rc = lyd_new_implicit(op_node, lyd_node_child_p(op_node), NULL, NULL, NULL, NULL, NULL, LYD_IMPLICIT_OUTPUT,
+                    getnext_ht, diff);
             LY_CHECK_GOTO(rc, cleanup);
 
             /* skip validating the operation itself, go to children directly */
