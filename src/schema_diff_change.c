@@ -70,7 +70,7 @@ schema_diff_add_node_change(const struct lysc_node *snode_old, const struct lysc
  */
 static LY_ERR
 schema_diff_add_change(enum lysc_diff_change_e change, enum lysc_diff_changed_e parent_changed,
-        enum lysc_diff_changed_e changed, int is_nbc, struct lysc_diff_node_change_s *node_change)
+        enum lysc_diff_changed_e changed, ly_bool is_nbc, struct lysc_diff_node_change_s *node_change)
 {
     void *mem;
     struct lysc_diff_change_s *c;
@@ -781,9 +781,9 @@ schema_diff_node_whens_change(struct lysc_when **whens1, struct lysc_when **when
         }
 
         if (!found) {
-            /* removed */
-            LY_CHECK_GOTO(rc = schema_diff_add_change(LYSC_CHANGE_REMOVED, parent_changed, LYSC_CHANGED_WHEN, 0,
-                    node_change), cleanup);
+            /* removed, NBC for YANG 1.0 */
+            LY_CHECK_GOTO(rc = schema_diff_add_change(LYSC_CHANGE_REMOVED, parent_changed, LYSC_CHANGED_WHEN,
+                    diff->is_yang10, node_change), cleanup);
             continue;
         }
 
@@ -808,7 +808,7 @@ schema_diff_node_whens_change(struct lysc_when **whens1, struct lysc_when **when
         }
 
         /* added, detect compatibility by the extension presence */
-        if (schema_diff_has_bc_ext(whens2[v]->exts)) {
+        if (!diff->is_yang10 && schema_diff_has_bc_ext(whens2[v]->exts)) {
             LY_CHECK_GOTO(rc = schema_diff_add_change(LYSC_CHANGE_ADDED, parent_changed, LYSC_CHANGED_WHEN, 0,
                     node_change), cleanup);
         } else {
@@ -1205,11 +1205,12 @@ cleanup:
  * @param[in] bases1 First base array.
  * @param[in] bases2 Second base array.
  * @param[in,out] node_change Node change pair to use.
+ * @param[in,out] diff Diff to use.
  * @return LY_ERR value.
  */
 static LY_ERR
 schema_diff_node_type_bases_change(struct lysc_ident **bases1, struct lysc_ident **bases2,
-        struct lysc_diff_node_change_s *node_change)
+        struct lysc_diff_node_change_s *node_change, struct lysc_diff_s *diff)
 {
     LY_ERR rc = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u, v;
@@ -1236,9 +1237,9 @@ schema_diff_node_type_bases_change(struct lysc_ident **bases1, struct lysc_ident
         }
 
         if (!found) {
-            /* removed */
-            LY_CHECK_GOTO(rc = schema_diff_add_change(LYSC_CHANGE_REMOVED, LYSC_CHANGED_NONE, LYSC_CHANGED_BASE, 0,
-                    node_change), cleanup);
+            /* removed, NBC for YANG 1.0 */
+            LY_CHECK_GOTO(rc = schema_diff_add_change(LYSC_CHANGE_REMOVED, LYSC_CHANGED_NONE, LYSC_CHANGED_BASE,
+                    diff->is_yang10, node_change), cleanup);
         }
     }
 
@@ -1426,7 +1427,7 @@ schema_diff_node_type_change(const struct lysc_type *type1, const struct lysc_ty
         type2_identref = (const struct lysc_type_identityref *)type2;
 
         /* base */
-        LY_CHECK_RET(schema_diff_node_type_bases_change(type1_identref->bases, type2_identref->bases, node_change));
+        LY_CHECK_RET(schema_diff_node_type_bases_change(type1_identref->bases, type2_identref->bases, node_change, diff));
         break;
     case LY_TYPE_INST:
         type1_instid = (const struct lysc_type_instanceid *)type1;
