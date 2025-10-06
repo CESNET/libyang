@@ -19,8 +19,8 @@ module ietf-schema-comparison {
     description
       "Marks statements in a new revision of a module
        that were changed but in a backwards-compatible
-       manner according to YANG 1.1 rules for updating
-       a module.
+       manner according to YANG 1.1 and 1.0 rules for
+       updating a module.
 
        When used as a substatement of a 'pattern'
        statement, it means its allowed value space has
@@ -41,7 +41,9 @@ module ietf-schema-comparison {
        Not allowed to be instiantiated for any other
        statements.";
     reference
-      "RFC 7950: The YANG 1.1 Data Modeling Language, section 11";
+      "RFC 7950: The YANG 1.1 Data Modeling Language, section 11;
+       RFC 6020: YANG - A Data Modeling Language for the Network
+       Configuration Protocol (NETCONF), section 10";
   }
 
   typedef data-path {

@@ -1251,6 +1251,9 @@ lysc_compare(const struct ly_ctx *ctx, const struct lys_module *src_mod, const s
         goto cleanup;
     }
 
+    /* decide what rules to use based on the YANG version of the new module */
+    diff.is_yang10 = (trg_mod->version & LYS_VERSION_1_1) ? 0 : 1;
+
     /* generate the diff */
     LY_CHECK_GOTO(rc = lysc_diff_changes(src_mod, trg_mod, &diff), cleanup);
 

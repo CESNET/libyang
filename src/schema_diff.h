@@ -98,6 +98,7 @@ struct lysc_diff_node_change_s {
 struct lysc_diff_s {
     struct lysc_diff_node_change_s *node_changes;   /**< array of all the nodes and their changes */
     uint32_t node_change_count;                     /**< count of node changes */
+    ly_bool is_yang10;                              /**< marks using YANG 1.0 update rules */
     ly_bool is_nbc;                                 /**< flag to mark a non-backwards-compatible change */
 };
 
