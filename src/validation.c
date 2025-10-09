@@ -103,6 +103,17 @@ lyd_val_getnext_ht_free(struct ly_ht *getnext_ht)
     lyht_free(getnext_ht, lyd_val_getnext_ht_free_cb);
 }
 
+/**
+ * @brief Wrapper of ::lyd_val_getnext_ht_free() to be used as a set item destructor.
+ *
+ * @param[in] getnext_ht Getnext HT to free.
+ */
+static void
+lyd_val_getnext_ht_set_free(void *getnext_ht)
+{
+    lyd_val_getnext_ht_free(getnext_ht);
+}
+
 LY_ERR
 lyd_val_getnext_get(const struct lysc_node *sparent, const struct lys_module *mod, const struct lysc_ext_instance *ext,
         ly_bool output, struct ly_ht *getnext_ht, const struct lysc_node ***choices, const struct lysc_node ***snodes)
@@ -1989,7 +2000,7 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
     LY_ERR r, rc = LY_SUCCESS;
     struct lyd_node *first, *next, **first2, *iter;
     const struct lys_module *mod;
-    struct ly_set node_types = {0}, meta_types = {0}, node_when = {0}, ext_val = {0};
+    struct ly_set node_types = {0}, meta_types = {0}, node_when = {0}, ext_val = {0}, mod_set = {0}, getnext_ht_set = {0};
     uint32_t i = 0, impl_opts;
     struct ly_ht *getnext_ht = NULL;
 
@@ -2023,6 +2034,12 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
 
         /* create the getnext hash table for this module */
         r = lyd_val_getnext_ht_new(&getnext_ht);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+
+        /* store getnext_ht and module for final validation */
+        r = ly_set_add(&getnext_ht_set, getnext_ht, 1, NULL);
+        LY_CHECK_ERR_GOTO(r, lyd_val_getnext_ht_free(getnext_ht); rc = r, cleanup);
+        r = ly_set_add(&mod_set, mod, 1, NULL);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
         /* validate new top-level nodes of this module, autodelete */
@@ -2075,16 +2092,21 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
         r = lyd_validate_unres(first2, mod, NULL, LYD_TYPE_DATA_YANG, node_when_p, 0, node_types_p, meta_types_p,
                 ext_val_p, val_opts, diff);
         LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
+    }
 
-        if (!(val_opts & LYD_VALIDATE_NOT_FINAL)) {
-            /* perform final validation that assumes the data tree is final */
-            r = lyd_validate_final_r(*first2, NULL, NULL, mod, NULL, val_opts, 0, 0, getnext_ht);
+    if (!(val_opts & LYD_VALIDATE_NOT_FINAL)) {
+        /* perform final validation that assumes the data tree is final */
+        for (i = 0; i < mod_set.count; ++i) {
+            mod = mod_set.objs[i];
+            getnext_ht = getnext_ht_set.objs[i];
+
+            /* find data of this module */
+            first = *tree;
+            lyd_first_module_sibling(&first, mod);
+
+            r = lyd_validate_final_r(first, NULL, NULL, mod, NULL, val_opts, 0, 0, getnext_ht);
             LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
         }
-
-        /* free the getnext hash table */
-        lyht_free(getnext_ht, lyd_val_getnext_ht_free_cb);
-        getnext_ht = NULL;
     }
 
 cleanup:
@@ -2092,7 +2114,8 @@ cleanup:
     ly_set_erase(&node_types, NULL);
     ly_set_erase(&meta_types, NULL);
     ly_set_erase(&ext_val, free);
-    lyd_val_getnext_ht_free(getnext_ht);
+    ly_set_erase(&mod_set, NULL);
+    ly_set_erase(&getnext_ht_set, lyd_val_getnext_ht_set_free);
     return rc;
 }
 
