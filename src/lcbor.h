@@ -41,10 +41,16 @@ enum lyd_cbor_format
 struct lycbor_ctx {
     const struct ly_ctx *ctx; /**< libyang context */
     struct ly_in *in;   /**< input structure */
+    
     cbor_item_t *cbor_data; /**< parsed CBOR data */
+    
     enum lyd_cbor_format format; /**< CBOR format variant */
-    uint32_t parse_opts; /**< parser options */
-    uint32_t val_opts;   /**< validation options */
+    
+    struct {
+        cbor_item_t *cbor_data; /**< parsed CBOR data */
+        enum lyd_cbor_format format; /**< CBOR format variant */
+        const char *input;
+    } backup;
 };
 
 /**
@@ -52,19 +58,19 @@ struct lycbor_ctx {
  *
  * @param[in] ctx libyang context.
  * @param[in] in Input handler.
- * @param[out] cbor_ctx_p Pointer to store the created CBOR context.
+ * @param[out] cborctx_p Pointer to store the created CBOR context.
  * @return LY_ERR value.
  */
 LY_ERR
-lycbor_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lycbor_ctx **cbor_ctx_p);
+lycbor_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lycbor_ctx **cborctx_p);
 
 /**
  * @brief Free CBOR context.
  *
- * @param[in] cbor_ctx CBOR context to free.
+ * @param[in] cborctx CBOR context to free.
  */
 void
-lycbor_ctx_free(struct lycbor_ctx *cbor_ctx);
+lycbor_ctx_free(struct lycbor_ctx *cborctx);
 
 #endif /* ENABLE_CBOR_SUPPORT */
 

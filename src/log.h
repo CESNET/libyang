@@ -271,6 +271,7 @@ typedef enum {
     LYVE_SEMANTICS,    /**< generic semantic error */
     LYVE_SYNTAX_XML,   /**< XML-related syntax error */
     LYVE_SYNTAX_JSON,  /**< JSON-related syntax error */
+    LYVE_SYNTAX_CBOR,  /**< CBOR-related syntax error */
     LYVE_DATA,         /**< YANG data does not reflect some of the module restrictions */
 
     LYVE_OTHER         /**< Unknown error */

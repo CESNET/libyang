@@ -204,6 +204,7 @@ struct lyd_cbor_ctx
     lyd_ctx_free_clb free; /**< destructor */
 
     struct lycbor_ctx *cborctx; /**< CBOR context for low-level operations */    
+    const struct lysc_node *any_schema; /**< parent anyxml/anydata schema node if parsing nested data tree */
 };
 #endif /* ENABLE_CBOR_SUPPORT */
 
