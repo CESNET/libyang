@@ -1058,15 +1058,6 @@ lydcbor_subtree_r(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent,
 
     assert(lydctx && first_p && parsed && cbor_obj);
 
-    /* assuming that the top level structure is always a map
-    to be modified to include anything else that it can support */
-
-    if (!cbor_isa_map(cbor_obj))
-    {
-        LOGVAL(lydctx->cborctx->ctx, LYVE_SYNTAX, "Expected CBOR map");
-        return LY_EVALID;
-    }
-
     size_t map_size = cbor_map_size(cbor_obj);
     struct cbor_pair *pairs = cbor_map_handle(cbor_obj);
 
@@ -1159,28 +1150,37 @@ lydcbor_ctx_init(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_opts
                  uint32_t val_opts, struct lyd_cbor_ctx **lydctx_p)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lyd_cbor_ctx *lydctx = NULL;
+    struct lyd_cbor_ctx *lydctx;
+    enum cbor_type cbortype;
 
     assert(lydctx_p);
 
-    /* Initialize context with calloc to ensure all fields are zero */
+    /* init context */
     lydctx = calloc(1, sizeof *lydctx);
     LY_CHECK_ERR_RET(!lydctx, LOGMEM(ctx), LY_EMEM);
     lydctx->parse_opts = parse_opts;
     lydctx->val_opts = val_opts;
     lydctx->free = lyd_cbor_ctx_free;
 
-    /* Create low-level CBOR context */
-    LY_CHECK_GOTO(ret = lycbor_ctx_new(ctx, in, &lydctx->cborctx), cleanup);
+    /* Create low-level CBOR context (includes CBOR parsing) */
+    LY_CHECK_ERR_RET(ret = lycbor_ctx_new(ctx, in, &lydctx->cborctx),  free(lydctx), ret);
+    cbortype = cbor_typeof(lydctx->cborctx->cbor_data);
+
+    /* assuming that the top level structure is always a map
+    - though this is not mentioned explicitly in RFC9254 - it is implied
+    and it is almost always the case - This is a similar assumption made
+    to the RFC 7951 where JSON Encoding of data modeled by YANG is always assumed
+    to a have a top-level structure as an object */    
+    if (!cbor_isa_map(lydctx->cborctx->cbor_data))
+    {
+        /* expecting top-level map */
+        LOGVAL(ctx, LYVE_SYNTAX_CBOR, "Expected top-level CBOR map, but %s found.", lycbor_token2str(cbortype));
+        *lydctx_p = NULL;
+        lyd_cbor_ctx_free((struct lyd_ctx *)lydctx);
+        return LY_EVALID;
+    }
 
     *lydctx_p = lydctx;
-    return ret;
-
-cleanup:
-    if (lydctx)
-    {
-        lyd_cbor_ctx_free((struct lyd_ctx *)lydctx);
-    }
     return ret;
 }
 
@@ -1189,72 +1189,43 @@ lyd_parse_cbor(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, st
                struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts,
                struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR r, rc = LY_SUCCESS;
     struct lyd_cbor_ctx *lydctx = NULL;
-    cbor_item_t *cbor_data = NULL;
-    struct cbor_load_result result = {0};
+    printf("Entering lyd_parse_cbor\n AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH\n");
 
-    /* Initialize context */
-    LY_CHECK_GOTO(ret = lydcbor_ctx_init(ctx, in, parse_opts, val_opts, &lydctx), cleanup);
+    /* Initialize context (CBOR parsing happens in lycbor_ctx_new) */
+    rc = lydcbor_ctx_init(ctx, in, parse_opts, val_opts, &lydctx);
+    LY_CHECK_GOTO(rc, cleanup);
 
     lydctx->int_opts = int_opts;
     lydctx->ext = ext;
 
     /* find the operation node if it exists already */
-    LY_CHECK_GOTO(ret = lyd_parser_find_operation(parent, int_opts, &lydctx->op_node), cleanup);
+    LY_CHECK_GOTO(rc = lyd_parser_find_operation(parent, int_opts, &lydctx->op_node), cleanup);
 
+    /* Parse the CBOR structure - read subtrees */
+    r = lydcbor_subtree_r(lydctx, parent, first_p, parsed, lydctx->cborctx->cbor_data);
+    LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
-    /*
-     * Loads CBOR data from the current input buffer.
-     *
-     * Parameters:
-     *   in->current - Pointer to the current position in the input buffer.
-     *   in->length  - Length of the data to be loaded.
-     *   &result     - Pointer to a variable where the result status will be stored.
-     *
-     * Returns:
-     *   cbor_data - Pointer to the loaded CBOR data structure, or NULL on failure.
-     */
-    /* need to convert in->current from  const char* to cbor_data type */
-    cbor_data = cbor_load(in->current, in->length, &result);
-    lydctx->cborctx->cbor_data = cbor_data;
+    /* Unexpected sibling node error handling */
 
-    if (!cbor_data)
-    {
-        LOGVAL(ctx, LYVE_SYNTAX, "Failed to parse CBOR data: no data returned from cbor_load().");
-        ret = LY_EVALID;
-        goto cleanup;
+    /* Validate operation node presence */
+    if ((int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NOTIF | LYD_INTOPT_REPLY)) && 
+        !lydctx->op_node) {
+        LOGVAL(ctx, LYVE_DATA, "Missing the operation node.");
+        r = LY_EVALID;
+        LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
     }
-    if (result.error.code != CBOR_ERR_NONE)
-    {
-        LOGVAL(ctx, LYVE_SYNTAX, "Failed to parse CBOR data: parsing error (code %d).", result.error.code);
-        ret = LY_EVALID;
-        goto cleanup;
-    }
-
-    /* Probably need to check if the obtained data is a operational node and
-    then write functions to parse them accordingly. If not then continue below */
-
-    /* Parse the CBOR structure */
-    ret = lydcbor_subtree_r(lydctx, parent, first_p, parsed, cbor_data);
+    /* also need to deal with metadata linking etc*/
 
 cleanup:
-    if (cbor_data)
-    {
-        cbor_decref(&cbor_data);
-    }
-
-    if (ret)
-    {
-        if (lydctx)
-        {
-            lyd_cbor_ctx_free((struct lyd_ctx *)lydctx);
-            lydctx = NULL;
-        }
+    if (rc && (!lydctx || !(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
+        lyd_cbor_ctx_free((struct lyd_ctx *)lydctx);
+        lydctx = NULL;
     }
 
     *lydctx_p = (struct lyd_ctx *)lydctx;
-    return ret;
+    return rc;
 }
 
 #endif /* ENABLE_CBOR_SUPPORT */

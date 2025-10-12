@@ -44,7 +44,8 @@ struct ly_in;
  * - CBOR
  *
  *   The reference documentation would be `Encoding of Data Modeled with YANG in the Concise Binary Object 
- *   Representation (CBOR)` : [RFC 9254](https://datatracker.ietf.org/doc/html/rfc9254)
+ *   Representation (CBOR)` : [RFC 9254](https://datatracker.ietf.org/doc/html/rfc9254).  < $TODO$ Look at the edge cases of 
+ *   RPCs, actions and Notifications and maybe like json only - where we make a proprietary representation>
  *
  * While the parsers themselves process the input data only syntactically, all the parser functions actually incorporate
  * the [common validator](@ref howtoDataValidation) checking the input data semantically. Therefore, the parser functions
