@@ -9,6 +9,9 @@ module ietf-schema-comparison {
   import ietf-yang-library {
     prefix yanglib;
   }
+  import ietf-yang-structure-ext {
+    prefix sx;
+  }
 
   revision 2025-09-19 {
     description
@@ -318,6 +321,7 @@ module ietf-schema-comparison {
     }
     list enum {
       key "name";
+      ordered-by user;
       description
         "List of enum statements.";
       leaf name {
@@ -349,6 +353,7 @@ module ietf-schema-comparison {
     }
     list bit {
       key "name";
+      ordered-by user;
       leaf name {
         type yang:yang-identifier;
       }
@@ -622,8 +627,7 @@ module ietf-schema-comparison {
     }
   }
 
-  container schema-comparison {
-    config false;
+  sx:structure schema-comparison {
     description
       "Schema comparison details.";
     list compiled-diff {
@@ -669,6 +673,7 @@ module ietf-schema-comparison {
       }
       list node-diff {
         key "node";
+        ordered-by user;
         description
           "Information about data-definition (node) statement substatement changes.";
         leaf node {
