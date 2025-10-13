@@ -12,28 +12,32 @@
         },
         "target-import": [
           {
-            "module": "ietf-schema-comparison",
-            "revision": "2025-09-19"
-          },
-          {
-            "module": "ietf-yang-types",
-            "revision": "2013-07-15"
-          },
-          {
-            "module": "ietf-yang-library",
-            "revision": "2019-01-04"
-          },
-          {
-            "module": "ietf-yang-types",
-            "revision": "2013-07-15"
+            "module": "ietf-datastores",
+            "revision": "2018-02-14"
           },
           {
             "module": "ietf-inet-types",
             "revision": "2013-07-15"
           },
           {
-            "module": "ietf-datastores",
-            "revision": "2018-02-14"
+            "module": "ietf-schema-comparison",
+            "revision": "2025-09-19"
+          },
+          {
+            "module": "ietf-yang-library",
+            "revision": "2019-01-04"
+          },
+          {
+            "module": "ietf-yang-structure-ext",
+            "revision": "2020-06-17"
+          },
+          {
+            "module": "ietf-yang-types",
+            "revision": "2013-07-15"
+          },
+          {
+            "module": "ietf-yang-types",
+            "revision": "2013-07-15"
           }
         ],
         "conformance": "backwards-compatible",
