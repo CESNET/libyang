@@ -2070,7 +2070,9 @@ lysc_diff_tree(const struct lys_module *mod1, const struct lys_module *mod2, con
     const struct lysc_node *imp_schema;
     uint32_t i;
 
-    LY_CHECK_GOTO(rc = lyd_new_inner(NULL, cmp_mod, "schema-comparison", 0, &diff_cont), cleanup);
+    /* structure extension */
+    assert(LY_ARRAY_COUNT(cmp_mod->compiled->exts) == 1);
+    LY_CHECK_GOTO(rc = lyd_new_ext_inner(&cmp_mod->compiled->exts[0], "schema-comparison", &diff_cont), cleanup);
     LY_CHECK_GOTO(rc = lyd_new_list(diff_cont, NULL, "compiled-diff", 0, &diff_list), cleanup);
 
     /* source module info */
