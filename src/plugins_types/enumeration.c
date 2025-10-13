@@ -163,9 +163,9 @@ static int
 lyplg_type_sort_enum(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1,
         const struct lyd_value *val2)
 {
-    if (val1->enum_item->value > val2->enum_item->value) {
+    if (val1->enum_item->value < val2->enum_item->value) {
         return -1;
-    } else if (val1->enum_item->value < val2->enum_item->value) {
+    } else if (val1->enum_item->value > val2->enum_item->value) {
         return 1;
     } else {
         return 0;
