@@ -90,6 +90,10 @@ const char *schema =
         "      leaf l3 {type string;}"
         "    }"
         "  }"
+        "  list person {key \"name surname\"; ordered-by user;"
+        "    leaf name {type string;}"
+        "    leaf surname {type string;}"
+        "  }"
         "  leaf-list dllist {type uint8; default \"1\"; default \"2\"; default \"3\";}"
         "  list list {key \"name\";"
         "    leaf name {type string;}"
@@ -1418,6 +1422,63 @@ test_metadata(void **state)
     TEST_DIFF_3(xml1, xml2, xml3, LYD_DIFF_META, out_diff_1, out_diff_2, out_merge);
 }
 
+static void
+test_userord_conflicting_replace(void **state)
+{
+    (void) state;
+    struct lyd_node *diff_tree1 = NULL, *diff_tree2 = NULL, *final_diff = NULL;
+    char *final_xml;
+
+    char *diff_xml1 =
+            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
+            "  <person yang:operation=\"delete\" yang:orig-key=\"[name='alice'][surname='chalice']\">"
+            "    <name>roland</name>"
+            "    <surname>doland</surname>"
+            "  </person>"
+            "  <person yang:operation=\"replace\" yang:orig-key=\"\" yang:key=\"[name='bob'][surname='drop']\">"
+            "    <name>jake</name>"
+            "    <surname>fake</surname>"
+            "  </person>"
+            "  <person yang:operation=\"replace\" yang:orig-key=\"[name='jake'][surname='fake']\" yang:key=\"[name='alice'][surname='chalice']\">"
+            "    <name>bob</name>"
+            "    <surname>drop</surname>"
+            "  </person>"
+            "</df>\n";
+
+    char *diff_xml2 =
+            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
+            "  <person yang:operation=\"replace\" yang:orig-key=\"[name='alice'][surname='chalice']\" yang:key=\"\">"
+            "    <name>bob</name>"
+            "    <surname>drop</surname>"
+            "  </person>"
+            "</df>\n";
+
+    CHECK_PARSE_LYD(diff_xml1, diff_tree1);
+    CHECK_PARSE_LYD(diff_xml2, diff_tree2);
+    lyd_diff_merge_all(&final_diff, diff_tree1, 0);
+    lyd_diff_merge_all(&final_diff, diff_tree2, 0);
+
+    lyd_print_mem(&final_xml, final_diff, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+
+    char *result_xml =
+            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
+            "  <person yang:operation=\"delete\" yang:orig-key=\"[name='alice'][surname='chalice']\">\n"
+            "    <name>roland</name>\n"
+            "    <surname>doland</surname>\n"
+            "  </person>\n"
+            "  <person yang:operation=\"replace\" yang:orig-key=\"\" yang:key=\"[name='bob'][surname='drop']\">\n"
+            "    <name>jake</name>\n"
+            "    <surname>fake</surname>\n"
+            "  </person>\n"
+            "</df>\n";
+
+    assert_string_equal(final_xml, result_xml);
+    free(final_xml);
+    lyd_free_all(diff_tree1);
+    lyd_free_all(diff_tree2);
+    lyd_free_all(final_diff);
+}
+
 int
 main(void)
 {
@@ -1442,6 +1503,7 @@ main(void)
         UTEST(test_state_llist, setup),
         UTEST(test_wd, setup),
         UTEST(test_metadata, setup),
+        UTEST(test_userord_conflicting_replace, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

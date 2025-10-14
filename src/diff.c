@@ -2005,6 +2005,86 @@ lyd_diff_change_op(struct lyd_node *node, enum lyd_diff_op op)
 }
 
 /**
+ * @brief In user-ordered lists, certain operations on sibling nodes can result in logically identical changes.
+ *        However, applying the first change may cause the second one to fail.
+ *        To prevent this, the affected node is unlinked and freed.
+ *
+ * @param[in,out] diff The node whose metadata has been modified.
+ * @param[in] mod  The YANG module associated with the metadata.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_diff_find_and_unlink_cyclic_nodes(struct lyd_node **diff, const struct lys_module *mod)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyd_meta *meta1, *meta2;
+    struct lyd_node *diff_iter = *diff;
+    char *buff1 = NULL, *buff2 = NULL;
+    const char *name = NULL, *name_iter = NULL;
+    size_t bufflen1 = 0, buffused1 = 0;
+    size_t bufflen2 = 0, buffused2 = 0;
+
+    /* itereate throught previous nodes and look for logically identical changes */
+    while (diff_iter->prev->next) {
+        diff_iter = diff_iter->prev;
+
+        meta1 = lyd_find_meta((*diff)->meta, mod, "key");
+        meta2 = lyd_find_meta(diff_iter->meta, mod, "orig-key");
+
+        name = lyd_get_meta_value(meta1);
+        name_iter = lyd_get_meta_value(meta2);
+
+        if (!name || !name_iter) {
+            continue;
+        }
+
+        /* if keys don't match, skip - not a candidate for cyclic change */
+        if (strcmp(name, name_iter)) {
+            continue;
+        }
+
+        meta1 = lyd_find_meta((*diff)->meta, mod, "orig-key");
+        meta2 = lyd_find_meta(diff_iter->meta, mod, "key");
+
+        /* store string values of metadata to compare later */
+        name = lyd_get_meta_value(meta1);
+        name_iter = lyd_get_meta_value(meta2);
+
+        /* reuse buffers by resetting used size */
+        buffused1 = buffused2 = 0;
+
+        if ((ret = lyd_path_list_predicate(*diff, &buff1, &bufflen1, &buffused1, 0))) {
+            goto cleanup;
+        }
+
+        if ((ret = lyd_path_list_predicate(diff_iter, &buff2, &bufflen2, &buffused2, 0))) {
+            goto cleanup;
+        }
+
+        if (!name || !name_iter) {
+            continue;
+        }
+
+        /* compare path predicates with metadata - check if this is a reversed operation */
+        if (!strcmp(buff1, name_iter) && !strcmp(buff2, name)) {
+
+            /* found a cyclic change - remove and free the node */
+            if ((ret = lyd_unlink_tree(*diff))) {
+                goto cleanup;
+            }
+
+            lyd_free_tree(*diff);
+            *diff = NULL;
+            goto cleanup;
+        }
+    }
+cleanup:
+    free(buff1);
+    free(buff2);
+    return ret;
+}
+
+/**
  * @brief Update operations on a diff node when the new operation is REPLACE.
  *
  * @param[in] diff_match Node from the diff.
@@ -2047,6 +2127,7 @@ lyd_diff_merge_replace(struct lyd_node *diff_match, enum lyd_diff_op cur_op, con
             meta = lyd_find_meta(src_diff->meta, mod, meta_name);
             LY_CHECK_ERR_RET(!meta, LOGERR_META(ctx, meta_name, src_diff), LY_EINVAL);
             LY_CHECK_RET(lyd_dup_meta_single(meta, diff_match, NULL));
+
             break;
         case LYS_LEAF:
             /* replaced with the exact same value, impossible */
@@ -2459,6 +2540,17 @@ lyd_diff_is_redundant(struct lyd_node *diff)
         } else {
             meta_name = "value";
             orig_meta_name = "orig-value";
+        }
+
+        /** userordered lists can have different nodes that lead to identical changes.
+         *  Only one node will stay other is unlinked
+         */
+        if (!strcmp(meta_name, "key")) {
+            LY_CHECK_RET(lyd_diff_find_and_unlink_cyclic_nodes(&diff, mod), 0);
+            if (!diff) {
+                return 0;
+            }
+
         }
 
         /* check for redundant move */
