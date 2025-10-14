@@ -90,6 +90,10 @@ const char *schema =
         "      leaf l3 {type string;}"
         "    }"
         "  }"
+        "  list person {key \"name surname\"; ordered-by user;"
+        "    leaf name {type string;}"
+        "    leaf surname {type string;}"
+        "  }"
         "  leaf-list dllist {type uint8; default \"1\"; default \"2\"; default \"3\";}"
         "  list list {key \"name\";"
         "    leaf name {type string;}"
@@ -1418,6 +1422,280 @@ test_metadata(void **state)
     TEST_DIFF_3(xml1, xml2, xml3, LYD_DIFF_META, out_diff_1, out_diff_2, out_merge);
 }
 
+static void
+test_userord_list_reverse(void **state)
+{
+    (void) state;
+    struct lyd_node *tree1 = NULL, *tree2 = NULL;
+    struct lyd_node *diff1_2 = NULL, *diff_reverse = NULL;
+    char *final_xml;
+
+    char *xml1 =
+            "<df xmlns=\"urn:libyang:tests:defaults\">\n"
+            "  <person>\n"
+            "    <name>alice</name>\n"
+            "    <surname>chalice</surname>\n"
+            "  </person>\n"
+            "  <person>\n"
+            "    <name>bob</name>\n"
+            "    <surname>drop</surname>\n"
+            "  </person>\n"
+            "  <person>\n"
+            "    <name>jake</name>\n"
+            "    <surname>fake</surname>\n"
+            "  </person>\n"
+            "</df>\n";
+
+    char *xml2 =
+            "<df xmlns=\"urn:libyang:tests:defaults\">\n"
+            "  <person>\n"
+            "    <name>jake</name>\n"
+            "    <surname>fake</surname>\n"
+            "  </person>\n"
+            "  <person>\n"
+            "    <name>bob</name>\n"
+            "    <surname>drop</surname>\n"
+            "  </person>\n"
+            "  <person>\n"
+            "    <name>alice</name>\n"
+            "    <surname>chalice</surname>\n"
+            "  </person>\n"
+            "  <person>\n"
+            "    <name>roland</name>\n"
+            "    <surname>doland</surname>\n"
+            "  </person>\n"
+            "</df>\n";
+
+    CHECK_PARSE_LYD(xml1, tree1);
+    CHECK_PARSE_LYD(xml2, tree2);
+
+    lyd_diff_siblings(tree1, tree2, 0, &diff1_2);
+
+    lyd_diff_reverse_all(diff1_2, &diff_reverse);
+
+    lyd_diff_apply_all(&tree2, diff_reverse);
+
+    lyd_print_mem(&final_xml, tree2, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+
+    assert_string_equal(final_xml, xml1);
+
+    lyd_free_tree(diff1_2);
+    lyd_free_tree(diff_reverse);
+
+    lyd_free_tree(tree1);
+    lyd_free_tree(tree2);
+    free(final_xml);
+}
+
+static void
+test_userord_conflicting_replace_list(void **state)
+{
+    (void) state;
+    struct lyd_node *diff_tree1 = NULL, *diff_tree2 = NULL;
+    char *final_xml;
+
+    char *diff_xml1 =
+            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
+            "  <person yang:operation=\"delete\" yang:orig-key=\"[name='alice'][surname='chalice']\">"
+            "    <name>roland</name>"
+            "    <surname>doland</surname>"
+            "  </person>"
+            "  <person yang:operation=\"replace\" yang:orig-key=\"\" yang:key=\"[name='bob'][surname='drop']\">"
+            "    <name>jake</name>"
+            "    <surname>fake</surname>"
+            "  </person>"
+            "  <person yang:operation=\"replace\" yang:orig-key=\"[name='jake'][surname='fake']\" yang:key=\"[name='alice'][surname='chalice']\">"
+            "    <name>bob</name>"
+            "    <surname>drop</surname>"
+            "  </person>"
+            "</df>\n";
+
+    char *diff_xml2 =
+            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
+            "  <person yang:operation=\"replace\" yang:orig-key=\"[name='alice'][surname='chalice']\" yang:key=\"\">"
+            "    <name>bob</name>"
+            "    <surname>drop</surname>"
+            "  </person>"
+            "</df>\n";
+
+    CHECK_PARSE_LYD(diff_xml1, diff_tree1);
+    CHECK_PARSE_LYD(diff_xml2, diff_tree2);
+
+    lyd_diff_merge_all(&diff_tree1, diff_tree2, 0);
+
+    lyd_print_mem(&final_xml, diff_tree1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+
+    char *result_xml =
+            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
+            "  <person yang:operation=\"delete\" yang:orig-key=\"[name='alice'][surname='chalice']\">\n"
+            "    <name>roland</name>\n"
+            "    <surname>doland</surname>\n"
+            "  </person>\n"
+            "  <person yang:operation=\"replace\" yang:orig-key=\"\" yang:key=\"[name='bob'][surname='drop']\">\n"
+            "    <name>jake</name>\n"
+            "    <surname>fake</surname>\n"
+            "  </person>\n"
+            "</df>\n";
+
+    assert_string_equal(final_xml, result_xml);
+
+    lyd_free_tree(diff_tree1);
+    lyd_free_tree(diff_tree2);
+    free(final_xml);
+}
+
+static void
+test_userord_conflicting_replace_list2(void **state)
+{
+    (void) state;
+    struct lyd_node *tree1 = NULL, *tree2 = NULL, *tree3 = NULL;
+    struct lyd_node *diff1_2 = NULL, *diff3_1 = NULL, *diff1_3 = NULL;
+    char *final_xml;
+
+    char *xml1 =
+            "<df xmlns=\"urn:libyang:tests:defaults\">\n"
+            "  <person>\n"
+            "    <name>alice</name>\n"
+            "    <surname>chalice</surname>\n"
+            "  </person>\n"
+            "  <person>\n"
+            "    <name>bob</name>\n"
+            "    <surname>drop</surname>\n"
+            "  </person>\n"
+            "  <person>\n"
+            "    <name>jake</name>\n"
+            "    <surname>fake</surname>\n"
+            "  </person>\n"
+            "  <person>\n"
+            "    <name>roland</name>\n"
+            "    <surname>doland</surname>\n"
+            "  </person>\n"
+            "</df>\n";
+
+    char *xml2 =
+            "<df xmlns=\"urn:libyang:tests:defaults\">\n"
+            "  <person>\n"
+            "    <name>bob</name>\n"
+            "    <surname>drop</surname>\n"
+            "  </person>\n"
+            "  <person>\n"
+            "    <name>alice</name>\n"
+            "    <surname>chalice</surname>\n"
+            "  </person>\n"
+            "  <person>\n"
+            "    <name>jake</name>\n"
+            "    <surname>fake</surname>\n"
+            "  </person>\n"
+            "  <person>\n"
+            "    <name>roland</name>\n"
+            "    <surname>doland</surname>\n"
+            "  </person>\n"
+            "</df>\n";
+
+    char *xml3 =
+            "<df xmlns=\"urn:libyang:tests:defaults\">\n"
+            "  <person>\n"
+            "    <name>jake</name>\n"
+            "    <surname>fake</surname>\n"
+            "  </person>\n"
+            "  <person>\n"
+            "    <name>bob</name>\n"
+            "    <surname>drop</surname>\n"
+            "  </person>\n"
+            "  <person>\n"
+            "    <name>alice</name>\n"
+            "    <surname>chalice</surname>\n"
+            "  </person>\n"
+            "  <person>\n"
+            "    <name>roland</name>\n"
+            "    <surname>doland</surname>\n"
+            "  </person>\n"
+            "</df>\n";
+
+    CHECK_PARSE_LYD(xml1, tree1);
+    CHECK_PARSE_LYD(xml2, tree2);
+    CHECK_PARSE_LYD(xml3, tree3);
+
+    lyd_diff_siblings(tree1, tree2, 0, &diff1_2);
+    lyd_diff_siblings(tree1, tree3, 0, &diff1_3);
+    lyd_diff_reverse_all(diff1_3, &diff3_1);
+
+    lyd_diff_merge_all(&diff3_1, diff1_2, 0);
+
+    lyd_diff_apply_all(&tree3, diff3_1);
+
+    lyd_print_mem(&final_xml, tree3, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+
+    assert_string_equal(final_xml, xml2);
+
+    lyd_free_tree(diff1_2);
+    lyd_free_tree(diff1_3);
+    lyd_free_tree(diff3_1);
+
+    lyd_free_tree(tree1);
+    lyd_free_tree(tree2);
+    lyd_free_tree(tree3);
+    free(final_xml);
+}
+
+static void
+test_userord_conflicting_replace_llist(void **state)
+{
+    (void) state;
+    struct lyd_node *tree1 = NULL, *tree2 = NULL, *tree3 = NULL;
+    struct lyd_node *diff1_2 = NULL, *diff3_1 = NULL, *diff1_3 = NULL;
+    char *final_xml;
+
+    char *xml1 =
+            "<df xmlns=\"urn:libyang:tests:defaults\">\n"
+            "  <llist>1</llist>\n"
+            "  <llist>2</llist>\n"
+            "  <llist>3</llist>\n"
+            "  <llist>4</llist>\n"
+            "</df>\n";
+
+    char *xml2 =
+            "<df xmlns=\"urn:libyang:tests:defaults\">\n"
+            "  <llist>2</llist>\n"
+            "  <llist>1</llist>\n"
+            "  <llist>3</llist>\n"
+            "  <llist>4</llist>\n"
+            "</df>\n";
+
+    char *xml3 =
+            "<df xmlns=\"urn:libyang:tests:defaults\">\n"
+            "  <llist>3</llist>\n"
+            "  <llist>2</llist>\n"
+            "  <llist>1</llist>\n"
+            "  <llist>4</llist>\n"
+            "</df>\n";
+
+    CHECK_PARSE_LYD(xml1, tree1);
+    CHECK_PARSE_LYD(xml2, tree2);
+    CHECK_PARSE_LYD(xml3, tree3);
+
+    lyd_diff_siblings(tree1, tree2, 0, &diff1_2);
+    lyd_diff_siblings(tree1, tree3, 0, &diff1_3);
+    lyd_diff_reverse_all(diff1_3, &diff3_1);
+
+    lyd_diff_merge_all(&diff3_1, diff1_2, 0);
+
+    lyd_diff_apply_all(&tree3, diff3_1);
+
+    lyd_print_mem(&final_xml, tree3, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+
+    assert_string_equal(final_xml, xml2);
+
+    lyd_free_tree(diff1_2);
+    lyd_free_tree(diff1_3);
+    lyd_free_tree(diff3_1);
+
+    lyd_free_tree(tree1);
+    lyd_free_tree(tree2);
+    lyd_free_tree(tree3);
+    free(final_xml);
+}
+
 int
 main(void)
 {
@@ -1442,6 +1720,10 @@ main(void)
         UTEST(test_state_llist, setup),
         UTEST(test_wd, setup),
         UTEST(test_metadata, setup),
+        UTEST(test_userord_list_reverse, setup),
+        UTEST(test_userord_conflicting_replace_list, setup),
+        UTEST(test_userord_conflicting_replace_list2, setup),
+        UTEST(test_userord_conflicting_replace_llist, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

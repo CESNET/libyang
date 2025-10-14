@@ -2005,6 +2005,196 @@ lyd_diff_change_op(struct lyd_node *node, enum lyd_diff_op op)
 }
 
 /**
+ * @brief In user-ordered lists, certain operations on sibling nodes can result in logically identical changes.
+ *        However, applying the first change may cause the second one to fail.
+ *        Check whether this diff node is redundant.
+ *
+ * @param[in,out] diff The node whose metadata has been modified.
+ * @param[in] child The child of diff node.
+ * @return 0 if not, non-zero if it is.
+ */
+static ly_bool
+lyd_diff_is_redundant_userord_move(struct lyd_node **diff, struct lyd_node *child)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyd_meta *meta1, *meta2;
+    struct lyd_meta *orig_val_meta = NULL, *val_meta = NULL;
+    struct lyd_node *diff_iter = *diff;
+    char *buff1 = NULL, *buff2 = NULL;
+    const char *llist_value1 = NULL, *llist_value2 = NULL;
+    const char *name = NULL, *name_iter = NULL;
+    size_t bufflen1 = 0, buffused1 = 0;
+    size_t bufflen2 = 0, buffused2 = 0;
+    const char *orig_meta_name, *meta_name;
+
+    /* get metadata names */
+    if (lysc_is_dup_inst_list((*diff)->schema)) {
+        meta_name = "yang:position";
+        orig_meta_name = "yang:orig-position";
+    } else if ((*diff)->schema->nodetype == LYS_LIST) {
+        meta_name = "yang:key";
+        orig_meta_name = "yang:orig-key";
+    } else {
+        meta_name = "yang:value";
+        orig_meta_name = "yang:orig-value";
+    }
+
+    /* check for redundant move */
+    orig_val_meta = lyd_find_meta((*diff)->meta, NULL, orig_meta_name);
+    val_meta = lyd_find_meta((*diff)->meta, NULL, meta_name);
+    assert(orig_val_meta && val_meta);
+
+    if (!lyd_compare_meta(orig_val_meta, val_meta)) {
+        /* there is actually no move */
+        lyd_free_meta_single(orig_val_meta);
+        lyd_free_meta_single(val_meta);
+        if (child) {
+            /* change operation to NONE, we have siblings */
+            lyd_diff_change_op((*diff), LYD_DIFF_OP_NONE);
+            goto cleanup;
+        }
+
+        /* redundant node, BUT !!
+            * In diff the move operation is always converted to be INSERT_AFTER, which is fine
+            * because the data that this is applied on should not change for the diff lifetime.
+            * However, when we are merging 2 diffs, this conversion is actually lossy because
+            * if the data change, the move operation can also change its meaning. In this specific
+            * case the move operation will be lost. But it can be considered a feature, it is not supported.
+            */
+        ret = 1;
+        goto cleanup;
+    }
+
+    /* itereate throught previous nodes and look for logically identical changes */
+    diff_iter = (*diff)->prev;
+    while (diff_iter != (*diff)) {
+
+        meta1 = lyd_find_meta((*diff)->meta, NULL, meta_name);
+        meta2 = lyd_find_meta(diff_iter->meta, NULL, orig_meta_name);
+
+        name = lyd_get_meta_value(meta1);
+        name_iter = lyd_get_meta_value(meta2);
+
+        if (!name || !name_iter) {
+            goto next_iter;
+        }
+
+        /* if keys don't match, skip - not a candidate for cyclic change */
+        if (strcmp(name, name_iter)) {
+            goto next_iter;
+        }
+
+        meta1 = lyd_find_meta((*diff)->meta, NULL, orig_meta_name);
+        meta2 = lyd_find_meta(diff_iter->meta, NULL, meta_name);
+
+        /* store string values of metadata to compare later */
+        name = lyd_get_meta_value(meta1);
+        name_iter = lyd_get_meta_value(meta2);
+
+        if (!name || !name_iter) {
+            goto next_iter;
+        }
+
+        if ((*diff)->schema->nodetype == LYS_LIST) {
+
+            /* reuse buffers by resetting used size */
+            buffused1 = buffused2 = 0;
+            LY_CHECK_GOTO(ret = lyd_path_list_predicate(*diff, &buff1, &bufflen1, &buffused1, 0), cleanup);
+            LY_CHECK_GOTO(ret = lyd_path_list_predicate(diff_iter, &buff2, &bufflen2, &buffused2, 0), cleanup);
+
+            /* compare path predicates with metadata - check if this is a reversed operation */
+            if (!strcmp(buff1, name_iter) && !strcmp(buff2, name)) {
+
+                /* found a cyclic change - remove and free the node */
+                ret = 1;
+                goto cleanup;
+            }
+        } else {
+            llist_value1 = lyd_get_value(*diff);
+            llist_value2 = lyd_get_value(diff_iter);
+
+            /* compare vlaue of data node with metadata - check if this is a reversed operation */
+            if (!strcmp(llist_value1, name_iter) && !strcmp(llist_value2, name)) {
+
+                /* found a cyclic change - remove and free the node */
+                ret = 1;
+                goto cleanup;
+            }
+        }
+
+next_iter:
+        diff_iter = diff_iter->prev;
+    }
+
+cleanup:
+    free(buff1);
+    free(buff2);
+    return ret;
+}
+
+/**
+ * @brief Propagate key/value metadata from a list or leaf-list node
+ *        to its sibling nodes that reference it via key/value.
+ *
+ *        This is used to ensure correct ordering in user-ordered lists
+ *        or leaf-lists by updating the corresponding metadata in sibling
+ *        nodes before the reference node changes.
+ *
+ * @param[in] diff Node from lyd_diff_merge_replace().
+ * @param[in] meta_name Name of the metadata ("key" or "value").
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_diff_propagate_meta(struct lyd_node *diff, const char *meta_name)
+{
+    LY_ERR ret = LY_SUCCESS;
+    const struct lys_module *mod;
+    struct lyd_meta *meta1, *meta2;
+    struct lyd_node *diff_iter = NULL;
+    char *buff = NULL;
+    size_t bufflen = 0, buffused = 0;
+    const char *meta_value;
+
+    /* get "yang" module for the metadata */
+    mod = ly_ctx_get_module_latest(LYD_CTX(diff), "yang");
+    assert(mod);
+
+    /*
+     * iterate through all siblings of the diff
+     * if a sibling references the diff node via metadata, update it
+     */
+    LY_LIST_FOR(diff, diff_iter) {
+        /* find the relevant metadata on the current sibling */
+        if ((meta1 = lyd_find_meta(diff_iter->meta, mod, meta_name))) {
+            if (diff->schema->nodetype == LYS_LEAFLIST) {
+                if (!strcmp(lyd_get_meta_value(meta1), lyd_get_value(diff))) {
+                    /* replace the old metadata with the updated one from the changed node */
+                    lyd_diff_del_meta(diff_iter, meta_name);
+                    meta2 = lyd_find_meta(diff->meta, mod, meta_name);
+                    LY_CHECK_GOTO((ret = lyd_dup_meta_single(meta2, diff_iter, NULL)), cleanup);
+                }
+            } else {
+                buffused = 0;
+
+                LY_CHECK_GOTO((ret = lyd_path_list_predicate(diff, &buff, &bufflen, &buffused, 0)), cleanup);
+                meta_value = lyd_get_meta_value(meta1);
+
+                /* if the path predicate matches, replace the metadata */
+                if (!strcmp(buff, meta_value)) {
+                    meta1 = lyd_find_meta(diff_iter->meta, mod, meta_name);
+                    meta2 = lyd_find_meta(diff->meta, mod, meta_name);
+                    LY_CHECK_GOTO((ret = lyd_change_meta(meta1, lyd_get_meta_value(meta2))), cleanup);
+                }
+            }
+        }
+    }
+
+cleanup:
+    free(buff);
+    return ret;
+}
+
+/**
  * @brief Update operations on a diff node when the new operation is REPLACE.
  *
  * @param[in] diff_match Node from the diff.
@@ -2043,10 +2233,14 @@ lyd_diff_merge_replace(struct lyd_node *diff_match, enum lyd_diff_op cur_op, con
                 meta_name = "value";
             }
 
+            /* update sibling nodes which reference the diff_match by key/value */
+            LY_CHECK_RET(lyd_diff_propagate_meta(diff_match, meta_name));
+
             lyd_diff_del_meta(diff_match, meta_name);
             meta = lyd_find_meta(src_diff->meta, mod, meta_name);
             LY_CHECK_ERR_RET(!meta, LOGERR_META(ctx, meta_name, src_diff), LY_EINVAL);
             LY_CHECK_RET(lyd_dup_meta_single(meta, diff_match, NULL));
+
             break;
         case LYS_LEAF:
             /* replaced with the exact same value, impossible */
@@ -2429,10 +2623,10 @@ static ly_bool
 lyd_diff_is_redundant(struct lyd_node *diff)
 {
     enum lyd_diff_op op;
-    struct lyd_meta *meta, *orig_val_meta = NULL, *val_meta = NULL;
+    struct lyd_meta *meta;
     struct lyd_node *child;
     const struct lys_module *mod;
-    const char *str, *orig_meta_name, *meta_name;
+    const char *str;
 
     assert(diff);
 
@@ -2449,42 +2643,12 @@ lyd_diff_is_redundant(struct lyd_node *diff)
     LY_CHECK_RET(lyd_diff_get_op(diff, &op, NULL), 0);
 
     if ((op == LYD_DIFF_OP_REPLACE) && lysc_is_userordered(diff->schema)) {
-        /* get metadata names */
-        if (lysc_is_dup_inst_list(diff->schema)) {
-            meta_name = "position";
-            orig_meta_name = "orig-position";
-        } else if (diff->schema->nodetype == LYS_LIST) {
-            meta_name = "key";
-            orig_meta_name = "orig-key";
-        } else {
-            meta_name = "value";
-            orig_meta_name = "orig-value";
-        }
 
-        /* check for redundant move */
-        orig_val_meta = lyd_find_meta(diff->meta, mod, orig_meta_name);
-        val_meta = lyd_find_meta(diff->meta, mod, meta_name);
-        assert(orig_val_meta && val_meta);
+        /** userordered lists can have different nodes that lead to identical changes.
+         *  if such a redundant node is detected, this function returns non-zero.
+         */
+        LY_CHECK_RET(lyd_diff_is_redundant_userord_move(&diff, child), 1);
 
-        if (!lyd_compare_meta(orig_val_meta, val_meta)) {
-            /* there is actually no move */
-            lyd_free_meta_single(orig_val_meta);
-            lyd_free_meta_single(val_meta);
-            if (child) {
-                /* change operation to NONE, we have siblings */
-                lyd_diff_change_op(diff, LYD_DIFF_OP_NONE);
-                return 0;
-            }
-
-            /* redundant node, BUT !!
-             * In diff the move operation is always converted to be INSERT_AFTER, which is fine
-             * because the data that this is applied on should not change for the diff lifetime.
-             * However, when we are merging 2 diffs, this conversion is actually lossy because
-             * if the data change, the move operation can also change its meaning. In this specific
-             * case the move operation will be lost. But it can be considered a feature, it is not supported.
-             */
-            return 1;
-        }
     } else if (op == LYD_DIFF_OP_NONE) {
         if (!diff->schema) {
             /* opaque node with none must be redundant */
@@ -3108,6 +3272,7 @@ lyd_diff_reverse_userord(struct lyd_node *node, const struct lysc_node **schema_
             do {
                 --u;
                 LY_CHECK_GOTO(rc = lyd_insert_after(anchor, (*nodes_p)[u]), cleanup);
+                anchor = (*nodes_p)[u];
             } while (u);
         }
 
@@ -3268,13 +3433,13 @@ lyd_diff_reverse_siblings_r(struct lyd_node *sibling, const struct lys_module *y
         LY_CHECK_GOTO(rc = lyd_diff_reverse_siblings_r(lyd_child(iter), yang_mod), cleanup);
 
         if (lysc_is_userordered(iter->schema)) {
-            /* special user-ordered nodes processing */
+            /* special user-ordered nodes processing (collect all the nodes) */
             LY_CHECK_GOTO(rc = lyd_diff_reverse_userord(iter, &userord_schema, &userord), cleanup);
         }
     }
 
     if (userord_schema) {
-        /* finish user-ordered nodes processing */
+        /* finish user-ordered nodes processing - reverse the order of the nodes */
         LY_CHECK_GOTO(rc = lyd_diff_reverse_userord(NULL, &userord_schema, &userord), cleanup);
     }
 
