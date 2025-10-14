@@ -1,5 +1,5 @@
 {
-  "ietf-schema-comparison:schema-comparison": {
+  "ietf-yang-schema-comparison:schema-comparison": {
     "compiled-diff": [
       {
         "source": {
