@@ -1,5 +1,5 @@
 {
-  "ietf-schema-comparison:schema-comparison": {
+  "ietf-yang-schema-comparison:schema-comparison": {
     "compiled-diff": [
       {
         "source": {
@@ -20,12 +20,12 @@
             "revision": "2013-07-15"
           },
           {
-            "module": "ietf-schema-comparison",
-            "revision": "2025-09-19"
-          },
-          {
             "module": "ietf-yang-library",
             "revision": "2019-01-04"
+          },
+          {
+            "module": "ietf-yang-schema-comparison",
+            "revision": "2025-10-13"
           },
           {
             "module": "ietf-yang-structure-ext",
@@ -114,7 +114,7 @@
                   "status": "current",
                   "ext-instance": [
                     {
-                      "module": "ietf-schema-comparison",
+                      "module": "ietf-yang-schema-comparison",
                       "name": "backwards-compatible"
                     }
                   ]
