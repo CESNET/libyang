@@ -304,8 +304,10 @@ ly_ctx_shared_data_remove_and_free(struct ly_ctx_shared_data *shared_data)
         return;
     }
 
-    /* free members */
+    /* free all the cached pattern pcodes */
     lyht_free(shared_data->pattern_ht, ly_ctx_ht_pattern_free_cb);
+
+    /* free rest of the members */
     lydict_clean(shared_data->data_dict);
     free(shared_data->data_dict);
     lyht_free(shared_data->leafref_links_ht, ly_ctx_ht_leafref_links_rec_free);
@@ -543,7 +545,7 @@ cleanup:
 }
 
 LY_ERR
-ly_ctx_get_or_compile_pattern_code(const struct ly_ctx *ctx, const char *pattern, const pcre2_code **pcode)
+ly_ctx_shared_data_pattern_get(const struct ly_ctx *ctx, const char *pattern, const pcre2_code **pcode)
 {
     LY_ERR rc = LY_SUCCESS;
     struct ly_ctx_shared_data *ctx_data;
@@ -591,6 +593,37 @@ cleanup:
         pcre2_code_free(pcode_tmp);
     }
     return rc;
+}
+
+void
+ly_ctx_shared_data_pattern_del(const struct ly_ctx *ctx, const char *pattern)
+{
+    struct ly_ctx_shared_data *ctx_data;
+    struct ly_pattern_ht_rec rec = {0}, *found_rec = NULL;
+    uint32_t hash;
+
+    assert(ctx && pattern);
+
+    /* get the context shared data */
+    ctx_data = ly_ctx_shared_data_get(ctx);
+    LY_CHECK_ERR_RET(!ctx_data, LOGINT(ctx), );
+
+    /* try to find the pattern code in the pattern ht */
+    hash = lyht_hash(pattern, strlen(pattern));
+    rec.pattern = pattern;
+
+    if (lyht_find(ctx_data->pattern_ht, &rec, hash, (void **)&found_rec)) {
+        /* pattern code not cached yet */
+        return;
+    }
+
+    /* found it, free the pcode */
+    pcre2_code_free(found_rec->pcode);
+
+    /* free the pattern HT record */
+    if (lyht_remove(ctx_data->pattern_ht, &rec, hash)) {
+        LOGINT(ctx);
+    }
 }
 
 void *

@@ -4997,6 +4997,7 @@ xpath_re_match(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_s
     rc = lyxp_set_cast(args[1], LYXP_SET_STRING);
     LY_CHECK_RET(rc);
 
+    /* create a temporary pattern */
     LY_ARRAY_NEW_RET(set->ctx, patterns, pattern, LY_EMEM);
     *pattern = calloc(1, sizeof **pattern);
     if (set->cur_node) {
@@ -5007,9 +5008,13 @@ xpath_re_match(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_s
     (*pattern)->expr = args[1]->val.str;
     rc = lyplg_type_validate_patterns(set->ctx, patterns, args[0]->val.str, strlen(args[0]->val.str), &err);
 
+    /* free the pattern */
     free(*pattern);
     LY_ARRAY_FREE(patterns);
+    ly_ctx_shared_data_pattern_del(set->ctx, args[1]->val.str);
+
     if (rc && (rc != LY_EVALID)) {
+        /* error */
         ly_err_print(set->ctx, err);
         ly_err_free(err);
         return rc;

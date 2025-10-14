@@ -474,7 +474,7 @@ void ly_ctx_ht_leafref_links_rec_free(void *val_p);
 struct lys_module *ly_ctx_get_module_implemented2(const struct ly_ctx *ctx, const char *name, size_t name_len);
 
 /**
- * @brief Get or compile a PCRE2 pattern code.
+ * @brief Get a PCRE2 pattern code.
  *
  * If the pattern is not found in the context, it is compiled and cached.
  *
@@ -483,7 +483,15 @@ struct lys_module *ly_ctx_get_module_implemented2(const struct ly_ctx *ctx, cons
  * @param[out] pcode Optional compiled pattern code. DO NOT FREE IT, it is owned by the context.
  * @return LY_ERR value.
  */
-LY_ERR ly_ctx_get_or_compile_pattern_code(const struct ly_ctx *ctx, const char *pattern, const pcre2_code **pcode);
+LY_ERR ly_ctx_shared_data_pattern_get(const struct ly_ctx *ctx, const char *pattern, const pcre2_code **pcode);
+
+/**
+ * @brief Free a PCRE2 pattern code, if found in the context cache.
+ *
+ * @param[in] ctx Context of the pattern.
+ * @param[in] pattern Pattern string to use.
+ */
+void ly_ctx_shared_data_pattern_del(const struct ly_ctx *ctx, const char *pattern);
 
 /******************************************************************************
  * Dictionary

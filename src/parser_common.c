@@ -114,6 +114,11 @@ lyd_parser_notif_eventtime_validate(const struct lyd_node *node)
         /* validate */
         value = lyd_get_value(node);
         rc = lyplg_type_validate_patterns(ctx, patterns, value, strlen(value), &err);
+
+        /* free pcodes that were just cached */
+        LY_ARRAY_FOR(patterns, u) {
+            ly_ctx_shared_data_pattern_del(cctx.ctx, patterns[u]->expr);
+        }
     }
 
 cleanup:

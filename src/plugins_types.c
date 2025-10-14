@@ -552,7 +552,7 @@ lyplg_type_validate_patterns(const struct ly_ctx *ctx, struct lysc_pattern **pat
     LY_ARRAY_FOR(patterns, u) {
         /* get (or compile) the compiled pattern. The pattern might not be found, because
          * if ctx is printed, it did not inherit compiled patterns from the original context. */
-        LY_CHECK_RET(ly_ctx_get_or_compile_pattern_code(ctx, patterns[u]->expr, &pcode));
+        LY_CHECK_RET(ly_ctx_shared_data_pattern_get(ctx, patterns[u]->expr, &pcode));
 
         /* match the pattern */
         r = ly_pattern_code_match(pcode, str, str_len, err);
