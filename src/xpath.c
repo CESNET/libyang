@@ -4948,8 +4948,6 @@ xpath_position(struct lyxp_set **UNUSED(args), uint32_t UNUSED(arg_count), struc
 
     set_fill_number(set, set->ctx_pos);
 
-    /* UNUSED in 'Release' build type */
-    (void)options;
     return LY_SUCCESS;
 }
 
