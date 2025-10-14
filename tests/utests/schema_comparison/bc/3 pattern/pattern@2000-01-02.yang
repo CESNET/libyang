@@ -3,7 +3,7 @@ module pattern {
     prefix ptn;
     yang-version 1.1;
 
-    import ietf-schema-comparison {
+    import ietf-yang-schema-comparison {
         prefix schema-cmp;
     }
 

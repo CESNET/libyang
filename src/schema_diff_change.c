@@ -128,7 +128,7 @@ schema_diff_has_bc_ext(const struct lysc_ext_instance *exts)
     LY_ARRAY_COUNT_TYPE u;
 
     LY_ARRAY_FOR(exts, u) {
-        if (!strcmp(exts[u].def->module->name, "ietf-schema-comparison") &&
+        if (!strcmp(exts[u].def->module->name, "ietf-yang-schema-comparison") &&
                 !strcmp(exts[u].def->name, "backwards-compatible")) {
             return 1;
         }
@@ -372,7 +372,8 @@ schema_diff_node_description(const char *dsc1, const char *dsc2, const struct ly
         /* modified, look for BC extension */
         is_nbc = 1;
         LY_ARRAY_FOR(exts2, u) {
-            if ((exts2[u].parent_stmt == LY_STMT_DESCRIPTION) && !strcmp(exts2[u].def->module->name, "ietf-schema-comparison") &&
+            if ((exts2[u].parent_stmt == LY_STMT_DESCRIPTION) &&
+                    !strcmp(exts2[u].def->module->name, "ietf-yang-schema-comparison") &&
                     !strcmp(exts2[u].def->name, "backwards-compatible")) {
                 is_nbc = 0;
                 break;
