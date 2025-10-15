@@ -5006,6 +5006,10 @@ xpath_re_match(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_s
     (*pattern)->expr = args[1]->val.str;
     rc = lyplg_type_validate_patterns(set->ctx, patterns, args[0]->val.str, strlen(args[0]->val.str), &err);
 
+    if (set->cur_node) {
+        LOG_LOCBACK(0, 1);
+    }
+
     /* free the pattern */
     free(*pattern);
     LY_ARRAY_FREE(patterns);
