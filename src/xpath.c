@@ -1709,8 +1709,8 @@ set_comp_canonize(struct lyxp_set *set, const struct lyxp_set_node *xp_node)
     }
 
     /* print canonized string, ignore errors, the value may not satisfy schema constraints */
-    r = lyd_value_validate2(set->ctx, xp_node->node->schema, set->val.str, strlen(set->val.str),
-            set->format, set->prefix_data, NULL, set->ext, NULL, &canon);
+    r = lyd_value_validate2(NULL, xp_node->node->schema, set->val.str, strlen(set->val.str), set->format,
+            set->prefix_data, NULL, set->ext, NULL, &canon);
     if (r && (r != LY_EINCOMPLETE)) {
         /* invalid value, fine */
         return LY_SUCCESS;
