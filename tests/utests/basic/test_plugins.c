@@ -31,15 +31,27 @@ const char *simple = "module libyang-plugins-simple {"
         "    type s:note {length 255;}"
         "    s:hint \"some hint here\";"
         "  }"
+        "  leaf enum1 {"
+        "    type enumeration {"
+        "      enum val1 {s:rt;}"
+        "      enum val2 {s:rt;}"
+        "    }"
+        "  }"
+        "  leaf u1 {"
+        "    type union {"
+        "      type string {s:rt;}"
+        "      type int8 {s:rt;}"
+        "    }"
+        "  }"
         "  grouping grp1 {"
         "    list l1 {key v; leaf v {type string;} leaf k {type string;}}"
         "    list l2 {key v; leaf v {type string;} leaf k {type string;}}"
         "    typedef t1 {"
-        "      type string;"
+        "      type string {s:rt;}"
         "      s:rt;"
         "    }"
         "    typedef t2 {"
-        "      type string;"
+        "      type string {s:rt;}"
         "      s:rt;"
         "    }"
         "  }"
@@ -132,6 +144,8 @@ parse_clb2(struct lysp_ctx *UNUSED(pctx), struct lysp_ext_instance *ext)
 {
     struct lysp_refine *refine;
     struct lysp_tpdf *tpdf;
+    struct lysp_type_enum *en;
+    struct lysp_type *type;
     LY_ARRAY_COUNT_TYPE count = 0;
 
     if (ext->parent_stmt == LY_STMT_REFINE) {
@@ -140,6 +154,12 @@ parse_clb2(struct lysp_ctx *UNUSED(pctx), struct lysp_ext_instance *ext)
     } else if (ext->parent_stmt == LY_STMT_TYPEDEF) {
         tpdf = (struct lysp_tpdf *)ext->parent;
         count = LY_ARRAY_COUNT(tpdf->exts);
+    } else if (ext->parent_stmt == LY_STMT_ENUM) {
+        en = (struct lysp_type_enum *)ext->parent;
+        count = LY_ARRAY_COUNT(en->exts);
+    } else if (ext->parent_stmt == LY_STMT_TYPE) {
+        type = (struct lysp_type *)ext->parent;
+        count = LY_ARRAY_COUNT(type->exts);
     } else {
         return LY_SUCCESS;
     }
