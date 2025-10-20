@@ -1922,26 +1922,6 @@ yang_data(void **state)
     TEST_LOCAL_TEARDOWN;
 }
 
-static LY_ERR
-getter(const struct lysc_ext_instance *ext, const struct lyd_node *UNUSED(parent), void *user_data, void **ext_data,
-        ly_bool *ext_data_free)
-{
-    struct ly_ctx *ctx;
-    struct lyd_node *data = NULL;
-
-    ctx = ext->module->ctx;
-    if (user_data) {
-        /* parse using the parent context */
-        ly_ctx_set_ext_data_clb(ctx, getter, NULL);
-        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, user_data, LYD_XML, LYD_PARSE_ONLY, 0, &data));
-        ly_ctx_set_ext_data_clb(ctx, getter, user_data);
-    }
-
-    *ext_data = data;
-    *ext_data_free = 1;
-    return LY_SUCCESS;
-}
-
 #define SM_MODNAME_EXT "sm-extension"
 #define SM_MOD_EXT_NAMESPACE "urn:sm-ext"
 #define SM_PREF "sm"
