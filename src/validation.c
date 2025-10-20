@@ -2484,6 +2484,10 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *dep_tree, enum 
 
     LY_CHECK_ARG_RET(NULL, op_tree, !dep_tree || !dep_tree->parent, (data_type == LYD_TYPE_RPC_YANG) ||
             (data_type == LYD_TYPE_NOTIF_YANG) || (data_type == LYD_TYPE_REPLY_YANG), LY_EINVAL);
+    if (op_tree == dep_tree) {
+        /* redundant dependency */
+        dep_tree = NULL;
+    }
     if (diff) {
         *diff = NULL;
     }
