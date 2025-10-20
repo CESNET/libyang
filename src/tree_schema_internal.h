@@ -623,6 +623,7 @@ char *lysc_path_until(const struct lysc_node *node, const struct lysc_node *pare
  *      LY_VALUE_SCHEMA          - const struct ::lysp_module* (module used for resolving imports to prefixes)
  *      LY_VALUE_SCHEMA_RESOLVED - struct ::lysc_prefix* (sized array of pairs: prefix - module)
  *      LY_VALUE_XML             - struct ::ly_set* (set of all returned modules as struct ::lys_module)
+ *      LY_VALUE_CBOR            - NULL
  *      LY_VALUE_JSON            - NULL
  *      LY_VALUE_LYB             - NULL
  * @return Module prefix to print.
@@ -642,6 +643,7 @@ const char *ly_get_prefix(const struct lys_module *mod, LY_VALUE_FORMAT format, 
  *      LY_VALUE_SCHEMA          - const struct lysp_module * (module used for resolving prefixes from imports)
  *      LY_VALUE_SCHEMA_RESOLVED - struct lyd_value_prefix * (sized array of pairs: prefix - module)
  *      LY_VALUE_XML             - const struct ly_set * (set with defined namespaces stored as ::lyxml_ns)
+ *      LY_VALUE_CBOR            - NULL
  *      LY_VALUE_JSON            - NULL
  *      LY_VALUE_LYB             - NULL
  * @return Resolved prefix module,

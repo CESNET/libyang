@@ -307,6 +307,7 @@ lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *pref
             }
 
             /* unknown data node */
+            printf("checkpoint1-json\n");
             if (lydctx->parse_opts & LYD_PARSE_STRICT) {
                 if (parent) {
                     LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "Node \"%.*s\" not found as a child of \"%s\" node.",

@@ -137,6 +137,7 @@ ly_resolve_prefix(const struct ly_ctx *ctx, const void *prefix, size_t prefix_le
         mod = ly_xml_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
         break;
     case LY_VALUE_CANON:
+    case LY_VALUE_CBOR:
     case LY_VALUE_JSON:
     case LY_VALUE_LYB:
         mod = ly_json_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
@@ -161,6 +162,7 @@ lyplg_type_identity_module(const struct ly_ctx *ctx, const struct lysc_node *ctx
             /* use local module */
             return ly_schema_resolved_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
         case LY_VALUE_CANON:
+        case LY_VALUE_CBOR:
         case LY_VALUE_JSON:
         case LY_VALUE_LYB:
         case LY_VALUE_STR_NS:
@@ -286,6 +288,7 @@ ly_get_prefix(const struct lys_module *mod, LY_VALUE_FORMAT format, void *prefix
         prefix = ly_xml_get_prefix(mod, prefix_data);
         break;
     case LY_VALUE_CANON:
+    case LY_VALUE_CBOR:
     case LY_VALUE_JSON:
     case LY_VALUE_LYB:
         prefix = ly_json_get_prefix(mod, prefix_data);
@@ -837,6 +840,7 @@ lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_
         break;
     case LY_VALUE_CANON:
     case LY_VALUE_LYB:
+    case LY_VALUE_CBOR:
     case LY_VALUE_JSON:
     case LY_VALUE_STR_NS:
         prefix_opt = LY_PATH_PREFIX_STRICT_INHERIT;

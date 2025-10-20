@@ -48,36 +48,6 @@ lycbor_token2str(enum cbor_type cbortype)
     return "";
 }
 
-        return "object";
-    case LYJSON_OBJECT_NEXT:
-        return "object next";
-    case LYJSON_OBJECT_CLOSED:
-        return "object closed";
-    case LYJSON_ARRAY:
-        return "array";
-    case LYJSON_ARRAY_NEXT:
-        return "array next";
-    case LYJSON_ARRAY_CLOSED:
-        return "array closed";
-    case LYJSON_OBJECT_NAME:
-        return "object name";
-    case LYJSON_NUMBER:
-        return "number";
-    case LYJSON_STRING:
-        return "string";
-    case LYJSON_TRUE:
-        return "true";
-    case LYJSON_FALSE:
-        return "false";
-    case LYJSON_NULL:
-        return "null";
-    case LYJSON_END:
-        return "end of input";
-    }
-
-    return "";
-}
-
 /**
  * @brief Free CBOR context.
  *

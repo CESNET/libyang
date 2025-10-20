@@ -597,6 +597,7 @@ ly_path_compile_snode(const struct ly_ctx *ctx, const struct lysc_node *cur_node
             /* use current module */
             mod = cur_mod;
             break;
+        case LY_VALUE_CBOR:
         case LY_VALUE_JSON:
         case LY_VALUE_LYB:
             if (!prev_ctx_node) {

@@ -190,6 +190,7 @@ lyplg_type_store_instanceid_keys(const struct ly_ctx *ctx, const struct lysc_typ
 
     switch (format) {
     case LY_VALUE_CANON:
+    case LY_VALUE_CBOR:
     case LY_VALUE_JSON:
     case LY_VALUE_LYB:
     case LY_VALUE_STR_NS:
