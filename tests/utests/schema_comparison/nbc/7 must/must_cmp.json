@@ -1,6 +1,6 @@
 {
   "ietf-yang-schema-comparison:schema-comparison": {
-    "compiled-diff": [
+    "schema": [
       {
         "source": {
           "module": "must",
@@ -11,7 +11,7 @@
           "revision": "2000-01-02"
         },
         "conformance": "non-backwards-compatible",
-        "node-diff": [
+        "node-comparison": [
           {
             "node": "/must:l1",
             "node-type": "leaf",
@@ -23,22 +23,22 @@
               }
             ],
             "old": {
+              "status": "current",
               "config": true,
               "mandatory": false,
-              "status": "current",
               "type": {
                 "base-type": "uint16"
               }
             },
             "new": {
-              "config": true,
-              "mandatory": false,
+              "status": "current",
               "must": [
                 {
                   "condition": ". = 5"
                 }
               ],
-              "status": "current",
+              "config": true,
+              "mandatory": false,
               "type": {
                 "base-type": "uint16"
               }

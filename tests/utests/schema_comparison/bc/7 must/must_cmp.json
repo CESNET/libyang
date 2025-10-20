@@ -1,6 +1,6 @@
 {
   "ietf-yang-schema-comparison:schema-comparison": {
-    "compiled-diff": [
+    "schema": [
       {
         "source": {
           "module": "must",
@@ -25,7 +25,7 @@
           },
           {
             "module": "ietf-yang-schema-comparison",
-            "revision": "2025-10-13"
+            "revision": "2025-10-20"
           },
           {
             "module": "ietf-yang-structure-ext",
@@ -41,7 +41,7 @@
           }
         ],
         "conformance": "backwards-compatible",
-        "node-diff": [
+        "node-comparison": [
           {
             "node": "/must:l1",
             "node-type": "leaf",
@@ -53,22 +53,22 @@
               }
             ],
             "old": {
-              "config": true,
-              "mandatory": false,
+              "status": "current",
               "must": [
                 {
                   "condition": ". = 5"
                 }
               ],
-              "status": "current",
+              "config": true,
+              "mandatory": false,
               "type": {
                 "base-type": "uint16"
               }
             },
             "new": {
+              "status": "current",
               "config": true,
               "mandatory": false,
-              "status": "current",
               "type": {
                 "base-type": "uint16"
               }
@@ -90,21 +90,20 @@
               }
             ],
             "old": {
-              "config": true,
-              "mandatory": false,
+              "status": "current",
               "must": [
                 {
                   "condition": ". > 50"
                 }
               ],
-              "status": "current",
+              "config": true,
+              "mandatory": false,
               "type": {
                 "base-type": "uint32"
               }
             },
             "new": {
-              "config": true,
-              "mandatory": false,
+              "status": "current",
               "must": [
                 {
                   "condition": ". > 30",
@@ -116,7 +115,8 @@
                   ]
                 }
               ],
-              "status": "current",
+              "config": true,
+              "mandatory": false,
               "type": {
                 "base-type": "uint32"
               }

@@ -1,6 +1,6 @@
 {
   "ietf-yang-schema-comparison:schema-comparison": {
-    "compiled-diff": [
+    "schema": [
       {
         "source": {
           "module": "bits",
@@ -11,7 +11,7 @@
           "revision": "2000-01-02"
         },
         "conformance": "non-backwards-compatible",
-        "node-diff": [
+        "node-comparison": [
           {
             "node": "/bits:l1",
             "node-type": "leaf",
@@ -33,9 +33,9 @@
               }
             ],
             "old": {
+              "status": "current",
               "config": true,
               "mandatory": false,
-              "status": "current",
               "type": {
                 "base-type": "bits",
                 "bit": [
@@ -58,9 +58,9 @@
               }
             },
             "new": {
+              "status": "current",
               "config": true,
               "mandatory": false,
-              "status": "current",
               "type": {
                 "base-type": "bits",
                 "bit": [
@@ -104,9 +104,9 @@
               }
             ],
             "old": {
+              "status": "current",
               "config": true,
               "mandatory": false,
-              "status": "current",
               "type": {
                 "base-type": "bits",
                 "bit": [
@@ -129,9 +129,9 @@
               }
             },
             "new": {
+              "status": "current",
               "config": true,
               "mandatory": false,
-              "status": "current",
               "type": {
                 "base-type": "bits",
                 "bit": [

@@ -1,6 +1,6 @@
 {
   "ietf-yang-schema-comparison:schema-comparison": {
-    "compiled-diff": [
+    "schema": [
       {
         "source": {
           "module": "case",
@@ -11,9 +11,9 @@
           "revision": "2000-01-02"
         },
         "conformance": "backwards-compatible",
-        "node-diff": [
+        "node-comparison": [
           {
-            "node": "/case:cont",
+            "node": "/case:ch/c2/cont",
             "node-type": "container",
             "changed": [
               {
@@ -23,9 +23,9 @@
               }
             ],
             "new": {
-              "config": true,
+              "status": "current",
               "presence": false,
-              "status": "current"
+              "config": true
             }
           }
         ]

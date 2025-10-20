@@ -1,6 +1,6 @@
 {
   "ietf-yang-schema-comparison:schema-comparison": {
-    "compiled-diff": [
+    "schema": [
       {
         "source": {
           "module": "data-def-order",
@@ -11,7 +11,7 @@
           "revision": "2000-01-02"
         },
         "conformance": "non-backwards-compatible",
-        "node-diff": [
+        "node-comparison": [
           {
             "node": "/data-def-order:cont/cont2",
             "node-type": "container",
@@ -23,14 +23,14 @@
               }
             ],
             "old": {
-              "config": true,
+              "status": "current",
               "presence": false,
-              "status": "current"
+              "config": true
             },
             "new": {
-              "config": true,
+              "status": "current",
               "presence": false,
-              "status": "current"
+              "config": true
             }
           },
           {
@@ -44,9 +44,9 @@
               }
             ],
             "new": {
-              "config": true,
+              "status": "current",
               "presence": false,
-              "status": "current"
+              "config": true
             }
           }
         ]
