@@ -1,6 +1,6 @@
 {
   "ietf-yang-schema-comparison:schema-comparison": {
-    "compiled-diff": [
+    "schema": [
       {
         "source": {
           "module": "new-stmt",
@@ -11,7 +11,7 @@
           "revision": "2000-01-02"
         },
         "conformance": "backwards-compatible",
-        "module-diff": {
+        "module-comparison": {
           "changed": [
             {
               "stmt": "identity",
@@ -37,7 +37,7 @@
             ]
           }
         },
-        "node-diff": [
+        "node-comparison": [
           {
             "node": "/new-stmt:r1",
             "node-type": "rpc",
@@ -53,9 +53,8 @@
             }
           },
           {
-            "node": "/new-stmt:r2/l",
+            "node": "/new-stmt:r2/input/l",
             "node-type": "leaf",
-            "in-rpc-action": "input",
             "changed": [
               {
                 "stmt": "node",
@@ -64,8 +63,8 @@
               }
             ],
             "new": {
-              "mandatory": false,
               "status": "current",
+              "mandatory": false,
               "type": {
                 "base-type": "string"
               }
