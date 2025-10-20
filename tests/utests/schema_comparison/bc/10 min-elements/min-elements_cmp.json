@@ -1,6 +1,6 @@
 {
   "ietf-yang-schema-comparison:schema-comparison": {
-    "compiled-diff": [
+    "schema": [
       {
         "source": {
           "module": "min-elements",
@@ -11,7 +11,7 @@
           "revision": "2000-01-02"
         },
         "conformance": "backwards-compatible",
-        "node-diff": [
+        "node-comparison": [
           {
             "node": "/min-elements:l1",
             "node-type": "leaf-list",
@@ -23,22 +23,22 @@
               }
             ],
             "old": {
-              "config": true,
+              "ordered-by": "system",
               "status": "current",
+              "config": true,
+              "min-elements": 10,
               "type": {
                 "base-type": "uint16"
-              },
-              "ordered-by": "system",
-              "min-elements": 10
+              }
             },
             "new": {
-              "config": true,
+              "ordered-by": "system",
               "status": "current",
+              "config": true,
+              "min-elements": 5,
               "type": {
                 "base-type": "uint16"
-              },
-              "ordered-by": "system",
-              "min-elements": 5
+              }
             }
           },
           {
@@ -52,15 +52,15 @@
               }
             ],
             "old": {
-              "config": true,
-              "status": "current",
               "ordered-by": "system",
+              "status": "current",
+              "config": true,
               "min-elements": 5
             },
             "new": {
-              "config": true,
+              "ordered-by": "system",
               "status": "current",
-              "ordered-by": "system"
+              "config": true
             }
           }
         ]
