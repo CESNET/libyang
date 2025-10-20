@@ -1,6 +1,6 @@
 {
   "ietf-yang-schema-comparison:schema-comparison": {
-    "compiled-diff": [
+    "schema": [
       {
         "source": {
           "module": "dflt",
@@ -11,7 +11,7 @@
           "revision": "2000-01-02"
         },
         "conformance": "backwards-compatible",
-        "node-diff": [
+        "node-comparison": [
           {
             "node": "/dflt:l1",
             "node-type": "leaf",
@@ -23,23 +23,23 @@
               }
             ],
             "old": {
+              "status": "current",
               "config": true,
               "mandatory": false,
-              "status": "current",
               "type": {
                 "base-type": "uint16"
               }
             },
             "new": {
-              "config": true,
-              "mandatory": false,
               "status": "current",
-              "type": {
-                "base-type": "uint16"
-              },
               "default": [
                 "10"
-              ]
+              ],
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "base-type": "uint16"
+              }
             }
           },
           {
@@ -53,23 +53,23 @@
               }
             ],
             "old": {
+              "status": "current",
               "config": true,
               "mandatory": false,
-              "status": "current",
               "type": {
                 "base-type": "string"
               }
             },
             "new": {
-              "config": true,
-              "mandatory": false,
               "status": "current",
-              "type": {
-                "base-type": "string"
-              },
               "default": [
                 "val"
-              ]
+              ],
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "base-type": "string"
+              }
             }
           }
         ]

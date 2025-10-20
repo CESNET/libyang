@@ -42,7 +42,7 @@ struct sc_state {
 };
 
 static int
-setup(void **state)
+setup_f(void **state)
 {
     struct sc_state *st;
 
@@ -58,10 +58,10 @@ setup(void **state)
     }
 
     /* load ietf-schema-comparison into both contexts, the module is imported */
-    if (lys_parse_path(st->ctx1, TESTS_SRC "/../modules/ietf-yang-schema-comparison@2025-10-13.yang", LYS_IN_YANG, NULL)) {
+    if (lys_parse_path(st->ctx1, TESTS_SRC "/../modules/ietf-yang-schema-comparison@2025-10-20.yang", LYS_IN_YANG, NULL)) {
         return 1;
     }
-    if (lys_parse_path(st->ctx2, TESTS_SRC "/../modules/ietf-yang-schema-comparison@2025-10-13.yang", LYS_IN_YANG, NULL)) {
+    if (lys_parse_path(st->ctx2, TESTS_SRC "/../modules/ietf-yang-schema-comparison@2025-10-20.yang", LYS_IN_YANG, NULL)) {
         return 1;
     }
 
@@ -69,7 +69,7 @@ setup(void **state)
 }
 
 static int
-teardown(void **state)
+teardown_f(void **state)
 {
     struct sc_state *st = *state;
 
@@ -217,9 +217,9 @@ int
 main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_backwards_compatible),
-        cmocka_unit_test(test_non_backwards_compatible),
+        cmocka_unit_test_setup_teardown(test_backwards_compatible, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_non_backwards_compatible, setup_f, teardown_f),
     };
 
-    return cmocka_run_group_tests(tests, setup, teardown);
+    return cmocka_run_group_tests(tests, NULL, NULL);
 }
