@@ -1,6 +1,6 @@
 {
   "ietf-yang-schema-comparison:schema-comparison": {
-    "compiled-diff": [
+    "schema": [
       {
         "source": {
           "module": "description",
@@ -25,7 +25,7 @@
           },
           {
             "module": "ietf-yang-schema-comparison",
-            "revision": "2025-10-13"
+            "revision": "2025-10-20"
           },
           {
             "module": "ietf-yang-structure-ext",
@@ -41,7 +41,7 @@
           }
         ],
         "conformance": "backwards-compatible",
-        "node-diff": [
+        "node-comparison": [
           {
             "node": "/description:l1",
             "node-type": "leaf",
@@ -53,18 +53,18 @@
               }
             ],
             "old": {
+              "status": "current",
               "config": true,
               "mandatory": false,
-              "status": "current",
               "type": {
                 "base-type": "uint16"
               }
             },
             "new": {
-              "config": true,
-              "description": "is a nice leaf",
-              "mandatory": false,
               "status": "current",
+              "description": "is a nice leaf",
+              "config": true,
+              "mandatory": false,
               "type": {
                 "base-type": "uint16"
               }
@@ -86,28 +86,28 @@
               }
             ],
             "old": {
-              "config": true,
-              "description": "desc",
-              "mandatory": false,
               "status": "current",
+              "description": "desc",
+              "config": true,
+              "mandatory": false,
               "type": {
                 "base-type": "uint32"
               }
             },
             "new": {
-              "config": true,
-              "description": "desc2",
-              "mandatory": false,
               "status": "current",
-              "type": {
-                "base-type": "uint32"
-              },
+              "description": "desc2",
+              "config": true,
+              "mandatory": false,
               "ext-instance": [
                 {
                   "module": "ietf-yang-schema-comparison",
                   "name": "backwards-compatible"
                 }
-              ]
+              ],
+              "type": {
+                "base-type": "uint32"
+              }
             }
           }
         ]
