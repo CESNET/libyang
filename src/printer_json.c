@@ -170,6 +170,7 @@ node_prefix(const struct lyd_node *node, const struct lysc_node *snode, const ch
         onode = (struct lyd_node_opaq *)node;
 
         switch (onode->format) {
+        case LY_VALUE_CBOR:
         case LY_VALUE_JSON:
             *mod_name = onode->name.module_name;
             if (data_dict) {
@@ -342,6 +343,7 @@ json_print_member2(struct jsonpr_ctx *pctx, const struct lyd_node *parent, LY_VA
     /* determine prefix string */
     if (name) {
         switch (format) {
+        case LY_VALUE_CBOR:
         case LY_VALUE_JSON:
             module_name = name->module_name;
             break;

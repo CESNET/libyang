@@ -753,6 +753,7 @@ lyb_print_prefix_data(LY_VALUE_FORMAT format, const void *prefix_data, struct ly
             LY_CHECK_RET(lyb_write_string(ns->uri, 0, lybctx));
         }
         break;
+    case LY_VALUE_CBOR:
     case LY_VALUE_JSON:
     case LY_VALUE_LYB:
         /* nothing to print */
