@@ -1999,7 +1999,7 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
                 /* create default leaf */
                 LY_CHECK_RET(lyd_create_term(snode, ((struct lysc_node_leaf *)snode)->dflt.str,
                         strlen(((struct lysc_node_leaf *)snode)->dflt.str) * 8, 1, 1, NULL, LY_VALUE_SCHEMA_RESOLVED,
-                        ((struct lysc_node_leaf *)snode)->dflt.prefixes, LYD_HINT_DATA, top_ext, &incomplete, &node));
+                        ((struct lysc_node_leaf *)snode)->dflt.prefixes, LYD_HINT_SCHEMA, top_ext, &incomplete, &node));
                 if (incomplete && node_types) {
                     /* remember to resolve type */
                     LY_CHECK_RET(ly_set_add(node_types, node, 1, NULL));
@@ -2024,7 +2024,7 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
                 dflts = ((struct lysc_node_leaflist *)snode)->dflts;
                 LY_ARRAY_FOR(dflts, u) {
                     LY_CHECK_RET(lyd_create_term(snode, dflts[u].str, strlen(dflts[u].str) * 8, 1, 1, NULL,
-                            LY_VALUE_SCHEMA_RESOLVED, dflts[u].prefixes, LYD_HINT_DATA, top_ext, &incomplete, &node));
+                            LY_VALUE_SCHEMA_RESOLVED, dflts[u].prefixes, LYD_HINT_SCHEMA, top_ext, &incomplete, &node));
                     if (incomplete && node_types) {
                         /* remember to resolve type */
                         LY_CHECK_RET(ly_set_add(node_types, node, 1, NULL));
