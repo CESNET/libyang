@@ -1,6 +1,6 @@
 {
   "ietf-yang-schema-comparison:schema-comparison": {
-    "compiled-diff": [
+    "schema": [
       {
         "source": {
           "module": "status",
@@ -11,7 +11,7 @@
           "revision": "2000-01-02"
         },
         "conformance": "non-backwards-compatible",
-        "node-diff": [
+        "node-comparison": [
           {
             "node": "/status:cont/l1",
             "node-type": "leaf",
@@ -23,17 +23,17 @@
               }
             ],
             "old": {
+              "status": "deprecated",
               "config": true,
               "mandatory": false,
-              "status": "deprecated",
               "type": {
                 "base-type": "string"
               }
             },
             "new": {
+              "status": "current",
               "config": true,
               "mandatory": false,
-              "status": "current",
               "type": {
                 "base-type": "string"
               }
@@ -50,9 +50,9 @@
               }
             ],
             "old": {
+              "status": "current",
               "config": true,
               "mandatory": false,
-              "status": "current",
               "type": {
                 "base-type": "string"
               }
@@ -69,9 +69,9 @@
               }
             ],
             "new": {
-              "config": true,
+              "status": "current",
               "presence": false,
-              "status": "current"
+              "config": true
             }
           },
           {
@@ -85,9 +85,9 @@
               }
             ],
             "new": {
-              "config": true,
+              "status": "current",
               "presence": false,
-              "status": "current"
+              "config": true
             }
           }
         ]

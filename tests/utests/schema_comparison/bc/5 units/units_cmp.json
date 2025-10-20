@@ -1,6 +1,6 @@
 {
   "ietf-yang-schema-comparison:schema-comparison": {
-    "compiled-diff": [
+    "schema": [
       {
         "source": {
           "module": "units",
@@ -11,7 +11,7 @@
           "revision": "2000-01-02"
         },
         "conformance": "backwards-compatible",
-        "node-diff": [
+        "node-comparison": [
           {
             "node": "/units:l1",
             "node-type": "leaf",
@@ -23,17 +23,17 @@
               }
             ],
             "old": {
+              "status": "current",
               "config": true,
               "mandatory": false,
-              "status": "current",
               "type": {
                 "base-type": "uint16"
               }
             },
             "new": {
+              "status": "current",
               "config": true,
               "mandatory": false,
-              "status": "current",
               "type": {
                 "base-type": "uint16"
               },
@@ -51,21 +51,21 @@
               }
             ],
             "old": {
-              "config": true,
+              "ordered-by": "system",
               "status": "current",
+              "config": true,
               "type": {
                 "base-type": "string"
-              },
-              "ordered-by": "system"
+              }
             },
             "new": {
-              "config": true,
+              "ordered-by": "system",
               "status": "current",
+              "config": true,
               "type": {
                 "base-type": "string"
               },
-              "units": "packages",
-              "ordered-by": "system"
+              "units": "packages"
             }
           }
         ]
