@@ -1,6 +1,6 @@
 {
   "ietf-yang-schema-comparison:schema-comparison": {
-    "compiled-diff": [
+    "schema": [
       {
         "source": {
           "module": "when",
@@ -25,7 +25,7 @@
           },
           {
             "module": "ietf-yang-schema-comparison",
-            "revision": "2025-10-13"
+            "revision": "2025-10-20"
           },
           {
             "module": "ietf-yang-structure-ext",
@@ -41,7 +41,7 @@
           }
         ],
         "conformance": "backwards-compatible",
-        "node-diff": [
+        "node-comparison": [
           {
             "node": "/when:l1",
             "node-type": "leaf",
@@ -53,23 +53,23 @@
               }
             ],
             "old": {
-              "config": true,
-              "mandatory": false,
-              "status": "current",
               "when": [
                 {
                   "condition": "10 = 5",
                   "status": "current"
                 }
               ],
+              "status": "current",
+              "config": true,
+              "mandatory": false,
               "type": {
                 "base-type": "uint16"
               }
             },
             "new": {
+              "status": "current",
               "config": true,
               "mandatory": false,
-              "status": "current",
               "type": {
                 "base-type": "uint16"
               }
@@ -91,23 +91,20 @@
               }
             ],
             "old": {
-              "config": true,
-              "mandatory": false,
-              "status": "current",
               "when": [
                 {
                   "condition": "/l1 > 10",
                   "status": "current"
                 }
               ],
+              "status": "current",
+              "config": true,
+              "mandatory": false,
               "type": {
                 "base-type": "string"
               }
             },
             "new": {
-              "config": true,
-              "mandatory": false,
-              "status": "current",
               "when": [
                 {
                   "condition": "/l1 > 5",
@@ -120,6 +117,9 @@
                   ]
                 }
               ],
+              "status": "current",
+              "config": true,
+              "mandatory": false,
               "type": {
                 "base-type": "string"
               }

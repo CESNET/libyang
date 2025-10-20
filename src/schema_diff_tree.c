@@ -1380,7 +1380,7 @@ schema_diff_module(const struct lysc_diff_node_change_s *node_change, const stru
     }
 
     /* module diff */
-    LY_CHECK_GOTO(rc = lyd_new_inner(diff_list, NULL, "module-diff", 0, &mod_diff_cont), cleanup);
+    LY_CHECK_GOTO(rc = lyd_new_inner(diff_list, NULL, "module-comparison", 0, &mod_diff_cont), cleanup);
 
     /* change info */
     LY_CHECK_GOTO(rc = schema_diff_change_info(node_change->changes, node_change->change_count, mod_diff_cont), cleanup);
@@ -2023,23 +2023,16 @@ schema_diff_node(const struct lysc_diff_node_change_s *node_change, struct lyd_n
     }
 
     /* list instance with its key */
-    path = lysc_path(node, LYSC_PATH_DATA, NULL, 0);
+    path = lysc_path(node, LYSC_PATH_LOG, NULL, 0);
     if (!path) {
         rc = LY_EMEM;
         goto cleanup;
     }
-    LY_CHECK_GOTO(rc = lyd_new_list(diff_list, NULL, "node-diff", 0, &node_diff_list, path), cleanup);
+    LY_CHECK_GOTO(rc = lyd_new_list(diff_list, NULL, "node-comparison", 0, &node_diff_list, path), cleanup);
 
     /* node-type */
     LY_CHECK_GOTO(rc = lyd_new_term(node_diff_list, NULL, "node-type", schema_diff_nodetype2enum(node->nodetype), 0,
             NULL), cleanup);
-
-    /* input/output */
-    if (node->flags & LYS_IS_INPUT) {
-        LY_CHECK_GOTO(rc = lyd_new_term(node_diff_list, NULL, "in-rpc-action", "input", 0, NULL), cleanup);
-    } else if (node->flags & LYS_IS_OUTPUT) {
-        LY_CHECK_GOTO(rc = lyd_new_term(node_diff_list, NULL, "in-rpc-action", "output", 0, NULL), cleanup);
-    }
 
     /* change info */
     LY_CHECK_GOTO(rc = schema_diff_change_info(node_change->changes, node_change->change_count, node_diff_list), cleanup);
@@ -2073,7 +2066,7 @@ lysc_diff_tree(const struct lys_module *mod1, const struct lys_module *mod2, con
     /* structure extension */
     assert(LY_ARRAY_COUNT(cmp_mod->compiled->exts) == 1);
     LY_CHECK_GOTO(rc = lyd_new_ext_inner(&cmp_mod->compiled->exts[0], "schema-comparison", &diff_cont), cleanup);
-    LY_CHECK_GOTO(rc = lyd_new_list(diff_cont, NULL, "compiled-diff", 0, &diff_list), cleanup);
+    LY_CHECK_GOTO(rc = lyd_new_list(diff_cont, NULL, "schema", 0, &diff_list), cleanup);
 
     /* source module info */
     LY_CHECK_GOTO(rc = lyd_new_inner(diff_list, NULL, "source", 0, &mod_cont), cleanup);

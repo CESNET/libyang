@@ -1,6 +1,6 @@
 {
   "ietf-yang-schema-comparison:schema-comparison": {
-    "compiled-diff": [
+    "schema": [
       {
         "source": {
           "module": "union",
@@ -11,7 +11,7 @@
           "revision": "2000-01-02"
         },
         "conformance": "non-backwards-compatible",
-        "node-diff": [
+        "node-comparison": [
           {
             "node": "/union:l1",
             "node-type": "leaf",
@@ -30,9 +30,9 @@
               }
             ],
             "old": {
+              "status": "current",
               "config": true,
               "mandatory": false,
-              "status": "current",
               "type": {
                 "base-type": "union",
                 "union-type": [
@@ -56,9 +56,9 @@
               }
             },
             "new": {
+              "status": "current",
               "config": true,
               "mandatory": false,
-              "status": "current",
               "type": {
                 "base-type": "union",
                 "union-type": [
