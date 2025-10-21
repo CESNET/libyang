@@ -1486,8 +1486,9 @@ ly_ctx_is_printed(const struct ly_ctx *ctx)
 LIBYANG_API_DEF void
 ly_ctx_destroy(struct ly_ctx *ctx)
 {
-    uint32_t i;
     struct lys_module *mod;
+    uint32_t i;
+    LY_ARRAY_COUNT_TYPE u;
 
     if (!ctx) {
         return;
@@ -1514,9 +1515,15 @@ ly_ctx_destroy(struct ly_ctx *ctx)
             lysc_module_free(ctx, mod->compiled);
             mod->compiled = NULL;
         }
+
+        /* even compiled ext definitions can have ext instances, free those, too */
+        LY_ARRAY_FOR(mod->extensions, u) {
+            FREE_ARRAY(ctx, mod->extensions[u].exts, lysc_ext_instance_free);
+            mod->extensions[u].exts = NULL;
+        }
     }
 
-    /* free the modules (with compiled extension definitions) */
+    /* free the modules */
     for (i = 0; i < ctx->modules.count; ++i) {
         mod = ctx->modules.objs[i];
         lys_module_free(ctx, mod, 0);
