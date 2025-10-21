@@ -144,34 +144,51 @@ json_print_array_close(struct jsonpr_ctx *pctx)
  * @brief Get the node's module name to use as the @p node prefix in JSON.
  *
  * @param[in] node Node to process.
- * @return The name of the module where the @p node belongs, it can be NULL in case the module name
- * cannot be determined (source format is XML and the refered namespace is unknown/not implemented in the current context).
+ * @param[out] mod_name Module name of @p node, can be NULL (format is XML and the module with NS is not in the context).
+ * @param[out] data_dict Whether @p mod_name is from the schema or data dictionary.
  */
-static const char *
-node_prefix(const struct lyd_node *node)
+static void
+node_prefix(const struct lyd_node *node, const char **mod_name, ly_bool *data_dict)
 {
+    struct lyd_node_opaq *onode;
+    const struct lys_module *mod;
+
+    *mod_name = NULL;
+
+    if (!node) {
+        return;
+    }
+
     if (node->schema) {
-        return node->schema->module->name;
+        *mod_name = node->schema->module->name;
+        if (data_dict) {
+            *data_dict = 0;
+        }
     } else {
-        struct lyd_node_opaq *onode = (struct lyd_node_opaq *)node;
-        const struct lys_module *mod;
+        onode = (struct lyd_node_opaq *)node;
 
         switch (onode->format) {
         case LY_VALUE_JSON:
-            return onode->name.module_name;
+            *mod_name = onode->name.module_name;
+            if (data_dict) {
+                *data_dict = 1;
+            }
+            break;
         case LY_VALUE_XML:
             mod = ly_ctx_get_module_implemented_ns(onode->ctx, onode->name.module_ns);
-            if (!mod) {
-                return NULL;
+            if (mod) {
+                *mod_name = mod->name;
+                if (data_dict) {
+                    *data_dict = 0;
+                }
             }
-            return mod->name;
+            break;
         default:
             /* cannot be created */
             LOGINT(LYD_CTX(node));
+            break;
         }
     }
-
-    return NULL;
 }
 
 /**
@@ -187,6 +204,9 @@ node_prefix(const struct lyd_node *node)
 int
 json_nscmp(const struct lyd_node *node1, const struct lyd_node *node2)
 {
+    const char *pref1, *pref2;
+    ly_bool dd1, dd2;
+
     assert(node1 || node2);
 
     if (!node1 || !node2) {
@@ -200,10 +220,10 @@ json_nscmp(const struct lyd_node *node1, const struct lyd_node *node2)
             return 1;
         }
     } else {
-        const char *pref1 = node_prefix(node1);
-        const char *pref2 = node_prefix(node2);
+        node_prefix(node1, &pref1, &dd1);
+        node_prefix(node2, &pref2, &dd2);
 
-        if ((pref1 && pref2) && (pref1 == pref2)) {
+        if (pref1 && pref2 && (((dd1 == dd2) && (pref1 == pref2)) || ((dd1 != dd2) && !strcmp(pref1, pref2)))) {
             return 0;
         } else {
             return 1;
@@ -271,11 +291,14 @@ json_print_string(struct ly_out *out, const char *text)
 static LY_ERR
 json_print_member(struct jsonpr_ctx *pctx, const struct lyd_node *node, ly_bool is_attr)
 {
+    const char *pref;
+
     PRINT_COMMA;
     if ((LEVEL == 1) || json_nscmp(node, pctx->parent)) {
         /* print "namespace" */
+        node_prefix(node, &pref, NULL);
         ly_print_(pctx->out, "%*s\"%s%s:%s\":%s", INDENT, is_attr ? "@" : "",
-                node_prefix(node), node->schema->name, DO_FORMAT ? " " : "");
+                pref, node->schema->name, DO_FORMAT ? " " : "");
     } else {
         ly_print_(pctx->out, "%*s\"%s%s\":%s", INDENT, is_attr ? "@" : "", node->schema->name, DO_FORMAT ? " " : "");
     }
@@ -297,7 +320,8 @@ static LY_ERR
 json_print_member2(struct jsonpr_ctx *pctx, const struct lyd_node *parent, LY_VALUE_FORMAT format,
         const struct ly_opaq_name *name, ly_bool is_attr)
 {
-    const char *module_name = NULL, *name_str;
+    const char *module_name = NULL, *name_str, *pmod_name;
+    const struct lys_module *mod;
 
     PRINT_COMMA;
 
@@ -307,9 +331,8 @@ json_print_member2(struct jsonpr_ctx *pctx, const struct lyd_node *parent, LY_VA
         case LY_VALUE_JSON:
             module_name = name->module_name;
             break;
-        case LY_VALUE_XML: {
-            const struct lys_module *mod = NULL;
-
+        case LY_VALUE_XML:
+            mod = NULL;
             if (name->module_ns) {
                 mod = ly_ctx_get_module_implemented_ns(pctx->ctx, name->module_ns);
             }
@@ -317,7 +340,6 @@ json_print_member2(struct jsonpr_ctx *pctx, const struct lyd_node *parent, LY_VA
                 module_name = mod->name;
             }
             break;
-        }
         default:
             /* cannot be created */
             LOGINT_RET(pctx->ctx);
@@ -329,7 +351,8 @@ json_print_member2(struct jsonpr_ctx *pctx, const struct lyd_node *parent, LY_VA
     }
 
     /* print the member, strcmp because node prefix is in the schema dict, module_name in data dict */
-    if (module_name && (!parent || strcmp(node_prefix(parent), module_name))) {
+    node_prefix(parent, &pmod_name, NULL);
+    if (module_name && (!parent || strcmp(pmod_name, module_name))) {
         ly_print_(pctx->out, "%*s\"%s%s:%s\":%s", INDENT, is_attr ? "@" : "", module_name, name_str, DO_FORMAT ? " " : "");
     } else {
         ly_print_(pctx->out, "%*s\"%s%s\":%s", INDENT, is_attr ? "@" : "", name_str, DO_FORMAT ? " " : "");
