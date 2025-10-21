@@ -1859,7 +1859,7 @@ LIBYANG_API_DECL void lyd_free_attr_siblings(const struct ly_ctx *ctx, struct ly
  * @param[in] ctx_node Optional data tree context node for the value (leafref target, instance-identifier).
  * If not set and is required for the validation to complete, ::LY_EINCOMPLETE is be returned.
  * @param[out] realtype Optional real type of @p value.
- * @param[out] canonical Optional canonical value of @p value (in the dictionary).
+ * @param[out] canonical Optional canonical value of @p value in the dictionary, needs to be freed using ::lydict_remove().
  * @return LY_SUCCESS on success
  * @return LY_EINCOMPLETE in case the @p ctx_node is not provided and it was needed to finish the validation
  * (e.g. due to require-instance).
