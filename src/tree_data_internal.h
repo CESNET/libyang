@@ -647,6 +647,7 @@ LY_ERR ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node,
  * @param[in] value_len Length of the given @p value (mandatory).
  * @param[in] format Value prefix format.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
+ * @param[in] hints Value hints, bitmap of LYD_VALHINT_* values.
  * @param[in] ctx_node Optional data tree context node for the value (leafref target, instance-identifier).
  * If not set and is required for the validation to complete, ::LY_EINCOMPLETE is be returned.
  * @param[in] top_ext Extension instance containing the definition of the data being validated.
@@ -657,8 +658,8 @@ LY_ERR ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node,
  * (e.g. due to require-instance).
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_value_validate2(const struct ly_ctx *ctx, const struct lysc_node *schema, const char *value, size_t value_len,
-        LY_VALUE_FORMAT format, void *prefix_data, const struct lyd_node *ctx_node,
+LY_ERR lyd_value_validate3(const struct ly_ctx *ctx, const struct lysc_node *schema, const char *value, size_t value_len,
+        LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lyd_node *ctx_node,
         const struct lysc_ext_instance *top_ext, const struct lysc_type **realtype, const char **canonical);
 
 /**
