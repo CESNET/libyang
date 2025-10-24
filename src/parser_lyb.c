@@ -1542,9 +1542,7 @@ lyb_parse_header(struct lylyb_parse_ctx *lybctx)
         lybctx->empty_hash = 1;
     } else {
         /* truncate context hash to the same bit size */
-        cur_hash = ly_ctx_get_modules_hash(lybctx->ctx);
-        cur_hash <<= (sizeof cur_hash * 8) - LYB_HEADER_CTX_HASH_BITS;
-        cur_hash >>= (sizeof cur_hash * 8) - LYB_HEADER_CTX_HASH_BITS;
+        cur_hash = lyb_truncate_hash_nonzero(ly_ctx_get_modules_hash(lybctx->ctx), LYB_HEADER_CTX_HASH_BITS);
 
         if (data_hash != cur_hash) {
             LOGERR(lybctx->ctx, LY_EINVAL, "Different current LYB context modules hash compared to the one stored in the "

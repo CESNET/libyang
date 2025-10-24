@@ -255,4 +255,15 @@ void lyb_right_shift(void *buf, uint32_t count_bytes, uint8_t shift);
  */
 void lyb_prepend_bits(void *buf, uint32_t count_bytes, uint8_t byte, uint8_t byte_bits);
 
+/**
+ * @brief Truncate a hash to rightmost bits and make sure it is non-zero.
+ *
+ * If these bits are all zeroes, next bits are used.
+ *
+ * @param[in] hash Hash to truncate.
+ * @param[in] hash_bits Size of the truncate hash in bits.
+ * @return Truncated non-zero hash.
+ */
+uint32_t lyb_truncate_hash_nonzero(uint32_t hash, uint8_t hash_bits);
+
 #endif /* LY_LYB_H_ */

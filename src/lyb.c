@@ -219,3 +219,26 @@ lyb_prepend_bits(void *buf, uint32_t count_bytes, uint8_t byte, uint8_t byte_bit
     /* prepend the bits from the byte */
     ((uint8_t *)buf)[0] |= byte & lyb_right_bit_mask(byte_bits);
 }
+
+uint32_t
+lyb_truncate_hash_nonzero(uint32_t hash, uint8_t hash_bits)
+{
+    uint32_t orig_hash = hash;
+    uint8_t offset;
+
+    assert(hash && !(hash_bits % 8));
+
+    offset = 0;
+    do {
+        hash = orig_hash;
+
+        /* truncate hash */
+        hash <<= (32 - offset) - hash_bits;
+        hash >>= 32 - hash_bits;
+
+        /* next offset */
+        offset += 8;
+    } while (!hash);
+
+    return hash;
+}

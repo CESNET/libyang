@@ -634,7 +634,7 @@ lyb_print_header(struct lylyb_print_ctx *lybctx)
 
     /* context hash (is truncated), if not printing empty data */
     if (lybctx->ctx) {
-        hash = ly_ctx_get_modules_hash(lybctx->ctx);
+        hash = lyb_truncate_hash_nonzero(ly_ctx_get_modules_hash(lybctx->ctx), LYB_HEADER_CTX_HASH_BITS);
     } else {
         hash = 0;
     }
