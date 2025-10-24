@@ -751,38 +751,77 @@ ly_ctx_get_modules_hash(const struct ly_ctx *ctx)
     return ctx->mod_hash;
 }
 
+/**
+ * @brief qsort() alphabetical compare of modules.
+ */
+static int
+ly_ctx_mod_cmp_cb(const void *ptr1, const void *ptr2)
+{
+    const struct lys_module *mod1, *mod2;
+    int r;
+
+    mod1 = *(struct lys_module **)ptr1;
+    mod2 = *(struct lys_module **)ptr2;
+
+    /* module name */
+    r = strcmp(mod1->name, mod2->name);
+    if (!r) {
+        /* revision */
+        if (mod1->revision && !mod2->revision) {
+            r = 1;
+        } else if (!mod1->revision && mod2->revision) {
+            r = -1;
+        } else if (mod1->revision && mod2->revision) {
+            r = strcmp(mod1->revision, mod2->revision);
+        }
+    }
+
+    return r;
+}
+
 void
 ly_ctx_new_change(struct ly_ctx *ctx)
 {
-    const struct lys_module *mod;
-    uint32_t i = ly_ctx_internal_modules_count(ctx), hash = 0;
+    uint32_t i, hash = 0;
+    const struct lys_module **mods = NULL;
     LY_ARRAY_COUNT_TYPE u;
 
     /* change counter */
     ctx->change_count++;
 
-    /* module hash */
-    while ((mod = ly_ctx_get_module_iter(ctx, &i))) {
+    /* collect modules into an array */
+    mods = malloc(ctx->modules.count * sizeof *mods);
+    LY_CHECK_ERR_GOTO(!mods, LOGMEM(ctx), cleanup);
+    memcpy(mods, ctx->modules.objs, ctx->modules.count * sizeof *mods);
+
+    /* sort modules alphabetically */
+    qsort(mods, ctx->modules.count, sizeof *mods, ly_ctx_mod_cmp_cb);
+
+    /* calculate module hash */
+    for (i = 0; i < ctx->modules.count; ++i) {
         /* name */
-        hash = lyht_hash_multi(hash, mod->name, strlen(mod->name));
+        hash = lyht_hash_multi(hash, mods[i]->name, strlen(mods[i]->name));
 
         /* revision */
-        if (mod->revision) {
-            hash = lyht_hash_multi(hash, mod->revision, strlen(mod->revision));
+        if (mods[i]->revision) {
+            hash = lyht_hash_multi(hash, mods[i]->revision, strlen(mods[i]->revision));
         }
 
         /* enabled features */
-        if (mod->implemented) {
-            LY_ARRAY_FOR(mod->compiled->features, u) {
-                hash = lyht_hash_multi(hash, mod->compiled->features[u], strlen(mod->compiled->features[u]));
+        if (mods[i]->implemented) {
+            LY_ARRAY_FOR(mods[i]->compiled->features, u) {
+                hash = lyht_hash_multi(hash, mods[i]->compiled->features[u], strlen(mods[i]->compiled->features[u]));
             }
         }
 
         /* imported/implemented */
-        hash = lyht_hash_multi(hash, (char *)&mod->implemented, sizeof mod->implemented);
+        hash = lyht_hash_multi(hash, (char *)&mods[i]->implemented, sizeof mods[i]->implemented);
     }
 
     ctx->mod_hash = lyht_hash_multi(hash, NULL, 0);
+
+cleanup:
+    free(mods);
 }
 
 LIBYANG_API_DEF ly_module_imp_clb
