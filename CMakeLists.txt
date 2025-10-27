@@ -157,6 +157,8 @@ set(libsrc
     src/plugins_exts/yangdata.c
     src/plugins_exts/schema_mount.c
     src/plugins_exts/structure.c
+    src/plugins_exts/yang_semver.c
+    src/plugins_exts/yang_revisions.c
     src/xml.c
     src/xpath.c
     src/validation.c
