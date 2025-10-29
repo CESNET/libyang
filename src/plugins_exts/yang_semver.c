@@ -133,13 +133,13 @@ version_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     /* Validate the argument format */
     if (!ext->argument) {
         lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EVALID,
-                "Extension %s requires a yang-semantic-version argument.", ext->name);
+                "Extension %s requires a YANG Semver argument.", ext->name);
         return LY_EVALID;
     }
 
     if (semver_validate_format(ext->argument, 1) != LY_SUCCESS) {
         lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EVALID,
-                "Extension %s has invalid semantic version format: %s", ext->name, ext->argument);
+                "Extension %s has invalid YANG Semver version format: %s", ext->name, ext->argument);
         return LY_EVALID;
     }
 

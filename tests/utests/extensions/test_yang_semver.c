@@ -90,7 +90,7 @@ test_version_invalid(void **state)
             "revision 2025-01-01 { ysv:version \"1.0\"; }}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 ietf-yang-semver v1\": "
-            "Extension ysv:version has invalid semantic version format: 1.0",
+            "Extension ysv:version has invalid YANG Semver version format: 1.0",
             "/c:{extension='ysv:version'}/1.0", 0);
 
     /* Invalid: bad format - too many dots */
@@ -99,7 +99,7 @@ test_version_invalid(void **state)
             "revision 2025-01-01 { ysv:version \"1.0.0.1\"; }}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 ietf-yang-semver v1\": "
-            "Extension ysv:version has invalid semantic version format: 1.0.0.1",
+            "Extension ysv:version has invalid YANG Semver version format: 1.0.0.1",
             "/d:{extension='ysv:version'}/1.0.0.1", 0);
 
     /* Invalid: duplicate in same revision */

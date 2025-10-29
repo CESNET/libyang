@@ -119,7 +119,7 @@ recommended_min_date_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 
     if (revision_date_validate(ext->argument) != LY_SUCCESS) {
         lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EVALID,
-                "Extension %s has invalid revision-date format: %s (expected YYYY-MM-DD)",
+                "Extension %s has invalid revision-date format: %s (expected YYYY-MM-DD and a valid date)",
                 ext->name, ext->argument);
         return LY_EVALID;
     }

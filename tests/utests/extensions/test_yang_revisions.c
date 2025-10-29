@@ -103,7 +103,7 @@ test_recommended_min_date_invalid(void **state)
             "import ietf-yang-types { prefix yt; rev:recommended-min-date \"2013/07/15\"; }}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 ietf-yang-revisions v1\": "
-            "Extension rev:recommended-min-date has invalid revision-date format: 2013/07/15 (expected YYYY-MM-DD)",
+            "Extension rev:recommended-min-date has invalid revision-date format: 2013/07/15 (expected YYYY-MM-DD and a valid date)",
             "/b:{extension='rev:recommended-min-date'}/2013/07/15", 0);
 
     /* Invalid: bad date format - too short */
@@ -112,7 +112,7 @@ test_recommended_min_date_invalid(void **state)
             "import ietf-yang-types { prefix yt; rev:recommended-min-date \"2013-07\"; }}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 ietf-yang-revisions v1\": "
-            "Extension rev:recommended-min-date has invalid revision-date format: 2013-07 (expected YYYY-MM-DD)",
+            "Extension rev:recommended-min-date has invalid revision-date format: 2013-07 (expected YYYY-MM-DD and a valid date)",
             "/c:{extension='rev:recommended-min-date'}/2013-07", 0);
 
     /* Invalid: bad date - invalid month */
@@ -121,7 +121,7 @@ test_recommended_min_date_invalid(void **state)
             "import ietf-yang-types { prefix yt; rev:recommended-min-date \"2013-13-15\"; }}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 ietf-yang-revisions v1\": "
-            "Extension rev:recommended-min-date has invalid revision-date format: 2013-13-15 (expected YYYY-MM-DD)",
+            "Extension rev:recommended-min-date has invalid revision-date format: 2013-13-15 (expected YYYY-MM-DD and a valid date)",
             "/d:{extension='rev:recommended-min-date'}/2013-13-15", 0);
 
     /* Invalid: duplicate in same import */
