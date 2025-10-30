@@ -1503,49 +1503,50 @@ lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, ly_bool 
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_parse_header(struct lylyb_parse_ctx *lybctx)
+lyb_parse_header(struct lyd_lyb_ctx *lybctx)
 {
     uint8_t byte;
     uint32_t data_hash, cur_hash;
+    struct lylyb_parse_ctx *pctx = lybctx->parse_ctx;
 
     /* version */
     byte = 0;
-    lyb_read(&byte, LYB_HEADER_VERSION_BITS, lybctx);
+    lyb_read(&byte, LYB_HEADER_VERSION_BITS, pctx);
     if (byte != LYB_HEADER_VERSION_NUM) {
-        LOGERR(lybctx->ctx, LY_EINVAL, "Invalid LYB format version \"0x%" PRIx8 "\", expected \"0x%x\".",
+        LOGERR(pctx->ctx, LY_EINVAL, "Invalid LYB format version \"0x%" PRIx8 "\", expected \"0x%x\".",
                 byte, LYB_HEADER_VERSION_NUM);
         return LY_EINVAL;
     }
 
     /* hash algorithm */
     byte = 0;
-    lyb_read(&byte, LYB_HEADER_HASH_ALG_BITS, lybctx);
+    lyb_read(&byte, LYB_HEADER_HASH_ALG_BITS, pctx);
     if (byte != LYB_HEADER_HASH_ALG_NUM) {
-        LOGERR(lybctx->ctx, LY_EINVAL, "Different LYB format hash algorithm \"0x%" PRIx8 "\" used, expected \"0x%x\".",
+        LOGERR(pctx->ctx, LY_EINVAL, "Different LYB format hash algorithm \"0x%" PRIx8 "\" used, expected \"0x%x\".",
                 byte, LYB_HEADER_HASH_ALG_NUM);
         return LY_EINVAL;
     }
 
     /* shrink */
     byte = 0;
-    lyb_read(&byte, LYB_HEADER_SHRINK_FLAG_BITS, lybctx);
+    lyb_read(&byte, LYB_HEADER_SHRINK_FLAG_BITS, pctx);
     if (byte) {
-        lybctx->shrink = 1;
+        pctx->shrink = 1;
     }
 
     /* context hash */
     data_hash = 0;
-    lyb_read((uint8_t *)&data_hash, LYB_HEADER_CTX_HASH_BITS, lybctx);
+    lyb_read((uint8_t *)&data_hash, LYB_HEADER_CTX_HASH_BITS, pctx);
 
     if (!data_hash) {
         /* fine for no data */
-        lybctx->empty_hash = 1;
-    } else {
+        pctx->empty_hash = 1;
+    } else if (!(lybctx->parse_opts & LYD_PARSE_LYB_SKIP_CTX_CHECK)) {
         /* truncate context hash to the same bit size */
-        cur_hash = lyb_truncate_hash_nonzero(ly_ctx_get_modules_hash(lybctx->ctx), LYB_HEADER_CTX_HASH_BITS);
+        cur_hash = lyb_truncate_hash_nonzero(ly_ctx_get_modules_hash(pctx->ctx), LYB_HEADER_CTX_HASH_BITS);
 
         if (data_hash != cur_hash) {
-            LOGERR(lybctx->ctx, LY_EINVAL, "Different current LYB context modules hash compared to the one stored in the "
+            LOGERR(pctx->ctx, LY_EINVAL, "Different current LYB context modules hash compared to the one stored in the "
                     "LYB data (0x%" PRIx32 " != 0x%" PRIx32 ").", data_hash, cur_hash);
             return LY_EINVAL;
         }
@@ -1593,7 +1594,7 @@ lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
     LY_CHECK_GOTO(rc = lyd_parser_find_operation(parent, int_opts, &lybctx->op_node), cleanup);
 
     /* read header */
-    rc = lyb_parse_header(lybctx->parse_ctx);
+    rc = lyb_parse_header(lybctx);
     LY_CHECK_GOTO(rc, cleanup);
 
     /* read sibling(s) */
