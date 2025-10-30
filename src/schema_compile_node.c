@@ -1623,6 +1623,13 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
         }
     }
 
+    /* revalidate the backward parent pointers from extensions now that the array is final */
+    LY_ARRAY_FOR(*bitenums, u) {
+        LY_ARRAY_FOR((*bitenums)[u].exts, v) {
+            (*bitenums)[u].exts[v].parent = &(*bitenums)[u];
+        }
+    }
+
 done:
     return ret;
 }

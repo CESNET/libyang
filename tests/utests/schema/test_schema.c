@@ -2157,7 +2157,7 @@ test_compiled_print(void **state)
             "  leaf b {type string;}"
             "  leaf c {type uint32;}"
             "  leaf d {type empty;}"
-            "  leaf e {type int8;}"
+            "  leaf e {type enumeration {enum one {m1:a;} enum two;}}"
             "}"
             "}"
             "rpc h {"
@@ -2240,7 +2240,7 @@ test_compiled_print(void **state)
             "    <b>unique</b>\n"
             "    <c>123</c>\n"
             "    <d/>\n"
-            "    <e>-10</e>\n"
+            "    <e>two</e>\n"
             "  </g>\n"
             "  <a xmlns=\"urn:m2\" xmlns:m1=\"urn:m1\">m1:id1</a>\n"
             "</root>\n";

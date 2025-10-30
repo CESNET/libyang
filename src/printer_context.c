@@ -982,6 +982,7 @@ ctxp_children(const struct lysc_node *orig_child, struct lysc_node **child, stru
         ch = *mem;
         *mem = (char *)*mem + CTXP_MEM_SIZE(node_size);
 
+        /* referenced by pointers */
         ly_ctx_compiled_addr_ht_add(addr_ht, orig_child, ch);
         ctxp_node(orig_child, ch, addr_ht, ptr_set, mem);
 
