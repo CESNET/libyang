@@ -1584,15 +1584,7 @@ lyb_parse_header(struct lylyb_ctx *lybctx)
     /* context hash */
     lyb_read((uint8_t *)&hash, sizeof hash, lybctx);
 
-    if (!hash) {
-        /* fine for no data */
-        lybctx->empty_hash = 1;
-    } else if (lybctx->ctx && (hash != ly_ctx_get_modules_hash(lybctx->ctx))) {
-        /* context is not set if called by lyd_lyb_data_length() */
-        LOGERR(lybctx->ctx, LY_EINVAL, "Different current LYB context modules hash compared to the one stored in the "
-                "LYB file (0x%08x != 0x%08x).", hash, ly_ctx_get_modules_hash(lybctx->ctx));
-        return LY_EINVAL;
-    }
+    /* skip hash checking to support parsing data with less strict requirements (as in the previous versions) */
 
     return LY_SUCCESS;
 }
