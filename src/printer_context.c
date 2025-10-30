@@ -355,6 +355,7 @@ ctxs_node(const struct lysc_node *node, struct ly_ht *ht, int *size)
     const struct lysc_node_anydata *any;
     const struct lysc_node_case *cas;
     const struct lysc_node_action *act;
+    const struct lysc_node_action_inout *inout;
     const struct lysc_node_notif *notif;
     const struct lysc_node *child;
     LY_ARRAY_COUNT_TYPE u;
@@ -453,14 +454,18 @@ ctxs_node(const struct lysc_node *node, struct ly_ht *ht, int *size)
         *size += CTXP_MEM_SIZE(sizeof *act);
 
         ctxs_whens((const struct lysc_when **)act->when, ht, size);
-        LY_LIST_FOR(act->input.child, child) {
+        ctxs_node((struct lysc_node *)&act->input, ht, size);
+        ctxs_node((struct lysc_node *)&act->output, ht, size);
+        break;
+    case LYS_INPUT:
+    case LYS_OUTPUT:
+        inout = (const struct lysc_node_action_inout *)node;
+        /* node a member of rpc/action */
+
+        LY_LIST_FOR(inout->child, child) {
             ctxs_node(child, ht, size);
         }
-        ctxs_musts(act->input.musts, ht, size);
-        LY_LIST_FOR(act->output.child, child) {
-            ctxs_node(child, ht, size);
-        }
-        ctxs_musts(act->output.musts, ht, size);
+        ctxs_musts(inout->musts, ht, size);
         break;
     case LYS_NOTIF:
         notif = (const struct lysc_node_notif *)node;

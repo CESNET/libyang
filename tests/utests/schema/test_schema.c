@@ -2138,6 +2138,7 @@ test_compiled_print(void **state)
     /* load the base module */
     yang = "module m1 {yang-version 1.1; namespace urn:m1;prefix m1;"
             "import ietf-yang-metadata {prefix md;}"
+            "extension a;"
             "identity baseid;"
             "identity id1 {base baseid;}"
             "feature feat;"
@@ -2160,7 +2161,7 @@ test_compiled_print(void **state)
             "}"
             "}"
             "rpc h {"
-            "  input {leaf a {type string;}}"
+            "  input {m1:a; leaf a {type string;}}"
             "}"
             "md:annotation i {"
             "  description \"test\";"
