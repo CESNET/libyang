@@ -98,6 +98,8 @@ extern struct lyplg_ext_record plugins_nacm[];
 extern struct lyplg_ext_record plugins_yangdata[];
 extern struct lyplg_ext_record plugins_schema_mount[];
 extern struct lyplg_ext_record plugins_structure[];
+extern struct lyplg_ext_record plugins_yang_semver[];
+extern struct lyplg_ext_record plugins_yang_revisions[];
 
 static pthread_mutex_t plugins_guard = PTHREAD_MUTEX_INITIALIZER;
 
@@ -538,6 +540,8 @@ lyplg_init(ly_bool builtin_type_plugins_only)
         LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_yangdata), error);
         LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_schema_mount), error);
         LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_structure), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_yang_semver), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_yang_revisions), error);
     }
 
 #ifndef STATIC
