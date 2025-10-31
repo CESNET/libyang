@@ -73,7 +73,7 @@ test_version_valid(void **state)
 static void
 test_version_invalid(void **state)
 {
-    const char *data;    
+    const char *data;
 
     /* Invalid: not in revision statement */
     data = "module a {yang-version 1.1; namespace urn:tests:extensions:semver:a; prefix a;"

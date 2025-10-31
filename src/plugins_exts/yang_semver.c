@@ -45,7 +45,7 @@ semver_validate_format(const char *version, ly_bool allow_modifiers)
             digits++;
             ptr++;
         } else if (*ptr == '.') {
-            if (digits == 0 || dots >= 2) {
+            if ((digits == 0) || (dots >= 2)) {
                 return LY_EVALID;
             }
             dots++;
@@ -58,12 +58,12 @@ semver_validate_format(const char *version, ly_bool allow_modifiers)
     }
 
     /* Must have exactly 2 dots and digits after last dot */
-    if (dots != 2 || digits == 0) {
+    if ((dots != 2) || (digits == 0)) {
         return LY_EVALID;
     }
 
     /* For recommended-min-version, no modifiers allowed */
-    if (!allow_modifiers && *ptr != '\0') {
+    if (!allow_modifiers && (*ptr != '\0')) {
         return LY_EVALID;
     }
 
@@ -85,7 +85,7 @@ semver_validate_format(const char *version, ly_bool allow_modifiers)
             return LY_EVALID;
         }
         while (*ptr && *ptr != '+') {
-            if (!isalnum(*ptr) && *ptr != '.' && *ptr != '-') {
+            if (!isalnum(*ptr) && (*ptr != '.') && (*ptr != '-')) {
                 return LY_EVALID;
             }
             ptr++;
@@ -99,7 +99,7 @@ semver_validate_format(const char *version, ly_bool allow_modifiers)
             return LY_EVALID;
         }
         while (*ptr) {
-            if (!isalnum(*ptr) && *ptr != '.' && *ptr != '-') {
+            if (!isalnum(*ptr) && (*ptr != '.') && (*ptr != '-')) {
                 return LY_EVALID;
             }
             ptr++;
@@ -163,7 +163,7 @@ version_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 
             /* Check if this is also a version extension by name and module */
             if (rev->exts[v].name && !strcmp(rev->exts[v].name, ext->name) &&
-                    rev->exts[v].parent_stmt == LY_STMT_REVISION) {
+                    (rev->exts[v].parent_stmt == LY_STMT_REVISION)) {
                 /* Check for duplicate in same revision */
                 if (rev->exts[v].parent == ext->parent) {
                     lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EVALID,

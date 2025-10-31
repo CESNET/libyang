@@ -72,11 +72,11 @@ revision_date_validate(const char *date)
 {
     int year, month, day;
 
-    if (!date || strlen(date) != 10) {
+    if (!date || (strlen(date) != 10)) {
         return LY_EVALID;
     }
 
-    if (date[4] != '-' || date[7] != '-') {
+    if ((date[4] != '-') || (date[7] != '-')) {
         return LY_EVALID;
     }
 
@@ -84,7 +84,7 @@ revision_date_validate(const char *date)
         return LY_EVALID;
     }
 
-    if (year < 1000 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31) {
+    if ((year < 1000) || (year > 9999) || (month < 1) || (month > 12) || (day < 1) || (day > 31)) {
         return LY_EVALID;
     }
 

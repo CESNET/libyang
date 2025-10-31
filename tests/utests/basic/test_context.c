@@ -477,7 +477,7 @@ test_get_models(void **state)
     unsigned int index = 0;
     const char *names[] = {
         "ietf-yang-metadata", "yang", "ietf-inet-types", "ietf-yang-types", "ietf-yang-semver",
-        "ietf-yang-revisions", "ietf-yang-schema-mount", "ietf-yang-structure-ext", "ietf-datastores", 
+        "ietf-yang-revisions", "ietf-yang-schema-mount", "ietf-yang-structure-ext", "ietf-datastores",
         "ietf-yang-library", "a", "a", "a"
     };
 

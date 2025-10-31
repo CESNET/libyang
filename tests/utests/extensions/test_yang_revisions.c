@@ -131,7 +131,7 @@ test_recommended_min_date_invalid(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 ietf-yang-revisions v1\": "
             "Extension rev:recommended-min-date is instantiated multiple times in the same import.",
-           "/e:{extension='rev:recommended-min-date'}/2013-07-15", 0);
+            "/e:{extension='rev:recommended-min-date'}/2013-07-15", 0);
 }
 
 int
