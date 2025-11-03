@@ -716,8 +716,8 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
                 /* do not store the canonical value, only validate */
                 LOG_LOCSET(key, NULL);
-                r = lyd_value_validate3(ctx_node->module->ctx, key, val, val_len, format, prefix_data, LYD_HINT_DATA,
-                        NULL, top_ext, NULL, &p->value);
+                r = lyd_value_validate3(key, val, val_len, format, prefix_data, LYD_HINT_DATA, NULL, top_ext, 1, NULL,
+                        &p->value);
                 LOG_LOCBACK(1, 0);
                 LY_CHECK_ERR_GOTO(r && (r != LY_EINCOMPLETE), rc = r, cleanup);
 
@@ -775,8 +775,8 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
         /* do not store the value, only validate */
         LOG_LOCSET(ctx_node, NULL);
-        r = lyd_value_validate3(ctx_node->module->ctx, ctx_node, val, val_len, format, prefix_data, LYD_HINT_DATA, NULL,
-                top_ext, NULL, &p->value);
+        r = lyd_value_validate3(ctx_node, val, val_len, format, prefix_data, LYD_HINT_DATA, NULL, top_ext, 1, NULL,
+                &p->value);
         LOG_LOCBACK(1, 0);
         LY_CHECK_ERR_GOTO(r && (r != LY_EINCOMPLETE), rc = r, cleanup);
 

@@ -430,7 +430,7 @@ main(int argc, char *argv[])
     }
 
     /* check the value */
-    match = lyd_value_validate(ctx, mod->compiled->data, str, strlen(str), NULL, NULL, NULL);
+    match = lyd_value_validate(mod->compiled->data, str, strlen(str), NULL, NULL, NULL);
 
     if (verbose) {
         print_verbose(patterns, patterns_count, str, match);

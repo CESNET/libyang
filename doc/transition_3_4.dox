@@ -14,8 +14,9 @@
  * and the other for YANG data that can be written to normally. The main consequence of this is that comparing
  * directly (the addresses) of strings from these 2 dictionaries will not work. Next, all plugin references were
  * replaced by an `uintptr_t` value but there are functions ::lysc_get_type_plugin() and ::lysc_get_ext_plugin() for
- * getting the actual plugin structures. Finally, some new callbacks were required for extension-instance plugins
- * so that they can be printed with the context as well.
+ * getting the actual plugin structures. Then, default values are stored as strings in the schema nodes. To learn their
+ * real type or get their canonical value, use ::lyd_value_validate_dflt(). Finally, some new callbacks were required
+ * for extension-instance plugins so that they can be printed with the context as well.
  *
  * Other notable changes include major LYB binary data format optimizations. The effect in API is that wherever a size
  * of a value is required, it is now expected in bits instead of bytes. Next, there are extension plugin API

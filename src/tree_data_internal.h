@@ -641,7 +641,6 @@ LY_ERR ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node,
  *
  * The given node is not modified in any way - it is just checked if the @p value can be set to the node.
  *
- * @param[in] ctx libyang context for logging (function does not log errors when @p ctx is NULL)
  * @param[in] schema Schema node of the @p value.
  * @param[in] value String value to be checked, it is expected to be in JSON format.
  * @param[in] value_len Length of the given @p value (mandatory).
@@ -651,6 +650,7 @@ LY_ERR ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node,
  * @param[in] ctx_node Optional data tree context node for the value (leafref target, instance-identifier).
  * If not set and is required for the validation to complete, ::LY_EINCOMPLETE is be returned.
  * @param[in] top_ext Extension instance containing the definition of the data being validated.
+ * @param[in] log Whether to log errors or not.
  * @param[out] realtype Optional real type of @p value.
  * @param[out] canonical Optional canonical value of @p value (in the dictionary).
  * @return LY_SUCCESS on success
@@ -658,9 +658,9 @@ LY_ERR ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node,
  * (e.g. due to require-instance).
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_value_validate3(const struct ly_ctx *ctx, const struct lysc_node *schema, const char *value, size_t value_len,
+LY_ERR lyd_value_validate3(const struct lysc_node *schema, const char *value, size_t value_len,
         LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lyd_node *ctx_node,
-        const struct lysc_ext_instance *top_ext, const struct lysc_type **realtype, const char **canonical);
+        const struct lysc_ext_instance *top_ext, int log, const struct lysc_type **realtype, const char **canonical);
 
 /**
  * @defgroup datahash Data nodes hash manipulation

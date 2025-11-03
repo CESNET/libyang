@@ -94,7 +94,7 @@ lyd_parser_notif_eventtime_validate(const struct lyd_node *node)
 
         /* validate the value, in JSON format */
         value = lyd_get_value(node);
-        LY_CHECK_RET(lyd_value_validate(LYD_CTX(node), schema, value, strlen(value), NULL, NULL, NULL));
+        LY_CHECK_RET(lyd_value_validate(schema, value, strlen(value), NULL, NULL, NULL));
     } else {
         LYSC_CTX_INIT_CTX(cctx, ctx);
 

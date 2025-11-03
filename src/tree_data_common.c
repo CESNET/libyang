@@ -620,41 +620,39 @@ ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const 
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *schema, const char *value, uint32_t value_len,
+lyd_value_validate(const struct lysc_node *schema, const char *value, uint32_t value_len,
         const struct lyd_node *ctx_node, const struct lysc_type **realtype, const char **canonical)
 {
-    LY_CHECK_ARG_RET(ctx, schema, !value_len || value, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, schema, !value_len || value, LY_EINVAL);
 
-    return lyd_value_validate3(ctx, schema, value, value_len, LY_VALUE_JSON, NULL, LYD_HINT_DATA, ctx_node, NULL,
-            realtype, canonical);
+    return lyd_value_validate3(schema, value, value_len, LY_VALUE_JSON, NULL, LYD_HINT_DATA, ctx_node, NULL,
+            1, realtype, canonical);
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_value_validate2(const struct ly_ctx *ctx, const struct lysc_node *schema, const char *value, uint32_t value_len,
-        uint32_t hints, const struct lyd_node *ctx_node, const struct lysc_type **realtype, const char **canonical)
+lyd_value_validate_dflt(const struct lysc_node *schema, const char *value, struct lysc_prefix *prefixes,
+        const struct lyd_node *ctx_node, const struct lysc_type **realtype, const char **canonical)
 {
-    LY_CHECK_ARG_RET(ctx, schema, !value_len || value, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, schema, LY_EINVAL);
 
-    return lyd_value_validate3(ctx, schema, value, value_len, LY_VALUE_JSON, NULL, hints, ctx_node, NULL,
-            realtype, canonical);
+    return lyd_value_validate3(schema, value, value ? strlen(value) : 0, LY_VALUE_SCHEMA_RESOLVED, prefixes,
+            LYD_HINT_SCHEMA, ctx_node, NULL, 1, realtype, canonical);
 }
 
 LY_ERR
-lyd_value_validate3(const struct ly_ctx *ctx, const struct lysc_node *schema, const char *value, size_t value_len,
-        LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lyd_node *ctx_node,
-        const struct lysc_ext_instance *top_ext, const struct lysc_type **realtype, const char **canonical)
+lyd_value_validate3(const struct lysc_node *schema, const char *value, size_t value_len, LY_VALUE_FORMAT format,
+        void *prefix_data, uint32_t hints, const struct lyd_node *ctx_node, const struct lysc_ext_instance *top_ext,
+        int log, const struct lysc_type **realtype, const char **canonical)
 {
     LY_ERR rc;
+    const struct ly_ctx *ctx;
     struct ly_err_item *err = NULL;
     struct lysc_type *type;
     struct lyd_value val = {0};
-    ly_bool stored = 0, log = 1;
+    ly_bool stored = 0;
     struct lyplg_type *type_plg;
 
-    if (!ctx) {
-        ctx = schema->module->ctx;
-        log = 0;
-    }
+    ctx = schema->module->ctx;
     if (!value_len) {
         value = "";
     }

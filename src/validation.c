@@ -1336,9 +1336,9 @@ uniquecheck:
                 val1 = lyd_get_value(diter);
             } else if (slist->uniques[u][v]->dflt.str) {
                 /* use canonical default value */
-                lyd_value_validate3(ctx, first->schema, slist->uniques[u][v]->dflt.str,
-                        strlen(slist->uniques[u][v]->dflt.str), LY_VALUE_SCHEMA_RESOLVED,
-                        slist->uniques[u][v]->dflt.prefixes, LYD_HINT_SCHEMA, NULL, NULL, NULL, &canon2);
+                lyd_value_validate3(first->schema, slist->uniques[u][v]->dflt.str, strlen(slist->uniques[u][v]->dflt.str),
+                        LY_VALUE_SCHEMA_RESOLVED, slist->uniques[u][v]->dflt.prefixes, LYD_HINT_SCHEMA, NULL, NULL, 1,
+                        NULL, &canon2);
                 val1 = canon1;
             }
 
@@ -1350,9 +1350,9 @@ uniquecheck:
                 val2 = lyd_get_value(diter);
             } else if (slist->uniques[u][v]->dflt.str) {
                 /* use canonical default value */
-                lyd_value_validate3(ctx, first->schema, slist->uniques[u][v]->dflt.str,
-                        strlen(slist->uniques[u][v]->dflt.str), LY_VALUE_SCHEMA_RESOLVED,
-                        slist->uniques[u][v]->dflt.prefixes, LYD_HINT_SCHEMA, NULL, NULL, NULL, &canon2);
+                lyd_value_validate3(first->schema, slist->uniques[u][v]->dflt.str, strlen(slist->uniques[u][v]->dflt.str),
+                        LY_VALUE_SCHEMA_RESOLVED, slist->uniques[u][v]->dflt.prefixes, LYD_HINT_SCHEMA, NULL, NULL, 1,
+                        NULL, &canon2);
                 val2 = canon2;
             }
 
@@ -1480,8 +1480,8 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
                         val = lyd_get_value(diter);
                     } else if (uniques[u][v]->dflt.str) {
                         /* use canonical default value */
-                        ret = lyd_value_validate3(ctx, snode, uniques[u][v]->dflt.str, strlen(uniques[u][v]->dflt.str),
-                                LY_VALUE_SCHEMA_RESOLVED, uniques[u][v]->dflt.prefixes, LYD_HINT_SCHEMA, NULL, NULL,
+                        ret = lyd_value_validate3(snode, uniques[u][v]->dflt.str, strlen(uniques[u][v]->dflt.str),
+                                LY_VALUE_SCHEMA_RESOLVED, uniques[u][v]->dflt.prefixes, LYD_HINT_SCHEMA, NULL, NULL, 1,
                                 NULL, &val);
                         LY_CHECK_GOTO(ret, cleanup);
                     }

@@ -1852,7 +1852,6 @@ LIBYANG_API_DECL void lyd_free_attr_siblings(const struct ly_ctx *ctx, struct ly
  *
  * The given node is not modified in any way - it is just checked if the @p value can be set to the node.
  *
- * @param[in] ctx libyang context for logging (function does not log errors when @p ctx is NULL)
  * @param[in] schema Schema node of the @p value.
  * @param[in] value String value to be checked, it is expected to be in JSON format.
  * @param[in] value_len Length of the given @p value (mandatory).
@@ -1865,20 +1864,17 @@ LIBYANG_API_DECL void lyd_free_attr_siblings(const struct ly_ctx *ctx, struct ly
  * (e.g. due to require-instance).
  * @return LY_ERR value if an error occurred.
  */
-LIBYANG_API_DECL LY_ERR lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *schema, const char *value,
-        uint32_t value_len, const struct lyd_node *ctx_node, const struct lysc_type **realtype, const char **canonical);
+LIBYANG_API_DECL LY_ERR lyd_value_validate(const struct lysc_node *schema, const char *value, uint32_t value_len,
+        const struct lyd_node *ctx_node, const struct lysc_type **realtype, const char **canonical);
 
 /**
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.
  *
  * The given node is not modified in any way - it is just checked if the @p value can be set to the node.
  *
- * @param[in] ctx libyang context for logging (function does not log errors when @p ctx is NULL)
  * @param[in] schema Schema node of the @p value.
- * @param[in] value String value to be checked, it is expected to be in JSON format.
- * @param[in] value_len Length of the given @p value (mandatory).
- * @param[in] hints Value hints, bitmap of @ref lydvalhints. Use ::LYD_HINT_DATA for generic data value and
- * ::LYD_HINT_SCHEMA for a schema value (default value, for example).
+ * @param[in] value String default value to be checked, in a ::lysc_value.
+ * @param[in] prefixes Stored prefixes of @p value, in a ::lysc_value.
  * @param[in] ctx_node Optional data tree context node for the value (leafref target, instance-identifier).
  * If not set and is required for the validation to complete, ::LY_EINCOMPLETE is be returned.
  * @param[out] realtype Optional real type of @p value.
@@ -1888,8 +1884,8 @@ LIBYANG_API_DECL LY_ERR lyd_value_validate(const struct ly_ctx *ctx, const struc
  * (e.g. due to require-instance).
  * @return LY_ERR value if an error occurred.
  */
-LIBYANG_API_DECL LY_ERR lyd_value_validate2(const struct ly_ctx *ctx, const struct lysc_node *schema, const char *value,
-        uint32_t value_len, uint32_t hints, const struct lyd_node *ctx_node, const struct lysc_type **realtype,
+LIBYANG_API_DECL LY_ERR lyd_value_validate_dflt(const struct lysc_node *schema, const char *value,
+        struct lysc_prefix *prefixes, const struct lyd_node *ctx_node, const struct lysc_type **realtype,
         const char **canonical);
 
 /**
