@@ -1,9 +1,9 @@
 /**
  * @file printer_cbor.c
- * @author Meher Rushi
- * @brief CBOR printer for libyang data tree using libcbor
+ * @author Meher Rushi <meherrushi2@gmail.com>
+ * @brief CBOR printer for libyang data structure
  *
- * Copyright (c) 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2023 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -12,771 +12,1340 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "printer_data.h"
+#define _GNU_SOURCE
+
+#ifdef ENABLE_CBOR_SUPPORT
 
 #include <assert.h>
-#include <inttypes.h>
-#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <cbor.h>
 
 #include "context.h"
 #include "log.h"
 #include "ly_common.h"
 #include "out.h"
-#include "plugins_exts.h"
+#include "out_internal.h"
+#include "parser_data.h"
+#include "plugins_exts/metadata.h"
+#include "plugins_types.h"
+#include "printer_data.h"
 #include "printer_internal.h"
 #include "set.h"
+#include "tree.h"
 #include "tree_data.h"
 #include "tree_schema.h"
+#include "cbor.h"
 
 /**
- * @brief CBOR printer context
+ * @brief CBOR printer context.
  */
 struct cborpr_ctx {
-    struct ly_out *out;           /**< output structure */
-    const struct lyd_node *root;  /**< root node of the subtree being printed */
-    const struct lyd_node *print_sibling_metadata; /**< node with metadata supposed to be printed */
-    ly_bool simple_status;        /**< flag for simple status */
+    struct ly_out *out;                     /**< output specification */
+    const struct lyd_node *root;            /**< root node of the subtree being printed */
+    const struct lyd_node *parent;          /**< parent of the node being printed */
+    uint32_t options;                       /**< [Data printer flags](@ref dataprinterflags) */
+    const struct ly_ctx *ctx;               /**< libyang context */
 
-    uint16_t level;               /**< current nesting level */
-    uint32_t options;             /**< [printer flags](@ref dataprinterflags) */
-    const struct ly_ctx *ctx;     /**< libyang context */
-
-    struct ly_set prefix;         /**< printed module prefixes */
-    uint32_t array_index;         /**< index in array if we are printing an array element */
+    struct ly_set open;                     /**< currently open array(s) */
+    const struct lyd_node *first_leaflist;  /**< first printed leaf-list instance, used when printing its metadata/attributes */
     
-    cbor_item_t *root_item;       /**< root CBOR item */
+    cbor_item_t *root_map;                  /**< root CBOR map */
 };
 
+static LY_ERR cbor_print_node(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_item_t *parent_map);
+
 /**
- * @brief Check if module needs prefix - ROBUST VERSION
+ * @brief Compare 2 nodes, despite it is regular data node or an opaq node, and
+ * decide if they corresponds to the same schema node.
+ *
+ * @return 1 - matching nodes, 0 - non-matching nodes
  */
-static ly_bool
-cbor_module_needs_prefix(struct cborpr_ctx *ctx, const struct lys_module *module)
+static int
+matching_node(const struct lyd_node *node1, const struct lyd_node *node2)
 {
-    /* CRITICAL: Add comprehensive null checks */
-    if (!ctx) {
-        fprintf(stderr, "DEBUG: cbor_module_needs_prefix called with NULL ctx\n");
+    assert(node1 || node2);
+
+    if (!node1 || !node2) {
+        return 0;
+    } else if (node1->schema != node2->schema) {
         return 0;
     }
-    
-    if (!module) {
-        fprintf(stderr, "DEBUG: cbor_module_needs_prefix called with NULL module\n");
-        return 0;
+    if (!node1->schema) {
+        /* compare node names */
+        struct lyd_node_opaq *onode1 = (struct lyd_node_opaq *)node1;
+        struct lyd_node_opaq *onode2 = (struct lyd_node_opaq *)node2;
+
+        if ((onode1->name.name != onode2->name.name) || (onode1->name.prefix != onode2->name.prefix)) {
+            return 0;
+        }
     }
-    
-    if (!module->name) {
-        fprintf(stderr, "DEBUG: Module has NULL name\n");
-        return 0;
-    }
-    
-    fprintf(stderr, "DEBUG: Checking prefix for module: '%s'\n", module->name);
-    
-    /* Always add prefix if explicitly requested */
-    if (ctx->options & LYD_PRINT_WD_ALL_TAG) {
-        fprintf(stderr, "DEBUG: Prefix requested via options\n");
+
+    return 1;
+}
+
+/**
+ * @brief Open a CBOR array for the specified @p node
+ *
+ * @param[in] pctx CBOR printer context.
+ * @param[in] node First node of the array.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+cbor_print_array_open(struct cborpr_ctx *pctx, const struct lyd_node *node)
+{
+    LY_CHECK_RET(ly_set_add(&pctx->open, (void *)node, 0, NULL));
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Get know if the array for the provided @p node is currently open.
+ *
+ * @param[in] pctx CBOR printer context.
+ * @param[in] node Data node to check.
+ * @return 1 in case the printer is currently in the array belonging to the provided @p node.
+ * @return 0 in case the provided @p node is not connected with the currently open array (or there is no open array).
+ */
+static int
+is_open_array(struct cborpr_ctx *pctx, const struct lyd_node *node)
+{
+    if (pctx->open.count && matching_node(node, pctx->open.dnodes[pctx->open.count - 1])) {
         return 1;
-    }
-    
-    /* Check if it's an internal libyang module */
-    if (!strcmp(module->name, "ietf-yang-metadata") ||
-        !strcmp(module->name, "yang") ||
-        !strcmp(module->name, "ietf-inet-types") ||
-        !strcmp(module->name, "ietf-yang-types") ||
-        !strcmp(module->name, "ietf-yang-structure-ext")) {
-        fprintf(stderr, "DEBUG: Internal module, no prefix needed\n");
+    } else {
         return 0;
     }
-    
-    /* For now, don't add prefixes unless explicitly requested */
-    fprintf(stderr, "DEBUG: No prefix needed for module: '%s'\n", module->name);
-    return 0;
-}
-
-
-/**
- * @brief Safe wrapper for cbor_build_string that handles NULL inputs - ENHANCED
- */
-static cbor_item_t *
-safe_cbor_build_string(const char *str)
-{
-    if (!str) {
-        fprintf(stderr, "DEBUG: NULL string passed to safe_cbor_build_string, using empty string\n");
-        return cbor_build_string("");
-    }
-    
-    fprintf(stderr, "DEBUG: Building CBOR string: '%s' (len=%zu)\n", str, strlen(str));
-    cbor_item_t *item = cbor_build_string(str);
-    if (!item) {
-        fprintf(stderr, "DEBUG: cbor_build_string failed for '%s'\n", str);
-    }
-    return item;
 }
 
 /**
- * @brief Convert YANG value to CBOR item
+ * @brief Close the most inner CBOR array.
+ *
+ * @param[in] pctx CBOR printer context.
  */
-static cbor_item_t *
-cbor_value_to_item(const struct lyd_node *node)
+static void
+cbor_print_array_close(struct cborpr_ctx *pctx)
 {
-    const char *str;
+    ly_set_rm_index(&pctx->open, pctx->open.count - 1, NULL);
+}
+
+/**
+ * @brief Get the node's module name to use as the @p node prefix in CBOR.
+ *
+ * @param[in] node Node to process.
+ * @return The name of the module where the @p node belongs, it can be NULL in case the module name
+ * cannot be determined (source format is XML and the refered namespace is unknown/not implemented in the current context).
+ */
+static const char *
+node_prefix(const struct lyd_node *node)
+{
+    if (node->schema) {
+        return node->schema->module->name;
+    } else {
+        struct lyd_node_opaq *onode = (struct lyd_node_opaq *)node;
+        const struct lys_module *mod;
+
+        switch (onode->format) {
+        case LY_VALUE_CBOR:
+        case LY_VALUE_JSON:
+            return onode->name.module_name;
+        case LY_VALUE_XML:
+            mod = ly_ctx_get_module_implemented_ns(onode->ctx, onode->name.module_ns);
+            if (!mod) {
+                return NULL;
+            }
+            return mod->name;
+        default:
+            /* cannot be created */
+            LOGINT(LYD_CTX(node));
+        }
+    }
+
+    return NULL;
+}
+
+/**
+ * @brief Compare 2 nodes if the belongs to the same module (if they come from the same namespace)
+ *
+ * Accepts both regulard a well as opaq nodes.
+ *
+ * @param[in] node1 The first node to compare.
+ * @param[in] node2 The second node to compare.
+ * @return 0 in case the nodes' modules are the same
+ * @return 1 in case the nodes belongs to different modules
+ */
+int
+cbor_nscmp(const struct lyd_node *node1, const struct lyd_node *node2)
+{
+    assert(node1 || node2);
+
+    if (!node1 || !node2) {
+        return 1;
+    } else if (node1->schema && node2->schema) {
+        if (node1->schema->module == node2->schema->module) {
+            /* belongs to the same module */
+            return 0;
+        } else {
+            /* different modules */
+            return 1;
+        }
+    } else {
+        const char *pref1 = node_prefix(node1);
+        const char *pref2 = node_prefix(node2);
+
+        if ((pref1 && pref2) && (pref1 == pref2)) {
+            return 0;
+        } else {
+            return 1;
+        }
+    }
+}
+
+/**
+ * @brief Create CBOR member name as [prefix:]name
+ *
+ * @param[in] pctx CBOR printer context.
+ * @param[in] node The data node being printed.
+ * @param[in] is_attr Flag if the metadata sign (@) is supposed to be added before the identifier.
+ * @return Newly allocated string with the member name, NULL on error.
+ */
+static char *
+cbor_print_member_name(struct cborpr_ctx *pctx, const struct lyd_node *node, ly_bool is_attr)
+{
+    char *name = NULL;
+    const char *prefix_str = node_prefix(node);
+    const char *node_name = node->schema->name;
+    
+    if (cbor_nscmp(node, pctx->parent)) {
+        /* print "namespace" */
+        if (is_attr) {
+            if (asprintf(&name, "@%s:%s", prefix_str, node_name) == -1) {
+                return NULL;
+            }
+        } else {
+            if (asprintf(&name, "%s:%s", prefix_str, node_name) == -1) {
+                return NULL;
+            }
+        }
+    } else {
+        if (is_attr) {
+            if (asprintf(&name, "@%s", node_name) == -1) {
+                return NULL;
+            }
+        } else {
+            name = strdup(node_name);
+        }
+    }
+    
+    return name;
+}
+
+/**
+ * @brief More generic alternative to cbor_print_member_name() to print some special cases of the member names.
+ *
+ * @param[in] pctx CBOR printer context.
+ * @param[in] parent Parent node to compare modules deciding if the prefix is printed.
+ * @param[in] format Format to decide how to process the @p prefix.
+ * @param[in] name Name structure to provide name and prefix to print. If NULL, only "" name is printed.
+ * @param[in] is_attr Flag if the metadata sign (@) is supposed to be added before the identifier.
+ * @return Newly allocated string with the member name, NULL on error.
+ */
+static char *
+cbor_print_member_name2(struct cborpr_ctx *pctx, const struct lyd_node *parent, LY_VALUE_FORMAT format,
+        const struct ly_opaq_name *name, ly_bool is_attr)
+{
+    const char *module_name = NULL, *name_str;
+    char *result = NULL;
+
+    /* determine prefix string */
+    if (name) {
+        switch (format) {
+        case LY_VALUE_CBOR:
+        case LY_VALUE_JSON:
+            module_name = name->module_name;
+            break;
+        case LY_VALUE_XML: {
+            const struct lys_module *mod = NULL;
+
+            if (name->module_ns) {
+                mod = ly_ctx_get_module_implemented_ns(pctx->ctx, name->module_ns);
+            }
+            if (mod) {
+                module_name = mod->name;
+            }
+            break;
+        }
+        default:
+            /* cannot be created */
+            LOGINT_RET(pctx->ctx);
+        }
+
+        name_str = name->name;
+    } else {
+        name_str = "";
+    }
+
+    /* create the member name */
+    if (module_name && (!parent || (node_prefix(parent) != module_name))) {
+        if (is_attr) {
+            if (asprintf(&result, "@%s:%s", module_name, name_str) == -1) {
+                return NULL;
+            }
+        } else {
+            if (asprintf(&result, "%s:%s", module_name, name_str) == -1) {
+                return NULL;
+            }
+        }
+    } else {
+        if (is_attr) {
+            if (asprintf(&result, "@%s", name_str) == -1) {
+                return NULL;
+            }
+        } else {
+            result = strdup(name_str);
+        }
+    }
+
+    return result;
+}
+
+/**
+ * @brief Print data value to CBOR item.
+ *
+ * @param[in] pctx CBOR printer context.
+ * @param[in] ctx Context used to print the value.
+ * @param[in] val Data value to be printed.
+ * @param[in] local_mod Module of the current node.
+ * @param[out] item_p Pointer to store the created CBOR item.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+cbor_print_value(struct cborpr_ctx *pctx, const struct ly_ctx *ctx, const struct lyd_value *val,
+        const struct lys_module *local_mod, cbor_item_t **item_p)
+{
+    ly_bool dynamic;
+    LY_DATA_TYPE basetype;
+    const char *value;
     cbor_item_t *item = NULL;
-    
-    if (!node) {
-        fprintf(stderr, "DEBUG: cbor_value_to_item called with NULL node\n");
-        return safe_cbor_build_string("");
+
+    value = val->realtype->plugin->print(ctx, val, LY_VALUE_JSON, (void *)local_mod, &dynamic, NULL);
+    LY_CHECK_RET(!value, LY_EINVAL);
+    basetype = val->realtype->basetype;
+
+print_val:
+    /* leafref is not supported */
+    switch (basetype) {
+    case LY_TYPE_UNION:
+        /* use the resolved type */
+        val = &val->subvalue->value;
+        basetype = val->realtype->basetype;
+        goto print_val;
+
+    case LY_TYPE_BINARY:
+    case LY_TYPE_STRING:
+    case LY_TYPE_BITS:
+    case LY_TYPE_ENUM:
+    case LY_TYPE_INST:
+    case LY_TYPE_IDENT:
+        /* string types */
+        item = cbor_build_string(value);
+        break;
+
+    case LY_TYPE_INT64:
+    case LY_TYPE_UINT64:
+    case LY_TYPE_DEC64: {
+        /* numeric types stored as strings in CBOR */
+        item = cbor_build_string(value);
+        break;
     }
-    
-    fprintf(stderr, "DEBUG: cbor_value_to_item - node type: %d\n", node->schema->nodetype);
-    
-    if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-        fprintf(stderr, "DEBUG: Non-leaf node, returning empty string\n");
-        return safe_cbor_build_string(""); /* Empty string for non-leaf nodes */
+
+    case LY_TYPE_INT8:
+    case LY_TYPE_INT16:
+    case LY_TYPE_INT32: {
+        /* signed integer types */
+        int64_t num = strtoll(value, NULL, 10);
+        if (num >= 0) {
+            item = cbor_build_uint64(num);
+        } else {
+            item = cbor_build_negint64(-num - 1);
+        }
+        break;
     }
-    
-    str = lyd_get_value(node);
-    fprintf(stderr, "DEBUG: Node value: '%s'\n", str ? str : "NULL");
-    
-    if (!str || strlen(str) == 0) {
-        fprintf(stderr, "DEBUG: Empty or NULL value, returning empty string\n");
-        return safe_cbor_build_string("");
+
+    case LY_TYPE_UINT8:
+    case LY_TYPE_UINT16:
+    case LY_TYPE_UINT32: {
+        /* unsigned integer types */
+        uint64_t num = strtoull(value, NULL, 10);
+        item = cbor_build_uint64(num);
+        break;
     }
-    
-    /* FIXED: Add null check for schema before casting */
-    if (!node->schema) {
-        fprintf(stderr, "DEBUG: Node has NULL schema, using string value\n");
-        return cbor_build_string(str);
-    }
-    
-    /* Handle different data types based on YANG type */
-    switch (((struct lysc_node_leaf *)node->schema)->type->basetype) {
+
     case LY_TYPE_BOOL:
-        if (strcmp(str, "true") == 0) {
+        /* boolean */
+        if (strcmp(value, "true") == 0) {
             item = cbor_build_bool(true);
         } else {
             item = cbor_build_bool(false);
         }
         break;
-        
-    case LY_TYPE_INT8:
-    case LY_TYPE_INT16:
-    case LY_TYPE_INT32:
-    case LY_TYPE_INT64: {
-        char *endptr;
-        long long num = strtoll(str, &endptr, 10);
-        if (*endptr == '\0') {
-            if (num >= 0) {
-                item = cbor_build_uint64((uint64_t)num);
-            } else {
-                item = cbor_build_negint64((uint64_t)(-num - 1));
-            }
-        } else {
-            item = cbor_build_string(str);
-        }
-        break;
-    }
-    
-    case LY_TYPE_UINT8:
-    case LY_TYPE_UINT16:
-    case LY_TYPE_UINT32:
-    case LY_TYPE_UINT64: {
-        char *endptr;
-        unsigned long long num = strtoull(str, &endptr, 10);
-        if (*endptr == '\0') {
-            item = cbor_build_uint64(num);
-        } else {
-            item = cbor_build_string(str);
-        }
-        break;
-    }
-    
-    case LY_TYPE_DEC64: {
-        char *endptr;
-        double num = strtod(str, &endptr);
-        if (*endptr == '\0') {
-            item = cbor_build_float8(num);
-        } else {
-            item = cbor_build_string(str);
-        }
-        break;
-    }
-    
+
     case LY_TYPE_EMPTY:
-        item = cbor_build_string("");
-        break;
-        
-    default:
-        /* String types and others */
-        item = cbor_build_string(str);
-        break;
-    }
-    
-    return item;
-}
-
-/**
- * @brief Count direct children of a node
- */
-static size_t
-cbor_count_children(const struct lyd_node *node)
-{
-    size_t count = 0;
-    const struct lyd_node *child;
-    
-    LY_LIST_FOR(lyd_child(node), child) {
-        count++;
-    }
-    return count;
-}
-
-/**
- * @brief Count sibling nodes with the same name (for leaf-lists)
- */
-static size_t
-cbor_count_siblings_same_name(const struct lyd_node *node)
-{
-    size_t count = 0;
-    const struct lyd_node *sibling;
-    const struct lysc_node *schema = node->schema;
-    
-    /* Check if this is a leaf-list */
-    if (!(schema->nodetype & LYS_LEAFLIST)) {
-        return 1;
-    }
-    
-    /* Count siblings with same schema */
-    LY_LIST_FOR(node, sibling) {
-        if (sibling->schema == schema) {
-            count++;
-        } else {
-            break; /* leaf-list instances are consecutive */
+        /* empty type is represented as [null] */
+        item = cbor_new_definite_array(1);
+        if (item) {
+            cbor_item_t *null_item = cbor_build_ctrl(CBOR_CTRL_NULL);
+            if (null_item) {
+                cbor_array_push(item, null_item);
+                cbor_decref(&null_item);
+            }
         }
+        break;
+
+    default:
+        /* error */
+        LOGINT_RET(pctx->ctx);
     }
-    
-    return count;
+
+    if (dynamic) {
+        free((char *)value);
+    }
+
+    *item_p = item;
+    return item ? LY_SUCCESS : LY_EMEM;
 }
 
 /**
- * @brief Print a single node recursively
- */
-static LY_ERR cbor_print_node(struct cborpr_ctx *ctx, const struct lyd_node *node, cbor_item_t *parent_map);
-
-/**
- * @brief Print container or list node - EXTRA SAFE VERSION
+ * @brief Print all the attributes of the opaq node to CBOR map.
+ *
+ * @param[in] pctx CBOR printer context.
+ * @param[in] node Opaq node where the attributes are placed.
+ * @param[in] attr_map CBOR map to add attributes to.
+ * @return LY_ERR value.
  */
 static LY_ERR
-cbor_print_container(struct cborpr_ctx *ctx, const struct lyd_node *node, cbor_item_t *parent_map)
+cbor_print_attribute(struct cborpr_ctx *pctx, const struct lyd_node_opaq *node, cbor_item_t *attr_map)
 {
-    cbor_item_t *node_map = NULL;
-    cbor_item_t *key_item = NULL;
-    char *node_name = NULL;
-    const struct lyd_node *child;
-    LY_ERR ret = LY_SUCCESS;
-    size_t child_count;
-    
-    fprintf(stderr, "DEBUG: cbor_print_container called for node: %s\n",
-            node && node->schema && node->schema->name ? node->schema->name : "NULL");
-    
-    /* COMPREHENSIVE NULL CHECKS */
-    if (!ctx) {
-        fprintf(stderr, "DEBUG: Container called with NULL ctx\n");
-        return LY_EINVAL;
+    struct lyd_attr *attr;
+    cbor_item_t *value_item = NULL;
+
+    for (attr = node->attr; attr; attr = attr->next) {
+        char *key = cbor_print_member_name2(pctx, &node->node, attr->format, &attr->name, 0);
+        LY_CHECK_RET(!key, LY_EMEM);
+
+        if (attr->hints & (LYD_VALHINT_STRING | LYD_VALHINT_OCTNUM | LYD_VALHINT_HEXNUM | LYD_VALHINT_NUM64)) {
+            value_item = cbor_build_string(attr->value);
+        } else if (attr->hints & (LYD_VALHINT_BOOLEAN | LYD_VALHINT_DECNUM)) {
+            if (strcmp(attr->value, "true") == 0) {
+                value_item = cbor_build_bool(true);
+            } else if (strcmp(attr->value, "false") == 0) {
+                value_item = cbor_build_bool(false);
+            } else {
+                /* numeric value as string */
+                value_item = cbor_build_string(attr->value);
+            }
+        } else if (attr->hints & LYD_VALHINT_EMPTY) {
+            value_item = cbor_new_definite_array(1);
+            if (value_item) {
+                cbor_item_t *null_item = cbor_build_ctrl(CBOR_CTRL_NULL);
+                if (null_item) {
+                    cbor_array_push(value_item, null_item);
+                    cbor_decref(&null_item);
+                }
+            }
+        } else {
+            /* unknown value format with no hints, use universal string */
+            value_item = cbor_build_string(attr->value);
+        }
+
+        if (!value_item) {
+            free(key);
+            return LY_EMEM;
+        }
+
+        struct cbor_pair pair = {
+            .key = cbor_move(cbor_build_string(key)),
+            .value = cbor_move(value_item)
+        };
+        free(key);
+
+        if (!cbor_map_add(attr_map, pair)) {
+            cbor_decref(&pair.key);
+            cbor_decref(&pair.value);
+            return LY_EMEM;
+        }
     }
-    
-    if (!node) {
-        fprintf(stderr, "DEBUG: Container called with NULL node\n");
-        return LY_EINVAL;
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Print all the metadata of the node to CBOR map.
+ *
+ * @param[in] pctx CBOR printer context.
+ * @param[in] node Node where the metadata are placed.
+ * @param[in] wdmod With-defaults module to mark that default attribute is supposed to be printed.
+ * @param[in] meta_map CBOR map to add metadata to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+cbor_print_metadata(struct cborpr_ctx *pctx, const struct lyd_node *node, const struct lys_module *wdmod,
+        cbor_item_t *meta_map)
+{
+    struct lyd_meta *meta;
+    cbor_item_t *value_item = NULL;
+    char *key = NULL;
+
+    if (wdmod) {
+        if (asprintf(&key, "%s:default", wdmod->name) == -1) {
+            return LY_EMEM;
+        }
+        value_item = cbor_build_bool(true);
+        if (!value_item) {
+            free(key);
+            return LY_EMEM;
+        }
+
+        struct cbor_pair pair = {
+            .key = cbor_move(cbor_build_string(key)),
+            .value = cbor_move(value_item)
+        };
+        free(key);
+
+        if (!cbor_map_add(meta_map, pair)) {
+            cbor_decref(&pair.key);
+            cbor_decref(&pair.value);
+            return LY_EMEM;
+        }
     }
-    
-    if (!node->schema) {
-        fprintf(stderr, "DEBUG: Container node has NULL schema\n");
-        return LY_EINVAL;
-    }
-    
-    if (!parent_map) {
-        fprintf(stderr, "DEBUG: Container called with NULL parent_map\n");
-        return LY_EINVAL;
-    }
-    
-    /* Get node name - This should now be safe */
-    // node_name = cbor_get_node_name(ctx, node);
-    node_name = "";    if (!node_name) {
-        fprintf(stderr, "DEBUG: Failed to get container node name\n");
-        ret = LY_EMEM;
-        goto cleanup;
-    }
-    
-    fprintf(stderr, "DEBUG: Container name: '%s'\n", node_name);
-    
-    /* Count children */
-    child_count = cbor_count_children(node);
-    fprintf(stderr, "DEBUG: Container has %zu children\n", child_count);
-    
-    /* Create map for this container/list */
-    node_map = cbor_new_definite_map(child_count);
-    if (!node_map) {
-        fprintf(stderr, "DEBUG: Failed to create CBOR map for container\n");
-        ret = LY_EMEM;
-        goto cleanup;
-    }
-    
-    /* Add all children to the map */
-    LY_LIST_FOR(lyd_child(node), child) {
-        if (!child || !child->schema || !child->schema->name) {
-            fprintf(stderr, "DEBUG: Skipping invalid child\n");
+
+    for (meta = node->meta; meta; meta = meta->next) {
+        if (!lyd_metadata_should_print(meta)) {
             continue;
         }
-        
-        fprintf(stderr, "DEBUG: Processing child: %s\n", child->schema->name);
-        ret = cbor_print_node(ctx, child, node_map);
-        if (ret != LY_SUCCESS) {
-            fprintf(stderr, "DEBUG: Failed to process child node\n");
-            goto cleanup;
+
+        if (asprintf(&key, "%s:%s", meta->annotation->module->name, meta->name) == -1) {
+            return LY_EMEM;
+        }
+
+        LY_CHECK_RET(cbor_print_value(pctx, LYD_CTX(node), &meta->value, NULL, &value_item));
+
+        struct cbor_pair pair = {
+            .key = cbor_move(cbor_build_string(key)),
+            .value = cbor_move(value_item)
+        };
+        free(key);
+
+        if (!cbor_map_add(meta_map, pair)) {
+            cbor_decref(&pair.key);
+            cbor_decref(&pair.value);
+            return LY_EMEM;
         }
     }
-    
-    /* Add this container/list to parent map */
-    key_item = safe_cbor_build_string(node_name);
-    if (!key_item) {
-        fprintf(stderr, "DEBUG: Failed to create key item for container\n");
-        ret = LY_EMEM;
-        goto cleanup;
-    }
-    
-    if (!cbor_map_add(parent_map, (struct cbor_pair) {
-        .key = key_item,
-        .value = node_map
-    })) {
-        fprintf(stderr, "DEBUG: Failed to add container to parent map\n");
-        ret = LY_EMEM;
-        goto cleanup;
-    }
-    
-    fprintf(stderr, "DEBUG: Container added successfully\n");
-    
-    /* Items are now owned by the map, don't decref them */
-    key_item = NULL;
-    node_map = NULL;
 
-cleanup:
-    if (key_item) {
-        cbor_decref(&key_item);
-    }
-    if (node_map) {
-        cbor_decref(&node_map);
-    }
-    if (node_name) {
-        free(node_name);
-    }
-    return ret;
+    return LY_SUCCESS;
 }
 
 /**
- * @brief Print leaf or leaf-list node
+ * @brief Check if a value can be printed for at least one metadata.
+ *
+ * @param[in] node Node to check.
+ * @return 1 if node has printable meta otherwise 0.
  */
-static LY_ERR
-cbor_print_leaf(struct cborpr_ctx *ctx, const struct lyd_node *node, cbor_item_t *parent_map)
+static ly_bool
+node_has_printable_meta(const struct lyd_node *node)
 {
-    cbor_item_t *key_item = NULL;
-    cbor_item_t *value_item = NULL;
-    cbor_item_t *array_item = NULL;
-    char *node_name = NULL;
-    const struct lyd_node *sibling;
-    LY_ERR ret = LY_SUCCESS;
-    size_t sibling_count;
-    
-    fprintf(stderr, "DEBUG: cbor_print_leaf called for node: %s\n", 
-            node && node->schema && node->schema->name ? node->schema->name : "NULL");
-    
-    /* FIXED: Add null checks */
-    if (!node || !node->schema) {
-        fprintf(stderr, "DEBUG: Leaf node or schema is NULL\n");
-        return LY_EINVAL;
-    }
-    
-    /* Get node name */
-    // node_name = cbor_get_node_name(ctx, node);
-    node_name = "";
-    if (!node_name) {
-        fprintf(stderr, "DEBUG: Failed to get node name\n");
-        ret = LY_EMEM;
-        goto cleanup;
-    }
-    
-    fprintf(stderr, "DEBUG: Got node name: '%s'\n", node_name);
-    
-    /* Check if this is a leaf-list with multiple values */
-    sibling_count = cbor_count_siblings_same_name(node);
-    fprintf(stderr, "DEBUG: Sibling count: %zu\n", sibling_count);
-    
-    if (sibling_count > 1 && (node->schema->nodetype & LYS_LEAFLIST)) {
-        fprintf(stderr, "DEBUG: Processing leaf-list with %zu values\n", sibling_count);
-        
-        /* Create array for leaf-list */
-        array_item = cbor_new_definite_array(sibling_count);
-        if (!array_item) {
-            fprintf(stderr, "DEBUG: Failed to create CBOR array\n");
-            ret = LY_EMEM;
-            goto cleanup;
-        }
-        
-        /* Add all values to array */
-        LY_LIST_FOR(node, sibling) {
-            if (sibling->schema != node->schema) {
-                break; /* Different schema, stop */
-            }
-            
-            fprintf(stderr, "DEBUG: Adding leaf-list value to array\n");
-            value_item = cbor_value_to_item(sibling);
-            if (!value_item) {
-                fprintf(stderr, "DEBUG: Failed to create CBOR value item\n");
-                ret = LY_EMEM;
-                goto cleanup;
-            }
-            
-            if (!cbor_array_push(array_item, value_item)) {
-                fprintf(stderr, "DEBUG: Failed to add item to CBOR array\n");
-                cbor_decref(&value_item);
-                ret = LY_EMEM;
-                goto cleanup;
-            }
-            
-            value_item = NULL; /* Array owns it now */
-        }
-        
-        /* Add array to parent map */
-        key_item = safe_cbor_build_string(node_name);
-        if (!key_item) {
-            fprintf(stderr, "DEBUG: Failed to create CBOR key item for leaf-list\n");
-            ret = LY_EMEM;
-            goto cleanup;
-        }
-        
-        if (!cbor_map_add(parent_map, (struct cbor_pair) {
-            .key = key_item,
-            .value = array_item
-        })) {
-            fprintf(stderr, "DEBUG: Failed to add leaf-list to parent map\n");
-            ret = LY_EMEM;
-            goto cleanup;
-        }
-        
-        /* Items are now owned by the map */
-        key_item = NULL;
-        array_item = NULL;
-        
-    } else {
-        fprintf(stderr, "DEBUG: Processing single leaf value\n");
-        
-        /* Single leaf value */
-        value_item = cbor_value_to_item(node);
-        if (!value_item) {
-            fprintf(stderr, "DEBUG: Failed to create CBOR value item for leaf\n");
-            ret = LY_EMEM;
-            goto cleanup;
-        }
-        
-        key_item = safe_cbor_build_string(node_name);
-        if (!key_item) {
-            fprintf(stderr, "DEBUG: Failed to create CBOR key item for leaf\n");
-            ret = LY_EMEM;
-            goto cleanup;
-        }
-        
-        if (!cbor_map_add(parent_map, (struct cbor_pair) {
-            .key = key_item,
-            .value = value_item
-        })) {
-            fprintf(stderr, "DEBUG: Failed to add leaf to parent map\n");
-            ret = LY_EMEM;
-            goto cleanup;
-        }
-        
-        /* Items are now owned by the map */
-        key_item = NULL;
-        value_item = NULL;
-    }
-    
-    fprintf(stderr, "DEBUG: cbor_print_leaf completed successfully\n");
+    struct lyd_meta *iter;
 
-cleanup:
-    if (key_item) {
-        cbor_decref(&key_item);
+    if (!node->meta) {
+        return 0;
     }
-    if (value_item) {
-        cbor_decref(&value_item);
+
+    LY_LIST_FOR(node->meta, iter) {
+        if (lyd_metadata_should_print(iter)) {
+            return 1;
+        }
     }
-    if (array_item) {
-        cbor_decref(&array_item);
-    }
-    free(node_name);
-    return ret;
+
+    return 0;
 }
 
 /**
- * @brief Print anydata/anyxml node
+ * @brief Print attributes/metadata of the given @p node to CBOR map.
+ *
+ * @param[in] pctx CBOR printer context.
+ * @param[in] node Data node where the attributes/metadata are placed.
+ * @param[in] parent_map CBOR map to add the metadata to.
+ * @param[in] inner Flag if the @p node is an inner node in the tree.
+ * @return LY_ERR value.
  */
 static LY_ERR
-cbor_print_any(struct cborpr_ctx *ctx, const struct lyd_node *node, cbor_item_t *parent_map)
+cbor_print_attributes(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_item_t *parent_map, ly_bool inner)
 {
-    cbor_item_t *key_item = NULL;
+    const struct lys_module *wdmod = NULL;
+    cbor_item_t *meta_map = NULL;
+    char *key = NULL;
+
+    if (node->schema && (node->schema->nodetype != LYS_CONTAINER) && (((node->flags & LYD_DEFAULT) &&
+            (pctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) ||
+            ((pctx->options & LYD_PRINT_WD_ALL_TAG) && lyd_is_default(node)))) {
+        /* we have implicit OR explicit default node */
+        /* get with-defaults module */
+        wdmod = ly_ctx_get_module_implemented(LYD_CTX(node), "ietf-netconf-with-defaults");
+    }
+
+    if (node->schema && (wdmod || node_has_printable_meta(node))) {
+        meta_map = cbor_new_indefinite_map();
+        LY_CHECK_RET(!meta_map, LY_EMEM);
+
+        LY_CHECK_RET(cbor_print_metadata(pctx, node, wdmod, meta_map));
+
+        if (inner) {
+            key = cbor_print_member_name2(pctx, lyd_parent(node), LY_VALUE_JSON, NULL, 1);
+        } else {
+            key = cbor_print_member_name(pctx, node, 1);
+        }
+        LY_CHECK_RET(!key, LY_EMEM);
+
+        struct cbor_pair pair = {
+            .key = cbor_move(cbor_build_string(key)),
+            .value = cbor_move(meta_map)
+        };
+        free(key);
+
+        if (!cbor_map_add(parent_map, pair)) {
+            cbor_decref(&pair.key);
+            cbor_decref(&pair.value);
+            return LY_EMEM;
+        }
+    } else if (!node->schema && ((struct lyd_node_opaq *)node)->attr) {
+        meta_map = cbor_new_indefinite_map();
+        LY_CHECK_RET(!meta_map, LY_EMEM);
+
+        LY_CHECK_RET(cbor_print_attribute(pctx, (struct lyd_node_opaq *)node, meta_map));
+
+        if (inner) {
+            key = cbor_print_member_name2(pctx, lyd_parent(node), LY_VALUE_JSON, NULL, 1);
+        } else {
+            key = cbor_print_member_name2(pctx, lyd_parent(node), ((struct lyd_node_opaq *)node)->format,
+                    &((struct lyd_node_opaq *)node)->name, 1);
+        }
+        LY_CHECK_RET(!key, LY_EMEM);
+
+        struct cbor_pair pair = {
+            .key = cbor_move(cbor_build_string(key)),
+            .value = cbor_move(meta_map)
+        };
+        free(key);
+
+        if (!cbor_map_add(parent_map, pair)) {
+            cbor_decref(&pair.key);
+            cbor_decref(&pair.value);
+            return LY_EMEM;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Print leaf data node including its metadata.
+ *
+ * @param[in] pctx CBOR printer context.
+ * @param[in] node Data node to print.
+ * @param[in] parent_map CBOR map to add the leaf to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+cbor_print_leaf(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_item_t *parent_map)
+{
+    char *key = NULL;
     cbor_item_t *value_item = NULL;
-    char *node_name = NULL;
+
+    key = cbor_print_member_name(pctx, node, 0);
+    LY_CHECK_RET(!key, LY_EMEM);
+
+    LY_CHECK_ERR_RET(cbor_print_value(pctx, LYD_CTX(node), &((const struct lyd_node_term *)node)->value,
+            node->schema->module, &value_item), free(key), LY_EINVAL);
+
+    struct cbor_pair pair = {
+        .key = cbor_move(cbor_build_string(key)),
+        .value = cbor_move(value_item)
+    };
+    
+    if (!cbor_map_add(parent_map, pair)) {
+        free(key);
+        cbor_decref(&pair.key);
+        cbor_decref(&pair.value);
+        return LY_EMEM;
+    }
+    free(key);
+
+    /* print attributes as sibling */
+    cbor_print_attributes(pctx, node, parent_map, 0);
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Print anydata/anyxml content to CBOR item.
+ *
+ * @param[in] pctx CBOR printer context.
+ * @param[in] any Anydata node to print.
+ * @param[out] item_p Pointer to store the created CBOR item.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+cbor_print_any_content(struct cborpr_ctx *pctx, struct lyd_node_any *any, cbor_item_t **item_p)
+{
     LY_ERR ret = LY_SUCCESS;
-    struct lyd_node_any *any = (struct lyd_node_any *)node;
-    const char *value_str = "";
-    
-    /* FIXED: Add null checks */
-    if (!node || !node->schema) {
-        fprintf(stderr, "DEBUG: Any node or schema is NULL\n");
-        return LY_EINVAL;
+    struct lyd_node *iter;
+    const struct lyd_node *prev_parent;
+    uint32_t prev_opts, *prev_lo, temp_lo = 0;
+    cbor_item_t *content_map = NULL;
+
+    assert(any->schema->nodetype & LYD_NODE_ANY);
+
+    if ((any->schema->nodetype == LYS_ANYDATA) && (any->value_type != LYD_ANYDATA_DATATREE)) {
+        LOGINT_RET(pctx->ctx);
     }
-    
-    /* Get node name */
-    // node_name = cbor_get_node_name(ctx, node);
-    node_name = "";    if (!node_name) {
-        ret = LY_EMEM;
-        goto cleanup;
+    if (any->value_type == LYD_ANYDATA_LYB) {
+        uint32_t parser_options = LYD_PARSE_ONLY | LYD_PARSE_OPAQ | LYD_PARSE_STRICT;
+
+        /* turn logging off */
+        prev_lo = ly_temp_log_options(&temp_lo);
+
+        /* try to parse it into a data tree */
+        if (lyd_parse_data_mem(pctx->ctx, any->value.mem, LYD_LYB, parser_options, 0, &iter) == LY_SUCCESS) {
+            /* successfully parsed */
+            free(any->value.mem);
+            any->value.tree = iter;
+            any->value_type = LYD_ANYDATA_DATATREE;
+        }
+
+        /* turn logging on again */
+        ly_temp_log_options(prev_lo);
     }
-    
-    /* Convert anydata to string representation for now */
-    /* TODO: Could be enhanced to preserve the actual data format */
+
     switch (any->value_type) {
-    case LYD_ANYDATA_STRING:
-        value_str = any->value.str ? (char *)any->value.str : "";
-        break;
     case LYD_ANYDATA_DATATREE:
-        /* For now, just indicate it's a data tree */
-        value_str = "[DATA TREE]";
-        break;
-    case LYD_ANYDATA_XML:
-        value_str = any->value.str ? (char *)any->value.str : "";
+        /* create a map for the content */
+        content_map = cbor_new_indefinite_map();
+        LY_CHECK_RET(!content_map, LY_EMEM);
+
+        /* print data tree */
+        prev_parent = pctx->parent;
+        prev_opts = pctx->options;
+        pctx->parent = &any->node;
+        pctx->options &= ~LYD_PRINT_WITHSIBLINGS;
+        LY_LIST_FOR(any->value.tree, iter) {
+            ret = cbor_print_node(pctx, iter, content_map);
+            LY_CHECK_ERR_RET(ret, cbor_decref(&content_map), ret);
+        }
+        pctx->parent = prev_parent;
+        pctx->options = prev_opts;
+
+        *item_p = content_map;
         break;
     case LYD_ANYDATA_JSON:
-        value_str = any->value.str ? (char *)any->value.str : "";
+        if (!any->value.json) {
+            /* no content */
+            if (any->schema->nodetype == LYS_ANYXML) {
+                *item_p = cbor_build_ctrl(CBOR_CTRL_NULL);
+            } else {
+                *item_p = cbor_new_indefinite_map();
+            }
+        } else {
+            /* JSON content - store as string */
+            *item_p = cbor_build_string(any->value.json);
+        }
         break;
-    default:
-        value_str = "";
+    case LYD_ANYDATA_STRING:
+    case LYD_ANYDATA_XML:
+        if (!any->value.str) {
+            /* no content */
+            if (any->schema->nodetype == LYS_ANYXML) {
+                *item_p = cbor_build_ctrl(CBOR_CTRL_NULL);
+            } else {
+                *item_p = cbor_new_indefinite_map();
+            }
+        } else {
+            /* print as a string */
+            *item_p = cbor_build_string(any->value.str);
+        }
+        break;
+    case LYD_ANYDATA_LYB:
+        /* LYB format is not supported */
+        LOGWRN(pctx->ctx, "Unable to print anydata content (type %d) as CBOR.", any->value_type);
+        *item_p = cbor_build_ctrl(CBOR_CTRL_NULL);
         break;
     }
-    
-    value_item = cbor_build_string(value_str);
-    if (!value_item) {
-        ret = LY_EMEM;
-        goto cleanup;
-    }
-    
-    key_item = cbor_build_string(node_name);
-    if (!key_item) {
-        ret = LY_EMEM;
-        goto cleanup;
-    }
-    
-    if (!cbor_map_add(parent_map, (struct cbor_pair) {
-        .key = key_item,
-        .value = value_item
-    })) {
-        ret = LY_EMEM;
-        goto cleanup;
-    }
-    
-    /* Items are now owned by the map */
-    key_item = NULL;
-    value_item = NULL;
 
-cleanup:
-    if (key_item) {
-        cbor_decref(&key_item);
-    }
-    if (value_item) {
-        cbor_decref(&value_item);
-    }
-    free(node_name);
-    return ret;
+    return LY_SUCCESS;
 }
 
 /**
- * @brief Print a single node recursively
+ * @brief Print content of a single container/list data node including its metadata.
+ *
+ * @param[in] pctx CBOR printer context.
+ * @param[in] node Data node to print.
+ * @param[out] item_p Pointer to store the created CBOR map.
+ * @return LY_ERR value.
  */
 static LY_ERR
-cbor_print_node(struct cborpr_ctx *ctx, const struct lyd_node *node, cbor_item_t *parent_map)
+cbor_print_inner(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_item_t **item_p)
 {
-    /* FIXED: Add null checks at the beginning */
-    if (!node || !node->schema) {
-        fprintf(stderr, "DEBUG: cbor_print_node called with NULL node or schema\n");
-        return LY_EINVAL;
+    struct lyd_node *child;
+    const struct lyd_node *prev_parent;
+    cbor_item_t *inner_map = NULL;
+
+    /* create map for inner node */
+    inner_map = cbor_new_indefinite_map();
+    LY_CHECK_RET(!inner_map, LY_EMEM);
+
+    /* print attributes first */
+    cbor_print_attributes(pctx, node, inner_map, 1);
+
+    /* print children */
+    prev_parent = pctx->parent;
+    pctx->parent = node;
+    LY_LIST_FOR(lyd_child(node), child) {
+        LY_CHECK_ERR_RET(cbor_print_node(pctx, child, inner_map), cbor_decref(&inner_map), LY_EINVAL);
     }
+    pctx->parent = prev_parent;
+
+    *item_p = inner_map;
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Print container data node including its metadata.
+ *
+ * @param[in] pctx CBOR printer context.
+ * @param[in] node Data node to print.
+ * @param[in] parent_map CBOR map to add the container to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+cbor_print_container(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_item_t *parent_map)
+{
+    char *key = NULL;
+    cbor_item_t *inner_map = NULL;
+
+    key = cbor_print_member_name(pctx, node, 0);
+    LY_CHECK_RET(!key, LY_EMEM);
+
+    LY_CHECK_ERR_RET(cbor_print_inner(pctx, node, &inner_map), free(key), LY_EINVAL);
+
+    struct cbor_pair pair = {
+        .key = cbor_move(cbor_build_string(key)),
+        .value = cbor_move(inner_map)
+    };
     
-    switch (node->schema->nodetype) {
-    case LYS_CONTAINER:
-    case LYS_LIST:
-        return cbor_print_container(ctx, node, parent_map);
-    case LYS_LEAF:
-    case LYS_LEAFLIST:
-        return cbor_print_leaf(ctx, node, parent_map);
-    case LYS_ANYXML:
-    case LYS_ANYDATA:
-        return cbor_print_any(ctx, node, parent_map);
-    default:
-        /* Skip unknown node types */
-        fprintf(stderr, "DEBUG: Skipping unknown node type: %d\n", node->schema->nodetype);
+    if (!cbor_map_add(parent_map, pair)) {
+        free(key);
+        cbor_decref(&pair.key);
+        cbor_decref(&pair.value);
+        return LY_EMEM;
+    }
+    free(key);
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Print anydata/anyxml data node including its metadata.
+ *
+ * @param[in] pctx CBOR printer context.
+ * @param[in] node Data node to print.
+ * @param[in] parent_map CBOR map to add the anydata to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+cbor_print_any(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_item_t *parent_map)
+{
+    char *key = NULL;
+    cbor_item_t *any_item = NULL;
+
+    key = cbor_print_member_name(pctx, node, 0);
+    LY_CHECK_RET(!key, LY_EMEM);
+
+    LY_CHECK_ERR_RET(cbor_print_any_content(pctx, (struct lyd_node_any *)node, &any_item), free(key), LY_EINVAL);
+
+    struct cbor_pair pair = {
+        .key = cbor_move(cbor_build_string(key)),
+        .value = cbor_move(any_item)
+    };
+    
+    if (!cbor_map_add(parent_map, pair)) {
+        free(key);
+        cbor_decref(&pair.key);
+        cbor_decref(&pair.value);
+        return LY_EMEM;
+    }
+    free(key);
+
+    /* print attributes as sibling */
+    cbor_print_attributes(pctx, node, parent_map, 0);
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Check whether a node is the last printed instance of a (leaf-)list.
+ *
+ * @param[in] pctx CBOR printer context.
+ * @param[in] node Last printed node.
+ * @return Whether it is the last printed instance or not.
+ */
+static ly_bool
+cbor_print_array_is_last_inst(struct cborpr_ctx *pctx, const struct lyd_node *node)
+{
+    if (!is_open_array(pctx, node)) {
+        /* no array open */
+        return 0;
+    }
+
+    if ((pctx->root == node) && !(pctx->options & LYD_PRINT_WITHSIBLINGS)) {
+        /* the only printed instance */
+        return 1;
+    }
+
+    if (!node->next || (node->next->schema != node->schema)) {
+        /* last instance */
+        return 1;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Print single leaf-list or list instance.
+ *
+ * @param[in] pctx CBOR printer context.
+ * @param[in] node Data node to print.
+ * @param[in] parent_map CBOR map to add the node to.
+ * @param[in,out] array_p Pointer to the array being built.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+cbor_print_leaf_list(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_item_t *parent_map, cbor_item_t **array_p)
+{
+    const struct lys_module *wdmod = NULL;
+    cbor_item_t *value_item = NULL;
+    cbor_item_t *inner_map = NULL;
+    char *key = NULL;
+
+    if (!is_open_array(pctx, node)) {
+        /* start new array */
+        *array_p = cbor_new_indefinite_array();
+        LY_CHECK_RET(!*array_p, LY_EMEM);
+
+        key = cbor_print_member_name(pctx, node, 0);
+        LY_CHECK_ERR_RET(!key, cbor_decref(array_p), LY_EMEM);
+
+        LY_CHECK_RET(cbor_print_array_open(pctx, node));
+    }
+
+    if (node->schema->nodetype == LYS_LIST) {
+        /* print list's content */
+        LY_CHECK_RET(cbor_print_inner(pctx, node, &inner_map));
+        cbor_array_push(*array_p, inner_map);
+        cbor_decref(&inner_map);
+    } else {
+        assert(node->schema->nodetype == LYS_LEAFLIST);
+
+        LY_CHECK_RET(cbor_print_value(pctx, LYD_CTX(node), &((const struct lyd_node_term *)node)->value,
+                node->schema->module, &value_item));
+        cbor_array_push(*array_p, value_item);
+        cbor_decref(&value_item);
+
+        if (!pctx->first_leaflist) {
+            if (((node->flags & LYD_DEFAULT) && (pctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) ||
+                    ((pctx->options & LYD_PRINT_WD_ALL_TAG) && lyd_is_default(node))) {
+                /* we have implicit OR explicit default node, get with-defaults module */
+                wdmod = ly_ctx_get_module_implemented(LYD_CTX(node), "ietf-netconf-with-defaults");
+            }
+            if (wdmod || node_has_printable_meta(node)) {
+                /* we will be printing metadata for these siblings */
+                pctx->first_leaflist = node;
+            }
+        }
+    }
+
+    if (cbor_print_array_is_last_inst(pctx, node)) {
+        /* add completed array to parent map */
+        if (key) {
+            struct cbor_pair pair = {
+                .key = cbor_move(cbor_build_string(key)),
+                .value = cbor_move(*array_p)
+            };
+            free(key);
+
+            if (!cbor_map_add(parent_map, pair)) {
+                cbor_decref(&pair.key);
+                cbor_decref(&pair.value);
+                return LY_EMEM;
+            }
+        }
+        cbor_print_array_close(pctx);
+        *array_p = NULL;
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Print leaf-list's metadata or opaque nodes attributes.
+ *
+ * @param[in] pctx CBOR printer context.
+ * @param[in] parent_map CBOR map to add metadata to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+cbor_print_meta_attr_leaflist(struct cborpr_ctx *pctx, cbor_item_t *parent_map)
+{
+    const struct lyd_node *prev, *node, *iter;
+    const struct lys_module *wdmod = NULL, *iter_wdmod;
+    const struct lyd_node_opaq *opaq = NULL;
+    cbor_item_t *meta_array = NULL;
+    cbor_item_t *meta_map = NULL;
+    char *key = NULL;
+
+    assert(pctx->first_leaflist);
+
+    if (pctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG)) {
+        /* get with-defaults module */
+        wdmod = ly_ctx_get_module_implemented(pctx->ctx, "ietf-netconf-with-defaults");
+    }
+
+    /* node is the first instance of the leaf-list */
+    for (node = pctx->first_leaflist, prev = pctx->first_leaflist->prev;
+            prev->next && matching_node(node, prev);
+            node = prev, prev = node->prev) {}
+
+    /* create metadata array */
+    meta_array = cbor_new_indefinite_array();
+    LY_CHECK_RET(!meta_array, LY_EMEM);
+
+    if (node->schema) {
+        key = cbor_print_member_name(pctx, node, 1);
+    } else {
+        opaq = (struct lyd_node_opaq *)node;
+        key = cbor_print_member_name2(pctx, lyd_parent(node), opaq->format, &opaq->name, 1);
+    }
+    LY_CHECK_ERR_RET(!key, cbor_decref(&meta_array), LY_EMEM);
+
+    LY_LIST_FOR(node, iter) {
+        if (iter->schema && ((iter->flags & LYD_DEFAULT) || ((pctx->options & LYD_PRINT_WD_ALL_TAG) && lyd_is_default(iter)))) {
+            iter_wdmod = wdmod;
+        } else {
+            iter_wdmod = NULL;
+        }
+
+        if ((iter->schema && (node_has_printable_meta(iter) || iter_wdmod)) || (opaq && opaq->attr)) {
+            meta_map = cbor_new_indefinite_map();
+            if (!meta_map) {
+                free(key);
+                cbor_decref(&meta_array);
+                return LY_EMEM;
+            }
+
+            if (iter->schema) {
+                LY_CHECK_ERR_RET(cbor_print_metadata(pctx, iter, iter_wdmod, meta_map),
+                        free(key); cbor_decref(&meta_array); cbor_decref(&meta_map), LY_EINVAL);
+            } else {
+                LY_CHECK_ERR_RET(cbor_print_attribute(pctx, (struct lyd_node_opaq *)iter, meta_map),
+                        free(key); cbor_decref(&meta_array); cbor_decref(&meta_map), LY_EINVAL);
+            }
+
+            cbor_array_push(meta_array, meta_map);
+            cbor_decref(&meta_map);
+        } else {
+            cbor_item_t *null_item = cbor_build_ctrl(CBOR_CTRL_NULL);
+            cbor_array_push(meta_array, null_item);
+            cbor_decref(&null_item);
+        }
+
+        if (!matching_node(iter, iter->next)) {
+            break;
+        }
+    }
+
+    /* add metadata array to parent map */
+    struct cbor_pair pair = {
+        .key = cbor_move(cbor_build_string(key)),
+        .value = cbor_move(meta_array)
+    };
+    free(key);
+
+    if (!cbor_map_add(parent_map, pair)) {
+        cbor_decref(&pair.key);
+        cbor_decref(&pair.value);
+        return LY_EMEM;
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Print opaq data node including its attributes.
+ *
+ * @param[in] pctx CBOR printer context.
+ * @param[in] node Opaq node to print.
+ * @param[in] parent_map CBOR map to add the node to.
+ * @param[in,out] array_p Pointer to the array being built (for leaf-lists/lists).
+ * @return LY_ERR value.
+ */
+static LY_ERR
+cbor_print_opaq(struct cborpr_ctx *pctx, const struct lyd_node_opaq *node, cbor_item_t *parent_map, cbor_item_t **array_p)
+{
+    ly_bool first = 1, last = 1;
+    uint32_t hints;
+    char *key = NULL;
+    cbor_item_t *value_item = NULL;
+
+    if (node->hints == LYD_HINT_DATA) {
+        /* useless and confusing hints */
+        hints = 0;
+    } else {
+        hints = node->hints;
+    }
+
+    if (hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
+        if (node->prev->next && matching_node(node->prev, &node->node)) {
+            first = 0;
+        }
+        if (node->next && matching_node(&node->node, node->next)) {
+            last = 0;
+        }
+    }
+
+    if (first) {
+        key = cbor_print_member_name2(pctx, pctx->parent, node->format, &node->name, 0);
+        LY_CHECK_RET(!key, LY_EMEM);
+
+        if (hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
+            *array_p = cbor_new_indefinite_array();
+            LY_CHECK_ERR_RET(!*array_p, free(key), LY_EMEM);
+            LY_CHECK_ERR_RET(cbor_print_array_open(pctx, &node->node), free(key), LY_EINVAL);
+        }
+    }
+
+    if (node->child || (hints & LYD_NODEHINT_LIST) || (hints & LYD_NODEHINT_CONTAINER)) {
+        cbor_item_t *inner_map = NULL;
+        LY_CHECK_ERR_RET(cbor_print_inner(pctx, &node->node, &inner_map), free(key), LY_EINVAL);
+
+        if (hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
+            cbor_array_push(*array_p, inner_map);
+            cbor_decref(&inner_map);
+        } else {
+            struct cbor_pair pair = {
+                .key = cbor_move(cbor_build_string(key)),
+                .value = cbor_move(inner_map)
+            };
+            free(key);
+            key = NULL;
+
+            if (!cbor_map_add(parent_map, pair)) {
+                cbor_decref(&pair.key);
+                cbor_decref(&pair.value);
+                return LY_EMEM;
+            }
+        }
+    } else {
+        if (hints & LYD_VALHINT_EMPTY) {
+            value_item = cbor_new_definite_array(1);
+            if (value_item) {
+                cbor_item_t *null_item = cbor_build_ctrl(CBOR_CTRL_NULL);
+                if (null_item) {
+                    cbor_array_push(value_item, null_item);
+                    cbor_decref(&null_item);
+                }
+            }
+        } else if ((hints & (LYD_VALHINT_BOOLEAN | LYD_VALHINT_DECNUM)) && !(hints & LYD_VALHINT_NUM64)) {
+            if (strcmp(node->value, "true") == 0) {
+                value_item = cbor_build_bool(true);
+            } else if (strcmp(node->value, "false") == 0) {
+                value_item = cbor_build_bool(false);
+            } else {
+                value_item = cbor_build_string(node->value);
+            }
+        } else {
+            /* string or a large number */
+            value_item = cbor_build_string(node->value);
+        }
+
+        LY_CHECK_ERR_RET(!value_item, free(key), LY_EMEM);
+
+        if (hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
+            cbor_array_push(*array_p, value_item);
+            cbor_decref(&value_item);
+        } else {
+            struct cbor_pair pair = {
+                .key = cbor_move(cbor_build_string(key)),
+                .value = cbor_move(value_item)
+            };
+            free(key);
+            key = NULL;
+
+            if (!cbor_map_add(parent_map, pair)) {
+                cbor_decref(&pair.key);
+                cbor_decref(&pair.value);
+                return LY_EMEM;
+            }
+        }
+
+        if (!(hints & LYD_NODEHINT_LEAFLIST)) {
+            /* attributes */
+            cbor_print_attributes(pctx, (const struct lyd_node *)node, parent_map, 0);
+        } else if (!pctx->first_leaflist && node->attr) {
+            /* attributes printed later */
+            pctx->first_leaflist = &node->node;
+        }
+    }
+
+    if (last && (hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST))) {
+        if (key) {
+            struct cbor_pair pair = {
+                .key = cbor_move(cbor_build_string(key)),
+                .value = cbor_move(*array_p)
+            };
+            free(key);
+
+            if (!cbor_map_add(parent_map, pair)) {
+                cbor_decref(&pair.key);
+                cbor_decref(&pair.value);
+                return LY_EMEM;
+            }
+        }
+        cbor_print_array_close(pctx);
+        *array_p = NULL;
+    }
+
+    if (key) {
+        free(key);
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Print all the types of data node including its metadata.
+ *
+ * @param[in] pctx CBOR printer context.
+ * @param[in] node Data node to print.
+ * @param[in] parent_map CBOR map to add the node to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+cbor_print_node(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_item_t *parent_map)
+{
+    static cbor_item_t *array = NULL;
+
+    if (!lyd_node_should_print(node, pctx->options)) {
+        if (cbor_print_array_is_last_inst(pctx, node)) {
+            cbor_print_array_close(pctx);
+        }
         return LY_SUCCESS;
     }
-}
 
-/**
- * @brief Count root level nodes, handling leaf-lists correctly
- */
-static size_t
-cbor_count_root_nodes(const struct lyd_node *root)
-{
-    size_t count = 0;
-    const struct lyd_node *node;
-    const struct lysc_node *last_schema = NULL;
-    
-    LY_LIST_FOR(root, node) {
-        /* FIXED: Add null check for schema */
-        if (!node->schema) {
-            continue;
-        }
-        
-        /* For leaf-lists, only count the first occurrence */
-        if (node->schema != last_schema) {
-            count++;
-            last_schema = node->schema;
-        } else if (!(node->schema->nodetype & LYS_LEAFLIST)) {
-            count++;
+    if (!node->schema) {
+        LY_CHECK_RET(cbor_print_opaq(pctx, (const struct lyd_node_opaq *)node, parent_map, &array));
+    } else {
+        switch (node->schema->nodetype) {
+        case LYS_RPC:
+        case LYS_ACTION:
+        case LYS_NOTIF:
+        case LYS_CONTAINER:
+            LY_CHECK_RET(cbor_print_container(pctx, node, parent_map));
+            break;
+        case LYS_LEAF:
+            LY_CHECK_RET(cbor_print_leaf(pctx, node, parent_map));
+            break;
+        case LYS_LEAFLIST:
+        case LYS_LIST:
+            LY_CHECK_RET(cbor_print_leaf_list(pctx, node, parent_map, &array));
+            break;
+        case LYS_ANYDATA:
+        case LYS_ANYXML:
+            LY_CHECK_RET(cbor_print_any(pctx, node, parent_map));
+            break;
+        default:
+            LOGINT(pctx->ctx);
+            return EXIT_FAILURE;
         }
     }
-    
-    return count;
+
+    if (pctx->first_leaflist && !matching_node(node->next, pctx->first_leaflist)) {
+        cbor_print_meta_attr_leaflist(pctx, parent_map);
+        pctx->first_leaflist = NULL;
+    }
+
+    return LY_SUCCESS;
 }
 
-/**
- * @brief Main function to print data tree in CBOR format
- */
 LY_ERR
 cbor_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options)
 {
-    LY_ERR ret = LY_SUCCESS;
-    struct cborpr_ctx ctx = {0};
     const struct lyd_node *node;
-    const struct lysc_node *last_schema = NULL;
-    size_t root_count;
-    unsigned char *cbor_data = NULL;
-    size_t cbor_data_len = 0;
-    
-    if (!out) {
-        return LY_EINVAL;
-    }
-    
-    /* Initialize context */
-    ctx.out = out;
-    ctx.root = root;
-    ctx.options = options;
-    ctx.level = 0;
-    
-    if (root) {
-        ctx.ctx = LYD_CTX(root);
+    struct cborpr_ctx pctx = {0};
+    unsigned char *buffer = NULL;
+    size_t buffer_size = 0;
+
+    if (!root) {
+        /* empty data - print empty map */
+        cbor_item_t *empty_map = cbor_new_indefinite_map();
+        LY_CHECK_RET(!empty_map, LY_EMEM);
         
-        /* Count root level nodes */
-        root_count = cbor_count_root_nodes(root);
+        buffer_size = cbor_serialize_alloc(empty_map, &buffer, &buffer_size);
+        cbor_decref(&empty_map);
         
-        /* Debug: Print what we're processing */
-        fprintf(stderr, "DEBUG: Processing %zu root nodes\n", root_count);
-        
-        /* Create root map */
-        ctx.root_item = cbor_new_definite_map(root_count);
-        if (!ctx.root_item) {
-            fprintf(stderr, "DEBUG: Failed to create root map\n");
-            ret = LY_EMEM;
-            goto cleanup;
+        if (buffer_size == 0) {
+            return LY_EMEM;
         }
         
-        /* Process all root nodes */
-        LY_LIST_FOR(root, node) {
-            /* FIXED: Add null check for schema */
-            if (!node->schema) {
-                fprintf(stderr, "DEBUG: Skipping node with NULL schema\n");
-                continue;
-            }
-            
-            /* Skip duplicate leaf-list entries (they are handled together) */
-            if ((node->schema->nodetype & LYS_LEAFLIST) && (node->schema == last_schema)) {
-                continue;
-            }
-            
-            fprintf(stderr, "DEBUG: Processing node: %s\n", node->schema->name);
-            
-            ctx.root = node;
-            ret = cbor_print_node(&ctx, node, ctx.root_item);
-            if (ret != LY_SUCCESS) {
-                fprintf(stderr, "DEBUG: Failed to print node: %s\n", node->schema->name);
-                goto cleanup;
-            }
-            
-            last_schema = node->schema;
-            
-            /* Break if not printing siblings */
-            if (!(options & LYD_PRINT_WITHSIBLINGS)) {
-                break;
-            }
-        }
-    } else {
-        fprintf(stderr, "DEBUG: Empty data tree\n");
-        /* Empty data tree - create empty map */
-        ctx.root_item = cbor_new_definite_map(0);
-        if (!ctx.root_item) {
-            ret = LY_EMEM;
-            goto cleanup;
+        ly_write_(out, (const char *)buffer, buffer_size);
+        free(buffer);
+        ly_print_flush(out);
+        return LY_SUCCESS;
+    }
+
+    pctx.out = out;
+    pctx.parent = NULL;
+    pctx.options = options;
+    pctx.ctx = LYD_CTX(root);
+
+    /* create root map */
+    pctx.root_map = cbor_new_indefinite_map();
+    LY_CHECK_RET(!pctx.root_map, LY_EMEM);
+
+    /* print content */
+    LY_LIST_FOR(root, node) {
+        pctx.root = node;
+        LY_CHECK_ERR_RET(cbor_print_node(&pctx, node, pctx.root_map), 
+                cbor_decref(&pctx.root_map); ly_set_erase(&pctx.open, NULL), LY_EINVAL);
+        if (!(options & LYD_PRINT_WITHSIBLINGS)) {
+            break;
         }
     }
-    
-    /* Serialize CBOR to bytes */
-    cbor_data_len = cbor_serialize_alloc(ctx.root_item, &cbor_data, &cbor_data_len);
-    if (cbor_data_len == 0 || !cbor_data) {
-        fprintf(stderr, "DEBUG: Failed to serialize CBOR or got 0 bytes\n");
-        ret = LY_EMEM;
-        goto cleanup;
-    }
-    
-    fprintf(stderr, "DEBUG: Generated %zu bytes of CBOR data\n", cbor_data_len);
-    
-    /* Write to output using ly_print_ macro */
-    ly_print_(out, "%.*s", (int)cbor_data_len, cbor_data);
 
-cleanup:
-    if (ctx.root_item) {
-        cbor_decref(&ctx.root_item);
+    /* serialize CBOR to buffer */
+    buffer_size = cbor_serialize_alloc(pctx.root_map, &buffer, &buffer_size);
+    cbor_decref(&pctx.root_map);
+
+    if (buffer_size == 0) {
+        ly_set_erase(&pctx.open, NULL);
+        return LY_EMEM;
     }
-    if (cbor_data) {
-        free(cbor_data);
-    }
-    
-    return ret;
+
+    /* write to output */
+    ly_write_(out, (const char *)buffer, buffer_size);
+    free(buffer);
+
+    assert(!pctx.open.count);
+    ly_set_erase(&pctx.open, NULL);
+
+    ly_print_flush(out);
+    return LY_SUCCESS;
 }
 
-/**
- * @brief Print data subtree in CBOR format
- */
-LY_ERR
-cbor_print_tree(struct ly_out *out, const struct lyd_node *root, uint32_t options, size_t max_depth)
-{
-    /* For now, ignore max_depth and use the regular print function */
-    /* TODO: Implement depth limiting if needed */
-    (void)max_depth;
-    return cbor_print_data(out, root, options);
-}
-
-/**
- * @brief Print all data trees in CBOR format
- */
-LY_ERR
-cbor_print_all(struct ly_out *out, const struct lyd_node *root, uint32_t options)
-{
-    return cbor_print_data(out, root, options);
-}
+#endif /* ENABLE_CBOR_SUPPORT */
