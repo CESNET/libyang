@@ -1069,6 +1069,7 @@ lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, uint32_t option
             return LY_ENOTFOUND;
         }
         break;
+    case LY_VALUE_CBOR:
     case LY_VALUE_JSON:
         mod = ly_ctx_get_module_implemented(ctx, attr->name.module_name);
         if (!mod) {

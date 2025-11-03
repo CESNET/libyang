@@ -5706,6 +5706,7 @@ moveto_resolve_module(const char **qname, uint32_t *qname_len, const struct lyxp
             mod = set->cur_mod;
             break;
         case LY_VALUE_CANON:
+        case LY_VALUE_CBOR:
         case LY_VALUE_JSON:
         case LY_VALUE_LYB:
         case LY_VALUE_STR_NS:
@@ -6323,6 +6324,7 @@ moveto_scnode_check(const struct lysc_node *node, const struct lysc_node *ctx_sc
             /* use current module */
             moveto_mod = set->cur_mod;
             break;
+        case LY_VALUE_CBOR:
         case LY_VALUE_JSON:
         case LY_VALUE_LYB:
         case LY_VALUE_STR_NS:

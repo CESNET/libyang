@@ -215,4 +215,14 @@ LY_ERR json_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t
  */
 LY_ERR lyb_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options);
 
+/**
+ * @brief CBOR printer of YANG data.
+ *
+ * @param[in] out Output structure.
+ * @param[in] root The root element of the (sub)tree to print.
+ * @param[in] options [Data printer flags](@ref dataprinterflags).
+ * @return LY_ERR value, number of the printed bytes is updated in ::ly_out.printed.
+ */
+LY_ERR cbor_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options);
+
 #endif /* LY_PRINTER_INTERNAL_H_ */

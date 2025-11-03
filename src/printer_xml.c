@@ -128,6 +128,7 @@ xml_print_ns_opaq(struct xmlpr_ctx *pctx, LY_VALUE_FORMAT format, const struct l
             return xml_print_ns(pctx, name->module_ns, (prefix_opts & LYXML_PREFIX_DEFAULT) ? NULL : name->prefix, prefix_opts);
         }
         break;
+    case LY_VALUE_CBOR:
     case LY_VALUE_JSON:
         if (name->module_name) {
             mod = ly_ctx_get_module_latest(pctx->ctx, name->module_name);

@@ -231,6 +231,7 @@ set(format_sources
     src/*.h
     src/plugins_exts/*
     src/plugins_types/*)
+
 #
 # options
 #
@@ -249,6 +250,7 @@ option(ENABLE_YANGLINT_INTERACTIVE "Enable interactive CLI yanglint" ON)
 option(ENABLE_TOOLS "Build binary tools 'yanglint' and 'yangre'" ON)
 option(ENABLE_COMMON_TARGETS "Define common custom target names such as 'doc' or 'uninstall', may cause conflicts when using add_subdirectory() to build this project" ON)
 option(BUILD_SHARED_LIBS "By default, shared libs are enabled. Turn off for a static build." ON)
+option(ENABLE_CBOR_SUPPORT "Enable CBOR support with libcbor" ON)
 set(YANG_MODULE_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/yang/modules/libyang" CACHE STRING "Directory where to copy the YANG modules to")
 
 if(ENABLE_INTERNAL_DOCS)
@@ -314,6 +316,42 @@ endif()
 
 if(ENABLE_COVERAGE)
     gen_coverage_enable(${ENABLE_TESTS})
+endif()
+
+if(ENABLE_CBOR_SUPPORT)
+    find_package(PkgConfig)
+    if(PKG_CONFIG_FOUND)
+        pkg_check_modules(LIBCBOR REQUIRED libcbor)
+        if(LIBCBOR_FOUND)
+            message(STATUS "libcbor found, enabling CBOR support")
+            add_definitions(-DENABLE_CBOR_SUPPORT)
+            include_directories(${LIBCBOR_INCLUDE_DIRS})
+            # Add CBOR parser files to the library sources
+            list(APPEND libsrc src/parser_cbor.c src/lcbor.c src/printer_cbor.c)
+            list(APPEND headers src/lcbor.h)
+            # Add CBOR files to format sources
+            list(APPEND format_sources src/parser_cbor.c src/lcbor.h src/lcbor.c src/printer_cbor.c)
+        else()
+            message(FATAL_ERROR "libcbor not found! Please install libcbor development package or disable CBOR support with -DENABLE_CBOR_SUPPORT=OFF")
+        endif()
+    else()
+        # Fallback to find_path and find_library if pkg-config is not available
+        find_path(LIBCBOR_INCLUDE_DIR cbor.h)
+        find_library(LIBCBOR_LIBRARY cbor)
+        if(LIBCBOR_INCLUDE_DIR AND LIBCBOR_LIBRARY)
+            message(STATUS "libcbor found via find_path/find_library, enabling CBOR support")
+            add_definitions(-DENABLE_CBOR_SUPPORT)
+            include_directories(${LIBCBOR_INCLUDE_DIR})
+            set(LIBCBOR_LIBRARIES ${LIBCBOR_LIBRARY})
+            # Add CBOR parser files to the library sources
+            list(APPEND libsrc src/parser_cbor.c src/lcbor.c src/printer_cbor.c)
+            list(APPEND headers src/lcbor.h)
+            # Add CBOR files to format sources
+            list(APPEND format_sources src/parser_cbor.c src/lcbor.h src/lcbor.c src/printer_cbor.c)
+        else()
+            message(FATAL_ERROR "libcbor not found! Please install libcbor development package or disable CBOR support with -DENABLE_CBOR_SUPPORT=OFF")
+        endif()
+    endif()
 endif()
 
 if ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
@@ -407,6 +445,11 @@ unset(PCRE2_LIBRARY CACHE)
 find_package(PCRE2 10.21 REQUIRED)
 include_directories(${PCRE2_INCLUDE_DIRS})
 target_link_libraries(yang ${PCRE2_LIBRARIES})
+
+# link libcbor if CBOR support is enabled
+if(ENABLE_CBOR_SUPPORT)
+    target_link_libraries(yang ${LIBCBOR_LIBRARIES})
+endif()
 
 # XXHash include and library
 find_package(XXHash)

@@ -315,6 +315,7 @@ lyd_owner_module(const struct lyd_node *node)
                 return ly_ctx_get_module_implemented_ns(LYD_CTX(node), opaq->name.module_ns);
             }
             break;
+        case LY_VALUE_CBOR:
         case LY_VALUE_JSON:
             if (opaq->name.module_name) {
                 return ly_ctx_get_module_implemented(LYD_CTX(node), opaq->name.module_name);
@@ -349,6 +350,7 @@ lyd_node_module(const struct lyd_node *node)
                 return ly_ctx_get_module_implemented_ns(LYD_CTX(node), opaq->name.module_ns);
             }
             break;
+        case LY_VALUE_CBOR:
         case LY_VALUE_JSON:
             if (opaq->name.module_name) {
                 return ly_ctx_get_module_implemented(LYD_CTX(node), opaq->name.module_name);
@@ -900,6 +902,7 @@ lyd_parse_opaq_error(const struct lyd_node *node)
             mod = sparent->module;
         }
         break;
+    case LY_VALUE_CBOR:
     case LY_VALUE_JSON:
     case LY_VALUE_LYB:
         if (!sparent || strcmp(opaq->name.module_name, sparent->module->name)) {
@@ -1390,6 +1393,7 @@ ly_free_prefix_data(LY_VALUE_FORMAT format, void *prefix_data)
         break;
     case LY_VALUE_CANON:
     case LY_VALUE_SCHEMA:
+    case LY_VALUE_CBOR:
     case LY_VALUE_JSON:
     case LY_VALUE_LYB:
         break;
@@ -1449,6 +1453,7 @@ ly_dup_prefix_data(const struct ly_ctx *ctx, LY_VALUE_FORMAT format, const void 
         }
         break;
     case LY_VALUE_CANON:
+    case LY_VALUE_CBOR:
     case LY_VALUE_JSON:
     case LY_VALUE_LYB:
         assert(!prefix_data);
@@ -1574,6 +1579,7 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const void *value, size_t value_l
         break;
     case LY_VALUE_CANON:
     case LY_VALUE_SCHEMA_RESOLVED:
+    case LY_VALUE_CBOR:
     case LY_VALUE_JSON:
     case LY_VALUE_LYB:
         if (!*prefix_data_p) {
@@ -1604,6 +1610,8 @@ ly_format2str(LY_VALUE_FORMAT format)
         return "schema stored mapping";
     case LY_VALUE_XML:
         return "XML prefixes";
+    case LY_VALUE_CBOR:
+        return "CBOR module names";
     case LY_VALUE_JSON:
         return "JSON module names";
     case LY_VALUE_LYB:

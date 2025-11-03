@@ -75,6 +75,7 @@ node_instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, voi
         inherit_prefix = 0;
         break;
     case LY_VALUE_CANON:
+    case LY_VALUE_CBOR:
     case LY_VALUE_JSON:
     case LY_VALUE_LYB:
     case LY_VALUE_STR_NS:
@@ -202,6 +203,7 @@ lyplg_type_store_node_instanceid(const struct ly_ctx *ctx, const struct lysc_typ
         break;
     case LY_VALUE_CANON:
     case LY_VALUE_LYB:
+    case LY_VALUE_CBOR:
     case LY_VALUE_JSON:
     case LY_VALUE_STR_NS:
         prefix_opt = LY_PATH_PREFIX_STRICT_INHERIT;

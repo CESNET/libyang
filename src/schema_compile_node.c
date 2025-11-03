@@ -3216,6 +3216,7 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
                 /* use the current module */
                 mod = ctx->cur_mod;
                 break;
+            case LY_VALUE_CBOR:
             case LY_VALUE_JSON:
             case LY_VALUE_LYB:
                 if (!ctx_node) {

@@ -33,6 +33,8 @@ struct lysc_module;
 #define LY_JSON_SUFFIX_LEN 5
 #define LY_LYB_SUFFIX ".lyb"
 #define LY_LYB_SUFFIX_LEN 4
+#define LY_CBOR_SUFFIX ".cbor"
+#define LY_CBOR_SUFFIX_LEN 5
 
 /**
  * @brief Internal item structure for remembering "used" instances of duplicate node instances.
