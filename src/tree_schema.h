@@ -1635,7 +1635,7 @@ struct lysc_node_leaf {
     struct lysc_type *type;          /**< type of the leaf node (mandatory) */
 
     const char *units;               /**< units of the leaf's type */
-    struct lysc_value dflt;          /**< default value */
+    struct lysc_value dflt;          /**< default value, use ::lyd_value_validate_dflt() to get real type and canonical value */
 };
 
 struct lysc_node_leaflist {
@@ -1666,7 +1666,8 @@ struct lysc_node_leaflist {
     struct lysc_type *type;          /**< type of the leaf node (mandatory) */
 
     const char *units;               /**< units of the leaf's type */
-    struct lysc_value *dflts;        /**< list ([sized array](@ref sizedarrays)) of default values */
+    struct lysc_value *dflts;        /**< list ([sized array](@ref sizedarrays)) of default values, use
+                                          ::lyd_value_validate_dflt() to get real type and canonical values */
 
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint */
