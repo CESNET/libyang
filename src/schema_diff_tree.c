@@ -28,7 +28,7 @@ static LY_ERR schema_diff_ext_inst_substmts(const struct ly_ctx *ctx, const stru
         struct lyd_node **child_p);
 static LY_ERR schema_diff_ext_inst_substmts_ext_insts(const struct ly_ctx *ctx, const struct lysc_ext_instance *exts,
         struct lyd_node **child_p);
-static LY_ERR schema_diff_ext_inst(const struct lysc_ext_instance *ext, struct lyd_node *change_cont);
+static LY_ERR schema_diff_ext_inst(const struct lysc_ext_instance *ext, int is_cont, struct lyd_node *change_cont);
 
 /**
  * @brief Get string from a changed statement.
@@ -188,36 +188,53 @@ schema_diff_type2str(LY_DATA_TYPE basetype)
 /**
  * @brief Create cmp YANG data from common information about a change.
  *
- * @param[in] changes Changes to read from.
- * @param[in] change_count Count of @p changes.
+ * @param[in] change Change to read from.
  * @param[in,out] diff_list Node to append to.
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_change_info(const struct lysc_diff_change_s *changes, uint32_t change_count, struct lyd_node *diff_list)
+schema_diff_change_info(const struct lysc_diff_change_s *change, struct lyd_node *diff_list)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_node *changed_list;
+
+    /* changed stmt */
+    LY_CHECK_GOTO(rc = lyd_new_list(diff_list, NULL, "changed", 0, &changed_list,
+            schema_diff_changed2str(change->changed)), cleanup);
+
+    /* parent-stmt */
+    if (change->parent_changed && (rc = lyd_new_term(changed_list, NULL, "parent-stmt",
+            schema_diff_changed2str(change->parent_changed), 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* change */
+    LY_CHECK_GOTO(rc = lyd_new_term(changed_list, NULL, "change", schema_diff_change2str(change->change),
+            0, NULL), cleanup);
+
+    /* conformance */
+    LY_CHECK_GOTO(rc = lyd_new_term(changed_list, NULL, "conformance",
+            change->is_nbc ? "non-backwards-compatible" : "backwards-compatible", 0, NULL), cleanup);
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from common information about changes.
+ *
+ * @param[in] changes Changes to read from.
+ * @param[in,out] diff_list Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_changes_info(const struct lysc_diff_changes_s *changes, struct lyd_node *diff_list)
+{
+    LY_ERR rc = LY_SUCCESS;
     uint32_t i;
 
-    for (i = 0; i < change_count; ++i) {
-        /* changed stmt */
-        LY_CHECK_GOTO(rc = lyd_new_list(diff_list, NULL, "changed", 0, &changed_list,
-                schema_diff_changed2str(changes[i].changed)), cleanup);
-
-        /* parent-stmt */
-        if (changes[i].parent_changed && (rc = lyd_new_term(changed_list, NULL, "parent-stmt",
-                schema_diff_changed2str(changes[i].parent_changed), 0, NULL))) {
-            goto cleanup;
-        }
-
-        /* change */
-        LY_CHECK_GOTO(rc = lyd_new_term(changed_list, NULL, "change", schema_diff_change2str(changes[i].change), 0, NULL),
-                cleanup);
-
-        /* conformance */
-        LY_CHECK_GOTO(rc = lyd_new_term(changed_list, NULL, "conformance",
-                changes[i].is_nbc ? "non-backwards-compatible" : "backwards-compatible", 0, NULL), cleanup);
+    for (i = 0; i < changes->count; ++i) {
+        LY_CHECK_GOTO(rc = schema_diff_change_info(&changes->changes[i], diff_list), cleanup);
     }
 
 cleanup:
@@ -1171,17 +1188,22 @@ cleanup:
  * @brief Create cmp YANG data from an ext-inst.
  *
  * @param[in] ext Ext-inst to use.
+ * @param[in] is_cont Whether the outer inner node is container or a list.
  * @param[in,out] change_cont Node to append to.
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_ext_inst(const struct lysc_ext_instance *ext, struct lyd_node *change_cont)
+schema_diff_ext_inst(const struct lysc_ext_instance *ext, int is_cont, struct lyd_node *change_cont)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_node *ext_par, *ext_child = NULL;
 
-    /* list instance */
-    LY_CHECK_GOTO(rc = lyd_new_list(change_cont, NULL, "ext-instance", 0, &ext_par), cleanup);
+    /* inner node */
+    if (is_cont) {
+        LY_CHECK_GOTO(rc = lyd_new_inner(change_cont, NULL, "ext-instance", 0, &ext_par), cleanup);
+    } else {
+        LY_CHECK_GOTO(rc = lyd_new_list(change_cont, NULL, "ext-instance", 0, &ext_par), cleanup);
+    }
 
     /* module */
     LY_CHECK_GOTO(rc = lyd_new_term(ext_par, NULL, "module", ext->def->module->name, 0, NULL), cleanup);
@@ -1302,56 +1324,190 @@ cleanup:
 }
 
 /**
- * @brief Create cmp YANG data from direct substatements of 'module'.
+ * @brief Create cmp YANG data from direct text substatement of 'module'.
  *
- * @param[in] mod Module to use.
+ * @param[in] change Change to use.
+ * @param[in] mod1 Old module.
+ * @param[in] mod2 New module.
+ * @param[in,out] diff_list Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_module_text(const struct lysc_diff_change_s *change, const struct lys_module *mod1,
+        const struct lys_module *mod2, struct lyd_node *diff_list)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *mod_cmp_list, *cont;
+    const char *node_name, *text_old, *text_new;
+
+    /* learn about the change */
+    switch (change->changed) {
+    case LYSC_CHANGED_CONTACT:
+        node_name = "contact";
+        text_old = mod1->contact;
+        text_new = mod2->contact;
+        break;
+    case LYSC_CHANGED_DESCRIPTION:
+        node_name = "description";
+        text_old = mod1->dsc;
+        text_new = mod2->dsc;
+        break;
+    case LYSC_CHANGED_ORGANIZATION:
+        node_name = "organization";
+        text_old = mod1->org;
+        text_new = mod2->org;
+        break;
+    case LYSC_CHANGED_REFERENCE:
+        node_name = "reference";
+        text_old = mod1->ref;
+        text_new = mod2->ref;
+        break;
+    default:
+        LOGINT(mod1->ctx);
+        rc = LY_EINT;
+        goto cleanup;
+    }
+
+    /* module comparison */
+    LY_CHECK_GOTO(rc = lyd_new_list(diff_list, NULL, "module-comparison", 0, &mod_cmp_list), cleanup);
+
+    /* change info */
+    LY_CHECK_GOTO(rc = schema_diff_change_info(change, mod_cmp_list), cleanup);
+
+    if (text_old) {
+        /* old */
+        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "old", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, node_name, text_old, 0, NULL), cleanup);
+    }
+
+    if (text_new) {
+        /* new */
+        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "new", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, node_name, text_new, 0, NULL), cleanup);
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from an identity.
+ *
+ * @param[in] ident Compiled identity to use.
+ * @param[in] p_ident Parsed identity to use.
+ * @param[in] with_parsed Whether 'parsed-schema' feature is enabled.
  * @param[in,out] change_cont Node to append to.
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_module_stmts(const struct lys_module *mod, struct lyd_node *change_cont)
+schema_diff_ident(const struct lysc_ident *ident, const struct lysp_ident *p_ident, ly_bool with_parsed,
+        struct lyd_node *change_cont)
 {
     LY_ERR rc = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u, v;
-    struct lyd_node *ident_list;
-    const struct lysc_ident *ident;
+    struct lyd_node *ident_cont;
+    LY_ARRAY_COUNT_TYPE u;
 
-    /* organization */
-    if (mod->org && (rc = lyd_new_term(change_cont, NULL, "organization", mod->org, 0, NULL))) {
-        goto cleanup;
-    }
+    /* identity container */
+    LY_CHECK_GOTO(rc = lyd_new_inner(change_cont, NULL, "identity", 0, &ident_cont), cleanup);
 
-    /* contact */
-    if (mod->contact && (rc = lyd_new_term(change_cont, NULL, "contact", mod->contact, 0, NULL))) {
-        goto cleanup;
-    }
+    /* name */
+    LY_CHECK_GOTO(rc = lyd_new_term(ident_cont, NULL, "name", ident->name, 0, NULL), cleanup);
 
-    /* description */
-    if (mod->dsc && (rc = lyd_new_term(change_cont, NULL, "description", mod->dsc, 0, NULL))) {
-        goto cleanup;
-    }
-
-    /* reference */
-    if (mod->ref && (rc = lyd_new_term(change_cont, NULL, "reference", mod->ref, 0, NULL))) {
-        goto cleanup;
-    }
-
-    /* identity */
-    LY_ARRAY_FOR(mod->identities, u) {
-        ident = &mod->identities[u];
-
-        /* identity name */
-        LY_CHECK_GOTO(rc = lyd_new_list(change_cont, NULL, "identity", 0, &ident_list, ident->name), cleanup);
-
-        /* ext-instance */
-        LY_ARRAY_FOR(ident->exts, v) {
-            LY_CHECK_GOTO(rc = schema_diff_ext_inst(&ident->exts[v], ident_list), cleanup);
+    if (with_parsed) {
+        /* base */
+        LY_ARRAY_FOR(p_ident->bases, u) {
+            LY_CHECK_GOTO(rc = lyd_new_term(ident_cont, NULL, "base", p_ident->bases[u], 0, NULL), cleanup);
         }
     }
 
-    /* ext-instance */
-    LY_ARRAY_FOR(mod->compiled->exts, v) {
-        LY_CHECK_GOTO(rc = schema_diff_ext_inst(&mod->compiled->exts[v], change_cont), cleanup);
+    /* ext-inst */
+    LY_ARRAY_FOR(ident->exts, u) {
+        LY_CHECK_GOTO(rc = schema_diff_ext_inst(&ident->exts[u], 0, ident_cont), cleanup);
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from identity changes of 'module'.
+ *
+ * @param[in] change Identity change to use.
+ * @param[in] with_parsed Whether 'parsed-schema' feature is enabled.
+ * @param[in,out] diff_list Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_module_ident(const struct lysc_diff_ident_change_s *change, ly_bool with_parsed, struct lyd_node *diff_list)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *mod_cmp_list, *cont;
+    uint32_t i;
+
+    if (!change->changes.count && !change->ext_changes.count) {
+        /* no changes of this identity */
+        goto cleanup;
+    }
+
+    /* module comparison */
+    LY_CHECK_GOTO(rc = lyd_new_list(diff_list, NULL, "module-comparison", 0, &mod_cmp_list), cleanup);
+
+    /* change info */
+    LY_CHECK_GOTO(rc = schema_diff_changes_info(&change->changes, mod_cmp_list), cleanup);
+    for (i = 0; i < change->ext_changes.count; ++i) {
+        LY_CHECK_GOTO(rc = schema_diff_changes_info(change->ext_changes.changes[i].changes, mod_cmp_list), cleanup);
+    }
+
+    if (change->ident_old) {
+        /* old */
+        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "old", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_ident(change->ident_old, change->p_ident_old, with_parsed, cont), cleanup);
+    }
+
+    if (change->ident_new) {
+        /* new */
+        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "new", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_ident(change->ident_new, change->p_ident_new, with_parsed, cont), cleanup);
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from direct extension-instances of 'module'.
+ *
+ * @param[in] change Ext-instance change to use.
+ * @param[in,out] diff_list Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_module_ext_inst(const struct lysc_diff_ext_change_s *change, struct lyd_node *diff_list)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *mod_cmp_list, *cont;
+    uint32_t i;
+
+    assert(change->changes->count);
+
+    /* module comparison */
+    LY_CHECK_GOTO(rc = lyd_new_list(diff_list, NULL, "module-comparison", 0, &mod_cmp_list), cleanup);
+
+    /* change info */
+    for (i = 0; i < change->changes->count; ++i) {
+        LY_CHECK_GOTO(rc = schema_diff_change_info(&change->changes->changes[i], mod_cmp_list), cleanup);
+    }
+
+    if (change->ext_old) {
+        /* old */
+        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "old", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_ext_inst(change->ext_old, 1, cont), cleanup);
+    }
+
+    if (change->ext_new) {
+        /* new */
+        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "new", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_ext_inst(change->ext_new, 1, cont), cleanup);
     }
 
 cleanup:
@@ -1361,37 +1517,33 @@ cleanup:
 /**
  * @brief Create cmp YANG data from 'module' changes.
  *
- * @param[in] node_change Node change to use, is actually a module change.
+ * @param[in] diff Diff to use.
  * @param[in] mod1 First module.
  * @param[in] mod2 Second module.
  * @param[in,out] diff_list Node to append to.
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_module(const struct lysc_diff_node_change_s *node_change, const struct lys_module *mod1,
-        const struct lys_module *mod2, struct lyd_node *diff_list)
+schema_diff_module(const struct lysc_diff_s *diff, const struct lys_module *mod1, const struct lys_module *mod2,
+        struct lyd_node *diff_list)
 {
     LY_ERR rc = LY_SUCCESS;
-    struct lyd_node *mod_diff_cont, *cont;
+    uint32_t i;
 
-    if (!node_change->change_count) {
-        /* no changes */
-        goto cleanup;
+    /* text substmts */
+    for (i = 0; i < diff->module_changes.count; ++i) {
+        LY_CHECK_GOTO(rc = schema_diff_module_text(&diff->module_changes.changes[i], mod1, mod2, diff_list), cleanup);
     }
 
-    /* module diff */
-    LY_CHECK_GOTO(rc = lyd_new_inner(diff_list, NULL, "module-comparison", 0, &mod_diff_cont), cleanup);
+    /* identities */
+    for (i = 0; i < diff->ident_change_count; ++i) {
+        LY_CHECK_GOTO(rc = schema_diff_module_ident(&diff->ident_changes[i], diff->diff_parsed, diff_list), cleanup);
+    }
 
-    /* change info */
-    LY_CHECK_GOTO(rc = schema_diff_change_info(node_change->changes, node_change->change_count, mod_diff_cont), cleanup);
-
-    /* old */
-    LY_CHECK_GOTO(rc = lyd_new_inner(mod_diff_cont, NULL, "old", 0, &cont), cleanup);
-    LY_CHECK_GOTO(rc = schema_diff_module_stmts(mod1, cont), cleanup);
-
-    /* new */
-    LY_CHECK_GOTO(rc = lyd_new_inner(mod_diff_cont, NULL, "new", 0, &cont), cleanup);
-    LY_CHECK_GOTO(rc = schema_diff_module_stmts(mod2, cont), cleanup);
+    /* extension-instances */
+    for (i = 0; i < diff->mod_ext_changes.count; ++i) {
+        LY_CHECK_GOTO(rc = schema_diff_module_ext_inst(&diff->mod_ext_changes.changes[i], diff_list), cleanup);
+    }
 
 cleanup:
     return rc;
@@ -1439,7 +1591,7 @@ schema_diff_node_musts(const struct lysc_must *musts, struct lyd_node *change_co
 
         /* ext-instance */
         LY_ARRAY_FOR(musts[u].exts, v) {
-            LY_CHECK_GOTO(rc = schema_diff_ext_inst(&musts[u].exts[v], must_list), cleanup);
+            LY_CHECK_GOTO(rc = schema_diff_ext_inst(&musts[u].exts[v], 0, must_list), cleanup);
         }
     }
 
@@ -1509,7 +1661,7 @@ schema_diff_node_whens(struct lysc_when **whens, struct lyd_node *change_cont)
 
         /* ext-instance */
         LY_ARRAY_FOR(whens[u]->exts, v) {
-            LY_CHECK_GOTO(rc = schema_diff_ext_inst(&whens[u]->exts[v], when_list), cleanup);
+            LY_CHECK_GOTO(rc = schema_diff_ext_inst(&whens[u]->exts[v], 0, when_list), cleanup);
         }
     }
 
@@ -1564,7 +1716,7 @@ schema_diff_node_type_range(const struct lysc_range *range, ly_bool is_signed, s
 
     /* ext-instance */
     LY_ARRAY_FOR(range->exts, u) {
-        LY_CHECK_GOTO(rc = schema_diff_ext_inst(&range->exts[u], parent), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_ext_inst(&range->exts[u], 0, parent), cleanup);
     }
 
 cleanup:
@@ -1611,7 +1763,7 @@ schema_diff_node_type_patterns(struct lysc_pattern **patterns, struct lyd_node *
 
         /* ext-instance */
         LY_ARRAY_FOR(patterns[u]->exts, v) {
-            LY_CHECK_GOTO(rc = schema_diff_ext_inst(&patterns[u]->exts[v], pat_list), cleanup);
+            LY_CHECK_GOTO(rc = schema_diff_ext_inst(&patterns[u]->exts[v], 0, pat_list), cleanup);
         }
     }
 
@@ -1660,7 +1812,7 @@ schema_diff_node_type_bitenums(const struct lysc_type_bitenum_item *items, struc
 
         /* ext-instance */
         LY_ARRAY_FOR(items[u].exts, v) {
-            LY_CHECK_GOTO(rc = schema_diff_ext_inst(&items[u].exts[v], par_list), cleanup);
+            LY_CHECK_GOTO(rc = schema_diff_ext_inst(&items[u].exts[v], 0, par_list), cleanup);
         }
     }
 
@@ -1807,7 +1959,7 @@ schema_diff_node_type(const struct lysc_type *type, struct lyd_node *type_par)
 
     /* ext-instance */
     LY_ARRAY_FOR(type->exts, u) {
-        LY_CHECK_GOTO(rc = schema_diff_ext_inst(&type->exts[u], type_par), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_ext_inst(&type->exts[u], 0, type_par), cleanup);
     }
 
 cleanup:
@@ -1953,7 +2105,7 @@ schema_diff_node_stmts(const struct lysc_node *node, struct lyd_node *change_con
 
     /* ext-instance */
     LY_ARRAY_FOR(node->exts, u) {
-        LY_CHECK_GOTO(rc = schema_diff_ext_inst(&node->exts[u], change_cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_ext_inst(&node->exts[u], 0, change_cont), cleanup);
     }
 
 cleanup:
@@ -2007,10 +2159,11 @@ schema_diff_node(const struct lysc_diff_node_change_s *node_change, struct lyd_n
     struct lyd_node *node_diff_list, *change_cont;
     const struct lysc_node *node;
     char *path = NULL;
+    uint32_t i;
 
     assert(node_change->snode_old || node_change->snode_new);
 
-    if (!node_change->change_count) {
+    if (!node_change->changes.count) {
         /* no changes */
         goto cleanup;
     }
@@ -2035,7 +2188,10 @@ schema_diff_node(const struct lysc_diff_node_change_s *node_change, struct lyd_n
             NULL), cleanup);
 
     /* change info */
-    LY_CHECK_GOTO(rc = schema_diff_change_info(node_change->changes, node_change->change_count, node_diff_list), cleanup);
+    LY_CHECK_GOTO(rc = schema_diff_changes_info(&node_change->changes, node_diff_list), cleanup);
+    for (i = 0; i < node_change->ext_changes.count; ++i) {
+        LY_CHECK_GOTO(rc = schema_diff_changes_info(node_change->ext_changes.changes[i].changes, node_diff_list), cleanup);
+    }
 
     /* old */
     if (node_change->snode_old) {
@@ -2092,13 +2248,11 @@ lysc_diff_tree(const struct lys_module *mod1, const struct lys_module *mod2, con
     LY_CHECK_GOTO(rc = lyd_new_term(diff_list, NULL, "conformance",
             diff->is_nbc ? "non-backwards-compatible" : "backwards-compatible", 0, NULL), cleanup);
 
-    /* module diff */
-    assert(!diff->node_changes[0].snode_old && !diff->node_changes[0].snode_new);
-    LY_CHECK_GOTO(rc = schema_diff_module(&diff->node_changes[0], mod1, mod2, diff_list), cleanup);
+    /* module comparison */
+    LY_CHECK_GOTO(rc = schema_diff_module(diff, mod1, mod2, diff_list), cleanup);
 
-    /* node diff */
-    for (i = 1; i < diff->node_change_count; ++i) {
-        /* node diff */
+    /* node comparison */
+    for (i = 0; i < diff->node_change_count; ++i) {
         LY_CHECK_GOTO(rc = schema_diff_node(&diff->node_changes[i], diff_list), cleanup);
     }
 
