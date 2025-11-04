@@ -325,6 +325,18 @@ module ietf-yang-schema-comparison {
     }
   }
 
+  grouping augment-stmt {
+    description
+      "Describes changes of an augment statement.";
+    leaf target {
+      type string;
+      mandatory true;
+      description
+        "Augment target argument.";
+    }
+    uses node-info;
+  }
+
   grouping augment-stmts {
     description
       "Describes changes of all the augment statements on a specific level and
@@ -333,13 +345,33 @@ module ietf-yang-schema-comparison {
       if-feature parsed-schema;
       description
         "List of augment substatements.";
-      leaf target {
-        type string;
-        mandatory true;
-        description
-          "Augment target argument.";
-      }
-      uses node-info;
+      uses augment-stmt;
+    }
+  }
+
+  grouping ext-instance-stmt {
+    description
+      "Describes changes of an extension instance.";
+    leaf module {
+      type yang:yang-identifier;
+      mandatory true;
+      description
+        "Module with the extension definition of an extension instance.";
+    }
+    leaf name {
+      type yang:yang-identifier;
+      mandatory true;
+      description
+        "Name of the extension defition of an extension instance.";
+    }
+    leaf argument {
+      type string;
+      description
+        "Argument used of an extension definition.";
+    }
+    anydata substatements {
+      description
+        "Any substatements of the extension instance.";
     }
   }
 
@@ -349,27 +381,7 @@ module ietf-yang-schema-comparison {
     list ext-instance {
       description
         "List of extension-instance substatements.";
-      leaf module {
-        type yang:yang-identifier;
-        mandatory true;
-        description
-          "Module with the extension definition of an extension instance.";
-      }
-      leaf name {
-        type yang:yang-identifier;
-        mandatory true;
-        description
-          "Name of the extension defition of an extension instance.";
-      }
-      leaf argument {
-        type string;
-        description
-          "Argument used of an extension definition.";
-      }
-      anydata substatements {
-        description
-          "Any substatements of the extension instance.";
-      }
+      uses ext-instance-stmt;
     }
   }
 
@@ -860,7 +872,7 @@ module ietf-yang-schema-comparison {
 
   grouping module-substmts {
     description
-      "All compiled non-data-definition substatements of a module.";
+      "All non-data-definition substatements of a module.";
     leaf prefix {
       if-feature parsed-schema;
       type string;
@@ -887,13 +899,15 @@ module ietf-yang-schema-comparison {
       description
         "Reference substatement value.";
     }
-    list extension {
+    container extension {
       if-feature parsed-schema;
-      key "name";
+      presence
+        "Exists only when there is a difference in this extension.";
       description
-        "List of extension substatements.";
+        "Extension substatements.";
       leaf name {
         type yang:yang-identifier;
+        mandatory true;
         description
           "Extension name.";
       }
@@ -914,13 +928,15 @@ module ietf-yang-schema-comparison {
           "Reference substatement value.";
       }
     }
-    list feature {
+    container feature {
       if-feature parsed-schema;
-      key "name";
+      presence
+        "Exists only when there is a difference in this feature.";
       description
-        "List of feature substatements.";
+        "Feature substatements.";
       leaf name {
         type yang:yang-identifier;
+        mandatory true;
         description
           "Feature name.";
       }
@@ -937,12 +953,12 @@ module ietf-yang-schema-comparison {
           "Reference substatement value.";
       }
     }
-    list identity {
-      key "name";
+    container identity {
       description
-        "List of identity substatements.";
+        "Identity substatements.";
       leaf name {
         type yang:yang-identifier;
+        mandatory true;
         description
           "Identity statement name.";
       }
@@ -957,11 +973,18 @@ module ietf-yang-schema-comparison {
       }
       uses ext-instance-stmts;
     }
-    uses augment-stmts;
-    list deviation {
+    container augment {
       if-feature parsed-schema;
       description
-        "List of deviation substatements.";
+        "Augment substatements.";
+      uses augment-stmt;
+    }
+    container deviation {
+      if-feature parsed-schema;
+      presence
+        "Exists only when there is a difference in this deviation.";
+      description
+        "Deviation substatements.";
       leaf target {
         type string;
         mandatory true;
@@ -1012,7 +1035,13 @@ module ietf-yang-schema-comparison {
     uses typedef-stmts {
       if-feature parsed-schema;
     }
-    uses ext-instance-stmts;
+    container ext-instance {
+      presence
+        "Exists only when there is a difference in this extension-instance.";
+      description
+        "Extension-instance substatements.";
+      uses ext-instance-stmt;
+    }
   }
 
   grouping conformance-type {
@@ -1243,7 +1272,7 @@ module ietf-yang-schema-comparison {
         uses module-params;
       }
       uses conformance-type;
-      container module-comparison {
+      list module-comparison {
         description
           "Information about direct module statement substatement changes.";
         uses change-info;
