@@ -631,8 +631,11 @@ ly_realloc(void *ptr, size_t size)
 {
     void *new_mem;
 
+    /* may cause double-free if NULL is returned */
+    assert(size);
+
     new_mem = realloc(ptr, size);
-    if (!new_mem) {
+    if (!new_mem && size) {
         free(ptr);
     }
 
