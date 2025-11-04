@@ -11,32 +11,22 @@
           "revision": "2000-01-02"
         },
         "conformance": "backwards-compatible",
-        "module-comparison": {
-          "changed": [
-            {
-              "stmt": "identity",
-              "change": "added",
-              "conformance": "backwards-compatible"
-            }
-          ],
-          "old": {
-            "identity": [
+        "module-comparison": [
+          {
+            "changed": [
               {
-                "name": "base-a"
+                "stmt": "identity",
+                "change": "added",
+                "conformance": "backwards-compatible"
               }
-            ]
-          },
-          "new": {
-            "identity": [
-              {
-                "name": "base-a"
-              },
-              {
+            ],
+            "new": {
+              "identity": {
                 "name": "base-b"
               }
-            ]
+            }
           }
-        },
+        ],
         "node-comparison": [
           {
             "node": "/new-stmt:r1",
