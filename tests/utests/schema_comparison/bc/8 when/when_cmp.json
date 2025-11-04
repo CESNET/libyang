@@ -25,7 +25,10 @@
           },
           {
             "module": "ietf-yang-schema-comparison",
-            "revision": "2025-10-20"
+            "revision": "2025-10-20",
+            "enabled-feature": [
+              "parsed-schema"
+            ]
           },
           {
             "module": "ietf-yang-structure-ext",

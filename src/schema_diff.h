@@ -79,26 +79,64 @@ struct lysc_diff_change_s {
 };
 
 /**
+ * @brief Structure for an array of changes.
+ */
+struct lysc_diff_changes_s {
+    struct lysc_diff_change_s *changes; /**< array of changes */
+    uint32_t count;                     /**< count of changes */
+};
+
+/**
+ * @brief Structure for an array of extension-instance changes.
+ */
+struct lysc_diff_ext_changes_s {
+    struct lysc_diff_ext_change_s *changes; /**< array of ext-instance changes */
+    uint32_t count;                         /**< count of ext-instance changes */
+};
+
+/**
+ * @brief Structure for an extension-instance change.
+ */
+struct lysc_diff_ext_change_s {
+    const struct lysc_ext_instance *ext_old;    /**< old compiled extension-instance */
+    const struct lysc_ext_instance *ext_new;    /**< new compiled extension-instance */
+    struct lysc_diff_changes_s *changes;        /**< pointer to changes in the old and new extension-instance, may be empty */
+};
+
+/**
  * @brief Structure for a node schema change.
- *
- * snode_old NULL; snode_new non-NULL - snode was added
- * snode_old non-NULL; snode_new NULL - snode was removed
- * snode_old NULL; snode_new NULL - module changes, not node changes
  */
 struct lysc_diff_node_change_s {
-    const struct lysc_node *snode_old;  /**< schema node from the old revision of the YANG module */
-    const struct lysc_node *snode_new;  /**< schema node from the new revision of the YANG module */
-    struct lysc_diff_change_s *changes; /**< array of changes in the old and new schema node, may be empty */
-    uint32_t change_count;              /**< count of changes */
+    const struct lysc_node *snode_old;          /**< schema node from the old revision of the YANG module */
+    const struct lysc_node *snode_new;          /**< schema node from the new revision of the YANG module */
+    struct lysc_diff_changes_s changes;         /**< changes in the old and new schema node, may be empty */
+    struct lysc_diff_ext_changes_s ext_changes; /**< extension-instance changes */
+};
+
+/**
+ * @brief Structure for an identity change.
+ */
+struct lysc_diff_ident_change_s {
+    const struct lysc_ident *ident_old;         /**< old compiled identity */
+    const struct lysp_ident *p_ident_old;       /**< old parsed identity */
+    const struct lysc_ident *ident_new;         /**< new compiled identity */
+    const struct lysp_ident *p_ident_new;       /**< new parsed identity */
+    struct lysc_diff_changes_s changes;         /**< changes in the old and new identity, may be empty */
+    struct lysc_diff_ext_changes_s ext_changes; /**< extension-instance changes */
 };
 
 /**
  * @brief Structure for a full schema comparison.
  */
 struct lysc_diff_s {
+    struct lysc_diff_changes_s module_changes;      /**< module changes */
+    struct lysc_diff_ident_change_s *ident_changes; /**< array of all the changed identities */
+    uint32_t ident_change_count;                    /**< count of ident changes */
+    struct lysc_diff_ext_changes_s mod_ext_changes; /**< module extension-instance changes */
     struct lysc_diff_node_change_s *node_changes;   /**< array of all the nodes and their changes */
     uint32_t node_change_count;                     /**< count of node changes */
     ly_bool is_yang10;                              /**< marks using YANG 1.0 update rules */
+    ly_bool diff_parsed;                            /**< marks generating diff for parsed schema in addition to compiled */
     ly_bool is_nbc;                                 /**< flag to mark a non-backwards-compatible change */
 };
 

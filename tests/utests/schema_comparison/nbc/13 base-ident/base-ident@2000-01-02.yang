@@ -1,0 +1,15 @@
+module base-ident {
+    namespace "urn:test:base-ident";
+    prefix bai;
+    yang-version 1.1;
+
+    revision 2000-01-02;
+
+    identity a;
+    identity b {
+        base c;
+    }
+    identity c {
+        base a;
+    }
+}
