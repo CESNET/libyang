@@ -45,6 +45,8 @@ static int
 setup_f(void **state)
 {
     struct sc_state *st;
+    struct ly_in *in;
+    const char *feats[] = {"parsed-schema", NULL};
 
     st = calloc(1, sizeof *st);
     *state = st;
@@ -58,12 +60,18 @@ setup_f(void **state)
     }
 
     /* load ietf-schema-comparison into both contexts, the module is imported */
-    if (lys_parse_path(st->ctx1, TESTS_SRC "/../modules/ietf-yang-schema-comparison@2025-10-20.yang", LYS_IN_YANG, NULL)) {
+    if (ly_in_new_filepath(TESTS_SRC "/../modules/ietf-yang-schema-comparison@2025-10-20.yang", 0, &in)) {
         return 1;
     }
-    if (lys_parse_path(st->ctx2, TESTS_SRC "/../modules/ietf-yang-schema-comparison@2025-10-20.yang", LYS_IN_YANG, NULL)) {
+    if (lys_parse(st->ctx1, in, LYS_IN_YANG, feats, NULL)) {
         return 1;
     }
+
+    ly_in_reset(in);
+    if (lys_parse(st->ctx2, in, LYS_IN_YANG, feats, NULL)) {
+        return 1;
+    }
+    ly_in_free(in, 0);
 
     return 0;
 }
@@ -168,6 +176,7 @@ test_backwards_compatible(void **state)
     schema_comparison(st, "min-elements");
     schema_comparison(st, "max-elements");
     schema_comparison(st, "description");
+    schema_comparison(st, "base-ident");
     schema_comparison(st, "base");
     schema_comparison(st, "new-stmt");
     schema_comparison(st, "new-data-def");
@@ -204,6 +213,7 @@ test_non_backwards_compatible(void **state)
     schema_comparison(st, "min-elements");
     schema_comparison(st, "max-elements");
     schema_comparison(st, "description");
+    schema_comparison(st, "base-ident");
     schema_comparison(st, "base");
     schema_comparison(st, "new-data-def");
     schema_comparison(st, "config");

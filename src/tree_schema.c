@@ -1254,6 +1254,9 @@ lysc_compare(const struct ly_ctx *ctx, const struct lys_module *src_mod, const s
     /* decide what rules to use based on the YANG version of the new module */
     diff.is_yang10 = (trg_mod->version & LYS_VERSION_1_1) ? 0 : 1;
 
+    /* check if parsed schema diff is supported */
+    diff.diff_parsed = (lys_feature_value(cmp_mod, "parsed-schema") == LY_SUCCESS) ? 1 : 0;
+
     /* generate the diff */
     LY_CHECK_GOTO(rc = lysc_diff_changes(src_mod, trg_mod, &diff), cleanup);
 

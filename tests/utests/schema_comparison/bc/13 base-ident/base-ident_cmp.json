@@ -1,0 +1,67 @@
+{
+  "ietf-yang-schema-comparison:schema-comparison": {
+    "schema": [
+      {
+        "source": {
+          "module": "base-ident",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "base-ident",
+          "revision": "2000-01-02"
+        },
+        "conformance": "backwards-compatible",
+        "module-comparison": [
+          {
+            "changed": [
+              {
+                "stmt": "base",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "identity": {
+                "name": "b"
+              }
+            },
+            "new": {
+              "identity": {
+                "name": "b",
+                "base": [
+                  "a"
+                ]
+              }
+            }
+          },
+          {
+            "changed": [
+              {
+                "stmt": "base",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "identity": {
+                "name": "c",
+                "base": [
+                  "a"
+                ]
+              }
+            },
+            "new": {
+              "identity": {
+                "name": "c",
+                "base": [
+                  "a",
+                  "b"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
