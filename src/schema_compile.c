@@ -177,7 +177,7 @@ LY_ERR
 lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp_module *parsed_mod,
         const struct lysp_ident *identities_p, struct lysc_ident **identities)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LY_ARRAY_COUNT_TYPE u, v;
     struct lysc_ctx cctx = {0};
     struct lysc_ident *ident;
     LY_ERR ret = LY_SUCCESS;
@@ -215,6 +215,13 @@ lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp
         lysc_update_path(ctx_sc, NULL, NULL);
     }
     lysc_update_path(ctx_sc, NULL, NULL);
+
+    /* revalidate the backward parent pointers from extensions now that the array is final */
+    LY_ARRAY_FOR(*identities, u) {
+        LY_ARRAY_FOR((*identities)[u].exts, v) {
+            (*identities)[u].exts[v].parent = &(*identities)[u];
+        }
+    }
 
 done:
     if (ret) {
