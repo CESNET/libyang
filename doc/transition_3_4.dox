@@ -3,25 +3,27 @@
  *
  * There are not that major non-backwards-compatible changes between libyang version 3 and 4 and the version was
  * increased in part due to new functionality. The main new feature, which most of the changes are related to, is the
- * ability to serialize (print) compiled YANG context. What is more, such a printed context does not have to be
+ * ability to __serialize (print) compiled YANG context__. What is more, such a printed context does not have to be
  * deserialized to be used by applications and they can directly read the printed context in run-time. This saves time
  * when reusing contexts since they do not always have to be created in every process but also potentially a lot of
  * memory since all the processes on the system may share a single printed context. Naturally, such a concept has
  * some limitations that are mentioned in detail in the documentation (@ref howtoPrintedContext).
  *
  * Related to this feature there were lots of minor changes to make sure all the intended functionality works. Most
- * importantly, there are now 2 dictionaries for a context. One, read-only for the strings in the compiled context
+ * importantly, there are now __2 dictionaries__ for a context. One, read-only for the strings in the compiled context
  * and the other for YANG data that can be written to normally. The main consequence of this is that comparing
- * directly (the addresses) of strings from these 2 dictionaries will not work. Next, all plugin references were
- * replaced by an `uintptr_t` value but there are functions ::lysc_get_type_plugin() and ::lysc_get_ext_plugin() for
- * getting the actual plugin structures. Then, default values are stored as strings in the schema nodes. To learn their
- * real type or get their canonical value, use ::lyd_value_validate_dflt(). Finally, some new callbacks were required
- * for extension-instance plugins so that they can be printed with the context as well.
+ * directly (the addresses) of strings from these 2 dictionaries will not work. Also, it is now possible to __free all
+ * the parsed modules__ from the context to save memory. The library functions should all be adjusted and handle such a
+ * situation properly. Next, all __plugin references__ were replaced by an `uintptr_t` value but there are functions
+ * ::lysc_get_type_plugin() and ::lysc_get_ext_plugin() for getting the actual plugin structures. Then, __default values
+ * are stored as strings__ in the schema nodes. To learn their real type or get their canonical value, use
+ * ::lyd_value_validate_dflt(). Finally, some new callbacks were required for extension-instance plugins so that they
+ * can be printed with the context as well.
  *
  * Other notable changes include major LYB binary data format optimizations. The effect in API is that wherever a size
- * of a value is required, it is now expected in bits instead of bytes. Next, there are extension plugin API
- * improvements to account for custom XPath root definitions. Then, obsolete nodes are not compiled and cannot be
- * instantiated in data by default but can be if requested by a context flag. Finally, the "default" metadata instance
+ * of a value is required, it is now expected in __bits instead of bytes__. Next, there are extension plugin API
+ * improvements to account for custom XPath root definitions. Then, __obsolete nodes are not compiled__ and cannot be
+ * instantiated in data by default but can be if requested by a context flag. Finally, the __"default" metadata instance__
  * connected to the `ietf-netconf-with-defaults` YANG module is now in the proper namespace, which is not the namespace
  * of this module. Other minor NBC changes should be reported by the compilator and they should be explained in the
  * documentation of the corresponding changed functions.
