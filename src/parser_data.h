@@ -389,6 +389,8 @@ enum lyd_type {
  *   - @p op - must be provided, the RPC/action data tree itself will be returned here, pointing to the operation;
  *
  * - ::LYD_TYPE_NOTIF_NETCONF:
+ *   - @p ctx - must either have the `notifications` module from [RFC 5277](http://tools.ietf.org/html/rfc5277)
+ *              loaded, or be created with ::LY_CTX_SET_PRIV_PARSED
  *   - @p parent - must be NULL, the whole notification is expected;
  *   - @p format - must be ::LYD_XML, NETCONF supports only this format;
  *   - @p tree - must be provided, all the NETCONF-specific XML envelopes will be returned here as
@@ -411,6 +413,8 @@ enum lyd_type {
  *   - @p op - must be NULL, @p parent points to the operation;
  *
  * - ::LYD_TYPE_NOTIF_RESTCONF:
+ *   - @p ctx - must either have the `notifications` module from [RFC 5277](http://tools.ietf.org/html/rfc5277)
+ *              loaded, or be created with ::LY_CTX_SET_PRIV_PARSED
  *   - @p parent - must be NULL, the whole notification is expected;
  *   - @p format - must be ::LYD_JSON, XML-formatted notifications are parsed using ::LYD_TYPE_NOTIF_NETCONF;
  *   - @p tree - must be provided, all the RESTCONF-specific JSON objects will be returned here as
