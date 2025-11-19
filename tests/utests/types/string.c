@@ -69,7 +69,7 @@
         char *xml_out, *data; \
         data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</" NODE_NAME ">"; \
         CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, LY_SUCCESS, tree_1); \
-        assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0); \
+        assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_SIBLINGS), 0); \
         assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2)); \
         assert_non_null(tree_2); \
         CHECK_LYD(tree_1, tree_2); \
@@ -968,7 +968,7 @@ test_diff(void **state)
     CHECK_PARSE_LYD_PARAM(data_2, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, model_2);
     assert_int_equal(LY_SUCCESS, lyd_diff_siblings(model_1, model_2, 0, &diff));
     assert_non_null(diff);
-    CHECK_LYD_STRING_PARAM(diff, diff_expected, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
+    CHECK_LYD_STRING_PARAM(diff, diff_expected, LYD_XML, LYD_PRINT_SIBLINGS | LYD_PRINT_SHRINK);
     assert_int_equal(LY_SUCCESS, lyd_diff_apply_all(&model_1, diff));
     CHECK_LYD(model_1, model_2);
     lyd_free_all(model_1);
@@ -987,7 +987,7 @@ test_diff(void **state)
     assert_int_equal(LY_SUCCESS, lyd_diff_apply_all(&model_1, diff));
     const char *expected = "<port xmlns=\"urn:tests:T_DIFF\">jjjjjjj</port>";
 
-    CHECK_LYD_STRING_PARAM(model_1, expected, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
+    CHECK_LYD_STRING_PARAM(model_1, expected, LYD_XML, LYD_PRINT_SIBLINGS | LYD_PRINT_SHRINK);
     lyd_free_all(model_1);
     lyd_free_all(diff);
 
@@ -1015,7 +1015,7 @@ test_diff(void **state)
     CHECK_PARSE_LYD_PARAM(data_2, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, model_2);
     assert_int_equal(LY_SUCCESS, lyd_diff_siblings(model_1, model_2, 0, &diff));
     assert_non_null(diff);
-    CHECK_LYD_STRING_PARAM(diff, diff_expected, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
+    CHECK_LYD_STRING_PARAM(diff, diff_expected, LYD_XML, LYD_PRINT_SIBLINGS | LYD_PRINT_SHRINK);
     assert_int_equal(LY_SUCCESS, lyd_diff_apply_all(&model_1, diff));
     CHECK_LYD(model_1, model_2);
     lyd_free_all(diff);
@@ -1041,12 +1041,12 @@ test_print(void **state)
     /* XML */
     const char *expected_xml = "<port xmlns=\"urn:tests:T_PRINT\"> &lt; hello &gt;  </port>";
 
-    CHECK_LYD_STRING_PARAM(model_1, expected_xml, LYD_XML, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
+    CHECK_LYD_STRING_PARAM(model_1, expected_xml, LYD_XML, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS | LYD_PRINT_SHRINK);
 
     /* JSON */
     const char *expected_json = "{\"T_PRINT:port\":\" < hello >  \"}";
 
-    CHECK_LYD_STRING_PARAM(model_1, expected_json, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
+    CHECK_LYD_STRING_PARAM(model_1, expected_json, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS | LYD_PRINT_SHRINK);
 
     lyd_free_all(model_1);
 }

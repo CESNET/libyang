@@ -79,7 +79,7 @@ test_empty_container_wd_trim(void **state)
     CHECK_STRING(buffer, "{}");
     free(buffer);
 
-    assert_int_equal(LY_SUCCESS, lyd_print_mem(&buffer, tree, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_WD_TRIM | LYD_PRINT_KEEPEMPTYCONT));
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&buffer, tree, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_WD_TRIM | LYD_PRINT_EMPTY_CONT));
     CHECK_STRING(buffer, "{\"schema2:a\":{\"b\":{}}}");
     free(buffer);
 
@@ -102,7 +102,7 @@ test_empty_leaf_list(void **state)
 
     data = "{\"schema2:a\":{}}";
     CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
-    assert_int_equal(LY_SUCCESS, lyd_print_mem(&buffer, tree, LYD_JSON, LYD_PRINT_KEEPEMPTYCONT | LYD_PRINT_EMPTY_LEAF_LIST));
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&buffer, tree, LYD_JSON, LYD_PRINT_EMPTY_CONT | LYD_PRINT_EMPTY_LEAF_LIST));
     CHECK_STRING(buffer, "{\n"
             "  \"schema2:a\": {\n"
             "    \"b\": {\n"

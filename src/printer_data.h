@@ -49,7 +49,7 @@ struct ly_out;
  *
  *   Proprietary binary format that is focused on efficiency. Should always be used for best performance except for
  *   cases when the YANG context used for printing may differ from the one used for parsing, such a scenario will fail.
- *   Also, this format ignores most printing flags except for ::LYD_PRINT_WITH_SIBLINGS and ::LYD_PRINT_SHRINK
+ *   Also, this format ignores most printing flags except for ::LYD_PRINT_SIBLINGS and ::LYD_PRINT_SHRINK
  *   (functionality differs from the text formats). In addition to storing the data, this format also stores all the
  *   default values and data node flags meaning the loaded data can be used directly without any validation (unless
  *   ::LYD_PRINT_SHRINK is used).
@@ -62,7 +62,7 @@ struct ly_out;
  * [output handler](@ref howtoOutput) introduced in libyang 2.0. In contrast to
  * [schema printers](@ref howtoSchemaPrinters), there is no limit of the functionality and the functions can be used
  * interchangeable. The only think to note is that the new functions ::lyd_print_all() and ::lyd_print_tree() does not
- * accept ::LYD_PRINT_WITHSIBLINGS [printer option](@ref dataprinterflags)) since this flag differentiate the functions
+ * accept ::LYD_PRINT_SIBLINGS [printer option](@ref dataprinterflags)) since this flag differentiate the functions
  * themselves.
  *
  * Functions List
@@ -84,13 +84,13 @@ struct ly_out;
  *
  * @{
  */
-#define LYD_PRINT_WITHSIBLINGS  0x01             /**< Flag for printing also the (following) sibling nodes of the data node.
+#define LYD_PRINT_SIBLINGS  0x01                 /**< Flag for printing also the (following) sibling nodes of the data node.
                                                       The flag is not allowed for ::lyd_print_all() and ::lyd_print_tree(). */
 #define LYD_PRINT_SHRINK        LY_PRINT_SHRINK  /**< Flag for output without indentation and formatting new lines for
                                                       text formats. For the LYB format, this causes the printed data to
                                                       be shrinked to include only the necessary data making them smaller
                                                       but requiring validation. */
-#define LYD_PRINT_KEEPEMPTYCONT 0x04             /**< Preserve empty non-presence containers */
+#define LYD_PRINT_EMPTY_CONT 0x04                /**< Preserve empty non-presence containers */
 #define LYD_PRINT_EMPTY_LEAF_LIST 0x08           /**< Print even empty list and leaf-list instances, not possible for every
                                                       data format (supported only for ::LYD_JSON). */
 #define LYD_PRINT_WD_MASK       0xF0             /**< Mask for with-defaults modes */

@@ -951,7 +951,7 @@ test_defaults(void **state)
             "  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt1</ll2>\n"
             "  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt2</ll2>\n"
             "</cont>\n",
-            LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_WITHSIBLINGS);
+            LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SIBLINGS);
 
     /* check diff */
     CHECK_LYD_STRING_PARAM(diff,
@@ -969,7 +969,7 @@ test_defaults(void **state)
             "  <ll2 yang:operation=\"create\">dflt1</ll2>\n"
             "  <ll2 yang:operation=\"create\">dflt2</ll2>\n"
             "</cont>\n",
-            LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_WITHSIBLINGS);
+            LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_SIBLINGS);
     lyd_free_all(diff);
 
     /* create another explicit case and validate */
@@ -991,14 +991,14 @@ test_defaults(void **state)
             "  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt1</ll2>\n"
             "  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt2</ll2>\n"
             "</cont>\n",
-            LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_WITHSIBLINGS);
+            LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SIBLINGS);
 
     /* check diff */
     CHECK_LYD_STRING_PARAM(diff,
             "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">def1</ll1>\n"
             "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">def2</ll1>\n"
             "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">def3</ll1>\n",
-            LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_WITHSIBLINGS);
+            LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_SIBLINGS);
     lyd_free_all(diff);
 
     /* create explicit leaf-list and leaf and validate */
@@ -1021,14 +1021,14 @@ test_defaults(void **state)
             "  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt1</ll2>\n"
             "  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt2</ll2>\n"
             "</cont>\n",
-            LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_WITHSIBLINGS);
+            LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SIBLINGS);
 
     /* check diff */
     CHECK_LYD_STRING_PARAM(diff,
             "<d xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">15</d>\n"
             "<ll2 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">dflt1</ll2>\n"
             "<ll2 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">dflt2</ll2>\n",
-            LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_WITHSIBLINGS);
+            LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_SIBLINGS);
     lyd_free_all(diff);
 
     /* create first explicit container, which should become implicit */
@@ -1049,7 +1049,7 @@ test_defaults(void **state)
             "  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt1</ll2>\n"
             "  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt2</ll2>\n"
             "</cont>\n",
-            LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_WITHSIBLINGS);
+            LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SIBLINGS);
     /* check diff */
     assert_null(diff);
 
@@ -1071,7 +1071,7 @@ test_defaults(void **state)
             "  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt1</ll2>\n"
             "  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt2</ll2>\n"
             "</cont>\n",
-            LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_WITHSIBLINGS);
+            LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SIBLINGS);
     /* check diff */
     assert_null(diff);
 
@@ -1091,7 +1091,7 @@ test_defaults(void **state)
             "  <d>5</d>\n"
             "  <ll2>non-dflt</ll2>\n"
             "</cont>\n",
-            LYD_XML, LYD_PRINT_WITHSIBLINGS);
+            LYD_XML, LYD_PRINT_SIBLINGS);
 
     /* check diff */
     CHECK_LYD_STRING_PARAM(diff,
@@ -1103,7 +1103,7 @@ test_defaults(void **state)
             "  <ll2 yang:operation=\"delete\">dflt1</ll2>\n"
             "  <ll2 yang:operation=\"delete\">dflt2</ll2>\n"
             "</cont>\n",
-            LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_WITHSIBLINGS);
+            LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_SIBLINGS);
     lyd_free_all(diff);
     lyd_free_all(tree);
 
@@ -1127,7 +1127,7 @@ test_defaults(void **state)
             "  <ll2>dflt1</ll2>\n"
             "  <ll2>dflt2</ll2>\n"
             "</cont>\n",
-            LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_WITHSIBLINGS);
+            LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_SIBLINGS);
     lyd_free_all(tree);
 }
 

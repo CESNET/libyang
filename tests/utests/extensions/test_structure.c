@@ -247,12 +247,12 @@ test_parse(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(xml, &UTEST_IN));
     assert_int_equal(LY_SUCCESS, lyd_parse_ext_data(e, NULL, UTEST_IN, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
-    CHECK_LYD_STRING_PARAM(tree, xml, LYD_XML, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(tree, xml, LYD_XML, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS);
     lyd_free_all(tree);
 
     ly_in_memory(UTEST_IN, json);
     assert_int_equal(LY_SUCCESS, lyd_parse_ext_data(e, NULL, UTEST_IN, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
-    CHECK_LYD_STRING_PARAM(tree, json, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(tree, json, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS);
     lyd_free_all(tree);
 }
 

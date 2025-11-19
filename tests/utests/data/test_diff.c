@@ -21,7 +21,7 @@
         CHECK_PARSE_LYD_PARAM(INPUT, LYD_XML, LYD_PARSE_ONLY, 0, LY_SUCCESS, OUTPUT)
 
 #define CHECK_LYD_STRING(INPUT, TEXT) \
-        CHECK_LYD_STRING_PARAM(INPUT, TEXT, LYD_XML, LYD_PRINT_WITHSIBLINGS)
+        CHECK_LYD_STRING_PARAM(INPUT, TEXT, LYD_XML, LYD_PRINT_SIBLINGS)
 
 #define CHECK_PARSE_LYD_DIFF(INPUT_1, INPUT_2, OPTS, OUT_DIFF) \
         assert_int_equal(LY_SUCCESS, lyd_diff_siblings(INPUT_1, INPUT_2, OPTS, &OUT_DIFF));\
@@ -1300,7 +1300,7 @@ test_wd(void **state)
             "  <dllist yang:operation=\"create\">4</dllist>\n"
             "</df>\n";
 
-    CHECK_LYD_STRING_PARAM(diff1, diff1_out_1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL);
+    CHECK_LYD_STRING_PARAM(diff1, diff1_out_1, LYD_XML, LYD_PRINT_SIBLINGS | LYD_PRINT_WD_ALL);
     assert_int_equal(lyd_diff_apply_all(&model_1, diff1), LY_SUCCESS);
     CHECK_LYD(model_1, model_2);
 
@@ -1330,7 +1330,7 @@ test_wd(void **state)
             "  <dllist yang:operation=\"create\">4</dllist>\n"
             "</df>\n";
 
-    CHECK_LYD_STRING_PARAM(diff1, diff1_out_2, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL);
+    CHECK_LYD_STRING_PARAM(diff1, diff1_out_2, LYD_XML, LYD_PRINT_SIBLINGS | LYD_PRINT_WD_ALL);
 
     lyd_free_all(model_1);
     lyd_free_all(model_2);
@@ -1475,7 +1475,7 @@ test_userord_list_reverse(void **state)
 
     lyd_diff_apply_all(&tree2, diff_reverse);
 
-    lyd_print_mem(&final_xml, tree2, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&final_xml, tree2, LYD_XML, LYD_PRINT_SIBLINGS);
 
     assert_string_equal(final_xml, xml1);
 
@@ -1523,7 +1523,7 @@ test_userord_conflicting_replace_list(void **state)
 
     lyd_diff_merge_all(&diff_tree1, diff_tree2, 0);
 
-    lyd_print_mem(&final_xml, diff_tree1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&final_xml, diff_tree1, LYD_XML, LYD_PRINT_SIBLINGS);
 
     char *result_xml =
             "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
@@ -1624,7 +1624,7 @@ test_userord_conflicting_replace_list2(void **state)
 
     lyd_diff_apply_all(&tree3, diff3_1);
 
-    lyd_print_mem(&final_xml, tree3, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&final_xml, tree3, LYD_XML, LYD_PRINT_SIBLINGS);
 
     assert_string_equal(final_xml, xml2);
 
@@ -1682,7 +1682,7 @@ test_userord_conflicting_replace_llist(void **state)
 
     lyd_diff_apply_all(&tree3, diff3_1);
 
-    lyd_print_mem(&final_xml, tree3, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&final_xml, tree3, LYD_XML, LYD_PRINT_SIBLINGS);
 
     assert_string_equal(final_xml, xml2);
 

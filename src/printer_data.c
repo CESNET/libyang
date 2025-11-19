@@ -50,7 +50,7 @@ lyd_print_(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, u
 LIBYANG_API_DEF LY_ERR
 lyd_print_all(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, uint32_t options)
 {
-    LY_CHECK_ARG_RET(NULL, out, !(options & LYD_PRINT_WITHSIBLINGS), LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, out, !(options & LYD_PRINT_SIBLINGS), LY_EINVAL);
 
     /* reset the number of printed bytes */
     out->func_printed = 0;
@@ -66,7 +66,7 @@ lyd_print_all(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format
     }
 
     /* print each top-level sibling */
-    LY_CHECK_RET(lyd_print_(out, root, format, options | LYD_PRINT_WITHSIBLINGS));
+    LY_CHECK_RET(lyd_print_(out, root, format, options | LYD_PRINT_SIBLINGS));
 
     return LY_SUCCESS;
 }
@@ -74,7 +74,7 @@ lyd_print_all(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format
 LIBYANG_API_DEF LY_ERR
 lyd_print_tree(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, uint32_t options)
 {
-    LY_CHECK_ARG_RET(NULL, out, !(options & LYD_PRINT_WITHSIBLINGS), LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, out, !(options & LYD_PRINT_SIBLINGS), LY_EINVAL);
 
     /* reset the number of printed bytes */
     out->func_printed = 0;

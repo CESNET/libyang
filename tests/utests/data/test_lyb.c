@@ -21,7 +21,7 @@
                 CHECK_PARSE_LYD_PARAM(INPUT, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, LY_SUCCESS, OUT_NODE)
 
 #define CHECK_LYD_STRING(MODEL, TEXT) \
-                CHECK_LYD_STRING_PARAM(MODEL, TEXT, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK)
+                CHECK_LYD_STRING_PARAM(MODEL, TEXT, LYD_XML, LYD_PRINT_SIBLINGS | LYD_PRINT_SHRINK)
 
 static void
 check_print_parse(void **state, const char *data_xml)
@@ -31,7 +31,7 @@ check_print_parse(void **state, const char *data_xml)
     char *lyb_out;
 
     CHECK_PARSE_LYD(data_xml, tree_1);
-    assert_int_equal(lyd_print_mem(&lyb_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&lyb_out, tree_1, LYD_LYB, LYD_PRINT_SIBLINGS), 0);
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, lyb_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT,
             0, &tree_2));
     assert_non_null(tree_2);
@@ -469,7 +469,7 @@ test_opaq(void **state)
     ly_in_free(in, 0);
     assert_int_equal(rc, LY_SUCCESS);
 
-    assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_SIBLINGS), 0);
 
     ly_in_new_memory(xml_out, &in);
     rc = lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_LYB, LYD_TYPE_RPC_YANG, LYD_PARSE_STRICT, &tree_2, NULL);
@@ -2545,12 +2545,12 @@ test_shrink(void **state)
     /* non-shrinked */
     data_xml = "<cont xmlns=\"urn:mod\"/>";
     CHECK_PARSE_LYD_PARAM(data_xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree1);
-    assert_int_equal(lyd_print_mem(&lyb_out, tree1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&lyb_out, tree1, LYD_LYB, LYD_PRINT_SIBLINGS), 0);
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, lyb_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT,
             0, &tree2));
     assert_non_null(tree2);
 
-    assert_int_equal(LY_SUCCESS, lyd_print_mem(&str, tree2, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK));
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&str, tree2, LYD_XML, LYD_PRINT_SIBLINGS | LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK));
     assert_non_null(str);
     assert_string_equal(str, "<cont xmlns=\"urn:mod\"><l>25</l></cont>");
     free(str);
@@ -2562,7 +2562,7 @@ test_shrink(void **state)
     /* shrinked */
     data_xml = "<cont xmlns=\"urn:mod\"/>";
     CHECK_PARSE_LYD_PARAM(data_xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree1);
-    assert_int_equal(lyd_print_mem(&lyb_out, tree1, LYD_LYB, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK), 0);
+    assert_int_equal(lyd_print_mem(&lyb_out, tree1, LYD_LYB, LYD_PRINT_SIBLINGS | LYD_PRINT_SHRINK), 0);
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, lyb_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT,
             0, &tree2));
     assert_null(tree2);

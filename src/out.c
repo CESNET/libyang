@@ -56,7 +56,7 @@ lyd_node_should_print(const struct lyd_node *node, uint32_t options)
                 return 0;
             }
         } else if (lysc_is_np_cont(node->schema)) {
-            if (options & LYD_PRINT_KEEPEMPTYCONT) {
+            if (options & LYD_PRINT_EMPTY_CONT) {
                 /* explicit request to print, redundant to check */
                 return 1;
             }
@@ -71,7 +71,7 @@ lyd_node_should_print(const struct lyd_node *node, uint32_t options)
             return 0;
         }
     } else if ((node->flags & LYD_DEFAULT) && (node->schema->nodetype == LYS_CONTAINER)) {
-        if (options & LYD_PRINT_KEEPEMPTYCONT) {
+        if (options & LYD_PRINT_EMPTY_CONT) {
             /* explicit request to print */
             return 1;
         }

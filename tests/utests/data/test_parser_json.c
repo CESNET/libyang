@@ -91,7 +91,7 @@ test_leaf(void **state)
     CHECK_LYD_VALUE(leaf->value, STRING, "default-val");
     assert_true(leaf->flags & LYD_DEFAULT);
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* make foo2 explicit */
@@ -105,7 +105,7 @@ test_leaf(void **state)
     CHECK_LYD_VALUE(leaf->value, STRING, "default-val");
     assert_false(leaf->flags & LYD_DEFAULT);
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* parse foo2 but make it implicit */
@@ -120,7 +120,7 @@ test_leaf(void **state)
     assert_true(leaf->flags & LYD_DEFAULT);
 
     /* print default values */
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL_TAG, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS | LYD_PRINT_WD_ALL_TAG, data);
     lyd_free_all(tree);
 
     /* skip leaf */
@@ -128,7 +128,7 @@ test_leaf(void **state)
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
     assert_non_null(tree);
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, "{\"a:cp\":{\"y\":\"valy\",\"z\":5}}");
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, "{\"a:cp\":{\"y\":\"valy\",\"z\":5}}");
     lyd_free_all(tree);
 
     /* multiple meatadata hint and unknown metadata xxx supposed to be skipped since it is from missing schema */
@@ -139,7 +139,7 @@ test_leaf(void **state)
     CHECK_LYD_META(tree->meta->next, 1, "hint", 0, 1,  INT8, "2", 2);
     assert_null(tree->meta->next->next);
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS,
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS,
             "{\"a:foo\":\"xxx\",\"@a:foo\":{\"a:hint\":1,\"a:hint\":2}}");
     lyd_free_all(tree);
 
@@ -207,7 +207,7 @@ test_leaflist(void **state)
     ll = (struct lyd_node_term *)tree->next;
     CHECK_LYD_VALUE(ll->value, UINT8, "11", 11);
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* accept empty */
@@ -233,7 +233,7 @@ test_leaflist(void **state)
     CHECK_LYD_META(ll->meta, 1, "hint", 0, 1,  INT8, "2", 2);
     assert_null(ll->meta->next);
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* multiple meatadata hint and unknown metadata xxx supposed to be skipped since it is from missing schema */
@@ -264,7 +264,7 @@ test_leaflist(void **state)
     CHECK_LYD_META(ll->meta, 1, "hint", 0, 1,  INT8, "3", 3);
     assert_null(ll->meta->next);
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS,
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS,
             "{\"a:ll1\":[1,2,3],\"@a:ll1\":[{\"a:hint\":1,\"a:hint\":10},null,{\"a:hint\":3}]}");
     lyd_free_all(tree);
 
@@ -291,7 +291,7 @@ test_anydata(void **state)
     tree = tree->next;
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_R | LYS_SET_CONFIG, 1, "any",
             1, LYS_ANYDATA, 0, 0, NULL, 0);
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "{\"a:any\":{}}";
@@ -300,7 +300,7 @@ test_anydata(void **state)
     tree = tree->next;
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_R | LYS_SET_CONFIG, 1, "any",
             1, LYS_ANYDATA, 0, 0, NULL, 0);
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "{\"a:any\":{\"node\":20}}";
@@ -309,7 +309,7 @@ test_anydata(void **state)
     tree = tree->next;
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_R | LYS_SET_CONFIG, 1, "any",
             1, LYS_ANYDATA, 0, 0, NULL, 0);
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "{\"a:any\": null}";
@@ -329,7 +329,7 @@ test_anyxml(void **state)
     assert_non_null(tree);
     tree = tree->next;
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_W, 1, "axml", 1, LYS_ANYXML, 0, 0, NULL, 0);
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "{\"a:axml\":\"\"}";
@@ -337,7 +337,7 @@ test_anyxml(void **state)
     assert_non_null(tree);
     tree = tree->next;
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_W, 1, "axml", 1, LYS_ANYXML, 0, 0, NULL, 0);
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "{\"a:axml\":55}";
@@ -345,7 +345,7 @@ test_anyxml(void **state)
     assert_non_null(tree);
     tree = tree->next;
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_W, 1, "axml", 1, LYS_ANYXML, 0, 0, NULL, 0);
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "{\"a:axml\":false}";
@@ -353,7 +353,7 @@ test_anyxml(void **state)
     assert_non_null(tree);
     tree = tree->next;
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_W, 1, "axml", 1, LYS_ANYXML, 0, 0, NULL, 0);
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "{\"a:axml\":null}";
@@ -361,7 +361,7 @@ test_anyxml(void **state)
     assert_non_null(tree);
     tree = tree->next;
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_W, 1, "axml", 1, LYS_ANYXML, 0, 0, NULL, 0);
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "{\"a:axml\":[null,true,false]}";
@@ -369,7 +369,7 @@ test_anyxml(void **state)
     assert_non_null(tree);
     tree = tree->next;
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_W, 1, "axml", 1, LYS_ANYXML, 0, 0, NULL, 0);
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "{\"a:axml\":[null,true,{\"name\":[25,40, false]}]}";
@@ -377,7 +377,7 @@ test_anyxml(void **state)
     assert_non_null(tree);
     tree = tree->next;
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_W, 1, "axml", 1, LYS_ANYXML, 0, 0, NULL, 0);
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* same as anydata tests */
@@ -386,7 +386,7 @@ test_anyxml(void **state)
     assert_non_null(tree);
     tree = tree->next;
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_W, 1, "axml", 1, LYS_ANYXML, 0, 0, NULL, 0);
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "{\"a:axml\":{}}";
@@ -394,7 +394,7 @@ test_anyxml(void **state)
     assert_non_null(tree);
     tree = tree->next;
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_W, 1, "axml", 1, LYS_ANYXML, 0, 0, NULL, 0);
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 }
 
@@ -415,7 +415,7 @@ test_list(void **state)
     LY_LIST_FOR(list->child, iter) {
         assert_int_not_equal(0, iter->hash);
     }
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* accept empty */
@@ -451,7 +451,7 @@ test_list(void **state)
     assert_non_null(leaf = (struct lyd_node_term *)leaf->next);
     CHECK_LYSC_NODE(leaf->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "d", 1, LYS_LEAF, 1, 0, NULL, 0);
     CHECK_LOG_CTX(NULL, NULL, 0);
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS,
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS,
             "{\"a:l1\":[{\"a\":\"a\",\"b\":\"b\",\"c\":1,\"d\":\"d\"}]}");
     lyd_free_all(tree);
 
@@ -469,14 +469,14 @@ test_list(void **state)
     CHECK_LYSC_NODE(leaf->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "c",
             1, LYS_LEAF, 1, 0, NULL, 0);
     CHECK_LOG_CTX(NULL, NULL, 0);
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS,
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS,
             "{\"a:l1\":[{\"a\":\"a\",\"b\":\"b\",\"c\":1}]}");
     lyd_free_all(tree);
 
     /* skip unknown nested nodes */
     data = "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"c\":3,\"counters\":{\"count1\":\"c1\",\"count2\":\"c2\"}}]}";
     CHECK_PARSE_LYD(data, LYD_PARSE_ONLY, 0, tree);
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"c\":3}]}");
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"c\":3}]}");
     lyd_free_all(tree);
 
     data = "{\"a:cp\":{\"@\":{\"a:hint\":1}}}";
@@ -487,7 +487,7 @@ test_list(void **state)
             1, LYS_CONTAINER, 0, 0, NULL, 0);
     CHECK_LYD_META(tree->meta, 1, "hint", 0, 1,  INT8, "1", 1);
     assert_null(tree->meta->next);
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 }
 
@@ -504,7 +504,7 @@ test_container(void **state)
     cont = (struct lyd_node_inner *)tree;
     assert_true(cont->flags & LYD_DEFAULT);
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, "{}");
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, "{}");
     lyd_free_all(tree);
 
     data = "{\"a:cp\":{}}";
@@ -516,12 +516,12 @@ test_container(void **state)
     cont = (struct lyd_node_inner *)tree;
     assert_false(cont->flags & LYD_DEFAULT);
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* skip container */
     CHECK_PARSE_LYD("{\"a:unknown\":{\"a\":\"val\",\"b\":5}}", 0, LYD_VALIDATE_PRESENT, tree);
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, "{}");
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, "{}");
     lyd_free_all(tree);
 
     data = "{\"a:c\": null}";
@@ -544,26 +544,26 @@ test_opaq(void **state)
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0, LY_VALUE_JSON, "foo3", 0, 0, NULL,  0,  "");
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* special chars */
     data = "{\"a:foo3\":\"ab\\\"\\\\\\r\\t\"}";
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* wrong encoding */
     data = "{\"a:foo3\":\"25\"}";
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0, LY_VALUE_JSON, "foo3", 0, 0, NULL,  0,  "25");
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "{\"a:foo4\":25}";
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0, LY_VALUE_JSON, "foo4", 0, 0, NULL,  0,  "25");
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* missing key, no flags */
@@ -574,7 +574,7 @@ test_opaq(void **state)
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_VALUE_JSON, "l1", 0, 0, NULL,  0,  "");
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* invalid key, no flags */
@@ -585,19 +585,19 @@ test_opaq(void **state)
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_VALUE_JSON, "l1", 0, 0, NULL,  0,  "");
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"c\":{\"val\":\"val_c\"}}]}";
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_VALUE_JSON, "l1", 0, 0, NULL,  0,  "");
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\"}]}";
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_VALUE_JSON, "l1", 0, 0, NULL,  0,  "");
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* invalid metadata */
@@ -666,7 +666,7 @@ test_opaq(void **state)
             "  }\n"
             "}\n";
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 }
 
@@ -722,7 +722,7 @@ test_rpc(void **state)
     /* l1 key c has invalid value so it is at the end */
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)node, 0x1, 0x1, LY_VALUE_JSON, "l1", 0, 0, NULL,  0,  "");
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* append to parent */
@@ -732,7 +732,7 @@ test_rpc(void **state)
             NULL));
     ly_in_free(in, 0);
 
-    assert_int_equal(LY_SUCCESS, lyd_print_mem(&str, op, LYD_JSON, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK));
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&str, op, LYD_JSON, LYD_PRINT_SIBLINGS | LYD_PRINT_SHRINK));
     lyd_free_tree(op);
     assert_string_equal(str, "{\"a:r1\":{\"l1\":\"some str\",\"l2\":\"some other str\"}}");
     free(str);
@@ -756,7 +756,7 @@ test_action(void **state)
             1, 0, 0, 1, "act", LYS_ACTION,
             1, 0, 0, 1, 0, NULL, 0);
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* wrong namespace, element name, whatever... */
@@ -781,7 +781,7 @@ test_notification(void **state)
 
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "c", 1, LYS_CONTAINER, 0, 0, NULL, 0);
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "{\"a:n2\":{}}";
@@ -796,7 +796,7 @@ test_notification(void **state)
     assert_non_null(tree);
     assert_ptr_equal(ntf, tree);
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* wrong namespace, element name, whatever... */
@@ -827,8 +827,8 @@ test_reply(void **state)
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "c", 1, LYS_CONTAINER, 0, 0, NULL, 0);
 
     /* TODO print only rpc-reply node and then output subtree */
-    CHECK_LYD_STRING(lyd_child(op), LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, "{\"a:al\":25}");
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, "{\"a:c\":{\"act\":{\"al\":25}}}");
+    CHECK_LYD_STRING(lyd_child(op), LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, "{\"a:al\":25}");
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, "{\"a:c\":{\"act\":{\"al\":25}}}");
     lyd_free_all(tree);
 
     /* wrong namespace, element name, whatever... */
@@ -862,7 +862,7 @@ test_restconf_rpc(void **state)
             "\"config\":{\"a:cp\":{\"z\":[null],\"@z\":{\"ietf-netconf:operation\":\"replace\"}},"
             "\"a:l1\":[{\"@\":{\"ietf-netconf:operation\":\"replace\"},\"a\":\"val_a\",\"b\":\"val_b\",\"c\":\"val_c\"}]}"
             "}}";
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
     lyd_free_all(envp);
 }
@@ -882,11 +882,11 @@ test_restconf_notification(void **state)
 
     /* envelopes separately */
     data = "{\"ietf-restconf:notification\":{\"eventTime\":\"2013-12-21T00:01:00Z\"}}";
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
 
     /* notification with the parent node */
     data = "{\"a:c\":{\"n1\":{\"nl\":\"value\"}}}";
-    CHECK_LYD_STRING(lyd_parent(ntf), LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(lyd_parent(ntf), LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
 
     lyd_free_all(tree);
     lyd_free_all(ntf);
@@ -928,7 +928,7 @@ test_restconf_reply(void **state)
 
     /* connected to the RPC with the parent */
     data = "{\"a:c\":{\"act\":{\"al\":25}}}";
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
     lyd_free_all(envp);
 }

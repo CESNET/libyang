@@ -1178,7 +1178,7 @@ test_trim(void **state)
     assert_non_null(tree);
 
     assert_int_equal(LY_SUCCESS, lyd_trim_xpath(&tree, "/a:c/ll/ll[a='key11']", NULL));
-    lyd_print_mem(&str1, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&str1, tree, LYD_XML, LYD_PRINT_SIBLINGS);
     assert_string_equal(str1,
             "<c xmlns=\"urn:tests:a\">\n"
             "  <ll>\n"
@@ -1198,7 +1198,7 @@ test_trim(void **state)
     assert_non_null(tree);
 
     assert_int_equal(LY_SUCCESS, lyd_trim_xpath(&tree, "/a:c/ll/ll[contains(.,'2')]", NULL));
-    lyd_print_mem(&str1, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&str1, tree, LYD_XML, LYD_PRINT_SIBLINGS);
     assert_string_equal(str1,
             "<c xmlns=\"urn:tests:a\">\n"
             "  <ll>\n"
@@ -1236,7 +1236,7 @@ test_trim(void **state)
     assert_non_null(tree);
 
     assert_int_equal(LY_SUCCESS, lyd_trim_xpath(&tree, "/l1[4]//.", NULL));
-    lyd_print_mem(&str1, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&str1, tree, LYD_XML, LYD_PRINT_SIBLINGS);
     assert_string_equal(str1,
             "<l1 xmlns=\"urn:tests:a\">\n"
             "  <a>a4</a>\n"

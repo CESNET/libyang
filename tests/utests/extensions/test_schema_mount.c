@@ -446,7 +446,7 @@ test_parse_invalid(void **state)
             "  </interfaces>\n"
             "</root>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
-    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_SIBLINGS);
     lyd_free_siblings(data);
 
     json =
@@ -463,7 +463,7 @@ test_parse_invalid(void **state)
             "  }\n"
             "}\n";
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
-    CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_SIBLINGS);
     lyd_free_siblings(data);
 }
 
@@ -556,7 +556,7 @@ test_parse_inline(void **state)
             "  </interfaces-state>\n"
             "</root>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
-    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_SIBLINGS);
     ext_ctx = LYD_CTX(lyd_child(data));
     lyd_free_siblings(data);
 
@@ -586,7 +586,7 @@ test_parse_inline(void **state)
             "  }\n"
             "}\n";
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
-    CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_SIBLINGS);
     assert_ptr_equal(ext_ctx, LYD_CTX(lyd_child(data)));
     lyd_free_siblings(data);
 
@@ -657,13 +657,13 @@ test_parse_inline(void **state)
             "  </mount-point>"
             "</schema-mounts>");
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
-    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_SIBLINGS);
     assert_ptr_not_equal(ext_ctx, LYD_CTX(lyd_child(data)));
     ext_ctx = LYD_CTX(lyd_child(data));
     lyd_free_siblings(data);
 
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
-    CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_SIBLINGS);
     assert_ptr_equal(ext_ctx, LYD_CTX(lyd_child(data)));
 
     assert_int_equal(LY_SUCCESS, lyd_print_mem(&lyb, data, LYD_LYB, 0));
@@ -764,7 +764,7 @@ test_parse_shared(void **state)
             "  </interfaces-state>\n"
             "</root>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
-    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_SIBLINGS);
     lyd_free_siblings(data);
 
     json =
@@ -793,7 +793,7 @@ test_parse_shared(void **state)
             "  }\n"
             "}\n";
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
-    CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_SIBLINGS);
     lyd_free_siblings(data);
 
     /* different yang-lib data */
@@ -1036,7 +1036,7 @@ test_parse_shared(void **state)
             "  </interfaces-state>\n"
             "</root2>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
-    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_SIBLINGS);
     lyd_free_siblings(data);
 
     json =
@@ -1087,9 +1087,9 @@ test_parse_shared(void **state)
             "  }\n"
             "}\n";
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
-    CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_SIBLINGS);
 
-    assert_int_equal(LY_SUCCESS, lyd_print_mem(&lyb, data, LYD_LYB, LYD_PRINT_WITHSIBLINGS));
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&lyb, data, LYD_LYB, LYD_PRINT_SIBLINGS));
     lyd_free_siblings(data);
 
     CHECK_PARSE_LYD_PARAM(lyb, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
@@ -1234,7 +1234,7 @@ test_parse_shared_parent_ref(void **state)
             "</root3>\n"
             "<target xmlns=\"urn:sm\">target-value</target>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
-    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_SIBLINGS);
     lyd_free_siblings(data);
 
     json =
@@ -1258,7 +1258,7 @@ test_parse_shared_parent_ref(void **state)
             "  \"sm:target\": \"target-value\"\n"
             "}\n";
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
-    CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_SIBLINGS);
     lyd_free_siblings(data);
 }
 
@@ -1495,7 +1495,7 @@ test_parse_config(void **state)
             "  </interfaces>\n"
             "</root>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
-    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_SIBLINGS);
 
     node = lyd_child(data);
     assert_string_equal(LYD_NAME(node), "interfaces");
@@ -1602,7 +1602,7 @@ test_parse_config(void **state)
             "  </interfaces>\n"
             "</root4>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
-    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_SIBLINGS);
 
     node = lyd_child(data->next->next->next);
     assert_string_equal(LYD_NAME(node), "interfaces");
@@ -1738,7 +1738,7 @@ test_new(void **state)
     assert_int_equal(LY_SUCCESS, lyd_new_inner(node, NULL, "statistics", 0, &node));
     assert_int_equal(LY_SUCCESS, lyd_new_term(node, NULL, "discontinuity-time", "2022-01-01T10:00:00-00:00", 0, NULL));
 
-    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_SIBLINGS);
     lyd_free_siblings(data);
 
     /* create the data using lyd_new_path */
@@ -1754,7 +1754,7 @@ test_new(void **state)
             "/sm:root/ietf-interfaces:interfaces-state/interface[name='bu']/statistics/discontinuity-time",
             "2022-01-01T10:00:00-00:00", 0, NULL));
 
-    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_SIBLINGS);
     lyd_free_siblings(data);
 }
 

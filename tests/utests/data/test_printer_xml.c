@@ -112,12 +112,12 @@ test_anydata(void **state)
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
     /* canonized */
     data = "<any xmlns=\"urn:tests:types\"><somexml xmlns=\"example.com\"><x xmlns=\"url:x\"/></somexml></any>";
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "<any xmlns=\"urn:tests:types\"/>";
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "<any xmlns=\"urn:tests:types\">\n"
@@ -150,7 +150,7 @@ test_anydata(void **state)
             "    </elem1>\n"
             "  </cont>\n"
             "</any>\n";
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "<any xmlns=\"urn:tests:types\">\n"
@@ -159,7 +159,7 @@ test_anydata(void **state)
             "  </ahoj>\n"
             "</any>\n";
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "<any xmlns=\"urn:tests:types\">\n"
@@ -168,14 +168,14 @@ test_anydata(void **state)
             "  <leaflisttarget> Čau    </leaflisttarget>\n"
             "</any>\n";
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "<any xmlns=\"urn:tests:types\">\n"
             "  <cont2/>\n"
             "</any>\n";
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "<any xmlns=\"urn:tests:types\">\n"
@@ -184,7 +184,7 @@ test_anydata(void **state)
             "  </cont>\n"
             "</any>\n";
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 }
 
@@ -204,20 +204,20 @@ test_defaults(void **state)
     /* standard default value */
     data = "<c xmlns=\"urn:defaults\">aa</c>";
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
-    CHECK_LYD_STRING(tree, LYD_PRINT_WD_TRIM | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_WD_TRIM | LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
 
     data = "<a xmlns=\"urn:defaults\">/d:b</a><c xmlns=\"urn:defaults\">aa</c>";
-    CHECK_LYD_STRING(tree, LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
 
     data = "<a xmlns=\"urn:defaults\" xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\""
             " dflt:default=\"true\">/d:b</a>"
             "<c xmlns=\"urn:defaults\">aa</c>";
-    CHECK_LYD_STRING(tree, LYD_PRINT_WD_ALL_TAG | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_WD_ALL_TAG | LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
 
     data = "<a xmlns=\"urn:defaults\" xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\""
             " dflt:default=\"true\">/d:b</a>"
             "<c xmlns=\"urn:defaults\">aa</c>";
-    CHECK_LYD_STRING(tree, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* string value equal to the default, intepreted as a string because instance-identifier target does not exist */
@@ -226,10 +226,10 @@ test_defaults(void **state)
     data_all_tag = "<a xmlns=\"urn:defaults\" xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\""
             " dflt:default=\"true\">/d:b</a><c xmlns=\"urn:defaults\">aa</c>";
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
-    CHECK_LYD_STRING(tree, LYD_PRINT_WD_TRIM | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data_trim);
-    CHECK_LYD_STRING(tree, LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
-    CHECK_LYD_STRING(tree, LYD_PRINT_WD_ALL_TAG | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data_all_tag);
-    CHECK_LYD_STRING(tree, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_WD_TRIM | LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data_trim);
+    CHECK_LYD_STRING(tree, LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_WD_ALL_TAG | LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data_all_tag);
+    CHECK_LYD_STRING(tree, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* instance-identifier value equal to the default, should be considered equal */
@@ -243,10 +243,10 @@ test_defaults(void **state)
     data_impl_tag = "<a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a><b xmlns=\"urn:defaults\">val</b><c xmlns=\"urn:defaults\">aa</c>";
 
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
-    CHECK_LYD_STRING(tree, LYD_PRINT_WD_TRIM | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data_trim);
-    CHECK_LYD_STRING(tree, LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data_all);
-    CHECK_LYD_STRING(tree, LYD_PRINT_WD_ALL_TAG | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data_all_tag);
-    CHECK_LYD_STRING(tree, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data_impl_tag);
+    CHECK_LYD_STRING(tree, LYD_PRINT_WD_TRIM | LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data_trim);
+    CHECK_LYD_STRING(tree, LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data_all);
+    CHECK_LYD_STRING(tree, LYD_PRINT_WD_ALL_TAG | LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data_all_tag);
+    CHECK_LYD_STRING(tree, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data_impl_tag);
     lyd_free_all(tree);
 }
 

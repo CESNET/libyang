@@ -456,7 +456,7 @@ no_content:
         case LYD_ANYDATA_DATATREE:
             /* close opening tag and print data */
             prev_opts = pctx->options;
-            pctx->options &= ~LYD_PRINT_WITHSIBLINGS;
+            pctx->options &= ~LYD_PRINT_SIBLINGS;
             LEVEL_INC;
 
             ly_print_(pctx->out, ">%s", DO_FORMAT ? "\n" : "");
@@ -618,7 +618,7 @@ xml_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options
     /* content */
     LY_LIST_FOR(root, node) {
         LY_CHECK_RET(xml_print_node(&pctx, node));
-        if (!(options & LYD_PRINT_WITHSIBLINGS)) {
+        if (!(options & LYD_PRINT_SIBLINGS)) {
             break;
         }
     }

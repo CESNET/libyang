@@ -148,14 +148,14 @@ test_anydata(void **state)
             "  <element1a/>\n"
             "</any>\n";
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data_expected);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data_expected);
 
     assert_int_equal(LY_SUCCESS, lyd_any_value_str(tree, &str));
     lyd_free_all(tree);
 
     assert_int_equal(LY_SUCCESS, lyd_new_path2(NULL, UTEST_LYCTX, "/a:any", str, strlen(str), LYD_ANYDATA_XML, 0, &tree, NULL));
     free(str);
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data_expected);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data_expected);
     lyd_free_all(tree);
 }
 
@@ -184,14 +184,14 @@ test_anyxml(void **state)
             "  <element1a/>\n"
             "</anyx>\n";
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data_expected);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data_expected);
 
     assert_int_equal(LY_SUCCESS, lyd_any_value_str(tree, &str));
     lyd_free_all(tree);
 
     assert_int_equal(LY_SUCCESS, lyd_new_path2(NULL, UTEST_LYCTX, "/a:anyx", str, strlen(str), LYD_ANYDATA_XML, 0, &tree, NULL));
     free(str);
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data_expected);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data_expected);
     lyd_free_all(tree);
 
     data = "<anyx xmlns=\"urn:tests:a\"><x>1</x><x>0</x><x>-1</x><x>4294967295</x><x>4294967296</x><x>-2147483648</x><x>-2147483649</x></anyx>";
@@ -314,14 +314,14 @@ test_opaq(void **state)
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0, LY_VALUE_XML, "foo3", 0, 0, NULL,  1,  "");
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, "<foo3 xmlns=\"urn:tests:a\"/>\n");
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, "<foo3 xmlns=\"urn:tests:a\"/>\n");
     lyd_free_all(tree);
 
     /* list, opaq flag */
     data = "<l1 xmlns=\"urn:tests:a\"/>";
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0, LY_VALUE_XML, "l1", 0, 0, NULL,  1,  "");
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, "<l1 xmlns=\"urn:tests:a\"/>\n");
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, "<l1 xmlns=\"urn:tests:a\"/>\n");
     lyd_free_all(tree);
 
     /* missing key, no flags */
@@ -336,7 +336,7 @@ test_opaq(void **state)
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_VALUE_XML, "l1", 0, 0, NULL,  1,  "");
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* invalid key, no flags */
@@ -351,7 +351,7 @@ test_opaq(void **state)
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_VALUE_XML, "l1", 0, 0, NULL,  1,  "");
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* opaq flag and fail */
@@ -425,7 +425,7 @@ test_rpc(void **state)
     /* l1 key c has invalid value so it is at the end */
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)node, 0x1, 0x1, LY_VALUE_XML, "l1", 0, 0, NULL,  1,  "");
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS,
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS,
             "<edit-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n"
             "  <target>\n"
             "    <running/>\n"
@@ -470,7 +470,7 @@ test_action(void **state)
             1, 0, 0, 1, "act", LYS_ACTION,
             1, 0, 0, 1, 0, NULL, 0);
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS,
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS,
             "<c xmlns=\"urn:tests:a\">\n"
             "  <act>\n"
             "    <al>value</al>\n"
@@ -505,7 +505,7 @@ test_notification(void **state)
 
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "c", 1, LYS_CONTAINER, 0, 0, NULL, 0);
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* top-level notif without envelope */
@@ -521,7 +521,7 @@ test_notification(void **state)
     assert_non_null(tree);
     assert_ptr_equal(ntf, tree);
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     /* wrong namespace, element name, whatever... */
@@ -557,7 +557,7 @@ test_reply(void **state)
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "c", 1, LYS_CONTAINER, 0, 0, NULL, 0);
 
     /* TODO print only rpc-reply node and then output subtree */
-    CHECK_LYD_STRING(lyd_child(op), LYD_PRINT_WITHSIBLINGS, "<al xmlns=\"urn:tests:a\">25</al>\n");
+    CHECK_LYD_STRING(lyd_child(op), LYD_PRINT_SIBLINGS, "<al xmlns=\"urn:tests:a\">25</al>\n");
     lyd_free_all(tree);
 
     /* wrong namespace, element name, whatever... */
@@ -626,9 +626,9 @@ test_netconf_rpc(void **state)
     /* l1 key c has invalid value so it is at the end */
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)node, 0x1, 0x1, LY_VALUE_XML, "l1", 0, 0, NULL,  1,  "");
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS,
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS,
             "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"25\"/>\n");
-    CHECK_LYD_STRING(op, LYD_PRINT_WITHSIBLINGS,
+    CHECK_LYD_STRING(op, LYD_PRINT_SIBLINGS,
             "<edit-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n"
             "  <target>\n"
             "    <running/>\n"
@@ -707,11 +707,11 @@ test_netconf_action(void **state)
             1, 0, 0, 1, "act", LYS_ACTION,
             1, 0, 0, 1, 0, NULL, 0);
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS,
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS,
             "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"25\">\n"
             "  <action xmlns=\"urn:ietf:params:xml:ns:yang:1\"/>\n"
             "</rpc>\n");
-    CHECK_LYD_STRING(op, LYD_PRINT_WITHSIBLINGS,
+    CHECK_LYD_STRING(op, LYD_PRINT_SIBLINGS,
             "<act xmlns=\"urn:tests:a\">\n"
             "  <al>value</al>\n"
             "</act>\n");
@@ -764,11 +764,11 @@ test_netconf_reply_or_notification(void **state)
     assert_non_null(op2);
     CHECK_LYSC_NOTIF((struct lysc_node_notif *)op2->schema, 1, NULL, 0, 0x4, 1, 0, "n1", 1, 0, NULL, 0);
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS,
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS,
             "<notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\">\n"
             "  <eventTime>2010-12-06T08:00:01Z</eventTime>\n"
             "</notification>\n");
-    CHECK_LYD_STRING(op2, LYD_PRINT_WITHSIBLINGS,
+    CHECK_LYD_STRING(op2, LYD_PRINT_SIBLINGS,
             "<n1 xmlns=\"urn:tests:a\">\n"
             "  <nl>value</nl>\n"
             "</n1>\n");
@@ -804,7 +804,7 @@ test_netconf_reply_or_notification(void **state)
 
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 1, 0, LY_VALUE_XML, "rpc-reply", 0, 0, 0, 0, "");
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS,
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS,
             "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"55\"/>\n");
 
     lyd_free_all(tree);
@@ -822,7 +822,7 @@ test_netconf_reply_or_notification(void **state)
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 1, 1, LY_VALUE_XML, "rpc-reply", 0, 0, 0, 0, "");
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)lyd_child(tree), 0, 0, LY_VALUE_XML, "ok", 0, 0, 0, 0, "");
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data);
 
     lyd_free_all(tree);
 
@@ -845,7 +845,7 @@ test_netconf_reply_or_notification(void **state)
     ly_in_free(in, 0);
 
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 1, 1, LY_VALUE_XML, "rpc-reply", 0, 0, 0, 0, "");
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data);
 
     lyd_free_all(tree);
 
@@ -888,7 +888,7 @@ test_restconf_rpc(void **state)
             "<a>val_a</a><b>val_b</b><c>val_c</c>"
             "</l1>"
             "</config></edit-data>";
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
     lyd_free_all(envp);
 }
@@ -910,7 +910,7 @@ test_restconf_reply(void **state)
 
     /* connected to the RPC with the parent */
     data = "<c xmlns=\"urn:tests:a\"><act><al>25</al></act></c>";
-    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
     lyd_free_all(envp);
 }
@@ -947,7 +947,7 @@ test_filter_attributes(void **state)
     dsc = "This parameter specifies the portion of the system\nconfiguration and state data to retrieve.";
     CHECK_LYSC_NODE(node->schema, dsc, 1, LYS_STATUS_CURR | LYS_IS_INPUT, 1, "filter", 0, LYS_ANYXML, 1, 0, NULL, 0);
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
     data = "<create-subscription xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\">\n"
@@ -961,7 +961,7 @@ test_filter_attributes(void **state)
     ly_in_free(in, 0);
     assert_non_null(tree);
 
-    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 }
 

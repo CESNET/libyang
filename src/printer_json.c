@@ -633,7 +633,7 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
         prev_parent = pctx->parent;
         prev_opts = pctx->options;
         pctx->parent = &any->node;
-        pctx->options &= ~LYD_PRINT_WITHSIBLINGS;
+        pctx->options &= ~LYD_PRINT_SIBLINGS;
         LY_LIST_FOR(any->value.tree, iter) {
             ret = json_print_node(pctx, iter);
             LY_CHECK_ERR_RET(ret, LEVEL_DEC, ret);
@@ -804,7 +804,7 @@ json_print_array_is_last_inst(struct jsonpr_ctx *pctx, const struct lyd_node *no
         return 0;
     }
 
-    if ((pctx->root == node) && !(pctx->options & LYD_PRINT_WITHSIBLINGS)) {
+    if ((pctx->root == node) && !(pctx->options & LYD_PRINT_SIBLINGS)) {
         /* the only printed instance */
         return 1;
     }
@@ -1168,7 +1168,7 @@ json_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t option
     LY_LIST_FOR(root, node) {
         pctx.root = node;
         LY_CHECK_RET(json_print_node(&pctx, node));
-        if (!(options & LYD_PRINT_WITHSIBLINGS)) {
+        if (!(options & LYD_PRINT_SIBLINGS)) {
             break;
         }
     }

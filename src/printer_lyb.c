@@ -1306,7 +1306,7 @@ lyb_print_siblings(const struct lyd_node *node, ly_bool is_root, struct lyd_lyb_
 
         LY_CHECK_RET(lyb_print_node(&node, &sibling_ht, lybctx));
 
-        if (is_root && !(lybctx->print_options & LYD_PRINT_WITHSIBLINGS)) {
+        if (is_root && !(lybctx->print_options & LYD_PRINT_SIBLINGS)) {
             break;
         }
     }

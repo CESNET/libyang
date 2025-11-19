@@ -361,7 +361,7 @@ test_path(void **state)
     assert_int_equal(ret, LY_EINVAL);
     CHECK_LOG_CTX("Cannot create \"l2\" on position 2, no instances exist.", NULL, 0);
 
-    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_SIBLINGS);
     assert_string_equal(str,
             "<c2 xmlns=\"urn:tests:a\">\n"
             "  <l3>\n"
@@ -412,7 +412,7 @@ test_path(void **state)
     assert_int_equal(ret, LY_EVALID);
     CHECK_LOG_CTX("Unparsed characters \"[.='val3']\" left at the end of path.", NULL, 0);
 
-    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_SIBLINGS);
     assert_string_equal(str,
             "<ll2 xmlns=\"urn:tests:a\">val</ll2>\n"
             "<ll2 xmlns=\"urn:tests:a\">val2</ll2>\n"
@@ -424,13 +424,13 @@ test_path(void **state)
     ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:any", "<elem>val</elem>", 0, LYD_ANYDATA_XML, 0, &root, NULL);
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(root);
-    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_SIBLINGS);
     assert_string_equal(str,
             "<any xmlns=\"urn:tests:a\">\n"
             "  <elem>val</elem>\n"
             "</any>\n");
     free(str);
-    lyd_print_mem(&str, root, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&str, root, LYD_JSON, LYD_PRINT_SIBLINGS);
     assert_string_equal(str,
             "{\n"
             "  \"a:any\": {\n"
@@ -444,7 +444,7 @@ test_path(void **state)
     ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:anyx", "<a/><b/><c/>", 0, LYD_ANYDATA_XML, 0, &root, NULL);
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(root);
-    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_SIBLINGS);
     assert_string_equal(str,
             "<anyx xmlns=\"urn:tests:a\">\n"
             "  <a/>\n"
@@ -452,7 +452,7 @@ test_path(void **state)
             "  <c/>\n"
             "</anyx>\n");
     free(str);
-    lyd_print_mem(&str, root, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&str, root, LYD_JSON, LYD_PRINT_SIBLINGS);
     assert_string_equal(str,
             "{\n"
             "  \"a:anyx\": {\n"
@@ -469,11 +469,11 @@ test_path(void **state)
     assert_non_null(root);
     ret = lyd_new_path2(root, NULL, "/a:anyx", "[10,11,12]", 0, LYD_ANYDATA_JSON, LYD_NEW_PATH_UPDATE, NULL, NULL);
     assert_int_equal(ret, LY_SUCCESS);
-    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_SIBLINGS);
     assert_string_equal(str,
             "<anyx xmlns=\"urn:tests:a\">[10,11,12]</anyx>\n");
     free(str);
-    lyd_print_mem(&str, root, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&str, root, LYD_JSON, LYD_PRINT_SIBLINGS);
     assert_string_equal(str,
             "{\n"
             "  \"a:anyx\": [10,11,12]\n"
@@ -487,11 +487,11 @@ test_path(void **state)
     ret = lyd_new_path2(root, NULL, "/a:anyx", strdup("[10,11,12]"), 0, LYD_ANYDATA_JSON,
             LYD_NEW_PATH_UPDATE | LYD_NEW_ANY_USE_VALUE, NULL, NULL);
     assert_int_equal(ret, LY_SUCCESS);
-    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_SIBLINGS);
     assert_string_equal(str,
             "<anyx xmlns=\"urn:tests:a\">[10,11,12]</anyx>\n");
     free(str);
-    lyd_print_mem(&str, root, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&str, root, LYD_JSON, LYD_PRINT_SIBLINGS);
     assert_string_equal(str,
             "{\n"
             "  \"a:anyx\": [10,11,12]\n"
@@ -502,7 +502,7 @@ test_path(void **state)
     ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:anyx", "{\"a\":[null],\"b\":[null],\"c\":[null]}", 0, LYD_ANYDATA_JSON, 0, &root, NULL);
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(root);
-    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_SIBLINGS);
     assert_string_equal(str,
             "<anyx xmlns=\"urn:tests:a\">\n"
             "  <a/>\n"
@@ -510,7 +510,7 @@ test_path(void **state)
             "  <c/>\n"
             "</anyx>\n");
     free(str);
-    lyd_print_mem(&str, root, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&str, root, LYD_JSON, LYD_PRINT_SIBLINGS);
     assert_string_equal(str,
             "{\n"
             "  \"a:anyx\": {\n"

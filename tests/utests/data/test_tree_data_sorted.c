@@ -1115,7 +1115,7 @@ test_parse_data(void **state)
     /* data tree is used in the next check */
 
     /* lyb */
-    assert_int_equal(lyd_print_mem(&lyb_out, tree, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&lyb_out, tree, LYD_LYB, LYD_PRINT_SIBLINGS), 0);
     assert_int_equal(lyd_parse_data_mem(UTEST_LYCTX, lyb_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT,
             0, &tree2), LY_SUCCESS);
     assert_true(tree2 && tree2->meta && tree2->next);
@@ -1184,13 +1184,13 @@ test_print_data(void **state)
     assert_int_equal(lyd_new_term(NULL, mod, "ll", "2", 0, &first), LY_SUCCESS);
     assert_int_equal(lyd_new_term(NULL, mod, "ll", "1", 0, &node), LY_SUCCESS);
     assert_int_equal(lyd_insert_sibling(first, node, NULL), LY_SUCCESS);
-    assert_int_equal(lyd_print_mem(&out, node, LYD_JSON, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK), 0);
+    assert_int_equal(lyd_print_mem(&out, node, LYD_JSON, LYD_PRINT_SIBLINGS | LYD_PRINT_SHRINK), 0);
     exp = "{\"a:ll\":[1,2]}";
     assert_string_equal(out, exp);
     free(out);
 
     /* xml */
-    assert_int_equal(lyd_print_mem(&out, node, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK), 0);
+    assert_int_equal(lyd_print_mem(&out, node, LYD_XML, LYD_PRINT_SIBLINGS | LYD_PRINT_SHRINK), 0);
     exp = "<ll xmlns=\"urn:tests:a\">1</ll><ll xmlns=\"urn:tests:a\">2</ll>";
     assert_string_equal(out, exp);
     free(out);

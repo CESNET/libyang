@@ -1041,7 +1041,7 @@ lyd_any_value_str(const struct lyd_node *any, char **value_str)
 
     if (tree) {
         /* print into a string */
-        ret = lyd_print_mem(value_str, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+        ret = lyd_print_mem(value_str, tree, LYD_XML, LYD_PRINT_SIBLINGS);
         LY_CHECK_GOTO(ret, cleanup);
     } else {
         assert(str);

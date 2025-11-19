@@ -67,7 +67,7 @@
         char *xml_out, *data; \
         data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</" NODE_NAME ">"; \
         CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, LY_SUCCESS, tree_1); \
-        assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0); \
+        assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_SIBLINGS), 0); \
         assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2)); \
         assert_non_null(tree_2); \
         CHECK_LYD(tree_1, tree_2); \
@@ -159,11 +159,11 @@ test_print(void **state)
 
     /* XML print */
     expected = "<l xmlns=\"urn:tests:a\" xmlns:pref=\"urn:tests:a\">/pref:l[.='/pref:l']</l>";
-    CHECK_LYD_STRING_PARAM(tree, expected, LYD_XML, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(tree, expected, LYD_XML, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS);
 
     /* JSON print */
     expected = "{\"a:l\":\"/a:l[.='/a:l']\"}";
-    CHECK_LYD_STRING_PARAM(tree, expected, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(tree, expected, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS);
 
     lyd_free_tree(tree);
 
@@ -173,11 +173,11 @@ test_print(void **state)
 
     /* XML print */
     expected = "<l xmlns=\"urn:tests:a\" xmlns:pref=\"urn:tests:a\">/pref:l/pref:k/pref:m[.='/pref:l']</l>";
-    CHECK_LYD_STRING_PARAM(tree, expected, LYD_XML, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(tree, expected, LYD_XML, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS);
 
     /* JSON print */
     expected = "{\"a:l\":\"/a:l/k/m[. = '/a:l']\"}";
-    CHECK_LYD_STRING_PARAM(tree, expected, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(tree, expected, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS);
 
     lyd_free_tree(tree);
 }
@@ -201,7 +201,7 @@ test_duplicate(void **state)
     /* print */
     expected = "<l1 xmlns=\"urn:tests:a\">2005-05-25T16:45:15.88888-02:00</l1>"
             "<l2 xmlns=\"urn:tests:a\" xmlns:pref=\"urn:tests:a\">/pref:l2[.='/pref:l2']</l2>";
-    CHECK_LYD_STRING_PARAM(dup, expected, LYD_XML, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS);
+    CHECK_LYD_STRING_PARAM(dup, expected, LYD_XML, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS);
 
     lyd_free_siblings(tree);
     lyd_free_siblings(dup);

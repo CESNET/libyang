@@ -170,8 +170,8 @@ struct utest_context {
     { \
         char *str1; \
         char *str2; \
-        assert_int_equal(LY_SUCCESS, lyd_print_mem(&str1, NODE_1, LYD_XML, LYD_PRINT_WITHSIBLINGS)); \
-        assert_int_equal(LY_SUCCESS, lyd_print_mem(&str2, NODE_2, LYD_XML, LYD_PRINT_WITHSIBLINGS)); \
+        assert_int_equal(LY_SUCCESS, lyd_print_mem(&str1, NODE_1, LYD_XML, LYD_PRINT_SIBLINGS)); \
+        assert_int_equal(LY_SUCCESS, lyd_print_mem(&str2, NODE_2, LYD_XML, LYD_PRINT_SIBLINGS)); \
         assert_non_null(str1); \
         assert_non_null(str2); \
         assert_string_equal(str1, str2); \
