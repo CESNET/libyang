@@ -28,6 +28,21 @@ setup(void **state)
             "        type string;"
             "        default \"dflt\";"
             "      }"
+            "      list l {"
+            "        key \"k\";"
+            "        leaf k {"
+            "          type string;"
+            "        }"
+            "      }"
+            "    }"
+            "    leaf-list ll {"
+            "      type string;"
+            "    }"
+            "  }"
+            "  list tl {"
+            "    key \"tk\";"
+            "    leaf tk {"
+            "      type string;"
             "    }"
             "  }"
             "}";
@@ -71,12 +86,46 @@ test_empty_container_wd_trim(void **state)
     lyd_free_all(tree);
 }
 
+static void
+test_empty_leaf_list(void **state)
+{
+    struct lyd_node *tree;
+    char *buffer = NULL;
+    const char *data;
+
+    data = "{\"schema2:a\":{\"b\":{\"c\":\"val\"}}}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&buffer, tree, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_EMPTY_LEAF_LIST));
+    CHECK_STRING(buffer, "{\"schema2:a\":{\"b\":{\"c\":\"val\",\"l\":[]},\"ll\":[]},\"schema2:tl\":[]}");
+    free(buffer);
+    lyd_free_all(tree);
+
+    data = "{\"schema2:a\":{}}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&buffer, tree, LYD_JSON, LYD_PRINT_EMPTY_CONT | LYD_PRINT_EMPTY_LEAF_LIST));
+    CHECK_STRING(buffer, "{\n"
+            "  \"schema2:a\": {\n"
+            "    \"b\": {\n"
+            "      \"l\": [\n"
+            "      ]\n"
+            "    },\n"
+            "    \"ll\": [\n"
+            "    ]\n"
+            "  },\n"
+            "  \"schema2:tl\": [\n"
+            "  ]\n"
+            "}\n");
+    free(buffer);
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_container_presence, setup),
         UTEST(test_empty_container_wd_trim, setup),
+        UTEST(test_empty_leaf_list, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

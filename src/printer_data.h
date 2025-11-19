@@ -91,6 +91,8 @@ struct ly_out;
                                                       be shrinked to include only the necessary data making them smaller
                                                       but requiring validation. */
 #define LYD_PRINT_KEEPEMPTYCONT 0x04             /**< Preserve empty non-presence containers */
+#define LYD_PRINT_EMPTY_LEAF_LIST 0x08           /**< Print even empty list and leaf-list instances, not possible for every
+                                                      data format (supported only for ::LYD_JSON). */
 #define LYD_PRINT_WD_MASK       0xF0             /**< Mask for with-defaults modes */
 #define LYD_PRINT_WD_EXPLICIT   0x00             /**< Explicit with-defaults mode. Only the data explicitly being present in
                                                       the data tree are printed, so the implicitly added default nodes are

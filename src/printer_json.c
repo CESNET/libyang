@@ -32,21 +32,22 @@
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
+#include "tree_data_internal.h"
 #include "tree_schema.h"
 
 /**
  * @brief JSON printer context.
  */
 struct jsonpr_ctx {
-    struct ly_out *out;         /**< output specification */
+    struct ly_out *out;             /**< output specification */
     const struct lyd_node *root;    /**< root node of the subtree being printed */
     const struct lyd_node *parent;  /**< parent of the node being printed */
-    uint16_t level;             /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
-    uint32_t options;           /**< [Data printer flags](@ref dataprinterflags) */
-    const struct ly_ctx *ctx;   /**< libyang context */
+    uint16_t level;                 /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
+    uint32_t options;               /**< [Data printer flags](@ref dataprinterflags) */
+    const struct ly_ctx *ctx;       /**< libyang context */
 
-    uint16_t level_printed;     /* level where some data were already printed */
-    struct ly_set open;         /* currently open array(s) */
+    uint16_t level_printed;         /**< level where some data were already printed */
+    struct ly_set open;             /**< currently open array(s) */
     const struct lyd_node *first_leaflist;  /**< first printed leaf-list instance, used when printing its metadata/attributes */
 };
 
@@ -60,6 +61,10 @@ struct jsonpr_ctx {
     if (pctx->level_printed >= pctx->level) { \
         ly_print_(pctx->out, ",%s", (DO_FORMAT ? "\n" : "")); \
     }
+
+static LY_ERR json_print_leaf_list_empty(struct jsonpr_ctx *pctx, const struct lysc_node *snode);
+static const struct lysc_node *json_print_next_empty_leaf_list(struct jsonpr_ctx *pctx, const struct lysc_node *snode,
+        const struct lyd_node *siblings);
 
 static LY_ERR json_print_node(struct jsonpr_ctx *pctx, const struct lyd_node *node);
 
@@ -144,27 +149,28 @@ json_print_array_close(struct jsonpr_ctx *pctx)
  * @brief Get the node's module name to use as the @p node prefix in JSON.
  *
  * @param[in] node Node to process.
+ * @param[in] snode Schema node to process.
  * @param[out] mod_name Module name of @p node, can be NULL (format is XML and the module with NS is not in the context).
  * @param[out] data_dict Whether @p mod_name is from the schema or data dictionary.
  */
 static void
-node_prefix(const struct lyd_node *node, const char **mod_name, ly_bool *data_dict)
+node_prefix(const struct lyd_node *node, const struct lysc_node *snode, const char **mod_name, ly_bool *data_dict)
 {
     struct lyd_node_opaq *onode;
     const struct lys_module *mod;
 
     *mod_name = NULL;
 
-    if (!node) {
+    if (!node && !snode) {
         return;
     }
 
-    if (node->schema) {
-        *mod_name = node->schema->module->name;
+    if (snode) {
+        *mod_name = snode->module->name;
         if (data_dict) {
             *data_dict = 0;
         }
-    } else {
+    } else if (node) {
         onode = (struct lyd_node_opaq *)node;
 
         switch (onode->format) {
@@ -201,18 +207,18 @@ node_prefix(const struct lyd_node *node, const char **mod_name, ly_bool *data_di
  * @return 0 in case the nodes' modules are the same
  * @return 1 in case the nodes belongs to different modules
  */
-int
-json_nscmp(const struct lyd_node *node1, const struct lyd_node *node2)
+static int
+json_nscmp(const struct lyd_node *node1, const struct lysc_node *snode1, const struct lyd_node *node2)
 {
     const char *pref1, *pref2;
     ly_bool dd1, dd2;
 
-    assert(node1 || node2);
+    assert(snode1 || node2);
 
-    if (!node1 || !node2) {
+    if (!snode1 || !node2) {
         return 1;
-    } else if (node1->schema && node2->schema) {
-        if (node1->schema->module == node2->schema->module) {
+    } else if (snode1 && node2->schema) {
+        if (snode1->module == node2->schema->module) {
             /* belongs to the same module */
             return 0;
         } else {
@@ -220,8 +226,8 @@ json_nscmp(const struct lyd_node *node1, const struct lyd_node *node2)
             return 1;
         }
     } else {
-        node_prefix(node1, &pref1, &dd1);
-        node_prefix(node2, &pref2, &dd2);
+        node_prefix(node1, snode1, &pref1, &dd1);
+        node_prefix(node2, node2->schema, &pref2, &dd2);
 
         if (pref1 && pref2 && (((dd1 == dd2) && (pref1 == pref2)) || ((dd1 != dd2) && !strcmp(pref1, pref2)))) {
             return 0;
@@ -284,23 +290,32 @@ json_print_string(struct ly_out *out, const char *text)
  * @brief Print JSON object's member name, ending by ':'. It resolves if the prefix is supposed to be printed.
  *
  * @param[in] ctx JSON printer context.
- * @param[in] node The data node being printed.
+ * @param[in] node Data node being printed.
+ * @param[in] snode Optional schema node if there is no @p node.
  * @param[in] is_attr Flag if the metadata sign (@) is supposed to be added before the identifier.
  * @return LY_ERR value.
  */
 static LY_ERR
-json_print_member(struct jsonpr_ctx *pctx, const struct lyd_node *node, ly_bool is_attr)
+json_print_member(struct jsonpr_ctx *pctx, const struct lyd_node *node, const struct lysc_node *snode, ly_bool is_attr)
 {
-    const char *pref;
+    const char *pref, *name;
+
+    assert(node || snode);
+
+    if (node) {
+        snode = node->schema;
+        name = LYD_NAME(node);
+    } else {
+        name = snode->name;
+    }
 
     PRINT_COMMA;
-    if ((LEVEL == 1) || json_nscmp(node, pctx->parent)) {
+    if ((LEVEL == 1) || json_nscmp(node, snode, pctx->parent)) {
         /* print "namespace" */
-        node_prefix(node, &pref, NULL);
-        ly_print_(pctx->out, "%*s\"%s%s:%s\":%s", INDENT, is_attr ? "@" : "",
-                pref, node->schema->name, DO_FORMAT ? " " : "");
+        node_prefix(node, snode, &pref, NULL);
+        ly_print_(pctx->out, "%*s\"%s%s:%s\":%s", INDENT, is_attr ? "@" : "", pref, name, DO_FORMAT ? " " : "");
     } else {
-        ly_print_(pctx->out, "%*s\"%s%s\":%s", INDENT, is_attr ? "@" : "", node->schema->name, DO_FORMAT ? " " : "");
+        ly_print_(pctx->out, "%*s\"%s%s\":%s", INDENT, is_attr ? "@" : "", name, DO_FORMAT ? " " : "");
     }
 
     return LY_SUCCESS;
@@ -351,7 +366,7 @@ json_print_member2(struct jsonpr_ctx *pctx, const struct lyd_node *parent, LY_VA
     }
 
     /* print the member, strcmp because node prefix is in the schema dict, module_name in data dict */
-    node_prefix(parent, &pmod_name, NULL);
+    node_prefix(parent, parent ? parent->schema : NULL, &pmod_name, NULL);
     if (module_name && (!parent || strcmp(pmod_name, module_name))) {
         ly_print_(pctx->out, "%*s\"%s%s:%s\":%s", INDENT, is_attr ? "@" : "", module_name, name_str, DO_FORMAT ? " " : "");
     } else {
@@ -541,7 +556,7 @@ json_print_attributes(struct jsonpr_ctx *pctx, const struct lyd_node *node, ly_b
         if (inner) {
             LY_CHECK_RET(json_print_member2(pctx, lyd_parent(node), LY_VALUE_JSON, NULL, 1));
         } else {
-            LY_CHECK_RET(json_print_member(pctx, node, 1));
+            LY_CHECK_RET(json_print_member(pctx, node, NULL, 1));
         }
         ly_print_(pctx->out, "{%s", (DO_FORMAT ? "\n" : ""));
         LEVEL_INC;
@@ -577,7 +592,7 @@ json_print_attributes(struct jsonpr_ctx *pctx, const struct lyd_node *node, ly_b
 static LY_ERR
 json_print_leaf(struct jsonpr_ctx *pctx, const struct lyd_node *node)
 {
-    LY_CHECK_RET(json_print_member(pctx, node, 0));
+    LY_CHECK_RET(json_print_member(pctx, node, NULL, 0));
     LY_CHECK_RET(json_print_value(pctx, LYD_CTX(node), &((const struct lyd_node_term *)node)->value, node->schema->module));
     LEVEL_PRINTED;
 
@@ -680,14 +695,17 @@ json_print_inner(struct jsonpr_ctx *pctx, const struct lyd_node *node)
     struct lyd_node *child;
     const struct lyd_node *prev_parent;
     struct lyd_node_opaq *opaq = NULL;
-    ly_bool has_content = 0;
+    const struct lysc_node *snode;
+    ly_bool has_content = 0, no_child_print = 1;
 
     LY_LIST_FOR(lyd_child(node), child) {
         if (lyd_node_should_print(child, pctx->options)) {
+            no_child_print = 0;
             break;
         }
     }
-    if (node->meta || child) {
+    if (node->meta || child || ((pctx->options & LYD_PRINT_EMPTY_LEAF_LIST) &&
+            json_print_next_empty_leaf_list(pctx, lysc_node_child(node->schema), lyd_child(node)))) {
         has_content = 1;
     }
     if (!node->schema) {
@@ -714,6 +732,16 @@ json_print_inner(struct jsonpr_ctx *pctx, const struct lyd_node *node)
     }
     pctx->parent = prev_parent;
 
+    if (no_child_print && (pctx->options & LYD_PRINT_EMPTY_LEAF_LIST)) {
+        snode = json_print_next_empty_leaf_list(pctx, lysc_node_child(node->schema), NULL);
+        while (snode) {
+            /* print an empty (leaf-)list */
+            LY_CHECK_RET(json_print_leaf_list_empty(pctx, snode));
+
+            snode = json_print_next_empty_leaf_list(pctx, snode->next, NULL);
+        }
+    }
+
     LEVEL_DEC;
     if (DO_FORMAT && has_content) {
         ly_print_(pctx->out, "\n%*s}", INDENT);
@@ -735,7 +763,7 @@ json_print_inner(struct jsonpr_ctx *pctx, const struct lyd_node *node)
 static int
 json_print_container(struct jsonpr_ctx *pctx, const struct lyd_node *node)
 {
-    LY_CHECK_RET(json_print_member(pctx, node, 0));
+    LY_CHECK_RET(json_print_member(pctx, node, NULL, 0));
     LY_CHECK_RET(json_print_inner(pctx, node));
 
     return LY_SUCCESS;
@@ -751,7 +779,7 @@ json_print_container(struct jsonpr_ctx *pctx, const struct lyd_node *node)
 static int
 json_print_any(struct jsonpr_ctx *pctx, const struct lyd_node *node)
 {
-    LY_CHECK_RET(json_print_member(pctx, node, 0));
+    LY_CHECK_RET(json_print_member(pctx, node, NULL, 0));
     LY_CHECK_RET(json_print_any_content(pctx, (struct lyd_node_any *)node));
     LEVEL_PRINTED;
 
@@ -806,7 +834,7 @@ json_print_leaf_list(struct jsonpr_ctx *pctx, const struct lyd_node *node)
     const struct lys_module *df_mod = NULL;
 
     if (!is_open_array(pctx, node)) {
-        LY_CHECK_RET(json_print_member(pctx, node, 0));
+        LY_CHECK_RET(json_print_member(pctx, node, NULL, 0));
         LY_CHECK_RET(json_print_array_open(pctx, node));
         if (node->schema->nodetype == LYS_LEAFLIST) {
             ly_print_(pctx->out, "%*s", INDENT);
@@ -846,6 +874,34 @@ json_print_leaf_list(struct jsonpr_ctx *pctx, const struct lyd_node *node)
 }
 
 /**
+ * @brief Print empty leaf-list or list instance.
+ *
+ * @param[in] ctx JSON printer context.
+ * @param[in] snode Schema node to print.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+json_print_leaf_list_empty(struct jsonpr_ctx *pctx, const struct lysc_node *snode)
+{
+    assert(snode->nodetype & (LYS_LEAFLIST | LYS_LIST));
+
+    LY_CHECK_RET(json_print_member(pctx, NULL, snode, 0));
+
+    /* avoid an empty line */
+    if (!(pctx->options & LY_PRINT_SHRINK)) {
+        pctx->options |= LY_PRINT_SHRINK;
+        LY_CHECK_RET(json_print_array_open(pctx, (void *)snode));
+        pctx->options &= ~LY_PRINT_SHRINK;
+    } else {
+        LY_CHECK_RET(json_print_array_open(pctx, (void *)snode));
+    }
+
+    json_print_array_close(pctx);
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Print leaf-list's metadata or opaque nodes attributes.
  * This function is supposed to be called when the leaf-list array is closed.
  *
@@ -874,7 +930,7 @@ json_print_meta_attr_leaflist(struct jsonpr_ctx *pctx)
             node = prev, prev = node->prev) {}
 
     if (node->schema) {
-        LY_CHECK_RET(json_print_member(pctx, node, 1));
+        LY_CHECK_RET(json_print_member(pctx, node, NULL, 1));
     } else {
         opaq = (struct lyd_node_opaq *)node;
         LY_CHECK_RET(json_print_member2(pctx, lyd_parent(node), opaq->format, &opaq->name, 1));
@@ -989,15 +1045,48 @@ json_print_opaq(struct jsonpr_ctx *pctx, const struct lyd_node_opaq *node)
 }
 
 /**
+ * @brief Return the following empty (leaf-)lists if no predecessor is printed.
+ *
+ * @param[in] pctx JSON printer context.
+ * @param[in] snode First schema node to consider.
+ * @param[in] siblings Siblings to check for (leaf-)list existence.
+ * @return Next (leaf-)list without instances.
+ * @return NULL if no (leaf-)list without instances matches snode or following nodes until a node is printed.
+ */
+static const struct lysc_node *
+json_print_next_empty_leaf_list(struct jsonpr_ctx *pctx, const struct lysc_node *snode, const struct lyd_node *siblings)
+{
+    struct lyd_node *match;
+
+    /* look for following empty (leaf-)lists */
+    LY_LIST_FOR(snode, snode) {
+        if (!lyd_find_sibling_schema(siblings, snode, &match) && lyd_node_should_print(match, pctx->options)) {
+            /* instance exists and will be printed */
+            break;
+        }
+
+        if (snode->nodetype & (LYS_LEAFLIST | LYS_LIST)) {
+            assert(!match);
+            return snode;
+        }
+    }
+
+    /* no empty (leaf-)list to print */
+    return NULL;
+}
+
+/**
  * @brief Print all the types of data node including its metadata.
  *
- * @param[in] ctx JSON printer context.
+ * @param[in] pctx JSON printer context.
  * @param[in] node Data node to print.
  * @return LY_ERR value.
  */
 static LY_ERR
 json_print_node(struct jsonpr_ctx *pctx, const struct lyd_node *node)
 {
+    const struct lysc_node *snode;
+
     if (!lyd_node_should_print(node, pctx->options)) {
         if (json_print_array_is_last_inst(pctx, node)) {
             json_print_array_close(pctx);
@@ -1029,6 +1118,16 @@ json_print_node(struct jsonpr_ctx *pctx, const struct lyd_node *node)
         default:
             LOGINT(pctx->ctx);
             return EXIT_FAILURE;
+        }
+
+        if (pctx->options & LYD_PRINT_EMPTY_LEAF_LIST) {
+            snode = json_print_next_empty_leaf_list(pctx, node->schema->next, node);
+            while (snode) {
+                /* print an empty (leaf-)list */
+                LY_CHECK_RET(json_print_leaf_list_empty(pctx, snode));
+
+                snode = json_print_next_empty_leaf_list(pctx, snode->next, node);
+            }
         }
     }
 
