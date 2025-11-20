@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Validation routines.
  *
- * Copyright (c) 2019 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -121,6 +121,15 @@ LY_ERR lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, 
 LY_ERR lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const struct lys_module *mod,
         const struct lysc_ext_instance *ext, uint32_t val_opts, uint32_t int_opts, struct ly_ht *getnext_ht,
         struct lyd_node **diff);
+
+/**
+ * @brief Validate data node with an extension instance, if any, by storing it in its unres set.
+ *
+ * @param[in] node Node to check for an extension instance with a validate callback.
+ * @param[in,out] ext_val Set with data nodes to validate.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_validate_node_ext(struct lyd_node *node, struct ly_set *ext_val);
 
 /**
  * @brief Validate a data tree.

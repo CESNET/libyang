@@ -1175,6 +1175,11 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
         EXT_LOGERR_INT_RET(NULL, ext);
     }
 
+    if (!(sibling->flags & LYD_EXT)) {
+        /* no validation of the node with the mount-point */
+        goto cleanup;
+    }
+
     /* get operational data with ietf-yang-library and ietf-yang-schema-mount data */
     if ((ret = lyplg_ext_get_data(ext->module->ctx, ext, lyd_parent(sibling), (void **)&ext_data, &ext_data_free))) {
         goto cleanup;

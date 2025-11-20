@@ -466,7 +466,7 @@ lyd_parser_validate_new_implicit(struct lyd_ctx *lydctx, struct lyd_node *node)
 
     /* add any missing default children */
     r = lyd_new_implicit_r(node, lyd_node_child_p(node), NULL, NULL, lydctx->ext, &lydctx->node_when, &lydctx->node_types,
-            (lydctx->val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, lydctx->val_getnext_ht, NULL);
+            &lydctx->ext_val, (lydctx->val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, lydctx->val_getnext_ht, NULL);
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
 cleanup:

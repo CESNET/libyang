@@ -1111,6 +1111,12 @@ node_parsed:
         /* add/correct flags */
         r = lyd_parser_set_data_flags(node, &meta, (struct lyd_ctx *)lydctx, ext);
         LY_CHECK_ERR_GOTO(r, rc = r; lyd_free_tree(node), cleanup);
+
+        if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {
+            /* store for ext instance node validation, if needed */
+            r = lyd_validate_node_ext(node, &lydctx->ext_val);
+            LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+        }
     }
 
     /* parser next */

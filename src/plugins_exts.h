@@ -892,10 +892,12 @@ typedef LY_ERR (*lyplg_ext_data_snode_clb)(struct lysc_ext_instance *ext, const 
 /**
  * @brief Callback for validating parsed YANG instance data described by an extension instance.
  *
- * This callback is used only for nested data definition (with a standard YANG schema parent).
+ * This callback is called both for nested data definition (with a standard YANG schema parent) when all @p sibling
+ * nodes have ::LYD_EXT flag set and for data nodes of schema nodes with the extension instance (no special flag).
  *
  * @param[in] ext Compiled extension instance.
- * @param[in] sibling First sibling with schema node returned by ::lyplg_ext_data_snode_clb.
+ * @param[in] sibling First sibling with schema node returned by ::lyplg_ext_data_snode_clb for nested data, otherwise
+ * the data node with the extension instance.
  * @param[in] dep_tree Tree to be used for validating references from the operation subtree, if operation.
  * @param[in] data_type Validated data type, can be ::LYD_TYPE_DATA_YANG, ::LYD_TYPE_RPC_YANG, ::LYD_TYPE_NOTIF_YANG,
  * or ::LYD_TYPE_REPLY_YANG.

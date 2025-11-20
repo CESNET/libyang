@@ -367,6 +367,7 @@ LY_ERR lyd_change_term_val(struct lyd_node *term, struct lyd_value *val, ly_bool
  * @param[in] top_ext Extension instance containing the definition of the data being created.
  * @param[in] node_when Optional set to add nodes with "when" conditions into.
  * @param[in] node_types Optional set to add nodes with unresolved types into.
+ * @param[in] ext_val Optional set to add nodes with extension instances into.
  * @param[in] impl_opts Implicit options (@ref implicitoptions).
  * @param[in,out] getnext_ht Getnext HT to use, new @p sparent is added to it.
  * @param[in,out] diff Validation diff.
@@ -374,7 +375,8 @@ LY_ERR lyd_change_term_val(struct lyd_node *term, struct lyd_value *val, ly_bool
  */
 LY_ERR lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
         const struct lys_module *mod, const struct lysc_ext_instance *top_ext, struct ly_set *node_when,
-        struct ly_set *node_types, uint32_t impl_opts, struct ly_ht *getnext_ht, struct lyd_node **diff);
+        struct ly_set *node_types, struct ly_set *ext_val, uint32_t impl_opts, struct ly_ht *getnext_ht,
+        struct lyd_node **diff);
 
 /**
  * @brief Check the existence and create any non-existing implicit children, recursively for containers.
@@ -386,6 +388,7 @@ LY_ERR lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const 
  * @param[in] top_ext Extension instance containing the definition of the data being created.
  * @param[in] node_when Optional set to add nodes with "when" conditions into.
  * @param[in] node_types Optional set to add nodes with unresolved types into.
+ * @param[in] ext_val Optional set to add nodes with extension instances into.
  * @param[in] impl_opts Implicit options (@ref implicitoptions).
  * @param[in,out] getnext_ht Getnext HT to use, new @p sparent is added to it.
  * @param[in,out] diff Validation diff.
@@ -393,7 +396,8 @@ LY_ERR lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const 
  */
 LY_ERR lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
         const struct lys_module *mod, const struct lysc_ext_instance *top_ext, struct ly_set *node_when,
-        struct ly_set *node_types, uint32_t impl_opts, struct ly_ht *getnext_ht, struct lyd_node **diff);
+        struct ly_set *node_types, struct ly_set *ext_val, uint32_t impl_opts, struct ly_ht *getnext_ht,
+        struct lyd_node **diff);
 
 /**
  * @brief Find the next node, before which to insert the new node.
