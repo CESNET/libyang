@@ -161,10 +161,6 @@ node_prefix(const struct lyd_node *node, const struct lysc_node *snode, const ch
 
     *mod_name = NULL;
 
-    if (!node && !snode) {
-        return;
-    }
-
     if (snode) {
         *mod_name = snode->module->name;
         if (data_dict) {
@@ -202,8 +198,9 @@ node_prefix(const struct lyd_node *node, const struct lysc_node *snode, const ch
  *
  * Accepts both regulard a well as opaq nodes.
  *
- * @param[in] node1 The first node to compare.
- * @param[in] node2 The second node to compare.
+ * @param[in] node1 First data node to compare.
+ * @param[in] snode1 First schema node to compare, if there is no @p node1.
+ * @param[in] node2 Second data node to compare.
  * @return 0 in case the nodes' modules are the same
  * @return 1 in case the nodes belongs to different modules
  */
