@@ -15,6 +15,7 @@ else()
         pcre2.h
         PATHS
         /usr/include
+        /usr/include/pcre
         /usr/local/include
         /opt/local/include
         /sw/include

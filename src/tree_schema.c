@@ -2370,7 +2370,11 @@ lys_search_localfile_file_type(const struct dirent *file, const char *wd, struct
 
     *skip = 0;
 
+#ifdef __sun__
+    if (1) {
+#else
     if ((file->d_type == DT_UNKNOWN) || (file->d_type == DT_LNK)) {
+#endif
         /* FS does not support this field or its a symbolic link, need to call stat */
         if (asprintf(&str, "%s/%s", wd, file->d_name) == -1) {
             LOGMEM(NULL);
@@ -2387,6 +2391,9 @@ lys_search_localfile_file_type(const struct dirent *file, const char *wd, struct
             /* stat - file */
             is_reg = 1;
         }
+#ifdef __sun__
+    }
+#else
     } else if (file->d_type == DT_DIR) {
         /* dirent - dir */
         is_dir = 1;
@@ -2394,6 +2401,7 @@ lys_search_localfile_file_type(const struct dirent *file, const char *wd, struct
         /* dirent - file */
         is_reg = 1;
     }
+#endif
 
     if (is_dir && (dirs->count || !implicit_cwd)) {
         /* we have another subdirectory in searchpath to explore,
