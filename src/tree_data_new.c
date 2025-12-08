@@ -245,7 +245,7 @@ lyd_create_any_datatree(const struct ly_ctx *ctx, struct ly_in *value_in, LYD_AN
         rc = lyd_parse_xml(ctx, NULL, NULL, tree, value_in, parse_opts, 0, int_opts, NULL, NULL, &lydctx);
         break;
     case LYD_ANYDATA_JSON:
-        rc = lyd_parse_json(ctx, NULL, NULL, tree, value_in, parse_opts, 0, int_opts, NULL, NULL, &lydctx);
+        rc = lyd_parse_json(ctx, NULL, NULL, NULL, tree, value_in, parse_opts, 0, int_opts, NULL, NULL, &lydctx);
         break;
     }
     if (lydctx) {
@@ -1601,42 +1601,12 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const struct lysc_ext_insta
     return LY_SUCCESS;
 }
 
-/**
- * @brief Create a new node in the data tree based on a path. All node types can be created.
- *
- * If @p path points to a list key, the key value from the predicate is used and @p value is ignored.
- * Also, if a leaf-list is being created and both a predicate is defined in @p path
- * and @p value is set, the predicate is preferred.
- *
- * For key-less lists and state leaf-lists, positional predicates can be used. If no preciate is used for these
- * nodes, they are always created.
- *
- * @param[in] parent Data parent to add to/modify, can be NULL. Note that in case a first top-level sibling is used,
- * it may no longer be first if @p path is absolute and starts with a non-existing top-level node inserted
- * before @p parent. Use ::lyd_first_sibling() to adjust @p parent in these cases.
- * @param[in] ctx libyang context, must be set if @p parent is NULL.
- * @param[in] ext Extension instance where the node being created is defined. This argument takes effect only for absolute
- * path or when the relative paths touches document root (top-level). In such cases the present extension instance replaces
- * searching for the appropriate module.
- * @param[in] path [Path](@ref howtoXPath) to create.
- * @param[in] value Value of the new leaf/leaf-list. If creating an anyxml/anydata node, the expected type depends on
- * @p value_type. For other node types, it should be NULL.
- * @param[in] value_size_bits Size of @p value in bits, must be set correctly. Ignored when
- * creating anyxml/anydata nodes.
- * @param[in] value_type Anyxml/anydata node @p value type.
- * @param[in] options Bitmask of options, see @ref pathoptions.
- * @param[out] new_parent Optional first parent node created. If only one node was created, equals to @p new_node.
- * @param[out] new_node Optional last node created.
- * @return LY_ERR value.
- */
-static LY_ERR
-lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, const char *path,
-        const void *value, uint32_t value_size_bits, LYD_ANYDATA_VALUETYPE value_type, uint32_t options,
-        struct lyd_node **new_parent, struct lyd_node **new_node)
+LY_ERR
+lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, const struct lysc_ext_instance *ext,
+        struct ly_path *p, const char *path, const void *value, uint32_t value_size_bits, LYD_ANYDATA_VALUETYPE value_type,
+        uint32_t options, struct lyd_node **new_parent, struct lyd_node **new_node)
 {
     LY_ERR ret = LY_SUCCESS, r;
-    struct lyxp_expr *exp = NULL;
-    struct ly_path *p = NULL;
     struct lyd_node *nparent = NULL, *nnode = NULL, *node = NULL, *cur_parent, *iter;
     const struct lysc_node *schema;
     const char *val = NULL;
@@ -1646,22 +1616,8 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
     LY_VALUE_FORMAT format;
     uint32_t value_size, hints, count;
 
-    assert(parent || ctx);
-    assert(path && ((path[0] == '/') || parent));
-
-    if (!ctx) {
-        ctx = LYD_CTX(parent);
-    }
     LY_CHECK_GOTO(ret = lyd_new_val_get_format(options, &format), cleanup);
     value_size = LYPLG_BITS2BYTES(value_size_bits);
-
-    /* parse path */
-    LY_CHECK_GOTO(ret = ly_path_parse(ctx, NULL, path, 0, 0, LY_PATH_BEGIN_EITHER, LY_PATH_PREFIX_FIRST,
-            LY_PATH_PRED_SIMPLE, &exp), cleanup);
-
-    /* compile path */
-    LY_CHECK_GOTO(ret = ly_path_compile(ctx, NULL, lyd_node_schema(parent), ext, exp, options & LYD_NEW_VAL_OUTPUT ?
-            LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY, 0, LY_VALUE_JSON, NULL, &p), cleanup);
 
     /* check the compiled path before searching existing nodes, it may be shortened */
     orig_count = LY_ARRAY_COUNT(p);
@@ -1856,13 +1812,11 @@ next_iter:
     }
 
 cleanup:
-    lyxp_expr_free(exp);
     if (p) {
         while (orig_count > LY_ARRAY_COUNT(p)) {
             LY_ARRAY_INCREMENT(p);
         }
     }
-    ly_path_free(p);
     if (!ret) {
         /* set out params only on success */
         if (new_parent) {
@@ -1874,6 +1828,68 @@ cleanup:
     } else {
         lyd_free_tree(nparent);
     }
+    return ret;
+}
+
+/**
+ * @brief Create a new node in the data tree based on a path. All node types can be created.
+ *
+ * If @p path points to a list key, the key value from the predicate is used and @p value is ignored.
+ * Also, if a leaf-list is being created and both a predicate is defined in @p path
+ * and @p value is set, the predicate is preferred.
+ *
+ * For key-less lists and state leaf-lists, positional predicates can be used. If no preciate is used for these
+ * nodes, they are always created.
+ *
+ * @param[in] parent Data parent to add to/modify, can be NULL. Note that in case a first top-level sibling is used,
+ * it may no longer be first if @p path is absolute and starts with a non-existing top-level node inserted
+ * before @p parent. Use ::lyd_first_sibling() to adjust @p parent in these cases.
+ * @param[in] ctx libyang context, must be set if @p parent is NULL.
+ * @param[in] ext Extension instance where the node being created is defined. This argument takes effect only for absolute
+ * path or when the relative paths touches document root (top-level). In such cases the present extension instance replaces
+ * searching for the appropriate module.
+ * @param[in] path [Path](@ref howtoXPath) to create.
+ * @param[in] value Value of the new leaf/leaf-list (const char *) in ::LY_VALUE_JSON format. If creating an
+ * anyxml/anydata node, the expected type depends on @p value_type. For other node types, it should be NULL.
+ * @param[in] value_size_bits Size of @p value in bits, must be set correctly. Ignored when
+ * creating anyxml/anydata nodes.
+ * @param[in] value_type Anyxml/anydata node @p value type.
+ * @param[in] options Bitmask of options, see @ref pathoptions.
+ * @param[out] new_parent Optional first parent node created. If only one node was created, equals to @p new_node.
+ * @param[out] new_node Optional last node created.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, const char *path,
+        const void *value, uint32_t value_size_bits, LYD_ANYDATA_VALUETYPE value_type, uint32_t options,
+        struct lyd_node **new_parent, struct lyd_node **new_node)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyxp_expr *exp = NULL;
+    struct ly_path *p = NULL;
+
+    assert(parent || ctx);
+    assert(path && ((path[0] == '/') || parent));
+
+    if (!ctx) {
+        ctx = LYD_CTX(parent);
+    }
+
+    /* parse path */
+    LY_CHECK_GOTO(ret = ly_path_parse(ctx, NULL, path, 0, 0, LY_PATH_BEGIN_EITHER, LY_PATH_PREFIX_FIRST,
+            LY_PATH_PRED_SIMPLE, &exp), cleanup);
+
+    /* compile path */
+    LY_CHECK_GOTO(ret = ly_path_compile(ctx, NULL, lyd_node_schema(parent), ext, exp, options & LYD_NEW_VAL_OUTPUT ?
+            LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY, 0, LY_VALUE_JSON, NULL, &p), cleanup);
+
+    /* create nodes */
+    LY_CHECK_GOTO(ret = lyd_new_path_create(parent, ctx, ext, p, path, value, value_size_bits, value_type, options,
+            new_parent, new_node), cleanup);
+
+cleanup:
+    lyxp_expr_free(exp);
+    ly_path_free(p);
     return ret;
 }
 

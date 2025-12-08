@@ -36,6 +36,7 @@ setup(void **state)
             "leaf foo { type string;}"
             "container c {"
             "    leaf x {type string;}"
+            "    leaf-list y { type uint8; }"
             "    action act { input { leaf al {type string;} } output { leaf al {type uint8;} } }"
             "    notification n1 { leaf nl {type string;} }"
             "}"
@@ -43,6 +44,7 @@ setup(void **state)
             "anydata any {config false;}"
             "anyxml axml;"
             "leaf-list ll1 { type uint8; }"
+            "leaf-list ll2 { type string; }"
             "leaf foo2 { type string; default \"default-val\"; }"
             "leaf foo3 { type uint32; }"
             "leaf foo4 { type uint64; }"
@@ -68,6 +70,62 @@ setup(void **state)
 
 #define CHECK_LYD_STRING(IN_MODEL, PRINT_OPTION, TEXT) \
     CHECK_LYD_STRING_PARAM(IN_MODEL, TEXT, LYD_JSON, PRINT_OPTION)
+
+static void
+test_baretop_leaf(void **state)
+{
+    struct lyd_node *tree;
+    struct ly_in *in;
+    int ret, i;
+
+    /* please bear in mind that a leaflist always has to have an array value (bare value without square brackets is not
+     * allowed according to the RFC7951)*/
+    char *xpath[] = {"/a:foo", "/a:ll2", "/a:ll1", "/a:c", "/a:l1[a=\"mi\"][b=\"ni\"][c=12]/b"};
+    char *data[] = {"\"foo value\"", "[\"abc\", \"def\", \"ghi\"]", "[1, 2, 3]", "{\"x\":\"foo value\"}", "\"ni\""};
+    char *exp_str_sib[] = {
+        "{\"a:foo\":\"foo value\"}",
+        "{\"a:ll2\":[\"abc\",\"def\",\"ghi\"]}",
+        "{\"a:ll1\":[1,2,3]}",
+        "{\"a:c\":{\"x\":\"foo value\"}}",
+        "{\"a:l1\":[{\"a\":\"mi\",\"b\":\"ni\",\"c\":12}]}",
+    };
+
+    for (i = 0; i < 5; i++) {
+        tree = NULL;
+
+        if ((ret = ly_in_new_memory(data[i], &in))) {
+            fail_msg("Print err 0x%d; MSG: %s", ret, ly_err_last(UTEST_LYCTX)->msg);
+        }
+
+        if ((ret = lyd_parse_value_fragment(UTEST_LYCTX, xpath[i], in, LYD_JSON, 0, LYD_PARSE_JSON_NULL, 0, &tree))) {
+            fail_msg("Print err 0x%d; MSG: %s", ret, ly_err_last(UTEST_LYCTX)->msg);
+        }
+
+        CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, exp_str_sib[i]);
+        lyd_free_all(tree);
+        ly_in_free(in, 0);
+    }
+
+    tree = NULL;
+
+    if ((ret = ly_in_new_memory("\"nx\"", &in))) {
+        fail_msg("Print err 0x%d; MSG: %s", ret, ly_err_last(UTEST_LYCTX)->msg);
+    }
+
+    ret = lyd_parse_value_fragment(UTEST_LYCTX, "/a:l1[a=\"mi\"][b=\"ni\"][c=12]/b", in, LYD_JSON, 0, LYD_PARSE_JSON_NULL,
+            0, &tree);
+    if (ret != LY_EINVAL) {
+        fail_msg("Print err 0x%d; MSG: %s", ret, ly_err_last(UTEST_LYCTX)->msg);
+    }
+    if (strcmp(ly_err_last(UTEST_LYCTX)->msg, "Path [/a:l1[a=\"mi\"][b=\"ni\"][c=12]/b] contains a different key [ni] than data [nx]")) {
+        fail_msg("Print err 0x%d; MSG: %s  :differs from:  "
+                "Path [/a:l1[a=\"mi\"][b=\"ni\"][c=12]/b] contains a different key [ni] than data [nx]", ret, ly_err_last(UTEST_LYCTX)->msg);
+    }
+
+    ly_err_clean(UTEST_LYCTX, NULL);
+    lyd_free_all(tree);
+    ly_in_free(in, 0);
+}
 
 static void
 test_leaf(void **state)
@@ -969,6 +1027,7 @@ int
 main(void)
 {
     const struct CMUnitTest tests[] = {
+        UTEST(test_baretop_leaf, setup),
         UTEST(test_leaf, setup),
         UTEST(test_leaflist, setup),
         UTEST(test_anydata, setup),

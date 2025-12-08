@@ -935,7 +935,7 @@ cleanup:
  */
 static void
 lydjson_maintain_children(struct lyd_node *parent, struct lyd_node **first_p, struct lyd_node **node_p, ly_bool last,
-        struct lysc_ext_instance *ext)
+        const struct lysc_ext_instance *ext)
 {
     if (!*node_p) {
         return;
@@ -1822,15 +1822,17 @@ cleanup:
  * @brief Common start of JSON parser processing different types of the input data.
  *
  * @param[in] ctx libyang context
+ * @param[in] schema Schema node of the potential bare value to check.
  * @param[in] in Input structure.
  * @param[in] parse_opts Options for parser, see @ref dataparseroptions.
  * @param[in] val_opts Options for the validation phase, see @ref datavalidationoptions.
+ * @param[out] status_p Initial status of the input structure.
  * @param[out] lydctx_p Data parser context to finish validation.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts,
-        struct lyd_json_ctx **lydctx_p)
+lyd_parse_json_init(const struct ly_ctx *ctx, const struct lysc_node *schema, struct ly_in *in, uint32_t parse_opts,
+        uint32_t val_opts, enum LYJSON_PARSER_STATUS *status_p, struct lyd_json_ctx **lydctx_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_json_ctx *lydctx;
@@ -1849,28 +1851,139 @@ lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_o
     status = lyjson_ctx_status(lydctx->jsonctx);
 
     /* parse_opts & LYD_PARSE_SUBTREE not implemented */
-    if (status != LYJSON_OBJECT) {
-        /* expecting top-level object */
-        LOGVAL(ctx, LYVE_SYNTAX_JSON, "Expected top-level JSON object, but %s found.", lyjson_token2str(status));
+    /* there are two options: either we want to parse a bare JSON value or a JSON object
+     * node of the bare JSON value has to have a schema, otherwise we do not know where to put the value
+     * the only types of nodes that can take on a value are a leaf (number, string or bool) and a leaf-list (array) */
+    if (schema &&
+            (((status == LYJSON_ARRAY) && (schema->nodetype & LYS_LEAFLIST)) ||
+            (((status == LYJSON_NUMBER) || (status == LYJSON_STRING) || (status == LYJSON_FALSE) ||
+            (status == LYJSON_TRUE) || (status == LYJSON_NULL) || (status == LYJSON_ARRAY)) && (schema->nodetype & LYS_LEAF)))) {
+        /* bare value (bare anydata 'value = object' is not supported) */
+    } else if (status == LYJSON_OBJECT) {
+        /* JSON object */
+    } else {
+        /* expecting top-level object or bare value */
+        LOGVAL(ctx, LYVE_SYNTAX_JSON, "Expected top-level JSON object or correct bare value, but %s found.", lyjson_token2str(status));
         *lydctx_p = NULL;
         lyd_json_ctx_free((struct lyd_ctx *)lydctx);
         return LY_EVALID;
     }
 
     *lydctx_p = lydctx;
+    if (status_p) {
+        *status_p = status;
+    }
     return LY_SUCCESS;
+}
+
+/**
+ * @brief Parse a bare JSON value.
+ *
+ * @param[in] lydctx Data parser context.
+ * @param[in,out] status Current status of the data parser context.
+ * @param[in] parent Parent to connect the parsed nodes to, if any.
+ * @param[in] schema Optional schema node of the parsed node (mandatory when parsing JSON value fragment).
+ * @param[in,out] first_p Pointer to the first top-level parsed node, used only if @p parent is NULL.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_parse_json_bare_value(struct lyd_json_ctx *lydctx, enum LYJSON_PARSER_STATUS *status, struct lyd_node *parent,
+        const struct lysc_node *schema, struct lyd_node **first_p)
+{
+    LY_ERR r, rc = LY_SUCCESS;
+    const struct ly_ctx *ctx = lydctx->jsonctx->ctx;
+    struct lyd_node *node = NULL;
+    const char *expected = NULL;
+
+    assert(schema);
+
+    /* this branch partly copies the behavior of lydjson_subtree_r() */
+
+    /* set expected representation */
+    switch (schema->nodetype) {
+    case LYS_LEAFLIST:
+        expected = "array of values";
+        break;
+    case LYS_LEAF:
+        if (*status == LYJSON_ARRAY) {
+            expected = "[null]";
+        } else {
+            expected = "value";
+        }
+        break;
+    }
+
+    /* check the representation according to the nodetype and then continue with the content */
+    /* for now object values are not supported (anydata) */
+    /* for now extensions not supported */
+    switch (schema->nodetype) {
+    case LYS_LEAFLIST:
+        LY_CHECK_GOTO(*status != LYJSON_ARRAY, representation_error);
+
+        /* process all the values/objects */
+        do {
+            /* move into array/next value */
+            r = lyjson_ctx_next(lydctx->jsonctx, status);
+            LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+            if (*status == LYJSON_ARRAY_CLOSED) {
+                /* empty array, fine... */
+                break;
+            }
+
+            r = lydjson_parse_instance(lydctx, parent, first_p, schema, NULL, schema->name, strlen(schema->name),
+                    NULL, 0, status, &node);
+            if (r == LY_ENOT) {
+                goto representation_error;
+            }
+            LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+
+            lydjson_maintain_children(parent, first_p, &node,
+                    lydctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT, NULL);
+
+            /* move after the item(s) */
+            r = lyjson_ctx_next(lydctx->jsonctx, status);
+            LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+        } while (*status == LYJSON_ARRAY_NEXT);
+
+        break;
+    case LYS_LEAF:
+        /* process the value/object */
+        r = lydjson_parse_instance(lydctx, parent, first_p, schema, NULL, schema->name, strlen(schema->name),
+                NULL, 0, status, &node);
+        if (r == LY_ENOT) {
+            goto representation_error;
+        }
+        LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+
+        /* finally connect the parsed node, is zeroed */
+        lydjson_maintain_children(parent, first_p, &node,
+                lydctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT, NULL);
+        break;
+    }
+
+    goto cleanup;
+
+representation_error:
+    LOGVAL(ctx, LYVE_SYNTAX_JSON, "Expecting JSON %s but %s \"%s\" is represented in input data as %s.",
+            expected, lys_nodetype2str(schema->nodetype), schema->name, lyjson_token2str(*status));
+    rc = LY_EVALID;
+
+cleanup:
+    lyd_free_tree(node);
+    return rc;
 }
 
 LY_ERR
 lyd_parse_json(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
-        struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts,
-        struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p)
+        const struct lysc_node *schema, struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts,
+        uint32_t val_opts, uint32_t int_opts, struct ly_set *parsed, ly_bool *subtree_sibling,
+        struct lyd_ctx **lydctx_p)
 {
     LY_ERR r, rc = LY_SUCCESS;
     struct lyd_json_ctx *lydctx = NULL;
-    enum LYJSON_PARSER_STATUS status;
+    enum LYJSON_PARSER_STATUS status = LYJSON_ERROR;
 
-    rc = lyd_parse_json_init(ctx, in, parse_opts, val_opts, &lydctx);
+    rc = lyd_parse_json_init(ctx, schema, in, parse_opts, val_opts, &status, &lydctx);
     LY_CHECK_GOTO(rc, cleanup);
 
     lydctx->int_opts = int_opts;
@@ -1879,17 +1992,25 @@ lyd_parse_json(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, st
     /* find the operation node if it exists already */
     LY_CHECK_GOTO(rc = lyd_parser_find_operation(parent, int_opts, &lydctx->op_node), cleanup);
 
-    /* read subtree(s) */
-    do {
-        r = lydjson_subtree_r(lydctx, parent, first_p, parsed);
-        LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+    if (status != LYJSON_OBJECT) {
+        /* parse bare JSON value */
+        r = lyd_parse_json_bare_value(lydctx, &status, parent, schema, first_p);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+    } else {
+        /* parse JSON object */
 
-        status = lyjson_ctx_status(lydctx->jsonctx);
+        /* read subtree(s) */
+        do {
+            r = lydjson_subtree_r(lydctx, parent, first_p, parsed);
+            LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
-        if (!(int_opts & LYD_INTOPT_WITH_SIBLINGS)) {
-            break;
-        }
-    } while (status == LYJSON_OBJECT_NEXT);
+            status = lyjson_ctx_status(lydctx->jsonctx);
+
+            if (!(int_opts & LYD_INTOPT_WITH_SIBLINGS)) {
+                break;
+            }
+        } while (status == LYJSON_OBJECT_NEXT);
+    }
 
     if ((int_opts & LYD_INTOPT_NO_SIBLINGS) && lydctx->jsonctx->in->current[0] && (status != LYJSON_OBJECT_CLOSED)) {
         LOGVAL(ctx, LYVE_SYNTAX, "Unexpected sibling node.");
@@ -1927,11 +2048,16 @@ cleanup:
     if (rc && (!lydctx || !(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
         lyd_json_ctx_free((struct lyd_ctx *)lydctx);
     } else {
-        *lydctx_p = (struct lyd_ctx *)lydctx;
-
         /* the JSON context is no more needed, freeing it also stops logging line numbers which would be confusing now */
         lyjson_ctx_free(lydctx->jsonctx);
         lydctx->jsonctx = NULL;
+
+        /* set optional lydctx pointer, otherwise free */
+        if (lydctx_p) {
+            *lydctx_p = (struct lyd_ctx *)lydctx;
+        } else {
+            lyd_json_ctx_free((struct lyd_ctx *)lydctx);
+        }
     }
     return rc;
 }
@@ -2020,7 +2146,7 @@ lyd_parse_json_restconf(const struct ly_ctx *ctx, const struct lysc_ext_instance
     assert(!(parse_opts & LYD_PARSE_SUBTREE));
 
     /* init context */
-    rc = lyd_parse_json_init(ctx, in, parse_opts, val_opts, &lydctx);
+    rc = lyd_parse_json_init(ctx, NULL, in, parse_opts, val_opts, NULL, &lydctx);
     LY_CHECK_GOTO(rc, cleanup);
     lydctx->ext = ext;
 

@@ -286,6 +286,7 @@ LY_ERR lyd_parse_xml_netconf(const struct ly_ctx *ctx, const struct lysc_ext_ins
  * @param[in] ctx libyang context.
  * @param[in] ext Optional extension instance to parse data following the schema tree specified in the extension instance
  * @param[in] parent Parent to connect the parsed nodes to, if any.
+ * @param[in] schema Optional schema node of the parsed node (mandatory when parsing JSON value fragment).
  * @param[in,out] first_p Pointer to the first top-level parsed node, used only if @p parent is NULL.
  * @param[in] in Input structure.
  * @param[in] parse_opts Options for parser, see @ref dataparseroptions.
@@ -293,12 +294,13 @@ LY_ERR lyd_parse_xml_netconf(const struct ly_ctx *ctx, const struct lysc_ext_ins
  * @param[in] int_opts Internal data parser options.
  * @param[out] parsed Set to add all the parsed siblings into.
  * @param[out] subtree_sibling Set if ::LYD_PARSE_SUBTREE is used and another subtree is following in @p in.
- * @param[out] lydctx_p Data parser context to finish validation.
+ * @param[out] lydctx_p Optional data parser context to finish validation.
  * @return LY_ERR value.
  */
 LY_ERR lyd_parse_json(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
-        struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts,
-        struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p);
+        const struct lysc_node *schema, struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts,
+        uint32_t val_opts, uint32_t int_opts, struct ly_set *parsed, ly_bool *subtree_sibling,
+        struct lyd_ctx **lydctx_p);
 
 /**
  * @brief Parse JSON string as a RESTCONF message.

@@ -358,6 +358,39 @@ LY_ERR lyd_create_opaq(const struct ly_ctx *ctx, const char *name, uint32_t name
 LY_ERR lyd_change_term_val(struct lyd_node *term, struct lyd_value *val, ly_bool use_val, ly_bool is_dflt);
 
 /**
+ * @brief Create a new node in the data tree based on a ly_path structure @p. All node types can be created.
+ *
+ * If @p path points to a list key, the key value from the predicate is used and @p value is ignored.
+ * Also, if a leaf-list is being created and both a predicate is defined in @p path
+ * and @p value is set, the predicate is preferred.
+ *
+ * For key-less lists and state leaf-lists, positional predicates can be used. If no preciate is used for these
+ * nodes, they are always created.
+ *
+ * @param[in] parent Data parent to add to/modify, can be NULL. Note that in case a first top-level sibling is used,
+ * it may no longer be first if @p path is absolute and starts with a non-existing top-level node inserted
+ * before @p parent. Use ::lyd_first_sibling() to adjust @p parent in these cases.
+ * @param[in] ctx libyang context, must be set if @p parent is NULL.
+ * @param[in] ext Extension instance where the node being created is defined. This argument takes effect only for absolute
+ * path or when the relative paths touches document root (top-level). In such cases the present extension instance replaces
+ * searching for the appropriate module.
+ * @param[in] p Compiled path.
+ * @param[in] path [Path](@ref howtoXPath) to create.
+ * @param[in] value Value of the new leaf/leaf-list (const char *) in ::LY_VALUE_JSON format. If creating an
+ * anyxml/anydata node, the expected type depends on @p value_type. For other node types, it should be NULL.
+ * @param[in] value_size_bits Size of @p value in bits, must be set correctly. Ignored when
+ * creating anyxml/anydata nodes.
+ * @param[in] value_type Anyxml/anydata node @p value type.
+ * @param[in] options Bitmask of new value creation options, see @ref newvaloptions.
+ * @param[out] new_parent Optional first parent node created. If only one node was created, equals to @p new_node.
+ * @param[out] new_node Optional last node created.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, const struct lysc_ext_instance *ext,
+        struct ly_path *p, const char *path, const void *value, uint32_t value_size_bits, LYD_ANYDATA_VALUETYPE value_type,
+        uint32_t options, struct lyd_node **new_parent, struct lyd_node **new_node);
+
+/**
  * @brief Check the existence and create any non-existing implicit children.
  *
  * @param[in] parent Parent of the potential default values, NULL for top-level siblings.

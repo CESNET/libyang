@@ -53,6 +53,8 @@
 #include "xml.h"
 #include "xpath.h"
 
+static int lyd_insert_has_keys(const struct lyd_node *list);
+
 static LY_ERR lyd_compare_siblings_(const struct lyd_node *node1, const struct lyd_node *node2, uint32_t options,
         ly_bool parental_schemas_checked);
 
@@ -130,7 +132,7 @@ lyd_parse(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct 
                 &subtree_sibling, &lydctx);
         break;
     case LYD_JSON:
-        r = lyd_parse_json(ctx, ext, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed,
+        r = lyd_parse_json(ctx, ext, parent, NULL, first_p, in, parse_opts, val_opts, int_opts, &parsed,
                 &subtree_sibling, &lydctx);
         break;
     case LYD_LYB:
@@ -279,6 +281,103 @@ lyd_parse_data_path(const struct ly_ctx *ctx, const char *path, LYD_FORMAT forma
     return ret;
 }
 
+LIBYANG_API_DEF LY_ERR
+lyd_parse_value_fragment(const struct ly_ctx *ctx, const char *path, struct ly_in *in, LYD_FORMAT format,
+        uint32_t new_val_options, uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyxp_expr *exp = NULL;
+    struct ly_path *p = NULL;
+    struct lyd_node *new_last_parent = NULL, *new_top_parent = NULL;
+    const struct lysc_node *new_node_schema = NULL;
+    ly_bool p_decremented = 0;
+    struct lyd_node *iter = NULL, *parent = NULL;
+    const char *key_value = NULL;
+    const char *path_key_value = NULL;
+
+    LY_CHECK_ARG_RET(ctx, ctx, path && (path[0] == '/'), LY_EINVAL);
+
+    /* other formats are not supported for now */
+    if (format != LYD_JSON) {
+        LOGARG(ctx, "invalid format (only JSON supported)");
+        return LY_EINVAL;
+    }
+
+    /* parse path */
+    LY_CHECK_GOTO(ret = ly_path_parse(ctx, NULL, path, 0, 0, LY_PATH_BEGIN_EITHER, LY_PATH_PREFIX_FIRST,
+            LY_PATH_PRED_SIMPLE, &exp), cleanup);
+
+    /* compile path */
+    LY_CHECK_GOTO(ret = ly_path_compile(ctx, NULL, NULL, NULL, exp, new_val_options & LYD_NEW_VAL_OUTPUT ?
+            LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY, 0, LY_VALUE_JSON, NULL, &p), cleanup);
+
+    /* has to have a schema */
+    new_node_schema = p[LY_ARRAY_COUNT(p) - 1].node;
+
+    /* only the term nodes get their path shortened */
+    if (new_node_schema->nodetype & LYD_NODE_TERM) {
+        /* shorten the ly_path by one element (to avoid a leaflist without predicate at the end) */
+        LY_ARRAY_DECREMENT(p);
+        p_decremented = 1;
+    }
+
+    if (LY_ARRAY_COUNT(p)) {
+        /* create nodes */
+        LY_CHECK_GOTO(ret = lyd_new_path_create(NULL, ctx, NULL, p, path, NULL, 0, 0, new_val_options, &new_top_parent,
+                &new_last_parent), cleanup);
+    }
+
+    /* parse the json value */
+    LY_CHECK_GOTO(ret = lyd_parse_json(ctx, NULL, new_last_parent, new_node_schema, new_last_parent ? NULL : &new_top_parent,
+            in, parse_options, validate_options, 0, NULL, NULL, NULL), cleanup);
+
+    /* when setting keys they have to have a correct value (same as in the path) */
+    if (lysc_is_key(new_node_schema)) {
+        LY_LIST_FOR(lyd_child(new_last_parent), iter) {
+            /* look for the same schema as is in the path */
+            if (!strcmp(iter->schema->name, new_node_schema->name)) {
+                key_value = lyd_get_value(iter);
+                if (!path_key_value) {
+                    path_key_value = key_value;
+                } else {
+                    LY_CHECK_ERR_GOTO(strcmp(key_value, path_key_value), LOGVAL(ctx, LYVE_DATA,
+                            "Path [%s] contains a different key [%s] than data [%s]", path, path_key_value, key_value);
+                            ret = LY_EINVAL, cleanup);
+
+                    /* when unlinking duplicate key we need to recalculate the list hash,
+                       so store the list (parent) and recalculate the hash after unlinking the duplicate key */
+                    parent = lyd_parent(iter);
+                    assert(parent);
+
+                    lyd_unlink(iter);
+                    lyd_free_tree(iter);
+
+                    lyd_unlink_hash(parent);
+                    lyd_hash(parent);
+                    lyd_insert_hash(parent);
+                    break;
+                }
+            }
+        }
+    }
+
+    /* set output tree */
+    if (tree) {
+        *tree = new_top_parent;
+    }
+
+cleanup:
+    lyxp_expr_free(exp);
+    if (p_decremented) {
+        LY_ARRAY_INCREMENT(p);
+    }
+    ly_path_free(p);
+    if (ret) {
+        lyd_free_all(new_top_parent);
+    }
+    return ret;
+}
+
 /**
  * @brief Parse YANG data into an operation data tree, in case the extension instance is specified, keep the searching
  * for schema nodes locked inside the extension instance.
@@ -401,7 +500,7 @@ lyd_parse_op_(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
         rc = lyd_parse_xml(ctx, ext, parent, &first, in, parse_opts, val_opts, int_opts, &parsed, NULL, &lydctx);
         break;
     case LYD_JSON:
-        rc = lyd_parse_json(ctx, ext, parent, &first, in, parse_opts, val_opts, int_opts, &parsed, NULL, &lydctx);
+        rc = lyd_parse_json(ctx, ext, parent, NULL, &first, in, parse_opts, val_opts, int_opts, &parsed, NULL, &lydctx);
         break;
     case LYD_LYB:
         rc = lyd_parse_lyb(ctx, ext, parent, &first, in, parse_opts, val_opts, int_opts, &parsed, NULL, &lydctx);
