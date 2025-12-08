@@ -111,6 +111,13 @@ struct ly_out;
                                                       are not explicitly present in the original data tree despite their
                                                       value is equal to their default value.  There is the same limitation regarding
                                                       the presence of ietf-netconf-with-defaults module in libyang context. */
+#define LYD_PRINT_JSON_NO_NESTED_PREFIX  0x0100  /**< Do not print the prefix in JSON data for nested nodes
+                                                      (non-top-level). By nested we mean any node that does not appear
+                                                      in the top-level of a corresponding schema. The printed data do
+                                                      not have the information about the module they belong to. When
+                                                      parsing such data it is important to include this information
+                                                      elsewhere (e.g. for lyd_parse_value_fragment() the module name
+                                                      should be part of the path parameter). */
 /**
  * @}
  */

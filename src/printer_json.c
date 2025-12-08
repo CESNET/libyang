@@ -307,7 +307,7 @@ json_print_member(struct jsonpr_ctx *pctx, const struct lyd_node *node, const st
     }
 
     PRINT_COMMA;
-    if ((LEVEL == 1) || json_nscmp(node, snode, pctx->parent)) {
+    if (json_nscmp(node, snode, pctx->parent)) {
         /* print "namespace" */
         node_prefix(node, snode, &pref, NULL);
         ly_print_(pctx->out, "%*s\"%s%s:%s\":%s", INDENT, is_attr ? "@" : "", pref, name, DO_FORMAT ? " " : "");
@@ -1174,6 +1174,10 @@ json_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t option
     /* content */
     LY_LIST_FOR(root, node) {
         pctx.root = node;
+        if (options & LYD_PRINT_JSON_NO_NESTED_PREFIX) {
+            /* update parent, if it has the same namespace it will not be printed */
+            pctx.parent = (const struct lyd_node *)(node->parent);
+        }
         LY_CHECK_RET(json_print_node(&pctx, node));
         if (!(options & LYD_PRINT_SIBLINGS)) {
             break;

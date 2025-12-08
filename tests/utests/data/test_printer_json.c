@@ -135,6 +135,27 @@ test_empty_leaf_list(void **state)
     lyd_free_all(tree);
 }
 
+static void
+test_no_json_nested_prefix(void **state)
+{
+    struct lyd_node *tree;
+    char *buffer = NULL;
+    const char *data = "{\"schema2:a\":{\"b\":{\"c\":\"dflt\"}}}";
+
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&buffer, tree, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_WD_ALL |
+            LYD_PRINT_JSON_NO_NESTED_PREFIX));
+    CHECK_STRING(buffer, "{\"schema2:a\":{\"b\":{\"c\":\"dflt\"}}}");
+    free(buffer);
+
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&buffer, lyd_child(tree), LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_WD_ALL |
+            LYD_PRINT_JSON_NO_NESTED_PREFIX));
+    CHECK_STRING(buffer, "{\"b\":{\"c\":\"dflt\"}}");
+    free(buffer);
+
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -142,6 +163,7 @@ main(void)
         UTEST(test_container_presence, setup),
         UTEST(test_empty_container_wd_trim, setup),
         UTEST(test_empty_leaf_list, setup),
+        UTEST(test_no_json_nested_prefix, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
