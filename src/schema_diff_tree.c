@@ -37,73 +37,75 @@ static LY_ERR schema_diff_ext_inst(const struct lysc_ext_instance *ext, int is_c
  * @return String form of the changed statement.
  */
 static const char *
-schema_diff_changed2str(enum lysc_diff_changed_e ch)
+schema_diff_changed2str(enum lys_diff_changed_e ch)
 {
     switch (ch) {
-    case LYSC_CHANGED_NONE:
+    case LYS_CHANGED_NONE:
         break;
-    case LYSC_CHANGED_BASE:
+    case LYS_CHANGED_BASE:
         return "base";
-    case LYSC_CHANGED_BIT:
+    case LYS_CHANGED_BIT:
         return "bit";
-    case LYSC_CHANGED_CONFIG:
+    case LYS_CHANGED_CONFIG:
         return "config";
-    case LYSC_CHANGED_CONTACT:
+    case LYS_CHANGED_CONTACT:
         return "contact";
-    case LYSC_CHANGED_DEFAULT:
+    case LYS_CHANGED_DEFAULT:
         return "default";
-    case LYSC_CHANGED_DESCRIPTION:
+    case LYS_CHANGED_DESCRIPTION:
         return "description";
-    case LYSC_CHANGED_ENUM:
+    case LYS_CHANGED_ENUM:
         return "enum";
-    case LYSC_CHANGED_ERR_APP_TAG:
+    case LYS_CHANGED_ERR_APP_TAG:
         return "error-app-tag";
-    case LYSC_CHANGED_ERR_MSG:
+    case LYS_CHANGED_ERR_MSG:
         return "error-message";
-    case LYSC_CHANGED_EXT_INST:
+    case LYS_CHANGED_EXT_INST:
         return "extension-instance";
-    case LYSC_CHANGED_FRAC_DIG:
+    case LYS_CHANGED_FRAC_DIG:
         return "fraction-digits";
-    case LYSC_CHANGED_IDENT:
+    case LYS_CHANGED_IDENT:
         return "identity";
-    case LYSC_CHANGED_LENGTH:
+    case LYS_CHANGED_LENGTH:
         return "length";
-    case LYSC_CHANGED_MANDATORY:
+    case LYS_CHANGED_MANDATORY:
         return "mandatory";
-    case LYSC_CHANGED_MAX_ELEM:
+    case LYS_CHANGED_MAX_ELEM:
         return "max-elements";
-    case LYSC_CHANGED_MIN_ELEM:
+    case LYS_CHANGED_MIN_ELEM:
         return "min-elements";
-    case LYSC_CHANGED_MUST:
+    case LYS_CHANGED_MUST:
         return "must";
-    case LYSC_CHANGED_NODE:
+    case LYS_CHANGED_NODE:
         return "node";
-    case LYSC_CHANGED_ORDERED_BY:
+    case LYS_CHANGED_ORDERED_BY:
         return "ordered-by";
-    case LYSC_CHANGED_ORGANIZATION:
+    case LYS_CHANGED_ORGANIZATION:
         return "organization";
-    case LYSC_CHANGED_PATH:
+    case LYS_CHANGED_PATH:
         return "path";
-    case LYSC_CHANGED_PATTERN:
+    case LYS_CHANGED_PATTERN:
         return "pattern";
-    case LYSC_CHANGED_PRESENCE:
+    case LYS_CHANGED_PRESENCE:
         return "presence";
-    case LYSC_CHANGED_RANGE:
+    case LYS_CHANGED_RANGE:
         return "range";
-    case LYSC_CHANGED_REFERENCE:
+    case LYS_CHANGED_REFERENCE:
         return "reference";
-    case LYSC_CHANGED_REQ_INSTANCE:
+    case LYS_CHANGED_REQ_INSTANCE:
         return "require-instance";
-    case LYSC_CHANGED_STATUS:
+    case LYS_CHANGED_STATUS:
         return "status";
-    case LYSC_CHANGED_TYPE:
+    case LYS_CHANGED_TYPE:
         return "type";
-    case LYSC_CHANGED_UNITS:
+    case LYS_CHANGED_UNITS:
         return "units";
-    case LYSC_CHANGED_UNIQUE:
+    case LYS_CHANGED_UNIQUE:
         return "unique";
-    case LYSC_CHANGED_WHEN:
+    case LYS_CHANGED_WHEN:
         return "when";
+    case LYS_CHANGED_TYPEDEF:
+        return "typedef";
     }
 
     return NULL;
@@ -116,16 +118,16 @@ schema_diff_changed2str(enum lysc_diff_changed_e ch)
  * @return String form of the change type.
  */
 static const char *
-schema_diff_change2str(enum lysc_diff_change_e ch)
+schema_diff_change2str(enum lys_diff_change_e ch)
 {
     switch (ch) {
-    case LYSC_CHANGE_MODIFIED:
+    case LYS_CHANGE_MODIFIED:
         return "modified";
-    case LYSC_CHANGE_ADDED:
+    case LYS_CHANGE_ADDED:
         return "added";
-    case LYSC_CHANGE_REMOVED:
+    case LYS_CHANGE_REMOVED:
         return "removed";
-    case LYSC_CHANGE_MOVED:
+    case LYS_CHANGE_MOVED:
         return "moved";
     }
 
@@ -186,6 +188,101 @@ schema_diff_type2str(LY_DATA_TYPE basetype)
 }
 
 /**
+ * @brief Gnereate a path to a parsed node.
+ *
+ * @param[in] node Node to use.
+ * @return Generated path.
+ * @return NULL on error.
+ */
+static char *
+schema_diff_pnode_path(const struct lysp_node *node)
+{
+    const struct lysp_node **nodes = NULL;
+    char *path = NULL;
+    const char *node_pre, *node_post;
+    uint32_t node_count = 0, path_len = 0, i, new_len;
+
+    if (!node) {
+        /* top-level */
+        if (asprintf(&path, "/") == -1) {
+            LOGMEM(NULL);
+            path = NULL;
+            goto cleanup;
+        }
+        goto cleanup;
+    }
+
+    /* collect all the parent nodes */
+    while (node) {
+        nodes = ly_realloc(nodes, (node_count + 1) * sizeof *nodes);
+        LY_CHECK_ERR_GOTO(!nodes, LOGMEM(NULL), cleanup);
+
+        /* store the node */
+        nodes[node_count] = node;
+        ++node_count;
+
+        node = node->parent;
+    }
+
+    i = node_count;
+    do {
+        --i;
+
+        /* reset vars */
+        node_pre = NULL;
+        node_post = NULL;
+
+        /* prepare node type */
+        switch (nodes[i]->nodetype) {
+        case LYS_CONTAINER:
+        case LYS_CHOICE:
+        case LYS_LIST:
+        case LYS_CASE:
+        case LYS_RPC:
+        case LYS_ACTION:
+        case LYS_NOTIF:
+        case LYS_INPUT:
+        case LYS_OUTPUT:
+            /* print jsut the node name */
+            break;
+        case LYS_USES:
+            node_pre = "{uses=";
+            node_post = "}";
+            break;
+        case LYS_GROUPING:
+            node_pre = "{grp=";
+            node_post = "}";
+            break;
+        case LYS_AUGMENT:
+            node_pre = "{aug=";
+            node_post = "}";
+            break;
+        default:
+            LOGINT(NULL);
+            free(path);
+            path = NULL;
+            goto cleanup;
+        }
+
+        /* append new node */
+        new_len = path_len;
+        if (node_pre && node_post) {
+            new_len += strlen(node_pre) + strlen(node_post);
+        }
+        new_len += 1 + strlen(nodes[i]->name) + 1;
+        path = ly_realloc(path, new_len + 1);
+        LY_CHECK_ERR_GOTO(!path, LOGMEM(NULL), cleanup);
+
+        sprintf(path + path_len, "/%s%s%s", node_pre ? node_pre : "", nodes[i]->name, node_post ? node_post : "");
+        path_len = new_len;
+    } while (i);
+
+cleanup:
+    free(nodes);
+    return path;
+}
+
+/**
  * @brief Create cmp YANG data from common information about a change.
  *
  * @param[in] change Change to read from.
@@ -193,7 +290,7 @@ schema_diff_type2str(LY_DATA_TYPE basetype)
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_change_info(const struct lysc_diff_change_s *change, struct lyd_node *diff_list)
+schema_diff_change_info(const struct lys_diff_change_s *change, struct lyd_node *diff_list)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_node *changed_list;
@@ -228,7 +325,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_changes_info(const struct lysc_diff_changes_s *changes, struct lyd_node *diff_list)
+schema_diff_changes_info(const struct lys_diff_changes_s *changes, struct lyd_node *diff_list)
 {
     LY_ERR rc = LY_SUCCESS;
     uint32_t i;
@@ -1230,6 +1327,35 @@ cleanup:
 }
 
 /**
+ * @brief Create cmp YANG data from a 'status'.
+ *
+ * @param[in] flags Flags to use.
+ * @param[in,out] parent Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_status(uint16_t flags, struct lyd_node *parent)
+{
+    LY_ERR rc = LY_SUCCESS;
+    const char *status = NULL;
+
+    if (flags & LYS_STATUS_CURR) {
+        status = "current";
+    } else if (flags & LYS_STATUS_DEPRC) {
+        status = "deprecated";
+    } else if (flags & LYS_STATUS_OBSLT) {
+        status = "obsolete";
+    }
+
+    if (status) {
+        LY_CHECK_GOTO(rc = lyd_new_term(parent, NULL, "status", status, 0, NULL), cleanup);
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
  * @brief Create leaf-list of enabled features as part of cmp YANG data.
  *
  * @param[in] mod Module to use.
@@ -1333,7 +1459,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_module_text(const struct lysc_diff_change_s *change, const struct lys_module *mod1,
+schema_diff_module_text(const struct lys_diff_change_s *change, const struct lys_module *mod1,
         const struct lys_module *mod2, struct lyd_node *diff_list)
 {
     LY_ERR rc = LY_SUCCESS;
@@ -1342,22 +1468,22 @@ schema_diff_module_text(const struct lysc_diff_change_s *change, const struct ly
 
     /* learn about the change */
     switch (change->changed) {
-    case LYSC_CHANGED_CONTACT:
+    case LYS_CHANGED_CONTACT:
         node_name = "contact";
         text_old = mod1->contact;
         text_new = mod2->contact;
         break;
-    case LYSC_CHANGED_DESCRIPTION:
+    case LYS_CHANGED_DESCRIPTION:
         node_name = "description";
         text_old = mod1->dsc;
         text_new = mod2->dsc;
         break;
-    case LYSC_CHANGED_ORGANIZATION:
+    case LYS_CHANGED_ORGANIZATION:
         node_name = "organization";
         text_old = mod1->org;
         text_new = mod2->org;
         break;
-    case LYSC_CHANGED_REFERENCE:
+    case LYS_CHANGED_REFERENCE:
         node_name = "reference";
         text_old = mod1->ref;
         text_new = mod2->ref;
@@ -1438,7 +1564,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_module_ident(const struct lysc_diff_ident_change_s *change, ly_bool with_parsed, struct lyd_node *diff_list)
+schema_diff_module_ident(const struct lys_diff_ident_change_s *change, ly_bool with_parsed, struct lyd_node *diff_list)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_node *mod_cmp_list, *cont;
@@ -1475,6 +1601,288 @@ cleanup:
 }
 
 /**
+ * @brief Create cmp YANG data from a parsed restriction.
+ *
+ * @param[in] restr Parsed restriction to use.
+ * @param[in] cont_name Name of the main container to create.
+ * @param[in] is_pattern Whether @p restr is a pattern, creates different nodes.
+ * @param[in,out] cont Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_parsed_restr(const struct lysp_restr *restr, const char *cont_name, ly_bool is_pattern, struct lyd_node *cont)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *restr_parent;
+
+    /* container */
+    if (is_pattern) {
+        LY_CHECK_GOTO(rc = lyd_new_list(cont, NULL, cont_name, 0, &restr_parent), cleanup);
+    } else {
+        LY_CHECK_GOTO(rc = lyd_new_inner(cont, NULL, cont_name, 0, &restr_parent), cleanup);
+    }
+
+    if (is_pattern) {
+        /* expression */
+        LY_CHECK_GOTO(rc = lyd_new_term(restr_parent, NULL, "expression", restr->arg.str + 1, 0, NULL), cleanup);
+
+        /* inverted */
+        if ((restr->arg.str[0] == 0x15) && (rc = lyd_new_term(restr_parent, NULL, "inverted", NULL, 0, NULL))) {
+            goto cleanup;
+        }
+    } else {
+        /* restriction */
+        LY_CHECK_GOTO(rc = lyd_new_term(restr_parent, NULL, "restriction", restr->arg.str, 0, NULL), cleanup);
+    }
+
+    /* description, reference, error-message, error-app-tag */
+    if (restr->dsc && (rc = lyd_new_term(restr_parent, NULL, "description", restr->dsc, 0, NULL))) {
+        goto cleanup;
+    }
+    if (restr->ref && (rc = lyd_new_term(restr_parent, NULL, "reference", restr->ref, 0, NULL))) {
+        goto cleanup;
+    }
+    if (restr->emsg && (rc = lyd_new_term(restr_parent, NULL, "error-message", restr->emsg, 0, NULL))) {
+        goto cleanup;
+    }
+    if (restr->eapptag && (rc = lyd_new_term(restr_parent, NULL, "error-app-tag", restr->eapptag, 0, NULL))) {
+        goto cleanup;
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from a parsed enum or bit.
+ *
+ * @param[in] enum Parsed enum or bit to use.
+ * @param[in] is_pattern Whether @p enum is a bit, creates different nodes.
+ * @param[in,out] cont Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_parsed_enum(const struct lysp_type_enum *enm, ly_bool is_bit, struct lyd_node *cont)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *enum_list;
+    char str[22];
+
+    /* list with name */
+    LY_CHECK_GOTO(rc = lyd_new_list(cont, NULL, is_bit ? "bit" : "enum", 0, &enum_list, enm->name), cleanup);
+
+    /* if-features */
+    /* TODO */
+
+    /* description */
+    if (enm->dsc && (rc = lyd_new_term(enum_list, NULL, "description", enm->dsc, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* reference */
+    if (enm->ref && (rc = lyd_new_term(enum_list, NULL, "reference", enm->ref, 0, NULL))) {
+        goto cleanup;
+    }
+
+    if (is_bit) {
+        /* position */
+        sprintf(str, "%" PRIu64, (uint64_t)enm->value);
+        LY_CHECK_GOTO(rc = lyd_new_term(enum_list, NULL, "position", str, LYD_NEW_VAL_CANON, NULL), cleanup);
+    } else {
+        /* value */
+        sprintf(str, "%" PRId64, enm->value);
+        LY_CHECK_GOTO(rc = lyd_new_term(enum_list, NULL, "value", str, LYD_NEW_VAL_CANON, NULL), cleanup);
+    }
+
+    /* status */
+    LY_CHECK_GOTO(rc = schema_diff_status(enm->flags, enum_list), cleanup);
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from a parsed type.
+ *
+ * @param[in] type Parsed type to use.
+ * @param[in,out] cont Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_parsed_type(const struct lysp_type *type, struct lyd_node *cont)
+{
+    LY_ERR rc = LY_SUCCESS;
+    LY_ARRAY_COUNT_TYPE u;
+    char str[4];
+    const char *req_inst_str;
+    struct lyd_node *un_type_cont;
+
+    /* name */
+    LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, "name", type->name, 0, NULL), cleanup);
+
+    /* range */
+    if (type->range && (rc = schema_diff_parsed_restr(type->range, "range", 0, cont))) {
+        goto cleanup;
+    }
+
+    /* length */
+    if (type->length && (rc = schema_diff_parsed_restr(type->length, "length", 0, cont))) {
+        goto cleanup;
+    }
+
+    /* fraction-digits */
+    if (type->flags & LYS_SET_FRDIGITS) {
+        sprintf(str, "%" PRIu8, type->fraction_digits);
+        LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, "fraction-digits", str, LYD_NEW_VAL_CANON, NULL), cleanup);
+    }
+
+    /* patterns */
+    LY_ARRAY_FOR(type->patterns, u) {
+        LY_CHECK_GOTO(rc = schema_diff_parsed_restr(&type->patterns[u], "pattern", 1, cont), cleanup);
+    }
+
+    /* enums */
+    LY_ARRAY_FOR(type->enums, u) {
+        LY_CHECK_GOTO(rc = schema_diff_parsed_enum(&type->enums[u], 0, cont), cleanup);
+    }
+
+    /* bits */
+    LY_ARRAY_FOR(type->bits, u) {
+        LY_CHECK_GOTO(rc = schema_diff_parsed_enum(&type->bits[u], 1, cont), cleanup);
+    }
+
+    /* path */
+    if (type->path && (rc = lyd_new_term(cont, NULL, "path", lyxp_get_expr(type->path), 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* require-instance */
+    if (type->flags & LYS_SET_REQINST) {
+        if (type->require_instance) {
+            req_inst_str = "true";
+        } else {
+            req_inst_str = "false";
+        }
+    } else {
+        req_inst_str = NULL;
+    }
+    if (req_inst_str && (rc = lyd_new_term(cont, NULL, "require-instance", req_inst_str, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* bases */
+    LY_ARRAY_FOR(type->bases, u) {
+        LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, "base", type->bases[u], 0, NULL), cleanup);
+    }
+
+    /* types */
+    LY_ARRAY_FOR(type->types, u) {
+        LY_CHECK_GOTO(rc = lyd_new_inner(cont, NULL, "union-type", 0, &un_type_cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_parsed_type(&type->types[u], un_type_cont), cleanup)
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from a typedef.
+ *
+ * @param[in] typedef Parsed typedef to use.
+ * @param[in,out] change_cont Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_typedef(const struct lysp_tpdf *tpdf, const struct lysp_node *parent, struct lyd_node *change_cont)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *typedef_cont, *type_cont;
+    char *path = NULL;
+
+    /* typedef container */
+    LY_CHECK_GOTO(rc = lyd_new_inner(change_cont, NULL, "typedef", 0, &typedef_cont), cleanup);
+
+    /* name */
+    LY_CHECK_GOTO(rc = lyd_new_term(typedef_cont, NULL, "name", tpdf->name, 0, NULL), cleanup);
+
+    /* path */
+    path = schema_diff_pnode_path(parent);
+    LY_CHECK_GOTO(rc = lyd_new_term(typedef_cont, NULL, "path", path, 0, NULL), cleanup);
+
+    /* default */
+    if (tpdf->dflt.str && (rc = lyd_new_term(typedef_cont, NULL, "default", tpdf->dflt.str, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* description */
+    if (tpdf->dsc && (rc = lyd_new_term(typedef_cont, NULL, "description", tpdf->dsc, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* reference */
+    if (tpdf->ref && (rc = lyd_new_term(typedef_cont, NULL, "reference", tpdf->ref, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* status */
+    LY_CHECK_GOTO(rc = schema_diff_status(tpdf->flags, typedef_cont), cleanup);
+
+    /* type */
+    LY_CHECK_GOTO(rc = lyd_new_inner(typedef_cont, NULL, "type", 0, &type_cont), cleanup);
+    LY_CHECK_GOTO(rc = schema_diff_parsed_type(&tpdf->type, type_cont), cleanup);
+
+    /* units */
+    if (tpdf->units && (rc = lyd_new_term(typedef_cont, NULL, "units", tpdf->units, 0, NULL))) {
+        goto cleanup;
+    }
+
+cleanup:
+    free(path);
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from all typedef changes.
+ *
+ * @param[in] change Identity change to use.
+ * @param[in] with_parsed Whether 'parsed-schema' feature is enabled.
+ * @param[in,out] diff_list Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_parsed_typedef(const struct lys_diff_typedef_change_s *change, struct lyd_node *diff_list)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *mod_cmp_list, *cont;
+
+    if (!change->changes.count) {
+        /* no changes of this typedef */
+        goto cleanup;
+    }
+
+    /* parsed comparison */
+    LY_CHECK_GOTO(rc = lyd_new_list(diff_list, NULL, "parsed-comparison", 0, &mod_cmp_list), cleanup);
+
+    /* change info */
+    LY_CHECK_GOTO(rc = schema_diff_changes_info(&change->changes, mod_cmp_list), cleanup);
+
+    if (change->typedef_old) {
+        /* old */
+        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "old", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_typedef(change->typedef_old, change->parent_new, cont), cleanup);
+    }
+
+    if (change->typedef_new) {
+        /* new */
+        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "new", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_typedef(change->typedef_new, change->parent_new, cont), cleanup);
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
  * @brief Create cmp YANG data from direct extension-instances of 'module'.
  *
  * @param[in] change Ext-instance change to use.
@@ -1482,7 +1890,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_module_ext_inst(const struct lysc_diff_ext_change_s *change, struct lyd_node *diff_list)
+schema_diff_module_ext_inst(const struct lys_diff_ext_change_s *change, struct lyd_node *diff_list)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_node *mod_cmp_list, *cont;
@@ -1524,7 +1932,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_module(const struct lysc_diff_s *diff, const struct lys_module *mod1, const struct lys_module *mod2,
+schema_diff_module(const struct lys_diff_s *diff, const struct lys_module *mod1, const struct lys_module *mod2,
         struct lyd_node *diff_list)
 {
     LY_ERR rc = LY_SUCCESS;
@@ -1538,6 +1946,19 @@ schema_diff_module(const struct lysc_diff_s *diff, const struct lys_module *mod1
     /* identities */
     for (i = 0; i < diff->ident_change_count; ++i) {
         LY_CHECK_GOTO(rc = schema_diff_module_ident(&diff->ident_changes[i], diff->diff_parsed, diff_list), cleanup);
+    }
+
+    if (diff->diff_parsed) {
+        /* augments */
+        /* TODO */
+
+        /* deviations */
+        /* TODO */
+
+        /* typedefs */
+        for (i = 0; i < diff->typedef_change_count; ++i) {
+            LY_CHECK_GOTO(rc = schema_diff_parsed_typedef(&diff->typedef_changes[i], diff_list), cleanup);
+        }
     }
 
     /* extension-instances */
@@ -1594,33 +2015,6 @@ schema_diff_node_musts(const struct lysc_must *musts, struct lyd_node *change_co
             LY_CHECK_GOTO(rc = schema_diff_ext_inst(&musts[u].exts[v], 0, must_list), cleanup);
         }
     }
-
-cleanup:
-    return rc;
-}
-
-/**
- * @brief Create cmp YANG data from a 'status'.
- *
- * @param[in] flags Flags to use.
- * @param[in,out] parent Node to append to.
- * @return LY_ERR value.
- */
-static LY_ERR
-schema_diff_status(uint16_t flags, struct lyd_node *parent)
-{
-    LY_ERR rc = LY_SUCCESS;
-    const char *status;
-
-    if (flags & LYS_STATUS_CURR) {
-        status = "current";
-    } else if (flags & LYS_STATUS_DEPRC) {
-        status = "deprecated";
-    } else {
-        assert(flags & LYS_STATUS_OBSLT);
-        status = "obsolete";
-    }
-    LY_CHECK_GOTO(rc = lyd_new_term(parent, NULL, "status", status, 0, NULL), cleanup);
 
 cleanup:
     return rc;
@@ -2153,7 +2547,7 @@ schema_diff_nodetype2enum(uint16_t nodetype)
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_node(const struct lysc_diff_node_change_s *node_change, struct lyd_node *diff_list)
+schema_diff_node(const struct lys_diff_node_change_s *node_change, struct lyd_node *diff_list)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_node *node_diff_list, *change_cont;
@@ -2211,7 +2605,7 @@ cleanup:
 }
 
 LY_ERR
-lysc_diff_tree(const struct lys_module *mod1, const struct lys_module *mod2, const struct lysc_diff_s *diff,
+lysc_diff_tree(const struct lys_module *mod1, const struct lys_module *mod2, const struct lys_diff_s *diff,
         const struct lys_module *cmp_mod, struct lyd_node **schema_diff)
 {
     LY_ERR rc = LY_SUCCESS;

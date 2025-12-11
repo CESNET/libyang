@@ -10,7 +10,79 @@
           "module": "type",
           "revision": "2000-01-02"
         },
-        "conformance": "backwards-compatible"
+        "conformance": "non-backwards-compatible",
+        "parsed-comparison": [
+          {
+            "changed": [
+              {
+                "stmt": "typedef",
+                "change": "removed",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "typedef": {
+                "name": "my-un-type",
+                "path": "/",
+                "type": {
+                  "name": "uint8"
+                }
+              }
+            }
+          },
+          {
+            "changed": [
+              {
+                "stmt": "typedef",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "typedef": {
+                "name": "mytype",
+                "path": "/",
+                "type": {
+                  "name": "string",
+                  "length": {
+                    "restriction": "1..20"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "changed": [
+              {
+                "stmt": "length",
+                "parent-stmt": "typedef",
+                "change": "added",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "typedef": {
+                "name": "list-type",
+                "path": "/cont",
+                "type": {
+                  "name": "string"
+                }
+              }
+            },
+            "new": {
+              "typedef": {
+                "name": "list-type",
+                "path": "/cont",
+                "type": {
+                  "name": "string",
+                  "length": {
+                    "restriction": "1..16"
+                  }
+                }
+              }
+            }
+          }
+        ]
       }
     ]
   }

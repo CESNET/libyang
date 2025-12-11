@@ -11,6 +11,37 @@
           "revision": "2000-01-02"
         },
         "conformance": "non-backwards-compatible",
+        "parsed-comparison": [
+          {
+            "changed": [
+              {
+                "stmt": "default",
+                "parent-stmt": "typedef",
+                "change": "removed",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "typedef": {
+                "name": "mytype",
+                "path": "/",
+                "default": "val",
+                "type": {
+                  "name": "string"
+                }
+              }
+            },
+            "new": {
+              "typedef": {
+                "name": "mytype",
+                "path": "/",
+                "type": {
+                  "name": "string"
+                }
+              }
+            }
+          }
+        ],
         "node-comparison": [
           {
             "node": "/dflt:l1",
