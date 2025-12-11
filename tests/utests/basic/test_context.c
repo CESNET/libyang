@@ -772,6 +772,26 @@ test_ylmem(void **state)
     /* seperate context to avoid double free during teadown */
     struct ly_ctx *ctx_test = NULL;
 
+    const char *yanglibrary_json =
+	    "{"
+	    "  \"ietf-yang-library:modules-state\": {"
+	    "    \"module-set-id\": \"e595da11ace92c0d881995fa7e56bbe86f1f48e9\","
+	    "    \"module\": ["
+	    "      {"
+	    "        \"name\": \"test-module\","
+	    "        \"revision\": \"2025-01-29\","
+	    "        \"namespace\": \"test-module:test-module\","
+	    "        \"conformance-type\": \"implement\""
+	    "      }"
+	    "    ]"
+	    "  },"
+	    "  \"ietf-yang-library:yang-library\": {"
+	    "    \"content-id\": \"321566\""
+	    "  }"
+	    "}";
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", yanglibrary_json, LYD_JSON, 0, &ctx_test));
+
     /* test invalid parameters */
     assert_int_equal(LY_EINVAL, ly_ctx_new_ylpath(NULL, NULL, LYD_XML, 0, &ctx_test));
     assert_int_equal(LY_EINVAL, ly_ctx_new_ylpath(NULL, TESTS_SRC, LYD_XML, 0, NULL));
