@@ -1383,12 +1383,12 @@ cleanup:
 }
 
 LIBYANG_API_DEF LY_ERR
-lysc_compare(const struct ly_ctx *ctx, const struct lys_module *src_mod, const struct lys_module *trg_mod,
+lys_compare(const struct ly_ctx *ctx, const struct lys_module *src_mod, const struct lys_module *trg_mod,
         struct lyd_node **schema_diff)
 {
     LY_ERR rc = LY_SUCCESS;
     const struct lys_module *cmp_mod;
-    struct lysc_diff_s diff = {0};
+    struct lys_diff_s diff = {0};
 
     LY_CHECK_ARG_RET(NULL, ctx, src_mod, trg_mod, schema_diff, LY_EINVAL);
 

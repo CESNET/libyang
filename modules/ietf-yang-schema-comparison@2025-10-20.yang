@@ -118,11 +118,17 @@ module ietf-yang-schema-comparison {
        Configuration Protocol (NETCONF), section 10";
   }
 
-  typedef schema-path {
+  typedef schema-node-path {
     type string;
     description
       "Node schema path (node-id). A generic type is used to not enforce their
        evaluation or validation in this context.";
+  }
+
+  typedef schema-stmt-path {
+    type string;
+    description
+      "Path to a statement. Any non-schema-node parents are encoded specially.";
   }
 
   typedef stmt-type {
@@ -254,6 +260,11 @@ module ietf-yang-schema-comparison {
         description
           "YANG statement 'when'.";
       }
+
+      enum "typedef" {
+        description
+          "YANG statement 'typedef'.";
+      }
     }
     description
       "Type of the statement that a change affects.";
@@ -279,22 +290,28 @@ module ietf-yang-schema-comparison {
     }
   }
 
-  grouping typedef-stmts {
+  grouping typedef-stmt {
     description
-      "Describes changes of all the typedefs on a specific level and parent.";
-    list typedef {
-      key "name";
+      "Describes changes of a typedef statement.";
+    container typedef {
       description
         "List of typedefs.";
       leaf name {
         type yang:yang-identifier;
+        mandatory true;
         description
           "Name of the typedef.";
+      }
+      leaf path {
+        type schema-stmt-path;
+        mandatory true;
+        description
+          "Path to the parent statement.";
       }
       leaf default {
         type string;
         description
-          "List of default substatement values.";
+          "Default substatement value.";
       }
       leaf description {
         type string;
@@ -310,11 +327,11 @@ module ietf-yang-schema-comparison {
       container type {
         description
           "Type substatement.";
-        uses type-substmts;
+        uses type-parsed-substmts;
         list union-type {
           description
             "List of a union type substatements.";
-          uses type-substmts;
+          uses type-parsed-substmts;
         }
       }
       leaf units {
@@ -723,6 +740,132 @@ module ietf-yang-schema-comparison {
     uses ext-instance-stmts;
   }
 
+  grouping type-parsed-substmts {
+    description
+      "Describes a parsed type statement change.";
+    leaf name {
+      type yang:yang-identifier;
+      description
+        "Type argument substatement value.";
+    }
+    container range {
+      description
+        "Range statement substatements.";
+      leaf restriction {
+        type string;
+        description
+          "Range argument substatement value.";
+      }
+      uses restriction-substmts;
+    }
+    container length {
+      description
+        "Length statement substatements.";
+      leaf restriction {
+        type string;
+        description
+          "Range argument substatement value.";
+      }
+      uses restriction-substmts;
+    }
+    leaf fraction-digits {
+      type uint8;
+      description
+        "Fraction-digits substatement value.";
+    }
+    list pattern {
+      description
+        "List of pattern statements.";
+      leaf expression {
+        type string;
+        description
+          "Pattern substatement value.";
+      }
+      leaf inverted {
+        type empty;
+        description
+          "Inverted substatement value.";
+      }
+      uses restriction-substmts;
+    }
+    list enum {
+      key "name";
+      ordered-by user;
+      description
+        "List of enum statements. Keeps the same order of the statements as in
+         the module.";
+      leaf name {
+        type yang:yang-identifier;
+        description
+          "Enum statement name.";
+      }
+      uses if-feature-stmts;
+      leaf description {
+        type string;
+        description
+          "Description substatement value.";
+      }
+      leaf reference {
+        type string;
+        description
+          "Reference substatement value.";
+      }
+      leaf value {
+        type int32;
+        description
+          "Value substatement value.";
+      }
+      uses status-stmt;
+      uses ext-instance-stmts;
+    }
+    list bit {
+      key "name";
+      ordered-by user;
+      description
+        "List of bit statements. Keeps the same order of the statements as in
+         the module.";
+      leaf name {
+        type yang:yang-identifier;
+        description
+          "Bit statement name.";
+      }
+      uses if-feature-stmts;
+      leaf description {
+        type string;
+        description
+          "Description substatement value.";
+      }
+      leaf reference {
+        type string;
+        description
+          "Reference substatement value.";
+      }
+      leaf position {
+        type uint32;
+        description
+          "Position substatement value.";
+      }
+      uses status-stmt;
+      uses ext-instance-stmts;
+    }
+    leaf path {
+      type string;
+      description
+        "Path substatement value.";
+    }
+    leaf require-instance {
+      type boolean;
+      description
+        "Require-instance substatement value.";
+    }
+    leaf-list base {
+      type yang:yang-identifier;
+      description
+        "List of base substatement values.";
+    }
+    uses ext-instance-stmts;
+  }
+
   grouping refine-deviate-node-substmts {
     description
       "All substatements of a data-definition node that can be changed by both
@@ -837,9 +980,6 @@ module ietf-yang-schema-comparison {
     uses status-stmt;
     uses refine-node-substmts;
     uses deviate-only-node-substmts;
-    uses typedef-stmts {
-      if-feature parsed-schema;
-    }
     anydata groupings {
       if-feature parsed-schema;
       description
@@ -973,14 +1113,7 @@ module ietf-yang-schema-comparison {
       }
       uses ext-instance-stmts;
     }
-    container augment {
-      if-feature parsed-schema;
-      description
-        "Augment substatements.";
-      uses augment-stmt;
-    }
     container deviation {
-      if-feature parsed-schema;
       presence
         "Exists only when there is a difference in this deviation.";
       description
@@ -1032,9 +1165,6 @@ module ietf-yang-schema-comparison {
           "Reference substatement value.";
       }
     }
-    uses typedef-stmts {
-      if-feature parsed-schema;
-    }
     container ext-instance {
       presence
         "Exists only when there is a difference in this extension-instance.";
@@ -1042,6 +1172,18 @@ module ietf-yang-schema-comparison {
         "Extension-instance substatements.";
       uses ext-instance-stmt;
     }
+  }
+
+  grouping parsed-substmts {
+    description
+      "All parsed-only statements that can be direct substatements of a module
+       or nested in a node.";
+    container augment {
+      description
+        "Augment substatements.";
+      uses augment-stmt;
+    }
+    uses typedef-stmt;
   }
 
   grouping conformance-type {
@@ -1159,7 +1301,7 @@ module ietf-yang-schema-comparison {
          changes. Keeps the traversed order of the nodes by the algorithm.
          It SHOULD follow the depth-first search order.";
       leaf node {
-        type schema-path;
+        type schema-node-path;
         description
           "Path to the changed data-definition statement.";
       }
@@ -1285,6 +1427,22 @@ module ietf-yang-schema-comparison {
           description
             "Changed statements in the newer revision of the YANG module.";
           uses module-substmts;
+        }
+      }
+      list parsed-comparison {
+        if-feature parsed-schema;
+        description
+          "Information about parsed-only statement changes.";
+        uses change-info;
+        container old {
+          description
+            "Changed parsed statements in the older revision of the YANG module.";
+          uses parsed-substmts;
+        }
+        container new {
+          description
+            "Changed parsed statements in the newer revision of the YANG module.";
+          uses parsed-substmts;
         }
       }
       uses node-info;
