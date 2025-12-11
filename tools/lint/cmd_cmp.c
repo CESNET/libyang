@@ -85,7 +85,7 @@ cmd_cmp_exec(struct ly_ctx **ctx, struct yl_opt *yo)
     mod2 = yo->schema_modules.objs[yo->schema_modules.count - 1];
 
     /* generate comparison data */
-    if (lysc_compare(*ctx, mod1, mod2, &data)) {
+    if (lys_compare(*ctx, mod1, mod2, &data)) {
         rc = -1;
         goto cleanup;
     }

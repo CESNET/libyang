@@ -2317,7 +2317,7 @@ LIBYANG_API_DECL LY_ERR lys_feature_value(const struct lys_module *module, const
 LIBYANG_API_DECL LY_ERR lys_set_implemented(struct lys_module *mod, const char **features);
 
 /**
- * @brief Compare 2 revisions of a compiled module and generate their schema diff. Requires 'ietf-schema-comparison'
+ * @brief Compare 2 revisions of a module and generate their schema diff. Requires 'ietf-schema-comparison'
  * YANG module to be loaded.
  *
  * @param[in] ctx Context to use for creating the schema diff data tree.
@@ -2327,7 +2327,7 @@ LIBYANG_API_DECL LY_ERR lys_set_implemented(struct lys_module *mod, const char *
  * @return LY_SUCCESS on success.
  * @return LY_ERR value on error.
  */
-LIBYANG_API_DECL LY_ERR lysc_compare(const struct ly_ctx *ctx, const struct lys_module *src_mod,
+LIBYANG_API_DECL LY_ERR lys_compare(const struct ly_ctx *ctx, const struct lys_module *src_mod,
         const struct lys_module *trg_mod, struct lyd_node **schema_diff);
 
 /**

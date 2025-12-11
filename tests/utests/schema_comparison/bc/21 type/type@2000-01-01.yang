@@ -21,4 +21,17 @@ module type {
             type string;
         }
     }
+
+    container cont {
+        list l {
+            typedef list-type {
+                type string;
+            }
+
+            key k;
+            leaf k {
+                type uint32;
+            }
+        }
+    }
 }
