@@ -16,6 +16,9 @@ module new-stmt {
         leaf gleaf {
             type uint32;
         }
+        leaf gleaf2 {
+            type empty;
+        }
     }
 
     grouping top-grp2 {
