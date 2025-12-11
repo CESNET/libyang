@@ -118,7 +118,7 @@ schema_comparison(struct sc_state *st, const char *module_name)
     assert_non_null(trg_mod);
 
     /* get and print the comparison data */
-    assert_int_equal(LY_SUCCESS, lysc_compare(st->ctx1, src_mod, trg_mod, &st->sc_data));
+    assert_int_equal(LY_SUCCESS, lys_compare(st->ctx1, src_mod, trg_mod, &st->sc_data));
     assert_int_equal(LY_SUCCESS, lyd_print_mem(&st->str, st->sc_data, LYD_JSON, 0));
 
     /* open file with the expected output */

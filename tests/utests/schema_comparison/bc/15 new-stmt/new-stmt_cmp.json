@@ -27,6 +27,26 @@
             }
           }
         ],
+        "parsed-comparison": [
+          {
+            "changed": [
+              {
+                "stmt": "typedef",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "typedef": {
+                "name": "type1",
+                "path": "/",
+                "type": {
+                  "name": "int8"
+                }
+              }
+            }
+          }
+        ],
         "node-comparison": [
           {
             "node": "/new-stmt:r1",
