@@ -1310,7 +1310,11 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, st
 
         /* parse any data tree with correct options, first backup the current options and then make the parser
          * process data as opaq nodes */
-        lydctx->parse_opts &= ~LYD_PARSE_STRICT;
+        if (lydctx->parse_opts & LYD_PARSE_ANYDATA_STRICT) {
+            lydctx->parse_opts |= LYD_PARSE_STRICT;
+        } else {
+            lydctx->parse_opts &= ~LYD_PARSE_STRICT;
+         }
         lydctx->parse_opts |= LYD_PARSE_OPAQ | (ext ? LYD_PARSE_ONLY : 0);
         lydctx->int_opts |= LYD_INTOPT_ANY | LYD_INTOPT_WITH_SIBLINGS;
         lydctx->any_schema = snode;

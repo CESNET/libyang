@@ -146,7 +146,9 @@ cmd_data_help(void)
             "                is supposed to contain the source 'nc-rpc' operation of the reply.\n"
             "  -k, --ext-inst <name>\n"
             "                Name of extension instance in format:\n"
-            "                <module-name>:<extension-name>:<argument>\n");
+            "                <module-name>:<extension-name>:<argument>\n"
+            "  -A, --anydata-strict\n"
+            "                Enable strict parsing of anydata content\n");
     cmd_data_help_format();
     cmd_data_help_in_format();
     printf("  -o OUTFILE, --output=OUTFILE\n"
@@ -161,19 +163,20 @@ cmd_data_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
     int rc = 0, argc = 0;
     int opt, opt_index;
     struct option options[] = {
-        {"defaults",    required_argument, NULL, 'd'},
-        {"present",     no_argument,       NULL, 'e'},
-        {"format",      required_argument, NULL, 'f'},
-        {"in-format",   required_argument, NULL, 'F'},
-        {"help",        no_argument,       NULL, 'h'},
-        {"merge",       no_argument,       NULL, 'm'},
-        {"output",      required_argument, NULL, 'o'},
-        {"operational", required_argument, NULL, 'O'},
-        {"reply-rpc",   required_argument, NULL, 'R'},
-        {"not-strict",  no_argument,       NULL, 'n'},
-        {"type",        required_argument, NULL, 't'},
-        {"xpath",       required_argument, NULL, 'x'},
-        {"ext-inst",    required_argument, NULL, 'k'},
+        {"defaults",        required_argument, NULL, 'd'},
+        {"present",         no_argument,       NULL, 'e'},
+        {"format",          required_argument, NULL, 'f'},
+        {"in-format",       required_argument, NULL, 'F'},
+        {"help",            no_argument,       NULL, 'h'},
+        {"merge",           no_argument,       NULL, 'm'},
+        {"output",          required_argument, NULL, 'o'},
+        {"operational",     required_argument, NULL, 'O'},
+        {"reply-rpc",       required_argument, NULL, 'R'},
+        {"not-strict",      no_argument,       NULL, 'n'},
+        {"anydata-strict",  no_argument      , NULL, 'A'},
+        {"type",            required_argument, NULL, 't'},
+        {"xpath",           required_argument, NULL, 'x'},
+        {"ext-inst",        required_argument, NULL, 'k'},
         {NULL, 0, NULL, 0}
     };
 
@@ -242,6 +245,10 @@ cmd_data_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
         case 'n': /* --not-strict */
             yo->data_parse_options &= ~LYD_PARSE_STRICT;
             break;
+        case 'A':   /* --anydata-strict */
+            yo->data_parse_options |= LYD_PARSE_ANYDATA_STRICT;
+            break;
+
         case 't': /* --type */
             if (data_type_set) {
                 YLMSG_E("The data type (-t) cannot be set multiple times.");

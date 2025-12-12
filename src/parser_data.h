@@ -197,6 +197,11 @@ struct ly_in;
                                                        number type values enclosed in quotes. */
 #define LYD_PARSE_OPTS_MASK 0xFFFF0000      /**< Mask for all the LYD_PARSE_ options. */
 
+#define LYD_PARSE_ANYDATA_STRICT 0x10000000 /**< Apply strict parsing (::LYD_PARSE_STRICT) also to anydata
+                                                 content. By default, unknown elements in anydata are parsed
+                                                 as opaque nodes. With this flag, an error is raised for any unknown
+                                                 elements within anydata/anyxml subtrees. */
+
 /** @} dataparseroptions */
 
 /**
