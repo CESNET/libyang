@@ -160,6 +160,61 @@ test_anydata(void **state)
 }
 
 static void
+test_anydata_strict_validation(void **state)
+{
+    const char *data_without_schema;
+    const char *data_invalid;
+    const char *data_valid;
+    char *str;
+    struct lyd_node *tree;
+
+    // no shcema defiend for "urn:tests:no:schema" in the parsing context
+    data_without_schema = "<any xmlns=\"urn:tests:a\">\n"
+            "  <x:element1 xmlns:x=\"urn:tests:no:schema\">\n"
+            "    <x:element2>default-val</x:element2>\n"
+            "  </x:element1>\n"
+            "</any>\n";
+
+    PARSER_CHECK_ERROR(data_without_schema, LYD_PARSE_ANYDATA_STRICT, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
+            "No module with namespace \"urn:tests:no:schema\" in the context.", "/a:any", 3);
+
+    // anydata value are based on "module a" defined in the setup function and loaded into the parsing context.
+    // However, the value passed in the anydata subtree is not defined in "module a".
+    data_invalid = "<any xmlns=\"urn:tests:a\">\n"
+            "  <element1>default-val</element1>\n"
+            "</any>\n";
+
+    PARSER_CHECK_ERROR(data_invalid, LYD_PARSE_ANYDATA_STRICT, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
+            "Node \"element1\" not found in the \"a\" module.", "/a:any", 2);
+
+    // anydata value are based on "module a" defined in the setup function and loaded into the parsing context
+    data_valid = "<any xmlns=\"urn:tests:a\">\n"
+            "  <foo>default-val</foo>\n"
+            "</any>\n";
+
+    CHECK_PARSE_LYD(data_valid, LYD_PARSE_ANYDATA_STRICT, LYD_VALIDATE_PRESENT, tree);
+    assert_non_null(tree);
+    tree = tree->next;
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_R | LYS_STATUS_CURR | LYS_SET_CONFIG, 1, "any",
+            1, LYS_ANYDATA, 0, 0, NULL, 0);
+
+    const char *data_expected =
+            "<any xmlns=\"urn:tests:a\">\n"
+            "  <foo>default-val</foo>\n"
+            "</any>\n";
+
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data_expected);
+
+    assert_int_equal(LY_SUCCESS, lyd_any_value_str(tree, &str));
+    lyd_free_all(tree);
+
+    assert_int_equal(LY_SUCCESS, lyd_new_path2(NULL, UTEST_LYCTX, "/a:any", str, strlen(str), LYD_ANYDATA_XML, 0, &tree, NULL));
+    free(str);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data_expected);
+    lyd_free_all(tree);
+}
+
+static void
 test_anyxml(void **state)
 {
     const char *data;
@@ -1042,6 +1097,7 @@ main(void)
     const struct CMUnitTest tests[] = {
         UTEST(test_leaf, setup),
         UTEST(test_anydata, setup),
+        UTEST(test_anydata_strict_validation, setup),
         UTEST(test_anyxml, setup),
         UTEST(test_list, setup),
         UTEST(test_container, setup),
