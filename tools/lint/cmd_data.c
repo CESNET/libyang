@@ -173,7 +173,7 @@ cmd_data_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
         {"operational",     required_argument, NULL, 'O'},
         {"reply-rpc",       required_argument, NULL, 'R'},
         {"not-strict",      no_argument,       NULL, 'n'},
-        {"anydata-strict",  no_argument      , NULL, 'A'},
+        {"anydata-strict",  no_argument,       NULL, 'A'},
         {"type",            required_argument, NULL, 't'},
         {"xpath",           required_argument, NULL, 'x'},
         {"ext-inst",        required_argument, NULL, 'k'},
