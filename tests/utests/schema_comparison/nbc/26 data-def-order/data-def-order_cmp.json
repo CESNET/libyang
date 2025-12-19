@@ -24,18 +24,18 @@
             ],
             "old": {
               "status": "current",
-              "presence": false,
-              "config": true
+              "config": true,
+              "presence": false
             },
             "new": {
               "status": "current",
-              "presence": false,
-              "config": true
+              "config": true,
+              "presence": false
             }
           },
           {
-            "node": "/data-def-order:cont/cont2",
-            "node-type": "container",
+            "node": "/data-def-order:cont/l3",
+            "node-type": "leaf",
             "changed": [
               {
                 "stmt": "node",
@@ -45,8 +45,11 @@
             ],
             "new": {
               "status": "current",
-              "presence": false,
-              "config": true
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "base-type": "int8"
+              }
             }
           }
         ]

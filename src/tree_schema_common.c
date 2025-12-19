@@ -1362,6 +1362,14 @@ lys_nodetype2str(uint16_t nodetype)
         return "notification";
     case LYS_USES:
         return "uses";
+    case LYS_INPUT:
+        return "input";
+    case LYS_OUTPUT:
+        return "output";
+    case LYS_GROUPING:
+        return "grouping";
+    case LYS_AUGMENT:
+        return "augment";
     default:
         return "unknown";
     }

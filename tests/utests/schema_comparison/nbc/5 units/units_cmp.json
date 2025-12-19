@@ -51,18 +51,18 @@
               }
             ],
             "old": {
-              "ordered-by": "system",
               "status": "current",
               "config": true,
+              "ordered-by": "system",
               "type": {
                 "base-type": "string"
               },
               "units": "packages"
             },
             "new": {
-              "ordered-by": "system",
               "status": "current",
               "config": true,
+              "ordered-by": "system",
               "type": {
                 "base-type": "string"
               }

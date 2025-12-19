@@ -23,19 +23,19 @@
               }
             ],
             "old": {
-              "ordered-by": "system",
               "status": "current",
               "config": true,
               "max-elements": 10,
+              "ordered-by": "system",
               "type": {
                 "base-type": "uint16"
               }
             },
             "new": {
-              "ordered-by": "system",
               "status": "current",
               "config": true,
               "max-elements": 20,
+              "ordered-by": "system",
               "type": {
                 "base-type": "uint16"
               }
@@ -52,15 +52,15 @@
               }
             ],
             "old": {
-              "ordered-by": "system",
               "status": "current",
               "config": true,
-              "max-elements": 5
+              "max-elements": 5,
+              "ordered-by": "system"
             },
             "new": {
-              "ordered-by": "system",
               "status": "current",
-              "config": true
+              "config": true,
+              "ordered-by": "system"
             }
           }
         ]

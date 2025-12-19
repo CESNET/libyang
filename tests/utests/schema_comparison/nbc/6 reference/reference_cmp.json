@@ -23,8 +23,8 @@
               }
             ],
             "old": {
-              "status": "current",
               "reference": "some RFC",
+              "status": "current",
               "config": true,
               "mandatory": false,
               "type": {
