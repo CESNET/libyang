@@ -104,6 +104,11 @@ schema_diff_changed2str(enum lys_diff_changed_e ch)
         return "unique";
     case LYS_CHANGED_WHEN:
         return "when";
+
+    case LYS_CHANGED_PREFIX:
+        return "prefix";
+    case LYS_CHANGED_REFINE:
+        return "refine";
     case LYS_CHANGED_TYPEDEF:
         return "typedef";
     }
@@ -1455,12 +1460,13 @@ cleanup:
  * @param[in] change Change to use.
  * @param[in] mod1 Old module.
  * @param[in] mod2 New module.
+ * @param[in] with_parsed Whether 'parsed-schema' feature is enabled.
  * @param[in,out] diff_list Node to append to.
  * @return LY_ERR value.
  */
 static LY_ERR
 schema_diff_module_text(const struct lys_diff_change_s *change, const struct lys_module *mod1,
-        const struct lys_module *mod2, struct lyd_node *diff_list)
+        const struct lys_module *mod2, ly_bool with_parsed, struct lyd_node *diff_list)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_node *mod_cmp_list, *cont;
@@ -1468,6 +1474,16 @@ schema_diff_module_text(const struct lys_diff_change_s *change, const struct lys
 
     /* learn about the change */
     switch (change->changed) {
+    case LYS_CHANGED_PREFIX:
+        if (!with_parsed) {
+            /* parsed-only */
+            goto cleanup;
+        }
+
+        node_name = "prefix";
+        text_old = mod1->prefix;
+        text_new = mod2->prefix;
+        break;
     case LYS_CHANGED_CONTACT:
         node_name = "contact";
         text_old = mod1->contact;
@@ -1601,55 +1617,363 @@ cleanup:
 }
 
 /**
- * @brief Create cmp YANG data from a parsed restriction.
+ * @brief Create cmp YANG data from a parsed when.
  *
- * @param[in] restr Parsed restriction to use.
- * @param[in] cont_name Name of the main container to create.
- * @param[in] is_pattern Whether @p restr is a pattern, creates different nodes.
- * @param[in,out] cont Node to append to.
+ * @param[in] when Parsed when to use.
+ * @param[in,out] change_cont Node to append to.
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_parsed_restr(const struct lysp_restr *restr, const char *cont_name, ly_bool is_pattern, struct lyd_node *cont)
+schema_diff_parsed_when(const struct lysp_when *when, struct lyd_node *change_cont)
 {
     LY_ERR rc = LY_SUCCESS;
-    struct lyd_node *restr_parent;
+    struct lyd_node *when_list;
 
-    /* container */
-    if (is_pattern) {
-        LY_CHECK_GOTO(rc = lyd_new_list(cont, NULL, cont_name, 0, &restr_parent), cleanup);
-    } else {
-        LY_CHECK_GOTO(rc = lyd_new_inner(cont, NULL, cont_name, 0, &restr_parent), cleanup);
-    }
+    /* when */
+    LY_CHECK_GOTO(rc = lyd_new_list(change_cont, NULL, "when", 0, &when_list), cleanup);
 
-    if (is_pattern) {
-        /* expression */
-        LY_CHECK_GOTO(rc = lyd_new_term(restr_parent, NULL, "expression", restr->arg.str + 1, 0, NULL), cleanup);
+    /* condition */
+    LY_CHECK_GOTO(rc = lyd_new_term(when_list, NULL, "condition", when->cond, 0, NULL), cleanup);
 
-        /* inverted */
-        if ((restr->arg.str[0] == 0x15) && (rc = lyd_new_term(restr_parent, NULL, "inverted", NULL, 0, NULL))) {
-            goto cleanup;
-        }
-    } else {
-        /* restriction */
-        LY_CHECK_GOTO(rc = lyd_new_term(restr_parent, NULL, "restriction", restr->arg.str, 0, NULL), cleanup);
-    }
-
-    /* description, reference, error-message, error-app-tag */
-    if (restr->dsc && (rc = lyd_new_term(restr_parent, NULL, "description", restr->dsc, 0, NULL))) {
+    /* description */
+    if (when->dsc && (rc = lyd_new_term(when_list, NULL, "description", when->dsc, 0, NULL))) {
         goto cleanup;
     }
-    if (restr->ref && (rc = lyd_new_term(restr_parent, NULL, "reference", restr->ref, 0, NULL))) {
-        goto cleanup;
-    }
-    if (restr->emsg && (rc = lyd_new_term(restr_parent, NULL, "error-message", restr->emsg, 0, NULL))) {
-        goto cleanup;
-    }
-    if (restr->eapptag && (rc = lyd_new_term(restr_parent, NULL, "error-app-tag", restr->eapptag, 0, NULL))) {
+
+    /* reference */
+    if (when->ref && (rc = lyd_new_term(when_list, NULL, "reference", when->ref, 0, NULL))) {
         goto cleanup;
     }
 
 cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data children from a parsed restriction.
+ *
+ * @param[in] restr Parsed restriction to use.
+ * @param[in] leaf_name Name of the first restriction leaf to create.
+ * @param[in,out] cont Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_parsed_restr_children(const struct lysp_restr *restr, const char *leaf_name, struct lyd_node *parent)
+{
+    LY_ERR rc = LY_SUCCESS;
+
+    /* check if pattern */
+    if (!strcmp(leaf_name, "expression")) {
+        /* expression */
+        LY_CHECK_GOTO(rc = lyd_new_term(parent, NULL, leaf_name, restr->arg.str + 1, 0, NULL), cleanup);
+
+        /* inverted */
+        if ((restr->arg.str[0] == 0x15) && (rc = lyd_new_term(parent, NULL, "inverted", NULL, 0, NULL))) {
+            goto cleanup;
+        }
+    } else {
+        /* restriction */
+        LY_CHECK_GOTO(rc = lyd_new_term(parent, NULL, leaf_name, restr->arg.str, 0, NULL), cleanup);
+    }
+
+    /* description, reference, error-message, error-app-tag */
+    if (restr->dsc && (rc = lyd_new_term(parent, NULL, "description", restr->dsc, 0, NULL))) {
+        goto cleanup;
+    }
+    if (restr->ref && (rc = lyd_new_term(parent, NULL, "reference", restr->ref, 0, NULL))) {
+        goto cleanup;
+    }
+    if (restr->emsg && (rc = lyd_new_term(parent, NULL, "error-message", restr->emsg, 0, NULL))) {
+        goto cleanup;
+    }
+    if (restr->eapptag && (rc = lyd_new_term(parent, NULL, "error-app-tag", restr->eapptag, 0, NULL))) {
+        goto cleanup;
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from a parsed node.
+ *
+ * @param[in] pnode Parsed node to use.
+ * @param[in,out] change_cont Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_pnode(const struct lysp_node *pnode, struct lyd_node *change_cont)
+{
+    LY_ERR rc = LY_SUCCESS;
+    LY_ARRAY_COUNT_TYPE u;
+    struct lyd_node *must_list;
+    const struct lysp_node_choice *choic;
+    const struct lysp_node_case *cas;
+    const struct lysp_node_uses *uses;
+    const struct lysp_node_action_inout *inout;
+    const struct lysp_node_augment *aug;
+    const struct lysp_when *when = NULL;
+    const struct lysp_restr *musts = NULL;
+    const char *dflt = NULL;
+
+    /* description */
+    if (pnode->dsc && (rc = lyd_new_term(change_cont, NULL, "description", pnode->dsc, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* reference */
+    if (pnode->ref && (rc = lyd_new_term(change_cont, NULL, "reference", pnode->ref, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* status */
+    LY_CHECK_GOTO(rc = schema_diff_status(pnode->flags, change_cont), cleanup);
+
+    switch (pnode->nodetype) {
+    case LYS_CHOICE:
+        /* when, dflt */
+        choic = (struct lysp_node_choice *)pnode;
+        when = choic->when;
+        dflt = choic->dflt.str;
+
+        break;
+    case LYS_CASE:
+        /* when */
+        cas = (struct lysp_node_case *)pnode;
+        when = cas->when;
+
+        break;
+    case LYS_USES:
+        /* when */
+        uses = (struct lysp_node_uses *)pnode;
+        when = uses->when;
+
+        break;
+    case LYS_INPUT:
+    case LYS_OUTPUT:
+        /* musts */
+        inout = (struct lysp_node_action_inout *)pnode;
+        musts = inout->musts;
+
+        break;
+    case LYS_GROUPING:
+        /* no special substatements */
+        break;
+    case LYS_AUGMENT:
+        /* when */
+        aug = (struct lysp_node_augment *)pnode;
+        when = aug->when;
+
+        break;
+    default:
+        LOGINT(NULL);
+        rc = LY_EINT;
+        goto cleanup;
+    }
+
+    /* when */
+    if (when && (rc = schema_diff_parsed_when(when, change_cont))) {
+        goto cleanup;
+    }
+
+    /* musts */
+    LY_ARRAY_FOR(musts, u) {
+        LY_CHECK_GOTO(rc = lyd_new_list(change_cont, NULL, "must", 0, &must_list), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_parsed_restr_children(&musts[u], "condition", must_list), cleanup);
+    }
+
+    /* default */
+    if (dflt && (rc = lyd_new_term(change_cont, NULL, "default", dflt, 0, NULL))) {
+        goto cleanup;
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from all parsed node changes.
+ *
+ * @param[in] change Parsed node change to use.
+ * @param[in,out] diff_list Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_parsed_pnode(const struct lys_diff_pnode_change_s *change, struct lyd_node *diff_list)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *parsed_cmp_list, *cont;
+    char *path = NULL;
+    const struct lysp_node *pnode;
+
+    if (!change->changes.count) {
+        /* no changes of this typedef */
+        goto cleanup;
+    }
+
+    pnode = change->pnode_old ? change->pnode_old : change->pnode_new;
+
+    /* parsed comparison */
+    LY_CHECK_GOTO(rc = lyd_new_list(diff_list, NULL, "parsed-comparison", 0, &parsed_cmp_list), cleanup);
+
+    /* parent path */
+    path = schema_diff_pnode_path(pnode->parent);
+    LY_CHECK_GOTO(rc = lyd_new_term(parsed_cmp_list, NULL, "parent-path", path, 0, NULL), cleanup);
+
+    /* indentifier */
+    LY_CHECK_GOTO(rc = lyd_new_term(parsed_cmp_list, NULL, "identifier", pnode->name, 0, NULL), cleanup);
+
+    /* stmt-type */
+    LY_CHECK_GOTO(rc = lyd_new_term(parsed_cmp_list, NULL, "stmt-type", lys_nodetype2str(pnode->nodetype), 0, NULL), cleanup);
+
+    /* change info */
+    LY_CHECK_GOTO(rc = schema_diff_changes_info(&change->changes, parsed_cmp_list), cleanup);
+
+    if (change->pnode_old) {
+        /* old */
+        LY_CHECK_GOTO(rc = lyd_new_inner(parsed_cmp_list, NULL, "old", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnode(change->pnode_old, cont), cleanup);
+    }
+
+    if (change->pnode_new) {
+        /* new */
+        LY_CHECK_GOTO(rc = lyd_new_inner(parsed_cmp_list, NULL, "new", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnode(change->pnode_new, cont), cleanup);
+    }
+
+cleanup:
+    free(path);
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from a refine.
+ *
+ * @param[in] refine Parsed refine to use.
+ * @param[in,out] change_cont Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_refine(const struct lysp_refine *refine, struct lyd_node *change_cont)
+{
+    LY_ERR rc = LY_SUCCESS;
+    LY_ARRAY_COUNT_TYPE u;
+    struct lyd_node *must_list;
+    const char *config = NULL, *mandatory = NULL;
+
+    /* description */
+    if (refine->dsc && (rc = lyd_new_term(change_cont, NULL, "description", refine->dsc, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* reference */
+    if (refine->ref && (rc = lyd_new_term(change_cont, NULL, "reference", refine->ref, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* musts */
+    LY_ARRAY_FOR(refine->musts, u) {
+        LY_CHECK_GOTO(rc = lyd_new_list(change_cont, NULL, "must", 0, &must_list), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_parsed_restr_children(&refine->musts[u], "condition", must_list), cleanup);
+    }
+
+    /* presence */
+    if (refine->presence && (rc = lyd_new_term(change_cont, NULL, "presence", refine->presence, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* defaults */
+    LY_ARRAY_FOR(refine->dflts, u) {
+        LY_CHECK_GOTO(rc = lyd_new_term(change_cont, NULL, "default", refine->dflts[u].str, 0, NULL), cleanup);
+    }
+
+    /* min-elements */
+    if ((refine->flags & LYS_SET_MIN) && (rc = lyd_new_term_bin(change_cont, NULL, "min-elements", &refine->min,
+            sizeof refine->min, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* max-elements */
+    if ((refine->flags & LYS_SET_MAX) && (rc = lyd_new_term_bin(change_cont, NULL, "max-elements", &refine->max,
+            sizeof refine->max, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* config */
+    if (refine->flags & LYS_CONFIG_W) {
+        config = "true";
+    } else if (refine->flags & LYS_CONFIG_R) {
+        config = "false";
+    }
+    if (config && (rc = lyd_new_term(change_cont, NULL, "config", config, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* mandatory */
+    if (refine->flags & LYS_MAND_TRUE) {
+        mandatory = "true";
+    } else if (refine->flags & LYS_MAND_FALSE) {
+        mandatory = "false";
+    }
+    if (mandatory && (rc = lyd_new_term(change_cont, NULL, "mandatory", mandatory, 0, NULL))) {
+        goto cleanup;
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from all refine changes.
+ *
+ * @param[in] change Refine change to use.
+ * @param[in,out] diff_list Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_parsed_refine(const struct lys_diff_refine_change_s *change, struct lyd_node *diff_list)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *parsed_cmp_list, *cont;
+    char *path = NULL;
+    const char *nodeid;
+
+    if (!change->changes.count) {
+        /* no changes of this typedef */
+        goto cleanup;
+    }
+
+    /* parsed comparison */
+    LY_CHECK_GOTO(rc = lyd_new_list(diff_list, NULL, "parsed-comparison", 0, &parsed_cmp_list), cleanup);
+
+    /* parent path */
+    path = schema_diff_pnode_path(change->parent_new);
+    LY_CHECK_GOTO(rc = lyd_new_term(parsed_cmp_list, NULL, "parent-path", path, 0, NULL), cleanup);
+
+    /* indentifier */
+    nodeid = change->refine_old ? change->refine_old->nodeid : change->refine_new->nodeid;
+    LY_CHECK_GOTO(rc = lyd_new_term(parsed_cmp_list, NULL, "identifier", nodeid, 0, NULL), cleanup);
+
+    /* stmt-type */
+    LY_CHECK_GOTO(rc = lyd_new_term(parsed_cmp_list, NULL, "stmt-type", "refine", 0, NULL), cleanup);
+
+    /* change info */
+    LY_CHECK_GOTO(rc = schema_diff_changes_info(&change->changes, parsed_cmp_list), cleanup);
+
+    if (change->refine_old) {
+        /* old */
+        LY_CHECK_GOTO(rc = lyd_new_inner(parsed_cmp_list, NULL, "old", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_refine(change->refine_old, cont), cleanup);
+    }
+
+    if (change->refine_new) {
+        /* new */
+        LY_CHECK_GOTO(rc = lyd_new_inner(parsed_cmp_list, NULL, "new", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_refine(change->refine_new, cont), cleanup);
+    }
+
+cleanup:
+    free(path);
     return rc;
 }
 
@@ -1672,7 +1996,7 @@ schema_diff_parsed_enum(const struct lysp_type_enum *enm, ly_bool is_bit, struct
     LY_CHECK_GOTO(rc = lyd_new_list(cont, NULL, is_bit ? "bit" : "enum", 0, &enum_list, enm->name), cleanup);
 
     /* if-features */
-    /* TODO */
+    /* TODO for all the statements */
 
     /* description */
     if (enm->dsc && (rc = lyd_new_term(enum_list, NULL, "description", enm->dsc, 0, NULL))) {
@@ -1715,19 +2039,21 @@ schema_diff_parsed_type(const struct lysp_type *type, struct lyd_node *cont)
     LY_ARRAY_COUNT_TYPE u;
     char str[4];
     const char *req_inst_str;
-    struct lyd_node *un_type_cont;
+    struct lyd_node *un_type_cont, *restr_parent;
 
     /* name */
     LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, "name", type->name, 0, NULL), cleanup);
 
     /* range */
-    if (type->range && (rc = schema_diff_parsed_restr(type->range, "range", 0, cont))) {
-        goto cleanup;
+    if (type->range) {
+        LY_CHECK_GOTO(rc = lyd_new_inner(cont, NULL, "range", 0, &restr_parent), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_parsed_restr_children(type->range, "restriction", restr_parent), cleanup);
     }
 
     /* length */
-    if (type->length && (rc = schema_diff_parsed_restr(type->length, "length", 0, cont))) {
-        goto cleanup;
+    if (type->length) {
+        LY_CHECK_GOTO(rc = lyd_new_inner(cont, NULL, "length", 0, &restr_parent), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_parsed_restr_children(type->length, "restriction", restr_parent), cleanup);
     }
 
     /* fraction-digits */
@@ -1738,7 +2064,8 @@ schema_diff_parsed_type(const struct lysp_type *type, struct lyd_node *cont)
 
     /* patterns */
     LY_ARRAY_FOR(type->patterns, u) {
-        LY_CHECK_GOTO(rc = schema_diff_parsed_restr(&type->patterns[u], "pattern", 1, cont), cleanup);
+        LY_CHECK_GOTO(rc = lyd_new_list(cont, NULL, "length", 0, &restr_parent), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_parsed_restr_children(&type->patterns[u], "expression", restr_parent), cleanup);
     }
 
     /* enums */
@@ -1793,47 +2120,89 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_typedef(const struct lysp_tpdf *tpdf, const struct lysp_node *parent, struct lyd_node *change_cont)
+schema_diff_typedef(const struct lysp_tpdf *tpdf, struct lyd_node *change_cont)
 {
     LY_ERR rc = LY_SUCCESS;
-    struct lyd_node *typedef_cont, *type_cont;
-    char *path = NULL;
-
-    /* typedef container */
-    LY_CHECK_GOTO(rc = lyd_new_inner(change_cont, NULL, "typedef", 0, &typedef_cont), cleanup);
-
-    /* name */
-    LY_CHECK_GOTO(rc = lyd_new_term(typedef_cont, NULL, "name", tpdf->name, 0, NULL), cleanup);
-
-    /* path */
-    path = schema_diff_pnode_path(parent);
-    LY_CHECK_GOTO(rc = lyd_new_term(typedef_cont, NULL, "path", path, 0, NULL), cleanup);
+    struct lyd_node *type_cont;
 
     /* default */
-    if (tpdf->dflt.str && (rc = lyd_new_term(typedef_cont, NULL, "default", tpdf->dflt.str, 0, NULL))) {
+    if (tpdf->dflt.str && (rc = lyd_new_term(change_cont, NULL, "default", tpdf->dflt.str, 0, NULL))) {
         goto cleanup;
     }
 
     /* description */
-    if (tpdf->dsc && (rc = lyd_new_term(typedef_cont, NULL, "description", tpdf->dsc, 0, NULL))) {
+    if (tpdf->dsc && (rc = lyd_new_term(change_cont, NULL, "description", tpdf->dsc, 0, NULL))) {
         goto cleanup;
     }
 
     /* reference */
-    if (tpdf->ref && (rc = lyd_new_term(typedef_cont, NULL, "reference", tpdf->ref, 0, NULL))) {
+    if (tpdf->ref && (rc = lyd_new_term(change_cont, NULL, "reference", tpdf->ref, 0, NULL))) {
         goto cleanup;
     }
 
     /* status */
-    LY_CHECK_GOTO(rc = schema_diff_status(tpdf->flags, typedef_cont), cleanup);
+    LY_CHECK_GOTO(rc = schema_diff_status(tpdf->flags, change_cont), cleanup);
 
     /* type */
-    LY_CHECK_GOTO(rc = lyd_new_inner(typedef_cont, NULL, "type", 0, &type_cont), cleanup);
+    LY_CHECK_GOTO(rc = lyd_new_inner(change_cont, NULL, "type", 0, &type_cont), cleanup);
     LY_CHECK_GOTO(rc = schema_diff_parsed_type(&tpdf->type, type_cont), cleanup);
 
     /* units */
-    if (tpdf->units && (rc = lyd_new_term(typedef_cont, NULL, "units", tpdf->units, 0, NULL))) {
+    if (tpdf->units && (rc = lyd_new_term(change_cont, NULL, "units", tpdf->units, 0, NULL))) {
         goto cleanup;
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from all typedef changes.
+ *
+ * @param[in] change Typedef change to use.
+ * @param[in,out] diff_list Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_parsed_typedef(const struct lys_diff_typedef_change_s *change, struct lyd_node *diff_list)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *parsed_cmp_list, *cont;
+    char *path = NULL;
+    const char *tpdf_name;
+
+    if (!change->changes.count) {
+        /* no changes of this typedef */
+        goto cleanup;
+    }
+
+    /* parsed comparison */
+    LY_CHECK_GOTO(rc = lyd_new_list(diff_list, NULL, "parsed-comparison", 0, &parsed_cmp_list), cleanup);
+
+    /* parent path */
+    path = schema_diff_pnode_path(change->parent_new);
+    LY_CHECK_GOTO(rc = lyd_new_term(parsed_cmp_list, NULL, "parent-path", path, 0, NULL), cleanup);
+
+    /* indentifier */
+    tpdf_name = change->typedef_old ? change->typedef_old->name : change->typedef_new->name;
+    LY_CHECK_GOTO(rc = lyd_new_term(parsed_cmp_list, NULL, "identifier", tpdf_name, 0, NULL), cleanup);
+
+    /* stmt-type */
+    LY_CHECK_GOTO(rc = lyd_new_term(parsed_cmp_list, NULL, "stmt-type", "typedef", 0, NULL), cleanup);
+
+    /* change info */
+    LY_CHECK_GOTO(rc = schema_diff_changes_info(&change->changes, parsed_cmp_list), cleanup);
+
+    if (change->typedef_old) {
+        /* old */
+        LY_CHECK_GOTO(rc = lyd_new_inner(parsed_cmp_list, NULL, "old", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_typedef(change->typedef_old, cont), cleanup);
+    }
+
+    if (change->typedef_new) {
+        /* new */
+        LY_CHECK_GOTO(rc = lyd_new_inner(parsed_cmp_list, NULL, "new", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_typedef(change->typedef_new, cont), cleanup);
     }
 
 cleanup:
@@ -1842,40 +2211,31 @@ cleanup:
 }
 
 /**
- * @brief Create cmp YANG data from all typedef changes.
+ * @brief Create cmp YANG data from parsed-only statement changes.
  *
- * @param[in] change Identity change to use.
- * @param[in] with_parsed Whether 'parsed-schema' feature is enabled.
+ * @param[in] diff Diff to use.
  * @param[in,out] diff_list Node to append to.
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_parsed_typedef(const struct lys_diff_typedef_change_s *change, struct lyd_node *diff_list)
+schema_diff_parsed(const struct lys_diff_s *diff, struct lyd_node *diff_list)
 {
     LY_ERR rc = LY_SUCCESS;
-    struct lyd_node *mod_cmp_list, *cont;
+    uint32_t i;
 
-    if (!change->changes.count) {
-        /* no changes of this typedef */
-        goto cleanup;
+    /* choice, case, input, output, uses, grouping, augment */
+    for (i = 0; i < diff->pnode_change_count; ++i) {
+        LY_CHECK_GOTO(rc = schema_diff_parsed_pnode(&diff->pnode_changes[i], diff_list), cleanup);
     }
 
-    /* parsed comparison */
-    LY_CHECK_GOTO(rc = lyd_new_list(diff_list, NULL, "parsed-comparison", 0, &mod_cmp_list), cleanup);
-
-    /* change info */
-    LY_CHECK_GOTO(rc = schema_diff_changes_info(&change->changes, mod_cmp_list), cleanup);
-
-    if (change->typedef_old) {
-        /* old */
-        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "old", 0, &cont), cleanup);
-        LY_CHECK_GOTO(rc = schema_diff_typedef(change->typedef_old, change->parent_new, cont), cleanup);
+    /* refine */
+    for (i = 0; i < diff->refine_change_count; ++i) {
+        LY_CHECK_GOTO(rc = schema_diff_parsed_refine(&diff->refine_changes[i], diff_list), cleanup);
     }
 
-    if (change->typedef_new) {
-        /* new */
-        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "new", 0, &cont), cleanup);
-        LY_CHECK_GOTO(rc = schema_diff_typedef(change->typedef_new, change->parent_new, cont), cleanup);
+    /* typedefs */
+    for (i = 0; i < diff->typedef_change_count; ++i) {
+        LY_CHECK_GOTO(rc = schema_diff_parsed_typedef(&diff->typedef_changes[i], diff_list), cleanup);
     }
 
 cleanup:
@@ -1940,25 +2300,21 @@ schema_diff_module(const struct lys_diff_s *diff, const struct lys_module *mod1,
 
     /* text substmts */
     for (i = 0; i < diff->module_changes.count; ++i) {
-        LY_CHECK_GOTO(rc = schema_diff_module_text(&diff->module_changes.changes[i], mod1, mod2, diff_list), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_module_text(&diff->module_changes.changes[i], mod1, mod2, diff->with_parsed,
+                diff_list), cleanup);
     }
 
     /* identities */
     for (i = 0; i < diff->ident_change_count; ++i) {
-        LY_CHECK_GOTO(rc = schema_diff_module_ident(&diff->ident_changes[i], diff->diff_parsed, diff_list), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_module_ident(&diff->ident_changes[i], diff->with_parsed, diff_list), cleanup);
     }
 
-    if (diff->diff_parsed) {
-        /* augments */
+    if (diff->with_parsed) {
+        /* extensions */
         /* TODO */
 
         /* deviations */
         /* TODO */
-
-        /* typedefs */
-        for (i = 0; i < diff->typedef_change_count; ++i) {
-            LY_CHECK_GOTO(rc = schema_diff_parsed_typedef(&diff->typedef_changes[i], diff_list), cleanup);
-        }
     }
 
     /* extension-instances */
@@ -2644,6 +3000,11 @@ lysc_diff_tree(const struct lys_module *mod1, const struct lys_module *mod2, con
 
     /* module comparison */
     LY_CHECK_GOTO(rc = schema_diff_module(diff, mod1, mod2, diff_list), cleanup);
+
+    /* parsed comparison */
+    if (diff->with_parsed) {
+        LY_CHECK_GOTO(rc = schema_diff_parsed(diff, diff_list), cleanup);
+    }
 
     /* node comparison */
     for (i = 0; i < diff->node_change_count; ++i) {

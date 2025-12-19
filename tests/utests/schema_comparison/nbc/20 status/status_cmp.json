@@ -59,8 +59,8 @@
             }
           },
           {
-            "node": "/status:cont",
-            "node-type": "container",
+            "node": "/status:l3",
+            "node-type": "leaf",
             "changed": [
               {
                 "stmt": "node",
@@ -70,13 +70,16 @@
             ],
             "new": {
               "status": "current",
-              "presence": false,
-              "config": true
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "base-type": "string"
+              }
             }
           },
           {
-            "node": "/status:cont",
-            "node-type": "container",
+            "node": "/status:l4",
+            "node-type": "leaf",
             "changed": [
               {
                 "stmt": "node",
@@ -85,9 +88,12 @@
               }
             ],
             "new": {
-              "status": "current",
-              "presence": false,
-              "config": true
+              "status": "deprecated",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "base-type": "string"
+              }
             }
           }
         ]

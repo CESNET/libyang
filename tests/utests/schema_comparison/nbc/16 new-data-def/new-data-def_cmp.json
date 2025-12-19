@@ -13,27 +13,8 @@
         "conformance": "non-backwards-compatible",
         "node-comparison": [
           {
-            "node": "/new-data-def:cont/l1",
+            "node": "/new-data-def:cont/l2",
             "node-type": "leaf",
-            "changed": [
-              {
-                "stmt": "node",
-                "change": "added",
-                "conformance": "backwards-compatible"
-              }
-            ],
-            "new": {
-              "status": "current",
-              "config": true,
-              "mandatory": false,
-              "type": {
-                "base-type": "string"
-              }
-            }
-          },
-          {
-            "node": "/new-data-def:cont",
-            "node-type": "container",
             "changed": [
               {
                 "stmt": "node",
@@ -43,8 +24,31 @@
             ],
             "new": {
               "status": "current",
-              "presence": false,
-              "config": true
+              "config": true,
+              "mandatory": true,
+              "type": {
+                "base-type": "decimal64",
+                "fraction-digits": 4
+              }
+            }
+          },
+          {
+            "node": "/new-data-def:l3",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "added",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": true,
+              "type": {
+                "base-type": "uint8"
+              }
             }
           }
         ]

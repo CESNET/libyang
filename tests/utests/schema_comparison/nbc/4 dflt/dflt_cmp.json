@@ -13,6 +13,9 @@
         "conformance": "non-backwards-compatible",
         "parsed-comparison": [
           {
+            "parent-path": "/",
+            "identifier": "mytype",
+            "stmt-type": "typedef",
             "changed": [
               {
                 "stmt": "default",
@@ -22,22 +25,16 @@
               }
             ],
             "old": {
-              "typedef": {
-                "name": "mytype",
-                "path": "/",
-                "default": "val",
-                "type": {
-                  "name": "string"
-                }
+              "default": [
+                "val"
+              ],
+              "type": {
+                "name": "string"
               }
             },
             "new": {
-              "typedef": {
-                "name": "mytype",
-                "path": "/",
-                "type": {
-                  "name": "string"
-                }
+              "type": {
+                "name": "string"
               }
             }
           }

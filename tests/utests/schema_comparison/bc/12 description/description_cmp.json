@@ -64,8 +64,8 @@
               }
             },
             "new": {
-              "status": "current",
               "description": "is a nice leaf",
+              "status": "current",
               "config": true,
               "mandatory": false,
               "type": {
@@ -89,8 +89,8 @@
               }
             ],
             "old": {
-              "status": "current",
               "description": "desc",
+              "status": "current",
               "config": true,
               "mandatory": false,
               "type": {
@@ -98,19 +98,19 @@
               }
             },
             "new": {
-              "status": "current",
               "description": "desc2",
+              "status": "current",
               "config": true,
               "mandatory": false,
+              "type": {
+                "base-type": "uint32"
+              },
               "ext-instance": [
                 {
                   "module": "ietf-yang-schema-comparison",
                   "name": "backwards-compatible"
                 }
-              ],
-              "type": {
-                "base-type": "uint32"
-              }
+              ]
             }
           }
         ]
