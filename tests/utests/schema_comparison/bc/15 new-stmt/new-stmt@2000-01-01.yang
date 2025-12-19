@@ -13,9 +13,13 @@ module new-stmt {
         }
     }
 
+    grouping top-grp2;
+
     leaf l1 {
         type string;
     }
+
+    uses top-grp2;
 
     rpc r1;
 }

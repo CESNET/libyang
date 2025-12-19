@@ -24,13 +24,13 @@
             ],
             "old": {
               "status": "current",
-              "presence": true,
-              "config": true
+              "config": true,
+              "presence": true
             },
             "new": {
               "status": "current",
-              "presence": false,
-              "config": true
+              "config": true,
+              "presence": false
             }
           },
           {
@@ -45,13 +45,13 @@
             ],
             "old": {
               "status": "current",
-              "presence": false,
-              "config": true
+              "config": true,
+              "presence": false
             },
             "new": {
               "status": "current",
-              "presence": true,
-              "config": true
+              "config": true,
+              "presence": true
             }
           }
         ]
