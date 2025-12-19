@@ -29,6 +29,63 @@
         ],
         "parsed-comparison": [
           {
+            "parent-path": "/{uses=top-grp2}",
+            "identifier": "cont",
+            "stmt-type": "augment",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ]
+          },
+          {
+            "parent-path": "/r2",
+            "identifier": "input",
+            "stmt-type": "input",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ]
+          },
+          {
+            "parent-path": "/r2",
+            "identifier": "output",
+            "stmt-type": "output",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ]
+          },
+          {
+            "parent-path": "/{uses=top-grp2}",
+            "identifier": "cont/lg",
+            "stmt-type": "refine",
+            "changed": [
+              {
+                "stmt": "refine",
+                "parent-stmt": "node",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "default": [
+                "50"
+              ]
+            }
+          },
+          {
+            "parent-path": "/",
+            "identifier": "type1",
+            "stmt-type": "typedef",
             "changed": [
               {
                 "stmt": "typedef",
@@ -37,19 +94,53 @@
               }
             ],
             "new": {
-              "typedef": {
-                "name": "type1",
-                "path": "/",
-                "type": {
-                  "name": "int8"
-                }
+              "type": {
+                "name": "int8"
               }
             }
           }
         ],
         "node-comparison": [
           {
-            "node": "/new-stmt:r1",
+            "node": "/new-stmt:cont",
+            "node-type": "container",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "status": "current",
+              "config": true,
+              "presence": false
+            }
+          },
+          {
+            "node": "/new-stmt:cont/lg",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "status": "current",
+              "default": [
+                "50"
+              ],
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "base-type": "uint8"
+              }
+            }
+          },
+          {
+            "node": "/new-stmt:r2",
             "node-type": "rpc",
             "changed": [
               {

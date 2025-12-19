@@ -21,6 +21,13 @@
 #include "ly_common.h"
 
 /**
+ * @brief Check a node type for a prased-only node.
+ *
+ * @param[in] nodetype Node type to check.
+ */
+#define LYS_DIFF_NODE_PARSED(nodetype) ((nodetype) & (LYS_CHOICE | LYS_CASE | LYS_USES | LYS_INPUT | LYS_OUTPUT | LYS_GROUPING | LYS_AUGMENT))
+
+/**
  * @brief Type of a schema change.
  */
 enum lys_diff_change_e {
@@ -68,6 +75,8 @@ enum lys_diff_changed_e {
     LYS_CHANGED_WHEN,
 
     /* parsed-schema */
+    LYS_CHANGED_PREFIX,
+    LYS_CHANGED_REFINE,
     LYS_CHANGED_TYPEDEF
 };
 
@@ -107,16 +116,6 @@ struct lys_diff_ext_change_s {
 };
 
 /**
- * @brief Structure for a node schema change.
- */
-struct lys_diff_node_change_s {
-    const struct lysc_node *snode_old;          /**< schema node from the old revision of the YANG module */
-    const struct lysc_node *snode_new;          /**< schema node from the new revision of the YANG module */
-    struct lys_diff_changes_s changes;          /**< changes in the old and new schema node, may be empty */
-    struct lys_diff_ext_changes_s ext_changes;  /**< extension-instance changes */
-};
-
-/**
  * @brief Structure for an identity change.
  */
 struct lys_diff_ident_change_s {
@@ -126,6 +125,16 @@ struct lys_diff_ident_change_s {
     const struct lysp_ident *p_ident_new;       /**< new parsed identity */
     struct lys_diff_changes_s changes;          /**< changes in the old and new identity, may be empty */
     struct lys_diff_ext_changes_s ext_changes;  /**< extension-instance changes */
+};
+
+/**
+ * @brief Structure for a refine change.
+ */
+struct lys_diff_refine_change_s {
+    const struct lysp_refine *refine_old;       /**< old parsed refine */
+    const struct lysp_refine *refine_new;       /**< new parsed refine */
+    const struct lysp_node *parent_new;         /**< new parent parsed node of the refine */
+    struct lys_diff_changes_s changes;          /**< changes in the old and new refine, may be empty */
 };
 
 /**
@@ -139,19 +148,44 @@ struct lys_diff_typedef_change_s {
 };
 
 /**
+ * @brief Structure for a parsed node schema change.
+ */
+struct lys_diff_pnode_change_s {
+    const struct lysp_node *pnode_old;          /**< parsed schema node from the old revision of the YANG module */
+    const struct lysp_node *pnode_new;          /**< parsed schema node from the new revision of the YANG module */
+    struct lys_diff_changes_s changes;          /**< changes in the old and new schema node, may be empty */
+};
+
+/**
+ * @brief Structure for a node schema change.
+ */
+struct lys_diff_node_change_s {
+    const struct lysc_node *snode_old;          /**< schema node from the old revision of the YANG module */
+    const struct lysc_node *snode_new;          /**< schema node from the new revision of the YANG module */
+    struct lys_diff_changes_s changes;          /**< changes in the old and new schema node, may be empty */
+    struct lys_diff_ext_changes_s ext_changes;  /**< extension-instance changes */
+};
+
+/**
  * @brief Structure for a full schema comparison.
  */
 struct lys_diff_s {
     struct lys_diff_changes_s module_changes;       /**< module changes */
     struct lys_diff_ident_change_s *ident_changes;  /**< array of all the changed identities */
     uint32_t ident_change_count;                    /**< count of ident changes */
-    struct lys_diff_typedef_change_s *typedef_changes; /**< array of all the changed typedefs */
-    uint32_t typedef_change_count;                  /**< count of typedef changes */
     struct lys_diff_ext_changes_s mod_ext_changes;  /**< module extension-instance changes */
+    struct lys_diff_pnode_change_s *pnode_changes;  /**< array of all the parsed-only nodes and their changes */
+    uint32_t pnode_change_count;                    /**< count of pnode changes */
+    struct lys_diff_refine_change_s *refine_changes;    /**< array of all the changed refines */
+    uint32_t refine_change_count;                   /**< count of refine changes */
+    struct lys_diff_typedef_change_s *typedef_changes;  /**< array of all the changed typedefs */
+    uint32_t typedef_change_count;                  /**< count of typedef changes */
     struct lys_diff_node_change_s *node_changes;    /**< array of all the nodes and their changes */
     uint32_t node_change_count;                     /**< count of node changes */
+    const char *old_prefix;                         /**< old module local prefix */
+    const char *new_prefix;                         /**< new module local prefix */
     ly_bool is_yang10;                              /**< marks using YANG 1.0 update rules */
-    ly_bool diff_parsed;                            /**< marks generating diff for parsed schema in addition to compiled */
+    ly_bool with_parsed;                            /**< marks generating diff for parsed schema in addition to compiled */
     ly_bool is_nbc;                                 /**< flag to mark a non-backwards-compatible change */
 };
 

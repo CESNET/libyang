@@ -33,6 +33,17 @@ module new-stmt {
         type string;
     }
 
+    uses top-grp2 {
+        augment "cont" {
+            leaf lg {
+                type uint8;
+            }
+        }
+        refine "cont/lg" {
+            default 50;
+        }
+    }
+
     rpc r1;
     rpc r2 {
         input {

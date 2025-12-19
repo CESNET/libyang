@@ -11,6 +11,20 @@
           "revision": "2000-01-02"
         },
         "conformance": "backwards-compatible",
+        "parsed-comparison": [
+          {
+            "parent-path": "/ch",
+            "identifier": "c2",
+            "stmt-type": "case",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ]
+          }
+        ],
         "node-comparison": [
           {
             "node": "/case:ch/c2/cont",
@@ -24,8 +38,8 @@
             ],
             "new": {
               "status": "current",
-              "presence": false,
-              "config": true
+              "config": true,
+              "presence": false
             }
           }
         ]

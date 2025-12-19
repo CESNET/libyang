@@ -23,8 +23,8 @@
               }
             ],
             "old": {
-              "status": "current",
               "description": "is a nice leaf",
+              "status": "current",
               "config": true,
               "mandatory": false,
               "type": {

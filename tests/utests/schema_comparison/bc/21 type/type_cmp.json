@@ -13,6 +13,9 @@
         "conformance": "non-backwards-compatible",
         "parsed-comparison": [
           {
+            "parent-path": "/",
+            "identifier": "my-un-type",
+            "stmt-type": "typedef",
             "changed": [
               {
                 "stmt": "typedef",
@@ -21,16 +24,15 @@
               }
             ],
             "old": {
-              "typedef": {
-                "name": "my-un-type",
-                "path": "/",
-                "type": {
-                  "name": "uint8"
-                }
+              "type": {
+                "name": "uint8"
               }
             }
           },
           {
+            "parent-path": "/",
+            "identifier": "mytype",
+            "stmt-type": "typedef",
             "changed": [
               {
                 "stmt": "typedef",
@@ -39,19 +41,18 @@
               }
             ],
             "new": {
-              "typedef": {
-                "name": "mytype",
-                "path": "/",
-                "type": {
-                  "name": "string",
-                  "length": {
-                    "restriction": "1..20"
-                  }
+              "type": {
+                "name": "string",
+                "length": {
+                  "restriction": "1..20"
                 }
               }
             }
           },
           {
+            "parent-path": "/cont",
+            "identifier": "list-type",
+            "stmt-type": "typedef",
             "changed": [
               {
                 "stmt": "length",
@@ -61,23 +62,15 @@
               }
             ],
             "old": {
-              "typedef": {
-                "name": "list-type",
-                "path": "/cont",
-                "type": {
-                  "name": "string"
-                }
+              "type": {
+                "name": "string"
               }
             },
             "new": {
-              "typedef": {
-                "name": "list-type",
-                "path": "/cont",
-                "type": {
-                  "name": "string",
-                  "length": {
-                    "restriction": "1..16"
-                  }
+              "type": {
+                "name": "string",
+                "length": {
+                  "restriction": "1..16"
                 }
               }
             }

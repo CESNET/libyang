@@ -31,8 +31,8 @@
               }
             },
             "new": {
-              "status": "current",
               "reference": "some RFC",
+              "status": "current",
               "config": true,
               "mandatory": false,
               "type": {
@@ -51,19 +51,19 @@
               }
             ],
             "old": {
-              "ordered-by": "system",
-              "status": "current",
               "reference": "old RFC",
+              "status": "current",
               "config": true,
+              "ordered-by": "system",
               "type": {
                 "base-type": "string"
               }
             },
             "new": {
-              "ordered-by": "system",
-              "status": "current",
               "reference": "new RFC",
+              "status": "current",
               "config": true,
+              "ordered-by": "system",
               "type": {
                 "base-type": "string"
               }
