@@ -26,11 +26,12 @@
 # include <alloca.h>
 #endif
 
-#if defined (__APPLE__) || defined (_WIN32)
+#cmakedefine HAVE_BYTESWAP_H
+#ifdef HAVE_BYTESWAP_H
+# include <byteswap.h>
+#else
 # define bswap_32 __builtin_bswap32
 # define bswap64 __builtin_bswap64
-#else
-# include <byteswap.h>
 #endif
 
 #include <limits.h>

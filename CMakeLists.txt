@@ -341,6 +341,10 @@ endif()
 # link compat
 use_compat()
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
+    add_compile_definitions(__EXTENSIONS__)
+endif()
+
 # create static libyang library
 if(NOT BUILD_SHARED_LIBS)
     add_definitions(-DSTATIC)
