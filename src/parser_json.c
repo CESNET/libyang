@@ -1191,7 +1191,7 @@ lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node,
 {
     LY_ERR r;
     const char *opaq_name, *mod_name, *attr_mod = NULL;
-    size_t opaq_name_len, attr_mod_len;
+    size_t opaq_name_len, attr_mod_len = 0;
 
     if (!attr_node) {
         /* learn the attribute module name */
