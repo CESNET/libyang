@@ -35,10 +35,17 @@ lyht_hash_multi(uint32_t hash, const char *key_part, size_t len)
 {
 #ifdef LY_XXHASH_SUPPORT
     if (key_part && len) {
+# ifdef LY_XXH3_64BITS_WITHSEED
         return XXH3_64bits_withSeed(key_part, len, hash);
+# else
+        return XXH32(key_part, len, hash);
+# endif
     }
-
+# ifdef LY_XXH3_64BITS_WITHSEED
     return XXH3_64bits_withSeed(NULL, 0, hash);
+# else
+    return XXH32(NULL, 0, hash);
+# endif
 #else
     uint32_t i;
 
@@ -62,7 +69,11 @@ LIBYANG_API_DEF uint32_t
 lyht_hash(const char *key, size_t len)
 {
 #ifdef LY_XXHASH_SUPPORT
+# ifdef LY_XXH3_64BITS_WITHSEED
     return XXH3_64bits(key, len);
+# else
+    return XXH32(key, len, 0);
+# endif
 #else
     uint32_t hash;
 
