@@ -2349,13 +2349,28 @@ lys_search_localfile_file_type(const struct dirent *file, const char *wd, struct
 {
     LY_ERR rc = LY_SUCCESS;
     char *str = NULL;
-    ly_bool is_dir = 0, is_reg = 0;
+    ly_bool is_dir = 0, is_reg = 0, need_stat = 1;
     struct stat st;
 
     *skip = 0;
 
-    if ((file->d_type == DT_UNKNOWN) || (file->d_type == DT_LNK)) {
-        /* FS does not support this field or its a symbolic link, need to call stat */
+#ifdef HAVE_DIRENT_D_TYPE
+    if (file->d_type == DT_DIR) {
+        /* dirent - dir */
+        is_dir = 1;
+        need_stat = 0;
+    } else if (file->d_type == DT_REG) {
+        /* dirent - file */
+        is_reg = 1;
+        need_stat = 0;
+    } else if ((file->d_type != DT_UNKNOWN) && (file->d_type != DT_LNK)) {
+        /* it is a known type, but not dir or regular file, so trust d_type and just skip it */
+        need_stat = 0;
+    }
+#endif // HAVE_DIRENT_D_TYPE
+
+    if (need_stat) {
+        /* need to use stat to determine the file type */
         if (asprintf(&str, "%s/%s", wd, file->d_name) == -1) {
             LOGMEM(NULL);
             rc = LY_EMEM;
@@ -2371,12 +2386,6 @@ lys_search_localfile_file_type(const struct dirent *file, const char *wd, struct
             /* stat - file */
             is_reg = 1;
         }
-    } else if (file->d_type == DT_DIR) {
-        /* dirent - dir */
-        is_dir = 1;
-    } else if (file->d_type == DT_REG) {
-        /* dirent - file */
-        is_reg = 1;
     }
 
     if (is_dir && (dirs->count || !implicit_cwd)) {

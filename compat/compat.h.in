@@ -86,6 +86,7 @@
 #cmakedefine HAVE_MMAP
 #cmakedefine HAVE_STRCASECMP
 #cmakedefine HAVE_SETENV
+#cmakedefine HAVE_DIRENT_D_TYPE
 
 #ifndef bswap64
 #define bswap64(val) \

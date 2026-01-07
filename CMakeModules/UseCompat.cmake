@@ -18,6 +18,7 @@ include(CheckSymbolExists)
 include(CheckFunctionExists)
 include(CheckIncludeFile)
 include(TestBigEndian)
+include(CheckStructHasMember)
 if(POLICY CMP0075)
     cmake_policy(SET CMP0075 NEW)
 endif()
@@ -62,6 +63,8 @@ macro(USE_COMPAT)
     check_include_file("alloca.h" HAVE_ALLOCA_H)
 
     check_include_file("byteswap.h" HAVE_BYTESWAP_H)
+
+    check_struct_has_member("struct dirent" d_type "dirent.h" HAVE_DIRENT_D_TYPE)
 
     list(REMOVE_ITEM CMAKE_REQUIRED_DEFINITIONS -D_POSIX_C_SOURCE=200809L)
     list(REMOVE_ITEM CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
