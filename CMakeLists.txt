@@ -342,6 +342,8 @@ endif()
 use_compat()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
+    # required for some extensions on Solaris (e.g. strndup), see man 7 standards, section "Feature Test Macros"
+    # https://docs.oracle.com/cd/E88353_01/html/E37853/posix-7.html
     add_compile_definitions(__EXTENSIONS__)
 endif()
 
