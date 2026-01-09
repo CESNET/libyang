@@ -825,6 +825,10 @@ lysc_pattern_free(const struct ly_ctx *ctx, struct lysc_pattern **pattern)
     if (--(*pattern)->refcount) {
         return;
     }
+
+    /* free the shared pattern first, before removing from the dictionary */
+    ly_ctx_shared_data_pattern_del(ctx, (*pattern)->expr);
+
     lysdict_remove(ctx, (*pattern)->expr);
     lysdict_remove(ctx, (*pattern)->eapptag);
     lysdict_remove(ctx, (*pattern)->emsg);

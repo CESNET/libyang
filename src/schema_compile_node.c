@@ -1385,10 +1385,7 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, const struct lysp_restr *pattern
     LY_ARRAY_FOR(patterns_p, u) {
         LY_ARRAY_NEW_RET(ctx->ctx, (*patterns), pattern, LY_EMEM);
         *pattern = calloc(1, sizeof **pattern);
-        ++(*pattern)->refcount;
-
-        /* compile and insert the pattern into the context hash table, if it wasnt already compiled */
-        LY_CHECK_GOTO(ret = ly_ctx_shared_data_pattern_get(ctx->ctx, &patterns_p[u].arg.str[1], NULL), done);
+        (*pattern)->refcount = 1;
 
         if (patterns_p[u].arg.str[0] == LYSP_RESTR_PATTERN_NACK) {
             (*pattern)->inverted = 1;
@@ -1399,6 +1396,12 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, const struct lysp_restr *pattern
         DUP_STRING_GOTO(ctx->ctx, patterns_p[u].dsc, (*pattern)->dsc, ret, done);
         DUP_STRING_GOTO(ctx->ctx, patterns_p[u].ref, (*pattern)->ref, ret, done);
         COMPILE_EXTS_GOTO(ctx, patterns_p[u].exts, (*pattern)->exts, (*pattern), ret, done);
+
+        /* compile the pattern, if it wasnt already compiled (e.g. same expression but different module)
+         * we do this now to verify the pattern right away while compiling the type
+         * and so we can store it in the cache so we dont have to recompile it again later
+         */
+        LY_CHECK_GOTO(ret = ly_ctx_shared_data_pattern_get(ctx->ctx, (*pattern)->expr, NULL), done);
     }
 
 done:

@@ -142,20 +142,6 @@ ly_ctx_ht_pattern_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void
 }
 
 /**
- * @brief Callback for freeing a pattern record.
- */
-static void
-ly_ctx_ht_pattern_free_cb(void *val_p)
-{
-    struct ly_pattern_ht_rec *val = val_p;
-
-    if (val->pcode) {
-        /* free the pcode */
-        pcre2_code_free(val->pcode);
-    }
-}
-
-/**
  * @brief Remove private context data from the sized array and free its contents.
  *
  * @param[in] private_data Private context data to free.
@@ -304,8 +290,11 @@ ly_ctx_shared_data_remove_and_free(struct ly_ctx_shared_data *shared_data)
         return;
     }
 
-    /* free all the cached pattern pcodes */
-    lyht_free(shared_data->pattern_ht, ly_ctx_ht_pattern_free_cb);
+    /* all the patterns must have been removed already,
+     * either while free compiled modules (standard behavior)
+     * or when assigning a parent to a context, it's shared data will be used (schema mount) */
+    assert(shared_data->pattern_ht->used == 0);
+    lyht_free(shared_data->pattern_ht, NULL);
 
     /* free rest of the members */
     lydict_clean(shared_data->data_dict);
@@ -544,6 +533,16 @@ cleanup:
     pthread_rwlock_unlock(&ly_ctx_data_rwlock);
 }
 
+void
+ly_ctx_ht_pattern_rec_free(struct ly_pattern_ht_rec *rec)
+{
+    if (!rec) {
+        return;
+    }
+
+    pcre2_code_free(rec->pcode);
+}
+
 LY_ERR
 ly_ctx_shared_data_pattern_get(const struct ly_ctx *ctx, const char *pattern, const pcre2_code **pcode)
 {
@@ -559,6 +558,7 @@ ly_ctx_shared_data_pattern_get(const struct ly_ctx *ctx, const char *pattern, co
         *pcode = NULL;
     }
 
+    /* get the context shared data */
     ctx_data = ly_ctx_shared_data_get(ctx);
     LY_CHECK_RET(!ctx_data, LY_EINT);
 
@@ -566,32 +566,28 @@ ly_ctx_shared_data_pattern_get(const struct ly_ctx *ctx, const char *pattern, co
     hash = lyht_hash(pattern, strlen(pattern));
     rec.pattern = pattern;
     if (!lyht_find(ctx_data->pattern_ht, &rec, hash, (void **)&found_rec)) {
-        /* found it, return it */
+        /* pcode cached */
         if (pcode) {
             *pcode = found_rec->pcode;
         }
         goto cleanup;
     }
 
-    /* didnt find it, need to compile it */
+    /* didnt find it, either it's the first time or using printed context (which compiles the pcodes on the fly) */
+    assert(!pcode || ly_ctx_is_printed(ctx));
     LY_CHECK_GOTO(rc = lys_compile_type_pattern_check(ctx, pattern, &pcode_tmp), cleanup);
 
     /* store the compiled pattern code in the hash table */
-    hash = lyht_hash(pattern, strlen(pattern));
-    rec.pattern = pattern;
     rec.pcode = pcode_tmp;
     LY_CHECK_GOTO(rc = lyht_insert_no_check(ctx_data->pattern_ht, &rec, hash, NULL), cleanup);
 
     if (pcode) {
         *pcode = pcode_tmp;
-        pcode_tmp = NULL;
     }
+    pcode_tmp = NULL;
 
 cleanup:
-    if (rc) {
-        /* only free the pcode if we failed, because it belongs to the hash table */
-        pcre2_code_free(pcode_tmp);
-    }
+    pcre2_code_free(pcode_tmp);
     return rc;
 }
 
@@ -613,7 +609,8 @@ ly_ctx_shared_data_pattern_del(const struct ly_ctx *ctx, const char *pattern)
     rec.pattern = pattern;
 
     if (lyht_find(ctx_data->pattern_ht, &rec, hash, (void **)&found_rec)) {
-        /* pattern code not cached yet */
+        /* pattern code not cached, this may happen when using printed context,
+         * because then the pcodes are obtained on demand */
         return;
     }
 

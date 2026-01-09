@@ -327,6 +327,15 @@ int LY_VCODE_INSTREXP_len(const char *str);
  *****************************************************************************/
 
 /**
+ * @brief Internal pattern hash table record.
+ */
+struct ly_pattern_ht_rec {
+    const char *pattern;    /**< Pattern expression, used both as key to hash and value to search for.
+                              * Not stored in a dictionary, but a direct reference to ::lysc_pattern.expr. */
+    pcre2_code *pcode;      /**< Compiled PCRE2 pattern code. */
+};
+
+/**
   * @brief Private run-time context data.
   *
   * The data is thread and context address specific. It is used to store
@@ -492,6 +501,13 @@ LY_ERR ly_ctx_shared_data_pattern_get(const struct ly_ctx *ctx, const char *patt
  * @param[in] pattern Pattern string to use.
  */
 void ly_ctx_shared_data_pattern_del(const struct ly_ctx *ctx, const char *pattern);
+
+/**
+ * @brief Free members of a pattern record stored in the context hash table.
+ *
+ * @param[in] rec Pattern records whose members to free.
+ */
+void ly_ctx_ht_pattern_rec_free(struct ly_pattern_ht_rec *rec);
 
 /******************************************************************************
  * Dictionary

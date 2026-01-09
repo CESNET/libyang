@@ -763,6 +763,10 @@ LIBYANG_API_DEF LY_ERR
 lyplg_ext_set_parent_ctx(struct ly_ctx *ctx, const struct ly_ctx *parent_ctx)
 {
     const struct ly_ctx *c;
+    struct ly_ctx_shared_data *ctx_data;
+    struct ly_ht_rec *rec;
+    uint32_t hlist_idx;
+    uint32_t rec_idx;
 
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
 
@@ -787,7 +791,16 @@ lyplg_ext_set_parent_ctx(struct ly_ctx *ctx, const struct ly_ctx *parent_ctx)
              * contexts, there is no ext callback for freeing the compiled extension data with the contexts) */
             ly_ctx_destroy(ctx);
         } else {
-            /* remove its shared and private data */
+            /* remove its shared and private data, this is an exception as we need to free compiled patterns
+             * manually, since we are not destroying the whole context, we will just be using the parent's ctx data instead */
+            ctx_data = ly_ctx_shared_data_get(ctx);
+            LYHT_ITER_ALL_RECS(ctx_data->pattern_ht, hlist_idx, rec_idx, rec) {
+                ly_ctx_ht_pattern_rec_free((struct ly_pattern_ht_rec *)&rec->val);
+            }
+
+            /* we have removed all patterns (so it is empty), we can not free the ht here though, to avoid
+             * double free, but just trick it to look empty */
+            ctx_data->pattern_ht->used = 0;
             ly_ctx_data_del(ctx);
         }
     } else if (!parent_ctx) {
