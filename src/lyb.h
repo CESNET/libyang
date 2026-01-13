@@ -125,7 +125,7 @@ struct lylyb_parse_ctx {
 };
 
 /**< current LYB format version */
-#define LYB_HEADER_VERSION_NUM 0x0
+#define LYB_HEADER_VERSION_NUM 0x1
 
 /**< LYB format version reserved bit size */
 #define LYB_HEADER_VERSION_BITS 3
