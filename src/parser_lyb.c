@@ -139,44 +139,6 @@ lyb_read(void *buf, uint64_t count_bits, struct lylyb_parse_ctx *lybctx)
 }
 
 /**
- * @brief Peek data from the input.
- *
- * @param[in,out] buf Destination buffer, @p count_bits rightmost bits are written to, rest are shifted left.
- * @param[in] count_bits Number of bits to peek.
- * @param[in] lybctx LYB context.
- */
-static void
-lyb_peek(void *buf, uint64_t count_bits, struct lylyb_parse_ctx *lybctx)
-{
-    uint8_t count_buf_bits = 0, peek;
-
-    assert(lybctx && (count_bits < 9));
-
-    if (!count_bits) {
-        return;
-    }
-
-    if (lybctx->buf_bits) {
-        /* peek the buffered bits */
-        count_buf_bits = (lybctx->buf_bits > count_bits) ? count_bits : lybctx->buf_bits;
-
-        /* keep the original leftmost bits and write new peeked rightmost bits */
-        ((uint8_t *)buf)[0] = (((uint8_t *)buf)[0] << count_bits) | (lybctx->buf & lyb_right_bit_mask(count_buf_bits));
-        count_bits -= count_buf_bits;
-    }
-
-    if (!count_bits) {
-        return;
-    }
-
-    /* need to peek input */
-    ly_in_peek(lybctx->in, &peek);
-
-    /* prepend the newly peeked bits in front of the previously peeked bits */
-    ((uint8_t *)buf)[0] |= (peek & lyb_right_bit_mask(count_bits)) << count_buf_bits;
-}
-
-/**
  * @brief Read a count.
  *
  * @param[in,out] count Destination count buffer, must be zeroed because only relevant bits will be used.
@@ -435,11 +397,13 @@ cleanup:
  *
  * @param[in] lybctx LYB context.
  * @param[in] sparent Schema parent node of the metadata.
+ * @param[in] metadata_count Number of metadata stored.
+ * If (uint32_t)-1, the count has not been read yet and should be read here.
  * @param[out] meta Parsed metadata.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, struct lyd_meta **meta)
+lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, uint32_t metadata_count, struct lyd_meta **meta)
 {
     LY_ERR rc = LY_SUCCESS;
     ly_bool dynamic;
@@ -450,8 +414,13 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, 
     struct lysc_ext_instance *ant;
     const struct lysc_type *ant_type;
 
-    /* read number of metadata stored */
-    lyb_read_count(&count, lybctx->parse_ctx);
+    if (metadata_count == (uint32_t)-1) {
+        /* reserved value meaning metadata count not read yet, read it now */
+        lyb_read_count(&count, lybctx->parse_ctx);
+    } else {
+        /* use provided count */
+        count = metadata_count;
+    }
 
     for (i = 0; i < count; ++i) {
         /* find module */
@@ -956,15 +925,16 @@ lyb_finish_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, uint32_t fl
  *
  * @param[in] lybctx LYB context.
  * @param[in] sparent Schema parent node of the metadata.
+ * @param[in] metadata_count Number of metadata already read.
  * @param[out] flags Parsed node flags.
  * @param[out] meta Parsed metadata of the node.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_parse_node_header(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, uint32_t *flags, struct lyd_meta **meta)
+lyb_parse_node_header(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, uint32_t metadata_count, uint32_t *flags, struct lyd_meta **meta)
 {
     /* create and read metadata */
-    LY_CHECK_RET(lyb_parse_metadata(lybctx, sparent, meta));
+    LY_CHECK_RET(lyb_parse_metadata(lybctx, sparent, metadata_count, meta));
 
     if (!lybctx->parse_ctx->shrink) {
         /* read flags, fixed bits */
@@ -1147,7 +1117,7 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
     const struct ly_ctx *ctx = lybctx->parse_ctx->ctx;
 
     /* read necessary basic data */
-    rc = lyb_parse_node_header(lybctx, snode, &flags, &meta);
+    rc = lyb_parse_node_header(lybctx, snode, -1, &flags, &meta);
     LY_CHECK_GOTO(rc, error);
 
     /* parse value type */
@@ -1228,7 +1198,7 @@ lyb_parse_node_inner(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const 
     uint32_t flags = 0;
 
     /* read necessary basic data */
-    rc = lyb_parse_node_header(lybctx, snode, &flags, &meta);
+    rc = lyb_parse_node_header(lybctx, snode, -1, &flags, &meta);
     LY_CHECK_GOTO(rc, error);
 
     /* create node */
@@ -1272,13 +1242,14 @@ error:
  * @param[in] lybctx LYB context.
  * @param[in] parent Data parent of the sibling.
  * @param[in] snode Schema of the node to be parsed.
+ * @param[in] metadata_count Number of metadata already read for the node.
  * @param[in,out] first_p First top-level sibling.
  * @param[out] parsed Set of all successfully parsed nodes.
  * @return LY_ERR value.
  */
 static LY_ERR
 lyb_parse_node_leaf(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const struct lysc_node *snode,
-        struct lyd_node **first_p, struct ly_set *parsed)
+        uint32_t metadata_count, struct lyd_node **first_p, struct ly_set *parsed)
 {
     LY_ERR ret;
     struct lyd_node *node = NULL;
@@ -1286,7 +1257,7 @@ lyb_parse_node_leaf(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
     uint32_t flags = 0;
 
     /* read necessary basic data */
-    ret = lyb_parse_node_header(lybctx, snode, &flags, &meta);
+    ret = lyb_parse_node_header(lybctx, snode, metadata_count, &flags, &meta);
     LY_CHECK_GOTO(ret, error);
 
     /* read value of term node and create it */
@@ -1321,20 +1292,19 @@ static LY_ERR
 lyb_parse_node_leaflist(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const struct lysc_node *snode,
         struct lyd_node **first_p, struct ly_set *parsed)
 {
-    uint8_t peek;
+    uint32_t metadata_count;
 
     while (1) {
-        /* peek for the end instance flag (special metadata count) */
-        peek = 0;
-        lyb_peek(&peek, LYB_METADATA_END_BITS, lybctx->parse_ctx);
-        if (peek == LYB_METADATA_END) {
-            /* all the instances parsed, read the end flag */
-            lyb_read(&peek, LYB_METADATA_END_BITS, lybctx->parse_ctx);
+        /* read metadata count to check for end of instances */
+        metadata_count = 0;
+        lyb_read_count(&metadata_count, lybctx->parse_ctx);
+        if (metadata_count == LYB_METADATA_END_COUNT) {
+            /* all the instances parsed */
             break;
         }
 
         /* next instance */
-        LY_CHECK_RET(lyb_parse_node_leaf(lybctx, parent, snode, first_p, parsed));
+        LY_CHECK_RET(lyb_parse_node_leaf(lybctx, parent, snode, metadata_count, first_p, parsed));
     }
 
     return LY_SUCCESS;
@@ -1355,24 +1325,22 @@ lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
         struct lyd_node **first_p, struct ly_set *parsed)
 {
     LY_ERR rc;
-    uint8_t peek;
     struct lyd_node *node = NULL;
     struct lyd_meta *meta = NULL;
-    uint32_t flags = 0;
+    uint32_t flags = 0, metadata_count;
     ly_bool log_node = 0;
 
     while (1) {
-        /* peek for the end instance flag (special metadata count) */
-        peek = 0;
-        lyb_peek(&peek, LYB_METADATA_END_BITS, lybctx->parse_ctx);
-        if (peek == LYB_METADATA_END) {
-            /* all the instances parsed, read the end flag */
-            lyb_read(&peek, LYB_METADATA_END_BITS, lybctx->parse_ctx);
+        /* read metadata count to check for end of instances */
+        metadata_count = 0;
+        lyb_read_count(&metadata_count, lybctx->parse_ctx);
+        if (metadata_count == LYB_METADATA_END_COUNT) {
+            /* all the instances parsed */
             break;
         }
 
         /* read necessary basic data */
-        rc = lyb_parse_node_header(lybctx, snode, &flags, &meta);
+        rc = lyb_parse_node_header(lybctx, snode, metadata_count, &flags, &meta);
         LY_CHECK_GOTO(rc, error);
 
         /* create list node */
@@ -1476,7 +1444,7 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
     } else if (snode->nodetype & LYD_NODE_INNER) {
         rc = lyb_parse_node_inner(lybctx, parent, snode, first_p, parsed);
     } else {
-        rc = lyb_parse_node_leaf(lybctx, parent, snode, first_p, parsed);
+        rc = lyb_parse_node_leaf(lybctx, parent, snode, -1, first_p, parsed);
     }
     LY_CHECK_GOTO(rc, cleanup);
 

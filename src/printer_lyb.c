@@ -801,9 +801,9 @@ lyb_print_metadata(const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
         if (!lyd_metadata_should_print(iter)) {
             continue;
         }
-        if (count == LYB_METADATA_END - 1) {
+        if (count == LYB_METADATA_END_COUNT - 1) {
             LOGERR(lybctx->print_ctx->ctx, LY_EINT, "Maximum supported number of data node metadata is %" PRIu8 ".",
-                    LYB_METADATA_END - 1);
+                    LYB_METADATA_END_COUNT - 1);
             return LY_EINT;
         }
         ++count;
