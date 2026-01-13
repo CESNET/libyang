@@ -332,6 +332,12 @@ lyb_write(const void *buf, uint64_t count_bits, struct lylyb_print_ctx *lybctx)
         return LY_SUCCESS;
     }
 
+    if (!lybctx->shrink) {
+        /* just write full bytes */
+        count_bytes = LYPLG_BITS2BYTES(count_bits);
+        return ly_write_(lybctx->out, buf, count_bytes);
+    }
+
     if (lybctx->buf_bits + count_bits < 8) {
         /* only buffering additional bits, append them (from left) */
         lybctx->buf |= ((*(uint8_t *)buf) << lybctx->buf_bits) & lyb_left_bit_mask(8 - lybctx->buf_bits);
@@ -408,10 +414,24 @@ lyb_write_flush(struct lylyb_print_ctx *lybctx)
 static LY_ERR
 lyb_write_count(uint32_t count, struct lylyb_print_ctx *lybctx)
 {
-    uint8_t prefix_b, num_b;
+    uint8_t prefix_b, num_b, byte_len;
     uint32_t buf;
 
-    /* prepare prefix in buf (in reverse, read bit-by-bit), set prefix length and number length in bits */
+    /* --- no shrink mode --- */
+    if (!lybctx->shrink) {
+        if (count > UINT16_MAX) {
+            LOGERR(lybctx->ctx, LY_EINT, "Cannot print count %" PRIu32 ", largest supported number is %" PRIu16 ".", count, UINT16_MAX);
+            return LY_EINT;
+        }
+
+        /* always write the count on 2 bytes */
+        byte_len = 2;
+        buf = htole32(count);
+        return lyb_write(&buf, byte_len * 8, lybctx);
+    }
+
+    /* --- shrink mode ---
+     * prepare prefix in buf (in reverse, read bit-by-bit), set prefix length and number length in bits */
     if (count == 0) {
         /* 0 */
         buf = 0;
@@ -466,10 +486,19 @@ lyb_write_count(uint32_t count, struct lylyb_print_ctx *lybctx)
 static LY_ERR
 lyb_write_size(uint32_t size, struct lylyb_print_ctx *lybctx)
 {
-    uint8_t prefix_b, num_b;
+    uint8_t prefix_b, num_b, byte_len;
     uint32_t buf;
 
-    /* prepare prefix in buf (in reverse, read bit-by-bit), set prefix length and number length in bits */
+    /* --- no shrink mode --- */
+    if (!lybctx->shrink) {
+        /* always write the size on 4 bytes */
+        byte_len = 4;
+        buf = htole32(size);
+        return lyb_write(&buf, byte_len * 8, lybctx);
+    }
+
+    /* --- shrink mode ---
+     * prepare prefix in buf (in reverse, read bit-by-bit), set prefix length and number length in bits */
     if (size < 16) {
         /* prefix 0, encoded on 5 b */
         buf = 0x0;
@@ -609,6 +638,28 @@ cleanup:
 }
 
 /**
+ * @brief Print context hash.
+ *
+ * @param[in] lybctx Printer LYB context.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_print_context_hash(struct lylyb_print_ctx *lybctx)
+{
+    uint32_t hash = 0;
+
+    /* context hash (is truncated), if not printing empty data */
+    if (lybctx->ctx) {
+        hash = lyb_truncate_hash_nonzero(ly_ctx_get_modules_hash(lybctx->ctx), LYB_HEADER_CTX_HASH_BITS);
+
+        /* correct byte order */
+        hash = htole32(hash);
+    }
+
+    return lyb_write(&hash, LYB_HEADER_CTX_HASH_BITS, lybctx);
+}
+
+/**
  * @brief Print LYB header.
  *
  * @param[in] lybctx Printer LYB context.
@@ -617,8 +668,14 @@ cleanup:
 static LY_ERR
 lyb_print_header(struct lylyb_print_ctx *lybctx)
 {
-    uint8_t byte = 0;
-    uint32_t hash;
+    uint8_t byte = 0, remaining_bit_count;
+    ly_bool is_shrink;
+
+    /* save the shrink mode */
+    is_shrink = lybctx->shrink;
+
+    /* temporarily set shrink to 1 to allow writing the header bit by bit */
+    lybctx->shrink = 1;
 
     /* version */
     byte = LYB_HEADER_VERSION_NUM;
@@ -629,19 +686,16 @@ lyb_print_header(struct lylyb_print_ctx *lybctx)
     LY_CHECK_RET(lyb_write(&byte, LYB_HEADER_HASH_ALG_BITS, lybctx));
 
     /* shrink */
-    byte = (lybctx->shrink ? 1 : 0);
+    byte = (is_shrink ? 1 : 0);
     LY_CHECK_RET(lyb_write(&byte, LYB_HEADER_SHRINK_FLAG_BITS, lybctx));
 
-    /* context hash (is truncated), if not printing empty data */
-    if (lybctx->ctx) {
-        hash = lyb_truncate_hash_nonzero(ly_ctx_get_modules_hash(lybctx->ctx), LYB_HEADER_CTX_HASH_BITS);
+    /* fill remaining reserved bits with 0 */
+    remaining_bit_count = 8 - (LYB_HEADER_VERSION_BITS + LYB_HEADER_HASH_ALG_BITS + LYB_HEADER_SHRINK_FLAG_BITS);
+    byte = 0;
+    LY_CHECK_RET(lyb_write(&byte, remaining_bit_count, lybctx));
 
-        /* correct byte order */
-        hash = htole32(hash);
-    } else {
-        hash = 0;
-    }
-    LY_CHECK_RET(lyb_write(&hash, LYB_HEADER_CTX_HASH_BITS, lybctx));
+    /* restore the shrink mode */
+    lybctx->shrink = is_shrink;
 
     return LY_SUCCESS;
 }
@@ -1364,6 +1418,9 @@ lyb_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options
 
     /* LYB header */
     LY_CHECK_GOTO(rc = lyb_print_header(lybctx->print_ctx), cleanup);
+
+    /* context hash */
+    LY_CHECK_GOTO(rc = lyb_print_context_hash(lybctx->print_ctx), cleanup);
 
     /* all the top-level siblings, recursively */
     LY_CHECK_GOTO(rc = lyb_print_siblings(root, 1, lybctx), cleanup);

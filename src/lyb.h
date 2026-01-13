@@ -44,8 +44,8 @@ struct lysc_node;
  * This is a short summary of the format:
  * @verbatim
 
- lyb_data         = "lyb" lyb_header siblings <padding to a full byte>
- lyb_header       = LYB_HEADER_VERSION_NUM LYB_HEADER_HASH_ALG YANG-context-hash
+ lyb_data         = "lyb" lyb_header YANG-context-hash siblings <padding to a full byte>
+ lyb_header       = LYB_HEADER_VERSION_NUM LYB_HEADER_HASH_ALG <padding to a full byte>
 
  siblings         = (node_id node_content)* LYB_NODE_END
  node_id          = (LYB_NODE_CHILD schema_hash) | (LYB_NODE_EXT module schema_name) | (LYB_NODE_TOP module schema_hash)
@@ -113,8 +113,8 @@ struct lylyb_print_ctx {
  * @brief LYB format parser context
  */
 struct lylyb_parse_ctx {
-    const struct ly_ctx *ctx;
-    ly_bool shrink;
+    const struct ly_ctx *ctx;   /**< context */
+    ly_bool shrink;             /**< whether the LYB data were printed in shrinked mode */
 
     uint64_t line;              /**< current line */
     ly_bool empty_hash;         /**< mark empty context hash */

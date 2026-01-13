@@ -86,6 +86,13 @@ lyb_read(void *buf, uint64_t count_bits, struct lylyb_parse_ctx *lybctx)
         return;
     }
 
+    if (!lybctx->shrink) {
+        /* just read full bytes */
+        count_bytes = LYPLG_BITS2BYTES(count_bits);
+        ly_in_read(lybctx->in, buf, count_bytes);
+        return;
+    }
+
     if (lybctx->buf_bits) {
         /* will spent buffered bits */
         count_buf_bits = (count_bits > lybctx->buf_bits) ? lybctx->buf_bits : count_bits;
@@ -147,9 +154,19 @@ lyb_read(void *buf, uint64_t count_bits, struct lylyb_parse_ctx *lybctx)
 static void
 lyb_read_count(uint32_t *count, struct lylyb_parse_ctx *lybctx)
 {
-    uint8_t prefix = 0, pref_len = 0;
+    uint8_t prefix = 0, pref_len = 0, byte_len = 0;
 
-    /* read all prefix bits */
+    /* --- no shrink mode --- */
+    if (!lybctx->shrink) {
+        /* always use 2 bytes for the count */
+        byte_len = 2;
+        lyb_read(count, byte_len * 8, lybctx);
+        *count = le32toh(*count);
+        return;
+    }
+
+    /* --- shrink mode ---
+     * read all prefix bits */
     do {
         ++pref_len;
         prefix <<= 1;
@@ -200,9 +217,19 @@ lyb_read_count(uint32_t *count, struct lylyb_parse_ctx *lybctx)
 static void
 lyb_read_size(uint32_t *size, struct lylyb_parse_ctx *lybctx)
 {
-    uint8_t prefix = 0, pref_len = 0;
+    uint8_t prefix = 0, pref_len = 0, byte_len = 0;
 
-    /* read all prefix bits */
+    /* --- no shrink mode --- */
+    if (!lybctx->shrink) {
+        /* always use 4 bytes for the size */
+        byte_len = 4;
+        lyb_read(size, byte_len * 8, lybctx);
+        *size = le32toh(*size);
+        return;
+    }
+
+    /* --- shrink mode ---
+     * read all prefix bits */
     do {
         ++pref_len;
         prefix <<= 1;
@@ -398,7 +425,7 @@ cleanup:
  * @param[in] lybctx LYB context.
  * @param[in] sparent Schema parent node of the metadata.
  * @param[in] metadata_count Number of metadata stored.
- * If (uint32_t)-1, the count has not been read yet and should be read here.
+ * If UINT32_MAX, the count has not been read yet and should be read here.
  * @param[out] meta Parsed metadata.
  * @return LY_ERR value.
  */
@@ -414,7 +441,7 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, 
     struct lysc_ext_instance *ant;
     const struct lysc_type *ant_type;
 
-    if (metadata_count == (uint32_t)-1) {
+    if (metadata_count == UINT32_MAX) {
         /* reserved value meaning metadata count not read yet, read it now */
         lyb_read_count(&count, lybctx->parse_ctx);
     } else {
@@ -1117,7 +1144,7 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
     const struct ly_ctx *ctx = lybctx->parse_ctx->ctx;
 
     /* read necessary basic data */
-    rc = lyb_parse_node_header(lybctx, snode, -1, &flags, &meta);
+    rc = lyb_parse_node_header(lybctx, snode, UINT32_MAX, &flags, &meta);
     LY_CHECK_GOTO(rc, error);
 
     /* parse value type */
@@ -1198,7 +1225,7 @@ lyb_parse_node_inner(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const 
     uint32_t flags = 0;
 
     /* read necessary basic data */
-    rc = lyb_parse_node_header(lybctx, snode, -1, &flags, &meta);
+    rc = lyb_parse_node_header(lybctx, snode, UINT32_MAX, &flags, &meta);
     LY_CHECK_GOTO(rc, error);
 
     /* create node */
@@ -1444,7 +1471,7 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
     } else if (snode->nodetype & LYD_NODE_INNER) {
         rc = lyb_parse_node_inner(lybctx, parent, snode, first_p, parsed);
     } else {
-        rc = lyb_parse_node_leaf(lybctx, parent, snode, -1, first_p, parsed);
+        rc = lyb_parse_node_leaf(lybctx, parent, snode, UINT32_MAX, first_p, parsed);
     }
     LY_CHECK_GOTO(rc, cleanup);
 
@@ -1483,6 +1510,42 @@ lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, ly_bool 
 }
 
 /**
+ * @brief Parse context hash and optionally compare it to the current context hash.
+ *
+ * @param[in] lybctx LYB context.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_parse_context_hash(struct lyd_lyb_ctx *lybctx)
+{
+    uint32_t data_hash, cur_hash;
+    struct lylyb_parse_ctx *pctx = lybctx->parse_ctx;
+
+    /* context hash */
+    data_hash = 0;
+    lyb_read((uint8_t *)&data_hash, LYB_HEADER_CTX_HASH_BITS, pctx);
+
+    /* correct byte order */
+    data_hash = le32toh(data_hash);
+
+    if (!data_hash) {
+        /* fine for no data */
+        pctx->empty_hash = 1;
+    } else if (!(lybctx->parse_opts & LYD_PARSE_LYB_SKIP_CTX_CHECK)) {
+        /* truncate context hash to the same bit size */
+        cur_hash = lyb_truncate_hash_nonzero(ly_ctx_get_modules_hash(pctx->ctx), LYB_HEADER_CTX_HASH_BITS);
+
+        if (data_hash != cur_hash) {
+            LOGERR(pctx->ctx, LY_EINVAL, "Different current LYB context modules hash compared to the one stored in the "
+                    "LYB data (0x%" PRIx32 " != 0x%" PRIx32 ").", data_hash, cur_hash);
+            return LY_EINVAL;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Parse LYB header.
  *
  * @param[in] lybctx LYB context.
@@ -1491,9 +1554,11 @@ lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, ly_bool 
 static LY_ERR
 lyb_parse_header(struct lyd_lyb_ctx *lybctx)
 {
-    uint8_t byte;
-    uint32_t data_hash, cur_hash;
+    uint8_t byte, is_shrink, remaining_bit_count;
     struct lylyb_parse_ctx *pctx = lybctx->parse_ctx;
+
+    /* assume shrinked format until we read the flag in the header, so we can parse the header bit by bit */
+    pctx->shrink = 1;
 
     /* version */
     byte = 0;
@@ -1516,30 +1581,19 @@ lyb_parse_header(struct lyd_lyb_ctx *lybctx)
     /* shrink */
     byte = 0;
     lyb_read(&byte, LYB_HEADER_SHRINK_FLAG_BITS, pctx);
+    is_shrink = byte;
+
+    /* read and check remaining reserved bits */
+    remaining_bit_count = 8 - (LYB_HEADER_VERSION_BITS + LYB_HEADER_HASH_ALG_BITS + LYB_HEADER_SHRINK_FLAG_BITS);
+    byte = 0;
+    lyb_read(&byte, remaining_bit_count, pctx);
     if (byte) {
-        pctx->shrink = 1;
+        LOGERR(pctx->ctx, LY_EINVAL, "Invalid reserved bits in LYB header.");
+        return LY_EINVAL;
     }
 
-    /* context hash */
-    data_hash = 0;
-    lyb_read((uint8_t *)&data_hash, LYB_HEADER_CTX_HASH_BITS, pctx);
-
-    /* correct byte order */
-    data_hash = le32toh(data_hash);
-
-    if (!data_hash) {
-        /* fine for no data */
-        pctx->empty_hash = 1;
-    } else if (!(lybctx->parse_opts & LYD_PARSE_LYB_SKIP_CTX_CHECK)) {
-        /* truncate context hash to the same bit size */
-        cur_hash = lyb_truncate_hash_nonzero(ly_ctx_get_modules_hash(pctx->ctx), LYB_HEADER_CTX_HASH_BITS);
-
-        if (data_hash != cur_hash) {
-            LOGERR(pctx->ctx, LY_EINVAL, "Different current LYB context modules hash compared to the one stored in the "
-                    "LYB data (0x%" PRIx32 " != 0x%" PRIx32 ").", data_hash, cur_hash);
-            return LY_EINVAL;
-        }
-    }
+    /* set the real shrink value */
+    pctx->shrink = is_shrink;
 
     return LY_SUCCESS;
 }
@@ -1584,6 +1638,10 @@ lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
 
     /* read header */
     rc = lyb_parse_header(lybctx);
+    LY_CHECK_GOTO(rc, cleanup);
+
+    /* read and check context hash */
+    rc = lyb_parse_context_hash(lybctx);
     LY_CHECK_GOTO(rc, cleanup);
 
     /* read sibling(s) */
