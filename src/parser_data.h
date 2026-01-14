@@ -145,27 +145,15 @@ struct ly_in;
                                                  resolved, and default values are not added (only the ones parsed are
                                                  present). */
 #define LYD_PARSE_STRICT    0x020000        /**< Instead of silently ignoring data without schema definition raise an error.
-                                                 Do not combine with ::LYD_PARSE_OPAQ. Always set for ::LYD_LYB. */
+                                                 Do not combine with ::LYD_PARSE_OPAQ. Always the behavior for ::LYD_LYB. */
 #define LYD_PARSE_OPAQ      0x040000        /**< Instead of silently ignoring data without definition, parse them into
                                                  an opaq node. Do not combine with ::LYD_PARSE_STRICT (except for ::LYD_LYB). */
 #define LYD_PARSE_NO_STATE  0x080000        /**< Forbid state data in the parsed data. Usually used with ::LYD_VALIDATE_NO_STATE. */
-#define LYD_PARSE_LYB_SKIP_CTX_CHECK 0x100000   /**< Normally, when printing LYB data, the context hash is written into
-                                                     the data that describes the context (see ::ly_ctx_get_modules_hash()).
-                                                     Then, when parsing the data, the hash is compared with the current
-                                                     context and an error is generated if they do not match. The reason
-                                                     for that is that the data may be parsed incorrectly possibly
-                                                     leading to a crash. However, this hash restriction is too severe
-                                                     and the hash must match only with regard to the modules with actual
-                                                     YANG data in the LYB data and their equal absolute order in the
-                                                     context to guarantee correct data parsing. In other words, if there
-                                                     is a module A in the printing context but no data
-                                                     of this module in the LYB data and any YANG data belong to modules
-                                                     before the module A, the parsing context does not have
-                                                     to have module A loaded but the hash check will fail without it.
-                                                     So, if you are able to guarantee that the parsing context will
-                                                     have all the required YANG modules in the same state and absolute
-                                                     order as in the printed context you can use this flag to
-                                                     effectively soften the context restriction. */
+#define LYD_PARSE_LYB_SKIP_MODULE_CHECK 0x100000    /**< [LYB](@ref howtoDataPrinters) only; only affects data printed without ::LYD_PRINT_SHRINK.
+                                                         Skip checking of module revisions and set of enabled features when
+                                                         parsing data. Use this flag when the modules in the parser context
+                                                         differ (in revision/features), but the instantiated schema trees exactly match
+                                                         (the module changes conform to RFC 7950, sec. 11). */
 #define LYD_PARSE_ORDERED 0x200000          /**< Do not search for the correct place of each node but instead expect
                                                  that the nodes are being parsed in the correct schema-based order,
                                                  which is always true if the data were printed by libyang and not

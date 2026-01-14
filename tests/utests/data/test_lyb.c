@@ -2778,6 +2778,110 @@ test_different_contexts(void **state)
     ly_ctx_destroy(ctx);
 }
 
+static void
+test_skip_module_check(void **state)
+{
+    const char *mod_rev_1, *mod_rev_2, *mod_feat, *data_xml;
+    struct ly_ctx *ctx;
+    struct ly_in *in;
+    char *lyb_out;
+    struct lyd_node *tree1, *tree2;
+    const char *feats1[] = {"feat1", NULL};
+    const char *feats2[] = {"feat1", "feat2", NULL};
+
+    /* prepare two revisions of the same module */
+    mod_rev_1 =
+            "module mod { namespace \"urn:mod-skip\"; prefix m;"
+            "  revision 2024-01-01;"
+            "  container cont { leaf l { type uint8; } }"
+            "}";
+    mod_rev_2 =
+            "module mod { namespace \"urn:mod-skip\"; prefix m;"
+            "  revision 2024-02-01;"
+            "  container cont { leaf l { type uint8; } }"
+            "  container cont2 { leaf l2 { type uint8; } }"
+            "}";
+
+    /* Test 1: Different revisions of the same module - skip module check */
+
+    /* load mod_rev_1 */
+    UTEST_ADD_MODULE(mod_rev_1, LYS_IN_YANG, NULL, NULL);
+
+    /* create a new context with mod_rev_2 */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(mod_rev_2, &in));
+    assert_int_equal(LY_SUCCESS, lys_parse(ctx, in, LYS_IN_YANG, NULL, NULL));
+    ly_in_free(in, 0);
+
+    /* create some XML data for mod */
+    data_xml = "<cont xmlns=\"urn:mod-skip\"><l>42</l></cont>\n";
+    CHECK_PARSE_LYD(data_xml, tree1);
+
+    /* print it to LYB using UTEST_LYCTX (with mod_rev_1) */
+    assert_int_equal(lyd_print_mem(&lyb_out, tree1, LYD_LYB, LYD_PRINT_SIBLINGS), 0);
+
+    /* parse it in the new context (with mod_rev_2) - should fail due to revision mismatch */
+    assert_int_not_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, lyb_out, LYD_LYB,
+            LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree2));
+
+    /* parse it in the new context (with mod_rev_2) - should succeed when skipping module check */
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, lyb_out, LYD_LYB,
+            LYD_PARSE_ONLY | LYD_PARSE_STRICT | LYD_PARSE_LYB_SKIP_MODULE_CHECK, 0, &tree2));
+    assert_non_null(tree2);
+    CHECK_LYD(tree1, tree2);
+
+    free(lyb_out);
+    lyd_free_all(tree1);
+    lyd_free_all(tree2);
+    ly_ctx_destroy(ctx);
+
+    /* Test 2: Different features enabled - skip module check */
+    mod_feat =
+            "module mod-feat { namespace \"urn:mod-feat-skip\"; prefix mf;"
+            "  feature feat1;"
+            "  feature feat2;"
+            "  container cont {"
+            "    if-feature feat1;"
+            "    leaf l1 { type uint8; }"
+            "  }"
+            "  container cont2 {"
+            "    if-feature feat2;"
+            "    leaf l2 { type uint8; }"
+            "  }"
+            "}";
+
+    /* load mod-feat with feat1 enabled */
+    UTEST_ADD_MODULE(mod_feat, LYS_IN_YANG, feats1, NULL);
+
+    /* create a new context with mod-feat with feat1 and feat2 enabled */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(mod_feat, &in));
+    assert_int_equal(LY_SUCCESS, lys_parse(ctx, in, LYS_IN_YANG, feats2, NULL));
+    ly_in_free(in, 0);
+
+    /* create some XML data for mod-feat */
+    data_xml = "<cont xmlns=\"urn:mod-feat-skip\"><l1>1</l1></cont>\n";
+    CHECK_PARSE_LYD(data_xml, tree1);
+
+    /* print it to LYB using UTEST_LYCTX (with feat1) */
+    assert_int_equal(lyd_print_mem(&lyb_out, tree1, LYD_LYB, LYD_PRINT_SIBLINGS), 0);
+
+    /* parse it in the new context (with feat1 and feat2) - should fail due to feature mismatch */
+    assert_int_not_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, lyb_out, LYD_LYB,
+            LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree2));
+
+    /* parse it in the new context (with feat1 and feat2) - should succeed when skipping module check */
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, lyb_out, LYD_LYB,
+            LYD_PARSE_ONLY | LYD_PARSE_STRICT | LYD_PARSE_LYB_SKIP_MODULE_CHECK, 0, &tree2));
+    assert_non_null(tree2);
+    CHECK_LYD(tree1, tree2);
+
+    free(lyb_out);
+    lyd_free_all(tree1);
+    lyd_free_all(tree2);
+    ly_ctx_destroy(ctx);
+}
+
 int
 main(void)
 {
@@ -2794,6 +2898,7 @@ main(void)
         UTEST(test_enumeration, setup),
         UTEST(test_bits, setup),
         UTEST(test_different_contexts, setup),
+        UTEST(test_skip_module_check, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -47,12 +47,14 @@ struct ly_out;
  *
  * - LYB
  *
- *   Proprietary binary format that is focused on efficiency. Should always be used for best performance except for
- *   cases when the YANG context used for printing may differ from the one used for parsing, such a scenario will fail.
- *   Also, this format ignores most printing flags except for ::LYD_PRINT_SIBLINGS and ::LYD_PRINT_SHRINK
- *   (functionality differs from the text formats). In addition to storing the data, this format also stores all the
- *   default values and data node flags meaning the loaded data can be used directly without any validation (unless
- *   ::LYD_PRINT_SHRINK is used).
+ *   Proprietary binary format that is focused on performance. This format ignores most printing flags
+ *   except for ::LYD_PRINT_SIBLINGS and ::LYD_PRINT_SHRINK (functionality differs from the text formats).
+ *   In addition to storing the data, this format also stores all the default values and data node flags
+ *   meaning the loaded data can be used directly without any revalidation (unless ::LYD_PRINT_SHRINK is used).
+ *   Unlike text formats, LYB format has specific context restrictions:
+ *      - The context used for parsing must contain and implement all modules, whose YANG data are instantiated in the LYB data.
+ *      - These modules must also be in the same revisions and have the same set of enabled features as in the printer context.
+ *   The ::LYD_PRINT_SHRINK and ::LYD_PARSE_LYB_SKIP_MODULE_CHECK flags further influence the context requirements.
  *
  * By default, both text formats are printed with indentation (formatting), which can be avoided by ::LYD_PRINT_SHRINK
  * [printer option](@ref dataprinterflags)). Other options adjust e.g. [with-defaults mode](@ref howtoDataWD).
@@ -86,10 +88,15 @@ struct ly_out;
  */
 #define LYD_PRINT_SIBLINGS  0x01                 /**< Flag for printing also the (following) sibling nodes of the data node.
                                                       The flag is not allowed for ::lyd_print_all() and ::lyd_print_tree(). */
-#define LYD_PRINT_SHRINK        LY_PRINT_SHRINK  /**< Flag for output without indentation and formatting new lines for
-                                                      text formats. For the LYB format, this causes the printed data to
-                                                      be shrinked to include only the necessary data making them smaller
-                                                      but requiring validation. */
+#define LYD_PRINT_SHRINK        LY_PRINT_SHRINK  /**< For text formats, output without indentation and formatting new lines.
+                                                      For LYB format, print only the necessary data (making the output smaller)
+                                                      but even valid data require validation after parsing.
+                                                      The contexts used for printing and parsing shrunk LYB data <b>must be identical</b>
+                                                      (the hash of the context used for printing is stored in the LYB data and checked
+                                                      against the context used for parsing. See ::ly_ctx_get_modules_hash()
+                                                      for more information about how the context hash is computed and
+                                                      what exactly it means for two contexts to be identical).
+                                                      Use this flag if size matters more than parsing performance. */
 #define LYD_PRINT_EMPTY_CONT 0x04                /**< Preserve empty non-presence containers */
 #define LYD_PRINT_EMPTY_LEAF_LIST 0x08           /**< Print even empty list and leaf-list instances, not possible for every
                                                       data format (supported only for ::LYD_JSON). */
