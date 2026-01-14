@@ -24,18 +24,24 @@
                 CHECK_LYD_STRING_PARAM(MODEL, TEXT, LYD_XML, LYD_PRINT_SIBLINGS | LYD_PRINT_SHRINK)
 
 static void
-check_print_parse(void **state, const char *data_xml)
+check_print_parse(void **state, const char *data_xml, const struct ly_ctx *parse_ctx, ly_bool expect_parse_success)
 {
-    struct lyd_node *tree_1;
-    struct lyd_node *tree_2;
-    char *lyb_out;
+    struct lyd_node *tree_1, *tree_2 = NULL;
+    char *lyb_out = NULL;
+    LY_ERR r;
 
     CHECK_PARSE_LYD(data_xml, tree_1);
     assert_int_equal(lyd_print_mem(&lyb_out, tree_1, LYD_LYB, LYD_PRINT_SIBLINGS), 0);
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, lyb_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT,
-            0, &tree_2));
-    assert_non_null(tree_2);
-    CHECK_LYD(tree_1, tree_2);
+
+    r = lyd_parse_data_mem(parse_ctx, lyb_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2);
+    if (expect_parse_success) {
+        assert_int_equal(r, LY_SUCCESS);
+        assert_non_null(tree_2);
+        CHECK_LYD(tree_1, tree_2);
+    } else {
+        assert_int_not_equal(r, LY_SUCCESS);
+        assert_null(tree_2);
+    }
 
     free(lyb_out);
     lyd_free_all(tree_1);
@@ -71,20 +77,20 @@ test_leaflist(void **state)
     data_xml =
             "<cont xmlns=\"urn:test-leaflist\">\n"
             "</cont>\n";
-    check_print_parse(state, data_xml);
+    check_print_parse(state, data_xml, UTEST_LYCTX, 1);
 
     data_xml =
             "<cont xmlns=\"urn:test-leaflist\">\n"
             "  <ll>1</ll>\n"
             "</cont>\n";
-    check_print_parse(state, data_xml);
+    check_print_parse(state, data_xml, UTEST_LYCTX, 1);
 
     data_xml =
             "<cont xmlns=\"urn:test-leaflist\">\n"
             "  <ll>1</ll>\n"
             "  <ll>2</ll>\n"
             "</cont>\n";
-    check_print_parse(state, data_xml);
+    check_print_parse(state, data_xml, UTEST_LYCTX, 1);
 }
 
 static void
@@ -113,7 +119,7 @@ test_list(void **state)
             "    <lf>1</lf>"
             "  </lst>"
             "</cont>\n";
-    check_print_parse(state, data_xml);
+    check_print_parse(state, data_xml, UTEST_LYCTX, 1);
 
     data_xml =
             "<cont xmlns=\"urn:test-list\">\n"
@@ -122,7 +128,7 @@ test_list(void **state)
             "    <lf>2</lf>"
             "  </lst>"
             "</cont>\n";
-    check_print_parse(state, data_xml);
+    check_print_parse(state, data_xml, UTEST_LYCTX, 1);
 }
 
 static void
@@ -143,20 +149,20 @@ test_any(void **state)
     data_xml =
             "<cont xmlns=\"urn:test-any\">\n"
             "</cont>\n";
-    check_print_parse(state, data_xml);
+    check_print_parse(state, data_xml, UTEST_LYCTX, 1);
 
     data_xml =
             "<cont xmlns=\"urn:test-any\">\n"
             "  <anxml><node>value</node></anxml>\n"
             "</cont>\n";
-    check_print_parse(state, data_xml);
+    check_print_parse(state, data_xml, UTEST_LYCTX, 1);
 
     data_xml =
             "<cont xmlns=\"urn:test-any\">\n"
             "  <anxml><node1>value</node1></anxml>\n"
             "  <anxml><node2>value</node2></anxml>\n"
             "</cont>\n";
-    check_print_parse(state, data_xml);
+    check_print_parse(state, data_xml, UTEST_LYCTX, 1);
 }
 
 static void
@@ -203,7 +209,7 @@ test_ietf_interfaces(void **state)
     assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "ietf-ip", NULL, NULL));
     assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "iana-if-type", NULL, NULL));
 
-    check_print_parse(state, data_xml);
+    check_print_parse(state, data_xml, UTEST_LYCTX, 1);
 }
 
 static void
@@ -239,7 +245,7 @@ test_origin(void **state)
     UTEST_ADD_MODULE(origin_yang, LYS_IN_YANG, NULL, NULL);
     assert_int_equal(LY_SUCCESS, lys_set_implemented(ly_ctx_get_module_latest(UTEST_LYCTX, "ietf-origin"), NULL));
 
-    check_print_parse(state, data_xml);
+    check_print_parse(state, data_xml, UTEST_LYCTX, 1);
 }
 
 static void
@@ -438,7 +444,7 @@ test_statements(void **state)
     UTEST_ADD_MODULE(links_yang, LYS_IN_YANG, NULL, NULL);
     UTEST_ADD_MODULE(statements_yang, LYS_IN_YANG, NULL, NULL);
 
-    check_print_parse(state, data_xml);
+    check_print_parse(state, data_xml, UTEST_LYCTX, 1);
 }
 
 static void
@@ -2518,7 +2524,7 @@ test_collisions(void **state)
 
     UTEST_ADD_MODULE(counters_yang, LYS_IN_YANG, NULL, NULL);
 
-    check_print_parse(state, data_xml);
+    check_print_parse(state, data_xml, UTEST_LYCTX, 1);
 
     free(counters_yang);
     free(data_xml);
@@ -2599,7 +2605,7 @@ test_enumeration(void **state)
             "<cont xmlns=\"urn:enum\">\n"
             "<test-value>value-56</test-value>\n"
             "</cont>\n";
-    check_print_parse(state, data_xml);
+    check_print_parse(state, data_xml, UTEST_LYCTX, 1);
 }
 
 static void
@@ -2630,7 +2636,146 @@ test_bits(void **state)
             "<cont xmlns=\"urn:bits\">\n"
             "<test-value>bit-56</test-value>\n"
             "</cont>\n";
-    check_print_parse(state, data_xml);
+    check_print_parse(state, data_xml, UTEST_LYCTX, 1);
+}
+
+static void
+test_different_contexts(void **state)
+{
+    struct ly_ctx *ctx;
+    struct ly_in *in;
+    const char *data_xml, *mod_data, *mod_rev1, *mod_rev2, *mod_feat, *mod_extra;
+    const char *feats1[] = {"feat1", NULL};
+    const char *feats2[] = {"feat2", NULL};
+
+    /* TEST 1: Parse LYB data in a different context with all required modules */
+
+    /* add a test module to UTEST_LYCTX */
+    mod_data =
+            "module mod { namespace \"urn:test-ctx\"; prefix m;"
+            "  container cont {"
+            "    presence \"\";"
+            "    leaf l { type uint8; }"
+            "  }"
+            "}";
+    UTEST_ADD_MODULE(mod_data, LYS_IN_YANG, NULL, NULL);
+
+    /* create a new context without the module */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
+
+    /* create some XML data for mod */
+    data_xml = "<cont xmlns=\"urn:test-ctx\"/>\n";
+
+    /* TEST 1a: parsing should fail - module 'mod' not present in new context */
+    check_print_parse(state, data_xml, ctx, 0);
+    CHECK_LOG_LASTMSG("Invalid context for LYB data parsing, module \"mod\" not found.");
+
+    /* load 'mod' into the new context */
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(mod_data, &in));
+    assert_int_equal(LY_SUCCESS, lys_parse(ctx, in, LYS_IN_YANG, NULL, NULL));
+    ly_in_free(in, 0);
+
+    /* TEST 1b: parsing should now succeed - all required modules are present */
+    check_print_parse(state, data_xml, ctx, 1);
+
+    /* add extra module to the new context to make contexts different */
+    mod_extra =
+            "module extra { namespace \"urn:extra\"; prefix ex;"
+            "  container cont { leaf l { type string; } }"
+            "}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(mod_extra, &in));
+    assert_int_equal(LY_SUCCESS, lys_parse(ctx, in, LYS_IN_YANG, NULL, NULL));
+    ly_in_free(in, 0);
+
+    /* TEST 1c: parsing should still succeed despite different context hashes */
+    check_print_parse(state, data_xml, ctx, 1);
+    ly_ctx_destroy(ctx);
+
+    /* TEST 2: Different revisions of the same module */
+
+    /* add module revision 2024-01-01 to UTEST_LYCTX */
+    mod_rev1 =
+            "module mod-rev { namespace \"urn:test-rev\"; prefix mr;"
+            "  revision 2024-01-01;"
+            "  container cont { leaf l { type uint8; } }"
+            "}";
+    UTEST_ADD_MODULE(mod_rev1, LYS_IN_YANG, NULL, NULL);
+
+    /* create some XML data for mod-rev */
+    data_xml = "<cont xmlns=\"urn:test-rev\"><l>42</l></cont>\n";
+
+    /* create a new context with the same module but different revision (2024-02-01) */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
+    mod_rev2 =
+            "module mod-rev { namespace \"urn:test-rev\"; prefix mr;"
+            "  revision 2024-02-01;"
+            "  container cont { leaf l { type uint8; } }"
+            "}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(mod_rev2, &in));
+    assert_int_equal(LY_SUCCESS, lys_parse(ctx, in, LYS_IN_YANG, NULL, NULL));
+    ly_in_free(in, 0);
+
+    /* TEST 2a: parsing should fail - different revision */
+    check_print_parse(state, data_xml, ctx, 0);
+    CHECK_LOG_LASTMSG("Invalid context for LYB data parsing, module \"mod-rev\" revision mismatch (printer: 2024-01-01, parser: 2024-02-01).");
+
+    ly_ctx_destroy(ctx);
+
+    /* create a new context with the same revision (2024-01-01) */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(mod_rev1, &in));
+    assert_int_equal(LY_SUCCESS, lys_parse(ctx, in, LYS_IN_YANG, NULL, NULL));
+    ly_in_free(in, 0);
+
+    /* TEST 2b: parsing should succeed - same revision */
+    check_print_parse(state, data_xml, ctx, 1);
+
+    ly_ctx_destroy(ctx);
+
+    /* TEST 3: Different features enabled */
+
+    /* add module with features to UTEST_LYCTX - enable just feat1 */
+    mod_feat =
+            "module mod-feat { namespace \"urn:test-feat\"; prefix mf;"
+            "  feature feat1;"
+            "  feature feat2;"
+            "  container cont {"
+            "    if-feature feat1;"
+            "    leaf l1 { type uint8; }"
+            "  }"
+            "  container cont2 {"
+            "    if-feature feat2;"
+            "    leaf l2 { type uint8; }"
+            "  }"
+            "}";
+
+    UTEST_ADD_MODULE(mod_feat, LYS_IN_YANG, feats1, NULL);
+
+    /* create some XML data for mod-feat with feat1 data */
+    data_xml = "<cont xmlns=\"urn:test-feat\"><l1>1</l1></cont>\n";
+
+    /* create a new context with different features enabled (feat2) */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(mod_feat, &in));
+    assert_int_equal(LY_SUCCESS, lys_parse(ctx, in, LYS_IN_YANG, feats2, NULL));
+    ly_in_free(in, 0);
+
+    /* TEST 3a: parsing should fail - different features enabled */
+    check_print_parse(state, data_xml, ctx, 0);
+    CHECK_LOG_LASTMSG("Invalid context for LYB data parsing, module \"mod-feat\" enabled feature mismatch (printer: {feat1}, parser: {feat2}).");
+
+    ly_ctx_destroy(ctx);
+
+    /* create a new context with the same features enabled (feat1) */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(mod_feat, &in));
+    assert_int_equal(LY_SUCCESS, lys_parse(ctx, in, LYS_IN_YANG, feats1, NULL));
+    ly_in_free(in, 0);
+
+    /* TEST 3b: parsing should succeed - same features enabled */
+    check_print_parse(state, data_xml, ctx, 1);
+
+    ly_ctx_destroy(ctx);
 }
 
 int
@@ -2648,6 +2793,7 @@ main(void)
         UTEST(test_shrink, setup),
         UTEST(test_enumeration, setup),
         UTEST(test_bits, setup),
+        UTEST(test_different_contexts, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

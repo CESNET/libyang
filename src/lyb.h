@@ -33,8 +33,11 @@ struct lysc_node;
  * an array of hashes is created with each next hash one bit shorter until a unique sequence of all these
  * hashes is found and then all of them are stored;
  *
- * - data are preceded with information about the used context in the form of context hash - the exact same
- * context must be used for parsing the data to guarantee that all the schema nodes get the same hash;
+ * - data are preceded with information about the used context in the form of context hash. Different contexts
+ * may be used for printing and parsing, provided they are compatible: the same modules with the same revisions
+ * and the same set of enabled features must be present in both contexts (this requirement applies only to
+ * modules actually used in the data). However, when using ::LYD_PRINT_SHRINK, the exact same context must be
+ * used for both printing and parsing to guarantee that all schema nodes get the same hash;
  *
  * - tree structure is represented as a parent followed by all of its children, recursively;
  *

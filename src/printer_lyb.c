@@ -594,7 +594,7 @@ cleanup:
 }
 
 /**
- * @brief Print YANG module info as only the module index in the context.
+ * @brief Print YANG module info as name, revision and enabled features.
  *
  * @param[in] mod Module to print.
  * @param[in] lybctx Printer LYB context.
@@ -606,6 +606,7 @@ lyb_print_module(const struct lys_module *mod, struct lylyb_print_ctx *lybctx)
     LY_ERR rc = LY_SUCCESS;
     uint16_t revision;
     int r;
+    LY_ARRAY_COUNT_TYPE i;
 
     /* module name length and module name */
     LY_CHECK_GOTO(rc = lyb_write_string(mod->name, 0, lybctx), cleanup);
@@ -632,6 +633,14 @@ lyb_print_module(const struct lys_module *mod, struct lylyb_print_ctx *lybctx)
         revision |= r;
     }
     LY_CHECK_GOTO(rc = lyb_write(&revision, 2 * 8, lybctx), cleanup);
+
+    /* feature count */
+    LY_CHECK_GOTO(rc = lyb_write_count(LY_ARRAY_COUNT(mod->compiled->features), lybctx), cleanup);
+
+    /* features */
+    LY_ARRAY_FOR(mod->compiled->features, i) {
+        LY_CHECK_GOTO(rc = lyb_write_string(mod->compiled->features[i], 0, lybctx), cleanup);
+    }
 
 cleanup:
     return rc;
@@ -868,7 +877,11 @@ lyb_print_metadata(const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
 
     if (df_mod) {
         /* write the "default" metadata */
-        LY_CHECK_RET(lyb_print_module_idx(df_mod, lybctx->print_ctx));
+        if (lybctx->print_ctx->shrink) {
+            LY_CHECK_RET(lyb_print_module_idx(df_mod, lybctx->print_ctx));
+        } else {
+            LY_CHECK_RET(lyb_print_module(df_mod, lybctx->print_ctx));
+        }
         LY_CHECK_RET(lyb_write_string("default", 0, lybctx->print_ctx));
         LY_CHECK_RET(lyb_write_string("true", 0, lybctx->print_ctx));
     }
@@ -880,7 +893,11 @@ lyb_print_metadata(const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
         }
 
         /* module */
-        LY_CHECK_RET(lyb_print_module_idx(iter->annotation->module, lybctx->print_ctx));
+        if (lybctx->print_ctx->shrink) {
+            LY_CHECK_RET(lyb_print_module_idx(iter->annotation->module, lybctx->print_ctx));
+        } else {
+            LY_CHECK_RET(lyb_print_module(iter->annotation->module, lybctx->print_ctx));
+        }
 
         /* annotation name with length */
         LY_CHECK_RET(lyb_write_string(iter->name, 0, lybctx->print_ctx));
@@ -1310,9 +1327,16 @@ lyb_print_node(const struct lyd_node **printed_node, struct ly_ht **sibling_ht, 
 
     /* write module info first */
     if (node->flags & LYD_EXT) {
+        /* always write full module info for exts */
         LY_CHECK_RET(lyb_print_module(node->schema->module, lybctx->print_ctx));
     } else if (node->schema && !lysc_data_parent(node->schema)) {
-        LY_CHECK_RET(lyb_print_module_idx(node->schema->module, lybctx->print_ctx));
+        if (lybctx->print_ctx->shrink) {
+            /* write just module index in shrink mode */
+            LY_CHECK_RET(lyb_print_module_idx(node->schema->module, lybctx->print_ctx));
+        } else {
+            /* write full module info in non-shrink mode */
+            LY_CHECK_RET(lyb_print_module(node->schema->module, lybctx->print_ctx));
+        }
     }
 
     if (node->flags & LYD_EXT) {
