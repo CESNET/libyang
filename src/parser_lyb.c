@@ -572,6 +572,8 @@ cleanup:
  * @param[in] sparent Schema parent node of the metadata.
  * @param[in] metadata_count Number of metadata stored.
  * If UINT32_MAX, the count has not been read yet and should be read here.
+ * Can't use 0, because 0 is a valid count. We can use UINT32_MAX, because the maximum
+ * possible count is limited by ::LYB_METADATA_END_COUNT.
  * @param[out] meta Parsed metadata.
  * @return LY_ERR value.
  */

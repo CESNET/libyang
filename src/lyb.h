@@ -149,8 +149,8 @@ struct lylyb_parse_ctx {
 
 /**< reserved count of metadata instances used for the last instance of (leaf-)list,
    * also bounds the maximum possible count of node metadata instances,
-   * 31 should be reasonably high for practical use cases */
-#define LYB_METADATA_END_COUNT 31
+   * 15 should be reasonably high for practical use cases */
+#define LYB_METADATA_END_COUNT 15
 
 /**< opaque node format LY_VALUE_XML */
 #define LYB_OPAQ_FORMAT_XML 0x0
