@@ -415,6 +415,7 @@ static LY_ERR
 lyb_write_count(uint32_t count, struct lylyb_print_ctx *lybctx)
 {
     uint8_t prefix_b, num_b, byte_len;
+    uint16_t buf16;
     uint32_t buf;
 
     /* --- no shrink mode --- */
@@ -426,8 +427,8 @@ lyb_write_count(uint32_t count, struct lylyb_print_ctx *lybctx)
 
         /* always write the count on 2 bytes */
         byte_len = 2;
-        buf = htole32(count);
-        return lyb_write(&buf, byte_len * 8, lybctx);
+        buf16 = htole16(count);
+        return lyb_write(&buf16, byte_len * 8, lybctx);
     }
 
     /* --- shrink mode ---

@@ -155,13 +155,14 @@ static void
 lyb_read_count(uint32_t *count, struct lylyb_parse_ctx *lybctx)
 {
     uint8_t prefix = 0, pref_len = 0, byte_len = 0;
+    uint16_t count16 = 0;
 
     /* --- no shrink mode --- */
     if (!lybctx->shrink) {
         /* always use 2 bytes for the count */
         byte_len = 2;
-        lyb_read(count, byte_len * 8, lybctx);
-        *count = le32toh(*count);
+        lyb_read(&count16, byte_len * 8, lybctx);
+        *count = le16toh(count16);
         return;
     }
 
