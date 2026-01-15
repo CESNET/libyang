@@ -386,22 +386,25 @@ lyb_check_mod_revision(struct lyd_lyb_ctx *lybctx, const char *mod_name, const c
  *
  * @param[in] lybctx LYB context.
  * @param[in] mod_name Module name from LYB data.
- * @param[in] feature_count Number of features in LYB data.
  * @param[in] mod Module from parser context.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_check_mod_features(struct lyd_lyb_ctx *lybctx, const char *mod_name, uint32_t feature_count,
-        const struct lys_module *mod)
+lyb_check_mod_features(struct lyd_lyb_ctx *lybctx, const char *mod_name, const struct lys_module *mod)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lylyb_parse_ctx *pctx = lybctx->parse_ctx;
     char *feature_name = NULL, **features = NULL, *en_feats_printer = NULL, *en_feats_parser = NULL;
-    uint32_t i, ctx_feature_count, len;
+    uint32_t i, feature_count = 0, ctx_feature_count, len;
 
-    /* create an array for the features */
-    features = calloc(feature_count, sizeof *features);
-    LY_CHECK_ERR_RET(!features, LOGMEM(pctx->ctx), LY_EMEM);
+    /* read feature count */
+    lyb_read_count(&feature_count, pctx);
+
+    if (feature_count) {
+        /* create an array for the features */
+        features = calloc(feature_count, sizeof *features);
+        LY_CHECK_ERR_RET(!features, LOGMEM(pctx->ctx), LY_EMEM);
+    }
 
     /* read all features from LYB data */
     for (i = 0; i < feature_count; i++) {
@@ -488,7 +491,6 @@ lyb_parse_module(struct lyd_lyb_ctx *lybctx, const struct lys_module **mod)
     struct lylyb_parse_ctx *pctx = lybctx->parse_ctx;
     char *mod_name = NULL, mod_rev[LY_REV_SIZE];
     uint16_t rev;
-    uint32_t feature_count = 0;
 
     mod_rev[0] = '\0';
 
@@ -514,11 +516,8 @@ lyb_parse_module(struct lyd_lyb_ctx *lybctx, const struct lys_module **mod)
     /* revision check */
     LY_CHECK_GOTO(rc = lyb_check_mod_revision(lybctx, mod_name, mod_rev, *mod), cleanup);
 
-    /* feature count */
-    lyb_read_count(&feature_count, pctx);
-
     /* features and feature check */
-    LY_CHECK_GOTO(rc = lyb_check_mod_features(lybctx, mod_name, feature_count, *mod), cleanup);
+    LY_CHECK_GOTO(rc = lyb_check_mod_features(lybctx, mod_name, *mod), cleanup);
 
 cleanup:
     free(mod_name);
