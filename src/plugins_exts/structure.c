@@ -510,52 +510,6 @@ emem:
     return LY_EMEM;
 }
 
-static LY_ERR
-structure_sprinter_pnode(const struct lysp_node *UNUSED(node), const void *UNUSED(plugin_priv),
-        ly_bool *UNUSED(skip), const char **flags, const char **UNUSED(add_opts))
-{
-    *flags = "";
-    return LY_SUCCESS;
-}
-
-static LY_ERR
-structure_sprinter_cnode(const struct lysc_node *UNUSED(node), const void *UNUSED(plugin_priv),
-        ly_bool *UNUSED(skip), const char **flags, const char **UNUSED(add_opts))
-{
-    *flags = "";
-    return LY_SUCCESS;
-}
-
-/**
- * @brief Structure schema compiled tree printer.
- *
- * Implementation of ::lyplg_ext_sprinter_ctree_clb callback set as lyext_plugin::printer_ctree.
- */
-static LY_ERR
-structure_sprinter_ctree(struct lysc_ext_instance *ext, const struct lyspr_tree_ctx *ctx,
-        const char **UNUSED(flags), const char **UNUSED(add_opts))
-{
-    LY_ERR rc;
-
-    rc = lyplg_ext_sprinter_ctree_add_ext_nodes(ctx, ext, structure_sprinter_cnode);
-    return rc;
-}
-
-/**
- * @brief Structure schema parsed tree printer.
- *
- * Implementation of ::lyplg_ext_sprinter_ptree_clb callback set as lyext_plugin::printer_ptree.
- */
-static LY_ERR
-structure_sprinter_ptree(struct lysp_ext_instance *ext, const struct lyspr_tree_ctx *ctx,
-        const char **UNUSED(flags), const char **UNUSED(add_opts))
-{
-    LY_ERR rc;
-
-    rc = lyplg_ext_sprinter_ptree_add_ext_nodes(ctx, ext, structure_sprinter_pnode);
-    return rc;
-}
-
 /**
  * @brief Node xpath callback for structure.
  */
@@ -664,56 +618,6 @@ structure_validate(struct lysc_ext_instance *ext, struct lyd_node *node, const s
 }
 
 /**
- * @brief Augment structure schema parsed tree printer.
- *
- * Implementation of ::lyplg_ext_sprinter_ptree_clb callback set as lyext_plugin::printer_ptree.
- */
-static LY_ERR
-structure_aug_sprinter_ptree(struct lysp_ext_instance *ext, const struct lyspr_tree_ctx *ctx,
-        const char **UNUSED(flags), const char **UNUSED(add_opts))
-{
-    LY_ERR rc = LY_SUCCESS;
-    struct lysp_node_augment **aug;
-
-    assert(ctx);
-
-    aug = (struct lysp_node_augment **)ext->substmts[12].storage_p;
-    rc = lyplg_ext_sprinter_ptree_add_nodes(ctx, (*aug)->child, structure_sprinter_pnode);
-
-    return rc;
-}
-
-/**
- * @brief Augment structure schema compiled tree printer.
- *
- * Implementation of ::lyplg_ext_sprinter_ctree_clb callback set as lyext_plugin::printer_ctree.
- */
-static LY_ERR
-structure_aug_sprinter_ctree(struct lysc_ext_instance *ext, const struct lyspr_tree_ctx *ctx, const char **flags,
-        const char **add_opts)
-{
-    LY_ERR rc = LY_SUCCESS;
-
-    LY_ARRAY_COUNT_TYPE i;
-    struct lysp_ext_instance *parsed_ext;
-
-    assert(ctx);
-
-    /* find the parsed ext structure */
-    parsed_ext = ext->module->parsed->exts;
-    LY_ARRAY_FOR(parsed_ext, i) {
-        if (!strcmp(parsed_ext[i].name, "sx:augment-structure") && !strcmp(parsed_ext[i].argument, ext->argument)) {
-            break;
-        }
-    }
-    assert(i < LY_ARRAY_COUNT(parsed_ext));
-
-    /* for augments print the parsed tree */
-    rc = structure_aug_sprinter_ptree(parsed_ext, ctx, flags, add_opts);
-    return rc;
-}
-
-/**
  * @brief Plugin descriptions for the structure extension
  *
  * Note that external plugins are supposed to use:
@@ -730,8 +634,6 @@ const struct lyplg_ext_record plugins_structure[] = {
         .plugin.parse = structure_parse,
         .plugin.compile = structure_compile,
         .plugin.printer_info = structure_printer_info,
-        .plugin.printer_ctree = structure_sprinter_ctree,
-        .plugin.printer_ptree = structure_sprinter_ptree,
         .plugin.node_xpath = structure_node_xpath,
         .plugin.snode_xpath = structure_snode_xpath,
         .plugin.snode = structure_snode,
@@ -750,8 +652,6 @@ const struct lyplg_ext_record plugins_structure[] = {
         .plugin.parse = structure_aug_parse,
         .plugin.compile = NULL,
         .plugin.printer_info = NULL,
-        .plugin.printer_ctree = structure_aug_sprinter_ctree,
-        .plugin.printer_ptree = structure_aug_sprinter_ptree,
         .plugin.node_xpath = NULL,
         .plugin.snode_xpath = NULL,
         .plugin.snode = NULL,

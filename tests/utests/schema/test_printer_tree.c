@@ -629,11 +629,11 @@ node_keys(void **state)
             "    }\n"
             "  }\n"
             "  list l2 {\n"
-            "    key \"a b\";\n"
-            "    leaf a {\n"
+            "    key \"aba a\";\n"
+            "    leaf aba {\n"
             "      type string;\n"
             "    }\n"
-            "    leaf b {\n"
+            "    leaf a {\n"
             "      type string;\n"
             "    }\n"
             "  }\n"
@@ -647,9 +647,9 @@ node_keys(void **state)
             "module: a11\n"
             "  +--rw l1* [a]\n"
             "  |  +--rw a    string\n"
-            "  +--rw l2* [a b]\n"
-            "  |  +--rw a    string\n"
-            "  |  +--rw b    string\n"
+            "  +--rw l2* [aba a]\n"
+            "  |  +--rw aba    string\n"
+            "  |  +--rw a      string\n"
             "  +--rw ll*   string\n";
 
     UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
@@ -726,15 +726,30 @@ node_type_leafref(void **state)
             "      path \"/x:pretty-long-identifier-name-which-should-exceed-the-limit-of-72-characters\";\n"
             "    }\n"
             "  }\n"
+            "  leaf-list b {\n"
+            "    type leafref {\n"
+            "      path \"/x:pretty-long-identifier-name-which-should-exceed-the-limit-of-72-characters\";\n"
+            "    }\n"
+            "  }\n"
+            "  leaf-list c {\n"
+            "    type leafref {\n"
+            "      path \"/x:a\";\n"
+            "    }\n"
+            "  }\n"
             "}\n";
 
-    /* yanglint --tree-no-leafref-target --tree-line-length=72 */
+    /* pyang -f tree --tree-line-length=72 */
+    /* but '/a' edited to '/x:a' */
     expect =
             "module: a13\n"
             "  +--rw pretty-long-identifier-name-which-should-exceed-the-limit-of-72-characters?\n"
             "  |       string\n"
             "  +--rw a?\n"
-            "          leafref\n";
+            "  |       leafref\n"
+            "  +--rw b*\n"
+            "  |       leafref\n"
+            "  +--rw c*\n"
+            "          -> /x:a\n";
 
     UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
     TEST_LOCAL_PRINT(mod, 72);
@@ -855,6 +870,17 @@ static void
 line_length_twiddling(void **state)
 {
     TEST_LOCAL_SETUP;
+
+    orig =
+            "module a01xx {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"xx:y\";\n"
+            "  prefix xx;\n"
+            "  container c;\n"
+            "}\n";
+
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, NULL);
+
     /* node_fits_tight */
 
     orig =
@@ -862,6 +888,11 @@ line_length_twiddling(void **state)
             "  yang-version 1.1;\n"
             "  namespace \"x:y\";\n"
             "  prefix x;\n"
+            "\n"
+            "  import a01xx {\n"
+            "    prefix some-very-long-long-prefix;\n"
+            "  }\n"
+            "\n"
             "\n"
             "  feature f;\n"
             "\n"
@@ -882,6 +913,9 @@ line_length_twiddling(void **state)
             "      type int32;\n"
             "    }\n"
             "  }\n"
+            "  augment \"/some-very-long-long-prefix:c\" {\n"
+            "    container e;\n"
+            "  }\n"
             "}\n";
 
     /* pyang --tree-line-length 42 */
@@ -890,7 +924,10 @@ line_length_twiddling(void **state)
             "  +--rw my-list-name* [key]\n"
             "     +--rw key         string\n"
             "     +--rw nod-leaf?   some-long-type {f}?\n"
-            "     +--rw nos-leaf?   int32 {f}?\n";
+            "     +--rw nos-leaf?   int32 {f}?\n"
+            "\n"
+            "  augment /some-very-long-long-prefix:c:\n"
+            "    +--rw e\n";
 
     const char *feats[] = {"f", NULL};
 
@@ -917,7 +954,10 @@ line_length_twiddling(void **state)
             "     +--rw key         string\n"
             "     +--rw nod-leaf?   some-long-type\n"
             "     |       {f}?\n"
-            "     +--rw nos-leaf?   int32 {f}?\n";
+            "     +--rw nos-leaf?   int32 {f}?\n"
+            "\n"
+            "  augment /some-very-long-long-prefix:c:\n"
+            "    +--rw e\n";
 
     UTEST_ADD_MODULE(orig, LYS_IN_YANG, feats, &mod);
     TEST_LOCAL_PRINT(mod, 41);
@@ -934,6 +974,7 @@ line_length_twiddling(void **state)
 
     ly_out_reset(UTEST_OUT);
     /* break_before_type */
+    /* augment long path is ignored, it just doesn't fit */
 
     /* pyang --tree-line-length 29 */
     expect =
@@ -944,7 +985,10 @@ line_length_twiddling(void **state)
             "     |       some-long-type\n"
             "     |       {f}?\n"
             "     +--rw nos-leaf?   int32\n"
-            "             {f}?\n";
+            "             {f}?\n"
+            "\n"
+            "  augment /some-very-long-long-prefix:c:\n"
+            "    +--rw e\n";
 
     UTEST_ADD_MODULE(orig, LYS_IN_YANG, feats, &mod);
     TEST_LOCAL_PRINT(mod, 29);
@@ -973,7 +1017,10 @@ line_length_twiddling(void **state)
             "     |       some-long-type\n"
             "     |       {f}?\n"
             "     +--rw nos-leaf?\n"
-            "             int32 {f}?\n";
+            "             int32 {f}?\n"
+            "\n"
+            "  augment /some-very-long-long-prefix:c:\n"
+            "    +--rw e\n";
 
     UTEST_ADD_MODULE(orig, LYS_IN_YANG, feats, &mod);
     TEST_LOCAL_PRINT(mod, 23);
@@ -1003,7 +1050,10 @@ line_length_twiddling(void **state)
             "     |       {f}?\n"
             "     +--rw nos-leaf?\n"
             "             int32\n"
-            "             {f}?\n";
+            "             {f}?\n"
+            "\n"
+            "  augment /some-very-long-long-prefix:c:\n"
+            "    +--rw e\n";
 
     UTEST_ADD_MODULE(orig, LYS_IN_YANG, feats, &mod);
     TEST_LOCAL_PRINT(mod, 14);
@@ -1848,9 +1898,9 @@ yang_data(void **state)
 
     /* from pyang (--tree-print-yang-data --tree-print-groupings -p "...")
      * but with these adjustments:
-     *  - <flags> is always '--' for yang-data nodes
      *  - yang-data tmp3 has two 'uses' nodes
-     *  - grouping g2 has ':' character at the end
+     *  - grouping g1 has not ':' character at the end
+     *  - grouping has ---- cont3 node (not -- cont3)
      */
     expect =
             "module: a28\n"
@@ -1861,23 +1911,23 @@ yang_data(void **state)
             "    +---- cont3\n"
             "\n"
             "  yang-data tmp1:\n"
-            "    +---- cont1\n"
-            "       +---- lf?   string\n"
-            "       +---- l2* [a b]\n"
-            "          +---- a    string\n"
-            "          +---- b    string\n"
+            "    +-- cont1\n"
+            "       +-- lf?   string\n"
+            "       +-- l2* [a b]\n"
+            "          +-- a    string\n"
+            "          +-- b    string\n"
             "  yang-data tmp2:\n"
-            "    +---- con2\n"
-            "       +---- lf?   string\n"
+            "    +-- con2\n"
+            "       +-- lf?   string\n"
             "  yang-data tmp3:\n"
             "    +---u g1\n"
             "    +---u g2\n"
             "  yang-data tmp4:\n"
-            "    +---- (x)?\n"
+            "    +-- (x)?\n"
             "       +--:(a)\n"
-            "       |  +---- z\n"
+            "       |  +-- z\n"
             "       +--:(b)\n"
-            "          +---- y\n";
+            "          +-- y\n";
 
     UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
     TEST_LOCAL_PRINT(mod, 72);
@@ -1887,30 +1937,28 @@ yang_data(void **state)
     ly_out_reset(UTEST_OUT);
 
     /* from pyang (--tree-print-yang-data -p "...")
-     * but with these adjustments:
-     *  <flags> is always '--' for yang-data nodes
      */
     expect =
             "module: a28\n"
             "  +--rw mont\n"
             "\n"
             "  yang-data tmp1:\n"
-            "    +---- cont1\n"
-            "       +---- lf?   string\n"
-            "       +---- l2* [a b]\n"
-            "          +---- a    string\n"
-            "          +---- b    string\n"
+            "    +-- cont1\n"
+            "       +-- lf?   string\n"
+            "       +-- l2* [a b]\n"
+            "          +-- a    string\n"
+            "          +-- b    string\n"
             "  yang-data tmp2:\n"
-            "    +---- con2\n"
-            "       +---- lf?   string\n"
+            "    +-- con2\n"
+            "       +-- lf?   string\n"
             "  yang-data tmp3:\n"
-            "    +---- cont3\n"
+            "    +-- cont3\n"
             "  yang-data tmp4:\n"
-            "    +---- (x)?\n"
+            "    +-- (x)?\n"
             "       +--:(a)\n"
-            "       |  +---- z\n"
+            "       |  +-- z\n"
             "       +--:(b)\n"
-            "          +---- y\n";
+            "          +-- y\n";
 
     /* using lysc tree */
     ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
@@ -1922,85 +1970,180 @@ yang_data(void **state)
     TEST_LOCAL_TEARDOWN;
 }
 
-#define SM_MODNAME_EXT "sm-extension"
-#define SM_MOD_EXT_NAMESPACE "urn:sm-ext"
-#define SM_PREF "sm"
-#define SCHEMA_REF_INLINE "<inline></inline>"
-#define SCHEMA_REF_SHARED(REF) "<shared-schema>"REF"</shared-schema>"
+static LY_ERR
+ext_data_clb(const struct lysc_ext_instance *ext, const struct lyd_node *UNUSED(parent), void *user_data,
+        void **ext_data, ly_bool *ext_data_free)
+{
+    static int recursive_call = 0;
+    LY_ERR r = LY_SUCCESS;
 
-#define EXT_DATA(MP_XML_START, MP_XML_END, MPMOD_NAME, MODULES, SCHEMA_REF) \
-    MP_XML_START \
-    "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"\n" \
-    "   xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">\n" \
-    "<module-set>\n" \
-    "   <name>test-set</name>\n" \
-    "   <module>\n" \
-    "      <name>"SM_MODNAME_EXT"</name>\n" \
-    "      <namespace>"SM_MOD_EXT_NAMESPACE"</namespace>\n" \
-    "   </module>\n" \
-    MODULES \
-    "</module-set>\n" \
-    "<content-id>1</content-id>\n" \
-    "</yang-library>\n" \
-    "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n" \
-    "<module-set-id>1</module-set-id>\n" \
-    "</modules-state>\n" \
-    MP_XML_END \
-    "<schema-mounts xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount\">\n" \
-    "<namespace>\n" \
-    "   <prefix>"SM_PREF"</prefix>\n" \
-    "   <uri>x:"MPMOD_NAME"</uri>\n" \
-    "</namespace>\n" \
-    "<mount-point>\n" \
-    "   <module>"MPMOD_NAME"</module>\n" \
-    "   <label>mnt-root</label>\n" \
-    SCHEMA_REF \
-    "</mount-point>\n" \
-    "</schema-mounts>"
-
-#define SM_MOD_MAIN(NAME, BODY) \
-    "module "NAME" {\n" \
-    "  yang-version 1.1;\n" \
-    "  namespace \"x:"NAME"\";\n" \
-    "  prefix \"x\";\n" \
-    "  import ietf-yang-schema-mount {\n" \
-    "    prefix yangmnt;\n" \
-    "  }\n" \
-    BODY \
-    "}"
+    *ext_data = NULL;
+    *ext_data_free = 0;
+    if (recursive_call) {
+        return LY_SUCCESS;
+    }
+    recursive_call = 1;
+    if (user_data) {
+        r = lyd_parse_data_mem(ext->module->ctx, user_data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, (struct lyd_node **)ext_data);
+    }
+    recursive_call = 0;
+    if (r) {
+        return r;
+    }
+    *ext_data_free = 1;
+    return LY_SUCCESS;
+}
 
 static void
 mount_point(void **state)
 {
     TEST_LOCAL_SETUP;
+    char *data;
 
-    /* interested in sm-extension.yang and sm-mod.yang */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_DIR_MODULES_YANG));
 
-    /*
-     * 'mp' flag for list and container
-     */
-    orig = SM_MOD_MAIN("a29",
-            "list lt {\n"
-            "  key \"name\";\n"
-            "  leaf name {\n"
-            "    type string;\n"
+    orig =
+            "module mp-module {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:yanglint:mpm\";\n"
+            "  prefix \"mpm\";\n"
+            "\n"
+            "  import ietf-yang-schema-mount {\n"
+            "      prefix yangmnt;\n"
             "  }\n"
-            "  yangmnt:mount-point \"mnt-root\";\n"
-            "}\n"
-            "container cont {\n"
-            "  yangmnt:mount-point \"mnt-root\";\n"
-            "}\n");
-    expect =
-            "module: a29\n"
-            "  +--mp lt* [name]\n"
-            "  |  +--rw name    string\n"
-            "  +--mp cont\n";
+            "  import ietf-interfaces {\n"
+            "      prefix if;\n"
+            "  }\n"
+            "\n"
+            "  list root {\n"
+            "    key \"node\";\n"
+            "    leaf node {\n"
+            "      type string;\n"
+            "    }\n"
+            "    yangmnt:mount-point \"root\";\n"
+            "  }\n"
+            "  container root2 {\n"
+            "    yangmnt:mount-point \"root\";\n"
+            "  }\n"
+            "  container root3 {\n"
+            "    list my-list {\n"
+            "      key name;\n"
+            "      leaf name {\n"
+            "        type string;\n"
+            "      }\n"
+            "      yangmnt:mount-point \"mnt-root\";\n"
+            "    }\n"
+            "  }\n"
+            "}";
+
+    /* data for mountin */
+    data =
+            "<root3 xmlns=\"urn:yanglint:mpm\">\n"
+            "  <my-list>\n"
+            "    <name>list item 1</name>\n"
+            "    <yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"\n"
+            "         xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">\n"
+            "       <module-set>\n"
+            "         <name>test-set</name>\n"
+            "         <module>\n"
+            "           <name>ietf-datastores</name>\n"
+            "           <revision>2018-02-14</revision>\n"
+            "           <namespace>urn:ietf:params:xml:ns:yang:ietf-datastores</namespace>\n"
+            "         </module>\n"
+            "         <module>\n"
+            "           <name>ietf-yang-library</name>\n"
+            "           <revision>2019-01-04</revision>\n"
+            "           <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>\n"
+            "         </module>\n"
+            "         <module>\n"
+            "           <name>sm-extension</name>\n"
+            "           <namespace>urn:sm-ext</namespace>\n"
+            "         </module>\n"
+            "         <module>\n"
+            "           <name>iana-if-type</name>\n"
+            "           <namespace>urn:ietf:params:xml:ns:yang:iana-if-type</namespace>\n"
+            "         </module>\n"
+            "         <module>\n"
+            "           <name>ietf-interfaces</name>\n"
+            "           <namespace>urn:ietf:params:xml:ns:yang:ietf-interfaces</namespace>\n"
+            "         </module>\n"
+            "         <import-only-module>\n"
+            "           <name>ietf-yang-types</name>\n"
+            "           <revision>2013-07-15</revision>\n"
+            "           <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace>\n"
+            "         </import-only-module>\n"
+            "         <import-only-module>\n"
+            "           <name>sm-modp</name>\n"
+            "           <revision>2017-01-26</revision>\n"
+            "           <namespace>urn:sm-modp</namespace>\n"
+            "         </import-only-module>\n"
+            "       </module-set>\n"
+            "       <schema>\n"
+            "         <name>test-schema</name>\n"
+            "         <module-set>test-set</module-set>\n"
+            "       </schema>\n"
+            "       <datastore>\n"
+            "         <name>ds:running</name>\n"
+            "         <schema>test-schema</schema>\n"
+            "       </datastore>\n"
+            "       <datastore>\n"
+            "         <name>ds:operational</name>\n"
+            "         <schema>test-schema</schema>\n"
+            "       </datastore>\n"
+            "       <content-id>1</content-id>\n"
+            "     </yang-library>\n"
+            "     <modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
+            "       <module-set-id>1</module-set-id>\n"
+            "     </modules-state>\n"
+            "  </my-list>\n"
+            "</root3>\n"
+            "<schema-mounts xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount\">\n"
+            "  <namespace>\n"
+            "    <prefix>if</prefix>\n"
+            "    <uri>urn:ietf:params:xml:ns:yang:ietf-interfaces</uri>\n"
+            "  </namespace>\n"
+            "  <mount-point>\n"
+            "    <module>mp-module</module>\n"
+            "    <label>mnt-root</label>\n"
+            "    <shared-schema>\n"
+            "      <parent-reference>/if:interfaces/if:interface/if:name</parent-reference>\n"
+            "      <parent-reference>/if:interfaces/if:interface/if:type</parent-reference>\n"
+            "    </shared-schema>\n"
+            "  </mount-point>\n"
+            "</schema-mounts>\n";
+
+    /* set extension data */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    assert_int_equal(ly_ctx_set_ext_data_clb(UTEST_LYCTX, ext_data_clb, data), LY_SUCCESS);
+    assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "ietf-interfaces", "2014-05-08", NULL));
     UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+
+    expect =
+            "module: mp-module\n"
+            "  +--mp root* [node]\n"
+            "  |  +--rw node    string\n"
+            "  +--mp root2\n"
+            "  +--rw root3\n"
+            "     +--mp my-list* [name]\n"
+            "        +--rw tlist/ [name]\n"
+            "        |  +--rw name    uint32\n"
+            "        +--rw tcont/\n"
+            "        |  +--rw tleaf?   uint32\n"
+            "        +--mp ncmp/\n"
+            "        +--rw not-compiled/\n"
+            "        |  +--rw first?    string\n"
+            "        |  +--rw second?   string\n"
+            "        +--rw interfaces@\n"
+            "        |  +--rw interface* [name]\n"
+            "        |     +--rw name    string\n"
+            "        |     +--rw type    identityref\n"
+            "        +--rw name    string\n";
+
+    /* using lysc tree */
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
-    ly_out_reset(UTEST_OUT);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
 
     TEST_LOCAL_TEARDOWN;
 }

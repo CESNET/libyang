@@ -277,12 +277,29 @@ LY_ERR
 ext_data_clb(const struct lysc_ext_instance *ext, const struct lyd_node *UNUSED(parent), void *user_data,
         void **ext_data, ly_bool *ext_data_free)
 {
-    struct ly_ctx *ctx;
     struct lyd_node *data = NULL;
+    static int recursive_call = 0;
+    LY_ERR r = LY_SUCCESS;
 
-    ctx = ext->module->ctx;
+    *ext_data = NULL;
+    *ext_data_free = 0;
+
+    if (recursive_call) {
+        /* called recursively, when processing only `ietf-yang-library` and `ietf-yang-schema-mount` data,
+         * NULL ext_data can be returned */
+        return LY_SUCCESS;
+    }
+
+    /* the required operational data include mounted data so we must prevent this callback from being called
+     * recursively again, infinitely */
+    recursive_call = 1;
     if (user_data) {
-        lyd_parse_data_path(ctx, user_data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &data);
+        r = lyd_parse_data_path(ext->module->ctx, user_data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &data);
+    }
+    recursive_call = 0;
+
+    if (r) {
+        return r;
     }
 
     *ext_data = data;

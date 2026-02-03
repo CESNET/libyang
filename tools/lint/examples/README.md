@@ -488,7 +488,7 @@ module: sm-main
   +--mp root2
   +--rw root3
      +--mp my-list* [name]
-        +--rw things/* [name]
+        +--rw things/ [name]
         |  +--rw name         -> /if:interfaces/if:interface/if:name
         |  +--rw attribute?   uint32
         +--rw not-compiled/

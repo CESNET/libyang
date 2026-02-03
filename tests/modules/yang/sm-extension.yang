@@ -3,6 +3,10 @@ module sm-extension {
   namespace "urn:sm-ext";
   prefix "sm-ext";
 
+  import sm-modp {
+    prefix modp;
+  }
+
   list tlist {
     key "name";
     leaf name {

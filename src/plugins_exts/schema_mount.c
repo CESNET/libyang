@@ -61,11 +61,6 @@ struct lyplg_ext_sm {
     } inln;                     /**< inline mount points */
 };
 
-struct sprinter_tree_priv {
-    struct ly_ctx *ext_ctx;
-    struct ly_set *refs;
-};
-
 #define EXT_LOGERR_MEM_RET(cctx, ext) \
         lyplg_ext_compile_log(cctx, ext, LY_LLERR, LY_EMEM, "Memory allocation failed (%s:%d).", __FILE__, __LINE__); \
         return LY_EMEM
@@ -1451,38 +1446,6 @@ cleanup:
     return rc;
 }
 
-/**
- * @brief Schema mount schema parsed tree printer.
- *
- * Implementation of ::lyplg_ext_sprinter_ptree_clb callback set as lyext_plugin::printer_ptree.
- */
-static LY_ERR
-schema_mount_sprinter_ptree(struct lysp_ext_instance *UNUSED(ext), const struct lyspr_tree_ctx *ctx,
-        const char **flags, const char **UNUSED(add_opts))
-{
-    if (!ctx) {
-        *flags = "mp";
-    }
-
-    return LY_SUCCESS;
-}
-
-/**
- * @brief Schema mount schema compiled tree printer.
- *
- * Implementation of ::lyplg_ext_sprinter_ctree_clb callback set as lyext_plugin::printer_ctree.
- */
-static LY_ERR
-schema_mount_sprinter_ctree(struct lysc_ext_instance *UNUSED(ext), const struct lyspr_tree_ctx *ctx,
-        const char **flags, const char **UNUSED(add_opts))
-{
-    if (!ctx) {
-        *flags = "mp";
-    }
-
-    return LY_SUCCESS;
-}
-
 static int
 schema_mount_compiled_size(const struct lysc_ext_instance *ext, struct ly_ht *addr_ht)
 {
@@ -1596,8 +1559,6 @@ const struct lyplg_ext_record plugins_schema_mount[] = {
         .plugin.parse = schema_mount_parse,
         .plugin.compile = schema_mount_compile,
         .plugin.printer_info = NULL,
-        .plugin.printer_ctree = schema_mount_sprinter_ctree,
-        .plugin.printer_ptree = schema_mount_sprinter_ptree,
         .plugin.node_xpath = NULL,
         .plugin.snode_xpath = schema_mount_snode_xpath,
         .plugin.snode = schema_mount_snode,
