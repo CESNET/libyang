@@ -17,7 +17,7 @@
           },
           {
             "module": "ietf-inet-types",
-            "revision": "2013-07-15"
+            "revision": "2025-12-22"
           },
           {
             "module": "ietf-yang-library",
@@ -36,11 +36,7 @@
           },
           {
             "module": "ietf-yang-types",
-            "revision": "2013-07-15"
-          },
-          {
-            "module": "ietf-yang-types",
-            "revision": "2013-07-15"
+            "revision": "2025-12-22"
           }
         ],
         "conformance": "backwards-compatible",
