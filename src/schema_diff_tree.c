@@ -1432,12 +1432,12 @@ schema_diff_imports(const struct lys_module *mod, const struct lysc_node *schema
 
         /* check that the import has not yet been added */
         free(keys);
-        if (asprintf(&keys, "[name='%s'][revision='%s']", imp->name, imp->revision) == -1) {
+        if (asprintf(&keys, "[module='%s'][revision='%s']", imp->name, imp->revision) == -1) {
             LOGMEM(mod->ctx);
             rc = LY_EMEM;
             goto cleanup;
         }
-        if (!lyd_find_sibling_val(diff_list, schema, keys, 0, NULL)) {
+        if (!lyd_find_sibling_val(lyd_child(diff_list), schema, keys, 0, NULL)) {
             continue;
         }
 
@@ -2970,8 +2970,7 @@ lysc_diff_tree(const struct lys_module *mod1, const struct lys_module *mod2, con
     uint32_t i;
 
     /* structure extension */
-    assert(LY_ARRAY_COUNT(cmp_mod->compiled->exts) == 1);
-    LY_CHECK_GOTO(rc = lyd_new_ext_inner(&cmp_mod->compiled->exts[0], "schema-comparison", &diff_cont), cleanup);
+    LY_CHECK_GOTO(rc = lyd_new_inner(NULL, cmp_mod, "schema-comparison", 0, &diff_cont), cleanup);
     LY_CHECK_GOTO(rc = lyd_new_list(diff_cont, NULL, "schema", 0, &diff_list), cleanup);
 
     /* source module info */
