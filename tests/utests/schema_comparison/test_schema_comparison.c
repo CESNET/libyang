@@ -215,6 +215,7 @@ test_non_backwards_compatible(void **state)
     schema_comparison(st, "description");
     schema_comparison(st, "base-ident");
     schema_comparison(st, "base");
+    schema_comparison(st, "new-stmt");
     schema_comparison(st, "new-data-def");
     schema_comparison(st, "config");
     schema_comparison(st, "status");

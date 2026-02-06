@@ -1,0 +1,202 @@
+{
+  "ietf-yang-schema-comparison:schema-comparison": {
+    "schema": [
+      {
+        "source": {
+          "module": "new-stmt",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "new-stmt",
+          "revision": "2000-01-02"
+        },
+        "conformance": "non-backwards-compatible",
+        "module-comparison": [
+          {
+            "changed": [
+              {
+                "stmt": "identity",
+                "change": "removed",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "identity": {
+                "name": "base-a"
+              }
+            }
+          },
+          {
+            "changed": [
+              {
+                "stmt": "extension",
+                "change": "removed",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "extension": {
+                "name": "my-ext"
+              }
+            }
+          },
+          {
+            "changed": [
+              {
+                "stmt": "feature",
+                "change": "removed",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "feature": {
+                "name": "feat1"
+              }
+            }
+          },
+          {
+            "changed": [
+              {
+                "stmt": "feature",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "feature": {
+                "name": "feat2"
+              }
+            }
+          },
+          {
+            "changed": [
+              {
+                "stmt": "deviation",
+                "change": "added",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "new": {
+              "deviation": {
+                "target": "/nst:l1",
+                "deviate": [
+                  {
+                    "argument": "not-supported"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "changed": [
+              {
+                "stmt": "deviation",
+                "change": "added",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "new": {
+              "deviation": {
+                "target": "/nst:cont/lg",
+                "deviate": [
+                  {
+                    "argument": "add",
+                    "units": "unknown"
+                  },
+                  {
+                    "argument": "replace",
+                    "type": {
+                      "name": "uint32"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "parsed-comparison": [
+          {
+            "parent-path": "/{uses=top-grp2}",
+            "identifier": "cont/lg",
+            "stmt-type": "refine",
+            "changed": [
+              {
+                "stmt": "refine",
+                "parent-stmt": "node",
+                "change": "added",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "new": {
+              "default": [
+                "50"
+              ]
+            }
+          }
+        ],
+        "node-comparison": [
+          {
+            "node": "/new-stmt:l1",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "removed",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "base-type": "string"
+              }
+            }
+          },
+          {
+            "node": "/new-stmt:cont/lg",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "default",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              },
+              {
+                "stmt": "type",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              },
+              {
+                "stmt": "units",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "base-type": "uint8"
+              }
+            },
+            "new": {
+              "status": "current",
+              "default": [
+                "50"
+              ],
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "base-type": "uint32"
+              },
+              "units": "unknown"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

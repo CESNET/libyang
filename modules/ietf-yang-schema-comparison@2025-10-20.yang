@@ -157,6 +157,14 @@ module ietf-yang-schema-comparison {
         description
           "YANG statement 'description'.";
       }
+      enum "deviate" {
+        description
+          "YANG statement 'deviate'.";
+      }
+      enum "deviation" {
+        description
+          "YANG statement 'deviation'.";
+      }
       enum "enum" {
         description
           "YANG statement 'enum'.";
@@ -169,9 +177,17 @@ module ietf-yang-schema-comparison {
         description
           "YANG statement 'error-message'.";
       }
+      enum "extension" {
+        description
+          "YANG statement 'extension'.";
+      }
       enum "extension-instance" {
         description
           "Any extension instance YANG statement.";
+      }
+      enum "feature" {
+        description
+          "YANG statement 'feature'.";
       }
       enum "fraction-digits" {
         description

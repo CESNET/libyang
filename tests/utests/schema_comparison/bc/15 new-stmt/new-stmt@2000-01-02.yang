@@ -39,9 +39,6 @@ module new-stmt {
                 type uint8;
             }
         }
-        refine "cont/lg" {
-            default 50;
-        }
     }
 
     rpc r1;
