@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Schema diff tree functions
  *
- * Copyright (c) 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2025 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -76,6 +76,10 @@ schema_diff_changed2str(enum lys_diff_changed_e ch)
         return "identity";
     case LYS_CHANGED_IF_FEATURE:
         return "if-feature";
+    case LYS_CHANGED_IMPORT:
+        return "import";
+    case LYS_CHANGED_INCLUDE:
+        return "include";
     case LYS_CHANGED_LENGTH:
         return "length";
     case LYS_CHANGED_MANDATORY:
@@ -96,31 +100,32 @@ schema_diff_changed2str(enum lys_diff_changed_e ch)
         return "path";
     case LYS_CHANGED_PATTERN:
         return "pattern";
+    case LYS_CHANGED_PREFIX:
+        return "prefix";
     case LYS_CHANGED_PRESENCE:
         return "presence";
     case LYS_CHANGED_RANGE:
         return "range";
     case LYS_CHANGED_REFERENCE:
         return "reference";
+    case LYS_CHANGED_REFINE:
+        return "refine";
     case LYS_CHANGED_REQ_INSTANCE:
         return "require-instance";
+    case LYS_CHANGED_REVISION_DATE:
+        return "revision-date";
     case LYS_CHANGED_STATUS:
         return "status";
     case LYS_CHANGED_TYPE:
         return "type";
+    case LYS_CHANGED_TYPEDEF:
+        return "typedef";
     case LYS_CHANGED_UNITS:
         return "units";
     case LYS_CHANGED_UNIQUE:
         return "unique";
     case LYS_CHANGED_WHEN:
         return "when";
-
-    case LYS_CHANGED_PREFIX:
-        return "prefix";
-    case LYS_CHANGED_REFINE:
-        return "refine";
-    case LYS_CHANGED_TYPEDEF:
-        return "typedef";
     }
 
     return NULL;
@@ -2272,6 +2277,165 @@ cleanup:
 }
 
 /**
+ * @brief Create cmp YANG data from an import.
+ *
+ * @param[in] imp Parsed import to use.
+ * @param[in,out] change_cont Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_import(const struct lysp_import *imp, struct lyd_node *change_cont)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *cont;
+
+    /* import container */
+    LY_CHECK_GOTO(rc = lyd_new_inner(change_cont, NULL, "import", 0, &cont), cleanup);
+
+    /* module */
+    LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, "module", imp->name, 0, NULL), cleanup);
+
+    /* prefix */
+    LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, "prefix", imp->prefix, 0, NULL), cleanup);
+
+    /* revision-date */
+    if (imp->rev[0] && (rc = lyd_new_term(cont, NULL, "revision-date", imp->rev, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* description */
+    if (imp->dsc && (rc = lyd_new_term(cont, NULL, "description", imp->dsc, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* reference */
+    if (imp->ref && (rc = lyd_new_term(cont, NULL, "reference", imp->ref, 0, NULL))) {
+        goto cleanup;
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from import changes of 'module'.
+ *
+ * @param[in] change Import change to use.
+ * @param[in,out] diff_list Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_module_import(const struct lys_diff_import_change_s *change, struct lyd_node *diff_list)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *mod_cmp_list, *cont;
+
+    if (!change->changes.count) {
+        /* no changes of this import */
+        goto cleanup;
+    }
+
+    /* module comparison */
+    LY_CHECK_GOTO(rc = lyd_new_list(diff_list, NULL, "module-comparison", 0, &mod_cmp_list), cleanup);
+
+    /* change info */
+    LY_CHECK_GOTO(rc = schema_diff_changes_info(&change->changes, mod_cmp_list), cleanup);
+
+    if (change->imp_old) {
+        /* old */
+        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "old", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_import(change->imp_old, cont), cleanup);
+    }
+
+    if (change->imp_new) {
+        /* new */
+        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "new", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_import(change->imp_new, cont), cleanup);
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from an include.
+ *
+ * @param[in] inc Parsed include to use.
+ * @param[in,out] change_cont Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_include(const struct lysp_include *inc, struct lyd_node *change_cont)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *cont;
+
+    /* include container */
+    LY_CHECK_GOTO(rc = lyd_new_inner(change_cont, NULL, "include", 0, &cont), cleanup);
+
+    /* submodule */
+    LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, "submodule", inc->name, 0, NULL), cleanup);
+
+    /* revision-date */
+    if (inc->rev[0] && (rc = lyd_new_term(cont, NULL, "revision-date", inc->rev, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* description */
+    if (inc->dsc && (rc = lyd_new_term(cont, NULL, "description", inc->dsc, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* reference */
+    if (inc->ref && (rc = lyd_new_term(cont, NULL, "reference", inc->ref, 0, NULL))) {
+        goto cleanup;
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from include changes of 'module'.
+ *
+ * @param[in] change Include change to use.
+ * @param[in,out] diff_list Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_module_include(const struct lys_diff_include_change_s *change, struct lyd_node *diff_list)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *mod_cmp_list, *cont;
+
+    if (!change->changes.count) {
+        /* no changes of this include */
+        goto cleanup;
+    }
+
+    /* module comparison */
+    LY_CHECK_GOTO(rc = lyd_new_list(diff_list, NULL, "module-comparison", 0, &mod_cmp_list), cleanup);
+
+    /* change info */
+    LY_CHECK_GOTO(rc = schema_diff_changes_info(&change->changes, mod_cmp_list), cleanup);
+
+    if (change->inc_old) {
+        /* old */
+        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "old", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_include(change->inc_old, cont), cleanup);
+    }
+
+    if (change->inc_new) {
+        /* new */
+        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "new", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_include(change->inc_new, cont), cleanup);
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
  * @brief Create cmp YANG data from an extension.
  *
  * @param[in] ext Parsed extension to use.
@@ -2688,6 +2852,16 @@ schema_diff_module(const struct lys_diff_s *diff, const struct lys_module *mod1,
     }
 
     if (diff->with_parsed) {
+        /* imports */
+        for (i = 0; i < diff->import_change_count; ++i) {
+            LY_CHECK_GOTO(rc = schema_diff_module_import(&diff->import_changes[i], diff_list), cleanup);
+        }
+
+        /* includes */
+        for (i = 0; i < diff->include_change_count; ++i) {
+            LY_CHECK_GOTO(rc = schema_diff_module_include(&diff->include_changes[i], diff_list), cleanup);
+        }
+
         /* extensions */
         for (i = 0; i < diff->extension_change_count; ++i) {
             LY_CHECK_GOTO(rc = schema_diff_module_extension(&diff->extension_changes[i], diff_list), cleanup);

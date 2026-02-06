@@ -201,6 +201,14 @@ module ietf-yang-schema-comparison {
         description
           "YANG statement 'if-feature'.";
       }
+      enum "import" {
+        description
+          "YANG statement 'import'.";
+      }
+      enum "include" {
+        description
+          "YANG statement 'include'.";
+      }
       enum "length" {
         description
           "YANG statement 'length'.";
@@ -259,6 +267,10 @@ module ietf-yang-schema-comparison {
       enum "require-instance" {
         description
           "YANG statement 'require-instance'.";
+      }
+      enum "revision-date" {
+        description
+          "YANG statement 'revision-date'.";
       }
       enum "status" {
         description
@@ -908,6 +920,68 @@ module ietf-yang-schema-comparison {
       type string;
       description
         "Prefix substatement value.";
+    }
+    container import {
+      if-feature parsed-schema;
+      presence
+        "Exists only when there is a difference in this import.";
+      description
+        "Import substatements.";
+      leaf module {
+        type yang:yang-identifier;
+        mandatory true;
+        description
+          "Imported module.";
+      }
+      leaf prefix {
+        type yang:yang-identifier;
+        mandatory true;
+        description
+          "Imported module prefix.";
+      }
+      leaf revision-date {
+        type yanglib:revision-identifier;
+        description
+          "Imported module revision-date.";
+      }
+      leaf description {
+        type string;
+        description
+          "Description substatement value.";
+      }
+      leaf reference {
+        type string;
+        description
+          "Reference substatement value.";
+      }
+    }
+    container include {
+      if-feature parsed-schema;
+      presence
+        "Exists only when there is a difference in this include.";
+      description
+        "Include substatements.";
+      leaf submodule {
+        type yang:yang-identifier;
+        mandatory true;
+        description
+          "Included submodule.";
+      }
+      leaf revision-date {
+        type yanglib:revision-identifier;
+        description
+          "Included submodule revision-date.";
+      }
+      leaf description {
+        type string;
+        description
+          "Description substatement value.";
+      }
+      leaf reference {
+        type string;
+        description
+          "Reference substatement value.";
+      }
     }
     leaf organization {
       type string;
