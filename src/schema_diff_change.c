@@ -289,7 +289,6 @@ schema_diff_add_dev_change(const struct lysp_deviation *dev_old, const struct ly
     return LY_SUCCESS;
 }
 
-
 /**
  * @brief Add a new ext-instance change pair.
  *
@@ -703,6 +702,66 @@ schema_diff_text_nbc(const char *text1, const char *text2, enum lys_diff_changed
 }
 
 /**
+ * @brief Check changes of an 'if-feature' array.
+ *
+ * @param[in] iffs1 First if-feature array.
+ * @param[in] flags1 First node flags, if applicable.
+ * @param[in] iffs2 Second if-feature array.
+ * @param[in] parent_changed Parent statement of the change.
+ * @param[in,out] changes Changes to add to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_iffeatures_change(const struct lysp_qname *iffs1, uint16_t flags1, const struct lysp_qname *iffs2,
+        enum lys_diff_changed_e parent_changed, struct lys_diff_changes_s *changes)
+{
+    LY_ERR rc = LY_SUCCESS;
+    LY_ARRAY_COUNT_TYPE u, v;
+    ly_bool found, *iff2_found = NULL, is_nbc;
+
+    /* prepare array for marking found if-features */
+    iff2_found = calloc(LY_ARRAY_COUNT(iffs2), sizeof *iff2_found);
+    LY_CHECK_ERR_GOTO(!iff2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup)
+
+    LY_ARRAY_FOR(iffs1, u) {
+        found = 0;
+        LY_ARRAY_FOR(iffs2, v) {
+            if (iff2_found[v]) {
+                continue;
+            }
+
+            /* text value */
+            if (!strcmp(iffs1[u].str, iffs2[v].str)) {
+                found = 1;
+                iff2_found[v] = 1;
+                break;
+            }
+        }
+
+        if (!found) {
+            /* removed */
+            is_nbc = (flags1 & LYS_MAND_TRUE) ? 1 : 0;
+            LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, LYS_CHANGED_IF_FEATURE, is_nbc,
+                    changes), cleanup);
+        }
+    }
+
+    LY_ARRAY_FOR(iffs2, v) {
+        if (iff2_found[v]) {
+            continue;
+        }
+
+        /* added */
+        LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, LYS_CHANGED_IF_FEATURE, 1, changes),
+                cleanup);
+    }
+
+cleanup:
+    free(iff2_found);
+    return rc;
+}
+
+/**
  * @brief Check changes of a 'status'.
  *
  * @param[in] flags1 First flags.
@@ -1071,6 +1130,10 @@ schema_diff_ptype_enums_change(const struct lysp_type_enum *enums1, const struct
             LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_MODIFIED, LYS_CHANGED_TYPEDEF, changed, 1, changes),
                     cleanup);
         }
+
+        /* if-features */
+        LY_CHECK_GOTO(rc = schema_diff_iffeatures_change(enums1[u].iffeatures, 0, enums2[v].iffeatures, changed, changes),
+                cleanup);
 
         /* status */
         LY_CHECK_GOTO(rc = schema_diff_status_change(enums1[u].flags, enums2[v].flags, changed, changes), cleanup);
@@ -1652,6 +1715,10 @@ schema_diff_parsed_refines_change(const struct lysp_refine *refines1, const stru
         LY_CHECK_GOTO(rc = schema_diff_text_bc(refines1[u].ref, refines2[v].ref, LYS_CHANGED_REFINE,
                 LYS_CHANGED_REFERENCE, &refine_change->changes), cleanup);
 
+        /* if-features */
+        LY_CHECK_GOTO(rc = schema_diff_iffeatures_change(refines1[u].iffeatures, 0, refines2[v].iffeatures,
+                LYS_CHANGED_REFINE, &refine_change->changes), cleanup);
+
         /* musts */
         LY_CHECK_GOTO(rc = schema_diff_parsed_restrs_change(refines1[u].musts, refines2[v].musts, LYS_CHANGED_MUST,
                 LYS_CHANGED_REFINE, &refine_change->changes), cleanup);
@@ -1760,6 +1827,10 @@ schema_diff_pnode_change(const struct lysp_node *node1, const struct lysp_node *
     /* reference */
     LY_CHECK_GOTO(rc = schema_diff_text_bc(node1->ref, node2->ref, LYS_CHANGED_NODE, LYS_CHANGED_REFERENCE, changes),
             cleanup);
+
+    /* if-features */
+    LY_CHECK_GOTO(rc = schema_diff_iffeatures_change(node1->iffeatures, node1->flags, node2->iffeatures,
+            LYS_CHANGED_NODE, changes), cleanup);
 
     /* status */
     LY_CHECK_GOTO(rc = schema_diff_status_change(node1->flags, node2->flags, LYS_CHANGED_NODE, changes), cleanup);
@@ -2116,8 +2187,9 @@ schema_diff_features_change(const struct lysp_feature *features1, const struct l
             continue;
         }
 
-        /* if-feature */
-        /* TODO */
+        /* if-features */
+        LY_CHECK_GOTO(rc = schema_diff_iffeatures_change(features1[u].iffeatures, 0, features2[v].iffeatures,
+                LYS_CHANGED_FEATURE, &feat_change->changes), cleanup);
 
         /* status */
         LY_CHECK_GOTO(rc = schema_diff_status_change(features1[u].flags, features2[v].flags, LYS_CHANGED_FEATURE,
@@ -2591,6 +2663,10 @@ schema_diff_module_identities_change(const struct lysc_ident *idents1, const str
         }
 
         if (diff->with_parsed) {
+            /* if-features */
+            LY_CHECK_GOTO(rc = schema_diff_iffeatures_change(ident_change->p_ident_old->iffeatures, 0,
+                    ident_change->p_ident_new->iffeatures, LYS_CHANGED_IDENT, &ident_change->changes), cleanup);
+
             /* bases */
             LY_CHECK_GOTO(rc = schema_diff_module_identity_bases_change(parent_changed, ident_change), cleanup);
         }
@@ -3290,11 +3366,15 @@ schema_diff_node_type_bitenum_change(const struct lysc_type_bitenum_item *bitenu
             continue;
         }
 
-        /* description, reference */
+        /* description */
         LY_CHECK_GOTO(rc = schema_diff_text_bc(bitenums1[u].dsc, bitenums2[v].dsc, changed, LYS_CHANGED_DESCRIPTION,
                 changes), cleanup);
+
+        /* reference */
         LY_CHECK_GOTO(rc = schema_diff_text_bc(bitenums1[u].ref, bitenums2[v].ref, changed, LYS_CHANGED_REFERENCE,
                 changes), cleanup);
+
+        /* if-features not supported */
 
         /* ext-instance */
         LY_CHECK_GOTO(rc = schema_diff_ext_insts_change(bitenums1[u].exts, bitenums2[v].exts,
@@ -3645,6 +3725,12 @@ schema_diff_node_change(const struct lysc_node *node1, const struct lysc_node *n
 
     /* reference */
     LY_CHECK_RET(schema_diff_text_bc(node1->ref, node2->ref, LYS_CHANGED_NONE, LYS_CHANGED_REFERENCE, changes));
+
+    if (diff->with_parsed && diff->with_priv_parsed) {
+        /* if-features */
+        LY_CHECK_RET(schema_diff_iffeatures_change(((struct lysp_node *)node1->priv)->iffeatures, node1->flags,
+                ((struct lysp_node *)node2->priv)->iffeatures, LYS_CHANGED_NODE, changes));
+    }
 
     /* status */
     LY_CHECK_RET(schema_diff_status_change(node1->flags, node2->flags, LYS_CHANGED_NONE, changes));

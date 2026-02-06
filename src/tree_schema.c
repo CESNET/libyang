@@ -1451,8 +1451,14 @@ lys_compare(const struct ly_ctx *ctx, const struct lys_module *src_mod, const st
     /* decide what rules to use based on the YANG version of the new module */
     diff.is_yang10 = (trg_mod->version & LYS_VERSION_1_1) ? 0 : 1;
 
-    /* check if parsed schema diff is supported */
+    /* check if parsed schema diff is supported and the parsed nodes are available */
     diff.with_parsed = (lys_feature_value(cmp_mod, "parsed-schema") == LY_SUCCESS) ? 1 : 0;
+    if (diff.with_parsed && (ly_ctx_get_options(src_mod->ctx) & LY_CTX_SET_PRIV_PARSED) &&
+            (ly_ctx_get_options(trg_mod->ctx) & LY_CTX_SET_PRIV_PARSED)) {
+        diff.with_priv_parsed = 1;
+    } else {
+        diff.with_priv_parsed = 0;
+    }
 
     /* generate the diff */
     LY_CHECK_GOTO(rc = lysc_diff_changes(src_mod, trg_mod, &diff), cleanup);

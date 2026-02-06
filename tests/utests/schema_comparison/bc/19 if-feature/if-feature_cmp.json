@@ -1,0 +1,164 @@
+{
+  "ietf-yang-schema-comparison:schema-comparison": {
+    "schema": [
+      {
+        "source": {
+          "module": "if-feature",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "if-feature",
+          "revision": "2000-01-02"
+        },
+        "conformance": "backwards-compatible",
+        "module-comparison": [
+          {
+            "changed": [
+              {
+                "stmt": "if-feature",
+                "parent-stmt": "identity",
+                "change": "removed",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "identity": {
+                "name": "id",
+                "if-feature": [
+                  "f2"
+                ]
+              }
+            },
+            "new": {
+              "identity": {
+                "name": "id"
+              }
+            }
+          },
+          {
+            "changed": [
+              {
+                "stmt": "if-feature",
+                "parent-stmt": "feature",
+                "change": "removed",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "feature": {
+                "name": "f2",
+                "if-feature": [
+                  "f"
+                ]
+              }
+            },
+            "new": {
+              "feature": {
+                "name": "f2"
+              }
+            }
+          }
+        ],
+        "parsed-comparison": [
+          {
+            "parent-path": "/cont",
+            "identifier": "grp",
+            "stmt-type": "uses",
+            "changed": [
+              {
+                "stmt": "if-feature",
+                "parent-stmt": "node",
+                "change": "removed",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "if-feature": [
+                "not f2"
+              ]
+            }
+          },
+          {
+            "parent-path": "/",
+            "identifier": "t1",
+            "stmt-type": "typedef",
+            "changed": [
+              {
+                "stmt": "if-feature",
+                "parent-stmt": "enum",
+                "change": "removed",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "type": {
+                "name": "enumeration",
+                "enum": [
+                  {
+                    "name": "e1",
+                    "value": 0
+                  },
+                  {
+                    "name": "e2",
+                    "if-feature": [
+                      "f"
+                    ],
+                    "value": 0
+                  }
+                ]
+              }
+            },
+            "new": {
+              "type": {
+                "name": "enumeration",
+                "enum": [
+                  {
+                    "name": "e1",
+                    "value": 0
+                  },
+                  {
+                    "name": "e2",
+                    "value": 0
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "node-comparison": [
+          {
+            "node": "/if-feature:cont/l",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "if-feature",
+                "parent-stmt": "node",
+                "change": "removed",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "if-feature": [
+                "not f"
+              ],
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "base-type": "string"
+              }
+            },
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "base-type": "string"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
