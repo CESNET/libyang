@@ -74,6 +74,8 @@ schema_diff_changed2str(enum lys_diff_changed_e ch)
         return "fraction-digits";
     case LYS_CHANGED_IDENT:
         return "identity";
+    case LYS_CHANGED_IF_FEATURE:
+        return "if-feature";
     case LYS_CHANGED_LENGTH:
         return "length";
     case LYS_CHANGED_MANDATORY:
@@ -1565,7 +1567,10 @@ schema_diff_ident(const struct lysc_ident *ident, const struct lysp_ident *p_ide
 
     if (with_parsed) {
         /* if-features */
-        /* TODO */
+        LY_ARRAY_FOR(p_ident->iffeatures, u) {
+            LY_CHECK_GOTO(rc = lyd_new_term(ident_cont, NULL, "if-feature", p_ident->iffeatures[u].str, 0, NULL),
+                    cleanup);
+        }
 
         /* base */
         LY_ARRAY_FOR(p_ident->bases, u) {
@@ -1740,6 +1745,11 @@ schema_diff_pnode(const struct lysp_node *pnode, struct lyd_node *change_cont)
     /* status */
     LY_CHECK_GOTO(rc = schema_diff_status(pnode->flags, change_cont), cleanup);
 
+    /* if-features */
+    LY_ARRAY_FOR(pnode->iffeatures, u) {
+        LY_CHECK_GOTO(rc = lyd_new_term(change_cont, NULL, "if-feature", pnode->iffeatures[u].str, 0, NULL), cleanup);
+    }
+
     switch (pnode->nodetype) {
     case LYS_CHOICE:
         /* when, dflt */
@@ -1882,6 +1892,11 @@ schema_diff_refine(const struct lysp_refine *refine, struct lyd_node *change_con
         goto cleanup;
     }
 
+    /* if-features */
+    LY_ARRAY_FOR(refine->iffeatures, u) {
+        LY_CHECK_GOTO(rc = lyd_new_term(change_cont, NULL, "if-feature", refine->iffeatures[u].str, 0, NULL), cleanup);
+    }
+
     /* musts */
     LY_ARRAY_FOR(refine->musts, u) {
         LY_CHECK_GOTO(rc = lyd_new_list(change_cont, NULL, "must", 0, &must_list), cleanup);
@@ -2001,13 +2016,16 @@ schema_diff_parsed_enum(const struct lysp_type_enum *enm, ly_bool is_bit, struct
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_node *enum_list;
+    LY_ARRAY_COUNT_TYPE u;
     char str[22];
 
     /* list with name */
     LY_CHECK_GOTO(rc = lyd_new_list(cont, NULL, is_bit ? "bit" : "enum", 0, &enum_list, enm->name), cleanup);
 
     /* if-features */
-    /* TODO for all the statements */
+    LY_ARRAY_FOR(enm->iffeatures, u) {
+        LY_CHECK_GOTO(rc = lyd_new_term(enum_list, NULL, "if-feature", enm->iffeatures[u].str, 0, NULL), cleanup);
+    }
 
     /* description */
     if (enm->dsc && (rc = lyd_new_term(enum_list, NULL, "description", enm->dsc, 0, NULL))) {
@@ -2346,6 +2364,7 @@ schema_diff_feature(const struct lysp_feature *feat, struct lyd_node *change_con
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_node *feat_cont;
+    LY_ARRAY_COUNT_TYPE u;
 
     /* feature container */
     LY_CHECK_GOTO(rc = lyd_new_inner(change_cont, NULL, "feature", 0, &feat_cont), cleanup);
@@ -2354,7 +2373,9 @@ schema_diff_feature(const struct lysp_feature *feat, struct lyd_node *change_con
     LY_CHECK_GOTO(rc = lyd_new_term(feat_cont, NULL, "name", feat->name, 0, NULL), cleanup);
 
     /* if-features */
-    /* TODO */
+    LY_ARRAY_FOR(feat->iffeatures, u) {
+        LY_CHECK_GOTO(rc = lyd_new_term(feat_cont, NULL, "if-feature", feat->iffeatures[u].str, 0, NULL), cleanup);
+    }
 
     /* status */
     LY_CHECK_GOTO(rc = schema_diff_status(feat->flags, feat_cont), cleanup);
@@ -3086,11 +3107,12 @@ cleanup:
  * @brief Create cmp YANG data from a node.
  *
  * @param[in] node Node to use.
+ * @param[in] with_priv_parsed Whether LY_CTX_SET_PRIV_PARSED ctx option is set.
  * @param[in,out] change_cont Node to append to.
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_node_stmts(const struct lysc_node *node, struct lyd_node *change_cont)
+schema_diff_node_stmts(const struct lysc_node *node, ly_bool with_priv_parsed, struct lyd_node *change_cont)
 {
     LY_ERR rc = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u, v;
@@ -3099,6 +3121,7 @@ schema_diff_node_stmts(const struct lysc_node *node, struct lyd_node *change_con
     const struct lysc_node_leaf *leaf;
     const struct lysc_node_leaflist *llist;
     const struct lysc_node_list *list;
+    const struct lysp_node *p_node;
     struct lyd_node *unique_list, *type_cont;
 
     /* config */
@@ -3140,6 +3163,15 @@ schema_diff_node_stmts(const struct lysc_node *node, struct lyd_node *change_con
 
     /* status */
     LY_CHECK_GOTO(rc = schema_diff_status(node->flags, change_cont), cleanup);
+
+    if (with_priv_parsed) {
+        p_node = node->priv;
+
+        /* if-features */
+        LY_ARRAY_FOR(p_node->iffeatures, u) {
+            LY_CHECK_GOTO(rc = lyd_new_term(change_cont, NULL, "if-feature", p_node->iffeatures[u].str, 0, NULL), cleanup);
+        }
+    }
 
     /* when */
     LY_CHECK_GOTO(rc = schema_diff_node_whens(lysc_node_when(node), change_cont), cleanup);
@@ -3265,11 +3297,12 @@ schema_diff_nodetype2enum(uint16_t nodetype)
  * @brief Create cmp YANG data from a node change.
  *
  * @param[in] node_change Node change to use.
+ * @param[in] with_priv_parsed Whether LY_CTX_SET_PRIV_PARSED ctx option is set.
  * @param[in,out] diff_list Node to append to.
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_node(const struct lys_diff_node_change_s *node_change, struct lyd_node *diff_list)
+schema_diff_node(const struct lys_diff_node_change_s *node_change, ly_bool with_priv_parsed, struct lyd_node *diff_list)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_node *node_diff_list, *change_cont;
@@ -3312,13 +3345,13 @@ schema_diff_node(const struct lys_diff_node_change_s *node_change, struct lyd_no
     /* old */
     if (node_change->snode_old) {
         LY_CHECK_GOTO(rc = lyd_new_inner(node_diff_list, NULL, "old", 0, &change_cont), cleanup);
-        LY_CHECK_GOTO(rc = schema_diff_node_stmts(node_change->snode_old, change_cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_node_stmts(node_change->snode_old, with_priv_parsed, change_cont), cleanup);
     }
 
     /* new */
     if (node_change->snode_new) {
         LY_CHECK_GOTO(rc = lyd_new_inner(node_diff_list, NULL, "new", 0, &change_cont), cleanup);
-        LY_CHECK_GOTO(rc = schema_diff_node_stmts(node_change->snode_new, change_cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_node_stmts(node_change->snode_new, with_priv_parsed, change_cont), cleanup);
     }
 
 cleanup:
@@ -3373,7 +3406,7 @@ lysc_diff_tree(const struct lys_module *mod1, const struct lys_module *mod2, con
 
     /* node comparison */
     for (i = 0; i < diff->node_change_count; ++i) {
-        LY_CHECK_GOTO(rc = schema_diff_node(&diff->node_changes[i], diff_list), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_node(&diff->node_changes[i], diff->with_priv_parsed, diff_list), cleanup);
     }
 
 cleanup:
