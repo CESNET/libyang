@@ -52,10 +52,10 @@ setup_f(void **state)
     *state = st;
 
     /* create contexts */
-    if (ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &st->ctx1)) {
+    if (ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD | LY_CTX_SET_PRIV_PARSED, &st->ctx1)) {
         return 1;
     }
-    if (ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &st->ctx2)) {
+    if (ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD | LY_CTX_SET_PRIV_PARSED, &st->ctx2)) {
         return 1;
     }
 
@@ -182,6 +182,7 @@ test_backwards_compatible(void **state)
     schema_comparison(st, "new-data-def");
     schema_comparison(st, "case");
     schema_comparison(st, "config");
+    schema_comparison(st, "if-feature");
     schema_comparison(st, "status");
     schema_comparison(st, "type");
     schema_comparison(st, "uses");
@@ -218,6 +219,7 @@ test_non_backwards_compatible(void **state)
     schema_comparison(st, "new-stmt");
     schema_comparison(st, "new-data-def");
     schema_comparison(st, "config");
+    schema_comparison(st, "if-feature");
     schema_comparison(st, "status");
     schema_comparison(st, "data-def-order");
     schema_comparison(st, "presence");
