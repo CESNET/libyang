@@ -186,7 +186,6 @@ test_backwards_compatible(void **state)
     schema_comparison(st, "status");
     schema_comparison(st, "type");
     schema_comparison(st, "uses");
-    schema_comparison(st, "submod1");
     schema_comparison(st, "prefix");
 }
 
@@ -221,6 +220,7 @@ test_non_backwards_compatible(void **state)
     schema_comparison(st, "config");
     schema_comparison(st, "if-feature");
     schema_comparison(st, "status");
+    schema_comparison(st, "submod1");
     schema_comparison(st, "data-def-order");
     schema_comparison(st, "presence");
     schema_comparison(st, "union");

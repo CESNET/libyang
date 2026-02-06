@@ -1,0 +1,102 @@
+{
+  "ietf-yang-schema-comparison:schema-comparison": {
+    "schema": [
+      {
+        "source": {
+          "module": "submod1",
+          "revision": "2000-01-01",
+          "submodule": [
+            {
+              "name": "submod11",
+              "revision": "2000-01-01"
+            },
+            {
+              "name": "submod12",
+              "revision": "2000-01-01"
+            }
+          ]
+        },
+        "target": {
+          "module": "submod1",
+          "revision": "2000-01-02",
+          "submodule": [
+            {
+              "name": "submod11",
+              "revision": "2000-01-02"
+            },
+            {
+              "name": "submod12",
+              "revision": "2000-01-02"
+            },
+            {
+              "name": "submod13",
+              "revision": "2000-01-02"
+            }
+          ]
+        },
+        "conformance": "non-backwards-compatible",
+        "module-comparison": [
+          {
+            "changed": [
+              {
+                "stmt": "revision-date",
+                "parent-stmt": "include",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "include": {
+                "submodule": "submod11",
+                "revision-date": "2000-01-01"
+              }
+            },
+            "new": {
+              "include": {
+                "submodule": "submod11",
+                "revision-date": "2000-01-02"
+              }
+            }
+          },
+          {
+            "changed": [
+              {
+                "stmt": "revision-date",
+                "parent-stmt": "include",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "include": {
+                "submodule": "submod12",
+                "revision-date": "2000-01-01"
+              }
+            },
+            "new": {
+              "include": {
+                "submodule": "submod12",
+                "revision-date": "2000-01-02"
+              }
+            }
+          },
+          {
+            "changed": [
+              {
+                "stmt": "include",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "include": {
+                "submodule": "submod13",
+                "revision-date": "2000-01-02"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

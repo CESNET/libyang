@@ -40,6 +40,23 @@
           }
         ],
         "conformance": "backwards-compatible",
+        "module-comparison": [
+          {
+            "changed": [
+              {
+                "stmt": "import",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "import": {
+                "module": "ietf-yang-schema-comparison",
+                "prefix": "schema-cmp"
+              }
+            }
+          }
+        ],
         "node-comparison": [
           {
             "node": "/when:l1",

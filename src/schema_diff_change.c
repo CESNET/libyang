@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Schema diff change functionss
  *
- * Copyright (c) 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2025 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -191,6 +191,72 @@ schema_diff_add_ident_change(const struct lysc_ident *ident_old, const struct ly
 }
 
 /**
+ * @brief Add a new import change pair.
+ *
+ * @param[in] imp_old Old changed import.
+ * @param[in] imp_new New changed import.
+ * @param[in,out] diff Diff to use and add to.
+ * @param[out] import_change Added import change structure.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_add_import_change(const struct lysp_import *imp_old, const struct lysp_import *imp_new,
+        struct lys_diff_s *diff, struct lys_diff_import_change_s **import_change)
+{
+    void *mem;
+    struct lys_diff_import_change_s *ic;
+
+    /* add new import_change */
+    mem = realloc(diff->import_changes, (diff->import_change_count + 1) * sizeof *diff->import_changes);
+    LY_CHECK_ERR_RET(!mem, LOGMEM(NULL), LY_EMEM);
+    diff->import_changes = mem;
+    ic = &diff->import_changes[diff->import_change_count];
+    ++diff->import_change_count;
+
+    /* fill new import_change */
+    ic->imp_old = imp_old;
+    ic->imp_new = imp_new;
+    ic->changes.changes = NULL;
+    ic->changes.count = 0;
+
+    *import_change = ic;
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Add a new include change pair.
+ *
+ * @param[in] inc_old Old changed include.
+ * @param[in] inc_new New changed include.
+ * @param[in,out] diff Diff to use and add to.
+ * @param[out] include_change Added include change structure.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_add_include_change(const struct lysp_include *inc_old, const struct lysp_include *inc_new,
+        struct lys_diff_s *diff, struct lys_diff_include_change_s **include_change)
+{
+    void *mem;
+    struct lys_diff_include_change_s *ic;
+
+    /* add new include_change */
+    mem = realloc(diff->include_changes, (diff->include_change_count + 1) * sizeof *diff->include_changes);
+    LY_CHECK_ERR_RET(!mem, LOGMEM(NULL), LY_EMEM);
+    diff->include_changes = mem;
+    ic = &diff->include_changes[diff->include_change_count];
+    ++diff->include_change_count;
+
+    /* fill new include_change */
+    ic->inc_old = inc_old;
+    ic->inc_new = inc_new;
+    ic->changes.changes = NULL;
+    ic->changes.count = 0;
+
+    *include_change = ic;
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Add a new extension change pair.
  *
  * @param[in] extension_old Old changed extension.
@@ -206,7 +272,7 @@ schema_diff_add_extension_change(const struct lysp_ext *extension_old, const str
     void *mem;
     struct lys_diff_extension_change_s *ec;
 
-    /* add new ident_change */
+    /* add new extension_change */
     mem = realloc(diff->extension_changes, (diff->extension_change_count + 1) * sizeof *diff->extension_changes);
     LY_CHECK_ERR_RET(!mem, LOGMEM(NULL), LY_EMEM);
     diff->extension_changes = mem;
@@ -2050,6 +2116,172 @@ cleanup:
 }
 
 /**
+ * @brief Check changes of a parsed 'import' array.
+ *
+ * @param[in] imps1 First import array.
+ * @param[in] imps2 Second import array.
+ * @param[in,out] diff Diff to use.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_imports_change(const struct lysp_import *imps1, const struct lysp_import *imps2, struct lys_diff_s *diff)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lys_diff_import_change_s *import_change;
+    ly_bool *imp2_found = NULL, found;
+    LY_ARRAY_COUNT_TYPE u, v;
+
+    /* prepare array for marking found identities */
+    imp2_found = calloc(LY_ARRAY_COUNT(imps2), sizeof *imp2_found);
+    LY_CHECK_ERR_GOTO(!imp2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup);
+
+    LY_ARRAY_FOR(imps1, u) {
+        found = 0;
+        LY_ARRAY_FOR(imps2, v) {
+            if (imp2_found[v]) {
+                continue;
+            }
+
+            /* name */
+            if (!strcmp(imps1[u].name, imps2[v].name)) {
+                found = 1;
+                imp2_found[v] = 1;
+                break;
+            }
+        }
+
+        /* add new import to changes */
+        LY_CHECK_GOTO(rc = schema_diff_add_import_change(&imps1[u], found ? &imps2[v] : NULL, diff,
+                &import_change), cleanup);
+
+        if (!found) {
+            /* removed */
+            LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_REMOVED, LYS_CHANGED_NONE, LYS_CHANGED_IMPORT, 0,
+                    &import_change->changes), cleanup);
+            continue;
+        }
+
+        /* revision-date */
+        LY_CHECK_GOTO(rc = schema_diff_text_nbc(imps1[u].rev[0] ? imps1[u].rev : NULL,
+                imps2[v].rev[0] ? imps2[v].rev : NULL, LYS_CHANGED_IMPORT, LYS_CHANGED_REVISION_DATE,
+                &import_change->changes), cleanup);
+
+        /* description */
+        LY_CHECK_GOTO(rc = schema_diff_pnode_description(imps1[u].dsc, imps2[v].dsc, imps2[v].exts, LYS_CHANGED_IMPORT,
+                &import_change->changes), cleanup);
+
+        /* reference */
+        LY_CHECK_GOTO(rc = schema_diff_text_bc(imps1[u].ref, imps2[v].ref, LYS_CHANGED_IMPORT, LYS_CHANGED_REFERENCE,
+                &import_change->changes), cleanup);
+
+        /* check whether any of the changes were NBC */
+        schema_diff_check_node_change_nbc(&import_change->changes, diff);
+    }
+
+    LY_ARRAY_FOR(imps2, v) {
+        if (imp2_found[v]) {
+            continue;
+        }
+
+        /* add new import to changes */
+        LY_CHECK_RET(schema_diff_add_import_change(NULL, &imps2[v], diff, &import_change));
+
+        /* added */
+        LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, LYS_CHANGED_NONE, LYS_CHANGED_IMPORT, 0,
+                &import_change->changes), cleanup);
+    }
+
+cleanup:
+    free(imp2_found);
+    return rc;
+}
+
+/**
+ * @brief Check changes of a parsed 'include' array.
+ *
+ * @param[in] incs1 First include array.
+ * @param[in] incs2 Second include array.
+ * @param[in,out] diff Diff to use.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_includes_change(const struct lysp_include *incs1, const struct lysp_include *incs2, struct lys_diff_s *diff)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lys_diff_include_change_s *include_change;
+    ly_bool *inc2_found = NULL, found;
+    LY_ARRAY_COUNT_TYPE u, v;
+
+    /* prepare array for marking found identities */
+    inc2_found = calloc(LY_ARRAY_COUNT(incs2), sizeof *inc2_found);
+    LY_CHECK_ERR_GOTO(!inc2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup);
+
+    LY_ARRAY_FOR(incs1, u) {
+        if (incs1[u].injected) {
+            continue;
+        }
+
+        found = 0;
+        LY_ARRAY_FOR(incs2, v) {
+            if (incs2[v].injected || inc2_found[v]) {
+                continue;
+            }
+
+            /* name */
+            if (!strcmp(incs1[u].name, incs2[v].name)) {
+                found = 1;
+                inc2_found[v] = 1;
+                break;
+            }
+        }
+
+        /* add new include to changes */
+        LY_CHECK_GOTO(rc = schema_diff_add_include_change(&incs1[u], found ? &incs2[v] : NULL, diff, &include_change),
+                cleanup);
+
+        if (!found) {
+            /* removed */
+            LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_REMOVED, LYS_CHANGED_NONE, LYS_CHANGED_INCLUDE, 0,
+                    &include_change->changes), cleanup);
+            continue;
+        }
+
+        /* revision-date */
+        LY_CHECK_GOTO(rc = schema_diff_text_nbc(incs1[u].rev[0] ? incs1[u].rev : NULL,
+                incs2[v].rev[0] ? incs2[v].rev : NULL, LYS_CHANGED_INCLUDE, LYS_CHANGED_REVISION_DATE,
+                &include_change->changes), cleanup);
+
+        /* description */
+        LY_CHECK_GOTO(rc = schema_diff_pnode_description(incs1[u].dsc, incs2[v].dsc, incs2[v].exts,
+                LYS_CHANGED_INCLUDE, &include_change->changes), cleanup);
+
+        /* reference */
+        LY_CHECK_GOTO(rc = schema_diff_text_bc(incs1[u].ref, incs2[v].ref, LYS_CHANGED_INCLUDE,
+                LYS_CHANGED_REFERENCE, &include_change->changes), cleanup);
+
+        /* check whether any of the changes were NBC */
+        schema_diff_check_node_change_nbc(&include_change->changes, diff);
+    }
+
+    LY_ARRAY_FOR(incs2, v) {
+        if (incs2[v].injected || inc2_found[v]) {
+            continue;
+        }
+
+        /* add new include to changes */
+        LY_CHECK_RET(schema_diff_add_include_change(NULL, &incs2[v], diff, &include_change));
+
+        /* added */
+        LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, LYS_CHANGED_NONE, LYS_CHANGED_INCLUDE, 0,
+                &include_change->changes), cleanup);
+    }
+
+cleanup:
+    free(inc2_found);
+    return rc;
+}
+
+/**
  * @brief Check changes of a parsed 'extension' array.
  *
  * @param[in] extensions1 First extension array.
@@ -2519,6 +2751,12 @@ schema_diff_pmodule_change(const struct lysp_module *mod1, const struct lysp_mod
         LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_MODIFIED, LYS_CHANGED_NONE, LYS_CHANGED_PREFIX, 0,
                 &diff->module_changes), cleanup);
     }
+
+    /* imports */
+    LY_CHECK_GOTO(rc = schema_diff_imports_change(mod1->imports, mod2->imports, diff), cleanup);
+
+    /* includes */
+    LY_CHECK_GOTO(rc = schema_diff_includes_change(mod1->includes, mod2->includes, diff), cleanup);
 
     /* extensions */
     LY_CHECK_GOTO(rc = schema_diff_extensions_change(mod1->extensions, mod2->extensions, diff), cleanup);
@@ -4290,6 +4528,16 @@ lysc_diff_erase(struct lys_diff_s *diff)
     free(diff->ident_changes);
 
     /* parsed module */
+    for (i = 0; i < diff->import_change_count; ++i) {
+        free(diff->import_changes[i].changes.changes);
+    }
+    free(diff->import_changes);
+
+    for (i = 0; i < diff->include_change_count; ++i) {
+        free(diff->include_changes[i].changes.changes);
+    }
+    free(diff->include_changes);
+
     for (i = 0; i < diff->extension_change_count; ++i) {
         free(diff->extension_changes[i].changes.changes);
     }

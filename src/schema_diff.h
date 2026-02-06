@@ -59,6 +59,8 @@ enum lys_diff_changed_e {
     LYS_CHANGED_FRAC_DIG,
     LYS_CHANGED_IDENT,
     LYS_CHANGED_IF_FEATURE,
+    LYS_CHANGED_IMPORT,
+    LYS_CHANGED_INCLUDE,
     LYS_CHANGED_LENGTH,
     LYS_CHANGED_MANDATORY,
     LYS_CHANGED_MAX_ELEM,
@@ -73,6 +75,7 @@ enum lys_diff_changed_e {
     LYS_CHANGED_RANGE,
     LYS_CHANGED_REFERENCE,
     LYS_CHANGED_REQ_INSTANCE,
+    LYS_CHANGED_REVISION_DATE,
     LYS_CHANGED_STATUS,
     LYS_CHANGED_TYPE,
     LYS_CHANGED_UNITS,
@@ -118,6 +121,24 @@ struct lys_diff_ext_change_s {
     const struct lysc_ext_instance *ext_old;    /**< old compiled extension-instance */
     const struct lysc_ext_instance *ext_new;    /**< new compiled extension-instance */
     struct lys_diff_changes_s *changes;         /**< pointer to changes in the old and new extension-instance, may be empty */
+};
+
+/**
+ * @brief Structure for an import change.
+ */
+struct lys_diff_import_change_s {
+    const struct lysp_import *imp_old;          /**< old parsed import */
+    const struct lysp_import *imp_new;          /**< new parsed import */
+    struct lys_diff_changes_s changes;          /**< changes in the old and new import, may be empty */
+};
+
+/**
+ * @brief Structure for an include change.
+ */
+struct lys_diff_include_change_s {
+    const struct lysp_include *inc_old;         /**< old parsed include */
+    const struct lysp_include *inc_new;         /**< new parsed include */
+    struct lys_diff_changes_s changes;          /**< changes in the old and new include, may be empty */
 };
 
 /**
@@ -203,6 +224,10 @@ struct lys_diff_node_change_s {
  */
 struct lys_diff_s {
     struct lys_diff_changes_s module_changes;       /**< module changes */
+    struct lys_diff_import_change_s *import_changes;    /**< array of all the changed imports */
+    uint32_t import_change_count;                   /**< count of import changes */
+    struct lys_diff_include_change_s *include_changes;  /**< array of all the changed includes */
+    uint32_t include_change_count;                  /**< count of include changes */
     struct lys_diff_ident_change_s *ident_changes;  /**< array of all the changed identities */
     uint32_t ident_change_count;                    /**< count of ident changes */
     struct lys_diff_extension_change_s *extension_changes;  /**< array of all the changed extensions */
