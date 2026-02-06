@@ -2317,8 +2317,14 @@ LIBYANG_API_DECL LY_ERR lys_feature_value(const struct lys_module *module, const
 LIBYANG_API_DECL LY_ERR lys_set_implemented(struct lys_module *mod, const char **features);
 
 /**
- * @brief Compare 2 revisions of a module and generate their schema diff. Requires 'ietf-schema-comparison'
+ * @brief Compare 2 revisions of a module and generate their schema diff. Requires 'ietf-yang-schema-comparison'
  * YANG module to be loaded.
+ *
+ * If 'parsed-schema' feature is enabled in 'ietf-yang-schema-comparison', parsed-only statements are also compared
+ * and changes reported.
+ *
+ * If also ::LY_CTX_SET_PRIV_PARSED options is set for **both** @p src_mod and @p trg_mod contexts, parsed-only
+ * substatement changes are reported for compiled nodes (such as their if-features).
  *
  * @param[in] ctx Context to use for creating the schema diff data tree.
  * @param[in] src_mod Source implemented module to compare.
