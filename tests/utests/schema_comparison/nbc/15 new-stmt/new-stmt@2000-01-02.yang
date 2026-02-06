@@ -1,0 +1,46 @@
+module new-stmt {
+    namespace "urn:test:new-stmt";
+    prefix nst;
+    yang-version 1.1;
+
+    revision 2000-01-02;
+
+    feature feat2;
+
+    grouping top-grp {
+        leaf gleaf {
+            type uint32;
+        }
+    }
+
+    grouping top-grp2 {
+        container cont {
+            leaf lg {
+                type uint8;
+            }
+        }
+    }
+
+    leaf l1 {
+        type string;
+    }
+
+    uses top-grp2 {
+        refine "cont/lg" {
+            default 50;
+        }
+    }
+
+    deviation "/nst:l1" {
+        deviate not-supported;
+    }
+
+    deviation "/nst:cont/lg" {
+        deviate add {
+            units "unknown";
+        }
+        deviate replace {
+            type uint32;
+        }
+    }
+}

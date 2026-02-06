@@ -191,6 +191,106 @@ schema_diff_add_ident_change(const struct lysc_ident *ident_old, const struct ly
 }
 
 /**
+ * @brief Add a new extension change pair.
+ *
+ * @param[in] extension_old Old changed extension.
+ * @param[in] extension_new New changed extension.
+ * @param[in,out] diff Diff to use and add to.
+ * @param[out] extension_change Added extension change structure.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_add_extension_change(const struct lysp_ext *extension_old, const struct lysp_ext *extension_new,
+        struct lys_diff_s *diff, struct lys_diff_extension_change_s **extension_change)
+{
+    void *mem;
+    struct lys_diff_extension_change_s *ec;
+
+    /* add new ident_change */
+    mem = realloc(diff->extension_changes, (diff->extension_change_count + 1) * sizeof *diff->extension_changes);
+    LY_CHECK_ERR_RET(!mem, LOGMEM(NULL), LY_EMEM);
+    diff->extension_changes = mem;
+    ec = &diff->extension_changes[diff->extension_change_count];
+    ++diff->extension_change_count;
+
+    /* fill new extension_change */
+    ec->extension_old = extension_old;
+    ec->extension_new = extension_new;
+    ec->changes.changes = NULL;
+    ec->changes.count = 0;
+
+    *extension_change = ec;
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Add a new feature change pair.
+ *
+ * @param[in] feat_old Old changed identity.
+ * @param[in] feat_new New changed identity.
+ * @param[in,out] diff Diff to use and add to.
+ * @param[out] feat_change Added identity change structure.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_add_feat_change(const struct lysp_feature *feat_old, const struct lysp_feature *feat_new,
+        struct lys_diff_s *diff, struct lys_diff_feat_change_s **feat_change)
+{
+    void *mem;
+    struct lys_diff_feat_change_s *fc;
+
+    /* add new feat_change */
+    mem = realloc(diff->feat_changes, (diff->feat_change_count + 1) * sizeof *diff->feat_changes);
+    LY_CHECK_ERR_RET(!mem, LOGMEM(NULL), LY_EMEM);
+    diff->feat_changes = mem;
+    fc = &diff->feat_changes[diff->feat_change_count];
+    ++diff->feat_change_count;
+
+    /* fill new feat_change */
+    fc->feat_old = feat_old;
+    fc->feat_new = feat_new;
+    fc->changes.changes = NULL;
+    fc->changes.count = 0;
+
+    *feat_change = fc;
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Add a new devation change pair.
+ *
+ * @param[in] dev_old Old changed deviation.
+ * @param[in] dev_new New changed devation.
+ * @param[in,out] diff Diff to use and add to.
+ * @param[out] ident_change Added identity change structure.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_add_dev_change(const struct lysp_deviation *dev_old, const struct lysp_deviation *dev_new,
+        struct lys_diff_s *diff, struct lys_diff_dev_change_s **dev_change)
+{
+    void *mem;
+    struct lys_diff_dev_change_s *dc;
+
+    /* add new ident_change */
+    mem = realloc(diff->dev_changes, (diff->dev_change_count + 1) * sizeof *diff->dev_changes);
+    LY_CHECK_ERR_RET(!mem, LOGMEM(NULL), LY_EMEM);
+    diff->dev_changes = mem;
+    dc = &diff->dev_changes[diff->dev_change_count];
+    ++diff->dev_change_count;
+
+    /* fill new ident_change */
+    dc->dev_old = dev_old;
+    dc->dev_new = dev_new;
+    dc->changes.changes = NULL;
+    dc->changes.count = 0;
+
+    *dev_change = dc;
+    return LY_SUCCESS;
+}
+
+
+/**
  * @brief Add a new ext-instance change pair.
  *
  * @param[in] ext_old Old changed ext-instance.
@@ -1167,7 +1267,7 @@ schema_diff_typedefs_change(const struct lysp_tpdf *typedefs1, const struct lysp
     ly_bool *typedef2_found = NULL, found;
     LY_ARRAY_COUNT_TYPE u, v;
 
-    /* prepare array for marking found identities */
+    /* prepare array for marking found typedefs */
     typedef2_found = calloc(LY_ARRAY_COUNT(typedefs2), sizeof *typedef2_found);
     LY_CHECK_ERR_GOTO(!typedef2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup);
 
@@ -1247,7 +1347,7 @@ cleanup:
 }
 
 /**
- * @brief Check changes of parsed 'when' statements.
+ * @brief Check changes of a parsed 'when' statement.
  *
  * @param[in] when1 First when.
  * @param[in] when2 Second when.
@@ -1305,7 +1405,7 @@ cleanup:
  * @param[in] dflts1 First default array.
  * @param[in] dflts2 Second default array.
  * @param[in] parent_changed Changed parent statement.
- * @param[in,out] diff Diff to use.
+ * @param[in,out] changes Changes to add to.
  * @return LY_ERR value.
  */
 static LY_ERR
@@ -1324,6 +1424,36 @@ schema_diff_parsed_defaults_change(const struct lysp_qname *dflts1, const struct
     } else if (LY_ARRAY_COUNT(dflts1) != LY_ARRAY_COUNT(dflts2)) {
         /* modified */
         return schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_DEFAULT, 1, changes);
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Check changes of a parsed 'mandatory' statement.
+ *
+ * @param[in] flags1 First flags.
+ * @param[in] flags2 Second flags.
+ * @param[in] parent_changed Changed parent statement.
+ * @param[in,out] changes Changes to add to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_parsed_mandatory_change(uint16_t flags1, uint16_t flags2, enum lys_diff_changed_e parent_changed,
+        struct lys_diff_changes_s *changes)
+{
+    ly_bool is_nbc;
+
+    flags1 &= LYS_MAND_MASK;
+    flags2 &= LYS_MAND_MASK;
+    is_nbc = ((flags1 & LYS_MAND_FALSE) || (flags2 & LYS_MAND_TRUE)) ? 1 : 0;
+
+    if (flags1 && !flags2) {
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_REMOVED, LYS_CHANGED_MANDATORY, parent_changed, is_nbc, changes));
+    } else if (!flags1 && flags2) {
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_ADDED, LYS_CHANGED_MANDATORY, parent_changed, is_nbc, changes));
+    } else if (flags1 && flags2 && (flags1 != flags2)) {
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, LYS_CHANGED_MANDATORY, parent_changed, is_nbc, changes));
     }
 
     return LY_SUCCESS;
@@ -1395,13 +1525,63 @@ schema_diff_parsed_name_canon(const char *name, uint16_t nodetype, const char *p
 static ly_bool
 schema_diff_parsed_refine_is_nbc(const struct lysp_refine *refine, enum lys_diff_change_e change)
 {
-    /* TODO */
-
-    if (change == LYS_CHANGE_ADDED) {
-        return 0;
+    /* description */
+    if (refine->dsc) {
+        if (!schema_diff_parsed_has_bc_ext(refine->exts)) {
+            return 1;
+        }
     }
 
-    return 1;
+    /* reference */
+    /* always BC */
+
+    /* if-features */
+    if (refine->iffeatures) {
+        if (change == LYS_CHANGE_ADDED) {
+            return 1;
+        }
+    }
+
+    /* musts */
+    if (refine->musts) {
+        if (change == LYS_CHANGE_ADDED) {
+            return 1;
+        }
+    }
+
+    /* presence */
+    if (refine->presence) {
+        return 1;
+    }
+
+    /* default */
+    if (refine->dflts) {
+        /* only setting a default value for a leaf is BC, no way to check */
+        return 1;
+    }
+
+    /* min, max */
+    if (refine->min || refine->max) {
+        /* relaxed constraint is BC, no way to check */
+        if (change == LYS_CHANGE_ADDED) {
+            return 1;
+        }
+    }
+
+    /* config */
+    if (refine->flags & LYS_CONFIG_MASK) {
+        /* state -> config BC if not mandatory, no way to check */
+        return 1;
+    }
+
+    /* mandatory */
+    if ((refine->flags & LYS_MAND_TRUE) && (change == LYS_CHANGE_ADDED)) {
+        return 1;
+    } else if ((refine->flags & LYS_MAND_FALSE) && (change == LYS_CHANGE_REMOVED)) {
+        return 1;
+    }
+
+    return 0;
 }
 
 /**
@@ -1420,8 +1600,7 @@ schema_diff_parsed_refines_change(const struct lysp_refine *refines1, const stru
     LY_ERR rc = LY_SUCCESS;
     struct lys_diff_refine_change_s *refine_change;
     LY_ARRAY_COUNT_TYPE u, v;
-    ly_bool found, *refine2_found = NULL, mand_is_nbc;
-    uint16_t mand1, mand2;
+    ly_bool found, *refine2_found = NULL;
     const char *nodeid1, *nodeid2;
     char *buf1 = NULL, *buf2 = NULL;
 
@@ -1508,19 +1687,8 @@ schema_diff_parsed_refines_change(const struct lysp_refine *refines1, const stru
                 &refine_change->changes), cleanup);
 
         /* mandatory */
-        mand1 = refines1[u].flags & LYS_MAND_MASK;
-        mand2 = refines2[v].flags & LYS_MAND_MASK;
-        mand_is_nbc = ((mand1 & LYS_MAND_FALSE) || (mand2 & LYS_MAND_TRUE)) ? 1 : 0;
-        if (mand1 && !mand2) {
-            LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_REMOVED, LYS_CHANGED_MANDATORY, LYS_CHANGED_REFINE,
-                    mand_is_nbc, &refine_change->changes), cleanup);
-        } else if (!mand1 && mand2) {
-            LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, LYS_CHANGED_MANDATORY, LYS_CHANGED_REFINE,
-                    mand_is_nbc, &refine_change->changes), cleanup);
-        } else if (mand1 && mand2 && (mand1 != mand2)) {
-            LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_MODIFIED, LYS_CHANGED_MANDATORY, LYS_CHANGED_REFINE,
-                    mand_is_nbc, &refine_change->changes), cleanup);
-        }
+        LY_CHECK_GOTO(rc = schema_diff_parsed_mandatory_change(refines1[u].flags, refines2[v].flags, LYS_CHANGED_REFINE,
+                &refine_change->changes), cleanup);
 
         /* check whether any of the changes were NBC */
         schema_diff_check_node_change_nbc(&refine_change->changes, diff);
@@ -1811,6 +1979,448 @@ cleanup:
 }
 
 /**
+ * @brief Check changes of a parsed 'extension' array.
+ *
+ * @param[in] extensions1 First extension array.
+ * @param[in] extensions2 Second extension array.
+ * @param[in,out] diff Diff to use.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_extensions_change(const struct lysp_ext *extensions1, const struct lysp_ext *extensions2,
+        struct lys_diff_s *diff)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lys_diff_extension_change_s *extension_change;
+    ly_bool *extension2_found = NULL, found;
+    LY_ARRAY_COUNT_TYPE u, v;
+
+    /* prepare array for marking found identities */
+    extension2_found = calloc(LY_ARRAY_COUNT(extensions2), sizeof *extension2_found);
+    LY_CHECK_ERR_GOTO(!extension2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup);
+
+    LY_ARRAY_FOR(extensions1, u) {
+        found = 0;
+        LY_ARRAY_FOR(extensions2, v) {
+            if (extension2_found[v]) {
+                continue;
+            }
+
+            /* name */
+            if (!strcmp(extensions1[u].name, extensions2[v].name)) {
+                found = 1;
+                extension2_found[v] = 1;
+                break;
+            }
+        }
+
+        /* add new extension to changes */
+        LY_CHECK_GOTO(rc = schema_diff_add_extension_change(&extensions1[u], found ? &extensions2[v] : NULL, diff,
+                &extension_change), cleanup);
+
+        if (!found) {
+            /* removed */
+            LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_REMOVED, LYS_CHANGED_NONE, LYS_CHANGED_EXTENSION, 1,
+                    &extension_change->changes), cleanup);
+
+            /* NBC */
+            diff->is_nbc = 1;
+            continue;
+        }
+
+        /* argument */
+        LY_CHECK_GOTO(rc = schema_diff_text_nbc(extensions1[u].argname, extensions2[v].argname, LYS_CHANGED_EXTENSION,
+                LYS_CHANGED_UNITS, &extension_change->changes), cleanup);
+
+        /* status */
+        LY_CHECK_GOTO(rc = schema_diff_status_change(extensions1[u].flags, extensions2[v].flags, LYS_CHANGED_EXTENSION,
+                &extension_change->changes), cleanup);
+
+        /* description */
+        LY_CHECK_GOTO(rc = schema_diff_pnode_description(extensions1[u].dsc, extensions2[v].dsc, extensions2[v].exts,
+                LYS_CHANGED_EXTENSION, &extension_change->changes), cleanup);
+
+        /* reference */
+        LY_CHECK_GOTO(rc = schema_diff_text_bc(extensions1[u].ref, extensions2[v].ref, LYS_CHANGED_EXTENSION,
+                LYS_CHANGED_REFERENCE, &extension_change->changes), cleanup);
+
+        /* check whether any of the changes were NBC */
+        schema_diff_check_node_change_nbc(&extension_change->changes, diff);
+    }
+
+    LY_ARRAY_FOR(extensions2, v) {
+        if (extension2_found[v]) {
+            continue;
+        }
+
+        /* add new extension to changes */
+        LY_CHECK_RET(schema_diff_add_extension_change(NULL, &extensions2[v], diff, &extension_change));
+
+        /* added */
+        LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, LYS_CHANGED_NONE, LYS_CHANGED_EXTENSION, 0,
+                &extension_change->changes), cleanup);
+    }
+
+cleanup:
+    free(extension2_found);
+    return rc;
+}
+
+/**
+ * @brief Check changes of a parsed 'feature' array.
+ *
+ * @param[in] features1 First feature array.
+ * @param[in] features2 Second feature array.
+ * @param[in,out] diff Diff to use.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_features_change(const struct lysp_feature *features1, const struct lysp_feature *features2,
+        struct lys_diff_s *diff)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lys_diff_feat_change_s *feat_change;
+    ly_bool *feature2_found = NULL, found;
+    LY_ARRAY_COUNT_TYPE u, v;
+
+    /* prepare array for marking found identities */
+    feature2_found = calloc(LY_ARRAY_COUNT(features2), sizeof *feature2_found);
+    LY_CHECK_ERR_GOTO(!feature2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup);
+
+    LY_ARRAY_FOR(features1, u) {
+        found = 0;
+        LY_ARRAY_FOR(features2, v) {
+            if (feature2_found[v]) {
+                continue;
+            }
+
+            /* name */
+            if (!strcmp(features1[u].name, features2[v].name)) {
+                found = 1;
+                feature2_found[v] = 1;
+                break;
+            }
+        }
+
+        /* add new feature to changes */
+        LY_CHECK_GOTO(rc = schema_diff_add_feat_change(&features1[u], found ? &features2[v] : NULL, diff, &feat_change),
+                cleanup);
+
+        if (!found) {
+            /* removed */
+            LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_REMOVED, LYS_CHANGED_NONE, LYS_CHANGED_FEATURE, 1,
+                    &feat_change->changes), cleanup);
+
+            /* NBC */
+            diff->is_nbc = 1;
+            continue;
+        }
+
+        /* if-feature */
+        /* TODO */
+
+        /* status */
+        LY_CHECK_GOTO(rc = schema_diff_status_change(features1[u].flags, features2[v].flags, LYS_CHANGED_FEATURE,
+                &feat_change->changes), cleanup);
+
+        /* description */
+        LY_CHECK_GOTO(rc = schema_diff_pnode_description(features1[u].dsc, features2[v].dsc, features2[v].exts,
+                LYS_CHANGED_FEATURE, &feat_change->changes), cleanup);
+
+        /* reference */
+        LY_CHECK_GOTO(rc = schema_diff_text_bc(features1[u].ref, features2[v].ref, LYS_CHANGED_FEATURE,
+                LYS_CHANGED_REFERENCE, &feat_change->changes), cleanup);
+
+        /* check whether any of the changes were NBC */
+        schema_diff_check_node_change_nbc(&feat_change->changes, diff);
+    }
+
+    LY_ARRAY_FOR(features2, v) {
+        if (feature2_found[v]) {
+            continue;
+        }
+
+        /* add new feature to changes */
+        LY_CHECK_RET(schema_diff_add_feat_change(NULL, &features2[v], diff, &feat_change));
+
+        /* added */
+        LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, LYS_CHANGED_NONE, LYS_CHANGED_FEATURE, 0,
+                &feat_change->changes), cleanup);
+    }
+
+cleanup:
+    free(feature2_found);
+    return rc;
+}
+
+/**
+ * @brief Check changes of a parsed 'unique' array.
+ *
+ * @param[in] uniqs1 First unique array.
+ * @param[in] uniqs2 Second unique array.
+ * @param[in] parent_changed Changed parent statement.
+ * @param[in,out] changes Changes to add to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_parsed_uniques_change(const struct lysp_qname *uniqs1, const struct lysp_qname *uniqs2,
+        enum lys_diff_changed_e parent_changed, struct lys_diff_changes_s *changes)
+{
+    if (!uniqs1 && !uniqs2) {
+        /* no changes */
+        return LY_SUCCESS;
+    } else if (!uniqs2) {
+        /* removed */
+        return schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, LYS_CHANGED_UNIQUE, 1, changes);
+    } else if (!uniqs1) {
+        /* added */
+        return schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, LYS_CHANGED_UNIQUE, 1, changes);
+    } else if (LY_ARRAY_COUNT(uniqs1) != LY_ARRAY_COUNT(uniqs2)) {
+        /* modified */
+        return schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_UNIQUE, 1, changes);
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Check changes of a deviate pair.
+ *
+ * @param[in] dev1 First deviate.
+ * @param[in] dev2 Second deviate.
+ * @param[in,out] changes Changes to add to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_deviate_change(const struct lysp_deviate *dev1, const struct lysp_deviate *dev2,
+        struct lys_diff_changes_s *changes)
+{
+    const struct lysp_deviate_add *add1, *add2;
+    const struct lysp_deviate_rpl *rpl1, *rpl2;
+
+    assert(dev1->mod == dev2->mod);
+
+    add1 = (const struct lysp_deviate_add *)dev1;
+    add2 = (const struct lysp_deviate_add *)dev2;
+    rpl1 = (const struct lysp_deviate_rpl *)dev1;
+    rpl2 = (const struct lysp_deviate_rpl *)dev2;
+
+    /* units */
+    if (dev1->mod == LYS_DEV_ADD) {
+        LY_CHECK_RET(schema_diff_text_bc_add(add1->units, add2->units, LYS_CHANGED_DEVIATE, LYS_CHANGED_UNITS,
+                changes));
+    } else if (dev1->mod == LYS_DEV_DELETE) {
+        LY_CHECK_RET(schema_diff_text_bc_add(add2->units, add1->units, LYS_CHANGED_DEVIATE, LYS_CHANGED_UNITS,
+                changes));
+    }
+
+    /* musts */
+    if (dev1->mod == LYS_DEV_ADD) {
+        LY_CHECK_RET(schema_diff_parsed_restrs_change(add1->musts, add2->musts, LYS_CHANGED_MUST, LYS_CHANGED_DEVIATE,
+                changes));
+    } else if (dev1->mod == LYS_DEV_DELETE) {
+        LY_CHECK_RET(schema_diff_parsed_restrs_change(add2->musts, add1->musts, LYS_CHANGED_MUST, LYS_CHANGED_DEVIATE,
+                changes));
+    }
+
+    /* unique */
+    if ((dev1->mod == LYS_DEV_ADD) || (dev1->mod == LYS_DEV_DELETE)) {
+        /* any change is NBC */
+        LY_CHECK_RET(schema_diff_parsed_uniques_change(add1->uniques, add2->uniques, LYS_CHANGED_DEVIATE, changes));
+    }
+
+    /* default */
+    if (dev1->mod == LYS_DEV_ADD) {
+        LY_CHECK_RET(schema_diff_parsed_defaults_change(add1->dflts, add2->dflts, LYS_CHANGED_DEVIATE, changes));
+    } else if (dev1->mod == LYS_DEV_DELETE) {
+        LY_CHECK_RET(schema_diff_parsed_defaults_change(add2->dflts, add1->dflts, LYS_CHANGED_DEVIATE, changes));
+    } else if (dev1->mod == LYS_DEV_REPLACE) {
+        LY_CHECK_RET(schema_diff_text_bc_add(rpl1->dflt.str, rpl2->dflt.str, LYS_CHANGED_DEVIATE, LYS_CHANGED_DEFAULT,
+                changes));
+    }
+
+    /* config */
+    if ((dev1->mod == LYS_DEV_ADD) || (dev1->mod == LYS_DEV_REPLACE)) {
+        LY_CHECK_RET(schema_diff_config_change(add1->flags, add2->flags, LYS_CHANGED_DEVIATE, changes));
+    }
+
+    /* mandatory */
+    if ((dev1->mod == LYS_DEV_ADD) || (dev1->mod == LYS_DEV_REPLACE)) {
+        LY_CHECK_RET(schema_diff_parsed_mandatory_change(add1->flags, add2->flags, LYS_CHANGED_DEVIATE, changes));
+    }
+
+    /* min-elements */
+    if ((dev1->mod == LYS_DEV_ADD) || (dev1->mod == LYS_DEV_REPLACE)) {
+        LY_CHECK_RET(schema_diff_elem_limit_change(add1->min, add1->flags & LYS_SET_MIN, add2->min,
+                add2->flags & LYS_SET_MIN, LYS_CHANGED_DEVIATE, LYS_CHANGED_MIN_ELEM, changes));
+    }
+
+    /* max-elements */
+    if ((dev1->mod == LYS_DEV_ADD) || (dev1->mod == LYS_DEV_REPLACE)) {
+        LY_CHECK_RET(schema_diff_elem_limit_change(add1->max, add1->flags & LYS_SET_MAX, add2->max,
+                add2->flags & LYS_SET_MAX, LYS_CHANGED_DEVIATE, LYS_CHANGED_MAX_ELEM, changes));
+    }
+
+    /* type */
+    if (dev1->mod == LYS_DEV_REPLACE) {
+        LY_CHECK_RET(schema_diff_ptype_change(rpl1->type, rpl2->type, changes));
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Check changes of a parsed 'deviate' array.
+ *
+ * @param[in] deviates1 First deviate array.
+ * @param[in] deviates2 Second deviate array.
+ * @param[in,out] changes Changes to add to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_deviates_change(const struct lysp_deviate *deviates1, const struct lysp_deviate *deviates2,
+        struct lys_diff_changes_s *changes)
+{
+    LY_ERR rc = LY_SUCCESS;
+    LY_ARRAY_COUNT_TYPE v;
+    ly_bool found, *deviate2_found = NULL;
+    const struct lysp_deviate *iter1, *iter2;
+
+    if (deviates2) {
+        /* prepare array for marking found deviates */
+        deviate2_found = calloc(LY_ARRAY_COUNT(deviates2), sizeof *deviate2_found);
+        LY_CHECK_ERR_GOTO(!deviate2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup)
+    }
+
+    LY_LIST_FOR(deviates1, iter1) {
+        found = 0;
+        for (iter2 = deviates2, v = 0; iter2; iter2 = iter2->next, ++v) {
+            if (deviate2_found[v]) {
+                continue;
+            }
+
+            /* argument (type) */
+            if (iter1->mod == iter2->mod) {
+                found = 1;
+                deviate2_found[v] = 1;
+                break;
+            }
+        }
+
+        if (!found) {
+            /* removed */
+            LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_REMOVED, LYS_CHANGED_DEVIATION, LYS_CHANGED_DEVIATE, 1,
+                    changes), cleanup);
+            continue;
+        }
+
+        /* deviate */
+        LY_CHECK_GOTO(rc = schema_diff_deviate_change(iter1, iter2, changes), cleanup);
+    }
+
+    for (iter2 = deviates2, v = 0; iter2; iter2 = iter2->next, ++v) {
+        if (deviate2_found[v]) {
+            continue;
+        }
+
+        /* added */
+        LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, LYS_CHANGED_DEVIATION, LYS_CHANGED_DEVIATE, 1,
+                changes), cleanup);
+    }
+
+cleanup:
+    free(deviate2_found);
+    return rc;
+}
+
+/**
+ * @brief Check changes of a parsed 'deviation' array.
+ *
+ * @param[in] deviations1 First deviation array.
+ * @param[in] deviations2 Second deviation array.
+ * @param[in,out] diff Diff to use.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_deviations_change(const struct lysp_deviation *deviations1, const struct lysp_deviation *deviations2,
+        struct lys_diff_s *diff)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lys_diff_dev_change_s *dev_change;
+    ly_bool *deviation2_found = NULL, found;
+    LY_ARRAY_COUNT_TYPE u, v;
+
+    /* prepare array for marking found identities */
+    deviation2_found = calloc(LY_ARRAY_COUNT(deviations2), sizeof *deviation2_found);
+    LY_CHECK_ERR_GOTO(!deviation2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup);
+
+    LY_ARRAY_FOR(deviations1, u) {
+        found = 0;
+        LY_ARRAY_FOR(deviations2, v) {
+            if (deviation2_found[v]) {
+                continue;
+            }
+
+            /* nodeid */
+            if (!strcmp(deviations1[u].nodeid, deviations2[v].nodeid)) {
+                found = 1;
+                deviation2_found[v] = 1;
+                break;
+            }
+        }
+
+        /* add new deviation to changes */
+        LY_CHECK_GOTO(rc = schema_diff_add_dev_change(&deviations1[u], found ? &deviations2[v] : NULL, diff, &dev_change),
+                cleanup);
+
+        if (!found) {
+            /* removed */
+            LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_REMOVED, LYS_CHANGED_NONE, LYS_CHANGED_DEVIATION, 1,
+                    &dev_change->changes), cleanup);
+
+            /* NBC */
+            diff->is_nbc = 1;
+            continue;
+        }
+
+        /* deviate */
+        LY_CHECK_GOTO(rc = schema_diff_deviates_change(deviations1[u].deviates, deviations2[v].deviates,
+                &dev_change->changes), cleanup);
+
+        /* description */
+        LY_CHECK_GOTO(rc = schema_diff_pnode_description(deviations1[u].dsc, deviations2[v].dsc, deviations2[v].exts,
+                LYS_CHANGED_DEVIATION, &dev_change->changes), cleanup);
+
+        /* reference */
+        LY_CHECK_GOTO(rc = schema_diff_text_bc(deviations1[u].ref, deviations2[v].ref, LYS_CHANGED_DEVIATION,
+                LYS_CHANGED_REFERENCE, &dev_change->changes), cleanup);
+
+        /* check whether any of the changes were NBC */
+        schema_diff_check_node_change_nbc(&dev_change->changes, diff);
+    }
+
+    LY_ARRAY_FOR(deviations2, v) {
+        if (deviation2_found[v]) {
+            continue;
+        }
+
+        /* add new deviation to changes */
+        LY_CHECK_RET(schema_diff_add_dev_change(NULL, &deviations2[v], diff, &dev_change));
+
+        /* added */
+        LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, LYS_CHANGED_NONE, LYS_CHANGED_DEVIATION, 1,
+                &dev_change->changes), cleanup);
+
+        /* NBC */
+        diff->is_nbc = 1;
+    }
+
+cleanup:
+    free(deviation2_found);
+    return rc;
+}
+
+/**
  * @brief Check changes of parsed modules.
  *
  * @param[in] mod1 First parsed module.
@@ -1839,13 +2449,13 @@ schema_diff_pmodule_change(const struct lysp_module *mod1, const struct lysp_mod
     }
 
     /* extensions */
-    /* TODO */
+    LY_CHECK_GOTO(rc = schema_diff_extensions_change(mod1->extensions, mod2->extensions, diff), cleanup);
 
     /* features */
-    /* TODO */
+    LY_CHECK_GOTO(rc = schema_diff_features_change(mod1->features, mod2->features, diff), cleanup);
 
     /* deviations */
-    /* TODO */
+    LY_CHECK_GOTO(rc = schema_diff_deviations_change(mod1->deviations, mod2->deviations, diff), cleanup);
 
     /* typedefs */
     LY_CHECK_GOTO(rc = schema_diff_typedefs_change(mod1->typedefs, mod2->typedefs, NULL, LYS_CHANGED_NONE, diff), cleanup);
@@ -3005,6 +3615,7 @@ schema_diff_node_change(const struct lysc_node *node1, const struct lysc_node *n
     const struct lysc_node_leaf *term1, *term2;
     const struct lysc_node_leaflist *llist1, *llist2;
     const struct lysc_node_list *list1, *list2;
+    const struct lysc_node_choice *choic1, *choic2;
 
     if (!node1) {
         /* node added change */
@@ -3081,6 +3692,12 @@ schema_diff_node_change(const struct lysc_node *node1, const struct lysc_node *n
         llist2 = (const struct lysc_node_leaflist *)node2;
 
         LY_CHECK_RET(schema_diff_node_defaults_change(llist1, llist2, LYS_CHANGED_NONE, changes));
+    } else if (node1->nodetype == LYS_CHOICE) {
+        choic1 = (const struct lysc_node_choice *)node1;
+        choic2 = (const struct lysc_node_choice *)node2;
+
+        LY_CHECK_RET(schema_diff_text_nbc(choic1->dflt ? choic1->dflt->name : NULL,
+                choic2->dflt ? choic2->dflt->name : NULL, LYS_CHANGED_NONE, LYS_CHANGED_DEFAULT, changes));
     }
 
     /* min-elements, max-elements */
@@ -3586,9 +4203,25 @@ lysc_diff_erase(struct lys_diff_s *diff)
     }
     free(diff->ident_changes);
 
+    /* parsed module */
+    for (i = 0; i < diff->extension_change_count; ++i) {
+        free(diff->extension_changes[i].changes.changes);
+    }
+    free(diff->extension_changes);
+
+    for (i = 0; i < diff->feat_change_count; ++i) {
+        free(diff->feat_changes[i].changes.changes);
+    }
+    free(diff->feat_changes);
+
+    for (i = 0; i < diff->dev_change_count; ++i) {
+        free(diff->dev_changes[i].changes.changes);
+    }
+    free(diff->dev_changes);
+
     lysc_diff_erase_ext_changes(&diff->mod_ext_changes);
 
-    /* parsed */
+    /* parsed node */
     for (i = 0; i < diff->pnode_change_count; ++i) {
         free(diff->pnode_changes[i].changes.changes);
     }
