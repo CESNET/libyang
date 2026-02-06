@@ -54,14 +54,22 @@ schema_diff_changed2str(enum lys_diff_changed_e ch)
         return "default";
     case LYS_CHANGED_DESCRIPTION:
         return "description";
+    case LYS_CHANGED_DEVIATE:
+        return "deviate";
+    case LYS_CHANGED_DEVIATION:
+        return "deviation";
     case LYS_CHANGED_ENUM:
         return "enum";
     case LYS_CHANGED_ERR_APP_TAG:
         return "error-app-tag";
     case LYS_CHANGED_ERR_MSG:
         return "error-message";
+    case LYS_CHANGED_EXTENSION:
+        return "extension";
     case LYS_CHANGED_EXT_INST:
         return "extension-instance";
+    case LYS_CHANGED_FEATURE:
+        return "feature";
     case LYS_CHANGED_FRAC_DIG:
         return "fraction-digits";
     case LYS_CHANGED_IDENT:
@@ -1556,6 +1564,9 @@ schema_diff_ident(const struct lysc_ident *ident, const struct lysp_ident *p_ide
     LY_CHECK_GOTO(rc = lyd_new_term(ident_cont, NULL, "name", ident->name, 0, NULL), cleanup);
 
     if (with_parsed) {
+        /* if-features */
+        /* TODO */
+
         /* base */
         LY_ARRAY_FOR(p_ident->bases, u) {
             LY_CHECK_GOTO(rc = lyd_new_term(ident_cont, NULL, "base", p_ident->bases[u], 0, NULL), cleanup);
@@ -2243,6 +2254,352 @@ cleanup:
 }
 
 /**
+ * @brief Create cmp YANG data from an extension.
+ *
+ * @param[in] ext Parsed extension to use.
+ * @param[in,out] change_cont Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_extension(const struct lysp_ext *ext, struct lyd_node *change_cont)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *ext_cont;
+
+    /* extension container */
+    LY_CHECK_GOTO(rc = lyd_new_inner(change_cont, NULL, "extension", 0, &ext_cont), cleanup);
+
+    /* name */
+    LY_CHECK_GOTO(rc = lyd_new_term(ext_cont, NULL, "name", ext->name, 0, NULL), cleanup);
+
+    /* argument */
+    if (ext->argname && (rc = lyd_new_term(ext_cont, NULL, "argument", ext->argname, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* status */
+    LY_CHECK_GOTO(rc = schema_diff_status(ext->flags, ext_cont), cleanup);
+
+    /* description */
+    if (ext->dsc && (rc = lyd_new_term(ext_cont, NULL, "description", ext->dsc, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* reference */
+    if (ext->ref && (rc = lyd_new_term(ext_cont, NULL, "reference", ext->ref, 0, NULL))) {
+        goto cleanup;
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from extension changes of 'module'.
+ *
+ * @param[in] change Extension change to use.
+ * @param[in,out] diff_list Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_module_extension(const struct lys_diff_extension_change_s *change, struct lyd_node *diff_list)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *mod_cmp_list, *cont;
+
+    if (!change->changes.count) {
+        /* no changes of this extension */
+        goto cleanup;
+    }
+
+    /* module comparison */
+    LY_CHECK_GOTO(rc = lyd_new_list(diff_list, NULL, "module-comparison", 0, &mod_cmp_list), cleanup);
+
+    /* change info */
+    LY_CHECK_GOTO(rc = schema_diff_changes_info(&change->changes, mod_cmp_list), cleanup);
+
+    if (change->extension_old) {
+        /* old */
+        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "old", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_extension(change->extension_old, cont), cleanup);
+    }
+
+    if (change->extension_new) {
+        /* new */
+        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "new", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_extension(change->extension_new, cont), cleanup);
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from a feature.
+ *
+ * @param[in] ext Parsed feature to use.
+ * @param[in,out] change_cont Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_feature(const struct lysp_feature *feat, struct lyd_node *change_cont)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *feat_cont;
+
+    /* feature container */
+    LY_CHECK_GOTO(rc = lyd_new_inner(change_cont, NULL, "feature", 0, &feat_cont), cleanup);
+
+    /* name */
+    LY_CHECK_GOTO(rc = lyd_new_term(feat_cont, NULL, "name", feat->name, 0, NULL), cleanup);
+
+    /* if-features */
+    /* TODO */
+
+    /* status */
+    LY_CHECK_GOTO(rc = schema_diff_status(feat->flags, feat_cont), cleanup);
+
+    /* description */
+    if (feat->dsc && (rc = lyd_new_term(feat_cont, NULL, "description", feat->dsc, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* reference */
+    if (feat->ref && (rc = lyd_new_term(feat_cont, NULL, "reference", feat->ref, 0, NULL))) {
+        goto cleanup;
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from feature changes of 'module'.
+ *
+ * @param[in] change Feature change to use.
+ * @param[in,out] diff_list Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_module_feature(const struct lys_diff_feat_change_s *change, struct lyd_node *diff_list)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *mod_cmp_list, *cont;
+
+    if (!change->changes.count) {
+        /* no changes of this extension */
+        goto cleanup;
+    }
+
+    /* module comparison */
+    LY_CHECK_GOTO(rc = lyd_new_list(diff_list, NULL, "module-comparison", 0, &mod_cmp_list), cleanup);
+
+    /* change info */
+    LY_CHECK_GOTO(rc = schema_diff_changes_info(&change->changes, mod_cmp_list), cleanup);
+
+    if (change->feat_old) {
+        /* old */
+        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "old", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_feature(change->feat_old, cont), cleanup);
+    }
+
+    if (change->feat_new) {
+        /* new */
+        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "new", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_feature(change->feat_new, cont), cleanup);
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from a deviation.
+ *
+ * @param[in] dev Parsed deviation to use.
+ * @param[in,out] change_cont Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_deviation(const struct lysp_deviation *dev, struct lyd_node *change_cont)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *dev_cont, *dev_list, *parent;
+    LY_ARRAY_COUNT_TYPE u;
+    const struct lysp_deviate *d;
+    const struct lysp_deviate_add *d_add;
+    const struct lysp_deviate_del *d_del;
+    const struct lysp_deviate_rpl *d_rpl;
+    const char *argument = NULL, *units = NULL, *dflt = NULL, *config = NULL, *mandatory = NULL;
+    const struct lysp_restr *musts = NULL;
+    const struct lysp_qname *uniques = NULL, *dflts = NULL;
+    uint16_t flags = 0;
+    uint32_t min = 0, max = 0;
+    const struct lysp_type *type = NULL;
+
+    /* deviation container */
+    LY_CHECK_GOTO(rc = lyd_new_inner(change_cont, NULL, "deviation", 0, &dev_cont), cleanup);
+
+    /* target */
+    LY_CHECK_GOTO(rc = lyd_new_term(dev_cont, NULL, "target", dev->nodeid, 0, NULL), cleanup);
+
+    /* deviate */
+    LY_LIST_FOR(dev->deviates, d) {
+        /* collect all the substatements */
+        switch (d->mod) {
+        case LYS_DEV_NOT_SUPPORTED:
+            argument = "not-supported";
+            break;
+        case LYS_DEV_ADD:
+            argument = "add";
+
+            d_add = (const struct lysp_deviate_add *)d;
+            units = d_add->units;
+            musts = d_add->musts;
+            uniques = d_add->uniques;
+            dflts = d_add->dflts;
+            flags = d_add->flags;
+            min = d_add->min;
+            max = d_add->max;
+            break;
+        case LYS_DEV_DELETE:
+            argument = "delete";
+
+            d_del = (const struct lysp_deviate_del *)d;
+            units = d_del->units;
+            musts = d_del->musts;
+            uniques = d_del->uniques;
+            dflts = d_del->dflts;
+            break;
+        case LYS_DEV_REPLACE:
+            argument = "replace";
+
+            d_rpl = (const struct lysp_deviate_rpl *)d;
+            type = d_rpl->type;
+            units = d_rpl->units;
+            dflt = d_rpl->dflt.str;
+            flags = d_add->flags;
+            min = d_add->min;
+            max = d_add->max;
+            break;
+        }
+
+        /* deviate list */
+        LY_CHECK_GOTO(rc = lyd_new_list(dev_cont, NULL, "deviate", 0, &dev_list), cleanup);
+
+        /* argument */
+        LY_CHECK_GOTO(rc = lyd_new_term(dev_list, NULL, "argument", argument, 0, NULL), cleanup);
+
+        /* musts */
+        LY_ARRAY_FOR(musts, u) {
+            LY_CHECK_GOTO(rc = lyd_new_list(dev_list, NULL, "must", 0, &parent), cleanup);
+            LY_CHECK_GOTO(rc = schema_diff_parsed_restr_children(&musts[u], "condition", parent), cleanup);
+        }
+
+        /* default */
+        if (dflt && (rc = lyd_new_term(dev_list, NULL, "default", dflt, 0, NULL))) {
+            goto cleanup;
+        } else {
+            LY_ARRAY_FOR(dflts, u) {
+                LY_CHECK_GOTO(rc = lyd_new_term(dev_list, NULL, "default", dflts[u].str, 0, NULL), cleanup);
+            }
+        }
+
+        /* config */
+        if (flags & LYS_CONFIG_W) {
+            config = "true";
+        } else if (flags & LYS_CONFIG_R) {
+            config = "false";
+        }
+        if (config && (rc = lyd_new_term(dev_list, NULL, "config", config, 0, NULL))) {
+            goto cleanup;
+        }
+
+        /* mandatory */
+        if (flags & LYS_MAND_TRUE) {
+            mandatory = "true";
+        } else if (flags & LYS_MAND_FALSE) {
+            mandatory = "false";
+        }
+        if (mandatory && (rc = lyd_new_term(dev_list, NULL, "mandatory", mandatory, 0, NULL))) {
+            goto cleanup;
+        }
+
+        /* min-elements */
+        if ((flags & LYS_SET_MIN) && (rc = lyd_new_term_bin(dev_list, NULL, "min-elements", &min, sizeof min, 0, NULL))) {
+            goto cleanup;
+        }
+
+        /* max-elements */
+        if ((flags & LYS_SET_MAX) && (rc = lyd_new_term_bin(dev_list, NULL, "max-elements", &max, sizeof max, 0, NULL))) {
+            goto cleanup;
+        }
+
+        /* type */
+        if (type) {
+            LY_CHECK_GOTO(rc = lyd_new_inner(dev_list, NULL, "type", 0, &parent), cleanup);
+            LY_CHECK_GOTO(rc = schema_diff_parsed_type(type, parent), cleanup);
+        }
+
+        /* units */
+        if (units && (rc = lyd_new_term(dev_list, NULL, "units", units, 0, NULL))) {
+            goto cleanup;
+        }
+
+        /* uniques */
+        if (uniques) {
+            LY_CHECK_GOTO(rc = lyd_new_list(dev_list, NULL, "unique", 0, &parent), cleanup);
+            LY_ARRAY_FOR(uniques, u) {
+                LY_CHECK_GOTO(rc = lyd_new_term(parent, NULL, "node", uniques[u].str, 0, NULL), cleanup);
+            }
+        }
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from deviation changes of 'module'.
+ *
+ * @param[in] change Deviation change to use.
+ * @param[in,out] diff_list Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_module_deviation(const struct lys_diff_dev_change_s *change, struct lyd_node *diff_list)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *mod_cmp_list, *cont;
+
+    if (!change->changes.count) {
+        /* no changes of this deviation */
+        goto cleanup;
+    }
+
+    /* module comparison */
+    LY_CHECK_GOTO(rc = lyd_new_list(diff_list, NULL, "module-comparison", 0, &mod_cmp_list), cleanup);
+
+    /* change info */
+    LY_CHECK_GOTO(rc = schema_diff_changes_info(&change->changes, mod_cmp_list), cleanup);
+
+    if (change->dev_old) {
+        /* old */
+        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "old", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_deviation(change->dev_old, cont), cleanup);
+    }
+
+    if (change->dev_new) {
+        /* new */
+        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "new", 0, &cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_deviation(change->dev_new, cont), cleanup);
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
  * @brief Create cmp YANG data from direct extension-instances of 'module'.
  *
  * @param[in] change Ext-instance change to use.
@@ -2311,10 +2668,19 @@ schema_diff_module(const struct lys_diff_s *diff, const struct lys_module *mod1,
 
     if (diff->with_parsed) {
         /* extensions */
-        /* TODO */
+        for (i = 0; i < diff->extension_change_count; ++i) {
+            LY_CHECK_GOTO(rc = schema_diff_module_extension(&diff->extension_changes[i], diff_list), cleanup);
+        }
+
+        /* features */
+        for (i = 0; i < diff->feat_change_count; ++i) {
+            LY_CHECK_GOTO(rc = schema_diff_module_feature(&diff->feat_changes[i], diff_list), cleanup);
+        }
 
         /* deviations */
-        /* TODO */
+        for (i = 0; i < diff->dev_change_count; ++i) {
+            LY_CHECK_GOTO(rc = schema_diff_module_deviation(&diff->dev_changes[i], diff_list), cleanup);
+        }
     }
 
     /* extension-instances */
