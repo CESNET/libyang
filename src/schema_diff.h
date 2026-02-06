@@ -58,6 +58,7 @@ enum lys_diff_changed_e {
     LYS_CHANGED_FEATURE,
     LYS_CHANGED_FRAC_DIG,
     LYS_CHANGED_IDENT,
+    LYS_CHANGED_IF_FEATURE,
     LYS_CHANGED_LENGTH,
     LYS_CHANGED_MANDATORY,
     LYS_CHANGED_MAX_ELEM,
@@ -223,6 +224,7 @@ struct lys_diff_s {
     const char *new_prefix;                         /**< new module local prefix */
     ly_bool is_yang10;                              /**< marks using YANG 1.0 update rules */
     ly_bool with_parsed;                            /**< marks generating diff for parsed schema in addition to compiled */
+    ly_bool with_priv_parsed;                       /**< marks compiled nodes having references to parsed nodes */
     ly_bool is_nbc;                                 /**< flag to mark a non-backwards-compatible change */
 };
 

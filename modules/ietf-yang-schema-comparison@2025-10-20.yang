@@ -197,6 +197,10 @@ module ietf-yang-schema-comparison {
         description
           "YANG statement 'identity'.";
       }
+      enum "if-feature" {
+        description
+          "YANG statement 'if-feature'.";
+      }
       enum "length" {
         description
           "YANG statement 'length'.";

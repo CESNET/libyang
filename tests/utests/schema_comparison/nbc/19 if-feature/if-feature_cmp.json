@@ -1,0 +1,98 @@
+{
+  "ietf-yang-schema-comparison:schema-comparison": {
+    "schema": [
+      {
+        "source": {
+          "module": "if-feature",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "if-feature",
+          "revision": "2000-01-02"
+        },
+        "conformance": "non-backwards-compatible",
+        "module-comparison": [
+          {
+            "changed": [
+              {
+                "stmt": "if-feature",
+                "parent-stmt": "identity",
+                "change": "added",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "identity": {
+                "name": "id"
+              }
+            },
+            "new": {
+              "identity": {
+                "name": "id",
+                "if-feature": [
+                  "f2"
+                ]
+              }
+            }
+          },
+          {
+            "changed": [
+              {
+                "stmt": "if-feature",
+                "parent-stmt": "feature",
+                "change": "added",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "feature": {
+                "name": "f2"
+              }
+            },
+            "new": {
+              "feature": {
+                "name": "f2",
+                "if-feature": [
+                  "f"
+                ]
+              }
+            }
+          }
+        ],
+        "node-comparison": [
+          {
+            "node": "/if-feature:cont/l",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "if-feature",
+                "parent-stmt": "node",
+                "change": "removed",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "if-feature": [
+                "not f"
+              ],
+              "status": "current",
+              "config": true,
+              "mandatory": true,
+              "type": {
+                "base-type": "string"
+              }
+            },
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": true,
+              "type": {
+                "base-type": "string"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
