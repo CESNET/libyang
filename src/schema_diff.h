@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Schema comparison header.
  *
- * Copyright (c) 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2025 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -48,10 +48,14 @@ enum lys_diff_changed_e {
     LYS_CHANGED_CONTACT,
     LYS_CHANGED_DEFAULT,
     LYS_CHANGED_DESCRIPTION,
+    LYS_CHANGED_DEVIATE,
+    LYS_CHANGED_DEVIATION,
     LYS_CHANGED_ENUM,
     LYS_CHANGED_ERR_APP_TAG,
     LYS_CHANGED_ERR_MSG,
+    LYS_CHANGED_EXTENSION,
     LYS_CHANGED_EXT_INST,
+    LYS_CHANGED_FEATURE,
     LYS_CHANGED_FRAC_DIG,
     LYS_CHANGED_IDENT,
     LYS_CHANGED_LENGTH,
@@ -128,6 +132,33 @@ struct lys_diff_ident_change_s {
 };
 
 /**
+ * @brief Structure for an extension change.
+ */
+struct lys_diff_extension_change_s {
+    const struct lysp_ext *extension_old;       /**< old parsed extension */
+    const struct lysp_ext *extension_new;       /**< new parsed extension */
+    struct lys_diff_changes_s changes;          /**< changes in the old and new extension, may be empty */
+};
+
+/**
+ * @brief Structure for a feature change.
+ */
+struct lys_diff_feat_change_s {
+    const struct lysp_feature *feat_old;        /**< old parsed feature */
+    const struct lysp_feature *feat_new;        /**< new parsed feature */
+    struct lys_diff_changes_s changes;          /**< changes in the old and new feature, may be empty */
+};
+
+/**
+ * @brief Structure for a deviation change.
+ */
+struct lys_diff_dev_change_s {
+    const struct lysp_deviation *dev_old;       /**< old parsed deviation */
+    const struct lysp_deviation *dev_new;       /**< new parsed deviation */
+    struct lys_diff_changes_s changes;          /**< changes in the old and new deviation, may be empty */
+};
+
+/**
  * @brief Structure for a refine change.
  */
 struct lys_diff_refine_change_s {
@@ -173,6 +204,12 @@ struct lys_diff_s {
     struct lys_diff_changes_s module_changes;       /**< module changes */
     struct lys_diff_ident_change_s *ident_changes;  /**< array of all the changed identities */
     uint32_t ident_change_count;                    /**< count of ident changes */
+    struct lys_diff_extension_change_s *extension_changes;  /**< array of all the changed extensions */
+    uint32_t extension_change_count;                /**< count of extension changes */
+    struct lys_diff_feat_change_s *feat_changes;    /**< array of all the changed features */
+    uint32_t feat_change_count;                     /**< count of feat changes */
+    struct lys_diff_dev_change_s *dev_changes;      /**< array of all the changed deviations */
+    uint32_t dev_change_count;                      /**< count of dev changes */
     struct lys_diff_ext_changes_s mod_ext_changes;  /**< module extension-instance changes */
     struct lys_diff_pnode_change_s *pnode_changes;  /**< array of all the parsed-only nodes and their changes */
     uint32_t pnode_change_count;                    /**< count of pnode changes */

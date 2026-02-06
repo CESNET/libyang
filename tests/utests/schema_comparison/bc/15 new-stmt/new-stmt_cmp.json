@@ -25,6 +25,34 @@
                 "name": "base-b"
               }
             }
+          },
+          {
+            "changed": [
+              {
+                "stmt": "extension",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "extension": {
+                "name": "my-ext"
+              }
+            }
+          },
+          {
+            "changed": [
+              {
+                "stmt": "feature",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "feature": {
+                "name": "feat1"
+              }
+            }
           }
         ],
         "parsed-comparison": [
@@ -63,24 +91,6 @@
                 "conformance": "backwards-compatible"
               }
             ]
-          },
-          {
-            "parent-path": "/{uses=top-grp2}",
-            "identifier": "cont/lg",
-            "stmt-type": "refine",
-            "changed": [
-              {
-                "stmt": "refine",
-                "parent-stmt": "node",
-                "change": "added",
-                "conformance": "backwards-compatible"
-              }
-            ],
-            "new": {
-              "default": [
-                "50"
-              ]
-            }
           },
           {
             "parent-path": "/",
@@ -129,9 +139,6 @@
             ],
             "new": {
               "status": "current",
-              "default": [
-                "50"
-              ],
               "config": true,
               "mandatory": false,
               "type": {
