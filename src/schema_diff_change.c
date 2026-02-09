@@ -3508,21 +3508,21 @@ schema_diff_node_type_patterns_change(struct lysc_pattern **patterns1, struct ly
         }
 
         /* description, reference, error-message, error-app-tag */
-        LY_CHECK_GOTO(rc = schema_diff_text_bc(patterns1[u]->dsc, patterns2[u]->dsc, LYS_CHANGED_PATTERN,
+        LY_CHECK_GOTO(rc = schema_diff_text_bc(patterns1[u]->dsc, patterns2[v]->dsc, LYS_CHANGED_PATTERN,
                 LYS_CHANGED_DESCRIPTION, changes), cleanup);
-        LY_CHECK_GOTO(rc = schema_diff_text_bc(patterns1[u]->ref, patterns2[u]->ref, LYS_CHANGED_PATTERN,
+        LY_CHECK_GOTO(rc = schema_diff_text_bc(patterns1[u]->ref, patterns2[v]->ref, LYS_CHANGED_PATTERN,
                 LYS_CHANGED_REFERENCE, changes), cleanup);
-        LY_CHECK_GOTO(rc = schema_diff_text_bc(patterns1[u]->emsg, patterns2[u]->emsg, LYS_CHANGED_PATTERN,
+        LY_CHECK_GOTO(rc = schema_diff_text_bc(patterns1[u]->emsg, patterns2[v]->emsg, LYS_CHANGED_PATTERN,
                 LYS_CHANGED_ERR_MSG, changes), cleanup);
-        LY_CHECK_GOTO(rc = schema_diff_text_bc(patterns1[u]->eapptag, patterns2[u]->eapptag, LYS_CHANGED_PATTERN,
+        LY_CHECK_GOTO(rc = schema_diff_text_bc(patterns1[u]->eapptag, patterns2[v]->eapptag, LYS_CHANGED_PATTERN,
                 LYS_CHANGED_ERR_APP_TAG, changes), cleanup);
 
         /* ext-instance */
-        LY_CHECK_GOTO(rc = schema_diff_ext_insts_change(patterns1[u]->exts, patterns2[u]->exts, LYS_CHANGED_PATTERN,
+        LY_CHECK_GOTO(rc = schema_diff_ext_insts_change(patterns1[u]->exts, patterns2[v]->exts, LYS_CHANGED_PATTERN,
                 ext_changes, diff), cleanup);
 
         /* inverted */
-        if (patterns1[u]->inverted != patterns2[u]->inverted) {
+        if (patterns1[u]->inverted != patterns2[v]->inverted) {
             LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_PATTERN, 1,
                     changes), cleanup);
         }
@@ -3541,7 +3541,6 @@ schema_diff_node_type_patterns_change(struct lysc_pattern **patterns1, struct ly
             LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, LYS_CHANGED_PATTERN, 1,
                     changes), cleanup);
         }
-        break;
     }
 
 cleanup:
@@ -3717,30 +3716,11 @@ schema_diff_node_type_union_change(struct lysc_type **types1, struct lysc_type *
         struct lys_diff_changes_s *changes, struct lys_diff_ext_changes_s *ext_changes, struct lys_diff_s *diff)
 {
     LY_ERR rc = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u, v;
-    ly_bool found, *type2_found = NULL;
+    LY_ARRAY_COUNT_TYPE u;
 
-    /* prepare array for marking found types */
-    type2_found = calloc(LY_ARRAY_COUNT(types2), sizeof *type2_found);
-    LY_CHECK_ERR_GOTO(!type2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup)
-
+    /* order matters */
     LY_ARRAY_FOR(types1, u) {
-        found = 0;
-        LY_ARRAY_FOR(types2, v) {
-            if (type2_found[v]) {
-                continue;
-            }
-
-            /* basetype */
-            if (types1[u]->basetype == types2[v]->basetype) {
-                /* found */
-                found = 1;
-                type2_found[v] = 1;
-                break;
-            }
-        }
-
-        if (!found) {
+        if (u >= LY_ARRAY_COUNT(types2)) {
             /* removed */
             LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_REMOVED, LYS_CHANGED_NONE, LYS_CHANGED_TYPE, 1,
                     changes), cleanup);
@@ -3752,18 +3732,13 @@ schema_diff_node_type_union_change(struct lysc_type **types1, struct lysc_type *
                 diff), cleanup);
     }
 
-    LY_ARRAY_FOR(types2, v) {
-        if (type2_found[v]) {
-            continue;
-        }
-
+    for (; u < LY_ARRAY_COUNT(types2); ++u) {
         /* added */
         LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, LYS_CHANGED_NONE, LYS_CHANGED_TYPE, 0,
                 changes), cleanup);
     }
 
 cleanup:
-    free(type2_found);
     return rc;
 }
 
@@ -4081,9 +4056,9 @@ schema_diff_ext_inst_substmts_change(const struct lysc_ext_substmt *substmts1, c
     /* collect all the compiled substatements2 to remove from */
     substmts2_array = calloc(LY_ARRAY_COUNT(substmts2), sizeof *substmts2_array);
     LY_CHECK_ERR_GOTO(!substmts2_array, LOGMEM(NULL); rc = LY_EMEM, cleanup);
-    LY_ARRAY_FOR(substmts2, u) {
-        if (substmts2[u].storage_p) {
-            substmts2_array[u] = &substmts2[u];
+    LY_ARRAY_FOR(substmts2, v) {
+        if (substmts2[v].storage_p) {
+            substmts2_array[v] = &substmts2[v];
         }
     }
 
@@ -4170,7 +4145,7 @@ schema_diff_ext_inst_substmts_change(const struct lysc_ext_substmt *substmts1, c
         case LY_STMT_CONFIG:
             /* config flag */
             LY_CHECK_GOTO(rc = schema_diff_config_change(*(uint16_t *)substmts1[u].storage_p,
-                    *(uint16_t *)substmts2[u].storage_p, LYS_CHANGED_EXT_INST, changes), cleanup);
+                    *(uint16_t *)substmts2[v].storage_p, LYS_CHANGED_EXT_INST, changes), cleanup);
             break;
         case LY_STMT_EXTENSION_INSTANCE:
             /* ext-instance */
@@ -4180,7 +4155,7 @@ schema_diff_ext_inst_substmts_change(const struct lysc_ext_substmt *substmts1, c
         case LY_STMT_FRACTION_DIGITS:
         case LY_STMT_REQUIRE_INSTANCE:
             /* uint8 number */
-            if (*(uint8_t *)substmts1[u].storage_p != *(uint8_t *)substmts2[u].storage_p) {
+            if (*(uint8_t *)substmts1[u].storage_p != *(uint8_t *)substmts2[v].storage_p) {
                 LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_MODIFIED, LYS_CHANGED_EXT_INST,
                         schema_diff_stmt2changed(substmts1[u].stmt), 1, changes), cleanup);
             }
@@ -4203,17 +4178,17 @@ schema_diff_ext_inst_substmts_change(const struct lysc_ext_substmt *substmts1, c
         case LY_STMT_MANDATORY:
             /* mandatory */
             LY_CHECK_GOTO(rc = schema_diff_node_mandatory_change(*(uint16_t *)substmts1[u].storage_p,
-                    *(uint16_t *)substmts2[u].storage_p, LYS_CHANGED_EXT_INST, changes), cleanup);
+                    *(uint16_t *)substmts2[v].storage_p, LYS_CHANGED_EXT_INST, changes), cleanup);
             break;
         case LY_STMT_ORDERED_BY:
             /* odrered-by */
             LY_CHECK_GOTO(rc = schema_diff_node_ordby_change(*(uint16_t *)substmts1[u].storage_p,
-                    *(uint16_t *)substmts2[u].storage_p, LYS_CHANGED_EXT_INST, changes), cleanup);
+                    *(uint16_t *)substmts2[v].storage_p, LYS_CHANGED_EXT_INST, changes), cleanup);
             break;
         case LY_STMT_MAX_ELEMENTS:
         case LY_STMT_MIN_ELEMENTS:
             /* uint32 number */
-            if (*(uint32_t *)substmts1[u].storage_p != *(uint32_t *)substmts2[u].storage_p) {
+            if (*(uint32_t *)substmts1[u].storage_p != *(uint32_t *)substmts2[v].storage_p) {
                 LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_MODIFIED, LYS_CHANGED_EXT_INST,
                         schema_diff_stmt2changed(substmts1[u].stmt), 1, changes), cleanup);
             }
@@ -4231,7 +4206,7 @@ schema_diff_ext_inst_substmts_change(const struct lysc_ext_substmt *substmts1, c
         case LY_STMT_POSITION:
         case LY_STMT_VALUE:
             /* uint64/int64 number */
-            if (*(uint64_t *)substmts1[u].storage_p != *(uint64_t *)substmts2[u].storage_p) {
+            if (*(uint64_t *)substmts1[u].storage_p != *(uint64_t *)substmts2[v].storage_p) {
                 LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_MODIFIED, LYS_CHANGED_EXT_INST,
                         schema_diff_stmt2changed(substmts1[u].stmt), 1, changes), cleanup);
             }
@@ -4239,7 +4214,7 @@ schema_diff_ext_inst_substmts_change(const struct lysc_ext_substmt *substmts1, c
         case LY_STMT_STATUS:
             /* status flag */
             LY_CHECK_GOTO(rc = schema_diff_status_change(*(uint16_t *)substmts1[u].storage_p,
-                    *(uint16_t *)substmts2[u].storage_p, LYS_CHANGED_EXT_INST, changes), cleanup);
+                    *(uint16_t *)substmts2[v].storage_p, LYS_CHANGED_EXT_INST, changes), cleanup);
             break;
         case LY_STMT_TYPE:
             /* type */
