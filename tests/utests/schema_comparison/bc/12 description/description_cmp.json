@@ -97,6 +97,7 @@
               },
               {
                 "stmt": "extension-instance",
+                "parent-stmt": "description",
                 "change": "added",
                 "conformance": "backwards-compatible"
               }
