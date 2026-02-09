@@ -252,6 +252,10 @@ module ietf-yang-schema-comparison {
         description
           "YANG statement 'pattern'.";
       }
+      enum "prefix" {
+        description
+          "YANG statement 'prefix'.";
+      }
       enum "presence" {
         description
           "YANG statement 'presence'.";
@@ -263,6 +267,10 @@ module ietf-yang-schema-comparison {
       enum "reference" {
         description
           "YANG statement 'reference'.";
+      }
+      enum "refine" {
+        description
+          "YANG statement 'refine'.";
       }
       enum "require-instance" {
         description
@@ -280,6 +288,10 @@ module ietf-yang-schema-comparison {
         description
           "YANG statement 'type'.";
       }
+      enum "typedef" {
+        description
+          "YANG statement 'typedef'.";
+      }
       enum "units" {
         description
           "YANG statement 'units'.";
@@ -291,19 +303,6 @@ module ietf-yang-schema-comparison {
       enum "when" {
         description
           "YANG statement 'when'.";
-      }
-
-      enum "prefix" {
-        description
-          "YANG statement 'prefix'.";
-      }
-      enum "refine" {
-        description
-          "YANG statement 'refine'.";
-      }
-      enum "typedef" {
-        description
-          "YANG statement 'typedef'.";
       }
     }
     description
