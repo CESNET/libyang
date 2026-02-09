@@ -118,7 +118,7 @@ struct lys_diff_ext_changes_s {
 struct lys_diff_ext_change_s {
     const struct lysc_ext_instance *ext_old;    /**< old compiled extension-instance */
     const struct lysc_ext_instance *ext_new;    /**< new compiled extension-instance */
-    struct lys_diff_changes_s *changes;         /**< pointer to changes in the old and new extension-instance, may be empty */
+    struct lys_diff_changes_s changes;          /**< changes in the old and new extension-instance, may be empty */
 };
 
 /**
@@ -222,6 +222,7 @@ struct lys_diff_node_change_s {
  */
 struct lys_diff_s {
     struct lys_diff_changes_s module_changes;       /**< module changes */
+    struct lys_diff_ext_changes_s mod_ext_changes;  /**< module extension-instance changes */
     struct lys_diff_import_change_s *import_changes;    /**< array of all the changed imports */
     uint32_t import_change_count;                   /**< count of import changes */
     struct lys_diff_include_change_s *include_changes;  /**< array of all the changed includes */
@@ -234,7 +235,6 @@ struct lys_diff_s {
     uint32_t feat_change_count;                     /**< count of feat changes */
     struct lys_diff_dev_change_s *dev_changes;      /**< array of all the changed deviations */
     uint32_t dev_change_count;                      /**< count of dev changes */
-    struct lys_diff_ext_changes_s mod_ext_changes;  /**< module extension-instance changes */
     struct lys_diff_pnode_change_s *pnode_changes;  /**< array of all the parsed-only nodes and their changes */
     uint32_t pnode_change_count;                    /**< count of pnode changes */
     struct lys_diff_refine_change_s *refine_changes;    /**< array of all the changed refines */

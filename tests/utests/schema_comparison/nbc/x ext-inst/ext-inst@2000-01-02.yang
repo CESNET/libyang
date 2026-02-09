@@ -1,0 +1,34 @@
+module ext-inst {
+    namespace "urn:test:ext-inst";
+    prefix exi;
+    yang-version 1.1;
+
+    reference "no-ref" {
+        exi:ex "ref-ext";
+    }
+
+    revision 2000-01-02;
+
+    identity id {
+        exi:ex "id-ext";
+    }
+
+    extension ex {
+        argument name;
+    }
+
+    leaf l {
+        type enumeration {
+            enum e1;
+            enum e2;
+        }
+    }
+
+    leaf k {
+        type string {
+            pattern 'a' {
+                exi:ex "enum-ext";
+            }
+        }
+    }
+}

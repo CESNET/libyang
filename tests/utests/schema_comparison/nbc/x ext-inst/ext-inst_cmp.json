@@ -1,0 +1,171 @@
+{
+  "ietf-yang-schema-comparison:schema-comparison": {
+    "schema": [
+      {
+        "source": {
+          "module": "ext-inst",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "ext-inst",
+          "revision": "2000-01-02"
+        },
+        "conformance": "non-backwards-compatible",
+        "module-comparison": [
+          {
+            "changed": [
+              {
+                "stmt": "extension-instance",
+                "parent-stmt": "identity",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "identity": {
+                "name": "id"
+              }
+            },
+            "new": {
+              "identity": {
+                "name": "id",
+                "ext-instance": [
+                  {
+                    "module": "ext-inst",
+                    "name": "ex",
+                    "argument": "id-ext"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "changed": [
+              {
+                "stmt": "extension-instance",
+                "parent-stmt": "reference",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "ext-instance": {
+                "module": "ext-inst",
+                "name": "ex",
+                "argument": "ref-ext"
+              }
+            }
+          }
+        ],
+        "node-comparison": [
+          {
+            "node": "/ext-inst:l",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "extension-instance",
+                "parent-stmt": "enum",
+                "change": "removed",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "base-type": "enumeration",
+                "enum": [
+                  {
+                    "name": "e1",
+                    "value": 0,
+                    "status": "current",
+                    "ext-instance": [
+                      {
+                        "module": "ext-inst",
+                        "name": "ex",
+                        "argument": "my-ext"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "e2",
+                    "value": 1,
+                    "status": "current"
+                  }
+                ]
+              }
+            },
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "base-type": "enumeration",
+                "enum": [
+                  {
+                    "name": "e1",
+                    "value": 0,
+                    "status": "current"
+                  },
+                  {
+                    "name": "e2",
+                    "value": 1,
+                    "status": "current"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "node": "/ext-inst:k",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "extension-instance",
+                "parent-stmt": "pattern",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "base-type": "string",
+                "pattern": [
+                  {
+                    "expression": "a",
+                    "inverted": false
+                  }
+                ]
+              }
+            },
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "base-type": "string",
+                "pattern": [
+                  {
+                    "expression": "a",
+                    "inverted": false,
+                    "ext-instance": [
+                      {
+                        "module": "ext-inst",
+                        "name": "ex",
+                        "argument": "enum-ext"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
