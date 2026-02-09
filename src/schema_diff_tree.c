@@ -1618,7 +1618,7 @@ schema_diff_module_ident(const struct lys_diff_ident_change_s *change, ly_bool w
     /* change info */
     LY_CHECK_GOTO(rc = schema_diff_changes_info(&change->changes, mod_cmp_list), cleanup);
     for (i = 0; i < change->ext_changes.count; ++i) {
-        LY_CHECK_GOTO(rc = schema_diff_changes_info(change->ext_changes.changes[i].changes, mod_cmp_list), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_changes_info(&change->ext_changes.changes[i].changes, mod_cmp_list), cleanup);
     }
 
     if (change->ident_old) {
@@ -2798,14 +2798,14 @@ schema_diff_module_ext_inst(const struct lys_diff_ext_change_s *change, struct l
     struct lyd_node *mod_cmp_list, *cont;
     uint32_t i;
 
-    assert(change->changes->count);
+    assert(change->changes.count);
 
     /* module comparison */
     LY_CHECK_GOTO(rc = lyd_new_list(diff_list, NULL, "module-comparison", 0, &mod_cmp_list), cleanup);
 
     /* change info */
-    for (i = 0; i < change->changes->count; ++i) {
-        LY_CHECK_GOTO(rc = schema_diff_change_info(&change->changes->changes[i], mod_cmp_list), cleanup);
+    for (i = 0; i < change->changes.count; ++i) {
+        LY_CHECK_GOTO(rc = schema_diff_change_info(&change->changes.changes[i], mod_cmp_list), cleanup);
     }
 
     if (change->ext_old) {
@@ -3486,7 +3486,7 @@ schema_diff_node(const struct lys_diff_node_change_s *node_change, ly_bool with_
 
     assert(node_change->snode_old || node_change->snode_new);
 
-    if (!node_change->changes.count) {
+    if (!node_change->changes.count && !node_change->ext_changes.count) {
         /* no changes */
         goto cleanup;
     }
@@ -3513,7 +3513,7 @@ schema_diff_node(const struct lys_diff_node_change_s *node_change, ly_bool with_
     /* change info */
     LY_CHECK_GOTO(rc = schema_diff_changes_info(&node_change->changes, node_diff_list), cleanup);
     for (i = 0; i < node_change->ext_changes.count; ++i) {
-        LY_CHECK_GOTO(rc = schema_diff_changes_info(node_change->ext_changes.changes[i].changes, node_diff_list), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_changes_info(&node_change->ext_changes.changes[i].changes, node_diff_list), cleanup);
     }
 
     /* old */
