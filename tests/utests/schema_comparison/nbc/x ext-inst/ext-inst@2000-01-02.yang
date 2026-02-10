@@ -3,11 +3,20 @@ module ext-inst {
     prefix exi;
     yang-version 1.1;
 
+    import "ietf-inet-types" {
+        prefix inet {
+            exi:ex "prefix-ext";
+        }
+        exi:ex "imp-ext";
+    }
+
     reference "no-ref" {
         exi:ex "ref-ext";
     }
 
     revision 2000-01-02;
+
+    feature f;
 
     identity id {
         exi:ex "id-ext";
@@ -15,6 +24,10 @@ module ext-inst {
 
     extension ex {
         argument name;
+    }
+
+    exi:ex "top-ext" {
+        exi:ex "nested-top-ext";
     }
 
     leaf l {

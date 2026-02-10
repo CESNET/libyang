@@ -3547,7 +3547,7 @@ lysp_stmt_parse(struct lysp_ctx *pctx, const struct lysp_stmt *stmt, void **resu
 }
 
 LY_ERR
-lys_parser_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *substmt, struct lysp_stmt *stmt,
+lys_parser_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *substmt, const struct lysp_stmt *stmt,
         struct lysp_ext_instance **exts)
 {
     LY_ERR rc = LY_SUCCESS;
