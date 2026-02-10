@@ -3,15 +3,25 @@ module ext-inst {
     prefix exi;
     yang-version 1.1;
 
+    import "ietf-inet-types" {
+        prefix inet;
+    }
+
     reference "no-ref";
 
     revision 2000-01-01;
+
+    feature f {
+        exi:ex "feat-ext";
+    }
 
     identity id;
 
     extension ex {
         argument name;
     }
+
+    exi:ex "top-ext";
 
     leaf l {
         type enumeration {

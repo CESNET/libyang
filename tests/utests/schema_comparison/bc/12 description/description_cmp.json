@@ -94,12 +94,6 @@
                 "stmt": "description",
                 "change": "modified",
                 "conformance": "backwards-compatible"
-              },
-              {
-                "stmt": "extension-instance",
-                "parent-stmt": "description",
-                "change": "added",
-                "conformance": "backwards-compatible"
               }
             ],
             "old": {

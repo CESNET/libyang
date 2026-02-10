@@ -42,7 +42,9 @@ enum lys_diff_change_e {
  */
 enum lys_diff_changed_e {
     LYS_CHANGED_NONE = 0,
+    LYS_CHANGED_NODE,
     LYS_CHANGED_BASE,
+    LYS_CHANGED_BELONGS_TO,
     LYS_CHANGED_BIT,
     LYS_CHANGED_CONFIG,
     LYS_CHANGED_CONTACT,
@@ -61,28 +63,35 @@ enum lys_diff_changed_e {
     LYS_CHANGED_IF_FEATURE,
     LYS_CHANGED_IMPORT,
     LYS_CHANGED_INCLUDE,
+    LYS_CHANGED_KEY,
     LYS_CHANGED_LENGTH,
     LYS_CHANGED_MANDATORY,
     LYS_CHANGED_MAX_ELEM,
     LYS_CHANGED_MIN_ELEM,
+    LYS_CHANGED_MODIFIER,
+    LYS_CHANGED_MODULE,
     LYS_CHANGED_MUST,
-    LYS_CHANGED_NODE,
+    LYS_CHANGED_NAMESPACE,
     LYS_CHANGED_ORDERED_BY,
     LYS_CHANGED_ORGANIZATION,
     LYS_CHANGED_PATH,
     LYS_CHANGED_PATTERN,
+    LYS_CHANGED_POSITION,
     LYS_CHANGED_PREFIX,
     LYS_CHANGED_PRESENCE,
     LYS_CHANGED_RANGE,
     LYS_CHANGED_REFERENCE,
     LYS_CHANGED_REFINE,
     LYS_CHANGED_REQ_INSTANCE,
+    LYS_CHANGED_REVISION,
     LYS_CHANGED_REVISION_DATE,
     LYS_CHANGED_STATUS,
+    LYS_CHANGED_SUBMODULE,
     LYS_CHANGED_TYPE,
     LYS_CHANGED_TYPEDEF,
-    LYS_CHANGED_UNITS,
     LYS_CHANGED_UNIQUE,
+    LYS_CHANGED_UNITS,
+    LYS_CHANGED_VALUE,
     LYS_CHANGED_WHEN
 };
 
@@ -105,7 +114,16 @@ struct lys_diff_changes_s {
 };
 
 /**
- * @brief Structure for an array of extension-instance changes.
+ * @brief Structure for a compiled extension-instance change.
+ */
+struct lys_diff_ext_change_s {
+    const struct lysc_ext_instance *ext_old;    /**< old compiled extension-instance */
+    const struct lysc_ext_instance *ext_new;    /**< new compiled extension-instance */
+    struct lys_diff_changes_s changes;          /**< changes in the old and new extension-instance, may be empty */
+};
+
+/**
+ * @brief Structure for an array of compiled extension-instance changes.
  */
 struct lys_diff_ext_changes_s {
     struct lys_diff_ext_change_s *changes;  /**< array of ext-instance changes */
@@ -113,12 +131,20 @@ struct lys_diff_ext_changes_s {
 };
 
 /**
- * @brief Structure for an extension-instance change.
+ * @brief Structure for a parsed extension-instance change.
  */
-struct lys_diff_ext_change_s {
-    const struct lysc_ext_instance *ext_old;    /**< old compiled extension-instance */
-    const struct lysc_ext_instance *ext_new;    /**< new compiled extension-instance */
+struct lys_diff_pext_change_s {
+    const struct lysp_ext_instance *p_ext_old;  /**< old parsed extension-instance */
+    const struct lysp_ext_instance *p_ext_new;  /**< new parsed extension-instance */
     struct lys_diff_changes_s changes;          /**< changes in the old and new extension-instance, may be empty */
+};
+
+/**
+ * @brief Structure for an array of parsed extension-instance changes.
+ */
+struct lys_diff_pext_changes_s {
+    struct lys_diff_pext_change_s *changes; /**< array of ext-instance changes */
+    uint32_t count;                         /**< count of ext-instance changes */
 };
 
 /**
@@ -128,6 +154,7 @@ struct lys_diff_import_change_s {
     const struct lysp_import *imp_old;          /**< old parsed import */
     const struct lysp_import *imp_new;          /**< new parsed import */
     struct lys_diff_changes_s changes;          /**< changes in the old and new import, may be empty */
+    struct lys_diff_pext_changes_s ext_changes; /**< extension-instance changes */
 };
 
 /**
@@ -137,6 +164,7 @@ struct lys_diff_include_change_s {
     const struct lysp_include *inc_old;         /**< old parsed include */
     const struct lysp_include *inc_new;         /**< new parsed include */
     struct lys_diff_changes_s changes;          /**< changes in the old and new include, may be empty */
+    struct lys_diff_pext_changes_s ext_changes; /**< extension-instance changes */
 };
 
 /**
@@ -158,6 +186,7 @@ struct lys_diff_extension_change_s {
     const struct lysp_ext *extension_old;       /**< old parsed extension */
     const struct lysp_ext *extension_new;       /**< new parsed extension */
     struct lys_diff_changes_s changes;          /**< changes in the old and new extension, may be empty */
+    struct lys_diff_pext_changes_s ext_changes; /**< extension-instance changes */
 };
 
 /**
@@ -167,6 +196,7 @@ struct lys_diff_feat_change_s {
     const struct lysp_feature *feat_old;        /**< old parsed feature */
     const struct lysp_feature *feat_new;        /**< new parsed feature */
     struct lys_diff_changes_s changes;          /**< changes in the old and new feature, may be empty */
+    struct lys_diff_pext_changes_s ext_changes; /**< extension-instance changes */
 };
 
 /**
@@ -176,6 +206,7 @@ struct lys_diff_dev_change_s {
     const struct lysp_deviation *dev_old;       /**< old parsed deviation */
     const struct lysp_deviation *dev_new;       /**< new parsed deviation */
     struct lys_diff_changes_s changes;          /**< changes in the old and new deviation, may be empty */
+    struct lys_diff_pext_changes_s ext_changes; /**< extension-instance changes */
 };
 
 /**
@@ -186,6 +217,7 @@ struct lys_diff_refine_change_s {
     const struct lysp_refine *refine_new;       /**< new parsed refine */
     const struct lysp_node *parent_new;         /**< new parent parsed node of the refine */
     struct lys_diff_changes_s changes;          /**< changes in the old and new refine, may be empty */
+    struct lys_diff_pext_changes_s ext_changes; /**< extension-instance changes */
 };
 
 /**
@@ -196,6 +228,7 @@ struct lys_diff_typedef_change_s {
     const struct lysp_tpdf *typedef_new;        /**< new parsed typedef */
     const struct lysp_node *parent_new;         /**< new parent parsed node of the typedef */
     struct lys_diff_changes_s changes;          /**< changes in the old and new typedef, may be empty */
+    struct lys_diff_pext_changes_s ext_changes; /**< extension-instance changes */
 };
 
 /**
@@ -205,6 +238,7 @@ struct lys_diff_pnode_change_s {
     const struct lysp_node *pnode_old;          /**< parsed schema node from the old revision of the YANG module */
     const struct lysp_node *pnode_new;          /**< parsed schema node from the new revision of the YANG module */
     struct lys_diff_changes_s changes;          /**< changes in the old and new schema node, may be empty */
+    struct lys_diff_pext_changes_s ext_changes; /**< extension-instance changes */
 };
 
 /**
@@ -249,7 +283,197 @@ struct lys_diff_s {
     ly_bool with_parsed;                            /**< marks generating diff for parsed schema in addition to compiled */
     ly_bool with_priv_parsed;                       /**< marks compiled nodes having references to parsed nodes */
     ly_bool is_nbc;                                 /**< flag to mark a non-backwards-compatible change */
+    const struct ly_ctx *ctx;                       /**< context to use */
 };
+
+/**
+ * @brief Check whether any change is NBC, mark it in the diff if so.
+ *
+ * @param[in] changes Changes to check.
+ * @param[in,out] diff Diff to update.
+ */
+void schema_diff_check_node_change_nbc(const struct lys_diff_changes_s *changes, struct lys_diff_s *diff);
+
+/**
+ * @brief Add a new change into a schema node change pair.
+ *
+ * @param[in] change Type of change.
+ * @param[in] parent_changed Parent statement of the change.
+ * @param[in] changed Changed statement.
+ * @param[in] is_nbc Set if the change is non-backwards-compatible.
+ * @param[in,out] changes Changes to add the change to.
+ * @return LY_ERR value.
+ */
+LY_ERR schema_diff_add_change(enum lys_diff_change_e change, enum lys_diff_changed_e parent_changed,
+        enum lys_diff_changed_e changed, ly_bool is_nbc, struct lys_diff_changes_s *changes);
+
+/**
+ * @brief Get the changed statement from a parser statement.
+ *
+ * @param[in] stmt Parser statement.
+ * @return Changed statement.
+ */
+enum lys_diff_changed_e schema_diff_stmt2changed(enum ly_stmt stmt);
+
+/**
+ * @brief Get the module name from a node ID with a prefix.
+ *
+ * @param[in] ctx Contex to use.
+ * @param[in] nodeid Node ID to parse.
+ * @param[in] format Prefix format in @p nodeid.
+ * @param[in] prefix_data Prefix data to use.
+ * @param[out] mod_name Found module name.
+ * @param[out] name Local name.
+ */
+void schema_diff_find_module(const struct ly_ctx *ctx, const char *nodeid, LY_VALUE_FORMAT format, void *prefix_data,
+        const char **mod_name, const char **name);
+
+/**
+ * @brief Check changes of a text whose change is considered BC.
+ *
+ * @param[in] text1 First text.
+ * @param[in] text2 Second text.
+ * @param[in] parent_changed Parent statement of the change.
+ * @param[in] changed Changed statement.
+ * @param[in,out] changes Changes to add the change to.
+ * @return LY_ERR value.
+ */
+LY_ERR schema_diff_text_bc(const char *text1, const char *text2, enum lys_diff_changed_e parent_changed,
+        enum lys_diff_changed_e changed, struct lys_diff_changes_s *changes);
+
+/**
+ * @brief Check changes of a text whose addition is considered BC.
+ *
+ * @param[in] text1 First text.
+ * @param[in] text2 Second text.
+ * @param[in] parent_changed Parent statement of the change.
+ * @param[in] changed Changed statement.
+ * @param[in,out] changes Changes to add to.
+ * @return LY_ERR value.
+ */
+LY_ERR schema_diff_text_bc_add(const char *text1, const char *text2, enum lys_diff_changed_e parent_changed,
+        enum lys_diff_changed_e changed, struct lys_diff_changes_s *changes);
+
+/**
+ * @brief Check changes of a text whose any changes are considered NBC.
+ *
+ * @param[in] text1 First text.
+ * @param[in] text2 Second text.
+ * @param[in] parent_changed Parent statement of the change.
+ * @param[in] changed Changed statement.
+ * @param[in,out] changes Changes to add to.
+ * @return LY_ERR value.
+ */
+LY_ERR schema_diff_text_nbc(const char *text1, const char *text2, enum lys_diff_changed_e parent_changed,
+        enum lys_diff_changed_e changed, struct lys_diff_changes_s *changes);
+
+/**
+ * @brief Check changes of a 'status'.
+ *
+ * @param[in] flags1 First flags.
+ * @param[in] flags2 Second flags.
+ * @param[in] parent_changed Parent statement of the change.
+ * @param[in,out] changes Changes to add to.
+ * @return LY_ERR value.
+ */
+LY_ERR schema_diff_status_change(uint16_t flags1, uint16_t flags2, enum lys_diff_changed_e parent_changed,
+        struct lys_diff_changes_s *changes);
+
+/**
+ * @brief Check changes of a 'config'.
+ *
+ * @param[in] flags1 First flags.
+ * @param[in] flags2 Second flags.
+ * @param[in] parent_changed Parent statement of the change.
+ * @param[in,out] changes Changes to add to.
+ * @return LY_ERR value.
+ */
+LY_ERR schema_diff_config_change(uint16_t flags1, uint16_t flags2, enum lys_diff_changed_e parent_changed,
+        struct lys_diff_changes_s *changes);
+
+/**
+ * @brief Check changes of a 'require-instance'.
+ *
+ * @param[in] req_inst1 First require-instance value.
+ * @param[in] req_inst2 Second require-instance value.
+ * @param[in] parent_changed Parent statement of the change.
+ * @param[in,out] changes Changes to add to.
+ * @return LY_ERR value.
+ */
+LY_ERR schema_diff_req_inst_change(uint8_t req_inst1, uint8_t req_inst2, enum lys_diff_changed_e parent_changed,
+        struct lys_diff_changes_s *changes);
+
+/**
+ * @brief Check changes of a 'min-elements' or 'max-elements' statements.
+ *
+ * @param[in] num1 First elements value.
+ * @param[in] num1_set Whether @p num1 is explicitly set or not.
+ * @param[in] num2 Second elements value.
+ * @param[in] num2_set Whether @p num2 is explicitly set or not.
+ * @param[in] parent_changed Parent statement of the change.
+ * @param[in] changed Changed statement.
+ * @param[in,out] changes Changes to add to.
+ * @return LY_ERR value.
+ */
+LY_ERR schema_diff_elem_limit_change(uint32_t num1, int num1_set, uint32_t num2, int num2_set,
+        enum lys_diff_changed_e parent_changed, enum lys_diff_changed_e changed, struct lys_diff_changes_s *changes);
+
+/**
+ * @brief Check changes of extension-instance arrays.
+ *
+ * @param[in] exts1 First ext-inst array.
+ * @param[in] exts2 Second ext-inst array.
+ * @param[in,out] ext_changes Ext-instance changes to add to.
+ * @param[in,out] diff Diff to use.
+ * @return LY_ERR value.
+ */
+LY_ERR schema_diff_ext_insts_change(const struct lysc_ext_instance *exts1, const struct lysc_ext_instance *exts2,
+        struct lys_diff_ext_changes_s *ext_changes, struct lys_diff_s *diff);
+
+/**
+ * @brief Check changes of nodes, recursively.
+ *
+ * @param[in] node1 First node.
+ * @param[in] node2 Second node.
+ * @param[in,out] diff Diff to use.
+ * @return LY_ERR value.
+ */
+LY_ERR schema_diff_nodes_change_r(const struct lysc_node *node1, const struct lysc_node *node2, struct lys_diff_s *diff);
+
+/**
+ * @brief Check changes of an 'if-feature' array.
+ *
+ * @param[in] iffs1 First if-feature array.
+ * @param[in] flags1 First node flags, if applicable.
+ * @param[in] iffs2 Second if-feature array.
+ * @param[in] parent_changed Parent statement of the change.
+ * @param[in,out] changes Changes to add to.
+ * @return LY_ERR value.
+ */
+LY_ERR schema_diff_iffeatures_change(const struct lysp_qname *iffs1, uint16_t flags1, const struct lysp_qname *iffs2,
+        enum lys_diff_changed_e parent_changed, struct lys_diff_changes_s *changes);
+
+/**
+ * @brief Check changes of parsed modules.
+ *
+ * @param[in] mod1 First parsed module.
+ * @param[in] mod2 Second parsed module.
+ * @param[in,out] diff Diff to use.
+ * @return LY_ERR value.
+ */
+LY_ERR schema_diff_pmodule_change(const struct lysp_module *mod1, const struct lysp_module *mod2, struct lys_diff_s *diff);
+
+/**
+ * @brief Check changes of 'identity' arrays.
+ *
+ * @param[in] idents1 First identity array.
+ * @param[in] idents2 Second identity array.
+ * @param[in] parent_changed Parent statement of the change.
+ * @param[in,out] diff Diff to use.
+ * @return LY_ERR value.
+ */
+LY_ERR schema_diff_module_identities_change(const struct lysc_ident *idents1, const struct lysc_ident *idents2,
+        enum lys_diff_changed_e parent_changed, struct lys_diff_s *diff);
 
 /**
  * @brief Collect a diff of 2 modules.

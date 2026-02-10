@@ -6,10 +6,22 @@
           "module": "ext-inst",
           "revision": "2000-01-01"
         },
+        "source-import": [
+          {
+            "module": "ietf-inet-types",
+            "revision": "2025-12-22"
+          }
+        ],
         "target": {
           "module": "ext-inst",
           "revision": "2000-01-02"
         },
+        "target-import": [
+          {
+            "module": "ietf-inet-types",
+            "revision": "2025-12-22"
+          }
+        ],
         "conformance": "non-backwards-compatible",
         "module-comparison": [
           {
@@ -18,7 +30,7 @@
                 "stmt": "extension-instance",
                 "parent-stmt": "identity",
                 "change": "added",
-                "conformance": "backwards-compatible"
+                "conformance": "non-backwards-compatible"
               }
             ],
             "old": {
@@ -43,9 +55,93 @@
             "changed": [
               {
                 "stmt": "extension-instance",
+                "parent-stmt": "prefix",
+                "change": "added",
+                "conformance": "non-backwards-compatible"
+              },
+              {
+                "stmt": "extension-instance",
+                "parent-stmt": "import",
+                "change": "added",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "import": {
+                "module": "ietf-inet-types",
+                "prefix": "inet"
+              }
+            },
+            "new": {
+              "import": {
+                "module": "ietf-inet-types",
+                "prefix": "inet",
+                "ext-instance": [
+                  {
+                    "module": "ext-inst",
+                    "name": "ex",
+                    "argument": "prefix-ext"
+                  },
+                  {
+                    "module": "ext-inst",
+                    "name": "ex",
+                    "argument": "imp-ext"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "changed": [
+              {
+                "stmt": "extension-instance",
+                "parent-stmt": "feature",
+                "change": "removed",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "feature": {
+                "name": "f",
+                "ext-instance": [
+                  {
+                    "module": "ext-inst",
+                    "name": "ex",
+                    "argument": "feat-ext"
+                  }
+                ]
+              }
+            },
+            "new": {
+              "feature": {
+                "name": "f"
+              }
+            }
+          },
+          {
+            "changed": [
+              {
+                "stmt": "extension-instance",
+                "parent-stmt": "extension-instance",
+                "change": "added",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "new": {
+              "ext-instance": {
+                "module": "ext-inst",
+                "name": "ex",
+                "argument": "nested-top-ext"
+              }
+            }
+          },
+          {
+            "changed": [
+              {
+                "stmt": "extension-instance",
                 "parent-stmt": "reference",
                 "change": "added",
-                "conformance": "backwards-compatible"
+                "conformance": "non-backwards-compatible"
               }
             ],
             "new": {
@@ -125,7 +221,7 @@
                 "stmt": "extension-instance",
                 "parent-stmt": "pattern",
                 "change": "added",
-                "conformance": "backwards-compatible"
+                "conformance": "non-backwards-compatible"
               }
             ],
             "old": {
