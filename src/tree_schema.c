@@ -1439,6 +1439,8 @@ lys_compare(const struct ly_ctx *ctx, const struct lys_module *src_mod, const st
         diff.with_priv_parsed = 0;
     }
 
+    diff.ctx = ctx;
+
     /* generate the diff */
     LY_CHECK_GOTO(rc = lysc_diff_changes(src_mod, trg_mod, &diff), cleanup);
 

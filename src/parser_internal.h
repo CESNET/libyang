@@ -457,6 +457,6 @@ LY_ERR lyd_parser_node_insert(struct lyd_node *parent, struct lyd_node **first_p
  * @param[in] stmt Parsed generic statement to process.
  * @return LY_ERR value.
  */
-LY_ERR lys_parser_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *substmt, struct lysp_stmt *stmt);
+LY_ERR lys_parser_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *substmt, const struct lysp_stmt *stmt);
 
 #endif /* LY_PARSER_INTERNAL_H_ */
