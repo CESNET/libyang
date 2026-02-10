@@ -953,6 +953,7 @@ module ietf-yang-schema-comparison {
         description
           "Reference substatement value.";
       }
+      uses ext-instance-stmts;
     }
     container include {
       if-feature parsed-schema;
@@ -981,6 +982,7 @@ module ietf-yang-schema-comparison {
         description
           "Reference substatement value.";
       }
+      uses ext-instance-stmts;
     }
     leaf organization {
       type string;
@@ -1030,6 +1032,7 @@ module ietf-yang-schema-comparison {
         description
           "Reference substatement value.";
       }
+      uses ext-instance-stmts;
     }
     container feature {
       if-feature parsed-schema;
@@ -1055,6 +1058,7 @@ module ietf-yang-schema-comparison {
         description
           "Reference substatement value.";
       }
+      uses ext-instance-stmts;
     }
     container identity {
       description
@@ -1151,6 +1155,7 @@ module ietf-yang-schema-comparison {
         description
           "Reference substatement value.";
       }
+      uses ext-instance-stmts;
     }
     container ext-instance {
       presence

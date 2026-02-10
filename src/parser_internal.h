@@ -526,7 +526,7 @@ void lysp_parser_dev_insert(struct lysp_deviate **devs, struct lysp_deviate *dev
  * @param[in,out] exts Extension instances to add to.
  * @return LY_ERR value.
  */
-LY_ERR lys_parser_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *substmt, struct lysp_stmt *stmt,
+LY_ERR lys_parser_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *substmt, const struct lysp_stmt *stmt,
         struct lysp_ext_instance **exts);
 
 #endif /* LY_PARSER_INTERNAL_H_ */
