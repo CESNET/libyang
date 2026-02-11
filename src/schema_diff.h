@@ -92,7 +92,8 @@ enum lys_diff_changed_e {
     LYS_CHANGED_UNIQUE,
     LYS_CHANGED_UNITS,
     LYS_CHANGED_VALUE,
-    LYS_CHANGED_WHEN
+    LYS_CHANGED_WHEN,
+    LYS_CHANGED_YANG_VERSION
 };
 
 /**

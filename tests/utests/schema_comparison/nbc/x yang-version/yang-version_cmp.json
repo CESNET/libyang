@@ -1,0 +1,34 @@
+{
+  "ietf-yang-schema-comparison:schema-comparison": {
+    "schema": [
+      {
+        "source": {
+          "module": "yang-version",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "yang-version",
+          "revision": "2000-01-02"
+        },
+        "conformance": "non-backwards-compatible",
+        "module-comparison": [
+          {
+            "changed": [
+              {
+                "stmt": "yang-version",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "yang-version": "1"
+            },
+            "new": {
+              "yang-version": "1.1"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
