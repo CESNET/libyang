@@ -60,7 +60,7 @@ setup_f(void **state)
     }
 
     /* load ietf-schema-comparison into both contexts, the module is imported */
-    if (ly_in_new_filepath(TESTS_SRC "/../modules/ietf-yang-schema-comparison@2025-10-20.yang", 0, &in)) {
+    if (ly_in_new_filepath(TESTS_SRC "/../modules/ietf-yang-schema-comparison@2026-02-11.yang", 0, &in)) {
         return 1;
     }
     if (lys_parse(st->ctx1, in, LYS_IN_YANG, feats, NULL)) {
