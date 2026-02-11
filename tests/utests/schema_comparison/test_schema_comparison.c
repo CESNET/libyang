@@ -225,6 +225,7 @@ test_non_backwards_compatible(void **state)
     schema_comparison(st, "ext-inst");
     schema_comparison(st, "presence");
     schema_comparison(st, "union");
+    schema_comparison(st, "yang-version");
 }
 
 int

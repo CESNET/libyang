@@ -89,7 +89,6 @@ schema_diff_stmt2changed(enum ly_stmt stmt)
     case LY_STMT_SYNTAX_LEFT_BRACE:
     case LY_STMT_SYNTAX_RIGHT_BRACE:
     case LY_STMT_SYNTAX_SEMICOLON:
-    case LY_STMT_YANG_VERSION:
     case LY_STMT_YIN_ELEMENT:
         /* invalid */
         LOGINT(NULL);
@@ -194,6 +193,8 @@ schema_diff_stmt2changed(enum ly_stmt stmt)
         return LYS_CHANGED_VALUE;
     case LY_STMT_WHEN:
         return LYS_CHANGED_WHEN;
+    case LY_STMT_YANG_VERSION:
+        return LYS_CHANGED_YANG_VERSION;
     }
 
     return LYS_CHANGED_NONE;
@@ -217,6 +218,30 @@ schema_diff_find_module(const struct ly_ctx *ctx, const char *nodeid, LY_VALUE_F
 
     *mod_name = mod->name;
     *name = nam;
+}
+
+/**
+ * @brief Check changes of a 'yang-version'.
+ *
+ * @param[in] yvsn1 First yang-version.
+ * @param[in] yvsn2 Second yang-version.
+ * @param[in] parent_changed Parent statement of the change.
+ * @param[in] changed Changed statement.
+ * @param[in,out] changes Changes to add to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_yangversion_change(uint8_t yvsn1, uint8_t yvsn2,
+        enum lys_diff_changed_e parent_changed, enum lys_diff_changed_e changed,
+        struct lys_diff_changes_s *changes)
+{
+    if (yvsn1 != yvsn2) {
+        /* modified */
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed,
+                     changed, 1, changes));
+    }
+
+    return LY_SUCCESS;
 }
 
 LY_ERR
@@ -587,6 +612,10 @@ cleanup:
 static LY_ERR
 schema_diff_module_change(const struct lys_module *mod1, const struct lys_module *mod2, struct lys_diff_s *diff)
 {
+    /* yang-version */
+    LY_CHECK_RET(schema_diff_yangversion_change(mod1->version, mod2->version,
+            LYS_CHANGED_NONE, LYS_CHANGED_YANG_VERSION, &diff->module_changes));
+
     /* organization */
     LY_CHECK_RET(schema_diff_text_bc(mod1->org, mod2->org, LYS_CHANGED_NONE, LYS_CHANGED_ORGANIZATION,
             &diff->module_changes));

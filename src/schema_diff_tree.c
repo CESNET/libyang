@@ -144,6 +144,8 @@ schema_diff_changed2str(enum lys_diff_changed_e ch)
         return "unique";
     case LYS_CHANGED_WHEN:
         return "when";
+    case LYS_CHANGED_YANG_VERSION:
+        return "yang-version";
     }
 
     return NULL;
@@ -1556,7 +1558,7 @@ cleanup:
 }
 
 /**
- * @brief Create cmp YANG data from direct text substatement of 'module'.
+ * @brief Create cmp YANG data from direct 'module' substatement.
  *
  * @param[in] change Change to use.
  * @param[in] mod1 Old module.
@@ -1566,7 +1568,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_module_text(const struct lys_diff_change_s *change, const struct lys_module *mod1,
+schema_diff_module_substmt(const struct lys_diff_change_s *change, const struct lys_module *mod1,
         const struct lys_module *mod2, ly_bool with_parsed, struct lyd_node *diff_list)
 {
     LY_ERR rc = LY_SUCCESS;
@@ -1605,6 +1607,9 @@ schema_diff_module_text(const struct lys_diff_change_s *change, const struct lys
         text_old = mod1->ref;
         text_new = mod2->ref;
         break;
+    case LYS_CHANGED_YANG_VERSION:
+        node_name = "yang-version";
+        break;
     default:
         LOGINT(mod1->ctx);
         rc = LY_EINT;
@@ -1617,16 +1622,32 @@ schema_diff_module_text(const struct lys_diff_change_s *change, const struct lys
     /* change info */
     LY_CHECK_GOTO(rc = schema_diff_change_info(change, mod_cmp_list), cleanup);
 
-    if (text_old) {
-        /* old */
-        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "old", 0, &cont), cleanup);
-        LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, node_name, text_old, 0, NULL), cleanup);
-    }
+    if (change->changed != LYS_CHANGED_YANG_VERSION) {
+        /* text substatement */
+        if (text_old) {
+            /* old */
+            LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "old", 0, &cont), cleanup);
+            LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, node_name, text_old, 0, NULL), cleanup);
+        }
 
-    if (text_new) {
-        /* new */
-        LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "new", 0, &cont), cleanup);
-        LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, node_name, text_new, 0, NULL), cleanup);
+        if (text_new) {
+            /* new */
+            LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "new", 0, &cont), cleanup);
+            LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, node_name, text_new, 0, NULL), cleanup);
+        }
+    } else {
+        /* yang-version substatement */
+        if (mod1->version) {
+            LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "old", 0, &cont), cleanup);
+            LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, node_name,
+                        mod1->version == LYS_VERSION_1_1 ? "1.1" : "1", 0, NULL), cleanup);
+        }
+
+        if (mod2->version) {
+            LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "new", 0, &cont), cleanup);
+            LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, node_name,
+                        mod2->version == LYS_VERSION_1_1 ? "1.1" : "1", 0, NULL), cleanup);
+        }
     }
 
 cleanup:
@@ -3024,9 +3045,9 @@ schema_diff_module(const struct lys_diff_s *diff, const struct lys_module *mod1,
     LY_ERR rc = LY_SUCCESS;
     uint32_t i;
 
-    /* text substmts */
+    /* yang-version and text substmts */
     for (i = 0; i < diff->module_changes.count; ++i) {
-        LY_CHECK_GOTO(rc = schema_diff_module_text(&diff->module_changes.changes[i], mod1, mod2, diff->with_parsed,
+        LY_CHECK_GOTO(rc = schema_diff_module_substmt(&diff->module_changes.changes[i], mod1, mod2, diff->with_parsed,
                 diff_list), cleanup);
     }
 
