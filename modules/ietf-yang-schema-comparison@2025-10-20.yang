@@ -304,6 +304,10 @@ module ietf-yang-schema-comparison {
         description
           "YANG statement 'when'.";
       }
+      enum "yang-version" {
+        description
+          "YANG statement 'yang-version'.";
+      }
     }
     description
       "Type of the statement that a change affects.";
@@ -914,6 +918,11 @@ module ietf-yang-schema-comparison {
   grouping module-substmts {
     description
       "All non-data-definition substatements of a module.";
+    leaf yang-version {
+      type string;
+      description
+        "YANG version substatement value.";
+    }
     leaf prefix {
       if-feature parsed-schema;
       type string;
