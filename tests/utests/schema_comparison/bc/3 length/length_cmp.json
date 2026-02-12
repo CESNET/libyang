@@ -11,6 +11,37 @@
           "revision": "2000-01-02"
         },
         "conformance": "backwards-compatible",
+        "parsed-comparison": [
+          {
+            "parent-path": "/",
+            "identifier": "l1-type",
+            "stmt-type": "typedef",
+            "changed": [
+              {
+                "stmt": "length",
+                "parent-stmt": "typedef",
+                "change": "modified",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "type": {
+                "name": "string",
+                "length": {
+                  "restriction": "min..10|20..50|100"
+                }
+              }
+            },
+            "new": {
+              "type": {
+                "name": "string",
+                "length": {
+                  "restriction": "min..50|100|1000"
+                }
+              }
+            }
+          }
+        ],
         "node-comparison": [
           {
             "node": "/length:l1",

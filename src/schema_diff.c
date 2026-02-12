@@ -238,7 +238,7 @@ schema_diff_yangversion_change(uint8_t yvsn1, uint8_t yvsn2,
     if (yvsn1 != yvsn2) {
         /* modified */
         LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed,
-                     changed, 1, changes));
+                changed, 1, changes));
     }
 
     return LY_SUCCESS;
