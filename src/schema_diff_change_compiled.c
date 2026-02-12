@@ -545,19 +545,7 @@ cleanup:
     return rc;
 }
 
-/**
- * @brief Check changes of a 'range' or 'length'.
- *
- * @param[in] range1 First range/length.
- * @param[in] range2 Second range/length.
- * @param[in] sign If signed, is a range, otherwise length.
- * @param[in] parent_changed Parent statement of the change.
- * @param[in,out] changes Changes to add to.
- * @param[in,out] ext_changes Ext-instance changes to add to.
- * @param[in,out] diff Diff to use.
- * @return LY_ERR value.
- */
-static LY_ERR
+LY_ERR
 schema_diff_node_type_range_change(const struct lysc_range *range1, const struct lysc_range *range2, ly_bool sign,
         enum lys_diff_changed_e parent_changed, struct lys_diff_changes_s *changes,
         struct lys_diff_ext_changes_s *ext_changes, struct lys_diff_s *diff)

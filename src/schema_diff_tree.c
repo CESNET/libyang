@@ -1356,8 +1356,8 @@ schema_diff_ext_inst(const struct lysc_ext_instance *ext, int is_cont, struct ly
     /* substatements */
     LY_CHECK_GOTO(rc = schema_diff_ext_inst_substmts(LYD_CTX(change_cont), ext->substmts, &ext_child), cleanup);
     if (ext_child) {
-        LY_CHECK_GOTO(rc = lyd_new_any(ext_par, NULL, "substatements", ext_child, LYD_ANYDATA_DATATREE,
-                LYD_NEW_ANY_USE_VALUE, NULL), cleanup);
+        LY_CHECK_GOTO(rc = lyd_new_any(ext_par, NULL, "substatements", ext_child, NULL, 0, LYD_NEW_ANY_USE_VALUE, NULL),
+                cleanup);
         ext_child = NULL;
     }
 
@@ -1424,8 +1424,8 @@ schema_diff_pext_inst(const struct lysp_ext_instance *ext, struct lyd_node *chan
     /* substatements (children) */
     LY_CHECK_GOTO(rc = schema_diff_pext_inst_children(LYD_CTX(change_cont), ext->child, &ext_child), cleanup);
     if (ext_child) {
-        LY_CHECK_GOTO(rc = lyd_new_any(ext_par, NULL, "substatements", ext_child, LYD_ANYDATA_DATATREE,
-                LYD_NEW_ANY_USE_VALUE, NULL), cleanup);
+        LY_CHECK_GOTO(rc = lyd_new_any(ext_par, NULL, "substatements", ext_child, NULL, 0, LYD_NEW_ANY_USE_VALUE, NULL),
+                cleanup);
         ext_child = NULL;
     }
 
@@ -1640,13 +1640,13 @@ schema_diff_module_substmt(const struct lys_diff_change_s *change, const struct 
         if (mod1->version) {
             LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "old", 0, &cont), cleanup);
             LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, node_name,
-                        mod1->version == LYS_VERSION_1_1 ? "1.1" : "1", 0, NULL), cleanup);
+                    mod1->version == LYS_VERSION_1_1 ? "1.1" : "1", 0, NULL), cleanup);
         }
 
         if (mod2->version) {
             LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "new", 0, &cont), cleanup);
             LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, node_name,
-                        mod2->version == LYS_VERSION_1_1 ? "1.1" : "1", 0, NULL), cleanup);
+                    mod2->version == LYS_VERSION_1_1 ? "1.1" : "1", 0, NULL), cleanup);
         }
     }
 
@@ -2047,13 +2047,13 @@ schema_diff_refine(const struct lysp_refine *refine, struct lyd_node *change_con
     }
 
     /* min-elements */
-    if ((refine->flags & LYS_SET_MIN) && (rc = lyd_new_term_bin(change_cont, NULL, "min-elements", &refine->min,
+    if ((refine->flags & LYS_SET_MIN) && (rc = lyd_new_term_raw(change_cont, NULL, "min-elements", &refine->min,
             sizeof refine->min, 0, NULL))) {
         goto cleanup;
     }
 
     /* max-elements */
-    if ((refine->flags & LYS_SET_MAX) && (rc = lyd_new_term_bin(change_cont, NULL, "max-elements", &refine->max,
+    if ((refine->flags & LYS_SET_MAX) && (rc = lyd_new_term_raw(change_cont, NULL, "max-elements", &refine->max,
             sizeof refine->max, 0, NULL))) {
         goto cleanup;
     }
@@ -2907,12 +2907,12 @@ schema_diff_deviation(const struct lysp_deviation *dev, struct lyd_node *change_
         }
 
         /* min-elements */
-        if ((flags & LYS_SET_MIN) && (rc = lyd_new_term_bin(dev_list, NULL, "min-elements", &min, sizeof min, 0, NULL))) {
+        if ((flags & LYS_SET_MIN) && (rc = lyd_new_term_raw(dev_list, NULL, "min-elements", &min, sizeof min, 0, NULL))) {
             goto cleanup;
         }
 
         /* max-elements */
-        if ((flags & LYS_SET_MAX) && (rc = lyd_new_term_bin(dev_list, NULL, "max-elements", &max, sizeof max, 0, NULL))) {
+        if ((flags & LYS_SET_MAX) && (rc = lyd_new_term_raw(dev_list, NULL, "max-elements", &max, sizeof max, 0, NULL))) {
             goto cleanup;
         }
 
@@ -3204,14 +3204,14 @@ schema_diff_node_type_range(const struct lysc_range *range, ly_bool is_signed, s
         /* interval */
         LY_CHECK_GOTO(rc = lyd_new_list(parent, NULL, "interval", 0, &interval_list), cleanup);
         if (is_signed) {
-            LY_CHECK_GOTO(rc = lyd_new_term_bin(interval_list, NULL, "min", &range->parts[u].min_64,
+            LY_CHECK_GOTO(rc = lyd_new_term_raw(interval_list, NULL, "min", &range->parts[u].min_64,
                     sizeof range->parts[u].min_64, 0, NULL), cleanup);
-            LY_CHECK_GOTO(rc = lyd_new_term_bin(interval_list, NULL, "max", &range->parts[u].max_64,
+            LY_CHECK_GOTO(rc = lyd_new_term_raw(interval_list, NULL, "max", &range->parts[u].max_64,
                     sizeof range->parts[u].max_64, 0, NULL), cleanup);
         } else {
-            LY_CHECK_GOTO(rc = lyd_new_term_bin(interval_list, NULL, "min", &range->parts[u].min_u64,
+            LY_CHECK_GOTO(rc = lyd_new_term_raw(interval_list, NULL, "min", &range->parts[u].min_u64,
                     sizeof range->parts[u].min_u64, 0, NULL), cleanup);
-            LY_CHECK_GOTO(rc = lyd_new_term_bin(interval_list, NULL, "max", &range->parts[u].max_u64,
+            LY_CHECK_GOTO(rc = lyd_new_term_raw(interval_list, NULL, "max", &range->parts[u].max_u64,
                     sizeof range->parts[u].max_u64, 0, NULL), cleanup);
         }
     }
@@ -3316,10 +3316,10 @@ schema_diff_node_type_bitenums(const struct lysc_type_bitenum_item *items, struc
 
         /* value/position */
         if (items[u].flags & LYS_IS_ENUM) {
-            LY_CHECK_GOTO(rc = lyd_new_term_bin(par_list, NULL, "value", &items[u].value, sizeof items[u].value, 0,
+            LY_CHECK_GOTO(rc = lyd_new_term_raw(par_list, NULL, "value", &items[u].value, sizeof items[u].value, 0,
                     NULL), cleanup);
         } else {
-            LY_CHECK_GOTO(rc = lyd_new_term_bin(par_list, NULL, "position", &items[u].position, sizeof items[u].position,
+            LY_CHECK_GOTO(rc = lyd_new_term_raw(par_list, NULL, "position", &items[u].position, sizeof items[u].position,
                     0, NULL), cleanup);
         }
 
@@ -3417,7 +3417,7 @@ schema_diff_node_type(const struct lysc_type *type, struct lyd_node *type_par)
         type_dec = (const struct lysc_type_dec *)type;
 
         /* fraction-digits */
-        LY_CHECK_GOTO(rc = lyd_new_term_bin(type_par, NULL, "fraction-digits", &type_dec->fraction_digits,
+        LY_CHECK_GOTO(rc = lyd_new_term_raw(type_par, NULL, "fraction-digits", &type_dec->fraction_digits,
                 sizeof type_dec->fraction_digits, 0, NULL), cleanup);
 
         /* range */
@@ -3610,10 +3610,10 @@ schema_diff_node_stmts(const struct lysc_node *node, ly_bool with_priv_parsed, s
         min = llist->min;
         max = llist->max;
     }
-    if ((min > 0) && (rc = lyd_new_term_bin(change_cont, NULL, "min-elements", &min, sizeof min, 0, NULL))) {
+    if ((min > 0) && (rc = lyd_new_term_raw(change_cont, NULL, "min-elements", &min, sizeof min, 0, NULL))) {
         goto cleanup;
     }
-    if ((max < UINT32_MAX) && (rc = lyd_new_term_bin(change_cont, NULL, "max-elements", &max, sizeof max, 0, NULL))) {
+    if ((max < UINT32_MAX) && (rc = lyd_new_term_raw(change_cont, NULL, "max-elements", &max, sizeof max, 0, NULL))) {
         goto cleanup;
     }
 
