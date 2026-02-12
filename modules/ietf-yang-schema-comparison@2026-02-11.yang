@@ -97,7 +97,9 @@ module ietf-yang-schema-comparison {
 
        When used as a substatement of an extension
        instance, it means adding, modifying, or removing
-       it is a backwards-compatible change.
+       it is a backwards-compatible change. The same is
+       true for any substatements of the extension
+       instance.
 
        Not allowed to be instantiated for any other
        statements.";
@@ -128,7 +130,7 @@ module ietf-yang-schema-comparison {
   typedef schema-stmt-path {
     type string;
     description
-      "Path to a statement. Any non-schema-node parents are encoded specially.";
+      "Path to a statement. Any non data node parents are encoded specially.";
   }
 
   typedef stmt-type {
