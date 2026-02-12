@@ -2187,6 +2187,24 @@ LIBYANG_API_DECL LY_ERR lyd_diff_apply_module(struct lyd_node **data, const stru
 LIBYANG_API_DECL LY_ERR lyd_diff_apply_all(struct lyd_node **data, const struct lyd_node *diff);
 
 /**
+ * @brief Apply the diff subtree on a data tree.
+ *
+ * Details are mentioned in ::lyd_diff_apply_module().
+ *
+ * @param[in,out] data_parent Parent of data to apply the diff subtree on.
+ * If @p diff_node is a top-level node, this parameter must be NULL.
+ * If @p diff_node has a parent, its schema must match this parameter schema.
+ * @param[in,out] data_first First sibling of the subtree.
+ * If @p diff_node is a top-level node, this parameter must point to the first top-level sibling.
+ * Optional for nested data.
+ * @param[in] diff_node Diff subtree to apply on data.
+ * @return LY_SUCCESS on success,
+ * @return LY_ERR on error.
+ */
+LIBYANG_API_DECL LY_ERR lyd_diff_apply_node(struct lyd_node *data_parent, struct lyd_node **data_first,
+        const struct lyd_node *diff_node);
+
+/**
  * @ingroup datatree
  * @defgroup diffmergeoptions Data diff merge options.
  *

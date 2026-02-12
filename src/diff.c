@@ -1763,7 +1763,7 @@ cleanup:
 /**
  * @brief Apply diff subtree on data tree nodes, recursively.
  *
- * @param[in,out] first_node First sibling of the data tree.
+ * @param[in,out] first_node First sibling of the subtree.
  * @param[in] parent_node Parent of the first sibling.
  * @param[in] diff_node Current diff node.
  * @param[in] diff_cb Optional diff callback.
@@ -1947,6 +1947,41 @@ LIBYANG_API_DEF LY_ERR
 lyd_diff_apply_all(struct lyd_node **data, const struct lyd_node *diff)
 {
     return lyd_diff_apply_module(data, diff, NULL, NULL, NULL);
+}
+
+LIBYANG_API_DEF LY_ERR
+lyd_diff_apply_node(struct lyd_node *data_parent, struct lyd_node **data_first, const struct lyd_node *diff_node)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct ly_ht *dup_inst = NULL;
+
+    LY_CHECK_ARG_RET(NULL, data_parent || data_first, diff_node, LY_EINVAL);
+
+    /* diff_node is top level node, data_parent must be NULL */
+    if (!diff_node->parent && data_parent) {
+        LOGERR(LYD_CTX(diff_node), LY_EINVAL, "data_parent must be NULL when applying top-level diff_node.");
+        return LY_EINVAL;
+    }
+
+    if (!data_first) {
+        data_first = lyd_node_child_p(data_parent);
+    }
+
+    /* diff_node is top level node, data_first must be set */
+    if (!diff_node->parent && !data_first) {
+        LOGERR(LYD_CTX(diff_node), LY_EINVAL, "data_first is not set, when working with top-level node.");
+        return LY_EINVAL;
+    }
+
+    if (diff_node->parent && data_parent && (diff_node->parent->schema != data_parent->schema)) {
+        LOGERR(LYD_CTX(diff_node), LY_EINVAL, "Schemas of data_parent and diff_node do not match.");
+        return LY_EINVAL;
+    }
+
+    ret = lyd_diff_apply_r(data_first, data_parent, diff_node, NULL, NULL, &dup_inst);
+
+    lyd_dup_inst_free(dup_inst);
+    return ret;
 }
 
 /**
