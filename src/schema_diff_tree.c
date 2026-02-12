@@ -1640,13 +1640,13 @@ schema_diff_module_substmt(const struct lys_diff_change_s *change, const struct 
         if (mod1->version) {
             LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "old", 0, &cont), cleanup);
             LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, node_name,
-                        mod1->version == LYS_VERSION_1_1 ? "1.1" : "1", 0, NULL), cleanup);
+                    mod1->version == LYS_VERSION_1_1 ? "1.1" : "1", 0, NULL), cleanup);
         }
 
         if (mod2->version) {
             LY_CHECK_GOTO(rc = lyd_new_inner(mod_cmp_list, NULL, "new", 0, &cont), cleanup);
             LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, node_name,
-                        mod2->version == LYS_VERSION_1_1 ? "1.1" : "1", 0, NULL), cleanup);
+                    mod2->version == LYS_VERSION_1_1 ? "1.1" : "1", 0, NULL), cleanup);
         }
     }
 
