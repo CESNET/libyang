@@ -5,10 +5,14 @@ module length {
 
     revision 2000-01-02;
 
-    leaf l1 {
+    typedef l1-type {
         type string {
             length min..50|100|1000;
         }
+    }
+
+    leaf l1 {
+        type l1-type;
     }
 
     leaf l2 {

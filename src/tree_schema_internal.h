@@ -244,7 +244,7 @@ LY_ERR lysp_check_date(struct lysp_ctx *ctx, const char *date, size_t date_len, 
  * @param[out] node Node where the found typedef is defined, NULL in case of a top-level typedef.
  * @return LY_ERR value.
  */
-LY_ERR lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_module *start_module,
+LY_ERR lysp_type_find(const char *id, const struct lysp_node *start_node, const struct lysp_module *start_module,
         const struct lysc_ext_instance *ext, LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node);
 
 /**

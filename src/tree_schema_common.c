@@ -258,7 +258,7 @@ lysp_typedef_match(const char *name, const struct lysp_tpdf *typedefs)
 }
 
 LY_ERR
-lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_module *start_module,
+lysp_type_find(const char *id, const struct lysp_node *start_node, const struct lysp_module *start_module,
         const struct lysc_ext_instance *ext, LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node)
 {
     const char *str, *name;
@@ -266,6 +266,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_m
     const struct lysp_tpdf *ext_typedefs;
     const struct lys_module *mod;
     const struct lysp_module *local_module;
+    const struct lysp_node *iter;
     LY_ARRAY_COUNT_TYPE u, v;
 
     assert(id);
@@ -274,6 +275,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_m
     assert(node);
 
     *node = NULL;
+
     str = strchr(id, ':');
     if (str) {
         mod = ly_resolve_prefix(start_module->mod->ctx, id, str - id, LY_VALUE_SCHEMA, (void *)start_module);
@@ -296,10 +298,11 @@ lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_m
     if (local_module == start_module) {
         if (start_node) {
             /* search typedefs in parent's nodes */
-            for (*node = start_node; *node; *node = (*node)->parent) {
-                *tpdf = lysp_typedef_match(name, lysp_node_typedefs(*node));
+            for (iter = start_node; iter; iter = iter->parent) {
+                *tpdf = lysp_typedef_match(name, lysp_node_typedefs(iter));
                 if (*tpdf) {
                     /* match */
+                    *node = (struct lysp_node *)iter;
                     return LY_SUCCESS;
                 }
             }
