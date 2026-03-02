@@ -1356,8 +1356,8 @@ schema_diff_ext_inst(const struct lysc_ext_instance *ext, int is_cont, struct ly
     /* substatements */
     LY_CHECK_GOTO(rc = schema_diff_ext_inst_substmts(LYD_CTX(change_cont), ext->substmts, &ext_child), cleanup);
     if (ext_child) {
-        LY_CHECK_GOTO(rc = lyd_new_any(ext_par, NULL, "substatements", ext_child, LYD_ANYDATA_DATATREE,
-                LYD_NEW_ANY_USE_VALUE, NULL), cleanup);
+        LY_CHECK_GOTO(rc = lyd_new_any(ext_par, NULL, "substatements", ext_child, NULL, 0, LYD_NEW_ANY_USE_VALUE, NULL),
+                cleanup);
         ext_child = NULL;
     }
 
@@ -1424,7 +1424,7 @@ schema_diff_pext_inst(const struct lysp_ext_instance *ext, struct lyd_node *chan
     /* substatements (children) */
     LY_CHECK_GOTO(rc = schema_diff_pext_inst_children(LYD_CTX(change_cont), ext->child, &ext_child), cleanup);
     if (ext_child) {
-        LY_CHECK_GOTO(rc = lyd_new_any(ext_par, NULL, "substatements", ext_child, LYD_ANYDATA_DATATREE,
+        LY_CHECK_GOTO(rc = lyd_new_any(ext_par, NULL, "substatements", ext_child, NULL, 0,
                 LYD_NEW_ANY_USE_VALUE, NULL), cleanup);
         ext_child = NULL;
     }
