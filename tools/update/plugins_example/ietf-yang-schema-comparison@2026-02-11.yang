@@ -1,0 +1,1536 @@
+module ietf-yang-schema-comparison {
+  yang-version 1.1;
+  namespace "urn:ietf:params:xml:ns:yang:ietf-yang-schema-comparison";
+  prefix schema-cmp;
+
+  import ietf-yang-types {
+    prefix yang;
+    reference
+      "RFC 6991: Common YANG Data types";
+  }
+  import ietf-yang-library {
+    prefix yanglib;
+    reference
+      "RFC 8525: YANG Library";
+  }
+  import ietf-yang-structure-ext {
+    prefix sx;
+    reference
+      "RFC 8791: YANG Data Structure Extensions";
+  }
+
+  organization
+    "IETF NETMOD (Network Modeling) Working Group";
+  contact
+    "WG List: NETCONF WG list <mailto:netmod@ietf.org>
+     WG Web:  https://datatracker.ietf.org/wg/netmod
+
+     Author:  Michal Vaško
+              <mailto:mvasko@cesnet.cz>
+
+     Author:  Rob Wilton
+              <mailto:rwilton@cisco.com>
+
+     Author:  Per Andersson
+              <mailto:per.ietf@ionio.se>";
+  description
+    "This YANG 1.1 module contains definitions and extensions to
+     support comparison between different versions of YANG schemas. The
+     output of the comparison algorithm is described in this YANG
+     module. The base schema nodes describe changes in a compiled YANG
+     module with all of its included submodules and imported modules.
+     The rest of the schema nodes are optional and describe changes in
+     all the statements of a single YANG module.
+
+     Copyright (c) 2026 IETF Trust and the persons identified as
+     authors of the code.  All rights reserved.
+
+     Redistribution and use in source and binary forms, with
+     or without modification, is permitted pursuant to, and
+     subject to the license terms contained in, the Revised
+     BSD License set forth in Section 4.c of the IETF Trust's
+     Legal Provisions Relating to IETF Documents
+     (https://trustee.ietf.org/license-info).
+
+     This version of this YANG module is part of RFC XXXX
+     (https://www.rfc-editor.org/info/rfcXXXX); see the RFC
+     itself for full legal notices.
+
+     The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL',
+     'SHALL NOT', 'SHOULD', 'SHOULD NOT', 'RECOMMENDED',
+     'NOT RECOMMENDED', 'MAY', and 'OPTIONAL' in this document
+     are to be interpreted as described in BCP 14 (RFC 2119)
+     (RFC 8174) when, and only when, they appear in all
+     capitals, as shown here.";
+
+  // RFC Ed.: update the date below with the date of RFC publication
+  // and remove this note.
+  // RFC Ed.: replace XXXX (inc above) with actual RFC number and
+  // remove this note.
+
+  revision 2026-02-11 {
+    description
+      "Initial revision.";
+    reference
+      "RFC XXXX: YANG Schema Comparison";
+  }
+
+  extension backwards-compatible {
+    description
+      "Marks statements in a new revision of a module
+       that were changed but in a backwards-compatible
+       manner according to YANG 1.1 and 1.0 rules for
+       updating a module.
+
+       When used as a substatement of a 'pattern'
+       statement, it means its allowed value space has
+       been expanded.
+
+       When used as a substatement of a 'when' or
+       'must' statement, it means their constraint has
+       been relaxed.
+
+       When used as a substatement of a 'description'
+       statement, it means it has been changed in a
+       backwards-compatible way.
+
+       When used as a substatement of an extension
+       instance, it means adding, modifying, or removing
+       it is a backwards-compatible change. The same is
+       true for any substatements of the extension
+       instance.
+
+       Not allowed to be instantiated for any other
+       statements.";
+    reference
+      "RFC 7950: The YANG 1.1 Data Modeling Language, section 11;
+       RFC 6020: YANG - A Data Modeling Language for the Network
+       Configuration Protocol (NETCONF), section 10";
+  }
+
+  feature parsed-schema {
+    description
+      "Compare also the statements removed from the compiled schema to
+       get all the backwards-compatible and non-backwards-compatible
+       changes possible for a YANG module.";
+    reference
+      "RFC 7950: The YANG 1.1 Data Modeling Language, section 11;
+       RFC 6020: YANG - A Data Modeling Language for the Network
+       Configuration Protocol (NETCONF), section 10";
+  }
+
+  typedef schema-node-path {
+    type string;
+    description
+      "Node schema path (node-id). A generic type is used to not enforce
+       their evaluation or validation in this context.";
+  }
+
+  typedef schema-stmt-path {
+    type string;
+    description
+      "Path to a statement. Any non data node parents are encoded
+       specially.";
+  }
+
+  typedef stmt-type {
+    type enumeration {
+      enum base {
+        description
+          "YANG statement 'base'.";
+      }
+      enum bit {
+        description
+          "YANG statement 'bit'.";
+      }
+      enum config {
+        description
+          "YANG statement 'config'.";
+      }
+      enum contact {
+        description
+          "YANG statement 'contact'.";
+      }
+      enum default {
+        description
+          "YANG statement 'default'.";
+      }
+      enum description {
+        description
+          "YANG statement 'description'.";
+      }
+      enum deviate {
+        description
+          "YANG statement 'deviate'.";
+      }
+      enum deviation {
+        description
+          "YANG statement 'deviation'.";
+      }
+      enum enum {
+        description
+          "YANG statement 'enum'.";
+      }
+      enum error-app-tag {
+        description
+          "YANG statement 'error-app-tag'.";
+      }
+      enum error-message {
+        description
+          "YANG statement 'error-message'.";
+      }
+      enum extension {
+        description
+          "YANG statement 'extension'.";
+      }
+      enum extension-instance {
+        description
+          "Any extension instance YANG statement.";
+      }
+      enum feature {
+        description
+          "YANG statement 'feature'.";
+      }
+      enum fraction-digits {
+        description
+          "YANG statement 'fraction-digits'.";
+      }
+      enum identity {
+        description
+          "YANG statement 'identity'.";
+      }
+      enum if-feature {
+        description
+          "YANG statement 'if-feature'.";
+      }
+      enum import {
+        description
+          "YANG statement 'import'.";
+      }
+      enum include {
+        description
+          "YANG statement 'include'.";
+      }
+      enum length {
+        description
+          "YANG statement 'length'.";
+      }
+      enum mandatory {
+        description
+          "YANG statement 'mandatory'.";
+      }
+      enum max-elements {
+        description
+          "YANG statement 'max-elements'.";
+      }
+      enum min-elements {
+        description
+          "YANG statement 'min-elements'.";
+      }
+      enum must {
+        description
+          "YANG statement 'must'.";
+      }
+      enum node {
+        description
+          "YANG statement 'container', 'leaf', 'leaf-list', 'list',
+           'anydata', 'anyxml', 'rpc', 'action', or 'notification'. If
+           the parsed schema is also compared, it can additionally be
+           'choice', 'case', 'input', 'output', 'uses', 'augment', or
+           'grouping'.";
+      }
+      enum ordered-by {
+        description
+          "YANG statement 'ordered-by'.";
+      }
+      enum organization {
+        description
+          "YANG statement 'organization'.";
+      }
+      enum path {
+        description
+          "YANG statement 'path'.";
+      }
+      enum pattern {
+        description
+          "YANG statement 'pattern'.";
+      }
+      enum prefix {
+        description
+          "YANG statement 'prefix'.";
+      }
+      enum presence {
+        description
+          "YANG statement 'presence'.";
+      }
+      enum range {
+        description
+          "YANG statement 'range'.";
+      }
+      enum reference {
+        description
+          "YANG statement 'reference'.";
+      }
+      enum refine {
+        description
+          "YANG statement 'refine'.";
+      }
+      enum require-instance {
+        description
+          "YANG statement 'require-instance'.";
+      }
+      enum revision-date {
+        description
+          "YANG statement 'revision-date'.";
+      }
+      enum status {
+        description
+          "YANG statement 'status'.";
+      }
+      enum type {
+        description
+          "YANG statement 'type'.";
+      }
+      enum typedef {
+        description
+          "YANG statement 'typedef'.";
+      }
+      enum units {
+        description
+          "YANG statement 'units'.";
+      }
+      enum unique {
+        description
+          "YANG statement 'unique'.";
+      }
+      enum when {
+        description
+          "YANG statement 'when'.";
+      }
+      enum yang-version {
+        description
+          "YANG statement 'yang-version'.";
+      }
+    }
+    description
+      "Type of the statement that a change affects.";
+  }
+
+  typedef revision-or-empty {
+    type union {
+      type empty;
+      type yanglib:revision-identifier;
+    }
+    description
+      "Module or submodule revision. If it has none, an empty value is
+       used.";
+  }
+
+  grouping if-feature-stmts {
+    description
+      "Describes changes of all the if-features on a statement.";
+    leaf-list if-feature {
+      type string;
+      description
+        "Value of an if-feature statement.";
+    }
+  }
+
+  grouping ext-instance-stmt {
+    description
+      "Describes changes of an extension instance.";
+    leaf module {
+      type yang:yang-identifier;
+      mandatory true;
+      description
+        "Module with the extension definition of an extension
+         instance.";
+    }
+    leaf name {
+      type yang:yang-identifier;
+      mandatory true;
+      description
+        "Name of the extension defition of an extension instance.";
+    }
+    leaf argument {
+      type string;
+      description
+        "Argument used of an extension definition.";
+    }
+    anydata substatements {
+      description
+        "Any substatements of the extension instance.";
+    }
+  }
+
+  grouping ext-instance-stmts {
+    description
+      "Describes changes of all the extension instances.";
+    list ext-instance {
+      description
+        "List of extension-instance substatements.";
+      uses ext-instance-stmt;
+    }
+  }
+
+  grouping status-stmt {
+    description
+      "Describes a status statement change.";
+    leaf status {
+      type enumeration {
+        enum current {
+          description
+            "Current effective status of a statement.";
+        }
+        enum deprecated {
+          description
+            "Deprecated effective status of a statement.";
+        }
+        enum obsolete {
+          description
+            "Obsolete effective status of a statement.";
+        }
+      }
+      mandatory true;
+      description
+        "Status substatement value.";
+    }
+  }
+
+  grouping must-stmts {
+    description
+      "Describes changes of all the must statements of a specific parent
+       statement.";
+    list must {
+      description
+        "List of must substatements.";
+      leaf condition {
+        type string;
+        description
+          "Condition substatement value.";
+      }
+      uses restriction-substmts;
+    }
+  }
+
+  grouping when-stmts {
+    description
+      "Describes changes of all the must statements of a specific parent
+       statement.";
+    list when {
+      description
+        "List of when substatements.";
+      leaf condition {
+        type string;
+        description
+          "Condition substatement value.";
+      }
+      leaf description {
+        type string;
+        description
+          "Description substatement value.";
+      }
+      leaf reference {
+        type string;
+        description
+          "Reference substatement value.";
+      }
+      uses status-stmt;
+      uses ext-instance-stmts;
+    }
+  }
+
+  grouping restriction-substmts {
+    description
+      "Common substatements shared by all restriction statements.";
+    leaf description {
+      type string;
+      description
+        "Description substatement value.";
+    }
+    leaf reference {
+      type string;
+      description
+        "Reference substatement value.";
+    }
+    leaf error-message {
+      type string;
+      description
+        "Error-message substatement value.";
+    }
+    leaf error-app-tag {
+      type string;
+      description
+        "Error-app-tag substatement value.";
+    }
+    uses ext-instance-stmts;
+  }
+
+  grouping type-substmts {
+    description
+      "Describes a type statement change.";
+    leaf base-type {
+      type enumeration {
+        enum int8 {
+          description
+            "YANG built-in type 'int8'.";
+        }
+        enum int16 {
+          description
+            "YANG built-in type 'int16'.";
+        }
+        enum int32 {
+          description
+            "YANG built-in type 'int32'.";
+        }
+        enum int64 {
+          description
+            "YANG built-in type 'int64'.";
+        }
+        enum uint8 {
+          description
+            "YANG built-in type 'uint8'.";
+        }
+        enum uint16 {
+          description
+            "YANG built-in type 'uint16'.";
+        }
+        enum uint32 {
+          description
+            "YANG built-in type 'uint32'.";
+        }
+        enum uint64 {
+          description
+            "YANG built-in type 'uint64'.";
+        }
+        enum decimal64 {
+          description
+            "YANG built-in type 'decimal64'.";
+        }
+        enum string {
+          description
+            "YANG built-in type 'string'.";
+        }
+        enum boolean {
+          description
+            "YANG built-in type 'boolean'.";
+        }
+        enum enumeration {
+          description
+            "YANG built-in type 'enumeration'.";
+        }
+        enum bits {
+          description
+            "YANG built-in type 'bits'.";
+        }
+        enum binary {
+          description
+            "YANG built-in type 'binary'.";
+        }
+        enum leafref {
+          description
+            "YANG built-in type 'leafref'.";
+        }
+        enum identityref {
+          description
+            "YANG built-in type 'identityref'.";
+        }
+        enum empty {
+          description
+            "YANG built-in type 'empty'.";
+        }
+        enum union {
+          description
+            "YANG built-in type 'union'.";
+        }
+        enum instance-identifier {
+          description
+            "YANG built-in type 'instance-identifier'.";
+        }
+      }
+      description
+        "Type substatement value.";
+    }
+    container range {
+      description
+        "Range statement substatements.";
+      list interval {
+        description
+          "Intervals of a range statement.";
+        leaf min {
+          type int64;
+          description
+            "Lower boundary of an interval of a range statement.";
+        }
+        leaf max {
+          type int64;
+          description
+            "Upper boundary of an interval of a range statement.";
+        }
+      }
+      uses restriction-substmts;
+    }
+    container length {
+      description
+        "Length statement substatements.";
+      list interval {
+        description
+          "Intervals of a length statement.";
+        leaf min {
+          type uint64;
+          description
+            "Lower boundary of an interval of a length statement.";
+        }
+        leaf max {
+          type uint64;
+          description
+            "Upper boundary of an interval of a length statement.";
+        }
+      }
+      uses restriction-substmts;
+    }
+    leaf fraction-digits {
+      type uint8;
+      description
+        "Fraction-digits substatement value.";
+    }
+    list pattern {
+      description
+        "List of pattern statements.";
+      leaf expression {
+        type string;
+        description
+          "Pattern substatement value.";
+      }
+      leaf inverted {
+        type boolean;
+        description
+          "Inverted substatement value.";
+      }
+      uses restriction-substmts;
+    }
+    list enum {
+      key "name";
+      ordered-by user;
+      description
+        "List of enum statements. Keeps the same order of the statements
+         as in the module.";
+      leaf name {
+        type yang:yang-identifier;
+        description
+          "Enum statement name.";
+      }
+      uses if-feature-stmts {
+        if-feature "parsed-schema";
+      }
+      leaf description {
+        type string;
+        description
+          "Description substatement value.";
+      }
+      leaf reference {
+        type string;
+        description
+          "Reference substatement value.";
+      }
+      leaf value {
+        type int32;
+        description
+          "Value substatement value.";
+      }
+      uses status-stmt;
+      uses ext-instance-stmts;
+    }
+    list bit {
+      key "name";
+      ordered-by user;
+      description
+        "List of bit statements. Keeps the same order of the statements
+         as in the module.";
+      leaf name {
+        type yang:yang-identifier;
+        description
+          "Bit statement name.";
+      }
+      uses if-feature-stmts {
+        if-feature "parsed-schema";
+      }
+      leaf description {
+        type string;
+        description
+          "Description substatement value.";
+      }
+      leaf reference {
+        type string;
+        description
+          "Reference substatement value.";
+      }
+      leaf position {
+        type uint32;
+        description
+          "Position substatement value.";
+      }
+      uses status-stmt;
+      uses ext-instance-stmts;
+    }
+    leaf path {
+      type string;
+      description
+        "Path substatement value.";
+    }
+    leaf require-instance {
+      type boolean;
+      description
+        "Require-instance substatement value.";
+    }
+    leaf-list base {
+      type yang:yang-identifier;
+      description
+        "List of base substatement values.";
+    }
+    uses ext-instance-stmts;
+  }
+
+  grouping type-parsed-substmts {
+    description
+      "Describes a parsed type statement change.";
+    leaf name {
+      type yang:yang-identifier;
+      description
+        "Type argument substatement value.";
+    }
+    container range {
+      description
+        "Range statement substatements.";
+      leaf restriction {
+        type string;
+        description
+          "Range argument substatement value.";
+      }
+      uses restriction-substmts;
+    }
+    container length {
+      description
+        "Length statement substatements.";
+      leaf restriction {
+        type string;
+        description
+          "Range argument substatement value.";
+      }
+      uses restriction-substmts;
+    }
+    leaf fraction-digits {
+      type uint8;
+      description
+        "Fraction-digits substatement value.";
+    }
+    list pattern {
+      description
+        "List of pattern statements.";
+      leaf expression {
+        type string;
+        description
+          "Pattern substatement value.";
+      }
+      leaf inverted {
+        type empty;
+        description
+          "Inverted substatement value.";
+      }
+      uses restriction-substmts;
+    }
+    list enum {
+      key "name";
+      ordered-by user;
+      description
+        "List of enum statements. Keeps the same order of the statements
+         as in the module.";
+      leaf name {
+        type yang:yang-identifier;
+        description
+          "Enum statement name.";
+      }
+      uses if-feature-stmts;
+      leaf description {
+        type string;
+        description
+          "Description substatement value.";
+      }
+      leaf reference {
+        type string;
+        description
+          "Reference substatement value.";
+      }
+      leaf value {
+        type int32;
+        description
+          "Value substatement value.";
+      }
+      uses status-stmt;
+      uses ext-instance-stmts;
+    }
+    list bit {
+      key "name";
+      ordered-by user;
+      description
+        "List of bit statements. Keeps the same order of the statements
+         as in the module.";
+      leaf name {
+        type yang:yang-identifier;
+        description
+          "Bit statement name.";
+      }
+      uses if-feature-stmts;
+      leaf description {
+        type string;
+        description
+          "Description substatement value.";
+      }
+      leaf reference {
+        type string;
+        description
+          "Reference substatement value.";
+      }
+      leaf position {
+        type uint32;
+        description
+          "Position substatement value.";
+      }
+      uses status-stmt;
+      uses ext-instance-stmts;
+    }
+    leaf path {
+      type string;
+      description
+        "Path substatement value.";
+    }
+    leaf require-instance {
+      type boolean;
+      description
+        "Require-instance substatement value.";
+    }
+    leaf-list base {
+      type yang:yang-identifier;
+      description
+        "List of base substatement values.";
+    }
+    uses ext-instance-stmts;
+  }
+
+  grouping refine-deviate-node-substmts {
+    description
+      "All substatements of a data-definition node that can be changed
+       by both a refine and deviate statement.";
+    uses must-stmts;
+    leaf-list default {
+      type string;
+      description
+        "List of default substatement values.";
+    }
+    leaf config {
+      type boolean;
+      description
+        "Config substatement value.";
+    }
+    leaf mandatory {
+      type boolean;
+      description
+        "Mandatory substatement value.";
+    }
+    leaf min-elements {
+      type uint32;
+      description
+        "Min-elements substatement value.";
+    }
+    leaf max-elements {
+      type uint32;
+      description
+        "Max-elements substatement value.";
+    }
+  }
+
+  grouping node-substmts {
+    description
+      "All substatements of a data-definition node.";
+    uses if-feature-stmts {
+      if-feature "parsed-schema";
+    }
+    uses when-stmts;
+    leaf description {
+      type string;
+      description
+        "Description substatement value.";
+    }
+    leaf reference {
+      type string;
+      description
+        "Reference substatement value.";
+    }
+    uses status-stmt;
+    uses refine-deviate-node-substmts;
+    leaf-list key {
+      type yang:yang-identifier;
+      description
+        "Leaf-list of nodes referenced by a key statement.";
+    }
+    leaf ordered-by {
+      type enumeration {
+        enum system {
+          description
+            "System-ordered list or leaf-list of items.";
+        }
+        enum user {
+          description
+            "User-ordered list or leaf-list of items.";
+        }
+      }
+      description
+        "Ordered-by substatement value.";
+    }
+    container type {
+      description
+        "Type substatement.";
+      uses type-substmts;
+      list union-type {
+        description
+          "List of a union type substatements.";
+        uses type-substmts;
+      }
+    }
+    leaf units {
+      type string;
+      description
+        "Units substatement value.";
+    }
+    list unique {
+      description
+        "List of unique substatements.";
+      leaf-list node {
+        type yang:yang-identifier;
+        description
+          "List of nodes referenced by a unique substatement.";
+      }
+    }
+    leaf presence {
+      type boolean;
+      description
+        "Presence substatement existence.";
+    }
+    uses ext-instance-stmts;
+  }
+
+  grouping module-substmts {
+    description
+      "All non-data-definition substatements of a module.";
+    leaf yang-version {
+      type string;
+      description
+        "YANG version substatement value.";
+    }
+    leaf prefix {
+      if-feature "parsed-schema";
+      type string;
+      description
+        "Prefix substatement value.";
+    }
+    container import {
+      if-feature "parsed-schema";
+      presence "Exists only when there is a difference in this import.";
+      description
+        "Import substatements.";
+      leaf module {
+        type yang:yang-identifier;
+        mandatory true;
+        description
+          "Imported module.";
+      }
+      leaf prefix {
+        type yang:yang-identifier;
+        mandatory true;
+        description
+          "Imported module prefix.";
+      }
+      leaf revision-date {
+        type yanglib:revision-identifier;
+        description
+          "Imported module revision-date.";
+      }
+      leaf description {
+        type string;
+        description
+          "Description substatement value.";
+      }
+      leaf reference {
+        type string;
+        description
+          "Reference substatement value.";
+      }
+      uses ext-instance-stmts;
+    }
+    container include {
+      if-feature "parsed-schema";
+      presence
+        "Exists only when there is a difference in this include.";
+      description
+        "Include substatements.";
+      leaf submodule {
+        type yang:yang-identifier;
+        mandatory true;
+        description
+          "Included submodule.";
+      }
+      leaf revision-date {
+        type yanglib:revision-identifier;
+        description
+          "Included submodule revision-date.";
+      }
+      leaf description {
+        type string;
+        description
+          "Description substatement value.";
+      }
+      leaf reference {
+        type string;
+        description
+          "Reference substatement value.";
+      }
+      uses ext-instance-stmts;
+    }
+    leaf organization {
+      type string;
+      description
+        "Organization substatement value.";
+    }
+    leaf contact {
+      type string;
+      description
+        "Contact substatement value.";
+    }
+    leaf description {
+      type string;
+      description
+        "Description substatement value.";
+    }
+    leaf reference {
+      type string;
+      description
+        "Reference substatement value.";
+    }
+    container extension {
+      if-feature "parsed-schema";
+      presence
+        "Exists only when there is a difference in this extension.";
+      description
+        "Extension substatements.";
+      leaf name {
+        type yang:yang-identifier;
+        mandatory true;
+        description
+          "Extension name.";
+      }
+      leaf argument {
+        type yang:yang-identifier;
+        description
+          "Argument substatement value.";
+      }
+      uses status-stmt;
+      leaf description {
+        type string;
+        description
+          "Description substatement value.";
+      }
+      leaf reference {
+        type string;
+        description
+          "Reference substatement value.";
+      }
+      uses ext-instance-stmts;
+    }
+    container feature {
+      if-feature "parsed-schema";
+      presence
+        "Exists only when there is a difference in this feature.";
+      description
+        "Feature substatements.";
+      leaf name {
+        type yang:yang-identifier;
+        mandatory true;
+        description
+          "Feature name.";
+      }
+      uses if-feature-stmts;
+      uses status-stmt;
+      leaf description {
+        type string;
+        description
+          "Description substatement value.";
+      }
+      leaf reference {
+        type string;
+        description
+          "Reference substatement value.";
+      }
+      uses ext-instance-stmts;
+    }
+    container identity {
+      description
+        "Identity substatements.";
+      leaf name {
+        type yang:yang-identifier;
+        mandatory true;
+        description
+          "Identity statement name.";
+      }
+      uses if-feature-stmts {
+        if-feature "parsed-schema";
+      }
+      leaf-list base {
+        if-feature "parsed-schema";
+        type yang:yang-identifier;
+        description
+          "List of bases of an identity.";
+      }
+      uses ext-instance-stmts;
+    }
+    container deviation {
+      if-feature "parsed-schema";
+      presence
+        "Exists only when there is a difference in this deviation.";
+      description
+        "Deviation substatements.";
+      leaf target {
+        type string;
+        mandatory true;
+        description
+          "Deviation target argument.";
+      }
+      list deviate {
+        min-elements 1;
+        description
+          "List of deviate substatements.";
+        leaf argument {
+          type enumeration {
+            enum not-supported {
+              description
+                "Deviate 'not-supported' argument value.";
+            }
+            enum add {
+              description
+                "Deviate 'add' argument value.";
+            }
+            enum replace {
+              description
+                "Deviate 'replace' argument value.";
+            }
+            enum delete {
+              description
+                "Deviate 'delete' argument value.";
+            }
+          }
+          mandatory true;
+          description
+            "Deviate argument value.";
+        }
+        uses refine-deviate-node-substmts;
+        container type {
+          description
+            "Type substatement.";
+          uses type-parsed-substmts;
+          list union-type {
+            description
+              "List of a union type substatements.";
+            uses type-parsed-substmts;
+          }
+        }
+        leaf units {
+          type string;
+          description
+            "Units substatement value.";
+        }
+        list unique {
+          description
+            "List of unique substatements.";
+          leaf-list node {
+            type yang:yang-identifier;
+            description
+              "List of nodes referenced by a unique substatement.";
+          }
+        }
+      }
+      leaf description {
+        type string;
+        description
+          "Description substatement value.";
+      }
+      leaf reference {
+        type string;
+        description
+          "Reference substatement value.";
+      }
+      uses ext-instance-stmts;
+    }
+    container ext-instance {
+      presence
+        "Exists only when there is a difference in this
+         extension-instance.";
+      description
+        "Extension-instance substatements.";
+      uses ext-instance-stmt;
+    }
+  }
+
+  grouping parsed-substmts {
+    description
+      "All parsed-only statements that can be direct substatements of a
+       module or nested in a node.";
+    uses if-feature-stmts {
+      if-feature "parsed-schema";
+    }
+    uses when-stmts;
+    leaf description {
+      type string;
+      description
+        "Description substatement value.";
+    }
+    leaf reference {
+      type string;
+      description
+        "Reference substatement value.";
+    }
+    uses status-stmt;
+    uses refine-deviate-node-substmts;
+    container type {
+      description
+        "Type substatement.";
+      uses type-parsed-substmts;
+      list union-type {
+        description
+          "List of a union type substatements.";
+        uses type-parsed-substmts;
+      }
+    }
+    leaf units {
+      type string;
+      description
+        "Units substatement value.";
+    }
+    leaf presence {
+      type string;
+      description
+        "Presence substatement value.";
+    }
+    uses ext-instance-stmts;
+  }
+
+  grouping conformance-type {
+    description
+      "Conformance type of a change.";
+    leaf conformance {
+      type enumeration {
+        enum backwards-compatible {
+          description
+            "Backwards-compatible or editorial change.";
+        }
+        enum non-backwards-compatible {
+          description
+            "Non-backwards-compatible change.";
+        }
+      }
+      mandatory true;
+      description
+        "Conformance information of a change in the compared YANG
+         modules.";
+    }
+  }
+
+  grouping change-info {
+    description
+      "Details of a single change.";
+    list changed {
+      key "stmt";
+      min-elements 1;
+      description
+        "List of changes.";
+      leaf stmt {
+        type stmt-type;
+        description
+          "Changed statement.";
+      }
+      leaf parent-stmt {
+        type stmt-type;
+        description
+          "Parent statement of the changed statement.";
+      }
+      leaf change {
+        type enumeration {
+          enum modified {
+            description
+              "Statement existed and was modified.";
+          }
+          enum added {
+            description
+              "Statement was added.";
+          }
+          enum removed {
+            description
+              "Statement was removed.";
+          }
+          enum moved {
+            description
+              "Statement was moved and the position affects the
+               meaning.";
+          }
+        }
+        mandatory true;
+        description
+          "Type of change of the statement.";
+      }
+      uses conformance-type;
+    }
+  }
+
+  grouping module-params {
+    description
+      "Identification details of a processed YANG module.";
+    leaf module {
+      type yang:yang-identifier;
+      mandatory true;
+      description
+        "Compared module name.";
+    }
+    leaf revision {
+      type revision-or-empty;
+      mandatory true;
+      description
+        "Compared module revision.";
+    }
+    list submodule {
+      key "name revision";
+      leaf name {
+        type yang:yang-identifier;
+        mandatory true;
+        description
+          "Submodule name.";
+      }
+      leaf revision {
+        type revision-or-empty;
+        mandatory true;
+        description
+          "Submodule revision.";
+      }
+      description
+        "Submodule of the main module.";
+    }
+    leaf-list enabled-feature {
+      type yang:yang-identifier;
+      description
+        "All the enabled features of the module.";
+    }
+  }
+
+  grouping parsed-info {
+    description
+      "Information about all the changed parsed-only statements.";
+    list parsed-comparison {
+      description
+        "Information about parsed-only statement changes.";
+      leaf parent-path {
+        type schema-stmt-path;
+        description
+          "Path to the parent statement. Not set if a direct
+           substatement of module or submodule.";
+      }
+      leaf identifier {
+        type string;
+        mandatory true;
+        description
+          "Identifier of the statement, may include a prefix.";
+      }
+      leaf stmt-type {
+        type enumeration {
+          enum choice {
+            description
+              "YANG statement 'choice' node.";
+          }
+          enum case {
+            description
+              "YANG statement 'case' node.";
+          }
+          enum input {
+            description
+              "YANG statement 'input' node.";
+          }
+          enum output {
+            description
+              "YANG statement 'output' node.";
+          }
+          enum uses {
+            description
+              "YANG statement 'uses' node.";
+          }
+          enum grouping {
+            description
+              "YANG statement 'grouping' node.";
+          }
+          enum augment {
+            description
+              "YANG statement 'augment' node.";
+          }
+          enum refine {
+            description
+              "YANG statement 'refine' node.";
+          }
+          enum typedef {
+            description
+              "YANG statement 'typedef'.";
+          }
+        }
+        mandatory true;
+        description
+          "Type of the changed data-definition statement.";
+      }
+      uses change-info;
+      container old {
+        description
+          "Changed parsed statements in the older revision of the YANG
+           module.";
+        uses parsed-substmts;
+      }
+      container new {
+        description
+          "Changed parsed statements in the newer revision of the YANG
+           module.";
+        uses parsed-substmts;
+      }
+    }
+  }
+
+  grouping node-info {
+    description
+      "Information about all the changed compiled nodes.";
+    list node-comparison {
+      key "node";
+      ordered-by user;
+      description
+        "Information about data-definition (node) statement substatement
+         changes. Keeps the traversed order of the nodes by the
+         algorithm. It SHOULD follow the depth-first search order.";
+      leaf node {
+        type schema-node-path;
+        description
+          "Path to the changed data-definition statement.";
+      }
+      leaf node-type {
+        type enumeration {
+          enum container {
+            description
+              "YANG statement 'container' node.";
+          }
+          enum leaf {
+            description
+              "YANG statement 'leaf' node.";
+          }
+          enum leaf-list {
+            description
+              "YANG statement 'leaf-list' node.";
+          }
+          enum list {
+            description
+              "YANG statement 'list' node.";
+          }
+          enum anydata {
+            description
+              "YANG statement 'anydata' node.";
+          }
+          enum anyxml {
+            description
+              "YANG statement 'anyxml' node.";
+          }
+          enum rpc {
+            description
+              "YANG statement 'rpc' node.";
+          }
+          enum action {
+            description
+              "YANG statement 'action' node.";
+          }
+          enum notification {
+            description
+              "YANG statement 'notification' node.";
+          }
+        }
+        mandatory true;
+        description
+          "Type of the changed data-definition statement.";
+      }
+      uses change-info;
+      container old {
+        description
+          "All the node substatements in the older revision of the YANG
+           module.";
+        uses node-substmts;
+      }
+      container new {
+        description
+          "All the node substatements in the newer revision of the YANG
+           module.";
+        uses node-substmts;
+      }
+    }
+  }
+
+  sx:structure schema-comparison {
+    description
+      "Schema comparison details.";
+    list schema {
+      description
+        "Instance of a schema comparison of 2 YANG modules in different
+         revisions with all their imports.";
+      container source {
+        description
+          "Source module information.";
+        uses module-params;
+      }
+      list source-import {
+        key "module revision";
+        description
+          "List of source module imported modules information.";
+        uses module-params;
+      }
+      container target {
+        description
+          "Target module information.";
+        uses module-params;
+      }
+      list target-import {
+        key "module revision";
+        description
+          "List of target module imported modules information.";
+        uses module-params;
+      }
+      uses conformance-type;
+      list module-comparison {
+        description
+          "Information about direct module statement substatement
+           changes.";
+        uses change-info;
+        container old {
+          description
+            "Changed statements in the older revision of the YANG
+             module.";
+          uses module-substmts;
+        }
+        container new {
+          description
+            "Changed statements in the newer revision of the YANG
+             module.";
+          uses module-substmts;
+        }
+      }
+      uses parsed-info {
+        if-feature "parsed-schema";
+      }
+      uses node-info;
+    }
+  }
+}
