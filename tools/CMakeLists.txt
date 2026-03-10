@@ -19,6 +19,7 @@ endif()
 
 add_subdirectory(lint)
 add_subdirectory(re)
+add_subdirectory(update)
 
 set(format_sources
     ${format_sources}
