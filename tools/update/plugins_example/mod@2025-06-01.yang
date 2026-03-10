@@ -1,0 +1,30 @@
+module mod {
+    namespace "urn:mod";
+    prefix m;
+
+    revision 2025-06-01;
+
+    container cont {
+        list list1 {
+            key key1;
+
+            leaf key1 {
+                type string;
+            }
+
+            leaf l1 {
+                type uint32;
+            }
+        }
+
+        leaf ld {
+            type string;
+            default "dflt-val";
+        }
+    }
+
+    leaf l2 {
+        type uint32;
+        units milliseconds;
+    }
+}
