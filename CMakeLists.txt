@@ -279,8 +279,8 @@ set(PLUGINS_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang" CACHE 
 set(PLUGINS_DIR_EXTENSIONS "${PLUGINS_DIR}/extensions" CACHE STRING "Directory with libyang user extensions plugins")
 set(PLUGINS_DIR_TYPES "${PLUGINS_DIR}/types" CACHE STRING "Directory with libyang user types plugins")
 set(YANGUPDATE_PLUGINS_DIR "" CACHE STRING "Directory with libyang_update static plugin sources, must be set manually")
-if(NOT IS_ABSOLUTE ${YANGUPDATE_PLUGINS_DIR})
-    message(FATAL_ERROR "Directory with libyang_update plugins \"${YANGUPDATE_PLUGINS_DIR}\" must be aboslute.")
+if(YANGUPDATE_PLUGINS_DIR AND NOT IS_ABSOLUTE ${YANGUPDATE_PLUGINS_DIR})
+    message(FATAL_ERROR "Directory with libyang_update plugins \"${YANGUPDATE_PLUGINS_DIR}\" must be absolute.")
 endif()
 
 #
