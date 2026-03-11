@@ -2014,6 +2014,7 @@ schema_diff_refine(const struct lysp_refine *refine, struct lyd_node *change_con
     LY_ARRAY_COUNT_TYPE u;
     struct lyd_node *must_list;
     const char *config = NULL, *mandatory = NULL;
+    char num_str[11];
 
     /* description */
     if (refine->dsc && (rc = lyd_new_term(change_cont, NULL, "description", refine->dsc, 0, NULL))) {
@@ -2817,6 +2818,7 @@ schema_diff_deviation(const struct lysp_deviation *dev, struct lyd_node *change_
     uint16_t flags = 0;
     uint32_t min = 0, max = 0;
     const struct lysp_type *type = NULL;
+    char num_str[11];
 
     /* deviation container */
     LY_CHECK_GOTO(rc = lyd_new_inner(change_cont, NULL, "deviation", 0, &dev_cont), cleanup);
@@ -3199,6 +3201,7 @@ schema_diff_node_type_range(const struct lysc_range *range, ly_bool is_signed, s
     LY_ERR rc = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;
     struct lyd_node *interval_list;
+    char num_str[22];
 
     LY_ARRAY_FOR(range->parts, u) {
         /* interval */
@@ -3300,6 +3303,7 @@ schema_diff_node_type_bitenums(const struct lysc_type_bitenum_item *items, struc
     LY_ERR rc = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u, v;
     struct lyd_node *par_list;
+    char num_str[22];
 
     LY_ARRAY_FOR(items, u) {
         /* list with the key */
@@ -3360,6 +3364,7 @@ schema_diff_node_type(const struct lysc_type *type, struct lyd_node *type_par)
     const struct lysc_type_bin *type_bin;
     struct lyd_node *parent;
     ly_bool is_signed = 1;
+    char num_str[4];
 
     /* base-type */
     LY_CHECK_GOTO(rc = lyd_new_term(type_par, NULL, "base-type", schema_diff_type2str(type->basetype), 0, NULL), cleanup);
@@ -3502,6 +3507,7 @@ schema_diff_node_stmts(const struct lysc_node *node, ly_bool with_priv_parsed, s
     const struct lysc_node_list *list;
     const struct lysp_node *p_node;
     struct lyd_node *unique_list, *type_cont;
+    char num_str[11];
 
     /* config */
     if (node->flags & LYS_CONFIG_W) {
