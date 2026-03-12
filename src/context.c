@@ -300,6 +300,11 @@ ly_ctx_new(const char *search_dir, uint32_t options, struct ly_ctx **new_ctx)
     static_plugins_only = (options & LY_CTX_STATIC_PLUGINS_ONLY) ? 1 : 0;
     LY_CHECK_GOTO(rc = lyplg_init(builtin_plugins_only, static_plugins_only), cleanup);
 
+    /* obsolete nodes */
+    if (FORCE_LY_CTX_COMPILE_OBSOLETE) {
+        options |= LY_CTX_COMPILE_OBSOLETE;
+    }
+
     /* options */
     ctx->opts = options;
 

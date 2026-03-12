@@ -273,6 +273,8 @@ set(PLUGINS_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang" CACHE 
 set(PLUGINS_DIR_EXTENSIONS "${PLUGINS_DIR}/extensions" CACHE STRING "Directory with libyang user extensions plugins")
 set(PLUGINS_DIR_TYPES "${PLUGINS_DIR}/types" CACHE STRING "Directory with libyang user types plugins")
 
+set(FORCE_LY_CTX_COMPILE_OBSOLETE 0 CACHE STRING "Compile obsolete nodes in libyang context by default")
+
 #
 # checks
 #
