@@ -1,5 +1,5 @@
 /**
- * @file lcbor.h
+ * @file lcbor.c
  * @author MeherRushi <meherrrushi2@gmail.com>
  * @brief CBOR data parser for libyang (abstraction over libcbor)
  *
@@ -11,8 +11,6 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-
-#ifdef ENABLE_CBOR_SUPPORT
 
 #include <assert.h>
 #include <ctype.h>
@@ -55,8 +53,10 @@ lycbor_token2str(enum cbor_type cbortype)
  */
 void lycbor_ctx_free(struct lycbor_ctx *cborctx)
 {
-    if (cborctx)
-    {
+    if (cborctx) {
+        if (cborctx->cbor_data) {
+            cbor_decref(&cborctx->cbor_data);
+        }
         free(cborctx);
     }
 }
@@ -108,24 +108,22 @@ lycbor_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lycbor_ctx **c
     cborctx->format = format;
 
     /* load and parse CBOR data */
-    cborctx->cbor_data = cbor_load(in->current, in->length, &result);
+    cborctx->cbor_data = cbor_load((cbor_data)in->current, in->length, &result);
     if (!cborctx->cbor_data) {
-        LOGVAL(ctx, LYVE_SYNTAX, "Failed to parse CBOR data.");
+        LOGVAL(ctx, NULL, LYVE_SYNTAX, "Failed to parse CBOR data.");
         free(cborctx);
         return LY_EVALID;
     }
     if (result.error.code != CBOR_ERR_NONE) {
-        LOGVAL(ctx, LYVE_SYNTAX, "CBOR parsing error (code %d).", result.error.code);
+        LOGVAL(ctx, NULL, LYVE_SYNTAX, "CBOR parsing error (code %d).", result.error.code);
         cbor_decref(&cborctx->cbor_data);
         free(cborctx);
         return LY_EVALID;
     }
 
     /* input line logging */
-    ly_log_location(NULL, NULL, NULL, in);
+    ly_log_location(NULL, NULL, in);
 
     *cborctx_p = cborctx;
     return ret;
 }
-
-#endif /* ENABLE_CBOR_SUPPORT */

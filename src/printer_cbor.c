@@ -14,8 +14,6 @@
 
 #define _GNU_SOURCE
 
-#ifdef ENABLE_CBOR_SUPPORT
-
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -28,6 +26,7 @@
 #include "out_internal.h"
 #include "parser_data.h"
 #include "plugins_exts/metadata.h"
+#include "plugins_internal.h"
 #include "plugins_types.h"
 #include "printer_data.h"
 #include "printer_internal.h"
@@ -35,7 +34,7 @@
 #include "tree.h"
 #include "tree_data.h"
 #include "tree_schema.h"
-#include "cbor.h"
+#include "lcbor.h"
 
 /**
  * @brief CBOR printer context.
@@ -49,8 +48,9 @@ struct cborpr_ctx {
 
     struct ly_set open;                     /**< currently open array(s) */
     const struct lyd_node *first_leaflist;  /**< first printed leaf-list instance, used when printing its metadata/attributes */
-    
+
     cbor_item_t *root_map;                  /**< root CBOR map */
+    cbor_item_t *array;                     /**< currently open CBOR array for leaf-list/list instances */
 };
 
 static LY_ERR cbor_print_node(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_item_t *parent_map);
@@ -172,7 +172,7 @@ node_prefix(const struct lyd_node *node)
  * @return 0 in case the nodes' modules are the same
  * @return 1 in case the nodes belongs to different modules
  */
-int
+static int
 cbor_nscmp(const struct lyd_node *node1, const struct lyd_node *node2)
 {
     assert(node1 || node2);
@@ -275,7 +275,8 @@ cbor_print_member_name2(struct cborpr_ctx *pctx, const struct lyd_node *parent, 
         }
         default:
             /* cannot be created */
-            LOGINT_RET(pctx->ctx);
+            LOGINT(pctx->ctx);
+            return NULL;
         }
 
         name_str = name->name;
@@ -326,7 +327,7 @@ cbor_print_value(struct cborpr_ctx *pctx, const struct ly_ctx *ctx, const struct
     const char *value;
     cbor_item_t *item = NULL;
 
-    value = val->realtype->plugin->print(ctx, val, LY_VALUE_JSON, (void *)local_mod, &dynamic, NULL);
+    value = LYSC_GET_TYPE_PLG(val->realtype->plugin_ref)->print(ctx, val, LY_VALUE_CBOR, (void *)local_mod, &dynamic, NULL);
     LY_CHECK_RET(!value, LY_EINVAL);
     basetype = val->realtype->basetype;
 
@@ -699,34 +700,16 @@ cbor_print_any_content(struct cborpr_ctx *pctx, struct lyd_node_any *any, cbor_i
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *iter;
     const struct lyd_node *prev_parent;
-    uint32_t prev_opts, *prev_lo, temp_lo = 0;
+    uint32_t prev_opts;
     cbor_item_t *content_map = NULL;
 
     assert(any->schema->nodetype & LYD_NODE_ANY);
 
-    if ((any->schema->nodetype == LYS_ANYDATA) && (any->value_type != LYD_ANYDATA_DATATREE)) {
+    if ((any->schema->nodetype == LYS_ANYDATA) && any->value) {
         LOGINT_RET(pctx->ctx);
     }
-    if (any->value_type == LYD_ANYDATA_LYB) {
-        uint32_t parser_options = LYD_PARSE_ONLY | LYD_PARSE_OPAQ | LYD_PARSE_STRICT;
 
-        /* turn logging off */
-        prev_lo = ly_temp_log_options(&temp_lo);
-
-        /* try to parse it into a data tree */
-        if (lyd_parse_data_mem(pctx->ctx, any->value.mem, LYD_LYB, parser_options, 0, &iter) == LY_SUCCESS) {
-            /* successfully parsed */
-            free(any->value.mem);
-            any->value.tree = iter;
-            any->value_type = LYD_ANYDATA_DATATREE;
-        }
-
-        /* turn logging on again */
-        ly_temp_log_options(prev_lo);
-    }
-
-    switch (any->value_type) {
-    case LYD_ANYDATA_DATATREE:
+    if (any->child) {
         /* create a map for the content */
         content_map = cbor_new_indefinite_map();
         LY_CHECK_RET(!content_map, LY_EMEM);
@@ -735,8 +718,8 @@ cbor_print_any_content(struct cborpr_ctx *pctx, struct lyd_node_any *any, cbor_i
         prev_parent = pctx->parent;
         prev_opts = pctx->options;
         pctx->parent = &any->node;
-        pctx->options &= ~LYD_PRINT_WITHSIBLINGS;
-        LY_LIST_FOR(any->value.tree, iter) {
+        pctx->options &= ~LYD_PRINT_SIBLINGS;
+        LY_LIST_FOR(any->child, iter) {
             ret = cbor_print_node(pctx, iter, content_map);
             LY_CHECK_ERR_RET(ret, cbor_decref(&content_map), ret);
         }
@@ -744,39 +727,16 @@ cbor_print_any_content(struct cborpr_ctx *pctx, struct lyd_node_any *any, cbor_i
         pctx->options = prev_opts;
 
         *item_p = content_map;
-        break;
-    case LYD_ANYDATA_JSON:
-        if (!any->value.json) {
-            /* no content */
-            if (any->schema->nodetype == LYS_ANYXML) {
-                *item_p = cbor_build_ctrl(CBOR_CTRL_NULL);
-            } else {
-                *item_p = cbor_new_indefinite_map();
-            }
+    } else if (any->value) {
+        /* print as a string */
+        *item_p = cbor_build_string(any->value);
+    } else {
+        /* no content */
+        if (any->schema->nodetype == LYS_ANYXML) {
+            *item_p = cbor_build_ctrl(CBOR_CTRL_NULL);
         } else {
-            /* JSON content - store as string */
-            *item_p = cbor_build_string(any->value.json);
+            *item_p = cbor_new_indefinite_map();
         }
-        break;
-    case LYD_ANYDATA_STRING:
-    case LYD_ANYDATA_XML:
-        if (!any->value.str) {
-            /* no content */
-            if (any->schema->nodetype == LYS_ANYXML) {
-                *item_p = cbor_build_ctrl(CBOR_CTRL_NULL);
-            } else {
-                *item_p = cbor_new_indefinite_map();
-            }
-        } else {
-            /* print as a string */
-            *item_p = cbor_build_string(any->value.str);
-        }
-        break;
-    case LYD_ANYDATA_LYB:
-        /* LYB format is not supported */
-        LOGWRN(pctx->ctx, "Unable to print anydata content (type %d) as CBOR.", any->value_type);
-        *item_p = cbor_build_ctrl(CBOR_CTRL_NULL);
-        break;
     }
 
     return LY_SUCCESS;
@@ -904,7 +864,7 @@ cbor_print_array_is_last_inst(struct cborpr_ctx *pctx, const struct lyd_node *no
         return 0;
     }
 
-    if ((pctx->root == node) && !(pctx->options & LYD_PRINT_WITHSIBLINGS)) {
+    if ((pctx->root == node) && !(pctx->options & LYD_PRINT_SIBLINGS)) {
         /* the only printed instance */
         return 1;
     }
@@ -1239,7 +1199,6 @@ cbor_print_opaq(struct cborpr_ctx *pctx, const struct lyd_node_opaq *node, cbor_
 static LY_ERR
 cbor_print_node(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_item_t *parent_map)
 {
-    static cbor_item_t *array = NULL;
 
     if (!lyd_node_should_print(node, pctx->options)) {
         if (cbor_print_array_is_last_inst(pctx, node)) {
@@ -1249,7 +1208,7 @@ cbor_print_node(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_item_
     }
 
     if (!node->schema) {
-        LY_CHECK_RET(cbor_print_opaq(pctx, (const struct lyd_node_opaq *)node, parent_map, &array));
+        LY_CHECK_RET(cbor_print_opaq(pctx, (const struct lyd_node_opaq *)node, parent_map, &pctx->array));
     } else {
         switch (node->schema->nodetype) {
         case LYS_RPC:
@@ -1263,7 +1222,7 @@ cbor_print_node(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_item_
             break;
         case LYS_LEAFLIST:
         case LYS_LIST:
-            LY_CHECK_RET(cbor_print_leaf_list(pctx, node, parent_map, &array));
+            LY_CHECK_RET(cbor_print_leaf_list(pctx, node, parent_map, &pctx->array));
             break;
         case LYS_ANYDATA:
         case LYS_ANYXML:
@@ -1323,7 +1282,7 @@ cbor_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t option
         pctx.root = node;
         LY_CHECK_ERR_RET(cbor_print_node(&pctx, node, pctx.root_map), 
                 cbor_decref(&pctx.root_map); ly_set_erase(&pctx.open, NULL), LY_EINVAL);
-        if (!(options & LYD_PRINT_WITHSIBLINGS)) {
+        if (!(options & LYD_PRINT_SIBLINGS)) {
             break;
         }
     }
@@ -1347,5 +1306,3 @@ cbor_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t option
     ly_print_flush(out);
     return LY_SUCCESS;
 }
-
-#endif /* ENABLE_CBOR_SUPPORT */

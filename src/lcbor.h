@@ -12,10 +12,8 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#ifndef LY_LCBOR_H_
-#define LY_LCBOR_H_
-
-#ifdef ENABLE_CBOR_SUPPORT
+#ifndef LY_CBOR_H_
+#define LY_CBOR_H_
 
 #include <stddef.h>
 #include <stdint.h>
@@ -54,6 +52,14 @@ struct lycbor_ctx {
 };
 
 /**
+ * @brief Get a human-readable name for a CBOR type.
+ *
+ * @param[in] cbortype CBOR type.
+ * @return String representation of the CBOR type.
+ */
+const char *lycbor_token2str(enum cbor_type cbortype);
+
+/**
  * @brief Create new CBOR context for parsing.
  *
  * @param[in] ctx libyang context.
@@ -72,6 +78,4 @@ lycbor_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lycbor_ctx **c
 void
 lycbor_ctx_free(struct lycbor_ctx *cborctx);
 
-#endif /* ENABLE_CBOR_SUPPORT */
-
-#endif /* LY_LCBOR_H_ */
+#endif /* LY_CBOR_H_ */

@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief JSON data parser for libyang
  *
- * Copyright (c) 2020 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -37,6 +37,9 @@
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 #include "validation.h"
+
+static LY_ERR lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct lyd_node **first_p,
+        struct ly_set *parsed);
 
 /**
  * @brief Free the JSON data parser context.
@@ -174,7 +177,7 @@ lydjson_get_node_prefix(struct lyd_node *node, const char *local_prefix, size_t 
             module_name = onode->name.prefix;
             break;
         }
-        node = lyd_parent(node);
+        node = node->parent;
     }
 
     *prefix_p = module_name;
@@ -253,14 +256,37 @@ static LY_ERR
 lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *prefix, size_t prefix_len, const char *name,
         size_t name_len, struct lyd_node *parent, const struct lysc_node **snode, struct lysc_ext_instance **ext)
 {
-    LY_ERR ret = LY_SUCCESS, r;
+    LY_ERR r;
     struct lys_module *mod = NULL;
+    const struct lysc_node *sparent;
     uint32_t getnext_opts = lydctx->int_opts & LYD_INTOPT_REPLY ? LYS_GETNEXT_OUTPUT : 0;
 
     *snode = NULL;
-    *ext = NULL;
+    if (ext) {
+        *ext = NULL;
+    }
 
-    /* get the element module, prefer parent context because of extensions */
+    /* try to find parent schema node */
+    if (parent && parent->schema && !(parent->schema->nodetype & LYD_NODE_ANY)) {
+        /* use only a schema parent */
+        sparent = parent->schema;
+    } else {
+        sparent = NULL;
+    }
+    if (!prefix_len) {
+        prefix = NULL;
+    }
+    r = lys_find_child_node(parent ? LYD_CTX(parent) : lydctx->jsonctx->ctx, sparent, NULL, prefix, prefix_len,
+            LY_VALUE_JSON, NULL, name, name_len, getnext_opts, snode, ext);
+    LY_CHECK_RET(r && (r != LY_ENOT), r);
+
+    if (!r) {
+        /* check that schema node is valid and can be used */
+        LY_CHECK_RET(lyd_parser_check_schema((struct lyd_ctx *)lydctx, *snode));
+        return LY_SUCCESS;
+    }
+
+    /* generate error, find the module */
     if (prefix_len) {
         mod = ly_ctx_get_module_implemented2(parent ? LYD_CTX(parent) : lydctx->jsonctx->ctx, prefix, prefix_len);
     } else if (parent) {
@@ -268,80 +294,38 @@ lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *pref
             mod = parent->schema->module;
         }
     } else if (!(lydctx->int_opts & LYD_INTOPT_ANY)) {
-        LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX_JSON, "Top-level JSON object member \"%.*s\" must be namespace-qualified.",
+        LOGVAL(lydctx->jsonctx->ctx, parent, LYVE_SYNTAX_JSON,
+                "Top-level JSON object member \"%.*s\" must be namespace-qualified.",
                 (int)(is_attr ? name_len + 1 : name_len), is_attr ? name - 1 : name);
-        ret = LY_EVALID;
-        goto cleanup;
+        return LY_EVALID;
     }
+    if (!(lydctx->parse_opts & LYD_PARSE_STRICT)) {
+        return LY_SUCCESS;
+    }
+
     if (!mod) {
-        /* check for extension data */
-        r = ly_nested_ext_schema(parent, NULL, prefix, prefix_len, LY_VALUE_JSON, NULL, name, name_len, snode, ext);
-        if (r != LY_ENOT) {
-            /* success or error */
-            ret = r;
-            goto cleanup;
-        }
-
         /* unknown module */
-        if (lydctx->parse_opts & LYD_PARSE_STRICT) {
-            LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "No module named \"%.*s\" in the context.", (int)prefix_len, prefix);
-            ret = LY_EVALID;
-            goto cleanup;
-        }
+        LOGVAL(lydctx->jsonctx->ctx, parent, LYVE_REFERENCE, "No module named \"%.*s\" in the context.",
+                (int)prefix_len, prefix);
+        return LY_EVALID;
     }
 
-    /* get the schema node */
-    if (mod && (!parent || parent->schema)) {
-        if (!parent && lydctx->ext) {
-            *snode = lysc_ext_find_node(lydctx->ext, mod, name, name_len, 0, getnext_opts);
-        } else {
-            *snode = lys_find_child(lyd_parser_node_schema(parent), mod, name, name_len, 0, getnext_opts);
-        }
-        if (!*snode) {
-            /* check for extension data */
-            r = ly_nested_ext_schema(parent, NULL, prefix, prefix_len, LY_VALUE_JSON, NULL, name, name_len, snode, ext);
-            if (r != LY_ENOT) {
-                /* success or error */
-                ret = r;
-                goto cleanup;
-            }
-
-            /* unknown data node */
-            printf("checkpoint1-json\n");
-            if (lydctx->parse_opts & LYD_PARSE_STRICT) {
-                if (parent) {
-                    LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "Node \"%.*s\" not found as a child of \"%s\" node.",
-                            (int)name_len, name, LYD_NAME(parent));
-                } else if (lydctx->ext) {
-                    if (lydctx->ext->argument) {
-                        LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE,
-                                "Node \"%.*s\" not found in the \"%s\" %s extension instance.",
-                                (int)name_len, name, lydctx->ext->argument, lydctx->ext->def->name);
-                    } else {
-                        LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the %s extension instance.",
-                                (int)name_len, name, lydctx->ext->def->name);
-                    }
-                } else {
-                    LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the \"%s\" module.",
-                            (int)name_len, name, mod->name);
-                }
-                ret = LY_EVALID;
-                goto cleanup;
-            }
-        } else {
-            /* check that schema node is valid and can be used */
-            ret = lyd_parser_check_schema((struct lyd_ctx *)lydctx, *snode);
-        }
+    /* unknown node name */
+    if (sparent) {
+        LOGVAL(lydctx->jsonctx->ctx, parent, LYVE_REFERENCE, "Node \"%.*s\" not found as a child of \"%s\" node.",
+                (int)name_len, name, sparent->name);
+    } else {
+        LOGVAL(lydctx->jsonctx->ctx, parent, LYVE_REFERENCE, "Node \"%.*s\" not found in the \"%s\" module.",
+                (int)name_len, name, mod->name);
     }
-
-cleanup:
-    return ret;
+    return LY_EVALID;
 }
 
 /**
  * @brief Get the hint for the data type parsers according to the current JSON parser context.
  *
  * @param[in] lydctx JSON data parser context.
+ * @param[in] snode Schema node for logging.
  * @param[in,out] status Pointer to the current context status,
  * in some circumstances the function manipulates with the context so the status is updated.
  * @param[out] type_hint_p Pointer to the variable to store the result.
@@ -349,7 +333,8 @@ cleanup:
  * @return LY_EINVAL in case of invalid context status not referring to a value.
  */
 static LY_ERR
-lydjson_value_type_hint(struct lyd_json_ctx *lydctx, enum LYJSON_PARSER_STATUS *status_p, uint32_t *type_hint_p)
+lydjson_value_type_hint(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, enum LYJSON_PARSER_STATUS *status_p,
+        uint32_t *type_hint_p)
 {
     struct lyjson_ctx *jsonctx = lydctx->jsonctx;
 
@@ -359,16 +344,28 @@ lydjson_value_type_hint(struct lyd_json_ctx *lydctx, enum LYJSON_PARSER_STATUS *
         /* only [null] */
         LY_CHECK_RET(lyjson_ctx_next(jsonctx, status_p));
         if (*status_p != LYJSON_NULL) {
-            LOGVAL(jsonctx->ctx, LYVE_SYNTAX_JSON,
+            if (snode) {
+                LOG_LOCSET(snode);
+            }
+            LOGVAL(jsonctx->ctx, NULL, LYVE_SYNTAX_JSON,
                     "Expected JSON name/value or special name/[null], but input data contains name/[%s].",
                     lyjson_token2str(*status_p));
+            if (snode) {
+                LOG_LOCBACK(1);
+            }
             return LY_EINVAL;
         }
 
         LY_CHECK_RET(lyjson_ctx_next(jsonctx, NULL));
         if (lyjson_ctx_status(jsonctx) != LYJSON_ARRAY_CLOSED) {
-            LOGVAL(jsonctx->ctx, LYVE_SYNTAX_JSON, "Expected array end, but input data contains %s.",
+            if (snode) {
+                LOG_LOCSET(snode);
+            }
+            LOGVAL(jsonctx->ctx, NULL, LYVE_SYNTAX_JSON, "Expected array end, but input data contains %s.",
                     lyjson_token2str(*status_p));
+            if (snode) {
+                LOG_LOCBACK(1);
+            }
             return LY_EINVAL;
         }
 
@@ -382,7 +379,13 @@ lydjson_value_type_hint(struct lyd_json_ctx *lydctx, enum LYJSON_PARSER_STATUS *
     } else if (*status_p == LYJSON_NULL) {
         *type_hint_p = 0;
     } else {
-        LOGVAL(jsonctx->ctx, LYVE_SYNTAX_JSON, "Unexpected input data %s.", lyjson_token2str(*status_p));
+        if (snode) {
+            LOG_LOCSET(snode);
+        }
+        LOGVAL(jsonctx->ctx, NULL, LYVE_SYNTAX_JSON, "Unexpected input data %s.", lyjson_token2str(*status_p));
+        if (snode) {
+            LOG_LOCBACK(1);
+        }
         return LY_EINVAL;
     }
 
@@ -459,9 +462,10 @@ lydjson_check_list(struct lyd_json_ctx *lydctx, const struct lysc_node *list)
                         goto cleanup;
                     }
 
-                    rc = lydjson_value_type_hint(lydctx, &status, &hints);
+                    rc = lydjson_value_type_hint(lydctx, snode, &status, &hints);
                     LY_CHECK_GOTO(rc, cleanup);
-                    rc = ly_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, LY_VALUE_JSON, NULL, hints);
+                    rc = ly_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len * 8, LY_VALUE_JSON, NULL,
+                            hints);
                     LY_CHECK_GOTO(rc, cleanup);
 
                     /* key with a valid value, remove from the set */
@@ -528,15 +532,18 @@ lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *sno
         switch (snode->nodetype) {
         case LYS_LEAFLIST:
         case LYS_LEAF:
-            /* value may not be valid in which case we parse it as an opaque node */
-            if ((ret = lydjson_value_type_hint(lydctx, &status, type_hint_p))) {
-                break;
-            }
-
             prev_lo = ly_temp_log_options(&temp_lo);
-            if (ly_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, LY_VALUE_JSON, NULL, *type_hint_p)) {
+
+            /* value may not be valid in which case we parse it as an opaque node */
+            if (lydjson_value_type_hint(lydctx, snode, &status, type_hint_p)) {
                 ret = LY_ENOT;
             }
+
+            if (!ret && ly_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len * 8, LY_VALUE_JSON, NULL,
+                    *type_hint_p)) {
+                ret = LY_ENOT;
+            }
+
             ly_temp_log_options(prev_lo);
             break;
         case LYS_LIST:
@@ -548,7 +555,7 @@ lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *sno
             break;
         }
     } else if (snode->nodetype & LYD_NODE_TERM) {
-        ret = lydjson_value_type_hint(lydctx, &status, type_hint_p);
+        ret = lydjson_value_type_hint(lydctx, snode, &status, type_hint_p);
     }
 
     /* restore parser */
@@ -573,10 +580,8 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *node, *attr, *next, *meta_iter;
-    struct lysc_ext_instance *ext;
     uint64_t instance = 0;
     const char *prev = NULL;
-    uint32_t log_location_items = 0;
 
     /* finish linking metadata */
     LY_LIST_FOR_SAFE(*first_p, next, attr) {
@@ -591,9 +596,6 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
             /* not an opaq metadata node */
             continue;
         }
-
-        LOG_LOCSET(NULL, attr);
-        log_location_items++;
 
         if (prev != meta_container->name.name) {
             /* metas' names are stored in dictionary, so checking pointers must works */
@@ -613,7 +615,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                 }
 
                 if (((struct lyd_node_opaq *)node)->hints & LYD_NODEHINT_LIST) {
-                    LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX, "Metadata container references a sibling list node %s.",
+                    LOGVAL(lydctx->jsonctx->ctx, attr, LYVE_SYNTAX, "Metadata container references a sibling list node %s.",
                             ((struct lyd_node_opaq *)node)->name.name);
                     ret = LY_EVALID;
                     goto cleanup;
@@ -644,7 +646,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                 lydjson_parse_name(meta_container->name.name, strlen(meta_container->name.name), &name, &name_len,
                         &prefix, &prefix_len, &is_attr);
                 assert(is_attr);
-                lydjson_get_snode(lydctx, is_attr, prefix, prefix_len, name, name_len, lyd_parent(*first_p), &snode, &ext);
+                lydjson_get_snode(lydctx, is_attr, prefix, prefix_len, name, name_len, (*first_p)->parent, &snode, NULL);
 
                 if (snode != node->schema) {
                     continue;
@@ -663,18 +665,18 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
 
                     mod = ly_ctx_get_module_implemented(lydctx->jsonctx->ctx, meta->name.prefix);
                     if (mod) {
-                        ret = lyd_parser_create_meta((struct lyd_ctx *)lydctx, node, NULL, mod,
-                                meta->name.name, strlen(meta->name.name), meta->value, ly_strlen(meta->value),
-                                NULL, LY_VALUE_JSON, NULL, meta->hints, node->schema);
+                        ret = lyd_parser_create_meta((struct lyd_ctx *)lydctx, node, NULL, mod, meta->name.name,
+                                strlen(meta->name.name), meta->value, ly_strlen(meta->value) * 8, NULL, LY_VALUE_JSON,
+                                NULL, meta->hints, node->schema, node);
                         LY_CHECK_GOTO(ret, cleanup);
                     } else if (lydctx->parse_opts & LYD_PARSE_STRICT) {
                         if (meta->name.prefix) {
-                            LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE,
+                            LOGVAL(lydctx->jsonctx->ctx, attr, LYVE_REFERENCE,
                                     "Unknown (or not implemented) YANG module \"%s\" of metadata \"%s%s%s\".",
                                     meta->name.prefix, meta->name.prefix, ly_strlen(meta->name.prefix) ? ":" : "",
                                     meta->name.name);
                         } else {
-                            LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "Missing YANG module of metadata \"%s\".",
+                            LOGVAL(lydctx->jsonctx->ctx, attr, LYVE_REFERENCE, "Missing YANG module of metadata \"%s\".",
                                     meta->name.name);
                         }
                         ret = LY_EVALID;
@@ -683,7 +685,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                 }
 
                 /* add/correct flags */
-                ret = lyd_parser_set_data_flags(node, &node->meta, (struct lyd_ctx *)lydctx, ext);
+                ret = lyd_parser_set_data_flags(node, &node->meta, (struct lyd_ctx *)lydctx, NULL);
                 LY_CHECK_GOTO(ret, cleanup);
                 break;
             }
@@ -692,11 +694,11 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
         if (match != instance) {
             /* there is no corresponding data node for the metadata */
             if (instance > 1) {
-                LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE,
+                LOGVAL(lydctx->jsonctx->ctx, attr, LYVE_REFERENCE,
                         "Missing JSON data instance #%" PRIu64 " to be coupled with %s metadata.",
                         instance, meta_container->name.name);
             } else {
-                LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "Missing JSON data instance to be coupled with %s metadata.",
+                LOGVAL(lydctx->jsonctx->ctx, attr, LYVE_REFERENCE, "Missing JSON data instance to be coupled with %s metadata.",
                         meta_container->name.name);
             }
             ret = LY_EVALID;
@@ -707,15 +709,10 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
             }
             lyd_free_tree(attr);
         }
-
-        LOG_LOCBACK(0, log_location_items);
-        log_location_items = 0;
     }
 
 cleanup:
     lydict_remove(lydctx->jsonctx->ctx, prev);
-
-    LOG_LOCBACK(0, log_location_items);
     return ret;
 }
 
@@ -723,15 +720,12 @@ cleanup:
  * @brief Parse a metadata member/attribute.
  *
  * @param[in] lydctx JSON data parser context.
- * @param[in] snode Schema node of the metadata parent.
- * @param[in] node Parent node in case the metadata is not forward-referencing (only LYD_NODE_TERM)
- * so the data node does not exists. In such a case the metadata is stored in the context for the later
- * processing by lydjson_metadata_finish().
+ * @param[in] node Parent node.
  * @return LY_SUCCESS on success
  * @return Various LY_ERR values in case of failure.
  */
 static LY_ERR
-lydjson_meta_attr(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, struct lyd_node *node)
+lydjson_meta_attr(struct lyd_json_ctx *lydctx, struct lyd_node *node)
 {
     LY_ERR rc = LY_SUCCESS, r;
     enum LYJSON_PARSER_STATUS status;
@@ -747,12 +741,7 @@ lydjson_meta_attr(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, st
     uint32_t instance = 0, val_hints;
     uint16_t nodetype;
 
-    assert(snode || node);
-
-    nodetype = snode ? snode->nodetype : LYS_CONTAINER;
-    if (snode) {
-        LOG_LOCSET(snode, NULL);
-    }
+    nodetype = node->schema ? node->schema->nodetype : LYS_CONTAINER;
 
     /* move to the second item in the name/X pair */
     LY_CHECK_GOTO(rc = lyjson_ctx_next(lydctx->jsonctx, &status), cleanup);
@@ -775,8 +764,10 @@ next_entry:
         LY_CHECK_GOTO((status != LYJSON_OBJECT) && (status != LYJSON_NULL), representation_error);
 
         if (!node || (node->schema != prev->schema)) {
-            LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "Missing JSON data instance #%" PRIu32
+            LOG_LOCSET(prev->schema);
+            LOGVAL(lydctx->jsonctx->ctx, NULL, LYVE_REFERENCE, "Missing JSON data instance #%" PRIu32
                     " of %s:%s to be coupled with metadata.", instance, prev->schema->module->name, prev->schema->name);
+            LOG_LOCBACK(1);
             rc = LY_EVALID;
             goto cleanup;
         }
@@ -822,16 +813,16 @@ next_entry:
         lyjson_ctx_give_dynamic_value(lydctx->jsonctx, &dynamic_prefname);
 
         if (!name_len) {
-            LOGVAL(ctx, LYVE_SYNTAX_JSON, "Metadata in JSON found with an empty name, followed by: %.10s", name);
+            LOGVAL(ctx, prev, LYVE_SYNTAX_JSON, "Metadata in JSON found with an empty name, followed by: %.10s", name);
             rc = LY_EVALID;
             goto cleanup;
         } else if (!prefix_len) {
-            LOGVAL(ctx, LYVE_SYNTAX_JSON, "Metadata in JSON must be namespace-qualified, missing prefix for \"%.*s\".",
+            LOGVAL(ctx, prev, LYVE_SYNTAX_JSON, "Metadata in JSON must be namespace-qualified, missing prefix for \"%.*s\".",
                     (int)lydctx->jsonctx->value_len, lydctx->jsonctx->value);
             rc = LY_EVALID;
             goto cleanup;
         } else if (is_attr) {
-            LOGVAL(ctx, LYVE_SYNTAX_JSON, "Invalid format of the Metadata identifier in JSON, unexpected '@' in \"%.*s\"",
+            LOGVAL(ctx, prev, LYVE_SYNTAX_JSON, "Invalid format of the Metadata identifier in JSON, unexpected '@' in \"%.*s\"",
                     (int)lydctx->jsonctx->value_len, lydctx->jsonctx->value);
             rc = LY_EVALID;
             goto cleanup;
@@ -841,7 +832,8 @@ next_entry:
         mod = ly_ctx_get_module_implemented2(ctx, prefix, prefix_len);
         if (!mod) {
             if (lydctx->parse_opts & LYD_PARSE_STRICT) {
-                LOGVAL(ctx, LYVE_REFERENCE, "Prefix \"%.*s\" of the metadata \"%.*s\" does not match any module in the context.",
+                LOGVAL(ctx, prev, LYVE_REFERENCE,
+                        "Prefix \"%.*s\" of the metadata \"%.*s\" does not match any module in the context.",
                         (int)prefix_len, prefix, (int)name_len, name);
                 rc = LY_EVALID;
                 goto cleanup;
@@ -860,12 +852,13 @@ next_entry:
         LY_CHECK_GOTO(rc = lyjson_ctx_next(lydctx->jsonctx, &status), cleanup);
 
         /* get value hints */
-        LY_CHECK_GOTO(rc = lydjson_value_type_hint(lydctx, &status, &val_hints), cleanup);
+        LY_CHECK_GOTO(rc = lydjson_value_type_hint(lydctx, node->schema, &status, &val_hints), cleanup);
 
         if (node->schema) {
             /* create metadata */
-            rc = lyd_parser_create_meta((struct lyd_ctx *)lydctx, node, NULL, mod, name, name_len, lydctx->jsonctx->value,
-                    lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic, LY_VALUE_JSON, NULL, val_hints, node->schema);
+            rc = lyd_parser_create_meta((struct lyd_ctx *)lydctx, node, NULL, mod, name, name_len,
+                    lydctx->jsonctx->value, lydctx->jsonctx->value_len * 8, &lydctx->jsonctx->dynamic, LY_VALUE_JSON,
+                    NULL, val_hints, node->schema, node);
             LY_CHECK_GOTO(rc, cleanup);
 
             /* add/correct flags */
@@ -904,7 +897,7 @@ next_entry:
     goto cleanup;
 
 representation_error:
-    LOGVAL(ctx, LYVE_SYNTAX_JSON,
+    LOGVAL(ctx, prev, LYVE_SYNTAX_JSON,
             "The attribute(s) of %s \"%s\" is expected to be represented as JSON %s, but input data contains @%s/%s.",
             lys_nodetype2str(nodetype), node ? LYD_NAME(node) : LYD_NAME(prev), expected, lyjson_token2str(status),
             in_parent ? "" : "name");
@@ -918,44 +911,7 @@ cleanup:
         }
     }
     free(dynamic_prefname);
-    LOG_LOCBACK(snode ? 1 : 0, 0);
     return rc;
-}
-
-/**
- * @brief Eat the node pointed by @p node_p by inserting it into @p parent and maintain the @p first_p pointing
- * to the first child node.
- *
- * @param[in] parent Parent node to insert to, can be NULL in case of top-level (or provided first_p).
- * @param[in,out] first_p Pointer to the first sibling node in case of top-level.
- * @param[in,out] node_p pointer to the new node to insert, after the insert is done, pointer is set to NULL.
- * @param[in] last If set, always insert at the end.
- * @param[in] ext Extension instance of @p node_p, if any.
- */
-static void
-lydjson_maintain_children(struct lyd_node *parent, struct lyd_node **first_p, struct lyd_node **node_p, ly_bool last,
-        struct lysc_ext_instance *ext)
-{
-    if (!*node_p) {
-        return;
-    }
-
-    /* insert, keep first pointer correct */
-    if (ext) {
-        lyplg_ext_insert(parent, *node_p);
-    } else {
-        lyd_insert_node(parent, first_p, *node_p, last);
-    }
-    if (first_p) {
-        if (parent) {
-            *first_p = lyd_child(parent);
-        } else {
-            while ((*first_p)->prev->next) {
-                *first_p = (*first_p)->prev;
-            }
-        }
-    }
-    *node_p = NULL;
 }
 
 /**
@@ -989,7 +945,7 @@ lydjson_create_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_l
         dynamic = lydctx->jsonctx->dynamic;
         lydctx->jsonctx->dynamic = 0;
 
-        LY_CHECK_RET(lydjson_value_type_hint(lydctx, status_inner_p, &type_hint));
+        LY_CHECK_RET(lydjson_value_type_hint(lydctx, NULL, status_inner_p, &type_hint));
     }
 
     /* get the module name */
@@ -1010,9 +966,6 @@ lydjson_create_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_l
     return ret;
 }
 
-static LY_ERR lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct lyd_node **first_p,
-        struct ly_set *parsed);
-
 /**
  * @brief Parse opaq node from the input.
  *
@@ -1030,29 +983,30 @@ static LY_ERR lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *pa
  * @param[in,out] status_inner_p In case of processing JSON array, this parameter points to a standalone
  * context status of the array content. Otherwise, it is supposed to be the same as @p status_p.
  * @param[in,out] first_p First top-level/parent sibling, must be set if @p parent is not.
- * @param[out] node_p Pointer to the created opaq node.
+ * @param[out] node Pointer to the created opaq node.
  * @return LY_ERR value.
  */
 static LY_ERR
 lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len,
         struct lyd_node *parent, enum LYJSON_PARSER_STATUS *status_p, enum LYJSON_PARSER_STATUS *status_inner_p,
-        struct lyd_node **first_p, struct lyd_node **node_p)
+        struct lyd_node **first_p, struct lyd_node **node)
 {
     LY_ERR ret = LY_SUCCESS;
 
-    LY_CHECK_GOTO(ret = lydjson_create_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status_inner_p, node_p), cleanup);
+    LY_CHECK_GOTO(ret = lydjson_create_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status_inner_p, node), cleanup);
 
-    assert(*node_p);
-    LOG_LOCSET(NULL, *node_p);
+    /* insert */
+    ret = lyd_parser_node_insert(parent, first_p, NULL, lydctx->parse_opts, *node);
+    LY_CHECK_GOTO(ret, cleanup);
 
     if ((*status_p == LYJSON_ARRAY) && (*status_inner_p == LYJSON_NULL)) {
         /* special array null value */
-        ((struct lyd_node_opaq *)*node_p)->hints |= LYD_VALHINT_EMPTY;
+        ((struct lyd_node_opaq *)*node)->hints |= LYD_VALHINT_EMPTY;
 
         /* must be the only item */
         LY_CHECK_GOTO(ret = lyjson_ctx_next(lydctx->jsonctx, status_inner_p), cleanup);
         if (*status_inner_p != LYJSON_ARRAY_CLOSED) {
-            LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX, "Array \"null\" member with another member.");
+            LOGVAL(lydctx->jsonctx->ctx, *node, LYVE_SYNTAX, "Array \"null\" member with another member.");
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -1064,16 +1018,16 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
         /* process another instance of the same node */
         if (*status_inner_p == LYJSON_OBJECT) {
             /* array with objects, list */
-            ((struct lyd_node_opaq *)*node_p)->hints |= LYD_NODEHINT_LIST;
+            ((struct lyd_node_opaq *)*node)->hints |= LYD_NODEHINT_LIST;
 
             /* but first process children of the object in the array */
             do {
-                LY_CHECK_GOTO(ret = lydjson_subtree_r(lydctx, *node_p,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      (*node_p), NULL), cleanup);
+                LY_CHECK_GOTO(ret = lydjson_subtree_r(lydctx, *node, lyd_node_child_p(*node), NULL), cleanup);
                 *status_inner_p = lyjson_ctx_status(lydctx->jsonctx);
             } while (*status_inner_p == LYJSON_OBJECT_NEXT);
         } else {
             /* array with values, leaf-list */
-            ((struct lyd_node_opaq *)*node_p)->hints |= LYD_NODEHINT_LEAFLIST;
+            ((struct lyd_node_opaq *)*node)->hints |= LYD_NODEHINT_LEAFLIST;
         }
 
         LY_CHECK_GOTO(ret = lyjson_ctx_next(lydctx->jsonctx, status_inner_p), cleanup);
@@ -1084,35 +1038,28 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
 
         /* continue with the next instance */
         LY_CHECK_GOTO(ret = lyjson_ctx_next(lydctx->jsonctx, status_inner_p), cleanup);
-        assert(*node_p);
-        lydjson_maintain_children(parent, first_p, node_p,
-                lydctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT, NULL);
+        LY_CHECK_GOTO(ret = lydjson_create_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status_inner_p, node),
+                cleanup);
 
-        LOG_LOCBACK(0, 1);
-
-        LY_CHECK_GOTO(ret = lydjson_create_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status_inner_p, node_p), cleanup);
-
-        assert(*node_p);
-        LOG_LOCSET(NULL, *node_p);
+        /* insert */
+        ret = lyd_parser_node_insert(parent, first_p, NULL, lydctx->parse_opts, *node);
+        LY_CHECK_GOTO(ret, cleanup);
     }
 
     if (*status_p == LYJSON_OBJECT) {
-        ((struct lyd_node_opaq *)*node_p)->hints |= LYD_NODEHINT_CONTAINER;
+        ((struct lyd_node_opaq *)*node)->hints |= LYD_NODEHINT_CONTAINER;
         /* process children */
         do {
-            LY_CHECK_GOTO(ret = lydjson_subtree_r(lydctx, *node_p, lyd_node_child_p(*node_p), NULL), cleanup);
+            LY_CHECK_GOTO(ret = lydjson_subtree_r(lydctx, *node, lyd_node_child_p(*node), NULL), cleanup);
             *status_p = lyjson_ctx_status(lydctx->jsonctx);
         } while (*status_p == LYJSON_OBJECT_NEXT);
     }
 
 finish:
     /* finish linking metadata */
-    ret = lydjson_metadata_finish(lydctx, lyd_node_child_p(*node_p));
+    ret = lydjson_metadata_finish(lydctx, lyd_node_child_p(*node));
 
 cleanup:
-    if (*node_p) {
-        LOG_LOCBACK(0, 1);
-    }
     return ret;
 }
 
@@ -1133,13 +1080,13 @@ cleanup:
  * @param[in,out] status_p Pointer to the current status of the parser context,
  * since the function manipulates with the context and process the input, the status can be updated.
  * @param[in,out] first_p First top-level/parent sibling, must be set if @p parent is not.
- * @param[out] node_p Pointer to the created opaq node.
+ * @param[out] node Pointer to the created opaq node.
  * @return LY_ERR value.
  */
 static LY_ERR
 lydjson_ctx_next_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_len, const char *prefix,
         size_t prefix_len, struct lyd_node *parent, enum LYJSON_PARSER_STATUS *status_p,
-        struct lyd_node **first_p, struct lyd_node **node_p)
+        struct lyd_node **first_p, struct lyd_node **node)
 {
     enum LYJSON_PARSER_STATUS status_inner = 0;
 
@@ -1160,7 +1107,7 @@ lydjson_ctx_next_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_
 
     /* parse opaq node from the input */
     LY_CHECK_RET(lydjson_parse_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status_p, &status_inner,
-            first_p, node_p));
+            first_p, node));
 
     return LY_SUCCESS;
 }
@@ -1189,8 +1136,8 @@ lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node,
         enum LYJSON_PARSER_STATUS *status_p, struct lyd_node **first_p, struct lyd_node **node_p)
 {
     LY_ERR r;
-    const char *opaq_name, *mod_name, *attr_mod;
-    size_t opaq_name_len, attr_mod_len;
+    const char *opaq_name, *mod_name, *attr_mod = NULL;
+    size_t opaq_name_len, attr_mod_len = 0;
 
     if (!attr_node) {
         /* learn the attribute module name */
@@ -1252,7 +1199,7 @@ lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node,
         lydctx->parse_opts = prev_opts;
         LY_CHECK_RET(r);
     } else {
-        LY_CHECK_RET(lydjson_meta_attr(lydctx, snode, attr_node));
+        LY_CHECK_RET(lydjson_meta_attr(lydctx, attr_node));
     }
 
     return LY_SUCCESS;
@@ -1265,6 +1212,8 @@ lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node,
  * as before calling, despite it is necessary to process input data for checking.
  * @param[in] snode Schema node corresponding to the member currently being processed in the context.
  * @param[in] ext Extension instance of @p snode, if any.
+ * @param[in,out] parent Parent node, if any.
+ * @param[in,out] first_p First top-level node, is updated.
  * @param[in,out] status JSON parser status, is updated.
  * @param[out] node Parsed data (or opaque) node.
  * @return LY_SUCCESS if a node was successfully parsed,
@@ -1272,16 +1221,14 @@ lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node,
  * @return LY_ERR on other errors.
  */
 static LY_ERR
-lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, struct lysc_ext_instance *ext,
-        enum LYJSON_PARSER_STATUS *status, struct lyd_node **node)
+lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, const struct lysc_ext_instance *ext,
+        struct lyd_node *parent, struct lyd_node **first_p, enum LYJSON_PARSER_STATUS *status, struct lyd_node **node)
 {
     LY_ERR r, rc = LY_SUCCESS;
     uint32_t prev_parse_opts = lydctx->parse_opts, prev_int_opts = lydctx->int_opts;
     struct ly_in in_start;
     char *val = NULL;
     const char *end;
-    struct lyd_node *child = NULL;
-    ly_bool log_node = 0;
 
     assert(snode->nodetype & LYD_NODE_ANY);
 
@@ -1299,36 +1246,9 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, st
     /* create any node */
     switch (*status) {
     case LYJSON_OBJECT:
-        /* create node */
-        r = lyd_create_any(snode, NULL, LYD_ANYDATA_DATATREE, 1, node);
+        /* create empty node */
+        r = lyd_create_any(snode, NULL, NULL, 0, 1, 0, node);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-
-        assert(*node);
-        LOG_LOCSET(NULL, *node);
-        log_node = 1;
-
-        /* parse any data tree with correct options, first backup the current options and then make the parser
-         * process data as opaq nodes */
-        lydctx->parse_opts &= ~LYD_PARSE_STRICT;
-        lydctx->parse_opts |= LYD_PARSE_OPAQ | (ext ? LYD_PARSE_ONLY : 0);
-        lydctx->int_opts |= LYD_INTOPT_ANY | LYD_INTOPT_WITH_SIBLINGS;
-        lydctx->any_schema = snode;
-
-        /* process the anydata content */
-        do {
-            r = lydjson_subtree_r(lydctx, NULL, &child, NULL);
-            LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
-
-            *status = lyjson_ctx_status(lydctx->jsonctx);
-        } while (*status == LYJSON_OBJECT_NEXT);
-
-        /* finish linking metadata */
-        r = lydjson_metadata_finish(lydctx, &child);
-        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-
-        /* assign the data tree */
-        ((struct lyd_node_any *)*node)->value.tree = child;
-        child = NULL;
         break;
     case LYJSON_ARRAY:
         /* skip until the array end */
@@ -1347,20 +1267,21 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, st
             rc = LY_EMEM;
             goto cleanup;
         }
-        r = lyd_create_any(snode, val, LYD_ANYDATA_JSON, 1, node);
+        r = lyd_create_any(snode, NULL, val, LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST, 1, 0, node);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
         val = NULL;
         break;
     case LYJSON_STRING:
         /* string value */
         if (lydctx->jsonctx->dynamic) {
-            LY_CHECK_GOTO(rc = lyd_create_any(snode, lydctx->jsonctx->value, LYD_ANYDATA_STRING, 1, node), cleanup);
+            LY_CHECK_GOTO(rc = lyd_create_any(snode, NULL, lydctx->jsonctx->value,
+                    LYD_VALHINT_STRING | LYD_VALHINT_NUM64, 1, 0, node), cleanup);
             lydctx->jsonctx->dynamic = 0;
         } else {
             val = strndup(lydctx->jsonctx->value, lydctx->jsonctx->value_len);
             LY_CHECK_ERR_GOTO(!val, LOGMEM(lydctx->jsonctx->ctx); rc = LY_EMEM, cleanup);
 
-            r = lyd_create_any(snode, val, LYD_ANYDATA_STRING, 1, node);
+            r = lyd_create_any(snode, NULL, val, LYD_VALHINT_STRING | LYD_VALHINT_NUM64, 1, 0, node);
             LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
             val = NULL;
         }
@@ -1373,13 +1294,13 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, st
         val = strndup(lydctx->jsonctx->value, lydctx->jsonctx->value_len);
         LY_CHECK_ERR_GOTO(!val, LOGMEM(lydctx->jsonctx->ctx); rc = LY_EMEM, cleanup);
 
-        r = lyd_create_any(snode, val, LYD_ANYDATA_JSON, 1, node);
+        r = lyd_create_any(snode, NULL, val, (*status == LYJSON_NUMBER) ? LYD_VALHINT_DECNUM : LYD_VALHINT_BOOLEAN, 1, 0, node);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
         val = NULL;
         break;
     case LYJSON_NULL:
         /* no value */
-        r = lyd_create_any(snode, NULL, LYD_ANYDATA_JSON, 1, node);
+        r = lyd_create_any(snode, NULL, NULL, LYD_VALHINT_EMPTY, 1, 0, node);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
         break;
     default:
@@ -1388,15 +1309,45 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, st
         goto cleanup;
     }
 
-cleanup:
-    if (log_node) {
-        LOG_LOCBACK(0, 1);
+    /* insert, needs LYD_EXT flag */
+    if (ext) {
+        (*node)->flags |= LYD_EXT;
     }
+    r = lyd_parser_node_insert(parent, first_p, NULL, lydctx->parse_opts, *node);
+    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+
+    /* parse descendants */
+    if (*status == LYJSON_OBJECT) {
+        if (lydctx->parse_opts & LYD_PARSE_ANYDATA_STRICT) {
+            /* explicit strict data parsing */
+            lydctx->parse_opts |= LYD_PARSE_STRICT;
+        } else {
+            /* make the parser process data as opaq nodes */
+            lydctx->parse_opts &= ~LYD_PARSE_STRICT;
+            lydctx->parse_opts |= LYD_PARSE_OPAQ;
+        }
+        lydctx->parse_opts |= (ext ? LYD_PARSE_ONLY : 0);
+        lydctx->int_opts |= LYD_INTOPT_ANY | LYD_INTOPT_WITH_SIBLINGS;
+        lydctx->any_schema = snode;
+
+        /* process the anydata content */
+        do {
+            r = lydjson_subtree_r(lydctx, *node, &((struct lyd_node_any *)*node)->child, NULL);
+            LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+
+            *status = lyjson_ctx_status(lydctx->jsonctx);
+        } while (*status == LYJSON_OBJECT_NEXT);
+
+        /* finish linking metadata */
+        r = lydjson_metadata_finish(lydctx, &((struct lyd_node_any *)*node)->child);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+    }
+
+cleanup:
     lydctx->parse_opts = prev_parse_opts;
     lydctx->int_opts = prev_int_opts;
     lydctx->any_schema = NULL;
     free(val);
-    lyd_free_tree(child);
     return rc;
 }
 
@@ -1406,6 +1357,8 @@ cleanup:
  * @param[in] lydctx JSON data parser context.
  * @param[in] snode Schema node corresponding to the member currently being processed in the context.
  * @param[in] ext Extension instance of @p snode, if any.
+ * @param[in,out] parent Parent node, if any.
+ * @param[in,out] first_p First top-level node, is updated.
  * @param[in,out] status JSON parser status, is updated.
  * @param[out] node Parsed data (or opaque) node.
  * @return LY_SUCCESS if a node was successfully parsed,
@@ -1413,8 +1366,8 @@ cleanup:
  * @return LY_ERR on other errors.
  */
 static LY_ERR
-lydjson_parse_instance_inner(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, struct lysc_ext_instance *ext,
-        enum LYJSON_PARSER_STATUS *status, struct lyd_node **node)
+lydjson_parse_instance_inner(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, const struct lysc_ext_instance *ext,
+        struct lyd_node *parent, struct lyd_node **first_p, enum LYJSON_PARSER_STATUS *status, struct lyd_node **node)
 {
     LY_ERR r, rc = LY_SUCCESS;
     uint32_t prev_parse_opts = lydctx->parse_opts;
@@ -1424,8 +1377,12 @@ lydjson_parse_instance_inner(struct lyd_json_ctx *lydctx, const struct lysc_node
     /* create inner node */
     LY_CHECK_RET(lyd_create_inner(snode, node));
 
-    /* use it for logging */
-    LOG_LOCSET(NULL, *node);
+    /* insert, needs LYD_EXT flag */
+    if (ext) {
+        (*node)->flags |= LYD_EXT;
+    }
+    r = lyd_parser_node_insert(parent, first_p, NULL, lydctx->parse_opts, *node);
+    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
     if (ext) {
         /* only parse these extension data and validate afterwards */
@@ -1436,6 +1393,10 @@ lydjson_parse_instance_inner(struct lyd_json_ctx *lydctx, const struct lysc_node
     do {
         r = lydjson_subtree_r(lydctx, *node, lyd_node_child_p(*node), NULL);
         LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+
+        /* insert again, node may be a list that had its keys missing */
+        r = lyd_parser_node_insert(parent, first_p, NULL, lydctx->parse_opts, *node);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
         *status = lyjson_ctx_status(lydctx->jsonctx);
     } while (*status == LYJSON_OBJECT_NEXT);
@@ -1458,11 +1419,8 @@ lydjson_parse_instance_inner(struct lyd_json_ctx *lydctx, const struct lysc_node
 
 cleanup:
     lydctx->parse_opts = prev_parse_opts;
-    LOG_LOCBACK(0, 1);
-    if (!(*node)->hash) {
-        /* list without keys is unusable */
-        lyd_free_tree(*node);
-        *node = NULL;
+    if (rc && (!(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
+        lyd_parser_node_free(first_p, node);
     }
     return rc;
 }
@@ -1488,13 +1446,11 @@ cleanup:
  */
 static LY_ERR
 lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct lyd_node **first_p,
-        const struct lysc_node *snode, struct lysc_ext_instance *ext, const char *name, size_t name_len,
+        const struct lysc_node *snode, const struct lysc_ext_instance *ext, const char *name, size_t name_len,
         const char *prefix, size_t prefix_len, enum LYJSON_PARSER_STATUS *status, struct lyd_node **node)
 {
     LY_ERR r, rc = LY_SUCCESS;
     uint32_t type_hints = 0;
-
-    LOG_LOCSET(snode, NULL);
 
     r = lydjson_data_check_opaq(lydctx, snode, &type_hints);
     if (r == LY_SUCCESS) {
@@ -1510,9 +1466,16 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, str
             }
 
             /* create terminal node */
-            r = lyd_parser_create_term((struct lyd_ctx *)lydctx, snode, lydctx->jsonctx->value,
-                    lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic, LY_VALUE_JSON, NULL, type_hints, node);
+            r = lyd_parser_create_term((struct lyd_ctx *)lydctx, snode, parent, lydctx->jsonctx->value,
+                    lydctx->jsonctx->value_len * 8, &lydctx->jsonctx->dynamic, LY_VALUE_JSON, NULL, type_hints, node);
             LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+
+            /* insert, needs LYD_EXT flag */
+            if (ext) {
+                (*node)->flags |= LYD_EXT;
+            }
+            r = lyd_parser_node_insert(parent, first_p, NULL, lydctx->parse_opts, *node);
+            LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
             /* move JSON parser */
             if (*status == LYJSON_ARRAY) {
@@ -1527,11 +1490,11 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, str
             }
         } else if (snode->nodetype & LYD_NODE_INNER) {
             /* create inner node */
-            r = lydjson_parse_instance_inner(lydctx, snode, ext, status, node);
+            r = lydjson_parse_instance_inner(lydctx, snode, ext, parent, first_p, status, node);
             LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
         } else {
             /* create any node */
-            r = lydjson_parse_any(lydctx, snode, ext, status, node);
+            r = lydjson_parse_any(lydctx, snode, ext, parent, first_p, status, node);
             LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
         }
         LY_CHECK_GOTO(!*node, cleanup);
@@ -1539,12 +1502,6 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, str
         /* add/correct flags */
         r = lyd_parser_set_data_flags(*node, &(*node)->meta, (struct lyd_ctx *)lydctx, ext);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-
-        if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {
-            /* store for ext instance node validation, if needed */
-            r = lyd_validate_node_ext(*node, &lydctx->ext_node);
-            LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-        }
     } else if (r == LY_ENOT) {
         /* parse it again as an opaq node */
         r = lydjson_parse_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status, status, first_p, node);
@@ -1562,7 +1519,6 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, str
     }
 
 cleanup:
-    LOG_LOCBACK(1, 0);
     return rc;
 }
 
@@ -1582,7 +1538,7 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
     enum LYJSON_PARSER_STATUS status = lyjson_ctx_status(lydctx->jsonctx);
     const char *name, *prefix = NULL, *expected = NULL;
     size_t name_len, prefix_len = 0;
-    ly_bool is_meta = 0, parse_subtree;
+    ly_bool is_meta = 0;
     const struct lysc_node *snode = NULL;
     struct lysc_ext_instance *ext = NULL;
     struct lyd_node *node = NULL, *attr_node = NULL;
@@ -1591,10 +1547,6 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
 
     assert(parent || first_p);
     assert((status == LYJSON_OBJECT) || (status == LYJSON_OBJECT_NEXT));
-
-    parse_subtree = lydctx->parse_opts & LYD_PARSE_SUBTREE ? 1 : 0;
-    /* all descendants should be parsed */
-    lydctx->parse_opts &= ~LYD_PARSE_SUBTREE;
 
     r = lyjson_ctx_next(lydctx->jsonctx, &status);
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
@@ -1615,8 +1567,8 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
         if (status != LYJSON_STRING) {
-            LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX_JSON, "Expecting JSON %s but %s found.", lyjson_token2str(LYJSON_STRING),
-                    lyjson_token2str(status));
+            LOGVAL(lydctx->jsonctx->ctx, NULL, LYVE_SYNTAX_JSON, "Expecting JSON %s but %s found.",
+                    lyjson_token2str(LYJSON_STRING), lyjson_token2str(status));
             rc = LY_EVALID;
             goto cleanup;
         }
@@ -1624,6 +1576,10 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
         /* create node */
         r = lyd_create_opaq(lydctx->jsonctx->ctx, name, name_len, prefix, prefix_len, prefix, prefix_len,
                 lydctx->jsonctx->value, lydctx->jsonctx->value_len, NULL, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, &node);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+
+        /* insert */
+        r = lyd_parser_node_insert(parent, first_p, NULL, lydctx->parse_opts, node);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
         /* validate the value */
@@ -1657,7 +1613,7 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
     if (is_meta) {
         /* parse as metadata */
         if (!name_len && !prefix_len && !parent) {
-            LOGVAL(ctx, LYVE_SYNTAX_JSON,
+            LOGVAL(ctx, NULL, LYVE_SYNTAX_JSON,
                     "Invalid metadata format - \"@\" can be used only inside anydata, container or list entries.");
             r = LY_EVALID;
             LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
@@ -1679,7 +1635,7 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
 
             /* opaq node cannot have an empty string as the name. */
             if (name_len == 0) {
-                LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX_JSON, "JSON object member name cannot be a zero-length string.");
+                LOGVAL(lydctx->jsonctx->ctx, parent, LYVE_SYNTAX_JSON, "JSON object member name cannot be a zero-length string.");
                 r = LY_EVALID;
                 LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
             }
@@ -1749,9 +1705,6 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
                 }
                 LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
-                lydjson_maintain_children(parent, first_p, &node,
-                        lydctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT, ext);
-
                 /* move after the item(s) */
                 r = lyjson_ctx_next(lydctx->jsonctx, &status);
                 LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
@@ -1787,21 +1740,15 @@ node_parsed:
         ly_set_add(parsed, node, 1, NULL);
     }
 
-    /* finally connect the parsed node, is zeroed */
-    lydjson_maintain_children(parent, first_p, &node,
-            lydctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT, ext);
-
-    if (!parse_subtree) {
-        /* move after the item(s) */
-        r = lyjson_ctx_next(lydctx->jsonctx, &status);
-        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-    }
+    /* move after the item(s) */
+    r = lyjson_ctx_next(lydctx->jsonctx, &status);
+    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
     /* success */
     goto cleanup;
 
 representation_error:
-    LOGVAL(ctx, LYVE_SYNTAX_JSON, "Expecting JSON %s but %s \"%s\" is represented in input data as name/%s.",
+    LOGVAL(ctx, parent, LYVE_SYNTAX_JSON, "Expecting JSON %s but %s \"%s\" is represented in input data as name/%s.",
             expected, lys_nodetype2str(snode->nodetype), snode->name, lyjson_token2str(status));
     rc = LY_EVALID;
     if (lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) {
@@ -1813,7 +1760,9 @@ representation_error:
 
 cleanup:
     free(value);
-    lyd_free_tree(node);
+    if (rc && (!(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
+        lyd_parser_node_free(first_p, &node);
+    }
     return rc;
 }
 
@@ -1821,15 +1770,17 @@ cleanup:
  * @brief Common start of JSON parser processing different types of the input data.
  *
  * @param[in] ctx libyang context
+ * @param[in] schema Schema node of the potential bare value to check.
  * @param[in] in Input structure.
  * @param[in] parse_opts Options for parser, see @ref dataparseroptions.
  * @param[in] val_opts Options for the validation phase, see @ref datavalidationoptions.
+ * @param[out] status_p Initial status of the input structure.
  * @param[out] lydctx_p Data parser context to finish validation.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts,
-        struct lyd_json_ctx **lydctx_p)
+lyd_parse_json_init(const struct ly_ctx *ctx, const struct lysc_node *schema, struct ly_in *in, uint32_t parse_opts,
+        uint32_t val_opts, enum LYJSON_PARSER_STATUS *status_p, struct lyd_json_ctx **lydctx_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_json_ctx *lydctx;
@@ -1848,55 +1799,169 @@ lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_o
     status = lyjson_ctx_status(lydctx->jsonctx);
 
     /* parse_opts & LYD_PARSE_SUBTREE not implemented */
-    if (status != LYJSON_OBJECT) {
-        /* expecting top-level object */
-        LOGVAL(ctx, LYVE_SYNTAX_JSON, "Expected top-level JSON object, but %s found.", lyjson_token2str(status));
+    /* there are two options: either we want to parse a bare JSON value or a JSON object
+     * node of the bare JSON value has to have a schema, otherwise we do not know where to put the value
+     * the only types of nodes that can take on a value are a leaf (number, string or bool) and a leaf-list (array) */
+    if (schema &&
+            (((status == LYJSON_ARRAY) && (schema->nodetype & LYS_LEAFLIST)) ||
+            (((status == LYJSON_NUMBER) || (status == LYJSON_STRING) || (status == LYJSON_FALSE) ||
+            (status == LYJSON_TRUE) || (status == LYJSON_NULL) || (status == LYJSON_ARRAY)) && (schema->nodetype & LYS_LEAF)))) {
+        /* bare value (bare anydata 'value = object' is not supported) */
+    } else if (status == LYJSON_OBJECT) {
+        /* JSON object */
+    } else {
+        /* expecting top-level object or bare value */
+        LOGVAL(ctx, NULL, LYVE_SYNTAX_JSON, "Expected top-level JSON object or correct bare value, but %s found.",
+                lyjson_token2str(status));
         *lydctx_p = NULL;
         lyd_json_ctx_free((struct lyd_ctx *)lydctx);
         return LY_EVALID;
     }
 
     *lydctx_p = lydctx;
+    if (status_p) {
+        *status_p = status;
+    }
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Parse a bare JSON value.
+ *
+ * @param[in] lydctx Data parser context.
+ * @param[in,out] status Current status of the data parser context.
+ * @param[in] parent Parent to connect the parsed nodes to, if any.
+ * @param[in] schema Optional schema node of the parsed node (mandatory when parsing JSON value fragment).
+ * @param[in,out] first_p Pointer to the first top-level parsed node, used only if @p parent is NULL.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_parse_json_bare_value(struct lyd_json_ctx *lydctx, enum LYJSON_PARSER_STATUS *status, struct lyd_node *parent,
+        const struct lysc_node *schema, struct lyd_node **first_p)
+{
+    LY_ERR r, rc = LY_SUCCESS;
+    const struct ly_ctx *ctx = lydctx->jsonctx->ctx;
+    struct lyd_node *node = NULL;
+    const char *expected = NULL;
+
+    assert(schema);
+
+    /* this branch partly copies the behavior of lydjson_subtree_r() */
+
+    /* set expected representation */
+    switch (schema->nodetype) {
+    case LYS_LEAFLIST:
+        expected = "array of values";
+        break;
+    case LYS_LEAF:
+        if (*status == LYJSON_ARRAY) {
+            expected = "[null]";
+        } else {
+            expected = "value";
+        }
+        break;
+    }
+
+    /* check the representation according to the nodetype and then continue with the content */
+    /* for now object values are not supported (anydata) */
+    /* for now extensions not supported */
+    switch (schema->nodetype) {
+    case LYS_LEAFLIST:
+        LY_CHECK_GOTO(*status != LYJSON_ARRAY, representation_error);
+
+        /* process all the values/objects */
+        do {
+            /* move into array/next value */
+            r = lyjson_ctx_next(lydctx->jsonctx, status);
+            LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+            if (*status == LYJSON_ARRAY_CLOSED) {
+                /* empty array, fine... */
+                break;
+            }
+
+            r = lydjson_parse_instance(lydctx, parent, first_p, schema, NULL, schema->name, strlen(schema->name),
+                    NULL, 0, status, &node);
+            if (r == LY_ENOT) {
+                goto representation_error;
+            }
+            LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+
+            /* move after the item(s) */
+            r = lyjson_ctx_next(lydctx->jsonctx, status);
+            LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+        } while (*status == LYJSON_ARRAY_NEXT);
+
+        break;
+    case LYS_LEAF:
+        /* process the value/object */
+        r = lydjson_parse_instance(lydctx, parent, first_p, schema, NULL, schema->name, strlen(schema->name),
+                NULL, 0, status, &node);
+        if (r == LY_ENOT) {
+            goto representation_error;
+        }
+        LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+
+        break;
+    }
+
+    goto cleanup;
+
+representation_error:
+    LOGVAL(ctx, NULL, LYVE_SYNTAX_JSON, "Expecting JSON %s but %s \"%s\" is represented in input data as %s.",
+            expected, lys_nodetype2str(schema->nodetype), schema->name, lyjson_token2str(*status));
+    rc = LY_EVALID;
+
+cleanup:
+    if (rc && (!(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
+        lyd_parser_node_free(first_p, &node);
+    }
+    return rc;
+}
+
 LY_ERR
-lyd_parse_json(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
+lyd_parse_json(const struct ly_ctx *ctx, struct lyd_node *parent, const struct lysc_node *schema,
         struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts,
-        struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p)
+        struct ly_set *parsed, struct lyd_ctx **lydctx_p)
 {
     LY_ERR r, rc = LY_SUCCESS;
     struct lyd_json_ctx *lydctx = NULL;
-    enum LYJSON_PARSER_STATUS status;
+    enum LYJSON_PARSER_STATUS status = LYJSON_ERROR;
 
-    rc = lyd_parse_json_init(ctx, in, parse_opts, val_opts, &lydctx);
+    rc = lyd_parse_json_init(ctx, schema, in, parse_opts, val_opts, &status, &lydctx);
     LY_CHECK_GOTO(rc, cleanup);
 
     lydctx->int_opts = int_opts;
-    lydctx->ext = ext;
 
     /* find the operation node if it exists already */
     LY_CHECK_GOTO(rc = lyd_parser_find_operation(parent, int_opts, &lydctx->op_node), cleanup);
 
-    /* read subtree(s) */
-    do {
-        r = lydjson_subtree_r(lydctx, parent, first_p, parsed);
-        LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+    if (status != LYJSON_OBJECT) {
+        /* parse bare JSON value */
+        r = lyd_parse_json_bare_value(lydctx, &status, parent, schema, first_p);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+    } else {
+        /* parse JSON object */
 
-        status = lyjson_ctx_status(lydctx->jsonctx);
+        /* read subtree(s) */
+        do {
+            r = lydjson_subtree_r(lydctx, parent, first_p, parsed);
+            LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
-        if (!(int_opts & LYD_INTOPT_WITH_SIBLINGS)) {
-            break;
-        }
-    } while (status == LYJSON_OBJECT_NEXT);
+            status = lyjson_ctx_status(lydctx->jsonctx);
+
+            if (!(int_opts & LYD_INTOPT_WITH_SIBLINGS)) {
+                break;
+            }
+        } while (status == LYJSON_OBJECT_NEXT);
+    }
 
     if ((int_opts & LYD_INTOPT_NO_SIBLINGS) && lydctx->jsonctx->in->current[0] && (status != LYJSON_OBJECT_CLOSED)) {
-        LOGVAL(ctx, LYVE_SYNTAX, "Unexpected sibling node.");
+        LOGVAL(ctx, NULL, LYVE_SYNTAX, "Unexpected sibling node.");
         r = LY_EVALID;
         LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
     }
     if ((int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NOTIF | LYD_INTOPT_REPLY)) && !lydctx->op_node) {
-        LOGVAL(ctx, LYVE_DATA, "Missing the operation node.");
+        LOGVAL(ctx, NULL, LYVE_DATA, "Missing the operation node.");
         r = LY_EVALID;
         LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
     }
@@ -1904,19 +1969,6 @@ lyd_parse_json(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, st
     /* finish linking metadata */
     r = lydjson_metadata_finish(lydctx, parent ? lyd_node_child_p(parent) : first_p);
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-
-    if (parse_opts & LYD_PARSE_SUBTREE) {
-        /* check for a sibling object */
-        assert(subtree_sibling);
-        if (status == LYJSON_OBJECT_NEXT) {
-            *subtree_sibling = 1;
-
-            /* move to the next object */
-            ly_in_skip(lydctx->jsonctx->in, 1);
-        } else {
-            *subtree_sibling = 0;
-        }
-    }
 
 cleanup:
     /* there should be no unresolved types stored */
@@ -1926,11 +1978,16 @@ cleanup:
     if (rc && (!lydctx || !(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
         lyd_json_ctx_free((struct lyd_ctx *)lydctx);
     } else {
-        *lydctx_p = (struct lyd_ctx *)lydctx;
-
         /* the JSON context is no more needed, freeing it also stops logging line numbers which would be confusing now */
         lyjson_ctx_free(lydctx->jsonctx);
         lydctx->jsonctx = NULL;
+
+        /* set optional lydctx pointer, otherwise free */
+        if (lydctx_p) {
+            *lydctx_p = (struct lyd_ctx *)lydctx;
+        } else {
+            lyd_json_ctx_free((struct lyd_ctx *)lydctx);
+        }
     }
     return rc;
 }
@@ -1962,7 +2019,7 @@ lydjson_envelope(struct lyjson_ctx *jsonctx, const char *name, const char *modul
     r = lyjson_ctx_next(jsonctx, &status);
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
     if (status == LYJSON_OBJECT_CLOSED) {
-        LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Empty JSON object.");
+        LOGVAL(jsonctx->ctx, NULL, LYVE_SYNTAX, "Empty JSON object.");
         rc = LY_EVALID;
         goto cleanup;
     }
@@ -1971,15 +2028,16 @@ lydjson_envelope(struct lyjson_ctx *jsonctx, const char *name, const char *modul
     assert(status == LYJSON_OBJECT_NAME);
     lydjson_parse_name(jsonctx->value, jsonctx->value_len, &nam, &nam_len, &prefix, &prefix_len, &is_meta);
     if (is_meta) {
-        LOGVAL(jsonctx->ctx, LYVE_DATA, "Unexpected metadata.");
+        LOGVAL(jsonctx->ctx, NULL, LYVE_DATA, "Unexpected metadata.");
         rc = LY_EVALID;
         goto cleanup;
     } else if (module && ly_strncmp(module, prefix, prefix_len)) {
-        LOGVAL(jsonctx->ctx, LYVE_DATA, "Unexpected module \"%.*s\" instead of \"%s\".", (int)prefix_len, prefix, module);
+        LOGVAL(jsonctx->ctx, NULL, LYVE_DATA, "Unexpected module \"%.*s\" instead of \"%s\".", (int)prefix_len, prefix,
+                module);
         rc = LY_EVALID;
         goto cleanup;
     } else if (ly_strncmp(name, nam, nam_len)) {
-        LOGVAL(jsonctx->ctx, LYVE_DATA, "Unexpected object \"%.*s\" instead of \"%s\".", (int)nam_len, nam, name);
+        LOGVAL(jsonctx->ctx, NULL, LYVE_DATA, "Unexpected object \"%.*s\" instead of \"%s\".", (int)nam_len, nam, name);
         rc = LY_EVALID;
         goto cleanup;
     }
@@ -2001,9 +2059,9 @@ cleanup:
 }
 
 LY_ERR
-lyd_parse_json_restconf(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
-        struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, enum lyd_type data_type,
-        struct lyd_node **envp, struct ly_set *parsed, struct lyd_ctx **lydctx_p)
+lyd_parse_json_restconf(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_in *in,
+        uint32_t parse_opts, uint32_t val_opts, enum lyd_type data_type, struct lyd_node **envp, struct ly_set *parsed,
+        struct lyd_ctx **lydctx_p)
 {
     LY_ERR rc = LY_SUCCESS, r;
     struct lyd_json_ctx *lydctx = NULL;
@@ -2016,12 +2074,10 @@ lyd_parse_json_restconf(const struct ly_ctx *ctx, const struct lysc_ext_instance
 
     assert((data_type == LYD_TYPE_RPC_RESTCONF) || (data_type == LYD_TYPE_NOTIF_RESTCONF) ||
             (data_type == LYD_TYPE_REPLY_RESTCONF));
-    assert(!(parse_opts & LYD_PARSE_SUBTREE));
 
     /* init context */
-    rc = lyd_parse_json_init(ctx, in, parse_opts, val_opts, &lydctx);
+    rc = lyd_parse_json_init(ctx, NULL, in, parse_opts, val_opts, NULL, &lydctx);
     LY_CHECK_GOTO(rc, cleanup);
-    lydctx->ext = ext;
 
     switch (data_type) {
     case LYD_TYPE_RPC_RESTCONF:
@@ -2075,7 +2131,7 @@ lyd_parse_json_restconf(const struct ly_ctx *ctx, const struct lysc_ext_instance
     /* close all opened elements */
     for (i = 0; i < close_elem; ++i) {
         if (lyjson_ctx_status(lydctx->jsonctx) != LYJSON_OBJECT_CLOSED) {
-            LOGVAL(ctx, LYVE_SYNTAX_JSON, "Expecting JSON %s but %s found.", lyjson_token2str(LYJSON_OBJECT_CLOSED),
+            LOGVAL(ctx, NULL, LYVE_SYNTAX_JSON, "Expecting JSON %s but %s found.", lyjson_token2str(LYJSON_OBJECT_CLOSED),
                     lyjson_token2str(lyjson_ctx_status(lydctx->jsonctx)));
             rc = LY_EVALID;
             goto cleanup;
@@ -2086,7 +2142,7 @@ lyd_parse_json_restconf(const struct ly_ctx *ctx, const struct lysc_ext_instance
     }
 
     if ((int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NOTIF | LYD_INTOPT_REPLY)) && !lydctx->op_node) {
-        LOGVAL(ctx, LYVE_DATA, "Missing the operation node.");
+        LOGVAL(ctx, NULL, LYVE_DATA, "Missing the operation node.");
         r = LY_EVALID;
         LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
     }
@@ -2094,7 +2150,7 @@ lyd_parse_json_restconf(const struct ly_ctx *ctx, const struct lysc_ext_instance
         /* parse as a child of the envelope */
         node = (*first_p)->prev;
         if (node->schema) {
-            LOGVAL(ctx, LYVE_DATA, "Missing notification \"eventTime\" node.");
+            LOGVAL(ctx, NULL, LYVE_DATA, "Missing notification \"eventTime\" node.");
             r = LY_EVALID;
             LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
         } else {

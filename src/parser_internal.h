@@ -22,6 +22,7 @@
 
 struct lyd_ctx;
 struct ly_in;
+struct lycbor_ctx;
 struct lysp_ext_substmt;
 struct lysp_stmt;
 struct lysp_yang_ctx;
@@ -175,13 +176,10 @@ struct lyd_lyb_ctx {
     };
 };
 
-#ifdef ENABLE_CBOR_SUPPORT
 /**
  * @brief Internal context for CBOR data parser.
  */
-struct lyd_cbor_ctx
-{  
-    const struct lysc_ext_instance *ext; /**< extension instance possibly changing document root context, NULL if none */
+struct lyd_cbor_ctx {
     uint32_t parse_opts;                 /**< various @ref dataparseroptions. */
     uint32_t val_opts;                   /**< various @ref datavalidationoptions. */
     uint32_t int_opts;                   /**< internal parser options */
@@ -190,19 +188,19 @@ struct lyd_cbor_ctx
     struct ly_set node_when;             /**< set of nodes with "when" conditions */
     struct ly_set node_types;            /**< set of nodes with unresolved types */
     struct ly_set meta_types;            /**< set of metadata with unresolved types */
-    struct ly_set ext_node;              /**< set of nodes with extension instances to validate */
     struct ly_set ext_val;               /**< set of nested extension data to validate */
     struct lyd_node *op_node;            /**< if an operation is being parsed, its node */
     const struct lys_module *val_getnext_ht_mod;
     struct ly_ht *val_getnext_ht;
-    
+
     /* callbacks */
     lyd_ctx_free_clb free; /**< destructor */
 
-    struct lycbor_ctx *cborctx; /**< CBOR context for low-level operations */    
+    const struct lysc_ext_instance *ext; /**< extension instance possibly changing document root context, NULL if none */
+    struct ly_set ext_node;              /**< set of nodes with extension instances to validate */
+    struct lycbor_ctx *cborctx; /**< CBOR context for low-level operations */
     const struct lysc_node *any_schema; /**< parent anyxml/anydata schema node if parsing nested data tree */
 };
-#endif /* ENABLE_CBOR_SUPPORT */
 
 /**
  * @brief Parsed extension instance data to validate.
@@ -354,7 +352,6 @@ LY_ERR lyd_parse_json_restconf(const struct ly_ctx *ctx, struct lyd_node *parent
 LY_ERR lyd_parse_lyb(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_in *in,
         uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts, struct ly_set *parsed, struct lyd_ctx **lydctx_p);
 
-#ifdef ENABLE_CBOR_SUPPORT
 /**
  * @brief Parse CBOR data into libyang data tree.
  *
@@ -377,8 +374,6 @@ LY_ERR lyd_parse_lyb(const struct ly_ctx *ctx, struct lyd_node *parent, struct l
 LY_ERR lyd_parse_cbor(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
                       struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts,
                       struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p);
-
-#endif /* ENABLE_CBOR_SUPPORT */
 
 /**
  * @brief Validate eventTime date-and-time value.
