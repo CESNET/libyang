@@ -326,7 +326,6 @@ endif()
 
 find_package(CBOR)
 if(CBOR_FOUND)
-    set(CBOR_SUPPORT ON)
     list(APPEND libsrc src/parser_cbor.c src/lcbor.c src/printer_cbor.c)
     list(APPEND headers src/lcbor.h)
     list(APPEND format_sources src/parser_cbor.c src/lcbor.h src/lcbor.c src/printer_cbor.c)

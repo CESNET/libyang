@@ -3,7 +3,7 @@
  * @author Meher Rushi <meherrushi2@gmail.com>
  * @brief CBOR data parser for libyang
  *
- * Copyright (c) 2020 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.

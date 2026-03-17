@@ -3,7 +3,7 @@
  * @author MeherRushi <meherrrushi2@gmail.com>
  * @brief CBOR data parser routines for libyang (abstraction over libcbor)
  *
- * Copyright (c) 2020 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -37,13 +37,13 @@ enum lyd_cbor_format
 };
 
 struct lycbor_ctx {
-    const struct ly_ctx *ctx; /**< libyang context */
-    struct ly_in *in;   /**< input structure */
-    
+    const struct ly_ctx *ctx;
+    struct ly_in *in;   /** input structure */
+
     cbor_item_t *cbor_data; /**< parsed CBOR data */
-    
+
     enum lyd_cbor_format format; /**< CBOR format variant */
-    
+
     struct {
         cbor_item_t *cbor_data; /**< parsed CBOR data */
         enum lyd_cbor_format format; /**< CBOR format variant */
@@ -63,19 +63,17 @@ const char *lycbor_token2str(enum cbor_type cbortype);
  * @brief Create new CBOR context for parsing.
  *
  * @param[in] ctx libyang context.
- * @param[in] in Input handler.
- * @param[out] cborctx_p Pointer to store the created CBOR context.
+ * @param[in] in CBOR string data to parse.
+ * @param[out] cborctx New CBOR parser context containing parsed CBOR data.
  * @return LY_ERR value.
  */
-LY_ERR
-lycbor_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lycbor_ctx **cborctx_p);
+LY_ERR lycbor_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lycbor_ctx **cborctx);
 
 /**
  * @brief Free CBOR context.
  *
  * @param[in] cborctx CBOR context to free.
  */
-void
-lycbor_ctx_free(struct lycbor_ctx *cborctx);
+void lycbor_ctx_free(struct lycbor_ctx *cborctx);
 
 #endif /* LY_CBOR_H_ */

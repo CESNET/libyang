@@ -3,7 +3,7 @@
  * @author MeherRushi <meherrrushi2@gmail.com>
  * @brief CBOR data parser for libyang (abstraction over libcbor)
  *
- * Copyright (c) 2020 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -46,12 +46,8 @@ lycbor_token2str(enum cbor_type cbortype)
     return "";
 }
 
-/**
- * @brief Free CBOR context.
- *
- * @param[in] cborctx CBOR context to free.
- */
-void lycbor_ctx_free(struct lycbor_ctx *cborctx)
+void
+lycbor_ctx_free(struct lycbor_ctx *cborctx)
 {
     if (cborctx) {
         if (cborctx->cbor_data) {
@@ -78,14 +74,6 @@ lydcbor_detect_format(struct ly_in *in, enum lyd_cbor_format *format)
     return LY_SUCCESS;
 }
 
-/**
- * @brief Create new CBOR context for parsing.
- *
- * @param[in] ctx libyang context.
- * @param[in] in Input handler.
- * @param[out] cborctx_p Pointer to store the created CBOR context.
- * @return LY_ERR value.
- */
 LY_ERR
 lycbor_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lycbor_ctx **cborctx_p)
 {
@@ -107,6 +95,9 @@ lycbor_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lycbor_ctx **c
     cborctx->in = in;
     cborctx->format = format;
 
+     /* input line logging */
+    ly_log_location(NULL, NULL, in);
+
     /* load and parse CBOR data */
     cborctx->cbor_data = cbor_load((cbor_data)in->current, in->length, &result);
     if (!cborctx->cbor_data) {
@@ -120,9 +111,6 @@ lycbor_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lycbor_ctx **c
         free(cborctx);
         return LY_EVALID;
     }
-
-    /* input line logging */
-    ly_log_location(NULL, NULL, in);
 
     *cborctx_p = cborctx;
     return ret;
