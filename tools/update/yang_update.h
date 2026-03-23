@@ -71,21 +71,37 @@ struct lyu_plg {
 };
 
 /**
- * @brief Update data in a specific revision of a YANG module to the newest supported one based on the plugins.
+ * @brief Find the new YANG module revision to update data for.
  *
- * There is a chain of plugins created to update the data to the latest found revision of the module.
+ * There is a chain of plugins created to find the latest suitable YANG module or the matching one.
+ *
+ * @param[in] mod_old Old YANG module revision.
+ * @param[in] ctx_new Context to use for loading the new YANG module.
+ * @param[in] revision Optional new revision. If not set, find the latest one.
+ * @param[out] mod_new New YANG module revision.
+ * @return LY_SUCCESS on success;
+ * @return LY_ERR value on error.
+ */
+LIBYANG_API_DECL LY_ERR lyd_update_find_new(const struct lys_module *mod_old, struct ly_ctx *ctx_new,
+        const char *revision, struct lys_module **mod_new);
+
+/**
+ * @brief Update data in a specific revision of a YANG module to a newer revision.
+ *
  * All the required YANG modules are loaded into temporary contexts that will use the same search paths and import
  * callbacks as the context of @p mod_old.
  *
- * @param[in] mod_old Old revision of the YANG module.
+ * To get @p mod_new, ::lyd_update_find_new function can be used.
+ *
+ * @param[in] mod_old Old YANG module revision.
  * @param[in] data_old Old data of @p mod_old to update.
- * @param[out] ctx_new New context with the latest found revision of @p mod_old.
- * @param[out] data_new New updated data using @p ctx_new.
+ * @param[in] mod_new New YANG module revision.
+ * @param[out] data_new New updated data of @p mod_new.
  * @return LY_SUCCESS on success;
  * @return LY_ERR value on error.
  */
 LIBYANG_API_DECL LY_ERR lyd_update(const struct lys_module *mod_old, const struct lyd_node *data_old,
-        struct ly_ctx **ctx_new, struct lyd_node **data_new);
+        const struct lys_module *mod_new, struct lyd_node **data_new);
 
 /**
  * @brief Print all the changes between the old and updated data in a summarized form into a file.
