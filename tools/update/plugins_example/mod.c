@@ -119,8 +119,33 @@ cont_list1_cb3(const struct lyd_node *data_old, const struct lyd_node *node_old,
     return LY_SUCCESS;
 }
 
+static LY_ERR
+cont_ll_cb3(const struct lyd_node *data_old, const struct lyd_node *node_old, const struct lysc_node *schema_old,
+        struct lyd_node *parent_new, const struct lysc_node *schema_new, const struct lyd_node *node_cmp,
+        const void **user_data, struct lyd_node **node_new)
+{
+    const char *key_val;
+
+    assert(data_old && !node_old && !schema_old && schema_new && node_cmp && user_data);
+
+    /* create 2 new instances */
+    key_val = *user_data;
+    if (!key_val) {
+        lyd_new_term(parent_new, NULL, schema_new->name, "val1", 0, node_new);
+        *user_data = lyd_get_value(*node_new);
+    } else if (!strcmp(key_val, "val1")) {
+        lyd_new_term(parent_new, NULL, schema_new->name, "val2", 0, node_new);
+        *user_data = lyd_get_value(*node_new);
+    } else if (!strcmp(key_val, "val2")) {
+        *user_data = NULL;
+    }
+
+    return LY_SUCCESS;
+}
+
 static struct lyu_plg_rule rules_mod_3_6[] = {
     { .node_path = "/mod:cont/list1", .node_cb = cont_list1_cb3 },
+    { .node_path = "/mod:cont/ll", .node_cb = cont_ll_cb3 },
     { 0 }
 };
 

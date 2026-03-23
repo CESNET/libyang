@@ -63,7 +63,7 @@ main(int argc, char *argv[])
         {NULL,               0,                 NULL, 0}
     };
     struct ly_ctx *ctx_old = NULL, *ctx_new = NULL;
-    struct lys_module *mod_old;
+    struct lys_module *mod_old, *mod_new;
     struct lyd_node *data_old = NULL, *data_new = NULL;
     const char *mod_old_path = NULL, **searchdirs = NULL, *data_old_path = NULL, *data_new_path = NULL, *changes_path = NULL;
     uint32_t i, searchdir_count = 0;
@@ -141,7 +141,7 @@ main(int argc, char *argv[])
     /* set verbosity */
     ly_log_level(verbosity);
 
-    /* create the context */
+    /* create the contexts */
     if (ly_ctx_new(NULL, 0, &ctx_old)) {
         rc = -1;
         goto cleanup;
@@ -149,8 +149,15 @@ main(int argc, char *argv[])
     for (i = 0; i < searchdir_count; ++i) {
         ly_ctx_set_searchdir(ctx_old, searchdirs[i]);
     }
+    if (ly_ctx_new(NULL, 0, &ctx_new)) {
+        rc = -1;
+        goto cleanup;
+    }
+    for (i = 0; i < searchdir_count; ++i) {
+        ly_ctx_set_searchdir(ctx_new, searchdirs[i]);
+    }
 
-    /* load the module */
+    /* load the old module */
     if (lys_parse_path(ctx_old, mod_old_path, LYS_IN_YANG, &mod_old)) {
         rc = -1;
         goto cleanup;
@@ -162,8 +169,14 @@ main(int argc, char *argv[])
         goto cleanup;
     }
 
+    /* load the new module */
+    if (lyd_update_find_new(mod_old, ctx_new, NULL, &mod_new)) {
+        rc = -1;
+        goto cleanup;
+    }
+
     /* get the updated data */
-    if (lyd_update(mod_old, data_old, &ctx_new, &data_new)) {
+    if (lyd_update(mod_old, data_old, mod_new, &data_new)) {
         rc = -1;
         goto cleanup;
     }
