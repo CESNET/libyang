@@ -33,15 +33,24 @@ set(format_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
     PARENT_SCOPE)
 
+if(YANGUPDATE_TEST_LIB)
+    # special static lib name when compiling it for a test
+    set(LIB_NAME ${YANGUPDATE_TEST_LIB})
+else()
+    set(LIB_NAME yang_update)
+endif()
+
 # yang update library
-add_library(yang_update STATIC ${lib_src})
-target_include_directories(yang_update PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_BINARY_DIR})
+add_library(${LIB_NAME} STATIC ${lib_src})
+target_include_directories(${LIB_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_BINARY_DIR})
 get_target_property(yang_linked_libraries yang LINK_LIBRARIES)
-target_link_libraries(yang_update $<TARGET_OBJECTS:yangobj> ${yang_linked_libraries})
+target_link_libraries(${LIB_NAME} $<TARGET_OBJECTS:yangobj> ${yang_linked_libraries})
 
-# yangupdate
-add_executable(yangupdate main.c)
-target_include_directories(yangupdate PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_BINARY_DIR})
-target_link_libraries(yangupdate yang_update)
+if(NOT YANGUPDATE_TEST_LIB)
+    # yangupdate
+    add_executable(yangupdate main.c)
+    target_include_directories(yangupdate PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_BINARY_DIR})
+    target_link_libraries(yangupdate ${LIB_NAME})
 
-install(TARGETS yangupdate DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(TARGETS yangupdate DESTINATION ${CMAKE_INSTALL_BINDIR})
+endif()

@@ -4,6 +4,8 @@ module mod {
 
     revision 2025-06-01;
 
+    feature feat1;
+
     container cont {
         list list1 {
             key key1;
@@ -23,6 +25,7 @@ module mod {
         }
 
         leaf-list ll {
+            if-feature feat1;
             type string;
         }
     }

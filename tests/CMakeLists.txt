@@ -50,5 +50,6 @@ if(NOT WIN32)
 endif()
 add_subdirectory(yanglint)
 add_subdirectory(yangre)
+add_subdirectory(yangupdate)
 
 set(format_sources ${format_sources} PARENT_SCOPE)
