@@ -1,0 +1,17 @@
+module find_mod1 {
+    namespace "urn:find_mod1";
+    prefix m1;
+
+    revision 2025-01-01;
+    revision 2025-03-01;
+    revision 2025-06-01;
+
+    feature feat1;
+
+    container cont {
+        leaf l {
+            if-feature feat1;
+            type uint32;
+        }
+    }
+}
