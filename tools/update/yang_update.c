@@ -17,6 +17,7 @@
 #include "yang_update.h"
 
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,155 +26,460 @@
 
 #include "ly_common.h"
 #include "path.h"
+#include "tree_schema_internal.h"
 #include "xpath.h"
 
 /* generated */
 #include "yang_update_plugins.h"
 
 /**
- * @brief Check the collected plugins they are valid and correct.
+ * @brief Add a plugin into an array.
  *
- * @param[in] ctx Context to use for logging.
- * @param[in] plgs Array of sorted plugins.
- * @param[in] plg_count Count of @p plgs.
+ * @param[in] plg Plugin to add.
+ * @param[in] idx Index to add on.
+ * @param[in,out] plgs Array of plugins to add to.
+ * @param[in,out] plg_count Count of @p plgs.
  * @return LY_ERR value.
  */
 static LY_ERR
-yu_plg_check(const struct ly_ctx *ctx, struct lyu_plg **plgs, uint32_t plg_count)
+yu_plg_add(struct lyu_plg *plg, uint32_t idx, struct lyu_plg ***plgs, uint32_t *plg_count)
 {
-    LY_ERR rc = LY_SUCCESS;
+    void *mem;
+
+    assert(idx <= *plg_count);
+
+    mem = realloc(*plgs, (*plg_count + 1) * sizeof **plgs);
+    LY_CHECK_ERR_RET(!mem, LOGMEM(NULL), LY_EMEM);
+    *plgs = mem;
+
+    if (idx < *plg_count) {
+        memmove((*plgs) + idx + 1, (*plgs) + idx, (*plg_count - idx) * sizeof **plgs);
+    }
+
+    (*plgs)[idx] = plg;
+    ++(*plg_count);
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Perform basic checks of a plugin.
+ *
+ * @param[in] ctx Context to use for logging.
+ * @param[in] plg Plugin to check.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+yu_plg_check(const struct ly_ctx *ctx, const struct lyu_plg *plg)
+{
     uint32_t i;
+    struct lyu_plg_module *imp;
 
-    /* check the plugins */
-    for (i = 0; i < plg_count; ++i) {
-        if (!strcmp(plgs[i]->revision_old, plgs[i]->revision_new)) {
-            LOGERR(ctx, LY_EINVAL, "Invalid plugin of \"%s\" with the same revision old and revision new \"%s\".",
-                    plgs[i]->module_name, plgs[i]->revision_new);
-            rc = LY_EINVAL;
-            goto cleanup;
+    /* module name */
+    if (!plg->module_name) {
+        LOGERR(ctx, LY_EINVAL, "Plugin without its \"module_name\".");
+        return LY_EINVAL;
+    }
+
+    /* revisions */
+    if (!plg->revision_old || !plg->revision_new) {
+        LOGERR(ctx, LY_EINVAL, "Plugin \"%s\" without its \"revision_old\" or \"revision_new\".", plg->module_name);
+        return LY_EINVAL;
+    } else if (lys_check_date(ctx, plg->revision_old, strlen(plg->revision_old), "revision_old")) {
+        return LY_EINVAL;
+    } else if (lys_check_date(ctx, plg->revision_new, strlen(plg->revision_new), "revision_new")) {
+        return LY_EINVAL;
+    } else if (strcmp(plg->revision_old, plg->revision_new) >= 0) {
+        LOGERR(ctx, LY_EINVAL, "Plugin \"%s\" with invalid revision old %s and new %s.", plg->module_name,
+                plg->revision_old, plg->revision_new);
+        return LY_EINVAL;
+    }
+
+    /* imports */
+    if (plg->imports_old) {
+        for (i = 0; plg->imports_old[i].name; ++i) {
+            imp = &plg->imports_old[i];
+
+            if (imp->revision && lys_check_date(ctx, imp->revision, strlen(imp->revision), "revision")) {
+                return LY_EINVAL;
+            } else if (imp->features && imp->features[0] && !imp->implemented) {
+                LOGERR(ctx, LY_EINVAL, "Old import \"%s\" with features must be implemented.", imp->name);
+                return LY_EINVAL;
+            }
         }
+    }
+    if (plg->imports_new) {
+        for (i = 0; plg->imports_new[i].name; ++i) {
+            imp = &plg->imports_new[i];
 
-        if (strcmp(plgs[i]->revision_old, plgs[i]->revision_new) > 0) {
-            LOGERR(ctx, LY_EINVAL, "Invalid plugin of \"%s\" with newer revision old \"%s\" than revision new \"%s\".",
-                    plgs[i]->module_name, plgs[i]->revision_old, plgs[i]->revision_new);
-            rc = LY_EINVAL;
-            goto cleanup;
-        }
-
-        if ((i < plg_count - 1) && !strcmp(plgs[i]->revision_old, plgs[i + 1]->revision_old) &&
-                !strcmp(plgs[i]->revision_new, plgs[i + 1]->revision_new)) {
-            LOGERR(ctx, LY_EINVAL, "Duplicate plugin of \"%s\" revision old \"%s\" and revision new\"%s\".",
-                    plgs[i]->module_name, plgs[i]->revision_old, plgs[i]->revision_new);
-            rc = LY_EINVAL;
-            goto cleanup;
-        }
-
-        if ((i < plg_count - 1) && strcmp(plgs[i]->revision_new, plgs[i + 1]->revision_old)) {
-            LOGERR(ctx, LY_EINVAL, "Plugin of \"%s\" revision new \"%s\" does not match the next plugin "
-                    "revision old \"%s\".", plgs[i]->module_name, plgs[i]->revision_new, plgs[i + 1]->revision_old);
-            rc = LY_EINVAL;
-            goto cleanup;
+            if (imp->revision && lys_check_date(ctx, imp->revision, strlen(imp->revision), "revision")) {
+                return LY_EINVAL;
+            } else if (imp->features && imp->features[0] && !imp->implemented) {
+                LOGERR(ctx, LY_EINVAL, "New import \"%s\" with features must be implemented.", imp->name);
+                return LY_EINVAL;
+            }
         }
     }
 
-cleanup:
-    return rc;
+    /* rules checked when the paths are compiled */
+
+    return LY_SUCCESS;
 }
 
 /**
- * @brief qsort() plugin for sorting plugins of a module in an ascending order based on their revision_old.
+ * @brief Concatenate features into a string.
+ *
+ * @param[in] features Array of features terminated by NULL.
+ * @return String with all the features.
  */
-static int
-yu_plg_qsort_cmp(const void *item1, const void *item2)
+static char *
+yu_features_str(const char **features)
 {
-    struct lyu_plg *plg1, *plg2;
+    uint32_t i, len = 0, used;
+    char *str;
 
-    plg1 = *(struct lyu_plg **)item1;
-    plg2 = *(struct lyu_plg **)item2;
+    /* count the length */
+    for (i = 0; features[i]; ++i) {
+        if (i) {
+            len += 2;
+        }
 
-    assert(!strcmp(plg1->module_name, plg2->module_name));
+        len += 1 + strlen(features[i]) + 1;
+    }
 
-    return strcmp(plg1->revision_old, plg2->revision_old);
+    str = malloc(len + 1);
+    LY_CHECK_ERR_RET(!str, LOGMEM(NULL), NULL);
+    used = 0;
+
+    /* print */
+    for (i = 0; features[i]; ++i) {
+        if (i) {
+            used += sprintf(str + used, ", ");
+        }
+
+        used += sprintf(str + used, "\"%s\"", features[i]);
+    }
+    assert(used == len);
+
+    return str;
 }
 
 /**
- * @brief Collect all plugins for a module from the compiled plugins.
+ * @brief Compare revisions and feature arrays for an exact match.
+ *
+ * @param[in] rev1 First revision.
+ * @param[in] feats1 First feature array, unset means no enabled features.
+ * @param[in] rev2 Second revision.
+ * @param[in] feats2 Second feature array, unset means any enabled features (skip check).
+ * @return 1 if the revisions and features match;
+ * @return 0 otherwise.
+ */
+static ly_bool
+yu_rev_feat_equal(const char *rev1, const char **feats1, const char *rev2, const char **feats2)
+{
+    const char *no_feats[] = {NULL};
+    uint32_t i, j;
+    ly_bool found;
+
+    assert(rev1);
+
+    if (!rev2 && !feats2) {
+        /* never matches */
+        return 0;
+    }
+
+    /* revision */
+    if (rev2 && strcmp(rev1, rev2)) {
+        return 0;
+    }
+
+    /* features */
+    if (feats2) {
+        if (!feats1) {
+            /* unset means no enabled features */
+            feats1 = no_feats;
+        }
+
+        for (i = 0; feats1[i]; ++i) {
+            found = 0;
+            for (j = 0; feats2[j]; ++j) {
+                if (!strcmp(feats1[i], feats2[j])) {
+                    found = 1;
+                    break;
+                }
+            }
+
+            if (!found) {
+                /* not found */
+                return 0;
+            }
+        }
+
+        /* check all features matched */
+        for (j = 0; feats2[j]; ++j) {}
+        if (i != j) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+/**
+ * @brief Collect all plugins for a module from the compiled plugins starting at the end with new module.
  *
  * @param[in] ctx Context to use for logging.
  * @param[in] mod_name Module name.
- * @param[in] revision_old Module old (first) revision.
- * @param[out] plgs Array of found plugins.
- * @param[out] plg_count Count of @p plgs.
+ * @param[in] revision_old Old module revision (first).
+ * @param[in] features_old Old module enabled features.
+ * @param[in] revision_new Optional new module revision (last). If not set, find the latest.
+ * @param[in] features_new Optional new module enabled features. If not set, use those of the latest revision.
+ * @param[in,out] plgs Array of found plugins.
+ * @param[in,out] plg_count Count of @p plgs.
  * @return LY_ERR value.
  */
 static LY_ERR
-yu_plg_collect(const struct ly_ctx *ctx, const char *mod_name, const char *revision_old, struct lyu_plg ***plgs,
-        uint32_t *plg_count)
+yu_plg_collect_new(const struct ly_ctx *ctx, const char *mod_name, const char *revision_old, const char **features_old,
+        const char *revision_new, const char **features_new, struct lyu_plg ***plgs, uint32_t *plg_count)
 {
     LY_ERR rc = LY_SUCCESS;
-    void *mem;
-    uint32_t i;
+    struct lyu_plg *plg;
+    uint32_t i, orig_plg_count;
+    const char *rev, **feats;
+    char *feats_str;
+    ly_bool found;
 
-    *plgs = NULL;
-    *plg_count = 0;
+    assert(revision_new || features_new);
 
-    /* collect all the plugins of the module */
+    orig_plg_count = *plg_count;
+
+    /* find the last plugin */
+    plg = NULL;
     for (i = 0; i < sizeof lyu_plugins / sizeof *lyu_plugins; ++i) {
         /* module name */
         if (strcmp(mod_name, lyu_plugins[i]->module_name)) {
             continue;
         }
 
-        /* add a plugin */
-        mem = realloc(*plgs, (*plg_count + 1) * sizeof **plgs);
-        LY_CHECK_ERR_GOTO(!mem, LOGMEM(ctx); rc = LY_EMEM, cleanup);
-        *plgs = mem;
+        /* compare new revision and/or features */
+        if (!yu_rev_feat_equal(lyu_plugins[i]->revision_new, lyu_plugins[i]->features_new, revision_new, features_new)) {
+            continue;
+        }
 
-        (*plgs)[*plg_count] = lyu_plugins[i];
-        ++(*plg_count);
-    }
-    if (!*plg_count) {
-        LOGERR(ctx, LY_ENOTFOUND, "Failed to find a plugin for \"%s\" YANG module.", mod_name);
-        rc = LY_ENOTFOUND;
-        goto cleanup;
-    }
-
-    /* sort based on revision old */
-    qsort(*plgs, *plg_count, sizeof **plgs, yu_plg_qsort_cmp);
-
-    /* check the plugins */
-    if ((rc = yu_plg_check(ctx, *plgs, *plg_count))) {
-        goto cleanup;
-    }
-
-    /* remove any older revision plugins */
-    for (i = 0; (i < *plg_count) && (strcmp(revision_old, (*plgs)[i]->revision_old) > 0); ++i) {}
-    if (i == *plg_count) {
-        /* no plugins left but okay if the data have already been updated */
-        if (!strcmp(revision_old, (*plgs)[*plg_count]->revision_new)) {
-            LOGVRB("Data already in the latest revision \"%s\".", revision_old);
-        } else {
-            LOGERR(ctx, LY_ENOTFOUND, "Data in revision \"%s\" and the latest plugin revision new is \"%s\".",
-                    revision_old, (*plgs)[*plg_count]->revision_new);
-            rc = LY_ENOTFOUND;
+        if (!plg) {
+            /* first match */
+            plg = lyu_plugins[i];
+        } else if (!revision_new && (strcmp(plg->revision_new, lyu_plugins[i]->revision_new) < 0)) {
+            /* newer revision */
+            plg = lyu_plugins[i];
+        } else if (revision_new) {
+            /* same revision possibly with a different set of features */
+            if (features_new) {
+                feats_str = yu_features_str(features_new);
+                LOGERR(ctx, LY_EDENIED, "Ambiguous last plugin of \"%s\" with new revision %s and features %s.",
+                        mod_name, revision_new, feats_str);
+                free(feats_str);
+            } else {
+                LOGERR(ctx, LY_EDENIED, "Ambiguous last plugin of \"%s\" with new revision %s.",
+                        mod_name, revision_new);
+            }
+            rc = LY_EDENIED;
             goto cleanup;
         }
     }
-    if (i) {
-        memmove(*plgs, (*plgs) + i, (*plg_count - i) * sizeof **plgs);
-        *plg_count -= i;
 
-        if (!*plg_count) {
-            free(*plgs);
-            *plgs = NULL;
+    if (!plg) {
+        if (features_new) {
+            feats_str = yu_features_str(features_new);
+            LOGERR(ctx, LY_ENOTFOUND, "Failed to find the last plugin of \"%s\" with new revision %s and features %s.",
+                    mod_name, revision_new, feats_str);
+            free(feats_str);
+        } else {
+            LOGERR(ctx, LY_ENOTFOUND, "Failed to find the last plugin of \"%s\" with new revision %s.",
+                    mod_name, revision_new);
         }
-    }
-
-    /* check the first plugin */
-    if (strcmp(revision_old, (*plgs)[0]->revision_old)) {
-        LOGERR(ctx, LY_ENOTFOUND, "Failed to find a plugin for \"%s\" with revision old \"%s\".", mod_name, revision_old);
         rc = LY_ENOTFOUND;
         goto cleanup;
+    }
+
+    /* add a plugin */
+    LY_CHECK_GOTO(rc = yu_plg_add(lyu_plugins[i], orig_plg_count, plgs, plg_count), cleanup);
+
+    /* continue search from the end */
+    rev = (*plgs)[*plg_count - 1]->revision_old;
+    feats = (*plgs)[*plg_count - 1]->features_old;
+
+    while (1) {
+        /* check end */
+        if (orig_plg_count && yu_rev_feat_equal((*plgs)[orig_plg_count - 1]->revision_new,
+                (*plgs)[orig_plg_count - 1]->features_new, rev, feats)) {
+            break;
+        } else if (!orig_plg_count && yu_rev_feat_equal(revision_old, features_old, rev, feats)) {
+            break;
+        }
+
+        found = 0;
+        for (i = 0; i < sizeof lyu_plugins / sizeof *lyu_plugins; ++i) {
+            /* module name */
+            if (strcmp(mod_name, lyu_plugins[i]->module_name)) {
+                continue;
+            }
+
+            /* compare new revision and features */
+            if (!yu_rev_feat_equal(lyu_plugins[i]->revision_old, lyu_plugins[i]->features_old, rev, feats)) {
+                continue;
+            }
+
+            if (!found) {
+                found = 1;
+            } else if (found) {
+                /* more matches */
+                found = 2;
+                break;
+            }
+
+            /* add a plugin */
+            LY_CHECK_GOTO(rc = yu_plg_add(lyu_plugins[i], orig_plg_count, plgs, plg_count), cleanup);
+        }
+
+        if (!found) {
+            /* failed next search */
+            feats_str = yu_features_str(feats);
+            LOGERR(ctx, LY_ENOTFOUND, "Failed to find the next plugin of \"%s\" with new revision %s and features %s.",
+                    mod_name, rev, feats_str);
+            free(feats_str);
+            rc = LY_ENOTFOUND;
+            goto cleanup;
+        } else if (found == 1) {
+            /* continue search */
+        } else if (found == 2) {
+            /* ambiguous next search */
+            feats_str = yu_features_str(feats);
+            LOGERR(ctx, LY_EDENIED, "Ambiguous next plugin of \"%s\" with old revision %s and features %s.",
+                    mod_name, rev, feats_str);
+            free(feats_str);
+            rc = LY_EDENIED;
+            goto cleanup;
+        }
+
+        /* next iter */
+        rev = (*plgs)[orig_plg_count]->revision_old;
+        feats = (*plgs)[orig_plg_count]->features_old;
+    }
+
+cleanup:
+    if (rc) {
+        *plg_count = orig_plg_count;
+    }
+    return rc;
+}
+
+/**
+ * @brief Collect all plugins for a module from the compiled plugins starting at the beginning with old module.
+ *
+ * @param[in] ctx Context to use for logging.
+ * @param[in] mod_name Module name.
+ * @param[in] revision_old Old module revision (first).
+ * @param[in] features_old Old module enabled features.
+ * @param[in] revision_new Optional new module revision (last). If not set, find the latest.
+ * @param[in] features_new Optional new module enabled features. If not set, use those of the latest revision.
+ * @param[out] plgs Array of found plugins.
+ * @param[out] plg_count Count of @p plgs.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+yu_plg_collect(const struct ly_ctx *ctx, const char *mod_name, const char *revision_old, const char **features_old,
+        const char *revision_new, const char **features_new, struct lyu_plg ***plgs, uint32_t *plg_count)
+{
+    LY_ERR rc = LY_SUCCESS;
+    uint32_t i;
+    const char *rev, **feats;
+    char *feats_str;
+    ly_bool checks, found;
+
+    assert(ctx && mod_name && revision_old && features_old && plgs && plg_count);
+
+    *plgs = NULL;
+    *plg_count = 0;
+
+    /* start from the beginning */
+    rev = revision_old;
+    feats = features_old;
+
+    /* check the plugins only once */
+    checks = 1;
+    while (1) {
+        found = 0;
+        for (i = 0; i < sizeof lyu_plugins / sizeof *lyu_plugins; ++i) {
+            /* check the plugin */
+            if (checks && (rc = yu_plg_check(ctx, lyu_plugins[i]))) {
+                goto cleanup;
+            }
+
+            /* module name */
+            if (strcmp(mod_name, lyu_plugins[i]->module_name)) {
+                continue;
+            }
+
+            /* compare old revision and features */
+            if (!yu_rev_feat_equal(lyu_plugins[i]->revision_old, lyu_plugins[i]->features_old, rev, feats)) {
+                continue;
+            }
+
+            if (!found) {
+                found = 1;
+            } else if (found) {
+                /* more matches */
+                found = 2;
+                break;
+            }
+
+            /* add a plugin */
+            LY_CHECK_GOTO(rc = yu_plg_add(lyu_plugins[i], *plg_count, plgs, plg_count), cleanup);
+        }
+        checks = 0;
+
+        if (!found) {
+            if (!revision_new && !features_new) {
+                /* done, latest found */
+                break;
+            }
+
+            /* failed next search */
+            feats_str = yu_features_str(feats);
+            LOGERR(ctx, LY_ENOTFOUND, "Failed to find the next plugin of \"%s\" with old revision %s and features %s.",
+                    mod_name, rev, feats_str);
+            free(feats_str);
+            rc = LY_ENOTFOUND;
+            goto cleanup;
+        } else if (found == 1) {
+            if (yu_rev_feat_equal((*plgs)[*plg_count - 1]->revision_new, (*plgs)[*plg_count - 1]->features_new,
+                    revision_new, features_new)) {
+                /* done */
+                break;
+            }
+
+            /* continue search */
+        } else if (found == 2) {
+            if (!revision_new && !features_new) {
+                /* ambiguous next search */
+                feats_str = yu_features_str(feats);
+                LOGERR(ctx, LY_EDENIED, "Ambiguous plugin of \"%s\" with old revision %s and features %s.",
+                        mod_name, rev, feats_str);
+                free(feats_str);
+                rc = LY_EDENIED;
+                goto cleanup;
+            }
+
+            /* special search, try to match plugins based on new revision and/or features */
+            LY_CHECK_GOTO(rc = yu_plg_collect_new(ctx, mod_name, rev, feats, revision_new, features_new, plgs, plg_count),
+                    cleanup);
+            break;
+        }
+
+        /* next iter */
+        rev = (*plgs)[*plg_count - 1]->revision_new;
+        feats = (*plgs)[*plg_count - 1]->features_new;
     }
 
 cleanup:
@@ -185,52 +491,270 @@ cleanup:
     return rc;
 }
 
-LIBYANG_API_DEF LY_ERR
-lyd_update_find_new(const struct lys_module *mod_old, struct ly_ctx *ctx_new, const char *revision,
-        struct lys_module **mod_new)
-{
-    LY_ERR rc = LY_SUCCESS;
-    struct lyu_plg **plgs = NULL;
-    uint32_t i, plg_count = 0;
+struct yu_module_imp_arg {
+    const char * const *search_dirs;
+    const struct lyu_plg_module *imports;
+};
 
-    LY_CHECK_ARG_RET(NULL, mod_old, ctx_new, mod_new, LY_EINVAL);
-    if (!mod_old->revision) {
-        LOGERR(ctx_new, LY_EINVAL, "Old module \"%s\" without a revision.", mod_old->name);
-        return LY_EINVAL;
+/**
+ * @brief Context module import frree callback for libyang.
+ */
+static void
+yu_module_imp_data_free_clb(void *module_data, void *UNUSED(user_data))
+{
+    free(module_data);
+}
+
+/**
+ * @brief Context module import callback for libyang.
+ */
+static LY_ERR
+yu_module_imp_clb(const char *mod_name, const char *mod_rev, const char *submod_name, const char *submod_rev,
+        void *user_data, LYS_INFORMAT *format, const char **module_data, ly_module_imp_data_free_clb *free_module_data)
+{
+    struct yu_module_imp_arg *arg = user_data;
+    LY_ERR rc = LY_SUCCESS;
+    const struct lyu_plg_module *imp;
+    uint32_t i;
+    char *path = NULL, *data;
+    LYS_INFORMAT fmt;
+    FILE *f = NULL;
+    long size;
+
+    /* try to find the (sub)module */
+    if (submod_name) {
+        LY_CHECK_GOTO(rc = lys_search_localfile(arg->search_dirs, 0, submod_name, submod_rev, &path, &fmt), cleanup);
+    } else {
+        /* look for the module in the imports */
+        imp = NULL;
+        for (i = 0; arg->imports && arg->imports[i].name; ++i) {
+            if (!strcmp(arg->imports[i].name, mod_name)) {
+                imp = &arg->imports[i];
+                break;
+            }
+        }
+
+        if (imp && mod_rev && imp->revision && strcmp(mod_rev, imp->revision)) {
+            LOGERR(NULL, LY_EDENIED, "Module \"%s\" imported in revision %s but plugin requires revision %s.",
+                    mod_name, mod_rev, imp->revision);
+            rc = LY_EDENIED;
+            goto cleanup;
+        } else if (imp && imp->revision) {
+            mod_rev = imp->revision;
+        }
+
+        LY_CHECK_GOTO(rc = lys_search_localfile(arg->search_dirs, 0, mod_name, mod_rev, &path, &fmt), cleanup);
     }
 
-    /* ietf-yang-schema-comparison needs to be in the context */
-    if (!ly_ctx_get_module_implemented(ctx_new, "ietf-yang-schema-comparison") &&
-            !ly_ctx_load_module(ctx_new, "ietf-yang-schema-comparison", NULL, NULL)) {
+    if (!path) {
+        /* modue not found */
         rc = LY_ENOTFOUND;
         goto cleanup;
     }
 
-    /* collect plugins */
-    if ((rc = yu_plg_collect(ctx_new, mod_old->name, mod_old->revision, &plgs, &plg_count))) {
+    /* load module data */
+    f = fopen(path, "r");
+    if (!f) {
+        LOGERR(NULL, LY_ESYS, "Failed to open \"%s\" (%s).", path, strerror(errno));
+        rc = LY_ESYS;
         goto cleanup;
     }
 
-    if (revision) {
-        /* check the target module plugin exists */
-        for (i = 0; i < plg_count; ++i) {
-            if (!strcmp(plgs[i]->revision_new, revision)) {
-                break;
-            }
-        }
-        if (i == plg_count) {
-            LOGERR(ctx_new, LY_ENOTFOUND, "New module \"%s\" revision %s plugin not found.", mod_old->name, revision);
-            rc = LY_ENOTFOUND;
-            goto cleanup;
-        }
-    } else {
-        /* just use the latest revision */
-        revision = plgs[plg_count - 1]->revision_new;
+    if (fseek(f, 0, SEEK_END)) {
+        LOGERR(NULL, LY_ESYS, "Failed to seek \"%s\" (%s).", path, strerror(errno));
+        rc = LY_ESYS;
+        goto cleanup;
+    }
+    size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    data = malloc(size + 1);
+    if (!data) {
+        LOGMEM(NULL);
+        rc = LY_EMEM;
+        goto cleanup;
+    }
+    fread(data, 1, size, f);
+    data[size] = '\0';
+
+    *format = fmt;
+    *module_data = data;
+    *free_module_data = yu_module_imp_data_free_clb;
+
+cleanup:
+    if (f) {
+        fclose(f);
+    }
+    free(path);
+    return rc;
+}
+
+/**
+ * @brief Check that the context contains all the explicit imports in their desired state
+ * and make changes if possible.
+ *
+ * @param[in] ctx Context to use.
+ * @param[in] imports Array of imports to use.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+yu_ctx_load_check_imports(struct ly_ctx *ctx, const struct lyu_plg_module *imports)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lys_module *mod;
+    uint32_t i;
+
+    if (!imports) {
+        /* nothing to check */
+        goto cleanup;
     }
 
-    /* load the new YANG module */
-    *mod_new = ly_ctx_load_module(ctx_new, mod_old->name, revision, NULL);
-    if (!*mod_new) {
+    /* implement modules/enable only the requested features */
+    for (i = 0; imports[i].name; ++i) {
+        if (!imports[i].implemented) {
+            continue;
+        }
+
+        /* try to get the module from the context */
+        if (imports[i].revision) {
+            mod = ly_ctx_get_module(ctx, imports[i].name, imports[i].revision);
+        } else {
+            mod = ly_ctx_get_module_implemented(ctx, imports[i].name);
+        }
+
+        if (!mod) {
+            /* load the module */
+            mod = ly_ctx_load_module(ctx, imports[i].name, imports[i].revision, imports[i].features);
+            if (!mod) {
+                rc = LY_ENOTFOUND;
+                goto cleanup;
+            }
+        } else if (imports[i].features) {
+            /* set the features */
+            LY_CHECK_GOTO(rc = lys_set_implemented(mod, imports[i].features), cleanup);
+        }
+    }
+
+    /* check imported modules */
+    for (i = 0; imports[i].name; ++i) {
+        if (imports[i].implemented) {
+            continue;
+        }
+
+        /* try to get the module from the context */
+        if (imports[i].revision) {
+            mod = ly_ctx_get_module(ctx, imports[i].name, imports[i].revision);
+        } else {
+            mod = ly_ctx_get_module_latest(ctx, imports[i].name);
+        }
+
+        if (!mod) {
+            LOGERR(NULL, LY_EINVAL, "Imported plugin module \"%s%s%s\" not imported by any module.", imports[i].name,
+                    imports[i].revision ? "@" : "", imports[i].revision ? imports[i].revision : "");
+            rc = LY_EINVAL;
+            goto cleanup;
+        }
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create a new context with a specific revision of a module.
+ *
+ * @param[in] mod_name Module name.
+ * @param[in] revision Module revision.
+ * @param[in] features Features to enable.
+ * @param[in] search_dirs Search dirs to use.
+ * @param[in] imports All the specific imports to use.
+ * @param[out] ctx Created context.
+ * @param[out] mod Loaded module.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+yu_ctx_load(const char *mod_name, const char *revision, const char **features, const char * const *search_dirs,
+        const struct lyu_plg_module *imports, struct ly_ctx **ctx, struct lys_module **mod)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct yu_module_imp_arg arg;
+    uint32_t i;
+
+    *ctx = NULL;
+
+    /* create the context */
+    if ((rc = ly_ctx_new(NULL, 0, ctx))) {
+        goto cleanup;
+    }
+
+    /* set the import callback */
+    arg.search_dirs = search_dirs;
+    arg.imports = imports;
+    ly_ctx_set_module_imp_clb(*ctx, yu_module_imp_clb, &arg);
+
+    /* load the main module */
+    *mod = ly_ctx_load_module(*ctx, mod_name, revision, features);
+    if (!*mod) {
+        rc = LY_ENOTFOUND;
+        goto cleanup;
+    }
+
+    /* check the context and plugin imports */
+    LY_CHECK_GOTO(rc = yu_ctx_load_check_imports(*ctx, imports), cleanup);
+
+    /* load ietf-yang-schema-comparison */
+    if (!ly_ctx_load_module(*ctx, "ietf-yang-schema-comparison", NULL, NULL)) {
+        rc = LY_ENOTFOUND;
+        goto cleanup;
+    }
+
+    /* make the context usable by user */
+    ly_ctx_set_module_imp_clb(*ctx, NULL, NULL);
+    for (i = 0; search_dirs && search_dirs[i]; ++i) {
+        ly_ctx_set_searchdir(*ctx, search_dirs[i]);
+    }
+
+cleanup:
+    if (rc) {
+        ly_ctx_destroy(*ctx);
+        *ctx = NULL;
+    }
+    return rc;
+}
+
+LIBYANG_API_DEF LY_ERR
+lyd_update_find_new(const struct lys_module *mod_old, const char *revision_new, const char **features_new,
+        struct ly_ctx **ctx_new, struct lys_module **mod_new)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyu_plg **plgs = NULL;
+    uint32_t plg_count = 0;
+
+    LY_CHECK_ARG_RET(NULL, mod_old, mod_old->implemented, ctx_new, mod_new, LY_EINVAL);
+    if (!mod_old->revision) {
+        LOGERR(mod_old->ctx, LY_EINVAL, "Old module \"%s\" without a revision.", mod_old->name);
+        return LY_EINVAL;
+    } else if (revision_new && (strcmp(mod_old->revision, revision_new) >= 0)) {
+        LOGERR(mod_old->ctx, LY_EINVAL, "Module \"%s\" old revision %s not earlier than its new revision %s.",
+                mod_old->name, mod_old->revision, revision_new);
+        return LY_EINVAL;
+    }
+
+    /* collect correct plugin chain */
+    if ((rc = yu_plg_collect(mod_old->ctx, mod_old->name, mod_old->revision, mod_old->compiled->features, revision_new,
+            features_new, &plgs, &plg_count))) {
+        goto cleanup;
+    }
+
+    /* create the context and load the new YANG module */
+    if ((rc = yu_ctx_load(mod_old->name, plgs[plg_count - 1]->revision_new, plgs[plg_count - 1]->features_new,
+            ly_ctx_get_searchdirs(mod_old->ctx), plgs[plg_count - 1]->imports_new, ctx_new, mod_new))) {
+        goto cleanup;
+    }
+
+    /* ietf-yang-schema-comparison needs to be in the context */
+    if (!ly_ctx_get_module_implemented(*ctx_new, "ietf-yang-schema-comparison") &&
+            !ly_ctx_load_module(*ctx_new, "ietf-yang-schema-comparison", NULL, NULL)) {
         rc = LY_ENOTFOUND;
         goto cleanup;
     }
@@ -494,59 +1018,6 @@ cleanup:
 }
 
 /**
- * @brief Create a new context with a specific revision of a module.
- *
- * @param[in] mod_name Module name.
- * @param[in] revision Module revision.
- * @param[in] search_dirs Search dirs to use.
- * @param[in] mod_clb Module import callback to use.
- * @param[in] mod_clb_data User data for @p mod_clb.
- * @param[out] mod Loaded module.
- * @param[out] ctx Created context.
- * @return LY_ERR value.
- */
-static LY_ERR
-yu_ctx_new(const char *mod_name, const char *revision, const char * const *search_dirs, ly_module_imp_clb mod_clb,
-        void *mod_clb_data, const struct lys_module **mod, struct ly_ctx **ctx)
-{
-    LY_ERR rc = LY_SUCCESS;
-    uint32_t i;
-
-    *ctx = NULL;
-
-    /* create the context */
-    if ((rc = ly_ctx_new(NULL, 0, ctx))) {
-        goto cleanup;
-    }
-    for (i = 0; search_dirs && search_dirs[i]; ++i) {
-        ly_ctx_set_searchdir(*ctx, search_dirs[i]);
-    }
-    if (mod_clb) {
-        ly_ctx_set_module_imp_clb(*ctx, mod_clb, mod_clb_data);
-    }
-
-    /* load ietf-yang-schema-comparison */
-    if (!ly_ctx_load_module(*ctx, "ietf-yang-schema-comparison", NULL, NULL)) {
-        rc = LY_ENOTFOUND;
-        goto cleanup;
-    }
-
-    /* load the main module */
-    *mod = ly_ctx_load_module(*ctx, mod_name, revision, NULL);
-    if (!*mod) {
-        rc = LY_ENOTFOUND;
-        goto cleanup;
-    }
-
-cleanup:
-    if (rc) {
-        ly_ctx_destroy(*ctx);
-        *ctx = NULL;
-    }
-    return rc;
-}
-
-/**
  * @brief Compile paths of rules.
  *
  * @param[in] ctx Contex to use for logging.
@@ -613,14 +1084,11 @@ lyd_update(const struct lys_module *mod_old, const struct lyd_node *data_old, co
     struct lyu_plg **plgs = NULL;
     uint32_t i, j, rule_count = 0, plg_count = 0;
     struct ly_ctx *ctx1 = NULL, *ctx2 = NULL;
-    const struct lys_module *mod1, *mod2;
+    struct lys_module *mod1, *mod2;
     struct lyd_node *data1 = NULL, *data2 = NULL;
     struct ly_path **rule_paths = NULL;
-    const char * const *search_dirs = NULL;
-    ly_module_imp_clb mod_clb = NULL;
-    void *mod_clb_data = NULL;
 
-    LY_CHECK_ARG_RET(NULL, mod_old, mod_new, data_new, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, mod_old, mod_old->implemented, mod_new, mod_new->implemented, data_new, LY_EINVAL);
     if (strcmp(mod_old->name, mod_new->name)) {
         LOGERR(mod_new->ctx, LY_EINVAL, "Old module \"%s\" and new module \"%s\" mismatch.", mod_old->name, mod_new->name);
         return LY_EINVAL;
@@ -639,41 +1107,24 @@ lyd_update(const struct lys_module *mod_old, const struct lyd_node *data_old, co
     *data_new = NULL;
 
     /* collect plugins */
-    if ((rc = yu_plg_collect(mod_old->ctx, mod_old->name, mod_old->revision, &plgs, &plg_count))) {
+    if ((rc = yu_plg_collect(mod_old->ctx, mod_old->name, mod_old->revision, mod_old->compiled->features,
+            mod_new->revision, mod_new->compiled->features, &plgs, &plg_count))) {
         goto cleanup;
     }
 
-    /* check there is the new module */
-    for (i = 0; i < plg_count; ++i) {
-        if (!strcmp(plgs[i]->revision_new, mod_new->revision)) {
-            /* found the last used plugin */
-            plg_count = i + 1;
-            break;
-        }
-    }
-    if (i == plg_count) {
-        LOGERR(mod_new->ctx, LY_ENOTFOUND, "New module \"%s\" revision %s plugin not found.", mod_new->name,
-                mod_new->revision);
-        return LY_ENOTFOUND;
-    }
-
-    /* collect context params */
-    search_dirs = ly_ctx_get_searchdirs(mod_old->ctx);
-    mod_clb = ly_ctx_get_module_imp_clb(mod_old->ctx, &mod_clb_data);
-
     /* first iter */
     ctx1 = mod_old->ctx;
-    mod1 = mod_old;
+    mod1 = (struct lys_module *)mod_old;
     data1 = (struct lyd_node *)data_old;
 
     for (i = 0; i < plg_count; ++i) {
         /* prepare the new context */
         if (i == plg_count - 1) {
             ctx2 = mod_new->ctx;
-            mod2 = mod_new;
+            mod2 = (struct lys_module *)mod_new;
         } else {
-            if ((rc = yu_ctx_new(plgs[i]->module_name, plgs[i]->revision_new, search_dirs, mod_clb, mod_clb_data, &mod2,
-                    &ctx2))) {
+            if ((rc = yu_ctx_load(plgs[i]->module_name, plgs[i]->revision_new, plgs[i]->features_new,
+                    ly_ctx_get_searchdirs(mod_old->ctx), plgs[i]->imports_new, &ctx2, &mod2))) {
                 goto cleanup;
             }
         }

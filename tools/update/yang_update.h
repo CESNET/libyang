@@ -49,6 +49,13 @@ typedef LY_ERR (*lyu_plg_node_cb)(const struct lyd_node *data_old, const struct 
         const struct lysc_node *schema_old, struct lyd_node *parent_new, const struct lysc_node *schema_new,
         const struct lyd_node *node_cmp, const void **user_data, struct lyd_node **node_new);
 
+struct lyu_plg_module {
+    const char *name;       /** YANG module name */
+    const char *revision;   /** YANG module revision */
+    const char **features;  /** enabled YANG module features, NULL means any */
+    int implemented;        /** whether module is implemented or only imported */
+};
+
 /**
  * @brief Rule for updating a single node.
  *
@@ -64,10 +71,14 @@ struct lyu_plg_rule {
  * @brief Plugin for updating the data from a specific old revision to a specific new revision of a YANG module.
  */
 struct lyu_plg {
-    const char *module_name;    /**< YANG module name */
-    const char *revision_old;   /**< old YANG revision of the input data */
-    const char *revision_new;   /**< new YANG revision of the output data */
-    struct lyu_plg_rule *rules; /**< array of rules to apply on the nodes terminated by an empty rule */
+    const char *module_name;            /**< YANG module name */
+    const char *revision_old;           /**< old YANG module revision */
+    const char **features_old;          /**< old YANG module features terminated by NULL, unset means no enabled features */
+    struct lyu_plg_module *imports_old; /**< old module imports terminated by an empty import */
+    const char *revision_new;           /**< new YANG module revision */
+    const char **features_new;          /**< new YANG module features terminated by NULL, unset means no enabled features */
+    struct lyu_plg_module *imports_new; /**< new module imports terminated by an empty import */
+    struct lyu_plg_rule *rules;         /**< array of rules to apply on the nodes terminated by an empty rule */
 };
 
 /**
@@ -75,15 +86,17 @@ struct lyu_plg {
  *
  * There is a chain of plugins created to find the latest suitable YANG module or the matching one.
  *
- * @param[in] mod_old Old YANG module revision.
- * @param[in] ctx_new Context to use for loading the new YANG module.
- * @param[in] revision Optional new revision. If not set, find the latest one.
+ * @param[in] mod_old Old YANG module revision. Search paths of its context are used.
+ * @param[in] revision_new Optional new revision. If not set, find the latest one.
+ * @param[in] features_new Optional new module enabled features terminated by NULL. If not set, features of the latest
+ * suitable plugin are used.
+ * @param[out] ctx_new New created context.
  * @param[out] mod_new New YANG module revision.
  * @return LY_SUCCESS on success;
  * @return LY_ERR value on error.
  */
-LIBYANG_API_DECL LY_ERR lyd_update_find_new(const struct lys_module *mod_old, struct ly_ctx *ctx_new,
-        const char *revision, struct lys_module **mod_new);
+LIBYANG_API_DECL LY_ERR lyd_update_find_new(const struct lys_module *mod_old, const char *revision_new,
+        const char **features_new, struct ly_ctx **ctx_new, struct lys_module **mod_new);
 
 /**
  * @brief Update data in a specific revision of a YANG module to a newer revision.

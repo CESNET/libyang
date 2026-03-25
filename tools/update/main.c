@@ -31,20 +31,67 @@ help(void)
 {
     fprintf(stdout, "Usage:\n");
     fprintf(stdout, "    yangupdate [-hv]\n");
-    fprintf(stdout, "    yangupdate -m mod_old.yang -d data_old.json [-f json] [-o data_new.json] [-c changes.txt]\n\n");
+    fprintf(stdout, "    yangupdate -M mod_old.yang -d data_old.json -o data_new.json\n\n");
     fprintf(stdout, "Options:\n"
             "  -h, --help                  Show this help message and exit.\n"
             "  -v, --verbose               Increase verbosity. Can be specified multiple times.\n"
             "  -s, --searchdir=SEARCH-DIR  Directory with YANG modules in all the required revisions\n"
             "                              and 'ietf-yang-schema-comparison' YANG module. Can be\n"
             "                              specified repeatedly.\n"
-            "  -m, --module-path=YANG-FILE Path to the YANG module of the current data.\n"
+            "  -M, --old-module-path=YANG-FILE      Path to the YANG module of the current data.\n"
+            "  -F, --old-module-features=FEATURE*   Features to enable in the YANG module, separated\n"
+            "                                       by a comma.\n"
+            "  -R, --new-module-revision=REVISION   Specific revision the data should be updated to.\n"
+            "                                       If not set, the latest revision is found based\n"
+            "                                       on the compiled plugins.\n"
+            "  -G, --new-module-features=FEATURE*   Specific features that should be enabled in the\n"
+            "                                       new module of the updated data. Useful is there\n"
+            "                                       is not an unambiguous chain of the plugins to use\n"
+            "                                       to select the final plugin this way.\n"
             "  -d, --data=DATA-FILE        Path to the YANG data file with the current data.\n"
             "  -f, --format=FORMAT         Format of the new updated YANG data, default\n"
             "                              JSON (xml/json/lyb).\n"
             "  -o, --output=DATA-FILE      File to write the new updated YANG data into,\n"
             "                              default is the STDOUT stream.\n"
-            "  -c, --changes=OUTPUT-FILE   Print all the changes of the updated data compared to the\n\n");
+            "  -c, --changes=OUTPUT-FILE   Print all the changes of the updated data compared to the\n"
+            "                              current data.\n\n");
+}
+
+static int
+parse_features(const char *optarg, char ***features, uint32_t *feat_count)
+{
+    const char *ptr, *ptr2;
+    void *mem;
+
+    ptr = optarg;
+    while (1) {
+        ptr2 = strchr(ptr, ',');
+
+        /* new feature */
+        mem = realloc(*features, (*feat_count + 2) * sizeof **features);
+        if (!mem) {
+            fprintf(stderr, "yangupdate err: memory allocation failed (%s:%d)\n", __FILE__, __LINE__);
+            return 1;
+        }
+        *features = mem;
+        (*features)[*feat_count] = ptr2 ? strndup(ptr, ptr2 - ptr) : strdup(ptr);
+        if (!(*features)[*feat_count]) {
+            fprintf(stderr, "yangupdate err: memory allocation failed (%s:%d)\n", __FILE__, __LINE__);
+            return 1;
+        }
+
+        ++(*feat_count);
+        (*features)[*feat_count] = NULL;
+
+        if (!ptr2) {
+            break;
+        }
+
+        /* next */
+        ptr = ptr2 + 1;
+    }
+
+    return 0;
 }
 
 int
@@ -52,26 +99,32 @@ main(int argc, char *argv[])
 {
     int o, opt_index = 0, verbosity = 0, rc = 0;
     struct option options[] = {
-        {"help",             no_argument,       NULL, 'h'},
-        {"verbose",          no_argument,       NULL, 'v'},
-        {"searchdir",        required_argument, NULL, 's'},
-        {"module-path",      required_argument, NULL, 'm'},
-        {"data",             required_argument, NULL, 'd'},
-        {"format",           required_argument, NULL, 'f'},
-        {"output",           required_argument, NULL, 'o'},
-        {"changes",          required_argument, NULL, 'c'},
-        {NULL,               0,                 NULL, 0}
+        {"help",                no_argument,       NULL, 'h'},
+        {"verbose",             no_argument,       NULL, 'v'},
+        {"searchdir",           required_argument, NULL, 's'},
+        {"old-module-path",     required_argument, NULL, 'M'},
+        {"old-module-features", required_argument, NULL, 'F'},
+        {"new-module-revision", required_argument, NULL, 'R'},
+        {"new-module-features", required_argument, NULL, 'G'},
+        {"data",                required_argument, NULL, 'd'},
+        {"format",              required_argument, NULL, 'f'},
+        {"output",              required_argument, NULL, 'o'},
+        {"changes",             required_argument, NULL, 'c'},
+        {NULL,                  0,                 NULL, 0}
     };
     struct ly_ctx *ctx_old = NULL, *ctx_new = NULL;
     struct lys_module *mod_old, *mod_new;
     struct lyd_node *data_old = NULL, *data_new = NULL;
-    const char *mod_old_path = NULL, **searchdirs = NULL, *data_old_path = NULL, *data_new_path = NULL, *changes_path = NULL;
-    uint32_t i, searchdir_count = 0;
+    struct ly_in *in = NULL;
+    const char *mod_old_path = NULL, **searchdirs = NULL, *data_old_path = NULL, *data_new_path = NULL;
+    const char *changes_path = NULL, *mod_new_revision = NULL;
+    char **mod_old_features = NULL, **mod_new_features = NULL;
+    uint32_t i, searchdir_count = 0, old_feature_count = 0, new_feature_count = 0;
     LYD_FORMAT format = LYD_JSON;
     FILE *f = NULL, *f_ch = NULL, *f_out;
 
     opterr = 0;
-    while ((o = getopt_long(argc, argv, "hvs:m:d:f:o:c:", options, &opt_index)) != -1) {
+    while ((o = getopt_long(argc, argv, "hvs:M:F:R:G:d:f:o:c:", options, &opt_index)) != -1) {
         switch (o) {
         case 'h':
             help();
@@ -87,8 +140,26 @@ main(int argc, char *argv[])
             ++searchdir_count;
             break;
 
-        case 'm':
+        case 'M':
             mod_old_path = optarg;
+            break;
+
+        case 'F':
+            if (parse_features(optarg, &mod_old_features, &old_feature_count)) {
+                rc = -1;
+                goto cleanup;
+            }
+            break;
+
+        case 'R':
+            mod_new_revision = optarg;
+            break;
+
+        case 'G':
+            if (parse_features(optarg, &mod_new_features, &new_feature_count)) {
+                rc = -1;
+                goto cleanup;
+            }
             break;
 
         case 'd':
@@ -104,7 +175,8 @@ main(int argc, char *argv[])
                 format = LYD_LYB;
             } else {
                 fprintf(stderr, "yangupdate err: invalid format \"%s\"\n", optarg);
-                return 1;
+                rc = 1;
+                goto cleanup;
             }
             break;
 
@@ -122,26 +194,29 @@ main(int argc, char *argv[])
             } else {
                 fprintf(stderr, "yangupdate err: invalid option: %s\n", argv[optind - 1]);
             }
-            return 1;
+            rc = 1;
+            goto cleanup;
         }
     }
 
     /* redundant parameters */
     if (optind < argc) {
         fprintf(stderr, "yangupdate err: redundant parameters, use '-h' for help\n");
-        return 1;
+        rc = 1;
+        goto cleanup;
     }
 
     /* missing parameters */
     if (!mod_old_path || !data_old_path) {
         help();
-        return 1;
+        rc = 1;
+        goto cleanup;
     }
 
     /* set verbosity */
     ly_log_level(verbosity);
 
-    /* create the contexts */
+    /* create the old context */
     if (ly_ctx_new(NULL, 0, &ctx_old)) {
         rc = -1;
         goto cleanup;
@@ -149,16 +224,13 @@ main(int argc, char *argv[])
     for (i = 0; i < searchdir_count; ++i) {
         ly_ctx_set_searchdir(ctx_old, searchdirs[i]);
     }
-    if (ly_ctx_new(NULL, 0, &ctx_new)) {
+
+    /* load the old module */
+    if (ly_in_new_filepath(mod_old_path, 0, &in)) {
         rc = -1;
         goto cleanup;
     }
-    for (i = 0; i < searchdir_count; ++i) {
-        ly_ctx_set_searchdir(ctx_new, searchdirs[i]);
-    }
-
-    /* load the old module */
-    if (lys_parse_path(ctx_old, mod_old_path, LYS_IN_YANG, &mod_old)) {
+    if (lys_parse(ctx_old, in, LYS_IN_YANG, (const char **)mod_old_features, &mod_old)) {
         rc = -1;
         goto cleanup;
     }
@@ -170,7 +242,7 @@ main(int argc, char *argv[])
     }
 
     /* load the new module */
-    if (lyd_update_find_new(mod_old, ctx_new, NULL, &mod_new)) {
+    if (lyd_update_find_new(mod_old, mod_new_revision, (const char **)mod_new_features, &ctx_new, &mod_new)) {
         rc = -1;
         goto cleanup;
     }
@@ -216,12 +288,21 @@ main(int argc, char *argv[])
 
 cleanup:
     free(searchdirs);
+    for (i = 0; i < old_feature_count; ++i) {
+        free(mod_old_features[i]);
+    }
+    free(mod_old_features);
+    for (i = 0; i < new_feature_count; ++i) {
+        free(mod_new_features[i]);
+    }
+    free(mod_new_features);
     if (f) {
         fclose(f);
     }
     if (f_ch) {
         fclose(f_ch);
     }
+    ly_in_free(in, 0);
     lyd_free_siblings(data_old);
     lyd_free_siblings(data_new);
     ly_ctx_destroy(ctx_old);

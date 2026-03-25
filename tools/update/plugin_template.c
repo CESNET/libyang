@@ -38,15 +38,39 @@ static struct lyu_plg_rule RULES_MOD_NAME[] = {
     { 0 }
 };
 
+static const char *OLD_FEATURES[] = {
+    "FEATURE1",
+    NULL
+};
+
+static const char *NEW_FEATURES[] = {
+    "FEATURE1",
+    "FEATURE2",
+    NULL
+};
+
+/* Array of imports is terminated by an empty import and includes any additional modules that should be loaded in
+ * a specific revision or have a special set of features enabled. Not all of the imported modules need to be
+ * explicitly mentioned here and will be loaded normally with their revision determined by the standard YANG rules. */
+static struct lyu_plg_module NEW_IMPORTS[] = {
+    { .name = "IMPORTED_MODULE", .revision = "REVISION", .features = NULL, .implemented = 0 },
+    { 0 }
+};
+
 /* This line and all similar ones are searched for in all the plugin source files to generate a complete list of
  * available plugins. There can be several plugins in every file. Because a single array of these plugin structures is
  * generated, each plugin must have a globally unique name.
  *
  * The members identify the plugin by its affected YANG module name and the 2 revisions of this module whose data this
- * plugin structure transforms and updates. */
+ * plugin structure transforms and updates. Also, the set of enabled features needs to be specified for both the old
+ * revision and the new revision of the module. */
 struct lyu_plg PLG_MOD_NAME = {
     .module_name = "MOD_NAME",
     .revision_old = "OLD_REVISION",
+    .features_old = OLD_FEATURES,
+    .imports_old = NULL,
     .revision_new = "NEW_REVISION",
+    .features_new = NEW_FEATURES,
+    .imports_new = NEW_IMPORTS,
     .rules = RULES_MOD_NAME
 };

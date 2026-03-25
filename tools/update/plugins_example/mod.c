@@ -82,7 +82,11 @@ static struct lyu_plg_rule rules_mod_1_3[] = {
 struct lyu_plg plg_mod_1_3 = {
     .module_name = "mod",
     .revision_old = "2025-01-01",
+    .features_old = NULL,
+    .imports_old = NULL,
     .revision_new = "2025-03-01",
+    .features_new = NULL,
+    .imports_new = NULL,
     .rules = rules_mod_1_3
 };
 
@@ -143,6 +147,11 @@ cont_ll_cb3(const struct lyd_node *data_old, const struct lyd_node *node_old, co
     return LY_SUCCESS;
 }
 
+static const char *features_mod_3_6[] = {
+    "feat1",
+    NULL
+};
+
 static struct lyu_plg_rule rules_mod_3_6[] = {
     { .node_path = "/mod:cont/list1", .node_cb = cont_list1_cb3 },
     { .node_path = "/mod:cont/ll", .node_cb = cont_ll_cb3 },
@@ -152,6 +161,10 @@ static struct lyu_plg_rule rules_mod_3_6[] = {
 struct lyu_plg plg_mod_3_6 = {
     .module_name = "mod",
     .revision_old = "2025-03-01",
+    .features_old = NULL,
+    .imports_old = NULL,
     .revision_new = "2025-06-01",
+    .features_new = features_mod_3_6,
+    .imports_new = NULL,
     .rules = rules_mod_3_6
 };
