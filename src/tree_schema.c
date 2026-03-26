@@ -1526,7 +1526,7 @@ lysp_ext_instance_path_append(char **buf, uint32_t *size, const char *format, ..
 
     /* learn the required length */
     va_start(ap, format);
-    len = vsnprintf(*buf + *size, 0, format, ap);
+    len = vsnprintf(*buf ? *buf + *size : NULL, 0, format, ap);
     va_end(ap);
 
     /* realloc */
