@@ -96,6 +96,12 @@ enum lys_diff_changed_e {
     LYS_CHANGED_YANG_VERSION
 };
 
+enum lys_diff_conform_e {
+    LYS_CONFORM_ED,     /**< editorial change */
+    LYS_CONFORM_BC,     /**< backwards-compatible change */
+    LYS_CONFORM_NBC     /**< non-backwards-compatible change */
+};
+
 /**
  * @brief Structure for a schema change.
  */
@@ -103,7 +109,7 @@ struct lys_diff_change_s {
     enum lys_diff_change_e change;              /**< type of change of the node */
     enum lys_diff_changed_e parent_changed;     /**< type of the parent statement */
     enum lys_diff_changed_e changed;            /**< type of the changed statement */
-    ly_bool is_nbc;                             /**< flag to mark a non-backward-compatible change */
+    enum lys_diff_conform_e conform;            /**< conformance of the change */
 };
 
 /**
@@ -283,17 +289,9 @@ struct lys_diff_s {
     ly_bool is_yang10;                              /**< marks using YANG 1.0 update rules */
     ly_bool with_parsed;                            /**< marks generating diff for parsed schema in addition to compiled */
     ly_bool with_priv_parsed;                       /**< marks compiled nodes having references to parsed nodes */
-    ly_bool is_nbc;                                 /**< flag to mark a non-backwards-compatible change */
+    enum lys_diff_conform_e conform;                /**< conformance of the whole diff */
     const struct ly_ctx *ctx;                       /**< context to use */
 };
-
-/**
- * @brief Check whether any change is NBC, mark it in the diff if so.
- *
- * @param[in] changes Changes to check.
- * @param[in,out] diff Diff to update.
- */
-void schema_diff_check_node_change_nbc(const struct lys_diff_changes_s *changes, struct lys_diff_s *diff);
 
 /**
  * @brief Add a new change into a schema node change pair.
@@ -301,12 +299,12 @@ void schema_diff_check_node_change_nbc(const struct lys_diff_changes_s *changes,
  * @param[in] change Type of change.
  * @param[in] parent_changed Parent statement of the change.
  * @param[in] changed Changed statement.
- * @param[in] is_nbc Set if the change is non-backwards-compatible.
+ * @param[in] conform Conformance of the change.
  * @param[in,out] changes Changes to add the change to.
  * @return LY_ERR value.
  */
 LY_ERR schema_diff_add_change(enum lys_diff_change_e change, enum lys_diff_changed_e parent_changed,
-        enum lys_diff_changed_e changed, ly_bool is_nbc, struct lys_diff_changes_s *changes);
+        enum lys_diff_changed_e changed, enum lys_diff_conform_e conform, struct lys_diff_changes_s *changes);
 
 /**
  * @brief Get the changed statement from a parser statement.
