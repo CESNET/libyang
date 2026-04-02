@@ -75,33 +75,56 @@ module ietf-yang-schema-comparison {
       "RFC XXXX: YANG Schema Comparison";
   }
 
-  extension backwards-compatible {
+  extension ed-change-at {
+    argument semver;
     description
       "Marks statements in a new revision of a module
-       that were changed but in a backwards-compatible
-       manner according to YANG 1.1 and 1.0 rules for
-       updating a module.
+       that introduces an editorial change of the statement.
 
-       When used as a substatement of a 'pattern'
-       statement, it means its allowed value space has
-       been expanded.
+       The argument marks the last version of the module
+       where the statement has been changed.
 
-       When used as a substatement of a 'when' or
-       'must' statement, it means their constraint has
-       been relaxed.
+       Can only be a substatement of 'pattern', 'must',
+       'when', 'description', 'presence', or an extension
+       instance statements.";
+    reference
+      "RFC 7950: The YANG 1.1 Data Modeling Language, section 11;
+       RFC 6020: YANG - A Data Modeling Language for the Network
+       Configuration Protocol (NETCONF), section 10";
+  }
 
-       When used as a substatement of a 'description'
-       statement, it means it has been changed in a
-       backwards-compatible way.
+  extension bc-change-at {
+    argument semver;
+    description
+      "Marks statements in a new revision of a module
+       that introduces a backwards-compatible change of
+       the statement.
 
-       When used as a substatement of an extension
-       instance, it means adding, modifying, or removing
-       it is a backwards-compatible change. The same is
-       true for any substatements of the extension
-       instance.
+       The argument marks the last version of the module
+       where the statement has been changed.
 
-       Not allowed to be instantiated for any other
-       statements.";
+       Can only be a substatement of 'pattern', 'must',
+       'when', 'description', 'presence', or an extension
+       instance statements.";
+    reference
+      "RFC 7950: The YANG 1.1 Data Modeling Language, section 11;
+       RFC 6020: YANG - A Data Modeling Language for the Network
+       Configuration Protocol (NETCONF), section 10";
+  }
+
+  extension nbc-change-at {
+    argument semver;
+    description
+      "Marks statements in a new revision of a module
+       that introduces a non-backwards-compatible change of
+       the statement.
+
+       The argument marks the last version of the module
+       where the statement has been changed.
+
+       Can only be a substatement of 'pattern', 'must',
+       'when', 'description', 'presence', or an extension
+       instance statements.";
     reference
       "RFC 7950: The YANG 1.1 Data Modeling Language, section 11;
        RFC 6020: YANG - A Data Modeling Language for the Network
@@ -1227,9 +1250,13 @@ module ietf-yang-schema-comparison {
       "Conformance type of a change.";
     leaf conformance {
       type enumeration {
+        enum editorial {
+          description
+            "Editorial change.";
+        }
         enum backwards-compatible {
           description
-            "Backwards-compatible or editorial change.";
+            "Backwards-compatible change.";
         }
         enum non-backwards-compatible {
           description

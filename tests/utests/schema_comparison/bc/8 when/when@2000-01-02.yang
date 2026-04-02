@@ -16,7 +16,7 @@ module when {
     leaf l2 {
         type string;
         when "/l1 > 5" {
-            schema-cmp:backwards-compatible;
+            schema-cmp:bc-change-at 1.1.0;
         }
     }
 }

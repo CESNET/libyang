@@ -3,6 +3,10 @@ module ext-inst {
     prefix exi;
     yang-version 1.1;
 
+    import ietf-yang-schema-comparison {
+        prefix schema-cmp;
+    }
+
     import "ietf-inet-types" {
         prefix inet {
             exi:ex "prefix-ext";
@@ -19,7 +23,9 @@ module ext-inst {
     feature f;
 
     identity id {
-        exi:ex "id-ext";
+        exi:ex "id-ext" {
+            schema-cmp:nbc-change-at 2.0.0;
+        }
     }
 
     extension ex {

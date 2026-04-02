@@ -12,7 +12,7 @@ module pattern {
     leaf l1 {
         type string {
             pattern 'aa|bb|cc|dd|ee' {
-                schema-cmp:backwards-compatible;
+                schema-cmp:bc-change-at 1.1.0;
             }
         }
     }

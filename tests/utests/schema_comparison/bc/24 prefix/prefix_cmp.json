@@ -10,14 +10,14 @@
           "module": "prefix",
           "revision": "2000-01-02"
         },
-        "conformance": "backwards-compatible",
+        "conformance": "editorial",
         "module-comparison": [
           {
             "changed": [
               {
                 "stmt": "prefix",
                 "change": "modified",
-                "conformance": "backwards-compatible"
+                "conformance": "editorial"
               }
             ],
             "old": {

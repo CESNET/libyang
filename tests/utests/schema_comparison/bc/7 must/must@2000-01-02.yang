@@ -16,7 +16,7 @@ module must {
     leaf l2 {
         type uint32;
         must ". > 30" {
-            schema-cmp:backwards-compatible;
+            schema-cmp:bc-change-at 1.1.0;
         }
     }
 }

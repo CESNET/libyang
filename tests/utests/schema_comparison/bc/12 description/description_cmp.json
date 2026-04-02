@@ -10,53 +10,7 @@
           "module": "description",
           "revision": "2000-01-02"
         },
-        "target-import": [
-          {
-            "module": "ietf-datastores",
-            "revision": "2018-02-14"
-          },
-          {
-            "module": "ietf-inet-types",
-            "revision": "2025-12-22"
-          },
-          {
-            "module": "ietf-yang-library",
-            "revision": "2019-01-04"
-          },
-          {
-            "module": "ietf-yang-schema-comparison",
-            "revision": "2026-02-11",
-            "enabled-feature": [
-              "parsed-schema"
-            ]
-          },
-          {
-            "module": "ietf-yang-structure-ext",
-            "revision": "2020-06-17"
-          },
-          {
-            "module": "ietf-yang-types",
-            "revision": "2025-12-22"
-          }
-        ],
         "conformance": "backwards-compatible",
-        "module-comparison": [
-          {
-            "changed": [
-              {
-                "stmt": "import",
-                "change": "added",
-                "conformance": "backwards-compatible"
-              }
-            ],
-            "new": {
-              "import": {
-                "module": "ietf-yang-schema-comparison",
-                "prefix": "schema-cmp"
-              }
-            }
-          }
-        ],
         "node-comparison": [
           {
             "node": "/description:l1",
@@ -93,7 +47,7 @@
               {
                 "stmt": "description",
                 "change": "modified",
-                "conformance": "backwards-compatible"
+                "conformance": "editorial"
               }
             ],
             "old": {
@@ -112,13 +66,7 @@
               "mandatory": false,
               "type": {
                 "base-type": "uint32"
-              },
-              "ext-instance": [
-                {
-                  "module": "ietf-yang-schema-comparison",
-                  "name": "backwards-compatible"
-                }
-              ]
+              }
             }
           }
         ]
