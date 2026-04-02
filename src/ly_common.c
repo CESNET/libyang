@@ -4,6 +4,7 @@
  * @brief common internal definitions for libyang
  *
  * Copyright (c) 2018 - 2026 CESNET, z.s.p.o.
+ * Copyright (c) 2026 Nokia
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -813,7 +814,7 @@ ly_pat_compile_xmlschema_chblocks_xmlschema2perl(const char *pattern, char **reg
         {NULL, NULL}
     };
 
-    size_t idx, idx2, start, end;
+    size_t idx, idx2, start, end, ublock;
     char *perl_regex, *ptr;
 
     perl_regex = *regex;
@@ -849,6 +850,7 @@ ly_pat_compile_xmlschema_chblocks_xmlschema2perl(const char *pattern, char **reg
             return ly_err_new(err, LY_EVALID, 0, NULL, NULL, "Regular expression \"%s\" is not valid (\"%s\": %s).",
                     pattern, perl_regex + start + 5, "unknown block name");
         }
+        ublock = idx;
 
         /* make the space in the string and replace the block (but we cannot include brackets if it was already enclosed in them) */
         for (idx2 = 0, idx = 0; idx2 < start; ++idx2) {
@@ -863,10 +865,10 @@ ly_pat_compile_xmlschema_chblocks_xmlschema2perl(const char *pattern, char **reg
         if (idx) {
             /* skip brackets */
             memmove(perl_regex + start + (URANGE_LEN - 2), perl_regex + end, strlen(perl_regex + end) + 1);
-            memcpy(perl_regex + start, ublock2urange[idx][1] + 1, URANGE_LEN - 2);
+            memcpy(perl_regex + start, ublock2urange[ublock][1] + 1, URANGE_LEN - 2);
         } else {
             memmove(perl_regex + start + URANGE_LEN, perl_regex + end, strlen(perl_regex + end) + 1);
-            memcpy(perl_regex + start, ublock2urange[idx][1], URANGE_LEN);
+            memcpy(perl_regex + start, ublock2urange[ublock][1], URANGE_LEN);
         }
     }
 

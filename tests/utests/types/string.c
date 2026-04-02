@@ -4,6 +4,7 @@
  * @brief test for string values
  *
  * Copyright (c) 2021 CESNET, z.s.p.o.
+ * Copyright (c) 2026 Nokia
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -817,6 +818,52 @@ test_data_xml(void **state)
     CHECK_LOG_CTX("Unsatisfied pattern - \"abc\" does not match \"a.*b\".", "/T_ANCHOR:port", 1);
     TEST_ERROR_XML("T_ANCHOR", "cab");
     CHECK_LOG_CTX("Unsatisfied pattern - \"cab\" does not match \"a.*b\".", "/T_ANCHOR:port", 1);
+
+    /* Unicode block test 1 - Basic Latin */
+    schema = MODULE_CREATE_YANG("T_UB_1", "leaf port {type string { pattern '\\p{IsBasicLatin}+';} } ");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+    TEST_SUCCESS_XML("T_UB_1", "B4s1cLatin!", STRING, "B4s1cLatin!");
+
+    /* Unicode block test 2 - Basic Latin within brackets */
+    schema = MODULE_CREATE_YANG("T_UB_2", "leaf port {type string { pattern '[\\p{IsBasicLatin}]+';} } ");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+    TEST_SUCCESS_XML("T_UB_2", "B4s1cLatin!", STRING, "B4s1cLatin!");
+
+    /* Unicode block test 3 - Latin-1 Supplement */
+    schema = MODULE_CREATE_YANG("T_UB_3", "leaf port {type string { pattern '[\\p{IsLatin-1Supplement}]+';} } ");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+    TEST_SUCCESS_XML("T_UB_3", "ÁÉÍÓÖÜ", STRING, "ÁÉÍÓÖÜ");
+
+    /* Unicode block test 4 - Latin-1 Supplement */
+    schema = MODULE_CREATE_YANG("T_UB_4", "leaf port {type string { pattern '[\\p{IsLatin-1Supplement}]+';} } ");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+    TEST_SUCCESS_XML("T_UB_4", "ÁÉÍÓÖÜ", STRING, "ÁÉÍÓÖÜ");
+
+    /* Unicode block test 5 - Latin Extended-A */
+    schema = MODULE_CREATE_YANG("T_UB_5", "leaf port {type string { pattern '[\\p{IsLatinExtended-A}]+';} } ");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+    TEST_SUCCESS_XML("T_UB_5", "ŐŰőű", STRING, "ŐŰőű");
+
+    /* Unicode block test 6 - Basic Latin, Latin-1 Supplement, and Latin Extended-A */
+    schema = MODULE_CREATE_YANG("T_UB_6", "leaf port {type string {"
+            "       pattern '[\\p{IsBasicLatin}\\p{IsLatin-1Supplement}\\p{IsLatinExtended-A}]+';"
+            "}} ");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+    TEST_SUCCESS_XML("T_UB_6", "Árvíztűrő tükörfúrógép!", STRING, "Árvíztűrő tükörfúrógép!");
+
+    /* Unicode block test 7 - Unknown Unicode block */
+    schema = MODULE_CREATE_YANG("T_UB_7", "leaf port {type string { pattern '\\p{IsUnknownUnicodeBlock}+';} } ");
+    UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
+    CHECK_LOG_CTX("Regular expression \"\\p{IsUnknownUnicodeBlock}+\" "
+                  "is not valid (\"UnknownUnicodeBlock}+\": unknown block name).", "/T_UB_7:port", 0);
+
+    /* Unicode block test 8 - Unknown Unicode block with Basic Latin */
+    schema = MODULE_CREATE_YANG("T_UB_8", "leaf port {type string { "
+            "       pattern '[\\p{IsBasicLatin}\\p{IsUnknownUnicodeBlock}]+';"
+            "}} ");
+    UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
+    CHECK_LOG_CTX("Regular expression \"[\\p{IsBasicLatin}\\p{IsUnknownUnicodeBlock}]+\" "
+                  "is not valid (\"UnknownUnicodeBlock}]+\": unknown block name).", "/T_UB_8:port", 0);
 }
 
 static void
