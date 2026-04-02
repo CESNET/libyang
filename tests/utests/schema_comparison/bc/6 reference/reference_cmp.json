@@ -47,7 +47,7 @@
               {
                 "stmt": "reference",
                 "change": "modified",
-                "conformance": "backwards-compatible"
+                "conformance": "editorial"
               }
             ],
             "old": {

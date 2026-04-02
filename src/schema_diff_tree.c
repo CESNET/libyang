@@ -323,6 +323,27 @@ cleanup:
 }
 
 /**
+ * @brief Get string from a conformance.
+ *
+ * @param[in] conform Conformance to transform.
+ * @return String conformance.
+ */
+static const char *
+schema_diff_conform2str(enum lys_diff_conform_e conform)
+{
+    switch (conform) {
+    case LYS_CONFORM_ED:
+        return "editorial";
+    case LYS_CONFORM_BC:
+        return "backwards-compatible";
+    case LYS_CONFORM_NBC:
+        return "non-backwards-compatible";
+    }
+
+    return NULL;
+}
+
+/**
  * @brief Create cmp YANG data from common information about a change.
  *
  * @param[in] change Change to read from.
@@ -350,8 +371,8 @@ schema_diff_change_info(const struct lys_diff_change_s *change, struct lyd_node 
             0, NULL), cleanup);
 
     /* conformance */
-    LY_CHECK_GOTO(rc = lyd_new_term(changed_list, NULL, "conformance",
-            change->is_nbc ? "non-backwards-compatible" : "backwards-compatible", 0, NULL), cleanup);
+    LY_CHECK_GOTO(rc = lyd_new_term(changed_list, NULL, "conformance", schema_diff_conform2str(change->conform), 0,
+            NULL), cleanup);
 
 cleanup:
     return rc;
@@ -3782,8 +3803,8 @@ lysc_diff_tree(const struct lys_module *mod1, const struct lys_module *mod2, con
     LY_CHECK_GOTO(rc = schema_diff_imports(mod2, imp_schema, diff_list), cleanup);
 
     /* overall conformance */
-    LY_CHECK_GOTO(rc = lyd_new_term(diff_list, NULL, "conformance",
-            diff->is_nbc ? "non-backwards-compatible" : "backwards-compatible", 0, NULL), cleanup);
+    LY_CHECK_GOTO(rc = lyd_new_term(diff_list, NULL, "conformance", schema_diff_conform2str(diff->conform), 0, NULL),
+            cleanup);
 
     /* module comparison */
     LY_CHECK_GOTO(rc = schema_diff_module(diff, mod1, mod2, diff_list), cleanup);

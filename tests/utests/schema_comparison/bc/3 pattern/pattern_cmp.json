@@ -100,7 +100,8 @@
                     "ext-instance": [
                       {
                         "module": "ietf-yang-schema-comparison",
-                        "name": "backwards-compatible"
+                        "name": "bc-change-at",
+                        "argument": "1.1.0"
                       }
                     ]
                   }

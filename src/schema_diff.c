@@ -19,27 +19,9 @@
 
 #include "ly_common.h"
 
-void
-schema_diff_check_node_change_nbc(const struct lys_diff_changes_s *changes, struct lys_diff_s *diff)
-{
-    uint32_t i;
-
-    if (diff->is_nbc) {
-        /* nothing to do anymore */
-        return;
-    }
-
-    for (i = 0; i < changes->count; ++i) {
-        if (changes->changes[i].is_nbc) {
-            diff->is_nbc = 1;
-            break;
-        }
-    }
-}
-
 LY_ERR
 schema_diff_add_change(enum lys_diff_change_e change, enum lys_diff_changed_e parent_changed,
-        enum lys_diff_changed_e changed, ly_bool is_nbc, struct lys_diff_changes_s *changes)
+        enum lys_diff_changed_e changed, enum lys_diff_conform_e conform, struct lys_diff_changes_s *changes)
 {
     void *mem;
     struct lys_diff_change_s *c;
@@ -55,7 +37,7 @@ schema_diff_add_change(enum lys_diff_change_e change, enum lys_diff_changed_e pa
     c->change = change;
     c->parent_changed = parent_changed;
     c->changed = changed;
-    c->is_nbc = is_nbc;
+    c->conform = conform;
 
     return LY_SUCCESS;
 }
@@ -237,8 +219,7 @@ schema_diff_yangversion_change(uint8_t yvsn1, uint8_t yvsn2,
 {
     if (yvsn1 != yvsn2) {
         /* modified */
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed,
-                changed, 1, changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, changed, LYS_CONFORM_NBC, changes));
     }
 
     return LY_SUCCESS;
@@ -250,13 +231,13 @@ schema_diff_text_bc(const char *text1, const char *text2, enum lys_diff_changed_
 {
     if (text1 && !text2) {
         /* removed, always NBC */
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, changed, 1, changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, changed, LYS_CONFORM_NBC, changes));
     } else if (!text1 && text2) {
         /* added */
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, changed, 0, changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, changed, LYS_CONFORM_BC, changes));
     } else if (text1 && text2 && strcmp(text1, text2)) {
         /* modified */
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, changed, 0, changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, changed, LYS_CONFORM_ED, changes));
     }
 
     return LY_SUCCESS;
@@ -268,13 +249,13 @@ schema_diff_text_bc_add(const char *text1, const char *text2, enum lys_diff_chan
 {
     if (!text1 && text2) {
         /* added, BC */
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, changed, 0, changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, changed, LYS_CONFORM_BC, changes));
     } else if (text1 && !text2) {
         /* removed */
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, changed, 1, changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, changed, LYS_CONFORM_NBC, changes));
     } else if (text1 && text2 && strcmp(text1, text2)) {
         /* modified */
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, changed, 1, changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, changed, LYS_CONFORM_NBC, changes));
     }
 
     return LY_SUCCESS;
@@ -286,13 +267,13 @@ schema_diff_text_nbc(const char *text1, const char *text2, enum lys_diff_changed
 {
     if (text1 && !text2) {
         /* removed */
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, changed, 1, changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, changed, LYS_CONFORM_NBC, changes));
     } else if (!text1 && text2) {
         /* added */
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, changed, 1, changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, changed, LYS_CONFORM_NBC, changes));
     } else if (text1 && text2 && strcmp(text1, text2)) {
         /* modified */
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, changed, 1, changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, changed, LYS_CONFORM_NBC, changes));
     }
 
     return LY_SUCCESS;
@@ -307,9 +288,11 @@ schema_diff_status_change(uint16_t flags1, uint16_t flags2, enum lys_diff_change
 
     if ((flags1 == LYS_STATUS_CURR) && (flags2 == LYS_STATUS_DEPRC)) {
         /* current -> deprecated */
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_STATUS, 0, changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_STATUS, LYS_CONFORM_BC,
+                changes));
     } else if (flags1 != flags2) {
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_STATUS, 1, changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_STATUS, LYS_CONFORM_NBC,
+                changes));
     }
 
     return LY_SUCCESS;
@@ -321,9 +304,11 @@ schema_diff_config_change(uint16_t flags1, uint16_t flags2, enum lys_diff_change
 {
     if ((flags1 & LYS_CONFIG_R) && (flags2 & LYS_CONFIG_W) && !(flags2 & LYS_MAND_TRUE)) {
         /* state -> configuration, not mandatory */
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_CONFIG, 0, changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_CONFIG, LYS_CONFORM_BC,
+                changes));
     } else if ((flags1 & LYS_CONFIG_MASK) != (flags2 & LYS_CONFIG_MASK)) {
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_CONFIG, 1, changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_CONFIG, LYS_CONFORM_NBC,
+                changes));
     }
 
     return LY_SUCCESS;
@@ -334,11 +319,11 @@ schema_diff_req_inst_change(uint8_t req_inst1, uint8_t req_inst2, enum lys_diff_
         struct lys_diff_changes_s *changes)
 {
     if (req_inst1 > req_inst2) {
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_REQ_INSTANCE, 0,
-                changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_REQ_INSTANCE,
+                LYS_CONFORM_BC, changes));
     } else if (req_inst1 != req_inst2) {
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_REQ_INSTANCE, 1,
-                changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_REQ_INSTANCE,
+                LYS_CONFORM_NBC, changes));
     }
 
     return LY_SUCCESS;
@@ -353,19 +338,19 @@ schema_diff_elem_limit_change(uint32_t num1, int num1_set, uint32_t num2, int nu
         return LY_SUCCESS;
     } else if (!num1_set) {
         /* added */
-        return schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, changed, 1, changes);
+        return schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, changed, LYS_CONFORM_NBC, changes);
     } else if (!num2_set) {
         /* removed */
-        return schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, changed, 0, changes);
+        return schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, changed, LYS_CONFORM_BC, changes);
     }
 
     /* modified */
     if ((changed == LYS_CHANGED_MIN_ELEM) && (num1 > num2)) {
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, changed, 0, changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, changed, LYS_CONFORM_BC, changes));
     } else if ((changed == LYS_CHANGED_MAX_ELEM) && (num1 < num2)) {
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, changed, 0, changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, changed, LYS_CONFORM_BC, changes));
     } else if (num1 != num2) {
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, changed, 1, changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, changed, LYS_CONFORM_NBC, changes));
     }
 
     return LY_SUCCESS;
@@ -495,7 +480,7 @@ schema_diff_module_identity_bases_change(enum lys_diff_changed_e parent_changed,
 
     if (removed) {
         /* bases NBC modified */
-        LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, LYS_CHANGED_BASE, 1,
+        LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, LYS_CHANGED_BASE, LYS_CONFORM_NBC,
                 &ident_change->changes), cleanup);
     }
 
@@ -517,7 +502,7 @@ schema_diff_module_identity_bases_change(enum lys_diff_changed_e parent_changed,
 
     if (added) {
         /* bases BC modified */
-        LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, LYS_CHANGED_BASE, 0,
+        LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, LYS_CHANGED_BASE, LYS_CONFORM_BC,
                 &ident_change->changes), cleanup);
     }
 
@@ -558,11 +543,8 @@ schema_diff_module_identities_change(const struct lysc_ident *idents1, const str
 
         if (!found) {
             /* removed */
-            LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, LYS_CHANGED_IDENT, 1,
-                    &ident_change->changes), cleanup);
-
-            /* NBC */
-            diff->is_nbc = 1;
+            LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, LYS_CHANGED_IDENT,
+                    LYS_CONFORM_NBC, &ident_change->changes), cleanup);
             continue;
         }
 
@@ -578,9 +560,6 @@ schema_diff_module_identities_change(const struct lysc_ident *idents1, const str
         /* ext-instance */
         LY_CHECK_GOTO(rc = schema_diff_ext_insts_change(idents1[u].exts, idents2[v].exts, &ident_change->ext_changes,
                 diff), cleanup);
-
-        /* check whether any of the changes were NBC */
-        schema_diff_check_node_change_nbc(&ident_change->changes, diff);
     }
 
     LY_ARRAY_FOR(idents2, v) {
@@ -592,7 +571,7 @@ schema_diff_module_identities_change(const struct lysc_ident *idents1, const str
         LY_CHECK_RET(schema_diff_add_ident_change(NULL, &idents2[v], diff, &ident_change));
 
         /* added */
-        LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, LYS_CHANGED_IDENT, 0,
+        LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, LYS_CHANGED_IDENT, LYS_CONFORM_BC,
                 &ident_change->changes), cleanup);
     }
 
@@ -632,9 +611,6 @@ schema_diff_module_change(const struct lys_module *mod1, const struct lys_module
     LY_CHECK_RET(schema_diff_text_bc(mod1->ref, mod2->ref, LYS_CHANGED_NONE, LYS_CHANGED_REFERENCE,
             &diff->module_changes));
 
-    /* check whether any of the changes were NBC */
-    schema_diff_check_node_change_nbc(&diff->module_changes, diff);
-
     /* identity */
     LY_CHECK_RET(schema_diff_module_identities_change(mod1->identities, mod2->identities, LYS_CHANGED_NONE, diff));
 
@@ -642,6 +618,124 @@ schema_diff_module_change(const struct lys_module *mod1, const struct lys_module
     LY_CHECK_RET(schema_diff_ext_insts_change(mod1->compiled->exts, mod2->compiled->exts, &diff->mod_ext_changes, diff));
 
     return LY_SUCCESS;
+}
+
+/**
+ * @brief Update diff conformance based on all the changes in an array.
+ *
+ * @param[in] changes Changes to iterate over.
+ * @param[in,out] diff Diff to update.
+ */
+static void
+schema_diff_changes_update_conform(struct lys_diff_changes_s *changes, struct lys_diff_s *diff)
+{
+    uint32_t i;
+
+    for (i = 0; i < changes->count; ++i) {
+        if (changes->changes[i].conform > diff->conform) {
+            diff->conform = changes->changes[i].conform;
+        }
+    }
+}
+
+/**
+ * @brief Update diff conformance based on all the compiled ext instance changes.
+ *
+ * @param[in] ext_changes Compiled ext instance changes.
+ * @param[in,out] diff Diff to update.
+ */
+static void
+schema_diff_changes_ext_update_conform(struct lys_diff_ext_changes_s *ext_changes, struct lys_diff_s *diff)
+{
+    uint32_t i;
+
+    for (i = 0; i < ext_changes->count; ++i) {
+        schema_diff_changes_update_conform(&ext_changes->changes[i].changes, diff);
+    }
+}
+
+/**
+ * @brief Update diff conformance based on all the parsed ext instance changes.
+ *
+ * @param[in] ext_changes Parsed ext instance changes.
+ * @param[in,out] diff Diff to update.
+ */
+static void
+schema_diff_changes_pext_update_conform(struct lys_diff_pext_changes_s *ext_changes, struct lys_diff_s *diff)
+{
+    uint32_t i;
+
+    for (i = 0; i < ext_changes->count; ++i) {
+        schema_diff_changes_update_conform(&ext_changes->changes[i].changes, diff);
+    }
+}
+
+/**
+ * @brief Update diff conformance based on all the changes.
+ *
+ * @param[in,out] diff Diff to update.
+ */
+static void
+schema_diff_update_conform(struct lys_diff_s *diff)
+{
+    uint32_t i;
+
+    /* module */
+    schema_diff_changes_update_conform(&diff->module_changes, diff);
+    schema_diff_changes_ext_update_conform(&diff->mod_ext_changes, diff);
+
+    for (i = 0; i < diff->ident_change_count; ++i) {
+        schema_diff_changes_update_conform(&diff->ident_changes[i].changes, diff);
+        schema_diff_changes_ext_update_conform(&diff->ident_changes[i].ext_changes, diff);
+    }
+
+    /* parsed module */
+    for (i = 0; i < diff->import_change_count; ++i) {
+        schema_diff_changes_update_conform(&diff->import_changes[i].changes, diff);
+        schema_diff_changes_pext_update_conform(&diff->import_changes[i].ext_changes, diff);
+    }
+
+    for (i = 0; i < diff->include_change_count; ++i) {
+        schema_diff_changes_update_conform(&diff->include_changes[i].changes, diff);
+        schema_diff_changes_pext_update_conform(&diff->include_changes[i].ext_changes, diff);
+    }
+
+    for (i = 0; i < diff->extension_change_count; ++i) {
+        schema_diff_changes_update_conform(&diff->extension_changes[i].changes, diff);
+        schema_diff_changes_pext_update_conform(&diff->extension_changes[i].ext_changes, diff);
+    }
+
+    for (i = 0; i < diff->feat_change_count; ++i) {
+        schema_diff_changes_update_conform(&diff->feat_changes[i].changes, diff);
+        schema_diff_changes_pext_update_conform(&diff->feat_changes[i].ext_changes, diff);
+    }
+
+    for (i = 0; i < diff->dev_change_count; ++i) {
+        schema_diff_changes_update_conform(&diff->dev_changes[i].changes, diff);
+        schema_diff_changes_pext_update_conform(&diff->dev_changes[i].ext_changes, diff);
+    }
+
+    /* parsed node */
+    for (i = 0; i < diff->pnode_change_count; ++i) {
+        schema_diff_changes_update_conform(&diff->pnode_changes[i].changes, diff);
+        schema_diff_changes_pext_update_conform(&diff->pnode_changes[i].ext_changes, diff);
+    }
+
+    for (i = 0; i < diff->refine_change_count; ++i) {
+        schema_diff_changes_update_conform(&diff->refine_changes[i].changes, diff);
+        schema_diff_changes_pext_update_conform(&diff->refine_changes[i].ext_changes, diff);
+    }
+
+    for (i = 0; i < diff->typedef_change_count; ++i) {
+        schema_diff_changes_update_conform(&diff->typedef_changes[i].changes, diff);
+        schema_diff_changes_pext_update_conform(&diff->typedef_changes[i].ext_changes, diff);
+    }
+
+    /* compiled node */
+    for (i = 0; i < diff->node_change_count; ++i) {
+        schema_diff_changes_update_conform(&diff->node_changes[i].changes, diff);
+        schema_diff_changes_ext_update_conform(&diff->node_changes[i].ext_changes, diff);
+    }
 }
 
 LY_ERR
@@ -661,6 +755,9 @@ lysc_diff_changes(const struct lys_module *mod1, const struct lys_module *mod2, 
             (const struct lysc_node *)mod2->compiled->rpcs, diff));
     LY_CHECK_RET(schema_diff_nodes_change_r((const struct lysc_node *)mod1->compiled->notifs,
             (const struct lysc_node *)mod2->compiled->notifs, diff));
+
+    /* update overall module conformance */
+    schema_diff_update_conform(diff);
 
     return LY_SUCCESS;
 }
