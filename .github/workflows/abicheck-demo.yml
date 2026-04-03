@@ -1,0 +1,76 @@
+name: abicheck demo scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_sha:
+        description: "Optional base commit SHA (defaults to HEAD~1)"
+        required: false
+        type: string
+
+jobs:
+  demo-scan:
+    name: abicheck demo (manual)
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@main
+        with:
+          fetch-depth: 0
+
+      - name: Deps-packages
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake libpcre2-dev libxxhash-dev
+
+      - name: Compute base revision
+        id: base
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.inputs.base_sha }}" ]; then
+            BASE_SHA="${{ github.event.inputs.base_sha }}"
+          else
+            BASE_SHA="$(git rev-parse HEAD~1)"
+          fi
+          git cat-file -e "$BASE_SHA^{commit}"
+          echo "sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+          echo "Using base SHA: $BASE_SHA"
+
+      - name: Build base revision
+        shell: bash
+        run: |
+          git worktree add /tmp/libyang-base ${{ steps.base.outputs.sha }}
+          cmake -S /tmp/libyang-base -B /tmp/build-old -DCMAKE_BUILD_TYPE=RelWithDebInfo -DENABLE_TESTS=OFF -DENABLE_TOOLS=OFF
+          cmake --build /tmp/build-old -j2
+
+      - name: Build current revision
+        shell: bash
+        run: |
+          cmake -S . -B /tmp/build-new -DCMAKE_BUILD_TYPE=RelWithDebInfo -DENABLE_TESTS=OFF -DENABLE_TOOLS=OFF
+          cmake --build /tmp/build-new -j2
+
+      - name: Run abicheck (demo report)
+        id: abi
+        uses: napetrov/abicheck@v0.2.0
+        with:
+          mode: compare
+          old-library: /tmp/build-old/libyang.so
+          new-library: /tmp/build-new/libyang.so
+          old-header: /tmp/libyang-base/src/libyang.h
+          new-header: src/libyang.h
+          old-include: /tmp/libyang-base/src /tmp/build-old/libyang
+          new-include: src /tmp/build-new/libyang
+          lang: c
+          format: json
+          output-file: abicheck-report.json
+          fail-on-breaking: false
+          fail-on-api-break: false
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: abicheck-demo-report
+          path: abicheck-report.json
