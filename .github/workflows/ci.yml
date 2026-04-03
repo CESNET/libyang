@@ -205,7 +205,7 @@ jobs:
 
       - name: Run abicheck
         id: abi
-        uses: napetrov/abicheck@v1
+        uses: napetrov/abicheck@v0.2.0
         with:
           mode: compare
           old-library: /tmp/build-old/libyang.so
