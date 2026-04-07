@@ -858,7 +858,7 @@ test_data_xml(void **state)
 
     /* Unicode block test 8 - Unknown Unicode block with Basic Latin */
     schema = MODULE_CREATE_YANG("T_UB_8", "leaf port {type string { "
-i                       "       pattern '[\\p{IsBasicLatin}\\p{IsUnknownUnicodeBlock}]+';"
+                        "       pattern '[\\p{IsBasicLatin}\\p{IsUnknownUnicodeBlock}]+';"
                         "}} ");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Regular expression \"[\\p{IsBasicLatin}\\p{IsUnknownUnicodeBlock}]+\" "
