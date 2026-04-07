@@ -23,3 +23,4 @@ function(lyu_add_test)
 endfunction()
 
 lyu_add_test(find_mod1)
+lyu_add_test(complex_update)

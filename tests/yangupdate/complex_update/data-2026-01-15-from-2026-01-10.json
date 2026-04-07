@@ -1,0 +1,51 @@
+{
+  "ydct:leaf-01": "entry-alpha",
+  "ydct:leaf-02": 50,
+  "ydct:leaf-13": "true-true",
+  "ydct:leaf-10": "enabled",
+  "ydct:list-02": [
+    {
+      "leaf-01": "item-01",
+      "ydct-group:ygrp-aug01-leaf-02": false
+    },
+    {
+      "leaf-01": "item-02",
+      "ydct-group:ygrp-aug01-leaf-02": false
+    }
+  ],
+  "ydct:container-01": {
+    "leaf-01": 80,
+    "leaf-02": "ydct-types:identity-02",
+    "leaf-03": "e-01",
+    "ygrp-g01-leaf-01": "default-label",
+    "aug01-leaf-list-01": [
+      "default-tag"
+    ]
+  },
+  "ydct:container-03": {
+    "list-01": [
+      {
+        "leaf-01": "entry-alpha",
+        "leaf-05": 1,
+        "leaf-02": 1,
+        "leaf-07": "12.5",
+        "leaf-08": "enabled-entry-alpha"
+      },
+      {
+        "leaf-01": "entry-beta",
+        "leaf-05": 2,
+        "leaf-02": 2,
+        "leaf-08": "enabled-entry-beta"
+      },
+      {
+        "leaf-01": "entry-delta",
+        "leaf-05": 3,
+        "leaf-02": 2,
+        "leaf-08": "enabled-entry-delta"
+      }
+    ]
+  },
+  "ydct:container-04": {
+    "leaf-03": ""
+  }
+}
