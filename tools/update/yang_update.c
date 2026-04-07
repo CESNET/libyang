@@ -165,6 +165,51 @@ yu_features_str(const char **features)
 }
 
 /**
+ * @brief Print a plugin search error.
+ *
+ * @param[in] ctx Context to use.
+ * @param[in] err_code Error code.
+ * @param[in] msg_start STart of the error message followed by plugin details.
+ * @param[in] mod_name Module name.
+ * @param[in] revision_old Plugin revision_old member.
+ * @param[in] revision_new Plugin revision_new member.
+ * @param[in] features Plugin features array.
+ * @return @p err_code.
+ */
+static LY_ERR
+yu_log_plg_err(const struct ly_ctx *ctx, LY_ERR err_code, const char *msg_start, const char *mod_name,
+        const char *revision_old, const char *revision_new, const char **features)
+{
+    char *feats_str = NULL, *msg = NULL;
+    const char *rev_type, *rev = NULL;
+
+    assert(msg_start && mod_name && (!features || revision_old || revision_new));
+
+    if (revision_old) {
+        rev_type = "old";
+        rev = revision_old;
+    } else if (revision_new) {
+        rev_type = "new";
+        rev = revision_new;
+    }
+
+    if (features) {
+        feats_str = yu_features_str(features);
+        asprintf(&msg, "%s \"%s\" with %s revision %s and features %s.", msg_start, mod_name, rev_type, rev, feats_str);
+    } else if (rev) {
+        asprintf(&msg, "%s \"%s\" with %s revision %s.", msg_start, mod_name, rev_type, rev);
+    } else {
+        asprintf(&msg, "%s \"%s\".", msg_start, mod_name);
+    }
+
+    LOGERR(ctx, err_code, "%s", msg);
+
+    free(feats_str);
+    free(msg);
+    return err_code;
+}
+
+/**
  * @brief Compare revisions and feature arrays for an exact match.
  *
  * @param[in] rev1 First revision.
@@ -246,7 +291,6 @@ yu_plg_collect_new(const struct ly_ctx *ctx, const char *mod_name, const char *r
     struct lyu_plg *plg;
     uint32_t i, orig_plg_count;
     const char *rev, **feats;
-    char *feats_str;
     ly_bool found;
 
     assert(revision_new || features_new);
@@ -274,31 +318,14 @@ yu_plg_collect_new(const struct ly_ctx *ctx, const char *mod_name, const char *r
             plg = lyu_plugins[i];
         } else if (revision_new) {
             /* same revision possibly with a different set of features */
-            if (features_new) {
-                feats_str = yu_features_str(features_new);
-                LOGERR(ctx, LY_EDENIED, "Ambiguous last plugin of \"%s\" with new revision %s and features %s.",
-                        mod_name, revision_new, feats_str);
-                free(feats_str);
-            } else {
-                LOGERR(ctx, LY_EDENIED, "Ambiguous last plugin of \"%s\" with new revision %s.",
-                        mod_name, revision_new);
-            }
-            rc = LY_EDENIED;
+            rc = yu_log_plg_err(ctx, LY_EDENIED, "Ambiguous last plugin of ", mod_name, NULL, revision_new, features_new);
             goto cleanup;
         }
     }
 
     if (!plg) {
-        if (features_new) {
-            feats_str = yu_features_str(features_new);
-            LOGERR(ctx, LY_ENOTFOUND, "Failed to find the last plugin of \"%s\" with new revision %s and features %s.",
-                    mod_name, revision_new, feats_str);
-            free(feats_str);
-        } else {
-            LOGERR(ctx, LY_ENOTFOUND, "Failed to find the last plugin of \"%s\" with new revision %s.",
-                    mod_name, revision_new);
-        }
-        rc = LY_ENOTFOUND;
+        rc = yu_log_plg_err(ctx, LY_ENOTFOUND, "Failed to find the last plugin of ", mod_name, NULL, revision_new,
+                features_new);
         goto cleanup;
     }
 
@@ -344,21 +371,13 @@ yu_plg_collect_new(const struct ly_ctx *ctx, const char *mod_name, const char *r
 
         if (!found) {
             /* failed next search */
-            feats_str = yu_features_str(feats);
-            LOGERR(ctx, LY_ENOTFOUND, "Failed to find the next plugin of \"%s\" with new revision %s and features %s.",
-                    mod_name, rev, feats_str);
-            free(feats_str);
-            rc = LY_ENOTFOUND;
+            rc = yu_log_plg_err(ctx, LY_ENOTFOUND, "Failed to find the next plugin of ", mod_name, rev, NULL, feats);
             goto cleanup;
         } else if (found == 1) {
             /* continue search */
         } else if (found == 2) {
             /* ambiguous next search */
-            feats_str = yu_features_str(feats);
-            LOGERR(ctx, LY_EDENIED, "Ambiguous next plugin of \"%s\" with old revision %s and features %s.",
-                    mod_name, rev, feats_str);
-            free(feats_str);
-            rc = LY_EDENIED;
+            rc = yu_log_plg_err(ctx, LY_EDENIED, "Ambiguous next plugin of ", mod_name, rev, NULL, feats);
             goto cleanup;
         }
 
@@ -394,7 +413,6 @@ yu_plg_collect(const struct ly_ctx *ctx, const char *mod_name, const char *revis
     LY_ERR rc = LY_SUCCESS;
     uint32_t i;
     const char *rev, **feats;
-    char *feats_str;
     ly_bool checks, found;
 
     assert(mod_name && revision_old && features_old && plgs && plg_count);
@@ -446,11 +464,7 @@ yu_plg_collect(const struct ly_ctx *ctx, const char *mod_name, const char *revis
             }
 
             /* failed next search */
-            feats_str = yu_features_str(feats);
-            LOGERR(ctx, LY_ENOTFOUND, "Failed to find the next plugin of \"%s\" with old revision %s and features %s.",
-                    mod_name, rev, feats_str);
-            free(feats_str);
-            rc = LY_ENOTFOUND;
+            rc = yu_log_plg_err(ctx, LY_ENOTFOUND, "Failed to find the next plugin of ", mod_name, rev, NULL, feats);
             goto cleanup;
         } else if (found == 1) {
             if (yu_rev_feat_equal((*plgs)[*plg_count - 1]->revision_new, (*plgs)[*plg_count - 1]->features_new,
@@ -463,11 +477,7 @@ yu_plg_collect(const struct ly_ctx *ctx, const char *mod_name, const char *revis
         } else if (found == 2) {
             if (!revision_new && !features_new) {
                 /* ambiguous next search */
-                feats_str = yu_features_str(feats);
-                LOGERR(ctx, LY_EDENIED, "Ambiguous plugin of \"%s\" with old revision %s and features %s.",
-                        mod_name, rev, feats_str);
-                free(feats_str);
-                rc = LY_EDENIED;
+                rc = yu_log_plg_err(ctx, LY_EDENIED, "Ambiguous plugin of ", mod_name, rev, NULL, feats);
                 goto cleanup;
             }
 
@@ -737,7 +747,6 @@ yu_plg_find_old(const struct ly_ctx *ctx, const char *mod_name, const char *revi
         struct lyu_plg **plg)
 {
     LY_ERR rc = LY_SUCCESS;
-    char *feats_str;
     uint32_t i;
 
     *plg = NULL;
@@ -761,30 +770,15 @@ yu_plg_find_old(const struct ly_ctx *ctx, const char *mod_name, const char *revi
             *plg = lyu_plugins[i];
         } else if (revision_old) {
             /* same revision possibly with a different set of features */
-            if (features_old) {
-                feats_str = yu_features_str(features_old);
-                LOGERR(ctx, LY_EDENIED, "Ambiguous first plugin of \"%s\" with old revision %s and features %s.",
-                        mod_name, revision_old, feats_str);
-                free(feats_str);
-            } else {
-                LOGERR(ctx, LY_EDENIED, "Ambiguous first plugin of \"%s\" with old revision %s.", mod_name, revision_old);
-            }
-            rc = LY_EDENIED;
+            rc = yu_log_plg_err(ctx, LY_EDENIED, "Ambiguous first plugin of ", mod_name, revision_old, NULL,
+                features_old);
             goto cleanup;
         }
     }
 
     if (!*plg) {
-        if (features_old) {
-            feats_str = yu_features_str(features_old);
-            LOGERR(ctx, LY_ENOTFOUND, "Failed to find the first plugin of \"%s\" with old revision %s and features %s.",
-                    mod_name, revision_old, feats_str);
-            free(feats_str);
-        } else {
-            LOGERR(ctx, LY_ENOTFOUND, "Failed to find the first plugin of \"%s\" with old revision %s.",
-                    mod_name, revision_old);
-        }
-        rc = LY_ENOTFOUND;
+        rc = yu_log_plg_err(ctx, LY_ENOTFOUND, "Failed to find the first plugin of ", mod_name, revision_old, NULL,
+                features_old);
         goto cleanup;
     }
 
