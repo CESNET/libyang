@@ -82,6 +82,22 @@ struct lyu_plg {
 };
 
 /**
+ * @brief Find the old YANG module revision and load it.
+ *
+ * @param[in] module_name Module name to load.
+ * @param[in] revision_old Optional old revision. If not set, find the earliest one.
+ * @param[in] features_old Optional old module enabled features terminated by NULL. If not set, features of the earliest
+ * suitable plugin are used.
+ * @param[in] search_dirs Optional array of search dirs to use, terminated by NULL.
+ * @param[out] ctx_old Old created context.
+ * @param[out] mod_old Old YANG module revision.
+ * @return LY_SUCCESS on success;
+ * @return LY_ERR value on error.
+ */
+LIBYANG_API_DECL LY_ERR lyd_update_find_old(const char *module_name, const char *revision_old, const char **features_old,
+        const char * const *search_dirs, struct ly_ctx **ctx_old, struct lys_module **mod_old);
+
+/**
  * @brief Find the new YANG module revision to update data for.
  *
  * There is a chain of plugins created to find the latest suitable YANG module or the matching one.

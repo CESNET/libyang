@@ -1,0 +1,236 @@
+module ydct {
+    yang-version 1.1;
+    namespace "urn:ydct:yang-data-conversion-tool";
+    prefix ydct;
+
+    import ietf-inet-types {
+        prefix inet;
+        revision-date 2025-12-22;
+    }
+
+    organization
+        "YANG Data Conversion Tool Project";
+
+    contact
+        "Project repository: yang_data_conversion_tool";
+
+    description
+        "Base YANG module for the YANG data conversion tool (ydct) project.
+         This module serves as the initial starting revision and will be
+         evolved through subsequent revisions to demonstrate and test
+         YANG model versioning and data transformation capabilities.";
+
+    revision 2026-01-05 {
+        description
+            "Second revision of the ydct module.
+             MODIF-01: Added container-02 with list-01.
+             MODIF-02: list-01 uses string, enumeration, boolean, decimal64.
+             MODIF-03: Added rpc-01 with input/output.
+             MODIF-04: Added notification-01 with payload.
+             MODIF-05: Relaxed typedef-01 pattern (2-64 chars).
+             MODIF-06: Added mandatory leaf-04 (bits) at root.
+             MODIF-07: Added mandatory leaf-03 (enumeration) in container-01.
+             MODIF-08: Narrowed container-01/leaf-01 range to 1..100.
+             MODIF-09: Renamed root leaf-03 to leaf-05.
+             MODIF-10: Removed enum e-01 from container-01/leaf-02.
+             MODIF-11: Added leaf-06 (ipv4-address) at root.";
+    }
+
+    revision 2026-01-01 {
+        description
+            "Initial revision of the ydct module.";
+    }
+
+    typedef typedef-01 {
+        type string {
+            pattern '[A-Za-z][A-Za-z0-9\-]{1,63}';
+        }
+        description
+            "Identifier string. Must start with a letter and consist of
+             letters, digits, or hyphens; total length 2 to 64 characters.";
+    }
+
+    leaf leaf-01 {
+        type typedef-01;
+        description
+            "Reference to a custom typedef for identifier string.";
+    }
+
+    leaf leaf-02 {
+        type uint32;
+        default 42;
+        description
+            "Unsigned 32-bit integer with a default value.";
+    }
+
+    leaf leaf-04 {
+        type bits {
+            bit b-01 {
+                description "First bit.";
+            }
+            bit b-02 {
+                description "Second bit.";
+            }
+        }
+        mandatory true;
+        description
+            "Mandatory bits leaf with two bit values: b-01 and b-02.";
+    }
+
+    leaf leaf-05 {
+        type boolean;
+        default false;
+        description
+            "Boolean flag with a default value of false.
+             Renamed from leaf-03 in revision 2026-01-01.";
+    }
+
+    leaf leaf-06 {
+        type inet:ipv4-address;
+        default "0.0.0.0";
+        description
+            "IPv4 address leaf with a default value of 0.0.0.0.";
+    }
+
+    container container-01 {
+        description
+            "General-purpose container grouping an integer leaf
+             with bounded range and an enumerated leaf.";
+
+        leaf leaf-01 {
+            type uint32 {
+                range "1..100";
+            }
+            description
+                "Unsigned 32-bit integer constrained to the range 1 to 100.";
+        }
+
+        leaf leaf-02 {
+            type enumeration {
+                enum e-02 {
+                    description "Second enumeration value.";
+                }
+                enum e-03 {
+                    description "Third enumeration value.";
+                }
+            }
+            description
+                "Enumerated leaf with two possible values: e-02, e-03.";
+        }
+
+        leaf leaf-03 {
+            type enumeration {
+                enum e-01 {
+                    description "First enumeration value.";
+                }
+                enum e-02 {
+                    description "Second enumeration value.";
+                }
+            }
+            mandatory true;
+            description
+                "Mandatory enumerated leaf with two values: e-01, e-02.";
+        }
+    }
+
+    container container-02 {
+        description
+            "Container holding a list for structured data entries.";
+
+        list list-01 {
+            key "leaf-01";
+            description
+                "List of entries with diverse data types.";
+
+            leaf leaf-01 {
+                type string;
+                description
+                    "String key leaf for list entries.";
+            }
+
+            leaf leaf-02 {
+                type enumeration {
+                    enum e-01 {
+                        description "First enumeration value.";
+                    }
+                    enum e-02 {
+                        description "Second enumeration value.";
+                    }
+                }
+                description
+                    "Enumerated leaf with two values.";
+            }
+
+            leaf leaf-03 {
+                type boolean;
+                description
+                    "Boolean leaf.";
+            }
+
+            leaf leaf-04 {
+                type decimal64 {
+                    fraction-digits 2;
+                }
+                description
+                    "Decimal64 leaf with 2 fraction digits.";
+            }
+        }
+    }
+
+    rpc rpc-01 {
+        description
+            "Remote procedure call for triggering an operation.";
+
+        input {
+            leaf leaf-01 {
+                type string;
+                mandatory true;
+                description
+                    "Input parameter for the RPC.";
+            }
+
+            leaf leaf-02 {
+                type uint32;
+                description
+                    "Optional numeric input parameter.";
+            }
+        }
+
+        output {
+            leaf leaf-01 {
+                type string;
+                description
+                    "Output result string.";
+            }
+
+            leaf leaf-02 {
+                type boolean;
+                description
+                    "Output success indicator.";
+            }
+        }
+    }
+
+    notification notification-01 {
+        description
+            "Notification for reporting an event.";
+
+        leaf leaf-01 {
+            type string;
+            description
+                "Event description string.";
+        }
+
+        leaf leaf-02 {
+            type uint32;
+            description
+                "Event severity level.";
+        }
+
+        leaf leaf-03 {
+            type boolean;
+            description
+                "Whether the event requires acknowledgement.";
+        }
+    }
+}

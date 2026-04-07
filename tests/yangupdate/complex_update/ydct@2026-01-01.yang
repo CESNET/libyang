@@ -1,0 +1,81 @@
+module ydct {
+    yang-version 1.1;
+    namespace "urn:ydct:yang-data-conversion-tool";
+    prefix ydct;
+
+    organization
+        "YANG Data Conversion Tool Project";
+
+    contact
+        "Project repository: yang_data_conversion_tool";
+
+    description
+        "Base YANG module for the YANG data conversion tool (ydct) project.
+         This module serves as the initial starting revision and will be
+         evolved through subsequent revisions to demonstrate and test
+         YANG model versioning and data transformation capabilities.";
+
+    revision 2026-01-01 {
+        description
+            "Initial revision of the ydct module.";
+    }
+
+    typedef typedef-01 {
+        type string {
+            pattern '[A-Za-z][A-Za-z0-9\-]{2,31}';
+        }
+        description
+            "Identifier string. Must start with a letter and consist of
+             letters, digits, or hyphens; total length 3 to 32 characters.";
+    }
+
+    leaf leaf-01 {
+        type typedef-01;
+        description
+            "Reference to a custom typedef for identifier string.";
+    }
+
+    leaf leaf-02 {
+        type uint32;
+        default 42;
+        description
+            "Unsigned 32-bit integer with a default value.";
+    }
+
+    leaf leaf-03 {
+        type boolean;
+        default false;
+        description
+            "Boolean flag with a default value of false.";
+    }
+
+    container container-01 {
+        description
+            "General-purpose container grouping an integer leaf
+             with bounded range and an enumerated leaf.";
+
+        leaf leaf-01 {
+            type uint32 {
+                range "1..1000";
+            }
+            description
+                "Unsigned 32-bit integer constrained to the range 1 to 1000.";
+        }
+
+        leaf leaf-02 {
+            type enumeration {
+                enum e-01 {
+                    description "First enumeration value.";
+                }
+                enum e-02 {
+                    description "Second enumeration value.";
+                }
+                enum e-03 {
+                    description "Third enumeration value.";
+                }
+            }
+            description
+                "Enumerated leaf with three possible values: e-01, e-02, e-03.";
+        }
+    }
+}

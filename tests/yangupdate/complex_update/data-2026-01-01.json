@@ -1,0 +1,8 @@
+{
+  "ydct:leaf-01": "my-identifier",
+  "ydct:leaf-02": 100,
+  "ydct:container-01": {
+    "leaf-01": 500,
+    "leaf-02": "e-02"
+  }
+}

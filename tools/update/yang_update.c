@@ -397,7 +397,7 @@ yu_plg_collect(const struct ly_ctx *ctx, const char *mod_name, const char *revis
     char *feats_str;
     ly_bool checks, found;
 
-    assert(ctx && mod_name && revision_old && features_old && plgs && plg_count);
+    assert(mod_name && revision_old && features_old && plgs && plg_count);
 
     *plgs = NULL;
     *plg_count = 0;
@@ -719,6 +719,107 @@ cleanup:
         ly_ctx_destroy(*ctx);
         *ctx = NULL;
     }
+    return rc;
+}
+
+/**
+ * @brief Find a plugin, optionally matching old revision and/or features.
+ *
+ * @param[in] ctx Context for logging.
+ * @param[in] mod_name Module name.
+ * @param[in] revision_old Module old revision to match in the plugin.
+ * @param[in] features_old Module old features to match in the plugin.
+ * @param[out] plg Matching plugin.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+yu_plg_find_old(const struct ly_ctx *ctx, const char *mod_name, const char *revision_old, const char **features_old,
+        struct lyu_plg **plg)
+{
+    LY_ERR rc = LY_SUCCESS;
+    char *feats_str;
+    uint32_t i;
+
+    *plg = NULL;
+
+    for (i = 0; i < sizeof lyu_plugins / sizeof *lyu_plugins; ++i) {
+        /* module name */
+        if (strcmp(mod_name, lyu_plugins[i]->module_name)) {
+            continue;
+        }
+
+        /* compare old revision and/or features */
+        if (!yu_rev_feat_equal(lyu_plugins[i]->revision_old, lyu_plugins[i]->features_old, revision_old, features_old)) {
+            continue;
+        }
+
+        if (!*plg) {
+            /* first match */
+            *plg = lyu_plugins[i];
+        } else if (!revision_old && (strcmp((*plg)->revision_old, lyu_plugins[i]->revision_old) > 0)) {
+            /* older revision */
+            *plg = lyu_plugins[i];
+        } else if (revision_old) {
+            /* same revision possibly with a different set of features */
+            if (features_old) {
+                feats_str = yu_features_str(features_old);
+                LOGERR(ctx, LY_EDENIED, "Ambiguous first plugin of \"%s\" with old revision %s and features %s.",
+                        mod_name, revision_old, feats_str);
+                free(feats_str);
+            } else {
+                LOGERR(ctx, LY_EDENIED, "Ambiguous first plugin of \"%s\" with old revision %s.", mod_name, revision_old);
+            }
+            rc = LY_EDENIED;
+            goto cleanup;
+        }
+    }
+
+    if (!*plg) {
+        if (features_old) {
+            feats_str = yu_features_str(features_old);
+            LOGERR(ctx, LY_ENOTFOUND, "Failed to find the first plugin of \"%s\" with old revision %s and features %s.",
+                    mod_name, revision_old, feats_str);
+            free(feats_str);
+        } else {
+            LOGERR(ctx, LY_ENOTFOUND, "Failed to find the first plugin of \"%s\" with old revision %s.",
+                    mod_name, revision_old);
+        }
+        rc = LY_ENOTFOUND;
+        goto cleanup;
+    }
+
+cleanup:
+    return rc;
+}
+
+LIBYANG_API_DEF LY_ERR
+lyd_update_find_old(const char *module_name, const char *revision_old, const char **features_old,
+        const char * const *search_dirs, struct ly_ctx **ctx_old, struct lys_module **mod_old)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyu_plg *plg;
+
+    LY_CHECK_ARG_RET(NULL, module_name, ctx_old, mod_old, LY_EINVAL);
+
+    /* find a matching plugin */
+    if ((rc = yu_plg_find_old(NULL, module_name, revision_old, features_old, &plg))) {
+        goto cleanup;
+    }
+
+    /* create the context and load the old YANG module */
+    if ((rc = yu_ctx_load(module_name, plg->revision_old, plg->features_old, search_dirs, plg->imports_old, ctx_old,
+            mod_old))) {
+        goto cleanup;
+    }
+
+    /* ietf-yang-schema-comparison needs to be in the context */
+    if (!ly_ctx_get_module_implemented(*ctx_old, "ietf-yang-schema-comparison") &&
+            !ly_ctx_load_module(*ctx_old, "ietf-yang-schema-comparison", NULL, NULL)) {
+        rc = LY_ENOTFOUND;
+        goto cleanup;
+    }
+
+cleanup:
     return rc;
 }
 

@@ -1,0 +1,406 @@
+module ydct {
+    yang-version 1.1;
+    namespace "urn:ydct:yang-data-conversion-tool";
+    prefix ydct;
+
+    import ietf-inet-types {
+        prefix inet;
+        revision-date 2025-12-22;
+    }
+
+    import ydct-types {
+        prefix ytyp;
+        revision-date 2026-01-10;
+    }
+
+    import ydct-group {
+        prefix ygrp;
+        revision-date 2026-01-10;
+    }
+
+    organization
+        "YANG Data Conversion Tool Project";
+
+    contact
+        "Project repository: yang_data_conversion_tool";
+
+    description
+        "YANG module for the YANG data conversion tool (ydct) project.
+         Third revision with 20 modifications from predecessor 2026-01-05.";
+
+    revision 2026-01-10 {
+        description
+            "Third revision of the ydct module.
+             MODIF-01: Changed container-01/leaf-02 to identityref.
+             MODIF-02: Replaced leaf-04/leaf-05 with choice-01.
+             MODIF-03: Renamed container-02 to container-03.
+             MODIF-04: Moved list-01/leaf-03 to list-01/container-01/leaf-01.
+             MODIF-05: Added must constraint on container-01/leaf-01.
+             MODIF-06: Changed list-01/leaf-02 from enum to uint8.
+             MODIF-07: Added when condition to list-01/leaf-04.
+             MODIF-08: Added leaf-05 as second key to list-01.
+             MODIF-09: Added grouping-01 to container-01 with refine.
+             MODIF-10: Added feature-01 and mandatory leaf-10.
+             MODIF-11: Augmented container-01 with aug01-leaf-list-01.
+             MODIF-12: Added leaf-list-01 at root.
+             MODIF-13: Changed leaf-01 to leafref.
+             MODIF-14: Added max-elements 3 to list-01.
+             MODIF-15: Narrowed leaf-02 to uint8 range 1..50.
+             MODIF-16: Added config false nodes.
+             MODIF-17: Added container-04.
+             MODIF-18: Added identity-04 in ydct-types.
+             MODIF-19: Added if-feature on leaf-06.
+             MODIF-20: Added leaf-12 with if-feature.";
+    }
+
+    revision 2026-01-05 {
+        description
+            "Second revision of the ydct module.";
+    }
+
+    revision 2026-01-01 {
+        description
+            "Initial revision of the ydct module.";
+    }
+
+    feature feature-01 {
+        description
+            "Main module feature for extended functionality.";
+    }
+
+    typedef typedef-01 {
+        type string {
+            pattern '[A-Za-z][A-Za-z0-9\-]{1,63}';
+        }
+        description
+            "Identifier string. Must start with a letter and consist of
+             letters, digits, or hyphens; total length 2 to 64 characters.";
+    }
+
+    leaf leaf-01 {
+        type leafref {
+            path "/container-03/list-01/leaf-01";
+        }
+        description
+            "Leafref to a list-01 key in container-03.
+             Changed from typedef-01 in revision 2026-01-05.";
+    }
+
+    leaf leaf-02 {
+        type uint8 {
+            range "1..50";
+        }
+        default 42;
+        description
+            "Unsigned 8-bit integer constrained to range 1 to 50.
+             Narrowed from uint32 in revision 2026-01-05.";
+    }
+
+    leaf leaf-06 {
+        type inet:ipv4-address;
+        if-feature "ytyp:feature-01";
+        default "0.0.0.0";
+        description
+            "IPv4 address leaf with a default value of 0.0.0.0.
+             Conditional on ytyp:feature-01 since revision 2026-01-10.";
+    }
+
+    choice choice-01 {
+        mandatory true;
+        description
+            "Mandatory choice replacing former leaf-04 (bits) and
+             leaf-05 (boolean) from revision 2026-01-05.";
+
+        case case-01 {
+            description
+                "Split bits into individual boolean leaves.";
+
+            leaf leaf-07 {
+                type boolean;
+                description
+                    "Boolean flag corresponding to former bit b-01.";
+            }
+
+            leaf leaf-08 {
+                type boolean;
+                description
+                    "Boolean flag corresponding to former bit b-02.";
+            }
+        }
+
+        case case-02 {
+            description
+                "Reset state.";
+
+            leaf leaf-09 {
+                type empty;
+                description
+                    "Empty leaf indicating reset state.";
+            }
+        }
+    }
+
+    leaf leaf-10 {
+        type string;
+        mandatory true;
+        if-feature "feature-01";
+        description
+            "Mandatory string leaf conditional on feature-01.";
+    }
+
+    leaf leaf-11 {
+        type uint64;
+        config false;
+        description
+            "Root-level counter (config false).";
+    }
+
+    leaf leaf-12 {
+        type ytyp:typedef-01;
+        if-feature "ytyp:feature-01";
+        description
+            "Optional leaf with imported typedef, conditional on
+             ytyp:feature-01.";
+    }
+
+    leaf-list leaf-list-01 {
+        type string;
+        min-elements 2;
+        ordered-by user;
+        description
+            "Root-level string leaf-list with minimum 2 elements,
+             ordered by user.";
+    }
+
+    container container-01 {
+        description
+            "General-purpose container grouping an integer leaf
+             with bounded range and an identityref leaf.";
+
+        leaf leaf-01 {
+            type uint32 {
+                range "1..100";
+            }
+            must ". <= 80" {
+                error-message "Value must not exceed 80.";
+            }
+            description
+                "Unsigned 32-bit integer constrained to range 1..100,
+                 with must constraint limiting value to 80 or less.";
+        }
+
+        leaf leaf-02 {
+            type identityref {
+                base ytyp:identity-01;
+            }
+            description
+                "Identity reference based on ytyp:identity-01.
+                 Changed from enumeration in revision 2026-01-05.";
+        }
+
+        leaf leaf-03 {
+            type enumeration {
+                enum e-01 {
+                    description "First enumeration value.";
+                }
+                enum e-02 {
+                    description "Second enumeration value.";
+                }
+            }
+            mandatory true;
+            description
+                "Mandatory enumerated leaf with two values: e-01, e-02.";
+        }
+
+        leaf leaf-04 {
+            type string;
+            config false;
+            description
+                "Status state string (config false).";
+        }
+
+        uses ygrp:grouping-01 {
+            refine "ygrp-g01-leaf-01" {
+                mandatory true;
+            }
+        }
+    }
+
+    augment "/container-01" {
+        description
+            "Same-module augment adding leaf-list and config false leaf
+             to container-01.";
+
+        leaf-list aug01-leaf-list-01 {
+            type string;
+            min-elements 1;
+            description
+                "Augmented leaf-list with minimum 1 element.";
+        }
+
+        leaf aug01-leaf-01 {
+            type uint32;
+            config false;
+            description
+                "Config false counter in augmented container-01.";
+        }
+    }
+
+    container container-03 {
+        description
+            "Container holding a list for structured data entries.
+             Renamed from container-02 in revision 2026-01-05.";
+
+        leaf leaf-01 {
+            type uint32;
+            config false;
+            description
+                "Container summary counter (config false).";
+        }
+
+        list list-01 {
+            key "leaf-01 leaf-05";
+            max-elements 3;
+            description
+                "List of entries with diverse data types.
+                 Added leaf-05 as second key and limited to 3 entries
+                 in revision 2026-01-10.";
+
+            leaf leaf-01 {
+                type string;
+                description
+                    "String key leaf for list entries.";
+            }
+
+            leaf leaf-02 {
+                type uint8 {
+                    range "1..10";
+                }
+                description
+                    "Unsigned 8-bit integer with range 1..10.
+                     Changed from enumeration in revision 2026-01-05.";
+            }
+
+            leaf leaf-04 {
+                type decimal64 {
+                    fraction-digits 2;
+                }
+                when "../leaf-02 = 1";
+                description
+                    "Decimal64 leaf with 2 fraction digits.
+                     Only present when leaf-02 equals 1.";
+            }
+
+            leaf leaf-05 {
+                type uint32;
+                description
+                    "Sequential number, second key of list-01.
+                     Added in revision 2026-01-10.";
+            }
+
+            leaf leaf-06 {
+                type boolean;
+                config false;
+                description
+                    "List entry state indicator (config false).";
+            }
+
+            container container-01 {
+                description
+                    "Nested container for moved data nodes.";
+
+                leaf leaf-01 {
+                    type boolean;
+                    description
+                        "Boolean leaf moved from list-01/leaf-03 in
+                         revision 2026-01-05.";
+                }
+
+                leaf leaf-02 {
+                    type string;
+                    config false;
+                    description
+                        "Nested state string (config false).";
+                }
+            }
+        }
+    }
+
+    container container-04 {
+        presence
+            "Enables extended configuration with imported typedef.";
+        description
+            "Presence container with imported typedef.
+             Existence of this container signals that the extended
+             configuration is active.";
+
+        leaf leaf-01 {
+            type ytyp:typedef-01;
+            description
+                "Leaf using imported union typedef.";
+        }
+
+        leaf leaf-02 {
+            type boolean;
+            description
+                "Boolean leaf.";
+        }
+    }
+
+    rpc rpc-01 {
+        description
+            "Remote procedure call for triggering an operation.";
+
+        input {
+            leaf leaf-01 {
+                type string;
+                mandatory true;
+                description
+                    "Input parameter for the RPC.";
+            }
+
+            leaf leaf-02 {
+                type uint32;
+                description
+                    "Optional numeric input parameter.";
+            }
+        }
+
+        output {
+            leaf leaf-01 {
+                type string;
+                description
+                    "Output result string.";
+            }
+
+            leaf leaf-02 {
+                type boolean;
+                description
+                    "Output success indicator.";
+            }
+        }
+    }
+
+    notification notification-01 {
+        description
+            "Notification for reporting an event.";
+
+        leaf leaf-01 {
+            type string;
+            description
+                "Event description string.";
+        }
+
+        leaf leaf-02 {
+            type uint32;
+            description
+                "Event severity level.";
+        }
+
+        leaf leaf-03 {
+            type boolean;
+            description
+                "Whether the event requires acknowledgement.";
+        }
+    }
+}
