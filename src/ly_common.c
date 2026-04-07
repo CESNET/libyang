@@ -4,7 +4,6 @@
  * @brief common internal definitions for libyang
  *
  * Copyright (c) 2018 - 2026 CESNET, z.s.p.o.
- * Copyright (c) 2026 Nokia
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
