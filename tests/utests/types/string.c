@@ -845,8 +845,8 @@ test_data_xml(void **state)
 
     /* Unicode block test 6 - Basic Latin, Latin-1 Supplement, and Latin Extended-A */
     schema = MODULE_CREATE_YANG("T_UB_6", "leaf port {type string {"
-            "       pattern '[\\p{IsBasicLatin}\\p{IsLatin-1Supplement}\\p{IsLatinExtended-A}]+';"
-            "}} ");
+                        "       pattern '[\\p{IsBasicLatin}\\p{IsLatin-1Supplement}\\p{IsLatinExtended-A}]+';"
+                        "}} ");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
     TEST_SUCCESS_XML("T_UB_6", "Árvíztűrő tükörfúrógép!", STRING, "Árvíztűrő tükörfúrógép!");
 
@@ -854,15 +854,15 @@ test_data_xml(void **state)
     schema = MODULE_CREATE_YANG("T_UB_7", "leaf port {type string { pattern '\\p{IsUnknownUnicodeBlock}+';} } ");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Regular expression \"\\p{IsUnknownUnicodeBlock}+\" "
-                  "is not valid (\"UnknownUnicodeBlock}+\": unknown block name).", "/T_UB_7:port", 0);
+                        "is not valid (\"UnknownUnicodeBlock}+\": unknown block name).", "/T_UB_7:port", 0);
 
     /* Unicode block test 8 - Unknown Unicode block with Basic Latin */
     schema = MODULE_CREATE_YANG("T_UB_8", "leaf port {type string { "
-            "       pattern '[\\p{IsBasicLatin}\\p{IsUnknownUnicodeBlock}]+';"
-            "}} ");
+i                       "       pattern '[\\p{IsBasicLatin}\\p{IsUnknownUnicodeBlock}]+';"
+                        "}} ");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Regular expression \"[\\p{IsBasicLatin}\\p{IsUnknownUnicodeBlock}]+\" "
-                  "is not valid (\"UnknownUnicodeBlock}]+\": unknown block name).", "/T_UB_8:port", 0);
+                        "is not valid (\"UnknownUnicodeBlock}]+\": unknown block name).", "/T_UB_8:port", 0);
 }
 
 static void
