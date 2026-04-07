@@ -1,0 +1,57 @@
+module ydct-types {
+    yang-version 1.1;
+    namespace "urn:ydct:types";
+    prefix ytyp;
+
+    organization
+        "YANG Data Conversion Tool Project";
+
+    contact
+        "Project repository: yang_data_conversion_tool";
+
+    description
+        "Type definitions, identities, and features for the ydct project.";
+
+    revision 2026-01-10 {
+        description
+            "Initial revision of ydct-types module.
+             Provides feature-01, identity hierarchy, and union typedef.";
+    }
+
+    feature feature-01 {
+        description
+            "Extended type support feature.";
+    }
+
+    identity identity-01 {
+        description
+            "Base identity for classification.";
+    }
+
+    identity identity-02 {
+        base identity-01;
+        description
+            "Second classification identity (maps to old enumeration e-02).";
+    }
+
+    identity identity-03 {
+        base identity-01;
+        description
+            "Third classification identity (maps to old enumeration e-03).";
+    }
+
+    identity identity-04 {
+        base identity-01;
+        description
+            "Fourth classification identity (MODIF-18 extension).";
+    }
+
+    typedef typedef-01 {
+        type union {
+            type uint32;
+            type string;
+        }
+        description
+            "Flexible value type: union of uint32 and string.";
+    }
+}

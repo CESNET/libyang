@@ -31,17 +31,19 @@ help(void)
 {
     fprintf(stdout, "Usage:\n");
     fprintf(stdout, "    yangupdate [-hv]\n");
-    fprintf(stdout, "    yangupdate -M mod_old.yang -d data_old.json -o data_new.json\n\n");
+    fprintf(stdout, "    yangupdate -M mod -R 2026-04-02 -d data_old.json -o data_new.json\n\n");
     fprintf(stdout, "Options:\n"
             "  -h, --help                  Show this help message and exit.\n"
             "  -v, --verbose               Increase verbosity. Can be specified multiple times.\n"
             "  -s, --searchdir=SEARCH-DIR  Directory with YANG modules in all the required revisions\n"
             "                              and 'ietf-yang-schema-comparison' YANG module. Can be\n"
             "                              specified repeatedly.\n"
-            "  -M, --old-module-path=YANG-FILE      Path to the YANG module of the current data.\n"
+            "  -M, --module=MOD-NAME       Name of the YANG module of the current data.\n"
+            "  -R, --old-module-revision=REVISION   Specific revision of the data. If not set, the\n"
+            "                                       earliest revision is found based on the compiled plugins.\n"
             "  -F, --old-module-features=FEATURE*   Features to enable in the YANG module, separated\n"
             "                                       by a comma.\n"
-            "  -R, --new-module-revision=REVISION   Specific revision the data should be updated to.\n"
+            "  -N, --new-module-revision=REVISION   Specific revision the data should be updated to.\n"
             "                                       If not set, the latest revision is found based\n"
             "                                       on the compiled plugins.\n"
             "  -G, --new-module-features=FEATURE*   Specific features that should be enabled in the\n"
@@ -102,9 +104,10 @@ main(int argc, char *argv[])
         {"help",                no_argument,       NULL, 'h'},
         {"verbose",             no_argument,       NULL, 'v'},
         {"searchdir",           required_argument, NULL, 's'},
-        {"old-module-path",     required_argument, NULL, 'M'},
+        {"module",              required_argument, NULL, 'M'},
+        {"old-module-revision", required_argument, NULL, 'R'},
         {"old-module-features", required_argument, NULL, 'F'},
-        {"new-module-revision", required_argument, NULL, 'R'},
+        {"new-module-revision", required_argument, NULL, 'N'},
         {"new-module-features", required_argument, NULL, 'G'},
         {"data",                required_argument, NULL, 'd'},
         {"format",              required_argument, NULL, 'f'},
@@ -116,15 +119,15 @@ main(int argc, char *argv[])
     struct lys_module *mod_old, *mod_new;
     struct lyd_node *data_old = NULL, *data_new = NULL;
     struct ly_in *in = NULL;
-    const char *mod_old_path = NULL, **searchdirs = NULL, *data_old_path = NULL, *data_new_path = NULL;
-    const char *changes_path = NULL, *mod_new_revision = NULL;
+    const char *mod_name = NULL, **searchdirs = NULL, *data_old_path = NULL, *data_new_path = NULL;
+    const char *changes_path = NULL, *mod_old_revision = NULL, *mod_new_revision = NULL;
     char **mod_old_features = NULL, **mod_new_features = NULL;
     uint32_t i, searchdir_count = 0, old_feature_count = 0, new_feature_count = 0;
     LYD_FORMAT format = LYD_JSON;
     FILE *f = NULL, *f_ch = NULL, *f_out;
 
     opterr = 0;
-    while ((o = getopt_long(argc, argv, "hvs:M:F:R:G:d:f:o:c:", options, &opt_index)) != -1) {
+    while ((o = getopt_long(argc, argv, "hvs:M:R:F:N:G:d:f:o:c:", options, &opt_index)) != -1) {
         switch (o) {
         case 'h':
             help();
@@ -135,13 +138,18 @@ main(int argc, char *argv[])
             break;
 
         case 's':
-            searchdirs = realloc(searchdirs, (searchdir_count + 1) * sizeof *searchdirs);
+            searchdirs = realloc(searchdirs, (searchdir_count + 2) * sizeof *searchdirs);
             searchdirs[searchdir_count] = optarg;
             ++searchdir_count;
+            searchdirs[searchdir_count] = NULL;
             break;
 
         case 'M':
-            mod_old_path = optarg;
+            mod_name = optarg;
+            break;
+
+        case 'R':
+            mod_old_revision = optarg;
             break;
 
         case 'F':
@@ -151,7 +159,7 @@ main(int argc, char *argv[])
             }
             break;
 
-        case 'R':
+        case 'N':
             mod_new_revision = optarg;
             break;
 
@@ -207,7 +215,7 @@ main(int argc, char *argv[])
     }
 
     /* missing parameters */
-    if (!mod_old_path || !data_old_path) {
+    if (!mod_name || !data_old_path) {
         help();
         rc = 1;
         goto cleanup;
@@ -216,21 +224,8 @@ main(int argc, char *argv[])
     /* set verbosity */
     ly_log_level(verbosity);
 
-    /* create the old context */
-    if (ly_ctx_new(NULL, 0, &ctx_old)) {
-        rc = -1;
-        goto cleanup;
-    }
-    for (i = 0; i < searchdir_count; ++i) {
-        ly_ctx_set_searchdir(ctx_old, searchdirs[i]);
-    }
-
     /* load the old module */
-    if (ly_in_new_filepath(mod_old_path, 0, &in)) {
-        rc = -1;
-        goto cleanup;
-    }
-    if (lys_parse(ctx_old, in, LYS_IN_YANG, (const char **)mod_old_features, &mod_old)) {
+    if (lyd_update_find_old(mod_name, mod_old_revision, (const char **)mod_old_features, searchdirs, &ctx_old, &mod_old)) {
         rc = -1;
         goto cleanup;
     }
