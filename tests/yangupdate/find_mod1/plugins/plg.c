@@ -76,3 +76,42 @@ struct lyu_plg plg_findmod1_9_12 = {
     .imports_new = NULL,
     .rules = rules_findmod1
 };
+
+struct lyu_plg plg_findmod1_no_mod_name = {
+    .module_name = "findd_mod1",
+    .revision_old = "2025-10-01",
+    .features_old = NULL,
+    .imports_old = NULL,
+    .revision_new = "2025-12-02",
+    .features_new = NULL,
+    .imports_new = NULL,
+    .rules = rules_findmod1
+};
+
+struct lyu_plg plg_findmod1_no_rev_old = {
+    .module_name = "find_mod1",
+    .revision_old = "2025-10-02",
+    .features_old = NULL,
+    .imports_old = NULL,
+    .revision_new = "2025-11-02",
+    .features_new = NULL,
+    .imports_new = NULL,
+    .rules = rules_findmod1
+};
+
+static const char *features_findmod1_invalid[] = {
+    "feat1",
+    "feattt2",
+    NULL
+};
+
+struct lyu_plg plg_findmod1_no_feature_old = {
+    .module_name = "find_mod1",
+    .revision_old = "2025-12-01",
+    .features_old = features_findmod1_invalid,
+    .imports_old = NULL,
+    .revision_new = "2025-12-02",
+    .features_new = NULL,
+    .imports_new = NULL,
+    .rules = rules_findmod1
+};
