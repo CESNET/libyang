@@ -162,6 +162,11 @@ main(int argc, char *argv[])
             break;
 
         case 'F':
+            if (!optarg && (optind < argc) && (argv[optind][0] != '-')) {
+                /* assume the parameter is the optional argument */
+                optarg = argv[optind++];
+            }
+
             if (parse_features(optarg, &mod_old_features, &old_feature_count)) {
                 rc = -1;
                 goto cleanup;
@@ -173,6 +178,11 @@ main(int argc, char *argv[])
             break;
 
         case 'G':
+            if (!optarg && (optind < argc) && (argv[optind][0] != '-')) {
+                /* assume the parameter is the optional argument */
+                optarg = argv[optind++];
+            }
+
             if (parse_features(optarg, &mod_new_features, &new_feature_count)) {
                 rc = -1;
                 goto cleanup;
