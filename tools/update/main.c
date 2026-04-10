@@ -42,14 +42,15 @@ help(void)
             "  -R, --old-module-revision=REVISION   Specific revision of the data. If not set, the\n"
             "                                       earliest revision is found based on the compiled plugins.\n"
             "  -F, --old-module-features=FEATURE*   Features to enable in the YANG module, separated\n"
-            "                                       by a comma.\n"
+            "                                       by a comma. Use no argument for no enabled features.\n"
             "  -N, --new-module-revision=REVISION   Specific revision the data should be updated to.\n"
             "                                       If not set, the latest revision is found based\n"
             "                                       on the compiled plugins.\n"
             "  -G, --new-module-features=FEATURE*   Specific features that should be enabled in the\n"
             "                                       new module of the updated data. Useful is there\n"
             "                                       is not an unambiguous chain of the plugins to use\n"
-            "                                       to select the final plugin this way.\n"
+            "                                       to select the final plugin this way. Use no argument\n"
+            "                                       for no enabled features.\n"
             "  -d, --data=DATA-FILE        Path to the YANG data file with the current data.\n"
             "  -f, --format=FORMAT         Format of the new updated YANG data, default\n"
             "                              JSON (xml/json/lyb).\n"
@@ -64,6 +65,14 @@ parse_features(const char *optarg, char ***features, uint32_t *feat_count)
 {
     const char *ptr, *ptr2;
     void *mem;
+
+    if (!optarg) {
+        /* no enabled features */
+        *features = malloc(sizeof **features);
+        (*features)[0] = NULL;
+
+        return 0;
+    }
 
     ptr = optarg;
     while (1) {
@@ -106,9 +115,9 @@ main(int argc, char *argv[])
         {"searchdir",           required_argument, NULL, 's'},
         {"module",              required_argument, NULL, 'M'},
         {"old-module-revision", required_argument, NULL, 'R'},
-        {"old-module-features", required_argument, NULL, 'F'},
+        {"old-module-features", optional_argument, NULL, 'F'},
         {"new-module-revision", required_argument, NULL, 'N'},
-        {"new-module-features", required_argument, NULL, 'G'},
+        {"new-module-features", optional_argument, NULL, 'G'},
         {"data",                required_argument, NULL, 'd'},
         {"format",              required_argument, NULL, 'f'},
         {"output",              required_argument, NULL, 'o'},
@@ -127,7 +136,7 @@ main(int argc, char *argv[])
     FILE *f = NULL, *f_ch = NULL, *f_out;
 
     opterr = 0;
-    while ((o = getopt_long(argc, argv, "hvs:M:R:F:N:G:d:f:o:c:", options, &opt_index)) != -1) {
+    while ((o = getopt_long(argc, argv, "hvs:M:R:F::N:G::d:f:o:c:", options, &opt_index)) != -1) {
         switch (o) {
         case 'h':
             help();
