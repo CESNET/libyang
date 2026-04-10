@@ -318,13 +318,13 @@ yu_plg_collect_new(const struct ly_ctx *ctx, const char *mod_name, const char *r
             plg = lyu_plugins[i];
         } else if (revision_new) {
             /* same revision possibly with a different set of features */
-            rc = yu_log_plg_err(ctx, LY_EDENIED, "Ambiguous last plugin of ", mod_name, NULL, revision_new, features_new);
+            rc = yu_log_plg_err(ctx, LY_EDENIED, "Ambiguous last plugin of", mod_name, NULL, revision_new, features_new);
             goto cleanup;
         }
     }
 
     if (!plg) {
-        rc = yu_log_plg_err(ctx, LY_ENOTFOUND, "Failed to find the last plugin of ", mod_name, NULL, revision_new,
+        rc = yu_log_plg_err(ctx, LY_ENOTFOUND, "Failed to find the last plugin of", mod_name, NULL, revision_new,
                 features_new);
         goto cleanup;
     }
@@ -371,13 +371,13 @@ yu_plg_collect_new(const struct ly_ctx *ctx, const char *mod_name, const char *r
 
         if (!found) {
             /* failed next search */
-            rc = yu_log_plg_err(ctx, LY_ENOTFOUND, "Failed to find the next plugin of ", mod_name, rev, NULL, feats);
+            rc = yu_log_plg_err(ctx, LY_ENOTFOUND, "Failed to find the next plugin of", mod_name, rev, NULL, feats);
             goto cleanup;
         } else if (found == 1) {
             /* continue search */
         } else if (found == 2) {
             /* ambiguous next search */
-            rc = yu_log_plg_err(ctx, LY_EDENIED, "Ambiguous next plugin of ", mod_name, rev, NULL, feats);
+            rc = yu_log_plg_err(ctx, LY_EDENIED, "Ambiguous next plugin of", mod_name, rev, NULL, feats);
             goto cleanup;
         }
 
@@ -464,7 +464,7 @@ yu_plg_collect(const struct ly_ctx *ctx, const char *mod_name, const char *revis
             }
 
             /* failed next search */
-            rc = yu_log_plg_err(ctx, LY_ENOTFOUND, "Failed to find the next plugin of ", mod_name, rev, NULL, feats);
+            rc = yu_log_plg_err(ctx, LY_ENOTFOUND, "Failed to find the next plugin of", mod_name, rev, NULL, feats);
             goto cleanup;
         } else if (found == 1) {
             if (yu_rev_feat_equal((*plgs)[*plg_count - 1]->revision_new, (*plgs)[*plg_count - 1]->features_new,
@@ -477,7 +477,7 @@ yu_plg_collect(const struct ly_ctx *ctx, const char *mod_name, const char *revis
         } else if (found == 2) {
             if (!revision_new && !features_new) {
                 /* ambiguous next search */
-                rc = yu_log_plg_err(ctx, LY_EDENIED, "Ambiguous plugin of ", mod_name, rev, NULL, feats);
+                rc = yu_log_plg_err(ctx, LY_EDENIED, "Ambiguous plugin of", mod_name, rev, NULL, feats);
                 goto cleanup;
             }
 
@@ -770,14 +770,14 @@ yu_plg_find_old(const struct ly_ctx *ctx, const char *mod_name, const char *revi
             *plg = lyu_plugins[i];
         } else if (revision_old) {
             /* same revision possibly with a different set of features */
-            rc = yu_log_plg_err(ctx, LY_EDENIED, "Ambiguous first plugin of ", mod_name, revision_old, NULL,
+            rc = yu_log_plg_err(ctx, LY_EDENIED, "Ambiguous first plugin of", mod_name, revision_old, NULL,
                 features_old);
             goto cleanup;
         }
     }
 
     if (!*plg) {
-        rc = yu_log_plg_err(ctx, LY_ENOTFOUND, "Failed to find the first plugin of ", mod_name, revision_old, NULL,
+        rc = yu_log_plg_err(ctx, LY_ENOTFOUND, "Failed to find the first plugin of", mod_name, revision_old, NULL,
                 features_old);
         goto cleanup;
     }
