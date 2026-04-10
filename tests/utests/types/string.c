@@ -863,6 +863,11 @@ test_data_xml(void **state)
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Regular expression \"[\\p{IsBasicLatin}\\p{IsUnknownUnicodeBlock}]+\" "
             "is not valid (\"UnknownUnicodeBlock}]+\": unknown block name).", "/T_UB_8:port", 0);
+
+    schema = MODULE_CREATE_YANG("T_UB_9", "leaf port {type string { pattern "
+         "'[\\p{IsSpecials}]+';}}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+    TEST_SUCCESS_XML("T_UB_9", "&#xFFFA;&#xFFFD;", STRING, "\xef\xbf\xba\xef\xbf\xbd");
 }
 
 static void
