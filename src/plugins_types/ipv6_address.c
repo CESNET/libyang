@@ -14,6 +14,7 @@
 
 #define _GNU_SOURCE /* strndup */
 
+#include "ipv6_common.h"
 #include "plugins_internal.h"
 #include "plugins_types.h"
 
@@ -60,12 +61,13 @@ static void lyplg_type_free_ipv6_address(const struct ly_ctx *ctx, struct lyd_va
  * @param[in] ctx libyang context with dictionary.
  * @param[in,out] addr Allocated value for the address.
  * @param[out] zone Ipv6 address zone in dictionary.
+ * @param[out] dual stack format.
  * @param[out] err Error information on error.
  * @return LY_ERR value.
  */
 static LY_ERR
 ipv6address_str2ip(const char *value, uint32_t value_len, uint32_t options, const struct ly_ctx *ctx,
-        struct in6_addr *addr, const char **zone, struct ly_err_item **err)
+        struct in6_addr *addr, const char **zone, uint8_t *dual_stack_format, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *addr_no_zone;
@@ -106,6 +108,9 @@ ipv6address_str2ip(const char *value, uint32_t value_len, uint32_t options, cons
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to store IPv6 address \"%s\".", addr_no_zone);
         goto cleanup;
     }
+
+    /* store dual stack IPv6 format or compressed format */
+    *dual_stack_format = ly_strnchr(value, '.', value_len) != NULL;
 
     /* restore the value */
     if ((options & LYPLG_TYPE_STORE_DYNAMIC) && zone_ptr) {
@@ -174,7 +179,8 @@ lyplg_type_store_ipv6_address(const struct ly_ctx *ctx, const struct lysc_type *
     LY_CHECK_GOTO(ret, cleanup);
 
     /* get the network-byte order address */
-    ret = ipv6address_str2ip(value, value_size, options, ctx, &val->addr, &val->zone, err);
+    ret = ipv6address_str2ip(value, value_size, options, ctx, &val->addr, &val->zone,
+            &val->dual_stack_format, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (format == LY_VALUE_CANON) {
@@ -258,6 +264,7 @@ lyplg_type_print_ipv6_address(const struct ly_ctx *ctx, const struct lyd_value *
     struct lyd_value_ipv6_address *val;
     uint32_t zone_len;
     char *ret;
+    LY_ERR rc;
 
     LYD_VALUE_GET(value, val);
 
@@ -290,15 +297,10 @@ lyplg_type_print_ipv6_address(const struct ly_ctx *ctx, const struct lyd_value *
     if (!value->_canonical) {
         /* '%' + zone */
         zone_len = val->zone ? strlen(val->zone) + 1 : 0;
-        ret = malloc(INET6_ADDRSTRLEN + zone_len);
-        LY_CHECK_RET(!ret, NULL);
 
-        /* get the address in string */
-        if (!inet_ntop(AF_INET6, &val->addr, ret, INET6_ADDRSTRLEN)) {
-            free(ret);
-            LOGERR(ctx, LY_ESYS, "Failed to get IPv6 address in string (%s).", strerror(errno));
-            return NULL;
-        }
+        rc = ipv6address_ip2str(&val->addr, val->dual_stack_format,
+                &ret, INET6_ADDRSTRLEN + zone_len);
+        LY_CHECK_RET(!ret || rc != LY_SUCCESS, NULL);
 
         /* add zone */
         if (zone_len) {

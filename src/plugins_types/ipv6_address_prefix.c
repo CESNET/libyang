@@ -14,6 +14,7 @@
 
 #define _GNU_SOURCE /* strndup */
 
+#include "ipv6_common.h"
 #include "plugins_internal.h"
 #include "plugins_types.h"
 
@@ -58,11 +59,13 @@ static void lyplg_type_free_ipv6_address_prefix(const struct ly_ctx *ctx, struct
  * @param[in] value_len Length of @p value.
  * @param[in,out] addr Allocated address value to fill.
  * @param[out] prefix Prefix length.
+ * @param[out] dual stack format.
  * @param[out] err Error information on error.
  * @return LY_ERR value.
  */
 static LY_ERR
-ipv6prefix_str2ip(const char *value, uint32_t value_len, struct in6_addr *addr, uint8_t *prefix, struct ly_err_item **err)
+ipv6prefix_str2ip(const char *value, uint32_t value_len, struct in6_addr *addr, uint8_t *prefix,
+        uint8_t *dual_stack_format, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *pref_str;
@@ -81,6 +84,9 @@ ipv6prefix_str2ip(const char *value, uint32_t value_len, struct in6_addr *addr, 
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to store IPv6 address \"%s\".", mask_str);
         goto cleanup;
     }
+
+    /* store dual stack IPv6 format or compressed format */
+    *dual_stack_format = ly_strnchr(value, '.', value_len) != NULL;
 
 cleanup:
     free(mask_str);
@@ -194,7 +200,8 @@ lyplg_type_store_ipv6_address_prefix(const struct ly_ctx *ctx, const struct lysc
     }
 
     /* get the mask in network-byte order */
-    ret = ipv6prefix_str2ip(value, value_size, &val->addr, &val->prefix, err);
+    ret = ipv6prefix_str2ip(value, value_size, &val->addr, &val->prefix,
+            &val->dual_stack_format, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (!strcmp(type->name, "ipv6-prefix")) {
@@ -267,6 +274,7 @@ lyplg_type_print_ipv6_address_prefix(const struct ly_ctx *ctx, const struct lyd_
 {
     struct lyd_value_ipv6_prefix *val;
     char *ret;
+    LY_ERR rc;
 
     LYD_VALUE_GET(value, val);
 
@@ -281,14 +289,9 @@ lyplg_type_print_ipv6_address_prefix(const struct ly_ctx *ctx, const struct lyd_
     /* generate canonical value if not already */
     if (!value->_canonical) {
         /* IPv6 mask + '/' + prefix */
-        ret = malloc(INET6_ADDRSTRLEN + 4);
-        LY_CHECK_RET(!ret, NULL);
-
-        /* convert back to string */
-        if (!inet_ntop(AF_INET6, &val->addr, ret, INET6_ADDRSTRLEN)) {
-            free(ret);
-            return NULL;
-        }
+        rc = ipv6address_ip2str(&val->addr, val->dual_stack_format,
+                &ret, INET6_ADDRSTRLEN + 4);
+        LY_CHECK_RET(!ret || rc != LY_SUCCESS, NULL);
 
         /* add the prefix */
         sprintf(ret + strlen(ret), "/%" PRIu8, val->prefix);

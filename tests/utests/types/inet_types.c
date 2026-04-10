@@ -115,6 +115,8 @@ test_data_xml(void **state)
 
     /* ipv6-address */
     TEST_SUCCESS_XML("a", "l2", "FAAC:21:011:Da85::87:daaF%1", STRING, "faac:21:11:da85::87:daaf%1");
+    TEST_SUCCESS_XML("a", "l2", "::2121:3737%2", STRING, "::2121:3737%2");
+    TEST_SUCCESS_XML("a", "l2", "::21.21.37.37%3", STRING, "::21.21.37.37%3");
 
     /* ip-address-no-zone */
     TEST_SUCCESS_XML("a", "l3", "127.0.0.1", UNION, "127.0.0.1", STRING, "127.0.0.1");
@@ -122,6 +124,8 @@ test_data_xml(void **state)
 
     /* ipv6-address-no-zone */
     TEST_SUCCESS_XML("a", "l4", "A:B:c:D:e:f:1:0", STRING, "a:b:c:d:e:f:1:0");
+    TEST_SUCCESS_XML("a", "l4", "::2121:3737", STRING, "::2121:3737");
+    TEST_SUCCESS_XML("a", "l4", "::21.21.37.37", STRING, "::21.21.37.37");
 
     /* ip-prefix */
     TEST_SUCCESS_XML("a", "l5", "158.1.58.4/1", UNION, "128.0.0.0/1", STRING, "128.0.0.0/1");
@@ -137,6 +141,8 @@ test_data_xml(void **state)
     TEST_SUCCESS_XML("a", "l7", "::C:D:E:f:a/110", STRING, "::c:d:e:c:0/110");
     TEST_SUCCESS_XML("a", "l7", "::C:D:E:f:a/96", STRING, "::c:d:e:0:0/96");
     TEST_SUCCESS_XML("a", "l7", "::C:D:E:f:a/55", STRING, "::/55");
+    TEST_SUCCESS_XML("a", "l7", "::2121:3737/128", STRING, "::2121:3737/128");
+    TEST_SUCCESS_XML("a", "l7", "::21.21.37.37/127", STRING, "::21.21.37.36/127");
 }
 
 static void

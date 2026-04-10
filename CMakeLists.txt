@@ -100,6 +100,7 @@ set(type_plugins
     src/plugins_types/union.c
     src/plugins_types/ipv4_address.c
     src/plugins_types/ipv4_address_no_zone.c
+    src/plugins_types/ipv6_common.c
     src/plugins_types/ipv6_address.c
     src/plugins_types/ipv6_address_no_zone.c
     src/plugins_types/ipv4_address_prefix.c
