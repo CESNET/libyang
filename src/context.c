@@ -49,34 +49,23 @@
 #include "tree_schema_free.h"
 #include "tree_schema_internal.h"
 
-#include "../modules/default@2025-06-18.h"
-#include "../modules/ietf-datastores@2018-02-14.h"
-#include "../modules/ietf-inet-types@2025-12-22.h"
-#include "../modules/ietf-yang-library@2019-01-04.h"
-#include "../modules/ietf-yang-metadata@2016-08-05.h"
-#include "../modules/ietf-yang-schema-mount@2019-01-14.h"
-#include "../modules/ietf-yang-structure-ext@2020-06-17.h"
-#include "../modules/ietf-yang-types@2025-12-22.h"
-#include "../modules/yang@2025-01-29.h"
 #define IETF_YANG_LIB_REV "2019-01-04"
 
 static struct internal_modules_s {
     const char *name;
     const char *revision;
-    const char *data;
     ly_bool implemented;
-    LYS_INFORMAT format;
 } internal_modules[] = {
-    {"ietf-inet-types", "2025-12-22", ietf_inet_types_2025_12_22_yang, 0, LYS_IN_YANG},
-    {"ietf-yang-types", "2025-12-22", ietf_yang_types_2025_12_22_yang, 0, LYS_IN_YANG},
-    {"ietf-yang-metadata", "2016-08-05", ietf_yang_metadata_2016_08_05_yang, 1, LYS_IN_YANG},
-    {"yang", "2025-01-29", yang_2025_01_29_yang, 1, LYS_IN_YANG},
-    {"default", "2025-06-18", default_2025_06_18_yang, 1, LYS_IN_YANG},
-    {"ietf-yang-schema-mount", "2019-01-14", ietf_yang_schema_mount_2019_01_14_yang, 1, LYS_IN_YANG},
-    {"ietf-yang-structure-ext", "2020-06-17", ietf_yang_structure_ext_2020_06_17_yang, 0, LYS_IN_YANG},
+    {"ietf-inet-types", "2025-12-22", 0},
+    {"ietf-yang-types", "2025-12-22", 0},
+    {"ietf-yang-metadata", "2016-08-05", 1},
+    {"yang", "2025-01-29", 1},
+    {"default", "2025-06-18", 1},
+    {"ietf-yang-schema-mount", "2019-01-14", 1},
+    {"ietf-yang-structure-ext", "2020-06-17", 0},
     /* ietf-datastores and ietf-yang-library must be right here at the end of the list! */
-    {"ietf-datastores", "2018-02-14", ietf_datastores_2018_02_14_yang, 1, LYS_IN_YANG},
-    {"ietf-yang-library", IETF_YANG_LIB_REV, ietf_yang_library_2019_01_04_yang, 1, LYS_IN_YANG}
+    {"ietf-datastores", "2018-02-14", 1},
+    {"ietf-yang-library", IETF_YANG_LIB_REV, 1}
 };
 
 #define LY_INTERNAL_MODS_COUNT sizeof(internal_modules) / sizeof(struct internal_modules_s)
@@ -282,7 +271,6 @@ ly_ctx_new(const char *search_dir, uint32_t options, struct ly_ctx **new_ctx)
     char *search_dir_list, *sep, *dir;
     const char **imp_f, *all_f[] = {"*", NULL};
     uint32_t i;
-    struct ly_in *in = NULL;
     LY_ERR rc = LY_SUCCESS;
     struct lys_glob_unres unres = {0};
     ly_bool builtin_plugins_only, static_plugins_only;
@@ -314,23 +302,14 @@ ly_ctx_new(const char *search_dir, uint32_t options, struct ly_ctx **new_ctx)
 
         for (dir = search_dir_list; (sep = strchr(dir, PATH_SEPARATOR[0])) != NULL && rc == LY_SUCCESS; dir = sep + 1) {
             *sep = 0;
-            rc = ly_ctx_set_searchdir(ctx, dir);
-            if (rc == LY_EEXIST) {
-                /* ignore duplication */
-                rc = LY_SUCCESS;
-            }
+
+            /* ignore errors */
+            ly_ctx_set_searchdir(ctx, dir);
         }
         if (*dir && (rc == LY_SUCCESS)) {
-            rc = ly_ctx_set_searchdir(ctx, dir);
-            if (rc == LY_EEXIST) {
-                /* ignore duplication */
-                rc = LY_SUCCESS;
-            }
+            ly_ctx_set_searchdir(ctx, dir);
         }
         free(search_dir_list);
-
-        /* If ly_ctx_set_searchdir() failed, the error is already logged. Just exit */
-        LY_CHECK_GOTO(rc, cleanup);
     }
     ctx->change_count = 1;
 
@@ -339,14 +318,11 @@ ly_ctx_new(const char *search_dir, uint32_t options, struct ly_ctx **new_ctx)
         ctx->opts |= LY_CTX_EXPLICIT_COMPILE;
     }
 
-    /* create dummy in */
-    rc = ly_in_new_memory(internal_modules[0].data, &in);
-    LY_CHECK_GOTO(rc, cleanup);
-
     /* load internal modules */
     for (i = 0; i < ((options & LY_CTX_NO_YANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 2) : LY_INTERNAL_MODS_COUNT); i++) {
-        ly_in_memory(in, internal_modules[i].data);
-        LY_CHECK_GOTO(rc = lys_parse_in(ctx, in, internal_modules[i].format, NULL, &unres.creating, &module), cleanup);
+        rc = lys_parse_load(ctx, internal_modules[i].name, internal_modules[i].revision, &unres.creating, &module);
+        LY_CHECK_GOTO(rc, cleanup);
+
         if (internal_modules[i].implemented || (ctx->opts & LY_CTX_ALL_IMPLEMENTED)) {
             imp_f = (ctx->opts & LY_CTX_ENABLE_IMP_FEATURES) ? all_f : NULL;
             LY_CHECK_GOTO(rc = lys_implement(module, imp_f, &unres), cleanup);
@@ -360,7 +336,6 @@ ly_ctx_new(const char *search_dir, uint32_t options, struct ly_ctx **new_ctx)
     }
 
 cleanup:
-    ly_in_free(in, 0);
     lys_unres_glob_erase(&unres);
     if (rc) {
         ly_ctx_destroy(ctx);

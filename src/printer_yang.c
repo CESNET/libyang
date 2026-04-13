@@ -1064,6 +1064,10 @@ yprc_type(struct lys_ypr_ctx *pctx, const struct lysc_type *type)
 static void
 yprp_typedef(struct lys_ypr_ctx *pctx, const struct lysp_tpdf *tpdf)
 {
+    if (tpdf->flags & LYS_INTERNAL) {
+        return;
+    }
+
     ly_print_(pctx->out, "%*stypedef %s {\n", INDENT, tpdf->name);
     LEVEL++;
 

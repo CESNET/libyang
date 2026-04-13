@@ -2661,7 +2661,7 @@ test_different_contexts(void **state)
     UTEST_ADD_MODULE(mod_data, LYS_IN_YANG, NULL, NULL);
 
     /* create a new context without the module */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
 
     /* create some XML data for mod */
     data_xml = "<cont xmlns=\"urn:test-ctx\"/>\n";
@@ -2705,7 +2705,7 @@ test_different_contexts(void **state)
     data_xml = "<cont xmlns=\"urn:test-rev\"><l>42</l></cont>\n";
 
     /* create a new context with the same module but different revision (2024-02-01) */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
     mod_rev2 =
             "module mod-rev { namespace \"urn:test-rev\"; prefix mr;"
             "  revision 2024-02-01;"
@@ -2722,7 +2722,7 @@ test_different_contexts(void **state)
     ly_ctx_destroy(ctx);
 
     /* create a new context with the same revision (2024-01-01) */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(mod_rev1, &in));
     assert_int_equal(LY_SUCCESS, lys_parse(ctx, in, LYS_IN_YANG, NULL, NULL));
     ly_in_free(in, 0);
@@ -2755,7 +2755,7 @@ test_different_contexts(void **state)
     data_xml = "<cont xmlns=\"urn:test-feat\"><l1>1</l1></cont>\n";
 
     /* create a new context with different features enabled (feat2) */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(mod_feat, &in));
     assert_int_equal(LY_SUCCESS, lys_parse(ctx, in, LYS_IN_YANG, feats2, NULL));
     ly_in_free(in, 0);
@@ -2767,7 +2767,7 @@ test_different_contexts(void **state)
     ly_ctx_destroy(ctx);
 
     /* create a new context with the same features enabled (feat1) */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(mod_feat, &in));
     assert_int_equal(LY_SUCCESS, lys_parse(ctx, in, LYS_IN_YANG, feats1, NULL));
     ly_in_free(in, 0);
@@ -2808,7 +2808,7 @@ test_skip_module_check(void **state)
     UTEST_ADD_MODULE(mod_rev_1, LYS_IN_YANG, NULL, NULL);
 
     /* create a new context with mod_rev_2 */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(mod_rev_2, &in));
     assert_int_equal(LY_SUCCESS, lys_parse(ctx, in, LYS_IN_YANG, NULL, NULL));
     ly_in_free(in, 0);
@@ -2854,7 +2854,7 @@ test_skip_module_check(void **state)
     UTEST_ADD_MODULE(mod_feat, LYS_IN_YANG, feats1, NULL);
 
     /* create a new context with mod-feat with feat1 and feat2 enabled */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx));
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(mod_feat, &in));
     assert_int_equal(LY_SUCCESS, lys_parse(ctx, in, LYS_IN_YANG, feats2, NULL));
     ly_in_free(in, 0);

@@ -50,25 +50,25 @@ test_searchdirs(void **state)
 
     /* correct path */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, path1));
-    assert_int_equal(1, UTEST_LYCTX->search_paths.count);
-    assert_string_equal(path1, UTEST_LYCTX->search_paths.objs[0]);
+    assert_int_equal(2, UTEST_LYCTX->search_paths.count);
+    assert_string_equal(path1, UTEST_LYCTX->search_paths.objs[1]);
 
     /* duplicated paths */
     assert_int_equal(LY_EEXIST, ly_ctx_set_searchdir(UTEST_LYCTX, path1));
-    assert_int_equal(1, UTEST_LYCTX->search_paths.count);
-    assert_string_equal(path1, UTEST_LYCTX->search_paths.objs[0]);
+    assert_int_equal(2, UTEST_LYCTX->search_paths.count);
+    assert_string_equal(path1, UTEST_LYCTX->search_paths.objs[1]);
 
     /* another path */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, path2));
-    assert_int_equal(2, UTEST_LYCTX->search_paths.count);
-    assert_string_equal(path2, UTEST_LYCTX->search_paths.objs[1]);
+    assert_int_equal(3, UTEST_LYCTX->search_paths.count);
+    assert_string_equal(path2, UTEST_LYCTX->search_paths.objs[2]);
 
     /* get searchpaths */
     list = ly_ctx_get_searchdirs(UTEST_LYCTX);
     assert_non_null(list);
-    assert_string_equal(path1, list[0]);
-    assert_string_equal(path2, list[1]);
-    assert_null(list[2]);
+    assert_string_equal(path1, list[1]);
+    assert_string_equal(path2, list[2]);
+    assert_null(list[3]);
 
     /* removing searchpaths */
     /* nonexisting */
@@ -77,12 +77,12 @@ test_searchdirs(void **state)
 
     /* first */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(UTEST_LYCTX, path1));
-    assert_int_equal(1, UTEST_LYCTX->search_paths.count);
-    assert_string_not_equal(path1, list[0]);
+    assert_int_equal(2, UTEST_LYCTX->search_paths.count);
+    assert_string_not_equal(path1, list[1]);
 
     /* second */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(UTEST_LYCTX, path2));
-    assert_int_equal(0, UTEST_LYCTX->search_paths.count);
+    assert_int_equal(1, UTEST_LYCTX->search_paths.count);
 
     free(path1);
     free(path2);
@@ -116,13 +116,13 @@ test_searchdirs(void **state)
 
     /* correct path */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_BIN "/utests"));
-    assert_int_equal(1, UTEST_LYCTX->search_paths.count);
-    assert_string_equal(TESTS_BIN "/utests", UTEST_LYCTX->search_paths.objs[0]);
+    assert_int_equal(2, UTEST_LYCTX->search_paths.count);
+    assert_string_equal(TESTS_BIN "/utests", UTEST_LYCTX->search_paths.objs[1]);
 
     /* duplicated paths */
     assert_int_equal(LY_EEXIST, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_BIN "/utests"));
-    assert_int_equal(1, UTEST_LYCTX->search_paths.count);
-    assert_string_equal(TESTS_BIN "/utests", UTEST_LYCTX->search_paths.objs[0]);
+    assert_int_equal(2, UTEST_LYCTX->search_paths.count);
+    assert_string_equal(TESTS_BIN "/utests", UTEST_LYCTX->search_paths.objs[1]);
 
     /* another paths - add 8 to fill the initial buffer of the searchpaths list */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_BIN "/CMakeFiles"));
@@ -131,16 +131,16 @@ test_searchdirs(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_SRC "/../doc"));
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_SRC));
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_BIN));
-    assert_int_equal(7, UTEST_LYCTX->search_paths.count);
+    assert_int_equal(8, UTEST_LYCTX->search_paths.count);
 
     /* get searchpaths */
     list = ly_ctx_get_searchdirs(UTEST_LYCTX);
     assert_non_null(list);
-    assert_string_equal(TESTS_BIN "/utests", list[0]);
-    assert_string_equal(TESTS_BIN "/CMakeFiles", list[1]);
-    assert_string_equal(TESTS_SRC, list[5]);
-    assert_string_equal(TESTS_BIN, list[6]);
-    assert_null(list[7]);
+    assert_string_equal(TESTS_BIN "/utests", list[1]);
+    assert_string_equal(TESTS_BIN "/CMakeFiles", list[2]);
+    assert_string_equal(TESTS_SRC, list[6]);
+    assert_string_equal(TESTS_BIN, list[7]);
+    assert_null(list[8]);
 
     /* removing searchpaths */
     /* nonexisting */
@@ -149,131 +149,22 @@ test_searchdirs(void **state)
     /* first */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(UTEST_LYCTX, TESTS_BIN "/utests"));
     assert_string_not_equal(TESTS_BIN "/utests", list[0]);
-    assert_int_equal(6, UTEST_LYCTX->search_paths.count);
+    assert_int_equal(7, UTEST_LYCTX->search_paths.count);
     /* middle */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(UTEST_LYCTX, TESTS_SRC));
-    assert_int_equal(5, UTEST_LYCTX->search_paths.count);
+    assert_int_equal(6, UTEST_LYCTX->search_paths.count);
     /* last */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(UTEST_LYCTX, TESTS_BIN));
-    assert_int_equal(4, UTEST_LYCTX->search_paths.count);
+    assert_int_equal(5, UTEST_LYCTX->search_paths.count);
     /* all */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(UTEST_LYCTX, NULL));
     assert_int_equal(0, UTEST_LYCTX->search_paths.count);
 
     /* again - no change */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(UTEST_LYCTX, NULL));
-
-    /* cleanup */
-    ly_ctx_destroy(UTEST_LYCTX);
-
-    /* test searchdir list in ly_ctx_new() */
-    assert_int_equal(LY_EINVAL, ly_ctx_new("/nonexistingfile", 0, &UTEST_LYCTX));
-    CHECK_LOG_LASTMSG("Unable to use search directory \"/nonexistingfile\" (No such file or directory).");
-    assert_int_equal(LY_SUCCESS,
-            ly_ctx_new(TESTS_SRC PATH_SEPARATOR TESTS_BIN PATH_SEPARATOR TESTS_BIN PATH_SEPARATOR TESTS_SRC,
-            LY_CTX_DISABLE_SEARCHDIRS, &UTEST_LYCTX));
-    assert_int_equal(2, UTEST_LYCTX->search_paths.count);
-    assert_string_equal(TESTS_SRC, UTEST_LYCTX->search_paths.objs[0]);
-    assert_string_equal(TESTS_BIN, UTEST_LYCTX->search_paths.objs[1]);
 }
 
 #endif
-
-static void
-test_options(void **state)
-{
-    /* use own context with extra flags */
-    ly_ctx_destroy(UTEST_LYCTX);
-
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0xffff, &UTEST_LYCTX));
-
-    /* invalid arguments */
-    assert_int_equal(0, ly_ctx_get_options(NULL));
-    CHECK_LOG_LASTMSG("Invalid argument ctx (ly_ctx_get_options()).");
-
-    assert_int_equal(LY_EINVAL, ly_ctx_set_options(NULL, 0));
-    CHECK_LOG_LASTMSG("Invalid argument ctx (ly_ctx_set_options()).");
-    assert_int_equal(LY_EINVAL, ly_ctx_unset_options(NULL, 0));
-    CHECK_LOG_LASTMSG("Invalid argument ctx (ly_ctx_unset_options()).");
-
-    /* unset */
-    /* LY_CTX_ALL_IMPLEMENTED */
-    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_ALL_IMPLEMENTED);
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_ALL_IMPLEMENTED));
-    assert_int_equal(0, UTEST_LYCTX->opts & LY_CTX_ALL_IMPLEMENTED);
-
-    /* LY_CTX_REF_IMPLEMENTED */
-    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_REF_IMPLEMENTED);
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_REF_IMPLEMENTED));
-    assert_int_equal(0, UTEST_LYCTX->opts & LY_CTX_REF_IMPLEMENTED);
-
-    /* LY_CTX_DISABLE_SEARCHDIRS */
-    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_DISABLE_SEARCHDIRS);
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_DISABLE_SEARCHDIRS));
-    assert_int_equal(0, UTEST_LYCTX->opts & LY_CTX_DISABLE_SEARCHDIRS);
-
-    /* LY_CTX_DISABLE_SEARCHDIR_CWD */
-    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_DISABLE_SEARCHDIR_CWD);
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_DISABLE_SEARCHDIR_CWD));
-    assert_int_equal(0, UTEST_LYCTX->opts & LY_CTX_DISABLE_SEARCHDIR_CWD);
-
-    /* LY_CTX_PREFER_SEARCHDIRS */
-    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_PREFER_SEARCHDIRS);
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_PREFER_SEARCHDIRS));
-    assert_int_equal(0, UTEST_LYCTX->opts & LY_CTX_PREFER_SEARCHDIRS);
-
-    /* LY_CTX_LEAFREF_EXTENDED */
-    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_LEAFREF_EXTENDED);
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_LEAFREF_EXTENDED));
-    assert_int_equal(0, UTEST_LYCTX->opts & LY_CTX_LEAFREF_EXTENDED);
-
-    /* LY_CTX_LEAFREF_LINKING */
-    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_LEAFREF_LINKING);
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_LEAFREF_LINKING));
-    assert_int_equal(0, UTEST_LYCTX->opts & LY_CTX_LEAFREF_LINKING);
-
-    /* LY_CTX_BUILTIN_PLUGINS_ONLY */
-    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_BUILTIN_PLUGINS_ONLY);
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_BUILTIN_PLUGINS_ONLY));
-    assert_int_equal(0, UTEST_LYCTX->opts & LY_CTX_BUILTIN_PLUGINS_ONLY);
-
-    assert_int_equal(UTEST_LYCTX->opts, ly_ctx_get_options(UTEST_LYCTX));
-
-    /* set back */
-    /* LY_CTX_ALL_IMPLEMENTED */
-    assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_ALL_IMPLEMENTED));
-    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_ALL_IMPLEMENTED);
-
-    /* LY_CTX_REF_IMPLEMENTED */
-    assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_REF_IMPLEMENTED));
-    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_REF_IMPLEMENTED);
-
-    /* LY_CTX_DISABLE_SEARCHDIRS */
-    assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_DISABLE_SEARCHDIRS));
-    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_DISABLE_SEARCHDIRS);
-
-    /* LY_CTX_DISABLE_SEARCHDIR_CWD */
-    assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_DISABLE_SEARCHDIR_CWD));
-    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_DISABLE_SEARCHDIR_CWD);
-
-    /* LY_CTX_PREFER_SEARCHDIRS */
-    assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_PREFER_SEARCHDIRS));
-    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_PREFER_SEARCHDIRS);
-
-    /* LY_CTX_LEAFREF_EXTENDED */
-    assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_LEAFREF_EXTENDED));
-    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_LEAFREF_EXTENDED);
-
-    /* LY_CTX_LEAFREF_LINKING */
-    assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_LEAFREF_LINKING));
-    assert_int_not_equal(0, UTEST_LYCTX->opts & LY_CTX_LEAFREF_LINKING);
-
-    /* LY_CTX_BUILTIN_PLUGINS_ONLY */
-    assert_int_equal(LY_EINVAL, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_BUILTIN_PLUGINS_ONLY));
-    CHECK_LOG_CTX("Invalid argument option (LY_CTX_BUILTIN_PLUGINS_ONLY can be set only when creating a new context) (ly_ctx_set_options()).", NULL, 0);
-
-    assert_int_equal(UTEST_LYCTX->opts, ly_ctx_get_options(UTEST_LYCTX));
-}
 
 static LY_ERR
 test_imp_clb(const char *mod_name, const char *UNUSED(mod_rev), const char *submod_name, const char *UNUSED(sub_rev),
@@ -323,7 +214,7 @@ test_models(void **state)
     assert_int_equal(0, ly_ctx_get_change_count(NULL));
     CHECK_LOG_LASTMSG("Invalid argument ctx (ly_ctx_get_change_count()).");
 
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &UTEST_LYCTX));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD, &UTEST_LYCTX));
     assert_int_equal(UTEST_LYCTX->change_count, ly_ctx_get_change_count(UTEST_LYCTX));
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module x {namespace urn:x;prefix x;}", &in));
@@ -405,11 +296,11 @@ test_imports(void **state)
 
     /* use own context with extra flags */
     ly_ctx_destroy(UTEST_LYCTX);
-    ctx_options = LY_CTX_DISABLE_SEARCHDIRS | LY_CTX_NO_YANGLIBRARY;
+    ctx_options = LY_CTX_DISABLE_SEARCHDIR_CWD | LY_CTX_NO_YANGLIBRARY;
 
     /* Import callback provides newer revision of module 'a',
      * however the older revision is implemented soon and therefore it is preferred. */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, ctx_options, &UTEST_LYCTX));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", ctx_options, &UTEST_LYCTX));
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module a {namespace urn:a; prefix a; revision 2019-09-17;}");
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {namespace urn:a;prefix a;revision 2019-09-16;}",
             LYS_IN_YANG, &mod1));
@@ -427,7 +318,7 @@ test_imports(void **state)
     /* Import callback provides older revision of module 'a' and it is
      * imported by another module, so it is preferred even if newer
      * revision is implemented later. */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, ctx_options, &UTEST_LYCTX));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", ctx_options, &UTEST_LYCTX));
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module a {namespace urn:a; prefix a; revision 2019-09-16;}");
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module b {namespace urn:b;prefix b;import a {prefix a;}}",
             LYS_IN_YANG, &mod2));
@@ -452,7 +343,7 @@ test_imports(void **state)
     ly_ctx_destroy(UTEST_LYCTX);
 
     /* check of circular dependency */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, ctx_options, &UTEST_LYCTX));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", ctx_options, &UTEST_LYCTX));
     str = "module a {namespace urn:a; prefix a;"
             "import b {prefix b;}"
             "}";
@@ -785,21 +676,22 @@ test_ylmem(void **state)
     (void) state;
     /* seperate context to avoid double free during teadown */
     struct ly_ctx *ctx_test = NULL;
+    const char *search_paths = TESTS_SRC "/../modules" PATH_SEPARATOR TESTS_SRC "/modules/yang";
 
     /* test invalid parameters */
     assert_int_equal(LY_EINVAL, ly_ctx_new_ylpath(NULL, NULL, LYD_XML, 0, &ctx_test));
     assert_int_equal(LY_EINVAL, ly_ctx_new_ylpath(NULL, TESTS_SRC, LYD_XML, 0, NULL));
-    assert_int_equal(LY_ESYS, ly_ctx_new_ylpath(NULL, TESTS_SRC "garbage", LYD_XML, 0, &ctx_test));
+    assert_int_equal(LY_ESYS, ly_ctx_new_ylpath(search_paths, TESTS_SRC "garbage", LYD_XML, 0, &ctx_test));
 
     /* basic test with ietf-yang-library-only */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", yanglibrary_only, LYD_XML, 0, &ctx_test));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(search_paths, yanglibrary_only, LYD_XML, 0, &ctx_test));
     assert_non_null(ly_ctx_get_module(ctx_test, "ietf-yang-library", "2019-01-04"));
     assert_null(ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"));
     ly_ctx_destroy(ctx_test);
     ctx_test = NULL;
 
     /* test loading module, should also import other module */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", with_netconf, LYD_XML, 0, &ctx_test));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(search_paths, with_netconf, LYD_XML, 0, &ctx_test));
     assert_non_null(ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"));
     assert_int_equal(1, ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01")->implemented);
     assert_non_null(ly_ctx_get_module(ctx_test, "ietf-netconf-acm", "2018-02-14"));
@@ -809,7 +701,7 @@ test_ylmem(void **state)
     ctx_test = NULL;
 
     /* test loading module with feature if they are present */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", with_netconf_features, LYD_XML, 0, &ctx_test));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(search_paths, with_netconf_features, LYD_XML, 0, &ctx_test));
     assert_non_null(ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"));
     assert_non_null(ly_ctx_get_module(ctx_test, "ietf-netconf-acm", "2018-02-14"));
     assert_int_equal(LY_SUCCESS, lys_feature_value(ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"), "url"));
@@ -817,13 +709,10 @@ test_ylmem(void **state)
     ctx_test = NULL;
 
     /* test with not matching revision */
-    assert_int_equal(LY_EINVAL, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", garbage_revision, LYD_XML, 0, &ctx_test));
-
-    /* test data containing ietf-yang-library which conflicts with the option */
-    assert_int_equal(LY_EINVAL, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", with_netconf_features, LYD_XML, LY_CTX_NO_YANGLIBRARY, &ctx_test));
+    assert_int_equal(LY_EINVAL, ly_ctx_new_ylmem(search_paths, garbage_revision, LYD_XML, 0, &ctx_test));
 
     /* test creating without ietf-yang-library */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", no_yanglibrary, LYD_XML, LY_CTX_NO_YANGLIBRARY, &ctx_test));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(search_paths, no_yanglibrary, LYD_XML, LY_CTX_NO_YANGLIBRARY, &ctx_test));
     assert_int_equal(NULL, ly_ctx_get_module(ctx_test, "ietf-yang-library", "2019-01-04"));
     ly_ctx_destroy(ctx_test);
     free(with_netconf_features);
@@ -1013,7 +902,8 @@ test_set_priv_parsed(void **state)
     ly_ctx_destroy(UTEST_LYCTX);
     const char *feats[] = {"f1", NULL};
 
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD | LY_CTX_SET_PRIV_PARSED, &UTEST_LYCTX));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD | LY_CTX_SET_PRIV_PARSED,
+            &UTEST_LYCTX));
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_DIR_MODULES_YANG));
     assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "ietf-restconf", "2017-01-26", NULL));
     UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, feats, NULL);
@@ -1086,7 +976,8 @@ test_explicit_compile(void **state)
     ly_ctx_destroy(UTEST_LYCTX);
     const char *feats[] = {"f1", NULL};
 
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD | LY_CTX_EXPLICIT_COMPILE, &UTEST_LYCTX));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD | LY_CTX_EXPLICIT_COMPILE,
+            &UTEST_LYCTX));
     UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, NULL, &mod);
     UTEST_ADD_MODULE(schema_b, LYS_IN_YANG, NULL, NULL);
     UTEST_ADD_MODULE(schema_c, LYS_IN_YANG, NULL, NULL);
@@ -1130,7 +1021,6 @@ main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_searchdirs),
-        UTEST(test_options),
         UTEST(test_models),
         UTEST(test_imports),
         UTEST(test_includes),

@@ -750,7 +750,7 @@ test_lyd_dup_meta(void **state)
     lyd_free_all(par);
 
     /* metadata duplication where parameters are from different contexts */
-    assert_int_equal(ly_ctx_new(NULL, 0, &ctx2), LY_SUCCESS);
+    assert_int_equal(ly_ctx_new(TESTS_SRC "/../modules", 0, &ctx2), LY_SUCCESS);
     assert_int_equal(ly_in_new_memory(schema, &UTEST_IN), LY_SUCCESS);
     assert_int_equal(lys_parse(ctx2, UTEST_IN, LYS_IN_YANG, NULL, &mod2), LY_SUCCESS);
     ly_in_free(UTEST_IN, 0), UTEST_IN = NULL;

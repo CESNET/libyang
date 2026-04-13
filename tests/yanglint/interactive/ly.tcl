@@ -16,6 +16,7 @@ log_user 0
 
 # default setup for every unit test
 variable ly_setup {
+    set ::env(YANGLINT_INTERNAL_MODULES_DIR) "$env(TESTS_DIR)/../../modules"
     spawn $TUT
     ly_skip_warnings
     # Searchpath is set, so modules can be loaded via the 'load' command.

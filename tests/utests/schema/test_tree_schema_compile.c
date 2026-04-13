@@ -1332,7 +1332,7 @@ test_identity(void **state)
 
 #define RESET_CTX(CTX) \
     ly_ctx_destroy(UTEST_LYCTX); \
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &UTEST_LYCTX));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD, &UTEST_LYCTX));
 
     /* It does not matter whether the base identity is in implemented
      * module or not.

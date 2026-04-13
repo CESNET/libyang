@@ -2527,6 +2527,7 @@ lysp_add_internal_yang(struct lysp_ctx *pctx, struct lysp_module *mod)
     LY_CHECK_RET(lysdict_insert(PARSER_CTX(pctx), "lyds_tree", 0, &tpdf->name));
     LY_CHECK_RET(lysdict_insert(PARSER_CTX(pctx), "uint64", 0, &tpdf->type.name));
     tpdf->type.pmod = mod;
+    tpdf->flags = LYS_INTERNAL;
 
     /* add new extension instance */
     LY_ARRAY_NEW_RET(PARSER_CTX(pctx), mod->exts, extp, LY_EMEM);

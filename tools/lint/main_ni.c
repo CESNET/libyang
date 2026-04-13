@@ -510,6 +510,7 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
         {NULL,                0,                 NULL, 0}
     };
     uint8_t data_type_set = 0;
+    const char *search_path;
 
     yo->ctx_options = YL_DEFAULT_CTX_OPTIONS;
     yo->data_parse_options = YL_DEFAULT_DATA_PARSE_OPTIONS;
@@ -727,6 +728,15 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
         return -1;
     }
     if (cmd_print_dep(yo, 0)) {
+        return -1;
+    }
+
+    /* add the default search path */
+    search_path = getenv("YANGLINT_INTERNAL_MODULES_DIR");
+    if (!search_path) {
+        search_path = ly_yang_module_dir();
+    }
+    if (searchpath_strcat(&yo->searchpaths, search_path)) {
         return -1;
     }
 

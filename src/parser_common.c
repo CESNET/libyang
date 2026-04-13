@@ -3706,3 +3706,9 @@ lys_parser_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *sub
 cleanup:
     return rc;
 }
+
+LIBYANG_API_DEF const char *
+ly_yang_module_dir(void)
+{
+    return LY_YANG_MODULE_DIR;
+}

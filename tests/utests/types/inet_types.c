@@ -160,7 +160,7 @@ test_data_basic_plugins_only_xml(void **state)
 
     /* Recreate context to get rid of all plugins */
     ly_ctx_destroy(UTEST_LYCTX);
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_BUILTIN_PLUGINS_ONLY, &UTEST_LYCTX));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_BUILTIN_PLUGINS_ONLY, &UTEST_LYCTX));
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
 
     /* Stored via string plugin */

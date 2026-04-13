@@ -3,6 +3,7 @@ source [expr {[info exists ::env(TESTS_DIR)] ? "$env(TESTS_DIR)/interactive/ly.t
 set mdir $::env(YANG_MODULES_DIR)
 
 variable ly_setup {
+    set ::env(YANGLINT_INTERNAL_MODULES_DIR) "$env(TESTS_DIR)/../../modules"
     spawn $TUT
     ly_skip_warnings
 }

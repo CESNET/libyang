@@ -37,6 +37,9 @@
 #define LYPLG_TYPE_DIR "@PLUGINS_DIR_TYPES@"
 #define LYPLG_EXT_DIR "@PLUGINS_DIR_EXTENSIONS@"
 
+/** YANG module dir */
+#define LY_YANG_MODULE_DIR "@YANG_MODULE_DIR@"
+
 /** atomic compiler operations, to be able to use uint32_t */
 #ifndef _WIN32
 # define LY_ATOMIC_INC_BARRIER(var) __sync_fetch_and_add(&(var), 1)

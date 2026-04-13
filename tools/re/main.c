@@ -339,6 +339,7 @@ main(int argc, char *argv[])
     struct lys_module *mod;
     FILE *infile = NULL;
     ly_bool info_printed = 0;
+    const char *search_path;
 
     opterr = 0;
     while ((i = getopt_long(argc, argv, "hf:ivVp:", options, &opt_index)) != -1) {
@@ -420,7 +421,12 @@ main(int argc, char *argv[])
         goto cleanup;
     }
 
-    if (ly_ctx_new(NULL, 0, &ctx)) {
+    search_path = getenv("YANGRE_INTERNAL_MODULES_DIR");
+    if (!search_path) {
+        search_path = ly_yang_module_dir();
+    }
+
+    if (ly_ctx_new(search_path, 0, &ctx)) {
         goto cleanup;
     }
 

@@ -15,3 +15,4 @@ set TUT_NAME "yangre"
 source "$::env(TESTS_DIR)/../tool_ni.tcl"
 
 # The script continues by defining variables and functions specific to the yangre tool.
+set ::env(YANGRE_INTERNAL_MODULES_DIR) "$env(TESTS_DIR)/../../modules"

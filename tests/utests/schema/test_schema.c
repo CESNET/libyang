@@ -1492,7 +1492,7 @@ test_extension_argument(void **state)
 
     /* context reset */
     ly_ctx_destroy(UTEST_LYCTX);
-    ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &UTEST_LYCTX);
+    ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD, &UTEST_LYCTX);
 
     /* from YIN */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, (void *)mod_def_yin);
@@ -1594,7 +1594,7 @@ test_extension_argument_element(void **state)
 
     /* context reset */
     ly_ctx_destroy(UTEST_LYCTX);
-    ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &UTEST_LYCTX);
+    ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD, &UTEST_LYCTX);
 
     /* from YIN */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, (void *)mod_def_yin);
@@ -1866,7 +1866,7 @@ test_ext_recursive(void **state)
 
     /* context reset */
     ly_ctx_destroy(UTEST_LYCTX);
-    ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &UTEST_LYCTX);
+    ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD, &UTEST_LYCTX);
 
     /* from YIN */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, (void *)mod_imp_yin);
@@ -2131,7 +2131,8 @@ test_compiled_print(void **state)
 
     /* recreate the context, using builtin/static plugins only */
     ly_ctx_destroy(UTEST_LYCTX);
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_BUILTIN_PLUGINS_ONLY | LY_CTX_STATIC_PLUGINS_ONLY, &UTEST_LYCTX));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules",
+            LY_CTX_BUILTIN_PLUGINS_ONLY | LY_CTX_STATIC_PLUGINS_ONLY, &UTEST_LYCTX));
 
     /* load the base module */
     yang = "module m1 {yang-version 1.1; namespace urn:m1;prefix m1;"
@@ -2306,7 +2307,7 @@ test_obsolete(void **state)
     assert_null(snode->next);
 
     /* compile with obsolete nodes */
-    assert_int_equal(ly_ctx_new(NULL, LY_CTX_COMPILE_OBSOLETE, &ctx), LY_SUCCESS);
+    assert_int_equal(ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_COMPILE_OBSOLETE, &ctx), LY_SUCCESS);
     assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, &mod), LY_SUCCESS);
     CHECK_LOG_CTX(NULL, NULL, 0);
 

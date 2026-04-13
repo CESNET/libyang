@@ -6,3 +6,4 @@ source [expr {[info exists ::env(TESTS_DIR)] ? "$env(TESTS_DIR)/common.tcl" : ".
 source "$::env(TESTS_DIR)/../tool_ni.tcl"
 
 # The script continues by defining variables and functions specific to the non-interactive yanglint tool.
+set ::env(YANGLINT_INTERNAL_MODULES_DIR) "$env(TESTS_DIR)/../../modules"

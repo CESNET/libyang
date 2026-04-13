@@ -42,8 +42,8 @@ main(int argc, char *argv[])
 {
     int cmdlen, posc, i, j;
     struct yl_opt yo = {0};
-    char *empty = NULL, *cmdline;
-    char **posv;
+    char *empty = NULL, *cmdline, **posv;
+    const char *search_dir;
     uint8_t cmd_found;
 
     if (argc > 1) {
@@ -58,7 +58,14 @@ main(int argc, char *argv[])
     linenoiseSetMultiLine(1);
     load_config();
 
-    if (ly_ctx_new(NULL, YL_DEFAULT_CTX_OPTIONS, &ctx)) {
+    /* get YANG module dir */
+    search_dir = getenv("YANGLINT_INTERNAL_MODULES_DIR");
+    if (!search_dir) {
+        search_dir = ly_yang_module_dir();
+    }
+
+    /* create the context */
+    if (ly_ctx_new(search_dir, YL_DEFAULT_CTX_OPTIONS, &ctx)) {
         YLMSG_E("Failed to create context.");
         return 1;
     }

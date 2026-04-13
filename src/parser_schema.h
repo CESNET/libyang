@@ -174,6 +174,13 @@ LIBYANG_API_DECL LY_ERR lys_parse_path(struct ly_ctx *ctx, const char *path, LYS
 LIBYANG_API_DECL LY_ERR lys_search_localfile(const char * const *searchpaths, ly_bool cwd, const char *name, const char *revision,
         char **localfile, LYS_INFORMAT *format);
 
+/**
+ * @brief Get the directory with internal libyang YANG modules.
+ *
+ * @return YANG module dir.
+ */
+LIBYANG_API_DECL const char *ly_yang_module_dir(void);
+
 /** @} schematree */
 
 #ifdef __cplusplus

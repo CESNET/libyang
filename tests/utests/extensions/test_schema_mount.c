@@ -1385,7 +1385,7 @@ test_dup_shared(void **state)
     lyd_free_siblings(dup);
 
     /* dup to another context */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx2));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD, &ctx2));
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx2, TESTS_DIR_MODULES_YANG));
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx2, glob_schema, LYS_IN_YANG, NULL));
     assert_non_null(ly_ctx_load_module(ctx2, "iana-if-type", NULL, NULL));

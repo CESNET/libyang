@@ -72,7 +72,7 @@ setup(void **state)
 
 #define RECREATE_CTX_WITH_MODULE(CTX, MODULE) \
     ly_ctx_destroy(CTX); \
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &CTX)); \
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", 0, &CTX)); \
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(MODULE, &_UC->in)); \
     assert_int_equal(LY_SUCCESS, lys_parse(CTX, _UC->in, LYS_IN_YANG, NULL, NULL)); \
     ly_in_free(_UC->in, 0);

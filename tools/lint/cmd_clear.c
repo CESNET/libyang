@@ -132,7 +132,7 @@ searchpaths_to_str(const struct ly_ctx *ctx, char **searchpaths)
 
     for (i = 0; dirs[i]; ++i) {
         rc = searchpath_strcat(searchpaths, dirs[i]);
-        if (!rc) {
+        if (rc) {
             break;
         }
     }
@@ -146,17 +146,18 @@ cmd_clear_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
     (void) posv;
     struct ly_ctx *ctx_new = NULL;
 
+    if (searchpaths_to_str(*ctx, &yo->searchpaths)) {
+        YLMSG_E("Storing searchpaths failed.");
+        return 1;
+    }
+
     if (yo->yang_lib_file) {
-        if (searchpaths_to_str(*ctx, &yo->searchpaths)) {
-            YLMSG_E("Storing searchpaths failed.");
-            return 1;
-        }
         if (ly_ctx_new_ylpath(yo->searchpaths, yo->yang_lib_file, LYD_UNKNOWN, yo->ctx_options, &ctx_new)) {
             YLMSG_E("Unable to create libyang context with yang-library data.");
             return 1;
         }
     } else {
-        if (ly_ctx_new(NULL, yo->ctx_options, &ctx_new)) {
+        if (ly_ctx_new(yo->searchpaths, yo->ctx_options, &ctx_new)) {
             YLMSG_W("Failed to create context.");
             return 1;
         }

@@ -251,16 +251,16 @@ struct ly_ctx;
  * information) according to which the data trees will be processed and validated. So, the schema
  * trees are tightly connected with the specific context and they are held by the context internally
  * - caller does not need to keep pointers to the schemas returned by ::lys_parse(), context knows
- * about them. The data trees created with \b lyd_parse_*() are still connected with the specific context,
+ * about them. The data trees created with @b lyd_parse_*() are still connected with the specific context,
  * but they are not internally held by the context. The data tree just points and lean on some data
  * held by the context (schema tree, string dictionary, etc.). Therefore, in case of data trees, caller
- * is supposed to keep pointers returned by the \b lyd_parse_*() functions and manage the data tree on its own. This
+ * is supposed to keep pointers returned by the @b lyd_parse_*() functions and manage the data tree on its own. This
  * also affects the number of instances of both tree types. While you can have only one instance of
  * specific schema connected with a single context, number of data tree instances is not connected.
  *
- * @param[in] search_dir Directory (or directories) where libyang will search for the imported or included modules
- * and submodules. If no such directory is available, NULL is accepted. Several directories can be specified,
- * delimited by colon ":" (on Windows, use semicolon ";" instead).
+ * @param[in] search_dir Directory (or directories) where libyang will search for the imported or included modules,
+ * separated by colon ":" (on Windows, use semicolon ";" instead). At least ::ly_yang_module_dir() should be passed
+ * for the internal modules to be found.
  * @param[in] options Context options, see @ref contextoptions.
  * @param[out] new_ctx Pointer to the created libyang context if LY_SUCCESS returned.
  * @return LY_ERR return value.
