@@ -724,13 +724,13 @@ cleanup:
 static LY_ERR
 ly_pat_compile_xmlschema_chblocks_xmlschema2perl(const char *pattern, char **regex, struct ly_err_item **err)
 {
-struct ublock_s {
-    char *ublock;
-    char *urange;
-    size_t size;
-};
+    struct ublock_s {
+        char *ublock;
+        char *urange;
+        size_t size;
+    };
     struct ublock_s ublock2urange[] = {
-        {"BasicLatin", "[\\x{0000}-\\x{007F}]",19},
+        {"BasicLatin", "[\\x{0000}-\\x{007F}]", 19},
         {"Latin-1Supplement", "[\\x{0080}-\\x{00FF}]", 19},
         {"LatinExtended-A", "[\\x{0100}-\\x{017F}]", 19},
         {"LatinExtended-B", "[\\x{0180}-\\x{024F}]", 19},
@@ -833,7 +833,6 @@ struct ublock_s {
         }
         end = (ptr - perl_regex) + 1;
 
-
         /* find our range */
         for (idx = 0; ublock2urange[idx].ublock; ++idx) {
             if (!strncmp(perl_regex + start + ly_strlen_const("\\p{Is"),
@@ -848,15 +847,15 @@ struct ublock_s {
         ublock = idx;
 
         /* need more space */
-        size_t urange_len = ublock2urange[ublock].size; 
-            if(end - start < urange_len ) {
+        size_t urange_len = ublock2urange[ublock].size;
+
+        if (end - start < urange_len) {
             perl_regex = ly_realloc(perl_regex, strlen(perl_regex) + (urange_len - (end - start)) + 1);
             *regex = perl_regex;
             if (!perl_regex) {
                 return ly_err_new(err, LY_EMEM, 0, NULL, NULL, LY_EMEM_MSG);
             }
         }
-
 
         /* make the space in the string and replace the block (but we cannot include brackets if it was already enclosed in them) */
         for (idx2 = 0, idx = 0; idx2 < start; ++idx2) {
@@ -1119,6 +1118,7 @@ ly_pat_match_xmlschema(const void *pat_comp, const char *pattern, const char *st
     int r, match_opts = 0;
     pcre2_code *pcode = (void *)pat_comp;
     pcre2_match_data *match_data = NULL;
+
     if (!pat_comp) {
         /* compile pattern first */
         rc = ly_pat_compile_xmlschema(pattern, (void **)&pcode, err);

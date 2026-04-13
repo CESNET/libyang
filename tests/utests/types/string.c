@@ -865,9 +865,20 @@ test_data_xml(void **state)
             "is not valid (\"UnknownUnicodeBlock}]+\": unknown block name).", "/T_UB_8:port", 0);
 
     schema = MODULE_CREATE_YANG("T_UB_9", "leaf port {type string { pattern "
-         "'[\\p{IsSpecials}]+';}}");
+            "'[\\p{IsSpecials}]+';}}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
     TEST_SUCCESS_XML("T_UB_9", "&#xFFFA;&#xFFFD;", STRING, "\xef\xbf\xba\xef\xbf\xbd");
+
+    schema = MODULE_CREATE_YANG("T_UB_10", "leaf port {type string { pattern "
+            "'[\\p{IsSpecials}]+';}}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+    TEST_ERROR_XML("T_UB_10", "&#xFFDF;&#xFFFD;");
+    CHECK_LOG_CTX("Unsatisfied pattern - \"\xef\xbf\x9f\xef\xbf\xbd\" does not match \"[\\p{IsSpecials}]+\".", "/T_UB_10:port", 1);
+
+    schema = MODULE_CREATE_YANG("T_UB_11", "leaf port {type string { pattern "
+            "'[\\p{IsSpecials}]+';}}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+    TEST_SUCCESS_XML("T_UB_11", "&#xFEFF;&#xFFFD;", STRING, "\xef\xbb\xbf\xef\xbf\xbd");
 }
 
 static void
