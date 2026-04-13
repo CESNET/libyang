@@ -724,97 +724,92 @@ cleanup:
 static LY_ERR
 ly_pat_compile_xmlschema_chblocks_xmlschema2perl(const char *pattern, char **regex, struct ly_err_item **err)
 {
-    struct ublock_s {
-        char *ublock;
-        char *urange;
-        size_t size;
-    };
-    struct ublock_s ublock2urange[] = {
-        {"BasicLatin", "[\\x{0000}-\\x{007F}]", 19},
-        {"Latin-1Supplement", "[\\x{0080}-\\x{00FF}]", 19},
-        {"LatinExtended-A", "[\\x{0100}-\\x{017F}]", 19},
-        {"LatinExtended-B", "[\\x{0180}-\\x{024F}]", 19},
-        {"IPAExtensions", "[\\x{0250}-\\x{02AF}]", 19},
-        {"SpacingModifierLetters", "[\\x{02B0}-\\x{02FF}]", 19},
-        {"CombiningDiacriticalMarks", "[\\x{0300}-\\x{036F}]", 19},
-        {"Greek", "[\\x{0370}-\\x{03FF}]", 19},
-        {"Cyrillic", "[\\x{0400}-\\x{04FF}]", 19},
-        {"Armenian", "[\\x{0530}-\\x{058F}]", 19},
-        {"Hebrew", "[\\x{0590}-\\x{05FF}]", 19},
-        {"Arabic", "[\\x{0600}-\\x{06FF}]", 19},
-        {"Syriac", "[\\x{0700}-\\x{074F}]", 19},
-        {"Thaana", "[\\x{0780}-\\x{07BF}]", 19},
-        {"Devanagari", "[\\x{0900}-\\x{097F}]", 19},
-        {"Bengali", "[\\x{0980}-\\x{09FF}]", 19},
-        {"Gurmukhi", "[\\x{0A00}-\\x{0A7F}]", 19},
-        {"Gujarati", "[\\x{0A80}-\\x{0AFF}]", 19},
-        {"Oriya", "[\\x{0B00}-\\x{0B7F}]", 19},
-        {"Tamil", "[\\x{0B80}-\\x{0BFF}]", 19},
-        {"Telugu", "[\\x{0C00}-\\x{0C7F}]", 19},
-        {"Kannada", "[\\x{0C80}-\\x{0CFF}]", 19},
-        {"Malayalam", "[\\x{0D00}-\\x{0D7F}]", 19},
-        {"Sinhala", "[\\x{0D80}-\\x{0DFF}]", 19},
-        {"Thai", "[\\x{0E00}-\\x{0E7F}]", 19},
-        {"Lao", "[\\x{0E80}-\\x{0EFF}]", 19},
-        {"Tibetan", "[\\x{0F00}-\\x{0FFF}]", 19},
-        {"Myanmar", "[\\x{1000}-\\x{109F}]", 19},
-        {"Georgian", "[\\x{10A0}-\\x{10FF}]", 19},
-        {"HangulJamo", "[\\x{1100}-\\x{11FF}]", 19},
-        {"Ethiopic", "[\\x{1200}-\\x{137F}]", 19},
-        {"Cherokee", "[\\x{13A0}-\\x{13FF}]", 19},
-        {"UnifiedCanadianAboriginalSyllabics", "[\\x{1400}-\\x{167F}]", 19},
-        {"Ogham", "[\\x{1680}-\\x{169F}]", 19},
-        {"Runic", "[\\x{16A0}-\\x{16FF}]", 19},
-        {"Khmer", "[\\x{1780}-\\x{17FF}]", 19},
-        {"Mongolian", "[\\x{1800}-\\x{18AF}]", 19},
-        {"LatinExtendedAdditional", "[\\x{1E00}-\\x{1EFF}]", 19},
-        {"GreekExtended", "[\\x{1F00}-\\x{1FFF}]", 19},
-        {"GeneralPunctuation", "[\\x{2000}-\\x{206F}]", 19},
-        {"SuperscriptsandSubscripts", "[\\x{2070}-\\x{209F}]", 19},
-        {"CurrencySymbols", "[\\x{20A0}-\\x{20CF}]", 19},
-        {"CombiningMarksforSymbols", "[\\x{20D0}-\\x{20FF}]", 19},
-        {"LetterlikeSymbols", "[\\x{2100}-\\x{214F}]", 19},
-        {"NumberForms", "[\\x{2150}-\\x{218F}]", 19},
-        {"Arrows", "[\\x{2190}-\\x{21FF}]", 19},
-        {"MathematicalOperators", "[\\x{2200}-\\x{22FF}]", 19},
-        {"MiscellaneousTechnical", "[\\x{2300}-\\x{23FF}]", 19},
-        {"ControlPictures", "[\\x{2400}-\\x{243F}]", 19},
-        {"OpticalCharacterRecognition", "[\\x{2440}-\\x{245F}]", 19},
-        {"EnclosedAlphanumerics", "[\\x{2460}-\\x{24FF}]", 19},
-        {"BoxDrawing", "[\\x{2500}-\\x{257F}]", 19},
-        {"BlockElements", "[\\x{2580}-\\x{259F}]", 19},
-        {"GeometricShapes", "[\\x{25A0}-\\x{25FF}]", 19},
-        {"MiscellaneousSymbols", "[\\x{2600}-\\x{26FF}]", 19},
-        {"Dingbats", "[\\x{2700}-\\x{27BF}]", 19},
-        {"BraillePatterns", "[\\x{2800}-\\x{28FF}]", 19},
-        {"CJKRadicalsSupplement", "[\\x{2E80}-\\x{2EFF}]", 19},
-        {"KangxiRadicals", "[\\x{2F00}-\\x{2FDF}]", 19},
-        {"IdeographicDescriptionCharacters", "[\\x{2FF0}-\\x{2FFF}]", 19},
-        {"CJKSymbolsandPunctuation", "[\\x{3000}-\\x{303F}]", 19},
-        {"Hiragana", "[\\x{3040}-\\x{309F}]", 19},
-        {"Katakana", "[\\x{30A0}-\\x{30FF}]", 19},
-        {"Bopomofo", "[\\x{3100}-\\x{312F}]", 19},
-        {"HangulCompatibilityJamo", "[\\x{3130}-\\x{318F}]", 19},
-        {"Kanbun", "[\\x{3190}-\\x{319F}]", 19},
-        {"BopomofoExtended", "[\\x{31A0}-\\x{31BF}]", 19},
-        {"EnclosedCJKLettersandMonths", "[\\x{3200}-\\x{32FF}]", 19},
-        {"CJKCompatibility", "[\\x{3300}-\\x{33FF}]", 19},
-        {"CJKUnifiedIdeographsExtensionA", "[\\x{3400}-\\x{4DB5}]", 19},
-        {"CJKUnifiedIdeographs", "[\\x{4E00}-\\x{9FFF}]", 19},
-        {"YiSyllables", "[\\x{A000}-\\x{A48F}]", 19},
-        {"YiRadicals", "[\\x{A490}-\\x{A4CF}]", 19},
-        {"HangulSyllables", "[\\x{AC00}-\\x{D7A3}]", 19},
-        {"PrivateUse", "[\\x{E000}-\\x{F8FF}]", 19},
-        {"CJKCompatibilityIdeographs", "[\\x{F900}-\\x{FAFF}]", 19},
-        {"AlphabeticPresentationForms", "[\\x{FB00}-\\x{FB4F}]", 19},
-        {"ArabicPresentationForms-A", "[\\x{FB50}-\\x{FDFF}]", 19},
-        {"CombiningHalfMarks", "[\\x{FE20}-\\x{FE2F}]", 19},
-        {"CJKCompatibilityForms", "[\\x{FE30}-\\x{FE4F}]", 19},
-        {"SmallFormVariants", "[\\x{FE50}-\\x{FE6F}]", 19},
-        {"ArabicPresentationForms-B", "[\\x{FE70}-\\x{FEFE}]", 19},
-        {"HalfwidthandFullwidthForms", "[\\x{FF00}-\\x{FFEF}]", 19},
-        {"Specials", "[\\x{FEFF}|\\x{FFF0}-\\x{FFFD}]", 28},
-        {NULL, NULL, 0}
+    char *ublock2urange[][2] = {
+        {"BasicLatin", "[\\x{0000}-\\x{007F}]"},
+        {"Latin-1Supplement", "[\\x{0080}-\\x{00FF}]"},
+        {"LatinExtended-A", "[\\x{0100}-\\x{017F}]"},
+        {"LatinExtended-B", "[\\x{0180}-\\x{024F}]"},
+        {"IPAExtensions", "[\\x{0250}-\\x{02AF}]"},
+        {"SpacingModifierLetters", "[\\x{02B0}-\\x{02FF}]"},
+        {"CombiningDiacriticalMarks", "[\\x{0300}-\\x{036F}]"},
+        {"Greek", "[\\x{0370}-\\x{03FF}]"},
+        {"Cyrillic", "[\\x{0400}-\\x{04FF}]"},
+        {"Armenian", "[\\x{0530}-\\x{058F}]"},
+        {"Hebrew", "[\\x{0590}-\\x{05FF}]"},
+        {"Arabic", "[\\x{0600}-\\x{06FF}]"},
+        {"Syriac", "[\\x{0700}-\\x{074F}]"},
+        {"Thaana", "[\\x{0780}-\\x{07BF}]"},
+        {"Devanagari", "[\\x{0900}-\\x{097F}]"},
+        {"Bengali", "[\\x{0980}-\\x{09FF}]"},
+        {"Gurmukhi", "[\\x{0A00}-\\x{0A7F}]"},
+        {"Gujarati", "[\\x{0A80}-\\x{0AFF}]"},
+        {"Oriya", "[\\x{0B00}-\\x{0B7F}]"},
+        {"Tamil", "[\\x{0B80}-\\x{0BFF}]"},
+        {"Telugu", "[\\x{0C00}-\\x{0C7F}]"},
+        {"Kannada", "[\\x{0C80}-\\x{0CFF}]"},
+        {"Malayalam", "[\\x{0D00}-\\x{0D7F}]"},
+        {"Sinhala", "[\\x{0D80}-\\x{0DFF}]"},
+        {"Thai", "[\\x{0E00}-\\x{0E7F}]"},
+        {"Lao", "[\\x{0E80}-\\x{0EFF}]"},
+        {"Tibetan", "[\\x{0F00}-\\x{0FFF}]"},
+        {"Myanmar", "[\\x{1000}-\\x{109F}]"},
+        {"Georgian", "[\\x{10A0}-\\x{10FF}]"},
+        {"HangulJamo", "[\\x{1100}-\\x{11FF}]"},
+        {"Ethiopic", "[\\x{1200}-\\x{137F}]"},
+        {"Cherokee", "[\\x{13A0}-\\x{13FF}]"},
+        {"UnifiedCanadianAboriginalSyllabics", "[\\x{1400}-\\x{167F}]"},
+        {"Ogham", "[\\x{1680}-\\x{169F}]"},
+        {"Runic", "[\\x{16A0}-\\x{16FF}]"},
+        {"Khmer", "[\\x{1780}-\\x{17FF}]"},
+        {"Mongolian", "[\\x{1800}-\\x{18AF}]"},
+        {"LatinExtendedAdditional", "[\\x{1E00}-\\x{1EFF}]"},
+        {"GreekExtended", "[\\x{1F00}-\\x{1FFF}]"},
+        {"GeneralPunctuation", "[\\x{2000}-\\x{206F}]"},
+        {"SuperscriptsandSubscripts", "[\\x{2070}-\\x{209F}]"},
+        {"CurrencySymbols", "[\\x{20A0}-\\x{20CF}]"},
+        {"CombiningMarksforSymbols", "[\\x{20D0}-\\x{20FF}]"},
+        {"LetterlikeSymbols", "[\\x{2100}-\\x{214F}]"},
+        {"NumberForms", "[\\x{2150}-\\x{218F}]"},
+        {"Arrows", "[\\x{2190}-\\x{21FF}]"},
+        {"MathematicalOperators", "[\\x{2200}-\\x{22FF}]"},
+        {"MiscellaneousTechnical", "[\\x{2300}-\\x{23FF}]"},
+        {"ControlPictures", "[\\x{2400}-\\x{243F}]"},
+        {"OpticalCharacterRecognition", "[\\x{2440}-\\x{245F}]"},
+        {"EnclosedAlphanumerics", "[\\x{2460}-\\x{24FF}]"},
+        {"BoxDrawing", "[\\x{2500}-\\x{257F}]"},
+        {"BlockElements", "[\\x{2580}-\\x{259F}]"},
+        {"GeometricShapes", "[\\x{25A0}-\\x{25FF}]"},
+        {"MiscellaneousSymbols", "[\\x{2600}-\\x{26FF}]"},
+        {"Dingbats", "[\\x{2700}-\\x{27BF}]"},
+        {"BraillePatterns", "[\\x{2800}-\\x{28FF}]"},
+        {"CJKRadicalsSupplement", "[\\x{2E80}-\\x{2EFF}]"},
+        {"KangxiRadicals", "[\\x{2F00}-\\x{2FDF}]"},
+        {"IdeographicDescriptionCharacters", "[\\x{2FF0}-\\x{2FFF}]"},
+        {"CJKSymbolsandPunctuation", "[\\x{3000}-\\x{303F}]"},
+        {"Hiragana", "[\\x{3040}-\\x{309F}]"},
+        {"Katakana", "[\\x{30A0}-\\x{30FF}]"},
+        {"Bopomofo", "[\\x{3100}-\\x{312F}]"},
+        {"HangulCompatibilityJamo", "[\\x{3130}-\\x{318F}]"},
+        {"Kanbun", "[\\x{3190}-\\x{319F}]"},
+        {"BopomofoExtended", "[\\x{31A0}-\\x{31BF}]"},
+        {"EnclosedCJKLettersandMonths", "[\\x{3200}-\\x{32FF}]"},
+        {"CJKCompatibility", "[\\x{3300}-\\x{33FF}]"},
+        {"CJKUnifiedIdeographsExtensionA", "[\\x{3400}-\\x{4DB5}]"},
+        {"CJKUnifiedIdeographs", "[\\x{4E00}-\\x{9FFF}]"},
+        {"YiSyllables", "[\\x{A000}-\\x{A48F}]"},
+        {"YiRadicals", "[\\x{A490}-\\x{A4CF}]"},
+        {"HangulSyllables", "[\\x{AC00}-\\x{D7A3}]"},
+        {"PrivateUse", "[\\x{E000}-\\x{F8FF}]"},
+        {"CJKCompatibilityIdeographs", "[\\x{F900}-\\x{FAFF}]"},
+        {"AlphabeticPresentationForms", "[\\x{FB00}-\\x{FB4F}]"},
+        {"ArabicPresentationForms-A", "[\\x{FB50}-\\x{FDFF}]"},
+        {"CombiningHalfMarks", "[\\x{FE20}-\\x{FE2F}]"},
+        {"CJKCompatibilityForms", "[\\x{FE30}-\\x{FE4F}]"},
+        {"SmallFormVariants", "[\\x{FE50}-\\x{FE6F}]"},
+        {"ArabicPresentationForms-B", "[\\x{FE70}-\\x{FEFE}]"},
+        {"HalfwidthandFullwidthForms", "[\\x{FF00}-\\x{FFEF}]"},
+        {"Specials", "[\\x{FEFF}|\\x{FFF0}-\\x{FFFD}]"},
+        {NULL, NULL}
     };
 
     size_t idx, idx2, start, end, ublock;
@@ -834,20 +829,20 @@ ly_pat_compile_xmlschema_chblocks_xmlschema2perl(const char *pattern, char **reg
         end = (ptr - perl_regex) + 1;
 
         /* find our range */
-        for (idx = 0; ublock2urange[idx].ublock; ++idx) {
+        for (idx = 0; ublock2urange[idx][0]; ++idx) {
             if (!strncmp(perl_regex + start + ly_strlen_const("\\p{Is"),
-                    ublock2urange[idx].ublock, strlen(ublock2urange[idx].ublock))) {
+                    ublock2urange[idx][0], strlen(ublock2urange[idx][0]))) {
                 break;
             }
         }
-        if (!ublock2urange[idx].ublock) {
+        if (!ublock2urange[idx][0]) {
             return ly_err_new(err, LY_EVALID, 0, NULL, NULL, "Regular expression \"%s\" is not valid (\"%s\": %s).",
                     pattern, perl_regex + start + 5, "unknown block name");
         }
         ublock = idx;
 
         /* need more space */
-        size_t urange_len = ublock2urange[ublock].size;
+        size_t urange_len = strlen(ublock2urange[ublock][1]);
 
         if (end - start < urange_len) {
             perl_regex = ly_realloc(perl_regex, strlen(perl_regex) + (urange_len - (end - start)) + 1);
@@ -870,10 +865,10 @@ ly_pat_compile_xmlschema_chblocks_xmlschema2perl(const char *pattern, char **reg
         if (idx) {
             /* skip brackets */
             memmove(perl_regex + start + (urange_len - 2), perl_regex + end, strlen(perl_regex + end) + 1);
-            memcpy(perl_regex + start, ublock2urange[ublock].urange + 1, urange_len - 2);
+            memcpy(perl_regex + start, ublock2urange[ublock][1] + 1, urange_len - 2);
         } else {
             memmove(perl_regex + start + urange_len, perl_regex + end, strlen(perl_regex + end) + 1);
-            memcpy(perl_regex + start, ublock2urange[ublock].urange, urange_len);
+            memcpy(perl_regex + start, ublock2urange[ublock][1], urange_len);
         }
     }
 
