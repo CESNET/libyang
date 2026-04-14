@@ -1,6 +1,6 @@
 # YANG Update
 
-This tool, developed together with [RACOM](www.racom.eu), provides a framework for updating configuration YANG data
+This tool, developed together with [RACOM](https://www.racom.eu), provides a framework for updating configuration YANG data
 in one revision to a newer revision of the corresponding YANG module. This is a necessary task when there is a deployed
 device using YANG configuration that needs to be updated including its YANG module.
 
