@@ -81,12 +81,12 @@ module ietf-yang-schema-comparison {
       "Marks statements in a new revision of a module
        that introduces an editorial change of the statement.
 
-       The argument marks the last version of the module
-       where the statement has been changed.
+       The argument marks the most recent version of the
+       module where the statement has been changed.
 
-       Can only be a substatement of 'pattern', 'must',
-       'when', 'description', 'presence', or an extension
-       instance statements.";
+       Can only be a substatement of 'pattern', 'when',
+       'must', 'description', 'reference', 'presence', or
+       extension instance statements.";
     reference
       "RFC 7950: The YANG 1.1 Data Modeling Language, section 11;
        RFC 6020: YANG - A Data Modeling Language for the Network
@@ -100,12 +100,12 @@ module ietf-yang-schema-comparison {
        that introduces a backwards-compatible change of
        the statement.
 
-       The argument marks the last version of the module
-       where the statement has been changed.
+       The argument marks the most recent version of the
+       module where the statement has been changed.
 
-       Can only be a substatement of 'pattern', 'must',
-       'when', 'description', 'presence', or an extension
-       instance statements.";
+       Can only be a substatement of 'pattern', 'when',
+       'must', 'description', 'reference', 'presence', or
+       extension instance statements.";
     reference
       "RFC 7950: The YANG 1.1 Data Modeling Language, section 11;
        RFC 6020: YANG - A Data Modeling Language for the Network
@@ -119,12 +119,12 @@ module ietf-yang-schema-comparison {
        that introduces a non-backwards-compatible change of
        the statement.
 
-       The argument marks the last version of the module
-       where the statement has been changed.
+       The argument marks the most recent version of the
+       module where the statement has been changed.
 
-       Can only be a substatement of 'pattern', 'must',
-       'when', 'description', 'presence', or an extension
-       instance statements.";
+       Can only be a substatement of 'pattern', 'when',
+       'must', 'description', 'reference', 'presence', or
+       extension instance statements.";
     reference
       "RFC 7950: The YANG 1.1 Data Modeling Language, section 11;
        RFC 6020: YANG - A Data Modeling Language for the Network

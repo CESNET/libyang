@@ -26,6 +26,7 @@
 #include "libyang.h"
 #include "tests_config.h"
 
+#define TEST_SC_ED_DIR TESTS_SRC "/utests/schema_comparison/ed"
 #define TEST_SC_BC_DIR TESTS_SRC "/utests/schema_comparison/bc"
 #define TEST_SC_NBC_DIR TESTS_SRC "/utests/schema_comparison/nbc"
 
@@ -52,10 +53,10 @@ setup_f(void **state)
     *state = st;
 
     /* create contexts */
-    if (ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD | LY_CTX_SET_PRIV_PARSED, &st->ctx1)) {
+    if (ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD | LY_CTX_SET_PRIV_PARSED, &st->ctx1)) {
         return 1;
     }
-    if (ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIR_CWD | LY_CTX_SET_PRIV_PARSED, &st->ctx2)) {
+    if (ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD | LY_CTX_SET_PRIV_PARSED, &st->ctx2)) {
         return 1;
     }
 
@@ -153,6 +154,20 @@ schema_comparison(struct sc_state *st, const char *module_name)
 }
 
 static void
+test_editorial(void **state)
+{
+    struct sc_state *st = *state;
+
+    /* set up contexts */
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(st->ctx1, TEST_SC_ED_DIR));
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(st->ctx2, TEST_SC_ED_DIR));
+
+    /* test all editorial modules */
+    schema_comparison(st, "uses");
+    schema_comparison(st, "prefix");
+}
+
+static void
 test_backwards_compatible(void **state)
 {
     struct sc_state *st = *state;
@@ -186,7 +201,6 @@ test_backwards_compatible(void **state)
     schema_comparison(st, "status");
     schema_comparison(st, "type");
     schema_comparison(st, "uses");
-    schema_comparison(st, "prefix");
 }
 
 static void
@@ -232,6 +246,7 @@ int
 main(void)
 {
     const struct CMUnitTest tests[] = {
+        cmocka_unit_test_setup_teardown(test_editorial, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_backwards_compatible, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_non_backwards_compatible, setup_f, teardown_f),
     };
