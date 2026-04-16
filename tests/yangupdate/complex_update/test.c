@@ -78,7 +78,7 @@ test_update_01_01_to_01_20(void **state)
 {
     struct st *st = *state;
     struct lys_module *mod1, *mod2;
-    const char *search_dirs[] = {TESTS_SRC "/yangupdate/complex_update", TESTS_SRC "/../modules", NULL};
+    const char *search_dirs[] = {TESTS_SRC "/../modules", TESTS_SRC "/yangupdate/complex_update", NULL};
     long size;
 
     /* load old module */
@@ -114,7 +114,7 @@ test_update_01_10_to_01_15(void **state)
 {
     struct st *st = *state;
     struct lys_module *mod1, *mod2;
-    const char *search_dirs[] = {TESTS_SRC "/yangupdate/complex_update", TESTS_SRC "/../modules", NULL};
+    const char *search_dirs[] = {TESTS_SRC "/../modules", TESTS_SRC "/yangupdate/complex_update", NULL};
     long size;
 
     /* load old module */
@@ -150,7 +150,7 @@ test_update_01_15_to_01_20(void **state)
 {
     struct st *st = *state;
     struct lys_module *mod1, *mod2;
-    const char *search_dirs[] = {TESTS_SRC "/yangupdate/complex_update", TESTS_SRC "/../modules", NULL};
+    const char *search_dirs[] = {TESTS_SRC "/../modules", TESTS_SRC "/yangupdate/complex_update", NULL};
     const char *features_old[] = {"feature-02", NULL};
     long size;
 

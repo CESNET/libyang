@@ -687,13 +687,17 @@ yu_ctx_load(const char *mod_name, const char *revision, const char **features, c
         const struct lyu_plg_module *imports, struct ly_ctx **ctx, struct lys_module **mod)
 {
     LY_ERR rc = LY_SUCCESS;
+    const char *search_dir;
     struct yu_module_imp_arg arg;
     uint32_t i;
 
     *ctx = NULL;
 
+    /* use the first search dir for the internal modules */
+    search_dir = search_dirs ? search_dirs[0] : NULL;
+
     /* create the context */
-    if ((rc = ly_ctx_new(NULL, 0, ctx))) {
+    if ((rc = ly_ctx_new(search_dir, 0, ctx))) {
         goto cleanup;
     }
 
