@@ -482,32 +482,33 @@ cleanup:
 }
 
 /**
- * @brief Check changes of a parsed 'description'.
+ * @brief Check changes of a parsed text statement such as 'description' or 'reference'.
  *
  * @param[in] ctx Context to use.
- * @param[in] dsc1 First description.
- * @param[in] dsc2 Second description.
+ * @param[in] text1 First description.
+ * @param[in] text2 Second description.
  * @param[in] exts2 Parsed extension instances of the second statement.
+ * @param[in] stmt Changed statement.
  * @param[in] parent_changed Parent statement of the change.
  * @param[in,out] changes Changes to add to.
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_pnode_description(const struct ly_ctx *ctx, const char *dsc1, const char *dsc2,
-        const struct lysp_ext_instance *exts2, enum lys_diff_changed_e parent_changed, struct lys_diff_changes_s *changes)
+schema_diff_pnode_text(const struct ly_ctx *ctx, const char *text1, const char *text2, const struct lysp_ext_instance *exts2,
+        enum ly_stmt stmt, enum lys_diff_changed_e parent_changed, struct lys_diff_changes_s *changes)
 {
-    if (dsc1 && !dsc2) {
+    if (text1 && !text2) {
         /* removed, always NBC */
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, LYS_CHANGED_DESCRIPTION,
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, schema_diff_stmt2changed(stmt),
                 LYS_CONFORM_NBC, changes));
-    } else if (!dsc1 && dsc2) {
+    } else if (!text1 && text2) {
         /* added */
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, LYS_CHANGED_DESCRIPTION, LYS_CONFORM_BC,
-                changes));
-    } else if (dsc1 && dsc2 && strcmp(dsc1, dsc2)) {
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, schema_diff_stmt2changed(stmt),
+                LYS_CONFORM_BC, changes));
+    } else if (text1 && text2 && strcmp(text1, text2)) {
         /* modified, check BC extension */
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_DESCRIPTION,
-                schema_diff_pext_conform(ctx, exts2, LY_STMT_DESCRIPTION, LYS_CONFORM_ED, NULL), changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, schema_diff_stmt2changed(stmt),
+                schema_diff_pext_conform(ctx, exts2, stmt, LYS_CONFORM_ED, NULL), changes));
     }
 
     return LY_SUCCESS;
@@ -592,9 +593,10 @@ schema_diff_parsed_restr_change(const struct lysp_restr *restr1, const struct ly
     }
 
     /* description, reference, error-message, error-app-tag */
-    LY_CHECK_GOTO(rc = schema_diff_pnode_description(diff->ctx, restr1->dsc, restr2->dsc, restr2->exts, changed, changes),
-            cleanup);
-    LY_CHECK_GOTO(rc = schema_diff_text_bc(restr1->ref, restr2->ref, changed, LYS_CHANGED_REFERENCE, changes), cleanup);
+    LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, restr1->dsc, restr2->dsc, restr2->exts, LY_STMT_DESCRIPTION,
+            changed, changes), cleanup);
+    LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, restr1->ref, restr2->ref, restr2->exts, LY_STMT_REFERENCE,
+            changed, changes), cleanup);
     LY_CHECK_GOTO(rc = schema_diff_text_nbc(restr1->emsg, restr2->emsg, changed, LYS_CHANGED_ERR_MSG, changes), cleanup);
     LY_CHECK_GOTO(rc = schema_diff_text_nbc(restr1->eapptag, restr2->eapptag, changed, LYS_CHANGED_ERR_APP_TAG, changes),
             cleanup);
@@ -732,12 +734,12 @@ schema_diff_ptype_enums_change(const struct lysp_type_enum *enums1, const struct
         }
 
         /* description */
-        LY_CHECK_GOTO(rc = schema_diff_pnode_description(diff->ctx, enums1[u].dsc, enums2[v].dsc, enums2[v].exts,
-                changed, changes), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, enums1[u].dsc, enums2[v].dsc, enums2[v].exts,
+                LY_STMT_DESCRIPTION, changed, changes), cleanup);
 
         /* reference */
-        LY_CHECK_GOTO(rc = schema_diff_text_bc(enums1[u].ref, enums2[v].ref, changed, LYS_CHANGED_REFERENCE, changes),
-                cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, enums1[u].ref, enums2[v].ref, enums2[v].exts,
+                LY_STMT_REFERENCE, changed, changes), cleanup);
 
         /* value/position, does not matter */
         if (enums1[u].value != enums2[v].value) {
@@ -1090,12 +1092,12 @@ schema_diff_typedefs_change(const struct lysp_tpdf *typedefs1, const struct lysp
                 LYS_CHANGED_DEFAULT, &typedef_change->changes), cleanup);
 
         /* description */
-        LY_CHECK_GOTO(rc = schema_diff_pnode_description(diff->ctx, typedefs1[u].dsc, typedefs2[v].dsc, typedefs2[v].exts,
-                LYS_CHANGED_TYPEDEF, &typedef_change->changes), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, typedefs1[u].dsc, typedefs2[v].dsc, typedefs2[v].exts,
+                LY_STMT_DESCRIPTION, LYS_CHANGED_TYPEDEF, &typedef_change->changes), cleanup);
 
         /* reference */
-        LY_CHECK_GOTO(rc = schema_diff_text_bc(typedefs1[u].ref, typedefs2[v].ref, LYS_CHANGED_TYPEDEF,
-                LYS_CHANGED_REFERENCE, &typedef_change->changes), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, typedefs1[u].ref, typedefs2[v].ref, typedefs2[v].exts,
+                LY_STMT_REFERENCE, LYS_CHANGED_TYPEDEF, &typedef_change->changes), cleanup);
 
         /* type */
         LY_CHECK_GOTO(rc = schema_diff_ptype_change(&typedefs1[u].type, parent1, &typedefs2[v].type, parent2,
@@ -1176,12 +1178,12 @@ schema_diff_pnode_when_change(const struct lysp_when *when1, const struct lysp_w
     }
 
     /* description */
-    LY_CHECK_GOTO(rc = schema_diff_pnode_description(diff->ctx, when1->dsc, when2->dsc, when2->exts, LYS_CHANGED_WHEN,
-            changes), cleanup);
+    LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, when1->dsc, when2->dsc, when2->exts, LY_STMT_DESCRIPTION,
+            LYS_CHANGED_WHEN, changes), cleanup);
 
     /* reference */
-    LY_CHECK_GOTO(rc = schema_diff_text_bc(when1->ref, when2->ref, LYS_CHANGED_WHEN, LYS_CHANGED_REFERENCE, changes),
-            cleanup);
+    LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, when1->ref, when2->ref, when2->exts, LY_STMT_REFERENCE,
+            LYS_CHANGED_WHEN, changes), cleanup);
 
     /* ext-instance */
     LY_CHECK_GOTO(rc = schema_diff_pext_insts_change(when1->exts, when2->exts, ext_changes, diff), cleanup);
@@ -1484,12 +1486,12 @@ schema_diff_parsed_refines_change(const struct lysp_refine *refines1, const stru
         }
 
         /* description */
-        LY_CHECK_GOTO(rc = schema_diff_pnode_description(diff->ctx, refines1[u].dsc, refines2[v].dsc, refines2[v].exts,
-                LYS_CHANGED_REFINE, &refine_change->changes), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, refines1[u].dsc, refines2[v].dsc, refines2[v].exts,
+                LY_STMT_DESCRIPTION, LYS_CHANGED_REFINE, &refine_change->changes), cleanup);
 
         /* reference */
-        LY_CHECK_GOTO(rc = schema_diff_text_bc(refines1[u].ref, refines2[v].ref, LYS_CHANGED_REFINE,
-                LYS_CHANGED_REFERENCE, &refine_change->changes), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, refines1[u].ref, refines2[v].ref, refines2[v].exts,
+                LY_STMT_REFERENCE, LYS_CHANGED_REFINE, &refine_change->changes), cleanup);
 
         /* if-features */
         LY_CHECK_GOTO(rc = schema_diff_iffeatures_change(refines1[u].iffeatures, 0, refines2[v].iffeatures,
@@ -1562,6 +1564,43 @@ cleanup:
 }
 
 /**
+ * @brief Determine the conformance of adding or removing a specific node.
+ *
+ * @param[in] node Node to use.
+ * @param[in] change Node change, either added or removed.
+ * @return Conformance of the change.
+ */
+static enum lys_diff_conform_e
+schema_diff_parsed_node_conform(const struct lysp_node *node, enum lys_diff_change_e change)
+{
+    assert((change == LYS_CHANGE_ADDED) || (change == LYS_CHANGE_REMOVED));
+
+    /* leave schema-only node changes up to the compiled schema tree, editorial on their own */
+    if (node->nodetype == LYS_USES) {
+        return LYS_CONFORM_ED;
+    } else if ((node->nodetype == LYS_GROUPING) && node->parent) {
+        /* changes to top-level groupings affect importing modules */
+        return LYS_CONFORM_ED;
+    }
+
+    if (change == LYS_CHANGE_ADDED) {
+        if (node->flags & LYS_MAND_TRUE) {
+            /* adding mandatory nodes is NBC */
+            return LYS_CONFORM_NBC;
+        } else {
+            return LYS_CONFORM_BC;
+        }
+    } else {
+        if (node->flags & LYS_STATUS_OBSLT) {
+            /* obsolete nodes can be removed */
+            return LYS_CONFORM_BC;
+        } else {
+            return LYS_CONFORM_NBC;
+        }
+    }
+}
+
+/**
  * @brief Check changes of a parsed node pair.
  *
  * @param[in] node1 First node.
@@ -1590,20 +1629,20 @@ schema_diff_pnode_change(const struct lysp_node *node1, const struct lysp_node *
         /* node added change */
         assert(node2);
         return schema_diff_add_change(LYS_CHANGE_ADDED, LYS_CHANGED_NONE, LYS_CHANGED_NODE,
-                (node2->flags & LYS_MAND_TRUE) ? LYS_CONFORM_NBC : LYS_CONFORM_BC, changes);
+                schema_diff_parsed_node_conform(node2, LYS_CHANGE_ADDED), changes);
     } else if (!node2) {
         /* node removed change */
         return schema_diff_add_change(LYS_CHANGE_REMOVED, LYS_CHANGED_NONE, LYS_CHANGED_NODE,
-                (node1->flags & LYS_STATUS_OBSLT) ? LYS_CONFORM_BC : LYS_CONFORM_NBC, changes);
+                schema_diff_parsed_node_conform(node1, LYS_CHANGE_REMOVED), changes);
     }
 
     /* description */
-    LY_CHECK_GOTO(rc = schema_diff_pnode_description(diff->ctx, node1->dsc, node2->dsc, node2->exts, LYS_CHANGED_NODE,
-            changes), cleanup);
+    LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, node1->dsc, node2->dsc, node2->exts, LY_STMT_DESCRIPTION,
+            LYS_CHANGED_NODE, changes), cleanup);
 
     /* reference */
-    LY_CHECK_GOTO(rc = schema_diff_text_bc(node1->ref, node2->ref, LYS_CHANGED_NODE, LYS_CHANGED_REFERENCE, changes),
-            cleanup);
+    LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, node1->ref, node2->ref, node2->exts, LY_STMT_REFERENCE,
+            LYS_CHANGED_NODE, changes), cleanup);
 
     /* if-features */
     LY_CHECK_GOTO(rc = schema_diff_iffeatures_change(node1->iffeatures, node1->flags, node2->iffeatures,
@@ -1879,12 +1918,12 @@ schema_diff_imports_change(const struct lysp_import *imps1, const struct lysp_im
                 &import_change->changes), cleanup);
 
         /* description */
-        LY_CHECK_GOTO(rc = schema_diff_pnode_description(diff->ctx, imps1[u].dsc, imps2[v].dsc, imps2[v].exts,
-                LYS_CHANGED_IMPORT, &import_change->changes), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, imps1[u].dsc, imps2[v].dsc, imps2[v].exts,
+                LY_STMT_DESCRIPTION, LYS_CHANGED_IMPORT, &import_change->changes), cleanup);
 
         /* reference */
-        LY_CHECK_GOTO(rc = schema_diff_text_bc(imps1[u].ref, imps2[v].ref, LYS_CHANGED_IMPORT, LYS_CHANGED_REFERENCE,
-                &import_change->changes), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, imps1[u].ref, imps2[v].ref, imps2[v].exts,
+                LY_STMT_REFERENCE, LYS_CHANGED_IMPORT, &import_change->changes), cleanup);
 
         /* ext-instance */
         LY_CHECK_GOTO(rc = schema_diff_pext_insts_change(imps1[u].exts, imps2[v].exts, &import_change->ext_changes,
@@ -1965,12 +2004,12 @@ schema_diff_includes_change(const struct lysp_include *incs1, const struct lysp_
                 &include_change->changes), cleanup);
 
         /* description */
-        LY_CHECK_GOTO(rc = schema_diff_pnode_description(diff->ctx, incs1[u].dsc, incs2[v].dsc, incs2[v].exts,
-                LYS_CHANGED_INCLUDE, &include_change->changes), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, incs1[u].dsc, incs2[v].dsc, incs2[v].exts,
+                LY_STMT_DESCRIPTION, LYS_CHANGED_INCLUDE, &include_change->changes), cleanup);
 
         /* reference */
-        LY_CHECK_GOTO(rc = schema_diff_text_bc(incs1[u].ref, incs2[v].ref, LYS_CHANGED_INCLUDE,
-                LYS_CHANGED_REFERENCE, &include_change->changes), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, incs1[u].ref, incs2[v].ref, incs2[v].exts,
+                LY_STMT_REFERENCE, LYS_CHANGED_INCLUDE, &include_change->changes), cleanup);
 
         /* ext-instance */
         LY_CHECK_GOTO(rc = schema_diff_pext_insts_change(incs1[u].exts, incs2[v].exts, &include_change->ext_changes,
@@ -2051,12 +2090,12 @@ schema_diff_extensions_change(const struct lysp_ext *extensions1, const struct l
                 &extension_change->changes), cleanup);
 
         /* description */
-        LY_CHECK_GOTO(rc = schema_diff_pnode_description(diff->ctx, extensions1[u].dsc, extensions2[v].dsc,
-                extensions2[v].exts, LYS_CHANGED_EXTENSION, &extension_change->changes), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, extensions1[u].dsc, extensions2[v].dsc,
+                extensions2[v].exts, LY_STMT_DESCRIPTION, LYS_CHANGED_EXTENSION, &extension_change->changes), cleanup);
 
         /* reference */
-        LY_CHECK_GOTO(rc = schema_diff_text_bc(extensions1[u].ref, extensions2[v].ref, LYS_CHANGED_EXTENSION,
-                LYS_CHANGED_REFERENCE, &extension_change->changes), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, extensions1[u].ref, extensions2[v].ref,
+                extensions2[v].exts, LY_STMT_REFERENCE, LYS_CHANGED_EXTENSION, &extension_change->changes), cleanup);
 
         /* ext-instance */
         LY_CHECK_GOTO(rc = schema_diff_pext_insts_change(extensions1[u].exts, extensions2[v].exts,
@@ -2137,12 +2176,12 @@ schema_diff_features_change(const struct lysp_feature *features1, const struct l
                 &feat_change->changes), cleanup);
 
         /* description */
-        LY_CHECK_GOTO(rc = schema_diff_pnode_description(diff->ctx, features1[u].dsc, features2[v].dsc, features2[v].exts,
-                LYS_CHANGED_FEATURE, &feat_change->changes), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, features1[u].dsc, features2[v].dsc, features2[v].exts,
+                LY_STMT_DESCRIPTION, LYS_CHANGED_FEATURE, &feat_change->changes), cleanup);
 
         /* reference */
-        LY_CHECK_GOTO(rc = schema_diff_text_bc(features1[u].ref, features2[v].ref, LYS_CHANGED_FEATURE,
-                LYS_CHANGED_REFERENCE, &feat_change->changes), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, features1[u].ref, features2[v].ref, features2[v].exts,
+                LY_STMT_REFERENCE, LYS_CHANGED_FEATURE, &feat_change->changes), cleanup);
 
         /* ext-instance */
         LY_CHECK_GOTO(rc = schema_diff_pext_insts_change(features1[u].exts, features2[v].exts,
@@ -2407,12 +2446,12 @@ schema_diff_deviations_change(const struct lysp_deviation *deviations1, const st
                 &dev_change->changes, &dev_change->ext_changes, diff), cleanup);
 
         /* description */
-        LY_CHECK_GOTO(rc = schema_diff_pnode_description(diff->ctx, deviations1[u].dsc, deviations2[v].dsc,
-                deviations2[v].exts, LYS_CHANGED_DEVIATION, &dev_change->changes), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, deviations1[u].dsc, deviations2[v].dsc, deviations2[v].exts,
+                LY_STMT_DESCRIPTION, LYS_CHANGED_DEVIATION, &dev_change->changes), cleanup);
 
         /* reference */
-        LY_CHECK_GOTO(rc = schema_diff_text_bc(deviations1[u].ref, deviations2[v].ref, LYS_CHANGED_DEVIATION,
-                LYS_CHANGED_REFERENCE, &dev_change->changes), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, deviations1[u].ref, deviations2[v].ref, deviations2[v].exts,
+                LY_STMT_REFERENCE, LYS_CHANGED_DEVIATION, &dev_change->changes), cleanup);
 
         /* ext-instance */
         LY_CHECK_GOTO(rc = schema_diff_pext_insts_change(deviations1[u].exts, deviations2[v].exts,

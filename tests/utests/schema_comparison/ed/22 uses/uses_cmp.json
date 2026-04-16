@@ -10,10 +10,34 @@
           "module": "uses",
           "revision": "2000-01-02"
         },
-        "conformance": "backwards-compatible",
+        "conformance": "editorial",
         "parsed-comparison": [
           {
-            "parent-path": "/",
+            "parent-path": "/cont1",
+            "identifier": "grp",
+            "stmt-type": "uses",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "removed",
+                "conformance": "editorial"
+              }
+            ]
+          },
+          {
+            "parent-path": "/cont1",
+            "identifier": "grp",
+            "stmt-type": "grouping",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "removed",
+                "conformance": "editorial"
+              }
+            ]
+          },
+          {
+            "parent-path": "/cont2",
             "identifier": "grp",
             "stmt-type": "uses",
             "changed": [
@@ -25,14 +49,14 @@
             ]
           },
           {
-            "parent-path": "/",
+            "parent-path": "/cont2",
             "identifier": "grp",
             "stmt-type": "grouping",
             "changed": [
               {
                 "stmt": "node",
                 "change": "added",
-                "conformance": "backwards-compatible"
+                "conformance": "editorial"
               }
             ]
           }

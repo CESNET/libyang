@@ -33,8 +33,9 @@ schema_cmp_change_at_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     /* check that the extension is instantiated at an allowed place */
     if ((ext->parent_stmt != LY_STMT_PATTERN) && (ext->parent_stmt != LY_STMT_WHEN) &&
             (ext->parent_stmt != LY_STMT_MUST) && (ext->parent_stmt != LY_STMT_DESCRIPTION) &&
-            (ext->parent_stmt != LY_STMT_PRESENCE) && (ext->parent_stmt != LY_STMT_EXTENSION_INSTANCE)) {
-        lyplg_ext_parse_log(pctx, ext, LY_LLWRN, 0, "Extension %s is not allowed in \"%s\" statement.", ext->name,
+            (ext->parent_stmt != LY_STMT_REFERENCE) && (ext->parent_stmt != LY_STMT_PRESENCE) &&
+            (ext->parent_stmt != LY_STMT_EXTENSION_INSTANCE)) {
+        lyplg_ext_parse_log(pctx, ext, LY_LLWRN, 0, "Extension %s is not allowed in a \"%s\" statement.", ext->name,
                 lyplg_ext_stmt2str(ext->parent_stmt));
         return LY_ENOT;
     }
