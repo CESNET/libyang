@@ -32,7 +32,7 @@ struct st {
     const char **search_dirs;
 };
 
-const char *glob_search_dirs[] = {TESTS_SRC "/yangupdate/find_mod1", TESTS_SRC "/../modules", NULL};
+const char *glob_search_dirs[] = {TESTS_SRC "/../modules", TESTS_SRC "/yangupdate/find_mod1", NULL};
 
 static int
 setup(void **state)
