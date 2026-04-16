@@ -88,7 +88,8 @@ struct lyu_plg {
  * @param[in] revision_old Optional old revision. If not set, find the earliest one.
  * @param[in] features_old Optional old module enabled features terminated by NULL. If not set, features of the earliest
  * suitable plugin are used.
- * @param[in] search_dirs Optional array of search dirs to use, terminated by NULL.
+ * @param[in] search_dirs Array of search dirs to use, terminated by NULL. First search dir must include the internal
+ * modules and ::ly_yang_module_dir() can be used.
  * @param[out] ctx_old Old created context.
  * @param[out] mod_old Old YANG module revision.
  * @return LY_SUCCESS on success;
