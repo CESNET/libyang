@@ -328,7 +328,7 @@ void schema_diff_find_module(const struct ly_ctx *ctx, const char *nodeid, LY_VA
         const char **mod_name, const char **name);
 
 /**
- * @brief Check changes of a text whose change is considered BC.
+ * @brief Check changes of a text whose change is always considered ED.
  *
  * @param[in] text1 First text.
  * @param[in] text2 Second text.
@@ -337,7 +337,7 @@ void schema_diff_find_module(const struct ly_ctx *ctx, const char *nodeid, LY_VA
  * @param[in,out] changes Changes to add the change to.
  * @return LY_ERR value.
  */
-LY_ERR schema_diff_text_bc(const char *text1, const char *text2, enum lys_diff_changed_e parent_changed,
+LY_ERR schema_diff_text_ed(const char *text1, const char *text2, enum lys_diff_changed_e parent_changed,
         enum lys_diff_changed_e changed, struct lys_diff_changes_s *changes);
 
 /**
