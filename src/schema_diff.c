@@ -226,15 +226,15 @@ schema_diff_yangversion_change(uint8_t yvsn1, uint8_t yvsn2,
 }
 
 LY_ERR
-schema_diff_text_bc(const char *text1, const char *text2, enum lys_diff_changed_e parent_changed,
+schema_diff_text_ed(const char *text1, const char *text2, enum lys_diff_changed_e parent_changed,
         enum lys_diff_changed_e changed, struct lys_diff_changes_s *changes)
 {
     if (text1 && !text2) {
-        /* removed, always NBC */
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, changed, LYS_CONFORM_NBC, changes));
+        /* removed */
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, changed, LYS_CONFORM_ED, changes));
     } else if (!text1 && text2) {
         /* added */
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, changed, LYS_CONFORM_BC, changes));
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, changed, LYS_CONFORM_ED, changes));
     } else if (text1 && text2 && strcmp(text1, text2)) {
         /* modified */
         LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, changed, LYS_CONFORM_ED, changes));
@@ -596,19 +596,19 @@ schema_diff_module_change(const struct lys_module *mod1, const struct lys_module
             LYS_CHANGED_NONE, LYS_CHANGED_YANG_VERSION, &diff->module_changes));
 
     /* organization */
-    LY_CHECK_RET(schema_diff_text_bc(mod1->org, mod2->org, LYS_CHANGED_NONE, LYS_CHANGED_ORGANIZATION,
+    LY_CHECK_RET(schema_diff_text_ed(mod1->org, mod2->org, LYS_CHANGED_NONE, LYS_CHANGED_ORGANIZATION,
             &diff->module_changes));
 
     /* contact */
-    LY_CHECK_RET(schema_diff_text_bc(mod1->contact, mod2->contact, LYS_CHANGED_NONE, LYS_CHANGED_CONTACT,
+    LY_CHECK_RET(schema_diff_text_ed(mod1->contact, mod2->contact, LYS_CHANGED_NONE, LYS_CHANGED_CONTACT,
             &diff->module_changes));
 
     /* description */
-    LY_CHECK_RET(schema_diff_text_bc(mod1->dsc, mod2->dsc, LYS_CHANGED_NONE, LYS_CHANGED_DESCRIPTION,
+    LY_CHECK_RET(schema_diff_text_ed(mod1->dsc, mod2->dsc, LYS_CHANGED_NONE, LYS_CHANGED_DESCRIPTION,
             &diff->module_changes));
 
     /* reference */
-    LY_CHECK_RET(schema_diff_text_bc(mod1->ref, mod2->ref, LYS_CHANGED_NONE, LYS_CHANGED_REFERENCE,
+    LY_CHECK_RET(schema_diff_text_ed(mod1->ref, mod2->ref, LYS_CHANGED_NONE, LYS_CHANGED_REFERENCE,
             &diff->module_changes));
 
     /* identity */

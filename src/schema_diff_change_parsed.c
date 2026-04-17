@@ -2571,8 +2571,8 @@ schema_diff_pext_inst_substmts_change(const struct lysp_ext_substmt *substmts1, 
         case LY_STMT_ORGANIZATION:
         case LY_STMT_PRESENCE:
         case LY_STMT_REFERENCE:
-            /* text BC */
-            LY_CHECK_GOTO(rc = schema_diff_text_bc(*(substmts1[u].storage_p), *(substmts2[v].storage_p),
+            /* text ED */
+            LY_CHECK_GOTO(rc = schema_diff_text_ed(*(substmts1[u].storage_p), *(substmts2[v].storage_p),
                     LYS_CHANGED_EXT_INST, schema_diff_stmt2changed(substmts1[u].stmt), changes), cleanup);
             break;
         case LY_STMT_UNITS:

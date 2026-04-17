@@ -728,9 +728,9 @@ schema_diff_node_type_patterns_change(struct lysc_pattern **patterns1, struct ly
                 LY_STMT_DESCRIPTION, LYS_CHANGED_PATTERN, changes), cleanup);
         LY_CHECK_GOTO(rc = schema_diff_text(patterns1[u]->ref, patterns2[v]->ref, patterns2[v]->exts,
                 LY_STMT_REFERENCE, LYS_CHANGED_PATTERN, changes), cleanup);
-        LY_CHECK_GOTO(rc = schema_diff_text_bc(patterns1[u]->emsg, patterns2[v]->emsg, LYS_CHANGED_PATTERN,
+        LY_CHECK_GOTO(rc = schema_diff_text_nbc(patterns1[u]->emsg, patterns2[v]->emsg, LYS_CHANGED_PATTERN,
                 LYS_CHANGED_ERR_MSG, changes), cleanup);
-        LY_CHECK_GOTO(rc = schema_diff_text_bc(patterns1[u]->eapptag, patterns2[v]->eapptag, LYS_CHANGED_PATTERN,
+        LY_CHECK_GOTO(rc = schema_diff_text_nbc(patterns1[u]->eapptag, patterns2[v]->eapptag, LYS_CHANGED_PATTERN,
                 LYS_CHANGED_ERR_APP_TAG, changes), cleanup);
 
         /* ext-instance */
@@ -1340,7 +1340,7 @@ schema_diff_ext_inst_substmts_change(const struct lysc_ext_substmt *substmts1, c
         case LY_STMT_ORGANIZATION:
         case LY_STMT_PRESENCE:
             /* text BC */
-            LY_CHECK_GOTO(rc = schema_diff_text_bc(*(substmts1[u].storage_p), *(substmts2[v].storage_p),
+            LY_CHECK_GOTO(rc = schema_diff_text_ed(*(substmts1[u].storage_p), *(substmts2[v].storage_p),
                     LYS_CHANGED_EXT_INST, schema_diff_stmt2changed(substmts1[u].stmt), changes), cleanup);
             break;
         case LY_STMT_REFERENCE:
