@@ -404,7 +404,7 @@ test_get_models(void **state)
     unsigned int index = 0;
     const char *names[] = {
         "ietf-inet-types", "ietf-yang-types", "ietf-yang-metadata", "yang", "default", "ietf-yang-schema-mount",
-        "ietf-yang-structure-ext", "ietf-datastores", "ietf-yang-library", "a", "m", "a", "n"
+        "ietf-yang-structure-ext", "ietf-yang-revisions", "ietf-datastores", "ietf-yang-library", "a", "a", "a"
     };
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str0, &in0));
