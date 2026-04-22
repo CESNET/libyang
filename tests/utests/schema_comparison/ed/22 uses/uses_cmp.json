@@ -25,33 +25,9 @@
             ]
           },
           {
-            "parent-path": "/cont1",
-            "identifier": "grp",
-            "stmt-type": "grouping",
-            "changed": [
-              {
-                "stmt": "node",
-                "change": "removed",
-                "conformance": "editorial"
-              }
-            ]
-          },
-          {
             "parent-path": "/cont2",
             "identifier": "grp",
             "stmt-type": "uses",
-            "changed": [
-              {
-                "stmt": "node",
-                "change": "added",
-                "conformance": "editorial"
-              }
-            ]
-          },
-          {
-            "parent-path": "/cont2",
-            "identifier": "grp",
-            "stmt-type": "grouping",
             "changed": [
               {
                 "stmt": "node",

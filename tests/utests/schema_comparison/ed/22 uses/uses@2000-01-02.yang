@@ -6,6 +6,11 @@ module uses {
     revision 2000-01-02;
 
     container cont1 {
+        grouping grp {
+            leaf l {
+                type uint32;
+            }
+        }
         leaf l {
             type uint32;
         }
