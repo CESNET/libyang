@@ -2523,6 +2523,26 @@ lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_COUNT_TYPE index,
     return LY_ARRAY_COUNT(ext);
 }
 
+void
+lysp_nodeid_find_module(const struct ly_ctx *ctx, const char *nodeid, LY_VALUE_FORMAT format, void *prefix_data,
+        const char **mod_name, const char **name)
+{
+    const struct lys_module *mod;
+    const char *prefix, *nam;
+    uint32_t prefix_len, nam_len;
+
+    /* parse the prefix */
+    ly_parse_nodeid(&nodeid, &prefix, &prefix_len, &nam, &nam_len);
+    assert(nam[nam_len] == '\0');
+
+    /* find the module */
+    mod = lys_find_module(ctx, NULL, prefix, prefix_len, format, prefix_data);
+    assert(mod);
+
+    *mod_name = mod->name;
+    *name = nam;
+}
+
 LIBYANG_API_DEF const struct lysc_node *
 lysc_data_node(const struct lysc_node *schema)
 {

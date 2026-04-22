@@ -315,19 +315,6 @@ LY_ERR schema_diff_add_change(enum lys_diff_change_e change, enum lys_diff_chang
 enum lys_diff_changed_e schema_diff_stmt2changed(enum ly_stmt stmt);
 
 /**
- * @brief Get the module name from a node ID with a prefix.
- *
- * @param[in] ctx Contex to use.
- * @param[in] nodeid Node ID to parse.
- * @param[in] format Prefix format in @p nodeid.
- * @param[in] prefix_data Prefix data to use.
- * @param[out] mod_name Found module name.
- * @param[out] name Local name.
- */
-void schema_diff_find_module(const struct ly_ctx *ctx, const char *nodeid, LY_VALUE_FORMAT format, void *prefix_data,
-        const char **mod_name, const char **name);
-
-/**
  * @brief Check changes of a text whose change is always considered ED.
  *
  * @param[in] text1 First text.

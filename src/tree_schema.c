@@ -1474,6 +1474,48 @@ cleanup:
 }
 
 /**
+ * @brief Check ietf-yang-revisions recommended-min-date extension, if present.
+ *
+ * @param[in] pmod Module with the import.
+ * @param[in] imp Import to check.
+ */
+static void
+lysp_resolve_import_check_rev_min_date(const struct lysp_module *pmod, const struct lysp_import *imp)
+{
+    LY_ARRAY_COUNT_TYPE u;
+    const struct lysp_ext_instance *ext = NULL;
+    const char *mod_name, *name;
+
+    assert(imp->module);
+
+    if (!imp->module->revision) {
+        /* nothing to check */
+        return;
+    }
+
+    LY_ARRAY_FOR(imp->exts, u) {
+        lysp_nodeid_find_module(pmod->mod->ctx, imp->exts[u].name, imp->exts[u].format, imp->exts[u].prefix_data,
+                &mod_name, &name);
+
+        if (!strcmp(mod_name, "ietf-yang-revisions") && !strcmp(name, "recommended-min-date")) {
+            ext = &imp->exts[u];
+            break;
+        }
+    }
+
+    if (!ext) {
+        /* no recommended min date */
+        return;
+    }
+
+    /* extension has not been parsed (checked) yet */
+    if (ext->argument && (strcmp(ext->argument, imp->module->revision) > 0)) {
+        LOGWRN(pmod->mod->ctx, "Module \"%s\" recommended minimal date of import \"%s\" is %s but the imported module "
+                "revision is %s.", pmod->mod->name, imp->module->name, ext->argument, imp->module->revision);
+    }
+}
+
+/**
  * @brief Resolve (find) all imported and included modules.
  *
  * @param[in] pctx Parser context.
@@ -1500,7 +1542,11 @@ lysp_resolve_import_include(struct lysp_ctx *pctx, struct lysp_module *pmod, str
                  */
                 imp->module->latest_revision |= LYS_MOD_IMPORTED_REV;
             }
+
+            /* check ietf-yang-revisions recommended-min-date extension */
+            lysp_resolve_import_check_rev_min_date(pmod, imp);
         }
+
         /* check for importing the same module twice */
         for (v = 0; v < u; ++v) {
             if (imp->module == pmod->imports[v].module) {

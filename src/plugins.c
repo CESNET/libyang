@@ -103,6 +103,7 @@ extern struct lyplg_ext_record plugins_schema_mount[];
 extern struct lyplg_ext_record plugins_structure[];
 extern struct lyplg_ext_record plugins_openconfig[];
 extern struct lyplg_ext_record plugins_schema_cmp[];
+extern struct lyplg_ext_record plugins_revisions[];
 
 static pthread_mutex_t plugins_guard = PTHREAD_MUTEX_INITIALIZER;
 
@@ -634,6 +635,7 @@ lyplg_init(ly_bool builtin_type_plugins_only, ly_bool static_plugins_only)
     LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_structure), error);
     LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_openconfig), error);
     LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_schema_cmp), error);
+    LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_EXTENSION, plugins_revisions), error);
 
     /* the global plugin sets contain only static plugins at this point, so assign to the counters here.
      * the counters are used to determine whether a plugin is static or not */

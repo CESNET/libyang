@@ -541,6 +541,19 @@ LY_ERR lysp_ext_instance_resolve_argument(const struct ly_ctx *ctx, const struct
 LY_ARRAY_COUNT_TYPE lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_COUNT_TYPE index, enum ly_stmt substmt);
 
 /**
+ * @brief Get the module name from a node ID with a prefix.
+ *
+ * @param[in] ctx Contex to use.
+ * @param[in] nodeid Node ID to parse.
+ * @param[in] format Prefix format in @p nodeid.
+ * @param[in] prefix_data Prefix data to use.
+ * @param[out] mod_name Found module name.
+ * @param[out] name Local name.
+ */
+void lysp_nodeid_find_module(const struct ly_ctx *ctx, const char *nodeid, LY_VALUE_FORMAT format, void *prefix_data,
+        const char **mod_name, const char **name);
+
+/**
  * @brief Stringify YANG built-in type.
  *
  * @param[in] basetype Built-in type ID to stringify.
