@@ -64,9 +64,11 @@ static struct internal_modules_s {
     {"ietf-yang-schema-mount", "2019-01-14", 1},
     {"ietf-yang-structure-ext", "2020-06-17", 0},
     {"ietf-yang-revisions", "2025-09-16", 0},
-    /* ietf-datastores and ietf-yang-library must be right here at the end of the list! */
+    /* yang-library and related modules must be at the end of the list! */
     {"ietf-datastores", "2018-02-14", 1},
-    {"ietf-yang-library", IETF_YANG_LIB_REV, 1}
+    {"ietf-yang-library", IETF_YANG_LIB_REV, 1},
+    {"ietf-yang-library-status", "2025-09-16", 1},
+    {"ietf-yang-library-augmentedby", "2025-05-28", 1}
 };
 
 #define LY_INTERNAL_MODS_COUNT sizeof(internal_modules) / sizeof(struct internal_modules_s)
@@ -320,7 +322,7 @@ ly_ctx_new(const char *search_dir, uint32_t options, struct ly_ctx **new_ctx)
     }
 
     /* load internal modules */
-    for (i = 0; i < ((options & LY_CTX_NO_YANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 2) : LY_INTERNAL_MODS_COUNT); i++) {
+    for (i = 0; i < ((options & LY_CTX_NO_YANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 4) : LY_INTERNAL_MODS_COUNT); i++) {
         rc = lys_parse_load(ctx, internal_modules[i].name, internal_modules[i].revision, &unres.creating, &module);
         LY_CHECK_GOTO(rc, cleanup);
 
@@ -1112,6 +1114,13 @@ ly_ctx_internal_modules_count(const struct ly_ctx *ctx)
     }
 }
 
+/**
+ * @brief Create yang-library 'feature' leaf-list.
+ *
+ * @param[in] parent Parent node.
+ * @param[in] mod Module to use.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 ylib_feature(struct lyd_node *parent, const struct lys_module *mod)
 {
@@ -1129,6 +1138,14 @@ ylib_feature(struct lyd_node *parent, const struct lys_module *mod)
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Create yang-library 'deviation' list.
+ *
+ * @param[in] parent Parent node.
+ * @param[in] cur_mod Module to use.
+ * @param[in] bis Set if using the current 'ietf-yang-library' revision.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, ly_bool bis)
 {
@@ -1153,6 +1170,14 @@ ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, ly_boo
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Create yang-library 'submodules' list.
+ *
+ * @param[in] parent Parent node.
+ * @param[in] mod Module to use.
+ * @param[in] bis Set if using the current 'ietf-yang-library' revision.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 ylib_submodules(struct lyd_node *parent, const struct lys_module *mod, ly_bool bis)
 {
@@ -1190,15 +1215,35 @@ ylib_submodules(struct lyd_node *parent, const struct lys_module *mod, ly_bool b
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Create yang-library 'augmented-by' leaf-list.
+ *
+ * @param[in] parent Parent node.
+ * @param[in] mod_augby Module 'ietf-yang-library-augmentedby'.
+ * @param[in] mod Module to use.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+ylib_augmentedby(struct lyd_node *parent, const struct lys_module *mod_augby, const struct lys_module *mod)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    LY_ARRAY_FOR(mod->augmented_by, u) {
+        LY_CHECK_RET(lyd_new_term(parent, mod_augby, "augmented-by", mod->augmented_by[u]->name, 0, NULL));
+    }
+
+    return LY_SUCCESS;
+}
+
 LIBYANG_API_DEF LY_ERR
 ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p, const char *content_id_format, ...)
 {
     LY_ERR ret;
     uint32_t i;
-    ly_bool bis = 0;
+    ly_bool bis = 0, obslt_absent;
     int r;
     char *str;
-    const struct lys_module *mod;
+    const struct lys_module *mod, *mod_status, *mod_augby;
     struct lyd_node *root = NULL, *root_bis = NULL, *cont, *set_bis = NULL;
     va_list ap;
 
@@ -1206,6 +1251,12 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p, cons
 
     mod = ly_ctx_get_module_implemented(ctx, "ietf-yang-library");
     LY_CHECK_ERR_RET(!mod, LOGERR(ctx, LY_EINVAL, "Module \"ietf-yang-library\" is not implemented."), LY_EINVAL);
+    mod_status = ly_ctx_get_module_implemented(ctx, "ietf-yang-library-status");
+    LY_CHECK_ERR_RET(!mod_status, LOGERR(ctx, LY_EINVAL, "Module \"ietf-yang-library-status\" is not implemented."),
+            LY_EINVAL);
+    mod_augby = ly_ctx_get_module_implemented(ctx, "ietf-yang-library-augmentedby");
+    LY_CHECK_ERR_RET(!mod_augby, LOGERR(ctx, LY_EINVAL, "Module \"ietf-yang-library-augmentedby\" is not implemented."),
+            LY_EINVAL);
 
     if (mod->revision && !strcmp(mod->revision, "2016-06-21")) {
         bis = 0;
@@ -1257,6 +1308,9 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p, cons
         /* submodule list */
         LY_CHECK_GOTO(ret = ylib_submodules(cont, mod, 0), error);
 
+        /* augmented-by leaf-list */
+        LY_CHECK_GOTO(ret = ylib_augmentedby(cont, mod_augby, mod), error);
+
         /*
          * current revision
          */
@@ -1294,6 +1348,9 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p, cons
 
             /* deviation */
             LY_CHECK_GOTO(ret = ylib_deviation(cont, mod, 1), error);
+
+            /* augmented-by leaf-list */
+            LY_CHECK_GOTO(ret = ylib_augmentedby(cont, mod_augby, mod), error);
         }
     }
 
@@ -1310,6 +1367,14 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p, cons
         LY_CHECK_ERR_GOTO(ret = lyd_new_list(root_bis, NULL, "schema", 0, &cont, "complete"), free(str), error);
 
         LY_CHECK_ERR_GOTO(ret = lyd_new_term(cont, NULL, "module-set", "complete", 0, NULL), free(str), error);
+
+        /* status augments */
+        LY_CHECK_ERR_GOTO(ret = lyd_new_term(cont, mod_status, "deprecated-nodes-implemented", "true", 0, NULL),
+                free(str), error);
+
+        obslt_absent = (ctx->opts & LY_CTX_COMPILE_OBSOLETE) ? 0 : 1;
+        LY_CHECK_ERR_GOTO(ret = lyd_new_term(cont, mod_status, "obsolete-nodes-absent",
+                obslt_absent ? "true" : "false", 0, NULL), free(str), error);
 
         /* content-id */
         LY_CHECK_ERR_GOTO(ret = lyd_new_term(root_bis, NULL, "content-id", str, 0, NULL), free(str), error);
