@@ -1974,6 +1974,8 @@ test_lysc_backlinks(void **state)
         "/ietf-yang-library:yang-library/datastore/schema",
         "/ietf-yang-library:yang-library-update/content-id",
         "/ietf-yang-library:yang-library-change/module-set-id",
+        "/ietf-yang-library:yang-library/module-set/module/ietf-yang-library-augmentedby:augmented-by",
+        "/ietf-yang-library:modules-state/module/ietf-yang-library-augmentedby:augmented-by",
         /* Normal expected */
         "/b:my_extref_list/my_extref",
         "/a:refstr",
