@@ -182,26 +182,6 @@ schema_diff_stmt2changed(enum ly_stmt stmt)
     return LYS_CHANGED_NONE;
 }
 
-void
-schema_diff_find_module(const struct ly_ctx *ctx, const char *nodeid, LY_VALUE_FORMAT format, void *prefix_data,
-        const char **mod_name, const char **name)
-{
-    const struct lys_module *mod;
-    const char *prefix, *nam;
-    uint32_t prefix_len, nam_len;
-
-    /* parse the prefix */
-    ly_parse_nodeid(&nodeid, &prefix, &prefix_len, &nam, &nam_len);
-    assert(nam[nam_len] == '\0');
-
-    /* find the module */
-    mod = lys_find_module(ctx, NULL, prefix, prefix_len, format, prefix_data);
-    assert(mod);
-
-    *mod_name = mod->name;
-    *name = nam;
-}
-
 /**
  * @brief Check changes of a 'yang-version'.
  *

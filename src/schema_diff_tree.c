@@ -1426,7 +1426,7 @@ schema_diff_pext_inst(const struct lysp_ext_instance *ext, struct lyd_node *chan
     const char *mod_name, *name;
 
     /* parse */
-    schema_diff_find_module(LYD_CTX(change_cont), ext->name, ext->format, ext->prefix_data, &mod_name, &name);
+    lysp_nodeid_find_module(LYD_CTX(change_cont), ext->name, ext->format, ext->prefix_data, &mod_name, &name);
 
     /* inner node */
     LY_CHECK_GOTO(rc = lyd_new_list(change_cont, NULL, "ext-instance", 0, &ext_par), cleanup);

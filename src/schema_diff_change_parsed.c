@@ -19,6 +19,7 @@
 
 #include "ly_common.h"
 #include "schema_compile_node.h"
+#include "tree_schema_internal.h"
 #include "xpath.h"
 
 static LY_ERR schema_diff_ptype_change(const struct lysp_type *type1, const struct lysp_node *ctx_node1,
@@ -362,7 +363,7 @@ schema_diff_is_pext_conform(const struct ly_ctx *ctx, const struct lysp_ext_inst
     const char *mod_name, *name;
 
     /* get the module and name */
-    schema_diff_find_module(ctx, ext->name, ext->format, ext->prefix_data, &mod_name, &name);
+    lysp_nodeid_find_module(ctx, ext->name, ext->format, ext->prefix_data, &mod_name, &name);
 
     if (is_conform_ext) {
         *is_conform_ext = 0;
@@ -2730,8 +2731,8 @@ schema_diff_pext_inst_match(const struct ly_ctx *ctx, const struct lysp_ext_inst
     const char *mod1, *mod2, *name1, *name2;
 
     /* get the modules and names */
-    schema_diff_find_module(ctx, ext1->name, ext1->format, ext1->prefix_data, &mod1, &name1);
-    schema_diff_find_module(ctx, ext2->name, ext2->format, ext2->prefix_data, &mod2, &name2);
+    lysp_nodeid_find_module(ctx, ext1->name, ext1->format, ext1->prefix_data, &mod1, &name1);
+    lysp_nodeid_find_module(ctx, ext2->name, ext2->format, ext2->prefix_data, &mod2, &name2);
 
     /* module and name */
     if (strcmp(mod1, mod2) || strcmp(name1, name2)) {
