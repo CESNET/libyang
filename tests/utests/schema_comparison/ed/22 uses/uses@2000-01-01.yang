@@ -15,6 +15,13 @@ module uses {
     }
 
     container cont2 {
+        grouping grp {
+            leaf l1 {
+                type string {
+                    length 1..20;
+                }
+            }
+        }
         leaf l1 {
             type string {
                 length 1..20;

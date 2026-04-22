@@ -1575,12 +1575,11 @@ schema_diff_parsed_node_conform(const struct lysp_node *node, enum lys_diff_chan
 {
     assert((change == LYS_CHANGE_ADDED) || (change == LYS_CHANGE_REMOVED));
 
-    /* leave schema-only node changes up to the compiled schema tree, editorial on their own */
+    /* leave schema-only node changes up to the compiled schema tree */
     if (node->nodetype == LYS_USES) {
         return LYS_CONFORM_ED;
-    } else if ((node->nodetype == LYS_GROUPING) && node->parent) {
-        /* changes to top-level groupings affect importing modules */
-        return LYS_CONFORM_ED;
+    } else if (node->nodetype == LYS_GROUPING) {
+        return LYS_CONFORM_BC;
     }
 
     if (change == LYS_CHANGE_ADDED) {
