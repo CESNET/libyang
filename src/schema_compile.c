@@ -105,7 +105,7 @@ remove_nodelevel:
 }
 
 LY_ERR
-lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *extp, struct lysc_ext_instance *ext, void *parent)
+lys_compile_ext(struct lysc_ctx *ctx, const struct lysp_ext_instance *extp, struct lysc_ext_instance *ext, void *parent)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyplg_ext *ext_plg;
@@ -1752,6 +1752,98 @@ cleanup:
     return rc;
 }
 
+/**
+ * @brief Compile every parsed extensions that has a plugin with compile callback.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] exts_p Parsed extension array.
+ * @param[in] parent Compiled extension parent to set.
+ * @param[in] parent_stmt STatement type of @p parent.
+ * @param[in,out] exts Compiled extensions to add to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_compile_parsed_only_exts(struct lysc_ctx *ctx, const struct lysp_ext_instance *exts_p, void *parent,
+        enum ly_stmt parent_stmt, struct lysc_ext_instance **exts)
+{
+    LY_ARRAY_COUNT_TYPE u;
+    struct lyplg_ext *ext_plg;
+    struct lysc_ext *ext_def;
+    struct lysc_ext_instance *ext;
+    LY_ERR r;
+
+    LY_ARRAY_FOR(exts_p, u) {
+        /* find the compiled extension definition and its plugin */
+        LY_CHECK_RET(lysc_ext_find_definition(ctx->ctx, &exts_p[u], &ext_def));
+        ext_plg = LYSC_GET_EXT_PLG(ext_def->plugin_ref);
+
+        /* compile this extension if it has the callback */
+        if (ext_plg && ext_plg->compile) {
+            LY_ARRAY_NEW_RET(ctx->ctx, *exts, ext, LY_EMEM);
+            r = lys_compile_ext(ctx, &exts_p[u], ext, parent);
+            if (r == LY_ENOT) {
+                LY_ARRAY_DECREMENT(*exts);
+                continue;
+            } else if (r) {
+                return r;
+            }
+
+            /* fix parent statement */
+            ext->parent_stmt = parent_stmt;
+            ext->parent_stmt_index = 0;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Compile all extension instances in parsed-only top-level statements of a module that have a compile
+ * callback defined.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] mod_p Parsed module.
+ * @param[in] mod_c Compiled module.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_compile_parsed_only_ext(struct lysc_ctx *ctx, const struct lysp_module *mod_p, struct lysc_module *mod_c)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    /* revision */
+    LY_ARRAY_FOR(mod_p->revs, u) {
+        LY_CHECK_RET(lys_compile_parsed_only_exts(ctx, mod_p->revs[u].exts, mod_p->mod, LY_STMT_MODULE, &mod_c->exts));
+    }
+
+    /* import */
+    LY_ARRAY_FOR(mod_p->imports, u) {
+        LY_CHECK_RET(lys_compile_parsed_only_exts(ctx, mod_p->imports[u].exts, mod_p->mod, LY_STMT_MODULE, &mod_c->exts));
+    }
+
+    /* include */
+    LY_ARRAY_FOR(mod_p->includes, u) {
+        LY_CHECK_RET(lys_compile_parsed_only_exts(ctx, mod_p->includes[u].exts, mod_p->mod, LY_STMT_MODULE, &mod_c->exts));
+    }
+
+    /* feature */
+    LY_ARRAY_FOR(mod_p->features, u) {
+        LY_CHECK_RET(lys_compile_parsed_only_exts(ctx, mod_p->features[u].exts, mod_p->mod, LY_STMT_MODULE, &mod_c->exts));
+    }
+
+    /* typedef */
+    LY_ARRAY_FOR(mod_p->typedefs, u) {
+        LY_CHECK_RET(lys_compile_parsed_only_exts(ctx, mod_p->typedefs[u].exts, mod_p->mod, LY_STMT_MODULE, &mod_c->exts));
+    }
+
+    /* deviation */
+    LY_ARRAY_FOR(mod_p->deviations, u) {
+        LY_CHECK_RET(lys_compile_parsed_only_exts(ctx, mod_p->deviations[u].exts, mod_p->mod, LY_STMT_MODULE, &mod_c->exts));
+    }
+
+    return LY_SUCCESS;
+}
+
 LY_ERR
 lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
 {
@@ -1800,6 +1892,9 @@ lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
 
     /* module extension instances */
     COMPILE_EXTS_GOTO(&ctx, sp->exts, mod_c->exts, mod_c, ret, cleanup);
+
+    /* parsed-only statements extension instances with compile callback */
+    LY_CHECK_GOTO(ret = lys_compile_parsed_only_ext(&ctx, sp, mod_c), cleanup);
 
     /* the same for submodules */
     LY_ARRAY_FOR(sp->includes, u) {

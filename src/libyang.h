@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief The main libyang public header.
  *
- * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -34,9 +34,11 @@ extern "C" {
 #include "parser_schema.h"
 #include "printer_data.h"
 #include "printer_schema.h"
+#include "semver.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
+#include "tree_edit.h"
 #include "tree_schema.h"
 
 /**

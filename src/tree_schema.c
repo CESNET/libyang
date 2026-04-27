@@ -2611,7 +2611,7 @@ lysp_add_internal_ietf_netconf_with_defaults(struct lysp_ctx *pctx, struct lysp_
 }
 
 /**
- * @brief Define a new internal 'lyds_tree' value for metadata.
+ * @brief Add lyds_tree metadata and date-and-time compiled leaves to the 'yang' internal module.
  *
  * The 'lyds_tree' is a data type containing a reference to a binary search tree
  * by which the data nodes are ordered.

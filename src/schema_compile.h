@@ -257,7 +257,8 @@ void lysc_update_path(struct lysc_ctx *ctx, const struct lys_module *parent_modu
  * @return LY_ENOT if the extension is disabled and should be ignored.
  * @return LY_ERR on error.
  */
-LY_ERR lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *extp, struct lysc_ext_instance *ext, void *parent);
+LY_ERR lys_compile_ext(struct lysc_ctx *ctx, const struct lysp_ext_instance *extp, struct lysc_ext_instance *ext,
+        void *parent);
 
 /**
  * @brief Compile information from the identity statement

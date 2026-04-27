@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Context implementations
  *
- * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@
 #include "plugins_internal.h"
 #include "plugins_types.h"
 #include "schema_compile.h"
+#include "semver.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
@@ -56,6 +57,7 @@ static struct internal_modules_s {
     const char *revision;
     ly_bool implemented;
 } internal_modules[] = {
+    {"ietf-yang-semver", "2026-03-03", 0},
     {"ietf-inet-types", "2025-12-22", 0},
     {"ietf-yang-types", "2025-12-22", 0},
     {"ietf-yang-metadata", "2016-08-05", 1},
@@ -68,7 +70,8 @@ static struct internal_modules_s {
     {"ietf-datastores", "2018-02-14", 1},
     {"ietf-yang-library", IETF_YANG_LIB_REV, 1},
     {"ietf-yang-library-status", "2025-09-16", 1},
-    {"ietf-yang-library-augmentedby", "2025-05-28", 1}
+    {"ietf-yang-library-augmentedby", "2025-05-28", 1},
+    {"ietf-yang-library-semver", "2025-09-29", 1}
 };
 
 #define LY_INTERNAL_MODS_COUNT sizeof(internal_modules) / sizeof(struct internal_modules_s)
@@ -322,7 +325,7 @@ ly_ctx_new(const char *search_dir, uint32_t options, struct ly_ctx **new_ctx)
     }
 
     /* load internal modules */
-    for (i = 0; i < ((options & LY_CTX_NO_YANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 4) : LY_INTERNAL_MODS_COUNT); i++) {
+    for (i = 0; i < ((options & LY_CTX_NO_YANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 5) : LY_INTERNAL_MODS_COUNT); i++) {
         rc = lys_parse_load(ctx, internal_modules[i].name, internal_modules[i].revision, &unres.creating, &module);
         LY_CHECK_GOTO(rc, cleanup);
 
@@ -1142,29 +1145,52 @@ ylib_feature(struct lyd_node *parent, const struct lys_module *mod)
  * @brief Create yang-library 'deviation' list.
  *
  * @param[in] parent Parent node.
- * @param[in] cur_mod Module to use.
+ * @param[in] mod Module to use.
  * @param[in] bis Set if using the current 'ietf-yang-library' revision.
  * @return LY_ERR value.
  */
 static LY_ERR
-ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, ly_bool bis)
+ylib_deviation(struct lyd_node *parent, const struct lys_module *mod, ly_bool bis)
 {
     LY_ARRAY_COUNT_TYPE i;
-    struct lys_module *mod;
+    struct lys_module *m;
 
-    if (!cur_mod->implemented) {
+    if (!mod->implemented) {
         /* no deviations of the module for certain */
         return LY_SUCCESS;
     }
 
-    LY_ARRAY_FOR(cur_mod->deviated_by, i) {
-        mod = cur_mod->deviated_by[i];
+    LY_ARRAY_FOR(mod->deviated_by, i) {
+        m = mod->deviated_by[i];
 
         if (bis) {
-            LY_CHECK_RET(lyd_new_term(parent, NULL, "deviation", mod->name, 0, NULL));
+            LY_CHECK_RET(lyd_new_term(parent, NULL, "deviation", m->name, 0, NULL));
         } else {
-            LY_CHECK_RET(lyd_new_list(parent, NULL, "deviation", 0, NULL, mod->name, mod->revision ? mod->revision : ""));
+            LY_CHECK_RET(lyd_new_list(parent, NULL, "deviation", 0, NULL, m->name, m->revision ? m->revision : ""));
         }
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Create yang-library 'version' leaf.
+ *
+ * @param[in] parent Parent node.
+ * @param[in] mod_semver Module 'ietf-yang-library-semver'.
+ * @param[in] mod Module to use.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+ylib_version(struct lyd_node *parent, const struct lys_module *mod_semver, const struct lys_module *mod)
+{
+    const char *str;
+
+    /* read semver of the module */
+    lys_semver_get(mod, &str);
+
+    if (str) {
+        LY_CHECK_RET(lyd_new_term(parent, mod_semver, "version", str, 0, NULL));
     }
 
     return LY_SUCCESS;
@@ -1176,10 +1202,11 @@ ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, ly_boo
  * @param[in] parent Parent node.
  * @param[in] mod Module to use.
  * @param[in] bis Set if using the current 'ietf-yang-library' revision.
+ * @param[in] mod_semver Optional 'ietf-yang-library-semver' module.
  * @return LY_ERR value.
  */
 static LY_ERR
-ylib_submodules(struct lyd_node *parent, const struct lys_module *mod, ly_bool bis)
+ylib_submodules(struct lyd_node *parent, const struct lys_module *mod, ly_bool bis, const struct lys_module *mod_semver)
 {
     LY_ERR ret;
     LY_ARRAY_COUNT_TYPE u;
@@ -1209,6 +1236,11 @@ ylib_submodules(struct lyd_node *parent, const struct lys_module *mod, ly_bool b
             ret = lyd_new_term(cont, NULL, bis ? "location" : "schema", str, 0, NULL);
             free(str);
             LY_CHECK_RET(ret);
+        }
+
+        if (bis && mod_semver) {
+            /* version */
+            LY_CHECK_RET(ylib_version(cont, mod_semver, mod));
         }
     }
 
@@ -1243,7 +1275,7 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p, cons
     ly_bool bis = 0, obslt_absent;
     int r;
     char *str;
-    const struct lys_module *mod, *mod_status, *mod_augby;
+    const struct lys_module *mod, *mod_status, *mod_augby, *mod_semver;
     struct lyd_node *root = NULL, *root_bis = NULL, *cont, *set_bis = NULL;
     va_list ap;
 
@@ -1252,11 +1284,8 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p, cons
     mod = ly_ctx_get_module_implemented(ctx, "ietf-yang-library");
     LY_CHECK_ERR_RET(!mod, LOGERR(ctx, LY_EINVAL, "Module \"ietf-yang-library\" is not implemented."), LY_EINVAL);
     mod_status = ly_ctx_get_module_implemented(ctx, "ietf-yang-library-status");
-    LY_CHECK_ERR_RET(!mod_status, LOGERR(ctx, LY_EINVAL, "Module \"ietf-yang-library-status\" is not implemented."),
-            LY_EINVAL);
     mod_augby = ly_ctx_get_module_implemented(ctx, "ietf-yang-library-augmentedby");
-    LY_CHECK_ERR_RET(!mod_augby, LOGERR(ctx, LY_EINVAL, "Module \"ietf-yang-library-augmentedby\" is not implemented."),
-            LY_EINVAL);
+    mod_semver = ly_ctx_get_module_implemented(ctx, "ietf-yang-library-semver");
 
     if (mod->revision && !strcmp(mod->revision, "2016-06-21")) {
         bis = 0;
@@ -1306,10 +1335,12 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p, cons
         LY_CHECK_GOTO(ret = lyd_new_term(cont, NULL, "conformance-type", mod->implemented ? "implement" : "import", 0, NULL), error);
 
         /* submodule list */
-        LY_CHECK_GOTO(ret = ylib_submodules(cont, mod, 0), error);
+        LY_CHECK_GOTO(ret = ylib_submodules(cont, mod, 0, mod_semver), error);
 
-        /* augmented-by leaf-list */
-        LY_CHECK_GOTO(ret = ylib_augmentedby(cont, mod_augby, mod), error);
+        if (mod_augby) {
+            /* augmented-by leaf-list */
+            LY_CHECK_GOTO(ret = ylib_augmentedby(cont, mod_augby, mod), error);
+        }
 
         /*
          * current revision
@@ -1341,7 +1372,7 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p, cons
             }
 
             /* submodule list */
-            LY_CHECK_GOTO(ret = ylib_submodules(cont, mod, 1), error);
+            LY_CHECK_GOTO(ret = ylib_submodules(cont, mod, 1, mod_semver), error);
 
             /* feature list */
             LY_CHECK_GOTO(ret = ylib_feature(cont, mod), error);
@@ -1349,8 +1380,15 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p, cons
             /* deviation */
             LY_CHECK_GOTO(ret = ylib_deviation(cont, mod, 1), error);
 
-            /* augmented-by leaf-list */
-            LY_CHECK_GOTO(ret = ylib_augmentedby(cont, mod_augby, mod), error);
+            if (mod_augby) {
+                /* augmented-by leaf-list */
+                LY_CHECK_GOTO(ret = ylib_augmentedby(cont, mod_augby, mod), error);
+            }
+
+            if (mod_semver) {
+                /* version */
+                LY_CHECK_GOTO(ret = ylib_version(cont, mod_semver, mod), error);
+            }
         }
     }
 
@@ -1368,13 +1406,15 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p, cons
 
         LY_CHECK_ERR_GOTO(ret = lyd_new_term(cont, NULL, "module-set", "complete", 0, NULL), free(str), error);
 
-        /* status augments */
-        LY_CHECK_ERR_GOTO(ret = lyd_new_term(cont, mod_status, "deprecated-nodes-implemented", "true", 0, NULL),
-                free(str), error);
+        if (mod_status) {
+            /* status augments */
+            LY_CHECK_ERR_GOTO(ret = lyd_new_term(cont, mod_status, "deprecated-nodes-implemented", "true", 0, NULL),
+                    free(str), error);
 
-        obslt_absent = (ctx->opts & LY_CTX_COMPILE_OBSOLETE) ? 0 : 1;
-        LY_CHECK_ERR_GOTO(ret = lyd_new_term(cont, mod_status, "obsolete-nodes-absent",
-                obslt_absent ? "true" : "false", 0, NULL), free(str), error);
+            obslt_absent = (ctx->opts & LY_CTX_COMPILE_OBSOLETE) ? 0 : 1;
+            LY_CHECK_ERR_GOTO(ret = lyd_new_term(cont, mod_status, "obsolete-nodes-absent",
+                    obslt_absent ? "true" : "false", 0, NULL), free(str), error);
+        }
 
         /* content-id */
         LY_CHECK_ERR_GOTO(ret = lyd_new_term(root_bis, NULL, "content-id", str, 0, NULL), free(str), error);

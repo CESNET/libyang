@@ -27,6 +27,7 @@
 #include "hash_table_internal.h"
 #include "log.h"
 #include "ly_config.h"
+#include "plugins_exts/semver.h"
 #include "schema_compile.h"
 #include "set.h"
 #include "tree_data.h"
@@ -66,6 +67,15 @@ struct lysc_node;
 #ifndef PATH_MAX
 # define PATH_MAX 4096
 #endif
+
+/** ietf-yang-semver@2026-03-03 version typedef pattern */
+#define LY_SEMVER_VERSION_PATTERN "[0-9]+[.][0-9]+[.][0-9]+(_(non_)?compatible)?(-[A-Za-z0-9.-]+)?([+][A-Za-z0-9.-]+)?"
+
+/** ietf-yang-semver@2026-03-03 version typedef minimum length */
+#define LY_SEMVER_VERSION_MIN_LEN 5
+
+/** ietf-yang-semver@2026-03-03 version typedef maximum length */
+#define LY_SEMVER_VERSION_MAX_LEN 128
 
 /******************************************************************************
  * Logger
@@ -347,6 +357,7 @@ struct ly_ctx_shared_data {
 
     pthread_mutex_t leafref_links_lock; /**< lock for accessing the leafref links hash table */
     struct ly_ht *leafref_links_ht;     /**< hash table of leafref links between term data nodes */
+    void *semver_pattern;               /**< compiled pattern for semver matching */
 };
 
 #define LY_CTX_INT_IMMUTABLE 0x80000000 /**< marks a context that was printed into a fixed-size memory block and
@@ -891,5 +902,25 @@ LY_ERR ly_strcat(char **dest, const char *format, ...) _FORMAT_PRINTF(2, 3);
  * @return LY_ERR value.
  */
 LY_ERR lyplg_ext_schema_mount_get_ctx(struct lysc_ext_instance *ext, const struct lyd_node *parent, const struct ly_ctx **ext_ctx);
+
+/**
+ * @brief Validate and parse semantic version.
+ *
+ * @param[in] ctx Context with shared data and the compiled pattern to use.
+ * @param[in] version Version to check.
+ * @param[in] version_len Length of @p version. May be 0 if @p version is 0-terminated.
+ * @param[in] bare Set if the version should have only MAJOR.MINOR.PATCH format.
+ * @param[out] semver Optional parsed semver structure.
+ * @return LY_ERR value.
+ */
+LY_ERR lyplg_ext_semver_parse(const struct ly_ctx *ctx, const char *version, uint32_t version_len, ly_bool bare,
+        struct lys_ext_instance_semver **semver);
+
+/**
+ * @brief Free parsed semantic version.
+ *
+ * @param[in] semver Parser semver structure to free.
+ */
+void lyplg_ext_semver_free(struct lys_ext_instance_semver *semver);
 
 #endif /* LY_COMMON_H_ */

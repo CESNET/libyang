@@ -82,5 +82,6 @@ if(LY_HAVE_REGEX_H)
     ly_add_utest(NAME openconfig SOURCES extensions/test_openconfig.c)
 endif()
 ly_add_utest(NAME revisions SOURCES extensions/test_revisions.c)
+ly_add_utest(NAME semver SOURCES extensions/test_semver.c)
 
 ly_add_utest(NAME schema_comparison SOURCES schema_comparison/test_schema_comparison.c)

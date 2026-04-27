@@ -310,6 +310,7 @@ ly_ctx_shared_data_remove_and_free(struct ly_ctx_shared_data *shared_data)
     lydict_clean(shared_data->data_dict);
     free(shared_data->data_dict);
     lyht_free(shared_data->leafref_links_ht, ly_ctx_ht_leafref_links_rec_free);
+    ly_pat_free(shared_data->semver_pattern, 0);
     free(shared_data);
 
     /* find */
@@ -341,6 +342,7 @@ ly_ctx_shared_data_create(const struct ly_ctx *ctx, struct ly_ctx_shared_data **
     LY_ERR rc = LY_SUCCESS;
     struct ly_ctx_shared_data **shrd_data = NULL;
     pthread_mutexattr_t attr;
+    struct ly_err_item *err = NULL;
 
     if (shared_data) {
         *shared_data = NULL;
@@ -382,6 +384,11 @@ ly_ctx_shared_data_create(const struct ly_ctx *ctx, struct ly_ctx_shared_data **
     pthread_mutex_init(&(*shrd_data)->ext_clb_lock, &attr);
     pthread_mutexattr_destroy(&attr);
     pthread_mutex_init(&(*shrd_data)->leafref_links_lock, NULL);
+
+    /* semver pattern */
+    rc = ly_pat_compile(LY_SEMVER_VERSION_PATTERN, 0, &(*shrd_data)->semver_pattern, &err);
+    ly_err_free(err);
+    LY_CHECK_GOTO(rc, cleanup);
 
     /* refcount */
     ATOMIC_STORE_RELAXED((*shrd_data)->refcount, 1);

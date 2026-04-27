@@ -168,6 +168,7 @@ set(libsrc
     src/plugins_exts/openconfig.c
     src/plugins_exts/schema_comparison.c
     src/plugins_exts/revisions.c
+    src/plugins_exts/semver.c
     src/xml.c
     src/xpath.c
     src/validation.c
@@ -186,6 +187,7 @@ set(headers
     src/plugins.h
     src/plugins_exts.h
     src/plugins_exts/metadata.h
+    src/plugins_exts/semver.h
     src/plugins_types.h
     src/printer_data.h
     src/printer_schema.h
