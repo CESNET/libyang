@@ -403,9 +403,10 @@ test_get_models(void **state)
 
     unsigned int index = 0;
     const char *names[] = {
-        "ietf-inet-types", "ietf-yang-types", "ietf-yang-metadata", "yang", "default", "ietf-yang-schema-mount",
-        "ietf-yang-structure-ext", "ietf-yang-revisions", "ietf-datastores", "ietf-yang-library",
-        "ietf-yang-library-status", "ietf-yang-library-augmentedby", "a", "a", "a"
+        "ietf-yang-semver", "ietf-inet-types", "ietf-yang-types", "ietf-yang-metadata", "yang", "default",
+        "ietf-yang-schema-mount", "ietf-yang-structure-ext", "ietf-yang-revisions", "ietf-datastores",
+        "ietf-yang-library", "ietf-yang-library-status", "ietf-yang-library-augmentedby", "ietf-yang-library-semver",
+        "a", "a", "a"
     };
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str0, &in0));
@@ -470,7 +471,7 @@ test_get_models(void **state)
     while ((mod = (struct lys_module *)ly_ctx_get_module_iter(UTEST_LYCTX, &index))) {
         assert_string_equal(names[index - 1], mod->name);
     }
-    assert_int_equal(15, index);
+    assert_int_equal(17, index);
 
     /* cleanup */
     ly_in_free(in0, 0);
@@ -1003,7 +1004,7 @@ test_explicit_compile(void **state)
     UTEST_ADD_MODULE(schema_b, LYS_IN_YANG, NULL, NULL);
     UTEST_ADD_MODULE(schema_c, LYS_IN_YANG, NULL, NULL);
 
-    /* none of the modules should be compiled */
+    /* none of the added modules should be compiled */
     i = 0;
     while ((mod = ly_ctx_get_module_iter(UTEST_LYCTX, &i))) {
         assert_null(mod->compiled);
