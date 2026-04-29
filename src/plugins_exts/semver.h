@@ -50,6 +50,8 @@ struct lys_ext_instance_semver {
 /**
  * @brief Get semantic version of a module.
  *
+ * To get version of a submodule, use ::lysp_semver_get().
+ *
  * @param[in] mod Module to use.
  * @param[out] semver_str Optional string semantic version if defined for @p mod at its current revision. NULL otherwise.
  * @return Semantic version structure;
@@ -57,6 +59,29 @@ struct lys_ext_instance_semver {
  */
 LIBYANG_API_DECL const struct lys_ext_instance_semver *lys_semver_get(const struct lys_module *mod,
         const char **semver_str);
+
+/**
+ * @brief Get semantic version of a parsed (sub)module.
+ *
+ * @param[in] pmod Parsed (sub)module to use.
+ * @param[out] semver_str Optional string semantic version if defined for @p mod at its current revision. NULL otherwise.
+ * @return Semantic version structure;
+ * @return NULL if no semantic version is defined for @p pmod at its current revision.
+ */
+LIBYANG_API_DECL const struct lys_ext_instance_semver *lysp_semver_get(const struct lysp_module *pmod,
+        const char **semver_str);
+
+/**
+ * @brief Compare semantic versions ignoring metadata.
+ *
+ * @param[in] ver1 First semantic version.
+ * @param[in] ver2 Second semantic version.
+ * @return -1 if ver1 < ver2,
+ * @return 0 if ver1 == ver2,
+ * @return 1 if ver1 > ver2;
+ */
+LIBYANG_API_DECL int lys_semver_cmp(const struct lys_ext_instance_semver *ver1,
+        const struct lys_ext_instance_semver *ver2);
 
 #ifdef __cplusplus
 }

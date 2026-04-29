@@ -159,67 +159,62 @@ test_min_version(void **state)
     struct lys_module *mod;
     const char *yang;
 
-    /* TODO */
+    ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_SRC "/modules/min_ver");
 
     /* valid yang */
-    yang = "module rev1 {namespace urn:rev1; prefix r1;"
-            "import ietf-yang-revisions {prefix rev;}"
-            "import ietf-yang-types {prefix yang; rev:recommended-min-date 2025-12-22;}"
-            "leaf a {type yang:hex-string;}"
+    yang = "module ver1 {namespace urn:ver1; prefix v1;"
+            "import ietf-yang-semver {prefix ysv;}"
+            "import imp-min-ver1 {prefix imv1; ysv:recommended-min-version 1.0.0;}"
             "}";
     UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, &mod);
 
-    /* unsatisfied min-date */
-    yang = "module rev2 {namespace urn:rev2; prefix r2;"
-            "import ietf-yang-revisions {prefix rev;}"
-            "import ietf-yang-types {prefix yang; rev:recommended-min-date 2030-12-22;}"
-            "leaf a {type yang:hex-string;}"
+    /* older version import */
+    yang = "module ver2 {namespace urn:ver2; prefix v2;"
+            "import ietf-yang-semver {prefix ysv;}"
+            "import imp-min-ver1 {prefix imv1; ysv:recommended-min-version 1.5.0;}"
             "}";
     UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, &mod);
-    CHECK_LOG_CTX("Module \"rev2\" recommended minimal date of import \"ietf-yang-types\" is 2030-12-22 "
-            "but the imported module revision is 2025-12-22.",
-            NULL, 0);
+    CHECK_LOG_CTX("Module \"imp-min-ver1@2026-01-01\" with version 1.0.0 but import recommended minimal version is 1.5.0.", NULL, 0);
 
     /* wrong statement */
-    yang = "module rev3 {namespace urn:rev3; prefix r3;"
-            "import ietf-yang-revisions {prefix rev;}"
-            "import ietf-yang-types {prefix yang; rev:recommended-min-date 2025-12-22;}"
-            "revision 2026-01-01 {rev:recommended-min-date 2025-12-22;}"
-            "leaf a {type yang:hex-string;}"
+    yang = "module ver3 {namespace urn:ver3; prefix v3;"
+            "import ietf-yang-semver {prefix ysv;}"
+            "import imp-min-ver1 {prefix imv1; ysv:recommended-min-version 1.0.0;}"
+            "revision 2026-01-01 {ysv:recommended-min-version 1.0.0;}"
             "}";
     UTEST_INVALID_MODULE(yang, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Ext plugin \"ly2 revisions\": Extension rev:recommended-min-date is allowed only in an \"import\" "
+    CHECK_LOG_CTX("Ext plugin \"ly2 semver\": Extension ysv:recommended-min-version is allowed only in an \"import\" "
             "statement, but it is placed in \"revision\" statement.",
-            "/rev3:{revision='2026-01-01'}/{ext-inst='rev:recommended-min-date'}/2025-12-22", 0);
+            "/ver3:{revision='2026-01-01'}/{ext-inst='ysv:recommended-min-version'}/1.0.0", 0);
 
     /* duplicate */
-    yang = "module rev3 {namespace urn:rev3; prefix r3;"
-            "import ietf-yang-revisions {prefix rev;}"
-            "import ietf-yang-types {prefix yang; rev:recommended-min-date 2025-12-22; rev:recommended-min-date 2022-12-22;}"
-            "leaf a {type yang:hex-string;}"
+    yang = "module ver3 {namespace urn:ver3; prefix v3;"
+            "import ietf-yang-semver {prefix ysv;}"
+            "import imp-min-ver1 {prefix imv1; ysv:recommended-min-version 1.0.0; ysv:recommended-min-version 1.0.5;}"
+            "revision 2026-01-01;"
             "}";
     UTEST_INVALID_MODULE(yang, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Ext plugin \"ly2 revisions\": Extension rev:recommended-min-date is instantiated multiple times.",
-            "/rev3:{import='ietf-yang-types'}/{ext-inst='rev:recommended-min-date'}/2025-12-22", 0);
+    CHECK_LOG_CTX("Ext plugin \"ly2 semver\": Extension ysv:recommended-min-version is instantiated multiple times.",
+            "/ver3:{import='imp-min-ver1'}/{ext-inst='ysv:recommended-min-version'}/1.0.0", 0);
 
     /* argument */
-    yang = "module rev3 {namespace urn:rev3; prefix r3;"
-            "import ietf-yang-revisions {prefix rev;}"
-            "import ietf-yang-types {prefix yang; rev:recommended-min-date;}"
-            "leaf a {type yang:hex-string;}"
+    yang = "module ver3 {namespace urn:ver3; prefix v3;"
+            "import ietf-yang-semver {prefix ysv;}"
+            "import imp-min-ver1 {prefix imv1; ysv:recommended-min-version;}"
+            "revision 2026-01-01;"
             "}";
     UTEST_INVALID_MODULE(yang, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Extension instance \"rev:recommended-min-date\" missing argument \"revision-date\".",
-            "/rev3:{import='ietf-yang-types'}/{ext-inst='rev:recommended-min-date'}", 0);
+    CHECK_LOG_CTX("Extension instance \"ysv:recommended-min-version\" missing argument \"yang-semantic-version\".",
+            "/ver3:{import='imp-min-ver1'}/{ext-inst='ysv:recommended-min-version'}", 0);
 
-    yang = "module rev3 {namespace urn:rev3; prefix r3;"
-            "import ietf-yang-revisions {prefix rev;}"
-            "import ietf-yang-types {prefix yang; rev:recommended-min-date 1999-02-30;}"
-            "leaf a {type yang:hex-string;}"
+    yang = "module ver3 {namespace urn:ver3; prefix v3;"
+            "import ietf-yang-semver {prefix ysv;}"
+            "import imp-min-ver1 {prefix imv1; ysv:recommended-min-version 1.0;}"
+            "revision 2026-01-01;"
             "}";
     UTEST_INVALID_MODULE(yang, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Ext plugin \"ly2 revisions\": Extension rev:recommended-min-date argument revision-date \"1999-02-30\" invalid.",
-            "/rev3:{import='ietf-yang-types'}/{ext-inst='rev:recommended-min-date'}/1999-02-30", 0);
+    CHECK_LOG_CTX("Ext plugin \"ly2 semver\": Extension ysv:recommended-min-version argument yang-semantic-version \"1.0\" invalid.",
+            "/ver3:{import='imp-min-ver1'}/{ext-inst='ysv:recommended-min-version'}/1.0", 0);
 }
 
 int
