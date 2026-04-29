@@ -1,0 +1,12 @@
+module local-mod2 {
+  namespace "urn:local-mod2";
+  prefix "lm2";
+
+  import ietf-yang-semver {
+    prefix ysv;
+  }
+
+  revision 2026-01-01 {
+    ysv:version 0.1.0;
+  }
+}

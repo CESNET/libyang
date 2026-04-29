@@ -906,7 +906,8 @@ LY_ERR lyplg_ext_schema_mount_get_ctx(struct lysc_ext_instance *ext, const struc
 /**
  * @brief Validate and parse semantic version.
  *
- * @param[in] ctx Context with shared data and the compiled pattern to use.
+ * @param[in] ctx Context with shared data and the compiled pattern to use. If NULL, the pattern is compiled ad-hoc and
+ * then freed.
  * @param[in] version Version to check.
  * @param[in] version_len Length of @p version. May be 0 if @p version is 0-terminated.
  * @param[in] bare Set if the version should have only MAJOR.MINOR.PATCH format.

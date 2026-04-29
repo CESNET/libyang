@@ -1,9 +1,10 @@
 /**
  * @file test_context.c
- * @author: Radek Krejci <rkrejci@cesnet.cz>
+ * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for functions from context.c
  *
- * Copyright (c) 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2018 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -1034,6 +1035,58 @@ test_all_implemented(void **state)
     assert_non_null(mod);
 }
 
+static void
+test_search_localfile(void **state)
+{
+    const struct lys_module *mod;
+    const char *semver_str;
+
+    ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_SRC "/modules/search_localfile");
+
+    /* prefer version in filename */
+    mod = ly_ctx_load_module(UTEST_LYCTX, "local-mod1", NULL, NULL);
+    assert_non_null(mod);
+    lys_semver_get(mod, &semver_str);
+    assert_string_equal(semver_str, "1.1.0");
+
+    /* find latest version */
+    mod = ly_ctx_load_module(UTEST_LYCTX, "local-mod2", NULL, NULL);
+    assert_non_null(mod);
+    lys_semver_get(mod, &semver_str);
+    assert_string_equal(semver_str, "1.2.0-latest");
+
+    /* find latest revision */
+    mod = ly_ctx_load_module(UTEST_LYCTX, "local-mod3", NULL, NULL);
+    assert_non_null(mod);
+    assert_string_equal(mod->revision, "2026-02-10");
+    lys_semver_get(mod, &semver_str);
+    assert_string_equal(semver_str, "1.5.0+weekend-build");
+}
+
+static void
+test_filename_warn(void **state)
+{
+    const struct lys_module *mod;
+
+    ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_SRC "/modules/filename_warn");
+
+    /* name mismatch, error */
+    mod = ly_ctx_load_module(UTEST_LYCTX, "invalid1", NULL, NULL);
+    assert_null(mod);
+    CHECK_LOG_CTX("Parsing module \"invalid11\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Unexpected module \"invalid11\" parsed instead of \"invalid1\".", NULL, 0);
+
+    /* revision mismatch */
+    mod = ly_ctx_load_module(UTEST_LYCTX, "invalid2", NULL, NULL);
+    assert_non_null(mod);
+    CHECK_LOG_CTX("File name \"invalid2@2026-01-01.yang\" does not match module revision \"2026-01-05\".", NULL, 0);
+
+    /* version mismatch */
+    mod = ly_ctx_load_module(UTEST_LYCTX, "invalid3", NULL, NULL);
+    assert_non_null(mod);
+    CHECK_LOG_CTX("File name \"invalid3@1.0.1-special.yang\" does not match module version \"1.0.1-spec\".", NULL, 0);
+}
+
 int
 main(void)
 {
@@ -1048,6 +1101,8 @@ main(void)
         UTEST(test_explicit_compile),
         UTEST(test_free_parsed),
         UTEST(test_all_implemented),
+        UTEST(test_search_localfile),
+        UTEST(test_filename_warn),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

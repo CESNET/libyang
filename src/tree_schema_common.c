@@ -744,18 +744,18 @@ static LY_ERR
 lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, struct lysp_ctx *main_ctx,
         const char *main_name, struct ly_set *new_mods, ly_bool *found, void **result)
 {
+    LY_ERR rc = LY_SUCCESS;
     struct ly_in *in;
     char *filepath = NULL;
     LYS_INFORMAT format = 0;
     void *mod = NULL;
-    LY_ERR ret = LY_SUCCESS;
     struct lysp_load_module_data mod_data = {0};
 
     *found = 0;
     *result = NULL;
 
-    LY_CHECK_RET(lys_search_localfile(ly_ctx_get_searchdirs(ctx), !(ctx->opts & LY_CTX_DISABLE_SEARCHDIR_CWD), name,
-            revision, &filepath, &format));
+    LY_CHECK_RET(_lys_search_localfile(ctx, ly_ctx_get_searchdirs(ctx), !(ctx->opts & LY_CTX_DISABLE_SEARCHDIR_CWD),
+            name, revision, &filepath, &format));
     if (!filepath) {
         LOGVRB("Module \"%s%s%s\" not found in local searchdirs.", name, revision ? "@" : "", revision ? revision : "");
         goto cleanup;
@@ -764,27 +764,29 @@ lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, 
     LOGVRB("Loading schema from \"%s\" file.", filepath);
 
     /* get the (sub)module */
-    LY_CHECK_ERR_GOTO(ret = ly_in_new_filepath(filepath, 0, &in),
-            LOGERR(ctx, ret, "Unable to create input handler for filepath %s.", filepath), cleanup);
+    if ((rc = ly_in_new_filepath(filepath, 0, &in))) {
+        LOGERR(ctx, rc, "Unable to create input handler for filepath %s.", filepath);
+        goto cleanup;
+    }
+
     mod_data.name = name;
     mod_data.revision = revision;
-    mod_data.path = filepath;
     mod_data.submoduleof = main_name;
     if (main_ctx) {
-        ret = lys_parse_submodule(ctx, in, format, main_ctx, &mod_data, 1, new_mods, (struct lysp_submodule **)&mod);
+        rc = lys_parse_submodule(ctx, in, format, main_ctx, &mod_data, 1, new_mods, (struct lysp_submodule **)&mod);
     } else {
-        ret = lys_parse_in(ctx, in, format, &mod_data, new_mods, (struct lys_module **)&mod);
+        rc = lys_parse_in(ctx, in, format, &mod_data, new_mods, (struct lys_module **)&mod);
 
     }
     ly_in_free(in, 1);
-    LY_CHECK_GOTO(ret, cleanup);
+    LY_CHECK_GOTO(rc, cleanup);
 
     *found = 1;
     *result = mod;
 
 cleanup:
     free(filepath);
-    return ret;
+    return rc;
 }
 
 /**
@@ -2318,6 +2320,7 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_module *pmo
     uint32_t pref_len, name_len;
     LY_ARRAY_COUNT_TYPE u, v;
     const struct lys_module *mod = NULL;
+    const struct lysp_module *pm;
     const struct lysp_submodule *submod;
     char *path;
 
@@ -2351,16 +2354,23 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_module *pmo
         return LY_SUCCESS;
     }
 
+    if (mod == pmod->mod) {
+        /* use the current module, it may actually be a submodule so limit the search to it */
+        pm = pmod;
+    } else {
+        pm = mod->parsed;
+    }
+
     /* find the parsed extension definition there */
-    LY_ARRAY_FOR(mod->parsed->extensions, v) {
-        if (!strcmp(name, mod->parsed->extensions[v].name)) {
-            *ext_def = &mod->parsed->extensions[v];
+    LY_ARRAY_FOR(pm->extensions, v) {
+        if (!strcmp(name, pm->extensions[v].name)) {
+            *ext_def = &pm->extensions[v];
             break;
         }
     }
     if (!*ext_def) {
-        LY_ARRAY_FOR(mod->parsed->includes, u) {
-            submod = mod->parsed->includes[u].submodule;
+        LY_ARRAY_FOR(pm->includes, u) {
+            submod = pm->includes[u].submodule;
             LY_ARRAY_FOR(submod->extensions, v) {
                 if (!strcmp(name, submod->extensions[v].name)) {
                     *ext_def = &submod->extensions[v];

@@ -602,7 +602,6 @@ void lys_unres_glob_erase(struct lys_glob_unres *unres);
 struct lysp_load_module_data {
     const char *name;           /**< expected module name */
     const char *revision;       /**< expected module revision */
-    const char *path;           /**< module file name to check */
     const char *submoduleof;    /**< expected submodule main module */
 };
 
@@ -620,6 +619,24 @@ struct lysp_load_module_data {
  */
 LY_ERR lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
         const struct lysp_load_module_data *mod_data, struct ly_set *new_mods, struct lys_module **module);
+
+/**
+ * @brief Search for the schema file in the specified searchpaths.
+ *
+ * @param[in] ctx Context to use.
+ * @param[in] searchpaths NULL-terminated array of paths to be searched (recursively). Current working
+ * directory is searched automatically (but non-recursively if not in the provided list).
+ * @param[in] cwd Flag to implicitly search also in the current working directory (non-recursively).
+ * @param[in] name Name of the schema to find.
+ * @param[in] revision Revision of the schema to find. If NULL, the newest found schema filepath is returned.
+ * @param[out] localfile Mandatory output variable containing absolute path of the found schema. If no schema
+ * complying the provided restriction is found, NULL is set.
+ * @param[out] format Optional output variable containing expected format of the schema document according to the
+ * file suffix.
+ * @return LY_ERR value (LY_SUCCESS is returned even if the file is not found, then the *localfile is NULL).
+ */
+LY_ERR _lys_search_localfile(const struct ly_ctx *ctx, const char * const *searchpaths, ly_bool cwd, const char *name,
+        const char *revision, char **localfile, LYS_INFORMAT *format);
 
 /**
  * @brief Build log path for a parsed extension instance.

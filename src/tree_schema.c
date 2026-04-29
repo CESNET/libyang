@@ -1474,48 +1474,6 @@ cleanup:
 }
 
 /**
- * @brief Check ietf-yang-revisions recommended-min-date extension, if present.
- *
- * @param[in] pmod Module with the import.
- * @param[in] imp Import to check.
- */
-static void
-lysp_resolve_import_check_rev_min_date(const struct lysp_module *pmod, const struct lysp_import *imp)
-{
-    LY_ARRAY_COUNT_TYPE u;
-    const struct lysp_ext_instance *ext = NULL;
-    const char *mod_name, *name;
-
-    assert(imp->module);
-
-    if (!imp->module->revision) {
-        /* nothing to check */
-        return;
-    }
-
-    LY_ARRAY_FOR(imp->exts, u) {
-        lysp_nodeid_find_module(pmod->mod->ctx, imp->exts[u].name, imp->exts[u].format, imp->exts[u].prefix_data,
-                &mod_name, &name);
-
-        if (!strcmp(mod_name, "ietf-yang-revisions") && !strcmp(name, "recommended-min-date")) {
-            ext = &imp->exts[u];
-            break;
-        }
-    }
-
-    if (!ext) {
-        /* no recommended min date */
-        return;
-    }
-
-    /* extension has not been parsed (checked) yet */
-    if (ext->argument && (strcmp(ext->argument, imp->module->revision) > 0)) {
-        LOGWRN(pmod->mod->ctx, "Module \"%s\" recommended minimal date of import \"%s\" is %s but the imported module "
-                "revision is %s.", pmod->mod->name, imp->module->name, ext->argument, imp->module->revision);
-    }
-}
-
-/**
  * @brief Resolve (find) all imported and included modules.
  *
  * @param[in] pctx Parser context.
@@ -1542,9 +1500,6 @@ lysp_resolve_import_include(struct lysp_ctx *pctx, struct lysp_module *pmod, str
                  */
                 imp->module->latest_revision |= LYS_MOD_IMPORTED_REV;
             }
-
-            /* check ietf-yang-revisions recommended-min-date extension */
-            lysp_resolve_import_check_rev_min_date(pmod, imp);
         }
 
         /* check for importing the same module twice */
@@ -1943,30 +1898,18 @@ lysp_ext_instance_path(const struct ly_ctx *ctx, const struct lysp_module *pmod,
 }
 
 /**
- * @brief Find ext instance plugins for all the parsed extensions.
+ * @brief Find extension plugins for all the parsed extensions in a parsed (sub)module.
  *
- * @param[in] mod Module to use.
+ * @param[in] pmod Parsed (sub)module to use.
  */
 static void
-lysp_resolve_ext_instance_plugins(struct lys_module *mod)
+lysp_resolve_extension_plugins(const struct lysp_module *pmod)
 {
-    LY_ARRAY_COUNT_TYPE u, v;
-    const struct lysp_include *inc;
+    LY_ARRAY_COUNT_TYPE u;
 
-    /* module */
-    LY_ARRAY_FOR(mod->parsed->extensions, u) {
-        mod->parsed->extensions[u].plugin_ref = lyplg_ext_plugin_find(mod->ctx, mod->name,
-                mod->revision, mod->parsed->extensions[u].name);
-    }
-
-    /* submodules */
-    LY_ARRAY_FOR(mod->parsed->includes, v) {
-        inc = &mod->parsed->includes[v];
-
-        LY_ARRAY_FOR(inc->submodule->extensions, u) {
-            inc->submodule->extensions[u].plugin_ref = lyplg_ext_plugin_find(mod->ctx, mod->name,
-                    mod->revision, inc->submodule->extensions[u].name);
-        }
+    LY_ARRAY_FOR(pmod->extensions, u) {
+        pmod->extensions[u].plugin_ref = lyplg_ext_plugin_find(pmod->mod->ctx, pmod->mod->name, pmod->mod->revision,
+                pmod->extensions[u].name);
     }
 }
 
@@ -2048,45 +1991,132 @@ next_iter:
 /**
  * @brief Generate a warning if the filename does not match the expected module name and version.
  *
- * @param[in] ctx Context for logging
- * @param[in] name Expected module name
- * @param[in] revision Expected module revision, or NULL if not to be checked
- * @param[in] filename File path to be checked
+ * @param[in] ctx Context for logging.
+ * @param[in] name Expected module name.
+ * @param[in] revision Expected module revision, if any.
+ * @param[in] semver Expected module semantic version, if any.
+ * @param[in] path File path to be checked.
  */
 static void
-ly_check_module_filename(const struct ly_ctx *ctx, const char *name, const char *revision, const char *filename)
+ly_check_module_filename(const struct ly_ctx *ctx, const char *name, const char *revision, const char *semver,
+        const char *path)
 {
-    const char *basename, *rev, *dot;
-    size_t len;
+    const char *filename, *at, *dot, *rev = NULL, *ver = NULL;
+    uint32_t name_len, at_len;
 
-    /* check that name and revision match filename */
-    basename = strrchr(filename, '/');
+    /* get the filename */
+    filename = strrchr(path, '/');
+
 #ifdef _WIN32
-    const char *backslash = strrchr(filename, '\\');
+    const char *backslash = strrchr(path, '\\');
 
-    if (!basename || (basename && backslash && (backslash > basename))) {
-        basename = backslash;
+    if (!filename || (filename && backslash && (backslash > filename))) {
+        filename = backslash;
     }
 #endif
-    if (!basename) {
-        basename = filename;
+
+    if (!filename) {
+        filename = path;
     } else {
-        basename++; /* leading slash */
+        filename++; /* leading slash */
     }
-    rev = strchr(basename, '@');
-    dot = strrchr(basename, '.');
+
+    /* find the name, revision/version, and file extension */
+    at = strchr(filename, '@');
+    dot = strrchr(filename, '.');
+    if (at) {
+        name_len = at - filename;
+    } else if (dot) {
+        name_len = dot - filename;
+    } else {
+        name_len = strlen(filename);
+    }
+    if (at) {
+        ++at;
+        at_len = dot ? dot - at : (uint32_t)strlen(at);
+    }
+
+    /* check valid revision/version and file extension */
+    if (!dot) {
+        LOGWRN(ctx, "File name \"%s\" missing file extension.", filename);
+    }
+    if (at) {
+        if (!lys_check_date(NULL, at, at_len, "revision")) {
+            rev = at;
+        } else if (!lyplg_ext_semver_parse(ctx, at, at_len, 0, NULL)) {
+            ver = at;
+        }
+    }
 
     /* name */
-    len = strlen(name);
-    if (strncmp(basename, name, len) ||
-            ((rev && (rev != &basename[len])) || (!rev && (dot != &basename[len])))) {
-        LOGWRN(ctx, "File name \"%s\" does not match module name \"%s\".", basename, name);
+    if ((name_len != strlen(name)) || strncmp(filename, name, name_len)) {
+        LOGWRN(ctx, "File name \"%s\" does not match module name \"%s\".", filename, name);
     }
-    if (rev) {
-        len = dot - ++rev;
-        if (!revision || (len != LY_REV_SIZE - 1) || strncmp(revision, rev, len)) {
-            LOGWRN(ctx, "File name \"%s\" does not match module revision \"%s\".", basename,
-                    revision ? revision : "none");
+
+    /* revision */
+    if (rev && (!revision || strncmp(revision, rev, at_len))) {
+        LOGWRN(ctx, "File name \"%s\" does not match module revision \"%s\".", filename, revision ? revision : "<none>");
+    }
+
+    /* version */
+    if (ver && (!semver || strncmp(semver, ver, at_len))) {
+        LOGWRN(ctx, "File name \"%s\" does not match module version \"%s\".", filename, semver ? semver : "<none>");
+    }
+}
+
+/**
+ * @brief Check recommended-min-date and recommended-min-version extensions, if present.
+ *
+ * Import revision-date is checked when loading the (sub)module.
+ *
+ * @param[in] pmod Module whose imports to check.
+ */
+static void
+lysp_check_import_exts(const struct lysp_module *pmod)
+{
+    LY_ARRAY_COUNT_TYPE u, v;
+    const struct lysp_import *imp;
+    const struct lysp_ext_instance *min_date_ext = NULL, *min_ver_ext = NULL;
+    const struct lys_ext_instance_semver *semver;
+    const char *mod_name, *name, *semver_str;
+
+    LY_ARRAY_FOR(pmod->imports, u) {
+        imp = &pmod->imports[u];
+        assert(imp->module);
+
+        if (!imp->module->revision) {
+            /* nothing to check, has no revision nor version */
+            continue;
+        }
+
+        min_date_ext = NULL;
+        min_ver_ext = NULL;
+        LY_ARRAY_FOR(imp->exts, v) {
+            lysp_nodeid_find_module(pmod->mod->ctx, imp->exts[v].name, imp->exts[v].format, imp->exts[v].prefix_data,
+                    &mod_name, &name);
+
+            if (!strcmp(mod_name, "ietf-yang-revisions") && !strcmp(name, "recommended-min-date")) {
+                min_date_ext = &imp->exts[v];
+            } else if (!strcmp(mod_name, "ietf-yang-semver") && !strcmp(name, "recommended-min-version")) {
+                min_ver_ext = &imp->exts[v];
+                assert(min_ver_ext->parsed);
+            }
+        }
+
+        if (min_date_ext && (strcmp(min_date_ext->argument, imp->module->revision) > 0)) {
+            LOGWRN(pmod->mod->ctx, "Module \"%s@%s\" import recommended minimal date %s.", imp->module->name,
+                    imp->module->revision, min_date_ext->argument);
+        }
+
+        if (min_ver_ext) {
+            semver = lys_semver_get(imp->module, &semver_str);
+            if (!semver) {
+                LOGWRN(pmod->mod->ctx, "Module \"%s@%s\" without version but import recommended minimal version is %s.",
+                        imp->module->name, imp->module->revision, min_ver_ext->argument);
+            } else if (lys_semver_cmp(min_ver_ext->parsed, semver) > 0) {
+                LOGWRN(pmod->mod->ctx, "Module \"%s@%s\" with version %s but import recommended minimal version is %s.",
+                        imp->module->name, imp->module->revision, semver_str, min_ver_ext->argument);
+            }
         }
     }
 }
@@ -2106,11 +2136,11 @@ static LY_ERR
 lysp_load_module_data_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod,
         const struct lysp_load_module_data *mod_data)
 {
-    const char *name, *last_revision;
+    const char *name, *revision;
     uint8_t latest_revision;
 
     name = mod ? mod->mod->name : submod->name;
-    last_revision = mod ? lysp_last_revision(NULL, mod->revs) : lysp_last_revision(NULL, submod->revs);
+    revision = mod ? lysp_last_revision(NULL, mod->revs) : lysp_last_revision(NULL, submod->revs);
     latest_revision = mod ? mod->mod->latest_revision : submod->latest_revision;
 
     if (mod_data->name) {
@@ -2123,9 +2153,9 @@ lysp_load_module_data_check(const struct ly_ctx *ctx, struct lysp_module *mod, s
 
     if (mod_data->revision) {
         /* check revision of the parsed module */
-        if (!last_revision || strcmp(mod_data->revision, last_revision)) {
+        if (!revision || strcmp(mod_data->revision, revision)) {
             LOGERR(ctx, LY_EINVAL, "Module \"%s\" parsed with the wrong revision (\"%s\" instead \"%s\").", name,
-                    last_revision ? last_revision : "none", mod_data->revision);
+                    revision ? revision : "none", mod_data->revision);
             return LY_EINVAL;
         }
     } else if (!latest_revision) {
@@ -2149,10 +2179,6 @@ lysp_load_module_data_check(const struct ly_ctx *ctx, struct lysp_module *mod, s
         }
     }
 
-    if (mod_data->path) {
-        ly_check_module_filename(ctx, name, last_revision, mod_data->path);
-    }
-
     return LY_SUCCESS;
 }
 
@@ -2166,7 +2192,7 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
     struct lysp_yang_ctx *yangctx = NULL;
     struct lysp_yin_ctx *yinctx = NULL;
     struct lysp_ctx *pctx = NULL;
-    const char *last_revision, *last_revision2;
+    const char *last_revision, *last_revision2, *semver;
 
     LY_CHECK_ARG_RET(ctx, ctx, in, LY_EINVAL);
 
@@ -2235,10 +2261,24 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
         latest_sp->latest_revision = 0;
     }
 
+    /* store path */
     LY_CHECK_GOTO(rc = lys_parser_fill_filepath(ctx, in, &submod->filepath), cleanup);
 
     /* resolve imports and includes */
     LY_CHECK_GOTO(rc = lysp_resolve_import_include(pctx, (struct lysp_module *)submod, new_mods), cleanup);
+
+    /* resolve extension plugins and parse extension instances */
+    lysp_resolve_extension_plugins((struct lysp_module *)submod);
+    LY_CHECK_GOTO(rc = lysp_resolve_ext_instance_records(pctx), cleanup);
+
+    /* now check all the imports */
+    lysp_check_import_exts((struct lysp_module *)submod);
+
+    /* check path */
+    if (submod->filepath) {
+        lysp_semver_get((struct lysp_module *)submod, &semver);
+        ly_check_module_filename(ctx, submod->name, last_revision, semver, submod->filepath);
+    }
 
 cleanup:
     if (rc) {
@@ -2257,7 +2297,7 @@ cleanup:
         ly_set_erase(&pctx->tpdfs_nodes, NULL);
         ly_set_merge(&pctx->main_ctx->grps_nodes, &pctx->grps_nodes, 1, NULL);
         ly_set_erase(&pctx->grps_nodes, NULL);
-        ly_set_merge(&pctx->main_ctx->ext_inst, &pctx->ext_inst, 1, NULL);
+        /* ext_insts already parsed */
         ly_set_erase(&pctx->ext_inst, NULL);
     }
 
@@ -2729,7 +2769,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const st
     struct lysp_yin_ctx *yinctx = NULL;
     struct lysp_ctx *pctx = NULL;
     ly_bool mod_created = 0, mod_exists = 0;
-    const char *last_revision;
+    const char *last_revision, *semver;
 
     assert(ctx && in && new_mods);
 
@@ -2826,20 +2866,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const st
         goto cleanup;
     }
 
-    switch (in->type) {
-    case LY_IN_FILEPATH:
-        ly_check_module_filename(ctx, mod->name, lysp_last_revision(NULL, mod->parsed->revs), in->method.fpath.filepath);
-        break;
-    case LY_IN_FD:
-    case LY_IN_FILE:
-    case LY_IN_MEMORY:
-        /* nothing special to do */
-        break;
-    case LY_IN_ERROR:
-        LOGINT(ctx);
-        rc = LY_EINT;
-        goto cleanup;
-    }
+    /* store path */
     LY_CHECK_GOTO(rc = lys_parser_fill_filepath(ctx, in, &mod->filepath), cleanup);
 
     if (latest) {
@@ -2863,12 +2890,21 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const st
     rc = ly_set_add(&ctx->modules, mod, 1, NULL);
     LY_CHECK_GOTO(rc, cleanup);
 
-    /* resolve includes and all imports */
+    /* resolve imports and includes */
     LY_CHECK_GOTO(rc = lysp_resolve_import_include(pctx, mod->parsed, new_mods), cleanup);
 
     /* resolve extension plugins and parse extension instances */
-    lysp_resolve_ext_instance_plugins(mod);
+    lysp_resolve_extension_plugins(mod->parsed);
     LY_CHECK_GOTO(rc = lysp_resolve_ext_instance_records(pctx), cleanup);
+
+    /* now check all the imports */
+    lysp_check_import_exts(mod->parsed);
+
+    /* check path */
+    if (mod->filepath) {
+        lys_semver_get(mod, &semver);
+        ly_check_module_filename(ctx, mod->name, last_revision, semver, mod->filepath);
+    }
 
     /* check name collisions */
     LY_CHECK_GOTO(rc = lysp_check_dup_typedefs(pctx, mod->parsed), cleanup);
@@ -3110,73 +3146,197 @@ cleanup:
     return rc;
 }
 
-LIBYANG_API_DEF LY_ERR
-lys_search_localfile(const char * const *searchpaths, ly_bool cwd, const char *name, const char *revision,
-        char **localfile, LYS_INFORMAT *format)
+/**
+ * @brief Check that a found file matches (or is a better match than a previously found match).
+ *
+ * @param[in] ctx Context for version parsing.
+ * @param[in] file_atsuffix Pointer to the file name at its @-suffix, if any.
+ * @param[in] file_suffix_len Length of YANG/YIN file suffix.
+ * @param[in] revision Optional searched revision.
+ * @param[in] prev_match Previous match value.
+ * @param[in,out] match_rev Previous match revision, if any. Is updated on a match.
+ * @param[in,out] match_ver Previous match version, if any. Is updated on a match.
+ * @return 2 if the file is the best possible match,
+ * @return 1 if the file is a match or a better match than the previous match,
+ * @return 0 if not a suitable file.
+ */
+static int
+lys_search_localfile_is_match(const struct ly_ctx *ctx, const char *file_atsuffix, uint32_t file_suffix_len,
+        const char *revision, int prev_match, const char **match_rev, struct lys_ext_instance_semver **match_ver)
 {
-    LY_ERR ret = LY_EMEM;
-    size_t len, flen, match_len = 0, dir_len;
-    ly_bool implicit_cwd = 0, skip;
-    char *wd;
+    int match = 0;
+    ly_bool file_no_suffix = 0, file_has_rev;
+    struct lys_ext_instance_semver *semver = NULL;
+
+    if (file_atsuffix[0] != '@') {
+        /* no @-suffix, accept only if nothing else found */
+        if (!prev_match) {
+            match = 1;
+            file_no_suffix = 1;
+        }
+        goto cleanup;
+    }
+
+    /* check valid revision/version */
+    if (!lys_check_date(NULL, file_atsuffix + 1, strlen(file_atsuffix) - file_suffix_len - 1, "revision")) {
+        file_has_rev = 1;
+    } else if (!lyplg_ext_semver_parse(ctx, file_atsuffix + 1, strlen(file_atsuffix) - file_suffix_len - 1, 0, &semver)) {
+        file_has_rev = 0;
+    } else {
+        goto cleanup;
+    }
+
+    if (revision) {
+        if (file_has_rev && !strncmp(revision, file_atsuffix + 1, LY_REV_SIZE - 1)) {
+            /* exact revision found */
+            match = 2;
+        }
+
+        /* ignore other revisions or versions */
+        goto cleanup;
+    }
+
+    if (!prev_match || (!*match_ver && !*match_rev)) {
+        /* no current match or has no @-suffix, always prefer specific revision/version */
+        match = 1;
+        goto cleanup;
+    }
+
+    /* now simply searching for the latest revision/highest version */
+    assert(*match_rev || *match_ver);
+    if (file_has_rev) {
+        /* file with a revision, prefer versions to revisions */
+        if (*match_rev && (strncmp(*match_rev, file_atsuffix + 1, LY_REV_SIZE - 1) < 0)) {
+            /* newer revision */
+            match = 1;
+        }
+    } else {
+        /* file with a version */
+        if (*match_rev) {
+            /* prefer versions to revisions */
+            match = 1;
+        } else if (lys_semver_cmp(*match_ver, semver) < 0) {
+            /* higher version */
+            match = 1;
+        }
+    }
+
+cleanup:
+    if (match) {
+        /* unset previous match */
+        *match_rev = NULL;
+        lyplg_ext_semver_free(*match_ver);
+        *match_ver = NULL;
+
+        if (file_no_suffix) {
+            /* just unset */
+        } else if (file_has_rev) {
+            *match_rev = file_atsuffix + 1;
+        } else {
+            assert(semver);
+            *match_ver = semver;
+        }
+    } else {
+        lyplg_ext_semver_free(semver);
+    }
+    return match;
+}
+
+/**
+ * @brief Collect all searched directories.
+ *
+ * @param[in] ctx Context for logging.
+ * @param[in] searchpaths Explicit searchpaths to use.
+ * @param[in,out] cwd Set if CWD should be used, is unset if found in @p searchdirs.
+ * @param[out] dirs Collected directories.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_search_localfile_collect_dirs(const struct ly_ctx *ctx, const char * const *searchpaths, ly_bool *cwd,
+        struct ly_set **dirs)
+{
+    LY_ERR rc = LY_SUCCESS;
+    char *dir = NULL;
+    uint32_t i;
+
+    *dirs = NULL;
+
+    LY_CHECK_RET(ly_set_new(dirs));
+
+    if (*cwd) {
+        /* add CWD, not searched recursively */
+        dir = get_current_dir_name();
+        if (!dir) {
+            LOGMEM(ctx);
+            rc = LY_EMEM;
+            goto cleanup;
+        }
+
+        LY_CHECK_GOTO(rc = ly_set_add(*dirs, dir, 0, NULL), cleanup);
+        dir = NULL;
+    }
+
+    if (searchpaths) {
+        for (i = 0; searchpaths[i]; i++) {
+            /* check for duplicities with the implicit current working directory */
+            if (*cwd && !strcmp((*dirs)->objs[0], searchpaths[i])) {
+                *cwd = 0;
+                continue;
+            }
+
+            /* add new dir */
+            dir = strdup(searchpaths[i]);
+            if (!dir) {
+                LOGMEM(ctx);
+                rc = LY_EMEM;
+                goto cleanup;
+            }
+
+            LY_CHECK_GOTO(rc = ly_set_add(*dirs, dir, 0, NULL), cleanup);
+            dir = NULL;
+        }
+    }
+
+cleanup:
+    free(dir);
+    if (rc) {
+        ly_set_free(*dirs, free);
+        *dirs = NULL;
+    }
+
+    return rc;
+}
+
+LY_ERR
+_lys_search_localfile(const struct ly_ctx *ctx, const char * const *searchpaths, ly_bool cwd, const char *name,
+        const char *revision, char **localfile, LYS_INFORMAT *format)
+{
+    LY_ERR rc = LY_SUCCESS;
+    int match = 0, m;
+    size_t name_len, flen;
+    ly_bool skip;
+    const char *wd, *match_rev = NULL;
     DIR *dir = NULL;
     struct dirent *file;
     char *match_name = NULL;
     LYS_INFORMAT format_aux, match_format = 0;
-    struct ly_set *dirs;
+    struct lys_ext_instance_semver *match_ver = NULL;
+    struct ly_set *dirs = NULL;
+    uint32_t i;
 
-    LY_CHECK_ARG_RET(NULL, localfile, LY_EINVAL);
-
-    /* start to fill the dir fifo with the context's search path (if set)
-     * and the current working directory */
-    LY_CHECK_RET(ly_set_new(&dirs));
-
-    len = strlen(name);
-    if (cwd) {
-        wd = get_current_dir_name();
-        if (!wd) {
-            LOGMEM(NULL);
-            goto cleanup;
-        } else {
-            /* add implicit current working directory (./) to be searched,
-             * this directory is not searched recursively */
-            ret = ly_set_add(dirs, wd, 0, NULL);
-            LY_CHECK_GOTO(ret, cleanup);
-            implicit_cwd = 1;
-        }
-    }
-    if (searchpaths) {
-        for (uint64_t i = 0; searchpaths[i]; i++) {
-            /* check for duplicities with the implicit current working directory */
-            if (implicit_cwd && !strcmp(dirs->objs[0], searchpaths[i])) {
-                implicit_cwd = 0;
-                continue;
-            }
-            wd = strdup(searchpaths[i]);
-            if (!wd) {
-                LOGMEM(NULL);
-                goto cleanup;
-            } else {
-                ret = ly_set_add(dirs, wd, 0, NULL);
-                LY_CHECK_GOTO(ret, cleanup);
-            }
-        }
-    }
-    wd = NULL;
+    /* collect all the dirs to search */
+    LY_CHECK_GOTO(rc = lys_search_localfile_collect_dirs(ctx, searchpaths, &cwd, &dirs), cleanup);
 
     /* start searching */
-    while (dirs->count) {
-        free(wd);
-
-        dirs->count--;
-        wd = (char *)dirs->objs[dirs->count];
-        dirs->objs[dirs->count] = NULL;
+    name_len = strlen(name);
+    for (i = 0; (i < dirs->count) && (match < 2); ++i) {
+        wd = dirs->objs[i];
         LOGVRB("Searching for \"%s\" in \"%s\".", name, wd);
 
         if (dir) {
             closedir(dir);
         }
         dir = opendir(wd);
-        dir_len = strlen(wd);
         if (!dir) {
             LOGWRN(NULL, "Unable to open directory \"%s\" for searching (sub)modules (%s).", wd, strerror(errno));
             continue;
@@ -3189,13 +3349,14 @@ lys_search_localfile(const char * const *searchpaths, ly_bool cwd, const char *n
                 continue;
             }
 
-            /* check whether file type is */
-            if ((ret = lys_search_localfile_file_type(file, wd, dirs, implicit_cwd, &skip))) {
-                goto cleanup;
+            /* check file type */
+            LY_CHECK_GOTO(rc = lys_search_localfile_file_type(file, wd, dirs, cwd, &skip), cleanup);
+            if (skip) {
+                continue;
             }
 
             /* here we know that the item is a file which can contain a module */
-            if (strncmp(name, file->d_name, len) || ((file->d_name[len] != '.') && (file->d_name[len] != '@'))) {
+            if (strncmp(name, file->d_name, name_len) || ((file->d_name[name_len] != '.') && (file->d_name[name_len] != '@'))) {
                 /* different filename than the module we search for */
                 continue;
             }
@@ -3211,75 +3372,53 @@ lys_search_localfile(const char * const *searchpaths, ly_bool cwd, const char *n
                 continue;
             }
 
-            if (revision) {
-                /* we look for the specific revision, try to get it from the filename */
-                if (file->d_name[len] == '@') {
-                    /* check revision from the filename */
-                    if (strncmp(revision, &file->d_name[len + 1], strlen(revision))) {
-                        /* another revision */
-                        continue;
-                    } else {
-                        /* exact revision */
-                        free(match_name);
-                        if (asprintf(&match_name, "%s/%s", wd, file->d_name) == -1) {
-                            LOGMEM(NULL);
-                            goto cleanup;
-                        }
-                        match_len = dir_len + 1 + len;
-                        match_format = format_aux;
-                        goto success;
-                    }
-                } else {
-                    /* continue trying to find exact revision match, use this only if not found */
-                    free(match_name);
-                    if (asprintf(&match_name, "%s/%s", wd, file->d_name) == -1) {
-                        LOGMEM(NULL);
-                        goto cleanup;
-                    }
-                    match_len = dir_len + 1 + len;
-                    match_format = format_aux;
-                    continue;
-                }
-            } else {
-                /* remember the revision and try to find the newest one */
-                if (match_name) {
-                    if ((file->d_name[len] != '@') ||
-                            lys_check_date(NULL, &file->d_name[len + 1],
-                            flen - ((format_aux == LYS_IN_YANG) ? LY_YANG_SUFFIX_LEN : LY_YIN_SUFFIX_LEN) - len - 1, "revision")) {
-                        continue;
-                    } else if ((match_name[match_len] == '@') &&
-                            (strncmp(&match_name[match_len + 1], &file->d_name[len + 1], LY_REV_SIZE - 1) >= 0)) {
-                        continue;
-                    }
-                    free(match_name);
-                }
+            /* check the file @-suffix */
+            m = lys_search_localfile_is_match(ctx, &file->d_name[name_len],
+                    (format_aux == LYS_IN_YANG) ? LY_YANG_SUFFIX_LEN : LY_YIN_SUFFIX_LEN, revision, match, &match_rev,
+                    &match_ver);
 
+            if (m) {
+                /* file matches, store */
+                free(match_name);
                 if (asprintf(&match_name, "%s/%s", wd, file->d_name) == -1) {
-                    LOGMEM(NULL);
+                    LOGMEM(ctx);
+                    rc = LY_EMEM;
                     goto cleanup;
                 }
-                match_len = dir_len + 1 + len;
                 match_format = format_aux;
-                continue;
+                match = m;
+            }
+
+            if (match == 2) {
+                /* exact match found, finish */
+                break;
             }
         }
     }
 
-success:
+    /* return best found match */
     (*localfile) = match_name;
     match_name = NULL;
     if (format) {
         (*format) = match_format;
     }
-    ret = LY_SUCCESS;
 
 cleanup:
-    free(wd);
     if (dir) {
         closedir(dir);
     }
     free(match_name);
+    lyplg_ext_semver_free(match_ver);
     ly_set_free(dirs, free);
 
-    return ret;
+    return rc;
+}
+
+LIBYANG_API_DEF LY_ERR
+lys_search_localfile(const char * const *searchpaths, ly_bool cwd, const char *name, const char *revision,
+        char **localfile, LYS_INFORMAT *format)
+{
+    LY_CHECK_ARG_RET(NULL, name, localfile, LY_EINVAL);
+
+    return _lys_search_localfile(NULL, searchpaths, cwd, name, revision, localfile, format);
 }
