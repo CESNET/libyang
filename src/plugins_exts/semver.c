@@ -40,9 +40,6 @@ lys_semver_get(const struct lys_module *mod, const char **semver_str)
 {
     LY_ARRAY_COUNT_TYPE u;
     const struct lysc_ext_instance *ext;
-    const struct lysp_revision *rev;
-    const struct lysp_ext_instance *extp;
-    const char *mod_name, *name;
 
     if (semver_str) {
         *semver_str = NULL;
@@ -69,40 +66,92 @@ lys_semver_get(const struct lys_module *mod, const char **semver_str)
         return NULL;
     }
 
-    if (mod->parsed) {
-        /* find the last revision */
-        rev = NULL;
-        LY_ARRAY_FOR(mod->parsed->revs, u) {
-            if (strcmp(mod->parsed->revs[u].date, mod->revision)) {
-                continue;
-            }
+    /* try the parsed module */
+    return lysp_semver_get(mod->parsed, semver_str);
+}
 
-            rev = &mod->parsed->revs[u];
-            break;
+LIBYANG_API_DEF const struct lys_ext_instance_semver *
+lysp_semver_get(const struct lysp_module *pmod, const char **semver_str)
+{
+    LY_ARRAY_COUNT_TYPE u;
+    const struct lysp_revision *rev;
+    const struct lysp_ext_instance *extp;
+    const char *mod_name, *name;
+
+    if (semver_str) {
+        *semver_str = NULL;
+    }
+
+    if (!pmod || !pmod->revs) {
+        return NULL;
+    }
+
+    /* find the last revision */
+    rev = NULL;
+    LY_ARRAY_FOR(pmod->revs, u) {
+        if (rev && (strcmp(pmod->revs[u].date, rev->date) < 0)) {
+            continue;
         }
-        assert(rev);
 
-        /* find the version extension instance */
-        LY_ARRAY_FOR(rev->exts, u) {
-            extp = &rev->exts[u];
-            lysp_nodeid_find_module(mod->ctx, extp->name, extp->format, extp->prefix_data, &mod_name, &name);
+        rev = &pmod->revs[u];
+    }
 
-            if (!strcmp(mod_name, "ietf-yang-semver") && !strcmp(name, "version")) {
-                if (semver_str) {
-                    *semver_str = extp->argument;
-                }
-                return extp->parsed;
+    /* find the version extension instance */
+    LY_ARRAY_FOR(rev->exts, u) {
+        extp = &rev->exts[u];
+        lysp_nodeid_find_module(pmod->mod->ctx, extp->name, extp->format, extp->prefix_data, &mod_name, &name);
+
+        if (!strcmp(mod_name, "ietf-yang-semver") && !strcmp(name, "version")) {
+            if (semver_str) {
+                *semver_str = extp->argument;
             }
+            return extp->parsed;
         }
     }
 
     return NULL;
 }
 
+LIBYANG_API_DEF int
+lys_semver_cmp(const struct lys_ext_instance_semver *ver1, const struct lys_ext_instance_semver *ver2)
+{
+    if (!ver1 && !ver2) {
+        return 0;
+    } else if (!ver1) {
+        return -1;
+    } else if (!ver2) {
+        return 1;
+    }
+
+    /* major */
+    if (ver1->major < ver2->major) {
+        return -1;
+    } else if (ver1->major > ver2->major) {
+        return 1;
+    }
+
+    /* minor */
+    if (ver1->minor < ver2->minor) {
+        return -1;
+    } else if (ver1->minor > ver2->minor) {
+        return 1;
+    }
+
+    /* patch */
+    if (ver1->patch < ver2->patch) {
+        return -1;
+    } else if (ver1->patch > ver2->patch) {
+        return 1;
+    }
+
+    return 0;
+}
+
 /**
  * @brief Validate a semantic version.
  *
- * @param[in] ctx Context with shared data and the compiled pattern to use.
+ * @param[in] ctx Context with shared data and the compiled pattern to use. If NULL, pattern is compiled ad-hoc and
+ * then freed.
  * @param[in] version Version to check.
  * @param[in] version_len Length of @p version.
  * @param[in] bare Set if the version should have only MAJOR.MINOR.PATCH format.
@@ -116,10 +165,12 @@ semver_check_string(const struct ly_ctx *ctx, const char *version, uint32_t vers
     struct ly_err_item *err = NULL;
     const char *ptr;
 
-    assert(ctx && version && version_len);
+    assert(version && version_len);
 
-    sdata = ly_ctx_shared_data_get(ctx);
-    assert(sdata && sdata->semver_pattern);
+    if (ctx) {
+        sdata = ly_ctx_shared_data_get(ctx);
+        assert(sdata && sdata->semver_pattern);
+    }
 
     /* length */
     if ((version_len < LY_SEMVER_VERSION_MIN_LEN) || (version_len > LY_SEMVER_VERSION_MAX_LEN)) {
@@ -127,7 +178,7 @@ semver_check_string(const struct ly_ctx *ctx, const char *version, uint32_t vers
     }
 
     /* pattern */
-    r = ly_pat_match(sdata->semver_pattern, LY_SEMVER_VERSION_PATTERN, 0, version, version_len, &err);
+    r = ly_pat_match(sdata ? sdata->semver_pattern : NULL, LY_SEMVER_VERSION_PATTERN, 0, version, version_len, &err);
     ly_err_free(err);
     LY_CHECK_RET(r);
 
@@ -189,7 +240,7 @@ semver_parse_string(const char *version, uint32_t version_len, struct lys_ext_in
     /* patch */
     s->patch = strtol(ptr, &ptr, 10);
 
-    if (ptr[0] == '_') {
+    if ((ptr - version < version_len) && (ptr[0] == '_')) {
         /* compat */
         ++ptr;
         if (ptr[0] == 'c') {
@@ -203,20 +254,20 @@ semver_parse_string(const char *version, uint32_t version_len, struct lys_ext_in
         }
     }
 
-    if (ptr[0] == '-') {
+    if ((ptr - version < version_len) && (ptr[0] == '-')) {
         /* pre-release meta */
         ++ptr;
-        for (ptr2 = ptr; (ptr2 - ptr < version_len) && (ptr2[0] != '+'); ++ptr2) {}
+        for (ptr2 = ptr; (ptr2 - version < version_len) && (ptr2[0] != '+'); ++ptr2) {}
 
         s->pre_release_meta = strndup(ptr, ptr2 - ptr);
         LY_CHECK_ERR_RET(!s->pre_release_meta, LOGMEM(NULL), LY_EMEM);
         ptr = ptr2;
     }
 
-    if (ptr[0] == '+') {
+    if ((ptr - version < version_len) && (ptr[0] == '+')) {
         /* build meta */
         ++ptr;
-        for (ptr2 = ptr; (ptr2 - ptr < version_len); ++ptr2) {}
+        for (ptr2 = ptr; (ptr2 - version < version_len); ++ptr2) {}
 
         s->build_meta = strndup(ptr, ptr2 - ptr);
         LY_CHECK_ERR_RET(!s->build_meta, LOGMEM(NULL), LY_EMEM);
@@ -230,7 +281,7 @@ LY_ERR
 lyplg_ext_semver_parse(const struct ly_ctx *ctx, const char *version, uint32_t version_len, ly_bool bare,
         struct lys_ext_instance_semver **semver)
 {
-    if (!ctx || !version) {
+    if (!version) {
         return LY_EINVAL;
     }
 
@@ -566,7 +617,7 @@ version_pfree(const struct ly_ctx *UNUSED(ctx), struct lysp_ext_instance *ext)
  * Implementation of ::lyplg_ext_compile_free_clb callback set as lyext_plugin::cfree.
  */
 static void
-structure_cfree(const struct ly_ctx *UNUSED(ctx), struct lysc_ext_instance *ext)
+version_cfree(const struct ly_ctx *UNUSED(ctx), struct lysc_ext_instance *ext)
 {
     lyplg_ext_semver_free(ext->compiled);
 }
@@ -591,7 +642,11 @@ min_version_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 
     /* check argument */
     assert(ext->argument);
-    LY_CHECK_RET(semver_check_string(PARSER_CTX(pctx), ext->argument, strlen(ext->argument), 1));
+    if (semver_check_string(PARSER_CTX(pctx), ext->argument, strlen(ext->argument), 1)) {
+        lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EVALID, "Extension %s argument yang-semantic-version \"%s\" invalid.",
+                ext->name, ext->argument);
+        return LY_EVALID;
+    }
 
     /* check for duplication */
     imp = ext->parent;
@@ -601,6 +656,9 @@ min_version_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
             return LY_EVALID;
         }
     }
+
+    /* parse */
+    LY_CHECK_RET(semver_parse_string(ext->argument, strlen(ext->argument), (struct lys_ext_instance_semver **)&ext->parsed));
 
     return LY_SUCCESS;
 }
@@ -627,7 +685,7 @@ const struct lyplg_ext_record plugins_semver[] = {
         .plugin.snode = NULL,
         .plugin.validate = NULL,
         .plugin.pfree = version_pfree,
-        .plugin.cfree = structure_cfree,
+        .plugin.cfree = version_cfree,
         .plugin.compiled_size = NULL,
         .plugin.compiled_print = NULL
     }, {
@@ -643,7 +701,7 @@ const struct lyplg_ext_record plugins_semver[] = {
         .plugin.snode_xpath = NULL,
         .plugin.snode = NULL,
         .plugin.validate = NULL,
-        .plugin.pfree = NULL,
+        .plugin.pfree = version_pfree,
         .plugin.cfree = NULL,
         .plugin.compiled_size = NULL,
         .plugin.compiled_print = NULL

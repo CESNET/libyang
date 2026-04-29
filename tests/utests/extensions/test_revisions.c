@@ -83,8 +83,7 @@ test_min_date(void **state)
             "leaf a {type yang:hex-string;}"
             "}";
     UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, &mod);
-    CHECK_LOG_CTX("Module \"rev2\" recommended minimal date of import \"ietf-yang-types\" is 2030-12-22 "
-            "but the imported module revision is 2025-12-22.",
+    CHECK_LOG_CTX("Module \"ietf-yang-types@2025-12-22\" import recommended minimal date 2030-12-22.",
             NULL, 0);
 
     /* wrong statement */
