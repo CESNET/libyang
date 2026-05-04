@@ -284,6 +284,9 @@ lyb_read_string(char **str, struct lylyb_parse_ctx *lybctx)
     /* read length in bytes */
     lyb_read_size(&str_len, lybctx);
 
+    /* str_len + 1 wraps to 0 when str_len == UINT32_MAX, causing malloc(0) followed by an out-of-bounds write */
+    LY_CHECK_ERR_RET(str_len == UINT32_MAX, LOGERR(lybctx->ctx, LY_EINVAL, "LYB string length overflow."), LY_EINVAL);
+
     /* allocate mem */
     *str = malloc((str_len + 1) * sizeof **str);
     LY_CHECK_ERR_RET(!*str, LOGMEM(lybctx->ctx), LY_EMEM);
@@ -339,6 +342,11 @@ lyb_read_value(const struct lysc_type *type, uint8_t **val, uint64_t *val_size_b
             *val_size_bits *= 8;
         }
     }
+
+    /* LYPLG_BITS2BYTES(val_size_bits) + 1 can reach 4 GiB when lyb_size_bits == UINT32_MAX and
+     * size_type == VARIABLE_BYTES, causing calloc to attempt a 4 GiB allocation (OOM / DoS) */
+    LY_CHECK_ERR_RET(LYPLG_BITS2BYTES(*val_size_bits) >= UINT32_MAX,
+            LOGERR(lybctx->ctx, LY_EINVAL, "LYB value size overflow."), LY_EINVAL);
 
     /* allocate zeroed memory with an addition zero byte */
     *val = calloc(LYPLG_BITS2BYTES(*val_size_bits) + 1, sizeof **val);
