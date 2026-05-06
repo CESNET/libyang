@@ -68,7 +68,7 @@ module ietf-yang-schema-comparison {
   // RFC Ed.: replace XXXX (inc above) with actual RFC number and
   // remove this note.
 
-  revision 2026-02-11 {
+  revision 2026-05-05 {
     description
       "Initial revision.";
     reference

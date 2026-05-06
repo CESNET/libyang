@@ -31,7 +31,7 @@
           },
           {
             "module": "ietf-yang-schema-comparison",
-            "revision": "2026-02-11",
+            "revision": "2026-05-05",
             "enabled-feature": [
               "parsed-schema"
             ]
