@@ -5861,9 +5861,13 @@ moveto_node_check(const struct lyd_node *node, enum lyxp_node_type node_type, co
     }
 
     /* when check, accept the context node because it should only be the path ".", we have checked the when is valid before */
-    if (!(options & LYXP_IGNORE_WHEN) && lysc_has_when(schema) && !(node->flags & LYD_WHEN_TRUE) &&
-            (node != set->cur_node)) {
+    if (!(options & LYXP_IGNORE_WHEN) && lysc_has_when(schema) &&
+            !(node->flags & (LYD_WHEN_TRUE | LYD_WHEN_FALSE)) && (node != set->cur_node)) {
         return LY_EINCOMPLETE;
+    }
+    if ((node->flags & LYD_WHEN_FALSE) && (node != set->cur_node)) {
+        /* when-false node is treated as non-existent for XPath purposes */
+        return LY_ENOT;
     }
 
     /* match */
@@ -6372,9 +6376,14 @@ moveto_node_hash_child(struct lyxp_set *set, const struct lysc_node *scnode, con
         LY_CHECK_ERR_GOTO(r && (r != LY_ENOTFOUND), ret = r, cleanup);
 
         /* when check */
-        if (!(options & LYXP_IGNORE_WHEN) && sub && lysc_has_when(sub->schema) && !(sub->flags & LYD_WHEN_TRUE)) {
+        if (!(options & LYXP_IGNORE_WHEN) && sub && lysc_has_when(sub->schema) &&
+                !(sub->flags & (LYD_WHEN_TRUE | LYD_WHEN_FALSE))) {
             ret = LY_EINCOMPLETE;
             goto cleanup;
+        }
+        if (sub && (sub->flags & LYD_WHEN_FALSE)) {
+            /* when-false node is treated as non-existent */
+            sub = NULL;
         }
 
         if (sub) {

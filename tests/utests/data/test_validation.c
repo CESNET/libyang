@@ -1632,6 +1632,156 @@ test_store_only(void **state)
     lyd_free_siblings(tree);
 }
 
+static void
+test_when_must_cross_ref(void **state)
+{
+    /* Regression: when one node's "when" evaluates to false, references to it
+     * from a sibling's "must" (or another "when") must NOT bubble up
+     * LY_EINCOMPLETE -- the when-false node should be treated as non-existent
+     * by XPath. Before the LYD_WHEN_FALSE flag was introduced, this scenario
+     * either suppressed the second error (must skipped under multi-error) or
+     * crashed with "Internal error (validation.c:1058)" when a dummy-when
+     * evaluation hit the same chain. */
+    struct lyd_node *tree;
+    const char *schema =
+            "module twm {\n"
+            "    namespace urn:tests:twm;\n"
+            "    prefix twm;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    container top {\n"
+            "        leaf flag {\n"
+            "            type boolean;\n"
+            "            default \"false\";\n"
+            "        }\n"
+            "        leaf gated {\n"
+            "            when \"../flag = 'true'\";\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf checker {\n"
+            "            must \"/twm:top/twm:gated = 'expected'\" {\n"
+            "                error-app-tag \"checker-bad\";\n"
+            "                error-message \"checker requires gated=expected\";\n"
+            "            }\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf dep-when {\n"
+            "            when \"/twm:top/twm:gated = 'expected'\";\n"
+            "            mandatory true;\n"
+            "            type string;\n"
+            "        }\n"
+            "    }\n"
+            "}";
+    const char *data =
+            "<top xmlns=\"urn:tests:twm\">\n"
+            "  <gated>x</gated>\n"
+            "  <checker>val</checker>\n"
+            "</top>\n";
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    /* with multi-error: both the when failure and the cross-referencing must
+     * failure must be reported, and validation must NOT crash with an
+     * internal error from lyd_validate_dummy_when (the mandatory dep-when
+     * leaf would otherwise trigger LY_EINCOMPLETE there) */
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0,
+            LYD_VALIDATE_PRESENT | LYD_VALIDATE_MULTI_ERROR, LY_EVALID, tree);
+    CHECK_LOG_CTX_APPTAG("checker requires gated=expected", "/twm:top/checker", 0, "checker-bad");
+    CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm:top/gated", 0);
+
+    /* Regression: a leafref inside a when-false container must NOT produce a
+     * spurious "Invalid leafref value" error. Before the node_types cleanup in
+     * lyd_validate_unres_when was added, XPath navigation from the leafref leaf
+     * upward through the LYD_WHEN_FALSE parent returned LY_ENOT, making the
+     * target instance unreachable and triggering a false leafref failure. */
+    const char *schema2 =
+            "module twm2 {\n"
+            "    namespace urn:tests:twm2;\n"
+            "    prefix twm2;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    container top {\n"
+            "        leaf flag {\n"
+            "            type boolean;\n"
+            "        }\n"
+            "        list item {\n"
+            "            key \"name\";\n"
+            "            leaf name { type string; }\n"
+            "        }\n"
+            "        container gated {\n"
+            "            when \"../flag = 'true'\";\n"
+            "            leaf ref {\n"
+            "                type leafref {\n"
+            "                    path \"../../item/name\";\n"
+            "                }\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "}";
+    const char *data2 =
+            "<top xmlns=\"urn:tests:twm2\">\n"
+            "  <flag>false</flag>\n"
+            "  <item><name>x</name></item>\n"
+            "  <gated><ref>x</ref></gated>\n"
+            "</top>\n";
+
+    UTEST_ADD_MODULE(schema2, LYS_IN_YANG, NULL, NULL);
+
+    /* only the when error must be reported; no spurious leafref error */
+    CHECK_PARSE_LYD_PARAM(data2, LYD_XML, 0,
+            LYD_VALIDATE_PRESENT | LYD_VALIDATE_MULTI_ERROR, LY_EVALID, tree);
+    CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm2:top/gated", 0);
+
+    /* Regression: a leaf that itself carries both a when condition and a
+     * leafref type must NOT produce a spurious leafref error when its own
+     * when evaluates to false. The leaf is the LYD_WHEN_FALSE node, not a
+     * descendant of one, so the node_types cleanup must include the node
+     * itself (not only its descendants). Mirrors the imsdc application-stream
+     * pattern where current()/../<sibling> in the path also becomes
+     * non-existent once that sibling's when is false. */
+    const char *schema3 =
+            "module twm3 {\n"
+            "    namespace urn:tests:twm3;\n"
+            "    prefix twm3;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    container top {\n"
+            "        leaf flag {\n"
+            "            type boolean;\n"
+            "        }\n"
+            "        list item {\n"
+            "            key \"name\";\n"
+            "            leaf name { type string; }\n"
+            "        }\n"
+            "        leaf selector {\n"
+            "            when \"../flag = 'true'\";\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf ref {\n"
+            "            when \"../flag = 'true'\";\n"
+            "            type leafref {\n"
+            "                path \"/twm3:top/twm3:item[twm3:name = current()/../selector]/twm3:name\";\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "}";
+    const char *data3 =
+            "<top xmlns=\"urn:tests:twm3\">\n"
+            "  <flag>false</flag>\n"
+            "  <item><name>x</name></item>\n"
+            "  <selector>x</selector>\n"
+            "  <ref>x</ref>\n"
+            "</top>\n";
+
+    UTEST_ADD_MODULE(schema3, LYS_IN_YANG, NULL, NULL);
+
+    /* only the when errors must be reported; no spurious leafref error for ref */
+    CHECK_PARSE_LYD_PARAM(data3, LYD_XML, 0,
+            LYD_VALIDATE_PRESENT | LYD_VALIDATE_MULTI_ERROR, LY_EVALID, tree);
+    CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm3:top/selector", 0);
+    CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm3:top/ref", 0);
+}
+
 int
 main(void)
 {
@@ -1650,6 +1800,7 @@ main(void)
         UTEST(test_state),
         UTEST(test_must),
         UTEST(test_multi_error),
+        UTEST(test_when_must_cross_ref),
         UTEST(test_action),
         UTEST(test_rpc),
         UTEST(test_reply),
