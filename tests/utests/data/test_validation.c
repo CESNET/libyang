@@ -1780,6 +1780,58 @@ test_when_must_cross_ref(void **state)
             LYD_VALIDATE_PRESENT | LYD_VALIDATE_MULTI_ERROR, LY_EVALID, tree);
     CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm3:top/selector", 0);
     CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm3:top/ref", 0);
+
+    /* Regression: explicitly exercise the hash-based child lookup path
+     * (moveto_node_hash_child in src/xpath.c) for a when-false KEYED LIST. The
+     * other sub-cases reach moveto_node_check via plain name steps; this one
+     * forces XPath through the optimized [key='...'] lookup. The data
+     * deliberately sets item[name='a']/value to 'expected' so that, if the
+     * when-false flag were NOT honored by the hash lookup, the must would
+     * incorrectly pass. With LYD_WHEN_FALSE the list instance is invisible to
+     * XPath, the value comparison is against an empty node-set, and the must
+     * must fail. */
+    const char *schema4 =
+            "module twm4 {\n"
+            "    namespace urn:tests:twm4;\n"
+            "    prefix twm4;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    container top {\n"
+            "        leaf flag {\n"
+            "            type boolean;\n"
+            "        }\n"
+            "        list item {\n"
+            "            when \"../flag = 'true'\";\n"
+            "            key \"name\";\n"
+            "            leaf name { type string; }\n"
+            "            leaf value { type string; }\n"
+            "        }\n"
+            "        leaf checker {\n"
+            "            must \"/twm4:top/twm4:item[twm4:name = 'a']/twm4:value = 'expected'\" {\n"
+            "                error-app-tag \"checker-bad\";\n"
+            "                error-message \"checker requires item[a]/value=expected\";\n"
+            "            }\n"
+            "            type string;\n"
+            "        }\n"
+            "    }\n"
+            "}";
+    const char *data4 =
+            "<top xmlns=\"urn:tests:twm4\">\n"
+            "  <flag>false</flag>\n"
+            "  <item><name>a</name><value>expected</value></item>\n"
+            "  <checker>val</checker>\n"
+            "</top>\n";
+
+    UTEST_ADD_MODULE(schema4, LYS_IN_YANG, NULL, NULL);
+
+    /* both errors must be reported: the when-false on the list and the must
+     * failure on checker (the hash lookup must treat item[name='a'] as
+     * non-existent despite value='expected' being physically present). Note:
+     * CHECK_LOG_CTX pops via ly_err_last, so assertions are in reverse order. */
+    CHECK_PARSE_LYD_PARAM(data4, LYD_XML, 0,
+            LYD_VALIDATE_PRESENT | LYD_VALIDATE_MULTI_ERROR, LY_EVALID, tree);
+    CHECK_LOG_CTX_APPTAG("checker requires item[a]/value=expected", "/twm4:top/checker", 0, "checker-bad");
+    CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm4:top/item[name='a']", 0);
 }
 
 int
