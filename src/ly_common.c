@@ -16,7 +16,7 @@
 
 #include "ly_common.h"
 
-#ifdef HAVE_REGEX_H
+#ifdef LY_HAVE_REGEX_H
 # include <regex.h>
 #endif
 
@@ -667,7 +667,7 @@ ly_ctx_shared_data_pattern_del(const struct ly_ctx *ctx, const char *pattern, ly
 static LY_ERR
 ly_pat_compile_posix(const char *pattern, void **pat_comp, struct ly_err_item **err)
 {
-#ifdef HAVE_REGEX_H
+#ifdef LY_HAVE_REGEX_H
     LY_ERR rc = LY_SUCCESS;
     int err_code;
     size_t err_len;
@@ -1035,7 +1035,7 @@ ly_pat_compile(const char *pattern, ly_bool format, void **pat_comp, struct ly_e
 static LY_ERR
 ly_pat_match_posix(const void *pat_comp, const char *pattern, const char *str, size_t str_len, struct ly_err_item **err)
 {
-#ifdef HAVE_REGEX_H
+#ifdef LY_HAVE_REGEX_H
     LY_ERR rc = LY_SUCCESS;
     int err_code;
     regex_t *preg_p = (void *)pat_comp;
@@ -1177,7 +1177,7 @@ ly_pat_free(void *pat_comp, ly_bool format)
     }
 
     if (format) {
-#ifdef HAVE_REGEX_H
+#ifdef LY_HAVE_REGEX_H
         regfree(pat_comp);
         free(pat_comp);
 #endif

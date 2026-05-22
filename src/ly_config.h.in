@@ -85,7 +85,7 @@
 #endif
 
 /** existence of regex.h */
-#cmakedefine HAVE_REGEX_H
+#cmakedefine LY_HAVE_REGEX_H
 
 /** regex.h BSD flag */
 #cmakedefine HAVE_REG_STARTEND

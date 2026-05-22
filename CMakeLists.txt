@@ -329,8 +329,8 @@ if ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
 endif()
 
 # check regex compatibility
-check_include_file("regex.h" HAVE_REGEX_H)
-if(HAVE_REGEX_H)
+check_include_file("regex.h" LY_HAVE_REGEX_H)
+if(LY_HAVE_REGEX_H)
     check_symbol_exists(REG_STARTEND "regex.h" HAVE_REG_STARTEND)
 endif()
 
