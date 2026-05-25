@@ -23,7 +23,6 @@
 
 #include "in.h"
 #include "log.h"
-#include "ly_common.h"
 #include "out.h"
 
 #define TEST_INPUT_FILE TESTS_BIN "/libyang_test_input"

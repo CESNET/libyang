@@ -805,29 +805,6 @@ LY_ERR ly_parse_uint(const char *val_str, uint32_t val_len, uint64_t max, int ba
 LY_ERR ly_parse_nodeid(const char **id, const char **prefix, uint32_t *prefix_len, const char **name, uint32_t *name_len);
 
 /**
- * @brief parse instance-identifier's predicate, supports key-predicate, leaf-list-predicate and pos rules from YANG ABNF Grammar.
- *
- * @param[in,out] pred Predicate string (including the leading '[') to parse. The string is updated according to what was parsed
- * (even for error case, so it can be used to determine which substring caused failure).
- * @param[in] limit Limiting length of the @p pred. Function expects NULL terminated string which is not overread.
- * The limit value is not checked with each character, so it can be overread and the failure is detected later.
- * @param[in] format Input format of the data containing the @p pred.
- * @param[out] prefix Start of the node-identifier's prefix if any, NULL in case of pos or leaf-list-predicate rules.
- * @param[out] prefix_len Length of the parsed @p prefix.
- * @param[out] id Start of the node-identifier's identifier string, NULL in case of pos rule, "." in case of leaf-list-predicate rule.
- * @param[out] id_len Length of the parsed @p id.
- * @param[out] value Start of the quoted-string (without quotation marks), not NULL in case of success.
- * @param[out] value_len Length of the parsed @p value.
- * @param[out] errmsg Error message string in case of error.
- * @return LY_SUCCESS in case a complete predicate was parsed.
- * @return LY_EVALID in case of invalid predicate form.
- * @return LY_EINVAL in case of reaching @p limit when parsing @p pred.
- */
-LY_ERR ly_parse_instance_predicate(const char **pred, uint32_t limit, LYD_FORMAT format,
-        const char **prefix, uint32_t *prefix_len, const char **id, uint32_t *id_len,
-        const char **value, uint32_t *value_len, const char **errmsg);
-
-/**
  * @brief Get suitable quotes for a value for use in an (X)Path expression.
  *
  * @param[in] ctx Context to use.
