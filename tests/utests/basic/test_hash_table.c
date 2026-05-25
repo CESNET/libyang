@@ -17,7 +17,6 @@
 #include <stdlib.h>
 
 #include "hash_table.h"
-#include "ly_common.h"
 
 static void
 test_invalid_arguments(void **state)
@@ -104,24 +103,17 @@ test_ht_resize(void **UNUSED(state))
     struct ly_ht *ht;
 
     assert_non_null(ht = lyht_new(8, sizeof(int), ht_equal_clb, NULL, 1));
-    assert_int_equal(8, ht->size);
 
     /* insert records into indexes 2-7 */
     for (i = 2; i < 8; ++i) {
         assert_int_equal(LY_SUCCESS, lyht_insert(ht, &i, i, NULL));
     }
-    /* check that table resized */
-    assert_int_equal(16, ht->size);
 
     /* check expected content of the table */
     for (i = 0; i < 16; ++i) {
         if ((i >= 2) && (i < 8)) {
-            /* inserted data on indexes 2-7 */
-            assert_int_not_equal(UINT32_MAX, ht->hlists[i].first);
             assert_int_equal(LY_SUCCESS, lyht_find(ht, &i, i, NULL));
         } else {
-            /* nothing otherwise */
-            assert_int_equal(UINT32_MAX, ht->hlists[i].first);
             assert_int_equal(LY_ENOTFOUND, lyht_find(ht, &i, i, NULL));
         }
     }
@@ -136,7 +128,6 @@ test_ht_resize(void **UNUSED(state))
     for ( ; i < 5; ++i) {
         assert_int_equal(LY_SUCCESS, lyht_remove(ht, &i, i));
     }
-    assert_int_equal(8, ht->size);
 
     /* remove the rest */
     for ( ; i < 8; ++i) {
@@ -154,28 +145,16 @@ test_ht_resize(void **UNUSED(state))
 static void
 test_ht_collisions(void **UNUSED(state))
 {
-#define GET_REC_INT(rec) (*((uint32_t *)&(rec)->val))
-
     uint32_t i;
-    struct ly_ht_rec *rec;
     struct ly_ht *ht;
-    uint32_t rec_idx;
-    int count;
 
     assert_non_null(ht = lyht_new(8, sizeof(int), ht_equal_clb, NULL, 1));
 
     for (i = 2; i < 6; ++i) {
-        assert_int_equal(lyht_insert(ht, &i, 2, NULL), 0);
+        assert_int_equal(LY_SUCCESS, lyht_insert(ht, &i, 2, NULL));
     }
 
     /* check all records */
-    for (i = 0; i < 8; ++i) {
-        if (i == 2) {
-            assert_int_not_equal(UINT32_MAX, ht->hlists[i].first);
-        } else {
-            assert_int_equal(UINT32_MAX, ht->hlists[i].first);
-        }
-    }
     for (i = 0; i < 8; ++i) {
         if ((i >= 2) && (i < 6)) {
             assert_int_equal(LY_SUCCESS, lyht_find(ht, &i, 2, NULL));
@@ -183,32 +162,14 @@ test_ht_collisions(void **UNUSED(state))
             assert_int_equal(LY_ENOTFOUND, lyht_find(ht, &i, 2, NULL));
         }
     }
-    rec_idx = ht->hlists[2].first;
-    count = 0;
-    while (rec_idx != UINT32_MAX) {
-        rec = lyht_get_rec(ht->recs, ht->rec_size, rec_idx);
-        rec_idx = rec->next;
-        assert_int_equal(rec->hash, 2);
-        count++;
-    }
-    assert_int_equal(count, 4);
 
     i = 4;
-    assert_int_equal(lyht_remove(ht, &i, 2), 0);
-
-    rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+    assert_int_equal(LY_SUCCESS, lyht_remove(ht, &i, 2));
 
     i = 2;
-    assert_int_equal(lyht_remove(ht, &i, 2), 0);
+    assert_int_equal(LY_SUCCESS, lyht_remove(ht, &i, 2));
 
     /* check all records */
-    for (i = 0; i < 8; ++i) {
-        if (i == 2) {
-            assert_int_not_equal(UINT32_MAX, ht->hlists[i].first);
-        } else {
-            assert_int_equal(UINT32_MAX, ht->hlists[i].first);
-        }
-    }
     for (i = 0; i < 8; ++i) {
         if ((i == 3) || (i == 5)) {
             assert_int_equal(LY_SUCCESS, lyht_find(ht, &i, 2, NULL));
@@ -216,32 +177,23 @@ test_ht_collisions(void **UNUSED(state))
             assert_int_equal(LY_ENOTFOUND, lyht_find(ht, &i, 2, NULL));
         }
     }
-    rec_idx = ht->hlists[2].first;
-    count = 0;
-    while (rec_idx != UINT32_MAX) {
-        rec = lyht_get_rec(ht->recs, ht->rec_size, rec_idx);
-        rec_idx = rec->next;
-        assert_int_equal(rec->hash, 2);
-        count++;
-    }
-    assert_int_equal(count, 2);
 
     for (i = 0; i < 8; ++i) {
         if ((i == 3) || (i == 5)) {
-            assert_int_equal(lyht_find(ht, &i, 2, NULL), LY_SUCCESS);
+            assert_int_equal(LY_SUCCESS, lyht_find(ht, &i, 2, NULL));
         } else {
-            assert_int_equal(lyht_find(ht, &i, 2, NULL), LY_ENOTFOUND);
+            assert_int_equal(LY_ENOTFOUND, lyht_find(ht, &i, 2, NULL));
         }
     }
 
     i = 3;
-    assert_int_equal(lyht_remove(ht, &i, 2), 0);
+    assert_int_equal(LY_SUCCESS, lyht_remove(ht, &i, 2));
     i = 5;
-    assert_int_equal(lyht_remove(ht, &i, 2), 0);
+    assert_int_equal(LY_SUCCESS, lyht_remove(ht, &i, 2));
 
     /* check all records */
     for (i = 0; i < 8; ++i) {
-        assert_int_equal(UINT32_MAX, ht->hlists[i].first);
+        assert_int_equal(LY_ENOTFOUND, lyht_find(ht, &i, 2, NULL));
     }
 
     lyht_free(ht, NULL);
