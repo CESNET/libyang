@@ -36,7 +36,7 @@ help(void)
             "  -h, --help                  Show this help message and exit.\n"
             "  -v, --verbose               Increase verbosity. Can be specified multiple times.\n"
             "  -s, --searchdir=SEARCH-DIR  Directory with YANG modules in all the required revisions\n"
-            "                              and 'ietf-yang-schema-comparison' YANG module. Can be\n"
+            "                              and 'ietf-yang-schema-comparison-output' YANG module. Can be\n"
             "                              specified repeatedly.\n"
             "  -M, --module=MOD-NAME       Name of the YANG module of the current data.\n"
             "  -R, --old-module-revision=REVISION   Specific revision of the data. If not set, the\n"
