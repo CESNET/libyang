@@ -1,5 +1,5 @@
 {
-  "ietf-yang-schema-comparison:schema-comparison": {
+  "ietf-yang-schema-comparison-output:schema-comparison": {
     "schema": [
       {
         "source": {

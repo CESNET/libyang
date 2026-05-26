@@ -1,5 +1,5 @@
 {
-  "ietf-yang-schema-comparison:schema-comparison": {
+  "ietf-yang-schema-comparison-output:schema-comparison": {
     "schema": [
       {
         "source": {
@@ -18,31 +18,12 @@
         },
         "target-import": [
           {
-            "module": "ietf-datastores",
-            "revision": "2018-02-14"
-          },
-          {
             "module": "ietf-inet-types",
             "revision": "2025-12-22"
           },
           {
-            "module": "ietf-yang-library",
-            "revision": "2019-01-04"
-          },
-          {
             "module": "ietf-yang-schema-comparison",
-            "revision": "2026-05-05",
-            "enabled-feature": [
-              "parsed-schema"
-            ]
-          },
-          {
-            "module": "ietf-yang-structure-ext",
-            "revision": "2020-06-17"
-          },
-          {
-            "module": "ietf-yang-types",
-            "revision": "2025-12-22"
+            "revision": "2026-05-27"
           }
         ],
         "conformance": "non-backwards-compatible",

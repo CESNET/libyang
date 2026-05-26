@@ -1,7 +1,7 @@
-module ietf-yang-schema-comparison {
+module ietf-yang-schema-comparison-output {
   yang-version 1.1;
-  namespace "urn:ietf:params:xml:ns:yang:ietf-yang-schema-comparison";
-  prefix schema-cmp;
+  namespace "urn:ietf:params:xml:ns:yang:ietf-yang-schema-comparison-output";
+  prefix schema-cmp-out;
 
   import ietf-yang-types {
     prefix yang;
@@ -34,13 +34,12 @@ module ietf-yang-schema-comparison {
      Author:  Per Andersson
               <mailto:per.ietf@ionio.se>";
   description
-    "This YANG 1.1 module contains definitions and extensions to
-     support comparison between different versions of YANG schemas. The
-     output of the comparison algorithm is described in this YANG
-     module. The base schema nodes describe changes in a compiled YANG
-     module with all of its included submodules and imported modules.
-     The rest of the schema nodes are optional and describe changes in
-     all the statements of a single YANG module.
+    "This YANG 1.1 module contains definitions of output of comparison
+     between different versions of YANG schemas. The base schema nodes
+     describe changes in a compiled YANG module with all of its
+     included submodules and imported modules. The rest of the schema
+     nodes are optional and describe changes in all the statements of a
+     single YANG module.
 
      Copyright (c) 2026 IETF Trust and the persons identified as
      authors of the code.  All rights reserved.
@@ -68,67 +67,11 @@ module ietf-yang-schema-comparison {
   // RFC Ed.: replace XXXX (inc above) with actual RFC number and
   // remove this note.
 
-  revision 2026-05-05 {
+  revision 2026-05-27 {
     description
       "Initial revision.";
     reference
       "RFC XXXX: YANG Schema Comparison";
-  }
-
-  extension ed-change-at {
-    argument semver;
-    description
-      "Marks statements in a new revision of a module
-       that introduces an editorial change of the statement.
-
-       The argument marks the most recent version of the
-       module where the statement has been changed.
-
-       Can only be a substatement of 'pattern', 'when',
-       'must', 'description', 'reference', 'presence', or
-       extension instance statements.";
-    reference
-      "RFC 7950: The YANG 1.1 Data Modeling Language, section 11;
-       RFC 6020: YANG - A Data Modeling Language for the Network
-       Configuration Protocol (NETCONF), section 10";
-  }
-
-  extension bc-change-at {
-    argument semver;
-    description
-      "Marks statements in a new revision of a module
-       that introduces a backwards-compatible change of
-       the statement.
-
-       The argument marks the most recent version of the
-       module where the statement has been changed.
-
-       Can only be a substatement of 'pattern', 'when',
-       'must', 'description', 'reference', 'presence', or
-       extension instance statements.";
-    reference
-      "RFC 7950: The YANG 1.1 Data Modeling Language, section 11;
-       RFC 6020: YANG - A Data Modeling Language for the Network
-       Configuration Protocol (NETCONF), section 10";
-  }
-
-  extension nbc-change-at {
-    argument semver;
-    description
-      "Marks statements in a new revision of a module
-       that introduces a non-backwards-compatible change of
-       the statement.
-
-       The argument marks the most recent version of the
-       module where the statement has been changed.
-
-       Can only be a substatement of 'pattern', 'when',
-       'must', 'description', 'reference', 'presence', or
-       extension instance statements.";
-    reference
-      "RFC 7950: The YANG 1.1 Data Modeling Language, section 11;
-       RFC 6020: YANG - A Data Modeling Language for the Network
-       Configuration Protocol (NETCONF), section 10";
   }
 
   feature parsed-schema {
@@ -438,7 +381,7 @@ module ietf-yang-schema-comparison {
 
   grouping when-stmts {
     description
-      "Describes changes of all the must statements of a specific parent
+      "Describes changes of all the when statements of a specific parent
        statement.";
     list when {
       description
@@ -628,7 +571,10 @@ module ietf-yang-schema-comparison {
       leaf inverted {
         type boolean;
         description
-          "Inverted substatement value.";
+          "A value of true indicates that the pattern's 'modifier'
+           substatement is 'invert-match'.";
+        reference
+          "RFC 7950 Section 9.4.6";
       }
       uses restriction-substmts;
     }
@@ -738,7 +684,7 @@ module ietf-yang-schema-comparison {
       leaf restriction {
         type string;
         description
-          "Range argument substatement value.";
+          "Length argument substatement value.";
       }
       uses restriction-substmts;
     }
@@ -937,7 +883,10 @@ module ietf-yang-schema-comparison {
     leaf presence {
       type boolean;
       description
-        "Presence substatement existence.";
+        "Indicates whether a presence substatement is defined for
+         the container in the compiled schema. The textual argument
+         of 'presence' is reported via the parsed schema comparison
+         (see the 'presence' leaf in 'parsed-substmts').";
     }
     uses ext-instance-stmts;
   }
