@@ -1416,13 +1416,13 @@ lys_compare(const struct ly_ctx *ctx, const struct lys_module *src_mod, const st
     *schema_diff = NULL;
 
     /* check arguments */
-    cmp_mod = ly_ctx_get_module_implemented(ctx, "ietf-yang-schema-comparison");
+    cmp_mod = ly_ctx_get_module_implemented(ctx, "ietf-yang-schema-comparison-output");
     if (!cmp_mod) {
-        LOGERR(ctx, LY_ENOTFOUND, "Module \"ietf-yang-schema-comparison\" not found.");
+        LOGERR(ctx, LY_ENOTFOUND, "Module \"ietf-yang-schema-comparison-output\" not found.");
         rc = LY_ENOTFOUND;
         goto cleanup;
-    } else if (!cmp_mod->revision || strcmp(cmp_mod->revision, "2026-05-05")) {
-        LOGERR(ctx, LY_ENOTFOUND, "Module \"ietf-yang-schema-comparison\" not in the expected revision \"2026-05-05\".");
+    } else if (!cmp_mod->revision || strcmp(cmp_mod->revision, "2026-05-27")) {
+        LOGERR(ctx, LY_ENOTFOUND, "Module \"ietf-yang-schema-comparison\" not in the expected revision \"2026-05-27\".");
         rc = LY_ENOTFOUND;
         goto cleanup;
     }

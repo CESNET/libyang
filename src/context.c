@@ -66,6 +66,7 @@ static struct internal_modules_s {
     {"ietf-yang-schema-mount", "2019-01-14", 1},
     {"ietf-yang-structure-ext", "2020-06-17", 0},
     {"ietf-yang-revisions", "2025-09-16", 0},
+    {"ietf-yang-schema-comparison", "2026-05-27", 0},
     /* yang-library and related modules must be at the end of the list! */
     {"ietf-datastores", "2018-02-14", 1},
     {"ietf-yang-library", IETF_YANG_LIB_REV, 1},

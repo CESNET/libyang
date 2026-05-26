@@ -716,8 +716,8 @@ yu_ctx_load(const char *mod_name, const char *revision, const char **features, c
     /* check the context and plugin imports */
     LY_CHECK_GOTO(rc = yu_ctx_load_check_imports(*ctx, imports), cleanup);
 
-    /* load ietf-yang-schema-comparison */
-    if (!ly_ctx_load_module(*ctx, "ietf-yang-schema-comparison", NULL, NULL)) {
+    /* load ietf-yang-schema-comparison-output */
+    if (!ly_ctx_load_module(*ctx, "ietf-yang-schema-comparison-output", NULL, NULL)) {
         rc = LY_ENOTFOUND;
         goto cleanup;
     }
@@ -810,9 +810,9 @@ lyd_update_find_old(const char *module_name, const char *revision_old, const cha
         goto cleanup;
     }
 
-    /* ietf-yang-schema-comparison needs to be in the context */
-    if (!ly_ctx_get_module_implemented(*ctx_old, "ietf-yang-schema-comparison") &&
-            !ly_ctx_load_module(*ctx_old, "ietf-yang-schema-comparison", NULL, NULL)) {
+    /* ietf-yang-schema-comparison-output needs to be in the context */
+    if (!ly_ctx_get_module_implemented(*ctx_old, "ietf-yang-schema-comparison-output") &&
+            !ly_ctx_load_module(*ctx_old, "ietf-yang-schema-comparison-output", NULL, NULL)) {
         rc = LY_ENOTFOUND;
         goto cleanup;
     }
@@ -851,9 +851,9 @@ lyd_update_find_new(const struct lys_module *mod_old, const char *revision_new, 
         goto cleanup;
     }
 
-    /* ietf-yang-schema-comparison needs to be in the context */
-    if (!ly_ctx_get_module_implemented(*ctx_new, "ietf-yang-schema-comparison") &&
-            !ly_ctx_load_module(*ctx_new, "ietf-yang-schema-comparison", NULL, NULL)) {
+    /* ietf-yang-schema-comparison-output needs to be in the context */
+    if (!ly_ctx_get_module_implemented(*ctx_new, "ietf-yang-schema-comparison-output") &&
+            !ly_ctx_load_module(*ctx_new, "ietf-yang-schema-comparison-output", NULL, NULL)) {
         rc = LY_ENOTFOUND;
         goto cleanup;
     }
@@ -903,7 +903,7 @@ yu_update_node(const struct lysc_node *snode1, const struct lyd_node *data1, con
     path = lysc_path(snode, LYSC_PATH_DATA, NULL, 0);
 
     /* find a change in schema-comparison data */
-    if (asprintf(&path2, "/ietf-yang-schema-comparison:schema-comparison/schema[1]/node-comparison[node='%s']", path) == -1) {
+    if (asprintf(&path2, "/ietf-yang-schema-comparison-output:schema-comparison/schema[1]/node-comparison[node='%s']", path) == -1) {
         LOGMEM(snode->module->ctx);
         rc = LY_EMEM;
         goto cleanup;
