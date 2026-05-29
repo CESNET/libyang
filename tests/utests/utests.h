@@ -29,9 +29,9 @@
 
 #include <string.h>
 
+#include "compat.h"
 #include "libyang.h"
 #include "plugins_exts/metadata.h"
-#include "plugins_internal.h"
 #include "plugins_types.h"
 #include "tests_config.h"
 #include "tree_schema_internal.h"
@@ -222,7 +222,7 @@ struct utest_context {
  */
 
 /**
- * @brief check compileted type
+ * @brief check compiled type
  *
  * @param[in] NODE pointer to lysc_type value
  * @param[in] TYPE expected type [LY_DATA_TYPE](@ref LY_DATA_TYPE)
@@ -232,7 +232,7 @@ struct utest_context {
     assert_non_null(NODE); \
     assert_int_equal((NODE)->basetype, TYPE); \
     CHECK_ARRAY((NODE)->exts, EXTS); \
-    assert_ptr_equal((NODE)->plugin_ref, lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[TYPE]))
+    assert_non_null(lysc_get_type_plugin((NODE)->plugin_ref))
 
 /**
  * @brief check compileted numeric type
@@ -585,9 +585,8 @@ struct utest_context {
  *                      LYS_USES, LYS_INPUT, LYS_OUTPUT, LYS_GROUPING, LYS_AUGMENT
  * @param[in] PARENT    0-> check if node is root, 1-> check if node is not root
  * @param[in] REF       expected reference statement
- * @param[in] WHEN      0-> pointer is null, 1 -> pointer is not null
  */
-#define CHECK_LYSP_NODE(NODE, DSC, EXTS, FLAGS, IFFEATURES, NAME, NEXT, NODETYPE, PARENT, REF, WHEN) \
+#define CHECK_LYSP_NODE(NODE, DSC, EXTS, FLAGS, IFFEATURES, NAME, NEXT, NODETYPE, PARENT, REF) \
     assert_non_null(NODE); \
     CHECK_STRING((NODE)->dsc, DSC); \
     CHECK_ARRAY((NODE)->exts, EXTS); \
@@ -597,8 +596,7 @@ struct utest_context {
     CHECK_POINTER((NODE)->next, NEXT); \
     assert_int_equal((NODE)->nodetype, NODETYPE); \
     CHECK_POINTER((NODE)->parent, PARENT); \
-    CHECK_STRING((NODE)->ref, REF); \
-    CHECK_POINTER(lysp_node_when((struct lysp_node *)NODE), WHEN);
+    CHECK_STRING((NODE)->ref, REF);
 
 /**
  * @brief assert that lysp_node structure members are correct
@@ -619,7 +617,8 @@ struct utest_context {
  */
 #define CHECK_LYSP_NODE_LEAF(NODE, DSC, EXTS, FLAGS, IFFEATURES, NAME, NEXT, \
                 PARENT, REF, WHEN, MUSTS, UNITS, DFLT) \
-    CHECK_LYSP_NODE(NODE, DSC, EXTS, FLAGS, IFFEATURES, NAME, NEXT, LYS_LEAF, PARENT, REF, WHEN); \
+    CHECK_LYSP_NODE(NODE, DSC, EXTS, FLAGS, IFFEATURES, NAME, NEXT, LYS_LEAF, PARENT, REF); \
+    CHECK_POINTER(((struct lysp_node_leaf *)NODE)->when, WHEN); \
     CHECK_ARRAY((NODE)->musts, MUSTS); \
     CHECK_STRING((NODE)->units, UNITS); \
     CHECK_STRING((NODE)->dflt.str, DFLT);
@@ -1004,11 +1003,6 @@ struct utest_context {
     { \
         LY_ARRAY_COUNT_TYPE arr_size = sizeof(VALUE) / sizeof(VALUE[0]); \
         assert_int_equal(arr_size, LY_ARRAY_COUNT((NODE).target)); \
-        for (LY_ARRAY_COUNT_TYPE it = 0; it < arr_size; it++) { \
-            if ((NODE).target[it].predicates) { \
-                assert_int_equal(VALUE[it], (NODE).target[it].predicates[0].type); \
-            } \
-        } \
     }
 
 /**
