@@ -20,382 +20,145 @@
 #include <string.h>
 
 #include "in.h"
-#include "ly_common.h"
-#include "parser_internal.h"
-#include "schema_compile.h"
 #include "tree.h"
 #include "tree_edit.h"
 #include "tree_schema.h"
-#include "tree_schema_internal.h"
-#include "xml.h"
-#include "xpath.h"
 
-/* copied from parser_yin.c */
-enum yin_argument {
-    YIN_ARG_UNKNOWN = 0,   /**< parsed argument can not be matched with any supported yin argument keyword */
-    YIN_ARG_NAME,          /**< argument name */
-    YIN_ARG_TARGET_NODE,   /**< argument target-node */
-    YIN_ARG_MODULE,        /**< argument module */
-    YIN_ARG_VALUE,         /**< argument value */
-    YIN_ARG_TEXT,          /**< argument text */
-    YIN_ARG_CONDITION,     /**< argument condition */
-    YIN_ARG_URI,           /**< argument uri */
-    YIN_ARG_DATE,          /**< argument data */
-    YIN_ARG_TAG,           /**< argument tag */
-    YIN_ARG_NONE           /**< empty (special value) */
-};
-
-struct yin_subelement {
-    enum ly_stmt type;      /**< type of keyword */
-    void *dest;             /**< meta infromation passed to responsible function (mostly information about where parsed subelement should be stored) */
-    uint16_t flags;         /**< describes constraints of subelement can be set to YIN_SUBELEM_MANDATORY, YIN_SUBELEM_UNIQUE, YIN_SUBELEM_FIRST, YIN_SUBELEM_VER2, and YIN_SUBELEM_DEFAULT_TEXT */
-};
-
-struct import_meta {
-    const char *prefix;             /**< module prefix. */
-    struct lysp_import **imports;   /**< imports to add to. */
-};
-
-struct yin_argument_meta {
-    uint16_t *flags;        /**< Argument flags */
-    const char **argument;  /**< Argument value */
-};
-
-struct tree_node_meta {
-    struct lysp_node *parent;       /**< parent node */
-    struct lysp_node **nodes;    /**< linked list of siblings */
-};
-
-struct include_meta {
-    const char *name;               /**< Module/submodule name. */
-    struct lysp_include **includes; /**< [Sized array](@ref sizedarrays) of parsed includes to add to. */
-};
-
-struct inout_meta {
-    struct lysp_node *parent;          /**< Parent node. */
-    struct lysp_node_action_inout *inout_p; /**< inout_p Input/output pointer to write to. */
-};
-
-struct minmax_dev_meta {
-    uint32_t *lim;                      /**< min/max value to write to. */
-    uint16_t *flags;                    /**< min/max flags to write to. */
-    struct lysp_ext_instance **exts;    /**< extension instances to add to. */
-};
-
-#define YIN_SUBELEM_MANDATORY   0x01
-#define YIN_SUBELEM_UNIQUE      0x02
-#define YIN_SUBELEM_FIRST       0x04
-#define YIN_SUBELEM_VER2        0x08
-
-#define YIN_SUBELEM_PARSED      0x80
-
-/* prototypes of static functions */
-enum yin_argument yin_match_argument_name(const char *name, size_t len);
-
-LY_ERR yin_parse_content(struct lysp_yin_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
-        const void *parent, enum ly_stmt parent_stmt, const char **text_content, struct lysp_ext_instance **exts);
-LY_ERR yin_validate_value(struct lysp_yin_ctx *ctx, enum yang_arg val_type);
-enum ly_stmt yin_match_keyword(struct lysp_yin_ctx *ctx, const char *name, size_t name_len,
-        const char *prefix, size_t prefix_len, enum ly_stmt parrent);
-
-LY_ERR yin_parse_extension_instance(struct lysp_yin_ctx *ctx, const void *parent, enum ly_stmt parent_stmt,
-        LY_ARRAY_COUNT_TYPE parent_stmt_index, struct lysp_ext_instance **exts);
-LY_ERR yin_parse_element_generic(struct lysp_yin_ctx *ctx, enum ly_stmt parent, struct lysp_stmt **element);
-LY_ERR yin_parse_mod(struct lysp_yin_ctx *ctx, struct lysp_module *mod);
-LY_ERR yin_parse_submod(struct lysp_yin_ctx *ctx, struct lysp_submodule *submod);
-
-/* wrapping element used for mocking has nothing to do with real module structure */
-#define ELEMENT_WRAPPER_START "<status xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
-#define ELEMENT_WRAPPER_END "</status>"
-
-#define TEST_1_CHECK_LYSP_EXT_INSTANCE(NODE, INSUBSTMT)\
-    CHECK_LYSP_EXT_INSTANCE((NODE), NULL, 1, INSUBSTMT, 0, "myext:c-define", LY_VALUE_XML)
-
-struct lysp_yin_ctx *YCTX;
-
-static int
-setup_ctx(void **state)
-{
-    struct lysp_module *pmod;
-
-    /* allocate parser context */
-    YCTX = calloc(1, sizeof(*YCTX));
-    YCTX->main_ctx = (struct lysp_ctx *)YCTX;
-    YCTX->format = LYS_IN_YIN;
-    ly_set_new(&YCTX->parsed_mods);
-
-    /* allocate new parsed module */
-    pmod = calloc(1, sizeof *pmod);
-    ly_set_add(YCTX->parsed_mods, pmod, 1, NULL);
-
-    /* allocate new module */
-    pmod->mod = calloc(1, sizeof *pmod->mod);
-    pmod->mod->ctx = UTEST_LYCTX;
-    pmod->mod->parsed = pmod;
-
-    return 0;
-}
-
-static int
-setup(void **state)
-{
-    UTEST_SETUP;
-
-    setup_ctx(state);
-
-    return 0;
-}
-
-static int
-teardown_ctx(void **state)
-{
-    lys_module_free(UTEST_LYCTX, PARSER_CUR_PMOD(YCTX)->mod, 0);
-    lysp_yin_ctx_free(YCTX);
-    YCTX = NULL;
-
-    return 0;
-}
-
-static int
-teardown(void **state)
-{
-    teardown_ctx(state);
-
-    UTEST_TEARDOWN;
-
-    return 0;
-}
-
-#define RESET_STATE \
-    ly_in_free(UTEST_IN, 0); \
-    UTEST_IN = NULL; \
-    teardown_ctx(state); \
-    setup_ctx(state)
+#define TEST_1_CHECK_LYSP_EXT_INSTANCE(NODE, INSUBSTMT, ARGUMENT)\
+    CHECK_LYSP_EXT_INSTANCE((NODE), (ARGUMENT), 1, INSUBSTMT, 0, "myext:c-define", LY_VALUE_XML)
 
 static void
 test_yin_match_keyword(void **state)
 {
-    const char *prefix;
-    size_t prefix_len;
+    const char *yin_data;
 
-    /* create mock yin namespace in xml context */
-    ly_in_new_memory("<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" />", &UTEST_IN);
-    lyxml_ctx_new(UTEST_LYCTX, UTEST_IN, &YCTX->xmlctx);
-    prefix = YCTX->xmlctx->prefix;
-    prefix_len = YCTX->xmlctx->prefix_len;
+    yin_data =
+            "<module name=\"test\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:t1\"/>"
+            "  <prefix value=\"t1\"/>"
+            "  <anydatax/>"
+            "</module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"test\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Unexpected sub-element \"anydatax\" of \"module\" element.", NULL, 1);
 
-    assert_int_equal(yin_match_keyword(YCTX, "anydatax", strlen("anydatax"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_NONE);
-    assert_int_equal(yin_match_keyword(YCTX, "asdasd", strlen("asdasd"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_NONE);
-    assert_int_equal(yin_match_keyword(YCTX, "", 0, prefix, prefix_len, LY_STMT_NONE), LY_STMT_NONE);
-    assert_int_equal(yin_match_keyword(YCTX, "anydata", strlen("anydata"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_ANYDATA);
-    assert_int_equal(yin_match_keyword(YCTX, "anyxml", strlen("anyxml"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_ANYXML);
-    assert_int_equal(yin_match_keyword(YCTX, "argument", strlen("argument"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_ARGUMENT);
-    assert_int_equal(yin_match_keyword(YCTX, "augment", strlen("augment"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_AUGMENT);
-    assert_int_equal(yin_match_keyword(YCTX, "base", strlen("base"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_BASE);
-    assert_int_equal(yin_match_keyword(YCTX, "belongs-to", strlen("belongs-to"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_BELONGS_TO);
-    assert_int_equal(yin_match_keyword(YCTX, "bit", strlen("bit"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_BIT);
-    assert_int_equal(yin_match_keyword(YCTX, "case", strlen("case"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_CASE);
-    assert_int_equal(yin_match_keyword(YCTX, "choice", strlen("choice"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_CHOICE);
-    assert_int_equal(yin_match_keyword(YCTX, "config", strlen("config"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_CONFIG);
-    assert_int_equal(yin_match_keyword(YCTX, "contact", strlen("contact"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_CONTACT);
-    assert_int_equal(yin_match_keyword(YCTX, "container", strlen("container"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_CONTAINER);
-    assert_int_equal(yin_match_keyword(YCTX, "default", strlen("default"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_DEFAULT);
-    assert_int_equal(yin_match_keyword(YCTX, "description", strlen("description"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_DESCRIPTION);
-    assert_int_equal(yin_match_keyword(YCTX, "deviate", strlen("deviate"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_DEVIATE);
-    assert_int_equal(yin_match_keyword(YCTX, "deviation", strlen("deviation"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_DEVIATION);
-    assert_int_equal(yin_match_keyword(YCTX, "enum", strlen("enum"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_ENUM);
-    assert_int_equal(yin_match_keyword(YCTX, "error-app-tag", strlen("error-app-tag"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_ERROR_APP_TAG);
-    assert_int_equal(yin_match_keyword(YCTX, "error-message", strlen("error-message"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_ERROR_MESSAGE);
-    assert_int_equal(yin_match_keyword(YCTX, "extension", strlen("extension"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_EXTENSION);
-    assert_int_equal(yin_match_keyword(YCTX, "feature", strlen("feature"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_FEATURE);
-    assert_int_equal(yin_match_keyword(YCTX, "fraction-digits", strlen("fraction-digits"), prefix,  prefix_len, LY_STMT_NONE), LY_STMT_FRACTION_DIGITS);
-    assert_int_equal(yin_match_keyword(YCTX, "grouping", strlen("grouping"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_GROUPING);
-    assert_int_equal(yin_match_keyword(YCTX, "identity", strlen("identity"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_IDENTITY);
-    assert_int_equal(yin_match_keyword(YCTX, "if-feature", strlen("if-feature"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_IF_FEATURE);
-    assert_int_equal(yin_match_keyword(YCTX, "import", strlen("import"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_IMPORT);
-    assert_int_equal(yin_match_keyword(YCTX, "include", strlen("include"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_INCLUDE);
-    assert_int_equal(yin_match_keyword(YCTX, "input", strlen("input"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_INPUT);
-    assert_int_equal(yin_match_keyword(YCTX, "key", strlen("key"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_KEY);
-    assert_int_equal(yin_match_keyword(YCTX, "leaf", strlen("leaf"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_LEAF);
-    assert_int_equal(yin_match_keyword(YCTX, "leaf-list", strlen("leaf-list"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_LEAF_LIST);
-    assert_int_equal(yin_match_keyword(YCTX, "length", strlen("length"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_LENGTH);
-    assert_int_equal(yin_match_keyword(YCTX, "list", strlen("list"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_LIST);
-    assert_int_equal(yin_match_keyword(YCTX, "mandatory", strlen("mandatory"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_MANDATORY);
-    assert_int_equal(yin_match_keyword(YCTX, "max-elements", strlen("max-elements"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_MAX_ELEMENTS);
-    assert_int_equal(yin_match_keyword(YCTX, "min-elements", strlen("min-elements"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_MIN_ELEMENTS);
-    assert_int_equal(yin_match_keyword(YCTX, "modifier", strlen("modifier"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_MODIFIER);
-    assert_int_equal(yin_match_keyword(YCTX, "module", strlen("module"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_MODULE);
-    assert_int_equal(yin_match_keyword(YCTX, "must", strlen("must"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_MUST);
-    assert_int_equal(yin_match_keyword(YCTX, "namespace", strlen("namespace"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_NAMESPACE);
-    assert_int_equal(yin_match_keyword(YCTX, "notification", strlen("notification"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_NOTIFICATION);
-    assert_int_equal(yin_match_keyword(YCTX, "ordered-by", strlen("ordered-by"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_ORDERED_BY);
-    assert_int_equal(yin_match_keyword(YCTX, "organization", strlen("organization"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_ORGANIZATION);
-    assert_int_equal(yin_match_keyword(YCTX, "output", strlen("output"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_OUTPUT);
-    assert_int_equal(yin_match_keyword(YCTX, "path", strlen("path"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_PATH);
-    assert_int_equal(yin_match_keyword(YCTX, "pattern", strlen("pattern"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_PATTERN);
-    assert_int_equal(yin_match_keyword(YCTX, "position", strlen("position"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_POSITION);
-    assert_int_equal(yin_match_keyword(YCTX, "prefix", strlen("prefix"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_PREFIX);
-    assert_int_equal(yin_match_keyword(YCTX, "presence", strlen("presence"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_PRESENCE);
-    assert_int_equal(yin_match_keyword(YCTX, "range", strlen("range"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_RANGE);
-    assert_int_equal(yin_match_keyword(YCTX, "reference", strlen("reference"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_REFERENCE);
-    assert_int_equal(yin_match_keyword(YCTX, "refine", strlen("refine"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_REFINE);
-    assert_int_equal(yin_match_keyword(YCTX, "require-instance", strlen("require-instance"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_REQUIRE_INSTANCE);
-    assert_int_equal(yin_match_keyword(YCTX, "revision", strlen("revision"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_REVISION);
-    assert_int_equal(yin_match_keyword(YCTX, "revision-date", strlen("revision-date"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_REVISION_DATE);
-    assert_int_equal(yin_match_keyword(YCTX, "rpc", strlen("rpc"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_RPC);
-    assert_int_equal(yin_match_keyword(YCTX, "status", strlen("status"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_STATUS);
-    assert_int_equal(yin_match_keyword(YCTX, "submodule", strlen("submodule"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_SUBMODULE);
-    assert_int_equal(yin_match_keyword(YCTX, "type", strlen("type"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_TYPE);
-    assert_int_equal(yin_match_keyword(YCTX, "typedef", strlen("typedef"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_TYPEDEF);
-    assert_int_equal(yin_match_keyword(YCTX, "unique", strlen("unique"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_UNIQUE);
-    assert_int_equal(yin_match_keyword(YCTX, "units", strlen("units"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_UNITS);
-    assert_int_equal(yin_match_keyword(YCTX, "uses", strlen("uses"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_USES);
-    assert_int_equal(yin_match_keyword(YCTX, "value", strlen("value"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_VALUE);
-    assert_int_equal(yin_match_keyword(YCTX, "when", strlen("when"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_WHEN);
-    assert_int_equal(yin_match_keyword(YCTX, "yang-version", strlen("yang-version"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_YANG_VERSION);
-    assert_int_equal(yin_match_keyword(YCTX, "yin-element", strlen("yin-element"), prefix, prefix_len, LY_STMT_NONE), LY_STMT_YIN_ELEMENT);
-}
+    yin_data =
+            "<module name=\"test\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:t1\"/>"
+            "  <prefix value=\"t1\"/>"
+            "  <asdasd/>"
+            "</module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"test\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Unexpected sub-element \"asdasd\" of \"module\" element.", NULL, 1);
 
-static void
-test_yin_match_argument_name(void **UNUSED(state))
-{
-    assert_int_equal(yin_match_argument_name("", 5), YIN_ARG_UNKNOWN);
-    assert_int_equal(yin_match_argument_name("qwertyasd", 5), YIN_ARG_UNKNOWN);
-    assert_int_equal(yin_match_argument_name("conditionasd", 8), YIN_ARG_UNKNOWN);
-    assert_int_equal(yin_match_argument_name("condition", 9), YIN_ARG_CONDITION);
-    assert_int_equal(yin_match_argument_name("date", 4), YIN_ARG_DATE);
-    assert_int_equal(yin_match_argument_name("module", 6), YIN_ARG_MODULE);
-    assert_int_equal(yin_match_argument_name("name", 4), YIN_ARG_NAME);
-    assert_int_equal(yin_match_argument_name("tag", 3), YIN_ARG_TAG);
-    assert_int_equal(yin_match_argument_name("target-node", 11), YIN_ARG_TARGET_NODE);
-    assert_int_equal(yin_match_argument_name("text", 4), YIN_ARG_TEXT);
-    assert_int_equal(yin_match_argument_name("uri", 3), YIN_ARG_URI);
-    assert_int_equal(yin_match_argument_name("value", 5), YIN_ARG_VALUE);
+    yin_data =
+            "<module name=\"test\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:t1\"/>"
+            "  <prefix value=\"t1\"/>"
+            "  </>"
+            "</module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"test\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Identifier \"></module>\" starts with an invalid character.", NULL, 1);
 }
 
 static void
 test_yin_parse_content(void **state)
 {
-    LY_ERR ret = LY_SUCCESS;
-    const char *data =
-            "<prefix value=\"a_mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
-            "    <myext:custom xmlns:myext=\"urn:example:extensions\">totally amazing extension</myext:custom>\n"
-            "    <extension name=\"ext\">\n"
-            "        <argument name=\"argname\"></argument>\n"
-            "        <description><text>desc</text></description>\n"
-            "        <reference><text>ref</text></reference>\n"
-            "        <status value=\"deprecated\"></status>\n"
-            "    </extension>\n"
-            "    <text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>\n"
-            "    <if-feature name=\"foo\"></if-feature>\n"
-            "    <when condition=\"condition...\">\n"
-            "        <reference><text>when_ref</text></reference>\n"
-            "        <description><text>when_desc</text></description>\n"
-            "    </when>\n"
-            "    <config value=\"true\"/>\n"
-            "    <error-message>\n"
-            "        <value>error-msg</value>\n"
-            "    </error-message>\n"
-            "    <error-app-tag value=\"err-app-tag\"/>\n"
-            "    <units name=\"radians\"></units>\n"
-            "    <default value=\"default-value\"/>\n"
-            "    <position value=\"25\"></position>\n"
-            "    <value value=\"-5\"/>\n"
-            "    <require-instance value=\"true\"></require-instance>\n"
-            "    <range value=\"5..10\" />\n"
-            "    <length value=\"baf\"/>\n"
-            "    <pattern value='pattern'>\n"
-            "        <modifier value='invert-match'/>\n"
-            "    </pattern>\n"
-            "    <enum name=\"yay\">\n"
-            "    </enum>\n"
-            "</prefix>";
-    struct lysp_ext_instance *exts = NULL;
-    const char *value;
+    const char *yin_data;
 
-    /* test unique subelem */
-    const char *prefix_value;
-    struct yin_subelement subelems2[2] = {{LY_STMT_PREFIX, &prefix_value, YIN_SUBELEM_UNIQUE},
-        {LY_STMT_ARG_TEXT, &value, YIN_SUBELEM_UNIQUE}};
+    yin_data =
+            "<module name=\"test\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:err1\"/>"
+            "  <prefix value=\"e1\"/>"
+            "  <description>"
+            "    <text>First text</text>"
+            "    <text>Second text (invalid duplication)</text>"
+            "  </description>"
+            "</module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"test\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Redefinition of \"text\" sub-element in \"description\" element.", NULL, 1);
 
-    data = ELEMENT_WRAPPER_START
-            "<prefix value=\"inv_mod\" />"
-            "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
-            "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
-            ELEMENT_WRAPPER_END;
-    ly_in_new_memory(data, &UTEST_IN);
-    lyxml_ctx_new(UTEST_LYCTX, UTEST_IN, &YCTX->xmlctx);
-    lyxml_ctx_next(YCTX->xmlctx);
+    yin_data =
+            "<module name=\"test\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:err1\"/>"
+            "  <prefix value=\"e1\"/>"
+            "  <extension name=\"ext\"/>"
+            "  <description>"
+            "    <e1:ext/>"
+            "    <text>Desc</text>"
+            "  </description>"
+            "</module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"test\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Invalid order of module's sub-elements \"description\" can't appear after \"extension\".", NULL, 1);
 
-    ret = yin_parse_content(YCTX, subelems2, 2, NULL, LY_STMT_STATUS, NULL, &exts);
-    assert_int_equal(ret, LY_EVALID);
-    CHECK_LOG_CTX("Redefinition of \"text\" sub-element in \"status\" element.", NULL, 1);
-    lysdict_remove(UTEST_LYCTX, prefix_value);
-    lysdict_remove(UTEST_LYCTX, value);
-    RESET_STATE;
+    yin_data =
+            "<module name=\"test\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:err1\"/>"
+            "  <prefix value=\"e1\"/>"
+            "  <description>"
+            "  </description>"
+            "</module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"test\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Missing mandatory sub-element \"text\" of \"description\" element.", NULL, 1);
 
-    /* test first subelem */
-    data = ELEMENT_WRAPPER_START
-            "<prefix value=\"inv_mod\" />"
-            "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
-            "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
-            ELEMENT_WRAPPER_END;
-    struct yin_subelement subelems3[2] = {{LY_STMT_PREFIX, &prefix_value, YIN_SUBELEM_UNIQUE},
-        {LY_STMT_ARG_TEXT, &value, YIN_SUBELEM_FIRST}};
-
-    ly_in_new_memory(data, &UTEST_IN);
-    lyxml_ctx_new(UTEST_LYCTX, UTEST_IN, &YCTX->xmlctx);
-    lyxml_ctx_next(YCTX->xmlctx);
-
-    ret = yin_parse_content(YCTX, subelems3, 2, NULL, LY_STMT_STATUS, NULL, &exts);
-    assert_int_equal(ret, LY_EVALID);
-    CHECK_LOG_CTX("Sub-element \"text\" of \"status\" element must be defined as it's first sub-element.", NULL, 1);
-    lysdict_remove(UTEST_LYCTX, prefix_value);
-    RESET_STATE;
-
-    /* test mandatory subelem */
-    data = ELEMENT_WRAPPER_START ELEMENT_WRAPPER_END;
-    struct yin_subelement subelems4[1] = {{LY_STMT_PREFIX, &prefix_value, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE}};
-
-    ly_in_new_memory(data, &UTEST_IN);
-    lyxml_ctx_new(UTEST_LYCTX, UTEST_IN, &YCTX->xmlctx);
-    lyxml_ctx_next(YCTX->xmlctx);
-
-    ret = yin_parse_content(YCTX, subelems4, 1, NULL, LY_STMT_STATUS, NULL, &exts);
-    assert_int_equal(ret, LY_EVALID);
-    CHECK_LOG_CTX("Missing mandatory sub-element \"prefix\" of \"status\" element.", NULL, 1);
 }
 
 static void
 test_validate_value(void **state)
 {
-    const char *data = ELEMENT_WRAPPER_START ELEMENT_WRAPPER_END;
+    char buffer[512];
+    const char *yin_ident =
+            "<module name=\"%s\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:t1\"/>"
+            "  <prefix value=\"t1\"/>"
+            "</module>";
+    const char *yin_str_empty =
+            "<module name=\"t2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:t2\"/>"
+            "  <prefix value=\"t2\"/>"
+            "  <description><text></text></description>"
+            "</module>";
+    const char *yin_pref =
+            "<module name=\"t3\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:t3\"/>"
+            "  <prefix value=\"pre\"/>"
+            "  <identity name=\"b\"/>"
+            "  <identity name=\"test-id\">"
+            "    <base name=\"%s\"/>"
+            "  </identity>"
+            "</module>";
 
-    /* create some XML context */
-    ly_in_new_memory(data, &UTEST_IN);
-    lyxml_ctx_new(UTEST_LYCTX, UTEST_IN, &YCTX->xmlctx);
-    YCTX->xmlctx->status = LYXML_ELEM_CONTENT;
-    YCTX->xmlctx->dynamic = 0;
-
-    YCTX->xmlctx->value = "#invalid";
-    YCTX->xmlctx->value_len = 8;
-    assert_int_equal(yin_validate_value(YCTX, Y_IDENTIF_ARG), LY_EVALID);
+    snprintf(buffer, sizeof(buffer), yin_ident, "#invalid");
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, buffer, LYS_IN_YIN, NULL));
     CHECK_LOG_CTX("Invalid identifier first character '#' (0x0023).", NULL, 1);
 
-    YCTX->xmlctx->value = "";
-    YCTX->xmlctx->value_len = 0;
-    assert_int_equal(yin_validate_value(YCTX, Y_STR_ARG), LY_SUCCESS);
-
-    YCTX->xmlctx->value = "pre:b";
-    YCTX->xmlctx->value_len = 5;
-    assert_int_equal(yin_validate_value(YCTX, Y_IDENTIF_ARG), LY_EVALID);
+    snprintf(buffer, sizeof(buffer), yin_ident, "pre:b");
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, buffer, LYS_IN_YIN, NULL));
     CHECK_LOG_CTX("Invalid identifier character ':' (0x003a).", NULL, 1);
-    assert_int_equal(yin_validate_value(YCTX, Y_PREF_IDENTIF_ARG), LY_SUCCESS);
 
-    YCTX->xmlctx->value = "pre:pre:b";
-    YCTX->xmlctx->value_len = 9;
-    assert_int_equal(yin_validate_value(YCTX, Y_PREF_IDENTIF_ARG), LY_EVALID);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_str_empty, LYS_IN_YIN, NULL));
+
+    snprintf(buffer, sizeof(buffer), yin_pref, "pre:pre:b");
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, buffer, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"t3\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid identifier character ':' (0x003a).", NULL, 1);
+
+    snprintf(buffer, sizeof(buffer), yin_pref, "pre:b");
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, buffer, LYS_IN_YIN, NULL));
 }
 
 static void
@@ -1167,186 +930,142 @@ test_print_submodule(void **state)
     ly_out_free(out, NULL, 1);
 }
 
-/* helper function to simplify unit test of each element using parse_content function */
-LY_ERR
-test_element_helper(void **state, const char *data, void *dest, const char **text, struct lysp_ext_instance **exts)
-{
-    const char *name, *prefix;
-    size_t name_len, prefix_len;
-    LY_ERR ret = LY_SUCCESS;
-    struct yin_subelement subelems[71] = {
-        {LY_STMT_ACTION, dest, 0},
-        {LY_STMT_ANYDATA, dest, 0},
-        {LY_STMT_ANYXML, dest, 0},
-        {LY_STMT_ARGUMENT, dest, 0},
-        {LY_STMT_AUGMENT, dest, 0},
-        {LY_STMT_BASE, dest, 0},
-        {LY_STMT_BELONGS_TO, dest, 0},
-        {LY_STMT_BIT, dest, 0},
-        {LY_STMT_CASE, dest, 0},
-        {LY_STMT_CHOICE, dest, 0},
-        {LY_STMT_CONFIG, dest, 0},
-        {LY_STMT_CONTACT, dest, 0},
-        {LY_STMT_CONTAINER, dest, 0},
-        {LY_STMT_DEFAULT, dest, YIN_SUBELEM_UNIQUE},
-        {LY_STMT_DESCRIPTION, dest, 0},
-        {LY_STMT_DEVIATE, dest, 0},
-        {LY_STMT_DEVIATION, dest, 0},
-        {LY_STMT_ENUM, dest, 0},
-        {LY_STMT_ERROR_APP_TAG, dest, YIN_SUBELEM_UNIQUE},
-        {LY_STMT_ERROR_MESSAGE, dest, 0},
-        {LY_STMT_EXTENSION, dest, 0},
-        {LY_STMT_FEATURE, dest, 0},
-        {LY_STMT_FRACTION_DIGITS, dest, 0},
-        {LY_STMT_GROUPING, dest, 0},
-        {LY_STMT_IDENTITY, dest, 0},
-        {LY_STMT_IF_FEATURE, dest, 0},
-        {LY_STMT_IMPORT, dest, 0},
-        {LY_STMT_INCLUDE, dest, 0},
-        {LY_STMT_INPUT, dest, 0},
-        {LY_STMT_KEY, dest, YIN_SUBELEM_UNIQUE},
-        {LY_STMT_LEAF, dest, 0},
-        {LY_STMT_LEAF_LIST, dest, 0},
-        {LY_STMT_LENGTH, dest, 0},
-        {LY_STMT_LIST, dest, 0},
-        {LY_STMT_MANDATORY, dest, 0},
-        {LY_STMT_MAX_ELEMENTS, dest, 0},
-        {LY_STMT_MIN_ELEMENTS, dest, 0},
-        {LY_STMT_MODIFIER, dest, 0},
-        {LY_STMT_MODULE, dest, 0},
-        {LY_STMT_MUST, dest, 0},
-        {LY_STMT_NAMESPACE, dest, YIN_SUBELEM_UNIQUE},
-        {LY_STMT_NOTIFICATION, dest, 0},
-        {LY_STMT_ORDERED_BY, dest, 0},
-        {LY_STMT_ORGANIZATION, dest, 0},
-        {LY_STMT_OUTPUT, dest, 0},
-        {LY_STMT_PATH, dest, 0},
-        {LY_STMT_PATTERN, dest, 0},
-        {LY_STMT_POSITION, dest, 0},
-        {LY_STMT_PREFIX, dest, YIN_SUBELEM_UNIQUE},
-        {LY_STMT_PRESENCE, dest, YIN_SUBELEM_UNIQUE},
-        {LY_STMT_RANGE, dest, 0},
-        {LY_STMT_REFERENCE, dest, 0},
-        {LY_STMT_REFINE, dest, 0},
-        {LY_STMT_REQUIRE_INSTANCE, dest, 0},
-        {LY_STMT_REVISION, dest, 0},
-        {LY_STMT_REVISION_DATE, dest, 0},
-        {LY_STMT_RPC, dest, 0},
-        {LY_STMT_STATUS, dest, 0},
-        {LY_STMT_SUBMODULE, dest, 0},
-        {LY_STMT_TYPE, dest, 0},
-        {LY_STMT_TYPEDEF, dest, 0},
-        {LY_STMT_UNIQUE, dest, 0},
-        {LY_STMT_UNITS, dest, YIN_SUBELEM_UNIQUE},
-        {LY_STMT_USES, dest, 0},
-        {LY_STMT_VALUE, dest, 0},
-        {LY_STMT_WHEN, dest, 0},
-        {LY_STMT_YANG_VERSION, dest, 0},
-        {LY_STMT_YIN_ELEMENT, dest, 0},
-        {LY_STMT_EXTENSION_INSTANCE, dest, 0},
-        {LY_STMT_ARG_TEXT, dest, 0},
-        {LY_STMT_ARG_VALUE, dest, 0}
-    };
-
-    YCTX->main_ctx = (struct lysp_ctx *)YCTX;
-    ly_in_new_memory(data, &UTEST_IN);
-    lyxml_ctx_new(UTEST_LYCTX, UTEST_IN, &YCTX->xmlctx);
-    prefix = YCTX->xmlctx->prefix;
-    prefix_len = YCTX->xmlctx->prefix_len;
-    name = YCTX->xmlctx->name;
-    name_len = YCTX->xmlctx->name_len;
-    lyxml_ctx_next(YCTX->xmlctx);
-
-    ret = yin_parse_content(YCTX, subelems, 71, NULL,
-            yin_match_keyword(YCTX, name, name_len, prefix, prefix_len, LY_STMT_NONE), text, exts);
-
-    /* free parser and input */
-    lyxml_ctx_free(YCTX->xmlctx);
-    YCTX->xmlctx = NULL;
-    ly_in_free(UTEST_IN, 0);
-    UTEST_IN = NULL;
-    return ret;
-}
-
-#define EXT_SUBELEM "<myext:c-define name=\"MY_MTU\" xmlns:myext=\"urn:example:extensions\"/>"
+#define EXT_SUBELEM "<myext:c-define name=\"MY_MTU\"/>"
 
 static void
 test_enum_elem(void **state)
 {
-    struct lysp_type type = {0};
-    const char *data;
-
-    data = ELEMENT_WRAPPER_START
-            "<enum name=\"enum-name\">\n"
-            "     <if-feature name=\"feature\" />\n"
-            "     <value value=\"55\" />\n"
-            "     <status value=\"deprecated\" />\n"
-            "     <description><text>desc...</text></description>\n"
-            "     <reference><text>ref...</text></reference>\n"
-            "     " EXT_SUBELEM "\n"
-            "</enum>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_SUCCESS);
+    struct lys_module *mod = NULL;
+    struct lysp_node_leaf *leaf;
+    struct lysp_type *type;
     uint16_t flags = LYS_STATUS_DEPRC | LYS_SET_VALUE;
+    const char *yin_data =
+            "<module name=\"t-enum\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:t-enum\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:t-enum\"/>"
+            "  <prefix value=\"te\"/>"
+            "  <extension name=\"c-define\">"
+            "       <argument name=\"name\"/>"
+            "  </extension>"
+            "  <feature name=\"feature\"/>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"enumeration\">"
+            "      <enum name=\"enum-name\">"
+            "        <if-feature name=\"feature\" />"
+            "        <value value=\"55\" />"
+            "        <status value=\"deprecated\" />"
+            "        <description><text>desc...</text></description>"
+            "        <reference><text>ref...</text></reference>"
+            EXT_SUBELEM
+            "      </enum>"
+            "      <enum name=\"fallback\">"
+            "        <value value=\"1\" />"
+            "      </enum>"
+            "    </type>"
+            "  </leaf>"
+            "</module>";
 
-    CHECK_LYSP_TYPE_ENUM(type.enums, "desc...", 1, flags, 1, "enum-name", "ref...", 55);
-    assert_string_equal(type.enums->iffeatures[0].str, "feature");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(type.enums->exts, LY_STMT_ENUM);
-    lysp_type_free(UTEST_LYCTX, &type);
-    memset(&type, 0, sizeof type);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    assert_non_null(mod);
+    assert_non_null(mod->parsed);
+    assert_non_null(mod->parsed->data);
+    assert_int_equal(LYS_LEAF, mod->parsed->data->nodetype);
+    leaf = (struct lysp_node_leaf *)mod->parsed->data;
+    type = &leaf->type;
+    CHECK_LYSP_TYPE_ENUM(type->enums, "desc...", 1, flags, 1, "enum-name", "ref...", 55);
+    assert_string_equal(type->enums->iffeatures[0].str, "feature");
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(type->enums->exts, LY_STMT_ENUM, "MY_MTU");
 
-    data = ELEMENT_WRAPPER_START
-            "<enum name=\"enum-name\"></enum>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(type.enums->name, "enum-name");
-    lysp_type_free(UTEST_LYCTX, &type);
-    memset(&type, 0, sizeof type);
+    yin_data =
+            "<module name=\"t-enum2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:t-enum2\"/>"
+            "  <prefix value=\"te2\"/>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"enumeration\">"
+            "      <enum name=\"enum-name\"/>"
+            "    </type>"
+            "  </leaf>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    leaf = (struct lysp_node_leaf *)mod->parsed->data;
+    assert_string_equal(leaf->type.enums[0].name, "enum-name");
 }
 
 static void
 test_bit_elem(void **state)
 {
-    struct lysp_type type = {0};
-    const char *data;
-
-    data = ELEMENT_WRAPPER_START
-            "<bit name=\"bit-name\">\n"
-            "    <if-feature name=\"feature\" />\n"
-            "    <position value=\"55\" />\n"
-            "    <status value=\"deprecated\" />\n"
-            "    <description><text>desc...</text></description>\n"
-            "    <reference><text>ref...</text></reference>\n"
-            EXT_SUBELEM
-            "</bit>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_SUCCESS);
+    struct lys_module *mod = NULL;
+    struct lysp_node_leaf *leaf;
+    struct lysp_type *type;
     uint16_t flags = LYS_STATUS_DEPRC | LYS_SET_VALUE;
+    const char *yin_data =
+            "<module name=\"t-bit\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:t-bit\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:t-bit\"/>"
+            "  <prefix value=\"tb\"/>"
+            "  <extension name=\"c-define\">"
+            "     <argument name=\"name\"/>"
+            "  </extension>"
+            "  <feature name=\"feature\"/>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"bits\">"
+            "      <bit name=\"bit-name\">"
+            "        <if-feature name=\"feature\" />"
+            "        <position value=\"55\" />"
+            "        <status value=\"deprecated\" />"
+            "        <description><text>desc...</text></description>"
+            "        <reference><text>ref...</text></reference>"
+            EXT_SUBELEM
+            "      </bit>"
+            "      <bit name=\"fallback\">"
+            "        <position value=\"1\" />"
+            "      </bit>"
+            "    </type>"
+            "  </leaf>"
+            "</module>";
 
-    CHECK_LYSP_TYPE_ENUM(type.bits, "desc...", 1, flags, 1, "bit-name", "ref...", 55);
-    assert_string_equal(type.bits->iffeatures[0].str, "feature");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(type.bits->exts, LY_STMT_BIT);
-    lysp_type_free(UTEST_LYCTX, &type);
-    memset(&type, 0, sizeof type);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    assert_non_null(mod);
+    assert_non_null(mod->parsed);
+    assert_non_null(mod->parsed->data);
+    assert_int_equal(LYS_LEAF, mod->parsed->data->nodetype);
+    leaf = (struct lysp_node_leaf *)mod->parsed->data;
+    type = &leaf->type;
+    CHECK_LYSP_TYPE_ENUM(type->bits, "desc...", 1, flags, 1, "bit-name", "ref...", 55);
+    assert_string_equal(type->bits->iffeatures[0].str, "feature");
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(type->bits->exts, LY_STMT_BIT, "MY_MTU");
 
-    data = ELEMENT_WRAPPER_START
-            "<bit name=\"bit-name\"> </bit>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_SUCCESS);
-    CHECK_LYSP_TYPE_ENUM(type.bits, NULL, 0, 0, 0, "bit-name", NULL, 0);
-    lysp_type_free(UTEST_LYCTX, &type);
-    memset(&type, 0, sizeof type);
+    yin_data =
+            "<module name=\"t-bit2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:t-bit2\"/>"
+            "  <prefix value=\"tb2\"/>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"bits\">"
+            "      <bit name=\"bit-name\"/>"
+            "    </type>"
+            "  </leaf>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    leaf = (struct lysp_node_leaf *)mod->parsed->data;
+    CHECK_LYSP_TYPE_ENUM(leaf->type.bits, NULL, 0, 0, 0, "bit-name", NULL, 0);
 }
 
 static void
 test_status_elem(void **state)
 {
-    const char *data;
-    uint16_t flags = 0;
+    struct lys_module *mod = NULL;
+    const char *yin_data =
+            "<module name=\"t-status\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:t-status\"/>"
+            "  <prefix value=\"st\"/>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"string\" />"
+            "    <status value=\"invalid\" />"
+            "  </leaf>"
+            "</module>";
 
-    /* test invalid value */
-    data = ELEMENT_WRAPPER_START "<status value=\"invalid\"></status>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &flags, NULL, NULL), LY_EVALID);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    CHECK_LOG_CTX("Parsing module \"t-status\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"invalid\" of \"value\" attribute in \"status\" element. "
             "Valid values are \"current\", \"deprecated\" and \"obsolete\".", NULL, 1);
 }
@@ -1354,11 +1073,20 @@ test_status_elem(void **state)
 static void
 test_yin_element_elem(void **state)
 {
-    const char *data;
-    uint16_t flags = 0;
+    struct lys_module *mod = NULL;
+    const char *yin_data =
+            "<module name=\"t-yin-elem\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:t-bit\"/>"
+            "  <prefix value=\"myext\"/>"
+            "  <extension name=\"c-define\">"
+            "       <argument name=\"name\">"
+            "          <yin-element value=\"invalid\"/>"
+            "       </argument>"
+            "  </extension>"
+            "</module>";
 
-    data = ELEMENT_WRAPPER_START "<yin-element value=\"invalid\" />" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &flags, NULL, NULL), LY_EVALID);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    CHECK_LOG_CTX("Parsing module \"t-yin-elem\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"invalid\" of \"value\" attribute in \"yin-element\" element. "
             "Valid values are \"true\" and \"false\".", NULL, 1);
 }
@@ -1366,61 +1094,91 @@ test_yin_element_elem(void **state)
 static void
 test_yangversion_elem(void **state)
 {
-    const char *data;
-    uint8_t version = 0;
+    struct lys_module *mod = NULL;
+    const char *yin_data =
+            "<module name=\"t-ver\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <yang-version value=\"invalid\"/>"
+            "  <namespace uri=\"urn:t-ver\"/>"
+            "  <prefix value=\"v\"/>"
+            "</module>";
 
-    /* invalid value */
-    data = ELEMENT_WRAPPER_START "<yang-version value=\"version\" />" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &version, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"version\" of \"value\" attribute in \"yang-version\" element. "
-            "Valid values are \"1\" and \"1.1\".", NULL, 1);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    CHECK_LOG_CTX("Parsing module \"t-ver\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Invalid value \"invalid\" of \"value\" attribute in \"yang-version\" element. Valid values are \"1\" and \"1.1\".", NULL, 1);
 }
 
 static void
 test_argument_elem(void **state)
 {
-    const char *data;
-    uint16_t flags = 0;
-    const char *arg;
-    struct yin_argument_meta arg_meta = {&flags, &arg};
+    struct lys_module *mod = NULL;
+    const char *yin_data =
+            "<module name=\"t-arg\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:t-bit\"/>"
+            "  <prefix value=\"myext\"/>"
+            "  <extension name=\"c-define\">"
+            "     <argument name=\"arg\"/>"
+            "  </extension>"
+            "</module>";
 
-    /* min subelems */
-    data = ELEMENT_WRAPPER_START
-            "<argument name=\"arg\">"
-            "</argument>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &arg_meta, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(arg, "arg");
-    assert_true(flags == 0);
-    lysdict_remove(UTEST_LYCTX, arg);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    assert_string_equal(mod->parsed->extensions->argname, "arg");
+    assert_true(mod->parsed->extensions->flags == 0);
 }
 
 static void
 test_belongsto_elem(void **state)
 {
-    const char *data;
-    struct lysp_submodule submod;
+    struct lys_module *mod = NULL;
+    const char *parent_yin =
+            "<module name=\"parent\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:parent\"/>"
+            "  <prefix value=\"mn\"/>"
+            "  <include module=\"sub\"/>"
+            "</module>";
+    char *submod_in =
+            "<submodule name=\"sub\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <belongs-to module=\"parent\">"
+            "    <prefix value=\"mn\"/>"
+            "  </belongs-to>"
+            "</submodule>";
+    char *submod_fail =
+            "<submodule name=\"sub-fail\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <belongs-to module=\"parent\">"
+            "  </belongs-to>"
+            "</submodule>";
 
-    lysdict_insert(UTEST_LYCTX, "module-name", 0, &PARSER_CUR_PMOD(YCTX)->mod->name);
-
-    data = ELEMENT_WRAPPER_START "<belongs-to module=\"module-name\"></belongs-to>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &submod, NULL, NULL), LY_EVALID);
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, submod_fail);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, parent_yin, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"parent\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Parsing submodule \"sub\" failed.", NULL, 0);
     CHECK_LOG_CTX("Missing mandatory sub-element \"prefix\" of \"belongs-to\" element.", NULL, 1);
+
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, submod_in);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, parent_yin, LYS_IN_YIN, &mod));
 }
 
 static void
 test_config_elem(void **state)
 {
-    const char *data;
-    uint16_t flags = 0;
+    struct lys_module *mod = NULL;
+    const char *yin_data =
+            "<module name=\"config\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:minimal-config\"/>"
+            "  <prefix value=\"min\"/>"
+            "  <leaf name=\"my-setting\">"
+            "    <type name=\"string\"/>"
+            "    <config value=\"%s\"/>"
+            "  </leaf>"
+            "</module>";
+    char buffer[256];
 
-    data = ELEMENT_WRAPPER_START "<config value=\"false\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &flags, NULL, NULL), LY_SUCCESS);
-    assert_true(flags & LYS_CONFIG_R);
-    flags = 0;
+    snprintf(buffer, sizeof(buffer), yin_data, "false");
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, buffer, LYS_IN_YIN, &mod));
 
-    data = ELEMENT_WRAPPER_START "<config value=\"invalid\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &flags, NULL, NULL), LY_EVALID);
+    snprintf(buffer, sizeof(buffer), yin_data, "invalid");
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, buffer, LYS_IN_YIN, &mod));
+    CHECK_LOG_CTX("Parsing module \"config\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"invalid\" of \"value\" attribute in \"config\" element. "
             "Valid values are \"true\" and \"false\".", NULL, 1);
 }
@@ -1428,309 +1186,506 @@ test_config_elem(void **state)
 static void
 test_default_elem(void **state)
 {
-    const char *data;
-    struct lysp_qname val = {0};
+    const char *yin_data =
+            "<module name=\"def\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:mod\"/>"
+            "  <prefix value=\"m\"/>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"string\"/>"
+            "    <default/>"
+            "  </leaf>"
+            "</module>";
 
-    data = ELEMENT_WRAPPER_START "<default/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_EVALID);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"def\" failed.", NULL, 0);
     CHECK_LOG_CTX("Missing mandatory attribute value of default element.", NULL, 1);
 }
 
 static void
 test_err_app_tag_elem(void **state)
 {
-    const char *data;
-    const char *val = NULL;
+    const char *yin_data =
+            "<module name=\"err-app-tag\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:mod\"/>"
+            "  <prefix value=\"m\"/>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"string\"/>"
+            "    <must condition=\"true\">"
+            "      <error-app-tag/>"
+            "    </must>"
+            "  </leaf>"
+            "</module>";
 
-    data = ELEMENT_WRAPPER_START "<error-app-tag/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_EVALID);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"err-app-tag\" failed.", NULL, 0);
     CHECK_LOG_CTX("Missing mandatory attribute value of error-app-tag element.", NULL, 1);
 }
 
 static void
 test_err_msg_elem(void **state)
 {
-    const char *data;
-    const char *val = NULL;
+    const char *yin_data =
+            "<module name=\"err-msg\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:mod\"/>"
+            "  <prefix value=\"m\"/>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"string\"/>"
+            "    <must condition=\"true\">"
+            "      <error-message></error-message>"
+            "    </must>"
+            "  </leaf>"
+            "</module>";
 
-    data = ELEMENT_WRAPPER_START "<error-message></error-message>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_EVALID);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"err-msg\" failed.", NULL, 0);
     CHECK_LOG_CTX("Missing mandatory sub-element \"value\" of \"error-message\" element.", NULL, 1);
 
-    data = ELEMENT_WRAPPER_START "<error-message invalid=\"text\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_EVALID);
+    yin_data = "<module name=\"err-msg\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:mod\"/>"
+            "  <prefix value=\"m\"/>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"string\"/>"
+            "    <must condition=\"true\">"
+            "      <error-message invalid=\"text\"/>"
+            "    </must>"
+            "  </leaf>"
+            "</module>";
+
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"err-msg\" failed.", NULL, 0);
     CHECK_LOG_CTX("Unexpected attribute \"invalid\" of \"error-message\" element.", NULL, 1);
 }
 
 static void
 test_fracdigits_elem(void **state)
 {
-    const char *data;
-    struct lysp_type type = {0};
+    char buffer[256];
+    const char *yin_data =
+            "<module name=\"frac-mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:frac1\"/>"
+            "  <prefix value=\"f1\"/>"
+            "  <leaf name=\"l\"><type name=\"decimal64\"><fraction-digits value=\"%s\"/></type></leaf>"
+            "</module>";
 
     /* invalid values */
-    data = ELEMENT_WRAPPER_START "<fraction-digits value=\"-1\"></fraction-digits>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_EVALID);
+    snprintf(buffer, sizeof(buffer), yin_data, "-1");
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, buffer, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"frac-mod\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"-1\" of \"value\" attribute in \"fraction-digits\" element.", NULL, 1);
 
-    data = ELEMENT_WRAPPER_START "<fraction-digits value=\"02\"></fraction-digits>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_EVALID);
+    snprintf(buffer, sizeof(buffer), yin_data, "02");
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, buffer, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"frac-mod\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"02\" of \"value\" attribute in \"fraction-digits\" element.", NULL, 1);
 
-    data = ELEMENT_WRAPPER_START "<fraction-digits value=\"1p\"></fraction-digits>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_EVALID);
+    snprintf(buffer, sizeof(buffer), yin_data, "1p");
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, buffer, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"frac-mod\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"1p\" of \"value\" attribute in \"fraction-digits\" element.", NULL, 1);
 
-    data = ELEMENT_WRAPPER_START "<fraction-digits value=\"19\"></fraction-digits>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_EVALID);
+    snprintf(buffer, sizeof(buffer), yin_data, "19");
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, buffer, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"frac-mod\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"19\" of \"value\" attribute in \"fraction-digits\" element.", NULL, 1);
 
-    data = ELEMENT_WRAPPER_START "<fraction-digits value=\"999999999999999999\"></fraction-digits>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_EVALID);
+    snprintf(buffer, sizeof(buffer), yin_data, "999999999999999999");
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, buffer, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"frac-mod\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"999999999999999999\" of \"value\" attribute in \"fraction-digits\" element.", NULL, 1);
+
 }
 
 static void
 test_iffeature_elem(void **state)
 {
-    const char *data;
-    const char **iffeatures = NULL;
+    const char *yin_data =
+            "<module name=\"feat\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:feat\"/>"
+            "  <prefix value=\"ft\"/>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"string\"/>"
+            "    <if-feature/>"
+            "  </leaf>"
+            "</module>";
 
-    data = ELEMENT_WRAPPER_START "<if-feature/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &iffeatures, NULL, NULL), LY_EVALID);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"feat\" failed.", NULL, 0);
     CHECK_LOG_CTX("Missing mandatory attribute name of if-feature element.", NULL, 1);
-    LY_ARRAY_FREE(iffeatures);
-    iffeatures = NULL;
 }
 
 static void
 test_length_elem(void **state)
 {
-    const char *data;
-    struct lysp_type type = {0};
+    const char *yin_data;
+    struct lys_module *mod = NULL;
+    struct lysp_node_leaf *leaf;
+    struct lysp_type *type;
 
     /* max subelems */
-    data = ELEMENT_WRAPPER_START
-            "<length value=\"length-str\">\n"
-            "    <error-message><value>err-msg</value></error-message>\n"
-            "    <error-app-tag value=\"err-app-tag\"/>\n"
-            "    <description><text>desc</text></description>\n"
-            "    <reference><text>ref</text></reference>\n"
+    yin_data =
+            "<module name=\"len-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:len1\">"
+            "  <namespace uri=\"urn:len1\"/>"
+            "  <prefix value=\"l1\"/>"
+            "  <extension name=\"c-define\">"
+            "    <argument name=\"name\"/>"
+            "  </extension>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"string\">"
+            "      <length value=\"1..10\">"
+            "        <error-message><value>err-msg</value></error-message>"
+            "        <error-app-tag value=\"err-app-tag\"/>"
+            "        <description><text>desc</text></description>"
+            "        <reference><text>ref</text></reference>"
             EXT_SUBELEM
-            "</length>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_SUCCESS);
-    CHECK_LYSP_RESTR(type.length, "length-str", "desc",
-            "err-app-tag", "err-msg", 1, "ref");
-    assert_true(type.flags & LYS_SET_LENGTH);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type.length->exts[0]), LY_STMT_LENGTH);
-    lysp_type_free(UTEST_LYCTX, &type);
-    memset(&type, 0, sizeof(type));
+            "      </length>"
+            "    </type>"
+            "  </leaf>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    leaf = (struct lysp_node_leaf *)mod->parsed->data;
+    type = &leaf->type;
+
+    CHECK_LYSP_RESTR(type->length, "1..10", "desc", "err-app-tag", "err-msg", 1, "ref");
+    assert_true(type->flags & LYS_SET_LENGTH);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type->length->exts[0]), LY_STMT_LENGTH, "MY_MTU");
 
     /* min subelems */
-    data = ELEMENT_WRAPPER_START
-            "<length value=\"length-str\">"
-            "</length>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_SUCCESS);
-    CHECK_LYSP_RESTR(type.length, "length-str", NULL,
-            NULL, NULL, 0, NULL);
-    lysp_type_free(UTEST_LYCTX, &type);
-    assert_true(type.flags & LYS_SET_LENGTH);
-    memset(&type, 0, sizeof(type));
+    yin_data =
+            "<module name=\"len-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:len2\"/>"
+            "  <prefix value=\"l2\"/>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"string\">"
+            "      <length value=\"1..10\"></length>"
+            "    </type>"
+            "  </leaf>"
+            "</module>";
 
-    data = ELEMENT_WRAPPER_START "<length></length>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_EVALID);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    leaf = (struct lysp_node_leaf *)mod->parsed->data;
+    type = &leaf->type;
+
+    CHECK_LYSP_RESTR(type->length, "1..10", NULL, NULL, NULL, 0, NULL);
+    assert_true(type->flags & LYS_SET_LENGTH);
+
+    yin_data =
+            "<module name=\"len-fail\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:lenf\"/>"
+            "  <prefix value=\"lf\"/>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"string\">"
+            "      <length></length>"
+            "    </type>"
+            "  </leaf>"
+            "</module>";
+
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"len-fail\" failed.", NULL, 0);
     CHECK_LOG_CTX("Missing mandatory attribute value of length element.", NULL, 1);
-    lysp_type_free(UTEST_LYCTX, &type);
-    memset(&type, 0, sizeof(type));
 }
 
 static void
 test_modifier_elem(void **state)
 {
-    const char *data;
-    const char *pat;
+    const char *yin_data =
+            "<module name=\"modif\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:mod\"/>"
+            "  <prefix value=\"mm\"/>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"string\">"
+            "      <pattern value=\"a.*\">"
+            "        <modifier value=\"invert\"/>"
+            "      </pattern>"
+            "    </type>"
+            "  </leaf>"
+            "</module>";
 
-    assert_int_equal(LY_SUCCESS, lysdict_insert(UTEST_LYCTX, "\006pattern", 8, &pat));
-    data = ELEMENT_WRAPPER_START "<modifier value=\"invert\" />" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &pat, NULL, NULL), LY_EVALID);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"modif\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"invert\" of \"value\" attribute in \"modifier\" element. "
             "Only valid value is \"invert-match\".", NULL, 1);
-    lysdict_remove(UTEST_LYCTX, pat);
 }
 
 static void
 test_namespace_elem(void **state)
 {
-    const char *data;
-    const char *ns;
+    const char *yin_data =
+            "<module name=\"ns\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace/>"
+            "  <prefix value=\"nt\"/>"
+            "</module>";
 
-    data = ELEMENT_WRAPPER_START "<namespace/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &ns, NULL, NULL), LY_EVALID);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"ns\" failed.", NULL, 0);
     CHECK_LOG_CTX("Missing mandatory attribute uri of namespace element.", NULL, 1);
 }
 
 static void
 test_pattern_elem(void **state)
 {
-    const char *data;
-    struct lysp_type type = {0};
+    const char *yin_data;
+    struct lys_module *mod = NULL;
+    struct lysp_node_leaf *leaf;
+    struct lysp_type *type;
 
     /* max subelems */
-    data = ELEMENT_WRAPPER_START
-            "<pattern value=\"super_pattern\">\n"
-            "    <modifier value=\"invert-match\"/>\n"
-            "    <error-message><value>err-msg-value</value></error-message>\n"
-            "    <error-app-tag value=\"err-app-tag-value\"/>\n"
-            "    <description><text>&quot;pattern-desc&quot;</text></description>\n"
-            "    <reference><text>pattern-ref</text></reference>\n"
+    yin_data =
+            "<module name=\"pat-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:pat1\">"
+            "  <namespace uri=\"urn:pat1\"/>"
+            "  <prefix value=\"p1\"/>"
+            "  <extension name=\"c-define\">"
+            "    <argument name=\"name\"/>"
+            "  </extension>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"string\">"
+            "      <pattern value=\"super_pattern\">"
+            "        <modifier value=\"invert-match\"/>"
+            "        <error-message><value>err-msg-value</value></error-message>"
+            "        <error-app-tag value=\"err-app-tag-value\"/>"
+            "        <description><text>&quot;pattern-desc&quot;</text></description>"
+            "        <reference><text>pattern-ref</text></reference>"
             EXT_SUBELEM
-            "</pattern>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_SUCCESS);
-    assert_true(type.flags & LYS_SET_PATTERN);
-    CHECK_LYSP_RESTR(type.patterns, "\x015super_pattern", "\"pattern-desc\"",
+            "      </pattern>"
+            "    </type>"
+            "  </leaf>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    leaf = (struct lysp_node_leaf *)mod->parsed->data;
+    type = &leaf->type;
+    assert_true(type->flags & LYS_SET_PATTERN);
+    CHECK_LYSP_RESTR(type->patterns, "\x015super_pattern", "\"pattern-desc\"",
             "err-app-tag-value", "err-msg-value", 1, "pattern-ref");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type.patterns->exts[0]), LY_STMT_PATTERN);
-    lysp_type_free(UTEST_LYCTX, &type);
-    memset(&type, 0, sizeof(type));
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type->patterns->exts[0]), LY_STMT_PATTERN, "MY_MTU");
 
     /* min subelems */
-    data = ELEMENT_WRAPPER_START "<pattern value=\"pattern\"> </pattern>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_SUCCESS);
-    CHECK_LYSP_RESTR(type.patterns, "\x006pattern", NULL, NULL, NULL, 0, NULL);
-    lysp_type_free(UTEST_LYCTX, &type);
-    memset(&type, 0, sizeof(type));
+    yin_data =
+            "<module name=\"pat-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:pat2\"/>"
+            "  <prefix value=\"p2\"/>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"string\">"
+            "      <pattern value=\"pattern\"> </pattern>"
+            "    </type>"
+            "  </leaf>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    leaf = (struct lysp_node_leaf *)mod->parsed->data;
+    type = &leaf->type;
+    CHECK_LYSP_RESTR(type->patterns, "\x006pattern", NULL, NULL, NULL, 0, NULL);
 }
 
 static void
 test_value_position_elem(void **state)
 {
-    const char *data;
-    struct lysp_type_enum en = {0};
+    const char *yin_data;
+    struct lys_module *mod = NULL;
+    struct lysp_node_leaf *leaf;
 
     /* valid values */
-    data = ELEMENT_WRAPPER_START "<value value=\"-55\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &en, NULL, NULL), LY_SUCCESS);
-    CHECK_LYSP_TYPE_ENUM(&(en), NULL, 0, LYS_SET_VALUE, 0, NULL, NULL, -55);
-    memset(&en, 0, sizeof(en));
+    yin_data = "<module name=\"vp1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><namespace uri=\"urn:vp1\"/><prefix value=\"vp1\"/>"
+            "<leaf name=\"l\"><type name=\"enumeration\"><enum name=\"e\"><value value=\"-55\"/></enum></type></leaf></module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    leaf = (struct lysp_node_leaf *)mod->parsed->data;
+    CHECK_LYSP_TYPE_ENUM(&(leaf->type.enums[0]), NULL, 0, LYS_SET_VALUE, 0, "e", NULL, -55);
 
-    data = ELEMENT_WRAPPER_START "<value value=\"0\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &en, NULL, NULL), LY_SUCCESS);
-    CHECK_LYSP_TYPE_ENUM(&(en), NULL, 0, LYS_SET_VALUE, 0, NULL, NULL, 0);
-    memset(&en, 0, sizeof(en));
+    yin_data = "<module name=\"vp2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><namespace uri=\"urn:vp2\"/><prefix value=\"vp2\"/>"
+            "<leaf name=\"l\"><type name=\"enumeration\"><enum name=\"e\"><value value=\"0\"/></enum></type></leaf></module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    leaf = (struct lysp_node_leaf *)mod->parsed->data;
+    CHECK_LYSP_TYPE_ENUM(&(leaf->type.enums[0]), NULL, 0, LYS_SET_VALUE, 0, "e", NULL, 0);
 
-    data = ELEMENT_WRAPPER_START "<value value=\"-0\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &en, NULL, NULL), LY_SUCCESS);
-    CHECK_LYSP_TYPE_ENUM(&(en), NULL, 0, LYS_SET_VALUE, 0, NULL, NULL, 0);
-    memset(&en, 0, sizeof(en));
+    yin_data = "<module name=\"vp3\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><namespace uri=\"urn:vp3\"/><prefix value=\"vp3\"/>"
+            "<leaf name=\"l\"><type name=\"enumeration\"><enum name=\"e\"><value value=\"-0\"/></enum></type></leaf></module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    leaf = (struct lysp_node_leaf *)mod->parsed->data;
+    CHECK_LYSP_TYPE_ENUM(&(leaf->type.enums[0]), NULL, 0, LYS_SET_VALUE, 0, "e", NULL, 0);
 
     /* valid positions */
-    data = ELEMENT_WRAPPER_START "<position value=\"0\" />" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &en, NULL, NULL), LY_SUCCESS);
-    CHECK_LYSP_TYPE_ENUM(&(en), NULL, 0, LYS_SET_VALUE, 0, NULL, NULL, 0);
-    memset(&en, 0, sizeof(en));
+    yin_data = "<module name=\"vp4\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><namespace uri=\"urn:vp4\"/><prefix value=\"vp4\"/>"
+            "<leaf name=\"l\"><type name=\"bits\"><bit name=\"b\"><position value=\"0\"/></bit></type></leaf></module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    leaf = (struct lysp_node_leaf *)mod->parsed->data;
+    CHECK_LYSP_TYPE_ENUM(&(leaf->type.bits[0]), NULL, 0, LYS_SET_VALUE, 0, "b", NULL, 0);
 
     /* invalid values */
-    data = ELEMENT_WRAPPER_START "<value value=\"99999999999999999999999\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &en, NULL, NULL), LY_EVALID);
+    yin_data = "<module name=\"vp5\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><namespace uri=\"urn:vp5\"/><prefix value=\"vp5\"/>"
+            "<leaf name=\"l\"><type name=\"enumeration\"><enum name=\"e\"><value value=\"99999999999999999999999\"/></enum></type></leaf></module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"vp5\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"99999999999999999999999\" of \"value\" attribute in \"value\" element.", NULL, 1);
 
-    data = ELEMENT_WRAPPER_START "<value value=\"1k\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &en, NULL, NULL), LY_EVALID);
+    yin_data = "<module name=\"vp5\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><namespace uri=\"urn:vp6\"/><prefix value=\"vp6\"/>"
+            "<leaf name=\"l\"><type name=\"enumeration\"><enum name=\"e\"><value value=\"1k\"/></enum></type></leaf></module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"vp5\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"1k\" of \"value\" attribute in \"value\" element.", NULL, 1);
 
-    data = ELEMENT_WRAPPER_START "<value value=\"\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &en, NULL, NULL), LY_EVALID);
+    yin_data = "<module name=\"vp5\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><namespace uri=\"urn:vp7\"/><prefix value=\"vp7\"/>"
+            "<leaf name=\"l\"><type name=\"enumeration\"><enum name=\"e\"><value value=\"\"/></enum></type></leaf></module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"vp5\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"\" of \"value\" attribute in \"value\" element.", NULL, 1);
 
     /*invalid positions */
-    data = ELEMENT_WRAPPER_START "<position value=\"-5\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &en, NULL, NULL), LY_EVALID);
+    yin_data = "<module name=\"vp5\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><namespace uri=\"urn:vp8\"/><prefix value=\"vp8\"/>"
+            "<leaf name=\"l\"><type name=\"bits\"><bit name=\"b\"><position value=\"-5\"/></bit></type></leaf></module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"vp5\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"-5\" of \"value\" attribute in \"position\" element.", NULL, 1);
 
-    data = ELEMENT_WRAPPER_START "<position value=\"-0\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &en, NULL, NULL), LY_EVALID);
+    yin_data = "<module name=\"vp5\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><namespace uri=\"urn:vp9\"/><prefix value=\"vp9\"/>"
+            "<leaf name=\"l\"><type name=\"bits\"><bit name=\"b\"><position value=\"-0\"/></bit></type></leaf></module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"vp5\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"-0\" of \"value\" attribute in \"position\" element.", NULL, 1);
 
-    data = ELEMENT_WRAPPER_START "<position value=\"99999999999999999999\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &en, NULL, NULL), LY_EVALID);
+    yin_data = "<module name=\"vp5\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><namespace uri=\"urn:vp10\"/><prefix value=\"vp10\"/>"
+            "<leaf name=\"l\"><type name=\"bits\"><bit name=\"b\"><position value=\"99999999999999999999\"/></bit></type></leaf></module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"vp5\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"99999999999999999999\" of \"value\" attribute in \"position\" element.", NULL, 1);
 
-    data = ELEMENT_WRAPPER_START "<position value=\"\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &en, NULL, NULL), LY_EVALID);
+    yin_data = "<module name=\"vp5\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><namespace uri=\"urn:vp11\"/><prefix value=\"vp11\"/>"
+            "<leaf name=\"l\"><type name=\"bits\"><bit name=\"b\"><position value=\"\"/></bit></type></leaf></module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"vp5\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"\" of \"value\" attribute in \"position\" element.", NULL, 1);
 }
 
 static void
 test_prefix_elem(void **state)
 {
-    const char *data;
-    const char *value = NULL;
+    struct lys_module *mod = NULL;
+    const char *yin_data =
+            "<module name=\"pref-mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:pref\"/>"
+            "  <prefix value=\"pref\"/>"
+            "</module>";
 
-    data = ELEMENT_WRAPPER_START "<prefix value=\"pref\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &value, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(value, "pref");
-    lysdict_remove(UTEST_LYCTX, value);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    assert_string_equal(mod->prefix, "pref");
 }
 
 static void
 test_range_elem(void **state)
 {
-    const char *data;
-    struct lysp_type type = {0};
+    const char *yin_data;
+    struct lys_module *mod = NULL;
+    struct lysp_node_leaf *leaf;
+    struct lysp_type *type;
 
     /* max subelems */
-    data = ELEMENT_WRAPPER_START
-            "<range value=\"range-str\">\n"
-            "    <error-message><value>err-msg</value></error-message>\n"
-            "    <error-app-tag value=\"err-app-tag\" />\n"
-            "    <description><text>desc</text></description>\n"
-            "    <reference><text>ref</text></reference>\n"
+    yin_data =
+            "<module name=\"rng-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:rng1\">"
+            "  <namespace uri=\"urn:rng1\"/>"
+            "  <prefix value=\"r1\"/>"
+            "  <extension name=\"c-define\">"
+            "    <argument name=\"name\"/>"
+            "  </extension>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"uint8\">"
+            "      <range value=\"1..10\">"
+            "        <error-message><value>err-msg</value></error-message>"
+            "        <error-app-tag value=\"err-app-tag\" />"
+            "        <description><text>desc</text></description>"
+            "        <reference><text>ref</text></reference>"
             EXT_SUBELEM
-            "</range>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_SUCCESS);
-    CHECK_LYSP_RESTR(type.range, "range-str", "desc",
+            "      </range>"
+            "    </type>"
+            "  </leaf>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    leaf = (struct lysp_node_leaf *)mod->parsed->data;
+    type = &leaf->type;
+    assert_true(type->flags & LYS_SET_RANGE);
+    CHECK_LYSP_RESTR(type->range, "1..10", "desc",
             "err-app-tag", "err-msg", 1, "ref");
-    assert_true(type.flags & LYS_SET_RANGE);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type.range->exts[0]), LY_STMT_RANGE);
-    lysp_type_free(UTEST_LYCTX, &type);
-    memset(&type, 0, sizeof(type));
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type->range->exts[0]), LY_STMT_RANGE, "MY_MTU");
 
     /* min subelems */
-    data = ELEMENT_WRAPPER_START "<range value=\"range-str\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_SUCCESS);
-    CHECK_LYSP_RESTR(type.range, "range-str", NULL,
-            NULL, NULL, 0, NULL);
-    lysp_type_free(UTEST_LYCTX, &type);
-    memset(&type, 0, sizeof(type));
+    yin_data =
+            "<module name=\"rng-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:rng2\"/>"
+            "  <prefix value=\"r2\"/>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"uint8\">"
+            "      <range value=\"1..10\"/>"
+            "    </type>"
+            "  </leaf>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    leaf = (struct lysp_node_leaf *)mod->parsed->data;
+    type = &leaf->type;
+    CHECK_LYSP_RESTR(type->range, "1..10", NULL, NULL, NULL, 0, NULL);
 }
 
 static void
 test_reqinstance_elem(void **state)
 {
-    const char *data;
-    struct lysp_type type = {0};
+    const char *yin_data;
+    struct lys_module *mod = NULL;
+    struct lysp_node_leaf *leaf;
+    struct lysp_type *type;
 
-    data = ELEMENT_WRAPPER_START "<require-instance value=\"true\">" EXT_SUBELEM "</require-instance>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_SUCCESS);
-    assert_int_equal(type.require_instance, 1);
-    assert_true(type.flags & LYS_SET_REQINST);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type.exts[0]), LY_STMT_REQUIRE_INSTANCE);
-    lysp_type_free(UTEST_LYCTX, &type);
-    memset(&type, 0, sizeof(type));
+    yin_data =
+            "<module name=\"req-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:req1\">"
+            "  <namespace uri=\"urn:req1\"/>"
+            "  <prefix value=\"r1\"/>"
+            "  <extension name=\"c-define\">"
+            "    <argument name=\"name\"/>"
+            "  </extension>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"instance-identifier\">"
+            "      <require-instance value=\"true\">"
+            EXT_SUBELEM
+            "      </require-instance>"
+            "    </type>"
+            "  </leaf>"
+            "</module>";
 
-    data = ELEMENT_WRAPPER_START "<require-instance value=\"false\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_SUCCESS);
-    assert_int_equal(type.require_instance, 0);
-    assert_true(type.flags & LYS_SET_REQINST);
-    memset(&type, 0, sizeof(type));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    leaf = (struct lysp_node_leaf *)mod->parsed->data;
+    type = &leaf->type;
+    assert_int_equal(type->require_instance, 1);
+    assert_true(type->flags & LYS_SET_REQINST);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type->exts[0]), LY_STMT_REQUIRE_INSTANCE, "MY_MTU");
 
-    data = ELEMENT_WRAPPER_START "<require-instance value=\"invalid\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_EVALID);
-    memset(&type, 0, sizeof(type));
+    yin_data =
+            "<module name=\"req-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:req2\"/>"
+            "  <prefix value=\"r2\"/>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"instance-identifier\">"
+            "      <require-instance value=\"false\"/>"
+            "    </type>"
+            "  </leaf>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    leaf = (struct lysp_node_leaf *)mod->parsed->data;
+    type = &leaf->type;
+    assert_int_equal(type->require_instance, 0);
+    assert_true(type->flags & LYS_SET_REQINST);
+
+    /* invalid */
+    yin_data =
+            "<module name=\"req-mod3\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:req3\"/>"
+            "  <prefix value=\"r3\"/>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"instance-identifier\">"
+            "      <require-instance value=\"invalid\"/>"
+            "    </type>"
+            "  </leaf>"
+            "</module>";
+
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"req-mod3\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"invalid\" of \"value\" attribute in \"require-instance\" element. "
             "Valid values are \"true\" and \"false\".", NULL, 1);
 }
@@ -1738,189 +1693,247 @@ test_reqinstance_elem(void **state)
 static void
 test_revision_date_elem(void **state)
 {
-    const char *data;
-    char rev[LY_REV_SIZE];
+    const char *yin_data;
+    struct lys_module *mod = NULL;
+    struct lys_module *dummy = NULL;
 
-    data = ELEMENT_WRAPPER_START "<revision-date date=\"2000-01-01\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, rev, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(rev, "2000-01-01");
+    const char *dummy_mod =
+            "<module name=\"dummy\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:dummy\"/>"
+            "  <prefix value=\"dum\"/>"
+            "  <revision date=\"2000-01-01\"/>"
+            "</module>";
 
-    data = ELEMENT_WRAPPER_START "<revision-date date=\"2000-50-05\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, rev, NULL, NULL), LY_EVALID);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, dummy_mod, LYS_IN_YIN, &dummy));
+
+    yin_data =
+            "<module name=\"rev-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:rev1\"/>"
+            "  <prefix value=\"r1\"/>"
+            "  <import module=\"dummy\">"
+            "    <prefix value=\"d\"/>"
+            "    <revision-date date=\"2000-01-01\"/>"
+            "  </import>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    assert_string_equal(mod->parsed->imports[0].rev, "2000-01-01");
+
+    yin_data =
+            "<module name=\"rev-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:rev2\"/>"
+            "  <prefix value=\"r2\"/>"
+            "  <import module=\"dummy\">"
+            "    <prefix value=\"d\"/>"
+            "    <revision-date date=\"2000-50-05\"/>"
+            "  </import>"
+            "</module>";
+
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"rev-mod2\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"2000-50-05\" of \"revision-date\".", NULL, 1);
 }
 
 static void
 test_unique_elem(void **state)
 {
-    const char *data;
-    const char **values = NULL;
+    struct lys_module *mod = NULL;
+    struct lysp_node_list *list;
+    const char *yin_data =
+            "<module name=\"uniq-mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:uniq\"/>"
+            "  <prefix value=\"u\"/>"
+            "  <list name=\"l\">"
+            "    <config value=\"false\"/>"
+            "    <leaf name=\"tag\"><type name=\"string\"/></leaf>"
+            "    <unique tag=\"tag\"/>"
+            "  </list>"
+            "</module>";
 
-    data = ELEMENT_WRAPPER_START "<unique tag=\"tag\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &values, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(*values, "tag");
-    lysdict_remove(UTEST_LYCTX, *values);
-    LY_ARRAY_FREE(values);
-    values = NULL;
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    list = (struct lysp_node_list *)mod->parsed->data;
+    assert_string_equal(list->uniques[0].str, "tag");
 }
 
 static void
 test_units_elem(void **state)
 {
-    const char *data;
-    const char *values = NULL;
+    struct lys_module *mod = NULL;
+    struct lysp_node_leaf *leaf;
+    const char *yin_data =
+            "<module name=\"units-mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:units\"/>"
+            "  <prefix value=\"u\"/>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"string\"/>"
+            "    <units name=\"name\"/>"
+            "  </leaf>"
+            "</module>";
 
-    data = ELEMENT_WRAPPER_START "<units name=\"name\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &values, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(values, "name");
-    lysdict_remove(UTEST_LYCTX, values);
-    values = NULL;
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    leaf = (struct lysp_node_leaf *)mod->parsed->data;
+    assert_string_equal(leaf->units, "name");
 }
 
 static void
 test_yin_text_value_elem(void **state)
 {
-    const char *data;
-    const char *val;
+    const char *yin_data;
+    struct lys_module *mod = NULL;
+    struct lysp_node_leaf *leaf;
 
-    data = ELEMENT_WRAPPER_START "<text>text</text>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(val, "text");
-    lysdict_remove(UTEST_LYCTX, val);
+    yin_data =
+            "<module name=\"txt-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:txt1\"/>"
+            "  <prefix value=\"t1\"/>"
+            "  <description><text>text</text></description>"
+            "</module>";
 
-    data = "<error-message xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <value>text</value> </error-message>";
-    assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(val, "text");
-    lysdict_remove(UTEST_LYCTX, val);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    assert_string_equal(mod->dsc, "text");
 
-    data = ELEMENT_WRAPPER_START "<text></text>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_SUCCESS);
-    assert_string_equal("", val);
-    lysdict_remove(UTEST_LYCTX, val);
-}
+    yin_data =
+            "<module name=\"txt-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:txt2\"/>"
+            "  <prefix value=\"t2\"/>"
+            "  <leaf name=\"l\">"
+            "    <type name=\"string\"/>"
+            "    <must condition=\"'true()'\">"
+            "      <error-message><value>text</value></error-message>"
+            "    </must>"
+            "  </leaf>"
+            "</module>";
 
-static void
-test_type_elem(void **state)
-{
-    const char *data;
-    struct lysp_type type = {0};
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    leaf = (struct lysp_node_leaf *)mod->parsed->data;
+    assert_string_equal(leaf->musts->emsg, "text");
 
-    /* max subelems */
-    data = ELEMENT_WRAPPER_START
-            "<type name=\"type-name\">\n"
-            "    <base name=\"base-name\"/>\n"
-            "    <bit name=\"bit\"/>\n"
-            "    <enum name=\"enum\"/>\n"
-            "    <fraction-digits value=\"2\"/>\n"
-            "    <length value=\"length\"/>\n"
-            "    <path value=\"/path\"/>\n"
-            "    <pattern value=\"pattern\"/>\n"
-            "    <range value=\"range\" />\n"
-            "    <require-instance value=\"true\"/>\n"
-            "    <type name=\"sub-type-name\"/>\n"
-            EXT_SUBELEM
-            "</type>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(type.name, "type-name");
-    assert_string_equal(*type.bases, "base-name");
-    assert_string_equal(type.bits->name,  "bit");
-    assert_string_equal(type.enums->name,  "enum");
-    assert_int_equal(type.fraction_digits, 2);
-    CHECK_LYSP_RESTR(type.length, "length", NULL,
-            NULL, NULL, 0, NULL);
-    assert_string_equal(type.path->expr, "/path");
-    CHECK_LYSP_RESTR(type.patterns, "\006pattern", NULL,
-            NULL, NULL, 0, NULL);
-    CHECK_LYSP_RESTR(type.range, "range", NULL,
-            NULL, NULL, 0, NULL);
-    assert_int_equal(type.require_instance, 1);
-    assert_string_equal(type.types->name, "sub-type-name");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type.exts[0]), LY_STMT_TYPE);
-    assert_true(type.flags & LYS_SET_BASE);
-    assert_true(type.flags & LYS_SET_BIT);
-    assert_true(type.flags & LYS_SET_ENUM);
-    assert_true(type.flags & LYS_SET_FRDIGITS);
-    assert_true(type.flags & LYS_SET_LENGTH);
-    assert_true(type.flags & LYS_SET_PATH);
-    assert_true(type.flags & LYS_SET_PATTERN);
-    assert_true(type.flags & LYS_SET_RANGE);
-    assert_true(type.flags & LYS_SET_REQINST);
-    assert_true(type.flags & LYS_SET_TYPE);
-    lysp_type_free(UTEST_LYCTX, &type);
-    memset(&type, 0, sizeof(type));
+    yin_data =
+            "<module name=\"txt-mod3\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:txt3\"/>"
+            "  <prefix value=\"t3\"/>"
+            "  <description><text></text></description>"
+            "</module>";
 
-    /* min subelems */
-    data = ELEMENT_WRAPPER_START "<type name=\"type-name\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_SUCCESS);
-    lysp_type_free(UTEST_LYCTX, &type);
-    memset(&type, 0, sizeof(type));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    assert_string_equal(mod->dsc, "");
 }
 
 static void
 test_max_elems_elem(void **state)
 {
-    const char *data;
-    struct lysp_node_list list = {0};
-    struct lysp_refine refine = {0};
+    const char *yin_data;
+    struct lys_module *mod = NULL;
+    struct lysp_node_uses *uses;
 
-    data = "<refine xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"10\"/> </refine>";
-    assert_int_equal(test_element_helper(state, data, &refine, NULL, NULL), LY_SUCCESS);
-    assert_int_equal(refine.max, 10);
-    assert_true(refine.flags & LYS_SET_MAX);
+    yin_data =
+            "<module name=\"max-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:max1\"/>"
+            "  <prefix value=\"m1\"/>"
+            "  <grouping name=\"g\">"
+            "    <list name=\"l\"><config value=\"false\"/></list>"
+            "  </grouping>"
+            "  <uses name=\"g\">"
+            "    <refine target-node=\"l\">"
+            "      <max-elements value=\"10\"/>"
+            "    </refine>"
+            "  </uses>"
+            "</module>";
 
-    data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"0\"/> </list>";
-    assert_int_equal(test_element_helper(state, data, &list, NULL, NULL), LY_EVALID);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    uses = (struct lysp_node_uses *)mod->parsed->data;
+    assert_int_equal(uses->refines->max, 10);
+    assert_true(uses->refines->flags & LYS_SET_MAX);
+
+    yin_data = "<module name=\"max-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><namespace uri=\"urn:max2\"/><prefix value=\"m2\"/>"
+            "<list name=\"l\"><config value=\"false\"/><max-elements value=\"0\"/></list></module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"max-mod2\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"0\" of \"value\" attribute in \"max-elements\" element.", NULL, 1);
 
-    data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"-10\"/> </list>";
-    assert_int_equal(test_element_helper(state, data, &list, NULL, NULL), LY_EVALID);
+    yin_data = "<module name=\"max-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><namespace uri=\"urn:max3\"/><prefix value=\"m3\"/>"
+            "<list name=\"l\"><config value=\"false\"/><max-elements value=\"-10\"/></list></module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"max-mod2\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"-10\" of \"value\" attribute in \"max-elements\" element.", NULL, 1);
 
-    data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"k\"/> </list>";
-    assert_int_equal(test_element_helper(state, data, &list, NULL, NULL), LY_EVALID);
+    yin_data = "<module name=\"max-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><namespace uri=\"urn:max4\"/><prefix value=\"m4\"/>"
+            "<list name=\"l\"><config value=\"false\"/><max-elements value=\"k\"/></list></module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"max-mod2\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"k\" of \"value\" attribute in \"max-elements\" element.", NULL, 1);
 
-    data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"u12\"/> </list>";
-    assert_int_equal(test_element_helper(state, data, &list, NULL, NULL), LY_EVALID);
+    yin_data = "<module name=\"max-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><namespace uri=\"urn:max5\"/><prefix value=\"m5\"/>"
+            "<list name=\"l\"><config value=\"false\"/><max-elements value=\"u12\"/></list></module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"max-mod2\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"u12\" of \"value\" attribute in \"max-elements\" element.", NULL, 1);
 }
 
 static void
 test_min_elems_elem(void **state)
 {
-    const char *data;
-    struct lysp_node_leaflist llist = {0};
+    const char *yin_data;
 
-    data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"-5\"/> </leaf-list>";
-    assert_int_equal(test_element_helper(state, data, &llist, NULL, NULL), LY_EVALID);
+    yin_data = "<module name=\"min-mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><namespace uri=\"urn:min1\"/><prefix value=\"m1\"/>"
+            "<leaf-list name=\"ll\"><type name=\"string\"/><min-elements value=\"-5\"/></leaf-list></module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"min-mod\" failed.", NULL, 0);
     CHECK_LOG_CTX("Value \"-5\" of \"value\" attribute in \"min-elements\" element is out of bounds.", NULL, 1);
 
-    data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"99999999999999999\"/> </leaf-list>";
-    assert_int_equal(test_element_helper(state, data, &llist, NULL, NULL), LY_EVALID);
+    yin_data = "<module name=\"min-mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><namespace uri=\"urn:min2\"/><prefix value=\"m2\"/>"
+            "<leaf-list name=\"ll\"><type name=\"string\"/><min-elements value=\"99999999999999999\"/></leaf-list></module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"min-mod\" failed.", NULL, 0);
     CHECK_LOG_CTX("Value \"99999999999999999\" of \"value\" attribute in \"min-elements\" element is out of bounds.", NULL, 1);
 
-    data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"5k\"/> </leaf-list>";
-    assert_int_equal(test_element_helper(state, data, &llist, NULL, NULL), LY_EVALID);
+    yin_data = "<module name=\"min-mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><namespace uri=\"urn:min3\"/><prefix value=\"m3\"/>"
+            "<leaf-list name=\"ll\"><type name=\"string\"/><min-elements value=\"5k\"/></leaf-list></module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"min-mod\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"5k\" of \"value\" attribute in \"min-elements\" element.", NULL, 1);
 
-    data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"05\"/> </leaf-list>";
-    assert_int_equal(test_element_helper(state, data, &llist, NULL, NULL), LY_EVALID);
+    yin_data = "<module name=\"min-mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><namespace uri=\"urn:min4\"/><prefix value=\"m4\"/>"
+            "<leaf-list name=\"ll\"><type name=\"string\"/><min-elements value=\"05\"/></leaf-list></module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"min-mod\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"05\" of \"value\" attribute in \"min-elements\" element.", NULL, 1);
 }
 
 static void
 test_ordby_elem(void **state)
 {
-    const char *data;
-    uint16_t flags = 0;
+    const char *yin_data;
+    struct lys_module *mod = NULL;
+    struct lysp_node_list *list;
 
-    data = ELEMENT_WRAPPER_START "<ordered-by value=\"user\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &flags, NULL, NULL), LY_SUCCESS);
-    assert_true(flags & LYS_ORDBY_USER);
+    yin_data =
+            "<module name=\"ord-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:ord1\"/>"
+            "  <prefix value=\"o1\"/>"
+            "  <list name=\"l\">"
+            "    <key value=\"k\"/>"
+            "    <leaf name=\"k\"><type name=\"string\"/></leaf>"
+            "    <ordered-by value=\"user\"/>"
+            "  </list>"
+            "</module>";
 
-    data = ELEMENT_WRAPPER_START "<ordered-by value=\"inv\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &flags, NULL, NULL), LY_EVALID);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    list = (struct lysp_node_list *)mod->parsed->data;
+    assert_true(list->flags & LYS_ORDBY_USER);
+
+    yin_data =
+            "<module name=\"ord-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:ord2\"/>"
+            "  <prefix value=\"o2\"/>"
+            "  <list name=\"l\">"
+            "    <key value=\"k\"/>"
+            "    <leaf name=\"k\"><type name=\"string\"/></leaf>"
+            "    <ordered-by value=\"inv\"/>"
+            "  </list>"
+            "</module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"ord-mod2\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"inv\" of \"value\" attribute in \"ordered-by\" element. "
             "Valid values are \"system\" and \"user\".", NULL, 1);
 }
@@ -1928,390 +1941,503 @@ test_ordby_elem(void **state)
 static void
 test_any_elem(void **state)
 {
-    const char *data;
-    struct lysp_node *siblings = NULL;
-    struct tree_node_meta node_meta = {.parent = NULL, .nodes = &siblings};
+    const char *yin_data;
+    struct lys_module *mod = NULL;
     struct lysp_node_anydata *parsed = NULL;
-    uint16_t flags;
+    uint16_t flags = LYS_CONFIG_W | LYS_MAND_TRUE | LYS_STATUS_DEPRC;
 
     /* anyxml max subelems */
-    data = ELEMENT_WRAPPER_START
-            "<anyxml name=\"any-name\">\n"
-            "    <config value=\"true\" />\n"
-            "    <description><text>desc</text></description>\n"
-            "    <if-feature name=\"feature\" />\n"
-            "    <mandatory value=\"true\" />\n"
-            "    <must condition=\"must-cond\" />\n"
-            "    <reference><text>ref</text></reference>\n"
-            "    <status value=\"deprecated\"/>\n"
-            "    <when condition=\"when-cond\"/>\n"
+    yin_data =
+            "<module name=\"any-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:any1\">"
+            "  <namespace uri=\"urn:any1\"/>"
+            "  <prefix value=\"a1\"/>"
+            "  <extension name=\"c-define\">"
+            "    <argument name=\"name\"/>"
+            "  </extension>"
+            "  <feature name=\"feature\"/>"
+            "  <anyxml name=\"any-name\">"
+            "    <config value=\"true\" />"
+            "    <description><text>desc</text></description>"
+            "    <if-feature name=\"feature\" />"
+            "    <mandatory value=\"true\" />"
+            "    <must condition=\"must-cond\" />"
+            "    <reference><text>ref</text></reference>"
+            "    <status value=\"deprecated\"/>"
+            "    <when condition=\"when-cond\"/>"
             EXT_SUBELEM
-            "</anyxml>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_SUCCESS);
-    parsed = (struct lysp_node_anydata *)siblings;
-    flags = LYS_CONFIG_W | LYS_MAND_TRUE | LYS_STATUS_DEPRC;
+            "  </anyxml>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    parsed = (struct lysp_node_anydata *)mod->parsed->data;
     CHECK_LYSP_NODE(parsed, "desc", 1, flags, 1,
-            "any-name", 0, LYS_ANYXML, 0, "ref", 1);
+            "any-name", 0, LYS_ANYXML, 0, "ref");
+    CHECK_POINTER(((struct lysp_node_leaf *)parsed)->when, 1);
     CHECK_LYSP_WHEN(parsed->when, "when-cond", NULL, 0, NULL);
     assert_string_equal(parsed->iffeatures[0].str, "feature");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_ANYXML);
-    lysp_node_free(UTEST_LYCTX, siblings);
-    siblings = NULL;
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_ANYXML, "MY_MTU");
 
     /* anydata max subelems */
-    data = ELEMENT_WRAPPER_START
-            "<anydata name=\"any-name\">\n"
-            "    <config value=\"true\" />\n"
-            "    <description><text>desc</text></description>\n"
-            "    <if-feature name=\"feature\" />\n"
-            "    <mandatory value=\"true\" />\n"
-            "    <must condition=\"must-cond\" />\n"
-            "    <reference><text>ref</text></reference>\n"
-            "    <status value=\"deprecated\"/>\n"
-            "    <when condition=\"when-cond\"/>\n"
+    yin_data =
+            "<module name=\"any-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:any2\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:any2\"/>"
+            "  <prefix value=\"a2\"/>"
+            "  <extension name=\"c-define\">"
+            "    <argument name=\"name\"/>"
+            "  </extension>"
+            "  <feature name=\"feature\"/>"
+            "  <anydata name=\"any-name\">"
+            "    <config value=\"true\" />"
+            "    <description><text>desc</text></description>"
+            "    <if-feature name=\"feature\" />"
+            "    <mandatory value=\"true\" />"
+            "    <must condition=\"must-cond\" />"
+            "    <reference><text>ref</text></reference>"
+            "    <status value=\"deprecated\"/>"
+            "    <when condition=\"when-cond\"/>"
             EXT_SUBELEM
-            "</anydata>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_SUCCESS);
-    parsed = (struct lysp_node_anydata *)siblings;
-    flags = LYS_CONFIG_W | LYS_MAND_TRUE | LYS_STATUS_DEPRC;
+            "  </anydata>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    parsed = (struct lysp_node_anydata *)mod->parsed->data;
     CHECK_LYSP_NODE(parsed, "desc", 1, flags, 1,
-            "any-name", 0, LYS_ANYDATA, 0, "ref", 1);
+            "any-name", 0, LYS_ANYDATA, 0, "ref");
+    CHECK_POINTER(((struct lysp_node_leaf *)parsed)->when, 1);
     CHECK_LYSP_WHEN(parsed->when, "when-cond", NULL, 0, NULL);
     assert_string_equal(parsed->iffeatures[0].str, "feature");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_ANYDATA);
-    lysp_node_free(UTEST_LYCTX, siblings);
-    siblings = NULL;
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_ANYDATA, "MY_MTU");
 
     /* min subelems */
-    node_meta.parent = (void *)0x10;
-    data = ELEMENT_WRAPPER_START "<anydata name=\"any-name\"> </anydata>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_SUCCESS);
-    parsed = (struct lysp_node_anydata *)siblings;
-    assert_ptr_equal(parsed->parent, node_meta.parent);
+    yin_data =
+            "<module name=\"any-mod3\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:any3\"/>"
+            "  <prefix value=\"a3\"/>"
+            "  <anydata name=\"any-name\"> </anydata>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    parsed = (struct lysp_node_anydata *)mod->parsed->data;
     CHECK_LYSP_NODE(parsed, NULL, 0, 0, 0,
-            "any-name", 0, LYS_ANYDATA, 1, NULL, 0);
-    lysp_node_free(UTEST_LYCTX, siblings);
+            "any-name", 0, LYS_ANYDATA, 0, NULL);
+    CHECK_POINTER(((struct lysp_node_leaf *)parsed)->when, 0);
 }
 
 static void
 test_leaf_elem(void **state)
 {
-    const char *data;
-    struct lysp_node *siblings = NULL;
-    struct tree_node_meta node_meta = {.parent = NULL, .nodes = &siblings};
+    const char *yin_data;
+    struct lys_module *mod = NULL;
     struct lysp_node_leaf *parsed = NULL;
     uint16_t flags;
 
     /* max elements */
-    data = ELEMENT_WRAPPER_START
-            "<leaf name=\"leaf\">\n"
-            "    <config value=\"true\" />\n"
-            "    <default value=\"def-val\"/>\n"
-            "    <description><text>desc</text></description>\n"
-            "    <if-feature name=\"feature\" />\n"
-            "    <mandatory value=\"true\" />\n"
-            "    <must condition=\"must-cond\" />\n"
-            "    <reference><text>ref</text></reference>\n"
-            "    <status value=\"deprecated\"/>\n"
-            "    <type name=\"type\"/>\n"
-            "    <units name=\"uni\"/>\n"
-            "    <when condition=\"when-cond\"/>\n"
+    yin_data =
+            "<module name=\"leaf-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:leaf1\">"
+            "  <namespace uri=\"urn:leaf1\"/>"
+            "  <yang-version value=\"1.1\"/>"
+            "  <prefix value=\"l1\"/>"
+            "  <extension name=\"c-define\">"
+            "    <argument name=\"name\"/>"
+            "  </extension>"
+            "  <feature name=\"feature\"/>"
+            "  <leaf name=\"leaf1\">"
+            "    <config value=\"true\" />"
+            "    <description><text>desc</text></description>"
+            "    <if-feature name=\"feature\" />"
+            "    <mandatory value=\"true\" />"
+            "    <must condition=\"must-cond\" />"
+            "    <reference><text>ref</text></reference>"
+            "    <status value=\"deprecated\"/>"
+            "    <type name=\"string\"/>"
+            "    <units name=\"uni\"/>"
+            "    <when condition=\"when-cond\"/>"
             EXT_SUBELEM
-            "</leaf>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_SUCCESS);
-    parsed = (struct lysp_node_leaf *)siblings;
+            "  </leaf>"
+            "  <leaf name=\"leaf2\">"
+            "    <type name=\"string\"/>"
+            "    <default value=\"def-val\"/>"
+            "  </leaf>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    parsed = (struct lysp_node_leaf *)mod->parsed->data;
     flags = LYS_CONFIG_W | LYS_MAND_TRUE | LYS_STATUS_DEPRC;
     CHECK_LYSP_NODE(parsed, "desc", 1, flags, 1,
-            "leaf", 0, LYS_LEAF, 0, "ref", 1);
+            "leaf1", 1, LYS_LEAF, 0, "ref");
+    CHECK_POINTER(((struct lysp_node_leaf *)parsed)->when, 1);
     CHECK_LYSP_WHEN(parsed->when, "when-cond", NULL, 0, NULL);
     assert_string_equal(parsed->iffeatures[0].str, "feature");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_LEAF);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_LEAF, "MY_MTU");
     assert_string_equal(parsed->musts->arg.str, "must-cond");
-    assert_string_equal(parsed->type.name, "type");
+    assert_string_equal(parsed->type.name, "string");
     assert_string_equal(parsed->units, "uni");
+
+    parsed = (struct lysp_node_leaf *)parsed->next;
+    assert_string_equal(parsed->name, "leaf2");
     assert_string_equal(parsed->dflt.str, "def-val");
-    lysp_node_free(UTEST_LYCTX, siblings);
-    siblings = NULL;
 
     /* min elements */
-    data = ELEMENT_WRAPPER_START "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_SUCCESS);
-    parsed = (struct lysp_node_leaf *)siblings;
+    yin_data = "<module name=\"leaf-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:leaf2\"/>"
+            "  <prefix value=\"l2\"/>"
+            "  <leaf name=\"leaf\"> <type name=\"string\"/> </leaf>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    parsed = (struct lysp_node_leaf *)mod->parsed->data;
     assert_string_equal(parsed->name, "leaf");
-    assert_string_equal(parsed->type.name, "type");
-    lysp_node_free(UTEST_LYCTX, siblings);
-    siblings = NULL;
+    assert_string_equal(parsed->type.name, "string");
 }
 
 static void
 test_leaf_list_elem(void **state)
 {
-    const char *data;
-    struct lysp_node *siblings = NULL;
-    struct tree_node_meta node_meta = {.parent = NULL, .nodes = &siblings};
+    const char *yin_data;
+    struct lys_module *mod = NULL;
     struct lysp_node_leaflist *parsed = NULL;
     uint16_t flags;
 
-    data = ELEMENT_WRAPPER_START
-            "<leaf-list name=\"llist\">\n"
-            "    <config value=\"true\" />\n"
-            "    <default value=\"def-val0\"/>\n"
-            "    <default value=\"def-val1\"/>\n"
-            "    <description><text>desc</text></description>\n"
-            "    <if-feature name=\"feature\"/>\n"
-            "    <max-elements value=\"5\"/>\n"
-            "    <must condition=\"must-cond\"/>\n"
-            "    <ordered-by value=\"user\" />\n"
-            "    <reference><text>ref</text></reference>\n"
-            "    <status value=\"current\"/>\n"
-            "    <type name=\"type\"/>\n"
-            "    <units name=\"uni\"/>\n"
-            "    <when condition=\"when-cond\"/>\n"
+    yin_data =
+            "<module name=\"ll-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:ll1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:ll1\"/>"
+            "  <prefix value=\"ll1\"/>"
+            "  <extension name=\"c-define\">"
+            "    <argument name=\"name\"/>"
+            "  </extension>"
+            "  <feature name=\"feature\"/>"
+            "  <leaf-list name=\"llist\">"
+            "    <config value=\"true\" />"
+            "    <default value=\"def-val0\"/>"
+            "    <default value=\"def-val1\"/>"
+            "    <description><text>desc</text></description>"
+            "    <if-feature name=\"feature\"/>"
+            "    <max-elements value=\"5\"/>"
+            "    <must condition=\"must-cond\"/>"
+            "    <ordered-by value=\"user\" />"
+            "    <reference><text>ref</text></reference>"
+            "    <status value=\"current\"/>"
+            "    <type name=\"string\"/>"
+            "    <units name=\"uni\"/>"
+            "    <when condition=\"when-cond\"/>"
             EXT_SUBELEM
-            "</leaf-list>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_SUCCESS);
-    parsed = (struct lysp_node_leaflist *)siblings;
+            "  </leaf-list>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    parsed = (struct lysp_node_leaflist *)mod->parsed->data;
     flags = LYS_CONFIG_W | LYS_ORDBY_USER | LYS_STATUS_CURR | LYS_SET_MAX;
     CHECK_LYSP_NODE(parsed, "desc", 1, flags, 1,
-            "llist", 0, LYS_LEAFLIST, 0, "ref", 1);
+            "llist", 0, LYS_LEAFLIST, 0, "ref");
+    CHECK_POINTER(((struct lysp_node_leaf *)parsed)->when, 1);
     CHECK_LYSP_RESTR(parsed->musts, "must-cond", NULL, NULL, NULL, 0, NULL);
     assert_string_equal(parsed->dflts[0].str, "def-val0");
     assert_string_equal(parsed->dflts[1].str, "def-val1");
     assert_string_equal(parsed->iffeatures[0].str, "feature");
     assert_int_equal(parsed->max, 5);
-    assert_string_equal(parsed->type.name, "type");
+    assert_string_equal(parsed->type.name, "string");
     assert_string_equal(parsed->units, "uni");
     CHECK_LYSP_WHEN(parsed->when, "when-cond", NULL, 0, NULL);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_LEAF_LIST);
-    lysp_node_free(UTEST_LYCTX, siblings);
-    siblings = NULL;
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_LEAF_LIST, "MY_MTU");
 
-    data = ELEMENT_WRAPPER_START
-            "<leaf-list name=\"llist\">\n"
-            "    <config value=\"true\" />\n"
-            "    <description><text>desc</text></description>\n"
-            "    <if-feature name=\"feature\"/>\n"
-            "    <min-elements value=\"5\"/>\n"
-            "    <must condition=\"must-cond\"/>\n"
-            "    <ordered-by value=\"user\" />\n"
-            "    <reference><text>ref</text></reference>\n"
-            "    <status value=\"current\"/>\n"
-            "    <type name=\"type\"/>\n"
-            "    <units name=\"uni\"/>\n"
-            "    <when condition=\"when-cond\"/>\n"
+    yin_data =
+            "<module name=\"ll-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:ll2\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:ll2\"/>"
+            "  <prefix value=\"ll2\"/>"
+            "  <extension name=\"c-define\">"
+            "    <argument name=\"name\"/>"
+            "  </extension>"
+            "  <feature name=\"feature\"/>"
+            "  <leaf-list name=\"llist\">"
+            "    <config value=\"true\" />"
+            "    <description><text>desc</text></description>"
+            "    <if-feature name=\"feature\"/>"
+            "    <min-elements value=\"5\"/>"
+            "    <must condition=\"must-cond\"/>"
+            "    <ordered-by value=\"user\" />"
+            "    <reference><text>ref</text></reference>"
+            "    <status value=\"current\"/>"
+            "    <type name=\"string\"/>"
+            "    <units name=\"uni\"/>"
+            "    <when condition=\"when-cond\"/>"
             EXT_SUBELEM
-            "</leaf-list>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_SUCCESS);
-    parsed = (struct lysp_node_leaflist *)siblings;
+            "  </leaf-list>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    parsed = (struct lysp_node_leaflist *)mod->parsed->data;
     flags = LYS_CONFIG_W | LYS_ORDBY_USER | LYS_STATUS_CURR | LYS_SET_MIN;
     CHECK_LYSP_NODE(parsed, "desc", 1, flags, 1,
-            "llist", 0, LYS_LEAFLIST, 0, "ref", 1);
+            "llist", 0, LYS_LEAFLIST, 0, "ref");
+    CHECK_POINTER(((struct lysp_node_leaf *)parsed)->when, 1);
     CHECK_LYSP_RESTR(parsed->musts, "must-cond", NULL, NULL, NULL, 0, NULL);
     CHECK_LYSP_WHEN(parsed->when, "when-cond", NULL, 0, NULL);
     assert_string_equal(parsed->iffeatures[0].str, "feature");
     assert_int_equal(parsed->min, 5);
-    assert_string_equal(parsed->type.name, "type");
+    assert_string_equal(parsed->type.name, "string");
     assert_string_equal(parsed->units, "uni");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_LEAF_LIST);
-    lysp_node_free(UTEST_LYCTX, siblings);
-    siblings = NULL;
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_LEAF_LIST, "MY_MTU");
 
-    data = ELEMENT_WRAPPER_START
-            "<leaf-list name=\"llist\">\n"
-            "    <config value=\"true\" />\n"
-            "    <description><text>desc</text></description>\n"
-            "    <if-feature name=\"feature\"/>\n"
-            "    <max-elements value=\"15\"/>\n"
-            "    <min-elements value=\"5\"/>\n"
-            "    <must condition=\"must-cond\"/>\n"
-            "    <ordered-by value=\"user\" />\n"
-            "    <reference><text>ref</text></reference>\n"
-            "    <status value=\"current\"/>\n"
-            "    <type name=\"type\"/>\n"
-            "    <units name=\"uni\"/>\n"
-            "    <when condition=\"when-cond\"/>\n"
-            "</leaf-list>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_SUCCESS);
-    parsed = (struct lysp_node_leaflist *)siblings;
+    yin_data =
+            "<module name=\"ll-mod3\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:ll3\"/>"
+            "  <prefix value=\"ll3\"/>"
+            "  <feature name=\"feature\"/>"
+            "  <leaf-list name=\"llist\">"
+            "    <config value=\"true\" />"
+            "    <description><text>desc</text></description>"
+            "    <if-feature name=\"feature\"/>"
+            "    <max-elements value=\"15\"/>"
+            "    <min-elements value=\"5\"/>"
+            "    <must condition=\"must-cond\"/>"
+            "    <ordered-by value=\"user\" />"
+            "    <reference><text>ref</text></reference>"
+            "    <status value=\"current\"/>"
+            "    <type name=\"string\"/>"
+            "    <units name=\"uni\"/>"
+            "    <when condition=\"when-cond\"/>"
+            "  </leaf-list>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    parsed = (struct lysp_node_leaflist *)mod->parsed->data;
     flags = LYS_CONFIG_W | LYS_ORDBY_USER | LYS_STATUS_CURR | LYS_SET_MIN | LYS_SET_MAX;
     CHECK_LYSP_NODE(parsed, "desc", 0, flags, 1,
-            "llist", 0, LYS_LEAFLIST, 0, "ref", 1);
+            "llist", 0, LYS_LEAFLIST, 0, "ref");
+    CHECK_POINTER(((struct lysp_node_leaf *)parsed)->when, 1);
     CHECK_LYSP_RESTR(parsed->musts, "must-cond", NULL, NULL, NULL, 0, NULL);
     CHECK_LYSP_WHEN(parsed->when, "when-cond", NULL, 0, NULL);
     assert_string_equal(parsed->iffeatures[0].str, "feature");
     assert_int_equal(parsed->min, 5);
     assert_int_equal(parsed->max, 15);
-    assert_string_equal(parsed->type.name, "type");
+    assert_string_equal(parsed->type.name, "string");
     assert_string_equal(parsed->units, "uni");
-    lysp_node_free(UTEST_LYCTX, siblings);
-    siblings = NULL;
 
-    data = ELEMENT_WRAPPER_START
-            "<leaf-list name=\"llist\">\n"
-            "    <type name=\"type\"/>\n"
-            "</leaf-list>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_SUCCESS);
-    parsed = (struct lysp_node_leaflist *)siblings;
+    yin_data =
+            "<module name=\"ll-mod4\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:ll4\"/>"
+            "  <prefix value=\"ll4\"/>"
+            "  <leaf-list name=\"llist\">"
+            "    <type name=\"string\"/>"
+            "  </leaf-list>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    parsed = (struct lysp_node_leaflist *)mod->parsed->data;
     assert_string_equal(parsed->name, "llist");
-    assert_string_equal(parsed->type.name, "type");
-    lysp_node_free(UTEST_LYCTX, siblings);
-    siblings = NULL;
+    assert_string_equal(parsed->type.name, "string");
 
     /* invalid combinations */
-    data = ELEMENT_WRAPPER_START
-            "<leaf-list name=\"llist\">\n"
-            "    <max-elements value=\"5\"/>\n"
-            "    <min-elements value=\"15\"/>\n"
-            "    <type name=\"type\"/>"
-            "</leaf-list>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_EVALID);
+    yin_data =
+            "<module name=\"ll-inv\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:inv1\"/>"
+            "  <prefix value=\"i1\"/>"
+            "  <leaf-list name=\"llist\">"
+            "    <max-elements value=\"5\"/>"
+            "    <min-elements value=\"15\"/>"
+            "    <type name=\"string\"/>"
+            "  </leaf-list>"
+            "</module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"ll-inv\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid combination of min-elements and max-elements: min value 15 is bigger than the max value 5.",
-            NULL, 4);
-    lysp_node_free(UTEST_LYCTX, siblings);
-    siblings = NULL;
+            NULL, 1);
+    yin_data =
+            "<module name=\"ll-inv\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:inv2\"/>"
+            "  <prefix value=\"i2\"/>"
+            "  <leaf-list name=\"llist\">"
+            "    <default value=\"def-val1\"/>"
+            "    <min-elements value=\"15\"/>"
+            "    <type name=\"string\"/>"
+            "  </leaf-list>"
+            "</module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"ll-inv\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Invalid combination of sub-elemnts \"min-elements\" and \"default\" in \"leaf-list\" element.", NULL, 1);
 
-    data = ELEMENT_WRAPPER_START
-            "<leaf-list name=\"llist\">\n"
-            "    <default value=\"def-val1\"/>\n"
-            "    <min-elements value=\"15\"/>\n"
-            "    <type name=\"type\"/>\n"
-            "</leaf-list>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Invalid combination of sub-elemnts \"min-elements\" and \"default\" in \"leaf-list\" element.", NULL, 5);
-    lysp_node_free(UTEST_LYCTX, siblings);
-    siblings = NULL;
-
-    data = ELEMENT_WRAPPER_START
-            "<leaf-list name=\"llist\">"
-            "</leaf-list>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_EVALID);
+    yin_data =
+            "<module name=\"ll-inv\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:inv3\"/>"
+            "  <prefix value=\"i3\"/>"
+            "  <leaf-list name=\"llist\">"
+            "  </leaf-list>"
+            "</module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"ll-inv\" failed.", NULL, 0);
     CHECK_LOG_CTX("Missing mandatory sub-element \"type\" of \"leaf-list\" element.", NULL, 1);
-    lysp_node_free(UTEST_LYCTX, siblings);
-    siblings = NULL;
 }
 
 static void
 test_presence_elem(void **state)
 {
-    const char *data;
-    const char *val;
+    const char *yin_data;
+    struct lys_module *mod = NULL;
+    struct lysp_node_container *cont;
 
-    data = ELEMENT_WRAPPER_START "<presence value=\"presence-val\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(val, "presence-val");
-    lysdict_remove(UTEST_LYCTX, val);
+    yin_data =
+            "<module name=\"pres-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:pres1\"/>"
+            "  <prefix value=\"p1\"/>"
+            "  <container name=\"c\">"
+            "    <presence value=\"presence-val\"/>"
+            "  </container>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    cont = (struct lysp_node_container *)mod->parsed->data;
+    assert_string_equal(cont->presence, "presence-val");
 
-    data = ELEMENT_WRAPPER_START "<presence/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_EVALID);
+    yin_data =
+            "<module name=\"pres-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:pres2\"/>"
+            "  <prefix value=\"p2\"/>"
+            "  <container name=\"c\">"
+            "    <presence/>"
+            "  </container>"
+            "</module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"pres-mod2\" failed.", NULL, 0);
     CHECK_LOG_CTX("Missing mandatory attribute value of presence element.", NULL, 1);
 }
 
 static void
 test_key_elem(void **state)
 {
-    const char *data;
-    const char *val;
+    const char *yin_data;
+    struct lys_module *mod = NULL;
+    struct lysp_node_list *list;
 
-    data = ELEMENT_WRAPPER_START "<key value=\"key-value\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(val, "key-value");
-    lysdict_remove(UTEST_LYCTX, val);
+    yin_data =
+            "<module name=\"key-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:key1\"/>"
+            "  <prefix value=\"k1\"/>"
+            "  <list name=\"l\">"
+            "    <key value=\"key-value\"/>"
+            "    <leaf name=\"key-value\"><type name=\"string\"/></leaf>"
+            "  </list>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    list = (struct lysp_node_list *)mod->parsed->data;
+    assert_string_equal(list->key, "key-value");
 
-    data = ELEMENT_WRAPPER_START "<key/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_EVALID);
+    yin_data =
+            "<module name=\"key-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:key2\"/>"
+            "  <prefix value=\"k2\"/>"
+            "  <list name=\"l\">"
+            "    <key/>"
+            "  </list>"
+            "</module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"key-mod2\" failed.", NULL, 0);
     CHECK_LOG_CTX("Missing mandatory attribute value of key element.", NULL, 1);
 }
 
 static void
 test_uses_elem(void **state)
 {
-    const char *data;
-    struct lysp_node *siblings = NULL;
-    struct tree_node_meta node_meta = {NULL, &siblings};
-    struct lysp_node_uses *parsed = NULL;
+    struct lys_module *mod;
+    struct lysp_node_uses *parsed;
+    const char *yin_data;
 
     /* max subelems */
-    data = ELEMENT_WRAPPER_START
-            "<uses name=\"uses-name\">\n"
-            "    <when condition=\"cond\" />\n"
-            "    <if-feature name=\"feature\" />\n"
-            "    <status value=\"obsolete\" />\n"
-            "    <description><text>desc</text></description>\n"
-            "    <reference><text>ref</text></reference>\n"
-            "    <refine target-node=\"target\"/>\n"
-            "    <augment target-node=\"target\" />\n"
-            EXT_SUBELEM
-            "</uses>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_SUCCESS);
-    parsed = (struct lysp_node_uses *)&siblings[0];
-    CHECK_LYSP_NODE(parsed, "desc", 1, LYS_STATUS_OBSLT, 1,
-            "uses-name", 0, LYS_USES, 0, "ref", 1);
+    yin_data =
+            "<module name=\"uses1\""
+            "    xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "    <yang-version value=\"1.1\"/>"
+            "    <namespace uri=\"urn:uses1\"/>"
+            "    <prefix value=\"u1\"/>"
+            "    <feature name=\"feature\"/>"
+            "    <grouping name=\"uses-name\">"
+            "        <container name=\"target\"/>"
+            "    </grouping>"
+            "    <uses name=\"uses-name\">"
+            "        <when condition=\"cond\"/>"
+            "        <if-feature name=\"feature\"/>"
+            "        <status value=\"obsolete\"/>"
+            "        <description><text>desc</text></description>"
+            "        <reference><text>ref</text></reference>"
+            "        <refine target-node=\"target\"/>"
+            "        <augment target-node=\"target\">"
+            "            <container name=\"aug-cont\"/>"
+            "        </augment>"
+            "    </uses>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    parsed = (struct lysp_node_uses *)mod->parsed->data;
+    CHECK_LYSP_NODE(parsed, "desc", 0, LYS_STATUS_OBSLT, 1,
+            "uses-name", 0, LYS_USES, 0, "ref");
     CHECK_LYSP_WHEN(parsed->when, "cond", NULL, 0, NULL);
     assert_string_equal(parsed->iffeatures[0].str, "feature");
     assert_string_equal(parsed->refines->nodeid, "target");
     assert_string_equal(parsed->augments->nodeid, "target");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_USES);
-    lysp_node_free(UTEST_LYCTX, siblings);
-    siblings = NULL;
 
     /* min subelems */
-    data = ELEMENT_WRAPPER_START "<uses name=\"uses-name\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(siblings[0].name, "uses-name");
-    lysp_node_free(UTEST_LYCTX, siblings);
-    siblings = NULL;
+    yin_data =
+            "<module name=\"uses2\""
+            "    xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "    <yang-version value=\"1.1\"/>"
+            "    <namespace uri=\"urn:uses2\"/>"
+            "    <prefix value=\"u2\"/>"
+            "    <grouping name=\"uses-name\"/>"
+            "    <uses name=\"uses-name\"/>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    parsed = (struct lysp_node_uses *)mod->parsed->data;
+    assert_string_equal(parsed->name, "uses-name");
 }
 
 static void
 test_list_elem(void **state)
 {
-    const char *data;
-    struct lysp_node *siblings = NULL;
-    struct tree_node_meta node_meta = {NULL, &siblings};
+    const char *yin_data;
+    struct lys_module *mod = NULL;
     struct lysp_node_list *parsed = NULL;
+    uint16_t flags = LYS_ORDBY_USER | LYS_STATUS_DEPRC | LYS_CONFIG_W | LYS_SET_MIN;
 
     /* max subelems */
-    data = ELEMENT_WRAPPER_START
-            "<list name=\"list-name\">\n"
-            "    <when condition=\"when\"/>\n"
-            "    <if-feature name=\"iff\"/>\n"
-            "    <must condition=\"must-cond\"/>\n"
-            "    <key value=\"key\"/>\n"
-            "    <unique tag=\"utag\"/>\n"
-            "    <config value=\"true\"/>\n"
-            "    <min-elements value=\"10\"/>\n"
-            "    <ordered-by value=\"user\"/>\n"
-            "    <status value=\"deprecated\"/>\n"
-            "    <description><text>desc</text></description>\n"
-            "    <reference><text>ref</text></reference>\n"
-            "    <anydata name=\"anyd\"/>\n"
-            "    <anyxml name=\"anyx\"/>\n"
-            "    <container name=\"cont\"/>\n"
-            "    <choice name=\"choice\"/>\n"
-            "    <action name=\"action\"/>\n"
-            "    <grouping name=\"grp\"/>\n"
-            "    <notification name=\"notf\"/>\n"
-            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
-            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
-            "    <list name=\"sub-list\"/>\n"
-            "    <typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
-            "    <uses name=\"uses-name\"/>\n"
+    yin_data =
+            "<module name=\"list-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:list1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:list1\"/>"
+            "  <prefix value=\"l1\"/>"
+            "  <extension name=\"c-define\">"
+            "    <argument name=\"name\"/>"
+            "  </extension>"
+            "  <feature name=\"iff\"/>"
+            "  <list name=\"list-name\">"
+            "    <when condition=\"when\"/>"
+            "    <if-feature name=\"iff\"/>"
+            "    <must condition=\"must-cond\"/>"
+            "    <key value=\"key\"/>"
+            "    <unique tag=\"utag\"/>"
+            "    <config value=\"true\"/>"
+            "    <min-elements value=\"10\"/>"
+            "    <ordered-by value=\"user\"/>"
+            "    <status value=\"deprecated\"/>"
+            "    <description><text>desc</text></description>"
+            "    <reference><text>ref</text></reference>"
+            "    <anydata name=\"anyd\"/>"
+            "    <anyxml name=\"anyx\"/>"
+            "    <container name=\"cont\"/>"
+            "    <choice name=\"choice\"/>"
+            "    <action name=\"action\"/>"
+            "    <grouping name=\"grp\"/>"
+            "    <notification name=\"notf\"/>"
+            "    <leaf name=\"leaf\"> <type name=\"string\"/> </leaf>"
+            "    <leaf-list name=\"llist\"> <type name=\"string\"/> </leaf-list>"
+            "    <list name=\"sub-list\"><config value=\"false\"/></list>"
+            "    <typedef name=\"tpdf\"> <type name=\"string\"/> </typedef>"
+            "    <uses name=\"grp\"/>"
             EXT_SUBELEM
-            "</list>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_SUCCESS);
-    parsed = (struct lysp_node_list *)&siblings[0];
+            "    <leaf name=\"key\"><type name=\"string\"/></leaf>"
+            "    <leaf name=\"utag\"><type name=\"string\"/></leaf>"
+            "  </list>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    parsed = (struct lysp_node_list *)mod->parsed->data;
+
     assert_string_equal(parsed->child->name, "anyd");
     assert_int_equal(parsed->child->nodetype, LYS_ANYDATA);
     assert_string_equal(parsed->child->next->name, "anyx");
@@ -2326,13 +2452,16 @@ test_list_elem(void **state)
     assert_int_equal(parsed->child->next->next->next->next->next->nodetype, LYS_LEAFLIST);
     assert_string_equal(parsed->child->next->next->next->next->next->next->name, "sub-list");
     assert_int_equal(parsed->child->next->next->next->next->next->next->nodetype, LYS_LIST);
-    assert_string_equal(parsed->child->next->next->next->next->next->next->next->name, "uses-name");
+    assert_string_equal(parsed->child->next->next->next->next->next->next->next->name, "grp");
     assert_int_equal(parsed->child->next->next->next->next->next->next->next->nodetype, LYS_USES);
-    assert_null(parsed->child->next->next->next->next->next->next->next->next);
-    uint16_t flags = LYS_ORDBY_USER | LYS_STATUS_DEPRC | LYS_CONFIG_W | LYS_SET_MIN;
+    assert_string_equal(parsed->child->next->next->next->next->next->next->next->next->name, "key");
+    assert_int_equal(parsed->child->next->next->next->next->next->next->next->next->nodetype, LYS_LEAF);
+    assert_string_equal(parsed->child->next->next->next->next->next->next->next->next->next->name, "utag");
+    assert_int_equal(parsed->child->next->next->next->next->next->next->next->next->next->nodetype, LYS_LEAF);
+    assert_null(parsed->child->next->next->next->next->next->next->next->next->next->next);
 
-    CHECK_LYSP_NODE(parsed, "desc", 1, flags, 1,
-            "list-name", 0, LYS_LIST, 0, "ref", 1);
+    CHECK_LYSP_NODE(parsed, "desc", 1, flags, 1, "list-name", 0, LYS_LIST, 0, "ref");
+    CHECK_POINTER(parsed->when, 1);
     CHECK_LYSP_RESTR(parsed->musts, "must-cond", NULL, NULL, NULL, 0, NULL);
     CHECK_LYSP_WHEN(parsed->when, "when", NULL, 0, NULL);
     assert_string_equal(parsed->groupings->name, "grp");
@@ -2344,51 +2473,67 @@ test_list_elem(void **state)
     assert_int_equal(parsed->min, 10);
     assert_string_equal(parsed->typedefs->name, "tpdf");
     assert_string_equal(parsed->uniques->str, "utag");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_LIST);
-    lysp_node_free(UTEST_LYCTX, siblings);
-    ly_set_erase(&YCTX->tpdfs_nodes, NULL);
-    siblings = NULL;
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_LIST, "MY_MTU");
 
     /* min subelems */
-    data = ELEMENT_WRAPPER_START "<list name=\"list-name\" />" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_SUCCESS);
-    parsed = (struct lysp_node_list *)&siblings[0];
-    CHECK_LYSP_NODE(parsed, NULL, 0, 0, 0,
-            "list-name", 0, LYS_LIST, 0, NULL, 0);
-    lysp_node_free(UTEST_LYCTX, siblings);
-    siblings = NULL;
+    yin_data =
+            "<module name=\"list-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:list2\"/>"
+            "  <prefix value=\"l2\"/>"
+            "  <list name=\"list-name\">"
+            "    <config value=\"false\"/>"
+            "  </list>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    parsed = (struct lysp_node_list *)mod->parsed->data;
+    CHECK_LYSP_NODE(parsed, NULL, 0, LYS_CONFIG_R, 0, "list-name", 0, LYS_LIST, 0, NULL);
+    CHECK_POINTER(parsed->when, 0);
 }
 
 static void
 test_notification_elem(void **state)
 {
-    const char *data;
+    const char *yin_data;
+    struct lys_module *mod = NULL;
     struct lysp_node_notif *notifs = NULL;
-    struct tree_node_meta notif_meta = {NULL, (struct lysp_node **)&notifs};
 
     /* max subelems */
-    PARSER_CUR_PMOD(YCTX)->version = LYS_VERSION_1_1;
-    data = ELEMENT_WRAPPER_START
-            "<notification name=\"notif-name\">\n"
-            "    <anydata name=\"anyd\"/>\n"
-            "    <anyxml name=\"anyx\"/>\n"
-            "    <description><text>desc</text></description>\n"
-            "    <if-feature name=\"iff\"/>\n"
-            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
-            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
-            "    <list name=\"sub-list\"/>\n"
-            "    <must condition=\"cond\"/>\n"
-            "    <reference><text>ref</text></reference>\n"
-            "    <status value=\"deprecated\"/>\n"
-            "    <typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
-            "    <uses name=\"uses-name\"/>\n"
-            "    <container name=\"cont\"/>\n"
-            "    <choice name=\"choice\"/>\n"
-            "    <grouping name=\"grp\"/>\n"
+    yin_data =
+            "<module name=\"notif-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:notif1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:notif1\"/>"
+            "  <prefix value=\"n1\"/>"
+            "  <extension name=\"c-define\">"
+            "    <argument name=\"name\"/>"
+            "  </extension>"
+            "  <feature name=\"iff\"/>"
+            "  <grouping name=\"uses-name\"/>"
+            "  <leaf name=\"cond\"><type name=\"string\"/></leaf>"
+            "  <notification name=\"notif-name\">"
+            "    <anydata name=\"anyd\"/>"
+            "    <anyxml name=\"anyx\"/>"
+            "    <description><text>desc</text></description>"
+            "    <if-feature name=\"iff\"/>"
+            "    <leaf name=\"leaf\"> <type name=\"string\"/> </leaf>"
+            "    <leaf-list name=\"llist\"> <type name=\"string\"/> </leaf-list>"
+            "    <list name=\"sub-list\"><config value=\"false\"/></list>"
+            "    <must condition=\"cond\"/>"
+            "    <reference><text>ref</text></reference>"
+            "    <status value=\"deprecated\"/>"
+            "    <typedef name=\"tpdf\"> <type name=\"string\"/> </typedef>"
+            "    <uses name=\"uses-name\"/>"
+            "    <container name=\"cont\"/>"
+            "    <choice name=\"choice\"/>"
+            "    <grouping name=\"grp\"/>"
             EXT_SUBELEM
-            "</notification>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &notif_meta, NULL, NULL), LY_SUCCESS);
+            "  </notification>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+
+    notifs = mod->parsed->notifs;
+
     assert_string_equal(notifs->name, "notif-name");
     assert_string_equal(notifs->child->name, "anyd");
     assert_int_equal(notifs->child->nodetype, LYS_ANYDATA);
@@ -2416,47 +2561,61 @@ test_notification_elem(void **state)
     assert_null(notifs->parent);
     assert_string_equal(notifs->ref, "ref");
     assert_string_equal(notifs->typedefs->name, "tpdf");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(notifs->exts[0]), LY_STMT_NOTIFICATION);
-    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)notifs);
-    notifs = NULL;
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(notifs->exts[0]), LY_STMT_NOTIFICATION, "MY_MTU");
 
     /* min subelems */
-    data = ELEMENT_WRAPPER_START "<notification name=\"notif-name\" />" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &notif_meta, NULL, NULL), LY_SUCCESS);
+    yin_data =
+            "<module name=\"notif-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:notif2\"/>"
+            "  <prefix value=\"n2\"/>"
+            "  <notification name=\"notif-name\" />"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    notifs = mod->parsed->notifs;
     assert_string_equal(notifs->name, "notif-name");
-    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)notifs);
-    notifs = NULL;
 }
 
 static void
 test_grouping_elem(void **state)
 {
-    const char *data;
+    const char *yin_data;
+    struct lys_module *mod = NULL;
     struct lysp_node_grp *grps = NULL;
-    struct tree_node_meta grp_meta = {NULL, (struct lysp_node **)&grps};
 
     /* max subelems */
-    data = ELEMENT_WRAPPER_START
-            "<grouping name=\"grp-name\">\n"
-            "    <anydata name=\"anyd\"/>\n"
-            "    <anyxml name=\"anyx\"/>\n"
-            "    <description><text>desc</text></description>\n"
-            "    <grouping name=\"sub-grp\"/>\n"
-            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
-            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
-            "    <list name=\"list\"/>\n"
-            "    <notification name=\"notf\"/>\n"
-            "    <reference><text>ref</text></reference>\n"
-            "    <status value=\"current\"/>\n"
-            "    <typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
-            "    <uses name=\"uses-name\"/>\n"
-            "    <action name=\"act\"/>\n"
-            "    <container name=\"cont\"/>\n"
-            "    <choice name=\"choice\"/>\n"
+    yin_data =
+            "<module name=\"grp-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:grp1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:grp1\"/>"
+            "  <prefix value=\"g1\"/>"
+            "  <extension name=\"c-define\">"
+            "    <argument name=\"name\"/>"
+            "  </extension>"
+            "  <grouping name=\"grp-name\">"
+            "    <anydata name=\"anyd\"/>"
+            "    <anyxml name=\"anyx\"/>"
+            "    <description><text>desc</text></description>"
+            "    <grouping name=\"sub-grp\"/>"
+            "    <leaf name=\"leaf\"> <type name=\"string\"/> </leaf>"
+            "    <leaf-list name=\"llist\"> <type name=\"string\"/> </leaf-list>"
+            "    <list name=\"list\"><config value=\"false\"/></list>"
+            "    <notification name=\"notf\"/>"
+            "    <reference><text>ref</text></reference>"
+            "    <status value=\"current\"/>"
+            "    <typedef name=\"tpdf\"> <type name=\"string\"/> </typedef>"
+            "    <uses name=\"uses-name\"/>"
+            "    <action name=\"act\"/>"
+            "    <container name=\"cont\"/>"
+            "    <choice name=\"choice\"/>"
             EXT_SUBELEM
-            "</grouping>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &grp_meta, NULL, NULL), LY_SUCCESS);
+            "  </grouping>"
+            "  <grouping name=\"uses-name\"/>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    grps = &mod->parsed->groupings[0];
+
     assert_string_equal(grps->name, "grp-name");
     assert_string_equal(grps->child->name, "anyd");
     assert_string_equal(grps->child->next->name, "anyx");
@@ -2478,66 +2637,83 @@ test_grouping_elem(void **state)
     assert_int_equal(grps->child->next->next->next->next->next->next->nodetype, LYS_CONTAINER);
     assert_string_equal(grps->child->next->next->next->next->next->next->next->name, "choice");
     assert_int_equal(grps->child->next->next->next->next->next->next->next->nodetype, LYS_CHOICE);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(grps->exts[0]), LY_STMT_GROUPING);
-    lysp_node_free(UTEST_LYCTX, &grps->node);
-    grps = NULL;
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(grps->exts[0]), LY_STMT_GROUPING, "MY_MTU");
 
     /* min subelems */
-    data = ELEMENT_WRAPPER_START "<grouping name=\"grp-name\" />" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &grp_meta, NULL, NULL), LY_SUCCESS);
+    yin_data =
+            "<module name=\"grp-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:grp2\"/>"
+            "  <prefix value=\"g2\"/>"
+            "  <grouping name=\"grp-name\" />"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    grps = mod->parsed->groupings;
     assert_string_equal(grps->name, "grp-name");
-    lysp_node_free(UTEST_LYCTX, &grps->node);
-    grps = NULL;
 }
 
 static void
 test_container_elem(void **state)
 {
-    const char *data;
-    struct lysp_node *siblings = NULL;
-    struct tree_node_meta node_meta = {NULL, &siblings};
+    const char *yin_data;
+    struct lys_module *mod = NULL;
     struct lysp_node_container *parsed = NULL;
-
-    /* max subelems */
-    PARSER_CUR_PMOD(YCTX)->version = LYS_VERSION_1_1;
-    data = ELEMENT_WRAPPER_START
-            "<container name=\"cont-name\">\n"
-            "    <anydata name=\"anyd\"/>\n"
-            "    <anyxml name=\"anyx\"/>\n"
-            "    <config value=\"true\"/>\n"
-            "    <container name=\"subcont\"/>\n"
-            "    <description><text>desc</text></description>\n"
-            "    <grouping name=\"sub-grp\"/>\n"
-            "    <if-feature name=\"iff\"/>\n"
-            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
-            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
-            "    <list name=\"list\"/>\n"
-            "    <must condition=\"cond\"/>\n"
-            "    <notification name=\"notf\"/>\n"
-            "    <presence value=\"presence\"/>\n"
-            "    <reference><text>ref</text></reference>\n"
-            "    <status value=\"current\"/>\n"
-            "    <typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
-            "    <uses name=\"uses-name\"/>\n"
-            "    <when condition=\"when-cond\"/>\n"
-            "    <action name=\"act\"/>\n"
-            "    <choice name=\"choice\"/>\n"
-            EXT_SUBELEM
-            "</container>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_SUCCESS);
-    parsed = (struct lysp_node_container *)siblings;
     uint16_t flags = LYS_CONFIG_W | LYS_STATUS_CURR;
 
+    /* max subelems */
+    yin_data =
+            "<module name=\"cont-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:cont1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:cont1\"/>"
+            "  <prefix value=\"c1\"/>"
+            "  <extension name=\"c-define\">"
+            "    <argument name=\"name\"/>"
+            "  </extension>"
+            "  <feature name=\"iff\"/>"
+            "  <leaf name=\"cond\"><type name=\"string\"/></leaf>"
+            "  <leaf name=\"when-cond\"><type name=\"string\"/></leaf>"
+            "  <container name=\"cont-name\">"
+            "    <anydata name=\"anyd\"/>"
+            "    <anyxml name=\"anyx\"/>"
+            "    <config value=\"true\"/>"
+            "    <container name=\"subcont\"/>"
+            "    <description><text>desc</text></description>"
+            "    <grouping name=\"grp\"/>"
+            "    <if-feature name=\"iff\"/>"
+            "    <leaf name=\"leaf\"> <type name=\"string\"/> </leaf>"
+            "    <leaf-list name=\"llist\"> <type name=\"string\"/> </leaf-list>"
+            "    <list name=\"list\"><config value=\"false\"/></list>"
+            "    <must condition=\"cond\"/>"
+            "    <notification name=\"notf\"/>"
+            "    <presence value=\"presence\"/>"
+            "    <reference><text>ref</text></reference>"
+            "    <status value=\"current\"/>"
+            "    <typedef name=\"tpdf\"> <type name=\"string\"/> </typedef>"
+            "    <uses name=\"grp\"/>"
+            "    <when condition=\"when-cond\"/>"
+            "    <action name=\"act\"/>"
+            "    <choice name=\"choice\"/>"
+            EXT_SUBELEM
+            "  </container>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+
+    parsed = (struct lysp_node_container *)mod->parsed->data;
+    while (parsed && strcmp(parsed->name, "cont-name") != 0) {
+        parsed = (struct lysp_node_container *)parsed->next;
+    }
+
     CHECK_LYSP_NODE(parsed, "desc", 1, flags, 1,
-            "cont-name", 0, LYS_CONTAINER, 0, "ref", 1);
+            "cont-name", 0, LYS_CONTAINER, 0, "ref");
+    CHECK_POINTER(((struct lysp_node_leaf *)parsed)->when, 1);
     CHECK_LYSP_RESTR(parsed->musts, "cond", NULL, NULL, NULL, 0, NULL);
     CHECK_LYSP_WHEN(parsed->when, "when-cond", NULL, 0, NULL);
 
     assert_string_equal(parsed->iffeatures[0].str, "iff");
     assert_string_equal(parsed->presence, "presence");
     assert_string_equal(parsed->typedefs->name, "tpdf");
-    assert_string_equal(parsed->groupings->name, "sub-grp");
+    assert_string_equal(parsed->groupings->name, "grp");
     assert_string_equal(parsed->child->name, "anyd");
     assert_int_equal(parsed->child->nodetype, LYS_ANYDATA);
     assert_string_equal(parsed->child->next->name, "anyx");
@@ -2550,63 +2726,83 @@ test_container_elem(void **state)
     assert_int_equal(parsed->child->next->next->next->next->nodetype, LYS_LEAFLIST);
     assert_string_equal(parsed->child->next->next->next->next->next->name, "list");
     assert_int_equal(parsed->child->next->next->next->next->next->nodetype, LYS_LIST);
-    assert_string_equal(parsed->child->next->next->next->next->next->next->name, "uses-name");
+    assert_string_equal(parsed->child->next->next->next->next->next->next->name, "grp");
     assert_int_equal(parsed->child->next->next->next->next->next->next->nodetype, LYS_USES);
     assert_string_equal(parsed->child->next->next->next->next->next->next->next->name, "choice");
     assert_int_equal(parsed->child->next->next->next->next->next->next->next->nodetype, LYS_CHOICE);
     assert_null(parsed->child->next->next->next->next->next->next->next->next);
     assert_string_equal(parsed->notifs->name, "notf");
     assert_string_equal(parsed->actions->name, "act");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_CONTAINER);
-    lysp_node_free(UTEST_LYCTX, siblings);
-    ly_set_erase(&YCTX->tpdfs_nodes, NULL);
-    siblings = NULL;
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_CONTAINER, "MY_MTU");
 
     /* min subelems */
-    data = ELEMENT_WRAPPER_START "<container name=\"cont-name\" />" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_SUCCESS);
-    parsed = (struct lysp_node_container *)siblings;
+    yin_data =
+            "<module name=\"cont-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:cont2\"/>"
+            "  <prefix value=\"c2\"/>"
+            "  <container name=\"cont-name\" />"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    parsed = (struct lysp_node_container *)mod->parsed->data;
     CHECK_LYSP_NODE(parsed, NULL, 0, 0, 0,
-            "cont-name", 0, LYS_CONTAINER, 0, NULL, 0);
-    lysp_node_free(UTEST_LYCTX, siblings);
-    siblings = NULL;
+            "cont-name", 0, LYS_CONTAINER, 0, NULL);
+    CHECK_POINTER(parsed->when, 0);
 }
 
 static void
 test_case_elem(void **state)
 {
-    const char *data;
-    struct lysp_node *siblings = NULL;
-    struct tree_node_meta node_meta = {NULL, &siblings};
+    const char *yin_data;
+    struct lys_module *mod = NULL;
+    struct lysp_node *node = NULL;
     struct lysp_node_case *parsed = NULL;
-
-    /* max subelems */
-    PARSER_CUR_PMOD(YCTX)->version = LYS_VERSION_1_1;
-    data = ELEMENT_WRAPPER_START
-            "<case name=\"case-name\">\n"
-            "    <anydata name=\"anyd\"/>\n"
-            "    <anyxml name=\"anyx\"/>\n"
-            "    <container name=\"subcont\"/>\n"
-            "    <description><text>desc</text></description>\n"
-            "    <if-feature name=\"iff\"/>\n"
-            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
-            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
-            "    <list name=\"list\"/>\n"
-            "    <reference><text>ref</text></reference>\n"
-            "    <status value=\"current\"/>\n"
-            "    <uses name=\"uses-name\"/>\n"
-            "    <when condition=\"when-cond\"/>\n"
-            "    <choice name=\"choice\"/>\n"
-            EXT_SUBELEM
-            "</case>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_SUCCESS);
-    parsed = (struct lysp_node_case *)siblings;
     uint16_t flags = LYS_STATUS_CURR;
 
+    /* max subelems */
+    yin_data =
+            "<module name=\"case-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:case1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:case1\"/>"
+            "  <prefix value=\"c1\"/>"
+            "  <extension name=\"c-define\">"
+            "    <argument name=\"name\"/>"
+            "  </extension>"
+            "  <feature name=\"iff\"/>"
+            "  <grouping name=\"uses-name\"/>"
+            "  <leaf name=\"cond\"><type name=\"string\"/></leaf>"
+            "  <choice name=\"ch\">"
+            "    <case name=\"case-name\">"
+            "      <anydata name=\"anyd\"/>"
+            "      <anyxml name=\"anyx\"/>"
+            "      <container name=\"subcont\"/>"
+            "      <description><text>desc</text></description>"
+            "      <if-feature name=\"iff\"/>"
+            "      <leaf name=\"leaf\"> <type name=\"string\"/> </leaf>"
+            "      <leaf-list name=\"llist\"> <type name=\"string\"/> </leaf-list>"
+            "      <list name=\"list\"><config value=\"false\"/></list>"
+            "      <reference><text>ref</text></reference>"
+            "      <status value=\"current\"/>"
+            "      <uses name=\"uses-name\"/>"
+            "      <when condition=\"/c1:cond\"/>"
+            "      <choice name=\"choice\"/>"
+            EXT_SUBELEM
+            "    </case>"
+            "  </choice>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+
+    node = mod->parsed->data;
+    while (node && strcmp(node->name, "ch") != 0) {
+        node = node->next;
+    }
+    parsed = (struct lysp_node_case *)((struct lysp_node_choice *)node)->child;
+
     CHECK_LYSP_NODE(parsed, "desc", 1, flags, 1,
-            "case-name", 0, LYS_CASE, 0, "ref", 1);
-    CHECK_LYSP_WHEN(parsed->when, "when-cond", NULL, 0, NULL);
+            "case-name", 0, LYS_CASE, 1, "ref");
+    CHECK_POINTER(((struct lysp_node_leaf *)parsed)->when, 1);
+    CHECK_LYSP_WHEN(parsed->when, "/c1:cond", NULL, 0, NULL);
     assert_string_equal(parsed->iffeatures[0].str, "iff");
     assert_string_equal(parsed->child->name, "anyd");
     assert_int_equal(parsed->child->nodetype, LYS_ANYDATA);
@@ -2625,58 +2821,80 @@ test_case_elem(void **state)
     assert_string_equal(parsed->child->next->next->next->next->next->next->next->name, "choice");
     assert_int_equal(parsed->child->next->next->next->next->next->next->next->nodetype, LYS_CHOICE);
     assert_null(parsed->child->next->next->next->next->next->next->next->next);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_CASE);
-    lysp_node_free(UTEST_LYCTX, siblings);
-    siblings = NULL;
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_CASE, "MY_MTU");
 
     /* min subelems */
-    data = ELEMENT_WRAPPER_START "<case name=\"case-name\" />" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_SUCCESS);
-    parsed = (struct lysp_node_case *)siblings;
+    yin_data =
+            "<module name=\"case-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:case2\"/>"
+            "  <prefix value=\"c2\"/>"
+            "  <choice name=\"ch\">"
+            "    <case name=\"case-name\"/>"
+            "  </choice>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    parsed = (struct lysp_node_case *)((struct lysp_node_choice *)mod->parsed->data)->child;
     CHECK_LYSP_NODE(parsed, NULL, 0, 0, 0,
-            "case-name", 0, LYS_CASE, 0, NULL, 0);
-    lysp_node_free(UTEST_LYCTX, siblings);
-    siblings = NULL;
+            "case-name", 0, LYS_CASE, 1, NULL);
+    CHECK_POINTER(((struct lysp_node_leaf *)parsed)->when, 0);
 }
 
 static void
 test_choice_elem(void **state)
 {
-    const char *data;
-    struct lysp_node *siblings = NULL;
-    struct tree_node_meta node_meta = {NULL, &siblings};
+    const char *yin_data;
+    struct lys_module *mod = NULL;
+    struct lysp_node *node = NULL;
     struct lysp_node_choice *parsed = NULL;
-
-    /* max subelems */
-    PARSER_CUR_PMOD(YCTX)->version = LYS_VERSION_1_1;
-    data = ELEMENT_WRAPPER_START
-            "<choice name=\"choice-name\">\n"
-            "    <anydata name=\"anyd\"/>\n"
-            "    <anyxml name=\"anyx\"/>\n"
-            "    <case name=\"sub-case\"/>\n"
-            "    <choice name=\"choice\"/>\n"
-            "    <config value=\"true\"/>\n"
-            "    <container name=\"subcont\"/>\n"
-            "    <default value=\"def\"/>\n"
-            "    <description><text>desc</text></description>\n"
-            "    <if-feature name=\"iff\"/>\n"
-            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
-            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
-            "    <list name=\"list\"/>\n"
-            "    <mandatory value=\"true\" />\n"
-            "    <reference><text>ref</text></reference>\n"
-            "    <status value=\"current\"/>\n"
-            "    <when condition=\"when-cond\"/>\n"
-            EXT_SUBELEM
-            "</choice>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_SUCCESS);
-    parsed = (struct lysp_node_choice *)siblings;
     uint16_t flags = LYS_CONFIG_W | LYS_MAND_TRUE | LYS_STATUS_CURR;
 
-    CHECK_LYSP_NODE(parsed, "desc", 1, flags, 1,
-            "choice-name", 0, LYS_CHOICE, 0, "ref", 1);
-    CHECK_LYSP_WHEN(parsed->when, "when-cond", NULL, 0, NULL);
+    /* max subelems */
+    yin_data =
+            "<module name=\"ch-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:ch1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:ch1\"/>"
+            "  <prefix value=\"ch1\"/>"
+            "  <extension name=\"c-define\">"
+            "    <argument name=\"name\"/>"
+            "  </extension>"
+            "  <feature name=\"iff\"/>"
+            "  <leaf name=\"cond\"><type name=\"string\"/></leaf>"
+            "  <choice name=\"choice-name\">"
+            "    <anydata name=\"anyd\"/>"
+            "    <anyxml name=\"anyx\"/>"
+            "    <case name=\"sub-case\"/>"
+            "    <choice name=\"choice\"/>"
+            "    <config value=\"true\"/>"
+            "    <container name=\"subcont\"/>"
+            "    <description><text>desc</text></description>"
+            "    <if-feature name=\"iff\"/>"
+            "    <leaf name=\"leaf\"> <type name=\"string\"/> </leaf>"
+            "    <leaf-list name=\"llist\"> <type name=\"string\"/> </leaf-list>"
+            "    <list name=\"list\"><config value=\"false\"/></list>"
+            "    <mandatory value=\"true\" />"
+            "    <reference><text>ref</text></reference>"
+            "    <status value=\"current\"/>"
+            "    <when condition=\"/ch1:cond\"/>"
+            EXT_SUBELEM
+            "  </choice>"
+            "  <choice name=\"choice2\">"
+            "    <case name=\"sub-case\"/>"
+            "    <default value=\"sub-case\"/>"
+            "  </choice>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+
+    node = mod->parsed->data;
+    while (node && strcmp(node->name, "choice-name") != 0) {
+        node = node->next;
+    }
+    parsed = (struct lysp_node_choice *)node;
+
+    CHECK_LYSP_NODE(parsed, "desc", 1, flags, 1, "choice-name", 1, LYS_CHOICE, 0, "ref");
+    CHECK_POINTER(((struct lysp_node_leaf *)parsed)->when, 1);
+    CHECK_LYSP_WHEN(parsed->when, "/ch1:cond", NULL, 0, NULL);
     assert_string_equal(parsed->iffeatures[0].str, "iff");
     assert_string_equal(parsed->child->name, "anyd");
     assert_int_equal(parsed->child->nodetype, LYS_ANYDATA);
@@ -2695,402 +2913,514 @@ test_choice_elem(void **state)
     assert_string_equal(parsed->child->next->next->next->next->next->next->next->name, "list");
     assert_int_equal(parsed->child->next->next->next->next->next->next->next->nodetype, LYS_LIST);
     assert_null(parsed->child->next->next->next->next->next->next->next->next);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_CHOICE);
-    lysp_node_free(UTEST_LYCTX, siblings);
-    siblings = NULL;
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_CHOICE, "MY_MTU");
+
+    parsed = (struct lysp_node_choice *)parsed->next;
+    assert_string_equal(parsed->name, "choice2");
+    assert_string_equal(parsed->dflt.str, "sub-case");
 
     /* min subelems */
-    data = ELEMENT_WRAPPER_START "<choice name=\"choice-name\" />" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &node_meta, NULL, NULL), LY_SUCCESS);
-    parsed = (struct lysp_node_choice *)siblings;
+    yin_data =
+            "<module name=\"ch-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:ch2\"/>"
+            "  <prefix value=\"ch2\"/>"
+            "  <choice name=\"choice-name\" />"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    parsed = (struct lysp_node_choice *)mod->parsed->data;
     assert_string_equal(parsed->name, "choice-name");
-    CHECK_LYSP_NODE(parsed, NULL, 0, 0, 0,
-            "choice-name", 0, LYS_CHOICE, 0, NULL, 0);
-    lysp_node_free(UTEST_LYCTX, siblings);
-    siblings = NULL;
+    CHECK_LYSP_NODE(parsed, NULL, 0, 0, 0, "choice-name", 0, LYS_CHOICE, 0, NULL);
+    CHECK_POINTER(((struct lysp_node_leaf *)parsed)->when, 0);
 }
 
 static void
 test_inout_elem(void **state)
 {
-    const char *data;
-    struct lysp_node_action_inout inout = {0};
-    struct inout_meta inout_meta = {NULL, &inout};
+    const char *yin_data;
+    struct lys_module *mod = NULL;
+    struct lysp_node_action *rpc = NULL;
+    struct lysp_node_action_inout *inout = NULL;
 
     /* max subelements */
-    PARSER_CUR_PMOD(YCTX)->version = LYS_VERSION_1_1;
-    data = ELEMENT_WRAPPER_START
-            "<input>\n"
-            "    <anydata name=\"anyd\"/>\n"
-            "    <anyxml name=\"anyx\"/>\n"
-            "    <choice name=\"choice\"/>\n"
-            "    <container name=\"subcont\"/>\n"
-            "    <grouping name=\"sub-grp\"/>\n"
-            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
-            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
-            "    <list name=\"list\"/>\n"
-            "    <must condition=\"cond\"/>\n"
-            "    <typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
-            "    <uses name=\"uses-name\"/>\n"
+    yin_data =
+            "<module name=\"io-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:io1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:io1\"/>"
+            "  <prefix value=\"io1\"/>"
+            "  <extension name=\"c-define\">"
+            "    <argument name=\"name\"/>"
+            "  </extension>"
+            "  <grouping name=\"uses-name\"/>"
+            "  <leaf name=\"cond\"><type name=\"string\"/></leaf>"
+            "  <rpc name=\"my-rpc\">"
+            "    <input>"
+            "      <anydata name=\"anyd\"/>"
+            "      <anyxml name=\"anyx\"/>"
+            "      <choice name=\"choice\"/>"
+            "      <container name=\"subcont\"/>"
+            "      <grouping name=\"sub-grp\"/>"
+            "      <leaf name=\"leaf\"> <type name=\"string\"/> </leaf>"
+            "      <leaf-list name=\"llist\"> <type name=\"string\"/> </leaf-list>"
+            "      <list name=\"list\"/>"
+            "      <must condition=\"/io1:cond\"/>"
+            "      <typedef name=\"tpdf\"> <type name=\"string\"/> </typedef>"
+            "      <uses name=\"uses-name\"/>"
             EXT_SUBELEM
-            "</input>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &inout_meta, NULL, NULL), LY_SUCCESS);
-    CHECK_LYSP_ACTION_INOUT(&(inout), 1, 1, 1, 1, LYS_INPUT, 0, 1);
-    CHECK_LYSP_RESTR(inout.musts, "cond", NULL, NULL, NULL, 0, NULL);
-    assert_string_equal(inout.typedefs->name, "tpdf");
-    assert_string_equal(inout.groupings->name, "sub-grp");
-    assert_string_equal(inout.child->name, "anyd");
-    assert_int_equal(inout.child->nodetype, LYS_ANYDATA);
-    assert_string_equal(inout.child->next->name, "anyx");
-    assert_int_equal(inout.child->next->nodetype, LYS_ANYXML);
-    assert_string_equal(inout.child->next->next->name, "choice");
-    assert_int_equal(inout.child->next->next->nodetype, LYS_CHOICE);
-    assert_string_equal(inout.child->next->next->next->name, "subcont");
-    assert_int_equal(inout.child->next->next->next->nodetype, LYS_CONTAINER);
-    assert_string_equal(inout.child->next->next->next->next->name, "leaf");
-    assert_int_equal(inout.child->next->next->next->next->nodetype, LYS_LEAF);
-    assert_string_equal(inout.child->next->next->next->next->next->name, "llist");
-    assert_int_equal(inout.child->next->next->next->next->next->nodetype, LYS_LEAFLIST);
-    assert_string_equal(inout.child->next->next->next->next->next->next->name, "list");
-    assert_int_equal(inout.child->next->next->next->next->next->next->nodetype, LYS_LIST);
-    assert_string_equal(inout.child->next->next->next->next->next->next->next->name, "uses-name");
-    assert_int_equal(inout.child->next->next->next->next->next->next->next->nodetype, LYS_USES);
-    assert_null(inout.child->next->next->next->next->next->next->next->next);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(inout.exts[0]), LY_STMT_INPUT);
-    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)&inout);
-    memset(&inout, 0, sizeof inout);
+            "    </input>"
+            "  </rpc>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    rpc = mod->parsed->rpcs;
+    inout = &rpc->input;
+
+    CHECK_LYSP_ACTION_INOUT(inout, 1, 1, 1, 1, LYS_INPUT, 1, 1);
+    CHECK_LYSP_RESTR(inout->musts, "/io1:cond", NULL, NULL, NULL, 0, NULL);
+    assert_string_equal(inout->typedefs->name, "tpdf");
+    assert_string_equal(inout->groupings->name, "sub-grp");
+    assert_string_equal(inout->child->name, "anyd");
+    assert_int_equal(inout->child->nodetype, LYS_ANYDATA);
+    assert_string_equal(inout->child->next->name, "anyx");
+    assert_int_equal(inout->child->next->nodetype, LYS_ANYXML);
+    assert_string_equal(inout->child->next->next->name, "choice");
+    assert_int_equal(inout->child->next->next->nodetype, LYS_CHOICE);
+    assert_string_equal(inout->child->next->next->next->name, "subcont");
+    assert_int_equal(inout->child->next->next->next->nodetype, LYS_CONTAINER);
+    assert_string_equal(inout->child->next->next->next->next->name, "leaf");
+    assert_int_equal(inout->child->next->next->next->next->nodetype, LYS_LEAF);
+    assert_string_equal(inout->child->next->next->next->next->next->name, "llist");
+    assert_int_equal(inout->child->next->next->next->next->next->nodetype, LYS_LEAFLIST);
+    assert_string_equal(inout->child->next->next->next->next->next->next->name, "list");
+    assert_int_equal(inout->child->next->next->next->next->next->next->nodetype, LYS_LIST);
+    assert_string_equal(inout->child->next->next->next->next->next->next->next->name, "uses-name");
+    assert_int_equal(inout->child->next->next->next->next->next->next->next->nodetype, LYS_USES);
+    assert_null(inout->child->next->next->next->next->next->next->next->next);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(inout->exts[0]), LY_STMT_INPUT, "MY_MTU");
 
     /* max subelements */
-    PARSER_CUR_PMOD(YCTX)->version = LYS_VERSION_1_1;
-    data = ELEMENT_WRAPPER_START
-            "<output>\n"
-            "    <anydata name=\"anyd\"/>\n"
-            "    <anyxml name=\"anyx\"/>\n"
-            "    <choice name=\"choice\"/>\n"
-            "    <container name=\"subcont\"/>\n"
-            "    <grouping name=\"sub-grp\"/>\n"
-            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
-            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
-            "    <list name=\"list\"/>\n"
-            "    <must condition=\"cond\"/>\n"
-            "    <typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
-            "    <uses name=\"uses-name\"/>\n"
+    yin_data =
+            "<module name=\"io-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:io2\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:io2\"/>"
+            "  <prefix value=\"io2\"/>"
+            "  <extension name=\"c-define\">"
+            "    <argument name=\"name\"/>"
+            "  </extension>"
+            "  <grouping name=\"uses-name\"/>"
+            "  <leaf name=\"cond\"><type name=\"string\"/></leaf>"
+            "  <rpc name=\"my-rpc\">"
+            "    <output>"
+            "      <anydata name=\"anyd\"/>"
+            "      <anyxml name=\"anyx\"/>"
+            "      <choice name=\"choice\"/>"
+            "      <container name=\"subcont\"/>"
+            "      <grouping name=\"sub-grp\"/>"
+            "      <leaf name=\"leaf\"> <type name=\"string\"/> </leaf>"
+            "      <leaf-list name=\"llist\"> <type name=\"string\"/> </leaf-list>"
+            "      <list name=\"list\"/>"
+            "      <must condition=\"/io2:cond\"/>"
+            "      <typedef name=\"tpdf\"> <type name=\"string\"/> </typedef>"
+            "      <uses name=\"uses-name\"/>"
             EXT_SUBELEM
-            "</output>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &inout_meta, NULL, NULL), LY_SUCCESS);
-    CHECK_LYSP_ACTION_INOUT(&(inout), 1, 1, 1, 1, LYS_OUTPUT, 0, 1);
-    assert_string_equal(inout.musts->arg.str, "cond");
-    assert_string_equal(inout.typedefs->name, "tpdf");
-    assert_string_equal(inout.groupings->name, "sub-grp");
-    assert_string_equal(inout.child->name, "anyd");
-    assert_int_equal(inout.child->nodetype, LYS_ANYDATA);
-    assert_string_equal(inout.child->next->name, "anyx");
-    assert_int_equal(inout.child->next->nodetype, LYS_ANYXML);
-    assert_string_equal(inout.child->next->next->name, "choice");
-    assert_int_equal(inout.child->next->next->nodetype, LYS_CHOICE);
-    assert_string_equal(inout.child->next->next->next->name, "subcont");
-    assert_int_equal(inout.child->next->next->next->nodetype, LYS_CONTAINER);
-    assert_string_equal(inout.child->next->next->next->next->name, "leaf");
-    assert_int_equal(inout.child->next->next->next->next->nodetype, LYS_LEAF);
-    assert_string_equal(inout.child->next->next->next->next->next->name, "llist");
-    assert_int_equal(inout.child->next->next->next->next->next->nodetype, LYS_LEAFLIST);
-    assert_string_equal(inout.child->next->next->next->next->next->next->name, "list");
-    assert_int_equal(inout.child->next->next->next->next->next->next->nodetype, LYS_LIST);
-    assert_string_equal(inout.child->next->next->next->next->next->next->next->name, "uses-name");
-    assert_int_equal(inout.child->next->next->next->next->next->next->next->nodetype, LYS_USES);
-    assert_null(inout.child->next->next->next->next->next->next->next->next);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(inout.exts[0]), LY_STMT_OUTPUT);
-    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)&inout);
-    memset(&inout, 0, sizeof inout);
+            "    </output>"
+            "  </rpc>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    rpc = mod->parsed->rpcs;
+    inout = &rpc->output;
+
+    CHECK_LYSP_ACTION_INOUT(inout, 1, 1, 1, 1, LYS_OUTPUT, 1, 1);
+    assert_string_equal(inout->musts->arg.str, "/io2:cond");
+    assert_string_equal(inout->typedefs->name, "tpdf");
+    assert_string_equal(inout->groupings->name, "sub-grp");
+    assert_string_equal(inout->child->name, "anyd");
+    assert_int_equal(inout->child->nodetype, LYS_ANYDATA);
+    assert_string_equal(inout->child->next->name, "anyx");
+    assert_int_equal(inout->child->next->nodetype, LYS_ANYXML);
+    assert_string_equal(inout->child->next->next->name, "choice");
+    assert_int_equal(inout->child->next->next->nodetype, LYS_CHOICE);
+    assert_string_equal(inout->child->next->next->next->name, "subcont");
+    assert_int_equal(inout->child->next->next->next->nodetype, LYS_CONTAINER);
+    assert_string_equal(inout->child->next->next->next->next->name, "leaf");
+    assert_int_equal(inout->child->next->next->next->next->nodetype, LYS_LEAF);
+    assert_string_equal(inout->child->next->next->next->next->next->name, "llist");
+    assert_int_equal(inout->child->next->next->next->next->next->nodetype, LYS_LEAFLIST);
+    assert_string_equal(inout->child->next->next->next->next->next->next->name, "list");
+    assert_int_equal(inout->child->next->next->next->next->next->next->nodetype, LYS_LIST);
+    assert_string_equal(inout->child->next->next->next->next->next->next->next->name, "uses-name");
+    assert_int_equal(inout->child->next->next->next->next->next->next->next->nodetype, LYS_USES);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(inout->exts[0]), LY_STMT_OUTPUT, "MY_MTU");
 
     /* min subelems */
-    data = ELEMENT_WRAPPER_START "<input><leaf name=\"l\"><type name=\"empty\"/></leaf></input>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &inout_meta, NULL, NULL), LY_SUCCESS);
-    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)&inout);
-    memset(&inout, 0, sizeof inout);
+    yin_data =
+            "<module name=\"io-mod3\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:io3\"/>"
+            "  <prefix value=\"i3\"/>"
+            "  <rpc name=\"act\">"
+            "    <input><leaf name=\"l\"><type name=\"empty\"/></leaf></input>"
+            "  </rpc>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
 
-    data = ELEMENT_WRAPPER_START "<output><leaf name=\"l\"><type name=\"empty\"/></leaf></output>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &inout_meta, NULL, NULL), LY_SUCCESS);
-    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)&inout);
-    memset(&inout, 0, sizeof inout);
+    yin_data =
+            "<module name=\"io-mod4\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:io4\"/>"
+            "  <prefix value=\"i4\"/>"
+            "  <rpc name=\"act\">"
+            "    <output><leaf name=\"l\"><type name=\"empty\"/></leaf></output>"
+            "  </rpc>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
 
     /* invalid combinations */
-    data = ELEMENT_WRAPPER_START "<input name=\"test\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &inout_meta, NULL, NULL), LY_EVALID);
-    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)&inout);
+    yin_data =
+            "<module name=\"io-mod5\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:io5\"/>"
+            "  <prefix value=\"i5\"/>"
+            "  <rpc name=\"act\">"
+            "    <input name=\"test\"/>"
+            "  </rpc>"
+            "</module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"io-mod5\" failed.", NULL, 0);
     CHECK_LOG_CTX("Unexpected attribute \"name\" of \"input\" element.", NULL, 1);
-    memset(&inout, 0, sizeof inout);
 }
 
 static void
 test_action_elem(void **state)
 {
-    const char *data;
+    const char *yin_data;
+    struct lys_module *mod = NULL;
     struct lysp_node_action *actions = NULL;
-    struct tree_node_meta act_meta = {NULL, (struct lysp_node **)&actions};
-    uint16_t flags;
+    struct lysp_node_container *cont = NULL;
+    uint16_t flags = LYS_STATUS_DEPRC;
 
     /* max subelems */
-    PARSER_CUR_PMOD(YCTX)->version = LYS_VERSION_1_1;
-    data = ELEMENT_WRAPPER_START
-            "<action name=\"act\">\n"
-            "    <description><text>desc</text></description>\n"
-            "    <grouping name=\"grouping\"/>\n"
-            "    <if-feature name=\"iff\"/>\n"
-            "    <input><uses name=\"uses-name\"/></input>\n"
-            "    <output><must condition=\"cond\"/><leaf name=\"l\"><type name=\"type\"/></leaf></output>\n"
-            "    <reference><text>ref</text></reference>\n"
-            "    <status value=\"deprecated\"/>\n"
-            "    <typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
+    yin_data =
+            "<module name=\"act-mod1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:act1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:act1\"/>"
+            "  <prefix value=\"a1\"/>"
+            "  <extension name=\"c-define\">"
+            "    <argument name=\"name\"/>"
+            "  </extension>"
+            "  <feature name=\"iff\"/>"
+            "  <grouping name=\"uses-name\"/>"
+            "  <leaf name=\"cond\"><type name=\"string\"/></leaf>"
+            "  <container name=\"c\">"
+            "    <action name=\"act\">"
+            "      <description><text>desc</text></description>"
+            "      <grouping name=\"grouping\"/>"
+            "      <if-feature name=\"iff\"/>"
+            "      <input><uses name=\"uses-name\"/></input>"
+            "      <output><must condition=\"/a1:cond\"/><leaf name=\"l\"><type name=\"string\"/></leaf></output>"
+            "      <reference><text>ref</text></reference>"
+            "      <status value=\"deprecated\"/>"
+            "      <typedef name=\"tpdf\"> <type name=\"string\"/> </typedef>"
             EXT_SUBELEM
-            "</action>"
-            ELEMENT_WRAPPER_END;
-    /* there must be parent for action */
-    act_meta.parent = (void *)1;
-    assert_int_equal(test_element_helper(state, data, &act_meta, NULL, NULL), LY_SUCCESS);
-    act_meta.parent = NULL;
-    flags = LYS_STATUS_DEPRC;
-    CHECK_LYSP_ACTION(actions, "desc", 1, flags, 1, 1,\
-            1, 0, 0, 0,\
-            1, 0,\
-            "act", LYS_ACTION, \
-            1, 0, 0, 1,\
-            1, 0,\
-            1, "ref", 1);
-
+            "    </action>"
+            "  </container>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    cont = (struct lysp_node_container *)mod->parsed->data;
+    while (cont && strcmp(cont->name, "c") != 0) {
+        cont = (struct lysp_node_container *)cont->next;
+    }
+    actions = cont->actions;
+    CHECK_LYSP_ACTION(actions, "desc", 1, flags, 1, 1, 1, 0, 0, 0, 1, 0,
+            "act", LYS_ACTION, 1, 0, 0, 1, 1, 0, 1, "ref", 1);
     assert_string_equal(actions->iffeatures[0].str, "iff");
     assert_string_equal(actions->typedefs->name, "tpdf");
     assert_string_equal(actions->groupings->name, "grouping");
-    assert_string_equal(actions->output.musts->arg.str, "cond");
+    assert_string_equal(actions->output.musts->arg.str, "/a1:cond");
     assert_string_equal(actions->input.child->name, "uses-name");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(actions->exts[0]), LY_STMT_ACTION);
-    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)actions);
-    actions = NULL;
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(actions->exts[0]), LY_STMT_ACTION, "MY_MTU");
 
-    PARSER_CUR_PMOD(YCTX)->version = LYS_VERSION_1_1;
-    data = ELEMENT_WRAPPER_START
-            "<rpc name=\"act\">\n"
-            "    <description><text>desc</text></description>\n"
-            "    <grouping name=\"grouping\"/>\n"
-            "    <if-feature name=\"iff\"/>\n"
-            "    <input><uses name=\"uses-name\"/></input>\n"
-            "    <output><must condition=\"cond\"/><leaf name=\"l\"><type name=\"type\"/></leaf></output>\n"
-            "    <reference><text>ref</text></reference>\n"
-            "    <status value=\"deprecated\"/>\n"
-            "    <typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
+    yin_data =
+            "<module name=\"act-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:act2\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:act2\"/>"
+            "  <prefix value=\"a2\"/>"
+            "  <extension name=\"c-define\">"
+            "    <argument name=\"name\"/>"
+            "  </extension>"
+            "  <feature name=\"iff\"/>"
+            "  <grouping name=\"uses-name\"/>"
+            "  <leaf name=\"cond\"><type name=\"string\"/></leaf>"
+            "  <rpc name=\"act\">"
+            "    <description><text>desc</text></description>"
+            "    <grouping name=\"grouping\"/>"
+            "    <if-feature name=\"iff\"/>"
+            "    <input><uses name=\"uses-name\"/></input>"
+            "    <output><must condition=\"/a2:cond\"/><leaf name=\"l\"><type name=\"string\"/></leaf></output>"
+            "    <reference><text>ref</text></reference>"
+            "    <status value=\"deprecated\"/>"
+            "    <typedef name=\"tpdf\"> <type name=\"string\"/> </typedef>"
             EXT_SUBELEM
-            "</rpc>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &act_meta, NULL, NULL), LY_SUCCESS);
-    flags = LYS_STATUS_DEPRC;
-    CHECK_LYSP_ACTION(actions, "desc", 1, flags, 1, 1,\
-            1, 0, 0, 0,\
-            1, 0,\
-            "act", LYS_RPC, \
-            1, 0, 0, 1,\
-            1, 0,\
-            0, "ref", 1);
-
+            "  </rpc>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    actions = mod->parsed->rpcs;
+    CHECK_LYSP_ACTION(actions, "desc", 1, flags, 1, 1, 1, 0, 0, 0, 1, 0, "act", LYS_RPC, 1, 0, 0, 1, 1, 0, 0, "ref", 1);
     assert_string_equal(actions->iffeatures[0].str, "iff");
     assert_string_equal(actions->typedefs->name, "tpdf");
     assert_string_equal(actions->groupings->name, "grouping");
     assert_string_equal(actions->input.child->name, "uses-name");
-    assert_string_equal(actions->output.musts->arg.str, "cond");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(actions->exts[0]), LY_STMT_RPC);
-    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)actions);
-    actions = NULL;
+    assert_string_equal(actions->output.musts->arg.str, "/a2:cond");
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(actions->exts[0]), LY_STMT_RPC, "MY_MTU");
 
     /* min subelems */
-    data = ELEMENT_WRAPPER_START "<action name=\"act\" />" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &act_meta, NULL, NULL), LY_SUCCESS);
+    yin_data =
+            "<module name=\"act-mod4\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:act4\"/>"
+            "  <prefix value=\"a4\"/>"
+            "  <container name=\"c\">"
+            "    <action name=\"act\" />"
+            "  </container>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    cont = (struct lysp_node_container *)mod->parsed->data;
+    actions = cont->actions;
     assert_string_equal(actions->name, "act");
-    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)actions);
-    actions = NULL;
 }
 
 static void
 test_augment_elem(void **state)
 {
-    const char *data;
+    const char *yin_data;
+    struct lys_module *mod = NULL;
     struct lysp_node_augment *augments = NULL;
-    struct tree_node_meta aug_meta = {NULL, (struct lysp_node **)&augments};
 
-    PARSER_CUR_PMOD(YCTX)->version = LYS_VERSION_1_1;
-    data = ELEMENT_WRAPPER_START
-            "<augment target-node=\"target\">\n"
-            "    <action name=\"action\"/>\n"
-            "    <anydata name=\"anyd\"/>\n"
-            "    <anyxml name=\"anyx\"/>\n"
-            "    <case name=\"case\"/>\n"
-            "    <choice name=\"choice\"/>\n"
-            "    <container name=\"subcont\"/>\n"
-            "    <description><text>desc</text></description>\n"
-            "    <if-feature name=\"iff\"/>\n"
-            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
-            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
-            "    <list name=\"list\"/>\n"
-            "    <notification name=\"notif\"/>\n"
-            "    <reference><text>ref</text></reference>\n"
-            "    <status value=\"current\"/>\n"
-            "    <uses name=\"uses\"/>\n"
-            "    <when condition=\"when-cond\"/>\n"
+    yin_data =
+            "<module name=\"aug-mod-test\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"urn:aug-test\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:aug-test\"/>"
+            "  <prefix value=\"aug-test\"/>"
+            "  <extension name=\"c-define\">"
+            "    <argument name=\"name\"/>"
+            "  </extension>"
+            "  <feature name=\"iff\"/>"
+            "  <grouping name=\"uses\"/>"
+            "  <leaf name=\"when-cond\">"
+            "    <type name=\"string\"/>"
+            "  </leaf>"
+            "  <container name=\"target\"/>"
+            "  <augment target-node=\"/aug-test:target\">"
+            "    <action name=\"action\"/>"
+            "    <anydata name=\"anyd\"/>"
+            "    <anyxml name=\"anyx\"/>"
+            "    <choice name=\"choice\">"
+            "       <case name=\"case\"/>"
+            "    </choice>"
+            "    <container name=\"subcont\"/>"
+            "    <description><text>desc</text></description>"
+            "    <if-feature name=\"iff\"/>"
+            "    <leaf name=\"leaf\"> <type name=\"string\"/> </leaf>"
+            "    <leaf-list name=\"llist\"> <type name=\"string\"/> </leaf-list>"
+            "    <list name=\"list\"> <config value=\"false\"/> </list>"
+            "    <notification name=\"notif\"/>"
+            "    <reference><text>ref</text></reference>"
+            "    <status value=\"current\"/>"
+            "    <uses name=\"uses\"/>"
+            "    <when condition=\"/aug-test:when-cond\"/>"
             EXT_SUBELEM
-            "</augment>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &aug_meta, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(augments->nodeid, "target");
+            "  </augment>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+
+    augments = mod->parsed->augments;
+
+    assert_string_equal(augments->nodeid, "/aug-test:target");
     assert_null(augments->parent);
     assert_int_equal(augments->nodetype, LYS_AUGMENT);
     assert_true(augments->flags & LYS_STATUS_CURR);
     assert_string_equal(augments->dsc, "desc");
     assert_string_equal(augments->ref, "ref");
-    assert_string_equal(augments->when->cond, "when-cond");
+    assert_string_equal(augments->when->cond, "/aug-test:when-cond");
     assert_string_equal(augments->iffeatures[0].str, "iff");
     assert_string_equal(augments->child->name, "anyd");
     assert_int_equal(augments->child->nodetype, LYS_ANYDATA);
     assert_string_equal(augments->child->next->name, "anyx");
     assert_int_equal(augments->child->next->nodetype, LYS_ANYXML);
-    assert_string_equal(augments->child->next->next->name, "case");
-    assert_int_equal(augments->child->next->next->nodetype, LYS_CASE);
-    assert_string_equal(augments->child->next->next->next->name, "choice");
-    assert_int_equal(augments->child->next->next->next->nodetype, LYS_CHOICE);
-    assert_string_equal(augments->child->next->next->next->next->name, "subcont");
-    assert_int_equal(augments->child->next->next->next->next->nodetype, LYS_CONTAINER);
-    assert_string_equal(augments->child->next->next->next->next->next->name, "leaf");
-    assert_int_equal(augments->child->next->next->next->next->next->nodetype, LYS_LEAF);
-    assert_string_equal(augments->child->next->next->next->next->next->next->name, "llist");
-    assert_int_equal(augments->child->next->next->next->next->next->next->nodetype, LYS_LEAFLIST);
-    assert_string_equal(augments->child->next->next->next->next->next->next->next->name, "list");
-    assert_int_equal(augments->child->next->next->next->next->next->next->next->nodetype, LYS_LIST);
-    assert_string_equal(augments->child->next->next->next->next->next->next->next->next->name, "uses");
-    assert_int_equal(augments->child->next->next->next->next->next->next->next->next->nodetype, LYS_USES);
-    assert_null(augments->child->next->next->next->next->next->next->next->next->next);
+    assert_string_equal(augments->child->next->next->name, "choice");
+    assert_int_equal(augments->child->next->next->nodetype, LYS_CHOICE);
+    assert_string_equal(((struct lysp_node_choice *)augments->child->next->next)->child->name, "case");
+    assert_int_equal(((struct lysp_node_choice *)augments->child->next->next)->child->nodetype, LYS_CASE);
+    assert_string_equal(augments->child->next->next->next->name, "subcont");
+    assert_int_equal(augments->child->next->next->next->nodetype, LYS_CONTAINER);
+    assert_string_equal(augments->child->next->next->next->next->name, "leaf");
+    assert_int_equal(augments->child->next->next->next->next->nodetype, LYS_LEAF);
+    assert_string_equal(augments->child->next->next->next->next->next->name, "llist");
+    assert_int_equal(augments->child->next->next->next->next->next->nodetype, LYS_LEAFLIST);
+    assert_string_equal(augments->child->next->next->next->next->next->next->name, "list");
+    assert_int_equal(augments->child->next->next->next->next->next->next->nodetype, LYS_LIST);
+    assert_string_equal(augments->child->next->next->next->next->next->next->next->name, "uses");
+    assert_int_equal(augments->child->next->next->next->next->next->next->next->nodetype, LYS_USES);
+    assert_null(augments->child->next->next->next->next->next->next->next->next);
     assert_string_equal(augments->actions->name, "action");
     assert_string_equal(augments->notifs->name, "notif");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(augments->exts[0]), LY_STMT_AUGMENT);
-    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)augments);
-    augments = NULL;
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(augments->exts[0]), LY_STMT_AUGMENT, "MY_MTU");
 
-    data = ELEMENT_WRAPPER_START "<augment target-node=\"target\" />" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &aug_meta, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(augments->nodeid, "target");
-    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)augments);
-    augments = NULL;
+    /* min subelems */
+    yin_data =
+            "<module name=\"aug-mod2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:aug2\"/>"
+            "  <prefix value=\"a2\"/>"
+            "  <container name=\"target\"/>"
+            "  <augment target-node=\"/a2:target\" />"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    augments = mod->parsed->augments;
+    assert_string_equal(augments->nodeid, "/a2:target");
 }
 
 static void
 test_deviate_elem(void **state)
 {
-    const char *data;
-    struct lysp_deviate *deviates = NULL;
+    const char *yin_data;
 
     /* invalid arguments */
-    data = ELEMENT_WRAPPER_START "<deviate value=\"\" />" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &deviates, NULL, NULL), LY_EVALID);
+    yin_data =
+            "<module name=\"dev-mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:dev1\"/><prefix value=\"d1\"/>"
+            "  <container name=\"target\"/>"
+            "  <deviation target-node=\"/d1:target\"><deviate value=\"\" /></deviation>"
+            "</module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"dev-mod\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"\" of \"value\" attribute in \"deviate\" element. "
             "Valid values are \"not-supported\", \"add\", \"replace\" and \"delete\".", NULL, 1);
-    deviates = NULL;
-
-    data = ELEMENT_WRAPPER_START "<deviate value=\"invalid\" />" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &deviates, NULL, NULL), LY_EVALID);
+    yin_data =
+            "<module name=\"dev-mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:dev2\"/><prefix value=\"d2\"/>"
+            "  <container name=\"target\"/>"
+            "  <deviation target-node=\"/d2:target\"><deviate value=\"invalid\" /></deviation>"
+            "</module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"dev-mod\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"invalid\" of \"value\" attribute in \"deviate\" element. "
             "Valid values are \"not-supported\", \"add\", \"replace\" and \"delete\".", NULL, 1);
-    deviates = NULL;
-
-    data = ELEMENT_WRAPPER_START "<deviate value=\"ad\" />" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &deviates, NULL, NULL), LY_EVALID);
+    yin_data =
+            "<module name=\"dev-mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:dev3\"/><prefix value=\"d3\"/>"
+            "  <container name=\"target\"/>"
+            "  <deviation target-node=\"/d3:target\"><deviate value=\"ad\" /></deviation>"
+            "</module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"dev-mod\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"ad\" of \"value\" attribute in \"deviate\" element. "
             "Valid values are \"not-supported\", \"add\", \"replace\" and \"delete\".", NULL, 1);
-    deviates = NULL;
 
-    data = ELEMENT_WRAPPER_START "<deviate value=\"adds\" />" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &deviates, NULL, NULL), LY_EVALID);
+    yin_data =
+            "<module name=\"dev-mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:dev4\"/><prefix value=\"d4\"/>"
+            "  <container name=\"target\"/>"
+            "  <deviation target-node=\"/d4:target\"><deviate value=\"adds\" /></deviation>"
+            "</module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"dev-mod\" failed.", NULL, 0);
     CHECK_LOG_CTX("Invalid value \"adds\" of \"value\" attribute in \"deviate\" element. "
             "Valid values are \"not-supported\", \"add\", \"replace\" and \"delete\".", NULL, 1);
-    deviates = NULL;
-
-    data = ELEMENT_WRAPPER_START
-            "<deviate value=\"not-supported\">\n"
-            "    <must condition=\"c\"/>\n"
-            "</deviate>"
-            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &deviates, NULL, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Deviate of this type doesn't allow \"must\" as it's sub-element.", NULL, 2);
+    yin_data =
+            "<module name=\"dev-mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:dev5\"/><prefix value=\"d5\"/>"
+            "  <container name=\"target\"/>"
+            "  <deviation target-node=\"/d5:target\">"
+            "    <deviate value=\"not-supported\">"
+            "      <must condition=\"c\"/>"
+            "    </deviate>"
+            "  </deviation>"
+            "</module>";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"dev-mod\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Deviate of this type doesn't allow \"must\" as it's sub-element.", NULL, 1);
 }
 
 static void
 test_deviation_elem(void **state)
 {
-    const char *data;
-    struct lysp_deviation *deviations = NULL;
+    const char *yin_data;
 
     /* invalid */
-    data = ELEMENT_WRAPPER_START "<deviation target-node=\"target\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(state, data, &deviations, NULL, NULL), LY_EVALID);
+    yin_data =
+            "<module name=\"dev\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:dev6\"/>"
+            "  <prefix value=\"d6\"/>"
+            "  <container name=\"target\"/>"
+            "  <deviation target-node=\"/d6:target\"/>"
+            "</module>";
+
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"dev\" failed.", NULL, 0);
     CHECK_LOG_CTX("Missing mandatory sub-element \"deviate\" of \"deviation\" element.", NULL, 1);
-}
-
-static struct lysp_module *
-mod_renew(struct lysp_yin_ctx *ctx)
-{
-    struct ly_ctx *ly_ctx = PARSER_CUR_PMOD(ctx)->mod->ctx;
-    struct lysp_module *pmod;
-
-    lys_module_free(ly_ctx, PARSER_CUR_PMOD(ctx)->mod, 0);
-    pmod = calloc(1, sizeof *pmod);
-    ctx->parsed_mods->objs[0] = pmod;
-    pmod->mod = calloc(1, sizeof *pmod->mod);
-    pmod->mod->parsed = pmod;
-    pmod->mod->ctx = ly_ctx;
-
-    return pmod;
 }
 
 static void
 test_module_elem(void **state)
 {
-    const char *data;
-    struct lysp_module *lysp_mod = mod_renew(YCTX);
+    const char *yin_data;
+    struct lys_module *mod = NULL;
+    struct lysp_module *lysp_mod = NULL;
+    const char *a_mod =
+            "<module name=\"a-mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:a-mod\"/>"
+            "  <prefix value=\"a\"/>"
+            "</module>";
+    char *b_mod =
+            "<submodule name=\"b-mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <belongs-to module=\"mod\">"
+            "    <prefix value=\"pref\"/>"
+            "  </belongs-to>"
+            "</submodule>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, a_mod, LYS_IN_YIN, NULL));
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, b_mod);
 
     /* max subelems */
-    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"mod\">\n"
-            "    <yang-version value=\"1.1\"/>\n"
-            "    <namespace uri=\"ns\"/>\n"
-            "    <prefix value=\"pref\"/>\n"
-            "    <include module=\"b-mod\"/>\n"
-            "    <import module=\"a-mod\"><prefix value=\"imp-pref\"/></import>\n"
-            "    <organization><text>org</text></organization>\n"
-            "    <contact><text>contact</text></contact>\n"
-            "    <description><text>desc</text></description>\n"
-            "    <reference><text>ref</text></reference>\n"
-            "    <revision date=\"2019-02-02\"/>\n"
-            "    <anydata name=\"anyd\"/>\n"
-            "    <anyxml name=\"anyx\"/>\n"
-            "    <choice name=\"choice\"/>\n"
-            "    <container name=\"cont\"/>\n"
-            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
-            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
-            "    <list name=\"sub-list\"/>\n"
-            "    <uses name=\"uses-name\"/>\n"
-            "    <augment target-node=\"target\"/>\n"
-            "    <deviation target-node=\"target\">\n"
-            "        <deviate value=\"not-supported\"/>\n"
-            "    </deviation>\n"
-            "    <extension name=\"ext\"/>\n"
-            "    <feature name=\"feature\"/>\n"
-            "    <grouping name=\"grp\"/>\n"
-            "    <identity name=\"ident-name\"/>\n"
-            "    <notification name=\"notf\"/>\n"
-            "    <rpc name=\"rpc-name\"/>\n"
-            "    <typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
-            EXT_SUBELEM "\n"
-            "</module>\n";
-    assert_int_equal(ly_in_new_memory(data, &UTEST_IN), LY_SUCCESS);
-    assert_int_equal(lyxml_ctx_new(UTEST_LYCTX, UTEST_IN, &YCTX->xmlctx), LY_SUCCESS);
+    yin_data =
+            "<module name=\"mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"ns\">"
+            "    <yang-version value=\"1.1\"/>"
+            "    <namespace uri=\"ns\"/>"
+            "    <prefix value=\"pref\"/>"
+            "    <include module=\"b-mod\"/>"
+            "    <import module=\"a-mod\"><prefix value=\"imp-pref\"/></import>"
+            "    <organization><text>org</text></organization>"
+            "    <contact><text>contact</text></contact>"
+            "    <description><text>desc</text></description>"
+            "    <reference><text>ref</text></reference>"
+            "    <revision date=\"2019-02-02\"/>"
+            "    <extension name=\"c-define\">"
+            "      <argument name=\"name\"/>"
+            "    </extension>"
+            "    <feature name=\"feature\"/>"
+            "    <identity name=\"ident-name\"/>"
+            "    <typedef name=\"tpdf\"> <type name=\"string\"/> </typedef>"
+            "    <grouping name=\"uses-name\"/>"
+            "    <anydata name=\"anyd\"/>"
+            "    <anyxml name=\"anyx\"/>"
+            "    <choice name=\"choice\"/>"
+            "    <container name=\"cont\"/>"
+            "    <leaf name=\"leaf\"> <type name=\"string\"/> </leaf>"
+            "    <leaf-list name=\"llist\"> <type name=\"string\"/> </leaf-list>"
+            "    <list name=\"sub-list\"><config value=\"false\"/></list>"
+            "    <uses name=\"uses-name\"/>"
+            "    <augment target-node=\"/pref:cont\"/>"
+            "    <deviation target-node=\"/pref:cont\">"
+            "        <deviate value=\"not-supported\"/>"
+            "    </deviation>"
+            "    <notification name=\"notf\"/>"
+            "    <rpc name=\"rpc-name\"/>"
+            "    " EXT_SUBELEM ""
+            "</module>";
 
-    assert_int_equal(yin_parse_mod(YCTX, lysp_mod), LY_SUCCESS);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    lysp_mod = mod->parsed;
+
     assert_string_equal(lysp_mod->mod->name, "mod");
     assert_string_equal(lysp_mod->revs[0].date, "2019-02-02");
     assert_string_equal(lysp_mod->mod->ns, "ns");
@@ -3101,14 +3431,13 @@ test_module_elem(void **state)
     assert_string_equal(lysp_mod->mod->dsc, "desc");
     assert_string_equal(lysp_mod->mod->ref, "ref");
     assert_int_equal(lysp_mod->version, LYS_VERSION_1_1);
-    CHECK_LYSP_IMPORT(lysp_mod->imports, NULL, 0, "a-mod",
-            "imp-pref", NULL, "");
+    CHECK_LYSP_IMPORT(lysp_mod->imports, NULL, 0, "a-mod", "imp-pref", NULL, "");
     assert_string_equal(lysp_mod->includes->name, "b-mod");
-    assert_string_equal(lysp_mod->extensions->name, "ext");
+    assert_string_equal(lysp_mod->extensions->name, "c-define");
     assert_string_equal(lysp_mod->features->name, "feature");
     assert_string_equal(lysp_mod->identities->name, "ident-name");
     assert_string_equal(lysp_mod->typedefs->name, "tpdf");
-    assert_string_equal(lysp_mod->groupings->name, "grp");
+    assert_string_equal(lysp_mod->groupings->name, "uses-name");
     assert_string_equal(lysp_mod->data->name, "anyd");
     assert_int_equal(lysp_mod->data->nodetype, LYS_ANYDATA);
     assert_string_equal(lysp_mod->data->next->name, "anyx");
@@ -3126,105 +3455,102 @@ test_module_elem(void **state)
     assert_string_equal(lysp_mod->data->next->next->next->next->next->next->next->name, "uses-name");
     assert_int_equal(lysp_mod->data->next->next->next->next->next->next->next->nodetype, LYS_USES);
     assert_null(lysp_mod->data->next->next->next->next->next->next->next->next);
-    assert_string_equal(lysp_mod->augments->nodeid, "target");
+    assert_string_equal(lysp_mod->augments->nodeid, "/pref:cont");
     assert_string_equal(lysp_mod->rpcs->name, "rpc-name");
     assert_string_equal(lysp_mod->notifs->name, "notf");
-    assert_string_equal(lysp_mod->deviations->nodeid, "target");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(lysp_mod->exts[0]), LY_STMT_MODULE);
+    assert_string_equal(lysp_mod->deviations->nodeid, "/pref:cont");
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(lysp_mod->exts[0]), LY_STMT_MODULE, "MY_MTU");
 
     /* min subelems */
-    ly_in_free(UTEST_IN, 0);
-    lyxml_ctx_free(YCTX->xmlctx);
-    lysp_mod = mod_renew(YCTX);
-    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"mod\">\n"
-            "    <namespace uri=\"ns\"/>\n"
-            "    <prefix value=\"pref\"/>\n"
-            "    <yang-version value=\"1.1\"/>\n"
+    yin_data =
+            "<module name=\"mod-min\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "    <namespace uri=\"ns2\"/>"
+            "    <prefix value=\"pref2\"/>"
+            "    <yang-version value=\"1.1\"/>"
             "</module>";
-    assert_int_equal(ly_in_new_memory(data, &UTEST_IN), LY_SUCCESS);
-    assert_int_equal(lyxml_ctx_new(UTEST_LYCTX, UTEST_IN, &YCTX->xmlctx), LY_SUCCESS);
-    assert_int_equal(yin_parse_mod(YCTX, lysp_mod), LY_SUCCESS);
-    assert_string_equal(lysp_mod->mod->name, "mod");
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    lysp_mod = mod->parsed;
+    assert_string_equal(lysp_mod->mod->name, "mod-min");
 
     /* incorrect subelem order */
-    ly_in_free(UTEST_IN, 0);
-    lyxml_ctx_free(YCTX->xmlctx);
-    lysp_mod = mod_renew(YCTX);
-    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"mod\">\n"
-            "    <feature name=\"feature\"/>\n"
-            "    <namespace uri=\"ns\"/>\n"
-            "    <prefix value=\"pref\"/>\n"
-            "    <yang-version value=\"1.1\"/>\n"
+    yin_data =
+            "<module name=\"mod-inv\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "    <feature name=\"feature\"/>"
+            "    <namespace uri=\"ns3\"/>"
+            "    <prefix value=\"pref3\"/>"
+            "    <yang-version value=\"1.1\"/>"
             "</module>";
-    assert_int_equal(ly_in_new_memory(data, &UTEST_IN), LY_SUCCESS);
-    assert_int_equal(lyxml_ctx_new(UTEST_LYCTX, UTEST_IN, &YCTX->xmlctx), LY_SUCCESS);
-    assert_int_equal(yin_parse_mod(YCTX, lysp_mod), LY_EVALID);
-    CHECK_LOG_CTX("Invalid order of module\'s sub-elements \"namespace\" can\'t appear after \"feature\".", NULL, 3);
-}
 
-static struct lysp_submodule *
-submod_renew(struct lysp_yin_ctx *ctx, const char *belongs_to)
-{
-    struct ly_ctx *ly_ctx = PARSER_CUR_PMOD(ctx)->mod->ctx;
-    struct lysp_submodule *submod;
-
-    lys_module_free(ly_ctx, PARSER_CUR_PMOD(ctx)->mod, 0);
-    submod = calloc(1, sizeof *submod);
-    ctx->parsed_mods->objs[0] = submod;
-    submod->mod = calloc(1, sizeof *submod->mod);
-    lysdict_insert(ly_ctx, belongs_to, 0, &submod->mod->name);
-    submod->mod->parsed = (struct lysp_module *)submod;
-    submod->mod->ctx = ly_ctx;
-
-    return submod;
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"mod-inv\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Invalid order of module\'s sub-elements \"namespace\" can\'t appear after \"feature\".", NULL, 1);
 }
 
 static void
 test_submodule_elem(void **state)
 {
-    const char *data;
-    struct lysp_submodule *lysp_submod = submod_renew(YCTX, "module-name");
+    char *yin_data;
+    const char *parent_data;
+    struct lys_module *mod = NULL;
+    struct lysp_submodule *lysp_submod = NULL;
+    const char *a_mod =
+            "<module name=\"a-mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:a-mod\"/>"
+            "  <prefix value=\"a\"/>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, a_mod, LYS_IN_YIN, NULL));
 
     /* max subelements */
-    data = "<submodule xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"mod\">\n"
-            "    <yang-version value=\"1.1\"/>\n"
-            "    <belongs-to module=\"module-name\">\n"
-            "        <prefix value=\"pref\"/>\n"
-            "    </belongs-to>\n"
-            "    <include module=\"b-mod\"/>\n"
-            "    <import module=\"a-mod\"><prefix value=\"imp-pref\"/></import>\n"
-            "    <organization><text>org</text></organization>\n"
-            "    <contact><text>contact</text></contact>\n"
-            "    <description><text>desc</text></description>\n"
-            "    <reference><text>ref</text></reference>\n"
-            "    <revision date=\"2019-02-02\"/>\n"
-            "    <anydata name=\"anyd\"/>\n"
-            "    <anyxml name=\"anyx\"/>\n"
-            "    <choice name=\"choice\"/>\n"
-            "    <container name=\"cont\"/>\n"
-            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
-            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
-            "    <list name=\"sub-list\"/>\n"
-            "    <uses name=\"uses-name\"/>\n"
-            "    <augment target-node=\"target\"/>\n"
-            "    <deviation target-node=\"target\">\n"
-            "        <deviate value=\"not-supported\"/>\n"
-            "    </deviation>\n"
-            "    <extension name=\"ext\"/>\n"
-            "    <feature name=\"feature\"/>\n"
-            "    <grouping name=\"grp\"/>\n"
-            "    <identity name=\"ident-name\"/>\n"
-            "    <notification name=\"notf\"/>\n"
-            "    <rpc name=\"rpc-name\"/>\n"
-            "    <typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
-            EXT_SUBELEM "\n"
-            "</submodule>\n";
-    assert_int_equal(ly_in_new_memory(data, &UTEST_IN), LY_SUCCESS);
-    assert_int_equal(lyxml_ctx_new(UTEST_LYCTX, UTEST_IN, &YCTX->xmlctx), LY_SUCCESS);
+    yin_data =
+            "<submodule name=\"mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"ns\">"
+            "    <yang-version value=\"1.1\"/>"
+            "    <belongs-to module=\"parent\">"
+            "        <prefix value=\"pref\"/>"
+            "    </belongs-to>"
+            "    <import module=\"a-mod\"><prefix value=\"imp-pref\"/></import>"
+            "    <organization><text>org</text></organization>"
+            "    <contact><text>contact</text></contact>"
+            "    <description><text>desc</text></description>"
+            "    <reference><text>ref</text></reference>"
+            "    <revision date=\"2019-02-02\"/>"
+            "    <extension name=\"ext\"/>"
+            "    <extension name=\"c-define\">"
+            "      <argument name=\"name\"/>"
+            "    </extension>"
+            "    <feature name=\"feature\"/>"
+            "    <grouping name=\"grp\"/>"
+            "    <grouping name=\"uses-name\"/>"
+            "    <identity name=\"ident-name\"/>"
+            "    <typedef name=\"tpdf\"> <type name=\"string\"/> </typedef>"
+            "    <anydata name=\"anyd\"/>"
+            "    <anyxml name=\"anyx\"/>"
+            "    <choice name=\"choice\"/>"
+            "    <container name=\"cont\"/>"
+            "    <leaf name=\"leaf\"> <type name=\"string\"/> </leaf>"
+            "    <leaf-list name=\"llist\"> <type name=\"string\"/> </leaf-list>"
+            "    <list name=\"sub-list\"><config value=\"false\"/></list>"
+            "    <uses name=\"uses-name\"/>"
+            "    <augment target-node=\"/pref:cont\"/>"
+            "    <deviation target-node=\"/pref:cont\">"
+            "        <deviate value=\"not-supported\"/>"
+            "    </deviation>"
+            "    <notification name=\"notf\"/>"
+            "    <rpc name=\"rpc-name\"/>"
+            "    " EXT_SUBELEM ""
+            "</submodule>";
 
-    assert_int_equal(yin_parse_submod(YCTX, lysp_submod), LY_SUCCESS);
-    CHECK_LOG_CTX("YANG version 1.1 expects all includes in main module, includes in submodules (mod) are not necessary.",
-            NULL, 0);
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, yin_data);
+    parent_data =
+            "<module name=\"parent\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:myext=\"ns\">"
+            "  <namespace uri=\"ns\"/>"
+            "  <prefix value=\"pref\"/>"
+            "  <include module=\"mod\"/>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, parent_data, LYS_IN_YIN, &mod));
+    lysp_submod = mod->parsed->includes[0].submodule;
     assert_string_equal(lysp_submod->name, "mod");
     assert_string_equal(lysp_submod->revs[0].date, "2019-02-02");
     assert_string_equal(lysp_submod->prefix, "pref");
@@ -3234,9 +3560,7 @@ test_submodule_elem(void **state)
     assert_string_equal(lysp_submod->dsc, "desc");
     assert_string_equal(lysp_submod->ref, "ref");
     assert_int_equal(lysp_submod->version, LYS_VERSION_1_1);
-    CHECK_LYSP_IMPORT(lysp_submod->imports, NULL, 0, "a-mod",
-            "imp-pref", NULL, "");
-    assert_string_equal(lysp_submod->includes->name, "b-mod");
+    CHECK_LYSP_IMPORT(lysp_submod->imports, NULL, 0, "a-mod", "imp-pref", NULL, "");
     assert_string_equal(lysp_submod->extensions->name, "ext");
     assert_string_equal(lysp_submod->features->name, "feature");
     assert_string_equal(lysp_submod->identities->name, "ident-name");
@@ -3259,254 +3583,239 @@ test_submodule_elem(void **state)
     assert_string_equal(lysp_submod->data->next->next->next->next->next->next->next->name, "uses-name");
     assert_int_equal(lysp_submod->data->next->next->next->next->next->next->next->nodetype, LYS_USES);
     assert_null(lysp_submod->data->next->next->next->next->next->next->next->next);
-    assert_string_equal(lysp_submod->augments->nodeid, "target");
+    assert_string_equal(lysp_submod->augments->nodeid, "/pref:cont");
     assert_string_equal(lysp_submod->rpcs->name, "rpc-name");
     assert_string_equal(lysp_submod->notifs->name, "notf");
-    assert_string_equal(lysp_submod->deviations->nodeid, "target");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(lysp_submod->exts[0]), LY_STMT_SUBMODULE);
+    assert_string_equal(lysp_submod->deviations->nodeid, "/pref:cont");
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(lysp_submod->exts[0]), LY_STMT_SUBMODULE, "MY_MTU");
 
-    /* min subelemnts */
-    ly_in_free(UTEST_IN, 0);
-    lyxml_ctx_free(YCTX->xmlctx);
-    lysp_submod = submod_renew(YCTX, "module-name");
-    data = "<submodule xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"submod\">\n"
-            "    <yang-version value=\"1\"/>\n"
-            "    <belongs-to module=\"module-name\"><prefix value=\"pref\"/></belongs-to>\n"
+    /* min subelements */
+    yin_data =
+            "<submodule name=\"submod-min\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "    <yang-version value=\"1\"/>"
+            "    <belongs-to module=\"parent2\"><prefix value=\"pref\"/></belongs-to>"
             "</submodule>";
-    assert_int_equal(ly_in_new_memory(data, &UTEST_IN), LY_SUCCESS);
-    assert_int_equal(lyxml_ctx_new(UTEST_LYCTX, UTEST_IN, &YCTX->xmlctx), LY_SUCCESS);
-    assert_int_equal(yin_parse_submod(YCTX, lysp_submod), LY_SUCCESS);
+
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, yin_data);
+
+    parent_data =
+            "<module name=\"parent2\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"ns2\"/>"
+            "  <prefix value=\"pref2\"/>"
+            "  <include module=\"submod-min\"/>"
+            "</module>";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, parent_data, LYS_IN_YIN, &mod));
+    lysp_submod = mod->parsed->includes[0].submodule;
+
     assert_string_equal(lysp_submod->prefix, "pref");
     assert_int_equal(lysp_submod->version, LYS_VERSION_1_0);
 
     /* incorrect subelem order */
-    ly_in_free(UTEST_IN, 0);
-    lyxml_ctx_free(YCTX->xmlctx);
-    lysp_submod = submod_renew(YCTX, "module-name");
-    data = "<submodule xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"submod\">\n"
-            "    <yang-version value=\"1\"/>\n"
-            "    <reference><text>ref</text></reference>\n"
-            "    <belongs-to module=\"module-name\"><prefix value=\"pref\"/></belongs-to>\n"
+    yin_data =
+            "<submodule name=\"submod-inv\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "    <yang-version value=\"1\"/>"
+            "    <reference><text>ref</text></reference>"
+            "    <belongs-to module=\"parent3\"><prefix value=\"pref\"/></belongs-to>"
             "</submodule>";
-    assert_int_equal(ly_in_new_memory(data, &UTEST_IN), LY_SUCCESS);
-    assert_int_equal(lyxml_ctx_new(UTEST_LYCTX, UTEST_IN, &YCTX->xmlctx), LY_SUCCESS);
-    assert_int_equal(yin_parse_submod(YCTX, lysp_submod), LY_EVALID);
-    CHECK_LOG_CTX("Invalid order of submodule's sub-elements \"belongs-to\" can't appear after \"reference\".", NULL, 4);
+
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, (void *)yin_data);
+
+    parent_data =
+            "<module name=\"parent3\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"ns3\"/>"
+            "  <prefix value=\"pref3\"/>"
+            "  <include module=\"submod-inv\"/>"
+            "</module>";
+
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, parent_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"parent3\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Parsing submodule \"submod-inv\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Invalid order of submodule's sub-elements \"belongs-to\" can't appear after \"reference\".", NULL, 1);
 }
 
 static void
 test_yin_parse_module(void **state)
 {
-    const char *data;
-    struct lys_module *mod;
-    struct lysp_yin_ctx *yin_ctx = NULL;
-    struct ly_in *in = NULL;
+    const char *yin_data;
+    struct lys_module *mod = NULL;
+    const char *ext_mod =
+            "<module name=\"example-extensions\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:example:extensions\"/>"
+            "  <prefix value=\"myext\"/>"
+            "  <extension name=\"c-define\"><argument name=\"name\"/></extension>"
+            "</module>";
 
-    mod = calloc(1, sizeof *mod);
-    mod->ctx = UTEST_LYCTX;
-    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"a\"> \n"
-            "    <yang-version value=\"1.1\"/>\n"
-            "    <namespace uri=\"urn:tests:extensions:metadata:a\"/>\n"
-            "    <prefix value=\"a\"/>\n"
-            "    <import module=\"ietf-yang-metadata\">\n"
-            "        <prefix value=\"md\"/>\n"
-            "    </import>\n"
-            "    <feature name=\"f\"/>\n"
-            "    <md:annotation name=\"x\">\n"
-            "        <description>\n"
-            "            <text>test</text>\n"
-            "        </description>\n"
-            "        <reference>\n"
-            "            <text>test</text>\n"
-            "        </reference>\n"
-            "        <if-feature name=\"f\"/>\n"
-            "        <status value=\"current\"/>\n"
-            "        <type name=\"uint8\"/>\n"
-            "        <units name=\"meters\"/>\n"
-            "    </md:annotation>\n"
-            "</module>\n";
-    assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_SUCCESS);
-    assert_null(mod->parsed->exts->child->next->child);
-    assert_string_equal(mod->parsed->exts->child->next->arg, "test");
-    lys_module_free(UTEST_LYCTX, mod, 0);
-    lysp_yin_ctx_free(yin_ctx);
-    ly_in_free(in, 0);
-    mod = NULL;
-    yin_ctx = NULL;
+    yin_data =
+            "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"a\"> "
+            "    <yang-version value=\"1.1\"/>"
+            "    <namespace uri=\"urn:tests:extensions:metadata:a\"/>"
+            "    <prefix value=\"a\"/>"
+            "    <import module=\"ietf-yang-metadata\">"
+            "        <prefix value=\"md\"/>"
+            "    </import>"
+            "    <feature name=\"f\"/>"
+            "    <md:annotation name=\"x\">"
+            "        <description>"
+            "            <text>test</text>"
+            "        </description>"
+            "        <reference>"
+            "            <text>test</text>"
+            "        </reference>"
+            "        <if-feature name=\"f\"/>"
+            "        <status value=\"current\"/>"
+            "        <type name=\"uint8\"/>"
+            "        <units name=\"meters\"/>"
+            "    </md:annotation>"
+            "</module>";
 
-    mod = calloc(1, sizeof *mod);
-    mod->ctx = UTEST_LYCTX;
-    data = "<module name=\"example-foo\""
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+    assert_null(mod->parsed->exts[0].child->next->child);
+    assert_string_equal(mod->parsed->exts[0].child->next->arg, "test");
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, ext_mod, LYS_IN_YIN, NULL));
+
+    yin_data =
+            "<module name=\"example-foo\""
             "    xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\""
             "    xmlns:foo=\"urn:example:foo\""
-            "    xmlns:myext=\"urn:example:extensions\">\n"
+            "    xmlns:myext=\"urn:example:extensions\">"
+            "    <yang-version value=\"1\"/>"
+            "    <namespace uri=\"urn:example:foo\"/>"
+            "    <prefix value=\"foo\"/>"
+            "    <import module=\"example-extensions\">"
+            "        <prefix value=\"myext\"/>"
+            "    </import>"
+            "    <list name=\"interface\">"
+            "        <key value=\"name\"/>"
+            "        <leaf name=\"name\">"
+            "            <type name=\"string\"/>"
+            "        </leaf>"
+            "        <leaf name=\"mtu\">"
+            "            <type name=\"uint32\"/>"
+            "            <description>"
+            "                <text>The MTU of the interface.</text>"
+            "            </description>"
+            "            <myext:c-define name=\"MY_MTU\"/>"
+            "        </leaf>"
+            "    </list>"
+            "</module>";
 
-            "    <yang-version value=\"1\"/>\n"
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
 
-            "    <namespace uri=\"urn:example:foo\"/>\n"
-            "    <prefix value=\"foo\"/>\n"
+    yin_data =
+            "<module name=\"example-foo-min\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "    <yang-version value=\"1\"/>"
+            "    <namespace uri=\"urn:example:foo-min\"/>"
+            "    <prefix value=\"foo-min\"/>"
+            "</module>";
 
-            "    <import module=\"example-extensions\">\n"
-            "        <prefix value=\"myext\"/>\n"
-            "    </import>\n"
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
 
-            "    <list name=\"interface\">\n"
-            "        <key value=\"name\"/>\n"
-            "        <leaf name=\"name\">\n"
-            "            <type name=\"string\"/>\n"
-            "        </leaf>\n"
-            "        <leaf name=\"mtu\">\n"
-            "            <type name=\"uint32\"/>\n"
-            "            <description>\n"
-            "                <text>The MTU of the interface.</text>\n"
-            "            </description>\n"
-            "            <myext:c-define name=\"MY_MTU\"/>\n"
-            "        </leaf>\n"
-            "    </list>\n"
-            "</module>\n";
-    assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_SUCCESS);
-    lys_module_free(UTEST_LYCTX, mod, 0);
-    lysp_yin_ctx_free(yin_ctx);
-    ly_in_free(in, 0);
-    mod = NULL;
-    yin_ctx = NULL;
+    yin_data = "<submodule name=\"example-foo-sub\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"></submodule>";
 
-    mod = calloc(1, sizeof *mod);
-    mod->ctx = UTEST_LYCTX;
-    data = "<module name=\"example-foo\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
-            "    <yang-version value=\"1\"/>\n"
-            "    <namespace uri=\"urn:example:foo\"/>\n"
-            "    <prefix value=\"foo\"/>\n"
-            "</module>\n";
-    assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_SUCCESS);
-    lys_module_free(UTEST_LYCTX, mod, 0);
-    lysp_yin_ctx_free(yin_ctx);
-    ly_in_free(in, 0);
-    mod = NULL;
-    yin_ctx = NULL;
-
-    mod = calloc(1, sizeof *mod);
-    mod->ctx = UTEST_LYCTX;
-    data = "<submodule name=\"example-foo\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
-            "</submodule>\n";
-    assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_EINVAL);
+    assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
     CHECK_LOG_CTX("Input data contains submodule which cannot be parsed directly without its main module.", NULL, 0);
-    lys_module_free(UTEST_LYCTX, mod, 0);
-    lysp_yin_ctx_free(yin_ctx);
-    ly_in_free(in, 0);
 
-    mod = calloc(1, sizeof *mod);
-    mod->ctx = UTEST_LYCTX;
-    data = "<module name=\"example-foo\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
-            "    <yang-version value=\"1\"/>\n"
-            "    <namespace uri=\"urn:example:foo\"/>\n"
-            "    <prefix value=\"foo\"/>\n"
-            "</module>\n"
+    yin_data =
+            "<module name=\"example-foo-garb\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "    <yang-version value=\"1\"/>"
+            "    <namespace uri=\"urn:example:foo-garb\"/>"
+            "    <prefix value=\"foo-garb\"/>"
+            "</module>"
             "<module>";
-    assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_EVALID);
-    CHECK_LOG_CTX("Trailing garbage \"<module>\" after module, expected end-of-input.", NULL, 6);
-    lys_module_free(UTEST_LYCTX, mod, 0);
-    lysp_yin_ctx_free(yin_ctx);
-    ly_in_free(in, 0);
-    mod = NULL;
-    yin_ctx = NULL;
+
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+    CHECK_LOG_CTX("Parsing module \"example-foo-garb\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Trailing garbage \"<module>\" after module, expected end-of-input.", NULL, 1);
 }
 
 static void
 test_yin_parse_submodule(void **state)
 {
-    const char *data;
-    struct lysp_yin_ctx *yin_ctx = NULL;
-    struct lysp_submodule *submod = NULL;
-    struct ly_in *in;
+    struct lys_module *mod;
+    char *yin_data;
+    const char *mod_a =
+            "<module name=\"a\""
+            "    xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\""
+            "    xmlns:a=\"urn:a\">"
+            "    <yang-version value=\"1\"/>"
+            "    <namespace uri=\"urn:a\"/>"
+            "    <prefix value=\"a\"/>"
+            "    <include module=\"asub\"/>"
+            "    <feature name=\"bar\"/>"
+            "    <container name=\"top\"/>"
+            "</module>";
 
-    lysdict_insert(UTEST_LYCTX, "a", 0, &PARSER_CUR_PMOD(YCTX)->mod->name);
-
-    data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+    yin_data =
             "<submodule name=\"asub\""
             "    xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\""
-            "    xmlns:a=\"urn:a\">\n"
-            "    <yang-version value=\"1\"/>\n"
-            "    <belongs-to module=\"a\">\n"
-            "        <prefix value=\"a_pref\"/>\n"
-            "    </belongs-to>\n"
-            "    <include module=\"atop\"/>\n"
-            "    <feature name=\"fox\"/>\n"
-            "    <notification name=\"bar-notif\">\n"
-            "        <if-feature name=\"bar\"/>\n"
-            "    </notification>\n"
-            "    <notification name=\"fox-notif\">\n"
-            "        <if-feature name=\"fox\"/>\n"
-            "    </notification>\n"
-            "    <augment target-node=\"/a_pref:top\">\n"
-            "        <if-feature name=\"bar\"/>\n"
-            "        <container name=\"bar-sub\"/>\n"
-            "    </augment>\n"
-            "    <augment target-node=\"/top\">\n"
-            "        <container name=\"bar-sub2\"/>\n"
-            "    </augment>\n"
+            "    xmlns:a=\"urn:a\">"
+            "    <yang-version value=\"1\"/>"
+            "    <belongs-to module=\"a\">"
+            "        <prefix value=\"a_pref\"/>"
+            "    </belongs-to>"
+            "    <feature name=\"fox\"/>"
+            "    <notification name=\"bar-notif\">"
+            "        <if-feature name=\"bar\"/>"
+            "    </notification>"
+            "    <notification name=\"fox-notif\">"
+            "        <if-feature name=\"fox\"/>"
+            "    </notification>"
+            "    <augment target-node=\"/a_pref:top\">"
+            "        <if-feature name=\"bar\"/>"
+            "        <container name=\"bar-sub\"/>"
+            "    </augment>"
+            "    <augment target-node=\"/a_pref:top\">"
+            "        <container name=\"bar-sub2\"/>"
+            "    </augment>"
             "</submodule>";
-    assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_submodule(&yin_ctx, UTEST_LYCTX, (struct lysp_ctx *)YCTX, in, &submod), LY_SUCCESS);
-    lysp_module_free(UTEST_LYCTX, (struct lysp_module *)submod);
-    lysp_yin_ctx_free(yin_ctx);
-    ly_in_free(in, 0);
-    yin_ctx = NULL;
-    submod = NULL;
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, yin_data);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, mod_a, LYS_IN_YIN, &mod));
+    UTEST_TEARDOWN;
+    UTEST_SETUP;
 
-    data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-            "<submodule name=\"asub\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
-            "    <yang-version value=\"1\"/>\n"
-            "    <belongs-to module=\"a\">\n"
-            "        <prefix value=\"a_pref\"/>\n"
-            "    </belongs-to>\n"
+    yin_data =
+            "<submodule name=\"asub\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "    <yang-version value=\"1\"/>"
+            "    <belongs-to module=\"a\">"
+            "        <prefix value=\"a_pref\"/>"
+            "    </belongs-to>"
             "</submodule>";
-    assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_submodule(&yin_ctx, UTEST_LYCTX, (struct lysp_ctx *)YCTX, in, &submod), LY_SUCCESS);
-    lysp_module_free(UTEST_LYCTX, (struct lysp_module *)submod);
-    lysp_yin_ctx_free(yin_ctx);
-    ly_in_free(in, 0);
-    yin_ctx = NULL;
-    submod = NULL;
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, yin_data);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, mod_a, LYS_IN_YIN, &mod));
+    UTEST_TEARDOWN;
+    UTEST_SETUP;
 
-    data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+    yin_data =
             "<module name=\"inval\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
             "</module>";
-    assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_submodule(&yin_ctx, UTEST_LYCTX, (struct lysp_ctx *)YCTX, in, &submod), LY_EINVAL);
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, yin_data);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, mod_a, LYS_IN_YIN, &mod), LY_EINVAL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Parsing submodule \"asub\" failed.", NULL, 0);
     CHECK_LOG_CTX("Input data contains module when a submodule is expected.", NULL, 0);
-    lysp_module_free(UTEST_LYCTX, (struct lysp_module *)submod);
-    lysp_yin_ctx_free(yin_ctx);
-    ly_in_free(in, 0);
-    yin_ctx = NULL;
-    submod = NULL;
 
-    data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-            "<submodule name=\"asub\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
-            "    <yang-version value=\"1\"/>\n"
-            "    <belongs-to module=\"a\">\n"
-            "        <prefix value=\"a_pref\"/>\n"
-            "    </belongs-to>\n"
-            "</submodule>\n"
-            "<submodule name=\"asub\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
-            "    <yang-version value=\"1\"/>\n"
-            "    <belongs-to module=\"a\">\n"
-            "        <prefix value=\"a_pref\"/>\n"
-            "    </belongs-to>\n"
+    UTEST_TEARDOWN;
+    UTEST_SETUP;
+
+    yin_data =
+            "<submodule name=\"asub\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "    <yang-version value=\"1\"/>"
+            "    <belongs-to module=\"a\">"
+            "        <prefix value=\"a_pref\"/>"
+            "    </belongs-to>"
+            "</submodule>"
+            "<submodule name=\"asub\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "    <yang-version value=\"1\"/>"
+            "    <belongs-to module=\"a\">"
+            "        <prefix value=\"a_pref\"/>"
+            "    </belongs-to>"
             "</submodule>";
-    assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_submodule(&yin_ctx, UTEST_LYCTX, (struct lysp_ctx *)YCTX, in, &submod), LY_EVALID);
-    CHECK_LOG_CTX("Trailing garbage \"<submodule name...\" after submodule, expected end-of-input.", NULL, 8);
-    lysp_module_free(UTEST_LYCTX, (struct lysp_module *)submod);
-    lysp_yin_ctx_free(yin_ctx);
-    ly_in_free(in, 0);
-    yin_ctx = NULL;
-    submod = NULL;
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, yin_data);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, mod_a, LYS_IN_YIN, &mod), LY_EVALID);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Parsing submodule \"asub\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Trailing garbage \"<submodule name...\" after submodule, expected end-of-input.", NULL, 1);
 }
 
 int
@@ -3514,65 +3823,61 @@ main(void)
 {
 
     const struct CMUnitTest tests[] = {
-        UTEST(test_yin_match_keyword, setup, teardown),
-        UTEST(test_yin_parse_content, setup, teardown),
-        UTEST(test_validate_value, setup, teardown),
+        UTEST(test_yin_match_keyword),
+        UTEST(test_yin_parse_content),
+        UTEST(test_validate_value),
         UTEST(test_valid_module),
         UTEST(test_print_module),
         UTEST(test_print_submodule),
-
-        UTEST(test_yin_match_argument_name),
-        cmocka_unit_test_setup_teardown(test_enum_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_bit_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_status_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_yin_element_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_yangversion_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_argument_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_belongsto_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_config_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_default_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_err_app_tag_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_err_msg_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_fracdigits_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_iffeature_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_length_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_modifier_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_namespace_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_pattern_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_value_position_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_prefix_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_range_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_reqinstance_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_revision_date_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_unique_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_units_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_yin_text_value_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_type_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_max_elems_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_min_elems_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_ordby_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_any_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_leaf_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_leaf_list_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_presence_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_key_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_uses_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_list_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_notification_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_grouping_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_container_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_case_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_choice_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_inout_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_action_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_augment_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_deviate_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_deviation_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_module_elem, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_submodule_elem, setup, teardown),
-
-        cmocka_unit_test_setup_teardown(test_yin_parse_module, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_yin_parse_submodule, setup, teardown),
+        UTEST(test_enum_elem),
+        UTEST(test_bit_elem),
+        UTEST(test_status_elem),
+        UTEST(test_yin_element_elem),
+        UTEST(test_yangversion_elem),
+        UTEST(test_argument_elem),
+        UTEST(test_belongsto_elem),
+        UTEST(test_config_elem),
+        UTEST(test_default_elem),
+        UTEST(test_err_app_tag_elem),
+        UTEST(test_err_msg_elem),
+        UTEST(test_fracdigits_elem),
+        UTEST(test_iffeature_elem),
+        UTEST(test_length_elem),
+        UTEST(test_modifier_elem),
+        UTEST(test_namespace_elem),
+        UTEST(test_pattern_elem),
+        UTEST(test_value_position_elem),
+        UTEST(test_prefix_elem),
+        UTEST(test_range_elem),
+        UTEST(test_reqinstance_elem),
+        UTEST(test_revision_date_elem),
+        UTEST(test_unique_elem),
+        UTEST(test_units_elem),
+        UTEST(test_yin_text_value_elem),
+        UTEST(test_max_elems_elem),
+        UTEST(test_min_elems_elem),
+        UTEST(test_ordby_elem),
+        UTEST(test_any_elem),
+        UTEST(test_leaf_elem),
+        UTEST(test_leaf_list_elem),
+        UTEST(test_presence_elem),
+        UTEST(test_key_elem),
+        UTEST(test_uses_elem),
+        UTEST(test_list_elem),
+        UTEST(test_notification_elem),
+        UTEST(test_grouping_elem),
+        UTEST(test_container_elem),
+        UTEST(test_case_elem),
+        UTEST(test_choice_elem),
+        UTEST(test_inout_elem),
+        UTEST(test_action_elem),
+        UTEST(test_augment_elem),
+        UTEST(test_deviate_elem),
+        UTEST(test_deviation_elem),
+        UTEST(test_module_elem),
+        UTEST(test_submodule_elem),
+        UTEST(test_yin_parse_module),
+        UTEST(test_yin_parse_submodule),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

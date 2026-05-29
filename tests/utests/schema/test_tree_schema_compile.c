@@ -16,12 +16,7 @@
 #include "utests.h"
 
 #include "in.h"
-#include "ly_common.h"
-#include "parser_internal.h"
-#include "path.h"
 #include "plugins_types.h"
-#include "schema_compile.h"
-#include "xpath.h"
 
 static int
 setup(void **state)
@@ -89,15 +84,13 @@ test_module(void **state)
     struct lys_module *mod = NULL;
     struct lysp_feature *f;
     struct lysc_iffeature *iff;
-    struct lys_glob_unres unres = {0};
 
     str = "module test {namespace urn:test; prefix t;"
             "feature f1;feature f2 {if-feature f1;}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
-    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &unres.creating, &mod));
-    lys_unres_glob_erase(&unres);
+    assert_int_equal(LY_SUCCESS, lys_parse(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &mod));
     ly_in_free(in, 0);
-    assert_int_equal(0, mod->implemented);
+    assert_int_equal(1, mod->implemented);
     assert_int_equal(LY_EINVAL, lys_set_implemented(mod, feats));
     CHECK_LOG_CTX("Feature \"invalid\" not found in module \"test@<none>\".", NULL, 0);
     assert_int_equal(LY_SUCCESS, lys_set_implemented(mod, NULL));
@@ -120,8 +113,7 @@ test_module(void **state)
     /* submodules cannot be compiled directly */
     str = "submodule test {belongs-to xxx {prefix x;}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
-    assert_int_equal(LY_EINVAL, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &unres.creating, NULL));
-    lys_unres_glob_erase(&unres);
+    assert_int_equal(LY_EINVAL, lys_parse(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL));
     ly_in_free(in, 0);
     CHECK_LOG_CTX("Input data contains submodule which cannot be parsed directly without its main module.", NULL, 0);
 
@@ -1701,49 +1693,32 @@ test_type_leafref(void **state)
     char *str;
     struct lys_module *mod;
     struct lysc_type *type;
-    const char *path;
-    struct lyxp_expr *expr;
+    char yang[512];
+    size_t i;
+    const char *invalid[] = {
+        "invalid_path",
+        "..",
+        "..[",
+        "../",
+        "/",
+        "../../pref:id/xxx[predicate]/invalid!!!"
+    };
 
-    /* lys_path_parse() */
-    path = "invalid_path";
-    assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
-            LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
-    CHECK_LOG_CTX("Unexpected XPath token \"NameTest\" (\"invalid_path\"), expected \"..\".", NULL, 0);
+    /* 1. Test Invalid Paths */
+    for (i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
+        snprintf(yang, sizeof(yang), "module a {namespace urn:a;prefix a; leaf l { type leafref { path \"%s\"; } } }", invalid[i]);
+        assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, yang, LYS_IN_YANG, NULL));
+        UTEST_LOG_CTX_CLEAN;
+    }
 
-    path = "..";
-    assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
-            LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
-    CHECK_LOG_CTX("Unexpected XPath expression end.", NULL, 0);
+    /* 2. Test Valid Path */
+    const char *valid_yang =
+            "module v {namespace urn:v; prefix prefix;"
+            "  container absolute { leaf path { type string; } }"
+            "  leaf l { type leafref { path \"/absolute/prefix:path\"; } }"
+            "}";
 
-    path = "..[";
-    assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
-            LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
-    CHECK_LOG_CTX("Unexpected XPath token \"[\" (\"[\"), expected \"Operator(Path)\".", NULL, 0);
-
-    path = "../";
-    assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
-            LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
-    CHECK_LOG_CTX("Unexpected XPath expression end.", NULL, 0);
-
-    path = "/";
-    assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
-            LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
-    CHECK_LOG_CTX("Unexpected XPath expression end.", NULL, 0);
-
-    path = "../../pref:id/xxx[predicate]/invalid!!!";
-    assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
-            LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
-    CHECK_LOG_CTX("Invalid character 0x21 ('!'), perhaps \"invalid\" is supposed to be a function call.", NULL, 0);
-
-    path = "/absolute/prefix:path";
-    assert_int_equal(LY_SUCCESS, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
-            LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
-    assert_int_equal(4, expr->used);
-    assert_int_equal(LYXP_TOKEN_OPER_PATH, expr->tokens[0]);
-    assert_int_equal(LYXP_TOKEN_NAMETEST, expr->tokens[1]);
-    assert_int_equal(LYXP_TOKEN_OPER_PATH, expr->tokens[2]);
-    assert_int_equal(LYXP_TOKEN_NAMETEST, expr->tokens[3]);
-    lyxp_expr_free(expr);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, valid_yang, LYS_IN_YANG, NULL));
 
     /* complete leafref paths */
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {yang-version 1.1;namespace urn:a;prefix a;"
@@ -1752,15 +1727,14 @@ test_type_leafref(void **state)
     type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
     assert_non_null(type);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
-    assert_string_equal("/a:target1", ((struct lysc_type_leafref *)type)->path->expr);
-    assert_ptr_equal(mod, ly_resolve_prefix(UTEST_LYCTX, "a", 1, LY_VALUE_SCHEMA_RESOLVED, ((struct lysc_type_leafref *)type)->prefixes));
+    assert_string_equal("/a:target1", lyxp_get_expr(((struct lysc_type_leafref *)type)->path));
     assert_non_null(((struct lysc_type_leafref *)type)->realtype);
     assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_leafref *)type)->realtype->basetype);
     assert_int_equal(1, ((struct lysc_type_leafref *)type)->require_instance);
     type = ((struct lysc_node_leaf *)mod->compiled->data->next)->type;
     assert_non_null(type);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
-    assert_string_equal("/a/target2", ((struct lysc_type_leafref *)type)->path->expr);
+    assert_string_equal("/a/target2", lyxp_get_expr(((struct lysc_type_leafref *)type)->path));
     assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_leafref *)type)->prefixes));
     assert_non_null(((struct lysc_type_leafref *)type)->realtype);
     assert_int_equal(LY_TYPE_UINT8, ((struct lysc_type_leafref *)type)->realtype->basetype);
@@ -1773,8 +1747,7 @@ test_type_leafref(void **state)
     assert_non_null(type);
     assert_int_equal(1, type->refcount);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
-    assert_string_equal("/b:target", ((struct lysc_type_leafref *)type)->path->expr);
-    assert_ptr_equal(mod, ly_resolve_prefix(UTEST_LYCTX, "b", 1, LY_VALUE_SCHEMA_RESOLVED, ((struct lysc_type_leafref *)type)->prefixes));
+    assert_string_equal("/b:target", lyxp_get_expr(((struct lysc_type_leafref *)type)->path));
     assert_non_null(((struct lysc_type_leafref *)type)->realtype);
     assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_leafref *)type)->realtype->basetype);
     assert_int_equal(1, ((struct lysc_type_leafref *)type)->require_instance);
@@ -1787,8 +1760,7 @@ test_type_leafref(void **state)
     assert_non_null(type);
     assert_int_equal(1, type->refcount);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
-    assert_string_equal("/b:target", ((struct lysc_type_leafref *)type)->path->expr);
-    assert_ptr_not_equal(mod, ly_resolve_prefix(UTEST_LYCTX, "b", 1, LY_VALUE_SCHEMA_RESOLVED, ((struct lysc_type_leafref *)type)->prefixes));
+    assert_string_equal("/b:target", lyxp_get_expr(((struct lysc_type_leafref *)type)->path));
     assert_non_null(((struct lysc_type_leafref *)type)->realtype);
     assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_leafref *)type)->realtype->basetype);
     assert_int_equal(0, ((struct lysc_type_leafref *)type)->require_instance);
@@ -1796,8 +1768,7 @@ test_type_leafref(void **state)
     assert_non_null(type);
     assert_int_equal(1, type->refcount);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
-    assert_string_equal("/b:target", ((struct lysc_type_leafref *)type)->path->expr);
-    assert_ptr_not_equal(mod, ly_resolve_prefix(UTEST_LYCTX, "b", 1, LY_VALUE_SCHEMA_RESOLVED, ((struct lysc_type_leafref *)type)->prefixes));
+    assert_string_equal("/b:target", lyxp_get_expr(((struct lysc_type_leafref *)type)->path));
     assert_int_equal(1, ((struct lysc_type_leafref *)type)->require_instance);
 
     /* non-prefixed nodes in path are supposed to be from the module where the leafref type is instantiated */
@@ -1807,7 +1778,7 @@ test_type_leafref(void **state)
     assert_non_null(type);
     assert_int_equal(1, type->refcount);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
-    assert_string_equal("/target", ((struct lysc_type_leafref *)type)->path->expr);
+    assert_string_equal("/target", lyxp_get_expr(((struct lysc_type_leafref *)type)->path));
     assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_leafref *)type)->prefixes));
     assert_non_null(((struct lysc_type_leafref *)type)->realtype);
     assert_int_equal(LY_TYPE_INT8, ((struct lysc_type_leafref *)type)->realtype->basetype);
@@ -1847,12 +1818,12 @@ test_type_leafref(void **state)
             "container default-address{leaf ifname{type leafref{ path \"../../interface/name\";}}"
             "leaf address {type leafref{ path \"../../interface[  name = current()/../ifname ]/address/ip\";}}}}",
             LYS_IN_YANG, &mod));
-    type = ((struct lysc_node_leaf *)(*lysc_node_child_p(mod->compiled->data->prev))->prev)->type;
+    type = ((struct lysc_node_leaf *)(lysc_node_child(mod->compiled->data->prev)->prev))->type;
     assert_non_null(type);
     assert_int_equal(1, type->refcount);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
     assert_string_equal("../../interface[  name = current()/../ifname ]/address/ip",
-            ((struct lysc_type_leafref *)type)->path->expr);
+            lyxp_get_expr(((struct lysc_type_leafref *)type)->path));
     assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_leafref *)type)->prefixes));
     assert_non_null(((struct lysc_type_leafref *)type)->realtype);
     assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_leafref *)type)->realtype->basetype);
@@ -1865,7 +1836,7 @@ test_type_leafref(void **state)
     assert_non_null(type);
     assert_int_equal(1, type->refcount);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
-    assert_string_equal("/endpoint-parent[id=current()/../field]/endpoint/name", ((struct lysc_type_leafref *)type)->path->expr);
+    assert_string_equal("/endpoint-parent[id=current()/../field]/endpoint/name", lyxp_get_expr(((struct lysc_type_leafref *)type)->path));
     assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_leafref *)type)->prefixes));
     assert_non_null(((struct lysc_type_leafref *)type)->realtype);
     assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_leafref *)type)->realtype->basetype);
@@ -1909,7 +1880,7 @@ test_type_leafref(void **state)
     assert_non_null(type);
     assert_int_equal(1, type->refcount);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
-    assert_string_equal("../target", ((struct lysc_type_leafref *)type)->path->expr);
+    assert_string_equal("../target", lyxp_get_expr(((struct lysc_type_leafref *)type)->path));
     assert_non_null(((struct lysc_type_leafref *)type)->realtype);
     assert_int_equal(LY_TYPE_BOOL, ((struct lysc_type_leafref *)type)->realtype->basetype);
     assert_non_null(((struct lysc_node_leaf *)mod->compiled->data)->dflt.str);
@@ -3133,11 +3104,11 @@ test_deviation(void **state)
     assert_non_null(node = mod->compiled->data);
     assert_string_equal("c1", node->name);
     assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_node_leaf *)node)->musts));
-    assert_string_equal("3", ((struct lysc_node_leaf *)node)->musts[1].cond->expr);
+    assert_string_equal("3", lyxp_get_expr(((struct lysc_node_leaf *)node)->musts[1].cond));
     assert_non_null(node = node->next);
     assert_string_equal("c2", node->name);
     assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_node_container *)node)->musts));
-    assert_string_equal("1", ((struct lysc_node_container *)node)->musts[0].cond->expr);
+    assert_string_equal("1", lyxp_get_expr(((struct lysc_node_container *)node)->musts[0].cond));
     assert_non_null(node = node->next);
     assert_string_equal("c3", node->name);
     assert_null(((struct lysc_node_leaf *)node)->musts);
