@@ -288,7 +288,7 @@ test_parse(void **state)
     free(lyb);
 
     /* invalid data */
-    node = lyd_child(lyd_child(lyd_child(lyd_child(tree))));
+    node = lyd_child_no_keys(lyd_child_no_keys(lyd_child_no_keys(lyd_child_no_keys(tree))));
     assert_string_equal(LYD_NAME(node->next), "y");
     lyd_free_tree(node->next);
     assert_string_equal(LYD_NAME(node), "x");
