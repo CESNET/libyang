@@ -299,13 +299,13 @@ test_path(void **state)
 
     ret = lyd_new_path(root, NULL, "a", NULL, LYD_NEW_PATH_OPAQ, NULL);
     assert_int_equal(ret, LY_SUCCESS);
-    assert_non_null(lyd_child(root));
-    assert_null(lyd_child(root)->schema);
+    assert_non_null(lyd_child_no_keys(root));
+    assert_null(lyd_child_no_keys(root)->schema);
 
     ret = lyd_new_path(root, NULL, "b", NULL, LYD_NEW_PATH_OPAQ, NULL);
     assert_int_equal(ret, LY_SUCCESS);
-    assert_non_null(lyd_child(root)->next);
-    assert_null(lyd_child(root)->next->schema);
+    assert_non_null(lyd_child_no_keys(root)->next);
+    assert_null(lyd_child_no_keys(root)->next->schema);
 
     lyd_free_tree(root);
 
@@ -569,7 +569,7 @@ test_path_ext(void **state)
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(root);
     assert_string_equal(root->schema->name, "c");
-    assert_non_null(node = lyd_child(root));
+    assert_non_null(node = lyd_child_no_keys(root));
     assert_string_equal(node->schema->name, "x");
     assert_string_equal("xxx", lyd_get_value(node));
 

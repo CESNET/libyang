@@ -177,7 +177,7 @@ test_invalid(void **state)
 
     struct lyd_node *diff = NULL;
 
-    assert_int_equal(lyd_diff_siblings(model_1, lyd_child(model_1), 0, &diff), LY_EINVAL);
+    assert_int_equal(lyd_diff_siblings(model_1, lyd_child_no_keys(model_1), 0, &diff), LY_EINVAL);
     CHECK_LOG_CTX("Invalid arguments - cannot create diff for unrelated data (lyd_diff()).", NULL, 0);
 
     assert_int_equal(lyd_diff_siblings(NULL, NULL, 0, NULL), LY_EINVAL);
@@ -315,7 +315,7 @@ test_empty_nested(void **state)
 
     struct lyd_node *diff1;
 
-    CHECK_PARSE_LYD_DIFF(NULL, lyd_child(model_1), 0, diff1);
+    CHECK_PARSE_LYD_DIFF(NULL, lyd_child_no_keys(model_1), 0, diff1);
     CHECK_LYD_STRING(diff1,
             "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
             "  <foo yang:operation=\"create\">42</foo>\n"
@@ -323,7 +323,7 @@ test_empty_nested(void **state)
 
     struct lyd_node *diff2;
 
-    CHECK_PARSE_LYD_DIFF(lyd_child(model_1), NULL, 0, diff2);
+    CHECK_PARSE_LYD_DIFF(lyd_child_no_keys(model_1), NULL, 0, diff2);
     CHECK_LYD_STRING(diff2,
             "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
             "  <foo yang:operation=\"delete\">42</foo>\n"

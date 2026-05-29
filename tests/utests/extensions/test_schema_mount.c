@@ -234,7 +234,7 @@ test_parse_invalid(void **state)
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb, NULL);
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     assert_string_equal(LYD_NAME(data), "root");
-    assert_null(lyd_child(data));
+    assert_null(lyd_child_no_keys(data));
     assert_non_null(data->next);
     assert_true(data->next->flags & LYD_DEFAULT);
     lyd_free_siblings(data);
@@ -244,7 +244,7 @@ test_parse_invalid(void **state)
 
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     assert_string_equal(LYD_NAME(data), "root");
-    assert_null(lyd_child(data));
+    assert_null(lyd_child_no_keys(data));
     assert_non_null(data->next);
     assert_true(data->next->flags & LYD_DEFAULT);
     lyd_free_siblings(data);
@@ -557,7 +557,7 @@ test_parse_inline(void **state)
             "</root>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_SIBLINGS);
-    ext_ctx = LYD_CTX(lyd_child(data));
+    ext_ctx = LYD_CTX(lyd_child_no_keys(data));
     lyd_free_siblings(data);
 
     json =
@@ -587,7 +587,7 @@ test_parse_inline(void **state)
             "}\n";
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_SIBLINGS);
-    assert_ptr_equal(ext_ctx, LYD_CTX(lyd_child(data)));
+    assert_ptr_equal(ext_ctx, LYD_CTX(lyd_child_no_keys(data)));
     lyd_free_siblings(data);
 
     /* different yang-lib data with the same content-id */
@@ -658,19 +658,19 @@ test_parse_inline(void **state)
             "</schema-mounts>");
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_SIBLINGS);
-    assert_ptr_not_equal(ext_ctx, LYD_CTX(lyd_child(data)));
-    ext_ctx = LYD_CTX(lyd_child(data));
+    assert_ptr_not_equal(ext_ctx, LYD_CTX(lyd_child_no_keys(data)));
+    ext_ctx = LYD_CTX(lyd_child_no_keys(data));
     lyd_free_siblings(data);
 
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_SIBLINGS);
-    assert_ptr_equal(ext_ctx, LYD_CTX(lyd_child(data)));
+    assert_ptr_equal(ext_ctx, LYD_CTX(lyd_child_no_keys(data)));
 
     assert_int_equal(LY_SUCCESS, lyd_print_mem(&lyb, data, LYD_LYB, 0));
     lyd_free_siblings(data);
 
     CHECK_PARSE_LYD_PARAM(lyb, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
-    assert_ptr_equal(ext_ctx, LYD_CTX(lyd_child(data)));
+    assert_ptr_equal(ext_ctx, LYD_CTX(lyd_child_no_keys(data)));
     free(lyb);
     lyd_free_siblings(data);
 }
@@ -1420,7 +1420,7 @@ test_parse_config(void **state)
 {
     const char *xml;
     char *lyb;
-    struct lyd_node *data;
+    struct lyd_node *data, *key_node;
     const struct lyd_node *node;
 
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
@@ -1497,34 +1497,33 @@ test_parse_config(void **state)
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_SIBLINGS);
 
-    node = lyd_child(data);
+    node = lyd_child_no_keys(data);
     assert_string_equal(LYD_NAME(node), "interfaces");
     assert_true(node->schema->flags & LYS_CONFIG_R);
-    node = lyd_child(node);
+    node = lyd_child_no_keys(node);
     assert_string_equal(LYD_NAME(node), "interface");
     assert_true(node->schema->flags & LYS_CONFIG_R);
-    node = lyd_child(node);
-    assert_string_equal(LYD_NAME(node), "name");
-    assert_true(node->schema->flags & LYS_CONFIG_R);
-    node = node->next;
+    assert_int_equal(LY_SUCCESS, lyd_find_path(node, "name", 0, &key_node));
+    assert_string_equal(LYD_NAME(key_node), "name");
+    assert_true(key_node->schema->flags & LYS_CONFIG_R);
+    node = lyd_child_no_keys(node);
     assert_string_equal(LYD_NAME(node), "type");
     assert_true(node->schema->flags & LYS_CONFIG_R);
-
     lyd_print_mem(&lyb, data, LYD_LYB, 0);
     lyd_free_siblings(data);
     CHECK_PARSE_LYD_PARAM(lyb, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     free(lyb);
 
-    node = lyd_child(data);
+    node = lyd_child_no_keys(data);
     assert_string_equal(LYD_NAME(node), "interfaces");
     assert_true(node->schema->flags & LYS_CONFIG_R);
-    node = lyd_child(node);
+    node = lyd_child_no_keys(node);
     assert_string_equal(LYD_NAME(node), "interface");
     assert_true(node->schema->flags & LYS_CONFIG_R);
-    node = lyd_child(node);
-    assert_string_equal(LYD_NAME(node), "name");
-    assert_true(node->schema->flags & LYS_CONFIG_R);
-    node = node->next;
+    assert_int_equal(LY_SUCCESS, lyd_find_path(node, "name", 0, &key_node));
+    assert_string_equal(LYD_NAME(key_node), "name");
+    assert_true(key_node->schema->flags & LYS_CONFIG_R);
+    node = lyd_child_no_keys(node);
     assert_string_equal(LYD_NAME(node), "type");
     assert_true(node->schema->flags & LYS_CONFIG_R);
 
@@ -1604,16 +1603,16 @@ test_parse_config(void **state)
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_SIBLINGS);
 
-    node = lyd_child(data->next->next->next);
+    node = lyd_child_no_keys(data->next->next->next);
     assert_string_equal(LYD_NAME(node), "interfaces");
     assert_true(node->schema->flags & LYS_CONFIG_R);
-    node = lyd_child(node);
+    node = lyd_child_no_keys(node);
     assert_string_equal(LYD_NAME(node), "interface");
     assert_true(node->schema->flags & LYS_CONFIG_R);
-    node = lyd_child(node);
-    assert_string_equal(LYD_NAME(node), "name");
-    assert_true(node->schema->flags & LYS_CONFIG_R);
-    node = node->next;
+    assert_int_equal(LY_SUCCESS, lyd_find_path(node, "name", 0, &key_node));
+    assert_string_equal(LYD_NAME(key_node), "name");
+    assert_true(key_node->schema->flags & LYS_CONFIG_R);
+    node = lyd_child_no_keys(node);
     assert_string_equal(LYD_NAME(node), "type");
     assert_true(node->schema->flags & LYS_CONFIG_R);
 
