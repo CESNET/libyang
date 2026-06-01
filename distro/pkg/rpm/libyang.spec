@@ -70,11 +70,8 @@ written (and providing API) in C.
 %else
   %cmake -DCMAKE_BUILD_TYPE=RELWITHDEBINFO
   %cmake_build
-  %if "x%{?suse_version}" == "x"
-    cd %{__cmake_builddir}
-  %endif
 %endif
-make doc
+%cmake_build --target doc
 
 %check
 %if ( 0%{?rhel} == 0 ) || 0%{?rhel} > 7
