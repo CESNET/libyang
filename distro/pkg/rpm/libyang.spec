@@ -1,7 +1,3 @@
-%if 0%{?rhel} == 8
-%undefine __cmake_in_source_build
-%endif
-
 Name: libyang
 Version: {{ version }}
 Release: {{ release }}%{?dist}
@@ -14,7 +10,6 @@ BuildRequires:  cmake
 BuildRequires:  doxygen
 BuildRequires:  gcc
 BuildRequires:  cmake(cmocka) >= 1.0.1
-BuildRequires:  make
 BuildRequires:  pkgconfig(libpcre2-8) >= 10.21
 
 %package modules
@@ -53,43 +48,23 @@ written (and providing API) in C.
 
 %prep
 %autosetup -p1
-%if 0%{?rhel} && 0%{?rhel} < 8
-    mkdir build
-%endif
 
 %build
-%if 0%{?rhel} && 0%{?rhel} < 8
-  cd build
-  cmake \
-    -DCMAKE_INSTALL_PREFIX:PATH=%{_prefix} \
-    -DCMAKE_BUILD_TYPE:String="Release" \
-    -DCMAKE_C_FLAGS="${RPM_OPT_FLAGS}" \
-    -DCMAKE_CXX_FLAGS="${RPM_OPT_FLAGS}" \
-    ..
-  make
+%cmake -DCMAKE_BUILD_TYPE=RELWITHDEBINFO
+%cmake_build -j4
+%if 0%{?suse_version}
+  %cmake_build doc
 %else
-  %cmake -DCMAKE_BUILD_TYPE=RELWITHDEBINFO
-  %cmake_build
+  %cmake_build --target doc
 %endif
-%cmake_build --target doc
 
 %check
-%if ( 0%{?rhel} == 0 ) || 0%{?rhel} > 7
-  %if "x%{?suse_version}" == "x"
-    cd %{__cmake_builddir}
-  %endif
-%endif
-ctest --output-on-failure -V %{?_smp_mflags}
+%ctest --output-on-failure
 
 %install
 mkdir -m0755 -p %{buildroot}/%{_docdir}/libyang
-%if 0%{?rhel} && 0%{?rhel} < 8
-  cd build
-  make DESTDIR=%{buildroot} install
-%else
-  %cmake_install
-  cp -a doc/html %{buildroot}/%{_docdir}/libyang/html
-%endif
+%cmake_install
+cp -a doc/html %{buildroot}/%{_docdir}/libyang/html
 
 %files
 %license LICENSE
