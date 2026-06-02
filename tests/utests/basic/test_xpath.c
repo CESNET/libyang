@@ -19,7 +19,6 @@
 #include "context.h"
 #include "parser_data.h"
 #include "set.h"
-#include "tests_config.h"
 #include "tree_data.h"
 #include "tree_schema.h"
 
