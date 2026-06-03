@@ -483,7 +483,9 @@ lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, st
                     LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
                 }
             } else {
-                /* when true */
+                /* when true; clear any stale when-false mark from a previous validation run
+                 * so XPath no longer treats the node as non-existent */
+                node->flags &= ~LYD_WHEN_FALSE;
                 node->flags |= LYD_WHEN_TRUE;
             }
 
@@ -1818,6 +1820,7 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
         /* skip further validation for when-false nodes: the node is logically non-existent,
          * so its own must constraints and obsolete checks must not run */
         if (node->flags & LYD_WHEN_FALSE) {
+            r = LY_SUCCESS;
             goto next_iter;
         }
 
@@ -1850,20 +1853,17 @@ next_iter:
             break;
         }
 
-        /* skip when-false nodes: they are logically non-existent, so their children must not be validated */
-        if (node->flags & LYD_WHEN_FALSE) {
-            goto skip_children;
+        /* skip when-false nodes: they are logically non-existent, so neither their children
+         * nor their container-default handling must run */
+        if (!(node->flags & LYD_WHEN_FALSE)) {
+            /* validate all children recursively */
+            r = lyd_validate_final_r(lyd_child(node), node, node->schema, NULL, ext, val_opts,
+                    int_opts & ~LYD_INTOPT_SKIP_SIBLINGS, must_xp_opts, getnext_ht);
+            LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
+
+            /* set default for containers */
+            lyd_np_cont_dflt_set(node);
         }
-
-        /* validate all children recursively */
-        r = lyd_validate_final_r(lyd_child(node), node, node->schema, NULL, ext, val_opts,
-                int_opts & ~LYD_INTOPT_SKIP_SIBLINGS, must_xp_opts, getnext_ht);
-        LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
-
-skip_children:
-
-        /* set default for containers */
-        lyd_np_cont_dflt_set(node);
 
         if (int_opts & LYD_INTOPT_SKIP_SIBLINGS) {
             break;

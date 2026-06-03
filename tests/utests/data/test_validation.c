@@ -1832,6 +1832,46 @@ test_when_must_cross_ref(void **state)
             LYD_VALIDATE_PRESENT | LYD_VALIDATE_MULTI_ERROR, LY_EVALID, tree);
     CHECK_LOG_CTX_APPTAG("checker requires item[a]/value=expected", "/twm4:top/checker", 0, "checker-bad");
     CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm4:top/item[name='a']", 0);
+
+    /* Regression: a when-false node with a descendant that also carries a when
+     * must NOT emit a spurious when error for the descendant. The descendant's
+     * when references its when-gated ancestor, so its evaluation returns
+     * LY_EINCOMPLETE and it stays queued in node_when until the ancestor is
+     * resolved to false. The node_when descendant cleanup in
+     * lyd_validate_unres_when then removes it before it can be (re-)evaluated.
+     * Without that cleanup, the descendant's own when is evaluated against the
+     * logically non-existent subtree and a second, spurious when error is
+     * reported. Only the ancestor's when error is expected. */
+    const char *schema5 =
+            "module twm5 {\n"
+            "    namespace urn:tests:twm5;\n"
+            "    prefix twm5;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    container top {\n"
+            "        leaf flag {\n"
+            "            type boolean;\n"
+            "        }\n"
+            "        container outer {\n"
+            "            when \"../flag = 'true'\";\n"
+            "            leaf inner {\n"
+            "                when \"../../flag = 'true'\";\n"
+            "                type string;\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "}";
+    const char *data5 =
+            "<top xmlns=\"urn:tests:twm5\">\n"
+            "  <flag>false</flag>\n"
+            "  <outer><inner>x</inner></outer>\n"
+            "</top>\n";
+
+    UTEST_ADD_MODULE(schema5, LYS_IN_YANG, NULL, NULL);
+
+    CHECK_PARSE_LYD_PARAM(data5, LYD_XML, 0,
+            LYD_VALIDATE_PRESENT | LYD_VALIDATE_MULTI_ERROR, LY_EVALID, tree);
+    CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm5:top/outer", 0);
 }
 
 int
