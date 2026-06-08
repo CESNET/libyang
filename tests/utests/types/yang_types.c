@@ -18,7 +18,6 @@
 
 #include <stdlib.h>
 
-#include "compat.h"
 #include "libyang.h"
 
 #define MODULE_CREATE_YIN(MOD_NAME, NODES) \
@@ -281,7 +280,7 @@ test_sort(void **state)
     const char *schema;
     struct lys_module *mod;
     struct lyd_value val1 = {0}, val2 = {0};
-    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "ietf-yang-types", "2025-12-22", "date-and-time"));
+    struct lyplg_type *type = NULL;
     struct lysc_type *lysc_type;
     struct ly_err_item *err = NULL;
 
@@ -290,6 +289,7 @@ test_sort(void **state)
             "leaf-list ll {type yang:date-and-time;}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_type = ((struct lysc_node_leaflist *)mod->compiled->data)->type;
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
 
     /* v1 > v2, v2 < v1, v1 == v1 */
     v1 = "2005-05-25T23:15:15Z";

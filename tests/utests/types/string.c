@@ -20,8 +20,6 @@
 
 /* LOCAL INCLUDE HEADERS */
 #include "libyang.h"
-#include "path.h"
-#include "plugins_internal.h"
 
 #define MODULE_CREATE_YIN(MOD_NAME, NODES) \
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" \
@@ -1122,7 +1120,7 @@ test_plugin_store(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value value = {0};
-    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_STRING]));
+    struct lyplg_type *type = NULL;
     struct lysc_type *lysc_type;
     char *alloc_text;
     unsigned int alloc_text_size;
@@ -1133,6 +1131,7 @@ test_plugin_store(void **state)
             "pattern '[0-9\\n<>\\\"\\|]*' ;}}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_type = ((struct lysc_node_leaf *) mod->compiled->data)->type;
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
 
     /* check proper type */
     assert_string_equal("ly2 string", type->id);
@@ -1263,7 +1262,7 @@ test_plugin_compare(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value values[10];
-    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_STRING]));
+    struct lyplg_type *type = NULL;
     struct lysc_type *lysc_type;
     LY_ERR ly_ret;
     const char *schema;
@@ -1281,6 +1280,7 @@ test_plugin_compare(void **state)
             "leaf p4 {type uint8;}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_type = ((struct lysc_node_leaf *) mod->compiled->data)->type;
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
 
     /* CREATE VALUES */
     const char *val_init[] = {"hi", "hello", "hi", "hello", "hell", "hh"};
@@ -1321,7 +1321,7 @@ test_plugin_print(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value values[10];
-    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_STRING]));
+    struct lyplg_type *type = NULL;
     struct lysc_type *lysc_type;
     LY_ERR ly_ret;
 
@@ -1330,6 +1330,7 @@ test_plugin_print(void **state)
 
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_type = ((struct lysc_node_leaf *) mod->compiled->data)->type;
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
 
     /* CREATE VALUES */
     const char *val_init[] = {"20", "0x4A", "<|>", "\""};
@@ -1360,7 +1361,7 @@ test_plugin_dup(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value values[10];
-    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_STRING]));
+    struct lyplg_type *type = NULL;
     struct lysc_type *lysc_type[2];
     const char *schema;
     LY_ERR ly_ret;
@@ -1377,6 +1378,7 @@ test_plugin_dup(void **state)
             "leaf port {type my_int_type; }");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_type[1] = ((struct lysc_node_leaf *) mod->compiled->data)->type;
+    type = lysc_get_type_plugin(lysc_type[1]->plugin_ref);
 
     /* CREATE VALUES */
     const char *val_init[] = {"20", "0x4A", "<\">", "0x4A"};

@@ -216,7 +216,7 @@ test_plugin_sort(void **state)
     const char *schema;
     struct lys_module *mod;
     struct lyd_value val1 = {0}, val2 = {0};
-    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_LEAFREF]));
+    struct lyplg_type *type = NULL;
     struct lysc_type *lysc_type;
     struct ly_err_item *err = NULL;
 
@@ -232,6 +232,7 @@ test_plugin_sort(void **state)
             "}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
 
     v1 = "str1";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,

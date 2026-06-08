@@ -197,7 +197,7 @@ test_plugin_sort(void **state)
     const char *schema;
     struct lys_module *mod;
     struct lyd_value val1 = {0}, val2 = {0};
-    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_UNION]));
+    struct lyplg_type *type = NULL;
     struct lysc_type *lysc_type;
     struct ly_err_item *err = NULL;
 
@@ -212,6 +212,7 @@ test_plugin_sort(void **state)
 
     /* ipv4-address */
     lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
 
     v1 = "192.168.0.1";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
@@ -239,7 +240,7 @@ test_plugin_sort(void **state)
 
     /* ipv6-address */
     lysc_type = ((struct lysc_node_leaflist *)mod->compiled->data->next)->type;
-    type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_STRING]));
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
 
     v1 = "2008:15:0:0:0:0:feAC:1";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
@@ -267,7 +268,7 @@ test_plugin_sort(void **state)
 
     /* ipv4-address-no-zone */
     lysc_type = ((struct lysc_node_leaflist *)mod->compiled->data->next->next)->type;
-    type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_UNION]));
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
     v1 = "127.0.0.1";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
             0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
@@ -282,7 +283,7 @@ test_plugin_sort(void **state)
 
     /* ipv6-address-no-zone */
     lysc_type = ((struct lysc_node_leaflist *)mod->compiled->data->next->next->next)->type;
-    type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_STRING]));
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
     v1 = "A:B:c:D:e:f:1:1";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
             0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
@@ -297,6 +298,7 @@ test_plugin_sort(void **state)
 
     /* ipv4-prefix */
     lysc_type = ((struct lysc_node_leaflist *)mod->compiled->data->next->next->next->next)->type;
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
     v1 = "0.1.58.4/32";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
             0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
@@ -311,10 +313,11 @@ test_plugin_sort(void **state)
 
     /* ipv6-prefix */
     lysc_type = ((struct lysc_node_leaflist *)mod->compiled->data->next->next->next->next->next)->type;
-    v1 = "::C:D:E:f:a/96";
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
+    v1 = "::C:D:E:f:a/112";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
             0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val1, NULL, &err));
-    v2 = "::C:D:E:f:a/112";
+    v2 = "::C:D:E:f:a/96";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2) * 8,
             0, LY_VALUE_JSON, NULL, LYD_VALHINT_STRING, NULL, &val2, NULL, &err));
     assert_true(0 < type->sort(UTEST_LYCTX, &val1, &val2));
