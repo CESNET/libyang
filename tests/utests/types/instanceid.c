@@ -18,7 +18,6 @@
 
 /* LOCAL INCLUDE HEADERS */
 #include "libyang.h"
-#include "path.h"
 
 #define MODULE_CREATE_YANG(MOD_NAME, NODES) \
     "module " MOD_NAME " {\n" \
@@ -79,12 +78,12 @@ static void
 test_data_xml(void **state)
 {
     const char *schema, *schema2;
-    const enum ly_path_pred_type val1[] = {0, 0};
-    const enum ly_path_pred_type val2[] = {LY_PATH_PREDTYPE_LIST, 0};
-    const enum ly_path_pred_type val3[] = {LY_PATH_PREDTYPE_LEAFLIST};
-    const enum ly_path_pred_type val4[] = {LY_PATH_PREDTYPE_LIST, 0};
-    const enum ly_path_pred_type val5[] = {LY_PATH_PREDTYPE_LIST, 0};
-    const enum ly_path_pred_type val6[] = {LY_PATH_PREDTYPE_LIST, 0};
+    const int val1[] = {0, 0};
+    const int val2[] = {0, 0};
+    const int val3[] = {0};
+    const int val4[] = {0, 0};
+    const int val5[] = {0, 0};
+    const int val6[] = {0, 0};
 
     /* xml test */
     schema = MODULE_CREATE_YANG("mod", "container cont {leaf l2 {type empty;}}");

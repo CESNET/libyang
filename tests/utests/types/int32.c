@@ -21,8 +21,6 @@
 
 /* LOCAL INCLUDE HEADERS */
 #include "libyang.h"
-#include "path.h"
-#include "plugins_internal.h"
 
 #define MODULE_CREATE_YANG(MOD_NAME, NODES) \
     "module " MOD_NAME " {\n" \

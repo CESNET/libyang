@@ -34,7 +34,6 @@
 #include "plugins_exts/metadata.h"
 #include "plugins_types.h"
 #include "tests_config.h"
-#include "tree_schema_internal.h"
 
 /**
  * TESTS OVERVIEW

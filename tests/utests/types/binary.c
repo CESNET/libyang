@@ -51,7 +51,7 @@ test_plugin_store(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value value = {0};
-    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_BINARY]));
+    struct lyplg_type *type = NULL;
     struct lysc_type *lysc_type, *lysc_type2;
     LY_ERR ly_ret;
     const char *schema;
@@ -61,6 +61,7 @@ test_plugin_store(void **state)
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
     lysc_type2 = ((struct lysc_node_leaf *)mod->compiled->data->next)->type;
+    type = lysc_get_type_plugin(lysc_type2->plugin_ref);
 
     /* check proper type */
     assert_string_equal("ly2 binary", type->id);
@@ -250,13 +251,14 @@ test_plugin_print(void **state)
     struct lyd_value value = {0};
     struct lys_module *mod;
     struct lysc_type *lysc_type;
-    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_BINARY]));
+    struct lyplg_type *type = NULL;
     struct ly_err_item *err = NULL;
 
     /* create schema. Prepare common used variables */
     schema = MODULE_CREATE_YANG("a", "leaf l {type binary;}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
 
     /* Testing empty value. */
     val = "";
@@ -273,13 +275,14 @@ test_plugin_duplicate(void **state)
     struct lyd_value value = {0}, dup;
     struct lys_module *mod;
     struct lysc_type *lysc_type;
-    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_BINARY]));
+    struct lyplg_type *type = NULL;
     struct ly_err_item *err = NULL;
 
     /* create schema. Prepare common used variables */
     schema = MODULE_CREATE_YANG("a", "leaf l {type binary;}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
 
     /* Testing empty value. */
     val = "";
@@ -298,7 +301,7 @@ test_plugin_sort(void **state)
     const char *schema;
     struct lys_module *mod;
     struct lyd_value val1 = {0}, val2 = {0};
-    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_BINARY]));
+    struct lyplg_type *type = NULL;
     struct lysc_type *lysc_type;
     struct ly_err_item *err = NULL;
 
@@ -306,6 +309,7 @@ test_plugin_sort(void **state)
     schema = MODULE_CREATE_YANG("a", "leaf-list ll {type binary;}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_type = ((struct lysc_node_leaflist *)mod->compiled->data)->type;
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
 
     /* v1 < v2, v2 > v1, v1 == v1 */
     v1 = "YWhveQ=="; /* ahoy */
