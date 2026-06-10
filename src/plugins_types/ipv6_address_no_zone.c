@@ -55,12 +55,13 @@ static void lyplg_type_free_ipv6_address_no_zone(const struct ly_ctx *ctx, struc
  * @param[in] value Value to convert.
  * @param[in] value_len Length of @p value.
  * @param[in] options Type store callback options.
- * @param[in,out] addr Allocated value for the address.
+ * @param[in,out] val contains addr to fill.
  * @param[out] err Error information on error.
  * @return LY_ERR value.
  */
 static LY_ERR
-ipv6addressnozone_str2ip(const char *value, uint32_t value_len, uint32_t options, struct in6_addr *addr, struct ly_err_item **err)
+ipv6addressnozone_str2ip(const char *value, uint32_t value_len, uint32_t options,
+        struct lyd_value_ipv6_address_no_zone *val, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *addr_str;
@@ -76,7 +77,7 @@ ipv6addressnozone_str2ip(const char *value, uint32_t value_len, uint32_t options
     }
 
     /* store the IPv6 address in network-byte order */
-    if (!inet_pton(AF_INET6, addr_str, addr)) {
+    if (!inet_pton(AF_INET6, addr_str, &val->addr)) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to store IPv6 address \"%s\".", addr_str);
         goto cleanup;
     }
@@ -143,7 +144,7 @@ lyplg_type_store_ipv6_address_no_zone(const struct ly_ctx *ctx, const struct lys
     LY_CHECK_GOTO(ret, cleanup);
 
     /* get the network-byte order address, validates the value */
-    ret = ipv6addressnozone_str2ip(value, value_size, options, &val->addr, err);
+    ret = ipv6addressnozone_str2ip(value, value_size, options, val, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (format == LY_VALUE_CANON) {

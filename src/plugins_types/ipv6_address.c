@@ -58,14 +58,13 @@ static void lyplg_type_free_ipv6_address(const struct ly_ctx *ctx, struct lyd_va
  * @param[in] value_len Length of @p value.
  * @param[in] options Type store callback options.
  * @param[in] ctx libyang context with dictionary.
- * @param[in,out] addr Allocated value for the address.
- * @param[out] zone Ipv6 address zone in dictionary.
+ * @param[in,out] val contains addr and zone to fill.
  * @param[out] err Error information on error.
  * @return LY_ERR value.
  */
 static LY_ERR
 ipv6address_str2ip(const char *value, uint32_t value_len, uint32_t options, const struct ly_ctx *ctx,
-        struct in6_addr *addr, const char **zone, struct ly_err_item **err)
+        struct lyd_value_ipv6_address *val, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *addr_no_zone;
@@ -76,7 +75,7 @@ ipv6address_str2ip(const char *value, uint32_t value_len, uint32_t options, cons
     if ((zone_ptr = ly_strnchr(value, '%', value_len))) {
         /* there is a zone index */
         zone_len = value_len - (zone_ptr - value) - 1;
-        ret = lydict_insert(ctx, zone_ptr + 1, zone_len, zone);
+        ret = lydict_insert(ctx, zone_ptr + 1, zone_len, &val->zone);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* get the IP without it */
@@ -89,7 +88,7 @@ ipv6address_str2ip(const char *value, uint32_t value_len, uint32_t options, cons
         }
     } else {
         /* no zone */
-        *zone = NULL;
+        val->zone = NULL;
 
         /* get the IP terminated with zero */
         if (options & LYPLG_TYPE_STORE_DYNAMIC) {
@@ -102,7 +101,7 @@ ipv6address_str2ip(const char *value, uint32_t value_len, uint32_t options, cons
     }
 
     /* store the IPv6 address in network-byte order */
-    if (!inet_pton(AF_INET6, addr_no_zone, addr)) {
+    if (!inet_pton(AF_INET6, addr_no_zone, &val->addr)) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to store IPv6 address \"%s\".", addr_no_zone);
         goto cleanup;
     }
@@ -174,7 +173,7 @@ lyplg_type_store_ipv6_address(const struct ly_ctx *ctx, const struct lysc_type *
     LY_CHECK_GOTO(ret, cleanup);
 
     /* get the network-byte order address */
-    ret = ipv6address_str2ip(value, value_size, options, ctx, &val->addr, &val->zone, err);
+    ret = ipv6address_str2ip(value, value_size, options, ctx, val, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (format == LY_VALUE_CANON) {

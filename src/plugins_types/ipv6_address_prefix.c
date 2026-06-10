@@ -56,13 +56,13 @@ static void lyplg_type_free_ipv6_address_prefix(const struct ly_ctx *ctx, struct
  *
  * @param[in] value String to convert.
  * @param[in] value_len Length of @p value.
- * @param[in,out] addr Allocated address value to fill.
- * @param[out] prefix Prefix length.
+ * @param[in,out] val contains addr and prefix to fill.
  * @param[out] err Error information on error.
  * @return LY_ERR value.
  */
 static LY_ERR
-ipv6prefix_str2ip(const char *value, uint32_t value_len, struct in6_addr *addr, uint8_t *prefix, struct ly_err_item **err)
+ipv6prefix_str2ip(const char *value, uint32_t value_len, struct lyd_value_ipv6_prefix *val,
+        struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *pref_str;
@@ -70,14 +70,14 @@ ipv6prefix_str2ip(const char *value, uint32_t value_len, struct in6_addr *addr, 
 
     /* it passed the pattern validation */
     pref_str = ly_strnchr(value, '/', value_len);
-    ly_strntou8(pref_str + 1, value_len - (pref_str + 1 - value), prefix);
+    ly_strntou8(pref_str + 1, value_len - (pref_str + 1 - value), &val->prefix);
 
     /* get just the network prefix */
     mask_str = strndup(value, pref_str - value);
     LY_CHECK_ERR_GOTO(!mask_str, ret = LY_EMEM, cleanup);
 
     /* convert it to netword-byte order */
-    if (inet_pton(AF_INET6, mask_str, addr) != 1) {
+    if (inet_pton(AF_INET6, mask_str, &val->addr) != 1) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to store IPv6 address \"%s\".", mask_str);
         goto cleanup;
     }
@@ -194,7 +194,7 @@ lyplg_type_store_ipv6_address_prefix(const struct ly_ctx *ctx, const struct lysc
     }
 
     /* get the mask in network-byte order */
-    ret = ipv6prefix_str2ip(value, value_size, &val->addr, &val->prefix, err);
+    ret = ipv6prefix_str2ip(value, value_size, val, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (!strcmp(type->name, "ipv6-prefix")) {
