@@ -73,6 +73,7 @@ enum COMMAND_INDEX {
     CMD_LOAD,
     CMD_PRINT,
     CMD_DATA,
+    CMD_SAMPLE,
     CMD_LIST,
     CMD_FEATURE,
     CMD_SEARCHPATH,
@@ -275,6 +276,29 @@ int cmd_print_dep(struct yl_opt *yo, int posc);
  */
 int cmd_print_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv);
 void cmd_print_help(void);
+
+/* cmd_sample.c */
+
+/**
+ * @copydoc cmd_add_opt
+ */
+int cmd_sample_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc);
+
+/**
+ * @copydoc cmd_add_dep
+ */
+int cmd_sample_dep(struct yl_opt *yo, int posc);
+void cmd_sample_help(void);
+
+/**
+ * @brief Print a sample skeleton of module in json or xml.
+ *
+ * @param[in,out] ctx context for libyang.
+ * @param[in] yo context for yanglint.
+ * @param[in] posv Name of the module to be printed.
+ * @return 0 on success, 1 on failure.
+ */
+int cmd_sample_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv);
 
 /* cmd_searchpath.c */
 

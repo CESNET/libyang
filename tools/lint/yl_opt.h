@@ -137,6 +137,9 @@ struct yl_opt {
     /* storage for --data-xpath */
     struct ly_set data_xpath;
 
+    /* flag for --sample*/
+    uint8_t sample_skeleton;
+
     char **argv;
 };
 
