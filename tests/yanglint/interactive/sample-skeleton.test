@@ -1,0 +1,96 @@
+source [expr {[info exists ::env(TESTS_DIR)] ? "$env(TESTS_DIR)/interactive/ly.tcl" : "ly.tcl"}]
+
+test print_yang {} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    ly_cmd "load modleaf"
+    ly_cmd "print -f yang modleaf" "leaf lfl"
+}}
+
+test skeleton_generate_xml {Test generating xml skeleton to stdout and to file} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    set pattern "(?s)^"
+    append pattern {.*<main-box xmlns="urn:ietf:params:xml:ns:yang:skeleton-complex">}
+    append pattern {.*<empty-leaf/>}
+    append pattern {.*<bool-leaf>true</bool-leaf>}
+    append pattern {.*<num32-leaf>-100</num32-leaf>}
+    append pattern {.*<num64-leaf>9999999999</num64-leaf>}
+    append pattern {.*<str-leaf>hello</str-leaf>}
+    append pattern {.*<ll-empty></ll-empty>}
+    append pattern {.*<ll-numbers>10</ll-numbers>}
+    append pattern {.*<ll-numbers>20</ll-numbers>}
+    append pattern {.*<a-leaf/>}
+    append pattern {.*<c2-leaf>default-choice-val</c2-leaf>}
+    append pattern {.*<server-list>}
+    append pattern {.*<id/>}
+    append pattern {.*<config>}
+    append pattern {.*<ip/>}
+    append pattern {.*</config>}
+    append pattern {.*</server-list>}
+    append pattern {.*<custom-data/>}
+    append pattern {.*<custom-xml/>}
+    append pattern {.*<aug-leaf xmlns="urn:ietf:params:xml:ns:yang:skeleton-augment">augmented-value</aug-leaf>}
+    append pattern {.*<aug-ll xmlns="urn:ietf:params:xml:ns:yang:skeleton-augment">1</aug-ll>}
+    append pattern {.*<aug-ll xmlns="urn:ietf:params:xml:ns:yang:skeleton-augment">2</aug-ll>}
+    append pattern {.*</main-box>}
+    append pattern ".*"
+
+    ly_cmd "load skeleton"
+    ly_cmd "load skeleton-augment"
+    ly_cmd "sample -f xml skeleton" $pattern
+
+    ly_cmd "sample -f xml -o test_output.xml skeleton"
+
+    if {![file exists "test_output.xml"]} {
+        error "Test failed: yanglint did not create 'test_output.xml'!"
+    }
+
+    set fp [open "test_output.xml" r]
+    set file_data [read $fp]
+    close $fp
+
+    if {![regexp $pattern $file_data]} {
+        error "Test failed: The file content did not match!\nFile contained:\n$file_data"
+    }
+
+    file delete "test_output.xml"
+}}
+
+test skeleton_generate_json {} {
+-setup $ly_setup -cleanup $ly_cleanup -body {
+    set pattern "(?s)^"
+    append pattern {.*"skeleton:main-box": \{}
+    append pattern {.*"empty-leaf": \[null\],}
+    append pattern {.*"bool-leaf": true,}
+    append pattern {.*"num32-leaf": -100,}
+    append pattern {.*"num64-leaf": "9999999999",}
+    append pattern {.*"str-leaf": "hello",}
+    append pattern {.*"ll-empty": \[\],}
+    append pattern {.*"ll-numbers": \[}
+    append pattern {.*10,}
+    append pattern {.*20}
+    append pattern {.*],}
+    append pattern {.*"a-leaf": null,}
+    append pattern {.*"c2-leaf": "default-choice-val",}
+    append pattern {.*"server-list": \[}
+    append pattern {.*\{}
+    append pattern {.*"id": null,}
+    append pattern {.*"config": \{}
+    append pattern {.*"ip": null}
+    append pattern {.*\}}
+    append pattern {.*\}}
+    append pattern {.*\],}
+    append pattern {.*"custom-data": \{\},}
+    append pattern {.*"custom-xml": \{\},}
+    append pattern {.*"skeleton-augment:aug-leaf": "augmented-value",}
+    append pattern {.*"skeleton-augment:aug-ll": \[}
+    append pattern {.*1,}
+    append pattern {.*2}
+    append pattern {.*\]}
+    append pattern {.*\}}
+    append pattern ".*"
+
+    ly_cmd "load skeleton"
+    ly_cmd "load skeleton-augment"
+
+    ly_cmd "sample -f json skeleton" $pattern
+}}

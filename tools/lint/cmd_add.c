@@ -130,7 +130,7 @@ store_parsed_module(const char *filepath, struct lys_module *mod, struct yl_opt 
 {
     assert(!yo->interactive);
 
-    if (yo->schema_out_format || yo->feature_param_format) {
+    if (yo->schema_out_format || yo->feature_param_format || yo->sample_skeleton) {
         if (ly_set_add(&yo->schema_modules, (void *)mod, 1, NULL)) {
             YLMSG_E("Storing parsed schema module (%s) for print failed.", filepath);
             return 1;

@@ -52,6 +52,9 @@ help(int shortout)
             "    yanglint [-f { xml | json }] <schema>... <file>...\n"
             "        Validates the YANG modeled data <file>(s) according to the <schema>(s) optionally\n"
             "        printing them in the specified format.\n\n"
+            "    yanglint -S { xml | json } <schema>...\n"
+            "        Generates and prints a sample data skeleton from the provided YANG <schema>(s)\n"
+            "        in the specified format (XML or JSON).\n\n"
             "    yanglint -t (nc-)rpc/notif [-O <operational-file>] <schema>... <file>\n"
             "        Validates the YANG/NETCONF RPC/notification <file> according to the <schema>(s) using\n"
             "        <operational-file> with possible references to the operational datastore data.\n"
@@ -77,6 +80,10 @@ help(int shortout)
             "                Convert input into FORMAT. Supported formats: \n"
             "                yang, yin, tree, info and feature-param for schemas,\n"
             "                xml, json, and lyb for data.\n\n");
+
+    printf("  -S FORMAT, --sample-skeleton=FORMAT\n"
+            "                Generate a sample data skeleton from the provided schema.\n"
+            "                Supported formats: xml, json.\n\n");
 
     printf("  -I FORMAT, --in-format=FORMAT\n"
             "                Load the data in one of the following formats:\n"
@@ -507,6 +514,7 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
         {"extended-leafref",  no_argument,       NULL, 'X'},
         {"json-null",         no_argument,       NULL, 'J'},
         {"debug",             required_argument, NULL, 'G'},
+        {"sample-skeleton",   required_argument, NULL, 'S'},
         {NULL,                0,                 NULL, 0}
     };
     uint8_t data_type_set = 0;
@@ -518,7 +526,7 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
     yo->line_length = 0;
 
     opterr = 0;
-    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neE:At:d:lL:o:O:R:myY:XJx:G:", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neE:At:d:lL:o:O:R:myY:XJx:G:S:", options, &opt_index)) != -1) {
         switch (opt) {
         case 'h': /* --help */
             help(0);
@@ -711,6 +719,16 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
                 return -1;
             }
             break;
+
+        case 'S': /* --sample-skeleton */
+            if (yl_opt_update_data_out_format(optarg, yo)) {
+                YLMSG_E("Unknown out format %s.", optarg);
+                help(1);
+                return -1;
+            }
+            yo->sample_skeleton = 1;
+            break;
+
         default:
             YLMSG_E("Invalid option or missing argument: -%c.", optopt);
             return -1;
@@ -815,6 +833,13 @@ main_ni(int argc, char *argv[])
         for (u = 0; u < yo.schema_modules.count; ++u) {
             yo.last_one = (u + 1) == yo.schema_modules.count;
             if ((ret = cmd_print_exec(&ctx, &yo, ((struct lys_module *)yo.schema_modules.objs[u])->name))) {
+                goto cleanup;
+            }
+        }
+    } else if (yo.sample_skeleton) {
+        for (u = 0; u < yo.schema_modules.count; ++u) {
+            yo.last_one = (u + 1) == yo.schema_modules.count;
+            if ((ret = cmd_sample_exec(&ctx, &yo, ((struct lys_module *)yo.schema_modules.objs[u])->name))) {
                 goto cleanup;
             }
         }
