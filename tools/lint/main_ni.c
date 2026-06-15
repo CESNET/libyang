@@ -30,6 +30,7 @@
 #include "cmd.h"
 #include "common.h"
 #include "compat.h"
+#include "ietf.h"
 #include "out.h"
 #include "tools/config.h"
 #include "yl_opt.h"
@@ -225,6 +226,9 @@ help(int shortout)
     printf("  -J, --json-null\n"
             "                Allow usage of JSON empty values ('null') within input data\n\n");
 
+    printf(" -T, --ietf\n"
+            "               Enable stricter YANG model validation according to IETF rules.\n\n");
+
     printf("  -G GROUPS, --debug=GROUPS\n"
 #ifndef NDEBUG
             "                Enable printing of specific debugging message group\n"
@@ -417,6 +421,14 @@ process_files(int argc, char *argv[], int optind, LYD_FORMAT data_in_format, str
             if (cmd_add_exec(&ctx, yo, filepath)) {
                 return -1;
             }
+
+            if (yo->ietf_validation) {
+                struct lys_module *mod = (struct lys_module *)yo->schema_modules.objs[yo->schema_modules.count - 1];
+
+                if (yl_validate_ietf(&ctx, yo, mod->name)) {
+                    return -1;
+                }
+            }
         } else {
             if (cmd_data_store(&ctx, yo, filepath)) {
                 return -1;
@@ -515,6 +527,7 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
         {"json-null",         no_argument,       NULL, 'J'},
         {"debug",             required_argument, NULL, 'G'},
         {"sample-skeleton",   required_argument, NULL, 'S'},
+        {"ietf",              no_argument,       NULL, 'T'},
         {NULL,                0,                 NULL, 0}
     };
     uint8_t data_type_set = 0;
@@ -526,7 +539,7 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
     yo->line_length = 0;
 
     opterr = 0;
-    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neE:At:d:lL:o:O:R:myY:XJx:G:S:", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neE:At:d:lL:o:O:R:myY:XJx:G:S:T", options, &opt_index)) != -1) {
         switch (opt) {
         case 'h': /* --help */
             help(0);
@@ -727,6 +740,10 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
                 return -1;
             }
             yo->sample_skeleton = 1;
+            break;
+
+        case 'T': /* --ietf */
+            yo->ietf_validation = 1;
             break;
 
         default:
