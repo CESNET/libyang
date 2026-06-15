@@ -1,0 +1,100 @@
+module ietf-list-key {
+  yang-version 1;
+  namespace "urn:ietf:params:xml:ns:yang:ietf-list-key";
+  prefix elkt;
+
+  organization
+    "IETF NETMOD (Network Modeling) Working Group";
+
+  contact
+    "WG Web:   <https://datatracker.ietf.org/wg/netmod/>
+     WG List:  <mailto:netmod@ietf.org>
+
+     Author:   Test Author
+               <mailto:test@example.com>";
+
+  description
+    "Copyright (c) 2026 IETF Trust and the persons identified as
+     authors of the code.  All rights reserved.
+
+     Redistribution and use in source and binary forms, with or
+     without modification, is permitted pursuant to, and subject
+     to the license terms contained in, the Revised BSD License
+     set forth in Section 4.c of the IETF Trust's Legal Provisions
+     Relating to IETF Documents
+     (https://trustee.ietf.org/license-info).
+
+     This version of this YANG module is part of RFC XXXX; see
+     the RFC itself for full legal notices.";
+
+  revision 2026-07-10 {
+    description
+      "Initial revision. Testing list key constraints and state data must statements.";
+    reference
+      "RFC XXXX: Guidelines for Authors and Reviewers of YANG Data Models";
+  }
+
+  feature feature-a {
+    description "A test feature.";
+  }
+
+  feature feature-b {
+    description "Another test feature.";
+  }
+
+  container top-container {
+    description "A top level container to hold our test lists.";
+
+    leaf condition-tester {
+      type boolean;
+      description "A simple leaf to evaluate 'when' statements against.";
+    }
+
+    /* TEST 1: Trigger the "when" statement warning */
+    list list-with-when-on-key {
+      key "id";
+      description "A list to test the 'when' statement warning.";
+
+      leaf id {
+        type string;
+        when "../../condition-tester = 'true'";
+        description "Key leaf with an invalid when statement.";
+      }
+    }
+
+    /* TEST 2: Trigger the if-feature count mismatch error */
+    list list-missing-if-feature {
+      if-feature "feature-a";
+      key "id";
+      description "List with a feature, but the key is missing it.";
+
+      leaf id {
+        type string;
+        description "Key leaf missing the parent's if-feature.";
+      }
+    }
+
+    /* TEST 3: Trigger the if-feature string mismatch error */
+    list list-mismatched-if-feature {
+      if-feature "feature-a";
+      key "id";
+      description "List with feature-a, but the key has feature-b.";
+
+      leaf id {
+        if-feature "feature-b";
+        type string;
+        description "Key leaf with the wrong if-feature string.";
+      }
+    }
+
+    /* TEST 4: Trigger the state data constraint warning */
+    leaf state-data-with-must {
+      type string;
+      config false;
+      must "string-length(.) > 0";
+      description
+        "This leaf tests the RFC 9907 Section 4.5 recommendation to avoid
+         defining 'must' constraints on state data.";
+    }
+  }
+}

@@ -1,0 +1,66 @@
+module ietf-defaults-and-mandatory {
+  yang-version 1.1;
+  namespace "urn:ietf:params:xml:ns:yang:ietf-defaults-and-mandatory";
+  prefix idm;
+
+  organization "IETF NETMOD Working Group";
+  contact "WG Web: <https://datatracker.ietf.org/wg/netmod/>";
+  description
+    "Copyright (c) 2026 IETF Trust and the persons identified as
+     authors of the code.  All rights reserved.
+
+     Redistribution and use in source and binary forms, with or
+     without modification, is permitted pursuant to, and subject
+     to the license terms contained in, the Revised BSD License
+     set forth in Section 4.c of the IETF Trust's Legal Provisions
+     Relating to IETF Documents
+     (https://trustee.ietf.org/license-info).
+
+     This version of this YANG module is part of RFC XXXX; see
+     the RFC itself for full legal notices.";
+
+  revision 2026-07-08 {
+    description "Initial revision.";
+    reference "RFC XXXX: Test Module";
+  }
+
+  extension ext1 {
+    description "Ext description";
+    argument arg1 {
+      // Triggers 4.4: yin-element given with default
+      yin-element false;
+    }
+  }
+
+  // Triggers 4.10: Top-level node cannot be mandatory
+  leaf top-mand-leaf {
+    type string;
+    description "Top level mandatory";
+    mandatory true;
+  }
+
+  leaf bad-defaults-leaf {
+    type string;
+    description "Leaf with explicit defaults";
+    // Triggers 4.4: config true
+    config true;
+    // Triggers 4.4: status current
+    status current;
+    // Triggers 4.4: mandatory false
+    mandatory false;
+  }
+
+  list bad-list {
+    key "k";
+    description "List with explicit defaults";
+    ordered-by system;
+    leaf k {
+      type string;
+      description "Key";
+    }
+    // Triggers 4.4: min-elements 0
+    min-elements 0;
+    // Triggers 4.4: max-elements unbounded
+    max-elements unbounded;
+  }
+}
