@@ -1798,7 +1798,8 @@ next_iter:
     LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
     LY_LIST_FOR(first, node) {
-        if ((node->flags & LYD_EXT) || !node->schema || (!node->parent && mod && (lyd_owner_module(node) != mod))) {
+        if (((node->flags & LYD_EXT) && !ext) || !node->schema ||
+                (!node->parent && mod && (lyd_owner_module(node) != mod))) {
             /* condensed condition of the previous loop */
             break;
         }

@@ -602,19 +602,81 @@ structure_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent, co
 }
 
 /**
+ * @brief Validate the inner notification of a notification envelope structure.
+ *
+ * @param[in] ext Compiled extension instance.
+ * @param[in] node Envelope data node.
+ * @param[in] dep_tree Tree to be used for validating references from the notification subtree.
+ * @param[out] diff Optional diff with any changes made by the validation.
+ * @return LY_SUCCESS on success, other LY_ERR value on error.
+ */
+static LY_ERR
+structure_validate_notif_envelope(struct lysc_ext_instance *ext, struct lyd_node *node,
+        const struct lyd_node *dep_tree, struct lyd_node **diff)
+{
+    struct lyd_node *child, *contents_any = NULL, *notif = NULL;
+    uint32_t notif_count = 0;
+
+    /* find "contents" anydata child */
+    LY_LIST_FOR(lyd_child(node), child) {
+        if (child->schema && !strcmp(child->schema->name, "contents") && (child->schema->nodetype == LYS_ANYDATA)) {
+            contents_any = child;
+            break;
+        }
+    }
+    if (!contents_any) {
+        lyplg_ext_compile_log(NULL, ext,
+                LY_LLERR, LY_EVALID, "Notification envelope is missing the \"contents\" anydata node.");
+        return LY_EVALID;
+    }
+
+    /* find the notification inside the contents and check there is exactly one */
+    LY_LIST_FOR(lyd_child_any(contents_any), child) {
+        if (child->schema && (child->schema->nodetype == LYS_NOTIF)) {
+            if (++notif_count == 1) {
+                notif = child;
+            }
+        }
+    }
+    if (!notif) {
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EVALID, "Notification envelope does not contain a notification.");
+        return LY_EVALID;
+    }
+    if (notif_count > 1) {
+        lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EVALID,
+                "Notification envelope \"contents\" must contain exactly one notification (%u found).", notif_count);
+        return LY_EVALID;
+    }
+
+    /* validate the inner notification */
+    return lyd_validate_op(notif, dep_tree, LYD_TYPE_NOTIF_YANG, diff);
+}
+
+/**
  * @brief Validate callback for structure.
  */
 static LY_ERR
-structure_validate(struct lysc_ext_instance *ext, struct lyd_node *node, const struct lyd_node *UNUSED(dep_tree),
+structure_validate(struct lysc_ext_instance *ext, struct lyd_node *node, const struct lyd_node *dep_tree,
         enum lyd_type data_type, uint32_t val_opts, struct lyd_node **diff)
 {
+    LY_ERR rc;
+    struct lyd_node *env_node = node;
+
     if (data_type != LYD_TYPE_DATA_YANG) {
         /* not supported */
         return LY_ENOT;
     }
 
-    /* validate all the modules with data */
-    return lyd_validate_ext(&node, ext, val_opts, diff);
+    /* validate the extension instance subtree */
+    rc = lyd_validate_ext(&env_node, ext, val_opts, diff);
+    LY_CHECK_RET(rc);
+
+    if (!strcmp(ext->module->name, "ietf-yp-notification") && !strcmp(ext->argument, "envelope")) {
+        /* notification envelope: validate the inner notification */
+        return structure_validate_notif_envelope(ext, node, dep_tree, diff);
+    }
+
+    return LY_SUCCESS;
 }
 
 /**
