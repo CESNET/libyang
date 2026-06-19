@@ -492,14 +492,17 @@ lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, st
                 } else if (val_opts & LYD_VALIDATE_OPERATIONAL) {
                     /* only a warning */
                     LOGWRN(LYD_CTX(node), "When condition \"%s\" not satisfied.", disabled->cond->expr);
+                } else if (val_opts & LYD_VALIDATE_MULTI_ERROR) {
+                    /* invalid data; for multi-error validation keep the node in the tree marked
+                     * as when-false so XPath treats it as non-existent and validation can continue
+                     * without spurious cascading errors */
+                    lyd_validate_when_false(node, node_when, node_types, &i);
+                    LOGVAL(LYD_CTX(node), node, LY_VCODE_NOWHEN, disabled->cond->expr);
+                    r = LY_EVALID;
+                    LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
                 } else {
-                    /* invalid data; only for multi-error validation keep the node in the tree
-                     * marked as when-false so XPath treats it as non-existent and validation can
-                     * continue without spurious cascading errors. In single-error validation this
-                     * is needless work because validation stops at this error. */
-                    if (val_opts & LYD_VALIDATE_MULTI_ERROR) {
-                        lyd_validate_when_false(node, node_when, node_types, &i);
-                    }
+                    /* invalid data; single-error validation stops at this first error, so the
+                     * when-false marking and descendant cleanup would be needless work */
                     LOGVAL(LYD_CTX(node), node, LY_VCODE_NOWHEN, disabled->cond->expr);
                     r = LY_EVALID;
                     LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
