@@ -797,6 +797,20 @@ typedef LY_ERR (*lyplg_ext_data_snode_clb)(struct lysc_ext_instance *ext, const 
  */
 
 /**
+ * @brief Validate a data subtree of an extension instance, which is assumed to be a separate data tree independent of
+ * normal YANG data.
+ *
+ * @param[in,out] ext_tree Ext data tree to validate. May be changed by validation, might become NULL.
+ * @param[in] ext Extension instance whose data to validate.
+ * @param[in] val_opts Validation options (@ref datavalidationoptions).
+ * @param[out] diff Optional diff with any changes made by the validation.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR error on error.
+ */
+LIBYANG_API_DECL LY_ERR lyd_validate_ext(struct lyd_node **ext_tree, const struct lysc_ext_instance *ext,
+        uint32_t val_opts, struct lyd_node **diff);
+
+/**
  * @brief Callback for validating parsed YANG instance data described by an extension instance.
  *
  * This callback is called in 2 distinct cases:
@@ -804,6 +818,8 @@ typedef LY_ERR (*lyplg_ext_data_snode_clb)(struct lysc_ext_instance *ext, const 
  *    defined, the whole subtree is validated by this callback;
  * 2) For any data nodes whose a) schema node or b) their type has the extension instance. These nodes are also always
  *    validated according to the standard YANG node validation rules.
+ *
+ * To validate the extension data, you can use ::lyd_validate_ext().
  *
  * @param[in] ext Compiled extension instance.
  * @param[in] node Node/subtree to validate.
