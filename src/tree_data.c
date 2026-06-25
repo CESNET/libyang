@@ -2894,10 +2894,7 @@ lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *bufl
         len = 1 + strlen(key->schema->name) + 2 + strlen(val) + 2;
         LY_CHECK_RET(lyd_path_str_enlarge(buffer, buflen, *bufused + len, is_static));
 
-        quot = '\'';
-        if (strchr(val, '\'')) {
-            quot = '"';
-        }
+        LY_CHECK_RET(ly_val_get_quot(LYD_CTX(node), val, &quot));
         *bufused += sprintf(*buffer + *bufused, "[%s=%c%s%c]", key->schema->name, quot, val, quot);
     }
 
@@ -2912,7 +2909,7 @@ lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *bufl
  * @param[in,out] buflen Current buffer length.
  * @param[in,out] bufused Current number of characters used in @p buffer.
  * @param[in] is_static Whether buffer is static or can be reallocated.
- * @return LY_ERR
+ * @return LY_ERR value.
  */
 static LY_ERR
 lyd_path_leaflist_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, ly_bool is_static)
@@ -2925,10 +2922,7 @@ lyd_path_leaflist_predicate(const struct lyd_node *node, char **buffer, size_t *
     len = 4 + strlen(val) + 2; /* "[.='" + val + "']" */
     LY_CHECK_RET(lyd_path_str_enlarge(buffer, buflen, *bufused + len, is_static));
 
-    quot = '\'';
-    if (strchr(val, '\'')) {
-        quot = '"';
-    }
+    LY_CHECK_RET(ly_val_get_quot(LYD_CTX(node), val, &quot));
     *bufused += sprintf(*buffer + *bufused, "[.=%c%s%c]", quot, val, quot);
 
     return LY_SUCCESS;
@@ -3013,7 +3007,7 @@ iter_print:
             len = 1 + (mod ? strlen(mod->name) + 1 : 0) + (iter->schema ? strlen(iter->schema->name) :
                     strlen(((struct lyd_node_opaq *)iter)->name.name));
             rc = lyd_path_str_enlarge(&buffer, &buflen, bufused + len, is_static);
-            if (rc != LY_SUCCESS) {
+            if (rc) {
                 break;
             }
 
@@ -3046,7 +3040,7 @@ iter_print:
                     break;
                 }
             }
-            if (rc != LY_SUCCESS) {
+            if (rc) {
                 break;
             }
 
@@ -3055,6 +3049,10 @@ iter_print:
         break;
     }
 
+    if (rc && !is_static) {
+        free(buffer);
+        buffer = NULL;
+    }
     return buffer;
 }
 

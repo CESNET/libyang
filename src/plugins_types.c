@@ -936,7 +936,7 @@ lyplg_type_resolve_leafref_get_target_path(const struct lyxp_expr *path, const s
         len = path->tok_pos[path->used - 3] + path->tok_len[path->used - 3];
 
         /* generate the string path evaluated using hashes */
-        quot = strchr(target_val, '\'') ? '\"' : '\'';
+        LY_CHECK_RET(ly_val_get_quot(ctx_node->module->ctx, target_val, &quot));
         if (asprintf(&str_path, "%.*s[%s=%c%s%c]/%s", len, path->expr, path->expr + path->tok_pos[path->used - 1],
                 quot, target_val, quot, path->expr + path->tok_pos[path->used - 1]) == -1) {
             LOGMEM(ctx_node->module->ctx);
@@ -949,7 +949,7 @@ lyplg_type_resolve_leafref_get_target_path(const struct lyxp_expr *path, const s
         assert(p[LY_ARRAY_COUNT(p) - 1].node->nodetype & LYD_NODE_TERM);
 
         /* generate the string path evaluated using hashes */
-        quot = strchr(target_val, '\'') ? '\"' : '\'';
+        LY_CHECK_RET(ly_val_get_quot(ctx_node->module->ctx, target_val, &quot));
         if (asprintf(&str_path, "%s[.=%c%s%c]", path->expr, quot, target_val, quot) == -1) {
             LOGMEM(ctx_node->module->ctx);
             rc = LY_EMEM;

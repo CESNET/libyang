@@ -7974,7 +7974,7 @@ eval_name_test_try_compile_predicate_append(const struct lyxp_expr *exp, uint32_
     /* append the JSON predicate */
     *pred = ly_realloc(*pred, *pred_len + 1 + strlen(pred_node->name) + 2 + strlen(set2.val.str) + 3);
     LY_CHECK_ERR_GOTO(!*pred, LOGMEM(set->ctx); rc = LY_EMEM, cleanup);
-    quot = strchr(set2.val.str, '\'') ? '\"' : '\'';
+    LY_CHECK_GOTO(rc = ly_val_get_quot(set->ctx, set2.val.str, &quot), cleanup);
     *pred_len += sprintf(*pred + *pred_len, "[%s=%c%s%c]", pred_node->name, quot, set2.val.str, quot);
 
 cleanup:

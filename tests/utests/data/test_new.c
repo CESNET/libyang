@@ -526,6 +526,28 @@ test_path(void **state)
             "}\n");
     free(str);
     lyd_free_siblings(root);
+
+    /* value with both ' and " */
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:ll", "my-value with ' and \"", 0, LYD_VALHINT_STRING, 0, &root, NULL);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_SIBLINGS);
+    assert_string_equal(str,
+            "<ll xmlns=\"urn:tests:a\">my-value with ' and \"</ll>\n");
+    free(str);
+    lyd_print_mem(&str, root, LYD_JSON, LYD_PRINT_SIBLINGS);
+    assert_string_equal(str,
+            "{\n"
+            "  \"a:ll\": [\n"
+            "    \"my-value with ' and \\\"\"\n"
+            "  ]\n"
+            "}\n");
+    free(str);
+
+    str = lyd_path(root, LYD_PATH_STD, NULL, 0);
+    assert_null(str);
+    CHECK_LOG_CTX("Invalid value with both ' and \" characters, unable to put in quotes.", NULL, 0);
+    lyd_free_siblings(root);
 }
 
 static void

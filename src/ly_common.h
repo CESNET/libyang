@@ -828,6 +828,16 @@ LY_ERR ly_parse_instance_predicate(const char **pred, uint32_t limit, LYD_FORMAT
         const char **value, uint32_t *value_len, const char **errmsg);
 
 /**
+ * @brief Get suitable quotes for a value for use in an (X)Path expression.
+ *
+ * @param[in] ctx Context to use.
+ * @param[in] value Value to quote.
+ * @param[out] quot Quoting character.
+ * @return LY_ERR value.
+ */
+LY_ERR ly_val_get_quot(const struct ly_ctx *ctx, const char *value, char *quot);
+
+/**
  * @brief mmap(2) wrapper to map input files into memory to unify parsing.
  *
  * The address space is allocate only for reading.

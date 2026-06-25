@@ -2076,3 +2076,23 @@ error:
     *pred = &in[offset];
     return ret;
 }
+
+LY_ERR
+ly_val_get_quot(const struct ly_ctx *ctx, const char *value, char *quot)
+{
+    /* try ' */
+    *quot = '\'';
+    if (!strchr(value, *quot)) {
+        return LY_SUCCESS;
+    }
+
+    /* try " */
+    *quot = '\"';
+    if (!strchr(value, *quot)) {
+        return LY_SUCCESS;
+    }
+
+    /* no valid quotes */
+    LOGERR(ctx, LY_EINVAL, "Invalid value with both ' and \" characters, unable to put in quotes.");
+    return LY_EINVAL;
+}

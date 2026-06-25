@@ -108,10 +108,7 @@ node_instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, voi
                 LY_CHECK_GOTO(ret, cleanup);
 
                 /* default quote */
-                quot = '\'';
-                if (strchr(strval, quot)) {
-                    quot = '"';
-                }
+                LY_CHECK_GOTO(ret = ly_val_get_quot(pred->key->module->ctx, strval, &quot), cleanup);
                 if (inherit_prefix) {
                     /* always the same prefix as the parent */
                     ret = ly_strcat(&result, "[%s=%c%s%c]", pred->key->name, quot, strval, quot);
@@ -127,10 +124,7 @@ node_instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, voi
                 LY_CHECK_GOTO(ret, cleanup);
 
                 /* default quote */
-                quot = '\'';
-                if (strchr(strval, quot)) {
-                    quot = '"';
-                }
+                LY_CHECK_GOTO(ret = ly_val_get_quot(path[u].node->module->ctx, strval, &quot), cleanup);
                 ret = ly_strcat(&result, "[.=%c%s%c]", quot, strval, quot);
                 lydict_remove(path[u].node->module->ctx, strval);
                 break;
