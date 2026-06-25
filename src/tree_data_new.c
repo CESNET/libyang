@@ -789,7 +789,7 @@ lyd_new_term_raw(struct lyd_node *parent, const struct lys_module *module, const
         /* spend the value */
         if (value_size > LYD_VALUE_FIXED_MEM_SIZE) {
             term->value.dyn_mem = malloc(value_size);
-            LY_CHECK_ERR_RET(!term->value.dyn_mem, LOGMEM(ctx), LY_EMEM);
+            LY_CHECK_ERR_RET(!term->value.dyn_mem, LOGMEM(ctx); free(term), LY_EMEM);
             memcpy(term->value.dyn_mem, value_ptr, value_size);
         } else {
             memcpy(term->value.fixed_mem, value_ptr, value_size);
