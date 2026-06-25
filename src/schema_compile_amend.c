@@ -2163,9 +2163,10 @@ lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
         lysc_update_path(ctx, NULL, NULL);
         LY_CHECK_GOTO(ret, cleanup);
 
-        /* augment was applied, remove it (index and the whole set may have changed because other augments
-         * could have been applied) */
-        ly_set_rm(&ctx->uses_augs, aug, NULL);
+        /* augment was applied, remove it (index and the whole set may have changed because other augments could have
+         * been applied, keep the order so that augments from the same module have a deterministic order) */
+        ly_set_contains(&ctx->uses_augs, aug, &i);
+        ly_set_rm_index_ordered(&ctx->uses_augs, i, NULL);
         lysc_augment_free(ctx->ctx, aug);
         i = 0;
     }
@@ -2195,7 +2196,8 @@ lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
         LY_CHECK_GOTO(ret, cleanup);
 
         /* augment was applied, remove it */
-        ly_set_rm(&ctx->augs, aug, NULL);
+        ly_set_contains(&ctx->augs, aug, &i);
+        ly_set_rm_index_ordered(&ctx->augs, i, NULL);
         lysc_augment_free(ctx->ctx, aug);
         i = 0;
     }
