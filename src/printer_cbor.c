@@ -19,7 +19,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "compat.h"
 #include "context.h"
+#include "lcbor.h"
 #include "log.h"
 #include "ly_common.h"
 #include "out.h"
@@ -34,7 +36,6 @@
 #include "tree.h"
 #include "tree_data.h"
 #include "tree_schema.h"
-#include "lcbor.h"
 
 /**
  * @brief CBOR printer context.
@@ -213,7 +214,7 @@ cbor_print_member_name(struct cborpr_ctx *pctx, const struct lyd_node *node, ly_
     char *name = NULL;
     const char *prefix_str = node_prefix(node);
     const char *node_name = node->schema->name;
-    
+
     if (cbor_nscmp(node, pctx->parent)) {
         /* print "namespace" */
         if (is_attr) {
@@ -234,7 +235,7 @@ cbor_print_member_name(struct cborpr_ctx *pctx, const struct lyd_node *node, ly_
             name = strdup(node_name);
         }
     }
-    
+
     return name;
 }
 
@@ -352,17 +353,17 @@ print_val:
 
     case LY_TYPE_INT64:
     case LY_TYPE_UINT64:
-    case LY_TYPE_DEC64: {
+    case LY_TYPE_DEC64:
         /* numeric types stored as strings in CBOR */
         item = cbor_build_string(value);
         break;
-    }
 
     case LY_TYPE_INT8:
     case LY_TYPE_INT16:
     case LY_TYPE_INT32: {
         /* signed integer types */
         int64_t num = strtoll(value, NULL, 10);
+
         if (num >= 0) {
             item = cbor_build_uint64(num);
         } else {
@@ -376,6 +377,7 @@ print_val:
     case LY_TYPE_UINT32: {
         /* unsigned integer types */
         uint64_t num = strtoull(value, NULL, 10);
+
         item = cbor_build_uint64(num);
         break;
     }
@@ -394,6 +396,7 @@ print_val:
         item = cbor_new_definite_array(1);
         if (item) {
             cbor_item_t *null_item = cbor_build_ctrl(CBOR_CTRL_NULL);
+
             if (null_item) {
                 cbor_array_push(item, null_item);
                 cbor_decref(&null_item);
@@ -430,6 +433,7 @@ cbor_print_attribute(struct cborpr_ctx *pctx, const struct lyd_node_opaq *node, 
 
     for (attr = node->attr; attr; attr = attr->next) {
         char *key = cbor_print_member_name2(pctx, &node->node, attr->format, &attr->name, 0);
+
         LY_CHECK_RET(!key, LY_EMEM);
 
         if (attr->hints & (LYD_VALHINT_STRING | LYD_VALHINT_OCTNUM | LYD_VALHINT_HEXNUM | LYD_VALHINT_NUM64)) {
@@ -447,6 +451,7 @@ cbor_print_attribute(struct cborpr_ctx *pctx, const struct lyd_node_opaq *node, 
             value_item = cbor_new_definite_array(1);
             if (value_item) {
                 cbor_item_t *null_item = cbor_build_ctrl(CBOR_CTRL_NULL);
+
                 if (null_item) {
                     cbor_array_push(value_item, null_item);
                     cbor_decref(&null_item);
@@ -466,6 +471,7 @@ cbor_print_attribute(struct cborpr_ctx *pctx, const struct lyd_node_opaq *node, 
             .key = cbor_move(cbor_build_string(key)),
             .value = cbor_move(value_item)
         };
+
         free(key);
 
         if (!cbor_map_add(attr_map, pair)) {
@@ -509,6 +515,7 @@ cbor_print_metadata(struct cborpr_ctx *pctx, const struct lyd_node *node, const 
             .key = cbor_move(cbor_build_string(key)),
             .value = cbor_move(value_item)
         };
+
         free(key);
 
         if (!cbor_map_add(meta_map, pair)) {
@@ -533,6 +540,7 @@ cbor_print_metadata(struct cborpr_ctx *pctx, const struct lyd_node *node, const 
             .key = cbor_move(cbor_build_string(key)),
             .value = cbor_move(value_item)
         };
+
         free(key);
 
         if (!cbor_map_add(meta_map, pair)) {
@@ -610,6 +618,7 @@ cbor_print_attributes(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor
             .key = cbor_move(cbor_build_string(key)),
             .value = cbor_move(meta_map)
         };
+
         free(key);
 
         if (!cbor_map_add(parent_map, pair)) {
@@ -635,6 +644,7 @@ cbor_print_attributes(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor
             .key = cbor_move(cbor_build_string(key)),
             .value = cbor_move(meta_map)
         };
+
         free(key);
 
         if (!cbor_map_add(parent_map, pair)) {
@@ -671,7 +681,7 @@ cbor_print_leaf(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_item_
         .key = cbor_move(cbor_build_string(key)),
         .value = cbor_move(value_item)
     };
-    
+
     if (!cbor_map_add(parent_map, pair)) {
         free(key);
         cbor_decref(&pair.key);
@@ -799,7 +809,7 @@ cbor_print_container(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_
         .key = cbor_move(cbor_build_string(key)),
         .value = cbor_move(inner_map)
     };
-    
+
     if (!cbor_map_add(parent_map, pair)) {
         free(key);
         cbor_decref(&pair.key);
@@ -834,7 +844,7 @@ cbor_print_any(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_item_t
         .key = cbor_move(cbor_build_string(key)),
         .value = cbor_move(any_item)
     };
-    
+
     if (!cbor_map_add(parent_map, pair)) {
         free(key);
         cbor_decref(&pair.key);
@@ -938,6 +948,7 @@ cbor_print_leaf_list(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_
                 .key = cbor_move(cbor_build_string(key)),
                 .value = cbor_move(*array_p)
             };
+
             free(key);
 
             if (!cbor_map_add(parent_map, pair)) {
@@ -1021,6 +1032,7 @@ cbor_print_meta_attr_leaflist(struct cborpr_ctx *pctx, cbor_item_t *parent_map)
             cbor_decref(&meta_map);
         } else {
             cbor_item_t *null_item = cbor_build_ctrl(CBOR_CTRL_NULL);
+
             cbor_array_push(meta_array, null_item);
             cbor_decref(&null_item);
         }
@@ -1035,6 +1047,7 @@ cbor_print_meta_attr_leaflist(struct cborpr_ctx *pctx, cbor_item_t *parent_map)
         .key = cbor_move(cbor_build_string(key)),
         .value = cbor_move(meta_array)
     };
+
     free(key);
 
     if (!cbor_map_add(parent_map, pair)) {
@@ -1092,6 +1105,7 @@ cbor_print_opaq(struct cborpr_ctx *pctx, const struct lyd_node_opaq *node, cbor_
 
     if (node->child || (hints & LYD_NODEHINT_LIST) || (hints & LYD_NODEHINT_CONTAINER)) {
         cbor_item_t *inner_map = NULL;
+
         LY_CHECK_ERR_RET(cbor_print_inner(pctx, &node->node, &inner_map), free(key), LY_EINVAL);
 
         if (hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
@@ -1102,6 +1116,7 @@ cbor_print_opaq(struct cborpr_ctx *pctx, const struct lyd_node_opaq *node, cbor_
                 .key = cbor_move(cbor_build_string(key)),
                 .value = cbor_move(inner_map)
             };
+
             free(key);
             key = NULL;
 
@@ -1116,6 +1131,7 @@ cbor_print_opaq(struct cborpr_ctx *pctx, const struct lyd_node_opaq *node, cbor_
             value_item = cbor_new_definite_array(1);
             if (value_item) {
                 cbor_item_t *null_item = cbor_build_ctrl(CBOR_CTRL_NULL);
+
                 if (null_item) {
                     cbor_array_push(value_item, null_item);
                     cbor_decref(&null_item);
@@ -1144,6 +1160,7 @@ cbor_print_opaq(struct cborpr_ctx *pctx, const struct lyd_node_opaq *node, cbor_
                 .key = cbor_move(cbor_build_string(key)),
                 .value = cbor_move(value_item)
             };
+
             free(key);
             key = NULL;
 
@@ -1169,6 +1186,7 @@ cbor_print_opaq(struct cborpr_ctx *pctx, const struct lyd_node_opaq *node, cbor_
                 .key = cbor_move(cbor_build_string(key)),
                 .value = cbor_move(*array_p)
             };
+
             free(key);
 
             if (!cbor_map_add(parent_map, pair)) {
@@ -1253,15 +1271,16 @@ cbor_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t option
     if (!root) {
         /* empty data - print empty map */
         cbor_item_t *empty_map = cbor_new_indefinite_map();
+
         LY_CHECK_RET(!empty_map, LY_EMEM);
-        
+
         buffer_size = cbor_serialize_alloc(empty_map, &buffer, &buffer_size);
         cbor_decref(&empty_map);
-        
+
         if (buffer_size == 0) {
             return LY_EMEM;
         }
-        
+
         ly_write_(out, (const char *)buffer, buffer_size);
         free(buffer);
         ly_print_flush(out);
@@ -1280,7 +1299,7 @@ cbor_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t option
     /* print content */
     LY_LIST_FOR(root, node) {
         pctx.root = node;
-        LY_CHECK_ERR_RET(cbor_print_node(&pctx, node, pctx.root_map), 
+        LY_CHECK_ERR_RET(cbor_print_node(&pctx, node, pctx.root_map),
                 cbor_decref(&pctx.root_map); ly_set_erase(&pctx.open, NULL), LY_EINVAL);
         if (!(options & LYD_PRINT_SIBLINGS)) {
             break;

@@ -20,7 +20,6 @@
 /* using libcbor as the low-level parser */
 #include <cbor.h>
 
-
 #include "log.h"
 #include "set.h"
 
@@ -30,8 +29,7 @@ struct ly_in;
 /**
  * @brief CBOR format variants for different encoding schemes
  */
-enum lyd_cbor_format
-{
+enum lyd_cbor_format {
     LYD_CBOR_NAMED, /**< CBOR with named identifiers (JSON-like) */
     LYD_CBOR_SID    /**< CBOR with Schema Item identifiers (future implementation) */
 };

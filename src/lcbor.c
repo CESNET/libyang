@@ -77,7 +77,6 @@ lydcbor_detect_format(struct ly_in *in, enum lyd_cbor_format *format)
 LY_ERR
 lycbor_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lycbor_ctx **cborctx_p)
 {
-    /* TODO : Need to restructure error handling here */
     LY_ERR ret = LY_SUCCESS;
     struct lycbor_ctx *cborctx;
     struct cbor_load_result result = {0};
@@ -85,8 +84,7 @@ lycbor_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lycbor_ctx **c
 
     assert(ctx && in && cborctx_p);
 
-    /* TODO : error handling after the detect_format function call */
-    ret = lydcbor_detect_format(in, &format);
+    LY_CHECK_RET(lydcbor_detect_format(in, &format));
 
     /* Allocate and initialize CBOR context */
     cborctx = calloc(1, sizeof *cborctx);
@@ -95,7 +93,7 @@ lycbor_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lycbor_ctx **c
     cborctx->in = in;
     cborctx->format = format;
 
-     /* input line logging */
+    /* input line logging */
     ly_log_location(NULL, NULL, in);
 
     /* load and parse CBOR data */

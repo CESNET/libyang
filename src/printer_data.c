@@ -44,8 +44,8 @@ lyd_print_(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, u
         break;
 #else
     case LYD_CBOR:
-        LOGERR(root ? LYD_CTX(root) : NULL, LY_EINVAL, "CBOR format not supported, libcbor not found.");
-        ret = LY_EINVAL;
+        LOGERR(root ? LYD_CTX(root) : NULL, LY_ENOT, "CBOR format not supported, libcbor not found.");
+        ret = LY_ENOT;
         break;
 #endif /* ENABLE_CBOR_SUPPORT */
     case LYD_UNKNOWN:

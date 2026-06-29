@@ -78,7 +78,7 @@ lyd_parse_get_format(const struct ly_in *in, LYD_FORMAT format)
         } else if ((len >= LY_LYB_SUFFIX_LEN + 1) &&
                 !strncmp(&path[len - LY_LYB_SUFFIX_LEN], LY_LYB_SUFFIX, LY_LYB_SUFFIX_LEN)) {
             format = LYD_LYB;
-        } else if ((len >= LY_CBOR_SUFFIX_LEN + 1) && 
+        } else if ((len >= LY_CBOR_SUFFIX_LEN + 1) &&
                 !strncmp(&path[len - LY_CBOR_SUFFIX_LEN], LY_CBOR_SUFFIX, LY_CBOR_SUFFIX_LEN)) {
             format = LYD_CBOR;
         } /* else still unknown */
