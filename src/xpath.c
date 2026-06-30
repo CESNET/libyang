@@ -256,15 +256,15 @@ print_expr_struct_debug(const struct lyxp_expr *exp)
 
     LOGDBG(LY_LDGXPATH, "expression \"%s\":", exp->expr);
     for (i = 0; i < exp->used; ++i) {
-        ly_append_str(&buf, &used, &size, "\ttoken %s, in expression \"%.*s\"",
+        ly_append_str(&buf, &size, &used, "\ttoken %s, in expression \"%.*s\"",
                 lyxp_token2str(exp->tokens[i]), exp->tok_len[i], &exp->expr[exp->tok_pos[i]]);
 
         if (exp->repeat && exp->repeat[i]) {
-            ly_append_str(&buf, &used, &size, " (repeat %d", exp->repeat[i][0]);
+            ly_append_str(&buf, &size, &used, " (repeat %d", exp->repeat[i][0]);
             for (j = 1; exp->repeat[i][j]; ++j) {
-                ly_append_str(&buf, &used, &size, ", %d", exp->repeat[i][j]);
+                ly_append_str(&buf, &size, &used, ", %d", exp->repeat[i][j]);
             }
-            ly_append_str(&buf, &used, &size, ")");
+            ly_append_str(&buf, &size, &used, ")");
         }
         LOGDBG(LY_LDGXPATH, buf);
         used = 0;
