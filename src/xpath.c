@@ -240,43 +240,6 @@ str2axis(const char *str, uint32_t str_len)
 }
 
 /**
- * @brief Append a string to a dynamic string variable.
- *
- * @param[in,out] str String to use.
- * @param[in,out] size String size.
- * @param[in,out] used String used size excluding terminating zero.
- * @param[in] format Message format.
- * @param[in] ... Message format arguments.
- */
-static void
-print_expr_str(char **str, size_t *size, size_t *used, const char *format, ...)
-{
-    int p;
-    va_list ap;
-
-    va_start(ap, format);
-
-    /* try to append the string */
-    p = vsnprintf(*str ? *str + *used : NULL, *size - *used, format, ap);
-
-    if ((unsigned)p >= *size - *used) {
-        /* realloc */
-        *str = ly_realloc(*str, *size + p + 1);
-        *size += p + 1;
-
-        /* restart ap */
-        va_end(ap);
-        va_start(ap, format);
-
-        /* print */
-        p = vsnprintf(*str + *used, *size - *used, format, ap);
-    }
-
-    *used += p;
-    va_end(ap);
-}
-
-/**
  * @brief Print the whole expression @p exp to debug output.
  *
  * @param[in] exp Expression to use.
@@ -285,8 +248,7 @@ static void
 print_expr_struct_debug(const struct lyxp_expr *exp)
 {
     char *buf = NULL;
-    uint32_t i, j;
-    size_t size = 0, used = 0;
+    uint32_t i, j, size = 0, used = 0;
 
     if (!exp || (ly_ll < LY_LLDBG)) {
         return;
@@ -294,15 +256,15 @@ print_expr_struct_debug(const struct lyxp_expr *exp)
 
     LOGDBG(LY_LDGXPATH, "expression \"%s\":", exp->expr);
     for (i = 0; i < exp->used; ++i) {
-        print_expr_str(&buf, &size, &used, "\ttoken %s, in expression \"%.*s\"",
+        ly_append_str(&buf, &used, &size, "\ttoken %s, in expression \"%.*s\"",
                 lyxp_token2str(exp->tokens[i]), exp->tok_len[i], &exp->expr[exp->tok_pos[i]]);
 
         if (exp->repeat && exp->repeat[i]) {
-            print_expr_str(&buf, &size, &used, " (repeat %d", exp->repeat[i][0]);
+            ly_append_str(&buf, &used, &size, " (repeat %d", exp->repeat[i][0]);
             for (j = 1; exp->repeat[i][j]; ++j) {
-                print_expr_str(&buf, &size, &used, ", %d", exp->repeat[i][j]);
+                ly_append_str(&buf, &used, &size, ", %d", exp->repeat[i][j]);
             }
-            print_expr_str(&buf, &size, &used, ")");
+            ly_append_str(&buf, &used, &size, ")");
         }
         LOGDBG(LY_LDGXPATH, buf);
         used = 0;

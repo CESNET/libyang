@@ -1651,12 +1651,17 @@ lys_apply_deviation(struct lysc_ctx *ctx, struct lysp_deviation *dev, const stru
     LY_ERR ret = LY_SUCCESS;
     struct lys_module *orig_mod = ctx->cur_mod;
     struct lysp_module *orig_pmod = ctx->pmod;
-    char orig_path[LYSC_CTX_BUFSIZE];
+    char *orig_path;
+    uint32_t path_used, path_size;
     struct lysp_deviate *d;
 
     /* clear path and set modules */
-    strcpy(orig_path, ctx->path);
-    ctx->path_len = 1;
+    orig_path = ctx->path;
+    path_used = ctx->path_used;
+    path_size = ctx->path_size;
+    ctx->path = NULL;
+    ctx->path_used = 0;
+    ctx->path_size = 0;
     ctx->cur_mod = dev_pmod->mod;
     ctx->pmod = (struct lysp_module *)dev_pmod;
 
@@ -1686,8 +1691,10 @@ cleanup:
     ctx->cur_mod = orig_mod;
     ctx->pmod = orig_pmod;
 
-    strcpy(ctx->path, orig_path);
-    ctx->path_len = strlen(ctx->path);
+    free(ctx->path);
+    ctx->path = orig_path;
+    ctx->path_used = path_used;
+    ctx->path_size = path_size;
     return ret;
 }
 
@@ -2137,8 +2144,8 @@ lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
     LY_ERR ret = LY_SUCCESS;
     struct lys_module *orig_mod = ctx->cur_mod;
     struct lysp_module *orig_pmod = ctx->pmod;
-    uint32_t i;
-    char orig_path[LYSC_CTX_BUFSIZE];
+    uint32_t i, path_used, path_size;
+    char *orig_path;
     struct lysc_augment *aug;
 
     /* uses augments */
@@ -2182,8 +2189,12 @@ lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
         }
 
         /* use the path and modules from the augment */
-        strcpy(orig_path, ctx->path);
-        ctx->path_len = 1;
+        orig_path = ctx->path;
+        path_used = ctx->path_used;
+        path_size = ctx->path_size;
+        ctx->path = NULL;
+        ctx->path_used = 0;
+        ctx->path_size = 0;
         ctx->cur_mod = aug->aug_pmod->mod;
         ctx->pmod = (struct lysp_module *)aug->aug_pmod;
         lysc_update_path(ctx, NULL, "{augment}");
@@ -2191,8 +2202,10 @@ lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
 
         /* apply augment, restore the path */
         ret = lys_compile_augment(ctx, aug->aug_p, node);
-        strcpy(ctx->path, orig_path);
-        ctx->path_len = strlen(ctx->path);
+        free(ctx->path);
+        ctx->path = orig_path;
+        ctx->path_used = path_used;
+        ctx->path_size = path_size;
         LY_CHECK_GOTO(ret, cleanup);
 
         /* augment was applied, remove it */

@@ -1531,38 +1531,6 @@ cleanup:
 }
 
 /**
- * @brief Append a formatted message to a buffer.
- *
- * @param[in,out] buf Buffer to use.
- * @param[in,out] size Size of @p buf.
- * @param[in] format Message format.
- * @param[in] ... Message format arguments.
- * @return LY_ERR value.
- */
-static LY_ERR
-lysp_ext_instance_path_append(char **buf, uint32_t *size, const char *format, ...)
-{
-    va_list ap;
-    uint32_t len;
-
-    /* learn the required length */
-    va_start(ap, format);
-    len = vsnprintf(*buf ? *buf + *size : NULL, 0, format, ap);
-    va_end(ap);
-
-    /* realloc */
-    *buf = ly_realloc(*buf, (*size) + len + 1);
-    LY_CHECK_ERR_RET(!*buf, LOGMEM(NULL), LY_EMEM);
-
-    /* print */
-    va_start(ap, format);
-    *size += vsnprintf(*buf + *size, len + 1, format, ap);
-    va_end(ap);
-
-    return LY_SUCCESS;
-}
-
-/**
  * @brief Append the log path of a statement to a string, recursively.
  *
  * @param[in] ctx Context for logging.
@@ -1571,16 +1539,17 @@ lysp_ext_instance_path_append(char **buf, uint32_t *size, const char *format, ..
  * @param[in] stmt_p Pointer to the statement structure.
  * @param[in] pmod Parsed module to use.
  * @param[in,out] buf Buffer to use.
+ * @param[in,out] used Used bytes of @p buf without terminating 0.
  * @param[in,out] size Size of @p buf.
  * @return LY_ERR value.
  */
 static LY_ERR
 lysp_ext_instance_path_stmt_append_r(const struct ly_ctx *ctx, enum ly_stmt stmt, LY_ARRAY_COUNT_TYPE stmt_idx,
-        const void *stmt_p, const struct lysp_module *pmod, char **buf, uint32_t *size)
+        const void *stmt_p, const struct lysp_module *pmod, char **buf, uint32_t *used, uint32_t *size)
 {
-    if (*size && ((*buf)[*size - 1] != ':')) {
+    if (*used && ((*buf)[*used - 1] != ':')) {
         /* slash after the previous path, if not module name */
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "/"));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "/"));
     }
 
     switch (stmt) {
@@ -1602,30 +1571,31 @@ lysp_ext_instance_path_stmt_append_r(const struct ly_ctx *ctx, enum ly_stmt stmt
     case LY_STMT_USES:
         *buf = lysp_path_until(stmt_p, NULL, pmod);
         LY_CHECK_ERR_RET(!buf, LOGMEM(ctx), LY_EMEM);
-        *size = strlen(*buf);
+        *used = strlen(*buf);
+        *size = *used + 1;
         break;
     case LY_STMT_ARGUMENT:
     case LY_STMT_YIN_ELEMENT:
-        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_EXTENSION, 0, stmt_p, pmod, buf, size));
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "/{%s}", lyplg_ext_stmt2str(stmt)));
+        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_EXTENSION, 0, stmt_p, pmod, buf, used, size));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "/{%s}", lyplg_ext_stmt2str(stmt)));
         break;
     case LY_STMT_BASE: {
         const char * const *bases = stmt_p;
 
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), bases[stmt_idx]));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='%s'}", lyplg_ext_stmt2str(stmt), bases[stmt_idx]));
         break;
     }
     case LY_STMT_BELONGS_TO: {
         const struct lysp_submodule *submod = stmt_p;
 
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), submod->name));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='%s'}", lyplg_ext_stmt2str(stmt), submod->name));
         break;
     }
     case LY_STMT_BIT:
     case LY_STMT_ENUM: {
         const struct lysp_type_enum *be = stmt_p;
 
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), be->name));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='%s'}", lyplg_ext_stmt2str(stmt), be->name));
         break;
     }
     case LY_STMT_CONFIG:
@@ -1638,12 +1608,12 @@ lysp_ext_instance_path_stmt_append_r(const struct ly_ctx *ctx, enum ly_stmt stmt
     case LY_STMT_ORGANIZATION:
     case LY_STMT_PREFIX:
     case LY_STMT_YANG_VERSION:
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s}", lyplg_ext_stmt2str(stmt)));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{%s}", lyplg_ext_stmt2str(stmt)));
         break;
     case LY_STMT_DEFAULT: {
         const struct lysp_qname *qn = stmt_p;
 
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), qn->str));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='%s'}", lyplg_ext_stmt2str(stmt), qn->str));
         break;
     }
     case LY_STMT_DEVIATE: {
@@ -1651,16 +1621,16 @@ lysp_ext_instance_path_stmt_append_r(const struct ly_ctx *ctx, enum ly_stmt stmt
 
         switch (d->mod) {
         case LYS_DEV_NOT_SUPPORTED:
-            LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='not-supported'}", lyplg_ext_stmt2str(stmt)));
+            LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='not-supported'}", lyplg_ext_stmt2str(stmt)));
             break;
         case LYS_DEV_ADD:
-            LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='add'}", lyplg_ext_stmt2str(stmt)));
+            LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='add'}", lyplg_ext_stmt2str(stmt)));
             break;
         case LYS_DEV_DELETE:
-            LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='delete'}", lyplg_ext_stmt2str(stmt)));
+            LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='delete'}", lyplg_ext_stmt2str(stmt)));
             break;
         case LYS_DEV_REPLACE:
-            LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='replace'}", lyplg_ext_stmt2str(stmt)));
+            LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='replace'}", lyplg_ext_stmt2str(stmt)));
             break;
         }
         break;
@@ -1668,91 +1638,91 @@ lysp_ext_instance_path_stmt_append_r(const struct ly_ctx *ctx, enum ly_stmt stmt
     case LY_STMT_DEVIATION: {
         const struct lysp_deviation *dev = stmt_p;
 
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), dev->nodeid));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='%s'}", lyplg_ext_stmt2str(stmt), dev->nodeid));
         break;
     }
     case LY_STMT_ERROR_APP_TAG:
     case LY_STMT_ERROR_MESSAGE:
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{restriction}/{%s}", lyplg_ext_stmt2str(stmt)));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{restriction}/{%s}", lyplg_ext_stmt2str(stmt)));
         break;
     case LY_STMT_EXTENSION: {
         const struct lysp_ext *ext = stmt_p;
 
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), ext->name));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='%s'}", lyplg_ext_stmt2str(stmt), ext->name));
         break;
     }
     case LY_STMT_EXTENSION_INSTANCE: {
         const struct lysp_ext_instance *ext = stmt_p;
 
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{ext-inst='%s'}", ext->name));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{ext-inst='%s'}", ext->name));
         if (ext->argument) {
-            LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "/%s", ext->argument));
+            LY_CHECK_RET(ly_append_str(buf, size, used, "/%s", ext->argument));
         }
         break;
     }
     case LY_STMT_FEATURE: {
         const struct lysp_feature *f = stmt_p;
 
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), f->name));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='%s'}", lyplg_ext_stmt2str(stmt), f->name));
         break;
     }
     case LY_STMT_FRACTION_DIGITS:
     case LY_STMT_PATH:
     case LY_STMT_REQUIRE_INSTANCE:
-        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_TYPE, 0, stmt_p, pmod, buf, size));
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "/{%s}", lyplg_ext_stmt2str(stmt)));
+        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_TYPE, 0, stmt_p, pmod, buf, used, size));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "/{%s}", lyplg_ext_stmt2str(stmt)));
         break;
     case LY_STMT_IDENTITY: {
         const struct lysp_ident *id = stmt_p;
 
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), id->name));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='%s'}", lyplg_ext_stmt2str(stmt), id->name));
         break;
     }
     case LY_STMT_IF_FEATURE:
     case LY_STMT_UNIQUE: {
         const struct lysp_qname *qns = stmt_p;
 
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), qns[stmt_idx].str));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='%s'}", lyplg_ext_stmt2str(stmt), qns[stmt_idx].str));
         break;
     }
     case LY_STMT_IMPORT: {
         const struct lysp_import *imp = stmt_p;
 
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), imp->name));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='%s'}", lyplg_ext_stmt2str(stmt), imp->name));
         break;
     }
     case LY_STMT_INCLUDE:  {
         const struct lysp_include *inc = stmt_p;
 
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), inc->name));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='%s'}", lyplg_ext_stmt2str(stmt), inc->name));
         break;
     }
     case LY_STMT_KEY:
     case LY_STMT_ORDERED_BY:
-        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_LIST, 0, stmt_p, pmod, buf, size));
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "/{%s}", lyplg_ext_stmt2str(stmt)));
+        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_LIST, 0, stmt_p, pmod, buf, used, size));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "/{%s}", lyplg_ext_stmt2str(stmt)));
         break;
     case LY_STMT_LENGTH:
     case LY_STMT_MUST:
     case LY_STMT_RANGE: {
         const struct lysp_restr *res = stmt_p;
 
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), res->arg.str));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='%s'}", lyplg_ext_stmt2str(stmt), res->arg.str));
         break;
     }
     case LY_STMT_MODIFIER:
-        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_PATTERN, 0, stmt_p, pmod, buf, size));
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "/{%s}", lyplg_ext_stmt2str(stmt)));
+        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_PATTERN, 0, stmt_p, pmod, buf, used, size));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "/{%s}", lyplg_ext_stmt2str(stmt)));
         break;
     case LY_STMT_PATTERN: {
         const struct lysp_restr *res = stmt_p;
 
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), res->arg.str + 1));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='%s'}", lyplg_ext_stmt2str(stmt), res->arg.str + 1));
         break;
     }
     case LY_STMT_POSITION:
-        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_BIT, 0, stmt_p, pmod, buf, size));
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "/{%s}", lyplg_ext_stmt2str(stmt)));
+        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_BIT, 0, stmt_p, pmod, buf, used, size));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "/{%s}", lyplg_ext_stmt2str(stmt)));
         break;
     case LY_STMT_PRESENCE:
     case LY_STMT_REFERENCE:
@@ -1760,53 +1730,53 @@ lysp_ext_instance_path_stmt_append_r(const struct ly_ctx *ctx, enum ly_stmt stmt
     case LY_STMT_UNITS: {
         const char *str = stmt_p;
 
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), str));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='%s'}", lyplg_ext_stmt2str(stmt), str));
         break;
     }
     case LY_STMT_REFINE: {
         const struct lysp_refine *rf = stmt_p;
 
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), rf->nodeid));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='%s'}", lyplg_ext_stmt2str(stmt), rf->nodeid));
         break;
     }
     case LY_STMT_REVISION: {
         const struct lysp_revision *rev = stmt_p;
 
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), rev->date));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='%s'}", lyplg_ext_stmt2str(stmt), rev->date));
         break;
     }
     case LY_STMT_STATUS: {
         const uint16_t *flags = stmt_p;
 
         if (*flags & LYS_STATUS_OBSLT) {
-            LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='obsolete'}", lyplg_ext_stmt2str(stmt)));
+            LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='obsolete'}", lyplg_ext_stmt2str(stmt)));
         } else if (*flags & LYS_STATUS_DEPRC) {
-            LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='deprecated'}", lyplg_ext_stmt2str(stmt)));
+            LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='deprecated'}", lyplg_ext_stmt2str(stmt)));
         } else {
-            LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='current'}", lyplg_ext_stmt2str(stmt)));
+            LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='current'}", lyplg_ext_stmt2str(stmt)));
         }
         break;
     }
     case LY_STMT_TYPE: {
         const struct lysp_type *typ = stmt_p;
 
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), typ->name));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='%s'}", lyplg_ext_stmt2str(stmt), typ->name));
         break;
     }
     case LY_STMT_TYPEDEF: {
         const struct lysp_tpdf *tpdf = stmt_p;
 
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), tpdf->name));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='%s'}", lyplg_ext_stmt2str(stmt), tpdf->name));
         break;
     }
     case LY_STMT_VALUE:
-        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_ENUM, 0, stmt_p, pmod, buf, size));
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "/{%s}", lyplg_ext_stmt2str(stmt)));
+        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_ENUM, 0, stmt_p, pmod, buf, used, size));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "/{%s}", lyplg_ext_stmt2str(stmt)));
         break;
     case LY_STMT_WHEN: {
         const struct lysp_when *wh = stmt_p;
 
-        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), wh->cond));
+        LY_CHECK_RET(ly_append_str(buf, size, used, "{%s='%s'}", lyplg_ext_stmt2str(stmt), wh->cond));
         break;
     }
     case LY_STMT_NONE:
@@ -1829,27 +1799,27 @@ lysp_ext_instance_path(const struct ly_ctx *ctx, const struct lysp_module *pmod,
         char **path)
 {
     char *buf = NULL;
-    uint32_t size = 0;
+    uint32_t used = 0, size = 0;
 
     if (ext->parent_stmt == LY_STMT_MODULE) {
         /* module name */
-        LY_CHECK_RET(lysp_ext_instance_path_append(&buf, &size, "/%s:", ((struct lysp_module *)ext->parent)->mod->name));
+        LY_CHECK_RET(ly_append_str(&buf, &size, &used, "/%s:", ((struct lysp_module *)ext->parent)->mod->name));
     } else if (ext->parent_stmt == LY_STMT_SUBMODULE) {
         /* submodule name */
-        LY_CHECK_RET(lysp_ext_instance_path_append(&buf, &size, "/%s:", ((struct lysp_submodule *)ext->parent)->name));
+        LY_CHECK_RET(ly_append_str(&buf, &size, &used, "/%s:", ((struct lysp_submodule *)ext->parent)->name));
     } else {
         /* start with the module name unless a node is parent, which will include its module name */
         if (!(ext->parent_stmt & LY_STMT_NODE_MASK)) {
-            LY_CHECK_RET(lysp_ext_instance_path_append(&buf, &size, "/%s:", pmod->mod->name));
+            LY_CHECK_RET(ly_append_str(&buf, &size, &used, "/%s:", pmod->mod->name));
         }
 
         /* generate path of the parent statement */
-        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, ext->parent_stmt, ext->parent_stmt_index, ext->parent, pmod,
-                &buf, &size));
+        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, ext->parent_stmt, ext->parent_stmt_index, ext->parent,
+                pmod, &buf, &used, &size));
     }
 
     /* append the extension instance path */
-    LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_EXTENSION_INSTANCE, 0, ext, pmod, &buf, &size));
+    LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_EXTENSION_INSTANCE, 0, ext, pmod, &buf, &used, &size));
 
     *path = buf;
     return LY_SUCCESS;

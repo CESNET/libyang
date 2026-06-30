@@ -51,58 +51,52 @@
 void
 lysc_update_path(struct lysc_ctx *ctx, const struct lys_module *parent_module, const char *name)
 {
-    int len;
-    uint8_t nextlevel = 0; /* 0 - no starttag, 1 - '/' starttag, 2 - '=' starttag + '}' endtag */
+    ly_bool spec = 0;
 
     if (!name) {
+        assert(ctx->path_used);
+
         /* removing last path segment */
-        if (ctx->path[ctx->path_len - 1] == '}') {
-            for ( ; ctx->path[ctx->path_len] != '=' && ctx->path[ctx->path_len] != '{'; --ctx->path_len) {}
-            if (ctx->path[ctx->path_len] == '=') {
-                ctx->path[ctx->path_len++] = '}';
+        if (ctx->path[ctx->path_used - 1] == '}') {
+            for ( ; ctx->path[ctx->path_used] != '=' && ctx->path[ctx->path_used] != '{'; --ctx->path_used) {}
+            if (ctx->path[ctx->path_used] == '=') {
+                ctx->path[ctx->path_used++] = '}';
             } else {
                 /* not a top-level special tag, remove also preceiding '/' */
                 goto remove_nodelevel;
             }
         } else {
 remove_nodelevel:
-            for ( ; ctx->path[ctx->path_len] != '/'; --ctx->path_len) {}
-            if (ctx->path_len == 0) {
-                /* top-level (last segment) */
-                ctx->path_len = 1;
+            for ( ; ctx->path[ctx->path_used] != '/'; --ctx->path_used) {}
+            if (!ctx->path_used) {
+                free(ctx->path);
+                ctx->path = NULL;
+                ctx->path_size = 0;
             }
         }
-        /* set new terminating NULL-byte */
-        ctx->path[ctx->path_len] = '\0';
-    } else {
-        if (ctx->path_len > 1) {
-            if (!parent_module && (ctx->path[ctx->path_len - 1] == '}') && (ctx->path[ctx->path_len - 2] != '\'')) {
-                /* extension of the special tag */
-                nextlevel = 2;
-                --ctx->path_len;
-            } else {
-                /* there is already some path, so add next level */
-                nextlevel = 1;
-            }
-        } /* else the path is just initiated with '/', so do not add additional slash in case of top-level nodes */
 
-        if (nextlevel != 2) {
-            if ((parent_module && (parent_module == ctx->cur_mod)) || (!parent_module && (ctx->path_len > 1) && (name[0] == '{'))) {
+        if (ctx->path_used) {
+            /* set new terminating NULL-byte */
+            ctx->path[ctx->path_used] = '\0';
+        }
+    } else {
+        if (!parent_module && ctx->path_used && (ctx->path[ctx->path_used - 1] == '}') &&
+                (ctx->path[ctx->path_used - 2] != '\'')) {
+            /* extension of the special tag */
+            spec = 1;
+            --ctx->path_used;
+        }
+
+        if (!spec) {
+            if ((parent_module && (parent_module == ctx->cur_mod)) || (!parent_module && (ctx->path_used > 1) &&
+                    (name[0] == '{'))) {
                 /* module not changed, print the name unprefixed */
-                len = snprintf(&ctx->path[ctx->path_len], LYSC_CTX_BUFSIZE - ctx->path_len, "%s%s",
-                        nextlevel ? "/" : "", name);
+                ly_append_str(&ctx->path, &ctx->path_size, &ctx->path_used, "/%s", name);
             } else {
-                len = snprintf(&ctx->path[ctx->path_len], LYSC_CTX_BUFSIZE - ctx->path_len, "%s%s:%s",
-                        nextlevel ? "/" : "", ctx->cur_mod->name, name);
+                ly_append_str(&ctx->path, &ctx->path_size, &ctx->path_used, "/%s:%s", ctx->cur_mod->name, name);
             }
         } else {
-            len = snprintf(&ctx->path[ctx->path_len], LYSC_CTX_BUFSIZE - ctx->path_len, "='%s'}", name);
-        }
-        if (len >= LYSC_CTX_BUFSIZE - (int)ctx->path_len) {
-            /* output truncated */
-            ctx->path_len = LYSC_CTX_BUFSIZE - 1;
-        } else {
-            ctx->path_len += len;
+            ly_append_str(&ctx->path, &ctx->path_size, &ctx->path_used, "='%s'}", name);
         }
     }
 
@@ -368,11 +362,12 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module *base_
 static LY_ERR
 lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p, struct lysc_ident **idents)
 {
+    LY_ERR rc = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u, v;
 
     lysc_update_path(ctx, NULL, "{identity}");
 
-    for (u = 0; u < LY_ARRAY_COUNT(*idents); ++u) {
+    for (u = 0; !rc && (u < LY_ARRAY_COUNT(*idents)); ++u) {
         /* find matching parsed identity */
         for (v = 0; v < LY_ARRAY_COUNT(idents_p); ++v) {
             if (idents_p[v].name == (*idents)[u].name) {
@@ -386,12 +381,12 @@ lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p
         }
 
         lysc_update_path(ctx, NULL, (*idents)[u].name);
-        LY_CHECK_RET(lys_compile_identity_bases(ctx, ctx->pmod, idents_p[v].bases, &(*idents)[u], NULL));
+        rc = lys_compile_identity_bases(ctx, ctx->pmod, idents_p[v].bases, &(*idents)[u], NULL);
         lysc_update_path(ctx, NULL, NULL);
     }
 
     lysc_update_path(ctx, NULL, NULL);
-    return LY_SUCCESS;
+    return rc;
 }
 
 LY_ERR
@@ -597,6 +592,7 @@ lys_compile_unres_when(struct lysc_ctx *ctx, const struct lysc_when *when, const
     uint32_t i, opts;
     struct lysc_node *schema;
     LY_ERR ret = LY_SUCCESS;
+    char *path;
 
     opts = LYXP_SCNODE_SCHEMA | ((node->flags & LYS_IS_OUTPUT) ? LYXP_SCNODE_OUTPUT : 0);
 
@@ -610,8 +606,13 @@ lys_compile_unres_when(struct lysc_ctx *ctx, const struct lysc_when *when, const
         goto cleanup;
     }
 
-    ctx->path[0] = '\0';
-    lysc_path(node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
+    path = lysc_path(node, LYSC_PATH_LOG, NULL, 0);
+    LY_CHECK_ERR_GOTO(!path, LOGMEM(ctx->ctx); ret = LY_EMEM, cleanup);
+    free(ctx->path);
+    ctx->path = path;
+    ctx->path_used = strlen(ctx->path);
+    ctx->path_size = ctx->path_used + 1;
+
     for (i = 0; i < tmp_set.used; ++i) {
         if (tmp_set.val.scnodes[i].type != LYXP_NODE_ELEM) {
             /* skip roots'n'stuff */
@@ -684,6 +685,7 @@ lys_compile_unres_must(struct lysc_ctx *ctx, const struct lysc_node *node, const
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_must *musts;
     LY_ERR ret = LY_SUCCESS;
+    char *path;
     uint16_t flg;
 
     memset(&tmp_set, 0, sizeof tmp_set);
@@ -701,8 +703,13 @@ lys_compile_unres_must(struct lysc_ctx *ctx, const struct lysc_node *node, const
             goto cleanup;
         }
 
-        ctx->path[0] = '\0';
-        lysc_path(node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
+        path = lysc_path(node, LYSC_PATH_LOG, NULL, 0);
+        LY_CHECK_ERR_GOTO(!path, LOGMEM(ctx->ctx); ret = LY_EMEM, cleanup);
+        free(ctx->path);
+        ctx->path = path;
+        ctx->path_used = strlen(ctx->path);
+        ctx->path_size = ctx->path_used + 1;
+
         for (i = 0; i < tmp_set.used; ++i) {
             /* skip roots'n'stuff */
             if (tmp_set.val.scnodes[i].type == LYXP_NODE_ELEM) {
@@ -868,6 +875,7 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
 {
     const struct lysc_node *target = NULL;
     struct ly_path *p;
+    char *path;
     uint16_t flg;
 
     assert(node->nodetype & (LYS_LEAF | LYS_LEAFLIST));
@@ -894,10 +902,14 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
         return LY_EVALID;
     }
 
+    path = lysc_path(node, LYSC_PATH_LOG, NULL, 0);
+    LY_CHECK_ERR_RET(!path, LOGMEM(ctx->ctx), LY_EMEM);
+    free(ctx->path);
+    ctx->path = path;
+    ctx->path_used = strlen(ctx->path);
+    ctx->path_size = ctx->path_used + 1;
+
     /* check status */
-    ctx->path[0] = '\0';
-    lysc_path(node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
-    ctx->path_len = strlen(ctx->path);
     if (node->module == local_mod->mod) {
         /* use flags of the context node since the definition is local */
         flg = node->flags;
@@ -908,8 +920,6 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
     if (lysc_check_status(ctx, node, flg, local_mod->mod, node->name, target->flags, target->module, target->name)) {
         return LY_EVALID;
     }
-    ctx->path_len = 1;
-    ctx->path[1] = '\0';
 
     /* check config */
     if (lref->require_instance) {
@@ -1483,6 +1493,7 @@ resolve_all:
     }
 
 cleanup:
+    free(cctx.path);
     return ret;
 }
 

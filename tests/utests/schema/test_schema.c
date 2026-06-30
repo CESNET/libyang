@@ -1687,8 +1687,6 @@ test_extension_compile(void **state)
     cctx.ctx = UTEST_LYCTX;
     cctx.cur_mod = mod;
     cctx.pmod = mod->parsed;
-    cctx.path_len = 1;
-    cctx.path[0] = '/';
 
     /* parsed ext instance */
     lysdict_insert(UTEST_LYCTX, "pref:my-ext", 0, &ext_p.name);

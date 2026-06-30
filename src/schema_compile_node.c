@@ -3285,29 +3285,31 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
         }
 
         lysc_update_path(ctx, list->module, key->name);
+
         /* key must have the same config flag as the list itself */
         if ((list->flags & LYS_CONFIG_MASK) != (key->flags & LYS_CONFIG_MASK)) {
             LOGVAL(ctx->ctx, NULL, LYVE_SEMANTICS, "Key of a configuration list must not be a state leaf.");
-            return LY_EVALID;
+            goto key_invalid;
         }
         if (ctx->pmod->version < LYS_VERSION_1_1) {
             /* YANG 1.0 denies key to be of empty type */
             if (key->type->basetype == LY_TYPE_EMPTY) {
                 LOGVAL(ctx->ctx, NULL, LYVE_SEMANTICS,
                         "List key of the \"empty\" type is allowed only in YANG 1.1 modules.");
-                return LY_EVALID;
+                goto key_invalid;
             }
         } else {
             /* when and if-feature are illegal on list keys */
             if (key->when) {
                 LOGVAL(ctx->ctx, NULL, LYVE_SEMANTICS, "List's key must not have any \"when\" statement.");
-                return LY_EVALID;
+                goto key_invalid;
             }
             /* unable to check if-features but compilation would fail if disabled */
         }
 
         /* check status */
-        LY_CHECK_RET(lysc_check_status(ctx, NULL, list->flags, list->module, list->name, key->flags, key->module, key->name));
+        LY_CHECK_GOTO(lysc_check_status(ctx, NULL, list->flags, list->module, list->name, key->flags, key->module,
+                key->name), key_invalid);
 
         /* ignore default values of the key */
         if (key->dflt.str) {
@@ -3386,6 +3388,10 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
 
 done:
     return ret;
+
+key_invalid:
+    lysc_update_path(ctx, NULL, NULL);
+    return LY_EVALID;
 }
 
 /**
@@ -4013,17 +4019,6 @@ lys_compile_grouping_pathlog(struct lysc_ctx *ctx, struct lysp_node *node, char 
         len = r;
     }
 
-    if (!len) {
-        /* root node path */
-        *path = strdup("/");
-        if (!*path) {
-            len = -1;
-            goto cleanup;
-        }
-
-        len = 1;
-    }
-
 cleanup:
     if (len < 0) {
         free(*path);
@@ -4071,9 +4066,10 @@ lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysp_
         LOGMEM(ctx->ctx);
         return LY_EMEM;
     }
-    strncpy(ctx->path, path, LYSC_CTX_BUFSIZE - 1);
-    ctx->path_len = (uint32_t)len;
-    free(path);
+    free(ctx->path);
+    ctx->path = path;
+    ctx->path_used = len;
+    ctx->path_size = ctx->path_used ? ctx->path_used + 1 : 0;
 
     lysc_update_path(ctx, NULL, "{grouping}");
     lysc_update_path(ctx, NULL, grp->name);
@@ -4081,8 +4077,10 @@ lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysp_
     lysc_update_path(ctx, NULL, NULL);
     lysc_update_path(ctx, NULL, NULL);
 
-    ctx->path_len = 1;
-    ctx->path[1] = '\0';
+    free(ctx->path);
+    ctx->path = NULL;
+    ctx->path_used = 0;
+    ctx->path_size = 0;
 
 cleanup:
     lysc_node_container_free(ctx->ctx, &fake_container);
@@ -4094,7 +4092,7 @@ LY_ERR
 lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node *parent, uint16_t inherited_flags,
         struct ly_set *child_set)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR rc = LY_SUCCESS;
     struct lysc_node *node = NULL;
     uint32_t prev_opts = ctx->compile_opts;
 
@@ -4143,7 +4141,8 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node
             LOGVAL(ctx->ctx, NULL, LYVE_SEMANTICS,
                     "Action \"%s\" is placed inside %s.", pnode->name,
                     (ctx->compile_opts & LYS_IS_NOTIF) ? "notification" : "another RPC/action");
-            return LY_EVALID;
+            rc = LY_EVALID;
+            goto cleanup;
         }
         node = (struct lysc_node *)calloc(1, sizeof(struct lysc_node_action));
         node_compile_spec = lys_compile_node_action;
@@ -4154,26 +4153,32 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node
             LOGVAL(ctx->ctx, NULL, LYVE_SEMANTICS,
                     "Notification \"%s\" is placed inside %s.", pnode->name,
                     (ctx->compile_opts & LYS_IS_NOTIF) ? "another notification" : "RPC/action");
-            return LY_EVALID;
+            rc = LY_EVALID;
+            goto cleanup;
         }
         node = (struct lysc_node *)calloc(1, sizeof(struct lysc_node_notif));
         node_compile_spec = lys_compile_node_notif;
         ctx->compile_opts |= LYS_COMPILE_NOTIFICATION;
         break;
     case LYS_USES:
-        ret = lys_compile_uses(ctx, (struct lysp_node_uses *)pnode, parent, inherited_flags, child_set);
-        lysc_update_path(ctx, NULL, NULL);
-        lysc_update_path(ctx, NULL, NULL);
-        return ret;
+        rc = lys_compile_uses(ctx, (struct lysp_node_uses *)pnode, parent, inherited_flags, child_set);
+        goto cleanup;
     default:
         LOGINT(ctx->ctx);
-        return LY_EINT;
+        rc = LY_EINT;
+        goto cleanup;
     }
-    LY_CHECK_ERR_RET(!node, LOGMEM(ctx->ctx), LY_EMEM);
+    LY_CHECK_ERR_GOTO(!node, LOGMEM(ctx->ctx); rc = LY_EMEM, cleanup);
 
-    ret = lys_compile_node_(ctx, pnode, parent, inherited_flags, node_compile_spec, node, child_set);
+    rc = lys_compile_node_(ctx, pnode, parent, inherited_flags, node_compile_spec, node, child_set);
 
+cleanup:
     ctx->compile_opts = prev_opts;
-    lysc_update_path(ctx, NULL, NULL);
-    return ret;
+    if (pnode->nodetype != LYS_USES) {
+        lysc_update_path(ctx, NULL, NULL);
+    } else {
+        lysc_update_path(ctx, NULL, NULL);
+        lysc_update_path(ctx, NULL, NULL);
+    }
+    return rc;
 }

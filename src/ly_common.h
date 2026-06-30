@@ -838,6 +838,18 @@ LY_ERR ly_parse_instance_predicate(const char **pred, uint32_t limit, LYD_FORMAT
 LY_ERR ly_val_get_quot(const struct ly_ctx *ctx, const char *value, char *quot);
 
 /**
+ * @brief Append a string to a dynamic string variable.
+ *
+ * @param[in,out] str String to use.
+ * @param[in,out] size String size.
+ * @param[in,out] used String used size excluding terminating zero. If NULL, 0 is assumed.
+ * @param[in] format Message format.
+ * @param[in] ... Message format arguments.
+ * @return LY_ERR value.
+ */
+LY_ERR ly_append_str(char **str, uint32_t *size, uint32_t *used, const char *format, ...);
+
+/**
  * @brief mmap(2) wrapper to map input files into memory to unify parsing.
  *
  * The address space is allocate only for reading.

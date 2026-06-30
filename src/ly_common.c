@@ -2096,3 +2096,34 @@ ly_val_get_quot(const struct ly_ctx *ctx, const char *value, char *quot)
     LOGERR(ctx, LY_EINVAL, "Invalid value with both ' and \" characters, unable to put in quotes.");
     return LY_EINVAL;
 }
+
+LY_ERR
+ly_append_str(char **str, uint32_t *size, uint32_t *used, const char *format, ...)
+{
+    int p;
+    va_list ap;
+
+    va_start(ap, format);
+
+    /* try to append the string */
+    p = vsnprintf(*str ? *str + *used : NULL, *size - *used, format, ap);
+
+    if ((unsigned)p >= *size - *used) {
+        /* realloc */
+        *str = ly_realloc(*str, *size + p + 1);
+        LY_CHECK_ERR_RET(!*str, LOGMEM(NULL), LY_EMEM);
+        *size += p + 1;
+
+        /* restart ap */
+        va_end(ap);
+        va_start(ap, format);
+
+        /* print */
+        p = vsnprintf(*str + *used, *size - *used, format, ap);
+    }
+
+    va_end(ap);
+
+    *used += p;
+    return LY_SUCCESS;
+}

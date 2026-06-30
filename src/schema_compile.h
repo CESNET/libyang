@@ -52,11 +52,11 @@ struct lysc_ctx {
     struct ly_set uses_augs;    /**< set of compiled non-applied uses augments (stored ::lysc_augment *) */
     struct ly_set uses_rfns;    /**< set of compiled non-applied uses refines (stored ::lysc_refine *) */
     struct lys_depset_unres *unres; /**< dependency set unres sets */
-    uint32_t path_len;          /**< number of path bytes used */
     uint32_t compile_opts;      /**< various @ref scflags. */
 
-#define LYSC_CTX_BUFSIZE 4078
-    char path[LYSC_CTX_BUFSIZE];/**< Path identifying the schema node currently being processed */
+    char *path;                 /**< Path identifying the schema node currently being processed */
+    uint32_t path_used;         /**< number of path bytes used (without terminating 0) */
+    uint32_t path_size;         /**< allocated size of path */
 };
 
 /**
@@ -66,9 +66,7 @@ struct lysc_ctx {
  * @param[in] CTX libyang context.
  */
 #define LYSC_CTX_INIT_CTX(CCTX, CTX) \
-    (CCTX).ctx = (CTX); \
-    (CCTX).path_len = 1; \
-    (CCTX).path[0] = '/'
+    (CCTX).ctx = (CTX);
 
 /**
  * @brief Initalize local compilation context using a parsed module.
@@ -81,9 +79,7 @@ struct lysc_ctx {
     (CCTX).ctx = (PMOD)->mod->ctx; \
     (CCTX).cur_mod = (PMOD)->mod; \
     (CCTX).pmod = (PMOD); \
-    (CCTX).ext = (EXT); \
-    (CCTX).path_len = 1; \
-    (CCTX).path[0] = '/'
+    (CCTX).ext = (EXT);
 
 /**
  * @brief Structure for unresolved items that may depend on any implemented module data in the dependency set
