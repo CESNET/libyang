@@ -112,6 +112,8 @@ ly_strvecode(LY_VECODE vecode)
         return "XML syntax error";
     case LYVE_SYNTAX_JSON:
         return "JSON syntax error";
+    case LYVE_SYNTAX_CBOR:
+        return "CBOR syntax error";
     case LYVE_DATA:
         return "YANG data error";
     case LYVE_OTHER:

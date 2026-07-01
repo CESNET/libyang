@@ -219,6 +219,7 @@ ly_resolve_prefix(const struct ly_ctx *ctx, const void *prefix, uint32_t prefix_
     case LY_VALUE_CANON:
     case LY_VALUE_JSON:
     case LY_VALUE_LYB:
+    case LY_VALUE_CBOR:
         mod = ly_json_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
         break;
     }
@@ -243,6 +244,7 @@ lys_find_module(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, cons
         case LY_VALUE_CANON:
         case LY_VALUE_JSON:
         case LY_VALUE_LYB:
+        case LY_VALUE_CBOR:
         case LY_VALUE_STR_NS:
             /* use context node module (as specified) */
             return ctx_node ? ctx_node->module : NULL;
