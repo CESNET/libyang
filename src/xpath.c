@@ -6999,8 +6999,8 @@ moveto_scnode_dfs(struct lyxp_set *set, const struct lysc_node *start, uint32_t 
 
     /* TREE DFS */
     for (elem = next = start; elem; elem = next) {
-        if ((elem == start) || (elem->nodetype & (LYS_CHOICE | LYS_CASE))) {
-            /* schema-only nodes, skip root */
+        if (elem->nodetype & (LYS_CHOICE | LYS_CASE)) {
+            /* schema-only nodes */
             goto next_iter;
         }
 
