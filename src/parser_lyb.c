@@ -44,7 +44,7 @@
 #include "xml.h"
 
 static LY_ERR lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, ly_bool is_root,
-        struct lyd_node **first_p, struct ly_set *parsed);
+        struct lyd_node *pparent, struct lyd_node **first_p, struct ly_set *parsed);
 
 /**
  * @brief Free a LYB data parser context.
@@ -1002,35 +1002,6 @@ cleanup:
 }
 
 /**
- * @brief Insert new node to @p parsed set.
- *
- * Also if needed, correct @p first_p.
- *
- * @param[in] lybctx LYB context.
- * @param[in] parent Data parent of the sibling, must be set if @p first_p is not.
- * @param[in,out] node Parsed node to insertion.
- * @param[in,out] first_p First top-level sibling, must be set if @p parent is not.
- * @param[out] parsed Set of all successfully parsed nodes.
- * @return LY_ERR value.
- */
-static void
-lyb_insert_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_node *node, struct lyd_node **first_p,
-        struct ly_set *parsed)
-{
-    /* insert, keep first pointer correct */
-    lyd_insert_node(parent, first_p, node,
-            lybctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT);
-    while (!parent && (*first_p)->prev->next) {
-        *first_p = (*first_p)->prev;
-    }
-
-    /* rememeber a successfully parsed node */
-    if (parsed) {
-        ly_set_add(parsed, node, 1, NULL);
-    }
-}
-
-/**
  * @brief Finish parsing the opaq node.
  *
  * @param[in] lybctx LYB context.
@@ -1055,7 +1026,13 @@ lyb_finish_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_
     ((struct lyd_node_opaq *)*node)->attr = *attr;
     *attr = NULL;
 
-    lyb_insert_node(lybctx, parent, *node, first_p, parsed);
+    lyd_parser_node_insert(parent, first_p, NULL, lybctx->parse_opts, *node);
+
+    /* rememeber a successfully parsed node */
+    if (parsed) {
+        ly_set_add(parsed, *node, 1, NULL);
+    }
+
     *node = NULL;
 }
 
@@ -1063,45 +1040,40 @@ lyb_finish_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_
  * @brief Finish parsing the node.
  *
  * @param[in] lybctx LYB context.
- * @param[in] parent Data parent of the sibling, must be set if @p first_p is not.
- * @param[in] flags Node flags to set.
+ * @param[in] node Parsed node to finish.
  * @param[in] ext Ext instance of @p node, if any.
  * @param[in,out] meta Metadata to be attached. Finally set to NULL.
- * @param[in,out] node Parsed node to finish.
- * @param[in,out] first_p First top-level sibling, must be set if @p parent is not.
  * @param[out] parsed Set of all successfully parsed nodes.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_finish_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, uint32_t flags, const struct lysc_ext_instance *ext,
-        struct lyd_meta **meta, struct lyd_node **node, struct lyd_node **first_p, struct ly_set *parsed)
+lyb_finish_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *node, const struct lysc_ext_instance *ext,
+        struct lyd_meta **meta, struct ly_set *parsed)
 {
     struct lyd_meta *m;
 
-    /* set flags */
-    (*node)->flags = flags;
-
     /* add metadata */
     LY_LIST_FOR(*meta, m) {
-        m->parent = *node;
+        m->parent = node;
     }
-    (*node)->meta = *meta;
+    node->meta = *meta;
     *meta = NULL;
-
-    /* insert into parent */
-    lyb_insert_node(lybctx, parent, *node, first_p, parsed);
 
     if (!(lybctx->parse_opts & LYD_PARSE_ONLY)) {
         if (ext) {
             /* parsed for an extension, validate the subtree using the same extension */
-            LY_CHECK_RET(lyd_validate_tree_ext(*node, ext, &lybctx->ext_val));
+            LY_CHECK_RET(lyd_validate_tree_ext(node, ext, &lybctx->ext_val));
         }
 
         /* store for ext instance node validation, if needed */
-        LY_CHECK_RET(lyd_validate_node_ext(*node, &lybctx->ext_val));
+        LY_CHECK_RET(lyd_validate_node_ext(node, &lybctx->ext_val));
     }
 
-    *node = NULL;
+    /* rememeber a successfully parsed node */
+    if (parsed) {
+        ly_set_add(parsed, node, 1, NULL);
+    }
+
     return LY_SUCCESS;
 }
 
@@ -1253,7 +1225,7 @@ lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     LY_CHECK_ERR_GOTO(ret, ly_free_prefix_data(format, val_prefix_data), cleanup);
 
     /* process children */
-    ret = lyb_parse_siblings(lybctx, node, 0, NULL, NULL);
+    ret = lyb_parse_siblings(lybctx, node, 0, parent, NULL, NULL);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (lybctx->parse_opts & LYD_PARSE_OPAQ) {
@@ -1313,7 +1285,7 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
         lybctx->int_opts = LYD_INTOPT_ANY | LYD_INTOPT_WITH_SIBLINGS;
 
         /* parse LYB siblings, restore options */
-        rc = lyb_parse_siblings(lybctx, NULL, 0, &tree, NULL);
+        rc = lyb_parse_siblings(lybctx, NULL, 0, NULL, &tree, NULL);
         lybctx->parse_opts = prev_parse_opts;
         lybctx->int_opts = prev_int_opts;
         LY_CHECK_GOTO(rc, cleanup);
@@ -1337,15 +1309,22 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
         goto cleanup;
     }
 
-    /* register parsed anydata node */
-    rc = lyb_finish_node(lybctx, parent, flags, ext, &meta, &node, first_p, parsed);
+    /* insert, needs LYD_EXT flag */
+    node->flags = flags;
+    rc = lyd_parser_node_insert(parent, first_p, NULL, lybctx->parse_opts, node);
+    LY_CHECK_GOTO(rc, cleanup);
+
+    /* finish parsed anydata node */
+    rc = lyb_finish_node(lybctx, node, ext, &meta, parsed);
     LY_CHECK_GOTO(rc, cleanup);
 
 cleanup:
     lyd_free_meta_siblings(meta);
     lyd_free_siblings(tree);
     free(value);
-    lyd_free_tree(node);
+    if (rc) {
+        lyd_parser_node_free(first_p, &node);
+    }
     return rc;
 }
 
@@ -1377,8 +1356,13 @@ lyb_parse_node_inner(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const 
     rc = lyd_create_inner(snode, &node);
     LY_CHECK_GOTO(rc, cleanup);
 
+    /* insert, needs LYD_EXT flag */
+    node->flags = flags;
+    rc = lyd_parser_node_insert(parent, first_p, NULL, lybctx->parse_opts, node);
+    LY_CHECK_GOTO(rc, cleanup);
+
     /* process children */
-    rc = lyb_parse_siblings(lybctx, node, 0, NULL, NULL);
+    rc = lyb_parse_siblings(lybctx, node, 0, parent, NULL, NULL);
     LY_CHECK_GOTO(rc, cleanup);
 
     /* additional procedure for inner node */
@@ -1390,13 +1374,15 @@ lyb_parse_node_inner(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const 
         lybctx->op_node = node;
     }
 
-    /* register parsed node */
-    rc = lyb_finish_node(lybctx, parent, flags, ext, &meta, &node, first_p, parsed);
+    /* finish parsed node */
+    rc = lyb_finish_node(lybctx, node, ext, &meta, parsed);
     LY_CHECK_GOTO(rc, cleanup);
 
 cleanup:
     lyd_free_meta_siblings(meta);
-    lyd_free_tree(node);
+    if (rc) {
+        lyd_parser_node_free(first_p, &node);
+    }
     return rc;
 }
 
@@ -1429,12 +1415,20 @@ lyb_parse_node_leaf(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
     rc = lyb_create_term(lybctx, snode, parent, &node);
     LY_CHECK_GOTO(rc, cleanup);
 
-    rc = lyb_finish_node(lybctx, parent, flags, ext, &meta, &node, first_p, parsed);
+    /* insert, needs LYD_EXT flag */
+    node->flags = flags;
+    rc = lyd_parser_node_insert(parent, first_p, NULL, lybctx->parse_opts, node);
+    LY_CHECK_GOTO(rc, cleanup);
+
+    /* finish parsed node */
+    rc = lyb_finish_node(lybctx, node, ext, &meta, parsed);
     LY_CHECK_GOTO(rc, cleanup);
 
 cleanup:
     lyd_free_meta_siblings(meta);
-    lyd_free_tree(node);
+    if (rc) {
+        lyd_parser_node_free(first_p, &node);
+    }
     return rc;
 }
 
@@ -1507,8 +1501,15 @@ lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
         rc = lyd_create_inner(snode, &node);
         LY_CHECK_GOTO(rc, cleanup);
 
+        /* cannot insert yet, will be inserted right after all the keys are parsed */
+        node->flags = flags;
+
         /* process children */
-        rc = lyb_parse_siblings(lybctx, node, 0, NULL, NULL);
+        rc = lyb_parse_siblings(lybctx, node, 0, parent, NULL, NULL);
+        LY_CHECK_GOTO(rc, cleanup);
+
+        /* try to insert again, top-level list needs to be assigned to first_p */
+        rc = lyd_parser_node_insert(parent, first_p, NULL, lybctx->parse_opts, node);
         LY_CHECK_GOTO(rc, cleanup);
 
         /* additional procedure for inner node */
@@ -1520,14 +1521,16 @@ lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
             lybctx->op_node = node;
         }
 
-        /* register parsed list node */
-        rc = lyb_finish_node(lybctx, parent, flags, ext, &meta, &node, first_p, parsed);
+        /* finish parsed list node */
+        rc = lyb_finish_node(lybctx, node, ext, &meta, parsed);
         LY_CHECK_GOTO(rc, cleanup);
     }
 
 cleanup:
     lyd_free_meta_siblings(meta);
-    lyd_free_tree(node);
+    if (rc) {
+        lyd_parser_node_free(first_p, &node);
+    }
     return rc;
 }
 
@@ -1609,21 +1612,27 @@ cleanup:
  * @brief Parse siblings (@ref lyb_print_siblings()).
  *
  * @param[in] lybctx LYB context.
- * @param[in] parent Data parent of the sibling, must be set if @p first_p is not.
+ * @param[in] parent Data parent node of the sibling, must be set if @p first_p is not.
  * @param[in] is_root Whether we are parsing the root node or not.
+ * @param[in] pparent Parent of @p parent.
  * @param[in,out] first_p First top-level sibling, must be set if @p parent is not.
  * @param[out] parsed Set of all successfully parsed nodes.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, ly_bool is_root, struct lyd_node **first_p,
-        struct ly_set *parsed)
+lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, ly_bool is_root, struct lyd_node *pparent,
+        struct lyd_node **first_p, struct ly_set *parsed)
 {
     LY_ERR r;
 
     while (!(r = lyb_parse_node(lybctx, parent, first_p, parsed))) {
         /* parsing some data, hash must be set */
         assert(!lybctx->parse_ctx->empty_hash);
+
+        if (pparent) {
+            /* insert again, node may be a list that had its keys missing */
+            LY_CHECK_RET(lyd_parser_node_insert(pparent, first_p, NULL, lybctx->parse_opts, parent));
+        }
 
         if (is_root && !(lybctx->int_opts & LYD_INTOPT_WITH_SIBLINGS)) {
             break;
@@ -1765,7 +1774,7 @@ lyd_parse_lyb(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node
     LY_CHECK_GOTO(rc, cleanup);
 
     /* read sibling(s) */
-    rc = lyb_parse_siblings(lybctx, parent, 1, first_p, parsed);
+    rc = lyb_parse_siblings(lybctx, parent, 1, NULL, first_p, parsed);
     LY_CHECK_GOTO(rc, cleanup);
 
     if ((int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NOTIF | LYD_INTOPT_REPLY)) && !lybctx->op_node) {
