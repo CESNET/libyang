@@ -67,6 +67,11 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
 
     if (format == LY_VALUE_LYB) {
         /* copy the integer and correct the byte order */
+        if (value_size > sizeof num) {
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid %s LYB value size %u B (max %zu B).",
+                    lys_datatype2str(type->basetype), value_size, sizeof num);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
         memcpy(&num, value, value_size);
         num = le64toh(num);
     } else {
@@ -314,6 +319,11 @@ lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, co
 
     if (format == LY_VALUE_LYB) {
         /* copy the integer and correct the byte order */
+        if (value_size > sizeof num) {
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid %s LYB value size %u B (max %zu B).",
+                    lys_datatype2str(type->basetype), value_size, sizeof num);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
         memcpy(&num, value, value_size);
         num = le64toh(num);
     } else {
