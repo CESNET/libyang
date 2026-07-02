@@ -18,12 +18,12 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 
     err = ly_ctx_new(LY_SRC_DIR "/modules", 0, &ctx);
     if (err != LY_SUCCESS) {
-        fprintf(stderr, "Failed to create context\n");
-        exit(EXIT_FAILURE);
+        return 0;
     }
 
     data = malloc(len + 1);
     if (data == NULL) {
+        ly_ctx_destroy(ctx);
         return 0;
     }
 
