@@ -62,8 +62,7 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 
     err = ly_ctx_new(LY_SRC_DIR "/modules", 0, &ctx);
     if (err != LY_SUCCESS) {
-        fprintf(stderr, "Failed to create context\n");
-        exit(EXIT_FAILURE);
+        return 0;
     }
 
     lys_parse_mem(ctx, schema_a, LYS_IN_YANG, NULL);
@@ -71,12 +70,14 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 
     data = malloc(len + 1);
     if (data == NULL) {
-        return 0;
+        goto cleanup;
     }
     memcpy(data, buf, len);
     data[len] = 0;
 
     lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree);
+
+cleanup:
     lyd_free_all(tree);
     ly_ctx_destroy(ctx);
 

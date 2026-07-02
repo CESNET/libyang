@@ -25,7 +25,7 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 
     data = malloc(len + 1);
     if (data == NULL) {
-        fprintf(stderr, "Out of memory\n");
+        ly_ctx_destroy(ctx);
         return 0;
     }
     memcpy(data, buf, len);
