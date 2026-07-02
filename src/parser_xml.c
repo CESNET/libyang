@@ -769,23 +769,25 @@ lydxml_subtree_term(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, c
             &xmlctx->dynamic, LY_VALUE_XML, &xmlctx->ns, LYD_HINT_DATA, node);
     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
-    /* insert, needs LYD_EXT flag */
-    if (ext) {
-        (*node)->flags |= LYD_EXT;
-    }
-    r = lyd_parser_node_insert(parent, first_p, NULL, lydctx->parse_opts, *node);
-    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+    if (*node) {
+        /* insert, needs LYD_EXT flag */
+        if (ext) {
+            (*node)->flags |= LYD_EXT;
+        }
+        r = lyd_parser_node_insert(parent, first_p, NULL, lydctx->parse_opts, *node);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
-    if (*node && parent && (snode->flags & LYS_KEY)) {
-        /* check the key order, the anchor must never be a key */
-        anchor = lyd_insert_get_next_anchor(lyd_child(parent), *node);
-        if (anchor && anchor->schema && (anchor->schema->flags & LYS_KEY)) {
-            if (lydctx->parse_opts & LYD_PARSE_STRICT) {
-                LOGVAL(xmlctx->ctx, *node, LYVE_DATA, "Invalid position of the key \"%s\" in a list.", snode->name);
-                r = LY_EVALID;
-                LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
-            } else {
-                LOGWRN(xmlctx->ctx, "Invalid position of the key \"%s\" in a list.", snode->name);
+        if (parent && (snode->flags & LYS_KEY)) {
+            /* check the key order, the anchor must never be a key */
+            anchor = lyd_insert_get_next_anchor(lyd_child(parent), *node);
+            if (anchor && anchor->schema && (anchor->schema->flags & LYS_KEY)) {
+                if (lydctx->parse_opts & LYD_PARSE_STRICT) {
+                    LOGVAL(xmlctx->ctx, *node, LYVE_DATA, "Invalid position of the key \"%s\" in a list.", snode->name);
+                    r = LY_EVALID;
+                    LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+                } else {
+                    LOGWRN(xmlctx->ctx, "Invalid position of the key \"%s\" in a list.", snode->name);
+                }
             }
         }
     }
