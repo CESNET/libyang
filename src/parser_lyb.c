@@ -1588,6 +1588,10 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
         /* read schema node name, find the ext schema node */
         LY_CHECK_GOTO(rc = lyb_parse_schema_ext(lybctx, parent, mod->name, &snode, &ext), cleanup);
         break;
+    default:
+        LOGERR(lybctx->parse_ctx->ctx, LY_EINVAL, "Invalid LYB node type 0x%x.", (int)lyb_type);
+        rc = LY_EINVAL;
+        goto cleanup;
     }
 
     if (!snode) {
