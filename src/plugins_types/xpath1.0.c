@@ -222,11 +222,25 @@ lyplg_type_print_xpath10_value(const struct lyd_value_xpath10 *xp_val, LY_VALUE_
     *str_value = NULL;
     *err = NULL;
 
-    if (format == LY_VALUE_XML) {
-        /* null the local module so that all the prefixes are printed */
+    switch (format) {
+    case LY_VALUE_XML:
+        /* zero the local module so that all the prefixes are printed */
         mods = prefix_data;
         local_mod = mods->objs[0];
         mods->objs[0] = NULL;
+        break;
+    case LY_VALUE_SCHEMA:
+    case LY_VALUE_SCHEMA_RESOLVED:
+        /* nothing to do */
+        break;
+    case LY_VALUE_CANON:
+    case LY_VALUE_CBOR:
+    case LY_VALUE_JSON:
+    case LY_VALUE_LYB:
+    case LY_VALUE_STR_NS:
+        /* zero the local module so that the first node is always prefixed */
+        prefix_data = NULL;
+        break;
     }
 
     /* recursively print the expression */
