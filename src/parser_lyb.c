@@ -290,6 +290,7 @@ lyb_read_size(uint32_t *size, struct lylyb_parse_ctx *lybctx)
 static LY_ERR
 lyb_read_string(char **str, struct lylyb_parse_ctx *lybctx)
 {
+    LY_ERR r;
     uint32_t str_len = 0;
 
     *str = NULL;
@@ -306,7 +307,7 @@ lyb_read_string(char **str, struct lylyb_parse_ctx *lybctx)
 
     if (str_len) {
         /* read the string */
-        LY_CHECK_RET(lyb_read(*str, (uint64_t)str_len * 8, lybctx));
+        LY_CHECK_ERR_RET(r = lyb_read(*str, (uint64_t)str_len * 8, lybctx), free(*str); *str = NULL, r);
     }
 
     (*str)[str_len] = '\0';
@@ -325,6 +326,7 @@ lyb_read_string(char **str, struct lylyb_parse_ctx *lybctx)
 static LY_ERR
 lyb_read_value(const struct lysc_type *type, uint8_t **val, uint64_t *val_size_bits, struct lylyb_parse_ctx *lybctx)
 {
+    LY_ERR r;
     enum lyplg_lyb_size_type size_type;
     uint32_t lyb_size_bits = 0;
     uint64_t fixed_size_bits;
@@ -367,7 +369,7 @@ lyb_read_value(const struct lysc_type *type, uint8_t **val, uint64_t *val_size_b
 
     if (*val_size_bits > 0) {
         /* parse value */
-        LY_CHECK_RET(lyb_read(*val, *val_size_bits, lybctx));
+        LY_CHECK_ERR_RET(r = lyb_read(*val, *val_size_bits, lybctx), free(*val); *val = NULL, r);
     }
 
     return LY_SUCCESS;
@@ -702,7 +704,7 @@ lyb_parse_prefix_data(struct lylyb_parse_ctx *lybctx, LY_VALUE_FORMAT format, vo
 
         for (i = 0; i < count; ++i) {
             ns = calloc(1, sizeof *ns);
-            LY_CHECK_ERR_GOTO(!ns, LOGMEM(lybctx->ctx), cleanup);
+            LY_CHECK_ERR_GOTO(!ns, LOGMEM(lybctx->ctx); rc = LY_EMEM, cleanup);
 
             /* prefix */
             LY_CHECK_GOTO(rc = lyb_read_string(&ns->prefix, lybctx), cleanup);
