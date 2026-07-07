@@ -468,7 +468,7 @@ lyplg_type_print_xpath10(const struct ly_ctx *ctx, const struct lyd_value *value
 
     /* LY_VALUE_STR_NS should never be transformed */
     if ((val->format == LY_VALUE_STR_NS) || (format == LY_VALUE_CANON) || (format == LY_VALUE_JSON) ||
-            (format == LY_VALUE_LYB)) {
+            (format == LY_VALUE_LYB) || (format == LY_VALUE_CBOR)) {
         /* canonical */
         if (dynamic) {
             *dynamic = 0;
