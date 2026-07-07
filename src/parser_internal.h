@@ -70,7 +70,7 @@ typedef void (*lyd_ctx_free_clb)(struct lyd_ctx *ctx);
 /**
  * @brief Internal (common) context for YANG data parsers.
  *
- * Covers ::lyd_xml_ctx, ::lyd_json_ctx and ::lyd_lyb_ctx.
+ * Covers ::lyd_xml_ctx, ::lyd_json_ctx, ::lyd_lyb_ctx and ::lyd_cbor_ctx.
  */
 struct lyd_ctx {
     uint32_t parse_opts;           /**< various @ref dataparseroptions. */
@@ -196,9 +196,9 @@ struct lyd_cbor_ctx {
     /* callbacks */
     lyd_ctx_free_clb free; /**< destructor */
 
+    struct lycbor_ctx *cborctx;         /**< CBOR context for low-level operations */
     const struct lysc_ext_instance *ext; /**< extension instance possibly changing document root context, NULL if none */
     struct ly_set ext_node;              /**< set of nodes with extension instances to validate */
-    struct lycbor_ctx *cborctx; /**< CBOR context for low-level operations */
     const struct lysc_node *any_schema; /**< parent anyxml/anydata schema node if parsing nested data tree */
 };
 
