@@ -269,7 +269,11 @@ lyplg_type_print_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lyd_v
 {
     char *ret;
 
-    if ((format == LY_VALUE_CANON) || (format == LY_VALUE_JSON) || (format == LY_VALUE_LYB)) {
+    switch (format) {
+    case LY_VALUE_CANON:
+    case LY_VALUE_JSON:
+    case LY_VALUE_LYB:
+    case LY_VALUE_CBOR:
         if (dynamic) {
             *dynamic = 0;
         }
@@ -277,6 +281,8 @@ lyplg_type_print_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lyd_v
             *value_size_bits = strlen(value->_canonical) * 8;
         }
         return value->_canonical;
+    default:
+        break;
     }
 
     /* print the value in the specific format */
