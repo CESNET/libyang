@@ -274,7 +274,8 @@ LIBYANG_API_DECL LY_ERR lyd_parse_data_mem(const struct ly_ctx *ctx, const char 
  * @param[in] data Pointer to the memory buffer containing the data to parse.
  * @param[in] data_len Length of the memory buffer.
  * @param[in] format Data format (e.g., XML, JSON, LYD_LYB).
- * @param[in] options Parsing options, see @ref dataparseroptions.
+ * @param[in] parse_options Options for parser, see @ref dataparseroptions.
+ * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
  * @param[in] ctx_node Optional context node for parsing (can be NULL).
  * @param[out] tree Pointer to the resulting data tree (set on success).
  * @return LY_ERR value indicating success or error reason.
