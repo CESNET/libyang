@@ -1,0 +1,232 @@
+module cbor-test {
+  yang-version 1.1;
+  namespace "urn:cbor:test";
+  prefix ct;
+
+	import ietf-yang-schema-mount {
+		prefix yangmnt;
+	}
+
+  revision 2026-07-01;
+
+  identity iface;
+  identity ethernet {
+    base iface;
+  }
+
+  container cont-root {
+		leaf lf-root-str {
+			type string;
+		}
+
+		container services {
+			yangmnt:mount-point "services";
+		}
+  }
+
+	/* ===== Basic scalar types ===== */
+
+	leaf lf-str {
+		type string;
+	}
+
+	leaf lf-bool {
+		type boolean;
+	}
+
+	leaf lf-empty {
+		type empty;
+	}
+
+	leaf lf-bin {
+		type binary;
+	}
+	
+	leaf lf-dec64 {
+		type decimal64 {
+			fraction-digits 2;
+		}
+	}
+
+	/* ===== Signed integers ===== */
+
+	leaf lf-intg8 {
+		type int8;
+	}
+
+	leaf lf-intg16 {
+		type int16;
+	}
+
+	leaf lf-intg32 {
+		type int32;
+	}
+
+	leaf lf-intg64 {
+		type int64;
+	}
+
+	/* ===== Unsigned integers ===== */
+
+	leaf lf-uintg8 {
+		type uint8;
+	}
+
+	leaf lf-uintg16 {
+		type uint16;
+	}
+
+	leaf lf-uintg32 {
+		type uint32;
+	}
+
+	leaf lf-uintg64 {
+		type uint64;
+	}
+
+	/* ===== Complex built-in types ===== */
+
+	leaf lf-enum {
+		type enumeration {
+			enum red;
+			enum green;
+			enum blue;
+		}
+	}
+
+	leaf lf-bits {
+		type bits {
+			bit up;
+			bit running;
+			bit testing;
+		}
+	}
+
+	leaf lf-idenref {
+		type identityref {
+			base iface;
+		}
+	}
+
+	leaf lf-inst-id {
+		type instance-identifier;
+	}
+
+	leaf lf-union {
+		type union {
+			type uint32;
+			type string;
+			type boolean;
+		}
+	}
+
+	leaf lf-lfref {
+		type leafref {
+			path "../lf-str";
+		}
+	}
+
+	/* ===== Leaf-lists ===== */
+
+	leaf-list ll-str {
+		type string;
+	}
+
+	leaf-list ll-intg32 {
+		type int32;
+	}
+
+	/* ===== Presence container ===== */
+
+	container cont-presence {
+		presence "Presence container.";
+
+		leaf lf-def-str {
+			type string;
+			default "abc";
+		}
+	}
+
+	/* ===== List ===== */
+
+	list list-user {
+		key "key-id";
+
+		leaf key-id {
+			type uint32;
+		}
+
+		leaf lf-name {
+			type string;
+		}
+	}
+
+	/* ===== Choice / Case ===== */
+
+	choice choice-transport {
+
+		case case-tcp {
+
+			leaf lf-tcp-port {
+				type uint16;
+			}
+		}
+
+		case case-unix {
+
+			leaf lf-unix-socket {
+				type string;
+			}
+		}
+	}
+
+    /* ===== Anydata / Anyxml ===== */
+
+    anydata anydata-payload;
+
+    anyxml anyxml-payload;
+
+  /* ===== RPC ===== */
+
+  rpc rpc-reset {
+
+    input {
+
+      leaf lf1 {
+        type boolean;
+      }
+    }
+
+    output {
+
+      leaf lf2 {
+        type string;
+      }
+    }
+  }
+
+  /* ===== Notification ===== */
+
+  notification notif-alarm {
+
+    leaf lf-severity {
+      type enumeration {
+        enum info;
+        enum warning;
+        enum critical;
+      }
+    }
+
+    leaf lf-message {
+      type string;
+    }
+  }
+
+	/* ===== Augment ===== */
+
+	augment "/ct:cont-root" {
+			leaf lf-augmented-str {
+					type string;
+			}
+	}
+}
