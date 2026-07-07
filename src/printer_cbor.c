@@ -909,9 +909,6 @@ cbor_print_leaf_list(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_
         *array_p = cbor_new_indefinite_array();
         LY_CHECK_RET(!*array_p, LY_EMEM);
 
-        key = cbor_print_member_name(pctx, node, 0);
-        LY_CHECK_ERR_RET(!key, cbor_decref(array_p), LY_EMEM);
-
         LY_CHECK_RET(cbor_print_array_open(pctx, node));
     }
 
@@ -942,6 +939,7 @@ cbor_print_leaf_list(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_
     }
 
     if (cbor_print_array_is_last_inst(pctx, node)) {
+        key = cbor_print_member_name(pctx, node, 0);
         /* add completed array to parent map */
         if (key) {
             struct cbor_pair pair = {
@@ -956,6 +954,9 @@ cbor_print_leaf_list(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_
                 cbor_decref(&pair.value);
                 return LY_EMEM;
             }
+        } else {
+            cbor_decref(array_p);
+            return LY_EMEM;
         }
         cbor_print_array_close(pctx);
         *array_p = NULL;
