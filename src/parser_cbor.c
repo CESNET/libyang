@@ -663,7 +663,6 @@ lydcbor_meta_attr(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snode, st
     LY_ERR rc = LY_SUCCESS, r;
     enum cbor_type type;
     const char *expected;
-    ly_bool in_parent = 0;
     const char *name, *prefix = NULL;
     size_t name_len, prefix_len = 0;
     struct lys_module *mod;
@@ -693,7 +692,8 @@ lydcbor_meta_attr(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snode, st
     next_entry:
         instance++;
         if (!node || (node->schema != prev->schema)) {
-            LOGVAL(ctx, NULL, LYVE_REFERENCE, "Missing CBOR data instance #%" PRIu32 " of %s:%s to be coupled with metadata.", instance, prev->schema->module->name, prev->schema->name);
+            LOGVAL(ctx, NULL, LYVE_REFERENCE, "Missing CBOR data instance #%" PRIu32 " of %s:%s to be coupled with metadata.",
+                    instance, prev->schema->module->name, prev->schema->name);
             rc = LY_EVALID;
             goto cleanup;
         }
@@ -726,7 +726,6 @@ lydcbor_meta_attr(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snode, st
     case LYS_NOTIF:
     case LYS_ACTION:
     case LYS_RPC:
-        in_parent = 1;
         expected = "@/object";
         LY_CHECK_GOTO(type != CBOR_TYPE_MAP, representation_error);
         break;
@@ -862,11 +861,9 @@ cleanup:
  * @param[in,out] first_p Pointer to the first sibling.
  * @param[in,out] node_p Pointer to the node to insert.
  * @param[in] last If set, insert at the end.
- * @param[in] ext Extension instance.
  */
 static void
-lydcbor_maintain_children(struct lyd_node *parent, struct lyd_node **first_p, struct lyd_node **node_p, ly_bool last,
-        struct lysc_ext_instance *ext)
+lydcbor_maintain_children(struct lyd_node *parent, struct lyd_node **first_p, struct lyd_node **node_p, ly_bool last)
 {
     if (!*node_p) {
         return;
@@ -998,7 +995,7 @@ lydcbor_parse_opaq(struct lyd_cbor_ctx *lydctx, const char *name, size_t name_le
                 /* continue with next instance */
                 assert(*node_p);
                 lydcbor_maintain_children(parent, first_p, node_p,
-                        lydctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT, NULL);
+                        lydctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT);
 
                 LOG_LOCBACK(0);
 
@@ -1303,19 +1300,21 @@ lydcbor_parse_instance(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, str
 
                 if (lydcbor_is_null(handle[0])) {
                     /* [null] case */
-                    goto cleanup;
+                    str_val = strdup("");
+                    str_len = 0;
                 }
             }
+            if (!str_val) {
+                if ((type != CBOR_TYPE_ARRAY) && (type != CBOR_TYPE_UINT) && (type != CBOR_TYPE_NEGINT) &&
+                        (type != CBOR_TYPE_STRING) && (type != CBOR_TYPE_FLOAT_CTRL)) {
+                    rc = LY_ENOT;
+                    goto cleanup;
+                }
 
-            if ((type != CBOR_TYPE_ARRAY) && (type != CBOR_TYPE_UINT) && (type != CBOR_TYPE_NEGINT) &&
-                    (type != CBOR_TYPE_STRING) && (type != CBOR_TYPE_FLOAT_CTRL)) {
-                rc = LY_ENOT;
-                goto cleanup;
+                /* create terminal node */
+                r = lydcbor_item_to_string(cbor_value, &str_val, &str_len);
+                LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
             }
-
-            /* create terminal node */
-            r = lydcbor_item_to_string(cbor_value, &str_val, &str_len);
-            LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
             r = lyd_parser_create_term((struct lyd_ctx *)lydctx, snode, parent, str_val, str_len * 8,
                     NULL, LY_VALUE_CBOR, NULL, type_hints, node);
@@ -1478,6 +1477,7 @@ lydcbor_subtree_r(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, struct l
                 /* parse opaq */
                 r = lydcbor_parse_opaq(lydctx, name, name_len, prefix, prefix_len, parent, value_item, first_p, &node);
                 free(key_str);
+                key_str = NULL;
                 LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
             }
         } else {
@@ -1532,7 +1532,7 @@ lydcbor_subtree_r(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, struct l
                     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
                     lydcbor_maintain_children(parent, first_p, &node,
-                            lydctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT, ext);
+                            lydctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT);
                 }
                 break;
             case LYS_LEAF:
@@ -1568,7 +1568,7 @@ lydcbor_subtree_r(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, struct l
 
         /* finally connect the parsed node */
         lydcbor_maintain_children(parent, first_p, &node,
-                lydctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT, ext);
+                lydctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT);
     }
 
     /* success */
@@ -1654,7 +1654,7 @@ lyd_parse_cbor(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, st
     r = lydcbor_subtree_r(lydctx, parent, first_p, parsed, lydctx->cborctx->cbor_data);
     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
-    if ((int_opts & LYD_INTOPT_NO_SIBLINGS)) {
+    if ((int_opts & LYD_INTOPT_NO_SIBLINGS) && *first_p && (*first_p)->next) {
         LOGVAL(ctx, NULL, LYVE_SYNTAX, "Unexpected sibling node.");
         r = LY_EVALID;
         LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
