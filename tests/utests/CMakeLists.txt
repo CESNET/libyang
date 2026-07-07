@@ -71,6 +71,7 @@ ly_add_utest(NAME lyb SOURCES data/test_lyb.c)
 ly_add_utest(NAME validation SOURCES data/test_validation.c)
 ly_add_utest(NAME merge SOURCES data/test_merge.c)
 ly_add_utest(NAME diff SOURCES data/test_diff.c)
+ly_add_utest(NAME cbor SOURCES data/test_cbor.c)
 
 ly_add_utest(NAME metadata SOURCES extensions/test_metadata.c)
 ly_add_utest(NAME nacm SOURCES extensions/test_nacm.c)
