@@ -142,6 +142,55 @@ struct utest_context {
     }
 
 /**
+ * @brief Parse (and validate) bounded data from memory as a YANG data tree.
+ */
+#define CHECK_PARSE_LYD_PARAM_LEN(INPUT, INPUT_LEN, INPUT_FORMAT, PARSE_OPTIONS, VALIDATE_OPTIONS, RET, OUT_NODE) \
+    { \
+        LY_ERR _r = lyd_parse_data_mem_len(_UC->ctx, INPUT, INPUT_LEN, INPUT_FORMAT, PARSE_OPTIONS, VALIDATE_OPTIONS, \
+                &OUT_NODE); \
+        if (_r != RET) { \
+            if (_r) { \
+                fail_msg("%s != 0x%d; MSG: %s", #RET, _r, ly_err_last(_UC->ctx)->msg); \
+            } else { \
+                fail_msg("%s != 0x%d", #RET, _r); \
+            } \
+        } \
+    }
+
+/**
+ * @brief Print data into memory and return the exact binary-safe output length.
+ */
+static inline LY_ERR
+utest_lyd_print_mem_len(char **strp, uint32_t *len, const struct lyd_node *root, LYD_FORMAT format, uint32_t options)
+{
+    LY_ERR ret;
+    struct ly_out *out;
+    size_t printed;
+
+    *strp = NULL;
+    *len = 0;
+    ret = ly_out_new_memory(strp, 0, &out);
+    if (ret) {
+        return ret;
+    }
+
+    if (options & LYD_PRINT_SIBLINGS) {
+        ret = lyd_print_all(out, root, format, options & ~LYD_PRINT_SIBLINGS);
+    } else {
+        ret = lyd_print_tree(out, root, format, options);
+    }
+
+    printed = ly_out_printed(out);
+    ly_out_free(out, NULL, 0);
+    if (!ret && (printed > UINT32_MAX)) {
+        ret = LY_EINVAL;
+    } else if (!ret) {
+        *len = (uint32_t)printed;
+    }
+    return ret;
+}
+
+/**
  * @brief Check if lyd_node and his subnodes have correct values. Print lyd_node and his subnodes into a string in json or xml format.
  * @param[in] NODE pointer to lyd_node
  * @param[in] TEXT expected output string in json or xml format.

@@ -1106,6 +1106,7 @@ test_parse_data(void **state)
 {
     const char *schema, *data;
     char *lyb_out;
+    uint32_t lyb_len;
     struct lys_module *mod;
     struct lyd_node *tree, *tree2;
 
@@ -1131,9 +1132,9 @@ test_parse_data(void **state)
     /* data tree is used in the next check */
 
     /* lyb */
-    assert_int_equal(lyd_print_mem(&lyb_out, tree, LYD_LYB, LYD_PRINT_SIBLINGS), 0);
-    assert_int_equal(lyd_parse_data_mem(UTEST_LYCTX, lyb_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT,
-            0, &tree2), LY_SUCCESS);
+    assert_int_equal(utest_lyd_print_mem_len(&lyb_out, &lyb_len, tree, LYD_LYB, LYD_PRINT_SIBLINGS), 0);
+    assert_int_equal(lyd_parse_data_mem_len(UTEST_LYCTX, lyb_out, lyb_len, LYD_LYB,
+            LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree2), LY_SUCCESS);
     assert_true(tree2 && tree2->meta && tree2->next);
     assert_string_equal(tree2->meta->name, META_NAME);
     CHECK_LYD_VALUE(((struct lyd_node_term *)tree2)->value, UINT32, "1", 1);

@@ -28,7 +28,8 @@ struct ly_in {
     const char *current;    /**< Current position in the input data */
     const char *func_start; /**< Input data position when the last parser function was executed */
     const char *start;      /**< Input data start */
-    size_t length;          /**< mmap() length (if used) */
+    size_t length;          /**< input data length (if bounded) */
+    ly_bool bounded;        /**< whether @ref length limits reads from @ref start */
 
     ly_bool peeked;         /**< whether a byte was peeked */
     uint8_t peek;           /**< peeked byte, if any */

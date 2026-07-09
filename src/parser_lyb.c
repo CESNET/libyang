@@ -149,8 +149,8 @@ lyb_read(void *buf, uint64_t count_bits, struct lylyb_parse_ctx *lybctx)
     return LY_SUCCESS;
 
 eof:
-    LOGERR(lybctx->ctx, LY_EDENIED, "Unexpected LYB read EOF.");
-    return LY_EDENIED;
+    LOGERR(lybctx->ctx, LY_EVALID, "Unexpected end of LYB data.");
+    return LY_EVALID;
 }
 
 /**
@@ -210,8 +210,8 @@ lyb_read_count(uint32_t *count, struct lylyb_parse_ctx *lybctx)
         break;
     default:
         /* invalid */
-        LOGINT(lybctx->ctx);
-        return LY_EINT;
+        LOGERR(lybctx->ctx, LY_EVALID, "Invalid LYB count prefix.");
+        return LY_EVALID;
     }
 
     /* correct byte order */
@@ -269,8 +269,8 @@ lyb_read_size(uint32_t *size, struct lylyb_parse_ctx *lybctx)
         break;
     default:
         /* invalid */
-        LOGINT(lybctx->ctx);
-        return LY_EINT;
+        LOGERR(lybctx->ctx, LY_EVALID, "Invalid LYB size prefix.");
+        return LY_EVALID;
     }
 
     /* correct byte order */
@@ -351,7 +351,7 @@ lyb_read_value(const struct lysc_type *type, uint8_t **val, uint64_t *val_size_b
         *val_size_bits = fixed_size_bits;
     } else {
         /* parse value size in bits or bytes, uint32_t is enough because larger sizes will be stored as bytes */
-        lyb_read_size(&lyb_size_bits, lybctx);
+        LY_CHECK_RET(lyb_read_size(&lyb_size_bits, lybctx));
         *val_size_bits = lyb_size_bits;
         if (size_type == LYPLG_LYB_SIZE_VARIABLE_BYTES) {
             *val_size_bits *= 8;
@@ -873,9 +873,15 @@ lyb_read_hashes(struct lylyb_parse_ctx *lybctx, LYB_HASH *hash, uint8_t *hash_co
         LY_CHECK_RET(lyb_read(&hash[j - 1], sizeof *hash * 8, lybctx));
 
         /* correct collision ID */
-        assert(hash[j - 1] & (LYB_HASH_COLLISION_ID >> (j - 1)));
+        if (!(hash[j - 1] & (LYB_HASH_COLLISION_ID >> (j - 1)))) {
+            LOGERR(lybctx->ctx, LY_EVALID, "Invalid LYB schema hash collision ID.");
+            return LY_EVALID;
+        }
         /* preceded with zeros */
-        assert(!(hash[j - 1] & (LYB_HASH_MASK << (LYB_HASH_BITS - (j - 1)))));
+        if (hash[j - 1] & (LYB_HASH_MASK << (LYB_HASH_BITS - (j - 1)))) {
+            LOGERR(lybctx->ctx, LY_EVALID, "Invalid LYB schema hash prefix.");
+            return LY_EVALID;
+        }
     }
 
     *hash_count = i + 1;

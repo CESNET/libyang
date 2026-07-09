@@ -212,6 +212,7 @@ test_parse(void **state)
     struct lyd_node *tree = NULL, *node;
     const char *yang, *xml, *json;
     char *lyb;
+    uint32_t lyb_len;
 
     yang = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix a;"
             "import ietf-yang-structure-ext {prefix sx;}"
@@ -249,10 +250,11 @@ test_parse(void **state)
 
     ly_out_new_memory(&lyb, 0, &UTEST_OUT);
     assert_int_equal(LY_SUCCESS, lyd_print_tree(UTEST_OUT, tree, LYD_LYB, 0));
+    lyb_len = (uint32_t)ly_out_printed(UTEST_OUT);
     ly_out_free(current_utest_context->out, NULL, 0);
     lyd_free_all(tree);
-    ly_in_memory(UTEST_IN, lyb);
-    assert_int_equal(LY_SUCCESS, lyd_parse_data(UTEST_LYCTX, NULL, UTEST_IN, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, lyb, lyb_len, LYD_LYB, LYD_PARSE_STRICT,
+            LYD_VALIDATE_PRESENT, &tree));
     free(lyb);
     lyd_free_all(tree);
 
@@ -281,10 +283,11 @@ test_parse(void **state)
 
     ly_out_new_memory(&lyb, 0, &UTEST_OUT);
     assert_int_equal(LY_SUCCESS, lyd_print_tree(UTEST_OUT, tree, LYD_LYB, 0));
+    lyb_len = (uint32_t)ly_out_printed(UTEST_OUT);
     ly_out_free(current_utest_context->out, NULL, 0);
     lyd_free_all(tree);
-    ly_in_memory(UTEST_IN, lyb);
-    assert_int_equal(LY_SUCCESS, lyd_parse_data(UTEST_LYCTX, NULL, UTEST_IN, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, lyb, lyb_len, LYD_LYB, LYD_PARSE_STRICT,
+            LYD_VALIDATE_PRESENT, &tree));
     free(lyb);
 
     /* invalid data */
