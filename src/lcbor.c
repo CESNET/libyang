@@ -50,6 +50,8 @@ void
 lycbor_ctx_free(struct lycbor_ctx *cborctx)
 {
     if (cborctx) {
+        ly_log_location_revert(0, 0, 1);
+
         if (cborctx->cbor_data) {
             cbor_decref(&cborctx->cbor_data);
         }
