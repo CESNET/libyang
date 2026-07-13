@@ -1347,9 +1347,14 @@ static int
 utest_teardown(void **state)
 {
     *state = NULL;
+    const struct ly_err_item *err;
 
     /* libyang context, no leftover messages */
-    assert_null(ly_err_last(current_utest_context->ctx));
+    err = ly_err_last(current_utest_context->ctx);
+    if (err) {
+        fail_msg("%s", err->msg);
+    }
+
     ly_ctx_destroy(current_utest_context->ctx);
 
     if (current_utest_context->orig_tz) {
