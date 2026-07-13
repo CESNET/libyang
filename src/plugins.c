@@ -638,6 +638,7 @@ lyplg_init(ly_bool builtin_type_plugins_only, ly_bool static_plugins_only)
     ly_static_type_plugins_count = ly_plugins_types.count;
     ly_static_ext_plugins_count = ly_plugins_extensions.count;
 
+    (void)static_plugins_only;
 #ifndef STATIC
     if (!static_plugins_only) {
         /* external types */
