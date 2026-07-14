@@ -352,11 +352,9 @@ lyd_diff_dup(const struct lyd_node *node, enum lyd_diff_op op, struct lyd_node *
     dup_parent = *dup;
     node_parent = node;
     sparent = parent ? parent->schema : NULL;
-    while (lysc_data_parent(dup_parent->schema) &&
-            !lyd_compare_schema_equal(lysc_data_parent(dup_parent->schema), sparent, 0)) {
-        node_parent = node_parent->parent;
-
+    while (node_parent->parent && (!sparent || !lyd_compare_schema_equal(node_parent->parent->schema, sparent, 0))) {
         /* duplicate the next parent */
+        node_parent = node_parent->parent;
         LY_CHECK_RET(lyd_dup_single(node_parent, NULL, LYD_DUP_NO_META | LYD_DUP_WITH_FLAGS, &d));
 
         /* connect the existing dup tree into the parent */
