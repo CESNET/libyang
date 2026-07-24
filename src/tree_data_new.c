@@ -973,6 +973,12 @@ lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name
     LY_CHECK_ARG_RET(ctx, parent || ctx, parent || node, name, module_name, !prefix || !strcmp(prefix, module_name), LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(__func__, ctx, parent ? LYD_CTX(parent) : NULL, LY_EINVAL);
 
+    if (parent && parent->schema && !(parent->schema->nodetype & LYD_NODE_INNER)) {
+        LOGERR(ctx, LY_EINVAL, "Cannot insert into %s node \"%s\".", lys_nodetype2str(parent->schema->nodetype),
+                LYD_NAME(parent));
+        return LY_EINVAL;
+    }
+
     if (!ctx) {
         ctx = LYD_CTX(parent);
     }
@@ -1002,6 +1008,12 @@ lyd_new_opaq2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *nam
 
     LY_CHECK_ARG_RET(ctx, parent || ctx, parent || node, name, module_ns, LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(__func__, ctx, parent ? LYD_CTX(parent) : NULL, LY_EINVAL);
+
+    if (parent && parent->schema && !(parent->schema->nodetype & LYD_NODE_INNER)) {
+        LOGERR(ctx, LY_EINVAL, "Cannot insert into %s node \"%s\".", lys_nodetype2str(parent->schema->nodetype),
+                LYD_NAME(parent));
+        return LY_EINVAL;
+    }
 
     if (!ctx) {
         ctx = LYD_CTX(parent);
