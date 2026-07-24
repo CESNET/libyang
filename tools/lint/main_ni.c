@@ -226,7 +226,7 @@ help(int shortout)
     printf("  -J, --json-null\n"
             "                Allow usage of JSON empty values ('null') within input data\n\n");
 
-    printf(" -T, --ietf\n"
+    printf("  -T, --ietf\n"
             "               Enable stricter YANG model validation according to IETF rules.\n\n");
 
     printf("  -G GROUPS, --debug=GROUPS\n"
