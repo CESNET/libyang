@@ -852,6 +852,13 @@ lysp_dup_single(struct lysc_ctx *cctx, const struct lysp_node *pnode, ly_bool wi
         case LYS_CASE:
             ((struct lysp_node_case *)dup)->child = ((struct lysp_node_case *)pnode)->child;
             break;
+        case LYS_INPUT:
+        case LYS_OUTPUT:
+            ((struct lysp_node_action_inout *)dup)->child = ((struct lysp_node_action_inout *)pnode)->child;
+            break;
+        case LYS_NOTIF:
+            ((struct lysp_node_notif *)dup)->child = ((struct lysp_node_notif *)pnode)->child;
+            break;
         default:
             break;
         }
