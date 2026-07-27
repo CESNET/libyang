@@ -472,6 +472,7 @@ test_parse_inline(void **state)
 {
     const char *xml, *json;
     char *lyb;
+    uint32_t lyb_len;
     struct lyd_node *data;
     const struct ly_ctx *ext_ctx;
 
@@ -666,10 +667,10 @@ test_parse_inline(void **state)
     CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_SIBLINGS);
     assert_ptr_equal(ext_ctx, LYD_CTX(lyd_child_no_keys(data)));
 
-    assert_int_equal(LY_SUCCESS, lyd_print_mem(&lyb, data, LYD_LYB, 0));
+    assert_int_equal(LY_SUCCESS, utest_lyd_print_mem_len(&lyb, &lyb_len, data, LYD_LYB, 0));
     lyd_free_siblings(data);
 
-    CHECK_PARSE_LYD_PARAM(lyb, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+    CHECK_PARSE_LYD_PARAM_LEN(lyb, lyb_len, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     assert_ptr_equal(ext_ctx, LYD_CTX(lyd_child_no_keys(data)));
     free(lyb);
     lyd_free_siblings(data);
@@ -680,6 +681,7 @@ test_parse_shared(void **state)
 {
     const char *xml, *json;
     char *lyb;
+    uint32_t lyb_len;
     struct lyd_node *data;
 
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
@@ -1089,10 +1091,11 @@ test_parse_shared(void **state)
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_SIBLINGS);
 
-    assert_int_equal(LY_SUCCESS, lyd_print_mem(&lyb, data, LYD_LYB, LYD_PRINT_SIBLINGS));
+    assert_int_equal(LY_SUCCESS,
+            utest_lyd_print_mem_len(&lyb, &lyb_len, data, LYD_LYB, LYD_PRINT_SIBLINGS));
     lyd_free_siblings(data);
 
-    CHECK_PARSE_LYD_PARAM(lyb, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+    CHECK_PARSE_LYD_PARAM_LEN(lyb, lyb_len, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     free(lyb);
     lyd_free_siblings(data);
 }
@@ -1420,6 +1423,7 @@ test_parse_config(void **state)
 {
     const char *xml;
     char *lyb;
+    uint32_t lyb_len;
     struct lyd_node *data, *key_node;
     const struct lyd_node *node;
 
@@ -1509,9 +1513,9 @@ test_parse_config(void **state)
     node = lyd_child_no_keys(node);
     assert_string_equal(LYD_NAME(node), "type");
     assert_true(node->schema->flags & LYS_CONFIG_R);
-    lyd_print_mem(&lyb, data, LYD_LYB, 0);
+    assert_int_equal(LY_SUCCESS, utest_lyd_print_mem_len(&lyb, &lyb_len, data, LYD_LYB, 0));
     lyd_free_siblings(data);
-    CHECK_PARSE_LYD_PARAM(lyb, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+    CHECK_PARSE_LYD_PARAM_LEN(lyb, lyb_len, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     free(lyb);
 
     node = lyd_child_no_keys(data);

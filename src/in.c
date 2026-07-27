@@ -46,6 +46,31 @@ ly_in_type(const struct ly_in *in)
     return in->type;
 }
 
+/**
+ * @brief Check whether @p count bytes can be read from the bounded input.
+ *
+ * @param[in] in Input handler.
+ * @param[in] count Number of bytes to be read.
+ * @return LY_SUCCESS if the read is within bounds.
+ * @return LY_EDENIED if reading @p count bytes would exceed the input length.
+ */
+static LY_ERR
+ly_in_check_read(const struct ly_in *in, size_t count)
+{
+    size_t offset;
+
+    if (!in->bounded) {
+        return LY_SUCCESS;
+    }
+
+    offset = in->current - in->start;
+    if ((offset > in->length) || (count > in->length - offset)) {
+        return LY_EDENIED;
+    }
+
+    return LY_SUCCESS;
+}
+
 LIBYANG_API_DEF LY_ERR
 ly_in_reset(struct ly_in *in)
 {
@@ -78,6 +103,7 @@ ly_in_new_fd(int fd, struct ly_in **in)
     (*in)->current = (*in)->start = (*in)->func_start = addr;
     (*in)->line = 1;
     (*in)->length = length;
+    (*in)->bounded = 1;
 
     return LY_SUCCESS;
 }
@@ -106,6 +132,7 @@ ly_in_fd(struct ly_in *in, int fd)
         in->current = in->start = addr;
         in->line = 1;
         in->length = length;
+        in->bounded = 1;
     }
 
     return prev_fd;
@@ -179,6 +206,8 @@ ly_in_memory(struct ly_in *in, const char *str)
     if (str) {
         in->start = in->current = str;
         in->line = 1;
+        in->length = 0;
+        in->bounded = 0;
     }
 
     return data;
@@ -299,12 +328,12 @@ ly_in_free(struct ly_in *in, ly_bool destroy)
 LIBYANG_API_DEF LY_ERR
 ly_in_read(struct ly_in *in, void *buf, size_t count)
 {
+    size_t read_count;
+
     LY_CHECK_ARG_RET(NULL, in, buf, LY_EINVAL);
 
-    if (in->length && (in->length - (in->current - in->start) < count)) {
-        /* EOF */
-        return LY_EDENIED;
-    }
+    read_count = (count && in->peeked) ? count - 1 : count;
+    LY_CHECK_RET(ly_in_check_read(in, read_count));
 
     if (count && in->peeked) {
         /* read the peeked byte */
@@ -328,13 +357,11 @@ ly_in_peek(struct ly_in *in, uint8_t *peek)
 {
     LY_CHECK_ARG_RET(NULL, in, peek, LY_EINVAL);
 
-    if (in->length && (in->length - (in->current - in->start) < 1)) {
-        /* EOF */
-        return LY_EDENIED;
-    } else if (in->peeked) {
+    if (in->peeked) {
         /* unsupported */
         return LY_ENOT;
     }
+    LY_CHECK_RET(ly_in_check_read(in, 1));
 
     memcpy(&in->peek, in->current, 1);
     in->current += 1;
@@ -347,12 +374,12 @@ ly_in_peek(struct ly_in *in, uint8_t *peek)
 LIBYANG_API_DEF LY_ERR
 ly_in_skip(struct ly_in *in, size_t count)
 {
+    size_t skip_count;
+
     LY_CHECK_ARG_RET(NULL, in, LY_EINVAL);
 
-    if (in->length && (in->length - (in->current - in->start) < count)) {
-        /* EOF */
-        return LY_EDENIED;
-    }
+    skip_count = (count && in->peeked) ? count - 1 : count;
+    LY_CHECK_RET(ly_in_check_read(in, skip_count));
 
     if (count && in->peeked) {
         /* skip the peeked byte */

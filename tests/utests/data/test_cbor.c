@@ -109,7 +109,7 @@ test_node(void **state)
         lyd_free_all(tree);
 
         assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(((struct utest_context *)*state)->ctx, buffer,
-                ly_out_printed(out), LYD_CBOR, LYD_PARSE_ONLY, 0, &tree));
+                (uint32_t)ly_out_printed(out), LYD_CBOR, LYD_PARSE_ONLY, 0, &tree));
 
         ly_out_free(out, NULL, 0);
         free(buffer);
@@ -244,7 +244,7 @@ test_schema_mount(void **state)
     tree = NULL;
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, cbor_buffer,
-            ly_out_printed(out_cbor), LYD_CBOR, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, &tree));
+            (uint32_t)ly_out_printed(out_cbor), LYD_CBOR, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, &tree));
 
     ly_out_free(out_cbor, NULL, 0);
     free(cbor_buffer);
@@ -280,7 +280,7 @@ test_opaque(void **state)
     lyd_free_all(tree);
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(((struct utest_context *)*state)->ctx, buffer,
-            ly_out_printed(out), LYD_CBOR, LYD_PARSE_ONLY | LYD_PARSE_OPAQ, 0, &tree));
+            (uint32_t)ly_out_printed(out), LYD_CBOR, LYD_PARSE_ONLY | LYD_PARSE_OPAQ, 0, &tree));
 
     ly_out_free(out, NULL, 0);
     free(buffer);

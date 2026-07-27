@@ -49,10 +49,12 @@
         struct lyd_node *tree_1; \
         struct lyd_node *tree_2; \
         char *xml_out, *data; \
+        uint32_t xml_len; \
         data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</" NODE_NAME ">"; \
         CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, LY_SUCCESS, tree_1); \
-        assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_SIBLINGS), 0); \
-        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2)); \
+        assert_int_equal(utest_lyd_print_mem_len(&xml_out, &xml_len, tree_1, LYD_LYB, LYD_PRINT_SIBLINGS), 0); \
+        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, xml_out, xml_len, LYD_LYB, \
+                LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2)); \
         assert_non_null(tree_2); \
         CHECK_LYD(tree_1, tree_2); \
         free(xml_out); \
@@ -192,6 +194,7 @@ test_validation(void **state)
     const char *schema, *data;
     struct lyd_node *tree;
     char *out;
+    uint32_t out_len;
 
     schema = MODULE_CREATE_YANG("val",
             "leaf l1 {\n"
@@ -216,9 +219,10 @@ test_validation(void **state)
     /* parse from LYB */
     data = "<l1 xmlns=\"urn:tests:val\">auto</l1><int8 xmlns=\"urn:tests:val\">15</int8><l2 xmlns=\"urn:tests:val\">15</l2>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
-    assert_int_equal(LY_SUCCESS, lyd_print_mem(&out, tree, LYD_LYB, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS));
+    assert_int_equal(LY_SUCCESS,
+            utest_lyd_print_mem_len(&out, &out_len, tree, LYD_LYB, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS));
     lyd_free_all(tree);
-    CHECK_PARSE_LYD_PARAM(out, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    CHECK_PARSE_LYD_PARAM_LEN(out, out_len, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
     free(out);
 
     /* validate */
@@ -273,18 +277,20 @@ test_validation(void **state)
     /* parse from LYB #1 */
     data = "<test xmlns=\"urn:tests:lref\"><b><name>2</name></b><community><name>test</name><view>2</view></community></test>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
-    assert_int_equal(LY_SUCCESS, lyd_print_mem(&out, tree, LYD_LYB, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS));
+    assert_int_equal(LY_SUCCESS,
+            utest_lyd_print_mem_len(&out, &out_len, tree, LYD_LYB, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS));
     lyd_free_all(tree);
-    CHECK_PARSE_LYD_PARAM(out, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    CHECK_PARSE_LYD_PARAM_LEN(out, out_len, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
     free(out);
     lyd_free_all(tree);
 
     /* parse from LYB #2 */
     data = "<test xmlns=\"urn:tests:lref\"><a><name>one</name></a><community><name>test</name><view>one</view></community></test>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
-    assert_int_equal(LY_SUCCESS, lyd_print_mem(&out, tree, LYD_LYB, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS));
+    assert_int_equal(LY_SUCCESS,
+            utest_lyd_print_mem_len(&out, &out_len, tree, LYD_LYB, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS));
     lyd_free_all(tree);
-    CHECK_PARSE_LYD_PARAM(out, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    CHECK_PARSE_LYD_PARAM_LEN(out, out_len, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
     free(out);
 
     /* remove the target and create another, which is represented the same way in LYB */

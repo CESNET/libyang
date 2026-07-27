@@ -266,21 +266,22 @@ LIBYANG_API_DECL LY_ERR lyd_parse_data_mem(const struct ly_ctx *ctx, const char 
         uint32_t validate_options, struct lyd_node **tree);
 
 /**
- * @brief Parse data from a memory buffer with a specified length.
+ * @brief Parse (and validate) input data as a YANG data tree from a bounded memory buffer.
  *
- * This function parses the provided data buffer of a given length and returns the resulting data tree.
+ * Wrapper around ::lyd_parse_data() hiding work with the input handler and some obscure options.
+ * Unlike ::lyd_parse_data_mem(), @p data may contain NULL bytes and the parser will not read past @p data_len bytes.
  *
- * @param[in] ctx libyang context for parsing.
- * @param[in] data Pointer to the memory buffer containing the data to parse.
- * @param[in] data_len Length of the memory buffer.
- * @param[in] format Data format (e.g., XML, JSON, LYD_LYB).
+ * @param[in] ctx Context to connect with the tree being built here.
+ * @param[in] data The input data in the specified @p format to parse (and validate).
+ * @param[in] data_len Number of readable bytes in @p data.
+ * @param[in] format Format of the input data to be parsed.
  * @param[in] parse_options Options for parser, see @ref dataparseroptions.
  * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
- * @param[in] ctx_node Optional context node for parsing (can be NULL).
- * @param[out] tree Pointer to the resulting data tree (set on success).
- * @return LY_ERR value indicating success or error reason.
+ * @param[out] tree Full parsed data tree, note that NULL can be a valid tree.
+ * @return LY_SUCCESS in case of successful parsing (and validation).
+ * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
  */
-LIBYANG_API_DECL LY_ERR lyd_parse_data_mem_len(const struct ly_ctx *ctx, const char *data, size_t data_len, LYD_FORMAT format,
+LIBYANG_API_DECL LY_ERR lyd_parse_data_mem_len(const struct ly_ctx *ctx, const char *data, uint32_t data_len, LYD_FORMAT format,
         uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree);
 
 /**
