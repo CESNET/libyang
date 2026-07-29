@@ -304,17 +304,52 @@ skip_comment(struct lysp_yang_ctx *ctx, uint8_t comment)
 }
 
 /**
+ * @brief Read from a replacement string instead of standard input.
+ *
+ * DOES NOT MOVE THE INPUT!
+ *
+ * @param[in] ctx yang parser context for logging.
+ * @param[in] arg Type of YANG keyword argument expected.
+ * @param[in] tmp_input Temporary input string to use for reading the char.
+ * @param[out] word_p Pointer to the read quoted string.
+ * @param[out] word_b Pointer to a dynamically-allocated buffer holding the read quoted string. If not needed,
+ * set to NULL. Otherwise equal to @p word_p.
+ * @param[out] word_len Length of the read quoted string.
+ * @param[out] buf_len Length of the dynamically-allocated buffer @p word_b.
+ * @return LY_ERR values.
+ */
+static LY_ERR
+buf_store_char_replaced_input(struct lysp_yang_ctx *ctx, enum yang_arg arg, const char *tmp_input, char **word_p,
+        char **word_b, size_t *word_len, size_t *buf_len)
+{
+    LY_ERR rc = LY_SUCCESS;
+    const char *c, *s;
+
+    /* backup */
+    c = ctx->in->current;
+    s = ctx->in->start;
+
+    /* read the special non-input string (char) */
+    ctx->in->current = ctx->in->start = tmp_input;
+    rc = buf_store_char(ctx, arg, word_p, word_len, word_b, buf_len, 1, NULL);
+
+    /* restore */
+    ctx->in->current = c;
+    ctx->in->start = s;
+
+    return rc;
+}
+
+/**
  * @brief Read a quoted string from data.
  *
  * @param[in] ctx yang parser context for logging.
  * @param[in] arg Type of YANG keyword argument expected.
  * @param[out] word_p Pointer to the read quoted string.
  * @param[out] word_b Pointer to a dynamically-allocated buffer holding the read quoted string. If not needed,
- * set to NULL. Otherwise equal to \p word_p.
+ * set to NULL. Otherwise equal to @p word_p.
  * @param[out] word_len Length of the read quoted string.
- * @param[out] buf_len Length of the dynamically-allocated buffer \p word_b.
- * @param[in] indent Current indent (number of YANG spaces). Needed for correct multi-line string
- * indenation in the final quoted string.
+ * @param[out] buf_len Length of the dynamically-allocated buffer @p word_b.
  * @return LY_ERR values.
  */
 static LY_ERR
@@ -333,7 +368,6 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
     uint64_t block_indent = 0, current_indent = 0;
     ly_bool need_buf = 0;
     uint8_t prefix = 0;
-    const char *c;
     uint64_t trailing_ws = 0; /* current number of stored trailing whitespace characters */
 
     if (ctx->in->current[0] == '\"') {
@@ -399,10 +433,7 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
                     ctx->indent += Y_TAB_SPACES;
                     for ( ; current_indent > block_indent; --current_indent, --ctx->indent) {
                         /* store leftover spaces from the tab */
-                        c = ctx->in->current;
-                        ctx->in->current = " ";
-                        LY_CHECK_RET(buf_store_char(ctx, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
-                        ctx->in->current = c;
+                        LY_CHECK_RET(buf_store_char_replaced_input(ctx, arg, " ", word_p, word_b, word_len, buf_len));
                         trailing_ws++;
                     }
                     ++ctx->in->current;
@@ -434,18 +465,14 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
                     current_indent = 0;
                 }
 
-                c = NULL;
-                if (ctx->in->current[0] != '\n') {
+                if (ctx->in->current[0] == '\n') {
+                    /* check and store character */
+                    LY_CHECK_RET(buf_store_char(ctx, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
+                } else {
                     /* storing '\r' as '\n' */
-                    c = ctx->in->current;
-                    ctx->in->current = "\n";
-                }
-
-                /* check and store character */
-                LY_CHECK_RET(buf_store_char(ctx, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
-
-                if (c) {
-                    ctx->in->current = c + 1;
+                    need_buf = 1;
+                    LY_CHECK_RET(buf_store_char_replaced_input(ctx, arg, "\n", word_p, word_b, word_len, buf_len));
+                    ++ctx->in->current;
                 }
 
                 /* reset context indentation counter for possible string after this one */
@@ -464,19 +491,23 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
             break;
         case STRING_DOUBLE_QUOTED_ESCAPED:
             /* string encoded characters */
-            c = ctx->in->current;
             switch (ctx->in->current[0]) {
             case 'n':
-                ctx->in->current = "\n";
+                need_buf = 1;
                 /* fix false newline count in buf_store_char() */
                 ctx->in->line--;
+                LY_CHECK_RET(buf_store_char_replaced_input(ctx, arg, "\n", word_p, word_b, word_len, buf_len));
+                ++ctx->in->current;
                 break;
             case 't':
-                ctx->in->current = "\t";
+                need_buf = 1;
+                LY_CHECK_RET(buf_store_char_replaced_input(ctx, arg, "\t", word_p, word_b, word_len, buf_len));
+                ++ctx->in->current;
                 break;
             case '\"':
             case '\\':
-                /* ok as is */
+                /* ok as is, check and store character */
+                LY_CHECK_RET(buf_store_char(ctx, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
                 break;
             default:
                 LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Double-quoted string unknown special character '\\%c'.",
@@ -484,11 +515,8 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
                 return LY_EVALID;
             }
 
-            /* check and store character */
-            LY_CHECK_RET(buf_store_char(ctx, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
-
+            /* escaped char processed */
             string = STRING_DOUBLE_QUOTED;
-            ctx->in->current = c + 1;
             break;
         case STRING_PAUSED_NEXTSTRING:
             switch (ctx->in->current[0]) {
