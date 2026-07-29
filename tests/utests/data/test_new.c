@@ -79,6 +79,9 @@ const char *schema_a = "module a {\n"
         "      }\n"
         "    }\n"
         "  }\n"
+        "  leaf-list ll3 {\n"
+        "    type uint8;\n"
+        "  }\n"
         "  rpc oper {\n"
         "    input {\n"
         "      leaf param {\n"
@@ -275,6 +278,17 @@ test_path(void **state)
     CHECK_LOG_CTX("Predicate missing for list \"l1\" in path \"/a:l1\".", "/a:l1", 0);
 
     ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:l1", NULL, 0, 0, LYD_NEW_PATH_OPAQ, NULL, &root);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    assert_null(root->schema);
+
+    lyd_free_tree(root);
+
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:ll3", "1050", 0, 0, 0, NULL, NULL);
+    assert_int_equal(ret, LY_EVALID);
+    CHECK_LOG_CTX("Value \"1050\" is out of type uint8 min/max bounds.", "/a:ll3", 0);
+
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:ll3", "1050", 0, 0, LYD_NEW_PATH_OPAQ, NULL, &root);
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(root);
     assert_null(root->schema);
