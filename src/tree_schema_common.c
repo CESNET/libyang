@@ -91,7 +91,7 @@ lysp_last_revision(const struct lysp_module *pmod, const struct lysp_revision *r
         cmp = strcmp(revs[u].date, revs[u + 1].date);
         if (cmp < 0) {
             if (ctx) {
-                LOGWRN(ctx, "Older revision %s found after a newer revision %s in %s \"%s\".", revs[u].date,
+                LOGWRN(ctx, "Older revision %s found before a newer revision %s in %s \"%s\".", revs[u].date,
                         revs[u + 1].date, mod_str, name);
             }
 
