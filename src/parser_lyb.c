@@ -860,7 +860,7 @@ lyb_read_hashes(struct lylyb_parse_ctx *lybctx, LYB_HASH *hash, uint8_t *hash_co
 
     /* based on the first hash read all the other ones, if any */
     for (i = 0; !(hash[0] & (LYB_HASH_COLLISION_ID >> i)); ++i) {
-        if (i > LYB_HASH_BITS) {
+        if (i == LYB_HASH_BITS) {
             LOGINT_RET(lybctx->ctx);
         }
     }
