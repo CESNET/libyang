@@ -930,7 +930,7 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
 {
     LY_ERR r;
     const struct lysc_node *sibling;
-    LYB_HASH hash[LYB_HASH_BITS - 1];
+    LYB_HASH hash[LYB_HASH_BITS];
     uint32_t getnext_opts;
     uint8_t hash_count;
 
