@@ -514,7 +514,6 @@ lydcbor_metadata_finish(struct lyd_cbor_ctx *lydctx, struct lyd_node **first_p)
     struct lysc_ext_instance *ext;
     uint64_t instance = 0;
     const char *prev = NULL;
-    uint32_t log_location_items = 0;
 
     /* finish linking metadata */
     LY_LIST_FOR_SAFE(*first_p, next, attr)
@@ -529,9 +528,6 @@ lydcbor_metadata_finish(struct lyd_cbor_ctx *lydctx, struct lyd_node **first_p)
         if (attr->schema || (meta_container->name.name[0] != '@')) {
             continue;
         }
-
-        /* dnode-only location no longer supported by LOG_LOCSET */
-        log_location_items++;
 
         if (prev != meta_container->name.name) {
             lydict_remove(lydctx->cborctx->ctx, prev);
@@ -636,14 +632,10 @@ lydcbor_metadata_finish(struct lyd_cbor_ctx *lydctx, struct lyd_node **first_p)
             }
             lyd_free_tree(attr);
         }
-
-        LOG_LOCBACK(0);
-        log_location_items = 0;
     }
 
 cleanup:
     lydict_remove(lydctx->cborctx->ctx, prev);
-    LOG_LOCBACK(0);
     return ret;
 }
 
@@ -960,7 +952,6 @@ lydcbor_parse_opaq(struct lyd_cbor_ctx *lydctx, const char *name, size_t name_le
     LY_CHECK_GOTO(ret = lydcbor_create_opaq(lydctx, name, name_len, prefix, prefix_len, parent, cbor_value, node_p), cleanup);
 
     assert(*node_p);
-    /* dnode-only location no longer supported by LOG_LOCSET */
 
     if ((type == CBOR_TYPE_ARRAY) && (cbor_array_size(cbor_value) == 1)) {
         cbor_item_t **handle = cbor_array_handle(cbor_value);
@@ -997,8 +988,6 @@ lydcbor_parse_opaq(struct lyd_cbor_ctx *lydctx, const char *name, size_t name_le
                 lydcbor_maintain_children(parent, first_p, node_p,
                         lydctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT);
 
-                LOG_LOCBACK(0);
-
                 LY_CHECK_GOTO(ret = lydcbor_create_opaq(lydctx, name, name_len, prefix, prefix_len, parent, item, node_p), cleanup);
 
                 assert(*node_p);
@@ -1016,9 +1005,6 @@ finish:
     ret = lydcbor_metadata_finish(lydctx, lyd_node_child_p(*node_p));
 
 cleanup:
-    if (*node_p) {
-        LOG_LOCBACK(0);
-    }
     return ret;
 }
 
@@ -1127,7 +1113,6 @@ lydcbor_parse_any(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snode, st
     LY_ERR r, rc = LY_SUCCESS;
     uint32_t prev_parse_opts = lydctx->parse_opts, prev_int_opts = lydctx->int_opts;
     struct lyd_node *child = NULL;
-    ly_bool log_node = 0;
     enum cbor_type type = cbor_typeof(cbor_value);
 
     assert(snode->nodetype & LYD_NODE_ANY);
@@ -1148,10 +1133,6 @@ lydcbor_parse_any(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snode, st
         /* create node */
         r = lyd_create_any(snode, NULL, NULL, 0, 1, 0, node);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-
-        assert(*node);
-        /* dnode-only location no longer supported by LOG_LOCSET */
-        log_node = 1;
 
         /* parse data tree with correct options */
         lydctx->parse_opts &= ~LYD_PARSE_STRICT;
@@ -1183,9 +1164,6 @@ lydcbor_parse_any(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snode, st
     }
 
 cleanup:
-    if (log_node) {
-        LOG_LOCBACK(0);
-    }
     lydctx->parse_opts = prev_parse_opts;
     lydctx->int_opts = prev_int_opts;
     lydctx->any_schema = NULL;
@@ -1247,7 +1225,6 @@ lydcbor_parse_instance_inner(struct lyd_cbor_ctx *lydctx, const struct lysc_node
 
 cleanup:
     lydctx->parse_opts = prev_parse_opts;
-    LOG_LOCBACK(0);
     if (!(*node)->hash) {
         /* list without keys is unusable */
         lyd_free_tree(*node);
