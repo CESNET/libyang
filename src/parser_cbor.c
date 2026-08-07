@@ -857,34 +857,6 @@ cleanup:
 }
 
 /**
- * @brief Maintain children - insert node and update first pointer.
- *
- * @param[in] parent Parent node to insert to.
- * @param[in,out] first_p Pointer to the first sibling.
- * @param[in,out] node_p Pointer to the node to insert.
- * @param[in] last If set, insert at the end.
- */
-static void
-lydcbor_maintain_children(struct lyd_node *parent, struct lyd_node **first_p, struct lyd_node **node_p, ly_bool last)
-{
-    if (!*node_p) {
-        return;
-    }
-
-    lyd_insert_node(parent, first_p, *node_p, last);
-    if (first_p) {
-        if (parent) {
-            *first_p = lyd_child(parent);
-        } else {
-            while ((*first_p)->prev->next) {
-                *first_p = (*first_p)->prev;
-            }
-        }
-    }
-    *node_p = NULL;
-}
-
-/**
  * @brief Create an opaq node from CBOR.
  *
  * @param[in] lydctx CBOR data parser context.
@@ -961,8 +933,6 @@ lydcbor_parse_opaq(struct lyd_cbor_ctx *lydctx, const char *name, size_t name_le
 
     LY_CHECK_GOTO(ret = lydcbor_create_opaq(lydctx, name, name_len, prefix, prefix_len, parent, cbor_value, node_p), cleanup);
 
-    assert(*node_p);
-
     if ((type == CBOR_TYPE_ARRAY) && (cbor_array_size(cbor_value) == 1)) {
         cbor_item_t **handle = cbor_array_handle(cbor_value);
 
@@ -995,13 +965,10 @@ lydcbor_parse_opaq(struct lyd_cbor_ctx *lydctx, const char *name, size_t name_le
             if (i < array_size - 1) {
                 /* continue with next instance */
                 assert(*node_p);
-                lydcbor_maintain_children(parent, first_p, node_p,
-                        lydctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT);
+                LY_CHECK_GOTO(ret = lyd_parser_node_insert(parent, first_p, NULL, lydctx->parse_opts, *node_p), cleanup);
+                *node_p = NULL;
 
                 LY_CHECK_GOTO(ret = lydcbor_create_opaq(lydctx, name, name_len, prefix, prefix_len, parent, item, node_p), cleanup);
-
-                assert(*node_p);
-                /* dnode-only location no longer supported by LOG_LOCSET */
             }
         }
     } else if (type == CBOR_TYPE_MAP) {
@@ -1518,8 +1485,9 @@ lydcbor_subtree_r(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, struct l
                     }
                     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
-                    lydcbor_maintain_children(parent, first_p, &node,
-                            lydctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT);
+                    r = lyd_parser_node_insert(parent, first_p, NULL, lydctx->parse_opts, node);
+                    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+                    node = NULL;
                 }
                 break;
             case LYS_LEAF:
@@ -1554,8 +1522,9 @@ lydcbor_subtree_r(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, struct l
         }
 
         /* finally connect the parsed node */
-        lydcbor_maintain_children(parent, first_p, &node,
-                lydctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT);
+        r = lyd_parser_node_insert(parent, first_p, NULL, lydctx->parse_opts, node);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+        node = NULL;
     }
 
     /* success */
