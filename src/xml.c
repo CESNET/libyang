@@ -361,7 +361,7 @@ lyxml_parse_qname(struct lyxml_ctx *xmlctx, const char **prefix, uint32_t *prefi
     LY_CHECK_RET(lyxml_parse_identifier(xmlctx, &start, &end));
     if (end[0] == ':') {
         /* we have prefixed identifier */
-        if (((uint32_t)(end - start)) > UINT32_MAX) {
+        if (((uint64_t)(end - start)) > UINT32_MAX) {
             LOGVAL(xmlctx->ctx, NULL, LYVE_SYNTAX, "XML qualified name prefix too long.");
             return LY_EINVAL;
         }
