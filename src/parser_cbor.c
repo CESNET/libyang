@@ -1030,8 +1030,8 @@ lydcbor_parse_attribute(struct lyd_cbor_ctx *lydctx, struct lyd_node *attr_node,
         const cbor_item_t *cbor_value, struct lyd_node **first_p, struct lyd_node **node_p)
 {
     LY_ERR r;
-    const char *opaq_name, *mod_name, *attr_mod;
-    size_t opaq_name_len, attr_mod_len;
+    const char *opaq_name, *mod_name, *attr_mod = NULL;
+    size_t opaq_name_len, attr_mod_len = 0;
 
     if (!attr_node) {
         /* learn the attribute module name */
