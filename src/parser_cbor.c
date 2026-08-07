@@ -490,7 +490,7 @@ lydcbor_data_check_opaq(struct lyd_cbor_ctx *lydctx, const struct lysc_node *sno
             prev_lo = ly_temp_log_options(&temp_lo);
             ret = lydcbor_item_to_string(cbor_value, &str_val, &str_len);
             if (ret == LY_SUCCESS) {
-                if (ly_value_validate(NULL, snode, str_val, str_len, LY_VALUE_CBOR, NULL, *type_hint_p)) {
+                if (ly_value_validate(NULL, snode, str_val, str_len * 8, LY_VALUE_CBOR, NULL, *type_hint_p)) {
                     ret = LY_ENOT;
                 }
             }
