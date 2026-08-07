@@ -3111,7 +3111,7 @@ pt_ext_iter_next(ly_bool lysc_tree, void *exts, LY_ARRAY_COUNT_TYPE *i)
     if (lysc_tree) {
         ce = exts;
         while (*i < LY_ARRAY_COUNT(ce)) {
-            if (ce->def->plugin_ref && pt_ext_parent_is_valid(1, &ce[*i])) {
+            if (ce[*i].def->plugin_ref && pt_ext_parent_is_valid(1, &ce[*i])) {
                 ext = &ce[*i];
                 break;
             }
@@ -3137,18 +3137,26 @@ pt_ext_iter_next(ly_bool lysc_tree, void *exts, LY_ARRAY_COUNT_TYPE *i)
  * @param[in] tc Contains current node.
  * @param[in] ext_name Extension name to find.
  * @param[in] from_module Set to 1 if extensions in the module
- * sould be searched otherwise it will search in the node.
+ * should be searched otherwise it will search in the node.
+ * @param[in] origin_lysc_tree Optional parameter, if set then
+ * reset @p tc to the original lysc tree before iteration over
+ * next extension. If NULL then reset is not applied.
  * @param[in,out] i State of iterator.
  * @return First/next extension or NULL.
  */
 static void *
-pt_ext_iter(const struct pt_tree_ctx *tc, const char *ext_name,
-        ly_bool from_module, LY_ARRAY_COUNT_TYPE *i)
+pt_ext_iter(struct pt_tree_ctx *tc, const char *ext_name,
+        ly_bool from_module, const ly_bool *origin_lysc_tree,
+        LY_ARRAY_COUNT_TYPE *i)
 {
     struct lysp_ext_instance *ext_pars;
     struct lysc_ext_instance *ext_comp;
     void *ext = NULL;
     const char *name = "";
+
+    if (origin_lysc_tree) {
+        tc->lysc_tree = *origin_lysc_tree;
+    }
 
     do {
         if (tc->lysc_tree) {
@@ -3182,7 +3190,7 @@ pt_ext_is_present(struct pt_tree_ctx *tc, const char *ext_name)
 {
     uint64_t i = 0;
 
-    if (pt_ext_iter(tc, ext_name, 0, &i)) {
+    if (pt_ext_iter(tc, ext_name, 0, NULL, &i)) {
         return 1;
     } else {
         return 0;
@@ -3418,7 +3426,7 @@ pt_print_schema_mount(struct pt_wrapper wr, struct pt_parent_cache ca,
 
     /* load children of mount-point */
     i = 0;
-    while ((ext = pt_ext_iter(&tc, "mount-point", 0, &i))) {
+    while ((ext = pt_ext_iter(&tc, "mount-point", 0, NULL, &i))) {
         rc = pt_create_mount_point(tc.lysc_tree, ext, &schema_mount);
         LY_CHECK_ERR_GOTO(rc, tc.last_error = rc, end);
 
@@ -3881,6 +3889,7 @@ pt_ext_read(void *ext, ly_bool *compiled, struct pt_keyword_stmt *ks)
     void *schema;
 
     if (!*compiled) {
+        /* lysp tree */
         ext_pars = ext;
         ks->argument = ext_pars->argument;
         name = strchr(ext_pars->name, ':') + 1;
@@ -3891,9 +3900,9 @@ pt_ext_read(void *ext, ly_bool *compiled, struct pt_keyword_stmt *ks)
         } else {
             schema = pt_ext_parsed_read_storage(ext_pars, LY_STMT_DATA_NODE_MASK);
         }
-        *compiled = 0;
         return schema;
     }
+    /* else lysc tree */
 
     /* for compiled extension instance */
     ext_comp = ext;
@@ -3902,19 +3911,19 @@ pt_ext_read(void *ext, ly_bool *compiled, struct pt_keyword_stmt *ks)
 
     /* search in lysc_ext_instance */
     lyplg_ext_get_storage(ext, LY_STMT_DATA_NODE_MASK, sizeof schema, (const void **)&schema);
-    *compiled = 1;
     if (schema) {
         return schema;
     }
 
     /* no data nodes lysc_ext_instance, so search in lysp_ext_instance */
-    *compiled = 0;
     if (!strcmp(ks->section_name, "augment-structure")) {
         lyplg_ext_parsed_get_storage(ext_comp, LY_STMT_AUGMENT, sizeof schema, (const void **)&schema);
         schema = ((struct lysp_node_augment *)schema)->child;
     } else {
         lyplg_ext_parsed_get_storage(ext_comp, LY_STMT_DATA_NODE_MASK, sizeof schema, (const void **)&schema);
     }
+    /* switching from lysc tree to lysp tree */
+    *compiled = 0;
 
     return schema;
 }
@@ -3939,9 +3948,7 @@ pt_print_extensions(struct pt_tree_ctx tc)
     tc.plugin_ctx.schema = &ext_schema;
     tc.plugin_ctx.schema->ext = PT_EXT_GENERIC;
 
-    while ((ext = pt_ext_iter(&tc, NULL, 1, &i))) {
-        tc.lysc_tree = origin_lysc_tree;
-
+    while ((ext = pt_ext_iter(&tc, NULL, 1, &origin_lysc_tree, &i))) {
         schema = pt_ext_read(ext, &tc.lysc_tree, &ks);
         if (!strcmp(ks.section_name, "mount-point") ||
                 !strcmp(ks.section_name, "annotation")) {
@@ -3967,8 +3974,6 @@ pt_print_extensions(struct pt_tree_ctx tc)
         /* print subtree */
         node = pt_modi_first_sibling(PT_EMPTY_PARENT_CACHE, &tc);
         pt_print_siblings(&node, PT_INIT_WRAPPER_BODY, PT_EMPTY_PARENT_CACHE, &tc);
-
-        tc.lysc_tree = origin_lysc_tree;
     }
 }
 
