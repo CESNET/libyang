@@ -579,12 +579,17 @@ lydxml_subtree_get_snode(struct lyd_xml_ctx *lydctx, const struct lyd_node *pare
     *ext = NULL;
 
     /* try to find parent schema node */
-    if (parent && parent->schema && !(parent->schema->nodetype & LYD_NODE_ANY)) {
+    if (parent && parent->schema) {
         /* use only a schema parent */
         sparent = parent->schema;
     } else {
         sparent = NULL;
     }
+    if (sparent && (sparent->nodetype & LYD_NODE_ANY)) {
+        /* do not search in children, module is inherited by default (namespace) */
+        sparent = NULL;
+    }
+
     if (!prefix_len) {
         prefix = NULL;
     }

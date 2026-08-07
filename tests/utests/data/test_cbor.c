@@ -44,6 +44,7 @@ test_node(void **state)
     char *buffer, *json;
     struct ly_out *out;
     size_t i;
+    uint32_t parse_opts;
 
     const struct test_case tests[] = {
         {"lf-str",      "{\"cbor-test:lf-str\":\"example string\"}"},
@@ -91,6 +92,7 @@ test_node(void **state)
             "}"
         },
         {"anydata",  "{\"cbor-test:anydata-payload\":{\"nested-key\":\"value\"}}"},
+        {"anydata-strict", "{\"cbor-test:anydata-payload\":{\"list-user\":[{\"key-id\":1,\"lf-name\":\"Alice\"}]}}"},
         {"anyxml",   "{\"cbor-test:anyxml-payload\":{\"xml-element\":\"text\"}}"},
         {"ll-str",      "{\"cbor-test:ll-str\":[\"val1\",\"val2\",\"val3\",\"val4\"]}"},
         {"ll-intg32",   "{\"cbor-test:ll-intg32\":[-30,10,20]}"},
@@ -101,7 +103,12 @@ test_node(void **state)
     };
 
     for (i = 0; i < sizeof(tests) / sizeof(tests[0]); ++i) {
-        CHECK_PARSE_LYD_PARAM(tests[i].json, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+        if (!strcmp(tests[i].name, "anydata-strict")) {
+            parse_opts = LYD_PARSE_STRICT | LYD_PARSE_ANYDATA_STRICT;
+        } else {
+            parse_opts = LYD_PARSE_STRICT;
+        }
+        CHECK_PARSE_LYD_PARAM(tests[i].json, LYD_JSON, parse_opts, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
 
         assert_int_equal(LY_SUCCESS, ly_out_new_memory(&buffer, 0, &out));
         assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_CBOR, 0));

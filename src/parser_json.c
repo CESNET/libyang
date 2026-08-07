@@ -267,16 +267,26 @@ lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *pref
     }
 
     /* try to find parent schema node */
-    if (parent && parent->schema && !(parent->schema->nodetype & LYD_NODE_ANY)) {
+    if (parent && parent->schema) {
         /* use only a schema parent */
         sparent = parent->schema;
     } else {
         sparent = NULL;
     }
+    if (sparent && (sparent->nodetype & LYD_NODE_ANY)) {
+        if (!prefix_len) {
+            /* inherit the module */
+            mod = sparent->module;
+        }
+
+        /* do not search in children */
+        sparent = NULL;
+    }
+
     if (!prefix_len) {
         prefix = NULL;
     }
-    r = lys_find_child_node(parent ? LYD_CTX(parent) : lydctx->jsonctx->ctx, sparent, NULL, prefix, prefix_len,
+    r = lys_find_child_node(parent ? LYD_CTX(parent) : lydctx->jsonctx->ctx, sparent, mod, prefix, prefix_len,
             LY_VALUE_JSON, NULL, name, name_len, getnext_opts, snode, ext);
     LY_CHECK_RET(r && (r != LY_ENOT), r);
 

@@ -199,15 +199,25 @@ lydcbor_get_snode(struct lyd_cbor_ctx *lydctx, ly_bool is_attr, const char *pref
     }
 
     /* try to find parent schema node */
-    if (parent && parent->schema && !(parent->schema->nodetype & LYD_NODE_ANY)) {
+    if (parent && parent->schema) {
         sparent = parent->schema;
     } else {
         sparent = NULL;
     }
+    if (sparent && (sparent->nodetype & LYD_NODE_ANY)) {
+        if (!prefix_len) {
+            /* inherit the module */
+            mod = sparent->module;
+        }
+
+        /* do not search in children */
+        sparent = NULL;
+    }
+
     if (!prefix_len) {
         prefix = NULL;
     }
-    r = lys_find_child_node(parent ? LYD_CTX(parent) : lydctx->cborctx->ctx, sparent, NULL, prefix, prefix_len,
+    r = lys_find_child_node(parent ? LYD_CTX(parent) : lydctx->cborctx->ctx, sparent, mod, prefix, prefix_len,
             LY_VALUE_CBOR, NULL, name, name_len, getnext_opts, snode, ext);
     LY_CHECK_RET(r && (r != LY_ENOT), r);
 
@@ -1141,7 +1151,7 @@ lydcbor_parse_any(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snode, st
         lydctx->any_schema = snode;
 
         /* process the anydata content */
-        r = lydcbor_subtree_r(lydctx, NULL, &child, NULL, cbor_value);
+        r = lydcbor_subtree_r(lydctx, *node, &child, NULL, cbor_value);
         LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
         /* finish linking metadata */
