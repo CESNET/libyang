@@ -60,12 +60,14 @@ lyb_print_ctx_free(struct lyd_ctx *lydctx)
 
     lyd_ctx_free(lydctx);
 
-    LY_ARRAY_FOR(ctx->print_ctx->sib_hts, u) {
-        lyht_free(ctx->print_ctx->sib_hts[u].ht, NULL);
+    if (ctx->print_ctx) {
+        LY_ARRAY_FOR(ctx->print_ctx->sib_hts, u) {
+            lyht_free(ctx->print_ctx->sib_hts[u].ht, NULL);
+        }
+        LY_ARRAY_FREE(ctx->print_ctx->sib_hts);
+        free(ctx->print_ctx);
     }
-    LY_ARRAY_FREE(ctx->print_ctx->sib_hts);
 
-    free(ctx->print_ctx);
     free(ctx);
 }
 
