@@ -3168,3 +3168,36 @@ cleanup:
 
     return ret;
 }
+
+LIBYANG_API_DEF LY_ERR
+lys_sid_gen(const struct lys_module *module, uint64_t entry_point, uint64_t size,
+        LYS_SID_FILE_STATUS status, const char *description, struct lyd_node **sid_file)
+{
+    LY_CHECK_ARG_RET(NULL, module, sid_file, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, module->compiled, module->parsed, size, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, ly_ctx_get_module_implemented(module->ctx, "ietf-sid-file"), LY_ENOTFOUND);
+
+    *sid_file = NULL;
+    return sid_file_gen(module, entry_point, size, status, description, sid_file);
+}
+
+LIBYANG_API_DEF LY_ERR
+lys_sid_update(const struct lys_module *module, const struct lyd_node *prev_sid_file,
+        LYS_SID_FILE_STATUS status, const char *description, struct lyd_node **sid_file)
+{
+    LY_CHECK_ARG_RET(NULL, module, prev_sid_file, sid_file, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, module->compiled, module->parsed, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, ly_ctx_get_module_implemented(module->ctx, "ietf-sid-file"), LY_ENOTFOUND);
+
+    *sid_file = NULL;
+    return sid_file_update(module, prev_sid_file, status, description, sid_file);
+}
+
+LIBYANG_API_DEF LY_ERR
+lys_sid_range_add(struct lyd_node *sid_file, uint64_t entry_point, uint64_t size)
+{
+    LY_CHECK_ARG_RET(NULL, sid_file, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, size, LY_EINVAL);
+
+    return sid_range_append(sid_file, entry_point, size);
+}
