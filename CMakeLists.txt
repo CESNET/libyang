@@ -149,6 +149,7 @@ set(libsrc
     src/parser_yang.c
     src/parser_yin.c
     src/printer_schema.c
+    src/printer_sid.c
     src/printer_yang.c
     src/printer_yin.c
     src/printer_tree.c
