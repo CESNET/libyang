@@ -3,6 +3,7 @@
 #include <stdbool.h>
 
 #include "libyang.h"
+#include "tests_config.h"
 
 int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 {
@@ -60,7 +61,7 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
         log = true;
     }
 
-    err = ly_ctx_new(LY_SRC_DIR "/modules", 0, &ctx);
+    err = ly_ctx_new(TESTS_SRC "/../modules", 0, &ctx);
     if (err != LY_SUCCESS) {
         return 0;
     }

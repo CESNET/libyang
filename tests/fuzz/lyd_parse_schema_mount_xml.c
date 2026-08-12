@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include "libyang.h"
+#include "tests_config.h"
 
 static const char mounted_module[] =
         "module fuzz-sm-leaf {"
@@ -141,7 +142,7 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
         return 0;
     }
 
-    if (ly_ctx_new(LY_SRC_DIR "/modules", 0, &ctx) != LY_SUCCESS) {
+    if (ly_ctx_new(TESTS_SRC "/../modules", 0, &ctx) != LY_SUCCESS) {
         return 0;
     }
     if (ly_ctx_set_searchdir(ctx, mount_module_dir) != LY_SUCCESS) {

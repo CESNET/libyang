@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include "libyang.h"
+#include "tests_config.h"
 
 int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 {
@@ -18,7 +19,7 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
         log = true;
     }
 
-    if (ly_ctx_new(LY_SRC_DIR "/modules", 0, &ctx) != LY_SUCCESS) {
+    if (ly_ctx_new(TESTS_SRC "/../modules", 0, &ctx) != LY_SUCCESS) {
         return 0;
     }
 
