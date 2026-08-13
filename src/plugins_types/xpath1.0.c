@@ -263,7 +263,7 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
 {
     LY_ERR ret = LY_SUCCESS;
     const struct ly_err_item *e;
-    uint32_t value_size, temp_lo = LY_LOSTORE;
+    uint32_t value_size, *prev_lo, temp_lo = LY_LOSTORE;
     struct lyd_value_xpath10 *val;
     char *canon;
 
@@ -283,9 +283,9 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
     LY_CHECK_GOTO(ret, cleanup);
 
     /* parse */
-    ly_temp_log_options(&temp_lo);
+    prev_lo = ly_temp_log_options(&temp_lo);
     ret = lyxp_expr_parse(ctx, NULL, value_size ? value : "", value_size, 1, &val->exp);
-    ly_temp_log_options(NULL);
+    ly_temp_log_options(prev_lo);
     if (ret) {
         /* get a copy of the error */
         e = ly_err_last(ctx);
