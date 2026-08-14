@@ -55,6 +55,7 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
     struct ly_set *set = NULL;
     uint32_t i;
     const char *name;
+    char *start, *end;
     size_t name_len;
 
     if (cur_node) {
@@ -152,10 +153,11 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
         } else if ((pred == LY_PATH_PRED_SIMPLE) && !lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_NUMBER)) {
             /* Number */
 
-            /* check for index 0 */
-            if (!atoi(exp->expr + exp->tok_pos[*tok_idx - 1])) {
+            /* check for index 0 or fractions */
+            start = exp->expr + exp->tok_pos[*tok_idx - 1];
+            if (!strtol(start, &end, 10) || (end - start != exp->tok_len[*tok_idx - 1])) {
                 LOGVAL(ctx, NULL, LYVE_XPATH, "Invalid positional predicate \"%.*s\".", (int)exp->tok_len[*tok_idx - 1],
-                        exp->expr + exp->tok_pos[*tok_idx - 1]);
+                        start);
                 goto token_error;
             }
 
