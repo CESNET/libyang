@@ -51,7 +51,8 @@ struct cborpr_ctx {
     const struct lyd_node *first_leaflist;  /**< first printed leaf-list instance, used when printing its metadata/attributes */
 
     cbor_item_t *root_map;                  /**< root CBOR map */
-    cbor_item_t *array;                     /**< currently open CBOR array for leaf-list/list instances */
+    cbor_item_t **arrays;                   /**< stack of currently open CBOR arrays, parallel to `open` (one per nesting level) */
+    uint32_t arrays_size;                   /**< allocated size of the `arrays` stack */
 };
 
 static LY_ERR cbor_print_node(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_item_t *parent_map);
@@ -93,10 +94,37 @@ matching_node(const struct lyd_node *node1, const struct lyd_node *node2)
  * @return LY_ERR value.
  */
 static LY_ERR
-cbor_print_array_open(struct cborpr_ctx *pctx, const struct lyd_node *node)
+cbor_print_array_open(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_item_t *array)
 {
     LY_CHECK_RET(ly_set_add(&pctx->open, (void *)node, 0, NULL));
+
+    /* keep the array pointer on a stack parallel to `open` so that nested
+     * (leaf-)lists each have their own open array instead of a single shared one */
+    if (pctx->open.count > pctx->arrays_size) {
+        cbor_item_t **tmp = realloc(pctx->arrays, pctx->open.count * sizeof *pctx->arrays);
+
+        LY_CHECK_RET(!tmp, LY_EMEM);
+        pctx->arrays = tmp;
+        pctx->arrays_size = pctx->open.count;
+    }
+    pctx->arrays[pctx->open.count - 1] = array;
+
     return LY_SUCCESS;
+}
+
+/**
+ * @brief Get the innermost currently open CBOR array.
+ *
+ * @param[in] pctx CBOR printer context.
+ * @return The innermost open array, or NULL if none is open.
+ */
+static cbor_item_t *
+cbor_current_array(struct cborpr_ctx *pctx)
+{
+    if (!pctx->open.count) {
+        return NULL;
+    }
+    return pctx->arrays[pctx->open.count - 1];
 }
 
 /**
@@ -922,31 +950,35 @@ cbor_print_array_is_last_inst(struct cborpr_ctx *pctx, const struct lyd_node *no
  * @return LY_ERR value.
  */
 static LY_ERR
-cbor_print_leaf_list(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_item_t *parent_map, cbor_item_t **array_p)
+cbor_print_leaf_list(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_item_t *parent_map)
 {
     const struct lys_module *wdmod = NULL;
     cbor_item_t *value_item = NULL;
     cbor_item_t *inner_map = NULL;
+    cbor_item_t *array;
     char *key = NULL;
 
     if (!is_open_array(pctx, node)) {
         /* start new array */
-        *array_p = cbor_new_indefinite_array();
-        LY_CHECK_RET(!*array_p, LY_EMEM);
+        cbor_item_t *new_array = cbor_new_indefinite_array();
 
-        LY_CHECK_RET(cbor_print_array_open(pctx, node));
+        LY_CHECK_RET(!new_array, LY_EMEM);
+        LY_CHECK_ERR_RET(cbor_print_array_open(pctx, node, new_array), cbor_decref(&new_array), LY_EINVAL);
     }
+    /* the array for this (leaf-)list is the innermost open one */
+    array = cbor_current_array(pctx);
 
     if (node->schema->nodetype == LYS_LIST) {
         /* print list's content */
         LY_CHECK_RET(cbor_print_inner(pctx, node, &inner_map));
-        LY_CHECK_RET(cbor_array_push_check(pctx->ctx, *array_p, inner_map));
+        /* re-read: nested (leaf-)lists may have pushed/popped their own arrays */
+        LY_CHECK_RET(cbor_array_push_check(pctx->ctx, cbor_current_array(pctx), inner_map));
     } else {
         assert(node->schema->nodetype == LYS_LEAFLIST);
 
         LY_CHECK_RET(cbor_print_value(pctx, LYD_CTX(node), &((const struct lyd_node_term *)node)->value,
                 node->schema->module, &value_item));
-        LY_CHECK_RET(cbor_array_push_check(pctx->ctx, *array_p, value_item));
+        LY_CHECK_RET(cbor_array_push_check(pctx->ctx, array, value_item));
 
         if (!pctx->first_leaflist) {
             if (((node->flags & LYD_DEFAULT) && (pctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) ||
@@ -962,12 +994,13 @@ cbor_print_leaf_list(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_
     }
 
     if (cbor_print_array_is_last_inst(pctx, node)) {
+        array = cbor_current_array(pctx);
         key = cbor_print_member_name(pctx, node, 0);
         /* add completed array to parent map */
         if (key) {
             struct cbor_pair pair = {
                 .key = cbor_move(cbor_build_string(key)),
-                .value = cbor_move(*array_p)
+                .value = cbor_move(array)
             };
 
             free(key);
@@ -978,11 +1011,11 @@ cbor_print_leaf_list(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_
                 return LY_EMEM;
             }
         } else {
-            cbor_decref(array_p);
+            cbor_decref(&array);
+            cbor_print_array_close(pctx);
             return LY_EMEM;
         }
         cbor_print_array_close(pctx);
-        *array_p = NULL;
     }
 
     return LY_SUCCESS;
@@ -1091,7 +1124,7 @@ cbor_print_meta_attr_leaflist(struct cborpr_ctx *pctx, cbor_item_t *parent_map)
  * @return LY_ERR value.
  */
 static LY_ERR
-cbor_print_opaq(struct cborpr_ctx *pctx, const struct lyd_node_opaq *node, cbor_item_t *parent_map, cbor_item_t **array_p)
+cbor_print_opaq(struct cborpr_ctx *pctx, const struct lyd_node_opaq *node, cbor_item_t *parent_map)
 {
     ly_bool first = 1, last = 1;
     uint32_t hints;
@@ -1119,9 +1152,11 @@ cbor_print_opaq(struct cborpr_ctx *pctx, const struct lyd_node_opaq *node, cbor_
         LY_CHECK_RET(!key, LY_EMEM);
 
         if (hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
-            *array_p = cbor_new_indefinite_array();
-            LY_CHECK_ERR_RET(!*array_p, free(key), LY_EMEM);
-            LY_CHECK_ERR_RET(cbor_print_array_open(pctx, &node->node), free(key), LY_EINVAL);
+            cbor_item_t *new_array = cbor_new_indefinite_array();
+
+            LY_CHECK_ERR_RET(!new_array, free(key), LY_EMEM);
+            LY_CHECK_ERR_RET(cbor_print_array_open(pctx, &node->node, new_array),
+                    cbor_decref(&new_array); free(key), LY_EINVAL);
         }
     }
 
@@ -1131,7 +1166,7 @@ cbor_print_opaq(struct cborpr_ctx *pctx, const struct lyd_node_opaq *node, cbor_
         LY_CHECK_ERR_RET(cbor_print_inner(pctx, &node->node, &inner_map), free(key), LY_EINVAL);
 
         if (hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
-            LY_CHECK_RET(cbor_array_push_check(pctx->ctx, *array_p, inner_map));
+            LY_CHECK_RET(cbor_array_push_check(pctx->ctx, cbor_current_array(pctx), inner_map));
         } else {
             struct cbor_pair pair = {
                 .key = cbor_move(cbor_build_string(key)),
@@ -1176,7 +1211,7 @@ cbor_print_opaq(struct cborpr_ctx *pctx, const struct lyd_node_opaq *node, cbor_
         LY_CHECK_ERR_RET(!value_item, free(key), LY_EMEM);
 
         if (hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
-            LY_CHECK_RET(cbor_array_push_check(pctx->ctx, *array_p, value_item));
+            LY_CHECK_RET(cbor_array_push_check(pctx->ctx, cbor_current_array(pctx), value_item));
         } else {
             struct cbor_pair pair = {
                 .key = cbor_move(cbor_build_string(key)),
@@ -1206,7 +1241,7 @@ cbor_print_opaq(struct cborpr_ctx *pctx, const struct lyd_node_opaq *node, cbor_
         if (key) {
             struct cbor_pair pair = {
                 .key = cbor_move(cbor_build_string(key)),
-                .value = cbor_move(*array_p)
+                .value = cbor_move(cbor_current_array(pctx))
             };
 
             free(key);
@@ -1218,7 +1253,6 @@ cbor_print_opaq(struct cborpr_ctx *pctx, const struct lyd_node_opaq *node, cbor_
             }
         }
         cbor_print_array_close(pctx);
-        *array_p = NULL;
     }
 
     if (key) {
@@ -1248,7 +1282,7 @@ cbor_print_node(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_item_
     }
 
     if (!node->schema) {
-        LY_CHECK_RET(cbor_print_opaq(pctx, (const struct lyd_node_opaq *)node, parent_map, &pctx->array));
+        LY_CHECK_RET(cbor_print_opaq(pctx, (const struct lyd_node_opaq *)node, parent_map));
     } else {
         switch (node->schema->nodetype) {
         case LYS_RPC:
@@ -1262,7 +1296,7 @@ cbor_print_node(struct cborpr_ctx *pctx, const struct lyd_node *node, cbor_item_
             break;
         case LYS_LEAFLIST:
         case LYS_LIST:
-            LY_CHECK_RET(cbor_print_leaf_list(pctx, node, parent_map, &pctx->array));
+            LY_CHECK_RET(cbor_print_leaf_list(pctx, node, parent_map));
             break;
         case LYS_ANYDATA:
         case LYS_ANYXML:
@@ -1322,7 +1356,7 @@ cbor_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t option
     LY_LIST_FOR(root, node) {
         pctx.root = node;
         LY_CHECK_ERR_RET(cbor_print_node(&pctx, node, pctx.root_map),
-                cbor_decref(&pctx.root_map); ly_set_erase(&pctx.open, NULL), LY_EINVAL);
+                cbor_decref(&pctx.root_map); ly_set_erase(&pctx.open, NULL); free(pctx.arrays), LY_EINVAL);
         if (!(options & LYD_PRINT_SIBLINGS)) {
             break;
         }
@@ -1334,6 +1368,7 @@ cbor_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t option
 
     if (buffer_size == 0) {
         ly_set_erase(&pctx.open, NULL);
+        free(pctx.arrays);
         return LY_EMEM;
     }
 
@@ -1343,6 +1378,7 @@ cbor_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t option
 
     assert(!pctx.open.count);
     ly_set_erase(&pctx.open, NULL);
+    free(pctx.arrays);
 
     ly_print_flush(out);
     return LY_SUCCESS;
