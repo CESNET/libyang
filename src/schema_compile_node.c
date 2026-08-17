@@ -1142,7 +1142,7 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, const struct lysp_restr *pattern
     LY_ERR rc = LY_SUCCESS;
     struct lysc_pattern **pattern;
     LY_ARRAY_COUNT_TYPE u;
-    uint32_t format = 0;
+    ly_bool format = 0;
 
     /* first check the format of the patterns based on the current parsed module extensions (not compiled yet),
      * if not set, assume internal use that always uses XML Schema expressions */
@@ -1935,18 +1935,75 @@ cleanup:
     return rc;
 }
 
+/**
+ * @brief Check that a compiled type can be reused and shared.
+ *
+ * @param[in] type_p Parsed type.
+ * @param[in] type_c Compiled type.
+ * @param[in] pattern_format Global pattern format.
+ * @return 1 if @p type_c can be shared;
+ * @return 0 otherwise.
+ */
+static ly_bool
+lys_compile_type_share_compiled(const struct lysp_type *type_p, const struct lysc_type *type_c, ly_bool pattern_format)
+{
+    LY_ARRAY_COUNT_TYPE u;
+    struct lysc_type_union *type_un;
+    struct lysc_type_str *type_str = NULL;
+
+    if (!type_c || type_p->flags || type_p->exts) {
+        /* no compiled type to share, special type flags, or extensions */
+        return 0;
+    }
+
+    /* learn whether the type has a leafref, in which case it cannot be shared because it may resolve to a different
+     * real type for every instantiation */
+    if (type_c->basetype == LY_TYPE_LEAFREF) {
+        /* leafref type */
+        return 0;
+    } else if (type_c->basetype == LY_TYPE_UNION) {
+        /* union with a leafref */
+        type_un = (struct lysc_type_union *)type_c;
+        LY_ARRAY_FOR(type_un->types, u) {
+            if (type_un->types[u]->basetype == LY_TYPE_LEAFREF) {
+                return 0;
+            }
+        }
+    }
+
+    /* check for patterns and their format */
+    if (type_c->basetype == LY_TYPE_STRING) {
+        type_str = (struct lysc_type_str *)type_c;
+    } else if (type_c->basetype == LY_TYPE_UNION) {
+        type_un = (struct lysc_type_union *)type_c;
+        LY_ARRAY_FOR(type_un->types, u) {
+            if (type_un->types[u]->basetype == LY_TYPE_STRING) {
+                type_str = (struct lysc_type_str *)type_un->types[u];
+                break;
+            }
+        }
+    }
+    if (!type_str || !type_str->patterns) {
+        return 1;
+    }
+
+    if (pattern_format != type_str->patterns[0]->format) {
+        return 0;
+    }
+    return 1;
+}
+
 LY_ERR
 lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t context_flags, const char *context_name,
         const struct lysp_type *type_p, struct lysc_type **type, const char **units, struct lysp_qname **dflt)
 {
     LY_ERR ret = LY_SUCCESS;
-    ly_bool dummyloops = 0, has_leafref;
+    ly_bool dummyloops = 0, pattern_format;
     struct lys_type_item *tctx, *tctx_prev = NULL, *tctx_iter;
     LY_DATA_TYPE basetype = LY_TYPE_UNKNOWN;
     struct lysc_type *base = NULL;
-    struct lysc_type_union *base_un;
-    LY_ARRAY_COUNT_TYPE u;
     struct ly_set tpdf_chain = {0};
+    uint32_t u;
     uintptr_t plugin_ref = 0;
 
     *type = NULL;
@@ -2007,7 +2064,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
         }
 
         /* circular typedef reference detection */
-        for (uint32_t u = 0; u < tpdf_chain.count; u++) {
+        for (u = 0; u < tpdf_chain.count; u++) {
             /* local part */
             tctx_iter = (struct lys_type_item *)tpdf_chain.objs[u];
             if (tctx_iter->tpdf == tctx->tpdf) {
@@ -2018,7 +2075,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
                 goto cleanup;
             }
         }
-        for (uint32_t u = 0; u < ctx->tpdf_chain.count; u++) {
+        for (u = 0; u < ctx->tpdf_chain.count; u++) {
             /* global part for unions corner case */
             tctx_iter = (struct lys_type_item *)ctx->tpdf_chain.objs[u];
             if (tctx_iter->tpdf == tctx->tpdf) {
@@ -2055,18 +2112,25 @@ preparenext:
         goto cleanup;
     }
 
+    /* learn the global pattern format to know what types need to be recompiled */
+    pattern_format = lys_compile_type_patterns_has_oc_posix_ext(ctx->pmod);
+
     /* get restrictions from the referred typedefs */
-    for (uint32_t u = tpdf_chain.count - 1; u + 1 > 0; --u) {
+    for (u = tpdf_chain.count - 1; u + 1 > 0; --u) {
         tctx = (struct lys_type_item *)tpdf_chain.objs[u];
 
         /* remember the typedef context for circular check */
         ret = ly_set_add(&ctx->tpdf_chain, tctx, 1, NULL);
         LY_CHECK_GOTO(ret, cleanup);
 
-        if (tctx->tpdf->type.compiled) {
-            /* already compiled */
+        if (lys_compile_type_share_compiled(&tctx->tpdf->type, tctx->tpdf->type.compiled, pattern_format)) {
+            /* already compiled, reuse */
             base = tctx->tpdf->type.compiled;
             continue;
+        } else if (tctx->tpdf->type.compiled) {
+            /* cannot reuse, replace the compiled type with our new compiled type */
+            LY_ATOMIC_DEC_BARRIER(tctx->tpdf->type.compiled->refcount);
+            ((struct lysp_tpdf *)tctx->tpdf)->type.compiled = NULL;
         }
 
         /* try to find loaded user type plugins */
@@ -2081,8 +2145,8 @@ preparenext:
         }
         assert(plugin_ref);
 
-        if ((basetype != LY_TYPE_LEAFREF) && (u != tpdf_chain.count - 1) && !tctx->tpdf->type.flags &&
-                !tctx->tpdf->type.exts && (plugin_ref == base->plugin_ref)) {
+        if (lys_compile_type_share_compiled(&tctx->tpdf->type, base, pattern_format) && (u != tpdf_chain.count - 1) &&
+                (plugin_ref == base->plugin_ref)) {
             /* no change, reuse the compiled base */
             ((struct lysp_tpdf *)tctx->tpdf)->type.compiled = base;
             LY_ATOMIC_INC_BARRIER(base->refcount);
@@ -2114,25 +2178,8 @@ preparenext:
     /* remove the processed typedef contexts from the stack for circular check */
     ctx->tpdf_chain.count = ctx->tpdf_chain.count - tpdf_chain.count;
 
-    /* learn whether the type has a leafref, in which case it cannot be shared because it may resolve to a different
-     * real type for every instantiation */
-    has_leafref = 0;
-    if (basetype == LY_TYPE_LEAFREF) {
-        /* leafref type */
-        has_leafref = 1;
-    } else if ((basetype == LY_TYPE_UNION) && base) {
-        /* union with a leafref */
-        base_un = (struct lysc_type_union *)base;
-        LY_ARRAY_FOR(base_un->types, u) {
-            if (base_un->types[u]->basetype == LY_TYPE_LEAFREF) {
-                has_leafref = 1;
-                break;
-            }
-        }
-    }
-
     /* process the type definition in leaf */
-    if (type_p->flags || type_p->exts || !base || has_leafref) {
+    if (!lys_compile_type_share_compiled(type_p, base, pattern_format)) {
         /* leaf type has changes that need to be compiled into the type */
         if (base) {
             plugin_ref = base->plugin_ref;
