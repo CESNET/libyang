@@ -161,6 +161,37 @@ module cbor-test {
 		}
 	}
 
+	/* ===== Nested lists / leaf-lists =====
+	 * Regression coverage for the CBOR printer: a leaf-list and a list
+	 * nested inside another list. Printing such data used to crash because
+	 * the printer kept only a single open-array pointer shared across all
+	 * nesting levels.
+	 */
+
+	list list-nested {
+		key "id";
+
+		leaf id {
+			type string;
+		}
+
+		leaf-list tags {
+			type string;
+		}
+
+		list inner {
+			key "iid";
+
+			leaf iid {
+				type uint32;
+			}
+
+			leaf-list vals {
+				type int32;
+			}
+		}
+	}
+
 	/* ===== Choice / Case ===== */
 
 	choice choice-transport {

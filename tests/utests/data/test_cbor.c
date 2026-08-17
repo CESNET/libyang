@@ -129,6 +129,72 @@ test_node(void **state)
     }
 }
 
+/**
+ * @brief Regression test: printing a (leaf-)list nested inside a list.
+ *
+ * The CBOR printer used to keep a single "currently open array" pointer in its
+ * context. When a leaf-list (or list) was nested inside a list, printing the
+ * inner array overwrote that pointer and then reset it to NULL, so the outer
+ * list pushed into a NULL array and the printer crashed (SIGSEGV in
+ * cbor_array_push()). This exercises exactly that structure and additionally
+ * checks the JSON round-trip fidelity.
+ */
+static void
+test_nested_list(void **state)
+{
+    struct lyd_node *tree;
+    char *buffer, *json;
+    struct ly_out *out;
+    size_t i;
+
+    const struct test_case tests[] = {
+        /* leaf-list nested inside a list */
+        {
+            "ll-in-list",
+            "{\"cbor-test:list-nested\":["
+            "{\"id\":\"a\",\"tags\":[\"t1\",\"t2\"]}"
+            "]}"
+        },
+        /* list nested inside a list, the inner list holding a leaf-list */
+        {
+            "list-in-list",
+            "{\"cbor-test:list-nested\":["
+            "{\"id\":\"a\",\"inner\":[{\"iid\":1,\"vals\":[10,20]},{\"iid\":2,\"vals\":[30]}]}"
+            "]}"
+        },
+        /* several outer instances mixing nested leaf-lists and lists */
+        {
+            "multi-nested",
+            "{\"cbor-test:list-nested\":["
+            "{\"id\":\"a\",\"tags\":[\"t1\",\"t2\"],\"inner\":[{\"iid\":1,\"vals\":[10,20]}]},"
+            "{\"id\":\"b\",\"inner\":[{\"iid\":3,\"vals\":[40]}]}"
+            "]}"
+        },
+    };
+
+    for (i = 0; i < sizeof(tests) / sizeof(tests[0]); ++i) {
+        CHECK_PARSE_LYD_PARAM(tests[i].json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+
+        assert_int_equal(LY_SUCCESS, ly_out_new_memory(&buffer, 0, &out));
+        /* this print call is what used to crash */
+        assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_CBOR, 0));
+
+        lyd_free_all(tree);
+
+        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(((struct utest_context *)*state)->ctx, buffer,
+                (uint32_t)ly_out_printed(out), LYD_CBOR, LYD_PARSE_ONLY, 0, &tree));
+
+        ly_out_free(out, NULL, 0);
+        free(buffer);
+
+        assert_int_equal(LY_SUCCESS, lyd_print_mem(&json, tree, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS));
+        assert_string_equal(json, tests[i].json);
+
+        free(json);
+        lyd_free_all(tree);
+    }
+}
+
 static void
 test_operations(void **state)
 {
@@ -304,6 +370,7 @@ main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_node, setup),
+        UTEST(test_nested_list, setup),
         UTEST(test_operations, setup),
         UTEST(test_schema_mount, setup),
         UTEST(test_opaque, setup),
