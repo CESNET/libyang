@@ -746,7 +746,7 @@ void
 ly_ctx_new_change(struct ly_ctx *ctx)
 {
     const struct lys_module *mod;
-    uint32_t i = ly_ctx_internal_modules_count(ctx), hash = 0;
+    uint32_t i = 0, hash = 0;
     LY_ARRAY_COUNT_TYPE u;
 
     /* change counter */
