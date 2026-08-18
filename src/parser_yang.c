@@ -847,7 +847,7 @@ keyword_start:
     } else if (*kw == LY_STMT_SYNTAX_LEFT_BRACE) {
         ctx->depth++;
         if (ctx->depth > LY_MAX_BLOCK_DEPTH) {
-            LOGERR(PARSER_CTX(ctx), LY_EINVAL, "The maximum number of block nestings has been exceeded.");
+            LOGERR(PARSER_CTX(ctx), LY_EINVAL, "Maximum number %d of block nestings has been exceeded.", LY_MAX_BLOCK_DEPTH);
             return LY_EINVAL;
         }
         goto success;

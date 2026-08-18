@@ -728,7 +728,7 @@ lyxml_open_element(struct lyxml_ctx *xmlctx, const char *prefix, uint32_t prefix
 
     LY_CHECK_RET(ly_set_add(&xmlctx->elements, e, 1, NULL));
     if (xmlctx->elements.count > LY_MAX_BLOCK_DEPTH) {
-        LOGERR(xmlctx->ctx, LY_EINVAL, "The maximum number of open elements has been exceeded.");
+        LOGERR(xmlctx->ctx, LY_EINVAL, "Maximum number %d of open elements has been exceeded.", LY_MAX_BLOCK_DEPTH);
         return LY_EINVAL;
     }
 

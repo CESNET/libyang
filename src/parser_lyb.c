@@ -1647,6 +1647,13 @@ lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, ly_bool 
         struct lyd_node **first_p, struct ly_set *parsed)
 {
     LY_ERR r;
+    struct lylyb_parse_ctx *pctx = lybctx->parse_ctx;
+
+    ++pctx->depth;
+    if (pctx->depth == LY_MAX_BLOCK_DEPTH) {
+        LOGERR(pctx->ctx, LY_EINVAL, "Maximum number %d of block nestings has been exceeded.", LY_MAX_BLOCK_DEPTH);
+        return LY_EINVAL;
+    }
 
     while (!(r = lyb_parse_node(lybctx, parent, first_p, parsed))) {
         /* parsing some data, hash must be set */
@@ -1663,6 +1670,7 @@ lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, ly_bool 
     }
     LY_CHECK_RET(r != LY_ENOT, r);
 
+    --pctx->depth;
     return LY_SUCCESS;
 }
 
