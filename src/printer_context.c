@@ -1043,6 +1043,7 @@ ctxp_pattern(const struct lysc_pattern *orig_pattern, struct lysc_pattern **patt
     }
 
     p->inverted = orig_pattern->inverted;
+    p->format = orig_pattern->format;
     p->refcount = orig_pattern->refcount;
 
     /* shared */
