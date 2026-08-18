@@ -463,6 +463,11 @@ lyb_check_mod_features(struct lyd_lyb_ctx *lybctx, const char *mod_name, const s
     /* feature mismatch, prepare error message, unpack enabled features for printer */
     len = 0;
     for (i = 0; i < feature_count; i++) {
+        if ((uint64_t)len + strlen(features[i]) + 2 > UINT32_MAX - 1) {
+            LOGERR(pctx->ctx, LY_EINVAL, "Invalid enabled features of module \"%s\", too long.", mod_name);
+            rc = LY_EDENIED;
+            goto cleanup;
+        }
         len += strlen(features[i]) + 2;
     }
     en_feats_printer = calloc(1, len + 1);
@@ -478,6 +483,11 @@ lyb_check_mod_features(struct lyd_lyb_ctx *lybctx, const char *mod_name, const s
     len = 0;
     ctx_feature_count = LY_ARRAY_COUNT(mod->compiled->features);
     for (i = 0; i < ctx_feature_count; i++) {
+        if ((uint64_t)len + strlen(mod->compiled->features[i]) + 2 > UINT32_MAX - 1) {
+            LOGINT(pctx->ctx);
+            rc = LY_EINT;
+            goto cleanup;
+        }
         len += strlen(mod->compiled->features[i]) + 2;
     }
     en_feats_parser = calloc(1, len + 1);
