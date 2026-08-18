@@ -229,6 +229,11 @@ struct ly_in;
 /**
  * @brief Parse (and validate) data from the input handler as a YANG data tree.
  *
+ * When parsing subtrees (i.e., when @p parent is non-NULL), validation is only performed on the newly parsed data.
+ * This might result in allowing invalid datastore content when the schema contains cross-branch constraints,
+ * complicated `must` statements, etc. When a full-datastore validation is desirable, parse all subtrees
+ * first, and then request validation of the complete datastore content.
+ *
  * @param[in] ctx Context to connect with the tree being built here.
  * @param[in] parent Optional parent to connect the parsed nodes to. If provided, the data are expected to describe
  * a subtree of the YANG module instead of starting at the schema root.
@@ -239,11 +244,6 @@ struct ly_in;
  * @param[out] tree Full parsed data tree, note that NULL can be a valid tree. If @p parent is set, the first parsed child.
  * @return LY_SUCCESS in case of successful parsing (and validation).
  * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
- *
- * When parsing subtrees (i.e., when @p parent is non-NULL), validation is only performed on the newly parsed data.
- * This might result in allowing invalid datastore content when the schema contains cross-branch constraints,
- * complicated `must` statements, etc. When a full-datastore validation is desirable, parse all subtrees
- * first, and then request validation of the complete datastore content.
  */
 LIBYANG_API_DECL LY_ERR lyd_parse_data(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in, LYD_FORMAT format,
         uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree);
