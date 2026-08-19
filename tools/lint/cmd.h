@@ -74,6 +74,7 @@ enum COMMAND_INDEX {
     CMD_PRINT,
     CMD_DATA,
     CMD_SAMPLE,
+    CMD_SID,
     CMD_LIST,
     CMD_FEATURE,
     CMD_SEARCHPATH,
@@ -299,6 +300,33 @@ void cmd_sample_help(void);
  * @return 0 on success, 1 on failure.
  */
 int cmd_sample_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv);
+
+/* cmd_sid.c */
+
+/**
+ * @copydoc cmd_add_opt
+ */
+int cmd_sid_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc);
+
+/**
+ * @copydoc cmd_add_dep
+ */
+int cmd_sid_dep(struct yl_opt *yo, int posc);
+void cmd_sid_help(void);
+
+/**
+ * @brief Process the .sid file of a module (generate/update/range-add, RFC 9595) based on
+ * the set SID options: no previous file generates, a previous file updates (optionally
+ * adding a new assignment range first), both a range and a previous file in the interactive
+ * mode just extends the previous file with the new range.
+ *
+ * @param[in,out] ctx context for libyang.
+ * @param[in,out] yo context for yanglint, holds all the SID options.
+ * @param[in] posv Name of the module to process for generation/update, NULL for the
+ * standalone (interactive) range addition.
+ * @return 0 on success, 1 on failure.
+ */
+int cmd_sid_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv);
 
 /* cmd_searchpath.c */
 

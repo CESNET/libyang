@@ -77,6 +77,10 @@ COMMAND commands[] = {
         "Generate a sample data skeleton for a module", "f:ho:"
     },
     {
+        "sid", cmd_sid_opt, cmd_sid_dep, cmd_sid_exec, NULL, cmd_sid_help, NULL,
+        "Generate, update or extend a .sid file of a loaded module (RFC 9595)", "ho:f:"
+    },
+    {
         "list", cmd_list_opt, cmd_list_dep, cmd_list_exec, NULL, cmd_list_help, NULL,
         "List all the loaded modules", "f:h"
     },
