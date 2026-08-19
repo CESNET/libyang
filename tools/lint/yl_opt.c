@@ -86,6 +86,10 @@ yl_opt_erase(struct yl_opt *yo)
     /* context */
     free(yo->searchpaths);
 
+    /* .sid file processing */
+    free(yo->sid_range);
+    free(yo->sid_prev_path);
+
     /* --reply-rpc */
     ly_in_free(yo->reply_rpc.in, 1);
 

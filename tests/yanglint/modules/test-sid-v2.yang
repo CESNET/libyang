@@ -1,0 +1,18 @@
+module test-sid {
+    namespace "test:module:test-sid";
+    prefix test-sid;
+
+    description
+        "Test module for testing sid generation, update and range-add.";
+
+    revision 2026-08-11;
+
+    container test-container {
+        leaf test-leaf1 {
+            type string;
+        }
+        leaf test-leaf3 {
+            type string;
+        }
+    }
+}
