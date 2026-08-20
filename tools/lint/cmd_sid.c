@@ -16,6 +16,7 @@
 
 #include "cmd.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <getopt.h>
 #include <stdint.h>
@@ -404,6 +405,7 @@ cmd_sid_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
     }
 
     if (!sid_file) {
+        assert(mod);
         if (prev) {
             /* update */
             if (lys_sid_update(mod, prev, status, NULL, &sid_file)) {
