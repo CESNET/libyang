@@ -38,19 +38,11 @@
  * | Size (b) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
  * | 32       | yes | `uint32_t *` | timestamp converted into seconds |
- * | 8        | no | `uint8_t *` | flag whether the value is in the special Z/-00:00 unknown timezone or not |
+ * | 8        | yes (only for time) | `uint8_t *` | flag whether the value is in the special Z/-00:00 unknown timezone or not |
  * | string length | no | `char *` | string with the fraction digits of a second |
  */
 
 static void lyplg_type_free_time(const struct ly_ctx *ctx, struct lyd_value *value);
-
-static void
-lyplg_type_lyb_size_time_nz(const struct lysc_type *UNUSED(type), enum lyplg_lyb_size_type *size_type,
-        uint64_t *fixed_size_bits)
-{
-    *size_type = LYPLG_LYB_SIZE_FIXED_BITS;
-    *fixed_size_bits = 32;
-}
 
 /**
  * @brief Implementation of ::lyplg_type_store_clb for ietf-yang-types time and time-no-zone type.
@@ -81,13 +73,17 @@ lyplg_type_store_time(const struct ly_ctx *ctx, const struct lysc_type *type, co
 
     if (format == LY_VALUE_LYB) {
         /* validation */
-        if (value_size_bits < 32) {
+        if (val && (value_size_bits < 40)) {
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB %s value size %" PRIu64
+                    " b (expected at least 40 b).", type->name, value_size_bits);
+            goto cleanup;
+        } else if (val_nz && (value_size_bits < 32)) {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB %s value size %" PRIu64
                     " b (expected at least 32 b).", type->name, value_size_bits);
             goto cleanup;
         }
         value_size = LYPLG_BITS2BYTES(value_size_bits);
-        for (i = 5; i < value_size; ++i) {
+        for (i = val ? 5 : 4; i < value_size; ++i) {
             c = ((char *)value)[i];
             if (!isdigit(c)) {
                 ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB %s character '%c' "
@@ -103,15 +99,18 @@ lyplg_type_store_time(const struct ly_ctx *ctx, const struct lysc_type *type, co
             memcpy(&val_nz->seconds, value, sizeof val_nz->seconds);
         }
 
+        /* store unknown timezone */
+        if (val) {
+            val->unknown_tz = *(((uint8_t *)value) + 4) ? 1 : 0;
+        }
+
         /* store fractions of a second */
         if (val && (value_size > 5)) {
             val->fractions_s = strndup(((char *)value) + 5, value_size - 5);
             LY_CHECK_ERR_GOTO(!val->fractions_s, ret = LY_EMEM, cleanup);
-        }
-
-        /* store unknown timezone */
-        if (val && (value_size > 4)) {
-            val->unknown_tz = *(((uint8_t *)value) + 4) ? 1 : 0;
+        } else if (val_nz && (value_size > 4)) {
+            val_nz->fractions_s = strndup(((char *)value) + 4, value_size - 4);
+            LY_CHECK_ERR_GOTO(!val_nz->fractions_s, ret = LY_EMEM, cleanup);
         }
 
         /* success */
@@ -372,39 +371,38 @@ lyplg_type_print_time(const struct ly_ctx *ctx, const struct lyd_value *value, L
     }
 
     if (format == LY_VALUE_LYB) {
-        if ((val && (val->fractions_s || val->unknown_tz)) || (val_nz && val_nz->fractions_s)) {
-            /* variable size */
-            if (val) {
-                seconds = val->seconds;
-                fractions_s = val->fractions_s;
-                unknown_tz = val->unknown_tz;
-            } else {
-                seconds = val_nz->seconds;
-                fractions_s = val_nz->fractions_s;
-                unknown_tz = 0;
-            }
-
-            ret = malloc(4 + 1 + (fractions_s ? strlen(fractions_s) : 0));
-            LY_CHECK_ERR_RET(!ret, LOGMEM(ctx), NULL);
-
-            *dynamic = 1;
-            if (value_size_bits) {
-                *value_size_bits = 32 + 8 + (fractions_s ? strlen(fractions_s) * 8 : 0);
-            }
-            memcpy(ret, &seconds, sizeof seconds);
-            if (val) {
-                memcpy(ret + 4, &unknown_tz, sizeof unknown_tz);
-            }
-            if (fractions_s) {
-                memcpy(ret + 5, fractions_s, strlen(fractions_s));
-            }
-        } else {
-            /* fixed size */
+        if (val_nz && !val_nz->fractions_s) {
+            /* static value */
             *dynamic = 0;
             if (value_size_bits) {
                 *value_size_bits = 32;
             }
-            ret = val ? (char *)&val->seconds : (char *)&val_nz->seconds;
+            return (char *)&val_nz->seconds;
+        }
+
+        /* dynamic value */
+        if (val) {
+            seconds = val->seconds;
+            unknown_tz = val->unknown_tz;
+            fractions_s = val->fractions_s;
+        } else {
+            seconds = val_nz->seconds;
+            fractions_s = val_nz->fractions_s;
+        }
+
+        ret = malloc(4 + (val ? 1 : 0) + (fractions_s ? strlen(fractions_s) : 0));
+        LY_CHECK_ERR_RET(!ret, LOGMEM(ctx), NULL);
+
+        *dynamic = 1;
+        if (value_size_bits) {
+            *value_size_bits = 32 + (val ? 8 : 0) + (fractions_s ? strlen(fractions_s) * 8 : 0);
+        }
+        memcpy(ret, &seconds, sizeof seconds);
+        if (val) {
+            memcpy(ret + 4, &unknown_tz, sizeof unknown_tz);
+        }
+        if (fractions_s) {
+            memcpy(ret + (val ? 5 : 4), fractions_s, strlen(fractions_s));
         }
         return ret;
     }
@@ -576,7 +574,7 @@ const struct lyplg_type_record plugins_time[] = {
         .name = "time-no-zone",
 
         .plugin.id = "ly2 time",
-        .plugin.lyb_size = lyplg_type_lyb_size_time_nz,
+        .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
         .plugin.store = lyplg_type_store_time,
         .plugin.validate_value = lyplg_type_validate_value_string,
         .plugin.validate_tree = NULL,
