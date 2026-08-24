@@ -323,6 +323,46 @@ test_path(void **state)
 
     lyd_free_tree(root);
 
+    /* uint16 leaf with a valid number -- exercises the DECNUM/OCTNUM/HEXNUM hint family */
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:foo", "42", 0, 0, LYD_NEW_PATH_OPAQ, NULL, &root);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    assert_non_null(root->schema);
+    assert_string_equal("foo", root->schema->name);
+    assert_string_equal("42", lyd_get_value(root));
+
+    lyd_free_tree(root);
+
+    /* config-true string leaf-list -- exercises LYD_VALHINT_STRING, which has no fallback */
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:ll", "abc", 0, 0, LYD_NEW_PATH_OPAQ, NULL, &root);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    assert_non_null(root->schema);
+    assert_string_equal("ll", root->schema->name);
+    assert_string_equal("abc", lyd_get_value(root));
+
+    lyd_free_tree(root);
+
+    /* config-false leaf-list exercising the duplicate-instance pre-check */
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:ll2", "val", 0, 0, LYD_NEW_PATH_OPAQ, NULL, &root);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    assert_non_null(root->schema);
+    assert_string_equal("ll2", root->schema->name);
+    assert_string_equal("val", lyd_get_value(root));
+
+    lyd_free_tree(root);
+
+    /* same state leaf-list, but with a POSITIONAL predicate and the value still supplied separately */
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:ll2[1]", "val", 0, 0, LYD_NEW_PATH_OPAQ, NULL, &root);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    assert_non_null(root->schema);
+    assert_string_equal("ll2", root->schema->name);
+    assert_string_equal("val", lyd_get_value(root));
+
+    lyd_free_tree(root);
+
     /* key-less list */
     ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:c2/l3/x", "val1", 0, 0, 0, &root, &node);
     assert_int_equal(ret, LY_SUCCESS);

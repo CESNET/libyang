@@ -1551,7 +1551,7 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
                 (!path[u].predicates || (path[u].predicates[0].type != LY_PATH_PREDTYPE_LEAFLIST))) {
             r = LY_SUCCESS;
             if (options & LYD_NEW_PATH_OPAQ) {
-                r = ly_value_validate(NULL, schema, value, value_size_bits, format, NULL, 0);
+                r = ly_value_validate(NULL, schema, value, value_size_bits, format, NULL, LYD_HINT_DATA);
             }
             if (!r) {
                 /* validate the value and store the canonical value */
@@ -1698,7 +1698,7 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
                 r = LY_EVALID;
                 if (lysc_is_dup_inst_list(schema)) {
                     /* validate value */
-                    r = ly_value_validate(NULL, schema, value, value_size_bits, format, NULL, 0);
+                    r = ly_value_validate(NULL, schema, value, value_size_bits, format, NULL, LYD_HINT_DATA);
                 }
                 if (r && (r != LY_EINCOMPLETE)) {
                     /* creating opaque leaf-list */
@@ -1741,7 +1741,7 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
                     r = LY_ENOT;
                 } else {
                     /* validate value */
-                    r = ly_value_validate(NULL, schema, value ? value : "", value_size_bits, format, NULL, 0);
+                    r = ly_value_validate(NULL, schema, value ? value : "", value_size_bits, format, NULL, LYD_HINT_DATA);
                 }
                 if (r && (r != LY_EINCOMPLETE)) {
                     /* creating opaque leaf */
