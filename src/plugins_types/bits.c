@@ -184,9 +184,12 @@ bits_str2bitmap(const char *value, uint32_t value_len, struct lysc_type_bits *ty
  * @param[in] position Bit position to add.
  * @param[in] type Bitis type to read the bit positions and names from.
  * @param[in,out] items Array of bit item pointers to add to.
+ * @param[out] err Error information.
+ * @return LY_ERR value.
  */
-static void
-bits_add_item(uint32_t position, struct lysc_type_bits *type, struct lysc_type_bitenum_item **items)
+static LY_ERR
+bits_add_item(uint32_t position, struct lysc_type_bits *type, struct lysc_type_bitenum_item **items,
+        struct ly_err_item **err)
 {
     LY_ARRAY_COUNT_TYPE u;
 
@@ -196,10 +199,15 @@ bits_add_item(uint32_t position, struct lysc_type_bits *type, struct lysc_type_b
             break;
         }
     }
+    if (u == LY_ARRAY_COUNT(type->bits)) {
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid bit at position #%" PRIu32 ".", position);
+    }
 
     /* add it at the end */
     items[LY_ARRAY_COUNT(items)] = &type->bits[u];
     LY_ARRAY_INCREMENT(items);
+
+    return LY_SUCCESS;
 }
 
 /**
@@ -208,9 +216,12 @@ bits_add_item(uint32_t position, struct lysc_type_bits *type, struct lysc_type_b
  * @param[in] bitmap Bitmap to read from.
  * @param[in] type Bits type.
  * @param[in,out] items Allocated sized array to fill with the set bits.
+ * @param[out] err Error information.
+ * @return LY_ERR value.
  */
-static void
-bits_bitmap2items(const char *bitmap, struct lysc_type_bits *type, struct lysc_type_bitenum_item **items)
+static LY_ERR
+bits_bitmap2items(const char *bitmap, struct lysc_type_bits *type, struct lysc_type_bitenum_item **items,
+        struct ly_err_item **err)
 {
     uint32_t bit_pos, i, bitmap_size;
     uint8_t bitmask;
@@ -225,7 +236,7 @@ bits_bitmap2items(const char *bitmap, struct lysc_type_bits *type, struct lysc_t
         for (bitmask = 1; bitmask; bitmask <<= 1) {
             if (*byte & bitmask) {
                 /* add this bit */
-                bits_add_item(bit_pos, type, items);
+                LY_CHECK_RET(bits_add_item(bit_pos, type, items, err));
             }
 
             if (bit_pos == BITS_LAST_BIT_POSITION(type)) {
@@ -236,6 +247,8 @@ bits_bitmap2items(const char *bitmap, struct lysc_type_bits *type, struct lysc_t
             ++bit_pos;
         }
     }
+
+    return LY_SUCCESS;
 }
 
 /**
@@ -314,7 +327,7 @@ lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, co
 
         /* allocate and fill the bit item array */
         LY_ARRAY_CREATE_GOTO(ctx, val->items, LY_ARRAY_COUNT(type_bits->bits), ret, cleanup);
-        bits_bitmap2items(val->bitmap, type_bits, val->items);
+        LY_CHECK_GOTO(ret = bits_bitmap2items(val->bitmap, type_bits, val->items, err), cleanup);
 
         /* success */
         goto cleanup;
@@ -334,7 +347,7 @@ lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, co
 
     /* allocate and fill the bit item array */
     LY_ARRAY_CREATE_GOTO(ctx, val->items, LY_ARRAY_COUNT(type_bits->bits), ret, cleanup);
-    bits_bitmap2items(val->bitmap, type_bits, val->items);
+    LY_CHECK_GOTO(ret = bits_bitmap2items(val->bitmap, type_bits, val->items, err), cleanup);
 
     if (format == LY_VALUE_CANON) {
         /* store canonical value */
