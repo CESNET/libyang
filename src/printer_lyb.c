@@ -800,7 +800,7 @@ lyb_print_value(const struct ly_ctx *ctx, const struct lyd_value *value, struct 
 
         /* get value from plugin */
         val = (void *)print(ctx, value, LY_VALUE_LYB, NULL, &dynamic, NULL);
-        LY_CHECK_GOTO(ret, cleanup);
+        LY_CHECK_ERR_GOTO(!val, ret = LY_EINT, cleanup);
 
         /* use the returned length */
         val_size_bits = fixed_size_bits;
