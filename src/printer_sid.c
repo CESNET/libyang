@@ -50,6 +50,7 @@ struct sid_collect_data {
     uint64_t count;           /**< Number of items collected so far; exceeding @p max, surplus items are only counted. */
     uint64_t max;             /**< Maximum number of items (capacity of the array). */
     struct ly_ctx *ctx;       /**< libyang context used for error logging. */
+    const struct lys_module *module;  /**< Module whose nodes are collected; used to attribute augmented nodes to their defining module. */
 };
 
 /**
@@ -176,6 +177,13 @@ collect_data_cb(struct lysc_node *node, void *data, ly_bool *UNUSED(dfs_continue
 
     if (node->nodetype & (LYS_CHOICE | LYS_CASE)) {
         return LY_SUCCESS; /* choice/case get no item, but their subtree is still traversed */
+    }
+
+    /* collect only nodes defined by the module being processed; when another
+     * module's tree is traversed this keeps exactly the nodes augmented in by
+     * the processed module and skips the target module's own nodes */
+    if (node->module != collect_data->module) {
+        return LY_SUCCESS;
     }
 
     path = sid_node_path(node);
@@ -343,11 +351,41 @@ sid_collect_items(struct sid_collect_data *callback_data, const struct lys_modul
         LY_CHECK_RET((rc = sid_item_add(callback_data, "feature", feature->name)), rc);
     }
 
+    /* collect_data_cb attributes nodes to their defining module, so foreign
+       nodes are skipped whenever another module's tree is traversed below */
+    callback_data->module = module;
+
     /* data namespace: walk the entire compiled schema tree depth-first.
        lysc_module_dfs_full traverses all nodes including RPCs, actions,
        notifications, input, output, choice and case nodes. sid_node_path() builds the
        RFC 9595 schema-node-path identifiers (choice/case names omitted). */
     LY_CHECK_RET((rc = lysc_module_dfs_full(module, collect_data_cb, callback_data)), rc);
+
+    /* data namespace: nodes that this module augments into other modules live in
+       the target modules' trees (RFC 9595 still assigns them to this module's .sid).
+       Traverse every context module that lists this module in its augmented_by and
+       collect the nodes defined here (collect_data_cb filters by defining module). */
+    {
+        const struct lys_module *aug_target;
+        uint32_t mod_idx = 0;
+
+        while ((aug_target = ly_ctx_get_module_iter(module->ctx, &mod_idx))) {
+            ly_bool augmented = 0;
+
+            if ((aug_target == module) || !aug_target->compiled) {
+                continue;
+            }
+            LY_ARRAY_FOR(aug_target->augmented_by, i) {
+                if (aug_target->augmented_by[i] == module) {
+                    augmented = 1;
+                    break;
+                }
+            }
+            if (augmented) {
+                LY_CHECK_RET((rc = lysc_module_dfs_full(aug_target, collect_data_cb, callback_data)), rc);
+            }
+        }
+    }
 
     /* data namespace: also traverse the data trees of compiled top-level extension
        instances that define their own data tree outside the standard module trees

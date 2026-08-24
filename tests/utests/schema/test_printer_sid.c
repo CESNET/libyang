@@ -453,6 +453,78 @@ test_exts(void **state)
     lyd_free_all(sid_file);
 }
 
+/**
+ * @brief Test case: augment coverage. A module's .sid file must include the data
+ * nodes it augments into another module (RFC 9595), and a module's own .sid must
+ * not include nodes augmented into it by other modules.
+ */
+static void
+test_augment(void **state)
+{
+    struct lys_module *base, *aug;
+    struct lyd_node *sid_file = NULL;
+    static const char *mod_base =
+            "module b1 {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:b1\";\n"
+            "  prefix b1;\n"
+            "  revision 2024-01-01;\n"
+            "  container cont {\n"
+            "    leaf l { type string; }\n"
+            "  }\n"
+            "}\n";
+    static const char *mod_aug =
+            "module a1 {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:a1\";\n"
+            "  prefix a1;\n"
+            "  import b1 { prefix b1; }\n"
+            "  revision 2024-01-01;\n"
+            "  augment \"/b1:cont\" {\n"
+            "    leaf x { type string; }\n"
+            "  }\n"
+            "}\n";
+
+    UTEST_ADD_MODULE(mod_base, LYS_IN_YANG, NULL, &base);
+    UTEST_ADD_MODULE(mod_aug, LYS_IN_YANG, NULL, &aug);
+    assert_non_null(ly_ctx_load_module(_UC->ctx, "ietf-sid-file", NULL, NULL));
+
+    /* the augmenting module's .sid contains the node it augments in: /b1:cont/a1:x */
+    assert_int_equal(LY_SUCCESS, lys_sid_gen(aug, 100, 2, LYS_SID_FILE_UNPUBLISHED, "d", &sid_file));
+    assert_non_null(sid_file);
+    check_json_tree(sid_file,
+            "{\"ietf-sid-file:sid-file\":{"
+            "\"module-name\":\"a1\","
+            "\"module-revision\":\"2024-01-01\","
+            "\"sid-file-status\":\"unpublished\","
+            "\"description\":\"d\","
+            "\"dependency-revision\":[{\"module-name\":\"b1\",\"module-revision\":\"2024-01-01\"}],"
+            "\"assignment-range\":[{\"entry-point\":\"100\",\"size\":\"2\"}],"
+            "\"item\":["
+            "{\"namespace\":\"module\",\"identifier\":\"a1\",\"status\":\"unstable\",\"sid\":\"100\"},"
+            "{\"namespace\":\"data\",\"identifier\":\"/b1:cont/a1:x\",\"status\":\"unstable\",\"sid\":\"101\"}"
+            "]}}");
+    lyd_free_all(sid_file);
+    sid_file = NULL;
+
+    /* the base module's own .sid must not contain the node augmented in by a1 */
+    assert_int_equal(LY_SUCCESS, lys_sid_gen(base, 100, 3, LYS_SID_FILE_UNPUBLISHED, "d", &sid_file));
+    assert_non_null(sid_file);
+    check_json_tree(sid_file,
+            "{\"ietf-sid-file:sid-file\":{"
+            "\"module-name\":\"b1\","
+            "\"module-revision\":\"2024-01-01\","
+            "\"sid-file-status\":\"unpublished\","
+            "\"description\":\"d\","
+            "\"assignment-range\":[{\"entry-point\":\"100\",\"size\":\"3\"}],"
+            "\"item\":["
+            "{\"namespace\":\"module\",\"identifier\":\"b1\",\"status\":\"unstable\",\"sid\":\"100\"},"
+            "{\"namespace\":\"data\",\"identifier\":\"/b1:cont\",\"status\":\"unstable\",\"sid\":\"101\"},"
+            "{\"namespace\":\"data\",\"identifier\":\"/b1:cont/l\",\"status\":\"unstable\",\"sid\":\"102\"}"
+            "]}}");
+    lyd_free_all(sid_file);
+}
+
 int
 main(void)
 {
@@ -461,6 +533,7 @@ main(void)
         UTEST(test_gen),
         UTEST(test_flow),
         UTEST(test_exts),
+        UTEST(test_augment),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
