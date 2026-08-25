@@ -52,13 +52,20 @@ void
 lysc_update_path(struct lysc_ctx *ctx, const struct lys_module *parent_module, const char *name)
 {
     ly_bool spec = 0;
+    char quot = 0;
 
     if (!name) {
         assert(ctx->path_used);
 
         /* removing last path segment */
         if (ctx->path[ctx->path_used - 1] == '}') {
-            for ( ; ctx->path[ctx->path_used] != '=' && ctx->path[ctx->path_used] != '{'; --ctx->path_used) {}
+            do {
+                --ctx->path_used;
+                if (ctx->path[ctx->path_used] == '\'') {
+                    /* skip quoted string */
+                    quot = quot ? 0 : ctx->path[ctx->path_used];
+                }
+            } while (quot || ((ctx->path[ctx->path_used] != '=') && (ctx->path[ctx->path_used] != '{')));
             if (ctx->path[ctx->path_used] == '=') {
                 ctx->path[ctx->path_used++] = '}';
             } else {
