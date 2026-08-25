@@ -226,6 +226,7 @@ struct lysc_unres_dflt {
             LY_ARRAY_INCREMENT(EXT_C); \
             RET = lys_compile_ext(CTX, &(EXTS_P)[__u], &(EXT_C)[LY_ARRAY_COUNT(EXT_C) - 1], PARENT); \
             if (RET == LY_ENOT) { \
+                memset(&(EXT_C)[LY_ARRAY_COUNT(EXT_C) - 1], 0, sizeof *(EXT_C)); \
                 LY_ARRAY_DECREMENT(EXT_C); \
                 RET = LY_SUCCESS; \
             } else if (RET) { \
