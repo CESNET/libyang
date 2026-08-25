@@ -638,28 +638,42 @@ lyb_union_print(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
     struct ly_err_item *err;
     uint64_t pval_size_bits;
     uint32_t num = 0, type_idx = 0;
+    struct lyd_value orig = {0};
+    struct lyplg_type *subvalue_type_plg;
     ly_bool dynamic;
     void *pval;
 
-    /* learn the type index, must succeed because have been called before */
     if (!ctx) {
         assert(subvalue->ctx_node);
         ctx = subvalue->ctx_node->module->ctx;
     }
-    LYSC_GET_TYPE_PLG(subvalue->value.realtype->plugin_ref)->free(ctx, &subvalue->value);
+
+    /* because of types that do not store their own type as realtype (leafref), we are not able to call their
+     * validate callback (there is no way to get the type) but even if possible, the value may be invalid
+     * for the type, so we may have to perform union value storing again from scratch, but keep a value backup */
+    subvalue_type_plg = LYSC_GET_TYPE_PLG(subvalue->value.realtype->plugin_ref);
+    LY_CHECK_RET(subvalue_type_plg->duplicate(ctx, &subvalue->value, &orig), NULL);
+    subvalue_type_plg->free(ctx, &subvalue->value);
+
+    /* learn the type index, may fail if LYPLG_TYPE_STORE_ONLY has been used before */
     r = union_find_type(ctx, type_u, subvalue, 0, 0, NULL, NULL, &type_idx, NULL, &err);
     ly_err_free(err);
-    LY_CHECK_RET((r != LY_SUCCESS) && (r != LY_EINCOMPLETE), NULL);
+    if ((r != LY_SUCCESS) && (r != LY_EINCOMPLETE)) {
+        /* use LYPLG_TYPE_STORE_ONLY to manage to print the value */
+        r = union_find_type(ctx, type_u, subvalue, LYPLG_TYPE_STORE_ONLY, 0, NULL, NULL, &type_idx, NULL, &err);
+        ly_err_free(err);
+    }
+    LY_CHECK_ERR_RET((r != LY_SUCCESS) && (r != LY_EINCOMPLETE), subvalue->value = orig, NULL);
 
     /* print subvalue in LYB format */
     pval = (void *)LYSC_GET_TYPE_PLG(subvalue->value.realtype->plugin_ref)->print(NULL, &subvalue->value, LY_VALUE_LYB,
             prefix_data, &dynamic, &pval_size_bits);
-    LY_CHECK_RET(!pval, NULL);
+    LY_CHECK_ERR_RET(!pval, subvalue->value = orig, NULL);
 
     /* create LYB data */
     *value_size_bits = LYPLG_UNION_TYPE_IDX_SIZE * 8 + pval_size_bits;
     ret = malloc(LYPLG_BITS2BYTES(*value_size_bits));
-    LY_CHECK_RET(!ret, NULL);
+    LY_CHECK_GOTO(!ret, cleanup);
 
     num = htole32(type_idx);
     memcpy(ret, &num, LYPLG_UNION_TYPE_IDX_SIZE);
@@ -669,6 +683,10 @@ lyb_union_print(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
         free(pval);
     }
 
+cleanup:
+    /* restore backup (original) value */
+    LYSC_GET_TYPE_PLG(subvalue->value.realtype->plugin_ref)->free(ctx, &subvalue->value);
+    subvalue->value = orig;
     return ret;
 }
 

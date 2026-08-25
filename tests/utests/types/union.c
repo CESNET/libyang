@@ -1,9 +1,10 @@
 /**
  * @file union.c
  * @author Adam Piecek <piecek@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief test for built-in enumeration type
  *
- * Copyright (c) 2021 CESNET, z.s.p.o.
+ * Copyright (c) 2021 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -308,13 +309,14 @@ test_validation(void **state)
 static void
 test_validation_store_only(void **state)
 {
-    const char *val_text = NULL;
+    const char *schema, *val_text = NULL;
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value value = {0};
     struct lyplg_type *type = NULL;
     struct lysc_type *lysc_type;
-    const char *schema;
+    struct lyd_node *root, *node;
+    char *str;
 
     schema = MODULE_CREATE_YANG("base",
             "leaf l1 {\n"
@@ -359,6 +361,19 @@ test_validation_store_only(void **state)
             0, LY_VALUE_CANON, NULL, LYD_VALHINT_STRING | LYD_VALHINT_DECNUM, NULL, &value, NULL, &err));
     ly_err_free(err);
     UTEST_LOG_CTX_CLEAN;
+
+    /* with LYPLG_TYPE_STORE_ONLY and LYB print */
+    val_text = "zz9";
+    assert_int_equal(LY_SUCCESS, lyd_new_path2(NULL, UTEST_LYCTX, "/base:l1", val_text, 0, 0, LYD_NEW_VAL_STORE_ONLY, &root, &node));
+    assert_string_equal(lyd_get_value(node), val_text);
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&str, root, LYD_LYB, 0));
+    free(str);
+    assert_string_equal(lyd_get_value(node), val_text);
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&str, root, LYD_XML, 0));
+    free(str);
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&str, root, LYD_LYB, 0));
+    free(str);
+    lyd_free_tree(root);
 }
 
 int
