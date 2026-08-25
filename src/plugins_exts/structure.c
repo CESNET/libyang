@@ -36,6 +36,7 @@ struct lysp_ext_instance_structure {
 
 struct lysc_ext_instance_structure {
     struct lysc_node_container *top_cont;
+    uint16_t flags;
 };
 
 struct lysp_ext_instance_augment_structure {
@@ -206,7 +207,7 @@ structure_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, s
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[1].stmt = LY_STMT_STATUS;
-    ext->substmts[1].storage_p = (void **)&struct_cdata->top_cont->flags;
+    ext->substmts[1].storage_p = (void **)&struct_cdata->flags;
 
     LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[2].stmt = LY_STMT_DESCRIPTION;
@@ -264,8 +265,10 @@ structure_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, s
         return rc;
     }
 
-    /* compile config properly even though it is ignored */
+    /* flags compiled into a separate member to avoid alignment issues */
+    struct_cdata->top_cont->flags = struct_cdata->flags;
     if (!(struct_cdata->top_cont->flags & LYS_CONFIG_MASK)) {
+        /* compile config properly even though it is ignored */
         struct_cdata->top_cont->flags |= LYS_CONFIG_W;
     }
 
