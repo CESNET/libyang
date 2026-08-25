@@ -538,8 +538,7 @@ cast_string_recursive(const struct lyd_node *node, struct lyxp_set *set, uint32_
                 }
             }
 
-            line = strtok_r(buf, "\n", &ptr);
-            do {
+            for (line = strtok_r(buf, "\n", &ptr); line; line = strtok_r(NULL, "\n", &ptr)) {
                 rc = cast_string_realloc(set->ctx, indent * 2 + strlen(line) + 1, str, used, size);
                 if (rc != LY_SUCCESS) {
                     free(buf);
@@ -553,7 +552,7 @@ cast_string_recursive(const struct lyd_node *node, struct lyxp_set *set, uint32_
 
                 strcpy(*str + (*used - 1), "\n");
                 *used += 1;
-            } while ((line = strtok_r(NULL, "\n", &ptr)));
+            }
 
             free(buf);
             break;
