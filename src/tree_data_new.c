@@ -351,9 +351,10 @@ lyd_any_copy_value(struct lyd_node *trg, const struct lyd_node *child, const cha
     /* copy src */
     if (child) {
         if (use_value) {
+            assert(LYD_CTX(trg) == LYD_CTX(child));
             t->child = (struct lyd_node *)child;
         } else {
-            LY_CHECK_RET(lyd_dup_siblings(child, NULL, LYD_DUP_RECURSIVE, &t->child));
+            LY_CHECK_RET(lyd_dup_siblings_to_ctx(child, LYD_CTX(trg), NULL, LYD_DUP_RECURSIVE, &t->child));
         }
         LY_LIST_FOR(t->child, node) {
             node->parent = &t->node;
