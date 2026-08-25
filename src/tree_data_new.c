@@ -1519,6 +1519,7 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
     LY_ARRAY_COUNT_TYPE u, new_count;
     const char *canon;
     int create = 0;
+    uint32_t *prev_lo, temp_lo = 0;
 
     assert(path);
 
@@ -1552,7 +1553,9 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
                 (!path[u].predicates || (path[u].predicates[0].type != LY_PATH_PREDTYPE_LEAFLIST))) {
             r = LY_SUCCESS;
             if (options & LYD_NEW_PATH_OPAQ) {
+                prev_lo = ly_temp_log_options(&temp_lo);
                 r = ly_value_validate(NULL, schema, value, value_size_bits, format, NULL, LYD_HINT_DATA);
+                ly_temp_log_options(prev_lo);
             }
             if (!r) {
                 /* validate the value and store the canonical value */
@@ -1591,7 +1594,7 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
     ly_bool any_use_value = (options & LYD_NEW_ANY_USE_VALUE) ? 1 : 0;
     LY_ARRAY_COUNT_TYPE path_idx = 0, orig_count = 0;
     LY_VALUE_FORMAT format;
-    uint32_t value_size, hints, count;
+    uint32_t value_size, hints, count, *prev_lo, temp_lo = 0;
 
     LY_CHECK_GOTO(ret = lyd_new_val_get_format(options, &format), cleanup);
     value_size = LYPLG_BITS2BYTES(value_size_bits);
@@ -1699,7 +1702,9 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
                 r = LY_EVALID;
                 if (lysc_is_dup_inst_list(schema)) {
                     /* validate value */
+                    prev_lo = ly_temp_log_options(&temp_lo);
                     r = ly_value_validate(NULL, schema, value, value_size_bits, format, NULL, LYD_HINT_DATA);
+                    ly_temp_log_options(prev_lo);
                 }
                 if (r && (r != LY_EINCOMPLETE)) {
                     /* creating opaque leaf-list */
@@ -1742,7 +1747,9 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
                     r = LY_ENOT;
                 } else {
                     /* validate value */
+                    prev_lo = ly_temp_log_options(&temp_lo);
                     r = ly_value_validate(NULL, schema, value ? value : "", value_size_bits, format, NULL, LYD_HINT_DATA);
+                    ly_temp_log_options(prev_lo);
                 }
                 if (r && (r != LY_EINCOMPLETE)) {
                     /* creating opaque leaf */
