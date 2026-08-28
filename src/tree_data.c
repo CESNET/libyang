@@ -1134,9 +1134,10 @@ lyd_insert_check_schema(const struct lysc_node *parent, const struct lysc_node *
 LIBYANG_API_DEF LY_ERR
 lyd_insert_child(struct lyd_node *parent, struct lyd_node *node)
 {
-    LY_CHECK_ARG_RET(NULL, parent, node, !parent->schema || (parent->schema->nodetype & LYD_NODE_INNER), LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, parent, node, !parent->schema || (parent->schema->nodetype & (LYD_NODE_INNER | LYD_NODE_ANY)),
+            LY_EINVAL);
 
-    if (!(node->flags & LYD_EXT)) {
+    if (!(node->flags & LYD_EXT) && (!parent->schema || !(parent->schema->nodetype & LYD_NODE_ANY))) {
         LY_CHECK_RET(lyd_insert_check_schema(parent->schema, NULL, node->schema));
     }
 
