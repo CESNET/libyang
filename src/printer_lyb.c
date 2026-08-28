@@ -490,13 +490,13 @@ static LY_ERR
 lyb_write_size(uint32_t size, struct lylyb_print_ctx *lybctx)
 {
     uint8_t prefix_b, num_b, byte_len;
-    uint32_t buf;
+    uint64_t buf;
 
     /* --- no shrink mode --- */
     if (!lybctx->shrink) {
         /* always write the size on 4 bytes */
         byte_len = 4;
-        buf = htole32(size);
+        buf = htole64(size);
         return lyb_write(&buf, byte_len * 8, lybctx);
     }
 
@@ -525,10 +525,10 @@ lyb_write_size(uint32_t size, struct lylyb_print_ctx *lybctx)
     }
 
     /* copy size to buf */
-    buf |= size << prefix_b;
+    buf |= (uint64_t)size << prefix_b;
 
     /* correct byte order */
-    buf = htole32(buf);
+    buf = htole64(buf);
 
     return lyb_write(&buf, prefix_b + num_b, lybctx);
 }
