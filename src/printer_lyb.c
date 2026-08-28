@@ -496,7 +496,7 @@ lyb_write_size(uint32_t size, struct lylyb_print_ctx *lybctx)
     if (!lybctx->shrink) {
         /* always write the size on 4 bytes */
         byte_len = 4;
-        buf = htole64(size);
+        buf = htole64((uint64_t)size);
         return lyb_write(&buf, byte_len * 8, lybctx);
     }
 
