@@ -282,6 +282,39 @@ test_compare_diff_ctx(void **state)
 }
 
 static void
+test_dup_anydata_to_ctx(void **state)
+{
+    struct ly_ctx *ctx1 = NULL, *ctx2 = NULL;
+    struct lyd_node *tree = NULL, *dup = NULL;
+    const char *schema;
+    const char *data;
+
+    (void)state;
+
+    schema = "module c {yang-version 1.1; namespace \"urn:tests:c\"; prefix c;"
+            "container root {anydata payload;}}";
+    data = "<root xmlns=\"urn:tests:c\">"
+            "<payload><unknown xmlns=\"urn:unknown:c\" xmlns:x=\"urn:x\" x:attr=\"1\">"
+            "<child>text</child></unknown></payload></root>";
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", 0, &ctx1));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", 0, &ctx2));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx1, schema, LYS_IN_YANG, NULL));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx2, schema, LYS_IN_YANG, NULL));
+
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx1, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_dup_siblings_to_ctx(tree, ctx2, NULL, LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS, &dup));
+
+    lyd_free_all(tree);
+    ly_ctx_destroy(ctx1);
+
+    assert_int_equal(LY_SUCCESS, lyd_trim_xpath(&dup, "//*", NULL));
+
+    lyd_free_all(dup);
+    ly_ctx_destroy(ctx2);
+}
+
+static void
 test_dup(void **state)
 {
     struct lyd_node *tree1, *tree2;
@@ -836,6 +869,7 @@ main(void)
     const struct CMUnitTest tests[] = {
         UTEST(test_compare, setup),
         UTEST(test_compare_diff_ctx, setup),
+        UTEST(test_dup_anydata_to_ctx),
         UTEST(test_dup, setup),
         UTEST(test_target, setup),
         UTEST(test_list_pos, setup),
