@@ -347,10 +347,14 @@ lyd_validate_autodel_node_del(struct lyd_node **first, struct lyd_node *del, con
 
     if (diff) {
         /* add into diff */
-        if (!np_cont_diff && (del->schema->nodetype == LYS_CONTAINER) && !(del->schema->flags & LYS_PRESENCE)) {
-            /* we do not want to track NP container changes, but remember any removed children */
-            LY_LIST_FOR(lyd_child(del), iter) {
-                lyd_val_diff_add(iter, LYD_DIFF_OP_DELETE, diff);
+        if (!np_cont_diff) {
+            /* we do not want to track NP container changes, but remember any other removed children */
+            LYD_TREE_DFS_BEGIN(del, iter) {
+                if ((iter->schema->nodetype != LYS_CONTAINER) || (iter->schema->flags & LYS_PRESENCE)) {
+                    lyd_val_diff_add(iter, LYD_DIFF_OP_DELETE, diff);
+                    LYD_TREE_DFS_continue = 1;
+                }
+                LYD_TREE_DFS_END(del, iter);
             }
         } else {
             lyd_val_diff_add(del, LYD_DIFF_OP_DELETE, diff);
