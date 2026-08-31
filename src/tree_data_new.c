@@ -1681,9 +1681,9 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
                 LY_CHECK_GOTO(ret = lyd_create_inner(schema, &node), cleanup);
             } else if ((options & LYD_NEW_PATH_OPAQ) && !p[path_idx].predicates) {
                 /* creating opaque list without keys */
-                LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), NULL, 0,
-                        schema->module->name, strlen(schema->module->name), NULL, 0, NULL, LY_VALUE_JSON, NULL,
-                        LYD_NODEHINT_LIST, &node), cleanup);
+                LY_CHECK_GOTO(ret = lyd_create_opaq(cur_parent ? LYD_CTX(cur_parent) : ctx, schema->name,
+                        strlen(schema->name), NULL, 0, schema->module->name, strlen(schema->module->name), NULL, 0,
+                        NULL, LY_VALUE_JSON, NULL, LYD_NODEHINT_LIST, &node), cleanup);
             } else {
                 /* create standard list instance */
                 LY_CHECK_GOTO(ret = lyd_create_list(schema, p[path_idx].predicates, NULL, store_only, &node), cleanup);
@@ -1712,9 +1712,9 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
                     if (value && (format == LY_VALUE_JSON) && !ly_strncmp("[null]", value, value_size)) {
                         hints |= LYD_VALHINT_EMPTY;
                     }
-                    LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), NULL, 0,
-                            schema->module->name, strlen(schema->module->name), value, value_size, NULL, format, NULL,
-                            hints, &node), cleanup);
+                    LY_CHECK_GOTO(ret = lyd_create_opaq(cur_parent ? LYD_CTX(cur_parent) : ctx, schema->name,
+                            strlen(schema->name), NULL, 0, schema->module->name, strlen(schema->module->name), value,
+                            value_size, NULL, format, NULL, hints, &node), cleanup);
                     break;
                 }
             }
@@ -1757,8 +1757,11 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
                     if (value && (format == LY_VALUE_JSON) && !ly_strncmp("[null]", value, value_size)) {
                         hints |= LYD_VALHINT_EMPTY;
                     }
-                    ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), NULL, 0, schema->module->name,
-                            strlen(schema->module->name), value, value_size, NULL, format, NULL, hints, &node);
+
+                    /* use parent context in case it is different from the base one */
+                    ret = lyd_create_opaq(cur_parent ? LYD_CTX(cur_parent) : ctx, schema->name, strlen(schema->name),
+                            NULL, 0, schema->module->name, strlen(schema->module->name), value, value_size, NULL,
+                            format, NULL, hints, &node);
                     LY_CHECK_GOTO(ret, cleanup);
                     break;
                 }
