@@ -1001,10 +1001,9 @@ test_explicit_compile(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD | LY_CTX_EXPLICIT_COMPILE,
             &UTEST_LYCTX));
-    UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, NULL, &mod);
+    UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, feats, NULL);
     UTEST_ADD_MODULE(schema_b, LYS_IN_YANG, NULL, NULL);
     UTEST_ADD_MODULE(schema_c, LYS_IN_YANG, NULL, NULL);
-    assert_int_equal(LY_SUCCESS, lys_set_implemented((struct lys_module *)mod, feats));
 
     /* none of the modules should be compiled */
     i = 0;
@@ -1029,6 +1028,27 @@ test_explicit_compile(void **state)
     assert_non_null(mod);
     mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "c");
     assert_non_null(mod);
+
+    /* test module parsing failure */
+    ly_ctx_destroy(UTEST_LYCTX);
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD | LY_CTX_EXPLICIT_COMPILE,
+            &UTEST_LYCTX));
+
+    UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, feats, NULL);
+    UTEST_ADD_MODULE(schema_c, LYS_IN_YANG, NULL, NULL);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa;", LYS_IN_YANG, NULL));
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Missing mandatory keyword \"namespace\" as a child of \"module\".", NULL, 1);
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_compile(UTEST_LYCTX));
+
+    /* check implemented modules */
+    mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "a");
+    assert_non_null(mod);
+    mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "c");
+    assert_non_null(mod);
+    mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "aa");
+    assert_null(mod);
 }
 
 static void

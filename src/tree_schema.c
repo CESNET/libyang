@@ -1344,6 +1344,54 @@ lys_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres)
     }
 }
 
+/**
+ * @brief Revert changes stored in global compile context after a failed compilation for a single module.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] unres Global unres to use.
+ * @param[in] mod Failed module to free.
+ */
+static void
+lys_unres_glob_revert_erase_mod(struct ly_ctx *ctx, struct lys_glob_unres *unres, struct lys_module *mod)
+{
+    uint32_t idx, i, j;
+    struct ly_set *dep_set;
+
+    if (ly_set_contains(&unres->implementing, mod, &i)) {
+        /* make the module correctly non-implemented again */
+        mod->implemented = 0;
+        lys_precompile_augments_deviations_revert(ctx, mod);
+        lysc_module_free(ctx, mod->compiled);
+        mod->compiled = NULL;
+
+        /* should not be made implemented */
+        mod->to_compile = 0;
+
+        /* remove from the set */
+        ly_set_rm_index(&unres->implementing, i, NULL);
+    }
+
+    if (ly_set_contains(&unres->creating, mod, &i)) {
+        /* remove the module from the context */
+        ly_set_rm(&ctx->modules, mod, NULL);
+
+        /* remove it also from dep sets */
+        for (j = 0; j < unres->dep_sets.count; ++j) {
+            dep_set = unres->dep_sets.objs[j];
+            if (ly_set_contains(dep_set, mod, &idx)) {
+                ly_set_rm_index(dep_set, idx, NULL);
+                break;
+            }
+        }
+
+        /* free the module */
+        lys_module_free(ctx, mod, 1);
+
+        /* remove from the set */
+        ly_set_rm_index(&unres->creating, i, NULL);
+    }
+}
+
 void
 lys_unres_glob_erase(struct lys_glob_unres *unres)
 {
@@ -2821,7 +2869,7 @@ LIBYANG_API_DEF LY_ERR
 lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char **features, struct lys_module **module)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lys_module *mod;
+    struct lys_module *mod = NULL;
 
     if (module) {
         *module = NULL;
@@ -2858,8 +2906,14 @@ lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char 
 
 cleanup:
     if (ret) {
-        lys_unres_glob_revert(ctx, &ctx->unres);
-        lys_unres_glob_erase(&ctx->unres);
+        if (!(ctx->opts & LY_CTX_EXPLICIT_COMPILE)) {
+            /* full revert */
+            lys_unres_glob_revert(ctx, &ctx->unres);
+            lys_unres_glob_erase(&ctx->unres);
+        } else {
+            /* revert only this module parsing (any side effects in the context will remain) */
+            lys_unres_glob_revert_erase_mod(ctx, &ctx->unres, mod);
+        }
     } else if (module) {
         *module = mod;
     }
