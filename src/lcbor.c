@@ -76,15 +76,46 @@ lydcbor_detect_format(struct ly_in *in, enum lyd_cbor_format *format)
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Transform CBOR parsing error into a human-readable string.
+ *
+ * @param[in] code CBOR parsing error code.
+ * @return String error message.
+ */
+static const char *
+lycbor_strerror(cbor_error_code code)
+{
+    switch (code) {
+    case CBOR_ERR_NONE:
+        return "success";
+    case CBOR_ERR_NOTENOUGHDATA:
+        return "not enough data";
+    case CBOR_ERR_NODATA:
+        return "no data";
+    case CBOR_ERR_MALFORMATED:
+        return "malformed data";
+    case CBOR_ERR_MEMERROR:
+        return "memory error";
+    case CBOR_ERR_SYNTAXERROR:
+        return "syntax error";
+    default:
+        return "unknown error code";
+    }
+}
+
 LY_ERR
 lycbor_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lycbor_ctx **cborctx_p)
 {
-    LY_ERR ret = LY_SUCCESS;
     struct lycbor_ctx *cborctx;
     struct cbor_load_result result = {0};
     enum lyd_cbor_format format;
 
     assert(ctx && in && cborctx_p);
+
+    if (!in->bounded) {
+        LOGVAL(ctx, NULL, LYVE_SYNTAX, "Failed to parse CBOR data (unknown data length).");
+        return LY_EVALID;
+    }
 
     LY_CHECK_RET(lydcbor_detect_format(in, &format));
 
@@ -101,17 +132,16 @@ lycbor_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lycbor_ctx **c
     /* load and parse CBOR data */
     cborctx->cbor_data = cbor_load((cbor_data)in->current, in->length, &result);
     if (!cborctx->cbor_data) {
-        LOGVAL(ctx, NULL, LYVE_SYNTAX, "Failed to parse CBOR data.");
+        LOGVAL(ctx, NULL, LYVE_SYNTAX, "Failed to parse CBOR data (%s).", lycbor_strerror(result.error.code));
         free(cborctx);
         return LY_EVALID;
-    }
-    if (result.error.code != CBOR_ERR_NONE) {
-        LOGVAL(ctx, NULL, LYVE_SYNTAX, "CBOR parsing error (code %d).", result.error.code);
+    } else if (result.error.code != CBOR_ERR_NONE) {
+        LOGVAL(ctx, NULL, LYVE_SYNTAX, "CBOR parsing error (%s).", lycbor_strerror(result.error.code));
         cbor_decref(&cborctx->cbor_data);
         free(cborctx);
         return LY_EVALID;
     }
 
     *cborctx_p = cborctx;
-    return ret;
+    return LY_SUCCESS;
 }
