@@ -226,10 +226,7 @@ lyd_parse_data_mem_len(const struct ly_ctx *ctx, const char *data, uint32_t data
     LY_ERR ret;
     struct ly_in *in;
 
-    LY_CHECK_RET(ly_in_new_memory(data, &in));
-    in->length = data_len;
-    in->bounded = 1;
-
+    LY_CHECK_RET(ly_in_new_memory_chunk(data, data_len, &in));
     ret = lyd_parse_data(ctx, NULL, in, format, parse_options, validate_options, tree);
 
     ly_in_free(in, 0);

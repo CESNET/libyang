@@ -222,8 +222,7 @@ test_operations(void **state)
 
         lyd_free_all(tree);
 
-        assert_int_equal(LY_SUCCESS, ly_in_new_memory(buffer, &in));
-        in->length = ly_out_printed(out);
+        assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(buffer, ly_out_printed(out), &in));
         assert_int_equal(LY_SUCCESS, lyd_parse_op(((struct utest_context *)*state)->ctx, NULL, in, LYD_CBOR, type, 0, &tree, NULL));
         ly_in_free(in, 0);
 

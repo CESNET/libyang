@@ -194,6 +194,23 @@ ly_in_new_memory(const char *str, struct ly_in **in)
     return LY_SUCCESS;
 }
 
+LIBYANG_API_DEF LY_ERR
+ly_in_new_memory_chunk(const void *mem, uint32_t mem_len, struct ly_in **in)
+{
+    LY_CHECK_ARG_RET(NULL, mem, in, LY_EINVAL);
+
+    *in = calloc(1, sizeof **in);
+    LY_CHECK_ERR_RET(!*in, LOGMEM(NULL), LY_EMEM);
+
+    (*in)->type = LY_IN_MEMORY;
+    (*in)->start = (*in)->current = (*in)->func_start = mem;
+    (*in)->line = 1;
+    (*in)->length = mem_len;
+    (*in)->bounded = 1;
+
+    return LY_SUCCESS;
+}
+
 LIBYANG_API_DEF const char *
 ly_in_memory(struct ly_in *in, const char *str)
 {
@@ -208,6 +225,25 @@ ly_in_memory(struct ly_in *in, const char *str)
         in->line = 1;
         in->length = 0;
         in->bounded = 0;
+    }
+
+    return data;
+}
+
+LIBYANG_API_DEF const void *
+ly_in_memory_chunk(struct ly_in *in, const void *mem, uint32_t mem_len)
+{
+    const void *data;
+
+    LY_CHECK_ARG_RET(NULL, in, in->type == LY_IN_MEMORY, NULL);
+
+    data = in->current;
+
+    if (mem) {
+        in->start = in->current = mem;
+        in->line = 1;
+        in->length = mem_len;
+        in->bounded = 1;
     }
 
     return data;
