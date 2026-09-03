@@ -650,7 +650,7 @@ cleanup:
 }
 
 /**
- * @brief Parse a metadata member/attribute from CBOR.
+ * @brief Parse a metadata member/attribute map from CBOR for a node.
  *
  * @param[in] lydctx CBOR data parser context.
  * @param[in] snode Schema node of the metadata parent.
@@ -659,94 +659,30 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-lydcbor_meta_attr(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snode, struct lyd_node *node,
-        const cbor_item_t *cbor_meta)
+lydcbor_meta_attr_instance(struct lyd_cbor_ctx *lydctx, struct lyd_node *node, const cbor_item_t *cbor_meta)
 {
-    LY_ERR rc = LY_SUCCESS, r;
-    enum cbor_type type;
-    const char *expected;
-    const char *name, *prefix = NULL;
-    size_t name_len, prefix_len = 0;
-    struct lys_module *mod;
+    LY_ERR rc = LY_SUCCESS;
     const struct ly_ctx *ctx = lydctx->cborctx->ctx;
-    ly_bool is_attr = 0;
-    struct lyd_node *prev = node;
-    uint32_t instance = 0, val_hints;
-    uint16_t nodetype;
     struct cbor_pair *pairs;
-    size_t map_size;
-
-    assert(snode || node);
-
-    nodetype = snode ? snode->nodetype : LYS_CONTAINER;
-    if (snode) {
-        LOG_LOCSET(snode);
-    }
-
-    type = cbor_typeof(cbor_meta);
-
-    /* check attribute encoding */
-    switch (nodetype) {
-    case LYS_LEAFLIST:
-        expected = "@name/array of objects/nulls";
-        LY_CHECK_GOTO(type != CBOR_TYPE_ARRAY, representation_error);
-
-    next_entry:
-        instance++;
-        if (!node || (node->schema != prev->schema)) {
-            LOGVAL(ctx, NULL, LYVE_REFERENCE, "Missing CBOR data instance #%" PRIu32 " of %s:%s to be coupled with metadata.",
-                    instance, prev->schema->module->name, prev->schema->name);
-            rc = LY_EVALID;
-            goto cleanup;
-        }
-
-        /* Process array item */
-        if (cbor_array_size(cbor_meta) > instance - 1) {
-            cbor_item_t **handle = cbor_array_handle(cbor_meta);
-            const cbor_item_t *item = handle[instance - 1];
-
-            if (lydcbor_is_null(item)) {
-                prev = node;
-                node = node->next;
-                if (instance < cbor_array_size(cbor_meta)) {
-                    goto next_entry;
-                }
-                goto cleanup;
-            }
-        } else {
-            goto cleanup;
-        }
-        break;
-    case LYS_LEAF:
-    case LYS_ANYXML:
-        expected = "@name/object";
-        LY_CHECK_GOTO(type != CBOR_TYPE_MAP, representation_error);
-        break;
-    case LYS_CONTAINER:
-    case LYS_LIST:
-    case LYS_ANYDATA:
-    case LYS_NOTIF:
-    case LYS_ACTION:
-    case LYS_RPC:
-        expected = "@/object";
-        LY_CHECK_GOTO(type != CBOR_TYPE_MAP, representation_error);
-        break;
-    default:
-        LOGINT(ctx);
-        rc = LY_EINT;
-        goto cleanup;
-    }
+    char *key_str = NULL;
+    const char *name, *prefix;
+    size_t name_len, prefix_len, map_size, key_len = 0;
+    ly_bool is_attr;
+    uint32_t val_hints;
+    struct lys_module *mod;
 
     /* process all members inside metadata object */
-    assert(type == CBOR_TYPE_MAP);
+    assert(cbor_typeof(cbor_meta) == CBOR_TYPE_MAP);
     map_size = cbor_map_size(cbor_meta);
     pairs = cbor_map_handle(cbor_meta);
 
     for (size_t i = 0; i < map_size; ++i) {
         const cbor_item_t *key_item = pairs[i].key;
         const cbor_item_t *value_item = pairs[i].value;
-        char *key_str = NULL;
-        size_t key_len = 0;
+
+        free(key_str);
+        key_str = NULL;
+        key_len = 0;
 
         if (!cbor_isa_string(key_item)) {
             LOGVAL(ctx, NULL, LYVE_SYNTAX, "Metadata key must be a string.");
@@ -760,19 +696,16 @@ lydcbor_meta_attr(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snode, st
 
         if (!name_len) {
             LOGVAL(ctx, NULL, LYVE_SYNTAX, "Metadata in CBOR found with an empty name.");
-            free(key_str);
             rc = LY_EVALID;
             goto cleanup;
         } else if (!prefix_len) {
             LOGVAL(ctx, NULL, LYVE_SYNTAX, "Metadata in CBOR must be namespace-qualified, missing prefix for \"%.*s\".",
                     (int)key_len, key_str);
-            free(key_str);
             rc = LY_EVALID;
             goto cleanup;
         } else if (is_attr) {
             LOGVAL(ctx, NULL, LYVE_SYNTAX, "Invalid format of Metadata identifier in CBOR, unexpected '@' in \"%.*s\"",
                     (int)key_len, key_str);
-            free(key_str);
             rc = LY_EVALID;
             goto cleanup;
         }
@@ -783,35 +716,33 @@ lydcbor_meta_attr(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snode, st
             if (lydctx->parse_opts & LYD_PARSE_STRICT) {
                 LOGVAL(ctx, NULL, LYVE_REFERENCE, "Prefix \"%.*s\" of the metadata \"%.*s\" does not match any module in the context.",
                         (int)prefix_len, prefix, (int)name_len, name);
-                free(key_str);
                 rc = LY_EVALID;
                 goto cleanup;
             }
             if (node->schema) {
-                free(key_str);
                 continue;
             }
             assert(lydctx->parse_opts & LYD_PARSE_OPAQ);
         }
 
         /* get value hints */
-        LY_CHECK_ERR_GOTO(rc = lydcbor_value_type_hint(lydctx, value_item, &val_hints), free(key_str), cleanup);
+        LY_CHECK_GOTO(rc = lydcbor_value_type_hint(lydctx, value_item, &val_hints), cleanup);
 
         if (node->schema) {
             char *str_val = NULL;
             size_t str_len = 0;
 
-            LY_CHECK_ERR_GOTO(rc = lydcbor_item_to_string(value_item, &str_val, &str_len), free(key_str), cleanup);
+            LY_CHECK_GOTO(rc = lydcbor_item_to_string(value_item, &str_val, &str_len), cleanup);
 
             /* create metadata */
             rc = lyd_parser_create_meta((struct lyd_ctx *)lydctx, node, NULL, mod, name, name_len, str_val,
                     str_len * 8, NULL, LY_VALUE_CBOR, NULL, val_hints, node->schema, node);
             free(str_val);
-            LY_CHECK_ERR_GOTO(rc, free(key_str), cleanup);
+            LY_CHECK_GOTO(rc, cleanup);
 
             /* add/correct flags */
             rc = lyd_parser_set_data_flags(node, &node->meta, (struct lyd_ctx *)lydctx, NULL);
-            LY_CHECK_ERR_GOTO(rc, free(key_str), cleanup);
+            LY_CHECK_GOTO(rc, cleanup);
         } else {
             /* create attribute */
             const char *module_name;
@@ -821,21 +752,100 @@ lydcbor_meta_attr(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snode, st
 
             lydcbor_get_node_prefix(node, prefix, prefix_len, &module_name, &module_name_len);
 
-            LY_CHECK_ERR_GOTO(rc = lydcbor_item_to_string(value_item, &str_val, &str_len), free(key_str), cleanup);
+            LY_CHECK_GOTO(rc = lydcbor_item_to_string(value_item, &str_val, &str_len), cleanup);
 
             rc = lyd_create_attr(node, NULL, ctx, name, name_len, prefix, prefix_len, module_name,
                     module_name_len, str_val, str_len, NULL, LY_VALUE_CBOR, NULL, val_hints);
             free(str_val);
-            LY_CHECK_ERR_GOTO(rc, free(key_str), cleanup);
+            LY_CHECK_GOTO(rc, cleanup);
         }
-
-        free(key_str);
     }
 
-    if ((nodetype == LYS_LEAFLIST) && (instance < cbor_array_size(cbor_meta))) {
-        prev = node;
-        node = node->next;
-        goto next_entry;
+cleanup:
+    free(key_str);
+    return rc;
+}
+
+/**
+ * @brief Parse a metadata member/attribute map (several for leaf-lists) from CBOR for a node(s).
+ *
+ * @param[in] lydctx CBOR data parser context.
+ * @param[in] snode Schema node of the metadata parent.
+ * @param[in] node Parent node.
+ * @param[in] cbor_meta CBOR metadata item.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lydcbor_meta_attr(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snode, struct lyd_node *node,
+        const cbor_item_t *cbor_meta)
+{
+    LY_ERR rc = LY_SUCCESS, r;
+    enum cbor_type type;
+    cbor_item_t **array_handle;
+    const cbor_item_t *item;
+    const char *expected;
+    const struct ly_ctx *ctx = lydctx->cborctx->ctx;
+    struct lyd_node *prev = node;
+    uint32_t i;
+    uint16_t nodetype;
+
+    assert(snode || node);
+
+    nodetype = snode ? snode->nodetype : LYS_CONTAINER;
+    type = cbor_typeof(cbor_meta);
+
+    /* check attribute encoding */
+    switch (nodetype) {
+    case LYS_LEAFLIST:
+        expected = "@name/array of objects/nulls";
+        LY_CHECK_GOTO(type != CBOR_TYPE_ARRAY, representation_error);
+
+        array_handle = cbor_array_handle(cbor_meta);
+        for (i = 0; i < cbor_array_size(cbor_meta); ++i) {
+            item = array_handle[i];
+
+            LY_CHECK_GOTO((cbor_typeof(item) != CBOR_TYPE_MAP) && !lydcbor_is_null(item), representation_error);
+
+            if (!node || (node->schema != prev->schema)) {
+                LOG_LOCSET(prev->schema);
+                LOGVAL(ctx, NULL, LYVE_REFERENCE, "Missing CBOR data instance #%" PRIu32 " of %s:%s to be coupled with metadata.",
+                        i + 1, prev->schema->module->name, prev->schema->name);
+                LOG_LOCBACK(1);
+                rc = LY_EVALID;
+                goto cleanup;
+            }
+
+            /* null values are simply skipped */
+            if (!lydcbor_is_null(item)) {
+                LY_CHECK_GOTO(rc = lydcbor_meta_attr_instance(lydctx, node, item), cleanup);
+            }
+
+            prev = node;
+            node = node->next;
+        }
+        break;
+    case LYS_LEAF:
+    case LYS_ANYXML:
+        expected = "@name/object";
+        LY_CHECK_GOTO(type != CBOR_TYPE_MAP, representation_error);
+
+        LY_CHECK_GOTO(rc = lydcbor_meta_attr_instance(lydctx, node, cbor_meta), cleanup);
+        break;
+    case LYS_CONTAINER:
+    case LYS_LIST:
+    case LYS_ANYDATA:
+    case LYS_NOTIF:
+    case LYS_ACTION:
+    case LYS_RPC:
+        expected = "@/object";
+        LY_CHECK_GOTO(type != CBOR_TYPE_MAP, representation_error);
+
+        LY_CHECK_GOTO(rc = lydcbor_meta_attr_instance(lydctx, node, cbor_meta), cleanup);
+        break;
+    default:
+        LOGINT(ctx);
+        rc = LY_EINT;
+        goto cleanup;
     }
 
     goto cleanup;
@@ -852,7 +862,6 @@ cleanup:
             rc = r;
         }
     }
-    LOG_LOCBACK(snode ? 1 : 0);
     return rc;
 }
 
@@ -1330,7 +1339,8 @@ lydcbor_subtree_r(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, struct l
 {
     LY_ERR r, rc = LY_SUCCESS;
     const char *name, *prefix = NULL, *expected = NULL;
-    size_t name_len, prefix_len = 0;
+    size_t name_len, prefix_len = 0, key_len = 0;
+    char *key_str = NULL;
     ly_bool is_meta = 0;
     const struct lysc_node *snode = NULL;
     struct lysc_ext_instance *ext = NULL;
@@ -1354,8 +1364,10 @@ lydcbor_subtree_r(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, struct l
     for (size_t i = 0; i < map_size; ++i) {
         const cbor_item_t *key_item = pairs[i].key;
         const cbor_item_t *value_item = pairs[i].value;
-        char *key_str = NULL;
-        size_t key_len = 0;
+
+        free(key_str);
+        key_str = NULL;
+        key_len = 0;
 
         if (!key_item || !value_item) {
             LOGVAL(ctx, NULL, LYVE_SYNTAX, "Null key or value in CBOR map");
@@ -1375,7 +1387,7 @@ lydcbor_subtree_r(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, struct l
             goto cleanup;
         }
 
-        LY_CHECK_ERR_GOTO(rc = lydcbor_item_to_string(key_item, &key_str, &key_len), free(key_str), cleanup);
+        LY_CHECK_GOTO(rc = lydcbor_item_to_string(key_item, &key_str, &key_len), cleanup);
 
         /* process the node name */
         lydcbor_parse_name(key_str, key_len, &name, &name_len, &prefix, &prefix_len, &is_meta);
@@ -1384,15 +1396,12 @@ lydcbor_subtree_r(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, struct l
             /* get the schema node */
             r = lydcbor_get_snode(lydctx, is_meta, prefix, prefix_len, name, name_len, parent, &snode, &ext);
             if (r == LY_ENOT) {
-                free(key_str);
                 continue;
             } else if ((r == LY_EVALID) && (lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR)) {
                 rc = r;
-                free(key_str);
                 continue;
             } else if (r) {
                 rc = r;
-                free(key_str);
                 goto cleanup;
             }
         }
@@ -1403,7 +1412,6 @@ lydcbor_subtree_r(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, struct l
                 LOGVAL(ctx, NULL, LYVE_SYNTAX,
                         "Invalid metadata format - \"@\" can be used only inside anydata, container or list entries.");
                 r = LY_EVALID;
-                free(key_str);
                 LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
             } else if (!name_len && !prefix_len) {
                 /* parent's metadata without a name */
@@ -1412,26 +1420,21 @@ lydcbor_subtree_r(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, struct l
             }
             r = lydcbor_parse_attribute(lydctx, attr_node, snode, name, name_len, prefix, prefix_len, parent,
                     value_item, first_p, &node);
-            free(key_str);
             LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
         } else if (!snode) {
             if (!(lydctx->parse_opts & LYD_PARSE_OPAQ)) {
                 /* skip element */
-                free(key_str);
                 continue;
             } else {
                 /* parse as an opaq node */
                 if (name_len == 0) {
                     LOGVAL(ctx, NULL, LYVE_SYNTAX, "CBOR object member name cannot be a zero-length string.");
                     r = LY_EVALID;
-                    free(key_str);
                     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
                 }
 
                 /* parse opaq */
                 r = lydcbor_parse_opaq(lydctx, name, name_len, prefix, prefix_len, parent, value_item, first_p, &node);
-                free(key_str);
-                key_str = NULL;
                 LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
             }
         } else {
@@ -1480,7 +1483,6 @@ lydcbor_subtree_r(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, struct l
                     r = lydcbor_parse_instance(lydctx, parent, first_p, snode, ext, name, name_len, prefix, prefix_len,
                             item, &node);
                     if (r == LY_ENOT) {
-                        free(key_str);
                         goto representation_error;
                     }
                     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
@@ -1501,7 +1503,6 @@ lydcbor_subtree_r(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, struct l
                 r = lydcbor_parse_instance(lydctx, parent, first_p, snode, ext, name, name_len, prefix, prefix_len,
                         value_item, &node);
                 if (r == LY_ENOT) {
-                    free(key_str);
                     goto representation_error;
                 }
                 LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
@@ -1513,8 +1514,6 @@ lydcbor_subtree_r(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, struct l
                 break;
             }
         }
-
-        free(key_str);
 
         /* remember a successfully parsed node */
         if (parsed && node) {
@@ -1542,6 +1541,7 @@ representation_error:
     }
 
 cleanup:
+    free(key_str);
     lyd_free_tree(node);
     return rc;
 }

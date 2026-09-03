@@ -3,9 +3,13 @@ module cbor-test {
   namespace "urn:cbor:test";
   prefix ct;
 
-	import ietf-yang-schema-mount {
-		prefix yangmnt;
-	}
+  import ietf-yang-schema-mount {
+    prefix yangmnt;
+  }
+
+  import ietf-yang-metadata {
+    prefix md;
+  }
 
   revision 2026-07-01;
 
@@ -14,77 +18,88 @@ module cbor-test {
     base iface;
   }
 
-  container cont-root {
-		leaf lf-root-str {
-			type string;
-		}
-
-		container services {
-			yangmnt:mount-point "services";
-		}
+  md:annotation a1 {
+    type enumeration {
+      enum val1;
+      enum val2;
+    }
   }
 
-	/* ===== Basic scalar types ===== */
+  md:annotation a2 {
+    type uint32;
+  }
 
-	leaf lf-str {
-		type string;
-	}
+  container cont-root {
+    leaf lf-root-str {
+      type string;
+    }
 
-	leaf lf-bool {
-		type boolean;
-	}
+    container services {
+      yangmnt:mount-point "services";
+    }
+  }
 
-	leaf lf-empty {
-		type empty;
-	}
+  /* ===== Basic scalar types ===== */
 
-	leaf lf-bin {
-		type binary;
-	}
-	
-	leaf lf-dec64 {
-		type decimal64 {
-			fraction-digits 2;
-		}
-	}
+  leaf lf-str {
+    type string;
+  }
 
-	/* ===== Signed integers ===== */
+  leaf lf-bool {
+    type boolean;
+  }
 
-	leaf lf-intg8 {
-		type int8;
-	}
+  leaf lf-empty {
+    type empty;
+  }
 
-	leaf lf-intg16 {
-		type int16;
-	}
+  leaf lf-bin {
+    type binary;
+  }
 
-	leaf lf-intg32 {
-		type int32;
-	}
+  leaf lf-dec64 {
+    type decimal64 {
+      fraction-digits 2;
+    }
+  }
 
-	leaf lf-intg64 {
-		type int64;
-	}
+  /* ===== Signed integers ===== */
 
-	/* ===== Unsigned integers ===== */
+  leaf lf-intg8 {
+    type int8;
+  }
 
-	leaf lf-uintg8 {
-		type uint8;
-	}
+  leaf lf-intg16 {
+    type int16;
+  }
 
-	leaf lf-uintg16 {
-		type uint16;
-	}
+  leaf lf-intg32 {
+    type int32;
+  }
 
-	leaf lf-uintg32 {
-		type uint32;
-	}
+  leaf lf-intg64 {
+    type int64;
+  }
 
-	leaf lf-uintg64 {
-		type uint64;
-	}
+  /* ===== Unsigned integers ===== */
 
-	/* ===== Complex built-in types ===== */
+  leaf lf-uintg8 {
+    type uint8;
+  }
+
+  leaf lf-uintg16 {
+    type uint16;
+  }
+
+  leaf lf-uintg32 {
+    type uint32;
+  }
+
+  leaf lf-uintg64 {
+    type uint64;
+  }
+
+  /* ===== Complex built-in types ===== */
 
 	leaf lf-enum {
 		type enumeration {
@@ -220,16 +235,13 @@ module cbor-test {
   /* ===== RPC ===== */
 
   rpc rpc-reset {
-
     input {
-
       leaf lf1 {
         type boolean;
       }
     }
 
     output {
-
       leaf lf2 {
         type string;
       }
@@ -239,7 +251,6 @@ module cbor-test {
   /* ===== Notification ===== */
 
   notification notif-alarm {
-
     leaf lf-severity {
       type enumeration {
         enum info;
@@ -247,17 +258,16 @@ module cbor-test {
         enum critical;
       }
     }
-
     leaf lf-message {
       type string;
     }
   }
 
-	/* ===== Augment ===== */
+  /* ===== Augment ===== */
 
-	augment "/ct:cont-root" {
-			leaf lf-augmented-str {
-					type string;
-			}
-	}
+  augment "/ct:cont-root" {
+    leaf lf-augmented-str {
+      type string;
+    }
+  }
 }

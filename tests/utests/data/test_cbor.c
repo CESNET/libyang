@@ -1,6 +1,7 @@
 /**
  * @file test_cbor.c
  * @author Juraj Budai <budai@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Cmocka tests for CBOR data format.
  *
  * Copyright (c) 2026 CESNET, z.s.p.o.
@@ -365,6 +366,36 @@ test_opaque(void **state)
     lyd_free_all(tree);
 }
 
+static void
+test_attributes(void **state)
+{
+    struct lyd_node *tree;
+    char *buffer, *json;
+    const char *json_input;
+    struct ly_out *out;
+
+    json_input = "{"
+            "\"cbor-test:cont-root\":{\"lf-root-str\":\"example string\",\"@lf-root-str\":{\"cbor-test:a2\":5}},"
+            "\"cbor-test:ll-str\":[\"my-str1\",\"my-str2\",\"my-str3\"],"
+            "\"@cbor-test:ll-str\":[null,{\"cbor-test:a2\":562},{\"cbor-test:a2\":25,\"cbor-test:a1\":\"val2\"}]"
+            "}";
+    CHECK_PARSE_LYD_PARAM(json_input, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&buffer, 0, &out));
+    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_CBOR, 0));
+    lyd_free_all(tree);
+
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, buffer, (uint32_t)ly_out_printed(out), LYD_CBOR,
+            0, LYD_VALIDATE_PRESENT, &tree));
+    ly_out_free(out, NULL, 0);
+    free(buffer);
+
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&json, tree, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS));
+    assert_string_equal(json, json_input);
+    free(json);
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -374,6 +405,7 @@ main(void)
         UTEST(test_operations, setup),
         UTEST(test_schema_mount, setup),
         UTEST(test_opaque, setup),
+        UTEST(test_attributes, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
