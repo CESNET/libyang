@@ -1574,7 +1574,7 @@ cleanup:
 /**
  * @brief Find a metadata instance with a specific value.
  *
- * @param[in] meta First metadata to consider.
+ * @param[in] node Node with metadata to search in.
  * @param[in] name Metadata name with module name.
  * @param[in] value Metadata value.
  * @param[in] log Whether to log an error if not found.
@@ -1582,12 +1582,14 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_diff_metadata_find(const struct lyd_meta *meta, const char *name, const char *value, ly_bool log,
+lyd_diff_metadata_find(const struct lyd_node *node, const char *name, const char *value, ly_bool log,
         struct lyd_meta **match)
 {
     const struct lyd_meta *m;
 
-    for (m = meta; (m = lyd_find_meta(m, NULL, name)); m = m->next) {
+    assert(node);
+
+    for (m = node->meta; (m = lyd_find_meta(m, NULL, name)); m = m->next) {
         if (!strcmp(lyd_get_meta_value(m), value)) {
             *match = (struct lyd_meta *)m;
             return LY_SUCCESS;
@@ -1596,7 +1598,7 @@ lyd_diff_metadata_find(const struct lyd_meta *meta, const char *name, const char
 
     *match = NULL;
     if (log) {
-        LOGINT(meta->annotation->module->ctx);
+        LOGINT(LYD_CTX(node));
         return LY_EINT;
     } else {
         return LY_SUCCESS;
@@ -1720,7 +1722,7 @@ lyd_diff_apply_metadata(struct lyd_node *node, const struct lyd_node *diff_node)
             LY_CHECK_GOTO(rc = lyd_diff_apply_metadata_parse(m, &meta_name, &meta_value), cleanup);
 
             /* find the metadata instance and free it */
-            LY_CHECK_GOTO(rc = lyd_diff_metadata_find(node->meta, meta_name, meta_value, 1, &m2), cleanup);
+            LY_CHECK_GOTO(rc = lyd_diff_metadata_find(node, meta_name, meta_value, 1, &m2), cleanup);
             lyd_free_meta_single(m2);
 
             free(meta_name);
@@ -1747,7 +1749,7 @@ lyd_diff_apply_metadata(struct lyd_node *node, const struct lyd_node *diff_node)
         LY_CHECK_GOTO(rc = lyd_diff_apply_metadata_parse(meta_orig[i], NULL, &old_meta_value), cleanup);
 
         /* find the metadata instance */
-        LY_CHECK_GOTO(rc = lyd_diff_metadata_find(node->meta, meta_name, old_meta_value, 0, &m2), cleanup);
+        LY_CHECK_GOTO(rc = lyd_diff_metadata_find(node, meta_name, old_meta_value, 0, &m2), cleanup);
         LY_CHECK_ERR_GOTO(!m2, LOGINT(LYD_CTX(node)); rc = LY_EINT, cleanup);
 
         /* change its value */
@@ -2743,7 +2745,7 @@ lyd_diff_merge_metadata(const struct lyd_node *src_diff, struct lyd_node *trg_di
 
         if (!strcmp(m->name, "meta-create")) {
             /* find relevant metadata in the target */
-            rc = lyd_diff_metadata_find(trg_diff->meta, "yang:meta-delete", lyd_get_meta_value(m), 0, &m1);
+            rc = lyd_diff_metadata_find(trg_diff, "yang:meta-delete", lyd_get_meta_value(m), 0, &m1);
             LY_CHECK_GOTO(rc, cleanup);
             m2 = NULL;
             for (i = 0; i < trg_mo_count; ++i) {
@@ -2779,7 +2781,7 @@ lyd_diff_merge_metadata(const struct lyd_node *src_diff, struct lyd_node *trg_di
             }
         } else if (!strcmp(m->name, "meta-delete")) {
             /* find relevant metadata in the target */
-            rc = lyd_diff_metadata_find(trg_diff->meta, "yang:meta-create", lyd_get_meta_value(m), 0, &m1);
+            rc = lyd_diff_metadata_find(trg_diff, "yang:meta-create", lyd_get_meta_value(m), 0, &m1);
             LY_CHECK_GOTO(rc, cleanup);
 
             if (m1) {
@@ -2804,7 +2806,7 @@ lyd_diff_merge_metadata(const struct lyd_node *src_diff, struct lyd_node *trg_di
 
     for (i = 0; i < src_mr_count; ++i) {
         /* find relevant metadata in the target */
-        rc = lyd_diff_metadata_find(trg_diff->meta, "yang:meta-delete", lyd_get_meta_value(src_meta_replace[i]), 0, &m1);
+        rc = lyd_diff_metadata_find(trg_diff, "yang:meta-delete", lyd_get_meta_value(src_meta_replace[i]), 0, &m1);
         LY_CHECK_GOTO(rc, cleanup);
         m2 = NULL;
         for (j = 0; j < trg_mo_count; ++j) {
