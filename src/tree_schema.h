@@ -2329,21 +2329,21 @@ LIBYANG_API_DECL LY_ERR lys_set_implemented(struct lys_module *mod, const char *
  * @brief Compare 2 revisions of a module and generate their schema diff. Requires 'ietf-yang-schema-comparison'
  * YANG module to be loaded.
  *
- * If 'parsed-schema' feature is enabled in 'ietf-yang-schema-comparison', parsed-only statements are also compared
- * and changes reported.
+ * Either @p gen_local or @p gen_full must be set, or both.
  *
- * If also ::LY_CTX_SET_PRIV_PARSED options is set for **both** @p src_mod and @p trg_mod contexts, parsed-only
- * substatement changes are reported for compiled nodes (such as their if-features).
+ * If @p gen_local is set, ::LY_CTX_SET_PRIV_PARSED option must be set for **both** @p src_mod and @p trg_mod contexts.
  *
  * @param[in] ctx Context to use for creating the schema diff data tree.
  * @param[in] src_mod Source implemented module to compare.
  * @param[in] trg_mod Target implemented module to compare.
+ * @param[in] gen_local Set if comparison with locally resolved modules should be performed.
+ * @param[in] gen_full Set if comparison with fully resolved schemas should be performed.
  * @param[out] schema_diff Generated schema diff tree.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value on error.
  */
 LIBYANG_API_DECL LY_ERR lys_compare(const struct ly_ctx *ctx, const struct lys_module *src_mod,
-        const struct lys_module *trg_mod, struct lyd_node **schema_diff);
+        const struct lys_module *trg_mod, ly_bool gen_local, ly_bool gen_full, struct lyd_node **schema_diff);
 
 /**
  * @brief Stringify schema nodetype.

@@ -14,7 +14,6 @@
 
 #include <stdlib.h>
 
-#include "libyang.h"
 #include "plugins_exts.h"
 #include "plugins_types.h"
 

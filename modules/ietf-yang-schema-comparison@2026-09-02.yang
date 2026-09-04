@@ -1,12 +1,12 @@
 module ietf-yang-schema-comparison {
   yang-version 1.1;
   namespace "urn:ietf:params:xml:ns:yang:ietf-yang-schema-comparison";
-  prefix schema-cmp;
+  prefix yscmp;
 
   organization
     "IETF NETMOD (Network Modeling) Working Group";
   contact
-    "WG List: NETCONF WG list <mailto:netmod@ietf.org>
+    "WG List: NETMOD WG list <mailto:netmod@ietf.org>
      WG Web:  https://datatracker.ietf.org/wg/netmod
 
      Author:  Michal Vaško
@@ -47,7 +47,7 @@ module ietf-yang-schema-comparison {
   // RFC Ed.: replace XXXX (inc above) with actual RFC number and
   // remove this note.
 
-  revision 2026-05-27 {
+  revision 2026-09-02 {
     description
       "Initial revision.";
     reference

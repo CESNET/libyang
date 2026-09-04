@@ -1,7 +1,7 @@
 /**
  * @file schema_diff.c
  * @author Michal Vasko <mvasko@cesnet.cz>
- * @brief Schema diff functionss
+ * @brief Schema diff functions
  *
  * Copyright (c) 2025 - 2026 CESNET, z.s.p.o.
  *
@@ -347,7 +347,7 @@ static LY_ERR
 schema_diff_find_parsed_ident(const struct lysc_ident *ident, const struct lysp_ident **p_ident)
 {
     const struct lysp_ident *idents;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
     *p_ident = NULL;
 
@@ -358,7 +358,7 @@ schema_diff_find_parsed_ident(const struct lysc_ident *ident, const struct lysp_
 
     /* find the parsed identity in the module */
     idents = ident->module->parsed->identities;
-    LY_ARRAY_FOR(idents, u) {
+    LYA_FOR(idents, u) {
         if (idents[u].name == ident->name) {
             *p_ident = &idents[u];
             break;
@@ -367,9 +367,9 @@ schema_diff_find_parsed_ident(const struct lysc_ident *ident, const struct lysp_
 
     if (!*p_ident) {
         /* find the parsed identity in submodules */
-        LY_ARRAY_FOR(ident->module->parsed->includes, v) {
+        LYA_FOR(ident->module->parsed->includes, v) {
             idents = ident->module->parsed->includes[v].submodule->identities;
-            LY_ARRAY_FOR(idents, u) {
+            LYA_FOR(idents, u) {
                 if (idents[u].name == ident->name) {
                     *p_ident = &idents[u];
                     break;
@@ -439,13 +439,13 @@ schema_diff_module_identity_bases_change(enum lys_diff_changed_e parent_changed,
         struct lys_diff_ident_change_s *ident_change)
 {
     LY_ERR rc = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     int found, added = 0, removed = 0;
 
     /* compare old ident bases to new ones */
-    LY_ARRAY_FOR(ident_change->p_ident_old->bases, u) {
+    LYA_FOR(ident_change->p_ident_old->bases, u) {
         found = 0;
-        LY_ARRAY_FOR(ident_change->p_ident_new->bases, v) {
+        LYA_FOR(ident_change->p_ident_new->bases, v) {
             if (!strcmp(ident_change->p_ident_old->bases[u], ident_change->p_ident_new->bases[v])) {
                 found = 1;
                 break;
@@ -465,9 +465,9 @@ schema_diff_module_identity_bases_change(enum lys_diff_changed_e parent_changed,
     }
 
     /* compare new ident bases to old ones */
-    LY_ARRAY_FOR(ident_change->p_ident_new->bases, v) {
+    LYA_FOR(ident_change->p_ident_new->bases, v) {
         found = 0;
-        LY_ARRAY_FOR(ident_change->p_ident_old->bases, u) {
+        LYA_FOR(ident_change->p_ident_old->bases, u) {
             if (!strcmp(ident_change->p_ident_old->bases[u], ident_change->p_ident_new->bases[v])) {
                 found = 1;
                 break;
@@ -497,15 +497,15 @@ schema_diff_module_identities_change(const struct lysc_ident *idents1, const str
     LY_ERR rc = LY_SUCCESS;
     struct lys_diff_ident_change_s *ident_change;
     ly_bool *ident2_found = NULL, found;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
     /* prepare array for marking found identities */
-    ident2_found = calloc(LY_ARRAY_COUNT(idents2), sizeof *ident2_found);
+    ident2_found = calloc(LYA_COUNT(idents2), sizeof *ident2_found);
     LY_CHECK_ERR_GOTO(!ident2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup);
 
-    LY_ARRAY_FOR(idents1, u) {
+    LYA_FOR(idents1, u) {
         found = 0;
-        LY_ARRAY_FOR(idents2, v) {
+        LYA_FOR(idents2, v) {
             if (ident2_found[v]) {
                 continue;
             }
@@ -528,7 +528,7 @@ schema_diff_module_identities_change(const struct lysc_ident *idents1, const str
             continue;
         }
 
-        if (diff->with_parsed) {
+        if (diff->gen_local) {
             /* if-features */
             LY_CHECK_GOTO(rc = schema_diff_iffeatures_change(ident_change->p_ident_old->iffeatures, 0,
                     ident_change->p_ident_new->iffeatures, LYS_CHANGED_IDENT, &ident_change->changes), cleanup);
@@ -542,7 +542,7 @@ schema_diff_module_identities_change(const struct lysc_ident *idents1, const str
                 diff), cleanup);
     }
 
-    LY_ARRAY_FOR(idents2, v) {
+    LYA_FOR(idents2, v) {
         if (ident2_found[v]) {
             continue;
         }
@@ -721,25 +721,49 @@ schema_diff_update_conform(struct lys_diff_s *diff)
 LY_ERR
 lysc_diff_changes(const struct lys_module *mod1, const struct lys_module *mod2, struct lys_diff_s *diff)
 {
-    if (diff->with_parsed) {
+    LY_ERR rc = LY_SUCCESS;
+    struct lysc_module *mod1c = NULL, *mod2c = NULL;
+    struct lys_glob_unres unres1 = {0}, unres2 = {0};
+
+    if (diff->gen_local) {
         /* parsed module changes */
-        LY_CHECK_RET(schema_diff_pmodule_change(mod1->parsed, mod2->parsed, diff));
+        LY_CHECK_GOTO(rc = schema_diff_pmodule_change(mod1->parsed, mod2->parsed, diff), cleanup);
     }
 
     /* compiled module changes */
-    LY_CHECK_RET(schema_diff_module_change(mod1, mod2, diff));
+    LY_CHECK_GOTO(rc = schema_diff_module_change(mod1, mod2, diff), cleanup);
+
+    if (!diff->gen_full) {
+        assert(diff->gen_local);
+
+        /* use locally resolved compiled modules */
+        LY_CHECK_GOTO(rc = lys_compile((struct lys_module *)mod1, 1, &unres1.ds_unres, &mod1c), cleanup);
+        LY_CHECK_GOTO(rc = lys_compile((struct lys_module *)mod2, 1, &unres2.ds_unres, &mod2c), cleanup);
+
+        /* there are no relevant unresolved items since the module is local only */
+        lys_compile_unres_depset_erase(mod1->ctx, &unres1);
+        lys_compile_unres_depset_erase(mod2->ctx, &unres2);
+    } else {
+        mod1c = mod1->compiled;
+        mod2c = mod2->compiled;
+    }
 
     /* compiled node changes */
-    LY_CHECK_RET(schema_diff_nodes_change_r(mod1->compiled->data, mod2->compiled->data, diff));
-    LY_CHECK_RET(schema_diff_nodes_change_r((const struct lysc_node *)mod1->compiled->rpcs,
-            (const struct lysc_node *)mod2->compiled->rpcs, diff));
-    LY_CHECK_RET(schema_diff_nodes_change_r((const struct lysc_node *)mod1->compiled->notifs,
-            (const struct lysc_node *)mod2->compiled->notifs, diff));
+    LY_CHECK_GOTO(rc = schema_diff_nodes_change_r(mod1c->data, mod2c->data, diff), cleanup);
+    LY_CHECK_GOTO(rc = schema_diff_nodes_change_r((const struct lysc_node *)mod1c->rpcs,
+            (const struct lysc_node *)mod2c->rpcs, diff), cleanup);
+    LY_CHECK_GOTO(rc = schema_diff_nodes_change_r((const struct lysc_node *)mod1c->notifs,
+            (const struct lysc_node *)mod2c->notifs, diff), cleanup);
 
     /* update overall module conformance */
     schema_diff_update_conform(diff);
 
-    return LY_SUCCESS;
+cleanup:
+    if (!diff->gen_full) {
+        lysc_module_free(mod1->ctx, mod1c);
+        lysc_module_free(mod2->ctx, mod2c);
+    }
+    return rc;
 }
 
 /**
@@ -843,6 +867,7 @@ lysc_diff_erase(struct lys_diff_s *diff)
     for (i = 0; i < diff->node_change_count; ++i) {
         free(diff->node_changes[i].changes.changes);
         lysc_diff_erase_ext_changes(&diff->node_changes[i].ext_changes);
+        lysc_diff_erase_pext_changes(&diff->node_changes[i].pext_changes);
     }
     free(diff->node_changes);
 }

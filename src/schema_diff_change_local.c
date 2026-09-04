@@ -1,7 +1,7 @@
 /**
- * @file schema_diff_change_parsed.c
+ * @file schema_diff_change_local.c
  * @author Michal Vasko <mvasko@cesnet.cz>
- * @brief Schema diff change parsed functionss
+ * @brief Schema diff change locally resolved module functions
  *
  * Copyright (c) 2025 - 2026 CESNET, z.s.p.o.
  *
@@ -22,9 +22,6 @@
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
-static LY_ERR schema_diff_ptype_change(const struct lysp_type *type1, const struct lysp_node *ctx_node1,
-        const struct lysp_type *type2, const struct lysp_node *ctx_node2, enum lys_diff_changed_e parent_changed,
-        struct lys_diff_changes_s *changes, struct lys_diff_pext_changes_s *ext_changes, struct lys_diff_s *diff);
 static LY_ERR schema_diff_pnodes_change_r(const struct lysp_node *node1, const struct lysp_node *node2,
         struct lys_diff_s *diff);
 static LY_ERR schema_diff_pext_insts_change(const struct lysp_ext_instance *exts1, const struct lysp_ext_instance *exts2,
@@ -409,11 +406,11 @@ static enum lys_diff_conform_e
 schema_diff_pext_conform(const struct ly_ctx *ctx, const struct lysp_ext_instance *exts, enum ly_stmt parent_stmt,
         enum lys_diff_conform_e default_conform, ly_bool *has_conform_ext)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     ly_bool is_conform_ext;
     enum lys_diff_conform_e conform;
 
-    LY_ARRAY_FOR(exts, u) {
+    LYA_FOR(exts, u) {
         if (parent_stmt && (parent_stmt != exts[u].parent_stmt)) {
             continue;
         }
@@ -438,16 +435,16 @@ schema_diff_iffeatures_change(const struct lysp_qname *iffs1, uint16_t flags1, c
         enum lys_diff_changed_e parent_changed, struct lys_diff_changes_s *changes)
 {
     LY_ERR rc = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     ly_bool found, *iff2_found = NULL;
 
     /* prepare array for marking found if-features */
-    iff2_found = calloc(LY_ARRAY_COUNT(iffs2), sizeof *iff2_found);
+    iff2_found = calloc(LYA_COUNT(iffs2), sizeof *iff2_found);
     LY_CHECK_ERR_GOTO(!iff2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup)
 
-    LY_ARRAY_FOR(iffs1, u) {
+    LYA_FOR(iffs1, u) {
         found = 0;
-        LY_ARRAY_FOR(iffs2, v) {
+        LYA_FOR(iffs2, v) {
             if (iff2_found[v]) {
                 continue;
             }
@@ -467,7 +464,7 @@ schema_diff_iffeatures_change(const struct lysp_qname *iffs1, uint16_t flags1, c
         }
     }
 
-    LY_ARRAY_FOR(iffs2, v) {
+    LYA_FOR(iffs2, v) {
         if (iff2_found[v]) {
             continue;
         }
@@ -627,18 +624,18 @@ schema_diff_parsed_restrs_change(const struct lysp_restr *restrs1, const struct 
         struct lys_diff_pext_changes_s *ext_changes, struct lys_diff_s *diff)
 {
     LY_ERR rc = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     ly_bool found, *restr2_found = NULL;
 
     if (restrs2) {
         /* prepare array for marking found bases */
-        restr2_found = calloc(LY_ARRAY_COUNT(restrs2), sizeof *restr2_found);
+        restr2_found = calloc(LYA_COUNT(restrs2), sizeof *restr2_found);
         LY_CHECK_ERR_GOTO(!restr2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup)
     }
 
-    LY_ARRAY_FOR(restrs1, u) {
+    LYA_FOR(restrs1, u) {
         found = 0;
-        LY_ARRAY_FOR(restrs2, v) {
+        LYA_FOR(restrs2, v) {
             if (restr2_found[v]) {
                 continue;
             }
@@ -673,7 +670,7 @@ schema_diff_parsed_restrs_change(const struct lysp_restr *restrs1, const struct 
                 parent_changed, changes, ext_changes, diff), cleanup);
     }
 
-    LY_ARRAY_FOR(restrs2, v) {
+    LYA_FOR(restrs2, v) {
         if (restr2_found[v]) {
             continue;
         }
@@ -705,16 +702,16 @@ schema_diff_ptype_enums_change(const struct lysp_type_enum *enums1, const struct
         struct lys_diff_s *diff)
 {
     LY_ERR rc = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     ly_bool found, *enum2_found = NULL;
 
     /* prepare array for marking found bases */
-    enum2_found = calloc(LY_ARRAY_COUNT(enums2), sizeof *enum2_found);
+    enum2_found = calloc(LYA_COUNT(enums2), sizeof *enum2_found);
     LY_CHECK_ERR_GOTO(!enum2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup)
 
-    LY_ARRAY_FOR(enums1, u) {
+    LYA_FOR(enums1, u) {
         found = 0;
-        LY_ARRAY_FOR(enums2, v) {
+        LYA_FOR(enums2, v) {
             if (enum2_found[v]) {
                 continue;
             }
@@ -759,7 +756,7 @@ schema_diff_ptype_enums_change(const struct lysp_type_enum *enums1, const struct
         LY_CHECK_GOTO(rc = schema_diff_pext_insts_change(enums1[u].exts, enums2[v].exts, ext_changes, diff), cleanup);
     }
 
-    LY_ARRAY_FOR(enums2, v) {
+    LYA_FOR(enums2, v) {
         if (enum2_found[v]) {
             continue;
         }
@@ -786,16 +783,16 @@ static LY_ERR
 schema_diff_ptype_bases_change(const char **bases1, const char **bases2, struct lys_diff_changes_s *changes)
 {
     LY_ERR rc = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     ly_bool found, *base2_found = NULL;
 
     /* prepare array for marking found bases */
-    base2_found = calloc(LY_ARRAY_COUNT(bases2), sizeof *base2_found);
+    base2_found = calloc(LYA_COUNT(bases2), sizeof *base2_found);
     LY_CHECK_ERR_GOTO(!base2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup)
 
-    LY_ARRAY_FOR(bases1, u) {
+    LYA_FOR(bases1, u) {
         found = 0;
-        LY_ARRAY_FOR(bases2, v) {
+        LYA_FOR(bases2, v) {
             if (base2_found[v]) {
                 continue;
             }
@@ -816,7 +813,7 @@ schema_diff_ptype_bases_change(const char **bases1, const char **bases2, struct 
         }
     }
 
-    LY_ARRAY_FOR(bases2, v) {
+    LYA_FOR(bases2, v) {
         if (base2_found[v]) {
             continue;
         }
@@ -849,19 +846,19 @@ schema_diff_ptypes_change(const struct lysp_type *types1, const struct lysp_node
         struct lys_diff_pext_changes_s *ext_changes, struct lys_diff_s *diff)
 {
     LY_ERR rc = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
-    if (LY_ARRAY_COUNT(types1) > LY_ARRAY_COUNT(types2)) {
+    if (LYA_COUNT(types1) > LYA_COUNT(types2)) {
         /* removed */
         LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_REMOVED, LYS_CHANGED_TYPEDEF, LYS_CHANGED_TYPE,
                 LYS_CONFORM_NBC, changes), cleanup);
-    } else if (LY_ARRAY_COUNT(types1) < LY_ARRAY_COUNT(types2)) {
+    } else if (LYA_COUNT(types1) < LYA_COUNT(types2)) {
         /* added */
         LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, LYS_CHANGED_TYPEDEF, LYS_CHANGED_TYPE,
                 LYS_CONFORM_NBC, changes), cleanup);
     }
 
-    LY_ARRAY_FOR(types1, u) {
+    LYA_FOR(types1, u) {
         if (strcmp(types1[u].name, types2[u].name)) {
             /* modified */
             LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_MODIFIED, LYS_CHANGED_TYPEDEF, LYS_CHANGED_TYPE,
@@ -959,20 +956,7 @@ cleanup:
     return rc;
 }
 
-/**
- * @brief Check changes of a parsed 'type'.
- *
- * @param[in] type1 First type.
- * @param[in] ctx_node1 Context node of @p type1, if any.
- * @param[in] type2 Second type.
- * @param[in] ctx_node2 Context node of @p type2, if any.
- * @param[in] parent_changed Parent statement of the change.
- * @param[in,out] changes Changes to add to.
- * @param[in,out] ext_changes Ext-instance changes to add to.
- * @param[in,out] diff Diff to use.
- * @return LY_ERR value.
- */
-static LY_ERR
+LY_ERR
 schema_diff_ptype_change(const struct lysp_type *type1, const struct lysp_node *ctx_node1, const struct lysp_type *type2,
         const struct lysp_node *ctx_node2, enum lys_diff_changed_e parent_changed, struct lys_diff_changes_s *changes,
         struct lys_diff_pext_changes_s *ext_changes, struct lys_diff_s *diff)
@@ -1052,15 +1036,15 @@ schema_diff_typedefs_change(const struct lysp_tpdf *typedefs1, const struct lysp
     LY_ERR rc = LY_SUCCESS;
     struct lys_diff_typedef_change_s *typedef_change;
     ly_bool *typedef2_found = NULL, found;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
     /* prepare array for marking found typedefs */
-    typedef2_found = calloc(LY_ARRAY_COUNT(typedefs2), sizeof *typedef2_found);
+    typedef2_found = calloc(LYA_COUNT(typedefs2), sizeof *typedef2_found);
     LY_CHECK_ERR_GOTO(!typedef2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup);
 
-    LY_ARRAY_FOR(typedefs1, u) {
+    LYA_FOR(typedefs1, u) {
         found = 0;
-        LY_ARRAY_FOR(typedefs2, v) {
+        LYA_FOR(typedefs2, v) {
             if (typedef2_found[v]) {
                 continue;
             }
@@ -1113,7 +1097,7 @@ schema_diff_typedefs_change(const struct lysp_tpdf *typedefs1, const struct lysp
                 &typedef_change->ext_changes, diff), cleanup);
     }
 
-    LY_ARRAY_FOR(typedefs2, v) {
+    LYA_FOR(typedefs2, v) {
         if (typedef2_found[v]) {
             continue;
         }
@@ -1215,7 +1199,7 @@ schema_diff_parsed_defaults_change(const struct lysp_qname *dflts1, const struct
     } else if (!dflts1) {
         /* added */
         return schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, LYS_CHANGED_DEFAULT, LYS_CONFORM_BC, changes);
-    } else if (LY_ARRAY_COUNT(dflts1) != LY_ARRAY_COUNT(dflts2)) {
+    } else if (LYA_COUNT(dflts1) != LYA_COUNT(dflts2)) {
         /* modified */
         return schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_DEFAULT, LYS_CONFORM_NBC, changes);
     }
@@ -1444,22 +1428,22 @@ schema_diff_parsed_refines_change(const struct lysp_refine *refines1, const stru
 {
     LY_ERR rc = LY_SUCCESS;
     struct lys_diff_refine_change_s *refine_change;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     ly_bool found, *refine2_found = NULL;
     const char *nodeid1, *nodeid2;
     char *buf1 = NULL, *buf2 = NULL;
 
     if (refines2) {
         /* prepare array for marking found refines */
-        refine2_found = calloc(LY_ARRAY_COUNT(refines2), sizeof *refine2_found);
+        refine2_found = calloc(LYA_COUNT(refines2), sizeof *refine2_found);
         LY_CHECK_ERR_GOTO(!refine2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup)
     }
 
-    LY_ARRAY_FOR(refines1, u) {
+    LYA_FOR(refines1, u) {
         nodeid1 = schema_diff_parsed_name_canon(refines1[u].nodeid, LYS_AUGMENT, diff->old_prefix, &buf1);
 
         found = 0;
-        LY_ARRAY_FOR(refines2, v) {
+        LYA_FOR(refines2, v) {
             if (refine2_found[v]) {
                 continue;
             }
@@ -1542,7 +1526,7 @@ schema_diff_parsed_refines_change(const struct lysp_refine *refines1, const stru
                 &refine_change->ext_changes, diff), cleanup);
     }
 
-    LY_ARRAY_FOR(refines2, v) {
+    LYA_FOR(refines2, v) {
         if (refine2_found[v]) {
             continue;
         }
@@ -1754,7 +1738,7 @@ schema_diff_pnode_change_r(const struct lysp_node *node1, const struct lysp_node
     LY_CHECK_GOTO(rc = schema_diff_typedefs_change(lysp_node_typedefs(node1), node1, lysp_node_typedefs(node2), node2,
             LYS_CHANGED_NODE, diff), cleanup);
 
-    if (LYS_DIFF_NODE_PARSED(nodetype)) {
+    if (LYS_DIFF_NODE_LOCAL(nodetype)) {
         /* add new node to changes */
         LY_CHECK_GOTO(rc = schema_diff_add_pnode_change(node1, node2, diff, &pnode_change), cleanup);
 
@@ -1880,15 +1864,15 @@ schema_diff_imports_change(const struct lysp_import *imps1, const struct lysp_im
     LY_ERR rc = LY_SUCCESS;
     struct lys_diff_import_change_s *import_change;
     ly_bool *imp2_found = NULL, found;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
     /* prepare array for marking found identities */
-    imp2_found = calloc(LY_ARRAY_COUNT(imps2), sizeof *imp2_found);
+    imp2_found = calloc(LYA_COUNT(imps2), sizeof *imp2_found);
     LY_CHECK_ERR_GOTO(!imp2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup);
 
-    LY_ARRAY_FOR(imps1, u) {
+    LYA_FOR(imps1, u) {
         found = 0;
-        LY_ARRAY_FOR(imps2, v) {
+        LYA_FOR(imps2, v) {
             if (imp2_found[v]) {
                 continue;
             }
@@ -1930,7 +1914,7 @@ schema_diff_imports_change(const struct lysp_import *imps1, const struct lysp_im
                 diff), cleanup);
     }
 
-    LY_ARRAY_FOR(imps2, v) {
+    LYA_FOR(imps2, v) {
         if (imp2_found[v]) {
             continue;
         }
@@ -1962,19 +1946,19 @@ schema_diff_includes_change(const struct lysp_include *incs1, const struct lysp_
     LY_ERR rc = LY_SUCCESS;
     struct lys_diff_include_change_s *include_change;
     ly_bool *inc2_found = NULL, found;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
     /* prepare array for marking found identities */
-    inc2_found = calloc(LY_ARRAY_COUNT(incs2), sizeof *inc2_found);
+    inc2_found = calloc(LYA_COUNT(incs2), sizeof *inc2_found);
     LY_CHECK_ERR_GOTO(!inc2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup);
 
-    LY_ARRAY_FOR(incs1, u) {
+    LYA_FOR(incs1, u) {
         if (incs1[u].injected) {
             continue;
         }
 
         found = 0;
-        LY_ARRAY_FOR(incs2, v) {
+        LYA_FOR(incs2, v) {
             if (incs2[v].injected || inc2_found[v]) {
                 continue;
             }
@@ -2016,7 +2000,7 @@ schema_diff_includes_change(const struct lysp_include *incs1, const struct lysp_
                 diff), cleanup);
     }
 
-    LY_ARRAY_FOR(incs2, v) {
+    LYA_FOR(incs2, v) {
         if (incs2[v].injected || inc2_found[v]) {
             continue;
         }
@@ -2049,15 +2033,15 @@ schema_diff_extensions_change(const struct lysp_ext *extensions1, const struct l
     LY_ERR rc = LY_SUCCESS;
     struct lys_diff_extension_change_s *extension_change;
     ly_bool *extension2_found = NULL, found;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
     /* prepare array for marking found identities */
-    extension2_found = calloc(LY_ARRAY_COUNT(extensions2), sizeof *extension2_found);
+    extension2_found = calloc(LYA_COUNT(extensions2), sizeof *extension2_found);
     LY_CHECK_ERR_GOTO(!extension2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup);
 
-    LY_ARRAY_FOR(extensions1, u) {
+    LYA_FOR(extensions1, u) {
         found = 0;
-        LY_ARRAY_FOR(extensions2, v) {
+        LYA_FOR(extensions2, v) {
             if (extension2_found[v]) {
                 continue;
             }
@@ -2102,7 +2086,7 @@ schema_diff_extensions_change(const struct lysp_ext *extensions1, const struct l
                 &extension_change->ext_changes, diff), cleanup);
     }
 
-    LY_ARRAY_FOR(extensions2, v) {
+    LYA_FOR(extensions2, v) {
         if (extension2_found[v]) {
             continue;
         }
@@ -2135,15 +2119,15 @@ schema_diff_features_change(const struct lysp_feature *features1, const struct l
     LY_ERR rc = LY_SUCCESS;
     struct lys_diff_feat_change_s *feat_change;
     ly_bool *feature2_found = NULL, found;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
     /* prepare array for marking found identities */
-    feature2_found = calloc(LY_ARRAY_COUNT(features2), sizeof *feature2_found);
+    feature2_found = calloc(LYA_COUNT(features2), sizeof *feature2_found);
     LY_CHECK_ERR_GOTO(!feature2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup);
 
-    LY_ARRAY_FOR(features1, u) {
+    LYA_FOR(features1, u) {
         found = 0;
-        LY_ARRAY_FOR(features2, v) {
+        LYA_FOR(features2, v) {
             if (feature2_found[v]) {
                 continue;
             }
@@ -2188,7 +2172,7 @@ schema_diff_features_change(const struct lysp_feature *features1, const struct l
                 &feat_change->ext_changes, diff), cleanup);
     }
 
-    LY_ARRAY_FOR(features2, v) {
+    LYA_FOR(features2, v) {
         if (feature2_found[v]) {
             continue;
         }
@@ -2228,7 +2212,7 @@ schema_diff_parsed_uniques_change(const struct lysp_qname *uniqs1, const struct 
     } else if (!uniqs1) {
         /* added */
         return schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, LYS_CHANGED_UNIQUE, LYS_CONFORM_NBC, changes);
-    } else if (LY_ARRAY_COUNT(uniqs1) != LY_ARRAY_COUNT(uniqs2)) {
+    } else if (LYA_COUNT(uniqs1) != LYA_COUNT(uniqs2)) {
         /* modified */
         return schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_UNIQUE, LYS_CONFORM_NBC, changes);
     }
@@ -2343,13 +2327,13 @@ schema_diff_deviates_change(const struct lysp_deviate *deviates1, const struct l
         struct lys_diff_changes_s *changes, struct lys_diff_pext_changes_s *ext_changes, struct lys_diff_s *diff)
 {
     LY_ERR rc = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE v;
+    LYA_COUNT_T v;
     ly_bool found, *deviate2_found = NULL;
     const struct lysp_deviate *iter1, *iter2;
 
     if (deviates2) {
         /* prepare array for marking found deviates */
-        deviate2_found = calloc(LY_ARRAY_COUNT(deviates2), sizeof *deviate2_found);
+        deviate2_found = calloc(LYA_COUNT(deviates2), sizeof *deviate2_found);
         LY_CHECK_ERR_GOTO(!deviate2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup)
     }
 
@@ -2409,15 +2393,15 @@ schema_diff_deviations_change(const struct lysp_deviation *deviations1, const st
     LY_ERR rc = LY_SUCCESS;
     struct lys_diff_dev_change_s *dev_change;
     ly_bool *deviation2_found = NULL, found;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
     /* prepare array for marking found identities */
-    deviation2_found = calloc(LY_ARRAY_COUNT(deviations2), sizeof *deviation2_found);
+    deviation2_found = calloc(LYA_COUNT(deviations2), sizeof *deviation2_found);
     LY_CHECK_ERR_GOTO(!deviation2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup);
 
-    LY_ARRAY_FOR(deviations1, u) {
+    LYA_FOR(deviations1, u) {
         found = 0;
-        LY_ARRAY_FOR(deviations2, v) {
+        LYA_FOR(deviations2, v) {
             if (deviation2_found[v]) {
                 continue;
             }
@@ -2458,7 +2442,7 @@ schema_diff_deviations_change(const struct lysp_deviation *deviations1, const st
                 &dev_change->ext_changes, diff), cleanup);
     }
 
-    LY_ARRAY_FOR(deviations2, v) {
+    LYA_FOR(deviations2, v) {
         if (deviation2_found[v]) {
             continue;
         }
@@ -2494,26 +2478,26 @@ schema_diff_pext_inst_substmts_change(const struct lysp_ext_substmt *substmts1, 
 {
     LY_ERR rc = LY_SUCCESS;
     const struct lysp_ext_substmt **substmts2_array = NULL;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     ly_bool found, siblings_checked = 0;
 
     /* collect all the compiled substatements2 to remove from */
-    substmts2_array = calloc(LY_ARRAY_COUNT(substmts2), sizeof *substmts2_array);
+    substmts2_array = calloc(LYA_COUNT(substmts2), sizeof *substmts2_array);
     LY_CHECK_ERR_GOTO(!substmts2_array, LOGMEM(NULL); rc = LY_EMEM, cleanup);
-    LY_ARRAY_FOR(substmts2, v) {
+    LYA_FOR(substmts2, v) {
         if (substmts2[v].storage_p) {
             substmts2_array[v] = &substmts2[v];
         }
     }
 
-    LY_ARRAY_FOR(substmts1, u) {
+    LYA_FOR(substmts1, u) {
         if (!substmts1[u].storage_p) {
             /* not parsed */
             continue;
         }
 
         found = 0;
-        for (v = 0; v < LY_ARRAY_COUNT(substmts2); ++v) {
+        for (v = 0; v < LYA_COUNT(substmts2); ++v) {
             if (!substmts2_array[v]) {
                 continue;
             }
@@ -2700,7 +2684,7 @@ schema_diff_pext_inst_substmts_change(const struct lysp_ext_substmt *substmts1, 
         }
     }
 
-    for (v = 0; v < LY_ARRAY_COUNT(substmts2); ++v) {
+    for (v = 0; v < LYA_COUNT(substmts2); ++v) {
         if (!substmts2_array[v]) {
             continue;
         }
@@ -2766,14 +2750,14 @@ schema_diff_pext_insts_change(const struct lysp_ext_instance *exts1, const struc
     enum lys_diff_changed_e parent_changed;
     enum lys_diff_conform_e conform;
     struct lys_diff_pext_change_s *ext_change;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     uint32_t i;
 
     /* prepare array for marking found exts */
-    exts2_found = calloc(LY_ARRAY_COUNT(exts2), sizeof *exts2_found);
+    exts2_found = calloc(LYA_COUNT(exts2), sizeof *exts2_found);
     LY_CHECK_ERR_GOTO(!exts2_found, LOGMEM(NULL); rc = LY_SUCCESS, cleanup);
 
-    LY_ARRAY_FOR(exts1, u) {
+    LYA_FOR(exts1, u) {
         schema_diff_is_pext_conform(diff->ctx, &exts1[u], 0, &conform_ext);
         if (conform_ext) {
             /* skip */
@@ -2781,7 +2765,7 @@ schema_diff_pext_insts_change(const struct lysp_ext_instance *exts1, const struc
         }
 
         found = 0;
-        LY_ARRAY_FOR(exts2, v) {
+        LYA_FOR(exts2, v) {
             schema_diff_is_pext_conform(diff->ctx, &exts2[v], 0, &conform_ext);
             if (conform_ext) {
                 /* skip */
@@ -2826,7 +2810,7 @@ schema_diff_pext_insts_change(const struct lysp_ext_instance *exts1, const struc
         LY_CHECK_GOTO(rc = schema_diff_pext_insts_change(exts1[u].exts, exts2[v].exts, ext_changes, diff), cleanup);
     }
 
-    LY_ARRAY_FOR(exts2, v) {
+    LYA_FOR(exts2, v) {
         schema_diff_is_pext_conform(diff->ctx, &exts2[v], 0, &conform_ext);
         if (conform_ext || exts2_found[v]) {
             continue;

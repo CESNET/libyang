@@ -403,7 +403,7 @@ lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *exp
 {
     uint32_t i;
     const char *ptr, *start, **imp_f, *all_f[] = {"*", NULL};
-    const struct lys_module *mod;
+    struct lys_module *mod;
 
     assert(implement || mod_p);
 
@@ -423,7 +423,7 @@ lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *exp
             continue;
         }
 
-        if (!(mod = ly_resolve_prefix(ctx, start, ptr - start, format, prefix_data))) {
+        if (!(mod = (struct lys_module *)ly_resolve_prefix(ctx, start, ptr - start, format, prefix_data))) {
             /* unknown prefix, do not care right now */
             continue;
         }
@@ -438,11 +438,11 @@ lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *exp
         if (!mod->implemented) {
             /* implement if not implemented */
             imp_f = (ctx->opts & LY_CTX_ENABLE_IMP_FEATURES) ? all_f : NULL;
-            LY_CHECK_RET(lys_implement((struct lys_module *)mod, imp_f, unres));
+            LY_CHECK_RET(lys_implement(mod, imp_f, unres));
         }
         if (!mod->compiled) {
             /* compile if not implemented before or only marked for compilation */
-            LY_CHECK_RET(lys_compile((struct lys_module *)mod, &unres->ds_unres));
+            LY_CHECK_RET(lys_compile(mod, 0, &unres->ds_unres, &mod->compiled));
         }
     }
 
@@ -1505,13 +1505,7 @@ cleanup:
     return ret;
 }
 
-/**
- * @brief Erase dep set unres.
- *
- * @param[in] ctx libyang context.
- * @param[in] unres Global unres structure with the sets to resolve.
- */
-static void
+void
 lys_compile_unres_depset_erase(const struct ly_ctx *ctx, struct lys_glob_unres *unres)
 {
     uint32_t i;
@@ -1559,7 +1553,7 @@ lys_compile_depset_r(struct ly_ctx *ctx, struct ly_set *dep_set, struct lys_glob
         mod->compiled = NULL;
 
         /* (re)compile the module */
-        LY_CHECK_GOTO(ret = lys_compile(mod, &unres->ds_unres), cleanup);
+        LY_CHECK_GOTO(ret = lys_compile(mod, 0, &unres->ds_unres, &mod->compiled), cleanup);
     }
 
 resolve_unres:
@@ -1581,7 +1575,7 @@ resolve_unres:
 
         if (mod->to_compile && !mod->compiled) {
             /* new module is implemented but does not require recompilation of the whole dep set */
-            LY_CHECK_GOTO(ret = lys_compile(mod, &unres->ds_unres), cleanup);
+            LY_CHECK_GOTO(ret = lys_compile(mod, 0, &unres->ds_unres, &mod->compiled), cleanup);
             goto resolve_unres;
         }
 
@@ -1733,11 +1727,12 @@ lys_compile_unres_mod_erase(struct lysc_ctx *ctx, ly_bool error)
 /**
  * @brief Compile (copy) all enabled features of a parsed module.
  *
- * @param[in] mod Module with the parsed and compiled module.
+ * @param[in] mod Module with the parsed module.
+ * @param[in,out] mod_c Compiled module to modify.
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_enabled_features(struct lys_module *mod)
+lys_compile_enabled_features(const struct lys_module *mod, struct lysc_module *mod_c)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lysp_feature *f = NULL;
@@ -1747,14 +1742,14 @@ lys_compile_enabled_features(struct lys_module *mod)
     /* copy enabled features */
     while ((f = lysp_feature_next(f, mod->parsed, &idx))) {
         if (f->flags & LYS_FENABLED) {
-            LYA_ADD_ITEM(mod->compiled->features, feat_p, LOGMEM(mod->ctx); rc = LY_EMEM; goto cleanup);
+            LYA_ADD_ITEM(mod_c->features, feat_p, LOGMEM(mod->ctx); rc = LY_EMEM; goto cleanup);
             LY_CHECK_GOTO(rc = lysdict_dup(mod->ctx, f->name, feat_p), cleanup);
         }
     }
 
     /* last NULL feature */
-    LYA_ADD_ITEM(mod->compiled->features, feat_p, LOGMEM(mod->ctx); rc = LY_EMEM; goto cleanup);
-    LYA_DECREMENT(mod->compiled->features);
+    LYA_ADD_ITEM(mod_c->features, feat_p, LOGMEM(mod->ctx); rc = LY_EMEM; goto cleanup);
+    LYA_DECREMENT(mod_c->features);
 
 cleanup:
     return rc;
@@ -1774,23 +1769,23 @@ static LY_ERR
 lys_compile_parsed_only_exts(struct lysc_ctx *ctx, const struct lysp_ext_instance *exts_p, void *parent,
         enum ly_stmt parent_stmt, struct lysc_ext_instance **exts)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lyplg_ext *ext_plg;
     struct lysc_ext *ext_def;
     struct lysc_ext_instance *ext;
     LY_ERR r;
 
-    LY_ARRAY_FOR(exts_p, u) {
+    LYA_FOR(exts_p, u) {
         /* find the compiled extension definition and its plugin */
         LY_CHECK_RET(lysc_ext_find_definition(ctx->ctx, &exts_p[u], &ext_def));
         ext_plg = LYSC_GET_EXT_PLG(ext_def->plugin_ref);
 
         /* compile this extension if it has the callback */
         if (ext_plg && ext_plg->compile) {
-            LY_ARRAY_NEW_RET(ctx->ctx, *exts, ext, LY_EMEM);
+            LYA_ADD_ITEM(*exts, ext, LOGMEM(ctx->ctx); return LY_EMEM);
             r = lys_compile_ext(ctx, &exts_p[u], ext, parent);
             if (r == LY_ENOT) {
-                LY_ARRAY_DECREMENT(*exts);
+                LYA_DECREMENT(*exts);
                 continue;
             } else if (r) {
                 return r;
@@ -1817,35 +1812,35 @@ lys_compile_parsed_only_exts(struct lysc_ctx *ctx, const struct lysp_ext_instanc
 static LY_ERR
 lys_compile_parsed_only_ext(struct lysc_ctx *ctx, const struct lysp_module *mod_p, struct lysc_module *mod_c)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     /* revision */
-    LY_ARRAY_FOR(mod_p->revs, u) {
+    LYA_FOR(mod_p->revs, u) {
         LY_CHECK_RET(lys_compile_parsed_only_exts(ctx, mod_p->revs[u].exts, mod_p->mod, LY_STMT_MODULE, &mod_c->exts));
     }
 
     /* import */
-    LY_ARRAY_FOR(mod_p->imports, u) {
+    LYA_FOR(mod_p->imports, u) {
         LY_CHECK_RET(lys_compile_parsed_only_exts(ctx, mod_p->imports[u].exts, mod_p->mod, LY_STMT_MODULE, &mod_c->exts));
     }
 
     /* include */
-    LY_ARRAY_FOR(mod_p->includes, u) {
+    LYA_FOR(mod_p->includes, u) {
         LY_CHECK_RET(lys_compile_parsed_only_exts(ctx, mod_p->includes[u].exts, mod_p->mod, LY_STMT_MODULE, &mod_c->exts));
     }
 
     /* feature */
-    LY_ARRAY_FOR(mod_p->features, u) {
+    LYA_FOR(mod_p->features, u) {
         LY_CHECK_RET(lys_compile_parsed_only_exts(ctx, mod_p->features[u].exts, mod_p->mod, LY_STMT_MODULE, &mod_c->exts));
     }
 
     /* typedef */
-    LY_ARRAY_FOR(mod_p->typedefs, u) {
+    LYA_FOR(mod_p->typedefs, u) {
         LY_CHECK_RET(lys_compile_parsed_only_exts(ctx, mod_p->typedefs[u].exts, mod_p->mod, LY_STMT_MODULE, &mod_c->exts));
     }
 
     /* deviation */
-    LY_ARRAY_FOR(mod_p->deviations, u) {
+    LYA_FOR(mod_p->deviations, u) {
         LY_CHECK_RET(lys_compile_parsed_only_exts(ctx, mod_p->deviations[u].exts, mod_p->mod, LY_STMT_MODULE, &mod_c->exts));
     }
 
@@ -1853,10 +1848,9 @@ lys_compile_parsed_only_ext(struct lysc_ctx *ctx, const struct lysp_module *mod_
 }
 
 LY_ERR
-lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
+lys_compile(struct lys_module *mod, ly_bool local_only, struct lys_depset_unres *unres, struct lysc_module **mod_c)
 {
     struct lysc_ctx ctx = {0};
-    struct lysc_module *mod_c = NULL;
     struct lysp_module *sp;
     struct lysp_submodule *submod;
     struct lysp_node *pnode;
@@ -1864,20 +1858,23 @@ lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
     LYA_COUNT_T u;
     LY_ERR ret = LY_SUCCESS;
 
-    LY_CHECK_ARG_RET(NULL, mod, mod->parsed, !mod->compiled, mod->ctx, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, mod, mod->parsed, mod_c, !*mod_c, mod->ctx, LY_EINVAL);
 
-    assert(mod->implemented && mod->to_compile);
+    assert((mod->implemented && mod->to_compile) || local_only);
 
     sp = mod->parsed;
     LYSC_CTX_INIT_PMOD(ctx, sp, NULL);
     ctx.unres = unres;
+    if (local_only) {
+        ctx.compile_opts |= LYS_COMPILE_LOCAL_ONLY;
+    }
 
-    mod->compiled = mod_c = calloc(1, sizeof *mod_c);
-    LY_CHECK_ERR_RET(!mod_c, LOGMEM(mod->ctx), LY_EMEM);
-    mod_c->mod = mod;
+    ctx.cmod = *mod_c = calloc(1, sizeof **mod_c);
+    LY_CHECK_ERR_RET(!*mod_c, LOGMEM(mod->ctx), LY_EMEM);
+    (*mod_c)->mod = mod;
 
     /* copy the enabled features */
-    LY_CHECK_GOTO(ret = lys_compile_enabled_features(mod), cleanup);
+    LY_CHECK_GOTO(ret = lys_compile_enabled_features(mod, *mod_c), cleanup);
 
     /* compile augments and deviations of our module from other modules so they can be applied during compilation */
     LY_CHECK_GOTO(ret = lys_precompile_own_augments(&ctx), cleanup);
@@ -1899,10 +1896,10 @@ lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
     }
 
     /* module extension instances */
-    COMPILE_EXTS_GOTO(&ctx, sp->exts, mod_c->exts, mod_c, ret, cleanup);
+    COMPILE_EXTS_GOTO(&ctx, sp->exts, (*mod_c)->exts, *mod_c, ret, cleanup);
 
     /* parsed-only statements extension instances with compile callback */
-    LY_CHECK_GOTO(ret = lys_compile_parsed_only_ext(&ctx, sp, mod_c), cleanup);
+    LY_CHECK_GOTO(ret = lys_compile_parsed_only_ext(&ctx, sp, *mod_c), cleanup);
 
     /* the same for submodules */
     LYA_FOR(sp->includes, u) {
@@ -1924,7 +1921,7 @@ lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
             LY_CHECK_GOTO(ret, cleanup);
         }
 
-        COMPILE_EXTS_GOTO(&ctx, submod->exts, mod_c->exts, mod_c, ret, cleanup);
+        COMPILE_EXTS_GOTO(&ctx, submod->exts, (*mod_c)->exts, *mod_c, ret, cleanup);
     }
     ctx.pmod = sp;
 
@@ -1973,8 +1970,8 @@ lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
 cleanup:
     lys_compile_unres_mod_erase(&ctx, ret);
     if (ret) {
-        lysc_module_free(ctx.ctx, mod_c);
-        mod->compiled = NULL;
+        lysc_module_free(ctx.ctx, *mod_c);
+        *mod_c = NULL;
     }
     return ret;
 }

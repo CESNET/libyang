@@ -22,10 +22,10 @@
 #include <string.h>
 
 #include "compat.h"
-#include "libyang.h"
-#include "ly_common.h"
+#include "ly_array.h"
+#include "parser_internal.h"
 #include "plugins_exts.h"
-#include "plugins_internal.h"
+#include "plugins_types.h"
 #include "tree_schema_internal.h"
 
 struct lyplg_ext_semver_item {
@@ -38,7 +38,7 @@ struct lyplg_ext_semver_item {
 LIBYANG_API_DEF const struct lys_ext_instance_semver *
 lys_semver_get(const struct lys_module *mod, const char **semver_str)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     const struct lysc_ext_instance *ext;
 
     if (semver_str) {
@@ -51,7 +51,7 @@ lys_semver_get(const struct lys_module *mod, const char **semver_str)
 
     if (mod->compiled) {
         /* find the compiled extension, if any */
-        LY_ARRAY_FOR(mod->compiled->exts, u) {
+        LYA_FOR(mod->compiled->exts, u) {
             ext = &mod->compiled->exts[u];
 
             if (ext->def && !strcmp(ext->def->module->name, "ietf-yang-semver") && !strcmp(ext->def->name, "version")) {
@@ -73,7 +73,7 @@ lys_semver_get(const struct lys_module *mod, const char **semver_str)
 LIBYANG_API_DEF const struct lys_ext_instance_semver *
 lysp_semver_get(const struct lysp_module *pmod, const char **semver_str)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     const struct lysp_revision *rev;
     const struct lysp_ext_instance *extp;
     const char *mod_name, *name;
@@ -88,7 +88,7 @@ lysp_semver_get(const struct lysp_module *pmod, const char **semver_str)
 
     /* find the last revision */
     rev = NULL;
-    LY_ARRAY_FOR(pmod->revs, u) {
+    LYA_FOR(pmod->revs, u) {
         if (rev && (strcmp(pmod->revs[u].date, rev->date) < 0)) {
             continue;
         }
@@ -97,7 +97,7 @@ lysp_semver_get(const struct lysp_module *pmod, const char **semver_str)
     }
 
     /* find the version extension instance */
-    LY_ARRAY_FOR(rev->exts, u) {
+    LYA_FOR(rev->exts, u) {
         extp = &rev->exts[u];
         lysp_nodeid_find_module(pmod->mod->ctx, extp->name, extp->format, extp->prefix_data, &mod_name, &name);
 
@@ -326,11 +326,11 @@ lyplg_ext_semver_free(struct lys_ext_instance_semver *semver)
 static ly_bool
 semver_has_nbc_ext(const struct ly_ctx *ctx, const struct lysp_revision *rev)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     const struct lysp_ext_instance *extp;
     const char *mod_name, *name;
 
-    LY_ARRAY_FOR(rev->exts, u) {
+    LYA_FOR(rev->exts, u) {
         extp = &rev->exts[u];
         lysp_nodeid_find_module(ctx, extp->name, extp->format, extp->prefix_data, &mod_name, &name);
 
@@ -441,13 +441,13 @@ semver_check_prev(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     struct lyplg_ext_semver_item *semvers = NULL;
     const char *mod_name, *name;
     uint32_t semver_count = 0;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     LY_ERR rc = LY_SUCCESS;
     ly_bool has_nbc_ext;
 
     /* collect all the versions */
     pmod = PARSER_CUR_PMOD(pctx);
-    LY_ARRAY_FOR(pmod->revs, u) {
+    LYA_FOR(pmod->revs, u) {
         rev = &pmod->revs[u];
         if (ext->parent == rev) {
             /* skip this revision */
@@ -456,7 +456,7 @@ semver_check_prev(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 
         extp_ver = NULL;
         has_nbc_ext = 0;
-        LY_ARRAY_FOR(rev->exts, v) {
+        LYA_FOR(rev->exts, v) {
             extp = &rev->exts[v];
             lysp_nodeid_find_module(PARSER_CTX(pctx), extp->name, extp->format, extp->prefix_data, &mod_name, &name);
 
@@ -510,7 +510,7 @@ static LY_ERR
 version_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 {
     const struct lysp_revision *rev;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     /* check that the extension is instantiated at an allowed place - revision */
     if (ext->parent_stmt != LY_STMT_REVISION) {
@@ -529,7 +529,7 @@ version_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 
     /* check for duplication */
     rev = ext->parent;
-    LY_ARRAY_FOR(rev->exts, u) {
+    LYA_FOR(rev->exts, u) {
         if ((&rev->exts[u] != ext) && (rev->exts[u].name == ext->name)) {
             lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EVALID, "Extension %s is instantiated multiple times.", ext->name);
             return LY_EVALID;
@@ -631,7 +631,7 @@ static LY_ERR
 min_version_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 {
     struct lysp_import *imp;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     /* check that the extension is instantiated at an allowed place - import */
     if (ext->parent_stmt != LY_STMT_IMPORT) {
@@ -650,7 +650,7 @@ min_version_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 
     /* check for duplication */
     imp = ext->parent;
-    LY_ARRAY_FOR(imp->exts, u) {
+    LYA_FOR(imp->exts, u) {
         if ((&imp->exts[u] != ext) && (imp->exts[u].name == ext->name)) {
             lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EVALID, "Extension %s is instantiated multiple times.", ext->name);
             return LY_EVALID;

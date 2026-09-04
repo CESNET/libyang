@@ -21,11 +21,11 @@
 #include "ly_common.h"
 
 /**
- * @brief Check a node type for a prased-only node.
+ * @brief Check a node type for a node of a locally resolved module.
  *
  * @param[in] nodetype Node type to check.
  */
-#define LYS_DIFF_NODE_PARSED(nodetype) ((nodetype) & (LYS_CHOICE | LYS_CASE | LYS_USES | LYS_INPUT | LYS_OUTPUT | LYS_GROUPING | LYS_AUGMENT))
+#define LYS_DIFF_NODE_LOCAL(nodetype) ((nodetype) & (LYS_CHOICE | LYS_CASE | LYS_USES | LYS_INPUT | LYS_OUTPUT | LYS_GROUPING | LYS_AUGMENT))
 
 /**
  * @brief Type of a schema change.
@@ -252,10 +252,11 @@ struct lys_diff_pnode_change_s {
  * @brief Structure for a node schema change.
  */
 struct lys_diff_node_change_s {
-    const struct lysc_node *snode_old;          /**< schema node from the old revision of the YANG module */
-    const struct lysc_node *snode_new;          /**< schema node from the new revision of the YANG module */
-    struct lys_diff_changes_s changes;          /**< changes in the old and new schema node, may be empty */
-    struct lys_diff_ext_changes_s ext_changes;  /**< extension-instance changes */
+    const struct lysc_node *snode_old;              /**< schema node from the old revision of the YANG module */
+    const struct lysc_node *snode_new;              /**< schema node from the new revision of the YANG module */
+    struct lys_diff_changes_s changes;              /**< changes in the old and new schema node, may be empty */
+    struct lys_diff_ext_changes_s ext_changes;      /**< extension-instance changes */
+    struct lys_diff_pext_changes_s pext_changes;    /**< parsed extension-instance changes */
 };
 
 /**
@@ -287,8 +288,8 @@ struct lys_diff_s {
     const char *old_prefix;                         /**< old module local prefix */
     const char *new_prefix;                         /**< new module local prefix */
     ly_bool is_yang10;                              /**< marks using YANG 1.0 update rules */
-    ly_bool with_parsed;                            /**< marks generating diff for parsed schema in addition to compiled */
-    ly_bool with_priv_parsed;                       /**< marks compiled nodes having references to parsed nodes */
+    ly_bool gen_local;                              /**< marks generating diff for locally resolved module */
+    ly_bool gen_full;                               /**< marks generating diff for fully resolved module */
     enum lys_diff_conform_e conform;                /**< conformance of the whole diff */
     const struct ly_ctx *ctx;                       /**< context to use */
 };
@@ -454,6 +455,23 @@ LY_ERR schema_diff_nodes_change_r(const struct lysc_node *node1, const struct ly
  */
 LY_ERR schema_diff_iffeatures_change(const struct lysp_qname *iffs1, uint16_t flags1, const struct lysp_qname *iffs2,
         enum lys_diff_changed_e parent_changed, struct lys_diff_changes_s *changes);
+
+/**
+ * @brief Check changes of a parsed 'type'.
+ *
+ * @param[in] type1 First type.
+ * @param[in] ctx_node1 Context node of @p type1, if any.
+ * @param[in] type2 Second type.
+ * @param[in] ctx_node2 Context node of @p type2, if any.
+ * @param[in] parent_changed Parent statement of the change.
+ * @param[in,out] changes Changes to add to.
+ * @param[in,out] ext_changes Ext-instance changes to add to.
+ * @param[in,out] diff Diff to use.
+ * @return LY_ERR value.
+ */
+LY_ERR schema_diff_ptype_change(const struct lysp_type *type1, const struct lysp_node *ctx_node1,
+        const struct lysp_type *type2, const struct lysp_node *ctx_node2, enum lys_diff_changed_e parent_changed,
+        struct lys_diff_changes_s *changes, struct lys_diff_pext_changes_s *ext_changes, struct lys_diff_s *diff);
 
 /**
  * @brief Check changes of parsed modules.

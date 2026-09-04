@@ -43,6 +43,7 @@ struct lysc_ctx {
                                      - augment - module where the augment is defined
                                      - deviation - module where the deviation is defined
                                      - uses - module where the grouping is defined */
+    struct lysc_module *cmod;   /**< compiled module structure to fill */
     struct lysc_ext_instance *ext; /**< extension instance being processed and serving as a source for its substatements
                                      instead of the module itself */
     struct ly_set groupings;    /**< stack for groupings circular check */
@@ -79,6 +80,7 @@ struct lysc_ctx {
     (CCTX).ctx = (PMOD)->mod->ctx; \
     (CCTX).cur_mod = (PMOD)->mod; \
     (CCTX).pmod = (PMOD); \
+    (CCTX).cmod = (PMOD)->mod->compiled; \
     (CCTX).ext = (EXT);
 
 /**
@@ -316,11 +318,14 @@ LY_ERR lys_compile_extensions(struct lys_module *mod);
  *
  * @param[in] mod Pointer to the schema structure holding pointers to both schema structure types. The ::lys_module#parsed
  * member is used as input and ::lys_module#compiled is used to hold the result of the compilation.
+ * @param[in] local_only Whether to resolve only the local statements in the module. If set, foreign uses are not
+ * resolved and term nodes referencing foreign typedefs have type set to NULL.
  * @param[in,out] unres Dep set unres structure to add to.
+ * @param[out] mod_c Compiled module.
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
-LY_ERR lys_compile(struct lys_module *mod, struct lys_depset_unres *unres);
+LY_ERR lys_compile(struct lys_module *mod, ly_bool local_only, struct lys_depset_unres *unres, struct lysc_module **mod_c);
 
 /**
  * @brief Check statement's status for invalid combination.
@@ -359,6 +364,14 @@ LY_ERR lysc_check_status(struct lysc_ctx *ctx, const struct lysc_node *snode, ui
  */
 LY_ERR lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *expr, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool implement, struct lys_glob_unres *unres, const struct lys_module **mod_p);
+
+/**
+ * @brief Erase dep set unres.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] unres Global unres structure with the sets to erase.
+ */
+void lys_compile_unres_depset_erase(const struct ly_ctx *ctx, struct lys_glob_unres *unres);
 
 /**
  * @brief Compile all flagged modules in a dependency set, recursively if recompilation is needed.

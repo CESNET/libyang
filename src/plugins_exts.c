@@ -292,15 +292,19 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, void **parsed_p, struct lysc
         uint16_t flags;
         const char *units;
         const struct lysp_type *ptype = *parsed_p;
+        struct lysc_type **ctype_p;
 
         /* read compiled info */
         lyplg_ext_get_storage(ext, LY_STMT_STATUS, sizeof flags, (const void **)&flags);
         lyplg_ext_get_storage(ext, LY_STMT_UNITS, sizeof units, (const void **)&units);
 
         /* compile */
-        rc = lys_compile_type(ctx, NULL, flags, ext->def->name, ptype, (struct lysc_type **)substmt->storage_p, &units, NULL);
+        ctype_p = (struct lysc_type **)substmt->storage_p;
+        rc = lys_compile_type(ctx, NULL, flags, ext->def->name, ptype, ctype_p, &units, NULL);
         LY_CHECK_GOTO(rc, cleanup);
-        LY_ATOMIC_INC_BARRIER((*(struct lysc_type **)substmt->storage_p)->refcount);
+        if (*ctype_p) {
+            LY_ATOMIC_INC_BARRIER((*ctype_p)->refcount);
+        }
         break;
     }
     case LY_STMT_EXTENSION_INSTANCE: {

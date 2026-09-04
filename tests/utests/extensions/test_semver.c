@@ -75,7 +75,7 @@ test_version(void **state)
     CHECK_LOG_CTX("Ext plugin \"ly2 semver\": Duplicate version \"1.1.0\" revision 2026-01-02 and "
             "\"1.1.0_non_compatible\" revision 2026-01-03.",
             "/rev2:{revision='2026-01-02'}/{ext-inst='ysv:version'}/1.1.0", 0);
-    CHECK_LOG_CTX("Older revision 2026-01-03 found after a newer revision 2026-01-04 in module \"rev2\".", NULL, 0);
+    CHECK_LOG_CTX("Older revision 2026-01-03 found before a newer revision 2026-01-04 in module \"rev2\".", NULL, 0);
 
     /* not a higher patch version */
     yang = "module rev2 {namespace urn:rev2; prefix r2;"
@@ -121,7 +121,7 @@ test_version(void **state)
     CHECK_LOG_CTX("Ext plugin \"ly2 semver\": Invalid compat change in version \"1.0.2_compatible\" revision 2026-04-01 "
             "compared to \"1.0.1_non_compatible\" revision 2026-02-01.",
             "/rev2:{revision='2026-04-01'}/{ext-inst='ysv:version'}/1.0.2_compatible", 0);
-    CHECK_LOG_CTX("Older revision 2026-02-01 found after a newer revision 2026-04-01 in module \"rev2\".", NULL, 0);
+    CHECK_LOG_CTX("Older revision 2026-02-01 found before a newer revision 2026-04-01 in module \"rev2\".", NULL, 0);
 
     /* NBC ext missing MAJOR version increase #1 */
     yang = "module rev2 {namespace urn:rev2; prefix r2;"
@@ -150,7 +150,7 @@ test_version(void **state)
     CHECK_LOG_CTX("Ext plugin \"ly2 semver\": Missing new major version with NBC changes in \"1.1.1\" revision 2026-04-01 "
             "compared to \"1.1.0\" revision 2026-03-01.",
             "/rev2:{revision='2026-04-01'}/{ext-inst='ysv:version'}/1.1.1", 0);
-    CHECK_LOG_CTX("Older revision 2026-03-01 found after a newer revision 2026-04-01 in module \"rev2\".", NULL, 0);
+    CHECK_LOG_CTX("Older revision 2026-03-01 found before a newer revision 2026-04-01 in module \"rev2\".", NULL, 0);
 }
 
 static void

@@ -47,7 +47,6 @@ setup_f(void **state)
 {
     struct sc_state *st;
     struct ly_in *in;
-    const char *feats[] = {"parsed-schema", NULL};
 
     st = calloc(1, sizeof *st);
     *state = st;
@@ -61,15 +60,15 @@ setup_f(void **state)
     }
 
     /* load ietf-schema-comparison into both contexts, the module is imported */
-    if (ly_in_new_filepath(TESTS_SRC "/../modules/ietf-yang-schema-comparison-output@2026-05-27.yang", 0, &in)) {
+    if (ly_in_new_filepath(TESTS_SRC "/../modules/ietf-yang-schema-comparison-output@2026-09-02.yang", 0, &in)) {
         return 1;
     }
-    if (lys_parse(st->ctx1, in, LYS_IN_YANG, feats, NULL)) {
+    if (lys_parse(st->ctx1, in, LYS_IN_YANG, NULL, NULL)) {
         return 1;
     }
 
     ly_in_reset(in);
-    if (lys_parse(st->ctx2, in, LYS_IN_YANG, feats, NULL)) {
+    if (lys_parse(st->ctx2, in, LYS_IN_YANG, NULL, NULL)) {
         return 1;
     }
     ly_in_free(in, 0);
@@ -119,7 +118,7 @@ schema_comparison(struct sc_state *st, const char *module_name)
     assert_non_null(trg_mod);
 
     /* get and print the comparison data */
-    assert_int_equal(LY_SUCCESS, lys_compare(st->ctx1, src_mod, trg_mod, &st->sc_data));
+    assert_int_equal(LY_SUCCESS, lys_compare(st->ctx1, src_mod, trg_mod, 1, 1, &st->sc_data));
     assert_int_equal(LY_SUCCESS, lyd_print_mem(&st->str, st->sc_data, LYD_JSON, 0));
 
     /* open file with the expected output */

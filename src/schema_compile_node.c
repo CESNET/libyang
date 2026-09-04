@@ -2114,7 +2114,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
     struct lys_type_item *tctx;
     LY_DATA_TYPE basetype = LY_TYPE_UNKNOWN;
     struct lysc_type *base = NULL;
-    uint32_t i;
+    uint32_t i, opt_prev = ctx->compile_opts;
     struct ly_set tpdf_chain = {0};
     uintptr_t plugin_ref = 0;
 
@@ -2142,6 +2142,9 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
 
     /* learn the global pattern format to know what types need to be recompiled */
     pattern_format = lys_compile_type_patterns_has_oc_posix_ext(ctx->pmod);
+
+    /* for recursive type compilation in unions */
+    ctx->compile_opts &= ~LYS_COMPILE_LOCAL_ONLY;
 
     /* get restrictions from the referred typedefs */
     for (i = tpdf_chain.count - 1; i + 1 > 0; --i) {
@@ -2206,6 +2209,12 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
     /* remove the processed typedef contexts from the stack for circular check */
     ctx->tpdf_chain.count = ctx->tpdf_chain.count - tpdf_chain.count;
 
+    if ((opt_prev & LYS_COMPILE_LOCAL_ONLY) && tpdf_chain.count &&
+            (((struct lys_type_item *)tpdf_chain.objs[tpdf_chain.count - 1])->tpdf->type.pmod->mod != ctx->pmod->mod)) {
+        /* last typedef is foreign, do not resolve */
+        goto cleanup;
+    }
+
     /* process the type definition in leaf */
     if (!lys_compile_type_share_compiled(type_p, base, pattern_format)) {
         /* leaf type has changes that need to be compiled into the type */
@@ -2229,6 +2238,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
     }
 
 cleanup:
+    ctx->compile_opts = opt_prev;
     ly_set_erase(&tpdf_chain, free);
     return ret;
 }
@@ -2325,7 +2335,7 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
             iter = lys_getnext(iter, parent, NULL, getnext_flags);
         }
     } else {
-        while ((iter = lys_getnext(iter, parent, ctx->cur_mod->compiled, getnext_flags))) {
+        while ((iter = lys_getnext(iter, parent, ctx->cmod, getnext_flags))) {
             if (!ly_set_contains(&parent_choices, (void *)iter, NULL) && CHECK_NODE(iter, exclude, name)) {
                 dup = iter;
                 goto cleanup;
@@ -2343,7 +2353,7 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
             }
         }
 
-        actions = parent ? lysc_node_actions(parent) : ctx->cur_mod->compiled->rpcs;
+        actions = parent ? lysc_node_actions(parent) : ctx->cmod->rpcs;
         LY_LIST_FOR((struct lysc_node *)actions, iter) {
             if (CHECK_NODE(iter, exclude, name)) {
                 dup = iter;
@@ -2351,7 +2361,7 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
             }
         }
 
-        notifs = parent ? lysc_node_notifs(parent) : ctx->cur_mod->compiled->notifs;
+        notifs = parent ? lysc_node_notifs(parent) : ctx->cmod->notifs;
         LY_LIST_FOR((struct lysc_node *)notifs, iter) {
             if (CHECK_NODE(iter, exclude, name)) {
                 dup = iter;
@@ -2482,11 +2492,11 @@ lys_compile_node_connect(struct lysc_ctx *ctx, struct lysc_node *parent, struct 
         if (ctx->ext) {
             lyplg_ext_get_storage_p(ctx->ext, LY_STMT_DATA_NODE_MASK, (void ***)&list);
         } else if (node->nodetype == LYS_RPC) {
-            list = (struct lysc_node **)&ctx->cur_mod->compiled->rpcs;
+            list = (struct lysc_node **)&ctx->cmod->rpcs;
         } else if (node->nodetype == LYS_NOTIF) {
-            list = (struct lysc_node **)&ctx->cur_mod->compiled->notifs;
+            list = (struct lysc_node **)&ctx->cmod->notifs;
         } else {
-            list = &ctx->cur_mod->compiled->data;
+            list = &ctx->cmod->data;
         }
         if (!(*list)) {
             *list = node;
@@ -2876,6 +2886,11 @@ lys_compile_node_type(struct lysc_ctx *ctx, struct lysp_node *context_node, stru
 
     LY_CHECK_RET(lys_compile_type(ctx, context_node, leaf->flags, leaf->name, type_p, &leaf->type,
             leaf->units ? NULL : &leaf->units, &dflt));
+    if (!leaf->type) {
+        /* foreign typedef in local-only module */
+        return LY_SUCCESS;
+    }
+
     LY_ATOMIC_INC_BARRIER(leaf->type->refcount);
 
     /* store default value, if any */
@@ -3930,6 +3945,11 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
 
     /* find the referenced grouping */
     LY_CHECK_RET(lys_compile_uses_find_grouping(ctx, uses_p, &grp, &grp_mod));
+
+    if ((ctx->compile_opts & LYS_COMPILE_LOCAL_ONLY) && (ctx->pmod->mod != grp_mod->mod)) {
+        /* external grouping, do not resolve or compile */
+        return LY_SUCCESS;
+    }
 
     /* grouping must not reference themselves - stack in ctx maintains list of groupings currently being applied */
     grp_stack_count = ctx->groupings.count;
