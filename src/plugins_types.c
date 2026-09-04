@@ -865,7 +865,7 @@ lyplg_type_make_implemented(struct lys_module *mod, const char **features, struc
     }
 
     LY_CHECK_RET(lys_implement(mod, features, unres));
-    LY_CHECK_RET(lys_compile(mod, &unres->ds_unres));
+    LY_CHECK_RET(lys_compile(mod, 0, &unres->ds_unres, &mod->compiled));
 
     return LY_SUCCESS;
 }

@@ -2320,6 +2320,9 @@ lys_precompile_own_augments(struct lysc_ctx *ctx)
 
     LYA_FOR(ctx->cur_mod->augmented_by, u) {
         aug_mod = ctx->cur_mod->augmented_by[u];
+        if ((ctx->compile_opts & LYS_COMPILE_LOCAL_ONLY) && (aug_mod != ctx->cur_mod)) {
+            continue;
+        }
 
         /* collect all module augments */
         LY_CHECK_RET(lys_precompile_own_augments_mod(ctx, aug_mod->parsed));
@@ -2408,6 +2411,9 @@ lys_precompile_own_deviations(struct lysc_ctx *ctx)
 
     LYA_FOR(ctx->cur_mod->deviated_by, u) {
         dev_mod = ctx->cur_mod->deviated_by[u];
+        if ((ctx->compile_opts & LYS_COMPILE_LOCAL_ONLY) && (dev_mod != ctx->cur_mod)) {
+            continue;
+        }
 
         /* compile all module deviations */
         LYA_FOR(dev_mod->parsed->deviations, v) {

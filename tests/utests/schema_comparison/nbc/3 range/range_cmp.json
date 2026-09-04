@@ -1,7 +1,9 @@
 {
   "ietf-yang-schema-comparison-output:schema-comparison": {
-    "schema": [
+    "comparison": [
       {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
         "source": {
           "module": "range",
           "revision": "2000-01-01"
@@ -27,22 +29,9 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "uint16",
+                "name": "uint16",
                 "range": {
-                  "interval": [
-                    {
-                      "min": "0",
-                      "max": "10"
-                    },
-                    {
-                      "min": "20",
-                      "max": "50"
-                    },
-                    {
-                      "min": "100",
-                      "max": "100"
-                    }
-                  ]
+                  "restriction": "0..10|20..50|100"
                 }
               }
             },
@@ -51,18 +40,9 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "uint16",
+                "name": "uint16",
                 "range": {
-                  "interval": [
-                    {
-                      "min": "1",
-                      "max": "50"
-                    },
-                    {
-                      "min": "100",
-                      "max": "100"
-                    }
-                  ]
+                  "restriction": "1..50|100"
                 }
               }
             }
@@ -82,18 +62,9 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "int32",
+                "name": "int32",
                 "range": {
-                  "interval": [
-                    {
-                      "min": "-10",
-                      "max": "0"
-                    },
-                    {
-                      "min": "100",
-                      "max": "200"
-                    }
-                  ]
+                  "restriction": "-10..0|100..200"
                 }
               }
             },
@@ -102,22 +73,9 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "int32",
+                "name": "int32",
                 "range": {
-                  "interval": [
-                    {
-                      "min": "-10",
-                      "max": "0"
-                    },
-                    {
-                      "min": "100",
-                      "max": "100"
-                    },
-                    {
-                      "min": "101",
-                      "max": "101"
-                    }
-                  ]
+                  "restriction": "-10..0|100|101"
                 }
               }
             }
@@ -137,14 +95,9 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "int8",
+                "name": "int8",
                 "range": {
-                  "interval": [
-                    {
-                      "min": "-10",
-                      "max": "10"
-                    }
-                  ]
+                  "restriction": "-10..10"
                 }
               }
             },
@@ -153,14 +106,9 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "int8",
+                "name": "int8",
                 "range": {
-                  "interval": [
-                    {
-                      "min": "-9",
-                      "max": "9"
-                    }
-                  ]
+                  "restriction": "-9..9"
                 }
               }
             }

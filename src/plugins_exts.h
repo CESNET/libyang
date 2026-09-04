@@ -534,6 +534,7 @@ LIBYANG_API_DECL LY_ERR lyplg_ext_parse_extension_instance(struct lysp_ctx *pctx
                                                       added to any unres sets. */
 #define LYS_COMPILE_NO_CONFIG       0x04            /**< ignore config statements, neither inherit config value */
 #define LYS_COMPILE_NO_DISABLED     0x08            /**< ignore if-feature statements */
+#define LYS_COMPILE_LOCAL_ONLY      0x10            /**< compile only local statements in the module, no imported statements */
 
 #define LYS_COMPILE_RPC_INPUT       (LYS_IS_INPUT | LYS_COMPILE_NO_CONFIG)  /**< Internal option when compiling schema tree of RPC/action input */
 #define LYS_COMPILE_RPC_OUTPUT      (LYS_IS_OUTPUT | LYS_COMPILE_NO_CONFIG) /**< Internal option when compiling schema tree of RPC/action output */

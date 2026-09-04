@@ -1,7 +1,9 @@
 {
   "ietf-yang-schema-comparison-output:schema-comparison": {
-    "schema": [
+    "comparison": [
       {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
         "source": {
           "module": "prefix",
           "revision": "2000-01-01"

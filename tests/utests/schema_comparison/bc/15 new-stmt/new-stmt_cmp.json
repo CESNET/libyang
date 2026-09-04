@@ -1,7 +1,9 @@
 {
   "ietf-yang-schema-comparison-output:schema-comparison": {
-    "schema": [
+    "comparison": [
       {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
         "source": {
           "module": "new-stmt",
           "revision": "2000-01-01"
@@ -55,7 +57,7 @@
             }
           }
         ],
-        "parsed-comparison": [
+        "local-comparison": [
           {
             "parent-path": "/{uses=top-grp2}",
             "identifier": "cont",
@@ -142,7 +144,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "uint8"
+                "name": "uint8"
               }
             }
           },
@@ -174,7 +176,7 @@
               "status": "current",
               "mandatory": false,
               "type": {
-                "base-type": "string"
+                "name": "string"
               }
             }
           },

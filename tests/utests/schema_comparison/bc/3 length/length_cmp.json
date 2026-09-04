@@ -1,7 +1,9 @@
 {
   "ietf-yang-schema-comparison-output:schema-comparison": {
-    "schema": [
+    "comparison": [
       {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
         "source": {
           "module": "length",
           "revision": "2000-01-01"
@@ -11,7 +13,7 @@
           "revision": "2000-01-02"
         },
         "conformance": "backwards-compatible",
-        "parsed-comparison": [
+        "local-comparison": [
           {
             "parent-path": "/",
             "identifier": "l1-type",
@@ -58,22 +60,9 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "string",
+                "name": "string",
                 "length": {
-                  "interval": [
-                    {
-                      "min": "0",
-                      "max": "10"
-                    },
-                    {
-                      "min": "20",
-                      "max": "50"
-                    },
-                    {
-                      "min": "100",
-                      "max": "100"
-                    }
-                  ]
+                  "restriction": "0..10|20..50|100"
                 }
               }
             },
@@ -82,22 +71,9 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "string",
+                "name": "string",
                 "length": {
-                  "interval": [
-                    {
-                      "min": "0",
-                      "max": "50"
-                    },
-                    {
-                      "min": "100",
-                      "max": "100"
-                    },
-                    {
-                      "min": "1000",
-                      "max": "1000"
-                    }
-                  ]
+                  "restriction": "0..50|100|1000"
                 }
               }
             }
@@ -117,18 +93,9 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "string",
+                "name": "string",
                 "length": {
-                  "interval": [
-                    {
-                      "min": "0",
-                      "max": "0"
-                    },
-                    {
-                      "min": "100",
-                      "max": "200"
-                    }
-                  ]
+                  "restriction": "0|100..200"
                 }
               }
             },
@@ -137,18 +104,9 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "string",
+                "name": "string",
                 "length": {
-                  "interval": [
-                    {
-                      "min": "0",
-                      "max": "50"
-                    },
-                    {
-                      "min": "55",
-                      "max": "200"
-                    }
-                  ]
+                  "restriction": "0..50|55..200"
                 }
               }
             }
@@ -168,14 +126,9 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "string",
+                "name": "string",
                 "length": {
-                  "interval": [
-                    {
-                      "min": "10",
-                      "max": "20"
-                    }
-                  ]
+                  "restriction": "10..20"
                 }
               }
             },
@@ -184,7 +137,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "string"
+                "name": "string"
               }
             }
           }

@@ -17,10 +17,9 @@
 #include <string.h>
 
 #include "compat.h"
-#include "libyang.h"
-#include "ly_common.h"
+#include "ly_array.h"
+#include "parser_internal.h"
 #include "plugins_exts.h"
-#include "plugins_internal.h"
 
 /**
  * @brief Parse backwards-compatible extension instances.

@@ -1,7 +1,9 @@
 {
   "ietf-yang-schema-comparison-output:schema-comparison": {
-    "schema": [
+    "comparison": [
       {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
         "source": {
           "module": "pattern",
           "revision": "2000-01-01"
@@ -32,7 +34,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "string",
+                "name": "string",
                 "pattern": [
                   {
                     "expression": "aa|bb|cc",
@@ -46,7 +48,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "string",
+                "name": "string",
                 "pattern": [
                   {
                     "expression": "aa|bb",
@@ -71,7 +73,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "string"
+                "name": "string"
               }
             },
             "new": {
@@ -79,7 +81,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "string",
+                "name": "string",
                 "pattern": [
                   {
                     "expression": "a|b|c",

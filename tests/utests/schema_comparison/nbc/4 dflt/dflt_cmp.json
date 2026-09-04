@@ -1,7 +1,9 @@
 {
   "ietf-yang-schema-comparison-output:schema-comparison": {
-    "schema": [
+    "comparison": [
       {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
         "source": {
           "module": "dflt",
           "revision": "2000-01-01"
@@ -11,7 +13,7 @@
           "revision": "2000-01-02"
         },
         "conformance": "non-backwards-compatible",
-        "parsed-comparison": [
+        "local-comparison": [
           {
             "parent-path": "/",
             "identifier": "mytype",
@@ -58,7 +60,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "uint16"
+                "name": "uint16"
               }
             },
             "new": {
@@ -69,7 +71,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "uint16"
+                "name": "uint16"
               }
             }
           },
@@ -91,7 +93,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "string"
+                "name": "string"
               }
             },
             "new": {
@@ -99,7 +101,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "string"
+                "name": "string"
               }
             }
           }

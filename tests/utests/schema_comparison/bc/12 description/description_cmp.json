@@ -1,7 +1,9 @@
 {
   "ietf-yang-schema-comparison-output:schema-comparison": {
-    "schema": [
+    "comparison": [
       {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
         "source": {
           "module": "description",
           "revision": "2000-01-01"
@@ -28,7 +30,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "uint16"
+                "name": "uint16"
               }
             },
             "new": {
@@ -37,7 +39,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "uint16"
+                "name": "uint16"
               }
             }
           },
@@ -58,7 +60,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "uint32"
+                "name": "uint32"
               }
             },
             "new": {
@@ -67,7 +69,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "uint32"
+                "name": "uint32"
               }
             }
           }

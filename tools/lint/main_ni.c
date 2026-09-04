@@ -255,8 +255,18 @@ help(int shortout)
             "                (otherwise 'unpublished').\n\n");
 
     printf("  -1/2 FILE, --cmp-mod1/2=FILE\n"
-            "                Path to the first/second YANG module to compare. Generates 'ietf-schema-comparison' data\n"
-            "                and requires this module to be in the context. Use an output format to print the data.\n\n");
+            "                Path to the first/second YANG module to compare. Generates\n"
+            "                'ietf-schema-comparison-output' data and requires this module to\n"
+            "                be in the context. Needs the type(s) of schema representation\n"
+            "                (--cmp-local and/or --cmp-full). Use an output format to print the data.\n\n");
+
+    printf("  -3, --cmp-local\n"
+            "                Combined with --cmp-mod1/2 params. Use the locally resolved\n"
+            "                module for schema comparison, useful for YANG module authors.\n\n");
+
+    printf("  -4, --cmp-full\n"
+            "                Combined with --cmp-mod1/2 params. Use the fully resolved\n"
+            "                schema for schema comparison, useful for changes in YANG data.\n\n");
 
     printf("  -G GROUPS, --debug=GROUPS\n"
 #ifndef NDEBUG
@@ -557,6 +567,8 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
         {"ext-inst",          required_argument, NULL, 'k'},
         {"cmp-mod1",          required_argument, NULL, '1'},
         {"cmp-mod2",          required_argument, NULL, '2'},
+        {"cmp-local",         no_argument,       NULL, '3'},
+        {"cmp-full",          no_argument,       NULL, '4'},
         {"debug",             required_argument, NULL, 'G'},
         {"sample-skeleton",   required_argument, NULL, 'S'},
         {"ietf",              no_argument,       NULL, 'T'},
@@ -575,7 +587,8 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
     yo->line_length = 0;
 
     opterr = 0;
-    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neE:At:d:lL:o:O:R:myY:XJx:1:2:G:S:Tg:u:r:U", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neE:At:d:lL:o:O:R:myY:XJx:1:2:34G:S:Tg:u:r:U", options,
+            &opt_index)) != -1) {
         switch (opt) {
         case 'h': /* --help */
             help(0);
@@ -764,11 +777,20 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
             break;
 
         case '1': /* --cmp-mod1 */
+            yo->ctx_options |= LY_CTX_SET_PRIV_PARSED;
             yo->cmp_mod_path1 = optarg;
             break;
 
         case '2': /* --cmp-mod2 */
             yo->cmp_mod_path2 = optarg;
+            break;
+
+        case '3': /* --cmp-local */
+            yo->cmp_local = 1;
+            break;
+
+        case '4': /* --cmp-full */
+            yo->cmp_full = 1;
             break;
 
         case 'G': /* --debug */
@@ -827,7 +849,7 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
     }
 
     /* additional checks for the options combinations */
-    if (!yo->list && (optind >= argc)) {
+    if (!yo->list && !yo->cmp_mod_path1 && !yo->cmp_mod_path2 && (optind >= argc)) {
         help(1);
         YLMSG_E("Missing <schema> to process.");
         return 1;
@@ -854,6 +876,9 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
     }
     if ((yo->cmp_mod_path1 && !yo->cmp_mod_path2) || (!yo->cmp_mod_path1 && yo->cmp_mod_path2)) {
         YLMSG_E("Two same modules in different revisions need to be specified for schema comparison.");
+        return -1;
+    } else if (yo->cmp_mod_path1 && yo->cmp_mod_path2 && !yo->cmp_local && !yo->cmp_full) {
+        YLMSG_E("Missing type of schema representation (--cmp-local/--cmp-full) for schema comparison.");
         return -1;
     }
 

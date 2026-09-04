@@ -1228,8 +1228,8 @@ lyd_update(const struct lys_module *mod_old, const struct lyd_node *data_old, co
             }
         }
 
-        /* compare the modules */
-        if ((rc = lys_compare(ctx2, mod1, mod2, &schema_diff))) {
+        /* compare the fully resolved schemas */
+        if ((rc = lys_compare(ctx2, mod1, mod2, 0, 1, &schema_diff))) {
             goto cleanup;
         }
 

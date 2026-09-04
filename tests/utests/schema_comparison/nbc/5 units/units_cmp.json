@@ -1,7 +1,9 @@
 {
   "ietf-yang-schema-comparison-output:schema-comparison": {
-    "schema": [
+    "comparison": [
       {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
         "source": {
           "module": "units",
           "revision": "2000-01-01"
@@ -27,7 +29,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "uint16"
+                "name": "uint16"
               },
               "units": "s"
             },
@@ -36,7 +38,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "uint16"
+                "name": "uint16"
               }
             }
           },
@@ -55,7 +57,7 @@
               "config": true,
               "ordered-by": "system",
               "type": {
-                "base-type": "string"
+                "name": "string"
               },
               "units": "packages"
             },
@@ -64,7 +66,7 @@
               "config": true,
               "ordered-by": "system",
               "type": {
-                "base-type": "string"
+                "name": "string"
               }
             }
           }

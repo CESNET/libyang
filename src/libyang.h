@@ -36,7 +36,6 @@ extern "C" {
 #include "semver.h"
 #include "set.h"
 #include "tree_data.h"
-#include "tree_edit.h"
 #include "tree_schema.h"
 #include "utils.h"
 

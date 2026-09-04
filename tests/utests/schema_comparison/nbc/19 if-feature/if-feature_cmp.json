@@ -1,7 +1,9 @@
 {
   "ietf-yang-schema-comparison-output:schema-comparison": {
-    "schema": [
+    "comparison": [
       {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
         "source": {
           "module": "if-feature",
           "revision": "2000-01-01"
@@ -79,7 +81,7 @@
               "config": true,
               "mandatory": true,
               "type": {
-                "base-type": "string"
+                "name": "string"
               }
             },
             "new": {
@@ -87,7 +89,7 @@
               "config": true,
               "mandatory": true,
               "type": {
-                "base-type": "string"
+                "name": "string"
               }
             }
           }

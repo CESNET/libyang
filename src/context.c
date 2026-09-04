@@ -66,7 +66,7 @@ static struct internal_modules_s {
     {"ietf-yang-schema-mount", "2019-01-14", 1},
     {"ietf-yang-structure-ext", "2020-06-17", 0},
     {"ietf-yang-revisions", "2025-09-16", 0},
-    {"ietf-yang-schema-comparison", "2026-05-27", 0},
+    {"ietf-yang-schema-comparison", "2026-09-02", 0},
     /* yang-library and related modules must be at the end of the list! */
     {"ietf-datastores", "2018-02-14", 1},
     {"ietf-yang-library", IETF_YANG_LIB_REV, 1},
@@ -1154,7 +1154,7 @@ static LY_ERR
 ylib_deviation(struct lyd_node *parent, const struct lys_module *mod, ly_bool bis)
 {
     LYA_COUNT_T i;
-    struct lys_module *mod;
+    struct lys_module *m;
 
     if (!mod->implemented) {
         /* no deviations of the module for certain */
@@ -1259,9 +1259,9 @@ ylib_submodules(struct lyd_node *parent, const struct lys_module *mod, ly_bool b
 static LY_ERR
 ylib_augmentedby(struct lyd_node *parent, const struct lys_module *mod_augby, const struct lys_module *mod)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
-    LY_ARRAY_FOR(mod->augmented_by, u) {
+    LYA_FOR(mod->augmented_by, u) {
         LY_CHECK_RET(lyd_new_term(parent, mod_augby, "augmented-by", mod->augmented_by[u]->name, 0, NULL));
     }
 

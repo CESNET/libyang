@@ -1,7 +1,9 @@
 {
   "ietf-yang-schema-comparison-output:schema-comparison": {
-    "schema": [
+    "comparison": [
       {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
         "source": {
           "module": "ext-inst",
           "revision": "2000-01-01"
@@ -23,7 +25,7 @@
           },
           {
             "module": "ietf-yang-schema-comparison",
-            "revision": "2026-05-27"
+            "revision": "2026-09-02"
           }
         ],
         "conformance": "non-backwards-compatible",
@@ -189,7 +191,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "enumeration",
+                "name": "enumeration",
                 "enum": [
                   {
                     "name": "e1",
@@ -216,7 +218,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "enumeration",
+                "name": "enumeration",
                 "enum": [
                   {
                     "name": "e1",
@@ -248,7 +250,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "string",
+                "name": "string",
                 "pattern": [
                   {
                     "expression": "a",
@@ -262,7 +264,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "string",
+                "name": "string",
                 "pattern": [
                   {
                     "expression": "a",

@@ -140,8 +140,8 @@ set(libsrc
     src/schema_compile_amend.c
     src/schema_features.c
     src/schema_diff.c
-    src/schema_diff_change_compiled.c
-    src/schema_diff_change_parsed.c
+    src/schema_diff_change_full.c
+    src/schema_diff_change_local.c
     src/schema_diff_tree.c
     src/tree_data_sorted.c
     src/tree_schema.c

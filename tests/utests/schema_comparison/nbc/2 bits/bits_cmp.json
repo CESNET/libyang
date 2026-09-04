@@ -1,7 +1,9 @@
 {
   "ietf-yang-schema-comparison-output:schema-comparison": {
-    "schema": [
+    "comparison": [
       {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
         "source": {
           "module": "bits",
           "revision": "2000-01-01"
@@ -37,7 +39,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "bits",
+                "name": "bits",
                 "bit": [
                   {
                     "name": "one",
@@ -62,7 +64,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "bits",
+                "name": "bits",
                 "bit": [
                   {
                     "name": "one",
@@ -108,7 +110,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "bits",
+                "name": "bits",
                 "bit": [
                   {
                     "name": "a",
@@ -133,7 +135,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "bits",
+                "name": "bits",
                 "bit": [
                   {
                     "name": "a",

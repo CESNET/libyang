@@ -1,7 +1,9 @@
 {
   "ietf-yang-schema-comparison-output:schema-comparison": {
-    "schema": [
+    "comparison": [
       {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
         "source": {
           "module": "pattern",
           "revision": "2000-01-01"
@@ -13,7 +15,7 @@
         "target-import": [
           {
             "module": "ietf-yang-schema-comparison",
-            "revision": "2026-05-27"
+            "revision": "2026-09-02"
           }
         ],
         "conformance": "backwards-compatible",
@@ -55,7 +57,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "string",
+                "name": "string",
                 "pattern": [
                   {
                     "expression": "aa|bb|cc",
@@ -69,7 +71,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "string",
+                "name": "string",
                 "pattern": [
                   {
                     "expression": "aa|bb|cc|dd|ee",
@@ -101,7 +103,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "string",
+                "name": "string",
                 "pattern": [
                   {
                     "expression": "a|b|c",
@@ -115,7 +117,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "string"
+                "name": "string"
               }
             }
           }

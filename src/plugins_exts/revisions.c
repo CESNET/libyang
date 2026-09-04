@@ -18,10 +18,9 @@
 #include <string.h>
 
 #include "compat.h"
-#include "libyang.h"
-#include "ly_common.h"
+#include "ly_array.h"
+#include "parser_internal.h"
 #include "plugins_exts.h"
-#include "plugins_internal.h"
 #include "tree_schema_internal.h"
 
 /**
@@ -33,7 +32,7 @@ static LY_ERR
 nbc_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 {
     struct lysp_revision *rev;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     /* check that the extension is instantiated at an allowed place - revision */
     if (ext->parent_stmt != LY_STMT_REVISION) {
@@ -51,7 +50,7 @@ nbc_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 
     /* check for duplication */
     rev = ext->parent;
-    LY_ARRAY_FOR(rev->exts, u) {
+    LYA_FOR(rev->exts, u) {
         if ((&rev->exts[u] != ext) && (rev->exts[u].name == ext->name)) {
             lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EVALID, "Extension %s is instantiated multiple times.", ext->name);
             return LY_EVALID;
@@ -70,7 +69,7 @@ static LY_ERR
 min_date_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 {
     struct lysp_import *imp;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     /* check that the extension is instantiated at an allowed place - import */
     if (ext->parent_stmt != LY_STMT_IMPORT) {
@@ -89,7 +88,7 @@ min_date_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 
     /* check for duplication */
     imp = ext->parent;
-    LY_ARRAY_FOR(imp->exts, u) {
+    LYA_FOR(imp->exts, u) {
         if ((&imp->exts[u] != ext) && (imp->exts[u].name == ext->name)) {
             lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EVALID, "Extension %s is instantiated multiple times.", ext->name);
             return LY_EVALID;

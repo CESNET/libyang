@@ -111,6 +111,8 @@ struct yl_opt {
     /* values of --cmp-mod1 and --cmp-mod2 */
     const char *cmp_mod_path1;
     const char *cmp_mod_path2;
+    ly_bool cmp_local;
+    ly_bool cmp_full;
 
     /*
      * data

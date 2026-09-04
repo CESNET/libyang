@@ -1455,13 +1455,13 @@ cleanup:
 
 LIBYANG_API_DEF LY_ERR
 lys_compare(const struct ly_ctx *ctx, const struct lys_module *src_mod, const struct lys_module *trg_mod,
-        struct lyd_node **schema_diff)
+        ly_bool gen_local, ly_bool gen_full, struct lyd_node **schema_diff)
 {
     LY_ERR rc = LY_SUCCESS;
     const struct lys_module *cmp_mod;
     struct lys_diff_s diff = {0};
 
-    LY_CHECK_ARG_RET(NULL, ctx, src_mod, trg_mod, schema_diff, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, ctx, src_mod, trg_mod, gen_local || gen_full, schema_diff, LY_EINVAL);
 
     *schema_diff = NULL;
 
@@ -1471,8 +1471,8 @@ lys_compare(const struct ly_ctx *ctx, const struct lys_module *src_mod, const st
         LOGERR(ctx, LY_ENOTFOUND, "Module \"ietf-yang-schema-comparison-output\" not found.");
         rc = LY_ENOTFOUND;
         goto cleanup;
-    } else if (!cmp_mod->revision || strcmp(cmp_mod->revision, "2026-05-27")) {
-        LOGERR(ctx, LY_ENOTFOUND, "Module \"ietf-yang-schema-comparison\" not in the expected revision \"2026-05-27\".");
+    } else if (!cmp_mod->revision || strcmp(cmp_mod->revision, "2026-09-02")) {
+        LOGERR(ctx, LY_ENOTFOUND, "Module \"ietf-yang-schema-comparison\" not in the expected revision \"2026-09-02\".");
         rc = LY_ENOTFOUND;
         goto cleanup;
     }
@@ -1494,6 +1494,30 @@ lys_compare(const struct ly_ctx *ctx, const struct lys_module *src_mod, const st
         goto cleanup;
     }
 
+    if (gen_local) {
+        if (!src_mod->parsed) {
+            LOGERR(ctx, LY_EINVAL, "Source parsed module \"%s@%s\" missing.", src_mod->name,
+                    src_mod->revision ? src_mod->revision : "<none>");
+            rc = LY_EINVAL;
+            goto cleanup;
+        } else if (!(ly_ctx_get_options(src_mod->ctx) & LY_CTX_SET_PRIV_PARSED)) {
+            LOGERR(ctx, LY_EINVAL, "Source module \"%s@%s\" context LY_CTX_SET_PRIV_PARSED option not set.",
+                    src_mod->name, src_mod->revision ? src_mod->revision : "<none>");
+            rc = LY_EINVAL;
+            goto cleanup;
+        } else if (!trg_mod->parsed) {
+            LOGERR(ctx, LY_EINVAL, "Target parsed module \"%s@%s\" missing.", trg_mod->name,
+                    trg_mod->revision ? trg_mod->revision : "<none>");
+            rc = LY_EINVAL;
+            goto cleanup;
+        } else if (!(ly_ctx_get_options(trg_mod->ctx) & LY_CTX_SET_PRIV_PARSED)) {
+            LOGERR(ctx, LY_EINVAL, "Target module \"%s@%s\" context LY_CTX_SET_PRIV_PARSED option not set.",
+                    trg_mod->name, trg_mod->revision ? trg_mod->revision : "<none>");
+            rc = LY_EINVAL;
+            goto cleanup;
+        }
+    }
+
     /* store module prefixes */
     diff.old_prefix = src_mod->prefix;
     diff.new_prefix = trg_mod->prefix;
@@ -1501,15 +1525,9 @@ lys_compare(const struct ly_ctx *ctx, const struct lys_module *src_mod, const st
     /* decide what rules to use based on the YANG version of the new module */
     diff.is_yang10 = (trg_mod->version & LYS_VERSION_1_1) ? 0 : 1;
 
-    /* check if parsed schema diff is supported and the parsed nodes are available */
-    diff.with_parsed = (lys_feature_value(cmp_mod, "parsed-schema") == LY_SUCCESS) ? 1 : 0;
-    if (diff.with_parsed && (ly_ctx_get_options(src_mod->ctx) & LY_CTX_SET_PRIV_PARSED) &&
-            (ly_ctx_get_options(trg_mod->ctx) & LY_CTX_SET_PRIV_PARSED)) {
-        diff.with_priv_parsed = 1;
-    } else {
-        diff.with_priv_parsed = 0;
-    }
-
+    /* store other params */
+    diff.gen_local = gen_local;
+    diff.gen_full = gen_full;
     diff.ctx = ctx;
 
     /* generate the diff */
@@ -2124,13 +2142,13 @@ ly_check_module_filename(const struct ly_ctx *ctx, const char *name, const char 
 static void
 lysp_check_import_exts(const struct lysp_module *pmod)
 {
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     const struct lysp_import *imp;
     const struct lysp_ext_instance *min_date_ext = NULL, *min_ver_ext = NULL;
     const struct lys_ext_instance_semver *semver;
     const char *mod_name, *name, *semver_str;
 
-    LY_ARRAY_FOR(pmod->imports, u) {
+    LYA_FOR(pmod->imports, u) {
         imp = &pmod->imports[u];
         assert(imp->module);
 
@@ -2141,7 +2159,7 @@ lysp_check_import_exts(const struct lysp_module *pmod)
 
         min_date_ext = NULL;
         min_ver_ext = NULL;
-        LY_ARRAY_FOR(imp->exts, v) {
+        LYA_FOR(imp->exts, v) {
             lysp_nodeid_find_module(pmod->mod->ctx, imp->exts[v].name, imp->exts[v].format, imp->exts[v].prefix_data,
                     &mod_name, &name);
 
@@ -3225,7 +3243,7 @@ cleanup:
  */
 static int
 lys_search_localfile_is_match(const struct ly_ctx *ctx, const char *file_atsuffix, uint32_t file_suffix_len,
-        const char *revision, int prev_match, const char **match_rev, struct lys_ext_instance_semver **match_ver)
+        const char *revision, int prev_match, char **match_rev, struct lys_ext_instance_semver **match_ver)
 {
     int match = 0;
     ly_bool file_no_suffix = 0, file_has_rev;
@@ -3287,6 +3305,7 @@ lys_search_localfile_is_match(const struct ly_ctx *ctx, const char *file_atsuffi
 cleanup:
     if (match) {
         /* unset previous match */
+        free(*match_rev);
         *match_rev = NULL;
         lyplg_ext_semver_free(*match_ver);
         *match_ver = NULL;
@@ -3294,7 +3313,7 @@ cleanup:
         if (file_no_suffix) {
             /* just unset */
         } else if (file_has_rev) {
-            *match_rev = file_atsuffix + 1;
+            *match_rev = strdup(file_atsuffix + 1);
         } else {
             assert(semver);
             *match_ver = semver;
@@ -3378,10 +3397,10 @@ _lys_search_localfile(const struct ly_ctx *ctx, const char * const *searchpaths,
     int match = 0, m;
     size_t name_len, flen;
     ly_bool skip;
-    const char *wd, *match_rev = NULL;
+    const char *wd;
     DIR *dir = NULL;
     struct dirent *file;
-    char *match_name = NULL;
+    char *match_name = NULL, *match_rev = NULL;
     LYS_INFORMAT format_aux, match_format = 0;
     struct lys_ext_instance_semver *match_ver = NULL;
     struct ly_set *dirs = NULL;
@@ -3471,6 +3490,7 @@ cleanup:
         closedir(dir);
     }
     free(match_name);
+    free(match_rev);
     lyplg_ext_semver_free(match_ver);
     ly_set_free(dirs, free);
 

@@ -1,7 +1,9 @@
 {
   "ietf-yang-schema-comparison-output:schema-comparison": {
-    "schema": [
+    "comparison": [
       {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
         "source": {
           "module": "data-def-order",
           "revision": "2000-01-01"
@@ -48,7 +50,7 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "int8"
+                "name": "int8"
               }
             }
           }

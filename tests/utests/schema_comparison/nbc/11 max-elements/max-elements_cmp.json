@@ -1,7 +1,9 @@
 {
   "ietf-yang-schema-comparison-output:schema-comparison": {
-    "schema": [
+    "comparison": [
       {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
         "source": {
           "module": "max-elements",
           "revision": "2000-01-01"
@@ -28,7 +30,7 @@
               "max-elements": 10,
               "ordered-by": "system",
               "type": {
-                "base-type": "uint16"
+                "name": "uint16"
               }
             },
             "new": {
@@ -37,7 +39,7 @@
               "max-elements": 9,
               "ordered-by": "system",
               "type": {
-                "base-type": "uint16"
+                "name": "uint16"
               }
             }
           },

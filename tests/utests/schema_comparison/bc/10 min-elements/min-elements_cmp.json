@@ -1,7 +1,9 @@
 {
   "ietf-yang-schema-comparison-output:schema-comparison": {
-    "schema": [
+    "comparison": [
       {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
         "source": {
           "module": "min-elements",
           "revision": "2000-01-01"
@@ -28,7 +30,7 @@
               "min-elements": 10,
               "ordered-by": "system",
               "type": {
-                "base-type": "uint16"
+                "name": "uint16"
               }
             },
             "new": {
@@ -37,7 +39,7 @@
               "min-elements": 5,
               "ordered-by": "system",
               "type": {
-                "base-type": "uint16"
+                "name": "uint16"
               }
             }
           },

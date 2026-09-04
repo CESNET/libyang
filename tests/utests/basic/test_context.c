@@ -15,6 +15,8 @@
 #define _UTEST_MAIN_
 #include "utests.h"
 
+#include "plugins_exts/semver.h"
+
 static int
 get_dirs_count(const char * const *list)
 {
@@ -400,17 +402,16 @@ test_get_models(void **state)
     const char *str0 = "module a {namespace urn:a;prefix a;}";
     const char *str1 = "module a {namespace urn:a;prefix a;revision 2018-10-23;}";
     const char *str2 = "module a {namespace urn:a;prefix a;revision 2018-10-24;revision 2018-10-23;}";
-    struct ly_in *in0, *in1, *in2, *in3;
+    struct ly_in *in1, *in2, *in3;
 
     unsigned int index = 0;
     const char *names[] = {
         "ietf-yang-semver", "ietf-inet-types", "ietf-yang-types", "ietf-yang-metadata", "yang", "default",
         "ietf-yang-schema-mount", "ietf-yang-structure-ext", "ietf-yang-revisions", "ietf-yang-schema-comparison",
         "ietf-datastores", "ietf-yang-library", "ietf-yang-library-status", "ietf-yang-library-augmentedby",
-        "ietf-yang-library-semver", "a", "a", "a"
+        "ietf-yang-library-semver", "a", "m", "a", "n"
     };
 
-    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str0, &in0));
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str1, &in1));
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str2, &in2));
 
@@ -472,10 +473,9 @@ test_get_models(void **state)
     while ((mod = (struct lys_module *)ly_ctx_get_module_iter(UTEST_LYCTX, &index))) {
         assert_string_equal(names[index - 1], mod->name);
     }
-    assert_int_equal(18, index);
+    assert_int_equal(19, index);
 
     /* cleanup */
-    ly_in_free(in0, 0);
     ly_in_free(in1, 0);
     ly_in_free(in2, 0);
     ly_in_free(in3, 0);

@@ -1,7 +1,9 @@
 {
   "ietf-yang-schema-comparison-output:schema-comparison": {
-    "schema": [
+    "comparison": [
       {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
         "source": {
           "module": "new-data-def",
           "revision": "2000-01-01"
@@ -27,7 +29,7 @@
               "config": true,
               "mandatory": true,
               "type": {
-                "base-type": "decimal64",
+                "name": "decimal64",
                 "fraction-digits": 4
               }
             }
@@ -47,7 +49,7 @@
               "config": true,
               "mandatory": true,
               "type": {
-                "base-type": "uint8"
+                "name": "uint8"
               }
             }
           }

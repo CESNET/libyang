@@ -1,7 +1,9 @@
 {
   "ietf-yang-schema-comparison-output:schema-comparison": {
-    "schema": [
+    "comparison": [
       {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
         "source": {
           "module": "union",
           "revision": "2000-01-01"
@@ -34,10 +36,10 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "union",
+                "name": "union",
                 "union-type": [
                   {
-                    "base-type": "enumeration",
+                    "name": "enumeration",
                     "enum": [
                       {
                         "name": "none",
@@ -47,10 +49,10 @@
                     ]
                   },
                   {
-                    "base-type": "uint32"
+                    "name": "uint32"
                   },
                   {
-                    "base-type": "string"
+                    "name": "string"
                   }
                 ]
               }
@@ -60,13 +62,13 @@
               "config": true,
               "mandatory": false,
               "type": {
-                "base-type": "union",
+                "name": "union",
                 "union-type": [
                   {
-                    "base-type": "uint32"
+                    "name": "uint32"
                   },
                   {
-                    "base-type": "enumeration",
+                    "name": "enumeration",
                     "enum": [
                       {
                         "name": "none",
@@ -76,7 +78,7 @@
                     ]
                   },
                   {
-                    "base-type": "string"
+                    "name": "string"
                   }
                 ]
               }
