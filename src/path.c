@@ -155,7 +155,7 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
 
             /* check for index 0 or fractions */
             start = exp->expr + exp->tok_pos[*tok_idx - 1];
-            if (!strtol(start, &end, 10) || (end - start != exp->tok_len[*tok_idx - 1])) {
+            if (!strtol(start, &end, 10) || ((uint32_t)(end - start) != exp->tok_len[*tok_idx - 1])) {
                 LOGVAL(ctx, NULL, LYVE_XPATH, "Invalid positional predicate \"%.*s\".", (int)exp->tok_len[*tok_idx - 1],
                         start);
                 goto token_error;

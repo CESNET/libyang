@@ -147,7 +147,7 @@ lyplg_type_store_date(const struct ly_ctx *ctx, const struct lysc_type *type, co
     } else {
         /* fill tm */
         ptr = strptime(value, "%Y-%m-%d", &tm);
-        if (!ptr || (ptr - (char *)value != value_size)) {
+        if (!ptr || ((uint32_t)(ptr - (char *)value) != value_size)) {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to parse %s value \"%.*s\".", type->name,
                     (int)value_size, (char *)value);
             goto cleanup;
