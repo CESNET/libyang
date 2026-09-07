@@ -8314,11 +8314,11 @@ eval_name_test_with_predicate(const struct lyxp_expr *exp, uint32_t *tok_idx, en
 {
     LY_ERR rc = LY_SUCCESS, r;
     const char *ncname = NULL;
-    uint32_t i, ncname_len;
+    uint32_t i, ncname_len, parent_idx;
     const struct lys_module *moveto_mod = NULL, *moveto_m;
     const struct lysc_node *scnode = NULL;
     struct ly_path_predicate *predicates = NULL;
-    int scnode_skip_pred = 0;
+    ly_bool scnode_skip_pred = 0, found;
 
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
             lyxp_token2str(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
@@ -8394,18 +8394,16 @@ moveto:
         }
     } else {
         if (!(options & LYXP_SKIP_EXPR) && (options & LYXP_SCNODE_ALL)) {
-            const struct lyxp_set_scnode *scparent = NULL;
-            ly_bool found = 0;
-
-            /* remember parent if there is only one, to print in the warning */
+            /* remember parent if there is only one, to include in the warning */
+            parent_idx = UINT32_MAX;
             for (i = 0; i < set->used; ++i) {
                 if (set->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_CTX) {
-                    if (!scparent) {
-                        /* remember the context node */
-                        scparent = &set->val.scnodes[i];
+                    if (parent_idx == UINT32_MAX) {
+                        /* remember the context node index */
+                        parent_idx = i;
                     } else {
                         /* several context nodes, no reasonable error possible */
-                        scparent = NULL;
+                        parent_idx = UINT32_MAX;
                         break;
                     }
                 }
@@ -8424,6 +8422,7 @@ moveto:
             }
             LY_CHECK_GOTO(rc, cleanup);
 
+            found = 0;
             if (set->used) {
                 i = set->used;
                 assert(i);
@@ -8437,7 +8436,8 @@ moveto:
             }
             if (!found) {
                 /* generate message */
-                eval_name_test_scnode_no_match_msg(set, scparent, ncname, ncname_len, exp->expr, options);
+                eval_name_test_scnode_no_match_msg(set, (parent_idx == UINT32_MAX) ? NULL : &set->val.scnodes[parent_idx],
+                        ncname, ncname_len, exp->expr, options);
 
                 if (options & LYXP_SCNODE_ERROR) {
                     /* error */
