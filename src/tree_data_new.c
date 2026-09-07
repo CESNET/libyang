@@ -1559,8 +1559,8 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
             }
             if (!r) {
                 /* validate the value and store the canonical value */
-                r = lyd_value_validate3(schema, value, LYPLG_BITS2BYTES(value_size_bits), format, NULL, LYD_HINT_DATA,
-                        NULL, 1, NULL, &canon);
+                r = lyd_value_validate3(schema->module->ctx, ((struct lysc_node_leaf *)schema)->type, value,
+                        LYPLG_BITS2BYTES(value_size_bits), format, NULL, LYD_HINT_DATA, NULL, schema, 1, NULL, &canon);
                 LY_CHECK_RET(r && r != LY_EINCOMPLETE, r);
 
                 /* store the new predicate so that it is used when searching for this instance */

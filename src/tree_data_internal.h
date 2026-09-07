@@ -656,7 +656,8 @@ LY_ERR ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node,
  *
  * The given node is not modified in any way - it is just checked if the @p value can be set to the node.
  *
- * @param[in] schema Schema node of the @p value.
+ * @param[in] ctx Context to use.
+ * @param[in] type Type of @p value to use.
  * @param[in] value String value to be checked, it is expected to be in JSON format.
  * @param[in] value_len Length of the given @p value (mandatory).
  * @param[in] format Value prefix format.
@@ -664,6 +665,7 @@ LY_ERR ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node,
  * @param[in] hints Value hints, bitmap of LYD_VALHINT_* values.
  * @param[in] ctx_node Optional data tree context node for the value (leafref target, instance-identifier).
  * If not set and is required for the validation to complete, ::LY_EINCOMPLETE is be returned.
+ * @param[in] ctx_scnode Optinal schema context node, for logging.
  * @param[in] log Whether to log errors or not.
  * @param[out] realtype Optional real type of @p value.
  * @param[out] canonical Optional canonical value of @p value (in the dictionary).
@@ -672,9 +674,9 @@ LY_ERR ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node,
  * (e.g. due to require-instance).
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_value_validate3(const struct lysc_node *schema, const char *value, size_t value_len, LY_VALUE_FORMAT format,
-        void *prefix_data, uint32_t hints, const struct lyd_node *ctx_node, int log, const struct lysc_type **realtype,
-        const char **canonical);
+LY_ERR lyd_value_validate3(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+        LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lyd_node *ctx_node,
+        const struct lysc_node *ctx_scnode, int log, const struct lysc_type **realtype, const char **canonical);
 
 /**
  * @defgroup datahash Data nodes hash manipulation

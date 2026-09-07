@@ -603,45 +603,42 @@ LIBYANG_API_DEF LY_ERR
 lyd_value_validate(const struct lysc_node *schema, const char *value, uint32_t value_len,
         const struct lyd_node *ctx_node, const struct lysc_type **realtype, const char **canonical)
 {
-    LY_CHECK_ARG_RET(NULL, schema, !value_len || value, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, schema, schema->nodetype & LYD_NODE_TERM, !value_len || value, LY_EINVAL);
 
-    return lyd_value_validate3(schema, value, value_len, LY_VALUE_JSON, NULL, LYD_HINT_DATA, ctx_node,
-            1, realtype, canonical);
+    return lyd_value_validate3(schema->module->ctx, ((struct lysc_node_leaf *)schema)->type, value, value_len,
+            LY_VALUE_JSON, NULL, LYD_HINT_DATA, ctx_node, schema, 1, realtype, canonical);
 }
 
 LIBYANG_API_DEF LY_ERR
 lyd_value_validate_dflt(const struct lysc_node *schema, const char *value, struct lysc_prefix *prefixes,
         const struct lyd_node *ctx_node, const struct lysc_type **realtype, const char **canonical)
 {
-    LY_CHECK_ARG_RET(NULL, schema, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, schema, schema->nodetype & LYD_NODE_TERM, LY_EINVAL);
 
-    return lyd_value_validate3(schema, value, value ? strlen(value) : 0, LY_VALUE_SCHEMA_RESOLVED, prefixes,
-            LYD_HINT_SCHEMA, ctx_node, 1, realtype, canonical);
+    return lyd_value_validate3(schema->module->ctx, ((struct lysc_node_leaf *)schema)->type, value,
+            value ? strlen(value) : 0, LY_VALUE_SCHEMA_RESOLVED, prefixes, LYD_HINT_SCHEMA, ctx_node, schema, 1,
+            realtype, canonical);
 }
 
 LY_ERR
-lyd_value_validate3(const struct lysc_node *schema, const char *value, size_t value_len, LY_VALUE_FORMAT format,
-        void *prefix_data, uint32_t hints, const struct lyd_node *ctx_node, int log, const struct lysc_type **realtype,
-        const char **canonical)
+lyd_value_validate3(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+        LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lyd_node *ctx_node,
+        const struct lysc_node *ctx_scnode, int log, const struct lysc_type **realtype, const char **canonical)
 {
     LY_ERR rc;
-    const struct ly_ctx *ctx;
     struct ly_err_item *err = NULL;
-    struct lysc_type *type;
     struct lyd_value val = {0};
     ly_bool stored = 0;
     struct lyplg_type *type_plg;
 
-    ctx = schema->module->ctx;
     if (!value_len) {
         value = "";
     }
-    type = ((struct lysc_node_leaf *)schema)->type;
 
     type_plg = LYSC_GET_TYPE_PLG(type->plugin_ref);
 
     /* store */
-    rc = type_plg->store(ctx, type, value, value_len * 8, 0, format, prefix_data, hints, schema, &val, NULL, &err);
+    rc = type_plg->store(ctx, type, value, value_len * 8, 0, format, prefix_data, hints, ctx_scnode, &val, NULL, &err);
     if (!rc || (rc == LY_EINCOMPLETE)) {
         stored = 1;
     }
@@ -654,7 +651,7 @@ lyd_value_validate3(const struct lysc_node *schema, const char *value, size_t va
     if (rc && (rc != LY_EINCOMPLETE) && err) {
         if (log) {
             /* log error */
-            ly_err_print(ctx, err, ctx_node, schema);
+            ly_err_print(ctx, err, ctx_node, ctx_scnode);
         }
         ly_err_free(err);
     }
