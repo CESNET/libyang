@@ -1393,7 +1393,7 @@ lyd_get_meta_annotation(const struct lys_module *mod, const char *name, size_t n
     LY_ARRAY_COUNT_TYPE u;
     struct lyplg_ext *plugin;
 
-    if (!mod) {
+    if (!mod || !mod->implemented) {
         return NULL;
     }
 
@@ -2598,8 +2598,8 @@ LY_ERR
 lyd_dup_meta_single_to_ctx(const struct ly_ctx *parent_ctx, const struct lyd_meta *meta, struct lyd_node *parent,
         struct lyd_meta **dup)
 {
-    LY_ERR ret = LY_SUCCESS;
-    struct lyd_meta *mt, *last;
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_meta *mt = NULL, *last;
     const struct lysc_type *ant_type;
     struct lys_module *mod;
     const char *val_can;
@@ -2608,7 +2608,7 @@ lyd_dup_meta_single_to_ctx(const struct ly_ctx *parent_ctx, const struct lyd_met
 
     /* create a copy */
     mt = calloc(1, sizeof *mt);
-    LY_CHECK_ERR_RET(!mt, LOGMEM(LYD_CTX(parent)), LY_EMEM);
+    LY_CHECK_ERR_GOTO(!mt, LOGMEM(LYD_CTX(parent)); rc = LY_EMEM, cleanup);
 
     if (parent_ctx != meta->annotation->module->ctx) {
         /* different contexts */
@@ -2616,22 +2616,25 @@ lyd_dup_meta_single_to_ctx(const struct ly_ctx *parent_ctx, const struct lyd_met
 
         /* annotation */
         mt->annotation = lyd_get_meta_annotation(mod, meta->name, strlen(meta->name));
+        if (!mt->annotation) {
+            LOGERR(parent_ctx, LY_EINVAL, "Annotation for metadata %s not found, value duplication failed.",
+                    meta->name);
+            rc = LY_EINVAL;
+            goto cleanup;
+        }
         lyplg_ext_get_storage(mt->annotation, LY_STMT_TYPE, sizeof ant_type, (const void **)&ant_type);
-        LY_CHECK_ERR_GOTO((ret = mt->annotation ? LY_SUCCESS : LY_EINVAL), LOGERR(parent_ctx, LY_EINVAL,
-                "Annotation for metadata %s not found, value duplication failed.", meta->name), finish);
 
         /* duplicate callback expect only the same contexts, so use the store callback */
         val_can = lyd_value_get_canonical(meta->annotation->module->ctx, &meta->value);
-        ret = lyd_value_store(parent_ctx, parent, &mt->value, ant_type, val_can, strlen(val_can) * 8, 1, 1, NULL,
+        rc = lyd_value_store(parent_ctx, parent, &mt->value, ant_type, val_can, strlen(val_can) * 8, 1, 1, NULL,
                 LY_VALUE_CANON, NULL, LYD_HINT_DATA, parent->schema, NULL);
     } else {
-        /* annotation */
-        mt->annotation = meta->annotation;
         /* duplication of value */
-        ret = LYSC_GET_TYPE_PLG(meta->value.realtype->plugin_ref)->duplicate(parent_ctx, &meta->value, &mt->value);
+        mt->annotation = meta->annotation;
+        rc = LYSC_GET_TYPE_PLG(meta->value.realtype->plugin_ref)->duplicate(parent_ctx, &meta->value, &mt->value);
     }
-    LY_CHECK_ERR_GOTO(ret, LOGERR(LYD_CTX(parent), LY_EINT, "Value duplication failed."), finish);
-    LY_CHECK_GOTO(ret = lydict_insert(parent_ctx, meta->name, 0, &mt->name), finish);
+    LY_CHECK_ERR_GOTO(rc, LOGERR(LYD_CTX(parent), LY_EINT, "Value duplication failed."), cleanup);
+    LY_CHECK_GOTO(rc = lydict_insert(parent_ctx, meta->name, 0, &mt->name), cleanup);
 
     /* insert as the last attribute */
     mt->parent = parent;
@@ -2642,13 +2645,17 @@ lyd_dup_meta_single_to_ctx(const struct ly_ctx *parent_ctx, const struct lyd_met
         parent->meta = mt;
     }
 
-finish:
-    if (ret) {
-        lyd_free_meta_single(mt);
+cleanup:
+    if (rc) {
+        if (!mt->annotation) {
+            free(mt);
+        } else {
+            lyd_free_meta_single(mt);
+        }
     } else if (dup) {
         *dup = mt;
     }
-    return LY_SUCCESS;
+    return rc;
 }
 
 LIBYANG_API_DEF LY_ERR

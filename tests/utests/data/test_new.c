@@ -165,6 +165,7 @@ test_top_level(void **state)
     CHECK_LOG_CTX("Invalid argument !(store_only && (format == LY_VALUE_CANON)) (_lyd_new_term()).", NULL, 0);
 
     uint16_t foo_val = 15;
+
     assert_int_equal(lyd_new_term_raw_canon(NULL, mod, "foo", &foo_val, sizeof foo_val, "15", LYD_NEW_ANY_USE_VALUE,
             &node), LY_SUCCESS);
     lyd_free_tree(node);
