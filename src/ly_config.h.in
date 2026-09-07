@@ -51,10 +51,12 @@
 #endif
 
 /** printf compiler attribute */
-#ifdef __GNUC__
+#if defined (__GNUC__) || defined (__llvm__)
 # define _FORMAT_PRINTF(FORM, ARGS) __attribute__((format (printf, FORM, ARGS)))
+# define _DEPRECATED __attribute__((__deprecated__))
 #else
 # define _FORMAT_PRINTF(FORM, ARGS)
+# define _DEPRECATED
 #endif
 
 /** Exporting symbols to a shared library and importing back afterwards

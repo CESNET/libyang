@@ -1384,12 +1384,19 @@ LIBYANG_API_DECL LY_ERR lyd_new_term(struct lyd_node *parent, const struct lys_m
  * @param[in] name Schema node name of the new data node. The node can be #LYS_LEAF or #LYS_LEAFLIST.
  * @param[in] value_ptr Pointer to the raw value of the node, specific ::lyd_value union member for the node type expected.
  * @param[in] value_size Size of @p value_ptr target in bytes.
+ * @param[in] canon Canonical @p value_ptr value string.
  * @param[in] options Bitmask of options, see @ref newvaloptions.
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
+LIBYANG_API_DECL LY_ERR lyd_new_term_raw_canon(struct lyd_node *parent, const struct lys_module *module, const char *name,
+        const void *value_ptr, uint32_t value_size, const char *canon, uint32_t options, struct lyd_node **node);
+
+/**
+ * @brief Deprecated, use ::lyd_new_term_raw_canon() instead. Produces nodes without canonical values.
+ */
 LIBYANG_API_DECL LY_ERR lyd_new_term_raw(struct lyd_node *parent, const struct lys_module *module, const char *name,
-        const void *value_ptr, uint32_t value_size, uint32_t options, struct lyd_node **node);
+        const void *value_ptr, uint32_t value_size, uint32_t options, struct lyd_node **node) _DEPRECATED;
 
 /**
  * @brief Create a new any node in the data tree.

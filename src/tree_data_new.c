@@ -743,8 +743,8 @@ lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const cha
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_new_term_raw(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value_ptr,
-        uint32_t value_size, uint32_t options, struct lyd_node **node)
+lyd_new_term_raw_canon(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value_ptr,
+        uint32_t value_size, const char *canon, uint32_t options, struct lyd_node **node)
 {
     LY_ERR r;
     struct lyd_node_term *term = NULL;
@@ -757,7 +757,7 @@ lyd_new_term_raw(struct lyd_node *parent, const struct lys_module *module, const
     const struct ly_ctx *ctx = parent ? LYD_CTX(parent) : (module ? module->ctx : NULL);
     uint32_t getnext_opts = (options & LYD_NEW_VAL_OUTPUT) ? LYS_GETNEXT_OUTPUT : 0;
 
-    LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, canon, LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(__func__, parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
 
     if (!module) {
@@ -784,9 +784,11 @@ lyd_new_term_raw(struct lyd_node *parent, const struct lys_module *module, const
     term->prev = &term->node;
     term->flags = LYD_NEW;
 
-    /* store the value, leave _canonical unset */
-    term->value.realtype = (type->basetype == LY_TYPE_LEAFREF) ? ((struct lysc_type_leafref *)type)->realtype : type;
+    /* store the value */
     if (options & LYD_NEW_ANY_USE_VALUE) {
+        LY_CHECK_ERR_RET(r = lydict_insert(ctx, canon, 0, &term->value._canonical), free(term), r);
+        term->value.realtype = (type->basetype == LY_TYPE_LEAFREF) ? ((struct lysc_type_leafref *)type)->realtype : type;
+
         /* spend the value */
         if (value_size > LYD_VALUE_FIXED_MEM_SIZE) {
             term->value.dyn_mem = malloc(value_size);
@@ -796,6 +798,9 @@ lyd_new_term_raw(struct lyd_node *parent, const struct lys_module *module, const
             memcpy(term->value.fixed_mem, value_ptr, value_size);
         }
     } else {
+        LY_CHECK_ERR_RET(r = lydict_insert(ctx, canon, 0, &val._canonical), free(term), r);
+        val.realtype = (type->basetype == LY_TYPE_LEAFREF) ? ((struct lysc_type_leafref *)type)->realtype : type;
+
         /* store a copy of the value */
         val.dyn_mem = (void *)value_ptr;
         r = type_plg->duplicate(ctx, &val, &term->value);
@@ -832,6 +837,13 @@ lyd_new_term_raw(struct lyd_node *parent, const struct lys_module *module, const
         *node = &term->node;
     }
     return LY_SUCCESS;
+}
+
+LIBYANG_API_DEF LY_ERR
+lyd_new_term_raw(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value_ptr,
+        uint32_t value_size, uint32_t options, struct lyd_node **node)
+{
+    return lyd_new_term_raw_canon(parent, module, name, value_ptr, value_size, "", options, node);
 }
 
 LIBYANG_API_DEF LY_ERR
