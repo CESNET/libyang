@@ -1,11 +1,11 @@
 # Security Policy
 
-If you discover a security-related issue (a crash), please report it based on the instructions below.
+If you discover a security-related issue, please report it based on the instructions below.
 
 ## Reporting a Vulnerability
 
 Please **DO NOT** file a public issue, instead report the vulnerability on the relevant
-[GitHub security](https://github.com/CESNET/libyang/security) page. If you do not receive any reaction within 48 hours,
+[GitHub security](https://github.com/CESNET/libyang/security) page. If you do not receive any reaction within 72 hours,
 please also send an email to [mvasko@cesnet.cz].
 
 ## Review Process
