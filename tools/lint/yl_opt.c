@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <getopt.h>
+#include <stdlib.h>
 #include <strings.h>
 
 #include "in.h" /* ly_in_free */
