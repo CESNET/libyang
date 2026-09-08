@@ -20,7 +20,6 @@
 #include "parser_data.h"
 #include "plugins.h"
 #include "tree_data.h"
-#include "tree_edit.h"
 #include "tree_schema.h"
 
 struct ly_ctx;
@@ -498,6 +497,18 @@ LIBYANG_API_DECL void lyplg_ext_parse_log(const struct lysp_ctx *pctx, const str
 LIBYANG_API_DECL const struct lysp_module *lyplg_ext_parse_get_cur_pmod(const struct lysp_ctx *pctx);
 
 /**
+ * @brief Create sized array of substatements in a parsed extension instance.
+ *
+ * @param[in] pctx Parse context.
+ * @param[in,out] ext Parsed extension instances whose substatements to create.
+ * @param[in] size Size of substatements to create.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR error on error.
+ */
+LIBYANG_API_DECL LY_ERR lyplg_ext_parse_create_substmts(const struct lysp_ctx *pctx, struct lysp_ext_instance *ext,
+        uint32_t size);
+
+/**
  * @brief Parse substatements of an extension instance.
  *
  * Uses standard libyang schema compiler to transform YANG statements into the parsed schema structures. The plugins are
@@ -626,6 +637,18 @@ LIBYANG_API_DECL const struct lys_module *lyplg_ext_compile_get_cur_mod(const st
  * @return Currently processed module.
  */
 LIBYANG_API_DECL struct lysp_module *lyplg_ext_compile_get_pmod(const struct lysc_ctx *ctx);
+
+/**
+ * @brief Create sized array of substatements in a compiled extension instance.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in,out] ext Compiled extension instances whose substatements to create.
+ * @param[in] size Size of substatements to create.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR error on error.
+ */
+LIBYANG_API_DECL LY_ERR lyplg_ext_compile_create_substmts(const struct lysc_ctx *ctx, struct lysc_ext_instance *ext,
+        uint32_t size);
 
 /**
  * @brief Compile substatements of an extension instance.

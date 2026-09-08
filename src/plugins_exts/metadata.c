@@ -76,29 +76,25 @@ annotation_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     if (!ann_pdata) {
         goto emem;
     }
-    LY_ARRAY_CREATE_GOTO(lyplg_ext_parse_get_cur_pmod(pctx)->mod->ctx, ext->substmts, 6, r, emem);
+    if ((r = lyplg_ext_parse_create_substmts(pctx, ext, 6))) {
+        return r;
+    }
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[0].stmt = LY_STMT_IF_FEATURE;
     ext->substmts[0].storage_p = (void **)&ann_pdata->iffeatures;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[1].stmt = LY_STMT_UNITS;
     ext->substmts[1].storage_p = (void **)&ann_pdata->units;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[2].stmt = LY_STMT_STATUS;
     ext->substmts[2].storage_p = (void **)&ann_pdata->flags;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[3].stmt = LY_STMT_TYPE;
     ext->substmts[3].storage_p = (void **)&ann_pdata->type;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[4].stmt = LY_STMT_DESCRIPTION;
     ext->substmts[4].storage_p = (void **)&ann_pdata->dsc;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[5].stmt = LY_STMT_REFERENCE;
     ext->substmts[5].storage_p = (void **)&ann_pdata->ref;
 
@@ -128,7 +124,7 @@ emem:
 static LY_ERR
 annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, struct lysc_ext_instance *ext)
 {
-    LY_ERR ret;
+    LY_ERR r;
     struct lysc_ext_metadata *ann_cdata;
 
     /* compile annotation substatements */
@@ -136,34 +132,29 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, 
     if (!ann_cdata) {
         goto emem;
     }
-    LY_ARRAY_CREATE_GOTO(lysc_ctx_get_ctx(cctx), ext->substmts, 6, ret, emem);
+    if ((r = lyplg_ext_compile_create_substmts(cctx, ext, 6))) {
+        return r;
+    }
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[0].stmt = LY_STMT_IF_FEATURE;
     ext->substmts[0].storage_p = NULL;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[1].stmt = LY_STMT_UNITS;
     ext->substmts[1].storage_p = (void **)&ann_cdata->units;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[2].stmt = LY_STMT_STATUS;
     ext->substmts[2].storage_p = (void **)&ann_cdata->flags;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[3].stmt = LY_STMT_TYPE;
     ext->substmts[3].storage_p = (void **)&ann_cdata->type;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[4].stmt = LY_STMT_DESCRIPTION;
     ext->substmts[4].storage_p = (void **)&ann_cdata->dsc;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[5].stmt = LY_STMT_REFERENCE;
     ext->substmts[5].storage_p = (void **)&ann_cdata->ref;
 
-    ret = lyplg_ext_compile_extension_instance(cctx, extp, ext, NULL);
-    return ret;
+    return lyplg_ext_compile_extension_instance(cctx, extp, ext, NULL);
 
 emem:
     lyplg_ext_compile_log(cctx, ext, LY_LLERR, LY_EMEM, "Memory allocation failed (%s()).", __func__);

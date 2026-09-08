@@ -27,12 +27,28 @@
 #include "schema_compile_amend.h"
 #include "schema_compile_node.h"
 #include "schema_features.h"
+#include "tree_edit.h"
 #include "tree_schema_internal.h"
 
 LIBYANG_API_DEF const struct lysp_module *
 lyplg_ext_parse_get_cur_pmod(const struct lysp_ctx *pctx)
 {
     return PARSER_CUR_PMOD(pctx);
+}
+
+LIBYANG_API_DEF LY_ERR
+lyplg_ext_parse_create_substmts(const struct lysp_ctx *pctx, struct lysp_ext_instance *ext, uint32_t size)
+{
+    LY_ARRAY_COUNT_TYPE *count_p;
+
+    /* allocate */
+    LY_ARRAY_CREATE_RET(lyplg_ext_parse_get_cur_pmod(pctx)->mod->ctx, ext->substmts, size, LY_EMEM);
+
+    /* set size information */
+    count_p = (LY_ARRAY_COUNT_TYPE *)ext->substmts - 1;
+    *count_p = size;
+
+    return LY_SUCCESS;
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -99,6 +115,21 @@ LIBYANG_API_DEF struct lysp_module *
 lyplg_ext_compile_get_pmod(const struct lysc_ctx *ctx)
 {
     return ctx->pmod;
+}
+
+LIBYANG_API_DEF LY_ERR
+lyplg_ext_compile_create_substmts(const struct lysc_ctx *ctx, struct lysc_ext_instance *ext, uint32_t size)
+{
+    LY_ARRAY_COUNT_TYPE *count_p;
+
+    /* allocate */
+    LY_ARRAY_CREATE_RET(lyplg_ext_compile_get_ctx(ctx), ext->substmts, size, LY_EMEM);
+
+    /* set size information */
+    count_p = (LY_ARRAY_COUNT_TYPE *)ext->substmts - 1;
+    *count_p = size;
+
+    return LY_SUCCESS;
 }
 
 /**

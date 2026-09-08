@@ -37,7 +37,7 @@ static void yangdata_cfree(const struct ly_ctx *ctx, struct lysc_ext_instance *e
 static LY_ERR
 yangdata_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 {
-    LY_ERR ret;
+    LY_ERR r;
     LY_ARRAY_COUNT_TYPE u;
     struct lysp_module *pmod;
 
@@ -60,28 +60,20 @@ yangdata_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     }
 
     /* parse yang-data substatements */
-    LY_ARRAY_CREATE_GOTO(lyplg_ext_parse_get_cur_pmod(pctx)->mod->ctx, ext->substmts, 3, ret, emem);
-    LY_ARRAY_INCREMENT(ext->substmts);
+    if ((r = lyplg_ext_parse_create_substmts(pctx, ext, 3))) {
+        return r;
+    }
+
     ext->substmts[0].stmt = LY_STMT_CONTAINER;
     ext->substmts[0].storage_p = (void **)&ext->parsed;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[1].stmt = LY_STMT_CHOICE;
     ext->substmts[1].storage_p = (void **)&ext->parsed;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[2].stmt = LY_STMT_USES;
     ext->substmts[2].storage_p = (void **)&ext->parsed;
 
-    if ((ret = lyplg_ext_parse_extension_instance(pctx, ext))) {
-        return ret;
-    }
-
-    return LY_SUCCESS;
-
-emem:
-    lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EMEM, "Memory allocation failed (%s()).", __func__);
-    return LY_EMEM;
+    return lyplg_ext_parse_extension_instance(pctx, ext);
 }
 
 /**
@@ -92,30 +84,30 @@ emem:
 static LY_ERR
 yangdata_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, struct lysc_ext_instance *ext)
 {
-    LY_ERR ret;
+    LY_ERR r;
     const struct lysc_node *child;
     ly_bool valid = 1;
     uint32_t prev_options = *lyplg_ext_compile_get_options(cctx);
 
     /* compile yangg-data substatements */
-    LY_ARRAY_CREATE_GOTO(cctx->ctx, ext->substmts, 3, ret, emem);
-    LY_ARRAY_INCREMENT(ext->substmts);
+    if ((r = lyplg_ext_compile_create_substmts(cctx, ext, 3))) {
+        return r;
+    }
+
     ext->substmts[0].stmt = LY_STMT_CONTAINER;
     ext->substmts[0].storage_p = (void **)&ext->compiled;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[1].stmt = LY_STMT_CHOICE;
     ext->substmts[1].storage_p = (void **)&ext->compiled;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[2].stmt = LY_STMT_USES;
     ext->substmts[2].storage_p = (void **)&ext->compiled;
 
     *lyplg_ext_compile_get_options(cctx) |= LYS_COMPILE_NO_CONFIG | LYS_COMPILE_NO_DISABLED;
-    ret = lyplg_ext_compile_extension_instance(cctx, extp, ext, NULL);
+    r = lyplg_ext_compile_extension_instance(cctx, extp, ext, NULL);
     *lyplg_ext_compile_get_options(cctx) = prev_options;
-    if (ret) {
-        return ret;
+    if (r) {
+        return r;
     }
 
     /* check that we have really just a single container data definition in the top */
@@ -165,10 +157,6 @@ yangdata_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, st
     }
 
     return LY_SUCCESS;
-
-emem:
-    lyplg_ext_compile_log(cctx, ext, LY_LLERR, LY_EMEM, "Memory allocation failed (%s()).", __func__);
-    return LY_EMEM;
 }
 
 /**
