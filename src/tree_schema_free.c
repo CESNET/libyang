@@ -583,7 +583,8 @@ lysp_node_free(const struct ly_ctx *ctx, struct lysp_node *node)
         LOGINT(ctx);
     }
 
-    free(node);
+    /* struct lysp_node is preceded wtih its parsed module pointer */
+    free((char *)node - sizeof(struct lysp_module *));
 }
 
 void

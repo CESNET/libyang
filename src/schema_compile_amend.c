@@ -26,6 +26,7 @@
 #include "dict.h"
 #include "log.h"
 #include "ly_common.h"
+#include "parser_internal.h"
 #include "plugins_internal.h"
 #include "schema_compile.h"
 #include "schema_compile_node.h"
@@ -794,37 +795,37 @@ lysp_dup_single(struct lysc_ctx *cctx, const struct lysp_node *pnode, ly_bool wi
 
     switch (pnode->nodetype) {
     case LYS_CONTAINER:
-        dup = calloc(1, sizeof(struct lysp_node_container));
+        dup = lysp_parser_node_new(cctx->pmod, sizeof(struct lysp_node_container), NULL);
         break;
     case LYS_LEAF:
-        dup = calloc(1, sizeof(struct lysp_node_leaf));
+        dup = lysp_parser_node_new(cctx->pmod, sizeof(struct lysp_node_leaf), NULL);
         break;
     case LYS_LEAFLIST:
-        dup = calloc(1, sizeof(struct lysp_node_leaflist));
+        dup = lysp_parser_node_new(cctx->pmod, sizeof(struct lysp_node_leaflist), NULL);
         break;
     case LYS_LIST:
-        dup = calloc(1, sizeof(struct lysp_node_list));
+        dup = lysp_parser_node_new(cctx->pmod, sizeof(struct lysp_node_list), NULL);
         break;
     case LYS_CHOICE:
-        dup = calloc(1, sizeof(struct lysp_node_choice));
+        dup = lysp_parser_node_new(cctx->pmod, sizeof(struct lysp_node_choice), NULL);
         break;
     case LYS_CASE:
-        dup = calloc(1, sizeof(struct lysp_node_case));
+        dup = lysp_parser_node_new(cctx->pmod, sizeof(struct lysp_node_case), NULL);
         break;
     case LYS_ANYDATA:
     case LYS_ANYXML:
-        dup = calloc(1, sizeof(struct lysp_node_anydata));
+        dup = lysp_parser_node_new(cctx->pmod, sizeof(struct lysp_node_anydata), NULL);
         break;
     case LYS_INPUT:
     case LYS_OUTPUT:
-        dup = calloc(1, sizeof(struct lysp_node_action_inout));
+        dup = lysp_parser_node_new(cctx->pmod, sizeof(struct lysp_node_action_inout), NULL);
         break;
     case LYS_ACTION:
     case LYS_RPC:
-        dup = calloc(1, sizeof(struct lysp_node_action));
+        dup = lysp_parser_node_new(cctx->pmod, sizeof(struct lysp_node_action), NULL);
         break;
     case LYS_NOTIF:
-        dup = calloc(1, sizeof(struct lysp_node_notif));
+        dup = lysp_parser_node_new(cctx->pmod, sizeof(struct lysp_node_notif), NULL);
         break;
     default:
         LOGINT_RET(cctx->ctx);

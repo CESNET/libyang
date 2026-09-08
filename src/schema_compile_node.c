@@ -29,6 +29,7 @@
 #include "dict.h"
 #include "log.h"
 #include "ly_common.h"
+#include "parser_internal.h"
 #include "plugins.h"
 #include "plugins_internal.h"
 #include "plugins_types.h"
@@ -3524,7 +3525,7 @@ lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, s
         ret = lys_compile_node(ctx, child_p, node, 0, child_set);
     } else {
         /* we need the implicit case first, so create a fake parsed (shorthand) case */
-        cs_p = calloc(1, sizeof *cs_p);
+        cs_p = lysp_parser_node_new(ctx->pmod, sizeof *cs_p, NULL);
         LY_CHECK_ERR_RET(!cs_p, LOGMEM(ctx->ctx), LY_EMEM);
         cs_p->nodetype = LYS_CASE;
         DUP_STRING_GOTO(ctx->ctx, child_p->name, cs_p->name, ret, revert_sh_case);

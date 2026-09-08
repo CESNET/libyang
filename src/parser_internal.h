@@ -500,6 +500,17 @@ LY_ERR lyd_parser_node_insert(struct lyd_node *parent, struct lyd_node **first_p
         uint32_t parse_opts, struct lyd_node *node);
 
 /**
+ * @brief Create a new parsed node.
+ *
+ * @param[in] pmod Parsed module of the node.
+ * @param[in] pnode_size Size of the specific parsed node struct.
+ * @param[in,out] first Optional, first parsed node in the list to link to.
+ * @return Specific parsed node;
+ * @return NULL on error.
+ */
+void *lysp_parser_node_new(struct lysp_module *pmod, uint32_t pnode_size, struct lysp_node **first);
+
+/**
  * @brief Parse an instance extension statement.
  *
  * @param[in] pctx Parse context.

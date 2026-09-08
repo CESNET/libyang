@@ -2374,13 +2374,15 @@ lysp_add_internal_ietf_netconf(struct lysp_ctx *pctx, struct lysp_module *mod)
     /*
      * 4) rpc-error
      */
-    LY_LIST_NEW_RET(mod->mod->ctx, &mod->data, cont, next, LY_EMEM);
+    cont = lysp_parser_node_new(mod, sizeof *cont, &mod->data);
+    LY_CHECK_ERR_RET(!cont, LOGMEM(mod->mod->ctx), LY_EMEM);
     cont->nodetype = LYS_CONTAINER;
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "rpc-error", 0, &cont->name));
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "presence", 0, &cont->presence));
     cont->flags = LYS_INTERNAL;
 
-    LY_LIST_NEW_RET(mod->mod->ctx, &cont->child, leaf, next, LY_EMEM);
+    leaf = lysp_parser_node_new(mod, sizeof *leaf, &cont->child);
+    LY_CHECK_ERR_RET(!leaf, LOGMEM(mod->mod->ctx), LY_EMEM);
     leaf->nodetype = LYS_LEAF;
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "error-type", 0, &leaf->name));
     leaf->flags = LYS_INTERNAL;
@@ -2396,7 +2398,8 @@ lysp_add_internal_ietf_netconf(struct lysp_ctx *pctx, struct lysp_module *mod)
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "application", 0, &enm->name));
 
-    LY_LIST_NEW_RET(mod->mod->ctx, &cont->child, leaf, next, LY_EMEM);
+    leaf = lysp_parser_node_new(mod, sizeof *leaf, &cont->child);
+    LY_CHECK_ERR_RET(!leaf, LOGMEM(mod->mod->ctx), LY_EMEM);
     leaf->nodetype = LYS_LEAF;
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "error-tag", 0, &leaf->name));
     leaf->flags = LYS_INTERNAL;
@@ -2444,7 +2447,8 @@ lysp_add_internal_ietf_netconf(struct lysp_ctx *pctx, struct lysp_module *mod)
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "malformed-message", 0, &enm->name));
 
-    LY_LIST_NEW_RET(mod->mod->ctx, &cont->child, leaf, next, LY_EMEM);
+    leaf = lysp_parser_node_new(mod, sizeof *leaf, &cont->child);
+    LY_CHECK_ERR_RET(!leaf, LOGMEM(mod->mod->ctx), LY_EMEM);
     leaf->nodetype = LYS_LEAF;
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "error-severity", 0, &leaf->name));
     leaf->flags = LYS_INTERNAL;
@@ -2456,14 +2460,16 @@ lysp_add_internal_ietf_netconf(struct lysp_ctx *pctx, struct lysp_module *mod)
     LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "warning", 0, &enm->name));
 
-    LY_LIST_NEW_RET(mod->mod->ctx, &cont->child, leaf, next, LY_EMEM);
+    leaf = lysp_parser_node_new(mod, sizeof *leaf, &cont->child);
+    LY_CHECK_ERR_RET(!leaf, LOGMEM(mod->mod->ctx), LY_EMEM);
     leaf->nodetype = LYS_LEAF;
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "error-app-tag", 0, &leaf->name));
     leaf->flags = LYS_INTERNAL;
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "string", 0, &leaf->type.name));
     leaf->type.pmod = mod;
 
-    LY_LIST_NEW_RET(mod->mod->ctx, &cont->child, leaf, next, LY_EMEM);
+    leaf = lysp_parser_node_new(mod, sizeof *leaf, &cont->child);
+    LY_CHECK_ERR_RET(!leaf, LOGMEM(mod->mod->ctx), LY_EMEM);
     leaf->nodetype = LYS_LEAF;
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "error-path", 0, &leaf->name));
     leaf->flags = LYS_INTERNAL;
@@ -2605,7 +2611,8 @@ lysp_add_internal_yang(struct lysp_ctx *pctx, struct lysp_module *mod)
     }
 
     /* add a date-and-time leaf so that such values can be validated (there is a compiled type) */
-    LY_LIST_NEW_RET(mod->mod->ctx, &mod->data, leaf, next, LY_EMEM);
+    leaf = lysp_parser_node_new(mod, sizeof *leaf, &mod->data);
+    LY_CHECK_ERR_RET(!leaf, LOGMEM(mod->mod->ctx), LY_EMEM);
     leaf->nodetype = LYS_LEAF;
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "date-and-time", 0, &leaf->name));
     leaf->flags = LYS_INTERNAL;

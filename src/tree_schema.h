@@ -724,6 +724,7 @@ struct lysp_deviation {
  * @brief Generic YANG data node
  */
 struct lysp_node {
+    /* struct lysp_module *mod;       **< node module (before the struct lysp_node structure) */
     struct lysp_node *parent;        /**< parent node (NULL if this is a top-level node) */
     uint16_t nodetype;               /**< [type of the node](@ref schemanodetypes) (mandatory) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */

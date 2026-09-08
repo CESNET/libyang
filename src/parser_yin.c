@@ -1564,7 +1564,8 @@ yin_parse_any(struct lysp_yin_ctx *ctx, enum ly_stmt any_kw, struct tree_node_me
     struct lysp_node_anydata *any;
 
     /* create new sibling */
-    LY_LIST_NEW_RET(ctx->xmlctx->ctx, node_meta->nodes, any, next, LY_EMEM);
+    any = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *any, node_meta->nodes);
+    LY_CHECK_ERR_RET(!any, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     any->nodetype = (any_kw == LY_STMT_ANYDATA) ? LYS_ANYDATA : LYS_ANYXML;
     any->parent = node_meta->parent;
 
@@ -1605,7 +1606,8 @@ yin_parse_leaf(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
     struct lysp_node_leaf *leaf;
 
     /* create structure new leaf */
-    LY_LIST_NEW_RET(ctx->xmlctx->ctx, node_meta->nodes, leaf, next, LY_EMEM);
+    leaf = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *leaf, node_meta->nodes);
+    LY_CHECK_ERR_RET(!leaf, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     leaf->nodetype = LYS_LEAF;
     leaf->parent = node_meta->parent;
 
@@ -1649,8 +1651,8 @@ yin_parse_leaflist(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
 {
     struct lysp_node_leaflist *llist;
 
-    LY_LIST_NEW_RET(ctx->xmlctx->ctx, node_meta->nodes, llist, next, LY_EMEM);
-
+    llist = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *llist, node_meta->nodes);
+    LY_CHECK_ERR_RET(!llist, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     llist->nodetype = LYS_LEAFLIST;
     llist->parent = node_meta->parent;
 
@@ -1793,7 +1795,8 @@ yin_parse_uses(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
     struct lysp_node_uses *uses;
 
     /* create new uses */
-    LY_LIST_NEW_RET(ctx->xmlctx->ctx, node_meta->nodes, uses, next, LY_EMEM);
+    uses = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *uses, node_meta->nodes);
+    LY_CHECK_ERR_RET(!uses, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     uses->nodetype = LYS_USES;
     uses->parent = node_meta->parent;
 
@@ -2335,7 +2338,8 @@ yin_parse_list(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
     struct yin_subelement *subelems = NULL;
     size_t subelems_size;
 
-    LY_LIST_NEW_RET(ctx->xmlctx->ctx, node_meta->nodes, list, next, LY_EMEM);
+    list = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *list, node_meta->nodes);
+    LY_CHECK_ERR_RET(!list, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     list->nodetype = LYS_LIST;
     list->parent = node_meta->parent;
 
@@ -2396,13 +2400,13 @@ static LY_ERR
 yin_parse_notification(struct lysp_yin_ctx *ctx, struct tree_node_meta *notif_meta)
 {
     struct lysp_node_notif *notif;
-    struct lysp_node_notif **notifs = (struct lysp_node_notif **)notif_meta->nodes;
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
     size_t subelems_size;
 
     /* allocate new notification */
-    LY_LIST_NEW_RET(ctx->xmlctx->ctx, notifs, notif, next, LY_EMEM);
+    notif = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *notif, notif_meta->nodes);
+    LY_CHECK_ERR_RET(!notif, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     notif->nodetype = LYS_NOTIF;
     notif->parent = notif_meta->parent;
 
@@ -2450,13 +2454,13 @@ static LY_ERR
 yin_parse_grouping(struct lysp_yin_ctx *ctx, struct tree_node_meta *gr_meta)
 {
     struct lysp_node_grp *grp;
-    struct lysp_node_grp **grps = (struct lysp_node_grp **)gr_meta->nodes;
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
     size_t subelems_size;
 
     /* create new grouping */
-    LY_LIST_NEW_RET(ctx->xmlctx->ctx, grps, grp, next, LY_EMEM);
+    grp = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *grp, gr_meta->nodes);
+    LY_CHECK_ERR_RET(!grp, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     grp->nodetype = LYS_GROUPING;
     grp->parent = gr_meta->parent;
 
@@ -2512,7 +2516,8 @@ yin_parse_container(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
     size_t subelems_size;
 
     /* create new container */
-    LY_LIST_NEW_RET(ctx->xmlctx->ctx, node_meta->nodes, cont, next, LY_EMEM);
+    cont = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *cont, node_meta->nodes);
+    LY_CHECK_ERR_RET(!cont, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     cont->nodetype = LYS_CONTAINER;
     cont->parent = node_meta->parent;
 
@@ -2569,7 +2574,8 @@ yin_parse_case(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
     size_t subelems_size;
 
     /* create new case */
-    LY_LIST_NEW_RET(ctx->xmlctx->ctx, node_meta->nodes, cas, next, LY_EMEM);
+    cas = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *cas, node_meta->nodes);
+    LY_CHECK_ERR_RET(!cas, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     cas->nodetype = LYS_CASE;
     cas->parent = node_meta->parent;
 
@@ -2619,8 +2625,8 @@ yin_parse_choice(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
     size_t subelems_size;
 
     /* create new choice */
-    LY_LIST_NEW_RET(ctx->xmlctx->ctx, node_meta->nodes, choice, next, LY_EMEM);
-
+    choice = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *choice, node_meta->nodes);
+    LY_CHECK_ERR_RET(!choice, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     choice->nodetype = LYS_CHOICE;
     choice->parent = node_meta->parent;
 
@@ -2720,14 +2726,15 @@ yin_parse_inout(struct lysp_yin_ctx *ctx, enum ly_stmt inout_kw, struct inout_me
 static LY_ERR
 yin_parse_action(struct lysp_yin_ctx *ctx, struct tree_node_meta *act_meta)
 {
-    struct lysp_node_action *act, **acts = (struct lysp_node_action **)act_meta->nodes;
+    struct lysp_node_action *act;
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
     size_t subelems_size;
     enum ly_stmt kw = act_meta->parent ? LY_STMT_ACTION : LY_STMT_RPC;
 
     /* create new action */
-    LY_LIST_NEW_RET(ctx->xmlctx->ctx, acts, act, next, LY_EMEM);
+    act = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *act, act_meta->nodes);
+    LY_CHECK_ERR_RET(!act, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     act->nodetype = act_meta->parent ? LYS_ACTION : LYS_RPC;
     act->parent = act_meta->parent;
 
@@ -2779,13 +2786,13 @@ static LY_ERR
 yin_parse_augment(struct lysp_yin_ctx *ctx, struct tree_node_meta *aug_meta)
 {
     struct lysp_node_augment *aug;
-    struct lysp_node_augment **augs = (struct lysp_node_augment **)aug_meta->nodes;
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
     size_t subelems_size;
 
     /* create new augment */
-    LY_LIST_NEW_RET(ctx->xmlctx->ctx, augs, aug, next, LY_EMEM);
+    aug = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *aug, aug_meta->nodes);
+    LY_CHECK_ERR_RET(!aug, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     aug->nodetype = LYS_AUGMENT;
     aug->parent = aug_meta->parent;
 
