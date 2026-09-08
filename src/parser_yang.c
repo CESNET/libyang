@@ -106,12 +106,12 @@ struct lys_glob_unres;
         __loop_end = 1; \
     }
 
-LY_ERR parse_container(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_uses(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_choice(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_case(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_list(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_grouping(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_grp **groupings);
+static LY_ERR parse_container(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+static LY_ERR parse_uses(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+static LY_ERR parse_choice(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+static LY_ERR parse_case(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+static LY_ERR parse_list(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+static LY_ERR parse_grouping(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_grp **groupings);
 
 /**
  * @brief Add another character to dynamic buffer, a low-level function.
@@ -126,7 +126,7 @@ LY_ERR parse_grouping(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struc
  * @param[in,out] buf_used Currently used characters of the buffer.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 buf_add_char(struct ly_ctx *ctx, struct ly_in *in, size_t len, char **buf, size_t *buf_len, size_t *buf_used)
 {
 #define BUF_STEP 16;
@@ -163,7 +163,7 @@ buf_add_char(struct ly_ctx *ctx, struct ly_in *in, size_t len, char **buf, size_
  * 2 - prefix already processed, now processing the identifier
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 buf_store_char(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, size_t *word_len,
         char **word_b, size_t *buf_len, ly_bool need_buf, uint8_t *prefix)
 {
@@ -244,7 +244,7 @@ buf_store_char(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, size
  *                    2 for a block comment.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 skip_comment(struct lysp_yang_ctx *ctx, uint8_t comment)
 {
     /* internal statuses: */
@@ -624,7 +624,7 @@ string_end:
  * @param[out] word_len Length of the read string.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 get_argument(struct lysp_yang_ctx *ctx, enum yang_arg arg, uint16_t *flags, char **word_p,
         char **word_b, size_t *word_len)
 {
@@ -781,7 +781,7 @@ error:
  * @param[out] word_len Length of the keyword in the data. Useful for extension instances.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 get_keyword(struct lysp_yang_ctx *ctx, enum ly_stmt *kw, char **word_p, size_t *word_len)
 {
     uint8_t prefix;
@@ -1774,7 +1774,7 @@ cleanup:
  * @param[in,out] when_p When pointer to parse to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_when(struct lysp_yang_ctx *ctx, struct lysp_when **when_p)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1836,7 +1836,7 @@ cleanup:
  * @param[in,out] siblings Siblings to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_any(struct lysp_yang_ctx *ctx, enum ly_stmt any_kw, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1904,7 +1904,7 @@ cleanup:
  * @param[in,out] enm Structure to fill.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_type_enum_value_pos(struct lysp_yang_ctx *ctx, enum ly_stmt val_kw, struct lysp_type_enum *enm)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -2437,7 +2437,7 @@ cleanup:
  * @param[in,out] siblings Siblings to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_leaf(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -2523,7 +2523,7 @@ cleanup:
  * @param[in,out] exts Extension instances to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_maxelements(struct lysp_yang_ctx *ctx, uint32_t *max, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -2595,7 +2595,7 @@ cleanup:
  * @param[in,out] exts Extension instances to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_minelements(struct lysp_yang_ctx *ctx, uint32_t *min, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -2711,7 +2711,7 @@ cleanup:
  *
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_leaflist(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3038,7 +3038,7 @@ cleanup:
  * @param[in,out] actions Actions to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_action(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_action **actions)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3117,7 +3117,7 @@ cleanup:
  * @param[in,out] notifs Notifications to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_notif(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_notif **notifs)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3208,7 +3208,7 @@ cleanup:
  * @param[in,out] groupings Groupings to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_grouping(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_grp **groupings)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3303,7 +3303,7 @@ cleanup:
  * @param[in,out] augments Augments to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_augment(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_augment **augments)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3397,7 +3397,7 @@ cleanup:
  * @param[in,out] siblings Siblings to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_uses(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3462,7 +3462,7 @@ cleanup:
  * @param[in,out] siblings Siblings to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_case(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3545,7 +3545,7 @@ cleanup:
  * @param[in,out] siblings Siblings to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_choice(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3642,7 +3642,7 @@ cleanup:
  * @param[in,out] siblings Siblings to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_container(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = 0;
@@ -3750,7 +3750,7 @@ cleanup:
  * @param[in,out] siblings Siblings to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_list(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -4021,7 +4021,7 @@ cleanup:
  * @param[in,out] deviates Deviates to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_deviate(struct lysp_yang_ctx *ctx, struct lysp_deviate **deviates)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -4252,7 +4252,7 @@ cleanup:
  * @param[in,out] deviations Deviations to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_deviation(struct lysp_yang_ctx *ctx, struct lysp_deviation **deviations)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -4322,7 +4322,7 @@ cleanup:
  * @param[in,out] features Features to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_feature(struct lysp_yang_ctx *ctx, struct lysp_feature **features)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -4380,7 +4380,7 @@ cleanup:
  * @param[in,out] identities Identities to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_identity(struct lysp_yang_ctx *ctx, struct lysp_ident **identities)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -4447,7 +4447,7 @@ cleanup:
  * @param[in,out] mod Module to write to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_module(struct lysp_yang_ctx *ctx, struct lysp_module *mod)
 {
     LY_ERR ret = 0;
@@ -4661,7 +4661,7 @@ cleanup:
  *
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_submodule(struct lysp_yang_ctx *ctx, struct lysp_submodule *submod)
 {
     LY_ERR ret = 0;

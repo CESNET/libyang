@@ -177,7 +177,7 @@ struct minmax_dev_meta {
     struct lysp_ext_instance **exts;    /**< extension instances to add to. */
 };
 
-LY_ERR yin_parse_content(struct lysp_yin_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
+static LY_ERR yin_parse_content(struct lysp_yin_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
         const void *parent, enum ly_stmt parent_stmt, const char **text_content, struct lysp_ext_instance **exts);
 
 /**
@@ -428,7 +428,7 @@ mem_err:
  * @param[in] val_type Type of the input string to select method of checking character validity.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 yin_validate_value(struct lysp_yin_ctx *ctx, enum yang_arg val_type)
 {
     uint8_t prefix = 0;
@@ -2616,7 +2616,7 @@ yin_parse_case(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
  * @param[in] node_meta Meta information about parent node and siblings to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 yin_parse_choice(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3243,7 +3243,7 @@ yin_parse_extension_instance_arg(struct lysp_yin_ctx *ctx, enum ly_stmt parent_s
  * @param[out] element Where the element structure should be stored.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 yin_parse_element_generic(struct lysp_yin_ctx *ctx, enum ly_stmt parent_stmt, struct lysp_stmt **element)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3364,7 +3364,7 @@ cleanup:
  * @param[in,out] exts Extension instance to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 yin_parse_extension_instance(struct lysp_yin_ctx *ctx, const void *parent, enum ly_stmt parent_stmt,
         LY_ARRAY_COUNT_TYPE parent_stmt_index, struct lysp_ext_instance **exts)
 {
@@ -3478,7 +3478,7 @@ yin_parse_extension_instance(struct lysp_yin_ctx *ctx, const void *parent, enum 
  * @param[in,out] exts Extension instance to add to. Can be set to null if element cannot have extension as subelements.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 yin_parse_content(struct lysp_yin_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
         const void *parent, enum ly_stmt parent_stmt, const char **text_content, struct lysp_ext_instance **exts)
 {
@@ -3783,7 +3783,7 @@ cleanup:
  * @param[out] mod Parsed module structure.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 yin_parse_mod(struct lysp_yin_ctx *ctx, struct lysp_module *mod)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3851,7 +3851,7 @@ yin_parse_mod(struct lysp_yin_ctx *ctx, struct lysp_module *mod)
  * @param[out] submod Parsed submodule structure.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 yin_parse_submod(struct lysp_yin_ctx *ctx, struct lysp_submodule *submod)
 {
     LY_ERR ret = LY_SUCCESS;
