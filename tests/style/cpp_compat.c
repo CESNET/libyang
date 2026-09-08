@@ -14,8 +14,10 @@
 
 /* LOCAL INCLUDE HEADERS */
 #include "libyang.h"
+#include "ly_common.h"
 #include "plugins_exts.h"
 #include "plugins_types.h"
+#include "tree_edit.h"
 
 int
 main(void)
@@ -32,7 +34,7 @@ main(void)
     struct lyd_node *data = NULL, *next, *elem, *opaq = NULL;
     LY_ERR ret = LY_SUCCESS;
 
-    if ((ret = ly_ctx_new(NULL, 0, &ctx))) {
+    if ((ret = ly_ctx_new(ly_yang_module_dir(), 0, &ctx))) {
         goto cleanup;
     }
     if (!(mod = ly_ctx_get_module_latest(ctx, "ietf-yang-library"))) {
@@ -60,8 +62,6 @@ main(void)
     LY_ARRAY_DECREMENT_FREE(sa);
     LY_ARRAY_DECREMENT_FREE(sa);
 
-    LY_LIST_NEW_GOTO(ctx, &tl, tl_item, next, ret, cleanup);
-    LY_LIST_NEW_GOTO(ctx, &tl, tl_item, next, ret, cleanup);
     LY_LIST_FOR(tl, tl_item) {}
     LY_LIST_FOR_SAFE(tl, tl_next, tl_item) {}
     tl_item = tl->next;

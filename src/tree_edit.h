@@ -1,10 +1,11 @@
 /**
  * @file tree_edit.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang generic macros and functions to modify YANG schema or data trees. Intended for internal use and libyang
  * plugins.
  *
- * Copyright (c) 2019-2021 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -17,25 +18,6 @@
 #define LY_TREE_EDIT_H_
 
 #include <stdlib.h>
-
-#ifndef LOGMEM
-#define LOGMEM(CTX)
-#endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/**
- * @brief Wrapper for realloc() call. The only difference is that if it fails to
- * allocate the requested memory, the original memory is freed as well.
- *
- * @param[in] ptr Memory to reallocate.
- * @param[in] size New size of the memory block.
- *
- * @return Pointer to the new memory, NULL on error.
- */
-void *ly_realloc(void *ptr, size_t size);
 
 /**
  * @defgroup trees_edit Trees - modification
@@ -270,57 +252,6 @@ void *ly_realloc(void *ptr, size_t size);
         memcpy(iter__, &(NEW_ITEM), sizeof NEW_ITEM); \
     }
 
-/**
- * @brief Allocate and insert new item into linked list, return in case of error.
- *
- * This is a generic macro for ::LY_LIST_NEW_RET and ::LY_LIST_NEW_GOTO.
- *
- * @param[in] CTX used for logging.
- * @param[in,out] LIST Linked list to add to.
- * @param[out] NEW_ITEM New item that is appended to the list.
- * @param[in] LINKER name of structure member that is used to connect items together.
- * @param[in] EACTION Action to perform in case of error (memory allocation failure).
- */
-#define LY_LIST_NEW(CTX, LIST, NEW_ITEM, LINKER, EACTION) \
-    { \
-        char *p__ = (char *)calloc(1, sizeof *NEW_ITEM); \
-        if (!p__) { \
-            LOGMEM(CTX); \
-            EACTION; \
-        } \
-        memcpy(&(NEW_ITEM), &p__, sizeof p__); \
-        LY_LIST_INSERT(LIST, NEW_ITEM, LINKER); \
-    }
-
-/**
- * @brief Allocate and insert new item into linked list, return in case of error.
- *
- * @param[in] CTX used for logging.
- * @param[in,out] LIST Linked list to add to.
- * @param[out] NEW_ITEM New item that is appended to the list.
- * @param[in] LINKER name of structure member that is used to connect items together.
- * @param[in] RETVAL Return value for the case of error (memory allocation failure).
- */
-#define LY_LIST_NEW_RET(CTX, LIST, NEW_ITEM, LINKER, RETVAL) \
-    LY_LIST_NEW(CTX, LIST, NEW_ITEM, LINKER, return RETVAL)
-
-/**
- * @brief Allocate and insert new item into linked list, goto specified label in case of error.
- *
- * @param[in] CTX used for logging.
- * @param[in,out] LIST Linked list to add to.
- * @param[out] NEW_ITEM New item that is appended to the list.
- * @param[in] LINKER name of structure member that is used to connect items together.
- * @param[in] RET variable to store returned error type.
- * @param[in] LABEL label to goto in case of error.
- */
-#define LY_LIST_NEW_GOTO(CTX, LIST, NEW_ITEM, LINKER, RET, LABEL) \
-    LY_LIST_NEW(CTX, LIST, NEW_ITEM, LINKER, RET = LY_EMEM; goto LABEL)
-
 /** @} trees_edit */
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LY_TREE_EDIT_H_ */

@@ -25,8 +25,6 @@
 #include "set.h"
 #include "tree.h"
 
-#include "tree_edit.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif

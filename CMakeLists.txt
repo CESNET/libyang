@@ -187,7 +187,6 @@ set(headers
     src/set.h
     src/tree.h
     src/tree_data.h
-    src/tree_edit.h
     src/tree_schema.h)
 
 set(internal_headers
@@ -208,6 +207,7 @@ set(internal_headers
     src/schema_features.h
     src/tree_data_internal.h
     src/tree_schema_internal.h
+    src/tree_edit.h
     src/validation.h
     src/xml.h
     src/xpath.h)

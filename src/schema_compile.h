@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Header for schema compilation.
  *
- * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@
 #include "plugins_exts.h"
 #include "set.h"
 #include "tree.h"
+#include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_free.h"
 
