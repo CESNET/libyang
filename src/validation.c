@@ -27,6 +27,7 @@
 #include "diff.h"
 #include "hash_table.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "parser_data.h"
 #include "parser_internal.h"
@@ -35,7 +36,6 @@
 #include "plugins_internal.h"
 #include "plugins_types.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"
@@ -273,7 +273,7 @@ lyd_validate_node_when(const struct lyd_node *tree, const struct lyd_node *node,
     LY_ERR r;
     const struct lyd_node *ctx_node;
     struct lyxp_set xp_set;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     assert(!node->schema || (node->schema == schema));
 
@@ -283,7 +283,7 @@ lyd_validate_node_when(const struct lyd_node *tree, const struct lyd_node *node,
         const struct lysc_when *when;
         struct lysc_when **when_list = lysc_node_when(schema);
 
-        LY_ARRAY_FOR(when_list, u) {
+        LYA_FOR(when_list, u) {
             when = when_list[u];
 
             /* get context node */
@@ -1340,7 +1340,7 @@ lyd_val_uniq_find_leaf(const struct lysc_node_leaf *uniq_leaf, const struct lyd_
  * @brief Unique list validation callback argument.
  */
 struct lyd_val_uniq_arg {
-    LY_ARRAY_COUNT_TYPE action; /**< Action to perform - 0 to compare all uniques, n to compare only n-th unique. */
+    LYA_COUNT_T action; /**< Action to perform - 0 to compare all uniques, n to compare only n-th unique. */
     uint32_t val_opts;          /**< Validation options. */
 };
 
@@ -1357,7 +1357,7 @@ lyd_val_uniq_list_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *c
     struct lyd_node *diter, *first, *second;
     const char *val1, *val2, *canon1, *canon2;
     char *path1, *path2, *uniq_str, *ptr;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     struct lyd_val_uniq_arg *arg = cb_data;
     const uint32_t uniq_err_msg_size = 1024;
 
@@ -1376,13 +1376,13 @@ lyd_val_uniq_list_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *c
     /* compare unique leaves */
     if (arg->action > 0) {
         u = arg->action - 1;
-        if (u < LY_ARRAY_COUNT(slist->uniques)) {
+        if (u < LYA_COUNT(slist->uniques)) {
             goto uniquecheck;
         }
     }
-    LY_ARRAY_FOR(slist->uniques, u) {
+    LYA_FOR(slist->uniques, u) {
 uniquecheck:
-        LY_ARRAY_FOR(slist->uniques[u], v) {
+        LYA_FOR(slist->uniques[u], v) {
             /* first */
             canon1 = NULL;
             val1 = NULL;
@@ -1418,7 +1418,7 @@ uniquecheck:
                 break;
             }
         }
-        if (v && (v == LY_ARRAY_COUNT(slist->uniques[u]))) {
+        if (v && (v == LYA_COUNT(slist->uniques[u]))) {
             /* all unique leaves are the same in this set, create this nice error */
             path1 = lyd_path(first, LYD_PATH_STD, NULL, 0);
             path2 = lyd_path(second, LYD_PATH_STD, NULL, 0);
@@ -1427,7 +1427,7 @@ uniquecheck:
             uniq_str = malloc(uniq_err_msg_size);
             uniq_str[0] = '\0';
             ptr = uniq_str;
-            LY_ARRAY_FOR(slist->uniques[u], v) {
+            LYA_FOR(slist->uniques[u], v) {
                 if (v) {
                     strcpy(ptr, " ");
                     ++ptr;
@@ -1481,7 +1481,7 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
 {
     const struct lyd_node *diter;
     struct ly_set *set;
-    LY_ARRAY_COUNT_TYPE u, v, x = 0;
+    LYA_COUNT_T u, v, x = 0;
     LY_ERR ret = LY_SUCCESS;
     uint32_t hash, i;
     struct lyd_val_uniq_arg arg, *args = NULL;
@@ -1511,10 +1511,10 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
         }
     } else if (set->count > 2) {
         /* use hashes for comparison */
-        uniqtables = malloc(LY_ARRAY_COUNT(uniques) * sizeof *uniqtables);
-        args = malloc(LY_ARRAY_COUNT(uniques) * sizeof *args);
+        uniqtables = malloc(LYA_COUNT(uniques) * sizeof *uniqtables);
+        args = malloc(LYA_COUNT(uniques) * sizeof *args);
         LY_CHECK_ERR_GOTO(!uniqtables || !args, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-        x = LY_ARRAY_COUNT(uniques);
+        x = LYA_COUNT(uniques);
         for (v = 0; v < x; v++) {
             args[v].action = v + 1;
             args[v].val_opts = val_opts;
@@ -1527,7 +1527,7 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
             /* loop for unique - get the hash for the instances */
             for (u = 0; u < x; u++) {
                 val = NULL;
-                for (v = hash = 0; v < LY_ARRAY_COUNT(uniques[u]); v++) {
+                for (v = hash = 0; v < LYA_COUNT(uniques[u]); v++) {
                     diter = lyd_val_uniq_find_leaf(uniques[u][v], set->objs[i]);
                     if (diter) {
                         val = lyd_get_value(diter);
@@ -1711,7 +1711,7 @@ lyd_validate_must(const struct lyd_node *node, uint32_t val_opts, uint32_t int_o
     const struct lyd_node *tree;
     const struct lysc_node *schema;
     const char *emsg, *eapptag;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     assert((int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_REPLY)) != (LYD_INTOPT_RPC | LYD_INTOPT_REPLY));
     assert((int_opts & (LYD_INTOPT_ACTION | LYD_INTOPT_REPLY)) != (LYD_INTOPT_ACTION | LYD_INTOPT_REPLY));
@@ -1737,7 +1737,7 @@ lyd_validate_must(const struct lyd_node *node, uint32_t val_opts, uint32_t int_o
     for (tree = node; tree->parent; tree = tree->parent) {}
     tree = lyd_first_sibling(tree);
 
-    LY_ARRAY_FOR(musts, u) {
+    LYA_FOR(musts, u) {
         memset(&xp_set, 0, sizeof xp_set);
 
         /* evaluate must */
@@ -1926,7 +1926,7 @@ lyd_validate_tree_ext(struct lyd_node *node, const struct lysc_ext_instance *ext
 {
     struct lysc_ext_instance *exts;
     struct lyplg_ext *plg_ext;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     assert(node->flags & LYD_EXT);
 
@@ -1945,7 +1945,7 @@ lyd_validate_tree_ext(struct lyd_node *node, const struct lysc_ext_instance *ext
         if (node->parent && node->parent->schema) {
             /* try to find the nested parent extension instance */
             exts = node->parent->schema->exts;
-            LY_ARRAY_FOR(exts, u) {
+            LYA_FOR(exts, u) {
                 plg_ext = LYSC_GET_EXT_PLG(exts[u].def->plugin_ref);
                 if (plg_ext && plg_ext->validate) {
                     LY_CHECK_RET(lyd_validate_ext_add(node, &exts[u], ext_val));
@@ -1956,7 +1956,7 @@ lyd_validate_tree_ext(struct lyd_node *node, const struct lysc_ext_instance *ext
         if (node->schema) {
             /* try to find a global extension instance */
             exts = node->schema->module->compiled->exts;
-            LY_ARRAY_FOR(exts, u) {
+            LYA_FOR(exts, u) {
                 plg_ext = LYSC_GET_EXT_PLG(exts[u].def->plugin_ref);
                 if (plg_ext && plg_ext->validate) {
                     LY_CHECK_RET(lyd_validate_ext_add(node, &exts[u], ext_val));
@@ -1973,11 +1973,11 @@ lyd_validate_node_ext(struct lyd_node *node, struct ly_set *ext_val)
 {
     struct lysc_ext_instance *exts;
     struct lyplg_ext *plg_ext;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     /* try to find a relevant extension instance with validation callback in the schema node ... */
     exts = node->schema->exts;
-    LY_ARRAY_FOR(exts, u) {
+    LYA_FOR(exts, u) {
         plg_ext = LYSC_GET_EXT_PLG(exts[u].def->plugin_ref);
         if (plg_ext && plg_ext->validate) {
             /* store for validation */
@@ -1988,7 +1988,7 @@ lyd_validate_node_ext(struct lyd_node *node, struct ly_set *ext_val)
     /* ... and in the type */
     if (node->schema->nodetype & LYD_NODE_TERM) {
         exts = ((struct lysc_node_leaf *)node->schema)->type->exts;
-        LY_ARRAY_FOR(exts, u) {
+        LYA_FOR(exts, u) {
             plg_ext = LYSC_GET_EXT_PLG(exts[u].def->plugin_ref);
             if (plg_ext && plg_ext->validate) {
                 /* store for validation */

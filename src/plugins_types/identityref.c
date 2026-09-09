@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Built-in identityref type plugin.
  *
- * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -21,12 +21,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "libyang.h"
-
-/* additional internal headers for some useful simple macros */
 #include "compat.h"
+#include "dict.h"
+#include "ly_array.h"
 #include "ly_common.h"
-#include "plugins_internal.h" /* LY_TYPE_*_STR */
+#include "plugins_internal.h"
 
 /**
  * @page howtoDataLYB LYB Binary Format
@@ -91,7 +90,7 @@ identityref_str2ident(const char *value, uint32_t value_size, LY_VALUE_FORMAT fo
     const char *id_name, *prefix = value;
     uint32_t id_len, prefix_len;
     const struct lys_module *mod;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lysc_ident *id, *identities;
 
     /* locate prefix if any */
@@ -117,7 +116,7 @@ identityref_str2ident(const char *value, uint32_t value_size, LY_VALUE_FORMAT fo
 
     id = NULL;
     identities = mod->identities;
-    LY_ARRAY_FOR(identities, u) {
+    LYA_FOR(identities, u) {
         if (!ly_strncmp(identities[u].name, id_name, id_len)) {
             /* we have match */
             id = &identities[u];
@@ -151,11 +150,11 @@ identityref_check_base(const struct lysc_ident *ident, struct lysc_type_identity
     LY_ERR ret;
     uint32_t str_len;
     char *str;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lysc_ident *base;
 
     /* check that the identity matches some of the type's base identities */
-    LY_ARRAY_FOR(type->bases, u) {
+    LYA_FOR(type->bases, u) {
         if (!lyplg_type_identity_isderived(type->bases[u], ident)) {
             /* we have match */
             break;
@@ -163,10 +162,10 @@ identityref_check_base(const struct lysc_ident *ident, struct lysc_type_identity
     }
 
     /* it does not, generate a nice error */
-    if (u == LY_ARRAY_COUNT(type->bases)) {
+    if (u == LYA_COUNT(type->bases)) {
         str = NULL;
         str_len = 1;
-        LY_ARRAY_FOR(type->bases, u) {
+        LYA_FOR(type->bases, u) {
             base = type->bases[u];
             str_len += (u ? 2 : 0) + 1 + strlen(base->module->name) + 1 + strlen(base->name) + 1;
             str = ly_realloc(str, str_len);

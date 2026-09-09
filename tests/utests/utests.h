@@ -1,11 +1,11 @@
 /**
- * @file   utests.h
+ * @file utests.h
  * @author Radek Iša <isa@cesnet.cz>
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @author Michal Vasko <mvasko@cesnet.cz>
- * @brief  this file contains macros for simplification test writing
+ * @brief This file contains macros for simplification test writing
  *
- * Copyright (c) 2021 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2021 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -19,21 +19,25 @@
 
 #define _GNU_SOURCE /* strdup, setenv, tzset */
 
+#include "tests_config.h"
+
 #include <setjmp.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <cmocka.h>
 
-#include <string.h>
-
 #include "compat.h"
-#include "libyang.h"
+#include "context.h"
+#include "in.h"
+#include "ly_array.h"
+#include "out.h"
 #include "plugins_exts/metadata.h"
 #include "plugins_types.h"
-#include "tests_config.h"
+#include "printer_data.h"
 
 /**
  * TESTS OVERVIEW
@@ -263,7 +267,7 @@ utest_lyd_print_mem_len(char **strp, uint32_t *len, const struct lyd_node *root,
 #define CHECK_ARRAY(ARRAY, SIZE) \
     assert_true((SIZE == 0) ? \
                 (ARRAY == NULL) : \
-                (ARRAY != NULL && SIZE == LY_ARRAY_COUNT(ARRAY)));
+                (ARRAY != NULL && SIZE == LYA_COUNT(ARRAY)));
 
 /*
  *   LIBYANG NODE CHECKING
@@ -1026,11 +1030,11 @@ utest_lyd_print_mem_len(char **strp, uint32_t *len, const struct lyd_node *root,
     assert_int_equal(LY_TYPE_BITS, (NODE).realtype->basetype); \
     { \
         const char *arr[] = { __VA_ARGS__ }; \
-        LY_ARRAY_COUNT_TYPE arr_size = (sizeof(arr) / sizeof(arr[0])) - 1; \
+        LYA_COUNT_T arr_size = (sizeof(arr) / sizeof(arr[0])) - 1; \
         struct lyd_value_bits *_val; \
         LYD_VALUE_GET(&(NODE), _val); \
-        assert_int_equal(arr_size, LY_ARRAY_COUNT(_val->items)); \
-        for (LY_ARRAY_COUNT_TYPE it = 0; it < arr_size; it++) { \
+        assert_int_equal(arr_size, LYA_COUNT(_val->items)); \
+        for (LYA_COUNT_T it = 0; it < arr_size; it++) { \
             assert_string_equal(arr[it + 1], _val->items[it]->name); \
         } \
     }
@@ -1049,8 +1053,8 @@ utest_lyd_print_mem_len(char **strp, uint32_t *len, const struct lyd_node *root,
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_INST, (NODE).realtype->basetype); \
     { \
-        LY_ARRAY_COUNT_TYPE arr_size = sizeof(VALUE) / sizeof(VALUE[0]); \
-        assert_int_equal(arr_size, LY_ARRAY_COUNT((NODE).target)); \
+        LYA_COUNT_T arr_size = sizeof(VALUE) / sizeof(VALUE[0]); \
+        assert_int_equal(arr_size, LYA_COUNT((NODE).target)); \
     }
 
 /**

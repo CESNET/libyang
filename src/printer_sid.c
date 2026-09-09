@@ -23,6 +23,7 @@
 #include "compat.h"
 #include "context.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "tree_data.h"
 #include "tree_schema.h"
@@ -252,7 +253,7 @@ sid_build_skeleton(const struct lys_module *module, const struct sid_range *rang
     char ver_str[11];
     char *item_path = NULL, *desc_buf = NULL, *time_str = NULL;
     time_t now = time(NULL);
-    LY_ARRAY_COUNT_TYPE iter;
+    LYA_COUNT_T iter;
 
     *tree = NULL;
 
@@ -288,7 +289,7 @@ sid_build_skeleton(const struct lys_module *module, const struct sid_range *rang
        but the 'revision' statement is optional in YANG and some modules simply do
        not have one, so it can happen that an import has no revision to record and the entry is skipped. */
     imports = module->parsed->imports;
-    LY_ARRAY_FOR(imports, iter) {
+    LYA_FOR(imports, iter) {
         if (imports[iter].module->revision) {
             LY_CHECK_ERR_GOTO(asprintf(&item_path, "dependency-revision[module-name='%s']/module-revision",
                     imports[iter].name) == -1, rc = LY_EMEM, cleanup);
@@ -328,7 +329,7 @@ static LY_ERR
 sid_collect_items(struct sid_collect_data *callback_data, const struct lys_module *module)
 {
     LY_ERR rc;
-    LY_ARRAY_COUNT_TYPE i;
+    LYA_COUNT_T i;
     uint32_t feature_idx = 0;
     const struct lysp_feature *feature = NULL;
     struct lysc_node **top = NULL;
@@ -337,12 +338,12 @@ sid_collect_items(struct sid_collect_data *callback_data, const struct lys_modul
     LY_CHECK_RET((rc = sid_item_add(callback_data, "module", module->name)), rc);
 
     /* module namespace: each submodule name (RFC 9595) */
-    LY_ARRAY_FOR(module->submodules, i) {
+    LYA_FOR(module->submodules, i) {
         LY_CHECK_RET((rc = sid_item_add(callback_data, "module", module->submodules[i].name)), rc);
     }
 
     /* identity namespace: all identities defined in the module and its submodules. */
-    LY_ARRAY_FOR(module->identities, i) {
+    LYA_FOR(module->identities, i) {
         LY_CHECK_RET((rc = sid_item_add(callback_data, "identity", module->identities[i].name)), rc);
     }
 
@@ -375,7 +376,7 @@ sid_collect_items(struct sid_collect_data *callback_data, const struct lys_modul
             if ((aug_target == module) || !aug_target->compiled) {
                 continue;
             }
-            LY_ARRAY_FOR(aug_target->augmented_by, i) {
+            LYA_FOR(aug_target->augmented_by, i) {
                 if (aug_target->augmented_by[i] == module) {
                     augmented = 1;
                     break;
@@ -391,7 +392,7 @@ sid_collect_items(struct sid_collect_data *callback_data, const struct lys_modul
        instances that define their own data tree outside the standard module trees
        (rc:yang-data, sx:structure); the top-level data node is obtained from the
        generic compiled extension storage via lyplg_ext_get_storage_p(). */
-    LY_ARRAY_FOR(module->compiled->exts, i) {
+    LYA_FOR(module->compiled->exts, i) {
         lyplg_ext_get_storage_p(&module->compiled->exts[i], LY_STMT_DATA_NODE_MASK, (void ***)&top);
 
         if (top) {

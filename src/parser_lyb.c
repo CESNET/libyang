@@ -15,7 +15,7 @@
 #include "lyb.h"
 
 #include <assert.h>
-#include <stdint.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,6 +27,7 @@
 #include "in.h"
 #include "in_internal.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "parser_data.h"
 #include "parser_internal.h"
@@ -34,12 +35,11 @@
 #include "plugins_exts/metadata.h"
 #include "plugins_internal.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data.h"
 #include "tree_data_internal.h"
-#include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "utils.h"
 #include "validation.h"
 #include "xml.h"
 
@@ -446,7 +446,7 @@ lyb_check_mod_features(struct lyd_lyb_ctx *lybctx, const char *mod_name, const s
     }
 
     /* we assume the order of features is the same (since the revision is), so we can just compare them in order */
-    if (feature_count == LY_ARRAY_COUNT(mod->compiled->features)) {
+    if (feature_count == LYA_COUNT(mod->compiled->features)) {
         for (i = 0; i < feature_count; i++) {
             if (strcmp(mod->compiled->features[i], features[i])) {
                 /* mismatch */
@@ -481,7 +481,7 @@ lyb_check_mod_features(struct lyd_lyb_ctx *lybctx, const char *mod_name, const s
 
     /* unpack enabled features for parser */
     len = 0;
-    ctx_feature_count = LY_ARRAY_COUNT(mod->compiled->features);
+    ctx_feature_count = LYA_COUNT(mod->compiled->features);
     for (i = 0; i < ctx_feature_count; i++) {
         if ((uint64_t)len + strlen(mod->compiled->features[i]) + 2 > UINT32_MAX - 1) {
             LOGINT(pctx->ctx);

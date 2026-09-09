@@ -20,10 +20,9 @@
 #include <stdint.h>
 
 #include "log.h"
+#include "ly_array.h"
 #include "plugins_exts.h"
 #include "set.h"
-#include "tree.h"
-#include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_free.h"
 
@@ -163,44 +162,44 @@ struct lysc_unres_dflt {
 
 #define DUP_ARRAY(CTX, ORIG_ARRAY, NEW_ARRAY, DUP_FUNC) \
     if (ORIG_ARRAY) { \
-        LY_ARRAY_COUNT_TYPE __u; \
-        LY_ARRAY_CREATE_RET(CTX, NEW_ARRAY, LY_ARRAY_COUNT(ORIG_ARRAY), LY_EMEM); \
-        LY_ARRAY_FOR(ORIG_ARRAY, __u) { \
-            LY_ARRAY_INCREMENT(NEW_ARRAY); \
+        LYA_COUNT_T __u; \
+        LYA_PREALLOC(NEW_ARRAY, LYA_COUNT(ORIG_ARRAY), LOGMEM(CTX); return LY_EMEM); \
+        LYA_FOR(ORIG_ARRAY, __u) { \
+            LYA_INCREMENT(NEW_ARRAY); \
             LY_CHECK_RET(DUP_FUNC(CTX, &(ORIG_ARRAY)[__u], &(NEW_ARRAY)[__u])); \
         } \
     }
 
 #define DUP_ARRAY2(CTX, PMOD, ORIG_ARRAY, NEW_ARRAY, DUP_FUNC) \
     if (ORIG_ARRAY) { \
-        LY_ARRAY_COUNT_TYPE __u; \
-        LY_ARRAY_CREATE_RET(CTX, NEW_ARRAY, LY_ARRAY_COUNT(ORIG_ARRAY), LY_EMEM); \
-        LY_ARRAY_FOR(ORIG_ARRAY, __u) { \
-            LY_ARRAY_INCREMENT(NEW_ARRAY); \
+        LYA_COUNT_T __u; \
+        LYA_PREALLOC(NEW_ARRAY, LYA_COUNT(ORIG_ARRAY), LOGMEM(CTX); return LY_EMEM); \
+        LYA_FOR(ORIG_ARRAY, __u) { \
+            LYA_INCREMENT(NEW_ARRAY); \
             LY_CHECK_RET(DUP_FUNC(CTX, PMOD, &(ORIG_ARRAY)[__u], &(NEW_ARRAY)[__u])); \
         } \
     }
 
 #define DUP_EXTS(CTX, PMOD, PARENT, PARENT_STMT, ORIG_ARRAY, NEW_ARRAY, DUP_FUNC) \
     if (ORIG_ARRAY) { \
-        LY_ARRAY_COUNT_TYPE __u, __new_start; \
-        __new_start = LY_ARRAY_COUNT(NEW_ARRAY); \
-        LY_ARRAY_CREATE_RET(CTX, NEW_ARRAY, LY_ARRAY_COUNT(ORIG_ARRAY), LY_EMEM); \
-        LY_ARRAY_FOR(ORIG_ARRAY, __u) { \
-            LY_ARRAY_INCREMENT(NEW_ARRAY); \
+        LYA_COUNT_T __u, __new_start; \
+        __new_start = LYA_COUNT(NEW_ARRAY); \
+        LYA_PREALLOC(NEW_ARRAY, LYA_COUNT(ORIG_ARRAY), LOGMEM(CTX); return LY_EMEM); \
+        LYA_FOR(ORIG_ARRAY, __u) { \
+            LYA_INCREMENT(NEW_ARRAY); \
             LY_CHECK_RET(DUP_FUNC(CTX, PMOD, PARENT, PARENT_STMT, &(ORIG_ARRAY)[__u], &(NEW_ARRAY)[__new_start + __u])); \
         } \
     }
 
 #define COMPILE_OP_ARRAY_GOTO(CTX, ARRAY_P, ARRAY_C, PARENT, FUNC, USES_STATUS, RET, GOTO) \
     if (ARRAY_P) { \
-        LY_ARRAY_COUNT_TYPE __u = (ARRAY_C) ? LY_ARRAY_COUNT(ARRAY_C) : 0; \
-        LY_ARRAY_CREATE_GOTO((CTX)->ctx, ARRAY_C, __u + LY_ARRAY_COUNT(ARRAY_P), RET, GOTO); \
-        LY_ARRAY_FOR(ARRAY_P, __u) { \
-            LY_ARRAY_INCREMENT(ARRAY_C); \
-            RET = FUNC(CTX, &(ARRAY_P)[__u], PARENT, &(ARRAY_C)[LY_ARRAY_COUNT(ARRAY_C) - 1], USES_STATUS); \
+        LYA_COUNT_T __u = (ARRAY_C) ? LYA_COUNT(ARRAY_C) : 0; \
+        LYA_PREALLOC(ARRAY_C, __u + LYA_COUNT(ARRAY_P), LOGMEM((CTX)->ctx); RET = LY_EMEM; goto GOTO); \
+        LYA_FOR(ARRAY_P, __u) { \
+            LYA_INCREMENT(ARRAY_C); \
+            RET = FUNC(CTX, &(ARRAY_P)[__u], PARENT, &(ARRAY_C)[LYA_COUNT(ARRAY_C) - 1], USES_STATUS); \
             if (RET == LY_EDENIED) { \
-                LY_ARRAY_DECREMENT(ARRAY_C); \
+                LYA_DECREMENT(ARRAY_C); \
                 RET = LY_SUCCESS; \
             } else if (RET) { \
                 goto GOTO; \
@@ -210,25 +209,25 @@ struct lysc_unres_dflt {
 
 #define COMPILE_ARRAY_GOTO(CTX, ARRAY_P, ARRAY_C, FUNC, RET, GOTO) \
     if (ARRAY_P) { \
-        LY_ARRAY_COUNT_TYPE __u = (ARRAY_C) ? LY_ARRAY_COUNT(ARRAY_C) : 0; \
-        LY_ARRAY_CREATE_GOTO((CTX)->ctx, ARRAY_C, __u + LY_ARRAY_COUNT(ARRAY_P), RET, GOTO); \
-        LY_ARRAY_FOR(ARRAY_P, __u) { \
-            LY_ARRAY_INCREMENT(ARRAY_C); \
-            RET = FUNC(CTX, &(ARRAY_P)[__u], &(ARRAY_C)[LY_ARRAY_COUNT(ARRAY_C) - 1]); \
+        LYA_COUNT_T __u = (ARRAY_C) ? LYA_COUNT(ARRAY_C) : 0; \
+        LYA_PREALLOC(ARRAY_C, __u + LYA_COUNT(ARRAY_P), LOGMEM((CTX)->ctx); RET = LY_EMEM; goto GOTO); \
+        LYA_FOR(ARRAY_P, __u) { \
+            LYA_INCREMENT(ARRAY_C); \
+            RET = FUNC(CTX, &(ARRAY_P)[__u], &(ARRAY_C)[LYA_COUNT(ARRAY_C) - 1]); \
             LY_CHECK_GOTO(RET, GOTO); \
         } \
     }
 
 #define COMPILE_EXTS_GOTO(CTX, EXTS_P, EXT_C, PARENT, RET, GOTO) \
     if (EXTS_P) { \
-        LY_ARRAY_COUNT_TYPE __u = (EXT_C) ? LY_ARRAY_COUNT(EXT_C) : 0; \
-        LY_ARRAY_CREATE_GOTO((CTX)->ctx, EXT_C, __u + LY_ARRAY_COUNT(EXTS_P), RET, GOTO); \
-        LY_ARRAY_FOR(EXTS_P, __u) { \
-            LY_ARRAY_INCREMENT(EXT_C); \
-            RET = lys_compile_ext(CTX, &(EXTS_P)[__u], &(EXT_C)[LY_ARRAY_COUNT(EXT_C) - 1], PARENT); \
+        LYA_COUNT_T __u = (EXT_C) ? LYA_COUNT(EXT_C) : 0; \
+        LYA_PREALLOC(EXT_C, __u + LYA_COUNT(EXTS_P), LOGMEM((CTX)->ctx); RET = LY_EMEM; goto GOTO); \
+        LYA_FOR(EXTS_P, __u) { \
+            LYA_INCREMENT(EXT_C); \
+            RET = lys_compile_ext(CTX, &(EXTS_P)[__u], &(EXT_C)[LYA_COUNT(EXT_C) - 1], PARENT); \
             if (RET == LY_ENOT) { \
-                memset(&(EXT_C)[LY_ARRAY_COUNT(EXT_C) - 1], 0, sizeof *(EXT_C)); \
-                LY_ARRAY_DECREMENT(EXT_C); \
+                memset(&(EXT_C)[LYA_COUNT(EXT_C) - 1], 0, sizeof *(EXT_C)); \
+                LYA_DECREMENT(EXT_C); \
                 RET = LY_SUCCESS; \
             } else if (RET) { \
                 goto GOTO; \

@@ -18,7 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "tree_edit.h"
+#include "printer_schema.h"
 #include "tree_schema.h"
 
 #define TEST_MOD(CTX, YANG_STR, EXPECTED_VALUE) \

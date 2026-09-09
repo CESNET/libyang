@@ -32,6 +32,7 @@
 #include "in.h"
 #include "in_internal.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "parser_data.h"
 #include "parser_internal.h"
@@ -41,12 +42,11 @@
 #include "plugins_internal.h"
 #include "plugins_types.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data_internal.h"
 #include "tree_data_sorted.h"
-#include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "utils.h"
 #include "validation.h"
 #include "xml.h"
 #include "xpath.h"
@@ -111,7 +111,7 @@ lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *
     struct lyd_node *list = NULL, *key;
     struct lyxp_var *var;
     const char *value;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     assert((schema->nodetype == LYS_LIST) && !(schema->flags & LYS_KEYLESS));
 
@@ -119,7 +119,7 @@ lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *
     LY_CHECK_GOTO(ret = lyd_create_inner(schema, &list), cleanup);
 
     /* create and insert all the keys */
-    LY_ARRAY_FOR(predicates, u) {
+    LYA_FOR(predicates, u) {
         if (predicates[u].type == LY_PATH_PREDTYPE_LIST_VAR) {
             /* find the var */
             if ((ret = lyxp_vars_find(schema->module->ctx, vars, predicates[u].variable, 0, &var))) {
@@ -1528,7 +1528,7 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
     LY_ERR r;
     struct ly_path_predicate *pred;
     const struct lysc_node *schema = NULL;
-    LY_ARRAY_COUNT_TYPE u, new_count;
+    LYA_COUNT_T u, new_count;
     const char *canon;
     int create = 0;
     uint32_t *prev_lo, temp_lo = 0;
@@ -1536,7 +1536,7 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
     assert(path);
 
     /* go through all the compiled nodes */
-    LY_ARRAY_FOR(path, u) {
+    LYA_FOR(path, u) {
         schema = path[u].node;
 
         if (lysc_is_dup_inst_list(schema)) {
@@ -1554,7 +1554,7 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
             }
         } else if ((schema->nodetype == LYS_LIST) &&
                 (!path[u].predicates || (path[u].predicates[0].type != LY_PATH_PREDTYPE_LIST))) {
-            if ((u < LY_ARRAY_COUNT(path) - 1) || !(options & LYD_NEW_PATH_OPAQ)) {
+            if ((u < LYA_COUNT(path) - 1) || !(options & LYD_NEW_PATH_OPAQ)) {
                 LOG_LOCSET(schema);
                 LOGVAL(schema->module->ctx, NULL, LYVE_XPATH, "Predicate missing for %s \"%s\" in path \"%s\".",
                         lys_nodetype2str(schema->nodetype), schema->name, str_path);
@@ -1576,7 +1576,7 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
                 LY_CHECK_RET(r && r != LY_EINCOMPLETE, r);
 
                 /* store the new predicate so that it is used when searching for this instance */
-                LY_ARRAY_NEW_RET(schema->module->ctx, path[u].predicates, pred, LY_EMEM);
+                LYA_ADD_ITEM(path[u].predicates, pred, LOGMEM(schema->module->ctx); return LY_EMEM);
                 pred->type = LY_PATH_PREDTYPE_LEAFLIST;
                 pred->value = canon;
             } /* else we have opaq flag and the value is not valid, leave no predicate and then create an opaque node */
@@ -1585,8 +1585,8 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
 
     if (create) {
         /* hide the nodes that should always be created so they are not found */
-        while (new_count < LY_ARRAY_COUNT(path)) {
-            LY_ARRAY_DECREMENT(path);
+        while (new_count < LYA_COUNT(path)) {
+            LYA_DECREMENT(path);
         }
     }
 
@@ -1604,7 +1604,7 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
     const char *val = NULL;
     ly_bool store_only = (options & LYD_NEW_VAL_STORE_ONLY) ? 1 : 0;
     ly_bool any_use_value = (options & LYD_NEW_ANY_USE_VALUE) ? 1 : 0;
-    LY_ARRAY_COUNT_TYPE path_idx = 0, orig_count = 0;
+    LYA_COUNT_T path_idx = 0, orig_count = 0;
     LY_VALUE_FORMAT format;
     uint32_t value_size, hints, count, *prev_lo, temp_lo = 0;
 
@@ -1612,7 +1612,7 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
     value_size = LYPLG_BITS2BYTES(value_size_bits);
 
     /* check the compiled path before searching existing nodes, it may be shortened */
-    orig_count = LY_ARRAY_COUNT(p);
+    orig_count = LYA_COUNT(p);
     LY_CHECK_GOTO(ret = lyd_new_path_check_find_lypath(p, path, value, value_size_bits, format, options), cleanup);
 
     /* try to find any existing nodes in the path */
@@ -1622,7 +1622,7 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
         }
         r = ly_path_eval_partial(p, tree ? NULL : parent, tree, NULL, options & LYD_NEW_PATH_WITH_OPAQ, &path_idx, &node);
         if (r == LY_SUCCESS) {
-            if (orig_count == LY_ARRAY_COUNT(p)) {
+            if (orig_count == LYA_COUNT(p)) {
                 /* the node exists, are we supposed to update it or is it just a default? */
                 if (!(options & LYD_NEW_PATH_UPDATE) && !(node->flags & LYD_DEFAULT)) {
                     LOGVAL(ctx, node, LYVE_REFERENCE, "Path \"%s\" already exists.", path);
@@ -1654,11 +1654,11 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
     }
 
     /* restore the full path for creating new nodes */
-    while (orig_count > LY_ARRAY_COUNT(p)) {
-        LY_ARRAY_INCREMENT(p);
+    while (orig_count > LYA_COUNT(p)) {
+        LYA_INCREMENT(p);
     }
 
-    if ((path_idx < LY_ARRAY_COUNT(p)) && lysc_is_dup_inst_list(p[path_idx].node) && p[path_idx].predicates &&
+    if ((path_idx < LYA_COUNT(p)) && lysc_is_dup_inst_list(p[path_idx].node) && p[path_idx].predicates &&
             (p[path_idx].predicates[0].type == LY_PATH_PREDTYPE_POSITION)) {
         /* check the used position of a key-less list or state leaf-list */
         count = 0;
@@ -1682,7 +1682,7 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
     }
 
     /* create all the non-existing nodes in a loop */
-    for ( ; path_idx < LY_ARRAY_COUNT(p); ++path_idx) {
+    for ( ; path_idx < LYA_COUNT(p); ++path_idx) {
         cur_parent = node;
         schema = p[path_idx].node;
 
@@ -1785,7 +1785,7 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
             break;
         case LYS_ANYDATA:
         case LYS_ANYXML:
-            if (path_idx < LY_ARRAY_COUNT(p) - 1) {
+            if (path_idx < LYA_COUNT(p) - 1) {
                 /* creating descendants of the node directly, use no value now */
                 LY_CHECK_GOTO(ret = lyd_create_any(schema, NULL, NULL, any_hints, 1, 0, &node), cleanup);
             } else {
@@ -1820,8 +1820,8 @@ next_iter:
 
 cleanup:
     if (p) {
-        while (orig_count > LY_ARRAY_COUNT(p)) {
-            LY_ARRAY_INCREMENT(p);
+        while (orig_count > LYA_COUNT(p)) {
+            LYA_INCREMENT(p);
         }
     }
     if (!ret) {
@@ -1930,7 +1930,7 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
     const struct lysc_node *snode, **choices, **snodes;
     struct lyd_node *node = NULL;
     struct lysc_value *dflts;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     uint32_t i;
     ly_bool incomplete;
 
@@ -2035,7 +2035,7 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
                     lyd_find_sibling_val(*first, snode, NULL, 0, NULL)) {
                 /* create all default leaf-lists */
                 dflts = ((struct lysc_node_leaflist *)snode)->dflts;
-                LY_ARRAY_FOR(dflts, u) {
+                LYA_FOR(dflts, u) {
                     LY_CHECK_RET(lyd_create_term(snode, parent, dflts[u].str, strlen(dflts[u].str) * 8, 1, 1, NULL,
                             LY_VALUE_SCHEMA_RESOLVED, dflts[u].prefixes, LYD_HINT_SCHEMA, &incomplete, &node));
                     if (incomplete && node_types) {

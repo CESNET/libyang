@@ -34,6 +34,7 @@
 #include "in.h"
 #include "in_internal.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "parser_internal.h"
 #include "parser_schema.h"
@@ -44,10 +45,9 @@
 #include "schema_compile_amend.h"
 #include "schema_features.h"
 #include "set.h"
-#include "tree.h"
-#include "tree_edit.h"
 #include "tree_schema_free.h"
 #include "tree_schema_internal.h"
+#include "utils.h"
 #include "xml.h"
 #include "xpath.h"
 
@@ -127,7 +127,7 @@ static const struct lys_module *
 ly_schema_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, uint32_t prefix_len, const void *prefix_data)
 {
     const struct lysp_module *prefix_mod = prefix_data;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     const char *local_prefix;
 
     local_prefix = prefix_mod->is_submod ? ((struct lysp_submodule *)prefix_mod)->prefix : prefix_mod->mod->prefix;
@@ -137,7 +137,7 @@ ly_schema_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, u
     }
 
     /* search in imports */
-    LY_ARRAY_FOR(prefix_mod->imports, u) {
+    LYA_FOR(prefix_mod->imports, u) {
         if (!ly_strncmp(prefix_mod->imports[u].prefix, prefix, prefix_len)) {
             return prefix_mod->imports[u].module;
         }
@@ -154,9 +154,9 @@ ly_schema_resolved_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *
         const void *prefix_data)
 {
     const struct lysc_prefix *prefixes = prefix_data;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
-    LY_ARRAY_FOR(prefixes, u) {
+    LYA_FOR(prefixes, u) {
         if ((!prefixes[u].prefix && !prefix_len) || (prefixes[u].prefix && !ly_strncmp(prefixes[u].prefix, prefix, prefix_len))) {
             return prefixes[u].mod;
         }
@@ -481,7 +481,7 @@ lys_find_child_node_ext(const struct ly_ctx *ctx, const struct lys_module *mod, 
         struct lysc_ext_instance **ext)
 {
     LY_ERR r;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lysc_ext_instance *exts;
 
     *snode = NULL;
@@ -497,7 +497,7 @@ lys_find_child_node_ext(const struct ly_ctx *ctx, const struct lys_module *mod, 
     } else {
         exts = NULL;
     }
-    LY_ARRAY_FOR(exts, u) {
+    LYA_FOR(exts, u) {
         r = lys_ext_find_node(&exts[u], parent, sparent, prefix, prefix_len, format, prefix_data, name, name_len,
                 is_xpath, snode);
         if (!r) {
@@ -522,7 +522,7 @@ lys_find_child_node_ext(const struct ly_ctx *ctx, const struct lys_module *mod, 
     } else {
         exts = NULL;
     }
-    LY_ARRAY_FOR(exts, u) {
+    LYA_FOR(exts, u) {
         r = lys_ext_find_node(&exts[u], parent, sparent, prefix, prefix_len, format, prefix_data, name, name_len,
                 is_xpath, snode);
         if (!r) {
@@ -772,17 +772,17 @@ LIBYANG_API_DEF LY_ERR
 lys_find_lypath_atoms(const struct ly_path *path, struct ly_set **set)
 {
     LY_ERR ret = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
     LY_CHECK_ARG_RET(NULL, path, set, LY_EINVAL);
 
     /* allocate return set */
     LY_CHECK_RET(ly_set_new(set));
 
-    LY_ARRAY_FOR(path, u) {
+    LYA_FOR(path, u) {
         /* add nodes from the path */
         LY_CHECK_GOTO(ret = ly_set_add(*set, (void *)path[u].node, 0, NULL), cleanup);
-        LY_ARRAY_FOR(path[u].predicates, v) {
+        LYA_FOR(path[u].predicates, v) {
             if ((path[u].predicates[v].type == LY_PATH_PREDTYPE_LIST) || (path[u].predicates[v].type == LY_PATH_PREDTYPE_LIST_VAR)) {
                 /* add all the keys in a predicate */
                 LY_CHECK_GOTO(ret = ly_set_add(*set, (void *)path[u].predicates[v].key, 0, NULL), cleanup);
@@ -860,7 +860,7 @@ lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
     LY_CHECK_GOTO(ret, cleanup);
 
     /* get last node */
-    snode = p[LY_ARRAY_COUNT(p) - 1].node;
+    snode = p[LYA_COUNT(p) - 1].node;
 
 cleanup:
     ly_path_free(p);
@@ -1073,7 +1073,7 @@ lys_unres_dep_sets_create_mod_r(struct lys_module *mod, struct ly_set *ctx_set, 
     struct lys_module *mod2;
     struct lysp_import *imports;
     uint32_t i;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     ly_bool found;
 
     if (LYS_IS_SINGLE_DEP_SET(mod)) {
@@ -1105,13 +1105,13 @@ lys_unres_dep_sets_create_mod_r(struct lys_module *mod, struct ly_set *ctx_set, 
 
     /* process imports of the module and submodules */
     imports = mod->parsed->imports;
-    LY_ARRAY_FOR(imports, u) {
+    LYA_FOR(imports, u) {
         mod2 = imports[u].module;
         LY_CHECK_RET(lys_unres_dep_sets_create_mod_r(mod2, ctx_set, dep_set, aux_set));
     }
-    LY_ARRAY_FOR(mod->parsed->includes, v) {
+    LYA_FOR(mod->parsed->includes, v) {
         imports = mod->parsed->includes[v].submodule->imports;
-        LY_ARRAY_FOR(imports, u) {
+        LYA_FOR(imports, u) {
             mod2 = imports[u].module;
             if (LYS_IS_SINGLE_DEP_SET(mod2) && !lys_has_dep_mods(mod2)) {
                 /* break the dep set here, no modules depend on this one */
@@ -1128,7 +1128,7 @@ lys_unres_dep_sets_create_mod_r(struct lys_module *mod, struct ly_set *ctx_set, 
         found = 0;
 
         imports = mod2->parsed->imports;
-        LY_ARRAY_FOR(imports, u) {
+        LYA_FOR(imports, u) {
             if (imports[u].module == mod) {
                 found = 1;
                 break;
@@ -1136,9 +1136,9 @@ lys_unres_dep_sets_create_mod_r(struct lys_module *mod, struct ly_set *ctx_set, 
         }
 
         if (!found) {
-            LY_ARRAY_FOR(mod2->parsed->includes, v) {
+            LYA_FOR(mod2->parsed->includes, v) {
                 imports = mod2->parsed->includes[v].submodule->imports;
-                LY_ARRAY_FOR(imports, u) {
+                LYA_FOR(imports, u) {
                     if (imports[u].module == mod) {
                         found = 1;
                         break;
@@ -1464,10 +1464,10 @@ static LY_ERR
 lysp_resolve_import_include(struct lysp_ctx *pctx, struct lysp_module *pmod, struct ly_set *new_mods)
 {
     struct lysp_import *imp;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
     pmod->parsing = 1;
-    LY_ARRAY_FOR(pmod->imports, u) {
+    LYA_FOR(pmod->imports, u) {
         imp = &pmod->imports[u];
         if (!imp->module) {
             LY_CHECK_RET(lys_parse_load(PARSER_CTX(pctx), imp->name, imp->rev[0] ? imp->rev : NULL, new_mods, &imp->module));
@@ -1594,7 +1594,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-lysp_ext_instance_path_stmt_append_r(const struct ly_ctx *ctx, enum ly_stmt stmt, LY_ARRAY_COUNT_TYPE stmt_idx,
+lysp_ext_instance_path_stmt_append_r(const struct ly_ctx *ctx, enum ly_stmt stmt, LYA_COUNT_T stmt_idx,
         const void *stmt_p, const struct lysp_module *pmod, char **buf, uint32_t *used, uint32_t *size)
 {
     if (*used && ((*buf)[*used - 1] != ':')) {
@@ -1883,20 +1883,20 @@ lysp_ext_instance_path(const struct ly_ctx *ctx, const struct lysp_module *pmod,
 static void
 lysp_resolve_ext_instance_plugins(struct lys_module *mod)
 {
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     const struct lysp_include *inc;
 
     /* module */
-    LY_ARRAY_FOR(mod->parsed->extensions, u) {
+    LYA_FOR(mod->parsed->extensions, u) {
         mod->parsed->extensions[u].plugin_ref = lyplg_ext_plugin_find(mod->ctx, mod->name,
                 mod->revision, mod->parsed->extensions[u].name);
     }
 
     /* submodules */
-    LY_ARRAY_FOR(mod->parsed->includes, v) {
+    LYA_FOR(mod->parsed->includes, v) {
         inc = &mod->parsed->includes[v];
 
-        LY_ARRAY_FOR(inc->submodule->extensions, u) {
+        LYA_FOR(inc->submodule->extensions, u) {
             inc->submodule->extensions[u].plugin_ref = lyplg_ext_plugin_find(mod->ctx, mod->name,
                     mod->revision, inc->submodule->extensions[u].name);
         }
@@ -1917,14 +1917,14 @@ lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
     struct lysp_ext *ext_def;
     const struct lys_module *mod;
     uint32_t i;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     char *path = NULL;
     struct lyplg_ext *ext_plg;
 
     /* first finish parsing all extension instances ... */
     for (i = 0; i < pctx->ext_inst.count; ++i) {
         exts = pctx->ext_inst.objs[i];
-        LY_ARRAY_FOR(exts, u) {
+        LYA_FOR(exts, u) {
             ext = &exts[u];
 
             /* find the extension definition, use its plugin */
@@ -1940,7 +1940,7 @@ lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
     for (i = 0; i < pctx->ext_inst.count; ++i) {
         exts = pctx->ext_inst.objs[i];
         u = 0;
-        while (u < LY_ARRAY_COUNT(exts)) {
+        while (u < LYA_COUNT(exts)) {
             ext = &exts[u];
             if (!ext->plugin_ref || !(ext_plg = LYSC_GET_EXT_PLG(ext->plugin_ref))->parse) {
                 goto next_iter;
@@ -1959,10 +1959,10 @@ lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
             if (r == LY_ENOT) {
                 /* instance should be ignored, remove it */
                 lysp_ext_instance_free(PARSER_CTX(pctx), ext);
-                LY_ARRAY_DECREMENT(exts);
-                if (u < LY_ARRAY_COUNT(exts)) {
+                LYA_DECREMENT(exts);
+                if (u < LYA_COUNT(exts)) {
                     /* replace by the last item */
-                    *ext = exts[LY_ARRAY_COUNT(exts)];
+                    *ext = exts[LYA_COUNT(exts)];
                 } /* else if there are no more items, leave the empty array, we are not able to free it */
                 continue;
             } else if (r) {
@@ -2224,7 +2224,7 @@ lysp_add_internal_ietf_netconf(struct lysp_ctx *pctx, struct lysp_module *mod)
     /*
      * 1) edit-config's operation
      */
-    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, extp, LY_EMEM);
+    LYA_ADD_ITEM(mod->exts, extp, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_ERR_RET(!extp, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "md_:annotation", 0, &extp->name));
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "operation", 0, &extp->argument));
@@ -2290,7 +2290,7 @@ lysp_add_internal_ietf_netconf(struct lysp_ctx *pctx, struct lysp_module *mod)
     /*
      * 2) filter's type
      */
-    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, extp, LY_EMEM);
+    LYA_ADD_ITEM(mod->exts, extp, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_ERR_RET(!extp, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "md_:annotation", 0, &extp->name));
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "type", 0, &extp->argument));
@@ -2341,7 +2341,7 @@ lysp_add_internal_ietf_netconf(struct lysp_ctx *pctx, struct lysp_module *mod)
     /*
      * 3) filter's select
      */
-    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, extp, LY_EMEM);
+    LYA_ADD_ITEM(mod->exts, extp, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_ERR_RET(!extp, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "md_:annotation", 0, &extp->name));
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "select", 0, &extp->argument));
@@ -2389,13 +2389,13 @@ lysp_add_internal_ietf_netconf(struct lysp_ctx *pctx, struct lysp_module *mod)
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "enumeration", 0, &leaf->type.name));
     leaf->type.pmod = mod;
     leaf->type.flags = LYS_SET_ENUM;
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "transport", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "rpc", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "protocol", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "application", 0, &enm->name));
 
     leaf = lysp_parser_node_new(mod, sizeof *leaf, &cont->child);
@@ -2406,45 +2406,45 @@ lysp_add_internal_ietf_netconf(struct lysp_ctx *pctx, struct lysp_module *mod)
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "enumeration", 0, &leaf->type.name));
     leaf->type.pmod = mod;
     leaf->type.flags = LYS_SET_ENUM;
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "in-use", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "invalid-value", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "too-big", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "missing-attribute", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "bad-attribute", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "unknown-attribute", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "missing-element", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "bad-element", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "unknown-element", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "unknown-namespace", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "access-denied", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "lock-denied", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "resource-denied", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "rollback-failed", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "data-exists", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "data-missing", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "operation-not-supported", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "operation-failed", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "partial-operation", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "malformed-message", 0, &enm->name));
 
     leaf = lysp_parser_node_new(mod, sizeof *leaf, &cont->child);
@@ -2455,9 +2455,9 @@ lysp_add_internal_ietf_netconf(struct lysp_ctx *pctx, struct lysp_module *mod)
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "enumeration", 0, &leaf->type.name));
     leaf->type.pmod = mod;
     leaf->type.flags = LYS_SET_ENUM;
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "error", 0, &enm->name));
-    LY_ARRAY_NEW_RET(mod->mod->ctx, leaf->type.enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(leaf->type.enums, enm, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "warning", 0, &enm->name));
 
     leaf = lysp_parser_node_new(mod, sizeof *leaf, &cont->child);
@@ -2479,12 +2479,12 @@ lysp_add_internal_ietf_netconf(struct lysp_ctx *pctx, struct lysp_module *mod)
     /* the rest are opaque nodes, error-message (because of 'xml:lang' attribute) and error-info (because can be any nodes) */
 
     /* create new imports for the used prefixes */
-    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->imports, imp, LY_EMEM);
+    LYA_ADD_ITEM(mod->imports, imp, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "ietf-yang-metadata", 0, &imp->name));
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "md_", 0, &imp->prefix));
     imp->flags = LYS_INTERNAL;
 
-    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->imports, imp, LY_EMEM);
+    LYA_ADD_ITEM(mod->imports, imp, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "ietf-yang-types", 0, &imp->name));
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "yang_", 0, &imp->prefix));
     imp->flags = LYS_INTERNAL;
@@ -2509,7 +2509,7 @@ lysp_add_internal_ietf_netconf_with_defaults(struct lysp_ctx *pctx, struct lysp_
     uint32_t idx;
 
     /* add new extension instance */
-    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, extp, LY_EMEM);
+    LYA_ADD_ITEM(mod->exts, extp, LOGMEM(mod->mod->ctx); return LY_EMEM);
 
     /* fill in the extension instance fields */
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "md_:annotation", 0, &extp->name));
@@ -2541,7 +2541,7 @@ lysp_add_internal_ietf_netconf_with_defaults(struct lysp_ctx *pctx, struct lysp_
     }
 
     /* create new import for the used prefix */
-    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->imports, imp, LY_EMEM);
+    LYA_ADD_ITEM(mod->imports, imp, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "ietf-yang-metadata", 0, &imp->name));
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "md_", 0, &imp->prefix));
     imp->flags = LYS_INTERNAL;
@@ -2571,14 +2571,14 @@ lysp_add_internal_yang(struct lysp_ctx *pctx, struct lysp_module *mod)
     uint32_t idx;
 
     /* add new typedef */
-    LY_ARRAY_NEW_RET(PARSER_CTX(pctx), mod->typedefs, tpdf, LY_EMEM);
+    LYA_ADD_ITEM(mod->typedefs, tpdf, LOGMEM(PARSER_CTX(pctx)); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(PARSER_CTX(pctx), "lyds_tree", 0, &tpdf->name));
     LY_CHECK_RET(lysdict_insert(PARSER_CTX(pctx), "uint64", 0, &tpdf->type.name));
     tpdf->type.pmod = mod;
     tpdf->flags = LYS_INTERNAL;
 
     /* add new extension instance */
-    LY_ARRAY_NEW_RET(PARSER_CTX(pctx), mod->exts, extp, LY_EMEM);
+    LYA_ADD_ITEM(mod->exts, extp, LOGMEM(PARSER_CTX(pctx)); return LY_EMEM);
 
     /* fill in the extension instance fields */
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "md:annotation", 0, &extp->name));
@@ -2620,7 +2620,7 @@ lysp_add_internal_yang(struct lysp_ctx *pctx, struct lysp_module *mod)
     leaf->type.pmod = mod;
 
     /* create new imports for the used prefixes */
-    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->imports, imp, LY_EMEM);
+    LYA_ADD_ITEM(mod->imports, imp, LOGMEM(mod->mod->ctx); return LY_EMEM);
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "ietf-yang-types", 0, &imp->name));
     LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "yang_", 0, &imp->prefix));
     imp->flags = LYS_INTERNAL;
@@ -2638,15 +2638,15 @@ static LY_ERR
 lys_compile_submodules(struct lys_module *mod)
 {
     LY_ERR rc = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     const struct lysp_submodule *submodp;
     struct lysc_submodule *submod;
     const char *last_revision;
 
-    LY_ARRAY_FOR(mod->parsed->includes, u) {
+    LYA_FOR(mod->parsed->includes, u) {
         submodp = mod->parsed->includes[u].submodule;
 
-        LY_ARRAY_NEW_GOTO(mod->ctx, mod->submodules, submod, rc, cleanup);
+        LYA_ADD_ITEM(mod->submodules, submod, LOGMEM(mod->ctx); rc = LY_EMEM; goto cleanup);
         DUP_STRING_GOTO(mod->ctx, submodp->name, submod->name, rc, cleanup);
         last_revision = lysp_last_revision(NULL, submodp->revs);
         if (last_revision) {

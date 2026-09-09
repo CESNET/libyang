@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Built-in enumeration type plugin.
  *
- * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -21,12 +21,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libyang.h"
-
-/* additional internal headers for some useful simple macros */
 #include "compat.h"
+#include "dict.h"
+#include "ly_array.h"
 #include "ly_common.h"
-#include "plugins_internal.h" /* LY_TYPE_*_STR */
+#include "plugins_internal.h"
 
 /**
  * @page howtoDataLYB LYB Binary Format
@@ -41,7 +40,7 @@ static void
 lyplg_type_lyb_size_enum(const struct lysc_type *type, enum lyplg_lyb_size_type *size_type, uint64_t *fixed_size_bits)
 {
     const struct lysc_type_enum *type_enum = (struct lysc_type_enum *)type;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     uint32_t max_value = 0;
 
     if (size_type) {
@@ -49,7 +48,7 @@ lyplg_type_lyb_size_enum(const struct lysc_type *type, enum lyplg_lyb_size_type 
     }
 
     /* learn the max value of enums */
-    LY_ARRAY_FOR(type_enum->enums, u) {
+    LYA_FOR(type_enum->enums, u) {
         if (type_enum->enums[u].value < 0) {
             /* we need the full 4 bytes */
             *fixed_size_bits = 32;
@@ -73,7 +72,7 @@ lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, co
 {
     struct lysc_type_enum *type_enum = (struct lysc_type_enum *)type;
     LY_ERR ret = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     uint64_t fixed_size_bits;
     ly_bool found = 0;
     uint32_t value_size;
@@ -97,7 +96,7 @@ lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, co
         num_val = num;
 
         /* find the matching enumeration value item */
-        LY_ARRAY_FOR(type_enum->enums, u) {
+        LYA_FOR(type_enum->enums, u) {
             if (type_enum->enums[u].value == num_val) {
                 found = 1;
                 break;
@@ -126,7 +125,7 @@ lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, co
     LY_CHECK_GOTO(ret, cleanup);
 
     /* find the matching enumeration value item */
-    LY_ARRAY_FOR(type_enum->enums, u) {
+    LYA_FOR(type_enum->enums, u) {
         if (!ly_strncmp(type_enum->enums[u].name, value, value_size)) {
             found = 1;
             break;

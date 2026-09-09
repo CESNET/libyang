@@ -14,7 +14,7 @@
 #define _UTEST_MAIN_
 #include "utests.h"
 
-#include "libyang.h"
+#include "printer_schema.h"
 
 static void
 test_schema(void **state)
@@ -39,7 +39,7 @@ test_schema(void **state)
             "}}";
 
     UTEST_ADD_MODULE(data, LYS_IN_YANG, NULL, &mod);
-    assert_int_equal(LY_ARRAY_COUNT(mod->compiled->exts), 1);
+    assert_int_equal(LYA_COUNT(mod->compiled->exts), 1);
 
     /* valid augment data */
     data = "module b {yang-version 1.1; namespace urn:tests:extensions:structure:b; prefix b;"
@@ -55,7 +55,7 @@ test_schema(void **state)
             "}}";
 
     UTEST_ADD_MODULE(data, LYS_IN_YANG, NULL, &mod);
-    assert_int_equal(LY_ARRAY_COUNT(mod->compiled->exts), 2);
+    assert_int_equal(LYA_COUNT(mod->compiled->exts), 2);
 
     /* yang compiled print */
     info = "module a {\n"
@@ -136,7 +136,7 @@ test_schema(void **state)
             "}\n";
 
     UTEST_ADD_MODULE(data, LYS_IN_YANG, NULL, &mod);
-    assert_int_equal(LY_ARRAY_COUNT(mod->compiled->exts), 1);
+    assert_int_equal(LYA_COUNT(mod->compiled->exts), 1);
     assert_int_equal(LY_SUCCESS, lys_print_mem(&printed, mod, LYS_OUT_YANG_COMPILED, 0));
     assert_string_equal(printed, info);
     free(printed);

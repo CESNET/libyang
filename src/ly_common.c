@@ -159,7 +159,7 @@ ly_ctx_ht_pattern_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void
 static void
 ly_ctx_private_data_remove_and_free(struct ly_ctx_private_data *private_data)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (!private_data) {
         return;
@@ -170,19 +170,19 @@ ly_ctx_private_data_remove_and_free(struct ly_ctx_private_data *private_data)
     free(private_data);
 
     /* find */
-    LY_ARRAY_FOR(ly_private_ctx_data, u) {
+    LYA_FOR(ly_private_ctx_data, u) {
         if (ly_private_ctx_data[u] == private_data) {
             break;
         }
     }
-    assert(u < LY_ARRAY_COUNT(ly_private_ctx_data));
+    assert(u < LYA_COUNT(ly_private_ctx_data));
 
     /* remove */
-    if (u < LY_ARRAY_COUNT(ly_private_ctx_data) - 1) {
+    if (u < LYA_COUNT(ly_private_ctx_data) - 1) {
         /* replace the private data with the last one if it even was added */
-        ly_private_ctx_data[u] = ly_private_ctx_data[LY_ARRAY_COUNT(ly_private_ctx_data) - 1];
+        ly_private_ctx_data[u] = ly_private_ctx_data[LYA_COUNT(ly_private_ctx_data) - 1];
     }
-    LY_ARRAY_DECREMENT_FREE(ly_private_ctx_data);
+    LYA_DECREMENT_FREE(ly_private_ctx_data);
 }
 
 /**
@@ -202,7 +202,7 @@ ly_ctx_private_data_create(const struct ly_ctx *ctx, struct ly_ctx_private_data 
     *private_data = NULL;
 
     /* create the private context data */
-    LY_ARRAY_NEW_GOTO(ctx, ly_private_ctx_data, priv_data, rc, cleanup);
+    LYA_ADD_ITEM(ly_private_ctx_data, priv_data, LOGMEM(ctx); rc = LY_EMEM; goto cleanup);
     *priv_data = calloc(1, sizeof **priv_data);
     LY_CHECK_ERR_GOTO(!*priv_data, LOGMEM(ctx); rc = LY_EMEM, cleanup);
 
@@ -234,7 +234,7 @@ _ly_ctx_private_data_get(const struct ly_ctx *ctx, ly_bool own_data_only)
     ly_bool found = 0;
     pthread_t tid = pthread_self();
 
-    LY_ARRAY_FOR(ly_private_ctx_data, struct ly_ctx_private_data *, iter) {
+    LYA_FOR_EACH(ly_private_ctx_data, iter) {
         /* either own - ctx and tid match, or "context's" - thread does not matter */
         if (((*iter)->ctx == ctx) && (!own_data_only || pthread_equal((*iter)->tid, tid))) {
             found = 1;
@@ -294,7 +294,7 @@ ly_ctx_private_data_get_or_create(const struct ly_ctx *ctx)
 static void
 ly_ctx_shared_data_remove_and_free(struct ly_ctx_shared_data *shared_data)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (!shared_data) {
         return;
@@ -313,19 +313,19 @@ ly_ctx_shared_data_remove_and_free(struct ly_ctx_shared_data *shared_data)
     free(shared_data);
 
     /* find */
-    LY_ARRAY_FOR(ly_shared_ctx_data, u) {
+    LYA_FOR(ly_shared_ctx_data, u) {
         if (ly_shared_ctx_data[u] == shared_data) {
             break;
         }
     }
-    assert(u < LY_ARRAY_COUNT(ly_shared_ctx_data));
+    assert(u < LYA_COUNT(ly_shared_ctx_data));
 
     /* remove */
-    if (u < LY_ARRAY_COUNT(ly_shared_ctx_data) - 1) {
+    if (u < LYA_COUNT(ly_shared_ctx_data) - 1) {
         /* replace the shared data with the last one */
-        ly_shared_ctx_data[u] = ly_shared_ctx_data[LY_ARRAY_COUNT(ly_shared_ctx_data) - 1];
+        ly_shared_ctx_data[u] = ly_shared_ctx_data[LYA_COUNT(ly_shared_ctx_data) - 1];
     }
-    LY_ARRAY_DECREMENT_FREE(ly_shared_ctx_data);
+    LYA_DECREMENT_FREE(ly_shared_ctx_data);
 }
 
 /**
@@ -347,7 +347,7 @@ ly_ctx_shared_data_create(const struct ly_ctx *ctx, struct ly_ctx_shared_data **
     }
 
     /* create the shared context data */
-    LY_ARRAY_NEW_GOTO(ctx, ly_shared_ctx_data, shrd_data, rc, cleanup);
+    LYA_ADD_ITEM(ly_shared_ctx_data, shrd_data, LOGMEM(ctx); rc = LY_EMEM; goto cleanup);
     *shrd_data = calloc(1, sizeof **shrd_data);
     LY_CHECK_ERR_GOTO(!*shrd_data, LOGMEM(ctx); rc = LY_EMEM, cleanup);
 
@@ -409,7 +409,7 @@ _ly_ctx_shared_data_get(const struct ly_ctx *ctx)
     struct ly_ctx_shared_data **iter;
     ly_bool found = 0;
 
-    LY_ARRAY_FOR(ly_shared_ctx_data, struct ly_ctx_shared_data *, iter) {
+    LYA_FOR_EACH(ly_shared_ctx_data, iter) {
         if ((*iter)->ctx == ctx) {
             found = 1;
             break;

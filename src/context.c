@@ -35,6 +35,7 @@
 #include "compat.h"
 #include "hash_table.h"
 #include "in.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "lyb.h"
 #include "parser_data.h"
@@ -42,7 +43,6 @@
 #include "plugins_types.h"
 #include "schema_compile.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"
@@ -77,7 +77,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
     struct stat st;
     char *new_dir = NULL;
     uint32_t i;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lys_module *mod;
 
     LY_CHECK_ARG_RET(ctx, ctx, !(ctx->opts & LY_CTX_INT_IMMUTABLE), LY_EINVAL);
@@ -131,7 +131,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
 
         mod->latest_revision &= ~LYS_MOD_LATEST_SEARCHDIRS;
         if (mod->parsed && mod->parsed->includes) {
-            for (u = 0; u < LY_ARRAY_COUNT(mod->parsed->includes); ++u) {
+            for (u = 0; u < LYA_COUNT(mod->parsed->includes); ++u) {
                 mod->parsed->includes[u].submodule->latest_revision &= ~LYS_MOD_LATEST_SEARCHDIRS;
             }
         }
@@ -678,7 +678,7 @@ lysc_node_clear_priv_dfs_cb(struct lysc_node *node, void *UNUSED(data), ly_bool 
 LIBYANG_API_DEF LY_ERR
 ly_ctx_unset_options(struct ly_ctx *ctx, uint32_t option)
 {
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     const struct lysc_ext_instance *ext;
     struct lysc_node *root;
     struct ly_ctx_shared_data *ctx_data;
@@ -707,9 +707,9 @@ ly_ctx_unset_options(struct ly_ctx *ctx, uint32_t option)
             lysc_module_dfs_full(mod, lysc_node_clear_priv_dfs_cb, NULL);
 
             /* set NULL for all ::lysc_node.priv pointers in compiled extension instances */
-            LY_ARRAY_FOR(mod->compiled->exts, u) {
+            LYA_FOR(mod->compiled->exts, u) {
                 ext = &mod->compiled->exts[u];
-                LY_ARRAY_FOR(ext->substmts, v) {
+                LYA_FOR(ext->substmts, v) {
                     if (ext->substmts[v].stmt & LY_STMT_DATA_NODE_MASK) {
                         LY_LIST_FOR(*ext->substmts[v].storage_p, root) {
                             lysc_tree_dfs_full(root, lysc_node_clear_priv_dfs_cb, NULL);
@@ -747,7 +747,7 @@ ly_ctx_new_change(struct ly_ctx *ctx)
 {
     const struct lys_module *mod;
     uint32_t i = 0, hash = 0;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     /* change counter */
     ctx->change_count++;
@@ -764,7 +764,7 @@ ly_ctx_new_change(struct ly_ctx *ctx)
 
         /* enabled features */
         if (mod->implemented) {
-            LY_ARRAY_FOR(mod->compiled->features, u) {
+            LYA_FOR(mod->compiled->features, u) {
                 hash = lyht_hash_multi(hash, mod->compiled->features[u], strlen(mod->compiled->features[u]));
             }
         }
@@ -801,7 +801,7 @@ ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_
 
         mod->latest_revision &= ~LYS_MOD_LATEST_IMPCLB;
         if (mod->parsed && mod->parsed->includes) {
-            for (LY_ARRAY_COUNT_TYPE u = 0; u < LY_ARRAY_COUNT(mod->parsed->includes); ++u) {
+            for (LYA_COUNT_T u = 0; u < LYA_COUNT(mod->parsed->includes); ++u) {
                 mod->parsed->includes[u].submodule->latest_revision &= ~LYS_MOD_LATEST_IMPCLB;
             }
         }
@@ -1015,11 +1015,11 @@ _ly_ctx_get_submodule2(const struct lys_module *module, const char *submodule, c
 {
     struct lysp_include *inc;
     const char *last_revision;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     LY_CHECK_ARG_RET(NULL, module, module->parsed, submodule, NULL);
 
-    LY_ARRAY_FOR(module->parsed->includes, u) {
+    LYA_FOR(module->parsed->includes, u) {
         if (module->parsed->includes[u].submodule && !strcmp(submodule, module->parsed->includes[u].submodule->name)) {
             inc = &module->parsed->includes[u];
             last_revision = lysp_last_revision(NULL, inc->submodule->revs);
@@ -1114,14 +1114,14 @@ ly_ctx_internal_modules_count(const struct ly_ctx *ctx)
 static LY_ERR
 ylib_feature(struct lyd_node *parent, const struct lys_module *mod)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (!mod->implemented) {
         /* no features can be enabled */
         return LY_SUCCESS;
     }
 
-    LY_ARRAY_FOR(mod->compiled->features, u) {
+    LYA_FOR(mod->compiled->features, u) {
         LY_CHECK_RET(lyd_new_term(parent, NULL, "feature", mod->compiled->features[u], 0, NULL));
     }
 
@@ -1131,7 +1131,7 @@ ylib_feature(struct lyd_node *parent, const struct lys_module *mod)
 static LY_ERR
 ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, ly_bool bis)
 {
-    LY_ARRAY_COUNT_TYPE i;
+    LYA_COUNT_T i;
     struct lys_module *mod;
 
     if (!cur_mod->implemented) {
@@ -1139,7 +1139,7 @@ ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, ly_boo
         return LY_SUCCESS;
     }
 
-    LY_ARRAY_FOR(cur_mod->deviated_by, i) {
+    LYA_FOR(cur_mod->deviated_by, i) {
         mod = cur_mod->deviated_by[i];
 
         if (bis) {
@@ -1156,13 +1156,13 @@ static LY_ERR
 ylib_submodules(struct lyd_node *parent, const struct lys_module *mod, ly_bool bis)
 {
     LY_ERR ret;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lyd_node *cont;
     struct lysc_submodule *submod;
     int r;
     char *str;
 
-    LY_ARRAY_FOR(mod->submodules, u) {
+    LYA_FOR(mod->submodules, u) {
         submod = &mod->submodules[u];
 
         if (bis) {
@@ -1481,7 +1481,7 @@ ly_ctx_destroy(struct ly_ctx *ctx)
 {
     struct lys_module *mod;
     uint32_t i;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (!ctx) {
         return;
@@ -1511,11 +1511,11 @@ ly_ctx_destroy(struct ly_ctx *ctx)
         }
 
         /* even compiled ext definitions and itentities can have ext instances, free those, too */
-        LY_ARRAY_FOR(mod->extensions, u) {
+        LYA_FOR(mod->extensions, u) {
             FREE_ARRAY(ctx, mod->extensions[u].exts, lysc_ext_instance_free);
             mod->extensions[u].exts = NULL;
         }
-        LY_ARRAY_FOR(mod->identities, u) {
+        LYA_FOR(mod->identities, u) {
             FREE_ARRAY(ctx, mod->identities[u].exts, lysc_ext_instance_free);
             mod->identities[u].exts = NULL;
         }

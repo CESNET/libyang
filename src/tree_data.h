@@ -16,15 +16,11 @@
 #ifndef LY_TREE_DATA_H_
 #define LY_TREE_DATA_H_
 
-/* socket/ip includes in ly_config.h */
-
 #include <stddef.h>
 #include <stdint.h>
 #include <time.h>
 
-#include "log.h"
 #include "ly_config.h"
-#include "tree.h"
 #include "tree_schema.h"
 
 #ifdef __cplusplus
@@ -79,7 +75,7 @@ struct rb_node;
  * - ::LY_LIST_FOR and ::LY_ARRAY_FOR as described on @ref howtoStructures page.
  *
  * Instead of going through the data tree on your own, a specific data node can be also located using a wide set of
- * \b lyd_find_*() functions.
+ * @b lyd_find_*() functions.
  *
  * More information about specific operations with data instances can be found on the following pages:
  * - @subpage howtoDataParsers
@@ -326,17 +322,17 @@ struct rb_node;
  *
  * The RFC document defines 4 modes for handling default nodes in a data tree, libyang adds the fifth mode and use them
  * via @ref dataprinterflags when printing data trees.
- * - \b explicit - Only the explicitly set configuration data. But in the case of status data, missing default
+ * - @b explicit - Only the explicitly set configuration data. But in the case of status data, missing default
  *                 data are added into the tree. In libyang, this mode is represented by ::LYD_PRINT_WD_EXPLICIT option.
  *                 This is the default with-defaults mode of the printer. The data nodes do not contain any additional
  *                 metadata information.
- * - \b trim - Data nodes containing the default value are removed. This mode is applied with ::LYD_PRINT_WD_TRIM option.
- * - \b report-all - This mode provides all the default data nodes despite they were explicitly present in source data or
+ * - @b trim - Data nodes containing the default value are removed. This mode is applied with ::LYD_PRINT_WD_TRIM option.
+ * - @b report-all - This mode provides all the default data nodes despite they were explicitly present in source data or
  *                 they were added by libyang's [validation process](@ref howtoDataValidation). This mode is activated by
  *                 ::LYD_PRINT_WD_ALL option.
- * - \b report-all-tagged - In this case, all the data nodes (implicit as well the explicit) containing the default value
+ * - @b report-all-tagged - In this case, all the data nodes (implicit as well the explicit) containing the default value
  *                 are printed and tagged (see the note below). Printers accept ::LYD_PRINT_WD_ALL_TAG option for this mode.
- * - \b report-implicit-tagged - The last mode is similar to the previous one, except only the implicitly added nodes
+ * - @b report-implicit-tagged - The last mode is similar to the previous one, except only the implicitly added nodes
  *                 are tagged. This is the libyang's extension and it is activated by ::LYD_PRINT_WD_IMPL_TAG option.
  *
  * Internally, libyang adds the default nodes into the data tree as part of the [validation process](@ref howtoDataValidation).
@@ -345,9 +341,9 @@ struct rb_node;
  * context, the [parser process](@ref howtoDataParsers) also supports to recognize the implicit default nodes marked with the
  * appropriate metadata.
  *
- * Note, that in a modified data tree (via e.g. \b lyd_insert_*() or \b lyd_free_*() functions), some of the default nodes
+ * Note, that in a modified data tree (via e.g. @b lyd_insert_*() or @b lyd_free_*() functions), some of the default nodes
  * can be missing or they can be present by mistake. Such a data tree is again corrected during the next run of the
- * [validation process](@ref howtoDataValidation) or manualy using \b lyd_new_implicit_*() functions.
+ * [validation process](@ref howtoDataValidation) or manualy using @b lyd_new_implicit_*() functions.
  *
  * The implicit (default) nodes, created by libyang, are marked with the ::LYD_DEFAULT flag in ::lyd_node.flags member
  * Note, that besides leafs and leaf-lists, the flag can appear also in containers, where it means that the container
@@ -376,6 +372,73 @@ struct rb_node;
  * closest type with explicit support (up to a built-in type).
  *
  * @section howtoDataLYBTypes Format of specific data type values
+ */
+
+/**
+ * @page howtoXPath XPath Addressing
+ *
+ * Internally, XPath evaluation is performed on __when__ and __must__ conditions in the schema. For that almost
+ * a full [XPath 1.0](http://www.w3.org/TR/1999/REC-xpath-19991116/) evaluator was implemented.
+ * In YANG modules you can also find paths identifying __augment__ targets, __leafref__ targets, and trivial paths in
+ * __choice default__ and __unique__ statements argument. The exact format of all those paths can be found in the
+ * relevant RFCs. Further will only be discussed paths that are used directly in libyang API functions.
+ *
+ * XPath
+ * =====
+ *
+ * Generally, any xpath argument expects an expression similar to _when_ or _must_ as the same evaluator is used. As for
+ * the format of any prefixes, the standardized JSON ([RFC 7951](https://tools.ietf.org/html/rfc7951#section-6.11))
+ * was used. Summarized, xpath follows these conventions:
+ *   - full XPath can be used, but only data nodes (node sets) will always be returned,
+ *   - as per the specification, prefixes are actually __module names__,
+ *   - also in the specification, for _absolute_ paths, the first (leftmost) node _MUST_ have a prefix,
+ *   - for _relative_ paths, you specify the __context node__, which then acts as a parent for the first node in the path,
+ *   - nodes always inherit their module (prefix) from their __parent node__ so whenever a node is from a different
+ *     module than its parent, it _MUST_ have a prefix,
+ *   - nodes from the same module as their __parent__ _MUST NOT_ have a prefix,
+ *   - note that non-data nodes/schema-only node (choice, case, uses, input, output) are skipped and _MUST_ not be
+ *     included in the path.
+ *
+ * Functions List
+ * --------------
+ * - ::lyd_find_xpath()
+ * - ::lys_find_xpath()
+ *
+ * Path
+ * ====
+ *
+ * The term path is used when a simplified (subset of) XPath is expected. Path is always a valid XPath but not
+ * the other way around. In short, paths only identify a specific (set of) nodes based on their ancestors in the
+ * schema. Predicates are allowed the same as for an [instance-identifier](https://tools.ietf.org/html/rfc7950#section-9.13).
+ * Specifically, key values of a list, leaf-list value, or position of lists without keys can be used.
+ *
+ * Examples
+ * --------
+ *
+ * - get __list__ instance with __key1__ of value __1__ and __key2__ of value __2__ (this can return more __list__ instances if there are more keys than __key1__ and __key2__)
+ *
+ *       /module-name:container/list[key1='1'][key2='2']
+ *
+ * - get __leaf-list__ instance with the value __val__
+ *
+ *       /module-name:container/leaf-list[.='val']
+ *
+ * - get __3rd list-without-keys__ instance with no keys defined
+ *
+ *       /module-name:container/list-without-keys[3]
+ *
+ * - get __aug-list__ with __aug-list-key__, which was added to __module-name__ from an augment module __augment-module__
+ *
+ *       /module-name:container/container2/augment-module:aug-cont/aug-list[aug-list-key='value']
+ *
+ * Functions List
+ * --------------
+ * - ::lyd_new_path()
+ * - ::lyd_new_path2()
+ * - ::lyd_path()
+ * - ::lyd_find_path()
+ * - ::lys_find_path()
+ *
  */
 
 /**
@@ -2598,59 +2661,6 @@ LIBYANG_API_DECL LY_ERR lyd_find_path(const struct lyd_node *ctx_node, const cha
 LIBYANG_API_DECL LY_ERR lyd_find_target(const struct ly_path *path, const struct lyd_node *tree, struct lyd_node **match);
 
 /**
- * @brief Get current timezone (including DST setting) UTC (GMT) time offset in seconds.
- *
- * @return Timezone shift in seconds.
- */
-LIBYANG_API_DECL int ly_time_tz_offset(void);
-
-/**
- * @brief Get UTC (GMT) timezone offset in seconds at a specific timestamp (including DST setting).
- *
- * @param[in] time Timestamp to get the offset at.
- * @return Timezone shift in seconds.
- */
-LIBYANG_API_DECL int ly_time_tz_offset_at(time_t time);
-
-/**
- * @brief Convert date-and-time from string to UNIX timestamp and fractions of a second.
- *
- * @param[in] value Valid string date-and-time value, the string may continue after the value (be longer).
- * @param[out] time UNIX timestamp.
- * @param[out] fractions_s Optional fractions of a second, set to NULL if none.
- * @return LY_ERR value.
- */
-LIBYANG_API_DECL LY_ERR ly_time_str2time(const char *value, time_t *time, char **fractions_s);
-
-/**
- * @brief Convert UNIX timestamp and fractions of a second into canonical date-and-time string value.
- *
- * @param[in] time UNIX timestamp.
- * @param[in] fractions_s Fractions of a second, if any.
- * @param[out] str String date-and-time value in the local timezone.
- * @return LY_ERR value.
- */
-LIBYANG_API_DECL LY_ERR ly_time_time2str(time_t time, const char *fractions_s, char **str);
-
-/**
- * @brief Convert date-and-time from string to timespec.
- *
- * @param[in] value Valid string date-and-time value, the string may continue after the value (be longer).
- * @param[out] ts Timespec.
- * @return LY_ERR value.
- */
-LIBYANG_API_DECL LY_ERR ly_time_str2ts(const char *value, struct timespec *ts);
-
-/**
- * @brief Convert timespec into date-and-time string value.
- *
- * @param[in] ts Timespec.
- * @param[out] str String date-and-time value in the local timezone.
- * @return LY_ERR value.
- */
-LIBYANG_API_DECL LY_ERR ly_time_ts2str(const struct timespec *ts, char **str);
-
-/**
  * @brief Gets the leafref links record for given node
  *
  * This API requires usage of ::LY_CTX_LEAFREF_LINKING context flag.
@@ -2672,40 +2682,6 @@ LIBYANG_API_DECL LY_ERR lyd_leafref_get_links(const struct lyd_node_term *node, 
  * @return LY_ERR value on error.
  */
 LIBYANG_API_DECL LY_ERR lyd_leafref_link_node_tree(const struct lyd_node *tree);
-
-/**
- * @brief Check a string matches an XML Schema regex used in YANG.
- *
- * @param[in] ctx Optional context for storing errors.
- * @param[in] pattern Regular expression pattern to use.
- * @param[in] string String to match.
- * @param[in] str_len Length of @p string, may be 0 if string is 0-terminated.
- * @param[in,out] pat_comp Optional pointer to pattern code. If set and NULL, it is returned. If set and non-NULL, it is
- * used directly for matching instead of compiling @p pattern. Free it using ::ly_pattern_free().
- * @return LY_SUCCESS on a match;
- * @return LY_ENOT if the string does not match;
- * @return LY_ERR on error.
- */
-LIBYANG_API_DECL LY_ERR ly_pattern_match(const struct ly_ctx *ctx, const char *pattern, const char *string,
-        uint32_t str_len, void **pat_comp);
-
-/**
- * @brief Compile an XML Schema regex pattern prior to matching.
- *
- * @param[in] ctx Optional context for storing errors.
- * @param[in] pattern Regular expression pattern to use.
- * @param[out] pat_comp Compiled @p pattern to be used by ::ly_pattern_match(). Free it using ::ly_pattern_free().
- * @return LY_SUCCESS on success;
- * @return LY_ERR on error.
- */
-LIBYANG_API_DECL LY_ERR ly_pattern_compile(const struct ly_ctx *ctx, const char *pattern, void **pat_comp);
-
-/**
- * @brief Free a compiled XML Schema regex pattern.
- *
- * @param[in] pat_comp Compiled pattern to free.
- */
-LIBYANG_API_DECL void ly_pattern_free(void *pat_comp);
 
 #ifdef __cplusplus
 }

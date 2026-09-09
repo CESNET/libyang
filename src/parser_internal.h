@@ -511,6 +511,14 @@ LY_ERR lyd_parser_node_insert(struct lyd_node *parent, struct lyd_node **first_p
 void *lysp_parser_node_new(struct lysp_module *pmod, uint32_t pnode_size, struct lysp_node **first);
 
 /**
+ * @brief Insert a new deviation into a list.
+ *
+ * @param[in,out] devs Deviate list to add to, assigned directly if unset.
+ * @param[in] dev Deviate to insert.
+ */
+void lysp_parser_dev_insert(struct lysp_deviate **devs, struct lysp_deviate *dev);
+
+/**
  * @brief Parse an instance extension statement.
  *
  * @param[in] pctx Parse context.

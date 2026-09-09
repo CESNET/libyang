@@ -19,8 +19,8 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <inttypes.h>
 #include <stddef.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,6 +28,7 @@
 #include "compat.h"
 #include "dict.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "parser_internal.h"
 #include "plugins.h"
@@ -37,11 +38,10 @@
 #include "schema_compile_amend.h"
 #include "schema_features.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data.h"
-#include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "utils.h"
 #include "xpath.h"
 
 /**
@@ -99,7 +99,7 @@ static LY_ERR
 lysc_unres_must_add(struct lysc_ctx *ctx, struct lysc_node *node, struct lysp_node *pnode)
 {
     struct lysc_unres_must *m = NULL;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lysc_must *musts;
     struct lysp_restr *pmusts;
     LY_ERR ret;
@@ -111,7 +111,7 @@ lysc_unres_must_add(struct lysc_ctx *ctx, struct lysc_node *node, struct lysp_no
 
     musts = lysc_node_musts(node);
     pmusts = lysp_node_musts(pnode);
-    assert(LY_ARRAY_COUNT(musts) == LY_ARRAY_COUNT(pmusts));
+    assert(LYA_COUNT(musts) == LYA_COUNT(pmusts));
 
     if (!musts) {
         /* no must */
@@ -124,10 +124,10 @@ lysc_unres_must_add(struct lysc_ctx *ctx, struct lysc_node *node, struct lysp_no
     m->node = node;
 
     /* add must local modules */
-    LY_ARRAY_CREATE_GOTO(ctx->ctx, m->local_mods, LY_ARRAY_COUNT(pmusts), ret, error);
-    LY_ARRAY_FOR(pmusts, u) {
+    LYA_PREALLOC(m->local_mods, LYA_COUNT(pmusts), LOGMEM(ctx->ctx); ret = LY_EMEM; goto error);
+    LYA_FOR(pmusts, u) {
         m->local_mods[u] = pmusts[u].arg.mod;
-        LY_ARRAY_INCREMENT(m->local_mods);
+        LYA_INCREMENT(m->local_mods);
     }
 
     /* store ext */
@@ -139,7 +139,7 @@ lysc_unres_must_add(struct lysc_ctx *ctx, struct lysc_node *node, struct lysp_no
 
 error:
     if (m) {
-        LY_ARRAY_FREE(m->local_mods);
+        LYA_FREE(m->local_mods);
         free(m);
     }
     LOGMEM(ctx->ctx);
@@ -151,7 +151,7 @@ lysc_unres_leafref_add(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, const 
 {
     struct lysc_unres_leafref *l = NULL;
     struct ly_set *leafrefs_set;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     int is_lref = 0;
 
     if (ctx->compile_opts & LYS_COMPILE_GROUPING) {
@@ -167,7 +167,7 @@ lysc_unres_leafref_add(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, const 
         is_lref = 1;
     } else if (leaf->type->basetype == LY_TYPE_UNION) {
         /* union with leafrefs */
-        LY_ARRAY_FOR(((struct lysc_type_union *)leaf->type)->types, u) {
+        LYA_FOR(((struct lysc_type_union *)leaf->type)->types, u) {
             if (((struct lysc_type_union *)leaf->type)->types[u]->basetype == LY_TYPE_LEAFREF) {
                 is_lref = 1;
                 break;
@@ -331,14 +331,14 @@ static struct lysc_pattern **
 lysc_patterns_dup(struct ly_ctx *ctx, struct lysc_pattern **orig)
 {
     struct lysc_pattern **dup = NULL;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     assert(orig);
 
-    LY_ARRAY_CREATE_RET(ctx, dup, LY_ARRAY_COUNT(orig), NULL);
-    LY_ARRAY_FOR(orig, u) {
+    LYA_PREALLOC(dup, LYA_COUNT(orig), LOGMEM(ctx); return NULL);
+    LYA_FOR(orig, u) {
         dup[u] = lysc_pattern_dup(orig[u]);
-        LY_ARRAY_INCREMENT(dup);
+        LYA_INCREMENT(dup);
     }
     return dup;
 }
@@ -366,9 +366,9 @@ lysc_range_dup(struct lysc_ctx *ctx, const struct lysc_range *orig, struct ly_se
     dup = calloc(1, sizeof *dup);
     LY_CHECK_ERR_RET(!dup, LOGMEM(ctx->ctx), NULL);
     if (orig->parts) {
-        LY_ARRAY_CREATE_GOTO(ctx->ctx, dup->parts, LY_ARRAY_COUNT(orig->parts), ret, error);
-        (*((LY_ARRAY_COUNT_TYPE *)(dup->parts) - 1)) = LY_ARRAY_COUNT(orig->parts);
-        memcpy(dup->parts, orig->parts, LY_ARRAY_COUNT(dup->parts) * sizeof *dup->parts);
+        LYA_PREALLOC(dup->parts, LYA_COUNT(orig->parts), LOGMEM(ctx->ctx); ret = LY_EMEM; goto error);
+        (*((LYA_COUNT_T *)(dup->parts) - 1)) = LYA_COUNT(orig->parts);
+        memcpy(dup->parts, orig->parts, LYA_COUNT(dup->parts) * sizeof *dup->parts);
     }
     DUP_STRING_GOTO(ctx->ctx, orig->eapptag, dup->eapptag, ret, error);
     DUP_STRING_GOTO(ctx->ctx, orig->emsg, dup->emsg, ret, error);
@@ -530,7 +530,7 @@ lys_compile_when(struct lysc_ctx *ctx, const struct lysp_when *when_p, uint16_t 
         node_when = lysc_node_when_p(node);
 
         /* create new when pointer */
-        LY_ARRAY_NEW_GOTO(ctx->ctx, *node_when, new_when, rc, cleanup);
+        LYA_ADD_ITEM(*node_when, new_when, LOGMEM(ctx->ctx); rc = LY_EMEM; goto cleanup);
     } else {
         /* individual when */
         new_when = &ptr;
@@ -714,7 +714,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool ma
     }
     if (!valcopy && base_range) {
         if (max) {
-            part->max_64 = base_range->parts[LY_ARRAY_COUNT(base_range->parts) - 1].max_64;
+            part->max_64 = base_range->parts[LYA_COUNT(base_range->parts) - 1].max_64;
         } else {
             part->min_64 = base_range->parts[0].min_64;
         }
@@ -864,7 +864,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, const struct lysp_restr *range_p, L
     const char *expr;
     struct lysc_range_part *parts = NULL, *part;
     ly_bool range_expected = 0, uns;
-    LY_ARRAY_COUNT_TYPE parts_done = 0, u, v;
+    LYA_COUNT_T parts_done = 0, u, v;
 
     assert(range);
     assert(range_p);
@@ -880,7 +880,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, const struct lysp_restr *range_p, L
                         length_restr ? "length" : "range", range_p->arg.str);
                 ret = LY_EVALID;
                 goto cleanup;
-            } else if (!parts || (parts_done == LY_ARRAY_COUNT(parts))) {
+            } else if (!parts || (parts_done == LYA_COUNT(parts))) {
                 LOGVAL(ctx->ctx, NULL, LYVE_SYNTAX_YANG,
                         "Invalid %s restriction - unexpected end of the expression (%s).",
                         length_restr ? "length" : "range", range_p->arg.str);
@@ -900,7 +900,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, const struct lysp_restr *range_p, L
             }
             expr += ly_strlen_const("min");
 
-            LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
+            LYA_ADD_ITEM(parts, part, LOGMEM(ctx->ctx); ret = LY_EMEM; goto cleanup);
             LY_CHECK_GOTO(ret = range_part_minmax(ctx, part, 0, 0, basetype, 1, length_restr, frdigits, base_range, NULL), cleanup);
             part->max_64 = part->min_64;
         } else if (*expr == '|') {
@@ -919,7 +919,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, const struct lysp_restr *range_p, L
             while (isspace(*expr)) {
                 expr++;
             }
-            if (!parts || (LY_ARRAY_COUNT(parts) == parts_done)) {
+            if (!parts || (LYA_COUNT(parts) == parts_done)) {
                 LOGVAL(ctx->ctx, NULL, LYVE_SYNTAX_YANG,
                         "Invalid %s restriction - unexpected \"..\" without a lower bound.", length_restr ? "length" : "range");
                 ret = LY_EVALID;
@@ -930,12 +930,12 @@ lys_compile_type_range(struct lysc_ctx *ctx, const struct lysp_restr *range_p, L
         } else if (isdigit(*expr) || (*expr == '-') || (*expr == '+')) {
             /* number */
             if (range_expected) {
-                part = &parts[LY_ARRAY_COUNT(parts) - 1];
+                part = &parts[LYA_COUNT(parts) - 1];
                 LY_CHECK_GOTO(ret = range_part_minmax(ctx, part, 1, part->min_64, basetype, 0, length_restr, frdigits, NULL, &expr), cleanup);
                 range_expected = 0;
             } else {
-                LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
-                LY_CHECK_GOTO(ret = range_part_minmax(ctx, part, 0, parts_done ? parts[LY_ARRAY_COUNT(parts) - 2].max_64 : 0,
+                LYA_ADD_ITEM(parts, part, LOGMEM(ctx->ctx); ret = LY_EMEM; goto cleanup);
+                LY_CHECK_GOTO(ret = range_part_minmax(ctx, part, 0, parts_done ? parts[LYA_COUNT(parts) - 2].max_64 : 0,
                         basetype, parts_done ? 0 : 1, length_restr, frdigits, NULL, &expr), cleanup);
                 part->max_64 = part->min_64;
             }
@@ -953,13 +953,13 @@ lys_compile_type_range(struct lysc_ctx *ctx, const struct lysp_restr *range_p, L
                 goto cleanup;
             }
             if (range_expected) {
-                part = &parts[LY_ARRAY_COUNT(parts) - 1];
+                part = &parts[LYA_COUNT(parts) - 1];
                 ret = range_part_minmax(ctx, part, 1, part->min_64, basetype, 0, length_restr, frdigits, base_range, NULL);
                 LY_CHECK_GOTO(ret, cleanup);
                 range_expected = 0;
             } else {
-                LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
-                LY_CHECK_GOTO(ret = range_part_minmax(ctx, part, 1, parts_done ? parts[LY_ARRAY_COUNT(parts) - 2].max_64 : 0,
+                LYA_ADD_ITEM(parts, part, LOGMEM(ctx->ctx); ret = LY_EMEM; goto cleanup);
+                LY_CHECK_GOTO(ret = range_part_minmax(ctx, part, 1, parts_done ? parts[LYA_COUNT(parts) - 2].max_64 : 0,
                         basetype, parts_done ? 0 : 1, length_restr, frdigits, base_range, NULL), cleanup);
                 part->min_64 = part->max_64;
             }
@@ -994,7 +994,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, const struct lysp_restr *range_p, L
             ret = LY_EINT;
             goto cleanup;
         }
-        for (u = v = 0; u < parts_done && v < LY_ARRAY_COUNT(base_range->parts); ++u) {
+        for (u = v = 0; u < parts_done && v < LYA_COUNT(base_range->parts); ++u) {
             if ((uns && (parts[u].min_u64 < base_range->parts[v].min_u64)) ||
                     (!uns && (parts[u].min_64 < base_range->parts[v].min_64))) {
                 goto baseerror;
@@ -1091,7 +1091,7 @@ baseerror:
     (*range)->parts = parts;
     parts = NULL;
 cleanup:
-    LY_ARRAY_FREE(parts);
+    LYA_FREE(parts);
 
     return ret;
 }
@@ -1107,12 +1107,12 @@ static ly_bool
 lys_compile_type_patterns_has_oc_posix_ext(const struct lysp_module *pmod)
 {
     const struct lysp_ext_instance *ext;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     const struct lys_module *mod;
     const char *tmp, *name, *prefix;
     uint32_t pref_len, name_len;
 
-    LY_ARRAY_FOR(pmod->exts, u) {
+    LYA_FOR(pmod->exts, u) {
         ext = &pmod->exts[u];
 
         /* parse the prefix, the nodeid was previously already parsed and checked */
@@ -1142,7 +1142,7 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, const struct lysp_restr *pattern
 {
     LY_ERR rc = LY_SUCCESS;
     struct lysc_pattern **pattern;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     ly_bool format = 0;
 
     /* first check the format of the patterns based on the current parsed module extensions (not compiled yet),
@@ -1157,8 +1157,8 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, const struct lysp_restr *pattern
         LY_CHECK_ERR_RET(!(*patterns), LOGMEM(ctx->ctx), LY_EMEM);
     }
 
-    LY_ARRAY_FOR(patterns_p, u) {
-        LY_ARRAY_NEW_RET(ctx->ctx, (*patterns), pattern, LY_EMEM);
+    LYA_FOR(patterns_p, u) {
+        LYA_ADD_ITEM((*patterns), pattern, LOGMEM(ctx->ctx); return LY_EMEM);
         *pattern = calloc(1, sizeof **pattern);
         (*pattern)->refcount = 1;
 
@@ -1241,7 +1241,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
         struct lysc_type_bitenum_item *base_enums, struct lysc_type_bitenum_item **bitenums)
 {
     LY_ERR ret = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u, v, match = 0;
+    LYA_COUNT_T u, v, match = 0;
     int32_t highest_value = INT32_MIN, cur_val = INT32_MIN;
     uint32_t highest_position = 0, cur_pos = 0;
     struct lysc_type_bitenum_item *e, storage;
@@ -1253,16 +1253,16 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
         return LY_EVALID;
     }
 
-    LY_ARRAY_FOR(enums_p, u) {
+    LYA_FOR(enums_p, u) {
         /* perform all checks */
         if (base_enums) {
             /* check the enum/bit presence in the base type - the set of enums/bits in the derived type must be a subset */
-            LY_ARRAY_FOR(base_enums, v) {
+            LYA_FOR(base_enums, v) {
                 if (!strcmp(enums_p[u].name, base_enums[v].name)) {
                     break;
                 }
             }
-            if (v == LY_ARRAY_COUNT(base_enums)) {
+            if (v == LYA_COUNT(base_enums)) {
                 LOGVAL(ctx->ctx, NULL, LYVE_SYNTAX_YANG, "Invalid %s - derived type adds new item \"%s\".",
                         basetype == LY_TYPE_ENUM ? "enumeration" : "bits", enums_p[u].name);
                 return LY_EVALID;
@@ -1275,7 +1275,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
                 /* value assigned by module */
                 cur_val = (int32_t)enums_p[u].value;
                 /* check collision with other values */
-                LY_ARRAY_FOR(*bitenums, v) {
+                LYA_FOR(*bitenums, v) {
                     if (cur_val == (*bitenums)[v].value) {
                         LOGVAL(ctx->ctx, NULL, LYVE_SYNTAX_YANG,
                                 "Invalid enumeration - value %" PRId32 " collide in items \"%s\" and \"%s\".",
@@ -1309,7 +1309,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
                 /* value assigned by module */
                 cur_pos = (uint32_t)enums_p[u].value;
                 /* check collision with other values */
-                LY_ARRAY_FOR(*bitenums, v) {
+                LYA_FOR(*bitenums, v) {
                     if (cur_pos == (*bitenums)[v].position) {
                         LOGVAL(ctx->ctx, NULL, LYVE_SYNTAX_YANG,
                                 "Invalid bits - position %" PRIu32 " collide in items \"%s\" and \"%s\".",
@@ -1361,7 +1361,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
         }
 
         /* add new enum/bit */
-        LY_ARRAY_NEW_RET(ctx->ctx, *bitenums, e, LY_EMEM);
+        LYA_ADD_ITEM(*bitenums, e, LOGMEM(ctx->ctx); return LY_EMEM);
         DUP_STRING_GOTO(ctx->ctx, enums_p[u].name, e->name, ret, done);
         DUP_STRING_GOTO(ctx->ctx, enums_p[u].dsc, e->dsc, ret, done);
         DUP_STRING_GOTO(ctx->ctx, enums_p[u].ref, e->ref, ret, done);
@@ -1402,8 +1402,8 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
     }
 
     /* revalidate the backward parent pointers from extensions now that the array is final */
-    LY_ARRAY_FOR(*bitenums, u) {
-        LY_ARRAY_FOR((*bitenums)[u].exts, v) {
+    LYA_FOR(*bitenums, u) {
+        LYA_FOR((*bitenums)[u].exts, v) {
             (*bitenums)[u].exts[v].parent = &(*bitenums)[u];
         }
     }
@@ -1431,8 +1431,8 @@ lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct ly
     struct lysc_type **utypes = *utypes_p;
     struct lysc_type_union *un_aux = NULL;
 
-    LY_ARRAY_CREATE_GOTO(ctx->ctx, utypes, LY_ARRAY_COUNT(ptypes), ret, error);
-    for (LY_ARRAY_COUNT_TYPE u = 0, additional = 0; u < LY_ARRAY_COUNT(ptypes); ++u) {
+    LYA_PREALLOC(utypes, LYA_COUNT(ptypes), LOGMEM(ctx->ctx); ret = LY_EMEM; goto error);
+    for (LYA_COUNT_T u = 0, additional = 0; u < LYA_COUNT(ptypes); ++u) {
         ret = lys_compile_type(ctx, context_pnode, context_flags, context_name, &ptypes[u], &utypes[u + additional],
                 NULL, NULL);
         LY_CHECK_GOTO(ret, error);
@@ -1441,15 +1441,15 @@ lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct ly
         if (utypes[u + additional]->basetype == LY_TYPE_UNION) {
             /* add space for additional types from the union subtype */
             un_aux = (struct lysc_type_union *)utypes[u + additional];
-            LY_ARRAY_CREATE_GOTO(ctx->ctx, utypes,
-                    LY_ARRAY_COUNT(ptypes) + additional + LY_ARRAY_COUNT(un_aux->types) - LY_ARRAY_COUNT(utypes), ret, error);
+            LYA_PREALLOC(utypes, LYA_COUNT(ptypes) + additional + LYA_COUNT(un_aux->types) - LYA_COUNT(utypes),
+                    LOGMEM(ctx->ctx); ret = LY_EMEM; goto error);
 
             /* copy subtypes of the subtype union */
-            for (LY_ARRAY_COUNT_TYPE v = 0; v < LY_ARRAY_COUNT(un_aux->types); ++v) {
+            for (LYA_COUNT_T v = 0; v < LYA_COUNT(un_aux->types); ++v) {
                 utypes[u + additional] = un_aux->types[v];
                 LY_ATOMIC_INC_BARRIER(un_aux->types[v]->refcount);
                 ++additional;
-                LY_ARRAY_INCREMENT(utypes);
+                LYA_INCREMENT(utypes);
             }
             /* compensate u increment in main loop */
             assert(additional);
@@ -1459,7 +1459,7 @@ lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct ly
             lysc_type_free(ctx->ctx, (struct lysc_type *)un_aux);
             un_aux = NULL;
         } else {
-            LY_ARRAY_INCREMENT(utypes);
+            LYA_INCREMENT(utypes);
         }
     }
 
@@ -1786,12 +1786,12 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
         } else if (base) {
             /* copy all the bases */
             const struct lysc_type_identityref *idref_base = (struct lysc_type_identityref *)base;
-            LY_ARRAY_COUNT_TYPE u;
+            LYA_COUNT_T u;
 
-            LY_ARRAY_CREATE_GOTO(ctx->ctx, idref->bases, LY_ARRAY_COUNT(idref_base->bases), rc, cleanup);
-            LY_ARRAY_FOR(idref_base->bases, u) {
+            LYA_PREALLOC(idref->bases, LYA_COUNT(idref_base->bases), LOGMEM(ctx->ctx); rc = LY_EMEM; goto cleanup);
+            LYA_FOR(idref_base->bases, u) {
                 idref->bases[u] = idref_base->bases[u];
-                LY_ARRAY_INCREMENT(idref->bases);
+                LYA_INCREMENT(idref->bases);
             }
         } else {
             /* type derived from identityref built-in type must contain at least one base */
@@ -1888,13 +1888,13 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
         } else if (base) {
             /* copy all the types */
             const struct lysc_type_union *un_base = (struct lysc_type_union *)base;
-            LY_ARRAY_COUNT_TYPE u;
+            LYA_COUNT_T u;
 
-            LY_ARRAY_CREATE_GOTO(ctx->ctx, un->types, LY_ARRAY_COUNT(un_base->types), rc, cleanup);
-            LY_ARRAY_FOR(un_base->types, u) {
+            LYA_PREALLOC(un->types, LYA_COUNT(un_base->types), LOGMEM(ctx->ctx); rc = LY_EMEM; goto cleanup);
+            LYA_FOR(un_base->types, u) {
                 un->types[u] = un_base->types[u];
                 LY_ATOMIC_INC_BARRIER(un->types[u]->refcount);
-                LY_ARRAY_INCREMENT(un->types);
+                LYA_INCREMENT(un->types);
             }
         } else {
             /* type derived from union built-in type must contain at least one type */
@@ -1948,7 +1948,7 @@ cleanup:
 static ly_bool
 lys_compile_type_share_compiled(const struct lysp_type *type_p, const struct lysc_type *type_c, ly_bool pattern_format)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lysc_type_union *type_un;
     struct lysc_type_str *type_str = NULL;
 
@@ -1965,7 +1965,7 @@ lys_compile_type_share_compiled(const struct lysp_type *type_p, const struct lys
     } else if (type_c->basetype == LY_TYPE_UNION) {
         /* union with a leafref */
         type_un = (struct lysc_type_union *)type_c;
-        LY_ARRAY_FOR(type_un->types, u) {
+        LYA_FOR(type_un->types, u) {
             if (type_un->types[u]->basetype == LY_TYPE_LEAFREF) {
                 return 0;
             }
@@ -1977,7 +1977,7 @@ lys_compile_type_share_compiled(const struct lysp_type *type_p, const struct lys
         type_str = (struct lysc_type_str *)type_c;
     } else if (type_c->basetype == LY_TYPE_UNION) {
         type_un = (struct lysc_type_union *)type_c;
-        LY_ARRAY_FOR(type_un->types, u) {
+        LYA_FOR(type_un->types, u) {
             if (type_un->types[u]->basetype == LY_TYPE_STRING) {
                 type_str = (struct lysc_type_str *)type_un->types[u];
                 break;
@@ -2844,7 +2844,7 @@ lys_compile_node_type(struct lysc_ctx *ctx, struct lysp_node *context_node, stru
 {
     struct lysp_qname *dflt;
     struct lysc_type **t;
-    LY_ARRAY_COUNT_TYPE u, count;
+    LYA_COUNT_T u, count;
     ly_bool in_unres = 0;
 
     LY_CHECK_RET(lys_compile_type(ctx, context_node, leaf->flags, leaf->name, type_p, &leaf->type,
@@ -2862,7 +2862,7 @@ lys_compile_node_type(struct lysc_ctx *ctx, struct lysp_node *context_node, stru
     /* type-specific checks */
     if (leaf->type->basetype == LY_TYPE_UNION) {
         t = ((struct lysc_type_union *)leaf->type)->types;
-        count = LY_ARRAY_COUNT(t);
+        count = LYA_COUNT(t);
     } else {
         t = &leaf->type;
         count = 1;
@@ -3170,13 +3170,13 @@ lys_compile_node_list_unique(struct lysc_ctx *ctx, struct lysp_qname *uniques, s
     struct lysc_node *parent;
     const char *keystr, *delim;
     size_t len;
-    LY_ARRAY_COUNT_TYPE v;
+    LYA_COUNT_T v;
     int8_t config; /* -1 - not yet seen; 0 - LYS_CONFIG_R; 1 - LYS_CONFIG_W */
     uint16_t flags;
 
-    LY_ARRAY_FOR(uniques, v) {
+    LYA_FOR(uniques, v) {
         config = -1;
-        LY_ARRAY_NEW_RET(ctx->ctx, list->uniques, unique, LY_EMEM);
+        LYA_ADD_ITEM(list->uniques, unique, LOGMEM(ctx->ctx); return LY_EMEM);
         keystr = uniques[v].str;
         while (keystr) {
             delim = strpbrk(keystr, " \t\n");
@@ -3190,7 +3190,7 @@ lys_compile_node_list_unique(struct lysc_ctx *ctx, struct lysp_qname *uniques, s
             }
 
             /* unique node must be present */
-            LY_ARRAY_NEW_RET(ctx->ctx, *unique, key, LY_EMEM);
+            LYA_ADD_ITEM(*unique, key, LOGMEM(ctx->ctx); return LY_EMEM);
             ret = lysc_resolve_schema_nodeid(ctx, keystr, len, &list->node, LY_VALUE_SCHEMA, (void *)uniques[v].mod,
                     LYS_LEAF, (const struct lysc_node **)key, &flags);
             if (ret != LY_SUCCESS) {
@@ -3734,7 +3734,7 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
     struct lysp_node *pnode;
     struct lysp_node_grp *grp;
     const struct lysp_node_grp *ext_grp;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     const char *id, *name, *prefix, *local_pref;
     uint32_t prefix_len, name_len;
     struct lysp_module *pmod, *found = NULL;
@@ -3780,7 +3780,7 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
             found = pmod;
         } else {
             /* ... and all the submodules */
-            LY_ARRAY_FOR(pmod->includes, u) {
+            LYA_FOR(pmod->includes, u) {
                 if ((grp = match_grouping(pmod->includes[u].submodule->groupings, name))) {
                     found = (struct lysp_module *)pmod->includes[u].submodule;
                     break;

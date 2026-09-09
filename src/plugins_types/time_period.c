@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libnetconf2-netconf-server time-period type plugin.
  *
- * Copyright (c) 2024 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2024 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -18,11 +18,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libyang.h"
-
 #include "compat.h"
+#include "dict.h"
 #include "ly_common.h"
-#include "plugins_internal.h" /* LY_TYPE_*_STR */
+#include "plugins_internal.h"
 
 /**
  * @page howtoDataLYB LYB Binary Format

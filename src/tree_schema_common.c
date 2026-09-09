@@ -30,17 +30,17 @@
 #include "in.h"
 #include "in_internal.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "parser_schema.h"
 #include "path.h"
 #include "schema_compile.h"
 #include "schema_features.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data_internal.h"
-#include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "utils.h"
 
 LY_ERR
 lysp_check_prefix(struct lysp_ctx *ctx, struct lysp_import *imports, const char *module_prefix, const char **value)
@@ -51,7 +51,7 @@ lysp_check_prefix(struct lysp_ctx *ctx, struct lysp_import *imports, const char 
         LOGVAL_PARSER(ctx, LYVE_REFERENCE, "Prefix \"%s\" already used as module prefix.", *value);
         return LY_EEXIST;
     }
-    LY_ARRAY_FOR(imports, struct lysp_import, i) {
+    LYA_FOR_EACH(imports, i) {
         if (i->prefix && (&i->prefix != value) && !strcmp(i->prefix, *value)) {
             LOGVAL_PARSER(ctx, LYVE_REFERENCE, "Prefix \"%s\" already used to import \"%s\" module.", *value,
                     i->name);
@@ -64,7 +64,7 @@ lysp_check_prefix(struct lysp_ctx *ctx, struct lysp_import *imports, const char 
 const char *
 lysp_last_revision(const struct lysp_module *pmod, const struct lysp_revision *revs)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     int cmp;
     const char *last_revision = NULL, *name, *mod_str;
     const struct ly_ctx *ctx = NULL;
@@ -87,7 +87,7 @@ lysp_last_revision(const struct lysp_module *pmod, const struct lysp_revision *r
 
     last_revision = revs[0].date;
 
-    for (u = 0; u < LY_ARRAY_COUNT(revs) - 1; ++u) {
+    for (u = 0; u < LYA_COUNT(revs) - 1; ++u) {
         cmp = strcmp(revs[u].date, revs[u + 1].date);
         if (cmp < 0) {
             if (ctx) {
@@ -220,9 +220,9 @@ lysp_type_str2builtin(const char *name, size_t len)
 static const struct lysp_tpdf *
 lysp_typedef_match(const char *name, const struct lysp_tpdf *typedefs)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
-    LY_ARRAY_FOR(typedefs, u) {
+    LYA_FOR(typedefs, u) {
         if (!strcmp(name, typedefs[u].name)) {
             /* match */
             return &typedefs[u];
@@ -240,7 +240,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_m
     const struct lysp_tpdf *ext_typedefs;
     const struct lys_module *mod;
     const struct lysp_module *local_module;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
     assert(id);
     assert(start_module);
@@ -294,7 +294,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_m
 
     /* search in top-level typedefs */
     if (local_module->typedefs) {
-        LY_ARRAY_FOR(local_module->typedefs, u) {
+        LYA_FOR(local_module->typedefs, u) {
             if (!strcmp(name, local_module->typedefs[u].name)) {
                 /* match */
                 *tpdf = &local_module->typedefs[u];
@@ -304,9 +304,9 @@ lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_m
     }
 
     /* search in all submodules' typedefs */
-    LY_ARRAY_FOR(local_module->includes, u) {
+    LYA_FOR(local_module->includes, u) {
         typedefs = local_module->includes[u].submodule->typedefs;
-        LY_ARRAY_FOR(typedefs, v) {
+        LYA_FOR(typedefs, v) {
             if (!strcmp(name, typedefs[v].name)) {
                 /* match */
                 *tpdf = &typedefs[v];
@@ -370,7 +370,7 @@ lysp_check_dup_typedef(struct lysp_ctx *ctx, struct lysp_node *node, const struc
     uint32_t hash;
     size_t name_len;
     const char *name;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     const struct lysp_tpdf *typedefs;
 
     assert(ctx);
@@ -388,7 +388,7 @@ lysp_check_dup_typedef(struct lysp_ctx *ctx, struct lysp_node *node, const struc
     /* check locally scoped typedefs (avoid name shadowing) */
     if (node) {
         typedefs = lysp_node_typedefs(node);
-        LY_ARRAY_FOR(typedefs, u) {
+        LYA_FOR(typedefs, u) {
             if (&typedefs[u] == tpdf) {
                 break;
             }
@@ -447,25 +447,25 @@ lysp_check_dup_typedefs(struct lysp_ctx *ctx, struct lysp_module *mod)
 {
     struct ly_ht *ids_global;
     const struct lysp_tpdf *typedefs;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     uint32_t i;
     LY_ERR ret = LY_SUCCESS;
 
     /* check name collisions - typedefs and groupings */
     ids_global = lyht_new(LYHT_MIN_SIZE, sizeof(char *), lysp_id_cmp, NULL, 1);
-    LY_ARRAY_FOR(mod->typedefs, v) {
+    LYA_FOR(mod->typedefs, v) {
         ret = lysp_check_dup_typedef(ctx, NULL, &mod->typedefs[v], ids_global);
         LY_CHECK_GOTO(ret, cleanup);
     }
-    LY_ARRAY_FOR(mod->includes, v) {
-        LY_ARRAY_FOR(mod->includes[v].submodule->typedefs, u) {
+    LYA_FOR(mod->includes, v) {
+        LYA_FOR(mod->includes[v].submodule->typedefs, u) {
             ret = lysp_check_dup_typedef(ctx, NULL, &mod->includes[v].submodule->typedefs[u], ids_global);
             LY_CHECK_GOTO(ret, cleanup);
         }
     }
     for (i = 0; i < ctx->tpdfs_nodes.count; ++i) {
         typedefs = lysp_node_typedefs((struct lysp_node *)ctx->tpdfs_nodes.objs[i]);
-        LY_ARRAY_FOR(typedefs, u) {
+        LYA_FOR(typedefs, u) {
             ret = lysp_check_dup_typedef(ctx, (struct lysp_node *)ctx->tpdfs_nodes.objs[i], &typedefs[u], ids_global);
             LY_CHECK_GOTO(ret, cleanup);
         }
@@ -564,7 +564,7 @@ lysp_check_dup_groupings(struct lysp_ctx *ctx, struct lysp_module *mod)
 {
     struct ly_ht *ids_global;
     const struct lysp_node_grp *groupings, *grp_iter;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     uint32_t i;
     LY_ERR ret = LY_SUCCESS;
 
@@ -573,7 +573,7 @@ lysp_check_dup_groupings(struct lysp_ctx *ctx, struct lysp_module *mod)
         ret = lysp_check_dup_grouping(ctx, NULL, grp_iter, ids_global);
         LY_CHECK_GOTO(ret, cleanup);
     }
-    LY_ARRAY_FOR(mod->includes, u) {
+    LYA_FOR(mod->includes, u) {
         LY_LIST_FOR(mod->includes[u].submodule->groupings, grp_iter) {
             ret = lysp_check_dup_grouping(ctx, NULL, grp_iter, ids_global);
             LY_CHECK_GOTO(ret, cleanup);
@@ -603,7 +603,7 @@ ly_ptrequal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_
 LY_ERR
 lysp_check_dup_features(struct lysp_ctx *ctx, struct lysp_module *mod)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct ly_ht *ht;
     struct lysp_feature *f;
     LY_ERR ret = LY_SUCCESS;
@@ -612,15 +612,15 @@ lysp_check_dup_features(struct lysp_ctx *ctx, struct lysp_module *mod)
     LY_CHECK_RET(!ht, LY_EMEM);
 
     /* add all module features into a hash table */
-    LY_ARRAY_FOR(mod->features, struct lysp_feature, f) {
+    LYA_FOR_EACH(mod->features, f) {
         ret = lysp_check_dup_ht_insert(ctx, ht, f->name, "feature",
                 "name collision with another top-level feature");
         LY_CHECK_GOTO(ret, cleanup);
     }
 
     /* add all submodule features into a hash table */
-    LY_ARRAY_FOR(mod->includes, u) {
-        LY_ARRAY_FOR(mod->includes[u].submodule->features, struct lysp_feature, f) {
+    LYA_FOR(mod->includes, u) {
+        LYA_FOR_EACH(mod->includes[u].submodule->features, f) {
             ret = lysp_check_dup_ht_insert(ctx, ht, f->name, "feature",
                     "name collision with another top-level feature");
             LY_CHECK_GOTO(ret, cleanup);
@@ -635,7 +635,7 @@ cleanup:
 LY_ERR
 lysp_check_dup_identities(struct lysp_ctx *ctx, struct lysp_module *mod)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct ly_ht *ht;
     struct lysp_ident *i;
     LY_ERR ret = LY_SUCCESS;
@@ -644,15 +644,15 @@ lysp_check_dup_identities(struct lysp_ctx *ctx, struct lysp_module *mod)
     LY_CHECK_RET(!ht, LY_EMEM);
 
     /* add all module identities into a hash table */
-    LY_ARRAY_FOR(mod->identities, struct lysp_ident, i) {
+    LYA_FOR_EACH(mod->identities, i) {
         ret = lysp_check_dup_ht_insert(ctx, ht, i->name, "identity",
                 "name collision with another top-level identity");
         LY_CHECK_GOTO(ret, cleanup);
     }
 
     /* add all submodule identities into a hash table */
-    LY_ARRAY_FOR(mod->includes, u) {
-        LY_ARRAY_FOR(mod->includes[u].submodule->identities, struct lysp_ident, i) {
+    LYA_FOR(mod->includes, u) {
+        LYA_FOR_EACH(mod->includes[u].submodule->identities, i) {
             ret = lysp_check_dup_ht_insert(ctx, ht, i->name, "identity",
                     "name collision with another top-level identity");
             LY_CHECK_GOTO(ret, cleanup);
@@ -1043,10 +1043,10 @@ lysp_check_identifierchar(struct lysp_ctx *ctx, uint32_t c, ly_bool first, uint8
 static LY_ERR
 lysp_main_pmod_get_submodule(struct lysp_ctx *pctx, struct lysp_include *inc)
 {
-    LY_ARRAY_COUNT_TYPE i;
+    LYA_COUNT_T i;
     struct lysp_module *main_pmod = PARSER_CUR_PMOD(pctx)->mod->parsed;
 
-    LY_ARRAY_FOR(main_pmod->includes, i) {
+    LYA_FOR(main_pmod->includes, i) {
         if (strcmp(main_pmod->includes[i].name, inc->name)) {
             continue;
         }
@@ -1131,12 +1131,12 @@ lysp_parsed_mods_get_submodule(struct lysp_ctx *pctx, struct lysp_include *inc)
 static LY_ERR
 lysp_inject_submodule(struct lysp_ctx *pctx, struct lysp_include *inc)
 {
-    LY_ARRAY_COUNT_TYPE i;
+    LYA_COUNT_T i;
     struct lysp_include *inc_new, *inc_tofill = NULL;
     struct lysp_module *main_pmod = PARSER_CUR_PMOD(pctx)->mod->parsed;
 
     /* first, try to find the corresponding record with missing parsed submodule */
-    LY_ARRAY_FOR(main_pmod->includes, i) {
+    LYA_FOR(main_pmod->includes, i) {
         if (strcmp(main_pmod->includes[i].name, inc->name)) {
             continue;
         }
@@ -1147,7 +1147,7 @@ lysp_inject_submodule(struct lysp_ctx *pctx, struct lysp_include *inc)
     if (inc_tofill) {
         inc_tofill->submodule = inc->submodule;
     } else {
-        LY_ARRAY_NEW_RET(PARSER_CTX(pctx), main_pmod->includes, inc_new, LY_EMEM);
+        LYA_ADD_ITEM(main_pmod->includes, inc_new, LOGMEM(PARSER_CTX(pctx)); return LY_EMEM);
 
         inc_new->submodule = inc->submodule;
         DUP_STRING_RET(PARSER_CTX(pctx), inc->name, inc_new->name);
@@ -1248,10 +1248,10 @@ lysp_load_submodules(struct lysp_ctx *pctx, struct lysp_module *pmod, struct ly_
     LY_ERR r;
     struct lysp_submodule *submod;
     struct lysp_include *inc;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     ly_bool submod_included;
 
-    LY_ARRAY_FOR(pmod->includes, u) {
+    LYA_FOR(pmod->includes, u) {
         inc = &pmod->includes[u];
         if (inc->submodule) {
             continue;
@@ -1912,7 +1912,7 @@ lysc_type_lref_target(const struct lysc_node *node, const struct lysc_type *type
     }
 
     /* get the target node */
-    target = p[LY_ARRAY_COUNT(p) - 1].node;
+    target = p[LYA_COUNT(p) - 1].node;
     ly_path_free(p);
 
     return target;
@@ -1935,7 +1935,7 @@ lysc_node_lref_targets(const struct lysc_node *node, struct ly_set **set)
     struct lysc_type *type;
     struct lysc_type_union *type_un;
     const struct lysc_node *target;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     LY_CHECK_ARG_RET(NULL, node, (node->nodetype & LYD_NODE_TERM), LY_EINVAL);
 
@@ -1947,7 +1947,7 @@ lysc_node_lref_targets(const struct lysc_node *node, struct ly_set **set)
         /* union with possible leafrefs */
         type_un = (struct lysc_type_union *)type;
 
-        LY_ARRAY_FOR(type_un->types, u) {
+        LYA_FOR(type_un->types, u) {
             if (type_un->types[u]->basetype != LY_TYPE_LEAFREF) {
                 continue;
             }
@@ -2305,7 +2305,7 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_module *pmo
 {
     const char *tmp, *name, *prefix;
     uint32_t pref_len, name_len;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     const struct lys_module *mod = NULL;
     const struct lysp_submodule *submod;
     char *path;
@@ -2341,16 +2341,16 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_module *pmo
     }
 
     /* find the parsed extension definition there */
-    LY_ARRAY_FOR(mod->parsed->extensions, v) {
+    LYA_FOR(mod->parsed->extensions, v) {
         if (!strcmp(name, mod->parsed->extensions[v].name)) {
             *ext_def = &mod->parsed->extensions[v];
             break;
         }
     }
     if (!*ext_def) {
-        LY_ARRAY_FOR(mod->parsed->includes, u) {
+        LYA_FOR(mod->parsed->includes, u) {
             submod = mod->parsed->includes[u].submodule;
-            LY_ARRAY_FOR(submod->extensions, v) {
+            LYA_FOR(submod->extensions, v) {
                 if (!strcmp(name, submod->extensions[v].name)) {
                     *ext_def = &submod->extensions[v];
                     break;
@@ -2378,7 +2378,7 @@ lysc_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
 {
     const char *tmp, *name, *prefix;
     uint32_t pref_len, name_len;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     const struct lys_module *mod = NULL;
 
     *ext_def = NULL;
@@ -2396,7 +2396,7 @@ lysc_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
     }
 
     /* find the compiled extension definition there */
-    LY_ARRAY_FOR(mod->extensions, u) {
+    LYA_FOR(mod->extensions, u) {
         if (!strcmp(name, mod->extensions[u].name)) {
             *ext_def = &mod->extensions[u];
             break;
@@ -2498,18 +2498,18 @@ lysp_ext_instance_resolve_argument(const struct ly_ctx *ctx, const struct lysp_m
     return LY_SUCCESS;
 }
 
-LY_ARRAY_COUNT_TYPE
-lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_COUNT_TYPE index, enum ly_stmt substmt)
+LYA_COUNT_T
+lysp_ext_instance_iter(struct lysp_ext_instance *ext, LYA_COUNT_T index, enum ly_stmt substmt)
 {
     LY_CHECK_ARG_RET(NULL, ext, LY_EINVAL);
 
-    for ( ; index < LY_ARRAY_COUNT(ext); index++) {
+    for ( ; index < LYA_COUNT(ext); index++) {
         if (ext[index].parent_stmt == substmt) {
             return index;
         }
     }
 
-    return LY_ARRAY_COUNT(ext);
+    return LYA_COUNT(ext);
 }
 
 LIBYANG_API_DEF const struct lysc_node *
@@ -2529,13 +2529,13 @@ lysc_data_node(const struct lysc_node *schema)
 ly_bool
 lys_has_recompiled(const struct lys_module *mod)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (LYSP_HAS_RECOMPILED(mod->parsed)) {
         return 1;
     }
 
-    LY_ARRAY_FOR(mod->parsed->includes, u) {
+    LYA_FOR(mod->parsed->includes, u) {
         if (LYSP_HAS_RECOMPILED(mod->parsed->includes[u].submodule)) {
             return 1;
         }
@@ -2547,13 +2547,13 @@ lys_has_recompiled(const struct lys_module *mod)
 ly_bool
 lys_has_compiled(const struct lys_module *mod)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (LYSP_HAS_COMPILED(mod->parsed)) {
         return 1;
     }
 
-    LY_ARRAY_FOR(mod->parsed->includes, u) {
+    LYA_FOR(mod->parsed->includes, u) {
         if (LYSP_HAS_COMPILED(mod->parsed->includes[u].submodule)) {
             return 1;
         }
@@ -2565,7 +2565,7 @@ lys_has_compiled(const struct lys_module *mod)
 ly_bool
 lys_has_dep_mods(const struct lys_module *mod)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     /* features */
     if (mod->parsed->features) {
@@ -2576,7 +2576,7 @@ lys_has_dep_mods(const struct lys_module *mod)
     if (mod->parsed->groupings) {
         return 1;
     }
-    LY_ARRAY_FOR(mod->parsed->includes, u) {
+    LYA_FOR(mod->parsed->includes, u) {
         if (mod->parsed->includes[u].submodule->groupings) {
             return 1;
         }
@@ -2586,7 +2586,7 @@ lys_has_dep_mods(const struct lys_module *mod)
     if (mod->parsed->augments) {
         return 1;
     }
-    LY_ARRAY_FOR(mod->parsed->includes, u) {
+    LYA_FOR(mod->parsed->includes, u) {
         if (mod->parsed->includes[u].submodule->augments) {
             return 1;
         }

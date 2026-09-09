@@ -18,7 +18,7 @@
 #include <string.h>
 
 #include "compat.h"
-#include "libyang.h"
+#include "ly_array.h"
 #include "parser_internal.h"
 #include "plugins_exts.h"
 
@@ -55,8 +55,7 @@ static void structure_cfree(const struct ly_ctx *ctx, struct lysc_ext_instance *
 static LY_ERR
 structure_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 {
-    LY_ERR r;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lysp_module *pmod;
     struct lysp_ext_instance_structure *struct_pdata;
 
@@ -71,7 +70,7 @@ structure_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     pmod = ext->parent;
 
     /* check for duplication */
-    LY_ARRAY_FOR(pmod->exts, u) {
+    LYA_FOR(pmod->exts, u) {
         if ((&pmod->exts[u] != ext) && (pmod->exts[u].name == ext->name) && !strcmp(pmod->exts[u].argument, ext->argument)) {
             /* duplication of the same structure extension in a single module */
             lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EVALID, "Extension %s is instantiated multiple times.", ext->name);
@@ -85,9 +84,7 @@ structure_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
         goto emem;
     }
     ext->parsed = struct_pdata;
-    if ((r = lyplg_ext_parse_create_substmts(pctx, ext, 14))) {
-        return r;
-    }
+    LYA_NEW(ext->substmts, 14, goto emem);
 
     /* parse substatements */
     ext->substmts[0].stmt = LY_STMT_MUST;
@@ -185,9 +182,7 @@ structure_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, s
     struct_cdata->top_cont->prev = &struct_cdata->top_cont->node;
 
     /* compile substatements */
-    if ((r = lyplg_ext_compile_create_substmts(cctx, ext, 14))) {
-        return r;
-    }
+    LYA_NEW(ext->substmts, 14, goto emem);
 
     ext->substmts[0].stmt = LY_STMT_MUST;
     ext->substmts[0].storage_p = (void **)&struct_cdata->top_cont->musts;
@@ -405,9 +400,7 @@ structure_aug_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
         goto emem;
     }
     ext->parsed = aug_pdata;
-    if ((r = lyplg_ext_parse_create_substmts(pctx, ext, 13))) {
-        return r;
-    }
+    LYA_NEW(ext->substmts, 13, goto emem);
 
     /* parse substatements */
     ext->substmts[0].stmt = LY_STMT_STATUS;

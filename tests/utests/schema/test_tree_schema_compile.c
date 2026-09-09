@@ -15,7 +15,6 @@
 #define _UTEST_MAIN_
 #include "utests.h"
 
-#include "in.h"
 #include "plugins_types.h"
 
 static int
@@ -100,14 +99,14 @@ test_module(void **state)
     assert_string_equal("t", mod->prefix);
     /* features */
     assert_non_null(mod->parsed->features);
-    assert_int_equal(2, LY_ARRAY_COUNT(mod->parsed->features));
+    assert_int_equal(2, LYA_COUNT(mod->parsed->features));
     f = &mod->parsed->features[1];
     assert_non_null(f->iffeatures);
-    assert_int_equal(1, LY_ARRAY_COUNT(f->iffeatures));
+    assert_int_equal(1, LYA_COUNT(f->iffeatures));
     iff = &f->iffeatures_c[0];
     assert_non_null(iff->expr);
     assert_non_null(iff->features);
-    assert_int_equal(1, LY_ARRAY_COUNT(iff->features));
+    assert_int_equal(1, LYA_COUNT(iff->features));
     assert_ptr_equal(&mod->parsed->features[0], iff->features[0]);
 
     /* submodules cannot be compiled directly */
@@ -255,7 +254,7 @@ test_node_leaflist(void **state)
     assert_int_equal(1, type->refcount);
     assert_int_equal(LY_TYPE_UNION, type->basetype);
     assert_non_null(((struct lysc_type_union *)type)->types);
-    assert_int_equal(3, LY_ARRAY_COUNT(((struct lysc_type_union *)type)->types));
+    assert_int_equal(3, LYA_COUNT(((struct lysc_type_union *)type)->types));
     assert_int_equal(LY_TYPE_DEC64, ((struct lysc_type_union *)type)->types[0]->basetype);
     assert_int_equal(LY_TYPE_LEAFREF, ((struct lysc_type_union *)type)->types[1]->basetype);
     assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_union *)type)->types[2]->basetype);
@@ -274,13 +273,13 @@ test_node_leaflist(void **state)
     assert_non_null(mod->compiled);
     assert_non_null((ll = (struct lysc_node_leaflist *)mod->compiled->data));
     assert_non_null(ll->dflts);
-    assert_int_equal(2, LY_ARRAY_COUNT(ll->dflts));
+    assert_int_equal(2, LYA_COUNT(ll->dflts));
     assert_string_equal("1", ll->dflts[0].str);
     assert_string_equal("1", ll->dflts[1].str);
     assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_USER | LYS_SET_DFLT | LYS_SET_CONFIG, ll->flags);
     assert_non_null((ll = (struct lysc_node_leaflist *)mod->compiled->data->next));
     assert_non_null(ll->dflts);
-    assert_int_equal(1, LY_ARRAY_COUNT(ll->dflts));
+    assert_int_equal(1, LYA_COUNT(ll->dflts));
     assert_string_equal("10", ll->dflts[0].str);
     assert_int_equal(LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_USER, ll->flags);
 
@@ -318,7 +317,7 @@ test_node_leaflist(void **state)
     assert_non_null(mod->compiled);
     assert_non_null((ll = (struct lysc_node_leaflist *)mod->compiled->data));
     assert_non_null(ll->dflts);
-    assert_int_equal(3, LY_ARRAY_COUNT(ll->dflts));
+    assert_int_equal(3, LYA_COUNT(ll->dflts));
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd {yang-version 1.1;namespace urn:dd;prefix dd;"
             "leaf-list ll {type string; default one;default two;default one;}}", LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Configuration leaf-list has multiple defaults of the same value \"one\".", "/dd:ll", 0);
@@ -374,13 +373,13 @@ test_node_list(void **state)
     assert_true(list->child->flags & LYS_KEY);
     assert_null(((struct lysc_node_leaf *)list->child)->dflt.str);
     assert_non_null(list->uniques);
-    assert_int_equal(2, LY_ARRAY_COUNT(list->uniques));
-    assert_int_equal(2, LY_ARRAY_COUNT(list->uniques[0]));
+    assert_int_equal(2, LYA_COUNT(list->uniques));
+    assert_int_equal(2, LYA_COUNT(list->uniques[0]));
     assert_string_equal("a", list->uniques[0][0]->name);
     assert_true(list->uniques[0][0]->flags & LYS_UNIQUE);
     assert_string_equal("b", list->uniques[0][1]->name);
     assert_true(list->uniques[0][1]->flags & LYS_UNIQUE);
-    assert_int_equal(2, LY_ARRAY_COUNT(list->uniques[1]));
+    assert_int_equal(2, LYA_COUNT(list->uniques[1]));
     assert_string_equal("e", list->uniques[1][0]->name);
     assert_true(list->uniques[1][0]->flags & LYS_UNIQUE);
     assert_string_equal("d", list->uniques[1][1]->name);
@@ -480,7 +479,7 @@ test_node_choice(void **state)
     ch = (struct lysc_node_choice *)mod->compiled->data;
     assert_non_null(ch);
     assert_int_equal(LYS_CONFIG_W | LYS_STATUS_CURR, ch->flags);
-    assert_int_equal(1, LY_ARRAY_COUNT(ch->when));
+    assert_int_equal(1, LYA_COUNT(ch->when));
     assert_null(ch->when[0]->context);
     cs = ch->cases;
     assert_non_null(cs);
@@ -579,7 +578,7 @@ test_action(void **state)
     assert_int_equal(LYS_STATUS_CURR, rpc->flags);
     assert_string_equal("b", rpc->name);
     assert_null(rpc->input.musts);
-    assert_int_equal(2, LY_ARRAY_COUNT(rpc->output.musts));
+    assert_int_equal(2, LYA_COUNT(rpc->output.musts));
 
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;container top {action x;}}",
@@ -651,7 +650,7 @@ test_notification(void **state)
     assert_int_equal(LYS_STATUS_CURR, notif->flags);
     assert_string_equal("b2", notif->name);
     assert_null(notif->child);
-    assert_int_equal(1, LY_ARRAY_COUNT(notif->musts));
+    assert_int_equal(1, LYA_COUNT(notif->musts));
 
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;container top {notification x;}}",
@@ -699,7 +698,7 @@ test_type_range(void **state)
     assert_int_equal(LY_TYPE_INT16, type->basetype);
     assert_non_null(((struct lysc_type_num *)type)->range);
     assert_non_null(((struct lysc_type_num *)type)->range->parts);
-    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_type_num *)type)->range->parts));
+    assert_int_equal(2, LYA_COUNT(((struct lysc_type_num *)type)->range->parts));
     assert_int_equal(-32768, ((struct lysc_type_num *)type)->range->parts[0].min_64);
     assert_int_equal(10, ((struct lysc_type_num *)type)->range->parts[0].max_64);
     assert_int_equal(32767, ((struct lysc_type_num *)type)->range->parts[1].min_64);
@@ -711,7 +710,7 @@ test_type_range(void **state)
     assert_int_equal(LY_TYPE_INT32, type->basetype);
     assert_non_null(((struct lysc_type_num *)type)->range);
     assert_non_null(((struct lysc_type_num *)type)->range->parts);
-    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_type_num *)type)->range->parts));
+    assert_int_equal(2, LYA_COUNT(((struct lysc_type_num *)type)->range->parts));
     assert_int_equal(INT64_C(-2147483648), ((struct lysc_type_num *)type)->range->parts[0].min_64);
     assert_int_equal(10, ((struct lysc_type_num *)type)->range->parts[0].max_64);
     assert_int_equal(INT64_C(2147483647), ((struct lysc_type_num *)type)->range->parts[1].min_64);
@@ -723,7 +722,7 @@ test_type_range(void **state)
     assert_int_equal(LY_TYPE_INT64, type->basetype);
     assert_non_null(((struct lysc_type_num *)type)->range);
     assert_non_null(((struct lysc_type_num *)type)->range->parts);
-    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_type_num *)type)->range->parts));
+    assert_int_equal(2, LYA_COUNT(((struct lysc_type_num *)type)->range->parts));
     assert_int_equal(INT64_C(-9223372036854775807) - INT64_C(1), ((struct lysc_type_num *)type)->range->parts[0].min_64);
     assert_int_equal(10, ((struct lysc_type_num *)type)->range->parts[0].max_64);
     assert_int_equal(INT64_C(9223372036854775807), ((struct lysc_type_num *)type)->range->parts[1].min_64);
@@ -735,7 +734,7 @@ test_type_range(void **state)
     assert_int_equal(LY_TYPE_UINT8, type->basetype);
     assert_non_null(((struct lysc_type_num *)type)->range);
     assert_non_null(((struct lysc_type_num *)type)->range->parts);
-    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_type_num *)type)->range->parts));
+    assert_int_equal(2, LYA_COUNT(((struct lysc_type_num *)type)->range->parts));
     assert_int_equal(0, ((struct lysc_type_num *)type)->range->parts[0].min_u64);
     assert_int_equal(10, ((struct lysc_type_num *)type)->range->parts[0].max_u64);
     assert_int_equal(255, ((struct lysc_type_num *)type)->range->parts[1].min_u64);
@@ -747,7 +746,7 @@ test_type_range(void **state)
     assert_int_equal(LY_TYPE_UINT16, type->basetype);
     assert_non_null(((struct lysc_type_num *)type)->range);
     assert_non_null(((struct lysc_type_num *)type)->range->parts);
-    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_type_num *)type)->range->parts));
+    assert_int_equal(2, LYA_COUNT(((struct lysc_type_num *)type)->range->parts));
     assert_int_equal(0, ((struct lysc_type_num *)type)->range->parts[0].min_u64);
     assert_int_equal(10, ((struct lysc_type_num *)type)->range->parts[0].max_u64);
     assert_int_equal(65535, ((struct lysc_type_num *)type)->range->parts[1].min_u64);
@@ -759,7 +758,7 @@ test_type_range(void **state)
     assert_int_equal(LY_TYPE_UINT32, type->basetype);
     assert_non_null(((struct lysc_type_num *)type)->range);
     assert_non_null(((struct lysc_type_num *)type)->range->parts);
-    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_type_num *)type)->range->parts));
+    assert_int_equal(2, LYA_COUNT(((struct lysc_type_num *)type)->range->parts));
     assert_int_equal(0, ((struct lysc_type_num *)type)->range->parts[0].min_u64);
     assert_int_equal(10, ((struct lysc_type_num *)type)->range->parts[0].max_u64);
     assert_int_equal(UINT64_C(4294967295), ((struct lysc_type_num *)type)->range->parts[1].min_u64);
@@ -771,7 +770,7 @@ test_type_range(void **state)
     assert_int_equal(LY_TYPE_UINT64, type->basetype);
     assert_non_null(((struct lysc_type_num *)type)->range);
     assert_non_null(((struct lysc_type_num *)type)->range->parts);
-    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_type_num *)type)->range->parts));
+    assert_int_equal(2, LYA_COUNT(((struct lysc_type_num *)type)->range->parts));
     assert_int_equal(0, ((struct lysc_type_num *)type)->range->parts[0].min_u64);
     assert_int_equal(10, ((struct lysc_type_num *)type)->range->parts[0].max_u64);
     assert_int_equal(UINT64_C(18446744073709551615), ((struct lysc_type_num *)type)->range->parts[1].min_u64);
@@ -785,7 +784,7 @@ test_type_range(void **state)
     assert_int_equal(LY_TYPE_UINT8, type->basetype);
     assert_non_null(((struct lysc_type_num *)type)->range);
     assert_non_null(((struct lysc_type_num *)type)->range->parts);
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_num *)type)->range->parts));
+    assert_int_equal(1, LYA_COUNT(((struct lysc_type_num *)type)->range->parts));
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module j {namespace urn:j;prefix j;"
             "typedef mytype {type uint8 {range 1..100{description \"one to hundred\";reference A;}}}"
@@ -798,7 +797,7 @@ test_type_range(void **state)
     assert_string_equal("one to ten", ((struct lysc_type_num *)type)->range->dsc);
     assert_string_equal("B", ((struct lysc_type_num *)type)->range->ref);
     assert_non_null(((struct lysc_type_num *)type)->range->parts);
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_num *)type)->range->parts));
+    assert_int_equal(1, LYA_COUNT(((struct lysc_type_num *)type)->range->parts));
     assert_int_equal(1, ((struct lysc_type_num *)type)->range->parts[0].min_u64);
     assert_int_equal(10, ((struct lysc_type_num *)type)->range->parts[0].max_u64);
 }
@@ -816,7 +815,7 @@ test_type_length(void **state)
     assert_non_null(((struct lysc_type_bin *)type)->length->parts);
     assert_string_equal("errortag", ((struct lysc_type_bin *)type)->length->eapptag);
     assert_string_equal("error", ((struct lysc_type_bin *)type)->length->emsg);
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_bin *)type)->length->parts));
+    assert_int_equal(1, LYA_COUNT(((struct lysc_type_bin *)type)->length->parts));
     assert_int_equal(0, ((struct lysc_type_bin *)type)->length->parts[0].min_u64);
     assert_int_equal(0, ((struct lysc_type_bin *)type)->length->parts[0].max_u64);
 
@@ -825,7 +824,7 @@ test_type_length(void **state)
     assert_non_null(type);
     assert_non_null(((struct lysc_type_bin *)type)->length);
     assert_non_null(((struct lysc_type_bin *)type)->length->parts);
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_bin *)type)->length->parts));
+    assert_int_equal(1, LYA_COUNT(((struct lysc_type_bin *)type)->length->parts));
     assert_int_equal(UINT64_C(18446744073709551615), ((struct lysc_type_bin *)type)->length->parts[0].min_u64);
     assert_int_equal(UINT64_C(18446744073709551615), ((struct lysc_type_bin *)type)->length->parts[0].max_u64);
 
@@ -834,7 +833,7 @@ test_type_length(void **state)
     assert_non_null(type);
     assert_non_null(((struct lysc_type_bin *)type)->length);
     assert_non_null(((struct lysc_type_bin *)type)->length->parts);
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_bin *)type)->length->parts));
+    assert_int_equal(1, LYA_COUNT(((struct lysc_type_bin *)type)->length->parts));
     assert_int_equal(0, ((struct lysc_type_bin *)type)->length->parts[0].min_u64);
     assert_int_equal(UINT64_C(18446744073709551615), ((struct lysc_type_bin *)type)->length->parts[0].max_u64);
 
@@ -843,7 +842,7 @@ test_type_length(void **state)
     assert_non_null(type);
     assert_non_null(((struct lysc_type_bin *)type)->length);
     assert_non_null(((struct lysc_type_bin *)type)->length->parts);
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_bin *)type)->length->parts));
+    assert_int_equal(1, LYA_COUNT(((struct lysc_type_bin *)type)->length->parts));
     assert_int_equal(5, ((struct lysc_type_bin *)type)->length->parts[0].min_u64);
     assert_int_equal(5, ((struct lysc_type_bin *)type)->length->parts[0].max_u64);
 
@@ -852,7 +851,7 @@ test_type_length(void **state)
     assert_non_null(type);
     assert_non_null(((struct lysc_type_bin *)type)->length);
     assert_non_null(((struct lysc_type_bin *)type)->length->parts);
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_bin *)type)->length->parts));
+    assert_int_equal(1, LYA_COUNT(((struct lysc_type_bin *)type)->length->parts));
     assert_int_equal(1, ((struct lysc_type_bin *)type)->length->parts[0].min_u64);
     assert_int_equal(10, ((struct lysc_type_bin *)type)->length->parts[0].max_u64);
 
@@ -861,7 +860,7 @@ test_type_length(void **state)
     assert_non_null(type);
     assert_non_null(((struct lysc_type_bin *)type)->length);
     assert_non_null(((struct lysc_type_bin *)type)->length->parts);
-    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_type_bin *)type)->length->parts));
+    assert_int_equal(2, LYA_COUNT(((struct lysc_type_bin *)type)->length->parts));
     assert_int_equal(1, ((struct lysc_type_bin *)type)->length->parts[0].min_u64);
     assert_int_equal(10, ((struct lysc_type_bin *)type)->length->parts[0].max_u64);
     assert_int_equal(20, ((struct lysc_type_bin *)type)->length->parts[1].min_u64);
@@ -872,7 +871,7 @@ test_type_length(void **state)
     assert_non_null(type);
     assert_non_null(((struct lysc_type_bin *)type)->length);
     assert_non_null(((struct lysc_type_bin *)type)->length->parts);
-    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_type_bin *)type)->length->parts));
+    assert_int_equal(2, LYA_COUNT(((struct lysc_type_bin *)type)->length->parts));
     assert_int_equal(16, ((struct lysc_type_bin *)type)->length->parts[0].min_u64);
     assert_int_equal(16, ((struct lysc_type_bin *)type)->length->parts[0].max_u64);
     assert_int_equal(32, ((struct lysc_type_bin *)type)->length->parts[1].min_u64);
@@ -884,7 +883,7 @@ test_type_length(void **state)
     assert_non_null(type);
     assert_non_null(((struct lysc_type_bin *)type)->length);
     assert_non_null(((struct lysc_type_bin *)type)->length->parts);
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_bin *)type)->length->parts));
+    assert_int_equal(1, LYA_COUNT(((struct lysc_type_bin *)type)->length->parts));
     assert_int_equal(10, ((struct lysc_type_bin *)type)->length->parts[0].min_u64);
     assert_int_equal(10, ((struct lysc_type_bin *)type)->length->parts[0].max_u64);
 
@@ -894,7 +893,7 @@ test_type_length(void **state)
     assert_non_null(type);
     assert_non_null(((struct lysc_type_bin *)type)->length);
     assert_non_null(((struct lysc_type_bin *)type)->length->parts);
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_bin *)type)->length->parts));
+    assert_int_equal(1, LYA_COUNT(((struct lysc_type_bin *)type)->length->parts));
     assert_int_equal(50, ((struct lysc_type_bin *)type)->length->parts[0].min_u64);
     assert_int_equal(50, ((struct lysc_type_bin *)type)->length->parts[0].max_u64);
 
@@ -904,7 +903,7 @@ test_type_length(void **state)
     assert_non_null(type);
     assert_non_null(((struct lysc_type_bin *)type)->length);
     assert_non_null(((struct lysc_type_bin *)type)->length->parts);
-    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_type_bin *)type)->length->parts));
+    assert_int_equal(2, LYA_COUNT(((struct lysc_type_bin *)type)->length->parts));
     assert_int_equal(10, ((struct lysc_type_bin *)type)->length->parts[0].min_u64);
     assert_int_equal(30, ((struct lysc_type_bin *)type)->length->parts[0].max_u64);
     assert_int_equal(60, ((struct lysc_type_bin *)type)->length->parts[1].min_u64);
@@ -917,7 +916,7 @@ test_type_length(void **state)
     assert_int_equal(1, type->refcount);
     assert_non_null(((struct lysc_type_bin *)type)->length);
     assert_non_null(((struct lysc_type_bin *)type)->length->parts);
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_bin *)type)->length->parts));
+    assert_int_equal(1, LYA_COUNT(((struct lysc_type_bin *)type)->length->parts));
     assert_int_equal(10, ((struct lysc_type_bin *)type)->length->parts[0].min_u64);
     assert_int_equal(80, ((struct lysc_type_bin *)type)->length->parts[0].max_u64);
     type = ((struct lysc_node_leaf *)mod->compiled->data->next)->type;
@@ -925,7 +924,7 @@ test_type_length(void **state)
     assert_int_equal(2, type->refcount);
     assert_non_null(((struct lysc_type_bin *)type)->length);
     assert_non_null(((struct lysc_type_bin *)type)->length->parts);
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_bin *)type)->length->parts));
+    assert_int_equal(1, LYA_COUNT(((struct lysc_type_bin *)type)->length->parts));
     assert_int_equal(10, ((struct lysc_type_bin *)type)->length->parts[0].min_u64);
     assert_int_equal(100, ((struct lysc_type_bin *)type)->length->parts[0].max_u64);
 
@@ -995,7 +994,7 @@ test_type_pattern(void **state)
     type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
     assert_non_null(type);
     assert_non_null(((struct lysc_type_str *)type)->patterns);
-    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_type_str *)type)->patterns));
+    assert_int_equal(2, LYA_COUNT(((struct lysc_type_str *)type)->patterns));
     assert_string_equal("errortag", ((struct lysc_type_str *)type)->patterns[0]->eapptag);
     assert_string_equal("error", ((struct lysc_type_str *)type)->patterns[0]->emsg);
     assert_string_equal(".*", ((struct lysc_type_str *)type)->patterns[0]->expr);
@@ -1021,7 +1020,7 @@ test_type_enum(void **state)
     assert_non_null(type);
     assert_int_equal(LY_TYPE_ENUM, type->basetype);
     assert_non_null(((struct lysc_type_enum *)type)->enums);
-    assert_int_equal(5, LY_ARRAY_COUNT(((struct lysc_type_enum *)type)->enums));
+    assert_int_equal(5, LYA_COUNT(((struct lysc_type_enum *)type)->enums));
     assert_string_equal("automin", ((struct lysc_type_enum *)type)->enums[0].name);
     assert_int_equal(0, ((struct lysc_type_enum *)type)->enums[0].value);
     assert_string_equal("min", ((struct lysc_type_enum *)type)->enums[1].name);
@@ -1041,7 +1040,7 @@ test_type_enum(void **state)
     assert_non_null(type);
     assert_int_equal(LY_TYPE_ENUM, type->basetype);
     assert_non_null(((struct lysc_type_enum *)type)->enums);
-    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_type_enum *)type)->enums));
+    assert_int_equal(2, LYA_COUNT(((struct lysc_type_enum *)type)->enums));
     assert_string_equal("seven", ((struct lysc_type_enum *)type)->enums[0].name);
     assert_int_equal(7, ((struct lysc_type_enum *)type)->enums[0].value);
     assert_string_equal("eight", ((struct lysc_type_enum *)type)->enums[1].name);
@@ -1056,7 +1055,7 @@ test_type_enum(void **state)
     assert_non_null(type);
     assert_int_equal(LY_TYPE_ENUM, type->basetype);
     assert_non_null(((struct lysc_type_enum *)type)->enums);
-    assert_int_equal(4, LY_ARRAY_COUNT(((struct lysc_type_enum *)type)->enums));
+    assert_int_equal(4, LYA_COUNT(((struct lysc_type_enum *)type)->enums));
     assert_string_equal("first", ((struct lysc_type_enum *)type)->enums[0].name);
     assert_int_equal(-270, ((struct lysc_type_enum *)type)->enums[0].value);
     assert_string_equal("second", ((struct lysc_type_enum *)type)->enums[1].name);
@@ -1074,7 +1073,7 @@ test_type_enum(void **state)
     assert_non_null(type);
     assert_int_equal(LY_TYPE_ENUM, type->basetype);
     assert_non_null(((struct lysc_type_enum *)type)->enums);
-    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_type_enum *)type)->enums));
+    assert_int_equal(2, LYA_COUNT(((struct lysc_type_enum *)type)->enums));
     assert_string_equal("first", ((struct lysc_type_enum *)type)->enums[0].name);
     assert_int_equal(0, ((struct lysc_type_enum *)type)->enums[0].value);
     assert_string_equal("second", ((struct lysc_type_enum *)type)->enums[1].name);
@@ -1156,7 +1155,7 @@ test_type_dec64(void **state)
     assert_int_equal(2, ((struct lysc_type_dec *)type)->fraction_digits);
     assert_non_null(((struct lysc_type_dec *)type)->range);
     assert_non_null(((struct lysc_type_dec *)type)->range->parts);
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_dec *)type)->range->parts));
+    assert_int_equal(1, LYA_COUNT(((struct lysc_type_dec *)type)->range->parts));
     assert_int_equal(INT64_C(-9223372036854775807) - INT64_C(1), ((struct lysc_type_dec *)type)->range->parts[0].min_64);
     assert_int_equal(INT64_C(9223372036854775807), ((struct lysc_type_dec *)type)->range->parts[0].max_64);
 
@@ -1168,7 +1167,7 @@ test_type_dec64(void **state)
     assert_int_equal(2, ((struct lysc_type_dec *)type)->fraction_digits);
     assert_non_null(((struct lysc_type_dec *)type)->range);
     assert_non_null(((struct lysc_type_dec *)type)->range->parts);
-    assert_int_equal(3, LY_ARRAY_COUNT(((struct lysc_type_dec *)type)->range->parts));
+    assert_int_equal(3, LYA_COUNT(((struct lysc_type_dec *)type)->range->parts));
     assert_int_equal(314, ((struct lysc_type_dec *)type)->range->parts[0].min_64);
     assert_int_equal(314, ((struct lysc_type_dec *)type)->range->parts[0].max_64);
     assert_int_equal(510, ((struct lysc_type_dec *)type)->range->parts[1].min_64);
@@ -1183,7 +1182,7 @@ test_type_dec64(void **state)
     assert_int_equal(2, ((struct lysc_type_dec *)type)->fraction_digits);
     assert_non_null(((struct lysc_type_dec *)type)->range);
     assert_non_null(((struct lysc_type_dec *)type)->range->parts);
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_dec *)type)->range->parts));
+    assert_int_equal(1, LYA_COUNT(((struct lysc_type_dec *)type)->range->parts));
     assert_int_equal(100, ((struct lysc_type_dec *)type)->range->parts[0].min_64);
     assert_int_equal(6553500, ((struct lysc_type_dec *)type)->range->parts[0].max_64);
 
@@ -1276,9 +1275,9 @@ test_type_instanceid(void **state)
 static ly_bool
 identity_isderived(const struct lysc_ident *base, const char *der)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
-    LY_ARRAY_FOR(base->derived, u) {
+    LYA_FOR(base->derived, u) {
         if (!strcmp(base->derived[u]->name, der)) {
             return 1;
         }
@@ -1293,7 +1292,7 @@ static ly_bool
 contains_derived_identity(struct ly_ctx *ctx, char *module_name,
         char *revision, char *identity_name, char *derived_name)
 {
-    LY_ARRAY_COUNT_TYPE u = 0;
+    LYA_COUNT_T u = 0;
     struct lys_module *mod;
     struct lysc_ident *identity = NULL;
 
@@ -1301,7 +1300,7 @@ contains_derived_identity(struct ly_ctx *ctx, char *module_name,
         return 0;
     }
 
-    LY_ARRAY_FOR(mod->identities, u) {
+    LYA_FOR(mod->identities, u) {
         if (!strcmp(identity_name, mod->identities[u].name)) {
             identity = &mod->identities[u];
             break;
@@ -1637,14 +1636,14 @@ test_type_identityref(void **state)
     assert_non_null(type);
     assert_int_equal(LY_TYPE_IDENT, type->basetype);
     assert_non_null(((struct lysc_type_identityref *)type)->bases);
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_identityref *)type)->bases));
+    assert_int_equal(1, LYA_COUNT(((struct lysc_type_identityref *)type)->bases));
     assert_string_equal("i", ((struct lysc_type_identityref *)type)->bases[0]->name);
 
     type = ((struct lysc_node_leaf *)mod->compiled->data->next)->type;
     assert_non_null(type);
     assert_int_equal(LY_TYPE_IDENT, type->basetype);
     assert_non_null(((struct lysc_type_identityref *)type)->bases);
-    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_type_identityref *)type)->bases));
+    assert_int_equal(2, LYA_COUNT(((struct lysc_type_identityref *)type)->bases));
     assert_string_equal("k", ((struct lysc_type_identityref *)type)->bases[0]->name);
     assert_string_equal("j", ((struct lysc_type_identityref *)type)->bases[1]->name);
 
@@ -1654,7 +1653,7 @@ test_type_identityref(void **state)
     assert_non_null(type);
     assert_int_equal(LY_TYPE_IDENT, type->basetype);
     assert_non_null(((struct lysc_type_identityref *)type)->bases);
-    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_type_identityref *)type)->bases));
+    assert_int_equal(2, LYA_COUNT(((struct lysc_type_identityref *)type)->bases));
     assert_string_equal("k", ((struct lysc_type_identityref *)type)->bases[0]->name);
     assert_string_equal("j", ((struct lysc_type_identityref *)type)->bases[1]->name);
 
@@ -1735,7 +1734,7 @@ test_type_leafref(void **state)
     assert_non_null(type);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
     assert_string_equal("/a/target2", lyxp_get_expr(((struct lysc_type_leafref *)type)->path));
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_leafref *)type)->prefixes));
+    assert_int_equal(1, LYA_COUNT(((struct lysc_type_leafref *)type)->prefixes));
     assert_non_null(((struct lysc_type_leafref *)type)->realtype);
     assert_int_equal(LY_TYPE_UINT8, ((struct lysc_type_leafref *)type)->realtype->basetype);
     assert_int_equal(0, ((struct lysc_type_leafref *)type)->require_instance);
@@ -1779,7 +1778,7 @@ test_type_leafref(void **state)
     assert_int_equal(1, type->refcount);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
     assert_string_equal("/target", lyxp_get_expr(((struct lysc_type_leafref *)type)->path));
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_leafref *)type)->prefixes));
+    assert_int_equal(1, LYA_COUNT(((struct lysc_type_leafref *)type)->prefixes));
     assert_non_null(((struct lysc_type_leafref *)type)->realtype);
     assert_int_equal(LY_TYPE_INT8, ((struct lysc_type_leafref *)type)->realtype->basetype);
     assert_int_equal(1, ((struct lysc_type_leafref *)type)->require_instance);
@@ -1824,7 +1823,7 @@ test_type_leafref(void **state)
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
     assert_string_equal("../../interface[  name = current()/../ifname ]/address/ip",
             lyxp_get_expr(((struct lysc_type_leafref *)type)->path));
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_leafref *)type)->prefixes));
+    assert_int_equal(1, LYA_COUNT(((struct lysc_type_leafref *)type)->prefixes));
     assert_non_null(((struct lysc_type_leafref *)type)->realtype);
     assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_leafref *)type)->realtype->basetype);
 
@@ -1837,7 +1836,7 @@ test_type_leafref(void **state)
     assert_int_equal(1, type->refcount);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
     assert_string_equal("/endpoint-parent[id=current()/../field]/endpoint/name", lyxp_get_expr(((struct lysc_type_leafref *)type)->path));
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_type_leafref *)type)->prefixes));
+    assert_int_equal(1, LYA_COUNT(((struct lysc_type_leafref *)type)->prefixes));
     assert_non_null(((struct lysc_type_leafref *)type)->realtype);
     assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_leafref *)type)->realtype->basetype);
 
@@ -2114,7 +2113,7 @@ test_type_union(void **state)
     assert_int_equal(2, type->refcount);
     assert_int_equal(LY_TYPE_UNION, type->basetype);
     assert_non_null(((struct lysc_type_union *)type)->types);
-    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_type_union *)type)->types));
+    assert_int_equal(2, LYA_COUNT(((struct lysc_type_union *)type)->types));
     assert_int_equal(LY_TYPE_INT8, ((struct lysc_type_union *)type)->types[0]->basetype);
     assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_union *)type)->types[1]->basetype);
 
@@ -2126,7 +2125,7 @@ test_type_union(void **state)
     assert_int_equal(1, type->refcount);
     assert_int_equal(LY_TYPE_UNION, type->basetype);
     assert_non_null(((struct lysc_type_union *)type)->types);
-    assert_int_equal(3, LY_ARRAY_COUNT(((struct lysc_type_union *)type)->types));
+    assert_int_equal(3, LYA_COUNT(((struct lysc_type_union *)type)->types));
     assert_int_equal(LY_TYPE_DEC64, ((struct lysc_type_union *)type)->types[0]->basetype);
     assert_int_equal(LY_TYPE_INT8, ((struct lysc_type_union *)type)->types[1]->basetype);
     assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_union *)type)->types[2]->basetype);
@@ -2141,7 +2140,7 @@ test_type_union(void **state)
     assert_int_equal(1, type->refcount);
     assert_int_equal(LY_TYPE_UNION, type->basetype);
     assert_non_null(((struct lysc_type_union *)type)->types);
-    assert_int_equal(3, LY_ARRAY_COUNT(((struct lysc_type_union *)type)->types));
+    assert_int_equal(3, LYA_COUNT(((struct lysc_type_union *)type)->types));
     assert_int_equal(LY_TYPE_DEC64, ((struct lysc_type_union *)type)->types[0]->basetype);
     assert_int_equal(LY_TYPE_LEAFREF, ((struct lysc_type_union *)type)->types[1]->basetype);
     assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_union *)type)->types[2]->basetype);
@@ -2207,7 +2206,7 @@ test_type_dflt(void **state)
     assert_int_equal(1, type->refcount);
     assert_int_equal(LY_TYPE_UNION, type->basetype);
     assert_non_null(((struct lysc_type_union *)type)->types);
-    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_type_union *)type)->types));
+    assert_int_equal(2, LYA_COUNT(((struct lysc_type_union *)type)->types));
     assert_int_equal(LY_TYPE_DEC64, ((struct lysc_type_union *)type)->types[0]->basetype);
     assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_union *)type)->types[1]->basetype);
     assert_null(((struct lysc_node_leaf *)mod->compiled->data)->dflt.str);
@@ -2388,18 +2387,18 @@ test_type_exts(void **state)
     assert_non_null(snode);
 
     type = ((struct lysc_node_leaf *)snode)->type;
-    assert_int_equal(LY_ARRAY_COUNT(type->exts), 1);
+    assert_int_equal(LYA_COUNT(type->exts), 1);
     assert_string_equal(type->exts[0].argument, "<server-address>");
     type_u = (struct lysc_type_union *)type;
-    assert_int_equal(LY_ARRAY_COUNT(type_u->types), 2);
+    assert_int_equal(LYA_COUNT(type_u->types), 2);
 
     type = type_u->types[0];
-    assert_int_equal(LY_ARRAY_COUNT(type->exts), 2);
+    assert_int_equal(LYA_COUNT(type->exts), 2);
     assert_string_equal(type->exts[0].argument, "<A.B.C.D>");
     assert_string_equal(type->exts[1].argument, "<ipv4-address>");
 
     type = type_u->types[1];
-    assert_int_equal(LY_ARRAY_COUNT(type->exts), 2);
+    assert_int_equal(LYA_COUNT(type->exts), 2);
     assert_string_equal(type->exts[0].argument, "<host-name>");
     assert_string_equal(type->exts[1].argument, "<fqdn>");
 
@@ -2407,16 +2406,16 @@ test_type_exts(void **state)
     snode = lys_find_path(UTEST_LYCTX, NULL, "/main-module:config/hostname", 0);
     assert_non_null(snode);
     type = ((struct lysc_node_leaf *)snode)->type;
-    assert_int_equal(LY_ARRAY_COUNT(type->exts), 0);
+    assert_int_equal(LYA_COUNT(type->exts), 0);
     type_u = (struct lysc_type_union *)type;
-    assert_int_equal(LY_ARRAY_COUNT(type_u->types), 2);
+    assert_int_equal(LYA_COUNT(type_u->types), 2);
 
     type = type_u->types[0];
-    assert_int_equal(LY_ARRAY_COUNT(type->exts), 1);
+    assert_int_equal(LYA_COUNT(type->exts), 1);
     assert_string_equal(type->exts[0].argument, "<host-name>");
 
     type = type_u->types[1];
-    assert_int_equal(LY_ARRAY_COUNT(type->exts), 0);
+    assert_int_equal(LYA_COUNT(type->exts), 0);
 }
 
 static void
@@ -2529,7 +2528,7 @@ test_uses(void **state)
     leaf = (struct lysc_node_leaf *)mod->compiled->data;
     assert_int_equal(LYS_LEAF, leaf->nodetype);
     assert_string_equal("b", leaf->name);
-    assert_int_equal(2, LY_ARRAY_COUNT(leaf->when));
+    assert_int_equal(2, LYA_COUNT(leaf->when));
     assert_int_equal(1, leaf->when[0]->refcount);
     assert_non_null(leaf->when[0]->context);
     assert_string_equal("b", leaf->when[0]->context->name);
@@ -2539,7 +2538,7 @@ test_uses(void **state)
     leaf = (struct lysc_node_leaf *)leaf->next;
     assert_int_equal(LYS_LEAF, leaf->nodetype);
     assert_string_equal("c", leaf->name);
-    assert_int_equal(1, LY_ARRAY_COUNT(leaf->when));
+    assert_int_equal(1, LYA_COUNT(leaf->when));
     assert_int_equal(2, leaf->when[0]->refcount);
     assert_null(leaf->when[0]->context);
 
@@ -2728,7 +2727,7 @@ test_refine(void **state)
     assert_non_null(llist = (struct lysc_node_leaflist *)leaf->next);
     assert_int_equal(LYS_LEAFLIST, llist->nodetype);
     assert_string_equal("ll", llist->name);
-    assert_int_equal(2, LY_ARRAY_COUNT(llist->dflts));
+    assert_int_equal(2, LYA_COUNT(llist->dflts));
     assert_string_equal("hello", llist->dflts[0].str);
     assert_string_equal("world", llist->dflts[1].str);
     assert_int_equal(5, llist->max);
@@ -2744,7 +2743,7 @@ test_refine(void **state)
     assert_false(LYS_MAND_TRUE & leaf->flags);
     assert_string_equal("cheers!", leaf->dflt.str);
     assert_non_null(leaf->musts);
-    assert_int_equal(2, LY_ARRAY_COUNT(leaf->musts));
+    assert_int_equal(2, LYA_COUNT(leaf->musts));
     assert_string_equal("refined", leaf->dsc);
     assert_string_equal("refined", leaf->ref);
     assert_non_null(child = leaf->next);
@@ -2752,7 +2751,7 @@ test_refine(void **state)
     assert_string_equal("a", child->name);
     assert_true(LYS_MAND_TRUE & child->flags);
     assert_non_null(((struct lysc_node_anydata *)child)->musts);
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_node_anydata *)child)->musts));
+    assert_int_equal(1, LYA_COUNT(((struct lysc_node_anydata *)child)->musts));
     assert_string_equal("refined", child->dsc);
     assert_string_equal("refined", child->ref);
     assert_non_null(child = child->next);
@@ -3103,11 +3102,11 @@ test_deviation(void **state)
             "deviation /c3 {deviate delete {must 3; must 1;}}}", LYS_IN_YANG, &mod));
     assert_non_null(node = mod->compiled->data);
     assert_string_equal("c1", node->name);
-    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_node_leaf *)node)->musts));
+    assert_int_equal(2, LYA_COUNT(((struct lysc_node_leaf *)node)->musts));
     assert_string_equal("3", lyxp_get_expr(((struct lysc_node_leaf *)node)->musts[1].cond));
     assert_non_null(node = node->next);
     assert_string_equal("c2", node->name);
-    assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_node_container *)node)->musts));
+    assert_int_equal(1, LYA_COUNT(((struct lysc_node_container *)node)->musts));
     assert_string_equal("1", lyxp_get_expr(((struct lysc_node_container *)node)->musts[0].cond));
     assert_non_null(node = node->next);
     assert_string_equal("c3", node->name);
@@ -3132,12 +3131,12 @@ test_deviation(void **state)
     assert_non_null(leaf = (struct lysc_node_leaf *)node->next);
     assert_null(leaf->dflt.str);
     assert_non_null(llist = (struct lysc_node_leaflist *)leaf->next);
-    assert_int_equal(1, LY_ARRAY_COUNT(llist->dflts));
+    assert_int_equal(1, LYA_COUNT(llist->dflts));
     assert_string_equal("hello", llist->dflts[0].str);
     assert_non_null(leaf = (struct lysc_node_leaf *)llist->next);
     assert_string_equal("nothing", leaf->dflt.str);
     assert_non_null(llist = (struct lysc_node_leaflist *)leaf->next);
-    assert_int_equal(1, LY_ARRAY_COUNT(llist->dflts));
+    assert_int_equal(1, LYA_COUNT(llist->dflts));
     assert_string_equal("nothing", llist->dflts[0].str);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module g {yang-version 1.1; namespace urn:g;prefix g;import e {prefix x;}"
@@ -3155,16 +3154,16 @@ test_deviation(void **state)
     assert_non_null(leaf = (struct lysc_node_leaf *)node->next);
     assert_string_equal("bye", leaf->dflt.str);
     assert_non_null(llist = (struct lysc_node_leaflist *)leaf->next);
-    assert_int_equal(3, LY_ARRAY_COUNT(llist->dflts));
+    assert_int_equal(3, LYA_COUNT(llist->dflts));
     assert_string_equal("hello", llist->dflts[0].str);
     assert_string_equal("all", llist->dflts[1].str);
     assert_string_equal("people", llist->dflts[2].str);
     assert_non_null(leaf = (struct lysc_node_leaf *)llist->next);
     assert_string_equal("hi", leaf->dflt.str);
-    assert_int_equal(1, LY_ARRAY_COUNT(leaf->musts));
-    assert_int_equal(1, LY_ARRAY_COUNT(leaf->musts[0].prefixes));
+    assert_int_equal(1, LYA_COUNT(leaf->musts));
+    assert_int_equal(1, LYA_COUNT(leaf->musts[0].prefixes));
     assert_non_null(llist = (struct lysc_node_leaflist *)leaf->next);
-    assert_int_equal(2, LY_ARRAY_COUNT(llist->dflts));
+    assert_int_equal(2, LYA_COUNT(llist->dflts));
     assert_string_equal("hi", llist->dflts[0].str);
     assert_string_equal("all", llist->dflts[1].str);
 
@@ -3192,11 +3191,11 @@ test_deviation(void **state)
     assert_non_null((mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "i")));
     assert_non_null(list = (struct lysc_node_list *)mod->compiled->data);
     assert_string_equal("l1", list->name);
-    assert_int_equal(2, LY_ARRAY_COUNT(list->uniques));
-    assert_int_equal(2, LY_ARRAY_COUNT(list->uniques[0]));
+    assert_int_equal(2, LYA_COUNT(list->uniques));
+    assert_int_equal(2, LYA_COUNT(list->uniques[0]));
     assert_string_equal("b", list->uniques[0][0]->name);
     assert_string_equal("j_c", list->uniques[0][1]->name);
-    assert_int_equal(1, LY_ARRAY_COUNT(list->uniques[1]));
+    assert_int_equal(1, LYA_COUNT(list->uniques[1]));
     assert_string_equal("c", list->uniques[1][0]->name);
     assert_non_null(list = (struct lysc_node_list *)list->next);
     assert_string_equal("l2", list->name);
@@ -3298,7 +3297,7 @@ test_deviation(void **state)
     assert_non_null(llist = (struct lysc_node_leaflist *)leaf->next);
     assert_string_equal("b", llist->name);
     assert_int_equal(LY_TYPE_INT8, llist->type->basetype);
-    assert_int_equal(1, LY_ARRAY_COUNT(llist->dflts));
+    assert_int_equal(1, LYA_COUNT(llist->dflts));
     assert_string_equal("1", llist->dflts[0].str);
 
     /* instance-identifiers with NULL canonical are changed to string types with a canonical value equal to the original value */
@@ -3311,7 +3310,7 @@ test_deviation(void **state)
     assert_non_null(leaf = (struct lysc_node_leaf *)mod->compiled->data);
     assert_string_equal("/e:d2[.='a']", leaf->dflt.str);
     assert_non_null(llist = (struct lysc_node_leaflist *)leaf->next);
-    assert_int_equal(2, LY_ARRAY_COUNT(llist->dflts));
+    assert_int_equal(2, LYA_COUNT(llist->dflts));
     assert_string_equal("/e:d[.='b']", llist->dflts[0].str);
     assert_string_equal("/e:d2[.='c']", llist->dflts[1].str);
 

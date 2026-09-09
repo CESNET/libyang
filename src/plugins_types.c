@@ -27,12 +27,12 @@
 #include "compat.h"
 #include "context.h"
 #include "dict.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "path.h"
 #include "plugins_internal.h"
 #include "schema_compile.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"
@@ -47,7 +47,7 @@ static const char *
 ly_schema_get_prefix(const struct lys_module *mod, void *prefix_data)
 {
     const struct lysp_module *pmod = prefix_data;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (pmod->mod == mod) {
         if (pmod->is_submod) {
@@ -57,7 +57,7 @@ ly_schema_get_prefix(const struct lys_module *mod, void *prefix_data)
         }
     }
 
-    LY_ARRAY_FOR(pmod->imports, u) {
+    LYA_FOR(pmod->imports, u) {
         if (pmod->imports[u].module == mod) {
             /* match */
             return pmod->imports[u].prefix;
@@ -74,9 +74,9 @@ static const char *
 ly_schema_resolved_get_prefix(const struct lys_module *mod, void *prefix_data)
 {
     struct lysc_prefix *prefixes = prefix_data;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
-    LY_ARRAY_FOR(prefixes, u) {
+    LYA_FOR(prefixes, u) {
         if (prefixes[u].mod == mod) {
             return prefixes[u].prefix;
         }
@@ -409,14 +409,14 @@ lyplg_type_validate_patterns(const struct ly_ctx *ctx, struct lysc_pattern **pat
 {
     LY_ERR r, rc = LY_SUCCESS;
     struct ly_err_item *err_tmp = NULL;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     const void *pat_comp;
 
     LY_CHECK_ARG_RET(NULL, str, err, LY_EINVAL);
 
     *err = NULL;
 
-    LY_ARRAY_FOR(patterns, u) {
+    LYA_FOR(patterns, u) {
         /* get (or compile) the compiled pattern. The pattern might not be found, because
          * if ctx is printed, it did not inherit compiled patterns from the original context. */
         LY_CHECK_RET(ly_ctx_shared_data_pattern_get(ctx, patterns[u]->expr, patterns[u]->format, &pat_comp));
@@ -455,13 +455,13 @@ LIBYANG_API_DEF LY_ERR
 lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *strval,
         uint32_t strval_len, struct ly_err_item **err)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     ly_bool is_length; /* length or range */
 
     *err = NULL;
     is_length = (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? 1 : 0;
 
-    LY_ARRAY_FOR(range->parts, u) {
+    LYA_FOR(range->parts, u) {
         if (basetype < LY_TYPE_DEC64) {
             /* unsigned */
             if ((uint64_t)value < range->parts[u].min_u64) {
@@ -476,7 +476,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
             } else if ((uint64_t)value <= range->parts[u].max_u64) {
                 /* inside the range */
                 return LY_SUCCESS;
-            } else if (u == LY_ARRAY_COUNT(range->parts) - 1) {
+            } else if (u == LYA_COUNT(range->parts) - 1) {
                 /* we have the last range part, so the value is out of bounds */
                 char *eapptag = range->eapptag ? strdup(range->eapptag) : NULL;
 
@@ -500,7 +500,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
             } else if (value <= range->parts[u].max_64) {
                 /* inside the range */
                 return LY_SUCCESS;
-            } else if (u == LY_ARRAY_COUNT(range->parts) - 1) {
+            } else if (u == LYA_COUNT(range->parts) - 1) {
                 /* we have the last range part, so the value is out of bounds */
                 char *eapptag = range->eapptag ? strdup(range->eapptag) : NULL;
 
@@ -700,7 +700,7 @@ lyplg_type_lypath_check_status(const struct lysc_node *ctx_node, const struct ly
         void *prefix_data, struct ly_err_item **err)
 {
     LY_ERR ret;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     const struct lys_module *val_mod;
     const struct lysc_node *node;
     uint16_t flg1, flg2;
@@ -719,7 +719,7 @@ lyplg_type_lypath_check_status(const struct lysc_node *ctx_node, const struct ly
         flg1 = LYS_STATUS_CURR;
     }
 
-    LY_ARRAY_FOR(path, u) {
+    LYA_FOR(path, u) {
         node = path[u].node;
 
         flg2 = (node->flags & LYS_STATUS_MASK) ? (node->flags & LYS_STATUS_MASK) : LYS_STATUS_CURR;
@@ -873,11 +873,11 @@ lyplg_type_make_implemented(struct lys_module *mod, const char **features, struc
 LIBYANG_API_DEF LY_ERR
 lyplg_type_identity_isderived(const struct lysc_ident *base, const struct lysc_ident *der)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     assert(base->module->ctx == der->module->ctx);
 
-    LY_ARRAY_FOR(base->derived, u) {
+    LYA_FOR(base->derived, u) {
         if (der == base->derived[u]) {
             return LY_SUCCESS;
         }
@@ -923,8 +923,8 @@ lyplg_type_resolve_leafref_get_target_path(const struct lyxp_expr *path, const s
     }
 
     /* check whether we can search for a list instance with a specific key value */
-    if (lysc_is_key(p[LY_ARRAY_COUNT(p) - 1].node)) {
-        if ((LY_ARRAY_COUNT(p) >= 2) && (p[LY_ARRAY_COUNT(p) - 2].node->nodetype == LYS_LIST)) {
+    if (lysc_is_key(p[LYA_COUNT(p) - 1].node)) {
+        if ((LYA_COUNT(p) >= 2) && (p[LYA_COUNT(p) - 2].node->nodetype == LYS_LIST)) {
             if ((path->tokens[path->used - 1] == LYXP_TOKEN_NAMETEST) &&
                     (path->tokens[path->used - 2] == LYXP_TOKEN_OPER_PATH) &&
                     (path->tokens[path->used - 3] == LYXP_TOKEN_NAMETEST)) {
@@ -948,7 +948,7 @@ lyplg_type_resolve_leafref_get_target_path(const struct lyxp_expr *path, const s
 
     } else {
         /* leaf will not be found using hashes, but generate the path just to unify it */
-        assert(p[LY_ARRAY_COUNT(p) - 1].node->nodetype & LYD_NODE_TERM);
+        assert(p[LYA_COUNT(p) - 1].node->nodetype & LYD_NODE_TERM);
 
         /* generate the string path evaluated using hashes */
         LY_CHECK_RET(ly_val_get_quot(ctx_node->module->ctx, target_val, &quot));

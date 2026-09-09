@@ -18,6 +18,7 @@
 #include <string.h>
 
 #include "plugins.h"
+#include "printer_schema.h"
 
 const char *simple = "module libyang-plugins-simple {"
         "  namespace urn:libyang:tests:plugins:simple;"
@@ -91,7 +92,7 @@ test_add_simple(void **state)
     assert_string_equal("ly2 simple test v1", plugin_t->id);
     assert_ptr_equal(leaf->type->plugin_ref, plugin_t);
 
-    assert_int_equal(1, LY_ARRAY_COUNT(leaf->exts));
+    assert_int_equal(1, LYA_COUNT(leaf->exts));
     plugin_ptr = leaf->exts[0].def->plugin_ref;
     assert_non_null(plugin_e = lysc_get_ext_plugin(plugin_ptr));
     assert_string_equal("ly2 simple test v1", plugin_e->id);
@@ -147,20 +148,20 @@ parse_clb2(struct lysp_ctx *UNUSED(pctx), struct lysp_ext_instance *ext)
     struct lysp_tpdf *tpdf;
     struct lysp_type_enum *en;
     struct lysp_type *type;
-    LY_ARRAY_COUNT_TYPE count = 0;
+    LYA_COUNT_T count = 0;
 
     if (ext->parent_stmt == LY_STMT_REFINE) {
         refine = (struct lysp_refine *)ext->parent;
-        count = LY_ARRAY_COUNT(refine->exts);
+        count = LYA_COUNT(refine->exts);
     } else if (ext->parent_stmt == LY_STMT_TYPEDEF) {
         tpdf = (struct lysp_tpdf *)ext->parent;
-        count = LY_ARRAY_COUNT(tpdf->exts);
+        count = LYA_COUNT(tpdf->exts);
     } else if (ext->parent_stmt == LY_STMT_ENUM) {
         en = (struct lysp_type_enum *)ext->parent;
-        count = LY_ARRAY_COUNT(en->exts);
+        count = LYA_COUNT(en->exts);
     } else if (ext->parent_stmt == LY_STMT_TYPE) {
         type = (struct lysp_type *)ext->parent;
-        count = LY_ARRAY_COUNT(type->exts);
+        count = LYA_COUNT(type->exts);
     } else {
         return LY_SUCCESS;
     }

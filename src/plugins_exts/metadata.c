@@ -20,7 +20,7 @@
 #include <string.h>
 
 #include "compat.h"
-#include "libyang.h"
+#include "ly_array.h"
 #include "plugins_exts.h"
 
 struct lysp_ext_metadata {
@@ -51,7 +51,7 @@ annotation_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     LY_ERR r;
     struct lysp_ext_metadata *ann_pdata;
     struct lysp_module *pmod;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     /* annotations can appear only at the top level of a YANG module or submodule */
     if ((ext->parent_stmt != LY_STMT_MODULE) && (ext->parent_stmt != LY_STMT_SUBMODULE)) {
@@ -63,7 +63,7 @@ annotation_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     pmod = ext->parent;
 
     /* check for duplication */
-    LY_ARRAY_FOR(pmod->exts, u) {
+    LYA_FOR(pmod->exts, u) {
         if ((&pmod->exts[u] != ext) && (pmod->exts[u].name == ext->name) && !strcmp(pmod->exts[u].argument, ext->argument)) {
             /* duplication of the same annotation extension in a single module */
             lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EVALID, "Extension %s is instantiated multiple times.", ext->name);
@@ -76,9 +76,8 @@ annotation_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     if (!ann_pdata) {
         goto emem;
     }
-    if ((r = lyplg_ext_parse_create_substmts(pctx, ext, 6))) {
-        return r;
-    }
+    LYA_NEW(ext->substmts, 6,
+            lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EMEM, "Memory allocation failed (%s()).", __func__); return LY_EMEM);
 
     ext->substmts[0].stmt = LY_STMT_IF_FEATURE;
     ext->substmts[0].storage_p = (void **)&ann_pdata->iffeatures;
@@ -124,7 +123,6 @@ emem:
 static LY_ERR
 annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, struct lysc_ext_instance *ext)
 {
-    LY_ERR r;
     struct lysc_ext_metadata *ann_cdata;
 
     /* compile annotation substatements */
@@ -132,9 +130,8 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, 
     if (!ann_cdata) {
         goto emem;
     }
-    if ((r = lyplg_ext_compile_create_substmts(cctx, ext, 6))) {
-        return r;
-    }
+    LYA_NEW(ext->substmts, 6,
+            lyplg_ext_compile_log(cctx, ext, LY_LLERR, LY_EMEM, "Memory allocation failed (%s()).", __func__); return LY_EMEM);
 
     ext->substmts[0].stmt = LY_STMT_IF_FEATURE;
     ext->substmts[0].storage_p = NULL;

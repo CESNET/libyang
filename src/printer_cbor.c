@@ -33,9 +33,9 @@
 #include "printer_data.h"
 #include "printer_internal.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data.h"
 #include "tree_schema.h"
+#include "utils.h"
 
 /**
  * @brief CBOR printer context.

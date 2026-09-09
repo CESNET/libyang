@@ -14,7 +14,7 @@
 #define _UTEST_MAIN_
 #include "utests.h"
 
-#include "libyang.h"
+#include "printer_schema.h"
 
 static void
 test_schema(void **state)
@@ -42,9 +42,9 @@ test_schema(void **state)
 
     UTEST_ADD_MODULE(data, LYS_IN_YANG, NULL, &mod);
     assert_non_null(e = mod->compiled->exts);
-    assert_int_equal(LY_ARRAY_COUNT(mod->compiled->exts), 1);
+    assert_int_equal(LYA_COUNT(mod->compiled->exts), 1);
     assert_non_null(node = lysc_node_child(mod->compiled->data)->next);
-    assert_int_equal(LY_ARRAY_COUNT(((struct lysc_node_leaf *)node)->type->exts), 1);
+    assert_int_equal(LYA_COUNT(((struct lysc_node_leaf *)node)->type->exts), 1);
 
     /* yang print */
     yang = "module oc-ext-pattern {\n"

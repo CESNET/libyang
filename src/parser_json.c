@@ -16,7 +16,7 @@
 #define _GNU_SOURCE
 
 #include <assert.h>
-#include <stdint.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -31,7 +31,6 @@
 #include "parser_internal.h"
 #include "plugins_exts.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"

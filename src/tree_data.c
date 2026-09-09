@@ -34,6 +34,7 @@
 #include "in.h"
 #include "in_internal.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "parser_data.h"
 #include "parser_internal.h"
@@ -43,12 +44,11 @@
 #include "plugins_internal.h"
 #include "plugins_types.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data_internal.h"
 #include "tree_data_sorted.h"
-#include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "utils.h"
 #include "validation.h"
 #include "xml.h"
 #include "xpath.h"
@@ -306,16 +306,16 @@ lyd_parse_value_fragment(const struct ly_ctx *ctx, const char *path, struct ly_i
             LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY, 0, LY_VALUE_JSON, NULL, &p), cleanup);
 
     /* has to have a schema */
-    new_node_schema = p[LY_ARRAY_COUNT(p) - 1].node;
+    new_node_schema = p[LYA_COUNT(p) - 1].node;
 
     /* only the term nodes get their path shortened */
     if (new_node_schema->nodetype & LYD_NODE_TERM) {
         /* shorten the ly_path by one element (to avoid a leaflist without predicate at the end) */
-        LY_ARRAY_DECREMENT(p);
+        LYA_DECREMENT(p);
         p_decremented = 1;
     }
 
-    if (LY_ARRAY_COUNT(p)) {
+    if (LYA_COUNT(p)) {
         /* create nodes */
         LY_CHECK_GOTO(ret = lyd_new_path_create(NULL, ctx, p, path, NULL, 0, 0, new_val_options, &new_top_parent,
                 &new_last_parent), cleanup);
@@ -366,7 +366,7 @@ lyd_parse_value_fragment(const struct ly_ctx *ctx, const char *path, struct ly_i
 cleanup:
     lyxp_expr_free(exp);
     if (p_decremented) {
-        LY_ARRAY_INCREMENT(p);
+        LYA_INCREMENT(p);
     }
     ly_path_free(p);
     if (ret) {
@@ -1390,14 +1390,14 @@ lyd_unlink_meta_single(struct lyd_meta *meta)
 struct lysc_ext_instance *
 lyd_get_meta_annotation(const struct lys_module *mod, const char *name, size_t name_len)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lyplg_ext *plugin;
 
     if (!mod || !mod->implemented) {
         return NULL;
     }
 
-    LY_ARRAY_FOR(mod->compiled->exts, u) {
+    LYA_FOR(mod->compiled->exts, u) {
         plugin = LYSC_GET_EXT_PLG(mod->compiled->exts[u].def->plugin_ref);
         if (plugin && !strcmp(plugin->id, "ly2 metadata") &&
                 !ly_strncmp(mod->compiled->exts[u].argument, name, name_len)) {
@@ -3856,7 +3856,7 @@ lyd_link_leafref_node(const struct lyd_node_term *node, const struct lyd_node_te
 {
     const struct lyd_node_term **item = NULL;
     struct lyd_leafref_links_rec *rec;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     assert(node);
     assert(leafref_node);
@@ -3867,24 +3867,24 @@ lyd_link_leafref_node(const struct lyd_node_term *node, const struct lyd_node_te
 
     /* add leafref node into the list of target node */
     LY_CHECK_RET(lyd_get_or_create_leafref_links_record(node, &rec, 1));
-    LY_ARRAY_FOR(rec->leafref_nodes, u) {
+    LYA_FOR(rec->leafref_nodes, u) {
         if (rec->leafref_nodes[u] == leafref_node) {
             return LY_SUCCESS;
         }
     }
 
-    LY_ARRAY_NEW_RET(LYD_CTX(node), rec->leafref_nodes, item, LY_EMEM);
+    LYA_ADD_ITEM(rec->leafref_nodes, item, LOGMEM(LYD_CTX(node)); return LY_EMEM);
     *item = leafref_node;
 
     /* add target node into the list of leafref node*/
     LY_CHECK_RET(lyd_get_or_create_leafref_links_record(leafref_node, &rec, 1));
-    LY_ARRAY_FOR(rec->target_nodes, u) {
+    LYA_FOR(rec->target_nodes, u) {
         if (rec->target_nodes[u] == node) {
             return LY_SUCCESS;
         }
     }
 
-    LY_ARRAY_NEW_RET(LYD_CTX(node), rec->target_nodes, item, LY_EMEM);
+    LYA_ADD_ITEM(rec->target_nodes, item, LOGMEM(LYD_CTX(node)); return LY_EMEM);
     *item = node;
 
     return LY_SUCCESS;
@@ -3911,7 +3911,7 @@ lyd_leafref_link_node_tree_type(const struct lyd_node *tree, const struct lyd_no
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_leafref *lref;
     struct lysc_type_union *un;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     uint32_t i;
     struct lyd_node_term *leafref_node = (struct lyd_node_term *)cur_node;
 
@@ -3932,7 +3932,7 @@ lyd_leafref_link_node_tree_type(const struct lyd_node *tree, const struct lyd_no
         }
     } else if (type->basetype == LY_TYPE_UNION) {
         un = (struct lysc_type_union *)type;
-        LY_ARRAY_FOR(un->types, u) {
+        LYA_FOR(un->types, u) {
             ret = lyd_leafref_link_node_tree_type(tree, cur_node, &leafref_node->value.subvalue->value, un->types[u]);
             LY_CHECK_GOTO(ret, cleanup)
         }
@@ -3986,8 +3986,8 @@ lyd_unlink_leafref_node(const struct lyd_node_term *node, const struct lyd_node_
     /* remove link from target node to leafref node */
     ret = lyd_get_or_create_leafref_links_record(node, &rec, 0);
     if (ret == LY_SUCCESS) {
-        LY_ARRAY_REMOVE_VALUE(rec->leafref_nodes, leafref_node);
-        if ((LY_ARRAY_COUNT(rec->leafref_nodes) == 0) && (LY_ARRAY_COUNT(rec->target_nodes) == 0)) {
+        LYA_REMOVE_VALUE(rec->leafref_nodes, leafref_node);
+        if ((LYA_COUNT(rec->leafref_nodes) == 0) && (LYA_COUNT(rec->target_nodes) == 0)) {
             lyd_free_leafref_nodes(node);
         }
     } else if (ret != LY_ENOTFOUND) {
@@ -3997,8 +3997,8 @@ lyd_unlink_leafref_node(const struct lyd_node_term *node, const struct lyd_node_
     /* remove link from leafref node to target node */
     ret = lyd_get_or_create_leafref_links_record(leafref_node, &rec, 0);
     if (ret == LY_SUCCESS) {
-        LY_ARRAY_REMOVE_VALUE(rec->target_nodes, node);
-        if ((LY_ARRAY_COUNT(rec->leafref_nodes) == 0) && (LY_ARRAY_COUNT(rec->target_nodes) == 0)) {
+        LYA_REMOVE_VALUE(rec->target_nodes, node);
+        if ((LYA_COUNT(rec->leafref_nodes) == 0) && (LYA_COUNT(rec->target_nodes) == 0)) {
             lyd_free_leafref_nodes(leafref_node);
         }
     } else if (ret != LY_ENOTFOUND) {

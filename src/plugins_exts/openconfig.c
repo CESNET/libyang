@@ -18,7 +18,7 @@
 #include <string.h>
 
 #include "compat.h"
-#include "libyang.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "plugins_exts.h"
 #include "plugins_internal.h"
@@ -32,7 +32,7 @@
 static LY_ERR
 regexp_posix_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lysp_ext_instance *exts;
 
     /* check that the extension is instantiated at an allowed place - top-level */
@@ -45,7 +45,7 @@ regexp_posix_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     exts = ((struct lysp_module *)ext->parent)->exts;
 
     /* check for duplication */
-    LY_ARRAY_FOR(exts, u) {
+    LYA_FOR(exts, u) {
         if ((&exts[u] != ext) && (exts[u].name == ext->name)) {
             lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EVALID, "Extension \"%s\" is instantiated multiple times.", ext->name);
             return LY_EINVAL;

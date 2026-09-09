@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Internal type plugin for sorting data nodes.
  *
- * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -20,8 +20,9 @@
 #include <string.h> /* memset */
 
 #include "compat.h"
-#include "libyang.h"
+#include "dict.h"
 #include "ly_common.h"
+#include "plugins_internal.h"
 #include "tree_data_sorted.h"
 
 static void lyplg_type_free_lyds(const struct ly_ctx *ctx, struct lyd_value *value);

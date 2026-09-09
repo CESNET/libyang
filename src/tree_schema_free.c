@@ -21,14 +21,13 @@
 #include "compat.h"
 #include "dict.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "plugins_exts.h"
 #include "plugins_internal.h"
 #include "plugins_types.h"
-#include "tree.h"
 #include "tree_data.h"
 #include "tree_data_internal.h"
-#include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 #include "xml.h"
@@ -193,7 +192,7 @@ lysp_feature_free(const struct ly_ctx *ctx, struct lysp_feature *feat)
     lysdict_remove(ctx, feat->name);
     FREE_ARRAY(ctx, feat->iffeatures, lysp_qname_free);
     FREE_ARRAY(ctx, feat->iffeatures_c, lysc_iffeature_free);
-    LY_ARRAY_FREE(feat->depfeatures);
+    LYA_FREE(feat->depfeatures);
     lysdict_remove(ctx, feat->dsc);
     lysdict_remove(ctx, feat->ref);
     FREE_ARRAY(ctx, feat->exts, lysp_ext_instance_free);
@@ -654,7 +653,7 @@ lysc_ext_instance_free(const struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 void
 lysc_iffeature_free(const struct ly_ctx *UNUSED(ctx), struct lysc_iffeature *iff)
 {
-    LY_ARRAY_FREE(iff->features);
+    LYA_FREE(iff->features);
     free(iff->expr);
 }
 
@@ -710,7 +709,7 @@ lysc_must_free(const struct ly_ctx *ctx, struct lysc_must *must)
 static void
 lysc_ident_derived_unlink(const struct lysc_ident *ident)
 {
-    LY_ARRAY_COUNT_TYPE u, v, w;
+    LYA_COUNT_T u, v, w;
     const struct lysp_submodule *submod;
     const struct lysp_module *base_pmod = NULL;
     const struct lysp_ident *identp = NULL;
@@ -721,7 +720,7 @@ lysc_ident_derived_unlink(const struct lysc_ident *ident)
     assert(ident->module->parsed);
 
     /* find the parsed identity */
-    LY_ARRAY_FOR(ident->module->parsed->identities, u) {
+    LYA_FOR(ident->module->parsed->identities, u) {
         if (ident->module->parsed->identities[u].name == ident->name) {
             identp = &ident->module->parsed->identities[u];
             base_pmod = ident->module->parsed;
@@ -729,9 +728,9 @@ lysc_ident_derived_unlink(const struct lysc_ident *ident)
         }
     }
     if (!identp) {
-        LY_ARRAY_FOR(ident->module->parsed->includes, v) {
+        LYA_FOR(ident->module->parsed->includes, v) {
             submod = ident->module->parsed->includes[v].submodule;
-            LY_ARRAY_FOR(submod->identities, u) {
+            LYA_FOR(submod->identities, u) {
                 if (submod->identities[u].name == ident->name) {
                     identp = &submod->identities[u];
                     base_pmod = (struct lysp_module *)submod;
@@ -743,7 +742,7 @@ lysc_ident_derived_unlink(const struct lysc_ident *ident)
     assert(identp);
 
     /* remove link from all the foreign bases, it may not be there if identity compilation failed */
-    LY_ARRAY_FOR(identp->bases, u) {
+    LYA_FOR(identp->bases, u) {
         base_name = strchr(identp->bases[u], ':');
         if (!base_name) {
             continue;
@@ -769,19 +768,19 @@ lysc_ident_derived_unlink(const struct lysc_ident *ident)
         }
 
         /* find the compiled base */
-        LY_ARRAY_FOR(mod->identities, v) {
+        LYA_FOR(mod->identities, v) {
             if (!strcmp(mod->identities[v].name, base_name)) {
                 /* find the derived link */
-                LY_ARRAY_FOR(mod->identities[v].derived, w) {
+                LYA_FOR(mod->identities[v].derived, w) {
                     if (mod->identities[v].derived[w] == ident) {
                         /* remove the link */
-                        LY_ARRAY_DECREMENT(mod->identities[v].derived);
-                        if (!LY_ARRAY_COUNT(mod->identities[v].derived)) {
-                            LY_ARRAY_FREE(mod->identities[v].derived);
+                        LYA_DECREMENT(mod->identities[v].derived);
+                        if (!LYA_COUNT(mod->identities[v].derived)) {
+                            LYA_FREE(mod->identities[v].derived);
                             mod->identities[v].derived = NULL;
-                        } else if (w < LY_ARRAY_COUNT(mod->identities[v].derived)) {
+                        } else if (w < LYA_COUNT(mod->identities[v].derived)) {
                             memmove(mod->identities[v].derived + w, mod->identities[v].derived + w + 1,
-                                    (LY_ARRAY_COUNT(mod->identities[v].derived) - w) * sizeof ident);
+                                    (LYA_COUNT(mod->identities[v].derived) - w) * sizeof ident);
                         }
                         break;
                     }
@@ -805,14 +804,14 @@ lysc_ident_free(const struct ly_ctx *ctx, struct lysc_ident *ident)
     lysdict_remove(ctx, ident->name);
     lysdict_remove(ctx, ident->dsc);
     lysdict_remove(ctx, ident->ref);
-    LY_ARRAY_FREE(ident->derived);
+    LYA_FREE(ident->derived);
     FREE_ARRAY(ctx, ident->exts, lysc_ext_instance_free);
 }
 
 void
 lysc_range_free(const struct ly_ctx *ctx, struct lysc_range *range)
 {
-    LY_ARRAY_FREE(range->parts);
+    LYA_FREE(range->parts);
     lysdict_remove(ctx, range->eapptag);
     lysdict_remove(ctx, range->emsg);
     lysdict_remove(ctx, range->dsc);
@@ -896,7 +895,7 @@ lysc_type_free(const struct ly_ctx *ctx, struct lysc_type *type)
         FREE_MEMBER(ctx, ((struct lysc_type_num *)type)->range, lysc_range_free);
         break;
     case LY_TYPE_IDENT:
-        LY_ARRAY_FREE(((struct lysc_type_identityref *)type)->bases);
+        LYA_FREE(((struct lysc_type_identityref *)type)->bases);
         break;
     case LY_TYPE_UNION:
         FREE_ARRAY(ctx, ((struct lysc_type_union *)type)->types, lysc_type2_free);
@@ -1048,7 +1047,7 @@ lysc_node_leaflist_free(const struct ly_ctx *ctx, struct lysc_node_leaflist *nod
 static void
 lysc_node_list_free(const struct ly_ctx *ctx, struct lysc_node_list *node)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lysc_node *child, *child_next;
 
     LY_LIST_FOR_SAFE(node->child, child_next, child) {
@@ -1057,10 +1056,10 @@ lysc_node_list_free(const struct ly_ctx *ctx, struct lysc_node_list *node)
     FREE_ARRAY(ctx, node->when, lysc_when_free);
     FREE_ARRAY(ctx, node->musts, lysc_must_free);
 
-    LY_ARRAY_FOR(node->uniques, u) {
-        LY_ARRAY_FREE(node->uniques[u]);
+    LYA_FOR(node->uniques, u) {
+        LYA_FREE(node->uniques[u]);
     }
-    LY_ARRAY_FREE(node->uniques);
+    LYA_FREE(node->uniques);
 
     LY_LIST_FOR_SAFE((struct lysc_node *)node->actions, child_next, child) {
         lysc_node_free_(ctx, child);
@@ -1310,7 +1309,7 @@ lysc_extension_free(const struct ly_ctx *ctx, struct lysc_ext *ext)
 void
 lys_module_free(const struct ly_ctx *ctx, struct lys_module *module, ly_bool remove_links)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (!module) {
         return;
@@ -1322,7 +1321,7 @@ lys_module_free(const struct ly_ctx *ctx, struct lys_module *module, ly_bool rem
     /* free identities */
     if (remove_links) {
         /* remove derived identity links */
-        LY_ARRAY_FOR(module->identities, u) {
+        LYA_FOR(module->identities, u) {
             lysc_ident_derived_unlink(&module->identities[u]);
         }
     }
@@ -1335,8 +1334,8 @@ lys_module_free(const struct ly_ctx *ctx, struct lys_module *module, ly_bool rem
     FREE_ARRAY(ctx, module->extensions, lysc_extension_free);
 
     FREE_ARRAY(ctx, module->submodules, lysc_submodule_free);
-    LY_ARRAY_FREE(module->augmented_by);
-    LY_ARRAY_FREE(module->deviated_by);
+    LYA_FREE(module->augmented_by);
+    LYA_FREE(module->deviated_by);
 
     lysdict_remove(ctx, module->name);
     lysdict_remove(ctx, module->revision);
@@ -1354,10 +1353,10 @@ lys_module_free(const struct ly_ctx *ctx, struct lys_module *module, ly_bool rem
 LIBYANG_API_DEF void
 lyplg_ext_pfree_instance_substatements(const struct ly_ctx *ctx, struct lysp_ext_substmt *substmts)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     ly_bool node_free;
 
-    LY_ARRAY_FOR(substmts, u) {
+    LYA_FOR(substmts, u) {
         if (!substmts[u].storage_p) {
             continue;
         }
@@ -1535,16 +1534,16 @@ lyplg_ext_pfree_instance_substatements(const struct ly_ctx *ctx, struct lysp_ext
         }
     }
 
-    LY_ARRAY_FREE(substmts);
+    LYA_FREE(substmts);
 }
 
 LIBYANG_API_DEF void
 lyplg_ext_cfree_instance_substatements(const struct ly_ctx *ctx, struct lysc_ext_substmt *substmts)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     ly_bool node_free;
 
-    LY_ARRAY_FOR(substmts, u) {
+    LYA_FOR(substmts, u) {
         if (!substmts[u].storage_p) {
             continue;
         }
@@ -1694,7 +1693,7 @@ lyplg_ext_cfree_instance_substatements(const struct ly_ctx *ctx, struct lysc_ext
         }
     }
 
-    LY_ARRAY_FREE(substmts);
+    LYA_FREE(substmts);
 }
 
 void

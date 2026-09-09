@@ -20,6 +20,7 @@
 #include "compat.h"
 #include "hash_table_internal.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "plugins_exts.h"
 #include "plugins_internal.h"
@@ -33,7 +34,7 @@
  * @return Size of @p ARRAY.
  */
 #define CTXS_SIZED_ARRAY(ARRAY) \
-        (ARRAY ? LY_CTXP_MEM_SIZE(sizeof(LY_ARRAY_COUNT_TYPE)) : 0) + LY_CTXP_MEM_SIZE(LY_ARRAY_COUNT(ARRAY) * sizeof *ARRAY)
+        (ARRAY ? LY_CTXP_MEM_SIZE(sizeof(LYA_COUNT_T)) : 0) + LY_CTXP_MEM_SIZE(LYA_COUNT(ARRAY) * sizeof *ARRAY)
 
 /**
  * @brief Print (serialize) a sized array.
@@ -44,7 +45,7 @@
  */
 #define CTXP_SIZED_ARRAY(ORIG_ARRAY, ARRAY, MEM) \
         if (ORIG_ARRAY) { \
-            LY_ARRAY_COUNT_TYPE count = LY_ARRAY_COUNT(ORIG_ARRAY); \
+            LYA_COUNT_T count = LYA_COUNT(ORIG_ARRAY); \
             memcpy(*MEM, &count, sizeof count); \
             *MEM = (char *)*MEM + LY_CTXP_MEM_SIZE(sizeof count); \
             \
@@ -91,13 +92,13 @@ ctxs_dict_strings(const struct ly_ht *ht, int *size)
 static void
 ctxs_exts(const struct lysc_ext_instance *exts, struct ly_ht *ht, int *size)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lyplg_ext *ext_plg;
 
     /* sized array */
     *size += CTXS_SIZED_ARRAY(exts);
 
-    LY_ARRAY_FOR(exts, u) {
+    LYA_FOR(exts, u) {
         ctxs_exts(exts[u].exts, ht, size);
 
         /* substmts */
@@ -113,10 +114,10 @@ ctxs_exts(const struct lysc_ext_instance *exts, struct ly_ht *ht, int *size)
 static void
 ctxs_prefixes(const struct lysc_prefix *prefixes, int *size)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     *size += CTXS_SIZED_ARRAY(prefixes);
-    LY_ARRAY_FOR(prefixes, u) {
+    LYA_FOR(prefixes, u) {
         /* string not in the dictionary */
         if (prefixes[u].prefix) {
             *size += LY_CTXP_MEM_SIZE(strlen(prefixes[u].prefix) + 1);
@@ -149,10 +150,10 @@ ctxs_expr(const struct lyxp_expr *exp, int *size)
 static void
 ctxs_musts(const struct lysc_must *musts, struct ly_ht *ht, int *size)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     *size += CTXS_SIZED_ARRAY(musts);
-    LY_ARRAY_FOR(musts, u) {
+    LYA_FOR(musts, u) {
         ctxs_expr(musts[u].cond, size);
         ctxs_prefixes(musts[u].prefixes, size);
         ctxs_exts(musts[u].exts, ht, size);
@@ -180,10 +181,10 @@ ctxs_when(const struct lysc_when *when, struct ly_ht *ht, int *size)
 static void
 ctxs_whens(const struct lysc_when **whens, struct ly_ht *ht, int *size)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     *size += CTXS_SIZED_ARRAY(whens);
-    LY_ARRAY_FOR(whens, u) {
+    LYA_FOR(whens, u) {
         ctxs_when(whens[u], ht, size);
     }
 }
@@ -205,10 +206,10 @@ static void
 ctxs_patterns(const struct lysc_pattern **patterns, struct ly_ht *ht, int *size)
 {
     uint32_t hash;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     *size += CTXS_SIZED_ARRAY(patterns);
-    LY_ARRAY_FOR(patterns, u) {
+    LYA_FOR(patterns, u) {
         /* ht check, make sure the structure is stored only once */
         hash = lyht_hash((const char *)&patterns[u], sizeof patterns[u]);
         if (lyht_insert(ht, (void *)patterns[u], hash, NULL) == LY_EEXIST) {
@@ -223,10 +224,10 @@ ctxs_patterns(const struct lysc_pattern **patterns, struct ly_ht *ht, int *size)
 static void
 ctxs_enums(const struct lysc_type_bitenum_item *enums, struct ly_ht *ht, int *size)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     *size += CTXS_SIZED_ARRAY(enums);
-    LY_ARRAY_FOR(enums, u) {
+    LYA_FOR(enums, u) {
         ctxs_exts(enums[u].exts, ht, size);
     }
 }
@@ -244,7 +245,7 @@ ctxs_type(const struct lysc_type *type, struct ly_ht *ht, int *size)
     const struct lysc_type_instanceid *type_instid;
     const struct lysc_type_union *type_union;
     const struct lysc_type_bin *type_bin;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     /* ht check, make sure the structure is stored only once */
     hash = lyht_hash((const char *)&type, sizeof type);
@@ -322,7 +323,7 @@ ctxs_type(const struct lysc_type *type, struct ly_ht *ht, int *size)
         *size += LY_CTXP_MEM_SIZE(sizeof *type_union);
 
         *size += CTXS_SIZED_ARRAY(type_union->types);
-        LY_ARRAY_FOR(type_union->types, u) {
+        LYA_FOR(type_union->types, u) {
             ctxs_type(type_union->types[u], ht, size);
         }
         break;
@@ -346,7 +347,7 @@ ctxs_node(const struct lysc_node *node, struct ly_ht *ht, int *size)
     const struct lysc_node_action_inout *inout;
     const struct lysc_node_notif *notif;
     const struct lysc_node *child;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     /* common members */
     ctxs_exts(node->exts, ht, size);
@@ -394,7 +395,7 @@ ctxs_node(const struct lysc_node *node, struct ly_ht *ht, int *size)
         ctxs_whens((const struct lysc_when **)llist->when, ht, size);
         ctxs_type(llist->type, ht, size);
         *size += CTXS_SIZED_ARRAY(llist->dflts);
-        LY_ARRAY_FOR(llist->dflts, u) {
+        LYA_FOR(llist->dflts, u) {
             ctxs_prefixes(llist->dflts[u].prefixes, size);
         }
         break;
@@ -414,9 +415,9 @@ ctxs_node(const struct lysc_node *node, struct ly_ht *ht, int *size)
             ctxs_node(child, ht, size);
         }
         *size += CTXS_SIZED_ARRAY(list->uniques);
-        LY_ARRAY_FOR(list->uniques, u) {
-            *size += LY_CTXP_MEM_SIZE(sizeof(LY_ARRAY_COUNT_TYPE)) +
-                    LY_CTXP_MEM_SIZE(LY_ARRAY_COUNT(list->uniques[u]) * sizeof **list->uniques);
+        LYA_FOR(list->uniques, u) {
+            *size += LY_CTXP_MEM_SIZE(sizeof(LYA_COUNT_T)) +
+                    LY_CTXP_MEM_SIZE(LYA_COUNT(list->uniques[u]) * sizeof **list->uniques);
         }
         break;
     case LYS_ANYXML:
@@ -499,12 +500,12 @@ ctxs_compiled(const struct lysc_module *compiled, struct ly_ht *ht, int *size)
 static void
 ctxs_extensions(const struct lysc_ext *extensions, struct ly_ht *ht, int *size)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     /* sized array */
     *size += CTXS_SIZED_ARRAY(extensions);
 
-    LY_ARRAY_FOR(extensions, u) {
+    LYA_FOR(extensions, u) {
         ctxs_exts(extensions[u].exts, ht, size);
     }
 }
@@ -512,12 +513,12 @@ ctxs_extensions(const struct lysc_ext *extensions, struct ly_ht *ht, int *size)
 static void
 ctxs_identities(const struct lysc_ident *identities, struct ly_ht *ht, int *size)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     /* sized array */
     *size += CTXS_SIZED_ARRAY(identities);
 
-    LY_ARRAY_FOR(identities, u) {
+    LYA_FOR(identities, u) {
         *size += CTXS_SIZED_ARRAY(identities[u].derived);
         ctxs_exts(identities[u].exts, ht, size);
     }
@@ -567,12 +568,12 @@ ly_ctx_compiled_size_context(const struct ly_ctx *ctx, struct ly_ht *addr_ht, in
 int
 ly_ctx_compiled_ext_stmts_storage_size(const struct lysc_ext_substmt *substmts, struct ly_ht *addr_ht)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     int size = 0;
     uint32_t hash;
     const struct lysc_node *node;
 
-    LY_ARRAY_FOR(substmts, u) {
+    LYA_FOR(substmts, u) {
         if (!substmts[u].storage_p) {
             /* nothing is compiled */
             continue;
@@ -742,7 +743,7 @@ static void
 ctxp_ext(const struct lysc_ext_instance *orig_ext, struct lysc_ext_instance *ext, struct ly_ht *addr_ht,
         struct ly_set *ptr_set, void **mem)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lyplg_ext *ext_plg;
 
     if (orig_ext->exts) {
@@ -758,7 +759,7 @@ ctxp_ext(const struct lysc_ext_instance *orig_ext, struct lysc_ext_instance *ext
 
     /* exts */
     CTXP_SIZED_ARRAY(orig_ext->exts, ext->exts, mem);
-    LY_ARRAY_FOR(orig_ext->exts, u) {
+    LYA_FOR(orig_ext->exts, u) {
         ctxp_ext(&orig_ext->exts[u], &ext->exts[u], addr_ht, ptr_set, mem);
     }
 
@@ -770,7 +771,7 @@ ctxp_ext(const struct lysc_ext_instance *orig_ext, struct lysc_ext_instance *ext
 
     /* substmts */
     CTXP_SIZED_ARRAY(orig_ext->substmts, ext->substmts, mem);
-    LY_ARRAY_FOR(orig_ext->substmts, u) {
+    LYA_FOR(orig_ext->substmts, u) {
         ext->substmts[u].stmt = orig_ext->substmts[u].stmt;
         ext->substmts[u].storage_p = NULL;
     }
@@ -847,7 +848,7 @@ static void
 ctxp_must(const struct lysc_must *orig_must, struct lysc_must *must, struct ly_ht *addr_ht, struct ly_set *ptr_set,
         void **mem)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (orig_must->exts) {
         /* may be referenced in the parent */
@@ -859,7 +860,7 @@ ctxp_must(const struct lysc_must *orig_must, struct lysc_must *must, struct ly_h
     ctxp_expr(orig_must->cond, must->cond, mem);
 
     CTXP_SIZED_ARRAY(orig_must->prefixes, must->prefixes, mem);
-    LY_ARRAY_FOR(orig_must->prefixes, u) {
+    LYA_FOR(orig_must->prefixes, u) {
         ctxp_prefix(&orig_must->prefixes[u], &must->prefixes[u], addr_ht, ptr_set, mem);
     }
 
@@ -869,7 +870,7 @@ ctxp_must(const struct lysc_must *orig_must, struct lysc_must *must, struct ly_h
     must->eapptag = ly_ctx_compiled_addr_ht_get(addr_ht, orig_must->eapptag, 0);
 
     CTXP_SIZED_ARRAY(orig_must->exts, must->exts, mem);
-    LY_ARRAY_FOR(orig_must->exts, u) {
+    LYA_FOR(orig_must->exts, u) {
         ctxp_ext(&orig_must->exts[u], &must->exts[u], addr_ht, ptr_set, mem);
     }
 }
@@ -878,7 +879,7 @@ static void
 ctxp_when(const struct lysc_when *orig_when, struct lysc_when **when, struct ly_ht *addr_ht, struct ly_set *ptr_set,
         void **mem)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lysc_when *w;
 
     /* may have already been printed */
@@ -902,7 +903,7 @@ ctxp_when(const struct lysc_when *orig_when, struct lysc_when **when, struct ly_
 
     w->context = ly_ctx_compiled_addr_ht_get(addr_ht, orig_when->context, 0);
     CTXP_SIZED_ARRAY(orig_when->prefixes, w->prefixes, mem);
-    LY_ARRAY_FOR(orig_when->prefixes, u) {
+    LYA_FOR(orig_when->prefixes, u) {
         ctxp_prefix(&orig_when->prefixes[u], &w->prefixes[u], addr_ht, ptr_set, mem);
     }
 
@@ -910,7 +911,7 @@ ctxp_when(const struct lysc_when *orig_when, struct lysc_when **when, struct ly_
     w->ref = ly_ctx_compiled_addr_ht_get(addr_ht, orig_when->ref, 0);
 
     CTXP_SIZED_ARRAY(orig_when->exts, w->exts, mem);
-    LY_ARRAY_FOR(orig_when->exts, u) {
+    LYA_FOR(orig_when->exts, u) {
         ctxp_ext(&orig_when->exts[u], &w->exts[u], addr_ht, ptr_set, mem);
     }
 
@@ -984,7 +985,7 @@ static void
 ctxp_range(const struct lysc_range *orig_range, struct lysc_range *range, struct ly_ht *addr_ht, struct ly_set *ptr_set,
         void **mem)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (orig_range->exts) {
         /* may be referenced in the parent */
@@ -992,7 +993,7 @@ ctxp_range(const struct lysc_range *orig_range, struct lysc_range *range, struct
     }
 
     CTXP_SIZED_ARRAY(orig_range->parts, range->parts, mem);
-    LY_ARRAY_FOR(orig_range->parts, u) {
+    LYA_FOR(orig_range->parts, u) {
         range->parts[u].min_64 = orig_range->parts[u].min_64;
         range->parts[u].max_64 = orig_range->parts[u].max_64;
     }
@@ -1003,7 +1004,7 @@ ctxp_range(const struct lysc_range *orig_range, struct lysc_range *range, struct
     range->eapptag = ly_ctx_compiled_addr_ht_get(addr_ht, orig_range->eapptag, 0);
 
     CTXP_SIZED_ARRAY(orig_range->exts, range->exts, mem);
-    LY_ARRAY_FOR(orig_range->exts, u) {
+    LYA_FOR(orig_range->exts, u) {
         ctxp_ext(&orig_range->exts[u], &range->exts[u], addr_ht, ptr_set, mem);
     }
 }
@@ -1012,7 +1013,7 @@ static void
 ctxp_pattern(const struct lysc_pattern *orig_pattern, struct lysc_pattern **pattern, struct ly_ht *addr_ht,
         struct ly_set *ptr_set, void **mem)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lysc_pattern *p;
 
     /* may have already been printed */
@@ -1038,7 +1039,7 @@ ctxp_pattern(const struct lysc_pattern *orig_pattern, struct lysc_pattern **patt
     p->eapptag = ly_ctx_compiled_addr_ht_get(addr_ht, orig_pattern->eapptag, 0);
 
     CTXP_SIZED_ARRAY(orig_pattern->exts, p->exts, mem);
-    LY_ARRAY_FOR(orig_pattern->exts, u) {
+    LYA_FOR(orig_pattern->exts, u) {
         ctxp_ext(&orig_pattern->exts[u], &p->exts[u], addr_ht, ptr_set, mem);
     }
 
@@ -1055,7 +1056,7 @@ static void
 ctxp_enum(const struct lysc_type_bitenum_item *orig_enum, struct lysc_type_bitenum_item *en, struct ly_ht *addr_ht,
         struct ly_set *ptr_set, void **mem)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (orig_enum->exts) {
         /* may be referenced in the parent */
@@ -1067,7 +1068,7 @@ ctxp_enum(const struct lysc_type_bitenum_item *orig_enum, struct lysc_type_biten
     en->ref = ly_ctx_compiled_addr_ht_get(addr_ht, orig_enum->ref, 0);
 
     CTXP_SIZED_ARRAY(orig_enum->exts, en->exts, mem);
-    LY_ARRAY_FOR(orig_enum->exts, u) {
+    LYA_FOR(orig_enum->exts, u) {
         ctxp_ext(&orig_enum->exts[u], &en->exts[u], addr_ht, ptr_set, mem);
     }
 
@@ -1098,7 +1099,7 @@ ctxp_type(const struct lysc_type *orig_type, struct lysc_type **type, struct ly_
     struct lysc_type_union *t_union;
     const struct lysc_type_bin *orig_type_bin;
     struct lysc_type_bin *t_bin;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     /* may have already been printed */
     t = ly_ctx_compiled_addr_ht_get(addr_ht, orig_type, 1);
@@ -1139,7 +1140,7 @@ ctxp_type(const struct lysc_type *orig_type, struct lysc_type **type, struct ly_
 
         CTXP_OPTIONAL_STRUCT(ctxp_range, orig_type_str->length, t_str->length, addr_ht, ptr_set, mem);
         CTXP_SIZED_ARRAY(orig_type_str->patterns, t_str->patterns, mem);
-        LY_ARRAY_FOR(orig_type_str->patterns, u) {
+        LYA_FOR(orig_type_str->patterns, u) {
             ctxp_pattern(orig_type_str->patterns[u], &t_str->patterns[u], addr_ht, ptr_set, mem);
         }
         break;
@@ -1151,7 +1152,7 @@ ctxp_type(const struct lysc_type *orig_type, struct lysc_type **type, struct ly_
         t_enum_bits = (struct lysc_type_enum *)t;
 
         CTXP_SIZED_ARRAY(orig_type_enum_bits->enums, t_enum_bits->enums, mem);
-        LY_ARRAY_FOR(orig_type_enum_bits->enums, u) {
+        LYA_FOR(orig_type_enum_bits->enums, u) {
             ctxp_enum(&orig_type_enum_bits->enums[u], &t_enum_bits->enums[u], addr_ht, ptr_set, mem);
         }
         break;
@@ -1177,7 +1178,7 @@ ctxp_type(const struct lysc_type *orig_type, struct lysc_type **type, struct ly_
         t_identref = (struct lysc_type_identityref *)t;
 
         CTXP_SIZED_ARRAY(orig_type_identref->bases, t_identref->bases, mem);
-        LY_ARRAY_FOR(orig_type_identref->bases, u) {
+        LYA_FOR(orig_type_identref->bases, u) {
             /* reference */
             t_identref->bases[u] = orig_type_identref->bases[u];
             ly_set_add(ptr_set, &t_identref->bases[u], 1, NULL);
@@ -1202,7 +1203,7 @@ ctxp_type(const struct lysc_type *orig_type, struct lysc_type **type, struct ly_
         ctxp_expr(orig_type_lref->path, t_lref->path, mem);
 
         CTXP_SIZED_ARRAY(orig_type_lref->prefixes, t_lref->prefixes, mem);
-        LY_ARRAY_FOR(orig_type_lref->prefixes, u) {
+        LYA_FOR(orig_type_lref->prefixes, u) {
             ctxp_prefix(&orig_type_lref->prefixes[u], &t_lref->prefixes[u], addr_ht, ptr_set, mem);
         }
 
@@ -1216,7 +1217,7 @@ ctxp_type(const struct lysc_type *orig_type, struct lysc_type **type, struct ly_
         t_union = (struct lysc_type_union *)t;
 
         CTXP_SIZED_ARRAY(orig_type_union->types, t_union->types, mem);
-        LY_ARRAY_FOR(orig_type_union->types, u) {
+        LYA_FOR(orig_type_union->types, u) {
             ctxp_type(orig_type_union->types[u], &t_union->types[u], addr_ht, ptr_set, mem);
         }
         break;
@@ -1229,7 +1230,7 @@ ctxp_type(const struct lysc_type *orig_type, struct lysc_type **type, struct ly_
     t->name = ly_ctx_compiled_addr_ht_get(addr_ht, orig_type->name, 0);
 
     CTXP_SIZED_ARRAY(orig_type->exts, t->exts, mem);
-    LY_ARRAY_FOR(orig_type->exts, u) {
+    LYA_FOR(orig_type->exts, u) {
         ctxp_ext(&orig_type->exts[u], &t->exts[u], addr_ht, ptr_set, mem);
     }
 
@@ -1248,12 +1249,12 @@ static void
 ctxp_dflt(const struct lysc_value *orig_dflt, struct lysc_value *dflt, struct ly_ht *addr_ht, struct ly_set *ptr_set,
         void **mem)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     dflt->str = ly_ctx_compiled_addr_ht_get(addr_ht, orig_dflt->str, 0);
 
     CTXP_SIZED_ARRAY(orig_dflt->prefixes, dflt->prefixes, mem);
-    LY_ARRAY_FOR(orig_dflt->prefixes, u) {
+    LYA_FOR(orig_dflt->prefixes, u) {
         ctxp_prefix(&orig_dflt->prefixes[u], &dflt->prefixes[u], addr_ht, ptr_set, mem);
     }
 }
@@ -1280,7 +1281,7 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
     struct lysc_node_action *act;
     const struct lysc_node_notif *orig_notif;
     struct lysc_node_notif *notif;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
     /*
      * common members
@@ -1304,7 +1305,7 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
 
     /* exts */
     CTXP_SIZED_ARRAY(orig_node->exts, node->exts, mem);
-    LY_ARRAY_FOR(orig_node->exts, u) {
+    LYA_FOR(orig_node->exts, u) {
         ctxp_ext(&orig_node->exts[u], &node->exts[u], addr_ht, ptr_set, mem);
     }
 
@@ -1321,13 +1322,13 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
 
         /* musts */
         CTXP_SIZED_ARRAY(orig_cont->musts, cont->musts, mem);
-        LY_ARRAY_FOR(orig_cont->musts, u) {
+        LYA_FOR(orig_cont->musts, u) {
             ctxp_must(&orig_cont->musts[u], &cont->musts[u], addr_ht, ptr_set, mem);
         }
 
         /* when */
         CTXP_SIZED_ARRAY(orig_cont->when, cont->when, mem);
-        LY_ARRAY_FOR(orig_cont->when, u) {
+        LYA_FOR(orig_cont->when, u) {
             ctxp_when(orig_cont->when[u], &cont->when[u], addr_ht, ptr_set, mem);
         }
 
@@ -1347,7 +1348,7 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
 
         /* when */
         CTXP_SIZED_ARRAY(orig_choic->when, choic->when, mem);
-        LY_ARRAY_FOR(orig_choic->when, u) {
+        LYA_FOR(orig_choic->when, u) {
             ctxp_when(orig_choic->when[u], &choic->when[u], addr_ht, ptr_set, mem);
         }
 
@@ -1361,13 +1362,13 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
 
         /* musts */
         CTXP_SIZED_ARRAY(orig_leaf->musts, leaf->musts, mem);
-        LY_ARRAY_FOR(orig_leaf->musts, u) {
+        LYA_FOR(orig_leaf->musts, u) {
             ctxp_must(&orig_leaf->musts[u], &leaf->musts[u], addr_ht, ptr_set, mem);
         }
 
         /* when */
         CTXP_SIZED_ARRAY(orig_leaf->when, leaf->when, mem);
-        LY_ARRAY_FOR(orig_leaf->when, u) {
+        LYA_FOR(orig_leaf->when, u) {
             ctxp_when(orig_leaf->when[u], &leaf->when[u], addr_ht, ptr_set, mem);
         }
 
@@ -1386,13 +1387,13 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
 
         /* musts */
         CTXP_SIZED_ARRAY(orig_llist->musts, llist->musts, mem);
-        LY_ARRAY_FOR(orig_llist->musts, u) {
+        LYA_FOR(orig_llist->musts, u) {
             ctxp_must(&orig_llist->musts[u], &llist->musts[u], addr_ht, ptr_set, mem);
         }
 
         /* when */
         CTXP_SIZED_ARRAY(orig_llist->when, llist->when, mem);
-        LY_ARRAY_FOR(orig_llist->when, u) {
+        LYA_FOR(orig_llist->when, u) {
             ctxp_when(orig_llist->when[u], &llist->when[u], addr_ht, ptr_set, mem);
         }
 
@@ -1404,7 +1405,7 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
 
         /* dflts */
         CTXP_SIZED_ARRAY(orig_llist->dflts, llist->dflts, mem);
-        LY_ARRAY_FOR(orig_llist->dflts, u) {
+        LYA_FOR(orig_llist->dflts, u) {
             ctxp_dflt(&orig_llist->dflts[u], &llist->dflts[u], addr_ht, ptr_set, mem);
         }
 
@@ -1421,13 +1422,13 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
 
         /* musts */
         CTXP_SIZED_ARRAY(orig_list->musts, list->musts, mem);
-        LY_ARRAY_FOR(orig_list->musts, u) {
+        LYA_FOR(orig_list->musts, u) {
             ctxp_must(&orig_list->musts[u], &list->musts[u], addr_ht, ptr_set, mem);
         }
 
         /* when */
         CTXP_SIZED_ARRAY(orig_list->when, list->when, mem);
-        LY_ARRAY_FOR(orig_list->when, u) {
+        LYA_FOR(orig_list->when, u) {
             ctxp_when(orig_list->when[u], &list->when[u], addr_ht, ptr_set, mem);
         }
 
@@ -1439,9 +1440,9 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
 
         /* uniques */
         CTXP_SIZED_ARRAY(orig_list->uniques, list->uniques, mem);
-        LY_ARRAY_FOR(orig_list->uniques, u) {
+        LYA_FOR(orig_list->uniques, u) {
             CTXP_SIZED_ARRAY(orig_list->uniques[u], list->uniques[u], mem);
-            LY_ARRAY_FOR(orig_list->uniques[u], v) {
+            LYA_FOR(orig_list->uniques[u], v) {
                 list->uniques[u][v] = ly_ctx_compiled_addr_ht_get(addr_ht, orig_list->uniques[u][v], 0);
             }
         }
@@ -1457,13 +1458,13 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
 
         /* musts */
         CTXP_SIZED_ARRAY(orig_any->musts, any->musts, mem);
-        LY_ARRAY_FOR(orig_any->musts, u) {
+        LYA_FOR(orig_any->musts, u) {
             ctxp_must(&orig_any->musts[u], &any->musts[u], addr_ht, ptr_set, mem);
         }
 
         /* when */
         CTXP_SIZED_ARRAY(orig_any->when, any->when, mem);
-        LY_ARRAY_FOR(orig_any->when, u) {
+        LYA_FOR(orig_any->when, u) {
             ctxp_when(orig_any->when[u], &any->when[u], addr_ht, ptr_set, mem);
         }
         break;
@@ -1476,7 +1477,7 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
 
         /* when */
         CTXP_SIZED_ARRAY(orig_cas->when, cas->when, mem);
-        LY_ARRAY_FOR(orig_cas->when, u) {
+        LYA_FOR(orig_cas->when, u) {
             ctxp_when(orig_cas->when[u], &cas->when[u], addr_ht, ptr_set, mem);
         }
         break;
@@ -1487,7 +1488,7 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
 
         /* when */
         CTXP_SIZED_ARRAY(orig_act->when, act->when, mem);
-        LY_ARRAY_FOR(orig_act->when, u) {
+        LYA_FOR(orig_act->when, u) {
             ctxp_when(orig_act->when[u], &act->when[u], addr_ht, ptr_set, mem);
         }
 
@@ -1502,7 +1503,7 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
 
         /* input musts */
         CTXP_SIZED_ARRAY(orig_act->input.musts, act->input.musts, mem);
-        LY_ARRAY_FOR(orig_act->input.musts, u) {
+        LYA_FOR(orig_act->input.musts, u) {
             ctxp_must(&orig_act->input.musts[u], &act->input.musts[u], addr_ht, ptr_set, mem);
         }
 
@@ -1517,7 +1518,7 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
 
         /* output musts */
         CTXP_SIZED_ARRAY(orig_act->output.musts, act->output.musts, mem);
-        LY_ARRAY_FOR(orig_act->output.musts, u) {
+        LYA_FOR(orig_act->output.musts, u) {
             ctxp_must(&orig_act->output.musts[u], &act->output.musts[u], addr_ht, ptr_set, mem);
         }
         break;
@@ -1530,13 +1531,13 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
 
         /* musts */
         CTXP_SIZED_ARRAY(orig_notif->musts, notif->musts, mem);
-        LY_ARRAY_FOR(orig_notif->musts, u) {
+        LYA_FOR(orig_notif->musts, u) {
             ctxp_must(&orig_notif->musts[u], &notif->musts[u], addr_ht, ptr_set, mem);
         }
 
         /* when */
         CTXP_SIZED_ARRAY(orig_notif->when, notif->when, mem);
-        LY_ARRAY_FOR(orig_notif->when, u) {
+        LYA_FOR(orig_notif->when, u) {
             ctxp_when(orig_notif->when[u], &notif->when[u], addr_ht, ptr_set, mem);
         }
         break;
@@ -1554,7 +1555,7 @@ static void
 ctxp_compiled(const struct lysc_module *orig_compiled, struct lysc_module *compiled, struct ly_ht *addr_ht,
         struct ly_set *ptr_set, void **mem)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (orig_compiled->exts) {
         /* may be referenced in the parent */
@@ -1566,7 +1567,7 @@ ctxp_compiled(const struct lysc_module *orig_compiled, struct lysc_module *compi
 
     /* features */
     CTXP_SIZED_ARRAY(orig_compiled->features, compiled->features, mem);
-    LY_ARRAY_FOR(orig_compiled->features, u) {
+    LYA_FOR(orig_compiled->features, u) {
         compiled->features[u] = ly_ctx_compiled_addr_ht_get(addr_ht, orig_compiled->features[u], 0);
     }
 
@@ -1581,7 +1582,7 @@ ctxp_compiled(const struct lysc_module *orig_compiled, struct lysc_module *compi
 
     /* exts */
     CTXP_SIZED_ARRAY(orig_compiled->exts, compiled->exts, mem);
-    LY_ARRAY_FOR(orig_compiled->exts, u) {
+    LYA_FOR(orig_compiled->exts, u) {
         ctxp_ext(&orig_compiled->exts[u], &compiled->exts[u], addr_ht, ptr_set, mem);
     }
 }
@@ -1590,13 +1591,13 @@ static void
 ctxp_extension(const struct lysc_ext *orig_extension, struct lysc_ext *extension, struct ly_ht *addr_ht,
         struct ly_set *ptr_set, void **mem)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     extension->name = ly_ctx_compiled_addr_ht_get(addr_ht, orig_extension->name, 0);
     extension->argname = ly_ctx_compiled_addr_ht_get(addr_ht, orig_extension->argname, 0);
 
     CTXP_SIZED_ARRAY(orig_extension->exts, extension->exts, mem);
-    LY_ARRAY_FOR(orig_extension->exts, u) {
+    LYA_FOR(orig_extension->exts, u) {
         ctxp_ext(&orig_extension->exts[u], &extension->exts[u], addr_ht, ptr_set, mem);
     }
 
@@ -1611,7 +1612,7 @@ static void
 ctxp_identity(const struct lysc_ident *orig_ident, struct lysc_ident *ident, struct ly_ht *addr_ht,
         struct ly_set *ptr_set, void **mem)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     ident->name = ly_ctx_compiled_addr_ht_get(addr_ht, orig_ident->name, 0);
     ident->dsc = ly_ctx_compiled_addr_ht_get(addr_ht, orig_ident->dsc, 0);
@@ -1620,13 +1621,13 @@ ctxp_identity(const struct lysc_ident *orig_ident, struct lysc_ident *ident, str
 
     /* reference */
     CTXP_SIZED_ARRAY(orig_ident->derived, ident->derived, mem);
-    LY_ARRAY_FOR(orig_ident->derived, u) {
+    LYA_FOR(orig_ident->derived, u) {
         ident->derived[u] = orig_ident->derived[u];
         ly_set_add(ptr_set, &ident->derived[u], 1, NULL);
     }
 
     CTXP_SIZED_ARRAY(orig_ident->exts, ident->exts, mem);
-    LY_ARRAY_FOR(orig_ident->exts, u) {
+    LYA_FOR(orig_ident->exts, u) {
         ctxp_ext(&orig_ident->exts[u], &ident->exts[u], addr_ht, ptr_set, mem);
     }
 
@@ -1645,7 +1646,7 @@ static void
 ctxp_module(const struct lys_module *orig_mod, struct lys_module *mod, struct ly_ht *addr_ht, struct ly_set *ptr_set,
         void **mem)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     /* ctx */
     mod->ctx = ly_ctx_compiled_addr_ht_get(addr_ht, orig_mod->ctx, 0);
@@ -1669,34 +1670,34 @@ ctxp_module(const struct lys_module *orig_mod, struct lys_module *mod, struct ly
 
     /* extensions, referenced */
     CTXP_SIZED_ARRAY(orig_mod->extensions, mod->extensions, mem);
-    LY_ARRAY_FOR(orig_mod->extensions, u) {
+    LYA_FOR(orig_mod->extensions, u) {
         ly_ctx_compiled_addr_ht_add(addr_ht, &orig_mod->extensions[u], &mod->extensions[u]);
         ctxp_extension(&orig_mod->extensions[u], &mod->extensions[u], addr_ht, ptr_set, mem);
     }
 
     /* identities, referenced */
     CTXP_SIZED_ARRAY(orig_mod->identities, mod->identities, mem);
-    LY_ARRAY_FOR(orig_mod->identities, u) {
+    LYA_FOR(orig_mod->identities, u) {
         ly_ctx_compiled_addr_ht_add(addr_ht, &orig_mod->identities[u], &mod->identities[u]);
         ctxp_identity(&orig_mod->identities[u], &mod->identities[u], addr_ht, ptr_set, mem);
     }
 
     /* submodules */
     CTXP_SIZED_ARRAY(orig_mod->submodules, mod->submodules, mem);
-    LY_ARRAY_FOR(orig_mod->submodules, u) {
+    LYA_FOR(orig_mod->submodules, u) {
         ctxp_submodule(&orig_mod->submodules[u], &mod->submodules[u], addr_ht);
     }
 
     /* augmented_by, reference */
     CTXP_SIZED_ARRAY(orig_mod->augmented_by, mod->augmented_by, mem);
-    LY_ARRAY_FOR(orig_mod->augmented_by, u) {
+    LYA_FOR(orig_mod->augmented_by, u) {
         mod->augmented_by[u] = orig_mod->augmented_by[u];
         ly_set_add(ptr_set, &mod->augmented_by[u], 1, NULL);
     }
 
     /* deviated_by, reference */
     CTXP_SIZED_ARRAY(orig_mod->deviated_by, mod->deviated_by, mem);
-    LY_ARRAY_FOR(orig_mod->deviated_by, u) {
+    LYA_FOR(orig_mod->deviated_by, u) {
         mod->deviated_by[u] = orig_mod->deviated_by[u];
         ly_set_add(ptr_set, &mod->deviated_by[u], 1, NULL);
     }
@@ -1765,10 +1766,10 @@ ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_subs
         struct ly_ht *addr_ht, struct ly_set *ptr_set, void **mem)
 {
     LY_ERR rc = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     const struct lysc_node *node;
 
-    LY_ARRAY_FOR(orig_substmts, u) {
+    LYA_FOR(orig_substmts, u) {
         assert(orig_substmts[u].stmt == substmts[u].stmt);
 
         if (!orig_substmts[u].storage_p) {
@@ -1821,7 +1822,7 @@ ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_subs
             struct lysc_type_bitenum_item *enums = *substmts[u].storage_p;
 
             CTXP_SIZED_ARRAY(orig_enums, enums, mem);
-            LY_ARRAY_FOR(orig_enums, v) {
+            LYA_FOR(orig_enums, v) {
                 ctxp_enum(&orig_enums[v], &enums[v], addr_ht, ptr_set, mem);
             }
             break;
@@ -1837,7 +1838,7 @@ ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_subs
             struct lysc_ext_instance *exts = *substmts[u].storage_p;
 
             CTXP_SIZED_ARRAY(orig_exts, exts, mem);
-            LY_ARRAY_FOR(orig_exts, v) {
+            LYA_FOR(orig_exts, v) {
                 ctxp_ext(&orig_exts[v], &exts[v], addr_ht, ptr_set, mem);
             }
             break;
@@ -1851,7 +1852,7 @@ ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_subs
             struct lysc_ident *identities = *substmts[u].storage_p;
 
             CTXP_SIZED_ARRAY(orig_identities, identities, mem);
-            LY_ARRAY_FOR(orig_identities, v) {
+            LYA_FOR(orig_identities, v) {
                 ctxp_identity(&orig_identities[v], &identities[v], addr_ht, ptr_set, mem);
             }
             break;
@@ -1871,7 +1872,7 @@ ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_subs
             struct lysc_must *musts = *substmts[u].storage_p;
 
             CTXP_SIZED_ARRAY(orig_musts, musts, mem);
-            LY_ARRAY_FOR(orig_musts, v) {
+            LYA_FOR(orig_musts, v) {
                 ctxp_must(&orig_musts[v], &musts[v], addr_ht, ptr_set, mem);
             }
             break;
@@ -1881,7 +1882,7 @@ ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_subs
             struct lysc_pattern **patterns = *substmts[u].storage_p;
 
             CTXP_SIZED_ARRAY(orig_patterns, patterns, mem);
-            LY_ARRAY_FOR(orig_patterns, v) {
+            LYA_FOR(orig_patterns, v) {
                 ctxp_pattern(orig_patterns[v], &patterns[v], addr_ht, ptr_set, mem);
             }
             break;

@@ -25,11 +25,10 @@
 #include <string.h>
 #include <time.h>
 
-#include "libyang.h"
-
 #include "compat.h"
+#include "dict.h"
 #include "ly_common.h"
-#include "plugins_internal.h" /* LY_TYPE_*_STR */
+#include "plugins_internal.h"
 
 /**
  * @page howtoDataLYB LYB Binary Format

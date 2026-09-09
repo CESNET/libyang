@@ -20,6 +20,7 @@
 #include <stdlib.h>
 
 #include "dict.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "parser_internal.h"
 #include "printer_internal.h"
@@ -27,7 +28,6 @@
 #include "schema_compile_amend.h"
 #include "schema_compile_node.h"
 #include "schema_features.h"
-#include "tree_edit.h"
 #include "tree_schema_internal.h"
 
 LIBYANG_API_DEF const struct lysp_module *
@@ -37,25 +37,10 @@ lyplg_ext_parse_get_cur_pmod(const struct lysp_ctx *pctx)
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_ext_parse_create_substmts(const struct lysp_ctx *pctx, struct lysp_ext_instance *ext, uint32_t size)
-{
-    LY_ARRAY_COUNT_TYPE *count_p;
-
-    /* allocate */
-    LY_ARRAY_CREATE_RET(lyplg_ext_parse_get_cur_pmod(pctx)->mod->ctx, ext->substmts, size, LY_EMEM);
-
-    /* set size information */
-    count_p = (LY_ARRAY_COUNT_TYPE *)ext->substmts - 1;
-    *count_p = size;
-
-    return LY_SUCCESS;
-}
-
-LIBYANG_API_DEF LY_ERR
 lyplg_ext_parse_extension_instance(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 {
     LY_ERR rc = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lysp_stmt *stmt;
 
     /* check for invalid substatements */
@@ -63,12 +48,12 @@ lyplg_ext_parse_extension_instance(struct lysp_ctx *pctx, struct lysp_ext_instan
         if (stmt->flags & (LYS_YIN_ATTR | LYS_YIN_ARGUMENT)) {
             continue;
         }
-        LY_ARRAY_FOR(ext->substmts, u) {
+        LYA_FOR(ext->substmts, u) {
             if (ext->substmts[u].stmt == stmt->kw) {
                 break;
             }
         }
-        if (u == LY_ARRAY_COUNT(ext->substmts)) {
+        if (u == LYA_COUNT(ext->substmts)) {
             LOGVAL_PARSER(pctx, LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s%s%s\" extension instance.",
                     stmt->stmt, ext->name, ext->argument ? " " : "", ext->argument ? ext->argument : "");
             rc = LY_EVALID;
@@ -77,7 +62,7 @@ lyplg_ext_parse_extension_instance(struct lysp_ctx *pctx, struct lysp_ext_instan
     }
 
     /* parse all the known statements */
-    LY_ARRAY_FOR(ext->substmts, u) {
+    LYA_FOR(ext->substmts, u) {
         LY_LIST_FOR(ext->child, stmt) {
             if (ext->substmts[u].stmt != stmt->kw) {
                 continue;
@@ -115,21 +100,6 @@ LIBYANG_API_DEF struct lysp_module *
 lyplg_ext_compile_get_pmod(const struct lysc_ctx *ctx)
 {
     return ctx->pmod;
-}
-
-LIBYANG_API_DEF LY_ERR
-lyplg_ext_compile_create_substmts(const struct lysc_ctx *ctx, struct lysc_ext_instance *ext, uint32_t size)
-{
-    LY_ARRAY_COUNT_TYPE *count_p;
-
-    /* allocate */
-    LY_ARRAY_CREATE_RET(lyplg_ext_compile_get_ctx(ctx), ext->substmts, size, LY_EMEM);
-
-    /* set size information */
-    count_p = (LY_ARRAY_COUNT_TYPE *)ext->substmts - 1;
-    *count_p = size;
-
-    return LY_SUCCESS;
 }
 
 /**
@@ -385,7 +355,7 @@ lyplg_ext_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext
         struct lysc_ext_instance *ext, struct lysc_node *parent)
 {
     LY_ERR rc = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     enum ly_stmt stmtp;
     void **storagep;
     struct ly_set storagep_compiled = {0};
@@ -395,7 +365,7 @@ lyplg_ext_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext
     /* note into the compile context that we are processing extension now */
     ctx->ext = ext;
 
-    LY_ARRAY_FOR(extp->substmts, u) {
+    LYA_FOR(extp->substmts, u) {
         stmtp = extp->substmts[u].stmt;
         storagep = extp->substmts[u].storage_p;
 
@@ -404,7 +374,7 @@ lyplg_ext_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext
             continue;
         }
 
-        LY_ARRAY_FOR(ext->substmts, v) {
+        LYA_FOR(ext->substmts, v) {
             if (stmtp != ext->substmts[v].stmt) {
                 continue;
             }
@@ -548,7 +518,7 @@ lyplg_ext_nodetype2stmt(uint16_t nodetype)
 LY_ERR
 lyplg_ext_get_storage_p(const struct lysc_ext_instance *ext, int stmt, void ***storage_pp)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     enum ly_stmt match = 0;
 
     *storage_pp = NULL;
@@ -558,7 +528,7 @@ lyplg_ext_get_storage_p(const struct lysc_ext_instance *ext, int stmt, void ***s
         match = stmt;
     }
 
-    LY_ARRAY_FOR(ext->substmts, u) {
+    LYA_FOR(ext->substmts, u) {
         if ((match && (ext->substmts[u].stmt == match)) || (!match && (ext->substmts[u].stmt & stmt))) {
             *storage_pp = ext->substmts[u].storage_p;
             return LY_SUCCESS;
@@ -590,7 +560,7 @@ lyplg_ext_get_storage(const struct lysc_ext_instance *ext, int stmt, uint32_t st
 LIBYANG_API_DEF LY_ERR
 lyplg_ext_parsed_get_storage(const struct lysc_ext_instance *ext, int stmt, uint32_t storage_size, const void **storage)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     const struct lysp_ext_instance *extp = NULL;
     const char *extp_name;
     enum ly_stmt match = 0;
@@ -599,7 +569,7 @@ lyplg_ext_parsed_get_storage(const struct lysc_ext_instance *ext, int stmt, uint
     LY_CHECK_ARG_RET(NULL, ext, ext->module->parsed, LY_EINVAL);
 
     /* find the parsed ext instance */
-    LY_ARRAY_FOR(ext->module->parsed->exts, u) {
+    LYA_FOR(ext->module->parsed->exts, u) {
         extp = &ext->module->parsed->exts[u];
         extp_name = strchr(extp->name, ':') + 1;
 
@@ -616,7 +586,7 @@ lyplg_ext_parsed_get_storage(const struct lysc_ext_instance *ext, int stmt, uint
     }
 
     /* get the substatement */
-    LY_ARRAY_FOR(extp->substmts, u) {
+    LYA_FOR(extp->substmts, u) {
         if ((match && (extp->substmts[u].stmt == match)) || (!match && (extp->substmts[u].stmt & stmt))) {
             s_p = extp->substmts[u].storage_p;
             break;

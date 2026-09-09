@@ -16,6 +16,7 @@
 
 #include <stdlib.h>
 
+#include "dict.h"
 #include "hash_table.h"
 
 static void

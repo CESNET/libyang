@@ -14,10 +14,8 @@
 
 /* LOCAL INCLUDE HEADERS */
 #include "libyang.h"
-#include "ly_common.h"
 #include "plugins_exts.h"
 #include "plugins_types.h"
-#include "tree_edit.h"
 
 int
 main(void)
@@ -29,7 +27,7 @@ main(void)
         int val;
         struct test_list *next;
     } *tl = NULL, *tl_item = NULL, *tl_next;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     const struct lysc_node *scnode;
     struct lyd_node *data = NULL, *next, *elem, *opaq = NULL;
     LY_ERR ret = LY_SUCCESS;
@@ -48,19 +46,19 @@ main(void)
         goto cleanup;
     }
 
-    /* tree_edit.h / tree.h */
-    LY_ARRAY_NEW_GOTO(ctx, sa, item, ret, cleanup);
-    LY_ARRAY_NEW_GOTO(ctx, sa, item, ret, cleanup);
-    LY_ARRAY_FOR(sa, int, item) {}
-    LY_ARRAY_FREE(sa);
+    /* ly_array.h */
+    LYA_ADD_ITEM(sa, item, ret = LY_EMEM; goto cleanup);
+    LYA_ADD_ITEM(sa, item, ret = LY_EMEM; goto cleanup);
+    LYA_FOR_EACH(sa, item) {}
+    LYA_FREE(sa);
     sa = NULL;
 
-    LY_ARRAY_CREATE_GOTO(ctx, sa, 2, ret, cleanup);
-    LY_ARRAY_INCREMENT(sa);
-    LY_ARRAY_INCREMENT(sa);
-    LY_ARRAY_FOR(sa, u) {}
-    LY_ARRAY_DECREMENT_FREE(sa);
-    LY_ARRAY_DECREMENT_FREE(sa);
+    LYA_PREALLOC(sa, 2, ret = LY_EMEM; goto cleanup);
+    LYA_INCREMENT(sa);
+    LYA_INCREMENT(sa);
+    LYA_FOR(sa, u) {}
+    LYA_DECREMENT_FREE(sa);
+    LYA_DECREMENT_FREE(sa);
 
     LY_LIST_FOR(tl, tl_item) {}
     LY_LIST_FOR_SAFE(tl, tl_next, tl_item) {}

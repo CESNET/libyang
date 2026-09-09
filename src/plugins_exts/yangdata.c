@@ -19,7 +19,7 @@
 #include <string.h>
 
 #include "compat.h"
-#include "libyang.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "plugins_exts.h"
 #include "plugins_types.h"
@@ -37,8 +37,7 @@ static void yangdata_cfree(const struct ly_ctx *ctx, struct lysc_ext_instance *e
 static LY_ERR
 yangdata_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 {
-    LY_ERR r;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lysp_module *pmod;
 
     /* yang-data can appear only at the top level of a YANG module or submodule */
@@ -51,7 +50,7 @@ yangdata_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     pmod = ext->parent;
 
     /* check for duplication */
-    LY_ARRAY_FOR(pmod->exts, u) {
+    LYA_FOR(pmod->exts, u) {
         if ((&pmod->exts[u] != ext) && (pmod->exts[u].name == ext->name) && !strcmp(pmod->exts[u].argument, ext->argument)) {
             /* duplication of the same yang-data extension in a single module */
             lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EVALID, "Extension %s is instantiated multiple times.", ext->name);
@@ -60,9 +59,8 @@ yangdata_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     }
 
     /* parse yang-data substatements */
-    if ((r = lyplg_ext_parse_create_substmts(pctx, ext, 3))) {
-        return r;
-    }
+    LYA_NEW(ext->substmts, 3,
+            lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EMEM, "Memory allocation failed (%s:%d).", __FILE__, __LINE__); return LY_EMEM);
 
     ext->substmts[0].stmt = LY_STMT_CONTAINER;
     ext->substmts[0].storage_p = (void **)&ext->parsed;
@@ -89,10 +87,9 @@ yangdata_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, st
     ly_bool valid = 1;
     uint32_t prev_options = *lyplg_ext_compile_get_options(cctx);
 
-    /* compile yangg-data substatements */
-    if ((r = lyplg_ext_compile_create_substmts(cctx, ext, 3))) {
-        return r;
-    }
+    /* compile yang-data substatements */
+    LYA_NEW(ext->substmts, 3,
+            lyplg_ext_compile_log(cctx, ext, LY_LLERR, LY_EMEM, "Memory allocation failed (%s:%d).", __FILE__, __LINE__); return LY_EMEM);
 
     ext->substmts[0].stmt = LY_STMT_CONTAINER;
     ext->substmts[0].storage_p = (void **)&ext->compiled;

@@ -14,9 +14,6 @@
 #define _UTEST_MAIN_
 #include "utests.h"
 
-#include "context.h"
-#include "in.h"
-
 static int
 get_dirs_count(const char * const *list)
 {
@@ -767,7 +764,7 @@ check_node_priv_parsed_not_set(struct lysc_node *node, void *UNUSED(data), ly_bo
 static void
 check_ext_instance_priv_parsed_is_set(struct lysc_ext_instance *ext)
 {
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     struct lysc_ext_substmt *substmts;
     struct lysc_node *cnode;
     const char **iter;
@@ -775,9 +772,9 @@ check_ext_instance_priv_parsed_is_set(struct lysc_ext_instance *ext)
         "tmp_cont", "lf", NULL
     };
 
-    LY_ARRAY_FOR(ext, u) {
+    LYA_FOR(ext, u) {
         substmts = ext[u].substmts;
-        LY_ARRAY_FOR(substmts, v) {
+        LYA_FOR(substmts, v) {
             if (substmts && substmts[v].storage_p && (substmts[v].stmt & LY_STMT_DATA_NODE_MASK)) {
                 cnode = *(struct lysc_node **)substmts[v].storage_p;
                 iter = check;
@@ -790,13 +787,13 @@ check_ext_instance_priv_parsed_is_set(struct lysc_ext_instance *ext)
 static void
 check_ext_instance_priv_parsed_not_set(struct lysc_ext_instance *ext)
 {
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     struct lysc_ext_substmt *substmts;
     struct lysc_node *cnode;
 
-    LY_ARRAY_FOR(ext, u) {
+    LYA_FOR(ext, u) {
         substmts = ext[u].substmts;
-        LY_ARRAY_FOR(substmts, v) {
+        LYA_FOR(substmts, v) {
             if (substmts && substmts[v].storage_p && (substmts[v].stmt & LY_STMT_DATA_NODE_MASK)) {
                 cnode = *(struct lysc_node **)substmts[v].storage_p;
                 if (cnode) {

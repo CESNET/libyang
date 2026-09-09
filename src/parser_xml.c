@@ -25,6 +25,7 @@
 #include "dict.h"
 #include "in_internal.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "parser_data.h"
 #include "parser_internal.h"
@@ -32,7 +33,6 @@
 #include "plugins_internal.h"
 #include "schema_compile_node.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"
@@ -96,7 +96,7 @@ lydxml_metadata(struct lyd_xml_ctx *lydctx, const struct lysc_node *sparent, con
     struct lys_module *mod;
     const char *name;
     size_t name_len;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     ly_bool filter_attrs = 0;
     struct lyxml_ctx *xmlctx = lydctx->xmlctx;
 
@@ -107,7 +107,7 @@ lydxml_metadata(struct lyd_xml_ctx *lydctx, const struct lysc_node *sparent, con
         /* ancient module that does not even use the extension */
         filter_attrs = 1;
     } else {
-        LY_ARRAY_FOR(sparent->exts, u) {
+        LYA_FOR(sparent->exts, u) {
             if (!strcmp(sparent->exts[u].def->name, "get-filter-element-attributes") &&
                     !strcmp(sparent->exts[u].def->module->name, "ietf-netconf")) {
                 filter_attrs = 1;

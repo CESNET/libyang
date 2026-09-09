@@ -185,7 +185,7 @@ get_arg_completion(const char *hint, const char **args, char ***matches, unsigne
 static void
 get_model_completion(const char *hint, char ***matches, unsigned int *match_count)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     uint32_t idx = 0;
     const struct lys_module *module;
 
@@ -197,7 +197,7 @@ get_model_completion(const char *hint, char ***matches, unsigned int *match_coun
             cmd_completion_add_match(module->name, matches, match_count);
         }
 
-        LY_ARRAY_FOR(module->parsed->includes, u) {
+        LYA_FOR(module->parsed->includes, u) {
             if (!strncmp(hint, module->parsed->includes[u].submodule->name, strlen(hint))) {
                 cmd_completion_add_match(module->parsed->includes[u].submodule->name, matches, match_count);
             }

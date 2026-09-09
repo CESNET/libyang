@@ -17,7 +17,7 @@
 
 #include <assert.h>
 #include <ctype.h>
-#include <stdint.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -27,6 +27,7 @@
 #include "dict.h"
 #include "hash_table.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "lyb.h"
 #include "metadata.h"
@@ -36,12 +37,11 @@
 #include "printer_data.h"
 #include "schema_compile_node.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data.h"
 #include "tree_data_internal.h"
-#include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "utils.h"
 #include "validation.h"
 #include "xml.h"
 #include "xpath.h"
@@ -216,7 +216,7 @@ lyd_node_child_p(struct lyd_node *node)
 LIBYANG_API_DEF LY_ERR
 lyxp_vars_set(struct lyxp_var **vars, const char *name, const char *value)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR rc = LY_SUCCESS;
     char *var_name = NULL, *var_value = NULL;
     struct lyxp_var *item;
 
@@ -235,10 +235,10 @@ lyxp_vars_set(struct lyxp_var **vars, const char *name, const char *value)
     } else {
         var_name = strdup(name);
         var_value = strdup(value);
-        LY_CHECK_ERR_GOTO(!var_name || !var_value, ret = LY_EMEM, error);
+        LY_CHECK_ERR_GOTO(!var_name || !var_value, rc = LY_EMEM, error);
 
         /* add new variable */
-        LY_ARRAY_NEW_GOTO(NULL, *vars, item, ret, error);
+        LYA_ADD_ITEM(*vars, item, LOGMEM(NULL); rc = LY_EMEM; goto error);
         item->name = var_name;
         item->value = var_value;
     }
@@ -248,24 +248,24 @@ lyxp_vars_set(struct lyxp_var **vars, const char *name, const char *value)
 error:
     free(var_name);
     free(var_value);
-    return ret;
+    return rc;
 }
 
 LIBYANG_API_DEF void
 lyxp_vars_free(struct lyxp_var *vars)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (!vars) {
         return;
     }
 
-    LY_ARRAY_FOR(vars, u) {
+    LYA_FOR(vars, u) {
         free(vars[u].name);
         free(vars[u].value);
     }
 
-    LY_ARRAY_FREE(vars);
+    LYA_FREE(vars);
 }
 
 LIBYANG_API_DEF struct lyd_node *
@@ -711,7 +711,7 @@ lyd_is_default(const struct lyd_node *node)
 {
     const struct lysc_node_leaf *leaf;
     const struct lysc_node_leaflist *llist;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (!(node->schema->nodetype & LYD_NODE_TERM)) {
         return 0;
@@ -733,7 +733,7 @@ lyd_is_default(const struct lyd_node *node)
             return 0;
         }
 
-        LY_ARRAY_FOR(llist->dflts, u) {
+        LYA_FOR(llist->dflts, u) {
             /* compare with each possible default value */
             if (!lysc_value_cmp(node->schema, node, &llist->dflts[u], lyd_get_value(node))) {
                 return 1;
@@ -1218,7 +1218,7 @@ ly_free_prefix_data(LY_VALUE_FORMAT format, void *prefix_data)
     struct ly_set *ns_list;
     struct lysc_prefix *prefixes;
     uint32_t i;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (!prefix_data) {
         return;
@@ -1236,10 +1236,10 @@ ly_free_prefix_data(LY_VALUE_FORMAT format, void *prefix_data)
         break;
     case LY_VALUE_SCHEMA_RESOLVED:
         prefixes = prefix_data;
-        LY_ARRAY_FOR(prefixes, u) {
+        LYA_FOR(prefixes, u) {
             free(prefixes[u].prefix);
         }
-        LY_ARRAY_FREE(prefixes);
+        LYA_FREE(prefixes);
         break;
     case LY_VALUE_CANON:
     case LY_VALUE_SCHEMA:
@@ -1259,7 +1259,7 @@ ly_dup_prefix_data(const struct ly_ctx *ctx, LY_VALUE_FORMAT format, const void 
     struct lysc_prefix *prefixes = NULL, *orig_pref;
     struct ly_set *ns_list, *orig_ns;
     uint32_t i;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     assert(!*prefix_data_p);
 
@@ -1270,16 +1270,16 @@ ly_dup_prefix_data(const struct ly_ctx *ctx, LY_VALUE_FORMAT format, const void 
     case LY_VALUE_SCHEMA_RESOLVED:
         /* copy all the value prefixes */
         orig_pref = (struct lysc_prefix *)prefix_data;
-        LY_ARRAY_CREATE_GOTO(ctx, prefixes, LY_ARRAY_COUNT(orig_pref), ret, cleanup);
+        LYA_PREALLOC(prefixes, LYA_COUNT(orig_pref), LOGMEM(ctx); ret = LY_EMEM; goto cleanup);
         *prefix_data_p = prefixes;
 
-        LY_ARRAY_FOR(orig_pref, u) {
+        LYA_FOR(orig_pref, u) {
             if (orig_pref[u].prefix) {
                 prefixes[u].prefix = strdup(orig_pref[u].prefix);
                 LY_CHECK_ERR_GOTO(!prefixes[u].prefix, LOGMEM(ctx); ret = LY_EMEM, cleanup);
             }
             prefixes[u].mod = orig_pref[u].mod;
-            LY_ARRAY_INCREMENT(prefixes);
+            LYA_INCREMENT(prefixes);
         }
         break;
     case LY_VALUE_XML:
@@ -1338,7 +1338,6 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const void *value, uint32_t value
         /* copy all referenced modules as prefix - module pairs */
         if (!*prefix_data_p) {
             /* new prefix data */
-            LY_ARRAY_CREATE_GOTO(ctx, prefixes, 0, ret, cleanup);
             *format_p = LY_VALUE_SCHEMA_RESOLVED;
             *prefix_data_p = prefixes;
         } else {
@@ -1348,7 +1347,7 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const void *value, uint32_t value
         }
 
         /* add current module for unprefixed values */
-        LY_ARRAY_NEW_GOTO(ctx, prefixes, val_pref, ret, cleanup);
+        LYA_ADD_ITEM(prefixes, val_pref, LOGMEM(ctx); ret = LY_EMEM; goto cleanup);
         *prefix_data_p = prefixes;
 
         val_pref->prefix = NULL;
@@ -1366,7 +1365,7 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const void *value, uint32_t value
                     if (mod) {
                         assert(*format_p == LY_VALUE_SCHEMA_RESOLVED);
                         /* store a new prefix - module pair */
-                        LY_ARRAY_NEW_GOTO(ctx, prefixes, val_pref, ret, cleanup);
+                        LYA_ADD_ITEM(prefixes, val_pref, LOGMEM(ctx); ret = LY_EMEM; goto cleanup);
                         *prefix_data_p = prefixes;
 
                         val_pref->prefix = strndup(value_iter, substr_len);

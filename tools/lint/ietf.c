@@ -154,7 +154,7 @@ check_xpath_string(struct ly_out *out, const char *xpath, const char *file_name,
 static void
 check_node_xpath(struct ly_out *out, const struct lysp_when *when, const struct lysp_restr *musts, const char *file_name, const char *node_name)
 {
-    LY_ARRAY_COUNT_TYPE i;
+    LYA_COUNT_T i;
 
     /* Check 'when' condition */
     if (when && when->cond) {
@@ -162,11 +162,9 @@ check_node_xpath(struct ly_out *out, const struct lysp_when *when, const struct 
     }
 
     /* Check all 'must' conditions */
-    if (musts) {
-        LY_ARRAY_FOR(musts, i) {
-            if (musts[i].arg.str) {
-                check_xpath_string(out, musts[i].arg.str, file_name, node_name, "must");
-            }
+    LYA_FOR(musts, i) {
+        if (musts[i].arg.str) {
+            check_xpath_string(out, musts[i].arg.str, file_name, node_name, "must");
         }
     }
 }
@@ -300,10 +298,10 @@ check_nodes_ietf(struct ly_out *out, const struct lysc_node *data, const char *f
 static void
 check_inner_defs(struct ly_out *out, const char *file_name, struct lysp_tpdf *typedefs, struct lysp_node_grp *groupings, const char *node_type_str, const char *node_name, int *found_2119)
 {
-    LY_ARRAY_COUNT_TYPE i;
+    LYA_COUNT_T i;
     struct lysp_node_grp *grp;
 
-    LY_ARRAY_FOR(typedefs, i) {
+    LYA_FOR(typedefs, i) {
         if (strlen(typedefs[i].name) > 64) {
             IETF_ERR(file_name, IETF_RFC_VERSION, "4.3", out, "identifier %s exceeds 64 characters", typedefs[i].name);
             rc = 1;
@@ -348,7 +346,7 @@ static void
 check_parsed_tree_ietf(struct ly_out *out, const struct lysp_node *node, const char *file_name, int *found_2119)
 {
     const struct lysp_node *elem;
-    LY_ARRAY_COUNT_TYPE i;
+    LYA_COUNT_T i;
 
     LY_LIST_FOR(node, elem) {
         if (strlen(elem->name) > 64) {
@@ -461,7 +459,7 @@ check_parsed_tree_ietf(struct ly_out *out, const struct lysp_node *node, const c
             }
 
             if (llist->type.enums) {
-                LY_ARRAY_FOR(llist->type.enums, i) {
+                LYA_FOR(llist->type.enums, i) {
                     if (strlen(llist->type.enums[i].name) > 64) {
                         IETF_ERR(file_name, IETF_RFC_VERSION, "4.3", out, "identifier %s exceeds 64 characters", llist->type.enums[i].name);
                         rc = 1;
@@ -474,7 +472,7 @@ check_parsed_tree_ietf(struct ly_out *out, const struct lysp_node *node, const c
                 }
             }
             if (llist->type.bits) {
-                LY_ARRAY_FOR(llist->type.bits, i) {
+                LYA_FOR(llist->type.bits, i) {
                     if (strlen(llist->type.bits[i].name) > 64) {
                         IETF_ERR(file_name, IETF_RFC_VERSION, "4.3", out, "identifier %s exceeds 64 characters", llist->type.bits[i].name);
                         rc = 1;
@@ -552,8 +550,8 @@ check_parsed_tree_ietf(struct ly_out *out, const struct lysp_node *node, const c
             const struct lysp_node_leaf *leaf = (struct lysp_node_leaf *)elem;
             const struct lysp_node_list *parent_list = (struct lysp_node_list *)elem->parent;
             const struct lysp_node *parent_node = elem->parent;
-            LY_ARRAY_COUNT_TYPE leaf_iff_count;
-            LY_ARRAY_COUNT_TYPE list_iff_count;
+            LYA_COUNT_T leaf_iff_count;
+            LYA_COUNT_T list_iff_count;
             int is_key = 0;
 
             check_node_xpath(out, leaf->when, leaf->musts, file_name, elem->name);
@@ -567,26 +565,32 @@ check_parsed_tree_ietf(struct ly_out *out, const struct lysp_node *node, const c
             }
 
             if ((elem->flags & LYS_CONFIG_R) && leaf->musts) {
-                IETF_WARN(file_name, IETF_RFC_VERSION, "4.5", out, "constraints ('must' statements) on state data should be avoided (leaf \"%s\")", leaf->name);
+                IETF_WARN(file_name, IETF_RFC_VERSION, "4.5", out,
+                        "constraints ('must' statements) on state data should be avoided (leaf \"%s\")", leaf->name);
                 rc = 1;
             }
 
             if (is_key) {
                 if (leaf->when) {
-                    IETF_WARN(file_name, IETF_RFC_VERSION, "4.5", out, "key leaf \"%s\" should not have a \"when\" statement", leaf->name);
+                    IETF_WARN(file_name, IETF_RFC_VERSION, "4.5", out,
+                            "key leaf \"%s\" should not have a \"when\" statement", leaf->name);
                     rc = 1;
                 }
 
-                leaf_iff_count = elem->iffeatures ? LY_ARRAY_COUNT(elem->iffeatures) : 0;
-                list_iff_count = parent_node->iffeatures ? LY_ARRAY_COUNT(parent_node->iffeatures) : 0;
+                leaf_iff_count = LYA_COUNT(elem->iffeatures);
+                list_iff_count = LYA_COUNT(parent_node->iffeatures);
 
                 if (leaf_iff_count != list_iff_count) {
-                    IETF_ERR(file_name, IETF_RFC_VERSION, "4.5", out, "key leaf \"%s\" must have the exact same \"if-feature\" statements as its parent list \"%s\"", leaf->name, parent_node->name);
+                    IETF_ERR(file_name, IETF_RFC_VERSION, "4.5", out,
+                            "key leaf \"%s\" must have the exact same \"if-feature\" statements as its parent list \"%s\"",
+                            leaf->name, parent_node->name);
                     rc = 1;
                 } else {
-                    for (LY_ARRAY_COUNT_TYPE i = 0; i < list_iff_count; i++) {
+                    for (LYA_COUNT_T i = 0; i < list_iff_count; i++) {
                         if (strcmp(elem->iffeatures[i].str, parent_node->iffeatures[i].str)) {
-                            IETF_ERR(file_name, IETF_RFC_VERSION, "4.5", out, "key leaf \"%s\" must have the exact same \"if-feature\" statements as its parent list \"%s\"", leaf->name, parent_node->name);
+                            IETF_ERR(file_name, IETF_RFC_VERSION, "4.5", out,
+                                    "key leaf \"%s\" must have the exact same \"if-feature\" statements as its parent list \"%s\"",
+                                    leaf->name, parent_node->name);
                             rc = 1;
                             break;
                         }
@@ -604,7 +608,7 @@ check_parsed_tree_ietf(struct ly_out *out, const struct lysp_node *node, const c
             }
 
             if (leaf->type.enums) {
-                LY_ARRAY_FOR(leaf->type.enums, i) {
+                LYA_FOR(leaf->type.enums, i) {
                     if (strlen(leaf->type.enums[i].name) > 64) {
                         IETF_ERR(file_name, IETF_RFC_VERSION, "4.3", out, "identifier %s exceeds 64 characters", leaf->type.enums[i].name);
                         rc = 1;
@@ -617,7 +621,7 @@ check_parsed_tree_ietf(struct ly_out *out, const struct lysp_node *node, const c
                 }
             }
             if (leaf->type.bits) {
-                LY_ARRAY_FOR(leaf->type.bits, i) {
+                LYA_FOR(leaf->type.bits, i) {
                     if (strlen(leaf->type.bits[i].name) > 64) {
                         IETF_ERR(file_name, IETF_RFC_VERSION, "4.3", out, "identifier %s exceeds 64 characters", leaf->type.bits[i].name);
                         rc = 1;
@@ -690,7 +694,7 @@ check_parsed_boilerplate(const char *name, const char *filepath, const char *dsc
     char *norm_dsc, *endptr;
     struct lysp_node_grp *grp;
     struct lysp_node_augment *aug;
-    LY_ARRAY_COUNT_TYPE i;
+    LYA_COUNT_T i;
     int rfc_valid = 0, tlp_valid = 0, is_simplified;
     long year;
 
@@ -718,7 +722,7 @@ check_parsed_boilerplate(const char *name, const char *filepath, const char *dsc
         IETF_ERR(file_name, IETF_RFC_VERSION, "4.8", out, "statement \"%s\" must have a \"revision\" substatement", type_name);
         rc = 1;
     } else {
-        LY_ARRAY_FOR(revs, i) {
+        LYA_FOR(revs, i) {
             if (!revs[i].ref) {
                 IETF_ERR(file_name, IETF_RFC_VERSION, "4.8", out, "statement \"revision\" %s must have a \"reference\" substatement", revs[i].date);
                 rc = 1;
@@ -814,7 +818,7 @@ check_parsed_boilerplate(const char *name, const char *filepath, const char *dsc
         }
     }
 
-    LY_ARRAY_FOR(exts, i) {
+    LYA_FOR(exts, i) {
         if (exts[i].flags & LYS_YINELEM_FALSE) {
             IETF_WARN(file_name, IETF_RFC_VERSION, "4.4", out, "statement \"yin-element\" is given with its default value \"false\"");
             rc = 1;
@@ -828,7 +832,7 @@ check_parsed_boilerplate(const char *name, const char *filepath, const char *dsc
         }
     }
 
-    LY_ARRAY_FOR(feats, i) {
+    LYA_FOR(feats, i) {
         if (strlen(feats[i].name) > 64) {
             IETF_ERR(file_name, IETF_RFC_VERSION, "4.3", out, "identifier %s exceeds 64 characters", feats[i].name);
             rc = 1;
@@ -842,7 +846,7 @@ check_parsed_boilerplate(const char *name, const char *filepath, const char *dsc
         }
     }
 
-    LY_ARRAY_FOR(idents, i) {
+    LYA_FOR(idents, i) {
         if (strlen(idents[i].name) > 64) {
             IETF_ERR(file_name, IETF_RFC_VERSION, "4.3", out, "identifier %s exceeds 64 characters", idents[i].name);
             rc = 1;
@@ -869,7 +873,7 @@ check_parsed_boilerplate(const char *name, const char *filepath, const char *dsc
         }
     }
 
-    LY_ARRAY_FOR(tpdfs, i) {
+    LYA_FOR(tpdfs, i) {
         if (strlen(tpdfs[i].name) > 64) {
             IETF_ERR(file_name, IETF_RFC_VERSION, "4.3", out, "identifier %s exceeds 64 characters", tpdfs[i].name);
             rc = 1;
@@ -923,7 +927,7 @@ check_ietf(const struct lys_module *mod, struct ly_out *out)
     const char *file_name = mod->filepath ? get_file_name(mod->filepath) : mod->name;
     const char *sub_file_name;
     char ns[256];
-    LY_ARRAY_COUNT_TYPE i;
+    LYA_COUNT_T i;
     int main_found_2119 = 0;
     struct lysp_submodule *sub;
 
@@ -947,7 +951,7 @@ check_ietf(const struct lys_module *mod, struct ly_out *out)
     }
 
     if (mod->parsed->imports) {
-        LY_ARRAY_FOR(mod->parsed->imports, i) {
+        LYA_FOR(mod->parsed->imports, i) {
             if (!strncmp(mod->parsed->imports[i].name, "ietf-", 5) || !strncmp(mod->parsed->imports[i].name, "iana-", 5)) {
                 if (!mod->parsed->imports[i].ref) {
                     IETF_WARN(file_name, IETF_RFC_VERSION, "4.7", out, "statement \"import\" for stable module \"%s\" should have a \"reference\" substatement", mod->parsed->imports[i].name);
@@ -964,7 +968,7 @@ check_ietf(const struct lys_module *mod, struct ly_out *out)
         }
     }
 
-    LY_ARRAY_FOR(mod->parsed->includes, i) {
+    LYA_FOR(mod->parsed->includes, i) {
         sub = mod->parsed->includes[i].submodule;
         sub_file_name = sub->filepath ? get_file_name(sub->filepath) : sub->name;
         int sub_found_2119 = 0;

@@ -23,7 +23,7 @@
 #include "ly_config.h"
 #include "plugins.h"
 #include "set.h"
-#include "tree.h"
+#include "utils.h"
 
 #ifdef __cplusplus
 extern "C" {

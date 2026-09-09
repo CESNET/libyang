@@ -162,9 +162,9 @@ handle_xml_default(struct ly_out *out, const struct lysc_node *node, int space_c
         struct lysc_node_leaflist *llist = (struct lysc_node_leaflist *)node;
 
         if (llist->dflts) {
-            LY_ARRAY_COUNT_TYPE i;
+            LYA_COUNT_T i;
 
-            LY_ARRAY_FOR(llist->dflts, i) {
+            LYA_FOR(llist->dflts, i) {
                 print_space(out, space_count);
                 if (node->parent && (node->module != node->parent->module)) {
                     ly_print(out, "<%s xmlns=\"%s\">%s</%s>\n", llist->name, node->module->ns, llist->dflts[i].str, llist->name);
@@ -352,11 +352,11 @@ handle_json_default(struct ly_out *out, const struct lysc_node *node, int space_
         struct lysc_node_leaflist *llist = (struct lysc_node_leaflist *)node;
 
         if (llist->dflts) {
-            LY_ARRAY_COUNT_TYPE i;
+            LYA_COUNT_T i;
 
             ly_print(out, " [\n");
 
-            LY_ARRAY_FOR(llist->dflts, i) {
+            LYA_FOR(llist->dflts, i) {
                 if (i == 0) {
                     print_space(out, space_count + SPACE_COUNT);
                 } else {

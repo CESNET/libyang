@@ -18,9 +18,11 @@
 
 #include <stdint.h>
 
+#include "ly_array.h"
 #include "ly_common.h"
 #include "set.h"
 #include "tree_schema.h"
+#include "utils.h"
 
 struct lysc_ctx;
 struct lys_glob_unres;
@@ -88,7 +90,7 @@ extern const char * const ly_devmod_list[];
  */
 #define CHECK_UNIQUENESS(CTX, ARRAY, MEMBER, STMT, IDENT) \
     if (ARRAY) { \
-        for (LY_ARRAY_COUNT_TYPE u_ = 0; u_ < LY_ARRAY_COUNT(ARRAY) - 1; ++u_) { \
+        for (LYA_COUNT_T u_ = 0; u_ < LYA_COUNT(ARRAY) - 1; ++u_) { \
             if (!strcmp((ARRAY)[u_].MEMBER, IDENT)) { \
                 LOGVAL_PARSER(CTX, LY_VCODE_DUPIDENT, IDENT, STMT); \
                 return LY_EVALID; \
@@ -538,7 +540,7 @@ LY_ERR lysp_ext_instance_resolve_argument(const struct ly_ctx *ctx, const struct
  * @param[in] substmt The statement the extension is supposed to belong to.
  * @result index in the ext array, LY_ARRAY_COUNT(ext) value if not present.
  */
-LY_ARRAY_COUNT_TYPE lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_COUNT_TYPE index, enum ly_stmt substmt);
+LYA_COUNT_T lysp_ext_instance_iter(struct lysp_ext_instance *ext, LYA_COUNT_T index, enum ly_stmt substmt);
 
 /**
  * @brief Stringify YANG built-in type.

@@ -174,6 +174,7 @@ set(headers
     src/dict.h
     src/in.h
     src/libyang.h
+    src/ly_array.h
     src/log.h
     src/out.h
     src/parser_data.h
@@ -185,9 +186,9 @@ set(headers
     src/printer_data.h
     src/printer_schema.h
     src/set.h
-    src/tree.h
     src/tree_data.h
-    src/tree_schema.h)
+    src/tree_schema.h
+    src/utils.h)
 
 set(internal_headers
     src/ly_common.h
@@ -207,7 +208,6 @@ set(internal_headers
     src/schema_features.h
     src/tree_data_internal.h
     src/tree_schema_internal.h
-    src/tree_edit.h
     src/validation.h
     src/xml.h
     src/xpath.h)

@@ -23,13 +23,12 @@
 #include "compat.h"
 #include "dict.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "plugins_types.h"
 #include "schema_compile.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data_internal.h"
-#include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 #include "xpath.h"
@@ -661,7 +660,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
             ++(*tok_idx);
 
             /* new predicate */
-            LY_ARRAY_NEW_GOTO(ctx, *predicates, p, rc, cleanup);
+            LYA_ADD_ITEM(*predicates, p, LOGMEM(ctx); rc = LY_EMEM; goto cleanup);
             p->key = key;
 
             /* '=' */
@@ -708,7 +707,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
         for (key = lysc_node_child(ctx_node); key && (key->flags & LYS_KEY); key = key->next) {
             ++key_count;
         }
-        if (LY_ARRAY_COUNT(*predicates) != key_count) {
+        if (LYA_COUNT(*predicates) != key_count) {
             /* names (keys) are unique - it was checked when parsing */
             LOGVAL_PATH(ctx, cur_node, ctx_node, LYVE_XPATH, "Predicate missing for a key of %s \"%s\" in path.",
                     lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
@@ -726,7 +725,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
         ++(*tok_idx);
 
         /* new predicate */
-        LY_ARRAY_NEW_GOTO(ctx, *predicates, p, rc, cleanup);
+        LYA_ADD_ITEM(*predicates, p, LOGMEM(ctx); rc = LY_EMEM; goto cleanup);
         p->type = LY_PATH_PREDTYPE_LEAFLIST;
 
         /* '=' */
@@ -769,7 +768,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
         }
 
         /* new predicate */
-        LY_ARRAY_NEW_GOTO(ctx, *predicates, p, rc, cleanup);
+        LYA_ADD_ITEM(*predicates, p, LOGMEM(ctx); rc = LY_EMEM; goto cleanup);
         p->type = LY_PATH_PREDTYPE_POSITION;
 
         /* syntax was already checked */
@@ -923,15 +922,15 @@ cleanup:
 static LY_ERR
 ly_path_dup_predicates(const struct ly_ctx *ctx, const struct ly_path_predicate *pred, struct ly_path_predicate **dup)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (!pred) {
         return LY_SUCCESS;
     }
 
-    LY_ARRAY_CREATE_RET(ctx, *dup, LY_ARRAY_COUNT(pred), LY_EMEM);
-    LY_ARRAY_FOR(pred, u) {
-        LY_ARRAY_INCREMENT(*dup);
+    LYA_PREALLOC(*dup, LYA_COUNT(pred), LOGMEM(ctx); return LY_EMEM);
+    LYA_FOR(pred, u) {
+        LYA_INCREMENT(*dup);
         (*dup)[u].type = pred->type;
 
         switch (pred[u].type) {
@@ -967,24 +966,24 @@ ly_path_dup_predicates(const struct ly_ctx *ctx, const struct ly_path_predicate 
 static LY_ERR
 ly_path_append(const struct ly_ctx *ctx, const struct ly_path *src, struct ly_path **dst)
 {
-    LY_ERR ret = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u;
+    LY_ERR rc = LY_SUCCESS;
+    LYA_COUNT_T u;
     struct ly_path *p;
 
     if (!src) {
         return LY_SUCCESS;
     }
 
-    LY_ARRAY_CREATE_RET(ctx, *dst, LY_ARRAY_COUNT(src), LY_EMEM);
-    LY_ARRAY_FOR(src, u) {
-        LY_ARRAY_NEW_GOTO(ctx, *dst, p, ret, cleanup);
+    LYA_PREALLOC(*dst, LYA_COUNT(src), LOGMEM(ctx); return LY_EMEM);
+    LYA_FOR(src, u) {
+        LYA_ADD_ITEM(*dst, p, LOGMEM(ctx); rc = LY_EMEM; goto cleanup);
         p->node = src[u].node;
         p->ext = src[u].ext;
-        LY_CHECK_GOTO(ret = ly_path_dup_predicates(ctx, src[u].predicates, &p->predicates), cleanup);
+        LY_CHECK_GOTO(rc = ly_path_dup_predicates(ctx, src[u].predicates, &p->predicates), cleanup);
     }
 
 cleanup:
-    return ret;
+    return rc;
 }
 
 /**
@@ -1015,12 +1014,12 @@ ly_path_compile_deref_type(const struct ly_ctx *ctx, const struct lysc_node *cur
     const struct lysc_type_union *union_type;
     const struct lysc_type_leafref *lref;
     uint32_t cur_tok_idx = *tok_idx;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (cur_type->basetype == LY_TYPE_UNION) {
         union_type = (const struct lysc_type_union *)cur_type;
         ret = LY_EVALID;
-        LY_ARRAY_FOR(union_type->types, u) {
+        LYA_FOR(union_type->types, u) {
             *tok_idx = cur_tok_idx;
             if (ly_path_compile_deref_type(ctx, cur_node, target_node, union_type->types[u], expr, oper, target, format,
                     prefix_data, 0, tok_idx, path) == LY_SUCCESS) {
@@ -1028,7 +1027,8 @@ ly_path_compile_deref_type(const struct ly_ctx *ctx, const struct lysc_node *cur
             }
         }
         if (log && ret) {
-            LOGVAL_PATH(ctx, cur_node, target_node, LYVE_XPATH, "Deref function target node \"%s\" is union type with no leafrefs.", target_node->name);
+            LOGVAL_PATH(ctx, cur_node, target_node, LYVE_XPATH,
+                    "Deref function target node \"%s\" is union type with no leafrefs.", target_node->name);
         }
         goto cleanup;
     } else if (cur_type->basetype != LY_TYPE_LEAFREF) {
@@ -1044,7 +1044,7 @@ ly_path_compile_deref_type(const struct ly_ctx *ctx, const struct lysc_node *cur
     /* compile dereferenced leafref expression and append it to the path */
     LY_CHECK_GOTO(ret = ly_path_compile_leafref(ctx, target_node, lref->path, oper, target, format, prefix_data,
             &path2), cleanup);
-    target_node = path2[LY_ARRAY_COUNT(path2) - 1].node;
+    target_node = path2[LYA_COUNT(path2) - 1].node;
     LY_CHECK_GOTO(ret = ly_path_append(ctx, path2, path), cleanup);
     ly_path_free(path2);
     path2 = NULL;
@@ -1131,7 +1131,7 @@ ly_path_compile_deref(const struct ly_ctx *ctx, const struct lysc_node *cur_node
     /* compile just deref arg, append it to the path and find dereferenced lref for next operations */
     LY_CHECK_GOTO(ret = ly_path_compile_leafref(ctx, ctx_node, &expr2, oper, target, format, prefix_data,
             &path2), cleanup);
-    node2 = path2[LY_ARRAY_COUNT(path2) - 1].node;
+    node2 = path2[LYA_COUNT(path2) - 1].node;
     if (node2 == ctx_node) {
         LOGVAL_PATH(ctx, cur_node, node2, LYVE_XPATH, "Deref function target node \"%s\" is node itself.",
                 node2->name);
@@ -1275,7 +1275,7 @@ _ly_path_compile(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, con
             /* nested path segment */
             is_abs = 0;
         }
-        LY_ARRAY_NEW_GOTO(ctx, *path, p, rc, cleanup);
+        LYA_ADD_ITEM(*path, p, LOGMEM(ctx); rc = LY_EMEM; goto cleanup);
         p->node = ctx_node;
         p->ext = ext;
         p->doc_root = is_abs;
@@ -1331,9 +1331,9 @@ ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node *ctx_no
 
 LY_ERR
 ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *ctx_node, const struct lyd_node *tree,
-        const struct lyxp_var *vars, ly_bool with_opaq, LY_ARRAY_COUNT_TYPE *path_idx, struct lyd_node **match)
+        const struct lyxp_var *vars, ly_bool with_opaq, LYA_COUNT_T *path_idx, struct lyd_node **match)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lyd_node *prev_node = NULL, *elem, *node = NULL, *target;
     uint64_t pos;
 
@@ -1347,7 +1347,7 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *ctx_node
         ctx_node = lyxp_node_first_doc_root_child(ctx_node, tree);
     }
 
-    LY_ARRAY_FOR(path, u) {
+    LYA_FOR(path, u) {
         if (path[u].predicates) {
             switch (path[u].predicates[0].type) {
             case LY_PATH_PREDTYPE_POSITION:
@@ -1460,15 +1460,15 @@ LY_ERR
 ly_path_dup(const struct ly_ctx *ctx, const struct ly_path *path, struct ly_path **dup)
 {
     LY_ERR ret = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (!path) {
         return LY_SUCCESS;
     }
 
-    LY_ARRAY_CREATE_RET(ctx, *dup, LY_ARRAY_COUNT(path), LY_EMEM);
-    LY_ARRAY_FOR(path, u) {
-        LY_ARRAY_INCREMENT(*dup);
+    LYA_PREALLOC(*dup, LYA_COUNT(path), LOGMEM(ctx); return LY_EMEM);
+    LYA_FOR(path, u) {
+        LYA_INCREMENT(*dup);
         (*dup)[u].node = path[u].node;
         (*dup)[u].ext = path[u].ext;
         LY_CHECK_RET(ret = ly_path_dup_predicates(ctx, path[u].predicates, &(*dup)[u].predicates), ret);
@@ -1481,13 +1481,13 @@ ly_path_dup(const struct ly_ctx *ctx, const struct ly_path *path, struct ly_path
 void
 ly_path_predicates_free(const struct ly_ctx *ctx, struct ly_path_predicate *predicates)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (!predicates) {
         return;
     }
 
-    LY_ARRAY_FOR(predicates, u) {
+    LYA_FOR(predicates, u) {
         switch (predicates[u].type) {
         case LY_PATH_PREDTYPE_POSITION:
             /* nothing to free */
@@ -1501,20 +1501,20 @@ ly_path_predicates_free(const struct ly_ctx *ctx, struct ly_path_predicate *pred
             break;
         }
     }
-    LY_ARRAY_FREE(predicates);
+    LYA_FREE(predicates);
 }
 
 void
 ly_path_free(struct ly_path *path)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (!path) {
         return;
     }
 
-    LY_ARRAY_FOR(path, u) {
+    LYA_FOR(path, u) {
         ly_path_predicates_free(path[u].node->module->ctx, path[u].predicates);
     }
-    LY_ARRAY_FREE(path);
+    LYA_FREE(path);
 }

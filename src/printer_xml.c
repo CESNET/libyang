@@ -21,6 +21,7 @@
 #include "context.h"
 #include "dict.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "out.h"
 #include "out_internal.h"
@@ -31,7 +32,6 @@
 #include "printer_data.h"
 #include "printer_internal.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data.h"
 #include "tree_schema.h"
 #include "xml.h"
@@ -196,7 +196,7 @@ xml_print_meta(struct xmlpr_ctx *pctx, const struct lyd_node *node)
     struct lyd_meta *meta;
     const struct lys_module *df_mod = NULL, *mod;
     struct ly_set ns_list = {0};
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     ly_bool dynamic, filter_attrs = 0;
     const char *value;
     uint32_t i;
@@ -219,7 +219,7 @@ xml_print_meta(struct xmlpr_ctx *pctx, const struct lyd_node *node)
     if (!strcmp(node->schema->module->name, "notifications")) {
         filter_attrs = 1;
     } else {
-        LY_ARRAY_FOR(node->schema->exts, u) {
+        LYA_FOR(node->schema->exts, u) {
             if (!strcmp(node->schema->exts[u].def->name, "get-filter-element-attributes") &&
                     !strcmp(node->schema->exts[u].def->module->name, "ietf-netconf")) {
                 filter_attrs = 1;

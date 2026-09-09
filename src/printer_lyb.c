@@ -15,7 +15,7 @@
 #include "lyb.h"
 
 #include <assert.h>
-#include <stdint.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +24,7 @@
 #include "context.h"
 #include "hash_table.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "out.h"
 #include "out_internal.h"
@@ -33,12 +34,11 @@
 #include "printer_data.h"
 #include "printer_internal.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data.h"
 #include "tree_data_internal.h"
-#include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "utils.h"
 #include "xml.h"
 
 static LY_ERR lyb_print_siblings(const struct lyd_node *node, ly_bool is_root, struct lyd_lyb_ctx *lybctx);
@@ -52,7 +52,7 @@ static void
 lyb_print_ctx_free(struct lyd_ctx *lydctx)
 {
     struct lyd_lyb_ctx *ctx = (struct lyd_lyb_ctx *)lydctx;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (!ctx) {
         return;
@@ -61,10 +61,10 @@ lyb_print_ctx_free(struct lyd_ctx *lydctx)
     lyd_ctx_free(lydctx);
 
     if (ctx->print_ctx) {
-        LY_ARRAY_FOR(ctx->print_ctx->sib_hts, u) {
+        LYA_FOR(ctx->print_ctx->sib_hts, u) {
             lyht_free(ctx->print_ctx->sib_hts[u].ht, NULL);
         }
-        LY_ARRAY_FREE(ctx->print_ctx->sib_hts);
+        LYA_FREE(ctx->print_ctx->sib_hts);
         free(ctx->print_ctx);
     }
 
@@ -609,7 +609,7 @@ lyb_print_module(const struct lys_module *mod, struct lylyb_print_ctx *lybctx)
     LY_ERR rc = LY_SUCCESS;
     uint16_t revision;
     int r;
-    LY_ARRAY_COUNT_TYPE i;
+    LYA_COUNT_T i;
 
     /* module name length and module name */
     LY_CHECK_GOTO(rc = lyb_write_string(mod->name, 0, lybctx), cleanup);
@@ -638,10 +638,10 @@ lyb_print_module(const struct lys_module *mod, struct lylyb_print_ctx *lybctx)
     LY_CHECK_GOTO(rc = lyb_write(&revision, 2 * 8, lybctx), cleanup);
 
     /* feature count */
-    LY_CHECK_GOTO(rc = lyb_write_count(LY_ARRAY_COUNT(mod->compiled->features), lybctx), cleanup);
+    LY_CHECK_GOTO(rc = lyb_write_count(LYA_COUNT(mod->compiled->features), lybctx), cleanup);
 
     /* features */
-    LY_ARRAY_FOR(mod->compiled->features, i) {
+    LYA_FOR(mod->compiled->features, i) {
         LY_CHECK_GOTO(rc = lyb_write_string(mod->compiled->features[i], 0, lybctx), cleanup);
     }
 
@@ -980,7 +980,7 @@ lyb_print_attributes(const struct lyd_node_opaq *node, struct lylyb_print_ctx *l
 static LY_ERR
 lyb_print_schema_hash(struct lysc_node *schema, struct ly_ht **sibling_ht, struct lylyb_print_ctx *lybctx)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     uint32_t i;
     LYB_HASH hash;
     struct lyd_lyb_sib_ht *sib_ht;
@@ -998,7 +998,7 @@ lyb_print_schema_hash(struct lysc_node *schema, struct ly_ht **sibling_ht, struc
         /* get first schema data sibling */
         first_sibling = (struct lysc_node *)lys_getnext(NULL, lysc_data_parent(schema), schema->module->compiled,
                 (schema->flags & LYS_IS_OUTPUT) ? LYS_GETNEXT_OUTPUT : 0);
-        LY_ARRAY_FOR(lybctx->sib_hts, u) {
+        LYA_FOR(lybctx->sib_hts, u) {
             if (lybctx->sib_hts[u].first_sibling == first_sibling) {
                 /* we have already created a hash table for these siblings */
                 *sibling_ht = lybctx->sib_hts[u].ht;
@@ -1011,7 +1011,7 @@ lyb_print_schema_hash(struct lysc_node *schema, struct ly_ht **sibling_ht, struc
             LY_CHECK_RET(lyb_hash_siblings(first_sibling, sibling_ht));
 
             /* and save it */
-            LY_ARRAY_NEW_RET(lybctx->ctx, lybctx->sib_hts, sib_ht, LY_EMEM);
+            LYA_ADD_ITEM(lybctx->sib_hts, sib_ht, LOGMEM(lybctx->ctx); return LY_EMEM);
 
             sib_ht->first_sibling = first_sibling;
             sib_ht->ht = *sibling_ht;

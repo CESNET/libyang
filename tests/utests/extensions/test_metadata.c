@@ -14,8 +14,6 @@
 #define _UTEST_MAIN_
 #include "utests.h"
 
-#include "libyang.h"
-
 static void
 test_yang(void **state)
 {
@@ -37,7 +35,7 @@ test_yang(void **state)
     const char *feats[] = {"f", NULL};
 
     UTEST_ADD_MODULE(data, LYS_IN_YANG, feats, &mod);
-    assert_int_equal(1, LY_ARRAY_COUNT(mod->compiled->exts));
+    assert_int_equal(1, LYA_COUNT(mod->compiled->exts));
     e = &mod->compiled->exts[0];
     assert_non_null(e->compiled);
     assert_non_null(e->substmts);
@@ -113,7 +111,7 @@ test_yin(void **state)
     const char *feats[] = {"f", NULL};
 
     UTEST_ADD_MODULE(data, LYS_IN_YIN, feats, &mod);
-    assert_int_equal(1, LY_ARRAY_COUNT(mod->compiled->exts));
+    assert_int_equal(1, LYA_COUNT(mod->compiled->exts));
     e = &mod->compiled->exts[0];
     assert_non_null(e->compiled);
     assert_non_null(e->substmts);

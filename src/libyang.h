@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief The main libyang public header.
  *
- * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 #ifndef LY_LIBYANG_H_
 #define LY_LIBYANG_H_
 
-#include <stdint.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -28,6 +26,7 @@ extern "C" {
 #include "dict.h"
 #include "in.h"
 #include "log.h"
+#include "ly_array.h"
 #include "metadata.h"
 #include "out.h"
 #include "parser_data.h"
@@ -35,9 +34,9 @@ extern "C" {
 #include "printer_data.h"
 #include "printer_schema.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data.h"
 #include "tree_schema.h"
+#include "utils.h"
 
 /**
  * @brief libyang v3 compatibility macros with v2.
@@ -49,7 +48,7 @@ extern "C" {
 #define ly_errpath(ctx) (ly_err_last(ctx) ? (ly_err_last(ctx)->data_path ? ly_err_last(ctx)->data_path : ly_err_last(ctx)->schema_path) : NULL)
 #define ly_vecode(ctx) (ly_err_last(ctx) ? ly_err_last(ctx)->vecode : 0)
 
-/*
+/**
  * The following headers are supposed to be included explicitly:
  * - hash_table.h
  * - metadata.h
@@ -81,7 +80,7 @@ extern "C" {
  *
  * @section about-license License
  *
- * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * (The BSD 3-Clause License)
  *
@@ -126,17 +125,16 @@ extern "C" {
  *
  * @section sizedarrays Sized Arrays
  *
- * The structure starts with 32bit number storing size of the array - the number of the items inside. The size is part of the
+ * The structure starts with number storing size of the array - the number of the items inside. The size is part of the
  * array to have it allocated together with the array itself only when it is needed. However, the pointers to the array always
- * points after the 32b number, so items can be accessed directly as for standard C arrays. Because of a known size (available
- * via ::LY_ARRAY_COUNT macro), it is not terminated by any special byte (sequence), so there is also no limitation for specific
+ * points after the number, so items can be accessed directly as for standard C arrays. Because of a known size (available
+ * via ::LYA_COUNT macro), it is not terminated by any special byte (sequence), so there is also no limitation for specific
  * content of the stored records (e.g. that first byte must not be NULL).
  *
  * The sized arrays must be carefully freed (which should be done anyway only internally), since pointers to the sized arrays used
  * in libyang structures, does not point to the beginning of the allocated space.
  *
- * - ::LY_ARRAY_COUNT
- * - ::LY_ARRAY_FOR
+ * This structure is available in public API (@ref arrays) for use in user applications.
  *
  * @section struct_lists Lists
  *
@@ -146,6 +144,9 @@ extern "C" {
  * The `prev` pointer is always filled. In case there is just a single item in the list, the `prev` pointer points to the
  * item itself. Otherwise, the `prev` pointer of the first item points to the last item of the list. In contrast, the
  * `next` pointer of the last item in the list is always NULL.
+ *
+ * - ::LY_LIST_FOR
+ * - ::LY_LIST_FOR_SAFE
  */
 
 /**

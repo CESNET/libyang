@@ -19,9 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "in.h"
-#include "tree.h"
-#include "tree_edit.h"
+#include "printer_schema.h"
 #include "tree_schema.h"
 
 #define TEST_1_CHECK_LYSP_EXT_INSTANCE(NODE, INSUBSTMT, ARGUMENT)\

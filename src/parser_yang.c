@@ -25,15 +25,15 @@
 #include "dict.h"
 #include "in_internal.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "parser_schema.h"
 #include "path.h"
 #include "set.h"
-#include "tree.h"
-#include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_free.h"
 #include "tree_schema_internal.h"
+#include "utils.h"
 
 struct lys_glob_unres;
 
@@ -999,7 +999,7 @@ cleanup:
  */
 static LY_ERR
 parse_ext(struct lysp_yang_ctx *ctx, const char *ext_name, size_t ext_name_len, const void *parent,
-        enum ly_stmt parent_stmt, LY_ARRAY_COUNT_TYPE parent_stmt_index, struct lysp_ext_instance **exts)
+        enum ly_stmt parent_stmt, LYA_COUNT_T parent_stmt_index, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -1007,7 +1007,7 @@ parse_ext(struct lysp_yang_ctx *ctx, const char *ext_name, size_t ext_name_len, 
     struct lysp_ext_instance *e;
     enum ly_stmt kw;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *exts, e, LY_EMEM);
+    LYA_ADD_ITEM(*exts, e, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     if (!ly_strnchr(ext_name, ':', ext_name_len)) {
         LOGVAL_PARSER(ctx, LYVE_SYNTAX, "Extension instance \"%.*s\" without the mandatory prefix.",
@@ -1272,13 +1272,13 @@ parse_include(struct lysp_yang_ctx *ctx, const char *module_name, struct lysp_in
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_include *inc;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *includes, inc, LY_EMEM);
+    LYA_ADD_ITEM(*includes, inc, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*includes, u) {
-        LY_ARRAY_FOR((*includes)[u].exts, v) {
+    LYA_FOR(*includes, u) {
+        LYA_FOR((*includes)[u].exts, v) {
             (*includes)[u].exts[v].parent = &(*includes)[u];
         }
     }
@@ -1338,13 +1338,13 @@ parse_import(struct lysp_yang_ctx *ctx, const char *module_prefix, struct lysp_i
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_import *imp;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *imports, imp, LY_EVALID);
+    LYA_ADD_ITEM(*imports, imp, LOGMEM(PARSER_CTX(ctx)); return LY_EVALID);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*imports, u) {
-        LY_ARRAY_FOR((*imports)[u].exts, v) {
+    LYA_FOR(*imports, u) {
+        LYA_FOR((*imports)[u].exts, v) {
             (*imports)[u].exts[v].parent = &(*imports)[u];
         }
     }
@@ -1402,13 +1402,13 @@ parse_revision(struct lysp_yang_ctx *ctx, struct lysp_revision **revs)
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_revision *rev;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *revs, rev, LY_EMEM);
+    LYA_ADD_ITEM(*revs, rev, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*revs, u) {
-        LY_ARRAY_FOR((*revs)[u].exts, v) {
+    LYA_FOR(*revs, u) {
+        LYA_FOR((*revs)[u].exts, v) {
             (*revs)[u].exts[v].parent = &(*revs)[u];
         }
     }
@@ -1469,7 +1469,7 @@ parse_text_fields(struct lysp_yang_ctx *ctx, enum ly_stmt parent_stmt, const cha
     enum ly_stmt kw;
 
     /* allocate new pointer */
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *texts, item, LY_EMEM);
+    LYA_ADD_ITEM(*texts, item, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, arg, NULL, &word, &buf, &word_len));
@@ -1478,7 +1478,7 @@ parse_text_fields(struct lysp_yang_ctx *ctx, enum ly_stmt parent_stmt, const cha
     YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(parse_ext(ctx, word, word_len, *texts, parent_stmt, LY_ARRAY_COUNT(*texts) - 1, exts));
+            LY_CHECK_RET(parse_ext(ctx, word, word_len, *texts, parent_stmt, LYA_COUNT(*texts) - 1, exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, lyplg_ext_stmt2str(kw), lyplg_ext_stmt2str(parent_stmt));
@@ -1512,7 +1512,7 @@ parse_qnames(struct lysp_yang_ctx *ctx, enum ly_stmt parent_stmt, struct lysp_qn
     enum ly_stmt kw;
 
     /* allocate new pointer */
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *qnames, item, LY_EMEM);
+    LYA_ADD_ITEM(*qnames, item, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, arg, &item->flags, &word, &buf, &word_len));
@@ -1522,7 +1522,7 @@ parse_qnames(struct lysp_yang_ctx *ctx, enum ly_stmt parent_stmt, struct lysp_qn
     YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(parse_ext(ctx, word, word_len, *qnames, parent_stmt, LY_ARRAY_COUNT(*qnames) - 1, exts));
+            LY_CHECK_RET(parse_ext(ctx, word, word_len, *qnames, parent_stmt, LYA_COUNT(*qnames) - 1, exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, lyplg_ext_stmt2str(kw), lyplg_ext_stmt2str(parent_stmt));
@@ -1700,13 +1700,13 @@ static LY_ERR
 parse_restrs(struct lysp_yang_ctx *ctx, enum ly_stmt restr_kw, struct lysp_restr **restrs)
 {
     struct lysp_restr *restr;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *restrs, restr, LY_EMEM);
+    LYA_ADD_ITEM(*restrs, restr, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*restrs, u) {
-        LY_ARRAY_FOR((*restrs)[u].exts, v) {
+    LYA_FOR(*restrs, u) {
+        LYA_FOR((*restrs)[u].exts, v) {
             (*restrs)[u].exts[v].parent = &(*restrs)[u];
         }
     }
@@ -1998,13 +1998,13 @@ parse_type_enum(struct lysp_yang_ctx *ctx, enum ly_stmt enum_kw, struct lysp_typ
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_type_enum *enm;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(*enums, enm, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*enums, u) {
-        LY_ARRAY_FOR((*enums)[u].exts, v) {
+    LYA_FOR(*enums, u) {
+        LYA_FOR((*enums)[u].exts, v) {
             (*enums)[u].exts[v].parent = &(*enums)[u];
         }
     }
@@ -2245,13 +2245,13 @@ parse_type_pattern(struct lysp_yang_ctx *ctx, struct lysp_restr **patterns)
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_restr *restr;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *patterns, restr, LY_EMEM);
+    LYA_ADD_ITEM(*patterns, restr, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*patterns, u) {
-        LY_ARRAY_FOR((*patterns)[u].exts, v) {
+    LYA_FOR(*patterns, u) {
+        LYA_FOR((*patterns)[u].exts, v) {
             (*patterns)[u].exts[v].parent = &(*patterns)[u];
         }
     }
@@ -2323,7 +2323,7 @@ parse_type(struct lysp_yang_ctx *ctx, struct lysp_type *type)
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_type *nest_type;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
     if (type->name) {
         LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, "type");
@@ -2406,10 +2406,10 @@ parse_type(struct lysp_yang_ctx *ctx, struct lysp_type *type)
             /* LYS_SET_REQINST checked and set inside parse_type_reqinstance() */
             break;
         case LY_STMT_TYPE:
-            LY_ARRAY_NEW_RET(PARSER_CTX(ctx), type->types, nest_type, LY_EMEM);
+            LYA_ADD_ITEM(type->types, nest_type, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
             /* revalidate the backward parent pointers from extensions */
-            LY_ARRAY_FOR(type->types, u) {
-                LY_ARRAY_FOR((type->types)[u].exts, v) {
+            LYA_FOR(type->types, u) {
+                LYA_FOR((type->types)[u].exts, v) {
                     (type->types)[u].exts[v].parent = &(type->types)[u];
                 }
             }
@@ -2808,13 +2808,13 @@ parse_refine(struct lysp_yang_ctx *ctx, struct lysp_refine **refines)
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_refine *rf;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *refines, rf, LY_EMEM);
+    LYA_ADD_ITEM(*refines, rf, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*refines, u) {
-        LY_ARRAY_FOR((*refines)[u].exts, v) {
+    LYA_FOR(*refines, u) {
+        LYA_FOR((*refines)[u].exts, v) {
             (*refines)[u].exts[v].parent = &(*refines)[u];
         }
     }
@@ -2886,16 +2886,16 @@ parse_typedef(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_t
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_tpdf *tpdf;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *typedefs, tpdf, LY_EMEM);
+    LYA_ADD_ITEM(*typedefs, tpdf, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*typedefs, u) {
-        LY_ARRAY_FOR((*typedefs)[u].exts, v) {
+    LYA_FOR(*typedefs, u) {
+        LYA_FOR((*typedefs)[u].exts, v) {
             (*typedefs)[u].exts[v].parent = &(*typedefs)[u];
         }
-        LY_ARRAY_FOR((*typedefs)[u].type.exts, v) {
+        LYA_FOR((*typedefs)[u].type.exts, v) {
             (*typedefs)[u].type.exts[v].parent = &(*typedefs)[u].type;
         }
     }
@@ -3971,13 +3971,13 @@ parse_extension(struct lysp_yang_ctx *ctx, struct lysp_ext **extensions)
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_ext *ex;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *extensions, ex, LY_EMEM);
+    LYA_ADD_ITEM(*extensions, ex, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*extensions, u) {
-        LY_ARRAY_FOR((*extensions)[u].exts, v) {
+    LYA_FOR(*extensions, u) {
+        LYA_FOR((*extensions)[u].exts, v) {
             (*extensions)[u].exts[v].parent = &(*extensions)[u];
         }
     }
@@ -4240,7 +4240,7 @@ cleanup:
         free(d);
     } else {
         /* insert into siblings */
-        LY_LIST_INSERT(deviates, d, next);
+        lysp_parser_dev_insert(deviates, d);
     }
     return ret;
 }
@@ -4260,13 +4260,13 @@ parse_deviation(struct lysp_yang_ctx *ctx, struct lysp_deviation **deviations)
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_deviation *dev;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *deviations, dev, LY_EMEM);
+    LYA_ADD_ITEM(*deviations, dev, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*deviations, u) {
-        LY_ARRAY_FOR((*deviations)[u].exts, v) {
+    LYA_FOR(*deviations, u) {
+        LYA_FOR((*deviations)[u].exts, v) {
             (*deviations)[u].exts[v].parent = &(*deviations)[u];
         }
     }
@@ -4310,7 +4310,7 @@ parse_deviation(struct lysp_yang_ctx *ctx, struct lysp_deviation **deviations)
 cleanup:
     if (ret) {
         lysp_deviation_free(PARSER_CTX(ctx), dev);
-        LY_ARRAY_DECREMENT_FREE(*deviations);
+        LYA_DECREMENT_FREE(*deviations);
     }
     return ret;
 }
@@ -4330,13 +4330,13 @@ parse_feature(struct lysp_yang_ctx *ctx, struct lysp_feature **features)
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_feature *feat;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *features, feat, LY_EMEM);
+    LYA_ADD_ITEM(*features, feat, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*features, u) {
-        LY_ARRAY_FOR((*features)[u].exts, v) {
+    LYA_FOR(*features, u) {
+        LYA_FOR((*features)[u].exts, v) {
             (*features)[u].exts[v].parent = &(*features)[u];
         }
     }
@@ -4388,13 +4388,13 @@ parse_identity(struct lysp_yang_ctx *ctx, struct lysp_ident **identities)
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_ident *ident;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *identities, ident, LY_EMEM);
+    LYA_ADD_ITEM(*identities, ident, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*identities, u) {
-        LY_ARRAY_FOR((*identities)[u].exts, v) {
+    LYA_FOR(*identities, u) {
+        LYA_FOR((*identities)[u].exts, v) {
             (*identities)[u].exts[v].parent = &(*identities)[u];
         }
     }

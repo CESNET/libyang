@@ -4,7 +4,7 @@
  * @author Michal Vasko
  * @brief Built-in union type plugin.
  *
- * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -18,17 +18,16 @@
 #include "plugins_types.h"
 
 #include <assert.h>
-#include <stdint.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "libyang.h"
-
-/* additional internal headers for some useful simple macros */
 #include "compat.h"
+#include "dict.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "lyb.h"
-#include "plugins_internal.h" /* LY_TYPE_*_STR */
+#include "plugins_internal.h"
 
 /**
  * @page howtoDataLYB LYB Binary Format
@@ -108,10 +107,10 @@ lyb_union_validate(const void *lyb_data, uint64_t lyb_data_size_bits, const stru
     /* get index in correct byte order */
     memcpy(&type_idx, lyb_data, LYPLG_UNION_TYPE_IDX_SIZE);
     type_idx = le32toh(type_idx);
-    if (type_idx >= LY_ARRAY_COUNT(type_u->types)) {
+    if (type_idx >= LYA_COUNT(type_u->types)) {
         return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
-                "Invalid LYB union type index %" PRIu32 " (type count %" LY_PRI_ARRAY_COUNT_TYPE ").",
-                type_idx, LY_ARRAY_COUNT(type_u->types));
+                "Invalid LYB union type index %" PRIu32 " (type count %" LYA_PRI_COUNT_T ").",
+                type_idx, LYA_COUNT(type_u->types));
     }
 
     return LY_SUCCESS;
@@ -325,7 +324,7 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
         uint32_t *type_idx, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct ly_err_item **errs = NULL, *e;
     uint32_t *prev_lo, temp_lo = 0;
     char *msg = NULL, *err_app_tag = NULL;
@@ -336,14 +335,14 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
     *err = NULL;
 
     /* alloc errors */
-    errs = calloc(LY_ARRAY_COUNT(type_u->types), sizeof *errs);
+    errs = calloc(LYA_COUNT(type_u->types), sizeof *errs);
     LY_CHECK_RET(!errs, LY_EMEM);
 
     /* turn logging temporarily off */
     prev_lo = ly_temp_log_options(&temp_lo);
 
     /* use the first usable subtype to store the value */
-    for (u = 0; u < LY_ARRAY_COUNT(type_u->types); ++u) {
+    for (u = 0; u < LYA_COUNT(type_u->types); ++u) {
         ret = union_store_type(ctx, type_u, u, subvalue, options, validate_tree, ctx_node, tree, unres, &e);
         if ((ret == LY_SUCCESS) || (ret == LY_EINCOMPLETE)) {
             break;
@@ -352,7 +351,7 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
         errs[u] = e;
     }
 
-    if (u == LY_ARRAY_COUNT(type_u->types)) {
+    if (u == LYA_COUNT(type_u->types)) {
         /* create the full error */
         if (subvalue->format == LY_VALUE_LYB) {
             msg_len = asprintf(&msg, "Invalid LYB union value - no matching subtype found:\n");
@@ -365,7 +364,7 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
             /* for further actions in function msg_len is just 0 */
             msg_len = 0;
         }
-        for (u = 0; u < LY_ARRAY_COUNT(type_u->types); ++u) {
+        for (u = 0; u < LYA_COUNT(type_u->types); ++u) {
             if (!errs[u]) {
                 /* no error for some reason */
                 continue;
@@ -400,7 +399,7 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
     }
 
 cleanup:
-    for (u = 0; u < LY_ARRAY_COUNT(type_u->types); ++u) {
+    for (u = 0; u < LYA_COUNT(type_u->types); ++u) {
         ly_err_free(errs[u]);
     }
     free(errs);
@@ -586,7 +585,7 @@ static int
 lyplg_type_sort_union(const struct ly_ctx *ctx, const struct lyd_value *val1, const struct lyd_value *val2)
 {
     int rc;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lysc_type **types, *type;
 
     if (val1->subvalue->value.realtype == val2->subvalue->value.realtype) {
@@ -597,7 +596,7 @@ lyplg_type_sort_union(const struct ly_ctx *ctx, const struct lyd_value *val1, co
     /* compare according to the order of types */
     rc = 0;
     types = ((struct lysc_type_union *)val1->realtype)->types;
-    LY_ARRAY_FOR(types, u) {
+    LYA_FOR(types, u) {
         if (types[u]->basetype == LY_TYPE_LEAFREF) {
             type = ((struct lysc_type_leafref *)types[u])->realtype;
         } else {

@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "compat.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "out_internal.h"
 #include "plugins_exts.h"
@@ -519,7 +520,7 @@ struct pt_tree_ctx {
     ((const struct lysp_node *)CN->priv)
 
 #define PT_LAST_ARRAY_ITEM(ARR, ITEM) \
-    (&ARR[LY_ARRAY_COUNT(ARR) - 1] == ITEM)
+    (&ARR[LYA_COUNT(ARR) - 1] == ITEM)
 
 #define PT_LAST_SCHEMA_MOUNT(PT_EXTENSION) \
     (PT_EXTENSION.schema ? \
@@ -1398,6 +1399,7 @@ static void
 pt_print_features_names(const struct pt_tree_ctx *tc)
 {
     const struct lysp_qname *iffs;
+    LYA_COUNT_T i;
 
     if (tc->lysc_tree) {
         assert(PT_TREE_CTX_LYSP_NODE_PRESENT(tc->cn));
@@ -1405,9 +1407,8 @@ pt_print_features_names(const struct pt_tree_ctx *tc)
     } else {
         iffs = tc->pn->iffeatures;
     }
-    LY_ARRAY_COUNT_TYPE i;
 
-    LY_ARRAY_FOR(iffs, i) {
+    LYA_FOR(iffs, i) {
         if (i == 0) {
             ly_print_(tc->out, "%s", iffs[i].str);
         } else {
@@ -2246,13 +2247,13 @@ pt_pnode_list_has_keys(const struct lysp_node *pn)
 static ly_bool
 pt_pnode_has_iffeature(const struct lysp_node *pn)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     const struct lysp_qname *iffs;
 
     ly_bool ret = 0;
 
     iffs = pn->iffeatures;
-    LY_ARRAY_FOR(iffs, u) {
+    LYA_FOR(iffs, u) {
         ret = 1;
         break;
     }
@@ -3046,14 +3047,14 @@ pt_modi_get_grouping(struct pt_tree_ctx *tc, uint32_t index)
 static void
 pt_ext_set_next_schema_mount(struct pt_tree_ctx *tc)
 {
-    LY_ARRAY_COUNT_TYPE i;
+    LYA_COUNT_T i;
     struct pt_ext_tree_schema *schemas;
     ly_bool set_next = 0;
 
     assert(!PT_LAST_SCHEMA_MOUNT(tc->plugin_ctx));
 
     schemas = tc->plugin_ctx.schema_mount->schemas;
-    LY_ARRAY_FOR(schemas, i) {
+    LYA_FOR(schemas, i) {
         if (set_next) {
             tc->plugin_ctx.schema = &schemas[i];
             tc->lysc_tree = tc->plugin_ctx.schema->compiled;
@@ -3098,7 +3099,7 @@ pt_ext_parent_is_valid(ly_bool lysc_tree, void *ext)
  * @return Pointer to the first/next extension.
  */
 static void *
-pt_ext_iter_next(ly_bool lysc_tree, void *exts, LY_ARRAY_COUNT_TYPE *i)
+pt_ext_iter_next(ly_bool lysc_tree, void *exts, LYA_COUNT_T *i)
 {
     void *ext = NULL;
     struct lysc_ext_instance *ce;
@@ -3110,7 +3111,7 @@ pt_ext_iter_next(ly_bool lysc_tree, void *exts, LY_ARRAY_COUNT_TYPE *i)
 
     if (lysc_tree) {
         ce = exts;
-        while (*i < LY_ARRAY_COUNT(ce)) {
+        while (*i < LYA_COUNT(ce)) {
             if (ce[*i].def->plugin_ref && pt_ext_parent_is_valid(1, &ce[*i])) {
                 ext = &ce[*i];
                 break;
@@ -3119,7 +3120,7 @@ pt_ext_iter_next(ly_bool lysc_tree, void *exts, LY_ARRAY_COUNT_TYPE *i)
         }
     } else {
         pe = exts;
-        while (*i < LY_ARRAY_COUNT(pe)) {
+        while (*i < LYA_COUNT(pe)) {
             if (pt_ext_parent_is_valid(0, &pe[*i])) {
                 ext = &pe[*i];
                 break;
@@ -3147,7 +3148,7 @@ pt_ext_iter_next(ly_bool lysc_tree, void *exts, LY_ARRAY_COUNT_TYPE *i)
 static void *
 pt_ext_iter(struct pt_tree_ctx *tc, const char *ext_name,
         ly_bool from_module, const ly_bool *origin_lysc_tree,
-        LY_ARRAY_COUNT_TYPE *i)
+        LYA_COUNT_T *i)
 {
     struct lysp_ext_instance *ext_pars;
     struct lysc_ext_instance *ext_comp;
@@ -3252,7 +3253,7 @@ pt_ext_sprinter_ctree_add_nodes(const struct pt_ext_schema_mount *ctx, struct ly
         return LY_SUCCESS;
     }
 
-    LY_ARRAY_NEW_RET(NULL, ((struct pt_ext_schema_mount *)ctx)->schemas, new, LY_EMEM);
+    LYA_ADD_ITEM(((struct pt_ext_schema_mount *)ctx)->schemas, new, LOGMEM(NULL); return LY_EMEM);
     new->compiled = 1;
     new->ctree = nodes;
     new->ext = parent_ref ? PT_EXT_SCHEMA_MOUNT_REF : PT_EXT_SCHEMA_MOUNT;
@@ -3278,7 +3279,7 @@ pt_ext_sprinter_ptree_add_nodes(const struct pt_ext_schema_mount *ctx, struct ly
         return LY_SUCCESS;
     }
 
-    LY_ARRAY_NEW_RET(NULL, ((struct pt_ext_schema_mount *)ctx)->schemas, new, LY_EMEM);
+    LYA_ADD_ITEM(((struct pt_ext_schema_mount *)ctx)->schemas, new, LOGMEM(NULL); return LY_EMEM);
     new->compiled = 0;
     new->ptree = nodes;
     new->ext = parent_ref ? PT_EXT_SCHEMA_MOUNT_REF : PT_EXT_SCHEMA_MOUNT;
@@ -3407,7 +3408,7 @@ pt_print_schema_mount(struct pt_wrapper wr, struct pt_parent_cache ca,
         struct pt_tree_ctx tc)
 {
     LY_ERR rc;
-    LY_ARRAY_COUNT_TYPE i;
+    LYA_COUNT_T i;
     void *ext;
     struct pt_ext_schema_mount schema_mount = {0};
     struct pt_node node;
@@ -3449,7 +3450,7 @@ pt_print_schema_mount(struct pt_wrapper wr, struct pt_parent_cache ca,
     }
 
 end:
-    LY_ARRAY_FREE(schema_mount.schemas);
+    LYA_FREE(schema_mount.schemas);
     if (schema_mount.parent_refs) {
         ly_set_free(schema_mount.parent_refs, NULL);
     }
@@ -3854,13 +3855,13 @@ pt_print_groupings(struct pt_tree_ctx *tc)
 static void *
 pt_ext_parsed_read_storage(struct lysp_ext_instance *ext, int stmt_mask)
 {
-    LY_ARRAY_COUNT_TYPE i;
+    LYA_COUNT_T i;
     enum ly_stmt stmt;
     void *substmts, **storage_p, *node = NULL;
 
     substmts = (void *)((struct lysp_ext_instance *)ext)->substmts;
 
-    LY_ARRAY_FOR(substmts, i) {
+    LYA_FOR(substmts, i) {
         stmt = ((struct lysp_ext_instance *)ext)->substmts[i].stmt;
         storage_p = ((struct lysp_ext_instance *)ext)->substmts[i].storage_p;
 
@@ -3936,7 +3937,7 @@ static void
 pt_print_extensions(struct pt_tree_ctx tc)
 {
     ly_bool once = 1;
-    LY_ARRAY_COUNT_TYPE i = 0;
+    LYA_COUNT_T i = 0;
     struct pt_keyword_stmt ks = PT_EMPTY_KEYWORD_STMT;
     struct pt_node node;
     void *schema;
