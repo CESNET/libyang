@@ -118,8 +118,9 @@ int
 cmd_load_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
 {
     const char *all_features[] = {"*", NULL};
-    char *revision;
+    char *name, *revision;
     const char **features = NULL;
+    int ret = 0;
 
     assert(posv);
 
@@ -128,8 +129,14 @@ cmd_load_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
         yo->ctx_options = 0;
     }
 
+    name = strdup(posv);
+    if (!name) {
+        YLMSG_E("Memory allocation error.");
+        return 1;
+    }
+
     /* get revision */
-    revision = (char *)strchr(posv, '@');
+    revision = strchr(name, '@');
     if (revision) {
         revision[0] = '\0';
         ++revision;
@@ -139,14 +146,15 @@ cmd_load_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
     if (!yo->schema_features.count) {
         features = all_features;
     } else {
-        get_features(&yo->schema_features, posv, &features);
+        get_features(&yo->schema_features, name, &features);
     }
 
     /* load the module */
-    if (!ly_ctx_load_module(*ctx, posv, revision, features)) {
+    if (!ly_ctx_load_module(*ctx, name, revision, features)) {
         /* libyang printed the error messages */
-        return 1;
+        ret = 1;
     }
 
-    return 0;
+    free(name);
+    return ret;
 }
