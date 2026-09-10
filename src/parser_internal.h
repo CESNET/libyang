@@ -502,13 +502,12 @@ LY_ERR lyd_parser_node_insert(struct lyd_node *parent, struct lyd_node **first_p
 /**
  * @brief Create a new parsed node.
  *
- * @param[in] pmod Parsed module of the node.
  * @param[in] pnode_size Size of the specific parsed node struct.
  * @param[in,out] first Optional, first parsed node in the list to link to.
  * @return Specific parsed node;
  * @return NULL on error.
  */
-void *lysp_parser_node_new(struct lysp_module *pmod, uint32_t pnode_size, struct lysp_node **first);
+void *lysp_parser_node_new(uint32_t pnode_size, struct lysp_node **first);
 
 /**
  * @brief Insert a new deviation into a list.

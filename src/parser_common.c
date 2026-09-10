@@ -491,20 +491,14 @@ lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char **file
 }
 
 void *
-lysp_parser_node_new(struct lysp_module *pmod, uint32_t pnode_size, struct lysp_node **first)
+lysp_parser_node_new(uint32_t pnode_size, struct lysp_node **first)
 {
     void *pnode;
     struct lysp_node *iter;
 
-    /* alloc for the node + parsed module */
-    pnode = calloc(1, pnode_size + sizeof pmod);
-    LY_CHECK_ERR_RET(!pnode, LOGMEM(pmod->mod->ctx), NULL);
-
-    /* set the parsed module */
-    memcpy(pnode, &pmod, sizeof pmod);
-
-    /* move the pointer */
-    pnode = (char *)pnode + sizeof pmod;
+    /* calloc the node */
+    pnode = calloc(1, pnode_size);
+    LY_CHECK_RET(!pnode, NULL);
 
     if (first) {
         /* link to the list */
@@ -1035,7 +1029,7 @@ lysp_stmt_any(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_no
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_IDENTIF_ARG, stmt->arg));
 
     /* create new structure and insert into siblings */
-    any = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *any, siblings);
+    any = lysp_parser_node_new(sizeof *any, siblings);
     LY_CHECK_ERR_RET(!any, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     any->nodetype = stmt->kw == LY_STMT_ANYDATA ? LYS_ANYDATA : LYS_ANYXML;
     any->parent = parent;
@@ -2052,7 +2046,7 @@ lysp_stmt_leaf(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_n
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_IDENTIF_ARG, stmt->arg));
 
     /* create new leaf structure */
-    leaf = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *leaf, siblings);
+    leaf = lysp_parser_node_new(sizeof *leaf, siblings);
     LY_CHECK_ERR_RET(!leaf, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     leaf->nodetype = LYS_LEAF;
     leaf->parent = parent;
@@ -2305,7 +2299,7 @@ lysp_stmt_leaflist(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct ly
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_IDENTIF_ARG, stmt->arg));
 
     /* create new leaf-list structure */
-    llist = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *llist, siblings);
+    llist = lysp_parser_node_new(sizeof *llist, siblings);
     LY_CHECK_ERR_RET(!llist, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     llist->nodetype = LYS_LEAFLIST;
     llist->parent = parent;
@@ -2598,7 +2592,7 @@ lysp_stmt_action(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp
 
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_IDENTIF_ARG, stmt->arg));
 
-    act = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *act, (struct lysp_node **)actions);
+    act = lysp_parser_node_new(sizeof *act, (struct lysp_node **)actions);
     LY_CHECK_ERR_RET(!act, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
 
     LY_CHECK_RET(lysdict_insert(PARSER_CTX(ctx), stmt->arg, 0, &act->name));
@@ -2674,7 +2668,7 @@ lysp_stmt_notif(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_
 
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_IDENTIF_ARG, stmt->arg));
 
-    notif = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *notif, (struct lysp_node **)notifs);
+    notif = lysp_parser_node_new(sizeof *notif, (struct lysp_node **)notifs);
     LY_CHECK_ERR_RET(!notif, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
 
     LY_CHECK_RET(lysdict_insert(PARSER_CTX(ctx), stmt->arg, 0, &notif->name));
@@ -2760,7 +2754,7 @@ lysp_stmt_grouping(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct ly
 
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_IDENTIF_ARG, stmt->arg));
 
-    grp = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *grp, (struct lysp_node **)groupings);
+    grp = lysp_parser_node_new(sizeof *grp, (struct lysp_node **)groupings);
     LY_CHECK_ERR_RET(!grp, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
 
     LY_CHECK_RET(lysdict_insert(PARSER_CTX(ctx), stmt->arg, 0, &grp->name));
@@ -2847,7 +2841,7 @@ lysp_stmt_augment(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lys
 
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_STR_ARG, stmt->arg));
 
-    aug = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *aug, (struct lysp_node **)augments);
+    aug = lysp_parser_node_new(sizeof *aug, (struct lysp_node **)augments);
     LY_CHECK_ERR_RET(!aug, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
 
     LY_CHECK_RET(lysdict_insert(PARSER_CTX(ctx), stmt->arg, 0, &aug->nodeid));
@@ -2938,7 +2932,7 @@ lysp_stmt_uses(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_n
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_PREF_IDENTIF_ARG, stmt->arg));
 
     /* create uses structure */
-    uses = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *uses, siblings);
+    uses = lysp_parser_node_new(sizeof *uses, siblings);
     LY_CHECK_ERR_RET(!uses, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
 
     LY_CHECK_RET(lysdict_insert(PARSER_CTX(ctx), stmt->arg, 0, &uses->name));
@@ -3000,7 +2994,7 @@ lysp_stmt_case(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_n
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_IDENTIF_ARG, stmt->arg));
 
     /* create new case structure */
-    cas = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *cas, siblings);
+    cas = lysp_parser_node_new(sizeof *cas, siblings);
     LY_CHECK_ERR_RET(!cas, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
 
     LY_CHECK_RET(lysdict_insert(PARSER_CTX(ctx), stmt->arg, 0, &cas->name));
@@ -3079,7 +3073,7 @@ lysp_stmt_choice(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_IDENTIF_ARG, stmt->arg));
 
     /* create new choice structure */
-    choice = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *choice, siblings);
+    choice = lysp_parser_node_new(sizeof *choice, siblings);
     LY_CHECK_ERR_RET(!choice, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
 
     LY_CHECK_RET(lysdict_insert(PARSER_CTX(ctx), stmt->arg, 0, &choice->name));
@@ -3168,7 +3162,7 @@ lysp_stmt_container(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct l
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_IDENTIF_ARG, stmt->arg));
 
     /* create new container structure */
-    cont = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *cont, siblings);
+    cont = lysp_parser_node_new(sizeof *cont, siblings);
     LY_CHECK_ERR_RET(!cont, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
 
     LY_CHECK_RET(lysdict_insert(PARSER_CTX(ctx), stmt->arg, 0, &cont->name));
@@ -3272,7 +3266,7 @@ lysp_stmt_list(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_n
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_IDENTIF_ARG, stmt->arg));
 
     /* create new list structure */
-    list = lysp_parser_node_new(PARSER_CUR_PMOD(ctx), sizeof *list, siblings);
+    list = lysp_parser_node_new(sizeof *list, siblings);
     LY_CHECK_ERR_RET(!list, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
 
     LY_CHECK_RET(lysdict_insert(PARSER_CTX(ctx), stmt->arg, 0, &list->name));

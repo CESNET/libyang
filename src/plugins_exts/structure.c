@@ -449,7 +449,7 @@ structure_aug_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     ext->substmts[12].stmt = LY_STMT_AUGMENT;
     ext->substmts[12].storage_p = (void **)&aug_pdata->aug;
 
-    aug_pdata->aug = lysp_parser_node_new((struct lysp_module *)lyplg_ext_parse_get_cur_pmod(pctx), sizeof *aug_pdata->aug, NULL);
+    aug_pdata->aug = lysp_parser_node_new(sizeof *aug_pdata->aug, NULL);
     if (!aug_pdata->aug) {
         goto emem;
     }
