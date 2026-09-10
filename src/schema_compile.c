@@ -1867,8 +1867,6 @@ lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
     }
     ctx.pmod = sp;
 
-    ly_log_location_revert(0, 1, 0);
-
     /* finish compilation for all unresolved module items in the context */
     LY_CHECK_GOTO(ret = lys_compile_unres_mod(&ctx), cleanup);
 
@@ -1878,7 +1876,6 @@ lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
     }
 
 cleanup:
-    ly_log_location_revert(0, 1, 0);
     lys_compile_unres_mod_erase(&ctx, ret);
     if (ret) {
         lysc_module_free(ctx.ctx, mod_c);
