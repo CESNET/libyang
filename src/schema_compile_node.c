@@ -3938,6 +3938,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     LY_ERR rc = LY_SUCCESS;
     ly_bool enabled, child_unres_disabled = 0;
     uint32_t i, grp_stack_count, opt_prev = ctx->compile_opts;
+    LYA_COUNT_T orig_u, u;
     struct lysp_node_grp *grp = NULL;
     uint16_t uses_flags = 0;
     struct lysp_module *grp_mod;
@@ -4038,9 +4039,20 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     }
     LY_CHECK_GOTO(rc, cleanup);
 
-    /* compile uses and grouping extensions into the parent */
-    COMPILE_EXTS_GOTO(ctx, uses_p->exts, parent->exts, parent, rc, cleanup);
-    COMPILE_EXTS_GOTO(ctx, grp->exts, parent->exts, parent, rc, cleanup);
+    if (parent) {
+        /* compile uses and grouping extensions into the parent */
+        COMPILE_EXTS_GOTO(ctx, uses_p->exts, parent->exts, parent, rc, cleanup);
+        COMPILE_EXTS_GOTO(ctx, grp->exts, parent->exts, parent, rc, cleanup);
+    } else {
+        /* compile uses and grouping extensions into the module */
+        orig_u = LYA_COUNT(ctx->cmod->exts);
+        COMPILE_EXTS_GOTO(ctx, uses_p->exts, ctx->cmod->exts, uses_p, rc, cleanup);
+        COMPILE_EXTS_GOTO(ctx, grp->exts, ctx->cmod->exts, grp, rc, cleanup);
+        for (u = orig_u; u < LYA_COUNT(ctx->cmod->exts); ++u) {
+            ctx->cmod->exts[u].parent = ctx->cmod;
+            ctx->cmod->exts[u].parent_stmt = LY_STMT_MODULE;
+        }
+    }
 
 cleanup:
     /* restore previous context */
