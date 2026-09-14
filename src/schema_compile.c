@@ -124,7 +124,7 @@ lys_compile_ext(struct lysc_ctx *ctx, const struct lysp_ext_instance *extp, stru
     ext->parent_stmt = extp->parent_stmt;
     ext->parent_stmt_index = extp->parent_stmt_index;
 
-    lysc_update_path(ctx, (ext->parent_stmt & LY_STMT_NODE_MASK) ? ((struct lysc_node *)ext->parent)->module : NULL,
+    lysc_update_path(ctx, (ext->parent_stmt & LY_STMT_DATA_NODE_MASK) ? ((struct lysc_node *)ext->parent)->module : NULL,
             "{ext-inst}");
     lysc_update_path(ctx, NULL, extp->name);
 
