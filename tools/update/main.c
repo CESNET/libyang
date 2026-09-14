@@ -22,8 +22,7 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include <libyang/libyang.h>
-
+#include "libyang.h"
 #include "yang_update.h"
 
 static void

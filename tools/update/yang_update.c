@@ -22,8 +22,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libyang/libyang.h>
-
 #include "ly_common.h"
 #include "path.h"
 #include "tree_schema_internal.h"
