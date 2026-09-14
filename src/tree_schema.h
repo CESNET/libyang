@@ -1565,8 +1565,7 @@ struct lysc_node_case {
         };
     };
 
-    struct lysc_node *child;         /**< first child node of the case (linked list). Note that all the children of all the sibling cases are linked
-                                          each other as siblings with the parent pointer pointing to appropriate case node. */
+    struct lysc_node *child;         /**< first child node of the case (linked list) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
 };
 
