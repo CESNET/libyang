@@ -662,9 +662,8 @@ lyplg_ext_set_parent_ctx(struct ly_ctx *ctx, const struct ly_ctx *parent_ctx)
              * contexts, there is no ext callback for freeing the compiled extension data with the contexts) */
             ly_ctx_destroy(ctx);
         } else {
-            /* remove its shared and private data, this is an exception as we need to free compiled patterns
-             * manually, since we are not destroying the whole context, we will just be using the parent's ctx data instead */
-            ly_ctx_pattern_ht_erase(ctx);
+            /* remove its shared and private data, this is an exception since we are not destroying the whole context,
+             * we will just be using the parent's ctx data instead */
             ly_ctx_data_del(ctx);
         }
     } else if (!parent_ctx) {

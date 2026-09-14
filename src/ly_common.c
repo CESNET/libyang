@@ -295,15 +295,19 @@ static void
 ly_ctx_shared_data_remove_and_free(struct ly_ctx_shared_data *shared_data)
 {
     LYA_COUNT_T u;
+    struct ly_ht_rec *rec;
+    struct ly_pattern_ht_rec *pat_rec;
+    uint32_t hlist_idx, rec_idx;
 
     if (!shared_data) {
         return;
     }
 
-    /* all the patterns must have been removed already,
-     * either while free compiled modules (standard behavior)
-     * or when assigning a parent to a context, it's shared data will be used (schema mount) */
-    assert(shared_data->pattern_ht->used == 0);
+    /* free the pattern HT */
+    LYHT_ITER_ALL_RECS(shared_data->pattern_ht, hlist_idx, rec_idx, rec) {
+        pat_rec = (struct ly_pattern_ht_rec *)&rec->val;
+        ly_pat_free(pat_rec->pat_comp, pat_rec->format);
+    }
     lyht_free(shared_data->pattern_ht, NULL);
 
     /* free rest of the members */
@@ -541,28 +545,6 @@ ly_ctx_data_del(const struct ly_ctx *ctx)
 cleanup:
     /* WR UNLOCK */
     pthread_rwlock_unlock(&ly_ctx_data_rwlock);
-}
-
-void
-ly_ctx_pattern_ht_erase(const struct ly_ctx *ctx)
-{
-    struct ly_ctx_shared_data *ctx_data;
-    struct ly_ht_rec *rec;
-    struct ly_pattern_ht_rec *pat_rec;
-    uint32_t hlist_idx, rec_idx;
-
-    ctx_data = ly_ctx_shared_data_get(ctx);
-
-    /* free all the stored records */
-    LYHT_ITER_ALL_RECS(ctx_data->pattern_ht, hlist_idx, rec_idx, rec) {
-        pat_rec = (struct ly_pattern_ht_rec *)&rec->val;
-
-        ly_pat_free(pat_rec->pat_comp, pat_rec->format);
-    }
-
-    /* we have removed all patterns (so it is empty), we can not free the ht here though, to avoid
-     * double free, but just trick it to look empty */
-    ctx_data->pattern_ht->used = 0;
 }
 
 LY_ERR

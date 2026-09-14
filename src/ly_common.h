@@ -402,13 +402,6 @@ LY_ERR ly_ctx_data_add(const struct ly_ctx *ctx);
 void ly_ctx_data_del(const struct ly_ctx *ctx);
 
 /**
- * @brief Free members of a pattern record stored in the context shared data hash table.
- *
- * @param[in] ctx Context to use.
- */
-void ly_ctx_pattern_ht_erase(const struct ly_ctx *ctx);
-
-/**
  * @brief Get private (thread-specific) context data or create it if it does not exist.
  *
  * @param[in] ctx Context whose data to get.
