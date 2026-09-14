@@ -311,6 +311,8 @@ ly_ctx_shared_data_remove_and_free(struct ly_ctx_shared_data *shared_data)
     lyht_free(shared_data->pattern_ht, NULL);
 
     /* free rest of the members */
+    pthread_mutex_destroy(&shared_data->pat_ht_lock);
+    pthread_mutex_destroy(&shared_data->ext_clb_lock);
     lydict_clean(shared_data->data_dict);
     free(shared_data->data_dict);
     lyht_free(shared_data->leafref_links_ht, ly_ctx_ht_leafref_links_rec_free);
@@ -359,6 +361,7 @@ ly_ctx_shared_data_create(const struct ly_ctx *ctx, struct ly_ctx_shared_data **
     (*shrd_data)->ctx = ctx;
 
     /* pattern hash table */
+    pthread_mutex_init(&(*shrd_data)->pat_ht_lock, NULL);
     (*shrd_data)->pattern_ht = lyht_new(LYHT_MIN_SIZE, sizeof(struct ly_pattern_ht_rec),
             ly_ctx_ht_pattern_equal_cb, NULL, 1);
     LY_CHECK_ERR_GOTO(!(*shrd_data)->pattern_ht, rc = LY_EMEM, cleanup);
@@ -571,6 +574,10 @@ ly_ctx_shared_data_pattern_get(const struct ly_ctx *ctx, const char *pattern, ly
     hash = lyht_hash(pattern, strlen(pattern));
     rec.pattern = pattern;
     rec.format = format;
+
+    /* PAT HT LOCK */
+    pthread_mutex_lock(&ctx_data->pat_ht_lock);
+
     if (!lyht_find(ctx_data->pattern_ht, &rec, hash, (void **)&found_rec)) {
         /* pat_comp cached */
         if (pat_comp) {
@@ -596,6 +603,9 @@ ly_ctx_shared_data_pattern_get(const struct ly_ctx *ctx, const char *pattern, ly
     pat_comp_tmp = NULL;
 
 cleanup:
+    /* PAT HT UNLOCK */
+    pthread_mutex_unlock(&ctx_data->pat_ht_lock);
+
     ly_pat_free(pat_comp_tmp, format);
     if (err) {
         /* log with the schema path */
@@ -623,10 +633,13 @@ ly_ctx_shared_data_pattern_del(const struct ly_ctx *ctx, const char *pattern, ly
     rec.pattern = pattern;
     rec.format = format;
 
+    /* PAT HT LOCK */
+    pthread_mutex_lock(&ctx_data->pat_ht_lock);
+
     if (lyht_find(ctx_data->pattern_ht, &rec, hash, (void **)&found_rec)) {
         /* pattern code not cached, this may happen when using printed context,
          * because then the pcodes are obtained on demand */
-        return;
+        goto cleanup;
     }
 
     /* found it, free */
@@ -636,6 +649,10 @@ ly_ctx_shared_data_pattern_del(const struct ly_ctx *ctx, const char *pattern, ly
     if (lyht_remove(ctx_data->pattern_ht, &rec, hash)) {
         LOGINT(ctx);
     }
+
+cleanup:
+    /* PAT HT UNLOCK */
+    pthread_mutex_unlock(&ctx_data->pat_ht_lock);
 }
 
 /**

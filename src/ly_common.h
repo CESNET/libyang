@@ -334,6 +334,7 @@ struct ly_ctx_shared_data {
                                       * incremented only when a new (next) printed context
                                       * is created from the same memory address. */
 
+    pthread_mutex_t pat_ht_lock;    /**< lock for accessing pattern_ht */
     struct ly_ht *pattern_ht;       /**< ht for storing patterns and their pcre2_codes.
                                       * A pattern is used both as a key and a value to search for.
                                       * This ht is only written to when the context is being compiled,
