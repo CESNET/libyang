@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Data parsers for libyang
  *
- * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -515,7 +515,7 @@ LIBYANG_API_DECL LY_ERR lyd_validate_module_final(struct lyd_node *tree, const s
 
 /**
  * @brief Validate an RPC/action request, reply, or notification. Only the operation data tree (input/output/notif)
- * is validate, any parents are ignored.
+ * is validated, any parents are ignored.
  *
  * @param[in,out] op_tree Operation tree with any parents. It can point to the operation itself or any of
  * its parents, only the operation subtree is actually validated.
@@ -527,6 +527,25 @@ LIBYANG_API_DECL LY_ERR lyd_validate_module_final(struct lyd_node *tree, const s
  */
 LIBYANG_API_DECL LY_ERR lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *dep_tree, enum lyd_type data_type,
         struct lyd_node **diff);
+
+/**
+ * @brief Validate an RPC/action request, reply, or notification. Only the operation data tree (input/output/notif)
+ * is validated, any parents are ignored.
+ *
+ * Similar to ::lyd_validate_op() but allows setting specific validation options.
+ *
+ * @param[in,out] op_tree Operation tree with any parents. It can point to the operation itself or any of
+ * its parents, only the operation subtree is actually validated.
+ * @param[in] dep_tree Tree to be used for validating references from the operation subtree.
+ * @param[in] data_type Operation type to validate (only YANG operations are accepted, @ref datatype).
+ * @param[in] val_opts Additional validation options (@ref datavalidationoptions), only #LYD_VALIDATE_MULTI_ERROR is
+ * allowed.
+ * @param[out] diff Optional diff with any changes made by the validation.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR error on error.
+ */
+LIBYANG_API_DECL LY_ERR lyd_validate_op2(struct lyd_node *op_tree, const struct lyd_node *dep_tree, enum lyd_type data_type,
+        uint32_t val_opts, struct lyd_node **diff);
 
 /** @} datatree */
 

@@ -2407,6 +2407,7 @@ lyd_val_op_merge_find(const struct lyd_node *op_tree, const struct lyd_node *op_
  * @param[in] op_tree Full operation data tree.
  * @param[in] op_node Operation node itself.
  * @param[in] dep_tree Tree to be used for validating references from the operation subtree.
+ * @param[in] val_opts Validation options.
  * @param[in] int_opts Internal parser options.
  * @param[in] data_type Type of validated data.
  * @param[in] validate_subtree Whether subtree was already validated (as part of data parsing) or not (separate validation).
@@ -2420,7 +2421,7 @@ lyd_val_op_merge_find(const struct lyd_node *op_tree, const struct lyd_node *op_
  */
 static LY_ERR
 _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struct lyd_node *dep_tree, enum lyd_type data_type,
-        uint32_t int_opts, ly_bool validate_subtree, struct ly_set *node_when_p, struct ly_set *node_types_p,
+        uint32_t val_opts, uint32_t int_opts, ly_bool validate_subtree, struct ly_set *node_when_p, struct ly_set *node_types_p,
         struct ly_set *meta_types_p, struct ly_set *ext_val_p, struct lyd_node **diff)
 {
     LY_ERR rc = LY_SUCCESS;
@@ -2464,7 +2465,7 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
 
             /* skip validating the operation itself, go to children directly */
             LY_LIST_FOR(lyd_child(op_node), child) {
-                rc = lyd_validate_tree(child, NULL, node_when_p, node_types_p, meta_types_p, ext_val_p, 0,
+                rc = lyd_validate_tree(child, NULL, node_when_p, node_types_p, meta_types_p, ext_val_p, val_opts,
                         int_opts, getnext_ht, diff);
                 LY_CHECK_GOTO(rc, cleanup);
             }
@@ -2477,7 +2478,7 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
     } else {
         if (validate_subtree) {
             /* prevalidate whole operation subtree */
-            rc = lyd_validate_tree(op_node, NULL, node_when_p, node_types_p, meta_types_p, ext_val_p, 0,
+            rc = lyd_validate_tree(op_node, NULL, node_when_p, node_types_p, meta_types_p, ext_val_p, val_opts,
                     int_opts, getnext_ht, diff);
             LY_CHECK_GOTO(rc, cleanup);
         }
@@ -2486,15 +2487,15 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
     /* finish incompletely validated terminal values/attributes and when conditions on the full tree,
      * account for unresolved 'when' that may appear in the non-validated dependency data tree */
     LY_CHECK_GOTO(rc = lyd_validate_unres((struct lyd_node **)&dep_tree, NULL, data_type, node_when_p,
-            LYXP_IGNORE_WHEN, node_types_p, meta_types_p, ext_val_p, 0, diff), cleanup);
+            LYXP_IGNORE_WHEN, node_types_p, meta_types_p, ext_val_p, val_opts, diff), cleanup);
 
     /* perform final validation of the operation/notification */
     lyd_validate_obsolete(op_node);
-    LY_CHECK_GOTO(rc = lyd_validate_must(op_node, 0, int_opts, LYXP_IGNORE_WHEN), cleanup);
+    LY_CHECK_GOTO(rc = lyd_validate_must(op_node, val_opts, int_opts, LYXP_IGNORE_WHEN), cleanup);
 
     /* final validation of all the descendants */
-    rc = lyd_validate_final_r(lyd_child(op_node), op_node, op_node->schema, NULL, NULL, 0, int_opts, LYXP_IGNORE_WHEN,
-            getnext_ht);
+    rc = lyd_validate_final_r(lyd_child(op_node), op_node, op_node->schema, NULL, NULL, val_opts, int_opts,
+            LYXP_IGNORE_WHEN, getnext_ht);
     LY_CHECK_GOTO(rc, cleanup);
 
 cleanup:
@@ -2521,13 +2522,21 @@ cleanup:
 LIBYANG_API_DEF LY_ERR
 lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *dep_tree, enum lyd_type data_type, struct lyd_node **diff)
 {
+    return lyd_validate_op2(op_tree, dep_tree, data_type, 0, diff);
+}
+
+LIBYANG_API_DEF LY_ERR
+lyd_validate_op2(struct lyd_node *op_tree, const struct lyd_node *dep_tree, enum lyd_type data_type,
+        uint32_t val_opts, struct lyd_node **diff)
+{
     struct lyd_node *op_node;
     uint32_t int_opts;
     struct ly_set ext_val = {0};
     LY_ERR rc;
 
     LY_CHECK_ARG_RET(NULL, op_tree, !dep_tree || !dep_tree->parent, (data_type == LYD_TYPE_RPC_YANG) ||
-            (data_type == LYD_TYPE_NOTIF_YANG) || (data_type == LYD_TYPE_REPLY_YANG), LY_EINVAL);
+            (data_type == LYD_TYPE_NOTIF_YANG) || (data_type == LYD_TYPE_REPLY_YANG),
+            !(val_opts & ~LYD_VALIDATE_MULTI_ERROR), LY_EINVAL);
     if (op_tree == dep_tree) {
         /* redundant dependency */
         dep_tree = NULL;
@@ -2561,7 +2570,7 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *dep_tree, enum 
                 /* fully validate the rest using the extension instance callback */
                 LY_CHECK_RET(lyd_validate_tree_ext(op_node, NULL, &ext_val));
                 rc = lyd_validate_unres((struct lyd_node **)&dep_tree, NULL, data_type, NULL, 0, NULL, NULL,
-                        &ext_val, 0, diff);
+                        &ext_val, val_opts, diff);
                 ly_set_erase(&ext_val, free);
                 return rc;
             }
@@ -2589,5 +2598,5 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *dep_tree, enum 
     }
 
     /* validate */
-    return _lyd_validate_op(op_tree, op_node, dep_tree, data_type, int_opts, 1, NULL, NULL, NULL, NULL, diff);
+    return _lyd_validate_op(op_tree, op_node, dep_tree, data_type, val_opts, int_opts, 1, NULL, NULL, NULL, NULL, diff);
 }
