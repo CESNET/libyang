@@ -141,7 +141,6 @@ struct lyxp_expr;
  */
 
 /**
- * @ingroup trees
  * @defgroup schematree Schema Tree
  * @{
  *

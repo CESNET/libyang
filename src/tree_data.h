@@ -442,7 +442,6 @@ struct rb_node;
  */
 
 /**
- * @ingroup trees
  * @defgroup datatree Data Tree
  * @{
  *
