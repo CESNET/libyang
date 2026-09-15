@@ -519,7 +519,7 @@ schema_diff_module_identities_change(const struct lysc_ident *idents1, const str
         }
 
         /* add new identity to changes */
-        LY_CHECK_RET(schema_diff_add_ident_change(&idents1[u], found ? &idents2[v] : NULL, diff, &ident_change));
+        LY_CHECK_GOTO(rc = schema_diff_add_ident_change(&idents1[u], found ? &idents2[v] : NULL, diff, &ident_change), cleanup);
 
         if (!found) {
             /* removed */
@@ -548,7 +548,7 @@ schema_diff_module_identities_change(const struct lysc_ident *idents1, const str
         }
 
         /* add new identity to changes */
-        LY_CHECK_RET(schema_diff_add_ident_change(NULL, &idents2[v], diff, &ident_change));
+        LY_CHECK_GOTO(rc = schema_diff_add_ident_change(NULL, &idents2[v], diff, &ident_change), cleanup);
 
         /* added */
         LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, LYS_CHANGED_IDENT, LYS_CONFORM_BC,

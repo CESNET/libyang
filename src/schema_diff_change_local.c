@@ -1103,7 +1103,7 @@ schema_diff_typedefs_change(const struct lysp_tpdf *typedefs1, const struct lysp
         }
 
         /* add new typedef to changes */
-        LY_CHECK_RET(schema_diff_add_typedef_change(NULL, &typedefs2[v], parent2, diff, &typedef_change));
+        LY_CHECK_GOTO(rc = schema_diff_add_typedef_change(NULL, &typedefs2[v], parent2, diff, &typedef_change), cleanup);
 
         /* added */
         LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, LYS_CHANGED_TYPEDEF, LYS_CONFORM_BC,
@@ -1920,7 +1920,7 @@ schema_diff_imports_change(const struct lysp_import *imps1, const struct lysp_im
         }
 
         /* add new import to changes */
-        LY_CHECK_RET(schema_diff_add_import_change(NULL, &imps2[v], diff, &import_change));
+        LY_CHECK_GOTO(rc = schema_diff_add_import_change(NULL, &imps2[v], diff, &import_change), cleanup);
 
         /* added */
         LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, LYS_CHANGED_NONE, LYS_CHANGED_IMPORT, LYS_CONFORM_BC,
@@ -2006,7 +2006,7 @@ schema_diff_includes_change(const struct lysp_include *incs1, const struct lysp_
         }
 
         /* add new include to changes */
-        LY_CHECK_RET(schema_diff_add_include_change(NULL, &incs2[v], diff, &include_change));
+        LY_CHECK_GOTO(rc = schema_diff_add_include_change(NULL, &incs2[v], diff, &include_change), cleanup);
 
         /* added */
         LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, LYS_CHANGED_NONE, LYS_CHANGED_INCLUDE,
@@ -2092,7 +2092,7 @@ schema_diff_extensions_change(const struct lysp_ext *extensions1, const struct l
         }
 
         /* add new extension to changes */
-        LY_CHECK_RET(schema_diff_add_extension_change(NULL, &extensions2[v], diff, &extension_change));
+        LY_CHECK_GOTO(rc = schema_diff_add_extension_change(NULL, &extensions2[v], diff, &extension_change), cleanup);
 
         /* added */
         LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, LYS_CHANGED_NONE, LYS_CHANGED_EXTENSION,
@@ -2178,7 +2178,7 @@ schema_diff_features_change(const struct lysp_feature *features1, const struct l
         }
 
         /* add new feature to changes */
-        LY_CHECK_RET(schema_diff_add_feat_change(NULL, &features2[v], diff, &feat_change));
+        LY_CHECK_GOTO(rc = schema_diff_add_feat_change(NULL, &features2[v], diff, &feat_change), cleanup);
 
         /* added */
         LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, LYS_CHANGED_NONE, LYS_CHANGED_FEATURE,
@@ -2448,7 +2448,7 @@ schema_diff_deviations_change(const struct lysp_deviation *deviations1, const st
         }
 
         /* add new deviation to changes */
-        LY_CHECK_RET(schema_diff_add_dev_change(NULL, &deviations2[v], diff, &dev_change));
+        LY_CHECK_GOTO(rc = schema_diff_add_dev_change(NULL, &deviations2[v], diff, &dev_change), cleanup);
 
         /* added */
         LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, LYS_CHANGED_NONE, LYS_CHANGED_DEVIATION,
@@ -2680,7 +2680,9 @@ schema_diff_pext_inst_substmts_change(const struct lysp_ext_substmt *substmts1, 
         case LY_STMT_YIN_ELEMENT:
         case LY_STMT_NONE:
             /* not compiled/invalid */
-            LOGINT_RET(NULL);
+            LOGINT(NULL);
+            rc = LY_EINT;
+            goto cleanup;
         }
     }
 
@@ -2780,7 +2782,7 @@ schema_diff_pext_insts_change(const struct lysp_ext_instance *exts1, const struc
         }
 
         /* add new ext-instance to changes */
-        LY_CHECK_RET(schema_diff_add_pext_change(&exts1[u], found ? &exts2[v] : NULL, ext_changes, &ext_change));
+        LY_CHECK_GOTO(rc = schema_diff_add_pext_change(&exts1[u], found ? &exts2[v] : NULL, ext_changes, &ext_change), cleanup);
         parent_changed = schema_diff_stmt2changed(exts1[u].parent_stmt);
 
         if (!found) {
@@ -2817,7 +2819,7 @@ schema_diff_pext_insts_change(const struct lysp_ext_instance *exts1, const struc
         }
 
         /* add new ext-instance to changes */
-        LY_CHECK_RET(schema_diff_add_pext_change(NULL, &exts2[v], ext_changes, &ext_change));
+        LY_CHECK_GOTO(rc = schema_diff_add_pext_change(NULL, &exts2[v], ext_changes, &ext_change), cleanup);
         parent_changed = schema_diff_stmt2changed(exts2[v].parent_stmt);
 
         /* learn conformance */

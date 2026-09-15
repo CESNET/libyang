@@ -1489,7 +1489,9 @@ schema_diff_ext_inst_substmts_change(const struct lysc_ext_substmt *substmts1, c
         case LY_STMT_YIN_ELEMENT:
         case LY_STMT_NONE:
             /* not compiled/invalid */
-            LOGINT_RET(NULL);
+            LOGINT(NULL);
+            rc = LY_EINT;
+            goto cleanup;
         }
     }
 
@@ -1547,7 +1549,7 @@ schema_diff_ext_insts_change(const struct lysc_ext_instance *exts1, const struct
         }
 
         /* add new ext-instance to changes */
-        LY_CHECK_RET(schema_diff_add_ext_change(&exts1[u], found ? &exts2[v] : NULL, ext_changes, &ext_change));
+        LY_CHECK_GOTO(rc = schema_diff_add_ext_change(&exts1[u], found ? &exts2[v] : NULL, ext_changes, &ext_change), cleanup);
         parent_changed = schema_diff_stmt2changed(exts1[u].parent_stmt);
 
         if (!found) {
@@ -1582,7 +1584,7 @@ schema_diff_ext_insts_change(const struct lysc_ext_instance *exts1, const struct
         }
 
         /* add new ext-instance to changes */
-        LY_CHECK_RET(schema_diff_add_ext_change(NULL, &exts2[v], ext_changes, &ext_change));
+        LY_CHECK_GOTO(rc = schema_diff_add_ext_change(NULL, &exts2[v], ext_changes, &ext_change), cleanup);
         parent_changed = schema_diff_stmt2changed(exts2[v].parent_stmt);
 
         /* learn conformance */
