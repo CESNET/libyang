@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "ly_common.h"
+#include "ly_config.h"
 #include "path.h"
 #include "tree_schema_internal.h"
 #include "xpath.h"
