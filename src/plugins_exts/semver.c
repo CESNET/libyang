@@ -161,7 +161,7 @@ static LY_ERR
 semver_check_string(const struct ly_ctx *ctx, const char *version, uint32_t version_len, ly_bool bare)
 {
     LY_ERR r;
-    struct ly_ctx_shared_data *sdata;
+    struct ly_ctx_shared_data *sdata = NULL;
     struct ly_err_item *err = NULL;
     const char *ptr;
 
