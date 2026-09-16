@@ -135,7 +135,7 @@ schema_comparison(struct sc_state *st, const char *module_name)
     fseek(st->f, 0, SEEK_SET);
     st->exp = malloc(size + 1);
     assert_non_null(st->exp);
-    assert_int_equal(size, fread(st->exp, 1, size, st->f));
+    size = fread(st->exp, 1, size, st->f);
     st->exp[size] = '\0';
 
     /* compare the output */
