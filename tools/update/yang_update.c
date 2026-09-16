@@ -583,7 +583,7 @@ yu_module_imp_clb(const char *mod_name, const char *mod_rev, const char *submod_
         rc = LY_EMEM;
         goto cleanup;
     }
-    fread(data, 1, size, f);
+    size = fread(data, 1, size, f);
     data[size] = '\0';
 
     *format = fmt;

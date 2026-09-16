@@ -104,7 +104,7 @@ test_update_01_01_to_01_20(void **state)
     rewind(st->f);
     st->str1 = malloc(size + 1);
     assert_non_null(st->str1);
-    fread(st->str1, 1, size, st->f);
+    size = fread(st->str1, 1, size, st->f);
     st->str1[size] = '\0';
     assert_string_equal(st->str2, st->str1);
 }
@@ -140,7 +140,7 @@ test_update_01_10_to_01_15(void **state)
     rewind(st->f);
     st->str1 = malloc(size + 1);
     assert_non_null(st->str1);
-    fread(st->str1, 1, size, st->f);
+    size = fread(st->str1, 1, size, st->f);
     st->str1[size] = '\0';
     assert_string_equal(st->str2, st->str1);
 }
@@ -177,7 +177,7 @@ test_update_01_15_to_01_20(void **state)
     rewind(st->f);
     st->str1 = malloc(size + 1);
     assert_non_null(st->str1);
-    fread(st->str1, 1, size, st->f);
+    size = fread(st->str1, 1, size, st->f);
     st->str1[size] = '\0';
     assert_string_equal(st->str2, st->str1);
 }
