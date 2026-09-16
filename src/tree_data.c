@@ -1305,6 +1305,10 @@ lyd_unlink_siblings(struct lyd_node *node)
 {
     struct lyd_node *next, *iter, *leader, *start, *first_sibling = NULL;
 
+    if (!node) {
+        return LY_SUCCESS;
+    }
+
     if (lyds_is_supported(node) && node->prev->next && (node->prev->schema == node->schema)) {
         /* unlink starts at the non-first item in the (leaf-)list */
         lyd_find_sibling_val(node, node->schema, NULL, 0, &leader);
