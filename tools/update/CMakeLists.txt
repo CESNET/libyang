@@ -42,6 +42,7 @@ endif()
 
 # yang update library
 add_library(${LIB_NAME} STATIC ${lib_src})
+target_compile_definitions(${LIB_NAME} PUBLIC LIBYANG_BUILD)
 target_include_directories(${LIB_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_BINARY_DIR})
 get_target_property(yang_linked_libraries yang LINK_LIBRARIES)
 target_link_libraries(${LIB_NAME} $<TARGET_OBJECTS:yangobj> ${yang_linked_libraries})
