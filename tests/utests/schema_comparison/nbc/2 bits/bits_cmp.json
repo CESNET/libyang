@@ -13,6 +13,7 @@
           "revision": "2000-01-02"
         },
         "conformance": "non-backwards-compatible",
+        "suggested-target-version": "2.0.0",
         "node-comparison": [
           {
             "node": "/bits:l1",

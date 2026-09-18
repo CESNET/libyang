@@ -29,6 +29,7 @@
 #define TEST_SC_ED_DIR TESTS_SRC "/utests/schema_comparison/ed"
 #define TEST_SC_BC_DIR TESTS_SRC "/utests/schema_comparison/bc"
 #define TEST_SC_NBC_DIR TESTS_SRC "/utests/schema_comparison/nbc"
+#define TEST_SC_LOCAL_FULL_DIR TESTS_SRC "/utests/schema_comparison/local_full_resolved"
 
 #define TEST_SC_OLD_REV "2000-01-01"
 #define TEST_SC_NEW_REV "2000-01-02"
@@ -36,6 +37,9 @@
 struct sc_state {
     struct ly_ctx *ctx1;
     struct ly_ctx *ctx2;
+    ly_bool local_cmp;
+    ly_bool full_cmp;
+    const char *cmp_file_prefix;
     struct lyd_node *sc_data;
     char *str;
     char *exp;
@@ -106,7 +110,9 @@ static void
 schema_comparison(struct sc_state *st, const char *module_name)
 {
     struct lys_module *src_mod, *trg_mod;
+    int r;
     char *path;
+    const char *ptr;
     size_t size;
 
     print_message("[          ] - %s\n", module_name);
@@ -118,12 +124,18 @@ schema_comparison(struct sc_state *st, const char *module_name)
     assert_non_null(trg_mod);
 
     /* get and print the comparison data */
-    assert_int_equal(LY_SUCCESS, lys_compare(st->ctx1, src_mod, trg_mod, 1, 1, &st->sc_data));
+    assert_int_equal(LY_SUCCESS, lys_compare(st->ctx1, src_mod, trg_mod, st->local_cmp, st->full_cmp, &st->sc_data));
     assert_int_equal(LY_SUCCESS, lyd_print_mem(&st->str, st->sc_data, LYD_JSON, 0));
 
     /* open file with the expected output */
-    path = strdup(src_mod->filepath);
-    assert_non_null(path);
+    if (st->cmp_file_prefix) {
+        ptr = strrchr(src_mod->filepath, '/') + 1;
+        r = asprintf(&path, "%.*s%s%s", (int)(ptr - src_mod->filepath), src_mod->filepath, st->cmp_file_prefix, ptr);
+        assert_int_not_equal(r, -1);
+    } else {
+        path = strdup(src_mod->filepath);
+        assert_non_null(path);
+    }
     sprintf(strrchr(path, '@'), "_cmp.json");
     st->f = fopen(path, "r");
     free(path);
@@ -160,6 +172,8 @@ test_editorial(void **state)
     /* set up contexts */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(st->ctx1, TEST_SC_ED_DIR));
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(st->ctx2, TEST_SC_ED_DIR));
+    st->local_cmp = 1;
+    st->full_cmp = 1;
 
     /* test all editorial modules */
     schema_comparison(st, "uses");
@@ -174,6 +188,8 @@ test_backwards_compatible(void **state)
     /* set up contexts */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(st->ctx1, TEST_SC_BC_DIR));
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(st->ctx2, TEST_SC_BC_DIR));
+    st->local_cmp = 1;
+    st->full_cmp = 1;
 
     /* test all backward-compatible modules */
     schema_comparison(st, "enumeration");
@@ -210,6 +226,8 @@ test_non_backwards_compatible(void **state)
     /* set up contexts */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(st->ctx1, TEST_SC_NBC_DIR));
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(st->ctx2, TEST_SC_NBC_DIR));
+    st->local_cmp = 1;
+    st->full_cmp = 1;
 
     /* test all non-backward-compatible modules */
     schema_comparison(st, "enumeration");
@@ -241,6 +259,40 @@ test_non_backwards_compatible(void **state)
     schema_comparison(st, "yang-version");
 }
 
+static void
+test_locally_resolved(void **state)
+{
+    struct sc_state *st = *state;
+
+    /* set up contexts */
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(st->ctx1, TEST_SC_LOCAL_FULL_DIR));
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(st->ctx2, TEST_SC_LOCAL_FULL_DIR));
+    st->local_cmp = 1;
+    st->full_cmp = 0;
+    st->cmp_file_prefix = "lr_";
+
+    /* test all locally-resolved-only modules */
+    schema_comparison(st, "type");
+    schema_comparison(st, "uses");
+}
+
+static void
+test_fully_resolved(void **state)
+{
+    struct sc_state *st = *state;
+
+    /* set up contexts */
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(st->ctx1, TEST_SC_LOCAL_FULL_DIR));
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(st->ctx2, TEST_SC_LOCAL_FULL_DIR));
+    st->local_cmp = 0;
+    st->full_cmp = 1;
+    st->cmp_file_prefix = "fr_";
+
+    /* test all fully-resolved-only modules */
+    schema_comparison(st, "type");
+    schema_comparison(st, "uses");
+}
+
 int
 main(void)
 {
@@ -248,6 +300,8 @@ main(void)
         cmocka_unit_test_setup_teardown(test_editorial, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_backwards_compatible, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_non_backwards_compatible, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_locally_resolved, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_fully_resolved, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

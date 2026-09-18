@@ -333,6 +333,8 @@ static const char *
 schema_diff_conform2str(enum lys_diff_conform_e conform)
 {
     switch (conform) {
+    case LYS_CONFORM_NO_CHANGE:
+        return "no-change";
     case LYS_CONFORM_ED:
         return "editorial";
     case LYS_CONFORM_BC:
@@ -3802,8 +3804,16 @@ cleanup:
     return rc;
 }
 
+/**
+ * @brief Create cmp YANG data with a mdoule semantic version.
+ *
+ * @param[in] parent Parent node to use.
+ * @param[in] mod Module to use.
+ * @param[in,out] semver Optional structure to fill with the module version, leave untouched if none defined.
+ * @return LY_ERR value.
+ */
 static LY_ERR
-lysc_diff_tree_version(struct lyd_node *parent, const struct lys_module *mod, const struct lys_ext_instance_semver **semver)
+lysc_diff_tree_version(struct lyd_node *parent, const struct lys_module *mod, struct lys_ext_instance_semver *semver)
 {
     const struct lys_ext_instance_semver *sv;
     const char *semver_str;
@@ -3814,8 +3824,8 @@ lysc_diff_tree_version(struct lyd_node *parent, const struct lys_module *mod, co
         LY_CHECK_RET(lyd_new_term(parent, NULL, "version", semver_str, 0, NULL));
     }
 
-    if (semver) {
-        *semver = sv;
+    if (sv && semver) {
+        *semver = *sv;
     }
     return LY_SUCCESS;
 }
@@ -3837,6 +3847,9 @@ lysc_diff_tree_suggest_semver(const struct lys_ext_instance_semver *src_semver, 
     trg_semver->patch = src_semver->patch;
 
     switch (trg_conform) {
+    case LYS_CONFORM_NO_CHANGE:
+        /* keep the same version */
+        break;
     case LYS_CONFORM_ED:
         ++(trg_semver->patch);
         break;
@@ -3881,8 +3894,7 @@ lysc_diff_tree(const struct lys_module *mod1, const struct lys_module *mod2, con
     const struct lysc_node *imp_schema;
     uint32_t i;
     char *str = NULL;
-    const struct lys_ext_instance_semver *src_semver = NULL;
-    struct lys_ext_instance_semver trg_semver;
+    struct lys_ext_instance_semver src_semver = {.major = 1}, trg_semver;
 
     /* structure extension */
     LY_CHECK_GOTO(rc = lyd_new_inner(NULL, cmp_mod, "schema-comparison", 0, &diff_cont), cleanup);
@@ -3925,11 +3937,9 @@ lysc_diff_tree(const struct lys_module *mod1, const struct lys_module *mod2, con
     /* overall conformance */
     LY_CHECK_GOTO(rc = lyd_new_term(diff_list, NULL, "conformance", schema_diff_conform2str(diff->conform), 0, NULL),
             cleanup);
-    if (src_semver) {
-        lysc_diff_tree_suggest_semver(src_semver, diff->conform, &trg_semver);
-        LY_CHECK_GOTO(rc = lysc_diff_tree_semver2str(diff->ctx, &trg_semver, &str), cleanup);
-        LY_CHECK_GOTO(rc = lyd_new_term(diff_list, NULL, "suggested-target-version", str, 0, NULL), cleanup);
-    }
+    lysc_diff_tree_suggest_semver(&src_semver, diff->conform, &trg_semver);
+    LY_CHECK_GOTO(rc = lysc_diff_tree_semver2str(diff->ctx, &trg_semver, &str), cleanup);
+    LY_CHECK_GOTO(rc = lyd_new_term(diff_list, NULL, "suggested-target-version", str, 0, NULL), cleanup);
 
     /* module comparison */
     LY_CHECK_GOTO(rc = schema_diff_module(diff, mod1, mod2, diff_list), cleanup);

@@ -13,6 +13,7 @@
           "revision": "2000-01-02"
         },
         "conformance": "editorial",
+        "suggested-target-version": "1.0.1",
         "local-comparison": [
           {
             "parent-path": "/cont1",

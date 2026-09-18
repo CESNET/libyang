@@ -975,31 +975,6 @@ module ietf-yang-schema-comparison-output {
     uses ext-instance-stmts;
   }
 
-  grouping conformance-type {
-    description
-      "Conformance type of a change.";
-    leaf conformance {
-      type enumeration {
-        enum editorial {
-          description
-            "Editorial change.";
-        }
-        enum backwards-compatible {
-          description
-            "Backwards-compatible change.";
-        }
-        enum non-backwards-compatible {
-          description
-            "Non-backwards-compatible change.";
-        }
-      }
-      mandatory true;
-      description
-        "Conformance information of a change in the compared YANG
-         modules.";
-    }
-  }
-
   grouping change-info {
     description
       "Details of a single change.";
@@ -1042,7 +1017,25 @@ module ietf-yang-schema-comparison-output {
         description
           "Type of change of the statement.";
       }
-      uses conformance-type;
+      leaf conformance {
+        type enumeration {
+          enum editorial {
+            description
+              "Editorial change.";
+          }
+          enum backwards-compatible {
+            description
+              "Backwards-compatible change.";
+          }
+          enum non-backwards-compatible {
+            description
+              "Non-backwards-compatible change.";
+          }
+        }
+        mandatory true;
+        description
+          "Conformance information of a change.";
+      }
     }
   }
 
@@ -1287,12 +1280,36 @@ module ietf-yang-schema-comparison-output {
           "List of target module imported modules information.";
         uses module-params;
       }
-      uses conformance-type;
-      leaf suggested-target-version {
-        when "../source/version";
-        type ysv:version;
+      leaf conformance {
+        type enumeration {
+          enum no-change {
+            description
+              "No changes.";
+          }
+          enum editorial {
+            description
+              "Editorial change.";
+          }
+          enum backwards-compatible {
+            description
+              "Backwards-compatible change.";
+          }
+          enum non-backwards-compatible {
+            description
+              "Non-backwards-compatible change.";
+          }
+        }
+        mandatory true;
         description
-          "Suggested target module semantic version.";
+          "Overall conformance information of the compared YANG schema
+           representations.";
+      }
+      leaf suggested-target-version {
+        type ysv:version;
+        mandatory true;
+        description
+          "Suggested target module semantic version. If the source module has
+           no semantic version, 1.0.0 is assumed.";
       }
       list module-comparison {
         description

@@ -3,7 +3,6 @@
     "comparison": [
       {
         "locally-resolved": [null],
-        "fully-resolved": [null],
         "source": {
           "module": "uses",
           "revision": "2000-01-01"
@@ -12,12 +11,38 @@
           "module": "uses",
           "revision": "2000-01-02"
         },
-        "conformance": "backwards-compatible",
-        "suggested-target-version": "1.1.0",
+        "conformance": "non-backwards-compatible",
+        "suggested-target-version": "2.0.0",
+        "module-comparison": [
+          {
+            "changed": [
+              {
+                "stmt": "revision-date",
+                "parent-stmt": "import",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "import": {
+                "module": "uses-imp",
+                "prefix": "ussi",
+                "revision-date": "2000-01-01"
+              }
+            },
+            "new": {
+              "import": {
+                "module": "uses-imp",
+                "prefix": "ussi",
+                "revision-date": "2000-01-02"
+              }
+            }
+          }
+        ],
         "local-comparison": [
           {
             "parent-path": "/",
-            "identifier": "grp",
+            "identifier": "local-group",
             "stmt-type": "uses",
             "changed": [
               {
@@ -29,7 +54,7 @@
           },
           {
             "parent-path": "/",
-            "identifier": "grp",
+            "identifier": "local-group",
             "stmt-type": "grouping",
             "changed": [
               {

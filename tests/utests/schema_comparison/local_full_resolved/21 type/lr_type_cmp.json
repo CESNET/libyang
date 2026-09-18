@@ -3,13 +3,12 @@
     "comparison": [
       {
         "locally-resolved": [null],
-        "fully-resolved": [null],
         "source": {
-          "module": "if-feature",
+          "module": "type",
           "revision": "2000-01-01"
         },
         "target": {
-          "module": "if-feature",
+          "module": "type",
           "revision": "2000-01-02"
         },
         "conformance": "non-backwards-compatible",
@@ -18,79 +17,78 @@
           {
             "changed": [
               {
-                "stmt": "if-feature",
-                "parent-stmt": "identity",
-                "change": "added",
+                "stmt": "revision-date",
+                "parent-stmt": "import",
+                "change": "modified",
                 "conformance": "non-backwards-compatible"
               }
             ],
             "old": {
-              "identity": {
-                "name": "id"
+              "import": {
+                "module": "type-imp",
+                "prefix": "typi",
+                "revision-date": "2000-01-01"
               }
             },
             "new": {
-              "identity": {
-                "name": "id",
-                "if-feature": [
-                  "f2"
-                ]
+              "import": {
+                "module": "type-imp",
+                "prefix": "typi",
+                "revision-date": "2000-01-02"
               }
             }
-          },
+          }
+        ],
+        "local-comparison": [
           {
+            "parent-path": "/",
+            "identifier": "local-tpdf",
+            "stmt-type": "typedef",
             "changed": [
               {
-                "stmt": "if-feature",
-                "parent-stmt": "feature",
-                "change": "added",
+                "stmt": "type",
+                "parent-stmt": "typedef",
+                "change": "modified",
                 "conformance": "non-backwards-compatible"
               }
             ],
             "old": {
-              "feature": {
-                "name": "f2"
+              "type": {
+                "name": "uint8"
               }
             },
             "new": {
-              "feature": {
-                "name": "f2",
-                "if-feature": [
-                  "f"
-                ]
+              "type": {
+                "name": "int8"
               }
             }
           }
         ],
         "node-comparison": [
           {
-            "node": "/if-feature:cont/l",
+            "node": "/type:l1",
             "node-type": "leaf",
             "changed": [
               {
-                "stmt": "if-feature",
-                "parent-stmt": "node",
-                "change": "removed",
+                "stmt": "type",
+                "change": "modified",
                 "conformance": "non-backwards-compatible"
               }
             ],
             "old": {
-              "if-feature": [
-                "not f"
-              ],
               "status": "current",
               "config": true,
-              "mandatory": true,
+              "mandatory": false,
               "type": {
-                "name": "string"
+                "name": "uint8"
               }
             },
             "new": {
               "status": "current",
               "config": true,
-              "mandatory": true,
+              "mandatory": false,
               "type": {
-                "name": "string"
+                "name": "int8"
               }
             }
           }

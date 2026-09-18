@@ -19,6 +19,7 @@
           }
         ],
         "conformance": "backwards-compatible",
+        "suggested-target-version": "1.1.0",
         "module-comparison": [
           {
             "changed": [

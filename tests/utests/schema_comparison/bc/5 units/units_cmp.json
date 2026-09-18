@@ -13,6 +13,7 @@
           "revision": "2000-01-02"
         },
         "conformance": "backwards-compatible",
+        "suggested-target-version": "1.1.0",
         "node-comparison": [
           {
             "node": "/units:l1",

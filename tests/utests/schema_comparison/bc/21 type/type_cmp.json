@@ -12,25 +12,9 @@
           "module": "type",
           "revision": "2000-01-02"
         },
-        "conformance": "non-backwards-compatible",
+        "conformance": "backwards-compatible",
+        "suggested-target-version": "1.1.0",
         "local-comparison": [
-          {
-            "parent-path": "/",
-            "identifier": "my-un-type",
-            "stmt-type": "typedef",
-            "changed": [
-              {
-                "stmt": "typedef",
-                "change": "removed",
-                "conformance": "non-backwards-compatible"
-              }
-            ],
-            "old": {
-              "type": {
-                "name": "uint8"
-              }
-            }
-          },
           {
             "parent-path": "/",
             "identifier": "mytype",
@@ -47,32 +31,6 @@
                 "name": "string",
                 "length": {
                   "restriction": "1..20"
-                }
-              }
-            }
-          },
-          {
-            "parent-path": "/cont",
-            "identifier": "list-type",
-            "stmt-type": "typedef",
-            "changed": [
-              {
-                "stmt": "length",
-                "parent-stmt": "typedef",
-                "change": "added",
-                "conformance": "non-backwards-compatible"
-              }
-            ],
-            "old": {
-              "type": {
-                "name": "string"
-              }
-            },
-            "new": {
-              "type": {
-                "name": "string",
-                "length": {
-                  "restriction": "1..16"
                 }
               }
             }

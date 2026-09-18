@@ -722,7 +722,7 @@ LY_ERR
 lysc_diff_changes(const struct lys_module *mod1, const struct lys_module *mod2, struct lys_diff_s *diff)
 {
     LY_ERR rc = LY_SUCCESS;
-    struct lysc_module *mod1c = NULL, *mod2c = NULL;
+    const struct lysc_module *mod1c, *mod2c;
     struct lys_glob_unres unres1 = {0}, unres2 = {0};
 
     if (diff->gen_local) {
@@ -737,12 +737,16 @@ lysc_diff_changes(const struct lys_module *mod1, const struct lys_module *mod2, 
         assert(diff->gen_local);
 
         /* use locally resolved compiled modules */
-        LY_CHECK_GOTO(rc = lys_compile((struct lys_module *)mod1, 1, &unres1.ds_unres, &mod1c), cleanup);
-        LY_CHECK_GOTO(rc = lys_compile((struct lys_module *)mod2, 1, &unres2.ds_unres, &mod2c), cleanup);
+        assert(!diff->mod1c && !diff->mod2c);
+        LY_CHECK_GOTO(rc = lys_compile((struct lys_module *)mod1, 1, &unres1.ds_unres, &diff->mod1c), cleanup);
+        LY_CHECK_GOTO(rc = lys_compile((struct lys_module *)mod2, 1, &unres2.ds_unres, &diff->mod2c), cleanup);
 
         /* there are no relevant unresolved items since the module is local only */
         lys_compile_unres_depset_erase(mod1->ctx, &unres1);
         lys_compile_unres_depset_erase(mod2->ctx, &unres2);
+
+        mod1c = diff->mod1c;
+        mod2c = diff->mod2c;
     } else {
         mod1c = mod1->compiled;
         mod2c = mod2->compiled;
@@ -759,10 +763,6 @@ lysc_diff_changes(const struct lys_module *mod1, const struct lys_module *mod2, 
     schema_diff_update_conform(diff);
 
 cleanup:
-    if (!diff->gen_full) {
-        lysc_module_free(mod1->ctx, mod1c);
-        lysc_module_free(mod2->ctx, mod2c);
-    }
     return rc;
 }
 
@@ -870,4 +870,12 @@ lysc_diff_erase(struct lys_diff_s *diff)
         lysc_diff_erase_pext_changes(&diff->node_changes[i].pext_changes);
     }
     free(diff->node_changes);
+
+    /* special compiled locally resolved modules */
+    if (diff->mod1c) {
+        lysc_module_free(diff->mod1c->mod->ctx, diff->mod1c);
+    }
+    if (diff->mod2c) {
+        lysc_module_free(diff->mod2c->mod->ctx, diff->mod2c);
+    }
 }

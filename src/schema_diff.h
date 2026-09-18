@@ -97,9 +97,10 @@ enum lys_diff_changed_e {
 };
 
 enum lys_diff_conform_e {
-    LYS_CONFORM_ED,     /**< editorial change */
-    LYS_CONFORM_BC,     /**< backwards-compatible change */
-    LYS_CONFORM_NBC     /**< non-backwards-compatible change */
+    LYS_CONFORM_NO_CHANGE,  /**< editorial change */
+    LYS_CONFORM_ED,         /**< editorial change */
+    LYS_CONFORM_BC,         /**< backwards-compatible change */
+    LYS_CONFORM_NBC         /**< non-backwards-compatible change */
 };
 
 /**
@@ -291,6 +292,8 @@ struct lys_diff_s {
     ly_bool gen_local;                              /**< marks generating diff for locally resolved module */
     ly_bool gen_full;                               /**< marks generating diff for fully resolved module */
     enum lys_diff_conform_e conform;                /**< conformance of the whole diff */
+    struct lysc_module *mod1c;                      /**< ad-hoc compiled locally resolved first module */
+    struct lysc_module *mod2c;                      /**< ad-hoc compiled locally resolved second module */
     const struct ly_ctx *ctx;                       /**< context to use */
 };
 

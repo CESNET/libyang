@@ -1418,34 +1418,43 @@ done:
  * @param[in] ctx Compile context.
  * @param[in] ptypes Parsed union types.
  * @param[in] context_pnode Schema node where the type/typedef is placed to correctly find the base types.
- * @param[in] context_flags Flags of the context node or the referencing typedef to correctly check status of referencing and referenced objects.
+ * @param[in] context_flags Flags of the context node or the referencing typedef to correctly check status
+ * of referencing and referenced objects.
  * @param[in] context_name Name of the context node or referencing typedef for logging.
- * @param[out] utypes_p Array of compiled union types.
+ * @param[in,out] utypes_p Array of compiled union types.
  * @return LY_ERR value.
  */
 static LY_ERR
 lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct lysp_node *context_pnode, uint16_t context_flags,
         const char *context_name, struct lysc_type ***utypes_p)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR rc = LY_SUCCESS;
     struct lysc_type **utypes = *utypes_p;
     struct lysc_type_union *un_aux = NULL;
+    LYA_COUNT_T u, v, additional;
+    ly_bool free_types = 0;
 
-    LYA_PREALLOC(utypes, LYA_COUNT(ptypes), LOGMEM(ctx->ctx); ret = LY_EMEM; goto error);
-    for (LYA_COUNT_T u = 0, additional = 0; u < LYA_COUNT(ptypes); ++u) {
-        ret = lys_compile_type(ctx, context_pnode, context_flags, context_name, &ptypes[u], &utypes[u + additional],
+    LYA_PREALLOC(utypes, LYA_COUNT(ptypes), LOGMEM(ctx->ctx); rc = LY_EMEM; goto cleanup);
+
+    for (u = 0, additional = 0; u < LYA_COUNT(ptypes); ++u) {
+        rc = lys_compile_type(ctx, context_pnode, context_flags, context_name, &ptypes[u], &utypes[u + additional],
                 NULL, NULL);
-        LY_CHECK_GOTO(ret, error);
+        LY_CHECK_GOTO(rc, cleanup);
+        if (!utypes[u + additional]) {
+            /* foreign typedef in local-only module */
+            free_types = 1;
+            goto cleanup;
+        }
         LY_ATOMIC_INC_BARRIER(utypes[u + additional]->refcount);
 
         if (utypes[u + additional]->basetype == LY_TYPE_UNION) {
             /* add space for additional types from the union subtype */
             un_aux = (struct lysc_type_union *)utypes[u + additional];
             LYA_PREALLOC(utypes, LYA_COUNT(ptypes) + additional + LYA_COUNT(un_aux->types) - LYA_COUNT(utypes),
-                    LOGMEM(ctx->ctx); ret = LY_EMEM; goto error);
+                    LOGMEM(ctx->ctx); rc = LY_EMEM; goto cleanup);
 
             /* copy subtypes of the subtype union */
-            for (LYA_COUNT_T v = 0; v < LYA_COUNT(un_aux->types); ++v) {
+            for (v = 0; v < LYA_COUNT(un_aux->types); ++v) {
                 utypes[u + additional] = un_aux->types[v];
                 LY_ATOMIC_INC_BARRIER(un_aux->types[v]->refcount);
                 ++additional;
@@ -1463,15 +1472,19 @@ lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct ly
         }
     }
 
-    *utypes_p = utypes;
-    return LY_SUCCESS;
-
-error:
+cleanup:
     if (un_aux) {
         lysc_type_free(ctx->ctx, (struct lysc_type *)un_aux);
     }
-    *utypes_p = utypes;
-    return ret;
+    if (!rc && !free_types) {
+        *utypes_p = utypes;
+    } else {
+        LYA_FOR(utypes, u) {
+            lysc_type_free(ctx->ctx, utypes[u]);
+        }
+        LYA_FREE(utypes);
+    }
+    return rc;
 }
 
 /**
@@ -1885,6 +1898,13 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
             /* compile the type */
             LY_CHECK_GOTO(rc = lys_compile_type_union(ctx, type_p->types, context_pnode, context_flags, context_name,
                     &un->types), cleanup);
+            if (!un->types) {
+                /* foreign typedef in local-only module */
+                lydict_remove(ctx->ctx, (*type)->name);
+                free(*type);
+                *type = NULL;
+                goto cleanup;
+            }
         } else if (base) {
             /* copy all the types */
             const struct lysc_type_union *un_base = (struct lysc_type_union *)base;
@@ -2114,7 +2134,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
     struct lys_type_item *tctx;
     LY_DATA_TYPE basetype = LY_TYPE_UNKNOWN;
     struct lysc_type *base = NULL;
-    uint32_t i, opt_prev = ctx->compile_opts;
+    uint32_t i;
     struct ly_set tpdf_chain = {0};
     uintptr_t plugin_ref = 0;
 
@@ -2142,9 +2162,6 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
 
     /* learn the global pattern format to know what types need to be recompiled */
     pattern_format = lys_compile_type_patterns_has_oc_posix_ext(ctx->pmod);
-
-    /* for recursive type compilation in unions */
-    ctx->compile_opts &= ~LYS_COMPILE_LOCAL_ONLY;
 
     /* get restrictions from the referred typedefs */
     for (i = tpdf_chain.count - 1; i + 1 > 0; --i) {
@@ -2209,7 +2226,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
     /* remove the processed typedef contexts from the stack for circular check */
     ctx->tpdf_chain.count = ctx->tpdf_chain.count - tpdf_chain.count;
 
-    if ((opt_prev & LYS_COMPILE_LOCAL_ONLY) && tpdf_chain.count &&
+    if ((ctx->compile_opts & LYS_COMPILE_LOCAL_ONLY) && tpdf_chain.count &&
             (((struct lys_type_item *)tpdf_chain.objs[tpdf_chain.count - 1])->tpdf->type.pmod->mod != ctx->pmod->mod)) {
         /* last typedef is foreign, do not resolve */
         goto cleanup;
@@ -2226,6 +2243,10 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
         ret = lys_compile_type_(ctx, context_pnode, context_flags, context_name, (struct lysp_type *)type_p, basetype,
                 NULL, base, plugin_ref, &tpdf_chain, 0, type);
         LY_CHECK_GOTO(ret, cleanup);
+        if (!*type) {
+            /* foreign typedef in local-only module */
+            goto cleanup;
+        }
 
         /* always fill the type name */
         if (tpdf_chain.count) {
@@ -2238,7 +2259,6 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
     }
 
 cleanup:
-    ctx->compile_opts = opt_prev;
     ly_set_erase(&tpdf_chain, free);
     return ret;
 }
