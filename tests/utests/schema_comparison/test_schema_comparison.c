@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for YANG schema comparison
  *
- * Copyright (c) 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2025 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ struct sc_state {
     struct ly_ctx *ctx2;
     ly_bool local_cmp;
     ly_bool full_cmp;
-    const char *cmp_file_prefix;
+    const char *cmp_file_suffix;
     struct lyd_node *sc_data;
     char *str;
     char *exp;
@@ -110,9 +110,7 @@ static void
 schema_comparison(struct sc_state *st, const char *module_name)
 {
     struct lys_module *src_mod, *trg_mod;
-    int r;
     char *path;
-    const char *ptr;
     size_t size;
 
     print_message("[          ] - %s\n", module_name);
@@ -128,15 +126,9 @@ schema_comparison(struct sc_state *st, const char *module_name)
     assert_int_equal(LY_SUCCESS, lyd_print_mem(&st->str, st->sc_data, LYD_JSON, 0));
 
     /* open file with the expected output */
-    if (st->cmp_file_prefix) {
-        ptr = strrchr(src_mod->filepath, '/') + 1;
-        r = asprintf(&path, "%.*s%s%s", (int)(ptr - src_mod->filepath), src_mod->filepath, st->cmp_file_prefix, ptr);
-        assert_int_not_equal(r, -1);
-    } else {
-        path = strdup(src_mod->filepath);
-        assert_non_null(path);
-    }
-    sprintf(strrchr(path, '@'), "_cmp.json");
+    path = strdup(src_mod->filepath);
+    assert_non_null(path);
+    sprintf(strrchr(path, '@'), "%s_cmp.json", st->cmp_file_suffix ? st->cmp_file_suffix : "");
     st->f = fopen(path, "r");
     free(path);
     assert_non_null(st->f);
@@ -269,7 +261,7 @@ test_locally_resolved(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(st->ctx2, TEST_SC_LOCAL_FULL_DIR));
     st->local_cmp = 1;
     st->full_cmp = 0;
-    st->cmp_file_prefix = "lr_";
+    st->cmp_file_suffix = "_lr";
 
     /* test all locally-resolved-only modules */
     schema_comparison(st, "type");
@@ -286,7 +278,7 @@ test_fully_resolved(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(st->ctx2, TEST_SC_LOCAL_FULL_DIR));
     st->local_cmp = 0;
     st->full_cmp = 1;
-    st->cmp_file_prefix = "fr_";
+    st->cmp_file_suffix = "_fr";
 
     /* test all fully-resolved-only modules */
     schema_comparison(st, "type");
