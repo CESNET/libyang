@@ -1190,6 +1190,8 @@ static LY_ERR
 schema_diff_parsed_defaults_change(const struct lysp_qname *dflts1, const struct lysp_qname *dflts2,
         enum lys_diff_changed_e parent_changed, struct lys_diff_changes_s *changes)
 {
+    LYA_COUNT_T u;
+
     if (!dflts1 && !dflts2) {
         /* no changes */
         return LY_SUCCESS;
@@ -1199,9 +1201,19 @@ schema_diff_parsed_defaults_change(const struct lysp_qname *dflts1, const struct
     } else if (!dflts1) {
         /* added */
         return schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, LYS_CHANGED_DEFAULT, LYS_CONFORM_BC, changes);
-    } else if (LYA_COUNT(dflts1) != LYA_COUNT(dflts2)) {
-        /* modified */
-        return schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_DEFAULT, LYS_CONFORM_NBC, changes);
+    } else {
+        if (LYA_COUNT(dflts1) != LYA_COUNT(dflts2)) {
+            /* modified */
+            return schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_DEFAULT, LYS_CONFORM_NBC,
+                    changes);
+        }
+        LYA_FOR(dflts1, u) {
+            if (strcmp(dflts1[u].str, dflts2[u].str)) {
+                /* modified */
+                return schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_DEFAULT, LYS_CONFORM_NBC,
+                        changes);
+            }
+        }
     }
 
     return LY_SUCCESS;
@@ -1657,11 +1669,16 @@ schema_diff_pnode_change(const struct lysp_node *node1, const struct lysp_node *
     case LYS_USES:
         /* refines, when */
         uses = (struct lysp_node_uses *)node1;
-        refines1 = uses->refines;
+        if (strchr(schema_diff_parsed_name_canon(uses->name, uses->nodetype, diff->old_prefix, NULL), ':')) {
+            /* compare only foreign grouping refines */
+            refines1 = uses->refines;
+        }
         when1 = uses->when;
 
         uses = (struct lysp_node_uses *)node2;
-        refines2 = uses->refines;
+        if (strchr(schema_diff_parsed_name_canon(uses->name, uses->nodetype, diff->new_prefix, NULL), ':')) {
+            refines2 = uses->refines;
+        }
         when2 = uses->when;
         break;
     case LYS_INPUT:

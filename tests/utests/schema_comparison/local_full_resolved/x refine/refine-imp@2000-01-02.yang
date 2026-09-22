@@ -1,0 +1,15 @@
+module refine-imp {
+    namespace "urn:test:refine-imp";
+    prefix rfni;
+    yang-version 1.1;
+
+    revision 2000-01-02;
+
+    grouping foreign-group {
+        leaf-list fl {
+            min-elements 1;
+            max-elements 50;
+            type string;
+        }
+    }
+}

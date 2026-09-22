@@ -1,0 +1,101 @@
+{
+  "ietf-yang-schema-comparison-output:schema-comparison": {
+    "comparison": [
+      {
+        "locally-resolved": [null],
+        "source": {
+          "module": "refine",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "refine",
+          "revision": "2000-01-02"
+        },
+        "conformance": "non-backwards-compatible",
+        "suggested-target-version": "2.0.0",
+        "module-comparison": [
+          {
+            "changed": [
+              {
+                "stmt": "revision-date",
+                "parent-stmt": "import",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "import": {
+                "module": "refine-imp",
+                "prefix": "rfni",
+                "revision-date": "2000-01-01"
+              }
+            },
+            "new": {
+              "import": {
+                "module": "refine-imp",
+                "prefix": "rfni",
+                "revision-date": "2000-01-02"
+              }
+            }
+          }
+        ],
+        "local-comparison": [
+          {
+            "parent-path": "/cont",
+            "identifier": "fl",
+            "stmt-type": "refine",
+            "changed": [
+              {
+                "stmt": "min-elements",
+                "parent-stmt": "refine",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "min-elements": 5
+            },
+            "new": {
+              "min-elements": 10
+            }
+          }
+        ],
+        "node-comparison": [
+          {
+            "node": "/refine:ll",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "default",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "default": [
+                "500"
+              ],
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "uint32"
+              }
+            },
+            "new": {
+              "status": "current",
+              "default": [
+                "1000"
+              ],
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "uint32"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

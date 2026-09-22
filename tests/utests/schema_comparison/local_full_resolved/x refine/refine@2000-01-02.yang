@@ -1,0 +1,32 @@
+module refine {
+    namespace "urn:test:refine";
+    prefix rfn;
+    yang-version 1.1;
+
+    import refine-imp {
+        prefix rfni;
+        revision-date 2000-01-02;
+    }
+
+    revision 2000-01-02;
+
+    grouping local-group {
+        leaf ll {
+            type uint32;
+        }
+    }
+
+    container cont {
+        uses rfni:foreign-group {
+            refine fl {
+                min-elements 10;
+            }
+        }
+    }
+
+    uses local-group {
+        refine ll {
+            default 1000;
+        }
+    }
+}

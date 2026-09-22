@@ -67,7 +67,7 @@ lysc_unres_when_add(struct lysc_ctx *ctx, struct lysc_when *when, struct lysc_no
     struct lysc_unres_when *w = NULL;
 
     /* do not check when(s) in a grouping or in disabled data (high risk of false-positives) */
-    if (ctx->compile_opts & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED)) {
+    if (ctx->compile_opts & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED | LYS_COMPILE_LOCAL_ONLY)) {
         goto cleanup;
     }
 
@@ -105,7 +105,7 @@ lysc_unres_must_add(struct lysc_ctx *ctx, struct lysc_node *node, struct lysp_no
     LY_ERR ret;
 
     /* do not check must(s) in a grouping or in disabled data (high risk of false-positives) */
-    if (ctx->compile_opts & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED)) {
+    if (ctx->compile_opts & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED | LYS_COMPILE_LOCAL_ONLY)) {
         return LY_SUCCESS;
     }
 
@@ -154,7 +154,7 @@ lysc_unres_leafref_add(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, const 
     LYA_COUNT_T u;
     int is_lref = 0;
 
-    if (ctx->compile_opts & LYS_COMPILE_GROUPING) {
+    if (ctx->compile_opts & (LYS_COMPILE_GROUPING | LYS_COMPILE_LOCAL_ONLY)) {
         /* do not check leafrefs in groupings */
         return LY_SUCCESS;
     }
@@ -204,8 +204,17 @@ lysc_unres_leaf_dflt_add(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, stru
 {
     struct lysc_unres_dflt *r = NULL;
     uint32_t i;
+    LY_VALUE_FORMAT format;
 
     if (ctx->compile_opts & (LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING)) {
+        return LY_SUCCESS;
+    }
+
+    if (ctx->compile_opts & LYS_COMPILE_LOCAL_ONLY) {
+        /* store the local value with the resolved prefixes */
+        LY_CHECK_RET(lysdict_insert(ctx->ctx, dflt->str, 0, &leaf->dflt.str));
+        LY_CHECK_RET(lyplg_type_prefix_data_new(ctx->ctx, dflt->str, strlen(dflt->str), LY_VALUE_SCHEMA, ctx->pmod,
+                &format, (void **)&leaf->dflt.prefixes));
         return LY_SUCCESS;
     }
 
@@ -252,8 +261,21 @@ lysc_unres_llist_dflts_add(struct lysc_ctx *ctx, struct lysc_node_leaflist *llis
 {
     struct lysc_unres_dflt *r = NULL;
     uint32_t i;
+    LYA_COUNT_T u;
+    LY_VALUE_FORMAT format;
 
     if (ctx->compile_opts & (LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING)) {
+        return LY_SUCCESS;
+    }
+
+    if (ctx->compile_opts & LYS_COMPILE_LOCAL_ONLY) {
+        /* store the local value with the resolved prefixes */
+        LYA_PREALLOC(llist->dflts, LYA_COUNT(dflts), LOGMEM(ctx->ctx); return LY_EMEM);
+        LYA_FOR(dflts, u) {
+            LY_CHECK_RET(lysdict_insert(ctx->ctx, dflts[u].str, 0, &llist->dflts[u].str));
+            LY_CHECK_RET(lyplg_type_prefix_data_new(ctx->ctx, dflts[u].str, strlen(dflts[u].str), LY_VALUE_SCHEMA,
+                    ctx->pmod, &format, (void **)&llist->dflts[u].prefixes));
+        }
         return LY_SUCCESS;
     }
 
@@ -292,7 +314,7 @@ lysc_unres_llist_dflts_add(struct lysc_ctx *ctx, struct lysc_node_leaflist *llis
 static LY_ERR
 lysc_unres_bitenum_add(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf)
 {
-    if (ctx->compile_opts & (LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING)) {
+    if (ctx->compile_opts & (LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING | LYS_COMPILE_LOCAL_ONLY)) {
         /* skip groupings and redundant for disabled nodes */
         return LY_SUCCESS;
     }
@@ -2630,7 +2652,8 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
 
     /* compile any deviations for this node */
     LY_CHECK_GOTO(ret = lys_compile_node_deviations_refines(ctx, pnode, parent, &dev_pnode, &not_supported), error);
-    if (not_supported && !(ctx->compile_opts & (LYS_COMPILE_NO_DISABLED | LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
+    if (not_supported && !(ctx->compile_opts & (LYS_COMPILE_NO_DISABLED | LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING |
+            LYS_COMPILE_LOCAL_ONLY))) {
         /* if not supported, keep it just like disabled nodes by if-feature */
         ly_set_add(&ctx->unres->disabled, node, 1, NULL);
         ctx->compile_opts |= LYS_COMPILE_DISABLED;
@@ -2645,7 +2668,8 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
 
     /* if-features */
     LY_CHECK_GOTO(ret = lys_eval_iffeatures(ctx->ctx, pnode->iffeatures, &enabled), error);
-    if (!enabled && !(ctx->compile_opts & (LYS_COMPILE_NO_DISABLED | LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
+    if (!enabled && !(ctx->compile_opts & (LYS_COMPILE_NO_DISABLED | LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING |
+            LYS_COMPILE_LOCAL_ONLY))) {
         ly_set_add(&ctx->unres->disabled, node, 1, NULL);
         ctx->compile_opts |= LYS_COMPILE_DISABLED;
     }
@@ -2653,7 +2677,7 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
     /* config, status and other flags */
     LY_CHECK_GOTO(ret = lys_compile_node_flags(ctx, pnode->flags, inherited_flags, node), error);
     if ((node->flags & LYS_STATUS_OBSLT) && !(ctx->ctx->opts & LY_CTX_COMPILE_OBSOLETE) &&
-            !(ctx->compile_opts & (LYS_COMPILE_NO_DISABLED | LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
+            !(ctx->compile_opts & (LYS_COMPILE_NO_DISABLED | LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING | LYS_COMPILE_LOCAL_ONLY))) {
         /* obsolete, will not be in the compiled tree, treat as disabled */
         ly_set_add(&ctx->unres->disabled, node, 1, NULL);
         ctx->compile_opts |= LYS_COMPILE_DISABLED;
@@ -2958,37 +2982,36 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
 {
     struct lysp_node_leaf *leaf_p = (struct lysp_node_leaf *)pnode;
     struct lysc_node_leaf *leaf = (struct lysc_node_leaf *)node;
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR rc = LY_SUCCESS;
 
-    COMPILE_ARRAY_GOTO(ctx, leaf_p->musts, leaf->musts, lys_compile_must, ret, done);
+    COMPILE_ARRAY_GOTO(ctx, leaf_p->musts, leaf->musts, lys_compile_must, rc, cleanup);
 
     /* add must(s) to unres */
-    ret = lysc_unres_must_add(ctx, node, pnode);
-    LY_CHECK_GOTO(ret, done);
+    LY_CHECK_GOTO(rc = lysc_unres_must_add(ctx, node, pnode), cleanup);
 
     if (leaf_p->units) {
-        LY_CHECK_GOTO(ret = lysdict_insert(ctx->ctx, leaf_p->units, 0, &leaf->units), done);
+        LY_CHECK_GOTO(rc = lysdict_insert(ctx->ctx, leaf_p->units, 0, &leaf->units), cleanup);
         leaf->flags |= LYS_SET_UNITS;
     }
 
     /* compile type */
-    ret = lys_compile_node_type(ctx, pnode, &leaf_p->type, leaf);
-    LY_CHECK_GOTO(ret, done);
+    LY_CHECK_GOTO(rc = lys_compile_node_type(ctx, pnode, &leaf_p->type, leaf), cleanup);
 
     /* store/update default value */
     if (leaf_p->dflt.str) {
-        LY_CHECK_RET(lysc_unres_leaf_dflt_add(ctx, leaf, &leaf_p->dflt));
+        LY_CHECK_GOTO(rc = lysc_unres_leaf_dflt_add(ctx, leaf, &leaf_p->dflt), cleanup);
         leaf->flags |= LYS_SET_DFLT;
     }
 
     /* checks */
     if ((leaf->flags & LYS_SET_DFLT) && (leaf->flags & LYS_MAND_TRUE)) {
         LOGVAL(ctx->ctx, NULL, LYVE_SEMANTICS, "Invalid mandatory leaf with a default value.");
-        return LY_EVALID;
+        rc = LY_EVALID;
+        goto cleanup;
     }
 
-done:
-    return ret;
+cleanup:
+    return rc;
 }
 
 /**
@@ -3004,31 +3027,30 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *pnode, struct 
 {
     struct lysp_node_leaflist *llist_p = (struct lysp_node_leaflist *)pnode;
     struct lysc_node_leaflist *llist = (struct lysc_node_leaflist *)node;
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR rc = LY_SUCCESS;
 
-    COMPILE_ARRAY_GOTO(ctx, llist_p->musts, llist->musts, lys_compile_must, ret, done);
+    COMPILE_ARRAY_GOTO(ctx, llist_p->musts, llist->musts, lys_compile_must, rc, cleanup);
 
     /* add must(s) to unres */
-    ret = lysc_unres_must_add(ctx, node, pnode);
-    LY_CHECK_GOTO(ret, done);
+    LY_CHECK_GOTO(rc = lysc_unres_must_add(ctx, node, pnode), cleanup);
 
     if (llist_p->units) {
-        LY_CHECK_GOTO(ret = lysdict_insert(ctx->ctx, llist_p->units, 0, &llist->units), done);
+        LY_CHECK_GOTO(rc = lysdict_insert(ctx->ctx, llist_p->units, 0, &llist->units), cleanup);
         llist->flags |= LYS_SET_UNITS;
     }
 
     /* compile type */
-    ret = lys_compile_node_type(ctx, pnode, &llist_p->type, (struct lysc_node_leaf *)llist);
-    LY_CHECK_GOTO(ret, done);
+    LY_CHECK_GOTO(rc = lys_compile_node_type(ctx, pnode, &llist_p->type, (struct lysc_node_leaf *)llist), cleanup);
 
     /* store/update default values */
     if (llist_p->dflts) {
         if (ctx->pmod->version < LYS_VERSION_1_1) {
             LOGVAL(ctx->ctx, NULL, LYVE_SEMANTICS, "Leaf-list default values are allowed only in YANG 1.1 modules.");
-            return LY_EVALID;
+            rc = LY_EVALID;
+            goto cleanup;
         }
 
-        LY_CHECK_GOTO(lysc_unres_llist_dflts_add(ctx, llist, llist_p->dflts), done);
+        LY_CHECK_GOTO(rc = lysc_unres_llist_dflts_add(ctx, llist, llist_p->dflts), cleanup);
         llist->flags |= LYS_SET_DFLT;
     }
 
@@ -3047,17 +3069,19 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *pnode, struct 
     /* checks */
     if ((llist->flags & LYS_SET_DFLT) && (llist->flags & LYS_MAND_TRUE)) {
         LOGVAL(ctx->ctx, NULL, LYVE_SEMANTICS, "The default statement is present on leaf-list with a nonzero min-elements.");
-        return LY_EVALID;
+        rc = LY_EVALID;
+        goto cleanup;
     }
 
     if (llist->min > llist->max) {
         LOGVAL(ctx->ctx, NULL, LYVE_SEMANTICS, "Leaf-list min-elements %" PRIu32 " is bigger than max-elements %" PRIu32 ".",
                 llist->min, llist->max);
-        return LY_EVALID;
+        rc = LY_EVALID;
+        goto cleanup;
     }
 
-done:
-    return ret;
+cleanup:
+    return rc;
 }
 
 /**

@@ -117,26 +117,6 @@
             }
           }
         ],
-        "local-comparison": [
-          {
-            "parent-path": "/{uses=top-grp2}",
-            "identifier": "cont/lg",
-            "stmt-type": "refine",
-            "changed": [
-              {
-                "stmt": "refine",
-                "parent-stmt": "node",
-                "change": "added",
-                "conformance": "non-backwards-compatible"
-              }
-            ],
-            "new": {
-              "default": [
-                "50"
-              ]
-            }
-          }
-        ],
         "node-comparison": [
           {
             "node": "/new-stmt:l1",
