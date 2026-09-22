@@ -30,6 +30,34 @@
               "prefix": "pfx2"
             }
           }
+        ],
+        "local-comparison": [
+          {
+            "parent-path": "/cont",
+            "identifier": "pfx:grp",
+            "stmt-type": "uses",
+            "changed": [
+              {
+                "stmt": "name",
+                "parent-stmt": "node",
+                "change": "modified",
+                "conformance": "editorial"
+              }
+            ]
+          },
+          {
+            "parent-path": "/cont",
+            "identifier": "pfx:cont2",
+            "stmt-type": "augment",
+            "changed": [
+              {
+                "stmt": "name",
+                "parent-stmt": "node",
+                "change": "modified",
+                "conformance": "editorial"
+              }
+            ]
+          }
         ]
       }
     ]

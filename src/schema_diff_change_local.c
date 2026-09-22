@@ -1749,8 +1749,6 @@ schema_diff_pnode_change_r(const struct lysp_node *node1, const struct lysp_node
 
     nodetype = node1 ? node1->nodetype : node2->nodetype;
 
-    /* TODO nodes are equal but their names do not have to match exactly, prefixes may differ (uses, augment), report it? */
-
     /* typedefs */
     LY_CHECK_GOTO(rc = schema_diff_typedefs_change(lysp_node_typedefs(node1), node1, lysp_node_typedefs(node2), node2,
             LYS_CHANGED_NODE, diff), cleanup);
@@ -1758,6 +1756,12 @@ schema_diff_pnode_change_r(const struct lysp_node *node1, const struct lysp_node
     if (LYS_DIFF_NODE_LOCAL(nodetype)) {
         /* add new node to changes */
         LY_CHECK_GOTO(rc = schema_diff_add_pnode_change(node1, node2, diff, &pnode_change), cleanup);
+
+        if (node1 && node2 && strcmp(node1->name, node2->name)) {
+            /* nodes matched, prefix changed */
+            LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_MODIFIED, LYS_CHANGED_NODE, LYS_CHANGED_NAME,
+                    LYS_CONFORM_ED, &pnode_change->changes), cleanup);
+        }
 
         /* node changes (removed, modified) */
         LY_CHECK_GOTO(rc = schema_diff_pnode_change(node1, node2, &pnode_change->changes, &pnode_change->ext_changes,

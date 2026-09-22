@@ -195,6 +195,10 @@ module ietf-yang-schema-comparison-output {
         description
           "YANG statement 'must'.";
       }
+      enum name {
+        description
+          "Name (identifier) argument of YANG statements.";
+      }
       enum node {
         description
           "YANG statement 'container', 'leaf', 'leaf-list', 'list',

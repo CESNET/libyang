@@ -99,6 +99,8 @@ schema_diff_changed2str(enum lys_diff_changed_e ch)
         return "module";
     case LYS_CHANGED_MUST:
         return "must";
+    case LYS_CHANGED_NAME:
+        return "name";
     case LYS_CHANGED_NAMESPACE:
         return "namespace";
     case LYS_CHANGED_NODE:
