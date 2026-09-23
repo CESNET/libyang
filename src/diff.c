@@ -824,7 +824,7 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
      */
     if (*op == LYD_DIFF_OP_CREATE) {
         /* insert the instance */
-        LYA_PREALLOC(userord_item->inst, 1, LOGMEM(schema->module->ctx); rc = LY_EMEM; goto cleanup);
+        LYA_PREALLOC(userord_item->inst, LYA_COUNT(userord_item->inst) + 1, LOGMEM(schema->module->ctx); rc = LY_EMEM; goto cleanup);
         if (second_pos < LYA_COUNT(userord_item->inst)) {
             memmove(userord_item->inst + second_pos + 1, userord_item->inst + second_pos,
                     (LYA_COUNT(userord_item->inst) - second_pos) * sizeof *userord_item->inst);

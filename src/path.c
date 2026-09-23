@@ -974,7 +974,7 @@ ly_path_append(const struct ly_ctx *ctx, const struct ly_path *src, struct ly_pa
         return LY_SUCCESS;
     }
 
-    LYA_PREALLOC(*dst, LYA_COUNT(src), LOGMEM(ctx); return LY_EMEM);
+    LYA_PREALLOC(*dst, LYA_COUNT(*dst) + LYA_COUNT(src), LOGMEM(ctx); return LY_EMEM);
     LYA_FOR(src, u) {
         LYA_ADD_ITEM(*dst, p, LOGMEM(ctx); rc = LY_EMEM; goto cleanup);
         p->node = src[u].node;

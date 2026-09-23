@@ -1472,8 +1472,8 @@ lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct ly
         if (utypes[u + additional]->basetype == LY_TYPE_UNION) {
             /* add space for additional types from the union subtype */
             un_aux = (struct lysc_type_union *)utypes[u + additional];
-            LYA_PREALLOC(utypes, LYA_COUNT(ptypes) + additional + LYA_COUNT(un_aux->types) - LYA_COUNT(utypes),
-                    LOGMEM(ctx->ctx); rc = LY_EMEM; goto cleanup);
+            LYA_PREALLOC(utypes, LYA_COUNT(ptypes) + additional + LYA_COUNT(un_aux->types), LOGMEM(ctx->ctx);
+                    rc = LY_EMEM; goto cleanup);
 
             /* copy subtypes of the subtype union */
             for (v = 0; v < LYA_COUNT(un_aux->types); ++v) {

@@ -88,7 +88,7 @@ extern "C" {
  * Does not set the size information, it is supposed to be incremented via ::LYA_INCREMENT
  * when the items are filled.
  *
- * Any new memory is zeroed.
+ * Any new memory is zeroed. The array is never shrunk below its current count.
  *
  * @param[in,out] ARRAY Sized array to manipulate.
  * @param[in] COUNT New count (size) of the items in the array.
@@ -96,18 +96,20 @@ extern "C" {
  */
 #define LYA_PREALLOC(ARRAY, COUNT, EACTION) \
     { \
-        LYA_COUNT_T orig_count = LYA_COUNT(ARRAY); \
-        void *mem = realloc((ARRAY) ? (LYA_COUNT_T *)(ARRAY) - 1 : NULL, \
-                sizeof(LYA_COUNT_T) + (orig_count + COUNT) * sizeof *(ARRAY)); \
-        if (!mem) { \
+        LYA_COUNT_T lya_prealloc_orig = LYA_COUNT(ARRAY); \
+        LYA_COUNT_T lya_prealloc_count = (COUNT); \
+        if (lya_prealloc_count < lya_prealloc_orig) { \
+            lya_prealloc_count = lya_prealloc_orig; \
+        } \
+        void *lya_prealloc_mem = realloc((ARRAY) ? (LYA_COUNT_T *)(ARRAY) - 1 : NULL, \
+                sizeof(LYA_COUNT_T) + lya_prealloc_count * sizeof *(ARRAY)); \
+        if (!lya_prealloc_mem) { \
             EACTION; \
         } \
-        void *new_array = (LYA_COUNT_T *)mem + 1; \
-        memcpy(&(ARRAY), &new_array, sizeof(ARRAY)); \
-        LYA_COUNT_(ARRAY) = orig_count; \
-        if ((COUNT) > orig_count) { \
-            memset((ARRAY) + orig_count, 0, ((COUNT) - orig_count) * sizeof *(ARRAY)); \
-        } \
+        void *lya_prealloc_array = (LYA_COUNT_T *)lya_prealloc_mem + 1; \
+        memcpy(&(ARRAY), &lya_prealloc_array, sizeof(ARRAY)); \
+        LYA_COUNT_(ARRAY) = lya_prealloc_orig; \
+        memset((ARRAY) + lya_prealloc_orig, 0, (lya_prealloc_count - lya_prealloc_orig) * sizeof *(ARRAY)); \
     }
 
 /**

@@ -186,7 +186,7 @@ struct lysc_unres_dflt {
     if (ORIG_ARRAY) { \
         LYA_COUNT_T __u, __new_start; \
         __new_start = LYA_COUNT(NEW_ARRAY); \
-        LYA_PREALLOC(NEW_ARRAY, LYA_COUNT(ORIG_ARRAY), LOGMEM(CTX); return LY_EMEM); \
+        LYA_PREALLOC(NEW_ARRAY, __new_start + LYA_COUNT(ORIG_ARRAY), LOGMEM(CTX); return LY_EMEM); \
         LYA_FOR(ORIG_ARRAY, __u) { \
             LYA_INCREMENT(NEW_ARRAY); \
             LY_CHECK_RET(DUP_FUNC(CTX, PMOD, PARENT, PARENT_STMT, &(ORIG_ARRAY)[__u], &(NEW_ARRAY)[__new_start + __u])); \
