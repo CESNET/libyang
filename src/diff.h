@@ -87,4 +87,14 @@ LIBYANG_API_DECL LY_ERR lyd_diff_add(const struct lyd_node *node, enum lyd_diff_
 LY_ERR lyd_diff_add_explicit_op(const struct lyd_node *node, enum lyd_diff_op op, const char *key,
         const char *value, const char *position, struct lyd_node **diff);
 
+/**
+ * @brief Drop a diff subtree that validation created, when its data nodes are being deleted again.
+ *
+ * @param[in] diff_node Diff node of the data node being deleted.
+ * @param[in,out] diff Diff @p diff_node belongs to.
+ * @return LY_SUCCESS if the subtree was dropped.
+ * @return LY_ENOT if it has to be merged instead.
+ */
+LY_ERR lyd_diff_val_del_created(struct lyd_node *diff_node, struct lyd_node **diff);
+
 #endif /* LY_DIFF_H_ */

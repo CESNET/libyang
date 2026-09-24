@@ -248,6 +248,16 @@ lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct lyd_no
         goto cleanup;
     }
 
+    /* a create followed by a delete cancels out; merging would reconcile the whole subtree to
+     * "none" only to drop it as redundant */
+    if (op == LYD_DIFF_OP_DELETE) {
+        ret = lyd_diff_val_del_created(match, diff);
+        if (ret != LY_ENOT) {
+            goto cleanup;
+        }
+        ret = LY_SUCCESS;
+    }
+
     /* create new diff tree */
     LY_CHECK_GOTO(ret = lyd_diff_add(node, op, NULL, NULL, key, value, position, NULL, NULL, &new_diff, NULL), cleanup);
 

@@ -2733,6 +2733,69 @@ lyd_diff_is_redundant(struct lyd_node *diff)
 }
 
 /**
+ * @brief Check whether a diff subtree was created by validation only, so that deleting the
+ * corresponding data nodes cancels it out.
+ *
+ * @param[in] diff_node Diff subtree to check.
+ * @return Whether it can be dropped.
+ */
+static ly_bool
+lyd_diff_val_subtree_created(const struct lyd_node *diff_node)
+{
+    const struct lyd_node *elem;
+    struct lyd_meta *meta;
+    struct lyd_attr *attr;
+
+    LYD_TREE_DFS_BEGIN(diff_node, elem) {
+        if (!elem->schema) {
+            /* cannot reason about opaque nodes */
+            return 0;
+        }
+
+        lyd_diff_find_meta(elem, "operation", &meta, &attr);
+        if (attr) {
+            return 0;
+        }
+        if (meta && (lyd_diff_str2op(lyd_get_meta_value(meta)) != LYD_DIFF_OP_CREATE)) {
+            return 0;
+        }
+
+        /* a non-default term was set explicitly, deleting it is a real change */
+        if ((elem->schema->nodetype & LYD_NODE_TERM) && !(elem->flags & LYD_DEFAULT)) {
+            return 0;
+        }
+
+        LYD_TREE_DFS_END(diff_node, elem);
+    }
+
+    return 1;
+}
+
+LY_ERR
+lyd_diff_val_del_created(struct lyd_node *diff_node, struct lyd_node **diff)
+{
+    struct lyd_node *parent;
+    enum lyd_diff_op op;
+
+    LY_CHECK_RET(lyd_diff_get_op(diff_node, &op, NULL));
+    if ((op != LYD_DIFF_OP_CREATE) || !lyd_diff_val_subtree_created(diff_node)) {
+        return LY_ENOT;
+    }
+
+    /* drop it, then any ancestor left without a change */
+    do {
+        parent = lyd_parent(diff_node);
+        if (diff_node == *diff) {
+            *diff = (*diff)->next;
+        }
+        lyd_free_tree(diff_node);
+        diff_node = parent;
+    } while (diff_node && lyd_diff_is_redundant(diff_node));
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Merge all diff metadata found on a source diff node.
  *
  * @param[in] src_diff Source node.
