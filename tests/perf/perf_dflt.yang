@@ -1,0 +1,450 @@
+module perf_dflt {
+    yang-version 1.1;
+    namespace "urn:sysrepo:tests:perf-dflt";
+    prefix pd;
+
+    description
+      "Every list instance offers four alternative sets of defaults gated on the same leaf,
+       so only one set can ever apply. Validation materialises the defaults of all four
+       before resolving the when conditions, then deletes the three that do not apply.";
+
+    container cont {
+        list lst {
+            key "k";
+
+            leaf k {
+                type uint32;
+            }
+
+            leaf type {
+                type enumeration {
+                    enum "a";
+                    enum "b";
+                    enum "c";
+                    enum "d";
+                }
+            }
+
+            container set-a {
+                when "../type = 'a'";
+
+                leaf d1 {
+                    type uint32;
+                    default 1;
+                }
+
+                leaf d2 {
+                    type uint32;
+                    default 2;
+                }
+
+                leaf d3 {
+                    type uint32;
+                    default 3;
+                }
+
+                leaf d4 {
+                    type uint32;
+                    default 4;
+                }
+
+                leaf d5 {
+                    type uint32;
+                    default 5;
+                }
+
+                leaf d6 {
+                    type uint32;
+                    default 6;
+                }
+
+                leaf d7 {
+                    type uint32;
+                    default 7;
+                }
+
+                leaf d8 {
+                    type uint32;
+                    default 8;
+                }
+
+                leaf d9 {
+                    type uint32;
+                    default 9;
+                }
+
+                leaf d10 {
+                    type uint32;
+                    default 10;
+                }
+
+                leaf d11 {
+                    type uint32;
+                    default 11;
+                }
+
+                leaf d12 {
+                    type uint32;
+                    default 12;
+                }
+
+                leaf d13 {
+                    type uint32;
+                    default 13;
+                }
+
+                leaf d14 {
+                    type uint32;
+                    default 14;
+                }
+
+                leaf d15 {
+                    type uint32;
+                    default 15;
+                }
+
+                leaf d16 {
+                    type uint32;
+                    default 16;
+                }
+
+                leaf d17 {
+                    type uint32;
+                    default 17;
+                }
+
+                leaf d18 {
+                    type uint32;
+                    default 18;
+                }
+
+                leaf d19 {
+                    type uint32;
+                    default 19;
+                }
+
+                leaf d20 {
+                    type uint32;
+                    default 20;
+                }
+
+            }
+
+            container set-b {
+                when "../type = 'b'";
+
+                leaf d1 {
+                    type uint32;
+                    default 1;
+                }
+
+                leaf d2 {
+                    type uint32;
+                    default 2;
+                }
+
+                leaf d3 {
+                    type uint32;
+                    default 3;
+                }
+
+                leaf d4 {
+                    type uint32;
+                    default 4;
+                }
+
+                leaf d5 {
+                    type uint32;
+                    default 5;
+                }
+
+                leaf d6 {
+                    type uint32;
+                    default 6;
+                }
+
+                leaf d7 {
+                    type uint32;
+                    default 7;
+                }
+
+                leaf d8 {
+                    type uint32;
+                    default 8;
+                }
+
+                leaf d9 {
+                    type uint32;
+                    default 9;
+                }
+
+                leaf d10 {
+                    type uint32;
+                    default 10;
+                }
+
+                leaf d11 {
+                    type uint32;
+                    default 11;
+                }
+
+                leaf d12 {
+                    type uint32;
+                    default 12;
+                }
+
+                leaf d13 {
+                    type uint32;
+                    default 13;
+                }
+
+                leaf d14 {
+                    type uint32;
+                    default 14;
+                }
+
+                leaf d15 {
+                    type uint32;
+                    default 15;
+                }
+
+                leaf d16 {
+                    type uint32;
+                    default 16;
+                }
+
+                leaf d17 {
+                    type uint32;
+                    default 17;
+                }
+
+                leaf d18 {
+                    type uint32;
+                    default 18;
+                }
+
+                leaf d19 {
+                    type uint32;
+                    default 19;
+                }
+
+                leaf d20 {
+                    type uint32;
+                    default 20;
+                }
+
+            }
+
+            container set-c {
+                when "../type = 'c'";
+
+                leaf d1 {
+                    type uint32;
+                    default 1;
+                }
+
+                leaf d2 {
+                    type uint32;
+                    default 2;
+                }
+
+                leaf d3 {
+                    type uint32;
+                    default 3;
+                }
+
+                leaf d4 {
+                    type uint32;
+                    default 4;
+                }
+
+                leaf d5 {
+                    type uint32;
+                    default 5;
+                }
+
+                leaf d6 {
+                    type uint32;
+                    default 6;
+                }
+
+                leaf d7 {
+                    type uint32;
+                    default 7;
+                }
+
+                leaf d8 {
+                    type uint32;
+                    default 8;
+                }
+
+                leaf d9 {
+                    type uint32;
+                    default 9;
+                }
+
+                leaf d10 {
+                    type uint32;
+                    default 10;
+                }
+
+                leaf d11 {
+                    type uint32;
+                    default 11;
+                }
+
+                leaf d12 {
+                    type uint32;
+                    default 12;
+                }
+
+                leaf d13 {
+                    type uint32;
+                    default 13;
+                }
+
+                leaf d14 {
+                    type uint32;
+                    default 14;
+                }
+
+                leaf d15 {
+                    type uint32;
+                    default 15;
+                }
+
+                leaf d16 {
+                    type uint32;
+                    default 16;
+                }
+
+                leaf d17 {
+                    type uint32;
+                    default 17;
+                }
+
+                leaf d18 {
+                    type uint32;
+                    default 18;
+                }
+
+                leaf d19 {
+                    type uint32;
+                    default 19;
+                }
+
+                leaf d20 {
+                    type uint32;
+                    default 20;
+                }
+
+            }
+
+            container set-d {
+                when "../type = 'd'";
+
+                leaf d1 {
+                    type uint32;
+                    default 1;
+                }
+
+                leaf d2 {
+                    type uint32;
+                    default 2;
+                }
+
+                leaf d3 {
+                    type uint32;
+                    default 3;
+                }
+
+                leaf d4 {
+                    type uint32;
+                    default 4;
+                }
+
+                leaf d5 {
+                    type uint32;
+                    default 5;
+                }
+
+                leaf d6 {
+                    type uint32;
+                    default 6;
+                }
+
+                leaf d7 {
+                    type uint32;
+                    default 7;
+                }
+
+                leaf d8 {
+                    type uint32;
+                    default 8;
+                }
+
+                leaf d9 {
+                    type uint32;
+                    default 9;
+                }
+
+                leaf d10 {
+                    type uint32;
+                    default 10;
+                }
+
+                leaf d11 {
+                    type uint32;
+                    default 11;
+                }
+
+                leaf d12 {
+                    type uint32;
+                    default 12;
+                }
+
+                leaf d13 {
+                    type uint32;
+                    default 13;
+                }
+
+                leaf d14 {
+                    type uint32;
+                    default 14;
+                }
+
+                leaf d15 {
+                    type uint32;
+                    default 15;
+                }
+
+                leaf d16 {
+                    type uint32;
+                    default 16;
+                }
+
+                leaf d17 {
+                    type uint32;
+                    default 17;
+                }
+
+                leaf d18 {
+                    type uint32;
+                    default 18;
+                }
+
+                leaf d19 {
+                    type uint32;
+                    default 19;
+                }
+
+                leaf d20 {
+                    type uint32;
+                    default 20;
+                }
+
+            }
+
+        }
+    }
+}
