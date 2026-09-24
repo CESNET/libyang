@@ -451,6 +451,54 @@ test_xpath(void **state)
     lyd_free_all(tree);
 }
 
+static LY_ERR
+submod_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *submod_name,
+        const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format, const char **module_data,
+        void (**free_module_data)(void *model_data, void *user_data))
+{
+    if (!submod_name || strcmp(submod_name, "c_sub")) {
+        return LY_ENOTFOUND;
+    }
+
+    *module_data = user_data;
+    *format = LYS_IN_YANG;
+    *free_module_data = NULL;
+    return LY_SUCCESS;
+}
+
+static void
+test_submod(void **state)
+{
+    struct lys_module *mod;
+    char *printed = NULL;
+    const char *data, *submod;
+
+    /* top-level extension instances of a submodule are compiled into the module
+     * but their parsed instances are stored in the submodule */
+    submod = "submodule c_sub {yang-version 1.1; belongs-to c {prefix c;}"
+            "import ietf-yang-structure-ext {prefix sx;}"
+            "sx:augment-structure \"/c:basetop/c:x\" {leaf z {type string;}}"
+            "}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, submod_imp_clb, (void *)submod);
+
+    data = "module c {yang-version 1.1; namespace urn:tests:extensions:structure:c; prefix c;"
+            "include c_sub;"
+            "import ietf-yang-structure-ext {prefix sx;}"
+            "sx:structure basetop {container x {leaf l {type string;}}}"
+            "}";
+    UTEST_ADD_MODULE(data, LYS_IN_YANG, NULL, &mod);
+
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, NULL, NULL);
+
+    /* tree print with compiled nodes iterates compiled extension instances, the parsed one
+     * of a submodule extension instance used not to be found and asserted on */
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED));
+    assert_int_equal(LY_SUCCESS, lys_print_mem(&printed, mod, LYS_OUT_TREE, 0));
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED));
+    assert_non_null(strstr(printed, "augment-structure /c:basetop/c:x:"));
+    free(printed);
+}
+
 int
 main(void)
 {
@@ -459,6 +507,7 @@ main(void)
         UTEST(test_schema_invalid),
         UTEST(test_parse),
         UTEST(test_xpath),
+        UTEST(test_submod),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

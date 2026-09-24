@@ -561,26 +561,52 @@ lyplg_ext_get_storage(const struct lysc_ext_instance *ext, int stmt, uint32_t st
     return rc;
 }
 
+/**
+ * @brief Find a parsed extension instance in an array.
+ *
+ * @param[in] exts Array of parsed extensions.
+ * @param[in] ext_def_name Extension definition name of the extension instance.
+ * @return Matching parsed extension;
+ * @return NULL if not found.
+ */
+static const struct lysp_ext_instance *
+lys_find_ext_parsed(const struct lysp_ext_instance *exts, const char *ext_def_name)
+{
+    LYA_COUNT_T u;
+    const char *extp_name;
+
+    LYA_FOR(exts, u) {
+        extp_name = strchr(exts[u].name, ':') + 1;
+        if (!strcmp(ext_def_name, extp_name)) {
+            return &exts[u];
+        }
+    }
+
+    return NULL;
+}
+
 LIBYANG_API_DEF LY_ERR
 lyplg_ext_parsed_get_storage(const struct lysc_ext_instance *ext, int stmt, uint32_t storage_size, const void **storage)
 {
     LYA_COUNT_T u;
-    const struct lysp_ext_instance *extp = NULL;
-    const char *extp_name;
+    const struct lysp_ext_instance *extp;
     enum ly_stmt match = 0;
     void **s_p = NULL;
 
     LY_CHECK_ARG_RET(NULL, ext, ext->module->parsed, LY_EINVAL);
 
-    /* find the parsed ext instance */
-    LYA_FOR(ext->module->parsed->exts, u) {
-        extp = &ext->module->parsed->exts[u];
-        extp_name = strchr(extp->name, ':') + 1;
-
-        if (!strcmp(ext->def->name, extp_name)) {
-            break;
+    /* find the parsed ext instance, it may be a top-level extension instance of the module or
+     * any of its submodules */
+    extp = lys_find_ext_parsed(ext->module->parsed->exts, ext->def->name);
+    if (!extp) {
+        LYA_FOR(ext->module->parsed->includes, u) {
+            if (ext->module->parsed->includes[u].submodule) {
+                extp = lys_find_ext_parsed(ext->module->parsed->includes[u].submodule->exts, ext->def->name);
+            }
+            if (extp) {
+                break;
+            }
         }
-        extp = NULL;
     }
     assert(extp);
 
