@@ -377,13 +377,49 @@ lyd_diff_dup(const struct lyd_node *node, enum lyd_diff_op op, struct lyd_node *
     return LY_SUCCESS;
 }
 
+void
+lyd_diff_find_node(struct lyd_node *diff, const struct lyd_node *node, struct lyd_node **diff_parent,
+        struct lyd_node **match)
+{
+    struct lyd_node *siblings, *m = NULL, *dparent = NULL;
+    const struct lyd_node *parent = NULL;
+
+    siblings = diff;
+    do {
+        /* find next node parent */
+        parent = node;
+        while (parent->parent && (!dparent || (parent->parent->schema != dparent->schema))) {
+            parent = parent->parent;
+        }
+
+        if (lysc_is_dup_inst_list(parent->schema)) {
+            /* assume it never exists, we are not able to distinguish whether it does or not */
+            m = NULL;
+            break;
+        }
+
+        /* check whether it exists in the diff */
+        if (lyd_find_sibling_first(siblings, parent, &m)) {
+            break;
+        }
+
+        /* another parent found */
+        dparent = m;
+
+        /* move down in the diff */
+        siblings = lyd_child_no_keys(m);
+    } while (parent != node);
+
+    *diff_parent = dparent;
+    *match = (m && (parent == node)) ? m : NULL;
+}
+
 LY_ERR
 lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_default, const char *orig_value,
         const char *key, const char *value, const char *position, const char *orig_key, const char *orig_position,
         struct lyd_node **diff, struct lyd_node **diff_node)
 {
-    struct lyd_node *dup, *siblings, *match = NULL, *diff_parent = NULL, *elem;
-    const struct lyd_node *parent = NULL;
+    struct lyd_node *dup, *match = NULL, *diff_parent = NULL, *elem;
     enum lyd_diff_op cur_op;
     struct lyd_meta *meta;
     ly_bool found;
@@ -410,35 +446,11 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
         *diff_node = NULL;
     }
 
-    /* find the first existing parent */
-    siblings = *diff;
-    do {
-        /* find next node parent */
-        parent = node;
-        while (parent->parent && (!diff_parent || (parent->parent->schema != diff_parent->schema))) {
-            parent = parent->parent;
-        }
+    lyd_diff_find_node(*diff, node, &diff_parent, &match);
 
-        if (lysc_is_dup_inst_list(parent->schema)) {
-            /* assume it never exists, we are not able to distinguish whether it does or not */
-            match = NULL;
-            break;
-        }
-
-        /* check whether it exists in the diff */
-        if (lyd_find_sibling_first(siblings, parent, &match)) {
-            break;
-        }
-
-        /* another parent found */
-        diff_parent = match;
-
-        /* move down in the diff */
-        siblings = lyd_child_no_keys(match);
-    } while (parent != node);
-
-    if (match && (parent == node)) {
+    if (match) {
         /* special case when there is already an operation on our descendant */
+        diff_parent = match;
         assert(!lyd_diff_get_op(diff_parent, &cur_op, NULL));
 
         /* move it to the end where it is expected (matters for user-ordered lists) */
@@ -522,6 +534,26 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
     if (diff_node) {
         *diff_node = dup;
     }
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lyd_diff_add_explicit_op(const struct lyd_node *node, enum lyd_diff_op op, const char *key, const char *value,
+        const char *position, struct lyd_node **diff)
+{
+    struct lyd_node *dup = NULL;
+    struct lyd_meta *meta;
+
+    LY_CHECK_RET(lyd_diff_add(node, op, NULL, NULL, key, value, position, NULL, NULL, diff, &dup));
+
+    /* ::lyd_diff_add() omits an operation a parent already states, a validation diff states it
+     * on every node */
+    lyd_diff_find_meta(dup, "operation", &meta, NULL);
+    if (!meta) {
+        LY_CHECK_RET(lyd_new_meta(NULL, dup, NULL, "yang:operation", lyd_diff_op2str(op),
+                LYD_NEW_VAL_STORE_ONLY, NULL));
+    }
+
     return LY_SUCCESS;
 }
 
