@@ -188,7 +188,7 @@ LY_ERR
 lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lyd_node *new_diff = NULL;
+    struct lyd_node *new_diff = NULL, *diff_parent, *match;
     const struct lyd_node *prev_inst;
     char *key = NULL, *value = NULL, *position = NULL;
     size_t buflen = 0, bufused = 0;
@@ -238,6 +238,14 @@ lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct lyd_no
                 }
             }
         }
+    }
+
+    /* appending reuses the ancestors already in the diff, unlike building a one-node diff and
+     * merging it; merge only to reconcile an operation already recorded on this node */
+    lyd_diff_find_node(*diff, node, &diff_parent, &match);
+    if (!match) {
+        ret = lyd_diff_add_explicit_op(node, op, key, value, position, diff);
+        goto cleanup;
     }
 
     /* create new diff tree */
