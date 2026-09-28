@@ -539,6 +539,20 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
             case '\t':
                 /* just skip */
                 break;
+            case '/':
+                if (ctx->in->current[1] == '/') {
+                    /* one-line comment */
+                    MOVE_INPUT(ctx, 2);
+                    LY_CHECK_RET(skip_comment(ctx, 1));
+                    continue;
+                } else if (ctx->in->current[1] == '*') {
+                    /* block comment */
+                    MOVE_INPUT(ctx, 2);
+                    LY_CHECK_RET(skip_comment(ctx, 2));
+                    continue;
+                }
+            /* not a comment after all */
+            /* fallthrough */
             default:
                 /* string is finished */
                 goto string_end;
