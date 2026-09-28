@@ -205,6 +205,44 @@ test_arg(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Parsing module \"test13\" failed.", NULL, 0);
     CHECK_LOG_CTX("Both string parts divided by '+' must be quoted.", NULL, 5);
+
+    /* comments between the quoted strings and '+' (RFC 7950 sec. 6.1.3.) */
+    schema = "module test14 {\n"
+            "  namespace urn:test14;\n"
+            "  prefix t;\n"
+            "  description \"hel\" /* comment */ + \'lo\';\n"
+            "}";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, &mod));
+    assert_string_equal("hello", mod->dsc);
+
+    schema = "module test15 {\n"
+            "  namespace urn:test15;\n"
+            "  prefix t;\n"
+            "  description \'hel\' // comment\n"
+            "    + \"lo\";\n"
+            "}";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, &mod));
+    assert_string_equal("hello", mod->dsc);
+
+    schema = "module test16 {\n"
+            "  namespace urn:test16;\n"
+            "  prefix t;\n"
+            "  description \"h\"/* a */+/* b */\"el\" // c\n"
+            "    /* d */ + // e\n"
+            "    \'lo\' /* f */;\n"
+            "}";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, &mod));
+    assert_string_equal("hello", mod->dsc);
+
+    schema = "module test17 {\n"
+            "  namespace urn:test17;\n"
+            "  prefix t;\n"
+            "  description \"hel\" /* multi\n"
+            "     line */ + lo;\n"
+            "}";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, &mod));
+    CHECK_LOG_CTX("Parsing module \"test17\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Both string parts divided by '+' must be quoted.", NULL, 5);
 }
 
 #define TEST_STMS_SUCCESS(CTX, MOD_NAME, STMT_TEXT) \
