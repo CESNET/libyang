@@ -41,6 +41,17 @@ enum lyd_diff_op {
 };
 
 /**
+ * @brief Find a node and its deepest existing ancestor in a diff.
+ *
+ * @param[in] diff Diff to search (first sibling).
+ * @param[in] node Data node to look for.
+ * @param[out] diff_parent Deepest ancestor of @p node in @p diff, NULL if none.
+ * @param[out] match Diff node of @p node, NULL if not present.
+ */
+void lyd_diff_find_node(struct lyd_node *diff, const struct lyd_node *node, struct lyd_node **diff_parent,
+        struct lyd_node **match);
+
+/**
  * @brief Add a new change into diff.
  *
  * @param[in] node Node (subtree) to add into diff.
@@ -59,5 +70,31 @@ enum lyd_diff_op {
 LIBYANG_API_DECL LY_ERR lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_default,
         const char *orig_value, const char *key, const char *value, const char *position, const char *orig_key,
         const char *orig_position, struct lyd_node **diff, struct lyd_node **diff_node);
+
+/**
+ * @brief Add a new change into diff, always stating the operation on the added node.
+ *
+ * Unlike ::lyd_diff_add(), sets the operation metadata even when a parent already states it.
+ *
+ * @param[in] node Node (subtree) to add into diff.
+ * @param[in] op Operation to set.
+ * @param[in] key Key metadata to set.
+ * @param[in] value Value metadata to set.
+ * @param[in] position Position metadata to set.
+ * @param[in,out] diff Diff to append to.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_diff_add_explicit_op(const struct lyd_node *node, enum lyd_diff_op op, const char *key,
+        const char *value, const char *position, struct lyd_node **diff);
+
+/**
+ * @brief Drop a diff subtree that validation created, when its data nodes are being deleted again.
+ *
+ * @param[in] diff_node Diff node of the data node being deleted.
+ * @param[in,out] diff Diff @p diff_node belongs to.
+ * @return LY_SUCCESS if the subtree was dropped.
+ * @return LY_ENOT if it has to be merged instead.
+ */
+LY_ERR lyd_diff_val_del_created(struct lyd_node *diff_node, struct lyd_node **diff);
 
 #endif /* LY_DIFF_H_ */

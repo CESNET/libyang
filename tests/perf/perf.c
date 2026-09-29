@@ -343,6 +343,78 @@ setup_data_offset_tree(const struct lys_module *mod, uint32_t count, struct test
 
 /* TEST CB */
 static LY_ERR
+setup_data_dflt_tree(const struct lys_module *mod, uint32_t count, struct test_state *state)
+{
+    const struct lys_module *dflt_mod;
+    struct lyd_node *parent;
+    char buf[64];
+    uint32_t i;
+    LY_ERR r;
+
+    state->count = count;
+
+    dflt_mod = ly_ctx_get_module_implemented(mod->ctx, "perf_dflt");
+    if (!dflt_mod) {
+        return LY_ENOTFOUND;
+    }
+    state->mod = dflt_mod;
+
+    for (i = 0; i < count; ++i) {
+        sprintf(buf, "/perf_dflt:cont/lst[k='%" PRIu32 "']", i);
+        if ((r = lyd_new_path(state->data1, mod->ctx, buf, NULL, 0, &parent))) {
+            return r;
+        }
+        if (!state->data1) {
+            state->data1 = parent;
+        }
+
+        sprintf(buf, "/perf_dflt:cont/lst[k='%" PRIu32 "']/type", i);
+        if ((r = lyd_new_path(state->data1, mod->ctx, buf, "a", 0, NULL))) {
+            return r;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+test_validate_dflt(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
+{
+    LY_ERR r;
+
+    *size = 0;
+    TEST_START(ts_start);
+
+    if ((r = lyd_validate_all(&state->data1, NULL, LYD_VALIDATE_PRESENT, NULL))) {
+        return r;
+    }
+
+    TEST_END(ts_end);
+
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+test_validate_dflt_diff(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
+{
+    struct lyd_node *diff = NULL;
+    LY_ERR r;
+
+    *size = 0;
+    TEST_START(ts_start);
+
+    if ((r = lyd_validate_all(&state->data1, NULL, LYD_VALIDATE_PRESENT, &diff))) {
+        return r;
+    }
+
+    TEST_END(ts_end);
+
+    lyd_free_siblings(diff);
+
+    return LY_SUCCESS;
+}
+
+static LY_ERR
 test_create_new_text(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
     LY_ERR r;
@@ -820,6 +892,8 @@ struct test tests[] = {
     {"create new text", setup_basic, test_create_new_text},
     {"create path", setup_basic, test_create_path},
     {"validate", setup_data_single_tree, test_validate},
+    {"validate defaults", setup_data_dflt_tree, test_validate_dflt},
+    {"validate defaults diff", setup_data_dflt_tree, test_validate_dflt_diff},
     {"parse xml mem validate", setup_data_single_tree, test_parse_xml_mem_validate},
     {"parse xml mem no validate", setup_data_single_tree, test_parse_xml_mem_no_validate},
     {"parse xml file no validate format", setup_data_single_tree, test_parse_xml_file_no_validate_format},
@@ -884,6 +958,10 @@ main(int argc, char **argv)
 
     /* load modules */
     if (!(mod = ly_ctx_load_module(ctx, "perf", NULL, NULL))) {
+        ret = LY_ENOTFOUND;
+        goto cleanup;
+    }
+    if (!ly_ctx_load_module(ctx, "perf_dflt", NULL, NULL)) {
         ret = LY_ENOTFOUND;
         goto cleanup;
     }
