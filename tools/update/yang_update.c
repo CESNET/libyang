@@ -181,6 +181,7 @@ yu_log_plg_err(const struct ly_ctx *ctx, LY_ERR err_code, const char *msg_start,
 {
     char *feats_str = NULL, *msg = NULL;
     const char *rev_type, *rev = NULL;
+    int r;
 
     assert(msg_start && mod_name && (!features || revision_old || revision_new));
 
@@ -194,14 +195,18 @@ yu_log_plg_err(const struct ly_ctx *ctx, LY_ERR err_code, const char *msg_start,
 
     if (features) {
         feats_str = yu_features_str(features);
-        asprintf(&msg, "%s \"%s\" with %s revision %s and features %s.", msg_start, mod_name, rev_type, rev, feats_str);
+        r = asprintf(&msg, "%s \"%s\" with %s revision %s and features %s.", msg_start, mod_name, rev_type, rev, feats_str);
     } else if (rev) {
-        asprintf(&msg, "%s \"%s\" with %s revision %s.", msg_start, mod_name, rev_type, rev);
+        r = asprintf(&msg, "%s \"%s\" with %s revision %s.", msg_start, mod_name, rev_type, rev);
     } else {
-        asprintf(&msg, "%s \"%s\".", msg_start, mod_name);
+        r = asprintf(&msg, "%s \"%s\".", msg_start, mod_name);
     }
 
-    LOGERR(ctx, err_code, "%s", msg);
+    if (r == -1) {
+        LOGMEM(ctx);
+    } else {
+        LOGERR(ctx, err_code, "%s", msg);
+    }
 
     free(feats_str);
     free(msg);
