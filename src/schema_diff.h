@@ -21,13 +21,6 @@
 #include "ly_common.h"
 
 /**
- * @brief Check a node type for a node of a locally resolved module.
- *
- * @param[in] nodetype Node type to check.
- */
-#define LYS_DIFF_NODE_LOCAL(nodetype) ((nodetype) & (LYS_CHOICE | LYS_CASE | LYS_USES | LYS_INPUT | LYS_OUTPUT | LYS_GROUPING | LYS_AUGMENT))
-
-/**
  * @brief Type of a schema change.
  */
 enum lys_diff_change_e {

@@ -1,0 +1,79 @@
+{
+  "ietf-yang-schema-comparison-output:schema-comparison": {
+    "comparison": [
+      {
+        "fully-resolved": [null],
+        "source": {
+          "module": "augment",
+          "revision": "2000-01-01"
+        },
+        "source-import": [
+          {
+            "module": "augment-imp",
+            "revision": "2000-01-01"
+          }
+        ],
+        "target": {
+          "module": "augment",
+          "revision": "2000-01-02"
+        },
+        "target-import": [
+          {
+            "module": "augment-imp",
+            "revision": "2000-01-01"
+          }
+        ],
+        "conformance": "non-backwards-compatible",
+        "suggested-target-version": "2.0.0",
+        "node-comparison": [
+          {
+            "node": "/augment:cont2/ll2",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "uint8"
+              }
+            }
+          },
+          {
+            "node": "/augment:gcont/gl2",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "type",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "int8"
+              }
+            },
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "int32"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1896,6 +1896,154 @@ cleanup:
 }
 
 /**
+ * @brief Create cmp YANG data from a parsed enum or bit.
+ *
+ * @param[in] enum Parsed enum or bit to use.
+ * @param[in] is_pattern Whether @p enum is a bit, creates different nodes.
+ * @param[in,out] cont Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_parsed_enum(const struct lysp_type_enum *enm, ly_bool is_bit, struct lyd_node *cont)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_node *enum_list;
+    LYA_COUNT_T u;
+    char str[22];
+
+    /* list with name */
+    LY_CHECK_GOTO(rc = lyd_new_list(cont, NULL, is_bit ? "bit" : "enum", 0, &enum_list, enm->name), cleanup);
+
+    /* if-features */
+    LYA_FOR(enm->iffeatures, u) {
+        LY_CHECK_GOTO(rc = lyd_new_term(enum_list, NULL, "if-feature", enm->iffeatures[u].str, 0, NULL), cleanup);
+    }
+
+    /* description */
+    if (enm->dsc && (rc = lyd_new_term(enum_list, NULL, "description", enm->dsc, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* reference */
+    if (enm->ref && (rc = lyd_new_term(enum_list, NULL, "reference", enm->ref, 0, NULL))) {
+        goto cleanup;
+    }
+
+    if (is_bit) {
+        /* position */
+        sprintf(str, "%" PRIu64, (uint64_t)enm->value);
+        LY_CHECK_GOTO(rc = lyd_new_term(enum_list, NULL, "position", str, LYD_NEW_VAL_CANON, NULL), cleanup);
+    } else {
+        /* value */
+        sprintf(str, "%" PRId64, enm->value);
+        LY_CHECK_GOTO(rc = lyd_new_term(enum_list, NULL, "value", str, LYD_NEW_VAL_CANON, NULL), cleanup);
+    }
+
+    /* status */
+    LY_CHECK_GOTO(rc = schema_diff_status(enm->flags, enum_list), cleanup);
+
+    /* ext-instance */
+    LYA_FOR(enm->exts, u) {
+        LY_CHECK_GOTO(rc = schema_diff_pext_inst(&enm->exts[u], enum_list), cleanup);
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Create cmp YANG data from a parsed type.
+ *
+ * @param[in] type Parsed type to use.
+ * @param[in,out] cont Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_parsed_type(const struct lysp_type *type, struct lyd_node *cont)
+{
+    LY_ERR rc = LY_SUCCESS;
+    LYA_COUNT_T u;
+    char str[4];
+    const char *req_inst_str;
+    struct lyd_node *un_type_cont, *restr_parent;
+
+    /* name */
+    LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, "name", type->name, 0, NULL), cleanup);
+
+    /* range */
+    if (type->range) {
+        LY_CHECK_GOTO(rc = lyd_new_inner(cont, NULL, "range", 0, &restr_parent), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_parsed_restr_children(type->range, "restriction", restr_parent), cleanup);
+    }
+
+    /* length */
+    if (type->length) {
+        LY_CHECK_GOTO(rc = lyd_new_inner(cont, NULL, "length", 0, &restr_parent), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_parsed_restr_children(type->length, "restriction", restr_parent), cleanup);
+    }
+
+    /* fraction-digits */
+    if (type->flags & LYS_SET_FRDIGITS) {
+        sprintf(str, "%" PRIu8, type->fraction_digits);
+        LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, "fraction-digits", str, LYD_NEW_VAL_CANON, NULL), cleanup);
+    }
+
+    /* patterns */
+    LYA_FOR(type->patterns, u) {
+        LY_CHECK_GOTO(rc = lyd_new_list(cont, NULL, "length", 0, &restr_parent), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_parsed_restr_children(&type->patterns[u], "expression", restr_parent), cleanup);
+    }
+
+    /* enums */
+    LYA_FOR(type->enums, u) {
+        LY_CHECK_GOTO(rc = schema_diff_parsed_enum(&type->enums[u], 0, cont), cleanup);
+    }
+
+    /* bits */
+    LYA_FOR(type->bits, u) {
+        LY_CHECK_GOTO(rc = schema_diff_parsed_enum(&type->bits[u], 1, cont), cleanup);
+    }
+
+    /* path */
+    if (type->path && (rc = lyd_new_term(cont, NULL, "path", lyxp_get_expr(type->path), 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* require-instance */
+    if (type->flags & LYS_SET_REQINST) {
+        if (type->require_instance) {
+            req_inst_str = "true";
+        } else {
+            req_inst_str = "false";
+        }
+    } else {
+        req_inst_str = NULL;
+    }
+    if (req_inst_str && (rc = lyd_new_term(cont, NULL, "require-instance", req_inst_str, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* bases */
+    LYA_FOR(type->bases, u) {
+        LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, "base", type->bases[u], 0, NULL), cleanup);
+    }
+
+    /* types */
+    LYA_FOR(type->types, u) {
+        LY_CHECK_GOTO(rc = lyd_new_inner(cont, NULL, "union-type", 0, &un_type_cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_parsed_type(&type->types[u], un_type_cont), cleanup)
+    }
+
+    /* ext-instance */
+    LYA_FOR(type->exts, u) {
+        LY_CHECK_GOTO(rc = schema_diff_pext_inst(&type->exts[u], cont), cleanup);
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
  * @brief Create cmp YANG data from a parsed node.
  *
  * @param[in] pnode Parsed node to use.
@@ -1907,7 +2055,13 @@ schema_diff_pnode(const struct lysp_node *pnode, struct lyd_node *change_cont)
 {
     LY_ERR rc = LY_SUCCESS;
     LYA_COUNT_T u;
-    struct lyd_node *must_list;
+    struct lyd_node *must_list, *type_cont;
+    const struct lysp_node_container *cont;
+    const struct lysp_node_leaf *leaf;
+    const struct lysp_node_leaflist *llist;
+    const struct lysp_node_list *list;
+    const struct lysp_node_anydata *any;
+    const struct lysp_node_notif *notif;
     const struct lysp_node_choice *choic;
     const struct lysp_node_case *cas;
     const struct lysp_node_uses *uses;
@@ -1915,7 +2069,12 @@ schema_diff_pnode(const struct lysp_node *pnode, struct lyd_node *change_cont)
     const struct lysp_node_augment *aug;
     const struct lysp_when *when = NULL;
     const struct lysp_restr *musts = NULL;
-    const char *dflt = NULL;
+    const char *dflt = NULL, *presence = NULL, *units = NULL, *key = NULL;
+    const struct lysp_type *type = NULL;
+    const struct lysp_qname *dflts = NULL, *uniques = NULL;
+    uint32_t min = 0, max = 0;
+    int min_set = 0, max_set = 0;
+    char buf[21];
 
     /* description */
     if (pnode->dsc && (rc = lyd_new_term(change_cont, NULL, "description", pnode->dsc, 0, NULL))) {
@@ -1936,6 +2095,65 @@ schema_diff_pnode(const struct lysp_node *pnode, struct lyd_node *change_cont)
     }
 
     switch (pnode->nodetype) {
+    case LYS_CONTAINER:
+        /* musts, when, presence */
+        cont = (struct lysp_node_container *)pnode;
+        musts = cont->musts;
+        when = cont->when;
+        presence = cont->presence;
+
+        break;
+    case LYS_LEAF:
+        /* musts, when, type, units, dflt */
+        leaf = (struct lysp_node_leaf *)pnode;
+        musts = leaf->musts;
+        when = leaf->when;
+        type = &leaf->type;
+        units = leaf->units;
+        dflt = leaf->dflt.str;
+
+        break;
+    case LYS_LEAFLIST:
+        /* musts, when, type, units, dflts, min, max */
+        llist = (struct lysp_node_leaflist *)pnode;
+        musts = llist->musts;
+        when = llist->when;
+        type = &llist->type;
+        units = llist->units;
+        dflts = llist->dflts;
+        min = llist->min;
+        min_set = pnode->flags & LYS_SET_MIN;
+        max = llist->max;
+        max_set = pnode->flags & LYS_SET_MAX;
+
+        break;
+    case LYS_LIST:
+        /* musts, when, key, uniques, min, max */
+        list = (struct lysp_node_list *)pnode;
+        musts = list->musts;
+        when = list->when;
+        key = list->key;
+        uniques = list->uniques;
+        min = list->min;
+        min_set = pnode->flags & LYS_SET_MIN;
+        max = list->max;
+        max_set = pnode->flags & LYS_SET_MAX;
+
+        break;
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        /* musts, when */
+        any = (struct lysp_node_anydata *)pnode;
+        musts = any->musts;
+        when = any->when;
+
+        break;
+    case LYS_NOTIF:
+        /* musts */
+        notif = (struct lysp_node_notif *)pnode;
+        musts = notif->musts;
+
+        break;
     case LYS_CHOICE:
         /* when, dflt */
         choic = (struct lysp_node_choice *)pnode;
@@ -1977,20 +2195,67 @@ schema_diff_pnode(const struct lysp_node *pnode, struct lyd_node *change_cont)
         goto cleanup;
     }
 
-    /* when */
-    if (when && (rc = schema_diff_parsed_when(when, change_cont))) {
-        goto cleanup;
-    }
-
     /* musts */
     LYA_FOR(musts, u) {
         LY_CHECK_GOTO(rc = lyd_new_list(change_cont, NULL, "must", 0, &must_list), cleanup);
         LY_CHECK_GOTO(rc = schema_diff_parsed_restr_children(&musts[u], "condition", must_list), cleanup);
     }
 
+    /* when */
+    if (when && (rc = schema_diff_parsed_when(when, change_cont))) {
+        goto cleanup;
+    }
+
+    /* presence */
+    if (presence && (rc = lyd_new_term(change_cont, NULL, "presence", presence, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* type */
+    if (type) {
+        LY_CHECK_GOTO(rc = lyd_new_inner(change_cont, NULL, "type", 0, &type_cont), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_parsed_type(type, type_cont), cleanup);
+    }
+
+    /* units */
+    if (units && (rc = lyd_new_term(change_cont, NULL, "units", units, 0, NULL))) {
+        goto cleanup;
+    }
+
     /* default */
     if (dflt && (rc = lyd_new_term(change_cont, NULL, "default", dflt, 0, NULL))) {
         goto cleanup;
+    }
+
+    /* defaults */
+    LYA_FOR(dflts, u) {
+        LY_CHECK_GOTO(rc = lyd_new_term(change_cont, NULL, "default", dflts[u].str, 0, NULL), cleanup);
+    }
+
+    /* min-elements */
+    if (min_set) {
+        sprintf(buf, "%" PRIu32, min);
+        if ((rc = lyd_new_term(change_cont, NULL, "min-elements", buf, 0, NULL))) {
+            goto cleanup;
+        }
+    }
+
+    /* max-elements */
+    if (max_set) {
+        sprintf(buf, "%" PRIu32, max);
+        if ((rc = lyd_new_term(change_cont, NULL, "max-elements", buf, 0, NULL))) {
+            goto cleanup;
+        }
+    }
+
+    /* key */
+    if (key && (rc = lyd_new_term(change_cont, NULL, "key", key, 0, NULL))) {
+        goto cleanup;
+    }
+
+    /* uniques */
+    LYA_FOR(uniques, u) {
+        LY_CHECK_GOTO(rc = lyd_new_term(change_cont, NULL, "unique", uniques[u].str, 0, NULL), cleanup);
     }
 
     /* ext-instance */
@@ -2208,154 +2473,6 @@ schema_diff_parsed_refine(const struct lys_diff_refine_change_s *change, struct 
 
 cleanup:
     free(path);
-    return rc;
-}
-
-/**
- * @brief Create cmp YANG data from a parsed enum or bit.
- *
- * @param[in] enum Parsed enum or bit to use.
- * @param[in] is_pattern Whether @p enum is a bit, creates different nodes.
- * @param[in,out] cont Node to append to.
- * @return LY_ERR value.
- */
-static LY_ERR
-schema_diff_parsed_enum(const struct lysp_type_enum *enm, ly_bool is_bit, struct lyd_node *cont)
-{
-    LY_ERR rc = LY_SUCCESS;
-    struct lyd_node *enum_list;
-    LYA_COUNT_T u;
-    char str[22];
-
-    /* list with name */
-    LY_CHECK_GOTO(rc = lyd_new_list(cont, NULL, is_bit ? "bit" : "enum", 0, &enum_list, enm->name), cleanup);
-
-    /* if-features */
-    LYA_FOR(enm->iffeatures, u) {
-        LY_CHECK_GOTO(rc = lyd_new_term(enum_list, NULL, "if-feature", enm->iffeatures[u].str, 0, NULL), cleanup);
-    }
-
-    /* description */
-    if (enm->dsc && (rc = lyd_new_term(enum_list, NULL, "description", enm->dsc, 0, NULL))) {
-        goto cleanup;
-    }
-
-    /* reference */
-    if (enm->ref && (rc = lyd_new_term(enum_list, NULL, "reference", enm->ref, 0, NULL))) {
-        goto cleanup;
-    }
-
-    if (is_bit) {
-        /* position */
-        sprintf(str, "%" PRIu64, (uint64_t)enm->value);
-        LY_CHECK_GOTO(rc = lyd_new_term(enum_list, NULL, "position", str, LYD_NEW_VAL_CANON, NULL), cleanup);
-    } else {
-        /* value */
-        sprintf(str, "%" PRId64, enm->value);
-        LY_CHECK_GOTO(rc = lyd_new_term(enum_list, NULL, "value", str, LYD_NEW_VAL_CANON, NULL), cleanup);
-    }
-
-    /* status */
-    LY_CHECK_GOTO(rc = schema_diff_status(enm->flags, enum_list), cleanup);
-
-    /* ext-instance */
-    LYA_FOR(enm->exts, u) {
-        LY_CHECK_GOTO(rc = schema_diff_pext_inst(&enm->exts[u], enum_list), cleanup);
-    }
-
-cleanup:
-    return rc;
-}
-
-/**
- * @brief Create cmp YANG data from a parsed type.
- *
- * @param[in] type Parsed type to use.
- * @param[in,out] cont Node to append to.
- * @return LY_ERR value.
- */
-static LY_ERR
-schema_diff_parsed_type(const struct lysp_type *type, struct lyd_node *cont)
-{
-    LY_ERR rc = LY_SUCCESS;
-    LYA_COUNT_T u;
-    char str[4];
-    const char *req_inst_str;
-    struct lyd_node *un_type_cont, *restr_parent;
-
-    /* name */
-    LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, "name", type->name, 0, NULL), cleanup);
-
-    /* range */
-    if (type->range) {
-        LY_CHECK_GOTO(rc = lyd_new_inner(cont, NULL, "range", 0, &restr_parent), cleanup);
-        LY_CHECK_GOTO(rc = schema_diff_parsed_restr_children(type->range, "restriction", restr_parent), cleanup);
-    }
-
-    /* length */
-    if (type->length) {
-        LY_CHECK_GOTO(rc = lyd_new_inner(cont, NULL, "length", 0, &restr_parent), cleanup);
-        LY_CHECK_GOTO(rc = schema_diff_parsed_restr_children(type->length, "restriction", restr_parent), cleanup);
-    }
-
-    /* fraction-digits */
-    if (type->flags & LYS_SET_FRDIGITS) {
-        sprintf(str, "%" PRIu8, type->fraction_digits);
-        LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, "fraction-digits", str, LYD_NEW_VAL_CANON, NULL), cleanup);
-    }
-
-    /* patterns */
-    LYA_FOR(type->patterns, u) {
-        LY_CHECK_GOTO(rc = lyd_new_list(cont, NULL, "length", 0, &restr_parent), cleanup);
-        LY_CHECK_GOTO(rc = schema_diff_parsed_restr_children(&type->patterns[u], "expression", restr_parent), cleanup);
-    }
-
-    /* enums */
-    LYA_FOR(type->enums, u) {
-        LY_CHECK_GOTO(rc = schema_diff_parsed_enum(&type->enums[u], 0, cont), cleanup);
-    }
-
-    /* bits */
-    LYA_FOR(type->bits, u) {
-        LY_CHECK_GOTO(rc = schema_diff_parsed_enum(&type->bits[u], 1, cont), cleanup);
-    }
-
-    /* path */
-    if (type->path && (rc = lyd_new_term(cont, NULL, "path", lyxp_get_expr(type->path), 0, NULL))) {
-        goto cleanup;
-    }
-
-    /* require-instance */
-    if (type->flags & LYS_SET_REQINST) {
-        if (type->require_instance) {
-            req_inst_str = "true";
-        } else {
-            req_inst_str = "false";
-        }
-    } else {
-        req_inst_str = NULL;
-    }
-    if (req_inst_str && (rc = lyd_new_term(cont, NULL, "require-instance", req_inst_str, 0, NULL))) {
-        goto cleanup;
-    }
-
-    /* bases */
-    LYA_FOR(type->bases, u) {
-        LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, "base", type->bases[u], 0, NULL), cleanup);
-    }
-
-    /* types */
-    LYA_FOR(type->types, u) {
-        LY_CHECK_GOTO(rc = lyd_new_inner(cont, NULL, "union-type", 0, &un_type_cont), cleanup);
-        LY_CHECK_GOTO(rc = schema_diff_parsed_type(&type->types[u], un_type_cont), cleanup)
-    }
-
-    /* ext-instance */
-    LYA_FOR(type->exts, u) {
-        LY_CHECK_GOTO(rc = schema_diff_pext_inst(&type->exts[u], cont), cleanup);
-    }
-
-cleanup:
     return rc;
 }
 

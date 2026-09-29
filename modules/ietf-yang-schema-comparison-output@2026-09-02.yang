@@ -971,6 +971,16 @@ module ietf-yang-schema-comparison-output {
       description
         "Units substatement value.";
     }
+    leaf key {
+      type string;
+      description
+        "Key substatement value.";
+    }
+    leaf-list unique {
+      type string;
+      description
+        "Unique substatement value.";
+    }
     leaf presence {
       type string;
       description
@@ -1103,6 +1113,34 @@ module ietf-yang-schema-comparison-output {
       }
       leaf stmt-type {
         type enumeration {
+          enum container {
+            description
+              "YANG statement 'container' node.";
+          }
+          enum leaf {
+            description
+              "YANG statement 'leaf' node.";
+          }
+          enum leaf-list {
+            description
+              "YANG statement 'leaf-list' node.";
+          }
+          enum list {
+            description
+              "YANG statement 'list' node.";
+          }
+          enum anyxml {
+            description
+              "YANG statement 'anyxml' node.";
+          }
+          enum anydata {
+            description
+              "YANG statement 'anydata' node.";
+          }
+          enum notif {
+            description
+              "YANG statement 'notif' node.";
+          }
           enum choice {
             description
               "YANG statement 'choice' node.";

@@ -23,7 +23,7 @@
 #include "xpath.h"
 
 static LY_ERR schema_diff_pnodes_change_r(const struct lysp_node *node1, const struct lysp_node *node2,
-        struct lys_diff_s *diff);
+        ly_bool skip_compiled, struct lys_diff_s *diff);
 static LY_ERR schema_diff_pext_insts_change(const struct lysp_ext_instance *exts1, const struct lysp_ext_instance *exts2,
         struct lys_diff_pext_changes_s *ext_changes, struct lys_diff_s *diff);
 
@@ -1220,6 +1220,47 @@ schema_diff_parsed_defaults_change(const struct lysp_qname *dflts1, const struct
 }
 
 /**
+ * @brief Check changes of a parsed 'unique' array.
+ *
+ * @param[in] uniqs1 First unique array.
+ * @param[in] uniqs2 Second unique array.
+ * @param[in] parent_changed Changed parent statement.
+ * @param[in,out] changes Changes to add to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_parsed_uniques_change(const struct lysp_qname *uniqs1, const struct lysp_qname *uniqs2,
+        enum lys_diff_changed_e parent_changed, struct lys_diff_changes_s *changes)
+{
+    LYA_COUNT_T u;
+
+    if (!uniqs1 && !uniqs2) {
+        /* no changes */
+        return LY_SUCCESS;
+    } else if (!uniqs2) {
+        /* removed */
+        return schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, LYS_CHANGED_UNIQUE, LYS_CONFORM_NBC, changes);
+    } else if (!uniqs1) {
+        /* added */
+        return schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, LYS_CHANGED_UNIQUE, LYS_CONFORM_NBC, changes);
+    } else {
+        if (LYA_COUNT(uniqs1) != LYA_COUNT(uniqs2)) {
+            /* modified */
+            return schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_UNIQUE, LYS_CONFORM_NBC, changes);
+        }
+        LYA_FOR(uniqs1, u) {
+            if (strcmp(uniqs1[u].str, uniqs2[u].str)) {
+                /* modified */
+                return schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_UNIQUE, LYS_CONFORM_NBC,
+                        changes);
+            }
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Check changes of a parsed 'mandatory' statement.
  *
  * @param[in] flags1 First flags.
@@ -1597,6 +1638,34 @@ schema_diff_parsed_node_conform(const struct lysp_node *node, enum lys_diff_chan
 }
 
 /**
+ * @brief Check changes of the 'presence' statement.
+ *
+ * @param[in] presence1 First presence text.
+ * @param[in] presence2 Second presence text.
+ * @param[in,out] changes Changes to add to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_presence_change(const char *presence1, const char *presence2, struct lys_diff_changes_s *changes)
+{
+    if (presence1 && !presence2) {
+        /* removed */
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_REMOVED, LYS_CHANGED_NODE, LYS_CHANGED_PRESENCE, LYS_CONFORM_NBC,
+                changes));
+    } else if (!presence1 && presence2) {
+        /* added */
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_ADDED, LYS_CHANGED_NODE, LYS_CHANGED_PRESENCE, LYS_CONFORM_NBC,
+                changes));
+    } else if (presence1 && presence2 && strcmp(presence1, presence2)) {
+        /* modified */
+        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, LYS_CHANGED_NODE, LYS_CHANGED_PRESENCE, LYS_CONFORM_ED,
+                changes));
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Check changes of a parsed node pair.
  *
  * @param[in] node1 First node.
@@ -1611,6 +1680,12 @@ schema_diff_pnode_change(const struct lysp_node *node1, const struct lysp_node *
         struct lys_diff_changes_s *changes, struct lys_diff_pext_changes_s *ext_changes, struct lys_diff_s *diff)
 {
     LY_ERR rc = LY_SUCCESS;
+    const struct lysp_node_container *cont;
+    const struct lysp_node_leaf *leaf;
+    const struct lysp_node_leaflist *llist;
+    const struct lysp_node_list *list;
+    const struct lysp_node_anydata *any;
+    const struct lysp_node_notif *notif;
     const struct lysp_node_choice *choic;
     const struct lysp_node_case *cas;
     const struct lysp_node_uses *uses;
@@ -1618,8 +1693,13 @@ schema_diff_pnode_change(const struct lysp_node *node1, const struct lysp_node *
     const struct lysp_node_augment *aug;
     const struct lysp_when *when1 = NULL, *when2 = NULL;
     const struct lysp_restr *musts1 = NULL, *musts2 = NULL;
-    const char *dflt1 = NULL, *dflt2 = NULL;
+    const char *dflt1 = NULL, *dflt2 = NULL, *pres1 = NULL, *pres2 = NULL, *units1 = NULL, *units2 = NULL;
+    const char *key1 = NULL, *key2 = NULL;
     const struct lysp_refine *refines1 = NULL, *refines2 = NULL;
+    const struct lysp_type *type1 = NULL, *type2 = NULL;
+    const struct lysp_qname *dflts1 = NULL, *dflts2 = NULL, *uniques1 = NULL, *uniques2 = NULL;
+    uint32_t min1 = 0, min2 = 0, max1 = 0, max2 = 0;
+    int min1_set = 0, min2_set = 0, max1_set = 0, max2_set = 0;
 
     if (!node1) {
         /* node added change */
@@ -1648,6 +1728,99 @@ schema_diff_pnode_change(const struct lysp_node *node1, const struct lysp_node *
     LY_CHECK_GOTO(rc = schema_diff_status_change(node1->flags, node2->flags, LYS_CHANGED_NODE, changes), cleanup);
 
     switch (node1->nodetype) {
+    case LYS_CONTAINER:
+        /* musts, when, presence */
+        cont = (struct lysp_node_container *)node1;
+        musts1 = cont->musts;
+        when1 = cont->when;
+        pres1 = cont->presence;
+
+        cont = (struct lysp_node_container *)node2;
+        musts2 = cont->musts;
+        when2 = cont->when;
+        pres2 = cont->presence;
+        break;
+    case LYS_LEAF:
+        /* musts, when, type, units, dflt */
+        leaf = (struct lysp_node_leaf *)node1;
+        musts1 = leaf->musts;
+        when1 = leaf->when;
+        type1 = &leaf->type;
+        units1 = leaf->units;
+        dflt1 = leaf->dflt.str;
+
+        leaf = (struct lysp_node_leaf *)node2;
+        musts2 = leaf->musts;
+        when2 = leaf->when;
+        type2 = &leaf->type;
+        units2 = leaf->units;
+        dflt2 = leaf->dflt.str;
+        break;
+    case LYS_LEAFLIST:
+        /* musts, when, type, units, dflts, min, max */
+        llist = (struct lysp_node_leaflist *)node1;
+        musts1 = llist->musts;
+        when1 = llist->when;
+        type1 = &llist->type;
+        units1 = llist->units;
+        dflts1 = llist->dflts;
+        min1 = llist->min;
+        min1_set = node1->flags & LYS_SET_MIN;
+        max1 = llist->max;
+        max1_set = node1->flags & LYS_SET_MAX;
+
+        llist = (struct lysp_node_leaflist *)node2;
+        musts2 = llist->musts;
+        when2 = llist->when;
+        type2 = &llist->type;
+        units2 = llist->units;
+        dflts2 = llist->dflts;
+        min2 = llist->min;
+        min2_set = node2->flags & LYS_SET_MIN;
+        max2 = llist->max;
+        max2_set = node2->flags & LYS_SET_MAX;
+        break;
+    case LYS_LIST:
+        /* musts, when, key, uniques, min, max */
+        list = (struct lysp_node_list *)node1;
+        musts1 = list->musts;
+        when1 = list->when;
+        key1 = list->key;
+        uniques1 = list->uniques;
+        min1 = list->min;
+        min1_set = node1->flags & LYS_SET_MIN;
+        max1 = list->max;
+        max1_set = node1->flags & LYS_SET_MAX;
+
+        list = (struct lysp_node_list *)node2;
+        musts2 = list->musts;
+        when2 = list->when;
+        key2 = list->key;
+        uniques2 = list->uniques;
+        min2 = list->min;
+        min2_set = node2->flags & LYS_SET_MIN;
+        max2 = list->max;
+        max2_set = node2->flags & LYS_SET_MAX;
+        break;
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        /* musts, when */
+        any = (struct lysp_node_anydata *)node1;
+        musts1 = any->musts;
+        when1 = any->when;
+
+        any = (struct lysp_node_anydata *)node1;
+        musts2 = any->musts;
+        when2 = any->when;
+        break;
+    case LYS_NOTIF:
+        /* musts */
+        notif = (struct lysp_node_notif *)node1;
+        musts1 = notif->musts;
+
+        notif = (struct lysp_node_notif *)node2;
+        musts2 = notif->musts;
+        break;
     case LYS_CHOICE:
         /* when, dflt */
         choic = (struct lysp_node_choice *)node1;
@@ -1690,6 +1863,7 @@ schema_diff_pnode_change(const struct lysp_node *node1, const struct lysp_node *
         inout = (struct lysp_node_action_inout *)node2;
         musts2 = inout->musts;
         break;
+    case LYS_ACTION:
     case LYS_GROUPING:
         /* no special substatements */
         break;
@@ -1707,15 +1881,44 @@ schema_diff_pnode_change(const struct lysp_node *node1, const struct lysp_node *
         goto cleanup;
     }
 
-    /* when */
-    LY_CHECK_GOTO(rc = schema_diff_pnode_when_change(when1, when2, LYS_CHANGED_NODE, changes, ext_changes, diff), cleanup);
-
     /* musts */
     LY_CHECK_GOTO(rc = schema_diff_parsed_restrs_change(musts1, musts2, LYS_CHANGED_MUST, LYS_CHANGED_NODE, changes,
             ext_changes, diff), cleanup);
 
+    /* when */
+    LY_CHECK_GOTO(rc = schema_diff_pnode_when_change(when1, when2, LYS_CHANGED_NODE, changes, ext_changes, diff), cleanup);
+
+    /* presence */
+    LY_CHECK_GOTO(rc = schema_diff_presence_change(pres1, pres2, changes), cleanup)
+
+    /* type */
+    if (type1 && type2) {
+        LY_CHECK_GOTO(rc = schema_diff_ptype_change(type1, node1, type2, node2, LYS_CHANGED_NODE, changes, ext_changes,
+                diff), cleanup);
+    }
+
+    /* units */
+    LY_CHECK_GOTO(rc = schema_diff_text_nbc(units1, units2, LYS_CHANGED_NODE, LYS_CHANGED_UNITS, changes), cleanup);
+
     /* default */
     LY_CHECK_GOTO(rc = schema_diff_text_nbc(dflt1, dflt2, LYS_CHANGED_NODE, LYS_CHANGED_DEFAULT, changes), cleanup);
+
+    /* defaults */
+    LY_CHECK_GOTO(rc = schema_diff_parsed_defaults_change(dflts1, dflts2, LYS_CHANGED_NODE, changes), cleanup);
+
+    /* min-elements */
+    LY_CHECK_GOTO(rc = schema_diff_elem_limit_change(min1, min1_set, min2, min2_set, LYS_CHANGED_NODE,
+            LYS_CHANGED_MIN_ELEM, changes), cleanup);
+
+    /* max-elements */
+    LY_CHECK_GOTO(rc = schema_diff_elem_limit_change(max1, max1_set, max2, max2_set, LYS_CHANGED_NODE,
+            LYS_CHANGED_MAX_ELEM, changes), cleanup);
+
+    /* key */
+    LY_CHECK_GOTO(rc = schema_diff_text_nbc(key1, key2, LYS_CHANGED_NODE, LYS_CHANGED_KEY, changes), cleanup);
+
+    /* uniques */
+    LY_CHECK_GOTO(rc = schema_diff_parsed_uniques_change(uniques1, uniques2, LYS_CHANGED_NODE, changes), cleanup);
 
     /* refines, separate changes */
     LY_CHECK_GOTO(rc = schema_diff_parsed_refines_change(refines1, refines2, node2, diff), cleanup);
@@ -1728,32 +1931,104 @@ cleanup:
 }
 
 /**
+ * @brief Check if nodeid references a local statement that is compiled in locally resolved module.
+ *
+ * @param[in] nodeid Node identifier to check.
+ * @param[in] local_prefix Local prefix of the current module.
+ * @return 1 if the nodeid refers to a local statement;
+ * @return 0 if the nodeid referes to a statement in an imported module.
+ */
+static ly_bool
+schema_diff_nodeid_is_local(const char *nodeid, const char *local_prefix)
+{
+    const char *prefix, *name;
+    uint32_t pref_len, name_len;
+
+    if (nodeid[0] == '/') {
+        /* absolute path */
+        ++nodeid;
+    }
+
+    ly_parse_nodeid(&nodeid, &prefix, &pref_len, &name, &name_len);
+
+    if (!prefix || !ly_strncmp(local_prefix, prefix, pref_len)) {
+        /* no or local prefix in the first path segment */
+        return 1;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief CHeck whether a parsed node is locally-resolved-only or is compiled and also in fully resolved.
+ *
+ * @param[in] node Parsed node to check.
+ * @param[in] local_prefix Local prefix of the current module.
+ * @param[in,out] skip_compiled Set to 0 in case all the descendants should be checked, not just locally resolved nodes.
+ * @return 1 if the parsed node is found only in locally resolved module;
+ * @return 0 if the parsed node is compiled and found in fully resolved module.
+ */
+static ly_bool
+schema_diff_pnode_is_local(const struct lysp_node *node, const char *local_prefix, ly_bool *skip_compiled)
+{
+    ly_bool is_local = 0;
+    const char *nodeid;
+
+    if (node->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES | LYS_INPUT | LYS_OUTPUT | LYS_GROUPING | LYS_AUGMENT)) {
+        /* nodes present only in the locally resolved module */
+        is_local = 1;
+    }
+
+    if (node->nodetype == LYS_AUGMENT) {
+        /* either parent uses nodeid or augment nodeid */
+        nodeid = node->parent ? node->parent->name : node->name;
+
+        if (!schema_diff_nodeid_is_local(nodeid, local_prefix)) {
+            /* augmented nodes will not be compiled (are in an imported module), so do not skip them in the augment */
+            *skip_compiled = 0;
+        }
+    }
+
+    return is_local;
+}
+
+/**
  * @brief Check changes of a parsed node pair, recursively.
  *
  * @param[in] node1 First node.
  * @param[in] node2 Second node.
+ * @param[in] skip_compiled Whether to skip checking compiled schema nodes.
  * @param[in,out] diff Diff to use.
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_pnode_change_r(const struct lysp_node *node1, const struct lysp_node *node2,
+schema_diff_pnode_change_r(const struct lysp_node *node1, const struct lysp_node *node2, ly_bool skip_compiled,
         struct lys_diff_s *diff)
 {
     LY_ERR rc = LY_SUCCESS;
     const struct lysp_node_action *act1, *act2;
     const struct lysp_node_uses *uses1, *uses2;
     struct lys_diff_pnode_change_s *pnode_change;
+    const struct lysp_node *node;
+    const char *prefix;
     uint16_t nodetype;
 
     assert(node1 || node2);
 
+    if (node1) {
+        node = node1;
+        prefix = diff->old_prefix;
+    } else {
+        node = node2;
+        prefix = diff->new_prefix;
+    }
     nodetype = node1 ? node1->nodetype : node2->nodetype;
 
     /* typedefs */
     LY_CHECK_GOTO(rc = schema_diff_typedefs_change(lysp_node_typedefs(node1), node1, lysp_node_typedefs(node2), node2,
             LYS_CHANGED_NODE, diff), cleanup);
 
-    if (LYS_DIFF_NODE_LOCAL(nodetype)) {
+    if (!skip_compiled || schema_diff_pnode_is_local(node, prefix, &skip_compiled)) {
         /* add new node to changes */
         LY_CHECK_GOTO(rc = schema_diff_add_pnode_change(node1, node2, diff, &pnode_change), cleanup);
 
@@ -1774,9 +2049,9 @@ schema_diff_pnode_change_r(const struct lysp_node *node1, const struct lysp_node
         act2 = (struct lysp_node_action *)node2;
 
         LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r(act1 ? &act1->input.node : NULL, act2 ? &act2->input.node : NULL,
-                diff), cleanup);
+                skip_compiled, diff), cleanup);
         LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r(act1 ? &act1->output.node : NULL, act2 ? &act2->output.node : NULL,
-                diff), cleanup);
+                skip_compiled, diff), cleanup);
     } else if (nodetype == LYS_USES) {
         /* do not report descendant changes in removed/added uses */
         if (node1 && node2) {
@@ -1784,18 +2059,19 @@ schema_diff_pnode_change_r(const struct lysp_node *node1, const struct lysp_node
             uses2 = (struct lysp_node_uses *)node2;
 
             LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r((struct lysp_node *)uses1->augments,
-                    (struct lysp_node *)uses2->augments, diff), cleanup);
+                    (struct lysp_node *)uses2->augments, skip_compiled, diff), cleanup);
         }
     } else {
-        LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r(lysp_node_child(node1), lysp_node_child(node2), diff), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r(lysp_node_child(node1), lysp_node_child(node2), skip_compiled,
+                diff), cleanup);
     }
 
     LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r((struct lysp_node *)lysp_node_actions(node1),
-            (struct lysp_node *)lysp_node_actions(node2), diff), cleanup);
+            (struct lysp_node *)lysp_node_actions(node2), skip_compiled, diff), cleanup);
     LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r((struct lysp_node *)lysp_node_notifs(node1),
-            (struct lysp_node *)lysp_node_notifs(node2), diff), cleanup);
+            (struct lysp_node *)lysp_node_notifs(node2), skip_compiled, diff), cleanup);
     LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r((struct lysp_node *)lysp_node_groupings(node1),
-            (struct lysp_node *)lysp_node_groupings(node2), diff), cleanup);
+            (struct lysp_node *)lysp_node_groupings(node2), skip_compiled, diff), cleanup);
 
 cleanup:
     return rc;
@@ -1806,11 +2082,13 @@ cleanup:
  *
  * @param[in] node1 First node siblings.
  * @param[in] node2 Second node siblings.
+ * @param[in] skip_compiled Whether to skip checking compiled schema nodes.
  * @param[in,out] diff Diff to use.
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_pnodes_change_r(const struct lysp_node *node1, const struct lysp_node *node2, struct lys_diff_s *diff)
+schema_diff_pnodes_change_r(const struct lysp_node *node1, const struct lysp_node *node2, ly_bool skip_compiled,
+        struct lys_diff_s *diff)
 {
     LY_ERR rc = LY_SUCCESS;
     const struct lysp_node **node2_array = NULL, *iter;
@@ -1847,7 +2125,7 @@ schema_diff_pnodes_change_r(const struct lysp_node *node1, const struct lysp_nod
         }
 
         /* process nodes */
-        LY_CHECK_GOTO(rc = schema_diff_pnode_change_r(node1, node2, diff), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnode_change_r(node1, node2, skip_compiled, diff), cleanup);
 
         if (node2) {
             /* match found */
@@ -1861,7 +2139,7 @@ schema_diff_pnodes_change_r(const struct lysp_node *node1, const struct lysp_nod
         }
 
         /* process nodes */
-        LY_CHECK_GOTO(rc = schema_diff_pnode_change_r(NULL, node2_array[i], diff), cleanup);
+        LY_CHECK_GOTO(rc = schema_diff_pnode_change_r(NULL, node2_array[i], skip_compiled, diff), cleanup);
     }
 
 cleanup:
@@ -2212,36 +2490,6 @@ cleanup:
 }
 
 /**
- * @brief Check changes of a parsed 'unique' array.
- *
- * @param[in] uniqs1 First unique array.
- * @param[in] uniqs2 Second unique array.
- * @param[in] parent_changed Changed parent statement.
- * @param[in,out] changes Changes to add to.
- * @return LY_ERR value.
- */
-static LY_ERR
-schema_diff_parsed_uniques_change(const struct lysp_qname *uniqs1, const struct lysp_qname *uniqs2,
-        enum lys_diff_changed_e parent_changed, struct lys_diff_changes_s *changes)
-{
-    if (!uniqs1 && !uniqs2) {
-        /* no changes */
-        return LY_SUCCESS;
-    } else if (!uniqs2) {
-        /* removed */
-        return schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, LYS_CHANGED_UNIQUE, LYS_CONFORM_NBC, changes);
-    } else if (!uniqs1) {
-        /* added */
-        return schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, LYS_CHANGED_UNIQUE, LYS_CONFORM_NBC, changes);
-    } else if (LYA_COUNT(uniqs1) != LYA_COUNT(uniqs2)) {
-        /* modified */
-        return schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_UNIQUE, LYS_CONFORM_NBC, changes);
-    }
-
-    return LY_SUCCESS;
-}
-
-/**
  * @brief Check changes of a deviate pair.
  *
  * @param[in] dev1 First deviate.
@@ -2558,7 +2806,7 @@ schema_diff_pext_inst_substmts_change(const struct lysp_ext_substmt *substmts1, 
             }
             siblings_checked = 1;
 
-            LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r(*(substmts1[u].storage_p), *(substmts2[v].storage_p), diff),
+            LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r(*(substmts1[u].storage_p), *(substmts2[v].storage_p), 1, diff),
                     cleanup);
             break;
         case LY_STMT_ARGUMENT:
@@ -2898,15 +3146,15 @@ schema_diff_pmodule_change(const struct lysp_module *mod1, const struct lysp_mod
     /*
      * node parsed substatements
      */
-    LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r(mod1->data, mod2->data, diff), cleanup);
-    LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r((struct lysp_node *)mod1->rpcs, (struct lysp_node *)mod2->rpcs, diff),
-            cleanup);
-    LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r((struct lysp_node *)mod1->notifs, (struct lysp_node *)mod2->notifs,
+    LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r(mod1->data, mod2->data, 1, diff), cleanup);
+    LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r((struct lysp_node *)mod1->rpcs, (struct lysp_node *)mod2->rpcs, 1,
             diff), cleanup);
+    LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r((struct lysp_node *)mod1->notifs, (struct lysp_node *)mod2->notifs,
+            1, diff), cleanup);
     LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r((struct lysp_node *)mod1->groupings,
-            (struct lysp_node *)mod2->groupings, diff), cleanup);
+            (struct lysp_node *)mod2->groupings, 1, diff), cleanup);
     LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r((struct lysp_node *)mod1->augments,
-            (struct lysp_node *)mod2->augments, diff), cleanup);
+            (struct lysp_node *)mod2->augments, 1, diff), cleanup);
 
 cleanup:
     return rc;

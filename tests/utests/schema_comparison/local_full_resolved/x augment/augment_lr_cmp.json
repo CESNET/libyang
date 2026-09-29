@@ -1,0 +1,82 @@
+{
+  "ietf-yang-schema-comparison-output:schema-comparison": {
+    "comparison": [
+      {
+        "locally-resolved": [null],
+        "source": {
+          "module": "augment",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "augment",
+          "revision": "2000-01-02"
+        },
+        "conformance": "non-backwards-compatible",
+        "suggested-target-version": "2.0.0",
+        "local-comparison": [
+          {
+            "parent-path": "/{uses=augi:imp-group}",
+            "identifier": "gl2",
+            "stmt-type": "leaf",
+            "changed": [
+              {
+                "stmt": "type",
+                "parent-stmt": "node",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "type": {
+                "name": "int8"
+              }
+            },
+            "new": {
+              "type": {
+                "name": "int32"
+              }
+            }
+          },
+          {
+            "parent-path": "/{aug=/augi:cont}",
+            "identifier": "al2",
+            "stmt-type": "leaf",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "type": {
+                "name": "uint16"
+              }
+            }
+          }
+        ],
+        "node-comparison": [
+          {
+            "node": "/augment:cont2/ll2",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "uint8"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

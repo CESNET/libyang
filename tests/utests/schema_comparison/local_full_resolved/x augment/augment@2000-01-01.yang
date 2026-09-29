@@ -1,0 +1,38 @@
+module augment {
+    namespace "urn:test:augment";
+    prefix aug;
+    yang-version 1.1;
+
+    import augment-imp {
+        prefix augi;
+        revision-date 2000-01-01;
+    }
+
+    revision 2000-01-01;
+
+    container cont2 {
+        leaf l2 {
+            type uint32;
+        }
+    }
+
+    uses augi:imp-group {
+        augment gcont {
+            leaf gl2 {
+                type int8;
+            }
+        }
+    }
+
+    augment "/aug:cont2" {
+        leaf ll {
+            type instance-identifier;
+        }
+    }
+
+    augment "/augi:cont" {
+        leaf al {
+            type empty;
+        }
+    }
+}

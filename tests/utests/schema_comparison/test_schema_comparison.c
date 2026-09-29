@@ -266,6 +266,7 @@ test_locally_resolved(void **state)
     /* test all locally-resolved-only modules */
     schema_comparison(st, "type");
     schema_comparison(st, "uses");
+    schema_comparison(st, "augment");
     schema_comparison(st, "refine");
 }
 
@@ -284,6 +285,7 @@ test_fully_resolved(void **state)
     /* test all fully-resolved-only modules */
     schema_comparison(st, "type");
     schema_comparison(st, "uses");
+    schema_comparison(st, "augment");
     schema_comparison(st, "refine");
 }
 
