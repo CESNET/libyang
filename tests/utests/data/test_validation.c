@@ -22,8 +22,6 @@
 #include "out.h"
 #include "parser_data.h"
 #include "printer_data.h"
-#include "tests_config.h"
-#include "tree_data_internal.h"
 #include "tree_schema.h"
 
 #define LYD_TREE_CREATE(INPUT, MODEL) \
@@ -65,8 +63,8 @@ test_when(void **state)
     lyd_free_all(tree);
 
     LYD_TREE_CREATE("<cont xmlns=\"urn:tests:a\"><a>val</a><b>val_b</b></cont><c xmlns=\"urn:tests:a\">val_c</c>", tree);
-    CHECK_LYSC_NODE(lyd_child(tree)->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "a", 1, LYS_LEAF, 1, 0, NULL, 1);
-    assert_int_equal(LYD_WHEN_TRUE, lyd_child(tree)->flags);
+    CHECK_LYSC_NODE(lyd_child_no_keys(tree)->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "a", 1, LYS_LEAF, 1, 0, NULL, 1);
+    assert_int_equal(LYD_WHEN_TRUE, lyd_child_no_keys(tree)->flags);
     CHECK_LYSC_NODE(tree->next->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "c", 0, LYS_LEAF, 0, 0, NULL, 1);
     assert_int_equal(LYD_WHEN_TRUE, tree->next->flags);
     lyd_free_all(tree);
@@ -153,8 +151,8 @@ test_mandatory_when(void **state)
     lyd_free_all(tree);
 
     LYD_TREE_CREATE("<cont xmlns=\"urn:tests:a\"><a>val_a</a><b>hey</b></cont>", tree);
-    CHECK_LYSC_NODE(lyd_child(tree)->next->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_MAND_TRUE, 1, "b", 0, LYS_LEAF, tree->schema, 0, NULL, 1);
-    assert_int_equal(LYD_WHEN_TRUE, lyd_child(tree)->next->flags);
+    CHECK_LYSC_NODE(lyd_child_no_keys(tree)->next->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_MAND_TRUE, 1, "b", 0, LYS_LEAF, tree->schema, 0, NULL, 1);
+    assert_int_equal(LYD_WHEN_TRUE, lyd_child_no_keys(tree)->next->flags);
     lyd_free_all(tree);
 }
 
@@ -1874,6 +1872,66 @@ test_when_must_cross_ref(void **state)
     CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm5:top/outer", 0);
 }
 
+static void
+test_when_nested(void **state)
+{
+    struct lyd_node *tree;
+    const char *schema =
+            "module poc {\n"
+            "    yang-version 1.1;\n"
+            "    namespace \"urn:poc\";\n"
+            "    prefix p;\n"
+            "\n"
+            "    container config {\n"
+            "        presence \"config presence\";\n"
+            "\n"
+            "        leaf enabled {\n"
+            "            type boolean;\n"
+            "            default true;\n"
+            "        }\n"
+            "\n"
+            "        container ref-container {\n"
+            "            when \"../enabled = 'true'\";\n"
+            "\n"
+            "            leaf ref-val {\n"
+            "                type string;\n"
+            "            }\n"
+            "        }\n"
+            "\n"
+            "        container data {\n"
+            "            when \"../enabled = 'true'\";\n"
+            "\n"
+            "            leaf name {\n"
+            "                type string;\n"
+            "                default \"default-name\";\n"
+            "            }\n"
+            "\n"
+            "            container child {\n"
+            "                when \"../../ref-container/ref-val = 'target'\";\n"
+            "\n"
+            "                leaf value {\n"
+            "                    type string;\n"
+            "                    default \"default-value\";\n"
+            "                }\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "}\n";
+    const char *data =
+            "<config xmlns=\"urn:poc\">\n"
+            "    <enabled>false</enabled>\n"
+            "    <ref-container>\n"
+            "        <ref-val>target</ref-val>\n"
+            "    </ref-container>\n"
+            "</config>\n";
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0,
+            LYD_VALIDATE_PRESENT | LYD_VALIDATE_MULTI_ERROR, LY_EVALID, tree);
+    CHECK_LOG_CTX("When condition \"../enabled = 'true'\" not satisfied.", "/poc:config/ref-container", 0);
+}
+
 int
 main(void)
 {
@@ -1899,6 +1957,7 @@ main(void)
         UTEST(test_case),
         UTEST(test_pattern),
         UTEST(test_store_only),
+        UTEST(test_when_nested),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

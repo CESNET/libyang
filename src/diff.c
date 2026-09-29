@@ -16,8 +16,8 @@
 #include "diff.h"
 
 #include <assert.h>
+#include <inttypes.h>
 #include <stddef.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,18 +26,18 @@
 #include "context.h"
 #include "dict.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "plugins_exts.h"
 #include "plugins_exts/metadata.h"
 #include "plugins_internal.h"
 #include "plugins_types.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data.h"
 #include "tree_data_internal.h"
-#include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "utils.h"
 
 #define LOGERR_META(ctx, meta_name, node) \
         { \
@@ -352,11 +352,9 @@ lyd_diff_dup(const struct lyd_node *node, enum lyd_diff_op op, struct lyd_node *
     dup_parent = *dup;
     node_parent = node;
     sparent = parent ? parent->schema : NULL;
-    while (lysc_data_parent(dup_parent->schema) &&
-            !lyd_compare_schema_equal(lysc_data_parent(dup_parent->schema), sparent, 0)) {
-        node_parent = node_parent->parent;
-
+    while (node_parent->parent && (!sparent || !lyd_compare_schema_equal(node_parent->parent->schema, sparent, 0))) {
         /* duplicate the next parent */
+        node_parent = node_parent->parent;
         LY_CHECK_RET(lyd_dup_single(node_parent, NULL, LYD_DUP_NO_META | LYD_DUP_WITH_FLAGS, &d));
 
         /* connect the existing dup tree into the parent */
@@ -541,16 +539,16 @@ lyd_diff_userord_get(const struct lyd_node *first, const struct lysc_node *schem
     struct lyd_diff_userord *item;
     struct lyd_node *iter;
     const struct lyd_node **node;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
-    LY_ARRAY_FOR(*userord, u) {
+    LYA_FOR(*userord, u) {
         if ((*userord)[u].schema == schema) {
             return &(*userord)[u];
         }
     }
 
     /* it was not added yet, add it now */
-    LY_ARRAY_NEW_RET(schema->module->ctx, *userord, item, NULL);
+    LYA_ADD_ITEM(*userord, item, LOGMEM(schema->module->ctx); return NULL);
 
     item->schema = schema;
     item->pos = 0;
@@ -559,7 +557,7 @@ lyd_diff_userord_get(const struct lyd_node *first, const struct lysc_node *schem
     /* store all the instance pointers in the current order */
     if (first) {
         LYD_LIST_FOR_INST(lyd_first_sibling(first), first->schema, iter) {
-            LY_ARRAY_NEW_RET(schema->module->ctx, item->inst, node, NULL);
+            LYA_ADD_ITEM(item->inst, node, LOGMEM(schema->module->ctx); return NULL);
             *node = iter;
         }
     }
@@ -697,12 +695,12 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
 
     /* find user-ordered first position */
     if (first) {
-        for (first_pos = 0; first_pos < LY_ARRAY_COUNT(userord_item->inst); ++first_pos) {
+        for (first_pos = 0; first_pos < LYA_COUNT(userord_item->inst); ++first_pos) {
             if (userord_item->inst[first_pos] == first) {
                 break;
             }
         }
-        assert(first_pos < LY_ARRAY_COUNT(userord_item->inst));
+        assert(first_pos < LYA_COUNT(userord_item->inst));
     } else {
         first_pos = 0;
     }
@@ -826,21 +824,21 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
      */
     if (*op == LYD_DIFF_OP_CREATE) {
         /* insert the instance */
-        LY_ARRAY_CREATE_GOTO(schema->module->ctx, userord_item->inst, 1, rc, cleanup);
-        if (second_pos < LY_ARRAY_COUNT(userord_item->inst)) {
+        LYA_PREALLOC(userord_item->inst, 1, LOGMEM(schema->module->ctx); rc = LY_EMEM; goto cleanup);
+        if (second_pos < LYA_COUNT(userord_item->inst)) {
             memmove(userord_item->inst + second_pos + 1, userord_item->inst + second_pos,
-                    (LY_ARRAY_COUNT(userord_item->inst) - second_pos) * sizeof *userord_item->inst);
+                    (LYA_COUNT(userord_item->inst) - second_pos) * sizeof *userord_item->inst);
         }
-        LY_ARRAY_INCREMENT(userord_item->inst);
+        LYA_INCREMENT(userord_item->inst);
         userord_item->inst[second_pos] = second;
 
     } else if (*op == LYD_DIFF_OP_DELETE) {
         /* remove the instance */
-        if (first_pos + 1 < LY_ARRAY_COUNT(userord_item->inst)) {
+        if (first_pos + 1 < LYA_COUNT(userord_item->inst)) {
             memmove(userord_item->inst + first_pos, userord_item->inst + first_pos + 1,
-                    (LY_ARRAY_COUNT(userord_item->inst) - first_pos - 1) * sizeof *userord_item->inst);
+                    (LYA_COUNT(userord_item->inst) - first_pos - 1) * sizeof *userord_item->inst);
         }
-        LY_ARRAY_DECREMENT(userord_item->inst);
+        LYA_DECREMENT(userord_item->inst);
 
     } else if (*op == LYD_DIFF_OP_REPLACE) {
         /* move the instances */
@@ -1230,7 +1228,7 @@ lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second,
     struct lyd_node *match_second, *match_first, *diff_node;
     struct lyd_diff_userord *userord = NULL, *userord_item;
     struct ly_ht *dup_inst_first = NULL, *dup_inst_second = NULL;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     enum lyd_diff_op op;
     const char *orig_default;
     char *orig_value, *key, *value, *position, *orig_key, *orig_position;
@@ -1318,7 +1316,7 @@ lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second,
     }
 
     /* reset all cached positions */
-    LY_ARRAY_FOR(userord, u) {
+    LYA_FOR(userord, u) {
         userord[u].pos = 0;
     }
 
@@ -1388,10 +1386,10 @@ lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second,
 cleanup:
     lyd_dup_inst_free(dup_inst_first);
     lyd_dup_inst_free(dup_inst_second);
-    LY_ARRAY_FOR(userord, u) {
-        LY_ARRAY_FREE(userord[u].inst);
+    LYA_FOR(userord, u) {
+        LYA_FREE(userord[u].inst);
     }
-    LY_ARRAY_FREE(userord);
+    LYA_FREE(userord);
     if (rc) {
         lyd_free_siblings(*diff);
         *diff = NULL;
@@ -1576,7 +1574,7 @@ cleanup:
 /**
  * @brief Find a metadata instance with a specific value.
  *
- * @param[in] meta First metadata to consider.
+ * @param[in] node Node with metadata to search in.
  * @param[in] name Metadata name with module name.
  * @param[in] value Metadata value.
  * @param[in] log Whether to log an error if not found.
@@ -1584,12 +1582,14 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_diff_metadata_find(const struct lyd_meta *meta, const char *name, const char *value, ly_bool log,
+lyd_diff_metadata_find(const struct lyd_node *node, const char *name, const char *value, ly_bool log,
         struct lyd_meta **match)
 {
     const struct lyd_meta *m;
 
-    for (m = meta; (m = lyd_find_meta(m, NULL, name)); m = m->next) {
+    assert(node);
+
+    for (m = node->meta; (m = lyd_find_meta(m, NULL, name)); m = m->next) {
         if (!strcmp(lyd_get_meta_value(m), value)) {
             *match = (struct lyd_meta *)m;
             return LY_SUCCESS;
@@ -1598,7 +1598,7 @@ lyd_diff_metadata_find(const struct lyd_meta *meta, const char *name, const char
 
     *match = NULL;
     if (log) {
-        LOGINT(meta->annotation->module->ctx);
+        LOGINT(LYD_CTX(node));
         return LY_EINT;
     } else {
         return LY_SUCCESS;
@@ -1722,7 +1722,7 @@ lyd_diff_apply_metadata(struct lyd_node *node, const struct lyd_node *diff_node)
             LY_CHECK_GOTO(rc = lyd_diff_apply_metadata_parse(m, &meta_name, &meta_value), cleanup);
 
             /* find the metadata instance and free it */
-            LY_CHECK_GOTO(rc = lyd_diff_metadata_find(node->meta, meta_name, meta_value, 1, &m2), cleanup);
+            LY_CHECK_GOTO(rc = lyd_diff_metadata_find(node, meta_name, meta_value, 1, &m2), cleanup);
             lyd_free_meta_single(m2);
 
             free(meta_name);
@@ -1749,7 +1749,7 @@ lyd_diff_apply_metadata(struct lyd_node *node, const struct lyd_node *diff_node)
         LY_CHECK_GOTO(rc = lyd_diff_apply_metadata_parse(meta_orig[i], NULL, &old_meta_value), cleanup);
 
         /* find the metadata instance */
-        LY_CHECK_GOTO(rc = lyd_diff_metadata_find(node->meta, meta_name, old_meta_value, 0, &m2), cleanup);
+        LY_CHECK_GOTO(rc = lyd_diff_metadata_find(node, meta_name, old_meta_value, 0, &m2), cleanup);
         LY_CHECK_ERR_GOTO(!m2, LOGINT(LYD_CTX(node)); rc = LY_EINT, cleanup);
 
         /* change its value */
@@ -2745,7 +2745,7 @@ lyd_diff_merge_metadata(const struct lyd_node *src_diff, struct lyd_node *trg_di
 
         if (!strcmp(m->name, "meta-create")) {
             /* find relevant metadata in the target */
-            rc = lyd_diff_metadata_find(trg_diff->meta, "yang:meta-delete", lyd_get_meta_value(m), 0, &m1);
+            rc = lyd_diff_metadata_find(trg_diff, "yang:meta-delete", lyd_get_meta_value(m), 0, &m1);
             LY_CHECK_GOTO(rc, cleanup);
             m2 = NULL;
             for (i = 0; i < trg_mo_count; ++i) {
@@ -2781,7 +2781,7 @@ lyd_diff_merge_metadata(const struct lyd_node *src_diff, struct lyd_node *trg_di
             }
         } else if (!strcmp(m->name, "meta-delete")) {
             /* find relevant metadata in the target */
-            rc = lyd_diff_metadata_find(trg_diff->meta, "yang:meta-create", lyd_get_meta_value(m), 0, &m1);
+            rc = lyd_diff_metadata_find(trg_diff, "yang:meta-create", lyd_get_meta_value(m), 0, &m1);
             LY_CHECK_GOTO(rc, cleanup);
 
             if (m1) {
@@ -2806,7 +2806,7 @@ lyd_diff_merge_metadata(const struct lyd_node *src_diff, struct lyd_node *trg_di
 
     for (i = 0; i < src_mr_count; ++i) {
         /* find relevant metadata in the target */
-        rc = lyd_diff_metadata_find(trg_diff->meta, "yang:meta-delete", lyd_get_meta_value(src_meta_replace[i]), 0, &m1);
+        rc = lyd_diff_metadata_find(trg_diff, "yang:meta-delete", lyd_get_meta_value(src_meta_replace[i]), 0, &m1);
         LY_CHECK_GOTO(rc, cleanup);
         m2 = NULL;
         for (j = 0; j < trg_mo_count; ++j) {
@@ -3274,14 +3274,14 @@ lyd_diff_reverse_userord(struct lyd_node *node, const struct lysc_node **schema_
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_node **ptr, *anchor;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     assert(node || *schema_p);
 
     /* all the schema node instances were collected, reverse their order */
     if (!node || (*schema_p && (node->schema != *schema_p))) {
         /* unlink all the nodes except for the last */
-        for (u = 0; u < LY_ARRAY_COUNT(*nodes_p) - 1; ++u) {
+        for (u = 0; u < LYA_COUNT(*nodes_p) - 1; ++u) {
             lyd_unlink_tree((*nodes_p)[u]);
         }
 
@@ -3299,7 +3299,7 @@ lyd_diff_reverse_userord(struct lyd_node *node, const struct lysc_node **schema_
 
         /* clear the collected nodes */
         *schema_p = NULL;
-        LY_ARRAY_FREE(*nodes_p);
+        LYA_FREE(*nodes_p);
         *nodes_p = NULL;
     }
 
@@ -3315,7 +3315,7 @@ lyd_diff_reverse_userord(struct lyd_node *node, const struct lysc_node **schema_
     assert(*schema_p == node->schema);
 
     /* collect it */
-    LY_ARRAY_NEW_GOTO(LYD_CTX(node), *nodes_p, ptr, rc, cleanup);
+    LYA_ADD_ITEM(*nodes_p, ptr, LOGMEM(LYD_CTX(node)); rc = LY_EMEM; goto cleanup);
     *ptr = node;
 
 cleanup:
@@ -3465,7 +3465,7 @@ lyd_diff_reverse_siblings_r(struct lyd_node *sibling, const struct lys_module *y
     }
 
 cleanup:
-    LY_ARRAY_FREE(userord);
+    LYA_FREE(userord);
     return rc;
 }
 

@@ -16,12 +16,8 @@
 #ifndef LY_PLUGINS_EXTS_H_
 #define LY_PLUGINS_EXTS_H_
 
-#include "log.h"
+#include "ly_array.h"
 #include "parser_data.h"
-#include "plugins.h"
-#include "tree_data.h"
-#include "tree_edit.h"
-#include "tree_schema.h"
 
 struct ly_ctx;
 struct ly_in;
@@ -394,25 +390,25 @@ struct lysp_ext_substmt {
  * @brief YANG extension parsed instance.
  */
 struct lysp_ext_instance {
-    const char *name;                       /**< extension identifier, including possible prefix */
-    const char *argument;                   /**< optional value of the extension's argument */
-    LY_VALUE_FORMAT format;                 /**< prefix format of the extension name/argument (::LY_VALUE_XML is YIN format) */
-    void *prefix_data;                      /**< format-specific data for prefix resolution (see ly_resolve_prefix()) */
-    uintptr_t plugin_ref;                   /**< reference to extension plugin, use ::lysc_get_ext_plugin() to get the plugin */
+    const char *name;                   /**< extension identifier, including possible prefix */
+    const char *argument;               /**< optional value of the extension's argument */
+    LY_VALUE_FORMAT format;             /**< prefix format of the extension name/argument (::LY_VALUE_XML is YIN format) */
+    void *prefix_data;                  /**< format-specific data for prefix resolution (see ly_resolve_prefix()) */
+    uintptr_t plugin_ref;               /**< reference to extension plugin, use ::lysc_get_ext_plugin() to get the plugin */
 
-    void *parent;                           /**< pointer to the parent statement holding the extension instance(s), use
-                                                 ::lysp_ext_instance#parent_stmt to access the value/structure */
-    enum ly_stmt parent_stmt;               /**< type of the parent statement */
-    LY_ARRAY_COUNT_TYPE parent_stmt_index;  /**< index of the stamenet in case the parent does not point to the parent
-                                                 statement directly and it is an array */
-    uint16_t flags;                         /**< ::LYS_INTERNAL value and ::LYS_SINGLEQUOTED or ::LYS_DOUBLEQUOTED
-                                                 describing the argument (@ref snodeflags) */
+    void *parent;                       /**< pointer to the parent statement holding the extension instance(s), use
+                                             ::lysp_ext_instance#parent_stmt to access the value/structure */
+    enum ly_stmt parent_stmt;           /**< type of the parent statement */
+    LYA_COUNT_T parent_stmt_index;      /**< index of the stamenet in case the parent does not point to the parent
+                                             statement directly and it is an array */
+    uint16_t flags;                     /**< ::LYS_INTERNAL value and ::LYS_SINGLEQUOTED or ::LYS_DOUBLEQUOTED
+                                             describing the argument (@ref snodeflags) */
 
-    struct lysp_ext_substmt *substmts;      /**< list of supported known YANG statements with the pointer to their
-                                                 parsed data ([sized array](@ref sizedarrays)) */
-    void *parsed;                           /**< private plugin parsed data */
-    struct lysp_stmt *child;                /**< list of generic (unknown) YANG statements */
-    struct lysp_ext_instance *exts;         /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    struct lysp_ext_substmt *substmts;  /**< list of supported known YANG statements with the pointer to their
+                                             parsed data ([sized array](@ref sizedarrays)) */
+    void *parsed;                       /**< private plugin parsed data */
+    struct lysp_stmt *child;            /**< list of generic (unknown) YANG statements */
+    struct lysp_ext_instance *exts;     /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 };
 
 /**
@@ -436,7 +432,7 @@ struct lysc_ext_instance {
     void *parent;                       /**< pointer to the parent element holding the extension instance(s), use
                                              ::lysc_ext_instance#parent_stmt to access the value/structure */
     enum ly_stmt parent_stmt;           /**< type of the parent statement */
-    LY_ARRAY_COUNT_TYPE parent_stmt_index;  /**< index of the stamenet in case the parent does not point to the parent
+    LYA_COUNT_T parent_stmt_index;      /**< index of the stamenet in case the parent does not point to the parent
                                                  statement directly and it is an array */
 
     struct lysc_ext_substmt *substmts;  /**< list of supported known YANG statements with the pointer to their
@@ -538,6 +534,7 @@ LIBYANG_API_DECL LY_ERR lyplg_ext_parse_extension_instance(struct lysp_ctx *pctx
                                                       added to any unres sets. */
 #define LYS_COMPILE_NO_CONFIG       0x04            /**< ignore config statements, neither inherit config value */
 #define LYS_COMPILE_NO_DISABLED     0x08            /**< ignore if-feature statements */
+#define LYS_COMPILE_LOCAL_ONLY      0x10            /**< compile only local statements in the module, no imported statements */
 
 #define LYS_COMPILE_RPC_INPUT       (LYS_IS_INPUT | LYS_COMPILE_NO_CONFIG)  /**< Internal option when compiling schema tree of RPC/action input */
 #define LYS_COMPILE_RPC_OUTPUT      (LYS_IS_OUTPUT | LYS_COMPILE_NO_CONFIG) /**< Internal option when compiling schema tree of RPC/action output */

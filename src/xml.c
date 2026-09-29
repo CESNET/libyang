@@ -27,7 +27,6 @@
 #include "in_internal.h"
 #include "ly_common.h"
 #include "out_internal.h"
-#include "tree.h"
 #include "tree_schema_internal.h"
 
 /* Move input p by s characters, if EOF log with lyxml_ctx c */
@@ -361,7 +360,7 @@ lyxml_parse_qname(struct lyxml_ctx *xmlctx, const char **prefix, uint32_t *prefi
     LY_CHECK_RET(lyxml_parse_identifier(xmlctx, &start, &end));
     if (end[0] == ':') {
         /* we have prefixed identifier */
-        if (end - start > UINT32_MAX) {
+        if (((uint64_t)(end - start)) > UINT32_MAX) {
             LOGVAL(xmlctx->ctx, NULL, LYVE_SYNTAX, "XML qualified name prefix too long.");
             return LY_EINVAL;
         }
@@ -373,7 +372,7 @@ lyxml_parse_qname(struct lyxml_ctx *xmlctx, const char **prefix, uint32_t *prefi
         LY_CHECK_RET(lyxml_parse_identifier(xmlctx, &start, &end));
     }
 
-    if (end - start > UINT32_MAX) {
+    if (((uint64_t)(end - start)) > UINT32_MAX) {
         LOGVAL(xmlctx->ctx, NULL, LYVE_SYNTAX, "XML qualified name too long.");
         return LY_EINVAL;
     }
@@ -728,7 +727,7 @@ lyxml_open_element(struct lyxml_ctx *xmlctx, const char *prefix, uint32_t prefix
 
     LY_CHECK_RET(ly_set_add(&xmlctx->elements, e, 1, NULL));
     if (xmlctx->elements.count > LY_MAX_BLOCK_DEPTH) {
-        LOGERR(xmlctx->ctx, LY_EINVAL, "The maximum number of open elements has been exceeded.");
+        LOGERR(xmlctx->ctx, LY_EINVAL, "Maximum number %d of open elements has been exceeded.", LY_MAX_BLOCK_DEPTH);
         return LY_EINVAL;
     }
 

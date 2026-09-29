@@ -1,0 +1,83 @@
+module skeleton {
+  yang-version 1.1;
+  namespace "urn:ietf:params:xml:ns:yang:skeleton-complex";
+  prefix sc;
+
+  rpc do-nothing {
+    input { leaf in { type string; } }
+  }
+  notification alert {
+    leaf msg { type string; }
+  }
+
+  container main-box {
+
+    leaf empty-leaf {
+      type empty;
+    }
+
+    leaf bool-leaf {
+      type boolean;
+      default true;
+    }
+    leaf num32-leaf {
+      type int32;
+      default -100;
+    }
+    leaf num64-leaf {
+      type uint64;
+      default 9999999999;
+    }
+    leaf str-leaf {
+      type string;
+      default "hello";
+    }
+
+    leaf-list ll-empty {
+      type string;
+    }
+    leaf-list ll-numbers {
+      type uint8;
+      default 10;
+      default 20;
+    }
+
+    choice no-def-choice {
+      case a {
+        leaf a-leaf { type string; }
+      }
+      case b {
+        leaf b-leaf { type string; }
+      }
+    }
+
+    choice def-choice {
+      default case-2;
+      case case-1 {
+        leaf c1-leaf { type string; }
+      }
+      case case-2 {
+        leaf c2-leaf {
+          type string;
+          default "default-choice-val";
+        }
+      }
+    }
+
+    list server-list {
+      key "id";
+      leaf id {
+        type string;
+      }
+      action reset {
+        input { leaf delay { type uint32; } }
+      }
+      container config {
+        leaf ip { type string; }
+      }
+    }
+
+    anydata custom-data;
+    anyxml custom-xml;
+  }
+}

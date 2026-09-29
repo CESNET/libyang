@@ -1,0 +1,12 @@
+module imp-min-ver1 {
+  namespace "urn:min-imp-ver1";
+  prefix "miv1";
+
+  import ietf-yang-semver {
+    prefix ysv;
+  }
+
+  revision 2026-01-01 {
+    ysv:version 1.0.0;
+  }
+}

@@ -19,7 +19,7 @@
 #include <stdint.h>
 
 #include "log.h"
-#include "tree.h"
+#include "ly_array.h"
 #include "tree_data.h"
 
 struct ly_ctx;
@@ -229,7 +229,7 @@ LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_nod
  * @return LY_ERR on another error.
  */
 LY_ERR ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *ctx_node, const struct lyd_node *tree,
-        const struct lyxp_var *vars, ly_bool with_opaq, LY_ARRAY_COUNT_TYPE *path_idx, struct lyd_node **match);
+        const struct lyxp_var *vars, ly_bool with_opaq, LYA_COUNT_T *path_idx, struct lyd_node **match);
 
 /**
  * @brief Resolve the target defined by ly_path structure. Not supported for leafref!

@@ -1,0 +1,22 @@
+module new-data-def {
+    namespace "urn:test:new-data-def";
+    prefix ndd;
+    yang-version 1.1;
+
+    revision 2000-01-02;
+
+    container cont {
+        leaf l1 {
+            type string;
+        }
+        leaf l2 {
+            type decimal64 {
+                fraction-digits 4;
+            }
+        }
+    }
+
+    leaf l3 {
+        type uint8;
+    }
+}

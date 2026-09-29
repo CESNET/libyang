@@ -185,7 +185,7 @@ get_arg_completion(const char *hint, const char **args, char ***matches, unsigne
 static void
 get_model_completion(const char *hint, char ***matches, unsigned int *match_count)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     uint32_t idx = 0;
     const struct lys_module *module;
 
@@ -197,7 +197,7 @@ get_model_completion(const char *hint, char ***matches, unsigned int *match_coun
             cmd_completion_add_match(module->name, matches, match_count);
         }
 
-        LY_ARRAY_FOR(module->parsed->includes, u) {
+        LYA_FOR(module->parsed->includes, u) {
             if (!strncmp(hint, module->parsed->includes[u].submodule->name, strlen(hint))) {
                 cmd_completion_add_match(module->parsed->includes[u].submodule->name, matches, match_count);
             }
@@ -417,6 +417,17 @@ get_data_in_format_arg(const char *hint, char ***matches, unsigned int *match_co
  * @copydoc get_print_format_arg
  */
 static void
+get_data_out_format_arg(const char *hint, char ***matches, unsigned int *match_count)
+{
+    const char *args[] = {"json", "xml", NULL};
+
+    get_arg_completion(hint, args, matches, match_count);
+}
+
+/**
+ * @copydoc get_print_format_arg
+ */
+static void
 get_data_default_arg(const char *hint, char ***matches, unsigned int *match_count)
 {
     const char *args[] = {"all", "all-tagged", "trim", "implicit-tagged", NULL};
@@ -518,6 +529,9 @@ complete_cmd(const char *buf, const char *hint, linenoiseCompletions *lc)
         {CMD_DATA,        NULL,    NULL},
         {CMD_LIST,        NULL,    get_list_format_arg},
         {CMD_FEATURE,     NULL,    get_model_completion},
+        {CMD_SID,         "-o",    NULL},
+        {CMD_SID,         "-f",    get_data_out_format_arg},
+        {CMD_SID,         NULL,    get_model_completion},
         {CMD_VERB,        NULL,    get_verb_arg},
         {CMD_DEBUG,       NULL,    get_debug_arg},
     };

@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Built-in binary type plugin.
  *
- * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -22,10 +22,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libyang.h"
-
-/* additional internal headers for some useful simple macros */
 #include "compat.h"
+#include "dict.h"
 #include "ly_common.h"
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 

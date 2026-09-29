@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Header for schema compilation.
  *
- * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -20,9 +20,9 @@
 #include <stdint.h>
 
 #include "log.h"
+#include "ly_array.h"
 #include "plugins_exts.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_schema.h"
 #include "tree_schema_free.h"
 
@@ -43,6 +43,7 @@ struct lysc_ctx {
                                      - augment - module where the augment is defined
                                      - deviation - module where the deviation is defined
                                      - uses - module where the grouping is defined */
+    struct lysc_module *cmod;   /**< compiled module structure to fill */
     struct lysc_ext_instance *ext; /**< extension instance being processed and serving as a source for its substatements
                                      instead of the module itself */
     struct ly_set groupings;    /**< stack for groupings circular check */
@@ -52,11 +53,11 @@ struct lysc_ctx {
     struct ly_set uses_augs;    /**< set of compiled non-applied uses augments (stored ::lysc_augment *) */
     struct ly_set uses_rfns;    /**< set of compiled non-applied uses refines (stored ::lysc_refine *) */
     struct lys_depset_unres *unres; /**< dependency set unres sets */
-    uint32_t path_len;          /**< number of path bytes used */
     uint32_t compile_opts;      /**< various @ref scflags. */
 
-#define LYSC_CTX_BUFSIZE 4078
-    char path[LYSC_CTX_BUFSIZE];/**< Path identifying the schema node currently being processed */
+    char *path;                 /**< Path identifying the schema node currently being processed */
+    uint32_t path_used;         /**< number of path bytes used (without terminating 0) */
+    uint32_t path_size;         /**< allocated size of path */
 };
 
 /**
@@ -66,9 +67,7 @@ struct lysc_ctx {
  * @param[in] CTX libyang context.
  */
 #define LYSC_CTX_INIT_CTX(CCTX, CTX) \
-    (CCTX).ctx = (CTX); \
-    (CCTX).path_len = 1; \
-    (CCTX).path[0] = '/'
+    (CCTX).ctx = (CTX);
 
 /**
  * @brief Initalize local compilation context using a parsed module.
@@ -81,9 +80,8 @@ struct lysc_ctx {
     (CCTX).ctx = (PMOD)->mod->ctx; \
     (CCTX).cur_mod = (PMOD)->mod; \
     (CCTX).pmod = (PMOD); \
-    (CCTX).ext = (EXT); \
-    (CCTX).path_len = 1; \
-    (CCTX).path[0] = '/'
+    (CCTX).cmod = (PMOD)->mod->compiled; \
+    (CCTX).ext = (EXT);
 
 /**
  * @brief Structure for unresolved items that may depend on any implemented module data in the dependency set
@@ -166,44 +164,44 @@ struct lysc_unres_dflt {
 
 #define DUP_ARRAY(CTX, ORIG_ARRAY, NEW_ARRAY, DUP_FUNC) \
     if (ORIG_ARRAY) { \
-        LY_ARRAY_COUNT_TYPE __u; \
-        LY_ARRAY_CREATE_RET(CTX, NEW_ARRAY, LY_ARRAY_COUNT(ORIG_ARRAY), LY_EMEM); \
-        LY_ARRAY_FOR(ORIG_ARRAY, __u) { \
-            LY_ARRAY_INCREMENT(NEW_ARRAY); \
+        LYA_COUNT_T __u; \
+        LYA_PREALLOC(NEW_ARRAY, LYA_COUNT(ORIG_ARRAY), LOGMEM(CTX); return LY_EMEM); \
+        LYA_FOR(ORIG_ARRAY, __u) { \
+            LYA_INCREMENT(NEW_ARRAY); \
             LY_CHECK_RET(DUP_FUNC(CTX, &(ORIG_ARRAY)[__u], &(NEW_ARRAY)[__u])); \
         } \
     }
 
 #define DUP_ARRAY2(CTX, PMOD, ORIG_ARRAY, NEW_ARRAY, DUP_FUNC) \
     if (ORIG_ARRAY) { \
-        LY_ARRAY_COUNT_TYPE __u; \
-        LY_ARRAY_CREATE_RET(CTX, NEW_ARRAY, LY_ARRAY_COUNT(ORIG_ARRAY), LY_EMEM); \
-        LY_ARRAY_FOR(ORIG_ARRAY, __u) { \
-            LY_ARRAY_INCREMENT(NEW_ARRAY); \
+        LYA_COUNT_T __u; \
+        LYA_PREALLOC(NEW_ARRAY, LYA_COUNT(ORIG_ARRAY), LOGMEM(CTX); return LY_EMEM); \
+        LYA_FOR(ORIG_ARRAY, __u) { \
+            LYA_INCREMENT(NEW_ARRAY); \
             LY_CHECK_RET(DUP_FUNC(CTX, PMOD, &(ORIG_ARRAY)[__u], &(NEW_ARRAY)[__u])); \
         } \
     }
 
 #define DUP_EXTS(CTX, PMOD, PARENT, PARENT_STMT, ORIG_ARRAY, NEW_ARRAY, DUP_FUNC) \
     if (ORIG_ARRAY) { \
-        LY_ARRAY_COUNT_TYPE __u, __new_start; \
-        __new_start = LY_ARRAY_COUNT(NEW_ARRAY); \
-        LY_ARRAY_CREATE_RET(CTX, NEW_ARRAY, LY_ARRAY_COUNT(ORIG_ARRAY), LY_EMEM); \
-        LY_ARRAY_FOR(ORIG_ARRAY, __u) { \
-            LY_ARRAY_INCREMENT(NEW_ARRAY); \
+        LYA_COUNT_T __u, __new_start; \
+        __new_start = LYA_COUNT(NEW_ARRAY); \
+        LYA_PREALLOC(NEW_ARRAY, LYA_COUNT(ORIG_ARRAY), LOGMEM(CTX); return LY_EMEM); \
+        LYA_FOR(ORIG_ARRAY, __u) { \
+            LYA_INCREMENT(NEW_ARRAY); \
             LY_CHECK_RET(DUP_FUNC(CTX, PMOD, PARENT, PARENT_STMT, &(ORIG_ARRAY)[__u], &(NEW_ARRAY)[__new_start + __u])); \
         } \
     }
 
 #define COMPILE_OP_ARRAY_GOTO(CTX, ARRAY_P, ARRAY_C, PARENT, FUNC, USES_STATUS, RET, GOTO) \
     if (ARRAY_P) { \
-        LY_ARRAY_COUNT_TYPE __u = (ARRAY_C) ? LY_ARRAY_COUNT(ARRAY_C) : 0; \
-        LY_ARRAY_CREATE_GOTO((CTX)->ctx, ARRAY_C, __u + LY_ARRAY_COUNT(ARRAY_P), RET, GOTO); \
-        LY_ARRAY_FOR(ARRAY_P, __u) { \
-            LY_ARRAY_INCREMENT(ARRAY_C); \
-            RET = FUNC(CTX, &(ARRAY_P)[__u], PARENT, &(ARRAY_C)[LY_ARRAY_COUNT(ARRAY_C) - 1], USES_STATUS); \
+        LYA_COUNT_T __u = (ARRAY_C) ? LYA_COUNT(ARRAY_C) : 0; \
+        LYA_PREALLOC(ARRAY_C, __u + LYA_COUNT(ARRAY_P), LOGMEM((CTX)->ctx); RET = LY_EMEM; goto GOTO); \
+        LYA_FOR(ARRAY_P, __u) { \
+            LYA_INCREMENT(ARRAY_C); \
+            RET = FUNC(CTX, &(ARRAY_P)[__u], PARENT, &(ARRAY_C)[LYA_COUNT(ARRAY_C) - 1], USES_STATUS); \
             if (RET == LY_EDENIED) { \
-                LY_ARRAY_DECREMENT(ARRAY_C); \
+                LYA_DECREMENT(ARRAY_C); \
                 RET = LY_SUCCESS; \
             } else if (RET) { \
                 goto GOTO; \
@@ -213,24 +211,25 @@ struct lysc_unres_dflt {
 
 #define COMPILE_ARRAY_GOTO(CTX, ARRAY_P, ARRAY_C, FUNC, RET, GOTO) \
     if (ARRAY_P) { \
-        LY_ARRAY_COUNT_TYPE __u = (ARRAY_C) ? LY_ARRAY_COUNT(ARRAY_C) : 0; \
-        LY_ARRAY_CREATE_GOTO((CTX)->ctx, ARRAY_C, __u + LY_ARRAY_COUNT(ARRAY_P), RET, GOTO); \
-        LY_ARRAY_FOR(ARRAY_P, __u) { \
-            LY_ARRAY_INCREMENT(ARRAY_C); \
-            RET = FUNC(CTX, &(ARRAY_P)[__u], &(ARRAY_C)[LY_ARRAY_COUNT(ARRAY_C) - 1]); \
+        LYA_COUNT_T __u = (ARRAY_C) ? LYA_COUNT(ARRAY_C) : 0; \
+        LYA_PREALLOC(ARRAY_C, __u + LYA_COUNT(ARRAY_P), LOGMEM((CTX)->ctx); RET = LY_EMEM; goto GOTO); \
+        LYA_FOR(ARRAY_P, __u) { \
+            LYA_INCREMENT(ARRAY_C); \
+            RET = FUNC(CTX, &(ARRAY_P)[__u], &(ARRAY_C)[LYA_COUNT(ARRAY_C) - 1]); \
             LY_CHECK_GOTO(RET, GOTO); \
         } \
     }
 
 #define COMPILE_EXTS_GOTO(CTX, EXTS_P, EXT_C, PARENT, RET, GOTO) \
     if (EXTS_P) { \
-        LY_ARRAY_COUNT_TYPE __u = (EXT_C) ? LY_ARRAY_COUNT(EXT_C) : 0; \
-        LY_ARRAY_CREATE_GOTO((CTX)->ctx, EXT_C, __u + LY_ARRAY_COUNT(EXTS_P), RET, GOTO); \
-        LY_ARRAY_FOR(EXTS_P, __u) { \
-            LY_ARRAY_INCREMENT(EXT_C); \
-            RET = lys_compile_ext(CTX, &(EXTS_P)[__u], &(EXT_C)[LY_ARRAY_COUNT(EXT_C) - 1], PARENT); \
+        LYA_COUNT_T __u = (EXT_C) ? LYA_COUNT(EXT_C) : 0; \
+        LYA_PREALLOC(EXT_C, __u + LYA_COUNT(EXTS_P), LOGMEM((CTX)->ctx); RET = LY_EMEM; goto GOTO); \
+        LYA_FOR(EXTS_P, __u) { \
+            LYA_INCREMENT(EXT_C); \
+            RET = lys_compile_ext(CTX, &(EXTS_P)[__u], &(EXT_C)[LYA_COUNT(EXT_C) - 1], PARENT); \
             if (RET == LY_ENOT) { \
-                LY_ARRAY_DECREMENT(EXT_C); \
+                memset(&(EXT_C)[LYA_COUNT(EXT_C) - 1], 0, sizeof *(EXT_C)); \
+                LYA_DECREMENT(EXT_C); \
                 RET = LY_SUCCESS; \
             } else if (RET) { \
                 goto GOTO; \
@@ -261,7 +260,8 @@ void lysc_update_path(struct lysc_ctx *ctx, const struct lys_module *parent_modu
  * @return LY_ENOT if the extension is disabled and should be ignored.
  * @return LY_ERR on error.
  */
-LY_ERR lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *extp, struct lysc_ext_instance *ext, void *parent);
+LY_ERR lys_compile_ext(struct lysc_ctx *ctx, const struct lysp_ext_instance *extp, struct lysc_ext_instance *ext,
+        void *parent);
 
 /**
  * @brief Compile information from the identity statement
@@ -318,11 +318,14 @@ LY_ERR lys_compile_extensions(struct lys_module *mod);
  *
  * @param[in] mod Pointer to the schema structure holding pointers to both schema structure types. The ::lys_module#parsed
  * member is used as input and ::lys_module#compiled is used to hold the result of the compilation.
+ * @param[in] local_only Whether to resolve only the local statements in the module. If set, foreign uses are not
+ * resolved and term nodes referencing foreign typedefs have type set to NULL.
  * @param[in,out] unres Dep set unres structure to add to.
+ * @param[out] mod_c Compiled module.
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
-LY_ERR lys_compile(struct lys_module *mod, struct lys_depset_unres *unres);
+LY_ERR lys_compile(struct lys_module *mod, ly_bool local_only, struct lys_depset_unres *unres, struct lysc_module **mod_c);
 
 /**
  * @brief Check statement's status for invalid combination.
@@ -361,6 +364,14 @@ LY_ERR lysc_check_status(struct lysc_ctx *ctx, const struct lysc_node *snode, ui
  */
 LY_ERR lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *expr, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool implement, struct lys_glob_unres *unres, const struct lys_module **mod_p);
+
+/**
+ * @brief Erase dep set unres.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] unres Global unres structure with the sets to erase.
+ */
+void lys_compile_unres_depset_erase(const struct ly_ctx *ctx, struct lys_glob_unres *unres);
 
 /**
  * @brief Compile all flagged modules in a dependency set, recursively if recompilation is needed.

@@ -1,0 +1,58 @@
+module ietf-miss-desc-data-nodes {
+  yang-version 1.1;
+  namespace "urn:ietf:params:xml:ns:yang:ietf-miss-desc-data-nodes";
+  prefix desc-data;
+
+  organization "IETF NETMOD Working Group";
+  contact "WG Web: <https://datatracker.ietf.org/wg/netmod/>";
+  description
+    "Copyright (c) 2026 IETF Trust and the persons identified as
+    authors of the code.  All rights reserved.
+
+    Redistribution and use in source and binary forms, with or
+    without modification, is permitted pursuant to, and subject
+    to the license terms contained in, the Revised BSD License
+    set forth in Section 4.c of the IETF Trust's Legal Provisions
+    Relating to IETF Documents
+    (https://trustee.ietf.org/license-info).
+
+    This version of this YANG module is part of RFC XXXX; see
+    the RFC itself for full legal notices.";
+
+  revision 2026-07-08 {
+    description "Initial revision.";
+    reference "RFC XXXX: Test Module";
+  }
+
+  container base-cont {
+  }
+
+  leaf top-leaf {
+    type string;
+  }
+
+  list top-list {
+    key "k";
+    leaf k {
+      type string;
+      description "Key leaf description to prevent secondary errors.";
+    }
+  }
+
+  leaf-list top-ll {
+    type string;
+  }
+
+  anyxml top-ax;
+
+  anydata top-ad;
+
+  choice top-choice {
+    case c1 {
+      leaf c-leaf {
+        type string;
+        description "Case leaf description to prevent secondary errors.";
+      }
+    }
+  }
+}

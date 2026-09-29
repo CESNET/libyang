@@ -30,6 +30,7 @@
 #include "cmd.h"
 #include "common.h"
 #include "compat.h"
+#include "ietf.h"
 #include "out.h"
 #include "tools/config.h"
 #include "yl_opt.h"
@@ -52,6 +53,9 @@ help(int shortout)
             "    yanglint [-f { xml | json }] <schema>... <file>...\n"
             "        Validates the YANG modeled data <file>(s) according to the <schema>(s) optionally\n"
             "        printing them in the specified format.\n\n"
+            "    yanglint -S { xml | json } <schema>...\n"
+            "        Generates and prints a sample data skeleton from the provided YANG <schema>(s)\n"
+            "        in the specified format (XML or JSON).\n\n"
             "    yanglint -t (nc-)rpc/notif [-O <operational-file>] <schema>... <file>\n"
             "        Validates the YANG/NETCONF RPC/notification <file> according to the <schema>(s) using\n"
             "        <operational-file> with possible references to the operational datastore data.\n"
@@ -77,6 +81,10 @@ help(int shortout)
             "                Convert input into FORMAT. Supported formats: \n"
             "                yang, yin, tree, info and feature-param for schemas,\n"
             "                xml, json, and lyb for data.\n\n");
+
+    printf("  -S FORMAT, --sample-skeleton=FORMAT\n"
+            "                Generate a sample data skeleton from the provided schema.\n"
+            "                Supported formats: xml, json.\n\n");
 
     printf("  -I FORMAT, --in-format=FORMAT\n"
             "                Load the data in one of the following formats:\n"
@@ -217,6 +225,48 @@ help(int shortout)
 
     printf("  -J, --json-null\n"
             "                Allow usage of JSON empty values ('null') within input data\n\n");
+
+    printf("  -T, --ietf\n"
+            "                Enable stricter YANG model validation according to IETF rules.\n\n");
+
+    printf("  -g EP:SIZE, --sid-generate=EP:SIZE\n"
+            "                Generate a new .sid file (RFC 9595) with the given SID assignment\n"
+            "                range, print it. Only the last schema module given on the command\n"
+            "                line is processed. The output format can be set by -f (default json).\n"
+            "                EP (Entry Point) is the first SID of the new assignment range,\n"
+            "                SIZE the number of SIDs to assign (must not be 0).\n\n");
+
+    printf("  -u FILE, --sid-update=FILE\n"
+            "                Update an existing .sid file with the data of the currently processed\n"
+            "                schema module, print it. Only the last schema module given on the\n"
+            "                command line is processed. The output format can be set by -f\n"
+            "                (default json).\n"
+            "                Can be combined with --sid-range-add to add a new assignment\n"
+            "                range into the updated file first.\n\n");
+
+    printf("  -r EP:SIZE, --sid-range-add=EP:SIZE\n"
+            "                Add a new assignment range into the updated .sid file\n"
+            "                (only in combination with --sid-update).\n"
+            "                EP (Entry Point) is the first SID of the new assignment range,\n"
+            "                SIZE the number of SIDs to assign (must not be 0).\n\n");
+
+    printf("  -U, --sid-publish\n"
+            "                Generate/update the .sid file with the 'published' status\n"
+            "                (otherwise 'unpublished').\n\n");
+
+    printf("  -1/2 FILE, --cmp-mod1/2=FILE\n"
+            "                Path to the first/second YANG module to compare. Generates\n"
+            "                'ietf-schema-comparison-output' data and requires this module to\n"
+            "                be in the context. Needs the type(s) of schema representation\n"
+            "                (--cmp-local and/or --cmp-full). Use an output format to print the data.\n\n");
+
+    printf("  -3, --cmp-local\n"
+            "                Combined with --cmp-mod1/2 params. Use the locally resolved\n"
+            "                module for schema comparison, useful for YANG module authors.\n\n");
+
+    printf("  -4, --cmp-full\n"
+            "                Combined with --cmp-mod1/2 params. Use the fully resolved\n"
+            "                schema for schema comparison, useful for changes in YANG data.\n\n");
 
     printf("  -G GROUPS, --debug=GROUPS\n"
 #ifndef NDEBUG
@@ -410,6 +460,14 @@ process_files(int argc, char *argv[], int optind, LYD_FORMAT data_in_format, str
             if (cmd_add_exec(&ctx, yo, filepath)) {
                 return -1;
             }
+
+            if (yo->ietf_validation) {
+                struct lys_module *mod = (struct lys_module *)yo->schema_modules.objs[yo->schema_modules.count - 1];
+
+                if (yl_validate_ietf(&ctx, yo, mod->name)) {
+                    return -1;
+                }
+            }
         } else {
             if (cmd_data_store(&ctx, yo, filepath)) {
                 return -1;
@@ -506,7 +564,18 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
         {"yang-library-file", required_argument, NULL, 'Y'},
         {"extended-leafref",  no_argument,       NULL, 'X'},
         {"json-null",         no_argument,       NULL, 'J'},
+        {"ext-inst",          required_argument, NULL, 'k'},
+        {"cmp-mod1",          required_argument, NULL, '1'},
+        {"cmp-mod2",          required_argument, NULL, '2'},
+        {"cmp-local",         no_argument,       NULL, '3'},
+        {"cmp-full",          no_argument,       NULL, '4'},
         {"debug",             required_argument, NULL, 'G'},
+        {"sample-skeleton",   required_argument, NULL, 'S'},
+        {"ietf",              no_argument,       NULL, 'T'},
+        {"sid-generate",      required_argument, NULL, 'g'},
+        {"sid-update",        required_argument, NULL, 'u'},
+        {"sid-range-add",     required_argument, NULL, 'r'},
+        {"sid-publish",       no_argument,       NULL, 'U'},
         {NULL,                0,                 NULL, 0}
     };
     uint8_t data_type_set = 0;
@@ -518,7 +587,8 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
     yo->line_length = 0;
 
     opterr = 0;
-    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neE:At:d:lL:o:O:R:myY:XJx:G:", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neE:At:d:lL:o:O:R:myY:XJx:1:2:34G:S:Tg:u:r:U", options,
+            &opt_index)) != -1) {
         switch (opt) {
         case 'h': /* --help */
             help(0);
@@ -706,11 +776,72 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
             yo->data_parse_options |= LYD_PARSE_JSON_NULL;
             break;
 
-        case 'G':   /* --debug */
+        case '1': /* --cmp-mod1 */
+            yo->ctx_options |= LY_CTX_SET_PRIV_PARSED;
+            yo->cmp_mod_path1 = optarg;
+            break;
+
+        case '2': /* --cmp-mod2 */
+            yo->cmp_mod_path2 = optarg;
+            break;
+
+        case '3': /* --cmp-local */
+            yo->cmp_local = 1;
+            break;
+
+        case '4': /* --cmp-full */
+            yo->cmp_full = 1;
+            break;
+
+        case 'G': /* --debug */
             if (set_debug_groups(optarg, yo)) {
                 return -1;
             }
             break;
+
+        case 'S': /* --sample-skeleton */
+            if (yl_opt_update_data_out_format(optarg, yo)) {
+                YLMSG_E("Unknown out format %s.", optarg);
+                help(1);
+                return -1;
+            }
+            yo->sample_skeleton = 1;
+            break;
+
+        case 'T': /* --ietf */
+            yo->ietf_validation = 1;
+            break;
+
+        case 'g': /* --sid-generate */
+        case 'r': /* --sid-range-add */
+            if (yo->sid_range) {
+                YLMSG_E("The SID range option (--sid-generate/--sid-range-add) can be specified only once.");
+                return -1;
+            }
+            yo->sid_range = strdup(optarg);
+            if (!yo->sid_range) {
+                YLMSG_E("Memory allocation failed.");
+                return -1;
+            }
+            yo->sid_range_add = (opt == 'r');
+            break;
+
+        case 'u': /* --sid-update */
+            if (yo->sid_prev_path) {
+                YLMSG_E("The --sid-update option can be specified only once.");
+                return -1;
+            }
+            yo->sid_prev_path = strdup(optarg);
+            if (!yo->sid_prev_path) {
+                YLMSG_E("Memory allocation failed.");
+                return -1;
+            }
+            break;
+
+        case 'U': /* --sid-publish */
+            yo->sid_publish = 1;
+            break;
+
         default:
             YLMSG_E("Invalid option or missing argument: -%c.", optopt);
             return -1;
@@ -718,7 +849,7 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
     }
 
     /* additional checks for the options combinations */
-    if (!yo->list && (optind >= argc)) {
+    if (!yo->list && !yo->cmp_mod_path1 && !yo->cmp_mod_path2 && (optind >= argc)) {
         help(1);
         YLMSG_E("Missing <schema> to process.");
         return 1;
@@ -728,6 +859,26 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
         return -1;
     }
     if (cmd_print_dep(yo, 0)) {
+        return -1;
+    }
+
+    if (yo->sid_publish && !yo->sid_range && !yo->sid_prev_path) {
+        YLMSG_E("The --sid-publish option requires --sid-generate or --sid-update.");
+        return -1;
+    }
+    if (yo->sid_range_add && !yo->sid_prev_path) {
+        YLMSG_E("The --sid-range-add option can be used only in combination with --sid-update.");
+        return -1;
+    }
+    if (yo->sid_prev_path && yo->sid_range && !yo->sid_range_add) {
+        YLMSG_E("The --sid-generate option cannot be combined with --sid-update, use --sid-range-add to add a range.");
+        return -1;
+    }
+    if ((yo->cmp_mod_path1 && !yo->cmp_mod_path2) || (!yo->cmp_mod_path1 && yo->cmp_mod_path2)) {
+        YLMSG_E("Two same modules in different revisions need to be specified for schema comparison.");
+        return -1;
+    } else if (yo->cmp_mod_path1 && yo->cmp_mod_path2 && !yo->cmp_local && !yo->cmp_full) {
+        YLMSG_E("Missing type of schema representation (--cmp-local/--cmp-full) for schema comparison.");
         return -1;
     }
 
@@ -817,6 +968,30 @@ main_ni(int argc, char *argv[])
             if ((ret = cmd_print_exec(&ctx, &yo, ((struct lys_module *)yo.schema_modules.objs[u])->name))) {
                 goto cleanup;
             }
+        }
+    } else if (yo.sample_skeleton) {
+        for (u = 0; u < yo.schema_modules.count; ++u) {
+            yo.last_one = (u + 1) == yo.schema_modules.count;
+            if ((ret = cmd_sample_exec(&ctx, &yo, ((struct lys_module *)yo.schema_modules.objs[u])->name))) {
+                goto cleanup;
+            }
+        }
+    } else if (yo.sid_range || yo.sid_prev_path) {
+        if (!yo.schema_modules.count) {
+            YLMSG_E("No schema module provided for the .sid file processing.");
+            ret = 1;
+            goto cleanup;
+        }
+
+        /* the .sid file is always generated/updated only for the last schema module
+         * given on the command line; all the other schema modules are loaded and
+         * validated, but they do not contribute to the .sid file processing */
+        if ((ret = cmd_sid_exec(&ctx, &yo, ((struct lys_module *)yo.schema_modules.objs[yo.schema_modules.count - 1])->name))) {
+            goto cleanup;
+        }
+    } else if (yo.cmp_mod_path1 && yo.cmp_mod_path2) {
+        if ((ret = cmd_cmp_exec(&ctx, &yo))) {
+            goto cleanup;
         }
     }
 

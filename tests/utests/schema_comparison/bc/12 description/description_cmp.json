@@ -1,0 +1,81 @@
+{
+  "ietf-yang-schema-comparison-output:schema-comparison": {
+    "comparison": [
+      {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
+        "source": {
+          "module": "description",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "description",
+          "revision": "2000-01-02"
+        },
+        "conformance": "backwards-compatible",
+        "suggested-target-version": "1.1.0",
+        "node-comparison": [
+          {
+            "node": "/description:l1",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "description",
+                "parent-stmt": "node",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "uint16"
+              }
+            },
+            "new": {
+              "description": "is a nice leaf",
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "uint16"
+              }
+            }
+          },
+          {
+            "node": "/description:l2",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "description",
+                "parent-stmt": "node",
+                "change": "modified",
+                "conformance": "editorial"
+              }
+            ],
+            "old": {
+              "description": "desc",
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "uint32"
+              }
+            },
+            "new": {
+              "description": "desc2",
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "uint32"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -16,7 +16,7 @@
 #define _GNU_SOURCE
 
 #include <assert.h>
-#include <stdint.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -31,7 +31,6 @@
 #include "parser_internal.h"
 #include "plugins_exts.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"
@@ -267,16 +266,26 @@ lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *pref
     }
 
     /* try to find parent schema node */
-    if (parent && parent->schema && !(parent->schema->nodetype & LYD_NODE_ANY)) {
+    if (parent && parent->schema) {
         /* use only a schema parent */
         sparent = parent->schema;
     } else {
         sparent = NULL;
     }
+    if (sparent && (sparent->nodetype & LYD_NODE_ANY)) {
+        if (!prefix_len) {
+            /* inherit the module */
+            mod = sparent->module;
+        }
+
+        /* do not search in children */
+        sparent = NULL;
+    }
+
     if (!prefix_len) {
         prefix = NULL;
     }
-    r = lys_find_child_node(parent ? LYD_CTX(parent) : lydctx->jsonctx->ctx, sparent, NULL, prefix, prefix_len,
+    r = lys_find_child_node(parent ? LYD_CTX(parent) : lydctx->jsonctx->ctx, sparent, mod, prefix, prefix_len,
             LY_VALUE_JSON, NULL, name, name_len, getnext_opts, snode, ext);
     LY_CHECK_RET(r && (r != LY_ENOT), r);
 
@@ -326,7 +335,7 @@ lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *pref
  *
  * @param[in] lydctx JSON data parser context.
  * @param[in] snode Schema node for logging.
- * @param[in,out] status Pointer to the current context status,
+ * @param[in,out] status_p Pointer to the current context status,
  * in some circumstances the function manipulates with the context so the status is updated.
  * @param[out] type_hint_p Pointer to the variable to store the result.
  * @return LY_SUCCESS in case of success.
@@ -730,112 +739,52 @@ cleanup:
 }
 
 /**
- * @brief Parse a metadata member/attribute.
+ * @brief Parse all metadata/attributes for a single node instance.
  *
  * @param[in] lydctx JSON data parser context.
  * @param[in] node Parent node.
- * @return LY_SUCCESS on success
- * @return Various LY_ERR values in case of failure.
+ * @param[in] prev_node Previous parent node.
+ * @param[out] represent_err Set if representation error should be generated.
+ * @return LY_ERR value.
  */
 static LY_ERR
-lydjson_meta_attr(struct lyd_json_ctx *lydctx, struct lyd_node *node)
+lydjson_meta_attr_instance(struct lyd_json_ctx *lydctx, struct lyd_node *node, const struct lyd_node *prev_node,
+        ly_bool *represent_err)
 {
-    LY_ERR rc = LY_SUCCESS, r;
+    LY_ERR rc = LY_SUCCESS;
     enum LYJSON_PARSER_STATUS status;
-    const char *expected;
-    ly_bool in_parent = 0;
-    const char *name, *prefix = NULL;
-    char *dynamic_prefname = NULL;
-    uint32_t name_len, prefix_len = 0;
+    const char *name, *prefix;
+    uint32_t name_len, prefix_len;
     struct lys_module *mod;
     const struct ly_ctx *ctx = lydctx->jsonctx->ctx;
-    ly_bool is_attr = 0;
-    struct lyd_node *prev = node;
-    uint32_t instance = 0, val_hints;
-    uint16_t nodetype;
+    ly_bool is_attr;
+    uint32_t val_hints;
 
-    nodetype = node->schema ? node->schema->nodetype : LYS_CONTAINER;
-
-    /* move to the second item in the name/X pair */
-    LY_CHECK_GOTO(rc = lyjson_ctx_next(lydctx->jsonctx, &status), cleanup);
-
-    /* check attribute encoding */
-    switch (nodetype) {
-    case LYS_LEAFLIST:
-        expected = "@name/array of objects/nulls";
-        LY_CHECK_GOTO(status != LYJSON_ARRAY, representation_error);
-
-next_entry:
-        if (status == LYJSON_ARRAY_CLOSED) {
-            /* no more metadata */
-            goto cleanup;
-        }
-
-        /* move into the array/next item */
-        LY_CHECK_GOTO(rc = lyjson_ctx_next(lydctx->jsonctx, &status), cleanup);
-        instance++;
-        LY_CHECK_GOTO((status != LYJSON_OBJECT) && (status != LYJSON_NULL), representation_error);
-
-        if (!node || (node->schema != prev->schema)) {
-            LOG_LOCSET(prev->schema);
-            LOGVAL(lydctx->jsonctx->ctx, NULL, LYVE_REFERENCE, "Missing JSON data instance #%" PRIu32
-                    " of %s:%s to be coupled with metadata.", instance, prev->schema->module->name, prev->schema->name);
-            LOG_LOCBACK(1);
-            rc = LY_EVALID;
-            goto cleanup;
-        }
-
-        if (status == LYJSON_NULL) {
-            /* continue with the next entry in the leaf-list array */
-            prev = node;
-            node = node->next;
-
-            LY_CHECK_GOTO(rc = lyjson_ctx_next(lydctx->jsonctx, &status), cleanup);
-            goto next_entry;
-        }
-        break;
-    case LYS_LEAF:
-    case LYS_ANYXML:
-        expected = "@name/object";
-
-        LY_CHECK_GOTO(status != LYJSON_OBJECT, representation_error);
-        break;
-    case LYS_CONTAINER:
-    case LYS_LIST:
-    case LYS_ANYDATA:
-    case LYS_NOTIF:
-    case LYS_ACTION:
-    case LYS_RPC:
-        in_parent = 1;
-        expected = "@/object";
-        LY_CHECK_GOTO(status != LYJSON_OBJECT, representation_error);
-        break;
-    default:
-        LOGINT(ctx);
-        rc = LY_EINT;
-        goto cleanup;
-    }
+    *represent_err = 0;
 
     /* process all the members inside a single metadata object */
+    status = lyjson_ctx_status(lydctx->jsonctx);
     assert(status == LYJSON_OBJECT);
     do {
         LY_CHECK_GOTO(rc = lyjson_ctx_next(lydctx->jsonctx, &status), cleanup);
-        LY_CHECK_GOTO(status != LYJSON_OBJECT_NAME, representation_error);
+        if (status != LYJSON_OBJECT_NAME) {
+            *represent_err = 1;
+            goto cleanup;
+        }
 
         lydjson_parse_name(lydctx->jsonctx->value, lydctx->jsonctx->value_len, &name, &name_len, &prefix, &prefix_len, &is_attr);
-        lyjson_ctx_give_dynamic_value(lydctx->jsonctx, &dynamic_prefname);
 
         if (!name_len) {
-            LOGVAL(ctx, prev, LYVE_SYNTAX_JSON, "Metadata in JSON found with an empty name, followed by: %.10s", name);
+            LOGVAL(ctx, prev_node, LYVE_SYNTAX_JSON, "Metadata in JSON found with an empty name, followed by \"%.10s\".", name);
             rc = LY_EVALID;
             goto cleanup;
         } else if (!prefix_len) {
-            LOGVAL(ctx, prev, LYVE_SYNTAX_JSON, "Metadata in JSON must be namespace-qualified, missing prefix for \"%.*s\".",
+            LOGVAL(ctx, prev_node, LYVE_SYNTAX_JSON, "Metadata in JSON must be namespace-qualified, missing prefix for \"%.*s\".",
                     (int)lydctx->jsonctx->value_len, lydctx->jsonctx->value);
             rc = LY_EVALID;
             goto cleanup;
         } else if (is_attr) {
-            LOGVAL(ctx, prev, LYVE_SYNTAX_JSON, "Invalid format of the Metadata identifier in JSON, unexpected '@' in \"%.*s\"",
+            LOGVAL(ctx, prev_node, LYVE_SYNTAX_JSON, "Invalid format of the Metadata identifier in JSON, unexpected '@' in \"%.*s\".",
                     (int)lydctx->jsonctx->value_len, lydctx->jsonctx->value);
             rc = LY_EVALID;
             goto cleanup;
@@ -845,7 +794,7 @@ next_entry:
         mod = ly_ctx_get_module_implemented2(ctx, prefix, prefix_len);
         if (!mod) {
             if (lydctx->parse_opts & LYD_PARSE_STRICT) {
-                LOGVAL(ctx, prev, LYVE_REFERENCE,
+                LOGVAL(ctx, prev_node, LYVE_REFERENCE,
                         "Prefix \"%.*s\" of the metadata \"%.*s\" does not match any module in the context.",
                         (int)prefix_len, prefix, (int)name_len, name);
                 rc = LY_EVALID;
@@ -855,6 +804,7 @@ next_entry:
                 /* skip element with children */
                 LY_CHECK_GOTO(rc = lydjson_data_skip(lydctx->jsonctx), cleanup);
                 status = lyjson_ctx_status(lydctx->jsonctx);
+
                 /* end of the item */
                 continue;
             }
@@ -894,16 +844,112 @@ next_entry:
         /* next member */
         LY_CHECK_GOTO(rc = lyjson_ctx_next(lydctx->jsonctx, &status), cleanup);
     } while (status == LYJSON_OBJECT_NEXT);
-    LY_CHECK_GOTO(status != LYJSON_OBJECT_CLOSED, representation_error);
 
-    if (nodetype == LYS_LEAFLIST) {
-        /* continue by processing another metadata object for the following
-         * leaf-list instance since they are always instantiated in JSON array */
-        prev = node;
-        node = node->next;
+    if (status != LYJSON_OBJECT_CLOSED) {
+        *represent_err = 1;
+        goto cleanup;
+    }
 
-        LY_CHECK_GOTO(rc = lyjson_ctx_next(lydctx->jsonctx, &status), cleanup);
-        goto next_entry;
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Parse all metadata/attributes of a node (all instances for a leaf-list).
+ *
+ * @param[in] lydctx JSON data parser context.
+ * @param[in] node Parent node.
+ * @return LY_SUCCESS on success
+ * @return Various LY_ERR values in case of failure.
+ */
+static LY_ERR
+lydjson_meta_attr(struct lyd_json_ctx *lydctx, struct lyd_node *node)
+{
+    LY_ERR rc = LY_SUCCESS, r;
+    enum LYJSON_PARSER_STATUS status;
+    const char *expected;
+    ly_bool in_parent = 0;
+    const struct ly_ctx *ctx = lydctx->jsonctx->ctx;
+    ly_bool rep_err;
+    struct lyd_node *prev = node;
+    uint32_t instance;
+    uint16_t nodetype;
+
+    nodetype = node->schema ? node->schema->nodetype : LYS_CONTAINER;
+
+    /* move to the second item in the name/X pair */
+    LY_CHECK_GOTO(rc = lyjson_ctx_next(lydctx->jsonctx, &status), cleanup);
+
+    /* check attribute encoding */
+    switch (nodetype) {
+    case LYS_LEAFLIST:
+        expected = "@name/array of objects/nulls";
+        LY_CHECK_GOTO(status != LYJSON_ARRAY, representation_error);
+
+        instance = 0;
+        do {
+            /* move into the array/next item */
+            LY_CHECK_GOTO(rc = lyjson_ctx_next(lydctx->jsonctx, &status), cleanup);
+            instance++;
+            LY_CHECK_GOTO((status != LYJSON_OBJECT) && (status != LYJSON_NULL), representation_error);
+
+            if (!node || (node->schema != prev->schema)) {
+                LOG_LOCSET(prev->schema);
+                LOGVAL(lydctx->jsonctx->ctx, NULL, LYVE_REFERENCE, "Missing JSON data instance #%" PRIu32
+                        " of %s:%s to be coupled with metadata.", instance, prev->schema->module->name, prev->schema->name);
+                LOG_LOCBACK(1);
+                rc = LY_EVALID;
+                goto cleanup;
+            }
+
+            /* null values are simply skipped */
+            if (status != LYJSON_NULL) {
+                LY_CHECK_GOTO(rc = lydjson_meta_attr_instance(lydctx, node, prev, &rep_err), cleanup);
+                status = lyjson_ctx_status(lydctx->jsonctx);
+                if (rep_err) {
+                    goto representation_error;
+                }
+            }
+
+            /* continue by processing another metadata object for the following
+             * leaf-list instance since they are always instantiated in JSON array */
+            prev = node;
+            node = node->next;
+
+            LY_CHECK_GOTO(rc = lyjson_ctx_next(lydctx->jsonctx, &status), cleanup);
+        } while (status != LYJSON_ARRAY_CLOSED);
+        break;
+    case LYS_LEAF:
+    case LYS_ANYXML:
+        expected = "@name/object";
+        LY_CHECK_GOTO(status != LYJSON_OBJECT, representation_error);
+
+        LY_CHECK_GOTO(rc = lydjson_meta_attr_instance(lydctx, node, prev, &rep_err), cleanup);
+        status = lyjson_ctx_status(lydctx->jsonctx);
+        if (rep_err) {
+            goto representation_error;
+        }
+        break;
+    case LYS_CONTAINER:
+    case LYS_LIST:
+    case LYS_ANYDATA:
+    case LYS_NOTIF:
+    case LYS_ACTION:
+    case LYS_RPC:
+        in_parent = 1;
+        expected = "@/object";
+        LY_CHECK_GOTO(status != LYJSON_OBJECT, representation_error);
+
+        LY_CHECK_GOTO(rc = lydjson_meta_attr_instance(lydctx, node, prev, &rep_err), cleanup);
+        status = lyjson_ctx_status(lydctx->jsonctx);
+        if (rep_err) {
+            goto representation_error;
+        }
+        break;
+    default:
+        LOGINT(ctx);
+        rc = LY_EINT;
+        goto cleanup;
     }
 
     /* success */
@@ -923,7 +969,6 @@ cleanup:
             rc = r;
         }
     }
-    free(dynamic_prefname);
     return rc;
 }
 

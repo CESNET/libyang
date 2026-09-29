@@ -1,0 +1,10 @@
+module ietf-miss-meta {
+  yang-version 1.1;
+  namespace "urn:ietf:params:xml:ns:yang:ietf-miss-meta";
+  prefix imm;
+
+  // Triggers 4.8: missing "organization"
+  // Triggers 4.8: missing "contact"
+  // Triggers 4.8: missing "revision"
+  // Triggers 4.8: missing "description"
+}

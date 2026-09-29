@@ -53,11 +53,13 @@ extern "C" {
  * - ::ly_in_new_file()
  * - ::ly_in_new_filepath()
  * - ::ly_in_new_memory()
+ * - ::ly_in_new_memory_chunk()
  *
  * - ::ly_in_fd()
  * - ::ly_in_file()
  * - ::ly_in_filepath()
  * - ::ly_in_memory()
+ * - ::ly_in_memory_chunk()
  *
  * - ::ly_in_type()
  * - ::ly_in_parsed()
@@ -162,9 +164,11 @@ LIBYANG_API_DECL FILE *ly_in_file(struct ly_in *in, FILE *f);
 /**
  * @brief Create input handler using memory to read data.
  *
- * @param[in] str Pointer where to start reading data. The input data are expected to be NULL-terminated.
+ * The input data are expected to be valid (NULL-terminated for text formats).
  * Note that in case the destroy argument of ::ly_in_free() is used, the input string is passed to free(),
- * so if it is really a static string, do not use the destroy argument!
+ * so if @p str is a static string, do not use the destroy argument!
+ *
+ * @param[in] str Data to read.
  * @param[out] in Created input handler supposed to be passed to different ly*_parse() functions.
  * @return LY_SUCCESS in case of success
  * @return LY_ERR value in case of failure.
@@ -172,16 +176,46 @@ LIBYANG_API_DECL FILE *ly_in_file(struct ly_in *in, FILE *f);
 LIBYANG_API_DECL LY_ERR ly_in_new_memory(const char *str, struct ly_in **in);
 
 /**
+ * @brief Create input handler using a fixed-size memory chunk to read data.
+ *
+ * Note that in case the destroy argument of ::ly_in_free() is used, the input mem chunk is passed to free(),
+ * so if @p mem is static memory, do not use the destroy argument!
+ *
+ * @param[in] mem Data to read.
+ * @param[in] mem_len Length of @p mem.
+ * @param[out] in Created input handler supposed to be passed to different ly*_parse() functions.
+ * @return LY_SUCCESS in case of success
+ * @return LY_ERR value in case of failure.
+ */
+LIBYANG_API_DECL LY_ERR ly_in_new_memory_chunk(const void *mem, uint32_t mem_len, struct ly_in **in);
+
+/**
  * @brief Get or change memory where the data are read from.
  *
- * @param[in] in Input handler.
- * @param[in] str String containing the data to read. The input data are expected to be NULL-terminated.
+ * The input data are expected to be valid (NULL-terminated for text formats).
  * Note that in case the destroy argument of ::ly_in_free() is used, the input string is passed to free(),
- * so if it is really a static string, do not use the destroy argument!
+ * so if @p str is a static string, do not use the destroy argument!
+ *
+ * @param[in] in Input handler.
+ * @param[in] str Data to read.
  * @return Previous starting address to read data from. Note that the caller is responsible to free
  * the data in case of changing string pointer @p str.
  */
 LIBYANG_API_DECL const char *ly_in_memory(struct ly_in *in, const char *str);
+
+/**
+ * @brief Get or change memory where the data are read from.
+ *
+ * Note that in case the destroy argument of ::ly_in_free() is used, the input mem chunk is passed to free(),
+ * so if @p mem is static memory, do not use the destroy argument!
+ *
+ * @param[in] in Input handler.
+ * @param[in] mem Data to read.
+ * @param[in] mem_len Length of @p mem.
+ * @return Previous starting address to read data from. Note that the caller is responsible to free
+ * the data in case of changing string pointer @p str.
+ */
+LIBYANG_API_DECL const void *ly_in_memory_chunk(struct ly_in *in, const void *mem, uint32_t mem_len);
 
 /**
  * @brief Create input handler file of the given filename.

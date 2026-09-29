@@ -79,6 +79,9 @@ const char *schema_a = "module a {\n"
         "      }\n"
         "    }\n"
         "  }\n"
+        "  leaf-list ll3 {\n"
+        "    type uint8;\n"
+        "  }\n"
         "  rpc oper {\n"
         "    input {\n"
         "      leaf param {\n"
@@ -163,7 +166,8 @@ test_top_level(void **state)
 
     uint16_t foo_val = 15;
 
-    assert_int_equal(lyd_new_term_raw(NULL, mod, "foo", &foo_val, sizeof foo_val, LYD_NEW_ANY_USE_VALUE, &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_term_raw_canon(NULL, mod, "foo", &foo_val, sizeof foo_val, "15", LYD_NEW_ANY_USE_VALUE,
+            &node), LY_SUCCESS);
     lyd_free_tree(node);
 
     /* leaf-list */
@@ -281,6 +285,17 @@ test_path(void **state)
 
     lyd_free_tree(root);
 
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:ll3", "1050", 0, 0, 0, NULL, NULL);
+    assert_int_equal(ret, LY_EVALID);
+    CHECK_LOG_CTX("Value \"1050\" is out of type uint8 min/max bounds.", "/a:ll3", 0);
+
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:ll3", "1050", 0, 0, LYD_NEW_PATH_OPAQ, NULL, &root);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    assert_null(root->schema);
+
+    lyd_free_tree(root);
+
     ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:foo", NULL, 0, 0, 0, NULL, NULL);
     assert_int_equal(ret, LY_EVALID);
     CHECK_LOG_CTX("Invalid type uint16 empty value.", "/a:foo", 0);
@@ -299,13 +314,53 @@ test_path(void **state)
 
     ret = lyd_new_path(root, NULL, "a", NULL, LYD_NEW_PATH_OPAQ, NULL);
     assert_int_equal(ret, LY_SUCCESS);
-    assert_non_null(lyd_child(root));
-    assert_null(lyd_child(root)->schema);
+    assert_non_null(lyd_child_no_keys(root));
+    assert_null(lyd_child_no_keys(root)->schema);
 
     ret = lyd_new_path(root, NULL, "b", NULL, LYD_NEW_PATH_OPAQ, NULL);
     assert_int_equal(ret, LY_SUCCESS);
-    assert_non_null(lyd_child(root)->next);
-    assert_null(lyd_child(root)->next->schema);
+    assert_non_null(lyd_child_no_keys(root)->next);
+    assert_null(lyd_child_no_keys(root)->next->schema);
+
+    lyd_free_tree(root);
+
+    /* uint16 leaf with a valid number -- exercises the DECNUM/OCTNUM/HEXNUM hint family */
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:foo", "42", 0, 0, LYD_NEW_PATH_OPAQ, NULL, &root);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    assert_non_null(root->schema);
+    assert_string_equal("foo", root->schema->name);
+    assert_string_equal("42", lyd_get_value(root));
+
+    lyd_free_tree(root);
+
+    /* config-true string leaf-list -- exercises LYD_VALHINT_STRING, which has no fallback */
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:ll", "abc", 0, 0, LYD_NEW_PATH_OPAQ, NULL, &root);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    assert_non_null(root->schema);
+    assert_string_equal("ll", root->schema->name);
+    assert_string_equal("abc", lyd_get_value(root));
+
+    lyd_free_tree(root);
+
+    /* config-false leaf-list exercising the duplicate-instance pre-check */
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:ll2", "val", 0, 0, LYD_NEW_PATH_OPAQ, NULL, &root);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    assert_non_null(root->schema);
+    assert_string_equal("ll2", root->schema->name);
+    assert_string_equal("val", lyd_get_value(root));
+
+    lyd_free_tree(root);
+
+    /* same state leaf-list, but with a POSITIONAL predicate and the value still supplied separately */
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:ll2[1]", "val", 0, 0, LYD_NEW_PATH_OPAQ, NULL, &root);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    assert_non_null(root->schema);
+    assert_string_equal("ll2", root->schema->name);
+    assert_string_equal("val", lyd_get_value(root));
 
     lyd_free_tree(root);
 
@@ -526,6 +581,28 @@ test_path(void **state)
             "}\n");
     free(str);
     lyd_free_siblings(root);
+
+    /* value with both ' and " */
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:ll", "my-value with ' and \"", 0, LYD_VALHINT_STRING, 0, &root, NULL);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_SIBLINGS);
+    assert_string_equal(str,
+            "<ll xmlns=\"urn:tests:a\">my-value with ' and \"</ll>\n");
+    free(str);
+    lyd_print_mem(&str, root, LYD_JSON, LYD_PRINT_SIBLINGS);
+    assert_string_equal(str,
+            "{\n"
+            "  \"a:ll\": [\n"
+            "    \"my-value with ' and \\\"\"\n"
+            "  ]\n"
+            "}\n");
+    free(str);
+
+    str = lyd_path(root, LYD_PATH_STD, NULL, 0);
+    assert_null(str);
+    CHECK_LOG_CTX("Invalid value with both ' and \" characters, unable to put in quotes.", NULL, 0);
+    lyd_free_siblings(root);
 }
 
 static void
@@ -547,7 +624,7 @@ test_path_ext(void **state)
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(root);
     assert_string_equal(root->schema->name, "c");
-    assert_non_null(node = lyd_child(root));
+    assert_non_null(node = lyd_child_no_keys(root));
     assert_string_equal(node->schema->name, "x");
     assert_string_equal("xxx", lyd_get_value(node));
 

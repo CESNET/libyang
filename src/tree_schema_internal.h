@@ -18,9 +18,11 @@
 
 #include <stdint.h>
 
+#include "ly_array.h"
 #include "ly_common.h"
 #include "set.h"
 #include "tree_schema.h"
+#include "utils.h"
 
 struct lysc_ctx;
 struct lys_glob_unres;
@@ -88,7 +90,7 @@ extern const char * const ly_devmod_list[];
  */
 #define CHECK_UNIQUENESS(CTX, ARRAY, MEMBER, STMT, IDENT) \
     if (ARRAY) { \
-        for (LY_ARRAY_COUNT_TYPE u_ = 0; u_ < LY_ARRAY_COUNT(ARRAY) - 1; ++u_) { \
+        for (LYA_COUNT_T u_ = 0; u_ < LYA_COUNT(ARRAY) - 1; ++u_) { \
             if (!strcmp((ARRAY)[u_].MEMBER, IDENT)) { \
                 LOGVAL_PARSER(CTX, LY_VCODE_DUPIDENT, IDENT, STMT); \
                 return LY_EVALID; \
@@ -242,7 +244,7 @@ const char *lysp_last_revision(const struct lysp_module *pmod, const struct lysp
  * @param[out] node Node where the found typedef is defined, NULL in case of a top-level typedef.
  * @return LY_ERR value.
  */
-LY_ERR lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_module *start_module,
+LY_ERR lysp_type_find(const char *id, const struct lysp_node *start_node, const struct lysp_module *start_module,
         const struct lysc_ext_instance *ext, LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node);
 
 /**
@@ -538,7 +540,20 @@ LY_ERR lysp_ext_instance_resolve_argument(const struct ly_ctx *ctx, const struct
  * @param[in] substmt The statement the extension is supposed to belong to.
  * @result index in the ext array, LY_ARRAY_COUNT(ext) value if not present.
  */
-LY_ARRAY_COUNT_TYPE lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_COUNT_TYPE index, enum ly_stmt substmt);
+LYA_COUNT_T lysp_ext_instance_iter(struct lysp_ext_instance *ext, LYA_COUNT_T index, enum ly_stmt substmt);
+
+/**
+ * @brief Get the module name from a node ID with a prefix.
+ *
+ * @param[in] ctx Contex to use.
+ * @param[in] nodeid Node ID to parse.
+ * @param[in] format Prefix format in @p nodeid.
+ * @param[in] prefix_data Prefix data to use.
+ * @param[out] mod_name Found module name.
+ * @param[out] name Local name.
+ */
+void lysp_nodeid_find_module(const struct ly_ctx *ctx, const char *nodeid, LY_VALUE_FORMAT format, void *prefix_data,
+        const char **mod_name, const char **name);
 
 /**
  * @brief Stringify YANG built-in type.
@@ -589,7 +604,6 @@ void lys_unres_glob_erase(struct lys_glob_unres *unres);
 struct lysp_load_module_data {
     const char *name;           /**< expected module name */
     const char *revision;       /**< expected module revision */
-    const char *path;           /**< module file name to check */
     const char *submoduleof;    /**< expected submodule main module */
 };
 
@@ -607,6 +621,24 @@ struct lysp_load_module_data {
  */
 LY_ERR lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
         const struct lysp_load_module_data *mod_data, struct ly_set *new_mods, struct lys_module **module);
+
+/**
+ * @brief Search for the schema file in the specified searchpaths.
+ *
+ * @param[in] ctx Context to use.
+ * @param[in] searchpaths NULL-terminated array of paths to be searched (recursively). Current working
+ * directory is searched automatically (but non-recursively if not in the provided list).
+ * @param[in] cwd Flag to implicitly search also in the current working directory (non-recursively).
+ * @param[in] name Name of the schema to find.
+ * @param[in] revision Revision of the schema to find. If NULL, the newest found schema filepath is returned.
+ * @param[out] localfile Mandatory output variable containing absolute path of the found schema. If no schema
+ * complying the provided restriction is found, NULL is set.
+ * @param[out] format Optional output variable containing expected format of the schema document according to the
+ * file suffix.
+ * @return LY_ERR value (LY_SUCCESS is returned even if the file is not found, then the *localfile is NULL).
+ */
+LY_ERR _lys_search_localfile(const struct ly_ctx *ctx, const char * const *searchpaths, ly_bool cwd, const char *name,
+        const char *revision, char **localfile, LYS_INFORMAT *format);
 
 /**
  * @brief Build log path for a parsed extension instance.
@@ -693,6 +725,7 @@ char *lysc_path_until(const struct lysc_node *node, const struct lysc_node *pare
  *      LY_VALUE_SCHEMA          - const struct ::lysp_module* (module used for resolving imports to prefixes)
  *      LY_VALUE_SCHEMA_RESOLVED - struct ::lysc_prefix* (sized array of pairs: prefix - module)
  *      LY_VALUE_XML             - struct ::ly_set* (set of all returned modules as struct ::lys_module)
+ *      LY_VALUE_CBOR            - NULL
  *      LY_VALUE_JSON            - NULL
  *      LY_VALUE_LYB             - NULL
  * @return Module prefix to print.
@@ -712,6 +745,7 @@ const char *ly_get_prefix(const struct lys_module *mod, LY_VALUE_FORMAT format, 
  *      LY_VALUE_SCHEMA          - const struct lysp_module * (module used for resolving prefixes from imports)
  *      LY_VALUE_SCHEMA_RESOLVED - struct lyd_value_prefix * (sized array of pairs: prefix - module)
  *      LY_VALUE_XML             - const struct ly_set * (set with defined namespaces stored as ::lyxml_ns)
+ *      LY_VALUE_CBOR            - NULL
  *      LY_VALUE_JSON            - NULL
  *      LY_VALUE_LYB             - NULL
  * @return Resolved prefix module,
@@ -891,5 +925,50 @@ void *ly_ctx_compiled_addr_ht_get(const struct ly_ht *addr_ht, const void *addr,
  * @return LY_ERR value.
  */
 LY_ERR ly_ctx_compiled_addr_ht_add(struct ly_ht *addr_ht, const void *orig_addr, const void *addr);
+
+/**
+ * @brief Generate a .sid file data tree. Internal implementation of ::lys_sid_gen, expects arguments already validated.
+ *
+ * @param[in] module Implemented module to collect items from. Its context must have the "ietf-sid-file" module implemented.
+ * @param[in] entry_point First SID of the assignment range.
+ * @param[in] size Number of SIDs available in the range, must cover all items.
+ * @param[in] status Status of the SID file (::LYS_SID_FILE_UNPUBLISHED or ::LYS_SID_FILE_PUBLISHED).
+ * @param[in] description Optional description string written to the "description" leaf, NULL to auto-generate
+ * "Generated by libyang \<version\>, at \<UTC timestamp\>".
+ * @param[out] sid_file Generated data tree ("/ietf-sid-file:sid-file"), caller must free with ::lyd_free_all().
+ * @return LY_SUCCESS on success.
+ * @return LY_EINVAL if @p size is smaller than the number of collected items.
+ * @return LY_ERR on other errors.
+ */
+LY_ERR sid_file_gen(const struct lys_module *module, uint64_t entry_point, uint64_t size,
+        LYS_SID_FILE_STATUS status, const char *description, struct lyd_node **sid_file);
+
+/**
+ * @brief Update a .sid file data tree. Internal implementation of ::lys_sid_update, expects arguments already validated.
+ *
+ * @param[in] module Implemented module to collect items from. Its context must have the "ietf-sid-file" module implemented.
+ * @param[in] prev_sid_file Root node of the previous .sid file data tree.
+ * @param[in] status Status of the SID file (::LYS_SID_FILE_UNPUBLISHED or ::LYS_SID_FILE_PUBLISHED).
+ * @param[in] description Optional description string written to the "description" leaf, NULL to auto-generate
+ * "Generated by libyang \<version\>, at \<UTC timestamp\>".
+ * @param[out] sid_file Generated data tree ("/ietf-sid-file:sid-file"), caller must free with ::lyd_free_all().
+ * @return LY_SUCCESS on success.
+ * @return LY_EINVAL on invalid previous file or if the assignment ranges cannot cover all items.
+ * @return LY_ERR on other errors.
+ */
+LY_ERR sid_file_update(const struct lys_module *module, const struct lyd_node *prev_sid_file,
+        LYS_SID_FILE_STATUS status, const char *description, struct lyd_node **sid_file);
+
+/**
+ * @brief Append a new assignment range to a .sid file data tree. Internal implementation of ::lys_sid_range_add, expects arguments already validated.
+ *
+ * @param[in] tree Data tree ("/ietf-sid-file:sid-file") to add the range to.
+ * @param[in] entry_point First SID of the new range.
+ * @param[in] size Number of SIDs in the new range.
+ * @return LY_SUCCESS on success.
+ * @return LY_EINVAL if @p tree is not the sid-file root node, the range exceeds the SID data type bound (2^63-1), or overlaps an already declared range.
+ * @return LY_ERR on other errors.
+ */
+LY_ERR sid_range_append(struct lyd_node *tree, uint64_t entry_point, uint64_t size);
 
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */

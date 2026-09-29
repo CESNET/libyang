@@ -1,0 +1,13 @@
+module uses-imp {
+    namespace "urn:test:uses-imp";
+    prefix ussi;
+    yang-version 1.1;
+
+    revision 2000-01-01;
+
+    grouping foreign-group {
+        leaf l2 {
+            type string;
+        }
+    }
+}

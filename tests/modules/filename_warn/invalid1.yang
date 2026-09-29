@@ -1,0 +1,12 @@
+module invalid11 {
+  namespace "urn:invalid1";
+  prefix "i1";
+
+  import ietf-yang-semver {
+    prefix ysv;
+  }
+
+  revision 2026-01-01 {
+    ysv:version 1.0.0;
+  }
+}

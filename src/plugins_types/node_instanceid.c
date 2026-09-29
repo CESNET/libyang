@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief ietf-netconf-acm node-instance-identifier type plugin.
  *
- * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -17,13 +17,12 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "libyang.h"
-
-/* additional internal headers for some useful simple macros */
 #include "compat.h"
+#include "dict.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "path.h"
-#include "plugins_internal.h" /* LY_TYPE_*_STR */
+#include "plugins_internal.h"
 #include "xpath.h"
 
 /**
@@ -48,7 +47,7 @@ static LY_ERR
 node_instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, void *prefix_data, char **str)
 {
     LY_ERR ret = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     char *result = NULL, quot;
     const struct lys_module *mod = NULL, *local_mod = NULL;
     struct ly_set *mods;
@@ -63,18 +62,34 @@ node_instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, voi
 
     switch (format) {
     case LY_VALUE_XML:
-        /* null the local module so that all the prefixes are printed */
+    case LY_VALUE_STR_NS:
+        /* zero the local module so that all the prefixes are printed */
         mods = prefix_data;
         local_mod = mods->objs[0];
         mods->objs[0] = NULL;
+        break;
+    case LY_VALUE_SCHEMA:
+    case LY_VALUE_SCHEMA_RESOLVED:
+        /* nothing to do */
+        break;
+    case LY_VALUE_CANON:
+    case LY_VALUE_CBOR:
+    case LY_VALUE_JSON:
+    case LY_VALUE_LYB:
+        /* zero the local module so that the first node is always prefixed */
+        prefix_data = NULL;
+        break;
+    }
 
-    /* fallthrough */
+    switch (format) {
+    case LY_VALUE_XML:
     case LY_VALUE_SCHEMA:
     case LY_VALUE_SCHEMA_RESOLVED:
         /* everything is prefixed */
         inherit_prefix = 0;
         break;
     case LY_VALUE_CANON:
+    case LY_VALUE_CBOR:
     case LY_VALUE_JSON:
     case LY_VALUE_LYB:
     case LY_VALUE_STR_NS:
@@ -83,7 +98,7 @@ node_instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, voi
         break;
     }
 
-    LY_ARRAY_FOR(path, u) {
+    LYA_FOR(path, u) {
         /* new node */
         if (!inherit_prefix || (mod != path[u].node->module)) {
             mod = path[u].node->module;
@@ -94,7 +109,7 @@ node_instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, voi
         LY_CHECK_GOTO(ret, cleanup);
 
         /* node predicates */
-        LY_ARRAY_FOR(path[u].predicates, v) {
+        LYA_FOR(path[u].predicates, v) {
             struct ly_path_predicate *pred = &path[u].predicates[v];
 
             switch (pred->type) {
@@ -108,10 +123,7 @@ node_instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, voi
                 LY_CHECK_GOTO(ret, cleanup);
 
                 /* default quote */
-                quot = '\'';
-                if (strchr(strval, quot)) {
-                    quot = '"';
-                }
+                LY_CHECK_GOTO(ret = ly_val_get_quot(pred->key->module->ctx, strval, &quot), cleanup);
                 if (inherit_prefix) {
                     /* always the same prefix as the parent */
                     ret = ly_strcat(&result, "[%s=%c%s%c]", pred->key->name, quot, strval, quot);
@@ -127,10 +139,7 @@ node_instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, voi
                 LY_CHECK_GOTO(ret, cleanup);
 
                 /* default quote */
-                quot = '\'';
-                if (strchr(strval, quot)) {
-                    quot = '"';
-                }
+                LY_CHECK_GOTO(ret = ly_val_get_quot(path[u].node->module->ctx, strval, &quot), cleanup);
                 ret = ly_strcat(&result, "[.=%c%s%c]", quot, strval, quot);
                 lydict_remove(path[u].node->module->ctx, strval);
                 break;
@@ -203,6 +212,7 @@ lyplg_type_store_node_instanceid(const struct ly_ctx *ctx, const struct lysc_typ
         break;
     case LY_VALUE_CANON:
     case LY_VALUE_LYB:
+    case LY_VALUE_CBOR:
     case LY_VALUE_JSON:
     case LY_VALUE_STR_NS:
         prefix_opt = LY_PATH_PREFIX_STRICT_INHERIT;

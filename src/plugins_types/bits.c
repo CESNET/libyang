@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Built-in bits type plugin.
  *
- * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -22,12 +22,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libyang.h"
-
-/* additional internal headers for some useful simple macros */
 #include "compat.h"
+#include "dict.h"
+#include "ly_array.h"
 #include "ly_common.h"
-#include "plugins_internal.h" /* LY_TYPE_*_STR */
+#include "plugins_internal.h"
 
 /**
  * @page howtoDataLYB LYB Binary Format
@@ -43,7 +42,7 @@ static void lyplg_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *val
 /**
  * @brief Get the position of the last bit.
  */
-#define BITS_LAST_BIT_POSITION(type_bits) ((type_bits)->bits[LY_ARRAY_COUNT((type_bits)->bits) - 1].position)
+#define BITS_LAST_BIT_POSITION(type_bits) ((type_bits)->bits[LYA_COUNT((type_bits)->bits) - 1].position)
 
 /**
  * @brief Get a specific byte in a bitmap.
@@ -132,7 +131,7 @@ static LY_ERR
 bits_str2bitmap(const char *value, uint32_t value_len, struct lysc_type_bits *type, char *bitmap, struct ly_err_item **err)
 {
     uint32_t idx_start, idx_end;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     ly_bool found;
 
     idx_start = idx_end = 0;
@@ -153,7 +152,7 @@ bits_str2bitmap(const char *value, uint32_t value_len, struct lysc_type_bits *ty
 
         /* find the bit */
         found = 0;
-        LY_ARRAY_FOR(type->bits, u) {
+        LYA_FOR(type->bits, u) {
             if (!ly_strncmp(type->bits[u].name, value + idx_start, idx_end - idx_start)) {
                 found = 1;
                 break;
@@ -184,22 +183,30 @@ bits_str2bitmap(const char *value, uint32_t value_len, struct lysc_type_bits *ty
  * @param[in] position Bit position to add.
  * @param[in] type Bitis type to read the bit positions and names from.
  * @param[in,out] items Array of bit item pointers to add to.
+ * @param[out] err Error information.
+ * @return LY_ERR value.
  */
-static void
-bits_add_item(uint32_t position, struct lysc_type_bits *type, struct lysc_type_bitenum_item **items)
+static LY_ERR
+bits_add_item(uint32_t position, struct lysc_type_bits *type, struct lysc_type_bitenum_item **items,
+        struct ly_err_item **err)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     /* find the bit item */
-    LY_ARRAY_FOR(type->bits, u) {
+    LYA_FOR(type->bits, u) {
         if (type->bits[u].position == position) {
             break;
         }
     }
+    if (u == LYA_COUNT(type->bits)) {
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid bit at position #%" PRIu32 ".", position);
+    }
 
     /* add it at the end */
-    items[LY_ARRAY_COUNT(items)] = &type->bits[u];
-    LY_ARRAY_INCREMENT(items);
+    items[LYA_COUNT(items)] = &type->bits[u];
+    LYA_INCREMENT(items);
+
+    return LY_SUCCESS;
 }
 
 /**
@@ -208,9 +215,12 @@ bits_add_item(uint32_t position, struct lysc_type_bits *type, struct lysc_type_b
  * @param[in] bitmap Bitmap to read from.
  * @param[in] type Bits type.
  * @param[in,out] items Allocated sized array to fill with the set bits.
+ * @param[out] err Error information.
+ * @return LY_ERR value.
  */
-static void
-bits_bitmap2items(const char *bitmap, struct lysc_type_bits *type, struct lysc_type_bitenum_item **items)
+static LY_ERR
+bits_bitmap2items(const char *bitmap, struct lysc_type_bits *type, struct lysc_type_bitenum_item **items,
+        struct ly_err_item **err)
 {
     uint32_t bit_pos, i, bitmap_size;
     uint8_t bitmask;
@@ -225,7 +235,7 @@ bits_bitmap2items(const char *bitmap, struct lysc_type_bits *type, struct lysc_t
         for (bitmask = 1; bitmask; bitmask <<= 1) {
             if (*byte & bitmask) {
                 /* add this bit */
-                bits_add_item(bit_pos, type, items);
+                LY_CHECK_RET(bits_add_item(bit_pos, type, items, err));
             }
 
             if (bit_pos == BITS_LAST_BIT_POSITION(type)) {
@@ -236,6 +246,8 @@ bits_bitmap2items(const char *bitmap, struct lysc_type_bits *type, struct lysc_t
             ++bit_pos;
         }
     }
+
+    return LY_SUCCESS;
 }
 
 /**
@@ -250,7 +262,7 @@ bits_items2canon(struct lysc_type_bitenum_item **items, char **canonical)
 {
     char *ret;
     uint32_t ret_len;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     *canonical = NULL;
 
@@ -259,7 +271,7 @@ bits_items2canon(struct lysc_type_bitenum_item **items, char **canonical)
     LY_CHECK_RET(!ret, LY_EMEM);
     ret_len = 0;
 
-    LY_ARRAY_FOR(items, u) {
+    LYA_FOR(items, u) {
         if (!ret_len) {
             ret = ly_realloc(ret, strlen(items[u]->name) + 1);
             LY_CHECK_RET(!ret, LY_EMEM);
@@ -313,8 +325,8 @@ lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, co
         }
 
         /* allocate and fill the bit item array */
-        LY_ARRAY_CREATE_GOTO(ctx, val->items, LY_ARRAY_COUNT(type_bits->bits), ret, cleanup);
-        bits_bitmap2items(val->bitmap, type_bits, val->items);
+        LYA_PREALLOC(val->items, LYA_COUNT(type_bits->bits), LOGMEM(ctx); ret = LY_EMEM; goto cleanup);
+        LY_CHECK_GOTO(ret = bits_bitmap2items(val->bitmap, type_bits, val->items, err), cleanup);
 
         /* success */
         goto cleanup;
@@ -333,8 +345,8 @@ lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, co
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate and fill the bit item array */
-    LY_ARRAY_CREATE_GOTO(ctx, val->items, LY_ARRAY_COUNT(type_bits->bits), ret, cleanup);
-    bits_bitmap2items(val->bitmap, type_bits, val->items);
+    LYA_PREALLOC(val->items, LYA_COUNT(type_bits->bits), LOGMEM(ctx); ret = LY_EMEM; goto cleanup);
+    LY_CHECK_GOTO(ret = bits_bitmap2items(val->bitmap, type_bits, val->items, err), cleanup);
 
     if (format == LY_VALUE_CANON) {
         /* store canonical value */
@@ -435,7 +447,7 @@ static LY_ERR
 lyplg_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_ERR ret;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lyd_value_bits *orig_val, *dup_val;
     uint32_t bitmap_size;
 
@@ -459,9 +471,9 @@ lyplg_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original, 
     memcpy(dup_val->bitmap, orig_val->bitmap, bitmap_size);
 
     /* duplicate bit item pointers */
-    LY_ARRAY_CREATE_GOTO(ctx, dup_val->items, LY_ARRAY_COUNT(orig_val->items), ret, error);
-    LY_ARRAY_FOR(orig_val->items, u) {
-        LY_ARRAY_INCREMENT(dup_val->items);
+    LYA_PREALLOC(dup_val->items, LYA_COUNT(orig_val->items), LOGMEM(ctx); ret = LY_EMEM; goto error);
+    LYA_FOR(orig_val->items, u) {
+        LYA_INCREMENT(dup_val->items);
         dup_val->items[u] = orig_val->items[u];
     }
 
@@ -483,7 +495,7 @@ lyplg_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value)
     LYD_VALUE_GET(value, val);
     if (val) {
         free(val->bitmap);
-        LY_ARRAY_FREE(val->items);
+        LYA_FREE(val->items);
         LYPLG_TYPE_VAL_INLINE_DESTROY(val);
     }
 }

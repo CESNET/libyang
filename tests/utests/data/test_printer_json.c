@@ -148,7 +148,7 @@ test_no_json_nested_prefix(void **state)
     CHECK_STRING(buffer, "{\"schema2:a\":{\"b\":{\"c\":\"dflt\"}}}");
     free(buffer);
 
-    assert_int_equal(LY_SUCCESS, lyd_print_mem(&buffer, lyd_child(tree), LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_WD_ALL |
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&buffer, lyd_child_no_keys(tree), LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_WD_ALL |
             LYD_PRINT_JSON_NO_NESTED_PREFIX));
     CHECK_STRING(buffer, "{\"b\":{\"c\":\"dflt\"}}");
     free(buffer);

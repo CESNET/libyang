@@ -1,0 +1,156 @@
+source [expr {[info exists ::env(TESTS_DIR)] ? "$env(TESTS_DIR)/non-interactive/ly.tcl" : "ly.tcl"}]
+
+set mdir $::env(YANG_MODULES_DIR)
+
+test ietf_boilerplate_bad_text {} {
+    set pattern "(?s)^"
+    append pattern "(?=.*warning: RFC 9907: 3.1: The IETF Trust Copyright statement seems to be missing or is not correct)"
+    append pattern "(?=.*warning: RFC 9907: Appendix B: The text about which RFC this module is part of seems to be missing or is not correct)"
+    append pattern "(?=.*warning: the module seems to use RFC 2119 keywords, but the required text from RFC 8174 is not found or is not correct)"
+    append pattern ".*"
+
+    ly_cmd_err "--ietf $mdir/ietf-bad-boilerplate.yang" $pattern
+} {}
+
+test ietf_long_indentifier {} {
+    set pattern "(?s)^"
+    append pattern "(?=.*error: RFC 9907: 4.3: identifier this-container-identifier-is-intentionally-designed-to-exceed-64-chars exceeds 64 characters)"
+    append pattern "(?=.*error: RFC 9907: 4.3: identifier this-enum-identifier-is-intentionally-designed-to-exceed-64-chars exceeds 64 characters)"
+    append pattern "(?=.*error: RFC 9907: 4.3: identifier ietf-example-this-identifier-is-intentionally-designed-to-exceed-64-chars exceeds 64 characters)"
+    append pattern "(?=.*error: RFC 9907: 4.3: identifier this-feature-identifier-is-intentionally-designed-to-exceed-64-chars exceeds 64 characters)"
+    append pattern "(?=.*error: RFC 9907: 4.3: identifier this-identity-identifier-is-intentionally-designed-to-exceed-64-chars exceeds 64 characters)"
+    append pattern "(?=.*error: RFC 9907: 4.3: identifier this-typedef-identifier-is-intentionally-designed-to-exceed-64-chars exceeds 64 characters)"
+    append pattern "(?=.*error: RFC 9907: 4.3: identifier this-grouping-identifier-is-intentionally-designed-to-exceed-64-chars exceeds 64 characters)"
+    append pattern ".*"
+
+    ly_cmd_err "--ietf $mdir/ietf-example-this-identifier-is-intentionally-designed-to-exceed-64-chars.yang" $pattern
+} {}
+
+test ietf_defaults_and_mandatory {} {
+    set pattern "(?s)^"
+    append pattern "(?=.*error: RFC 9907: 4.10: top-level node \"top-mand-leaf\" must not be mandatory)"
+    append pattern "(?=.*warning: RFC 9907: 4.4: statement \"config\" is given with its default value \"true\")"
+    append pattern "(?=.*warning: RFC 9907: 4.4: statement \"status\" is given with its default value \"current\")"
+    append pattern "(?=.*warning: RFC 9907: 4.4: statement \"mandatory\" is given with its default value \"false\")"
+    append pattern "(?=.*warning: RFC 9907: 4.4: statement \"min-elements\" is given with its default value \"0\")"
+    append pattern "(?=.*warning: RFC 9907: 4.4: statement \"max-elements\" is given with its default value \"unbounded\")"
+    append pattern "(?=.*warning: RFC 9907: 4.4: statement \"yin-element\" is given with its default value \"false\")"
+    append pattern "(?=.*warning: RFC 9907: 4.4: statement \"ordered-by\" is given with its default value \"system\")"
+    append pattern ".*"
+
+    ly_cmd_err "--ietf $mdir/ietf-defaults-and-mandatory.yang" $pattern
+} {}
+
+test ietf_list_key {} {
+    set pattern "(?s)^"
+    append pattern "(?=.*warning: RFC 9907: 4.5: key leaf \"id\" should not have a \"when\" statement)"
+    append pattern "(?=.*error: RFC 9907: 4.5: key leaf \"id\" must have the exact same \"if-feature\" statements as its parent list \"list-missing-if-feature\")"
+    append pattern "(?=.*error: RFC 9907: 4.5: key leaf \"id\" must have the exact same \"if-feature\" statements as its parent list \"list-mismatched-if-feature\")"
+    append pattern "(?=.*warning: RFC 9907: 4.5: constraints \\('must' statements\\) on state data should be avoided \\(leaf \"state-data-with-must\"\\))"
+    append pattern ".*"
+
+    ly_cmd_err "--ietf $mdir/ietf-list-key.yang" $pattern
+} {}
+
+test ietf_xpath {} {
+    set pattern "(?s)^"
+    append pattern "(?=.*warning: RFC 9907: 4.6.2: XPath function in \"when\" statement on \"function-test-1\" should not be used)"
+    append pattern "(?=.*warning: RFC 9907: 4.6.2: XPath function in \"must\" statement on \"function-test-2\" should not be used)"
+    append pattern "(?=.*warning: RFC 9907: 4.6.3: XPath axis in \"when\" statement on \"axis-test-1\" should not be used)"
+    append pattern "(?=.*warning: RFC 9907: 4.6.3: XPath axis in \"must\" statement on \"axis-test-2\" should not be used)"
+    append pattern ".*"
+
+    ly_cmd_err "--ietf $mdir/ietf-xpath.yang" $pattern
+} {}
+
+test ietf_boilerplate_submodule_rev {} {
+    set pattern "(?s)^"
+    append pattern "(?=.*error: RFC 9907: 4.7: the module's revision 2020-01-01 is older than submodule ietf-newer-sub's revision 2026-07-08)"
+    append pattern "(?=.*warning: RFC 9907: 4.7: statement \"import\" for stable module \"ietf-imported-module\" should have a \"reference\" substatement)"
+    append pattern ".*"
+
+    ly_cmd_err "--ietf $mdir/ietf-older-main.yang" $pattern
+} {}
+
+test ietf_boilerplate_missing_meta {} {
+    set pattern "(?s)^"
+    append pattern "(?=.*error: RFC 9907: 4.8: statement \"module\" must have a \"contact\" substatement)"
+    append pattern "(?=.*error: RFC 9907: 4.8: statement \"module\" must have a \"organization\" substatement)"
+    append pattern "(?=.*error: RFC 9907: 4.8: statement \"module\" must have a \"revision\" substatement)"
+    append pattern "(?=.*error: RFC 9907: 4.8: statement \"module\" must have a \"description\" substatement)"
+    append pattern ".*"
+
+    ly_cmd_err "--ietf $mdir/ietf-miss-meta.yang" $pattern
+} {}
+
+test ietf_boilerplate_naming_ns {} {
+    set pattern "(?s)^"
+    append pattern "(?=.*warning: RFC 9907: 4.1: the module name should start with one of the strings \"ietf-\" or \"iana-\")"
+    append pattern "(?=.*warning: RFC 9907: 4.9: namespace value should be \"urn:ietf:params:xml:ns:yang:bad-ietf-prefix-namespace\")"
+    append pattern "(?=.*error: RFC 9907: 4.8: statement \"revision\" 2026-07-08 must have a \"reference\" substatement)"
+    append pattern "(?=.*warning: RFC 9907: 4.8: statement \"revision\" 2026-07-08 should have a \"description\" substatement summarizing changes)"
+    append pattern ".*"
+
+    ly_cmd_err "--ietf $mdir/bad-ietf-prefix-namespace.yang" $pattern
+} {}
+
+test ietf_description_enum_bits {} {
+    set pattern "(?s)^"
+    append pattern "(?=.*warning: RFC 9907: 4.11.3: statement \"enum\" should have a \"description\" substatement)"
+    append pattern "(?=.*warning: RFC 9907: 4.11.3: statement \"bit\" should have a \"description\" substatement)"
+    append pattern ".*"
+
+    ly_cmd_err "--ietf $mdir/ietf-miss-desc-enums-bits.yang" $pattern
+} {}
+
+test ietf_empty_type {} {
+    set pattern "(?s)^"
+    append pattern "(?=.*warning: RFC 9907: 4.11.5: the type \"empty\" should not be used for a key leaf \"id\")"
+    append pattern "(?=.*warning: RFC 9907: 4.11.5: the type \"empty\" should not be used for a leaf-list \\(\"leaf-list-with-empty-type\"\\))"
+    append pattern "(?=.*warning: RFC 9907: 4.11.5: in \"id\", the \"boolean\" data type should be used instead of the \"empty\" data type)"
+    append pattern ".*"
+
+    ly_cmd_err "--ietf $mdir/ietf-empty-type.yang" $pattern
+} {}
+
+test ietf_description_top {} {
+    set pattern "(?s)^"
+    append pattern "(?=.*error: RFC 9907: 4.14: statement \"extension\" must have a \"description\" substatement)"
+    append pattern "(?=.*error: RFC 9907: 4.14: statement \"grouping\" must have a \"description\" substatement)"
+    append pattern "(?=.*error: RFC 9907: 4.14: statement \"feature\" must have a \"description\" substatement)"
+    append pattern "(?=.*error: RFC 9907: 4.14: statement \"identity\" must have a \"description\" substatement)"
+    append pattern "(?=.*error: RFC 9907: 4.13,4.14: statement \"typedef\" must have a \"description\" substatement)"
+    append pattern "(?=.*error: RFC 9907: 4.14: statement \"augment\" must have a \"description\" substatement)"
+    append pattern ".*"
+
+    ly_cmd_err "--ietf $mdir/ietf-miss-desc-top-level.yang" $pattern
+} {}
+
+test ietf_description_data_nodes {} {
+    set pattern "(?s)^"
+    append pattern "(?=.*error: RFC 9907: 4.14: statement \"container\" must have a \"description\" substatement)"
+    append pattern "(?=.*error: RFC 9907: 4.14: statement \"leaf\" must have a \"description\" substatement)"
+    append pattern "(?=.*error: RFC 9907: 4.14: statement \"list\" must have a \"description\" substatement)"
+    append pattern "(?=.*error: RFC 9907: 4.14: statement \"leaf-list\" must have a \"description\" substatement)"
+    append pattern "(?=.*error: RFC 9907: 4.14: statement \"anyxml\" must have a \"description\" substatement)"
+    append pattern "(?=.*error: RFC 9907: 4.14: statement \"choice\" must have a \"description\" substatement)"
+    append pattern "(?=.*error: RFC 9907: 4.14: statement \"anydata\" must have a \"description\" substatement)"
+    append pattern ".*"
+
+    ly_cmd_err "--ietf $mdir/ietf-miss-desc-data-nodes.yang" $pattern
+} {}
+
+test ietf_description_operations {} {
+    set pattern "(?s)^"
+    append pattern "(?=.*error: RFC 9907: 4.13,4.14: statement \"typedef\" inside input of \"my-rpc\" must have a \"description\" substatement)"
+    append pattern "(?=.*error: RFC 9907: 4.14: statement \"leaf\" must have a \"description\" substatement)"
+    append pattern "(?=.*error: RFC 9907: 4.14: statement \"RPC\" must have a \"description\" substatement)"
+    append pattern "(?=.*error: RFC 9907: 4.14,4.16: statement \"notification\" must have a \"description\" substatement)"
+    append pattern ".*"
+
+    ly_cmd_err "--ietf $mdir/ietf-miss-desc-operations.yang" $pattern
+} {}
+
+test ietf_correct {} {
+    ly_cmd "--ietf $mdir/ietf-correct.yang"
+} {}

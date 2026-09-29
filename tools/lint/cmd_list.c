@@ -5,7 +5,7 @@
  * @author Adam Piecek <piecek@cesnet.cz>
  * @brief 'list' command of the libyang's yanglint tool.
  *
- * Copyright (c) 2015-2023 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -160,10 +160,10 @@ cmd_list_exec(struct ly_ctx **ctx, struct yl_opt *yo, const char *posv)
 
         /* submodules print */
         if (mod->parsed && mod->parsed->includes) {
-            uint64_t u = 0;
+            LYA_COUNT_T u = 0;
 
             ly_print(yo->out, " (");
-            LY_ARRAY_FOR(mod->parsed->includes, u) {
+            LYA_FOR(mod->parsed->includes, u) {
                 ly_print(yo->out, "%s%s", !u ? "" : ",", mod->parsed->includes[u].name);
                 if (mod->parsed->includes[u].rev[0]) {
                     ly_print(yo->out, "@%s", mod->parsed->includes[u].rev);

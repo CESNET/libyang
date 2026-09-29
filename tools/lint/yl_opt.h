@@ -18,6 +18,7 @@
 #include "parser_data.h" /* enum lyd_type */
 #include "printer_schema.h" /* LYS_OUTFORMAT */
 #include "set.h" /* ly_set */
+#include "tree_schema.h" /* LYS_SID_FILE_STATUS */
 
 /**
  * @brief Data connected with a file provided on a command line as a file path.
@@ -107,6 +108,12 @@ struct yl_opt {
     ly_bool feature_param_format;
     ly_bool feature_print_all;
 
+    /* values of --cmp-mod1 and --cmp-mod2 */
+    const char *cmp_mod_path1;
+    const char *cmp_mod_path2;
+    ly_bool cmp_local;
+    ly_bool cmp_full;
+
     /*
      * data
      */
@@ -136,6 +143,27 @@ struct yl_opt {
 
     /* storage for --data-xpath */
     struct ly_set data_xpath;
+
+    /* flag for --ietf option */
+    uint8_t ietf_validation;
+
+    /* flag for --sample*/
+    uint8_t sample_skeleton;
+
+    /*
+     * .sid file processing (RFC 9595)
+     */
+    /* SID assignment range in the EP:SIZE format (generation or range addition) */
+    char *sid_range;
+
+    /* the range was provided by --sid-range-add (to be combined with --sid-update), not --sid-generate */
+    uint8_t sid_range_add;
+
+    /* generate/update the .sid file with the 'published' status */
+    uint8_t sid_publish;
+
+    /* path to the previous .sid file (update/range-add input) */
+    char *sid_prev_path;
 
     char **argv;
 };

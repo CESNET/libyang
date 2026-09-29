@@ -15,6 +15,7 @@
 #include "utests.h"
 
 #include "hash_table.h"
+#include "in_internal.h"
 #include "libyang.h"
 
 #define CHECK_PARSE_LYD(INPUT, OUT_NODE) \
@@ -28,12 +29,13 @@ check_print_parse(void **state, const char *data_xml, const struct ly_ctx *parse
 {
     struct lyd_node *tree_1, *tree_2 = NULL;
     char *lyb_out = NULL;
+    uint32_t lyb_len;
     LY_ERR r;
 
     CHECK_PARSE_LYD(data_xml, tree_1);
-    assert_int_equal(lyd_print_mem(&lyb_out, tree_1, LYD_LYB, LYD_PRINT_SIBLINGS), 0);
+    assert_int_equal(utest_lyd_print_mem_len(&lyb_out, &lyb_len, tree_1, LYD_LYB, LYD_PRINT_SIBLINGS), 0);
 
-    r = lyd_parse_data_mem(parse_ctx, lyb_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2);
+    r = lyd_parse_data_mem_len(parse_ctx, lyb_out, lyb_len, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2);
     if (expect_parse_success) {
         assert_int_equal(r, LY_SUCCESS);
         assert_non_null(tree_2);
@@ -466,6 +468,7 @@ test_opaq(void **state)
     struct lyd_node *tree_1;
     struct lyd_node *tree_2;
     char *xml_out; /* tree_2 */
+    uint32_t xml_len;
     LY_ERR rc;
 
     assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "ietf-netconf", NULL, nc_feats));
@@ -475,9 +478,11 @@ test_opaq(void **state)
     ly_in_free(in, 0);
     assert_int_equal(rc, LY_SUCCESS);
 
-    assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_SIBLINGS), 0);
+    assert_int_equal(utest_lyd_print_mem_len(&xml_out, &xml_len, tree_1, LYD_LYB, LYD_PRINT_SIBLINGS), 0);
 
     ly_in_new_memory(xml_out, &in);
+    in->length = xml_len;
+    in->bounded = 1;
     rc = lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_LYB, LYD_TYPE_RPC_YANG, LYD_PARSE_STRICT, &tree_2, NULL);
     ly_in_free(in, 0);
     assert_int_equal(rc, LY_SUCCESS);
@@ -2536,6 +2541,7 @@ test_shrink(void **state)
     const char *mod, *data_xml;
     struct lyd_node *tree1, *tree2;
     char *lyb_out, *str;
+    uint32_t lyb_len;
 
     mod =
             "module mod { namespace \"urn:mod\"; prefix m;"
@@ -2551,9 +2557,9 @@ test_shrink(void **state)
     /* non-shrinked */
     data_xml = "<cont xmlns=\"urn:mod\"/>";
     CHECK_PARSE_LYD_PARAM(data_xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree1);
-    assert_int_equal(lyd_print_mem(&lyb_out, tree1, LYD_LYB, LYD_PRINT_SIBLINGS), 0);
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, lyb_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT,
-            0, &tree2));
+    assert_int_equal(utest_lyd_print_mem_len(&lyb_out, &lyb_len, tree1, LYD_LYB, LYD_PRINT_SIBLINGS), 0);
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, lyb_out, lyb_len, LYD_LYB,
+            LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree2));
     assert_non_null(tree2);
 
     assert_int_equal(LY_SUCCESS, lyd_print_mem(&str, tree2, LYD_XML, LYD_PRINT_SIBLINGS | LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK));
@@ -2568,9 +2574,10 @@ test_shrink(void **state)
     /* shrinked */
     data_xml = "<cont xmlns=\"urn:mod\"/>";
     CHECK_PARSE_LYD_PARAM(data_xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree1);
-    assert_int_equal(lyd_print_mem(&lyb_out, tree1, LYD_LYB, LYD_PRINT_SIBLINGS | LYD_PRINT_SHRINK), 0);
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, lyb_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT,
-            0, &tree2));
+    assert_int_equal(utest_lyd_print_mem_len(&lyb_out, &lyb_len, tree1, LYD_LYB,
+            LYD_PRINT_SIBLINGS | LYD_PRINT_SHRINK), 0);
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, lyb_out, lyb_len, LYD_LYB,
+            LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree2));
     assert_null(tree2);
 
     free(lyb_out);
@@ -2785,6 +2792,7 @@ test_skip_module_check(void **state)
     struct ly_ctx *ctx;
     struct ly_in *in;
     char *lyb_out;
+    uint32_t lyb_len;
     struct lyd_node *tree1, *tree2;
     const char *feats1[] = {"feat1", NULL};
     const char *feats2[] = {"feat1", "feat2", NULL};
@@ -2818,14 +2826,14 @@ test_skip_module_check(void **state)
     CHECK_PARSE_LYD(data_xml, tree1);
 
     /* print it to LYB using UTEST_LYCTX (with mod_rev_1) */
-    assert_int_equal(lyd_print_mem(&lyb_out, tree1, LYD_LYB, LYD_PRINT_SIBLINGS), 0);
+    assert_int_equal(utest_lyd_print_mem_len(&lyb_out, &lyb_len, tree1, LYD_LYB, LYD_PRINT_SIBLINGS), 0);
 
     /* parse it in the new context (with mod_rev_2) - should fail due to revision mismatch */
-    assert_int_not_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, lyb_out, LYD_LYB,
+    assert_int_not_equal(LY_SUCCESS, lyd_parse_data_mem_len(ctx, lyb_out, lyb_len, LYD_LYB,
             LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree2));
 
     /* parse it in the new context (with mod_rev_2) - should succeed when skipping module check */
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, lyb_out, LYD_LYB,
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(ctx, lyb_out, lyb_len, LYD_LYB,
             LYD_PARSE_ONLY | LYD_PARSE_STRICT | LYD_PARSE_LYB_SKIP_MODULE_CHECK, 0, &tree2));
     assert_non_null(tree2);
     CHECK_LYD(tree1, tree2);
@@ -2864,14 +2872,14 @@ test_skip_module_check(void **state)
     CHECK_PARSE_LYD(data_xml, tree1);
 
     /* print it to LYB using UTEST_LYCTX (with feat1) */
-    assert_int_equal(lyd_print_mem(&lyb_out, tree1, LYD_LYB, LYD_PRINT_SIBLINGS), 0);
+    assert_int_equal(utest_lyd_print_mem_len(&lyb_out, &lyb_len, tree1, LYD_LYB, LYD_PRINT_SIBLINGS), 0);
 
     /* parse it in the new context (with feat1 and feat2) - should fail due to feature mismatch */
-    assert_int_not_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, lyb_out, LYD_LYB,
+    assert_int_not_equal(LY_SUCCESS, lyd_parse_data_mem_len(ctx, lyb_out, lyb_len, LYD_LYB,
             LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree2));
 
     /* parse it in the new context (with feat1 and feat2) - should succeed when skipping module check */
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, lyb_out, LYD_LYB,
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(ctx, lyb_out, lyb_len, LYD_LYB,
             LYD_PARSE_ONLY | LYD_PARSE_STRICT | LYD_PARSE_LYB_SKIP_MODULE_CHECK, 0, &tree2));
     assert_non_null(tree2);
     CHECK_LYD(tree1, tree2);
@@ -2880,6 +2888,53 @@ test_skip_module_check(void **state)
     lyd_free_all(tree1);
     lyd_free_all(tree2);
     ly_ctx_destroy(ctx);
+}
+
+static void
+test_memory_bounds(void **state)
+{
+    const char *mod, *data_xml;
+    struct lyd_node *tree, *parsed = NULL;
+    char *lyb;
+    uint32_t lyb_len;
+
+    mod =
+            "module bounds {namespace urn:bounds;prefix b;"
+            "container cont {leaf value {type string;}}}";
+    UTEST_ADD_MODULE(mod, LYS_IN_YANG, NULL, NULL);
+
+    data_xml = "<cont xmlns=\"urn:bounds\"><value>test</value></cont>";
+    CHECK_PARSE_LYD(data_xml, tree);
+    assert_int_equal(LY_SUCCESS, utest_lyd_print_mem_len(&lyb, &lyb_len, tree, LYD_LYB, LYD_PRINT_SIBLINGS));
+
+    /* Legacy unbounded memory input remains supported. */
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, lyb, LYD_LYB,
+            LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &parsed));
+    assert_non_null(parsed);
+    CHECK_LYD(tree, parsed);
+    lyd_free_all(parsed);
+    parsed = NULL;
+
+    /* Empty and truncated bounded inputs must fail without reading past their buffers. */
+    assert_int_equal(LY_EVALID, lyd_parse_data_mem_len(UTEST_LYCTX, lyb, 0, LYD_LYB,
+            LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &parsed));
+    assert_null(parsed);
+    UTEST_LOG_CTX_CLEAN;
+
+    assert_int_equal(LY_EVALID, lyd_parse_data_mem_len(UTEST_LYCTX, lyb, lyb_len - 1, LYD_LYB,
+            LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &parsed));
+    assert_null(parsed);
+    UTEST_LOG_CTX_CLEAN;
+
+    /* The complete bounded input still parses successfully. */
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, lyb, lyb_len, LYD_LYB,
+            LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &parsed));
+    assert_non_null(parsed);
+    CHECK_LYD(tree, parsed);
+
+    free(lyb);
+    lyd_free_all(tree);
+    lyd_free_all(parsed);
 }
 
 int
@@ -2899,6 +2954,7 @@ main(void)
         UTEST(test_bits, setup),
         UTEST(test_different_contexts, setup),
         UTEST(test_skip_module_check, setup),
+        UTEST(test_memory_bounds),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

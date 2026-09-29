@@ -21,7 +21,6 @@
 
 /* LOCAL INCLUDE HEADERS */
 #include "libyang.h"
-#include "path.h"
 
 #define MODULE_CREATE_YIN(MOD_NAME, NODES) \
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" \

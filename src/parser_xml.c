@@ -25,6 +25,7 @@
 #include "dict.h"
 #include "in_internal.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "parser_data.h"
 #include "parser_internal.h"
@@ -32,7 +33,6 @@
 #include "plugins_internal.h"
 #include "schema_compile_node.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"
@@ -96,7 +96,7 @@ lydxml_metadata(struct lyd_xml_ctx *lydctx, const struct lysc_node *sparent, con
     struct lys_module *mod;
     const char *name;
     size_t name_len;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     ly_bool filter_attrs = 0;
     struct lyxml_ctx *xmlctx = lydctx->xmlctx;
 
@@ -107,7 +107,7 @@ lydxml_metadata(struct lyd_xml_ctx *lydctx, const struct lysc_node *sparent, con
         /* ancient module that does not even use the extension */
         filter_attrs = 1;
     } else {
-        LY_ARRAY_FOR(sparent->exts, u) {
+        LYA_FOR(sparent->exts, u) {
             if (!strcmp(sparent->exts[u].def->name, "get-filter-element-attributes") &&
                     !strcmp(sparent->exts[u].def->module->name, "ietf-netconf")) {
                 filter_attrs = 1;
@@ -579,12 +579,17 @@ lydxml_subtree_get_snode(struct lyd_xml_ctx *lydctx, const struct lyd_node *pare
     *ext = NULL;
 
     /* try to find parent schema node */
-    if (parent && parent->schema && !(parent->schema->nodetype & LYD_NODE_ANY)) {
+    if (parent && parent->schema) {
         /* use only a schema parent */
         sparent = parent->schema;
     } else {
         sparent = NULL;
     }
+    if (sparent && (sparent->nodetype & LYD_NODE_ANY)) {
+        /* do not search in children, module is inherited by default (namespace) */
+        sparent = NULL;
+    }
+
     if (!prefix_len) {
         prefix = NULL;
     }
@@ -769,23 +774,25 @@ lydxml_subtree_term(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, c
             &xmlctx->dynamic, LY_VALUE_XML, &xmlctx->ns, LYD_HINT_DATA, node);
     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
-    /* insert, needs LYD_EXT flag */
-    if (ext) {
-        (*node)->flags |= LYD_EXT;
-    }
-    r = lyd_parser_node_insert(parent, first_p, NULL, lydctx->parse_opts, *node);
-    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+    if (*node) {
+        /* insert, needs LYD_EXT flag */
+        if (ext) {
+            (*node)->flags |= LYD_EXT;
+        }
+        r = lyd_parser_node_insert(parent, first_p, NULL, lydctx->parse_opts, *node);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
-    if (*node && parent && (snode->flags & LYS_KEY)) {
-        /* check the key order, the anchor must never be a key */
-        anchor = lyd_insert_get_next_anchor(lyd_child(parent), *node);
-        if (anchor && anchor->schema && (anchor->schema->flags & LYS_KEY)) {
-            if (lydctx->parse_opts & LYD_PARSE_STRICT) {
-                LOGVAL(xmlctx->ctx, *node, LYVE_DATA, "Invalid position of the key \"%s\" in a list.", snode->name);
-                r = LY_EVALID;
-                LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
-            } else {
-                LOGWRN(xmlctx->ctx, "Invalid position of the key \"%s\" in a list.", snode->name);
+        if (parent && (snode->flags & LYS_KEY)) {
+            /* check the key order, the anchor must never be a key */
+            anchor = lyd_insert_get_next_anchor(lyd_child(parent), *node);
+            if (anchor && anchor->schema && (anchor->schema->flags & LYS_KEY)) {
+                if (lydctx->parse_opts & LYD_PARSE_STRICT) {
+                    LOGVAL(xmlctx->ctx, *node, LYVE_DATA, "Invalid position of the key \"%s\" in a list.", snode->name);
+                    r = LY_EVALID;
+                    LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+                } else {
+                    LOGWRN(xmlctx->ctx, "Invalid position of the key \"%s\" in a list.", snode->name);
+                }
             }
         }
     }

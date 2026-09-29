@@ -1,0 +1,126 @@
+{
+  "ietf-yang-schema-comparison-output:schema-comparison": {
+    "comparison": [
+      {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
+        "source": {
+          "module": "must",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "must",
+          "revision": "2000-01-02"
+        },
+        "target-import": [
+          {
+            "module": "ietf-yang-schema-comparison",
+            "revision": "2026-09-02"
+          }
+        ],
+        "conformance": "backwards-compatible",
+        "suggested-target-version": "1.1.0",
+        "module-comparison": [
+          {
+            "changed": [
+              {
+                "stmt": "import",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "import": {
+                "module": "ietf-yang-schema-comparison",
+                "prefix": "schema-cmp"
+              }
+            }
+          }
+        ],
+        "node-comparison": [
+          {
+            "node": "/must:l1",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "must",
+                "change": "removed",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "must": [
+                {
+                  "condition": ". = 5"
+                }
+              ],
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "uint16"
+              }
+            },
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "uint16"
+              }
+            }
+          },
+          {
+            "node": "/must:l2",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "must",
+                "change": "removed",
+                "conformance": "backwards-compatible"
+              },
+              {
+                "stmt": "must",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "must": [
+                {
+                  "condition": ". > 50"
+                }
+              ],
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "uint32"
+              }
+            },
+            "new": {
+              "status": "current",
+              "must": [
+                {
+                  "condition": ". > 30",
+                  "ext-instance": [
+                    {
+                      "module": "ietf-yang-schema-comparison",
+                      "name": "bc-change-at",
+                      "argument": "1.1.0"
+                    }
+                  ]
+                }
+              ],
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "uint32"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

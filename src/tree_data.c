@@ -34,6 +34,7 @@
 #include "in.h"
 #include "in_internal.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "parser_data.h"
 #include "parser_internal.h"
@@ -43,12 +44,11 @@
 #include "plugins_internal.h"
 #include "plugins_types.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data_internal.h"
 #include "tree_data_sorted.h"
-#include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "utils.h"
 #include "validation.h"
 #include "xml.h"
 #include "xpath.h"
@@ -78,6 +78,9 @@ lyd_parse_get_format(const struct ly_in *in, LYD_FORMAT format)
         } else if ((len >= LY_LYB_SUFFIX_LEN + 1) &&
                 !strncmp(&path[len - LY_LYB_SUFFIX_LEN], LY_LYB_SUFFIX, LY_LYB_SUFFIX_LEN)) {
             format = LYD_LYB;
+        } else if ((len >= LY_CBOR_SUFFIX_LEN + 1) &&
+                !strncmp(&path[len - LY_CBOR_SUFFIX_LEN], LY_CBOR_SUFFIX, LY_CBOR_SUFFIX_LEN)) {
+            format = LYD_CBOR;
         } /* else still unknown */
     }
 
@@ -131,6 +134,16 @@ lyd_parse(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **f
     case LYD_LYB:
         r = lyd_parse_lyb(ctx, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed, &lydctx);
         break;
+#ifdef ENABLE_CBOR_SUPPORT
+    case LYD_CBOR:
+        r = lyd_parse_cbor(ctx, NULL, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed, NULL, &lydctx);
+        break;
+#else
+    case LYD_CBOR:
+        LOGARG(ctx, format);
+        r = LY_EINVAL;
+        break;
+#endif /* ENABLE_CBOR_SUPPORT */
     case LYD_UNKNOWN:
         LOGARG(ctx, format);
         r = LY_EINVAL;
@@ -207,6 +220,20 @@ lyd_parse_data(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *
 }
 
 LIBYANG_API_DEF LY_ERR
+lyd_parse_data_mem_len(const struct ly_ctx *ctx, const char *data, uint32_t data_len, LYD_FORMAT format,
+        uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree)
+{
+    LY_ERR ret;
+    struct ly_in *in;
+
+    LY_CHECK_RET(ly_in_new_memory_chunk(data, data_len, &in));
+    ret = lyd_parse_data(ctx, NULL, in, format, parse_options, validate_options, tree);
+
+    ly_in_free(in, 0);
+    return ret;
+}
+
+LIBYANG_API_DEF LY_ERR
 lyd_parse_data_mem(const struct ly_ctx *ctx, const char *data, LYD_FORMAT format, uint32_t parse_options,
         uint32_t validate_options, struct lyd_node **tree)
 {
@@ -279,16 +306,16 @@ lyd_parse_value_fragment(const struct ly_ctx *ctx, const char *path, struct ly_i
             LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY, 0, LY_VALUE_JSON, NULL, &p), cleanup);
 
     /* has to have a schema */
-    new_node_schema = p[LY_ARRAY_COUNT(p) - 1].node;
+    new_node_schema = p[LYA_COUNT(p) - 1].node;
 
     /* only the term nodes get their path shortened */
     if (new_node_schema->nodetype & LYD_NODE_TERM) {
         /* shorten the ly_path by one element (to avoid a leaflist without predicate at the end) */
-        LY_ARRAY_DECREMENT(p);
+        LYA_DECREMENT(p);
         p_decremented = 1;
     }
 
-    if (LY_ARRAY_COUNT(p)) {
+    if (LYA_COUNT(p)) {
         /* create nodes */
         LY_CHECK_GOTO(ret = lyd_new_path_create(NULL, ctx, p, path, NULL, 0, 0, new_val_options, &new_top_parent,
                 &new_last_parent), cleanup);
@@ -339,7 +366,7 @@ lyd_parse_value_fragment(const struct ly_ctx *ctx, const char *path, struct ly_i
 cleanup:
     lyxp_expr_free(exp);
     if (p_decremented) {
-        LY_ARRAY_INCREMENT(p);
+        LYA_INCREMENT(p);
     }
     ly_path_free(p);
     if (ret) {
@@ -460,6 +487,16 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
     case LYD_LYB:
         rc = lyd_parse_lyb(ctx, parent, &first, in, parse_options, val_opts, int_opts, &parsed, &lydctx);
         break;
+#ifdef ENABLE_CBOR_SUPPORT
+    case LYD_CBOR:
+        rc = lyd_parse_cbor(ctx, NULL, parent, &first, in, parse_options, val_opts, int_opts, &parsed, NULL, &lydctx);
+        break;
+#else
+    case LYD_CBOR:
+        LOGARG(ctx, format);
+        rc = LY_EINVAL;
+        break;
+#endif /* ENABLE_CBOR_SUPPORT */
     case LYD_UNKNOWN:
         LOGARG(ctx, format);
         rc = LY_EINVAL;
@@ -1094,9 +1131,10 @@ lyd_insert_check_schema(const struct lysc_node *parent, const struct lysc_node *
 LIBYANG_API_DEF LY_ERR
 lyd_insert_child(struct lyd_node *parent, struct lyd_node *node)
 {
-    LY_CHECK_ARG_RET(NULL, parent, node, !parent->schema || (parent->schema->nodetype & LYD_NODE_INNER), LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, parent, node, !parent->schema || (parent->schema->nodetype & (LYD_NODE_INNER | LYD_NODE_ANY)),
+            LY_EINVAL);
 
-    if (!(node->flags & LYD_EXT)) {
+    if (!(node->flags & LYD_EXT) && (!parent->schema || !(parent->schema->nodetype & LYD_NODE_ANY))) {
         LY_CHECK_RET(lyd_insert_check_schema(parent->schema, NULL, node->schema));
     }
 
@@ -1267,6 +1305,10 @@ lyd_unlink_siblings(struct lyd_node *node)
 {
     struct lyd_node *next, *iter, *leader, *start, *first_sibling = NULL;
 
+    if (!node) {
+        return LY_SUCCESS;
+    }
+
     if (lyds_is_supported(node) && node->prev->next && (node->prev->schema == node->schema)) {
         /* unlink starts at the non-first item in the (leaf-)list */
         lyd_find_sibling_val(node, node->schema, NULL, 0, &leader);
@@ -1352,14 +1394,14 @@ lyd_unlink_meta_single(struct lyd_meta *meta)
 struct lysc_ext_instance *
 lyd_get_meta_annotation(const struct lys_module *mod, const char *name, size_t name_len)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lyplg_ext *plugin;
 
-    if (!mod) {
+    if (!mod || !mod->implemented) {
         return NULL;
     }
 
-    LY_ARRAY_FOR(mod->compiled->exts, u) {
+    LYA_FOR(mod->compiled->exts, u) {
         plugin = LYSC_GET_EXT_PLG(mod->compiled->exts[u].def->plugin_ref);
         if (plugin && !strcmp(plugin->id, "ly2 metadata") &&
                 !ly_strncmp(mod->compiled->exts[u].argument, name, name_len)) {
@@ -2560,8 +2602,8 @@ LY_ERR
 lyd_dup_meta_single_to_ctx(const struct ly_ctx *parent_ctx, const struct lyd_meta *meta, struct lyd_node *parent,
         struct lyd_meta **dup)
 {
-    LY_ERR ret = LY_SUCCESS;
-    struct lyd_meta *mt, *last;
+    LY_ERR rc = LY_SUCCESS;
+    struct lyd_meta *mt = NULL, *last;
     const struct lysc_type *ant_type;
     struct lys_module *mod;
     const char *val_can;
@@ -2570,7 +2612,7 @@ lyd_dup_meta_single_to_ctx(const struct ly_ctx *parent_ctx, const struct lyd_met
 
     /* create a copy */
     mt = calloc(1, sizeof *mt);
-    LY_CHECK_ERR_RET(!mt, LOGMEM(LYD_CTX(parent)), LY_EMEM);
+    LY_CHECK_ERR_GOTO(!mt, LOGMEM(LYD_CTX(parent)); rc = LY_EMEM, cleanup);
 
     if (parent_ctx != meta->annotation->module->ctx) {
         /* different contexts */
@@ -2578,22 +2620,25 @@ lyd_dup_meta_single_to_ctx(const struct ly_ctx *parent_ctx, const struct lyd_met
 
         /* annotation */
         mt->annotation = lyd_get_meta_annotation(mod, meta->name, strlen(meta->name));
+        if (!mt->annotation) {
+            LOGERR(parent_ctx, LY_EINVAL, "Annotation for metadata %s not found, value duplication failed.",
+                    meta->name);
+            rc = LY_EINVAL;
+            goto cleanup;
+        }
         lyplg_ext_get_storage(mt->annotation, LY_STMT_TYPE, sizeof ant_type, (const void **)&ant_type);
-        LY_CHECK_ERR_GOTO((ret = mt->annotation ? LY_SUCCESS : LY_EINVAL), LOGERR(parent_ctx, LY_EINVAL,
-                "Annotation for metadata %s not found, value duplication failed.", meta->name), finish);
 
         /* duplicate callback expect only the same contexts, so use the store callback */
         val_can = lyd_value_get_canonical(meta->annotation->module->ctx, &meta->value);
-        ret = lyd_value_store(parent_ctx, parent, &mt->value, ant_type, val_can, strlen(val_can) * 8, 1, 1, NULL,
+        rc = lyd_value_store(parent_ctx, parent, &mt->value, ant_type, val_can, strlen(val_can) * 8, 1, 1, NULL,
                 LY_VALUE_CANON, NULL, LYD_HINT_DATA, parent->schema, NULL);
     } else {
-        /* annotation */
-        mt->annotation = meta->annotation;
         /* duplication of value */
-        ret = LYSC_GET_TYPE_PLG(meta->value.realtype->plugin_ref)->duplicate(parent_ctx, &meta->value, &mt->value);
+        mt->annotation = meta->annotation;
+        rc = LYSC_GET_TYPE_PLG(meta->value.realtype->plugin_ref)->duplicate(parent_ctx, &meta->value, &mt->value);
     }
-    LY_CHECK_ERR_GOTO(ret, LOGERR(LYD_CTX(parent), LY_EINT, "Value duplication failed."), finish);
-    LY_CHECK_GOTO(ret = lydict_insert(parent_ctx, meta->name, 0, &mt->name), finish);
+    LY_CHECK_ERR_GOTO(rc, LOGERR(LYD_CTX(parent), LY_EINT, "Value duplication failed."), cleanup);
+    LY_CHECK_GOTO(rc = lydict_insert(parent_ctx, meta->name, 0, &mt->name), cleanup);
 
     /* insert as the last attribute */
     mt->parent = parent;
@@ -2604,13 +2649,17 @@ lyd_dup_meta_single_to_ctx(const struct ly_ctx *parent_ctx, const struct lyd_met
         parent->meta = mt;
     }
 
-finish:
-    if (ret) {
-        lyd_free_meta_single(mt);
+cleanup:
+    if (rc) {
+        if (!mt->annotation) {
+            free(mt);
+        } else {
+            lyd_free_meta_single(mt);
+        }
     } else if (dup) {
         *dup = mt;
     }
-    return LY_SUCCESS;
+    return rc;
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -2894,10 +2943,7 @@ lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *bufl
         len = 1 + strlen(key->schema->name) + 2 + strlen(val) + 2;
         LY_CHECK_RET(lyd_path_str_enlarge(buffer, buflen, *bufused + len, is_static));
 
-        quot = '\'';
-        if (strchr(val, '\'')) {
-            quot = '"';
-        }
+        LY_CHECK_RET(ly_val_get_quot(LYD_CTX(node), val, &quot));
         *bufused += sprintf(*buffer + *bufused, "[%s=%c%s%c]", key->schema->name, quot, val, quot);
     }
 
@@ -2912,7 +2958,7 @@ lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *bufl
  * @param[in,out] buflen Current buffer length.
  * @param[in,out] bufused Current number of characters used in @p buffer.
  * @param[in] is_static Whether buffer is static or can be reallocated.
- * @return LY_ERR
+ * @return LY_ERR value.
  */
 static LY_ERR
 lyd_path_leaflist_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, ly_bool is_static)
@@ -2925,10 +2971,7 @@ lyd_path_leaflist_predicate(const struct lyd_node *node, char **buffer, size_t *
     len = 4 + strlen(val) + 2; /* "[.='" + val + "']" */
     LY_CHECK_RET(lyd_path_str_enlarge(buffer, buflen, *bufused + len, is_static));
 
-    quot = '\'';
-    if (strchr(val, '\'')) {
-        quot = '"';
-    }
+    LY_CHECK_RET(ly_val_get_quot(LYD_CTX(node), val, &quot));
     *bufused += sprintf(*buffer + *bufused, "[.=%c%s%c]", quot, val, quot);
 
     return LY_SUCCESS;
@@ -3013,7 +3056,7 @@ iter_print:
             len = 1 + (mod ? strlen(mod->name) + 1 : 0) + (iter->schema ? strlen(iter->schema->name) :
                     strlen(((struct lyd_node_opaq *)iter)->name.name));
             rc = lyd_path_str_enlarge(&buffer, &buflen, bufused + len, is_static);
-            if (rc != LY_SUCCESS) {
+            if (rc) {
                 break;
             }
 
@@ -3046,7 +3089,7 @@ iter_print:
                     break;
                 }
             }
-            if (rc != LY_SUCCESS) {
+            if (rc) {
                 break;
             }
 
@@ -3055,6 +3098,10 @@ iter_print:
         break;
     }
 
+    if (rc && !is_static) {
+        free(buffer);
+        buffer = NULL;
+    }
     return buffer;
 }
 
@@ -3813,7 +3860,7 @@ lyd_link_leafref_node(const struct lyd_node_term *node, const struct lyd_node_te
 {
     const struct lyd_node_term **item = NULL;
     struct lyd_leafref_links_rec *rec;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     assert(node);
     assert(leafref_node);
@@ -3824,24 +3871,24 @@ lyd_link_leafref_node(const struct lyd_node_term *node, const struct lyd_node_te
 
     /* add leafref node into the list of target node */
     LY_CHECK_RET(lyd_get_or_create_leafref_links_record(node, &rec, 1));
-    LY_ARRAY_FOR(rec->leafref_nodes, u) {
+    LYA_FOR(rec->leafref_nodes, u) {
         if (rec->leafref_nodes[u] == leafref_node) {
             return LY_SUCCESS;
         }
     }
 
-    LY_ARRAY_NEW_RET(LYD_CTX(node), rec->leafref_nodes, item, LY_EMEM);
+    LYA_ADD_ITEM(rec->leafref_nodes, item, LOGMEM(LYD_CTX(node)); return LY_EMEM);
     *item = leafref_node;
 
     /* add target node into the list of leafref node*/
     LY_CHECK_RET(lyd_get_or_create_leafref_links_record(leafref_node, &rec, 1));
-    LY_ARRAY_FOR(rec->target_nodes, u) {
+    LYA_FOR(rec->target_nodes, u) {
         if (rec->target_nodes[u] == node) {
             return LY_SUCCESS;
         }
     }
 
-    LY_ARRAY_NEW_RET(LYD_CTX(node), rec->target_nodes, item, LY_EMEM);
+    LYA_ADD_ITEM(rec->target_nodes, item, LOGMEM(LYD_CTX(node)); return LY_EMEM);
     *item = node;
 
     return LY_SUCCESS;
@@ -3868,7 +3915,7 @@ lyd_leafref_link_node_tree_type(const struct lyd_node *tree, const struct lyd_no
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_leafref *lref;
     struct lysc_type_union *un;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     uint32_t i;
     struct lyd_node_term *leafref_node = (struct lyd_node_term *)cur_node;
 
@@ -3889,7 +3936,7 @@ lyd_leafref_link_node_tree_type(const struct lyd_node *tree, const struct lyd_no
         }
     } else if (type->basetype == LY_TYPE_UNION) {
         un = (struct lysc_type_union *)type;
-        LY_ARRAY_FOR(un->types, u) {
+        LYA_FOR(un->types, u) {
             ret = lyd_leafref_link_node_tree_type(tree, cur_node, &leafref_node->value.subvalue->value, un->types[u]);
             LY_CHECK_GOTO(ret, cleanup)
         }
@@ -3943,8 +3990,8 @@ lyd_unlink_leafref_node(const struct lyd_node_term *node, const struct lyd_node_
     /* remove link from target node to leafref node */
     ret = lyd_get_or_create_leafref_links_record(node, &rec, 0);
     if (ret == LY_SUCCESS) {
-        LY_ARRAY_REMOVE_VALUE(rec->leafref_nodes, leafref_node);
-        if ((LY_ARRAY_COUNT(rec->leafref_nodes) == 0) && (LY_ARRAY_COUNT(rec->target_nodes) == 0)) {
+        LYA_REMOVE_VALUE(rec->leafref_nodes, leafref_node);
+        if ((LYA_COUNT(rec->leafref_nodes) == 0) && (LYA_COUNT(rec->target_nodes) == 0)) {
             lyd_free_leafref_nodes(node);
         }
     } else if (ret != LY_ENOTFOUND) {
@@ -3954,8 +4001,8 @@ lyd_unlink_leafref_node(const struct lyd_node_term *node, const struct lyd_node_
     /* remove link from leafref node to target node */
     ret = lyd_get_or_create_leafref_links_record(leafref_node, &rec, 0);
     if (ret == LY_SUCCESS) {
-        LY_ARRAY_REMOVE_VALUE(rec->target_nodes, node);
-        if ((LY_ARRAY_COUNT(rec->leafref_nodes) == 0) && (LY_ARRAY_COUNT(rec->target_nodes) == 0)) {
+        LYA_REMOVE_VALUE(rec->target_nodes, node);
+        if ((LYA_COUNT(rec->leafref_nodes) == 0) && (LYA_COUNT(rec->target_nodes) == 0)) {
             lyd_free_leafref_nodes(leafref_node);
         }
     } else if (ret != LY_ENOTFOUND) {

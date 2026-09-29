@@ -18,7 +18,7 @@
 #include <string.h>
 
 #include "compat.h"
-#include "libyang.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "plugins_exts.h"
 #include "plugins_internal.h"
@@ -37,12 +37,12 @@ nacm_inherit_clb(struct lysc_node *node, void *data, ly_bool *dfs_continue)
     LY_ERR ret;
     struct nacm_dfs_arg *arg = data;
     struct lysc_ext_instance *inherited;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     /* ignore the parent from which we inherit and input/output nodes */
     if ((node != arg->parent) && !(node->nodetype & (LYS_INPUT | LYS_OUTPUT))) {
         /* check that the node does not have its own NACM extension instance */
-        LY_ARRAY_FOR(node->exts, u) {
+        LYA_FOR(node->exts, u) {
             if (node->exts[u].def == arg->ext->def) {
                 /* the child already have its own NACM flag, so skip the subtree */
                 *dfs_continue = 1;
@@ -51,7 +51,7 @@ nacm_inherit_clb(struct lysc_node *node, void *data, ly_bool *dfs_continue)
         }
 
         /* duplicate this one to inherit it to the child */
-        LY_ARRAY_NEW_GOTO(node->module->ctx, node->exts, inherited, ret, emem);
+        LYA_ADD_ITEM(node->exts, inherited, ret = LY_EMEM; goto emem);
 
         inherited->def = arg->ext->def;
         inherited->parent = node;
@@ -82,7 +82,7 @@ static LY_ERR
 nacm_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 {
     struct lysp_node *parent = NULL;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lyplg_ext *ext_plugin, *parent_ext_plugin;
 
     /* check that the extension is instantiated at an allowed place - data node */
@@ -106,7 +106,7 @@ nacm_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     ext_plugin = LYSC_GET_EXT_PLG(ext->plugin_ref);
 
     /* check for duplication */
-    LY_ARRAY_FOR(parent->exts, u) {
+    LYA_FOR(parent->exts, u) {
         parent_ext_plugin = LYSC_GET_EXT_PLG(parent->exts[u].plugin_ref);
         if ((&parent->exts[u] != ext) && parent_ext_plugin && !strcmp(parent_ext_plugin->id, ext_plugin->id)) {
             /* duplication of a NACM extension on a single node

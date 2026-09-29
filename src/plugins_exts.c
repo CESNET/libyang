@@ -20,6 +20,7 @@
 #include <stdlib.h>
 
 #include "dict.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "parser_internal.h"
 #include "printer_internal.h"
@@ -39,7 +40,7 @@ LIBYANG_API_DEF LY_ERR
 lyplg_ext_parse_extension_instance(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 {
     LY_ERR rc = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lysp_stmt *stmt;
 
     /* check for invalid substatements */
@@ -47,12 +48,12 @@ lyplg_ext_parse_extension_instance(struct lysp_ctx *pctx, struct lysp_ext_instan
         if (stmt->flags & (LYS_YIN_ATTR | LYS_YIN_ARGUMENT)) {
             continue;
         }
-        LY_ARRAY_FOR(ext->substmts, u) {
+        LYA_FOR(ext->substmts, u) {
             if (ext->substmts[u].stmt == stmt->kw) {
                 break;
             }
         }
-        if (u == LY_ARRAY_COUNT(ext->substmts)) {
+        if (u == LYA_COUNT(ext->substmts)) {
             LOGVAL_PARSER(pctx, LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s%s%s\" extension instance.",
                     stmt->stmt, ext->name, ext->argument ? " " : "", ext->argument ? ext->argument : "");
             rc = LY_EVALID;
@@ -61,7 +62,7 @@ lyplg_ext_parse_extension_instance(struct lysp_ctx *pctx, struct lysp_ext_instan
     }
 
     /* parse all the known statements */
-    LY_ARRAY_FOR(ext->substmts, u) {
+    LYA_FOR(ext->substmts, u) {
         LY_LIST_FOR(ext->child, stmt) {
             if (ext->substmts[u].stmt != stmt->kw) {
                 continue;
@@ -291,15 +292,19 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, void **parsed_p, struct lysc
         uint16_t flags;
         const char *units;
         const struct lysp_type *ptype = *parsed_p;
+        struct lysc_type **ctype_p;
 
         /* read compiled info */
         lyplg_ext_get_storage(ext, LY_STMT_STATUS, sizeof flags, (const void **)&flags);
         lyplg_ext_get_storage(ext, LY_STMT_UNITS, sizeof units, (const void **)&units);
 
         /* compile */
-        rc = lys_compile_type(ctx, NULL, flags, ext->def->name, ptype, (struct lysc_type **)substmt->storage_p, &units, NULL);
+        ctype_p = (struct lysc_type **)substmt->storage_p;
+        rc = lys_compile_type(ctx, NULL, flags, ext->def->name, ptype, ctype_p, &units, NULL);
         LY_CHECK_GOTO(rc, cleanup);
-        LY_ATOMIC_INC_BARRIER((*(struct lysc_type **)substmt->storage_p)->refcount);
+        if (*ctype_p) {
+            LY_ATOMIC_INC_BARRIER((*ctype_p)->refcount);
+        }
         break;
     }
     case LY_STMT_EXTENSION_INSTANCE: {
@@ -354,7 +359,7 @@ lyplg_ext_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext
         struct lysc_ext_instance *ext, struct lysc_node *parent)
 {
     LY_ERR rc = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     enum ly_stmt stmtp;
     void **storagep;
     struct ly_set storagep_compiled = {0};
@@ -364,7 +369,7 @@ lyplg_ext_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext
     /* note into the compile context that we are processing extension now */
     ctx->ext = ext;
 
-    LY_ARRAY_FOR(extp->substmts, u) {
+    LYA_FOR(extp->substmts, u) {
         stmtp = extp->substmts[u].stmt;
         storagep = extp->substmts[u].storage_p;
 
@@ -373,7 +378,7 @@ lyplg_ext_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext
             continue;
         }
 
-        LY_ARRAY_FOR(ext->substmts, v) {
+        LYA_FOR(ext->substmts, v) {
             if (stmtp != ext->substmts[v].stmt) {
                 continue;
             }
@@ -517,7 +522,7 @@ lyplg_ext_nodetype2stmt(uint16_t nodetype)
 LY_ERR
 lyplg_ext_get_storage_p(const struct lysc_ext_instance *ext, int stmt, void ***storage_pp)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     enum ly_stmt match = 0;
 
     *storage_pp = NULL;
@@ -527,7 +532,7 @@ lyplg_ext_get_storage_p(const struct lysc_ext_instance *ext, int stmt, void ***s
         match = stmt;
     }
 
-    LY_ARRAY_FOR(ext->substmts, u) {
+    LYA_FOR(ext->substmts, u) {
         if ((match && (ext->substmts[u].stmt == match)) || (!match && (ext->substmts[u].stmt & stmt))) {
             *storage_pp = ext->substmts[u].storage_p;
             return LY_SUCCESS;
@@ -559,7 +564,7 @@ lyplg_ext_get_storage(const struct lysc_ext_instance *ext, int stmt, uint32_t st
 LIBYANG_API_DEF LY_ERR
 lyplg_ext_parsed_get_storage(const struct lysc_ext_instance *ext, int stmt, uint32_t storage_size, const void **storage)
 {
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     const struct lysp_ext_instance *extp = NULL;
     const struct lysp_submodule *submod;
     const char *extp_name;
@@ -570,7 +575,7 @@ lyplg_ext_parsed_get_storage(const struct lysc_ext_instance *ext, int stmt, uint
 
     /* find the parsed ext instance, it may be a top-level extension instance of the module or
      * any of its submodules */
-    LY_ARRAY_FOR(ext->module->parsed->exts, u) {
+    LYA_FOR(ext->module->parsed->exts, u) {
         extp = &ext->module->parsed->exts[u];
         extp_name = strchr(extp->name, ':') + 1;
 
@@ -579,7 +584,7 @@ lyplg_ext_parsed_get_storage(const struct lysc_ext_instance *ext, int stmt, uint
         }
         extp = NULL;
     }
-    for (v = 0; !extp && (v < LY_ARRAY_COUNT(ext->module->parsed->includes)); ++v) {
+    for (v = 0; !extp && (v < LYA_COUNT(ext->module->parsed->includes)); ++v) {
         submod = ext->module->parsed->includes[v].submodule;
         if (!submod) {
             continue;
@@ -602,7 +607,7 @@ lyplg_ext_parsed_get_storage(const struct lysc_ext_instance *ext, int stmt, uint
     }
 
     /* get the substatement */
-    LY_ARRAY_FOR(extp->substmts, u) {
+    LYA_FOR(extp->substmts, u) {
         if ((match && (extp->substmts[u].stmt == match)) || (!match && (extp->substmts[u].stmt & stmt))) {
             s_p = extp->substmts[u].storage_p;
             break;
@@ -678,9 +683,8 @@ lyplg_ext_set_parent_ctx(struct ly_ctx *ctx, const struct ly_ctx *parent_ctx)
              * contexts, there is no ext callback for freeing the compiled extension data with the contexts) */
             ly_ctx_destroy(ctx);
         } else {
-            /* remove its shared and private data, this is an exception as we need to free compiled patterns
-             * manually, since we are not destroying the whole context, we will just be using the parent's ctx data instead */
-            ly_ctx_pattern_ht_erase(ctx);
+            /* remove its shared and private data, this is an exception since we are not destroying the whole context,
+             * we will just be using the parent's ctx data instead */
             ly_ctx_data_del(ctx);
         }
     } else if (!parent_ctx) {

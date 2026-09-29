@@ -18,7 +18,6 @@
 
 #include <stdlib.h>
 
-#include "compat.h"
 #include "libyang.h"
 
 #define MODULE_CREATE_YIN(MOD_NAME, NODES) \
@@ -65,10 +64,12 @@
         struct lyd_node *tree_1; \
         struct lyd_node *tree_2; \
         char *xml_out, *data; \
+        uint32_t xml_len; \
         data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</" NODE_NAME ">"; \
         CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, LY_SUCCESS, tree_1); \
-        assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_SIBLINGS), 0); \
-        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2)); \
+        assert_int_equal(utest_lyd_print_mem_len(&xml_out, &xml_len, tree_1, LYD_LYB, LYD_PRINT_SIBLINGS), 0); \
+        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, xml_out, xml_len, LYD_LYB, \
+                LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2)); \
         assert_non_null(tree_2); \
         CHECK_LYD(tree_1, tree_2); \
         free(xml_out); \
@@ -281,7 +282,7 @@ test_sort(void **state)
     const char *schema;
     struct lys_module *mod;
     struct lyd_value val1 = {0}, val2 = {0};
-    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "ietf-yang-types", "2025-12-22", "date-and-time"));
+    struct lyplg_type *type = NULL;
     struct lysc_type *lysc_type;
     struct ly_err_item *err = NULL;
 
@@ -290,6 +291,7 @@ test_sort(void **state)
             "leaf-list ll {type yang:date-and-time;}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_type = ((struct lysc_node_leaflist *)mod->compiled->data)->type;
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
 
     /* v1 > v2, v2 < v1, v1 == v1 */
     v1 = "2005-05-25T23:15:15Z";

@@ -1,0 +1,71 @@
+{
+  "ietf-yang-schema-comparison-output:schema-comparison": {
+    "comparison": [
+      {
+        "locally-resolved": [null],
+        "source": {
+          "module": "uses",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "uses",
+          "revision": "2000-01-02"
+        },
+        "conformance": "non-backwards-compatible",
+        "suggested-target-version": "2.0.0",
+        "module-comparison": [
+          {
+            "changed": [
+              {
+                "stmt": "revision-date",
+                "parent-stmt": "import",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "import": {
+                "module": "uses-imp",
+                "prefix": "ussi",
+                "revision-date": "2000-01-01"
+              }
+            },
+            "new": {
+              "import": {
+                "module": "uses-imp",
+                "prefix": "ussi",
+                "revision-date": "2000-01-02"
+              }
+            }
+          }
+        ],
+        "local-comparison": [
+          {
+            "parent-path": "/",
+            "identifier": "local-group",
+            "stmt-type": "uses",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "added",
+                "conformance": "editorial"
+              }
+            ]
+          },
+          {
+            "parent-path": "/",
+            "identifier": "local-group",
+            "stmt-type": "grouping",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

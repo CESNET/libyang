@@ -19,8 +19,8 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <inttypes.h>
 #include <stddef.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,7 +28,9 @@
 #include "compat.h"
 #include "dict.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
+#include "parser_internal.h"
 #include "plugins.h"
 #include "plugins_internal.h"
 #include "plugins_types.h"
@@ -36,11 +38,10 @@
 #include "schema_compile_amend.h"
 #include "schema_features.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data.h"
-#include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "utils.h"
 #include "xpath.h"
 
 /**
@@ -98,7 +99,7 @@ static LY_ERR
 lysc_unres_must_add(struct lysc_ctx *ctx, struct lysc_node *node, struct lysp_node *pnode)
 {
     struct lysc_unres_must *m = NULL;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lysc_must *musts;
     struct lysp_restr *pmusts;
     LY_ERR ret;
@@ -110,7 +111,7 @@ lysc_unres_must_add(struct lysc_ctx *ctx, struct lysc_node *node, struct lysp_no
 
     musts = lysc_node_musts(node);
     pmusts = lysp_node_musts(pnode);
-    assert(LY_ARRAY_COUNT(musts) == LY_ARRAY_COUNT(pmusts));
+    assert(LYA_COUNT(musts) == LYA_COUNT(pmusts));
 
     if (!musts) {
         /* no must */
@@ -123,10 +124,10 @@ lysc_unres_must_add(struct lysc_ctx *ctx, struct lysc_node *node, struct lysp_no
     m->node = node;
 
     /* add must local modules */
-    LY_ARRAY_CREATE_GOTO(ctx->ctx, m->local_mods, LY_ARRAY_COUNT(pmusts), ret, error);
-    LY_ARRAY_FOR(pmusts, u) {
+    LYA_PREALLOC(m->local_mods, LYA_COUNT(pmusts), LOGMEM(ctx->ctx); ret = LY_EMEM; goto error);
+    LYA_FOR(pmusts, u) {
         m->local_mods[u] = pmusts[u].arg.mod;
-        LY_ARRAY_INCREMENT(m->local_mods);
+        LYA_INCREMENT(m->local_mods);
     }
 
     /* store ext */
@@ -138,7 +139,7 @@ lysc_unres_must_add(struct lysc_ctx *ctx, struct lysc_node *node, struct lysp_no
 
 error:
     if (m) {
-        LY_ARRAY_FREE(m->local_mods);
+        LYA_FREE(m->local_mods);
         free(m);
     }
     LOGMEM(ctx->ctx);
@@ -150,7 +151,7 @@ lysc_unres_leafref_add(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, const 
 {
     struct lysc_unres_leafref *l = NULL;
     struct ly_set *leafrefs_set;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     int is_lref = 0;
 
     if (ctx->compile_opts & LYS_COMPILE_GROUPING) {
@@ -166,7 +167,7 @@ lysc_unres_leafref_add(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, const 
         is_lref = 1;
     } else if (leaf->type->basetype == LY_TYPE_UNION) {
         /* union with leafrefs */
-        LY_ARRAY_FOR(((struct lysc_type_union *)leaf->type)->types, u) {
+        LYA_FOR(((struct lysc_type_union *)leaf->type)->types, u) {
             if (((struct lysc_type_union *)leaf->type)->types[u]->basetype == LY_TYPE_LEAFREF) {
                 is_lref = 1;
                 break;
@@ -330,14 +331,14 @@ static struct lysc_pattern **
 lysc_patterns_dup(struct ly_ctx *ctx, struct lysc_pattern **orig)
 {
     struct lysc_pattern **dup = NULL;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     assert(orig);
 
-    LY_ARRAY_CREATE_RET(ctx, dup, LY_ARRAY_COUNT(orig), NULL);
-    LY_ARRAY_FOR(orig, u) {
+    LYA_PREALLOC(dup, LYA_COUNT(orig), LOGMEM(ctx); return NULL);
+    LYA_FOR(orig, u) {
         dup[u] = lysc_pattern_dup(orig[u]);
-        LY_ARRAY_INCREMENT(dup);
+        LYA_INCREMENT(dup);
     }
     return dup;
 }
@@ -365,9 +366,9 @@ lysc_range_dup(struct lysc_ctx *ctx, const struct lysc_range *orig, struct ly_se
     dup = calloc(1, sizeof *dup);
     LY_CHECK_ERR_RET(!dup, LOGMEM(ctx->ctx), NULL);
     if (orig->parts) {
-        LY_ARRAY_CREATE_GOTO(ctx->ctx, dup->parts, LY_ARRAY_COUNT(orig->parts), ret, error);
-        (*((LY_ARRAY_COUNT_TYPE *)(dup->parts) - 1)) = LY_ARRAY_COUNT(orig->parts);
-        memcpy(dup->parts, orig->parts, LY_ARRAY_COUNT(dup->parts) * sizeof *dup->parts);
+        LYA_PREALLOC(dup->parts, LYA_COUNT(orig->parts), LOGMEM(ctx->ctx); ret = LY_EMEM; goto error);
+        (*((LYA_COUNT_T *)(dup->parts) - 1)) = LYA_COUNT(orig->parts);
+        memcpy(dup->parts, orig->parts, LYA_COUNT(dup->parts) * sizeof *dup->parts);
     }
     DUP_STRING_GOTO(ctx->ctx, orig->eapptag, dup->eapptag, ret, error);
     DUP_STRING_GOTO(ctx->ctx, orig->emsg, dup->emsg, ret, error);
@@ -529,7 +530,7 @@ lys_compile_when(struct lysc_ctx *ctx, const struct lysp_when *when_p, uint16_t 
         node_when = lysc_node_when_p(node);
 
         /* create new when pointer */
-        LY_ARRAY_NEW_GOTO(ctx->ctx, *node_when, new_when, rc, cleanup);
+        LYA_ADD_ITEM(*node_when, new_when, LOGMEM(ctx->ctx); rc = LY_EMEM; goto cleanup);
     } else {
         /* individual when */
         new_when = &ptr;
@@ -713,7 +714,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool ma
     }
     if (!valcopy && base_range) {
         if (max) {
-            part->max_64 = base_range->parts[LY_ARRAY_COUNT(base_range->parts) - 1].max_64;
+            part->max_64 = base_range->parts[LYA_COUNT(base_range->parts) - 1].max_64;
         } else {
             part->min_64 = base_range->parts[0].min_64;
         }
@@ -863,7 +864,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, const struct lysp_restr *range_p, L
     const char *expr;
     struct lysc_range_part *parts = NULL, *part;
     ly_bool range_expected = 0, uns;
-    LY_ARRAY_COUNT_TYPE parts_done = 0, u, v;
+    LYA_COUNT_T parts_done = 0, u, v;
 
     assert(range);
     assert(range_p);
@@ -879,7 +880,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, const struct lysp_restr *range_p, L
                         length_restr ? "length" : "range", range_p->arg.str);
                 ret = LY_EVALID;
                 goto cleanup;
-            } else if (!parts || (parts_done == LY_ARRAY_COUNT(parts))) {
+            } else if (!parts || (parts_done == LYA_COUNT(parts))) {
                 LOGVAL(ctx->ctx, NULL, LYVE_SYNTAX_YANG,
                         "Invalid %s restriction - unexpected end of the expression (%s).",
                         length_restr ? "length" : "range", range_p->arg.str);
@@ -899,7 +900,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, const struct lysp_restr *range_p, L
             }
             expr += ly_strlen_const("min");
 
-            LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
+            LYA_ADD_ITEM(parts, part, LOGMEM(ctx->ctx); ret = LY_EMEM; goto cleanup);
             LY_CHECK_GOTO(ret = range_part_minmax(ctx, part, 0, 0, basetype, 1, length_restr, frdigits, base_range, NULL), cleanup);
             part->max_64 = part->min_64;
         } else if (*expr == '|') {
@@ -918,7 +919,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, const struct lysp_restr *range_p, L
             while (isspace(*expr)) {
                 expr++;
             }
-            if (!parts || (LY_ARRAY_COUNT(parts) == parts_done)) {
+            if (!parts || (LYA_COUNT(parts) == parts_done)) {
                 LOGVAL(ctx->ctx, NULL, LYVE_SYNTAX_YANG,
                         "Invalid %s restriction - unexpected \"..\" without a lower bound.", length_restr ? "length" : "range");
                 ret = LY_EVALID;
@@ -929,12 +930,12 @@ lys_compile_type_range(struct lysc_ctx *ctx, const struct lysp_restr *range_p, L
         } else if (isdigit(*expr) || (*expr == '-') || (*expr == '+')) {
             /* number */
             if (range_expected) {
-                part = &parts[LY_ARRAY_COUNT(parts) - 1];
+                part = &parts[LYA_COUNT(parts) - 1];
                 LY_CHECK_GOTO(ret = range_part_minmax(ctx, part, 1, part->min_64, basetype, 0, length_restr, frdigits, NULL, &expr), cleanup);
                 range_expected = 0;
             } else {
-                LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
-                LY_CHECK_GOTO(ret = range_part_minmax(ctx, part, 0, parts_done ? parts[LY_ARRAY_COUNT(parts) - 2].max_64 : 0,
+                LYA_ADD_ITEM(parts, part, LOGMEM(ctx->ctx); ret = LY_EMEM; goto cleanup);
+                LY_CHECK_GOTO(ret = range_part_minmax(ctx, part, 0, parts_done ? parts[LYA_COUNT(parts) - 2].max_64 : 0,
                         basetype, parts_done ? 0 : 1, length_restr, frdigits, NULL, &expr), cleanup);
                 part->max_64 = part->min_64;
             }
@@ -952,13 +953,13 @@ lys_compile_type_range(struct lysc_ctx *ctx, const struct lysp_restr *range_p, L
                 goto cleanup;
             }
             if (range_expected) {
-                part = &parts[LY_ARRAY_COUNT(parts) - 1];
+                part = &parts[LYA_COUNT(parts) - 1];
                 ret = range_part_minmax(ctx, part, 1, part->min_64, basetype, 0, length_restr, frdigits, base_range, NULL);
                 LY_CHECK_GOTO(ret, cleanup);
                 range_expected = 0;
             } else {
-                LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
-                LY_CHECK_GOTO(ret = range_part_minmax(ctx, part, 1, parts_done ? parts[LY_ARRAY_COUNT(parts) - 2].max_64 : 0,
+                LYA_ADD_ITEM(parts, part, LOGMEM(ctx->ctx); ret = LY_EMEM; goto cleanup);
+                LY_CHECK_GOTO(ret = range_part_minmax(ctx, part, 1, parts_done ? parts[LYA_COUNT(parts) - 2].max_64 : 0,
                         basetype, parts_done ? 0 : 1, length_restr, frdigits, base_range, NULL), cleanup);
                 part->min_64 = part->max_64;
             }
@@ -993,7 +994,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, const struct lysp_restr *range_p, L
             ret = LY_EINT;
             goto cleanup;
         }
-        for (u = v = 0; u < parts_done && v < LY_ARRAY_COUNT(base_range->parts); ++u) {
+        for (u = v = 0; u < parts_done && v < LYA_COUNT(base_range->parts); ++u) {
             if ((uns && (parts[u].min_u64 < base_range->parts[v].min_u64)) ||
                     (!uns && (parts[u].min_64 < base_range->parts[v].min_64))) {
                 goto baseerror;
@@ -1090,7 +1091,7 @@ baseerror:
     (*range)->parts = parts;
     parts = NULL;
 cleanup:
-    LY_ARRAY_FREE(parts);
+    LYA_FREE(parts);
 
     return ret;
 }
@@ -1106,12 +1107,12 @@ static ly_bool
 lys_compile_type_patterns_has_oc_posix_ext(const struct lysp_module *pmod)
 {
     const struct lysp_ext_instance *ext;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     const struct lys_module *mod;
     const char *tmp, *name, *prefix;
     uint32_t pref_len, name_len;
 
-    LY_ARRAY_FOR(pmod->exts, u) {
+    LYA_FOR(pmod->exts, u) {
         ext = &pmod->exts[u];
 
         /* parse the prefix, the nodeid was previously already parsed and checked */
@@ -1141,8 +1142,8 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, const struct lysp_restr *pattern
 {
     LY_ERR rc = LY_SUCCESS;
     struct lysc_pattern **pattern;
-    LY_ARRAY_COUNT_TYPE u;
-    uint32_t format = 0;
+    LYA_COUNT_T u;
+    ly_bool format = 0;
 
     /* first check the format of the patterns based on the current parsed module extensions (not compiled yet),
      * if not set, assume internal use that always uses XML Schema expressions */
@@ -1156,8 +1157,8 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, const struct lysp_restr *pattern
         LY_CHECK_ERR_RET(!(*patterns), LOGMEM(ctx->ctx), LY_EMEM);
     }
 
-    LY_ARRAY_FOR(patterns_p, u) {
-        LY_ARRAY_NEW_RET(ctx->ctx, (*patterns), pattern, LY_EMEM);
+    LYA_FOR(patterns_p, u) {
+        LYA_ADD_ITEM((*patterns), pattern, LOGMEM(ctx->ctx); return LY_EMEM);
         *pattern = calloc(1, sizeof **pattern);
         (*pattern)->refcount = 1;
 
@@ -1240,7 +1241,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
         struct lysc_type_bitenum_item *base_enums, struct lysc_type_bitenum_item **bitenums)
 {
     LY_ERR ret = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u, v, match = 0;
+    LYA_COUNT_T u, v, match = 0;
     int32_t highest_value = INT32_MIN, cur_val = INT32_MIN;
     uint32_t highest_position = 0, cur_pos = 0;
     struct lysc_type_bitenum_item *e, storage;
@@ -1252,16 +1253,16 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
         return LY_EVALID;
     }
 
-    LY_ARRAY_FOR(enums_p, u) {
+    LYA_FOR(enums_p, u) {
         /* perform all checks */
         if (base_enums) {
             /* check the enum/bit presence in the base type - the set of enums/bits in the derived type must be a subset */
-            LY_ARRAY_FOR(base_enums, v) {
+            LYA_FOR(base_enums, v) {
                 if (!strcmp(enums_p[u].name, base_enums[v].name)) {
                     break;
                 }
             }
-            if (v == LY_ARRAY_COUNT(base_enums)) {
+            if (v == LYA_COUNT(base_enums)) {
                 LOGVAL(ctx->ctx, NULL, LYVE_SYNTAX_YANG, "Invalid %s - derived type adds new item \"%s\".",
                         basetype == LY_TYPE_ENUM ? "enumeration" : "bits", enums_p[u].name);
                 return LY_EVALID;
@@ -1274,7 +1275,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
                 /* value assigned by module */
                 cur_val = (int32_t)enums_p[u].value;
                 /* check collision with other values */
-                LY_ARRAY_FOR(*bitenums, v) {
+                LYA_FOR(*bitenums, v) {
                     if (cur_val == (*bitenums)[v].value) {
                         LOGVAL(ctx->ctx, NULL, LYVE_SYNTAX_YANG,
                                 "Invalid enumeration - value %" PRId32 " collide in items \"%s\" and \"%s\".",
@@ -1308,7 +1309,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
                 /* value assigned by module */
                 cur_pos = (uint32_t)enums_p[u].value;
                 /* check collision with other values */
-                LY_ARRAY_FOR(*bitenums, v) {
+                LYA_FOR(*bitenums, v) {
                     if (cur_pos == (*bitenums)[v].position) {
                         LOGVAL(ctx->ctx, NULL, LYVE_SYNTAX_YANG,
                                 "Invalid bits - position %" PRIu32 " collide in items \"%s\" and \"%s\".",
@@ -1360,7 +1361,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
         }
 
         /* add new enum/bit */
-        LY_ARRAY_NEW_RET(ctx->ctx, *bitenums, e, LY_EMEM);
+        LYA_ADD_ITEM(*bitenums, e, LOGMEM(ctx->ctx); return LY_EMEM);
         DUP_STRING_GOTO(ctx->ctx, enums_p[u].name, e->name, ret, done);
         DUP_STRING_GOTO(ctx->ctx, enums_p[u].dsc, e->dsc, ret, done);
         DUP_STRING_GOTO(ctx->ctx, enums_p[u].ref, e->ref, ret, done);
@@ -1401,8 +1402,8 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
     }
 
     /* revalidate the backward parent pointers from extensions now that the array is final */
-    LY_ARRAY_FOR(*bitenums, u) {
-        LY_ARRAY_FOR((*bitenums)[u].exts, v) {
+    LYA_FOR(*bitenums, u) {
+        LYA_FOR((*bitenums)[u].exts, v) {
             (*bitenums)[u].exts[v].parent = &(*bitenums)[u];
         }
     }
@@ -1417,38 +1418,47 @@ done:
  * @param[in] ctx Compile context.
  * @param[in] ptypes Parsed union types.
  * @param[in] context_pnode Schema node where the type/typedef is placed to correctly find the base types.
- * @param[in] context_flags Flags of the context node or the referencing typedef to correctly check status of referencing and referenced objects.
+ * @param[in] context_flags Flags of the context node or the referencing typedef to correctly check status
+ * of referencing and referenced objects.
  * @param[in] context_name Name of the context node or referencing typedef for logging.
- * @param[out] utypes_p Array of compiled union types.
+ * @param[in,out] utypes_p Array of compiled union types.
  * @return LY_ERR value.
  */
 static LY_ERR
 lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct lysp_node *context_pnode, uint16_t context_flags,
         const char *context_name, struct lysc_type ***utypes_p)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR rc = LY_SUCCESS;
     struct lysc_type **utypes = *utypes_p;
     struct lysc_type_union *un_aux = NULL;
+    LYA_COUNT_T u, v, additional;
+    ly_bool free_types = 0;
 
-    LY_ARRAY_CREATE_GOTO(ctx->ctx, utypes, LY_ARRAY_COUNT(ptypes), ret, error);
-    for (LY_ARRAY_COUNT_TYPE u = 0, additional = 0; u < LY_ARRAY_COUNT(ptypes); ++u) {
-        ret = lys_compile_type(ctx, context_pnode, context_flags, context_name, &ptypes[u], &utypes[u + additional],
+    LYA_PREALLOC(utypes, LYA_COUNT(ptypes), LOGMEM(ctx->ctx); rc = LY_EMEM; goto cleanup);
+
+    for (u = 0, additional = 0; u < LYA_COUNT(ptypes); ++u) {
+        rc = lys_compile_type(ctx, context_pnode, context_flags, context_name, &ptypes[u], &utypes[u + additional],
                 NULL, NULL);
-        LY_CHECK_GOTO(ret, error);
+        LY_CHECK_GOTO(rc, cleanup);
+        if (!utypes[u + additional]) {
+            /* foreign typedef in local-only module */
+            free_types = 1;
+            goto cleanup;
+        }
         LY_ATOMIC_INC_BARRIER(utypes[u + additional]->refcount);
 
         if (utypes[u + additional]->basetype == LY_TYPE_UNION) {
             /* add space for additional types from the union subtype */
             un_aux = (struct lysc_type_union *)utypes[u + additional];
-            LY_ARRAY_CREATE_GOTO(ctx->ctx, utypes,
-                    LY_ARRAY_COUNT(ptypes) + additional + LY_ARRAY_COUNT(un_aux->types) - LY_ARRAY_COUNT(utypes), ret, error);
+            LYA_PREALLOC(utypes, LYA_COUNT(ptypes) + additional + LYA_COUNT(un_aux->types) - LYA_COUNT(utypes),
+                    LOGMEM(ctx->ctx); rc = LY_EMEM; goto cleanup);
 
             /* copy subtypes of the subtype union */
-            for (LY_ARRAY_COUNT_TYPE v = 0; v < LY_ARRAY_COUNT(un_aux->types); ++v) {
+            for (v = 0; v < LYA_COUNT(un_aux->types); ++v) {
                 utypes[u + additional] = un_aux->types[v];
                 LY_ATOMIC_INC_BARRIER(un_aux->types[v]->refcount);
                 ++additional;
-                LY_ARRAY_INCREMENT(utypes);
+                LYA_INCREMENT(utypes);
             }
             /* compensate u increment in main loop */
             assert(additional);
@@ -1458,19 +1468,23 @@ lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct ly
             lysc_type_free(ctx->ctx, (struct lysc_type *)un_aux);
             un_aux = NULL;
         } else {
-            LY_ARRAY_INCREMENT(utypes);
+            LYA_INCREMENT(utypes);
         }
     }
 
-    *utypes_p = utypes;
-    return LY_SUCCESS;
-
-error:
+cleanup:
     if (un_aux) {
         lysc_type_free(ctx->ctx, (struct lysc_type *)un_aux);
     }
-    *utypes_p = utypes;
-    return ret;
+    if (!rc && !free_types) {
+        *utypes_p = utypes;
+    } else {
+        LYA_FOR(utypes, u) {
+            lysc_type_free(ctx->ctx, utypes[u]);
+        }
+        LYA_FREE(utypes);
+    }
+    return rc;
 }
 
 /**
@@ -1785,12 +1799,12 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
         } else if (base) {
             /* copy all the bases */
             const struct lysc_type_identityref *idref_base = (struct lysc_type_identityref *)base;
-            LY_ARRAY_COUNT_TYPE u;
+            LYA_COUNT_T u;
 
-            LY_ARRAY_CREATE_GOTO(ctx->ctx, idref->bases, LY_ARRAY_COUNT(idref_base->bases), rc, cleanup);
-            LY_ARRAY_FOR(idref_base->bases, u) {
+            LYA_PREALLOC(idref->bases, LYA_COUNT(idref_base->bases), LOGMEM(ctx->ctx); rc = LY_EMEM; goto cleanup);
+            LYA_FOR(idref_base->bases, u) {
                 idref->bases[u] = idref_base->bases[u];
-                LY_ARRAY_INCREMENT(idref->bases);
+                LYA_INCREMENT(idref->bases);
             }
         } else {
             /* type derived from identityref built-in type must contain at least one base */
@@ -1884,16 +1898,23 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
             /* compile the type */
             LY_CHECK_GOTO(rc = lys_compile_type_union(ctx, type_p->types, context_pnode, context_flags, context_name,
                     &un->types), cleanup);
+            if (!un->types) {
+                /* foreign typedef in local-only module */
+                lydict_remove(ctx->ctx, (*type)->name);
+                free(*type);
+                *type = NULL;
+                goto cleanup;
+            }
         } else if (base) {
             /* copy all the types */
             const struct lysc_type_union *un_base = (struct lysc_type_union *)base;
-            LY_ARRAY_COUNT_TYPE u;
+            LYA_COUNT_T u;
 
-            LY_ARRAY_CREATE_GOTO(ctx->ctx, un->types, LY_ARRAY_COUNT(un_base->types), rc, cleanup);
-            LY_ARRAY_FOR(un_base->types, u) {
+            LYA_PREALLOC(un->types, LYA_COUNT(un_base->types), LOGMEM(ctx->ctx); rc = LY_EMEM; goto cleanup);
+            LYA_FOR(un_base->types, u) {
                 un->types[u] = un_base->types[u];
                 LY_ATOMIC_INC_BARRIER(un->types[u]->refcount);
-                LY_ARRAY_INCREMENT(un->types);
+                LYA_INCREMENT(un->types);
             }
         } else {
             /* type derived from union built-in type must contain at least one type */
@@ -1935,51 +1956,111 @@ cleanup:
     return rc;
 }
 
+/**
+ * @brief Check that a compiled type can be reused and shared.
+ *
+ * @param[in] type_p Parsed type.
+ * @param[in] type_c Compiled type.
+ * @param[in] pattern_format Global pattern format.
+ * @return 1 if @p type_c can be shared;
+ * @return 0 otherwise.
+ */
+static ly_bool
+lys_compile_type_share_compiled(const struct lysp_type *type_p, const struct lysc_type *type_c, ly_bool pattern_format)
+{
+    LYA_COUNT_T u;
+    struct lysc_type_union *type_un;
+    struct lysc_type_str *type_str = NULL;
+
+    if (!type_c || type_p->flags || type_p->exts) {
+        /* no compiled type to share, special type flags, or extensions */
+        return 0;
+    }
+
+    /* learn whether the type has a leafref, in which case it cannot be shared because it may resolve to a different
+     * real type for every instantiation */
+    if (type_c->basetype == LY_TYPE_LEAFREF) {
+        /* leafref type */
+        return 0;
+    } else if (type_c->basetype == LY_TYPE_UNION) {
+        /* union with a leafref */
+        type_un = (struct lysc_type_union *)type_c;
+        LYA_FOR(type_un->types, u) {
+            if (type_un->types[u]->basetype == LY_TYPE_LEAFREF) {
+                return 0;
+            }
+        }
+    }
+
+    /* check for patterns and their format */
+    if (type_c->basetype == LY_TYPE_STRING) {
+        type_str = (struct lysc_type_str *)type_c;
+    } else if (type_c->basetype == LY_TYPE_UNION) {
+        type_un = (struct lysc_type_union *)type_c;
+        LYA_FOR(type_un->types, u) {
+            if (type_un->types[u]->basetype == LY_TYPE_STRING) {
+                type_str = (struct lysc_type_str *)type_un->types[u];
+                break;
+            }
+        }
+    }
+    if (!type_str || !type_str->patterns) {
+        return 1;
+    }
+
+    if (pattern_format != type_str->patterns[0]->format) {
+        return 0;
+    }
+    return 1;
+}
+
 LY_ERR
-lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t context_flags, const char *context_name,
-        const struct lysp_type *type_p, struct lysc_type **type, const char **units, struct lysp_qname **dflt)
+lys_compile_type_find_tpdf(struct lysc_ctx *ctx, const struct lysp_node *context_pnode, uint16_t context_flags,
+        const char *context_name, const struct lysp_type *type_p, const char **units, struct lysp_qname **dflt,
+        struct ly_set *tpdf_chain, LY_DATA_TYPE *basetype)
 {
     LY_ERR ret = LY_SUCCESS;
-    ly_bool dummyloops = 0, has_leafref;
+    ly_bool dummyloops = 0;
     struct lys_type_item *tctx, *tctx_prev = NULL, *tctx_iter;
-    LY_DATA_TYPE basetype = LY_TYPE_UNKNOWN;
-    struct lysc_type *base = NULL;
-    struct lysc_type_union *base_un;
-    LY_ARRAY_COUNT_TYPE u;
-    struct ly_set tpdf_chain = {0};
-    uintptr_t plugin_ref = 0;
+    uint32_t i;
 
-    *type = NULL;
+    assert(!tpdf_chain->count);
+
+    if (units) {
+        *units = NULL;
+    }
     if (dflt) {
         *dflt = NULL;
     }
+    *basetype = LY_TYPE_UNKNOWN;
 
     tctx = calloc(1, sizeof *tctx);
     LY_CHECK_ERR_RET(!tctx, LOGMEM(ctx->ctx), LY_EMEM);
-    for (ret = lysp_type_find(type_p->name, context_pnode, type_p->pmod, ctx->ext, &basetype, &tctx->tpdf, &tctx->node);
+
+    for (ret = lysp_type_find(type_p->name, context_pnode, type_p->pmod, ctx->ext, basetype, &tctx->tpdf, &tctx->node);
             ret == LY_SUCCESS;
             ret = lysp_type_find(tctx_prev->tpdf->type.name, tctx_prev->node, tctx_prev->tpdf->type.pmod, ctx->ext,
-                    &basetype, &tctx->tpdf, &tctx->node)) {
-        if (basetype) {
+                    basetype, &tctx->tpdf, &tctx->node)) {
+        if (*basetype) {
             break;
         }
 
         /* check status */
         ret = lysc_check_status(ctx, NULL, context_flags, (void *)type_p->pmod, context_name, tctx->tpdf->flags,
                 (void *)tctx->tpdf->type.pmod, tctx->node ? tctx->node->name : tctx->tpdf->name);
-        LY_CHECK_ERR_GOTO(ret, free(tctx), cleanup);
+        LY_CHECK_GOTO(ret, cleanup);
 
         if (units && !*units) {
             /* inherit units */
             DUP_STRING(ctx->ctx, tctx->tpdf->units, *units, ret);
-            LY_CHECK_ERR_GOTO(ret, free(tctx), cleanup);
+            LY_CHECK_GOTO(ret, cleanup);
         }
         if (dflt && !*dflt && tctx->tpdf->dflt.str) {
             /* inherit default */
             *dflt = (struct lysp_qname *)&tctx->tpdf->dflt;
         }
         if (dummyloops && (!units || *units) && dflt && *dflt) {
-            basetype = ((struct lys_type_item *)tpdf_chain.objs[tpdf_chain.count - 1])->tpdf->type.compiled->basetype;
+            *basetype = ((struct lys_type_item *)tpdf_chain->objs[tpdf_chain->count - 1])->tpdf->type.compiled->basetype;
             break;
         }
 
@@ -1993,13 +2074,13 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
         if (tctx->tpdf->type.compiled) {
             /* it is not necessary to continue, the rest of the chain was already compiled,
              * but we still may need to inherit default and units values, so start dummy loops */
-            basetype = tctx->tpdf->type.compiled->basetype;
-            ret = ly_set_add(&tpdf_chain, tctx, 1, NULL);
-            LY_CHECK_ERR_GOTO(ret, free(tctx), cleanup);
+            *basetype = tctx->tpdf->type.compiled->basetype;
+            ret = ly_set_add(tpdf_chain, tctx, 1, NULL);
+            LY_CHECK_GOTO(ret, cleanup);
 
             if ((units && !*units) || (dflt && !*dflt)) {
                 dummyloops = 1;
-                goto preparenext;
+                goto next_iter;
             } else {
                 tctx = NULL;
                 break;
@@ -2007,66 +2088,97 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
         }
 
         /* circular typedef reference detection */
-        for (uint32_t u = 0; u < tpdf_chain.count; u++) {
+        for (i = 0; i < tpdf_chain->count; ++i) {
             /* local part */
-            tctx_iter = (struct lys_type_item *)tpdf_chain.objs[u];
+            tctx_iter = tpdf_chain->objs[i];
             if (tctx_iter->tpdf == tctx->tpdf) {
                 LOGVAL(ctx->ctx, NULL, LYVE_REFERENCE, "Invalid \"%s\" type reference - circular chain of types detected.",
                         tctx->tpdf->name);
-                free(tctx);
                 ret = LY_EVALID;
                 goto cleanup;
             }
         }
-        for (uint32_t u = 0; u < ctx->tpdf_chain.count; u++) {
+        for (i = 0; i < ctx->tpdf_chain.count; ++i) {
             /* global part for unions corner case */
-            tctx_iter = (struct lys_type_item *)ctx->tpdf_chain.objs[u];
+            tctx_iter = (struct lys_type_item *)ctx->tpdf_chain.objs[i];
             if (tctx_iter->tpdf == tctx->tpdf) {
                 LOGVAL(ctx->ctx, NULL, LYVE_REFERENCE, "Invalid \"%s\" type reference - circular chain of types detected.",
                         tctx->tpdf->name);
-                free(tctx);
                 ret = LY_EVALID;
                 goto cleanup;
             }
         }
 
         /* store information for the following processing */
-        ret = ly_set_add(&tpdf_chain, tctx, 1, NULL);
-        LY_CHECK_ERR_GOTO(ret, free(tctx), cleanup);
+        ret = ly_set_add(tpdf_chain, tctx, 1, NULL);
+        LY_CHECK_GOTO(ret, cleanup);
 
-preparenext:
+next_iter:
         /* prepare next loop */
         tctx_prev = tctx;
         tctx = calloc(1, sizeof *tctx);
         LY_CHECK_ERR_RET(!tctx, LOGMEM(ctx->ctx), LY_EMEM);
     }
-    free(tctx);
 
-    /* basic checks */
-    if (basetype == LY_TYPE_UNKNOWN) {
+cleanup:
+    free(tctx);
+    return ret;
+}
+
+LY_ERR
+lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t context_flags, const char *context_name,
+        const struct lysp_type *type_p, struct lysc_type **type, const char **units, struct lysp_qname **dflt)
+{
+    LY_ERR ret = LY_SUCCESS;
+    ly_bool pattern_format;
+    struct lys_type_item *tctx;
+    LY_DATA_TYPE basetype = LY_TYPE_UNKNOWN;
+    struct lysc_type *base = NULL;
+    uint32_t i;
+    struct ly_set tpdf_chain = {0};
+    uintptr_t plugin_ref = 0;
+
+    *type = NULL;
+
+    /* collect the typedef chain and learn the basetype */
+    ret = lys_compile_type_find_tpdf(ctx, context_pnode, context_flags, context_name, type_p, units, dflt, &tpdf_chain,
+            &basetype);
+    if (ret == LY_ENOTFOUND) {
+        tctx = tpdf_chain.count ? tpdf_chain.objs[tpdf_chain.count - 1] : NULL;
         LOGVAL(ctx->ctx, NULL, LYVE_REFERENCE, "Referenced type \"%s\" not found.",
-                tctx_prev ? tctx_prev->tpdf->type.name : type_p->name);
+                tctx ? tctx->tpdf->type.name : type_p->name);
         ret = LY_EVALID;
         goto cleanup;
+    } else if (ret) {
+        goto cleanup;
     }
+
+    /* basic checks */
     if (~type_substmt_map[basetype] & type_p->flags) {
         LOGVAL(ctx->ctx, NULL, LYVE_SYNTAX_YANG, "Invalid type restrictions for %s type.", ly_data_type2str[basetype]);
         ret = LY_EVALID;
         goto cleanup;
     }
 
+    /* learn the global pattern format to know what types need to be recompiled */
+    pattern_format = lys_compile_type_patterns_has_oc_posix_ext(ctx->pmod);
+
     /* get restrictions from the referred typedefs */
-    for (uint32_t u = tpdf_chain.count - 1; u + 1 > 0; --u) {
-        tctx = (struct lys_type_item *)tpdf_chain.objs[u];
+    for (i = tpdf_chain.count - 1; i + 1 > 0; --i) {
+        tctx = tpdf_chain.objs[i];
 
         /* remember the typedef context for circular check */
         ret = ly_set_add(&ctx->tpdf_chain, tctx, 1, NULL);
         LY_CHECK_GOTO(ret, cleanup);
 
-        if (tctx->tpdf->type.compiled) {
-            /* already compiled */
+        if (lys_compile_type_share_compiled(&tctx->tpdf->type, tctx->tpdf->type.compiled, pattern_format)) {
+            /* already compiled, reuse */
             base = tctx->tpdf->type.compiled;
             continue;
+        } else if (tctx->tpdf->type.compiled) {
+            /* cannot reuse, replace the compiled type with our new compiled type */
+            LY_ATOMIC_DEC_BARRIER(tctx->tpdf->type.compiled->refcount);
+            ((struct lysp_tpdf *)tctx->tpdf)->type.compiled = NULL;
         }
 
         /* try to find loaded user type plugins */
@@ -2081,8 +2193,8 @@ preparenext:
         }
         assert(plugin_ref);
 
-        if ((basetype != LY_TYPE_LEAFREF) && (u != tpdf_chain.count - 1) && !tctx->tpdf->type.flags &&
-                !tctx->tpdf->type.exts && (plugin_ref == base->plugin_ref)) {
+        if (lys_compile_type_share_compiled(&tctx->tpdf->type, base, pattern_format) && (i != tpdf_chain.count - 1) &&
+                (plugin_ref == base->plugin_ref)) {
             /* no change, reuse the compiled base */
             ((struct lysp_tpdf *)tctx->tpdf)->type.compiled = base;
             LY_ATOMIC_INC_BARRIER(base->refcount);
@@ -2103,7 +2215,7 @@ preparenext:
 
         /* compile the typedef type */
         ret = lys_compile_type_(ctx, tctx->node, tctx->tpdf->flags, tctx->tpdf->name, &tctx->tpdf->type, basetype,
-                tctx->tpdf->name, base, plugin_ref, &tpdf_chain, u + 1, &base);
+                tctx->tpdf->name, base, plugin_ref, &tpdf_chain, i + 1, &base);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* store separately compiled typedef type to be reused */
@@ -2114,25 +2226,14 @@ preparenext:
     /* remove the processed typedef contexts from the stack for circular check */
     ctx->tpdf_chain.count = ctx->tpdf_chain.count - tpdf_chain.count;
 
-    /* learn whether the type has a leafref, in which case it cannot be shared because it may resolve to a different
-     * real type for every instantiation */
-    has_leafref = 0;
-    if (basetype == LY_TYPE_LEAFREF) {
-        /* leafref type */
-        has_leafref = 1;
-    } else if ((basetype == LY_TYPE_UNION) && base) {
-        /* union with a leafref */
-        base_un = (struct lysc_type_union *)base;
-        LY_ARRAY_FOR(base_un->types, u) {
-            if (base_un->types[u]->basetype == LY_TYPE_LEAFREF) {
-                has_leafref = 1;
-                break;
-            }
-        }
+    if ((ctx->compile_opts & LYS_COMPILE_LOCAL_ONLY) && tpdf_chain.count &&
+            (((struct lys_type_item *)tpdf_chain.objs[tpdf_chain.count - 1])->tpdf->type.pmod->mod != ctx->pmod->mod)) {
+        /* last typedef is foreign, do not resolve */
+        goto cleanup;
     }
 
     /* process the type definition in leaf */
-    if (type_p->flags || type_p->exts || !base || has_leafref) {
+    if (!lys_compile_type_share_compiled(type_p, base, pattern_format)) {
         /* leaf type has changes that need to be compiled into the type */
         if (base) {
             plugin_ref = base->plugin_ref;
@@ -2142,6 +2243,10 @@ preparenext:
         ret = lys_compile_type_(ctx, context_pnode, context_flags, context_name, (struct lysp_type *)type_p, basetype,
                 NULL, base, plugin_ref, &tpdf_chain, 0, type);
         LY_CHECK_GOTO(ret, cleanup);
+        if (!*type) {
+            /* foreign typedef in local-only module */
+            goto cleanup;
+        }
 
         /* always fill the type name */
         if (tpdf_chain.count) {
@@ -2250,7 +2355,7 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
             iter = lys_getnext(iter, parent, NULL, getnext_flags);
         }
     } else {
-        while ((iter = lys_getnext(iter, parent, ctx->cur_mod->compiled, getnext_flags))) {
+        while ((iter = lys_getnext(iter, parent, ctx->cmod, getnext_flags))) {
             if (!ly_set_contains(&parent_choices, (void *)iter, NULL) && CHECK_NODE(iter, exclude, name)) {
                 dup = iter;
                 goto cleanup;
@@ -2268,7 +2373,7 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
             }
         }
 
-        actions = parent ? lysc_node_actions(parent) : ctx->cur_mod->compiled->rpcs;
+        actions = parent ? lysc_node_actions(parent) : ctx->cmod->rpcs;
         LY_LIST_FOR((struct lysc_node *)actions, iter) {
             if (CHECK_NODE(iter, exclude, name)) {
                 dup = iter;
@@ -2276,7 +2381,7 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
             }
         }
 
-        notifs = parent ? lysc_node_notifs(parent) : ctx->cur_mod->compiled->notifs;
+        notifs = parent ? lysc_node_notifs(parent) : ctx->cmod->notifs;
         LY_LIST_FOR((struct lysc_node *)notifs, iter) {
             if (CHECK_NODE(iter, exclude, name)) {
                 dup = iter;
@@ -2407,11 +2512,11 @@ lys_compile_node_connect(struct lysc_ctx *ctx, struct lysc_node *parent, struct 
         if (ctx->ext) {
             lyplg_ext_get_storage_p(ctx->ext, LY_STMT_DATA_NODE_MASK, (void ***)&list);
         } else if (node->nodetype == LYS_RPC) {
-            list = (struct lysc_node **)&ctx->cur_mod->compiled->rpcs;
+            list = (struct lysc_node **)&ctx->cmod->rpcs;
         } else if (node->nodetype == LYS_NOTIF) {
-            list = (struct lysc_node **)&ctx->cur_mod->compiled->notifs;
+            list = (struct lysc_node **)&ctx->cmod->notifs;
         } else {
-            list = &ctx->cur_mod->compiled->data;
+            list = &ctx->cmod->data;
         }
         if (!(*list)) {
             *list = node;
@@ -2796,11 +2901,16 @@ lys_compile_node_type(struct lysc_ctx *ctx, struct lysp_node *context_node, stru
 {
     struct lysp_qname *dflt;
     struct lysc_type **t;
-    LY_ARRAY_COUNT_TYPE u, count;
+    LYA_COUNT_T u, count;
     ly_bool in_unres = 0;
 
     LY_CHECK_RET(lys_compile_type(ctx, context_node, leaf->flags, leaf->name, type_p, &leaf->type,
             leaf->units ? NULL : &leaf->units, &dflt));
+    if (!leaf->type) {
+        /* foreign typedef in local-only module */
+        return LY_SUCCESS;
+    }
+
     LY_ATOMIC_INC_BARRIER(leaf->type->refcount);
 
     /* store default value, if any */
@@ -2814,7 +2924,7 @@ lys_compile_node_type(struct lysc_ctx *ctx, struct lysp_node *context_node, stru
     /* type-specific checks */
     if (leaf->type->basetype == LY_TYPE_UNION) {
         t = ((struct lysc_type_union *)leaf->type)->types;
-        count = LY_ARRAY_COUNT(t);
+        count = LYA_COUNT(t);
     } else {
         t = &leaf->type;
         count = 1;
@@ -3028,6 +3138,7 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
                 /* use the current module */
                 mod = ctx->cur_mod;
                 break;
+            case LY_VALUE_CBOR:
             case LY_VALUE_JSON:
             case LY_VALUE_LYB:
                 if (!ctx_node) {
@@ -3121,13 +3232,13 @@ lys_compile_node_list_unique(struct lysc_ctx *ctx, struct lysp_qname *uniques, s
     struct lysc_node *parent;
     const char *keystr, *delim;
     size_t len;
-    LY_ARRAY_COUNT_TYPE v;
+    LYA_COUNT_T v;
     int8_t config; /* -1 - not yet seen; 0 - LYS_CONFIG_R; 1 - LYS_CONFIG_W */
     uint16_t flags;
 
-    LY_ARRAY_FOR(uniques, v) {
+    LYA_FOR(uniques, v) {
         config = -1;
-        LY_ARRAY_NEW_RET(ctx->ctx, list->uniques, unique, LY_EMEM);
+        LYA_ADD_ITEM(list->uniques, unique, LOGMEM(ctx->ctx); return LY_EMEM);
         keystr = uniques[v].str;
         while (keystr) {
             delim = strpbrk(keystr, " \t\n");
@@ -3141,7 +3252,7 @@ lys_compile_node_list_unique(struct lysc_ctx *ctx, struct lysp_qname *uniques, s
             }
 
             /* unique node must be present */
-            LY_ARRAY_NEW_RET(ctx->ctx, *unique, key, LY_EMEM);
+            LYA_ADD_ITEM(*unique, key, LOGMEM(ctx->ctx); return LY_EMEM);
             ret = lysc_resolve_schema_nodeid(ctx, keystr, len, &list->node, LY_VALUE_SCHEMA, (void *)uniques[v].mod,
                     LYS_LEAF, (const struct lysc_node **)key, &flags);
             if (ret != LY_SUCCESS) {
@@ -3285,29 +3396,31 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
         }
 
         lysc_update_path(ctx, list->module, key->name);
+
         /* key must have the same config flag as the list itself */
         if ((list->flags & LYS_CONFIG_MASK) != (key->flags & LYS_CONFIG_MASK)) {
             LOGVAL(ctx->ctx, NULL, LYVE_SEMANTICS, "Key of a configuration list must not be a state leaf.");
-            return LY_EVALID;
+            goto key_invalid;
         }
         if (ctx->pmod->version < LYS_VERSION_1_1) {
             /* YANG 1.0 denies key to be of empty type */
             if (key->type->basetype == LY_TYPE_EMPTY) {
                 LOGVAL(ctx->ctx, NULL, LYVE_SEMANTICS,
                         "List key of the \"empty\" type is allowed only in YANG 1.1 modules.");
-                return LY_EVALID;
+                goto key_invalid;
             }
         } else {
             /* when and if-feature are illegal on list keys */
             if (key->when) {
                 LOGVAL(ctx->ctx, NULL, LYVE_SEMANTICS, "List's key must not have any \"when\" statement.");
-                return LY_EVALID;
+                goto key_invalid;
             }
             /* unable to check if-features but compilation would fail if disabled */
         }
 
         /* check status */
-        LY_CHECK_RET(lysc_check_status(ctx, NULL, list->flags, list->module, list->name, key->flags, key->module, key->name));
+        LY_CHECK_GOTO(lysc_check_status(ctx, NULL, list->flags, list->module, list->name, key->flags, key->module,
+                key->name), key_invalid);
 
         /* ignore default values of the key */
         if (key->dflt.str) {
@@ -3386,6 +3499,10 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
 
 done:
     return ret;
+
+key_invalid:
+    lysc_update_path(ctx, NULL, NULL);
+    return LY_EVALID;
 }
 
 /**
@@ -3470,7 +3587,7 @@ lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, s
         ret = lys_compile_node(ctx, child_p, node, 0, child_set);
     } else {
         /* we need the implicit case first, so create a fake parsed (shorthand) case */
-        cs_p = calloc(1, sizeof *cs_p);
+        cs_p = lysp_parser_node_new(sizeof *cs_p, NULL);
         LY_CHECK_ERR_RET(!cs_p, LOGMEM(ctx->ctx), LY_EMEM);
         cs_p->nodetype = LYS_CASE;
         DUP_STRING_GOTO(ctx->ctx, child_p->name, cs_p->name, ret, revert_sh_case);
@@ -3679,7 +3796,7 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
     struct lysp_node *pnode;
     struct lysp_node_grp *grp;
     const struct lysp_node_grp *ext_grp;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     const char *id, *name, *prefix, *local_pref;
     uint32_t prefix_len, name_len;
     struct lysp_module *pmod, *found = NULL;
@@ -3725,7 +3842,7 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
             found = pmod;
         } else {
             /* ... and all the submodules */
-            LY_ARRAY_FOR(pmod->includes, u) {
+            LYA_FOR(pmod->includes, u) {
                 if ((grp = match_grouping(pmod->includes[u].submodule->groupings, name))) {
                     found = (struct lysp_module *)pmod->includes[u].submodule;
                     break;
@@ -3841,6 +3958,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     LY_ERR rc = LY_SUCCESS;
     ly_bool enabled, child_unres_disabled = 0;
     uint32_t i, grp_stack_count, opt_prev = ctx->compile_opts;
+    LYA_COUNT_T orig_u, u;
     struct lysp_node_grp *grp = NULL;
     uint16_t uses_flags = 0;
     struct lysp_module *grp_mod;
@@ -3848,6 +3966,11 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
 
     /* find the referenced grouping */
     LY_CHECK_RET(lys_compile_uses_find_grouping(ctx, uses_p, &grp, &grp_mod));
+
+    if ((ctx->compile_opts & LYS_COMPILE_LOCAL_ONLY) && (ctx->pmod->mod != grp_mod->mod)) {
+        /* external grouping, do not resolve or compile */
+        return LY_SUCCESS;
+    }
 
     /* grouping must not reference themselves - stack in ctx maintains list of groupings currently being applied */
     grp_stack_count = ctx->groupings.count;
@@ -3936,9 +4059,20 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     }
     LY_CHECK_GOTO(rc, cleanup);
 
-    /* compile uses and grouping extensions into the parent */
-    COMPILE_EXTS_GOTO(ctx, uses_p->exts, parent->exts, parent, rc, cleanup);
-    COMPILE_EXTS_GOTO(ctx, grp->exts, parent->exts, parent, rc, cleanup);
+    if (parent) {
+        /* compile uses and grouping extensions into the parent */
+        COMPILE_EXTS_GOTO(ctx, uses_p->exts, parent->exts, parent, rc, cleanup);
+        COMPILE_EXTS_GOTO(ctx, grp->exts, parent->exts, parent, rc, cleanup);
+    } else {
+        /* compile uses and grouping extensions into the module */
+        orig_u = LYA_COUNT(ctx->cmod->exts);
+        COMPILE_EXTS_GOTO(ctx, uses_p->exts, ctx->cmod->exts, uses_p, rc, cleanup);
+        COMPILE_EXTS_GOTO(ctx, grp->exts, ctx->cmod->exts, grp, rc, cleanup);
+        for (u = orig_u; u < LYA_COUNT(ctx->cmod->exts); ++u) {
+            ctx->cmod->exts[u].parent = ctx->cmod;
+            ctx->cmod->exts[u].parent_stmt = LY_STMT_MODULE;
+        }
+    }
 
 cleanup:
     /* restore previous context */
@@ -4013,17 +4147,6 @@ lys_compile_grouping_pathlog(struct lysc_ctx *ctx, struct lysp_node *node, char 
         len = r;
     }
 
-    if (!len) {
-        /* root node path */
-        *path = strdup("/");
-        if (!*path) {
-            len = -1;
-            goto cleanup;
-        }
-
-        len = 1;
-    }
-
 cleanup:
     if (len < 0) {
         free(*path);
@@ -4071,9 +4194,10 @@ lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysp_
         LOGMEM(ctx->ctx);
         return LY_EMEM;
     }
-    strncpy(ctx->path, path, LYSC_CTX_BUFSIZE - 1);
-    ctx->path_len = (uint32_t)len;
-    free(path);
+    free(ctx->path);
+    ctx->path = path;
+    ctx->path_used = len;
+    ctx->path_size = ctx->path_used ? ctx->path_used + 1 : 0;
 
     lysc_update_path(ctx, NULL, "{grouping}");
     lysc_update_path(ctx, NULL, grp->name);
@@ -4081,8 +4205,10 @@ lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysp_
     lysc_update_path(ctx, NULL, NULL);
     lysc_update_path(ctx, NULL, NULL);
 
-    ctx->path_len = 1;
-    ctx->path[1] = '\0';
+    free(ctx->path);
+    ctx->path = NULL;
+    ctx->path_used = 0;
+    ctx->path_size = 0;
 
 cleanup:
     lysc_node_container_free(ctx->ctx, &fake_container);
@@ -4094,7 +4220,7 @@ LY_ERR
 lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node *parent, uint16_t inherited_flags,
         struct ly_set *child_set)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR rc = LY_SUCCESS;
     struct lysc_node *node = NULL;
     uint32_t prev_opts = ctx->compile_opts;
 
@@ -4143,7 +4269,8 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node
             LOGVAL(ctx->ctx, NULL, LYVE_SEMANTICS,
                     "Action \"%s\" is placed inside %s.", pnode->name,
                     (ctx->compile_opts & LYS_IS_NOTIF) ? "notification" : "another RPC/action");
-            return LY_EVALID;
+            rc = LY_EVALID;
+            goto cleanup;
         }
         node = (struct lysc_node *)calloc(1, sizeof(struct lysc_node_action));
         node_compile_spec = lys_compile_node_action;
@@ -4154,26 +4281,32 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node
             LOGVAL(ctx->ctx, NULL, LYVE_SEMANTICS,
                     "Notification \"%s\" is placed inside %s.", pnode->name,
                     (ctx->compile_opts & LYS_IS_NOTIF) ? "another notification" : "RPC/action");
-            return LY_EVALID;
+            rc = LY_EVALID;
+            goto cleanup;
         }
         node = (struct lysc_node *)calloc(1, sizeof(struct lysc_node_notif));
         node_compile_spec = lys_compile_node_notif;
         ctx->compile_opts |= LYS_COMPILE_NOTIFICATION;
         break;
     case LYS_USES:
-        ret = lys_compile_uses(ctx, (struct lysp_node_uses *)pnode, parent, inherited_flags, child_set);
-        lysc_update_path(ctx, NULL, NULL);
-        lysc_update_path(ctx, NULL, NULL);
-        return ret;
+        rc = lys_compile_uses(ctx, (struct lysp_node_uses *)pnode, parent, inherited_flags, child_set);
+        goto cleanup;
     default:
         LOGINT(ctx->ctx);
-        return LY_EINT;
+        rc = LY_EINT;
+        goto cleanup;
     }
-    LY_CHECK_ERR_RET(!node, LOGMEM(ctx->ctx), LY_EMEM);
+    LY_CHECK_ERR_GOTO(!node, LOGMEM(ctx->ctx); rc = LY_EMEM, cleanup);
 
-    ret = lys_compile_node_(ctx, pnode, parent, inherited_flags, node_compile_spec, node, child_set);
+    rc = lys_compile_node_(ctx, pnode, parent, inherited_flags, node_compile_spec, node, child_set);
 
+cleanup:
     ctx->compile_opts = prev_opts;
-    lysc_update_path(ctx, NULL, NULL);
-    return ret;
+    if (pnode->nodetype != LYS_USES) {
+        lysc_update_path(ctx, NULL, NULL);
+    } else {
+        lysc_update_path(ctx, NULL, NULL);
+        lysc_update_path(ctx, NULL, NULL);
+    }
+    return rc;
 }

@@ -1,0 +1,149 @@
+{
+  "ietf-yang-schema-comparison-output:schema-comparison": {
+    "comparison": [
+      {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
+        "source": {
+          "module": "length",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "length",
+          "revision": "2000-01-02"
+        },
+        "conformance": "backwards-compatible",
+        "suggested-target-version": "1.1.0",
+        "local-comparison": [
+          {
+            "parent-path": "/",
+            "identifier": "l1-type",
+            "stmt-type": "typedef",
+            "changed": [
+              {
+                "stmt": "length",
+                "parent-stmt": "typedef",
+                "change": "modified",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "type": {
+                "name": "string",
+                "length": {
+                  "restriction": "min..10|20..50|100"
+                }
+              }
+            },
+            "new": {
+              "type": {
+                "name": "string",
+                "length": {
+                  "restriction": "min..50|100|1000"
+                }
+              }
+            }
+          }
+        ],
+        "node-comparison": [
+          {
+            "node": "/length:l1",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "length",
+                "change": "modified",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "string",
+                "length": {
+                  "restriction": "0..10|20..50|100"
+                }
+              }
+            },
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "string",
+                "length": {
+                  "restriction": "0..50|100|1000"
+                }
+              }
+            }
+          },
+          {
+            "node": "/length:l2",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "length",
+                "change": "modified",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "string",
+                "length": {
+                  "restriction": "0|100..200"
+                }
+              }
+            },
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "string",
+                "length": {
+                  "restriction": "0..50|55..200"
+                }
+              }
+            }
+          },
+          {
+            "node": "/length:l3",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "length",
+                "change": "removed",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "string",
+                "length": {
+                  "restriction": "10..20"
+                }
+              }
+            },
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "string"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -73,6 +73,14 @@ COMMAND commands[] = {
         "Load, validate and optionally print instance data", "d:ef:F:hmo:O:R:r:nt:x:k:"
     },
     {
+        "sample", cmd_sample_opt, cmd_sample_dep, cmd_sample_exec, NULL, cmd_sample_help, NULL,
+        "Generate a sample data skeleton for a module", "f:ho:"
+    },
+    {
+        "sid", cmd_sid_opt, cmd_sid_dep, cmd_sid_exec, NULL, cmd_sid_help, NULL,
+        "Generate, update or extend a .sid file of a loaded module (RFC 9595)", "ho:f:"
+    },
+    {
         "list", cmd_list_opt, cmd_list_dep, cmd_list_exec, NULL, cmd_list_help, NULL,
         "List all the loaded modules", "f:h"
     },

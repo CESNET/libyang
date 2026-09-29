@@ -1,0 +1,137 @@
+{
+  "ietf-yang-schema-comparison-output:schema-comparison": {
+    "comparison": [
+      {
+        "fully-resolved": [null],
+        "source": {
+          "module": "type",
+          "revision": "2000-01-01"
+        },
+        "source-import": [
+          {
+            "module": "type-imp",
+            "revision": "2000-01-01"
+          }
+        ],
+        "target": {
+          "module": "type",
+          "revision": "2000-01-02"
+        },
+        "target-import": [
+          {
+            "module": "type-imp",
+            "revision": "2000-01-02"
+          }
+        ],
+        "conformance": "non-backwards-compatible",
+        "suggested-target-version": "2.0.0",
+        "node-comparison": [
+          {
+            "node": "/type:l1",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "type",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "uint8"
+              }
+            },
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "int8"
+              }
+            }
+          },
+          {
+            "node": "/type:l2",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "type",
+                "parent-stmt": "type",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "union",
+                "union-type": [
+                  {
+                    "name": "string"
+                  },
+                  {
+                    "name": "string"
+                  }
+                ]
+              }
+            },
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "union",
+                "union-type": [
+                  {
+                    "name": "uint32",
+                    "range": {
+                      "restriction": "10..10000"
+                    }
+                  },
+                  {
+                    "name": "string"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "node": "/type:l3",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "type",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "string"
+              }
+            },
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "uint32",
+                "range": {
+                  "restriction": "10..10000"
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

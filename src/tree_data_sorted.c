@@ -32,7 +32,6 @@
 #include "metadata.h"
 #include "plugins_internal.h"
 #include "plugins_types.h"
-#include "tree.h"
 #include "tree_data.h"
 #include "tree_data_internal.h"
 #include "tree_data_sorted.h"

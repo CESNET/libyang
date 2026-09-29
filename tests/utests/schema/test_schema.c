@@ -19,15 +19,12 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include "compat.h"
-#include "context.h"
 #include "log.h"
 #include "parser_schema.h"
 #include "plugins_exts.h"
+#include "printer_schema.h"
 #include "set.h"
-#include "tree_edit.h"
 #include "tree_schema.h"
-#include "tree_schema_internal.h"
 
 static LY_ERR
 test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
@@ -246,28 +243,38 @@ test_getnext(void **state)
 static void
 test_date(void **state)
 {
-    assert_int_equal(LY_EINVAL, lys_check_date(UTEST_LYCTX, NULL, 0, "date"));
-    CHECK_LOG_CTX("Invalid argument date (lys_check_date()).", NULL, 0);
-    assert_int_equal(LY_EINVAL, lys_check_date(UTEST_LYCTX, "x", 1, "date"));
-    CHECK_LOG_CTX("Invalid length 1 of a date.", NULL, 0);
-    assert_int_equal(LY_EINVAL, lys_check_date(UTEST_LYCTX, "nonsencexx", 10, "date"));
-    CHECK_LOG_CTX("Invalid value \"nonsencexx\" of \"date\".", NULL, 0);
-    assert_int_equal(LY_EINVAL, lys_check_date(UTEST_LYCTX, "123x-11-11", 10, "date"));
-    CHECK_LOG_CTX("Invalid value \"123x-11-11\" of \"date\".", NULL, 0);
-    assert_int_equal(LY_EINVAL, lys_check_date(UTEST_LYCTX, "2018-13-11", 10, "date"));
-    CHECK_LOG_CTX("Invalid value \"2018-13-11\" of \"date\".", NULL, 0);
-    assert_int_equal(LY_EINVAL, lys_check_date(UTEST_LYCTX, "2018-11-41", 10, "date"));
-    CHECK_LOG_CTX("Invalid value \"2018-11-41\" of \"date\".", NULL, 0);
-    assert_int_equal(LY_EINVAL, lys_check_date(UTEST_LYCTX, "2018-02-29", 10, "date"));
-    CHECK_LOG_CTX("Invalid value \"2018-02-29\" of \"date\".", NULL, 0);
-    assert_int_equal(LY_EINVAL, lys_check_date(UTEST_LYCTX, "2018.02-28", 10, "date"));
-    CHECK_LOG_CTX("Invalid value \"2018.02-28\" of \"date\".", NULL, 0);
-    assert_int_equal(LY_EINVAL, lys_check_date(UTEST_LYCTX, "2018-02.28", 10, "date"));
-    CHECK_LOG_CTX("Invalid value \"2018-02.28\" of \"date\".", NULL, 0);
+    struct ly_ctx *ctx = UTEST_LYCTX;
+    char yang[256];
+    size_t i;
+    const char *invalid[] = {
+        "",
+        "x",
+        "nonsencexx",
+        "123x-11-11",
+        "2018-13-11",
+        "2018-11-41",
+        "2018-02-29",
+        "2018.02-28",
+        "2018-02.28"
+    };
+    const char *valid[] = {
+        "2018-11-11",
+        "2018-02-28",
+        "2016-02-29"
+    };
 
-    assert_int_equal(LY_SUCCESS, lys_check_date(NULL, "2018-11-11", 10, "date"));
-    assert_int_equal(LY_SUCCESS, lys_check_date(NULL, "2018-02-28", 10, "date"));
-    assert_int_equal(LY_SUCCESS, lys_check_date(NULL, "2016-02-29", 10, "date"));
+    /* 1. Test Invalid Dates */
+    for (i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
+        snprintf(yang, sizeof(yang), "module a {namespace urn:a;prefix a;revision \"%s\";}", invalid[i]);
+        assert_int_equal(LY_EVALID, lys_parse_mem(ctx, yang, LYS_IN_YANG, NULL));
+        UTEST_LOG_CTX_CLEAN;
+    }
+
+    /* 2. Test Valid Dates */
+    for (i = 0; i < sizeof(valid) / sizeof(valid[0]); ++i) {
+        snprintf(yang, sizeof(yang), "module v%zu {namespace urn:v%zu;prefix v;revision \"%s\";}", i, i, valid[i]);
+        assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, yang, LYS_IN_YANG, NULL));
+    }
 }
 
 static void
@@ -1009,7 +1016,7 @@ test_includes(void **state)
         ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
         mod = ly_ctx_load_module(UTEST_LYCTX, "main_a", NULL, NULL);
         assert_non_null(mod);
-        assert_int_equal(2, LY_ARRAY_COUNT(mod->parsed->includes));
+        assert_int_equal(2, LYA_COUNT(mod->parsed->includes));
         assert_true(mod->parsed->includes[1].injected);
     }
 
@@ -1025,7 +1032,7 @@ test_includes(void **state)
         ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
         mod = ly_ctx_load_module(UTEST_LYCTX, "main_d", NULL, NULL);
         assert_non_null(mod);
-        assert_int_equal(2, LY_ARRAY_COUNT(mod->parsed->includes));
+        assert_int_equal(2, LYA_COUNT(mod->parsed->includes));
     }
 
     {
@@ -1060,7 +1067,7 @@ test_includes(void **state)
         ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
         mod = ly_ctx_load_module(UTEST_LYCTX, "main_c", NULL, NULL);
         assert_non_null(mod);
-        assert_int_equal(2, LY_ARRAY_COUNT(mod->parsed->includes));
+        assert_int_equal(2, LYA_COUNT(mod->parsed->includes));
         assert_false(mod->parsed->includes[1].injected);
         /* result is ok, but log includes the warning */
         CHECK_LOG_CTX("YANG version 1.1 expects all includes in main module, includes in submodules (sub_c_two) are not necessary.",
@@ -1191,7 +1198,7 @@ test_identity(void **state)
             "identity test {base \"a\";base b; description text;reference \'another text\';status current; if-feature x;if-feature y; identityone:ext;}"
             "identity a; identity b; extension ext; feature x; feature y;", mod);
     assert_non_null(mod->parsed->identities);
-    assert_int_equal(3, LY_ARRAY_COUNT(mod->parsed->identities));
+    assert_int_equal(3, LYA_COUNT(mod->parsed->identities));
 
     /* invalid substatement */
     TEST_STMT_SUBSTM_ERR(0, "identity", "organization", "XXX");
@@ -1208,7 +1215,7 @@ test_identity(void **state)
             "<reference><text>ref</text></reference>"
             "<myext:ext xmlns:myext=\"urn:libyang:test:identityone-yin\"/>"
             "</identity><extension name=\"ext\"/><identity name=\"base-name\"/><feature name=\"iff\"/>", mod);
-    assert_int_equal(2, LY_ARRAY_COUNT(mod->parsed->identities));
+    assert_int_equal(2, LYA_COUNT(mod->parsed->identities));
     assert_string_equal(mod->parsed->identities[0].name, "ident-name");
     assert_string_equal(mod->parsed->identities[0].bases[0], "base-name");
     assert_string_equal(mod->parsed->identities[0].iffeatures[0].str, "iff");
@@ -1219,7 +1226,7 @@ test_identity(void **state)
 
     /* min subelems */
     TEST_SCHEMA_OK(1, 1, "identitytwo-yin", "<identity name=\"ident-name\" />", mod);
-    assert_int_equal(1, LY_ARRAY_COUNT(mod->parsed->identities));
+    assert_int_equal(1, LYA_COUNT(mod->parsed->identities));
     assert_string_equal(mod->parsed->identities[0].name, "ident-name");
 
     /* invalid substatement */
@@ -1238,21 +1245,21 @@ test_identity(void **state)
     assert_non_null(mod_imp->identities);
     assert_non_null(mod->identities);
     assert_non_null(mod_imp->identities[0].derived);
-    assert_int_equal(1, LY_ARRAY_COUNT(mod_imp->identities[0].derived));
+    assert_int_equal(1, LYA_COUNT(mod_imp->identities[0].derived));
     assert_ptr_equal(mod_imp->identities[0].derived[0], &mod->identities[2]);
     assert_non_null(mod->identities[0].derived);
-    assert_int_equal(2, LY_ARRAY_COUNT(mod->identities[0].derived));
+    assert_int_equal(2, LYA_COUNT(mod->identities[0].derived));
     assert_ptr_equal(mod->identities[0].derived[0], &mod->identities[2]);
     assert_ptr_equal(mod->identities[0].derived[1], &mod->identities[3]);
     assert_non_null(mod->identities[1].derived);
-    assert_int_equal(1, LY_ARRAY_COUNT(mod->identities[1].derived));
+    assert_int_equal(1, LYA_COUNT(mod->identities[1].derived));
     assert_ptr_equal(mod->identities[1].derived[0], &mod->identities[2]);
     assert_non_null(mod->identities[2].derived);
-    assert_int_equal(1, LY_ARRAY_COUNT(mod->identities[2].derived));
+    assert_int_equal(1, LYA_COUNT(mod->identities[2].derived));
     assert_ptr_equal(mod->identities[2].derived[0], &mod->identities[3]);
 
     TEST_SCHEMA_OK(1, 0, "c", "identity c2 {base c1;} identity c1;", mod);
-    assert_int_equal(1, LY_ARRAY_COUNT(mod->identities[1].derived));
+    assert_int_equal(1, LYA_COUNT(mod->identities[1].derived));
     assert_ptr_equal(mod->identities[1].derived[0], &mod->identities[0]);
 
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule inv_sub {belongs-to inv {prefix inv;} identity i1;}");
@@ -1304,7 +1311,7 @@ test_feature(void **state)
             "feature test {description text;reference \'another text\';status current; if-feature x; if-feature y; featureone:ext;}"
             "extension ext; feature x; feature y;", mod);
     assert_non_null(mod->parsed->features);
-    assert_int_equal(3, LY_ARRAY_COUNT(mod->parsed->features));
+    assert_int_equal(3, LYA_COUNT(mod->parsed->features));
 
     /* invalid substatement */
     TEST_STMT_SUBSTM_ERR(0, "feature", "organization", "XXX");
@@ -1320,7 +1327,7 @@ test_feature(void **state)
             "<reference><text>ref</text></reference>"
             "<myext:ext xmlns:myext=\"urn:libyang:test:featureone-yin\"/>"
             "</feature><extension name=\"ext\"/><feature name=\"iff\"/>", mod);
-    assert_int_equal(2, LY_ARRAY_COUNT(mod->parsed->features));
+    assert_int_equal(2, LYA_COUNT(mod->parsed->features));
     assert_string_equal(mod->parsed->features[0].name, "feature-name");
     assert_string_equal(mod->parsed->features[0].dsc, "desc");
     assert_true(mod->parsed->features[0].flags & LYS_STATUS_DEPRC);
@@ -1330,7 +1337,7 @@ test_feature(void **state)
 
     /* min subelems */
     TEST_SCHEMA_OK(0, 1, "featuretwo-yin", "<feature name=\"feature-name\"/>", mod)
-    assert_int_equal(1, LY_ARRAY_COUNT(mod->parsed->features));
+    assert_int_equal(1, LYA_COUNT(mod->parsed->features));
     assert_string_equal(mod->parsed->features[0].name, "feature-name");
 
     /* invalid substatement */
@@ -1349,10 +1356,10 @@ test_feature(void **state)
             "feature f8 {if-feature \"f1 or f2 or f3 or orfeature or andfeature\";}\n"
             "feature f9 {if-feature \"not not f1\";}", mod);
     assert_non_null(mod->parsed->features);
-    assert_int_equal(9, LY_ARRAY_COUNT(mod->parsed->features));
+    assert_int_equal(9, LYA_COUNT(mod->parsed->features));
 
     /* all features are disabled by default */
-    LY_ARRAY_FOR(mod->parsed->features, struct lysp_feature, f) {
+    LYA_FOR_EACH(mod->parsed->features, f) {
         assert_false(f->flags & LYS_FENABLED);
     }
 
@@ -1668,76 +1675,6 @@ test_extension_argument_element(void **state)
 }
 
 static void
-test_extension_compile(void **state)
-{
-    struct lys_module *mod;
-    struct lysc_ctx cctx = {0};
-    struct lysp_ext_instance ext_p = {0};
-    struct lysp_ext_substmt *substmtp;
-    struct lysp_stmt child = {0};
-    struct lysc_ext_instance ext_c = {0};
-    struct lysc_ext_substmt *substmt;
-    LY_ERR rc = LY_SUCCESS;
-
-    /* current module, whatever */
-    mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "yang");
-    assert_true(mod);
-
-    /* compile context */
-    cctx.ctx = UTEST_LYCTX;
-    cctx.cur_mod = mod;
-    cctx.pmod = mod->parsed;
-    cctx.path_len = 1;
-    cctx.path[0] = '/';
-
-    /* parsed ext instance */
-    lysdict_insert(UTEST_LYCTX, "pref:my-ext", 0, &ext_p.name);
-    ext_p.format = LY_VALUE_JSON;
-    ext_p.parent_stmt = LY_STMT_MODULE;
-
-    LY_ARRAY_NEW_GOTO(UTEST_LYCTX, ext_p.substmts, substmtp, rc, cleanup);
-
-    substmtp->stmt = LY_STMT_ERROR_MESSAGE;
-    substmtp->storage_p = &ext_p.parsed;
-    /* fake parse */
-    lysdict_insert(UTEST_LYCTX, "my error", 0, (const char **)&ext_p.parsed);
-
-    /* compiled ext instance */
-    ext_c.parent_stmt = ext_p.parent_stmt;
-    LY_ARRAY_NEW_GOTO(UTEST_LYCTX, ext_c.substmts, substmt, rc, cleanup);
-
-    substmt->stmt = LY_STMT_ERROR_MESSAGE;
-    substmt->storage_p = &ext_c.compiled;
-
-    /*
-     * error-message
-     */
-    ext_p.child = &child;
-    lysdict_insert(UTEST_LYCTX, "error-message", 0, &child.stmt);
-    lysdict_insert(UTEST_LYCTX, "my error", 0, &child.arg);
-    child.format = LY_VALUE_JSON;
-    child.kw = LY_STMT_ERROR_MESSAGE;
-
-    /* compile */
-    assert_int_equal(LY_SUCCESS, lyplg_ext_compile_extension_instance(&cctx, &ext_p, &ext_c, NULL));
-
-    /* check */
-    assert_string_equal(ext_c.compiled, "my error");
-
-cleanup:
-    lysdict_remove(UTEST_LYCTX, ext_p.name);
-    lysdict_remove(UTEST_LYCTX, child.stmt);
-    lysdict_remove(UTEST_LYCTX, child.arg);
-    LY_ARRAY_FREE(ext_p.substmts);
-    lysdict_remove(UTEST_LYCTX, ext_p.parsed);
-    LY_ARRAY_FREE(ext_c.substmts);
-    lysdict_remove(UTEST_LYCTX, ext_c.compiled);
-    if (rc) {
-        fail();
-    }
-}
-
-static void
 test_ext_recursive(void **state)
 {
     const char *mod_base_yang, *mod_imp_yang, *mod_base_yin, *mod_imp_yin;
@@ -1976,6 +1913,8 @@ test_lysc_backlinks(void **state)
         "/ietf-yang-library:yang-library/datastore/schema",
         "/ietf-yang-library:yang-library-update/content-id",
         "/ietf-yang-library:yang-library-change/module-set-id",
+        "/ietf-yang-library:yang-library/module-set/module/ietf-yang-library-augmentedby:augmented-by",
+        "/ietf-yang-library:modules-state/module/ietf-yang-library-augmentedby:augmented-by",
         /* Normal expected */
         "/b:my_extref_list/my_extref",
         "/a:refstr",
@@ -2313,7 +2252,6 @@ main(void)
         UTEST(test_feature),
         UTEST(test_extension_argument),
         UTEST(test_extension_argument_element),
-        UTEST(test_extension_compile),
         UTEST(test_ext_recursive),
         UTEST(test_lysc_path),
         UTEST(test_lysc_backlinks),

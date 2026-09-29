@@ -1,0 +1,32 @@
+module if-feature {
+    namespace "urn:test:if-feature";
+    prefix iff;
+    yang-version 1.1;
+
+    revision 2000-01-01;
+
+    feature f;
+
+    feature f2;
+
+    identity id;
+
+    typedef t1 {
+        type enumeration {
+            enum e1;
+            enum e2;
+        }
+    }
+
+    grouping grp {
+        leaf l {
+            if-feature "not f";
+            type string;
+            mandatory true;
+        }
+    }
+
+    container cont {
+        uses grp;
+    }
+}

@@ -1,0 +1,11 @@
+module type-imp {
+    namespace "urn:test:type-imp";
+    prefix typi;
+    yang-version 1.1;
+
+    revision 2000-01-01;
+
+    typedef foreign-tpdf {
+        type string;
+    }
+}

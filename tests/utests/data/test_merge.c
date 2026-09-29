@@ -654,8 +654,8 @@ test_dflt(void **state)
     source = NULL;
 
     /* c should be replaced and now be default */
-    assert_string_equal(lyd_child(target)->prev->schema->name, "c");
-    assert_true(lyd_child(target)->prev->flags & LYD_DEFAULT);
+    assert_string_equal(lyd_child_no_keys(target)->prev->schema->name, "c");
+    assert_true(lyd_child_no_keys(target)->prev->flags & LYD_DEFAULT);
 
     lyd_free_all(target);
     lyd_free_all(source);
@@ -696,7 +696,7 @@ test_dflt2(void **state)
     assert_int_equal(lyd_merge_siblings(&target, source, 0), LY_SUCCESS);
 
     /* c should not be replaced, so c remains not default */
-    assert_false(lyd_child(target)->flags & LYD_DEFAULT);
+    assert_false(lyd_child_no_keys(target)->flags & LYD_DEFAULT);
 
     lyd_free_all(target);
     lyd_free_all(source);

@@ -18,7 +18,6 @@
 
 /* LOCAL INCLUDE HEADERS */
 #include "libyang.h"
-#include "path.h"
 
 #define MODULE_CREATE_YANG(MOD_NAME, NODES) \
     "module " MOD_NAME " {\n" \
@@ -48,13 +47,15 @@
 #define LYB_CHECK_START \
     struct lyd_node *tree_1; \
     struct lyd_node *tree_2; \
-    char *xml_out, *data;
+    char *xml_out, *data; \
+    uint32_t xml_len;
 
 #define LYB_CHECK_END \
     { \
         CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, LY_SUCCESS, tree_1); \
-        assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_SIBLINGS), 0); \
-        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2)); \
+        assert_int_equal(utest_lyd_print_mem_len(&xml_out, &xml_len, tree_1, LYD_LYB, LYD_PRINT_SIBLINGS), 0); \
+        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, xml_out, xml_len, LYD_LYB, \
+                LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2)); \
         assert_non_null(tree_2); \
         CHECK_LYD(tree_1, tree_2); \
         free(xml_out); \
@@ -79,12 +80,12 @@ static void
 test_data_xml(void **state)
 {
     const char *schema, *schema2;
-    const enum ly_path_pred_type val1[] = {0, 0};
-    const enum ly_path_pred_type val2[] = {LY_PATH_PREDTYPE_LIST, 0};
-    const enum ly_path_pred_type val3[] = {LY_PATH_PREDTYPE_LEAFLIST};
-    const enum ly_path_pred_type val4[] = {LY_PATH_PREDTYPE_LIST, 0};
-    const enum ly_path_pred_type val5[] = {LY_PATH_PREDTYPE_LIST, 0};
-    const enum ly_path_pred_type val6[] = {LY_PATH_PREDTYPE_LIST, 0};
+    const int val1[] = {0, 0};
+    const int val2[] = {0, 0};
+    const int val3[] = {0};
+    const int val4[] = {0, 0};
+    const int val5[] = {0, 0};
+    const int val6[] = {0, 0};
 
     /* xml test */
     schema = MODULE_CREATE_YANG("mod", "container cont {leaf l2 {type empty;}}");

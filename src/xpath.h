@@ -20,8 +20,8 @@
 
 #include "compat.h"
 #include "log.h"
-#include "tree.h"
 #include "tree_schema.h"
+#include "utils.h"
 
 struct ly_ctx;
 struct lyd_node;

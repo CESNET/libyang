@@ -1,0 +1,19 @@
+module ietf-bad-boilerplate {
+  yang-version 1.1;
+  namespace "urn:ietf:params:xml:ns:yang:ietf-bad-boilerplate";
+  prefix ibb;
+
+  organization "IETF NETMOD Working Group";
+  contact "WG Web: <https://datatracker.ietf.org/wg/netmod/>";
+
+  // 1. Missing IETF Trust Copyright (Triggers 3.1)
+  // 2. Missing "This version of this YANG module is part of RFC..." (Triggers Appendix B)
+  // 3. Uses the word "MUST", but lacks the RFC 8174 text block (Triggers BCP 14 check)
+  description
+    "This module MUST intentionally fail the text boilerplate checks.";
+
+  revision 2026-07-08 {
+    description "Initial revision.";
+    reference "RFC XXXX: Test Module";
+  }
+}

@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "compat.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "tree_schema.h"
 
@@ -99,11 +100,11 @@ lyb_cache_node_hash_cb(struct lysc_node *node, void *UNUSED(data), ly_bool *UNUS
 void
 lyb_cache_ext_node_hash(const struct lys_module *mod)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lysc_ext_instance *ext;
     struct lysc_node *node;
 
-    LY_ARRAY_FOR(mod->compiled->exts, u) {
+    LYA_FOR(mod->compiled->exts, u) {
         ext = &mod->compiled->exts[u];
 
         /* data schema nodes */

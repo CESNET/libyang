@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief ietf-yang-types xpath1.0 type plugin.
  *
- * Copyright (c) 2021 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2021 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -21,9 +21,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libyang.h"
-
 #include "compat.h"
+#include "dict.h"
 #include "ly_common.h"
 #include "xml.h"
 #include "xpath.h"
@@ -222,11 +221,25 @@ lyplg_type_print_xpath10_value(const struct lyd_value_xpath10 *xp_val, LY_VALUE_
     *str_value = NULL;
     *err = NULL;
 
-    if (format == LY_VALUE_XML) {
-        /* null the local module so that all the prefixes are printed */
+    switch (format) {
+    case LY_VALUE_XML:
+        /* zero the local module so that all the prefixes are printed */
         mods = prefix_data;
         local_mod = mods->objs[0];
         mods->objs[0] = NULL;
+        break;
+    case LY_VALUE_SCHEMA:
+    case LY_VALUE_SCHEMA_RESOLVED:
+        /* nothing to do */
+        break;
+    case LY_VALUE_CANON:
+    case LY_VALUE_CBOR:
+    case LY_VALUE_JSON:
+    case LY_VALUE_LYB:
+    case LY_VALUE_STR_NS:
+        /* zero the local module so that the first node is always prefixed */
+        prefix_data = NULL;
+        break;
     }
 
     /* recursively print the expression */
@@ -249,7 +262,7 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
 {
     LY_ERR ret = LY_SUCCESS;
     const struct ly_err_item *e;
-    uint32_t value_size, temp_lo = LY_LOSTORE;
+    uint32_t value_size, *prev_lo, temp_lo = LY_LOSTORE;
     struct lyd_value_xpath10 *val;
     char *canon;
 
@@ -269,9 +282,9 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
     LY_CHECK_GOTO(ret, cleanup);
 
     /* parse */
-    ly_temp_log_options(&temp_lo);
+    prev_lo = ly_temp_log_options(&temp_lo);
     ret = lyxp_expr_parse(ctx, NULL, value_size ? value : "", value_size, 1, &val->exp);
-    ly_temp_log_options(NULL);
+    ly_temp_log_options(prev_lo);
     if (ret) {
         /* get a copy of the error */
         e = ly_err_last(ctx);
@@ -296,6 +309,7 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
 
     switch (format) {
     case LY_VALUE_CANON:
+    case LY_VALUE_CBOR:
     case LY_VALUE_JSON:
     case LY_VALUE_LYB:
     case LY_VALUE_STR_NS:
@@ -453,7 +467,7 @@ lyplg_type_print_xpath10(const struct ly_ctx *ctx, const struct lyd_value *value
 
     /* LY_VALUE_STR_NS should never be transformed */
     if ((val->format == LY_VALUE_STR_NS) || (format == LY_VALUE_CANON) || (format == LY_VALUE_JSON) ||
-            (format == LY_VALUE_LYB)) {
+            (format == LY_VALUE_LYB) || (format == LY_VALUE_CBOR)) {
         /* canonical */
         if (dynamic) {
             *dynamic = 0;

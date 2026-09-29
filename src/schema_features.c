@@ -24,10 +24,9 @@
 #include <string.h>
 
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "set.h"
-#include "tree.h"
-#include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 
@@ -100,7 +99,7 @@ lysc_iffeature_value(const struct lysc_iffeature *iff)
 LIBYANG_API_DEF LY_ERR
 lys_identity_iffeature_value(const struct lysc_ident *ident)
 {
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     ly_bool enabled;
     const struct lysp_ident *idents_p, *found_ident = NULL;
     struct lysp_include *includes;
@@ -109,7 +108,7 @@ lys_identity_iffeature_value(const struct lysc_ident *ident)
 
     /* Search parsed identity in the module. */
     idents_p = ident->module->parsed->identities;
-    LY_ARRAY_FOR(idents_p, u) {
+    LYA_FOR(idents_p, u) {
         if (idents_p[u].name == ident->name) {
             found_ident = &idents_p[u];
             break;
@@ -119,9 +118,9 @@ lys_identity_iffeature_value(const struct lysc_ident *ident)
     if (!found_ident) {
         /* It is not in the module, so it must be in some submodule. */
         includes = ident->module->parsed->includes;
-        LY_ARRAY_FOR(includes, u) {
+        LYA_FOR(includes, u) {
             idents_p = includes[u].submodule->identities;
-            LY_ARRAY_FOR(idents_p, v) {
+            LYA_FOR(idents_p, v) {
                 if (idents_p[v].name == ident->name) {
                     found_ident = &idents_p[v];
                     break;
@@ -151,7 +150,7 @@ lysp_feature_next(const struct lysp_feature *last, const struct lysp_module *pmo
     if (!*idx) {
         /* module features */
         features = pmod->features;
-    } else if ((*idx - 1) < LY_ARRAY_COUNT(pmod->includes)) {
+    } else if ((*idx - 1) < LYA_COUNT(pmod->includes)) {
         /* submodule features */
         features = pmod->includes[*idx - 1].submodule->features;
     } else {
@@ -160,7 +159,7 @@ lysp_feature_next(const struct lysp_feature *last, const struct lysp_module *pmo
     }
 
     /* get the next feature */
-    if (features && (!last || (&features[LY_ARRAY_COUNT(features) - 1] != last))) {
+    if (features && (!last || (&features[LYA_COUNT(features) - 1] != last))) {
         return !last ? &features[0] : (struct lysp_feature *)last + 1;
     }
 
@@ -217,7 +216,7 @@ LIBYANG_API_DEF LY_ERR
 lys_feature_value(const struct lys_module *module, const char *feature)
 {
     const struct lysp_feature *f;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     LY_CHECK_ARG_RET(NULL, module, module->parsed || module->compiled, feature, !strchr(feature, ':'), LY_EINVAL);
 
@@ -232,7 +231,7 @@ lys_feature_value(const struct lys_module *module, const char *feature)
         }
     } else {
         /* find the feature in the compiled enabled features */
-        LY_ARRAY_FOR(module->compiled->features, u) {
+        LYA_FOR(module->compiled->features, u) {
             if (!strcmp(module->compiled->features[u], feature)) {
                 /* feature enabled */
                 return LY_SUCCESS;
@@ -329,7 +328,7 @@ lys_compile_iffeature(const struct ly_ctx *ctx, const struct lysp_qname *qname, 
     const char *c = qname->str;
     int64_t i, j;
     int8_t op_len, last_not = 0, checkversion = 0;
-    LY_ARRAY_COUNT_TYPE f_size = 0, expr_size = 0, f_exp = 1;
+    LYA_COUNT_T f_size = 0, expr_size = 0, f_exp = 1;
     uint8_t op;
     struct iff_stack stack = {0, 0, NULL};
     struct lysp_feature *f;
@@ -422,7 +421,7 @@ lys_compile_iffeature(const struct ly_ctx *ctx, const struct lysp_qname *qname, 
     }
 
     /* allocate the memory */
-    LY_ARRAY_CREATE_RET(ctx, iff->features, f_size, LY_EMEM);
+    LYA_PREALLOC(iff->features, f_size, LOGMEM(ctx); return LY_EMEM);
     iff->expr = calloc((j = (expr_size / IFF_RECORDS_IN_BYTE) + ((expr_size % IFF_RECORDS_IN_BYTE) ? 1 : 0)), sizeof *iff->expr);
     stack.stack = malloc(expr_size * sizeof *stack.stack);
     LY_CHECK_ERR_GOTO(!stack.stack || !iff->expr, LOGMEM(ctx); rc = LY_EMEM, cleanup);
@@ -490,7 +489,7 @@ lys_compile_iffeature(const struct ly_ctx *ctx, const struct lysp_qname *qname, 
                 goto cleanup;
             }
             iff->features[f_size] = f;
-            LY_ARRAY_INCREMENT(iff->features);
+            LYA_INCREMENT(iff->features);
             f_size--;
         }
     }
@@ -507,7 +506,7 @@ lys_compile_iffeature(const struct ly_ctx *ctx, const struct lysp_qname *qname, 
 
 cleanup:
     if (rc) {
-        LY_ARRAY_FREE(iff->features);
+        LYA_FREE(iff->features);
         iff->features = NULL;
         free(iff->expr);
         iff->expr = NULL;
@@ -520,7 +519,7 @@ LY_ERR
 lys_eval_iffeatures(const struct ly_ctx *ctx, const struct lysp_qname *iffeatures, ly_bool *enabled)
 {
     LY_ERR ret;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lysc_iffeature iff;
 
     /* enabled by default */
@@ -531,7 +530,7 @@ lys_eval_iffeatures(const struct ly_ctx *ctx, const struct lysp_qname *iffeature
     }
 
     /* evaluate all if-feature conditions or until an unsatisfied one is found */
-    LY_ARRAY_FOR(iffeatures, u) {
+    LYA_FOR(iffeatures, u) {
         memset(&iff, 0, sizeof iff);
         LY_CHECK_RET(lys_compile_iffeature(ctx, &iffeatures[u], &iff));
 
@@ -655,7 +654,7 @@ static LY_ERR
 lys_compile_feature_circular_check(const struct ly_ctx *ctx, struct lysp_feature *feature, struct lysp_feature **depfeatures)
 {
     LY_ERR ret = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     struct ly_set recursion = {0};
     struct lysp_feature *drv;
 
@@ -663,7 +662,7 @@ lys_compile_feature_circular_check(const struct ly_ctx *ctx, struct lysp_feature
         return LY_SUCCESS;
     }
 
-    for (u = 0; u < LY_ARRAY_COUNT(depfeatures); ++u) {
+    for (u = 0; u < LYA_COUNT(depfeatures); ++u) {
         if (feature == depfeatures[u]) {
             LOGVAL(ctx, NULL, LYVE_REFERENCE, "Feature \"%s\" is indirectly referenced from itself.", feature->name);
             ret = LY_EVALID;
@@ -675,7 +674,7 @@ lys_compile_feature_circular_check(const struct ly_ctx *ctx, struct lysp_feature
 
     for (v = 0; v < recursion.count; ++v) {
         drv = recursion.objs[v];
-        for (u = 0; u < LY_ARRAY_COUNT(drv->depfeatures); ++u) {
+        for (u = 0; u < LYA_COUNT(drv->depfeatures); ++u) {
             if (feature == drv->depfeatures[u]) {
                 LOGVAL(ctx, NULL, LYVE_REFERENCE, "Feature \"%s\" is indirectly referenced from itself.", feature->name);
                 ret = LY_EVALID;
@@ -694,7 +693,7 @@ cleanup:
 LY_ERR
 lys_compile_feature_iffeatures(struct lysp_module *pmod)
 {
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     struct lysp_feature *f = NULL, **df;
     uint32_t idx = 0;
 
@@ -704,13 +703,13 @@ lys_compile_feature_iffeatures(struct lysp_module *pmod)
         }
 
         /* compile if-features */
-        LY_ARRAY_CREATE_RET(pmod->mod->ctx, f->iffeatures_c, LY_ARRAY_COUNT(f->iffeatures), LY_EMEM);
-        LY_ARRAY_FOR(f->iffeatures, u) {
-            LY_ARRAY_INCREMENT(f->iffeatures_c);
+        LYA_PREALLOC(f->iffeatures_c, LYA_COUNT(f->iffeatures), LOGMEM(pmod->mod->ctx); return LY_EMEM);
+        LYA_FOR(f->iffeatures, u) {
+            LYA_INCREMENT(f->iffeatures_c);
             LY_CHECK_RET(lys_compile_iffeature(pmod->mod->ctx, &(f->iffeatures)[u], &(f->iffeatures_c)[u]));
         }
-        LY_ARRAY_FOR(f->iffeatures_c, u) {
-            LY_ARRAY_FOR(f->iffeatures_c[u].features, v) {
+        LYA_FOR(f->iffeatures_c, u) {
+            LYA_FOR(f->iffeatures_c[u].features, v) {
                 /* check for circular dependency - direct reference first,... */
                 if (f == f->iffeatures_c[u].features[v]) {
                     LOGVAL(pmod->mod->ctx, NULL, LYVE_REFERENCE, "Feature \"%s\" is referenced from itself.", f->name);
@@ -720,7 +719,7 @@ lys_compile_feature_iffeatures(struct lysp_module *pmod)
                 LY_CHECK_RET(lys_compile_feature_circular_check(pmod->mod->ctx, f->iffeatures_c[u].features[v], f->depfeatures));
 
                 /* add itself into the dependants list */
-                LY_ARRAY_NEW_RET(pmod->mod->ctx, f->iffeatures_c[u].features[v]->depfeatures, df, LY_EMEM);
+                LYA_ADD_ITEM(f->iffeatures_c[u].features[v]->depfeatures, df, LOGMEM(pmod->mod->ctx); return LY_EMEM);
                 *df = f;
             }
         }

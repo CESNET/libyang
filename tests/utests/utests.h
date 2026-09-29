@@ -1,11 +1,11 @@
 /**
- * @file   utests.h
+ * @file utests.h
  * @author Radek Iša <isa@cesnet.cz>
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @author Michal Vasko <mvasko@cesnet.cz>
- * @brief  this file contains macros for simplification test writing
+ * @brief This file contains macros for simplification test writing
  *
- * Copyright (c) 2021 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2021 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -19,22 +19,25 @@
 
 #define _GNU_SOURCE /* strdup, setenv, tzset */
 
+#include "tests_config.h"
+
 #include <setjmp.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <cmocka.h>
 
-#include <string.h>
-
-#include "libyang.h"
+#include "compat.h"
+#include "context.h"
+#include "in.h"
+#include "ly_array.h"
+#include "out.h"
 #include "plugins_exts/metadata.h"
-#include "plugins_internal.h"
 #include "plugins_types.h"
-#include "tests_config.h"
-#include "tree_schema_internal.h"
+#include "printer_data.h"
 
 /**
  * TESTS OVERVIEW
@@ -143,6 +146,55 @@ struct utest_context {
     }
 
 /**
+ * @brief Parse (and validate) bounded data from memory as a YANG data tree.
+ */
+#define CHECK_PARSE_LYD_PARAM_LEN(INPUT, INPUT_LEN, INPUT_FORMAT, PARSE_OPTIONS, VALIDATE_OPTIONS, RET, OUT_NODE) \
+    { \
+        LY_ERR _r = lyd_parse_data_mem_len(_UC->ctx, INPUT, INPUT_LEN, INPUT_FORMAT, PARSE_OPTIONS, VALIDATE_OPTIONS, \
+                &OUT_NODE); \
+        if (_r != RET) { \
+            if (_r) { \
+                fail_msg("%s != 0x%d; MSG: %s", #RET, _r, ly_err_last(_UC->ctx)->msg); \
+            } else { \
+                fail_msg("%s != 0x%d", #RET, _r); \
+            } \
+        } \
+    }
+
+/**
+ * @brief Print data into memory and return the exact binary-safe output length.
+ */
+static inline LY_ERR
+utest_lyd_print_mem_len(char **strp, uint32_t *len, const struct lyd_node *root, LYD_FORMAT format, uint32_t options)
+{
+    LY_ERR ret;
+    struct ly_out *out;
+    size_t printed;
+
+    *strp = NULL;
+    *len = 0;
+    ret = ly_out_new_memory(strp, 0, &out);
+    if (ret) {
+        return ret;
+    }
+
+    if (options & LYD_PRINT_SIBLINGS) {
+        ret = lyd_print_all(out, root, format, options & ~LYD_PRINT_SIBLINGS);
+    } else {
+        ret = lyd_print_tree(out, root, format, options);
+    }
+
+    printed = ly_out_printed(out);
+    ly_out_free(out, NULL, 0);
+    if (!ret && (printed > UINT32_MAX)) {
+        ret = LY_EINVAL;
+    } else if (!ret) {
+        *len = (uint32_t)printed;
+    }
+    return ret;
+}
+
+/**
  * @brief Check if lyd_node and his subnodes have correct values. Print lyd_node and his subnodes into a string in json or xml format.
  * @param[in] NODE pointer to lyd_node
  * @param[in] TEXT expected output string in json or xml format.
@@ -215,14 +267,14 @@ struct utest_context {
 #define CHECK_ARRAY(ARRAY, SIZE) \
     assert_true((SIZE == 0) ? \
                 (ARRAY == NULL) : \
-                (ARRAY != NULL && SIZE == LY_ARRAY_COUNT(ARRAY)));
+                (ARRAY != NULL && SIZE == LYA_COUNT(ARRAY)));
 
 /*
  *   LIBYANG NODE CHECKING
  */
 
 /**
- * @brief check compileted type
+ * @brief check compiled type
  *
  * @param[in] NODE pointer to lysc_type value
  * @param[in] TYPE expected type [LY_DATA_TYPE](@ref LY_DATA_TYPE)
@@ -232,7 +284,7 @@ struct utest_context {
     assert_non_null(NODE); \
     assert_int_equal((NODE)->basetype, TYPE); \
     CHECK_ARRAY((NODE)->exts, EXTS); \
-    assert_ptr_equal((NODE)->plugin_ref, lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[TYPE]))
+    assert_non_null(lysc_get_type_plugin((NODE)->plugin_ref))
 
 /**
  * @brief check compileted numeric type
@@ -585,9 +637,8 @@ struct utest_context {
  *                      LYS_USES, LYS_INPUT, LYS_OUTPUT, LYS_GROUPING, LYS_AUGMENT
  * @param[in] PARENT    0-> check if node is root, 1-> check if node is not root
  * @param[in] REF       expected reference statement
- * @param[in] WHEN      0-> pointer is null, 1 -> pointer is not null
  */
-#define CHECK_LYSP_NODE(NODE, DSC, EXTS, FLAGS, IFFEATURES, NAME, NEXT, NODETYPE, PARENT, REF, WHEN) \
+#define CHECK_LYSP_NODE(NODE, DSC, EXTS, FLAGS, IFFEATURES, NAME, NEXT, NODETYPE, PARENT, REF) \
     assert_non_null(NODE); \
     CHECK_STRING((NODE)->dsc, DSC); \
     CHECK_ARRAY((NODE)->exts, EXTS); \
@@ -597,8 +648,7 @@ struct utest_context {
     CHECK_POINTER((NODE)->next, NEXT); \
     assert_int_equal((NODE)->nodetype, NODETYPE); \
     CHECK_POINTER((NODE)->parent, PARENT); \
-    CHECK_STRING((NODE)->ref, REF); \
-    CHECK_POINTER(lysp_node_when((struct lysp_node *)NODE), WHEN);
+    CHECK_STRING((NODE)->ref, REF);
 
 /**
  * @brief assert that lysp_node structure members are correct
@@ -619,7 +669,8 @@ struct utest_context {
  */
 #define CHECK_LYSP_NODE_LEAF(NODE, DSC, EXTS, FLAGS, IFFEATURES, NAME, NEXT, \
                 PARENT, REF, WHEN, MUSTS, UNITS, DFLT) \
-    CHECK_LYSP_NODE(NODE, DSC, EXTS, FLAGS, IFFEATURES, NAME, NEXT, LYS_LEAF, PARENT, REF, WHEN); \
+    CHECK_LYSP_NODE(NODE, DSC, EXTS, FLAGS, IFFEATURES, NAME, NEXT, LYS_LEAF, PARENT, REF); \
+    CHECK_POINTER(((struct lysp_node_leaf *)NODE)->when, WHEN); \
     CHECK_ARRAY((NODE)->musts, MUSTS); \
     CHECK_STRING((NODE)->units, UNITS); \
     CHECK_STRING((NODE)->dflt.str, DFLT);
@@ -979,11 +1030,11 @@ struct utest_context {
     assert_int_equal(LY_TYPE_BITS, (NODE).realtype->basetype); \
     { \
         const char *arr[] = { __VA_ARGS__ }; \
-        LY_ARRAY_COUNT_TYPE arr_size = (sizeof(arr) / sizeof(arr[0])) - 1; \
+        LYA_COUNT_T arr_size = (sizeof(arr) / sizeof(arr[0])) - 1; \
         struct lyd_value_bits *_val; \
         LYD_VALUE_GET(&(NODE), _val); \
-        assert_int_equal(arr_size, LY_ARRAY_COUNT(_val->items)); \
-        for (LY_ARRAY_COUNT_TYPE it = 0; it < arr_size; it++) { \
+        assert_int_equal(arr_size, LYA_COUNT(_val->items)); \
+        for (LYA_COUNT_T it = 0; it < arr_size; it++) { \
             assert_string_equal(arr[it + 1], _val->items[it]->name); \
         } \
     }
@@ -1002,13 +1053,8 @@ struct utest_context {
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_INST, (NODE).realtype->basetype); \
     { \
-        LY_ARRAY_COUNT_TYPE arr_size = sizeof(VALUE) / sizeof(VALUE[0]); \
-        assert_int_equal(arr_size, LY_ARRAY_COUNT((NODE).target)); \
-        for (LY_ARRAY_COUNT_TYPE it = 0; it < arr_size; it++) { \
-            if ((NODE).target[it].predicates) { \
-                assert_int_equal(VALUE[it], (NODE).target[it].predicates[0].type); \
-            } \
-        } \
+        LYA_COUNT_T arr_size = sizeof(VALUE) / sizeof(VALUE[0]); \
+        assert_int_equal(arr_size, LYA_COUNT((NODE).target)); \
     }
 
 /**
@@ -1347,9 +1393,14 @@ static int
 utest_teardown(void **state)
 {
     *state = NULL;
+    const struct ly_err_item *err;
 
     /* libyang context, no leftover messages */
-    assert_null(ly_err_last(current_utest_context->ctx));
+    err = ly_err_last(current_utest_context->ctx);
+    if (err) {
+        fail_msg("Unexpected message in context: %s", err->msg);
+    }
+
     ly_ctx_destroy(current_utest_context->ctx);
 
     if (current_utest_context->orig_tz) {

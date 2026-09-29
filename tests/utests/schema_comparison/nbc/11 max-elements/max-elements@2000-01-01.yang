@@ -1,0 +1,19 @@
+module max-elements {
+    namespace "urn:test:max-elements";
+    prefix mxe;
+    yang-version 1.1;
+
+    revision 2000-01-01;
+
+    leaf-list l1 {
+        type uint16;
+        max-elements 10;
+    }
+
+    list l2 {
+        key "k";
+        leaf k {
+            type string;
+        }
+    }
+}

@@ -20,7 +20,6 @@
 #include "out.h"
 #include "parser_data.h"
 #include "printer_data.h"
-#include "tree_data_internal.h"
 #include "tree_schema.h"
 
 static int
@@ -476,7 +475,7 @@ test_rpc(void **state)
     CHECK_LYSC_ACTION((struct lysc_node_action *)node->schema, dsc, 0, LYS_STATUS_CURR,
             1, 0, 0, 1, "edit-config", LYS_RPC,
             0, 0, 0, 0, 0, ref, 0);
-    node = lyd_child(node)->next;
+    node = lyd_child_no_keys(node)->next;
     dsc = "Inline Config content.";
     CHECK_LYSC_NODE(node->schema, dsc, 0, LYS_STATUS_CURR | LYS_IS_INPUT, 1, "config", 0, LYS_ANYXML, 1, 0, NULL, 0);
 
@@ -484,7 +483,7 @@ test_rpc(void **state)
     CHECK_LYSC_NODE(node->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_PRESENCE, 1, "cp",
             1, LYS_CONTAINER, 0, 0, NULL, 0);
 
-    node = lyd_child(node);
+    node = lyd_child_no_keys(node);
     /* z has no value */
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)node, 0x1, 0, LY_VALUE_XML, "z", 0, 0, NULL,  1,  "");
     node = node->parent->next;
@@ -617,13 +616,13 @@ test_reply(void **state)
     CHECK_LYSC_ACTION((struct lysc_node_action *)op->schema, NULL, 0, LYS_STATUS_CURR,
             1, 0, 0, 1, "act", LYS_ACTION,
             1, 0, 0, 1, 0, NULL, 0);
-    node = lyd_child(op);
+    node = lyd_child_no_keys(op);
     CHECK_LYSC_NODE(node->schema, NULL, 0, LYS_STATUS_CURR | LYS_IS_OUTPUT, 1, "al", 0, LYS_LEAF, 1, 0, NULL, 0);
 
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "c", 1, LYS_CONTAINER, 0, 0, NULL, 0);
 
     /* TODO print only rpc-reply node and then output subtree */
-    CHECK_LYD_STRING(lyd_child(op), LYD_PRINT_SIBLINGS, "<al xmlns=\"urn:tests:a\">25</al>\n");
+    CHECK_LYD_STRING(lyd_child_no_keys(op), LYD_PRINT_SIBLINGS, "<al xmlns=\"urn:tests:a\">25</al>\n");
     lyd_free_all(tree);
 
     /* wrong namespace, element name, whatever... */
@@ -677,7 +676,7 @@ test_netconf_rpc(void **state)
     CHECK_LYSC_ACTION((struct lysc_node_action *)node->schema, dsc, 0, LYS_STATUS_CURR,
             1, 0, 0, 1, "edit-config", LYS_RPC,
             0, 0, 0, 0, 0, ref, 0);
-    node = lyd_child(node)->next;
+    node = lyd_child_no_keys(node)->next;
     dsc = "Inline Config content.";
     CHECK_LYSC_NODE(node->schema, dsc, 0, LYS_STATUS_CURR | LYS_IS_INPUT, 1, "config", 0, LYS_ANYXML, 1, 0, NULL, 0);
 
@@ -685,7 +684,7 @@ test_netconf_rpc(void **state)
     CHECK_LYSC_NODE(node->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_PRESENCE, 1, "cp",
             1, LYS_CONTAINER, 0, 0, NULL, 0);
 
-    node = lyd_child(node);
+    node = lyd_child_no_keys(node);
     /* z has no value */
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)node, 0x1, 0, LY_VALUE_XML, "z", 0, 0, NULL,  1,  "");
     node = node->parent->next;
@@ -766,7 +765,7 @@ test_netconf_action(void **state)
     ly_in_free(in, 0);
 
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 1, 1, LY_VALUE_XML, "rpc", 0, 0, 0, 0, "");
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)lyd_child(tree), 0, 0, LY_VALUE_XML, "action", 0, 0, 0, 0, "");
+    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)lyd_child_no_keys(tree), 0, 0, LY_VALUE_XML, "action", 0, 0, 0, 0, "");
 
     assert_non_null(op);
     CHECK_LYSC_ACTION((struct lysc_node_action *)op->schema, NULL, 0, LYS_STATUS_CURR,
@@ -824,7 +823,7 @@ test_netconf_reply_or_notification(void **state)
     ly_in_free(in, 0);
 
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 1, LY_VALUE_XML, "notification", 0, 0, 0, 0, "");
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)lyd_child(tree), 0, 0, LY_VALUE_XML, "eventTime", 0, 0, 0, 0,
+    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)lyd_child_no_keys(tree), 0, 0, LY_VALUE_XML, "eventTime", 0, 0, 0, 0,
             "2010-12-06T08:00:01Z");
 
     assert_non_null(op2);
@@ -886,7 +885,7 @@ test_netconf_reply_or_notification(void **state)
     ly_in_free(in, 0);
 
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 1, 1, LY_VALUE_XML, "rpc-reply", 0, 0, 0, 0, "");
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)lyd_child(tree), 0, 0, LY_VALUE_XML, "ok", 0, 0, 0, 0, "");
+    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)lyd_child_no_keys(tree), 0, 0, LY_VALUE_XML, "ok", 0, 0, 0, 0, "");
 
     CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data);
 
@@ -970,7 +969,7 @@ test_restconf_reply(void **state)
 
     data = "<output xmlns=\"urn:tests:a\"><al>25</al></output>";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, lyd_child(tree), in, LYD_XML, LYD_TYPE_REPLY_RESTCONF,
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, lyd_child_no_keys(tree), in, LYD_XML, LYD_TYPE_REPLY_RESTCONF,
             LYD_PARSE_STRICT, &envp, NULL));
     ly_in_free(in, 0);
 
@@ -1009,7 +1008,7 @@ test_filter_attributes(void **state)
     CHECK_LYSC_ACTION((struct lysc_node_action *)node->schema, dsc, 0, LYS_STATUS_CURR,
             1, 0, 0, 1, "get", LYS_RPC,
             1, 0, 0, 0, 0, ref, 0);
-    node = lyd_child(node);
+    node = lyd_child_no_keys(node);
     dsc = "This parameter specifies the portion of the system\nconfiguration and state data to retrieve.";
     CHECK_LYSC_NODE(node->schema, dsc, 1, LYS_STATUS_CURR | LYS_IS_INPUT, 1, "filter", 0, LYS_ANYXML, 1, 0, NULL, 0);
 

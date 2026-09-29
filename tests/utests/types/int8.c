@@ -21,8 +21,6 @@
 
 /* LOCAL INCLUDE HEADERS */
 #include "libyang.h"
-#include "path.h"
-#include "plugins_internal.h"
 
 #define LYD_TREE_CREATE(INPUT, MODEL) \
     CHECK_PARSE_LYD_PARAM(INPUT, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, MODEL)
@@ -71,10 +69,12 @@
         struct lyd_node *tree_1; \
         struct lyd_node *tree_2; \
         char *xml_out, *data; \
+        uint32_t xml_len; \
         data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</" NODE_NAME ">"; \
         CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, LY_SUCCESS, tree_1); \
-        assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_SIBLINGS), 0); \
-        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2)); \
+        assert_int_equal(utest_lyd_print_mem_len(&xml_out, &xml_len, tree_1, LYD_LYB, LYD_PRINT_SIBLINGS), 0); \
+        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, xml_out, xml_len, LYD_LYB, \
+                LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2)); \
         assert_non_null(tree_2); \
         CHECK_LYD(tree_1, tree_2); \
         free(xml_out); \
@@ -1399,7 +1399,7 @@ test_plugin_store(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value value = {0};
-    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_INT8]));
+    struct lyplg_type *type = NULL;
     struct lysc_type *lysc_type;
     LY_ERR ly_ret;
     char *alloc;
@@ -1410,6 +1410,7 @@ test_plugin_store(void **state)
     schema = MODULE_CREATE_YANG("defs", "leaf port {type int8 {range \"-50 .. 50\";}}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
 
     /* check proper type */
     assert_string_equal("ly2 integers", type->id);
@@ -1546,7 +1547,7 @@ test_plugin_compare(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value values[10];
-    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_INT8]));
+    struct lyplg_type *type = NULL;
     struct lysc_type *lysc_type;
     LY_ERR ly_ret;
     const char *schema;
@@ -1565,6 +1566,7 @@ test_plugin_compare(void **state)
             "leaf p4 {type uint8;}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
 
     /* CREATE VALUES */
     for (unsigned int it = 0; it < sizeof(val_init) / sizeof(val_init[0]); it++) {
@@ -1631,7 +1633,7 @@ test_plugin_print(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value values[10];
-    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_INT8]));
+    struct lyplg_type *type = NULL;
     struct lysc_type *lysc_type;
     LY_ERR ly_ret;
     const char *schema;
@@ -1642,6 +1644,7 @@ test_plugin_print(void **state)
     schema = MODULE_CREATE_YANG("defs", "leaf port {type int8;}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
 
     /* CREATE VALUES */
     for (unsigned int it = 0; it < sizeof(val_init) / sizeof(val_init[0]); it++) {
@@ -1671,7 +1674,7 @@ test_plugin_dup(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value values[10];
-    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_INT8]));
+    struct lyplg_type *type = NULL;
     struct lysc_type *lysc_type[2];
     const char *schema;
     LY_ERR ly_ret;
@@ -1682,6 +1685,7 @@ test_plugin_dup(void **state)
     schema = MODULE_CREATE_YANG("T0", "leaf port {type int8;}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_type[0] = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+    type = lysc_get_type_plugin(lysc_type[0]->plugin_ref);
 
     schema = MODULE_CREATE_YANG("T1",
             "typedef my_int_type {"

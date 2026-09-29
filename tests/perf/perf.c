@@ -875,7 +875,7 @@ main(int argc, char **argv)
             (tries > 1) ? "times" : "time");
 
     /* create context */
-    if ((ret = ly_ctx_new(LY_SRC_DIR "/modules", 0, &ctx))) {
+    if ((ret = ly_ctx_new(TESTS_SRC "/../modules", 0, &ctx))) {
         goto cleanup;
     }
     if ((ret = ly_ctx_set_searchdir(ctx, TESTS_SRC "/perf"))) {

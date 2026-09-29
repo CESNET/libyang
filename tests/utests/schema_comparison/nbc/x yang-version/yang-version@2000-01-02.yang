@@ -1,0 +1,7 @@
+module yang-version {
+    yang-version 1.1;
+    namespace "urn:test:yang-version";
+    prefix yvsn;
+
+    revision 2000-01-02;
+}

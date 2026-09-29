@@ -1,9 +1,10 @@
 /**
  * @file union.c
  * @author Adam Piecek <piecek@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief test for built-in enumeration type
  *
- * Copyright (c) 2021 CESNET, z.s.p.o.
+ * Copyright (c) 2021 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -18,7 +19,6 @@
 
 /* LOCAL INCLUDE HEADERS */
 #include "libyang.h"
-#include "path.h"
 
 #define MODULE_CREATE_YANG(MOD_NAME, NODES) \
     "module " MOD_NAME " {\n" \
@@ -50,10 +50,12 @@
         struct lyd_node *tree_1; \
         struct lyd_node *tree_2; \
         char *xml_out, *data; \
+        uint32_t xml_len; \
         data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</" NODE_NAME ">"; \
         CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, LY_SUCCESS, tree_1); \
-        assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_SIBLINGS), 0); \
-        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2)); \
+        assert_int_equal(utest_lyd_print_mem_len(&xml_out, &xml_len, tree_1, LYD_LYB, LYD_PRINT_SIBLINGS), 0); \
+        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, xml_out, xml_len, LYD_LYB, \
+                LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2)); \
         assert_non_null(tree_2); \
         CHECK_LYD(tree_1, tree_2); \
         free(xml_out); \
@@ -65,7 +67,7 @@ static void
 test_data_xml(void **state)
 {
     const char *schema;
-    const enum ly_path_pred_type val1[] = {LY_PATH_PREDTYPE_LEAFLIST};
+    const int val1[] = {0};
 
     /* xml test */
     schema = MODULE_CREATE_YANG("defs", "identity ident1; identity ident2 {base ident1;}"
@@ -154,13 +156,14 @@ test_plugin_sort(void **state)
     const char *schema;
     struct lys_module *mod;
     struct lyd_value val1 = {0}, val2 = {0};
-    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_UNION]));
+    struct lyplg_type *type = NULL;
     struct lysc_type *lysc_type;
     struct ly_err_item *err = NULL;
 
     schema = MODULE_CREATE_YANG("sort", "leaf-list ll {type union {type uint16; type int16;}}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_type = ((struct lysc_node_leaflist *)mod->compiled->data)->type;
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
 
     v1 = "1";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
@@ -192,6 +195,7 @@ test_validation(void **state)
     const char *schema, *data;
     struct lyd_node *tree;
     char *out;
+    uint32_t out_len;
 
     schema = MODULE_CREATE_YANG("val",
             "leaf l1 {\n"
@@ -216,9 +220,10 @@ test_validation(void **state)
     /* parse from LYB */
     data = "<l1 xmlns=\"urn:tests:val\">auto</l1><int8 xmlns=\"urn:tests:val\">15</int8><l2 xmlns=\"urn:tests:val\">15</l2>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
-    assert_int_equal(LY_SUCCESS, lyd_print_mem(&out, tree, LYD_LYB, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS));
+    assert_int_equal(LY_SUCCESS,
+            utest_lyd_print_mem_len(&out, &out_len, tree, LYD_LYB, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS));
     lyd_free_all(tree);
-    CHECK_PARSE_LYD_PARAM(out, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    CHECK_PARSE_LYD_PARAM_LEN(out, out_len, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
     free(out);
 
     /* validate */
@@ -273,18 +278,20 @@ test_validation(void **state)
     /* parse from LYB #1 */
     data = "<test xmlns=\"urn:tests:lref\"><b><name>2</name></b><community><name>test</name><view>2</view></community></test>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
-    assert_int_equal(LY_SUCCESS, lyd_print_mem(&out, tree, LYD_LYB, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS));
+    assert_int_equal(LY_SUCCESS,
+            utest_lyd_print_mem_len(&out, &out_len, tree, LYD_LYB, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS));
     lyd_free_all(tree);
-    CHECK_PARSE_LYD_PARAM(out, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    CHECK_PARSE_LYD_PARAM_LEN(out, out_len, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
     free(out);
     lyd_free_all(tree);
 
     /* parse from LYB #2 */
     data = "<test xmlns=\"urn:tests:lref\"><a><name>one</name></a><community><name>test</name><view>one</view></community></test>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
-    assert_int_equal(LY_SUCCESS, lyd_print_mem(&out, tree, LYD_LYB, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS));
+    assert_int_equal(LY_SUCCESS,
+            utest_lyd_print_mem_len(&out, &out_len, tree, LYD_LYB, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS));
     lyd_free_all(tree);
-    CHECK_PARSE_LYD_PARAM(out, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    CHECK_PARSE_LYD_PARAM_LEN(out, out_len, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
     free(out);
 
     /* remove the target and create another, which is represented the same way in LYB */
@@ -302,13 +309,14 @@ test_validation(void **state)
 static void
 test_validation_store_only(void **state)
 {
-    const char *val_text = NULL;
+    const char *schema, *val_text = NULL;
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value value = {0};
-    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "", NULL, ly_data_type2str[LY_TYPE_UNION]));
+    struct lyplg_type *type = NULL;
     struct lysc_type *lysc_type;
-    const char *schema;
+    struct lyd_node *root, *node;
+    char *str;
 
     schema = MODULE_CREATE_YANG("base",
             "leaf l1 {\n"
@@ -323,6 +331,7 @@ test_validation_store_only(void **state)
             "}\n");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
 
     /* check proper type */
     assert_string_equal("ly2 union", type->id);
@@ -352,6 +361,19 @@ test_validation_store_only(void **state)
             0, LY_VALUE_CANON, NULL, LYD_VALHINT_STRING | LYD_VALHINT_DECNUM, NULL, &value, NULL, &err));
     ly_err_free(err);
     UTEST_LOG_CTX_CLEAN;
+
+    /* with LYPLG_TYPE_STORE_ONLY and LYB print */
+    val_text = "zz9";
+    assert_int_equal(LY_SUCCESS, lyd_new_path2(NULL, UTEST_LYCTX, "/base:l1", val_text, 0, 0, LYD_NEW_VAL_STORE_ONLY, &root, &node));
+    assert_string_equal(lyd_get_value(node), val_text);
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&str, root, LYD_LYB, 0));
+    free(str);
+    assert_string_equal(lyd_get_value(node), val_text);
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&str, root, LYD_XML, 0));
+    free(str);
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&str, root, LYD_LYB, 0));
+    free(str);
+    lyd_free_tree(root);
 }
 
 int

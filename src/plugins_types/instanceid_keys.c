@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief ietf-netconf edit-config key metadata instance-identifier keys predicate type plugin.
  *
- * Copyright (c) 2022 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2022 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -18,13 +18,12 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "libyang.h"
-
-/* additional internal headers for some useful simple macros */
 #include "compat.h"
+#include "dict.h"
 #include "ly_common.h"
 #include "path.h"
-#include "plugins_internal.h" /* LY_TYPE_*_STR */
+#include "plugins_internal.h"
+#include "utils.h"
 #include "xpath.h"
 
 /**
@@ -195,6 +194,7 @@ lyplg_type_store_instanceid_keys(const struct ly_ctx *ctx, const struct lysc_typ
 
     switch (format) {
     case LY_VALUE_CANON:
+    case LY_VALUE_CBOR:
     case LY_VALUE_JSON:
     case LY_VALUE_LYB:
     case LY_VALUE_STR_NS:

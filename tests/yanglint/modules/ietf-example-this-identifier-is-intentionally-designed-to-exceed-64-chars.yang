@@ -1,0 +1,90 @@
+module ietf-example-this-identifier-is-intentionally-designed-to-exceed-64-chars {
+  yang-version 1.1;
+  namespace "urn:ietf:params:xml:ns:yang:ietf-example-this-identifier-is-intentionally-designed-to-exceed-64-chars";
+  prefix isc;
+
+  organization
+    "IETF NETMOD Working Group";
+
+  contact
+    "WG Web:   <https://datatracker.ietf.org/wg/netmod/>";
+
+  description
+    "Copyright (c) 2026 IETF Trust and the persons identified as
+     authors of the code.  All rights reserved.
+
+     Redistribution and use in source and binary forms, with or
+     without modification, is permitted pursuant to, and subject
+     to the license terms contained in, the Revised BSD License
+     set forth in Section 4.c of the IETF Trust's Legal Provisions
+     Relating to IETF Documents
+     (https://trustee.ietf.org/license-info).
+
+     This version of this YANG module is part of RFC XXXX; see
+     the RFC itself for full legal notices.";
+
+  revision 2026-07-08 {
+    description
+      "Initial revision.";
+    reference
+      "RFC XXXX: Test Module";
+  }
+
+  extension this-extension-identifier-is-intentionally-designed-to-exceed-64-chars {
+    description
+      "Testing extension identifier length.";
+  }
+
+  feature this-feature-identifier-is-intentionally-designed-to-exceed-64-chars {
+    description
+      "Testing feature identifier length.";
+  }
+
+  identity this-identity-identifier-is-intentionally-designed-to-exceed-64-chars {
+    description
+      "Testing identity identifier length.";
+  }
+
+  typedef this-typedef-identifier-is-intentionally-designed-to-exceed-64-chars {
+    type string;
+    description
+      "Testing typedef identifier length.";
+  }
+
+  grouping this-grouping-identifier-is-intentionally-designed-to-exceed-64-chars {
+    description
+      "Testing grouping identifier length.";
+
+    leaf dummy-leaf {
+      type string;
+      description "Needed a child to make grouping valid.";
+    }
+  }
+
+  container this-container-identifier-is-intentionally-designed-to-exceed-64-chars {
+    description
+      "Testing data node identifier length.";
+
+    leaf enum-tester {
+      type enumeration {
+        enum this-enum-identifier-is-intentionally-designed-to-exceed-64-chars {
+          description
+            "Testing enum identifier length.";
+        }
+      }
+      description
+        "Leaf to hold the long enum.";
+    }
+
+    leaf bits-tester {
+      type bits {
+        bit this-bit-identifier-is-intentionally-designed-to-exceed-64-chars {
+          description
+            "Testing bit identifier length.";
+        }
+      }
+      description
+        "Leaf to hold the long bit.";
+    }
+  }
+}

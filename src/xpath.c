@@ -29,6 +29,7 @@
 #include "context.h"
 #include "dict.h"
 #include "hash_table.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "out.h"
 #include "parser_data.h"
@@ -38,11 +39,10 @@
 #include "plugins_types.h"
 #include "printer_data.h"
 #include "schema_compile_node.h"
-#include "tree.h"
 #include "tree_data.h"
 #include "tree_data_internal.h"
-#include "tree_edit.h"
 #include "tree_schema_internal.h"
+#include "utils.h"
 #include "xml.h"
 
 static LY_ERR reparse_or_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t depth);
@@ -240,43 +240,6 @@ str2axis(const char *str, uint32_t str_len)
 }
 
 /**
- * @brief Append a string to a dynamic string variable.
- *
- * @param[in,out] str String to use.
- * @param[in,out] size String size.
- * @param[in,out] used String used size excluding terminating zero.
- * @param[in] format Message format.
- * @param[in] ... Message format arguments.
- */
-static void
-print_expr_str(char **str, size_t *size, size_t *used, const char *format, ...)
-{
-    int p;
-    va_list ap;
-
-    va_start(ap, format);
-
-    /* try to append the string */
-    p = vsnprintf(*str ? *str + *used : NULL, *size - *used, format, ap);
-
-    if ((unsigned)p >= *size - *used) {
-        /* realloc */
-        *str = ly_realloc(*str, *size + p + 1);
-        *size += p + 1;
-
-        /* restart ap */
-        va_end(ap);
-        va_start(ap, format);
-
-        /* print */
-        p = vsnprintf(*str + *used, *size - *used, format, ap);
-    }
-
-    *used += p;
-    va_end(ap);
-}
-
-/**
  * @brief Print the whole expression @p exp to debug output.
  *
  * @param[in] exp Expression to use.
@@ -285,8 +248,7 @@ static void
 print_expr_struct_debug(const struct lyxp_expr *exp)
 {
     char *buf = NULL;
-    uint32_t i, j;
-    size_t size = 0, used = 0;
+    uint32_t i, j, size = 0, used = 0;
 
     if (!exp || (ly_ll < LY_LLDBG)) {
         return;
@@ -294,15 +256,15 @@ print_expr_struct_debug(const struct lyxp_expr *exp)
 
     LOGDBG(LY_LDGXPATH, "expression \"%s\":", exp->expr);
     for (i = 0; i < exp->used; ++i) {
-        print_expr_str(&buf, &size, &used, "\ttoken %s, in expression \"%.*s\"",
+        ly_append_str(&buf, &size, &used, "\ttoken %s, in expression \"%.*s\"",
                 lyxp_token2str(exp->tokens[i]), exp->tok_len[i], &exp->expr[exp->tok_pos[i]]);
 
         if (exp->repeat && exp->repeat[i]) {
-            print_expr_str(&buf, &size, &used, " (repeat %d", exp->repeat[i][0]);
+            ly_append_str(&buf, &size, &used, " (repeat %d", exp->repeat[i][0]);
             for (j = 1; exp->repeat[i][j]; ++j) {
-                print_expr_str(&buf, &size, &used, ", %d", exp->repeat[i][j]);
+                ly_append_str(&buf, &size, &used, ", %d", exp->repeat[i][j]);
             }
-            print_expr_str(&buf, &size, &used, ")");
+            ly_append_str(&buf, &size, &used, ")");
         }
         LOGDBG(LY_LDGXPATH, buf);
         used = 0;
@@ -576,8 +538,7 @@ cast_string_recursive(const struct lyd_node *node, struct lyxp_set *set, uint32_
                 }
             }
 
-            line = strtok_r(buf, "\n", &ptr);
-            do {
+            for (line = strtok_r(buf, "\n", &ptr); line; line = strtok_r(NULL, "\n", &ptr)) {
                 rc = cast_string_realloc(set->ctx, indent * 2 + strlen(line) + 1, str, used, size);
                 if (rc != LY_SUCCESS) {
                     free(buf);
@@ -591,7 +552,7 @@ cast_string_recursive(const struct lyd_node *node, struct lyxp_set *set, uint32_
 
                 strcpy(*str + (*used - 1), "\n");
                 *used += 1;
-            } while ((line = strtok_r(NULL, "\n", &ptr)));
+            }
 
             free(buf);
             break;
@@ -1722,8 +1683,8 @@ set_comp_canonize(struct lyxp_set *set, const struct lyxp_set_node *xp_node)
     }
 
     /* print canonized string, ignore errors, the value may not satisfy schema constraints */
-    r = lyd_value_validate3(xp_node->node->schema, set->val.str, strlen(set->val.str), set->format, set->prefix_data,
-            LYD_HINT_DATA, NULL, 0, NULL, &canon);
+    r = lyd_value_validate3(set->ctx, type, set->val.str, strlen(set->val.str), set->format, set->prefix_data,
+            LYD_HINT_DATA, xp_node->node, xp_node->node->schema, 0, NULL, &canon);
     if (r && (r != LY_EINCOMPLETE)) {
         /* invalid value, fine */
         return LY_SUCCESS;
@@ -3363,7 +3324,7 @@ warn_is_numeric_type(struct lysc_type *type)
 {
     struct lysc_type_union *uni;
     ly_bool ret;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     switch (type->basetype) {
     case LY_TYPE_DEC64:
@@ -3378,7 +3339,7 @@ warn_is_numeric_type(struct lysc_type *type)
         return 1;
     case LY_TYPE_UNION:
         uni = (struct lysc_type_union *)type;
-        LY_ARRAY_FOR(uni->types, u) {
+        LYA_FOR(uni->types, u) {
             ret = warn_is_numeric_type(uni->types[u]);
             if (ret) {
                 /* found a suitable type */
@@ -3405,7 +3366,7 @@ warn_is_string_type(struct lysc_type *type)
 {
     struct lysc_type_union *uni;
     ly_bool ret;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     switch (type->basetype) {
     case LY_TYPE_BITS:
@@ -3416,7 +3377,7 @@ warn_is_string_type(struct lysc_type *type)
         return 1;
     case LY_TYPE_UNION:
         uni = (struct lysc_type_union *)type;
-        LY_ARRAY_FOR(uni->types, u) {
+        LYA_FOR(uni->types, u) {
             ret = warn_is_string_type(uni->types[u]);
             if (ret) {
                 /* found a suitable type */
@@ -3444,13 +3405,13 @@ warn_is_specific_type(struct lysc_type *type, LY_DATA_TYPE base)
 {
     struct lysc_type_union *uni;
     ly_bool ret;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (type->basetype == base) {
         return 1;
     } else if (type->basetype == LY_TYPE_UNION) {
         uni = (struct lysc_type_union *)type;
-        LY_ARRAY_FOR(uni->types, u) {
+        LYA_FOR(uni->types, u) {
             ret = warn_is_specific_type(uni->types[u], base);
             if (ret) {
                 /* found a suitable type */
@@ -3479,7 +3440,7 @@ warn_is_equal_type_next_type(struct lysc_type *type, struct lysc_type *prev_type
 {
     struct lysc_type *next_type;
     struct lysc_type_union *uni;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (type->basetype == LY_TYPE_LEAFREF) {
         type = ((struct lysc_type_leafref *)type)->realtype;
@@ -3487,7 +3448,7 @@ warn_is_equal_type_next_type(struct lysc_type *type, struct lysc_type *prev_type
 
     if (type->basetype == LY_TYPE_UNION) {
         uni = (struct lysc_type_union *)type;
-        LY_ARRAY_FOR(uni->types, u) {
+        LYA_FOR(uni->types, u) {
             next_type = warn_is_equal_type_next_type(uni->types[u], prev_type, found);
             if (next_type) {
                 return next_type;
@@ -3709,7 +3670,7 @@ xpath_bit_is_set(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp
     struct lyd_value_bits *bits;
     struct lyd_value *val;
     LY_ERR rc = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (options & LYXP_SCNODE_ALL) {
         if (args[0]->type != LYXP_SET_SCNODE_SET) {
@@ -3751,7 +3712,7 @@ xpath_bit_is_set(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp
         }
         if (val->realtype->basetype == LY_TYPE_BITS) {
             LYD_VALUE_GET(val, bits);
-            LY_ARRAY_FOR(bits->items, u) {
+            LYA_FOR(bits->items, u) {
                 if (!strcmp(bits->items[u]->name, args[1]->val.str)) {
                     set_fill_boolean(set, 1);
                     break;
@@ -4039,7 +4000,7 @@ xpath_deref_type(struct lyd_node_term *leaf, struct lysc_node_leaf *sleaf, struc
     struct ly_set *targets = NULL;
     uint32_t i;
     const struct lysc_type_union *union_type;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         if (cur_type->basetype == LY_TYPE_LEAFREF) {
@@ -4074,7 +4035,7 @@ xpath_deref_type(struct lyd_node_term *leaf, struct lysc_node_leaf *sleaf, struc
         } else if (cur_type->basetype == LY_TYPE_UNION) {
             union_type = (const struct lysc_type_union *)cur_type;
             ret = LY_EINVAL;
-            LY_ARRAY_FOR(union_type->types, u) {
+            LYA_FOR(union_type->types, u) {
                 if (!xpath_deref_type(leaf, sleaf, &value->subvalue->value, union_type->types[u], 0, set)) {
                     ret = LY_SUCCESS;
                     goto cleanup;
@@ -4137,7 +4098,7 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
                     LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, &p);
             if (!r) {
                 /* get the target node */
-                target = p[LY_ARRAY_COUNT(p) - 1].node;
+                target = p[LYA_COUNT(p) - 1].node;
                 ly_path_free(p);
 
                 LY_CHECK_RET(lyxp_set_scnode_insert_node(set, target, LYXP_NODE_ELEM, LYXP_AXIS_SELF, NULL));
@@ -4192,7 +4153,7 @@ static LY_ERR
 xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, ly_bool self_match, const char *func)
 {
     uint32_t i, id_len;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lyd_node_term *leaf;
     struct lysc_node_leaf *sleaf;
     struct lyd_meta *meta;
@@ -4242,7 +4203,7 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
 
     /* find the identity */
     found = 0;
-    LY_ARRAY_FOR(mod->identities, u) {
+    LYA_FOR(mod->identities, u) {
         if (!ly_strncmp(mod->identities[u].name, id_name, id_len)) {
             /* we have match */
             found = 1;
@@ -5750,6 +5711,7 @@ moveto_resolve_module(const char **qname, uint32_t *qname_len, const struct lyxp
             mod = set->cur_mod;
             break;
         case LY_VALUE_CANON:
+        case LY_VALUE_CBOR:
         case LY_VALUE_JSON:
         case LY_VALUE_LYB:
         case LY_VALUE_STR_NS:
@@ -6424,6 +6386,7 @@ moveto_scnode_check(const struct lysc_node *node, const struct lysc_node *ctx_sc
             /* use current module */
             moveto_mod = set->cur_mod;
             break;
+        case LY_VALUE_CBOR:
         case LY_VALUE_JSON:
         case LY_VALUE_LYB:
         case LY_VALUE_STR_NS:
@@ -7035,8 +6998,8 @@ moveto_scnode_dfs(struct lyxp_set *set, const struct lysc_node *start, uint32_t 
 
     /* TREE DFS */
     for (elem = next = start; elem; elem = next) {
-        if ((elem == start) || (elem->nodetype & (LYS_CHOICE | LYS_CASE))) {
-            /* schema-only nodes, skip root */
+        if (elem->nodetype & (LYS_CHOICE | LYS_CASE)) {
+            /* schema-only nodes */
             goto next_iter;
         }
 
@@ -7974,7 +7937,7 @@ eval_name_test_try_compile_predicate_append(const struct lyxp_expr *exp, uint32_
     /* append the JSON predicate */
     *pred = ly_realloc(*pred, *pred_len + 1 + strlen(pred_node->name) + 2 + strlen(set2.val.str) + 3);
     LY_CHECK_ERR_GOTO(!*pred, LOGMEM(set->ctx); rc = LY_EMEM, cleanup);
-    quot = strchr(set2.val.str, '\'') ? '\"' : '\'';
+    LY_CHECK_GOTO(rc = ly_val_get_quot(set->ctx, set2.val.str, &quot), cleanup);
     *pred_len += sprintf(*pred + *pred_len, "[%s=%c%s%c]", pred_node->name, quot, set2.val.str, quot);
 
 cleanup:
@@ -8351,11 +8314,11 @@ eval_name_test_with_predicate(const struct lyxp_expr *exp, uint32_t *tok_idx, en
 {
     LY_ERR rc = LY_SUCCESS, r;
     const char *ncname = NULL;
-    uint32_t i, ncname_len;
+    uint32_t i, ncname_len, parent_idx;
     const struct lys_module *moveto_mod = NULL, *moveto_m;
     const struct lysc_node *scnode = NULL;
     struct ly_path_predicate *predicates = NULL;
-    int scnode_skip_pred = 0;
+    ly_bool scnode_skip_pred = 0, found;
 
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
             lyxp_token2str(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
@@ -8431,18 +8394,16 @@ moveto:
         }
     } else {
         if (!(options & LYXP_SKIP_EXPR) && (options & LYXP_SCNODE_ALL)) {
-            const struct lyxp_set_scnode *scparent = NULL;
-            ly_bool found = 0;
-
-            /* remember parent if there is only one, to print in the warning */
+            /* remember parent if there is only one, to include in the warning */
+            parent_idx = UINT32_MAX;
             for (i = 0; i < set->used; ++i) {
                 if (set->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_CTX) {
-                    if (!scparent) {
-                        /* remember the context node */
-                        scparent = &set->val.scnodes[i];
+                    if (parent_idx == UINT32_MAX) {
+                        /* remember the context node index */
+                        parent_idx = i;
                     } else {
                         /* several context nodes, no reasonable error possible */
-                        scparent = NULL;
+                        parent_idx = UINT32_MAX;
                         break;
                     }
                 }
@@ -8461,6 +8422,7 @@ moveto:
             }
             LY_CHECK_GOTO(rc, cleanup);
 
+            found = 0;
             if (set->used) {
                 i = set->used;
                 assert(i);
@@ -8474,7 +8436,8 @@ moveto:
             }
             if (!found) {
                 /* generate message */
-                eval_name_test_scnode_no_match_msg(set, scparent, ncname, ncname_len, exp->expr, options);
+                eval_name_test_scnode_no_match_msg(set, (parent_idx == UINT32_MAX) ? NULL : &set->val.scnodes[parent_idx],
+                        ncname, ncname_len, exp->expr, options);
 
                 if (options & LYXP_SCNODE_ERROR) {
                     /* error */
@@ -9050,7 +9013,7 @@ LY_ERR
 lyxp_vars_find(const struct ly_ctx *ctx, const struct lyxp_var *vars, const char *name, size_t name_len,
         struct lyxp_var **var)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     assert(name);
 
@@ -9058,7 +9021,7 @@ lyxp_vars_find(const struct ly_ctx *ctx, const struct lyxp_var *vars, const char
         name_len = strlen(name);
     }
 
-    LY_ARRAY_FOR(vars, u) {
+    LYA_FOR(vars, u) {
         if (!strncmp(vars[u].name, name, name_len)) {
             if (var) {
                 *var = (struct lyxp_var *)&vars[u];

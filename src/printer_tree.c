@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "compat.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "out_internal.h"
 #include "plugins_exts.h"
@@ -519,7 +520,7 @@ struct pt_tree_ctx {
     ((const struct lysp_node *)CN->priv)
 
 #define PT_LAST_ARRAY_ITEM(ARR, ITEM) \
-    (&ARR[LY_ARRAY_COUNT(ARR) - 1] == ITEM)
+    (&ARR[LYA_COUNT(ARR) - 1] == ITEM)
 
 #define PT_LAST_SCHEMA_MOUNT(PT_EXTENSION) \
     (PT_EXTENSION.schema ? \
@@ -1398,6 +1399,7 @@ static void
 pt_print_features_names(const struct pt_tree_ctx *tc)
 {
     const struct lysp_qname *iffs;
+    LYA_COUNT_T i;
 
     if (tc->lysc_tree) {
         assert(PT_TREE_CTX_LYSP_NODE_PRESENT(tc->cn));
@@ -1405,9 +1407,8 @@ pt_print_features_names(const struct pt_tree_ctx *tc)
     } else {
         iffs = tc->pn->iffeatures;
     }
-    LY_ARRAY_COUNT_TYPE i;
 
-    LY_ARRAY_FOR(iffs, i) {
+    LYA_FOR(iffs, i) {
         if (i == 0) {
             ly_print_(tc->out, "%s", iffs[i].str);
         } else {
@@ -2246,13 +2247,13 @@ pt_pnode_list_has_keys(const struct lysp_node *pn)
 static ly_bool
 pt_pnode_has_iffeature(const struct lysp_node *pn)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     const struct lysp_qname *iffs;
 
     ly_bool ret = 0;
 
     iffs = pn->iffeatures;
-    LY_ARRAY_FOR(iffs, u) {
+    LYA_FOR(iffs, u) {
         ret = 1;
         break;
     }
@@ -3046,14 +3047,14 @@ pt_modi_get_grouping(struct pt_tree_ctx *tc, uint32_t index)
 static void
 pt_ext_set_next_schema_mount(struct pt_tree_ctx *tc)
 {
-    LY_ARRAY_COUNT_TYPE i;
+    LYA_COUNT_T i;
     struct pt_ext_tree_schema *schemas;
     ly_bool set_next = 0;
 
     assert(!PT_LAST_SCHEMA_MOUNT(tc->plugin_ctx));
 
     schemas = tc->plugin_ctx.schema_mount->schemas;
-    LY_ARRAY_FOR(schemas, i) {
+    LYA_FOR(schemas, i) {
         if (set_next) {
             tc->plugin_ctx.schema = &schemas[i];
             tc->lysc_tree = tc->plugin_ctx.schema->compiled;
@@ -3098,7 +3099,7 @@ pt_ext_parent_is_valid(ly_bool lysc_tree, void *ext)
  * @return Pointer to the first/next extension.
  */
 static void *
-pt_ext_iter_next(ly_bool lysc_tree, void *exts, LY_ARRAY_COUNT_TYPE *i)
+pt_ext_iter_next(ly_bool lysc_tree, void *exts, LYA_COUNT_T *i)
 {
     void *ext = NULL;
     struct lysc_ext_instance *ce;
@@ -3110,8 +3111,8 @@ pt_ext_iter_next(ly_bool lysc_tree, void *exts, LY_ARRAY_COUNT_TYPE *i)
 
     if (lysc_tree) {
         ce = exts;
-        while (*i < LY_ARRAY_COUNT(ce)) {
-            if (ce->def->plugin_ref && pt_ext_parent_is_valid(1, &ce[*i])) {
+        while (*i < LYA_COUNT(ce)) {
+            if (ce[*i].def->plugin_ref && pt_ext_parent_is_valid(1, &ce[*i])) {
                 ext = &ce[*i];
                 break;
             }
@@ -3119,7 +3120,7 @@ pt_ext_iter_next(ly_bool lysc_tree, void *exts, LY_ARRAY_COUNT_TYPE *i)
         }
     } else {
         pe = exts;
-        while (*i < LY_ARRAY_COUNT(pe)) {
+        while (*i < LYA_COUNT(pe)) {
             if (pt_ext_parent_is_valid(0, &pe[*i])) {
                 ext = &pe[*i];
                 break;
@@ -3137,18 +3138,26 @@ pt_ext_iter_next(ly_bool lysc_tree, void *exts, LY_ARRAY_COUNT_TYPE *i)
  * @param[in] tc Contains current node.
  * @param[in] ext_name Extension name to find.
  * @param[in] from_module Set to 1 if extensions in the module
- * sould be searched otherwise it will search in the node.
+ * should be searched otherwise it will search in the node.
+ * @param[in] origin_lysc_tree Optional parameter, if set then
+ * reset @p tc to the original lysc tree before iteration over
+ * next extension. If NULL then reset is not applied.
  * @param[in,out] i State of iterator.
  * @return First/next extension or NULL.
  */
 static void *
-pt_ext_iter(const struct pt_tree_ctx *tc, const char *ext_name,
-        ly_bool from_module, LY_ARRAY_COUNT_TYPE *i)
+pt_ext_iter(struct pt_tree_ctx *tc, const char *ext_name,
+        ly_bool from_module, const ly_bool *origin_lysc_tree,
+        LYA_COUNT_T *i)
 {
     struct lysp_ext_instance *ext_pars;
     struct lysc_ext_instance *ext_comp;
     void *ext = NULL;
     const char *name = "";
+
+    if (origin_lysc_tree) {
+        tc->lysc_tree = *origin_lysc_tree;
+    }
 
     do {
         if (tc->lysc_tree) {
@@ -3182,7 +3191,7 @@ pt_ext_is_present(struct pt_tree_ctx *tc, const char *ext_name)
 {
     uint64_t i = 0;
 
-    if (pt_ext_iter(tc, ext_name, 0, &i)) {
+    if (pt_ext_iter(tc, ext_name, 0, NULL, &i)) {
         return 1;
     } else {
         return 0;
@@ -3244,7 +3253,7 @@ pt_ext_sprinter_ctree_add_nodes(const struct pt_ext_schema_mount *ctx, struct ly
         return LY_SUCCESS;
     }
 
-    LY_ARRAY_NEW_RET(NULL, ((struct pt_ext_schema_mount *)ctx)->schemas, new, LY_EMEM);
+    LYA_ADD_ITEM(((struct pt_ext_schema_mount *)ctx)->schemas, new, LOGMEM(NULL); return LY_EMEM);
     new->compiled = 1;
     new->ctree = nodes;
     new->ext = parent_ref ? PT_EXT_SCHEMA_MOUNT_REF : PT_EXT_SCHEMA_MOUNT;
@@ -3270,7 +3279,7 @@ pt_ext_sprinter_ptree_add_nodes(const struct pt_ext_schema_mount *ctx, struct ly
         return LY_SUCCESS;
     }
 
-    LY_ARRAY_NEW_RET(NULL, ((struct pt_ext_schema_mount *)ctx)->schemas, new, LY_EMEM);
+    LYA_ADD_ITEM(((struct pt_ext_schema_mount *)ctx)->schemas, new, LOGMEM(NULL); return LY_EMEM);
     new->compiled = 0;
     new->ptree = nodes;
     new->ext = parent_ref ? PT_EXT_SCHEMA_MOUNT_REF : PT_EXT_SCHEMA_MOUNT;
@@ -3399,7 +3408,7 @@ pt_print_schema_mount(struct pt_wrapper wr, struct pt_parent_cache ca,
         struct pt_tree_ctx tc)
 {
     LY_ERR rc;
-    LY_ARRAY_COUNT_TYPE i;
+    LYA_COUNT_T i;
     void *ext;
     struct pt_ext_schema_mount schema_mount = {0};
     struct pt_node node;
@@ -3418,7 +3427,7 @@ pt_print_schema_mount(struct pt_wrapper wr, struct pt_parent_cache ca,
 
     /* load children of mount-point */
     i = 0;
-    while ((ext = pt_ext_iter(&tc, "mount-point", 0, &i))) {
+    while ((ext = pt_ext_iter(&tc, "mount-point", 0, NULL, &i))) {
         rc = pt_create_mount_point(tc.lysc_tree, ext, &schema_mount);
         LY_CHECK_ERR_GOTO(rc, tc.last_error = rc, end);
 
@@ -3441,7 +3450,7 @@ pt_print_schema_mount(struct pt_wrapper wr, struct pt_parent_cache ca,
     }
 
 end:
-    LY_ARRAY_FREE(schema_mount.schemas);
+    LYA_FREE(schema_mount.schemas);
     if (schema_mount.parent_refs) {
         ly_set_free(schema_mount.parent_refs, NULL);
     }
@@ -3846,13 +3855,13 @@ pt_print_groupings(struct pt_tree_ctx *tc)
 static void *
 pt_ext_parsed_read_storage(struct lysp_ext_instance *ext, int stmt_mask)
 {
-    LY_ARRAY_COUNT_TYPE i;
+    LYA_COUNT_T i;
     enum ly_stmt stmt;
     void *substmts, **storage_p, *node = NULL;
 
     substmts = (void *)((struct lysp_ext_instance *)ext)->substmts;
 
-    LY_ARRAY_FOR(substmts, i) {
+    LYA_FOR(substmts, i) {
         stmt = ((struct lysp_ext_instance *)ext)->substmts[i].stmt;
         storage_p = ((struct lysp_ext_instance *)ext)->substmts[i].storage_p;
 
@@ -3881,6 +3890,7 @@ pt_ext_read(void *ext, ly_bool *compiled, struct pt_keyword_stmt *ks)
     void *schema;
 
     if (!*compiled) {
+        /* lysp tree */
         ext_pars = ext;
         ks->argument = ext_pars->argument;
         name = strchr(ext_pars->name, ':') + 1;
@@ -3891,9 +3901,9 @@ pt_ext_read(void *ext, ly_bool *compiled, struct pt_keyword_stmt *ks)
         } else {
             schema = pt_ext_parsed_read_storage(ext_pars, LY_STMT_DATA_NODE_MASK);
         }
-        *compiled = 0;
         return schema;
     }
+    /* else lysc tree */
 
     /* for compiled extension instance */
     ext_comp = ext;
@@ -3902,19 +3912,19 @@ pt_ext_read(void *ext, ly_bool *compiled, struct pt_keyword_stmt *ks)
 
     /* search in lysc_ext_instance */
     lyplg_ext_get_storage(ext, LY_STMT_DATA_NODE_MASK, sizeof schema, (const void **)&schema);
-    *compiled = 1;
     if (schema) {
         return schema;
     }
 
     /* no data nodes lysc_ext_instance, so search in lysp_ext_instance */
-    *compiled = 0;
     if (!strcmp(ks->section_name, "augment-structure")) {
         lyplg_ext_parsed_get_storage(ext_comp, LY_STMT_AUGMENT, sizeof schema, (const void **)&schema);
         schema = ((struct lysp_node_augment *)schema)->child;
     } else {
         lyplg_ext_parsed_get_storage(ext_comp, LY_STMT_DATA_NODE_MASK, sizeof schema, (const void **)&schema);
     }
+    /* switching from lysc tree to lysp tree */
+    *compiled = 0;
 
     return schema;
 }
@@ -3927,7 +3937,7 @@ static void
 pt_print_extensions(struct pt_tree_ctx tc)
 {
     ly_bool once = 1;
-    LY_ARRAY_COUNT_TYPE i = 0;
+    LYA_COUNT_T i = 0;
     struct pt_keyword_stmt ks = PT_EMPTY_KEYWORD_STMT;
     struct pt_node node;
     void *schema;
@@ -3939,9 +3949,7 @@ pt_print_extensions(struct pt_tree_ctx tc)
     tc.plugin_ctx.schema = &ext_schema;
     tc.plugin_ctx.schema->ext = PT_EXT_GENERIC;
 
-    while ((ext = pt_ext_iter(&tc, NULL, 1, &i))) {
-        tc.lysc_tree = origin_lysc_tree;
-
+    while ((ext = pt_ext_iter(&tc, NULL, 1, &origin_lysc_tree, &i))) {
         schema = pt_ext_read(ext, &tc.lysc_tree, &ks);
         if (!strcmp(ks.section_name, "mount-point") ||
                 !strcmp(ks.section_name, "annotation")) {
@@ -3967,8 +3975,6 @@ pt_print_extensions(struct pt_tree_ctx tc)
         /* print subtree */
         node = pt_modi_first_sibling(PT_EMPTY_PARENT_CACHE, &tc);
         pt_print_siblings(&node, PT_INIT_WRAPPER_BODY, PT_EMPTY_PARENT_CACHE, &tc);
-
-        tc.lysc_tree = origin_lysc_tree;
     }
 }
 

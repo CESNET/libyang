@@ -24,14 +24,13 @@
 #include "compat.h"
 #include "context.h"
 #include "dict.h"
-#include "libyang.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "parser_data.h"
 #include "plugins_exts.h"
 #include "plugins_internal.h"
 #include "plugins_types.h"
-#include "tree.h"
 #include "tree_data.h"
 #include "tree_schema.h"
 
@@ -86,13 +85,13 @@ static LY_ERR
 schema_mount_parse_unique_mp(struct lysp_ctx *pctx, const struct lysp_ext_instance *ext)
 {
     struct lysp_ext_instance *exts;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lysp_node *parent;
 
     /* check if it is the only instance of the mount-point among its siblings */
     parent = ext->parent;
     exts = parent->exts;
-    LY_ARRAY_FOR(exts, u) {
+    LYA_FOR(exts, u) {
         if (&exts[u] == ext) {
             continue;
         }
@@ -148,7 +147,7 @@ schema_mount_compile_mod_dfs_cb(struct lysc_node *node, void *data, ly_bool *UNU
     struct lyplg_ext_sm_shared_cb_data *cb_data = data;
     struct lyplg_ext_sm *sm_data;
     struct lysc_ext_instance *exts;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (node == cb_data->ext->parent) {
         /* parent of the current compiled extension, skip */
@@ -157,7 +156,7 @@ schema_mount_compile_mod_dfs_cb(struct lysc_node *node, void *data, ly_bool *UNU
 
     /* find the same mount point */
     exts = node->exts;
-    LY_ARRAY_FOR(exts, u) {
+    LYA_FOR(exts, u) {
         if (!strcmp(exts[u].def->module->name, "ietf-yang-schema-mount") && !strcmp(exts[u].def->name, "mount-point") &&
                 (exts[u].argument == cb_data->ext->argument)) {
             /* same mount point, break the DFS search */

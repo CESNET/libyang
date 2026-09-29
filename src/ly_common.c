@@ -159,7 +159,7 @@ ly_ctx_ht_pattern_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void
 static void
 ly_ctx_private_data_remove_and_free(struct ly_ctx_private_data *private_data)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
 
     if (!private_data) {
         return;
@@ -170,19 +170,19 @@ ly_ctx_private_data_remove_and_free(struct ly_ctx_private_data *private_data)
     free(private_data);
 
     /* find */
-    LY_ARRAY_FOR(ly_private_ctx_data, u) {
+    LYA_FOR(ly_private_ctx_data, u) {
         if (ly_private_ctx_data[u] == private_data) {
             break;
         }
     }
-    assert(u < LY_ARRAY_COUNT(ly_private_ctx_data));
+    assert(u < LYA_COUNT(ly_private_ctx_data));
 
     /* remove */
-    if (u < LY_ARRAY_COUNT(ly_private_ctx_data) - 1) {
+    if (u < LYA_COUNT(ly_private_ctx_data) - 1) {
         /* replace the private data with the last one if it even was added */
-        ly_private_ctx_data[u] = ly_private_ctx_data[LY_ARRAY_COUNT(ly_private_ctx_data) - 1];
+        ly_private_ctx_data[u] = ly_private_ctx_data[LYA_COUNT(ly_private_ctx_data) - 1];
     }
-    LY_ARRAY_DECREMENT_FREE(ly_private_ctx_data);
+    LYA_DECREMENT_FREE(ly_private_ctx_data);
 }
 
 /**
@@ -202,7 +202,7 @@ ly_ctx_private_data_create(const struct ly_ctx *ctx, struct ly_ctx_private_data 
     *private_data = NULL;
 
     /* create the private context data */
-    LY_ARRAY_NEW_GOTO(ctx, ly_private_ctx_data, priv_data, rc, cleanup);
+    LYA_ADD_ITEM(ly_private_ctx_data, priv_data, LOGMEM(ctx); rc = LY_EMEM; goto cleanup);
     *priv_data = calloc(1, sizeof **priv_data);
     LY_CHECK_ERR_GOTO(!*priv_data, LOGMEM(ctx); rc = LY_EMEM, cleanup);
 
@@ -234,7 +234,7 @@ _ly_ctx_private_data_get(const struct ly_ctx *ctx, ly_bool own_data_only)
     ly_bool found = 0;
     pthread_t tid = pthread_self();
 
-    LY_ARRAY_FOR(ly_private_ctx_data, struct ly_ctx_private_data *, iter) {
+    LYA_FOR_EACH(ly_private_ctx_data, iter) {
         /* either own - ctx and tid match, or "context's" - thread does not matter */
         if (((*iter)->ctx == ctx) && (!own_data_only || pthread_equal((*iter)->tid, tid))) {
             found = 1;
@@ -294,38 +294,45 @@ ly_ctx_private_data_get_or_create(const struct ly_ctx *ctx)
 static void
 ly_ctx_shared_data_remove_and_free(struct ly_ctx_shared_data *shared_data)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
+    struct ly_ht_rec *rec;
+    struct ly_pattern_ht_rec *pat_rec;
+    uint32_t hlist_idx, rec_idx;
 
     if (!shared_data) {
         return;
     }
 
-    /* all the patterns must have been removed already,
-     * either while free compiled modules (standard behavior)
-     * or when assigning a parent to a context, it's shared data will be used (schema mount) */
-    assert(shared_data->pattern_ht->used == 0);
+    /* free the pattern HT */
+    LYHT_ITER_ALL_RECS(shared_data->pattern_ht, hlist_idx, rec_idx, rec) {
+        pat_rec = (struct ly_pattern_ht_rec *)&rec->val;
+        ly_pat_free(pat_rec->pat_comp, pat_rec->format);
+    }
     lyht_free(shared_data->pattern_ht, NULL);
 
     /* free rest of the members */
+    pthread_mutex_destroy(&shared_data->pat_ht_lock);
+    pthread_mutex_destroy(&shared_data->ext_clb_lock);
     lydict_clean(shared_data->data_dict);
     free(shared_data->data_dict);
     lyht_free(shared_data->leafref_links_ht, ly_ctx_ht_leafref_links_rec_free);
+    ly_pat_free(shared_data->semver_pattern, 0);
     free(shared_data);
 
     /* find */
-    LY_ARRAY_FOR(ly_shared_ctx_data, u) {
+    LYA_FOR(ly_shared_ctx_data, u) {
         if (ly_shared_ctx_data[u] == shared_data) {
             break;
         }
     }
-    assert(u < LY_ARRAY_COUNT(ly_shared_ctx_data));
+    assert(u < LYA_COUNT(ly_shared_ctx_data));
 
     /* remove */
-    if (u < LY_ARRAY_COUNT(ly_shared_ctx_data) - 1) {
+    if (u < LYA_COUNT(ly_shared_ctx_data) - 1) {
         /* replace the shared data with the last one */
-        ly_shared_ctx_data[u] = ly_shared_ctx_data[LY_ARRAY_COUNT(ly_shared_ctx_data) - 1];
+        ly_shared_ctx_data[u] = ly_shared_ctx_data[LYA_COUNT(ly_shared_ctx_data) - 1];
     }
-    LY_ARRAY_DECREMENT_FREE(ly_shared_ctx_data);
+    LYA_DECREMENT_FREE(ly_shared_ctx_data);
 }
 
 /**
@@ -341,13 +348,14 @@ ly_ctx_shared_data_create(const struct ly_ctx *ctx, struct ly_ctx_shared_data **
     LY_ERR rc = LY_SUCCESS;
     struct ly_ctx_shared_data **shrd_data = NULL;
     pthread_mutexattr_t attr;
+    struct ly_err_item *err = NULL;
 
     if (shared_data) {
         *shared_data = NULL;
     }
 
     /* create the shared context data */
-    LY_ARRAY_NEW_GOTO(ctx, ly_shared_ctx_data, shrd_data, rc, cleanup);
+    LYA_ADD_ITEM(ly_shared_ctx_data, shrd_data, LOGMEM(ctx); rc = LY_EMEM; goto cleanup);
     *shrd_data = calloc(1, sizeof **shrd_data);
     LY_CHECK_ERR_GOTO(!*shrd_data, LOGMEM(ctx); rc = LY_EMEM, cleanup);
 
@@ -355,6 +363,7 @@ ly_ctx_shared_data_create(const struct ly_ctx *ctx, struct ly_ctx_shared_data **
     (*shrd_data)->ctx = ctx;
 
     /* pattern hash table */
+    pthread_mutex_init(&(*shrd_data)->pat_ht_lock, NULL);
     (*shrd_data)->pattern_ht = lyht_new(LYHT_MIN_SIZE, sizeof(struct ly_pattern_ht_rec),
             ly_ctx_ht_pattern_equal_cb, NULL, 1);
     LY_CHECK_ERR_GOTO(!(*shrd_data)->pattern_ht, rc = LY_EMEM, cleanup);
@@ -383,6 +392,11 @@ ly_ctx_shared_data_create(const struct ly_ctx *ctx, struct ly_ctx_shared_data **
     pthread_mutexattr_destroy(&attr);
     pthread_mutex_init(&(*shrd_data)->leafref_links_lock, NULL);
 
+    /* semver pattern */
+    rc = ly_pat_compile(LY_SEMVER_VERSION_PATTERN, 0, &(*shrd_data)->semver_pattern, &err);
+    ly_err_free(err);
+    LY_CHECK_GOTO(rc, cleanup);
+
     /* refcount */
     ATOMIC_STORE_RELAXED((*shrd_data)->refcount, 1);
 
@@ -409,7 +423,7 @@ _ly_ctx_shared_data_get(const struct ly_ctx *ctx)
     struct ly_ctx_shared_data **iter;
     ly_bool found = 0;
 
-    LY_ARRAY_FOR(ly_shared_ctx_data, struct ly_ctx_shared_data *, iter) {
+    LYA_FOR_EACH(ly_shared_ctx_data, iter) {
         if ((*iter)->ctx == ctx) {
             found = 1;
             break;
@@ -543,28 +557,6 @@ cleanup:
     pthread_rwlock_unlock(&ly_ctx_data_rwlock);
 }
 
-void
-ly_ctx_pattern_ht_erase(const struct ly_ctx *ctx)
-{
-    struct ly_ctx_shared_data *ctx_data;
-    struct ly_ht_rec *rec;
-    struct ly_pattern_ht_rec *pat_rec;
-    uint32_t hlist_idx, rec_idx;
-
-    ctx_data = ly_ctx_shared_data_get(ctx);
-
-    /* free all the stored records */
-    LYHT_ITER_ALL_RECS(ctx_data->pattern_ht, hlist_idx, rec_idx, rec) {
-        pat_rec = (struct ly_pattern_ht_rec *)&rec->val;
-
-        ly_pat_free(pat_rec->pat_comp, pat_rec->format);
-    }
-
-    /* we have removed all patterns (so it is empty), we can not free the ht here though, to avoid
-     * double free, but just trick it to look empty */
-    ctx_data->pattern_ht->used = 0;
-}
-
 LY_ERR
 ly_ctx_shared_data_pattern_get(const struct ly_ctx *ctx, const char *pattern, ly_bool format, const void **pat_comp)
 {
@@ -589,6 +581,10 @@ ly_ctx_shared_data_pattern_get(const struct ly_ctx *ctx, const char *pattern, ly
     hash = lyht_hash(pattern, strlen(pattern));
     rec.pattern = pattern;
     rec.format = format;
+
+    /* PAT HT LOCK */
+    pthread_mutex_lock(&ctx_data->pat_ht_lock);
+
     if (!lyht_find(ctx_data->pattern_ht, &rec, hash, (void **)&found_rec)) {
         /* pat_comp cached */
         if (pat_comp) {
@@ -614,6 +610,9 @@ ly_ctx_shared_data_pattern_get(const struct ly_ctx *ctx, const char *pattern, ly
     pat_comp_tmp = NULL;
 
 cleanup:
+    /* PAT HT UNLOCK */
+    pthread_mutex_unlock(&ctx_data->pat_ht_lock);
+
     ly_pat_free(pat_comp_tmp, format);
     if (err) {
         /* log with the schema path */
@@ -641,10 +640,13 @@ ly_ctx_shared_data_pattern_del(const struct ly_ctx *ctx, const char *pattern, ly
     rec.pattern = pattern;
     rec.format = format;
 
+    /* PAT HT LOCK */
+    pthread_mutex_lock(&ctx_data->pat_ht_lock);
+
     if (lyht_find(ctx_data->pattern_ht, &rec, hash, (void **)&found_rec)) {
         /* pattern code not cached, this may happen when using printed context,
          * because then the pcodes are obtained on demand */
-        return;
+        goto cleanup;
     }
 
     /* found it, free */
@@ -654,6 +656,10 @@ ly_ctx_shared_data_pattern_del(const struct ly_ctx *ctx, const char *pattern, ly
     if (lyht_remove(ctx_data->pattern_ht, &rec, hash)) {
         LOGINT(ctx);
     }
+
+cleanup:
+    /* PAT HT UNLOCK */
+    pthread_mutex_unlock(&ctx_data->pat_ht_lock);
 }
 
 /**
@@ -1957,122 +1963,52 @@ ly_parse_nodeid(const char **id, const char **prefix, uint32_t *prefix_len, cons
 }
 
 LY_ERR
-ly_parse_instance_predicate(const char **pred, uint32_t limit, LYD_FORMAT format, const char **prefix, uint32_t *prefix_len,
-        const char **id, uint32_t *id_len, const char **value, uint32_t *value_len, const char **errmsg)
+ly_val_get_quot(const struct ly_ctx *ctx, const char *value, char *quot)
 {
-    LY_ERR ret = LY_EVALID;
-    const char *in = *pred;
-    uint32_t offset = 1;
-    uint8_t expr = 0; /* 0 - position predicate; 1 - leaf-list-predicate; 2 - key-predicate */
-    char quot;
-
-    assert(in[0] == '[');
-
-    *prefix = *id = *value = NULL;
-    *prefix_len = *id_len = *value_len = 0;
-
-    /* leading *WSP */
-    for ( ; isspace(in[offset]); offset++) {}
-
-    if (isdigit(in[offset])) {
-        /* pos: "[" *WSP positive-integer-value *WSP "]" */
-        if (in[offset] == '0') {
-            /* zero */
-            *errmsg = "The position predicate cannot be zero.";
-            goto error;
-        }
-
-        /* positive-integer-value */
-        *value = &in[offset++];
-        for ( ; isdigit(in[offset]); offset++) {}
-        *value_len = &in[offset] - *value;
-
-    } else if (in[offset] == '.') {
-        /* leaf-list-predicate: "[" *WSP "." *WSP "=" *WSP quoted-string *WSP "]" */
-        *id = &in[offset];
-        *id_len = 1;
-        offset++;
-        expr = 1;
-    } else if (in[offset] == '-') {
-        /* typically negative value */
-        *errmsg = "Invalid instance predicate format (negative position or invalid node-identifier).";
-        goto error;
-    } else {
-        /* key-predicate: "[" *WSP node-identifier *WSP "=" *WSP quoted-string *WSP "]" */
-        in = &in[offset];
-        if (ly_parse_nodeid(&in, prefix, prefix_len, id, id_len)) {
-            *errmsg = "Invalid node-identifier.";
-            goto error;
-        }
-        if ((format == LYD_XML) && !(*prefix)) {
-            /* all node names MUST be qualified with explicit namespace prefix */
-            *errmsg = "Missing prefix of a node name.";
-            goto error;
-        }
-        offset = in - *pred;
-        in = *pred;
-        expr = 2;
-    }
-
-    if (expr) {
-        /*  *WSP "=" *WSP quoted-string *WSP "]" */
-        for ( ; isspace(in[offset]); offset++) {}
-
-        if (in[offset] != '=') {
-            if (expr == 1) {
-                *errmsg = "Unexpected character instead of \'=\' in leaf-list-predicate.";
-            } else { /* 2 */
-                *errmsg = "Unexpected character instead of \'=\' in key-predicate.";
-            }
-            goto error;
-        }
-        offset++;
-        for ( ; isspace(in[offset]); offset++) {}
-
-        /* quoted-string */
-        quot = in[offset++];
-        if ((quot != '\'') && (quot != '\"')) {
-            *errmsg = "String value is not quoted.";
-            goto error;
-        }
-        *value = &in[offset];
-        for ( ; offset < limit && (in[offset] != quot || (offset && in[offset - 1] == '\\')); offset++) {}
-        if (in[offset] == quot) {
-            *value_len = &in[offset] - *value;
-            offset++;
-        } else {
-            *errmsg = "Value is not terminated quoted-string.";
-            goto error;
-        }
-    }
-
-    /* *WSP "]" */
-    for ( ; isspace(in[offset]); offset++) {}
-    if (in[offset] != ']') {
-        if (expr == 0) {
-            *errmsg = "Predicate (pos) is not terminated by \']\' character.";
-        } else if (expr == 1) {
-            *errmsg = "Predicate (leaf-list-predicate) is not terminated by \']\' character.";
-        } else { /* 2 */
-            *errmsg = "Predicate (key-predicate) is not terminated by \']\' character.";
-        }
-        goto error;
-    }
-    offset++;
-
-    if (offset <= limit) {
-        *pred = &in[offset];
+    /* try ' */
+    *quot = '\'';
+    if (!strchr(value, *quot)) {
         return LY_SUCCESS;
     }
 
-    /* we read after the limit */
-    *errmsg = "Predicate is incomplete.";
-    *prefix = *id = *value = NULL;
-    *prefix_len = *id_len = *value_len = 0;
-    offset = limit;
-    ret = LY_EINVAL;
+    /* try " */
+    *quot = '\"';
+    if (!strchr(value, *quot)) {
+        return LY_SUCCESS;
+    }
 
-error:
-    *pred = &in[offset];
-    return ret;
+    /* no valid quotes */
+    LOGERR(ctx, LY_EINVAL, "Invalid value with both ' and \" characters, unable to put in quotes.");
+    return LY_EINVAL;
+}
+
+LY_ERR
+ly_append_str(char **str, uint32_t *size, uint32_t *used, const char *format, ...)
+{
+    int p;
+    va_list ap;
+
+    va_start(ap, format);
+
+    /* try to append the string */
+    p = vsnprintf(*str ? *str + *used : NULL, *size - *used, format, ap);
+
+    if ((unsigned)p >= *size - *used) {
+        /* realloc */
+        *str = ly_realloc(*str, *size + p + 1);
+        LY_CHECK_ERR_RET(!*str, LOGMEM(NULL), LY_EMEM);
+        *size += p + 1;
+
+        /* restart ap */
+        va_end(ap);
+        va_start(ap, format);
+
+        /* print */
+        p = vsnprintf(*str + *used, *size - *used, format, ap);
+    }
+
+    va_end(ap);
+
+    *used += p;
+    return LY_SUCCESS;
 }

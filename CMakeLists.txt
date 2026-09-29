@@ -59,15 +59,15 @@ set(CMAKE_MACOSX_RPATH TRUE)
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 # set version of the project
-set(LIBYANG_MAJOR_VERSION 5)
-set(LIBYANG_MINOR_VERSION 8)
-set(LIBYANG_MICRO_VERSION 6)
+set(LIBYANG_MAJOR_VERSION 6)
+set(LIBYANG_MINOR_VERSION 4)
+set(LIBYANG_MICRO_VERSION 3)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 
 # set version of the library
 set(LIBYANG_MAJOR_SOVERSION 5)
-set(LIBYANG_MINOR_SOVERSION 5)
-set(LIBYANG_MICRO_SOVERSION 5)
+set(LIBYANG_MINOR_SOVERSION 11)
+set(LIBYANG_MICRO_SOVERSION 1)
 set(LIBYANG_SOVERSION_FULL ${LIBYANG_MAJOR_SOVERSION}.${LIBYANG_MINOR_SOVERSION}.${LIBYANG_MICRO_SOVERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_SOVERSION})
 
@@ -80,7 +80,7 @@ else()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic -std=c11")
 endif()
 
-include_directories(${PROJECT_BINARY_DIR}/libyang ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/src/plugins_exts)
+include_directories(${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/libyang ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/src/plugins_exts)
 
 # type plugins are separate because they have their documentation generated
 set(type_plugins
@@ -139,6 +139,10 @@ set(libsrc
     src/schema_compile_node.c
     src/schema_compile_amend.c
     src/schema_features.c
+    src/schema_diff.c
+    src/schema_diff_change_full.c
+    src/schema_diff_change_local.c
+    src/schema_diff_tree.c
     src/tree_data_sorted.c
     src/tree_schema.c
     src/tree_schema_free.c
@@ -149,6 +153,7 @@ set(libsrc
     src/parser_yang.c
     src/parser_yin.c
     src/printer_schema.c
+    src/printer_sid.c
     src/printer_yang.c
     src/printer_yin.c
     src/printer_tree.c
@@ -162,6 +167,9 @@ set(libsrc
     src/plugins_exts/schema_mount.c
     src/plugins_exts/structure.c
     src/plugins_exts/openconfig.c
+    src/plugins_exts/schema_comparison.c
+    src/plugins_exts/revisions.c
+    src/plugins_exts/semver.c
     src/xml.c
     src/xpath.c
     src/validation.c
@@ -173,6 +181,7 @@ set(headers
     src/dict.h
     src/in.h
     src/libyang.h
+    src/ly_array.h
     src/log.h
     src/out.h
     src/parser_data.h
@@ -180,14 +189,14 @@ set(headers
     src/plugins.h
     src/plugins_exts.h
     src/plugins_exts/metadata.h
+    src/plugins_exts/semver.h
     src/plugins_types.h
     src/printer_data.h
     src/printer_schema.h
     src/set.h
-    src/tree.h
     src/tree_data.h
-    src/tree_edit.h
-    src/tree_schema.h)
+    src/tree_schema.h
+    src/utils.h)
 
 set(internal_headers
     src/ly_common.h
@@ -205,6 +214,7 @@ set(internal_headers
     src/schema_compile_amend.h
     src/schema_compile_node.h
     src/schema_features.h
+    src/schema_diff.h
     src/tree_data_internal.h
     src/tree_schema_internal.h
     src/validation.h
@@ -238,6 +248,7 @@ set(format_sources
     src/*.h
     src/plugins_exts/*
     src/plugins_types/*)
+
 #
 # options
 #
@@ -272,6 +283,10 @@ endif()
 set(PLUGINS_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang" CACHE STRING "Directory with libyang plugins (extensions and user types)")
 set(PLUGINS_DIR_EXTENSIONS "${PLUGINS_DIR}/extensions" CACHE STRING "Directory with libyang user extensions plugins")
 set(PLUGINS_DIR_TYPES "${PLUGINS_DIR}/types" CACHE STRING "Directory with libyang user types plugins")
+set(YANGUPDATE_PLUGINS_DIR "" CACHE STRING "Directory with libyang_update static plugin sources, must be set manually")
+if(YANGUPDATE_PLUGINS_DIR AND NOT IS_ABSOLUTE ${YANGUPDATE_PLUGINS_DIR})
+    message(FATAL_ERROR "Directory with libyang_update plugins \"${YANGUPDATE_PLUGINS_DIR}\" must be absolute.")
+endif()
 
 #
 # checks
@@ -323,9 +338,28 @@ if(ENABLE_COVERAGE)
     gen_coverage_enable(${ENABLE_TESTS})
 endif()
 
+find_package(CBOR)
+if(CBOR_FOUND)
+    list(APPEND libsrc src/parser_cbor.c src/lcbor.c src/printer_cbor.c)
+    list(APPEND headers src/lcbor.h)
+    list(APPEND format_sources src/parser_cbor.c src/lcbor.h src/lcbor.c src/printer_cbor.c)
+else()
+    message(STATUS "libcbor not found, CBOR support disabled")
+endif()
+
 if ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
     # enable before adding tests to let them detect that format checking is available - one of the tests is format checking
     source_format_enable(0.77)
+endif()
+
+if(ENABLE_FUZZ_TARGETS)
+    set(FUZZER "AFL" CACHE STRING "fuzzer type")
+    if(FUZZER STREQUAL "LibFuzzer")
+        if (NOT CMAKE_C_COMPILER_ID STREQUAL "Clang")
+            message(FATAL_ERROR "LibFuzzer works only with clang")
+        endif()
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address,undefined -fno-omit-frame-pointer")
+    endif()
 endif()
 
 # check regex compatibility
@@ -427,6 +461,17 @@ find_package(PCRE2 10.21 REQUIRED)
 include_directories(${PCRE2_INCLUDE_DIRS})
 target_link_libraries(yang ${PCRE2_LIBRARIES})
 
+# link libcbor if found
+if(CBOR_FOUND)
+    if(TARGET yangobj)
+        target_compile_definitions(yangobj PRIVATE ENABLE_CBOR_SUPPORT)
+        target_include_directories(yangobj PRIVATE ${CBOR_INCLUDE_DIR})
+    endif()
+    target_compile_definitions(yang PRIVATE ENABLE_CBOR_SUPPORT)
+    target_include_directories(yang PRIVATE ${CBOR_INCLUDE_DIR})
+    target_link_libraries(yang ${CBOR_LIBRARY})
+endif()
+
 # XXHash include and library
 find_package(XXHash)
 if(XXHASH_FOUND)
@@ -477,16 +522,8 @@ endif()
 if(ENABLE_TESTS)
     enable_testing()
     add_subdirectory(tests)
-endif()
-
-if(ENABLE_FUZZ_TARGETS)
-    set(FUZZER "AFL" CACHE STRING "fuzzer type")
-    if(FUZZER STREQUAL "LibFuzzer")
-        if (NOT CMAKE_C_COMPILER_ID STREQUAL "Clang")
-            message(FATAL_ERROR "LibFuzzer works only with clang")
-        endif()
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address,undefined -fno-omit-frame-pointer")
-    endif()
+elseif(ENABLE_FUZZ_TARGETS AND NOT WIN32)
+    add_subdirectory(tests/fuzz)
 endif()
 
 # create coverage target for generating coverage reports

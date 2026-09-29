@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Built-in integer types plugin.
  *
- * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -18,16 +18,14 @@
 #include "plugins_types.h"
 
 #include <assert.h>
-#include <stdint.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "libyang.h"
-
-/* additional internal headers for some useful simple macros */
 #include "compat.h"
+#include "dict.h"
 #include "ly_common.h"
-#include "plugins_internal.h" /* LY_TYPE_*_STR */
+#include "plugins_internal.h"
 #include "tree_schema_internal.h"
 
 /**
@@ -67,6 +65,11 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
 
     if (format == LY_VALUE_LYB) {
         /* copy the integer and correct the byte order */
+        if (value_size > sizeof num) {
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid %s LYB value size %u B (max %zu B).",
+                    lys_datatype2str(type->basetype), value_size, sizeof num);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
         memcpy(&num, value, value_size);
         num = le64toh(num);
     } else {
@@ -314,6 +317,11 @@ lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, co
 
     if (format == LY_VALUE_LYB) {
         /* copy the integer and correct the byte order */
+        if (value_size > sizeof num) {
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid %s LYB value size %u B (max %zu B).",
+                    lys_datatype2str(type->basetype), value_size, sizeof num);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
         memcpy(&num, value, value_size);
         num = le64toh(num);
     } else {

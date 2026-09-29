@@ -33,11 +33,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libyang.h"
-
 #include "compat.h"
+#include "dict.h"
 #include "ly_common.h"
-
 /**
  * @page howtoDataLYB LYB Binary Format
  * @subsection howtoDataLYBTypesIPv4Address ipv4-address and ipv4-address-link-local (ietf-inet-types)

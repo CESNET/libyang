@@ -1,0 +1,87 @@
+module ydct-group {
+    yang-version 1.1;
+    namespace "urn:ydct:group";
+    prefix ygrp;
+
+    import ydct {
+        prefix ydct;
+    }
+
+    organization
+        "YANG Data Conversion Tool Project";
+
+    contact
+        "Project repository: yang_data_conversion_tool";
+
+    description
+        "Grouping definitions for the ydct project.
+         Revision 2026-01-15 adds cross-module augment to list-02.";
+
+    revision 2026-01-15 {
+        description
+            "Second revision of ydct-group module.
+             Added augment to /ydct:list-02 with ygrp-aug01-leaf-01
+             and ygrp-aug01-leaf-02.";
+    }
+
+    revision 2026-01-10 {
+        description
+            "Initial revision of ydct-group module.
+             Provides grouping-01 and grouping-02.";
+    }
+
+    grouping grouping-01 {
+        description
+            "First grouping with string and uint16 leaves.";
+
+        leaf ygrp-g01-leaf-01 {
+            type string;
+            description
+                "String leaf from grouping-01.";
+        }
+
+        leaf ygrp-g01-leaf-02 {
+            type uint16;
+            description
+                "Uint16 leaf from grouping-01.";
+        }
+    }
+
+    grouping grouping-02 {
+        description
+            "Second grouping with boolean and string leaves.";
+
+        leaf ygrp-g02-leaf-01 {
+            type boolean;
+            description
+                "Boolean leaf from grouping-02.";
+        }
+
+        leaf ygrp-g02-leaf-02 {
+            type string;
+            description
+                "String leaf from grouping-02.";
+        }
+    }
+
+    augment "/ydct:list-02" {
+        when "true()";
+        description
+            "Cross-module augment adding leaves to list-02 in ydct.
+             When condition always true, required by RFC 7950 for
+             mandatory nodes in cross-module augment.";
+
+        leaf ygrp-aug01-leaf-01 {
+            type string;
+            description
+                "Augmented optional string leaf in list-02.";
+        }
+
+        leaf ygrp-aug01-leaf-02 {
+            type boolean;
+            mandatory true;
+            description
+                "Augmented mandatory boolean leaf in list-02.";
+        }
+    }
+}

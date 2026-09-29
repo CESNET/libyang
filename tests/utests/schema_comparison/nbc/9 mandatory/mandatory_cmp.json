@@ -1,0 +1,76 @@
+{
+  "ietf-yang-schema-comparison-output:schema-comparison": {
+    "comparison": [
+      {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
+        "source": {
+          "module": "mandatory",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "mandatory",
+          "revision": "2000-01-02"
+        },
+        "conformance": "non-backwards-compatible",
+        "suggested-target-version": "2.0.0",
+        "node-comparison": [
+          {
+            "node": "/mandatory:l1",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "mandatory",
+                "change": "added",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "uint16"
+              }
+            },
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": true,
+              "type": {
+                "name": "uint16"
+              }
+            }
+          },
+          {
+            "node": "/mandatory:l2",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "mandatory",
+                "change": "added",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "string"
+              }
+            },
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": true,
+              "type": {
+                "name": "string"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

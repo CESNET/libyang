@@ -27,6 +27,7 @@
 #include "hash_table_internal.h"
 #include "log.h"
 #include "ly_config.h"
+#include "plugins_exts/semver.h"
 #include "schema_compile.h"
 #include "set.h"
 #include "tree_data.h"
@@ -66,6 +67,15 @@ struct lysc_node;
 #ifndef PATH_MAX
 # define PATH_MAX 4096
 #endif
+
+/** ietf-yang-semver@2026-03-03 version typedef pattern */
+#define LY_SEMVER_VERSION_PATTERN "[0-9]+[.][0-9]+[.][0-9]+(_(non_)?compatible)?(-[A-Za-z0-9.-]+)?([+][A-Za-z0-9.-]+)?"
+
+/** ietf-yang-semver@2026-03-03 version typedef minimum length */
+#define LY_SEMVER_VERSION_MIN_LEN 5
+
+/** ietf-yang-semver@2026-03-03 version typedef maximum length */
+#define LY_SEMVER_VERSION_MAX_LEN 128
 
 /******************************************************************************
  * Logger
@@ -334,6 +344,7 @@ struct ly_ctx_shared_data {
                                       * incremented only when a new (next) printed context
                                       * is created from the same memory address. */
 
+    pthread_mutex_t pat_ht_lock;    /**< lock for accessing pattern_ht */
     struct ly_ht *pattern_ht;       /**< ht for storing patterns and their pcre2_codes.
                                       * A pattern is used both as a key and a value to search for.
                                       * This ht is only written to when the context is being compiled,
@@ -347,6 +358,7 @@ struct ly_ctx_shared_data {
 
     pthread_mutex_t leafref_links_lock; /**< lock for accessing the leafref links hash table */
     struct ly_ht *leafref_links_ht;     /**< hash table of leafref links between term data nodes */
+    void *semver_pattern;               /**< compiled pattern for semver matching */
 };
 
 #define LY_CTX_INT_IMMUTABLE 0x80000000 /**< marks a context that was printed into a fixed-size memory block and
@@ -400,13 +412,6 @@ LY_ERR ly_ctx_data_add(const struct ly_ctx *ctx);
  * @param[in] ctx Destroyed context.
  */
 void ly_ctx_data_del(const struct ly_ctx *ctx);
-
-/**
- * @brief Free members of a pattern record stored in the context shared data hash table.
- *
- * @param[in] ctx Context to use.
- */
-void ly_ctx_pattern_ht_erase(const struct ly_ctx *ctx);
 
 /**
  * @brief Get private (thread-specific) context data or create it if it does not exist.
@@ -805,27 +810,26 @@ LY_ERR ly_parse_uint(const char *val_str, uint32_t val_len, uint64_t max, int ba
 LY_ERR ly_parse_nodeid(const char **id, const char **prefix, uint32_t *prefix_len, const char **name, uint32_t *name_len);
 
 /**
- * @brief parse instance-identifier's predicate, supports key-predicate, leaf-list-predicate and pos rules from YANG ABNF Grammar.
+ * @brief Get suitable quotes for a value for use in an (X)Path expression.
  *
- * @param[in,out] pred Predicate string (including the leading '[') to parse. The string is updated according to what was parsed
- * (even for error case, so it can be used to determine which substring caused failure).
- * @param[in] limit Limiting length of the @p pred. Function expects NULL terminated string which is not overread.
- * The limit value is not checked with each character, so it can be overread and the failure is detected later.
- * @param[in] format Input format of the data containing the @p pred.
- * @param[out] prefix Start of the node-identifier's prefix if any, NULL in case of pos or leaf-list-predicate rules.
- * @param[out] prefix_len Length of the parsed @p prefix.
- * @param[out] id Start of the node-identifier's identifier string, NULL in case of pos rule, "." in case of leaf-list-predicate rule.
- * @param[out] id_len Length of the parsed @p id.
- * @param[out] value Start of the quoted-string (without quotation marks), not NULL in case of success.
- * @param[out] value_len Length of the parsed @p value.
- * @param[out] errmsg Error message string in case of error.
- * @return LY_SUCCESS in case a complete predicate was parsed.
- * @return LY_EVALID in case of invalid predicate form.
- * @return LY_EINVAL in case of reaching @p limit when parsing @p pred.
+ * @param[in] ctx Context to use.
+ * @param[in] value Value to quote.
+ * @param[out] quot Quoting character.
+ * @return LY_ERR value.
  */
-LY_ERR ly_parse_instance_predicate(const char **pred, uint32_t limit, LYD_FORMAT format,
-        const char **prefix, uint32_t *prefix_len, const char **id, uint32_t *id_len,
-        const char **value, uint32_t *value_len, const char **errmsg);
+LY_ERR ly_val_get_quot(const struct ly_ctx *ctx, const char *value, char *quot);
+
+/**
+ * @brief Append a string to a dynamic string variable.
+ *
+ * @param[in,out] str String to use.
+ * @param[in,out] size String size.
+ * @param[in,out] used String used size excluding terminating zero. If NULL, 0 is assumed.
+ * @param[in] format Message format.
+ * @param[in] ... Message format arguments.
+ * @return LY_ERR value.
+ */
+LY_ERR ly_append_str(char **str, uint32_t *size, uint32_t *used, const char *format, ...);
 
 /**
  * @brief mmap(2) wrapper to map input files into memory to unify parsing.
@@ -869,5 +873,26 @@ LY_ERR ly_strcat(char **dest, const char *format, ...) _FORMAT_PRINTF(2, 3);
  * @return LY_ERR value.
  */
 LY_ERR lyplg_ext_schema_mount_get_ctx(struct lysc_ext_instance *ext, const struct lyd_node *parent, const struct ly_ctx **ext_ctx);
+
+/**
+ * @brief Validate and parse semantic version.
+ *
+ * @param[in] ctx Context with shared data and the compiled pattern to use. If NULL, the pattern is compiled ad-hoc and
+ * then freed.
+ * @param[in] version Version to check.
+ * @param[in] version_len Length of @p version. May be 0 if @p version is 0-terminated.
+ * @param[in] bare Set if the version should have only MAJOR.MINOR.PATCH format.
+ * @param[out] semver Optional parsed semver structure.
+ * @return LY_ERR value.
+ */
+LY_ERR lyplg_ext_semver_parse(const struct ly_ctx *ctx, const char *version, uint32_t version_len, ly_bool bare,
+        struct lys_ext_instance_semver **semver);
+
+/**
+ * @brief Free parsed semantic version.
+ *
+ * @param[in] semver Parser semver structure to free.
+ */
+void lyplg_ext_semver_free(struct lys_ext_instance_semver *semver);
 
 #endif /* LY_COMMON_H_ */

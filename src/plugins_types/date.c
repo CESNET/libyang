@@ -25,11 +25,10 @@
 #include <string.h>
 #include <time.h>
 
-#include "libyang.h"
-
 #include "compat.h"
+#include "dict.h"
 #include "ly_common.h"
-#include "plugins_internal.h" /* LY_TYPE_*_STR */
+#include "plugins_internal.h"
 
 /**
  * @page howtoDataLYB LYB Binary Format
@@ -147,7 +146,7 @@ lyplg_type_store_date(const struct ly_ctx *ctx, const struct lysc_type *type, co
     } else {
         /* fill tm */
         ptr = strptime(value, "%Y-%m-%d", &tm);
-        if (!ptr || (ptr - (char *)value != value_size)) {
+        if (!ptr || ((uint32_t)(ptr - (char *)value) != value_size)) {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to parse %s value \"%.*s\".", type->name,
                     (int)value_size, (char *)value);
             goto cleanup;

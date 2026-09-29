@@ -32,11 +32,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libyang.h"
-
 #include "compat.h"
+#include "dict.h"
 #include "ly_common.h"
-
 /**
  * @page howtoDataLYB LYB Binary Format
  * @subsection howtoDataLYBTypesIPv6Prefix ipv6-prefix and ipv6-address-and-prefix (ietf-inet-types)

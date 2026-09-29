@@ -1,0 +1,129 @@
+{
+  "ietf-yang-schema-comparison-output:schema-comparison": {
+    "comparison": [
+      {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
+        "source": {
+          "module": "pattern",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "pattern",
+          "revision": "2000-01-02"
+        },
+        "target-import": [
+          {
+            "module": "ietf-yang-schema-comparison",
+            "revision": "2026-09-02"
+          }
+        ],
+        "conformance": "backwards-compatible",
+        "suggested-target-version": "1.1.0",
+        "module-comparison": [
+          {
+            "changed": [
+              {
+                "stmt": "import",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "import": {
+                "module": "ietf-yang-schema-comparison",
+                "prefix": "schema-cmp"
+              }
+            }
+          }
+        ],
+        "node-comparison": [
+          {
+            "node": "/pattern:l1",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "pattern",
+                "change": "removed",
+                "conformance": "backwards-compatible"
+              },
+              {
+                "stmt": "pattern",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "string",
+                "pattern": [
+                  {
+                    "expression": "aa|bb|cc",
+                    "inverted": false
+                  }
+                ]
+              }
+            },
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "string",
+                "pattern": [
+                  {
+                    "expression": "aa|bb|cc|dd|ee",
+                    "inverted": false,
+                    "ext-instance": [
+                      {
+                        "module": "ietf-yang-schema-comparison",
+                        "name": "bc-change-at",
+                        "argument": "1.1.0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "node": "/pattern:l2",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "pattern",
+                "change": "removed",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "string",
+                "pattern": [
+                  {
+                    "expression": "a|b|c",
+                    "inverted": false
+                  }
+                ]
+              }
+            },
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "string"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

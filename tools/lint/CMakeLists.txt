@@ -14,6 +14,10 @@ set(lintsrc
     cmd_help.c
     cmd_verb.c
     cmd_debug.c
+    cmd_sample.c
+    cmd_sid.c
+    cmd_cmp.c
+    ietf.c
     yl_opt.c
     yl_schema_features.c
     common.c

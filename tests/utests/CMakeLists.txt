@@ -11,6 +11,7 @@ set(format_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/types/*.c
     ${CMAKE_CURRENT_SOURCE_DIR}/restriction/*.c
     ${CMAKE_CURRENT_SOURCE_DIR}/node/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/schema_comparison/*.c
     PARENT_SCOPE)
 
 ly_add_utest(NAME uint8  SOURCES types/uint8.c)
@@ -59,6 +60,7 @@ ly_add_utest(NAME yang SOURCES schema/test_yang.c)
 ly_add_utest(NAME yin SOURCES schema/test_yin.c)
 ly_add_utest(NAME tree_schema_compile SOURCES schema/test_tree_schema_compile.c)
 ly_add_utest(NAME printer_tree SOURCES schema/test_printer_tree.c)
+ly_add_utest(NAME printer_sid SOURCES schema/test_printer_sid.c)
 
 ly_add_utest(NAME tree_data SOURCES data/test_tree_data.c)
 ly_add_utest(NAME tree_data_sorted SOURCES data/test_tree_data_sorted.c)
@@ -71,6 +73,9 @@ ly_add_utest(NAME lyb SOURCES data/test_lyb.c)
 ly_add_utest(NAME validation SOURCES data/test_validation.c)
 ly_add_utest(NAME merge SOURCES data/test_merge.c)
 ly_add_utest(NAME diff SOURCES data/test_diff.c)
+if(CBOR_FOUND)
+    ly_add_utest(NAME cbor SOURCES data/test_cbor.c)
+endif()
 
 ly_add_utest(NAME metadata SOURCES extensions/test_metadata.c)
 ly_add_utest(NAME nacm SOURCES extensions/test_nacm.c)
@@ -80,3 +85,7 @@ ly_add_utest(NAME structure SOURCES extensions/test_structure.c)
 if(LY_HAVE_REGEX_H)
     ly_add_utest(NAME openconfig SOURCES extensions/test_openconfig.c)
 endif()
+ly_add_utest(NAME revisions SOURCES extensions/test_revisions.c)
+ly_add_utest(NAME semver SOURCES extensions/test_semver.c)
+
+ly_add_utest(NAME schema_comparison SOURCES schema_comparison/test_schema_comparison.c)

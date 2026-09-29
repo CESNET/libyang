@@ -1,0 +1,17 @@
+module when {
+    namespace "urn:test:when";
+    prefix whn;
+    yang-version 1.1;
+
+    revision 2000-01-01;
+
+    leaf l1 {
+        type uint16;
+        when "10 = 5";
+    }
+
+    leaf l2 {
+        type string;
+        when "/l1 > 10";
+    }
+}

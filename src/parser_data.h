@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Data parsers for libyang
  *
- * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -40,6 +40,11 @@ struct ly_in;
  *   can be found in [RFC 7951](http://tools.ietf.org/html/rfc7951). The specification does not cover RPCs, actions and
  *   Notifications, so the representation of these data trees is proprietary and corresponds to the representation of these
  *   trees in XML.
+ *
+ * - CBOR
+ *
+ *   The reference documentation would be `Encoding of Data Modeled with YANG in the Concise Binary Object
+ *   Representation (CBOR)` : [RFC 9254](https://datatracker.ietf.org/doc/html/rfc9254).
  *
  * While the parsers themselves process the input data only syntactically, all the parser functions actually incorporate
  * the [common validator](@ref howtoDataValidation) checking the input data semantically. Therefore, the parser functions
@@ -224,6 +229,11 @@ struct ly_in;
 /**
  * @brief Parse (and validate) data from the input handler as a YANG data tree.
  *
+ * When parsing subtrees (i.e., when @p parent is non-NULL), validation is only performed on the newly parsed data.
+ * This might result in allowing invalid datastore content when the schema contains cross-branch constraints,
+ * complicated `must` statements, etc. When a full-datastore validation is desirable, parse all subtrees
+ * first, and then request validation of the complete datastore content.
+ *
  * @param[in] ctx Context to connect with the tree being built here.
  * @param[in] parent Optional parent to connect the parsed nodes to. If provided, the data are expected to describe
  * a subtree of the YANG module instead of starting at the schema root.
@@ -234,11 +244,6 @@ struct ly_in;
  * @param[out] tree Full parsed data tree, note that NULL can be a valid tree. If @p parent is set, the first parsed child.
  * @return LY_SUCCESS in case of successful parsing (and validation).
  * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
- *
- * When parsing subtrees (i.e., when @p parent is non-NULL), validation is only performed on the newly parsed data.
- * This might result in allowing invalid datastore content when the schema contains cross-branch constraints,
- * complicated `must` statements, etc. When a full-datastore validation is desirable, parse all subtrees
- * first, and then request validation of the complete datastore content.
  */
 LIBYANG_API_DECL LY_ERR lyd_parse_data(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in, LYD_FORMAT format,
         uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree);
@@ -259,6 +264,25 @@ LIBYANG_API_DECL LY_ERR lyd_parse_data(const struct ly_ctx *ctx, struct lyd_node
  */
 LIBYANG_API_DECL LY_ERR lyd_parse_data_mem(const struct ly_ctx *ctx, const char *data, LYD_FORMAT format, uint32_t parse_options,
         uint32_t validate_options, struct lyd_node **tree);
+
+/**
+ * @brief Parse (and validate) input data as a YANG data tree from a bounded memory buffer.
+ *
+ * Wrapper around ::lyd_parse_data() hiding work with the input handler and some obscure options.
+ * Unlike ::lyd_parse_data_mem(), @p data may contain NULL bytes and the parser will not read past @p data_len bytes.
+ *
+ * @param[in] ctx Context to connect with the tree being built here.
+ * @param[in] data The input data in the specified @p format to parse (and validate).
+ * @param[in] data_len Number of readable bytes in @p data.
+ * @param[in] format Format of the input data to be parsed.
+ * @param[in] parse_options Options for parser, see @ref dataparseroptions.
+ * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
+ * @param[out] tree Full parsed data tree, note that NULL can be a valid tree.
+ * @return LY_SUCCESS in case of successful parsing (and validation).
+ * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
+ */
+LIBYANG_API_DECL LY_ERR lyd_parse_data_mem_len(const struct ly_ctx *ctx, const char *data, uint32_t data_len, LYD_FORMAT format,
+        uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree);
 
 /**
  * @brief Parse (and validate) input data as a YANG data tree.
@@ -491,7 +515,7 @@ LIBYANG_API_DECL LY_ERR lyd_validate_module_final(struct lyd_node *tree, const s
 
 /**
  * @brief Validate an RPC/action request, reply, or notification. Only the operation data tree (input/output/notif)
- * is validate, any parents are ignored.
+ * is validated, any parents are ignored.
  *
  * @param[in,out] op_tree Operation tree with any parents. It can point to the operation itself or any of
  * its parents, only the operation subtree is actually validated.
@@ -503,6 +527,25 @@ LIBYANG_API_DECL LY_ERR lyd_validate_module_final(struct lyd_node *tree, const s
  */
 LIBYANG_API_DECL LY_ERR lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *dep_tree, enum lyd_type data_type,
         struct lyd_node **diff);
+
+/**
+ * @brief Validate an RPC/action request, reply, or notification. Only the operation data tree (input/output/notif)
+ * is validated, any parents are ignored.
+ *
+ * Similar to ::lyd_validate_op() but allows setting specific validation options.
+ *
+ * @param[in,out] op_tree Operation tree with any parents. It can point to the operation itself or any of
+ * its parents, only the operation subtree is actually validated.
+ * @param[in] dep_tree Tree to be used for validating references from the operation subtree.
+ * @param[in] data_type Operation type to validate (only YANG operations are accepted, @ref datatype).
+ * @param[in] val_opts Additional validation options (@ref datavalidationoptions), only #LYD_VALIDATE_MULTI_ERROR is
+ * allowed.
+ * @param[out] diff Optional diff with any changes made by the validation.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR error on error.
+ */
+LIBYANG_API_DECL LY_ERR lyd_validate_op2(struct lyd_node *op_tree, const struct lyd_node *dep_tree, enum lyd_type data_type,
+        uint32_t val_opts, struct lyd_node **diff);
 
 /** @} datatree */
 

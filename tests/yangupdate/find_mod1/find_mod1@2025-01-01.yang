@@ -1,0 +1,12 @@
+module find_mod1 {
+    namespace "urn:find_mod1";
+    prefix m1;
+
+    revision 2025-01-01;
+
+    container cont {
+        leaf l {
+            type uint32;
+        }
+    }
+}

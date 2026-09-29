@@ -20,8 +20,6 @@
 #include "out.h"
 #include "parser_data.h"
 #include "printer_data.h"
-#include "tests_config.h"
-#include "tree_data_internal.h"
 #include "tree_schema.h"
 
 static int
@@ -387,17 +385,27 @@ test_anydata_strict_validation(void **state)
     const char *data_invalid;
     const char *data_valid;
     struct lyd_node *tree;
+    char *json;
 
-    // no shcema defiend for "x" in the parsing context
+    /* no schema defiend for "x" in the parsing context */
     data_without_schema = "{\"a:any\":{\"x:element1\":{\"element2\":\"/a:some/a:path\",\"list\":[{},{\"key\":\"a\"}]}}}";
-
     PARSER_CHECK_ERROR(data_without_schema, LYD_PARSE_ANYDATA_STRICT, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
             "No module named \"x\" in the context.", "/a:any", 1);
 
     data_invalid = "{\"a:any\":{\"a:fooA\":{\"element2\":\"/a:some/a:path\",\"list\":[{},{\"key\":\"a\"}]}}}";
-
     PARSER_CHECK_ERROR(data_invalid, LYD_PARSE_ANYDATA_STRICT, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
             "Node \"fooA\" not found in the \"a\" module.", "/a:any", 1);
+
+    /* check print as well */
+    data_valid = "{\"a:any\":{\"a:l1\":[{\"d\":\"d\",\"a\":\"a\",\"c\":1,\"b\":\"b\"}]}}";
+    CHECK_PARSE_LYD(data_valid, LYD_PARSE_ANYDATA_STRICT, LYD_VALIDATE_PRESENT, tree);
+    assert_non_null(tree);
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&json, tree, LYD_JSON, LYD_PRINT_SIBLINGS));
+    lyd_free_all(tree);
+    CHECK_PARSE_LYD(json, LYD_PARSE_ANYDATA_STRICT, LYD_VALIDATE_PRESENT, tree);
+    free(json);
+    assert_non_null(tree);
+    lyd_free_all(tree);
 
     data_valid = "{\"a:any\":{\"foo\":\"default-val\"}}";
     CHECK_PARSE_LYD(data_valid, 0, LYD_VALIDATE_PRESENT, tree);
@@ -799,14 +807,14 @@ test_rpc(void **state)
     CHECK_LYSC_ACTION((struct lysc_node_action *)node->schema, dsc, 0, LYS_STATUS_CURR,
             1, 0, 0, 1, "edit-data", LYS_RPC,
             0, 0, 0, 0, 0, NULL, 0);
-    node = lyd_child(node)->next;
+    node = lyd_child_no_keys(node)->next;
     CHECK_LYSC_NODE(node->schema, "Inline config content.", 0, LYS_STATUS_CURR | LYS_IS_INPUT, 1, "config",
             0, LYS_ANYDATA, 1, 0, NULL, 0);
 
     node = ((struct lyd_node_any *)node)->child;
     CHECK_LYSC_NODE(node->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_PRESENCE, 1, "cp",
             1, LYS_CONTAINER, 0, 0, NULL, 0);
-    node = lyd_child(node);
+    node = lyd_child_no_keys(node);
     /* z has no value */
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)node, 0x1, 0, LY_VALUE_JSON, "z", 0, 0, NULL,  0,  "");
     node = node->parent->next;
@@ -912,13 +920,13 @@ test_reply(void **state)
     CHECK_LYSC_ACTION((struct lysc_node_action *)op->schema, NULL, 0, LYS_STATUS_CURR,
             1, 0, 0, 1, "act", LYS_ACTION,
             1, 0, 0, 1, 0, NULL, 0);
-    node = lyd_child(op);
+    node = lyd_child_no_keys(op);
     CHECK_LYSC_NODE(node->schema, NULL, 0, LYS_STATUS_CURR | LYS_IS_OUTPUT, 1, "al", 0, LYS_LEAF, 1, 0, NULL, 0);
 
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "c", 1, LYS_CONTAINER, 0, 0, NULL, 0);
 
     /* TODO print only rpc-reply node and then output subtree */
-    CHECK_LYD_STRING(lyd_child(op), LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, "{\"a:al\":25}");
+    CHECK_LYD_STRING(lyd_child_no_keys(op), LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, "{\"a:al\":25}");
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, "{\"a:c\":{\"act\":{\"al\":25}}}");
     lyd_free_all(tree);
 
@@ -1013,7 +1021,7 @@ test_restconf_reply(void **state)
 
     data = "{\"a:output\":{\"al\":25}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, lyd_child(tree), in, LYD_JSON, LYD_TYPE_REPLY_RESTCONF,
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, lyd_child_no_keys(tree), in, LYD_JSON, LYD_TYPE_REPLY_RESTCONF,
             LYD_PARSE_STRICT, &envp, NULL));
     ly_in_free(in, 0);
 

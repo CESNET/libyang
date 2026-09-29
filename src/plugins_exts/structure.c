@@ -18,11 +18,9 @@
 #include <string.h>
 
 #include "compat.h"
-#include "libyang.h"
-#include "ly_common.h"
+#include "ly_array.h"
+#include "parser_internal.h"
 #include "plugins_exts.h"
-#include "tree_data_internal.h"
-#include "xpath.h"
 
 struct lysp_ext_instance_structure {
     struct lysp_restr *musts;
@@ -36,6 +34,7 @@ struct lysp_ext_instance_structure {
 
 struct lysc_ext_instance_structure {
     struct lysc_node_container *top_cont;
+    uint16_t flags;
 };
 
 struct lysp_ext_instance_augment_structure {
@@ -56,8 +55,7 @@ static void structure_cfree(const struct ly_ctx *ctx, struct lysc_ext_instance *
 static LY_ERR
 structure_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 {
-    LY_ERR rc;
-    LY_ARRAY_COUNT_TYPE u;
+    LYA_COUNT_T u;
     struct lysp_module *pmod;
     struct lysp_ext_instance_structure *struct_pdata;
 
@@ -72,7 +70,7 @@ structure_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
     pmod = ext->parent;
 
     /* check for duplication */
-    LY_ARRAY_FOR(pmod->exts, u) {
+    LYA_FOR(pmod->exts, u) {
         if ((&pmod->exts[u] != ext) && (pmod->exts[u].name == ext->name) && !strcmp(pmod->exts[u].argument, ext->argument)) {
             /* duplication of the same structure extension in a single module */
             lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EVALID, "Extension %s is instantiated multiple times.", ext->name);
@@ -86,68 +84,53 @@ structure_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
         goto emem;
     }
     ext->parsed = struct_pdata;
-    LY_ARRAY_CREATE_GOTO(lyplg_ext_parse_get_cur_pmod(pctx)->mod->ctx, ext->substmts, 14, rc, emem);
+    LYA_NEW(ext->substmts, 14, goto emem);
 
     /* parse substatements */
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[0].stmt = LY_STMT_MUST;
     ext->substmts[0].storage_p = (void **)&struct_pdata->musts;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[1].stmt = LY_STMT_STATUS;
     ext->substmts[1].storage_p = (void **)&struct_pdata->flags;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[2].stmt = LY_STMT_DESCRIPTION;
     ext->substmts[2].storage_p = (void **)&struct_pdata->dsc;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[3].stmt = LY_STMT_REFERENCE;
     ext->substmts[3].storage_p = (void **)&struct_pdata->ref;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[4].stmt = LY_STMT_TYPEDEF;
     ext->substmts[4].storage_p = (void **)&struct_pdata->typedefs;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[5].stmt = LY_STMT_GROUPING;
     ext->substmts[5].storage_p = (void **)&struct_pdata->groupings;
 
     /* data-def-stmt */
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[6].stmt = LY_STMT_CONTAINER;
     ext->substmts[6].storage_p = (void **)&struct_pdata->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[7].stmt = LY_STMT_LEAF;
     ext->substmts[7].storage_p = (void **)&struct_pdata->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[8].stmt = LY_STMT_LEAF_LIST;
     ext->substmts[8].storage_p = (void **)&struct_pdata->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[9].stmt = LY_STMT_LIST;
     ext->substmts[9].storage_p = (void **)&struct_pdata->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[10].stmt = LY_STMT_CHOICE;
     ext->substmts[10].storage_p = (void **)&struct_pdata->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[11].stmt = LY_STMT_ANYDATA;
     ext->substmts[11].storage_p = (void **)&struct_pdata->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[12].stmt = LY_STMT_ANYXML;
     ext->substmts[12].storage_p = (void **)&struct_pdata->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[13].stmt = LY_STMT_USES;
     ext->substmts[13].storage_p = (void **)&struct_pdata->child;
 
-    rc = lyplg_ext_parse_extension_instance(pctx, ext);
-    return rc;
+    return lyplg_ext_parse_extension_instance(pctx, ext);
 
 emem:
     lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EMEM, "Memory allocation failed (%s()).", __func__);
@@ -162,7 +145,7 @@ emem:
 static LY_ERR
 structure_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, struct lysc_ext_instance *ext)
 {
-    LY_ERR rc;
+    LY_ERR r;
     struct lysc_module *mod_c;
     struct lysc_node *child;
     struct lysc_ext_instance_structure *struct_cdata;
@@ -199,73 +182,62 @@ structure_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *extp, s
     struct_cdata->top_cont->prev = &struct_cdata->top_cont->node;
 
     /* compile substatements */
-    LY_ARRAY_CREATE_GOTO(cctx->ctx, ext->substmts, 14, rc, emem);
-    LY_ARRAY_INCREMENT(ext->substmts);
+    LYA_NEW(ext->substmts, 14, goto emem);
+
     ext->substmts[0].stmt = LY_STMT_MUST;
     ext->substmts[0].storage_p = (void **)&struct_cdata->top_cont->musts;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[1].stmt = LY_STMT_STATUS;
-    ext->substmts[1].storage_p = (void **)&struct_cdata->top_cont->flags;
+    ext->substmts[1].storage_p = (void **)&struct_cdata->flags;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[2].stmt = LY_STMT_DESCRIPTION;
     ext->substmts[2].storage_p = (void **)&struct_cdata->top_cont->dsc;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[3].stmt = LY_STMT_REFERENCE;
     ext->substmts[3].storage_p = (void **)&struct_cdata->top_cont->ref;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[4].stmt = LY_STMT_TYPEDEF;
     ext->substmts[4].storage_p = NULL;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[5].stmt = LY_STMT_GROUPING;
     ext->substmts[5].storage_p = NULL;
 
     /* data-def-stmt */
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[6].stmt = LY_STMT_CONTAINER;
     ext->substmts[6].storage_p = (void **)&struct_cdata->top_cont->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[7].stmt = LY_STMT_LEAF;
     ext->substmts[7].storage_p = (void **)&struct_cdata->top_cont->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[8].stmt = LY_STMT_LEAF_LIST;
     ext->substmts[8].storage_p = (void **)&struct_cdata->top_cont->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[9].stmt = LY_STMT_LIST;
     ext->substmts[9].storage_p = (void **)&struct_cdata->top_cont->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[10].stmt = LY_STMT_CHOICE;
     ext->substmts[10].storage_p = (void **)&struct_cdata->top_cont->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[11].stmt = LY_STMT_ANYDATA;
     ext->substmts[11].storage_p = (void **)&struct_cdata->top_cont->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[12].stmt = LY_STMT_ANYXML;
     ext->substmts[12].storage_p = (void **)&struct_cdata->top_cont->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[13].stmt = LY_STMT_USES;
     ext->substmts[13].storage_p = (void **)&struct_cdata->top_cont->child;
 
     *lyplg_ext_compile_get_options(cctx) |= LYS_COMPILE_NO_CONFIG | LYS_COMPILE_NO_DISABLED;
-    rc = lyplg_ext_compile_extension_instance(cctx, extp, ext, (struct lysc_node *)struct_cdata->top_cont);
+    r = lyplg_ext_compile_extension_instance(cctx, extp, ext, (struct lysc_node *)struct_cdata->top_cont);
     *lyplg_ext_compile_get_options(cctx) = prev_options;
-    if (rc) {
-        return rc;
+    if (r) {
+        return r;
     }
 
-    /* compile config properly even though it is ignored */
+    /* flags compiled into a separate member to avoid alignment issues */
+    struct_cdata->top_cont->flags = struct_cdata->flags;
     if (!(struct_cdata->top_cont->flags & LYS_CONFIG_MASK)) {
+        /* compile config properly even though it is ignored */
         struct_cdata->top_cont->flags |= LYS_CONFIG_W;
     }
 
@@ -396,7 +368,7 @@ structure_compiled_print(const struct lysc_ext_instance *orig_ext, struct lysc_e
 static LY_ERR
 structure_aug_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 {
-    LY_ERR rc;
+    LY_ERR r;
     struct lysp_stmt *stmt;
     struct lysp_ext_instance_augment_structure *aug_pdata;
     const struct ly_ctx *ctx = lyplg_ext_parse_get_cur_pmod(pctx)->mod->ctx;
@@ -428,69 +400,56 @@ structure_aug_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
         goto emem;
     }
     ext->parsed = aug_pdata;
-    LY_ARRAY_CREATE_GOTO(ctx, ext->substmts, 13, rc, emem);
+    LYA_NEW(ext->substmts, 13, goto emem);
 
     /* parse substatements */
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[0].stmt = LY_STMT_STATUS;
     ext->substmts[0].storage_p = (void **)&aug_pdata->flags;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[1].stmt = LY_STMT_DESCRIPTION;
     ext->substmts[1].storage_p = (void **)&aug_pdata->dsc;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[2].stmt = LY_STMT_REFERENCE;
     ext->substmts[2].storage_p = (void **)&aug_pdata->ref;
 
     /* data-def-stmt */
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[3].stmt = LY_STMT_CONTAINER;
     ext->substmts[3].storage_p = (void **)&aug_pdata->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[4].stmt = LY_STMT_LEAF;
     ext->substmts[4].storage_p = (void **)&aug_pdata->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[5].stmt = LY_STMT_LEAF_LIST;
     ext->substmts[5].storage_p = (void **)&aug_pdata->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[6].stmt = LY_STMT_LIST;
     ext->substmts[6].storage_p = (void **)&aug_pdata->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[7].stmt = LY_STMT_CHOICE;
     ext->substmts[7].storage_p = (void **)&aug_pdata->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[8].stmt = LY_STMT_ANYDATA;
     ext->substmts[8].storage_p = (void **)&aug_pdata->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[9].stmt = LY_STMT_ANYXML;
     ext->substmts[9].storage_p = (void **)&aug_pdata->child;
 
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[10].stmt = LY_STMT_USES;
     ext->substmts[10].storage_p = (void **)&aug_pdata->child;
 
     /* case */
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[11].stmt = LY_STMT_CASE;
     ext->substmts[11].storage_p = (void **)&aug_pdata->child;
 
-    if ((rc = lyplg_ext_parse_extension_instance(pctx, ext))) {
-        return rc;
+    if ((r = lyplg_ext_parse_extension_instance(pctx, ext))) {
+        return r;
     }
 
     /* add fake parsed augment node */
-    LY_ARRAY_INCREMENT(ext->substmts);
     ext->substmts[12].stmt = LY_STMT_AUGMENT;
     ext->substmts[12].storage_p = (void **)&aug_pdata->aug;
 
-    aug_pdata->aug = calloc(1, sizeof *aug_pdata->aug);
+    aug_pdata->aug = lysp_parser_node_new(sizeof *aug_pdata->aug, NULL);
     if (!aug_pdata->aug) {
         goto emem;
     }

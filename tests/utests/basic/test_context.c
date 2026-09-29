@@ -1,9 +1,10 @@
 /**
  * @file test_context.c
- * @author: Radek Krejci <rkrejci@cesnet.cz>
+ * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for functions from context.c
  *
- * Copyright (c) 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2018 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -14,14 +15,21 @@
 #define _UTEST_MAIN_
 #include "utests.h"
 
-#include "context.h"
-#include "in.h"
-#include "ly_common.h"
-#include "schema_compile.h"
-#include "tests_config.h"
-#include "tree_schema_internal.h"
+#include "plugins_exts/semver.h"
+
+static int
+get_dirs_count(const char * const *list)
+{
+    int count = 0;
+
+    while (list[count]) {
+        count++;
+    }
+    return count;
+}
 
 #ifdef _WIN32
+# define PATH_SEPARATOR ";"
 
 static void
 slashes_to_backslashes(char *path)
@@ -50,18 +58,24 @@ test_searchdirs(void **state)
 
     /* correct path */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, path1));
-    assert_int_equal(2, UTEST_LYCTX->search_paths.count);
-    assert_string_equal(path1, UTEST_LYCTX->search_paths.objs[1]);
+    list = ly_ctx_get_searchdirs(UTEST_LYCTX);
+    assert_non_null(list);
+    assert_int_equal(2, get_dirs_count(list));
+    assert_string_equal(path1, list[1]);
 
     /* duplicated paths */
     assert_int_equal(LY_EEXIST, ly_ctx_set_searchdir(UTEST_LYCTX, path1));
-    assert_int_equal(2, UTEST_LYCTX->search_paths.count);
-    assert_string_equal(path1, UTEST_LYCTX->search_paths.objs[1]);
+    list = ly_ctx_get_searchdirs(UTEST_LYCTX);
+    assert_non_null(list);
+    assert_int_equal(2, get_dirs_count(list));
+    assert_string_equal(path1, list[1]);
 
     /* another path */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, path2));
-    assert_int_equal(3, UTEST_LYCTX->search_paths.count);
-    assert_string_equal(path2, UTEST_LYCTX->search_paths.objs[2]);
+    list = ly_ctx_get_searchdirs(UTEST_LYCTX);
+    assert_non_null(list);
+    assert_int_equal(3, get_dirs_count(list));
+    assert_string_equal(path2, list[2]);
 
     /* get searchpaths */
     list = ly_ctx_get_searchdirs(UTEST_LYCTX);
@@ -77,18 +91,21 @@ test_searchdirs(void **state)
 
     /* first */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(UTEST_LYCTX, path1));
-    assert_int_equal(2, UTEST_LYCTX->search_paths.count);
+    list = ly_ctx_get_searchdirs(UTEST_LYCTX);
+    assert_non_null(list);
+    assert_int_equal(2, get_dirs_count(list));
     assert_string_not_equal(path1, list[1]);
 
     /* second */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(UTEST_LYCTX, path2));
-    assert_int_equal(1, UTEST_LYCTX->search_paths.count);
+    assert_int_equal(1, get_dirs_count(list));
 
     free(path1);
     free(path2);
 }
 
 #else
+# define PATH_SEPARATOR ":"
 
 static void
 test_searchdirs(void **state)
@@ -116,13 +133,17 @@ test_searchdirs(void **state)
 
     /* correct path */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_BIN "/utests"));
-    assert_int_equal(2, UTEST_LYCTX->search_paths.count);
-    assert_string_equal(TESTS_BIN "/utests", UTEST_LYCTX->search_paths.objs[1]);
+    list = ly_ctx_get_searchdirs(UTEST_LYCTX);
+    assert_non_null(list);
+    assert_int_equal(2, get_dirs_count(list));
+    assert_string_equal(TESTS_BIN "/utests", list[1]);
 
     /* duplicated paths */
     assert_int_equal(LY_EEXIST, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_BIN "/utests"));
-    assert_int_equal(2, UTEST_LYCTX->search_paths.count);
-    assert_string_equal(TESTS_BIN "/utests", UTEST_LYCTX->search_paths.objs[1]);
+    list = ly_ctx_get_searchdirs(UTEST_LYCTX);
+    assert_non_null(list);
+    assert_int_equal(2, get_dirs_count(list));
+    assert_string_equal(TESTS_BIN "/utests", list[1]);
 
     /* another paths - add 8 to fill the initial buffer of the searchpaths list */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_BIN "/CMakeFiles"));
@@ -131,11 +152,11 @@ test_searchdirs(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_SRC "/../doc"));
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_SRC));
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_BIN));
-    assert_int_equal(8, UTEST_LYCTX->search_paths.count);
 
     /* get searchpaths */
     list = ly_ctx_get_searchdirs(UTEST_LYCTX);
     assert_non_null(list);
+    assert_int_equal(8, get_dirs_count(list));
     assert_string_equal(TESTS_BIN "/utests", list[1]);
     assert_string_equal(TESTS_BIN "/CMakeFiles", list[2]);
     assert_string_equal(TESTS_SRC, list[6]);
@@ -149,16 +170,19 @@ test_searchdirs(void **state)
     /* first */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(UTEST_LYCTX, TESTS_BIN "/utests"));
     assert_string_not_equal(TESTS_BIN "/utests", list[0]);
-    assert_int_equal(7, UTEST_LYCTX->search_paths.count);
+    assert_int_equal(7, get_dirs_count(list));
     /* middle */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(UTEST_LYCTX, TESTS_SRC));
-    assert_int_equal(6, UTEST_LYCTX->search_paths.count);
+    assert_int_equal(6, get_dirs_count(list));
+
     /* last */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(UTEST_LYCTX, TESTS_BIN));
-    assert_int_equal(5, UTEST_LYCTX->search_paths.count);
+    assert_int_equal(5, get_dirs_count(list));
+
     /* all */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(UTEST_LYCTX, NULL));
-    assert_int_equal(0, UTEST_LYCTX->search_paths.count);
+    list = ly_ctx_get_searchdirs(UTEST_LYCTX);
+    assert_int_equal(0, get_dirs_count(list));
 
     /* again - no change */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(UTEST_LYCTX, NULL));
@@ -205,7 +229,9 @@ test_models(void **state)
     struct ly_in *in;
     const char *str;
     struct lys_module *mod1, *mod2;
-    struct lys_glob_unres unres = {0};
+    uint16_t initial_change_count, change_count;
+    ly_module_imp_clb clb;
+    void *clb_data;
 
     /* use own context with extra flags */
     ly_ctx_destroy(UTEST_LYCTX);
@@ -215,59 +241,59 @@ test_models(void **state)
     CHECK_LOG_LASTMSG("Invalid argument ctx (ly_ctx_get_change_count()).");
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD, &UTEST_LYCTX));
-    assert_int_equal(UTEST_LYCTX->change_count, ly_ctx_get_change_count(UTEST_LYCTX));
+    initial_change_count = ly_ctx_get_change_count(UTEST_LYCTX);
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module x {namespace urn:x;prefix x;}", &in));
-    assert_int_equal(LY_EINVAL, lys_parse_in(UTEST_LYCTX, in, 4, NULL, &unres.creating, &mod1));
-    lys_unres_glob_erase(&unres);
+    lys_parse(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL);
+    change_count = ly_ctx_get_change_count(UTEST_LYCTX);
+    assert_true(change_count > initial_change_count);
+
+    assert_int_equal(LY_EINVAL, lys_parse(UTEST_LYCTX, in, 4, NULL, &mod1));
     ly_in_free(in, 0);
     CHECK_LOG_CTX("Invalid schema input format.", NULL, 0);
 
     /* import callback */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, (void *)(str = "test"));
-    assert_ptr_equal(test_imp_clb, UTEST_LYCTX->imp_clb);
-    assert_ptr_equal(str, UTEST_LYCTX->imp_clb_data);
+    clb = ly_ctx_get_module_imp_clb(UTEST_LYCTX, &clb_data);
+    assert_ptr_equal(test_imp_clb, clb);
+    assert_ptr_equal(str, clb_data);
     assert_ptr_equal(test_imp_clb, ly_ctx_get_module_imp_clb(UTEST_LYCTX, (void **)&str));
     assert_string_equal("test", str);
 
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, NULL, NULL);
-    assert_null(UTEST_LYCTX->imp_clb);
-    assert_null(UTEST_LYCTX->imp_clb_data);
+    clb = ly_ctx_get_module_imp_clb(UTEST_LYCTX, &clb_data);
+    assert_null(clb);
+    assert_null(clb_data);
 
     /* name collision of module and submodule */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule y {belongs-to a {prefix a;} revision 2018-10-30;}");
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module y {namespace urn:y;prefix y;include y;}", &in));
-    assert_int_equal(LY_EVALID, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &unres.creating, &mod1));
-    lys_unres_glob_erase(&unres);
+    assert_int_equal(LY_EVALID, lys_parse(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &mod1));
     ly_in_free(in, 0);
     CHECK_LOG_CTX("Parsing module \"y\" failed.", NULL, 0);
     CHECK_LOG_CTX("Name collision between module and submodule of name \"y\".", NULL, 1);
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module a {namespace urn:a;prefix a;include y;revision 2018-10-30; }", &in));
-    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &unres.creating, &mod1));
+    assert_int_equal(LY_SUCCESS, lys_parse(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &mod1));
     ly_in_free(in, 0);
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module y {namespace urn:y;prefix y;}", &in));
-    assert_int_equal(LY_EVALID, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &unres.creating, &mod1));
-    lys_unres_glob_erase(&unres);
+    assert_int_equal(LY_EVALID, lys_parse(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &mod1));
     ly_in_free(in, 0);
     CHECK_LOG_CTX("Parsing module \"y\" failed.", NULL, 0);
     CHECK_LOG_CTX("Name collision between module and submodule of name \"y\".", NULL, 1);
 
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule y {belongs-to b {prefix b;}}");
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module b {namespace urn:b;prefix b;include y;}", &in));
-    assert_int_equal(LY_EVALID, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &unres.creating, &mod1));
-    lys_unres_glob_revert(UTEST_LYCTX, &unres);
-    lys_unres_glob_erase(&unres);
+    assert_int_equal(LY_EVALID, lys_parse(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &mod1));
     ly_in_free(in, 0);
     CHECK_LOG_CTX("Parsing module \"b\" failed.", NULL, 0);
     CHECK_LOG_CTX("Parsing submodule \"y\" failed.", NULL, 0);
     CHECK_LOG_CTX("Name collision between submodules of name \"y\".", NULL, 1);
 
     /* selecting correct revision of the submodules */
-    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule y {belongs-to a {prefix a;} revision 2018-10-31;}");
-    assert_int_equal(LY_SUCCESS, ly_in_new_memory("module a {namespace urn:a;prefix a;include y; revision 2018-10-31;}", &in));
-    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &unres.creating, &mod2));
-    lys_unres_glob_erase(&unres);
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule p {belongs-to g {prefix g;} revision 2018-10-31;}");
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory("module g {namespace urn:g;prefix g;include p; revision 2018-10-31;}", &in));
+    assert_int_equal(LY_SUCCESS, lys_parse(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &mod2));
     ly_in_free(in, 0);
     assert_string_equal("2018-10-31", mod2->parsed->includes[0].submodule->revs[0].date);
 
@@ -372,20 +398,20 @@ test_includes(void **state)
 static void
 test_get_models(void **state)
 {
-    struct lys_module *mod, *mod2;
+    struct lys_module *mod, *mod2, *latest;
     const char *str0 = "module a {namespace urn:a;prefix a;}";
     const char *str1 = "module a {namespace urn:a;prefix a;revision 2018-10-23;}";
     const char *str2 = "module a {namespace urn:a;prefix a;revision 2018-10-24;revision 2018-10-23;}";
-    struct ly_in *in0, *in1, *in2;
-    struct lys_glob_unres unres = {0};
+    struct ly_in *in1, *in2, *in3;
 
     unsigned int index = 0;
     const char *names[] = {
-        "ietf-inet-types", "ietf-yang-types", "ietf-yang-metadata", "yang", "default", "ietf-yang-schema-mount",
-        "ietf-yang-structure-ext", "ietf-datastores", "ietf-yang-library", "a", "a", "a"
+        "ietf-yang-semver", "ietf-inet-types", "ietf-yang-types", "ietf-yang-metadata", "yang", "default",
+        "ietf-yang-schema-mount", "ietf-yang-structure-ext", "ietf-yang-revisions", "ietf-yang-schema-comparison",
+        "ietf-datastores", "ietf-yang-library", "ietf-yang-library-status", "ietf-yang-library-augmentedby",
+        "ietf-yang-library-semver", "a", "m", "a", "n"
     };
 
-    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str0, &in0));
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str1, &in1));
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str2, &in2));
 
@@ -416,46 +442,43 @@ test_get_models(void **state)
     /* select module by revision */
     assert_int_equal(LY_SUCCESS, lys_parse(UTEST_LYCTX, in1, LYS_IN_YANG, NULL, &mod));
     /* invalid attempts - implementing module of the same name and inserting the same module */
-    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in2, LYS_IN_YANG, NULL, &unres.creating, &mod2));
-    assert_int_equal(LY_EDENIED, lys_implement(mod2, NULL, &unres));
+    assert_int_equal(LY_EDENIED, lys_parse(UTEST_LYCTX, in2, LYS_IN_YANG, NULL, &mod2));
     CHECK_LOG_CTX("Module \"a@2018-10-24\" is already implemented in revision \"2018-10-23\".", NULL, 0);
-    lys_unres_glob_erase(&unres);
     ly_in_reset(in1);
     /* it is already there, fine */
-    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in1, LYS_IN_YANG, NULL, &unres.creating, NULL));
+    assert_int_equal(LY_SUCCESS, lys_parse(UTEST_LYCTX, in1, LYS_IN_YANG, NULL, NULL));
     /* insert the second module only as imported, not implemented */
-    lys_unres_glob_erase(&unres);
-    ly_in_reset(in2);
-    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in2, LYS_IN_YANG, NULL, &unres.creating, &mod2));
-    lys_unres_glob_erase(&unres);
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, (void *)str2);
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory("module m {namespace urn:m; prefix m; import a { prefix a; revision-date 2018-10-24; }}", &in3));
+    assert_int_equal(LY_SUCCESS, lys_parse(UTEST_LYCTX, in3, LYS_IN_YANG, NULL, NULL));
+    ly_in_free(in3, 0);
+    mod2 = ly_ctx_get_module(UTEST_LYCTX, "a", "2018-10-24");
     assert_non_null(mod2);
     assert_ptr_not_equal(mod, mod2);
-    mod = ly_ctx_get_module_latest(UTEST_LYCTX, "a");
-    assert_ptr_equal(mod, mod2);
-    mod2 = ly_ctx_get_module_latest_ns(UTEST_LYCTX, mod->ns);
-    assert_ptr_equal(mod, mod2);
-    /* work with module with no revision */
-    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in0, LYS_IN_YANG, NULL, &unres.creating, &mod));
-    lys_unres_glob_erase(&unres);
-    assert_ptr_equal(mod, ly_ctx_get_module(UTEST_LYCTX, "a", NULL));
-    assert_ptr_not_equal(mod, ly_ctx_get_module_latest(UTEST_LYCTX, "a"));
+    latest = ly_ctx_get_module_latest(UTEST_LYCTX, "a");
+    assert_ptr_equal(latest, mod2);
+    assert_ptr_equal(latest, ly_ctx_get_module_latest_ns(UTEST_LYCTX, mod->ns));
+
+    /* work with module with no revision by using another module */
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, (void *)str0);
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory("module n {namespace urn:n; prefix n; import a { prefix a; }}", &in3));
+    assert_int_equal(LY_SUCCESS, lys_parse(UTEST_LYCTX, in3, LYS_IN_YANG, NULL, NULL));
 
     str1 = "submodule b {belongs-to a {prefix a;}}";
     ly_in_free(in1, 0);
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str1, &in1));
-    assert_int_equal(LY_EINVAL, lys_parse_in(UTEST_LYCTX, in1, LYS_IN_YANG, NULL, &unres.creating, &mod));
+    assert_int_equal(LY_EINVAL, lys_parse(UTEST_LYCTX, in1, LYS_IN_YANG, NULL, &mod));
     CHECK_LOG_CTX("Input data contains submodule which cannot be parsed directly without its main module.", NULL, 0);
-    lys_unres_glob_erase(&unres);
 
     while ((mod = (struct lys_module *)ly_ctx_get_module_iter(UTEST_LYCTX, &index))) {
         assert_string_equal(names[index - 1], mod->name);
     }
-    assert_int_equal(12, index);
+    assert_int_equal(19, index);
 
     /* cleanup */
-    ly_in_free(in0, 0);
     ly_in_free(in1, 0);
     ly_in_free(in2, 0);
+    ly_in_free(in3, 0);
 }
 
 static void
@@ -744,7 +767,7 @@ check_node_priv_parsed_not_set(struct lysc_node *node, void *UNUSED(data), ly_bo
 static void
 check_ext_instance_priv_parsed_is_set(struct lysc_ext_instance *ext)
 {
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     struct lysc_ext_substmt *substmts;
     struct lysc_node *cnode;
     const char **iter;
@@ -752,9 +775,9 @@ check_ext_instance_priv_parsed_is_set(struct lysc_ext_instance *ext)
         "tmp_cont", "lf", NULL
     };
 
-    LY_ARRAY_FOR(ext, u) {
+    LYA_FOR(ext, u) {
         substmts = ext[u].substmts;
-        LY_ARRAY_FOR(substmts, v) {
+        LYA_FOR(substmts, v) {
             if (substmts && substmts[v].storage_p && (substmts[v].stmt & LY_STMT_DATA_NODE_MASK)) {
                 cnode = *(struct lysc_node **)substmts[v].storage_p;
                 iter = check;
@@ -767,13 +790,13 @@ check_ext_instance_priv_parsed_is_set(struct lysc_ext_instance *ext)
 static void
 check_ext_instance_priv_parsed_not_set(struct lysc_ext_instance *ext)
 {
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
     struct lysc_ext_substmt *substmts;
     struct lysc_node *cnode;
 
-    LY_ARRAY_FOR(ext, u) {
+    LYA_FOR(ext, u) {
         substmts = ext[u].substmts;
-        LY_ARRAY_FOR(substmts, v) {
+        LYA_FOR(substmts, v) {
             if (substmts && substmts[v].storage_p && (substmts[v].stmt & LY_STMT_DATA_NODE_MASK)) {
                 cnode = *(struct lysc_node **)substmts[v].storage_p;
                 if (cnode) {
@@ -978,12 +1001,11 @@ test_explicit_compile(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD | LY_CTX_EXPLICIT_COMPILE,
             &UTEST_LYCTX));
-    UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, NULL, &mod);
+    UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, feats, NULL);
     UTEST_ADD_MODULE(schema_b, LYS_IN_YANG, NULL, NULL);
     UTEST_ADD_MODULE(schema_c, LYS_IN_YANG, NULL, NULL);
-    assert_int_equal(LY_SUCCESS, lys_set_implemented((struct lys_module *)mod, feats));
 
-    /* none of the modules should be compiled */
+    /* none of the added modules should be compiled */
     i = 0;
     while ((mod = ly_ctx_get_module_iter(UTEST_LYCTX, &i))) {
         assert_null(mod->compiled);
@@ -1006,6 +1028,27 @@ test_explicit_compile(void **state)
     assert_non_null(mod);
     mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "c");
     assert_non_null(mod);
+
+    /* test module parsing failure */
+    ly_ctx_destroy(UTEST_LYCTX);
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules", LY_CTX_DISABLE_SEARCHDIR_CWD | LY_CTX_EXPLICIT_COMPILE,
+            &UTEST_LYCTX));
+
+    UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, feats, NULL);
+    UTEST_ADD_MODULE(schema_c, LYS_IN_YANG, NULL, NULL);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa;", LYS_IN_YANG, NULL));
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Missing mandatory keyword \"namespace\" as a child of \"module\".", NULL, 1);
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_compile(UTEST_LYCTX));
+
+    /* check implemented modules */
+    mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "a");
+    assert_non_null(mod);
+    mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "c");
+    assert_non_null(mod);
+    mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "aa");
+    assert_null(mod);
 }
 
 static void
@@ -1032,6 +1075,58 @@ test_all_implemented(void **state)
     assert_non_null(mod);
 }
 
+static void
+test_search_localfile(void **state)
+{
+    const struct lys_module *mod;
+    const char *semver_str;
+
+    ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_SRC "/modules/search_localfile");
+
+    /* prefer version in filename */
+    mod = ly_ctx_load_module(UTEST_LYCTX, "local-mod1", NULL, NULL);
+    assert_non_null(mod);
+    lys_semver_get(mod, &semver_str);
+    assert_string_equal(semver_str, "1.1.0");
+
+    /* find latest version */
+    mod = ly_ctx_load_module(UTEST_LYCTX, "local-mod2", NULL, NULL);
+    assert_non_null(mod);
+    lys_semver_get(mod, &semver_str);
+    assert_string_equal(semver_str, "1.2.0-latest");
+
+    /* find latest revision */
+    mod = ly_ctx_load_module(UTEST_LYCTX, "local-mod3", NULL, NULL);
+    assert_non_null(mod);
+    assert_string_equal(mod->revision, "2026-02-10");
+    lys_semver_get(mod, &semver_str);
+    assert_string_equal(semver_str, "1.5.0+weekend-build");
+}
+
+static void
+test_filename_warn(void **state)
+{
+    const struct lys_module *mod;
+
+    ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_SRC "/modules/filename_warn");
+
+    /* name mismatch, error */
+    mod = ly_ctx_load_module(UTEST_LYCTX, "invalid1", NULL, NULL);
+    assert_null(mod);
+    CHECK_LOG_CTX("Parsing module \"invalid11\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Unexpected module \"invalid11\" parsed instead of \"invalid1\".", NULL, 0);
+
+    /* revision mismatch */
+    mod = ly_ctx_load_module(UTEST_LYCTX, "invalid2", NULL, NULL);
+    assert_non_null(mod);
+    CHECK_LOG_CTX("File name \"invalid2@2026-01-01.yang\" does not match module revision \"2026-01-05\".", NULL, 0);
+
+    /* version mismatch */
+    mod = ly_ctx_load_module(UTEST_LYCTX, "invalid3", NULL, NULL);
+    assert_non_null(mod);
+    CHECK_LOG_CTX("File name \"invalid3@1.0.1-special.yang\" does not match module version \"1.0.1-spec\".", NULL, 0);
+}
+
 int
 main(void)
 {
@@ -1046,6 +1141,8 @@ main(void)
         UTEST(test_explicit_compile),
         UTEST(test_free_parsed),
         UTEST(test_all_implemented),
+        UTEST(test_search_localfile),
+        UTEST(test_filename_warn),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

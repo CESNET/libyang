@@ -1,0 +1,121 @@
+{
+  "ietf-yang-schema-comparison-output:schema-comparison": {
+    "comparison": [
+      {
+        "locally-resolved": [null],
+        "fully-resolved": [null],
+        "source": {
+          "module": "range",
+          "revision": "2000-01-01"
+        },
+        "target": {
+          "module": "range",
+          "revision": "2000-01-02"
+        },
+        "conformance": "non-backwards-compatible",
+        "suggested-target-version": "2.0.0",
+        "node-comparison": [
+          {
+            "node": "/range:l1",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "range",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "uint16",
+                "range": {
+                  "restriction": "0..10|20..50|100"
+                }
+              }
+            },
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "uint16",
+                "range": {
+                  "restriction": "1..50|100"
+                }
+              }
+            }
+          },
+          {
+            "node": "/range:l2",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "range",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "int32",
+                "range": {
+                  "restriction": "-10..0|100..200"
+                }
+              }
+            },
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "int32",
+                "range": {
+                  "restriction": "-10..0|100|101"
+                }
+              }
+            }
+          },
+          {
+            "node": "/range:l3",
+            "node-type": "leaf",
+            "changed": [
+              {
+                "stmt": "range",
+                "change": "modified",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "int8",
+                "range": {
+                  "restriction": "-10..10"
+                }
+              }
+            },
+            "new": {
+              "status": "current",
+              "config": true,
+              "mandatory": false,
+              "type": {
+                "name": "int8",
+                "range": {
+                  "restriction": "-9..9"
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

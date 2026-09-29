@@ -25,15 +25,15 @@
 #include "dict.h"
 #include "in_internal.h"
 #include "log.h"
+#include "ly_array.h"
 #include "ly_common.h"
 #include "parser_schema.h"
 #include "path.h"
 #include "set.h"
-#include "tree.h"
-#include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_free.h"
 #include "tree_schema_internal.h"
+#include "utils.h"
 
 struct lys_glob_unres;
 
@@ -106,12 +106,12 @@ struct lys_glob_unres;
         __loop_end = 1; \
     }
 
-LY_ERR parse_container(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_uses(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_choice(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_case(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_list(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_grouping(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_grp **groupings);
+static LY_ERR parse_container(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+static LY_ERR parse_uses(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+static LY_ERR parse_choice(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+static LY_ERR parse_case(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+static LY_ERR parse_list(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+static LY_ERR parse_grouping(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_grp **groupings);
 
 /**
  * @brief Add another character to dynamic buffer, a low-level function.
@@ -126,7 +126,7 @@ LY_ERR parse_grouping(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struc
  * @param[in,out] buf_used Currently used characters of the buffer.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 buf_add_char(struct ly_ctx *ctx, struct ly_in *in, size_t len, char **buf, size_t *buf_len, size_t *buf_used)
 {
 #define BUF_STEP 16;
@@ -163,7 +163,7 @@ buf_add_char(struct ly_ctx *ctx, struct ly_in *in, size_t len, char **buf, size_
  * 2 - prefix already processed, now processing the identifier
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 buf_store_char(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, size_t *word_len,
         char **word_b, size_t *buf_len, ly_bool need_buf, uint8_t *prefix)
 {
@@ -244,7 +244,7 @@ buf_store_char(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, size
  *                    2 for a block comment.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 skip_comment(struct lysp_yang_ctx *ctx, uint8_t comment)
 {
     /* internal statuses: */
@@ -304,17 +304,52 @@ skip_comment(struct lysp_yang_ctx *ctx, uint8_t comment)
 }
 
 /**
+ * @brief Read from a replacement string instead of standard input.
+ *
+ * DOES NOT MOVE THE INPUT!
+ *
+ * @param[in] ctx yang parser context for logging.
+ * @param[in] arg Type of YANG keyword argument expected.
+ * @param[in] tmp_input Temporary input string to use for reading the char.
+ * @param[out] word_p Pointer to the read quoted string.
+ * @param[out] word_b Pointer to a dynamically-allocated buffer holding the read quoted string. If not needed,
+ * set to NULL. Otherwise equal to @p word_p.
+ * @param[out] word_len Length of the read quoted string.
+ * @param[out] buf_len Length of the dynamically-allocated buffer @p word_b.
+ * @return LY_ERR values.
+ */
+static LY_ERR
+buf_store_char_replaced_input(struct lysp_yang_ctx *ctx, enum yang_arg arg, const char *tmp_input, char **word_p,
+        char **word_b, size_t *word_len, size_t *buf_len)
+{
+    LY_ERR rc = LY_SUCCESS;
+    const char *c, *s;
+
+    /* backup */
+    c = ctx->in->current;
+    s = ctx->in->start;
+
+    /* read the special non-input string (char) */
+    ctx->in->current = ctx->in->start = tmp_input;
+    rc = buf_store_char(ctx, arg, word_p, word_len, word_b, buf_len, 1, NULL);
+
+    /* restore */
+    ctx->in->current = c;
+    ctx->in->start = s;
+
+    return rc;
+}
+
+/**
  * @brief Read a quoted string from data.
  *
  * @param[in] ctx yang parser context for logging.
  * @param[in] arg Type of YANG keyword argument expected.
  * @param[out] word_p Pointer to the read quoted string.
  * @param[out] word_b Pointer to a dynamically-allocated buffer holding the read quoted string. If not needed,
- * set to NULL. Otherwise equal to \p word_p.
+ * set to NULL. Otherwise equal to @p word_p.
  * @param[out] word_len Length of the read quoted string.
- * @param[out] buf_len Length of the dynamically-allocated buffer \p word_b.
- * @param[in] indent Current indent (number of YANG spaces). Needed for correct multi-line string
- * indenation in the final quoted string.
+ * @param[out] buf_len Length of the dynamically-allocated buffer @p word_b.
  * @return LY_ERR values.
  */
 static LY_ERR
@@ -333,7 +368,6 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
     uint64_t block_indent = 0, current_indent = 0;
     ly_bool need_buf = 0;
     uint8_t prefix = 0;
-    const char *c;
     uint64_t trailing_ws = 0; /* current number of stored trailing whitespace characters */
 
     if (ctx->in->current[0] == '\"') {
@@ -399,10 +433,7 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
                     ctx->indent += Y_TAB_SPACES;
                     for ( ; current_indent > block_indent; --current_indent, --ctx->indent) {
                         /* store leftover spaces from the tab */
-                        c = ctx->in->current;
-                        ctx->in->current = " ";
-                        LY_CHECK_RET(buf_store_char(ctx, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
-                        ctx->in->current = c;
+                        LY_CHECK_RET(buf_store_char_replaced_input(ctx, arg, " ", word_p, word_b, word_len, buf_len));
                         trailing_ws++;
                     }
                     ++ctx->in->current;
@@ -434,18 +465,14 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
                     current_indent = 0;
                 }
 
-                c = NULL;
-                if (ctx->in->current[0] != '\n') {
+                if (ctx->in->current[0] == '\n') {
+                    /* check and store character */
+                    LY_CHECK_RET(buf_store_char(ctx, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
+                } else {
                     /* storing '\r' as '\n' */
-                    c = ctx->in->current;
-                    ctx->in->current = "\n";
-                }
-
-                /* check and store character */
-                LY_CHECK_RET(buf_store_char(ctx, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
-
-                if (c) {
-                    ctx->in->current = c + 1;
+                    need_buf = 1;
+                    LY_CHECK_RET(buf_store_char_replaced_input(ctx, arg, "\n", word_p, word_b, word_len, buf_len));
+                    ++ctx->in->current;
                 }
 
                 /* reset context indentation counter for possible string after this one */
@@ -464,19 +491,23 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
             break;
         case STRING_DOUBLE_QUOTED_ESCAPED:
             /* string encoded characters */
-            c = ctx->in->current;
             switch (ctx->in->current[0]) {
             case 'n':
-                ctx->in->current = "\n";
+                need_buf = 1;
                 /* fix false newline count in buf_store_char() */
                 ctx->in->line--;
+                LY_CHECK_RET(buf_store_char_replaced_input(ctx, arg, "\n", word_p, word_b, word_len, buf_len));
+                ++ctx->in->current;
                 break;
             case 't':
-                ctx->in->current = "\t";
+                need_buf = 1;
+                LY_CHECK_RET(buf_store_char_replaced_input(ctx, arg, "\t", word_p, word_b, word_len, buf_len));
+                ++ctx->in->current;
                 break;
             case '\"':
             case '\\':
-                /* ok as is */
+                /* ok as is, check and store character */
+                LY_CHECK_RET(buf_store_char(ctx, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
                 break;
             default:
                 LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Double-quoted string unknown special character '\\%c'.",
@@ -484,11 +515,8 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
                 return LY_EVALID;
             }
 
-            /* check and store character */
-            LY_CHECK_RET(buf_store_char(ctx, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
-
+            /* escaped char processed */
             string = STRING_DOUBLE_QUOTED;
-            ctx->in->current = c + 1;
             break;
         case STRING_PAUSED_NEXTSTRING:
             switch (ctx->in->current[0]) {
@@ -596,7 +624,7 @@ string_end:
  * @param[out] word_len Length of the read string.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 get_argument(struct lysp_yang_ctx *ctx, enum yang_arg arg, uint16_t *flags, char **word_p,
         char **word_b, size_t *word_len)
 {
@@ -753,7 +781,7 @@ error:
  * @param[out] word_len Length of the keyword in the data. Useful for extension instances.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 get_keyword(struct lysp_yang_ctx *ctx, enum ly_stmt *kw, char **word_p, size_t *word_len)
 {
     uint8_t prefix;
@@ -819,7 +847,7 @@ keyword_start:
     } else if (*kw == LY_STMT_SYNTAX_LEFT_BRACE) {
         ctx->depth++;
         if (ctx->depth > LY_MAX_BLOCK_DEPTH) {
-            LOGERR(PARSER_CTX(ctx), LY_EINVAL, "The maximum number of block nestings has been exceeded.");
+            LOGERR(PARSER_CTX(ctx), LY_EINVAL, "Maximum number %d of block nestings has been exceeded.", LY_MAX_BLOCK_DEPTH);
             return LY_EINVAL;
         }
         goto success;
@@ -971,7 +999,7 @@ cleanup:
  */
 static LY_ERR
 parse_ext(struct lysp_yang_ctx *ctx, const char *ext_name, size_t ext_name_len, const void *parent,
-        enum ly_stmt parent_stmt, LY_ARRAY_COUNT_TYPE parent_stmt_index, struct lysp_ext_instance **exts)
+        enum ly_stmt parent_stmt, LYA_COUNT_T parent_stmt_index, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -979,7 +1007,7 @@ parse_ext(struct lysp_yang_ctx *ctx, const char *ext_name, size_t ext_name_len, 
     struct lysp_ext_instance *e;
     enum ly_stmt kw;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *exts, e, LY_EMEM);
+    LYA_ADD_ITEM(*exts, e, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     if (!ly_strnchr(ext_name, ':', ext_name_len)) {
         LOGVAL_PARSER(ctx, LYVE_SYNTAX, "Extension instance \"%.*s\" without the mandatory prefix.",
@@ -1244,13 +1272,13 @@ parse_include(struct lysp_yang_ctx *ctx, const char *module_name, struct lysp_in
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_include *inc;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *includes, inc, LY_EMEM);
+    LYA_ADD_ITEM(*includes, inc, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*includes, u) {
-        LY_ARRAY_FOR((*includes)[u].exts, v) {
+    LYA_FOR(*includes, u) {
+        LYA_FOR((*includes)[u].exts, v) {
             (*includes)[u].exts[v].parent = &(*includes)[u];
         }
     }
@@ -1310,13 +1338,13 @@ parse_import(struct lysp_yang_ctx *ctx, const char *module_prefix, struct lysp_i
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_import *imp;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *imports, imp, LY_EVALID);
+    LYA_ADD_ITEM(*imports, imp, LOGMEM(PARSER_CTX(ctx)); return LY_EVALID);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*imports, u) {
-        LY_ARRAY_FOR((*imports)[u].exts, v) {
+    LYA_FOR(*imports, u) {
+        LYA_FOR((*imports)[u].exts, v) {
             (*imports)[u].exts[v].parent = &(*imports)[u];
         }
     }
@@ -1374,13 +1402,13 @@ parse_revision(struct lysp_yang_ctx *ctx, struct lysp_revision **revs)
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_revision *rev;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *revs, rev, LY_EMEM);
+    LYA_ADD_ITEM(*revs, rev, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*revs, u) {
-        LY_ARRAY_FOR((*revs)[u].exts, v) {
+    LYA_FOR(*revs, u) {
+        LYA_FOR((*revs)[u].exts, v) {
             (*revs)[u].exts[v].parent = &(*revs)[u];
         }
     }
@@ -1441,7 +1469,7 @@ parse_text_fields(struct lysp_yang_ctx *ctx, enum ly_stmt parent_stmt, const cha
     enum ly_stmt kw;
 
     /* allocate new pointer */
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *texts, item, LY_EMEM);
+    LYA_ADD_ITEM(*texts, item, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, arg, NULL, &word, &buf, &word_len));
@@ -1450,7 +1478,7 @@ parse_text_fields(struct lysp_yang_ctx *ctx, enum ly_stmt parent_stmt, const cha
     YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(parse_ext(ctx, word, word_len, *texts, parent_stmt, LY_ARRAY_COUNT(*texts) - 1, exts));
+            LY_CHECK_RET(parse_ext(ctx, word, word_len, *texts, parent_stmt, LYA_COUNT(*texts) - 1, exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, lyplg_ext_stmt2str(kw), lyplg_ext_stmt2str(parent_stmt));
@@ -1484,7 +1512,7 @@ parse_qnames(struct lysp_yang_ctx *ctx, enum ly_stmt parent_stmt, struct lysp_qn
     enum ly_stmt kw;
 
     /* allocate new pointer */
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *qnames, item, LY_EMEM);
+    LYA_ADD_ITEM(*qnames, item, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, arg, &item->flags, &word, &buf, &word_len));
@@ -1494,7 +1522,7 @@ parse_qnames(struct lysp_yang_ctx *ctx, enum ly_stmt parent_stmt, struct lysp_qn
     YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(parse_ext(ctx, word, word_len, *qnames, parent_stmt, LY_ARRAY_COUNT(*qnames) - 1, exts));
+            LY_CHECK_RET(parse_ext(ctx, word, word_len, *qnames, parent_stmt, LYA_COUNT(*qnames) - 1, exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, lyplg_ext_stmt2str(kw), lyplg_ext_stmt2str(parent_stmt));
@@ -1672,13 +1700,13 @@ static LY_ERR
 parse_restrs(struct lysp_yang_ctx *ctx, enum ly_stmt restr_kw, struct lysp_restr **restrs)
 {
     struct lysp_restr *restr;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *restrs, restr, LY_EMEM);
+    LYA_ADD_ITEM(*restrs, restr, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*restrs, u) {
-        LY_ARRAY_FOR((*restrs)[u].exts, v) {
+    LYA_FOR(*restrs, u) {
+        LYA_FOR((*restrs)[u].exts, v) {
             (*restrs)[u].exts[v].parent = &(*restrs)[u];
         }
     }
@@ -1746,7 +1774,7 @@ cleanup:
  * @param[in,out] when_p When pointer to parse to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_when(struct lysp_yang_ctx *ctx, struct lysp_when **when_p)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1808,7 +1836,7 @@ cleanup:
  * @param[in,out] siblings Siblings to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_any(struct lysp_yang_ctx *ctx, enum ly_stmt any_kw, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1818,8 +1846,8 @@ parse_any(struct lysp_yang_ctx *ctx, enum ly_stmt any_kw, struct lysp_node *pare
     enum ly_stmt kw;
 
     /* create new structure and insert into siblings */
-    LY_LIST_NEW_RET(PARSER_CTX(ctx), siblings, any, next, LY_EMEM);
-
+    any = lysp_parser_node_new(sizeof *any, siblings);
+    LY_CHECK_ERR_RET(!any, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     any->nodetype = any_kw == LY_STMT_ANYDATA ? LYS_ANYDATA : LYS_ANYXML;
     any->parent = parent;
 
@@ -1876,7 +1904,7 @@ cleanup:
  * @param[in,out] enm Structure to fill.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_type_enum_value_pos(struct lysp_yang_ctx *ctx, enum ly_stmt val_kw, struct lysp_type_enum *enm)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1970,13 +1998,13 @@ parse_type_enum(struct lysp_yang_ctx *ctx, enum ly_stmt enum_kw, struct lysp_typ
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_type_enum *enm;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *enums, enm, LY_EMEM);
+    LYA_ADD_ITEM(*enums, enm, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*enums, u) {
-        LY_ARRAY_FOR((*enums)[u].exts, v) {
+    LYA_FOR(*enums, u) {
+        LYA_FOR((*enums)[u].exts, v) {
             (*enums)[u].exts[v].parent = &(*enums)[u];
         }
     }
@@ -2217,13 +2245,13 @@ parse_type_pattern(struct lysp_yang_ctx *ctx, struct lysp_restr **patterns)
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_restr *restr;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *patterns, restr, LY_EMEM);
+    LYA_ADD_ITEM(*patterns, restr, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*patterns, u) {
-        LY_ARRAY_FOR((*patterns)[u].exts, v) {
+    LYA_FOR(*patterns, u) {
+        LYA_FOR((*patterns)[u].exts, v) {
             (*patterns)[u].exts[v].parent = &(*patterns)[u];
         }
     }
@@ -2295,7 +2323,7 @@ parse_type(struct lysp_yang_ctx *ctx, struct lysp_type *type)
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_type *nest_type;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
     if (type->name) {
         LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, "type");
@@ -2378,10 +2406,10 @@ parse_type(struct lysp_yang_ctx *ctx, struct lysp_type *type)
             /* LYS_SET_REQINST checked and set inside parse_type_reqinstance() */
             break;
         case LY_STMT_TYPE:
-            LY_ARRAY_NEW_RET(PARSER_CTX(ctx), type->types, nest_type, LY_EMEM);
+            LYA_ADD_ITEM(type->types, nest_type, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
             /* revalidate the backward parent pointers from extensions */
-            LY_ARRAY_FOR(type->types, u) {
-                LY_ARRAY_FOR((type->types)[u].exts, v) {
+            LYA_FOR(type->types, u) {
+                LYA_FOR((type->types)[u].exts, v) {
                     (type->types)[u].exts[v].parent = &(type->types)[u];
                 }
             }
@@ -2409,7 +2437,7 @@ cleanup:
  * @param[in,out] siblings Siblings to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_leaf(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -2419,7 +2447,8 @@ parse_leaf(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node
     struct lysp_node_leaf *leaf;
 
     /* create new leaf structure */
-    LY_LIST_NEW_RET(PARSER_CTX(ctx), siblings, leaf, next, LY_EMEM);
+    leaf = lysp_parser_node_new(sizeof *leaf, siblings);
+    LY_CHECK_ERR_RET(!leaf, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     leaf->nodetype = LYS_LEAF;
     leaf->parent = parent;
 
@@ -2494,7 +2523,7 @@ cleanup:
  * @param[in,out] exts Extension instances to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_maxelements(struct lysp_yang_ctx *ctx, uint32_t *max, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -2566,7 +2595,7 @@ cleanup:
  * @param[in,out] exts Extension instances to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_minelements(struct lysp_yang_ctx *ctx, uint32_t *min, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -2682,7 +2711,7 @@ cleanup:
  *
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_leaflist(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -2692,7 +2721,8 @@ parse_leaflist(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_
     struct lysp_node_leaflist *llist;
 
     /* create new leaf-list structure */
-    LY_LIST_NEW_RET(PARSER_CTX(ctx), siblings, llist, next, LY_EMEM);
+    llist = lysp_parser_node_new(sizeof *llist, siblings);
+    LY_CHECK_ERR_RET(!llist, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     llist->nodetype = LYS_LEAFLIST;
     llist->parent = parent;
 
@@ -2778,13 +2808,13 @@ parse_refine(struct lysp_yang_ctx *ctx, struct lysp_refine **refines)
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_refine *rf;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *refines, rf, LY_EMEM);
+    LYA_ADD_ITEM(*refines, rf, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*refines, u) {
-        LY_ARRAY_FOR((*refines)[u].exts, v) {
+    LYA_FOR(*refines, u) {
+        LYA_FOR((*refines)[u].exts, v) {
             (*refines)[u].exts[v].parent = &(*refines)[u];
         }
     }
@@ -2856,16 +2886,16 @@ parse_typedef(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_t
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_tpdf *tpdf;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *typedefs, tpdf, LY_EMEM);
+    LYA_ADD_ITEM(*typedefs, tpdf, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*typedefs, u) {
-        LY_ARRAY_FOR((*typedefs)[u].exts, v) {
+    LYA_FOR(*typedefs, u) {
+        LYA_FOR((*typedefs)[u].exts, v) {
             (*typedefs)[u].exts[v].parent = &(*typedefs)[u];
         }
-        LY_ARRAY_FOR((*typedefs)[u].type.exts, v) {
+        LYA_FOR((*typedefs)[u].type.exts, v) {
             (*typedefs)[u].type.exts[v].parent = &(*typedefs)[u].type;
         }
     }
@@ -3008,7 +3038,7 @@ cleanup:
  * @param[in,out] actions Actions to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_action(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_action **actions)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3017,7 +3047,8 @@ parse_action(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_no
     enum ly_stmt kw;
     struct lysp_node_action *act;
 
-    LY_LIST_NEW_RET(PARSER_CTX(ctx), actions, act, next, LY_EMEM);
+    act = lysp_parser_node_new(sizeof *act, (struct lysp_node **)actions);
+    LY_CHECK_ERR_RET(!act, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
@@ -3086,7 +3117,7 @@ cleanup:
  * @param[in,out] notifs Notifications to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_notif(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_notif **notifs)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3095,7 +3126,8 @@ parse_notif(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_nod
     enum ly_stmt kw;
     struct lysp_node_notif *notif;
 
-    LY_LIST_NEW_RET(PARSER_CTX(ctx), notifs, notif, next, LY_EMEM);
+    notif = lysp_parser_node_new(sizeof *notif, (struct lysp_node **)notifs);
+    LY_CHECK_ERR_RET(!notif, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
@@ -3176,7 +3208,7 @@ cleanup:
  * @param[in,out] groupings Groupings to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_grouping(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_grp **groupings)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3185,7 +3217,8 @@ parse_grouping(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_
     enum ly_stmt kw;
     struct lysp_node_grp *grp;
 
-    LY_LIST_NEW_RET(PARSER_CTX(ctx), groupings, grp, next, LY_EMEM);
+    grp = lysp_parser_node_new(sizeof *grp, (struct lysp_node **)groupings);
+    LY_CHECK_ERR_RET(!grp, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
@@ -3270,7 +3303,7 @@ cleanup:
  * @param[in,out] augments Augments to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_augment(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_augment **augments)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3279,7 +3312,8 @@ parse_augment(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_n
     enum ly_stmt kw;
     struct lysp_node_augment *aug;
 
-    LY_LIST_NEW_RET(PARSER_CTX(ctx), augments, aug, next, LY_EMEM);
+    aug = lysp_parser_node_new(sizeof *aug, (struct lysp_node **)augments);
+    LY_CHECK_ERR_RET(!aug, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len));
@@ -3363,7 +3397,7 @@ cleanup:
  * @param[in,out] siblings Siblings to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_uses(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3373,7 +3407,8 @@ parse_uses(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node
     struct lysp_node_uses *uses;
 
     /* create uses structure */
-    LY_LIST_NEW_RET(PARSER_CTX(ctx), siblings, uses, next, LY_EMEM);
+    uses = lysp_parser_node_new(sizeof *uses, siblings);
+    LY_CHECK_ERR_RET(!uses, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     uses->nodetype = LYS_USES;
     uses->parent = parent;
 
@@ -3427,7 +3462,7 @@ cleanup:
  * @param[in,out] siblings Siblings to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_case(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3437,7 +3472,8 @@ parse_case(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node
     struct lysp_node_case *cas;
 
     /* create new case structure */
-    LY_LIST_NEW_RET(PARSER_CTX(ctx), siblings, cas, next, LY_EMEM);
+    cas = lysp_parser_node_new(sizeof *cas, siblings);
+    LY_CHECK_ERR_RET(!cas, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     cas->nodetype = LYS_CASE;
     cas->parent = parent;
 
@@ -3509,7 +3545,7 @@ cleanup:
  * @param[in,out] siblings Siblings to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_choice(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3519,7 +3555,8 @@ parse_choice(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_no
     struct lysp_node_choice *choice;
 
     /* create new choice structure */
-    LY_LIST_NEW_RET(PARSER_CTX(ctx), siblings, choice, next, LY_EMEM);
+    choice = lysp_parser_node_new(sizeof *choice, siblings);
+    LY_CHECK_ERR_RET(!choice, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     choice->nodetype = LYS_CHOICE;
     choice->parent = parent;
 
@@ -3605,7 +3642,7 @@ cleanup:
  * @param[in,out] siblings Siblings to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_container(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = 0;
@@ -3615,7 +3652,8 @@ parse_container(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp
     struct lysp_node_container *cont;
 
     /* create new container structure */
-    LY_LIST_NEW_RET(PARSER_CTX(ctx), siblings, cont, next, LY_EMEM);
+    cont = lysp_parser_node_new(sizeof *cont, siblings);
+    LY_CHECK_ERR_RET(!cont, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     cont->nodetype = LYS_CONTAINER;
     cont->parent = parent;
 
@@ -3712,7 +3750,7 @@ cleanup:
  * @param[in,out] siblings Siblings to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_list(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3722,7 +3760,8 @@ parse_list(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node
     struct lysp_node_list *list;
 
     /* create new list structure */
-    LY_LIST_NEW_RET(PARSER_CTX(ctx), siblings, list, next, LY_EMEM);
+    list = lysp_parser_node_new(sizeof *list, siblings);
+    LY_CHECK_ERR_RET(!list, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     list->nodetype = LYS_LIST;
     list->parent = parent;
 
@@ -3932,13 +3971,13 @@ parse_extension(struct lysp_yang_ctx *ctx, struct lysp_ext **extensions)
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_ext *ex;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *extensions, ex, LY_EMEM);
+    LYA_ADD_ITEM(*extensions, ex, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*extensions, u) {
-        LY_ARRAY_FOR((*extensions)[u].exts, v) {
+    LYA_FOR(*extensions, u) {
+        LYA_FOR((*extensions)[u].exts, v) {
             (*extensions)[u].exts[v].parent = &(*extensions)[u];
         }
     }
@@ -3982,7 +4021,7 @@ cleanup:
  * @param[in,out] deviates Deviates to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_deviate(struct lysp_yang_ctx *ctx, struct lysp_deviate **deviates)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -4201,7 +4240,7 @@ cleanup:
         free(d);
     } else {
         /* insert into siblings */
-        LY_LIST_INSERT(deviates, d, next);
+        lysp_parser_dev_insert(deviates, d);
     }
     return ret;
 }
@@ -4213,7 +4252,7 @@ cleanup:
  * @param[in,out] deviations Deviations to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_deviation(struct lysp_yang_ctx *ctx, struct lysp_deviation **deviations)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -4221,13 +4260,13 @@ parse_deviation(struct lysp_yang_ctx *ctx, struct lysp_deviation **deviations)
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_deviation *dev;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *deviations, dev, LY_EMEM);
+    LYA_ADD_ITEM(*deviations, dev, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*deviations, u) {
-        LY_ARRAY_FOR((*deviations)[u].exts, v) {
+    LYA_FOR(*deviations, u) {
+        LYA_FOR((*deviations)[u].exts, v) {
             (*deviations)[u].exts[v].parent = &(*deviations)[u];
         }
     }
@@ -4271,7 +4310,7 @@ parse_deviation(struct lysp_yang_ctx *ctx, struct lysp_deviation **deviations)
 cleanup:
     if (ret) {
         lysp_deviation_free(PARSER_CTX(ctx), dev);
-        LY_ARRAY_DECREMENT_FREE(*deviations);
+        LYA_DECREMENT_FREE(*deviations);
     }
     return ret;
 }
@@ -4283,7 +4322,7 @@ cleanup:
  * @param[in,out] features Features to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_feature(struct lysp_yang_ctx *ctx, struct lysp_feature **features)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -4291,13 +4330,13 @@ parse_feature(struct lysp_yang_ctx *ctx, struct lysp_feature **features)
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_feature *feat;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *features, feat, LY_EMEM);
+    LYA_ADD_ITEM(*features, feat, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*features, u) {
-        LY_ARRAY_FOR((*features)[u].exts, v) {
+    LYA_FOR(*features, u) {
+        LYA_FOR((*features)[u].exts, v) {
             (*features)[u].exts[v].parent = &(*features)[u];
         }
     }
@@ -4341,7 +4380,7 @@ cleanup:
  * @param[in,out] identities Identities to add to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_identity(struct lysp_yang_ctx *ctx, struct lysp_ident **identities)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -4349,13 +4388,13 @@ parse_identity(struct lysp_yang_ctx *ctx, struct lysp_ident **identities)
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_ident *ident;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LYA_COUNT_T u, v;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *identities, ident, LY_EMEM);
+    LYA_ADD_ITEM(*identities, ident, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
     /* revalidate the backward parent pointers from extensions */
-    LY_ARRAY_FOR(*identities, u) {
-        LY_ARRAY_FOR((*identities)[u].exts, v) {
+    LYA_FOR(*identities, u) {
+        LYA_FOR((*identities)[u].exts, v) {
             (*identities)[u].exts[v].parent = &(*identities)[u];
         }
     }
@@ -4408,7 +4447,7 @@ cleanup:
  * @param[in,out] mod Module to write to.
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_module(struct lysp_yang_ctx *ctx, struct lysp_module *mod)
 {
     LY_ERR ret = 0;
@@ -4622,7 +4661,7 @@ cleanup:
  *
  * @return LY_ERR values.
  */
-LY_ERR
+static LY_ERR
 parse_submodule(struct lysp_yang_ctx *ctx, struct lysp_submodule *submod)
 {
     LY_ERR ret = 0;

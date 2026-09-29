@@ -1,4 +1,4 @@
-/*
+/**
  * @file test_yangdata.c
  * @author: Radek Krejci <rkrejci@cesnet.cz>
  * @brief unit tests for yang-data extensions support
@@ -14,7 +14,7 @@
 #define _UTEST_MAIN_
 #include "utests.h"
 
-#include "libyang.h"
+#include "printer_schema.h"
 
 static int
 setup(void **state)
@@ -64,7 +64,7 @@ test_schema(void **state)
     /* valid data */
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, &mod));
     assert_non_null(e = mod->compiled->exts);
-    assert_int_equal(LY_ARRAY_COUNT(mod->compiled->exts), 1);
+    assert_int_equal(LYA_COUNT(mod->compiled->exts), 1);
     assert_int_equal(LY_SUCCESS, lys_print_mem(&printed, mod, LYS_OUT_YANG_COMPILED, 0));
     assert_string_equal(printed, info);
     free(printed);
@@ -98,7 +98,7 @@ test_schema(void **state)
             "}\n";
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, &mod));
     assert_non_null(e = mod->compiled->exts);
-    assert_int_equal(LY_ARRAY_COUNT(mod->compiled->exts), 1);
+    assert_int_equal(LYA_COUNT(mod->compiled->exts), 1);
     assert_int_equal(LY_SUCCESS, lys_print_mem(&printed, mod, LYS_OUT_YANG_COMPILED, 0));
     assert_string_equal(printed, info);
     free(printed);
@@ -153,7 +153,7 @@ test_schema(void **state)
             "}\n";
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, &mod));
     assert_non_null(e = mod->compiled->exts);
-    assert_int_equal(LY_ARRAY_COUNT(mod->compiled->exts), 2);
+    assert_int_equal(LYA_COUNT(mod->compiled->exts), 2);
     assert_int_equal(LY_SUCCESS, lys_print_mem(&printed, mod, LYS_OUT_YANG_COMPILED, 0));
     assert_string_equal(printed, info);
     free(printed);

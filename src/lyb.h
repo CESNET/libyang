@@ -123,10 +123,12 @@ struct lylyb_parse_ctx {
     struct ly_in *in;           /**< input structure */
     uint8_t buf;                /**< read leftover rightmost bits from in */
     uint8_t buf_bits;           /**< cached buf bit count */
+
+    uint32_t depth;             /**< current node depth (nesting level) */
 };
 
 /**< current LYB format version */
-#define LYB_HEADER_VERSION_NUM 0x1
+#define LYB_HEADER_VERSION_NUM 0x2
 
 /**< LYB format version reserved bit size */
 #define LYB_HEADER_VERSION_BITS 3
