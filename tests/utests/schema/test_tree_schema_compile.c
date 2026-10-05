@@ -4223,7 +4223,9 @@ main(void)
         UTEST(test_type_leafref, setup),
         UTEST(test_type_empty, setup),
         UTEST(test_type_union, setup),
+#ifndef _WIN32
         UTEST(test_type_tpdf_reuse, setup),
+#endif
         UTEST(test_type_dflt, setup),
         UTEST(test_type_exts, setup),
         UTEST(test_status, setup),
