@@ -2192,6 +2192,101 @@ test_type_union(void **state)
 }
 
 static void
+test_type_tpdf_reuse(void **state)
+{
+    struct lyd_node *tree;
+    const char *str, *data;
+
+    str = "module a {yang-version 1.1; namespace urn:a; prefix a;"
+            "typedef base {type string {length \"1..5\";}}"
+            "typedef word {type base {pattern \"[a-z]*\";}}"
+            "typedef percent {type int32 {range \"0..100\";}}"
+            "typedef high {type percent {range \"10..max\";}}"
+            "typedef code {type base {pattern \"[a-z]*\";} default \"a\";}"
+            "leaf s1 {type word;} leaf s2 {type union {type word; type int8;}}"
+            "leaf r1 {type high;} leaf r2 {type union {type high; type boolean;}}"
+            "leaf u1 {type code; units \"chars\";} leaf u2 {type code; units \"chars\";}}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+
+    /* union member, inherited length */
+    data = "<s2 xmlns=\"urn:a\">abcdefghij</s2>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    UTEST_LOG_CTX_CLEAN;
+
+    /* union member, inherited range */
+    data = "<r2 xmlns=\"urn:a\">1000</r2>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    UTEST_LOG_CTX_CLEAN;
+
+    /* leaf with units, typedef with a default, inherited length */
+    data = "<u2 xmlns=\"urn:a\">abcdef</u2>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG_CTX("Unsatisfied length - string \"abcdef\" length is not allowed.", "/a:u2", 1);
+
+    /* union member, inherited fraction-digits */
+    str = "module b {yang-version 1.1; namespace urn:b; prefix b;"
+            "typedef amount {type decimal64 {fraction-digits 2;}}"
+            "typedef small {type amount {range \"0..10\";}}"
+            "leaf d1 {type small;} leaf d2 {type union {type small; type boolean;}}}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+
+    /* typedef compiled for a regexp-posix module, recompiled for a module without it */
+    str = "module openconfig-extensions {namespace \"http://openconfig.net/yang/openconfig-ext\"; prefix oc-ext;"
+            "extension regexp-posix;}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+    str = "module c {yang-version 1.1; namespace urn:c; prefix c;"
+            "typedef base {type string {length \"1..8\"; pattern \"[a-z]+\";}}"
+            "typedef word {type base {pattern \"[a-c]+\";}}}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+    str = "module d {yang-version 1.1; namespace urn:d; prefix d;"
+            "import openconfig-extensions {prefix oc-ext;} import c {prefix c;}"
+            "oc-ext:regexp-posix;"
+            "leaf b {type c:base;} leaf w {type c:word;}}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+    str = "module e {yang-version 1.1; namespace urn:e; prefix e; import c {prefix c;}"
+            "leaf either {type union {type c:word; type int8;}}}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+
+    data = "<either xmlns=\"urn:e\">abcabcabcabc</either>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    UTEST_LOG_CTX_CLEAN;
+
+    /* a union whose FIRST string member has no pattern and whose pattern is on a later member;
+     * compiled first for a regexp-posix module, it must still be recompiled for an unmarked one,
+     * otherwise the later member keeps its POSIX pattern, which is unanchored, so "abc1" matches
+     * "[a-z]+" as a substring instead of being rejected as it is in XML Schema regex */
+    str = "module f {yang-version 1.1; namespace urn:f; prefix f;"
+            "typedef mixed {type union {type int8; type string {length \"1..2\";}"
+            " type string {pattern \"[a-z]+\";}}}}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+    str = "module g {yang-version 1.1; namespace urn:g; prefix g;"
+            "import openconfig-extensions {prefix oc-ext;} import f {prefix f;}"
+            "oc-ext:regexp-posix;"
+            "leaf v {type f:mixed;}}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+    str = "module h {yang-version 1.1; namespace urn:h; prefix h; import f {prefix f;}"
+            "leaf v {type f:mixed;}}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+
+    /* control: the regexp-posix consumer really compiled the pattern as POSIX, so this path is
+     * the one being tested */
+    data = "<v xmlns=\"urn:g\">abc1</v>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_all(tree);
+
+    /* control: the patterned member is reachable for the unmarked consumer, so a rejection below
+     * cannot come from the type being unusable */
+    data = "<v xmlns=\"urn:h\">abc</v>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_all(tree);
+
+    /* the unmarked consumer must not inherit the POSIX pattern */
+    data = "<v xmlns=\"urn:h\">abc1</v>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    UTEST_LOG_CTX_CLEAN;
+}
+
+static void
 test_type_dflt(void **state)
 {
     struct lys_module *mod;
@@ -4128,6 +4223,7 @@ main(void)
         UTEST(test_type_leafref, setup),
         UTEST(test_type_empty, setup),
         UTEST(test_type_union, setup),
+        UTEST(test_type_tpdf_reuse, setup),
         UTEST(test_type_dflt, setup),
         UTEST(test_type_exts, setup),
         UTEST(test_status, setup),
