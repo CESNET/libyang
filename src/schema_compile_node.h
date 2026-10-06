@@ -74,13 +74,14 @@ LY_ERR lys_compile_type_range(struct lysc_ctx *ctx, const struct lysp_restr *ran
  *
  * @param[in] ctx Compile context.
  * @param[in] patterns_p Array of parsed patterns from the current type to compile.
+ * @param[in] type_pmod Parsed module of the type with @p patterns_p used to check for OC 'regexp-posix' extension.
  * @param[in] base_patterns Compiled patterns from the type from which the current type is derived.
  * Patterns from the base type are inherited to have all the patterns that have to match at one place.
  * @param[out] patterns Pointer to the storage for the patterns of the current type.
  * @return LY_ERR LY_SUCCESS, LY_EMEM, LY_EVALID.
  */
 LY_ERR lys_compile_type_patterns(struct lysc_ctx *ctx, const struct lysp_restr *patterns_p,
-        struct lysc_pattern **base_patterns, struct lysc_pattern ***patterns);
+        const struct lysp_module *type_pmod, struct lysc_pattern **base_patterns, struct lysc_pattern ***patterns);
 
 /**
  * @brief Compile parsed type's enum structures (for enumeration and bits types).

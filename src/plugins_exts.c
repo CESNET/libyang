@@ -284,7 +284,7 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, void **parsed_p, struct lysc
 
     case LY_STMT_PATTERN:
         /* compile */
-        rc = lys_compile_type_patterns(ctx, *parsed_p, NULL, (struct lysc_pattern ***)substmt->storage_p);
+        rc = lys_compile_type_patterns(ctx, *parsed_p, ctx->pmod, NULL, (struct lysc_pattern ***)substmt->storage_p);
         LY_CHECK_GOTO(rc, cleanup);
         break;
 

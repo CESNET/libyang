@@ -2268,11 +2268,10 @@ test_type_tpdf_reuse(void **state)
             "leaf v {type f:mixed;}}";
     UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
 
-    /* control: the regexp-posix consumer really compiled the pattern as POSIX, so this path is
-     * the one being tested */
+    /* even though 'g' includes regexp-posix, the pattern is in a module without this extension */
     data = "<v xmlns=\"urn:g\">abc1</v>";
-    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
-    lyd_free_all(tree);
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    UTEST_LOG_CTX_CLEAN;
 
     /* control: the patterned member is reachable for the unmarked consumer, so a rejection below
      * cannot come from the type being unusable */
@@ -2284,6 +2283,26 @@ test_type_tpdf_reuse(void **state)
     data = "<v xmlns=\"urn:h\">abc1</v>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     UTEST_LOG_CTX_CLEAN;
+
+    /* module with patterns and the OC extension */
+    str = "module i {yang-version 1.1; namespace urn:i; prefix i;"
+            "import openconfig-extensions {prefix oc-ext;}"
+            "oc-ext:regexp-posix;"
+            "typedef base {type string {length \"1..5\";}}"
+            "typedef word {type base {pattern \"[a-z]+\";}}"
+            "leaf a {type word;}"
+            "leaf b {type union {type string {length \"10..20\";} type word;}}"
+            "}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+
+    /* always uses POSIX patterns */
+    data = "<a xmlns=\"urn:i\">abc1</a>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_all(tree);
+
+    data = "<b xmlns=\"urn:i\">abc1</b>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_all(tree);
 }
 
 static void

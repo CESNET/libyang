@@ -1159,19 +1159,16 @@ lys_compile_type_patterns_has_oc_posix_ext(const struct lysp_module *pmod)
 }
 
 LY_ERR
-lys_compile_type_patterns(struct lysc_ctx *ctx, const struct lysp_restr *patterns_p, struct lysc_pattern **base_patterns,
-        struct lysc_pattern ***patterns)
+lys_compile_type_patterns(struct lysc_ctx *ctx, const struct lysp_restr *patterns_p, const struct lysp_module *type_pmod,
+        struct lysc_pattern **base_patterns, struct lysc_pattern ***patterns)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lysc_pattern **pattern;
     LYA_COUNT_T u;
-    ly_bool format = 0;
+    ly_bool format;
 
-    /* first check the format of the patterns based on the current parsed module extensions (not compiled yet),
-     * if not set, assume internal use that always uses XML Schema expressions */
-    if (ctx->pmod) {
-        format = lys_compile_type_patterns_has_oc_posix_ext(ctx->pmod);
-    }
+    /* first check the format of the patterns based on the type's local parsed module extensions (not compiled yet) */
+    format = lys_compile_type_patterns_has_oc_posix_ext(type_pmod);
 
     /* copy the patterns from the base type */
     if (base_patterns) {
@@ -1592,16 +1589,14 @@ cleanup:
  *
  * @param[in] type_p Parsed type.
  * @param[in] type_c Compiled type.
- * @param[in] pattern_format Global pattern format.
  * @return 1 if @p type_c can be shared;
  * @return 0 otherwise.
  */
 static ly_bool
-lys_compile_type_share_compiled(const struct lysp_type *type_p, const struct lysc_type *type_c, ly_bool pattern_format)
+lys_compile_type_share_compiled(const struct lysp_type *type_p, const struct lysc_type *type_c)
 {
     LYA_COUNT_T u;
     struct lysc_type_union *type_un;
-    struct lysc_type_str *type_str = NULL;
 
     if (!type_c) {
         /* no compiled type to share */
@@ -1624,26 +1619,6 @@ lys_compile_type_share_compiled(const struct lysp_type *type_p, const struct lys
         LYA_FOR(type_un->types, u) {
             if (type_un->types[u]->basetype == LY_TYPE_LEAFREF) {
                 return 0;
-            }
-        }
-    }
-
-    /* check for patterns and their format */
-    if (type_c->basetype == LY_TYPE_STRING) {
-        type_str = (struct lysc_type_str *)type_c;
-
-        if (type_str->patterns && (type_str->patterns[0]->format != pattern_format)) {
-            return 0;
-        }
-    } else if (type_c->basetype == LY_TYPE_UNION) {
-        type_un = (struct lysc_type_union *)type_c;
-        LYA_FOR(type_un->types, u) {
-            if (type_un->types[u]->basetype == LY_TYPE_STRING) {
-                type_str = (struct lysc_type_str *)type_un->types[u];
-
-                if (type_str->patterns && (type_str->patterns[0]->format != pattern_format)) {
-                    return 0;
-                }
             }
         }
     }
@@ -1733,6 +1708,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
     const struct lysp_type *base_type_p;
     struct lysc_prefix *prefixes;
     uint32_t i;
+    LYA_COUNT_T u;
     ly_bool pattern_format, share_base;
 
     /* alloc and init */
@@ -1836,10 +1812,33 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
 
         /* RFC 7950 9.4.5 - pattern */
         if (type_p->patterns) {
-            LY_CHECK_GOTO(rc = lys_compile_type_patterns(ctx, type_p->patterns,
+            LY_CHECK_GOTO(rc = lys_compile_type_patterns(ctx, type_p->patterns, type_p->pmod,
                     base ? ((struct lysc_type_str *)base)->patterns : NULL, &str->patterns), cleanup);
         } else if (base && ((struct lysc_type_str *)base)->patterns) {
-            str->patterns = lysc_patterns_dup(ctx->ctx, ((struct lysc_type_str *)base)->patterns);
+            pattern_format = lys_compile_type_patterns_has_oc_posix_ext(type_p->pmod);
+            share_base = 1;
+            LYA_FOR(str->patterns, u) {
+                if (str->patterns[u]->format != pattern_format) {
+                    /* different format, need to recompile */
+                    share_base = 0;
+                    break;
+                }
+            }
+
+            if (share_base) {
+                str->patterns = lysc_patterns_dup(ctx->ctx, ((struct lysc_type_str *)base)->patterns);
+            } else {
+                /* free the prepared type */
+                lydict_remove(ctx->ctx, (*type)->name);
+                free(*type);
+                *type = NULL;
+
+                /* recompile the string */
+                base_type_p = lys_compile_type_find_parsed(tpdf_chain, tpdf_chain_last, 0, 0, base);
+                rc = lys_compile_type(ctx, context_pnode, context_flags, context_name, base_type_p, type, NULL, NULL);
+                LY_CHECK_GOTO(rc, cleanup);
+                assert(*type);
+            }
         }
         break;
     case LY_TYPE_ENUM:
@@ -2015,12 +2014,10 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
         } else if (base) {
             /* copy all the types if possible */
             const struct lysc_type_union *un_base = (struct lysc_type_union *)base;
-            LYA_COUNT_T u;
 
-            pattern_format = lys_compile_type_patterns_has_oc_posix_ext(ctx->pmod);
             share_base = 1;
             LYA_FOR(un_base->types, u) {
-                if (un_base->types[u]->exts || !lys_compile_type_share_compiled(NULL, un_base->types[u], pattern_format)) {
+                if (un_base->types[u]->exts || !lys_compile_type_share_compiled(type_p, un_base->types[u])) {
                     /* cannot be shared */
                     share_base = 0;
                     break;
@@ -2202,7 +2199,6 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
         const struct lysp_type *type_p, struct lysc_type **type, const char **units, struct lysp_qname **dflt)
 {
     LY_ERR ret = LY_SUCCESS;
-    ly_bool pattern_format;
     struct lys_type_item *tctx;
     LY_DATA_TYPE basetype = LY_TYPE_UNKNOWN;
     struct lysc_type *base = NULL;
@@ -2232,9 +2228,6 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
         goto cleanup;
     }
 
-    /* learn the global pattern format to know what types need to be recompiled */
-    pattern_format = lys_compile_type_patterns_has_oc_posix_ext(ctx->pmod);
-
     /* get restrictions from the referred typedefs */
     for (i = tpdf_chain.count - 1; i + 1 > 0; --i) {
         tctx = tpdf_chain.objs[i];
@@ -2261,7 +2254,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
         }
         assert(plugin_ref);
 
-        if (lys_compile_type_share_compiled(&tctx->tpdf->type, base, pattern_format) && (i != tpdf_chain.count - 1) &&
+        if (lys_compile_type_share_compiled(&tctx->tpdf->type, base) && (i != tpdf_chain.count - 1) &&
                 (plugin_ref == base->plugin_ref)) {
             /* no change, reuse the compiled base */
             ((struct lysp_tpdf *)tctx->tpdf)->type.compiled = base;
@@ -2301,7 +2294,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
     }
 
     /* process the type definition in leaf */
-    if (!lys_compile_type_share_compiled(type_p, base, pattern_format)) {
+    if (!lys_compile_type_share_compiled(type_p, base)) {
         /* leaf type has changes that need to be compiled into the type */
         if (base) {
             plugin_ref = base->plugin_ref;
