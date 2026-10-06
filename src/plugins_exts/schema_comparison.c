@@ -20,6 +20,8 @@
 #include "ly_array.h"
 #include "parser_internal.h"
 #include "plugins_exts.h"
+#include "plugins_internal.h"
+#include "tree_schema_internal.h"
 
 /**
  * @brief Parse backwards-compatible extension instances.
@@ -29,14 +31,51 @@
 static LY_ERR
 schema_cmp_change_at_parse(struct lysp_ctx *pctx, struct lysp_ext_instance *ext)
 {
+    const struct lysp_ext_instance *exts = NULL;
+    LYA_COUNT_T u;
+    struct lyplg_ext *ext_plugin, *parent_ext_plugin;
+
     /* check that the extension is instantiated at an allowed place */
-    if ((ext->parent_stmt != LY_STMT_PATTERN) && (ext->parent_stmt != LY_STMT_WHEN) &&
-            (ext->parent_stmt != LY_STMT_MUST) && (ext->parent_stmt != LY_STMT_DESCRIPTION) &&
-            (ext->parent_stmt != LY_STMT_REFERENCE) && (ext->parent_stmt != LY_STMT_PRESENCE) &&
-            (ext->parent_stmt != LY_STMT_EXTENSION_INSTANCE)) {
+    switch (ext->parent_stmt) {
+    case LY_STMT_PATTERN:
+    case LY_STMT_MUST:
+        exts = ((struct lysp_restr *)ext->parent)->exts;
+        break;
+    case LY_STMT_WHEN:
+        exts = ((struct lysp_when *)ext->parent)->exts;
+        break;
+    case LY_STMT_DESCRIPTION:
+    case LY_STMT_REFERENCE:
+    case LY_STMT_PRESENCE:
+        /* meh */
+        break;
+    case LY_STMT_EXTENSION_INSTANCE:
+        exts = ((struct lysp_ext_instance *)ext->parent)->exts;
+        break;
+    default:
         lyplg_ext_parse_log(pctx, ext, LY_LLWRN, 0, "Extension %s is not allowed in a \"%s\" statement.", ext->name,
                 lyplg_ext_stmt2str(ext->parent_stmt));
         return LY_ENOT;
+    }
+
+    /* check argument */
+    if (lyplg_ext_semver_parse(PARSER_CTX(pctx), ext->argument, 0, 0, NULL)) {
+        lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EVALID, "Extension %s argument semver \"%s\" invalid.", ext->name,
+                ext->argument);
+        return LY_EVALID;
+    }
+
+    ext_plugin = LYSC_GET_EXT_PLG(ext->plugin_ref);
+
+    /* check for duplication */
+    LYA_FOR(exts, u) {
+        parent_ext_plugin = LYSC_GET_EXT_PLG(exts[u].plugin_ref);
+        if ((&exts[u] != ext) && parent_ext_plugin && !strcmp(parent_ext_plugin->id, ext_plugin->id) &&
+                !strcmp(exts[u].argument, ext->argument)) {
+            lyplg_ext_parse_log(pctx, ext, LY_LLERR, LY_EVALID, "Extension %s semver \"%s\" is a duplicate of %s semver \"%s\".",
+                    ext->name, ext->argument, exts[u].name, exts[u].argument);
+            return LY_EVALID;
+        }
     }
 
     return LY_SUCCESS;

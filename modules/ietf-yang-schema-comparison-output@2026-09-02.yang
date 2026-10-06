@@ -21,7 +21,7 @@ module ietf-yang-schema-comparison-output {
   import ietf-yang-semver {
     prefix ysv;
     reference
-      "RFC XXXX: YANG Semantic Versioning";
+      "RFC YYYY: YANG Semantic Versioning";
   }
 
   organization

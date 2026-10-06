@@ -57,56 +57,62 @@ module ietf-yang-schema-comparison {
   extension ed-change-at {
     argument semver;
     description
-      "Marks statements in a new revision of a module
+      "Marks statements in the specified version of a module
        that introduces an editorial change of the statement.
 
-       The argument marks the most recent version of the
-       module where the statement has been changed.
+       This extension may appear multiple times in a single
+       statement and can also be combined with the other
+       extensions in this module but each MUST always have
+       a unique semver argument.
 
        Can only be a substatement of 'pattern', 'when',
        'must', 'description', 'reference', 'presence', or
        extension instance statements.";
     reference
-      "RFC 7950: The YANG 1.1 Data Modeling Language, section 11;
-       RFC 6020: YANG - A Data Modeling Language for the Network
-       Configuration Protocol (NETCONF), section 10";
+      "RFC YYYY: YANG Semantic Versioning, section 4.4.";
   }
 
   extension bc-change-at {
     argument semver;
     description
-      "Marks statements in a new revision of a module
+      "Marks statements in the specified version of a module
        that introduces a backwards-compatible change of
        the statement.
 
-       The argument marks the most recent version of the
-       module where the statement has been changed.
+       This extension may appear multiple times in a single
+       statement and can also be combined with the other
+       extensions in this module but each MUST always have
+       a unique semver argument.
 
        Can only be a substatement of 'pattern', 'when',
        'must', 'description', 'reference', 'presence', or
        extension instance statements.";
     reference
-      "RFC 7950: The YANG 1.1 Data Modeling Language, section 11;
+      "RFC 7950: The YANG 1.1 Data Modeling Language, section 11.;
        RFC 6020: YANG - A Data Modeling Language for the Network
-       Configuration Protocol (NETCONF), section 10";
+       Configuration Protocol (NETCONF), section 10.;
+       RFC ZZZZ: Updated YANG Module Revision Handling, section 3.1.1.";
   }
 
   extension nbc-change-at {
     argument semver;
     description
-      "Marks statements in a new revision of a module
+      "Marks statements in the specified version of a module
        that introduces a non-backwards-compatible change of
        the statement.
 
-       The argument marks the most recent version of the
-       module where the statement has been changed.
+       This extension may appear multiple times in a single
+       statement and can also be combined with the other
+       extensions in this module but each MUST always have
+       a unique semver argument.
 
        Can only be a substatement of 'pattern', 'when',
        'must', 'description', 'reference', 'presence', or
        extension instance statements.";
     reference
-      "RFC 7950: The YANG 1.1 Data Modeling Language, section 11;
+      "RFC 7950: The YANG 1.1 Data Modeling Language, section 11.;
        RFC 6020: YANG - A Data Modeling Language for the Network
-       Configuration Protocol (NETCONF), section 10";
+       Configuration Protocol (NETCONF), section 10.;
+       RFC ZZZZ: Updated YANG Module Revision Handling, section 3.1.2.";
   }
 }

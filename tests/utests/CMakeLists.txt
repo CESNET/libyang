@@ -87,5 +87,6 @@ if(LY_HAVE_REGEX_H)
 endif()
 ly_add_utest(NAME revisions SOURCES extensions/test_revisions.c)
 ly_add_utest(NAME semver SOURCES extensions/test_semver.c)
+ly_add_utest(NAME schema_comparison SOURCES extensions/test_schema_comparison.c)
 
-ly_add_utest(NAME schema_comparison SOURCES schema_comparison/test_schema_comparison.c)
+ly_add_utest(NAME schema_comparison_output SOURCES schema_comparison/test_schema_comparison.c)
