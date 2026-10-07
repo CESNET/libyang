@@ -2109,7 +2109,7 @@ schema_diff_pnodes_change_r(const struct lysp_node *node1, const struct lysp_nod
             /* get node2 canonical name */
             name2 = schema_diff_parsed_name_canon(node2_array[i]->name, node2_array[i]->nodetype, diff->new_prefix, &buf2);
 
-            if (!strcmp(name1, name2)) {
+            if (!strcmp(name1, name2) && (node1->nodetype == node2_array[i]->nodetype)) {
                 /* matching nodes */
                 node2 = node2_array[i];
                 break;

@@ -1629,7 +1629,8 @@ schema_diff_nodes_change_r(const struct lysc_node *node1, const struct lysc_node
                 continue;
             }
 
-            if (!strcmp(node1->module->name, node2_array[i]->module->name) && !strcmp(node1->name, node2_array[i]->name)) {
+            if (!strcmp(node1->module->name, node2_array[i]->module->name) && !strcmp(node1->name, node2_array[i]->name) &&
+                    (node1->nodetype == node2_array[i]->nodetype)) {
                 /* matching nodes */
                 node2 = node2_array[i];
                 break;
