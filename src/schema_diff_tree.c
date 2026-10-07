@@ -3741,7 +3741,13 @@ schema_diff_node_stmts(const struct lysc_node *node, ly_bool gen_local, struct l
         leaf = (const struct lysc_node_leaf *)node;
 
         LY_CHECK_GOTO(rc = lyd_new_inner(change_cont, NULL, "type", 0, &type_cont), cleanup);
-        LY_CHECK_GOTO(rc = schema_diff_node_type(leaf->type, type_cont), cleanup);
+        if (leaf->type) {
+            LY_CHECK_GOTO(rc = schema_diff_node_type(leaf->type, type_cont), cleanup);
+        } else {
+            /* unresolved foreign typedef */
+            LY_CHECK_GOTO(rc = schema_diff_parsed_type(&((const struct lysp_node_leaf *)leaf->priv)->type, type_cont),
+                    cleanup);
+        }
     }
 
     /* units */
