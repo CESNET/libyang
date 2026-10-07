@@ -266,7 +266,8 @@ schema_diff_status_change(uint16_t flags1, uint16_t flags2, enum lys_diff_change
     flags1 &= LYS_STATUS_MASK;
     flags2 &= LYS_STATUS_MASK;
 
-    if ((flags1 == LYS_STATUS_CURR) && (flags2 == LYS_STATUS_DEPRC)) {
+    /* used for both parsed (may not have any status) and compiled (must always have a status) statements */
+    if ((!flags1 || (flags1 == LYS_STATUS_CURR)) && (flags2 == LYS_STATUS_DEPRC)) {
         /* current -> deprecated */
         LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_STATUS, LYS_CONFORM_BC,
                 changes));
