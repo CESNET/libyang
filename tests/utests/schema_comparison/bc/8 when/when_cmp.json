@@ -77,12 +77,7 @@
             "changed": [
               {
                 "stmt": "when",
-                "change": "removed",
-                "conformance": "backwards-compatible"
-              },
-              {
-                "stmt": "when",
-                "change": "added",
+                "change": "modified",
                 "conformance": "backwards-compatible"
               }
             ],

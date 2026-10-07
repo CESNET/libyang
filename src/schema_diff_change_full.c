@@ -18,6 +18,7 @@
 #include <stdlib.h>
 
 #include "ly_common.h"
+#include "tree_schema_internal.h"
 #include "xpath.h"
 
 static LY_ERR schema_diff_node_type_change(const struct lysc_type *type1, const struct lysc_type *type2,
@@ -384,10 +385,10 @@ cleanup:
 }
 
 /**
- * @brief Check changes of 'when' arrays.
+ * @brief Check changes of a 'when'.
  *
- * @param[in] whens1 First when array.
- * @param[in] whens2 Second when array.
+ * @param[in] when1 First when.
+ * @param[in] when2 Second when.
  * @param[in] parent_changed Parent statement of the change.
  * @param[in,out] changes Changes to add to.
  * @param[in,out] ext_changes Ext-instance changes to add to.
@@ -395,72 +396,54 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_node_whens_change(struct lysc_when **whens1, struct lysc_when **whens2, enum lys_diff_changed_e parent_changed,
-        struct lys_diff_changes_s *changes, struct lys_diff_ext_changes_s *ext_changes, struct lys_diff_s *diff)
+schema_diff_node_when_change(const struct lysc_when *when1, const struct lysc_when *when2,
+        enum lys_diff_changed_e parent_changed, struct lys_diff_changes_s *changes,
+        struct lys_diff_ext_changes_s *ext_changes, struct lys_diff_s *diff)
 {
     LY_ERR rc = LY_SUCCESS;
-    LYA_COUNT_T u, v;
-    ly_bool found, *when2_found = NULL;
     enum lys_diff_conform_e conform;
 
-    /* prepare array for marking found whens */
-    when2_found = calloc(LYA_COUNT(whens2), sizeof *when2_found);
-    LY_CHECK_ERR_GOTO(!when2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup);
-
-    LYA_FOR(whens1, u) {
-        found = 0;
-        LYA_FOR(whens2, v) {
-            if (when2_found[v]) {
-                continue;
-            }
-
-            /* condition */
-            if (!strcmp(lyxp_get_expr(whens1[u]->cond), lyxp_get_expr(whens2[v]->cond))) {
-                /* found */
-                found = 1;
-                when2_found[v] = 1;
-                break;
-            }
-        }
-
-        if (!found) {
-            /* removed, NBC for YANG 1.0 */
-            LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, LYS_CHANGED_WHEN,
-                    diff->is_yang10 ? LYS_CONFORM_NBC : LYS_CONFORM_BC, changes), cleanup);
-            continue;
-        }
-
-        /* description, reference */
-        LY_CHECK_GOTO(rc = schema_diff_text(whens1[u]->dsc, whens2[v]->dsc, whens2[v]->exts, LY_STMT_DESCRIPTION,
-                LYS_CHANGED_WHEN, changes), cleanup);
-        LY_CHECK_GOTO(rc = schema_diff_text(whens1[u]->ref, whens2[v]->ref, whens2[v]->exts, LY_STMT_REFERENCE,
-                LYS_CHANGED_WHEN, changes), cleanup);
-
-        /* status */
-        LY_CHECK_GOTO(rc = schema_diff_status_change(whens1[u]->flags, whens2[v]->flags, LYS_CHANGED_WHEN, changes),
-                cleanup);
-
-        /* ext-instance */
-        LY_CHECK_GOTO(rc = schema_diff_ext_insts_change(whens1[u]->exts, whens2[v]->exts, ext_changes, diff), cleanup);
-    }
-
-    LYA_FOR(whens2, v) {
-        if (when2_found[v]) {
-            continue;
-        }
-
+    if (!when1 && !when2) {
+        return LY_SUCCESS;
+    } else if (!when1) {
         /* added, detect compatibility by the extension presence */
         if (diff->is_yang10) {
             conform = LYS_CONFORM_NBC;
         } else {
-            conform = schema_diff_exts_conform(whens2[v]->exts, LY_STMT_WHEN, LYS_CONFORM_NBC, NULL);
+            conform = schema_diff_exts_conform(when2->exts, LY_STMT_WHEN, LYS_CONFORM_NBC, NULL);
         }
-        LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, LYS_CHANGED_WHEN, conform,
+        return schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, LYS_CHANGED_WHEN, conform, changes);
+    } else if (!when2) {
+        /* removed, NBC for YANG 1.0 */
+        return schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, LYS_CHANGED_WHEN,
+                diff->is_yang10 ? LYS_CONFORM_NBC : LYS_CONFORM_BC, changes);
+    }
+
+    /* condition */
+    if (strcmp(lyxp_get_expr(when1->cond), lyxp_get_expr(when2->cond))) {
+        /* modified, detect compatibility by the extension presence */
+        if (diff->is_yang10) {
+            conform = LYS_CONFORM_NBC;
+        } else {
+            conform = schema_diff_exts_conform(when2->exts, LY_STMT_WHEN, LYS_CONFORM_NBC, NULL);
+        }
+        LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_WHEN, conform,
                 changes), cleanup);
     }
 
+    /* description, reference */
+    LY_CHECK_GOTO(rc = schema_diff_text(when1->dsc, when2->dsc, when2->exts, LY_STMT_DESCRIPTION, LYS_CHANGED_WHEN,
+            changes), cleanup);
+    LY_CHECK_GOTO(rc = schema_diff_text(when1->ref, when2->ref, when2->exts, LY_STMT_REFERENCE, LYS_CHANGED_WHEN,
+            changes), cleanup);
+
+    /* status */
+    LY_CHECK_GOTO(rc = schema_diff_status_change(when1->flags, when2->flags, LYS_CHANGED_WHEN, changes), cleanup);
+
+    /* ext-instance */
+    LY_CHECK_GOTO(rc = schema_diff_ext_insts_change(when1->exts, when2->exts, ext_changes, diff), cleanup);
+
 cleanup:
-    free(when2_found);
     return rc;
 }
 
@@ -1084,6 +1067,34 @@ schema_diff_node_type_change(const struct lysc_type *type1, const struct lysc_ty
 }
 
 /**
+ * @brief Find a specific compiled when.
+ *
+ * @param[in] pwhen Parsed when to find.
+ * @param[in] whens Compiled when array to search in.
+ * @return Found compiled when.
+ */
+static const struct lysc_when *
+schema_diff_find_when(const struct lysp_when *pwhen, struct lysc_when **whens)
+{
+    const struct lysc_when *when = NULL;
+    LYA_COUNT_T u;
+
+    if (!pwhen) {
+        return NULL;
+    }
+
+    LYA_FOR(whens, u) {
+        if (!strcmp(lyxp_get_expr(whens[u]->cond), pwhen->cond)) {
+            when = whens[u];
+            break;
+        }
+    }
+
+    assert(when);
+    return when;
+}
+
+/**
  * @brief Check changes of a node.
  *
  * @param[in] node1 First node.
@@ -1103,6 +1114,8 @@ schema_diff_node_change(const struct lysc_node *node1, const struct lysc_node *n
     const struct lysc_node_leaflist *llist1, *llist2;
     const struct lysc_node_list *list1, *list2;
     const struct lysc_node_choice *choic1, *choic2;
+    const struct lysp_node *pnode1, *pnode2;
+    const struct lysc_when *when1, *when2;
 
     if (!node1) {
         /* node added change */
@@ -1151,9 +1164,22 @@ schema_diff_node_change(const struct lysc_node *node1, const struct lysc_node *n
         LY_CHECK_RET(schema_diff_node_mandatory_change(node1->flags, node2->flags, LYS_CHANGED_NONE, changes));
     }
 
-    /* when */
-    LY_CHECK_RET(schema_diff_node_whens_change(lysc_node_when(node1), lysc_node_when(node2), LYS_CHANGED_NONE,
-            changes, ext_changes, diff));
+    /* when ... */
+    pnode1 = node1->priv;
+    pnode2 = node2->priv;
+
+    /* ... in the node or ... */
+    when1 = schema_diff_find_when(lysp_node_when(pnode1), lysc_node_when(node1));
+    when2 = schema_diff_find_when(lysp_node_when(pnode2), lysc_node_when(node2));
+    LY_CHECK_RET(schema_diff_node_when_change(when1, when2, LYS_CHANGED_NONE, changes, ext_changes, diff));
+
+    /* ... in the parent augment or uses */
+    if (pnode1->parent && pnode2->parent && (pnode1->parent->nodetype == pnode2->parent->nodetype) &&
+            (pnode1->parent->nodetype & (LYS_AUGMENT | LYS_USES))) {
+        when1 = schema_diff_find_when(lysp_node_when(pnode1->parent), lysc_node_when(node1));
+        when2 = schema_diff_find_when(lysp_node_when(pnode2->parent), lysc_node_when(node2));
+        LY_CHECK_RET(schema_diff_node_when_change(when1, when2, LYS_CHANGED_NONE, changes, ext_changes, diff));
+    }
 
     /* type */
     if (node1->nodetype & LYD_NODE_TERM) {
@@ -1434,8 +1460,8 @@ schema_diff_ext_inst_substmts_change(const struct lysc_ext_substmt *substmts1, c
                     LYS_CHANGED_EXT_INST, changes, ext_changes, diff), cleanup);
             break;
         case LY_STMT_WHEN:
-            /* when array */
-            LY_CHECK_GOTO(rc = schema_diff_node_whens_change(*(substmts1[u].storage_p), *(substmts2[v].storage_p),
+            /* when */
+            LY_CHECK_GOTO(rc = schema_diff_node_when_change(*(substmts1[u].storage_p), *(substmts2[v].storage_p),
                     LYS_CHANGED_EXT_INST, changes, ext_changes, diff), cleanup);
             break;
         case LY_STMT_ARG_TEXT:
