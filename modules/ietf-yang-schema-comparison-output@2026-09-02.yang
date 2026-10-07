@@ -668,12 +668,9 @@ module ietf-yang-schema-comparison-output {
       }
     }
     leaf presence {
-      type boolean;
+      type string;
       description
-        "Indicates whether a presence substatement is defined for
-         the container in the compiled schema. The textual argument
-         of 'presence' is reported via the locally resolved module
-         comparison (see the 'presence' leaf in 'local-substmts').";
+        "Presence substatement value.";
     }
     uses ext-instance-stmts;
   }

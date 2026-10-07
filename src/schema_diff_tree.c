@@ -3673,7 +3673,7 @@ schema_diff_node_stmts(const struct lysc_node *node, ly_bool gen_local, struct l
 {
     LY_ERR rc = LY_SUCCESS;
     LYA_COUNT_T u, v;
-    const char *config = NULL, *mandatory = NULL, *ordered_by = NULL;
+    const char *config = NULL, *mandatory = NULL, *ordered_by = NULL, *presence;
     uint32_t min, max;
     const struct lysc_node_leaf *leaf;
     const struct lysc_node_leaflist *llist;
@@ -3710,8 +3710,10 @@ schema_diff_node_stmts(const struct lysc_node *node, ly_bool gen_local, struct l
 
     /* presence */
     if (node->nodetype == LYS_CONTAINER) {
-        LY_CHECK_GOTO(rc = lyd_new_term(change_cont, NULL, "presence", (node->flags & LYS_PRESENCE) ? "true" : "false",
-                0, NULL), cleanup);
+        presence = ((const struct lysp_node_container *)node->priv)->presence;
+        if (presence && (rc = lyd_new_term(change_cont, NULL, "presence", presence, 0, NULL))) {
+            goto cleanup;
+        }
     }
 
     /* reference */

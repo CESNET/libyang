@@ -471,6 +471,16 @@ LY_ERR schema_diff_ptype_change(const struct lysp_type *type1, const struct lysp
         struct lys_diff_changes_s *changes, struct lys_diff_pext_changes_s *ext_changes, struct lys_diff_s *diff);
 
 /**
+ * @brief Check changes of the 'presence' statement.
+ *
+ * @param[in] presence1 First presence text.
+ * @param[in] presence2 Second presence text.
+ * @param[in,out] changes Changes to add to.
+ * @return LY_ERR value.
+ */
+LY_ERR schema_diff_presence_change(const char *presence1, const char *presence2, struct lys_diff_changes_s *changes);
+
+/**
  * @brief Check changes of parsed modules.
  *
  * @param[in] mod1 First parsed module.

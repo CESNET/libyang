@@ -280,28 +280,6 @@ cleanup:
 }
 
 /**
- * @brief Check changes of a 'presence'.
- *
- * @param[in] flags1 First flags.
- * @param[in] flags2 Second flags.
- * @param[in,out] changes Changes to add to.
- * @return LY_ERR value.
- */
-static LY_ERR
-schema_diff_node_presence_change(uint16_t flags1, uint16_t flags2, struct lys_diff_changes_s *changes)
-{
-    if ((flags1 & LYS_PRESENCE) && !(flags2 & LYS_PRESENCE)) {
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_REMOVED, LYS_CHANGED_NONE, LYS_CHANGED_PRESENCE, LYS_CONFORM_NBC,
-                changes));
-    } else if (!(flags1 & LYS_PRESENCE) && (flags2 & LYS_PRESENCE)) {
-        LY_CHECK_RET(schema_diff_add_change(LYS_CHANGE_ADDED, LYS_CHANGED_NONE, LYS_CHANGED_PRESENCE, LYS_CONFORM_NBC,
-                changes));
-    }
-
-    return LY_SUCCESS;
-}
-
-/**
  * @brief Check changes of a 'mandatory'.
  *
  * @param[in] flags1 First flags.
@@ -1150,7 +1128,9 @@ schema_diff_node_change(const struct lysc_node *node1, const struct lysc_node *n
 
     /* presence */
     if (node1->nodetype == LYS_CONTAINER) {
-        LY_CHECK_RET(schema_diff_node_presence_change(node1->flags, node2->flags, changes));
+        /* compare the parsed string values */
+        LY_CHECK_RET(schema_diff_presence_change(((const struct lysp_node_container *)node1->priv)->presence,
+                ((const struct lysp_node_container *)node2->priv)->presence, changes));
     }
 
     /* reference */

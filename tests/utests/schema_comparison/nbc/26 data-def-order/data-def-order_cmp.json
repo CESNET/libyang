@@ -27,13 +27,11 @@
             ],
             "old": {
               "status": "current",
-              "config": true,
-              "presence": false
+              "config": true
             },
             "new": {
               "status": "current",
-              "config": true,
-              "presence": false
+              "config": true
             }
           },
           {

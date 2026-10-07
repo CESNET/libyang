@@ -1637,15 +1637,7 @@ schema_diff_parsed_node_conform(const struct lysp_node *node, enum lys_diff_chan
     }
 }
 
-/**
- * @brief Check changes of the 'presence' statement.
- *
- * @param[in] presence1 First presence text.
- * @param[in] presence2 Second presence text.
- * @param[in,out] changes Changes to add to.
- * @return LY_ERR value.
- */
-static LY_ERR
+LY_ERR
 schema_diff_presence_change(const char *presence1, const char *presence2, struct lys_diff_changes_s *changes)
 {
     if (presence1 && !presence2) {

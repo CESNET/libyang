@@ -21,6 +21,7 @@
             "changed": [
               {
                 "stmt": "presence",
+                "parent-stmt": "node",
                 "change": "removed",
                 "conformance": "non-backwards-compatible"
               }
@@ -28,12 +29,11 @@
             "old": {
               "status": "current",
               "config": true,
-              "presence": true
+              "presence": "yes"
             },
             "new": {
               "status": "current",
-              "config": true,
-              "presence": false
+              "config": true
             }
           },
           {
@@ -42,19 +42,19 @@
             "changed": [
               {
                 "stmt": "presence",
+                "parent-stmt": "node",
                 "change": "added",
                 "conformance": "non-backwards-compatible"
               }
             ],
             "old": {
               "status": "current",
-              "config": true,
-              "presence": false
+              "config": true
             },
             "new": {
               "status": "current",
               "config": true,
-              "presence": true
+              "presence": "yep"
             }
           }
         ]

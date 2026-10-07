@@ -1492,30 +1492,26 @@ lys_compare(const struct ly_ctx *ctx, const struct lys_module *src_mod, const st
                 trg_mod->revision ? trg_mod->revision : "<none>");
         rc = LY_EINVAL;
         goto cleanup;
-    }
-
-    if (gen_local) {
-        if (!src_mod->parsed) {
-            LOGERR(ctx, LY_EINVAL, "Source parsed module \"%s@%s\" missing.", src_mod->name,
-                    src_mod->revision ? src_mod->revision : "<none>");
-            rc = LY_EINVAL;
-            goto cleanup;
-        } else if (!(ly_ctx_get_options(src_mod->ctx) & LY_CTX_SET_PRIV_PARSED)) {
-            LOGERR(ctx, LY_EINVAL, "Source module \"%s@%s\" context LY_CTX_SET_PRIV_PARSED option not set.",
-                    src_mod->name, src_mod->revision ? src_mod->revision : "<none>");
-            rc = LY_EINVAL;
-            goto cleanup;
-        } else if (!trg_mod->parsed) {
-            LOGERR(ctx, LY_EINVAL, "Target parsed module \"%s@%s\" missing.", trg_mod->name,
-                    trg_mod->revision ? trg_mod->revision : "<none>");
-            rc = LY_EINVAL;
-            goto cleanup;
-        } else if (!(ly_ctx_get_options(trg_mod->ctx) & LY_CTX_SET_PRIV_PARSED)) {
-            LOGERR(ctx, LY_EINVAL, "Target module \"%s@%s\" context LY_CTX_SET_PRIV_PARSED option not set.",
-                    trg_mod->name, trg_mod->revision ? trg_mod->revision : "<none>");
-            rc = LY_EINVAL;
-            goto cleanup;
-        }
+    } else if (!(ly_ctx_get_options(src_mod->ctx) & LY_CTX_SET_PRIV_PARSED)) {
+        LOGERR(ctx, LY_EINVAL, "Source module \"%s@%s\" context LY_CTX_SET_PRIV_PARSED option not set.",
+                src_mod->name, src_mod->revision ? src_mod->revision : "<none>");
+        rc = LY_EINVAL;
+        goto cleanup;
+    } else if (!(ly_ctx_get_options(trg_mod->ctx) & LY_CTX_SET_PRIV_PARSED)) {
+        LOGERR(ctx, LY_EINVAL, "Target module \"%s@%s\" context LY_CTX_SET_PRIV_PARSED option not set.",
+                trg_mod->name, trg_mod->revision ? trg_mod->revision : "<none>");
+        rc = LY_EINVAL;
+        goto cleanup;
+    } else if (!src_mod->parsed) {
+        LOGERR(ctx, LY_EINVAL, "Source parsed module \"%s@%s\" missing.", src_mod->name,
+                src_mod->revision ? src_mod->revision : "<none>");
+        rc = LY_EINVAL;
+        goto cleanup;
+    } else if (!trg_mod->parsed) {
+        LOGERR(ctx, LY_EINVAL, "Target parsed module \"%s@%s\" missing.", trg_mod->name,
+                trg_mod->revision ? trg_mod->revision : "<none>");
+        rc = LY_EINVAL;
+        goto cleanup;
     }
 
     /* store module prefixes */

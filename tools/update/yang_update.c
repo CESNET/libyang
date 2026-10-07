@@ -701,7 +701,7 @@ yu_ctx_load(const char *mod_name, const char *revision, const char **features, c
     search_dir = search_dirs ? search_dirs[0] : NULL;
 
     /* create the context */
-    if ((rc = ly_ctx_new(search_dir, 0, ctx))) {
+    if ((rc = ly_ctx_new(search_dir, LY_CTX_SET_PRIV_PARSED, ctx))) {
         goto cleanup;
     }
 

@@ -126,8 +126,7 @@
             ],
             "new": {
               "status": "current",
-              "config": true,
-              "presence": false
+              "config": true
             }
           },
           {
