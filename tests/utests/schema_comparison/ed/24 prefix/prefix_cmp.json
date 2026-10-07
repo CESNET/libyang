@@ -46,7 +46,7 @@
             ]
           },
           {
-            "parent-path": "/cont",
+            "parent-path": "/cont/{uses=pfx:grp}",
             "identifier": "pfx:cont2",
             "stmt-type": "augment",
             "changed": [

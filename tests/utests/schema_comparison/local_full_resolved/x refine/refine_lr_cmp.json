@@ -41,7 +41,7 @@
         ],
         "local-comparison": [
           {
-            "parent-path": "/cont",
+            "parent-path": "/cont/{uses=rfni:foreign-group}",
             "identifier": "fl",
             "stmt-type": "refine",
             "changed": [

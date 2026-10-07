@@ -15,7 +15,7 @@
         "suggested-target-version": "2.0.0",
         "local-comparison": [
           {
-            "parent-path": "/{uses=augi:imp-group}",
+            "parent-path": "/{uses=augi:imp-group}/{aug=gcont}",
             "identifier": "gl2",
             "stmt-type": "leaf",
             "changed": [

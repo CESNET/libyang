@@ -312,7 +312,7 @@ schema_diff_pnode_path(const struct lysp_node *node)
         if (node_pre && node_post) {
             new_len += strlen(node_pre) + strlen(node_post);
         }
-        new_len += 1 + strlen(nodes[i]->name) + 1;
+        new_len += 1 + strlen(nodes[i]->name);
         path = ly_realloc(path, new_len + 1);
         LY_CHECK_ERR_GOTO(!path, LOGMEM(NULL), cleanup);
 
