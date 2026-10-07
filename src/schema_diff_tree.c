@@ -1990,7 +1990,7 @@ schema_diff_parsed_type(const struct lysp_type *type, struct lyd_node *cont)
 
     /* patterns */
     LYA_FOR(type->patterns, u) {
-        LY_CHECK_GOTO(rc = lyd_new_list(cont, NULL, "length", 0, &restr_parent), cleanup);
+        LY_CHECK_GOTO(rc = lyd_new_list(cont, NULL, "pattern", 0, &restr_parent), cleanup);
         LY_CHECK_GOTO(rc = schema_diff_parsed_restr_children(&type->patterns[u], "expression", restr_parent), cleanup);
     }
 
