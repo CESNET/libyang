@@ -907,7 +907,7 @@ yu_update_node(const struct lysc_node *snode1, const struct lyd_node *data1, con
     path = lysc_path(snode, LYSC_PATH_DATA, NULL, 0);
 
     /* find a change in schema-comparison data */
-    if (asprintf(&path2, "/ietf-yang-schema-comparison-output:schema-comparison/schema[1]/node-comparison[node='%s']", path) == -1) {
+    if (asprintf(&path2, "/ietf-yang-schema-comparison-output:schema-comparison/comparison[1]/node-comparison[node='%s']", path) == -1) {
         LOGMEM(snode->module->ctx);
         rc = LY_EMEM;
         goto cleanup;
