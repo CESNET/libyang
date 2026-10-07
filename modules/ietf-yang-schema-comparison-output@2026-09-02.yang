@@ -441,7 +441,7 @@ module ietf-yang-schema-comparison-output {
     description
       "Describes a type statement change.";
     leaf name {
-      type yang:yang-identifier;
+      type string;
       description
         "Type argument substatement value. Can be the name of a YANG built-in
          type or the name of a referenced typedef.";
@@ -566,7 +566,7 @@ module ietf-yang-schema-comparison-output {
         "Require-instance substatement value.";
     }
     leaf-list base {
-      type yang:yang-identifier;
+      type string;
       description
         "List of base substatement values.";
     }
@@ -788,7 +788,7 @@ module ietf-yang-schema-comparison-output {
           "Extension name.";
       }
       leaf argument {
-        type yang:yang-identifier;
+        type string;
         description
           "Argument substatement value.";
       }
@@ -845,7 +845,7 @@ module ietf-yang-schema-comparison-output {
       }
       leaf-list base {
         when "../../../../locally-resolved";
-        type yang:yang-identifier;
+        type string;
         description
           "List of bases of an identity.";
       }
