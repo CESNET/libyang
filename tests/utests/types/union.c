@@ -376,6 +376,246 @@ test_validation_store_only(void **state)
     lyd_free_tree(root);
 }
 
+static void
+test_store_lyb(void **state)
+{
+    const char *schema;
+    struct lys_module *mod;
+    struct lyd_value value = {0};
+    struct lyplg_type *type = NULL;
+    struct lysc_type *lysc_type;
+    struct lysc_type_union *type_u;
+    struct ly_err_item *err = NULL;
+    const char *printed;
+    uint64_t printed_bits;
+    ly_bool dynamic;
+    /* LYB-pinned values: member type index followed by the member type value (string "50", uint32 50) */
+    uint8_t lyb_str[3] = {1, '5', '0'};
+    uint8_t lyb_u32[5] = {0, 0x32, 0, 0, 0};
+    /* LYB-pinned values of other member types (uint8 30, leafref value 10) */
+    uint8_t lyb_u8r[2] = {0, 30};
+    uint8_t lyb_lref[2] = {0, 10};
+
+    schema = MODULE_CREATE_YANG("lybs",
+            "leaf l {type union {type uint32; type string; type int8;}}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+    lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
+    assert_string_equal("ly2 union", type->id);
+
+    /* a value pinned to a member type that the first matching member would accept, too, keeps its member */
+    err = NULL;
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, lyb_str, sizeof lyb_str * 8,
+            0, LY_VALUE_LYB, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
+    assert_null(err);
+    assert_ptr_equal(lysc_type, value.realtype);
+    assert_int_equal(LY_VALUE_LYB, value.subvalue->format);
+    assert_int_equal(LY_TYPE_STRING, value.subvalue->value.realtype->basetype);
+    assert_string_equal("50", lyd_value_get_canonical(UTEST_LYCTX, &value));
+
+    /* the pinned member type is kept through validation (no re-resolution to uint32) */
+    err = NULL;
+    assert_int_equal(LY_SUCCESS, type->validate_tree(UTEST_LYCTX, lysc_type, NULL, NULL, &value, &err));
+    assert_null(err);
+    assert_int_equal(LY_TYPE_STRING, value.subvalue->value.realtype->basetype);
+
+    /* the value is printed by the pinned member type */
+    printed = type->print(UTEST_LYCTX, &value, LY_VALUE_JSON, NULL, &dynamic, &printed_bits);
+    assert_non_null(printed);
+    assert_string_equal("50", printed);
+    if (dynamic) {
+        free((void *)printed);
+    }
+
+    /* the stored binary value is kept as is, pinning the member type */
+    printed = type->print(UTEST_LYCTX, &value, LY_VALUE_LYB, NULL, &dynamic, &printed_bits);
+    assert_non_null(printed);
+    assert_int_equal(0, dynamic);
+    assert_int_equal(sizeof lyb_str * 8, printed_bits);
+    assert_memory_equal(printed, lyb_str, sizeof lyb_str);
+    type->free(UTEST_LYCTX, &value);
+
+    /* prefix data are irrelevant for binary values and must not be asserted */
+    err = NULL;
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, lyb_str, sizeof lyb_str * 8,
+            0, LY_VALUE_LYB, (void *)mod, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
+    assert_null(err);
+    assert_null(value.subvalue->prefix_data);
+    type->free(UTEST_LYCTX, &value);
+
+    /* two members with the same basetype are still distinguished by the pinned index */
+    schema = MODULE_CREATE_YANG("lybs2",
+            "leaf l {type union {type uint32; type uint32;}}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+    lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+    type_u = (struct lysc_type_union *)lysc_type;
+
+    err = NULL;
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, lyb_u32, sizeof lyb_u32 * 8,
+            0, LY_VALUE_LYB, NULL, LYD_VALHINT_DECNUM, NULL, &value, NULL, &err));
+    assert_null(err);
+    assert_ptr_equal(type_u->types[0], value.subvalue->value.realtype);
+    type->free(UTEST_LYCTX, &value);
+
+    err = NULL;
+    lyb_u32[0] = 1;
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, lyb_u32, sizeof lyb_u32 * 8,
+            0, LY_VALUE_LYB, NULL, LYD_VALHINT_DECNUM, NULL, &value, NULL, &err));
+    assert_null(err);
+    assert_ptr_equal(type_u->types[1], value.subvalue->value.realtype);
+    type->free(UTEST_LYCTX, &value);
+
+    /* an out-of-bounds pinned member type index is a data error, not a crash */
+    err = NULL;
+    lyb_u32[0] = 2;
+    assert_int_equal(LY_EVALID, type->store(UTEST_LYCTX, lysc_type, lyb_u32, sizeof lyb_u32 * 8,
+            0, LY_VALUE_LYB, NULL, LYD_VALHINT_DECNUM, NULL, &value, NULL, &err));
+    assert_non_null(err);
+    CHECK_STRING(err->msg, "Invalid LYB union type index 2 (type count 2).");
+    ly_err_free(err);
+
+    /* a too short binary value is a data error, too */
+    err = NULL;
+    assert_int_equal(LY_EVALID, type->store(UTEST_LYCTX, lysc_type, "", 0,
+            0, LY_VALUE_LYB, NULL, 0, NULL, &value, NULL, &err));
+    assert_non_null(err);
+    CHECK_STRING(err->msg, "Invalid LYB union value size 0 b (expected at least 8 b).");
+    ly_err_free(err);
+
+    /* member type rejection is propagated */
+    schema = MODULE_CREATE_YANG("lybs3",
+            "leaf l {type union {type uint8 {range 10..20;} type string;}}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+    lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+
+    err = NULL;
+    assert_int_equal(LY_EVALID, type->store(UTEST_LYCTX, lysc_type, lyb_u8r, sizeof lyb_u8r * 8,
+            0, LY_VALUE_LYB, NULL, LYD_VALHINT_DECNUM, NULL, &value, NULL, &err));
+    assert_non_null(err);
+    ly_err_free(err);
+
+    /* pending value validation is propagated, too */
+    schema = MODULE_CREATE_YANG("lybs4",
+            "leaf target {type int8;}"
+            "leaf l {type union {type leafref {path ../target; require-instance true;} type string;}}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+    lysc_type = ((struct lysc_node_leaf *)mod->compiled->data->next)->type;
+
+    err = NULL;
+    assert_int_equal(LY_EINCOMPLETE, type->store(UTEST_LYCTX, lysc_type, lyb_lref, sizeof lyb_lref * 8,
+            0, LY_VALUE_LYB, NULL, LYD_VALHINT_DECNUM, NULL, &value, NULL, &err));
+    assert_int_equal(LY_TYPE_INT8, value.subvalue->value.realtype->basetype);
+    type->free(UTEST_LYCTX, &value);
+    ly_err_free(err);
+}
+
+static void
+test_store_union_idx(void **state)
+{
+    const char *schema;
+    struct lys_module *mod;
+    struct lyd_value value = {0};
+    struct lyplg_type *type = NULL;
+    struct lysc_type *lysc_type;
+    struct lysc_type_union *type_u;
+    struct ly_err_item *err = NULL;
+    const char *printed;
+    uint64_t printed_bits;
+    ly_bool dynamic;
+
+    schema = MODULE_CREATE_YANG("idx",
+            "leaf l {type union {type uint32; type string;}}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+    lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+    type = lysc_get_type_plugin(lysc_type->plugin_ref);
+    type_u = (struct lysc_type_union *)lysc_type;
+    assert_string_equal("ly2 union", type->id);
+
+    /* a value stored with a member type index keeps that member resolved, without any LYB data needed */
+    err = NULL;
+    assert_int_equal(LY_SUCCESS, lyplg_type_store_union_idx(UTEST_LYCTX, lysc_type, 1, "50", 2 * 8,
+            0, LY_VALUE_CANON, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
+    assert_null(err);
+    assert_ptr_equal(lysc_type, value.realtype);
+    assert_int_equal(LY_VALUE_LYB, value.subvalue->format);
+    assert_ptr_equal(type_u->types[1], value.subvalue->value.realtype);
+    assert_null(value.subvalue->prefix_data);
+    assert_string_equal("50", lyd_value_get_canonical(UTEST_LYCTX, &value));
+
+    /* the pinned member type is kept through validation (no re-resolution to uint32) */
+    err = NULL;
+    assert_int_equal(LY_SUCCESS, type->validate_tree(UTEST_LYCTX, lysc_type, NULL, NULL, &value, &err));
+    assert_null(err);
+    assert_ptr_equal(type_u->types[1], value.subvalue->value.realtype);
+
+    /* the value is printed by the pinned member type */
+    printed = type->print(UTEST_LYCTX, &value, LY_VALUE_JSON, NULL, &dynamic, &printed_bits);
+    assert_non_null(printed);
+    assert_string_equal("50", printed);
+    if (dynamic) {
+        free((void *)printed);
+    }
+
+    /* the internally created binary value pins the member type */
+    printed = type->print(UTEST_LYCTX, &value, LY_VALUE_LYB, NULL, &dynamic, &printed_bits);
+    assert_non_null(printed);
+    assert_int_equal(0, dynamic);
+    assert_int_equal(3 * 8, printed_bits);
+    assert_memory_equal(printed, "\x01" "50", 3);
+    type->free(UTEST_LYCTX, &value);
+
+    /* two members with the same basetype are still distinguished by the member type index */
+    schema = MODULE_CREATE_YANG("idx2",
+            "leaf l {type union {type uint32; type uint32;}}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+    lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+    type_u = (struct lysc_type_union *)lysc_type;
+
+    err = NULL;
+    assert_int_equal(LY_SUCCESS, lyplg_type_store_union_idx(UTEST_LYCTX, lysc_type, 0, "50", 2 * 8,
+            0, LY_VALUE_CANON, NULL, LYD_VALHINT_DECNUM, NULL, &value, NULL, &err));
+    assert_null(err);
+    assert_ptr_equal(type_u->types[0], value.subvalue->value.realtype);
+    type->free(UTEST_LYCTX, &value);
+
+    err = NULL;
+    assert_int_equal(LY_SUCCESS, lyplg_type_store_union_idx(UTEST_LYCTX, lysc_type, 1, "50", 2 * 8,
+            0, LY_VALUE_CANON, NULL, LYD_VALHINT_DECNUM, NULL, &value, NULL, &err));
+    assert_null(err);
+    assert_ptr_equal(type_u->types[1], value.subvalue->value.realtype);
+    type->free(UTEST_LYCTX, &value);
+
+    /* an out-of-range or stale member type index is a data error, not an assert/crash */
+    err = NULL;
+    assert_int_equal(LY_EVALID, lyplg_type_store_union_idx(UTEST_LYCTX, lysc_type, 2, "50", 2 * 8,
+            0, LY_VALUE_CANON, NULL, LYD_VALHINT_DECNUM, NULL, &value, NULL, &err));
+    assert_non_null(err);
+    CHECK_STRING(err->msg, "Union member type index 2 out of range of the union type with 2 member type(s).");
+    ly_err_free(err);
+
+    /* member type rejection is propagated */
+    err = NULL;
+    assert_int_equal(LY_EVALID, lyplg_type_store_union_idx(UTEST_LYCTX, lysc_type, 0, "x", 1 * 8,
+            0, LY_VALUE_CANON, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
+    assert_non_null(err);
+    ly_err_free(err);
+
+    /* pending value validation is propagated, too */
+    schema = MODULE_CREATE_YANG("idx3",
+            "leaf target {type int8;}"
+            "leaf l {type union {type leafref {path ../target; require-instance true;} type string;}}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+    lysc_type = ((struct lysc_node_leaf *)mod->compiled->data->next)->type;
+
+    err = NULL;
+    assert_int_equal(LY_EINCOMPLETE, lyplg_type_store_union_idx(UTEST_LYCTX, lysc_type, 0, "10", 2 * 8,
+            0, LY_VALUE_CANON, NULL, LYD_VALHINT_DECNUM, NULL, &value, NULL, &err));
+    assert_int_equal(LY_TYPE_INT8, value.subvalue->value.realtype->basetype);
+    assert_int_equal(LY_VALUE_LYB, value.subvalue->format);
+    type->free(UTEST_LYCTX, &value);
+    ly_err_free(err);
+}
+
 int
 main(void)
 {
@@ -386,6 +626,8 @@ main(void)
         UTEST(test_plugin_sort),
         UTEST(test_validation),
         UTEST(test_validation_store_only),
+        UTEST(test_store_lyb),
+        UTEST(test_store_union_idx),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
