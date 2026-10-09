@@ -154,6 +154,51 @@ lyb_parse_union(const void *lyb_data, uint64_t lyb_data_size_bits, uint32_t *typ
 }
 
 /**
+ * @brief Create LYB binary union data for a value of a given member type: the pinned member type
+ * index followed by the binary member type value.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] type_idx Index of the member type of @p member_value, is pinned in the binary data.
+ * @param[in] member_value Stored member type value, is printed to the LYB format.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ly_resolve_prefix()).
+ * @param[out] lyb_size_bits Size of the returned binary data in bits.
+ * @return Allocated binary data of @p *lyb_size_bits size, NULL on error. The caller is responsible
+ * for freeing the returned data.
+ */
+static void *
+lyb_union_blob_create(const struct ly_ctx *ctx, uint32_t type_idx, const struct lyd_value *member_value,
+        void *prefix_data, uint64_t *lyb_size_bits)
+{
+    void *lyb;
+    const void *pval;
+    uint64_t pval_size_bits;
+    uint32_t num;
+    ly_bool dynamic;
+
+    /* learn the member value in its binary format */
+    pval = LYSC_GET_TYPE_PLG(member_value->realtype->plugin_ref)->print(ctx, member_value, LY_VALUE_LYB,
+            prefix_data, &dynamic, &pval_size_bits);
+    if (!pval) {
+        return NULL;
+    }
+
+    /* create the binary data of the pinned member type index followed by its binary value
+     * (the size may not be an exact number of bytes, e.g. for integers) */
+    *lyb_size_bits = LYPLG_UNION_TYPE_IDX_SIZE * 8 + pval_size_bits;
+    lyb = calloc(1, LYPLG_BITS2BYTES(*lyb_size_bits));
+    if (lyb) {
+        num = htole32(type_idx);
+        memcpy(lyb, &num, LYPLG_UNION_TYPE_IDX_SIZE);
+        memcpy((char *)lyb + LYPLG_UNION_TYPE_IDX_SIZE, pval, LYPLG_BITS2BYTES(pval_size_bits));
+    }
+
+    if (dynamic) {
+        free((void *)pval);
+    }
+    return lyb;
+}
+
+/**
  * @brief For leafref failures, ensure the appropriate error is propagated, not a type validation failure.
  *
  * RFC7950 Section 15.5 defines the appropriate error app tag of "require-instance".
@@ -410,54 +455,47 @@ cleanup:
 }
 
 /**
- * @brief Fill union subvalue items: original, origin_len, format prefix_data and call 'store' function for value.
+ * @brief Prepare a union value storage for storing a value: initialize the storage, assign the caller
+ * value as the union subvalue original and derive its format-specific data.
  *
  * @param[in] ctx libyang context.
- * @param[in] type_u Compiled type of union.
- * @param[in] lyb_data Input LYB data consisting of index followed by value (lyb_value).
- * @param[in] lyb_data_size_bits Size of @p lyb_data in bits.
+ * @param[in] type The union schema type.
+ * @param[in] value Value to store, is always consumed.
+ * @param[in] value_size_bits Size of @p value in bits.
+ * @param[in,out] options Store options; may be updated by the member store.
+ * @param[in] format Format of @p value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ly_resolve_prefix()).
- * @param[in,out] subvalue Union subvalue to be filled.
- * @param[in,out] options Option containing LYPLG_TYPE_STORE_DYNAMIC.
- * @param[in,out] unres Global unres structure for newly implemented modules.
- * @param[out] err Error information on error.
+ * @param[in] hints Bitmap of value hints.
+ * @param[in] ctx_node Context node for prefix resolution.
+ * @param[in,out] storage Value storage to fill.
+ * @param[out] subvalue Prepared union subvalue.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_fill_subvalue(const struct ly_ctx *ctx, struct lysc_type_union *type_u, const void *lyb_data, uint64_t lyb_data_size_bits,
-        void *prefix_data, struct lyd_value_union *subvalue, uint32_t *options, struct lys_glob_unres *unres,
-        struct ly_err_item **err)
+union_prepare_subvalue(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
+        uint64_t value_size_bits, uint32_t *options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lyd_value_union **subvalue)
 {
     LY_ERR ret;
-    uint64_t lyb_value_size_bits = 0;
-    uint32_t type_idx;
-    const void *lyb_value = NULL;
 
-    ret = lyb_union_validate(lyb_data, lyb_data_size_bits, type_u, err);
+    /* init storage */
+    memset(storage, 0, sizeof *storage);
+    LYPLG_TYPE_VAL_INLINE_PREPARE(storage, *subvalue);
+    LY_CHECK_ERR_RET(!*subvalue, ret = LY_EMEM, ret);
+
+    storage->realtype = type;
+    (*subvalue)->hints = hints;
+    (*subvalue)->ctx_node = ctx_node;
+
+    /* store the caller value as the subvalue original, it is needed for the member type store */
+    ret = union_subvalue_assignment(value, value_size_bits, &(*subvalue)->original, &(*subvalue)->orig_size_bits,
+            options);
     LY_CHECK_RET(ret);
 
-    /* parse lyb_data and set the lyb_value and lyb_value_size_bits */
-    lyb_parse_union(lyb_data, lyb_data_size_bits, &type_idx, &lyb_value, &lyb_value_size_bits);
-
-    /* store lyb_data to subvalue */
-    ret = union_subvalue_assignment(lyb_data, lyb_data_size_bits, &subvalue->original, &subvalue->orig_size_bits, options);
-    LY_CHECK_RET(ret);
-
-    if (lyb_value) {
-        /* resolve prefix_data and set format */
-        ret = lyplg_type_prefix_data_new(ctx, lyb_value, LYPLG_BITS2BYTES(lyb_value_size_bits), LY_VALUE_LYB,
-                prefix_data, &subvalue->format, &subvalue->prefix_data);
-        LY_CHECK_RET(ret);
-        assert(subvalue->format == LY_VALUE_LYB);
-    } else {
-        /* lyb_parse_union() did not find lyb_value, just set format */
-        subvalue->format = LY_VALUE_LYB;
-    }
-
-    /* use the specific type to store the value */
-    ret = union_store_type(ctx, type_u, type_idx, subvalue, *options, 0, NULL, NULL, unres, err);
-
-    return ret;
+    /* derive format-specific data of the value, needed for the member type store;
+     * the values in the LYB format must have no prefix data stored (see ly_dup_prefix_data()) */
+    return lyplg_type_prefix_data_new(ctx, value, LYPLG_BITS2BYTES(value_size_bits), format,
+            (format == LY_VALUE_LYB) ? NULL : prefix_data, &(*subvalue)->format, &(*subvalue)->prefix_data);
 }
 
 static LY_ERR
@@ -468,30 +506,25 @@ lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, c
     LY_ERR ret = LY_SUCCESS, r;
     struct lysc_type_union *type_u = (struct lysc_type_union *)type;
     struct lyd_value_union *subvalue;
+    uint32_t type_idx = 0;
 
     *err = NULL;
 
-    /* init storage */
-    memset(storage, 0, sizeof *storage);
-    LYPLG_TYPE_VAL_INLINE_PREPARE(storage, subvalue);
-    LY_CHECK_ERR_GOTO(!subvalue, ret = LY_EMEM, cleanup);
-    storage->realtype = type;
-    subvalue->hints = hints;
-    subvalue->ctx_node = ctx_node;
+    /* initialize the storage and assign the caller value to the subvalue */
+    ret = union_prepare_subvalue(ctx, type, value, value_size_bits, &options, format, prefix_data, hints,
+            ctx_node, storage, &subvalue);
+    LY_CHECK_GOTO(ret, cleanup);
 
     if (format == LY_VALUE_LYB) {
-        ret = lyb_fill_subvalue(ctx, type_u, value, value_size_bits, prefix_data, subvalue, &options, unres, err);
+        /* the binary value pins the member type to use, validate it and learn its index */
+        ret = lyb_union_validate(value, value_size_bits, type_u, err);
+        LY_CHECK_GOTO(ret, cleanup);
+        lyb_parse_union(value, 0, &type_idx, NULL, NULL);
+
+        /* use the pinned member type to store the value, its acceptance errors are propagated */
+        ret = union_store_type(ctx, type_u, type_idx, subvalue, options, 0, NULL, NULL, unres, err);
         LY_CHECK_GOTO((ret != LY_SUCCESS) && (ret != LY_EINCOMPLETE), cleanup);
     } else {
-        /* store value to subvalue */
-        ret = union_subvalue_assignment(value, value_size_bits, &subvalue->original, &subvalue->orig_size_bits, &options);
-        LY_CHECK_GOTO(ret, cleanup);
-
-        /* store format-specific data for later prefix resolution */
-        ret = lyplg_type_prefix_data_new(ctx, value, LYPLG_BITS2BYTES(value_size_bits), format, prefix_data,
-                &subvalue->format, &subvalue->prefix_data);
-        LY_CHECK_GOTO(ret, cleanup);
-
         /* use the first usable and valid subtype to store the value */
         ret = union_find_type(ctx, type_u, subvalue, options & ~LYPLG_TYPE_STORE_ONLY, 0, NULL, NULL, NULL, unres, err);
         if (ret && (ret != LY_EINCOMPLETE) && (options & LYPLG_TYPE_STORE_ONLY)) {
@@ -502,6 +535,63 @@ lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, c
         }
         LY_CHECK_GOTO(ret && (ret != LY_EINCOMPLETE), cleanup);
     }
+
+    /* store canonical value, if any (use the specific type value) */
+    r = lydict_insert(ctx, subvalue->value._canonical, 0, &storage->_canonical);
+    LY_CHECK_ERR_GOTO(r, ret = r, cleanup);
+
+cleanup:
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
+        free((void *)value);
+    }
+
+    if ((ret != LY_SUCCESS) && (ret != LY_EINCOMPLETE)) {
+        lyplg_type_free_union(ctx, storage);
+    }
+    return ret;
+}
+
+LIBYANG_API_DEF LY_ERR
+lyplg_type_store_union_idx(const struct ly_ctx *ctx, const struct lysc_type *type, uint32_t type_idx,
+        const void *value, uint64_t value_size_bits, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data,
+        uint32_t hints, const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres,
+        struct ly_err_item **err)
+{
+    LY_ERR ret = LY_SUCCESS, r;
+    struct lysc_type_union *type_u = (struct lysc_type_union *)type;
+    struct lyd_value_union *subvalue;
+    void *lyb;
+
+    *err = NULL;
+
+    assert(type->basetype == LY_TYPE_UNION);
+
+    /* initialize the storage and assign the caller value to the subvalue */
+    ret = union_prepare_subvalue(ctx, type, value, value_size_bits, &options, format, prefix_data, hints,
+            ctx_node, storage, &subvalue);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    if (type_idx >= LYA_COUNT(type_u->types)) {
+        /* stale member type index of e.g. an older module revision is a data condition, report it */
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
+                "Union member type index %" PRIu32 " out of range of the union type with %" LYA_PRI_COUNT_T
+                " member type(s).", type_idx, LYA_COUNT(type_u->types));
+        goto cleanup;
+    }
+
+    /* store the value by the selected member type only, its acceptance errors are propagated */
+    ret = union_store_type(ctx, type_u, type_idx, subvalue, options, 0, NULL, NULL, unres, err);
+    LY_CHECK_GOTO((ret != LY_SUCCESS) && (ret != LY_EINCOMPLETE), cleanup);
+
+    /* pin the member type by replacing the stored caller value with its binary value */
+    lyb = lyb_union_blob_create(ctx, type_idx, &subvalue->value, NULL, &subvalue->orig_size_bits);
+    LY_CHECK_ERR_GOTO(!lyb, LOGINT(ctx); ret = LY_EINT, cleanup);
+
+    free(subvalue->original);
+    subvalue->original = lyb;
+    lyplg_type_prefix_data_free(subvalue->format, subvalue->prefix_data);
+    subvalue->prefix_data = NULL;
+    subvalue->format = LY_VALUE_LYB;
 
     /* store canonical value, if any (use the specific type value) */
     r = lydict_insert(ctx, subvalue->value._canonical, 0, &storage->_canonical);
@@ -635,12 +725,9 @@ lyb_union_print(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
     void *ret = NULL;
     LY_ERR r;
     struct ly_err_item *err;
-    uint64_t pval_size_bits;
-    uint32_t num = 0, type_idx = 0;
+    uint32_t type_idx = 0;
     struct lyd_value orig = {0};
     struct lyplg_type *subvalue_type_plg;
-    ly_bool dynamic;
-    void *pval;
 
     if (!ctx) {
         assert(subvalue->ctx_node);
@@ -664,25 +751,10 @@ lyb_union_print(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
     }
     LY_CHECK_ERR_RET((r != LY_SUCCESS) && (r != LY_EINCOMPLETE), subvalue->value = orig, NULL);
 
-    /* print subvalue in LYB format */
-    pval = (void *)LYSC_GET_TYPE_PLG(subvalue->value.realtype->plugin_ref)->print(NULL, &subvalue->value, LY_VALUE_LYB,
-            prefix_data, &dynamic, &pval_size_bits);
-    LY_CHECK_ERR_RET(!pval, subvalue->value = orig, NULL);
+    /* create the LYB data of the resolved member type value */
+    ret = lyb_union_blob_create(NULL, type_idx, &subvalue->value, prefix_data, value_size_bits);
+    LY_CHECK_ERR_RET(!ret, subvalue->value = orig, NULL);
 
-    /* create LYB data */
-    *value_size_bits = LYPLG_UNION_TYPE_IDX_SIZE * 8 + pval_size_bits;
-    ret = malloc(LYPLG_BITS2BYTES(*value_size_bits));
-    LY_CHECK_GOTO(!ret, cleanup);
-
-    num = htole32(type_idx);
-    memcpy(ret, &num, LYPLG_UNION_TYPE_IDX_SIZE);
-    memcpy((char *)ret + LYPLG_UNION_TYPE_IDX_SIZE, pval, LYPLG_BITS2BYTES(pval_size_bits));
-
-    if (dynamic) {
-        free(pval);
-    }
-
-cleanup:
     /* restore backup (original) value */
     LYSC_GET_TYPE_PLG(subvalue->value.realtype->plugin_ref)->free(ctx, &subvalue->value);
     subvalue->value = orig;
