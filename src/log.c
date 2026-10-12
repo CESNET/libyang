@@ -666,7 +666,9 @@ ly_vlog_build_path_line(const struct ly_ctx *ctx, const struct lyd_node *lnode, 
         char **data_path, char **schema_path, uint64_t *line)
 {
     int r;
-    char *path;
+    char *path, *path2;
+    const struct lyd_node *parent;
+    const struct lysc_node *sparent;
 
     *data_path = NULL;
     *schema_path = NULL;
@@ -686,6 +688,19 @@ ly_vlog_build_path_line(const struct ly_ctx *ctx, const struct lyd_node *lnode, 
             } else {
                 r = asprintf(&path, "%s/%s", *data_path, snode->name);
             }
+            free(*data_path);
+            LY_CHECK_ERR_RET(r == -1, LOGMEM(ctx), LY_EMEM);
+            *data_path = path;
+            path = NULL;
+        }
+
+        for (parent = lnode; parent->parent; parent = parent->parent) {}
+        sparent = lysc_data_parent(parent->schema);
+        if (sparent) {
+            /* prepend any missing parents and remove the current first node module name */
+            path2 = lysc_path(sparent, LYSC_PATH_DATA, NULL, 0);
+            r = asprintf(&path, "%s/%s", path2, strchr(*data_path, ':') + 1);
+            free(path2);
             free(*data_path);
             LY_CHECK_ERR_RET(r == -1, LOGMEM(ctx), LY_EMEM);
             *data_path = path;
