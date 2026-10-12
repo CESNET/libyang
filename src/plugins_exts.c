@@ -576,6 +576,7 @@ lys_find_ext_parsed(const struct lysp_ext_instance *exts, const char *ext_def_na
     const char *extp_name;
 
     LYA_FOR(exts, u) {
+        assert(strchr(exts[u].name, ':'));
         extp_name = strchr(exts[u].name, ':') + 1;
         if (!strcmp(ext_def_name, extp_name)) {
             return &exts[u];
