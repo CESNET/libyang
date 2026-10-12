@@ -534,7 +534,7 @@ test_store_union_idx(void **state)
     /* a value stored with a member type index keeps that member resolved, without any LYB data needed */
     err = NULL;
     assert_int_equal(LY_SUCCESS, lyplg_type_store_union_idx(UTEST_LYCTX, lysc_type, 1, "50", 2 * 8,
-            0, LY_VALUE_CANON, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
+            0, LY_VALUE_CANON, NULL, LYD_VALHINT_STRING, NULL, &value, &err));
     assert_null(err);
     assert_ptr_equal(lysc_type, value.realtype);
     assert_int_equal(LY_VALUE_LYB, value.subvalue->format);
@@ -573,30 +573,29 @@ test_store_union_idx(void **state)
 
     err = NULL;
     assert_int_equal(LY_SUCCESS, lyplg_type_store_union_idx(UTEST_LYCTX, lysc_type, 0, "50", 2 * 8,
-            0, LY_VALUE_CANON, NULL, LYD_VALHINT_DECNUM, NULL, &value, NULL, &err));
+            0, LY_VALUE_CANON, NULL, LYD_VALHINT_DECNUM, NULL, &value, &err));
     assert_null(err);
     assert_ptr_equal(type_u->types[0], value.subvalue->value.realtype);
     type->free(UTEST_LYCTX, &value);
 
     err = NULL;
     assert_int_equal(LY_SUCCESS, lyplg_type_store_union_idx(UTEST_LYCTX, lysc_type, 1, "50", 2 * 8,
-            0, LY_VALUE_CANON, NULL, LYD_VALHINT_DECNUM, NULL, &value, NULL, &err));
+            0, LY_VALUE_CANON, NULL, LYD_VALHINT_DECNUM, NULL, &value, &err));
     assert_null(err);
     assert_ptr_equal(type_u->types[1], value.subvalue->value.realtype);
     type->free(UTEST_LYCTX, &value);
 
     /* an out-of-range or stale member type index is a data error, not an assert/crash */
     err = NULL;
-    assert_int_equal(LY_EVALID, lyplg_type_store_union_idx(UTEST_LYCTX, lysc_type, 2, "50", 2 * 8,
-            0, LY_VALUE_CANON, NULL, LYD_VALHINT_DECNUM, NULL, &value, NULL, &err));
-    assert_non_null(err);
-    CHECK_STRING(err->msg, "Union member type index 2 out of range of the union type with 2 member type(s).");
-    ly_err_free(err);
+    assert_int_equal(LY_EINVAL, lyplg_type_store_union_idx(UTEST_LYCTX, lysc_type, 2, "50", 2 * 8,
+            0, LY_VALUE_CANON, NULL, LYD_VALHINT_DECNUM, NULL, &value, &err));
+    assert_null(err);
+    UTEST_LOG_CTX_CLEAN;
 
     /* member type rejection is propagated */
     err = NULL;
     assert_int_equal(LY_EVALID, lyplg_type_store_union_idx(UTEST_LYCTX, lysc_type, 0, "x", 1 * 8,
-            0, LY_VALUE_CANON, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
+            0, LY_VALUE_CANON, NULL, LYD_VALHINT_STRING, NULL, &value, &err));
     assert_non_null(err);
     ly_err_free(err);
 
@@ -609,7 +608,7 @@ test_store_union_idx(void **state)
 
     err = NULL;
     assert_int_equal(LY_EINCOMPLETE, lyplg_type_store_union_idx(UTEST_LYCTX, lysc_type, 0, "10", 2 * 8,
-            0, LY_VALUE_CANON, NULL, LYD_VALHINT_DECNUM, NULL, &value, NULL, &err));
+            0, LY_VALUE_CANON, NULL, LYD_VALHINT_DECNUM, NULL, &value, &err));
     assert_int_equal(LY_TYPE_INT8, value.subvalue->value.realtype->basetype);
     assert_int_equal(LY_VALUE_LYB, value.subvalue->format);
     type->free(UTEST_LYCTX, &value);

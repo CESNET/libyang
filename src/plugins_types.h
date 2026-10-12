@@ -262,7 +262,7 @@ LIBYANG_API_DECL LY_ERR lyplg_type_check_value_size(const char *type_name, LY_VA
  * @param[in] hints Bitmap of [value hints](@ref lydvalhints) of all the allowed value types provided by parsers
  *            to ::lyplg_type_store_clb.
  * @param[in] value Lexical representation of the value to be stored.
- * @param[in] value_len Length (number of bytes) of the given \p value.
+ * @param[in] value_len Length (number of bytes) of the given @p value.
  * @param[in] type Expected base type of the @p value by the caller.
  * @param[out] base Pointer to store the numeric base for parsing numeric values using strtol()/strtoll() function.
  * Returned (and required) only for numeric @p type values.
@@ -274,6 +274,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_check_hints(uint32_t hints, const char *value
 
 /**
  * @brief Check that the value of a type is allowed based on its status.
+ *
+ * Performs the check only if @p format is ::LY_VALUE_SCHEMA.
  *
  * @param[in] ctx_node Context node (which references the value).
  * @param[in] val_flags Flags fo the value.
@@ -288,6 +290,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_check_status(const struct lysc_node *ctx_node
 
 /**
  * @brief Check that the lypath instance-identifier value is allowed based on the status of the nodes.
+ *
+ * Performs the check only if @p format is ::LY_VALUE_SCHEMA.
  *
  * @param[in] ctx_node Context node (which references the value).
  * @param[in] path Path of the instance-identifier.
@@ -412,7 +416,8 @@ LIBYANG_API_DECL void lyplg_type_prefix_data_free(LY_VALUE_FORMAT format, void *
  * @param[in] format Input format of the value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ly_resolve_prefix()).
  * @param[in] ctx_node The @p value schema context node.
- * @param[in,out] unres Global unres structure for newly implemented modules.
+ * @param[in,out] unres Global unres structure for newly implemented modules. Used only if @p options include
+ * ::LYPLG_TYPE_STORE_IMPLEMENT.
  * @param[out] path Pointer to store the created structure representing the schema path from the @p value.
  * @param[out] err Pointer to store the error information provided in case of failure.
  * @return LY_SUCCESS on success,
@@ -449,38 +454,28 @@ LIBYANG_API_DECL void lyplg_type_lypath_free(struct ly_path *path);
  * @brief Store a union value with a specific member type index, keeping that member resolved (pinned),
  * so it is not re-resolved to the first matching member during later validation.
  *
- * Equivalent to storing the value through the member type plugin and then the union type plugin with
- * the value in the LYB format, except the caller does not need to handle the binary LYB format at all.
- * Meaning of the parameters follows ::lyplg_type_store_clb unless stated otherwise.
+ * The union value is effectively stored in LYB format.
  *
- * Suitable for datastore plugins that persist the resolved member type index of union values and need
- * to restore the values resolved as exactly the same member (e.g. when several member types share the
- * same base type). The resulting value is identical to a value stored from the LYB format.
- *
- * @param[in] ctx libyang context.
- * @param[in] type Union schema type, MUST be a union (basetype ::LY_TYPE_UNION).
- * @param[in] type_idx Index of the union member type to use (into ::lysc_type_union::types).
- * @param[in] value Value to store, is always consumed.
+ * @param[in] ctx Context to use.
+ * @param[in] type Union type to use.
+ * @param[in] type_idx Index of the union member type to use.
+ * @param[in] value Value to store as the specific type at @p type_idx.
  * @param[in] value_size_bits Size of @p value in bits.
- * @param[in] options [Type plugin store options](@ref plugintypestoreopts), may be updated by the member store.
- * @param[in] format Input format of @p value, even ::LY_VALUE_LYB of the member type value itself (the
- * 1-byte member index prefix is handled internally and must not be included).
+ * @param[in] options [Type plugin store options](@ref plugintypestoreopts).
+ * @param[in] format Input format of @p value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ly_resolve_prefix()).
- * @param[in] hints Bitmap of value hints.
- * @param[in] ctx_node The @p value schema context node.
- * @param[in,out] storage Value storage to fill identically to ::lyplg_type_store_clb, on failure it is
- * freeded and MUST NOT be freed again.
- * @param[in,out] unres Global unres structure for newly implemented modules.
+ * @param[in] hints Bitmap of value hints to use.
+ * @param[in] ctx_node Schema context node of @p value.
+ * @param[in,out] storage Value storage to fill.
  * @param[out] err Pointer to store the error information provided in case of failure.
  * @return LY_SUCCESS on success,
  * @return LY_EINCOMPLETE in case the value requires validation of its instance in the data tree,
- * @return LY_EVALID in/out-of-range @p type_idx or if the member type does not accept the @p value,
- * @return LY_ERR value on other error.
+ * @return LY_ERR value on error.
  */
 LIBYANG_API_DECL LY_ERR lyplg_type_store_union_idx(const struct ly_ctx *ctx, const struct lysc_type *type,
         uint32_t type_idx, const void *value, uint64_t value_size_bits, uint32_t options, LY_VALUE_FORMAT format,
         void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node, struct lyd_value *storage,
-        struct lys_glob_unres *unres, struct ly_err_item **err);
+        struct ly_err_item **err);
 
 /**
  * @brief Print xpath1.0 value in the specific format.
