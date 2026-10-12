@@ -59,7 +59,7 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
     /* init storage */
     memset(storage, 0, sizeof *storage);
     LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
-    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+    LY_CHECK_ERR_GOTO(!val, ret = ly_err_new_no_mem(err), cleanup);
     storage->realtype = type;
 
     if (format == LY_VALUE_LYB) {
@@ -85,7 +85,7 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
         /* store fractions of second */
         if (value_size > 9) {
             val->fractions_s = strndup(((char *)value) + 9, value_size - 9);
-            LY_CHECK_ERR_GOTO(!val->fractions_s, ret = LY_EMEM, cleanup);
+            LY_CHECK_ERR_GOTO(!val->fractions_s, ret = ly_err_new_no_mem(err), cleanup);
         }
 
         /* store unknown timezone */

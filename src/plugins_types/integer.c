@@ -135,16 +135,16 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
         /* generate canonical value */
         switch (type->basetype) {
         case LY_TYPE_INT8:
-            LY_CHECK_ERR_GOTO(asprintf(&canon, "%" PRId8, storage->int8) == -1, ret = LY_EMEM, cleanup);
+            LY_CHECK_ERR_GOTO(asprintf(&canon, "%" PRId8, storage->int8) == -1, ret = ly_err_new_no_mem(err), cleanup);
             break;
         case LY_TYPE_INT16:
-            LY_CHECK_ERR_GOTO(asprintf(&canon, "%" PRId16, storage->int16) == -1, ret = LY_EMEM, cleanup);
+            LY_CHECK_ERR_GOTO(asprintf(&canon, "%" PRId16, storage->int16) == -1, ret = ly_err_new_no_mem(err), cleanup);
             break;
         case LY_TYPE_INT32:
-            LY_CHECK_ERR_GOTO(asprintf(&canon, "%" PRId32, storage->int32) == -1, ret = LY_EMEM, cleanup);
+            LY_CHECK_ERR_GOTO(asprintf(&canon, "%" PRId32, storage->int32) == -1, ret = ly_err_new_no_mem(err), cleanup);
             break;
         case LY_TYPE_INT64:
-            LY_CHECK_ERR_GOTO(asprintf(&canon, "%" PRId64, storage->int64) == -1, ret = LY_EMEM, cleanup);
+            LY_CHECK_ERR_GOTO(asprintf(&canon, "%" PRId64, storage->int64) == -1, ret = ly_err_new_no_mem(err), cleanup);
             break;
         default:
             break;
@@ -380,7 +380,7 @@ lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, co
         }
     } else {
         /* generate canonical value */
-        LY_CHECK_ERR_GOTO(asprintf(&canon, "%" PRIu64, num) == -1, ret = LY_EMEM, cleanup);
+        LY_CHECK_ERR_GOTO(asprintf(&canon, "%" PRIu64, num) == -1, ret = ly_err_new_no_mem(err), cleanup);
 
         /* store it */
         ret = lydict_insert_zc(ctx, canon, (const char **)&storage->_canonical);

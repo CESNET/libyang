@@ -39,7 +39,7 @@ static LY_ERR
 lyplg_type_store_lyds(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
         uint64_t UNUSED(value_size_bits), uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data),
         uint32_t UNUSED(hints), const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage,
-        struct lys_glob_unres *UNUSED(unres), struct ly_err_item **UNUSED(err))
+        struct lys_glob_unres *UNUSED(unres), struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     struct rb_node *rbt = NULL;
@@ -47,7 +47,7 @@ lyplg_type_store_lyds(const struct ly_ctx *ctx, const struct lysc_type *type, co
 
     /* Prepare value memory. */
     LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
-    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+    LY_CHECK_ERR_GOTO(!val, ret = ly_err_new_no_mem(err), cleanup);
 
     if (format == LY_VALUE_CANON) {
         /* The canonical value for lyds_tree type is the empty string, so @p value is like NULL. */

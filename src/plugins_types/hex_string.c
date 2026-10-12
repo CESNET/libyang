@@ -60,7 +60,7 @@ lyplg_type_store_hex_string(const struct ly_ctx *ctx, const struct lysc_type *ty
     /* make a copy, it is needed for canonization */
     if ((format != LY_VALUE_CANON) && !(options & LYPLG_TYPE_STORE_DYNAMIC)) {
         value = strndup(value, value_size);
-        LY_CHECK_ERR_GOTO(!value, ret = LY_EMEM, cleanup);
+        LY_CHECK_ERR_GOTO(!value, ret = ly_err_new_no_mem(err), cleanup);
         options |= LYPLG_TYPE_STORE_DYNAMIC;
     }
 

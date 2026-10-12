@@ -267,7 +267,7 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
     /* init storage */
     memset(storage, 0, sizeof *storage);
     LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
-    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+    LY_CHECK_ERR_GOTO(!val, ret = ly_err_new_no_mem(err), cleanup);
     storage->realtype = type;
 
     /* check value length */
@@ -282,11 +282,11 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
             options &= ~LYPLG_TYPE_STORE_DYNAMIC;
         } else if (value_size) {
             val->data = malloc(value_size);
-            LY_CHECK_ERR_GOTO(!val->data, ret = LY_EMEM, cleanup);
+            LY_CHECK_ERR_GOTO(!val->data, ret = ly_err_new_no_mem(err), cleanup);
             memcpy(val->data, value, value_size);
         } else {
             val->data = strdup("");
-            LY_CHECK_ERR_GOTO(!val->data, ret = LY_EMEM, cleanup);
+            LY_CHECK_ERR_GOTO(!val->data, ret = ly_err_new_no_mem(err), cleanup);
         }
 
         /* store size */

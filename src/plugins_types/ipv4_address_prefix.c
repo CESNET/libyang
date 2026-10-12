@@ -80,7 +80,7 @@ ipv4prefix_str2ip(const char *value, uint32_t value_len, struct in_addr *addr, u
 
     /* get just the network prefix */
     mask_str = strndup(value, pref_str - value);
-    LY_CHECK_ERR_GOTO(!mask_str, ret = LY_EMEM, cleanup);
+    LY_CHECK_ERR_GOTO(!mask_str, ret = ly_err_new_no_mem(err), cleanup);
 
     /* convert it to netword-byte order */
     if (inet_pton(AF_INET, mask_str, addr) != 1) {
@@ -133,7 +133,7 @@ lyplg_type_store_ipv4_address_prefix(const struct ly_ctx *ctx, const struct lysc
     /* init storage */
     memset(storage, 0, sizeof *storage);
     LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
-    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+    LY_CHECK_ERR_GOTO(!val, ret = ly_err_new_no_mem(err), cleanup);
     storage->realtype = type;
 
     /* check value length */

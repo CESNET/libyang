@@ -60,14 +60,14 @@ lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_n
 
                 /* append the nametest and prefix */
                 mem = realloc(str, str_len + strlen(prefix) + 1 + len + 1);
-                LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory."), cleanup);
+                LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new_no_mem(err), cleanup);
                 str = mem;
                 str_len += sprintf(str + str_len, "%s:%.*s", prefix, (int)len, str_begin);
             } else {
                 /* just append the string, we may get the first expression node without a prefix but since this
                  * is not strictly forbidden, allow it */
                 mem = realloc(str, str_len + len + 1);
-                LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory."), cleanup);
+                LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new_no_mem(err), cleanup);
                 str = mem;
                 str_len += sprintf(str + str_len, "%.*s", (int)len, str_begin);
             }
@@ -99,7 +99,7 @@ lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_n
 
                 /* append the prefix */
                 mem = realloc(str, str_len + pref_len + 2);
-                LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory."), cleanup);
+                LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new_no_mem(err), cleanup);
                 str = mem;
                 str_len += sprintf(str + str_len, "%.*s:", (int)pref_len, prefix);
             }
@@ -205,7 +205,7 @@ xpath10_print_subexpr_r(uint16_t *cur_idx, enum lyxp_token end_tok, const struct
     return LY_SUCCESS;
 
 error_mem:
-    return ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory.");
+    return ly_err_new_no_mem(err);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -269,7 +269,7 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
     /* init storage */
     memset(storage, 0, sizeof *storage);
     LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
-    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+    LY_CHECK_ERR_GOTO(!val, ret = ly_err_new_no_mem(err), cleanup);
     storage->realtype = type;
 
     /* check value length */
@@ -447,7 +447,7 @@ lyplg_type_validate_tree_xpath10(const struct ly_ctx *UNUSED(ctx), const struct 
 cleanup:
     ly_set_free(set, NULL);
     if (ret == LY_EMEM) {
-        ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, LY_EMEM_MSG);
+        ly_err_new_no_mem(err);
     } else if (ret) {
         eitem = ly_err_last(LYD_CTX(ctx_node));
         ly_err_new(err, ret, LYVE_DATA, eitem->data_path, NULL, "%s", eitem->msg);

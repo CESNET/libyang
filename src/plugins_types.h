@@ -197,9 +197,11 @@ enum lyplg_lyb_size_type {
     do { if (LYPLG_TYPE_VAL_IS_DYN(type_val)) free(type_val); } while(0)
 
 /**
- * @brief Create and fill error structure.
+ * @brief Create and fill an error structure.
  *
  * Helper function for various plugin functions to generate error information structure.
+ *
+ * The structure can be freed using ::ly_err_free() or passed back from callback into libyang.
  *
  * @param[in,out] err Pointer to store a new error structure filled according to the input parameters. If the storage
  * already contains error information, the new record is appended into the errors list.
@@ -210,13 +212,21 @@ enum lyplg_lyb_size_type {
  * @param[in] err_format Format string (same like at printf) or string literal.
  * If you want to print just an unknown string, use "%s" for the @p err_format, otherwise undefined behavior may occur
  * because the unknown string may contain the % character, which is interpreted as conversion specifier.
- * @return The given @p ecode value if the @p err is successfully created. The structure can be freed using ::ly_err_free()
- * or passed back from callback into libyang.
- * @return LY_EMEM If there is not enough memory for allocating error record, the @p err is not touched in that case.
+ * @return The given @p ecode value if the @p err is successfully created.
+ * @return LY_EMEM if there is not enough memory for allocating error record, the @p err is not touched in that case.
  * @return LY_SUCCESS if @p ecode is LY_SUCCESS, the @p err is not touched in this case.
  */
 LIBYANG_API_DECL LY_ERR ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VECODE vecode, char *data_path, char *apptag,
         const char *err_format, ...) _FORMAT_PRINTF(6, 7);
+
+/**
+ * @brief Create and fill an error structure with a no-memory error.
+ *
+ * @param[in,out] err Pointer to store a new error structure filled according to the input parameters. If the storage
+ * already contains error information, the new record is appended into the errors list.
+ * @return LY_EMEM.
+ */
+LIBYANG_API_DECL LY_ERR ly_err_new_no_mem(struct ly_err_item **err);
 
 /**
  * @brief Destructor for the error records created with ::ly_err_new().

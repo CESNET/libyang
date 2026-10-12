@@ -69,7 +69,7 @@ lyplg_type_store_ipv4_address_no_zone(const struct ly_ctx *ctx, const struct lys
     /* init storage */
     memset(storage, 0, sizeof *storage);
     LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
-    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+    LY_CHECK_ERR_GOTO(!val, ret = ly_err_new_no_mem(err), cleanup);
     storage->realtype = type;
 
     /* check value length */
@@ -92,7 +92,7 @@ lyplg_type_store_ipv4_address_no_zone(const struct ly_ctx *ctx, const struct lys
     /* we always need a dynamic value */
     if (!(options & LYPLG_TYPE_STORE_DYNAMIC)) {
         value = strndup(value, value_size);
-        LY_CHECK_ERR_GOTO(!value, ret = LY_EMEM, cleanup);
+        LY_CHECK_ERR_GOTO(!value, ret = ly_err_new_no_mem(err), cleanup);
 
         options |= LYPLG_TYPE_STORE_DYNAMIC;
     }

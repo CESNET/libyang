@@ -131,7 +131,7 @@ lyplg_type_store_ipv6_address(const struct ly_ctx *ctx, const struct lysc_type *
     /* init storage */
     memset(storage, 0, sizeof *storage);
     LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
-    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+    LY_CHECK_ERR_GOTO(!val, ret = ly_err_new_no_mem(err), cleanup);
     storage->realtype = type;
 
     value_size = LYPLG_BITS2BYTES(value_size_bits);

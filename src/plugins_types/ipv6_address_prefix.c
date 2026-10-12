@@ -72,7 +72,7 @@ ipv6prefix_str2ip(const char *value, uint32_t value_len, struct lyd_value_ipv6_p
 
     /* get just the network prefix */
     mask_str = strndup(value, pref_str - value);
-    LY_CHECK_ERR_GOTO(!mask_str, ret = LY_EMEM, cleanup);
+    LY_CHECK_ERR_GOTO(!mask_str, ret = ly_err_new_no_mem(err), cleanup);
 
     /* convert it to netword-byte order */
     if (inet_pton(AF_INET6, mask_str, &val->addr) != 1) {
@@ -157,7 +157,7 @@ lyplg_type_store_ipv6_address_prefix(const struct ly_ctx *ctx, const struct lysc
             LYD_VALUE_GET(storage, val);
         } else {
             LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
-            LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+            LY_CHECK_ERR_GOTO(!val, ret = ly_err_new_no_mem(err), cleanup);
 
             memcpy(val, value, value_size);
         }
@@ -173,7 +173,7 @@ lyplg_type_store_ipv6_address_prefix(const struct ly_ctx *ctx, const struct lysc
 
     /* allocate value */
     LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
-    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+    LY_CHECK_ERR_GOTO(!val, ret = ly_err_new_no_mem(err), cleanup);
 
     /* check hints */
     ret = lyplg_type_check_hints(hints, value, value_size, type->basetype, NULL, err);

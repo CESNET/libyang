@@ -92,7 +92,7 @@ instanceid_keys_print_value(const struct lyd_value_instance_identifier_keys *val
             mem = realloc(*str_value, str_len + strlen(str_tok) + 1);
             if (!mem) {
                 free(str_tok);
-                ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory.");
+                ret = ly_err_new_no_mem(err);
                 goto cleanup;
             }
             *str_value = mem;
@@ -105,7 +105,7 @@ instanceid_keys_print_value(const struct lyd_value_instance_identifier_keys *val
             /* just copy the token */
             mem = realloc(*str_value, str_len + val->keys->tok_len[cur_idx] + 1);
             if (!mem) {
-                ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory.");
+                ret = ly_err_new_no_mem(err);
                 goto cleanup;
             }
             *str_value = mem;
@@ -145,7 +145,7 @@ lyplg_type_store_instanceid_keys(const struct ly_ctx *ctx, const struct lysc_typ
     /* init storage */
     memset(storage, 0, sizeof *storage);
     LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
-    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+    LY_CHECK_ERR_GOTO(!val, ret = ly_err_new_no_mem(err), cleanup);
     storage->realtype = type;
 
     /* check value length */

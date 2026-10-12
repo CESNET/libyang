@@ -179,6 +179,12 @@ ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VECODE vecode, char *data_
     return e->err;
 }
 
+LIBYANG_API_DEF LY_ERR
+ly_err_new_no_mem(struct ly_err_item **err)
+{
+    return ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "Memory allocation failed.");
+}
+
 LIBYANG_API_DEF const struct ly_err_item *
 ly_err_first(const struct ly_ctx *ctx)
 {

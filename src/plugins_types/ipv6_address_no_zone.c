@@ -123,7 +123,7 @@ lyplg_type_store_ipv6_address_no_zone(const struct ly_ctx *ctx, const struct lys
         } else {
             /* allocate value */
             LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
-            LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+            LY_CHECK_ERR_GOTO(!val, ret = ly_err_new_no_mem(err), cleanup);
 
             /* store IP address */
             memcpy(&val->addr, value, sizeof val->addr);
@@ -135,7 +135,7 @@ lyplg_type_store_ipv6_address_no_zone(const struct ly_ctx *ctx, const struct lys
 
     /* allocate value */
     LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
-    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+    LY_CHECK_ERR_GOTO(!val, ret = ly_err_new_no_mem(err), cleanup);
 
     /* check hints */
     ret = lyplg_type_check_hints(hints, value, value_size, type->basetype, NULL, err);

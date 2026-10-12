@@ -74,7 +74,7 @@ lyplg_type_store_date(const struct ly_ctx *ctx, const struct lysc_type *type, co
     } else {
         LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val_nz);
     }
-    LY_CHECK_ERR_GOTO(!val && !val_nz, ret = LY_EMEM, cleanup);
+    LY_CHECK_ERR_GOTO(!val && !val_nz, ret = ly_err_new_no_mem(err), cleanup);
     storage->realtype = type;
 
     if (format == LY_VALUE_LYB) {
@@ -133,7 +133,7 @@ lyplg_type_store_date(const struct ly_ctx *ctx, const struct lysc_type *type, co
     if (val) {
         /* create date-and-time value */
         if (asprintf(&str, "%.*sT00:00:00%.*s", 10, (char *)value, (int)(value_size - 10), (char *)value + 10) == -1) {
-            ret = LY_EMEM;
+            ret = ly_err_new_no_mem(err);
             goto cleanup;
         }
 

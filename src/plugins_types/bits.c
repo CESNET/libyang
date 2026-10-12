@@ -305,7 +305,7 @@ lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, co
     /* init storage */
     memset(storage, 0, sizeof *storage);
     LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
-    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+    LY_CHECK_ERR_GOTO(!val, ret = ly_err_new_no_mem(err), cleanup);
     storage->realtype = type;
 
     /* check value length */
@@ -320,12 +320,12 @@ lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, co
             options &= ~LYPLG_TYPE_STORE_DYNAMIC;
         } else {
             val->bitmap = malloc(value_size);
-            LY_CHECK_ERR_GOTO(!val->bitmap, ret = LY_EMEM, cleanup);
+            LY_CHECK_ERR_GOTO(!val->bitmap, ret = ly_err_new_no_mem(err), cleanup);
             memcpy(val->bitmap, value, value_size);
         }
 
         /* allocate and fill the bit item array */
-        LYA_PREALLOC(val->items, LYA_COUNT(type_bits->bits), LOGMEM(ctx); ret = LY_EMEM; goto cleanup);
+        LYA_PREALLOC(val->items, LYA_COUNT(type_bits->bits), ret = ly_err_new_no_mem(err); goto cleanup);
         LY_CHECK_GOTO(ret = bits_bitmap2items(val->bitmap, type_bits, val->items, err), cleanup);
 
         /* success */
@@ -338,14 +338,14 @@ lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, co
 
     /* allocate the bitmap */
     val->bitmap = calloc(1, LYPLG_BITS2BYTES(BITS_LAST_BIT_POSITION(type_bits) + 1));
-    LY_CHECK_ERR_GOTO(!val->bitmap, ret = LY_EMEM, cleanup);
+    LY_CHECK_ERR_GOTO(!val->bitmap, ret = ly_err_new_no_mem(err), cleanup);
 
     /* fill the bitmap */
     ret = bits_str2bitmap(value, value_size, type_bits, val->bitmap, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate and fill the bit item array */
-    LYA_PREALLOC(val->items, LYA_COUNT(type_bits->bits), LOGMEM(ctx); ret = LY_EMEM; goto cleanup);
+    LYA_PREALLOC(val->items, LYA_COUNT(type_bits->bits), ret = ly_err_new_no_mem(err); goto cleanup);
     LY_CHECK_GOTO(ret = bits_bitmap2items(val->bitmap, type_bits, val->items, err), cleanup);
 
     if (format == LY_VALUE_CANON) {
@@ -356,7 +356,7 @@ lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, co
             LY_CHECK_GOTO(ret, cleanup);
         } else {
             ret = lydict_insert(ctx, value_size ? value : "", value_size, &storage->_canonical);
-            LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
+            LY_CHECK_GOTO(ret, cleanup);
         }
     }
 

@@ -285,8 +285,7 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
     } else {
         /* JSON format with prefix is the canonical one */
         if (asprintf(&canon, "%s:%s", ident->module->name, ident->name) == -1) {
-            LOGMEM(ctx);
-            ret = LY_EMEM;
+            ret = ly_err_new_no_mem(err);
             goto cleanup;
         }
 
