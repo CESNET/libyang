@@ -392,26 +392,17 @@ LY_ERR
 lyd_parser_node_insert(struct lyd_node *parent, struct lyd_node **first_p, struct lyd_node *insert_anchor,
         uint32_t parse_opts, struct lyd_node *node)
 {
-    const struct lysc_node *skey = NULL;
-    const struct lyd_node *key;
-
     if (!node || node->parent || (node->prev != node) || (first_p && (*first_p == node))) {
         /* no node or already inserted */
         return LY_SUCCESS;
     }
 
-    if (node->schema && (node->schema->nodetype == LYS_LIST)) {
-        /* check the node has all the keys first */
-        key = lyd_child(node);
-        while ((skey = lys_getnext(skey, node->schema, NULL, 0)) && (skey->flags & LYS_KEY)) {
-            if (!key || (key->schema != skey)) {
-                /* missing key(s) */
-                return LY_SUCCESS;
-            }
-
-            key = key->next;
-        }
+    if (node->schema && (node->schema->nodetype == LYS_LIST) && !node->hash) {
+        /* missing key(s) */
+        return LY_SUCCESS;
     }
+
+    assert(!node->schema || node->hash);
 
     /* insert */
     if (insert_anchor) {
