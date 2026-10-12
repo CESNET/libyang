@@ -76,6 +76,7 @@ static struct internal_modules_s {
 };
 
 #define LY_INTERNAL_MODS_COUNT sizeof(internal_modules) / sizeof(struct internal_modules_s)
+#define LY_INTERNAL_YANGLIB_MODS_COUNT 5
 
 LIBYANG_API_DEF LY_ERR
 ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
@@ -277,7 +278,7 @@ ly_ctx_new(const char *search_dir, uint32_t options, struct ly_ctx **new_ctx)
     struct lys_module *module;
     char *search_dir_list, *sep, *dir;
     const char **imp_f, *all_f[] = {"*", NULL};
-    uint32_t i;
+    uint32_t i, int_mod_count;
     LY_ERR rc = LY_SUCCESS;
     struct lys_glob_unres unres = {0};
     ly_bool builtin_plugins_only, static_plugins_only;
@@ -326,7 +327,11 @@ ly_ctx_new(const char *search_dir, uint32_t options, struct ly_ctx **new_ctx)
     }
 
     /* load internal modules */
-    for (i = 0; i < ((options & LY_CTX_NO_YANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 5) : LY_INTERNAL_MODS_COUNT); i++) {
+    int_mod_count = LY_INTERNAL_MODS_COUNT;
+    if (options & LY_CTX_NO_YANGLIBRARY) {
+        int_mod_count -= LY_INTERNAL_YANGLIB_MODS_COUNT;
+    }
+    for (i = 0; i < int_mod_count; i++) {
         rc = lys_parse_load(ctx, internal_modules[i].name, internal_modules[i].revision, &unres.creating, &module);
         LY_CHECK_GOTO(rc, cleanup);
 
@@ -1112,7 +1117,7 @@ ly_ctx_internal_modules_count(const struct ly_ctx *ctx)
     }
 
     if (ctx->opts & LY_CTX_NO_YANGLIBRARY) {
-        return LY_INTERNAL_MODS_COUNT - 2;
+        return LY_INTERNAL_MODS_COUNT - LY_INTERNAL_YANGLIB_MODS_COUNT;
     } else {
         return LY_INTERNAL_MODS_COUNT;
     }
