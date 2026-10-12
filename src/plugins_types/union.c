@@ -548,7 +548,7 @@ union_prepare_subvalue(const struct ly_ctx *ctx, const struct lysc_type *type, c
     /* init storage */
     memset(storage, 0, sizeof *storage);
     LYPLG_TYPE_VAL_INLINE_PREPARE(storage, *subvalue);
-    LY_CHECK_ERR_RET(!*subvalue, ly_err_new_no_mem(err), LY_EMEM);
+    LY_CHECK_RET(!*subvalue, ly_err_new_no_mem(err));
 
     storage->realtype = type;
     (*subvalue)->hints = hints;
@@ -560,11 +560,11 @@ union_prepare_subvalue(const struct ly_ctx *ctx, const struct lysc_type *type, c
         *options &= ~LYPLG_TYPE_STORE_DYNAMIC;
     } else if (value_size_bits) {
         (*subvalue)->original = calloc(1, LYPLG_BITS2BYTES(value_size_bits));
-        LY_CHECK_ERR_RET(!(*subvalue)->original, ly_err_new_no_mem(err), LY_EMEM);
+        LY_CHECK_RET(!(*subvalue)->original, ly_err_new_no_mem(err));
         memcpy((*subvalue)->original, value, LYPLG_BITS2BYTES(value_size_bits));
     } else {
         (*subvalue)->original = strdup("");
-        LY_CHECK_ERR_RET(!(*subvalue)->original, ly_err_new_no_mem(err), LY_EMEM);
+        LY_CHECK_RET(!(*subvalue)->original, ly_err_new_no_mem(err));
     }
     (*subvalue)->orig_size_bits = value_size_bits;
 
