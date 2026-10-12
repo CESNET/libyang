@@ -682,7 +682,7 @@ ly_vlog_build_path_line(const struct ly_ctx *ctx, const struct lyd_node *lnode, 
         if (!snode && log_location.scnodes.count) {
             snode = log_location.scnodes.objs[log_location.scnodes.count - 1];
         }
-        if (snode && (!lnode || (lysc_data_parent(snode) == lnode->schema))) {
+        if (snode && (lysc_data_parent(snode) == lnode->schema)) {
             if (lyd_node_module(lnode) != snode->module) {
                 r = asprintf(&path, "%s/%s:%s", *data_path, snode->module->name, snode->name);
             } else {
