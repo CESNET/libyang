@@ -922,11 +922,12 @@ schema_diff_ptypes_change(const struct lysp_type *types1, const struct lysp_node
     LYA_COUNT_T u;
     const char *type1_name, *type2_name;
 
-    if (LYA_COUNT(types1) > LYA_COUNT(types2)) {
+    for (u = LYA_COUNT(types2); u < LYA_COUNT(types1); ++u) {
         /* removed */
         LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_REMOVED, LYS_CHANGED_TYPEDEF, LYS_CHANGED_TYPE,
                 LYS_CONFORM_NBC, changes), cleanup);
-    } else if (LYA_COUNT(types1) < LYA_COUNT(types2)) {
+    }
+    for (u = LYA_COUNT(types1); u < LYA_COUNT(types2); ++u) {
         /* added */
         LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, LYS_CHANGED_TYPEDEF, LYS_CHANGED_TYPE,
                 LYS_CONFORM_NBC, changes), cleanup);
