@@ -28,4 +28,12 @@ module uses {
             }
         }
     }
+
+    grouping grp2 {
+        leaf l2 {
+            type string;
+        }
+    }
+
+    uses grp2;
 }

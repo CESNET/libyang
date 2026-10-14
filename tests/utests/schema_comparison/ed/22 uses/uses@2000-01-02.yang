@@ -26,4 +26,12 @@ module uses {
         }
         uses grp;
     }
+
+    grouping grp2 {
+        leaf l2 {
+            type string;
+        }
+    }
+
+    uses uss:grp2;
 }

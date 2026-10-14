@@ -38,6 +38,19 @@
                 "conformance": "editorial"
               }
             ]
+          },
+          {
+            "parent-path": "/",
+            "identifier": "grp2",
+            "stmt-type": "uses",
+            "changed": [
+              {
+                "stmt": "name",
+                "parent-stmt": "node",
+                "change": "modified",
+                "conformance": "editorial"
+              }
+            ]
           }
         ]
       }

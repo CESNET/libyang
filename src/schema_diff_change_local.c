@@ -430,6 +430,66 @@ schema_diff_pext_conform(const struct ly_ctx *ctx, const struct lysp_ext_instanc
     return default_conform;
 }
 
+/**
+ * @brief Generate a canonical name (without local prefixes) of a statement with an optional prefix.
+ *
+ * @param[in] name Statement name.
+ * @param[in] prefix Local prefix to skip.
+ * @return Canonical name without local prefixes.
+ */
+static const char *
+schema_diff_parsed_name_canon_simple(const char *name, const char *prefix)
+{
+    uint32_t pref_len = strlen(prefix);
+
+    /* may start with the local prefix */
+    if (!strncmp(name, prefix, pref_len) && (name[pref_len] == ':')) {
+        return name + pref_len + 1;
+    }
+
+    return name;
+}
+
+/**
+ * @brief Generate a canonical name (without local prefixes) of a statement with a path.
+ *
+ * @param[in] name Statement name.
+ * @param[in] prefix Local prefix to remove.
+ * @param[in,out] buf Buffer to use, may already be allocated.
+ * @return Canonical name without local prefixes.
+ */
+static const char *
+schema_diff_parsed_name_canon_path(const char *name, const char *prefix, char **buf)
+{
+    uint32_t pref_len = strlen(prefix);
+    const char *ptr;
+    char *buf_ptr;
+
+    /* may include repeated local prefixes, relative or absolute path */
+    if (!strstr(name, prefix)) {
+        /* no local prefix usage */
+        return name;
+    }
+
+    free(*buf);
+    *buf = malloc(strlen(name) + 1);
+    buf_ptr = *buf;
+
+    for (ptr = name; ptr[0]; ++ptr) {
+        /* make sure it is a prefix */
+        if (((ptr == name) || (ptr[-1] == '/')) && !strncmp(ptr, prefix, pref_len) && (ptr[pref_len] == ':')) {
+            /* skip the prefix */
+            ptr += pref_len + 1;
+        }
+
+        buf_ptr[0] = ptr[0];
+        ++buf_ptr;
+    }
+
+    buf_ptr[0] = '\0';
+    return *buf;
+}
+
 LY_ERR
 schema_diff_iffeatures_change(const struct lysp_qname *iffs1, uint16_t flags1, const struct lysp_qname *iffs2,
         enum lys_diff_changed_e parent_changed, struct lys_diff_changes_s *changes)
@@ -777,28 +837,37 @@ cleanup:
  * @param[in] bases1 First base array.
  * @param[in] bases2 Second base array.
  * @param[in,out] changes Changes to add to.
+ * @param[in,out] diff Diff to use.
  * @return LY_ERR value.
  */
 static LY_ERR
-schema_diff_ptype_bases_change(const char **bases1, const char **bases2, struct lys_diff_changes_s *changes)
+schema_diff_ptype_bases_change(const char **bases1, const char **bases2, struct lys_diff_changes_s *changes,
+        struct lys_diff_s *diff)
 {
     LY_ERR rc = LY_SUCCESS;
     LYA_COUNT_T u, v;
     ly_bool found, *base2_found = NULL;
+    const char *name1, *name2;
 
     /* prepare array for marking found bases */
     base2_found = calloc(LYA_COUNT(bases2), sizeof *base2_found);
     LY_CHECK_ERR_GOTO(!base2_found, LOGMEM(NULL); rc = LY_EMEM, cleanup)
 
     LYA_FOR(bases1, u) {
+        /* get base1 canonical name */
+        name1 = schema_diff_parsed_name_canon_simple(bases1[u], diff->old_prefix);
+
         found = 0;
         LYA_FOR(bases2, v) {
             if (base2_found[v]) {
                 continue;
             }
 
-            /* condition */
-            if (!strcmp(bases1[u], bases2[v])) {
+            /* get base2 canonical name */
+            name2 = schema_diff_parsed_name_canon_simple(bases2[v], diff->new_prefix);
+
+            /* name */
+            if (!strcmp(name1, name2)) {
                 /* found */
                 found = 1;
                 base2_found[v] = 1;
@@ -810,6 +879,10 @@ schema_diff_ptype_bases_change(const char **bases1, const char **bases2, struct 
             /* removed */
             LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_REMOVED, LYS_CHANGED_TYPEDEF, LYS_CHANGED_BASE,
                     LYS_CONFORM_BC, changes), cleanup);
+        } else if (!strcmp(bases1[u], bases2[v])) {
+            /* editorial prefix change */
+            LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_MODIFIED, LYS_CHANGED_BASE, LYS_CHANGED_NAME,
+                    LYS_CONFORM_ED, changes), cleanup);
         }
     }
 
@@ -847,6 +920,7 @@ schema_diff_ptypes_change(const struct lysp_type *types1, const struct lysp_node
 {
     LY_ERR rc = LY_SUCCESS;
     LYA_COUNT_T u;
+    const char *type1_name, *type2_name;
 
     if (LYA_COUNT(types1) > LYA_COUNT(types2)) {
         /* removed */
@@ -859,7 +933,9 @@ schema_diff_ptypes_change(const struct lysp_type *types1, const struct lysp_node
     }
 
     LYA_FOR(types1, u) {
-        if (strcmp(types1[u].name, types2[u].name)) {
+        type1_name = schema_diff_parsed_name_canon_simple(types1[u].name, diff->old_prefix);
+        type2_name = schema_diff_parsed_name_canon_simple(types2[u].name, diff->new_prefix);
+        if (strcmp(type1_name, type2_name)) {
             /* modified */
             LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_MODIFIED, LYS_CHANGED_TYPEDEF, LYS_CHANGED_TYPE,
                     LYS_CONFORM_NBC, changes), cleanup);
@@ -962,11 +1038,18 @@ schema_diff_ptype_change(const struct lysp_type *type1, const struct lysp_node *
         struct lys_diff_pext_changes_s *ext_changes, struct lys_diff_s *diff)
 {
     LY_ERR rc = LY_SUCCESS;
+    const char *type1_name, *type2_name;
 
     /* basetype */
-    if (strcmp(type1->name, type2->name)) {
+    type1_name = schema_diff_parsed_name_canon_simple(type1->name, diff->old_prefix);
+    type2_name = schema_diff_parsed_name_canon_simple(type2->name, diff->new_prefix);
+    if (strcmp(type1_name, type2_name)) {
         /* different types */
         return schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_TYPE, LYS_CONFORM_NBC, changes);
+    } else if (strcmp(type1->name, type2->name)) {
+        /* same types with editorial name change */
+        LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_MODIFIED, LYS_CHANGED_TYPE, LYS_CHANGED_NAME,
+                LYS_CONFORM_ED, changes), cleanup);
     }
 
     /* range */
@@ -994,7 +1077,7 @@ schema_diff_ptype_change(const struct lysp_type *type1, const struct lysp_node *
             type2->path ? type2->path->expr : NULL, parent_changed, LYS_CHANGED_PATH, changes), cleanup);
 
     /* bases */
-    LY_CHECK_GOTO(rc = schema_diff_ptype_bases_change(type1->bases, type2->bases, changes), cleanup);
+    LY_CHECK_GOTO(rc = schema_diff_ptype_bases_change(type1->bases, type2->bases, changes, diff), cleanup);
 
     /* types */
     LY_CHECK_GOTO(rc = schema_diff_ptypes_change(type1->types, ctx_node1, type2->types, ctx_node2, changes, ext_changes,
@@ -1321,61 +1404,6 @@ schema_diff_parsed_ordby_change(uint16_t flags1, uint16_t flags2, enum lys_diff_
 }
 
 /**
- * @brief Generate a canonical name (without local prefixes) of a node.
- *
- * @param[in] name Node name.
- * @param[in] nodetype Node type.
- * @param[in] prefix Local prefix to remove.
- * @param[in,out] buf Buffer to use, may already be allocated.
- * @return Canonical name of @p node.
- */
-static const char *
-schema_diff_parsed_name_canon(const char *name, uint16_t nodetype, const char *prefix, char **buf)
-{
-    uint32_t pref_len = strlen(prefix);
-    const char *ptr;
-    char *buf_ptr;
-
-    if (!(nodetype & (LYS_USES | LYS_AUGMENT))) {
-        /* no prefixes */
-        return name;
-    }
-
-    if (nodetype == LYS_USES) {
-        /* may start with the local prefix */
-        if (!strncmp(name, prefix, pref_len) && (name[pref_len] == ':')) {
-            return name + pref_len + 1;
-        }
-
-        return name;
-    }
-
-    /* may include repeated local prefixes, relative or absolute path */
-    if (!strstr(name, prefix)) {
-        /* no local prefix usage */
-        return name;
-    }
-
-    free(*buf);
-    *buf = malloc(strlen(name) + 1);
-    buf_ptr = *buf;
-
-    for (ptr = name; ptr[0]; ++ptr) {
-        /* make sure it is a prefix */
-        if (((ptr == name) || (ptr[-1] == '/')) && !strncmp(ptr, prefix, pref_len) && (ptr[pref_len] == ':')) {
-            /* skip the prefix */
-            ptr += pref_len + 1;
-        }
-
-        buf_ptr[0] = ptr[0];
-        ++buf_ptr;
-    }
-
-    buf_ptr[0] = '\0';
-    return *buf;
-}
-
-/**
  * @brief Determine the conformance of adding or removing a specific refine.
  *
  * @param[in] ctx Context to use.
@@ -1493,7 +1521,7 @@ schema_diff_parsed_refines_change(const struct lysp_refine *refines1, const stru
     }
 
     LYA_FOR(refines1, u) {
-        nodeid1 = schema_diff_parsed_name_canon(refines1[u].nodeid, LYS_AUGMENT, diff->old_prefix, &buf1);
+        nodeid1 = schema_diff_parsed_name_canon_path(refines1[u].nodeid, diff->old_prefix, &buf1);
 
         found = 0;
         LYA_FOR(refines2, v) {
@@ -1501,7 +1529,7 @@ schema_diff_parsed_refines_change(const struct lysp_refine *refines1, const stru
                 continue;
             }
 
-            nodeid2 = schema_diff_parsed_name_canon(refines2[v].nodeid, LYS_AUGMENT, diff->new_prefix, &buf2);
+            nodeid2 = schema_diff_parsed_name_canon_path(refines2[v].nodeid, diff->new_prefix, &buf2);
 
             /* node-id */
             if (!strcmp(nodeid1, nodeid2)) {
@@ -1834,14 +1862,14 @@ schema_diff_pnode_change(const struct lysp_node *node1, const struct lysp_node *
     case LYS_USES:
         /* refines, when */
         uses = (struct lysp_node_uses *)node1;
-        if (strchr(schema_diff_parsed_name_canon(uses->name, uses->nodetype, diff->old_prefix, NULL), ':')) {
+        if (strchr(schema_diff_parsed_name_canon_simple(uses->name, diff->old_prefix), ':')) {
             /* compare only foreign grouping refines */
             refines1 = uses->refines;
         }
         when1 = uses->when;
 
         uses = (struct lysp_node_uses *)node2;
-        if (strchr(schema_diff_parsed_name_canon(uses->name, uses->nodetype, diff->new_prefix, NULL), ':')) {
+        if (strchr(schema_diff_parsed_name_canon_simple(uses->name, diff->new_prefix), ':')) {
             refines2 = uses->refines;
         }
         when2 = uses->when;
@@ -2098,7 +2126,7 @@ schema_diff_pnodes_change_r(const struct lysp_node *node1, const struct lysp_nod
 
     LY_LIST_FOR(node1, node1) {
         /* get node1 canonical name */
-        name1 = schema_diff_parsed_name_canon(node1->name, node1->nodetype, diff->old_prefix, &buf1);
+        name1 = schema_diff_parsed_name_canon_path(node1->name, diff->old_prefix, &buf1);
 
         node2 = NULL;
         for (i = 0; i < node2_count; ++i) {
@@ -2107,7 +2135,7 @@ schema_diff_pnodes_change_r(const struct lysp_node *node1, const struct lysp_nod
             }
 
             /* get node2 canonical name */
-            name2 = schema_diff_parsed_name_canon(node2_array[i]->name, node2_array[i]->nodetype, diff->new_prefix, &buf2);
+            name2 = schema_diff_parsed_name_canon_path(node2_array[i]->name, diff->new_prefix, &buf2);
 
             if (!strcmp(name1, name2) && (node1->nodetype == node2_array[i]->nodetype)) {
                 /* matching nodes */
