@@ -2141,17 +2141,13 @@ schema_diff_pnodes_change_r(const struct lysp_node *node1, const struct lysp_nod
             if (!strcmp(name1, name2) && (node1->nodetype == node2_array[i]->nodetype)) {
                 /* matching nodes */
                 node2 = node2_array[i];
+                node2_array[i] = NULL;
                 break;
             }
         }
 
         /* process nodes */
         LY_CHECK_GOTO(rc = schema_diff_pnode_change_r(node1, node2, skip_compiled, diff), cleanup);
-
-        if (node2) {
-            /* match found */
-            node2_array[i] = NULL;
-        }
     }
 
     for (i = 0; i < node2_count; ++i) {
