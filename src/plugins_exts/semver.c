@@ -622,6 +622,64 @@ version_cfree(const struct ly_ctx *UNUSED(ctx), struct lysc_ext_instance *ext)
     lyplg_ext_semver_free(ext->compiled);
 }
 
+static int
+version_compiled_size(const struct lysc_ext_instance *ext, struct ly_ht *UNUSED(addr_ht))
+{
+    struct lys_ext_instance_semver *semver;
+    int size = 0;
+
+    semver = ext->compiled;
+
+    size += LY_CTXP_MEM_SIZE(sizeof *semver);
+    if (semver->pre_release_meta) {
+        size += LY_CTXP_MEM_SIZE(strlen(semver->pre_release_meta) + 1);
+    }
+    if (semver->build_meta) {
+        size += LY_CTXP_MEM_SIZE(strlen(semver->build_meta) + 1);
+    }
+
+    return size;
+}
+
+static LY_ERR
+version_compiled_print(const struct lysc_ext_instance *orig_ext, struct lysc_ext_instance *ext, struct ly_ht *UNUSED(addr_ht),
+        struct ly_set *UNUSED(ptr_set), void **mem)
+{
+    struct lys_ext_instance_semver *semver, *orig_semver;
+    int size;
+
+    orig_semver = orig_ext->compiled;
+
+    /* ext structure */
+    semver = ext->compiled = *mem;
+    *mem = (char *)*mem + LY_CTXP_MEM_SIZE(sizeof *semver);
+    memset(semver, 0, sizeof *semver);
+
+    /* copy version numbers and compat */
+    semver->major = orig_semver->major;
+    semver->minor = orig_semver->minor;
+    semver->patch = orig_semver->patch;
+    semver->compat = orig_semver->compat;
+
+    /* copy strings */
+    if (orig_semver->pre_release_meta) {
+        size = strlen(orig_semver->pre_release_meta) + 1;
+
+        semver->pre_release_meta = *mem;
+        *mem = (char *)*mem + LY_CTXP_MEM_SIZE(size);
+        memcpy(semver->pre_release_meta, orig_semver->pre_release_meta, size);
+    }
+    if (orig_semver->build_meta) {
+        size = strlen(orig_semver->build_meta) + 1;
+
+        semver->build_meta = *mem;
+        *mem = (char *)*mem + LY_CTXP_MEM_SIZE(size);
+        memcpy(semver->build_meta, orig_semver->build_meta, size);
+    }
+
+    return LY_SUCCESS;
+}
+
 /**
  * @brief Parse ietf-yang-semver recommended-min-version extension.
  *
@@ -686,8 +744,8 @@ const struct lyplg_ext_record plugins_semver[] = {
         .plugin.validate = NULL,
         .plugin.pfree = version_pfree,
         .plugin.cfree = version_cfree,
-        .plugin.compiled_size = NULL,
-        .plugin.compiled_print = NULL
+        .plugin.compiled_size = version_compiled_size,
+        .plugin.compiled_print = version_compiled_print
     }, {
         .module = "ietf-yang-semver",
         .revision = NULL,

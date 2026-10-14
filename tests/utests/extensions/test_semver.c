@@ -217,12 +217,83 @@ test_min_version(void **state)
             "/ver3:{import='imp-min-ver1'}/{ext-inst='ysv:recommended-min-version'}/1.0", 0);
 }
 
+static void
+test_printed_ctx(void **state)
+{
+    int size;
+    void *mem, *mem_end;
+    struct ly_ctx *printed_ctx = NULL;
+    const char *yang, *str;
+    const struct lys_ext_instance_semver *semver;
+    struct lys_module *mod;
+
+    /* recreate the context, using builtin/static plugins only */
+    ly_ctx_destroy(UTEST_LYCTX);
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC "/../modules",
+            LY_CTX_BUILTIN_PLUGINS_ONLY | LY_CTX_STATIC_PLUGINS_ONLY, &UTEST_LYCTX));
+
+    /* load a module with semver */
+    yang = "module mod {yang-version 1.1; namespace urn:m; prefix m;"
+            "import ietf-yang-semver {prefix ysv;}"
+            "revision 2026-10-14 {"
+            "  ysv:version 3.0.1_compatible-alpha-build;"
+            "}"
+            "revision 2020-01-01 {"
+            "  ysv:version 1.0.0;"
+            "}"
+            "leaf c {type uint32;}"
+            "}";
+    UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, &mod);
+
+    /* check the module semver */
+    semver = lys_semver_get(mod, &str);
+    assert_string_equal(str, "3.0.1_compatible-alpha-build");
+    assert_int_equal(semver->major, 3);
+    assert_int_equal(semver->minor, 0);
+    assert_int_equal(semver->patch, 1);
+    assert_int_equal(semver->compat, LYS_EXT_SEMVER_COMPAT_COMPATIBLE);
+    assert_string_equal(semver->pre_release_meta, "alpha-build");
+    assert_null(semver->build_meta);
+
+    /* get the size of the compiled ctx */
+    size = ly_ctx_compiled_size(UTEST_LYCTX);
+
+    /* prepare memory chunk for the printed context */
+    mem = malloc(size);
+    assert_non_null(mem);
+
+    /* print the context into the shared memory */
+    assert_int_equal(LY_SUCCESS, ly_ctx_compiled_print(UTEST_LYCTX, mem, &mem_end));
+    assert_int_equal((char *)mem_end - (char *)mem, size);
+
+    /* create a new printed ctx from this address */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new_printed(mem, &printed_ctx));
+
+    /* check the printed module semver */
+    mod = ly_ctx_get_module_implemented(printed_ctx, "mod");
+    assert_non_null(mod);
+    assert_null(mod->parsed);
+    semver = lys_semver_get(mod, &str);
+    assert_string_equal(str, "3.0.1_compatible-alpha-build");
+    assert_int_equal(semver->major, 3);
+    assert_int_equal(semver->minor, 0);
+    assert_int_equal(semver->patch, 1);
+    assert_int_equal(semver->compat, LYS_EXT_SEMVER_COMPAT_COMPATIBLE);
+    assert_string_equal(semver->pre_release_meta, "alpha-build");
+    assert_null(semver->build_meta);
+
+    /* cleanup */
+    ly_ctx_destroy(printed_ctx);
+    free(mem);
+}
+
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_version),
         UTEST(test_min_version),
+        UTEST(test_printed_ctx),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
