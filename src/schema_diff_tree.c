@@ -2030,7 +2030,7 @@ schema_diff_parsed_type(const struct lysp_type *type, struct lyd_node *cont)
 
     /* types */
     LYA_FOR(type->types, u) {
-        LY_CHECK_GOTO(rc = lyd_new_inner(cont, NULL, "union-type", 0, &un_type_cont), cleanup);
+        LY_CHECK_GOTO(rc = lyd_new_list(cont, NULL, "union-type", 0, &un_type_cont), cleanup);
         LY_CHECK_GOTO(rc = schema_diff_parsed_type(&type->types[u], un_type_cont), cleanup)
     }
 
