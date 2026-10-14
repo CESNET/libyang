@@ -334,7 +334,7 @@ yu_plg_collect_new(const struct ly_ctx *ctx, const char *mod_name, const char *r
     }
 
     /* add a plugin */
-    LY_CHECK_GOTO(rc = yu_plg_add(lyu_plugins[i], orig_plg_count, plgs, plg_count), cleanup);
+    LY_CHECK_GOTO(rc = yu_plg_add(plg, orig_plg_count, plgs, plg_count), cleanup);
 
     /* continue search from the end */
     rev = (*plgs)[*plg_count - 1]->revision_old;
