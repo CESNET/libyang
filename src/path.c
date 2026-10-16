@@ -931,7 +931,7 @@ ly_path_dup_predicates(const struct ly_ctx *ctx, const struct ly_path_predicate 
     LYA_PREALLOC(*dup, LYA_COUNT(pred), LOGMEM(ctx); return LY_EMEM);
     LYA_FOR(pred, u) {
         LYA_INCREMENT(*dup);
-        (*dup)[u].type = pred->type;
+        (*dup)[u].type = pred[u].type;
 
         switch (pred[u].type) {
         case LY_PATH_PREDTYPE_POSITION:
