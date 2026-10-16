@@ -1152,7 +1152,7 @@ cleanup:
  * @param[in] name Name of the element.
  * @param[in] uri URI of the element.
  * @param[in] value Whether a value is expected in the element.
- * @param[out] evnp Parsed envelope (opaque node).
+ * @param[out] envp Parsed envelope (opaque node), set only on success.
  * @return LY_SUCCESS on success.
  * @return LY_ENOT if the specified element did not match.
  * @return LY_ERR value on error.
@@ -1163,6 +1163,7 @@ lydxml_envelope(struct lyxml_ctx *xmlctx, const char *name, const char *uri, ly_
     LY_ERR rc = LY_SUCCESS;
     const struct lyxml_ns *ns;
     struct lyd_attr *attr = NULL;
+    struct lyd_node *env = NULL;
     const char *prefix;
     size_t prefix_len;
 
@@ -1204,22 +1205,22 @@ lydxml_envelope(struct lyxml_ctx *xmlctx, const char *name, const char *uri, ly_
 
     /* create node */
     rc = lyd_create_opaq(xmlctx->ctx, name, strlen(name), prefix, prefix_len, uri, strlen(uri), xmlctx->value,
-            xmlctx->ws_only ? 0 : xmlctx->value_len, NULL, LY_VALUE_XML, NULL, 0, envp);
+            xmlctx->ws_only ? 0 : xmlctx->value_len, NULL, LY_VALUE_XML, NULL, 0, &env);
     LY_CHECK_GOTO(rc, cleanup);
 
     /* assign atributes */
-    ((struct lyd_node_opaq *)(*envp))->attr = attr;
+    ((struct lyd_node_opaq *)env)->attr = attr;
     attr = NULL;
 
     /* parser next element */
     LY_CHECK_GOTO(rc = lyxml_ctx_next(xmlctx), cleanup);
 
+    *envp = env;
+    env = NULL;
+
 cleanup:
     lyd_free_attr_siblings(xmlctx->ctx, attr);
-    if (rc) {
-        lyd_free_tree(*envp);
-        *envp = NULL;
-    }
+    lyd_free_tree(env);
     return rc;
 }
 
@@ -1330,7 +1331,7 @@ static LY_ERR
 lydxml_env_netconf_rpc(struct lyxml_ctx *xmlctx, struct lyd_node **envp, uint32_t *int_opts, uint32_t *close_elem)
 {
     LY_ERR rc = LY_SUCCESS, r;
-    struct lyd_node *child;
+    struct lyd_node *child = NULL;
 
     assert(envp && !*envp);
 

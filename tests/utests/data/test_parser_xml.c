@@ -784,6 +784,19 @@ test_netconf_action(void **state)
     lyd_free_all(tree);
     lyd_free_all(op);
 
+    /* value in the action envelope */
+    data = "<rpc message-id=\"25\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">"
+            "<action xmlns=\"urn:ietf:params:xml:ns:yang:1\">val</action>"
+            "</rpc>\n";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    tree = op = NULL;
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_NETCONF, LYD_PARSE_STRICT,
+            &tree, &op));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected value \"val\" in the \"action\" element.", NULL, 1);
+    assert_null(tree);
+    assert_null(op);
+
     /* wrong namespace, element name, whatever... */
     /* TODO */
 }
