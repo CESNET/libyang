@@ -766,9 +766,6 @@ yin_parse_fracdigits(struct lysp_yin_ctx *ctx, struct lysp_type *type)
 
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), type, LY_STMT_FRACTION_DIGITS, NULL, &type->exts));
 
-    /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(yin_unres_exts_add(ctx, type->exts));
-
     return LY_SUCCESS;
 }
 
@@ -979,9 +976,6 @@ yin_pasrse_reqinstance(struct lysp_yin_ctx *ctx, struct lysp_type *type)
     lysdict_remove(ctx->xmlctx->ctx, temp_val);
 
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), type, LY_STMT_REQUIRE_INSTANCE, NULL, &type->exts));
-
-    /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_RET(yin_unres_exts_add(ctx, type->exts));
 
     return LY_SUCCESS;
 }
@@ -1256,9 +1250,6 @@ yin_parse_value_pos(struct lysp_yin_ctx *ctx, enum ly_stmt parent_stmt, struct l
     };
 
     LY_CHECK_GOTO(ret = yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), enm, parent_stmt, NULL, &enm->exts), cleanup);
-
-    /* store extension instance array (no realloc anymore) to find the plugin records and finish parsing */
-    LY_CHECK_GOTO(ret = yin_unres_exts_add(ctx, enm->exts), cleanup);
 
 cleanup:
     lysdict_remove(ctx->xmlctx->ctx, temp_val);
