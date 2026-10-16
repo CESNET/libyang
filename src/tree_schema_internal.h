@@ -305,6 +305,40 @@ LY_ERR lys_check_date(const struct ly_ctx *ctx, const char *date, uint32_t date_
 LY_ERR lysp_check_enum_name(struct lysp_ctx *ctx, const char *name, size_t name_len);
 
 /**
+ * @brief Move parents of extension instances after the memory of their parent statements was reallocated.
+ *
+ * A parent of an extension instance may point to a statement structure stored in a sized array or to its member
+ * (such as flags). Parents pointing into the previous memory are moved to the same offset in the new memory,
+ * all other parents are kept.
+ *
+ * @param[in] exts Sized array of extension instances to update.
+ * @param[in] old_mem Address of the previous memory.
+ * @param[in] old_size Size of the previous memory.
+ * @param[in] new_mem Address of the new memory.
+ */
+void lysp_ext_parents_move(struct lysp_ext_instance *exts, uintptr_t old_mem, size_t old_size, void *new_mem);
+
+/**
+ * @brief Move parents of extension instances of all the items in a reallocated sized array of statements.
+ *
+ * @param[in] array Sized array of statements with a new item added.
+ * @param[in] item_size Size of an item of @p array.
+ * @param[in] exts_offset Offset of the sized array of extension instances in an item of @p array.
+ * @param[in] old_mem Address of the memory of @p array before the new item was added.
+ */
+void lysp_array_ext_parents_move(void *array, size_t item_size, size_t exts_offset, uintptr_t old_mem);
+
+/**
+ * @brief Move parents of extension instances of all the items in a reallocated sized array of statements.
+ *
+ * @param[in] ARRAY Sized array of statements with a new item added.
+ * @param[in] EXTS Member of an item of @p ARRAY with its sized array of extension instances.
+ * @param[in] OLD_MEM Address of the memory of @p ARRAY before the new item was added.
+ */
+#define LYSP_ARRAY_EXT_PARENTS_MOVE(ARRAY, EXTS, OLD_MEM) \
+        lysp_array_ext_parents_move(ARRAY, sizeof *(ARRAY), (size_t)((char *)&(ARRAY)->EXTS - (char *)(ARRAY)), OLD_MEM)
+
+/**
  * @brief Find source data for a specific module, parse it, and add into the context.
  *
  * @param[in] ctx libyang context.

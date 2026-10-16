@@ -129,6 +129,38 @@ lysp_check_enum_name(struct lysp_ctx *ctx, const char *name, size_t name_len)
     return LY_SUCCESS;
 }
 
+void
+lysp_ext_parents_move(struct lysp_ext_instance *exts, uintptr_t old_mem, size_t old_size, void *new_mem)
+{
+    LYA_COUNT_T u;
+    uintptr_t parent;
+
+    if (!old_mem || (old_mem == (uintptr_t)new_mem)) {
+        /* nothing was moved */
+        return;
+    }
+
+    LYA_FOR(exts, u) {
+        parent = (uintptr_t)exts[u].parent;
+        if ((parent >= old_mem) && (parent - old_mem < old_size)) {
+            exts[u].parent = (char *)new_mem + (parent - old_mem);
+        }
+    }
+}
+
+void
+lysp_array_ext_parents_move(void *array, size_t item_size, size_t exts_offset, uintptr_t old_mem)
+{
+    LYA_COUNT_T u, count = LYA_COUNT(array);
+    struct lysp_ext_instance *exts;
+
+    /* the last item was just added and has no extension instances */
+    for (u = 0; u + 1 < count; ++u) {
+        exts = *(struct lysp_ext_instance **)((char *)array + u * item_size + exts_offset);
+        lysp_ext_parents_move(exts, old_mem, (count - 1) * item_size, array);
+    }
+}
+
 /**
  * @brief Learn built-in type from its name.
  *
@@ -1139,6 +1171,7 @@ lysp_inject_submodule(struct lysp_ctx *pctx, struct lysp_include *inc)
     LYA_COUNT_T i;
     struct lysp_include *inc_new, *inc_tofill = NULL;
     struct lysp_module *main_pmod = PARSER_CUR_PMOD(pctx)->mod->parsed;
+    uintptr_t old_mem;
 
     /* first, try to find the corresponding record with missing parsed submodule */
     LYA_FOR(main_pmod->includes, i) {
@@ -1152,7 +1185,11 @@ lysp_inject_submodule(struct lysp_ctx *pctx, struct lysp_include *inc)
     if (inc_tofill) {
         inc_tofill->submodule = inc->submodule;
     } else {
+        old_mem = (uintptr_t)main_pmod->includes;
         LYA_ADD_ITEM(main_pmod->includes, inc_new, LOGMEM(PARSER_CTX(pctx)); return LY_EMEM);
+
+        /* move the parents of extension instances into the reallocated memory */
+        LYSP_ARRAY_EXT_PARENTS_MOVE(main_pmod->includes, exts, old_mem);
 
         inc_new->submodule = inc->submodule;
         DUP_STRING_RET(PARSER_CTX(pctx), inc->name, inc_new->name);

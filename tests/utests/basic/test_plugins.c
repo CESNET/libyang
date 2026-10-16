@@ -42,6 +42,10 @@ const char *simple = "module libyang-plugins-simple {"
         "      type int8 {s:rt;}"
         "    }"
         "  }"
+        "  container c1 {"
+        "    must \"true()\" {s:rt;}"
+        "    must \"not(false())\" {s:rt;}"
+        "  }"
         "  grouping grp1 {"
         "    list l1 {key v; leaf v {type string;} leaf k {type string;}}"
         "    list l2 {key v; leaf v {type string;} leaf k {type string;}}"
@@ -63,6 +67,45 @@ const char *simple = "module libyang-plugins-simple {"
         "    }"
         "  }"
         "}";
+
+const char *simple_yin = "<module name=\"libyang-plugins-simple\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\""
+        "    xmlns:s=\"urn:libyang:tests:plugins:simple\">"
+        "  <namespace uri=\"urn:libyang:tests:plugins:simple\"/>"
+        "  <prefix value=\"s\"/>"
+        "  <typedef name=\"note\"><type name=\"string\"/></typedef>"
+        "  <extension name=\"hint\"><argument name=\"value\"/></extension>"
+        "  <extension name=\"rt\"/>"
+        "  <leaf name=\"test\">"
+        "    <type name=\"s:note\"><length value=\"255\"/></type>"
+        "    <s:hint value=\"some hint here\"/>"
+        "  </leaf>"
+        "  <leaf name=\"enum1\">"
+        "    <type name=\"enumeration\">"
+        "      <enum name=\"val1\"><s:rt/></enum>"
+        "      <enum name=\"val2\"><s:rt/></enum>"
+        "    </type>"
+        "  </leaf>"
+        "  <leaf name=\"u1\">"
+        "    <type name=\"union\">"
+        "      <type name=\"string\"><s:rt/></type>"
+        "      <type name=\"int8\"><s:rt/></type>"
+        "    </type>"
+        "  </leaf>"
+        "  <container name=\"c1\">"
+        "    <must condition=\"true()\"><s:rt/></must>"
+        "    <must condition=\"not(false())\"><s:rt/></must>"
+        "  </container>"
+        "  <grouping name=\"grp1\">"
+        "    <list name=\"l1\"><key value=\"v\"/><leaf name=\"v\"><type name=\"string\"/></leaf></list>"
+        "    <list name=\"l2\"><key value=\"v\"/><leaf name=\"v\"><type name=\"string\"/></leaf></list>"
+        "    <typedef name=\"t1\"><type name=\"string\"><s:rt/></type><s:rt/></typedef>"
+        "    <typedef name=\"t2\"><type name=\"string\"><s:rt/></type><s:rt/></typedef>"
+        "  </grouping>"
+        "  <uses name=\"grp1\">"
+        "    <refine target-node=\"l1\"><s:rt/></refine>"
+        "    <refine target-node=\"l2\"><s:rt/></refine>"
+        "  </uses>"
+        "</module>";
 
 static void
 test_add_invalid(void **state)
@@ -148,25 +191,29 @@ parse_clb2(struct lysp_ctx *UNUSED(pctx), struct lysp_ext_instance *ext)
     struct lysp_tpdf *tpdf;
     struct lysp_type_enum *en;
     struct lysp_type *type;
-    LYA_COUNT_T count = 0;
+    struct lysp_restr *must;
+    struct lysp_ext_instance *exts;
 
     if (ext->parent_stmt == LY_STMT_REFINE) {
         refine = (struct lysp_refine *)ext->parent;
-        count = LYA_COUNT(refine->exts);
+        exts = refine->exts;
     } else if (ext->parent_stmt == LY_STMT_TYPEDEF) {
         tpdf = (struct lysp_tpdf *)ext->parent;
-        count = LYA_COUNT(tpdf->exts);
+        exts = tpdf->exts;
     } else if (ext->parent_stmt == LY_STMT_ENUM) {
         en = (struct lysp_type_enum *)ext->parent;
-        count = LYA_COUNT(en->exts);
+        exts = en->exts;
     } else if (ext->parent_stmt == LY_STMT_TYPE) {
         type = (struct lysp_type *)ext->parent;
-        count = LYA_COUNT(type->exts);
+        exts = type->exts;
+    } else if (ext->parent_stmt == LY_STMT_MUST) {
+        must = (struct lysp_restr *)ext->parent;
+        exts = must->exts;
     } else {
         return LY_SUCCESS;
     }
 
-    if (count != 1) {
+    if ((LYA_COUNT(exts) != 1) || (ext != exts)) {
         return LY_EINVAL;
     }
     return LY_SUCCESS;
@@ -220,6 +267,20 @@ test_simple_from_memory(void **state)
     assert_true(leaf->flags & LYS_STATUS_DEPRC);
 }
 
+static void
+test_simple_from_memory_yin(void **state)
+{
+    struct lys_module *mod;
+    struct lysc_node_leaf *leaf;
+
+    lyplg_add_extension_plugin(UTEST_LYCTX, LYPLG_EXT_API_VERSION, memory_recs);
+    UTEST_ADD_MODULE(simple_yin, LYS_IN_YIN, NULL, &mod);
+
+    leaf = (struct lysc_node_leaf *)mod->compiled->data;
+    assert_int_equal(LYS_LEAF, leaf->nodetype);
+    assert_true(leaf->flags & LYS_STATUS_DEPRC);
+}
+
 int
 main(void)
 {
@@ -228,6 +289,7 @@ main(void)
         UTEST(test_add_simple),
         UTEST(test_not_implemented),
         UTEST(test_simple_from_memory),
+        UTEST(test_simple_from_memory_yin),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

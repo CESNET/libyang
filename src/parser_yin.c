@@ -680,8 +680,14 @@ yin_parse_pattern(struct lysp_yin_ctx *ctx, struct lysp_type *type)
     const char *real_value = NULL;
     char *saved_value = NULL;
     struct lysp_restr *restr;
+    uintptr_t old_mem;
 
+    old_mem = (uintptr_t)type->patterns;
     LYA_ADD_ITEM(type->patterns, restr, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* move the parents of extension instances into the reallocated memory */
+    LYSP_ARRAY_EXT_PARENTS_MOVE(type->patterns, exts, old_mem);
+
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_VALUE, &real_value, Y_STR_ARG, LY_STMT_PATTERN));
     size_t len = strlen(real_value);
@@ -774,8 +780,14 @@ static LY_ERR
 yin_parse_enum(struct lysp_yin_ctx *ctx, struct lysp_type *type)
 {
     struct lysp_type_enum *en;
+    uintptr_t old_mem;
 
+    old_mem = (uintptr_t)type->enums;
     LYA_ADD_ITEM(type->enums, en, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* move the parents of extension instances into the reallocated memory */
+    LYSP_ARRAY_EXT_PARENTS_MOVE(type->enums, exts, old_mem);
+
     type->flags |= LYS_SET_ENUM;
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_NAME, &en->name, Y_STR_ARG, LY_STMT_ENUM));
@@ -811,8 +823,14 @@ static LY_ERR
 yin_parse_bit(struct lysp_yin_ctx *ctx, struct lysp_type *type)
 {
     struct lysp_type_enum *en;
+    uintptr_t old_mem;
 
+    old_mem = (uintptr_t)type->bits;
     LYA_ADD_ITEM(type->bits, en, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* move the parents of extension instances into the reallocated memory */
+    LYSP_ARRAY_EXT_PARENTS_MOVE(type->bits, exts, old_mem);
+
     type->flags |= LYS_SET_BIT;
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_NAME, &en->name, Y_IDENTIF_ARG, LY_STMT_BIT));
@@ -852,12 +870,17 @@ yin_parse_simple_elements(struct lysp_yin_ctx *ctx, enum ly_stmt parent_stmt, co
         enum yin_argument arg_type, enum yang_arg arg_val_type, struct lysp_ext_instance **exts)
 {
     const char **value;
+    uintptr_t old_mem;
     LYA_COUNT_T index = LYA_COUNT(*values);
     struct yin_subelement subelems[] = {
         {LY_STMT_EXTENSION_INSTANCE, &index, 0}
     };
 
+    old_mem = (uintptr_t)*values;
     LYA_ADD_ITEM(*values, value, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* move the parents of extension instances into the reallocated memory */
+    lysp_ext_parents_move(*exts, old_mem, (LYA_COUNT(*values) - 1) * sizeof *(*values), *values);
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, arg_type, value, arg_val_type, parent_stmt));
@@ -1084,8 +1107,14 @@ static LY_ERR
 yin_parse_must(struct lysp_yin_ctx *ctx, struct lysp_restr **restrs)
 {
     struct lysp_restr *restr;
+    uintptr_t old_mem;
 
+    old_mem = (uintptr_t)*restrs;
     LYA_ADD_ITEM(*restrs, restr, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* move the parents of extension instances into the reallocated memory */
+    LYSP_ARRAY_EXT_PARENTS_MOVE(*restrs, exts, old_mem);
+
     return yin_parse_restriction(ctx, LY_STMT_MUST, restr);
 }
 
@@ -1103,6 +1132,7 @@ yin_parse_qname(struct lysp_yin_ctx *ctx, enum ly_stmt parent_stmt, struct yin_s
         struct lysp_ext_instance **exts)
 {
     struct lysp_qname *qname, **qnames;
+    uintptr_t old_mem;
 
     switch (parent_stmt) {
     case LY_STMT_DEFAULT:
@@ -1110,7 +1140,11 @@ yin_parse_qname(struct lysp_yin_ctx *ctx, enum ly_stmt parent_stmt, struct yin_s
             qname = (struct lysp_qname *)subinfo->dest;
         } else {
             qnames = (struct lysp_qname **)subinfo->dest;
+            old_mem = (uintptr_t)*qnames;
             LYA_ADD_ITEM(*qnames, qname, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+            /* move the parents of extension instances into the reallocated memory */
+            lysp_ext_parents_move(*exts, old_mem, (LYA_COUNT(*qnames) - 1) * sizeof *(*qnames), *qnames);
         }
         qname->mod = PARSER_CUR_PMOD(ctx);
         return yin_parse_simple_element(ctx, qname, parent_stmt, &qname->str, YIN_ARG_VALUE, Y_STR_ARG, exts);
@@ -1118,14 +1152,24 @@ yin_parse_qname(struct lysp_yin_ctx *ctx, enum ly_stmt parent_stmt, struct yin_s
         assert(!(subinfo->flags & YIN_SUBELEM_UNIQUE));
 
         qnames = (struct lysp_qname **)subinfo->dest;
+        old_mem = (uintptr_t)*qnames;
         LYA_ADD_ITEM(*qnames, qname, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+        /* move the parents of extension instances into the reallocated memory */
+        lysp_ext_parents_move(*exts, old_mem, (LYA_COUNT(*qnames) - 1) * sizeof *(*qnames), *qnames);
+
         qname->mod = PARSER_CUR_PMOD(ctx);
         return yin_parse_simple_element(ctx, *qnames, parent_stmt, &qname->str, YIN_ARG_TAG, Y_STR_ARG, exts);
     case LY_STMT_IF_FEATURE:
         assert(!(subinfo->flags & YIN_SUBELEM_UNIQUE));
 
         qnames = (struct lysp_qname **)subinfo->dest;
+        old_mem = (uintptr_t)*qnames;
         LYA_ADD_ITEM(*qnames, qname, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+        /* move the parents of extension instances into the reallocated memory */
+        lysp_ext_parents_move(*exts, old_mem, (LYA_COUNT(*qnames) - 1) * sizeof *(*qnames), *qnames);
+
         qname->mod = PARSER_CUR_PMOD(ctx);
         return yin_parse_simple_element(ctx, *qnames, parent_stmt, &qname->str, YIN_ARG_NAME, Y_STR_ARG, exts);
     default:
@@ -1322,6 +1366,7 @@ static LY_ERR
 yin_parse_type(struct lysp_yin_ctx *ctx, enum ly_stmt parent_stmt, struct yin_subelement *subinfo)
 {
     struct lysp_type *type = NULL;
+    uintptr_t old_mem;
 
     if (parent_stmt == LY_STMT_DEVIATE) {
         *(struct lysp_type **)subinfo->dest = calloc(1, sizeof **(struct lysp_type **)subinfo->dest);
@@ -1335,7 +1380,12 @@ yin_parse_type(struct lysp_yin_ctx *ctx, enum ly_stmt parent_stmt, struct yin_su
     if (parent_stmt == LY_STMT_TYPE) {
         struct lysp_type *nested_type = NULL;
 
+        old_mem = (uintptr_t)type->types;
         LYA_ADD_ITEM(type->types, nested_type, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+        /* move the parents of extension instances into the reallocated memory */
+        LYSP_ARRAY_EXT_PARENTS_MOVE(type->types, exts, old_mem);
+
         type->flags |= LYS_SET_TYPE;
         type = nested_type;
     }
@@ -1708,8 +1758,14 @@ yin_parse_typedef(struct lysp_yin_ctx *ctx, struct tree_node_meta *typedef_meta)
 {
     struct lysp_tpdf *tpdf;
     struct lysp_tpdf **tpdfs = (struct lysp_tpdf **)typedef_meta->nodes;
+    uintptr_t old_mem;
 
+    old_mem = (uintptr_t)*tpdfs;
     LYA_ADD_ITEM(*tpdfs, tpdf, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* move the parents of extension instances into the reallocated memory */
+    LYSP_ARRAY_EXT_PARENTS_MOVE(*tpdfs, exts, old_mem);
+    LYSP_ARRAY_EXT_PARENTS_MOVE(*tpdfs, type.exts, old_mem);
 
     /* parse argument */
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
@@ -1750,9 +1806,14 @@ static LY_ERR
 yin_parse_refine(struct lysp_yin_ctx *ctx, struct lysp_refine **refines)
 {
     struct lysp_refine *rf;
+    uintptr_t old_mem;
 
     /* allocate new refine */
+    old_mem = (uintptr_t)*refines;
     LYA_ADD_ITEM(*refines, rf, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* move the parents of extension instances into the reallocated memory */
+    LYSP_ARRAY_EXT_PARENTS_MOVE(*refines, exts, old_mem);
 
     /* parse attribute */
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
@@ -1837,9 +1898,14 @@ yin_parse_revision(struct lysp_yin_ctx *ctx, struct lysp_revision **revs)
 {
     struct lysp_revision *rev;
     const char *temp_date = NULL;
+    uintptr_t old_mem;
 
     /* allocate new reivison */
+    old_mem = (uintptr_t)*revs;
     LYA_ADD_ITEM(*revs, rev, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* move the parents of extension instances into the reallocated memory */
+    LYSP_ARRAY_EXT_PARENTS_MOVE(*revs, exts, old_mem);
 
     /* parse argument */
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
@@ -1879,9 +1945,14 @@ static LY_ERR
 yin_parse_include(struct lysp_yin_ctx *ctx, struct include_meta *inc_meta)
 {
     struct lysp_include *inc;
+    uintptr_t old_mem;
 
     /* allocate new include */
+    old_mem = (uintptr_t)*inc_meta->includes;
     LYA_ADD_ITEM(*inc_meta->includes, inc, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* move the parents of extension instances into the reallocated memory */
+    LYSP_ARRAY_EXT_PARENTS_MOVE(*inc_meta->includes, exts, old_mem);
 
     /* parse argument */
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
@@ -2021,9 +2092,14 @@ static LY_ERR
 yin_parse_import(struct lysp_yin_ctx *ctx, struct import_meta *imp_meta)
 {
     struct lysp_import *imp;
+    uintptr_t old_mem;
 
     /* allocate new element in sized array for import */
+    old_mem = (uintptr_t)*imp_meta->imports;
     LYA_ADD_ITEM(*imp_meta->imports, imp, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* move the parents of extension instances into the reallocated memory */
+    LYSP_ARRAY_EXT_PARENTS_MOVE(*imp_meta->imports, exts, old_mem);
 
     struct yin_subelement subelems[] = {
         {LY_STMT_DESCRIPTION, &imp->dsc, YIN_SUBELEM_UNIQUE},
@@ -2228,8 +2304,14 @@ static LY_ERR
 yin_parse_extension(struct lysp_yin_ctx *ctx, struct lysp_ext **extensions)
 {
     struct lysp_ext *ex;
+    uintptr_t old_mem;
 
+    old_mem = (uintptr_t)*extensions;
     LYA_ADD_ITEM(*extensions, ex, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* move the parents of extension instances into the reallocated memory */
+    LYSP_ARRAY_EXT_PARENTS_MOVE(*extensions, exts, old_mem);
+
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_NAME, &ex->name, Y_IDENTIF_ARG, LY_STMT_EXTENSION));
 
@@ -2261,9 +2343,14 @@ static LY_ERR
 yin_parse_feature(struct lysp_yin_ctx *ctx, struct lysp_feature **features)
 {
     struct lysp_feature *feat;
+    uintptr_t old_mem;
 
     /* allocate new feature */
+    old_mem = (uintptr_t)*features;
     LYA_ADD_ITEM(*features, feat, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* move the parents of extension instances into the reallocated memory */
+    LYSP_ARRAY_EXT_PARENTS_MOVE(*features, exts, old_mem);
 
     /* parse argument */
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
@@ -2297,9 +2384,14 @@ static LY_ERR
 yin_parse_identity(struct lysp_yin_ctx *ctx, struct lysp_ident **identities)
 {
     struct lysp_ident *ident;
+    uintptr_t old_mem;
 
     /* allocate new identity */
+    old_mem = (uintptr_t)*identities;
     LYA_ADD_ITEM(*identities, ident, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* move the parents of extension instances into the reallocated memory */
+    LYSP_ARRAY_EXT_PARENTS_MOVE(*identities, exts, old_mem);
 
     /* parse argument */
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
@@ -2959,9 +3051,14 @@ yin_parse_deviation(struct lysp_yin_ctx *ctx, struct lysp_deviation **deviations
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysp_deviation *dev = NULL;
+    uintptr_t old_mem;
 
     /* create new deviation */
+    old_mem = (uintptr_t)*deviations;
     LYA_ADD_ITEM(*deviations, dev, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* move the parents of extension instances into the reallocated memory */
+    LYSP_ARRAY_EXT_PARENTS_MOVE(*deviations, exts, old_mem);
 
     /* parse argument */
     LY_CHECK_GOTO(ret = lyxml_ctx_next(ctx->xmlctx), cleanup);
@@ -3372,11 +3469,16 @@ yin_parse_extension_instance(struct lysp_yin_ctx *ctx, const void *parent, enum 
     struct lysp_ext_instance *e;
     struct lysp_stmt *last_subelem = NULL, *new_subelem = NULL;
     char *ext_name;
+    uintptr_t old_mem;
 
     assert(ctx->xmlctx->status == LYXML_ELEMENT);
     assert(exts);
 
+    old_mem = (uintptr_t)*exts;
     LYA_ADD_ITEM(*exts, e, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* move the parents of extension instances into the reallocated memory */
+    LYSP_ARRAY_EXT_PARENTS_MOVE(*exts, exts, old_mem);
 
     if (!ctx->xmlctx->prefix_len) {
         LOGVAL_PARSER(ctx, LYVE_SYNTAX, "Extension instance \"%*.s\" without the mandatory prefix.",
