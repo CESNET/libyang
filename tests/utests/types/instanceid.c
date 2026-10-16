@@ -281,12 +281,37 @@ test_plugin_lyb(void **state)
     TEST_SUCCESS_LYB2("lyb2", "nii", "ll[. = 'some_string']");
 }
 
+static void
+test_plugin_dup(void **state)
+{
+    const char *schema, *data;
+    struct lyd_node *tree, *dup;
+
+    /* ietf-netconf-acm node-instance-identifier type with mixed key predicates */
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_DIR_MODULES_YANG));
+    schema = MODULE_CREATE_YANG("dup",
+            "import ietf-netconf-acm {prefix acm;}"
+            "list lst {key \"k1 k2\"; leaf k1 {type string;} leaf k2 {type string;}}"
+            "leaf-list nii {type acm:node-instance-identifier;}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    data = "<nii xmlns=\"urn:tests:dup\" xmlns:aa=\"urn:tests:dup\">/aa:lst[aa:k1='a'][aa:k2=$x]</nii>"
+            "<nii xmlns=\"urn:tests:dup\" xmlns:aa=\"urn:tests:dup\">/aa:lst[aa:k1=$x][aa:k2='a']</nii>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, LY_SUCCESS, tree);
+
+    assert_int_equal(LY_SUCCESS, lyd_dup_siblings(tree, NULL, 0, &dup));
+    CHECK_LYD(tree, dup);
+    lyd_free_all(dup);
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_data_xml),
         UTEST(test_plugin_lyb),
+        UTEST(test_plugin_dup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
