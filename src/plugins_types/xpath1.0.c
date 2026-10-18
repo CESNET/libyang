@@ -45,8 +45,7 @@ lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_n
     const char *str_begin, *str_next, *prefix;
     ly_bool is_prefix, has_prefix = 0;
     char *str = NULL;
-    void *mem;
-    uint32_t len, str_len = 0, pref_len;
+    uint32_t len, str_size = 0, str_len = 0, pref_len;
     const struct lys_module *mod;
 
     str_begin = token;
@@ -59,17 +58,13 @@ lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_n
                 assert(prefix);
 
                 /* append the nametest and prefix */
-                mem = realloc(str, str_len + strlen(prefix) + 1 + len + 1);
-                LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new_no_mem(err), cleanup);
-                str = mem;
-                str_len += sprintf(str + str_len, "%s:%.*s", prefix, (int)len, str_begin);
+                LY_CHECK_ERR_GOTO(ly_append_str(&str, &str_size, &str_len, "%s:%.*s", prefix, (int)len, str_begin),
+                        ret = ly_err_new_no_mem(err), cleanup);
             } else {
                 /* just append the string, we may get the first expression node without a prefix but since this
                  * is not strictly forbidden, allow it */
-                mem = realloc(str, str_len + len + 1);
-                LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new_no_mem(err), cleanup);
-                str = mem;
-                str_len += sprintf(str + str_len, "%.*s", (int)len, str_begin);
+                LY_CHECK_ERR_GOTO(ly_append_str(&str, &str_size, &str_len, "%.*s", (int)len, str_begin),
+                        ret = ly_err_new_no_mem(err), cleanup);
             }
         } else {
             /* remember there was a prefix found */
@@ -98,10 +93,8 @@ lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_n
                 }
 
                 /* append the prefix */
-                mem = realloc(str, str_len + pref_len + 2);
-                LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new_no_mem(err), cleanup);
-                str = mem;
-                str_len += sprintf(str + str_len, "%.*s:", (int)pref_len, prefix);
+                LY_CHECK_ERR_GOTO(ly_append_str(&str, &str_size, &str_len, "%.*s:", (int)pref_len, prefix),
+                        ret = ly_err_new_no_mem(err), cleanup);
             }
 
             if (is_nametest) {
@@ -133,6 +126,7 @@ cleanup:
  * @param[in] format Format to print in.
  * @param[in] prefix_data Format-specific prefix data.
  * @param[in,out] str_value Printed value, appended to.
+ * @param[in,out] str_size Allocated size of @p str_value, updated.
  * @param[in,out] str_len Length of @p str_value, updated.
  * @param[out] err Error structure on error.
  * @return LY_ERR value.
@@ -140,11 +134,11 @@ cleanup:
 static LY_ERR
 xpath10_print_subexpr_r(uint16_t *cur_idx, enum lyxp_token end_tok, const struct lys_module *context_mod,
         const struct lyd_value_xpath10 *xp_val, LY_VALUE_FORMAT format, void *prefix_data, char **str_value,
-        uint32_t *str_len, struct ly_err_item **err)
+        uint32_t *str_size, uint32_t *str_len, struct ly_err_item **err)
 {
+    LY_ERR r;
     enum lyxp_token cur_tok, sub_end_tok;
     char *str_tok;
-    void *mem;
     const char *cur_exp_ptr;
     ly_bool is_nt;
     const struct lys_module *orig_context_mod = context_mod;
@@ -160,30 +154,24 @@ xpath10_print_subexpr_r(uint16_t *cur_idx, enum lyxp_token end_tok, const struct
                     xp_val->ctx, xp_val->format, xp_val->prefix_data, format, prefix_data, &str_tok, err));
 
             /* append the converted token */
-            mem = realloc(*str_value, *str_len + strlen(str_tok) + 1);
-            LY_CHECK_ERR_GOTO(!mem, free(str_tok), error_mem);
-            *str_value = mem;
-            *str_len += sprintf(*str_value + *str_len, "%s", str_tok);
+            r = ly_append_str(str_value, str_size, str_len, "%s", str_tok);
             free(str_tok);
+            LY_CHECK_GOTO(r, error_mem);
 
             /* token processed */
             ++(*cur_idx);
         } else {
             if ((cur_tok == LYXP_TOKEN_OPER_LOG) || (cur_tok == LYXP_TOKEN_OPER_UNI) || (cur_tok == LYXP_TOKEN_OPER_MATH)) {
                 /* copy the token with spaces around */
-                mem = realloc(*str_value, *str_len + 1 + xp_val->exp->tok_len[*cur_idx] + 2);
-                LY_CHECK_GOTO(!mem, error_mem);
-                *str_value = mem;
-                *str_len += sprintf(*str_value + *str_len, " %.*s ", (int)xp_val->exp->tok_len[*cur_idx], cur_exp_ptr);
+                LY_CHECK_GOTO(ly_append_str(str_value, str_size, str_len, " %.*s ", (int)xp_val->exp->tok_len[*cur_idx],
+                        cur_exp_ptr), error_mem);
 
                 /* reset context mod */
                 context_mod = orig_context_mod;
             } else {
                 /* just copy the token */
-                mem = realloc(*str_value, *str_len + xp_val->exp->tok_len[*cur_idx] + 1);
-                LY_CHECK_GOTO(!mem, error_mem);
-                *str_value = mem;
-                *str_len += sprintf(*str_value + *str_len, "%.*s", (int)xp_val->exp->tok_len[*cur_idx], cur_exp_ptr);
+                LY_CHECK_GOTO(ly_append_str(str_value, str_size, str_len, "%.*s", (int)xp_val->exp->tok_len[*cur_idx],
+                        cur_exp_ptr), error_mem);
             }
 
             /* token processed but keep it in cur_tok */
@@ -197,7 +185,7 @@ xpath10_print_subexpr_r(uint16_t *cur_idx, enum lyxp_token end_tok, const struct
 
                 /* parse the subexpression separately, use the current context mod */
                 LY_CHECK_RET(xpath10_print_subexpr_r(cur_idx, sub_end_tok, context_mod, xp_val, format, prefix_data,
-                        str_value, str_len, err));
+                        str_value, str_size, str_len, err));
             }
         }
     }
@@ -214,7 +202,7 @@ lyplg_type_print_xpath10_value(const struct lyd_value_xpath10 *xp_val, LY_VALUE_
 {
     LY_ERR ret = LY_SUCCESS;
     uint16_t expr_idx = 0;
-    uint32_t str_len = 0;
+    uint32_t str_size = 0, str_len = 0;
     const struct lys_module *local_mod = NULL;
     struct ly_set *mods;
 
@@ -243,7 +231,7 @@ lyplg_type_print_xpath10_value(const struct lyd_value_xpath10 *xp_val, LY_VALUE_
     }
 
     /* recursively print the expression */
-    ret = xpath10_print_subexpr_r(&expr_idx, 0, NULL, xp_val, format, prefix_data, str_value, &str_len, err);
+    ret = xpath10_print_subexpr_r(&expr_idx, 0, NULL, xp_val, format, prefix_data, str_value, &str_size, &str_len, err);
 
     if (local_mod) {
         mods->objs[0] = (void *)local_mod;

@@ -433,12 +433,12 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
         uint32_t options, const struct lyd_node *ctx_node, const struct lyd_node *tree, uint32_t *type_idx,
         struct lys_glob_unres *unres, struct ly_err_item **err)
 {
-    LY_ERR rc = LY_SUCCESS;
+    LY_ERR rc = LY_SUCCESS, r;
     LYA_COUNT_T u;
     struct ly_err_item **errs = NULL, *e;
     uint32_t *prev_lo, temp_lo = 0;
     char *msg = NULL, *err_app_tag = NULL;
-    int msg_len = 0;
+    uint32_t msg_size = 0, msg_len = 0;
     ly_bool use_err_app_tag = 0;
     struct lyplg_type *type_plg;
 
@@ -465,16 +465,12 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
     if (u == LYA_COUNT(type_u->types)) {
         /* create the full error */
         if (subvalue->format == LY_VALUE_LYB) {
-            msg_len = asprintf(&msg, "Invalid LYB union value - no matching subtype found:\n");
+            r = ly_append_str(&msg, &msg_size, &msg_len, "Invalid LYB union value - no matching subtype found:\n");
         } else {
-            msg_len = asprintf(&msg, "Invalid union value \"%.*s\" - no matching subtype found:\n",
+            r = ly_append_str(&msg, &msg_size, &msg_len, "Invalid union value \"%.*s\" - no matching subtype found:\n",
                     (int)subvalue->orig_size_bits / 8, (char *)subvalue->original);
         }
-        if (msg_len == -1) {
-            LY_CHECK_ERR_GOTO(!errs, rc = LY_EMEM, cleanup);
-            /* for further actions in function msg_len is just 0 */
-            msg_len = 0;
-        }
+        LY_CHECK_ERR_GOTO(r, rc = LY_EMEM, cleanup);
         LYA_FOR(type_u->types, u) {
             if (!errs[u]) {
                 /* no error for some reason */
@@ -494,9 +490,8 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
 
             type_plg = LYSC_GET_TYPE_PLG(type_u->types[u]->plugin_ref);
 
-            msg = ly_realloc(msg, msg_len + 4 + strlen(type_plg->id) + 2 + strlen(errs[u]->msg) + 2);
-            LY_CHECK_ERR_GOTO(!msg, rc = LY_EMEM, cleanup);
-            msg_len += sprintf(msg + msg_len, "    %s: %s\n", type_plg->id, errs[u]->msg);
+            r = ly_append_str(&msg, &msg_size, &msg_len, "    %s: %s\n", type_plg->id, errs[u]->msg);
+            LY_CHECK_ERR_GOTO(r, rc = LY_EMEM, cleanup);
         }
 
         if (!use_err_app_tag) {

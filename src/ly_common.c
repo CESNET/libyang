@@ -1803,25 +1803,29 @@ ly_strcat(char **dest, const char *format, ...)
 {
     va_list fp;
     char *addition = NULL;
-    size_t len;
+    size_t dest_len;
+    int add_len;
 
     va_start(fp, format);
-    len = vasprintf(&addition, format, fp);
-    len += (*dest ? strlen(*dest) : 0) + 1;
+    add_len = vasprintf(&addition, format, fp);
+    va_end(fp);
+    if (add_len == -1) {
+        return LY_EMEM;
+    }
 
     if (*dest) {
-        *dest = ly_realloc(*dest, len);
+        dest_len = strlen(*dest);
+        *dest = ly_realloc(*dest, dest_len + add_len + 1);
         if (!*dest) {
-            va_end(fp);
+            free(addition);
             return LY_EMEM;
         }
-        *dest = strcat(*dest, addition);
+        memcpy(*dest + dest_len, addition, add_len + 1);
         free(addition);
     } else {
         *dest = addition;
     }
 
-    va_end(fp);
     return LY_SUCCESS;
 }
 
@@ -1992,8 +1996,20 @@ ly_append_str(char **str, uint32_t *size, uint32_t *used, const char *format, ..
 
     /* try to append the string */
     p = vsnprintf(*str ? *str + *used : NULL, *size - *used, format, ap);
+    if (p < 0) {
+        va_end(ap);
+        LOGERR(NULL, LY_ESYS, "Failed to print a string (%s).", strerror(errno));
+        return LY_ESYS;
+    }
 
     if ((unsigned)p >= *size - *used) {
+        /* the new size must fit into the size type */
+        if ((unsigned)p >= UINT32_MAX - *size) {
+            va_end(ap);
+            LOGMEM(NULL);
+            return LY_EMEM;
+        }
+
         /* realloc */
         *str = ly_realloc(*str, *size + p + 1);
         LY_CHECK_ERR_RET(!*str, LOGMEM(NULL), LY_EMEM);
