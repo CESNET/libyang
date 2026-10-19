@@ -682,6 +682,15 @@ yin_parse_pattern(struct lysp_yin_ctx *ctx, struct lysp_type *type)
     struct lysp_restr *restr;
 
     LYA_ADD_ITEM(type->patterns, restr, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* revalidate the backward parent pointers from extensions */
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(type->patterns, exts, LY_STMT_PATTERN);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(type->patterns, exts, LY_STMT_MODIFIER);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(type->patterns, exts, LY_STMT_ERROR_APP_TAG);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(type->patterns, exts, LY_STMT_ERROR_MESSAGE);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(type->patterns, exts, LY_STMT_DESCRIPTION);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(type->patterns, exts, LY_STMT_REFERENCE);
+
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_VALUE, &real_value, Y_STR_ARG, LY_STMT_PATTERN));
     size_t len = strlen(real_value);
@@ -776,6 +785,14 @@ yin_parse_enum(struct lysp_yin_ctx *ctx, struct lysp_type *type)
     struct lysp_type_enum *en;
 
     LYA_ADD_ITEM(type->enums, en, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* revalidate the backward parent pointers from extensions */
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(type->enums, exts, LY_STMT_ENUM);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(type->enums, exts, LY_STMT_VALUE);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(type->enums, exts, LY_STMT_STATUS, flags);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(type->enums, exts, LY_STMT_DESCRIPTION);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(type->enums, exts, LY_STMT_REFERENCE);
+
     type->flags |= LYS_SET_ENUM;
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_NAME, &en->name, Y_STR_ARG, LY_STMT_ENUM));
@@ -813,6 +830,14 @@ yin_parse_bit(struct lysp_yin_ctx *ctx, struct lysp_type *type)
     struct lysp_type_enum *en;
 
     LYA_ADD_ITEM(type->bits, en, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* revalidate the backward parent pointers from extensions */
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(type->bits, exts, LY_STMT_BIT);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(type->bits, exts, LY_STMT_POSITION);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(type->bits, exts, LY_STMT_STATUS, flags);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(type->bits, exts, LY_STMT_DESCRIPTION);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(type->bits, exts, LY_STMT_REFERENCE);
+
     type->flags |= LYS_SET_BIT;
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_NAME, &en->name, Y_IDENTIF_ARG, LY_STMT_BIT));
@@ -858,6 +883,9 @@ yin_parse_simple_elements(struct lysp_yin_ctx *ctx, enum ly_stmt parent_stmt, co
     };
 
     LYA_ADD_ITEM(*values, value, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* revalidate the backward parent pointers from extensions */
+    LYSP_EXT_PARENTS_UPDATE(*exts, parent_stmt, *values);
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, arg_type, value, arg_val_type, parent_stmt));
@@ -1086,6 +1114,14 @@ yin_parse_must(struct lysp_yin_ctx *ctx, struct lysp_restr **restrs)
     struct lysp_restr *restr;
 
     LYA_ADD_ITEM(*restrs, restr, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* revalidate the backward parent pointers from extensions */
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*restrs, exts, LY_STMT_MUST);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*restrs, exts, LY_STMT_ERROR_APP_TAG);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*restrs, exts, LY_STMT_ERROR_MESSAGE);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*restrs, exts, LY_STMT_DESCRIPTION);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*restrs, exts, LY_STMT_REFERENCE);
+
     return yin_parse_restriction(ctx, LY_STMT_MUST, restr);
 }
 
@@ -1111,6 +1147,9 @@ yin_parse_qname(struct lysp_yin_ctx *ctx, enum ly_stmt parent_stmt, struct yin_s
         } else {
             qnames = (struct lysp_qname **)subinfo->dest;
             LYA_ADD_ITEM(*qnames, qname, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+            /* revalidate the backward parent pointers from extensions */
+            LYSP_EXT_PARENTS_UPDATE(*exts, parent_stmt, *qnames);
         }
         qname->mod = PARSER_CUR_PMOD(ctx);
         return yin_parse_simple_element(ctx, qname, parent_stmt, &qname->str, YIN_ARG_VALUE, Y_STR_ARG, exts);
@@ -1119,6 +1158,10 @@ yin_parse_qname(struct lysp_yin_ctx *ctx, enum ly_stmt parent_stmt, struct yin_s
 
         qnames = (struct lysp_qname **)subinfo->dest;
         LYA_ADD_ITEM(*qnames, qname, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+        /* revalidate the backward parent pointers from extensions */
+        LYSP_EXT_PARENTS_UPDATE(*exts, parent_stmt, *qnames);
+
         qname->mod = PARSER_CUR_PMOD(ctx);
         return yin_parse_simple_element(ctx, *qnames, parent_stmt, &qname->str, YIN_ARG_TAG, Y_STR_ARG, exts);
     case LY_STMT_IF_FEATURE:
@@ -1126,6 +1169,10 @@ yin_parse_qname(struct lysp_yin_ctx *ctx, enum ly_stmt parent_stmt, struct yin_s
 
         qnames = (struct lysp_qname **)subinfo->dest;
         LYA_ADD_ITEM(*qnames, qname, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+        /* revalidate the backward parent pointers from extensions */
+        LYSP_EXT_PARENTS_UPDATE(*exts, parent_stmt, *qnames);
+
         qname->mod = PARSER_CUR_PMOD(ctx);
         return yin_parse_simple_element(ctx, *qnames, parent_stmt, &qname->str, YIN_ARG_NAME, Y_STR_ARG, exts);
     default:
@@ -1336,6 +1383,13 @@ yin_parse_type(struct lysp_yin_ctx *ctx, enum ly_stmt parent_stmt, struct yin_su
         struct lysp_type *nested_type = NULL;
 
         LYA_ADD_ITEM(type->types, nested_type, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+        /* revalidate the backward parent pointers from extensions */
+        LYSP_ARRAY_EXT_PARENTS_UPDATE(type->types, exts, LY_STMT_TYPE);
+        LYSP_ARRAY_EXT_PARENTS_UPDATE(type->types, exts, LY_STMT_FRACTION_DIGITS);
+        LYSP_ARRAY_EXT_PARENTS_UPDATE(type->types, exts, LY_STMT_REQUIRE_INSTANCE);
+        LYSP_ARRAY_EXT_PARENTS_UPDATE(type->types, exts, LY_STMT_PATH);
+
         type->flags |= LYS_SET_TYPE;
         type = nested_type;
     }
@@ -1711,6 +1765,17 @@ yin_parse_typedef(struct lysp_yin_ctx *ctx, struct tree_node_meta *typedef_meta)
 
     LYA_ADD_ITEM(*tpdfs, tpdf, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
 
+    /* revalidate the backward parent pointers from extensions */
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*tpdfs, exts, LY_STMT_TYPEDEF);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*tpdfs, exts, LY_STMT_DEFAULT, dflt);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*tpdfs, exts, LY_STMT_STATUS, flags);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*tpdfs, exts, LY_STMT_DESCRIPTION);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*tpdfs, exts, LY_STMT_REFERENCE);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*tpdfs, type.exts, LY_STMT_TYPE, type);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*tpdfs, type.exts, LY_STMT_FRACTION_DIGITS, type);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*tpdfs, type.exts, LY_STMT_REQUIRE_INSTANCE, type);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*tpdfs, type.exts, LY_STMT_PATH, type);
+
     /* parse argument */
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_NAME, &tpdf->name, Y_IDENTIF_ARG, LY_STMT_TYPEDEF));
@@ -1753,6 +1818,15 @@ yin_parse_refine(struct lysp_yin_ctx *ctx, struct lysp_refine **refines)
 
     /* allocate new refine */
     LYA_ADD_ITEM(*refines, rf, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* revalidate the backward parent pointers from extensions */
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*refines, exts, LY_STMT_REFINE);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*refines, exts, LY_STMT_CONFIG, flags);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*refines, exts, LY_STMT_MANDATORY, flags);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*refines, exts, LY_STMT_MIN_ELEMENTS, min);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*refines, exts, LY_STMT_MAX_ELEMENTS, max);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*refines, exts, LY_STMT_DESCRIPTION);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*refines, exts, LY_STMT_REFERENCE);
 
     /* parse attribute */
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
@@ -1841,6 +1915,11 @@ yin_parse_revision(struct lysp_yin_ctx *ctx, struct lysp_revision **revs)
     /* allocate new reivison */
     LYA_ADD_ITEM(*revs, rev, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
 
+    /* revalidate the backward parent pointers from extensions */
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*revs, exts, LY_STMT_REVISION);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*revs, exts, LY_STMT_DESCRIPTION);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*revs, exts, LY_STMT_REFERENCE);
+
     /* parse argument */
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_DATE, &temp_date, Y_STR_ARG, LY_STMT_REVISION));
@@ -1882,6 +1961,12 @@ yin_parse_include(struct lysp_yin_ctx *ctx, struct include_meta *inc_meta)
 
     /* allocate new include */
     LYA_ADD_ITEM(*inc_meta->includes, inc, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* revalidate the backward parent pointers from extensions */
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*inc_meta->includes, exts, LY_STMT_INCLUDE);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*inc_meta->includes, exts, LY_STMT_REVISION_DATE, rev);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*inc_meta->includes, exts, LY_STMT_DESCRIPTION);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*inc_meta->includes, exts, LY_STMT_REFERENCE);
 
     /* parse argument */
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
@@ -2024,6 +2109,12 @@ yin_parse_import(struct lysp_yin_ctx *ctx, struct import_meta *imp_meta)
 
     /* allocate new element in sized array for import */
     LYA_ADD_ITEM(*imp_meta->imports, imp, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* revalidate the backward parent pointers from extensions */
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*imp_meta->imports, exts, LY_STMT_IMPORT);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*imp_meta->imports, exts, LY_STMT_REVISION_DATE, rev);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*imp_meta->imports, exts, LY_STMT_DESCRIPTION);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*imp_meta->imports, exts, LY_STMT_REFERENCE);
 
     struct yin_subelement subelems[] = {
         {LY_STMT_DESCRIPTION, &imp->dsc, YIN_SUBELEM_UNIQUE},
@@ -2230,6 +2321,15 @@ yin_parse_extension(struct lysp_yin_ctx *ctx, struct lysp_ext **extensions)
     struct lysp_ext *ex;
 
     LYA_ADD_ITEM(*extensions, ex, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* revalidate the backward parent pointers from extensions */
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*extensions, exts, LY_STMT_EXTENSION);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*extensions, exts, LY_STMT_ARGUMENT);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*extensions, exts, LY_STMT_YIN_ELEMENT);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*extensions, exts, LY_STMT_STATUS, flags);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*extensions, exts, LY_STMT_DESCRIPTION);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*extensions, exts, LY_STMT_REFERENCE);
+
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_NAME, &ex->name, Y_IDENTIF_ARG, LY_STMT_EXTENSION));
 
@@ -2264,6 +2364,12 @@ yin_parse_feature(struct lysp_yin_ctx *ctx, struct lysp_feature **features)
 
     /* allocate new feature */
     LYA_ADD_ITEM(*features, feat, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* revalidate the backward parent pointers from extensions */
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*features, exts, LY_STMT_FEATURE);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*features, exts, LY_STMT_STATUS, flags);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*features, exts, LY_STMT_DESCRIPTION);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*features, exts, LY_STMT_REFERENCE);
 
     /* parse argument */
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
@@ -2300,6 +2406,12 @@ yin_parse_identity(struct lysp_yin_ctx *ctx, struct lysp_ident **identities)
 
     /* allocate new identity */
     LYA_ADD_ITEM(*identities, ident, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* revalidate the backward parent pointers from extensions */
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*identities, exts, LY_STMT_IDENTITY);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*identities, exts, LY_STMT_STATUS, flags);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*identities, exts, LY_STMT_DESCRIPTION);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*identities, exts, LY_STMT_REFERENCE);
 
     /* parse argument */
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
@@ -2963,6 +3075,11 @@ yin_parse_deviation(struct lysp_yin_ctx *ctx, struct lysp_deviation **deviations
     /* create new deviation */
     LYA_ADD_ITEM(*deviations, dev, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
 
+    /* revalidate the backward parent pointers from extensions */
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*deviations, exts, LY_STMT_DEVIATION);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*deviations, exts, LY_STMT_DESCRIPTION);
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*deviations, exts, LY_STMT_REFERENCE);
+
     /* parse argument */
     LY_CHECK_GOTO(ret = lyxml_ctx_next(ctx->xmlctx), cleanup);
     LY_CHECK_GOTO(ret = yin_parse_attribute(ctx, YIN_ARG_TARGET_NODE, &dev->nodeid, Y_STR_ARG, LY_STMT_DEVIATION), cleanup);
@@ -3377,6 +3494,9 @@ yin_parse_extension_instance(struct lysp_yin_ctx *ctx, const void *parent, enum 
     assert(exts);
 
     LYA_ADD_ITEM(*exts, e, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* revalidate the backward parent pointers from extensions */
+    LYSP_ARRAY_EXT_PARENTS_UPDATE(*exts, exts, LY_STMT_EXTENSION_INSTANCE);
 
     if (!ctx->xmlctx->prefix_len) {
         LOGVAL_PARSER(ctx, LYVE_SYNTAX, "Extension instance \"%*.s\" without the mandatory prefix.",
