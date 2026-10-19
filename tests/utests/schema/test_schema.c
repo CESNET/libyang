@@ -2238,6 +2238,7 @@ static void
 check_ext_parents(const struct lysp_module *pmod)
 {
     const struct lysp_node_leaf *leaf;
+    const struct lysp_node_leaflist *llist;
     const struct lysp_tpdf *tpdf;
     const struct lysp_type_enum *en;
     const struct lysp_restr *must;
@@ -2284,6 +2285,16 @@ check_ext_parents(const struct lysp_module *pmod)
     LYA_FOR(leaf->exts, u) {
         assert_int_equal(LY_STMT_IF_FEATURE, leaf->exts[u].parent_stmt);
         assert_ptr_equal(leaf->iffeatures, leaf->exts[u].parent);
+        assert_int_equal(u, leaf->exts[u].parent_stmt_index);
+    }
+
+    llist = (const struct lysp_node_leaflist *)leaf->next;
+    assert_int_equal(3, LYA_COUNT(llist->dflts));
+    assert_int_equal(3, LYA_COUNT(llist->exts));
+    LYA_FOR(llist->exts, u) {
+        assert_int_equal(LY_STMT_DEFAULT, llist->exts[u].parent_stmt);
+        assert_ptr_equal(llist->dflts, llist->exts[u].parent);
+        assert_int_equal(u, llist->exts[u].parent_stmt_index);
     }
 }
 
@@ -2317,6 +2328,12 @@ test_ext_parent_array_realloc(void **state)
             "      enum c { status current { ep:e; } ep:e; }\n"
             "    }\n"
             "  }\n"
+            "  leaf-list ll {\n"
+            "    type string;\n"
+            "    default a { ep:e; }\n"
+            "    default b { ep:e; }\n"
+            "    default c { ep:e; }\n"
+            "  }\n"
             "}\n";
     UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, &mod);
     check_ext_parents(mod->parsed);
@@ -2345,6 +2362,12 @@ test_ext_parent_array_realloc(void **state)
             "      <enum name=\"c\"><status value=\"current\"><ep:e/></status><ep:e/></enum>\n"
             "    </type>\n"
             "  </leaf>\n"
+            "  <leaf-list name=\"ll\">\n"
+            "    <type name=\"string\"/>\n"
+            "    <default value=\"a\"><ep:e/></default>\n"
+            "    <default value=\"b\"><ep:e/></default>\n"
+            "    <default value=\"c\"><ep:e/></default>\n"
+            "  </leaf-list>\n"
             "</module>\n";
     UTEST_ADD_MODULE(yin, LYS_IN_YIN, NULL, &mod);
     check_ext_parents(mod->parsed);

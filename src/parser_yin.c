@@ -1133,48 +1133,46 @@ yin_parse_qname(struct lysp_yin_ctx *ctx, enum ly_stmt parent_stmt, struct yin_s
         struct lysp_ext_instance **exts)
 {
     struct lysp_qname *qname, **qnames;
+    enum yin_argument arg_type;
+    LYA_COUNT_T index;
+    struct yin_subelement subelems[] = {
+        {LY_STMT_EXTENSION_INSTANCE, &index, 0}
+    };
 
     switch (parent_stmt) {
     case LY_STMT_DEFAULT:
         if (subinfo->flags & YIN_SUBELEM_UNIQUE) {
             qname = (struct lysp_qname *)subinfo->dest;
-        } else {
-            qnames = (struct lysp_qname **)subinfo->dest;
-            LYA_ADD_ITEM(*qnames, qname, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
-
-            /* revalidate the backward parent pointers from extensions */
-            LYSP_EXT_PARENTS_UPDATE(*exts, parent_stmt, *qnames);
+            qname->mod = PARSER_CUR_PMOD(ctx);
+            return yin_parse_simple_element(ctx, qname, parent_stmt, &qname->str, YIN_ARG_VALUE, Y_STR_ARG, exts);
         }
-        qname->mod = PARSER_CUR_PMOD(ctx);
-        return yin_parse_simple_element(ctx, qname, parent_stmt, &qname->str, YIN_ARG_VALUE, Y_STR_ARG, exts);
-    case LY_STMT_UNIQUE:
-        assert(!(subinfo->flags & YIN_SUBELEM_UNIQUE));
-
-        qnames = (struct lysp_qname **)subinfo->dest;
-        LYA_ADD_ITEM(*qnames, qname, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
-
-        /* revalidate the backward parent pointers from extensions */
-        LYSP_EXT_PARENTS_UPDATE(*exts, parent_stmt, *qnames);
-
-        qname->mod = PARSER_CUR_PMOD(ctx);
-        return yin_parse_simple_element(ctx, *qnames, parent_stmt, &qname->str, YIN_ARG_TAG, Y_STR_ARG, exts);
-    case LY_STMT_IF_FEATURE:
-        assert(!(subinfo->flags & YIN_SUBELEM_UNIQUE));
-
-        qnames = (struct lysp_qname **)subinfo->dest;
-        LYA_ADD_ITEM(*qnames, qname, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
-
-        /* revalidate the backward parent pointers from extensions */
-        LYSP_EXT_PARENTS_UPDATE(*exts, parent_stmt, *qnames);
-
-        qname->mod = PARSER_CUR_PMOD(ctx);
-        return yin_parse_simple_element(ctx, *qnames, parent_stmt, &qname->str, YIN_ARG_NAME, Y_STR_ARG, exts);
-    default:
+        arg_type = YIN_ARG_VALUE;
         break;
+    case LY_STMT_UNIQUE:
+        arg_type = YIN_ARG_TAG;
+        break;
+    case LY_STMT_IF_FEATURE:
+        arg_type = YIN_ARG_NAME;
+        break;
+    default:
+        LOGINT(ctx->xmlctx->ctx);
+        return LY_EINT;
     }
+    assert(!(subinfo->flags & YIN_SUBELEM_UNIQUE));
 
-    LOGINT(ctx->xmlctx->ctx);
-    return LY_EINT;
+    qnames = (struct lysp_qname **)subinfo->dest;
+    index = LYA_COUNT(*qnames);
+    LYA_ADD_ITEM(*qnames, qname, LOGMEM(ctx->xmlctx->ctx); return LY_EMEM);
+
+    /* revalidate the backward parent pointers from extensions */
+    LYSP_EXT_PARENTS_UPDATE(*exts, parent_stmt, *qnames);
+
+    qname->mod = PARSER_CUR_PMOD(ctx);
+    LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
+    LY_CHECK_RET(yin_parse_attribute(ctx, arg_type, &qname->str, Y_STR_ARG, parent_stmt));
+
+    /* extension instances of the item have the array as their parent with the item index, as in YANG */
+    return yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), *qnames, parent_stmt, NULL, exts);
 }
 
 /**
