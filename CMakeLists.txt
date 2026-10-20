@@ -137,6 +137,7 @@ set(libsrc
     src/printer_lyb.c
     src/schema_compile.c
     src/schema_compile_node.c
+    src/schema_compile_type.c
     src/schema_compile_amend.c
     src/schema_features.c
     src/schema_diff.c
@@ -213,6 +214,7 @@ set(internal_headers
     src/schema_compile.h
     src/schema_compile_amend.h
     src/schema_compile_node.h
+    src/schema_compile_type.h
     src/schema_features.h
     src/schema_diff.h
     src/tree_data_internal.h

@@ -27,6 +27,7 @@
 #include "schema_compile.h"
 #include "schema_compile_amend.h"
 #include "schema_compile_node.h"
+#include "schema_compile_type.h"
 #include "schema_features.h"
 #include "tree_schema_internal.h"
 

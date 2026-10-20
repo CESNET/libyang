@@ -18,7 +18,7 @@
 #include <stdlib.h>
 
 #include "ly_common.h"
-#include "schema_compile_node.h"
+#include "schema_compile_type.h"
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
