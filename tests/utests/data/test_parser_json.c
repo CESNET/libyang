@@ -220,6 +220,12 @@ test_leaf(void **state)
     assert_int_equal(LY_EINVAL, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     CHECK_LOG_CTX("Annotation definition for attribute \"a:hi\nt\" not found.", "/a:foo/@a:hi\nt", 1);
 
+    /* escaped metadata member name */
+    data = "{\"a:foo\":\"xxx\",\"@a:foo\":{\"a:hin\\u0074\":1}}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    CHECK_LYD_META(tree->meta, 1, "hint", 0, 1,  INT8, "1", 1);
+    lyd_free_all(tree);
+
     data = "{\"a:foo\": null}";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID, "Invalid non-string-encoded string value \"\".", "/a:foo", 1);
     CHECK_PARSE_LYD(data, LYD_PARSE_JSON_NULL, LYD_VALIDATE_PRESENT, tree);
@@ -986,6 +992,19 @@ test_restconf_notification(void **state)
     /* notification with the parent node */
     data = "{\"a:c\":{\"n1\":{\"nl\":\"value\"}}}";
     CHECK_LYD_STRING(ntf->parent, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
+
+    lyd_free_all(tree);
+    lyd_free_all(ntf);
+
+    /* escaped envelope member name */
+    data = "{\"ietf-restconf:notificatio\\u006e\":{\"eventTime\":\"2013-12-21T00:01:00Z\",\"a:n2\":{}}}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_NOTIF_RESTCONF, LYD_PARSE_STRICT,
+            &tree, &ntf));
+    ly_in_free(in, 0);
+
+    data = "{\"ietf-restconf:notification\":{\"eventTime\":\"2013-12-21T00:01:00Z\"}}";
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
 
     lyd_free_all(tree);
     lyd_free_all(ntf);
