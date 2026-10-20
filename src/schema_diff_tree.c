@@ -3043,9 +3043,9 @@ schema_diff_deviation(const struct lysp_deviation *dev, struct lyd_node *change_
             type = d_rpl->type;
             units = d_rpl->units;
             dflt = d_rpl->dflt.str;
-            flags = d_add->flags;
-            min = d_add->min;
-            max = d_add->max;
+            flags = d_rpl->flags;
+            min = d_rpl->min;
+            max = d_rpl->max;
             break;
         }
 
