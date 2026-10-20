@@ -1831,7 +1831,7 @@ ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_subs
         case LY_STMT_MANDATORY:
         case LY_STMT_ORDERED_BY:
         case LY_STMT_STATUS:
-            memcpy((uint16_t *)orig_substmts[u].storage_p, (uint16_t *)substmts[u].storage_p, sizeof(uint16_t));
+            memcpy((uint16_t *)substmts[u].storage_p, (uint16_t *)orig_substmts[u].storage_p, sizeof(uint16_t));
             break;
         case LY_STMT_EXTENSION_INSTANCE: {
             const struct lysc_ext_instance *orig_exts = *orig_substmts[u].storage_p;
@@ -1845,7 +1845,7 @@ ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_subs
         }
         case LY_STMT_FRACTION_DIGITS:
         case LY_STMT_REQUIRE_INSTANCE:
-            memcpy(orig_substmts[u].storage_p, substmts[u].storage_p, sizeof(uint8_t));
+            memcpy((uint8_t *)substmts[u].storage_p, (uint8_t *)orig_substmts[u].storage_p, sizeof(uint8_t));
             break;
         case LY_STMT_IDENTITY: {
             const struct lysc_ident *orig_identities = *orig_substmts[u].storage_p;
@@ -1865,7 +1865,7 @@ ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_subs
             break;
         case LY_STMT_MAX_ELEMENTS:
         case LY_STMT_MIN_ELEMENTS:
-            memcpy(orig_substmts[u].storage_p, substmts[u].storage_p, sizeof(uint32_t));
+            memcpy((uint32_t *)substmts[u].storage_p, (uint32_t *)orig_substmts[u].storage_p, sizeof(uint32_t));
             break;
         case LY_STMT_MUST: {
             const struct lysc_must *orig_musts = *orig_substmts[u].storage_p;
@@ -1889,7 +1889,7 @@ ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_subs
         }
         case LY_STMT_POSITION:
         case LY_STMT_VALUE:
-            memcpy(orig_substmts[u].storage_p, substmts[u].storage_p, sizeof(uint64_t));
+            memcpy(substmts[u].storage_p, orig_substmts[u].storage_p, sizeof(uint64_t));
             break;
         case LY_STMT_TYPE:
             ctxp_type(*orig_substmts[u].storage_p, (struct lysc_type **)substmts[u].storage_p, addr_ht, ptr_set, mem);
