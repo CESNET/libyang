@@ -1831,7 +1831,7 @@ ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_subs
         case LY_STMT_MANDATORY:
         case LY_STMT_ORDERED_BY:
         case LY_STMT_STATUS:
-            memcpy(orig_substmts[u].storage_p, substmts[u].storage_p, sizeof(uint16_t));
+            memcpy((uint16_t *)orig_substmts[u].storage_p, (uint16_t *)substmts[u].storage_p, sizeof(uint16_t));
             break;
         case LY_STMT_EXTENSION_INSTANCE: {
             const struct lysc_ext_instance *orig_exts = *orig_substmts[u].storage_p;
