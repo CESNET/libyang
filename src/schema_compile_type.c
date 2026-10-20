@@ -88,6 +88,7 @@ lysc_patterns_dup(struct ly_ctx *ctx, struct lysc_pattern **orig)
         dup[u] = lysc_pattern_dup(orig[u]);
         LYA_INCREMENT(dup);
     }
+
     return dup;
 }
 
@@ -146,6 +147,7 @@ error:
 
 /**
  * @brief Validate and normalize numeric value from a range definition.
+ *
  * @param[in] ctx Compile context.
  * @param[in] basetype Base YANG built-in type of the node connected with the range restriction. Actually only LY_TYPE_DEC64 is important to
  * allow processing of the fractions. The fraction point is extracted from the value which is then normalize according to given frdigits into
@@ -155,7 +157,10 @@ error:
  * @param[in] value String value of the range boundary.
  * @param[out] len Number of the processed bytes from the value. Processing stops on the first character which is not part of the number boundary.
  * @param[out] valcopy NULL-terminated string with the numeric value to parse and store.
- * @return LY_ERR value - LY_SUCCESS, LY_EMEM, LY_EVALID (no number) or LY_EINVAL (decimal64 not matching fraction-digits value).
+ * @return LY_SUCCESS on success;
+ * @return LY_EMEM on memory allocation failure;
+ * @return LY_EVALID if not a number;
+ * @return LY_EINVAL if decimal64 not matching fraction-digits value.
  */
 static LY_ERR
 range_part_check_value_syntax(struct lysc_ctx *ctx, LY_DATA_TYPE basetype, uint8_t frdigits, const char *value,
@@ -226,15 +231,17 @@ decimal:
 
 /**
  * @brief Check that values in range are in ascendant order.
+ *
  * @param[in] unsigned_value Flag to note that we are working with unsigned values.
  * @param[in] max Flag to distinguish if checking min or max value. min value must be strictly higher than previous,
  * max can be also equal.
  * @param[in] value Current value to check.
- * @param[in] prev_value The last seen value.
- * @return LY_SUCCESS or LY_EEXIST for invalid order.
+ * @param[in] prev_value Last seen value.
+ * @return LY_SUCCESS on success;
+ * @return LY_EEXIST for invalid order.
  */
 static LY_ERR
-range_part_check_ascendancy(ly_bool unsigned_value, ly_bool max, int64_t value, int64_t prev_value)
+range_part_check(ly_bool unsigned_value, ly_bool max, int64_t value, int64_t prev_value)
 {
     if (unsigned_value) {
         if ((max && ((uint64_t)prev_value > (uint64_t)value)) || (!max && ((uint64_t)prev_value >= (uint64_t)value))) {
@@ -250,6 +257,7 @@ range_part_check_ascendancy(ly_bool unsigned_value, ly_bool max, int64_t value, 
 
 /**
  * @brief Set min/max value of the range part.
+ *
  * @param[in] ctx Compile context.
  * @param[in] part Range part structure to fill.
  * @param[in] max Flag to distinguish if storing min or max value.
@@ -260,9 +268,12 @@ range_part_check_ascendancy(ly_bool unsigned_value, ly_bool max, int64_t value, 
  * @param[in] frdigits The fraction-digits value in case of LY_TYPE_DEC64 basetype.
  * @param[in] base_range Range from the type from which the current type is derived (if not built-in) to get type's min and max values.
  * @param[in,out] value Numeric range value to be stored, if not provided the type's min/max value is set.
- * @return LY_ERR value - LY_SUCCESS, LY_EDENIED (value brokes type's boundaries), LY_EVALID (not a number),
- * LY_EEXIST (value is smaller than the previous one), LY_EINVAL (decimal64 value does not corresponds with the
- * frdigits value), LY_EMEM.
+ * @return LY_SUCCESS - success;
+ * @return LY_EDENIED - value broken type's boundaries;
+ * @return LY_EVALID - not a number;
+ * @return LY_EEXIST - value is smaller than the previous one;
+ * @return LY_EINVAL - decimal64 value does not corresponds with the fraction-digits value;
+ * @return LY_EMEM - memory allocation failed.
  */
 static LY_ERR
 range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool max, int64_t prev, LY_DATA_TYPE basetype,
@@ -283,7 +294,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool ma
             part->min_64 = base_range->parts[0].min_64;
         }
         if (!first) {
-            ret = range_part_check_ascendancy(basetype <= LY_TYPE_STRING ? 1 : 0, max, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check(basetype <= LY_TYPE_STRING ? 1 : 0, max, max ? part->max_64 : part->min_64, prev);
         }
         goto finalize;
     }
@@ -299,7 +310,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool ma
             part->min_64 = INT64_C(-128);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendancy(0, max, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check(0, max, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_INT16: /* range */
@@ -312,7 +323,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool ma
             part->min_64 = INT64_C(-32768);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendancy(0, max, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check(0, max, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_INT32: /* range */
@@ -325,7 +336,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool ma
             part->min_64 = INT64_C(-2147483648);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendancy(0, max, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check(0, max, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_INT64: /* range */
@@ -339,7 +350,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool ma
             part->min_64 = INT64_C(-9223372036854775807) - INT64_C(1);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendancy(0, max, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check(0, max, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_UINT8: /* range */
@@ -351,7 +362,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool ma
             part->min_u64 = UINT64_C(0);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendancy(1, max, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check(1, max, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_UINT16: /* range */
@@ -363,7 +374,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool ma
             part->min_u64 = UINT64_C(0);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendancy(1, max, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check(1, max, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_UINT32: /* range */
@@ -376,7 +387,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool ma
             part->min_u64 = UINT64_C(0);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendancy(1, max, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check(1, max, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_UINT64: /* range */
@@ -391,7 +402,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool ma
             part->min_u64 = UINT64_C(0);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendancy(1, max, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check(1, max, max ? part->max_64 : part->min_64, prev);
         }
         break;
     default:
@@ -405,12 +416,10 @@ finalize:
                 "Invalid %s restriction - value \"%s\" does not fit the type limitations.",
                 length_restr ? "length" : "range", valcopy ? valcopy : *value);
     } else if (ret == LY_EVALID) {
-        LOGVAL(ctx->ctx, NULL, LYVE_SYNTAX_YANG,
-                "Invalid %s restriction - invalid value \"%s\".",
+        LOGVAL(ctx->ctx, NULL, LYVE_SYNTAX_YANG, "Invalid %s restriction - invalid value \"%s\".",
                 length_restr ? "length" : "range", valcopy ? valcopy : *value);
     } else if (ret == LY_EEXIST) {
-        LOGVAL(ctx->ctx, NULL, LYVE_SYNTAX_YANG,
-                "Invalid %s restriction - values are not in ascending order (%s).",
+        LOGVAL(ctx->ctx, NULL, LYVE_SYNTAX_YANG, "Invalid %s restriction - values are not in ascending order (%s).",
                 length_restr ? "length" : "range",
                 (valcopy && basetype != LY_TYPE_DEC64) ? valcopy : value ? *value : max ? "max" : "min");
     } else if (!ret && value) {
@@ -999,7 +1008,8 @@ lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct ly
 
     LYA_PREALLOC(utypes, LYA_COUNT(ptypes), LOGMEM(ctx->ctx); rc = LY_EMEM; goto cleanup);
 
-    for (u = 0, additional = 0; u < LYA_COUNT(ptypes); ++u) {
+    additional = 0;
+    LYA_FOR(ptypes, u) {
         rc = lys_compile_type(ctx, context_pnode, context_flags, context_name, &ptypes[u], &utypes[u + additional],
                 NULL, NULL);
         LY_CHECK_GOTO(rc, cleanup);
@@ -1017,12 +1027,13 @@ lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct ly
                     rc = LY_EMEM; goto cleanup);
 
             /* copy subtypes of the subtype union */
-            for (v = 0; v < LYA_COUNT(un_aux->types); ++v) {
+            LYA_FOR(un_aux->types, v) {
                 utypes[u + additional] = un_aux->types[v];
                 LY_ATOMIC_INC_BARRIER(un_aux->types[v]->refcount);
                 ++additional;
                 LYA_INCREMENT(utypes);
             }
+
             /* compensate u increment in main loop */
             assert(additional);
             --additional;
@@ -1177,19 +1188,17 @@ lys_compile_type_share_compiled(const struct lysp_type *type_p, const struct lys
  * @param[in] tpdf_chain_last Index of @p tpdf_chain not to cross in descending order.
  * @param[in] with_enum Set if looking for the first type with enums.
  * @param[in] with_bits Set if looking for the first type with bits.
- * @param[in] compiled Set if looking for the parsed type of this compiled type.
  * @return Found parsed type.
  */
 static const struct lysp_type *
-lys_compile_type_find_parsed(const struct ly_set *tpdf_chain, uint32_t tpdf_chain_last, ly_bool with_enum, ly_bool with_bits,
-        const struct lysc_type *compiled)
+lys_compile_type_find_parsed(const struct ly_set *tpdf_chain, uint32_t tpdf_chain_last, ly_bool with_enum, ly_bool with_bits)
 {
     const struct lysp_type *parsed = NULL;
     const struct lys_type_item *tpdf_item;
     uint32_t i;
 
     assert(tpdf_chain->count > tpdf_chain_last);
-    assert((with_enum && !with_bits && !compiled) || (!with_enum && with_bits && !compiled) || (!with_enum && !with_bits && compiled));
+    assert((with_enum && !with_bits) || (!with_enum && with_bits));
 
     i = tpdf_chain->count;
     do {
@@ -1202,12 +1211,6 @@ lys_compile_type_find_parsed(const struct ly_set *tpdf_chain, uint32_t tpdf_chai
         } else if (with_bits && tpdf_item->tpdf->type.bits) {
             /* bits */
             parsed = &tpdf_item->tpdf->type;
-        } else if (compiled) {
-            /* original type, must be the first */
-            parsed = &tpdf_item->tpdf->type;
-            assert(!parsed->compiled || (parsed->compiled == compiled));
-            assert(!compiled->name || (compiled->name == tpdf_item->tpdf->name));
-            assert(!strcmp(lys_datatype2str(compiled->basetype), parsed->name));
         }
     } while (!parsed && (i > tpdf_chain_last));
 
@@ -1227,6 +1230,7 @@ lys_compile_type_find_parsed(const struct ly_set *tpdf_chain, uint32_t tpdf_chai
  * @param[in] basetype Base YANG built-in type of the type to compile.
  * @param[in] tpdfname Name of the type's typedef, serves as a flag - if it is leaf/leaf-list's type, it is NULL.
  * @param[in] base Latest base (compiled) type from which the current type is being derived.
+ * @param[in] base_p Parsed type of the @p base type.
  * @param[in] plugin_ref Reference to the type plugin to use.
  * @param[in] tpdf_chain Chain of the used typedefs, traversed backwards.
  * @param[in] tpdf_chain_last Index of the last (backwards) typedef in @p tpdf_chain to use.
@@ -1236,7 +1240,8 @@ lys_compile_type_find_parsed(const struct ly_set *tpdf_chain, uint32_t tpdf_chai
 static LY_ERR
 lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t context_flags, const char *context_name,
         const struct lysp_type *type_p, LY_DATA_TYPE basetype, const char *tpdfname, const struct lysc_type *base,
-        uintptr_t plugin_ref, struct ly_set *tpdf_chain, uint32_t tpdf_chain_last, struct lysc_type **type)
+        const struct lysp_type *base_p, uintptr_t plugin_ref, struct ly_set *tpdf_chain, uint32_t tpdf_chain_last,
+        struct lysc_type **type)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lysc_type_bin *bin;
@@ -1247,13 +1252,14 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
     struct lysc_type_dec *dec;
     struct lysc_type_identityref *idref;
     struct lysc_type_leafref *lref;
+    struct lysc_type_instanceid *instid;
     struct lysc_type_union *un;
     struct lys_type_item *tpdf_item;
     const struct lysp_type *base_type_p;
     struct lysc_prefix *prefixes;
     uint32_t i;
     LYA_COUNT_T u;
-    ly_bool pattern_format, share_base;
+    ly_bool share_base;
 
     /* alloc and init */
     rc = lys_new_type(ctx->ctx, basetype, tpdfname, type);
@@ -1273,11 +1279,14 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
             if (!tpdfname) {
                 COMPILE_EXTS_GOTO(ctx, type_p->length->exts, bin->length->exts, bin->length, rc, cleanup);
             }
+        } else if (base && ((struct lysc_type_bin *)base)->length) {
+            bin->length = lysc_range_dup(ctx, ((struct lysc_type_bin *)base)->length, tpdf_chain, tpdf_chain_last);
         }
         break;
     case LY_TYPE_BITS:
-        /* RFC 7950 9.7 - bits */
         bits = (struct lysc_type_bits *)*type;
+
+        /* RFC 7950 9.7 - bits */
         if (type_p->bits) {
             /* compile bits from this type */
             LY_CHECK_GOTO(rc = lys_compile_type_enums(ctx, type_p->bits, basetype,
@@ -1285,7 +1294,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
                     (struct lysc_type_bitenum_item **)&bits->bits), cleanup);
         } else if (base) {
             /* recompile bits from the first superior type with bits */
-            base_type_p = lys_compile_type_find_parsed(tpdf_chain, tpdf_chain_last, 0, 1, NULL);
+            base_type_p = lys_compile_type_find_parsed(tpdf_chain, tpdf_chain_last, 0, 1);
             LY_CHECK_GOTO(rc = lys_compile_type_enums(ctx, base_type_p->bits, basetype, NULL,
                     (struct lysc_type_bitenum_item **)&bits->bits), cleanup);
         } else {
@@ -1338,6 +1347,8 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
             if (!tpdfname) {
                 COMPILE_EXTS_GOTO(ctx, type_p->range->exts, dec->range->exts, dec->range, rc, cleanup);
             }
+        } else if (base && ((struct lysc_type_dec *)base)->range) {
+            dec->range = lysc_range_dup(ctx, ((struct lysc_type_dec *)base)->range, tpdf_chain, tpdf_chain_last);
         }
         break;
     case LY_TYPE_STRING:
@@ -1359,30 +1370,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
             LY_CHECK_GOTO(rc = lys_compile_type_patterns(ctx, type_p->patterns, type_p->pmod,
                     base ? ((struct lysc_type_str *)base)->patterns : NULL, &str->patterns), cleanup);
         } else if (base && ((struct lysc_type_str *)base)->patterns) {
-            pattern_format = lys_compile_type_patterns_has_oc_posix_ext(type_p->pmod);
-            share_base = 1;
-            LYA_FOR(str->patterns, u) {
-                if (str->patterns[u]->format != pattern_format) {
-                    /* different format, need to recompile */
-                    share_base = 0;
-                    break;
-                }
-            }
-
-            if (share_base) {
-                str->patterns = lysc_patterns_dup(ctx->ctx, ((struct lysc_type_str *)base)->patterns);
-            } else {
-                /* free the prepared type */
-                lydict_remove(ctx->ctx, (*type)->name);
-                free(*type);
-                *type = NULL;
-
-                /* recompile the string */
-                base_type_p = lys_compile_type_find_parsed(tpdf_chain, tpdf_chain_last, 0, 0, base);
-                rc = lys_compile_type(ctx, context_pnode, context_flags, context_name, base_type_p, type, NULL, NULL);
-                LY_CHECK_GOTO(rc, cleanup);
-                assert(*type);
-            }
+            str->patterns = lysc_patterns_dup(ctx->ctx, ((struct lysc_type_str *)base)->patterns);
         }
         break;
     case LY_TYPE_ENUM:
@@ -1394,7 +1382,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
                     base ? ((struct lysc_type_enum *)base)->enums : NULL, &enumeration->enums), cleanup);
         } else if (base) {
             /* recompile enums from the first superior type with enums */
-            base_type_p = lys_compile_type_find_parsed(tpdf_chain, tpdf_chain_last, 1, 0, NULL);
+            base_type_p = lys_compile_type_find_parsed(tpdf_chain, tpdf_chain_last, 1, 0);
             LY_CHECK_GOTO(rc = lys_compile_type_enums(ctx, base_type_p->enums, basetype, NULL, &enumeration->enums), cleanup);
         } else {
             /* type derived from enumerations built-in type must contain at least one enum */
@@ -1424,6 +1412,8 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
             if (!tpdfname) {
                 COMPILE_EXTS_GOTO(ctx, type_p->range->exts, num->range->exts, num->range, rc, cleanup);
             }
+        } else if (base && ((struct lysc_type_num *)base)->range) {
+            num->range = lysc_range_dup(ctx, ((struct lysc_type_num *)base)->range, tpdf_chain, tpdf_chain_last);
         }
         break;
     case LY_TYPE_IDENT:
@@ -1490,6 +1480,8 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
             /* default is true */
             lref->require_instance = 1;
         }
+
+        /* RFC 7950 9.9.2 - path */
         if (type_p->path) {
             LY_VALUE_FORMAT format;
 
@@ -1519,12 +1511,17 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
         }
         break;
     case LY_TYPE_INST:
+        instid = (struct lysc_type_instanceid *)*type;
+
         /* RFC 7950 9.9.3 - require-instance */
         if (type_p->flags & LYS_SET_REQINST) {
-            ((struct lysc_type_instanceid *)*type)->require_instance = type_p->require_instance;
+            instid->require_instance = type_p->require_instance;
+        } else if (base) {
+            /* inherit */
+            instid->require_instance = ((struct lysc_type_instanceid *)base)->require_instance;
         } else {
             /* default is true */
-            ((struct lysc_type_instanceid *)*type)->require_instance = 1;
+            instid->require_instance = 1;
         }
         break;
     case LY_TYPE_UNION:
@@ -1582,8 +1579,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
                 *type = NULL;
 
                 /* recompile the union */
-                base_type_p = lys_compile_type_find_parsed(tpdf_chain, tpdf_chain_last, 0, 0, base);
-                rc = lys_compile_type(ctx, context_pnode, context_flags, context_name, base_type_p, type, NULL, NULL);
+                rc = lys_compile_type(ctx, context_pnode, context_flags, context_name, base_p, type, NULL, NULL);
                 LY_CHECK_GOTO(rc, cleanup);
                 assert(*type);
             }
@@ -1600,8 +1596,12 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
         break;
     case LY_TYPE_BOOL:
     case LY_TYPE_EMPTY:
-    case LY_TYPE_UNKNOWN: /* just to complete switch */
+        /* nothing to do */
         break;
+    case LY_TYPE_UNKNOWN:
+        LOGINT(ctx->ctx);
+        rc = LY_EINT;
+        goto cleanup;
     }
 
     if (tpdf_chain->count > tpdf_chain_last) {
@@ -1746,6 +1746,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
     struct lys_type_item *tctx;
     LY_DATA_TYPE basetype = LY_TYPE_UNKNOWN;
     struct lysc_type *base = NULL;
+    const struct lysp_type *base_p = NULL;
     uint32_t i;
     struct ly_set tpdf_chain = {0};
     uintptr_t plugin_ref = 0;
@@ -1783,6 +1784,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
         if (tctx->tpdf->type.compiled) {
             /* already compiled, reuse */
             base = tctx->tpdf->type.compiled;
+            base_p = &tctx->tpdf->type;
             continue;
         }
 
@@ -1820,8 +1822,9 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
 
         /* compile the typedef type */
         ret = lys_compile_type_(ctx, tctx->node, tctx->tpdf->flags, tctx->tpdf->name, &tctx->tpdf->type, basetype,
-                tctx->tpdf->name, base, plugin_ref, &tpdf_chain, i + 1, &base);
+                tctx->tpdf->name, base, base_p, plugin_ref, &tpdf_chain, i + 1, &base);
         LY_CHECK_GOTO(ret, cleanup);
+        base_p = &tctx->tpdf->type;
 
         /* store separately compiled typedef type to be reused */
         ((struct lysp_tpdf *)tctx->tpdf)->type.compiled = base;
@@ -1846,7 +1849,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
             plugin_ref = lyplg_type_plugin_find(ctx->ctx, "", NULL, ly_data_type2str[basetype]);
         }
         ret = lys_compile_type_(ctx, context_pnode, context_flags, context_name, (struct lysp_type *)type_p, basetype,
-                NULL, base, plugin_ref, &tpdf_chain, 0, type);
+                NULL, base, base_p, plugin_ref, &tpdf_chain, 0, type);
         LY_CHECK_GOTO(ret, cleanup);
         if (!*type) {
             /* foreign typedef in local-only module */
