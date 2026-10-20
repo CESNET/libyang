@@ -754,6 +754,7 @@ lydjson_meta_attr_instance(struct lyd_json_ctx *lydctx, struct lyd_node *node, c
     LY_ERR rc = LY_SUCCESS;
     enum LYJSON_PARSER_STATUS status;
     const char *name, *prefix;
+    char *value = NULL;
     uint32_t name_len, prefix_len;
     struct lys_module *mod;
     const struct ly_ctx *ctx = lydctx->jsonctx->ctx;
@@ -773,6 +774,7 @@ lydjson_meta_attr_instance(struct lyd_json_ctx *lydctx, struct lyd_node *node, c
         }
 
         lydjson_parse_name(lydctx->jsonctx->value, lydctx->jsonctx->value_len, &name, &name_len, &prefix, &prefix_len, &is_attr);
+        lyjson_ctx_give_dynamic_value(lydctx->jsonctx, &value);
 
         if (!name_len) {
             LOGVAL(ctx, prev_node, LYVE_SYNTAX_JSON, "Metadata in JSON found with an empty name, followed by \"%.10s\".", name);
@@ -851,6 +853,7 @@ lydjson_meta_attr_instance(struct lyd_json_ctx *lydctx, struct lyd_node *node, c
     }
 
 cleanup:
+    free(value);
     return rc;
 }
 
@@ -2109,6 +2112,7 @@ lydjson_envelope(struct lyjson_ctx *jsonctx, const char *name, const char *modul
     LY_ERR rc = LY_SUCCESS, r;
     enum LYJSON_PARSER_STATUS status = lyjson_ctx_status(jsonctx);
     const char *nam, *prefix;
+    char *value = NULL;
     uint32_t nam_len, prefix_len;
     ly_bool is_meta;
 
@@ -2127,6 +2131,7 @@ lydjson_envelope(struct lyjson_ctx *jsonctx, const char *name, const char *modul
     /* process the name */
     assert(status == LYJSON_OBJECT_NAME);
     lydjson_parse_name(jsonctx->value, jsonctx->value_len, &nam, &nam_len, &prefix, &prefix_len, &is_meta);
+    lyjson_ctx_give_dynamic_value(jsonctx, &value);
     if (is_meta) {
         LOGVAL(jsonctx->ctx, NULL, LYVE_DATA, "Unexpected metadata.");
         rc = LY_EVALID;
@@ -2151,6 +2156,7 @@ lydjson_envelope(struct lyjson_ctx *jsonctx, const char *name, const char *modul
     LY_CHECK_GOTO(rc, cleanup);
 
 cleanup:
+    free(value);
     if (rc) {
         lyd_free_tree(*envp);
         *envp = NULL;
