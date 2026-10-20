@@ -963,10 +963,12 @@ lys_compile_type_enums(struct lysc_ctx *ctx, const struct lysp_type_enum *enums_
     }
 
     /* revalidate the backward parent pointers from extensions now that the array is final */
-    LYA_FOR(*bitenums, u) {
-        LYA_FOR((*bitenums)[u].exts, v) {
-            (*bitenums)[u].exts[v].parent = &(*bitenums)[u];
-        }
+    if (basetype == LY_TYPE_ENUM) {
+        LYSP_ARRAY_EXT_PARENTS_UPDATE(*bitenums, exts, LY_STMT_ENUM);
+        LYSP_ARRAY_EXT_PARENTS_UPDATE(*bitenums, exts, LY_STMT_VALUE);
+    } else {
+        LYSP_ARRAY_EXT_PARENTS_UPDATE(*bitenums, exts, LY_STMT_BIT);
+        LYSP_ARRAY_EXT_PARENTS_UPDATE(*bitenums, exts, LY_STMT_POSITION);
     }
 
 done:
