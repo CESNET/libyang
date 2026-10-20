@@ -1157,8 +1157,6 @@ lysp_inject_submodule(struct lysp_ctx *pctx, struct lysp_include *inc)
         /* revalidate the backward parent pointers from extensions */
         LYSP_ARRAY_EXT_PARENTS_UPDATE(main_pmod->includes, exts, LY_STMT_INCLUDE);
         LYSP_ARRAY_EXT_PARENTS_UPDATE(main_pmod->includes, exts, LY_STMT_REVISION_DATE, rev);
-        LYSP_ARRAY_EXT_PARENTS_UPDATE(main_pmod->includes, exts, LY_STMT_DESCRIPTION);
-        LYSP_ARRAY_EXT_PARENTS_UPDATE(main_pmod->includes, exts, LY_STMT_REFERENCE);
 
         inc_new->submodule = inc->submodule;
         DUP_STRING_RET(PARSER_CTX(pctx), inc->name, inc_new->name);
