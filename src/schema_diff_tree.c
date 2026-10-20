@@ -1634,7 +1634,7 @@ schema_diff_module_substmt(const struct lys_diff_change_s *change, const struct 
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_node *mod_cmp_list, *cont;
-    const char *node_name, *text_old, *text_new;
+    const char *node_name, *text_old = NULL, *text_new = NULL;
 
     /* learn about the change */
     switch (change->changed) {
