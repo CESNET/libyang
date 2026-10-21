@@ -1742,6 +1742,10 @@ schema_diff_pnode_change(const struct lysp_node *node1, const struct lysp_node *
     LY_CHECK_GOTO(rc = schema_diff_iffeatures_change(node1->iffeatures, node1->flags, node2->iffeatures,
             LYS_CHANGED_NODE, changes), cleanup);
 
+    /* mandatory */
+    LY_CHECK_GOTO(rc = schema_diff_parsed_mandatory_change(node1->flags, node2->flags, LYS_CHANGED_NODE, changes),
+            cleanup);
+
     /* status */
     LY_CHECK_GOTO(rc = schema_diff_status_change(node1->flags, node2->flags, LYS_CHANGED_NODE, changes), cleanup);
 

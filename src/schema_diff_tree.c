@@ -1525,6 +1525,33 @@ cleanup:
 }
 
 /**
+ * @brief Create cmp YANG data for a 'mandatory'.
+ *
+ * @param[in] flags Flags to use.
+ * @param[in,out] parent Node to append to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_mandatory(uint16_t flags, struct lyd_node *parent)
+{
+    LY_ERR rc = LY_SUCCESS;
+    const char *mandatory = NULL;
+
+    if (flags & LYS_MAND_TRUE) {
+        mandatory = "true";
+    } else if (flags & LYS_MAND_FALSE) {
+        mandatory = "false";
+    }
+
+    if (mandatory) {
+        LY_CHECK_GOTO(rc = lyd_new_term(parent, NULL, "mandatory", mandatory, 0, NULL), cleanup);
+    }
+
+cleanup:
+    return rc;
+}
+
+/**
  * @brief Create leaf-list of enabled features as part of cmp YANG data.
  *
  * @param[in] mod Module to use.
@@ -2088,6 +2115,9 @@ schema_diff_pnode(const struct lysp_node *pnode, struct lyd_node *change_cont)
 
     /* status */
     LY_CHECK_GOTO(rc = schema_diff_status(pnode->flags, change_cont), cleanup);
+
+    /* mandatory */
+    LY_CHECK_GOTO(rc = schema_diff_mandatory(pnode->flags, change_cont), cleanup);
 
     /* if-features */
     LYA_FOR(pnode->iffeatures, u) {
