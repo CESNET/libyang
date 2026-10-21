@@ -591,8 +591,17 @@ schema_diff_parsed_restr_change(const struct lysp_restr *restr1, const struct ly
         rc = schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, changed, LYS_CONFORM_BC, changes);
         goto cleanup;
     } else if (!restr1) {
+        /* learn conformance */
+        if (changed == LYS_CHANGED_PATTERN) {
+            conform = schema_diff_pext_conform(diff->ctx, restr2->exts, LY_STMT_PATTERN, LYS_CONFORM_NBC, NULL);
+        } else if (changed == LYS_CHANGED_MUST) {
+            conform = schema_diff_pext_conform(diff->ctx, restr2->exts, LY_STMT_MUST, LYS_CONFORM_NBC, NULL);
+        } else {
+            conform = LYS_CONFORM_NBC;
+        }
+
         /* added */
-        rc = schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, changed, LYS_CONFORM_NBC, changes);
+        rc = schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, changed, conform, changes);
         goto cleanup;
     }
 
