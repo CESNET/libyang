@@ -62,6 +62,36 @@
             }
           }
         ],
+        "local-comparison": [
+          {
+            "parent-path": "/{grp=grp}",
+            "identifier": "l",
+            "stmt-type": "leaf",
+            "changed": [
+              {
+                "stmt": "if-feature",
+                "parent-stmt": "node",
+                "change": "removed",
+                "conformance": "non-backwards-compatible"
+              }
+            ],
+            "old": {
+              "if-feature": [
+                "not f"
+              ],
+              "mandatory": true,
+              "type": {
+                "name": "string"
+              }
+            },
+            "new": {
+              "mandatory": true,
+              "type": {
+                "name": "string"
+              }
+            }
+          }
+        ],
         "node-comparison": [
           {
             "node": "/if-feature:cont/l",

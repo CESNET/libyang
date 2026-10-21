@@ -2093,7 +2093,7 @@ schema_diff_pnode_change_r(const struct lysp_node *node1, const struct lysp_node
     LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r((struct lysp_node *)lysp_node_notifs(node1),
             (struct lysp_node *)lysp_node_notifs(node2), skip_compiled, diff), cleanup);
     LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r((struct lysp_node *)lysp_node_groupings(node1),
-            (struct lysp_node *)lysp_node_groupings(node2), skip_compiled, diff), cleanup);
+            (struct lysp_node *)lysp_node_groupings(node2), 1, diff), cleanup);
 
 cleanup:
     return rc;
@@ -3170,7 +3170,7 @@ schema_diff_pmodule_change(const struct lysp_module *mod1, const struct lysp_mod
     LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r((struct lysp_node *)mod1->notifs, (struct lysp_node *)mod2->notifs,
             1, diff), cleanup);
     LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r((struct lysp_node *)mod1->groupings,
-            (struct lysp_node *)mod2->groupings, 1, diff), cleanup);
+            (struct lysp_node *)mod2->groupings, 0, diff), cleanup);
     LY_CHECK_GOTO(rc = schema_diff_pnodes_change_r((struct lysp_node *)mod1->augments,
             (struct lysp_node *)mod2->augments, 1, diff), cleanup);
 

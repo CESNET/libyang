@@ -63,6 +63,26 @@
                 "conformance": "backwards-compatible"
               }
             ]
+          },
+          {
+            "parent-path": "/{grp=local-group}",
+            "identifier": "l1",
+            "stmt-type": "leaf",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "type": {
+                "name": "string",
+                "length": {
+                  "restriction": "1..20"
+                }
+              }
+            }
           }
         ]
       }
