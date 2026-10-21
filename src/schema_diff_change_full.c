@@ -1169,6 +1169,7 @@ schema_diff_node_change(const struct lysc_node *node1, const struct lysc_node *n
     const struct lysc_node_choice *choic1, *choic2;
     const struct lysp_node *pnode1, *pnode2;
     const struct lysc_when *when1, *when2;
+    const struct lysp_qname *iffs1, *iffs2;
 
     if (!node1) {
         /* node added change */
@@ -1204,9 +1205,10 @@ schema_diff_node_change(const struct lysc_node *node1, const struct lysc_node *n
             changes));
 
     if (diff->gen_local) {
-        /* if-features */
-        LY_CHECK_RET(schema_diff_iffeatures_change(((struct lysp_node *)node1->priv)->iffeatures, node1->flags,
-                ((struct lysp_node *)node2->priv)->iffeatures, LYS_CHANGED_NODE, changes));
+        /* if-features, shorthand case has no parsed node */
+        iffs1 = node1->priv ? ((struct lysp_node *)node1->priv)->iffeatures : NULL;
+        iffs2 = node2->priv ? ((struct lysp_node *)node2->priv)->iffeatures : NULL;
+        LY_CHECK_RET(schema_diff_iffeatures_change(iffs1, node1->flags, iffs2, LYS_CHANGED_NODE, changes));
     }
 
     /* status */
@@ -1227,7 +1229,7 @@ schema_diff_node_change(const struct lysc_node *node1, const struct lysc_node *n
     LY_CHECK_RET(schema_diff_node_when_change(when1, when2, LYS_CHANGED_NONE, changes, ext_changes, diff));
 
     /* ... in the parent augment or uses */
-    if (pnode1->parent && pnode2->parent && (pnode1->parent->nodetype == pnode2->parent->nodetype) &&
+    if (pnode1 && pnode1->parent && pnode2 && pnode2->parent && (pnode1->parent->nodetype == pnode2->parent->nodetype) &&
             (pnode1->parent->nodetype & (LYS_AUGMENT | LYS_USES))) {
         when1 = schema_diff_find_when(lysp_node_when(pnode1->parent), lysc_node_when(node1));
         when2 = schema_diff_find_when(lysp_node_when(pnode2->parent), lysc_node_when(node2));
