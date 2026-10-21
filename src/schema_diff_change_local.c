@@ -170,10 +170,10 @@ schema_diff_add_extension_change(const struct lysp_ext *extension_old, const str
 /**
  * @brief Add a new feature change pair.
  *
- * @param[in] feat_old Old changed identity.
- * @param[in] feat_new New changed identity.
+ * @param[in] feat_old Old changed feature.
+ * @param[in] feat_new New changed feature.
  * @param[in,out] diff Diff to use and add to.
- * @param[out] feat_change Added identity change structure.
+ * @param[out] feat_change Added feature change structure.
  * @return LY_ERR value.
  */
 static LY_ERR
@@ -208,7 +208,7 @@ schema_diff_add_feat_change(const struct lysp_feature *feat_old, const struct ly
  * @param[in] dev_old Old changed deviation.
  * @param[in] dev_new New changed devation.
  * @param[in,out] diff Diff to use and add to.
- * @param[out] ident_change Added identity change structure.
+ * @param[out] dev_change Added deviation change structure.
  * @return LY_ERR value.
  */
 static LY_ERR
