@@ -1496,7 +1496,7 @@ cleanup:
 }
 
 /**
- * @brief Create cmp YANG data from a 'status'.
+ * @brief Create cmp YANG data for a 'status'.
  *
  * @param[in] flags Flags to use.
  * @param[in,out] parent Node to append to.
