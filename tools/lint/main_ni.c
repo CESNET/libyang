@@ -5,7 +5,7 @@
  * @author Adam Piecek <piecek@cesnet.cz>
  * @brief libyang's yanglint tool - non-interactive code
  *
- * Copyright (c) 2020 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@
 #include <string.h>
 #include <strings.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "libyang.h"
 
@@ -886,6 +887,10 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
     search_path = getenv("YANGLINT_INTERNAL_MODULES_DIR");
     if (!search_path) {
         search_path = ly_yang_module_dir();
+        if (access(search_path, F_OK)) {
+            /* assume running in local build */
+            search_path = "../modules";
+        }
     }
     if (searchpath_strcat(&yo->searchpaths, search_path)) {
         return -1;
