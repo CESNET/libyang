@@ -876,7 +876,7 @@ schema_diff_ptype_bases_change(const char **bases1, const char **bases2, struct 
             /* removed */
             LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_REMOVED, LYS_CHANGED_TYPEDEF, LYS_CHANGED_BASE,
                     LYS_CONFORM_BC, changes), cleanup);
-        } else if (!strcmp(bases1[u], bases2[v])) {
+        } else if (strcmp(bases1[u], bases2[v])) {
             /* editorial prefix change */
             LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_MODIFIED, LYS_CHANGED_BASE, LYS_CHANGED_NAME,
                     LYS_CONFORM_ED, changes), cleanup);
