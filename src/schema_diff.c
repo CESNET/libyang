@@ -536,6 +536,20 @@ schema_diff_module_identities_change(const struct lysc_ident *idents1, const str
 
             /* bases */
             LY_CHECK_GOTO(rc = schema_diff_module_identity_bases_change(parent_changed, ident_change), cleanup);
+
+            /* description */
+            LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, ident_change->p_ident_old->dsc,
+                    ident_change->p_ident_new->dsc, ident_change->p_ident_new->exts, LY_STMT_DESCRIPTION,
+                    LYS_CHANGED_IDENT, &ident_change->changes), cleanup);
+
+            /* reference */
+            LY_CHECK_GOTO(rc = schema_diff_pnode_text(diff->ctx, ident_change->p_ident_old->ref,
+                    ident_change->p_ident_new->ref, ident_change->p_ident_new->exts, LY_STMT_REFERENCE,
+                    LYS_CHANGED_IDENT, &ident_change->changes), cleanup);
+
+            /* status */
+            LY_CHECK_GOTO(rc = schema_diff_status_change(ident_change->p_ident_old->flags,
+                    ident_change->p_ident_new->flags, LYS_CHANGED_IDENT, &ident_change->changes), cleanup);
         }
 
         /* ext-instance */

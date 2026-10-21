@@ -539,19 +539,7 @@ cleanup:
     return rc;
 }
 
-/**
- * @brief Check changes of a parsed text statement such as 'description' or 'reference'.
- *
- * @param[in] ctx Context to use.
- * @param[in] text1 First description.
- * @param[in] text2 Second description.
- * @param[in] exts2 Parsed extension instances of the second statement.
- * @param[in] stmt Changed statement.
- * @param[in] parent_changed Parent statement of the change.
- * @param[in,out] changes Changes to add to.
- * @return LY_ERR value.
- */
-static LY_ERR
+LY_ERR
 schema_diff_pnode_text(const struct ly_ctx *ctx, const char *text1, const char *text2, const struct lysp_ext_instance *exts2,
         enum ly_stmt stmt, enum lys_diff_changed_e parent_changed, struct lys_diff_changes_s *changes)
 {
