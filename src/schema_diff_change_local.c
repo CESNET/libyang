@@ -675,6 +675,13 @@ schema_diff_parsed_restrs_change(const struct lysp_restr *restrs1, const struct 
     LYA_COUNT_T u, v;
     ly_bool found, *restr2_found = NULL;
 
+    if ((LYA_COUNT(restrs1) == 1) && (LYA_COUNT(restrs2) == 1)) {
+        /* special common case, consider modified if differ */
+        LY_CHECK_GOTO(rc = schema_diff_parsed_restr_change(restrs1, NULL, restrs2, NULL, changed, parent_changed,
+                changes, ext_changes, diff), cleanup);
+        goto cleanup;
+    }
+
     if (restrs2) {
         /* prepare array for marking found bases */
         restr2_found = calloc(LYA_COUNT(restrs2), sizeof *restr2_found);
@@ -706,15 +713,8 @@ schema_diff_parsed_restrs_change(const struct lysp_restr *restrs1, const struct 
             }
         }
 
-        if (!found) {
-            /* removed */
-            LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, changed, LYS_CONFORM_BC,
-                    changes), cleanup);
-            continue;
-        }
-
         /* restriction */
-        LY_CHECK_GOTO(rc = schema_diff_parsed_restr_change(&restrs1[u], NULL, &restrs2[v], NULL, changed,
+        LY_CHECK_GOTO(rc = schema_diff_parsed_restr_change(&restrs1[u], NULL, found ? &restrs2[v] : NULL, NULL, changed,
                 parent_changed, changes, ext_changes, diff), cleanup);
     }
 
@@ -723,9 +723,9 @@ schema_diff_parsed_restrs_change(const struct lysp_restr *restrs1, const struct 
             continue;
         }
 
-        /* added */
-        LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, changed, LYS_CONFORM_NBC, changes),
-                cleanup);
+        /* restriction */
+        LY_CHECK_GOTO(rc = schema_diff_parsed_restr_change(NULL, NULL, &restrs2[v], NULL, changed, parent_changed,
+                changes, ext_changes, diff), cleanup);
     }
 
 cleanup:

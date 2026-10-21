@@ -206,6 +206,68 @@ schema_diff_text(const char *text1, const char *text2, const struct lysc_ext_ins
 }
 
 /**
+ * @brief Check changes of a 'must'.
+ *
+ * @param[in] must1 First must.
+ * @param[in] must2 Second must.
+ * @param[in] parent_changed Parent statement of the change.
+ * @param[in,out] changes Changes to add to.
+ * @param[in,out] ext_changes Ext-instance changes to add to.
+ * @param[in,out] diff Diff to use.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+schema_diff_node_must_change(const struct lysc_must *must1, const struct lysc_must *must2,
+        enum lys_diff_changed_e parent_changed, struct lys_diff_changes_s *changes,
+        struct lys_diff_ext_changes_s *ext_changes, struct lys_diff_s *diff)
+{
+    LY_ERR rc = LY_SUCCESS;
+    enum lys_diff_conform_e conform;
+
+    if (!must1 && !must2) {
+        /* no changes */
+        goto cleanup;
+    } else if (!must2) {
+        /* removed */
+        rc = schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, LYS_CHANGED_MUST, LYS_CONFORM_BC, changes);
+        goto cleanup;
+    } else if (!must1) {
+        /* learn conformance */
+        conform = schema_diff_exts_conform(must2->exts, LY_STMT_MUST, LYS_CONFORM_NBC, NULL);
+
+        /* added */
+        rc = schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, LYS_CHANGED_MUST, conform, changes);
+        goto cleanup;
+    }
+
+    /* condition */
+    if (strcmp(lyxp_get_expr(must1->cond), lyxp_get_expr(must2->cond))) {
+        /* learn conformance */
+        conform = schema_diff_exts_conform(must2->exts, LY_STMT_MUST, LYS_CONFORM_NBC, NULL);
+
+        /* modified */
+        LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_MODIFIED, parent_changed, LYS_CHANGED_MUST, conform, changes),
+                cleanup);
+    }
+
+    /* description, reference, error-message, error-app-tag */
+    LY_CHECK_GOTO(rc = schema_diff_text(must1->dsc, must2->dsc, must2->exts, LY_STMT_DESCRIPTION, LYS_CHANGED_MUST,
+            changes), cleanup);
+    LY_CHECK_GOTO(rc = schema_diff_text(must1->ref, must2->ref, must2->exts, LY_STMT_REFERENCE, LYS_CHANGED_MUST,
+            changes), cleanup);
+    LY_CHECK_GOTO(rc = schema_diff_text_nbc(must1->emsg, must2->emsg, LYS_CHANGED_MUST, LYS_CHANGED_ERR_MSG, changes),
+            cleanup);
+    LY_CHECK_GOTO(rc = schema_diff_text_nbc(must1->eapptag, must2->eapptag, LYS_CHANGED_MUST, LYS_CHANGED_ERR_APP_TAG,
+            changes), cleanup);
+
+    /* ext-instance */
+    LY_CHECK_GOTO(rc = schema_diff_ext_insts_change(must1->exts, must2->exts, ext_changes, diff), cleanup);
+
+cleanup:
+    return rc;
+}
+
+/**
  * @brief Check changes of 'must' arrays.
  *
  * @param[in] musts1 First must array.
@@ -224,6 +286,12 @@ schema_diff_node_musts_change(const struct lysc_must *musts1, const struct lysc_
     LY_ERR rc = LY_SUCCESS;
     LYA_COUNT_T u, v;
     ly_bool found, *must2_found = NULL;
+
+    if ((LYA_COUNT(musts1) == 1) && (LYA_COUNT(musts2) == 1)) {
+        /* special common case, consider modified if differ */
+        LY_CHECK_GOTO(rc = schema_diff_node_must_change(musts1, musts2, parent_changed, changes, ext_changes, diff), cleanup);
+        goto cleanup;
+    }
 
     /* prepare array for marking found musts */
     must2_found = calloc(LYA_COUNT(musts2), sizeof *must2_found);
@@ -244,25 +312,10 @@ schema_diff_node_musts_change(const struct lysc_must *musts1, const struct lysc_
                 break;
             }
         }
-        if (!found) {
-            /* removed */
-            LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_REMOVED, parent_changed, LYS_CHANGED_MUST,
-                    LYS_CONFORM_BC, changes), cleanup);
-            continue;
-        }
 
-        /* description, reference, error-message, error-app-tag */
-        LY_CHECK_GOTO(rc = schema_diff_text(musts1[u].dsc, musts2[v].dsc, musts2[v].exts, LY_STMT_DESCRIPTION,
-                LYS_CHANGED_MUST, changes), cleanup);
-        LY_CHECK_GOTO(rc = schema_diff_text(musts1[u].ref, musts2[v].ref, musts2[v].exts, LY_STMT_REFERENCE,
-                LYS_CHANGED_MUST, changes), cleanup);
-        LY_CHECK_GOTO(rc = schema_diff_text_nbc(musts1[u].emsg, musts2[v].emsg, LYS_CHANGED_MUST, LYS_CHANGED_ERR_MSG,
-                changes), cleanup);
-        LY_CHECK_GOTO(rc = schema_diff_text_nbc(musts1[u].eapptag, musts2[v].eapptag, LYS_CHANGED_MUST,
-                LYS_CHANGED_ERR_APP_TAG, changes), cleanup);
-
-        /* ext-instance */
-        LY_CHECK_GOTO(rc = schema_diff_ext_insts_change(musts1[u].exts, musts2[v].exts, ext_changes, diff), cleanup);
+        /* must */
+        LY_CHECK_GOTO(rc = schema_diff_node_must_change(&musts1[u], found ? &musts2[v] : NULL, parent_changed, changes,
+                ext_changes, diff), cleanup);
     }
 
     LYA_FOR(musts2, v) {
@@ -270,9 +323,9 @@ schema_diff_node_musts_change(const struct lysc_must *musts1, const struct lysc_
             continue;
         }
 
-        /* added, detect compatibility by the extension presence */
-        LY_CHECK_GOTO(rc = schema_diff_add_change(LYS_CHANGE_ADDED, parent_changed, LYS_CHANGED_MUST,
-                schema_diff_exts_conform(musts2[v].exts, LY_STMT_MUST, LYS_CONFORM_NBC, NULL), changes), cleanup);
+        /* must */
+        LY_CHECK_GOTO(rc = schema_diff_node_must_change(NULL, &musts2[v], parent_changed, changes, ext_changes, diff),
+                cleanup);
     }
 
 cleanup:
