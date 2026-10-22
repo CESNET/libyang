@@ -2535,7 +2535,6 @@ test_type_exts(void **state)
 static void
 test_status(void **state)
 {
-
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;"
             "container c {status deprecated; leaf l {status current; type string;}}}", LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Status \"current\" of \"l\" is in conflict with \"deprecated\" status of parent \"c\".", "/aa:c/l", 0);
@@ -2549,10 +2548,15 @@ test_status(void **state)
     CHECK_LOG_CTX("Status \"deprecated\" of \"l\" is in conflict with \"obsolete\" status of parent \"c\".", "/cc:c/l", 0);
 
     /* just a warning */
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:dd;prefix d;"
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix d;"
             "container c {leaf l {status obsolete; type string;}}"
             "container d {leaf m {when \"../../c/l\"; type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("When condition \"../../c/l\" may be referencing deprecated node \"l\".", NULL, 0);
+    CHECK_LOG_CTX("When condition \"../../c/l\" is referencing an obsoleted node \"l\".", NULL, 0);
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module dd {yang-version 1.1; namespace urn:dd;prefix d;"
+            "container c {leaf l {status obsolete; type uint8;} leaf m {type uint8; must \"../d:l = 1\";}}}",
+            LYS_IN_YANG, NULL));
+    CHECK_LOG_CTX("Must condition \"../d:l = 1\" is referencing an obsoleted node \"l\".", NULL, 0);
 }
 
 static void

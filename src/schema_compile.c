@@ -631,8 +631,8 @@ lys_compile_unres_when(struct lysc_ctx *ctx, const struct lysc_when *when, const
         /* XPath expression cannot reference "lower" status than the node that has the definition */
         if (lysc_check_status(NULL, NULL, when->flags, node->module, node->name, schema->flags, schema->module,
                 schema->name)) {
-            LOGWRN(ctx->ctx, "When condition \"%s\" may be referencing %s node \"%s\".", when->cond->expr,
-                    (schema->flags == LYS_STATUS_OBSLT) ? "obsolete" : "deprecated", schema->name);
+            LOGWRN(ctx->ctx, "When condition \"%s\" is referencing %s node \"%s\".", when->cond->expr,
+                    (schema->flags & LYS_STATUS_OBSLT) ? "an obsoleted" : "a deprecated", schema->name);
         }
 
         /* check dummy node children/value accessing */
@@ -729,8 +729,8 @@ lys_compile_unres_must(struct lysc_ctx *ctx, const struct lysc_node *node, const
                 }
                 if (lysc_check_status(NULL, NULL, flg, local_mods[u]->mod, node->name, schema->flags, schema->module,
                         schema->name)) {
-                    LOGWRN(ctx->ctx, "Must condition \"%s\" may be referencing %s node \"%s\".", musts[u].cond->expr,
-                            (schema->flags == LYS_STATUS_OBSLT) ? "obsolete" : "deprecated", schema->name);
+                    LOGWRN(ctx->ctx, "Must condition \"%s\" is referencing %s node \"%s\".", musts[u].cond->expr,
+                            (schema->flags & LYS_STATUS_OBSLT) ? "an obsoleted" : "a deprecated", schema->name);
                     break;
                 }
             }
