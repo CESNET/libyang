@@ -133,12 +133,11 @@ lycbor_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lycbor_ctx **c
     cborctx->cbor_data = cbor_load((cbor_data)in->current, in->length, &result);
     if (!cborctx->cbor_data) {
         LOGVAL(ctx, NULL, LYVE_SYNTAX, "Failed to parse CBOR data (%s).", lycbor_strerror(result.error.code));
-        free(cborctx);
+        lycbor_ctx_free(cborctx);
         return LY_EVALID;
     } else if (result.error.code != CBOR_ERR_NONE) {
         LOGVAL(ctx, NULL, LYVE_SYNTAX, "CBOR parsing error (%s).", lycbor_strerror(result.error.code));
-        cbor_decref(&cborctx->cbor_data);
-        free(cborctx);
+        lycbor_ctx_free(cborctx);
         return LY_EVALID;
     }
 
