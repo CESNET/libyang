@@ -887,8 +887,8 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
     search_path = getenv("YANGLINT_INTERNAL_MODULES_DIR");
     if (!search_path) {
         search_path = ly_yang_module_dir();
-        if (access(search_path, F_OK)) {
-            /* assume running in local build */
+        if (access(search_path, F_OK) && !access("../modules", F_OK)) {
+            /* running in local build */
             search_path = "../modules";
         }
     }

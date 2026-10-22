@@ -63,8 +63,8 @@ main(int argc, char *argv[])
     search_dir = getenv("YANGLINT_INTERNAL_MODULES_DIR");
     if (!search_dir) {
         search_dir = ly_yang_module_dir();
-        if (access(search_dir, F_OK)) {
-            /* assume running in local build */
+        if (access(search_dir, F_OK) && !access("../modules", F_OK)) {
+            /* running in local build */
             search_dir = "../modules";
         }
     }
