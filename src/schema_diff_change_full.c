@@ -1250,6 +1250,7 @@ schema_diff_node_change(const struct lysc_node *node1, const struct lysc_node *n
             pterm1 = node1->priv;
             pterm2 = node2->priv;
 
+            assert(pterm1 && pterm2);
             LY_CHECK_RET(schema_diff_ptype_change(&pterm1->type, &pterm1->node, &pterm2->type, &pterm2->node,
                     LYS_CHANGED_NONE, changes, pext_changes, diff));
         }
