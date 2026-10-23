@@ -109,7 +109,7 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
     if (!(options & LYPLG_TYPE_STORE_ONLY)) {
         /* validate value */
         ret = lyplg_type_validate_patterns(ctx, ((struct lysc_type_str *)type)->patterns, value, value_size, err);
-        LY_CHECK_RET(ret);
+        LY_CHECK_GOTO(ret, cleanup);
     }
 
     /* convert to UNIX time and fractions of second */
