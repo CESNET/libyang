@@ -134,11 +134,22 @@ test_data_xml(void **state)
             "(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\".",
             "/a:l", 1);
 
+    /* invalid value in a dynamic buffer (entity reference) */
+    TEST_ERROR_XML("a", "l", "2005-05-31T23:15:15&amp;", LY_EVALID);
+    CHECK_LOG_CTX("Unsatisfied pattern - \"2005-05-31T23:15:15&\" does not match "
+            "\"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)"
+            "(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\".",
+            "/a:l", 1);
+
     /* date */
     TEST_SUCCESS_XML("a", "l2", "2005-05-31-01:00", STRING, "2005-05-30-02:00");
 #ifndef _WIN32
     TEST_SUCCESS_XML("a", "l2", "1950-01-01-02:00", STRING, "1950-01-01-02:00");
 #endif
+    TEST_ERROR_XML("a", "l2", "2005-05-31&amp;", LY_EVALID);
+    CHECK_LOG_CTX("Unsatisfied pattern - \"2005-05-31&\" does not match "
+            "\"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\".",
+            "/a:l2", 1);
 
     /* date-no-zone */
     TEST_SUCCESS_XML("a", "l2nz", "2005-05-31", STRING, "2005-05-31");
@@ -149,6 +160,10 @@ test_data_xml(void **state)
     /* time */
     TEST_SUCCESS_XML("a", "l4", "23:15:15-01:00", STRING, "22:15:15-02:00");
     TEST_SUCCESS_XML("a", "l4", "00:59:59.001-02:00", STRING, "00:59:59.001-02:00");
+    TEST_ERROR_XML("a", "l4", "23:15:15&amp;", LY_EVALID);
+    CHECK_LOG_CTX("Unsatisfied pattern - \"23:15:15&\" does not match "
+            "\"(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\".",
+            "/a:l4", 1);
 
     /* time-no-zone */
     TEST_SUCCESS_XML("a", "l4nz", "23:15:15", STRING, "23:15:15");

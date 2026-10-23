@@ -127,7 +127,7 @@ lyplg_type_store_date(const struct ly_ctx *ctx, const struct lysc_type *type, co
     if (!(options & LYPLG_TYPE_STORE_ONLY)) {
         /* validate value */
         ret = lyplg_type_validate_patterns(ctx, ((struct lysc_type_str *)type)->patterns, value, value_size, err);
-        LY_CHECK_RET(ret);
+        LY_CHECK_GOTO(ret, cleanup);
     }
 
     if (val) {
