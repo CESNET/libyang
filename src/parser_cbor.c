@@ -381,15 +381,24 @@ lydcbor_item_to_string(const cbor_item_t *item, char **str_val, size_t *str_len)
         break;
     }
     case CBOR_TYPE_NEGINT: {
-        int64_t val = -1 - (int64_t)cbor_get_int(item);
-        int len = snprintf(NULL, 0, "%" PRId64, val);
+        /* the value is -1 - val, which does not fit into int64_t for val > INT64_MAX */
+        uint64_t val = cbor_get_int(item);
+        int len;
 
+        if (val == UINT64_MAX) {
+            *str_val = strdup("-18446744073709551616");
+            LY_CHECK_ERR_RET(!*str_val, LOGMEM(NULL), LY_EMEM);
+            *str_len = strlen(*str_val);
+            break;
+        }
+
+        len = snprintf(NULL, 0, "-%" PRIu64, val + 1);
         if (len < 0) {
             return LY_ESYS;
         }
         *str_val = malloc(len + 1);
         LY_CHECK_ERR_RET(!*str_val, LOGMEM(NULL), LY_EMEM);
-        sprintf(*str_val, "%" PRId64, val);
+        sprintf(*str_val, "-%" PRIu64, val + 1);
         *str_len = len;
         break;
     }

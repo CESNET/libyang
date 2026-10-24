@@ -408,6 +408,26 @@ test_invalid_input(void **state)
     CHECK_LOG_CTX("Value \"1000\" is out of type int8 min/max bounds.", "/cbor-test:lf-intg8", 0);
 }
 
+static void
+test_negint(void **state)
+{
+    struct lyd_node *tree;
+
+    /* {"cbor-test:lf-uintg8": -18446744073709551611} */
+    const char data1[] = "\xa1\x73" "cbor-test:lf-uintg8" "\x3b\xff\xff\xff\xff\xff\xff\xff\xfa";
+
+    /* {"cbor-test:lf-uintg8": -18446744073709551616} */
+    const char data2[] = "\xa1\x73" "cbor-test:lf-uintg8" "\x3b\xff\xff\xff\xff\xff\xff\xff\xff";
+
+    assert_int_equal(LY_EVALID, lyd_parse_data_mem_len(UTEST_LYCTX, data1, sizeof data1 - 1, LYD_CBOR, 0,
+            LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX("Value \"-18446744073709551611\" is out of type uint8 min/max bounds.", "/cbor-test:lf-uintg8", 1);
+
+    assert_int_equal(LY_EVALID, lyd_parse_data_mem_len(UTEST_LYCTX, data2, sizeof data2 - 1, LYD_CBOR, 0,
+            LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX("Invalid type uint8 value \"-18446744073709551616\".", "/cbor-test:lf-uintg8", 1);
+}
+
 int
 main(void)
 {
@@ -419,6 +439,7 @@ main(void)
         UTEST(test_opaque, setup),
         UTEST(test_attributes, setup),
         UTEST(test_invalid_input, setup),
+        UTEST(test_negint, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
