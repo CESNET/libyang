@@ -438,6 +438,12 @@ test_invalid_input(void **state)
     CHECK_PARSE_LYD_PARAM_LEN("\xa1", 1, LYD_CBOR, 0, 0, LY_EVALID, tree);
     CHECK_LOG_CTX("Failed to parse CBOR data (not enough data).", NULL, 1);
 
+    /* text strings must be checked for invalid characters like in JSON and XML */
+    CHECK_PARSE_LYD_PARAM_LEN("\xa1\x70" "cbor-test:lf-str" "\x65" "ab\0cd", 24, LYD_CBOR, LYD_PARSE_ONLY, 0,
+            LY_EVALID, tree);
+    CHECK_PARSE_LYD_PARAM_LEN("\xa1\x70" "cbor-test:lf-str" "\x62" "a\xff", 21, LYD_CBOR, LYD_PARSE_ONLY, 0,
+            LY_EVALID, tree);
+
     assert_int_equal(LY_EVALID, lyd_new_path(NULL, UTEST_LYCTX, "/cbor-test:lf-intg8", "1000", 0, &tree));
     CHECK_LOG_CTX("Value \"1000\" is out of type int8 min/max bounds.", "/cbor-test:lf-intg8", 0);
 }
