@@ -350,6 +350,30 @@ lydcbor_value_type_hint(struct lyd_cbor_ctx *lydctx, const cbor_item_t *item, ui
 }
 
 /**
+ * @brief Check that a CBOR string contains only valid YANG string characters.
+ *
+ * @param[in] str String to check.
+ * @param[in] str_len Length of @p str.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lydcbor_check_string(const char *str, size_t str_len)
+{
+    size_t parsed = 0;
+    uint32_t len;
+
+    while (parsed < str_len) {
+        if (ly_checkutf8(str + parsed, str_len - parsed, &len)) {
+            LOGVAL(NULL, NULL, LY_VCODE_INCHAR, str[parsed]);
+            return LY_EVALID;
+        }
+        parsed += len;
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Convert a CBOR item to a string representation.
  *
  * @param[in] item CBOR item to convert.
@@ -399,6 +423,7 @@ lydcbor_item_to_string(const cbor_item_t *item, char **str_val, size_t *str_len)
         LY_CHECK_ERR_RET(!*str_val, LOGMEM(NULL), LY_EMEM);
         memcpy(*str_val, cbor_bytestring_handle(item), *str_len);
         (*str_val)[*str_len] = '\0';
+        LY_CHECK_ERR_RET(lydcbor_check_string(*str_val, *str_len), free(*str_val); *str_val = NULL, LY_EVALID);
         break;
     case CBOR_TYPE_STRING:
         *str_len = cbor_string_length(item);
@@ -406,6 +431,7 @@ lydcbor_item_to_string(const cbor_item_t *item, char **str_val, size_t *str_len)
         LY_CHECK_ERR_RET(!*str_val, LOGMEM(NULL), LY_EMEM);
         memcpy(*str_val, cbor_string_handle(item), *str_len);
         (*str_val)[*str_len] = '\0';
+        LY_CHECK_ERR_RET(lydcbor_check_string(*str_val, *str_len), free(*str_val); *str_val = NULL, LY_EVALID);
         break;
     case CBOR_TYPE_FLOAT_CTRL:
         if (cbor_float_ctrl_is_ctrl(item)) {
