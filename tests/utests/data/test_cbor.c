@@ -366,6 +366,40 @@ test_opaque(void **state)
 }
 
 static void
+test_opaque_list(void **state)
+{
+    struct lyd_node *tree;
+    char *buffer, *json;
+    struct ly_out *out;
+    size_t i;
+
+    /* invalid leaf-list values are stored as opaque nodes, one and more instances */
+    const struct test_case tests[] = {
+        {"single",   "{\"cbor-test:ll-intg32\":[\"not a number\"]}"},
+        {"multiple", "{\"cbor-test:ll-intg32\":[\"x\",\"y\",\"z\"]}"},
+        {"nested",   "{\"cbor-test:list-nested\":[{\"id\":\"a\",\"inner\":[{\"iid\":1,\"vals\":[\"q\"]}]}]}"},
+    };
+
+    for (i = 0; i < sizeof tests / sizeof *tests; ++i) {
+        CHECK_PARSE_LYD_PARAM(tests[i].json, LYD_JSON, LYD_PARSE_ONLY | LYD_PARSE_OPAQ, 0, LY_SUCCESS, tree);
+
+        assert_int_equal(LY_SUCCESS, ly_out_new_memory(&buffer, 0, &out));
+        assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_CBOR, 0));
+        lyd_free_all(tree);
+
+        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, buffer, (uint32_t)ly_out_printed(out), LYD_CBOR,
+                LYD_PARSE_ONLY | LYD_PARSE_OPAQ, 0, &tree));
+        ly_out_free(out, NULL, 0);
+        free(buffer);
+
+        assert_int_equal(LY_SUCCESS, lyd_print_mem(&json, tree, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS));
+        assert_string_equal(json, tests[i].json);
+        free(json);
+        lyd_free_all(tree);
+    }
+}
+
+static void
 test_attributes(void **state)
 {
     struct lyd_node *tree;
@@ -437,6 +471,7 @@ main(void)
         UTEST(test_operations, setup),
         UTEST(test_schema_mount, setup),
         UTEST(test_opaque, setup),
+        UTEST(test_opaque_list, setup),
         UTEST(test_attributes, setup),
         UTEST(test_invalid_input, setup),
         UTEST(test_negint, setup),
