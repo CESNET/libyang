@@ -599,7 +599,7 @@ typedef enum {
     LYD_XML,             /**< XML instance data format */
     LYD_JSON,            /**< JSON instance data format */
     LYD_LYB,              /**< LYB instance data format */
-    LYD_CBOR            /**< CBOR instance data format */
+    LYD_CBOR            /**< CBOR instance data format, available only if LY_HAVE_CBOR is defined */
 } LYD_FORMAT;
 
 /** @} */

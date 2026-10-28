@@ -89,4 +89,7 @@
 /** regex.h BSD flag */
 #cmakedefine HAVE_REG_STARTEND
 
+/** libyang built with CBOR support (libcbor), ::LYD_CBOR is usable */
+#cmakedefine LY_HAVE_CBOR
+
 #endif /* LY_CONFIG_H_ */
