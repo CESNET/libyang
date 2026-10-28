@@ -447,7 +447,7 @@ test_restconf_notification(void **state)
 static void
 test_restconf_notification_invalid(void **state)
 {
-    struct lyd_node *tree, *ntf;
+    struct lyd_node *tree, *ntf, *rpc;
     struct ly_in *in;
     uint32_t i;
 
@@ -506,6 +506,15 @@ test_restconf_notification_invalid(void **state)
     assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_CBOR, LYD_TYPE_NOTIF_RESTCONF, 0, &tree, &ntf));
     CHECK_LOG_CTX("Failed to parse CBOR data (unknown data length).", NULL, 0);
     ly_in_free(in, 0);
+
+    /* RESTCONF RPC is not supported in CBOR */
+    assert_int_equal(LY_SUCCESS, lyd_new_inner(NULL, ly_ctx_get_module_implemented(UTEST_LYCTX, "cbor-test"),
+            "rpc-reset", 0, &rpc));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(tests[0].data, strlen(tests[0].data), &in));
+    assert_int_equal(LY_EINVAL, lyd_parse_op(UTEST_LYCTX, rpc, in, LYD_CBOR, LYD_TYPE_RPC_RESTCONF, 0, &tree, NULL));
+    CHECK_LOG_CTX("Invalid argument (format == LYD_XML) || (format == LYD_JSON) (lyd_parse_op()).", NULL, 0);
+    ly_in_free(in, 0);
+    lyd_free_tree(rpc);
 }
 
 int
