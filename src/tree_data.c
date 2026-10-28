@@ -134,7 +134,7 @@ lyd_parse(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **f
     case LYD_LYB:
         r = lyd_parse_lyb(ctx, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed, &lydctx);
         break;
-#ifdef ENABLE_CBOR_SUPPORT
+#ifdef LY_HAVE_CBOR
     case LYD_CBOR:
         r = lyd_parse_cbor(ctx, NULL, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed, NULL, &lydctx);
         break;
@@ -143,7 +143,7 @@ lyd_parse(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **f
         LOGARG(ctx, format);
         r = LY_EINVAL;
         break;
-#endif /* ENABLE_CBOR_SUPPORT */
+#endif /* LY_HAVE_CBOR */
     case LYD_UNKNOWN:
         LOGARG(ctx, format);
         r = LY_EINVAL;
@@ -487,7 +487,7 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
     case LYD_LYB:
         rc = lyd_parse_lyb(ctx, parent, &first, in, parse_options, val_opts, int_opts, &parsed, &lydctx);
         break;
-#ifdef ENABLE_CBOR_SUPPORT
+#ifdef LY_HAVE_CBOR
     case LYD_CBOR:
         rc = lyd_parse_cbor(ctx, NULL, parent, &first, in, parse_options, val_opts, int_opts, &parsed, NULL, &lydctx);
         break;
@@ -496,7 +496,7 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
         LOGARG(ctx, format);
         rc = LY_EINVAL;
         break;
-#endif /* ENABLE_CBOR_SUPPORT */
+#endif /* LY_HAVE_CBOR */
     case LYD_UNKNOWN:
         LOGARG(ctx, format);
         rc = LY_EINVAL;
