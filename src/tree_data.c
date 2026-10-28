@@ -426,7 +426,7 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
         proto_msg = 1;
         break;
     case LYD_TYPE_NOTIF_RESTCONF:
-        LY_CHECK_ARG_RET(ctx, format == LYD_JSON, !parent, tree, op, LY_EINVAL);
+        LY_CHECK_ARG_RET(ctx, (format == LYD_JSON) || (format == LYD_CBOR), !parent, tree, op, LY_EINVAL);
         proto_msg = 1;
         break;
 
@@ -451,9 +451,17 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
         if (format == LYD_XML) {
             /* parse the NETCONF (or RESTCONF XML) message */
             rc = lyd_parse_xml_netconf(ctx, parent, &first, in, parse_options, val_opts, data_type, &envp, &parsed, &lydctx);
-        } else {
+        } else if (format == LYD_JSON) {
             /* parse the RESTCONF message */
             rc = lyd_parse_json_restconf(ctx, parent, &first, in, parse_options, val_opts, data_type, &envp, &parsed, &lydctx);
+        } else {
+#ifdef LY_HAVE_CBOR
+            /* parse the RESTCONF CBOR notification */
+            rc = lyd_parse_cbor_restconf(ctx, in, parse_options, val_opts, &first, &envp, &parsed, &lydctx);
+#else
+            LOGARG(ctx, format);
+            rc = LY_EINVAL;
+#endif /* LY_HAVE_CBOR */
         }
         if (rc) {
             if (envp) {

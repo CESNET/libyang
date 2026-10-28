@@ -1392,6 +1392,12 @@ lydcbor_subtree_r(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, struct l
         /* process the node name */
         lydcbor_parse_name(key_str, key_len, &name, &name_len, &prefix, &prefix_len, &is_meta);
 
+        if ((lydctx->int_opts & LYD_INTOPT_EVENTTIME) && !parent && !is_meta && !prefix_len &&
+                !ly_strncmp("eventTime", name, name_len)) {
+            /* already parsed into the envelope by lyd_parse_cbor_restconf() */
+            continue;
+        }
+
         if (!is_meta || name_len || prefix_len) {
             /* get the schema node */
             r = lydcbor_get_snode(lydctx, is_meta, prefix, prefix_len, name, name_len, parent, &snode, &ext);
@@ -1637,6 +1643,121 @@ cleanup:
         lydctx = NULL;
     } else {
         *lydctx_p = (struct lyd_ctx *)lydctx;
+        lycbor_ctx_free(lydctx->cborctx);
+        lydctx->cborctx = NULL;
+    }
+    return rc;
+}
+
+LY_ERR
+lyd_parse_cbor_restconf(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts,
+        struct lyd_node **first_p, struct lyd_node **envp, struct ly_set *parsed, struct lyd_ctx **lydctx_p)
+{
+    LY_ERR r, rc = LY_SUCCESS;
+    struct lyd_cbor_ctx *lydctx = NULL;
+    const cbor_item_t *root, *notif, *event_time = NULL;
+    struct cbor_pair *pairs;
+    struct lyd_node *node;
+    char *str = NULL;
+    size_t str_len;
+    uint32_t i;
+
+    assert(ctx && in && first_p && envp && lydctx_p);
+
+    *envp = NULL;
+
+    rc = lyd_parse_cbor_init(ctx, in, parse_opts, val_opts, &lydctx);
+    LY_CHECK_GOTO(rc, cleanup);
+    lydctx->int_opts = LYD_INTOPT_WITH_SIBLINGS | LYD_INTOPT_NOTIF | LYD_INTOPT_EVENTTIME;
+
+    /* parse "notification" */
+    root = lydctx->cborctx->cbor_data;
+    pairs = cbor_map_handle(root);
+    if ((cbor_map_size(root) != 1) || !cbor_isa_string(pairs[0].key)) {
+        LOGVAL(ctx, NULL, LYVE_DATA, "Expected a single CBOR map member \"ietf-restconf:notification\".");
+        rc = LY_EVALID;
+        goto cleanup;
+    }
+    LY_CHECK_GOTO(rc = lydcbor_item_to_string(pairs[0].key, &str, &str_len), cleanup);
+    if (ly_strncmp("ietf-restconf:notification", str, str_len)) {
+        LOGVAL(ctx, NULL, LYVE_DATA, "Unexpected object \"%.*s\" instead of \"ietf-restconf:notification\".",
+                (int)str_len, str);
+        rc = LY_EVALID;
+        goto cleanup;
+    } else if (!cbor_isa_map(pairs[0].value)) {
+        LOGVAL(ctx, NULL, LYVE_SYNTAX, "Expecting CBOR %s but %s found.", lycbor_token2str(CBOR_TYPE_MAP),
+                lycbor_token2str(cbor_typeof(pairs[0].value)));
+        rc = LY_EVALID;
+        goto cleanup;
+    }
+    notif = pairs[0].value;
+
+    rc = lyd_create_opaq(ctx, "notification", 12, "ietf-restconf", 13, "ietf-restconf", 13, NULL, 0, NULL,
+            LY_VALUE_CBOR, NULL, LYD_VALHINT_STRING, envp);
+    LY_CHECK_GOTO(rc, cleanup);
+
+    /* find eventTime, it can be anywhere in the map */
+    pairs = cbor_map_handle(notif);
+    for (i = 0; i < cbor_map_size(notif); ++i) {
+        if (!cbor_isa_string(pairs[i].key)) {
+            continue;
+        }
+
+        free(str);
+        LY_CHECK_GOTO(rc = lydcbor_item_to_string(pairs[i].key, &str, &str_len), cleanup);
+        if (ly_strncmp("eventTime", str, str_len)) {
+            continue;
+        }
+
+        if (event_time) {
+            LOGVAL(ctx, NULL, LYVE_DATA, "Duplicate notification \"eventTime\" node.");
+            rc = LY_EVALID;
+            goto cleanup;
+        }
+        event_time = pairs[i].value;
+    }
+    if (!event_time) {
+        LOGVAL(ctx, NULL, LYVE_DATA, "Missing notification \"eventTime\" node.");
+        rc = LY_EVALID;
+        goto cleanup;
+    } else if (!cbor_isa_string(event_time)) {
+        LOGVAL(ctx, NULL, LYVE_SYNTAX, "Expecting CBOR %s but %s found.", lycbor_token2str(CBOR_TYPE_STRING),
+                lycbor_token2str(cbor_typeof(event_time)));
+        rc = LY_EVALID;
+        goto cleanup;
+    }
+
+    /* parse eventTime into the envelope */
+    free(str);
+    LY_CHECK_GOTO(rc = lydcbor_item_to_string(event_time, &str, &str_len), cleanup);
+    rc = lyd_create_opaq(ctx, "eventTime", 9, NULL, 0, NULL, 0, str, str_len, NULL, LY_VALUE_CBOR, NULL,
+            LYD_VALHINT_STRING, &node);
+    LY_CHECK_GOTO(rc, cleanup);
+    lyd_insert_child(*envp, node);
+    LY_CHECK_GOTO(rc = lyd_parser_notif_eventtime_validate(node), cleanup);
+
+    /* parse the notification */
+    r = lydcbor_subtree_r(lydctx, NULL, first_p, parsed, notif);
+    LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+
+    if (!lydctx->op_node) {
+        LOGVAL(ctx, NULL, LYVE_DATA, "Missing the operation node.");
+        r = LY_EVALID;
+        LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+    }
+
+    /* finish linking metadata */
+    r = lydcbor_metadata_finish(lydctx, first_p);
+    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+
+cleanup:
+    free(str);
+    if (rc) {
+        lyd_cbor_ctx_free((struct lyd_ctx *)lydctx);
+    } else {
+        *lydctx_p = (struct lyd_ctx *)lydctx;
+
+        /* the CBOR context is no more needed */
         lycbor_ctx_free(lydctx->cborctx);
         lydctx->cborctx = NULL;
     }

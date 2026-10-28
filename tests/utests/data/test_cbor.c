@@ -208,6 +208,8 @@ test_operations(void **state)
     const struct test_case tests[] = {
         {"rpc",          "{\"cbor-test:rpc-reset\":{\"lf1\":true}}"},
         {"notification", "{\"cbor-test:notif-alarm\":{\"lf-severity\":\"warning\",\"lf-message\":\"Something\"}}"},
+        {"notification-nested", "{\"cbor-test:list-user\":[{\"key-id\":1,\"notif-user\":{\"lf-reason\":\"x\"}}]}"},
+        {"notification-anydata", "{\"cbor-test:notif-alarm\":{\"anydata-payload\":{\"list-user\":[{\"key-id\":1}]}}}"},
     };
 
     for (i = 0; i < sizeof(tests) / sizeof(tests[0]); ++i) {
@@ -408,6 +410,104 @@ test_invalid_input(void **state)
     CHECK_LOG_CTX("Value \"1000\" is out of type int8 min/max bounds.", "/cbor-test:lf-intg8", 0);
 }
 
+/* CBOR RESTCONF notification envelope parts */
+#define CBOR_ENVP_KEY "\x78\x1a" "ietf-restconf:notification"
+#define CBOR_EVENT_TIME "\x69" "eventTime" "\x74" "2013-12-21T00:01:00Z"
+#define CBOR_NOTIF "\x75" "cbor-test:notif-alarm" "\xa1" "\x6a" "lf-message" "\x61" "m"
+
+static void
+test_restconf_notification(void **state)
+{
+    struct lyd_node *tree, *ntf;
+    struct ly_in *in;
+    uint32_t i;
+    const char *tests[] = {
+        /* eventTime first, as RFC 8040 shows it */
+        "\xa1" CBOR_ENVP_KEY "\xa2" CBOR_EVENT_TIME CBOR_NOTIF,
+        /* eventTime last, map members are unordered */
+        "\xa1" CBOR_ENVP_KEY "\xa2" CBOR_NOTIF CBOR_EVENT_TIME,
+        /* indefinite-length map, as the libyang CBOR printer encodes maps */
+        "\xa1" CBOR_ENVP_KEY "\xbf" CBOR_NOTIF CBOR_EVENT_TIME "\xff",
+    };
+
+    for (i = 0; i < sizeof tests / sizeof *tests; ++i) {
+        assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(tests[i], strlen(tests[i]), &in));
+        assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_CBOR, LYD_TYPE_NOTIF_RESTCONF,
+                LYD_PARSE_STRICT, &tree, &ntf));
+        ly_in_free(in, 0);
+
+        CHECK_LYD_STRING_PARAM(tree, "{\"ietf-restconf:notification\":{\"eventTime\":\"2013-12-21T00:01:00Z\"}}",
+                LYD_JSON, LYD_PRINT_SHRINK);
+        CHECK_LYD_STRING_PARAM(ntf, "{\"cbor-test:notif-alarm\":{\"lf-message\":\"m\"}}", LYD_JSON, LYD_PRINT_SHRINK);
+        lyd_free_all(tree);
+        lyd_free_all(ntf);
+    }
+}
+
+static void
+test_restconf_notification_invalid(void **state)
+{
+    struct lyd_node *tree, *ntf;
+    struct ly_in *in;
+    uint32_t i;
+
+    const struct {
+        const char *data;
+        const char *msg;
+        const char *path;
+    } tests[] = {
+        {
+            "\xa1" CBOR_NOTIF,
+            "Unexpected object \"cbor-test:notif-alarm\" instead of \"ietf-restconf:notification\".", NULL
+        },
+        {
+            "\xa2" CBOR_ENVP_KEY "\xa0" CBOR_NOTIF,
+            "Expected a single CBOR map member \"ietf-restconf:notification\".", NULL
+        },
+        {
+            "\xa1" CBOR_ENVP_KEY "\x01",
+            "Expecting CBOR map but unsigned integer found.", NULL
+        },
+        {
+            "\xa1" CBOR_ENVP_KEY "\xa1" CBOR_NOTIF,
+            "Missing notification \"eventTime\" node.", NULL
+        },
+        {
+            "\xa1" CBOR_ENVP_KEY "\xa2" "\x69" "eventTime" "\x01" CBOR_NOTIF,
+            "Expecting CBOR string but unsigned integer found.", NULL
+        },
+        {
+            "\xa1" CBOR_ENVP_KEY "\xa3" CBOR_EVENT_TIME CBOR_EVENT_TIME CBOR_NOTIF,
+            "Duplicate notification \"eventTime\" node.", NULL
+        },
+        {
+            "\xa1" CBOR_ENVP_KEY "\xa2" "\x69" "eventTime" "\x64" "2013" CBOR_NOTIF,
+            "Unsatisfied pattern - \"2013\" does not match \"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])"
+            "T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?"
+            "(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\".", "/yang:date-and-time"
+        },
+        {
+            "\xa1" CBOR_ENVP_KEY "\xa1" CBOR_EVENT_TIME,
+            "Missing the operation node.", NULL
+        },
+    };
+
+    for (i = 0; i < sizeof tests / sizeof *tests; ++i) {
+        assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(tests[i].data, strlen(tests[i].data), &in));
+        assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_CBOR, LYD_TYPE_NOTIF_RESTCONF, 0,
+                &tree, &ntf));
+        CHECK_LOG_CTX(tests[i].msg, tests[i].path, 1);
+        ly_in_free(in, 0);
+        lyd_free_all(tree);
+    }
+
+    /* unknown data length */
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(tests[0].data, &in));
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_CBOR, LYD_TYPE_NOTIF_RESTCONF, 0, &tree, &ntf));
+    CHECK_LOG_CTX("Failed to parse CBOR data (unknown data length).", NULL, 0);
+    ly_in_free(in, 0);
+}
+
 int
 main(void)
 {
@@ -419,6 +519,8 @@ main(void)
         UTEST(test_opaque, setup),
         UTEST(test_attributes, setup),
         UTEST(test_invalid_input, setup),
+        UTEST(test_restconf_notification, setup),
+        UTEST(test_restconf_notification_invalid, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

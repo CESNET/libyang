@@ -367,7 +367,7 @@ enum lyd_type {
 
     LYD_TYPE_RPC_RESTCONF,      /**< message-body of a RESTCONF operation input parameters
                                      ([ref](https://www.rfc-editor.org/rfc/rfc8040.html#section-3.6.1)) */
-    LYD_TYPE_NOTIF_RESTCONF,    /**< RESTCONF JSON notification data
+    LYD_TYPE_NOTIF_RESTCONF,    /**< RESTCONF JSON or CBOR notification data
                                      ([ref](https://www.rfc-editor.org/rfc/rfc8040.html#section-6.4)), to parse
                                      a notification in XML, use ::LYD_TYPE_NOTIF_NETCONF */
     LYD_TYPE_REPLY_RESTCONF     /**< message-body of a RESTCONF operation output parameters
@@ -413,8 +413,9 @@ enum lyd_type {
  *
  * - ::LYD_TYPE_NOTIF_RESTCONF:
  *   - @p parent - must be NULL, the whole notification is expected;
- *   - @p format - must be ::LYD_JSON, XML-formatted notifications are parsed using ::LYD_TYPE_NOTIF_NETCONF;
- *   - @p tree - must be provided, all the RESTCONF-specific JSON objects will be returned here as
+ *   - @p format - can be both ::LYD_JSON and ::LYD_CBOR, XML-formatted notifications are parsed using
+ *                 ::LYD_TYPE_NOTIF_NETCONF;
+ *   - @p tree - must be provided, all the RESTCONF-specific JSON/CBOR objects will be returned here as
  *               a separate opaque data tree, even if the function fails, this may be returned;
  *   - @p op - must be provided, the notification data tree itself will be returned here, pointing to the operation;
  *

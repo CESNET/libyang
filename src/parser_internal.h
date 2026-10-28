@@ -376,6 +376,22 @@ LY_ERR lyd_parse_cbor(const struct ly_ctx *ctx, const struct lysc_ext_instance *
         struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p);
 
 /**
+ * @brief Parse CBOR data as a RESTCONF notification.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] in Input structure.
+ * @param[in] parse_opts Options for parser, see @ref dataparseroptions.
+ * @param[in] val_opts Options for the validation phase, see @ref datavalidationoptions.
+ * @param[in,out] first_p Pointer to the first top-level parsed node.
+ * @param[out] envp Parsed envelope with eventTime, may be returned possibly even on an error.
+ * @param[out] parsed Set to add all the parsed siblings into.
+ * @param[out] lydctx_p Data parser context to finish validation.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_cbor_restconf(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts,
+        struct lyd_node **first_p, struct lyd_node **envp, struct ly_set *parsed, struct lyd_ctx **lydctx_p);
+
+/**
  * @brief Validate eventTime date-and-time value.
  *
  * @param[in] node Opaque eventTime node.
