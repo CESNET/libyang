@@ -422,7 +422,8 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
         break;
     case LYD_TYPE_RPC_RESTCONF:
     case LYD_TYPE_REPLY_RESTCONF:
-        LY_CHECK_ARG_RET(ctx, parent, parent->schema, parent->schema->nodetype & (LYS_RPC | LYS_ACTION), tree, !op, LY_EINVAL);
+        LY_CHECK_ARG_RET(ctx, (format == LYD_XML) || (format == LYD_JSON), parent, parent->schema,
+                parent->schema->nodetype & (LYS_RPC | LYS_ACTION), tree, !op, LY_EINVAL);
         proto_msg = 1;
         break;
     case LYD_TYPE_NOTIF_RESTCONF:
