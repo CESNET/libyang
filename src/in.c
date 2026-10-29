@@ -78,6 +78,7 @@ ly_in_reset(struct ly_in *in)
 
     in->current = in->func_start = in->start;
     in->line = 1;
+    in->peeked = 0;
     return LY_SUCCESS;
 }
 
@@ -131,6 +132,7 @@ ly_in_fd(struct ly_in *in, int fd)
         in->method.fd = fd;
         in->current = in->start = addr;
         in->line = 1;
+        in->peeked = 0;
         in->length = length;
         in->bounded = 1;
     }
@@ -223,6 +225,7 @@ ly_in_memory(struct ly_in *in, const char *str)
     if (str) {
         in->start = in->current = str;
         in->line = 1;
+        in->peeked = 0;
         in->length = 0;
         in->bounded = 0;
     }
@@ -242,6 +245,7 @@ ly_in_memory_chunk(struct ly_in *in, const void *mem, uint32_t mem_len)
     if (mem) {
         in->start = in->current = mem;
         in->line = 1;
+        in->peeked = 0;
         in->length = mem_len;
         in->bounded = 1;
     }

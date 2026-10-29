@@ -98,6 +98,34 @@ test_input_mem(void **UNUSED(state))
 }
 
 static void
+test_input_peek_reset(void **UNUSED(state))
+{
+    struct ly_in *in = NULL;
+    uint8_t peek;
+    char buf[3];
+
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory("abc", &in));
+
+    /* a byte peeked before ly_in_reset() is not read again */
+    assert_int_equal(LY_SUCCESS, ly_in_peek(in, &peek));
+    assert_int_equal('a', peek);
+    assert_int_equal(LY_SUCCESS, ly_in_reset(in));
+    assert_int_equal(LY_SUCCESS, ly_in_read(in, buf, 3));
+    assert_memory_equal("abc", buf, 3);
+
+    /* a byte peeked before the source is changed is not read from the new source */
+    assert_int_equal(LY_SUCCESS, ly_in_reset(in));
+    assert_int_equal(LY_SUCCESS, ly_in_peek(in, &peek));
+    assert_non_null(ly_in_memory(in, "xyz"));
+    assert_int_equal(LY_SUCCESS, ly_in_peek(in, &peek));
+    assert_int_equal('x', peek);
+    assert_int_equal(LY_SUCCESS, ly_in_read(in, buf, 3));
+    assert_memory_equal("xyz", buf, 3);
+
+    ly_in_free(in, 0);
+}
+
+static void
 test_input_fd(void **UNUSED(state))
 {
     struct ly_in *in = NULL;
@@ -401,6 +429,7 @@ main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_input_mem),
+        UTEST(test_input_peek_reset),
         UTEST(test_input_fd, setup_files, teardown_files),
         UTEST(test_input_file, setup_files, teardown_files),
         UTEST(test_input_filepath, setup_files, teardown_files),
