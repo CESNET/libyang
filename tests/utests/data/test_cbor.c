@@ -428,6 +428,9 @@ test_restconf_notification(void **state)
         "\xa1" CBOR_ENVP_KEY "\xa2" CBOR_NOTIF CBOR_EVENT_TIME,
         /* indefinite-length map, as the libyang CBOR printer encodes maps */
         "\xa1" CBOR_ENVP_KEY "\xbf" CBOR_NOTIF CBOR_EVENT_TIME "\xff",
+        /* indefinite-length strings */
+        "\xa1" "\x7f" "\x6e" "ietf-restconf:" "\x6c" "notification" "\xff"
+        "\xa2" "\x69" "eventTime" "\x7f" "\x6a" "2013-12-21" "\x6a" "T00:01:00Z" "\xff" CBOR_NOTIF,
     };
 
     for (i = 0; i < sizeof tests / sizeof *tests; ++i) {
