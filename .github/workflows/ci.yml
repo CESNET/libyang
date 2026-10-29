@@ -19,7 +19,7 @@ jobs:
         config:
           - {
             name: "Release, gcc",
-            os: "ubuntu-22.04",
+            os: "ubuntu-latest",
             build-type: "Release",
             cc: "gcc",
             options: "-DENABLE_TESTS=ON",
@@ -31,7 +31,7 @@ jobs:
           }
           - {
             name: "Release, clang",
-            os: "ubuntu-22.04",
+            os: "ubuntu-latest",
             build-type: "Release",
             cc: "clang",
             options: "-DENABLE_TESTS=ON",
@@ -42,7 +42,7 @@ jobs:
           }
           - {
             name: "Debug, gcc",
-            os: "ubuntu-22.04",
+            os: "ubuntu-latest",
             build-type: "Debug",
             cc: "gcc",
             options: "",
@@ -53,7 +53,7 @@ jobs:
           }
           - {
             name: "Debug, clang",
-            os: "ubuntu-22.04",
+            os: "ubuntu-latest",
             build-type: "Debug",
             cc: "clang",
             options: "",
@@ -76,7 +76,7 @@ jobs:
           }
           - {
             name: "ASAN and UBSAN",
-            os: "ubuntu-22.04",
+            os: "ubuntu-latest",
             build-type: "Debug",
             cc: "clang",
             options: "-DCMAKE_C_FLAGS=-fsanitize=address,undefined -DENABLE_TESTS=ON -DENABLE_VALGRIND_TESTS=OFF",
@@ -87,7 +87,7 @@ jobs:
           }
           - {
             name: "DEB Package",
-            os: "ubuntu-22.04",
+            os: "ubuntu-latest",
             build-type: "Release",
             cc: "gcc",
             options: "",
