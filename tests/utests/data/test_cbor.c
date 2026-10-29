@@ -450,6 +450,9 @@ test_invalid_input(void **state)
     CHECK_PARSE_LYD_PARAM_LEN("\xa1\x70" "cbor-test:lf-str" "\x62" "a\xff", 21, LYD_CBOR, LYD_PARSE_ONLY, 0,
             LY_EVALID, tree);
     CHECK_LOG_CTX("Invalid character 0xff.", "/cbor-test:lf-str", 1);
+    CHECK_PARSE_LYD_PARAM_LEN("\xa1\x70" "cbor-test:lf-str" "\x7f" "\x62" "ab" "\x63" "\0cd" "\xff", 27, LYD_CBOR,
+            LYD_PARSE_ONLY, 0, LY_EVALID, tree);
+    CHECK_LOG_CTX("Invalid character 0x0.", "/cbor-test:lf-str", 1);
 #endif
 
     assert_int_equal(LY_EVALID, lyd_new_path(NULL, UTEST_LYCTX, "/cbor-test:lf-intg8", "1000", 0, &tree));
@@ -494,6 +497,9 @@ test_restconf_notification(void **state)
         "\xa1" CBOR_ENVP_KEY "\xa2" CBOR_NOTIF CBOR_EVENT_TIME,
         /* indefinite-length map, as the libyang CBOR printer encodes maps */
         "\xa1" CBOR_ENVP_KEY "\xbf" CBOR_NOTIF CBOR_EVENT_TIME "\xff",
+        /* indefinite-length strings */
+        "\xa1" "\x7f" "\x6e" "ietf-restconf:" "\x6c" "notification" "\xff"
+        "\xa2" "\x69" "eventTime" "\x7f" "\x6a" "2013-12-21" "\x6a" "T00:01:00Z" "\xff" CBOR_NOTIF,
     };
 
     for (i = 0; i < sizeof tests / sizeof *tests; ++i) {

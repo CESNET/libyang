@@ -375,6 +375,50 @@ lydcbor_check_string(const struct ly_ctx *ctx, const char *str, size_t str_len)
 }
 
 /**
+ * @brief Concatenate the chunks of an indefinite-length CBOR text or byte string.
+ *
+ * @param[in] ctx Context for logging.
+ * @param[in] item Indefinite-length string item.
+ * @param[out] str_val String value (allocated, caller must free).
+ * @param[out] str_len String length.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lydcbor_chunks_to_string(const struct ly_ctx *ctx, const cbor_item_t *item, char **str_val, size_t *str_len)
+{
+    ly_bool text = cbor_isa_string(item);
+    cbor_item_t **chunks;
+    uint32_t i, count;
+    size_t len;
+
+    chunks = text ? cbor_string_chunks_handle(item) : cbor_bytestring_chunks_handle(item);
+    count = (uint32_t)(text ? cbor_string_chunk_count(item) : cbor_bytestring_chunk_count(item));
+
+    /* total length */
+    for (i = 0; i < count; ++i) {
+        *str_len += text ? cbor_string_length(chunks[i]) : cbor_bytestring_length(chunks[i]);
+    }
+
+    *str_val = malloc(*str_len + 1);
+    LY_CHECK_ERR_RET(!*str_val, LOGMEM(ctx), LY_EMEM);
+
+    /* copy the chunks */
+    len = 0;
+    for (i = 0; i < count; ++i) {
+        if (text) {
+            memcpy(*str_val + len, cbor_string_handle(chunks[i]), cbor_string_length(chunks[i]));
+            len += cbor_string_length(chunks[i]);
+        } else {
+            memcpy(*str_val + len, cbor_bytestring_handle(chunks[i]), cbor_bytestring_length(chunks[i]));
+            len += cbor_bytestring_length(chunks[i]);
+        }
+    }
+    (*str_val)[len] = '\0';
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Convert a CBOR item to a string representation.
  *
  * @param[in] ctx Context for logging.
@@ -429,19 +473,27 @@ lydcbor_item_to_string(const struct ly_ctx *ctx, const cbor_item_t *item, char *
         break;
     }
     case CBOR_TYPE_BYTESTRING:
-        *str_len = cbor_bytestring_length(item);
-        *str_val = malloc(*str_len + 1);
-        LY_CHECK_ERR_RET(!*str_val, LOGMEM(ctx), LY_EMEM);
-        memcpy(*str_val, cbor_bytestring_handle(item), *str_len);
-        (*str_val)[*str_len] = '\0';
+        if (cbor_bytestring_is_indefinite(item)) {
+            LY_CHECK_RET(lydcbor_chunks_to_string(ctx, item, str_val, str_len));
+        } else {
+            *str_len = cbor_bytestring_length(item);
+            *str_val = malloc(*str_len + 1);
+            LY_CHECK_ERR_RET(!*str_val, LOGMEM(ctx), LY_EMEM);
+            memcpy(*str_val, cbor_bytestring_handle(item), *str_len);
+            (*str_val)[*str_len] = '\0';
+        }
         LY_CHECK_ERR_RET(ret = lydcbor_check_string(ctx, *str_val, *str_len), free(*str_val); *str_val = NULL, ret);
         break;
     case CBOR_TYPE_STRING:
-        *str_len = cbor_string_length(item);
-        *str_val = malloc(*str_len + 1);
-        LY_CHECK_ERR_RET(!*str_val, LOGMEM(ctx), LY_EMEM);
-        memcpy(*str_val, cbor_string_handle(item), *str_len);
-        (*str_val)[*str_len] = '\0';
+        if (cbor_string_is_indefinite(item)) {
+            LY_CHECK_RET(lydcbor_chunks_to_string(ctx, item, str_val, str_len));
+        } else {
+            *str_len = cbor_string_length(item);
+            *str_val = malloc(*str_len + 1);
+            LY_CHECK_ERR_RET(!*str_val, LOGMEM(ctx), LY_EMEM);
+            memcpy(*str_val, cbor_string_handle(item), *str_len);
+            (*str_val)[*str_len] = '\0';
+        }
         LY_CHECK_ERR_RET(ret = lydcbor_check_string(ctx, *str_val, *str_len), free(*str_val); *str_val = NULL, ret);
         break;
     case CBOR_TYPE_FLOAT_CTRL:
