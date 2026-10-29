@@ -172,6 +172,15 @@ test_input_filepath(void **UNUSED(state))
     assert_int_equal(LY_IN_FILEPATH, ly_in_type(in));
     assert_ptr_equal(NULL, ly_in_filepath(in, path2, 0));
     assert_string_equal(path2, ly_in_filepath(in, NULL, 0));
+
+    /* a file that cannot be opened or mapped is an error and the handler keeps its file */
+    assert_ptr_equal(((void *)-1), ly_in_filepath(in, TESTS_BIN "/no_such_dir/libyang_test_input", 0));
+    CHECK_LOG_LASTMSG("Failed to open file \"" TESTS_BIN "/no_such_dir/libyang_test_input\" (No such file or directory).");
+    assert_string_equal(path2, ly_in_filepath(in, NULL, 0));
+    assert_ptr_equal(((void *)-1), ly_in_filepath(in, TEST_OUTPUT_FILE, 0));
+    CHECK_LOG_LASTMSG("Empty input file.");
+    assert_string_equal(path2, ly_in_filepath(in, NULL, 0));
+
     ly_in_free(in, 0);
 }
 

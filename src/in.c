@@ -268,7 +268,7 @@ ly_in_new_filepath(const char *filepath, size_t len, struct ly_in **in)
     LY_CHECK_ERR_RET(fd == -1, LOGERR(NULL, LY_ESYS, "Failed to open file \"%s\" (%s).", fp, strerror(errno)); free(fp),
             LY_ESYS);
 
-    LY_CHECK_ERR_RET(ret = ly_in_new_fd(fd, in), free(fp), ret);
+    LY_CHECK_ERR_RET(ret = ly_in_new_fd(fd, in), close(fd); free(fp), ret);
 
     /* convert the LY_IN_FD input handler into the LY_IN_FILE */
     (*in)->type = LY_IN_FILEPATH;
@@ -298,12 +298,13 @@ ly_in_filepath(struct ly_in *in, const char *filepath, size_t len)
 
     /* replace filepath */
     fd = open(fp, O_RDONLY);
-    LY_CHECK_ERR_RET(!fd, LOGERR(NULL, LY_ESYS, "Failed to open file \"%s\" (%s).", fp, strerror(errno)); free(fp), NULL);
+    LY_CHECK_ERR_RET(fd == -1, LOGERR(NULL, LY_ESYS, "Failed to open file \"%s\" (%s).", fp, strerror(errno)); free(fp),
+            ((void *)-1));
 
     /* convert LY_IN_FILEPATH handler into LY_IN_FD to be able to update it via ly_in_fd() */
     in->type = LY_IN_FD;
     prev_fd = ly_in_fd(in, fd);
-    LY_CHECK_ERR_RET(prev_fd == -1, in->type = LY_IN_FILEPATH; free(fp), NULL);
+    LY_CHECK_ERR_RET(prev_fd == -1, in->type = LY_IN_FILEPATH; close(fd); free(fp), ((void *)-1));
 
     /* and convert the result back */
     in->type = LY_IN_FILEPATH;
