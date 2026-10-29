@@ -15,6 +15,8 @@
 #define _UTEST_MAIN_
 #include "utests.h"
 
+#include <cbor.h>
+
 #include "in_internal.h"
 #include "parser_data.h"
 #include "printer_data.h"
@@ -438,6 +440,7 @@ test_invalid_input(void **state)
     CHECK_PARSE_LYD_PARAM_LEN("\xa1", 1, LYD_CBOR, 0, 0, LY_EVALID, tree);
     CHECK_LOG_CTX("Failed to parse CBOR data (not enough data).", NULL, 1);
 
+#if (CBOR_MAJOR_VERSION > 0) || (CBOR_MINOR_VERSION >= 14)
     /* text strings must be checked for invalid characters like in JSON and XML */
     CHECK_PARSE_LYD_PARAM_LEN("\xa1\x70" "cbor-test:lf-str" "\x65" "ab\0cd", 24, LYD_CBOR, LYD_PARSE_ONLY, 0,
             LY_EVALID, tree);
@@ -445,6 +448,7 @@ test_invalid_input(void **state)
     CHECK_PARSE_LYD_PARAM_LEN("\xa1\x70" "cbor-test:lf-str" "\x62" "a\xff", 21, LYD_CBOR, LYD_PARSE_ONLY, 0,
             LY_EVALID, tree);
     CHECK_LOG_CTX("Invalid character 0xff.", "/cbor-test:lf-str", 1);
+#endif
 
     assert_int_equal(LY_EVALID, lyd_new_path(NULL, UTEST_LYCTX, "/cbor-test:lf-intg8", "1000", 0, &tree));
     CHECK_LOG_CTX("Value \"1000\" is out of type int8 min/max bounds.", "/cbor-test:lf-intg8", 0);
