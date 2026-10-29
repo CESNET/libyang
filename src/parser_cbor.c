@@ -352,19 +352,20 @@ lydcbor_value_type_hint(struct lyd_cbor_ctx *lydctx, const cbor_item_t *item, ui
 /**
  * @brief Check that a CBOR string contains only valid YANG string characters.
  *
+ * @param[in] ctx Context for logging.
  * @param[in] str String to check.
  * @param[in] str_len Length of @p str.
  * @return LY_ERR value.
  */
 static LY_ERR
-lydcbor_check_string(const char *str, size_t str_len)
+lydcbor_check_string(const struct ly_ctx *ctx, const char *str, size_t str_len)
 {
     size_t parsed = 0;
     uint32_t len;
 
     while (parsed < str_len) {
         if (ly_checkutf8(str + parsed, str_len - parsed, &len)) {
-            LOGVAL(NULL, NULL, LY_VCODE_INCHAR, str[parsed]);
+            LOGVAL(ctx, NULL, LY_VCODE_INCHAR, str[parsed]);
             return LY_EVALID;
         }
         parsed += len;
@@ -376,13 +377,14 @@ lydcbor_check_string(const char *str, size_t str_len)
 /**
  * @brief Convert a CBOR item to a string representation.
  *
+ * @param[in] ctx Context for logging.
  * @param[in] item CBOR item to convert.
  * @param[out] str_val String value (allocated, caller must free).
  * @param[out] str_len String length.
  * @return LY_ERR value.
  */
 static LY_ERR
-lydcbor_item_to_string(const cbor_item_t *item, char **str_val, size_t *str_len)
+lydcbor_item_to_string(const struct ly_ctx *ctx, const cbor_item_t *item, char **str_val, size_t *str_len)
 {
     LY_ERR ret = LY_SUCCESS;
 
@@ -399,7 +401,7 @@ lydcbor_item_to_string(const cbor_item_t *item, char **str_val, size_t *str_len)
             return LY_ESYS;
         }
         *str_val = malloc(len + 1);
-        LY_CHECK_ERR_RET(!*str_val, LOGMEM(NULL), LY_EMEM);
+        LY_CHECK_ERR_RET(!*str_val, LOGMEM(ctx), LY_EMEM);
         sprintf(*str_val, "%" PRIu64, val);
         *str_len = len;
         break;
@@ -411,7 +413,7 @@ lydcbor_item_to_string(const cbor_item_t *item, char **str_val, size_t *str_len)
 
         if (val == UINT64_MAX) {
             *str_val = strdup("-18446744073709551616");
-            LY_CHECK_ERR_RET(!*str_val, LOGMEM(NULL), LY_EMEM);
+            LY_CHECK_ERR_RET(!*str_val, LOGMEM(ctx), LY_EMEM);
             *str_len = strlen(*str_val);
             break;
         }
@@ -421,7 +423,7 @@ lydcbor_item_to_string(const cbor_item_t *item, char **str_val, size_t *str_len)
             return LY_ESYS;
         }
         *str_val = malloc(len + 1);
-        LY_CHECK_ERR_RET(!*str_val, LOGMEM(NULL), LY_EMEM);
+        LY_CHECK_ERR_RET(!*str_val, LOGMEM(ctx), LY_EMEM);
         sprintf(*str_val, "-%" PRIu64, val + 1);
         *str_len = len;
         break;
@@ -429,18 +431,18 @@ lydcbor_item_to_string(const cbor_item_t *item, char **str_val, size_t *str_len)
     case CBOR_TYPE_BYTESTRING:
         *str_len = cbor_bytestring_length(item);
         *str_val = malloc(*str_len + 1);
-        LY_CHECK_ERR_RET(!*str_val, LOGMEM(NULL), LY_EMEM);
+        LY_CHECK_ERR_RET(!*str_val, LOGMEM(ctx), LY_EMEM);
         memcpy(*str_val, cbor_bytestring_handle(item), *str_len);
         (*str_val)[*str_len] = '\0';
-        LY_CHECK_ERR_RET(lydcbor_check_string(*str_val, *str_len), free(*str_val); *str_val = NULL, LY_EVALID);
+        LY_CHECK_ERR_RET(ret = lydcbor_check_string(ctx, *str_val, *str_len), free(*str_val); *str_val = NULL, ret);
         break;
     case CBOR_TYPE_STRING:
         *str_len = cbor_string_length(item);
         *str_val = malloc(*str_len + 1);
-        LY_CHECK_ERR_RET(!*str_val, LOGMEM(NULL), LY_EMEM);
+        LY_CHECK_ERR_RET(!*str_val, LOGMEM(ctx), LY_EMEM);
         memcpy(*str_val, cbor_string_handle(item), *str_len);
         (*str_val)[*str_len] = '\0';
-        LY_CHECK_ERR_RET(lydcbor_check_string(*str_val, *str_len), free(*str_val); *str_val = NULL, LY_EVALID);
+        LY_CHECK_ERR_RET(ret = lydcbor_check_string(ctx, *str_val, *str_len), free(*str_val); *str_val = NULL, ret);
         break;
     case CBOR_TYPE_FLOAT_CTRL:
         if (cbor_float_ctrl_is_ctrl(item)) {
@@ -458,11 +460,11 @@ lydcbor_item_to_string(const cbor_item_t *item, char **str_val, size_t *str_len)
                 *str_len = 0;
                 break;
             default:
-                LOGVAL(NULL, NULL, LYVE_SYNTAX, "Unsupported CBOR control value");
+                LOGVAL(ctx, NULL, LYVE_SYNTAX, "Unsupported CBOR control value.");
                 ret = LY_EVALID;
                 break;
             }
-            LY_CHECK_ERR_RET(!*str_val, LOGMEM(NULL), LY_EMEM);
+            LY_CHECK_ERR_RET(!*str_val, LOGMEM(ctx), LY_EMEM);
         } else {
             double val = cbor_float_get_float(item);
             int len = snprintf(NULL, 0, "%g", val);
@@ -471,13 +473,13 @@ lydcbor_item_to_string(const cbor_item_t *item, char **str_val, size_t *str_len)
                 return LY_ESYS;
             }
             *str_val = malloc(len + 1);
-            LY_CHECK_ERR_RET(!*str_val, LOGMEM(NULL), LY_EMEM);
+            LY_CHECK_ERR_RET(!*str_val, LOGMEM(ctx), LY_EMEM);
             sprintf(*str_val, "%g", val);
             *str_len = len;
         }
         break;
     default:
-        LOGVAL(NULL, NULL, LYVE_SYNTAX, "Unsupported CBOR data type %d", cbor_typeof(item));
+        LOGVAL(ctx, NULL, LYVE_SYNTAX, "Unsupported CBOR data type %d.", cbor_typeof(item));
         ret = LY_EVALID;
         break;
     }
@@ -523,7 +525,7 @@ lydcbor_data_check_opaq(struct lyd_cbor_ctx *lydctx, const struct lysc_node *sno
             }
 
             prev_lo = ly_temp_log_options(&temp_lo);
-            ret = lydcbor_item_to_string(cbor_value, &str_val, &str_len);
+            ret = lydcbor_item_to_string(lydctx->cborctx->ctx, cbor_value, &str_val, &str_len);
             if (ret == LY_SUCCESS) {
                 if (ly_value_validate(NULL, snode, str_val, str_len * 8, LY_VALUE_CBOR, NULL, *type_hint_p)) {
                     ret = LY_ENOT;
@@ -725,7 +727,7 @@ lydcbor_meta_attr_instance(struct lyd_cbor_ctx *lydctx, struct lyd_node *node, c
             goto cleanup;
         }
 
-        LY_CHECK_GOTO(rc = lydcbor_item_to_string(key_item, &key_str, &key_len), cleanup);
+        LY_CHECK_GOTO(rc = lydcbor_item_to_string(ctx, key_item, &key_str, &key_len), cleanup);
 
         lydcbor_parse_name(key_str, key_len, &name, &name_len, &prefix, &prefix_len, &is_attr);
 
@@ -767,7 +769,7 @@ lydcbor_meta_attr_instance(struct lyd_cbor_ctx *lydctx, struct lyd_node *node, c
             char *str_val = NULL;
             size_t str_len = 0;
 
-            LY_CHECK_GOTO(rc = lydcbor_item_to_string(value_item, &str_val, &str_len), cleanup);
+            LY_CHECK_GOTO(rc = lydcbor_item_to_string(ctx, value_item, &str_val, &str_len), cleanup);
 
             /* create metadata */
             rc = lyd_parser_create_meta((struct lyd_ctx *)lydctx, node, NULL, mod, name, name_len, str_val,
@@ -787,7 +789,7 @@ lydcbor_meta_attr_instance(struct lyd_cbor_ctx *lydctx, struct lyd_node *node, c
 
             lydcbor_get_node_prefix(node, prefix, prefix_len, &module_name, &module_name_len);
 
-            LY_CHECK_GOTO(rc = lydcbor_item_to_string(value_item, &str_val, &str_len), cleanup);
+            LY_CHECK_GOTO(rc = lydcbor_item_to_string(ctx, value_item, &str_val, &str_len), cleanup);
 
             rc = lyd_create_attr(node, NULL, ctx, name, name_len, prefix, prefix_len, module_name,
                     module_name_len, str_val, str_len, NULL, LY_VALUE_CBOR, NULL, val_hints);
@@ -926,7 +928,7 @@ lydcbor_create_opaq(struct lyd_cbor_ctx *lydctx, const char *name, size_t name_l
 
     if (cbor_typeof(cbor_value) != CBOR_TYPE_MAP) {
         /* prepare for creating opaq node with a value */
-        LY_CHECK_RET(lydcbor_item_to_string(cbor_value, &str_val, &value_len));
+        LY_CHECK_RET(lydcbor_item_to_string(lydctx->cborctx->ctx, cbor_value, &str_val, &value_len));
         value = str_val;
         dynamic = 1;
 
@@ -1177,7 +1179,7 @@ lydcbor_parse_any(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snode, st
         char *str_val = NULL;
         size_t str_len = 0;
 
-        r = lydcbor_item_to_string(cbor_value, &str_val, &str_len);
+        r = lydcbor_item_to_string(lydctx->cborctx->ctx, cbor_value, &str_val, &str_len);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
         r = lyd_create_any(snode, NULL, str_val, LYD_VALHINT_STRING, 1, 0, node);
@@ -1310,7 +1312,7 @@ lydcbor_parse_instance(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, str
                 }
 
                 /* create terminal node */
-                r = lydcbor_item_to_string(cbor_value, &str_val, &str_len);
+                r = lydcbor_item_to_string(lydctx->cborctx->ctx, cbor_value, &str_val, &str_len);
                 LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
             }
 
@@ -1422,7 +1424,7 @@ lydcbor_subtree_r(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, struct l
             goto cleanup;
         }
 
-        LY_CHECK_GOTO(rc = lydcbor_item_to_string(key_item, &key_str, &key_len), cleanup);
+        LY_CHECK_GOTO(rc = lydcbor_item_to_string(ctx, key_item, &key_str, &key_len), cleanup);
 
         /* process the node name */
         lydcbor_parse_name(key_str, key_len, &name, &name_len, &prefix, &prefix_len, &is_meta);
