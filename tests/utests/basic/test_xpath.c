@@ -1326,6 +1326,99 @@ test_number(void **state)
     lyd_free_siblings(tree);
 }
 
+static void
+test_no_value(void **state)
+{
+    const char *schema_c =
+            "module c {\n"
+            "    namespace urn:tests:c;\n"
+            "    prefix c;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    identity base;\n"
+            "    identity one {\n"
+            "        base base;\n"
+            "    }\n"
+            "\n"
+            "    leaf t {\n"
+            "        type string;\n"
+            "    }\n"
+            "    container ce {\n"
+            "        presence \"test\";\n"
+            "        leaf v {\n"
+            "            when \"string(enum-value(.)) = 'NaN'\";\n"
+            "            type enumeration {\n"
+            "                enum x;\n"
+            "            }\n"
+            "            mandatory true;\n"
+            "        }\n"
+            "    }\n"
+            "    container cb {\n"
+            "        presence \"test\";\n"
+            "        leaf v {\n"
+            "            when \"not(bit-is-set(., 'f'))\";\n"
+            "            type bits {\n"
+            "                bit f;\n"
+            "            }\n"
+            "            mandatory true;\n"
+            "        }\n"
+            "    }\n"
+            "    container cd {\n"
+            "        presence \"test\";\n"
+            "        leaf v {\n"
+            "            when \"not(deref(.))\";\n"
+            "            type leafref {\n"
+            "                path \"/c:t\";\n"
+            "            }\n"
+            "            mandatory true;\n"
+            "        }\n"
+            "    }\n"
+            "    container ci {\n"
+            "        presence \"test\";\n"
+            "        leaf v {\n"
+            "            when \"not(derived-from-or-self(., 'c:one'))\";\n"
+            "            type identityref {\n"
+            "                base base;\n"
+            "            }\n"
+            "            mandatory true;\n"
+            "        }\n"
+            "    }\n"
+            "}";
+    struct lyd_node *tree;
+    ly_bool r;
+
+    UTEST_ADD_MODULE(schema_c, LYS_IN_YANG, NULL, NULL);
+
+    /* the when of a missing node is evaluated on an opaque dummy node without a value */
+    CHECK_PARSE_LYD_PARAM("<ce xmlns=\"urn:tests:c\"/>", LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG_CTX("Mandatory node \"v\" instance does not exist.", "/c:ce", 0);
+
+    CHECK_PARSE_LYD_PARAM("<cb xmlns=\"urn:tests:c\"/>", LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG_CTX("Mandatory node \"v\" instance does not exist.", "/c:cb", 0);
+
+    CHECK_PARSE_LYD_PARAM("<cd xmlns=\"urn:tests:c\"/>", LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG_CTX("Mandatory node \"v\" instance does not exist.", "/c:cd", 0);
+
+    CHECK_PARSE_LYD_PARAM("<ci xmlns=\"urn:tests:c\"/>", LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG_CTX("Mandatory node \"v\" instance does not exist.", "/c:ci", 0);
+
+    /* the root node has no value either */
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, "<t xmlns=\"urn:tests:c\">val</t>", LYD_XML,
+            LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    assert_non_null(tree);
+
+    assert_int_equal(LY_SUCCESS, lyd_eval_xpath(tree, "string(enum-value(/)) = 'NaN'", &r));
+    assert_int_equal(r, 1);
+
+    assert_int_equal(LY_SUCCESS, lyd_eval_xpath(tree, "bit-is-set(/, 'f')", &r));
+    assert_int_equal(r, 0);
+
+    assert_int_equal(LY_SUCCESS, lyd_eval_xpath(tree, "deref(/)", &r));
+    assert_int_equal(r, 0);
+
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -1346,6 +1439,7 @@ main(void)
         UTEST(test_mod, setup),
         UTEST(test_anydata, setup),
         UTEST(test_number, setup),
+        UTEST(test_no_value, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

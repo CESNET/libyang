@@ -3704,7 +3704,8 @@ xpath_bit_is_set(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp
     LY_CHECK_RET(rc);
 
     set_fill_boolean(set, 0);
-    if (args[0]->used && (args[0]->val.nodes[0].node->schema->nodetype & LYD_NODE_TERM)) {
+    if (args[0]->used && (args[0]->val.nodes[0].type == LYXP_NODE_ELEM) && args[0]->val.nodes[0].node->schema &&
+            (args[0]->val.nodes[0].node->schema->nodetype & LYD_NODE_TERM)) {
         leaf = (struct lyd_node_term *)args[0]->val.nodes[0].node;
         val = &leaf->value;
         if (val->realtype->basetype == LY_TYPE_UNION) {
@@ -4123,10 +4124,10 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
 
     /* clear */
     lyxp_set_free_content(set);
-    if (args[0]->used) {
+    if (args[0]->used && (args[0]->val.nodes[0].type == LYXP_NODE_ELEM)) {
         leaf = (struct lyd_node_term *)args[0]->val.nodes[0].node;
         sleaf = (struct lysc_node_leaf *)leaf->schema;
-        if (sleaf->nodetype & LYD_NODE_TERM) {
+        if (sleaf && (sleaf->nodetype & LYD_NODE_TERM)) {
             ret = xpath_deref_type(&leaf->node, &leaf->value, sleaf->type, set);
         }
     }
@@ -4343,10 +4344,10 @@ xpath_enum_value(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp
     }
 
     set_fill_number(set, NAN);
-    if (args[0]->used) {
+    if (args[0]->used && (args[0]->val.nodes[0].type == LYXP_NODE_ELEM)) {
         leaf = (struct lyd_node_term *)args[0]->val.nodes[0].node;
         sleaf = (struct lysc_node_leaf *)leaf->schema;
-        if ((sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && (sleaf->type->basetype == LY_TYPE_ENUM)) {
+        if (sleaf && (sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && (sleaf->type->basetype == LY_TYPE_ENUM)) {
             set_fill_number(set, leaf->value.enum_item->value);
         }
     }
