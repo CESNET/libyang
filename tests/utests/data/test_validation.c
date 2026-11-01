@@ -1301,6 +1301,52 @@ test_multi_error(void **state)
     CHECK_LOG_CTX_APPTAG("Duplicate instance of \"l\".", "/ii:cont/l", 0, NULL);
 }
 
+static void
+test_require_instance(void **state)
+{
+    struct lyd_node *tree;
+    const char *schema =
+            "module ri {\n"
+            "    namespace urn:tests:ri;\n"
+            "    prefix ri;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    leaf t {\n"
+            "        type string;\n"
+            "    }\n"
+            "    leaf lr {\n"
+            "        type leafref {\n"
+            "            path \"/ri:t\";\n"
+            "        }\n"
+            "    }\n"
+            "    leaf ii {\n"
+            "        type instance-identifier;\n"
+            "    }\n"
+            "}";
+    const char *data;
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    CHECK_PARSE_LYD_PARAM("<lr xmlns=\"urn:tests:ri\">x</lr>", LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG_CTX_APPTAG("Invalid leafref value \"x\" - no target instance \"/ri:t\" with the same value.", "/ri:lr", 0,
+            "instance-required");
+
+    CHECK_PARSE_LYD_PARAM("<ii xmlns=\"urn:tests:ri\" xmlns:ri=\"urn:tests:ri\">/ri:t</ii>", LYD_XML, 0,
+            LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/ri:t\" value - required instance not found.", "/ri:ii", 0,
+            "instance-required");
+
+    /* both errors */
+    data =
+            "<lr xmlns=\"urn:tests:ri\">x</lr>\n"
+            "<ii xmlns=\"urn:tests:ri\" xmlns:ri=\"urn:tests:ri\">/ri:t</ii>\n";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT | LYD_VALIDATE_MULTI_ERROR, LY_EVALID, tree);
+    CHECK_LOG_CTX_APPTAG("Invalid leafref value \"x\" - no target instance \"/ri:t\" with the same value.", "/ri:lr", 0,
+            "instance-required");
+    CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/ri:t\" value - required instance not found.", "/ri:ii", 0,
+            "instance-required");
+}
+
 const char *schema_j =
         "module j {\n"
         "    namespace urn:tests:j;\n"
@@ -1950,6 +1996,7 @@ main(void)
         UTEST(test_state),
         UTEST(test_must),
         UTEST(test_multi_error),
+        UTEST(test_require_instance),
         UTEST(test_when_must_cross_ref),
         UTEST(test_action),
         UTEST(test_rpc),

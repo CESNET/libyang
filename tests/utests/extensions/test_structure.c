@@ -296,7 +296,7 @@ test_parse(void **state)
     lyd_free_tree(node->next);
     assert_string_equal(LYD_NAME(node), "x");
     lyd_free_tree(node);
-    assert_int_equal(LY_ENOTFOUND, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT, NULL));
+    assert_int_equal(LY_EVALID, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT, NULL));
     CHECK_LOG_CTX("Invalid instance-identifier \"/a:x/y\" value - required instance not found.",
             "/a:struct/x/struct/x/z", 0);
     lyd_free_all(tree);
