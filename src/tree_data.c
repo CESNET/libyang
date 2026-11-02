@@ -382,7 +382,7 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
     LY_ERR rc = LY_SUCCESS;
     struct lyd_ctx *lydctx = NULL;
     struct ly_set parsed = {0};
-    struct lyd_node *first = NULL, *envp = NULL;
+    struct lyd_node *first = NULL, *envp = NULL, *top;
     uint32_t i, val_opts, int_opts = 0;
     ly_bool proto_msg = 0;
 
@@ -440,6 +440,13 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
         break;
     case LYD_TYPE_REPLY_YANG:
         int_opts = LYD_INTOPT_REPLY | (parent ? LYD_INTOPT_WITH_SIBLINGS : LYD_INTOPT_NO_SIBLINGS);
+        break;
+    case LYD_TYPE_NOTIF_ENVELOPE:
+        LY_CHECK_ARG_RET(ctx, (format == LYD_XML) || (format == LYD_JSON) || (format == LYD_CBOR), !parent, tree, op,
+                LY_EINVAL);
+        LY_CHECK_ERR_RET(!ly_ctx_get_module_implemented(ctx, "ietf-yp-notification"),
+                LOGERR(ctx, LY_EINVAL, "Module \"ietf-yp-notification\" is not implemented."), LY_EINVAL);
+        int_opts = LYD_INTOPT_NOTIF | LYD_INTOPT_NO_SIBLINGS | LYD_INTOPT_ENVELOPE;
         break;
     default:
         LOGINT(ctx);
@@ -512,6 +519,12 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
         break;
     }
     LY_CHECK_GOTO(rc, cleanup);
+
+    if (data_type == LYD_TYPE_NOTIF_ENVELOPE) {
+        /* unlink the notification from the envelope contents */
+        for (top = lydctx->op_node; top->parent->parent != first; top = lyd_parent(top)) {}
+        lyd_unlink(top);
+    }
 
     /* set out params correctly */
     if (tree) {

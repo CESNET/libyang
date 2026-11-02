@@ -140,8 +140,24 @@ lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode)
     LY_ERR rc = LY_SUCCESS;
 
     if (lydctx->int_opts & LYD_INTOPT_ANY) {
-        /* nothing to check, everything is allowed */
+        if ((lydctx->int_opts & LYD_INTOPT_ENVELOPE) && (snode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
+            /* only one notification and no RPC/action in the envelope */
+            if (snode->nodetype != LYS_NOTIF) {
+                goto error_node_inval;
+            }
+            if (lydctx->op_node) {
+                goto error_node_dup;
+            }
+        }
+
+        /* nothing else to check, everything is allowed */
         goto cleanup;
+    }
+
+    if ((lydctx->int_opts & LYD_INTOPT_ENVELOPE) && !snode->parent && (strcmp(snode->name, "envelope") ||
+            strcmp(snode->module->name, "ietf-yp-notification"))) {
+        /* the root must be the envelope */
+        goto error_node_inval;
     }
 
     if ((lydctx->parse_opts & LYD_PARSE_NO_STATE) && (snode->flags & LYS_CONFIG_R)) {

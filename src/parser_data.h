@@ -370,8 +370,12 @@ enum lyd_type {
     LYD_TYPE_NOTIF_RESTCONF,    /**< RESTCONF JSON or CBOR notification data
                                      ([ref](https://www.rfc-editor.org/rfc/rfc8040.html#section-6.4)), to parse
                                      a notification in XML, use ::LYD_TYPE_NOTIF_NETCONF */
-    LYD_TYPE_REPLY_RESTCONF     /**< message-body of a RESTCONF operation output parameters
+    LYD_TYPE_REPLY_RESTCONF,    /**< message-body of a RESTCONF operation output parameters
                                      ([ref](https://www.rfc-editor.org/rfc/rfc8040.html#section-3.6.2)) */
+
+    LYD_TYPE_NOTIF_ENVELOPE     /**< YANG-Push notification envelope, the 'envelope' structure of the
+                                     'ietf-yp-notification' module
+                                     ([ref](https://datatracker.ietf.org/doc/draft-ietf-netconf-notif-envelope/)) */
 };
 /** @} datatype */
 
@@ -426,6 +430,15 @@ enum lyd_type {
  *               a separate opaque data tree, even if the function fails, this may be returned;
  *   - @p op - must be NULL, @p parent points to the operation;
  *   Note that error reply should be parsed as 'yang-data' extension data.
+ *
+ * - ::LYD_TYPE_NOTIF_ENVELOPE:
+ *   - @p ctx - must have the 'ietf-yp-notification' module implemented;
+ *   - @p parent - must be NULL, the whole envelope is expected;
+ *   - @p format - can be ::LYD_XML, ::LYD_JSON, or ::LYD_CBOR;
+ *   - @p tree - must be provided, the envelope structure data tree with an empty 'contents' will be returned here,
+ *               validate it using ::lyd_validate_all() with ::LYD_VALIDATE_PRESENT;
+ *   - @p op - must be provided, the notification data tree separated from the envelope 'contents' will be returned
+ *             here, pointing to the operation;
  *
  * - ::LYD_TYPE_RPC_YANG:
  * - ::LYD_TYPE_NOTIF_YANG:

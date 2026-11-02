@@ -1213,6 +1213,8 @@ lydcbor_parse_any(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snode, st
         if (lydctx->parse_opts & LYD_PARSE_ANYDATA_STRICT) {
             /* explicit strict data parsing */
             lydctx->parse_opts |= LYD_PARSE_STRICT;
+        } else if ((lydctx->int_opts & LYD_INTOPT_ENVELOPE) && !(lydctx->int_opts & LYD_INTOPT_ANY)) {
+            /* the notification in the envelope contents, parsed as data like any other notification */
         } else {
             /* make the parser process data as opaq nodes */
             lydctx->parse_opts &= ~LYD_PARSE_STRICT;
