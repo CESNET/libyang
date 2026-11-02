@@ -1382,6 +1382,11 @@ lydcbor_parse_instance(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, str
         }
         LY_CHECK_GOTO(!*node, cleanup);
 
+        /* extension instance data */
+        if (ext) {
+            (*node)->flags |= LYD_EXT;
+        }
+
         /* add/correct flags */
         r = lyd_parser_set_data_flags(*node, &(*node)->meta, (struct lyd_ctx *)lydctx, ext);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
