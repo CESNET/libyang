@@ -858,6 +858,8 @@ lyds_pool_add(struct lyd_node *leader, struct lyds_pool *pool)
     rbt = lyds_get_rb_tree(leader, &root_meta);
     if (root_meta) {
         lyd_unlink_meta_single(root_meta);
+        /* the Red-black tree is owned by the pool now, the metadata must not refer to it anymore */
+        RBT_SET(root_meta, NULL);
         if (pool->meta) {
             tmp = pool->meta;
             pool->meta = root_meta;
@@ -935,7 +937,6 @@ lyds_pool_clean(struct lyds_pool *pool)
 
     for (meta = pool->meta; meta; meta = next) {
         next = meta->next;
-        RBT_SET(meta, NULL);
         lyd_free_meta_single(meta);
     }
     pool->meta = NULL;
@@ -1299,7 +1300,7 @@ lyds_insert2(struct lyd_node *parent, struct lyd_node **first_sibling, struct ly
         if (next) {
             /* there is no free structure for red-black node, a new ones must be allocated */
             ret = lyds_additionally_create_rb_nodes(first_sibling, leader, root_meta, &rbt, next);
-            LY_CHECK_RET(ret);
+            LY_CHECK_GOTO(ret, error);
         }
     }
 
@@ -1314,7 +1315,7 @@ lyds_insert2(struct lyd_node *parent, struct lyd_node **first_sibling, struct ly
     } else {
         /* allocate new node and insert */
         ret = rb_insert(node, &rbt, &rbn);
-        LY_CHECK_RET(ret);
+        LY_CHECK_GOTO(ret, error);
     }
     /* connect @p node with siblings so that the order is maintained */
     lyds_link_data_node(first_sibling, leader, node, root_meta, rbn);
@@ -1327,6 +1328,11 @@ cleanup:
     *first_sibling = node->prev->next ? *first_sibling : node;
 
     return LY_SUCCESS;
+
+error:
+    /* keep the (partially) built Red-black tree in the leader, it is freed together with it */
+    RBT_SET(root_meta, rbt);
+    return ret;
 }
 
 void
