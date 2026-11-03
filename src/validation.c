@@ -464,9 +464,6 @@ lyd_validate_when_false(struct lyd_node *node, struct ly_set *node_when, struct 
  * @brief Evaluate when conditions of collected unres nodes.
  *
  * @param[in,out] tree Data tree, is updated if some nodes are autodeleted.
- * @param[in] mod Module of the @p tree to take into consideration when deleting @p tree and moving it.
- * If set, it is expected @p tree should point to the first node of @p mod. Otherwise it will simply be
- * the first top-level sibling.
  * @param[in] node_when Set with nodes with "when" conditions.
  * @param[in] val_opts Validation options.
  * @param[in] xpath_options Additional XPath options to use.
@@ -476,8 +473,8 @@ lyd_validate_when_false(struct lyd_node *node, struct ly_set *node_when, struct 
  * @return LY_ERR value on error.
  */
 static LY_ERR
-lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, struct ly_set *node_when,
-        uint32_t val_opts, uint32_t xpath_options, struct ly_set *node_types, struct lyd_node **diff)
+lyd_validate_unres_when(struct lyd_node **tree, struct ly_set *node_when, uint32_t val_opts, uint32_t xpath_options,
+        struct ly_set *node_types, struct lyd_node **diff)
 {
     LY_ERR rc = LY_SUCCESS, r;
     uint32_t i, count;
@@ -501,7 +498,7 @@ lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, st
                 if (node->flags & LYD_WHEN_TRUE) {
                     /* autodelete */
                     count = node_when->count;
-                    lyd_validate_autodel_node_del(tree, node, mod, 1, NULL, node_when, node_types, diff);
+                    lyd_validate_autodel_node_del(tree, node, NULL, 1, NULL, node_when, node_types, diff);
                     if (count > node_when->count) {
                         /* nested nodes removed, we lost the index */
                         ly_set_contains(node_when, node, &i);
@@ -544,12 +541,12 @@ cleanup:
 }
 
 LY_ERR
-lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, enum lyd_type data_type,
-        struct ly_set *node_when, uint32_t when_xp_opts, struct ly_set *node_types, struct ly_set *meta_types,
-        struct ly_set *ext_val, uint32_t val_opts, struct lyd_node **diff)
+lyd_validate_unres(struct lyd_node **tree, enum lyd_type data_type, struct ly_set *node_when, uint32_t when_xp_opts,
+        struct ly_set *node_types, struct ly_set *meta_types, struct ly_set *ext_val, uint32_t val_opts,
+        struct lyd_node **diff)
 {
     LY_ERR r, rc = LY_SUCCESS;
-    uint32_t i;
+    uint32_t i, prev_count;
 
     if (ext_val && ext_val->count) {
         /* first validate parsed extension data */
@@ -571,11 +568,9 @@ lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, enum ly
 
     if (node_when) {
         /* evaluate all when conditions */
-        uint32_t prev_count;
-
         do {
             prev_count = node_when->count;
-            r = lyd_validate_unres_when(tree, mod, node_when, val_opts, when_xp_opts, node_types, diff);
+            r = lyd_validate_unres_when(tree, node_when, val_opts, when_xp_opts, node_types, diff);
             LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
             /* there must have been some when conditions resolved */
@@ -2214,12 +2209,12 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
                 LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
             }
         }
-
-        /* finish incompletely validated terminal values/attributes and when conditions */
-        r = lyd_validate_unres(first2, mod, LYD_TYPE_DATA_YANG, node_when_p, 0, node_types_p, meta_types_p,
-                ext_val_p, val_opts, diff);
-        LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
     }
+
+    /* finish incompletely validated terminal values/attributes and when conditions */
+    r = lyd_validate_unres(tree, LYD_TYPE_DATA_YANG, node_when_p, 0, node_types_p, meta_types_p, ext_val_p, val_opts,
+            diff);
+    LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
     if (!(val_opts & LYD_VALIDATE_NOT_FINAL)) {
         /* perform final validation that assumes the data tree is final */
@@ -2274,8 +2269,7 @@ lyd_validate_ext(struct lyd_node **subtree, const struct lysc_ext_instance *ext,
     LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
     /* finish incompletely validated terminal values/attributes and when conditions */
-    r = lyd_validate_unres(subtree, NULL, LYD_TYPE_DATA_YANG, &node_when, 0, &node_types, &meta_types,
-            &ext_val, val_opts, diff);
+    r = lyd_validate_unres(subtree, LYD_TYPE_DATA_YANG, &node_when, 0, &node_types, &meta_types, &ext_val, val_opts, diff);
     LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
     if (!(val_opts & LYD_VALIDATE_NOT_FINAL)) {
@@ -2504,8 +2498,8 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
 
     /* finish incompletely validated terminal values/attributes and when conditions on the full tree,
      * account for unresolved 'when' that may appear in the non-validated dependency data tree */
-    LY_CHECK_GOTO(rc = lyd_validate_unres((struct lyd_node **)&dep_tree, NULL, data_type, node_when_p,
-            LYXP_IGNORE_WHEN, node_types_p, meta_types_p, ext_val_p, val_opts, diff), cleanup);
+    LY_CHECK_GOTO(rc = lyd_validate_unres((struct lyd_node **)&dep_tree, data_type, node_when_p, LYXP_IGNORE_WHEN,
+            node_types_p, meta_types_p, ext_val_p, val_opts, diff), cleanup);
 
     /* perform final validation of the operation/notification */
     lyd_validate_obsolete(op_node);
@@ -2587,8 +2581,8 @@ lyd_validate_op2(struct lyd_node *op_tree, const struct lyd_node *dep_tree, enum
             } else if (op_node->flags & LYD_EXT) {
                 /* fully validate the rest using the extension instance callback */
                 LY_CHECK_RET(lyd_validate_tree_ext(op_node, NULL, &ext_val));
-                rc = lyd_validate_unres((struct lyd_node **)&dep_tree, NULL, data_type, NULL, 0, NULL, NULL,
-                        &ext_val, val_opts, diff);
+                rc = lyd_validate_unres((struct lyd_node **)&dep_tree, data_type, NULL, 0, NULL, NULL, &ext_val,
+                        val_opts, diff);
                 ly_set_erase(&ext_val, free);
                 return rc;
             }

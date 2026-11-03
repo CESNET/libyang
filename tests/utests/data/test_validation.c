@@ -1,9 +1,10 @@
 /**
  * @file test_validation.c
- * @author: Radek Krejci <rkrejci@cesnet.cz>
+ * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for functions from validation.c
  *
- * Copyright (c) 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -26,6 +27,37 @@
 
 #define LYD_TREE_CREATE(INPUT, MODEL) \
                 CHECK_PARSE_LYD_PARAM(INPUT, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, MODEL)
+
+static void
+test_leafref(void **state)
+{
+    struct lyd_node *tree;
+    const char *schema =
+            "module a {\n"
+            "    namespace urn:tests:a;\n"
+            "    prefix a;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    leaf t {\n"
+            "        type uint8;\n"
+            "        default 7;\n"
+            "    }\n"
+            "    leaf ref {\n"
+            "        type leafref {\n"
+            "            path \"/a:t\";\n"
+            "        }\n"
+            "    }\n"
+            "}";
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    /* must have the same result whether present is used or not */
+    CHECK_PARSE_LYD_PARAM("<ref xmlns=\"urn:tests:a\">7</ref>", LYD_XML, 0, LYD_VALIDATE_NO_STATE, LY_SUCCESS, tree);
+    lyd_free_all(tree);
+
+    CHECK_PARSE_LYD_PARAM("<ref xmlns=\"urn:tests:a\">7</ref>", LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_all(tree);
+}
 
 static void
 test_when(void **state)
@@ -1982,6 +2014,7 @@ int
 main(void)
 {
     const struct CMUnitTest tests[] = {
+        UTEST(test_leafref),
         UTEST(test_when),
         UTEST(test_when_rpc_reply),
         UTEST(test_mandatory),

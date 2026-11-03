@@ -2117,7 +2117,7 @@ lyd_new_implicit_tree(struct lyd_node *tree, uint32_t implicit_options, struct l
     }
 
     /* resolve when and remove any invalid defaults */
-    rc = lyd_validate_unres(&tree, NULL, 0, &node_when, LYXP_IGNORE_WHEN, NULL, NULL, NULL, 0, diff);
+    rc = lyd_validate_unres(&tree, 0, &node_when, LYXP_IGNORE_WHEN, NULL, NULL, NULL, 0, diff);
     LY_CHECK_GOTO(rc, cleanup);
 
 cleanup:
@@ -2193,8 +2193,7 @@ lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module,
     LY_CHECK_GOTO(rc, cleanup);
 
     /* resolve when and remove any invalid defaults */
-    LY_CHECK_GOTO(rc = lyd_validate_unres(tree, module, 0, &node_when, LYXP_IGNORE_WHEN, NULL, NULL, NULL,
-            0, diff), cleanup);
+    LY_CHECK_GOTO(rc = lyd_validate_unres(tree, 0, &node_when, LYXP_IGNORE_WHEN, NULL, NULL, NULL, 0, diff), cleanup);
 
     /* process top-level (and nested) nodes */
     LY_LIST_FOR(*tree, root) {
