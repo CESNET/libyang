@@ -687,8 +687,8 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
                 }
 
                 /* do not store the canonical value, only validate */
-                r = lyd_value_validate3(ctx, ((struct lysc_node_leaf *)key)->type, val, val_len, format, prefix_data,
-                        LYD_HINT_DATA, NULL, key, 1, NULL, &p->value);
+                r = lyd_value_validate3(ctx_node->module->ctx, ((struct lysc_node_leaf *)key)->type, val, val_len,
+                        format, prefix_data, LYD_HINT_DATA, NULL, key, 1, NULL, &p->value);
                 LY_CHECK_ERR_GOTO(r && (r != LY_EINCOMPLETE), rc = r, cleanup);
 
                 p->type = LY_PATH_PREDTYPE_LIST;
@@ -744,8 +744,8 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
         }
 
         /* do not store the value, only validate */
-        r = lyd_value_validate3(ctx, ((struct lysc_node_leaf *)ctx_node)->type, val, val_len, format, prefix_data,
-                LYD_HINT_DATA, NULL, ctx_node, 1, NULL, &p->value);
+        r = lyd_value_validate3(ctx_node->module->ctx, ((struct lysc_node_leaf *)ctx_node)->type, val, val_len, format,
+                prefix_data, LYD_HINT_DATA, NULL, ctx_node, 1, NULL, &p->value);
         LY_CHECK_ERR_GOTO(r && (r != LY_EINCOMPLETE), rc = r, cleanup);
 
         ++(*tok_idx);
