@@ -1261,6 +1261,8 @@ lyds_insert2(struct lyd_node *parent, struct lyd_node **first_sibling, struct ly
     struct lyd_meta *root_meta;
 
     assert(pool && pool->rbn && first_sibling && node);
+    /* only for the nodes that lyd_insert_node() would sort as well */
+    assert(lyds_is_supported(node) && !(node->flags & LYD_EXT));
 
     if (!*leader || ((*leader)->schema != node->schema)) {
         /* leader has not been visited yet */

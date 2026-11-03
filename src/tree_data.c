@@ -2810,9 +2810,14 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg,
             }
         }
 
-        if (lyds->rbn) {
-            /* insert node and try to reuse free lyds data */
-            lyds_insert2(parent_trg, first_trg, leader_p, dup_src, lyds);
+        if (lyds->rbn && !(dup_src->flags & LYD_EXT) && lyds_is_supported(dup_src)) {
+            /* insert node and try to reuse free lyds data, only for the nodes that lyd_insert_node() sorts as well */
+            r = lyds_insert2(parent_trg, first_trg, leader_p, dup_src, lyds);
+            if (r) {
+                /* insert the node anyway although the nodes will not be sorted, same as in lyd_insert_node() */
+                LOGWRN(LYD_CTX(dup_src), "Data in \"%s\" are not sorted.", dup_src->schema->name);
+                lyd_insert_node(parent_trg, first_trg, dup_src, LYD_INSERT_NODE_LAST_BY_SCHEMA);
+            }
         } else {
             /* generic insert node */
             lyd_insert_node(parent_trg, first_trg, dup_src, LYD_INSERT_NODE_DEFAULT);

@@ -1102,6 +1102,57 @@ test_merge_siblings_destruct(void **state)
 }
 
 static void
+test_merge_destruct_unsorted(void **state)
+{
+    const char *schema, *trg, *data;
+    struct lyd_node *dst, *src, *node;
+
+    schema = "module a {namespace urn:tests:a;prefix a;yang-version 1.1;revision 2014-05-08;"
+            "list lst {"
+            "  key \"k\";"
+            "  leaf k {type uint32;}"
+            "  leaf-list ll {type uint32;}"
+            "  list st {"
+            "    config false;"
+            "    key \"k\";"
+            "    leaf k {type uint32;}"
+            "  }"
+            "}}";
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    /* the free lyds data of the source "lst" must not be reused for the nodes that are not sorted */
+    trg = "{\"a:lst\":[{\"k\":1}]}";
+
+    /* config false list */
+    CHECK_PARSE_LYD_PARAM(trg, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, dst);
+    data = "{\"a:lst\":[{\"k\":1,\"st\":[{\"k\":2},{\"k\":1}]},{\"k\":2}]}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, src);
+    assert_int_equal(lyd_merge_siblings(&dst, src, LYD_MERGE_DESTRUCT), LY_SUCCESS);
+    CHECK_LYD_STRING_PARAM(dst, data, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS);
+    assert_null(lyd_child_no_keys(dst)->meta);
+    lyd_free_all(dst);
+
+    /* opaque node */
+    CHECK_PARSE_LYD_PARAM(trg, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, dst);
+    data = "{\"a:lst\":[{\"k\":1,\"op\":\"x\"},{\"k\":2}]}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, LY_SUCCESS, src);
+    assert_int_equal(lyd_merge_siblings(&dst, src, LYD_MERGE_DESTRUCT), LY_SUCCESS);
+    CHECK_LYD_STRING_PARAM(dst, data, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS);
+    lyd_free_all(dst);
+
+    /* extension node (schema mount) */
+    CHECK_PARSE_LYD_PARAM(trg, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, dst);
+    data = "{\"a:lst\":[{\"k\":1,\"ll\":[1,2]},{\"k\":2}]}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, src);
+    LY_LIST_FOR(lyd_child_no_keys(src), node) {
+        node->flags |= LYD_EXT;
+    }
+    assert_int_equal(lyd_merge_siblings(&dst, src, LYD_MERGE_DESTRUCT), LY_SUCCESS);
+    assert_null(lyd_child_no_keys(dst)->meta);
+    lyd_free_all(dst);
+}
+
+static void
 test_parse_data(void **state)
 {
     const char *schema, *data;
@@ -1671,6 +1722,7 @@ main(void)
         UTEST(test_insert_multiple_keys),
         UTEST(test_merge_siblings),
         UTEST(test_merge_siblings_destruct),
+        UTEST(test_merge_destruct_unsorted),
         UTEST(test_parse_data),
         UTEST(test_parse_ordered_data),
         UTEST(test_print_data),
