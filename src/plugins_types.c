@@ -829,6 +829,8 @@ lyplg_type_print_val(const struct lysc_node *node, const char *canon, LY_VALUE_F
     ly_bool dyn;
     struct lyplg_type *type_plg;
 
+    LY_CHECK_ARG_RET(NULL, node, canon, value, LY_EINVAL);
+
     type = ((struct lysc_node_leaf *)node)->type;
     type_plg = LYSC_GET_TYPE_PLG(type->plugin_ref);
 
@@ -860,6 +862,8 @@ lyplg_type_print_val(const struct lysc_node *node, const char *canon, LY_VALUE_F
 LIBYANG_API_DEF LY_ERR
 lyplg_type_make_implemented(struct lys_module *mod, const char **features, struct lys_glob_unres *unres)
 {
+    LY_CHECK_ARG_RET(NULL, mod, LY_EINVAL);
+
     if (mod->implemented) {
         return LY_SUCCESS;
     }
@@ -875,7 +879,7 @@ lyplg_type_identity_isderived(const struct lysc_ident *base, const struct lysc_i
 {
     LYA_COUNT_T u;
 
-    assert(base->module->ctx == der->module->ctx);
+    LY_CHECK_ARG_RET(NULL, base, der, (base->module->ctx == der->module->ctx), LY_EINVAL);
 
     LYA_FOR(base->derived, u) {
         if (der == base->derived[u]) {
