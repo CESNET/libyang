@@ -1386,7 +1386,7 @@ ly_getutf8(const char **input, uint32_t *utf8_char, uint32_t *bytes_read)
             c = (c << 6) | (aux & 0x3f);
         }
 
-        if ((c < 0x1000) || (c > 0x10ffff)) {
+        if ((c < 0x10000) || (c > 0x10ffff)) {
             goto error;
         }
     } else {

@@ -742,6 +742,11 @@ test_data_xml(void **state)
     CHECK_LOG_CTX("Entity reference \"&text;</po\" not supported, only predefined references allowed.", NULL, 1);
     TEST_ERROR_XML("T0", "\"&#x8;\"");
     CHECK_LOG_CTX("Invalid character reference \"&#x8;\"</port\" (0x00000008).", NULL, 1);
+    /* overlong 4-byte encodings of U+1000 and U+D800 */
+    TEST_ERROR_XML("T0", "\xf0\x81\x80\x80");
+    CHECK_LOG_CTX("Invalid character 0xf0.", NULL, 1);
+    TEST_ERROR_XML("T0", "\xf0\x8d\xa0\x80");
+    CHECK_LOG_CTX("Invalid character 0xf0.", NULL, 1);
 
     /* TEST INVERTED PATTERN ADN LENGTH */
     schema = MODULE_CREATE_YANG("T1", "leaf port {type string {"
@@ -927,6 +932,12 @@ test_data_json(void **state)
 
     TEST_ERROR_JSON("T0", "aabb \\x");
     CHECK_LOG_CTX("Invalid character escape sequence \\x.", NULL, 1);
+
+    /* overlong 4-byte encodings of U+1000 and U+D800 */
+    TEST_ERROR_JSON("T0", "\xf0\x81\x80\x80");
+    CHECK_LOG_CTX("Invalid character 0xf0.", NULL, 1);
+    TEST_ERROR_JSON("T0", "\xf0\x8d\xa0\x80");
+    CHECK_LOG_CTX("Invalid character 0xf0.", NULL, 1);
 
     /* TEST INVERTED PATTERN ADN LENGTH */
     schema = MODULE_CREATE_YANG("T1", "leaf port {type string {"
