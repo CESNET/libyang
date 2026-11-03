@@ -510,6 +510,25 @@ test_negint(void **state)
     CHECK_LOG_CTX("Invalid type uint8 value \"-18446744073709551616\".", "/cbor-test:lf-uintg8", 1);
 }
 
+static void
+test_anydata_strict(void **state)
+{
+    struct lyd_node *tree;
+
+    /* {"cbor-test:anydata-payload": {"cbor-test:unknown": "v"}} */
+    const char data[] = "\xa1\x78\x19" "cbor-test:anydata-payload" "\xa1\x71" "cbor-test:unknown" "\x61" "v";
+
+    /* unknown anydata content is parsed as opaque nodes */
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, data, sizeof data - 1, LYD_CBOR, 0,
+            LYD_VALIDATE_PRESENT, &tree));
+    lyd_free_all(tree);
+
+    /* but not with strict anydata parsing */
+    assert_int_equal(LY_EVALID, lyd_parse_data_mem_len(UTEST_LYCTX, data, sizeof data - 1, LYD_CBOR,
+            LYD_PARSE_ANYDATA_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX("Node \"unknown\" not found in the \"cbor-test\" module.", "/cbor-test:anydata-payload", 1);
+}
+
 /* CBOR RESTCONF notification envelope parts */
 #define CBOR_ENVP_KEY "\x78\x1a" "ietf-restconf:notification"
 #define CBOR_EVENT_TIME "\x69" "eventTime" "\x74" "2013-12-21T00:01:00Z"
@@ -634,6 +653,7 @@ main(void)
         UTEST(test_attributes, setup),
         UTEST(test_invalid_input, setup),
         UTEST(test_negint, setup),
+        UTEST(test_anydata_strict, setup),
         UTEST(test_restconf_notification, setup),
         UTEST(test_restconf_notification_invalid, setup),
     };
