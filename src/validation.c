@@ -428,6 +428,7 @@ lyd_validate_when_false(struct lyd_node *node, struct ly_set *node_when, struct 
     uint32_t j, count;
 
     /* mark so subsequent XPath evaluations on this node return "no match" instead of LY_EINCOMPLETE */
+    node->flags &= ~LYD_WHEN_NEW;
     node->flags |= LYD_WHEN_FALSE;
 
     /* remove descendants from node_types so their leafrefs are not validated against the
@@ -524,7 +525,7 @@ lyd_validate_unres_when(struct lyd_node **tree, struct ly_set *node_when, uint32
             } else {
                 /* when true; clear any stale when-false mark from a previous validation run
                  * so XPath no longer treats the node as non-existent */
-                node->flags &= ~LYD_WHEN_FALSE;
+                node->flags &= ~(LYD_WHEN_NEW | LYD_WHEN_FALSE);
                 node->flags |= LYD_WHEN_TRUE;
             }
 
@@ -541,12 +542,12 @@ cleanup:
 }
 
 LY_ERR
-lyd_validate_unres(struct lyd_node **tree, enum lyd_type data_type, struct ly_set *node_when, uint32_t when_xp_opts,
+lyd_validate_unres(struct lyd_node **tree, enum lyd_type data_type, struct ly_set *node_when, int with_unres_when,
         struct ly_set *node_types, struct ly_set *meta_types, struct ly_set *ext_val, uint32_t val_opts,
         struct lyd_node **diff)
 {
     LY_ERR r, rc = LY_SUCCESS;
-    uint32_t i, prev_count;
+    uint32_t i, prev_count, when_xp_opts;
 
     if (ext_val && ext_val->count) {
         /* first validate parsed extension data */
@@ -566,15 +567,22 @@ lyd_validate_unres(struct lyd_node **tree, enum lyd_type data_type, struct ly_se
         } while (i);
     }
 
-    if (node_when) {
+    if (node_when && node_when->count) {
         /* evaluate all when conditions */
+        when_xp_opts = 0;
         do {
             prev_count = node_when->count;
             r = lyd_validate_unres_when(tree, node_when, val_opts, when_xp_opts, node_types, diff);
             LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
+            if (with_unres_when && !when_xp_opts && (prev_count == node_when->count)) {
+                /* we have properly resolved what we could, assume the rest of 'when' conditions true */
+                when_xp_opts |= LYXP_IGNORE_WHEN;
+                continue;
+            }
+
             /* there must have been some when conditions resolved */
-        } while (prev_count > node_when->count);
+        } while (node_when->count && (prev_count > node_when->count));
 
         if (node_when->count) {
             /* there could have been no cyclic when dependencies, checked during compilation */
@@ -2013,6 +2021,14 @@ lyd_validate_node_ext(struct lyd_node *node, struct ly_set *ext_val)
     return LY_SUCCESS;
 }
 
+LY_ERR
+lyd_validate_unres_add_when(struct lyd_node *node, struct ly_set *node_when)
+{
+    node->flags |= LYD_WHEN_NEW;
+
+    return ly_set_add(node_when, (void *)node, 1, NULL);
+}
+
 /**
  * @brief Validate the whole data subtree.
  *
@@ -2084,7 +2100,7 @@ lyd_validate_tree(struct lyd_node *root, const struct lysc_ext_instance *ext, st
             r = lyd_validate_new(lyd_node_child_p(node), node->schema, NULL, val_opts, int_opts, getnext_ht, diff);
             LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
-            /* add nested defaults */
+            /* add nested defaults (no node_when, will be collected and evaluated later) */
             impl_opts = 0;
             if (val_opts & LYD_VALIDATE_NO_STATE) {
                 impl_opts |= LYD_IMPLICIT_NO_STATE;
@@ -2098,7 +2114,7 @@ lyd_validate_tree(struct lyd_node *root, const struct lysc_ext_instance *ext, st
 
         if (lysc_has_when(node->schema)) {
             /* when evaluation */
-            r = ly_set_add(node_when, (void *)node, 1, NULL);
+            r = lyd_validate_unres_add_when(node, node_when);
             LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
         }
 
@@ -2470,7 +2486,7 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
 
     if (int_opts & LYD_INTOPT_REPLY) {
         if (validate_subtree) {
-            /* add output children defaults */
+            /* add output children defaults (no node_when, will be collected and evaluated later) */
             rc = lyd_new_implicit(op_node, lyd_node_child_p(op_node), NULL, NULL, NULL, NULL, NULL,
                     LYD_IMPLICIT_OUTPUT, getnext_ht, diff);
             LY_CHECK_GOTO(rc, cleanup);
@@ -2498,8 +2514,8 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
 
     /* finish incompletely validated terminal values/attributes and when conditions on the full tree,
      * account for unresolved 'when' that may appear in the non-validated dependency data tree */
-    LY_CHECK_GOTO(rc = lyd_validate_unres((struct lyd_node **)&dep_tree, data_type, node_when_p, LYXP_IGNORE_WHEN,
-            node_types_p, meta_types_p, ext_val_p, val_opts, diff), cleanup);
+    LY_CHECK_GOTO(rc = lyd_validate_unres((struct lyd_node **)&dep_tree, data_type, node_when_p, 1, node_types_p,
+            meta_types_p, ext_val_p, val_opts, diff), cleanup);
 
     /* perform final validation of the operation/notification */
     lyd_validate_obsolete(op_node);

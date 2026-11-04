@@ -1162,6 +1162,57 @@ test_defaults(void **state)
 }
 
 static void
+test_defaults_order(void **state)
+{
+    struct lyd_node *tree = NULL;
+    struct lys_module *mod1, *mod2;
+    const char *schema1 =
+            "module a {\n"
+            "  namespace urn:tests:a;\n"
+            "  prefix a;\n"
+            "  yang-version 1.1;\n"
+            "\n"
+            "  leaf c {\n"
+            "    when \"false()\";\n"
+            "    type string;\n"
+            "    default \"on\";\n"
+            "  }\n"
+            "  leaf b {\n"
+            "    when \"/a:c = 'on'\";\n"
+            "    type string;\n"
+            "    default \"on\";\n"
+            "  }\n"
+            "}";
+    const char *schema2 =
+            "module ra {\n"
+            "  namespace urn:tests:ra;\n"
+            "  prefix ra;\n"
+            "  yang-version 1.1;\n"
+            "\n"
+            "  leaf b {\n"
+            "    when \"/ra:c = 'on'\";\n"
+            "    type string;\n"
+            "    default \"on\";\n"
+            "  }\n"
+            "  leaf c {\n"
+            "    when \"false()\";\n"
+            "    type string;\n"
+            "    default \"on\";\n"
+            "  }\n"
+            "}";
+
+    UTEST_ADD_MODULE(schema1, LYS_IN_YANG, NULL, &mod1);
+    UTEST_ADD_MODULE(schema2, LYS_IN_YANG, NULL, &mod2);
+
+    /* must have the same result no matter the node order */
+    assert_int_equal(LY_SUCCESS, lyd_new_implicit_module(&tree, mod1, 0, NULL));
+    assert_null(tree);
+
+    assert_int_equal(LY_SUCCESS, lyd_new_implicit_module(&tree, mod2, 0, NULL));
+    assert_null(tree);
+}
+
+static void
 test_state(void **state)
 {
     const char *data;
@@ -2026,6 +2077,7 @@ main(void)
         UTEST(test_unique_nested),
         UTEST(test_dup),
         UTEST(test_defaults),
+        UTEST(test_defaults_order),
         UTEST(test_state),
         UTEST(test_must),
         UTEST(test_multi_error),

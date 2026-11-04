@@ -1983,14 +1983,14 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
         switch (snode->nodetype) {
         case LYS_CONTAINER:
             if (!(snode->flags & LYS_PRESENCE) && lyd_find_sibling_val(*first, snode, NULL, 0, NULL)) {
-                /* create default NP container */
+                /* create default NP container, allow silent removal if has 'when' and is false */
                 LY_CHECK_RET(lyd_create_inner(snode, &node));
                 node->flags = LYD_DEFAULT | (lysc_has_when(snode) ? LYD_WHEN_TRUE : 0);
                 lyd_insert_node(parent, first, node, LYD_INSERT_NODE_DEFAULT);
 
                 if (lysc_has_when(snode) && node_when) {
                     /* remember to resolve when */
-                    LY_CHECK_RET(ly_set_add(node_when, node, 1, NULL));
+                    LY_CHECK_RET(lyd_validate_unres_add_when(node, node_when));
                 }
                 if (ext_val) {
                     /* store for ext instance node validation, if needed */
@@ -2018,7 +2018,7 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
 
                 if (lysc_has_when(snode) && node_when) {
                     /* remember to resolve when */
-                    LY_CHECK_RET(ly_set_add(node_when, node, 1, NULL));
+                    LY_CHECK_RET(lyd_validate_unres_add_when(node, node_when));
                 }
                 if (ext_val) {
                     /* store for ext instance node validation, if needed */
@@ -2047,7 +2047,7 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
 
                     if (lysc_has_when(snode) && node_when) {
                         /* remember to resolve when */
-                        LY_CHECK_RET(ly_set_add(node_when, node, 1, NULL));
+                        LY_CHECK_RET(lyd_validate_unres_add_when(node, node_when));
                     }
                     if (ext_val) {
                         /* store for ext instance node validation, if needed */
@@ -2117,7 +2117,7 @@ lyd_new_implicit_tree(struct lyd_node *tree, uint32_t implicit_options, struct l
     }
 
     /* resolve when and remove any invalid defaults */
-    rc = lyd_validate_unres(&tree, 0, &node_when, LYXP_IGNORE_WHEN, NULL, NULL, NULL, 0, diff);
+    rc = lyd_validate_unres(&tree, 0, &node_when, 1, NULL, NULL, NULL, 0, diff);
     LY_CHECK_GOTO(rc, cleanup);
 
 cleanup:
@@ -2193,7 +2193,7 @@ lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module,
     LY_CHECK_GOTO(rc, cleanup);
 
     /* resolve when and remove any invalid defaults */
-    LY_CHECK_GOTO(rc = lyd_validate_unres(tree, 0, &node_when, LYXP_IGNORE_WHEN, NULL, NULL, NULL, 0, diff), cleanup);
+    LY_CHECK_GOTO(rc = lyd_validate_unres(tree, 0, &node_when, 1, NULL, NULL, NULL, 0, diff), cleanup);
 
     /* process top-level (and nested) nodes */
     LY_LIST_FOR(*tree, root) {

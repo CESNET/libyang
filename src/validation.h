@@ -86,7 +86,7 @@ LY_ERR lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct
  * @param[in,out] tree Data tree, is updated if some nodes are autodeleted.
  * @param[in] data_type Validate data type.
  * @param[in] node_when Set with nodes with "when" conditions, can be NULL.
- * @param[in] when_xp_opts Additional XPath options to use for evaluating "when".
+ * @param[in] with_unres_when Allow unresolved 'when' conditions in case there are non-validated nodes in @p tree.
  * @param[in] node_types Set with nodes with unresolved types, can be NULL
  * @param[in] meta_types Set with metadata with unresolved types, can be NULL.
  * @param[in] ext_val Set with extension data to validate, can be NULL.
@@ -95,7 +95,7 @@ LY_ERR lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_unres(struct lyd_node **tree, enum lyd_type data_type, struct ly_set *node_when,
-        uint32_t when_xp_opts, struct ly_set *node_types, struct ly_set *meta_types, struct ly_set *ext_val,
+        int with_unres_when, struct ly_set *node_types, struct ly_set *meta_types, struct ly_set *ext_val,
         uint32_t val_opts, struct lyd_node **diff);
 
 /**
@@ -133,6 +133,15 @@ LY_ERR lyd_validate_tree_ext(struct lyd_node *node, const struct lysc_ext_instan
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_node_ext(struct lyd_node *node, struct ly_set *ext_val);
+
+/**
+ * @brief Store a node whose 'when' needs to be evaluated.
+ *
+ * @param[in] node Node with the 'when' condition.
+ * @param[in,out] node_when Set to add to.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_validate_unres_add_when(struct lyd_node *node, struct ly_set *node_when);
 
 /**
  * @brief Validate a data tree.
