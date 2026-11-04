@@ -516,10 +516,20 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, uint32_t
                 ADD_CHECK_OVERFLOW(offset, 1, error);
                 if (isdigit(in[offset])) {
                     for (n = 0; isdigit(in[offset]); offset++) {
+                        if (n > 0x10ffff) {
+                            /* too large, would overflow */
+                            LOGVAL(ctx, NULL, LYVE_SYNTAX, "Invalid character reference \"%.12s\".", p);
+                            goto error;
+                        }
                         n = (LY_BASE_DEC * n) + (in[offset] - '0');
                     }
                 } else if ((in[offset] == 'x') && isxdigit(in[offset + 1])) {
                     for (n = 0, ++offset; isxdigit(in[offset]); offset++) {
+                        if (n > 0x10ffff) {
+                            /* too large, would overflow */
+                            LOGVAL(ctx, NULL, LYVE_SYNTAX, "Invalid character reference \"%.12s\".", p);
+                            goto error;
+                        }
                         if (isdigit(in[offset])) {
                             u = (in[offset] - '0');
                         } else if (in[offset] > 'F') {
