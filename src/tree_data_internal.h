@@ -626,11 +626,13 @@ LY_ERR lyd_value_store(const struct ly_ctx *ctx, const struct lyd_node *lnode, s
  * @param[in,out] val Stored value to resolve.
  * @param[in] ctx_node Context node for the resolution.
  * @param[in] tree Data tree for the resolution.
+ * @param[in] unres_ht Hash table with unresolved nodes in @p tree, may be NULL.
  * @return LY_SUCCESS on success,
+ * @return LY_EINCOMPLETE in case a node was found in @p unres_ht;
  * @return LY_ERR value on error.
  */
 LY_ERR lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *type, struct lyd_value *val,
-        const struct lyd_node *ctx_node, const struct lyd_node *tree);
+        const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct ly_ht *unres_ht);
 
 /**
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.
@@ -664,19 +666,20 @@ LY_ERR ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node,
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] hints Value hints, bitmap of LYD_VALHINT_* values.
  * @param[in] ctx_node Optional data tree context node for the value (leafref target, instance-identifier).
- * If not set and is required for the validation to complete, ::LY_EINCOMPLETE is be returned.
+ * @param[in] tree Optional data tree for the value, if not set and required, ::LY_EINCOMPLETE is be returned.
+ * @param[in] unres_ht Hash table with unresolved nodes in @p tree, may be NULL.
  * @param[in] ctx_scnode Optinal schema context node, for logging.
  * @param[in] log Whether to log errors or not.
  * @param[out] realtype Optional real type of @p value.
  * @param[out] canonical Optional canonical value of @p value (in the dictionary).
- * @return LY_SUCCESS on success
- * @return LY_EINCOMPLETE in case the @p ctx_node is not provided and it was needed to finish the validation
- * (e.g. due to require-instance).
+ * @return LY_SUCCESS on success;
+ * @return LY_EINCOMPLETE in case the @p tree is not provided and required or a required node was found in @p unres_ht;
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_value_validate3(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lyd_node *ctx_node,
-        const struct lysc_node *ctx_scnode, int log, const struct lysc_type **realtype, const char **canonical);
+        const struct lyd_node *tree, const struct ly_ht *unres_ht, const struct lysc_node *ctx_scnode, int log,
+        const struct lysc_type **realtype, const char **canonical);
 
 /**
  * @defgroup datahash Data nodes hash manipulation

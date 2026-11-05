@@ -855,8 +855,6 @@ struct lyd_attr {
  *       4 LYD_EXT          |x|x|x|x|x|x|x|
  *                          +-+-+-+-+-+-+-+
  *       5 LYD_WHEN_FALSE   |x|x|x|x|x| | |
- *                          +-+-+-+-+-+-+-+
- *       6 LYD_WHEN_NEW     |x|x|x|x|x| | |
  *     ---------------------+-+-+-+-+-+-+-+
  *
  */
@@ -868,7 +866,6 @@ struct lyd_attr {
 #define LYD_WHEN_FALSE  0x10        /**< when condition of this node was evaluated to false; the node is kept in the
                                          tree so multi-error validation can continue, but XPath evaluation must treat
                                          the node as non-existent */
-#define LYD_WHEN_NEW    0x20        /**< when condition of this node will be (re-)evaluated */
 
 /** @} */
 

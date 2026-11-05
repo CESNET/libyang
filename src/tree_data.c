@@ -3546,8 +3546,7 @@ lyd_eval_xpath4(const struct lyd_node *ctx_node, const struct lyd_node *tree, co
     LY_CHECK_GOTO(ret, cleanup);
 
     /* evaluate expression */
-    ret = lyxp_eval(LYD_CTX(tree), exp, cur_mod, format, prefix_data, ctx_node, ctx_node, tree, vars, &xp_set,
-            LYXP_IGNORE_WHEN);
+    ret = lyxp_eval(LYD_CTX(tree), exp, cur_mod, format, prefix_data, ctx_node, ctx_node, tree, NULL, vars, &xp_set, 0);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* return expected result type without or with casting */
@@ -3667,7 +3666,7 @@ lyd_trim_xpath(struct lyd_node **tree, const char *xpath, const struct lyxp_var 
     LY_CHECK_GOTO(ret, cleanup);
 
     /* evaluate expression */
-    ret = lyxp_eval(ctx, exp, NULL, LY_VALUE_JSON, NULL, *tree, *tree, *tree, vars, &xp_set, LYXP_IGNORE_WHEN);
+    ret = lyxp_eval(ctx, exp, NULL, LY_VALUE_JSON, NULL, *tree, *tree, *tree, NULL, vars, &xp_set, 0);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* create hash table for all the parents of results */
@@ -3784,7 +3783,10 @@ lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output,
     }
 
     /* evaluate the path */
-    ret = ly_path_eval_partial(lypath, ctx_node, tree, NULL, 0, NULL, match);
+    ret = ly_path_eval_partial(lypath, ctx_node, tree, NULL, NULL, 0, NULL, match);
+    if (ret == LY_ENOT) {
+        ret = LY_EINCOMPLETE;
+    }
 
 cleanup:
     lyxp_expr_free(expr);
@@ -3800,7 +3802,7 @@ lyd_find_target(const struct ly_path *path, const struct lyd_node *tree, struct 
 
     LY_CHECK_ARG_RET(NULL, path, LY_EINVAL);
 
-    ret = ly_path_eval(path, tree, NULL, &m);
+    ret = ly_path_eval(path, tree, NULL, NULL, &m);
     if (ret) {
         if (match) {
             *match = NULL;
@@ -3917,12 +3919,12 @@ lyd_link_leafref_node(const struct lyd_node_term *node, const struct lyd_node_te
  * @param[in] cur_node The current data node.
  * @param[in] value The current node value.
  * @param[in] type The leaf/leaf-list type of given data node.
- *
  * @return LY_SUCCESS on success.
  * @return LY_ERR value on error.
  */
 static LY_ERR
-lyd_leafref_link_node_tree_type(const struct lyd_node *tree, const struct lyd_node *cur_node, struct lyd_value *value, const struct lysc_type *type)
+lyd_leafref_link_node_tree_type(const struct lyd_node *tree, const struct lyd_node *cur_node, struct lyd_value *value,
+        const struct lysc_type *type)
 {
     char *errmsg;
     struct ly_set *targets = NULL;
@@ -3936,7 +3938,7 @@ lyd_leafref_link_node_tree_type(const struct lyd_node *tree, const struct lyd_no
     if (type->basetype == LY_TYPE_LEAFREF) {
         lref = (struct lysc_type_leafref *)type;
         ly_set_free(targets, NULL);
-        if (lyplg_type_resolve_leafref(lref, cur_node, value, tree, &targets, &errmsg)) {
+        if (lyplg_type_resolve_leafref(lref, cur_node, value, tree, NULL, &targets, &errmsg)) {
             /* leafref target not found */
             free(errmsg);
         } else {

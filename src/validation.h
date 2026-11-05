@@ -79,6 +79,16 @@ LY_ERR lyd_val_getnext_get(const struct lysc_node *snode, const struct lysc_node
 LY_ERR lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct lyd_node **diff);
 
 /**
+ * @brief Check whether a node is in the unres HT.
+ *
+ * @param[in] node Node to check.
+ * @param[in] unres_ht Unres HT to use, may be NULL.
+ * @return 1 if the node is found in @p unres_ht;
+ * @return 0 otherwise.
+ */
+int lyd_validate_node_is_unres(const struct lyd_node *node, const struct ly_ht *unres_ht);
+
+/**
  * @brief Finish validation of nodes and attributes. Specifically, when (is processed first) and type validation.
  *
  * !! It is assumed autodeleted nodes cannot be in the unresolved node type set !!
@@ -86,7 +96,7 @@ LY_ERR lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct
  * @param[in,out] tree Data tree, is updated if some nodes are autodeleted.
  * @param[in] data_type Validate data type.
  * @param[in] node_when Set with nodes with "when" conditions, can be NULL.
- * @param[in] with_unres_when Allow unresolved 'when' conditions in case there are non-validated nodes in @p tree.
+ * @param[in] with_unresolvable Allow unresolved nodes in case there are non-validated nodes in @p tree.
  * @param[in] node_types Set with nodes with unresolved types, can be NULL
  * @param[in] meta_types Set with metadata with unresolved types, can be NULL.
  * @param[in] ext_val Set with extension data to validate, can be NULL.
@@ -95,7 +105,7 @@ LY_ERR lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_unres(struct lyd_node **tree, enum lyd_type data_type, struct ly_set *node_when,
-        int with_unres_when, struct ly_set *node_types, struct ly_set *meta_types, struct ly_set *ext_val,
+        int with_unresolvable, struct ly_set *node_types, struct ly_set *meta_types, struct ly_set *ext_val,
         uint32_t val_opts, struct lyd_node **diff);
 
 /**
@@ -133,15 +143,6 @@ LY_ERR lyd_validate_tree_ext(struct lyd_node *node, const struct lysc_ext_instan
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_node_ext(struct lyd_node *node, struct ly_set *ext_val);
-
-/**
- * @brief Store a node whose 'when' needs to be evaluated.
- *
- * @param[in] node Node with the 'when' condition.
- * @param[in,out] node_when Set to add to.
- * @return LY_ERR value.
- */
-LY_ERR lyd_validate_unres_add_when(struct lyd_node *node, struct ly_set *node_when);
 
 /**
  * @brief Validate a data tree.

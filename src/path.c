@@ -31,6 +31,7 @@
 #include "tree_data_internal.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "validation.h"
 #include "xpath.h"
 
 #define LOGVAL_P(CTX, CUR_NODE, CODE, ...) ly_vlog(CTX, (CUR_NODE) ? LY_VLOG_LYSC : LY_VLOG_NONE, CUR_NODE, CODE, ##__VA_ARGS__)
@@ -688,7 +689,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
                 /* do not store the canonical value, only validate */
                 r = lyd_value_validate3(ctx_node->module->ctx, ((struct lysc_node_leaf *)key)->type, val, val_len,
-                        format, prefix_data, LYD_HINT_DATA, NULL, key, 1, NULL, &p->value);
+                        format, prefix_data, LYD_HINT_DATA, NULL, NULL, NULL, key, 1, NULL, &p->value);
                 LY_CHECK_ERR_GOTO(r && (r != LY_EINCOMPLETE), rc = r, cleanup);
 
                 p->type = LY_PATH_PREDTYPE_LIST;
@@ -745,7 +746,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
         /* do not store the value, only validate */
         r = lyd_value_validate3(ctx_node->module->ctx, ((struct lysc_node_leaf *)ctx_node)->type, val, val_len, format,
-                prefix_data, LYD_HINT_DATA, NULL, ctx_node, 1, NULL, &p->value);
+                prefix_data, LYD_HINT_DATA, NULL, NULL, NULL, ctx_node, 1, NULL, &p->value);
         LY_CHECK_ERR_GOTO(r && (r != LY_EINCOMPLETE), rc = r, cleanup);
 
         ++(*tok_idx);
@@ -1331,7 +1332,8 @@ ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node *ctx_no
 
 LY_ERR
 ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *ctx_node, const struct lyd_node *tree,
-        const struct lyxp_var *vars, ly_bool with_opaq, LYA_COUNT_T *path_idx, struct lyd_node **match)
+        const struct ly_ht *unres_ht, const struct lyxp_var *vars, ly_bool with_opaq, LYA_COUNT_T *path_idx,
+        struct lyd_node **match)
 {
     LYA_COUNT_T u;
     struct lyd_node *prev_node = NULL, *elem, *node = NULL, *target;
@@ -1394,6 +1396,11 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *ctx_node
             break;
         }
 
+        if (lyd_validate_node_is_unres(node, unres_ht)) {
+            /* unresolved node */
+            return LY_EINCOMPLETE;
+        }
+
         /* rememeber previous node */
         prev_node = node;
 
@@ -1419,7 +1426,7 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *ctx_node
         if (match) {
             *match = prev_node;
         }
-        return LY_EINCOMPLETE;
+        return LY_ENOT;
     }
 
     /* we have not found any nodes */
@@ -1433,27 +1440,29 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *ctx_node
 }
 
 LY_ERR
-ly_path_eval(const struct ly_path *path, const struct lyd_node *ctx_node, const struct lyxp_var *vars,
-        struct lyd_node **match)
+ly_path_eval(const struct ly_path *path, const struct lyd_node *ctx_node, const struct ly_ht *unres_ht,
+        const struct lyxp_var *vars, struct lyd_node **match)
 {
-    LY_ERR ret;
+    LY_ERR rc;
     struct lyd_node *m;
 
-    ret = ly_path_eval_partial(path, ctx_node, NULL, vars, 0, NULL, &m);
+    rc = ly_path_eval_partial(path, ctx_node, NULL, unres_ht, vars, 0, NULL, &m);
 
-    if (ret == LY_SUCCESS) {
+    if (!rc) {
         /* last node was found */
         if (match) {
             *match = m;
         }
-        return LY_SUCCESS;
+    } else if (rc == LY_ENOT) {
+        /* not a full match, so no match */
+        rc = LY_ENOTFOUND;
     }
 
-    /* not a full match */
+    /* no match */
     if (match) {
         *match = NULL;
     }
-    return LY_ENOTFOUND;
+    return rc;
 }
 
 LY_ERR

@@ -43,6 +43,7 @@
 #include "tree_data_internal.h"
 #include "tree_schema_internal.h"
 #include "utils.h"
+#include "validation.h"
 #include "xml.h"
 
 static LY_ERR reparse_or_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t depth);
@@ -871,6 +872,7 @@ set_init(struct lyxp_set *new, const struct lyxp_set *set)
     new->root_type = set->root_type;
     new->context_op = set->context_op;
     new->tree = set->tree;
+    new->unres_ht = set->unres_ht;
     new->cur_mod = set->cur_mod;
     new->format = set->format;
     new->prefix_data = set->prefix_data;
@@ -1684,7 +1686,7 @@ set_comp_canonize(struct lyxp_set *set, const struct lyxp_set_node *xp_node)
 
     /* print canonized string, ignore errors, the value may not satisfy schema constraints */
     r = lyd_value_validate3(set->ctx, type, set->val.str, strlen(set->val.str), set->format, set->prefix_data,
-            LYD_HINT_DATA, xp_node->node, xp_node->node->schema, 0, NULL, &canon);
+            LYD_HINT_DATA, xp_node->node, set->tree, set->unres_ht, xp_node->node->schema, 0, NULL, &canon);
     if (r && (r != LY_EINCOMPLETE)) {
         /* invalid value, fine */
         return LY_SUCCESS;
@@ -4008,12 +4010,12 @@ xpath_deref_type(const struct lyd_node *ctx_node, struct lyd_value *value, const
     /* does not work for leafref, it is using the realtype of its target */
     if (value->realtype->basetype == LY_TYPE_INST) {
         /* use the realtype in case of a union */
-        r = ly_path_eval(value->target, set->tree, NULL, &node);
+        r = ly_path_eval(value->target, set->tree, set->unres_ht, NULL, &node);
         if (!r) {
             /* insert it */
             set_insert_node(set, node, 0, LYXP_NODE_ELEM, 0);
         } else if (r != LY_ENOTFOUND) {
-            /* error */
+            /* error/incomplete */
             rc = r;
             goto cleanup;
         }
@@ -4041,7 +4043,7 @@ xpath_deref_type(const struct lyd_node *ctx_node, struct lyd_value *value, const
         assert(lref_t->realtype == value->realtype);
 
         /* find leafref target */
-        r = lyplg_type_resolve_leafref(lref_t, ctx_node, value, set->tree, &targets, &errmsg);
+        r = lyplg_type_resolve_leafref(lref_t, ctx_node, value, set->tree, set->unres_ht, &targets, &errmsg);
         if (!r) {
             /* insert nodes into set */
             for (i = 0; i < targets->count; ++i) {
@@ -5779,13 +5781,12 @@ moveto_root(struct lyxp_set *set, uint32_t options)
  * @param[in] node_name Node name to move to, NULL for any node.
  * @param[in] node_name_len Length of @p node_name.
  * @param[in] moveto_mod Expected module of the node, NULL for no prefix.
- * @param[in] options XPath options.
- * @return LY_ERR (LY_ENOT if node does not match, LY_EINCOMPLETE on unresolved when,
+ * @return LY_ERR (LY_ENOT if node does not match, LY_EINCOMPLETE on unresolved node,
  * LY_EINVAL if neither node nor any children match)
  */
 static LY_ERR
 moveto_node_check(const struct lyd_node *node, enum lyxp_node_type node_type, const struct lyxp_set *set,
-        const char *node_name, uint32_t node_name_len, const struct lys_module *moveto_mod, uint32_t options)
+        const char *node_name, uint32_t node_name_len, const struct lys_module *moveto_mod)
 {
     const struct lysc_node *schema;
 
@@ -5830,11 +5831,12 @@ moveto_node_check(const struct lyd_node *node, enum lyxp_node_type node_type, co
         return LY_ENOT;
     }
 
-    /* when check, accept the context node because it should only be the path ".", we have checked the when is valid before */
-    if (!(options & LYXP_IGNORE_WHEN) && (node->flags & LYD_WHEN_NEW) && (node != set->cur_node)) {
+    /* unres check, accept the context node because it should only be the path ".", we have checked the when is valid before */
+    if ((node != set->cur_node) && lyd_validate_node_is_unres(node, set->unres_ht)) {
         return LY_EINCOMPLETE;
     }
-    if ((node->flags & LYD_WHEN_FALSE) && (node != set->cur_node)) {
+
+    if ((node != set->cur_node) && (node->flags & LYD_WHEN_FALSE)) {
         /* when-false node is treated as non-existent for XPath purposes */
         return LY_ENOT;
     }
@@ -6211,7 +6213,7 @@ moveto_node(struct lyxp_set *set, const struct lys_module *moveto_mod, const cha
         iter = NULL;
         iter_type = 0;
         while (!moveto_axis_node_next(&iter, &iter_type, set->val.nodes[i].node, set->val.nodes[i].type, axis, set)) {
-            r = moveto_node_check(iter, iter_type, set, ncname, ncname_len, moveto_mod, options);
+            r = moveto_node_check(iter, iter_type, set, ncname, ncname_len, moveto_mod);
             if (r == LY_EINCOMPLETE) {
                 rc = r;
                 goto cleanup;
@@ -6344,11 +6346,12 @@ moveto_node_hash_child(struct lyxp_set *set, const struct lysc_node *scnode, con
         }
         LY_CHECK_ERR_GOTO(r && (r != LY_ENOTFOUND), ret = r, cleanup);
 
-        /* when check */
-        if (!(options & LYXP_IGNORE_WHEN) && sub && (sub->flags & LYD_WHEN_NEW)) {
+        /* unres check */
+        if (sub && lyd_validate_node_is_unres(sub, set->unres_ht)) {
             ret = LY_EINCOMPLETE;
             goto cleanup;
         }
+
         if (sub && (sub->flags & LYD_WHEN_FALSE)) {
             /* when-false node is treated as non-existent */
             sub = NULL;
@@ -6955,7 +6958,7 @@ moveto_node_alldesc_child(struct lyxp_set *set, const struct lys_module *moveto_
     set_init(&ret_set, set);
     for (i = 0; i < set->used; ++i) {
         LYD_TREE_DFS_BEGIN(set->val.nodes[i].node, elem) {
-            rc = moveto_node_check(elem, LYXP_NODE_ELEM, set, ncname, ncname_len, moveto_mod, options);
+            rc = moveto_node_check(elem, LYXP_NODE_ELEM, set, ncname, ncname_len, moveto_mod);
             if (!rc) {
                 /* add matching node into result set */
                 set_insert_node(&ret_set, elem, 0, LYXP_NODE_ELEM, ret_set.used);
@@ -7937,7 +7940,7 @@ eval_name_test_try_compile_predicate_append(const struct lyxp_expr *exp, uint32_
     /* evaluate the value subexpression with the root context node */
     lyxp_set_free_content(&set2);
     LY_CHECK_GOTO(rc = lyxp_eval(set->ctx, val_exp, set->cur_mod, set->format, set->prefix_data, set->cur_node,
-            ctx_node, set->tree, NULL, &set2, 0), cleanup);
+            ctx_node, set->tree, set->unres_ht, NULL, &set2, 0), cleanup);
 
     /* cast it into a string */
     LY_CHECK_GOTO(rc = lyxp_set_cast(&set2, LYXP_SET_STRING), cleanup);
@@ -9904,7 +9907,8 @@ lyxp_get_root_type(const struct lyd_node *ctx_node, const struct lysc_node *ctx_
 LY_ERR
 lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct lys_module *cur_mod,
         LY_VALUE_FORMAT format, void *prefix_data, const struct lyd_node *cur_node, const struct lyd_node *ctx_node,
-        const struct lyd_node *tree, const struct lyxp_var *vars, struct lyxp_set *set, uint32_t options)
+        const struct lyd_node *tree, const struct ly_ht *unres_ht, const struct lyxp_var *vars, struct lyxp_set *set,
+        uint32_t options)
 {
     uint32_t tok_idx = 0;
     LY_ERR rc;
@@ -9942,6 +9946,7 @@ lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct ly
             set->context_op && !(set->context_op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF));
             set->context_op = set->context_op->parent) {}
     set->tree = tree;
+    set->unres_ht = unres_ht;
     set->cur_mod = cur_mod;
     set->format = format;
     set->prefix_data = prefix_data;

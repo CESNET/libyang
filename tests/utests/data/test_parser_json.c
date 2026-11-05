@@ -1083,6 +1083,43 @@ test_parent(void **state)
     lyd_free_tree(tree);
 }
 
+static void
+test_union_leafref(void **state)
+{
+    struct lyd_node *tree;
+    const char *data, *schema;
+
+    schema =
+            "module b {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:example:b\";\n"
+            "  prefix b;\n"
+            "\n"
+            "  leaf t {\n"
+            "    type uint8;\n"
+            "  }\n"
+            "  leaf d {\n"
+            "    type union {\n"
+            "      type leafref {\n"
+            "        path \"/b:t\";\n"
+            "      }\n"
+            "      type string;\n"
+            "    }\n"
+            "  }\n"
+            "  leaf y {\n"
+            "    when \"/b:d = '01'\";\n"
+            "    type string;\n"
+            "  }\n"
+            "}\n";
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    data = "{\"b:d\":\"01\",\"b:y\":\"z\"}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -1105,6 +1142,7 @@ main(void)
         UTEST(test_restconf_reply, setup),
         UTEST(test_metadata, setup),
         UTEST(test_parent, setup),
+        UTEST(test_union_leafref),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

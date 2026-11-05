@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for functions from parser_xml.c
  *
- * Copyright (c) 2019 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -1114,6 +1114,43 @@ test_subtree(void **state)
     lyd_free_all(tree);
 }
 
+static void
+test_union_leafref(void **state)
+{
+    struct lyd_node *tree;
+    const char *data, *schema;
+
+    schema =
+            "module b {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:example:b\";\n"
+            "  prefix b;\n"
+            "\n"
+            "  leaf t {\n"
+            "    type uint8;\n"
+            "  }\n"
+            "  leaf d {\n"
+            "    type union {\n"
+            "      type leafref {\n"
+            "        path \"/b:t\";\n"
+            "      }\n"
+            "      type string;\n"
+            "    }\n"
+            "  }\n"
+            "  leaf y {\n"
+            "    when \"/b:d = '01'\";\n"
+            "    type string;\n"
+            "  }\n"
+            "}\n";
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    data = "<d xmlns=\"urn:example:b\">01</d><y xmlns=\"urn:example:b\">z</y>";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -1138,6 +1175,7 @@ main(void)
         UTEST(test_data_skip, setup),
         UTEST(test_metadata, setup),
         UTEST(test_subtree, setup),
+        UTEST(test_union_leafref),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

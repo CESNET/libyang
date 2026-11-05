@@ -1572,7 +1572,8 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
             if (!r) {
                 /* validate the value and store the canonical value */
                 r = lyd_value_validate3(schema->module->ctx, ((struct lysc_node_leaf *)schema)->type, value,
-                        LYPLG_BITS2BYTES(value_size_bits), format, NULL, LYD_HINT_DATA, NULL, schema, 1, NULL, &canon);
+                        LYPLG_BITS2BYTES(value_size_bits), format, NULL, LYD_HINT_DATA, NULL, NULL, NULL, schema, 1,
+                        NULL, &canon);
                 LY_CHECK_RET(r && r != LY_EINCOMPLETE, r);
 
                 /* store the new predicate so that it is used when searching for this instance */
@@ -1620,7 +1621,8 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
         if (p[0].doc_root) {
             for (tree = parent; tree->parent; tree = tree->parent) {}
         }
-        r = ly_path_eval_partial(p, tree ? NULL : parent, tree, NULL, options & LYD_NEW_PATH_WITH_OPAQ, &path_idx, &node);
+        r = ly_path_eval_partial(p, tree ? NULL : parent, tree, NULL, NULL, options & LYD_NEW_PATH_WITH_OPAQ, &path_idx,
+                &node);
         if (r == LY_SUCCESS) {
             if (orig_count == LYA_COUNT(p)) {
                 /* the node exists, are we supposed to update it or is it just a default? */
@@ -1638,7 +1640,7 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
                         &nparent, &nnode);
                 goto cleanup;
             } /* else we were not searching for the whole path */
-        } else if (r == LY_EINCOMPLETE) {
+        } else if (r == LY_ENOT) {
             /* some nodes were found, adjust the iterator to the next segment to be created */
             ++path_idx;
         } else if (r == LY_ENOTFOUND) {
@@ -1990,7 +1992,7 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
 
                 if (lysc_has_when(snode) && node_when) {
                     /* remember to resolve when */
-                    LY_CHECK_RET(lyd_validate_unres_add_when(node, node_when));
+                    LY_CHECK_RET(ly_set_add(node_when, (void *)node, 1, NULL));
                 }
                 if (ext_val) {
                     /* store for ext instance node validation, if needed */
@@ -2018,7 +2020,7 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
 
                 if (lysc_has_when(snode) && node_when) {
                     /* remember to resolve when */
-                    LY_CHECK_RET(lyd_validate_unres_add_when(node, node_when));
+                    LY_CHECK_RET(ly_set_add(node_when, (void *)node, 1, NULL));
                 }
                 if (ext_val) {
                     /* store for ext instance node validation, if needed */
@@ -2047,7 +2049,7 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
 
                     if (lysc_has_when(snode) && node_when) {
                         /* remember to resolve when */
-                        LY_CHECK_RET(lyd_validate_unres_add_when(node, node_when));
+                        LY_CHECK_RET(ly_set_add(node_when, (void *)node, 1, NULL));
                     }
                     if (ext_val) {
                         /* store for ext instance node validation, if needed */

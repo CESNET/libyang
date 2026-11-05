@@ -974,7 +974,7 @@ cleanup:
 
 LIBYANG_API_DEF LY_ERR
 lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node, struct lyd_value *value,
-        const struct lyd_node *tree, struct ly_set **targets, char **errmsg)
+        const struct lyd_node *tree, const struct ly_ht *unres_ht, struct ly_set **targets, char **errmsg)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyxp_expr *target_path = NULL;
@@ -1009,8 +1009,10 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
 
     /* find the target data instance(s) */
     rc = lyxp_eval(LYD_CTX(node), target_path ? target_path : lref->path, node->schema->module,
-            LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, node, node, tree, NULL, &set, LYXP_IGNORE_WHEN);
-    if (rc) {
+            LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, node, node, tree, unres_ht, NULL, &set, 0);
+    if (rc == LY_EINCOMPLETE) {
+        goto cleanup;
+    } else if (rc) {
         e = ly_err_last(LYD_CTX(node));
         if (e && (e->err == rc)) {
             xp_err_msg = e->msg;

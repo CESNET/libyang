@@ -310,6 +310,7 @@ struct lyxp_set {
     enum lyxp_node_type root_type;          /**< Type of root node. */
     const struct lysc_node *context_op;     /**< Schema of the current node. */
     const struct lyd_node *tree;            /**< Data tree on which to perform the evaluation. */
+    const struct ly_ht *unres_ht;           /**< Optional hash table with all the yet unresolved nodes. */
     const struct lys_module *cur_mod;       /**< Current module for the expression (where it was "instantiated"). */
     LY_VALUE_FORMAT format;                 /**< Format of the XPath expression. */
     void *prefix_data;                      /**< Format-specific prefix data (see ::ly_resolve_prefix). */
@@ -342,16 +343,18 @@ const char *lyxp_token2str(enum lyxp_token tok);
  * subexpression is being evaluated.
  * @param[in] tree Data tree on which to perform the evaluation, it must include all the available data (including
  * the tree of @p ctx_node). Can be any node of the tree, it is adjusted.
+ * @param[in] unres_ht Hash table with all the yet unresolved nodes. If NULL, all the nodes are considered resolved.
  * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
  * @param[out] set Result set.
  * @param[in] options Whether to apply some evaluation restrictions.
- * @return LY_EVALID for invalid argument types/count,
- * @return LY_EINCOMPLETE for unresolved when,
+ * @return LY_EVALID for invalid argument types/count;
+ * @return LY_EINCOMPLETE for incomplete evaluation depending on a node in @p unres_ht, if set;
  * @return LY_EINVAL, LY_EMEM, LY_EINT for other errors.
  */
 LY_ERR lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct lys_module *cur_mod,
         LY_VALUE_FORMAT format, void *prefix_data, const struct lyd_node *cur_node, const struct lyd_node *ctx_node,
-        const struct lyd_node *tree, const struct lyxp_var *vars, struct lyxp_set *set, uint32_t options);
+        const struct lyd_node *tree, const struct ly_ht *unres_ht, const struct lyxp_var *vars, struct lyxp_set *set,
+        uint32_t options);
 
 /**
  * @brief Get all the partial XPath nodes (atoms) that are required for @p exp to be evaluated.
@@ -374,17 +377,16 @@ LY_ERR lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const
         const struct lysc_node *ctx_scnode, struct lyxp_set *set, uint32_t options);
 
 /** used only internally, maps with @ref findxpathoptions */
-#define LYXP_IGNORE_WHEN     0x01   /**< Ignore unevaluated when in data nodes and do not return ::LY_EINCOMPLETE. */
-#define LYXP_SCHEMA          0x02   /**< Apply data node access restrictions defined for 'when' and 'must' evaluation. */
+#define LYXP_SCHEMA          0x01   /**< Apply data node access restrictions defined for 'when' and 'must' evaluation. */
+#define LYXP_SKIP_EXPR       0x02   /**< Rest of the expression will not be evaluated (lazy evaluation) */
 #define LYXP_SCNODE          0x04   /**< No special tree access modifiers. */
 #define LYXP_SCNODE_SCHEMA   LYS_FIND_XP_SCHEMA /**< Apply node access restrictions defined for 'when' and 'must' evaluation. */
 #define LYXP_SCNODE_OUTPUT   LYS_FIND_XP_OUTPUT /**< Search RPC/action output nodes instead of input ones. */
 #define LYXP_SCNODE_ALL      0x1C   /**< mask for all the LYXP_SCNODE_* values */
-#define LYXP_SKIP_EXPR       0x20   /**< The rest of the expression will not be evaluated (lazy evaluation) */
+#define LYXP_ACCESS_TREE_ALL 0x20   /**< Explicit accessible tree of all the nodes. */
 #define LYXP_SCNODE_ERROR    LYS_FIND_NO_MATCH_ERROR    /**< Return error if a path segment matches no nodes, otherwise only
                                                              warning is printed. */
-#define LYXP_ACCESS_TREE_ALL 0x80   /**< Explicit accessible tree of all the nodes. */
-#define LYXP_ACCESS_TREE_CONFIG 0x0100  /**< Explicit accessible tree of only configuration data. */
+#define LYXP_ACCESS_TREE_CONFIG 0x80    /**< Explicit accessible tree of only configuration data. */
 
 /**
  * @brief Cast XPath set to another type.
