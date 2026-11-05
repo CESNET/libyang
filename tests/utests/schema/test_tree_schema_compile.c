@@ -3966,6 +3966,66 @@ test_when(void **state)
             LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("When condition is accessing its own conditional node children.", "/a:cont/aug-cont", 0);
 
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX,
+            "module a {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:a\";\n"
+            "  prefix a;\n"
+            "\n"
+            "  container c {\n"
+            "    presence \"test\";\n"
+            "    choice ch {\n"
+            "      default s;\n"
+            "      case s {\n"
+            "        when \"boolean(deref(v))\";\n"
+            "        leaf d {\n"
+            "          type uint8;\n"
+            "          default 3;\n"
+            "        }\n"
+            "      }\n"
+            "    }\n"
+            "    leaf v {\n"
+            "      type leafref {\n"
+            "        path \"../d\";\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "}",
+            LYS_IN_YANG, NULL));
+    CHECK_LOG_CTX("When condition cyclic dependency on the node \"d\".", "/a:c/ch/s", 0);
+
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX,
+            "module a {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:a\";\n"
+            "  prefix a;\n"
+            "\n"
+            "  grouping g {\n"
+            "    leaf d {\n"
+            "      type uint8;\n"
+            "      default 3;\n"
+            "    }\n"
+            "  }\n"
+            "\n"
+            "  container c {\n"
+            "    presence \"test\";\n"
+            "    uses g {\n"
+            "      when \"string(v) = '3'\";\n"
+            "    }\n"
+            "    leaf v {\n"
+            "      type union {\n"
+            "        type leafref {\n"
+            "          path \"../d\";\n"
+            "        }\n"
+            "        type string;\n"
+            "      }\n"
+            "      default \"03\";\n"
+            "    }\n"
+            "  }\n"
+            "}",
+            LYS_IN_YANG, NULL));
+    CHECK_LOG_CTX("When condition cyclic dependency on the node \"d\".", "/a:c/d", 0);
+
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX,
             "module b {\n"
             "    namespace urn:b;\n"
