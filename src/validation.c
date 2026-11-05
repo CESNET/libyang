@@ -643,11 +643,11 @@ cleanup:
 }
 
 LY_ERR
-lyd_validate_unres(struct lyd_node **tree, enum lyd_type data_type, struct ly_set *node_when, int with_unresolvable,
-        struct ly_set *node_types, struct ly_set *meta_types, struct ly_set *ext_val, uint32_t val_opts,
-        struct lyd_node **diff)
+lyd_validate_unres(struct lyd_node **tree, enum lyd_type data_type, struct ly_set *node_when, struct ly_set *node_types,
+        struct ly_set *meta_types, struct ly_set *ext_val, uint32_t val_opts, struct lyd_node **diff)
 {
     LY_ERR r, rc = LY_SUCCESS;
+    const struct ly_ctx *ctx = (*tree ? LYD_CTX(*tree) : NULL);
     uint32_t i, unres_count, prev_count;
     struct ly_ht *unres_ht = NULL;
     struct ly_set empty_set = {0};
@@ -685,8 +685,21 @@ lyd_validate_unres(struct lyd_node **tree, enum lyd_type data_type, struct ly_se
     unres_count = node_when->count + node_types->count;
     prev_count = 0;
     while (unres_count) {
-        if (with_unresolvable && unres_ht && (prev_count == unres_count)) {
-            /* we have resolved what we could, assume the rest is correct */
+        if (prev_count == unres_count) {
+            /* we have resolved what we could but there are cyclic dependencies, whens were checked
+             * during compilation */
+            LY_CHECK_ERR_GOTO(!unres_ht, LOGINT(ctx); rc = LY_EINT, cleanup);
+            assert((node_when->count && node_types->count) || (node_types->count > 1));
+
+            if (node_when->count) {
+                LOGWRN(ctx, "When condition of \"%s\" has a cyclic dependency on the value of \"%s\".",
+                        LYD_NAME(node_when->dnodes[0]), LYD_NAME(node_types->dnodes[0]));
+            } else {
+                LOGWRN(ctx, "Value of \"%s\" has a cyclic dependency on the value of \"%s\".",
+                        LYD_NAME(node_types->dnodes[0]), LYD_NAME(node_types->dnodes[1]));
+            }
+
+            /* ignore the rest of dependencies by freeing the unres HT */
             lyht_free(unres_ht, NULL);
             unres_ht = NULL;
         }
@@ -2332,8 +2345,7 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
     }
 
     /* finish incompletely validated terminal values/attributes and when conditions */
-    r = lyd_validate_unres(tree, LYD_TYPE_DATA_YANG, node_when_p, 0, node_types_p, meta_types_p, ext_val_p, val_opts,
-            diff);
+    r = lyd_validate_unres(tree, LYD_TYPE_DATA_YANG, node_when_p, node_types_p, meta_types_p, ext_val_p, val_opts, diff);
     LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
     if (!(val_opts & LYD_VALIDATE_NOT_FINAL)) {
@@ -2389,7 +2401,7 @@ lyd_validate_ext(struct lyd_node **subtree, const struct lysc_ext_instance *ext,
     LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
     /* finish incompletely validated terminal values/attributes and when conditions */
-    r = lyd_validate_unres(subtree, LYD_TYPE_DATA_YANG, &node_when, 0, &node_types, &meta_types, &ext_val, val_opts, diff);
+    r = lyd_validate_unres(subtree, LYD_TYPE_DATA_YANG, &node_when, &node_types, &meta_types, &ext_val, val_opts, diff);
     LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
     if (!(val_opts & LYD_VALIDATE_NOT_FINAL)) {
@@ -2618,7 +2630,7 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
 
     /* finish incompletely validated terminal values/attributes and when conditions on the full tree,
      * account for unresolved 'when' that may appear in the non-validated dependency data tree */
-    LY_CHECK_GOTO(rc = lyd_validate_unres((struct lyd_node **)&dep_tree, data_type, node_when_p, 1, node_types_p,
+    LY_CHECK_GOTO(rc = lyd_validate_unres((struct lyd_node **)&dep_tree, data_type, node_when_p, node_types_p,
             meta_types_p, ext_val_p, val_opts, diff), cleanup);
 
     /* perform final validation of the operation/notification */
@@ -2700,7 +2712,7 @@ lyd_validate_op2(struct lyd_node *op_tree, const struct lyd_node *dep_tree, enum
             } else if (op_node->flags & LYD_EXT) {
                 /* fully validate the rest using the extension instance callback */
                 LY_CHECK_RET(lyd_validate_tree_ext(op_node, NULL, &ext_val));
-                rc = lyd_validate_unres((struct lyd_node **)&dep_tree, data_type, NULL, 0, NULL, NULL, &ext_val,
+                rc = lyd_validate_unres((struct lyd_node **)&dep_tree, data_type, NULL, NULL, NULL, &ext_val,
                         val_opts, diff);
                 ly_set_erase(&ext_val, free);
                 return rc;

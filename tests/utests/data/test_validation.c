@@ -1428,6 +1428,28 @@ test_require_instance(void **state)
             "instance-required");
     CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/ri:t\" value - required instance not found.", "/ri:ii", 0,
             "instance-required");
+
+    schema =
+            "module ri2 {\n"
+            "    namespace urn:tests:ri2;\n"
+            "    prefix ri2;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    leaf t {\n"
+            "        when \"../ii\";\n"
+            "        type string;\n"
+            "    }\n"
+            "    leaf ii {\n"
+            "        type instance-identifier;\n"
+            "    }\n"
+            "}";
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    data = "<t xmlns=\"urn:tests:ri2\">str</t>\n"
+            "<ii xmlns=\"urn:tests:ri2\" xmlns:ri2=\"urn:tests:ri2\">/ri2:t</ii>\n";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT | LYD_VALIDATE_MULTI_ERROR, LY_SUCCESS, tree);
+    CHECK_LOG_CTX("When condition of \"t\" has a cyclic dependency on the value of \"ii\".", NULL, 0);
+    lyd_free_siblings(tree);
 }
 
 const char *schema_j =

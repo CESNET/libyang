@@ -96,7 +96,6 @@ int lyd_validate_node_is_unres(const struct lyd_node *node, const struct ly_ht *
  * @param[in,out] tree Data tree, is updated if some nodes are autodeleted.
  * @param[in] data_type Validate data type.
  * @param[in] node_when Set with nodes with "when" conditions, can be NULL.
- * @param[in] with_unresolvable Allow unresolved nodes in case there are non-validated nodes in @p tree.
  * @param[in] node_types Set with nodes with unresolved types, can be NULL
  * @param[in] meta_types Set with metadata with unresolved types, can be NULL.
  * @param[in] ext_val Set with extension data to validate, can be NULL.
@@ -105,8 +104,8 @@ int lyd_validate_node_is_unres(const struct lyd_node *node, const struct ly_ht *
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_unres(struct lyd_node **tree, enum lyd_type data_type, struct ly_set *node_when,
-        int with_unresolvable, struct ly_set *node_types, struct ly_set *meta_types, struct ly_set *ext_val,
-        uint32_t val_opts, struct lyd_node **diff);
+        struct ly_set *node_types, struct ly_set *meta_types, struct ly_set *ext_val, uint32_t val_opts,
+        struct lyd_node **diff);
 
 /**
  * @brief Validate new siblings. Specifically, check duplicated instances, autodelete default values and cases.
