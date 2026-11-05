@@ -2083,6 +2083,48 @@ test_when_nested(void **state)
     CHECK_LOG_CTX("When condition \"../enabled = 'true'\" not satisfied.", "/poc:config/ref-container", 0);
 }
 
+static void
+test_top_augment(void **state)
+{
+    struct lyd_node *tree;
+    const char *schema1 =
+            "module s1 {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:s1\";\n"
+            "  prefix s1;\n"
+            "\n"
+            "  choice mode {\n"
+            "    leaf first {\n"
+            "      type string;\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+    const char *schema2 =
+            "module s2 {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:s2\";\n"
+            "  prefix s2;\n"
+            "\n"
+            "  import s1 {\n"
+            "    prefix s1;\n"
+            "  }\n"
+            "\n"
+            "  augment \"/s1:mode\" {\n"
+            "    leaf second {\n"
+            "      type string;\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+    const char *data =
+            "<second xmlns=\"urn:s2\">x</second>\n";
+
+    UTEST_ADD_MODULE(schema1, LYS_IN_YANG, NULL, NULL);
+    UTEST_ADD_MODULE(schema2, LYS_IN_YANG, NULL, NULL);
+
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_siblings(tree);
+}
+
 int
 main(void)
 {
@@ -2112,6 +2154,7 @@ main(void)
         UTEST(test_pattern),
         UTEST(test_store_only),
         UTEST(test_when_nested),
+        UTEST(test_top_augment),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

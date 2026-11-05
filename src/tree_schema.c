@@ -545,7 +545,10 @@ lys_find_child_node(const struct ly_ctx *ctx, const struct lysc_node *parent, co
         const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name,
         uint32_t name_len, uint32_t options, const struct lysc_node **snode, struct lysc_ext_instance **ext)
 {
-    const struct lysc_node *node = NULL;
+    LY_ERR rc = LY_SUCCESS;
+    const struct lysc_node *node;
+    const struct lys_module *cur_mod;
+    uint32_t idx = 0;
 
     assert(name);
 
@@ -574,6 +577,7 @@ lys_find_child_node(const struct ly_ctx *ctx, const struct lysc_node *parent, co
             return LY_EINVAL;
         }
 
+        node = NULL;
         while ((node = lys_getnext(node, parent, mod->compiled, options))) {
             /* check module */
             if (node->module != mod) {
@@ -589,8 +593,34 @@ lys_find_child_node(const struct ly_ctx *ctx, const struct lysc_node *parent, co
     }
 
     /* look for an ext instance node */
-    return lys_find_child_node_ext(ctx, mod, NULL, parent, prefix, prefix_len, format, prefix_data, name, name_len,
+    rc = lys_find_child_node_ext(ctx, mod, NULL, parent, prefix, prefix_len, format, prefix_data, name, name_len,
             0, snode, ext);
+
+    if ((rc == LY_ENOT) && !parent && mod) {
+        /* it may still be a foreign top-level choice augment */
+        while ((cur_mod = ly_ctx_get_module_iter(ctx, &idx))) {
+            if (!cur_mod->implemented) {
+                continue;
+            }
+
+            /* get next node */
+            node = NULL;
+            while ((node = lys_getnext(node, NULL, cur_mod->compiled, 0))) {
+                /* check module */
+                if (node->module != mod) {
+                    continue;
+                }
+
+                /* check name */
+                if (!ly_strncmp(node->name, name, name_len)) {
+                    *snode = node;
+                    return LY_SUCCESS;
+                }
+            }
+        }
+    }
+
+    return rc;
 }
 
 LIBYANG_API_DEF const struct lysc_node *
