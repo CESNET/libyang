@@ -1210,8 +1210,17 @@ lydcbor_parse_any(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snode, st
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
         /* parse data tree with correct options */
-        lydctx->parse_opts &= ~LYD_PARSE_STRICT;
-        lydctx->parse_opts |= LYD_PARSE_OPAQ | (ext ? LYD_PARSE_ONLY : 0);
+        if (lydctx->parse_opts & LYD_PARSE_ANYDATA_STRICT) {
+            /* explicit strict data parsing */
+            lydctx->parse_opts |= LYD_PARSE_STRICT;
+        } else if ((lydctx->int_opts & LYD_INTOPT_ENVELOPE) && !(lydctx->int_opts & LYD_INTOPT_ANY)) {
+            /* the notification in the envelope contents, parsed as data like any other notification */
+        } else {
+            /* make the parser process data as opaq nodes */
+            lydctx->parse_opts &= ~LYD_PARSE_STRICT;
+            lydctx->parse_opts |= LYD_PARSE_OPAQ;
+        }
+        lydctx->parse_opts |= (ext ? LYD_PARSE_ONLY : 0);
         lydctx->int_opts |= LYD_INTOPT_ANY | LYD_INTOPT_WITH_SIBLINGS;
         lydctx->any_schema = snode;
 
@@ -1381,6 +1390,11 @@ lydcbor_parse_instance(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, str
             LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
         }
         LY_CHECK_GOTO(!*node, cleanup);
+
+        /* extension instance data */
+        if (ext) {
+            (*node)->flags |= LYD_EXT;
+        }
 
         /* add/correct flags */
         r = lyd_parser_set_data_flags(*node, &(*node)->meta, (struct lyd_ctx *)lydctx, ext);

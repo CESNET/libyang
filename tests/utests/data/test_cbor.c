@@ -241,6 +241,37 @@ test_operations(void **state)
     }
 }
 
+static void
+test_structure(void **state)
+{
+    struct lyd_node *tree;
+    char *buffer, *json;
+    struct ly_out *out;
+    const char *mod, *data;
+
+    mod = "module a {yang-version 1.1; namespace urn:tests:a; prefix a;"
+            "import ietf-yang-structure-ext {prefix sx;}"
+            "sx:structure struct {container x {leaf y {type string;} leaf z {type uint8; mandatory true;}}}}";
+    UTEST_ADD_MODULE(mod, LYS_IN_YANG, NULL, NULL);
+
+    data = "{\"a:struct\":{\"x\":{\"y\":\"val\",\"z\":25}}}";
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&buffer, 0, &out));
+    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_CBOR, 0));
+    lyd_free_all(tree);
+
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, buffer, ly_out_printed(out), LYD_CBOR,
+            LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    ly_out_free(out, NULL, 0);
+    free(buffer);
+    assert_true(tree->flags & LYD_EXT);
+
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&json, tree, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS));
+    assert_string_equal(json, data);
+    free(json);
+    lyd_free_all(tree);
+}
+
 static LY_ERR
 test_ext_data_clb(const struct lysc_ext_instance *ext, const struct lyd_node *UNUSED(parent), void *user_data,
         void **ext_data, ly_bool *ext_data_free)
@@ -479,6 +510,25 @@ test_negint(void **state)
     CHECK_LOG_CTX("Invalid type uint8 value \"-18446744073709551616\".", "/cbor-test:lf-uintg8", 1);
 }
 
+static void
+test_anydata_strict(void **state)
+{
+    struct lyd_node *tree;
+
+    /* {"cbor-test:anydata-payload": {"cbor-test:unknown": "v"}} */
+    const char data[] = "\xa1\x78\x19" "cbor-test:anydata-payload" "\xa1\x71" "cbor-test:unknown" "\x61" "v";
+
+    /* unknown anydata content is parsed as opaque nodes */
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, data, sizeof data - 1, LYD_CBOR, 0,
+            LYD_VALIDATE_PRESENT, &tree));
+    lyd_free_all(tree);
+
+    /* but not with strict anydata parsing */
+    assert_int_equal(LY_EVALID, lyd_parse_data_mem_len(UTEST_LYCTX, data, sizeof data - 1, LYD_CBOR,
+            LYD_PARSE_ANYDATA_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX("Node \"unknown\" not found in the \"cbor-test\" module.", "/cbor-test:anydata-payload", 1);
+}
+
 /* CBOR RESTCONF notification envelope parts */
 #define CBOR_ENVP_KEY "\x78\x1a" "ietf-restconf:notification"
 #define CBOR_EVENT_TIME "\x69" "eventTime" "\x74" "2013-12-21T00:01:00Z"
@@ -596,12 +646,14 @@ main(void)
         UTEST(test_node, setup),
         UTEST(test_nested_list, setup),
         UTEST(test_operations, setup),
+        UTEST(test_structure, setup),
         UTEST(test_schema_mount, setup),
         UTEST(test_opaque, setup),
         UTEST(test_opaque_list, setup),
         UTEST(test_attributes, setup),
         UTEST(test_invalid_input, setup),
         UTEST(test_negint, setup),
+        UTEST(test_anydata_strict, setup),
         UTEST(test_restconf_notification, setup),
         UTEST(test_restconf_notification_invalid, setup),
     };
