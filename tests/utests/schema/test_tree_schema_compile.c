@@ -3951,6 +3951,40 @@ test_when(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX,
             "module a {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:example:a\";\n"
+            "  prefix a;\n"
+            "\n"
+            "  identity base;\n"
+            "  identity one {\n"
+            "    base base;\n"
+            "  }\n"
+            "\n"
+            "  leaf e {\n"
+            "    when \"enum-value(.) = 1\";\n"
+            "    type enumeration {\n"
+            "      enum x;\n"
+            "      enum y;\n"
+            "    }\n"
+            "  }\n"
+            "  leaf i {\n"
+            "    when \"derived-from-or-self(., 'a:one')\";\n"
+            "    type identityref {\n"
+            "      base base;\n"
+            "    }\n"
+            "  }\n"
+            "  leaf b {\n"
+            "    when \"bit-is-set(., 'f')\";\n"
+            "    type bits {\n"
+            "      bit f;\n"
+            "    }\n"
+            "  }\n"
+            "}\n",
+            LYS_IN_YANG, NULL));
+    CHECK_LOG_CTX("When condition is accessing its own conditional node value.", "/a:b", 0);
+
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX,
+            "module a {\n"
             "    namespace urn:a;\n"
             "    prefix a;\n"
             "    augment /cont {\n"

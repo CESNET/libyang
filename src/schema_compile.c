@@ -504,6 +504,7 @@ lys_compile_unres_when_atomize_node_leafref(const struct lysc_node *node, struct
     LY_ERR rc = LY_SUCCESS;
     const struct lysc_type_leafref *lref;
     LYA_COUNT_T idx = 0, u;
+    uint32_t idx2;
     struct ly_path *p = NULL;
     uint8_t oper;
 
@@ -517,8 +518,17 @@ lys_compile_unres_when_atomize_node_leafref(const struct lysc_node *node, struct
 
         /* copy all leafref nodes into the atomized when set */
         LYA_FOR(p, u) {
-            rc = lyxp_set_scnode_insert_node(set, p[u].node, LYXP_NODE_ELEM, LYXP_AXIS_SELF, NULL);
-            LY_CHECK_GOTO(rc, cleanup);
+            if (lyxp_set_scnode_contains(set, p[u].node, LYXP_NODE_ELEM, -1, &idx2)) {
+                /* update ctx if needed */
+                if (set->val.scnodes[idx2].in_ctx < LYXP_SET_SCNODE_ATOM_NODE) {
+                    set->val.scnodes[idx2].in_ctx = LYXP_SET_SCNODE_ATOM_NODE;
+                }
+            } else {
+                /* insert new traversed node */
+                rc = lyxp_set_scnode_insert_node(set, p[u].node, LYXP_NODE_ELEM, LYXP_AXIS_SELF, &idx2);
+                LY_CHECK_GOTO(rc, cleanup);
+                set->val.scnodes[idx2].in_ctx = LYXP_SET_SCNODE_ATOM_NODE;
+            }
         }
         ly_path_free(p);
         p = NULL;
