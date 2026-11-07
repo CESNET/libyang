@@ -422,7 +422,7 @@ lyb_check_mod_features(struct lyd_lyb_ctx *lybctx, const char *mod_name, const s
     LY_ERR rc = LY_SUCCESS;
     struct lylyb_parse_ctx *pctx = lybctx->parse_ctx;
     char *feature_name = NULL, **features = NULL, *en_feats_printer = NULL, *en_feats_parser = NULL;
-    uint32_t i, feature_count = 0, ctx_feature_count, len;
+    uint32_t i, feature_count = 0, ctx_feature_count, size = 0, used = 0;
 
     /* read feature count */
     LY_CHECK_GOTO(rc = lyb_read_count(&feature_count, pctx), cleanup);
@@ -461,47 +461,23 @@ lyb_check_mod_features(struct lyd_lyb_ctx *lybctx, const char *mod_name, const s
     }
 
     /* feature mismatch, prepare error message, unpack enabled features for printer */
-    len = 0;
     for (i = 0; i < feature_count; i++) {
-        if ((uint64_t)len + strlen(features[i]) + 2 > UINT32_MAX - 1) {
-            LOGERR(pctx->ctx, LY_EINVAL, "Invalid enabled features of module \"%s\", too long.", mod_name);
-            rc = LY_EDENIED;
-            goto cleanup;
-        }
-        len += strlen(features[i]) + 2;
-    }
-    en_feats_printer = calloc(1, len + 1);
-    LY_CHECK_ERR_GOTO(!en_feats_printer, LOGMEM(pctx->ctx), cleanup);
-    for (i = 0; i < feature_count; i++) {
-        strcat(en_feats_printer, features[i]);
-        if (i + 1 < feature_count) {
-            strcat(en_feats_printer, ", ");
-        }
+        LY_CHECK_GOTO(rc = ly_append_str(&en_feats_printer, &size, &used, "%s%s", i ? ", " : "", features[i]),
+                cleanup);
     }
 
     /* unpack enabled features for parser */
-    len = 0;
+    size = 0;
+    used = 0;
     ctx_feature_count = LYA_COUNT(mod->compiled->features);
     for (i = 0; i < ctx_feature_count; i++) {
-        if ((uint64_t)len + strlen(mod->compiled->features[i]) + 2 > UINT32_MAX - 1) {
-            LOGINT(pctx->ctx);
-            rc = LY_EINT;
-            goto cleanup;
-        }
-        len += strlen(mod->compiled->features[i]) + 2;
-    }
-    en_feats_parser = calloc(1, len + 1);
-    LY_CHECK_ERR_GOTO(!en_feats_parser, LOGMEM(pctx->ctx), cleanup);
-    for (i = 0; i < ctx_feature_count; i++) {
-        strcat(en_feats_parser, mod->compiled->features[i]);
-        if (i + 1 < ctx_feature_count) {
-            strcat(en_feats_parser, ", ");
-        }
+        LY_CHECK_GOTO(rc = ly_append_str(&en_feats_parser, &size, &used, "%s%s", i ? ", " : "",
+                mod->compiled->features[i]), cleanup);
     }
 
     LOGERR(pctx->ctx, LY_EDENIED,
             "Invalid context for LYB data parsing, module \"%s\" enabled feature mismatch (printer: {%s}, parser: {%s}).",
-            mod_name, en_feats_printer, en_feats_parser);
+            mod_name, en_feats_printer ? en_feats_printer : "", en_feats_parser ? en_feats_parser : "");
     rc = LY_EDENIED;
 
 cleanup:
@@ -546,7 +522,8 @@ lyb_parse_module(struct lyd_lyb_ctx *lybctx, const struct lys_module **mod)
     /* module revision */
     LY_CHECK_GOTO(rc = lyb_read(&rev, 2 * 8, pctx), cleanup);
     if (rev) {
-        sprintf(mod_rev, "%04u-%02u-%02u", ((rev & LYB_REV_YEAR_MASK) >> LYB_REV_YEAR_SHIFT) + LYB_REV_YEAR_OFFSET,
+        snprintf(mod_rev, sizeof mod_rev, "%04u-%02u-%02u",
+                ((rev & LYB_REV_YEAR_MASK) >> LYB_REV_YEAR_SHIFT) + LYB_REV_YEAR_OFFSET,
                 (rev & LYB_REV_MONTH_MASK) >> LYB_REV_MONTH_SHIFT, rev & LYB_REV_DAY_MASK);
     }
 

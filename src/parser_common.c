@@ -463,7 +463,7 @@ lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char **file
         }
 #else
         /* get URI if there is /proc */
-        sprintf(proc_path, "/proc/self/fd/%d", in->method.fd);
+        snprintf(proc_path, sizeof proc_path, "/proc/self/fd/%d", in->method.fd);
         if ((len = readlink(proc_path, path, PATH_MAX - 1)) > 0) {
             LY_CHECK_RET(lysdict_insert(ctx, path, len, filepath));
         }
@@ -1339,9 +1339,8 @@ lysp_stmt_type_pattern_modifier(struct lysp_ctx *ctx, const struct lysp_stmt *st
     }
 
     /* replace the value in the dictionary */
-    buf = malloc(strlen(*pat) + 1);
+    buf = strdup(*pat);
     LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
-    strcpy(buf, *pat);
     lysdict_remove(PARSER_CTX(ctx), *pat);
 
     assert(buf[0] == LYSP_RESTR_PATTERN_ACK);
