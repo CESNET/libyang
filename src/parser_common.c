@@ -1785,6 +1785,39 @@ lysp_stmt_identity(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct ly
 }
 
 /**
+ * @brief Parse the revision-date statement of an import or include.
+ *
+ * The value is validated before it is stored, @p rev has room only for a valid date.
+ *
+ * @param[in] ctx Parser context.
+ * @param[in] stmt Source statement data from the parsed extension instance.
+ * @param[in,out] rev Array to store the revision date in.
+ * @param[in,out] exts Extension instances to add to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lysp_stmt_revision_date(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, char *rev, struct lysp_ext_instance **exts)
+{
+    const char *str = NULL;
+    LY_ERR rc;
+
+    if (rev[0]) {
+        LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, "revision-date");
+        return LY_EVALID;
+    }
+
+    LY_CHECK_RET(lysp_stmt_text_field(ctx, stmt, 0, &str, Y_STR_ARG, exts));
+
+    rc = lys_check_date(PARSER_CTX(ctx), str, strlen(str), "revision-date");
+    if (!rc) {
+        memcpy(rev, str, LY_REV_SIZE);
+    }
+    lysdict_remove(PARSER_CTX(ctx), str);
+
+    return rc ? LY_EVALID : LY_SUCCESS;
+}
+
+/**
  * @brief Parse the import statement.
  *
  * @param[in] ctx parser context.
@@ -1796,7 +1829,6 @@ static LY_ERR
 lysp_stmt_import(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_import **imports)
 {
     struct lysp_import *imp;
-    const char *str = NULL;
 
     LYA_ADD_ITEM(*imports, imp, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
@@ -1818,10 +1850,7 @@ lysp_stmt_import(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, 0, &imp->ref, Y_STR_ARG, &imp->exts));
             break;
         case LY_STMT_REVISION_DATE:
-            LY_CHECK_RET(lysp_stmt_text_field(ctx, stmt, 0, &str, Y_STR_ARG, &imp->exts));
-            strcpy(imp->rev, str);
-            lysdict_remove(PARSER_CTX(ctx), str);
-            LY_CHECK_RET(lys_check_date(PARSER_CTX(ctx), imp->rev, LY_REV_SIZE - 1, "revision-date"));
+            LY_CHECK_RET(lysp_stmt_revision_date(ctx, child, imp->rev, &imp->exts));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
             LY_CHECK_RET(lysp_stmt_ext(ctx, child, stmt->kw, 0, &imp->exts));
@@ -1847,7 +1876,6 @@ static LY_ERR
 lysp_stmt_include(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_include **includes)
 {
     struct lysp_include *inc;
-    const char *str = NULL;
 
     LYA_ADD_ITEM(*includes, inc, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
@@ -1865,10 +1893,7 @@ lysp_stmt_include(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lys
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, 0, &inc->ref, Y_STR_ARG, &inc->exts));
             break;
         case LY_STMT_REVISION_DATE:
-            LY_CHECK_RET(lysp_stmt_text_field(ctx, stmt, 0, &str, Y_STR_ARG, &inc->exts));
-            strcpy(inc->rev, str);
-            lysdict_remove(PARSER_CTX(ctx), str);
-            LY_CHECK_RET(lys_check_date(PARSER_CTX(ctx), inc->rev, LY_REV_SIZE - 1, "revision-date"));
+            LY_CHECK_RET(lysp_stmt_revision_date(ctx, child, inc->rev, &inc->exts));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
             LY_CHECK_RET(lysp_stmt_ext(ctx, child, stmt->kw, 0, &inc->exts));
