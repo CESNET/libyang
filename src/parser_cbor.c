@@ -446,7 +446,7 @@ lydcbor_item_to_string(const struct ly_ctx *ctx, const cbor_item_t *item, char *
         }
         *str_val = malloc(len + 1);
         LY_CHECK_ERR_RET(!*str_val, LOGMEM(ctx), LY_EMEM);
-        sprintf(*str_val, "%" PRIu64, val);
+        snprintf(*str_val, len + 1, "%" PRIu64, val);
         *str_len = len;
         break;
     }
@@ -468,7 +468,7 @@ lydcbor_item_to_string(const struct ly_ctx *ctx, const cbor_item_t *item, char *
         }
         *str_val = malloc(len + 1);
         LY_CHECK_ERR_RET(!*str_val, LOGMEM(ctx), LY_EMEM);
-        sprintf(*str_val, "-%" PRIu64, val + 1);
+        snprintf(*str_val, len + 1, "-%" PRIu64, val + 1);
         *str_len = len;
         break;
     }
@@ -526,7 +526,7 @@ lydcbor_item_to_string(const struct ly_ctx *ctx, const cbor_item_t *item, char *
             }
             *str_val = malloc(len + 1);
             LY_CHECK_ERR_RET(!*str_val, LOGMEM(ctx), LY_EMEM);
-            sprintf(*str_val, "%g", val);
+            snprintf(*str_val, len + 1, "%g", val);
             *str_len = len;
         }
         break;

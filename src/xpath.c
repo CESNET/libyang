@@ -20,6 +20,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <math.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -426,6 +427,47 @@ cast_string_realloc(const struct ly_ctx *ctx, uint64_t needed, char **str, uint3
     return LY_SUCCESS;
 }
 
+static LY_ERR cast_string_append(const struct ly_ctx *ctx, char **str, uint32_t *used, uint32_t *size,
+        const char *format, ...) _FORMAT_PRINTF(5, 6);
+
+/**
+ * @brief Append formatted text to a string being cast, enlarging it as needed.
+ *
+ * The length of the appended text is measured from the format itself so that callers never compute it by hand.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] str Pointer to the string to use.
+ * @param[in,out] used Used bytes in \p str, including the terminating zero.
+ * @param[in,out] size Allocated bytes in \p str.
+ * @param[in] format Format of the appended text.
+ * @param[in] ... Format arguments.
+ * @return LY_ERR
+ */
+static LY_ERR
+cast_string_append(const struct ly_ctx *ctx, char **str, uint32_t *used, uint32_t *size, const char *format, ...)
+{
+    va_list ap;
+    int len;
+
+    va_start(ap, format);
+    len = vsnprintf(NULL, 0, format, ap);
+    va_end(ap);
+    if (len < 0) {
+        LOGERR(ctx, LY_ESYS, "Failed to print a string (%s).", strerror(errno));
+        return LY_ESYS;
+    }
+
+    /* the terminating zero is overwritten, so len more bytes are needed */
+    LY_CHECK_RET(cast_string_realloc(ctx, len, str, used, size));
+
+    va_start(ap, format);
+    vsnprintf(*str + (*used - 1), *size - (*used - 1), format, ap);
+    va_end(ap);
+    *used += len;
+
+    return LY_SUCCESS;
+}
+
 /**
  * @brief Cast nodes recursively to one string @p str.
  *
@@ -455,9 +497,7 @@ cast_string_recursive(const struct lyd_node *node, struct lyxp_set *set, uint32_
 
     if (!node) {
         /* fake container */
-        LY_CHECK_RET(cast_string_realloc(set->ctx, 1, str, used, size));
-        strcpy(*str + (*used - 1), "\n");
-        ++(*used);
+        LY_CHECK_RET(cast_string_append(set->ctx, str, used, size, "\n"));
 
         ++indent;
 
@@ -469,9 +509,7 @@ cast_string_recursive(const struct lyd_node *node, struct lyxp_set *set, uint32_
         }
 
         /* end fake container */
-        LY_CHECK_RET(cast_string_realloc(set->ctx, 1, str, used, size));
-        strcpy(*str + (*used - 1), "\n");
-        ++(*used);
+        LY_CHECK_RET(cast_string_append(set->ctx, str, used, size, "\n"));
 
         --indent;
     } else {
@@ -488,9 +526,7 @@ cast_string_recursive(const struct lyd_node *node, struct lyxp_set *set, uint32_
         case LYS_LIST:
         case LYS_RPC:
         case LYS_NOTIF:
-            LY_CHECK_RET(cast_string_realloc(set->ctx, 1, str, used, size));
-            strcpy(*str + (*used - 1), "\n");
-            ++(*used);
+            LY_CHECK_RET(cast_string_append(set->ctx, str, used, size, "\n"));
 
             for (child = lyd_child(node); child; child = child->next) {
                 LY_CHECK_RET(cast_string_recursive(child, set, indent + 1, str, used, size));
@@ -502,19 +538,9 @@ cast_string_recursive(const struct lyd_node *node, struct lyxp_set *set, uint32_
         case LYS_LEAFLIST:
             value_str = lyd_get_value(node);
 
-            /* print indent */
-            LY_CHECK_RET(cast_string_realloc(set->ctx, indent * 2 + strlen(value_str) + 1, str, used, size));
-            memset(*str + (*used - 1), ' ', indent * 2);
-            *used += indent * 2;
-
-            /* print value */
-            if (*used == 1) {
-                sprintf(*str + (*used - 1), "%s", value_str);
-                *used += strlen(value_str);
-            } else {
-                sprintf(*str + (*used - 1), "%s\n", value_str);
-                *used += strlen(value_str) + 1;
-            }
+            /* print indent and value, a lone top-level value has no trailing newline */
+            LY_CHECK_RET(cast_string_append(set->ctx, str, used, size, "%*s%s%s", (int)(indent * 2), "", value_str,
+                    ((*used == 1) && !indent) ? "" : "\n"));
 
             break;
 
@@ -540,19 +566,11 @@ cast_string_recursive(const struct lyd_node *node, struct lyxp_set *set, uint32_
             }
 
             for (line = strtok_r(buf, "\n", &ptr); line; line = strtok_r(NULL, "\n", &ptr)) {
-                rc = cast_string_realloc(set->ctx, indent * 2 + strlen(line) + 1, str, used, size);
+                rc = cast_string_append(set->ctx, str, used, size, "%*s%s\n", (int)(indent * 2), "", line);
                 if (rc != LY_SUCCESS) {
                     free(buf);
                     return rc;
                 }
-                memset(*str + (*used - 1), ' ', indent * 2);
-                *used += indent * 2;
-
-                strcpy(*str + (*used - 1), line);
-                *used += strlen(line);
-
-                strcpy(*str + (*used - 1), "\n");
-                *used += 1;
             }
 
             free(buf);
@@ -3839,7 +3857,7 @@ xpath_concat(struct lyxp_set **args, uint32_t arg_count, struct lyxp_set *set, u
 {
     uint32_t i;
     char *str = NULL;
-    size_t used = 1;
+    uint32_t size = 0, used = 0;
     LY_ERR rc = LY_SUCCESS;
     struct lysc_node_leaf *sleaf;
 
@@ -3868,10 +3886,11 @@ xpath_concat(struct lyxp_set **args, uint32_t arg_count, struct lyxp_set *set, u
             return rc;
         }
 
-        str = ly_realloc(str, (used + strlen(args[i]->val.str)) * sizeof(char));
-        LY_CHECK_ERR_RET(!str, LOGMEM(set->ctx), LY_EMEM);
-        strcpy(str + used - 1, args[i]->val.str);
-        used += strlen(args[i]->val.str);
+        rc = ly_append_str(&str, &size, &used, "%s", args[i]->val.str);
+        if (rc != LY_SUCCESS) {
+            free(str);
+            return rc;
+        }
     }
 
     /* free, kind of */
@@ -7953,7 +7972,7 @@ eval_name_test_try_compile_predicate_append(const struct lyxp_expr *exp, uint32_
         uint32_t *pred_len)
 {
     LY_ERR rc = LY_SUCCESS;
-    uint32_t i;
+    uint32_t i, pred_size;
     const struct lyd_node *siblings;
     struct lyd_node *ctx_node;
     const struct lysc_node *sparent, *cur_scnode;
@@ -8012,11 +8031,11 @@ eval_name_test_try_compile_predicate_append(const struct lyxp_expr *exp, uint32_
     /* cast it into a string */
     LY_CHECK_GOTO(rc = lyxp_set_cast(&set2, LYXP_SET_STRING), cleanup);
 
-    /* append the JSON predicate */
-    *pred = ly_realloc(*pred, *pred_len + 1 + strlen(pred_node->name) + 2 + strlen(set2.val.str) + 3);
-    LY_CHECK_ERR_GOTO(!*pred, LOGMEM(set->ctx); rc = LY_EMEM, cleanup);
+    /* append the JSON predicate, *pred is allocated at least for *pred_len characters and the terminating zero */
     LY_CHECK_GOTO(rc = ly_val_get_quot(set->ctx, set2.val.str, &quot), cleanup);
-    *pred_len += sprintf(*pred + *pred_len, "[%s=%c%s%c]", pred_node->name, quot, set2.val.str, quot);
+    pred_size = *pred ? *pred_len + 1 : 0;
+    LY_CHECK_GOTO(rc = ly_append_str(pred, &pred_size, pred_len, "[%s=%c%s%c]", pred_node->name, quot,
+            set2.val.str, quot), cleanup);
 
 cleanup:
     lyxp_expr_free(val_exp);
