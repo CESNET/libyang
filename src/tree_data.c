@@ -19,6 +19,7 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <errno.h>
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -54,6 +55,8 @@
 #include "xpath.h"
 
 static int lyd_insert_has_keys(const struct lyd_node *list);
+static LY_ERR lyd_path_str_append(char **buffer, size_t *buflen, size_t *bufused, ly_bool is_static,
+        const char *format, ...) _FORMAT_PRINTF(5, 6);
 
 static LY_ERR lyd_compare_siblings_(const struct lyd_node *node1, const struct lyd_node *node2, uint32_t options,
         ly_bool parental_schemas_checked);
@@ -2936,23 +2939,37 @@ lyd_merge_module(struct lyd_node **target, const struct lyd_node *source, const 
 }
 
 static LY_ERR
-lyd_path_str_enlarge(char **buffer, size_t *buflen, size_t reqlen, ly_bool is_static)
+lyd_path_str_append(char **buffer, size_t *buflen, size_t *bufused, ly_bool is_static, const char *format, ...)
 {
-    /* ending \0 */
-    ++reqlen;
+    va_list ap;
+    int len;
 
-    if (reqlen > *buflen) {
+    va_start(ap, format);
+    len = vsnprintf(NULL, 0, format, ap);
+    va_end(ap);
+    if (len < 0) {
+        LOGERR(NULL, LY_ESYS, "Failed to print a path (%s).", strerror(errno));
+        return LY_ESYS;
+    }
+
+    /* grow the buffer if it is not static, +1 for the terminating zero */
+    if (*bufused + len + 1 > *buflen) {
         if (is_static) {
             return LY_EINCOMPLETE;
         }
 
-        *buffer = ly_realloc(*buffer, reqlen * sizeof **buffer);
+        *buffer = ly_realloc(*buffer, (*bufused + len + 1) * sizeof **buffer);
         if (!*buffer) {
             return LY_EMEM;
         }
 
-        *buflen = reqlen;
+        *buflen = *bufused + len + 1;
     }
+
+    va_start(ap, format);
+    vsnprintf(*buffer + *bufused, *buflen - *bufused, format, ap);
+    va_end(ap);
+    *bufused += len;
 
     return LY_SUCCESS;
 }
@@ -2961,17 +2978,14 @@ LY_ERR
 lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, ly_bool is_static)
 {
     const struct lyd_node *key;
-    size_t len;
     const char *val;
     char quot;
 
     for (key = lyd_child(node); key && key->schema && (key->schema->flags & LYS_KEY); key = key->next) {
         val = lyd_get_value(key);
-        len = 1 + strlen(key->schema->name) + 2 + strlen(val) + 2;
-        LY_CHECK_RET(lyd_path_str_enlarge(buffer, buflen, *bufused + len, is_static));
-
         LY_CHECK_RET(ly_val_get_quot(LYD_CTX(node), val, &quot));
-        *bufused += sprintf(*buffer + *bufused, "[%s=%c%s%c]", key->schema->name, quot, val, quot);
+        LY_CHECK_RET(lyd_path_str_append(buffer, buflen, bufused, is_static, "[%s=%c%s%c]", key->schema->name, quot,
+                val, quot));
     }
 
     return LY_SUCCESS;
@@ -2990,16 +3004,12 @@ lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *bufl
 static LY_ERR
 lyd_path_leaflist_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, ly_bool is_static)
 {
-    size_t len;
     const char *val;
     char quot;
 
     val = lyd_get_value(node);
-    len = 4 + strlen(val) + 2; /* "[.='" + val + "']" */
-    LY_CHECK_RET(lyd_path_str_enlarge(buffer, buflen, *bufused + len, is_static));
-
     LY_CHECK_RET(ly_val_get_quot(LYD_CTX(node), val, &quot));
-    *bufused += sprintf(*buffer + *bufused, "[.=%c%s%c]", quot, val, quot);
+    LY_CHECK_RET(lyd_path_str_append(buffer, buflen, bufused, is_static, "[.=%c%s%c]", quot, val, quot));
 
     return LY_SUCCESS;
 }
@@ -3017,27 +3027,10 @@ lyd_path_leaflist_predicate(const struct lyd_node *node, char **buffer, size_t *
 static LY_ERR
 lyd_path_position_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, ly_bool is_static)
 {
-    size_t len;
     uint32_t pos;
-    char *val = NULL;
-    LY_ERR rc;
 
     pos = lyd_list_pos(node);
-    if (asprintf(&val, "%" PRIu32, pos) == -1) {
-        return LY_EMEM;
-    }
-
-    len = 1 + strlen(val) + 1;
-    rc = lyd_path_str_enlarge(buffer, buflen, *bufused + len, is_static);
-    if (rc != LY_SUCCESS) {
-        goto cleanup;
-    }
-
-    *bufused += sprintf(*buffer + *bufused, "[%s]", val);
-
-cleanup:
-    free(val);
-    return rc;
+    return lyd_path_str_append(buffer, buflen, bufused, is_static, "[%" PRIu32 "]", pos);
 }
 
 LIBYANG_API_DEF char *
@@ -3045,7 +3038,7 @@ lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size
 {
     ly_bool is_static = 0;
     uint32_t i, depth;
-    size_t bufused = 0, len;
+    size_t bufused = 0;
     const struct lyd_node *iter, *parent;
     const struct lys_module *mod, *prev_mod;
     LY_ERR rc = LY_SUCCESS;
@@ -3079,16 +3072,12 @@ iter_print:
                 mod = NULL;
             }
 
-            /* realloc string */
-            len = 1 + (mod ? strlen(mod->name) + 1 : 0) + (iter->schema ? strlen(iter->schema->name) :
-                    strlen(((struct lyd_node_opaq *)iter)->name.name));
-            rc = lyd_path_str_enlarge(&buffer, &buflen, bufused + len, is_static);
+            /* print next node */
+            rc = lyd_path_str_append(&buffer, &buflen, &bufused, is_static, "/%s%s%s", mod ? mod->name : "",
+                    mod ? ":" : "", LYD_NAME(iter));
             if (rc) {
                 break;
             }
-
-            /* print next node */
-            bufused += sprintf(buffer + bufused, "/%s%s%s", mod ? mod->name : "", mod ? ":" : "", LYD_NAME(iter));
 
             /* do not always print the last (first) predicate */
             if (iter->schema && ((depth > 1) || (pathtype == LYD_PATH_STD))) {
@@ -3136,7 +3125,7 @@ char *
 lyd_path_set(const struct ly_set *dnodes, LYD_PATH_TYPE pathtype)
 {
     uint32_t depth;
-    size_t bufused = 0, buflen = 0, len;
+    size_t bufused = 0, buflen = 0;
     char *buffer = NULL;
     const struct lyd_node *iter, *parent;
     const struct lys_module *mod, *prev_mod;
@@ -3162,15 +3151,11 @@ lyd_path_set(const struct ly_set *dnodes, LYD_PATH_TYPE pathtype)
                 mod = NULL;
             }
 
-            /* realloc string */
-            len = 1 + (mod ? strlen(mod->name) + 1 : 0) + (iter->schema ? strlen(iter->schema->name) :
-                    strlen(((struct lyd_node_opaq *)iter)->name.name));
-            if ((rc = lyd_path_str_enlarge(&buffer, &buflen, bufused + len, 0))) {
+            /* print next node */
+            if ((rc = lyd_path_str_append(&buffer, &buflen, &bufused, 0, "/%s%s%s", mod ? mod->name : "",
+                    mod ? ":" : "", LYD_NAME(iter)))) {
                 break;
             }
-
-            /* print next node */
-            bufused += sprintf(buffer + bufused, "/%s%s%s", mod ? mod->name : "", mod ? ":" : "", LYD_NAME(iter));
 
             /* do not always print the last (first) predicate */
             if (iter->schema && ((depth > 1) || (pathtype == LYD_PATH_STD))) {
