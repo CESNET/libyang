@@ -1838,14 +1838,14 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
     }
 
 node_parsed:
+    /* move after the item(s) */
+    r = lyjson_ctx_next(lydctx->jsonctx, &status);
+    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+
     /* rememeber a successfully parsed node */
     if (parsed && node) {
         ly_set_add(parsed, node, 1, NULL);
     }
-
-    /* move after the item(s) */
-    r = lyjson_ctx_next(lydctx->jsonctx, &status);
-    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
     /* success */
     goto cleanup;
