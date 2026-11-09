@@ -216,9 +216,12 @@ test_parse(void **state)
 
     yang = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix a;"
             "import ietf-yang-structure-ext {prefix sx;}"
-            "sx:structure struct { container x { leaf x { type leafref {path \"/x/y\"; }}"
-            "anydata any;"
-            "leaf y { type string; must \"/x/y = 'val'\";} leaf z { type instance-identifier;}}}}";
+            "sx:structure struct { container x {"
+            "  leaf x { type leafref {path \"/x/y\"; }}"
+            "  anydata any;"
+            "  leaf y { type string; must \"/x/y = 'val'\";}"
+            "  leaf z { type instance-identifier;}"
+            "}}}";
     UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, NULL);
 
     yang = "module b {yang-version 1.1; namespace urn:tests:extensions:structure:b; prefix b;"

@@ -1901,7 +1901,7 @@ test_type_leafref(void **state)
     CHECK_LOG_CTX("Too many parent references in path.", "/bb:ref1", 0);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc;container a {leaf target2 {type uint8;}}"
             "leaf ref1 {type leafref {path /a:invalid;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("No module connected with the prefix \"a\" found (prefix format schema stored mapping).", "/cc:ref1", 0);
+    CHECK_LOG_CTX("Not found module prefix \"a\" in path (prefix format schema stored mapping).", "/cc:ref1", 0);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd {namespace urn:dd;prefix dd;leaf target1 {type string;}"
             "container a {leaf target2 {type uint8;}} leaf ref1 {type leafref {"
             "path '/a[target2 = current()/../target1]/target2';}}}", LYS_IN_YANG, &mod));
@@ -1958,7 +1958,7 @@ test_type_leafref(void **state)
             "leaf ifname{type leafref{ path \"../interface/name\";}}"
             "leaf address {type leafref{ path \"/interface[x:name=current()/../ifname]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("No module connected with the prefix \"x\" found (prefix format schema stored mapping).", "/pp:address", 0);
+    CHECK_LOG_CTX("Not found module prefix \"x\" in path (prefix format schema stored mapping).", "/pp:address", 0);
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module qq {namespace urn:qq;prefix qq;"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
@@ -2028,7 +2028,7 @@ test_type_leafref(void **state)
             "leaf ifname{type leafref{ path \"../interface/name\";}}\n"
             "leaf address {type leafref{ path \"/interface[name=current()/../x:ifname]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("No module connected with the prefix \"x\" found (prefix format schema stored mapping).", "/yy:address", 0);
+    CHECK_LOG_CTX("Not found module prefix \"x\" in path (prefix format schema stored mapping).", "/yy:address", 0);
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module zz {namespace urn:zz;prefix zz;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"

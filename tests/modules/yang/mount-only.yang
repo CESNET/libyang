@@ -1,0 +1,19 @@
+module mount-only {
+    yang-version 1.1;
+    namespace "urn:mount-only";
+    prefix "mo";
+
+    container cont {
+        leaf l {
+            type string;
+        }
+    }
+
+    rpc reset {
+        input {
+            leaf delay {
+                type uint32;
+            }
+        }
+    }
+}

@@ -536,7 +536,6 @@ ly_path_compile_snode(const struct ly_ctx *ctx, const struct lysc_node *cur_node
     size_t len, name_len;
     const struct lys_module *mod;
     const struct lysc_node *node = NULL, *sparent;
-    uint32_t getnext_opts = 0;
 
     assert(expr->tokens[tok_idx] == LYXP_TOKEN_NAMETEST);
 
@@ -564,39 +563,24 @@ ly_path_compile_snode(const struct ly_ctx *ctx, const struct lysc_node *cur_node
 
     /* find the module */
     mod = lys_find_module(ctx_node ? ctx_node->module->ctx : ctx, ctx_node, pref, len, format, prefix_data);
-    if (!mod) {
-        LOGVAL_PATH(ctx, cur_node, ctx_node, LYVE_XPATH,
-                "No module connected with the prefix \"%.*s\" found (prefix format %s).", (int)len, pref,
-                ly_format2str(format));
-        rc = LY_ENOTFOUND;
-        goto cleanup;
-    } else if (!mod->implemented) {
-        LOGVAL_PATH(ctx, cur_node, ctx_node, LYVE_XPATH, "Not implemented module \"%s\" in path.", mod->name);
-        rc = LY_ENOTFOUND;
-        goto cleanup;
-    }
+    if (mod && mod->implemented) {
+        /* find a standard schema node */
+        sparent = (ctx_node && !(ctx_node->nodetype & LYD_NODE_ANY)) ? ctx_node : NULL;
+        while ((node = lys_getnext(node, sparent, mod->compiled, is_output ? LYS_GETNEXT_OUTPUT : 0))) {
+            if (node->module != mod) {
+                continue;
+            }
 
-    /* set getnext options */
-    if (is_output) {
-        getnext_opts |= LYS_GETNEXT_OUTPUT;
-    }
-
-    /* find a standard schema node */
-    sparent = (ctx_node && !(ctx_node->nodetype & LYD_NODE_ANY)) ? ctx_node : NULL;
-    while ((node = lys_getnext(node, sparent, mod->compiled, getnext_opts))) {
-        if (node->module != mod) {
-            continue;
-        }
-
-        if (!ly_strncmp(node->name, name, name_len)) {
-            break;
+            if (!ly_strncmp(node->name, name, name_len)) {
+                break;
+            }
         }
     }
 
     if (!node) {
-        /* find a node in an extension */
-        r = lys_find_child_node_ext(NULL, mod, NULL, ctx_node, pref, len, format, prefix_data, name, name_len, is_xpath,
-                &node, ext);
+        /* find a node in an extension, the module may exist only in its context (such as a schema-mount context) */
+        r = lys_find_child_node_ext(ctx_node ? ctx_node->module->ctx : ctx, NULL, NULL, ctx_node, pref, len, format,
+                prefix_data, name, name_len, is_xpath, &node, ext);
         if (r && (r != LY_ENOT)) {
             rc = r;
             goto cleanup;
@@ -605,6 +589,15 @@ ly_path_compile_snode(const struct ly_ctx *ctx, const struct lysc_node *cur_node
 
     if (node) {
         *snode = node;
+    } else if (!mod) {
+        LOGVAL_PATH(ctx, cur_node, ctx_node, LYVE_XPATH, "Not found module prefix \"%.*s\" in path (prefix format %s).",
+                (int)len, pref, ly_format2str(format));
+        rc = LY_ENOTFOUND;
+        goto cleanup;
+    } else if (!mod->implemented) {
+        LOGVAL_PATH(ctx, cur_node, ctx_node, LYVE_XPATH, "Not implemented module \"%s\" in path.", mod->name);
+        rc = LY_ENOTFOUND;
+        goto cleanup;
     } else {
         LOGVAL_PATH(ctx, cur_node, ctx_node, LYVE_XPATH, "Not found node \"%.*s\" in path.", (int)name_len, name);
         rc = LY_ENOTFOUND;

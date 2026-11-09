@@ -221,7 +221,7 @@ test_data_xml(void **state)
 
     TEST_ERROR_XML2("",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l2", "/t:llist[6]", LY_EVALID);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/t:llist[6]\" value - semantic error: No module connected with the prefix \"t\" found (prefix format XML prefixes).",
+    CHECK_LOG_CTX("Invalid instance-identifier \"/t:llist[6]\" value - semantic error: Not found module prefix \"t\" in path (prefix format XML prefixes).",
             "/defs:l2", 1);
 
     TEST_ERROR_XML2("<list xmlns=\"urn:tests:defs\"><id>1</id><value>x</value></list>",
