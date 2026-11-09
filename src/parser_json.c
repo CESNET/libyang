@@ -2149,6 +2149,13 @@ lydjson_envelope(struct lyjson_ctx *jsonctx, const char *name, const char *modul
 
     r = lyjson_ctx_next(jsonctx, &status);
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+    if (status != LYJSON_OBJECT) {
+        /* the envelope content is parsed as an object, anything else must be rejected here */
+        LOGVAL(jsonctx->ctx, NULL, LYVE_SYNTAX_JSON, "Expecting JSON %s but %s found.", lyjson_token2str(LYJSON_OBJECT),
+                lyjson_token2str(status));
+        rc = LY_EVALID;
+        goto cleanup;
+    }
 
     /* create node */
     rc = lyd_create_opaq(jsonctx->ctx, name, strlen(name), prefix, prefix_len, prefix, prefix_len, NULL, 0, NULL,

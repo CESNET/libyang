@@ -970,6 +970,41 @@ test_restconf_rpc(void **state)
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
     lyd_free_all(envp);
+
+    /* input envelope with a value other than an object */
+    assert_int_equal(LY_SUCCESS, lyd_new_path(NULL, UTEST_LYCTX, "/ietf-netconf-nmda:edit-data", NULL, 0, &tree));
+    data = "{\"ietf-netconf-nmda:input\":[{}]}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, tree, in, LYD_JSON, LYD_TYPE_RPC_RESTCONF, LYD_PARSE_STRICT,
+            &envp, NULL));
+    assert_null(envp);
+    CHECK_LOG_CTX("Expecting JSON object but array found.", NULL, 1);
+    ly_in_free(in, 0);
+
+    data = "{\"ietf-netconf-nmda:input\":[]}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, tree, in, LYD_JSON, LYD_TYPE_RPC_RESTCONF, LYD_PARSE_STRICT,
+            &envp, NULL));
+    assert_null(envp);
+    CHECK_LOG_CTX("Expecting JSON object but array found.", NULL, 1);
+    ly_in_free(in, 0);
+
+    data = "{\"ietf-netconf-nmda:input\":\"x\"}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, tree, in, LYD_JSON, LYD_TYPE_RPC_RESTCONF, LYD_PARSE_STRICT,
+            &envp, NULL));
+    assert_null(envp);
+    CHECK_LOG_CTX("Expecting JSON object but string found.", NULL, 1);
+    ly_in_free(in, 0);
+
+    data = "{\"ietf-netconf-nmda:input\":null}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, tree, in, LYD_JSON, LYD_TYPE_RPC_RESTCONF, LYD_PARSE_STRICT,
+            &envp, NULL));
+    assert_null(envp);
+    CHECK_LOG_CTX("Expecting JSON object but null found.", NULL, 1);
+    ly_in_free(in, 0);
+    lyd_free_all(tree);
 }
 
 static void
@@ -1027,6 +1062,15 @@ test_restconf_notification(void **state)
     UTEST_LOG_CTX_CLEAN;
     ly_in_free(in, 0);
     lyd_free_all(tree);
+
+    /* notification envelope with a value other than an object */
+    data = "{\"ietf-restconf:notification\":[]}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_NOTIF_RESTCONF, LYD_PARSE_STRICT,
+            &tree, &ntf));
+    assert_null(tree);
+    CHECK_LOG_CTX("Expecting JSON object but array found.", NULL, 1);
+    ly_in_free(in, 0);
 }
 
 static void
@@ -1049,6 +1093,17 @@ test_restconf_reply(void **state)
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
     lyd_free_all(envp);
+
+    /* output envelope with a value other than an object */
+    assert_int_equal(LY_SUCCESS, lyd_new_path(NULL, UTEST_LYCTX, "/a:c/act", NULL, 0, &tree));
+    data = "{\"a:output\":[1]}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, lyd_child(tree), in, LYD_JSON, LYD_TYPE_REPLY_RESTCONF,
+            LYD_PARSE_STRICT, &envp, NULL));
+    assert_null(envp);
+    CHECK_LOG_CTX("Expecting JSON object but array found.", NULL, 1);
+    ly_in_free(in, 0);
+    lyd_free_all(tree);
 }
 
 static void
