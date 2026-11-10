@@ -1446,6 +1446,7 @@ ly_path_eval(const struct ly_path *path, const struct lyd_node *ctx_node, const 
         if (match) {
             *match = m;
         }
+        return LY_SUCCESS;
     } else if (rc == LY_ENOT) {
         /* not a full match, so no match */
         rc = LY_ENOTFOUND;

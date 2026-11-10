@@ -1387,7 +1387,8 @@ test_multi_error(void **state)
 static void
 test_require_instance(void **state)
 {
-    struct lyd_node *tree;
+    struct lyd_node *tree, *match;
+    struct lyd_node_term *term;
     const char *schema =
             "module ri {\n"
             "    namespace urn:tests:ri;\n"
@@ -1454,6 +1455,13 @@ test_require_instance(void **state)
     CHECK_PARSE_LYD_PARAM("<uni xmlns=\"urn:tests:ri\" xmlns:ri=\"urn:tests:ri\">/ri:uni</uni>", LYD_XML, 0,
             LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
     CHECK_LOG_CTX("Node \"uni\" value \"/ri:uni\" has a cyclic dependency.", NULL, 0);
+
+    assert_string_equal(LYD_NAME(tree), "uni");
+    term = (struct lyd_node_term *)tree;
+    assert_int_equal(term->value.realtype->basetype, LY_TYPE_UNION);
+    assert_int_equal(term->value.subvalue->value.realtype->basetype, LY_TYPE_INST);
+    assert_int_equal(LY_SUCCESS, lyd_find_target(term->value.subvalue->value.target, tree, &match));
+    assert_ptr_equal(match, tree);
     lyd_free_siblings(tree);
 
     schema =
