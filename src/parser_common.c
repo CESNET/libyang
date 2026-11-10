@@ -87,6 +87,17 @@ lyd_parser_notif_eventtime_validate(const struct lyd_node *node)
 }
 
 LY_ERR
+lyd_parser_yp_envelope_check(const struct ly_ctx *ctx)
+{
+    if (!ly_ctx_get_module_implemented(ctx, "ietf-yp-notification")) {
+        LOGERR(ctx, LY_EINVAL, "Module \"ietf-yp-notification\" is not implemented.");
+        return LY_EINVAL;
+    }
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
 lyd_parser_find_operation(const struct lyd_node *parent, uint32_t int_opts, struct lyd_node **op)
 {
     const struct lyd_node *iter;

@@ -433,6 +433,12 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
         LY_CHECK_ARG_RET(ctx, (format == LYD_JSON) || (format == LYD_CBOR), !parent, tree, op, LY_EINVAL);
         proto_msg = 1;
         break;
+    case LYD_TYPE_NOTIF_ENVELOPE:
+    case LYD_TYPE_NOTIF_AUTO:
+        LY_CHECK_ARG_RET(ctx, (format == LYD_XML) || (format == LYD_JSON) || (format == LYD_CBOR), !parent, tree, op,
+                LY_EINVAL);
+        proto_msg = 1;
+        break;
 
     /* set internal opts */
     case LYD_TYPE_RPC_YANG:
@@ -444,21 +450,14 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
     case LYD_TYPE_REPLY_YANG:
         int_opts = LYD_INTOPT_REPLY | (parent ? LYD_INTOPT_WITH_SIBLINGS : LYD_INTOPT_NO_SIBLINGS);
         break;
-    case LYD_TYPE_NOTIF_ENVELOPE:
-        LY_CHECK_ARG_RET(ctx, (format == LYD_XML) || (format == LYD_JSON) || (format == LYD_CBOR), !parent, tree, op,
-                LY_EINVAL);
-        LY_CHECK_ERR_RET(!ly_ctx_get_module_implemented(ctx, "ietf-yp-notification"),
-                LOGERR(ctx, LY_EINVAL, "Module \"ietf-yp-notification\" is not implemented."), LY_EINVAL);
-        int_opts = LYD_INTOPT_NOTIF | LYD_INTOPT_NO_SIBLINGS | LYD_INTOPT_YP_ENVELOPE;
-        break;
     default:
         LOGINT(ctx);
         rc = LY_EINT;
         goto cleanup;
     }
 
-    /* parse a full protocol message */
     if (proto_msg) {
+        /* parse a full protocol message */
         if (format == LYD_XML) {
             /* parse the NETCONF (or RESTCONF XML) message */
             rc = lyd_parse_xml_netconf(ctx, parent, &first, in, parse_options, val_opts, data_type, &envp, &parsed, &lydctx);
@@ -468,7 +467,7 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
         } else {
 #ifdef LY_HAVE_CBOR
             /* parse the RESTCONF CBOR notification */
-            rc = lyd_parse_cbor_restconf(ctx, in, parse_options, val_opts, &first, &envp, &parsed, &lydctx);
+            rc = lyd_parse_cbor_restconf(ctx, in, parse_options, val_opts, data_type, &first, &envp, &parsed, &lydctx);
 #else
             LOGARG(ctx, format);
             rc = LY_EINVAL;
@@ -481,56 +480,47 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
             }
             goto cleanup;
         }
-
-        /* set out params correctly */
-        if (envp) {
-            /* special out param meaning */
-            *tree = envp;
-        } else {
-            *tree = parent ? NULL : first;
-        }
-        if (op) {
-            *op = lydctx->op_node;
-        }
-        goto cleanup;
-    }
-
-    /* parse the data */
-    switch (format) {
-    case LYD_XML:
-        rc = lyd_parse_xml(ctx, parent, &first, in, parse_options, val_opts, int_opts, &parsed, &lydctx);
-        break;
-    case LYD_JSON:
-        rc = lyd_parse_json(ctx, parent, NULL, &first, in, parse_options, val_opts, int_opts, &parsed, &lydctx);
-        break;
-    case LYD_LYB:
-        rc = lyd_parse_lyb(ctx, parent, &first, in, parse_options, val_opts, int_opts, &parsed, &lydctx);
-        break;
+    } else {
+        /* parse the data */
+        switch (format) {
+        case LYD_XML:
+            rc = lyd_parse_xml(ctx, parent, &first, in, parse_options, val_opts, int_opts, &parsed, &lydctx);
+            break;
+        case LYD_JSON:
+            rc = lyd_parse_json(ctx, parent, NULL, &first, in, parse_options, val_opts, int_opts, &parsed, &lydctx);
+            break;
+        case LYD_LYB:
+            rc = lyd_parse_lyb(ctx, parent, &first, in, parse_options, val_opts, int_opts, &parsed, &lydctx);
+            break;
 #ifdef LY_HAVE_CBOR
-    case LYD_CBOR:
-        rc = lyd_parse_cbor(ctx, NULL, parent, &first, in, parse_options, val_opts, int_opts, &parsed, NULL, &lydctx);
-        break;
+        case LYD_CBOR:
+            rc = lyd_parse_cbor(ctx, NULL, parent, &first, in, parse_options, val_opts, int_opts, &parsed, NULL, &lydctx);
+            break;
 #else
-    case LYD_CBOR:
-        LOGARG(ctx, format);
-        rc = LY_EINVAL;
-        break;
+        case LYD_CBOR:
+            LOGARG(ctx, format);
+            rc = LY_EINVAL;
+            break;
 #endif /* LY_HAVE_CBOR */
-    case LYD_UNKNOWN:
-        LOGARG(ctx, format);
-        rc = LY_EINVAL;
-        break;
+        case LYD_UNKNOWN:
+            LOGARG(ctx, format);
+            rc = LY_EINVAL;
+            break;
+        }
+        LY_CHECK_GOTO(rc, cleanup);
     }
-    LY_CHECK_GOTO(rc, cleanup);
 
-    if (data_type == LYD_TYPE_NOTIF_ENVELOPE) {
-        /* unlink the notification from the envelope contents */
+    if (lydctx->int_opts & LYD_INTOPT_YP_ENVELOPE) {
+        /* unlink the notification from the YANG-Push envelope contents */
         for (top = lydctx->op_node; top->parent->parent != first; top = lyd_parent(top)) {}
         lyd_unlink(top);
     }
 
     /* set out params correctly */
-    if (tree) {
+    if (envp) {
+        /* special out param meaning */
+        *tree = envp;
+    } else if (tree) {
         *tree = parent ? NULL : first;
     }
     if (op) {
