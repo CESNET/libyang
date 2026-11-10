@@ -1226,6 +1226,26 @@ cleanup:
     return rc;
 }
 
+/**
+ * @brief Learn whether the current XML element is the YANG-Push notification envelope.
+ *
+ * @param[in] xmlctx XML parser context.
+ * @return Whether the element is the 'envelope' of 'ietf-yp-notification'.
+ */
+static ly_bool
+lydxml_is_yp_envelope(const struct lyxml_ctx *xmlctx)
+{
+    const struct lyxml_ns *ns;
+
+    if (xmlctx->status != LYXML_ELEMENT) {
+        return 0;
+    }
+
+    ns = lyxml_ns_get(&xmlctx->ns, xmlctx->prefix, xmlctx->prefix_len);
+    return ns && !strcmp(ns->uri, "urn:ietf:params:xml:ns:yang:ietf-yp-notification") &&
+           !ly_strncmp("envelope", xmlctx->name, xmlctx->name_len);
+}
+
 LY_ERR
 lyd_parse_xml(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_in *in,
         uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts, struct ly_set *parsed, struct lyd_ctx **lydctx_p)
@@ -1466,7 +1486,7 @@ lyd_parse_xml_netconf(const struct ly_ctx *ctx, struct lyd_node *parent, struct 
     struct lyd_xml_ctx *lydctx;
     struct lyd_node *node;
     uint32_t i, int_opts = 0, close_elem = 0;
-    ly_bool parsed_data_nodes = 0;
+    ly_bool parsed_data_nodes = 0, yp_envelope = 0;
 
     assert(ctx && in && lydctx_p);
     assert(!(parse_opts & ~LYD_PARSE_OPTS_MASK));
@@ -1490,18 +1510,37 @@ lyd_parse_xml_netconf(const struct ly_ctx *ctx, struct lyd_node *parent, struct 
         LY_CHECK_GOTO(rc, cleanup);
         break;
     case LYD_TYPE_NOTIF_NETCONF:
+    case LYD_TYPE_NOTIF_ENVELOPE:
+    case LYD_TYPE_NOTIF_AUTO:
         assert(!parent);
 
-        /* parse "notification" */
-        rc = lydxml_envelope(lydctx->xmlctx, "notification", "urn:ietf:params:xml:ns:netconf:notification:1.0", 0, envp);
-        if (rc == LY_ENOT) {
-            LOGVAL(ctx, NULL, LYVE_DATA, "Missing NETCONF <notification> envelope or in incorrect namespace.");
+        if (data_type == LYD_TYPE_NOTIF_ENVELOPE) {
+            yp_envelope = 1;
+        } else if (data_type == LYD_TYPE_NOTIF_AUTO) {
+            yp_envelope = lydxml_is_yp_envelope(lydctx->xmlctx);
         }
-        LY_CHECK_GOTO(rc, cleanup);
+        if (yp_envelope) {
+            /* YANG-Push notification envelope */
+            LY_CHECK_GOTO(rc = lyd_parser_yp_envelope_check(ctx), cleanup);
+            int_opts = LYD_INTOPT_NOTIF | LYD_INTOPT_NO_SIBLINGS | LYD_INTOPT_YP_ENVELOPE;
+        } else {
+            /* parse "notification" */
+            rc = lydxml_envelope(lydctx->xmlctx, "notification", "urn:ietf:params:xml:ns:netconf:notification:1.0", 0,
+                    envp);
+            if (rc == LY_ENOT) {
+                if (data_type == LYD_TYPE_NOTIF_AUTO) {
+                    LOGVAL(ctx, NULL, LYVE_DATA, "Missing NETCONF <notification> or YANG-Push <envelope>, or in "
+                            "incorrect namespace.");
+                } else {
+                    LOGVAL(ctx, NULL, LYVE_DATA, "Missing NETCONF <notification> envelope or in incorrect namespace.");
+                }
+            }
+            LY_CHECK_GOTO(rc, cleanup);
 
-        /* NETCONF notification */
-        int_opts = LYD_INTOPT_WITH_SIBLINGS | LYD_INTOPT_NOTIF | LYD_INTOPT_EVENTTIME;
-        close_elem = 1;
+            /* NETCONF notification */
+            int_opts = LYD_INTOPT_WITH_SIBLINGS | LYD_INTOPT_NOTIF | LYD_INTOPT_EVENTTIME;
+            close_elem = 1;
+        }
         break;
     case LYD_TYPE_REPLY_NETCONF:
         assert(parent);

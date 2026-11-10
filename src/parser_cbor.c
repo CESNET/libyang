@@ -1752,29 +1752,28 @@ cleanup:
     return rc;
 }
 
-LY_ERR
-lyd_parse_cbor_restconf(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts,
-        struct lyd_node **first_p, struct lyd_node **envp, struct ly_set *parsed, struct lyd_ctx **lydctx_p)
+/**
+ * @brief Parse the RESTCONF notification envelope with eventTime.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] root Root CBOR map of the input.
+ * @param[out] envp Parsed envelope with eventTime, may be returned possibly even on an error.
+ * @param[out] notif CBOR map with the notification.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lydcbor_env_restconf_notif(const struct ly_ctx *ctx, const cbor_item_t *root, struct lyd_node **envp,
+        const cbor_item_t **notif)
 {
-    LY_ERR r, rc = LY_SUCCESS;
-    struct lyd_cbor_ctx *lydctx = NULL;
-    const cbor_item_t *root, *notif, *event_time = NULL;
+    LY_ERR rc = LY_SUCCESS;
+    const cbor_item_t *event_time = NULL;
     struct cbor_pair *pairs;
     struct lyd_node *node;
     char *str = NULL;
     size_t str_len;
     uint32_t i;
 
-    assert(ctx && in && first_p && envp && lydctx_p);
-
-    *envp = NULL;
-
-    rc = lyd_parse_cbor_init(ctx, in, parse_opts, val_opts, &lydctx);
-    LY_CHECK_GOTO(rc, cleanup);
-    lydctx->int_opts = LYD_INTOPT_WITH_SIBLINGS | LYD_INTOPT_NOTIF | LYD_INTOPT_EVENTTIME;
-
     /* parse "notification" */
-    root = lydctx->cborctx->cbor_data;
     pairs = cbor_map_handle(root);
     if ((cbor_map_size(root) != 1) || !cbor_isa_string(pairs[0].key)) {
         LOGVAL(ctx, NULL, LYVE_DATA, "Expected a single CBOR map member \"ietf-restconf:notification\".");
@@ -1793,15 +1792,15 @@ lyd_parse_cbor_restconf(const struct ly_ctx *ctx, struct ly_in *in, uint32_t par
         rc = LY_EVALID;
         goto cleanup;
     }
-    notif = pairs[0].value;
+    *notif = pairs[0].value;
 
     rc = lyd_create_opaq(ctx, "notification", 12, "ietf-restconf", 13, "ietf-restconf", 13, NULL, 0, NULL,
             LY_VALUE_CBOR, NULL, LYD_VALHINT_STRING, envp);
     LY_CHECK_GOTO(rc, cleanup);
 
     /* find eventTime, it can be anywhere in the map */
-    pairs = cbor_map_handle(notif);
-    for (i = 0; i < cbor_map_size(notif); ++i) {
+    pairs = cbor_map_handle(*notif);
+    for (i = 0; i < cbor_map_size(*notif); ++i) {
         if (!cbor_isa_string(pairs[i].key)) {
             continue;
         }
@@ -1839,10 +1838,69 @@ lyd_parse_cbor_restconf(const struct ly_ctx *ctx, struct ly_in *in, uint32_t par
     lyd_insert_child(*envp, node);
     LY_CHECK_GOTO(rc = lyd_parser_notif_eventtime_validate(node), cleanup);
 
+cleanup:
+    free(str);
+    return rc;
+}
+
+LY_ERR
+lyd_parse_cbor_restconf(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts,
+        enum lyd_type data_type, struct lyd_node **first_p, struct lyd_node **envp, struct ly_set *parsed,
+        struct lyd_ctx **lydctx_p)
+{
+    LY_ERR r, rc = LY_SUCCESS;
+    struct lyd_cbor_ctx *lydctx = NULL;
+    const cbor_item_t *root, *notif;
+    struct cbor_pair *pairs;
+    char *str = NULL;
+    size_t str_len;
+    ly_bool yp_envelope = 0;
+
+    assert(ctx && in && first_p && envp && lydctx_p);
+    assert((data_type == LYD_TYPE_NOTIF_RESTCONF) || (data_type == LYD_TYPE_NOTIF_ENVELOPE) ||
+            (data_type == LYD_TYPE_NOTIF_AUTO));
+
+    rc = lyd_parse_cbor_init(ctx, in, parse_opts, val_opts, &lydctx);
+    LY_CHECK_GOTO(rc, cleanup);
+    root = lydctx->cborctx->cbor_data;
+
+    if (data_type == LYD_TYPE_NOTIF_ENVELOPE) {
+        yp_envelope = 1;
+    } else if (data_type == LYD_TYPE_NOTIF_AUTO) {
+        /* peek at the name of the first member */
+        pairs = cbor_map_handle(root);
+        if (cbor_map_size(root) && pairs && cbor_isa_string(pairs[0].key)) {
+            LY_CHECK_GOTO(rc = lydcbor_item_to_string(ctx, pairs[0].key, &str, &str_len), cleanup);
+            yp_envelope = !ly_strncmp("ietf-yp-notification:envelope", str, str_len);
+            if (!yp_envelope && ly_strncmp("ietf-restconf:notification", str, str_len)) {
+                LOGVAL(ctx, NULL, LYVE_DATA, "Unexpected object \"%.*s\" instead of \"ietf-restconf:notification\" "
+                        "or \"ietf-yp-notification:envelope\".", (int)str_len, str);
+                rc = LY_EVALID;
+                goto cleanup;
+            }
+        }
+    }
+
+    if (yp_envelope) {
+        /* YANG-Push notification envelope */
+        LY_CHECK_GOTO(rc = lyd_parser_yp_envelope_check(ctx), cleanup);
+        lydctx->int_opts = LYD_INTOPT_NOTIF | LYD_INTOPT_NO_SIBLINGS | LYD_INTOPT_YP_ENVELOPE;
+        notif = root;
+    } else {
+        /* RESTCONF notification envelope */
+        lydctx->int_opts = LYD_INTOPT_WITH_SIBLINGS | LYD_INTOPT_NOTIF | LYD_INTOPT_EVENTTIME;
+        LY_CHECK_GOTO(rc = lydcbor_env_restconf_notif(ctx, root, envp, &notif), cleanup);
+    }
+
     /* parse the notification */
     r = lydcbor_subtree_r(lydctx, NULL, first_p, parsed, notif);
     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
+    if ((lydctx->int_opts & LYD_INTOPT_NO_SIBLINGS) && *first_p && (*first_p)->next) {
+        LOGVAL(ctx, NULL, LYVE_SYNTAX, "Unexpected sibling node.");
+        rc = LY_EVALID;
+        goto cleanup;
+    }
     if (!lydctx->op_node) {
         LOGVAL(ctx, NULL, LYVE_DATA, "Missing the operation node.");
         r = LY_EVALID;
