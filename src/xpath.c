@@ -53,7 +53,7 @@ static LY_ERR eval_expr_select(const struct lyxp_expr *exp, uint32_t *tok_idx, e
 static LY_ERR moveto_axis_node_next(const struct lyd_node **iter, enum lyxp_node_type *iter_type,
         const struct lyd_node *node, enum lyxp_node_type node_type, enum lyxp_axis axis, struct lyxp_set *set);
 static LY_ERR moveto_node(struct lyxp_set *set, const char *ncname, uint32_t ncname_len, enum lyxp_axis axis,
-        const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t options);
+        const struct lyxp_expr *exp, uint32_t *tok_idx);
 static LY_ERR moveto_scnode(struct lyxp_set *set, const char *ncname, uint32_t ncname_len, enum lyxp_axis axis,
         uint32_t options);
 static LY_ERR moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, ly_bool *result);
@@ -5864,7 +5864,7 @@ xpath_pi_node(struct lyxp_set *set, enum lyxp_axis axis, uint32_t options)
     }
 
     /* just like moving to a node with no restrictions */
-    return moveto_node(set, "*", 1, axis, NULL, NULL, options);
+    return moveto_node(set, "*", 1, axis, NULL, NULL);
 }
 
 /**
@@ -6353,12 +6353,10 @@ moveto_axis_node_next(const struct lyd_node **iter, enum lyxp_node_type *iter_ty
  * @param[in,out] set Set to use.
  * @param[in] scnode Matching node schema.
  * @param[in] predicates If @p scnode is ::LYS_LIST or ::LYS_LEAFLIST, the predicates specifying a single instance.
- * @param[in] options XPath options.
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-moveto_node_hash_child(struct lyxp_set *set, const struct lysc_node *scnode, const struct ly_path_predicate *predicates,
-        uint32_t options)
+moveto_node_hash_child(struct lyxp_set *set, const struct lysc_node *scnode, const struct ly_path_predicate *predicates)
 {
     LY_ERR ret = LY_SUCCESS, r;
     uint32_t i;
@@ -6367,7 +6365,6 @@ moveto_node_hash_child(struct lyxp_set *set, const struct lysc_node *scnode, con
     struct lyd_node *sub, *inst = NULL;
 
     assert(scnode && (!(scnode->nodetype & (LYS_LIST | LYS_LEAFLIST)) || predicates));
-    assert(!(options & LYXP_SKIP_EXPR));
 
     /* init result set */
     set_init(&result, set);
@@ -6926,12 +6923,11 @@ moveto_node_get_module(const struct lys_module *moveto_mod, const struct ly_ctx 
  * @param[in] axis Axis to search on.
  * @param[in] exp Parsed XPath expression.
  * @param[in,out] tok_idx Position in the expression @p exp.
- * @param[in] options XPath options.
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
 moveto_node(struct lyxp_set *set, const char *ncname, uint32_t ncname_len, enum lyxp_axis axis,
-        const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t options)
+        const struct lyxp_expr *exp, uint32_t *tok_idx)
 {
     LY_ERR r, rc = LY_SUCCESS;
     const struct lyd_node *iter;
@@ -6945,7 +6941,6 @@ moveto_node(struct lyxp_set *set, const char *ncname, uint32_t ncname_len, enum 
     struct ly_path_predicate *predicates = NULL;
 
     assert(ncname && ncname_len);
-    assert(!(options & LYXP_SKIP_EXPR));
 
     if (set->type != LYXP_SET_NODE_SET) {
         LOGVAL_DXPATH(set, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
@@ -6992,7 +6987,7 @@ moveto_node(struct lyxp_set *set, const char *ncname, uint32_t ncname_len, enum 
 
         if (scnode) {
             /* we can find the child nodes using hashes */
-            rc = moveto_node_hash_child(set, scnode, predicates, options);
+            rc = moveto_node_hash_child(set, scnode, predicates);
             ly_path_predicates_free(scnode->module->ctx, predicates);
             return rc;
         }
@@ -7889,18 +7884,15 @@ moveto_scnode_alldesc_child(struct lyxp_set *set, const char *ncname, uint32_t n
  * @param[in,out] set Set to use.
  * @param[in] ncname NCName to use.
  * @param[in] ncname_len Length of @p ncname.
- * @param[in] options XPath options.
  * @return LY_ERR
  */
 static LY_ERR
-moveto_attr(struct lyxp_set *set, const char *ncname, uint32_t ncname_len, uint32_t options)
+moveto_attr(struct lyxp_set *set, const char *ncname, uint32_t ncname_len)
 {
     const struct lys_module *moveto_mod;
     struct lyd_meta *sub;
     uint32_t i;
     ly_bool replaced;
-
-    assert(!(options & LYXP_SKIP_EXPR));
 
     if (set->type != LYXP_SET_NODE_SET) {
         LOGVAL_DXPATH(set, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
@@ -8629,7 +8621,7 @@ eval_name_test_with_predicate_node(const struct lyxp_expr *exp, uint32_t *tok_id
         if (all_desc) {
             rc = moveto_attr_alldesc(set, ncname, ncname_len, options);
         } else {
-            rc = moveto_attr(set, ncname, ncname_len, options);
+            rc = moveto_attr(set, ncname, ncname_len);
         }
         LY_CHECK_GOTO(rc, cleanup);
     } else {
@@ -8642,7 +8634,7 @@ eval_name_test_with_predicate_node(const struct lyxp_expr *exp, uint32_t *tok_id
                 rc = xpath_pi_node(set, LYXP_AXIS_DESCENDANT_OR_SELF, options);
                 LY_CHECK_GOTO(rc, cleanup);
             }
-            rc = moveto_node(set, ncname, ncname_len, axis, exp, tok_idx, options);
+            rc = moveto_node(set, ncname, ncname_len, axis, exp, tok_idx);
         }
         LY_CHECK_GOTO(rc, cleanup);
     }
