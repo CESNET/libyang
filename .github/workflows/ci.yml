@@ -64,8 +64,8 @@ jobs:
             build-cmd: "make"
           }
           - {
-            name: "Release, macOS 14, clang",
-            os: "macos-14",
+            name: "Release, macOS, clang",
+            os: "macos-latest",
             build-type: "Release",
             cc: "clang",
             options: "-DENABLE_TESTS=ON -DPATH_EXPECT=",
@@ -296,7 +296,7 @@ jobs:
 
   build-linux-32bit:
     name: Release, Linux 32-bit, gcc
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@main
 
