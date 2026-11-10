@@ -689,14 +689,15 @@ lyd_validate_unres(struct lyd_node **tree, enum lyd_type data_type, struct ly_se
             /* we have resolved what we could but there are cyclic dependencies, whens were checked
              * during compilation */
             LY_CHECK_ERR_GOTO(!unres_ht, LOGINT(ctx); rc = LY_EINT, cleanup);
-            assert((node_when->count && node_types->count) || (node_types->count > 1));
-
             if (node_when->count) {
+                assert(node_types->count);
                 LOGWRN(ctx, "When condition of \"%s\" has a cyclic dependency on the value of \"%s\".",
                         LYD_NAME(node_when->dnodes[0]), LYD_NAME(node_types->dnodes[0]));
             } else {
-                LOGWRN(ctx, "Value of \"%s\" has a cyclic dependency on the value of \"%s\".",
-                        LYD_NAME(node_types->dnodes[0]), LYD_NAME(node_types->dnodes[1]));
+                for (i = 0; i < node_types->count; ++i) {
+                    LOGWRN(ctx, "Node \"%s\" value \"%s\" has a cyclic dependency.",
+                            LYD_NAME(node_types->dnodes[0]), lyd_get_value(node_types->dnodes[0]));
+                }
             }
 
             /* ignore the rest of dependencies by freeing the unres HT */

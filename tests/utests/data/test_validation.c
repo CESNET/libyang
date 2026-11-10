@@ -1405,6 +1405,27 @@ test_require_instance(void **state)
             "    leaf ii {\n"
             "        type instance-identifier;\n"
             "    }\n"
+            "    leaf uni {\n"
+            "        type union {\n"
+            "            type decimal64 {\n"
+            "                fraction-digits 1;\n"
+            "            }\n"
+            "            type leafref {\n"
+            "                path '../t';\n"
+            "            }\n"
+            "            type union {\n"
+            "                type instance-identifier;\n"
+            "                type union {\n"
+            "                    type binary {\n"
+            "                        length 1;\n"
+            "                    }\n"
+            "                    type decimal64 {\n"
+            "                        fraction-digits 3;\n"
+            "                    }\n"
+            "                }\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
             "}";
     const char *data;
 
@@ -1428,6 +1449,12 @@ test_require_instance(void **state)
             "instance-required");
     CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/ri:t\" value - required instance not found.", "/ri:ii", 0,
             "instance-required");
+
+    /* self-referencing instanceid */
+    CHECK_PARSE_LYD_PARAM("<uni xmlns=\"urn:tests:ri\" xmlns:ri=\"urn:tests:ri\">/ri:uni</uni>", LYD_XML, 0,
+            LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    CHECK_LOG_CTX("Node \"uni\" value \"/ri:uni\" has a cyclic dependency.", NULL, 0);
+    lyd_free_siblings(tree);
 
     schema =
             "module ri2 {\n"
