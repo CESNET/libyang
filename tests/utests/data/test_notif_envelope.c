@@ -51,6 +51,59 @@ setup(void **state)
         ly_in_free(_in, 0); \
     }
 
+#define CHECK_PARSE_AUTO_ERR(DATA, FORMAT, RC) \
+    { \
+        struct ly_in *_in; \
+        struct lyd_node *_tree, *_op; \
+        assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(DATA, strlen(DATA), &_in)); \
+        assert_int_equal(RC, lyd_parse_op(UTEST_LYCTX, NULL, _in, FORMAT, LYD_TYPE_NOTIF_AUTO, 0, &_tree, &_op)); \
+        assert_null(_tree); \
+        assert_null(_op); \
+        ly_in_free(_in, 0); \
+    }
+
+/**
+ * @brief Parse a notification in an envelope detected from the input and check the result.
+ *
+ * @param[in] state Test state.
+ * @param[in] data Notification to parse, NUL-terminated also in CBOR.
+ * @param[in] format Format of @p data.
+ * @param[in] yp_envelope Whether @p data is in the YANG-Push envelope.
+ */
+static void
+check_parse_auto(void **state, const char *data, LYD_FORMAT format, ly_bool yp_envelope)
+{
+    struct lyd_node *tree, *op;
+    struct ly_in *in;
+
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(data, strlen(data), &in));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, format, LYD_TYPE_NOTIF_AUTO, 0, &tree, &op));
+    ly_in_free(in, 0);
+
+    if (yp_envelope) {
+        /* envelope with its schema and an empty contents */
+        assert_non_null(tree->schema);
+        assert_string_equal(LYD_NAME(tree), "envelope");
+        assert_null(((struct lyd_node_any *)lyd_child(tree)->next)->child);
+        assert_int_equal(LY_SUCCESS, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT, NULL));
+    } else {
+        /* opaque envelope with eventTime */
+        assert_null(tree->schema);
+        assert_string_equal(LYD_NAME(tree), "notification");
+        assert_string_equal(LYD_NAME(lyd_child(tree)), "eventTime");
+    }
+    assert_null(tree->next);
+
+    /* separate notification */
+    assert_string_equal(LYD_NAME(op), "push-update");
+    assert_null(lyd_parent(op));
+    assert_null(op->next);
+    assert_int_equal(LY_SUCCESS, lyd_validate_op(op, NULL, LYD_TYPE_NOTIF_YANG, NULL));
+
+    lyd_free_all(tree);
+    lyd_free_all(op);
+}
+
 /**
  * @brief Put the notification separated by the parser back into the envelope contents, to print the whole message.
  *
@@ -420,6 +473,100 @@ test_invalid(void **state)
 }
 
 static void
+test_auto(void **state)
+{
+    const char *data;
+
+    /* YANG-Push envelope */
+    data = "<envelope xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yp-notification\">"
+            "<event-time>2026-11-02T10:00:00Z</event-time><contents>"
+            "<push-update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-push\"><id>1</id></push-update>"
+            "</contents></envelope>";
+    check_parse_auto(state, data, LYD_XML, 1);
+
+    data = "<yp:envelope xmlns:yp=\"urn:ietf:params:xml:ns:yang:ietf-yp-notification\">"
+            "<yp:event-time>2026-11-02T10:00:00Z</yp:event-time><yp:contents>"
+            "<push-update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-push\"><id>1</id></push-update>"
+            "</yp:contents></yp:envelope>";
+    check_parse_auto(state, data, LYD_XML, 1);
+
+    data = "{\"ietf-yp-notification:envelope\":{\"event-time\":\"2026-11-02T10:00:00Z\",\"contents\":{"
+            "\"ietf-yang-push:push-update\":{\"id\":1}}}}";
+    check_parse_auto(state, data, LYD_JSON, 1);
+
+    /* NETCONF and RESTCONF envelopes */
+    data = "<notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\">"
+            "<eventTime>2026-11-02T10:00:00Z</eventTime>"
+            "<push-update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-push\"><id>1</id></push-update>"
+            "</notification>";
+    check_parse_auto(state, data, LYD_XML, 0);
+
+    data = "{\"ietf-restconf:notification\":{\"eventTime\":\"2026-11-02T10:00:00Z\","
+            "\"ietf-yang-push:push-update\":{\"id\":1}}}";
+    check_parse_auto(state, data, LYD_JSON, 0);
+
+#ifdef LY_HAVE_CBOR
+    data = "\xa1\x78\x1d" "ietf-yp-notification:envelope" "\xa2"
+            "\x6a" "event-time" "\x74" "2026-11-02T10:00:00Z"
+            "\x68" "contents" "\xa1\x78\x1a" "ietf-yang-push:push-update" "\xa1\x62" "id" "\x01";
+    check_parse_auto(state, data, LYD_CBOR, 1);
+
+    data = "\xa1\x78\x1a" "ietf-restconf:notification" "\xa2"
+            "\x69" "eventTime" "\x74" "2026-11-02T10:00:00Z"
+            "\x78\x1a" "ietf-yang-push:push-update" "\xa1\x62" "id" "\x01";
+    check_parse_auto(state, data, LYD_CBOR, 0);
+#endif /* LY_HAVE_CBOR */
+
+    /* neither envelope */
+    data = "<push-update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-push\"><id>1</id></push-update>";
+    CHECK_PARSE_AUTO_ERR(data, LYD_XML, LY_ENOT);
+    CHECK_LOG_CTX("Missing NETCONF <notification> or YANG-Push <envelope>, or in incorrect namespace.", NULL, 1);
+
+    data = "<envelope xmlns=\"urn:tests:other\"/>";
+    CHECK_PARSE_AUTO_ERR(data, LYD_XML, LY_ENOT);
+    CHECK_LOG_CTX("Missing NETCONF <notification> or YANG-Push <envelope>, or in incorrect namespace.", NULL, 1);
+
+    data = "<envelope xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yp-notifications\"/>";
+    CHECK_PARSE_AUTO_ERR(data, LYD_XML, LY_ENOT);
+    CHECK_LOG_CTX("Missing NETCONF <notification> or YANG-Push <envelope>, or in incorrect namespace.", NULL, 1);
+
+    data = "{\"ietf-yang-push:push-update\":{\"id\":1}}";
+    CHECK_PARSE_AUTO_ERR(data, LYD_JSON, LY_EVALID);
+    CHECK_LOG_CTX("Unexpected object \"ietf-yang-push:push-update\" instead of \"ietf-restconf:notification\" "
+            "or \"ietf-yp-notification:envelope\".", NULL, 1);
+
+#ifdef LY_HAVE_CBOR
+    data = "\xa1\x78\x1a" "ietf-yang-push:push-update" "\xa1\x62" "id" "\x01";
+    CHECK_PARSE_AUTO_ERR(data, LYD_CBOR, LY_EVALID);
+    CHECK_LOG_CTX("Unexpected object \"ietf-yang-push:push-update\" instead of \"ietf-restconf:notification\" "
+            "or \"ietf-yp-notification:envelope\".", NULL, 1);
+#endif /* LY_HAVE_CBOR */
+
+    /* sibling of the YANG-Push envelope */
+    data = "<envelope xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yp-notification\">"
+            "<event-time>2026-11-02T10:00:00Z</event-time><contents>"
+            "<push-update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-push\"><id>1</id></push-update>"
+            "</contents></envelope>"
+            "<push-update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-push\"><id>2</id></push-update>";
+    CHECK_PARSE_AUTO_ERR(data, LYD_XML, LY_EVALID);
+    CHECK_LOG_CTX("Unexpected sibling node.", NULL, 1);
+
+    data = "{\"ietf-yp-notification:envelope\":{\"event-time\":\"2026-11-02T10:00:00Z\",\"contents\":{"
+            "\"ietf-yang-push:push-update\":{\"id\":1}}},\"ietf-yang-push:push-update\":{\"id\":2}}";
+    CHECK_PARSE_AUTO_ERR(data, LYD_JSON, LY_EVALID);
+    CHECK_LOG_CTX("Unexpected sibling node.", NULL, 1);
+
+#ifdef LY_HAVE_CBOR
+    data = "\xa2\x78\x1d" "ietf-yp-notification:envelope" "\xa2"
+            "\x6a" "event-time" "\x74" "2026-11-02T10:00:00Z"
+            "\x68" "contents" "\xa1\x78\x1a" "ietf-yang-push:push-update" "\xa1\x62" "id" "\x01"
+            "\x78\x1a" "ietf-yang-push:push-update" "\xa1\x62" "id" "\x02";
+    CHECK_PARSE_AUTO_ERR(data, LYD_CBOR, LY_EVALID);
+    CHECK_LOG_CTX("Unexpected notification element \"push-update\".", "/ietf-yang-push:push-update", 1);
+#endif /* LY_HAVE_CBOR */
+}
+
+static void
 test_invalid_validate(void **state)
 {
     struct lyd_node *tree, *op;
@@ -453,6 +600,32 @@ test_no_module(void **state)
             "\"ietf-yang-push:push-update\":{\"id\":1}}}}";
     CHECK_PARSE_ENVELOPE_ERR(data, LYD_JSON, LY_EINVAL);
     CHECK_LOG_CTX("Module \"ietf-yp-notification\" is not implemented.", NULL, 0);
+
+    /* detected YANG-Push envelope */
+    CHECK_PARSE_AUTO_ERR(data, LYD_JSON, LY_EINVAL);
+    CHECK_LOG_CTX("Module \"ietf-yp-notification\" is not implemented.", NULL, 0);
+
+    data = "<envelope xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yp-notification\">"
+            "<event-time>2026-11-02T10:00:00Z</event-time><contents>"
+            "<push-update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-push\"><id>1</id></push-update>"
+            "</contents></envelope>";
+    CHECK_PARSE_AUTO_ERR(data, LYD_XML, LY_EINVAL);
+    CHECK_LOG_CTX("Module \"ietf-yp-notification\" is not implemented.", NULL, 0);
+
+#ifdef LY_HAVE_CBOR
+    data = "\xa1\x78\x1d" "ietf-yp-notification:envelope" "\xa2"
+            "\x6a" "event-time" "\x74" "2026-11-02T10:00:00Z"
+            "\x68" "contents" "\xa1\x78\x1a" "ietf-yang-push:push-update" "\xa1\x62" "id" "\x01";
+    CHECK_PARSE_AUTO_ERR(data, LYD_CBOR, LY_EINVAL);
+    CHECK_LOG_CTX("Module \"ietf-yp-notification\" is not implemented.", NULL, 0);
+#endif /* LY_HAVE_CBOR */
+
+    /* the NETCONF envelope needs no module */
+    data = "<notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\">"
+            "<eventTime>2026-11-02T10:00:00Z</eventTime>"
+            "<push-update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-push\"><id>1</id></push-update>"
+            "</notification>";
+    check_parse_auto(state, data, LYD_XML, 0);
 }
 
 int
@@ -468,6 +641,7 @@ main(void)
         UTEST(test_nested, setup),
         UTEST(test_augment, setup),
         UTEST(test_invalid, setup),
+        UTEST(test_auto, setup),
         UTEST(test_invalid_validate, setup),
         UTEST(test_no_module),
     };
