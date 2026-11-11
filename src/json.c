@@ -1067,6 +1067,7 @@ lyjson_ctx_backup(struct lyjson_ctx *jsonctx)
     jsonctx->backup.value = jsonctx->value;
     jsonctx->backup.value_len = jsonctx->value_len;
     jsonctx->backup.input = jsonctx->in->current;
+    jsonctx->backup.line = jsonctx->in->line;
     jsonctx->backup.dynamic = jsonctx->dynamic;
     jsonctx->dynamic = 0;
 }
@@ -1082,6 +1083,7 @@ lyjson_ctx_restore(struct lyjson_ctx *jsonctx)
     jsonctx->value = jsonctx->backup.value;
     jsonctx->value_len = jsonctx->backup.value_len;
     jsonctx->in->current = jsonctx->backup.input;
+    jsonctx->in->line = jsonctx->backup.line;
     jsonctx->dynamic = jsonctx->backup.dynamic;
     jsonctx->backup.dynamic = 0;
 }

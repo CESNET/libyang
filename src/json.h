@@ -79,6 +79,7 @@ struct lyjson_ctx {
         uint32_t value_len;
         ly_bool dynamic;
         const char *input;
+        uint64_t line;
     } backup;
 };
 

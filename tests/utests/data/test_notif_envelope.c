@@ -542,6 +542,15 @@ test_auto(void **state)
             "or \"ietf-yp-notification:envelope\".", NULL, 1);
 #endif /* LY_HAVE_CBOR */
 
+    /* line of an error after the envelope detection */
+    data = "{\"ietf-yp-notification:envelope\":\n"
+            "{\n"
+            "\"event-time\":\"2026-11-02T10:00:00Z\",\"contents\":{\n"
+            "\"ietf-yang-push:push-update\":{\"id\":\"abc\"}}}}";
+    CHECK_PARSE_AUTO_ERR(data, LYD_JSON, LY_EVALID);
+    CHECK_LOG_CTX("Invalid non-number-encoded uint32 value \"abc\".",
+            "/ietf-yp-notification:envelope/contents/ietf-yang-push:push-update/id", 4);
+
     /* sibling of the YANG-Push envelope */
     data = "<envelope xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yp-notification\">"
             "<event-time>2026-11-02T10:00:00Z</event-time><contents>"
