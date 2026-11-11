@@ -449,7 +449,7 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
                 LY_EINVAL);
         LY_CHECK_ERR_RET(!ly_ctx_get_module_implemented(ctx, "ietf-yp-notification"),
                 LOGERR(ctx, LY_EINVAL, "Module \"ietf-yp-notification\" is not implemented."), LY_EINVAL);
-        int_opts = LYD_INTOPT_NOTIF | LYD_INTOPT_NO_SIBLINGS | LYD_INTOPT_ENVELOPE;
+        int_opts = LYD_INTOPT_NOTIF | LYD_INTOPT_NO_SIBLINGS | LYD_INTOPT_YP_ENVELOPE;
         break;
     default:
         LOGINT(ctx);
