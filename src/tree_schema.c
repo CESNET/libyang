@@ -1386,7 +1386,19 @@ static void
 lys_unres_glob_revert_erase_mod(struct ly_ctx *ctx, struct lys_glob_unres *unres, struct lys_module *mod)
 {
     uint32_t idx, i, j;
+    LYA_COUNT_T u;
     struct ly_set *dep_set;
+    struct lys_module *imp_mod;
+
+    /* check for any imports that failed to be parsed properly */
+    LYA_FOR(mod->parsed->imports, u) {
+        imp_mod = mod->parsed->imports[u].module;
+        if (imp_mod && imp_mod->parsed->parsing) {
+            /* free the module */
+            lys_unres_glob_revert_erase_mod(ctx, unres, imp_mod);
+            mod->parsed->imports[u].module = NULL;
+        }
+    }
 
     if (ly_set_contains(&unres->implementing, mod, &i)) {
         /* make the module correctly non-implemented again */
