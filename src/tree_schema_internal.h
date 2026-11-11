@@ -356,7 +356,7 @@ LY_ERR lysp_check_enum_name(struct lysp_ctx *ctx, const char *name, size_t name_
  * @param[in] name Name of the module to load.
  * @param[in] revision Optional revision of the module to load. If NULL, the newest revision is loaded.
  * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
- * @param[out] mod Created module structure.
+ * @param[out] mod Created module structure if added into context (even on error).
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
@@ -660,7 +660,7 @@ struct lysp_load_module_data {
  * @param[in] format Format of the input data (YANG or YIN).
  * @param[in] mod_data Optional expected module data to check.
  * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
- * @param[out] module Created module.
+ * @param[out] module Created module, always set if a new module was added to context (even on error).
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error, @p new_mods may be modified.
  */

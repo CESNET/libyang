@@ -797,7 +797,7 @@ cleanup:
  * @param[in] revision Revision of module to load.
  * @param[in] mod_latest Module with the latest revision found in context, otherwise set to NULL.
  * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
- * @param[out] mod Loaded module.
+ * @param[out] mod Loaded module, always returned if added into context (even on error).
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */

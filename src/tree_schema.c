@@ -3040,7 +3040,7 @@ cleanup:
         lysp_yin_ctx_free(yinctx);
     }
 
-    if (!rc && !mod_exists && module) {
+    if (module && ((!rc && !mod_exists) || mod_created)) {
         *module = mod;
     }
     return rc;
