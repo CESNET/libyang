@@ -1390,6 +1390,10 @@ lys_unres_glob_revert_erase_mod(struct ly_ctx *ctx, struct lys_glob_unres *unres
     struct ly_set *dep_set;
     struct lys_module *imp_mod;
 
+    if (!mod) {
+        return;
+    }
+
     /* check for any imports that failed to be parsed properly */
     LYA_FOR(mod->parsed->imports, u) {
         imp_mod = mod->parsed->imports[u].module;
