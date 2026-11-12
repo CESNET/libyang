@@ -233,7 +233,7 @@ lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, c
         const void *value, uint64_t value_size_bits, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data,
         uint32_t hints, struct lyd_node **node)
 {
-    ly_bool incomplete;
+    ly_bool incomplete = 0;
     ly_bool store_only = (lydctx->parse_opts & LYD_PARSE_STORE_ONLY) == LYD_PARSE_STORE_ONLY ? 1 : 0;
 
     LY_CHECK_RET(lyd_create_term(schema, lnode, value, value_size_bits, 1, store_only, dynamic, format, prefix_data,
