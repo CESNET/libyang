@@ -47,7 +47,7 @@ jobs:
             cc: "gcc",
             options: "",
             packager: "sudo apt-get",
-            packages: "libcmocka-dev libxxhash-dev libcbor-dev valgrind",
+            packages: "libcmocka-dev libxxhash-dev libcbor-dev uncrustify valgrind",
             snaps: "",
             build-cmd: "make"
           }
@@ -112,19 +112,6 @@ jobs:
           if ${{ matrix.config.snaps != '' }}
             then sudo snap install ${{ matrix.config.snaps }}
           fi
-
-      - name: Deps-uncrustify
-        shell: bash
-        working-directory: ${{ github.workspace }}
-        run: |
-          git clone --branch uncrustify-0.77.1 https://github.com/uncrustify/uncrustify
-          cd uncrustify
-          mkdir build
-          cd build
-          CC=${{ matrix.config.cc }} cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ..
-          make
-          sudo make install
-        if: ${{ matrix.config.name == 'Debug, gcc' }}
 
       - name: Build-and-install-package
         shell: bash
