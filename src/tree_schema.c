@@ -1000,7 +1000,7 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
         path = NULL;
     } else if (len == 0) {
         if (buffer) {
-            strcpy(buffer, "/");
+            snprintf(buffer, buflen, "/");
         } else {
             free(path);
             path = strdup("/");

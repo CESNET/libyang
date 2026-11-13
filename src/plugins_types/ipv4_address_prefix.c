@@ -275,7 +275,7 @@ lyplg_type_print_ipv4_address_prefix(const struct ly_ctx *ctx, const struct lyd_
         }
 
         /* add the prefix */
-        sprintf(ret + strlen(ret), "/%" PRIu8, val->prefix);
+        snprintf(ret + strlen(ret), INET_ADDRSTRLEN + 4 - strlen(ret), "/%" PRIu8, val->prefix);
 
         /* store it */
         if (lydict_insert_zc(ctx, ret, (const char **)&value->_canonical)) {

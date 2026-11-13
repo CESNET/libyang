@@ -1648,7 +1648,7 @@ ly_time_time2str(time_t time, const char *fractions_s, char **str)
     zonediff_s = ly_time_tz_offset_at(time);
     zonediff_h = zonediff_s / 60 / 60;
     zonediff_m = zonediff_s / 60 % 60;
-    sprintf(zoneshift, "%+03d:%02d", zonediff_h, zonediff_m < 0 ? -zonediff_m : zonediff_m);
+    snprintf(zoneshift, sizeof zoneshift, "%+03d:%02d", zonediff_h, zonediff_m < 0 ? -zonediff_m : zonediff_m);
 
     /* print */
     if (asprintf(str, "%04d-%02d-%02dT%02d:%02d:%02d%s%s%s",
@@ -1698,7 +1698,7 @@ ly_time_ts2str(const struct timespec *ts, char **str)
 
     /* convert nanoseconds to fractions of a second */
     if (ts->tv_nsec) {
-        sprintf(frac_buf, "%09ld", ts->tv_nsec);
+        snprintf(frac_buf, sizeof frac_buf, "%09ld", ts->tv_nsec);
     }
 
     return ly_time_time2str(ts->tv_sec, ts->tv_nsec ? frac_buf : NULL, str);

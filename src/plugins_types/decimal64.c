@@ -53,14 +53,14 @@ decimal64_num2str(int64_t num, struct lysc_type_dec *type, char **str)
     LY_CHECK_RET(!ret, LY_EMEM);
 
     if (num) {
-        int count = sprintf(ret, "%" PRId64 " ", num);
+        int count = snprintf(ret, LY_NUMBER_MAXLEN, "%" PRId64 " ", num);
 
         if (((num > 0) && ((count - 1) <= type->fraction_digits)) || ((count - 2) <= type->fraction_digits)) {
             /* we have 0. value, print the value with the leading zeros
              * (one for 0. and also keep the correct with of num according
              * to fraction-digits value)
              * for (num < 0) - extra character for '-' sign */
-            count = sprintf(ret, "%0*" PRId64 " ", (num > 0) ? (type->fraction_digits + 1) : (type->fraction_digits + 2), num);
+            count = snprintf(ret, LY_NUMBER_MAXLEN, "%0*" PRId64 " ", (num > 0) ? (type->fraction_digits + 1) : (type->fraction_digits + 2), num);
         }
         for (uint8_t i = type->fraction_digits, j = 1; i > 0; i--) {
             if (j && (i > 1) && (ret[count - 2] == '0')) {
@@ -75,7 +75,7 @@ decimal64_num2str(int64_t num, struct lysc_type_dec *type, char **str)
         ret[count - 1] = '.';
     } else {
         /* zero */
-        sprintf(ret, "0.0");
+        snprintf(ret, LY_NUMBER_MAXLEN, "0.0");
     }
 
     *str = ret;

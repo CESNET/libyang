@@ -316,7 +316,7 @@ schema_diff_pnode_path(const struct lysp_node *node)
         path = ly_realloc(path, new_len + 1);
         LY_CHECK_ERR_GOTO(!path, LOGMEM(NULL), cleanup);
 
-        sprintf(path + path_len, "/%s%s%s", node_pre ? node_pre : "", nodes[i]->name, node_post ? node_post : "");
+        snprintf(path + path_len, new_len + 1 - path_len, "/%s%s%s", node_pre ? node_pre : "", nodes[i]->name, node_post ? node_post : "");
         path_len = new_len;
     } while (i);
 
@@ -491,11 +491,11 @@ schema_diff_ext_inst_substmts_bitenums(const struct ly_ctx *ctx, const struct ly
 
         /* value/position */
         if (items[u].flags & LYS_IS_ENUM) {
-            sprintf(num_str, "%" PRId32, items[u].value);
+            snprintf(num_str, sizeof num_str, "%" PRId32, items[u].value);
             LY_CHECK_GOTO(rc = schema_diff_ext_inst_substmts_child_add(ctx, "value", num_str, &bitenum_node->child),
                     cleanup);
         } else {
-            sprintf(num_str, "%" PRIu32, items[u].position);
+            snprintf(num_str, sizeof num_str, "%" PRIu32, items[u].position);
             LY_CHECK_GOTO(rc = schema_diff_ext_inst_substmts_child_add(ctx, "position", num_str, &bitenum_node->child),
                     cleanup);
         }
@@ -611,16 +611,16 @@ schema_diff_range2str(struct lysc_range_part *parts, ly_bool is_signed, char **s
 
     LYA_FOR(parts, u) {
         if (is_signed) {
-            sprintf(num_min_str, "%" PRId64, parts[u].min_64);
+            snprintf(num_min_str, sizeof num_min_str, "%" PRId64, parts[u].min_64);
             if (parts[u].min_64 < parts[u].max_64) {
-                sprintf(num_max_str, "%" PRId64, parts[u].max_64);
+                snprintf(num_max_str, sizeof num_max_str, "%" PRId64, parts[u].max_64);
             } else {
                 num_max_str[0] = '\0';
             }
         } else {
-            sprintf(num_min_str, "%" PRIu64, parts[u].min_u64);
+            snprintf(num_min_str, sizeof num_min_str, "%" PRIu64, parts[u].min_u64);
             if (parts[u].min_u64 < parts[u].max_u64) {
-                sprintf(num_max_str, "%" PRIu64, parts[u].max_u64);
+                snprintf(num_max_str, sizeof num_max_str, "%" PRIu64, parts[u].max_u64);
             } else {
                 num_max_str[0] = '\0';
             }
@@ -630,7 +630,7 @@ schema_diff_range2str(struct lysc_range_part *parts, ly_bool is_signed, char **s
         s = ly_realloc(s, new_len + 1);
         LY_CHECK_ERR_GOTO(!s, LOGMEM(NULL); rc = LY_EMEM, cleanup);
 
-        sprintf(s + s_len, "%s%s%s%s", s_len ? "|" : "", num_min_str, num_max_str[0] ? ".." : "",
+        snprintf(s + s_len, new_len + 1 - s_len, "%s%s%s%s", s_len ? "|" : "", num_min_str, num_max_str[0] ? ".." : "",
                 num_max_str[0] ? num_max_str : "");
         s_len = new_len;
     }
@@ -877,7 +877,7 @@ schema_diff_ext_inst_substmts_type(const struct ly_ctx *ctx, const struct lysc_t
         type_dec = (const struct lysc_type_dec *)type;
 
         /* fraction-digits */
-        sprintf(num_str, "%" PRIu8, type_dec->fraction_digits);
+        snprintf(num_str, sizeof num_str, "%" PRIu8, type_dec->fraction_digits);
         LY_CHECK_GOTO(rc = schema_diff_ext_inst_substmts_child_add(ctx, "fraction-digits", num_str, child_p), cleanup);
 
         /* range */
@@ -1099,12 +1099,12 @@ schema_diff_ext_inst_substmts_nodes_r(const struct lysc_node *sibling, struct ly
             max = llist->max;
         }
         if (min > 0) {
-            sprintf(num_str, "%" PRIu32, min);
+            snprintf(num_str, sizeof num_str, "%" PRIu32, min);
             LY_CHECK_GOTO(rc = schema_diff_ext_inst_substmts_child_add(ctx, "min-elements", num_str, &node->child),
                     cleanup);
         }
         if (max < UINT32_MAX) {
-            sprintf(num_str, "%" PRIu32, max);
+            snprintf(num_str, sizeof num_str, "%" PRIu32, max);
             LY_CHECK_GOTO(rc = schema_diff_ext_inst_substmts_child_add(ctx, "max-elements", num_str, &node->child),
                     cleanup);
         }
@@ -1221,7 +1221,7 @@ schema_diff_ext_inst_substmts(const struct ly_ctx *ctx, const struct lysc_ext_su
 
             /* uint8 number */
             if (*(substmts[u].storage_p)) {
-                sprintf(num_str, "%" PRIu8, *(uint8_t *)substmts[u].storage_p);
+                snprintf(num_str, sizeof num_str, "%" PRIu8, *(uint8_t *)substmts[u].storage_p);
                 LY_CHECK_GOTO(rc = schema_diff_ext_inst_substmts_child_add(ctx, lys_stmt_str(substmts[u].stmt), num_str,
                         child_p), cleanup);
             }
@@ -1253,7 +1253,7 @@ schema_diff_ext_inst_substmts(const struct ly_ctx *ctx, const struct lysc_ext_su
 
             /* uint32 number */
             if (*(uint32_t *)substmts[u].storage_p < UINT32_MAX) {
-                sprintf(num_str, "%" PRIu32, *(uint32_t *)substmts[u].storage_p);
+                snprintf(num_str, sizeof num_str, "%" PRIu32, *(uint32_t *)substmts[u].storage_p);
                 LY_CHECK_GOTO(rc = schema_diff_ext_inst_substmts_child_add(ctx, "max-elements", num_str, child_p),
                         cleanup);
             }
@@ -1264,7 +1264,7 @@ schema_diff_ext_inst_substmts(const struct ly_ctx *ctx, const struct lysc_ext_su
 
             /* uint32 number */
             if (*(uint32_t *)substmts[u].storage_p > 0) {
-                sprintf(num_str, "%" PRIu32, *(uint32_t *)substmts[u].storage_p);
+                snprintf(num_str, sizeof num_str, "%" PRIu32, *(uint32_t *)substmts[u].storage_p);
                 LY_CHECK_GOTO(rc = schema_diff_ext_inst_substmts_child_add(ctx, "min-elements", num_str, child_p),
                         cleanup);
             }
@@ -1290,7 +1290,7 @@ schema_diff_ext_inst_substmts(const struct ly_ctx *ctx, const struct lysc_ext_su
             char num_str[21];
 
             /* uint64 number */
-            sprintf(num_str, "%" PRIu64, *(uint64_t *)substmts[u].storage_p);
+            snprintf(num_str, sizeof num_str, "%" PRIu64, *(uint64_t *)substmts[u].storage_p);
             LY_CHECK_GOTO(rc = schema_diff_ext_inst_substmts_child_add(ctx, "position", num_str, child_p), cleanup);
             break;
         }
@@ -1334,7 +1334,7 @@ schema_diff_ext_inst_substmts(const struct ly_ctx *ctx, const struct lysc_ext_su
             char num_str[21];
 
             /* int64 number */
-            sprintf(num_str, "%" PRId64, *(int64_t *)substmts[u].storage_p);
+            snprintf(num_str, sizeof num_str, "%" PRId64, *(int64_t *)substmts[u].storage_p);
             LY_CHECK_GOTO(rc = schema_diff_ext_inst_substmts_child_add(ctx, "value", num_str, child_p), cleanup);
             break;
         }
@@ -1958,11 +1958,11 @@ schema_diff_parsed_enum(const struct lysp_type_enum *enm, ly_bool is_bit, struct
 
     if (is_bit) {
         /* position */
-        sprintf(str, "%" PRIu64, (uint64_t)enm->value);
+        snprintf(str, sizeof str, "%" PRIu64, (uint64_t)enm->value);
         LY_CHECK_GOTO(rc = lyd_new_term(enum_list, NULL, "position", str, LYD_NEW_VAL_CANON, NULL), cleanup);
     } else {
         /* value */
-        sprintf(str, "%" PRId64, enm->value);
+        snprintf(str, sizeof str, "%" PRId64, enm->value);
         LY_CHECK_GOTO(rc = lyd_new_term(enum_list, NULL, "value", str, LYD_NEW_VAL_CANON, NULL), cleanup);
     }
 
@@ -2011,7 +2011,7 @@ schema_diff_parsed_type(const struct lysp_type *type, struct lyd_node *cont)
 
     /* fraction-digits */
     if (type->flags & LYS_SET_FRDIGITS) {
-        sprintf(str, "%" PRIu8, type->fraction_digits);
+        snprintf(str, sizeof str, "%" PRIu8, type->fraction_digits);
         LY_CHECK_GOTO(rc = lyd_new_term(cont, NULL, "fraction-digits", str, LYD_NEW_VAL_CANON, NULL), cleanup);
     }
 
@@ -2264,7 +2264,7 @@ schema_diff_pnode(const struct lysp_node *pnode, struct lyd_node *change_cont)
 
     /* min-elements */
     if (min_set) {
-        sprintf(buf, "%" PRIu32, min);
+        snprintf(buf, sizeof buf, "%" PRIu32, min);
         if ((rc = lyd_new_term(change_cont, NULL, "min-elements", buf, 0, NULL))) {
             goto cleanup;
         }
@@ -2272,7 +2272,7 @@ schema_diff_pnode(const struct lysp_node *pnode, struct lyd_node *change_cont)
 
     /* max-elements */
     if (max_set) {
-        sprintf(buf, "%" PRIu32, max);
+        snprintf(buf, sizeof buf, "%" PRIu32, max);
         if ((rc = lyd_new_term(change_cont, NULL, "max-elements", buf, 0, NULL))) {
             goto cleanup;
         }
@@ -2405,7 +2405,7 @@ schema_diff_refine(const struct lysp_refine *refine, struct lyd_node *change_con
 
     /* min-elements */
     if (refine->flags & LYS_SET_MIN) {
-        sprintf(buf, "%" PRIu32, refine->min);
+        snprintf(buf, sizeof buf, "%" PRIu32, refine->min);
         if ((rc = lyd_new_term(change_cont, NULL, "min-elements", buf, 0, NULL))) {
             goto cleanup;
         }
@@ -2413,7 +2413,7 @@ schema_diff_refine(const struct lysp_refine *refine, struct lyd_node *change_con
 
     /* max-elements */
     if (refine->flags & LYS_SET_MAX) {
-        sprintf(buf, "%" PRIu32, refine->max);
+        snprintf(buf, sizeof buf, "%" PRIu32, refine->max);
         if ((rc = lyd_new_term(change_cont, NULL, "max-elements", buf, 0, NULL))) {
             goto cleanup;
         }
@@ -3122,7 +3122,7 @@ schema_diff_deviation(const struct lysp_deviation *dev, struct lyd_node *change_
 
         /* min-elements */
         if (flags & LYS_SET_MIN) {
-            sprintf(buf, "%" PRIu32, min);
+            snprintf(buf, sizeof buf, "%" PRIu32, min);
             if ((rc = lyd_new_term(dev_list, NULL, "min-elements", buf, 0, NULL))) {
                 goto cleanup;
             }
@@ -3130,7 +3130,7 @@ schema_diff_deviation(const struct lysp_deviation *dev, struct lyd_node *change_
 
         /* max-elements */
         if (flags & LYS_SET_MAX) {
-            sprintf(buf, "%" PRIu32, max);
+            snprintf(buf, sizeof buf, "%" PRIu32, max);
             if ((rc = lyd_new_term(dev_list, NULL, "max-elements", buf, 0, NULL))) {
                 goto cleanup;
             }
@@ -3523,10 +3523,10 @@ schema_diff_node_type_bitenums(const struct lysc_type_bitenum_item *items, struc
 
         /* value/position */
         if (items[u].flags & LYS_IS_ENUM) {
-            sprintf(buf, "%" PRId32, items[u].value);
+            snprintf(buf, sizeof buf, "%" PRId32, items[u].value);
             LY_CHECK_GOTO(rc = lyd_new_term(par_list, NULL, "value", buf, 0, NULL), cleanup);
         } else {
-            sprintf(buf, "%" PRIu32, items[u].position);
+            snprintf(buf, sizeof buf, "%" PRIu32, items[u].position);
             LY_CHECK_GOTO(rc = lyd_new_term(par_list, NULL, "position", buf, 0, NULL), cleanup);
         }
 
@@ -3625,7 +3625,7 @@ schema_diff_node_type(const struct lysc_type *type, struct lyd_node *type_par)
         type_dec = (const struct lysc_type_dec *)type;
 
         /* fraction-digits */
-        sprintf(buf, "%" PRIu8, type_dec->fraction_digits);
+        snprintf(buf, sizeof buf, "%" PRIu8, type_dec->fraction_digits);
         LY_CHECK_GOTO(rc = lyd_new_term(type_par, NULL, "fraction-digits", buf, 0, NULL), cleanup);
 
         /* range */
@@ -3828,13 +3828,13 @@ schema_diff_node_stmts(const struct lysc_node *node, ly_bool gen_local, struct l
         max = llist->max;
     }
     if (min > 0) {
-        sprintf(buf, "%" PRIu32, min);
+        snprintf(buf, sizeof buf, "%" PRIu32, min);
         if ((rc = lyd_new_term(change_cont, NULL, "min-elements", buf, 0, NULL))) {
             goto cleanup;
         }
     }
     if (max < UINT32_MAX) {
-        sprintf(buf, "%" PRIu32, max);
+        snprintf(buf, sizeof buf, "%" PRIu32, max);
         if ((rc = lyd_new_term(change_cont, NULL, "max-elements", buf, 0, NULL))) {
             goto cleanup;
         }

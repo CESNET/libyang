@@ -1005,9 +1005,8 @@ yin_parse_modifier(struct lysp_yin_ctx *ctx, const void *parent, const char **pa
     lysdict_remove(ctx->xmlctx->ctx, temp_val);
 
     /* allocate new value */
-    modified_val = malloc(strlen(*pat) + 1);
+    modified_val = strdup(*pat);
     LY_CHECK_ERR_RET(!modified_val, LOGMEM(ctx->xmlctx->ctx), LY_EMEM);
-    strcpy(modified_val, *pat);
     lysdict_remove(ctx->xmlctx->ctx, *pat);
 
     /* modify the new value */
@@ -1994,7 +1993,7 @@ yin_parse_revision_date(struct lysp_yin_ctx *ctx, char *rev, struct lysp_ext_ins
     LY_CHECK_ERR_RET(lys_check_date(PARSER_CTX(ctx), temp_rev, strlen(temp_rev), "revision-date") != LY_SUCCESS,
             lysdict_remove(ctx->xmlctx->ctx, temp_rev), LY_EVALID);
 
-    strcpy(rev, temp_rev);
+    memcpy(rev, temp_rev, LY_REV_SIZE);
     lysdict_remove(ctx->xmlctx->ctx, temp_rev);
 
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), rev, LY_STMT_REVISION_DATE, NULL, exts));
