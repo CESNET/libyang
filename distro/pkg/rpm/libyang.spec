@@ -19,6 +19,7 @@ Summary:    YANG modules for libyang
 Summary:    Development files for libyang
 Requires:   %{name}%{?_isa} = %{version}-%{release}
 Requires:   pcre2-devel
+Requires:   libcbor-devel
 
 %package devel-doc
 Summary:    Documentation of libyang API
