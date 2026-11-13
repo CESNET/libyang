@@ -11,6 +11,8 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
+#define _GNU_SOURCE /* strdup */
+
 #include "parser_internal.h"
 
 #include <assert.h>
@@ -2206,9 +2208,8 @@ parse_type_pattern_modifier(struct lysp_yang_ctx *ctx, struct lysp_restr *restr)
     }
 
     /* replace the value in the dictionary */
-    buf = malloc(strlen(restr->arg.str) + 1);
+    buf = strdup(restr->arg.str);
     LY_CHECK_ERR_GOTO(!buf, LOGMEM(PARSER_CTX(ctx)); ret = LY_EMEM, cleanup);
-    strcpy(buf, restr->arg.str);
     lysdict_remove(PARSER_CTX(ctx), restr->arg.str);
 
     assert(buf[0] == LYSP_RESTR_PATTERN_ACK);
