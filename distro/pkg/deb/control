@@ -8,6 +8,7 @@ Build-Depends: cmake,
                debhelper (>= 10),
                libcmocka-dev <!nocheck>,
                libpcre2-dev,
+               libcbor-dev,
                pkg-config
 Vcs-Browser: https://github.com/CESNET/libyang/tree/master
 Vcs-Git: https://github.com/CESNET/libyang.git
@@ -23,6 +24,7 @@ Description: parser toolkit for IETF YANG data modeling - runtime
 
 Package: libyang-dev
 Depends: libpcre2-dev,
+         libcbor-dev,
          libyang5 (= ${binary:Version}),
          ${misc:Depends}
 Conflicts: libyang2-dev
