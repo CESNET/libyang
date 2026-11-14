@@ -896,9 +896,9 @@ lydcbor_meta_attr(struct lyd_cbor_ctx *lydctx, const struct lysc_node *snode, st
             LY_CHECK_GOTO((cbor_typeof(item) != CBOR_TYPE_MAP) && !lydcbor_is_null(item), representation_error);
 
             if (!node || (node->schema != prev->schema)) {
-                LOG_LOCSET(prev->schema);
+                LOG_LOCSET(snode);
                 LOGVAL(ctx, NULL, LYVE_REFERENCE, "Missing CBOR data instance #%" PRIu32 " of %s:%s to be coupled with metadata.",
-                        i + 1, prev->schema->module->name, prev->schema->name);
+                        i + 1, snode->module->name, snode->name);
                 LOG_LOCBACK(1);
                 rc = LY_EVALID;
                 goto cleanup;
@@ -1471,6 +1471,7 @@ lydcbor_subtree_r(struct lyd_cbor_ctx *lydctx, struct lyd_node *parent, struct l
         free(key_str);
         key_str = NULL;
         key_len = 0;
+        attr_node = NULL;
 
         if (!key_item || !value_item) {
             LOGVAL(ctx, NULL, LYVE_SYNTAX, "Null key or value in CBOR map");
