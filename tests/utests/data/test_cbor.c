@@ -465,6 +465,66 @@ test_attributes(void **state)
 }
 
 static void
+test_attributes_parent(void **state)
+{
+    struct lyd_node *tree;
+    char *buffer, *json;
+    struct ly_out *out;
+    size_t i;
+
+    /* metadata of the parent ("@") followed by metadata of its children */
+    const struct test_case tests[] = {
+        {
+            "leaf",
+            "{\"cbor-test:cont-root\":{\"@\":{\"cbor-test:a1\":\"val1\"},\"lf-root-str\":\"x\","
+            "\"@lf-root-str\":{\"cbor-test:a2\":5}}}"
+        },
+        {
+            "leaf-list",
+            "{\"cbor-test:list-nested\":[{\"@\":{\"cbor-test:a1\":\"val1\"},\"id\":\"a\",\"tags\":[\"t1\",\"t2\"],"
+            "\"@tags\":[{\"cbor-test:a2\":1},{\"cbor-test:a2\":2}]}]}"
+        },
+    };
+
+    /* {"cbor-test:anydata-payload": {"foo": {"@": {"cbor-test:a1": "val1"}, "cbor-test:ll-str": ["a", "b"],
+     *  "@cbor-test:ll-str": [{"cbor-test:a2": 1}, {"cbor-test:a2": 2}]}}} */
+    const char data1[] = "\xa1\x78\x19" "cbor-test:anydata-payload" "\xa1\x63" "foo" "\xa3"
+            "\x61" "@" "\xa1\x6c" "cbor-test:a1" "\x64" "val1"
+            "\x70" "cbor-test:ll-str" "\x82\x61" "a" "\x61" "b"
+            "\x71" "@cbor-test:ll-str" "\x82\xa1\x6c" "cbor-test:a2" "\x01\xa1\x6c" "cbor-test:a2" "\x02";
+
+    /* {"cbor-test:ll-intg32": ["x"], "@cbor-test:ll-intg32": [null, null]} */
+    const char data2[] = "\xa2\x73" "cbor-test:ll-intg32" "\x81\x61" "x" "\x74" "@cbor-test:ll-intg32" "\x82\xf6\xf6";
+
+    for (i = 0; i < sizeof tests / sizeof *tests; ++i) {
+        CHECK_PARSE_LYD_PARAM(tests[i].json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+
+        assert_int_equal(LY_SUCCESS, ly_out_new_memory(&buffer, 0, &out));
+        assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_CBOR, 0));
+        lyd_free_all(tree);
+
+        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, buffer, (uint32_t)ly_out_printed(out), LYD_CBOR,
+                0, LYD_VALIDATE_PRESENT, &tree));
+        ly_out_free(out, NULL, 0);
+        free(buffer);
+
+        assert_int_equal(LY_SUCCESS, lyd_print_mem(&json, tree, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS));
+        assert_string_equal(json, tests[i].json);
+        free(json);
+        lyd_free_all(tree);
+    }
+
+    /* anydata content is parsed as opaque nodes, the "@" metadata belong to "foo" */
+    CHECK_PARSE_LYD_PARAM_LEN(data1, sizeof data1 - 1, LYD_CBOR, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_all(tree);
+
+    /* opaque leaf-list instance */
+    CHECK_PARSE_LYD_PARAM_LEN(data2, sizeof data2 - 1, LYD_CBOR, LYD_PARSE_ONLY | LYD_PARSE_OPAQ, 0, LY_EVALID, tree);
+    CHECK_LOG_CTX("Missing CBOR data instance #2 of cbor-test:ll-intg32 to be coupled with metadata.",
+            "/cbor-test:ll-intg32", 1);
+}
+
+static void
 test_invalid_input(void **state)
 {
     struct lyd_node *tree = NULL;
@@ -651,6 +711,7 @@ main(void)
         UTEST(test_opaque, setup),
         UTEST(test_opaque_list, setup),
         UTEST(test_attributes, setup),
+        UTEST(test_attributes_parent, setup),
         UTEST(test_invalid_input, setup),
         UTEST(test_negint, setup),
         UTEST(test_anydata_strict, setup),
