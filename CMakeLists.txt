@@ -374,7 +374,10 @@ endif()
 # generate and copy all public header files
 configure_file(${PROJECT_SOURCE_DIR}/src/ly_config.h.in ${PROJECT_BINARY_DIR}/libyang/ly_config.h @ONLY)
 configure_file(${PROJECT_SOURCE_DIR}/src/version.h.in ${PROJECT_BINARY_DIR}/libyang/version.h @ONLY)
-file(COPY ${headers} DESTINATION ${PROJECT_BINARY_DIR}/libyang)
+foreach(h IN LISTS headers)
+    get_filename_component(h_name ${h} NAME)
+    configure_file(${PROJECT_SOURCE_DIR}/${h} ${PROJECT_BINARY_DIR}/libyang/${h_name} COPYONLY)
+endforeach()
 
 # DOC-only target with no extra dependencies
 if("${BUILD_TYPE_UPPER}" STREQUAL "DOCONLY")
