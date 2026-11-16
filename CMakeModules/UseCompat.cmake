@@ -44,9 +44,13 @@ macro(USE_COMPAT)
 
     set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
     find_package(Threads)
-    list(APPEND CMAKE_REQUIRED_LIBRARIES ${CMAKE_THREAD_LIBS_INIT})
+    if(CMAKE_THREAD_LIBS_INIT)
+        list(APPEND CMAKE_REQUIRED_LIBRARIES ${CMAKE_THREAD_LIBS_INIT})
+    endif()
     check_function_exists(pthread_mutex_timedlock HAVE_PTHREAD_MUTEX_TIMEDLOCK)
-    list(REMOVE_ITEM CMAKE_REQUIRED_LIBRARIES ${CMAKE_THREAD_LIBS_INIT} "") # cmake <= 3.19 needs at least one item
+    if(CMAKE_THREAD_LIBS_INIT)
+        list(REMOVE_ITEM CMAKE_REQUIRED_LIBRARIES ${CMAKE_THREAD_LIBS_INIT})
+    endif()
 
     test_big_endian(IS_BIG_ENDIAN)
 

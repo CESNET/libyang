@@ -60,7 +60,7 @@ libyang & yanglint can be installed using [homebrew](https://brew.sh/) with ```b
 ### Unix Build Requirements
 
 * C compiler
-* cmake >= 2.8.12
+* cmake >= 3.12
 * libpcre2 >= 10.21 (including devel package)
 
 #### Optional

@@ -40,12 +40,17 @@ else()
     set(LIB_NAME yang_update)
 endif()
 
-# yang update library
-add_library(${LIB_NAME} STATIC ${lib_src})
+# yang update library, uses also internal libyang functions
+if(TARGET yangobj)
+    add_library(${LIB_NAME} STATIC ${lib_src} $<TARGET_OBJECTS:yangobj>)
+    get_target_property(yang_linked_libraries yang LINK_LIBRARIES)
+    target_link_libraries(${LIB_NAME} ${yang_linked_libraries})
+else()
+    add_library(${LIB_NAME} STATIC ${lib_src})
+    target_link_libraries(${LIB_NAME} yang)
+endif()
 target_compile_definitions(${LIB_NAME} PUBLIC LIBYANG_BUILD)
 target_include_directories(${LIB_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_BINARY_DIR})
-get_target_property(yang_linked_libraries yang LINK_LIBRARIES)
-target_link_libraries(${LIB_NAME} $<TARGET_OBJECTS:yangobj> ${yang_linked_libraries})
 
 if(NOT YANGUPDATE_TEST_LIB)
     # yangupdate
