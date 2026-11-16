@@ -188,8 +188,17 @@ library was installed into a non-standard path, the path to libyang must be spec
 linker. To help with setting all the compiler's options, there is `libyang.pc` file for
 `pkg-config(1)` available in the source tree. The file is installed with the library.
 
-If you are using `cmake` in you project, it is also possible to use the provided
-`FindLibYANG.cmake` file to detect presence of the libyang library in the system.
+A CMake project finds libyang by its CMake package, installed into `lib/cmake/LibYANG`:
+```
+find_package(LibYANG 5 CONFIG REQUIRED)
+target_link_libraries(myapp PRIVATE LibYANG::yang)
+```
+
+The version passed to `find_package()` is the SO version of the library (`LY_VERSION`), the
+project version is in the `LibYANG_PROJECT_VERSION` variable. `LibYANG_HAVE_CBOR` says whether
+libyang supports the CBOR data format. A project can also use libyang from its build directory
+without installing it, by `-DLibYANG_DIR=<libyang build directory>`. A static build of libyang
+and older libyang releases provide no CMake package, use `pkg-config` with them.
 
 ## Bindings
 
