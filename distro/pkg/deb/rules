@@ -10,3 +10,7 @@ include /usr/share/dpkg/default.mk
 override_dh_auto_configure:
 	dh_auto_configure -- \
 		-DCMAKE_BUILD_TYPE:String="Release"
+
+# fail on installed files that no package lists
+override_dh_missing:
+	dh_missing --fail-missing

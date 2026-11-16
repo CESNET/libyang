@@ -87,6 +87,7 @@ cp -a doc/html %{buildroot}/%{_docdir}/libyang/html
 %files devel
 %{_libdir}/libyang.so
 %{_libdir}/pkgconfig/libyang.pc
+%{_libdir}/cmake/LibYANG/
 %{_includedir}/libyang/*.h
 %dir %{_includedir}/libyang/
 
