@@ -1182,7 +1182,7 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *node, cons
 {
     LY_ERR ret = LY_SUCCESS;
     uint32_t i;
-    struct lyd_node *iter, *ext_data = NULL, *ref_first = NULL, *orig_parent = node->parent, *op_tree;
+    struct lyd_node *iter, *ext_data = NULL, *ref_first = NULL, *orig_parent = node->parent, *op_tree = NULL;
     struct lyd_node *ext_diff = NULL, *diff_parent = NULL, *sm_root = NULL;
     ly_bool ext_data_free = 0;
     struct ly_set *ref_set = NULL;
