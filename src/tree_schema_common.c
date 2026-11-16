@@ -66,7 +66,7 @@ lysp_last_revision(const struct lysp_module *pmod, const struct lysp_revision *r
 {
     LYA_COUNT_T u;
     int cmp;
-    const char *last_revision = NULL, *name, *mod_str;
+    const char *last_revision = NULL, *name = NULL, *mod_str = NULL;
     const struct ly_ctx *ctx = NULL;
 
     if (!revs) {

@@ -50,7 +50,7 @@ node_instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, voi
     LYA_COUNT_T u, v;
     char *result = NULL, quot;
     const struct lys_module *mod = NULL, *local_mod = NULL;
-    struct ly_set *mods;
+    struct ly_set *mods = NULL;
     ly_bool inherit_prefix = 0;
     const char *strval;
 
