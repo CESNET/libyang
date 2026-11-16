@@ -20,6 +20,7 @@ include(ABICheck)
 include(SourceFormat)
 include(GenDoc)
 include(GenCoverage)
+include(LibYANGConfigPackage)
 include(CheckIncludeFile)
 
 # set default build type if not specified by user
@@ -80,7 +81,9 @@ else()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic -std=c11")
 endif()
 
-include_directories(${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/libyang ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/src/plugins_exts)
+include_directories(${PROJECT_BINARY_DIR}
+    ${PROJECT_BINARY_DIR}/include ${PROJECT_BINARY_DIR}/include/libyang
+    ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/src/plugins_exts)
 
 # type plugins are separate because they have their documentation generated
 set(type_plugins
@@ -236,7 +239,7 @@ set(doxy_files
     doc/transition_3_4.dox
     doc/transition_4_5.dox
     ${headers}
-    ${PROJECT_BINARY_DIR}/libyang/version.h
+    ${PROJECT_BINARY_DIR}/include/libyang/version.h
     ${type_plugins})
 
 # project (doxygen) logo
@@ -372,11 +375,11 @@ if(LY_HAVE_REGEX_H)
 endif()
 
 # generate and copy all public header files
-configure_file(${PROJECT_SOURCE_DIR}/src/ly_config.h.in ${PROJECT_BINARY_DIR}/libyang/ly_config.h @ONLY)
-configure_file(${PROJECT_SOURCE_DIR}/src/version.h.in ${PROJECT_BINARY_DIR}/libyang/version.h @ONLY)
+configure_file(${PROJECT_SOURCE_DIR}/src/ly_config.h.in ${PROJECT_BINARY_DIR}/include/libyang/ly_config.h @ONLY)
+configure_file(${PROJECT_SOURCE_DIR}/src/version.h.in ${PROJECT_BINARY_DIR}/include/libyang/version.h @ONLY)
 foreach(h IN LISTS headers)
     get_filename_component(h_name ${h} NAME)
-    configure_file(${PROJECT_SOURCE_DIR}/${h} ${PROJECT_BINARY_DIR}/libyang/${h_name} COPYONLY)
+    configure_file(${PROJECT_SOURCE_DIR}/${h} ${PROJECT_BINARY_DIR}/include/libyang/${h_name} COPYONLY)
 endforeach()
 
 # DOC-only target with no extra dependencies
@@ -451,7 +454,7 @@ if(WIN32)
 endif()
 
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_SOVERSION_FULL} SOVERSION ${LIBYANG_SOVERSION})
-target_include_directories(yang PUBLIC $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}> $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+target_include_directories(yang PUBLIC $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include> $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 # link math
 if(NOT WIN32)
@@ -495,18 +498,26 @@ endif()
 
 # generated header list
 foreach(h IN LISTS gen_headers)
-    list(APPEND g_headers ${PROJECT_BINARY_DIR}/libyang/${h})
+    list(APPEND g_headers ${PROJECT_BINARY_DIR}/include/libyang/${h})
 endforeach()
 
 # install the modules
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/modules/" DESTINATION ${YANG_MODULE_DIR} FILES_MATCHING PATTERN "*.yang")
 
-# install all library files
-install(TARGETS yang
+# install all library files, a Windows DLL is RUNTIME and belongs to bin/
+install(TARGETS yang EXPORT LibYANGTargets
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${headers} ${g_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)
+
+# CMake config package, for the build tree and the installation
+if(BUILD_SHARED_LIBS)
+    # the package version is the SO version, which all the dependent projects check
+    gen_libyang_config_package(SOVERSION ${LIBYANG_SOVERSION_FULL} VERSION ${LIBYANG_VERSION} HAVE_CBOR ${LY_HAVE_CBOR})
+else()
+    message(STATUS "Static build, CMake config package is not installed")
+endif()
 
 # generate and install pkg-config file
 if(IS_ABSOLUTE "${CMAKE_INSTALL_INCLUDEDIR}")

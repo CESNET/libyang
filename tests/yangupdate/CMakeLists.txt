@@ -11,7 +11,7 @@ function(lyu_add_test)
 
     set(TEST_NAME yangupdate_${ARGV0})
     add_executable(${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/${ARGV0}/test.c)
-    target_include_directories(${TEST_NAME} PRIVATE ${PROJECT_BINARY_DIR}/libyang ${PROJECT_SOURCE_DIR}/tools/update)
+    target_include_directories(${TEST_NAME} PRIVATE ${PROJECT_BINARY_DIR}/include/libyang ${PROJECT_SOURCE_DIR}/tools/update)
     target_link_libraries(${TEST_NAME} ${YANGUPDATE_TEST_LIB} ${CMOCKA_LIBRARIES})
     set_target_properties(${TEST_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests)
 
