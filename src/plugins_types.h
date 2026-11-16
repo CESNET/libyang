@@ -83,7 +83,7 @@ struct lysc_type_leafref;
  *
  * Usually, all the validation according to the type's restrictions is done in the store callback. However, in case the type
  * requires some validation referencing other entities in the data tree, the optional validation callback
- * ::lyplg_type_validate_clb can be implemented.
+ * ::lyplg_type_validate_tree_clb can be implemented.
  *
  * The stored values can be compared in a specific way by providing ::lyplg_type_compare_clb. In case the best way to compare
  * the values is to compare their canonical string representations, the ::lyplg_type_compare_simple() function can be used.
@@ -122,7 +122,6 @@ struct lysc_type_leafref;
  * - ::lyplg_type_check_status()
  * - ::lyplg_type_lypath_check_status()
  * - ::lyplg_type_identity_isderived()
- * - ::lyplg_type_identity_module()
  * - ::lyplg_type_make_implemented()
  * - ::lyplg_type_parse_dec64()
  * - ::lyplg_type_parse_int()
@@ -543,7 +542,7 @@ LIBYANG_API_DECL typedef void (*lyplg_type_lyb_size_clb)(const struct lysc_type 
  * @p value_size_bits is always correct. All store functions have to free a dynamically allocated @p value in all
  * cases (even on error).
  *
- * No unnecessary validation tasks should be performed by this callback and left for ::lyplg_type_validate_clb instead.
+ * No unnecessary validation tasks should be performed by this callback and left for ::lyplg_type_validate_value_clb instead.
  *
  * @param[in] ctx libyang context.
  * @param[in] type Type of the value being stored.

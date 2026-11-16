@@ -82,7 +82,7 @@ struct lyxp_expr;
  * it to navigate through the schema tree structure or to obtain various information, we recommend to use the following
  * macros for the specific actions.
  * - ::LYSC_TREE_DFS_BEGIN and ::LYSC_TREE_DFS_END to traverse the schema tree (depth-first).
- * - ::LY_LIST_FOR and ::LY_ARRAY_FOR as described on @ref howtoStructures page.
+ * - ::LY_LIST_FOR and ::LYA_FOR as described on @ref howtoStructures page.
  *
  * Further information about modules handling can be found on the following pages:
  * - @subpage howtoSchemaParsers
