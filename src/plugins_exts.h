@@ -132,220 +132,220 @@ extern "C" {
 enum ly_stmt {
     LY_STMT_NONE = 0,
 
-    LY_STMT_NOTIFICATION = 0x0001,  /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_node_notif *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - `struct lysc_node_notif *` */
-    LY_STMT_INPUT = 0x0002,     /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_node_action_inout *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - `struct lysc_node_action_inout *` */
-    LY_STMT_OUTPUT = 0x0004,    /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_node_action_inout *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - `struct lysc_node_action_inout *` */
-    LY_STMT_ACTION = 0x0008,    /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_node_action *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - `struct lysc_node_action *` */
-    LY_STMT_RPC = 0x0010,       /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_node_action *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - `struct lysc_node_action *` */
-    LY_STMT_ANYDATA = 0x0020,   /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_node_anydata *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - `struct lysc_node_anydata *` */
-    LY_STMT_ANYXML = 0x0040,    /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_node_anydata *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - `struct lysc_node_anydata *` */
-    LY_STMT_AUGMENT = 0x0080,   /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_node_augment *`
-                                     ::lysc_ext_substmt.storage - not compiled
-                                     ::lysc_ext_instance.parent - `struct lysc_node *` */
-    LY_STMT_CASE = 0x0100,      /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_node_case *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - `struct lysc_node_case *` */
-    LY_STMT_CHOICE = 0x0200,    /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_node_choice *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - `struct lysc_node_choice *` */
-    LY_STMT_CONTAINER = 0x0400, /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_node_container *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - `struct lysc_node_container *` */
-    LY_STMT_GROUPING = 0x0800,  /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_node_grp *`
-                                     ::lysc_ext_substmt.storage - not compiled
-                                     ::lysc_ext_instance.parent - `struct lysc_node *` */
-    LY_STMT_LEAF = 0x1000,      /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_node_leaf *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - `struct lysc_node_leaf *` */
-    LY_STMT_LEAF_LIST = 0x2000, /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_node_leaflist *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - `struct lysc_node_leaflist *` */
-    LY_STMT_LIST = 0x4000,      /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_node_list *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - `struct lysc_node_list *` */
-    LY_STMT_USES = 0x8000,      /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_node_uses *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - `struct lysc_node *` */
+    LY_STMT_NOTIFICATION = 0x0001,  /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_node_notif *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - `struct lysc_node_notif *` */
+    LY_STMT_INPUT = 0x0002,     /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_node_action_inout *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - `struct lysc_node_action_inout *` */
+    LY_STMT_OUTPUT = 0x0004,    /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_node_action_inout *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - `struct lysc_node_action_inout *` */
+    LY_STMT_ACTION = 0x0008,    /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_node_action *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - `struct lysc_node_action *` */
+    LY_STMT_RPC = 0x0010,       /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_node_action *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - `struct lysc_node_action *` */
+    LY_STMT_ANYDATA = 0x0020,   /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_node_anydata *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - `struct lysc_node_anydata *` */
+    LY_STMT_ANYXML = 0x0040,    /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_node_anydata *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - `struct lysc_node_anydata *` */
+    LY_STMT_AUGMENT = 0x0080,   /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_node_augment *`
+                                     lysc_ext_substmt.storage - not compiled
+                                     lysc_ext_instance.parent - `struct lysc_node *` */
+    LY_STMT_CASE = 0x0100,      /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_node_case *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - `struct lysc_node_case *` */
+    LY_STMT_CHOICE = 0x0200,    /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_node_choice *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - `struct lysc_node_choice *` */
+    LY_STMT_CONTAINER = 0x0400, /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_node_container *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - `struct lysc_node_container *` */
+    LY_STMT_GROUPING = 0x0800,  /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_node_grp *`
+                                     lysc_ext_substmt.storage - not compiled
+                                     lysc_ext_instance.parent - `struct lysc_node *` */
+    LY_STMT_LEAF = 0x1000,      /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_node_leaf *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - `struct lysc_node_leaf *` */
+    LY_STMT_LEAF_LIST = 0x2000, /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_node_leaflist *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - `struct lysc_node_leaflist *` */
+    LY_STMT_LIST = 0x4000,      /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_node_list *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - `struct lysc_node_list *` */
+    LY_STMT_USES = 0x8000,      /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_node_uses *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - `struct lysc_node *` */
 
-    LY_STMT_ARGUMENT = 0x10000, /**< ::lysp_ext_substmt.storage - `const char *`
-                                     ::lysp_ext_instance.parent - `struct lysp_ext *`
-                                     ::lysc_ext_substmt.storage - `const char *`
-                                     ::lysc_ext_instance.parent - `struct lysc_ext *` */
-    LY_STMT_BASE = 0x20000,     /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `const char **`[]
-                                     ::lysc_ext_substmt.storage - not compiled
-                                     ::lysc_ext_instance.parent - `struct lysc_ident *` */
-    LY_STMT_BELONGS_TO = 0x30000,   /**< ::lysp_ext_substmt.storage - `const char *`
-                                     ::lysp_ext_instance.parent - `struct lysp_submodule *`
-                                     ::lysc_ext_substmt.storage - not compiled
-                                     ::lysc_ext_instance.parent - `struct lysc_module *` */
-    LY_STMT_BIT = 0x40000,      /**< ::lysp_ext_substmt.storage - `struct lysp_type_enum *`[]
-                                     ::lysp_ext_instance.parent - `struct lysp_type_enum *`
-                                     ::lysc_ext_substmt.storage - `struct lysc_type_bitenum_item *`[]
-                                     ::lysc_ext_instance.parent - `struct lysc_type_bitenum_item *` */
-    LY_STMT_CONFIG = 0x50000,   /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `uint16_t *`
-                                     ::lysc_ext_substmt.storage - `uint16_t *`
-                                     ::lysc_ext_instance.parent - `struct lysc_node *` */
-    LY_STMT_CONTACT = 0x60000,  /**< ::lysp_ext_substmt.storage - `const char *`
-                                     ::lysp_ext_instance.parent - `struct lysp_(sub)module *`
-                                     ::lysc_ext_substmt.storage - `const char *`
-                                     ::lysc_ext_instance.parent - `struct lysc_module *` */
-    LY_STMT_DEFAULT = 0x70000,  /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_qname *`
-                                     ::lysc_ext_substmt.storage - not compiled
-                                     ::lysc_ext_instance.parent - `struct lysc_node *`, `struct lysc_type *` (typedef) */
-    LY_STMT_DESCRIPTION = 0x80000,  /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `const char *`
-                                     ::lysc_ext_substmt.storage - `const char *`
-                                     ::lysc_ext_instance.parent - compiled parent statement */
-    LY_STMT_DEVIATE = 0x90000,  /**< ::lysp_ext_substmt.storage - `struct lysp_deviate *`[]
-                                     ::lysp_ext_instance.parent - `struct lysp_deviate *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - not compiled */
-    LY_STMT_DEVIATION = 0xA0000,    /**< ::lysp_ext_substmt.storage - `struct lysp_deviation *`[]
-                                     ::lysp_ext_instance.parent - `struct lysp_deviation *`
-                                     ::lysc_ext_substmt.storage - not compiled
-                                     ::lysc_ext_instance.parent - `struct lysc_node *` */
-    LY_STMT_ENUM = 0xB0000,     /**< ::lysp_ext_substmt.storage - `struct lysp_type_enum *`[]
-                                     ::lysp_ext_instance.parent - `struct lysp_type_enum *`
-                                     ::lysc_ext_substmt.storage - `struct lysc_type_bitenum_item *`[]
-                                     ::lysc_ext_instance.parent - `struct lysc_type_bitenum_item *` */
-    LY_STMT_ERROR_APP_TAG = 0xC0000,    /**< ::lysp_ext_substmt.storage - `const char *`
-                                     ::lysp_ext_instance.parent - `struct lysp_restr *`
-                                     ::lysc_ext_substmt.storage - `const char *`
-                                     ::lysc_ext_instance.parent - compiled restriction structure */
-    LY_STMT_ERROR_MESSAGE = 0xD0000,    /**< ::lysp_ext_substmt.storage - `const char *`
-                                     ::lysp_ext_instance.parent - `struct lysp_restr *`
-                                     ::lysc_ext_substmt.storage - `const char *`
-                                     ::lysc_ext_instance.parent - compiled restriction structure */
-    LY_STMT_EXTENSION = 0xE0000,    /**< ::lysp_ext_substmt.storage - `struct lysp_ext *`[]
-                                     ::lysp_ext_instance.parent - `struct lysp_ext *`
-                                     ::lysc_ext_substmt.storage - not compiled explicitly
-                                     ::lysc_ext_instance.parent - `struct lysc_ext *` */
-    LY_STMT_EXTENSION_INSTANCE = 0xF0000,   /**< ::lysp_ext_substmt.storage - `struct lysp_ext_instance *`[]
-                                     ::lysc_ext_substmt.storage - `struct lysc_ext_instance *`[] */
-    LY_STMT_FEATURE = 0x100000, /**< ::lysp_ext_substmt.storage - `struct lysp_feature *`[]
-                                     ::lysp_ext_instance.parent - `struct lysp_feature *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - not compiled */
-    LY_STMT_FRACTION_DIGITS = 0x110000, /**< ::lysp_ext_substmt.storage - `uint8_t *`
-                                     ::lysp_ext_instance.parent - `struct lysp_type *`
-                                     ::lysc_ext_substmt.storage - `uint8_t *`
-                                     ::lysc_ext_instance.parent - `struct lysc_type *` */
-    LY_STMT_IDENTITY = 0x120000,    /**< ::lysp_ext_substmt.storage - `struct lysp_ident *`[]
-                                     ::lysp_ext_instance.parent - `struct lysp_ident *`
-                                     ::lysc_ext_substmt.storage - `struct lysc_ident *`[]
-                                     ::lysc_ext_instance.parent - `struct lysc_ident *` */
-    LY_STMT_IF_FEATURE = 0x130000,  /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_qname *`[]
-                                     ::lysc_ext_substmt.storage - no storage, evaluated when compiled
-                                     ::lysc_ext_instance.parent - compiled parent statement */
-    LY_STMT_IMPORT = 0x140000,  /**< ::lysp_ext_substmt.storage - `struct lysp_import *`[]
-                                     ::lysp_ext_instance.parent - `struct lysp_import *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - not compiled */
-    LY_STMT_INCLUDE = 0x150000, /**< ::lysp_ext_substmt.storage - `struct lysp_include *`[]
-                                     ::lysp_ext_instance.parent - `struct lysp_include *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - not compiled */
-    LY_STMT_KEY = 0x160000,     /**< ::lysp_ext_substmt.storage - `const char *`
-                                     ::lysp_ext_instance.parent - `struct lysp_node_list *`
-                                     ::lysc_ext_substmt.storage - `const char *`
-                                     ::lysc_ext_instance.parent - `struct lysc_node_list *` */
-    LY_STMT_LENGTH = 0x170000,  /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_restr *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - `struct lysc_range *` */
-    LY_STMT_MANDATORY = 0x180000,   /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `uint16_t *`
-                                     ::lysc_ext_substmt.storage - `uint16_t *`
-                                     ::lysc_ext_instance.parent - `struct lysc_node *` */
-    LY_STMT_MAX_ELEMENTS = 0x190000,    /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `uint32_t *`
-                                     ::lysc_ext_substmt.storage - `uint32_t *`
-                                     ::lysc_ext_instance.parent - `struct lysc_node_list *` */
-    LY_STMT_MIN_ELEMENTS = 0x1A0000,    /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `uint32_t *`
-                                     ::lysc_ext_substmt.storage - `uint32_t *`
-                                     ::lysc_ext_instance.parent - `struct lysc_node_list *` */
-    LY_STMT_MODIFIER = 0x1B0000,    /**< ::lysp_ext_substmt.storage - `const char *`
-                                     ::lysp_ext_instance.parent - `struct lysp_restr *`
-                                     ::lysc_ext_substmt.storage - `const char *`
-                                     ::lysc_ext_instance.parent - `struct lysc_pattern *` */
-    LY_STMT_MODULE = 0x1C0000,  /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_module *`
-                                     ::lysc_ext_substmt.storage - not compiled
-                                     ::lysc_ext_instance.parent - `struct lysc_module *` */
-    LY_STMT_MUST = 0x1D0000,    /**< ::lysp_ext_substmt.storage - `struct lysp_restr *`[]
-                                     ::lysp_ext_instance.parent - `struct lysp_restr *`
-                                     ::lysc_ext_substmt.storage - `struct lysc_must *`[]
-                                     ::lysc_ext_instance.parent - `struct lysc_must *` */
-    LY_STMT_NAMESPACE = 0x1E0000,   /**< ::lysp_ext_substmt.storage - `const char *`
-                                     ::lysp_ext_instance.parent - `struct lysp_module *`
-                                     ::lysc_ext_substmt.storage - `const char *`
-                                     ::lysc_ext_instance.parent - `struct lysc_module *` */
-    LY_STMT_ORDERED_BY = 0x1F0000,  /**< ::lysp_ext_substmt.storage - `uint16_t *`
-                                     ::lysp_ext_instance.parent - `struct lysp_node *`
-                                     ::lysc_ext_substmt.storage - `uint16_t *`
-                                     ::lysc_ext_instance.parent - `struct lysc_node *` */
-    LY_STMT_ORGANIZATION = 0x200000,    /**< ::lysp_ext_substmt.storage - `const char *`
-                                     ::lysp_ext_instance.parent - `struct lysp_(sub)module *`
-                                     ::lysc_ext_substmt.storage - `const char *`
-                                     ::lysc_ext_instance.parent - `struct lysc_module *` */
-    LY_STMT_PATH = 0x210000,    /**< ::lysp_ext_substmt.storage - `struct lyxp_expr *`
-                                     ::lysp_ext_instance.parent - `struct lysp_type *`
-                                     ::lysc_ext_substmt.storage - not compiled
-                                     ::lysc_ext_instance.parent - `struct lysc_type *` */
-    LY_STMT_PATTERN = 0x220000, /**< ::lysp_ext_substmt.storage - `struct lysp_restr *`[]
-                                     ::lysp_ext_instance.parent - `struct lysp_restr *`
-                                     ::lysc_ext_substmt.storage - `struct lysc_pattern **`[]
-                                     ::lysc_ext_instance.parent - `struct lysc_pattern *` */
-    LY_STMT_POSITION = 0x230000,    /**< ::lysp_ext_substmt.storage - `int64_t *`
-                                     ::lysp_ext_instance.parent - `struct lysp_type_enum *`
-                                     ::lysc_ext_substmt.storage - `int64_t *`
-                                     ::lysc_ext_instance.parent - `struct lysc_type_bitenum_item *` */
-    LY_STMT_PREFIX = 0x240000,  /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `const char *`
-                                     ::lysc_ext_substmt.storage - not compiled
-                                     ::lysc_ext_instance.parent - `struct lysc_module *` */
-    LY_STMT_PRESENCE = 0x250000,    /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `const char *`
-                                     ::lysc_ext_substmt.storage - `const char *`
-                                     ::lysc_ext_instance.parent - `struct lysc_node_container *` */
-    LY_STMT_RANGE = 0x260000,   /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_restr *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - `struct lysc_range *` */
-    LY_STMT_REFERENCE = 0x270000,   /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `const char *`
-                                     ::lysc_ext_substmt.storage - `const char *`
-                                     ::lysc_ext_instance.parent - compiled parent statement */
-    LY_STMT_REFINE = 0x280000,  /**< ::lysp_ext_substmt.storage - `struct lysp_refine *`[]
-                                     ::lysp_ext_instance.parent - `struct lysp_refine *`
-                                     ::lysc_ext_substmt.storage - not compiled
-                                     ::lysc_ext_instance.parent - `struct lysc_node *` */
-    LY_STMT_REQUIRE_INSTANCE = 0x290000,    /**< ::lysp_ext_substmt.storage - `uint8_t *`
-                                     ::lysp_ext_instance.parent - `struct lysp_type *`
-                                     ::lysc_ext_substmt.storage - `uint8_t *`
-                                     ::lysc_ext_instance.parent - `struct lysc_type *` */
-    LY_STMT_REVISION = 0x2A0000,    /**< ::lysp_ext_substmt.storage - `struct lysp_revision *`[]
-                                     ::lysp_ext_instance.parent - `struct lysp_revision *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - not compiled */
-    LY_STMT_REVISION_DATE = 0x2B0000,   /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `const char *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - not compiled */
-    LY_STMT_STATUS = 0x2C0000,  /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `uint16_t *`
-                                     ::lysc_ext_substmt.storage - `uint16_t *`
-                                     ::lysc_ext_instance.parent - compiled parent statement */
-    LY_STMT_SUBMODULE = 0x2D0000,   /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_submodule *`
-                                     ::lysc_ext_substmt.storage - not compiled
-                                     ::lysc_ext_instance.parent - `struct lysc_module *` */
-    LY_STMT_TYPE = 0x2E0000,    /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_type *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - `struct lysc_type *` */
-    LY_STMT_TYPEDEF = 0x2F0000, /**< ::lysp_ext_substmt.storage - `struct lysp_tpdf *`[]
-                                     ::lysp_ext_instance.parent - `struct lysp_tpdf *`
-                                     ::lysc_ext_substmt.storage - not compiled
-                                     ::lysc_ext_instance.parent - `struct lysc_type *` */
-    LY_STMT_UNIQUE = 0x300000,  /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_qname *`[]
-                                     ::lysc_ext_substmt.storage - not compiled
-                                     ::lysc_ext_instance.parent - `struct lysc_node_list *` */
-    LY_STMT_UNITS = 0x310000,   /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `const char *`
-                                     ::lysc_ext_substmt.storage - `const char *`
-                                     ::lysc_ext_instance.parent - `struct lysc_node *`, `struct lysc_type *` (typedef) */
-    LY_STMT_VALUE = 0x320000,   /**< ::lysp_ext_substmt.storage - `int64_t *`
-                                     ::lysp_ext_instance.parent - `struct lysp_type_enum *`
-                                     ::lysc_ext_substmt.storage - `int64_t *`
-                                     ::lysc_ext_instance.parent - `struct lysc_type_bitenum_item *` */
-    LY_STMT_WHEN = 0x330000,    /**< ::lysp_ext_substmt.storage and ::lysp_ext_instance.parent - `struct lysp_when *`
-                                     ::lysc_ext_substmt.storage and ::lysc_ext_instance.parent - `struct lysc_when *` */
-    LY_STMT_YANG_VERSION = 0x340000,    /**< ::lysp_ext_substmt.storage - `uint8_t *`
-                                     ::lysp_ext_instance.parent - `struct lysp_(sub)module *`
-                                     ::lysc_ext_substmt.storage - not compiled
-                                     ::lysc_ext_instance.parent - `struct lysc_module *` */
-    LY_STMT_YIN_ELEMENT = 0x350000, /**< ::lysp_ext_substmt.storage - `uint16_t *`
-                                     ::lysp_ext_instance.parent - `struct lysp_ext *`
-                                     ::lysc_ext_substmt.storage - not compiled
-                                     ::lysc_ext_instance.parent - `struct lysc_ext *` */
+    LY_STMT_ARGUMENT = 0x10000, /**< lysp_ext_substmt.storage - `const char *`
+                                     lysp_ext_instance.parent - `struct lysp_ext *`
+                                     lysc_ext_substmt.storage - `const char *`
+                                     lysc_ext_instance.parent - `struct lysc_ext *` */
+    LY_STMT_BASE = 0x20000,     /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `const char **`[]
+                                     lysc_ext_substmt.storage - not compiled
+                                     lysc_ext_instance.parent - `struct lysc_ident *` */
+    LY_STMT_BELONGS_TO = 0x30000,   /**< lysp_ext_substmt.storage - `const char *`
+                                     lysp_ext_instance.parent - `struct lysp_submodule *`
+                                     lysc_ext_substmt.storage - not compiled
+                                     lysc_ext_instance.parent - `struct lysc_module *` */
+    LY_STMT_BIT = 0x40000,      /**< lysp_ext_substmt.storage - `struct lysp_type_enum *`[]
+                                     lysp_ext_instance.parent - `struct lysp_type_enum *`
+                                     lysc_ext_substmt.storage - `struct lysc_type_bitenum_item *`[]
+                                     lysc_ext_instance.parent - `struct lysc_type_bitenum_item *` */
+    LY_STMT_CONFIG = 0x50000,   /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `uint16_t *`
+                                     lysc_ext_substmt.storage - `uint16_t *`
+                                     lysc_ext_instance.parent - `struct lysc_node *` */
+    LY_STMT_CONTACT = 0x60000,  /**< lysp_ext_substmt.storage - `const char *`
+                                     lysp_ext_instance.parent - `struct lysp_(sub)module *`
+                                     lysc_ext_substmt.storage - `const char *`
+                                     lysc_ext_instance.parent - `struct lysc_module *` */
+    LY_STMT_DEFAULT = 0x70000,  /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_qname *`
+                                     lysc_ext_substmt.storage - not compiled
+                                     lysc_ext_instance.parent - `struct lysc_node *`, `struct lysc_type *` (typedef) */
+    LY_STMT_DESCRIPTION = 0x80000,  /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `const char *`
+                                     lysc_ext_substmt.storage - `const char *`
+                                     lysc_ext_instance.parent - compiled parent statement */
+    LY_STMT_DEVIATE = 0x90000,  /**< lysp_ext_substmt.storage - `struct lysp_deviate *`[]
+                                     lysp_ext_instance.parent - `struct lysp_deviate *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - not compiled */
+    LY_STMT_DEVIATION = 0xA0000,    /**< lysp_ext_substmt.storage - `struct lysp_deviation *`[]
+                                     lysp_ext_instance.parent - `struct lysp_deviation *`
+                                     lysc_ext_substmt.storage - not compiled
+                                     lysc_ext_instance.parent - `struct lysc_node *` */
+    LY_STMT_ENUM = 0xB0000,     /**< lysp_ext_substmt.storage - `struct lysp_type_enum *`[]
+                                     lysp_ext_instance.parent - `struct lysp_type_enum *`
+                                     lysc_ext_substmt.storage - `struct lysc_type_bitenum_item *`[]
+                                     lysc_ext_instance.parent - `struct lysc_type_bitenum_item *` */
+    LY_STMT_ERROR_APP_TAG = 0xC0000,    /**< lysp_ext_substmt.storage - `const char *`
+                                     lysp_ext_instance.parent - `struct lysp_restr *`
+                                     lysc_ext_substmt.storage - `const char *`
+                                     lysc_ext_instance.parent - compiled restriction structure */
+    LY_STMT_ERROR_MESSAGE = 0xD0000,    /**< lysp_ext_substmt.storage - `const char *`
+                                     lysp_ext_instance.parent - `struct lysp_restr *`
+                                     lysc_ext_substmt.storage - `const char *`
+                                     lysc_ext_instance.parent - compiled restriction structure */
+    LY_STMT_EXTENSION = 0xE0000,    /**< lysp_ext_substmt.storage - `struct lysp_ext *`[]
+                                     lysp_ext_instance.parent - `struct lysp_ext *`
+                                     lysc_ext_substmt.storage - not compiled explicitly
+                                     lysc_ext_instance.parent - `struct lysc_ext *` */
+    LY_STMT_EXTENSION_INSTANCE = 0xF0000,   /**< lysp_ext_substmt.storage - `struct lysp_ext_instance *`[]
+                                     lysc_ext_substmt.storage - `struct lysc_ext_instance *`[] */
+    LY_STMT_FEATURE = 0x100000, /**< lysp_ext_substmt.storage - `struct lysp_feature *`[]
+                                     lysp_ext_instance.parent - `struct lysp_feature *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - not compiled */
+    LY_STMT_FRACTION_DIGITS = 0x110000, /**< lysp_ext_substmt.storage - `uint8_t *`
+                                     lysp_ext_instance.parent - `struct lysp_type *`
+                                     lysc_ext_substmt.storage - `uint8_t *`
+                                     lysc_ext_instance.parent - `struct lysc_type *` */
+    LY_STMT_IDENTITY = 0x120000,    /**< lysp_ext_substmt.storage - `struct lysp_ident *`[]
+                                     lysp_ext_instance.parent - `struct lysp_ident *`
+                                     lysc_ext_substmt.storage - `struct lysc_ident *`[]
+                                     lysc_ext_instance.parent - `struct lysc_ident *` */
+    LY_STMT_IF_FEATURE = 0x130000,  /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_qname *`[]
+                                     lysc_ext_substmt.storage - no storage, evaluated when compiled
+                                     lysc_ext_instance.parent - compiled parent statement */
+    LY_STMT_IMPORT = 0x140000,  /**< lysp_ext_substmt.storage - `struct lysp_import *`[]
+                                     lysp_ext_instance.parent - `struct lysp_import *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - not compiled */
+    LY_STMT_INCLUDE = 0x150000, /**< lysp_ext_substmt.storage - `struct lysp_include *`[]
+                                     lysp_ext_instance.parent - `struct lysp_include *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - not compiled */
+    LY_STMT_KEY = 0x160000,     /**< lysp_ext_substmt.storage - `const char *`
+                                     lysp_ext_instance.parent - `struct lysp_node_list *`
+                                     lysc_ext_substmt.storage - `const char *`
+                                     lysc_ext_instance.parent - `struct lysc_node_list *` */
+    LY_STMT_LENGTH = 0x170000,  /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_restr *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - `struct lysc_range *` */
+    LY_STMT_MANDATORY = 0x180000,   /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `uint16_t *`
+                                     lysc_ext_substmt.storage - `uint16_t *`
+                                     lysc_ext_instance.parent - `struct lysc_node *` */
+    LY_STMT_MAX_ELEMENTS = 0x190000,    /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `uint32_t *`
+                                     lysc_ext_substmt.storage - `uint32_t *`
+                                     lysc_ext_instance.parent - `struct lysc_node_list *` */
+    LY_STMT_MIN_ELEMENTS = 0x1A0000,    /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `uint32_t *`
+                                     lysc_ext_substmt.storage - `uint32_t *`
+                                     lysc_ext_instance.parent - `struct lysc_node_list *` */
+    LY_STMT_MODIFIER = 0x1B0000,    /**< lysp_ext_substmt.storage - `const char *`
+                                     lysp_ext_instance.parent - `struct lysp_restr *`
+                                     lysc_ext_substmt.storage - `const char *`
+                                     lysc_ext_instance.parent - `struct lysc_pattern *` */
+    LY_STMT_MODULE = 0x1C0000,  /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_module *`
+                                     lysc_ext_substmt.storage - not compiled
+                                     lysc_ext_instance.parent - `struct lysc_module *` */
+    LY_STMT_MUST = 0x1D0000,    /**< lysp_ext_substmt.storage - `struct lysp_restr *`[]
+                                     lysp_ext_instance.parent - `struct lysp_restr *`
+                                     lysc_ext_substmt.storage - `struct lysc_must *`[]
+                                     lysc_ext_instance.parent - `struct lysc_must *` */
+    LY_STMT_NAMESPACE = 0x1E0000,   /**< lysp_ext_substmt.storage - `const char *`
+                                     lysp_ext_instance.parent - `struct lysp_module *`
+                                     lysc_ext_substmt.storage - `const char *`
+                                     lysc_ext_instance.parent - `struct lysc_module *` */
+    LY_STMT_ORDERED_BY = 0x1F0000,  /**< lysp_ext_substmt.storage - `uint16_t *`
+                                     lysp_ext_instance.parent - `struct lysp_node *`
+                                     lysc_ext_substmt.storage - `uint16_t *`
+                                     lysc_ext_instance.parent - `struct lysc_node *` */
+    LY_STMT_ORGANIZATION = 0x200000,    /**< lysp_ext_substmt.storage - `const char *`
+                                     lysp_ext_instance.parent - `struct lysp_(sub)module *`
+                                     lysc_ext_substmt.storage - `const char *`
+                                     lysc_ext_instance.parent - `struct lysc_module *` */
+    LY_STMT_PATH = 0x210000,    /**< lysp_ext_substmt.storage - `struct lyxp_expr *`
+                                     lysp_ext_instance.parent - `struct lysp_type *`
+                                     lysc_ext_substmt.storage - not compiled
+                                     lysc_ext_instance.parent - `struct lysc_type *` */
+    LY_STMT_PATTERN = 0x220000, /**< lysp_ext_substmt.storage - `struct lysp_restr *`[]
+                                     lysp_ext_instance.parent - `struct lysp_restr *`
+                                     lysc_ext_substmt.storage - `struct lysc_pattern **`[]
+                                     lysc_ext_instance.parent - `struct lysc_pattern *` */
+    LY_STMT_POSITION = 0x230000,    /**< lysp_ext_substmt.storage - `int64_t *`
+                                     lysp_ext_instance.parent - `struct lysp_type_enum *`
+                                     lysc_ext_substmt.storage - `int64_t *`
+                                     lysc_ext_instance.parent - `struct lysc_type_bitenum_item *` */
+    LY_STMT_PREFIX = 0x240000,  /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `const char *`
+                                     lysc_ext_substmt.storage - not compiled
+                                     lysc_ext_instance.parent - `struct lysc_module *` */
+    LY_STMT_PRESENCE = 0x250000,    /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `const char *`
+                                     lysc_ext_substmt.storage - `const char *`
+                                     lysc_ext_instance.parent - `struct lysc_node_container *` */
+    LY_STMT_RANGE = 0x260000,   /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_restr *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - `struct lysc_range *` */
+    LY_STMT_REFERENCE = 0x270000,   /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `const char *`
+                                     lysc_ext_substmt.storage - `const char *`
+                                     lysc_ext_instance.parent - compiled parent statement */
+    LY_STMT_REFINE = 0x280000,  /**< lysp_ext_substmt.storage - `struct lysp_refine *`[]
+                                     lysp_ext_instance.parent - `struct lysp_refine *`
+                                     lysc_ext_substmt.storage - not compiled
+                                     lysc_ext_instance.parent - `struct lysc_node *` */
+    LY_STMT_REQUIRE_INSTANCE = 0x290000,    /**< lysp_ext_substmt.storage - `uint8_t *`
+                                     lysp_ext_instance.parent - `struct lysp_type *`
+                                     lysc_ext_substmt.storage - `uint8_t *`
+                                     lysc_ext_instance.parent - `struct lysc_type *` */
+    LY_STMT_REVISION = 0x2A0000,    /**< lysp_ext_substmt.storage - `struct lysp_revision *`[]
+                                     lysp_ext_instance.parent - `struct lysp_revision *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - not compiled */
+    LY_STMT_REVISION_DATE = 0x2B0000,   /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `const char *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - not compiled */
+    LY_STMT_STATUS = 0x2C0000,  /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `uint16_t *`
+                                     lysc_ext_substmt.storage - `uint16_t *`
+                                     lysc_ext_instance.parent - compiled parent statement */
+    LY_STMT_SUBMODULE = 0x2D0000,   /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_submodule *`
+                                     lysc_ext_substmt.storage - not compiled
+                                     lysc_ext_instance.parent - `struct lysc_module *` */
+    LY_STMT_TYPE = 0x2E0000,    /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_type *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - `struct lysc_type *` */
+    LY_STMT_TYPEDEF = 0x2F0000, /**< lysp_ext_substmt.storage - `struct lysp_tpdf *`[]
+                                     lysp_ext_instance.parent - `struct lysp_tpdf *`
+                                     lysc_ext_substmt.storage - not compiled
+                                     lysc_ext_instance.parent - `struct lysc_type *` */
+    LY_STMT_UNIQUE = 0x300000,  /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_qname *`[]
+                                     lysc_ext_substmt.storage - not compiled
+                                     lysc_ext_instance.parent - `struct lysc_node_list *` */
+    LY_STMT_UNITS = 0x310000,   /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `const char *`
+                                     lysc_ext_substmt.storage - `const char *`
+                                     lysc_ext_instance.parent - `struct lysc_node *`, `struct lysc_type *` (typedef) */
+    LY_STMT_VALUE = 0x320000,   /**< lysp_ext_substmt.storage - `int64_t *`
+                                     lysp_ext_instance.parent - `struct lysp_type_enum *`
+                                     lysc_ext_substmt.storage - `int64_t *`
+                                     lysc_ext_instance.parent - `struct lysc_type_bitenum_item *` */
+    LY_STMT_WHEN = 0x330000,    /**< lysp_ext_substmt.storage and lysp_ext_instance.parent - `struct lysp_when *`
+                                     lysc_ext_substmt.storage and lysc_ext_instance.parent - `struct lysc_when *` */
+    LY_STMT_YANG_VERSION = 0x340000,    /**< lysp_ext_substmt.storage - `uint8_t *`
+                                     lysp_ext_instance.parent - `struct lysp_(sub)module *`
+                                     lysc_ext_substmt.storage - not compiled
+                                     lysc_ext_instance.parent - `struct lysc_module *` */
+    LY_STMT_YIN_ELEMENT = 0x350000, /**< lysp_ext_substmt.storage - `uint16_t *`
+                                     lysp_ext_instance.parent - `struct lysp_ext *`
+                                     lysc_ext_substmt.storage - not compiled
+                                     lysc_ext_instance.parent - `struct lysc_ext *` */
 
     /* separated from the list of statements
      * the following tokens are part of the syntax and parsers have to work
@@ -956,8 +956,8 @@ LIBYANG_API_DECL LY_ERR lyplg_ext_compiled_print_add_addr(struct ly_ht *addr_ht,
 /**
  * @brief Extension plugin implementing various aspects of a YANG extension.
  *
- * Every plugin should have at least either ::parse() or ::compile() callback defined but other than that **all**
- * the callbacks are **optional**.
+ * Every plugin should have at least either ::struct lyplg_ext.parse() or ::struct lyplg_ext.compile() callback defined
+ * but other than that **all** the callbacks are **optional**.
  */
 struct lyplg_ext {
     const char *id;                         /**< plugin identification (mainly for distinguish incompatible versions
