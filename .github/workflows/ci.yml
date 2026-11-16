@@ -10,21 +10,6 @@ on:
       - devel
 
 jobs:
-  git-branch:
-    name: Get git branch
-    runs-on: ubuntu-latest
-    outputs:
-      branch-name: ${{ steps.get-git-branch.outputs.branch-name }}
-    steps:
-      - id: get-git-branch
-        run: |
-          if ${{ github.event_name == 'push' }}
-            then export GIT_BRANCH=`echo ${{ github.ref }} | cut -d'/' -f 3`
-          else
-            export GIT_BRANCH=${{ github.base_ref }}
-          fi
-          echo "branch-name=$GIT_BRANCH" >> $GITHUB_OUTPUT
-
   build-unix:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
@@ -316,7 +301,6 @@ jobs:
   build-packages:
     name: ${{ matrix.config.name }}
     runs-on: ubuntu-latest
-    needs: git-branch
     strategy:
       fail-fast: false
       matrix:
@@ -334,7 +318,7 @@ jobs:
             image: "debian:13",
             pkg-setup: "apt-get update -q",
             pkg-cmd: "apt-get install -yq",
-            pkg-packages: "pipx cmake git debhelper pkg-config libcmocka-dev libpcre2-dev libcbor-dev libxxhash-dev",
+            pkg-packages: "pipx cmake git debhelper libcmocka-dev libpcre2-dev libcbor-dev libxxhash-dev",
             pipx-install: ""
           }
     container:
@@ -350,9 +334,11 @@ jobs:
             pipx install apkg
             $HOME/.local/bin/apkg system-setup
 
+      - uses: actions/checkout@main
+
       - name: Build-and-install-package
         run: |
-          git clone -b ${{ needs.git-branch.outputs.branch-name }} https://github.com/CESNET/libyang.git
-          cd libyang
+          # the container runs as root, the checked out workspace belongs to the runner user
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           $HOME/.local/bin/apkg build
           $HOME/.local/bin/apkg install
