@@ -424,7 +424,7 @@ else()
     endif()
 
     #link dl
-    target_link_libraries(yang ${CMAKE_DL_LIBS})
+    target_link_libraries(yang PRIVATE ${CMAKE_DL_LIBS})
 endif()
 
 if(WIN32)
@@ -443,26 +443,28 @@ if(WIN32)
 
     find_package(pthreads REQUIRED)
     set(COMPAT_WIN_LIBRARIES PThreads4W::PThreads4W shlwapi.lib ws2_32)
-    target_link_libraries(yang ${COMPAT_WIN_LIBRARIES})
+    # ws2_32 is public, ly_config.h includes winsock2.h
+    target_link_libraries(yang PRIVATE PThreads4W::PThreads4W shlwapi.lib PUBLIC ws2_32)
 endif()
 
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_SOVERSION_FULL} SOVERSION ${LIBYANG_SOVERSION})
+target_include_directories(yang PUBLIC $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}> $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 # link math
 if(NOT WIN32)
-    target_link_libraries(yang m)
+    target_link_libraries(yang PRIVATE m)
 endif()
 
 # find pthreads
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 find_package(Threads REQUIRED)
-target_link_libraries(yang ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(yang PRIVATE ${CMAKE_THREAD_LIBS_INIT})
 
 # find PCRE2 library
 unset(PCRE2_LIBRARY CACHE)
 find_package(PCRE2 10.21 REQUIRED)
 include_directories(${PCRE2_INCLUDE_DIRS})
-target_link_libraries(yang ${PCRE2_LIBRARIES})
+target_link_libraries(yang PRIVATE ${PCRE2_LIBRARIES})
 
 # link libcbor if found
 if(CBOR_FOUND)
@@ -470,7 +472,7 @@ if(CBOR_FOUND)
         target_include_directories(yangobj PRIVATE ${CBOR_INCLUDE_DIR})
     endif()
     target_include_directories(yang PRIVATE ${CBOR_INCLUDE_DIR})
-    target_link_libraries(yang ${CBOR_LIBRARY})
+    target_link_libraries(yang PRIVATE ${CBOR_LIBRARY})
 endif()
 
 # XXHash include and library
@@ -478,7 +480,7 @@ find_package(XXHash)
 if(XXHASH_FOUND)
     add_definitions(-DLY_XXHASH_SUPPORT)
     include_directories(${XXHASH_INCLUDE_DIR})
-    target_link_libraries(yang ${XXHASH_LIBRARY})
+    target_link_libraries(yang PRIVATE ${XXHASH_LIBRARY})
     message(STATUS "Hash algorithm: xxhash")
     if (HAVE_XXH3_64BITS_WITHSEED)
         # for 32-bit system compatibility, this may not be available there, so use XXH32 instead
@@ -497,7 +499,10 @@ endforeach()
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/modules/" DESTINATION ${YANG_MODULE_DIR} FILES_MATCHING PATTERN "*.yang")
 
 # install all library files
-install(TARGETS yang DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(TARGETS yang
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${headers} ${g_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)
 
 # generate and install pkg-config file
