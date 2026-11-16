@@ -598,8 +598,10 @@ lydxml_subtree_get_snode(struct lyd_xml_ctx *lydctx, const struct lyd_node *pare
     LY_CHECK_RET(r && (r != LY_ENOT), r);
 
     if (!r) {
-        /* check that schema node is valid and can be used */
-        LY_CHECK_RET(lyd_parser_check_schema((struct lyd_ctx *)lydctx, *snode));
+        /* check that schema node is valid and can be used but rely on that implicitly for extensions */
+        if (!*ext) {
+            LY_CHECK_RET(lyd_parser_check_schema((struct lyd_ctx *)lydctx, *snode));
+        }
         LY_CHECK_RET(lydxml_data_check_opaq(lydctx, snode));
         return LY_SUCCESS;
     }

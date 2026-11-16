@@ -290,8 +290,10 @@ lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *pref
     LY_CHECK_RET(r && (r != LY_ENOT), r);
 
     if (!r) {
-        /* check that schema node is valid and can be used */
-        LY_CHECK_RET(lyd_parser_check_schema((struct lyd_ctx *)lydctx, *snode));
+        /* check that schema node is valid and can be used but rely on that implicitly for extensions */
+        if (ext && !*ext) {
+            LY_CHECK_RET(lyd_parser_check_schema((struct lyd_ctx *)lydctx, *snode));
+        }
         return LY_SUCCESS;
     }
 
