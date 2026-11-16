@@ -205,6 +205,7 @@ set(internal_headers
     src/hash_table_internal.h
     src/in_internal.h
     src/json.h
+    src/lcbor.h
     src/lyb.h
     src/out_internal.h
     src/parser_internal.h
@@ -344,7 +345,6 @@ find_package(CBOR)
 if(CBOR_FOUND)
     set(LY_HAVE_CBOR 1)
     list(APPEND libsrc src/parser_cbor.c src/lcbor.c src/printer_cbor.c)
-    list(APPEND headers src/lcbor.h)
     list(APPEND format_sources src/parser_cbor.c src/lcbor.h src/lcbor.c src/printer_cbor.c)
 else()
     message(STATUS "libcbor not found, CBOR support disabled")
