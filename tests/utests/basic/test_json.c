@@ -484,6 +484,25 @@ test_string(void **state)
     CHECK_LOG_CTX("Missing quotation-mark at the end of a JSON string.", NULL, 1);
     CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
 
+    /* escaped character */
+    str = "\"\\u003c\\u003C\"";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_SUCCESS, lyd_parse_value_fragment(ctx, "/test:l", in, LYD_JSON, 0, 0, 0, &tree));
+    assert_string_equal("<<", lyd_get_value(tree));
+    lyd_free_all(tree);
+    tree = NULL;
+
+    /* non-hexadecimal digits in an escaped character */
+    str = "\"\\u002s\"";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_EVALID, lyd_parse_value_fragment(ctx, "/test:l", in, LYD_JSON, 0, 0, 0, &tree));
+    CHECK_LOG_CTX("Invalid basic multilingual plane character \"\\u002s\".", NULL, 1);
+
+    str = "\"\\u004\"\"";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_EVALID, lyd_parse_value_fragment(ctx, "/test:l", in, LYD_JSON, 0, 0, 0, &tree));
+    CHECK_LOG_CTX("Invalid basic multilingual plane character \"\\u004\"\".", NULL, 1);
+
     ly_in_free(in, 0);
 }
 
