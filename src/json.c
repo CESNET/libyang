@@ -222,8 +222,8 @@ lyjson_string(struct lyjson_ctx *jsonctx)
                 /* Basic Multilingual Plane character \uXXXX */
                 ADD_CHECK_OVERFLOW_GOTO(offset, 1, error);
                 for (value = i = 0; i < 4; i++) {
-                    if (!in[offset + i]) {
-                        LOGVAL(jsonctx->ctx, NULL, LYVE_SYNTAX, "Invalid basic multilingual plane character \"%s\".", c);
+                    if (!isxdigit(in[offset + i])) {
+                        LOGVAL(jsonctx->ctx, NULL, LYVE_SYNTAX, "Invalid basic multilingual plane character \"%.6s\".", c);
                         goto error;
                     } else if (isdigit(in[offset + i])) {
                         u = (in[offset + i] - '0');
