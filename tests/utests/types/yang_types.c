@@ -80,7 +80,8 @@
 static void
 test_data_xml(void **state)
 {
-    const char *schema;
+    const char *schema, *data;
+    struct lyd_node *tree;
 
     /* xml test */
     schema = MODULE_CREATE_YANG("a",
@@ -150,6 +151,16 @@ test_data_xml(void **state)
     CHECK_LOG_CTX("Unsatisfied pattern - \"2005-05-31&\" does not match "
             "\"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\".",
             "/a:l2", 1);
+
+    /* date stored only, shorter than a date */
+    data = "<l2 xmlns=\"urn:tests:a\">2</l2><l2nz xmlns=\"urn:tests:a\">2005-05-31</l2nz>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STORE_ONLY, 0, LY_EVALID, tree);
+    assert_null(tree);
+    CHECK_LOG_CTX("Failed to parse date value \"2\".", "/a:l2", 1);
+    data = "<l2 xmlns=\"urn:tests:a\">&#50;</l2>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STORE_ONLY, 0, LY_EVALID, tree);
+    assert_null(tree);
+    CHECK_LOG_CTX("Failed to parse date value \"2\".", "/a:l2", 1);
 
     /* date-no-zone */
     TEST_SUCCESS_XML("a", "l2nz", "2005-05-31", STRING, "2005-05-31");
