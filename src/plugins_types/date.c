@@ -131,6 +131,13 @@ lyplg_type_store_date(const struct ly_ctx *ctx, const struct lysc_type *type, co
     }
 
     if (val) {
+        if (value_size < 10) {
+            /* not even a full date, the pattern was not checked with LYPLG_TYPE_STORE_ONLY */
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to parse %s value \"%.*s\".", type->name,
+                    (int)value_size, (char *)value);
+            goto cleanup;
+        }
+
         /* create date-and-time value */
         if (asprintf(&str, "%.*sT00:00:00%.*s", 10, (char *)value, (int)(value_size - 10), (char *)value + 10) == -1) {
             ret = ly_err_new_no_mem(err);
