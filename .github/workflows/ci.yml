@@ -344,7 +344,8 @@ jobs:
             ${{ matrix.config.pkg-setup }}
             ${{ matrix.config.pkg-cmd }} ${{ matrix.config.pkg-packages }}
             ${{ matrix.config.pipx-install }}
-            echo "$HOME/.local/bin" >> $GITHUB_PATH
+            # messes up PATH on Rocky ("sh" is not found in the next step), the image does not set PATH (seen in "Initialze containers" task "Starting job container" command "docker inspect" output)
+            ## echo "$HOME/.local/bin" >> "$GITHUB_PATH"
             pipx install apkg
             $HOME/.local/bin/apkg system-setup
 
@@ -352,5 +353,5 @@ jobs:
         run: |
           git clone -b ${{ needs.git-branch.outputs.branch-name }} https://github.com/CESNET/libyang.git
           cd libyang
-          apkg build
-          apkg install
+          $HOME/.local/bin/apkg build
+          $HOME/.local/bin/apkg install
