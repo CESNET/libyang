@@ -660,7 +660,7 @@ LY_ERR ly_strntou8(const char *nptr, size_t len, uint8_t *ret);
  *
  *
  * @param[in] str_begin Begin of the input string.
- * @param[in] str_end Length of the @p str_begin. If set to NULL then the @p str_begin must be NULL-terminated string.
+ * @param[in] str_end End of the input string @p str_begin. If set to NULL then the @p str_begin must be NULL-terminated string.
  * @param[out] len Number of bytes (length) of the found prefix/substring starting at @p str_begin.
  * @param[out] is_prefix Type of substring found. Set to True for prefix, otherwise False.
  * @param[out] str_next Remaining string starting after prefix/substring and ending with @p str_end.
