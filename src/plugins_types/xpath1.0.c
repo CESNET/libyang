@@ -24,6 +24,7 @@
 #include "compat.h"
 #include "dict.h"
 #include "ly_common.h"
+#include "tree_schema_internal.h"
 #include "xml.h"
 #include "xpath.h"
 
@@ -37,50 +38,84 @@
  */
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_nametest, const struct lys_module **context_mod,
-        const struct ly_ctx *resolve_ctx, LY_VALUE_FORMAT resolve_format, const void *resolve_prefix_data,
-        LY_VALUE_FORMAT get_format, void *get_prefix_data, char **token_p, struct ly_err_item **err)
+lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_nametest, const struct ly_ctx *resolve_ctx,
+        LY_VALUE_FORMAT resolve_format, const void *resolve_prefix_data, LY_VALUE_FORMAT get_format, void *get_prefix_data,
+        const struct lys_module **ctx_mod, const struct lysc_node **ctx_node, char **token_p, struct ly_err_item **err)
 {
-    LY_ERR ret = LY_SUCCESS;
-    const char *str_begin, *str_next, *prefix;
-    ly_bool is_prefix, has_prefix = 0;
+    LY_ERR rc = LY_SUCCESS, r;
+    const char *str_begin, *str_next, *str_next2, *prefix;
+    ly_bool is_prefix, is_prefix2, has_prefix = 0;
     char *str = NULL;
-    uint32_t len, str_size = 0, str_len = 0, pref_len;
+    uint32_t len, len2, str_size = 0, str_len = 0, pref_len;
+    const struct lysc_node *node = NULL;
     const struct lys_module *mod;
 
     *token_p = NULL;
 
+    if (*ctx_mod) {
+        /* use context module context in case it is from an extension */
+        resolve_ctx = (*ctx_mod)->ctx;
+    }
     str_begin = token;
 
-    while (!(ret = ly_value_prefix_next(str_begin, token + tok_len, &len, &is_prefix, &str_next)) && len) {
+    while (!(r = ly_value_prefix_next(str_begin, token + tok_len, &len, &is_prefix, &str_next)) && len) {
         if (!is_prefix) {
-            if (!has_prefix && is_nametest && (get_format == LY_VALUE_XML) && *context_mod) {
+            if (!has_prefix && is_nametest && (get_format == LY_VALUE_XML) && *ctx_mod) {
                 /* get the prefix */
-                prefix = lyplg_type_get_prefix(*context_mod, get_format, get_prefix_data);
+                prefix = lyplg_type_get_prefix(*ctx_mod, get_format, get_prefix_data);
                 assert(prefix);
 
                 /* append the nametest and prefix */
                 LY_CHECK_ERR_GOTO(ly_append_str(&str, &str_size, &str_len, "%s:%.*s", prefix, (int)len, str_begin),
-                        ret = ly_err_new_no_mem(err), cleanup);
+                        rc = ly_err_new_no_mem(err), cleanup);
             } else {
                 /* just append the string, we may get the first expression node without a prefix but since this
                  * is not strictly forbidden, allow it */
                 LY_CHECK_ERR_GOTO(ly_append_str(&str, &str_size, &str_len, "%.*s", (int)len, str_begin),
-                        ret = ly_err_new_no_mem(err), cleanup);
+                        rc = ly_err_new_no_mem(err), cleanup);
             }
         } else {
             /* remember there was a prefix found */
             has_prefix = 1;
 
-            /* resolve the module in the original format */
-            mod = lys_find_module(resolve_ctx, NULL, str_begin, len, resolve_format, resolve_prefix_data);
-            if (!mod && is_nametest) {
-                ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to resolve prefix \"%.*s\".",
-                        (int)len, str_begin);
-                goto cleanup;
+            if (is_nametest) {
+                /* parse the name as well */
+                r = ly_value_prefix_next(str_next, token + tok_len, &len2, &is_prefix2, &str_next2);
+                if (r) {
+                    /* invalid characters in the xpath */
+                    break;
+                } else if (!len2) {
+                    rc = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Unexpected token end (\"%.*s\").",
+                            (int)((token + tok_len) - str_begin), str_begin);
+                    goto cleanup;
+                } else if (is_prefix2) {
+                    rc = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Unexpected prefix found (\"%.*s\").",
+                            (int)((token + tok_len) - str_next), str_next);
+                    goto cleanup;
+                }
+
+                /* find the node */
+                r = lys_find_child_node(resolve_ctx, *ctx_node, *ctx_mod, str_begin, len, resolve_format,
+                        (void *)resolve_prefix_data, str_next, len2, 0, &node, NULL);
+                if (r) {
+                    /* we were not able to find the node but this function does not strictly require it, only the
+                     * module must be found */
+                    mod = lys_find_module(resolve_ctx, NULL, str_begin, len, resolve_format, resolve_prefix_data);
+                    if (!mod) {
+                        rc = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to resolve prefix \"%.*s\".",
+                                (int)len, str_begin);
+                        goto cleanup;
+                    }
+                } else {
+                    /* set the current module */
+                    mod = node->module;
+                }
+            } else {
+                /* resolve the module in the original format */
+                mod = lys_find_module(resolve_ctx, NULL, str_begin, len, resolve_format, resolve_prefix_data);
             }
 
-            if (is_nametest && ((get_format == LY_VALUE_JSON) || (get_format == LY_VALUE_LYB)) && (*context_mod == mod)) {
+            if (is_nametest && ((get_format == LY_VALUE_JSON) || (get_format == LY_VALUE_LYB)) && (*ctx_mod == mod)) {
                 /* inherit the prefix and do not print it again */
             } else {
                 if (mod) {
@@ -96,30 +131,31 @@ lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_n
 
                 /* append the prefix */
                 LY_CHECK_ERR_GOTO(ly_append_str(&str, &str_size, &str_len, "%.*s:", (int)pref_len, prefix),
-                        ret = ly_err_new_no_mem(err), cleanup);
+                        rc = ly_err_new_no_mem(err), cleanup);
             }
 
             if (is_nametest) {
-                /* update context module */
-                *context_mod = mod;
+                /* update context module and node */
+                *ctx_mod = mod;
+                *ctx_node = node;
             }
         }
 
         str_begin = str_next;
     }
-    if (ret) {
+    if (r) {
         /* invalid characters in the xpath */
-        ly_err_new(err, ret, LYVE_DATA, NULL, NULL, "Invalid characters found (\"%.*s\").",
+        rc = ly_err_new(err, r, LYVE_DATA, NULL, NULL, "Invalid characters found (\"%.*s\").",
                 (int)((token + tok_len) - str_begin), str_begin);
     }
 
 cleanup:
-    if (ret) {
+    if (rc) {
         free(str);
     } else {
         *token_p = str;
     }
-    return ret;
+    return rc;
 }
 
 /**
@@ -127,8 +163,9 @@ cleanup:
  *
  * @param[in,out] cur_idx Current index of the next token in the expression.
  * @param[in] end_tok End token (including) that finishes this subexpression parsing. If 0, parse until the end.
- * @param[in] context_mod Current context module, some formats (::LY_VALUE_JSON and ::LY_VALUE_LYB) inherit this module
- * instead of printing it again.
+ * @param[in] ctx_mod Current context module, some formats (::LY_VALUE_JSON and ::LY_VALUE_LYB) inherit it instead of
+ * printing it again.
+ * @param[in] ctx_node Current context node.
  * @param[in] xp_val xpath1.0 value structure.
  * @param[in] format Format to print in.
  * @param[in] prefix_data Format-specific prefix data.
@@ -139,16 +176,17 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-xpath10_print_subexpr_r(uint16_t *cur_idx, enum lyxp_token end_tok, const struct lys_module *context_mod,
-        const struct lyd_value_xpath10 *xp_val, LY_VALUE_FORMAT format, void *prefix_data, char **str_value,
-        uint32_t *str_size, uint32_t *str_len, struct ly_err_item **err)
+xpath10_print_subexpr_r(uint16_t *cur_idx, enum lyxp_token end_tok, const struct lys_module *ctx_mod,
+        const struct lysc_node *ctx_node, const struct lyd_value_xpath10 *xp_val, LY_VALUE_FORMAT format,
+        void *prefix_data, char **str_value, uint32_t *str_size, uint32_t *str_len, struct ly_err_item **err)
 {
     LY_ERR r;
     enum lyxp_token cur_tok, sub_end_tok;
     char *str_tok;
     const char *cur_exp_ptr;
     ly_bool is_nt;
-    const struct lys_module *orig_context_mod = context_mod;
+    const struct lys_module *orig_ctx_mod = ctx_mod;
+    const struct lysc_node *orig_ctx_node = ctx_node;
 
     while (*cur_idx < xp_val->exp->used) {
         cur_tok = xp_val->exp->tokens[*cur_idx];
@@ -157,8 +195,8 @@ xpath10_print_subexpr_r(uint16_t *cur_idx, enum lyxp_token end_tok, const struct
         if ((cur_tok == LYXP_TOKEN_NAMETEST) || (cur_tok == LYXP_TOKEN_LITERAL)) {
             /* tokens that may include prefixes, get them in the target format */
             is_nt = (cur_tok == LYXP_TOKEN_NAMETEST) ? 1 : 0;
-            LY_CHECK_RET(lyplg_type_xpath10_print_token(cur_exp_ptr, xp_val->exp->tok_len[*cur_idx], is_nt, &context_mod,
-                    xp_val->ctx, xp_val->format, xp_val->prefix_data, format, prefix_data, &str_tok, err));
+            LY_CHECK_RET(lyplg_type_xpath10_print_token(cur_exp_ptr, xp_val->exp->tok_len[*cur_idx], is_nt, xp_val->ctx,
+                    xp_val->format, xp_val->prefix_data, format, prefix_data, &ctx_mod, &ctx_node, &str_tok, err));
 
             /* append the converted token */
             r = ly_append_str(str_value, str_size, str_len, "%s", str_tok);
@@ -173,8 +211,9 @@ xpath10_print_subexpr_r(uint16_t *cur_idx, enum lyxp_token end_tok, const struct
                 LY_CHECK_GOTO(ly_append_str(str_value, str_size, str_len, " %.*s ", (int)xp_val->exp->tok_len[*cur_idx],
                         cur_exp_ptr), error_mem);
 
-                /* reset context mod */
-                context_mod = orig_context_mod;
+                /* reset context module and node */
+                ctx_mod = orig_ctx_mod;
+                ctx_node = orig_ctx_node;
             } else {
                 /* just copy the token */
                 LY_CHECK_GOTO(ly_append_str(str_value, str_size, str_len, "%.*s", (int)xp_val->exp->tok_len[*cur_idx],
@@ -191,8 +230,8 @@ xpath10_print_subexpr_r(uint16_t *cur_idx, enum lyxp_token end_tok, const struct
                 sub_end_tok = (cur_tok == LYXP_TOKEN_BRACK1) ? LYXP_TOKEN_BRACK2 : LYXP_TOKEN_PAR2;
 
                 /* parse the subexpression separately, use the current context mod */
-                LY_CHECK_RET(xpath10_print_subexpr_r(cur_idx, sub_end_tok, context_mod, xp_val, format, prefix_data,
-                        str_value, str_size, str_len, err));
+                LY_CHECK_RET(xpath10_print_subexpr_r(cur_idx, sub_end_tok, ctx_mod, ctx_node, xp_val, format,
+                        prefix_data, str_value, str_size, str_len, err));
             }
         }
     }
@@ -238,7 +277,8 @@ lyplg_type_print_xpath10_value(const struct lyd_value_xpath10 *xp_val, LY_VALUE_
     }
 
     /* recursively print the expression */
-    ret = xpath10_print_subexpr_r(&expr_idx, 0, NULL, xp_val, format, prefix_data, str_value, &str_size, &str_len, err);
+    ret = xpath10_print_subexpr_r(&expr_idx, 0, NULL, NULL, xp_val, format, prefix_data, str_value, &str_size, &str_len,
+            err);
 
     if (local_mod) {
         mods->objs[0] = (void *)local_mod;
