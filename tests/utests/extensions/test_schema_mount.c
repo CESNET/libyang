@@ -2061,6 +2061,60 @@ test_path_mounted_only(void **state)
     lyd_free_siblings(data);
 }
 
+static void
+test_lyb(void **state)
+{
+    const char *xml;
+    char *lyb;
+    uint32_t lyb_len;
+    struct lyd_node *data;
+
+    ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
+            "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
+            "    xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">"
+            "  <module-set><name>test-set</name>"
+            "    <module>"
+            "      <name>ietf-datastores</name><revision>2018-02-14</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-datastores</namespace></module>"
+            "    <module>"
+            "      <name>ietf-yang-library</name><revision>2019-01-04</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace></module>"
+            "    <module>"
+            "      <name>ietf-yang-schema-mount</name><revision>2019-01-14</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>mounted-only</name><revision>2026-11-03</revision>"
+            "      <namespace>urn:mounted-only</namespace>"
+            "    </module>"
+            "    <import-only-module>"
+            "      <name>ietf-yang-types</name><revision>2025-12-22</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace>"
+            "    </import-only-module>"
+            "  </module-set>"
+            "  <schema><name>test-schema</name><module-set>test-set</module-set></schema>"
+            "  <datastore><name>ds:running</name><schema>test-schema</schema></datastore>"
+            "  <datastore><name>ds:operational</name><schema>test-schema</schema></datastore>"
+            "  <content-id>1</content-id>"
+            "</yang-library>"
+            "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
+            "  <module-set-id>1</module-set-id>"
+            "</modules-state>"
+            "<schema-mounts xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount\">"
+            "  <mount-point><module>sm</module><label>root</label><inline/></mount-point>"
+            "</schema-mounts>");
+
+    assert_null(ly_ctx_get_module_implemented(UTEST_LYCTX, "mounted-only"));
+    xml = "<root xmlns=\"urn:sm\"><top xmlns=\"urn:mounted-only\"><name>x</name></top></root>";
+    CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+    assert_int_equal(LY_SUCCESS, utest_lyd_print_mem_len(&lyb, &lyb_len, data, LYD_LYB, 0));
+    lyd_free_siblings(data);
+
+    CHECK_PARSE_LYD_PARAM_LEN(lyb, lyb_len, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+    free(lyb);
+    lyd_free_siblings(data);
+}
+
 int
 main(void)
 {
@@ -2076,6 +2130,7 @@ main(void)
         UTEST(test_lys_getnext, setup),
         UTEST(test_xpath, setup),
         UTEST(test_path_mounted_only, setup),
+        UTEST(test_lyb, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

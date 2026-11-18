@@ -1019,7 +1019,8 @@ lyb_parse_schema_ext(struct lyd_lyb_ctx *lybctx, const struct lyd_node *parent, 
             LY_VALUE_JSON, NULL, name, strlen(name), 0, snode, ext);
     if (r == LY_ENOT) {
         /* failed to parse */
-        LOGERR(lybctx->parse_ctx->ctx, LY_EINVAL, "Failed to parse node \"%s\" as extension instance data.", name);
+        LOGERR(lybctx->parse_ctx->ctx, LY_EINVAL, "Failed to parse node \"%s%s%s\" as extension instance data.",
+                mod_name ? mod_name : "", mod_name ? ":" : "", name);
         rc = LY_EINVAL;
         goto cleanup;
     } else if (r) {
@@ -1613,11 +1614,12 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
     case LYB_NODE_EXT:
         /* ext, read module name, always unshrinked format */
         LY_CHECK_GOTO(rc = lyb_parse_module(lybctx, &mod_name, mod_rev, &features), cleanup);
-        mod = ly_ctx_get_module_implemented(lybctx->parse_ctx->ctx, mod_name);
-        LY_CHECK_GOTO(rc = lyb_check_module(lybctx, mod_name, mod_rev, features, mod), cleanup);
 
         /* read schema node name, find the ext schema node */
-        LY_CHECK_GOTO(rc = lyb_parse_schema_ext(lybctx, parent, mod->name, &snode, &ext), cleanup);
+        LY_CHECK_GOTO(rc = lyb_parse_schema_ext(lybctx, parent, mod_name, &snode, &ext), cleanup);
+
+        /* check the found module explcitily */
+        LY_CHECK_GOTO(rc = lyb_check_module(lybctx, mod_name, mod_rev, features, snode->module), cleanup);
         break;
     default:
         LOGERR(lybctx->parse_ctx->ctx, LY_EINVAL, "Invalid LYB node type 0x%x.", (int)lyb_type);
