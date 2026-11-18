@@ -346,14 +346,11 @@ jobs:
             ${{ matrix.config.pipx-install }}
             echo "$HOME/.local/bin" >> $GITHUB_PATH
             pipx install apkg
-
-      - name: Clone-repo
-        run: |
-          git clone -b ${{ needs.git-branch.outputs.branch-name }} https://github.com/CESNET/libyang.git
+            $HOME/.local/bin/apkg system-setup
 
       - name: Build-and-install-package
         run: |
-          apkg system-setup
+          git clone -b ${{ needs.git-branch.outputs.branch-name }} https://github.com/CESNET/libyang.git
           cd libyang
           apkg build
           apkg install
