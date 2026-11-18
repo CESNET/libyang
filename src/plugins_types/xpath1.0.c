@@ -48,6 +48,8 @@ lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_n
     uint32_t len, str_size = 0, str_len = 0, pref_len;
     const struct lys_module *mod;
 
+    *token_p = NULL;
+
     str_begin = token;
 
     while (!(ret = ly_value_prefix_next(str_begin, token + tok_len, &len, &is_prefix, &str_next)) && len) {
@@ -104,6 +106,11 @@ lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_n
         }
 
         str_begin = str_next;
+    }
+    if (ret) {
+        /* invalid characters in the xpath */
+        ly_err_new(err, ret, LYVE_DATA, NULL, NULL, "Invalid characters found (\"%.*s\").",
+                (int)((token + tok_len) - str_begin), str_begin);
     }
 
 cleanup:
