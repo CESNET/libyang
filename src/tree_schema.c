@@ -565,7 +565,7 @@ lys_find_child_node(const struct ly_ctx *ctx, const struct lysc_node *parent, co
     }
 
     /* find the module */
-    if (!mod) {
+    if (prefix || !mod) {
         mod = lys_find_module(ctx, parent, prefix, prefix_len, format, prefix_data);
     }
 
