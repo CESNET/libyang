@@ -379,14 +379,12 @@ lyb_read_value(const struct lysc_type *type, uint8_t **val, uint64_t *val_size_b
  * @brief Compare module revision from LYB data with the module in the parser context.
  *
  * @param[in] lybctx LYB context.
- * @param[in] mod_name Module name from LYB data.
- * @param[in] mod_rev Module revision from LYB data.
+ * @param[in] revision Expected module revision.
  * @param[in] mod Module from parser context.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_check_mod_revision(struct lyd_lyb_ctx *lybctx, const char *mod_name, const char *mod_rev,
-        const struct lys_module *mod)
+lyb_check_mod_revision(struct lyd_lyb_ctx *lybctx, const char *revision, const struct lys_module *mod)
 {
     ly_bool rev;
 
@@ -395,13 +393,11 @@ lyb_check_mod_revision(struct lyd_lyb_ctx *lybctx, const char *mod_name, const c
         return LY_SUCCESS;
     }
 
-    rev = (mod_rev[0] != '\0');
-    if ((rev && !mod->revision) || (!rev && mod->revision) || (rev && strcmp(mod->revision, mod_rev))) {
+    rev = (revision[0] != '\0');
+    if ((rev && !mod->revision) || (!rev && mod->revision) || (rev && strcmp(mod->revision, revision))) {
         LOGERR(lybctx->parse_ctx->ctx, LY_EDENIED,
                 "Invalid context for LYB data parsing, module \"%s\" revision mismatch (printer: %s, parser: %s).",
-                mod_name,
-                rev ? mod_rev : "<none>",
-                mod->revision ? mod->revision : "<none>");
+                mod->name, rev ? revision : "<none>", mod->revision ? mod->revision : "<none>");
         return LY_EDENIED;
     }
 
@@ -412,33 +408,19 @@ lyb_check_mod_revision(struct lyd_lyb_ctx *lybctx, const char *mod_name, const c
  * @brief Compare enabled module features from LYB data with the module in the parser context.
  *
  * @param[in] lybctx LYB context.
- * @param[in] mod_name Module name from LYB data.
- * @param[in] mod Module from parser context.
+ * @param[in] features Sized array of expected enabled features.
+ * @param[in] mod Module to check.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_check_mod_features(struct lyd_lyb_ctx *lybctx, const char *mod_name, const struct lys_module *mod)
+lyb_check_mod_features(struct lyd_lyb_ctx *lybctx, char **features, const struct lys_module *mod)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lylyb_parse_ctx *pctx = lybctx->parse_ctx;
-    char *feature_name = NULL, **features = NULL, *en_feats_printer = NULL, *en_feats_parser = NULL;
-    uint32_t i, feature_count = 0, ctx_feature_count, size = 0, used = 0;
-
-    /* read feature count */
-    LY_CHECK_GOTO(rc = lyb_read_count(&feature_count, pctx), cleanup);
-
-    if (feature_count) {
-        /* create an array for the features */
-        features = calloc(feature_count, sizeof *features);
-        LY_CHECK_ERR_RET(!features, LOGMEM(pctx->ctx), LY_EMEM);
-    }
-
-    /* read all features from LYB data */
-    for (i = 0; i < feature_count; i++) {
-        LY_CHECK_GOTO(rc = lyb_read_string(&feature_name, pctx), cleanup);
-        features[i] = feature_name;
-        feature_name = NULL;
-    }
+    char *en_feats_printer = NULL, *en_feats_parser = NULL;
+    uint32_t size = 0, used = 0;
+    ly_bool mismatch;
+    LYA_COUNT_T u;
 
     if (lybctx->parse_opts & LYD_PARSE_LYB_SKIP_MODULE_CHECK) {
         /* skip feature check */
@@ -446,47 +428,43 @@ lyb_check_mod_features(struct lyd_lyb_ctx *lybctx, const char *mod_name, const s
     }
 
     /* we assume the order of features is the same (since the revision is), so we can just compare them in order */
-    if (feature_count == LYA_COUNT(mod->compiled->features)) {
-        for (i = 0; i < feature_count; i++) {
-            if (strcmp(mod->compiled->features[i], features[i])) {
-                /* mismatch */
+    if (LYA_COUNT(features) == LYA_COUNT(mod->compiled->features)) {
+        mismatch = 0;
+        LYA_FOR(features, u) {
+            if (strcmp(mod->compiled->features[u], features[u])) {
+                mismatch = 1;
                 break;
             }
         }
 
-        if (i == feature_count) {
+        if (!mismatch) {
             /* success */
             goto cleanup;
         }
     }
 
     /* feature mismatch, prepare error message, unpack enabled features for printer */
-    for (i = 0; i < feature_count; i++) {
-        LY_CHECK_GOTO(rc = ly_append_str(&en_feats_printer, &size, &used, "%s%s", i ? ", " : "", features[i]),
+    LYA_FOR(features, u) {
+        LY_CHECK_GOTO(rc = ly_append_str(&en_feats_printer, &size, &used, "%s%s", u ? ", " : "", features[u]),
                 cleanup);
     }
 
     /* unpack enabled features for parser */
     size = 0;
     used = 0;
-    ctx_feature_count = LYA_COUNT(mod->compiled->features);
-    for (i = 0; i < ctx_feature_count; i++) {
-        LY_CHECK_GOTO(rc = ly_append_str(&en_feats_parser, &size, &used, "%s%s", i ? ", " : "",
-                mod->compiled->features[i]), cleanup);
+    LYA_FOR(mod->compiled->features, u) {
+        LY_CHECK_GOTO(rc = ly_append_str(&en_feats_parser, &size, &used, "%s%s", u ? ", " : "",
+                mod->compiled->features[u]), cleanup);
     }
 
     LOGERR(pctx->ctx, LY_EDENIED,
             "Invalid context for LYB data parsing, module \"%s\" enabled feature mismatch (printer: {%s}, parser: {%s}).",
-            mod_name, en_feats_printer ? en_feats_printer : "", en_feats_parser ? en_feats_parser : "");
+            mod->name, en_feats_printer ? en_feats_printer : "", en_feats_parser ? en_feats_parser : "");
     rc = LY_EDENIED;
 
 cleanup:
     free(en_feats_printer);
     free(en_feats_parser);
-    for (i = 0; i < feature_count; i++) {
-        free(features[i]);
-    }
-    free(features);
     return rc;
 }
 
@@ -494,47 +472,91 @@ cleanup:
  * @brief Parse YANG module info as name, revision, and features.
  *
  * @param[in] lybctx LYB context.
- * @param[out] mod Parsed module.
+ * @param[out] name Parsed module name.
+ * @param[in,out] revision Parsed module revision.
+ * @param[out] features Sized array of enabled features.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_parse_module(struct lyd_lyb_ctx *lybctx, const struct lys_module **mod)
+lyb_parse_module(struct lyd_lyb_ctx *lybctx, char **name, char *revision, char ***features)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lylyb_parse_ctx *pctx = lybctx->parse_ctx;
-    char *mod_name = NULL, mod_rev[LY_REV_SIZE];
     uint16_t rev;
+    uint32_t i, feature_count = 0;
+    LYA_COUNT_T u;
 
-    mod_rev[0] = '\0';
+    *name = NULL;
+    revision[0] = '\0';
+    *features = NULL;
 
     /* module name */
-    LY_CHECK_RET(lyb_read_string(&mod_name, pctx));
-    assert(mod_name[0]);
-
-    /* find the module in the context */
-    *mod = ly_ctx_get_module_implemented(pctx->ctx, mod_name);
-    if (!*mod) {
-        LOGERR(pctx->ctx, LY_EDENIED, "Invalid context for LYB data parsing, module \"%s\" not found.", mod_name);
-        rc = LY_EDENIED;
-        goto cleanup;
-    }
+    LY_CHECK_RET(lyb_read_string(name, pctx));
+    assert((*name)[0]);
 
     /* module revision */
     LY_CHECK_GOTO(rc = lyb_read(&rev, 2 * 8, pctx), cleanup);
     if (rev) {
-        snprintf(mod_rev, sizeof mod_rev, "%04u-%02u-%02u",
+        snprintf(revision, LY_REV_SIZE, "%04u-%02u-%02u",
                 ((rev & LYB_REV_YEAR_MASK) >> LYB_REV_YEAR_SHIFT) + LYB_REV_YEAR_OFFSET,
                 (rev & LYB_REV_MONTH_MASK) >> LYB_REV_MONTH_SHIFT, rev & LYB_REV_DAY_MASK);
     }
 
-    /* revision check */
-    LY_CHECK_GOTO(rc = lyb_check_mod_revision(lybctx, mod_name, mod_rev, *mod), cleanup);
+    /* features */
+    LY_CHECK_GOTO(rc = lyb_read_count(&feature_count, pctx), cleanup);
+    LYA_PREALLOC(*features, feature_count, LOGMEM(pctx->ctx); rc = LY_EMEM; goto cleanup);
 
-    /* features and feature check */
-    LY_CHECK_GOTO(rc = lyb_check_mod_features(lybctx, mod_name, *mod), cleanup);
+    /* read all features from LYB data */
+    for (i = 0; i < feature_count; i++) {
+        LY_CHECK_GOTO(rc = lyb_read_string(&(*features)[i], pctx), cleanup);
+        LYA_INCREMENT(*features);
+    }
 
 cleanup:
-    free(mod_name);
+    if (rc) {
+        free(*name);
+        *name = NULL;
+        if (*features) {
+            LYA_FOR(*features, u) {
+                free((*features)[u]);
+            }
+            *features = NULL;
+        }
+    }
+    return rc;
+}
+
+/**
+ * @brief Check YANG module in the context.
+ *
+ * @param[in] lybctx LYB context.
+ * @param[in] name Expected module name.
+ * @param[in] revision Expected module revision.
+ * @param[in] features Sized array of expected enabled features.
+ * @param[in] mod Module to check.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_check_module(struct lyd_lyb_ctx *lybctx, const char *name, const char *revision, char **features,
+        const struct lys_module *mod)
+{
+    LY_ERR rc = LY_SUCCESS;
+
+    /* module check */
+    if (!mod) {
+        LOGERR(lybctx->parse_ctx->ctx, LY_EDENIED, "Invalid context for LYB data parsing, module \"%s\" not found.",
+                name);
+        rc = LY_EDENIED;
+        goto cleanup;
+    }
+
+    /* revision check */
+    LY_CHECK_GOTO(rc = lyb_check_mod_revision(lybctx, revision, mod), cleanup);
+
+    /* features and feature check */
+    LY_CHECK_GOTO(rc = lyb_check_mod_features(lybctx, features, mod), cleanup);
+
+cleanup:
     return rc;
 }
 
@@ -597,8 +619,9 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, 
     LY_ERR rc = LY_SUCCESS;
     ly_bool dynamic;
     uint32_t i, count = 0;
+    LYA_COUNT_T u;
     uint64_t value_size_bits;
-    char *meta_name = NULL;
+    char *meta_name = NULL, *mod_name = NULL, mod_rev[LY_REV_SIZE], **features = NULL;
     uint8_t *value;
     const struct lys_module *mod;
     struct lysc_ext_instance *ant;
@@ -619,7 +642,9 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, 
         if (lybctx->parse_ctx->shrink) {
             LY_CHECK_GOTO(rc = lyb_parse_module_idx(lybctx, &mod), cleanup);
         } else {
-            LY_CHECK_GOTO(rc = lyb_parse_module(lybctx, &mod), cleanup);
+            LY_CHECK_GOTO(rc = lyb_parse_module(lybctx, &mod_name, mod_rev, &features), cleanup);
+            mod = ly_ctx_get_module_implemented(lybctx->parse_ctx->ctx, mod_name);
+            LY_CHECK_GOTO(rc = lyb_check_module(lybctx, mod_name, mod_rev, features, mod), cleanup);
         }
 
         /* meta name */
@@ -657,6 +682,11 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, 
     }
 
 cleanup:
+    free(mod_name);
+    LYA_FOR(features, u) {
+        free(features[u]);
+    }
+    LYA_FREE(features);
     free(meta_name);
     if (rc) {
         lyd_free_meta_siblings(*meta);
@@ -1547,6 +1577,8 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
     LY_ERR rc = LY_SUCCESS;
     const struct lysc_node *snode;
     struct lysc_ext_instance *ext = NULL;
+    LYA_COUNT_T u;
+    char *mod_name = NULL, mod_rev[LY_REV_SIZE], **features = NULL;
     const struct lys_module *mod;
     enum lylyb_node_type lyb_type = 0;
 
@@ -1566,7 +1598,9 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
         if (lybctx->parse_ctx->shrink) {
             LY_CHECK_GOTO(rc = lyb_parse_module_idx(lybctx, &mod), cleanup);
         } else {
-            LY_CHECK_GOTO(rc = lyb_parse_module(lybctx, &mod), cleanup);
+            LY_CHECK_GOTO(rc = lyb_parse_module(lybctx, &mod_name, mod_rev, &features), cleanup);
+            mod = ly_ctx_get_module_implemented(lybctx->parse_ctx->ctx, mod_name);
+            LY_CHECK_GOTO(rc = lyb_check_module(lybctx, mod_name, mod_rev, features, mod), cleanup);
         }
 
         /* read hash, find the schema node starting from mod */
@@ -1578,7 +1612,9 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
         break;
     case LYB_NODE_EXT:
         /* ext, read module name, always unshrinked format */
-        LY_CHECK_GOTO(rc = lyb_parse_module(lybctx, &mod), cleanup);
+        LY_CHECK_GOTO(rc = lyb_parse_module(lybctx, &mod_name, mod_rev, &features), cleanup);
+        mod = ly_ctx_get_module_implemented(lybctx->parse_ctx->ctx, mod_name);
+        LY_CHECK_GOTO(rc = lyb_check_module(lybctx, mod_name, mod_rev, features, mod), cleanup);
 
         /* read schema node name, find the ext schema node */
         LY_CHECK_GOTO(rc = lyb_parse_schema_ext(lybctx, parent, mod->name, &snode, &ext), cleanup);
@@ -1605,6 +1641,11 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
     LY_CHECK_GOTO(rc, cleanup);
 
 cleanup:
+    free(mod_name);
+    LYA_FOR(features, u) {
+        free(features[u]);
+    }
+    LYA_FREE(features);
     return rc;
 }
 
