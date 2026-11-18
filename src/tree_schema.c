@@ -3244,9 +3244,9 @@ lys_search_localfile_file_type(const struct dirent *file, const char *wd, struct
         }
     }
 
-    if (is_dir && (dirs->count || !implicit_cwd)) {
+    if (is_dir && !implicit_cwd) {
         /* we have another subdirectory in searchpath to explore,
-         * subdirectories are not taken into account in current working dir (dirs->set.g[0]) */
+         * subdirectories are not taken into account in current working dir */
         if (!str && (asprintf(&str, "%s/%s", wd, file->d_name) == -1)) {
             LOGMEM(NULL);
             rc = LY_EMEM;
@@ -3437,7 +3437,7 @@ _lys_search_localfile(const struct ly_ctx *ctx, const char * const *searchpaths,
 {
     LY_ERR rc = LY_SUCCESS;
     int match = 0, m;
-    size_t name_len, flen;
+    uint32_t i, name_len, flen;
     ly_bool skip;
     const char *wd;
     DIR *dir = NULL;
@@ -3446,7 +3446,6 @@ _lys_search_localfile(const struct ly_ctx *ctx, const char * const *searchpaths,
     LYS_INFORMAT format_aux, match_format = 0;
     struct lys_ext_instance_semver *match_ver = NULL;
     struct ly_set *dirs = NULL;
-    uint32_t i;
 
     /* collect all the dirs to search */
     LY_CHECK_GOTO(rc = lys_search_localfile_collect_dirs(ctx, searchpaths, &cwd, &dirs), cleanup);
@@ -3464,6 +3463,11 @@ _lys_search_localfile(const struct ly_ctx *ctx, const char * const *searchpaths,
         if (!dir) {
             LOGWRN(NULL, "Unable to open directory \"%s\" for searching (sub)modules (%s).", wd, strerror(errno));
             continue;
+        }
+
+        if (i) {
+            /* the first directory is CWD (if any) that is not searched recursively */
+            cwd = 0;
         }
 
         /* search the directory */
