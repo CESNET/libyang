@@ -372,6 +372,19 @@ test_output_filepath(void **UNUSED(state))
 
     fclose(f1);
     ly_out_free(out, NULL, 1);
+
+    /* data written before changing to the same file are not left in the file after the new data */
+    assert_int_equal(LY_SUCCESS, ly_out_new_filepath(fp1, &out));
+    assert_int_equal(LY_SUCCESS, ly_write(out, "previous data", 13));
+    assert_ptr_equal(NULL, ly_out_filepath(out, fp1));
+    assert_int_equal(LY_SUCCESS, ly_write(out, "new", 3));
+    ly_print_flush(out);
+    assert_non_null(f1 = fopen(fp1, "rb"));
+    memset(buf, 0, sizeof buf);
+    assert_int_equal(3, fread(buf, 1, 30, f1));
+    assert_string_equal("new", buf);
+    fclose(f1);
+    ly_out_free(out, NULL, 1);
 }
 
 static ssize_t

@@ -372,8 +372,9 @@ ly_out_filepath(struct ly_out *out, const char *filepath)
         return out->method.fpath.filepath;
     }
 
-    /* replace filepath */
+    /* replace filepath, the data written into the current file go there before the new file is created/opened */
     f = out->method.fpath.f;
+    fflush(f);
     out->method.fpath.f = fopen(filepath, "wb");
     if (!out->method.fpath.f) {
         LOGERR(NULL, LY_ESYS, "Failed to open file \"%s\" (%s).", filepath, strerror(errno));
