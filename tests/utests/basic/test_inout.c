@@ -305,6 +305,8 @@ test_output_fd(void **UNUSED(state))
     assert_int_equal(10, read(fd2, buf, 30));
     assert_string_equal("test print", buf);
     assert_int_equal(0, lseek(fd2, 0, SEEK_SET));
+    /* a value of errno left from before must not prevent truncating */
+    errno = ESPIPE;
     assert_int_equal(LY_SUCCESS, ly_out_reset(out));
 
     assert_int_equal(LY_SUCCESS, ly_write(out, "rewrite", 8));
@@ -349,6 +351,8 @@ test_output_file(void **UNUSED(state))
     assert_non_null(fgets(buf, 31, f2));
     assert_string_equal("test print", buf);
     assert_int_equal(0, fseek(f2, 0, SEEK_SET));
+    /* a value of errno left from before must not prevent truncating */
+    errno = ESPIPE;
     assert_int_equal(LY_SUCCESS, ly_out_reset(out));
 
     assert_int_equal(LY_SUCCESS, ly_write(out, "rewrite", 8));
@@ -356,6 +360,8 @@ test_output_file(void **UNUSED(state))
     ly_print_flush(out);
     assert_non_null(fgets(buf, 31, f2));
     assert_string_equal("rewrite", buf);
+    assert_int_equal(0, fseek(f2, 0, SEEK_END));
+    assert_int_equal(8, ftell(f2));
 
     fclose(f2);
     ly_out_free(out, NULL, 1);
