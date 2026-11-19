@@ -375,6 +375,14 @@ test_output_filepath(void **UNUSED(state))
     char buf[31] = {0};
     const char *fp1 = TEST_OUTPUT_FILE;
     const char *fp2 = TEST_OUTPUT_FILE2;
+    char *mem = NULL;
+
+    /* changing the file path of a NULL handler or a handler of another type is an error */
+    assert_ptr_equal(((void *)-1), ly_out_filepath(NULL, fp1));
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&mem, 0, &out));
+    assert_ptr_equal(((void *)-1), ly_out_filepath(out, fp1));
+    assert_int_equal(LY_OUT_MEMORY, ly_out_type(out));
+    ly_out_free(out, NULL, 1);
 
     /* manipulate with the handler */
     assert_int_equal(LY_SUCCESS, ly_out_new_filepath(fp1, &out));
