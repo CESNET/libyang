@@ -682,9 +682,10 @@ lyd_validate_unres(struct lyd_node **tree, enum lyd_type data_type, struct ly_se
         } while (i);
     }
 
+    /* try to resolve all the when and node type unres but stop on error on multi-error validation */
     unres_count = node_when->count + node_types->count;
     prev_count = 0;
-    while (unres_count) {
+    while (unres_count && !rc) {
         if (prev_count == unres_count) {
             /* we have resolved what we could but there are cyclic dependencies, whens were checked
              * during compilation */
