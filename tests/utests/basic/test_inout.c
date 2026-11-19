@@ -80,7 +80,8 @@ static void
 test_input_mem(void **UNUSED(state))
 {
     struct ly_in *in = NULL;
-    char *str1 = "a", *str2 = "b";
+    char *str1 = "a", *str2 = "b", *str3 = "abc";
+    char buf[2];
 
     assert_int_equal(LY_EINVAL, ly_in_new_memory(NULL, NULL));
     CHECK_LOG_LASTMSG("Invalid argument str (ly_in_new_memory()).");
@@ -94,6 +95,17 @@ test_input_mem(void **UNUSED(state))
     assert_ptr_equal(str1, ly_in_memory(in, str2));
     assert_ptr_equal(str2, ly_in_memory(in, NULL));
     assert_ptr_equal(str2, ly_in_memory(in, NULL));
+    ly_in_free(in, 0);
+
+    /* the previous start address is returned also after some data were read */
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str3, &in));
+    assert_int_equal(LY_SUCCESS, ly_in_read(in, buf, 2));
+    assert_ptr_equal(str3, ly_in_memory(in, str1));
+    ly_in_free(in, 0);
+
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(str3, 3, &in));
+    assert_int_equal(LY_SUCCESS, ly_in_read(in, buf, 2));
+    assert_ptr_equal(str3, ly_in_memory_chunk(in, str1, 1));
     ly_in_free(in, 0);
 }
 
