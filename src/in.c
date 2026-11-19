@@ -288,7 +288,7 @@ ly_in_filepath(struct ly_in *in, const char *filepath, size_t len)
     int fd, prev_fd;
     char *fp = NULL;
 
-    LY_CHECK_ARG_RET(NULL, in, in->type == LY_IN_FILEPATH, filepath ? NULL : ((void *)-1));
+    LY_CHECK_ARG_RET(NULL, in, in->type == LY_IN_FILEPATH, ((void *)-1));
 
     if (!filepath) {
         return in->method.fpath.filepath;
