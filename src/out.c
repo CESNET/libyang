@@ -270,7 +270,7 @@ ly_out_new_memory(char **strp, size_t size, struct ly_out **out)
     return LY_SUCCESS;
 }
 
-char *
+LIBYANG_API_DEF char *
 ly_out_memory(struct ly_out *out, char **strp, size_t size)
 {
     char *data;
