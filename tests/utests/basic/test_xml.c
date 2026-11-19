@@ -240,6 +240,25 @@ test_text(void **state)
     lyd_free_all(tree);
     tree = NULL;
 
+    str = "<e xmlns=\"urn:test\"><![CDATA[€𠜎Øn]]></e>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, str, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    assert_non_null(tree);
+    lyd_free_all(tree);
+    tree = NULL;
+
+    /* CDATA characters are checked the same as text */
+    str = "<e xmlns=\"urn:test\"><![CDATA[a\x01" "b]]></e>";
+    assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, str, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX("Invalid character 0x1.", NULL, 1);
+
+    str = "<e xmlns=\"urn:test\"><![CDATA[a\xff\xfe" "b]]></e>";
+    assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, str, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX("Invalid character 0xff.", NULL, 1);
+
+    str = "<e xmlns=\"urn:test\"><![CDATA[a\xf0]]></e>";
+    assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, str, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX("Invalid character 0xf0.", NULL, 1);
+
     /* invalid characters in string */
     str = "<e xmlns=\"urn:test\" attr=\'&#x52\'";
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, str, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
