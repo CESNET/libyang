@@ -372,6 +372,14 @@ test_anydata(void **state)
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
+    /* member names that need encoding */
+    data = "{\"a:any\":{\"x\\\":\\\"v\\\"},\\\"a:foo\\\":\\\"str\":\"y\",\"m\\\\d:n\\\"\":\"z\"}}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_non_null(tree);
+    tree = tree->next;
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
+    lyd_free_all(tree);
+
     data = "{\"a:any\": null}";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID, "Expecting JSON name/object but anydata \"any\" is represented in input data as name/null.", NULL, 1);
     CHECK_PARSE_LYD(data, LYD_PARSE_JSON_NULL, LYD_VALIDATE_PRESENT, tree);

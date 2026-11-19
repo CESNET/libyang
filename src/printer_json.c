@@ -237,22 +237,16 @@ json_nscmp(const struct lyd_node *node1, const struct lysc_node *snode1, const s
 }
 
 /**
- * @brief Print the @p text as JSON string - encode special characters and add quotation around the string.
+ * @brief Print the @p text with JSON special characters encoded, without quotation.
  *
  * @param[in] out The output handler.
  * @param[in] text The string to print.
- * @return LY_ERR value.
  */
-static LY_ERR
-json_print_string(struct ly_out *out, const char *text)
+static void
+json_print_escaped(struct ly_out *out, const char *text)
 {
     uint64_t i;
 
-    if (!text) {
-        return LY_SUCCESS;
-    }
-
-    ly_write_(out, "\"", 1);
     for (i = 0; text[i]; i++) {
         const unsigned char byte = text[i];
 
@@ -280,6 +274,24 @@ json_print_string(struct ly_out *out, const char *text)
             break;
         }
     }
+}
+
+/**
+ * @brief Print the @p text as JSON string - encode special characters and add quotation around the string.
+ *
+ * @param[in] out The output handler.
+ * @param[in] text The string to print.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+json_print_string(struct ly_out *out, const char *text)
+{
+    if (!text) {
+        return LY_SUCCESS;
+    }
+
+    ly_write_(out, "\"", 1);
+    json_print_escaped(out, text);
     ly_write_(out, "\"", 1);
 
     return LY_SUCCESS;
@@ -367,11 +379,14 @@ json_print_member2(struct jsonpr_ctx *pctx, const struct lyd_node *parent, LY_VA
 
     /* print the member, strcmp because node prefix is in the schema dict, module_name in data dict */
     node_prefix(parent, parent ? parent->schema : NULL, &pmod_name, NULL);
+    ly_print_(pctx->out, "%*s\"%s", INDENT, is_attr ? "@" : "");
     if (module_name && (!parent || !pmod_name || strcmp(pmod_name, module_name))) {
-        ly_print_(pctx->out, "%*s\"%s%s:%s\":%s", INDENT, is_attr ? "@" : "", module_name, name_str, DO_FORMAT ? " " : "");
-    } else {
-        ly_print_(pctx->out, "%*s\"%s%s\":%s", INDENT, is_attr ? "@" : "", name_str, DO_FORMAT ? " " : "");
+        /* opaque names come from the input and may need encoding */
+        json_print_escaped(pctx->out, module_name);
+        ly_write_(pctx->out, ":", 1);
     }
+    json_print_escaped(pctx->out, name_str);
+    ly_print_(pctx->out, "\":%s", DO_FORMAT ? " " : "");
 
     return LY_SUCCESS;
 }
