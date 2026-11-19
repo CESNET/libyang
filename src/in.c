@@ -220,7 +220,7 @@ ly_in_memory(struct ly_in *in, const char *str)
 
     LY_CHECK_ARG_RET(NULL, in, in->type == LY_IN_MEMORY, NULL);
 
-    data = in->current;
+    data = in->start;
 
     if (str) {
         in->start = in->current = str;
@@ -240,7 +240,7 @@ ly_in_memory_chunk(struct ly_in *in, const void *mem, uint32_t mem_len)
 
     LY_CHECK_ARG_RET(NULL, in, in->type == LY_IN_MEMORY, NULL);
 
-    data = in->current;
+    data = in->start;
 
     if (mem) {
         in->start = in->current = mem;
