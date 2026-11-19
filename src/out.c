@@ -366,7 +366,7 @@ ly_out_filepath(struct ly_out *out, const char *filepath)
 {
     FILE *f;
 
-    LY_CHECK_ARG_RET(NULL, out, out->type == LY_OUT_FILEPATH, filepath ? NULL : ((void *)-1));
+    LY_CHECK_ARG_RET(NULL, out, out->type == LY_OUT_FILEPATH, ((void *)-1));
 
     if (!filepath) {
         return out->method.fpath.filepath;
