@@ -671,6 +671,13 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, 
                 value_size_bits, &dynamic, LY_VALUE_LYB, NULL, LYD_HINT_DATA, sparent, NULL);
 
         /* free strings */
+        free(mod_name);
+        mod_name = NULL;
+        LYA_FOR(features, u) {
+            free(features[u]);
+        }
+        LYA_FREE(features);
+        features = NULL;
         free(meta_name);
         meta_name = NULL;
         if (dynamic) {
