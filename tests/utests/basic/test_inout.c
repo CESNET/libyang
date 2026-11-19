@@ -176,7 +176,8 @@ static void
 test_input_file(void **UNUSED(state))
 {
     struct ly_in *in = NULL;
-    FILE *f1 = NULL, *f2 = NULL;
+    FILE *f1 = NULL, *f2 = NULL, *f3 = NULL;
+    char buf[] = "{}";
 
     assert_int_equal(LY_EINVAL, ly_in_new_file(NULL, NULL));
     assert_null(ly_in_file(NULL, NULL));
@@ -191,6 +192,14 @@ test_input_file(void **UNUSED(state))
     assert_ptr_equal(f1, ly_in_file(in, f2));
     assert_ptr_equal(f2, ly_in_file(in, NULL));
     assert_ptr_equal(f2, ly_in_file(in, NULL));
+#ifndef _WIN32
+    /* a stream without a file descriptor cannot be used and the handler keeps its stream */
+    assert_non_null(f3 = fmemopen(buf, sizeof buf, "r"));
+    assert_null(ly_in_file(in, f3));
+    CHECK_LOG_LASTMSG("Input stream has no file descriptor.");
+    assert_ptr_equal(f2, ly_in_file(in, NULL));
+    fclose(f3);
+#endif
     ly_in_free(in, 1);
     /* f1 is still open */
     assert_int_not_equal(-1, fileno(f1));
