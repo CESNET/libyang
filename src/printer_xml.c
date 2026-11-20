@@ -95,7 +95,9 @@ xml_print_ns(struct xmlpr_ctx *pctx, const char *ns, const char *new_prefix, uin
     }
 
     /* suitable namespace not found, must be printed */
-    ly_print_(pctx->out, " xmlns%s%s=\"%s\"", new_prefix ? ":" : "", new_prefix ? new_prefix : "", ns);
+    ly_print_(pctx->out, " xmlns%s%s=\"", new_prefix ? ":" : "", new_prefix ? new_prefix : "");
+    lyxml_dump_text(pctx->out, ns, 1);
+    ly_print_(pctx->out, "\"");
 
     /* and added into namespaces */
     if (new_prefix) {
