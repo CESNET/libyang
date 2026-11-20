@@ -114,6 +114,12 @@ test_anydata(void **state)
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
+    /* namespace with characters that need encoding */
+    data = "<any xmlns=\"urn:tests:types\"><x xmlns=\"urn:x&quot;/&gt;&lt;y xmlns=&quot;urn:y&amp;\"/></any>";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
+    lyd_free_all(tree);
+
     data = "<any xmlns=\"urn:tests:types\"/>";
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
