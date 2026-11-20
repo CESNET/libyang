@@ -305,11 +305,12 @@ ly_out_reset(struct ly_out *out)
         LOGINT(NULL);
         return LY_EINT;
     case LY_OUT_FD:
-        if ((lseek(out->method.fd, 0, SEEK_SET) == -1) && (errno != ESPIPE)) {
-            LOGERR(NULL, LY_ESYS, "Seeking output file descriptor failed (%s).", strerror(errno));
-            return LY_ESYS;
-        }
-        if ((errno != ESPIPE) && (ftruncate(out->method.fd, 0) == -1)) {
+        if (lseek(out->method.fd, 0, SEEK_SET) == -1) {
+            if (errno != ESPIPE) {
+                LOGERR(NULL, LY_ESYS, "Seeking output file descriptor failed (%s).", strerror(errno));
+                return LY_ESYS;
+            }
+        } else if (ftruncate(out->method.fd, 0) == -1) {
             LOGERR(NULL, LY_ESYS, "Truncating output file failed (%s).", strerror(errno));
             return LY_ESYS;
         }
@@ -317,11 +318,12 @@ ly_out_reset(struct ly_out *out)
     case LY_OUT_FDSTREAM:
     case LY_OUT_FILE:
     case LY_OUT_FILEPATH:
-        if ((fseek(out->method.f, 0, SEEK_SET) == -1) && (errno != ESPIPE)) {
-            LOGERR(NULL, LY_ESYS, "Seeking output file stream failed (%s).", strerror(errno));
-            return LY_ESYS;
-        }
-        if ((errno != ESPIPE) && (ftruncate(fileno(out->method.f), 0) == -1)) {
+        if (fseek(out->method.f, 0, SEEK_SET) == -1) {
+            if (errno != ESPIPE) {
+                LOGERR(NULL, LY_ESYS, "Seeking output file stream failed (%s).", strerror(errno));
+                return LY_ESYS;
+            }
+        } else if (ftruncate(fileno(out->method.f), 0) == -1) {
             LOGERR(NULL, LY_ESYS, "Truncating output file failed (%s).", strerror(errno));
             return LY_ESYS;
         }
