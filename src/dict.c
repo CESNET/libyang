@@ -66,14 +66,12 @@ lydict_clean(struct ly_dict *dict)
 {
     struct ly_dict_rec *dict_rec = NULL;
     struct ly_ht_rec *rec = NULL;
-    uint32_t hlist_idx;
-    uint32_t rec_idx;
 
     if (!dict) {
         return;
     }
 
-    LYHT_ITER_ALL_RECS(dict->hash_tab, hlist_idx, rec_idx, rec) {
+    LYHT_ITER_ALL_RECS(dict->hash_tab, rec) {
         /*
          * this should not happen, all records inserted into
          * dictionary are supposed to be removed using lydict_remove()

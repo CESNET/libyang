@@ -77,11 +77,10 @@
 static void
 ctxs_dict_strings(const struct ly_ht *ht, int *size)
 {
-    uint32_t i, j;
     struct ly_ht_rec *rec;
     struct ly_dict_rec *dict_rec;
 
-    LYHT_ITER_ALL_RECS(ht, i, j, rec) {
+    LYHT_ITER_ALL_RECS(ht, rec) {
         dict_rec = (struct ly_dict_rec *)&rec->val;
 
         /* strings */
@@ -715,14 +714,13 @@ ctxp_set(const struct ly_set *orig_set, struct ly_set *set, void **mem)
 static void
 ctxp_dict_strings(const struct ly_ht *orig_dict, struct ly_ht *addr_ht, void **mem)
 {
-    uint32_t i, j;
     struct ly_ht_rec *rec;
     struct ly_dict_rec *dict_rec;
     int len;
     void *orig_str;
     char *str;
 
-    LYHT_ITER_ALL_RECS(orig_dict, i, j, rec) {
+    LYHT_ITER_ALL_RECS(orig_dict, rec) {
         dict_rec = (struct ly_dict_rec *)&rec->val;
 
         /* strings */

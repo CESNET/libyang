@@ -297,14 +297,13 @@ ly_ctx_shared_data_remove_and_free(struct ly_ctx_shared_data *shared_data)
     LYA_COUNT_T u;
     struct ly_ht_rec *rec;
     struct ly_pattern_ht_rec *pat_rec;
-    uint32_t hlist_idx, rec_idx;
 
     if (!shared_data) {
         return;
     }
 
     /* free the pattern HT */
-    LYHT_ITER_ALL_RECS(shared_data->pattern_ht, hlist_idx, rec_idx, rec) {
+    LYHT_ITER_ALL_RECS(shared_data->pattern_ht, rec) {
         pat_rec = (struct ly_pattern_ht_rec *)&rec->val;
         ly_pat_free(pat_rec->pat_comp, pat_rec->format);
     }
