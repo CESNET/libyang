@@ -539,7 +539,7 @@ lyd_value_store(const struct ly_ctx *ctx, const struct lyd_node *lnode, struct l
 
 LY_ERR
 lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *type, struct lyd_value *val,
-        const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct ly_ht *unres_ht)
+        const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lyd_val_unres *val_unres)
 {
     LY_ERR rc = LY_SUCCESS;
     struct ly_err_item *err = NULL;
@@ -548,7 +548,7 @@ lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *
     type_plg = LYSC_GET_TYPE_PLG(type->plugin_ref);
     assert(type_plg && type_plg->validate_tree);
 
-    rc = type_plg->validate_tree(ctx, type, ctx_node, tree, unres_ht, val, &err);
+    rc = type_plg->validate_tree(ctx, type, ctx_node, tree, val_unres, val, &err);
     assert((rc != LY_EINCOMPLETE) || !err);
 
     if (rc && (rc != LY_EINCOMPLETE)) {
@@ -623,7 +623,7 @@ lyd_value_validate_dflt(const struct lysc_node *schema, const char *value, struc
 LY_ERR
 lyd_value_validate3(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lyd_node *ctx_node,
-        const struct lyd_node *tree, const struct ly_ht *unres_ht, const struct lysc_node *ctx_scnode, int log,
+        const struct lyd_node *tree, const struct lyd_val_unres *val_unres, const struct lysc_node *ctx_scnode, int log,
         const struct lysc_type **realtype, const char **canonical)
 {
     LY_ERR rc;
@@ -646,7 +646,7 @@ lyd_value_validate3(const struct ly_ctx *ctx, const struct lysc_type *type, cons
 
     if (tree && (rc == LY_EINCOMPLETE)) {
         /* resolve */
-        rc = type_plg->validate_tree(ctx, type, ctx_node, tree, unres_ht, &val, &err);
+        rc = type_plg->validate_tree(ctx, type, ctx_node, tree, val_unres, &val, &err);
     }
 
     if (rc && (rc != LY_EINCOMPLETE) && err) {

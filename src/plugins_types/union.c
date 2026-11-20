@@ -369,7 +369,8 @@ union_store_type(const struct ly_ctx *ctx, const struct lysc_type *type, const v
 static LY_ERR
 union_read_store_type(const struct ly_ctx *ctx, const struct lysc_type_union *type_u, uint32_t type_idx,
         struct lyd_value_union *subvalue, uint32_t options, const struct lyd_node *ctx_node,
-        const struct lyd_node *tree, const struct ly_ht *unres_ht, struct lys_glob_unres *unres, struct ly_err_item **err)
+        const struct lyd_node *tree, const struct lyd_val_unres *val_unres, struct lys_glob_unres *unres,
+        struct ly_err_item **err)
 {
     LY_ERR rc = LY_SUCCESS, r;
     const void *value;
@@ -403,7 +404,7 @@ union_read_store_type(const struct ly_ctx *ctx, const struct lysc_type_union *ty
     /* validate the value */
     type_plg = LYSC_GET_TYPE_PLG(type_u->types[type_idx]->plugin_ref);
     if (tree && type_plg->validate_tree) {
-        rc = type_plg->validate_tree(ctx, type_u->types[type_idx], ctx_node, tree, unres_ht, &subvalue->value, err);
+        rc = type_plg->validate_tree(ctx, type_u->types[type_idx], ctx_node, tree, val_unres, &subvalue->value, err);
         if (rc) {
             /* validate failed, we need to free the stored value */
             type_plg->free(ctx, &subvalue->value);
@@ -425,7 +426,7 @@ cleanup:
  * @param[in] options The store options.
  * @param[in] ctx_node Data context node for the validation.
  * @param[in] tree Optional data tree for validation. If NULL, validation is not performed.
- * @param[in] unres_ht Hash table with unresolved @p tree nodes, may be NULL.
+ * @param[in] val_unres Val unres structure with unresolved @p tree nodes, may be NULL.
  * @param[out] type_idx Index of the type in which the value was stored.
  * @param[in,out] unres Global unres structure.
  * @param[out] err Error information on error.
@@ -433,7 +434,7 @@ cleanup:
  */
 static LY_ERR
 union_find_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct lyd_value_union *subvalue,
-        uint32_t options, const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct ly_ht *unres_ht,
+        uint32_t options, const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lyd_val_unres *val_unres,
         uint32_t *type_idx, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
     LY_ERR rc = LY_SUCCESS, r;
@@ -456,7 +457,7 @@ union_find_type(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
 
     /* use the first usable subtype to store the value */
     LYA_FOR(type_u->types, u) {
-        rc = union_read_store_type(ctx, type_u, u, subvalue, options, ctx_node, tree, unres_ht, unres, &e);
+        rc = union_read_store_type(ctx, type_u, u, subvalue, options, ctx_node, tree, val_unres, unres, &e);
         if (!rc || (rc == LY_EINCOMPLETE)) {
             /* success */
             break;
@@ -681,7 +682,7 @@ cleanup:
 
 static LY_ERR
 lyplg_type_validate_tree_union(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *ctx_node,
-        const struct lyd_node *tree, const struct ly_ht *unres_ht, struct lyd_value *storage, struct ly_err_item **err)
+        const struct lyd_node *tree, const struct lyd_val_unres *val_unres, struct lyd_value *storage, struct ly_err_item **err)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lysc_type_union *type_u = (struct lysc_type_union *)type;
@@ -704,7 +705,7 @@ lyplg_type_validate_tree_union(const struct ly_ctx *ctx, const struct lysc_type 
         /* use the specific type to store and validate the value */
         union_parse_value_lyb(subvalue->original, 0, &type_idx, NULL, NULL);
 
-        if (union_read_store_type(ctx, type_u, type_idx, subvalue, 0, ctx_node, tree, unres_ht, NULL, err)) {
+        if (union_read_store_type(ctx, type_u, type_idx, subvalue, 0, ctx_node, tree, val_unres, NULL, err)) {
             /* validation failed, we need to try storing the value again */
             ly_err_free(*err);
             *err = NULL;
@@ -715,7 +716,7 @@ lyplg_type_validate_tree_union(const struct ly_ctx *ctx, const struct lysc_type 
 
     if (!validated) {
         /* use the first usable subtype to store and validate the value */
-        rc = union_find_type(ctx, type_u, subvalue, 0, ctx_node, tree, unres_ht, NULL, NULL, err);
+        rc = union_find_type(ctx, type_u, subvalue, 0, ctx_node, tree, val_unres, NULL, NULL, err);
         LY_CHECK_GOTO(rc, cleanup);
     }
 

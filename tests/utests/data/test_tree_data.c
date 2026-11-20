@@ -686,8 +686,13 @@ test_data_leafref_nodes(void **state)
     /* verify state after leafref plugin validation */
     assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(target_node, &rec));
     assert_int_equal(2, LYA_COUNT(rec->leafref_nodes));
-    assert_ptr_equal(rec->leafref_nodes[1], leafref_node);
-    assert_ptr_equal(rec->leafref_nodes[0], leafref_node2);
+    if (rec->leafref_nodes[1] == leafref_node) {
+        assert_ptr_equal(rec->leafref_nodes[1], leafref_node);
+        assert_ptr_equal(rec->leafref_nodes[0], leafref_node2);
+    } else {
+        assert_ptr_equal(rec->leafref_nodes[0], leafref_node);
+        assert_ptr_equal(rec->leafref_nodes[1], leafref_node2);
+    }
     assert_int_equal(LY_SUCCESS, lyd_leafref_get_links(leafref_node, &rec));
     assert_int_equal(1, LYA_COUNT(rec->target_nodes));
     assert_ptr_equal(rec->target_nodes[0], target_node);

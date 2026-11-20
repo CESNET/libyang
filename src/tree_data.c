@@ -177,7 +177,7 @@ lyd_parse(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **f
 
     if (!(parse_opts & LYD_PARSE_ONLY)) {
         /* validate data */
-        r = lyd_validate(first_p, NULL, ctx, val_opts, 0, &lydctx->node_when, &lydctx->node_types, &lydctx->meta_types,
+        r = lyd_validate(first_p, NULL, ctx, val_opts, 0, lydctx->node_when, lydctx->node_types, &lydctx->meta_types,
                 &lydctx->ext_val, NULL);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
     }

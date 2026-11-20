@@ -1325,7 +1325,7 @@ ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node *ctx_no
 
 LY_ERR
 ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *ctx_node, const struct lyd_node *tree,
-        const struct ly_ht *unres_ht, const struct lyxp_var *vars, ly_bool with_opaq, LYA_COUNT_T *path_idx,
+        const struct lyd_val_unres *val_unres, const struct lyxp_var *vars, ly_bool with_opaq, LYA_COUNT_T *path_idx,
         struct lyd_node **match)
 {
     LYA_COUNT_T u;
@@ -1389,7 +1389,7 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *ctx_node
             break;
         }
 
-        if (lyd_validate_node_is_unres(node, unres_ht)) {
+        if (lyd_validate_node_is_unres(node, val_unres)) {
             /* unresolved node */
             return LY_EINCOMPLETE;
         }
@@ -1433,13 +1433,13 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *ctx_node
 }
 
 LY_ERR
-ly_path_eval(const struct ly_path *path, const struct lyd_node *ctx_node, const struct ly_ht *unres_ht,
+ly_path_eval(const struct ly_path *path, const struct lyd_node *ctx_node, const struct lyd_val_unres *val_unres,
         const struct lyxp_var *vars, struct lyd_node **match)
 {
     LY_ERR rc;
     struct lyd_node *m;
 
-    rc = ly_path_eval_partial(path, ctx_node, NULL, unres_ht, vars, 0, NULL, &m);
+    rc = ly_path_eval_partial(path, ctx_node, NULL, val_unres, vars, 0, NULL, &m);
 
     if (!rc) {
         /* last node was found */

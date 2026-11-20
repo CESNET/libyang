@@ -1672,33 +1672,41 @@ static LY_ERR
 lyd_parse_cbor_init(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts,
         struct lyd_cbor_ctx **lydctx_p)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR rc = LY_SUCCESS;
     struct lyd_cbor_ctx *lydctx;
     enum cbor_type cbortype;
 
     assert(lydctx_p);
+
+    *lydctx_p = NULL;
 
     /* init context */
     lydctx = calloc(1, sizeof *lydctx);
     LY_CHECK_ERR_RET(!lydctx, LOGMEM(ctx), LY_EMEM);
     lydctx->parse_opts = parse_opts;
     lydctx->val_opts = val_opts;
+    LY_CHECK_GOTO(rc = lyd_val_unres_ht_new(&lydctx->node_when), cleanup);
+    LY_CHECK_GOTO(rc = lyd_val_unres_ht_new(&lydctx->node_types), cleanup);
     lydctx->free = lyd_cbor_ctx_free;
 
     /* Create low-level CBOR context */
-    LY_CHECK_ERR_RET(ret = lycbor_ctx_new(ctx, in, &lydctx->cborctx), free(lydctx), ret);
+    LY_CHECK_GOTO(rc = lycbor_ctx_new(ctx, in, &lydctx->cborctx), cleanup);
     cbortype = cbor_typeof(lydctx->cborctx->cbor_data);
 
     if (!cbor_isa_map(lydctx->cborctx->cbor_data)) {
         /* expecting top-level map */
         LOGVAL(ctx, NULL, LYVE_SYNTAX, "Expected top-level CBOR map, but %d found.", cbortype);
-        *lydctx_p = NULL;
-        lyd_cbor_ctx_free((struct lyd_ctx *)lydctx);
-        return LY_EVALID;
+        rc = LY_EVALID;
+        goto cleanup;
     }
 
-    *lydctx_p = lydctx;
-    return ret;
+cleanup:
+    if (rc) {
+        lyd_cbor_ctx_free((struct lyd_ctx *)lydctx);
+    } else {
+        *lydctx_p = lydctx;
+    }
+    return rc;
 }
 
 LY_ERR
@@ -1742,7 +1750,8 @@ lyd_parse_cbor(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, st
 
 cleanup:
     /* there should be no unresolved types stored */
-    assert(!(parse_opts & LYD_PARSE_ONLY) || !lydctx || (!lydctx->node_types.count && !lydctx->meta_types.count && !lydctx->node_when.count));
+    assert(!(parse_opts & LYD_PARSE_ONLY) || !lydctx || (!lydctx->node_types->used && !lydctx->meta_types.count &&
+            !lydctx->node_when->used));
 
     if (rc && (!lydctx || !(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
         lyd_cbor_ctx_free((struct lyd_ctx *)lydctx);

@@ -1446,10 +1446,20 @@ test_require_instance(void **state)
             "<lr xmlns=\"urn:tests:ri\">x</lr>\n"
             "<ii xmlns=\"urn:tests:ri\" xmlns:ri=\"urn:tests:ri\">/ri:t</ii>\n";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT | LYD_VALIDATE_MULTI_ERROR, LY_EVALID, tree);
-    CHECK_LOG_CTX_APPTAG("Invalid leafref value \"x\" - no target instance \"/ri:t\" with the same value.", "/ri:lr", 0,
-            "instance-required");
-    CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/ri:t\" value - required instance not found.", "/ri:ii", 0,
-            "instance-required");
+    const struct ly_err_item *e = ly_err_last(UTEST_LYCTX);
+
+    /* node-address based HT so the order is random */
+    if (!strcmp(e->data_path, "/ri:lr")) {
+        CHECK_LOG_CTX_APPTAG("Invalid leafref value \"x\" - no target instance \"/ri:t\" with the same value.", "/ri:lr", 0,
+                "instance-required");
+        CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/ri:t\" value - required instance not found.", "/ri:ii", 0,
+                "instance-required");
+    } else {
+        CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/ri:t\" value - required instance not found.", "/ri:ii", 0,
+                "instance-required");
+        CHECK_LOG_CTX_APPTAG("Invalid leafref value \"x\" - no target instance \"/ri:t\" with the same value.", "/ri:lr", 0,
+                "instance-required");
+    }
 
     /* self-referencing instanceid */
     CHECK_PARSE_LYD_PARAM("<uni xmlns=\"urn:tests:ri\" xmlns:ri=\"urn:tests:ri\">/ri:uni</uni>", LYD_XML, 0,
@@ -1962,8 +1972,15 @@ test_when_must_cross_ref(void **state)
     /* only the when errors must be reported; no spurious leafref error for ref */
     CHECK_PARSE_LYD_PARAM(data3, LYD_XML, 0,
             LYD_VALIDATE_PRESENT | LYD_VALIDATE_MULTI_ERROR, LY_EVALID, tree);
-    CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm3:top/selector", 0);
-    CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm3:top/ref", 0);
+    const struct ly_err_item *e = ly_err_last(UTEST_LYCTX);
+
+    if (!strcmp(e->data_path, "/twm3:top/selector")) {
+        CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm3:top/selector", 0);
+        CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm3:top/ref", 0);
+    } else {
+        CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm3:top/ref", 0);
+        CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm3:top/selector", 0);
+    }
 
     /* Regression: explicitly exercise the hash-based child lookup path
      * (moveto_node_hash_child in src/xpath.c) for a when-false KEYED LIST. The

@@ -81,8 +81,8 @@ struct lyd_ctx {
 
 #define LYD_PARSER_BUFSIZE 4078
     char path[LYD_PARSER_BUFSIZE]; /**< buffer for the generated path */
-    struct ly_set node_when;       /**< set of nodes with "when" conditions */
-    struct ly_set node_types;      /**< set of nodes validated with LY_EINCOMPLETE result */
+    struct ly_ht *node_when;       /**< HT of nodes with "when" conditions */
+    struct ly_ht *node_types;      /**< HT of nodes validated with LY_EINCOMPLETE result */
     struct ly_set meta_types;      /**< set of metadata validated with LY_EINCOMPLETE result */
     struct ly_set ext_val;         /**< set of nested subtrees parsed by extensions to validate */
     struct lyd_node *op_node;      /**< if an RPC/action/notification is being parsed, store the pointer to it */
@@ -108,8 +108,8 @@ struct lyd_xml_ctx {
     uint32_t int_opts;
     uint32_t path_len;
     char path[LYD_PARSER_BUFSIZE];
-    struct ly_set node_when;
-    struct ly_set node_types;
+    struct ly_ht *node_when;
+    struct ly_ht *node_types;
     struct ly_set meta_types;
     struct ly_set ext_val;
     struct lyd_node *op_node;
@@ -131,8 +131,8 @@ struct lyd_json_ctx {
     uint32_t int_opts;
     uint32_t path_len;
     char path[LYD_PARSER_BUFSIZE];
-    struct ly_set node_when;
-    struct ly_set node_types;
+    struct ly_ht *node_when;
+    struct ly_ht *node_types;
     struct ly_set meta_types;
     struct ly_set ext_val;
     struct lyd_node *op_node;
@@ -160,8 +160,8 @@ struct lyd_lyb_ctx {
     uint32_t int_opts;
     uint32_t path_len;
     char path[LYD_PARSER_BUFSIZE];
-    struct ly_set node_when;
-    struct ly_set node_types;
+    struct ly_ht *node_when;
+    struct ly_ht *node_types;
     struct ly_set meta_types;
     struct ly_set ext_val;
     struct lyd_node *op_node;
@@ -186,8 +186,8 @@ struct lyd_cbor_ctx {
     uint32_t int_opts;                   /**< internal parser options */
     uint32_t path_len;                   /**< used bytes in the path buffer */
     char path[LYD_PARSER_BUFSIZE];       /**< buffer for the generated path */
-    struct ly_set node_when;             /**< set of nodes with "when" conditions */
-    struct ly_set node_types;            /**< set of nodes with unresolved types */
+    struct ly_ht *node_when;             /**< set of nodes with "when" conditions */
+    struct ly_ht *node_types;            /**< set of nodes with unresolved types */
     struct ly_set meta_types;            /**< set of metadata with unresolved types */
     struct ly_set ext_val;               /**< set of nested extension data to validate */
     struct lyd_node *op_node;            /**< if an operation is being parsed, its node */

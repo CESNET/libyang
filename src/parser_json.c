@@ -1889,20 +1889,24 @@ static LY_ERR
 lyd_parse_json_init(const struct ly_ctx *ctx, const struct lysc_node *schema, struct ly_in *in, uint32_t parse_opts,
         uint32_t val_opts, enum LYJSON_PARSER_STATUS *status_p, struct lyd_json_ctx **lydctx_p)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR rc = LY_SUCCESS;
     struct lyd_json_ctx *lydctx;
     enum LYJSON_PARSER_STATUS status;
 
     assert(lydctx_p);
+
+    *lydctx_p = NULL;
 
     /* init context */
     lydctx = calloc(1, sizeof *lydctx);
     LY_CHECK_ERR_RET(!lydctx, LOGMEM(ctx), LY_EMEM);
     lydctx->parse_opts = parse_opts;
     lydctx->val_opts = val_opts;
+    LY_CHECK_GOTO(rc = lyd_val_unres_ht_new(&lydctx->node_when), cleanup);
+    LY_CHECK_GOTO(rc = lyd_val_unres_ht_new(&lydctx->node_types), cleanup);
     lydctx->free = lyd_json_ctx_free;
 
-    LY_CHECK_ERR_RET(ret = lyjson_ctx_new(ctx, in, &lydctx->jsonctx), free(lydctx), ret);
+    LY_CHECK_GOTO(rc = lyjson_ctx_new(ctx, in, &lydctx->jsonctx), cleanup);
     status = lyjson_ctx_status(lydctx->jsonctx);
 
     /* parse_opts & LYD_PARSE_SUBTREE not implemented */
@@ -1920,16 +1924,20 @@ lyd_parse_json_init(const struct ly_ctx *ctx, const struct lysc_node *schema, st
         /* expecting top-level object or bare value */
         LOGVAL(ctx, NULL, LYVE_SYNTAX_JSON, "Expected top-level JSON object or correct bare value, but %s found.",
                 lyjson_token2str(status));
-        *lydctx_p = NULL;
-        lyd_json_ctx_free((struct lyd_ctx *)lydctx);
-        return LY_EVALID;
+        rc = LY_EVALID;
+        goto cleanup;
     }
 
-    *lydctx_p = lydctx;
-    if (status_p) {
-        *status_p = status;
+cleanup:
+    if (rc) {
+        lyd_json_ctx_free((struct lyd_ctx *)lydctx);
+    } else {
+        *lydctx_p = lydctx;
+        if (status_p) {
+            *status_p = status;
+        }
     }
-    return LY_SUCCESS;
+    return rc;
 }
 
 /**
@@ -2079,8 +2087,8 @@ lyd_parse_json(const struct ly_ctx *ctx, struct lyd_node *parent, const struct l
 
 cleanup:
     /* there should be no unresolved types stored */
-    assert(!(parse_opts & LYD_PARSE_ONLY) || !lydctx || (!lydctx->node_types.count && !lydctx->meta_types.count &&
-            !lydctx->node_when.count));
+    assert(!(parse_opts & LYD_PARSE_ONLY) || !lydctx || (!lydctx->node_types->used && !lydctx->meta_types.count &&
+            !lydctx->node_when->used));
 
     if (rc && (!lydctx || !(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
         lyd_json_ctx_free((struct lyd_ctx *)lydctx);
@@ -2345,8 +2353,8 @@ lyd_parse_json_restconf(const struct ly_ctx *ctx, struct lyd_node *parent, struc
 
 cleanup:
     /* there should be no unres stored if validation should be skipped */
-    assert(!(parse_opts & LYD_PARSE_ONLY) || !lydctx || (!lydctx->node_types.count && !lydctx->meta_types.count &&
-            !lydctx->node_when.count));
+    assert(!(parse_opts & LYD_PARSE_ONLY) || !lydctx || (!lydctx->node_types->used && !lydctx->meta_types.count &&
+            !lydctx->node_when->used));
 
     if (rc) {
         lyd_json_ctx_free((struct lyd_ctx *)lydctx);

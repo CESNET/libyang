@@ -23,6 +23,7 @@
 #include "tree_data.h"
 
 struct ly_ctx;
+struct lyd_val_unres;
 struct lys_module;
 struct lysc_ext_instance;
 struct lysc_node;
@@ -219,7 +220,7 @@ LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_nod
  * @param[in] path Path structure specifying the target.
  * @param[in] ctx_node Context node, NULL for the root node.
  * @param[in] tree Data tree to search, must be set if @p ctx_node is not.
- * @param[in] unres_ht Hash table with unresolved nodes in @p tree, may be NULL.
+ * @param[in] val_unres Val unres structure with unresolved nodes in @p tree, may be NULL.
  * @param[in] vars Array of defined variables to use in predicates, may be NULL.
  * @param[in] with_opaq Whether to consider opaque nodes or not.
  * @param[out] path_idx Last found path segment index, can be NULL, set to 0 if not found.
@@ -231,7 +232,7 @@ LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_nod
  * @return LY_ERR on another error.
  */
 LY_ERR ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *ctx_node, const struct lyd_node *tree,
-        const struct ly_ht *unres_ht, const struct lyxp_var *vars, ly_bool with_opaq, LYA_COUNT_T *path_idx,
+        const struct lyd_val_unres *val_unres, const struct lyxp_var *vars, ly_bool with_opaq, LYA_COUNT_T *path_idx,
         struct lyd_node **match);
 
 /**
@@ -239,14 +240,14 @@ LY_ERR ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *c
  *
  * @param[in] path Path structure specifying the target.
  * @param[in] ctx_node Context node for relative paths, can be any for absolute paths.
- * @param[in] unres_ht Hash table with unresolved nodes in @p ctx_node tree, may be NULL.
+ * @param[in] val_unres Val unres structure with unresolved nodes in @p ctx_tree, may be NULL.
  * @param[in] vars Array of defined variables to use in predicates, may be NULL.
  * @param[out] match Found matching node, can be NULL, set to NULL if not found.
  * @return LY_ENOTFOUND if no nodes were found,
  * @return LY_SUCCESS when the last node in the path was found,
  * @return LY_ERR on another error.
  */
-LY_ERR ly_path_eval(const struct ly_path *path, const struct lyd_node *ctx_node, const struct ly_ht *unres_ht,
+LY_ERR ly_path_eval(const struct ly_path *path, const struct lyd_node *ctx_node, const struct lyd_val_unres *val_unres,
         const struct lyxp_var *vars, struct lyd_node **match);
 
 /**

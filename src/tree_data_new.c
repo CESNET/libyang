@@ -1926,7 +1926,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
 
 LY_ERR
 lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
-        const struct lys_module *mod, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *ext_val,
+        const struct lys_module *mod, struct ly_ht *node_when, struct ly_ht *node_types, struct ly_set *ext_val,
         uint32_t impl_opts, struct ly_ht *getnext_ht, struct lyd_node **diff)
 {
     const struct lysc_node *snode, **choices, **snodes;
@@ -1992,7 +1992,7 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
 
                 if (lysc_has_when(snode) && node_when) {
                     /* remember to resolve when */
-                    LY_CHECK_RET(ly_set_add(node_when, (void *)node, 1, NULL));
+                    LY_CHECK_RET(lyd_val_unres_ht_add(node, node_when));
                 }
                 if (ext_val) {
                     /* store for ext instance node validation, if needed */
@@ -2013,14 +2013,14 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
                         ((struct lysc_node_leaf *)snode)->dflt.prefixes, LYD_HINT_SCHEMA, &incomplete, &node));
                 if (incomplete && node_types) {
                     /* remember to resolve type */
-                    LY_CHECK_RET(ly_set_add(node_types, node, 1, NULL));
+                    LY_CHECK_RET(lyd_val_unres_ht_add(node, node_types));
                 }
                 node->flags = LYD_DEFAULT | (lysc_has_when(snode) ? LYD_WHEN_TRUE : 0);
                 lyd_insert_node(parent, first, node, LYD_INSERT_NODE_DEFAULT);
 
                 if (lysc_has_when(snode) && node_when) {
                     /* remember to resolve when */
-                    LY_CHECK_RET(ly_set_add(node_when, (void *)node, 1, NULL));
+                    LY_CHECK_RET(lyd_val_unres_ht_add(node, node_when));
                 }
                 if (ext_val) {
                     /* store for ext instance node validation, if needed */
@@ -2042,14 +2042,14 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
                             LY_VALUE_SCHEMA_RESOLVED, dflts[u].prefixes, LYD_HINT_SCHEMA, &incomplete, &node));
                     if (incomplete && node_types) {
                         /* remember to resolve type */
-                        LY_CHECK_RET(ly_set_add(node_types, node, 1, NULL));
+                        LY_CHECK_RET(lyd_val_unres_ht_add(node, node_types));
                     }
                     node->flags = LYD_DEFAULT | (lysc_has_when(snode) ? LYD_WHEN_TRUE : 0);
                     lyd_insert_node(parent, first, node, LYD_INSERT_NODE_DEFAULT);
 
                     if (lysc_has_when(snode) && node_when) {
                         /* remember to resolve when */
-                        LY_CHECK_RET(ly_set_add(node_when, (void *)node, 1, NULL));
+                        LY_CHECK_RET(lyd_val_unres_ht_add(node, node_when));
                     }
                     if (ext_val) {
                         /* store for ext instance node validation, if needed */
@@ -2073,7 +2073,7 @@ lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct 
 
 LY_ERR
 lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
-        const struct lys_module *mod, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *ext_val,
+        const struct lys_module *mod, struct ly_ht *node_when, struct ly_ht *node_types, struct ly_set *ext_val,
         uint32_t impl_opts, struct ly_ht *getnext_ht, struct lyd_node **diff)
 {
     struct lyd_node *child;
@@ -2098,20 +2098,22 @@ lyd_new_implicit_tree(struct lyd_node *tree, uint32_t implicit_options, struct l
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_node *node;
-    struct ly_set node_when = {0};
-    struct ly_ht *getnext_ht = NULL;
+    struct ly_ht *node_when = NULL, *getnext_ht = NULL;
 
     LY_CHECK_ARG_RET(NULL, tree, LY_EINVAL);
     if (diff) {
         *diff = NULL;
     }
 
-    /* create the getnext hash table */
+    /* create the node when HT */
+    LY_CHECK_GOTO(rc = lyd_val_unres_ht_new(&node_when), cleanup);
+
+    /* create the getnext HT */
     LY_CHECK_GOTO(rc = lyd_val_getnext_ht_new(&getnext_ht), cleanup);
 
     LYD_TREE_DFS_BEGIN(tree, node) {
         if (node->schema && (node->schema->nodetype & LYD_NODE_INNER)) {
-            LY_CHECK_GOTO(rc = lyd_new_implicit(node, lyd_node_child_p(node), NULL, NULL, &node_when, NULL, NULL,
+            LY_CHECK_GOTO(rc = lyd_new_implicit(node, lyd_node_child_p(node), NULL, NULL, node_when, NULL, NULL,
                     implicit_options, getnext_ht, diff), cleanup);
         }
 
@@ -2119,11 +2121,11 @@ lyd_new_implicit_tree(struct lyd_node *tree, uint32_t implicit_options, struct l
     }
 
     /* resolve when and remove any invalid defaults */
-    rc = lyd_validate_unres(&tree, 0, &node_when, NULL, NULL, NULL, 0, diff);
+    rc = lyd_validate_unres(&tree, 0, node_when, NULL, NULL, NULL, 0, diff);
     LY_CHECK_GOTO(rc, cleanup);
 
 cleanup:
-    ly_set_erase(&node_when, NULL);
+    lyht_free(node_when, NULL);
     lyd_val_getnext_ht_free(getnext_ht);
     if (rc && diff) {
         lyd_free_all(*diff);
@@ -2178,8 +2180,7 @@ lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module,
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_node *root, *d = NULL;
-    struct ly_set node_when = {0};
-    struct ly_ht *getnext_ht = NULL;
+    struct ly_ht *node_when = NULL, *getnext_ht = NULL;
 
     LY_CHECK_ARG_RET(NULL, tree, module, LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(__func__, *tree ? LYD_CTX(*tree) : NULL, module ? module->ctx : NULL, LY_EINVAL);
@@ -2187,15 +2188,18 @@ lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module,
         *diff = NULL;
     }
 
+    /* create node when HT */
+    LY_CHECK_GOTO(rc = lyd_val_unres_ht_new(&node_when), cleanup);
+
     /* create the getnext hash table for this module */
     LY_CHECK_GOTO(rc = lyd_val_getnext_ht_new(&getnext_ht), cleanup);
 
     /* add all top-level defaults for this module */
-    rc = lyd_new_implicit(NULL, tree, NULL, module, &node_when, NULL, NULL, implicit_options, getnext_ht, diff);
+    rc = lyd_new_implicit(NULL, tree, NULL, module, node_when, NULL, NULL, implicit_options, getnext_ht, diff);
     LY_CHECK_GOTO(rc, cleanup);
 
     /* resolve when and remove any invalid defaults */
-    LY_CHECK_GOTO(rc = lyd_validate_unres(tree, 0, &node_when, NULL, NULL, NULL, 0, diff), cleanup);
+    LY_CHECK_GOTO(rc = lyd_validate_unres(tree, 0, node_when, NULL, NULL, NULL, 0, diff), cleanup);
 
     /* process top-level (and nested) nodes */
     LY_LIST_FOR(*tree, root) {
@@ -2209,7 +2213,7 @@ lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module,
     }
 
 cleanup:
-    ly_set_erase(&node_when, NULL);
+    lyht_free(node_when, NULL);
     lyd_val_getnext_ht_free(getnext_ht);
     if (rc && diff) {
         lyd_free_all(*diff);

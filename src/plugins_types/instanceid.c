@@ -234,7 +234,7 @@ cleanup:
 
 static LY_ERR
 lyplg_type_validate_tree_instanceid(const struct ly_ctx *ctx, const struct lysc_type *UNUSED(type),
-        const struct lyd_node *ctx_node, const struct lyd_node *UNUSED(tree), const struct ly_ht *unres_ht,
+        const struct lyd_node *ctx_node, const struct lyd_node *UNUSED(tree), const struct lyd_val_unres *val_unres,
         struct lyd_value *storage, struct ly_err_item **err)
 {
     LY_ERR r;
@@ -253,7 +253,7 @@ lyplg_type_validate_tree_instanceid(const struct ly_ctx *ctx, const struct lysc_
     }
 
     /* find the target in data */
-    r = ly_path_eval(storage->target, ctx_node, unres_ht, NULL, NULL);
+    r = ly_path_eval(storage->target, ctx_node, val_unres, NULL, NULL);
     if (r == LY_EINCOMPLETE) {
         return r;
     } else if (r) {

@@ -1818,6 +1818,8 @@ lyd_parse_lyb(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node
     lybctx->parse_opts = parse_opts;
     lybctx->val_opts = val_opts;
     lybctx->int_opts = int_opts;
+    LY_CHECK_GOTO(rc = lyd_val_unres_ht_new(&lybctx->node_when), cleanup);
+    LY_CHECK_GOTO(rc = lyd_val_unres_ht_new(&lybctx->node_types), cleanup);
     lybctx->free = lyb_parse_ctx_free;
 
     /* find the operation node if it exists already */
@@ -1843,8 +1845,8 @@ lyd_parse_lyb(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node
 
 cleanup:
     /* there should be no unres stored if validation should be skipped */
-    assert(!lybctx || !(parse_opts & LYD_PARSE_ONLY) || (!lybctx->node_types.count && !lybctx->meta_types.count &&
-            !lybctx->node_when.count));
+    assert(!lybctx || !(parse_opts & LYD_PARSE_ONLY) || (!lybctx->node_types->used && !lybctx->meta_types.count &&
+            !lybctx->node_when->used));
 
     if (rc) {
         lyb_parse_ctx_free((struct lyd_ctx *)lybctx);

@@ -62,9 +62,9 @@
 void
 lyd_ctx_free(struct lyd_ctx *lydctx)
 {
-    ly_set_erase(&lydctx->node_types, NULL);
+    lyht_free(lydctx->node_when, NULL);
+    lyht_free(lydctx->node_types, NULL);
     ly_set_erase(&lydctx->meta_types, NULL);
-    ly_set_erase(&lydctx->node_when, NULL);
     ly_set_erase(&lydctx->ext_val, free);
     lyd_val_getnext_ht_free(lydctx->val_getnext_ht);
 }
@@ -240,7 +240,7 @@ lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, c
             hints, &incomplete, node));
 
     if (incomplete && !(lydctx->parse_opts & LYD_PARSE_ONLY)) {
-        LY_CHECK_RET(ly_set_add(&lydctx->node_types, *node, 1, NULL));
+        LY_CHECK_RET(lyd_val_unres_ht_add(*node, lydctx->node_types));
     }
     return LY_SUCCESS;
 }
@@ -326,7 +326,7 @@ lyd_parser_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct 
         }
         if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {
             /* remember we need to evaluate this node's when */
-            LY_CHECK_RET(ly_set_add(&lydctx->node_when, node, 1, NULL));
+            LY_CHECK_RET(lyd_val_unres_ht_add(node, lydctx->node_when));
         }
     }
 
@@ -391,8 +391,9 @@ lyd_parser_validate_new_implicit(struct lyd_ctx *lydctx, struct lyd_node *node)
     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
     /* add any missing default children */
-    r = lyd_new_implicit_r(node, lyd_node_child_p(node), NULL, NULL, &lydctx->node_when, &lydctx->node_types,
-            &lydctx->ext_val, (lydctx->val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, lydctx->val_getnext_ht, NULL);
+    r = lyd_new_implicit_r(node, lyd_node_child_p(node), NULL, NULL, lydctx->node_when, lydctx->node_types,
+            &lydctx->ext_val, (lydctx->val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0,
+            lydctx->val_getnext_ht, NULL);
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
 cleanup:

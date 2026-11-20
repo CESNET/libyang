@@ -869,7 +869,7 @@ set_init(struct lyxp_set *new, const struct lyxp_set *set)
     new->root_type = set->root_type;
     new->context_op = set->context_op;
     new->tree = set->tree;
-    new->unres_ht = set->unres_ht;
+    new->val_unres = set->val_unres;
     new->cur_mod = set->cur_mod;
     new->format = set->format;
     new->prefix_data = set->prefix_data;
@@ -1706,7 +1706,7 @@ set_comp_canonize(struct lyxp_set *set, const struct lyxp_set_node *xp_node)
 
     /* print canonized string, ignore errors, the value may not satisfy schema constraints */
     r = lyd_value_validate3(set->ctx, type, set->val.str, strlen(set->val.str), set->format, set->prefix_data,
-            LYD_HINT_DATA, xp_node->node, set->tree, set->unres_ht, xp_node->node->schema, 0, NULL, &canon);
+            LYD_HINT_DATA, xp_node->node, set->tree, set->val_unres, xp_node->node->schema, 0, NULL, &canon);
     if (r && (r != LY_EINCOMPLETE)) {
         /* invalid value, fine */
         return LY_SUCCESS;
@@ -4223,7 +4223,7 @@ xpath_deref_type(const struct lyd_node *ctx_node, struct lyd_value *value, const
     /* does not work for leafref, it is using the realtype of its target */
     if (value->realtype->basetype == LY_TYPE_INST) {
         /* use the realtype in case of a union */
-        r = ly_path_eval(value->target, set->tree, set->unres_ht, NULL, &node);
+        r = ly_path_eval(value->target, set->tree, set->val_unres, NULL, &node);
         if (!r) {
             /* insert it */
             set_insert_node(set, node, 0, LYXP_NODE_ELEM, 0);
@@ -4256,7 +4256,7 @@ xpath_deref_type(const struct lyd_node *ctx_node, struct lyd_value *value, const
         assert(lref_t->realtype == value->realtype);
 
         /* find leafref target */
-        r = lyplg_type_resolve_leafref(lref_t, ctx_node, value, set->tree, set->unres_ht, &targets, &errmsg);
+        r = lyplg_type_resolve_leafref(lref_t, ctx_node, value, set->tree, set->val_unres, &targets, &errmsg);
         if (!r) {
             /* insert nodes into set */
             for (i = 0; i < targets->count; ++i) {
@@ -6004,7 +6004,7 @@ moveto_node_check(const struct lyd_node *node, enum lyxp_node_type node_type, co
     }
 
     /* unres check, accept the context node because it should only be the path ".", we have checked the when is valid before */
-    if ((node != set->cur_node) && lyd_validate_node_is_unres(node, set->unres_ht)) {
+    if ((node != set->cur_node) && lyd_validate_node_is_unres(node, set->val_unres)) {
         return LY_EINCOMPLETE;
     }
 
@@ -6419,7 +6419,7 @@ moveto_node_hash_child(struct lyxp_set *set, const struct lysc_node *scnode, con
         LY_CHECK_ERR_GOTO(r && (r != LY_ENOTFOUND), ret = r, cleanup);
 
         /* unres check */
-        if (sub && lyd_validate_node_is_unres(sub, set->unres_ht)) {
+        if (sub && lyd_validate_node_is_unres(sub, set->val_unres)) {
             ret = LY_EINCOMPLETE;
             goto cleanup;
         }
@@ -6554,7 +6554,7 @@ moveto_node_try_compile_predicate_append(const struct lyxp_expr *exp, uint32_t t
     /* evaluate the value subexpression with the root context node */
     lyxp_set_free_content(&set2);
     LY_CHECK_GOTO(rc = lyxp_eval(set->ctx, val_exp, set->cur_mod, set->format, set->prefix_data, set->cur_node,
-            ctx_node, set->tree, set->unres_ht, NULL, &set2, 0), cleanup);
+            ctx_node, set->tree, set->val_unres, NULL, &set2, 0), cleanup);
 
     /* cast it into a string */
     LY_CHECK_GOTO(rc = lyxp_set_cast(&set2, LYXP_SET_STRING), cleanup);
@@ -10222,8 +10222,8 @@ lyxp_get_root_type(const struct lyd_node *ctx_node, const struct lysc_node *ctx_
 LY_ERR
 lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct lys_module *cur_mod,
         LY_VALUE_FORMAT format, void *prefix_data, const struct lyd_node *cur_node, const struct lyd_node *ctx_node,
-        const struct lyd_node *tree, const struct ly_ht *unres_ht, const struct lyxp_var *vars, struct lyxp_set *set,
-        uint32_t options)
+        const struct lyd_node *tree, const struct lyd_val_unres *val_unres, const struct lyxp_var *vars,
+        struct lyxp_set *set, uint32_t options)
 {
     uint32_t tok_idx = 0;
     LY_ERR rc;
@@ -10261,7 +10261,7 @@ lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct ly
             set->context_op && !(set->context_op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF));
             set->context_op = set->context_op->parent) {}
     set->tree = tree;
-    set->unres_ht = unres_ht;
+    set->val_unres = val_unres;
     set->cur_mod = cur_mod;
     set->format = format;
     set->prefix_data = prefix_data;

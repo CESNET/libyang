@@ -30,9 +30,9 @@ extern "C" {
 #endif
 
 struct ly_ctx;
-struct ly_ht;
 struct ly_path;
 struct lyd_node;
+struct lyd_val_unres;
 struct lyd_value;
 struct lyd_value_xpath10;
 struct lys_module;
@@ -596,16 +596,16 @@ LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_validate_value_clb)(const struct ly
  * @param[in] type Original type of the value (not necessarily the stored one) being validated.
  * @param[in] ctx_node Value data context node for validation.
  * @param[in] tree External data tree (e.g. when validating RPC/Notification) with possibly referenced data.
- * @param[in] unres_ht Hash table with yet unresolved nodes in @p tree.
+ * @param[in] val_unres Val unres structure with yet unresolved nodes in @p tree.
  * @param[in,out] storage Storage of the value successfully filled by ::lyplg_type_store_clb. May be modified.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic
  * error message is prepared instead. The error structure can be created by ::ly_err_new().
  * @return LY_SUCCESS on success,
- * @return LY_EINCOMPLETE in case the validation cannot be performed because it depends on a node found in @p unres_ht,
+ * @return LY_EINCOMPLETE in case the validation cannot be performed because it depends on a node found in @p val_unres,
  * @return LY_ERR value on error.
  */
 LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_validate_tree_clb)(const struct ly_ctx *ctx, const struct lysc_type *type,
-        const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct ly_ht *unres_ht,
+        const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lyd_val_unres *val_unres,
         struct lyd_value *storage, struct ly_err_item **err);
 
 /**
@@ -900,16 +900,16 @@ LIBYANG_API_DECL LY_ERR lyplg_type_validate_patterns(const struct ly_ctx *ctx, s
  * @param[in] node Context node.
  * @param[in] value Target value.
  * @param[in] tree Full data tree to search in.
- * @param[in] unres_ht Hash table with yet unresolved nodes in @p tree.
+ * @param[in] val_unres Val unres structure with yet unresolved nodes in @p tree.
  * @param[out] targets Pointer to set of target nodes, optional.
  * @param[out] errmsg Error message in case of error.
  * @return LY_SUCCESS on success;
- * @return LY_EINCOMPLETE in case a node in @p unres_ht is referenced;
+ * @return LY_EINCOMPLETE in case a node in @p val_unres is referenced;
  * @return LY_ERR value on error.
  */
 LIBYANG_API_DECL LY_ERR lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node,
-        struct lyd_value *value, const struct lyd_node *tree, const struct ly_ht *unres_ht, struct ly_set **targets,
-        char **errmsg);
+        struct lyd_value *value, const struct lyd_node *tree, const struct lyd_val_unres *val_unres,
+        struct ly_set **targets, char **errmsg);
 
 /**
  * @brief Learn the position of the highest set bit in a number. Represents also the least amount of bits

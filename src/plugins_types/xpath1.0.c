@@ -432,7 +432,7 @@ cleanup:
  */
 static LY_ERR
 lyplg_type_validate_tree_xpath10(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *UNUSED(type),
-        const struct lyd_node *ctx_node, const struct lyd_node *UNUSED(tree), const struct ly_ht *UNUSED(unres_ht),
+        const struct lyd_node *ctx_node, const struct lyd_node *UNUSED(tree), const struct lyd_val_unres *UNUSED(val_unres),
         struct lyd_value *storage, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;

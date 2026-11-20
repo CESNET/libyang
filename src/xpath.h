@@ -310,7 +310,7 @@ struct lyxp_set {
     enum lyxp_node_type root_type;          /**< Type of root node. */
     const struct lysc_node *context_op;     /**< Schema of the current node. */
     const struct lyd_node *tree;            /**< Data tree on which to perform the evaluation. */
-    const struct ly_ht *unres_ht;           /**< Optional hash table with all the yet unresolved nodes. */
+    const struct lyd_val_unres *val_unres;  /**< Optional val unres structure with all the yet unresolved nodes. */
     const struct lys_module *cur_mod;       /**< Current module for the expression (where it was "instantiated"). */
     LY_VALUE_FORMAT format;                 /**< Format of the XPath expression. */
     void *prefix_data;                      /**< Format-specific prefix data (see ::ly_resolve_prefix). */
@@ -343,18 +343,18 @@ const char *lyxp_token2str(enum lyxp_token tok);
  * subexpression is being evaluated.
  * @param[in] tree Data tree on which to perform the evaluation, it must include all the available data (including
  * the tree of @p ctx_node). Can be any node of the tree, it is adjusted.
- * @param[in] unres_ht Hash table with all the yet unresolved nodes. If NULL, all the nodes are considered resolved.
+ * @param[in] val_unres Val unres structure with unresolved nodes in @p tree, may be NULL.
  * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
  * @param[out] set Result set.
  * @param[in] options Whether to apply some evaluation restrictions.
  * @return LY_EVALID for invalid argument types/count;
- * @return LY_EINCOMPLETE for incomplete evaluation depending on a node in @p unres_ht, if set;
+ * @return LY_EINCOMPLETE for incomplete evaluation depending on a node in @p val_unres, if set;
  * @return LY_EINVAL, LY_EMEM, LY_EINT for other errors.
  */
 LY_ERR lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct lys_module *cur_mod,
         LY_VALUE_FORMAT format, void *prefix_data, const struct lyd_node *cur_node, const struct lyd_node *ctx_node,
-        const struct lyd_node *tree, const struct ly_ht *unres_ht, const struct lyxp_var *vars, struct lyxp_set *set,
-        uint32_t options);
+        const struct lyd_node *tree, const struct lyd_val_unres *val_unres, const struct lyxp_var *vars,
+        struct lyxp_set *set, uint32_t options);
 
 /**
  * @brief Get all the partial XPath nodes (atoms) that are required for @p exp to be evaluated.
