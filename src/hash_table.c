@@ -477,7 +477,6 @@ lyht_remove_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_va
     uint32_t rec_idx;
 
     if (lyht_find_rec(ht, val_p, hash, 1, ht->val_equal, NULL, &found_rec)) {
-        LOGARG(NULL, hash);
         return LY_ENOTFOUND;
     }
 

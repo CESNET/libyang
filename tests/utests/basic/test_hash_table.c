@@ -93,7 +93,6 @@ test_ht_basic(void **UNUSED(state))
     assert_int_equal(LY_SUCCESS, lyht_remove(ht, &i, i));
     assert_int_equal(LY_ENOTFOUND, lyht_find(ht, &i, i, NULL));
     assert_int_equal(LY_ENOTFOUND, lyht_remove(ht, &i, i));
-    CHECK_LOG_LASTMSG("Invalid argument hash (lyht_remove_with_resize_cb()).");
 
     lyht_free(ht, NULL);
 }
@@ -123,7 +122,6 @@ test_ht_resize(void **UNUSED(state))
     /* removing not present data should fail */
     for (i = 0; i < 2; ++i) {
         assert_int_equal(LY_ENOTFOUND, lyht_remove(ht, &i, i));
-        CHECK_LOG_LASTMSG("Invalid argument hash (lyht_remove_with_resize_cb()).");
     }
     /* removing present data, resize should happened
      * when we are below 25% of the table filled, so with 3 records left */
