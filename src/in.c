@@ -164,6 +164,9 @@ ly_in_file(struct ly_in *in, FILE *f)
     prev_f = in->method.f;
 
     if (f) {
+        /* a stream without a descriptor cannot be mapped, and ly_in_fd() would take -1 as a query */
+        LY_CHECK_ERR_RET(fileno(f) == -1, LOGERR(NULL, LY_EINVAL, "Input stream has no file descriptor."), NULL);
+
         /* convert LY_IN_FILE handler into LY_IN_FD to be able to update it via ly_in_fd() */
         in->type = LY_IN_FD;
         in->method.fd = fileno(prev_f);
