@@ -195,6 +195,13 @@ test_input_filepath(void **UNUSED(state))
     assert_int_equal(LY_EINVAL, ly_in_new_filepath(NULL, 0, NULL));
     assert_int_equal(LY_EINVAL, ly_in_new_filepath(path1, 0, NULL));
     assert_ptr_equal(((void *)-1), ly_in_filepath(NULL, NULL, 0));
+    assert_ptr_equal(((void *)-1), ly_in_filepath(NULL, path1, 0));
+
+    /* changing the file path of a handler of another type is an error */
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory("data", &in));
+    assert_ptr_equal(((void *)-1), ly_in_filepath(in, path1, 0));
+    assert_int_equal(LY_IN_MEMORY, ly_in_type(in));
+    ly_in_free(in, 0);
 
     assert_int_equal(LY_SUCCESS, ly_in_new_filepath(path1, 0, &in));
     assert_int_equal(LY_IN_FILEPATH, ly_in_type(in));
