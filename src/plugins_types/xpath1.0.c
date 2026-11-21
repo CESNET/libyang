@@ -37,7 +37,7 @@
  */
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_nametest, const struct lys_module **context_mod,
+lyplg_type_xpath10_print_token(const char *token, uint32_t tok_len, ly_bool is_nametest, const struct lys_module **context_mod,
         const struct ly_ctx *resolve_ctx, LY_VALUE_FORMAT resolve_format, const void *resolve_prefix_data,
         LY_VALUE_FORMAT get_format, void *get_prefix_data, char **token_p, struct ly_err_item **err)
 {
@@ -138,7 +138,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-xpath10_print_subexpr_r(uint16_t *cur_idx, enum lyxp_token end_tok, const struct lys_module *context_mod,
+xpath10_print_subexpr_r(uint32_t *cur_idx, enum lyxp_token end_tok, const struct lys_module *context_mod,
         const struct lyd_value_xpath10 *xp_val, LY_VALUE_FORMAT format, void *prefix_data, char **str_value,
         uint32_t *str_len, struct ly_err_item **err)
 {
@@ -213,8 +213,7 @@ lyplg_type_print_xpath10_value(const struct lyd_value_xpath10 *xp_val, LY_VALUE_
         char **str_value, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    uint16_t expr_idx = 0;
-    uint32_t str_len = 0;
+    uint32_t expr_idx = 0, str_len = 0;
     const struct lys_module *local_mod = NULL;
     struct ly_set *mods;
 
