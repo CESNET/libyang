@@ -241,6 +241,67 @@ test_print(void **state)
 }
 
 static void
+test_print_long(void **state)
+{
+    const char *schema = MODULE_CREATE_YANG("a", "leaf l {type yang:xpath1.0;}");
+    const char *start = "<l xmlns=\"urn:tests:a\">", *end = "</l>";
+    const char *pred_start = "/l[.='", *pred_end = "']";
+    char *data, *expected;
+    struct lyd_node *tree;
+    uint32_t i, start_len, pred_len, exp_len;
+    const uint32_t lit_len = 70000, tok_cnt = 40000;
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+    start_len = strlen(start);
+    pred_len = strlen(pred_start);
+
+    /* a literal token longer than UINT16_MAX characters */
+    exp_len = pred_len + lit_len + strlen(pred_end);
+    expected = malloc(exp_len + 1);
+    assert_non_null(expected);
+    memcpy(expected, pred_start, pred_len);
+    memset(expected + pred_len, 'x', lit_len);
+    memcpy(expected + pred_len + lit_len, pred_end, strlen(pred_end) + 1);
+
+    data = malloc(start_len + exp_len + strlen(end) + 1);
+    assert_non_null(data);
+    memcpy(data, start, start_len);
+    memcpy(data + start_len, expected, exp_len);
+    memcpy(data + start_len + exp_len, end, strlen(end) + 1);
+
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    assert_string_equal(expected, lyd_get_value(tree));
+    lyd_free_tree(tree);
+    free(data);
+    free(expected);
+
+    /* an expression with more than UINT16_MAX tokens, union operators are printed with spaces */
+    exp_len = 1 + (tok_cnt * 4);
+    expected = malloc(exp_len + 1);
+    assert_non_null(expected);
+    expected[0] = '.';
+    for (i = 0; i < tok_cnt; ++i) {
+        memcpy(expected + 1 + (i * 4), " | .", 4);
+    }
+    expected[exp_len] = '\0';
+
+    data = malloc(start_len + 1 + (tok_cnt * 2) + strlen(end) + 1);
+    assert_non_null(data);
+    memcpy(data, start, start_len);
+    data[start_len] = '.';
+    for (i = 0; i < tok_cnt; ++i) {
+        memcpy(data + start_len + 1 + (i * 2), "|.", 2);
+    }
+    memcpy(data + start_len + 1 + (tok_cnt * 2), end, strlen(end) + 1);
+
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    assert_string_equal(expected, lyd_get_value(tree));
+    lyd_free_tree(tree);
+    free(data);
+    free(expected);
+}
+
+static void
 test_duplicate(void **state)
 {
     const char *schema = MODULE_CREATE_YANG("a", "leaf l1 {type yang:date-and-time;} leaf l2 {type yang:xpath1.0;}");
@@ -388,6 +449,7 @@ main(void)
     const struct CMUnitTest tests[] = {
         UTEST(test_data_xml),
         UTEST(test_print),
+        UTEST(test_print_long),
         UTEST(test_duplicate),
         UTEST(test_lyb),
         UTEST(test_sort),

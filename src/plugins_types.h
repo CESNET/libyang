@@ -354,7 +354,7 @@ LIBYANG_API_DECL ly_bool lyplg_type_bits_is_bit_set(const char *bitmap, uint32_t
  * @param[out] err Error structure on error.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_nametest,
+LIBYANG_API_DECL LY_ERR lyplg_type_xpath10_print_token(const char *token, uint32_t tok_len, ly_bool is_nametest,
         const struct ly_ctx *resolve_ctx, LY_VALUE_FORMAT resolve_format, const void *resolve_prefix_data,
         LY_VALUE_FORMAT get_format, void *get_prefix_data, const struct lys_module **ctx_mod,
         const struct lysc_node **ctx_node, char **token_p, struct ly_err_item **err);
