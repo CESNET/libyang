@@ -1458,7 +1458,7 @@ LIBYANG_API_DECL LY_ERR lyd_new_term_raw_canon(struct lyd_node *parent, const st
  * @brief Deprecated, use ::lyd_new_term_raw_canon() instead. Produces nodes without canonical values.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_term_raw(struct lyd_node *parent, const struct lys_module *module, const char *name,
-        const void *value_ptr, uint32_t value_size, uint32_t options, struct lyd_node **node) _DEPRECATED;
+        const void *value_ptr, uint32_t value_size, uint32_t options, struct lyd_node **node) LY_DEPRECATED;
 
 /**
  * @brief Create a new any node in the data tree.
