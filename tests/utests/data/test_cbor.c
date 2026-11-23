@@ -629,7 +629,7 @@ test_restconf_notification(void **state)
 static void
 test_restconf_notification_invalid(void **state)
 {
-    struct lyd_node *tree, *ntf, *rpc;
+    struct lyd_node *tree, *ntf, *rpc = NULL;
     struct ly_in *in;
     uint32_t i;
 

@@ -1387,7 +1387,7 @@ test_multi_error(void **state)
 static void
 test_require_instance(void **state)
 {
-    struct lyd_node *tree, *match;
+    struct lyd_node *tree, *match = NULL;
     struct lyd_node_term *term;
     const char *schema =
             "module ri {\n"

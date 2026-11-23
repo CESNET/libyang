@@ -410,7 +410,7 @@ test_rpc(void **state)
             "    <l>val</l>\n"
             "</r>";
     struct ly_in *in;
-    struct lyd_node *tree;
+    struct lyd_node *tree = NULL;
     struct ly_set *set;
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
