@@ -572,7 +572,7 @@ LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_store_clb)(const struct ly_ctx *ctx
  * @brief Callback to validate the stored value local semantic constraints of the type.
  *
  * This callback should perform any required validation of the value after it is stored. If the stored value is always
- * valid disregarding the accessible data tree, this callback should not be defined (but ::lyplg_type_validate_tree()
+ * valid disregarding the accessible data tree, this callback should not be defined (but ::lyplg_type_validate_tree_clb()
  * may be).
  *
  * @param[in] ctx libyang context.

@@ -956,7 +956,7 @@ LIBYANG_API_DECL LY_ERR lyplg_ext_compiled_print_add_addr(struct ly_ht *addr_ht,
 /**
  * @brief Extension plugin implementing various aspects of a YANG extension.
  *
- * Every plugin should have at least either ::struct lyplg_ext.parse() or ::struct lyplg_ext.compile() callback defined
+ * Every plugin should have at least either ::lyplg_ext.parse() or ::lyplg_ext.compile() callback defined
  * but other than that **all** the callbacks are **optional**.
  */
 struct lyplg_ext {
