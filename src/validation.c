@@ -2598,7 +2598,8 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
         struct ly_set *meta_types_p, struct ly_set *ext_val_p, struct lyd_node **diff)
 {
     LY_ERR rc = LY_SUCCESS;
-    struct lyd_node *tree_sibling, *tree_parent, *op_subtree, *op_parent, *op_sibling_before, *op_sibling_after, *child;
+    struct lyd_node *tree_sibling, *tree_parent, *op_subtree = NULL, *op_parent = NULL, *op_sibling_before = NULL;
+    struct lyd_node *op_sibling_after = NULL, *child;
     struct ly_set meta_types = {0}, ext_val = {0};
     struct ly_ht *node_when = NULL, *node_types = NULL, *getnext_ht = NULL;
 
