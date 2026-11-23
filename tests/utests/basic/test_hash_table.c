@@ -147,7 +147,7 @@ test_ht_collisions(void **UNUSED(state))
 {
     uint32_t i, val;
     struct ly_ht *ht;
-    struct ly_ht_rec *rec;
+    struct ly_ht_rec *rec, **hlist_recs = NULL;
 
     assert_non_null(ht = lyht_new(8, sizeof(int), ht_equal_clb, NULL, 1));
 
@@ -166,7 +166,7 @@ test_ht_collisions(void **UNUSED(state))
 
     /* iterate over records while removing items */
     i = 0;
-    LYHT_ITER_ALL_RECS_SAFE(ht, rec) {
+    LYHT_ITER_ALL_RECS_SAFE(ht, &hlist_recs, rec) {
         switch (i) {
         case 0:
             assert_int_equal(2, *(int *)&rec->val);
@@ -215,7 +215,7 @@ test_ht_collisions(void **UNUSED(state))
     }
 
     /* iterate over records while removing items */
-    LYHT_ITER_ALL_RECS_SAFE(ht, rec) {
+    LYHT_ITER_ALL_RECS_SAFE(ht, &hlist_recs, rec) {
         switch (*(int *)&rec->val) {
         case 0:
             /* remove current value */

@@ -152,13 +152,14 @@ struct ly_ht_rec *lyht_get_rec_next_safe(struct ly_ht *ht, uint32_t hlist_idx, s
  * Needs to be followed by '{'.
  *
  * @param[in] ht Hash table.
+ * @param[in,out] hlist_recs Cached hlist records, value NULL on first call, free with LYA_FREE on loop break.
  * @param[out] rec Record iterator to use.
  */
-#define LYHT_ITER_ALL_RECS_SAFE(ht, rec)                                                         \
-    for (struct { uint32_t hlist_idx; struct ly_ht_rec **hlist_recs; uint32_t rec_idx; } _iter = {0};   \
-            _iter.hlist_idx < ht->size;                                                     \
-            _iter.hlist_idx++)                                                              \
-        while ((rec = lyht_get_rec_next_safe(ht, _iter.hlist_idx, &_iter.hlist_recs, &_iter.rec_idx)))
+#define LYHT_ITER_ALL_RECS_SAFE(ht, hlist_recs, rec)                    \
+    for (struct { uint32_t hlist_idx; uint32_t rec_idx; } _iter = {0};  \
+            _iter.hlist_idx < ht->size;                                 \
+            _iter.hlist_idx++)                                          \
+        while ((rec = lyht_get_rec_next_safe(ht, _iter.hlist_idx, hlist_recs, &_iter.rec_idx)))
 
 /**
  * @brief Dictionary hash table record.

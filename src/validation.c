@@ -599,7 +599,7 @@ lyd_validate_unres_when(struct lyd_node **tree, struct lyd_val_unres *val_unres,
         uint32_t val_opts, struct ly_ht *node_types, struct lyd_node **diff)
 {
     LY_ERR rc = LY_SUCCESS, r;
-    struct ly_ht_rec *rec;
+    struct ly_ht_rec *rec, **hlist_recs = NULL;
     const struct lysc_when *disabled;
     struct lyd_node *node = NULL;
 
@@ -607,7 +607,7 @@ lyd_validate_unres_when(struct lyd_node **tree, struct lyd_val_unres *val_unres,
         return LY_SUCCESS;
     }
 
-    LYHT_ITER_ALL_RECS_SAFE(node_when, rec) {
+    LYHT_ITER_ALL_RECS_SAFE(node_when, &hlist_recs, rec) {
         node = *(struct lyd_node **)rec->val;
 
         /* evaluate all when expressions that affect this node's existence */
@@ -652,6 +652,7 @@ lyd_validate_unres_when(struct lyd_node **tree, struct lyd_val_unres *val_unres,
     }
 
 cleanup:
+    LYA_FREE(hlist_recs);
     return rc;
 }
 
@@ -662,7 +663,7 @@ lyd_validate_unres(struct lyd_node **tree, enum lyd_type data_type, struct ly_ht
     LY_ERR r, rc = LY_SUCCESS;
     const struct ly_ctx *ctx = (*tree ? LYD_CTX(*tree) : NULL);
     uint32_t i, unres_count, prev_count;
-    struct ly_ht_rec *rec;
+    struct ly_ht_rec *rec, **hlist_recs = NULL;
     struct lyd_val_unres val_unres = {0}, *val_unres_p;
     struct ly_ht *aux_ht = NULL;
     const struct lyd_node *node1, *node2;
@@ -740,7 +741,7 @@ lyd_validate_unres(struct lyd_node **tree, enum lyd_type data_type, struct ly_ht
         LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
         /* resolve incompletely validated terminal values */
-        LYHT_ITER_ALL_RECS_SAFE(node_types, rec) {
+        LYHT_ITER_ALL_RECS_SAFE(node_types, &hlist_recs, rec) {
             struct lyd_node_term *node = *(struct lyd_node_term **)rec->val;
             struct lysc_type *type = ((struct lysc_node_leaf *)node->schema)->type;
 
@@ -779,6 +780,7 @@ lyd_validate_unres(struct lyd_node **tree, enum lyd_type data_type, struct ly_ht
 
 cleanup:
     lyht_free(aux_ht, NULL);
+    LYA_FREE(hlist_recs);
     return rc;
 }
 
