@@ -617,8 +617,7 @@ lydcbor_metadata_finish(struct lyd_cbor_ctx *lydctx, struct lyd_node **first_p)
     const char *prev = NULL;
 
     /* finish linking metadata */
-    LY_LIST_FOR_SAFE(*first_p, next, attr)
-    {
+    LY_LIST_FOR_SAFE(*first_p, next, attr) {
         struct lyd_node_opaq *meta_container = (struct lyd_node_opaq *)attr;
         uint64_t match = 0;
         ly_bool is_attr;
@@ -639,8 +638,7 @@ lydcbor_metadata_finish(struct lyd_cbor_ctx *lydctx, struct lyd_node **first_p)
         }
 
         /* find the corresponding data node */
-        LY_LIST_FOR(*first_p, node)
-        {
+        LY_LIST_FOR(*first_p, node) {
             if (!node->schema) {
                 /* opaq node */
                 if (strcmp(&meta_container->name.name[1], ((struct lyd_node_opaq *)node)->name.name)) {
@@ -659,8 +657,7 @@ lydcbor_metadata_finish(struct lyd_cbor_ctx *lydctx, struct lyd_node **first_p)
                     continue;
                 }
 
-                LY_LIST_FOR(meta_container->child, meta_iter)
-                {
+                LY_LIST_FOR(meta_container->child, meta_iter) {
                     struct lyd_node_opaq *meta = (struct lyd_node_opaq *)meta_iter;
 
                     ret = lyd_create_attr(node, NULL, lydctx->cborctx->ctx, meta->name.name, strlen(meta->name.name),
@@ -685,8 +682,7 @@ lydcbor_metadata_finish(struct lyd_cbor_ctx *lydctx, struct lyd_node **first_p)
                     continue;
                 }
 
-                LY_LIST_FOR(meta_container->child, meta_iter)
-                {
+                LY_LIST_FOR(meta_container->child, meta_iter) {
                     struct lyd_node_opaq *meta = (struct lyd_node_opaq *)meta_iter;
                     struct lys_module *mod = NULL;
 
@@ -1122,8 +1118,7 @@ lydcbor_parse_attribute(struct lyd_cbor_ctx *lydctx, struct lyd_node *attr_node,
         }
 
         /* try to find the instance */
-        LY_LIST_FOR(parent ? lyd_child(parent) : *first_p, attr_node)
-        {
+        LY_LIST_FOR(parent ? lyd_child(parent) : *first_p, attr_node) {
             if (snode) {
                 if (attr_node->schema) {
                     if (attr_node->schema == snode) {
