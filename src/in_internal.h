@@ -53,4 +53,14 @@ struct ly_in {
 #define LY_IN_NEW_LINE(IN) \
     (IN)->line++
 
+/**
+ * @brief Check whether @p count bytes can be read from the bounded input.
+ *
+ * @param[in] in Input handler.
+ * @param[in] count Number of bytes to be read.
+ * @return LY_SUCCESS if the read is within bounds.
+ * @return LY_EDENIED if reading @p count bytes would exceed the input length.
+ */
+LY_ERR ly_in_check_read(const struct ly_in *in, size_t count);
+
 #endif /* LY_IN_INTERNAL_H_ */

@@ -226,7 +226,7 @@ void ly_log_dbg(uint32_t group, const char *format, ...);
     DUMMY) (FUNC, CTX, __VA_ARGS__)
 
 /* count sequence size for LY_VCODE_INCHILDSTMT validation error code */
-int LY_VCODE_INSTREXP_len(const char *str);
+int LY_VCODE_INSTREXP_len(const char *str, uint32_t str_len);
 
 /* default maximum characters to print in LY_VCODE_INCHILDSTMT */
 #define LY_VCODE_INSTREXP_MAXLEN 20

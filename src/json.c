@@ -779,8 +779,8 @@ lyjson_next_object_name(struct lyjson_ctx *jsonctx)
         lyjson_skip_ws(jsonctx);
 
         if (*jsonctx->in->current != ':') {
-            LOGVAL(jsonctx->ctx, NULL, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current), jsonctx->in->current,
-                    "a JSON value name-separator ':'");
+            LOGVAL(jsonctx->ctx, NULL, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current, 0),
+                    jsonctx->in->current, "a JSON value name-separator ':'");
             return LY_EVALID;
         }
         ly_in_skip(jsonctx->in, 1);
@@ -795,7 +795,7 @@ lyjson_next_object_name(struct lyjson_ctx *jsonctx)
 
     default:
         /* unexpected value */
-        LOGVAL(jsonctx->ctx, NULL, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current),
+        LOGVAL(jsonctx->ctx, NULL, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current, 0),
                 jsonctx->in->current, "a JSON object name");
         return LY_EVALID;
     }
@@ -899,7 +899,7 @@ lyjson_next_value(struct lyjson_ctx *jsonctx, ly_bool array_end)
 
     default:
 unexpected_value:
-        LOGVAL(jsonctx->ctx, NULL, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current),
+        LOGVAL(jsonctx->ctx, NULL, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current, 0),
                 jsonctx->in->current, "a JSON value");
         return LY_EVALID;
     }
@@ -941,7 +941,7 @@ lyjson_next_object_item(struct lyjson_ctx *jsonctx)
 
     default:
         /* unexpected value */
-        LOGVAL(jsonctx->ctx, NULL, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current),
+        LOGVAL(jsonctx->ctx, NULL, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current, 0),
                 jsonctx->in->current, "a JSON object-end or next item");
         return LY_EVALID;
     }
@@ -978,7 +978,7 @@ lyjson_next_array_item(struct lyjson_ctx *jsonctx)
 
     default:
         /* unexpected value */
-        LOGVAL(jsonctx->ctx, NULL, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current),
+        LOGVAL(jsonctx->ctx, NULL, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current, 0),
                 jsonctx->in->current, "a JSON array-end or next item");
         return LY_EVALID;
     }

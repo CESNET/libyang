@@ -27,7 +27,7 @@ struct ly_in;
 struct ly_out;
 
 /* Macro to test if character is whitespace */
-#define is_xmlws(c) (c == 0x20 || c == 0x9 || c == 0xa || c == 0xd)
+#define is_xmlws(c) (c == ' ' || c == '\t' || c == '\n' || c == '\r')
 
 /* Macro to test if character is allowed to be a first character of an qualified identifier */
 #define is_xmlqnamestartchar(c) ((c >= 'a' && c <= 'z') || c == '_' || \
