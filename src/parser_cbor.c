@@ -658,6 +658,13 @@ lydcbor_metadata_finish(struct lyd_cbor_ctx *lydctx, struct lyd_node **first_p)
                 }
 
                 LY_LIST_FOR(meta_container->child, meta_iter) {
+                    if (meta_iter->schema) {
+                        /* matched a top-level schema node, cannot be valid metadata */
+                        LOGVAL(lydctx->cborctx->ctx, NULL, LYVE_SYNTAX, "Invalid metadata \"%s\".", LYD_NAME(meta_iter));
+                        ret = LY_EVALID;
+                        goto cleanup;
+                    }
+
                     struct lyd_node_opaq *meta = (struct lyd_node_opaq *)meta_iter;
 
                     ret = lyd_create_attr(node, NULL, lydctx->cborctx->ctx, meta->name.name, strlen(meta->name.name),
@@ -683,6 +690,13 @@ lydcbor_metadata_finish(struct lyd_cbor_ctx *lydctx, struct lyd_node **first_p)
                 }
 
                 LY_LIST_FOR(meta_container->child, meta_iter) {
+                    if (meta_iter->schema) {
+                        /* matched a top-level schema node, cannot be valid metadata */
+                        LOGVAL(lydctx->cborctx->ctx, NULL, LYVE_SYNTAX, "Invalid metadata \"%s\".", LYD_NAME(meta_iter));
+                        ret = LY_EVALID;
+                        goto cleanup;
+                    }
+
                     struct lyd_node_opaq *meta = (struct lyd_node_opaq *)meta_iter;
                     struct lys_module *mod = NULL;
 
