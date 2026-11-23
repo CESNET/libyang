@@ -1518,6 +1518,7 @@ schema_mount_compiled_print(const struct lysc_ext_instance *orig_ext, struct lys
             ctx_mem = *mem;
             LY_CHECK_RET(ly_ctx_compiled_print(orig_sm_data->shared->schemas[i].ctx, ctx_mem, mem));
             LY_CHECK_RET(ly_ctx_new_printed(ctx_mem, &sm_data->shared->schemas[i].ctx));
+            assert(ext->module->ctx);
             LY_CHECK_RET(lyplg_ext_set_parent_ctx(ctx_mem, ext->module->ctx));
             sm_data->shared->schemas[i].ctx = ctx_mem;
 

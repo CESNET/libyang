@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Compiled context printer
  *
- * Copyright (c) 2024 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2024 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -1646,8 +1646,7 @@ ctxp_module(const struct lys_module *orig_mod, struct lys_module *mod, struct ly
 {
     LYA_COUNT_T u;
 
-    /* ctx */
-    mod->ctx = ly_ctx_compiled_addr_ht_get(addr_ht, orig_mod->ctx, 0);
+    /* ctx already set */
 
     /* strings */
     mod->name = ly_ctx_compiled_addr_ht_get(addr_ht, orig_mod->name, 0);
@@ -1728,8 +1727,10 @@ ly_ctx_compiled_print_context(const struct ly_ctx *orig_ctx, struct ly_ctx *ctx,
     /* modules, referenced, 2 loops because of augments (forward reference) */
     ctxp_set(&orig_ctx->modules, &ctx->modules, mem);
     for (i = 0; i < ctx->modules.count; ++i) {
-        /* allocate the shared module and store its new address in HT so it can be referenced */
+        /* allocate the shared module and store its new address in HT so it can be referenced;
+         * set only the context for extension callbacks (schema-mount) */
         ctx->modules.objs[i] = *mem;
+        ((struct lys_module *)*mem)->ctx = ctx;
         *mem = (char *)*mem + LY_CTXP_MEM_SIZE(sizeof(struct lys_module));
         ly_ctx_compiled_addr_ht_add(addr_ht, orig_ctx->modules.objs[i], ctx->modules.objs[i]);
     }
