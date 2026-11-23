@@ -1,9 +1,10 @@
 /**
  * @file test_xml.c
- * @author: Radek Krejci <rkrejci@cesnet.cz>
+ * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for functions from xml.c
  *
- * Copyright (c) 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2018 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -400,6 +401,89 @@ test_simple_xml(void **state)
     tree = NULL;
 }
 
+static void
+test_bound_input(void **state)
+{
+    struct ly_ctx *ctx = UTEST_LYCTX;
+    struct lyd_node *tree;
+    struct ly_in *in;
+    const char *test_input;
+    const char *yang = "module test {"
+            " namespace \"urn:test\";"
+            " prefix t;"
+            " container elem1 {"
+            "   leaf elem2 {"
+            "     type string;"
+            "   }"
+            " }"
+            "}";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yang, LYS_IN_YANG, NULL));
+
+    /* valid */
+    test_input = "<elem1 xmlns=\"urn:test\" attr1=\"value\"> <elem2>value</elem2> </elem1>";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(test_input, strlen(test_input), &in));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data(ctx, NULL, in, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+
+    lyd_free_all(tree);
+
+    /* invalid */
+    test_input = "<elem1 xmlns=\"urn:test\" attr1=\"value\"> <elem2>value</elem2> </elem1";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(test_input, strlen(test_input), &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(ctx, NULL, in, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    test_input = "<elem1 xmlns=\"urn:test\" attr1=\"value\"> <elem2>value</elem2>";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(test_input, strlen(test_input), &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(ctx, NULL, in, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    test_input = "<elem1 xmlns=\"urn:test\" attr1=\"value\"> <elem2>val";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(test_input, strlen(test_input), &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(ctx, NULL, in, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    test_input = "<elem1 xmlns=\"urn:test\" attr1=\"value\"> <";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(test_input, strlen(test_input), &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(ctx, NULL, in, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    test_input = "<elem1 xmlns=\"urn:test\" attr1=\"value\"";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(test_input, strlen(test_input), &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(ctx, NULL, in, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    test_input = "<elem1 xmlns=\"urn:test\" attr1=\"va";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(test_input, strlen(test_input), &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(ctx, NULL, in, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    test_input = "<elem1 xmlns=\"urn:test\" attr1=\"";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(test_input, strlen(test_input), &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(ctx, NULL, in, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    test_input = "<elem1 xmlns=\"urn:test\" attr1=";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(test_input, strlen(test_input), &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(ctx, NULL, in, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    test_input = "<elem1 xmlns=\"urn:test\" attr1";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(test_input, strlen(test_input), &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(ctx, NULL, in, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+}
+
 int
 main(void)
 {
@@ -410,6 +494,7 @@ main(void)
         UTEST(test_ns),
         UTEST(test_ns2),
         UTEST(test_simple_xml),
+        UTEST(test_bound_input),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

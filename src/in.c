@@ -18,6 +18,7 @@
 #include "in.h"
 #include "in_internal.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -39,22 +40,7 @@
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 
-LIBYANG_API_DEF LY_IN_TYPE
-ly_in_type(const struct ly_in *in)
-{
-    LY_CHECK_ARG_RET(NULL, in, LY_IN_ERROR);
-    return in->type;
-}
-
-/**
- * @brief Check whether @p count bytes can be read from the bounded input.
- *
- * @param[in] in Input handler.
- * @param[in] count Number of bytes to be read.
- * @return LY_SUCCESS if the read is within bounds.
- * @return LY_EDENIED if reading @p count bytes would exceed the input length.
- */
-static LY_ERR
+LY_ERR
 ly_in_check_read(const struct ly_in *in, size_t count)
 {
     size_t offset;
@@ -64,11 +50,19 @@ ly_in_check_read(const struct ly_in *in, size_t count)
     }
 
     offset = in->current - in->start;
-    if ((offset > in->length) || (count > in->length - offset)) {
+    assert(offset <= in->length);
+    if (count > in->length - offset) {
         return LY_EDENIED;
     }
 
     return LY_SUCCESS;
+}
+
+LIBYANG_API_DEF LY_IN_TYPE
+ly_in_type(const struct ly_in *in)
+{
+    LY_CHECK_ARG_RET(NULL, in, LY_IN_ERROR);
+    return in->type;
 }
 
 LIBYANG_API_DEF LY_ERR

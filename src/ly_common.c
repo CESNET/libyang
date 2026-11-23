@@ -1330,7 +1330,7 @@ ly_value_prefix_next(const char *str_begin, const char *str_end, uint32_t *len, 
 LY_ERR
 ly_getutf8(const char **input, uint32_t *utf8_char, uint32_t *bytes_read)
 {
-    uint32_t c, aux, len;
+    uint32_t c, i, aux, len;
 
     c = (*input)[0];
 
@@ -1359,7 +1359,7 @@ ly_getutf8(const char **input, uint32_t *utf8_char, uint32_t *bytes_read)
         len = 3;
 
         c &= 0x0f;
-        for (uint64_t i = 1; i <= 2; i++) {
+        for (i = 1; i <= 2; i++) {
             aux = (*input)[i];
             if ((aux & 0xc0) != 0x80) {
                 goto error;
@@ -1376,7 +1376,7 @@ ly_getutf8(const char **input, uint32_t *utf8_char, uint32_t *bytes_read)
         len = 4;
 
         c &= 0x07;
-        for (uint64_t i = 1; i <= 3; i++) {
+        for (i = 1; i <= 3; i++) {
             aux = (*input)[i];
             if ((aux & 0xc0) != 0x80) {
                 goto error;
@@ -1652,16 +1652,22 @@ ly_utf8len(const char *str, uint32_t bytes)
 }
 
 int
-LY_VCODE_INSTREXP_len(const char *str)
+LY_VCODE_INSTREXP_len(const char *str, uint32_t str_len)
 {
-    int len = 0;
+    uint32_t len = 0;
+
+    if (!str_len || (LY_VCODE_INSTREXP_MAXLEN < str_len)) {
+        str_len = LY_VCODE_INSTREXP_MAXLEN;
+    }
 
     if (!str) {
         return len;
     } else if (!str[0]) {
         return 1;
     }
-    for (len = 1; len < LY_VCODE_INSTREXP_MAXLEN && str[len]; ++len) {}
+
+    for (len = 1; (len < str_len) && str[len]; ++len) {}
+
     return len;
 }
 
