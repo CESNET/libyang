@@ -13,7 +13,7 @@ function(ly_add_utest)
         list(APPEND TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SOURCE})
     endforeach()
 
-    add_executable(${TEST_NAME} ${TEST_SOURCES})
+    add_executable(${TEST_NAME} ${TEST_SOURCES} ${compatsrc})
     target_link_libraries(${TEST_NAME} yang ${CMOCKA_LIBRARIES})
 
     # Set common attributes of all tests
