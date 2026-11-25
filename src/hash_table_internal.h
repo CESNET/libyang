@@ -134,6 +134,8 @@ lyht_get_rec(unsigned char *recs, uint16_t rec_size, uint32_t idx)
 /**
  * @brief Iterate safely over all records in a hlist.
  *
+ * Items may be ONLY REMOVED from the hash table while iterating over it.
+ *
  * @param[in] ht Hash table.
  * @param[in] hlist_idx Head list index.
  * @param[in,out] hlist_recs Cached records of the hlist, value NULL on first call.
