@@ -1,9 +1,10 @@
 /**
  * @file test_hash_table.c
- * @author: Radek Krejci <rkrejci@cesnet.cz>
+ * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for functions from hash_table.c
  *
- * Copyright (c) 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2018 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -19,6 +20,13 @@
 #include "dict.h"
 #include "hash_table.h"
 #include "hash_table_internal.h"
+
+/* compiles hash_table.c, which requires ly_log() */
+void
+ly_log(const struct ly_ctx *UNUSED(ctx), LY_LOG_LEVEL UNUSED(level), LY_ERR UNUSED(err), const char *UNUSED(format), ...)
+{
+
+}
 
 static void
 test_invalid_arguments(void **state)

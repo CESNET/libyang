@@ -3,17 +3,6 @@ set(format_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/perf.c
     PARENT_SCOPE)
 
-add_executable(ly_perf ${CMAKE_CURRENT_SOURCE_DIR}/perf.c $<TARGET_OBJECTS:yangobj>)
+add_executable(ly_perf ${CMAKE_CURRENT_SOURCE_DIR}/perf.c)
 set_target_properties(ly_perf PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
-target_link_libraries(ly_perf ${CMAKE_THREAD_LIBS_INIT} ${PCRE2_LIBRARIES} ${CMAKE_DL_LIBS})
-if (CBOR_FOUND)
-    target_link_libraries(ly_perf ${CBOR_LIBRARY})
-endif()
-
-if(XXHASH_FOUND)
-    target_link_libraries(ly_perf ${XXHASH_LIBRARY})
-endif()
-
-if(NOT WIN32)
-    target_link_libraries(ly_perf m)
-endif()
+target_link_libraries(ly_perf yang)

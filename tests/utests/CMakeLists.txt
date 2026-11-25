@@ -44,7 +44,7 @@ ly_add_utest(NAME list  SOURCES node/list.c)
 
 ly_add_utest(NAME common SOURCES basic/test_common.c)
 ly_add_utest(NAME set SOURCES basic/test_set.c)
-ly_add_utest(NAME hash_table SOURCES basic/test_hash_table.c)
+ly_add_utest(NAME hash_table SOURCES basic/test_hash_table.c ../../src/hash_table.c)
 ly_add_utest(NAME inout SOURCES basic/test_inout.c)
 ly_add_utest(NAME context SOURCES basic/test_context.c)
 if(NOT WIN32)
