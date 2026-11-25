@@ -42,7 +42,8 @@ set(format_sources
     PARENT_SCOPE)
 
 add_executable(yanglint ${lintsrc} ${compatsrc})
-target_link_libraries(yanglint yang)
+# the compat sources may call pthread functions
+target_link_libraries(yanglint yang ${CMAKE_THREAD_LIBS_INIT})
 install(TARGETS yanglint DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 target_include_directories(yanglint BEFORE PRIVATE ${PROJECT_BINARY_DIR})

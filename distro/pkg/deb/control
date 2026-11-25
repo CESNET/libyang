@@ -9,8 +9,7 @@ Build-Depends: cmake,
                libcmocka-dev <!nocheck>,
                libpcre2-dev,
                libcbor-dev,
-               libxxhash-dev,
-               pkg-config
+               libxxhash-dev
 Vcs-Browser: https://github.com/CESNET/libyang/tree/master
 Vcs-Git: https://github.com/CESNET/libyang.git
 

@@ -60,7 +60,7 @@ libyang & yanglint can be installed using [homebrew](https://brew.sh/) with ```b
 ### Unix Build Requirements
 
 * C compiler
-* cmake >= 2.8.12
+* cmake >= 3.12
 * libpcre2 >= 10.21 (including devel package)
 
 #### Optional
@@ -188,8 +188,21 @@ library was installed into a non-standard path, the path to libyang must be spec
 linker. To help with setting all the compiler's options, there is `libyang.pc` file for
 `pkg-config(1)` available in the source tree. The file is installed with the library.
 
-If you are using `cmake` in you project, it is also possible to use the provided
-`FindLibYANG.cmake` file to detect presence of the libyang library in the system.
+A CMake project finds libyang by its CMake package, installed into `LIBDIR/cmake/LibYANG`
+(`LIBDIR` is the library directory under the install prefix, e.g. `/usr/local/lib`):
+```
+find_package(LibYANG 5 CONFIG REQUIRED)
+target_link_libraries(myapp PRIVATE LibYANG::yang)
+```
+
+The version passed to `find_package()` is the SO version of the library. The package also
+defines the following variables:
+
+* `LibYANG_PROJECT_VERSION` - project version of libyang,
+* `LibYANG_HAVE_CBOR` - whether libyang supports the CBOR data format.
+
+To use libyang from its build directory, pass `-DLibYANG_DIR=<libyang build directory>`.
+Static builds and older libyang releases provide no CMake package, use `pkg-config` with them.
 
 ## Bindings
 

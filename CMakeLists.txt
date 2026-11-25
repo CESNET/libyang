@@ -1,7 +1,7 @@
 if(WIN32)
     cmake_minimum_required(VERSION 3.22.0)
 else()
-    cmake_minimum_required(VERSION 2.8.12...3.28.1)
+    cmake_minimum_required(VERSION 3.12...3.28.1)
 endif()
 
 # force out-of-source build
@@ -20,6 +20,7 @@ include(ABICheck)
 include(SourceFormat)
 include(GenDoc)
 include(GenCoverage)
+include(GenConfigPackage)
 include(CheckIncludeFile)
 
 # set default build type if not specified by user
@@ -80,7 +81,9 @@ else()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic -std=c11")
 endif()
 
-include_directories(${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/libyang ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/src/plugins_exts)
+include_directories(${PROJECT_BINARY_DIR}
+    ${PROJECT_BINARY_DIR}/include ${PROJECT_BINARY_DIR}/include/libyang
+    ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/src/plugins_exts)
 
 # type plugins are separate because they have their documentation generated
 set(type_plugins
@@ -205,6 +208,7 @@ set(internal_headers
     src/hash_table_internal.h
     src/in_internal.h
     src/json.h
+    src/lcbor.h
     src/lyb.h
     src/out_internal.h
     src/parser_internal.h
@@ -235,7 +239,7 @@ set(doxy_files
     doc/transition_3_4.dox
     doc/transition_4_5.dox
     ${headers}
-    ${PROJECT_BINARY_DIR}/libyang/version.h
+    ${PROJECT_BINARY_DIR}/include/libyang/version.h
     ${type_plugins})
 
 # project (doxygen) logo
@@ -342,11 +346,11 @@ endif()
 
 find_package(CBOR)
 if(CBOR_FOUND)
-    set(LY_HAVE_CBOR 1)
+    set(LY_HAVE_CBOR TRUE)
     list(APPEND libsrc src/parser_cbor.c src/lcbor.c src/printer_cbor.c)
-    list(APPEND headers src/lcbor.h)
     list(APPEND format_sources src/parser_cbor.c src/lcbor.h src/lcbor.c src/printer_cbor.c)
 else()
+    set(LY_HAVE_CBOR FALSE)
     message(STATUS "libcbor not found, CBOR support disabled")
 endif()
 
@@ -372,9 +376,12 @@ if(LY_HAVE_REGEX_H)
 endif()
 
 # generate and copy all public header files
-configure_file(${PROJECT_SOURCE_DIR}/src/ly_config.h.in ${PROJECT_BINARY_DIR}/libyang/ly_config.h @ONLY)
-configure_file(${PROJECT_SOURCE_DIR}/src/version.h.in ${PROJECT_BINARY_DIR}/libyang/version.h @ONLY)
-file(COPY ${headers} DESTINATION ${PROJECT_BINARY_DIR}/libyang)
+configure_file(${PROJECT_SOURCE_DIR}/src/ly_config.h.in ${PROJECT_BINARY_DIR}/include/libyang/ly_config.h @ONLY)
+configure_file(${PROJECT_SOURCE_DIR}/src/version.h.in ${PROJECT_BINARY_DIR}/include/libyang/version.h @ONLY)
+foreach(h IN LISTS headers)
+    get_filename_component(h_name ${h} NAME)
+    configure_file(${PROJECT_SOURCE_DIR}/${h} ${PROJECT_BINARY_DIR}/include/libyang/${h_name} COPYONLY)
+endforeach()
 
 # DOC-only target with no extra dependencies
 if("${BUILD_TYPE_UPPER}" STREQUAL "DOCONLY")
@@ -424,7 +431,7 @@ else()
     endif()
 
     #link dl
-    target_link_libraries(yang ${CMAKE_DL_LIBS})
+    target_link_libraries(yang PRIVATE ${CMAKE_DL_LIBS})
 endif()
 
 if(WIN32)
@@ -443,26 +450,28 @@ if(WIN32)
 
     find_package(pthreads REQUIRED)
     set(COMPAT_WIN_LIBRARIES PThreads4W::PThreads4W shlwapi.lib ws2_32)
-    target_link_libraries(yang ${COMPAT_WIN_LIBRARIES})
+    # ws2_32 is public, ly_config.h includes winsock2.h
+    target_link_libraries(yang PRIVATE PThreads4W::PThreads4W shlwapi.lib PUBLIC ws2_32)
 endif()
 
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_SOVERSION_FULL} SOVERSION ${LIBYANG_SOVERSION})
+target_include_directories(yang PUBLIC $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include> $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 # link math
 if(NOT WIN32)
-    target_link_libraries(yang m)
+    target_link_libraries(yang PRIVATE m)
 endif()
 
 # find pthreads
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 find_package(Threads REQUIRED)
-target_link_libraries(yang ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(yang PRIVATE ${CMAKE_THREAD_LIBS_INIT})
 
 # find PCRE2 library
 unset(PCRE2_LIBRARY CACHE)
 find_package(PCRE2 10.21 REQUIRED)
 include_directories(${PCRE2_INCLUDE_DIRS})
-target_link_libraries(yang ${PCRE2_LIBRARIES})
+target_link_libraries(yang PRIVATE ${PCRE2_LIBRARIES})
 
 # link libcbor if found
 if(CBOR_FOUND)
@@ -470,16 +479,15 @@ if(CBOR_FOUND)
         target_include_directories(yangobj PRIVATE ${CBOR_INCLUDE_DIR})
     endif()
     target_include_directories(yang PRIVATE ${CBOR_INCLUDE_DIR})
-    target_link_libraries(yang ${CBOR_LIBRARY})
+    target_link_libraries(yang PRIVATE ${CBOR_LIBRARY})
 endif()
 
 # XXHash include and library
 find_package(XXHash)
 if(XXHASH_FOUND)
     add_definitions(-DLY_XXHASH_SUPPORT)
-    set(PC_XXHASH_LIB libxxhash)
     include_directories(${XXHASH_INCLUDE_DIR})
-    target_link_libraries(yang ${XXHASH_LIBRARY})
+    target_link_libraries(yang PRIVATE ${XXHASH_LIBRARY})
     message(STATUS "Hash algorithm: xxhash")
     if (HAVE_XXH3_64BITS_WITHSEED)
         # for 32-bit system compatibility, this may not be available there, so use XXH32 instead
@@ -491,33 +499,58 @@ endif()
 
 # generated header list
 foreach(h IN LISTS gen_headers)
-    list(APPEND g_headers ${PROJECT_BINARY_DIR}/libyang/${h})
+    list(APPEND g_headers ${PROJECT_BINARY_DIR}/include/libyang/${h})
 endforeach()
 
 # install the modules
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/modules/" DESTINATION ${YANG_MODULE_DIR} FILES_MATCHING PATTERN "*.yang")
 
-# install all library files
-install(TARGETS yang DESTINATION ${CMAKE_INSTALL_LIBDIR})
+# install all library files, a Windows DLL is RUNTIME and belongs to bin/
+install(TARGETS yang EXPORT LibYANGTargets
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${headers} ${g_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)
 
-find_package(PkgConfig)
-if(PKG_CONFIG_FOUND)
-    # generate and install pkg-config file
-    configure_file("libyang.pc.in" "libyang.pc" @ONLY)
-    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libyang.pc" DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
-    # check that pkg-config includes the used path
-    execute_process(COMMAND ${PKG_CONFIG_EXECUTABLE} --variable pc_path pkg-config RESULT_VARIABLE RETURN OUTPUT_VARIABLE PC_PATH ERROR_QUIET)
-    if(RETURN EQUAL 0)
-    string(STRIP "${PC_PATH}" PC_PATH)
-    set(PC_PATH "${PC_PATH}:$ENV{PKG_CONFIG_PATH}")
-        string(REGEX MATCH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/pkgconfig" SUBSTR "${PC_PATH}")
-        string(LENGTH "${SUBSTR}" SUBSTR_LEN)
-        if(SUBSTR_LEN EQUAL 0)
-            message(WARNING "pkg-config will not detect the new package after installation, adjust PKG_CONFIG_PATH using \"export PKG_CONFIG_PATH=\${PKG_CONFIG_PATH}:${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/pkgconfig\".")
-        endif()
+# CMake config package, for the build tree and the installation
+if(BUILD_SHARED_LIBS)
+    # the package version is the SO version, which all the dependent projects check
+    gen_config_package(LibYANG ${LIBYANG_SOVERSION_FULL})
+else()
+    message(STATUS "Static build, CMake config package is not installed")
+endif()
+
+# generate and install pkg-config file
+if(IS_ABSOLUTE "${CMAKE_INSTALL_INCLUDEDIR}")
+    set(PC_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}")
+else()
+    set(PC_INCLUDEDIR "\${prefix}/${CMAKE_INSTALL_INCLUDEDIR}")
+endif()
+if(IS_ABSOLUTE "${CMAKE_INSTALL_LIBDIR}")
+    set(PC_LIBDIR "${CMAKE_INSTALL_LIBDIR}")
+else()
+    set(PC_LIBDIR "\${prefix}/${CMAKE_INSTALL_LIBDIR}")
+endif()
+# dependencies only in Libs.private, Requires.private would need their .pc files even for dynamic linking
+set(PC_LIBS_PRIVATE "-lpcre2-8")
+if(XXHASH_FOUND)
+    string(APPEND PC_LIBS_PRIVATE " -lxxhash")
+endif()
+if(CBOR_FOUND)
+    string(APPEND PC_LIBS_PRIVATE " -lcbor")
+endif()
+if(NOT WIN32)
+    string(APPEND PC_LIBS_PRIVATE " -lm")
+    # only the shared library loads plugins
+    if(BUILD_SHARED_LIBS AND CMAKE_DL_LIBS)
+        string(APPEND PC_LIBS_PRIVATE " -l${CMAKE_DL_LIBS}")
     endif()
 endif()
+if(CMAKE_THREAD_LIBS_INIT)
+    string(APPEND PC_LIBS_PRIVATE " ${CMAKE_THREAD_LIBS_INIT}")
+endif()
+configure_file("libyang.pc.in" "libyang.pc" @ONLY)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libyang.pc" DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
 
 # tests
 if(ENABLE_TESTS)
