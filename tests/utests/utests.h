@@ -1371,7 +1371,12 @@ utest_setup(void **state)
     }
 
     /* set CET */
+#ifndef _WIN32
     setenv("TZ", "CET+02:00", 1);
+#else
+    putenv("TZ=CET+02:00");
+#endif
+
     /* call tzset explicitly, to update the tzname, timezone and daylight global variables */
     tzset();
 
@@ -1405,7 +1410,14 @@ utest_teardown(void **state)
 
     if (current_utest_context->orig_tz) {
         /* restore TZ */
+#ifndef _WIN32
         setenv("TZ", current_utest_context->orig_tz, 1);
+#else
+        char env[64];
+
+        snprintf(env, 64, "TZ=%s", current_utest_context->orig_tz);
+        putenv(env);
+#endif
     }
 
     /* utest context */
