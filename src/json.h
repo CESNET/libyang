@@ -25,9 +25,6 @@
 struct ly_ctx;
 struct ly_in;
 
-#define LYJSON_STRING_BUF_START 24
-#define LYJSON_STRING_BUF_STEP 128
-
 /* Macro to test if character is whitespace */
 #define is_jsonws(c) (c == 0x20 || c == 0x9 || c == 0xa || c == 0xd)
 

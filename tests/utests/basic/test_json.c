@@ -1,9 +1,10 @@
 /**
  * @file test_json.c
- * @author: Radek Krejci <rkrejci@cesnet.cz>
+ * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for a generic JSON parser
  *
- * Copyright (c) 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -629,6 +630,103 @@ test_array(void **state)
     CHECK_LOG_CTX("Invalid character sequence \", null]}\", expected a JSON value.", NULL, 1);
 }
 
+static void
+test_bound_input(void **state)
+{
+    struct ly_in *in;
+    const char *str, *str_trailing;
+    struct ly_ctx *ctx = UTEST_LYCTX;
+    struct lyd_node *tree = NULL;
+    const char *yang = "module test {"
+            " namespace \"urn:test\";"
+            " prefix t;"
+            " leaf l {"
+            "    type boolean;"
+            " }"
+            " leaf emp {"
+            "    type empty;"
+            " }"
+            "}";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, yang, LYS_IN_YANG, NULL));
+
+    /* valid */
+    str = "{\"test:l\":true,\"test:emp\":[null]}";
+    str_trailing = "{\"test:l\":true,\"test:emp\":[null]} { more chars }";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(str_trailing, strlen(str), &in));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data(ctx, NULL, in, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+
+    lyd_free_all(tree);
+
+    /* invalid */
+    str = "{\"test:l\":true,\"test:emp\":[null]";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(str, strlen(str), &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(ctx, NULL, in, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    str = "{\"test:l\":true,\"test:emp\":[null";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(str, strlen(str), &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(ctx, NULL, in, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    str = "{\"test:l\":true,\"test:emp\":[nu";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(str, strlen(str), &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(ctx, NULL, in, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    str = "{\"test:l\":true,\"test:emp\":[";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(str, strlen(str), &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(ctx, NULL, in, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    str = "{\"test:l\":true,\"test:emp\":";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(str, strlen(str), &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(ctx, NULL, in, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    str = "{\"test:l\":true,\"test:emp\"";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(str, strlen(str), &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(ctx, NULL, in, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    str = "{\"test:l\":true,\"test:emp";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(str, strlen(str), &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(ctx, NULL, in, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    str = "{\"test:l\":true,\"test";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(str, strlen(str), &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(ctx, NULL, in, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    str = "{\"test:l\":true,\"";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(str, strlen(str), &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(ctx, NULL, in, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    str = "{\"test:l\":true,";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(str, strlen(str), &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(ctx, NULL, in, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    str = "{";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(str, strlen(str), &in));
+    assert_int_equal(LY_EVALID, lyd_parse_data(ctx, NULL, in, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+}
+
 int
 main(void)
 {
@@ -638,6 +736,7 @@ main(void)
         UTEST(test_string),
         UTEST(test_object),
         UTEST(test_array),
+        UTEST(test_bound_input),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
